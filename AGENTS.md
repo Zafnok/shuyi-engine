@@ -1,0 +1,95 @@
+# AGENTS.md
+
+How to work on Shuyi Engine. This applies to people and coding agents
+alike; Claude Code reads it through `CLAUDE.md`.
+
+Shuyi Engine is an open-source 2D game engine in Rust (MIT OR Apache-2.0).
+It is carved out of the game **Visions of Shuyi**
+(`github.com/Zafnok/visions-of-shuyi`), a paid, proprietary game. That
+game stays the engine's first user. Read [`README.md`](README.md), then
+[`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Who decides what
+
+- **Nick (owner)** decides the product: the name, the license, when
+  things go public, who may contribute, which parked work starts, and
+  anything that changes what the game gets. He does **not** review code
+  and doesn't want technical questions. Ask him product questions with
+  the `ask-nick` skill. His answers are in
+  [`docs/decisions.md`](docs/decisions.md).
+- **Claude** decides everything technical and records significant
+  choices as ADRs in `docs/adr/` (the `write-adr` skill).
+
+## Hard rules
+
+1. **Work one ticket at a time** from `tickets/open/`, with the
+   `work-ticket` skill. One ticket = one branch = one PR. The PR moves the
+   ticket to `tickets/done/`.
+2. **No unticketed work.** Found something else to do? Write a ticket
+   (`write-ticket` skill).
+3. **Parked tickets stay parked.** A ticket whose title starts with
+   `Parked:` is not started until Nick unparks it ([`docs/ROADMAP.md`](docs/ROADMAP.md)).
+4. **Nothing of the game in the engine.** No game crate, no file from the
+   game's `assets/`, no class, character, story, map or bought art, and no
+   game-specific rule. The game uses the engine like any other game would.
+   When unsure whether something is engine or game, it is game.
+5. **Respect the layers** ([ADR-0002](docs/adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md)):
+   - the core is pure and deterministic (no I/O, no clock, no floats in a
+     simulation);
+   - state changes only through commands (turn games) or inputs per step
+     (tick games);
+   - only the platform crate touches windows, files, audio devices and
+     the clock.
+6. **Tests are the review.** Run the `run-gates` skill before pushing.
+   Never weaken a gate to pass it.
+7. **Licenses.** The engine is MIT OR Apache-2.0. Ship only
+   dependencies and assets under the permissive licenses in ADR-0002 §8:
+   no GPL, LGPL, MPL or copyleft, nothing non-commercial, nothing that
+   costs money. Watch default features that pull in denied code
+   (ADR-0004 §7). Every non-crate asset goes in `THIRD_PARTY_ASSETS.md`
+   once one exists.
+8. **Never hard-code a key.** Engine code and games react to actions, and
+   text names keys through the player's keymap (`input-actions` skill).
+9. **Graphics are a skin.** Logic builds plain-data views and scenes, and a
+   skin paints them. Tests of what happened read the scene or the state;
+   only tests of a look read cells, colors and sprite items.
+10. **Formats are plugins** ([ADR-0007](docs/adr/0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md)).
+    An asset kind is never tied to one file format. Standard formats always
+    load. Our text formats stay the source of truth, and an optimized format
+    is derived from them and tested equal.
+11. **Never write a bare `@word` on GitHub** (PR title or body, commit
+    message, comment, release notes). GitHub turns it into a mention of
+    that user. Put it in backticks or drop the `@`.
+
+## Working with the game repository
+
+- Until the code arrives (the game's ticket 1131), the engine's code lives
+  in the game repository's `engine/` folder and is built and tested
+  there. The carve tickets (game 1102–1118) are in the game repository.
+- Ticket ids:
+  - `1119`–`1150` moved here from the game repository and kept their
+    numbers.
+  - New engine tickets use `2001` and up (blocks in
+    [`tickets/README.md`](tickets/README.md)).
+  - Any other four-digit id in the text is a game ticket.
+  - In `blocked_by`, a game ticket is written `"game#NNNN"`.
+- ADRs: "ADR-NNNN" means this repository's. "game ADR-NNNN" means the
+  game's (`github.com/Zafnok/visions-of-shuyi/tree/main/docs/adr`).
+- The study behind all of this: the game repository's
+  `docs/engine/feasibility.md` (the report to Nick) and
+  `docs/engine/boundary.md` (every module of the game, engine or game).
+
+## Environment
+
+- Nick's machine: Windows 11, Rust with the **GNU** host toolchain; **no
+  MSVC**. Never require MSVC locally; CI may use MSVC on GitHub runners.
+- Local builds need MSYS2's mingw-w64 toolchain (`winget install -e --id
+  MSYS2.MSYS2`, then `pacman -S mingw-w64-x86_64-gcc`), on `PATH` as
+  `C:\msys64\mingw64\bin`.
+- Use `cargo install --locked <tool>`; `cargo-binstall` doesn't build
+  there.
+- Never run mutation testing on Nick's machine (CI runs it).
+- The web build uses macroquad's own loader, not `wasm-bindgen`
+  (game ADR-0034). A crate that needs `wasm-bindgen` doesn't work in the
+  web build without a JS plugin of our own.
+- Git remote: `https://github.com/Zafnok/shuyi-engine` (public).

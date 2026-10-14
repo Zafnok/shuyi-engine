@@ -1,0 +1,10 @@
+[default.extend-words]
+# Fragments from hyphenated tokens that typos splits (e.g. "CC-BY-ND").
+nd = "nd"
+
+[files]
+extend-exclude = [
+    # Standard license texts, never edited.
+    "LICENSE-APACHE",
+    "LICENSE-MIT",
+]
