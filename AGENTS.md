@@ -38,8 +38,9 @@ game stays the engine's first user. Read [`README.md`](README.md), then
      simulation);
    - state changes only through commands (turn games) or inputs per step
      (tick games);
-   - only the platform crate touches windows, files, audio devices and
-     the clock.
+   - only platform backends touch windows, files, audio devices and
+     the clock: `shuyi-app` (macroquad), and later `shuyi-playdate` and
+     private console backends ([ADR-0008](docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)).
 6. **Tests are the review.** Run the `run-gates` skill before pushing.
    Never weaken a gate to pass it.
 7. **Licenses.** The engine is MIT OR Apache-2.0. Ship only

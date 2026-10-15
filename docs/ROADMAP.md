@@ -61,6 +61,35 @@ These are not parked, but they come after the MVP:
 - **2901**: research on better images with machine learning, as a
   separate repository with a loader plugin.
 
+### Export targets: the Steam Deck and the Playdate
+
+Nick, 2026-10-15 ([`decisions.md`](decisions.md)): Visions of Shuyi
+should run on the Playdate and the Steam Deck. On the Playdate the rules
+are 1-bit graphics, a good frame rate, and the d-pad, A, B and the crank
+only. Every target has performance budgets
+([ADR-0008](adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)).
+The tickets, in order:
+
+| Ticket | What |
+| ------ | ---- |
+| 3001 | Target profiles as data, `shuyi check --target` (screen and text size) |
+| 3003 | The platform boundary: `shuyi-platform`, `App::frame`, a headless backend |
+| 3002 | Controls fit: each screen's required actions fit the target, or it doesn't ship |
+| 3004 | `shuyi export <target>`: Windows, Linux, macOS, the web |
+| 3005 | `no_std` core, UI and platform, gated in CI |
+| 3008 | Performance budgets: `shuyi bench`, gated in CI |
+| 3006 | 1-bit output: patterns per palette role, a check that sides stay distinct |
+| 3007 | 1-bit sprites at bake time, hand-drawn overrides per target (after 2204) |
+| 3009 | Bots think in slices: the frame rate holds, the decision never changes |
+| 3012 | Steam Deck target |
+| 3013 | Steam Deck on the device: frame times and battery |
+| 3010 | The Playdate backend and `shuyi export playdate` |
+| 3011 | Playdate on the device: frame times and memory, budgets calibrated |
+
+3001, 3003 and 3005 are the cheapest early, because each one gets
+dearer as code piles up. The game's own Playdate port is still its
+ticket 1025, parked until after launch.
+
 ## Parked
 
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
@@ -73,3 +102,4 @@ for networking, styles for later". Each one's title starts with
 | 1126–1128 | Isometric, side view (platformer), optional physics | — |
 | 1135 | Research: visual scripting as a view over text | — |
 | 1140–1150 | Networking: lockstep, relay, browser, LAN, Steam, sessions, referee server, real time, accounts and ratings, chat, MMO and global chat research | the game's 0053 picks an online mode |
+| 3014–3016 | Export targets that cost money and bring agreements: Nintendo Switch and the eShop, mobile (Android, iOS), research on PlayStation and Xbox | Nick asks (2026-10-15: "eventually nintendo eshop and maybe even mobile and console") |

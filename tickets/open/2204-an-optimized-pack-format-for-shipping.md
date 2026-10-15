@@ -43,6 +43,16 @@ None.
 
   The pack is itself a bundle layer (game ADR-0040's layers), so a game
   can put a pack under its loose files.
+- **A `no_std` reader.** The code that reads a pack builds with
+  `default-features = false` as `no_std` with `alloc`, because the
+  Playdate loads only packs (ADR-0008 §5, ticket 3010). Pick an encoding
+  and a decompressor that work without `std`: for example `postcard` and
+  `lz4_flex` with `default-features = false`, licenses checked. Add the
+  reader to 3005's `thumbv7em-none-eabihf` CI build if that ticket has
+  landed. If it hasn't, 3005 adds it.
+- **A `--target` hook.** `shuyi bake --target <id>` passes the target
+  to each format's encoder, and picks the target's bundle layer. This
+  ticket only adds the parameter; 3007 uses it for 1-bit images.
 - **`shuyi bake`.** Sources → pack. It refuses a source with errors, and
   prints sizes and times.
 - **Equality.** For every asset in a game, decode(source) ==
@@ -70,6 +80,7 @@ None.
 - [ ] A truncated or changed pack gives an error, never a panic (property
       test).
 - [ ] The measurements are recorded.
+- [ ] The pack reader builds with `--no-default-features`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

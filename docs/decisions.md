@@ -155,3 +155,61 @@ From the game's ticket 0059:
 - who may contribute code (the recommendation is issues only until the
   first public release, then pull requests under a Developer Certificate
   of Origin).
+
+## 2026-10-15: export targets, the Playdate rule, benchmarks
+
+Source: Nick, in a Claude Code session on 2026-10-15.
+
+> "lets make sure there are tickets for export targets like consoles,
+> even obscure like playdate, with expected performance benchmarks for
+> game exports
+>
+> like I want my visions of shuyi to run on playdate, so it must be able
+> to translate its graphics to 1-bit easily and run at a good fps and
+> support dpad/a+b/lever only control scheme if there are more buttons
+> necessary (not optional) in any context it simply cannot run on
+> playdate
+>
+> I also want it to be exported to steam deck, and eventually nintendo
+> eshop and maybe even mobile and console"
+
+**Rules:**
+
+- **Targets and their order.** The details are in
+  [ADR-0008](adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)
+  and tickets 3001–3016.
+  - **The Steam Deck and the Playdate** are wanted for the game. Their
+    tickets come after the MVP and are not parked.
+  - **The Nintendo eShop, mobile, and PlayStation and Xbox** ("eventually",
+    "maybe") are `Parked:` tickets until Nick unparks them. Each costs
+    money and brings an agreement: a developer program, kits, store
+    fees.
+- **The Playdate rule.** On the Playdate a game may need only the d-pad,
+  A, B and the crank. "A+B" is read as two buttons, plus the A+B chord
+  Nick offered on 2026-10-07 (game ticket 1025: "chording A+B if we need
+  to"). Nick can veto the chord.
+  - If any screen needs more inputs than that for a required action, the
+    game doesn't ship on the Playdate. `shuyi check --target playdate`
+    fails, and `shuyi export playdate` refuses.
+  - Optional actions may go anywhere, the system menu included.
+  - The engine never drops a required action to make a game fit.
+- **1-bit, easily.** Graphics are a skin (ADR-0002 §4), so a game gets a
+  1-bit look from a pattern map for its palette roles, plus dithering of
+  its sprites at bake time.
+  - Roles that tell things apart, such as the sides in a battle, must
+    stay distinct, or the check fails.
+  - Hand-drawn 1-bit art overrides any asset.
+- **A good frame rate, as numbers.** Every target has budgets in its
+  profile. On the Playdate the starting budget is 30 frames a second,
+  held: no frame over 50 ms, on both hardware revisions, even while the
+  enemy thinks.
+  - CI gates on exact proxies (instruction counts, memory, size).
+  - Device tickets measure the real thing.
+  - Every number is provisional until its device ticket measures it.
+- **What this doesn't change.**
+  - The MVP is still parity with the game.
+  - The game's own Playdate port (game ticket 1025) is still parked
+    until after launch, in the game repository. These tickets make the
+    engine ready for it.
+  - Steam itself (the partner account, Steamworks, the store page) stays
+    the game's ticket 0903.
