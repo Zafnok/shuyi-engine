@@ -29,6 +29,7 @@ tickets/
 | `27xx` | Game styles and examples (new tickets; the first ones are 1119–1128) |
 | `28xx` | Docs and community |
 | `29xx` | Research |
+| `30xx` | Export targets: platforms, devices, stores and performance budgets (ADR-0008) |
 
 Any other four-digit id in a ticket's text is the **game repository's**
 ticket (`github.com/Zafnok/visions-of-shuyi/tree/main/tickets`): for
