@@ -5,6 +5,7 @@
 //! ([`font`]), named colours ([`palette`], [`ink`]), lights ([`lighting`]),
 //! the audio manifest ([`audio`]) and the credits ([`credits`]). Each is a
 //! pure parser; the game names its files and reads them from its bundle.
+//! The `.map` text format of a grid map is [`grid_map`].
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -23,6 +24,7 @@ pub mod bundle;
 pub mod credits;
 pub mod error;
 pub mod font;
+pub mod grid_map;
 pub mod image;
 pub mod ink;
 pub mod lighting;
@@ -31,4 +33,5 @@ pub mod ron;
 
 pub use bundle::{Bundle, Files, Layer};
 pub use error::{ContentError, ContentErrors, line_of};
+pub use grid_map::{GridMap, MapFeature, MapFormat, MapLook};
 pub use ron::parse_ron;

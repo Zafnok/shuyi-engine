@@ -40,7 +40,8 @@ Carved so far:
 
 - `shuyi-assets` (1103): the bundle as layers the game gives
   (`bundle`), content errors with file, line and column (`error`), and
-  RON loading (`ron`).
+  RON loading (`ron`). 1116: the `.map` text format of a grid map
+  (`grid_map`), with a hook for a game's tile features.
 - `shuyi-assets` (1104): the image table (`image`), font atlases
   (`font`), named colors and themes (`palette`), one-bit inks (`ink`),
   lights (`lighting`), the audio manifest (`audio`) and the credits
@@ -48,7 +49,8 @@ Carved so far:
 - `shuyi-core` (1114): the seeded RNG (`rng`), the grid and tile sets
   (`grid`), paths over a cost function (`path`), the `TurnRules` trait
   (`turn`), a game's history over it (`history`) and save versions
-  (`save`).
+  (`save`). 1116: playtest bots over any `TurnRules` (`bots`): the
+  `Bot` trait, the play loop and a seeded random bot.
 
 ## Third-party crates the engine may use
 

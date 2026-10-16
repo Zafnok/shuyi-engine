@@ -14,9 +14,11 @@ workspace = true
 default = ["std"]
 # Without it the crate is `no_std` + `alloc` (ADR-0070 §6): a layer is then a
 # file table (`Layer::table`), since `include_dir` needs `std`.
-std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std"]
+std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std", "shuyi-core/std"]
 
 [dependencies]
+# The grid a `.map` file is read into (`grid_map`).
+shuyi-core = { path = "../core", default-features = false }
 serde.workspace = true
 ron.workspace = true
 include_dir = { workspace = true, optional = true }
