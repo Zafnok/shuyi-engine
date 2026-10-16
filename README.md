@@ -41,6 +41,10 @@ Carved so far:
 - `shuyi-assets` (1103): the bundle as layers the game gives
   (`bundle`), content errors with file, line and column (`error`), and
   RON loading (`ron`).
+- `shuyi-core` (1114): the seeded RNG (`rng`), the grid and tile sets
+  (`grid`), paths over a cost function (`path`), the `TurnRules` trait
+  (`turn`), a game's history over it (`history`) and save versions
+  (`save`).
 
 ## Third-party crates the engine may use
 
