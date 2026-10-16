@@ -46,6 +46,12 @@ Carved so far:
   (`font`), named colors and themes (`palette`), one-bit inks (`ink`),
   lights (`lighting`), the audio manifest (`audio`) and the credits
   (`credits`). The game names its files and what it requires.
+- `shuyi-assets` (1105): languages and packs (`lang`), the names table
+  (`names`), the `.dlg` dialogue format with its checks and `@if`
+  (`dialogue`), voice clips by line id (`voice`) and tips (`tip`). The
+  game gives its directives, tokens, limits, line variants and triggers.
+  `shuyi-core` (1105): character ids (`character`) and the `{token}`
+  splitter (`text`).
 - `shuyi-core` (1114): the seeded RNG (`rng`), the grid and tile sets
   (`grid`), paths over a cost function (`path`), the `TurnRules` trait
   (`turn`), a game's history over it (`history`) and save versions

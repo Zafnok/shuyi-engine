@@ -17,7 +17,8 @@ default = ["std"]
 std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std", "shuyi-core/std"]
 
 [dependencies]
-# The grid a `.map` file is read into (`grid_map`).
+# The grid a `.map` file is read into (`grid_map`); character ids and the
+# `{token}` splitter, for dialogue and languages.
 shuyi-core = { path = "../core", default-features = false }
 serde.workspace = true
 ron.workspace = true

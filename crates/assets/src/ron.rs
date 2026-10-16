@@ -1,7 +1,7 @@
 //! Reading RON assets with `file:line:col` errors.
 use crate::prelude::*;
 
-use serde::de::DeserializeOwned;
+use serde::de::{DeserializeOwned, DeserializeSeed};
 
 use crate::bundle::Bundle;
 use crate::error::ContentError;
@@ -18,12 +18,27 @@ pub fn load_ron<T: DeserializeOwned>(bundle: &Bundle, path: &str) -> Result<T, C
 /// Deserializes RON `source`; errors are attributed to `file` (a
 /// human-facing path) with RON's 1-based line and column.
 pub fn parse_ron<T: DeserializeOwned>(file: &str, source: &str) -> Result<T, ContentError> {
-    ::ron::from_str(source).map_err(|e| {
-        // `span.end` is the offending token; `span.start` can be the
-        // whitespace before it.
-        let pos = e.span.end;
-        ContentError::new(file, e.code.to_string()).at(to_u32(pos.line), Some(to_u32(pos.col)))
-    })
+    ::ron::from_str(source).map_err(|e| error(file, &e))
+}
+
+/// Like [`parse_ron`], reading with `seed`: for a value whose shape is
+/// known only at run time.
+pub fn parse_ron_seed<'de, S: DeserializeSeed<'de>>(
+    file: &str,
+    source: &'de str,
+    seed: S,
+) -> Result<S::Value, ContentError> {
+    ::ron::Options::default()
+        .from_str_seed(source, seed)
+        .map_err(|e| error(file, &e))
+}
+
+/// `e` as an error of `file`.
+fn error(file: &str, e: &::ron::error::SpannedError) -> ContentError {
+    // `span.end` is the offending token; `span.start` can be the
+    // whitespace before it.
+    let pos = e.span.end;
+    ContentError::new(file, e.code.to_string()).at(to_u32(pos.line), Some(to_u32(pos.col)))
 }
 
 fn to_u32(n: usize) -> u32 {
