@@ -1,0 +1,25 @@
+[package]
+name = "shuyi-assets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license-file.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# Without it the crate is `no_std` + `alloc` (ADR-0070 §6): a layer is then a
+# file table (`Layer::table`), since `include_dir` needs `std`.
+std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std"]
+
+[dependencies]
+serde.workspace = true
+ron.workspace = true
+include_dir = { workspace = true, optional = true }
+thiserror.workspace = true
+# The process-wide bundle, set once, without `std`.
+once_cell.workspace = true

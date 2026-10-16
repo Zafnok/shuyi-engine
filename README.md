@@ -36,6 +36,12 @@ crate.
 | `shuyi-app` | `app` | The window, blitting, input devices, the audio backend, storage and the run loop. |
 | `shuyi-cli` | `cli` | Tools: `frame-png`, `font-atlas`, `check-keys`, `check-text`, `web`, and the rest. |
 
+Carved so far:
+
+- `shuyi-assets` (1103): the bundle as layers the game gives
+  (`bundle`), content errors with file, line and column (`error`), and
+  RON loading (`ron`).
+
 ## Third-party crates the engine may use
 
 An engine crate may depend on another engine crate and on the crates
@@ -48,6 +54,7 @@ serde
 ron
 thiserror
 include_dir
+once_cell
 macroquad
 quad-snd
 gilrs
