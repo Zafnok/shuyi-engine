@@ -42,8 +42,15 @@ None. Our game's frames don't change.
   `frame-png` and the renderer in `shuyi-app` draw them.
 - Whole-frame effects (fades, game ADR-0060's brightness) include world
   layers.
+- Perspective markers (ADR-0009 §3):
+  - `shuyi_core::perspective` has the trait `Perspective` and the
+    markers `TopDownGrid` and `TopDown`;
+  - `WorldLayer`, `Camera` and a world scene are generic over
+    `P: Perspective`, and the drawing side reads `P`'s projection;
+  - 1126 and 1127 add `Isometric` and `SideView`.
 
-**Out (do not do):** isometric projection (1126); rotation.
+**Out (do not do):** isometric projection (1126); rotation (2703 adds
+it, if procedural animation is unparked).
 
 ## Implementation steps
 

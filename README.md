@@ -48,6 +48,14 @@ movement, isometric, side-scrolling, and moving between them come later
 ([ADR-0003](docs/adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md)).
 No 3D.
 
+**Modules.** The default engine stays small. You pick a direction for
+each part of your game (its perspective, how bodies move and animate,
+online play) and add only the modules that fit it, such as rigid-body
+physics or procedural animation. Each module says which kinds of game
+it is built for, and guides show how to move a game between
+perspectives
+([ADR-0009](docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)).
+
 **Networking.** It is planned in layers, from LAN play to sessions,
 hosted servers, matchmaking and chat
 ([ADR-0006](docs/adr/0006-networking-in-layers-transports-sessions-sync-models-services.md)).

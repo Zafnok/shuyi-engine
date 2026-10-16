@@ -61,6 +61,10 @@ None (technical). Scheduling: see above.
   - a forced desync is reported with the first differing command;
   - a peer that disconnects and reconnects catches up.
 
+- Module duties (ADR-0009 §4): the metadata (concern: online play), the
+  README in its fixed order, the `net` feature of the `shuyi` crate
+  (2003), and the catalog row.
+
 **Out (do not do):** real sockets (1141, 1143); servers (1141); anything
 in our game (0053).
 

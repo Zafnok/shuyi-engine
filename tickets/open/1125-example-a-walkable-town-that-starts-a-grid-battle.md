@@ -54,6 +54,10 @@ for him, not a sign-off.
   - a replay test of the town part (tick record hashes);
   - `frame-png` snapshots of the town and the battle.
 - Web build on Pages beside `hello-grid`.
+- Guides (ADR-0009 §5): write `docs/guides/top-down-free.md` in full,
+  and the move guide `docs/guides/top-down-free-to-top-down-grid.md`
+  from this example. If 2004 is done, replace its planned pages. If not,
+  create the files, and 2004 adds them to its list.
 
 **Out (do not do):** anything in our game; isometric (1126).
 

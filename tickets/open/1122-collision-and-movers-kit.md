@@ -39,7 +39,10 @@ None.
     one pixel at a time, and return what they hit;
   - `Trigger` enter and leave events.
 - `shuyi_core::controllers::top_down`: 8-way and analog movement with
-  acceleration, top speed and friction, all as data (RON).
+  acceleration, top speed and friction, all as data (RON). It works with
+  the `TopDown` perspective marker only (ADR-0009 §3, markers from
+  1120), and a `compile_fail` doc test shows it can't be used with
+  another one.
 - Property tests:
   - a mover never ends inside a solid tile or box;
   - moving by `a` then by `b` equals moving by `a + b` when nothing is

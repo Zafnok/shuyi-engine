@@ -45,6 +45,11 @@ None.
   same hashes, against a checked-in table if running wasm in CI is
   impractical.
 - Measure the size it adds to a WASM build and record it.
+- Module duties (ADR-0009 §4): the metadata (concern: bodies and motion;
+  answer: rigid-body physics; alternatives: the default movers and
+  `shuyi-procanim`), the README in its fixed order, the `physics`
+  feature of the `shuyi` crate (2003), the catalog row, and the
+  `shuyi-physics` skill once the skill pack (1134) exists.
 
 **Out (do not do):**
 - making physics the default;
