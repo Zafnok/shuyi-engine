@@ -23,3 +23,8 @@ include_dir = { workspace = true, optional = true }
 thiserror.workspace = true
 # The process-wide bundle, set once, without `std`.
 once_cell.workspace = true
+# Float rounding without `std` (lights).
+libm.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
