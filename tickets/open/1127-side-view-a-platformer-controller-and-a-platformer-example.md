@@ -44,6 +44,11 @@ None.
 - Example `examples/platformer/`: two short levels drawn in Tiled
   or LDtk (1124), an animated player (1123), coins, a door to the next
   level, and CC0 art.
+- The `SideView` perspective marker (ADR-0009 §3). The platformer
+  controller works with `SideView` only, and a `compile_fail` doc test
+  shows that it can't be used in a `TopDown` stage.
+- Guides (ADR-0009 §5): write `docs/guides/side-view.md` in full. If
+  2004 isn't done, create the file and 2004 adds it to its list.
 - Tests:
   - controller unit tests, including coyote time and the jump buffer at
     their exact step limits;

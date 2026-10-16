@@ -213,3 +213,68 @@ Source: Nick, in a Claude Code session on 2026-10-15.
     engine ready for it.
   - Steam itself (the partner account, Steamworks, the store page) stays
     the game's ticket 0903.
+
+## 2026-10-16: modules, many kinds of game, procedural animation
+
+Source: Nick, in a Claude Code session on 2026-10-16.
+
+> "another inspiration hit me and that's rain world
+>
+> we should support plenty of modules for our engine, so that we don't
+> overload devs, but one such module should be procedural animation like
+> rain world has
+>
+> this will be very late addition since it won't tie into visions of
+> shuyi game but it's something to think about that we should support a
+> wide variety of game types in ways that make sense..."
+
+Then:
+
+> "the way I think about it is, high-level, a dev will set a direction
+> and import non-conflicting modules to help them out. So for instance,
+> if they decide they want a normal physics/animation system, they will
+> use that. Or if they want procedural animation, we will have different
+> primitives for that. And same for i.e. side scrolling perspective games
+> vs top-down or isometric. Not to say that games can't transition
+> perspectives, but we should make it very obvious OK this behavior is
+> built for this type of game, this one for this type of game, here is
+> how to transition between the two... make it smartly designed and well
+> documented at all steps. And eventually we support a visual
+> programming like Blueprints or Scratch"
+
+**Rules:**
+
+- **The engine grows in modules.** A game takes only the modules it uses,
+  and a developer learns only those. The default engine stays small.
+  [ADR-0009](adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)
+  says what a module is; ticket 2003 builds the catalog and the way a
+  game opts in.
+- **A developer sets a direction, then adds modules that fit it.** A
+  direction is a choice per concern: the perspective (top-down grid,
+  top-down free, isometric, side view), how bodies move and animate
+  (drawn clips, rigid-body physics, procedural animation), and so on.
+  Modules that answer the same concern differently are alternatives, and
+  the engine says so instead of letting them clash.
+- **It is obvious what each piece is for.** Every module and kit says
+  which direction it is built for. Where the type system can enforce it,
+  it does: a side-view controller can't be used in a top-down stage.
+- **Moving between directions is documented.** A game may change
+  perspective between stages (ADR-0003 §1). Each supported move has a
+  guide and an example. Ticket 2004 writes the guides, one per direction
+  and one per move.
+- **Many kinds of game, where it makes sense.** Each module names the
+  kinds of game it serves and shows one in an example. A module is
+  written when a kind of game needs it, not to fill a list.
+- **Visual programming, eventually.** "Blueprints or Scratch" is the same
+  goal as on 2026-10-14. It stays the parked research ticket 1135
+  (ADR-0005 §5: a graph is a view over text). Modules keep their
+  settings as data, so a visual editor can show them.
+- **Procedural animation is a module, and it is parked.** Bodies and
+  limbs that move by rules each step instead of by drawn frames, as in
+  Rain World.
+  [ADR-0010](adr/0010-procedural-animation-bodies-limbs-and-strips.md)
+  sets its design, and tickets 2701–2704 are `Parked:`. They start after
+  the MVP and after the real-time tickets they build on, when Nick
+  unparks them. Visions of Shuyi doesn't need them.
+- **Inspired by, nothing copied.** No name, creature, art or sound from
+  Rain World goes into the engine or its examples.

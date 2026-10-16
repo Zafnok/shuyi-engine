@@ -45,6 +45,10 @@ None.
 - Example `examples/iso-skirmish/`: a 10×10 isometric map with
   height offsets as drawing only, four pieces, and the kit's turns and
   bots. It uses CC0 isometric art (for example Kenney's isometric packs).
+- The `Isometric` perspective marker (ADR-0009 §3), whose projection is
+  `Projection::Isometric`. The grid kit takes any marker.
+- Guides (ADR-0009 §5): write `docs/guides/isometric.md` in full. If 2004
+  isn't done, create the file and 2004 adds it to its list.
 
 **Out (do not do):**
 - isometric autotiling;
