@@ -24,6 +24,7 @@
 
 use core::ops::Range;
 
+use shuyi_assets::bitmap::Bitmap;
 use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageId;
@@ -204,25 +205,60 @@ fn rows_start(atlas: &FontAtlasDef, glyph: char) -> Option<usize> {
 /// byte's highest bit its left pixel, a set bit white; and optionally a
 /// mask of the same shape, a set bit where the picture is drawn (the
 /// Playdate's own bitmap layout). Without a mask every pixel is drawn.
+///
+/// Its **source size** is the size of the image a sprite names
+/// ([`ImageTable`](shuyi_assets::image::ImageTable)), whose pixels the
+/// sprite's `src` counts in. It is the picture's own size unless the
+/// picture was enlarged before it was dithered ([`shuyi_assets::bitmap`]):
+/// then each source pixel covers several of the picture's.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Image<'a> {
     width: u16,
     height: u16,
+    source_width: u16,
+    source_height: u16,
     data: &'a [u8],
     mask: Option<&'a [u8]>,
 }
 
 impl<'a> Image<'a> {
-    /// The picture, or `None` if `data` (or `mask`) is too short for it.
+    /// The picture, its source size its own, or `None` if `data` (or
+    /// `mask`) is too short for it.
     pub fn new(width: u16, height: u16, data: &'a [u8], mask: Option<&'a [u8]>) -> Option<Self> {
         let size = Self::stride(width) * usize::from(height);
         let fits = |bytes: &[u8]| bytes.len() >= size;
         (fits(data) && mask.is_none_or(fits)).then_some(Self {
             width,
             height,
+            source_width: width,
+            source_height: height,
             data,
             mask,
         })
+    }
+
+    /// Style `style` of one-bit picture file `bitmap`, with its mask and
+    /// source size, or `None` if it has no such style.
+    pub fn from_bitmap(bitmap: &Bitmap<'a>, style: usize) -> Option<Self> {
+        let data = bitmap.style(style)?;
+        let image = Self::new(bitmap.width(), bitmap.height(), data, bitmap.mask())?;
+        let (width, height) = bitmap.source_size();
+        Some(image.with_source(width, height))
+    }
+
+    /// The same picture standing for an image `width` × `height` pixels
+    /// (its source size); a side of 0 is left as it was.
+    #[must_use]
+    pub fn with_source(self, width: u16, height: u16) -> Self {
+        Self {
+            source_width: if width == 0 { self.source_width } else { width },
+            source_height: if height == 0 {
+                self.source_height
+            } else {
+                height
+            },
+            ..self
+        }
     }
 
     /// Bytes per row of a picture `width` pixels wide.
@@ -243,6 +279,16 @@ impl<'a> Image<'a> {
             Some(mask) if !bit(mask) => None,
             _ => Some(bit(self.data)),
         }
+    }
+
+    /// The picture's pixel along one side (`size` long, its source side
+    /// `source`) under the centre of pixel `d` of a `dest`-long stretch of
+    /// the source's `start..start + len`: nearest sampling, as `app` does.
+    /// With the source size the picture's own, it is `start + (2d + 1) ×
+    /// len / 2dest`.
+    fn sample(d: i64, start: i64, len: i64, dest: i64, size: u16, source: u16) -> i64 {
+        let (size, source) = (i64::from(size), i64::from(source.max(1)));
+        (start * 2 * dest + (2 * d + 1) * len) * size / (2 * dest * source)
     }
 }
 
@@ -937,8 +983,9 @@ fn shows(opacity: u8, x: i32, y: i32) -> bool {
 }
 
 /// Draws the visible part of `sprite` at `at`: each screen pixel takes
-/// the image pixel under its centre, as nearest sampling does, coloured
-/// as its paint says. Without an image it is a grey rectangle.
+/// the picture's pixel under its centre, as nearest sampling does
+/// ([`Image::sample`]), coloured as its paint says. Without an image it is
+/// a grey rectangle.
 fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &impl Images) {
     let shown = at.screen(sprite.clip).within(target.clip);
     if shown.is_empty() {
@@ -957,14 +1004,28 @@ fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &imp
     };
     for y in shown.y0..shown.y1 {
         let dy = i64::from((y - at.y).div_euclid(at.scale)) - i64::from(dest.y);
-        let v = i64::from(src.y) + (2 * dy + 1) * src_h / (2 * dest_h);
+        let v = Image::sample(
+            dy,
+            src.y.into(),
+            src_h,
+            dest_h,
+            image.height,
+            image.source_height,
+        );
         for x in shown.x0..shown.x1 {
             let mut dx = i64::from((x - at.x).div_euclid(at.scale)) - i64::from(dest.x);
             if sprite.flip_x {
                 dx = dest_w - 1 - dx;
             }
-            let u = (2 * dx + 1) * src_w / (2 * dest_w);
-            let Some(white) = image.pixel(i64::from(src.x) + u, v) else {
+            let u = Image::sample(
+                dx,
+                src.x.into(),
+                src_w,
+                dest_w,
+                image.width,
+                image.source_width,
+            );
+            let Some(white) = image.pixel(u, v) else {
                 continue;
             };
             if !shows(sprite.opacity, x, y) {

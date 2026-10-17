@@ -2,10 +2,16 @@
 //! path, with its size. Screens name a picture by an [`ImageId`] from this
 //! table; the platform layer decodes and draws it. Only each file's header
 //! is read here, never its pixels.
+//!
+//! A one-bit screen's bundle may hold a one-bit picture file
+//! ([`crate::bitmap`]) at a PNG's path in place of the PNG: the table
+//! then gives the size of the PNG it was made from (its source size), so
+//! the image's id and size are the same as with the PNG.
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
 
+use crate::bitmap::Bitmap;
 use crate::bundle::Bundle;
 use crate::error::ContentError;
 
@@ -56,7 +62,8 @@ impl ImageTable {
     }
 
     /// The table of `files` (bundle path and contents), or every problem
-    /// found: a file that isn't a PNG, an empty image, or one with a side
+    /// found: a file that isn't a PNG (or a one-bit picture in a PNG's
+    /// place), an empty image, or one with a side
     /// over [`MAX_SIDE`]. Errors name each file as `bundle` shows it.
     pub fn from_files<'a>(
         bundle: &Bundle,
@@ -106,9 +113,16 @@ fn is_png(path: &str) -> bool {
     })
 }
 
-/// The size in PNG file `bytes`, or what is wrong with it in plain words.
+/// The size in PNG file `bytes`, or in one-bit picture file `bytes` the
+/// size of the PNG it was made from, or what is wrong with it in plain
+/// words.
 fn read_info(bytes: &[u8]) -> Result<ImageInfo, String> {
-    let (width, height) = png_size(bytes).ok_or("not a valid PNG file")?;
+    let (width, height) = if Bitmap::is_bitmap(bytes) {
+        let (width, height) = Bitmap::parse(bytes)?.source_size();
+        (u32::from(width), u32::from(height))
+    } else {
+        png_size(bytes).ok_or("not a valid PNG file")?
+    };
     if width == 0 || height == 0 {
         return Err(format!(
             "image is {width}×{height} px; both sides must be greater than 0"
@@ -246,6 +260,29 @@ mod tests {
         assert_eq!(paths, ["a.png", "b.png"]);
         // An id of another table's image has no size here.
         assert_eq!(a.and_then(|id| ImageTable::default().info(id)), None);
+    }
+
+    #[test]
+    fn a_one_bit_picture_in_a_pngs_place_has_the_pngs_size() {
+        // 4 × 2 pixels, made from a 2 × 1 PNG.
+        let bits = crate::bitmap::encode((4, 2), (2, 1), &[&[0, 0]], None).unwrap();
+        let mut broken = bits.clone();
+        broken.pop();
+        let files = [("a.png", &bits[..]), ("b.png", &broken[..])];
+        let table = ImageTable::from_files(&bundle(&[]), files[..1].iter().copied());
+        let a = table.as_ref().ok().and_then(|t| t.id("a.png"));
+        let size = a.and_then(|id| table.as_ref().ok()?.info(id));
+        assert_eq!(
+            size,
+            Some(ImageInfo {
+                width: 2,
+                height: 1
+            })
+        );
+        assert_eq!(
+            messages(ImageTable::from_files(&bundle(&[]), files)),
+            ["base/b.png: a one-bit picture's size doesn't match its header"]
+        );
     }
 
     #[test]

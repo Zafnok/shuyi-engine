@@ -1,7 +1,8 @@
 //! Shuyi Engine's assets: the bundle of files a game embeds, laid in layers
 //! the game gives ([`bundle`]), errors that name a file, line and column
 //! ([`error`]), and RON files read with those errors ([`ron`]). On top of
-//! them, the kinds of file every game has: images ([`image`]), a font atlas
+//! them, the kinds of file every game has: images ([`image`]) and their
+//! one-bit versions ([`bitmap`]), a font atlas
 //! ([`font`]), named colours ([`palette`], [`ink`]), lights ([`lighting`]),
 //! the audio manifest ([`audio`]) and the credits ([`credits`]); the `.map`
 //! text format of a grid map ([`grid_map`]); keymap files, generic over a
@@ -24,6 +25,7 @@ mod prelude {
 }
 
 pub mod audio;
+pub mod bitmap;
 pub mod bundle;
 pub mod credits;
 pub mod dialogue;

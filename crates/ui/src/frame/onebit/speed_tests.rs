@@ -53,23 +53,60 @@ fn colors() -> Vec<Rgb> {
 const PICTURE: [u8; 4] = [0b1010_0110, 0b0101_1001, 0b1111_0000, 0b0000_1111];
 const PICTURE_MASK: [u8; 4] = [u8::MAX, 0b1110_0111, 0b1100_0011, u8::MAX];
 
-/// The test picture's id.
-fn picture_id() -> ImageId {
+/// The same 8 × 4 image as a picture enlarged 1.5 times before it was
+/// dithered (12 × 6), as the converter makes it (ADR-0085): rows of 2
+/// bytes, its mask see-through at two corners.
+const BIG_PICTURE: [u8; 12] = [
+    0b1100_1010,
+    0b0111_0000,
+    0b0011_0101,
+    0b1000_0000,
+    0b1111_0000,
+    0b1111_0000, //
+    0b0000_1111,
+    0b0000_0000,
+    0b1010_1010,
+    0b1010_0000,
+    0b0101_0101,
+    0b0101_0000,
+];
+const BIG_MASK: [u8; 12] = [
+    0b0111_1111,
+    0b1111_0000,
+    0b1111_1111,
+    0b1111_0000,
+    0b1111_1111,
+    0b1111_0000, //
+    0b1111_1111,
+    0b1111_0000,
+    0b1111_1111,
+    0b1111_0000,
+    0b1111_1111,
+    0b1110_0000,
+];
+
+/// The test picture's id: `q.png` (the enlarged picture) if `big`, else
+/// `p.png`; both stand for an 8 × 4 image.
+fn picture_id(big: bool) -> ImageId {
     let size = shuyi_assets::image::ImageInfo {
         width: 8,
         height: 4,
     };
     let table = shuyi_assets::image::ImageTable {
-        images: [("p.png", size)].into(),
+        images: [("p.png", size), ("q.png", size)].into(),
     };
-    table.id("p.png").unwrap()
+    table.id(if big { "q.png" } else { "p.png" }).unwrap()
 }
 
 struct TestImages;
 
 impl Images for TestImages {
     fn image(&self, id: ImageId) -> Option<Image<'_>> {
-        (id == picture_id())
+        if id == picture_id(true) {
+            let big = Image::new(12, 6, &BIG_PICTURE, Some(&BIG_MASK))?;
+            return Some(big.with_source(8, 4));
+        }
+        (id == picture_id(false))
             .then(|| Image::new(8, 4, &PICTURE, Some(&PICTURE_MASK)))
             .flatten()
     }
@@ -100,10 +137,11 @@ fn cell_see_through(odds: f64) -> impl Strategy<Value = Cell> {
 enum Thing {
     /// A rectangle in a colour of [`colors`].
     Rect(Rect, usize, bool),
-    /// The test picture: `src` (inside the picture), `dest`, `clip`,
-    /// flipped, opacity, brightness and paint (0 the image, 1 dimmed, 2
-    /// in a colour of [`colors`] after it).
-    Sprite(Rect, Rect, Rect, bool, u8, u8, usize, bool),
+    /// A test picture: `src` (inside the picture), `dest`, `clip`,
+    /// flipped, opacity, brightness, paint (0 the image, 1 dimmed, 2
+    /// in a colour of [`colors`] after it), the layer, and whether it is
+    /// the enlarged picture.
+    Sprite(Rect, Rect, Rect, bool, u8, u8, usize, bool, bool),
 }
 
 fn px_rect(w: i32, h: i32) -> impl Strategy<Value = Rect> {
@@ -126,8 +164,11 @@ fn thing() -> impl Strategy<Value = Thing> {
             prop_oneof![Just(u8::MAX), any::<u8>()],
             0..n + 2,
             any::<bool>(),
+            any::<bool>(),
         )
-            .prop_map(|(s, d, c, f, o, b, p, l)| Thing::Sprite(s, d, c, f, o, b, p, l)),
+            .prop_map(|(s, d, c, f, o, b, p, l, big)| {
+                Thing::Sprite(s, d, c, f, o, b, p, l, big)
+            }),
     ]
 }
 
@@ -139,7 +180,7 @@ impl Thing {
             Thing::Rect(rect, color, over) => {
                 buf.add_overlay(Overlay::new(rect, colors[color], layer(over)));
             }
-            Thing::Sprite(src, dest, clip, flip_x, opacity, brightness, paint, over) => {
+            Thing::Sprite(src, dest, clip, flip_x, opacity, brightness, paint, over, big) => {
                 let paint = match paint {
                     0 => Paint::Image,
                     1 => Paint::Dimmed,
@@ -151,7 +192,7 @@ impl Thing {
                     opacity,
                     brightness,
                     paint,
-                    ..Sprite::new(picture_id(), src, dest, layer(over))
+                    ..Sprite::new(picture_id(big), src, dest, layer(over))
                 });
             }
         }
@@ -521,7 +562,7 @@ fn a_zoomed_scene_away_from_the_corner_draws_as_the_reference() {
                 opacity: 200,
                 paint,
                 ..Sprite::new(
-                    picture_id(),
+                    picture_id(false),
                     Rect::new(0, 0, 8, 4),
                     Rect::new(x, 3, 13, 7),
                     Layer::Over,
@@ -612,7 +653,7 @@ fn a_sprite_at_the_dithers_edge_draws_as_the_reference() {
             opacity: level,
             brightness: level,
             ..Sprite::new(
-                picture_id(),
+                picture_id(false),
                 Rect::new(0, 0, 8, 4),
                 Rect::new(0, 0, 32, 32),
                 Layer::Over,

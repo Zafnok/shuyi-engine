@@ -404,6 +404,103 @@ fn a_sprite_draws_its_one_bit_picture() {
     );
 }
 
+/// Any image's id: [`One`] gives every id its picture.
+struct One<'a>(Image<'a>);
+
+impl Images for One<'_> {
+    fn image(&self, _: ImageId) -> Option<Image<'_>> {
+        Some(self.0)
+    }
+}
+
+/// `image` drawn as an image of `source` size would be: `src` of it
+/// stretched to `dest`, over a grey cell.
+fn drawn(image: Image<'_>, src: Rect, dest: Rect, flip_x: bool) -> Vec<String> {
+    let mut b = buf(1, 1);
+    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
+    let sprite = Sprite::new(picture_id(), src, dest, Layer::Over);
+    b.add_sprite(Sprite { flip_x, ..sprite });
+    text(&draw_with(&b, &One(image)), 0, 0, 8, 4)
+}
+
+/// An 8 × 4 picture made from a 4 × 2 image enlarged twice before it was
+/// dithered (ADR-0085): drawn at the image's double size, each of its
+/// pixels is one screen pixel, not a doubled one.
+#[test]
+fn an_enlarged_picture_draws_a_screen_pixel_a_pixel() {
+    const BIG: [u8; 4] = [0b1100_0000, 0b0110_0000, 0b0011_0000, 0b0001_1000];
+    let big = Image::new(8, 4, &BIG, None).unwrap().with_source(4, 2);
+    let whole = Rect::new(0, 0, 4, 2);
+    let rows = ["..######", "#..#####", "##..####", "###..###"];
+    assert_eq!(drawn(big, whole, Rect::new(0, 0, 8, 4), false), rows);
+    let flipped = ["######..", "#####..#", "####..##", "###..###"];
+    assert_eq!(drawn(big, whole, Rect::new(0, 0, 8, 4), true), flipped);
+    // The image's right half: the picture's right half, stretched.
+    let right = drawn(big, Rect::new(2, 0, 2, 2), Rect::new(0, 0, 8, 4), false);
+    assert_eq!(right, ["########", "########", "########", "..######"]);
+    // At the image's own size: every other pixel of the picture, on the
+    // grey cell.
+    let small = drawn(big, whole, Rect::new(0, 0, 4, 2), false);
+    assert_eq!(small, [".####.#.", "#.##.#.#", "#.#.#.#.", ".#.#.#.#"]);
+    // A side of 0 leaves the source size as it was.
+    assert_eq!(big.with_source(0, 0), big);
+    assert_eq!(
+        Image::new(8, 4, &BIG, None)
+            .unwrap()
+            .with_source(0, 0)
+            .source_width,
+        8
+    );
+}
+
+/// With the picture its source's size, the sampling is plain nearest
+/// sampling of the source (1032's).
+#[test]
+fn a_picture_its_sources_size_samples_as_before() {
+    for start in 0..3 {
+        for len in 1..6 {
+            for dest in 1..9 {
+                for d in 0..dest {
+                    let plain = start + (2 * d + 1) * len / (2 * dest);
+                    for size in [1u16, 7, 40] {
+                        assert_eq!(Image::sample(d, start, len, dest, size, size), plain);
+                    }
+                }
+            }
+        }
+    }
+    // A source side of 0 is taken as 1, never a division by nothing.
+    assert_eq!(Image::sample(0, 0, 1, 1, 4, 0), 2);
+}
+
+/// A picture the converter made (`shuyi_assets::bitmap::convert`), read
+/// from its file, draws pixel for pixel as converted, see-through where
+/// the image was.
+#[test]
+fn a_converted_picture_draws_as_converted() {
+    use shuyi_assets::bitmap::Bitmap;
+    use shuyi_assets::bitmap::convert::{Method, Rgba, convert};
+    let (black, white, clear) = ([0, 0, 0, 255], [255; 4], [0; 4]);
+    let pixels = [white, black, clear, white, black, white, white, black];
+    let rgba: alloc::vec::Vec<u8> = pixels.concat();
+    let image = Rgba::new(4, 2, &rgba).unwrap();
+    let file = convert(&image, (2, 1), &[Method::BAYER, Method::BAYER]).unwrap();
+    let bitmap = Bitmap::parse(&file).unwrap();
+    let picture = Image::from_bitmap(&bitmap, 1).unwrap();
+    assert_eq!(Image::from_bitmap(&bitmap, 2), None);
+    let frame = drawn(picture, Rect::new(0, 0, 4, 2), Rect::new(0, 0, 8, 4), false);
+    for (y, row) in (0u16..).zip(&frame) {
+        for (x, pixel) in (0u16..).zip(row.chars()) {
+            let grey = (x + y) % 2 == 1;
+            let expected = bitmap.pixel(1, x, y).unwrap_or(grey);
+            assert_eq!(pixel == '.', expected, "({x}, {y})");
+        }
+    }
+    // The see-through pixels (columns 4 and 5 of the top rows) show the
+    // grey cell under the picture.
+    assert_eq!(frame, ["..###...", "..##.#..", "##....##", "##....##"]);
+}
+
 /// A sprite away from the buffer's corner: its picture starts at its own
 /// top-left.
 #[test]

@@ -8,7 +8,7 @@
 use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::ink::Ink;
 
-use super::{Font, Frame, HEIGHT, Images, Phase, ROW_BYTES, WIDTH, ink_is_white, ink_of};
+use super::{Font, Frame, HEIGHT, Image, Images, Phase, ROW_BYTES, WIDTH, ink_is_white, ink_of};
 use crate::frame::glyph_buffer::{GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
@@ -329,14 +329,28 @@ fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &imp
     };
     for y in shown.y0..shown.y1 {
         let dy = (y - at.y).div_euclid(at.scale) - i64::from(dest.y);
-        let v = (2 * dy + 1) * src_h / (2 * dest_h);
+        let v = Image::sample(
+            dy,
+            src.y.into(),
+            src_h,
+            dest_h,
+            image.height,
+            image.source_height,
+        );
         for x in shown.x0..shown.x1 {
             let mut dx = (x - at.x).div_euclid(at.scale) - i64::from(dest.x);
             if sprite.flip_x {
                 dx = dest_w - 1 - dx;
             }
-            let u = (2 * dx + 1) * src_w / (2 * dest_w);
-            let Some(white) = image.pixel(i64::from(src.x) + u, i64::from(src.y) + v) else {
+            let u = Image::sample(
+                dx,
+                src.x.into(),
+                src_w,
+                dest_w,
+                image.width,
+                image.source_width,
+            );
+            let Some(white) = image.pixel(u, v) else {
                 continue;
             };
             if !shows(sprite.opacity, x, y) {
