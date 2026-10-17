@@ -15,6 +15,9 @@ default = ["std"]
 # Without it the crate is `no_std` + `alloc` (ADR-0070 §6): a layer is then a
 # file table (`Layer::table`), since `include_dir` needs `std`.
 std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std", "shuyi-core/std"]
+# `keymap::sample`, a sample game's actions and keymap file, for other
+# engine crates' tests of input (ticket 1107).
+sample-actions = []
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the

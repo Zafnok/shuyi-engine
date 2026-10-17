@@ -57,6 +57,15 @@ Carved so far:
   (`turn`), a game's history over it (`history`) and save versions
   (`save`). 1116: playtest bots over any `TurnRules` (`bots`): the
   `Bot` trait, the play loop and a seeded random bot.
+- `shuyi-assets` (1107): keymap files (`keymap`): keys, chords,
+  controller buttons, named layouts, repeat and stick settings, generic
+  over a game's actions (`ActionSet`, `UiAction`). `keymap::sample` is a
+  sample game's actions and keymap file for tests (the `sample-actions`
+  feature).
+- `shuyi-ui` (1107): input (`input`): the keymap, held keys and repeat,
+  controllers, the player's saved bindings, fixed keys and the names of
+  keys and buttons in help text. The game gives its actions, its keymap
+  file and the words.
 
 ## Third-party crates the engine may use
 
@@ -69,6 +78,7 @@ its license against ADR-0013.
 serde
 ron
 thiserror
+hashbrown
 include_dir
 once_cell
 libm

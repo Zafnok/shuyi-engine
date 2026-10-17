@@ -1,0 +1,905 @@
+//! The keymap file format, generic over a game's [`ActionSet`] (ADR-0015,
+//! ADR-0031, ADR-0034, tickets 1106 and 1107): [`Key`]s and [`Chord`]s,
+//! controller [`Button`]s, the named [`Layout`]s a file lists, and
+//! [`KeymapDef`], a validated keymap file: each layout's default keys, the
+//! keys that work before a layout is chosen, the default buttons, key-repeat
+//! timings and the sticks' thresholds.
+//!
+//! Nothing here names one game's actions or layouts: a game gives its
+//! actions as an [`ActionSet`] ([`action_set`]) and its file's text.
+use crate::prelude::*;
+
+use alloc::collections::{BTreeMap, BTreeSet};
+use core::fmt;
+use core::str::FromStr;
+
+use serde::Deserialize;
+
+use crate::error::ContentError;
+use crate::ron::parse_ron;
+
+pub mod action_set;
+#[cfg(any(test, feature = "sample-actions"))]
+pub mod sample;
+#[cfg(test)]
+mod tests;
+
+pub use action_set::{ActionSet, UiAction};
+
+/// Declares [`Key`] with its keymap-file names, keeping the variant list,
+/// [`Key::ALL`] and [`Key::name`] in one table.
+macro_rules! keys {
+    ($($variant:ident => $name:literal,)+) => {
+        /// A hardware-agnostic keyboard key. `app` translates platform key
+        /// codes to these; anything without a variant is ignored.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub enum Key {
+            $(
+                #[doc = concat!("The `", $name, "` key.")]
+                $variant,
+            )+
+        }
+
+        impl Key {
+            /// Every key, in declaration order.
+            pub const ALL: &'static [Key] = &[$(Key::$variant),+];
+
+            /// The name used in keymap files: lowercase letters (`h`), digits
+            /// (`0`), punctuation as itself (`;`, `,`, `\`), numpad keys
+            /// prefixed `Kp` (`Kp0`, `Kp+`), and capitalised names for the
+            /// rest (`Left`, `F12`).
+            pub fn name(self) -> &'static str {
+                match self {
+                    $(Key::$variant => $name,)+
+                }
+            }
+        }
+    };
+}
+
+keys! {
+    A => "a",
+    B => "b",
+    C => "c",
+    D => "d",
+    E => "e",
+    F => "f",
+    G => "g",
+    H => "h",
+    I => "i",
+    J => "j",
+    K => "k",
+    L => "l",
+    M => "m",
+    N => "n",
+    O => "o",
+    P => "p",
+    Q => "q",
+    R => "r",
+    S => "s",
+    T => "t",
+    U => "u",
+    V => "v",
+    W => "w",
+    X => "x",
+    Y => "y",
+    Z => "z",
+    Digit0 => "0",
+    Digit1 => "1",
+    Digit2 => "2",
+    Digit3 => "3",
+    Digit4 => "4",
+    Digit5 => "5",
+    Digit6 => "6",
+    Digit7 => "7",
+    Digit8 => "8",
+    Digit9 => "9",
+    Semicolon => ";",
+    Up => "Up",
+    Down => "Down",
+    Left => "Left",
+    Right => "Right",
+    Enter => "Enter",
+    Escape => "Escape",
+    Space => "Space",
+    Tab => "Tab",
+    Backspace => "Backspace",
+    F1 => "F1",
+    F2 => "F2",
+    F3 => "F3",
+    F4 => "F4",
+    F5 => "F5",
+    F6 => "F6",
+    F7 => "F7",
+    F8 => "F8",
+    F9 => "F9",
+    F10 => "F10",
+    F11 => "F11",
+    F12 => "F12",
+    Comma => ",",
+    Period => ".",
+    Slash => "/",
+    Apostrophe => "'",
+    LeftBracket => "[",
+    RightBracket => "]",
+    Backslash => "\\",
+    Minus => "-",
+    Equal => "=",
+    Backquote => "`",
+    Insert => "Insert",
+    Delete => "Delete",
+    Home => "Home",
+    End => "End",
+    PageUp => "PageUp",
+    PageDown => "PageDown",
+    Kp0 => "Kp0",
+    Kp1 => "Kp1",
+    Kp2 => "Kp2",
+    Kp3 => "Kp3",
+    Kp4 => "Kp4",
+    Kp5 => "Kp5",
+    Kp6 => "Kp6",
+    Kp7 => "Kp7",
+    Kp8 => "Kp8",
+    Kp9 => "Kp9",
+    KpAdd => "Kp+",
+    KpSubtract => "Kp-",
+    KpMultiply => "Kp*",
+    KpDivide => "Kp/",
+    KpDecimal => "Kp.",
+}
+
+impl Key {
+    /// Looks a key up by its [`name`](Self::name) (exact match).
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.iter().copied().find(|k| k.name() == name)
+    }
+}
+
+/// Key slots per action: a layout lists at most this many chords for an
+/// action, and the player can give each action up to this many keys
+/// (`docs/design/controls.md`, *Rebinding keys*).
+pub const SLOTS: usize = 3;
+
+impl fmt::Display for Key {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// A key plus modifier state, e.g. `h` or `Shift+h`. `Shift+h` and `h` are
+/// different chords.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Chord {
+    /// The key pressed.
+    pub key: Key,
+    /// Whether Shift was held.
+    pub shift: bool,
+}
+
+/// Prefix for shifted chords in keymap files.
+const SHIFT_PREFIX: &str = "Shift+";
+
+impl Chord {
+    /// A chord without modifiers.
+    pub const fn plain(key: Key) -> Self {
+        Self { key, shift: false }
+    }
+
+    /// A chord with Shift held.
+    pub const fn shifted(key: Key) -> Self {
+        Self { key, shift: true }
+    }
+
+    /// Whether this chord is fixed by the game and can never be bound
+    /// (`docs/design/controls.md`, *Rebinding keys*): plain `Escape` always
+    /// cancels and plain `Delete` empties a key slot. `Shift+Escape` and
+    /// `Shift+Delete` are ordinary chords.
+    pub fn is_reserved(self) -> bool {
+        !self.shift && matches!(self.key, Key::Escape | Key::Delete)
+    }
+
+    /// Parses `"h"`, `"Shift+h"`, `"Left"`, `"Shift+Tab"`, `"F12"`, …
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let (shift, name) = match s.strip_prefix(SHIFT_PREFIX) {
+            Some(rest) => (true, rest),
+            None => (false, s),
+        };
+        match Key::from_name(name) {
+            Some(key) => Ok(Self { key, shift }),
+            None => Err(unknown_key_message(s, name)),
+        }
+    }
+}
+
+fn unknown_key_message(chord: &str, name: &str) -> String {
+    let hint = if name.len() == 1 && name.bytes().all(|b| b.is_ascii_uppercase()) {
+        format!(
+            " (letters are lowercase; write \"{SHIFT_PREFIX}{}\" for a shifted letter)",
+            name.to_ascii_lowercase()
+        )
+    } else {
+        String::new()
+    };
+    format!(
+        "unknown key chord \"{chord}\"{hint}; expected a key such as \"h\", \"0\", \";\", \"Left\", \
+         \"Enter\", \"Escape\", \"Space\", \"Tab\", \"Backspace\" or \"F1\", optionally \
+         prefixed by \"{SHIFT_PREFIX}\""
+    )
+}
+
+impl FromStr for Chord {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
+impl fmt::Display for Chord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.shift {
+            f.write_str(SHIFT_PREFIX)?;
+        }
+        f.write_str(self.key.name())
+    }
+}
+
+/// Declares [`Button`] with its docs, keeping the variant list,
+/// [`Button::ALL`] and [`Button::name`] in one table.
+macro_rules! buttons {
+    ($($variant:ident => $doc:literal,)+) => {
+        /// A controller button, named by its **position** on an Xbox-shaped
+        /// pad, whatever is printed on it (ADR-0034). Each stick's four
+        /// directions count as buttons too. `app` translates what the
+        /// platform reports to these; anything else on a pad is ignored.
+        ///
+        /// The first 16 are in the order of the browser Gamepad API's
+        /// "standard" mapping.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub enum Button {
+            $(
+                #[doc = $doc]
+                $variant,
+            )+
+        }
+
+        impl Button {
+            /// Every button, in declaration order.
+            pub const ALL: &'static [Button] = &[$(Button::$variant),+];
+
+            /// The name used in keymap files (the variant name).
+            pub fn name(self) -> &'static str {
+                match self {
+                    $(Button::$variant => stringify!($variant),)+
+                }
+            }
+        }
+    };
+}
+
+buttons! {
+    South => "The bottom face button (Xbox `A`).",
+    East => "The right face button (Xbox `B`).",
+    West => "The left face button (Xbox `X`).",
+    North => "The top face button (Xbox `Y`).",
+    LeftShoulder => "The left shoulder button (Xbox `LB`).",
+    RightShoulder => "The right shoulder button (Xbox `RB`).",
+    LeftTrigger => "The left trigger (Xbox `LT`), pulled far enough to count as pressed.",
+    RightTrigger => "The right trigger (Xbox `RT`), pulled far enough to count as pressed.",
+    Select => "The left centre button (Xbox `Back`).",
+    Start => "The right centre button (Xbox `Start`).",
+    LeftStickPress => "Pressing the left stick in.",
+    RightStickPress => "Pressing the right stick in.",
+    DpadUp => "D-pad up.",
+    DpadDown => "D-pad down.",
+    DpadLeft => "D-pad left.",
+    DpadRight => "D-pad right.",
+    LeftStickUp => "The left stick pushed up.",
+    LeftStickDown => "The left stick pushed down.",
+    LeftStickLeft => "The left stick pushed left.",
+    LeftStickRight => "The left stick pushed right.",
+    RightStickUp => "The right stick pushed up.",
+    RightStickDown => "The right stick pushed down.",
+    RightStickLeft => "The right stick pushed left.",
+    RightStickRight => "The right stick pushed right.",
+}
+
+impl Button {
+    /// Looks a button up by its [`name`](Self::name) (exact match).
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.iter().copied().find(|b| b.name() == name)
+    }
+
+    /// Parses a keymap-file button name: `"South"`, `"DpadUp"`,
+    /// `"LeftStickLeft"`, …
+    pub fn parse(s: &str) -> Result<Self, String> {
+        Self::from_name(s).ok_or_else(|| {
+            let known: Vec<&str> = Self::ALL.iter().map(|b| b.name()).collect();
+            format!(
+                "unknown button \"{s}\"; known buttons: {}",
+                known.join(", ")
+            )
+        })
+    }
+}
+
+impl FromStr for Button {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
+impl fmt::Display for Button {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// Key-repeat timings for held repeatable actions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RepeatDef {
+    /// Time from the press to the first repeat, in milliseconds.
+    pub delay_ms: u32,
+    /// Time between later repeats, in milliseconds (never 0).
+    pub interval_ms: u32,
+}
+
+impl Default for RepeatDef {
+    fn default() -> Self {
+        Self {
+            delay_ms: 300,
+            interval_ms: 55,
+        }
+    }
+}
+
+/// How far a stick must be pushed to count as a held direction
+/// ([`Button::LeftStickUp`] and the rest), in percent of its full travel.
+/// `release_percent` is below `press_percent`, so a stick resting near the
+/// edge of the dead zone doesn't flicker.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StickDef {
+    /// A direction starts once the stick is pushed at least this far.
+    pub press_percent: u8,
+    /// A held direction ends once the stick falls below this.
+    pub release_percent: u8,
+}
+
+impl Default for StickDef {
+    fn default() -> Self {
+        Self {
+            press_percent: 50,
+            release_percent: 35,
+        }
+    }
+}
+
+/// Most bytes in a [`Layout`]'s name.
+pub const LAYOUT_NAME_MAX: usize = 24;
+
+/// A complete set of key bindings the player can pick: one entry of
+/// `layouts` in the keymap file, named by its `id`. The file decides which
+/// layouts there are; this is only the name, kept inline so a layout is
+/// `Copy`. Names are ASCII letters, digits and `_`, at most
+/// [`LAYOUT_NAME_MAX`] bytes (`RightHanded`).
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Layout {
+    len: usize,
+    bytes: [u8; LAYOUT_NAME_MAX],
+}
+
+impl Layout {
+    /// The layout named `name`, for a game's constants. Fails to compile in
+    /// a `const` (panics elsewhere) if `name` isn't a valid name.
+    pub const fn named(name: &'static str) -> Self {
+        match Self::try_named(name) {
+            Some(layout) => layout,
+            None => panic!("a layout name is 1 to 24 ASCII letters, digits or _"),
+        }
+    }
+
+    /// The layout named `name`, if it is a valid name (saved settings, the
+    /// keymap file). Whether a keymap has it is
+    /// [`KeymapDef::has_layout`]'s question.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::try_named(name)
+    }
+
+    const fn try_named(name: &str) -> Option<Self> {
+        let given = name.as_bytes();
+        if given.is_empty() || given.len() > LAYOUT_NAME_MAX {
+            return None;
+        }
+        let mut bytes = [0; LAYOUT_NAME_MAX];
+        let mut i = 0;
+        while i < given.len() {
+            let b = given[i];
+            if !(b.is_ascii_alphanumeric() || b == b'_') {
+                return None;
+            }
+            bytes[i] = b;
+            i += 1;
+        }
+        Some(Self {
+            len: given.len(),
+            bytes,
+        })
+    }
+
+    /// The name used in keymap files and saved settings.
+    pub fn name(&self) -> &str {
+        let bytes = self.bytes.get(..self.len).unwrap_or_default();
+        // Only ASCII is ever stored.
+        core::str::from_utf8(bytes).unwrap_or_default()
+    }
+}
+
+impl Ord for Layout {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        self.name().cmp(other.name())
+    }
+}
+
+impl PartialOrd for Layout {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl fmt::Debug for Layout {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Layout({})", self.name())
+    }
+}
+
+impl fmt::Display for Layout {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.name())
+    }
+}
+
+/// Validated bindings as a lookup: each chord maps to exactly one action
+/// (of one [group](ActionSet::Group)). Unbound chords are absent.
+pub type Bindings<A> = BTreeMap<Chord, A>;
+
+/// One layout's default keys: every action with its chords in the order
+/// the keymap file lists them (at most [`SLOTS`], none [reserved]), no chord
+/// on two actions of one [group](ActionSet::Group). The order matters: the
+/// first chord is the one help text names, and the chords fill the player's
+/// key slots in this order.
+///
+/// [reserved]: Chord::is_reserved
+pub type LayoutKeys<A> = BTreeMap<A, Vec<Chord>>;
+
+/// The default controller buttons: every action with its buttons in the
+/// order the keymap file lists them (at most [`SLOTS`]), no button on two
+/// actions of one [group](ActionSet::Group). One table for every layout.
+pub type PadKeys<A> = BTreeMap<A, Vec<Button>>;
+
+/// The validated keymap: every [`Layout`]'s default keys, the layout
+/// picker's bindings, the default controller buttons, plus the key-repeat
+/// timings and stick thresholds they share.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeymapDef<A: ActionSet> {
+    /// Layout → its default keys. After
+    /// [`from_source`](Self::from_source) every layout the file lists is
+    /// present, with every action.
+    pub layouts: BTreeMap<Layout, LayoutKeys<A>>,
+    /// The layouts in the order the file lists them (the order the layout
+    /// picker shows them), each with the text key of its name.
+    pub layout_names: LayoutNames,
+    /// The keys that work before any layout is chosen (the layout picker).
+    /// Actions not listed are unbound there.
+    pub layout_picker: Bindings<A>,
+    /// The default controller buttons, the same in every layout and the
+    /// layout picker. After [`from_source`](Self::from_source) every action
+    /// is present.
+    pub pad: PadKeys<A>,
+    /// Key-repeat timings, for held keys and held buttons alike.
+    pub repeat: RepeatDef,
+    /// How far a stick is pushed to count as a direction.
+    pub stick: StickDef,
+}
+
+impl<A: ActionSet> Default for KeymapDef<A> {
+    fn default() -> Self {
+        Self {
+            layouts: BTreeMap::new(),
+            layout_names: Vec::new(),
+            layout_picker: BTreeMap::new(),
+            pad: BTreeMap::new(),
+            repeat: RepeatDef::default(),
+            stick: StickDef::default(),
+        }
+    }
+}
+
+/// The layouts in file order, each with the text key of its name.
+pub type LayoutNames = Vec<(Layout, String)>;
+
+/// The file as written, before validation.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawKeymap {
+    layouts: Vec<RawLayout>,
+    layout_picker: BTreeMap<String, Vec<String>>,
+    pad: BTreeMap<String, Vec<String>>,
+    repeat: RepeatDef,
+    stick: StickDef,
+}
+
+/// One entry of `layouts`, before validation.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RawLayout {
+    /// The name saved settings know it by.
+    id: String,
+    /// The text key of the name the player sees.
+    name: String,
+    /// Action name → chord names.
+    keys: BTreeMap<String, Vec<String>>,
+}
+
+impl<A: ActionSet> KeymapDef<A> {
+    /// `layout`'s default bindings of the actions in `group`, as a chord
+    /// lookup (`None` if the keymap has no such layout).
+    pub fn bindings(&self, layout: Layout, group: A::Group) -> Option<Bindings<A>> {
+        let keys = self.layouts.get(&layout)?;
+        Some(
+            keys.iter()
+                .filter(|(a, _)| a.group() == group)
+                .flat_map(|(&a, chords)| chords.iter().map(move |&c| (c, a)))
+                .collect(),
+        )
+    }
+
+    /// `action`'s default chords in `layout`, in file order; empty if the
+    /// layout or action is missing.
+    pub fn chords(&self, layout: Layout, action: A) -> &[Chord] {
+        self.layouts
+            .get(&layout)
+            .and_then(|keys| keys.get(&action))
+            .map_or(&[], Vec::as_slice)
+    }
+
+    /// `action`'s default controller buttons, in file order; empty if the
+    /// action is missing (only in a definition built by hand).
+    pub fn buttons(&self, action: A) -> &[Button] {
+        self.pad.get(&action).map_or(&[], Vec::as_slice)
+    }
+
+    /// Whether the keymap has `layout` (a name from saved settings may
+    /// name one it no longer has).
+    pub fn has_layout(&self, layout: Layout) -> bool {
+        self.layouts.contains_key(&layout)
+    }
+
+    /// The layouts in file order: the order the layout picker lists them.
+    pub fn layout_ids(&self) -> impl Iterator<Item = Layout> + '_ {
+        self.layout_names.iter().map(|&(layout, _)| layout)
+    }
+
+    /// The first layout the file lists: the one a screen falls back on
+    /// while none is chosen.
+    pub fn first_layout(&self) -> Option<Layout> {
+        self.layout_ids().next()
+    }
+
+    /// The text key of `layout`'s name, if the keymap has it.
+    pub fn layout_text(&self, layout: Layout) -> Option<&str> {
+        let (_, text) = self.layout_names.iter().find(|&&(l, _)| l == layout)?;
+        Some(text)
+    }
+
+    /// Parses and validates keymap `source`, attributing errors to `file`.
+    /// Reports a file with no layouts, a bad or repeated layout `id`, and
+    /// within each layout every unknown action, unparsable chord, chord
+    /// bound more than once, [reserved](Chord::is_reserved) chord, action
+    /// with more than [`SLOTS`] chords and missing action (prefixed with the
+    /// layout's id), the same for the `layout_picker` section (except that
+    /// unlisted actions are unbound there, and an action may have more than
+    /// [`SLOTS`] chords: the picker isn't rebindable), and for the `pad`
+    /// section (buttons instead of chords, every action listed, none on an
+    /// action that [can't be rebound](ActionSet::is_rebindable)), plus bad
+    /// repeat timing and stick thresholds.
+    pub fn from_source(file: &str, source: &str) -> Result<Self, Vec<ContentError>> {
+        let raw: RawKeymap = parse_ron(file, source).map_err(|e| vec![e])?;
+        let mut errors = Vec::new();
+        let (layouts, layout_names) =
+            validate_layouts::<A>(file, source, &raw.layouts, &mut errors);
+        let picker_line = line_of_quoted(source, 0, "layout_picker");
+        let from = picker_line.map_or(0, |line| usize::try_from(line).unwrap_or(0));
+        let layout_picker = match validate_bindings::<A, Chord>(
+            file,
+            source,
+            from,
+            "layout_picker",
+            false,
+            &raw.layout_picker,
+        ) {
+            Ok(keys) => keys
+                .iter()
+                .flat_map(|(&a, chords)| chords.iter().map(move |&c| (c, a)))
+                .collect(),
+            Err(e) => {
+                errors.extend(e);
+                Bindings::new()
+            }
+        };
+        let pad_line = line_of_quoted(source, 0, "pad");
+        let from = pad_line.map_or(0, |line| usize::try_from(line).unwrap_or(0));
+        let pad = match validate_bindings::<A, Button>(file, source, from, "pad", true, &raw.pad) {
+            Ok(buttons) => buttons,
+            Err(e) => {
+                errors.extend(e);
+                PadKeys::new()
+            }
+        };
+        for (&action, buttons) in &pad {
+            if !action.is_rebindable() && !buttons.is_empty() {
+                let message = format!(
+                    "pad: action \"{}\" can't have a button: it can't be rebound, so it is \
+                     keyboard only",
+                    action.name()
+                );
+                errors.push(positioned(
+                    ContentError::new(file, message),
+                    line_of_quoted(source, from, action.name()),
+                ));
+            }
+        }
+        if raw.repeat.interval_ms == 0 {
+            errors.push(positioned(
+                ContentError::new(file, "repeat interval_ms must be at least 1"),
+                line_of_quoted(source, 0, "repeat"),
+            ));
+        }
+        let StickDef {
+            press_percent,
+            release_percent,
+        } = raw.stick;
+        if release_percent == 0 || release_percent >= press_percent || press_percent > 100 {
+            errors.push(positioned(
+                ContentError::new(
+                    file,
+                    "stick release_percent must be at least 1 and below press_percent, which \
+                     must be at most 100",
+                ),
+                line_of_quoted(source, 0, "stick"),
+            ));
+        }
+        if errors.is_empty() {
+            Ok(Self {
+                layouts,
+                layout_names,
+                layout_picker,
+                pad,
+                repeat: raw.repeat,
+                stick: raw.stick,
+            })
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+/// The layouts the file lists (`layouts`): each one's validated keys, and
+/// the layouts in file order with the text keys of their names. Errors go
+/// to `errors`: no layout at all, a bad or repeated id, and every error of
+/// a layout's keys.
+fn validate_layouts<A: ActionSet>(
+    file: &str,
+    source: &str,
+    raw: &[RawLayout],
+    errors: &mut Vec<ContentError>,
+) -> (BTreeMap<Layout, LayoutKeys<A>>, LayoutNames) {
+    let mut layouts = BTreeMap::new();
+    let mut layout_names = Vec::new();
+    if raw.is_empty() {
+        errors.push(positioned(
+            ContentError::new(file, "layouts: list at least one layout"),
+            line_of_quoted(source, 0, "layouts"),
+        ));
+    }
+    let mut listed = BTreeSet::new();
+    let mut search_from = 0;
+    for RawLayout { id, name, keys } in raw {
+        let start = line_of_quoted(source, search_from, id);
+        // Search the layout's own lines first, so errors in the second
+        // layout don't point into the first.
+        let from = start.map_or(search_from, |line| {
+            usize::try_from(line).unwrap_or(search_from)
+        });
+        search_from = from;
+        let Some(layout) = Layout::from_name(id) else {
+            let message = format!(
+                "layout id \"{id}\" must be 1 to {LAYOUT_NAME_MAX} ASCII letters, digits or _"
+            );
+            errors.push(positioned(ContentError::new(file, message), start));
+            continue;
+        };
+        if !listed.insert(layout) {
+            let message = format!("layout \"{layout}\" is listed twice");
+            errors.push(positioned(ContentError::new(file, message), start));
+            continue;
+        }
+        let label = format!("layout \"{layout}\"");
+        match validate_bindings::<A, Chord>(file, source, from, &label, true, keys) {
+            Ok(keys) => {
+                layouts.insert(layout, keys);
+                layout_names.push((layout, name.clone()));
+            }
+            Err(e) => errors.extend(e),
+        }
+    }
+    (layouts, layout_names)
+}
+
+/// Something `keymap.ron` binds to actions: a key [`Chord`] or a controller
+/// [`Button`].
+trait Bound: Copy + Ord + fmt::Display {
+    /// What one is called in error messages.
+    const NOUN: &'static str;
+    /// What several are called in error messages.
+    const PLURAL: &'static str;
+
+    /// Parses its keymap-file name.
+    fn parse_name(text: &str) -> Result<Self, String>;
+
+    /// Why it may never appear in the file, if so.
+    fn refused(self) -> Option<&'static str>;
+}
+
+impl Bound for Chord {
+    const NOUN: &'static str = "chord";
+    const PLURAL: &'static str = "keys";
+
+    fn parse_name(text: &str) -> Result<Self, String> {
+        Self::parse(text)
+    }
+
+    fn refused(self) -> Option<&'static str> {
+        self.is_reserved()
+            .then_some("Esc and Delete are fixed, see controls.md")
+    }
+}
+
+impl Bound for Button {
+    const NOUN: &'static str = "button";
+    const PLURAL: &'static str = "buttons";
+
+    fn parse_name(text: &str) -> Result<Self, String> {
+        Self::parse(text)
+    }
+
+    fn refused(self) -> Option<&'static str> {
+        None
+    }
+}
+
+/// Validates one section's `actions` (action name → chord or button
+/// names): a layout, the layout picker or the `pad` table. Messages start
+/// with `label`; lines are searched from line index `from` (just after the
+/// section's own line) on. For a `complete` section (a layout, `pad`), every
+/// action must be listed, with at most [`SLOTS`] entries. A chord or
+/// button may be on one action of each [group](ActionSet::Group).
+fn validate_bindings<A: ActionSet, T: Bound>(
+    file: &str,
+    source: &str,
+    from: usize,
+    label: &str,
+    complete: bool,
+    actions: &BTreeMap<String, Vec<String>>,
+) -> Result<BTreeMap<A, Vec<T>>, Vec<ContentError>> {
+    let noun = T::NOUN;
+    let mut errors = Vec::new();
+    let mut bindings: BTreeMap<(A::Group, T), A> = BTreeMap::new();
+    let mut keys: BTreeMap<A, Vec<T>> = BTreeMap::new();
+    let err_at = |key: &str, message: String| {
+        positioned(
+            ContentError::new(file, format!("{label}: {message}")),
+            line_of_quoted(source, from, key),
+        )
+    };
+    for (action_name, names) in actions {
+        let Some(action) = A::from_name(action_name) else {
+            let known: Vec<&str> = A::ALL.iter().map(|a| a.name()).collect();
+            errors.push(err_at(
+                action_name,
+                format!(
+                    "unknown action \"{action_name}\"; known actions: {}",
+                    known.join(", ")
+                ),
+            ));
+            continue;
+        };
+        if complete && names.len() > SLOTS {
+            errors.push(err_at(
+                action_name,
+                format!(
+                    "action \"{}\" has {} {}; at most {SLOTS} are allowed",
+                    action.name(),
+                    names.len(),
+                    T::PLURAL
+                ),
+            ));
+        }
+        let name = action.name();
+        let listed = keys.entry(action).or_default();
+        for text in names {
+            let bound = match T::parse_name(text) {
+                Ok(bound) => bound,
+                Err(why) => {
+                    errors.push(err_at(
+                        action_name,
+                        format!("action \"{action_name}\": {why}"),
+                    ));
+                    continue;
+                }
+            };
+            if let Some(why) = bound.refused() {
+                errors.push(err_at(
+                    action_name,
+                    format!("action \"{name}\": \"{bound}\" can't be bound here: {why}"),
+                ));
+            } else if let Some(&other) = bindings.get(&(action.group(), bound)) {
+                let message = if other == action {
+                    format!("{noun} \"{bound}\" is listed twice for \"{name}\"")
+                } else {
+                    format!(
+                        "{noun} \"{bound}\" is bound to both \"{}\" and \"{name}\"",
+                        other.name()
+                    )
+                };
+                errors.push(err_at(action_name, message));
+            } else {
+                bindings.insert((action.group(), bound), action);
+                listed.push(bound);
+            }
+        }
+    }
+    for action in A::ALL {
+        if complete && !actions.contains_key(action.name()) {
+            errors.push(ContentError::new(
+                file,
+                format!(
+                    "{label}: missing action \"{}\" (list it with [] to leave it \
+                     unbound)",
+                    action.name()
+                ),
+            ));
+        }
+    }
+    if errors.is_empty() {
+        Ok(keys)
+    } else {
+        Err(errors)
+    }
+}
+
+/// `error` at `line`, if known.
+fn positioned(error: ContentError, line: Option<u32>) -> ContentError {
+    match line {
+        Some(line) => error.at(line, None),
+        None => error,
+    }
+}
+
+/// 1-based number of the first line, at or after line index `from`
+/// (0-based), that contains `key` quoted or starts with the field `key:`,
+/// for error positions.
+fn line_of_quoted(source: &str, from: usize, key: &str) -> Option<u32> {
+    let quoted = format!("\"{key}\"");
+    let field = format!("{key}:");
+    let (index, _) = source
+        .lines()
+        .enumerate()
+        .skip(from)
+        .find(|(_, l)| l.contains(&quoted) || l.trim_start().starts_with(&field))?;
+    u32::try_from(index + 1).ok()
+}

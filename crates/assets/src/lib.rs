@@ -4,7 +4,8 @@
 //! them, the kinds of file every game has: images ([`image`]), a font atlas
 //! ([`font`]), named colours ([`palette`], [`ink`]), lights ([`lighting`]),
 //! the audio manifest ([`audio`]) and the credits ([`credits`]); the `.map`
-//! text format of a grid map ([`grid_map`]); and the text of a story game:
+//! text format of a grid map ([`grid_map`]); keymap files, generic over a
+//! game's actions ([`keymap`]); and the text of a story game:
 //! languages ([`lang`]), a names table ([`names`]), dialogue scripts
 //! ([`dialogue`]), voice clips by line ([`voice`]) and tips ([`tip`]). Each
 //! is a pure parser; the game names its files, says what its own rules add,
@@ -31,6 +32,7 @@ pub mod font;
 pub mod grid_map;
 pub mod image;
 pub mod ink;
+pub mod keymap;
 pub mod lang;
 pub mod lighting;
 pub mod names;

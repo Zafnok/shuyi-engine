@@ -1,0 +1,36 @@
+[package]
+name = "shuyi-ui"
+description = "Shuyi Engine's UI: input actions, keymaps, repeat, controllers, saved bindings and help keys"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license-file.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# Without it the crate is `no_std` + `alloc` for the Playdate (ADR-0070 §3).
+std = ["shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
+# The developer's actions (those a player can't rebind) keep their keys
+# out of the player's reach in a release build too: the game turns it on
+# with its own debug tools (`DEBUG_TOOLS`).
+debug-tools = []
+
+[dependencies]
+# The keymap file format and `ActionSet`.
+shuyi-assets = { path = "../assets", default-features = false }
+thiserror.workspace = true
+# The player's saved key bindings (ADR-0031).
+serde.workspace = true
+ron.workspace = true
+# `HashMap` without `std` (ADR-0070 §3).
+hashbrown.workspace = true
+
+[dev-dependencies]
+# A sample game's actions and keymap file for the tests.
+shuyi-assets = { path = "../assets", features = ["sample-actions"] }
+proptest.workspace = true
