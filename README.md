@@ -86,6 +86,17 @@ Carved so far:
   form), profiles (`profiles`), storage (`storage`), audio requests and
   the music (`audio`) and `{name}` placeholders (`text`). A toy game of
   two screens (`toy`, tests only) runs them.
+- `shuyi-app` (1110): the platform shell. `run` opens the window and
+  runs the loop around `Game::frame`: the keyboard (`keys`) and
+  controllers (`pads`, gilrs and the web's `web/gamepad.js`, whose
+  functions are `shuyi_pad_*`), blitting the frame (`render`), the
+  sounds, music and voices (decoded off the main thread on native) and
+  storage (`storage`: a file per key in the OS's data folder, or
+  `localStorage` on the web). The game's binary keeps macroquad's entry
+  point and gives an `AppConfig`: the window, the storage's name, its
+  embedded files, font and images, its sound files and voice folder;
+  `Platform::setup` puts the storage, voices and music seed into its
+  context.
 
 ## Third-party crates the engine may use
 
@@ -108,6 +119,7 @@ gilrs
 quad-storage
 proptest
 insta
+tempfile
 ```
 
 ## License
