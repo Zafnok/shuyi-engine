@@ -186,6 +186,9 @@ pub struct Files<'a> {
     /// A sound file's name as errors show it, by its name in the manifest
     /// (e.g. `base/audio/sfx/x.wav`).
     pub sound_shown: &'a dyn Fn(&str) -> String,
+    /// Whether this build leaves a sound file out on purpose, by its name
+    /// in the manifest (a bundle's `left_out`): it is then not checked.
+    pub sound_left_out: &'a dyn Fn(&str) -> bool,
     /// The music folder's name as errors show it (e.g. `music`).
     pub music_dir: &'a str,
     /// Reads a file in the music folder.
@@ -414,7 +417,9 @@ impl Check<'_> {
         }
         for f in &s.files {
             let path = (self.files.sound_shown)(f);
-            if has_extension(f, &["ogg", "wav"]) {
+            if !has_extension(f, &["ogg", "wav"]) {
+                self.err(&id, format!("sound \"{id}\": \"{f}\" must be .ogg or .wav"));
+            } else if !(self.files.sound_left_out)(f) {
                 match (self.files.sound)(f) {
                     None => self.err(&id, format!("sound \"{id}\": file {path} not found")),
                     Some(bytes) => {
@@ -423,8 +428,6 @@ impl Check<'_> {
                         }
                     }
                 }
-            } else {
-                self.err(&id, format!("sound \"{id}\": \"{f}\" must be .ogg or .wav"));
             }
         }
         self.volume(&id, s.volume);
@@ -628,6 +631,7 @@ mod tests {
         Files {
             sound,
             sound_shown: &|f: &str| format!("base/audio/{f}"),
+            sound_left_out: &|_: &str| false,
             music_dir: "music",
             music,
         }
@@ -741,6 +745,32 @@ mod tests {
         // The game itself can't see the music folder and skips that check.
         let files = reading(&|p: &str| Some(Cow::Owned(good(p))), None);
         assert_eq!(errors_with(FULL, &files), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_sound_file_the_build_leaves_out_is_not_checked() {
+        let no_step_2 = |p: &str| (p != "sfx/step_2.ogg").then(|| Cow::Owned(good(p)));
+        let files = Files {
+            sound_left_out: &|p: &str| p == "sfx/step_2.ogg",
+            ..reading(&no_step_2, None)
+        };
+        assert_eq!(errors_with(FULL, &files), Vec::<String>::new());
+        let m = from_source("a.ron", FULL, &files).unwrap_or_default();
+        assert!(
+            m.sounds["footfall"]
+                .files
+                .contains(&"sfx/step_2.ogg".to_owned())
+        );
+        // Its name is still checked.
+        let wrong = FULL.replace("sfx/step_2.ogg", "sfx/step_2.mp3");
+        let files = Files {
+            sound_left_out: &|p: &str| p == "sfx/step_2.mp3",
+            ..reading(&no_step_2, None)
+        };
+        assert_eq!(
+            errors_with(&wrong, &files),
+            ["a.ron:5: sound \"footfall\": \"sfx/step_2.mp3\" must be .ogg or .wav"]
+        );
     }
 
     #[test]

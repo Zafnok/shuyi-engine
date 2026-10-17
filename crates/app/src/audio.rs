@@ -712,6 +712,7 @@ mod tests {
         Files {
             sound: &bytes,
             sound_shown: &shown,
+            sound_left_out: &|_: &str| false,
             music_dir: "music",
             music: None,
         }

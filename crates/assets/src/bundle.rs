@@ -9,8 +9,16 @@
 //! debug tools, which a build that ships leaves out: test layers are read
 //! after every other layer, and [`story_only`] hides them from a thread.
 //!
+//! A layer may also name the files it **leaves out** on purpose
+//! ([`Layer::leaving_out`]): a smaller build (a handheld's) that keeps only
+//! what it uses. [`Bundle::left_out`] lets a loader tell such a file from
+//! one that is missing.
+//!
 //! The game registers its bundle once ([`install`] or [`get_or_install`]),
-//! and its loaders read files as `&'static` data from it.
+//! and its loaders read files as `&'static` data from it. A front end can
+//! [`watch`] every file read, to log or time what it loads; with `std`,
+//! [`reading`] makes one thread read another bundle (a test of a smaller
+//! build's bundle).
 use crate::prelude::*;
 
 #[cfg(feature = "std")]
@@ -88,6 +96,8 @@ pub struct Layer {
     pub private: bool,
     /// Whether it holds test files, which a build that ships leaves out.
     pub test: bool,
+    /// The paths (sorted) of the files this layer leaves out on purpose.
+    pub left_out: &'static [&'static str],
 }
 
 impl Layer {
@@ -112,6 +122,7 @@ impl Layer {
             files,
             private: false,
             test: false,
+            left_out: &[],
         }
     }
 
@@ -128,6 +139,17 @@ impl Layer {
     #[must_use]
     pub const fn test(self) -> Self {
         Self { test: true, ..self }
+    }
+
+    /// This layer, leaving out the files at `paths` (sorted, relative to
+    /// its root) on purpose: they are the game's, but this build does
+    /// without them.
+    #[must_use]
+    pub const fn leaving_out(self, paths: &'static [&'static str]) -> Self {
+        Self {
+            left_out: paths,
+            ..self
+        }
     }
 }
 
@@ -193,7 +215,20 @@ impl Bundle {
     /// Returns the raw bytes of the file at `path` (relative to a layer's
     /// root, `/`-separated), e.g. an image, or `None` if it is missing.
     pub fn bytes(&self, path: &str) -> Option<&'static [u8]> {
-        find(self.read(), path).map(|(_, bytes)| bytes)
+        let bytes = find(self.read(), path).map(|(_, bytes)| bytes);
+        if let Some(watcher) = WATCHER.get() {
+            watcher(path, bytes.is_some());
+        }
+        bytes
+    }
+
+    /// Whether a layer this thread reads leaves the file at `path` out on
+    /// purpose ([`Layer::leaving_out`]): a loader then does without it
+    /// instead of reporting it missing.
+    pub fn left_out(&self, path: &str) -> bool {
+        self.read()
+            .iter()
+            .any(|layer| layer.left_out.binary_search(&path).is_ok())
     }
 
     /// The test layers' own file at `path`, with its human-facing name,
@@ -285,15 +320,65 @@ pub fn install(bundle: Bundle) -> Result<(), Bundle> {
     INSTALLED.set(Box::new(bundle)).map_err(|bundle| *bundle)
 }
 
-/// The process-wide bundle, once installed.
+/// The process-wide bundle, once installed; inside [`reading`], the
+/// bundle this thread reads instead.
 pub fn installed() -> Option<&'static Bundle> {
+    #[cfg(feature = "std")]
+    if let Some(bundle) = READING.get() {
+        return Some(bundle);
+    }
     INSTALLED.get()
 }
 
 /// The process-wide bundle, installing the one `make` builds if none is.
 /// When two threads race to install, one bundle wins and both get it.
+/// Inside [`reading`], the bundle this thread reads instead, and nothing is
+/// installed.
 pub fn get_or_install(make: impl FnOnce() -> Bundle) -> &'static Bundle {
+    #[cfg(feature = "std")]
+    if let Some(bundle) = READING.get() {
+        return bundle;
+    }
     INSTALLED.get_or_init(|| Box::new(make()))
+}
+
+/// What is told of every file read ([`watch`]): its path, and whether the
+/// bundle has it.
+pub type Watcher = fn(path: &str, found: bool);
+
+/// The watcher of every file read, once one is set.
+static WATCHER: OnceBox<Watcher> = OnceBox::new();
+
+/// Tells `watcher` of every file any bundle reads from now on
+/// ([`Bundle::bytes`] and [`Bundle::file`]), on the thread that reads it:
+/// for a front end that logs or times what it loads. Set once: a second
+/// call gives its watcher back and changes nothing.
+pub fn watch(watcher: Watcher) -> Result<(), Watcher> {
+    WATCHER.set(Box::new(watcher)).map_err(|watcher| *watcher)
+}
+
+#[cfg(feature = "std")]
+std::thread_local! {
+    /// The bundle this thread reads inside [`reading`].
+    static READING: core::cell::Cell<Option<&'static Bundle>> =
+        const { core::cell::Cell::new(None) };
+}
+
+/// Runs `f` with this thread reading `bundle` instead of the installed one
+/// ([`installed`], [`get_or_install`]): for a test of another build's
+/// bundle (a handheld's smaller one) in a process that installed the
+/// whole. Other threads are never affected.
+#[cfg(feature = "std")]
+pub fn reading<T>(bundle: &'static Bundle, f: impl FnOnce() -> T) -> T {
+    /// Puts the old bundle back, also when `f` panics.
+    struct Restore(Option<&'static Bundle>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            READING.set(self.0);
+        }
+    }
+    let _restore = Restore(READING.replace(Some(bundle)));
+    f()
 }
 
 #[cfg(feature = "std")]
@@ -664,6 +749,105 @@ mod tests {
             std::thread::spawn(move || with_tests().file("data/t.ron").is_some()).join()
         });
         assert!(matches!(elsewhere, Ok(true)));
+    }
+
+    /// [`PUBLIC_TABLE`] without `data/b.ron`, which it leaves out.
+    static TRIMMED: &[(&str, &[u8])] = &[
+        ("data/a.ron", b"public a"),
+        ("deep/x/z.txt", b"public z"),
+        ("top.txt", b"public top"),
+    ];
+
+    #[test]
+    fn a_file_a_layer_leaves_out_is_missing_and_left_out() {
+        let trimmed = Layer::table("base", TRIMMED).leaving_out(&["data/b.ron"]);
+        let bundle = Bundle::new(vec![trimmed]);
+        assert_eq!(bundle.file("data/b.ron"), None);
+        assert!(bundle.left_out("data/b.ron"));
+        // A missing file it does not name, and a file it has, are not.
+        assert!(!bundle.left_out("data/nope.ron"));
+        assert!(!bundle.left_out("data/a.ron"));
+        assert!(!bundle.left_out("data"));
+        assert_eq!(bundle.files_in("data"), ["data/a.ron"]);
+        // Nothing is left out of a layer that does not say so.
+        assert!(!merged().left_out("data/b.ron"));
+        // Nor out of a test layer, inside `story_only`.
+        let test = Layer::table("tests", TRIMMED).leaving_out(&["x"]).test();
+        let with_test = Bundle::new(vec![PUBLIC, test]);
+        assert!(with_test.left_out("x"));
+        assert!(!story_only(|| with_test.left_out("x")));
+    }
+
+    std::thread_local! {
+        /// The files this thread read inside [`watched`].
+        static SEEN: core::cell::RefCell<Option<Vec<(String, bool)>>> =
+            const { core::cell::RefCell::new(None) };
+    }
+
+    /// The test's watcher: notes the reads of a thread inside [`watched`].
+    fn note(path: &str, found: bool) {
+        SEEN.with_borrow_mut(|seen| {
+            if let Some(seen) = seen {
+                seen.push((path.to_owned(), found));
+            }
+        });
+    }
+
+    /// The files this thread reads in `f`, and whether each was found.
+    fn watched(f: impl FnOnce()) -> Vec<(String, bool)> {
+        SEEN.set(Some(Vec::new()));
+        f();
+        SEEN.take().unwrap_or_default()
+    }
+
+    /// The only test that sets the watcher: it is process-wide.
+    #[test]
+    fn the_watcher_is_told_of_every_file_read() {
+        assert!(watch(note).is_ok());
+        let refused: Watcher = |_, _| {};
+        assert!(watch(refused).is_err());
+        let bundle = merged();
+        let seen = watched(|| {
+            let _ = bundle.file("data/a.ron");
+            let _ = bundle.bytes("data/nope.ron");
+            // Listing and naming files reads none.
+            let _ = bundle.files_under("");
+            let _ = bundle.display_path("top.txt");
+            let _ = bundle.left_out("top.txt");
+        });
+        assert_eq!(
+            seen,
+            [
+                ("data/a.ron".to_owned(), true),
+                ("data/nope.ron".to_owned(), false)
+            ]
+        );
+    }
+
+    #[test]
+    fn reading_makes_this_thread_read_another_bundle_until_it_returns() {
+        let other: &'static Bundle =
+            Box::leak(Box::new(Bundle::new(vec![Layer::table("other", OVER)])));
+        let is_other = move |bundle: &Bundle| core::ptr::eq(bundle, other);
+        let inside = reading(other, || {
+            // A nested call puts the outer bundle back when it returns.
+            reading(other, || ());
+            (
+                installed().is_some_and(is_other),
+                is_other(get_or_install(merged)),
+            )
+        });
+        assert_eq!(inside, (true, true));
+        // Nothing was installed by it.
+        assert!(!installed().is_some_and(is_other));
+        // Also after a panic inside it.
+        assert!(std::panic::catch_unwind(|| reading(other, || panic!("inside"))).is_err());
+        assert!(!installed().is_some_and(is_other));
+        // Another thread is never affected.
+        let elsewhere = reading(other, || {
+            std::thread::spawn(move || installed().is_some_and(is_other)).join()
+        });
+        assert!(matches!(elsewhere, Ok(false)));
     }
 
     /// The `no_std` build's flag.

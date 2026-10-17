@@ -41,7 +41,10 @@ Carved so far:
 - `shuyi-assets` (1103): the bundle as layers the game gives
   (`bundle`), content errors with file, line and column (`error`), and
   RON loading (`ron`). 1116: the `.map` text format of a grid map
-  (`grid_map`), with a hook for a game's tile features.
+  (`grid_map`), with a hook for a game's tile features. 1036: a layer
+  that leaves files out on purpose (`Layer::leaving_out`,
+  `Bundle::left_out`, which the audio check honors), a watcher of every
+  file read (`watch`) and a thread reading another bundle (`reading`).
 - `shuyi-assets` (1104): the image table (`image`), font atlases
   (`font`), named colors and themes (`palette`), one-bit inks (`ink`),
   lights (`lighting`), the audio manifest (`audio`) and the credits
