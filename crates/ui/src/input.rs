@@ -32,7 +32,7 @@ pub mod state;
 #[cfg(test)]
 mod chord_tests;
 #[cfg(test)]
-mod sample;
+pub(crate) mod sample;
 #[cfg(test)]
 mod tests;
 #[cfg(test)]

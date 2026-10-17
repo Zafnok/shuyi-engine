@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-ui"
-description = "Shuyi Engine's UI: the frame (glyph console, sprites, backdrop, named colors, snapshots, one-bit renderer) and input (actions, keymaps, repeat, controllers, saved bindings, help keys)"
+description = "Shuyi Engine's UI: the frame (glyph console, sprites, backdrop, named colors, snapshots, one-bit renderer), input (actions, keymaps, repeat, controllers, saved bindings, help keys), screens on a stack, the context they share and the frame loop"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,6 +19,9 @@ std = ["shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
 # out of the player's reach in a release build too: the game turns it on
 # with its own debug tools (`DEBUG_TOOLS`).
 debug-tools = []
+# `storage::conformance_suite`, for a platform's `Storage` (also without
+# `std`: a console's debug build runs it on the device's files).
+storage-conformance = []
 # `frame::onebit::reference`, the plain one-bit renderer the fast one must
 # equal (ticket 1055): for a bench build that times both on the device.
 # The tests have it anyway.
@@ -28,7 +31,7 @@ onebit-reference = []
 # The keymap file format and `ActionSet`.
 shuyi-assets = { path = "../assets", default-features = false }
 thiserror.workspace = true
-# The player's saved key bindings (ADR-0031).
+# The player's saved key bindings (ADR-0031) and profiles.
 serde.workspace = true
 ron.workspace = true
 # `HashMap` without `std` (ADR-0070 §3).

@@ -76,6 +76,16 @@ Carved so far:
   fitting a picture to cells (`portrait`) and the Playdate's one-bit
   renderer (`onebit`). `float` is the float maths `core` lacks, for
   `no_std` builds.
+- `shuyi-ui` (1109): screens (`screen`: `Screen`, `Transition`,
+  `ScreenStack`), the context they share (`ctx`: `Ctx<G>`, with the
+  game's part in `ctx.game` and what the engine reads from it,
+  `GameData`) and the frame loop (`game`: `Game<G>`, `GameHooks` for the
+  screen the first key opens and the debug menu, `RawInputEvent`,
+  `FrameOutput`); with them the player's settings (`settings`: the
+  engine's and a game's `GameSettings`, one saved record in the game's
+  form), profiles (`profiles`), storage (`storage`), audio requests and
+  the music (`audio`) and `{name}` placeholders (`text`). A toy game of
+  two screens (`toy`, tests only) runs them.
 
 ## Third-party crates the engine may use
 
