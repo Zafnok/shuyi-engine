@@ -100,6 +100,13 @@ Carved so far:
   embedded files, font and images, its sound files and voice folder;
   `Platform::setup` puts the storage, voices and music seed into its
   context.
+- `shuyi-ui` (1111): the test Harness (`harness`, the `harness`
+  feature): any game driven without a window by key, typing, controller
+  and wait scripts in frames of 1/60 s, with the audio each frame asked
+  for, a stand-in for the music player and snapshots. The toy game
+  (`toy`, the `toy` feature) gained a layout picker the first key opens
+  and a gallery of pictures the Debug key opens; the Harness's tests drive
+  it (`tests/it`).
 
 ## Third-party crates the engine may use
 

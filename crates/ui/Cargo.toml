@@ -26,6 +26,12 @@ storage-conformance = []
 # equal (ticket 1055): for a bench build that times both on the device.
 # The tests have it anyway.
 onebit-reference = []
+# `harness`: the headless test driver for a game's integration tests
+# (ADR-0017).
+harness = []
+# `toy`: a toy game of a few screens over the sample game's actions, for
+# this crate's integration tests.
+toy = ["shuyi-assets/sample-actions"]
 
 [dependencies]
 # The keymap file format and `ActionSet`.
@@ -40,6 +46,8 @@ hashbrown.workspace = true
 libm.workspace = true
 
 [dev-dependencies]
+# The Harness and the toy game for the integration tests in tests/.
+shuyi-ui = { path = ".", features = ["harness", "toy"] }
 # A sample game's actions and keymap file for the tests.
 shuyi-assets = { path = "../assets", features = ["sample-actions"] }
 proptest.workspace = true

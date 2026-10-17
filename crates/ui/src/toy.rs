@@ -1,9 +1,14 @@
-//! A toy game for the tests of the screens, the context and the frame
-//! loop: the sample game's actions and keymap file
-//! ([`crate::input::sample`]), a palette of the engine's colors in two
-//! themes, a few lines of text in English and in a debug language, one
-//! sound, three tracks and a pool, voiced lines with two variants, one
-//! setting of its own, and two screens ([`Home`] and [`Menu`]).
+//! A toy game for the engine's tests of the screens, the context, the
+//! frame loop and the test `Harness`: the sample
+//! game's actions and keymap file ([`crate::input::sample`]), a palette of
+//! the engine's colors in two themes, a few lines of text in English and
+//! in a debug language, one sound, three tracks and a pool, voiced lines
+//! with two variants, one setting of its own, one image, and its screens:
+//! [`Home`], the [`Menu`] over it, the layout [`Picker`] the first key
+//! opens and the [`Gallery`] of pictures the Debug key opens ([`hooks`]).
+//!
+//! Built for this crate's tests and, with the `toy` feature, for its
+//! integration tests.
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
@@ -14,6 +19,7 @@ use shuyi_assets::audio::{AudioManifest, CreditRef, MusicCue, SoundCue};
 use shuyi_assets::dialogue::{
     DialogueLimits, DialogueTable, LineId, NoDirective, NoTokens, parse_dlg,
 };
+use shuyi_assets::image::{ImageId, ImageInfo, ImageTable};
 use shuyi_assets::keymap::{KeymapDef, Layout};
 use shuyi_assets::lang::{Lang, LangCode, PackRules, pack_from_sources};
 use shuyi_assets::palette::PaletteDef;
@@ -22,9 +28,11 @@ use shuyi_assets::voice::{self, ClipVariant, Playable};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
 use crate::frame::console::ConsoleSpec;
-use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
+use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
+use crate::game::{Game, GameHooks, ScreenHook};
 use crate::screen::{FrameInput, Screen, Transition};
 use crate::settings::{GameSettings, Settings, TextSpeed};
+use crate::storage::Storage;
 
 pub use crate::input::sample::{Action, LEFT_HANDED, RIGHT_HANDED};
 
@@ -138,8 +146,11 @@ impl GameSettings for Prefs {
     }
 }
 
+/// The toy's one image: a 16×16 card.
+pub const CARD: &str = "card.png";
+
 /// The toy's English text.
-const ENGLISH: [(&str, &str); 9] = [
+const ENGLISH: [(&str, &str); 10] = [
     ("keys.not_mapped", "! not mapped"),
     ("keys.arrows", "arrows"),
     ("keys.chord_join", "+"),
@@ -152,6 +163,7 @@ const ENGLISH: [(&str, &str); 9] = [
     ("layout_picker.right_handed", "Right hand"),
     ("layout_picker.left_handed", "Left hand"),
     ("menu.title", "Menu"),
+    ("gallery.help", "{Cancel} back"),
 ];
 
 /// The debug language's text: two keys of today's English, one of
@@ -179,6 +191,12 @@ fn palette(base: u8) -> PaletteDef {
         .collect();
     PaletteDef { colors }
 }
+
+/// The size of [`CARD`].
+const CARD_SIZE: ImageInfo = ImageInfo {
+    width: 16,
+    height: 16,
+};
 
 /// A track of `cue`, looped, 10 s long.
 fn track(cue: &str) -> MusicCue {
@@ -210,6 +228,8 @@ pub struct Toy {
     pub applied: Vec<(u8, Option<u8>)>,
     /// The keys the toy kept a player's data under before profiles.
     pub old_keys: Vec<String>,
+    /// The image [`CARD`].
+    pub images: ImageTable,
 }
 
 impl Toy {
@@ -282,7 +302,19 @@ impl Toy {
             voice: Voice::Only,
             applied: Vec::new(),
             old_keys: Vec::new(),
+            images: ImageTable {
+                images: [(CARD, CARD_SIZE)].into(),
+            },
         }
+    }
+
+    /// The image [`CARD`]'s id.
+    ///
+    /// # Panics
+    ///
+    /// If the toy's table lacks it.
+    pub fn card(&self) -> ImageId {
+        self.images.id(CARD).unwrap_or_else(|| panic!("no {CARD}"))
     }
 
     /// The ids of the scene's lines, in order.
@@ -308,6 +340,12 @@ impl Toy {
         };
         let clips: String = clips.iter().map(clip).collect();
         format!("(clips: [{clips}])")
+    }
+}
+
+impl Default for Toy {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -392,7 +430,46 @@ pub fn ctx() -> ToyCtx {
 ///
 /// If the toy's palette lacks a color.
 pub fn first_launch() -> ToyCtx {
-    Ctx::new(Toy::new()).unwrap_or_else(|missing| panic!("{missing:?}"))
+    Ctx::new(Toy::default()).unwrap_or_else(|missing| panic!("{missing:?}"))
+}
+
+/// The toy's context as a later launch finds it in `storage`: with the
+/// layout saved there in use, if one is, and debug tools on.
+pub fn launch(storage: Box<dyn Storage>) -> ToyCtx {
+    let mut ctx = first_launch().with_storage(storage);
+    if let Some(layout) = ctx.saved_layout() {
+        ctx.use_layout(layout);
+    }
+    ctx.debug_tools = true;
+    ctx
+}
+
+/// Where the toy game has a say in the frame loop: with no layout chosen
+/// the first key opens the [`Picker`], and the Debug key opens the
+/// [`Gallery`].
+pub fn hooks() -> GameHooks<Toy> {
+    GameHooks {
+        first_key: Some(ScreenHook {
+            name: "picker",
+            open: |_| Box::new(Picker::default()),
+        }),
+        debug: Some(ScreenHook {
+            name: "gallery",
+            open: |_| Box::new(Gallery),
+        }),
+        debug_screens: &["gallery"],
+    }
+}
+
+/// The toy game on `ctx`, at its [`Home`], with its [`hooks`].
+pub fn game_on(ctx: ToyCtx) -> Game<Toy> {
+    Game::new(ctx, Box::new(Home::default()), hooks())
+}
+
+/// The toy game with the right-handed layout chosen ([`ctx`]), at its
+/// [`Home`], with its [`hooks`].
+pub fn game() -> Game<Toy> {
+    game_on(ctx())
 }
 
 /// The toy's root screen: Confirm opens the [`Menu`] over it, Cancel quits.
@@ -470,5 +547,94 @@ impl Screen<Toy> for Menu {
 
     fn is_overlay(&self) -> bool {
         true
+    }
+}
+
+/// The layout picker: Up and Down choose a layout, Confirm picks it and
+/// closes; nothing cancels it. It draws `P` in the third cell and the
+/// chosen layout's name on the second row.
+#[derive(Debug, Default)]
+pub struct Picker {
+    /// The layout the cursor is on: 0 right-handed, 1 left-handed.
+    pub focus: usize,
+}
+
+impl Picker {
+    /// The layouts, in the order shown.
+    pub const LAYOUTS: [Layout; 2] = [RIGHT_HANDED, LEFT_HANDED];
+}
+
+impl Screen<Toy> for Picker {
+    fn name(&self) -> &'static str {
+        "picker"
+    }
+
+    fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
+        for action in &input.actions {
+            match action {
+                Action::CursorUp | Action::CursorDown => self.focus = 1 - self.focus,
+                Action::Confirm => {
+                    if let Err(e) = ctx.choose_layout(Self::LAYOUTS[self.focus]) {
+                        panic!("saving the layout: {e}");
+                    }
+                    return Transition::Pop;
+                }
+                _ => {}
+            }
+        }
+        Transition::None
+    }
+
+    fn draw(&self, ctx: &ToyCtx, buf: &mut GlyphBuffer) {
+        let text = ctx.palette.engine(EngineColor::Text);
+        let panel = ctx.palette.engine(EngineColor::Panel);
+        buf.set(2, 0, Cell::new('P', text, panel));
+        let name = if self.focus == 0 {
+            "layout_picker.right_handed"
+        } else {
+            "layout_picker.left_handed"
+        };
+        buf.print(0, 1, ctx.text(name), text, panel);
+    }
+
+    fn is_overlay(&self) -> bool {
+        true
+    }
+
+    fn as_any(&self) -> Option<&dyn Any> {
+        Some(self)
+    }
+}
+
+/// A debug tool showing pictures: the [`CARD`] whole at twice its size in
+/// the top-left corner, and again half off the right edge, so a snapshot
+/// lists one whole and one clipped. Its help line names the Cancel key
+/// of the device used last; Cancel closes it.
+#[derive(Debug)]
+pub struct Gallery;
+
+impl Screen<Toy> for Gallery {
+    fn name(&self) -> &'static str {
+        "gallery"
+    }
+
+    fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
+        if input.actions.contains(&Action::Cancel) {
+            return Transition::Pop;
+        }
+        Transition::None
+    }
+
+    fn draw(&self, ctx: &ToyCtx, buf: &mut GlyphBuffer) {
+        let card = ctx.game.card();
+        let src = Rect::new(0, 0, 16, 16);
+        let right = buf.pixel_bounds().w - 16;
+        for dest in [Rect::new(0, 0, 32, 32), Rect::new(right, 0, 32, 32)] {
+            buf.add_sprite(Sprite::new(card, src, dest, Layer::Over));
+        }
+        let text = ctx.palette.engine(EngineColor::Text);
+        let panel = ctx.palette.engine(EngineColor::Panel);
+        let last = i32::from(buf.height()) - 1;
+        buf.print(0, last, &ctx.text_with("gallery.help", &[]), text, panel);
     }
 }
