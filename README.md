@@ -66,6 +66,14 @@ Carved so far:
   controllers, the player's saved bindings, fixed keys and the names of
   keys and buttons in help text. The game gives its actions, its keymap
   file and the words.
+- `shuyi-ui` (1108): the frame (`frame`): the glyph console
+  (`glyph_buffer`, with items, layers and the backdrop), its size
+  (`console`, which the game gives, and letterboxing), colors by name
+  (`color`: a game's `ColorSet` and the engine's own `EngineColor`s), the
+  text form snapshot tests read (`snapshot`), framing a shot (`cinema`),
+  fitting a picture to cells (`portrait`) and the Playdate's one-bit
+  renderer (`onebit`). `float` is the float maths `core` lacks, for
+  `no_std` builds.
 
 ## Third-party crates the engine may use
 

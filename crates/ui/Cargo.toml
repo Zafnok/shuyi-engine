@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-ui"
-description = "Shuyi Engine's UI: input actions, keymaps, repeat, controllers, saved bindings and help keys"
+description = "Shuyi Engine's UI: the frame (glyph console, sprites, backdrop, named colors, snapshots, one-bit renderer) and input (actions, keymaps, repeat, controllers, saved bindings, help keys)"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -19,6 +19,10 @@ std = ["shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
 # out of the player's reach in a release build too: the game turns it on
 # with its own debug tools (`DEBUG_TOOLS`).
 debug-tools = []
+# `frame::onebit::reference`, the plain one-bit renderer the fast one must
+# equal (ticket 1055): for a bench build that times both on the device.
+# The tests have it anyway.
+onebit-reference = []
 
 [dependencies]
 # The keymap file format and `ActionSet`.
@@ -29,8 +33,11 @@ serde.workspace = true
 ron.workspace = true
 # `HashMap` without `std` (ADR-0070 §3).
 hashbrown.workspace = true
+# Float maths without `std` (ADR-0070 §3).
+libm.workspace = true
 
 [dev-dependencies]
 # A sample game's actions and keymap file for the tests.
 shuyi-assets = { path = "../assets", features = ["sample-actions"] }
 proptest.workspace = true
+insta.workspace = true

@@ -885,7 +885,7 @@ fn a_frame_holds_what_the_player_did_this_frame() {
     assert!(!held.is_held(Info));
     assert!(!held.pad_pressed());
     assert_eq!(held.pressed_chords(), []);
-    assert_eq!(held.text(), []);
+    assert!(held.text().is_empty());
     assert_eq!(held.pressed_buttons(), []);
     assert_eq!(held.released_buttons(), []);
 
