@@ -17,6 +17,7 @@ use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 use crate::audio::{AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::frame::glyph_buffer::GlyphBuffer;
+use crate::input::crank::Crank;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
 use crate::screen::{FrameInput, Screen, ScreenStack};
@@ -54,6 +55,24 @@ impl RawInputEvent {
             }
         };
         changes.into_iter().map(event).collect()
+    }
+
+    /// This frame's crank events: the crank turned `degrees` since the
+    /// last frame (forwards positive), on a pad of `kind`; `docked` if it
+    /// is folded away (then nothing, and a part notch is forgotten). Each
+    /// notch is a press and a release of [`Button::CrankBack`] or
+    /// [`Button::CrankForward`] ([`Crank`]).
+    pub fn from_crank(crank: &mut Crank, degrees: f32, docked: bool, kind: PadKind) -> Vec<Self> {
+        if docked {
+            crank.dock();
+            return Vec::new();
+        }
+        let Some((button, times)) = Crank::presses(crank.turn(degrees)) else {
+            return Vec::new();
+        };
+        (0..times)
+            .flat_map(|_| [Self::PadDown(button, kind), Self::PadUp(button)])
+            .collect()
     }
 }
 
@@ -294,11 +313,7 @@ impl<G: GameData> Game<G> {
         }
         self.ctx.device = self.input.device();
         let actions = self.input.update(dt);
-        let held = G::Action::ALL
-            .iter()
-            .copied()
-            .filter(|&a| self.input.is_held(a))
-            .collect();
+        let held = self.held();
         let debug = self.hooks.debug.filter(|_| {
             self.ctx.debug_tools
                 && actions.iter().any(|a| a.ui() == Some(UiAction::Debug))
@@ -325,6 +340,33 @@ impl<G: GameData> Game<G> {
             self.sync_keymap();
         }
         self.redraw();
+    }
+
+    /// Hands the top screen `action` alone, in an update of its own with no
+    /// time passing, as if a key bound to it had just been pressed: an
+    /// action from outside the keys and buttons, such as an entry of the
+    /// platform's own menu (the Playdate's system menu, ticket 1035). The
+    /// screen does with it what it does with the key, or nothing. Its
+    /// sounds come out with the next frame. After a quit, nothing.
+    pub fn act(&mut self, action: G::Action) {
+        if self.quit {
+            return;
+        }
+        let held = self.held();
+        let from_pad = matches!(self.ctx.device, Device::Pad(_));
+        let input = FrameInput::new(vec![action], 0.0, held).with_pad(from_pad);
+        self.quit = self.stack.update(&mut self.ctx, &input);
+        self.sync_keymap();
+        self.redraw();
+    }
+
+    /// The actions whose keys or buttons are held.
+    fn held(&self) -> Vec<G::Action> {
+        G::Action::ALL
+            .iter()
+            .copied()
+            .filter(|&a| self.input.is_held(a))
+            .collect()
     }
 
     /// Hands `ctx`'s keymap to the input if it changed (a layout was

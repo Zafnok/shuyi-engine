@@ -8,8 +8,8 @@
 //!
 //! The player's own bindings (3 slots per action, per layout, and the
 //! controller buttons) are in [`bindings`]; [`pad`] turns the controllers'
-//! raw state into button presses; [`help_keys`] names keys and buttons in
-//! help text.
+//! raw state into button presses, and [`crank`] a crank's turns; [`help_keys`]
+//! names keys and buttons in help text.
 //!
 //! **Fixed keys** ([`fixed`], ADR-0031): plain `Escape` backs out of
 //! capturing a key and plain `Delete` empties a slot on a rebinding
@@ -22,6 +22,7 @@
 //! (`shuyi_assets::keymap`) and re-exported here.
 
 pub mod bindings;
+pub mod crank;
 pub mod fixed;
 pub mod frame;
 pub mod help_keys;
@@ -39,6 +40,7 @@ mod tests;
 mod toy_tests;
 
 pub use bindings::{BindError, ButtonSlots, LayoutBindings, PadBindings, PlayerKeys, Slots};
+pub use crank::Crank;
 pub use fixed::{
     TextKey, capture_abort_key_name, clear_slot_key_name, is_capture_abort, is_clear_slot,
     text_key, text_key_names,
@@ -48,7 +50,7 @@ pub use help_keys::{ARROWS, HelpKeys};
 pub use keymap::{ChordWait, Keymap};
 pub use pad::{ButtonSet, PadId, PadKind, PadState, Pads};
 pub use shuyi_assets::keymap::{
-    ActionSet, Bindings, Button, ButtonChord, Chord, ChordDef, Key, KeymapDef, LAYOUT_NAME_MAX,
-    Layout, LayoutKeys, PadKeys, RepeatDef, SLOTS, StickDef, UiAction,
+    ActionSet, Bindings, Button, ButtonChord, Chord, ChordDef, CrankDef, Key, KeymapDef,
+    LAYOUT_NAME_MAX, Layout, LayoutKeys, PadKeys, RepeatDef, SLOTS, StickDef, UiAction,
 };
 pub use state::{Device, Input, InputState, MAX_REPEATS_PER_UPDATE};

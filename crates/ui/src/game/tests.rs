@@ -742,3 +742,58 @@ fn pad_changes_become_pad_events_with_the_pressing_pads_kind() {
     );
     assert_eq!(RawInputEvent::from_pads(&mut pads, &[]).len(), 2);
 }
+
+/// Ticket 1035: each notch of the crank is a press and a release of a
+/// crank button, from the pad of the kind given; a docked crank gives
+/// nothing and forgets a part notch.
+#[test]
+fn crank_notches_become_presses_and_releases_of_the_crank_buttons() {
+    let mut crank = crate::input::Crank::new(shuyi_assets::keymap::CrankDef { notch_degrees: 30 });
+    let kind = PadKind::Playdate;
+    let back = [
+        RawInputEvent::PadDown(Button::CrankBack, kind),
+        RawInputEvent::PadUp(Button::CrankBack),
+    ];
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, -20.0, false, kind),
+        []
+    );
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, -50.0, false, kind),
+        [back, back].concat()
+    );
+    assert_eq!(
+        RawInputEvent::from_crank(&mut crank, 40.0, false, kind),
+        [
+            RawInputEvent::PadDown(Button::CrankForward, kind),
+            RawInputEvent::PadUp(Button::CrankForward),
+        ]
+    );
+    // 20 wound forwards, then docked: forgotten.
+    assert_eq!(RawInputEvent::from_crank(&mut crank, -25.0, true, kind), []);
+    assert_eq!(RawInputEvent::from_crank(&mut crank, 20.0, false, kind), []);
+}
+
+/// Ticket 1035: an action from outside the keys (a platform's own menu)
+/// reaches the top screen in an update of its own, as its key would.
+#[test]
+fn an_action_from_outside_the_keys_reaches_the_top_screen() {
+    let mut game = home(ctx());
+    game.act(Action::Confirm);
+    assert_eq!(game.screens(), ["home", "menu"]);
+    assert_eq!(game.screen::<Home>().map(|h| h.frames), Some(1));
+    // The menu's click comes out with the next frame.
+    game.act(Action::Confirm);
+    let click = AudioRequest::PlaySound {
+        cue: "click".into(),
+        volume: 1.0,
+    };
+    assert_eq!(game.frame(&[], 0.0).audio, [click]);
+    game.act(Action::Cancel);
+    assert_eq!(game.screens(), ["home"]);
+    game.act(Action::Cancel);
+    assert!(game.quit_requested());
+    // After a quit, nothing.
+    game.act(Action::Confirm);
+    assert_eq!(game.screens(), ["home"]);
+}

@@ -175,7 +175,7 @@ fn left(k: &KeymapDef) -> Bindings {
 
 #[test]
 fn button_names_round_trip() {
-    assert_eq!(Button::ALL.len(), 16 + 4 + 4);
+    assert_eq!(Button::ALL.len(), 16 + 4 + 4 + 2);
     for (i, &b) in Button::ALL.iter().enumerate() {
         assert_eq!(b as usize, i);
         assert_eq!(Button::parse(&b.to_string()), Ok(b));
@@ -1031,6 +1031,47 @@ fn the_chord_window_is_read_from_the_file() {
     let src = source_with_playdate("", "    chord: (window_ms: 120),\n");
     let k = KeymapDef::from_source("k.ron", &src).unwrap_or_default();
     assert_eq!(k.chord, ChordDef { window_ms: 120 });
+}
+
+/// Ticket 1035: a notch of the crank, 30° unless the file says; a crank
+/// wound one notch is a button a table can bind.
+#[test]
+fn the_crank_notch_is_read_from_the_file() {
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate("", "")).unwrap_or_default();
+    assert_eq!(k.crank, CrankDef { notch_degrees: 30 });
+    let src = source_with_playdate(
+        "",
+        "    crank: (notch_degrees: 45),
+",
+    );
+    let k = KeymapDef::from_source("k.ron", &src).unwrap_or_default();
+    assert_eq!(k.crank, CrankDef { notch_degrees: 45 });
+    for bad in [0, 361] {
+        let src = source_with_playdate(
+            "",
+            &format!(
+                "    crank: (notch_degrees: {bad}),
+"
+            ),
+        );
+        let errs = errors(&src);
+        assert_eq!(errs.len(), 1, "{errs:?}");
+        assert!(
+            errs[0].ends_with("crank notch_degrees must be 1 to 360"),
+            "{}",
+            errs[0]
+        );
+    }
+    let table = playdate_table(
+        "Info",
+        "        \"Info\": [\"CrankBack\", \"CrankForward\"],
+",
+    );
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate(&table, "")).unwrap_or_default();
+    assert_eq!(
+        k.playdate[&Action::Info],
+        [Button::CrankBack, Button::CrankForward].map(ButtonChord::single)
+    );
 }
 
 #[test]

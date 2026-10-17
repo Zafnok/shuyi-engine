@@ -97,7 +97,8 @@ impl PadKind {
     /// say `Create`). The Playdate's `A`, `B` and D-pad are named as
     /// printed on it, which are the Xbox names; it has none of the other
     /// buttons (their actions move to chords and menus in tickets 1034
-    /// and 1035). The only place buttons get their names.
+    /// and 1035), but has the crank. The only place buttons get their
+    /// names.
     // check-text: not player text (a button's name is what is printed on the pad)
     pub fn button_name(self, button: Button) -> &'static str {
         let [xbox, playstation, nintendo] = names(button);
@@ -160,6 +161,8 @@ fn names(button: Button) -> [&'static str; 3] {
         Button::RightStickDown => ["R-stick ↓"; 3],
         Button::RightStickLeft => ["R-stick ←"; 3],
         Button::RightStickRight => ["R-stick →"; 3],
+        Button::CrankBack => ["Crank back"; 3],
+        Button::CrankForward => ["Crank forward"; 3],
     }
 }
 

@@ -6,8 +6,9 @@ use proptest::prelude::*;
 use super::*;
 use crate::input::sample::{Action, InputState, Keymap, RIGHT_HANDED, load_keymap};
 use Button::{
-    DpadUp, East, LeftStickDown, LeftStickLeft, LeftStickRight, LeftStickUp, North, RightStickDown,
-    RightStickLeft, RightStickRight, RightStickUp, South, Start, West,
+    CrankBack, CrankForward, DpadUp, East, LeftStickDown, LeftStickLeft, LeftStickRight,
+    LeftStickUp, North, RightStickDown, RightStickLeft, RightStickRight, RightStickUp, South,
+    Start, West,
 };
 
 fn stick() -> StickDef {
@@ -73,6 +74,13 @@ fn buttons_are_named_as_the_pad_in_use_labels_them() {
         (RightStickDown, "R-stick ↓", "R-stick ↓", "R-stick ↓"),
         (RightStickLeft, "R-stick ←", "R-stick ←", "R-stick ←"),
         (RightStickRight, "R-stick →", "R-stick →", "R-stick →"),
+        (CrankBack, "Crank back", "Crank back", "Crank back"),
+        (
+            CrankForward,
+            "Crank forward",
+            "Crank forward",
+            "Crank forward",
+        ),
     ];
     assert_eq!(table.map(|row| row.0), Button::ALL);
     for (button, xbox, playstation, nintendo) in table {

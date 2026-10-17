@@ -22,11 +22,12 @@
 use crate::prelude::*;
 use core::any::Any;
 
-use shuyi_assets::keymap::{Button, Chord};
+use shuyi_assets::keymap::{Button, Chord, CrankDef};
 
 use crate::audio::{AudioRequest, MusicClock, MusicCommand};
 use crate::ctx::{Ctx, GameData, KeyPrompt};
 use crate::game::{Game, RawInputEvent};
+use crate::input::crank::Crank;
 use crate::input::pad::PadKind;
 use crate::input::state::Device;
 use crate::storage::Storage;
@@ -50,6 +51,10 @@ pub struct Harness<G: GameData> {
     player: Player,
     /// The kind of controller [`pad`](Self::pad) presses buttons on.
     pad_kind: PadKind,
+    /// The crank [`crank`](Self::crank) winds, on the [`use_pad`] pad.
+    ///
+    /// [`use_pad`]: Self::use_pad
+    crank: Crank,
     /// What the last frame told the platform: the music and sound volumes
     /// and whether to fill the screen.
     mixer: (f32, f32, bool),
@@ -112,6 +117,7 @@ impl<G: GameData> Harness<G> {
             music: Vec::new(),
             player: Player::default(),
             pad_kind: PadKind::default(),
+            crank: Crank::new(CrankDef::default()),
             // Nothing told yet: as the platform starts.
             mixer: (1.0, 1.0, false),
         }
@@ -230,6 +236,30 @@ impl<G: GameData> Harness<G> {
             self.frame(&up, FRAME_DT);
         }
         self
+    }
+
+    /// Notches of `def` for [`crank`](Self::crank) (the game's keymap
+    /// file's `crank`; 30° until set).
+    pub fn set_crank(&mut self, def: CrankDef) -> &mut Self {
+        self.crank = Crank::new(def);
+        self
+    }
+
+    /// Winds the crank `degrees` in one frame of [`FRAME_DT`] (forwards is
+    /// positive, backwards negative), as the Playdate's front end reports
+    /// it: a press and a release of a crank button for each whole notch,
+    /// the rest of a notch kept for the next call (ticket 1035).
+    pub fn crank(&mut self, degrees: f32) -> &mut Self {
+        let events = RawInputEvent::from_crank(&mut self.crank, degrees, false, self.pad_kind);
+        self.frame(&events, FRAME_DT)
+    }
+
+    /// Hands the top screen `action` from outside the keys, as a platform's
+    /// own menu does ([`Game::act`]), then runs a frame of [`FRAME_DT`]:
+    /// the menu closes and the game goes on.
+    pub fn act(&mut self, action: G::Action) -> &mut Self {
+        self.game.act(action);
+        self.frame(&[], FRAME_DT)
     }
 
     /// Holds the controller button `button` for `seconds` of frames (so a

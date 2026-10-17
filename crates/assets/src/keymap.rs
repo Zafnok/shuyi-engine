@@ -252,8 +252,10 @@ macro_rules! buttons {
     ($($variant:ident => $doc:literal,)+) => {
         /// A controller button, named by its **position** on an Xbox-shaped
         /// pad, whatever is printed on it (ADR-0034). Each stick's four
-        /// directions count as buttons too. `app` translates what the
-        /// platform reports to these; anything else on a pad is ignored.
+        /// directions count as buttons too, and so does a crank wound one
+        /// notch either way (the Playdate's, ticket 1035: pressed and let go
+        /// once per notch). `app` translates what the platform reports to
+        /// these; anything else on a pad is ignored.
         ///
         /// The first 16 are in the order of the browser Gamepad API's
         /// "standard" mapping.
@@ -304,6 +306,8 @@ buttons! {
     RightStickDown => "The right stick pushed down.",
     RightStickLeft => "The right stick pushed left.",
     RightStickRight => "The right stick pushed right.",
+    CrankBack => "The crank wound one notch backwards (counterclockwise).",
+    CrankForward => "The crank wound one notch forwards (clockwise).",
 }
 
 impl Button {
@@ -506,6 +510,22 @@ impl Default for ChordDef {
     }
 }
 
+/// How a crank turns into [`Button::CrankBack`] and
+/// [`Button::CrankForward`] presses (`shuyi_ui::input::crank`): one per
+/// `notch_degrees` wound.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CrankDef {
+    /// How far, in degrees, the crank is wound for one notch (1 to 360).
+    pub notch_degrees: u16,
+}
+
+impl Default for CrankDef {
+    fn default() -> Self {
+        Self { notch_degrees: 30 }
+    }
+}
+
 /// Most bytes in a [`Layout`]'s name.
 pub const LAYOUT_NAME_MAX: usize = 24;
 
@@ -640,6 +660,8 @@ pub struct KeymapDef<A: ActionSet> {
     pub chord: ChordDef,
     /// How far a stick is pushed to count as a direction.
     pub stick: StickDef,
+    /// How far a crank is wound for one notch (optional in the file).
+    pub crank: CrankDef,
 }
 
 impl<A: ActionSet> Default for KeymapDef<A> {
@@ -653,6 +675,7 @@ impl<A: ActionSet> Default for KeymapDef<A> {
             repeat: RepeatDef::default(),
             chord: ChordDef::default(),
             stick: StickDef::default(),
+            crank: CrankDef::default(),
         }
     }
 }
@@ -674,6 +697,8 @@ struct RawKeymap {
     #[serde(default)]
     chord: ChordDef,
     stick: StickDef,
+    #[serde(default)]
+    crank: CrankDef,
 }
 
 /// One entry of `layouts`, before validation.
@@ -758,8 +783,8 @@ impl<A: ActionSet> KeymapDef<A> {
     /// [`SLOTS`] chords: the picker isn't rebindable), and for the `pad`
     /// and `playdate` sections (buttons and [button chords](ButtonChord)
     /// instead of key chords, every action listed, none on an action that
-    /// [can't be rebound](ActionSet::is_rebindable)), plus bad repeat timing
-    /// and stick thresholds.
+    /// [can't be rebound](ActionSet::is_rebindable)), plus bad repeat timing,
+    /// stick thresholds and crank notch size.
     pub fn from_source(file: &str, source: &str) -> Result<Self, Vec<ContentError>> {
         let raw: RawKeymap = parse_ron(file, source).map_err(|e| vec![e])?;
         let mut errors = Vec::new();
@@ -810,6 +835,12 @@ impl<A: ActionSet> KeymapDef<A> {
                 line_of_quoted(source, 0, "stick"),
             ));
         }
+        if !(1..=360).contains(&raw.crank.notch_degrees) {
+            errors.push(positioned(
+                ContentError::new(file, "crank notch_degrees must be 1 to 360"),
+                line_of_quoted(source, 0, "crank"),
+            ));
+        }
         if errors.is_empty() {
             Ok(Self {
                 layouts,
@@ -820,6 +851,7 @@ impl<A: ActionSet> KeymapDef<A> {
                 repeat: raw.repeat,
                 chord: raw.chord,
                 stick: raw.stick,
+                crank: raw.crank,
             })
         } else {
             Err(errors)
