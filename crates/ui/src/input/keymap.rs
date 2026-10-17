@@ -6,13 +6,16 @@ use crate::prelude::*;
 use alloc::collections::BTreeMap;
 use hashbrown::HashMap;
 use shuyi_assets::keymap::KeymapDef;
-use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, Layout, RepeatDef, UiAction};
+use shuyi_assets::keymap::{
+    ActionSet, Button, ButtonChord, Chord, ChordDef, Key, Layout, RepeatDef, UiAction,
+};
 
 use super::pad::{self, PadKind};
 use super::state::Device;
 
-/// Lookup from chord, and from controller button, to actions, plus repeat
-/// timings. A chord or button is on at most one action of each
+/// Lookup from chord, and from controller button or
+/// [button chord](ButtonChord), to actions, plus repeat and chord timings.
+/// A chord or button is on at most one action of each
 /// [group](ActionSet::Group) (ADR-0068), so one press can give an action of
 /// each group: the screen on top reacts to the ones it uses.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,12 +25,30 @@ pub struct Keymap<A: ActionSet> {
     bindings: HashMap<Chord, Vec<A>>,
     /// Each action's own chords (not the fixed keys), in the order given.
     chords: BTreeMap<A, Vec<Chord>>,
-    /// Every controller button that does something, with its actions in
-    /// group order.
-    pad: HashMap<Button, Vec<A>>,
-    /// Each action's buttons, in the order given.
-    buttons: BTreeMap<A, Vec<Button>>,
+    /// Every controller button or button chord that does something, with
+    /// its actions in group order.
+    pad: HashMap<ButtonChord, Vec<A>>,
+    /// Each action's buttons and button chords, in the order given.
+    buttons: BTreeMap<A, Vec<ButtonChord>>,
     repeat: RepeatDef,
+    chord: ChordDef,
+}
+
+/// How long a controller button that is in a [button chord](ButtonChord)
+/// holds back its own actions, so that pressing its partner can fire the
+/// chord instead (ticket 1034). See [`Keymap::chord_wait`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChordWait {
+    /// Not at all: it acts on press, like any button. A button in no chord,
+    /// or one whose own action repeats (the cursor never lags). A chord
+    /// with it fires only when it is pressed while its partner waits.
+    None,
+    /// For the chord window or until it is let go, whichever is first: its
+    /// partner may come just after it.
+    Window,
+    /// Until it is let go: a partner that acts on press may come any time
+    /// while it is held.
+    Release,
 }
 
 impl<A: ActionSet> Keymap<A> {
@@ -59,16 +80,19 @@ impl<A: ActionSet> Keymap<A> {
             pad: HashMap::new(),
             buttons: BTreeMap::new(),
             repeat,
+            chord: ChordDef::default(),
         }
     }
 
-    /// This keymap with `pad` as its controller buttons, replacing any it
-    /// had. A button listed twice keeps its last action.
+    /// This keymap with `pad` as its controller buttons and button chords,
+    /// replacing any it had. A button or chord listed twice for one group
+    /// keeps its last action of that group.
     #[must_use]
-    pub fn with_pad(mut self, pad: impl IntoIterator<Item = (Button, A)>) -> Self {
+    pub fn with_pad<B: Into<ButtonChord>>(mut self, pad: impl IntoIterator<Item = (B, A)>) -> Self {
         self.pad.clear();
         self.buttons.clear();
         for (button, action) in pad {
+            let button = button.into();
             if let Some(old) = put(&mut self.pad, button, action)
                 && let Some(list) = self.buttons.get_mut(&old)
             {
@@ -79,12 +103,21 @@ impl<A: ActionSet> Keymap<A> {
         self
     }
 
+    /// This keymap with `chord` as its button chords' timing.
+    #[must_use]
+    pub fn with_chord(mut self, chord: ChordDef) -> Self {
+        self.chord = chord;
+        self
+    }
+
     /// This keymap with the default controller buttons from a validated
-    /// keymap definition: the same in every layout and the layout picker.
+    /// keymap definition (the same in every layout and the layout picker)
+    /// and its chord timing.
     #[must_use]
     pub fn with_default_pad(self, def: &KeymapDef<A>) -> Self {
         let pad = def.pad.iter();
         self.with_pad(pad.flat_map(|(&a, buttons)| buttons.iter().map(move |&b| (b, a))))
+            .with_chord(def.chord)
     }
 
     /// `layout`'s default bindings from a validated keymap definition (no
@@ -121,10 +154,10 @@ impl<A: ActionSet> Keymap<A> {
         self.actions(chord).first().copied()
     }
 
-    /// The actions bound to the controller button `button`, as
+    /// The actions bound to the controller button `button` on its own, as
     /// [`actions`](Self::actions).
     pub fn pad_actions(&self, button: Button) -> &[A] {
-        self.pad.get(&button).map_or(&[], Vec::as_slice)
+        self.chord_actions(ButtonChord::single(button))
     }
 
     /// The first of [`pad_actions`](Self::pad_actions), if any.
@@ -132,15 +165,47 @@ impl<A: ActionSet> Keymap<A> {
         self.pad_actions(button).first().copied()
     }
 
-    /// Every controller button bound to `action`, in the order they were
-    /// given (file order for the keymap file).
-    pub fn buttons_for(&self, action: A) -> Vec<Button> {
+    /// The actions bound to `chord` (a button chord, or one button), as
+    /// [`actions`](Self::actions).
+    pub fn chord_actions(&self, chord: ButtonChord) -> &[A] {
+        self.pad.get(&chord).map_or(&[], Vec::as_slice)
+    }
+
+    /// Every controller button and button chord bound to `action`, in the
+    /// order they were given (file order for the keymap file).
+    pub fn buttons_for(&self, action: A) -> Vec<ButtonChord> {
         self.buttons.get(&action).cloned().unwrap_or_default()
     }
 
     /// Key-repeat timings.
     pub fn repeat(&self) -> RepeatDef {
         self.repeat
+    }
+
+    /// Button chords' timing.
+    pub fn chord(&self) -> ChordDef {
+        self.chord
+    }
+
+    /// How long `button` holds back its own actions when pressed, so that
+    /// a [button chord](ButtonChord) with it can fire instead (ticket
+    /// 1034). A button in no chord, or whose own action
+    /// [repeats](ActionSet::is_repeatable) (the D-pad on the cursor), acts
+    /// on press. Otherwise it waits until it is let go if a partner of its
+    /// acts on press (`B` in `B+←`: hold it as long as you like before `←`)
+    /// or it has no action of its own; else for the chord window or its
+    /// release, whichever is first (`A` in `A+B`). A pad with no chords
+    /// acts on press throughout, exactly as before chords.
+    pub fn chord_wait(&self, button: Button) -> ChordWait {
+        let repeats = |b| self.pad_actions(b).iter().any(|a| a.is_repeatable());
+        let mut partners = self.pad.keys().filter_map(|c| c.partner(button)).peekable();
+        if partners.peek().is_none() || repeats(button) {
+            ChordWait::None
+        } else if self.pad_actions(button).is_empty() || partners.any(repeats) {
+            ChordWait::Release
+        } else {
+            ChordWait::Window
+        }
     }
 
     /// Every chord bound to `action` (its key slots), in the order they
@@ -204,14 +269,16 @@ impl<A: ActionSet> Keymap<A> {
             UiAction::Right,
         ];
         for (buttons, ui) in bound.iter_mut().zip(order) {
-            *buttons = self.buttons_for(A::for_ui(ui)?);
+            let all = self.buttons_for(A::for_ui(ui)?);
+            *buttons = all.iter().filter_map(|c| c.single_button()).collect();
         }
         pad::cursor_buttons_name(kind, &bound)
     }
 
-    /// The button help text names for `action`: the first of
-    /// [`buttons_for`](Self::buttons_for), or `None` if it has none.
-    pub fn primary_button(&self, action: A) -> Option<Button> {
+    /// The button (or button chord) help text names for `action`: the
+    /// first of [`buttons_for`](Self::buttons_for), or `None` if it has
+    /// none.
+    pub fn primary_button(&self, action: A) -> Option<ButtonChord> {
         self.buttons_for(action).into_iter().next()
     }
 

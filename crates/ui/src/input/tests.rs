@@ -129,13 +129,13 @@ fn with_pad_looks_buttons_up_and_lists_them_in_order() {
         km.buttons_for(CursorDown),
         vec![Button::DpadDown, Button::LeftStickDown]
     );
-    assert_eq!(km.buttons_for(Info), vec![]);
+    assert!(km.buttons_for(Info).is_empty());
     // The keys are untouched, and a keymap has no buttons by itself.
     assert_eq!(km.action(chord("f")), Some(Confirm));
     assert_eq!(km.chords_for(CursorLeft), vec![chord("h"), chord("Left")]);
     let keys_only = test_keymap(170, 55);
     assert_eq!(keys_only.pad_action(Button::South), None);
-    assert_eq!(keys_only.buttons_for(Confirm), vec![]);
+    assert!(keys_only.buttons_for(Confirm).is_empty());
     assert_ne!(km, keys_only);
 }
 
@@ -152,7 +152,7 @@ fn a_repeated_button_keeps_its_last_action_and_with_pad_replaces_the_table() {
     assert_eq!(km.pad_action(Button::South), Some(Info));
     let km = km.with_pad([(Button::West, Confirm)]);
     assert_eq!(km.buttons_for(Confirm), vec![Button::West]);
-    assert_eq!(km.buttons_for(Info), vec![]);
+    assert!(km.buttons_for(Info).is_empty());
     assert_eq!(km.pad_action(Button::South), None);
     assert_eq!(km.pad_action(Button::East), None);
 }
@@ -178,7 +178,7 @@ fn every_keymap_from_the_definition_has_the_default_buttons() {
         // Unused by default.
         assert_eq!(km.pad_action(Button::RightStickPress), None);
         assert_eq!(km.pad_action(Button::RightStickUp), None);
-        assert_eq!(km.buttons_for(Action::Debug), vec![]);
+        assert!(km.buttons_for(Action::Debug).is_empty());
         for action in Action::ALL {
             assert_eq!(km.buttons_for(action), def.buttons(action), "{action}");
         }
@@ -391,8 +391,8 @@ fn buttons(pad: &[(Button, Action)]) -> Keymap {
 #[test]
 fn the_first_button_is_the_primary_one() {
     let km = pad_state().keymap().clone();
-    assert_eq!(km.primary_button(CursorDown), Some(Button::DpadDown));
-    assert_eq!(km.primary_button(Confirm), Some(Button::South));
+    assert_eq!(km.primary_button(CursorDown), Some(Button::DpadDown.into()));
+    assert_eq!(km.primary_button(Confirm), Some(Button::South.into()));
     assert_eq!(km.primary_button(Info), None);
     assert_eq!(test_keymap(170, 55).primary_button(Confirm), None);
 }
@@ -487,7 +487,7 @@ fn a_button_press_emits_once_and_is_held_until_released() {
 fn unbound_buttons_are_ignored() {
     let mut s = pad_state();
     s.pad_down(Button::RightStickPress, PAD);
-    assert!(s.held.is_empty());
+    assert!(s.held_pairs().is_empty());
     s.pad_up(Button::RightStickPress);
     assert_eq!(s.update(ms(500)), vec![]);
     // Without buttons in the keymap, every button is unbound.
@@ -519,7 +519,7 @@ fn a_key_and_a_button_on_one_action_are_separate_inputs() {
     // Letting go of one leaves the action held by the other.
     s.key_up(Key::F);
     assert!(s.is_held(Confirm));
-    assert_eq!(s.held, vec![(Input::Pad(Button::South), Confirm)]);
+    assert_eq!(s.held_pairs(), vec![(Input::Pad(Button::South), Confirm)]);
     s.pad_up(Button::South);
     assert!(!s.is_held(Confirm));
     // Likewise for two directions' repeat: the stick takes over from
@@ -830,9 +830,9 @@ proptest! {
             };
             if let Some(input) = release {
                 held.retain(|&(i, _)| i != input);
-                prop_assert!(!s.held.iter().any(|&(i, _)| i == input));
+                prop_assert!(!s.held_pairs().iter().any(|&(i, _)| i == input));
             }
-            prop_assert_eq!(&s.held, &held);
+            prop_assert_eq!(&s.held_pairs(), &held);
             let newest = held.iter().rev().find(|(_, a)| a.is_repeatable());
             prop_assert_eq!(s.repeat.map(|r| (r.input, r.action)), newest.copied());
             for action in Action::ALL {

@@ -229,10 +229,10 @@ fn pad_section_loads_in_file_order() {
         k.buttons(Action::CursorUp),
         [Button::LeftStickUp, Button::DpadUp, Button::RightStickUp]
     );
-    assert_eq!(k.buttons(Action::Confirm), []);
+    assert!(k.buttons(Action::Confirm).is_empty());
     assert_eq!(k.pad.len(), Action::ALL.len());
     assert_eq!(k.stick, StickDef::default());
-    assert_eq!(KeymapDef::default().buttons(Action::CursorUp), []);
+    assert!(KeymapDef::default().buttons(Action::CursorUp).is_empty());
 }
 
 #[test]
@@ -911,5 +911,165 @@ fn punctuation_chords_load_from_a_keymap_file() {
             Chord::plain(Key::Backslash),
             Chord::plain(Key::KpAdd)
         ]
+    );
+}
+
+/// Ticket 1034: a binding is a button or two together, kept in
+/// `Button::ALL` order whichever way the file writes them.
+#[test]
+fn button_chords_parse_in_either_order_and_show_in_button_order() {
+    let ab = ButtonChord::pair(Button::South, Button::East);
+    assert_eq!(ButtonChord::parse("South+East").ok(), ab);
+    assert_eq!(ButtonChord::parse("East+South").ok(), ab);
+    assert_eq!(ab.map(|c| c.to_string()).as_deref(), Some("South+East"));
+    assert_eq!(
+        ab.and_then(ButtonChord::buttons),
+        Some((Button::South, Button::East))
+    );
+    assert_eq!(
+        ab.and_then(|c| c.partner(Button::East)),
+        Some(Button::South)
+    );
+    assert_eq!(ab.and_then(|c| c.partner(Button::West)), None);
+    assert_eq!(ab.and_then(ButtonChord::single_button), None);
+    let south = ButtonChord::single(Button::South);
+    assert_eq!(ButtonChord::parse("South"), Ok(south));
+    assert_eq!(south, Button::South);
+    assert_ne!(south, Button::East);
+    assert_eq!(south.to_string(), "South");
+    assert_eq!(south.partner(Button::South), None);
+    assert_eq!(
+        ButtonChord::from(Button::East).single_button(),
+        Some(Button::East)
+    );
+}
+
+#[test]
+fn button_chord_parse_rejects_garbage() {
+    assert_eq!(
+        ButtonChord::parse("East+East"),
+        Err("\"East+East\" names the same button twice".to_owned())
+    );
+    for bad in ["South+", "+South", "South+East+West", "South+a"] {
+        assert!(ButtonChord::parse(bad).is_err(), "{bad:?}");
+    }
+    assert_eq!(ButtonChord::pair(Button::West, Button::West), None);
+}
+
+proptest! {
+    /// Every binding round-trips through its name.
+    #[test]
+    fn every_button_chord_round_trips(a in 0..Button::ALL.len(), b in 0..Button::ALL.len()) {
+        let (a, b) = (Button::ALL[a], Button::ALL[b]);
+        for chord in [Some(ButtonChord::single(a)), ButtonChord::pair(a, b)].into_iter().flatten() {
+            prop_assert_eq!(ButtonChord::parse(&chord.to_string()), Ok(chord));
+            prop_assert_eq!(chord.to_string().parse::<ButtonChord>(), Ok(chord));
+        }
+        prop_assert_eq!(ButtonChord::pair(a, b), ButtonChord::pair(b, a));
+    }
+}
+
+/// The `pad` section with `table` added after it, and `chord` after that.
+fn source_with_playdate(table: &str, chord: &str) -> String {
+    let src = pad_source("", "");
+    let stick = "    stick:";
+    let at = src.find(stick).unwrap_or(0);
+    format!("{}{table}{chord}{}", &src[..at], &src[at..])
+}
+
+/// A `playdate` table with every action `[]` but `extra`'s.
+fn playdate_table(skip: &str, extra: &str) -> String {
+    let lines: Vec<String> = Action::ALL
+        .iter()
+        .filter(|a| a.name() != skip)
+        .map(|a| format!("        \"{a}\": [],\n"))
+        .collect();
+    format!("    playdate: {{\n{}{extra}    }},\n", lines.concat())
+}
+
+#[test]
+fn chords_load_in_the_pad_tables() {
+    let extra = "        \"EndTurn\": [\"East+South\", \"Start\"],\n";
+    let table = playdate_table("EndTurn", extra);
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate(&table, "")).unwrap_or_default();
+    let ab = ButtonChord::pair(Button::South, Button::East);
+    assert_eq!(
+        k.playdate
+            .get(&Action::EndTurn)
+            .cloned()
+            .unwrap_or_default(),
+        [ab, Some(ButtonChord::single(Button::Start))]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(k.playdate.len(), Action::ALL.len());
+    assert!(
+        k.buttons(Action::EndTurn).is_empty(),
+        "pad is its own table"
+    );
+    let playdate = k.clone().for_playdate();
+    assert_eq!(playdate.pad, k.playdate);
+    assert_eq!(
+        playdate.buttons(Action::EndTurn),
+        k.playdate[&Action::EndTurn]
+    );
+    assert_eq!(k.chord, ChordDef::default());
+    assert_eq!(ChordDef::default().window_ms, 80);
+}
+
+#[test]
+fn a_file_without_a_playdate_table_uses_pad_on_a_playdate() {
+    let extra = "        \"Confirm\": [\"South\"],\n";
+    let k = KeymapDef::from_source("k.ron", &pad_source("Confirm", extra)).unwrap_or_default();
+    assert_eq!(k.playdate, k.pad);
+    assert_eq!(k.buttons(Action::Confirm), [Button::South]);
+}
+
+#[test]
+fn the_chord_window_is_read_from_the_file() {
+    let src = source_with_playdate("", "    chord: (window_ms: 120),\n");
+    let k = KeymapDef::from_source("k.ron", &src).unwrap_or_default();
+    assert_eq!(k.chord, ChordDef { window_ms: 120 });
+}
+
+#[test]
+fn playdate_table_errors_say_so() {
+    let table = playdate_table("Info", "        \"Info\": [\"West+West\"],\n");
+    let errs = errors(&source_with_playdate(&table, ""));
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert!(
+        errs[0].ends_with("playdate: action \"Info\": \"West+West\" names the same button twice"),
+        "{}",
+        errs[0]
+    );
+    // A chord written both ways is one chord, on one action.
+    let extra = "        \"Info\": [\"West+North\"],\n        \"DangerZone\": [\"North+West\"],\n";
+    let skip_both = playdate_table("Info", extra).replace("        \"DangerZone\": [],\n", "");
+    let errs = errors(&source_with_playdate(&skip_both, ""));
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert!(
+        errs[0].ends_with(
+            "playdate: button \"West+North\" is bound to both \"DangerZone\" and \"Info\""
+        ),
+        "{}",
+        errs[0]
+    );
+    // Missing actions and Debug: as in `pad`.
+    let errs = errors(&source_with_playdate(&playdate_table("Menu", ""), ""));
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert!(
+        errs[0]
+            .ends_with("playdate: missing action \"Menu\" (list it with [] to leave it unbound)"),
+        "{}",
+        errs[0]
+    );
+    let debug = playdate_table("Debug", "        \"Debug\": [\"South+East\"],\n");
+    let errs = errors(&source_with_playdate(&debug, ""));
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert!(
+        errs[0].contains("playdate: action \"Debug\" can't have a button"),
+        "{}",
+        errs[0]
     );
 }

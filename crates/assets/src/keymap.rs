@@ -1,6 +1,7 @@
 //! The keymap file format, generic over a game's [`ActionSet`] (ADR-0015,
 //! ADR-0031, ADR-0034, tickets 1106 and 1107): [`Key`]s and [`Chord`]s,
-//! controller [`Button`]s, the named [`Layout`]s a file lists, and
+//! controller [`Button`]s and [`ButtonChord`]s (two buttons together), the
+//! named [`Layout`]s a file lists, and
 //! [`KeymapDef`], a validated keymap file: each layout's default keys, the
 //! keys that work before a layout is chosen, the default buttons, key-repeat
 //! timings and the sticks' thresholds.
@@ -338,6 +339,115 @@ impl fmt::Display for Button {
     }
 }
 
+/// What a controller binding is: one [`Button`], or two pressed together
+/// (a *button chord*, ticket 1034), written `"South+East"` in keymap files
+/// and saved bindings. The two are kept in [`Button::ALL`] order, so
+/// `"East+South"` is the same chord as `"South+East"` (and is shown as the
+/// latter). How a chord fires is the input's business
+/// (`shuyi_ui::input::state`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ButtonChord {
+    first: Button,
+    second: Option<Button>,
+}
+
+/// What joins a chord's two buttons in keymap files and saved bindings.
+const CHORD_JOIN: char = '+';
+
+impl ButtonChord {
+    /// One button on its own.
+    pub const fn single(button: Button) -> Self {
+        Self {
+            first: button,
+            second: None,
+        }
+    }
+
+    /// `a` and `b` pressed together, in either order; `None` if they are
+    /// the same button.
+    pub fn pair(a: Button, b: Button) -> Option<Self> {
+        let (first, second) = match a.cmp(&b) {
+            core::cmp::Ordering::Less => (a, b),
+            core::cmp::Ordering::Greater => (b, a),
+            core::cmp::Ordering::Equal => return None,
+        };
+        Some(Self {
+            first,
+            second: Some(second),
+        })
+    }
+
+    /// The button, or a chord's first button in [`Button::ALL`] order.
+    pub fn first(self) -> Button {
+        self.first
+    }
+
+    /// The button, if this is one button on its own.
+    pub fn single_button(self) -> Option<Button> {
+        match self.second {
+            None => Some(self.first),
+            Some(_) => None,
+        }
+    }
+
+    /// The two buttons, in [`Button::ALL`] order, if this is a chord.
+    pub fn buttons(self) -> Option<(Button, Button)> {
+        self.second.map(|second| (self.first, second))
+    }
+
+    /// The other button of a chord that has `button`, if this is one.
+    pub fn partner(self, button: Button) -> Option<Button> {
+        let (a, b) = self.buttons()?;
+        if a == button {
+            Some(b)
+        } else if b == button {
+            Some(a)
+        } else {
+            None
+        }
+    }
+
+    /// Parses `"South"` or `"South+East"` (either order).
+    pub fn parse(s: &str) -> Result<Self, String> {
+        let Some((a, b)) = s.split_once(CHORD_JOIN) else {
+            return Button::parse(s).map(Self::single);
+        };
+        let (a, b) = (Button::parse(a.trim())?, Button::parse(b.trim())?);
+        Self::pair(a, b).ok_or_else(|| format!("\"{s}\" names the same button twice"))
+    }
+}
+
+impl From<Button> for ButtonChord {
+    fn from(button: Button) -> Self {
+        Self::single(button)
+    }
+}
+
+/// A binding is a button when it is that button on its own.
+impl PartialEq<Button> for ButtonChord {
+    fn eq(&self, button: &Button) -> bool {
+        self.single_button() == Some(*button)
+    }
+}
+
+impl FromStr for ButtonChord {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
+    }
+}
+
+impl fmt::Display for ButtonChord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.first.name())?;
+        if let Some(second) = self.second {
+            write!(f, "{CHORD_JOIN}{}", second.name())?;
+        }
+        Ok(())
+    }
+}
+
 /// Key-repeat timings for held repeatable actions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -376,6 +486,23 @@ impl Default for StickDef {
             press_percent: 50,
             release_percent: 35,
         }
+    }
+}
+
+/// How [`ButtonChord`]s fire (`shuyi_ui::input::state`): a chord button
+/// whose own action waits for its partner waits at most `window_ms`
+/// (unless it waits for its release).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ChordDef {
+    /// How long, in milliseconds, two buttons pressed one after the other
+    /// still count as pressed together.
+    pub window_ms: u32,
+}
+
+impl Default for ChordDef {
+    fn default() -> Self {
+        Self { window_ms: 80 }
     }
 }
 
@@ -476,10 +603,11 @@ pub type Bindings<A> = BTreeMap<Chord, A>;
 /// [reserved]: Chord::is_reserved
 pub type LayoutKeys<A> = BTreeMap<A, Vec<Chord>>;
 
-/// The default controller buttons: every action with its buttons in the
-/// order the keymap file lists them (at most [`SLOTS`]), no button on two
-/// actions of one [group](ActionSet::Group). One table for every layout.
-pub type PadKeys<A> = BTreeMap<A, Vec<Button>>;
+/// The default controller buttons: every action with its buttons and
+/// [button chords](ButtonChord) in the order the keymap file lists them (at
+/// most [`SLOTS`]), none on two actions of one [group](ActionSet::Group).
+/// One table for every layout.
+pub type PadKeys<A> = BTreeMap<A, Vec<ButtonChord>>;
 
 /// The validated keymap: every [`Layout`]'s default keys, the layout
 /// picker's bindings, the default controller buttons, plus the key-repeat
@@ -500,8 +628,16 @@ pub struct KeymapDef<A: ActionSet> {
     /// layout picker. After [`from_source`](Self::from_source) every action
     /// is present.
     pub pad: PadKeys<A>,
+    /// The default buttons of a Playdate (ADR-0070, ticket 1034), whose
+    /// only buttons are the D-pad, A and B: the file's `playdate` table, or
+    /// a copy of [`pad`](Self::pad) for a file without one. A game running
+    /// on a Playdate uses it in place of `pad`
+    /// ([`for_playdate`](Self::for_playdate)).
+    pub playdate: PadKeys<A>,
     /// Key-repeat timings, for held keys and held buttons alike.
     pub repeat: RepeatDef,
+    /// How button chords fire (optional in the file).
+    pub chord: ChordDef,
     /// How far a stick is pushed to count as a direction.
     pub stick: StickDef,
 }
@@ -513,7 +649,9 @@ impl<A: ActionSet> Default for KeymapDef<A> {
             layout_names: Vec::new(),
             layout_picker: BTreeMap::new(),
             pad: BTreeMap::new(),
+            playdate: BTreeMap::new(),
             repeat: RepeatDef::default(),
+            chord: ChordDef::default(),
             stick: StickDef::default(),
         }
     }
@@ -529,7 +667,12 @@ struct RawKeymap {
     layouts: Vec<RawLayout>,
     layout_picker: BTreeMap<String, Vec<String>>,
     pad: BTreeMap<String, Vec<String>>,
+    /// Absent (empty) in a file for no Playdate.
+    #[serde(default)]
+    playdate: BTreeMap<String, Vec<String>>,
     repeat: RepeatDef,
+    #[serde(default)]
+    chord: ChordDef,
     stick: StickDef,
 }
 
@@ -567,10 +710,19 @@ impl<A: ActionSet> KeymapDef<A> {
             .map_or(&[], Vec::as_slice)
     }
 
-    /// `action`'s default controller buttons, in file order; empty if the
-    /// action is missing (only in a definition built by hand).
-    pub fn buttons(&self, action: A) -> &[Button] {
+    /// `action`'s default controller buttons and button chords, in file
+    /// order; empty if the action is missing (only in a definition built by
+    /// hand).
+    pub fn buttons(&self, action: A) -> &[ButtonChord] {
         self.pad.get(&action).map_or(&[], Vec::as_slice)
+    }
+
+    /// This keymap as a Playdate uses it: its [`playdate`](Self::playdate)
+    /// table as the default buttons.
+    #[must_use]
+    pub fn for_playdate(mut self) -> Self {
+        self.pad.clone_from(&self.playdate);
+        self
     }
 
     /// Whether the keymap has `layout` (a name from saved settings may
@@ -604,9 +756,10 @@ impl<A: ActionSet> KeymapDef<A> {
     /// layout's id), the same for the `layout_picker` section (except that
     /// unlisted actions are unbound there, and an action may have more than
     /// [`SLOTS`] chords: the picker isn't rebindable), and for the `pad`
-    /// section (buttons instead of chords, every action listed, none on an
-    /// action that [can't be rebound](ActionSet::is_rebindable)), plus bad
-    /// repeat timing and stick thresholds.
+    /// and `playdate` sections (buttons and [button chords](ButtonChord)
+    /// instead of key chords, every action listed, none on an action that
+    /// [can't be rebound](ActionSet::is_rebindable)), plus bad repeat timing
+    /// and stick thresholds.
     pub fn from_source(file: &str, source: &str) -> Result<Self, Vec<ContentError>> {
         let raw: RawKeymap = parse_ron(file, source).map_err(|e| vec![e])?;
         let mut errors = Vec::new();
@@ -631,28 +784,12 @@ impl<A: ActionSet> KeymapDef<A> {
                 Bindings::new()
             }
         };
-        let pad_line = line_of_quoted(source, 0, "pad");
-        let from = pad_line.map_or(0, |line| usize::try_from(line).unwrap_or(0));
-        let pad = match validate_bindings::<A, Button>(file, source, from, "pad", true, &raw.pad) {
-            Ok(buttons) => buttons,
-            Err(e) => {
-                errors.extend(e);
-                PadKeys::new()
-            }
+        let pad = validate_pad::<A>(file, source, "pad", &raw.pad, &mut errors);
+        let playdate = if raw.playdate.is_empty() {
+            pad.clone()
+        } else {
+            validate_pad::<A>(file, source, "playdate", &raw.playdate, &mut errors)
         };
-        for (&action, buttons) in &pad {
-            if !action.is_rebindable() && !buttons.is_empty() {
-                let message = format!(
-                    "pad: action \"{}\" can't have a button: it can't be rebound, so it is \
-                     keyboard only",
-                    action.name()
-                );
-                errors.push(positioned(
-                    ContentError::new(file, message),
-                    line_of_quoted(source, from, action.name()),
-                ));
-            }
-        }
         if raw.repeat.interval_ms == 0 {
             errors.push(positioned(
                 ContentError::new(file, "repeat interval_ms must be at least 1"),
@@ -679,7 +816,9 @@ impl<A: ActionSet> KeymapDef<A> {
                 layout_names,
                 layout_picker,
                 pad,
+                playdate,
                 repeat: raw.repeat,
+                chord: raw.chord,
                 stick: raw.stick,
             })
         } else {
@@ -740,8 +879,42 @@ fn validate_layouts<A: ActionSet>(
     (layouts, layout_names)
 }
 
+/// A table of default controller buttons (`pad`, `playdate`) named
+/// `label`, validated; its errors go to `errors`.
+fn validate_pad<A: ActionSet>(
+    file: &str,
+    source: &str,
+    label: &str,
+    raw: &BTreeMap<String, Vec<String>>,
+    errors: &mut Vec<ContentError>,
+) -> PadKeys<A> {
+    let line = line_of_quoted(source, 0, label);
+    let from = line.map_or(0, |line| usize::try_from(line).unwrap_or(0));
+    let pad = match validate_bindings::<A, ButtonChord>(file, source, from, label, true, raw) {
+        Ok(buttons) => buttons,
+        Err(e) => {
+            errors.extend(e);
+            return PadKeys::new();
+        }
+    };
+    for (&action, buttons) in &pad {
+        if !action.is_rebindable() && !buttons.is_empty() {
+            let message = format!(
+                "{label}: action \"{}\" can't have a button: it can't be rebound, so it is \
+                 keyboard only",
+                action.name()
+            );
+            errors.push(positioned(
+                ContentError::new(file, message),
+                line_of_quoted(source, from, action.name()),
+            ));
+        }
+    }
+    pad
+}
+
 /// Something `keymap.ron` binds to actions: a key [`Chord`] or a controller
-/// [`Button`].
+/// [`ButtonChord`].
 trait Bound: Copy + Ord + fmt::Display {
     /// What one is called in error messages.
     const NOUN: &'static str;
@@ -769,7 +942,7 @@ impl Bound for Chord {
     }
 }
 
-impl Bound for Button {
+impl Bound for ButtonChord {
     const NOUN: &'static str = "button";
     const PLURAL: &'static str = "buttons";
 

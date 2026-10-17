@@ -4,11 +4,11 @@
 use proptest::prelude::*;
 
 use super::*;
-use crate::input::Key;
 use crate::input::sample::{
     Action, KeyGroup, KeymapDef, LEFT_HANDED, LayoutBindings, PadBindings, PlayerKeys,
     RIGHT_HANDED, load_keymap,
 };
+use crate::input::{Button, Key};
 use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorRight, CursorUp, Debug, Info};
 
 fn chord(s: &str) -> Chord {
@@ -545,8 +545,8 @@ fn pad() -> PadBindings {
 }
 
 /// Button slots as names, `-` for empty.
-fn buttons(slots: ButtonSlots) -> [&'static str; SLOTS] {
-    slots.map(|b| b.map_or("-", Button::name))
+fn buttons(slots: ButtonSlots) -> [String; SLOTS] {
+    slots.map(|b| b.map_or_else(|| "-".to_owned(), |b| b.to_string()))
 }
 
 #[test]
@@ -567,9 +567,9 @@ fn default_buttons_fill_the_first_slots_in_file_order() {
     assert_eq!(b.find(KeyGroup::General, Button::RightStickUp), None);
     // Every default button, with its action.
     let def = def();
-    let pairs: Vec<(Button, Action)> = b.pairs().collect();
+    let pairs: Vec<(ButtonChord, Action)> = b.pairs().collect();
     for action in Action::ALL {
-        let bound: Vec<Button> = pairs
+        let bound: Vec<ButtonChord> = pairs
             .iter()
             .filter(|&&(_, a)| a == action)
             .map(|&(b, _)| b)
@@ -644,14 +644,19 @@ fn required_actions_without_a_button_are_listed_in_action_order() {
 /// One edit of the buttons' property test.
 #[derive(Debug, Clone)]
 enum PadOp {
-    Bind(Action, usize, Button),
+    Bind(Action, usize, ButtonChord),
     Clear(Action, usize),
 }
 
 fn arb_pad_op() -> impl Strategy<Value = PadOp> {
     let action = prop::sample::select(Action::ALL.to_vec());
     let slot = 0..=SLOTS;
-    let button = prop::sample::select(Button::ALL);
+    let one = || prop::sample::select(Button::ALL);
+    // A button, or two together.
+    let button = (one(), prop::option::of(one())).prop_map(|(a, b)| {
+        b.and_then(|b| ButtonChord::pair(a, b))
+            .unwrap_or(ButtonChord::single(a))
+    });
     prop_oneof![
         (action.clone(), slot.clone(), button).prop_map(|(a, i, b)| PadOp::Bind(a, i, b)),
         (action, slot).prop_map(|(a, i)| PadOp::Clear(a, i)),
@@ -676,7 +681,7 @@ proptest! {
                 PadOp::Clear(a, i) => b.clear(a, i),
             }
             for group in KeyGroup::ALL {
-                let all: Vec<Button> = Action::ALL
+                let all: Vec<ButtonChord> = Action::ALL
                     .into_iter()
                     .filter(|a| a.group() == group)
                     .flat_map(|a| b.slots(a).into_iter().flatten())
@@ -689,7 +694,7 @@ proptest! {
             // The keymap these give has exactly these buttons.
             let km = Keymap::new([], RepeatDef::default()).with_pad(b.pairs());
             for action in Action::ALL {
-                let slots: Vec<Button> = b.slots(action).into_iter().flatten().collect();
+                let slots: Vec<ButtonChord> = b.slots(action).into_iter().flatten().collect();
                 prop_assert_eq!(km.buttons_for(action), slots);
             }
         }
@@ -926,6 +931,6 @@ fn a_file_saved_before_input_was_generic_round_trips_byte_for_byte() {
         [Some(chord("Kp+")), None, None]
     );
     let pad = keys.pad_bindings(&def);
-    assert_eq!(pad.slots(Info)[1], Some(Button::RightStickPress));
+    assert_eq!(pad.slots(Info)[1], Some(Button::RightStickPress.into()));
     assert_eq!(keys.to_ron(), saved);
 }

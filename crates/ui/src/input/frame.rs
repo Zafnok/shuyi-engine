@@ -74,9 +74,13 @@ impl<A: ActionSet> FrameInput<A> {
         self
     }
 
-    /// Whether a controller button went down this frame: the player is on
-    /// a controller, so a screen that needs text shows a letter grid
-    /// instead of asking them to type.
+    /// Whether this frame's input came from a controller (a button went
+    /// down, or a [button chord](super::ButtonChord)'s button gave its own
+    /// action as it was let go): the player is on a controller, so a
+    /// screen that needs text shows a letter grid instead of asking them to
+    /// type. A game sets it with [`with_pad`](Self::with_pad);
+    /// [`with_buttons`](Self::with_buttons) sets it for a button that
+    /// went down.
     pub fn pad_pressed(&self) -> bool {
         self.pad
     }

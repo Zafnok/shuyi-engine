@@ -65,7 +65,9 @@ Carved so far:
 - `shuyi-ui` (1107): input (`input`): the keymap, held keys and repeat,
   controllers, the player's saved bindings, fixed keys and the names of
   keys and buttons in help text. The game gives its actions, its keymap
-  file and the words.
+  file and the words. 1034: button chords (two pad buttons together,
+  `ButtonChord`, with the firing rules in `input::state`) and a keymap
+  file's `playdate` table.
 - `shuyi-ui` (1108): the frame (`frame`): the glyph console
   (`glyph_buffer`, with items, layers and the backdrop), its size
   (`console`, which the game gives, and letterboxing), colors by name

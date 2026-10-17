@@ -22,8 +22,9 @@ use super::state::Device;
 pub const ARROWS: &str = "arrows";
 
 /// What help text names keys from: the bindings, the device whose keys
-/// or buttons to name, and the two words a key's name can be
-/// (`! not mapped`, `arrows`). A game gives its screens one with the words
+/// or buttons to name, the two words a key's name can be
+/// (`! not mapped`, `arrows`) and what joins a button chord's two buttons
+/// (`A+B`). A game gives its screens one with the words
 /// in the player's language ([`worded`](Self::worded)). Dereferences to the
 /// [`Keymap`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,6 +33,7 @@ pub struct HelpKeys<'a, A: ActionSet> {
     device: Device,
     not_mapped: &'a str,
     arrows: &'a str,
+    chord_join: &'a str,
 }
 
 impl<'a, A: ActionSet> HelpKeys<'a, A> {
@@ -43,6 +45,7 @@ impl<'a, A: ActionSet> HelpKeys<'a, A> {
             device,
             not_mapped: NOT_MAPPED,
             arrows: ARROWS,
+            chord_join: CHORD_JOIN,
         }
     }
 
@@ -53,6 +56,16 @@ impl<'a, A: ActionSet> HelpKeys<'a, A> {
         Self {
             not_mapped,
             arrows,
+            ..self
+        }
+    }
+
+    /// These keys, with `join` between a button chord's two buttons
+    /// (`A+B`): the player's language's word.
+    #[must_use]
+    pub fn chord_joined(self, join: &'a str) -> Self {
+        Self {
+            chord_join: join,
             ..self
         }
     }
@@ -108,16 +121,22 @@ pub const SEPARATOR: &str = " · ";
 // check-text: not player text (the default of `HelpKeys::new`; a game gives the language's)
 pub const NOT_MAPPED: &str = "! not mapped";
 
+/// The English of what joins a button chord's two buttons (`A+B`): what
+/// [`HelpKeys::new`] starts with, and what tests compare with. The game
+/// shows the language file's.
+// check-text: not player text (the default of `HelpKeys::new`; a game gives the language's)
+pub const CHORD_JOIN: &str = "+";
+
 /// The name of the key for `action` (its [`Keymap::primary`] chord), e.g.
-/// `f` or `Shift+Space`; on a controller, of its button
-/// ([`Keymap::primary_button`]) as that pad labels it, e.g. `A`.
+/// `f` or `Shift+Space`; on a controller, of its button or button chord
+/// ([`Keymap::primary_button`]) as that pad labels it, e.g. `A` or `A+B`.
 /// [`HelpKeys::not_mapped`] if it has none.
 pub fn key_name<A: ActionSet>(keys: HelpKeys<'_, A>, action: A) -> String {
     let name = match keys.device {
         Device::Keyboard => keys.primary(action).map(|c| c.to_string()),
         Device::Pad(kind) => {
             let button = keys.primary_button(action);
-            button.map(|b| kind.button_name(b).to_owned())
+            button.map(|b| kind.chord_name(b, keys.chord_join))
         }
     };
     name.unwrap_or_else(|| keys.not_mapped.to_owned())
@@ -141,7 +160,7 @@ pub fn all_key_names<A: ActionSet>(keys: HelpKeys<'_, A>, action: A) -> String {
         }
         Device::Pad(kind) => {
             let buttons = keys.buttons_for(action);
-            let name = |&b| kind.button_name(b).to_owned();
+            let name = |&b| kind.chord_name(b, keys.chord_join);
             buttons.iter().map(name).collect()
         }
     };

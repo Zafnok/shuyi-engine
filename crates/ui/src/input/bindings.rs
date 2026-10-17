@@ -21,7 +21,7 @@ use core::fmt;
 use serde::{Deserialize, Serialize};
 
 use shuyi_assets::keymap::KeymapDef;
-use shuyi_assets::keymap::{ActionSet, Button, Chord, Layout, RepeatDef, SLOTS};
+use shuyi_assets::keymap::{ActionSet, ButtonChord, Chord, Layout, RepeatDef, SLOTS};
 
 use super::keymap::Keymap;
 use crate::DEBUG_TOOLS;
@@ -29,8 +29,9 @@ use crate::DEBUG_TOOLS;
 /// One action's key slots; `None` is an empty slot.
 pub type Slots = [Option<Chord>; SLOTS];
 
-/// One action's controller-button slots; `None` is an empty slot.
-pub type ButtonSlots = [Option<Button>; SLOTS];
+/// One action's controller-button slots, each a button or a
+/// [button chord](ButtonChord); `None` is an empty slot.
+pub type ButtonSlots = [Option<ButtonChord>; SLOTS];
 
 /// The saved form of a set of slots: action name → its slots' names.
 type Saved = BTreeMap<String, Vec<Option<String>>>;
@@ -285,7 +286,9 @@ impl<A: ActionSet> LayoutBindings<A> {
 }
 
 /// The player-edited controller buttons: every rebindable action's button
-/// slots. One setup for both keyboard layouts (`docs/design/controls.md`,
+/// slots, each holding a button or a [button chord](ButtonChord) (ticket
+/// 1034; a chord and its buttons on their own are different bindings).
+/// One setup for both keyboard layouts (`docs/design/controls.md`,
 /// *Rebinding buttons*); no button is reserved, and both sticks' directions
 /// count as buttons.
 ///
@@ -295,7 +298,7 @@ impl<A: ActionSet> LayoutBindings<A> {
 /// [`unmapped_required`](Self::unmapped_required).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PadBindings<A: ActionSet> {
-    table: SlotTable<A, Button>,
+    table: SlotTable<A, ButtonChord>,
 }
 
 impl<A: ActionSet> PadBindings<A> {
@@ -319,23 +322,24 @@ impl<A: ActionSet> PadBindings<A> {
         self.table.get(action)
     }
 
-    /// The slot of one of `group`'s actions holding `button`, if any.
-    pub fn find(&self, group: A::Group, button: Button) -> Option<(A, usize)> {
-        self.table.find(group, button)
+    /// The slot of one of `group`'s actions holding `button` (a button or
+    /// a button chord), if any.
+    pub fn find(&self, group: A::Group, button: impl Into<ButtonChord>) -> Option<(A, usize)> {
+        self.table.find(group, button.into())
     }
 
-    /// Puts `button` in `action`'s slot `i`, replacing what was there. If
-    /// `button` was in another slot (of any action of `action`'s
-    /// group, including `action`), that slot is emptied and
-    /// returned: the button *moves*, which may leave that action with no
-    /// button. An action of another group keeps it.
+    /// Puts `button` (a button or a button chord) in `action`'s slot `i`,
+    /// replacing what was there. If `button` was in another slot (of any
+    /// action of `action`'s group, including `action`), that slot is
+    /// emptied and returned: the button *moves*, which may leave that
+    /// action with no button. An action of another group keeps it.
     pub fn bind(
         &mut self,
         action: A,
         i: usize,
-        button: Button,
+        button: impl Into<ButtonChord>,
     ) -> Result<Option<(A, usize)>, BindError<A>> {
-        self.table.place(action, i, button)
+        self.table.place(action, i, button.into())
     }
 
     /// Empties `action`'s slot `i` (nothing happens for a slot that doesn't
@@ -356,9 +360,9 @@ impl<A: ActionSet> PadBindings<A> {
         self.table.unmapped_required()
     }
 
-    /// Every bound button with its action, for [`Keymap::with_pad`]: in
-    /// action then slot order.
-    pub fn pairs(&self) -> impl Iterator<Item = (Button, A)> + '_ {
+    /// Every bound button and button chord with its action, for
+    /// [`Keymap::with_pad`]: in action then slot order.
+    pub fn pairs(&self) -> impl Iterator<Item = (ButtonChord, A)> + '_ {
         self.table.pairs()
     }
 }
@@ -438,6 +442,7 @@ impl<A: ActionSet> PlayerKeys<A> {
     pub fn keymap(&self, def: &KeymapDef<A>, layout: Layout) -> Keymap<A> {
         let keys = self.bindings(def, layout).keymap(def.repeat);
         keys.with_pad(self.pad_bindings(def).pairs())
+            .with_chord(def.chord)
     }
 
     /// The keymap before any layout is chosen ([`Keymap::layout_picker`]),
@@ -477,7 +482,8 @@ impl<A: ActionSet> PlayerKeys<A> {
     /// The saved form (RON): every changed layout with all its actions'
     /// slots, e.g. `"Confirm": [Some("f"), Some("Enter"), None]`, and the
     /// buttons the same way under `pad` if changed, e.g. `"Confirm":
-    /// [Some("South"), None, None]`.
+    /// [Some("South"), None, None]`, a button chord as `"South+East"`
+    /// (ticket 1034: saved bindings without chords read as before).
     pub fn to_ron(&self) -> String {
         let layouts = self
             .layouts
@@ -555,7 +561,7 @@ impl<A: ActionSet> PlayerKeys<A> {
                 &defaults,
                 actions,
                 "button",
-                Button::parse,
+                ButtonChord::parse,
                 |_| Ok(()),
                 warn,
             );

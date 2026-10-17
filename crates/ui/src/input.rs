@@ -30,6 +30,8 @@ pub mod pad;
 pub mod state;
 
 #[cfg(test)]
+mod chord_tests;
+#[cfg(test)]
 mod sample;
 #[cfg(test)]
 mod tests;
@@ -43,10 +45,10 @@ pub use fixed::{
 };
 pub use frame::FrameInput;
 pub use help_keys::{ARROWS, HelpKeys};
-pub use keymap::Keymap;
+pub use keymap::{ChordWait, Keymap};
 pub use pad::{ButtonSet, PadId, PadKind, PadState, Pads};
 pub use shuyi_assets::keymap::{
-    ActionSet, Bindings, Button, Chord, Key, KeymapDef, LAYOUT_NAME_MAX, Layout, LayoutKeys,
-    PadKeys, RepeatDef, SLOTS, StickDef, UiAction,
+    ActionSet, Bindings, Button, ButtonChord, Chord, ChordDef, Key, KeymapDef, LAYOUT_NAME_MAX,
+    Layout, LayoutKeys, PadKeys, RepeatDef, SLOTS, StickDef, UiAction,
 };
 pub use state::{Device, Input, InputState, MAX_REPEATS_PER_UPDATE};

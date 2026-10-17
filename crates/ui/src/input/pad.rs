@@ -19,7 +19,7 @@
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
 
-use super::{Button, StickDef};
+use super::{Button, ButtonChord, StickDef};
 
 /// USB vendor ids of the pad makers the game tells apart.
 const MICROSOFT: u16 = 0x045e;
@@ -108,6 +108,17 @@ impl PadKind {
             Self::Nintendo => nintendo,
         }
     }
+
+    /// What help text calls `chord` on this kind of pad: its
+    /// [button's name](Self::button_name), or a button chord's two names
+    /// with `join` between them (`A+B`, `B+←` with `+`), in the chord's
+    /// order.
+    pub fn chord_name(self, chord: ButtonChord, join: &str) -> String {
+        match chord.buttons() {
+            Some((a, b)) => format!("{}{join}{}", self.button_name(a), self.button_name(b)),
+            None => self.button_name(chord.first()).to_owned(),
+        }
+    }
 }
 
 /// A Sony pad's face buttons' shapes: glyphs of our own in the font
@@ -163,6 +174,11 @@ impl ButtonSet {
     /// Adds `button`.
     pub fn insert(&mut self, button: Button) {
         self.0 |= bit(button);
+    }
+
+    /// Takes `button` out.
+    pub fn remove(&mut self, button: Button) {
+        self.0 &= !bit(button);
     }
 
     /// Whether `button` is in the set.

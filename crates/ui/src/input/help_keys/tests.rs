@@ -53,7 +53,10 @@ fn help_keys_are_the_keymap_and_a_device() {
     assert_ne!(keys, HelpKeys::keyboard(&km));
     // It stands in for the keymap.
     assert_eq!(keys.chords_for(Action::Confirm), [Chord::plain(Key::F)]);
-    assert_eq!(keys.primary_button(Action::Confirm), Some(Button::South));
+    assert_eq!(
+        keys.primary_button(Action::Confirm),
+        Some(Button::South.into())
+    );
 }
 
 /// `docs/design/controls.md`, *Button names on screen*: the example
