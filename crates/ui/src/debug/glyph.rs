@@ -1,11 +1,15 @@
 //! The glyph look of the debug screens: the debug menu ([`paint`]), the
-//! glyph sampler ([`sampler`]) and the Debug key's hint ([`paint_hint`]).
+//! glyph sampler ([`sampler`]), the scene camera ([`paint_camera`]) and the
+//! Debug key's hint ([`paint_hint`]).
 
+use alloc::rc::Rc;
+
+use super::camera::SceneCameraView;
 use super::{DebugMenuView, SamplePanels};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
-use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
+use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::{centre_x, print_centred};
 use crate::widgets::menu;
@@ -26,6 +30,46 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &DebugMenuView, buf: &mut GlyphBuf
     menu::glyph::paint(&ctx.palette, &view.menu, buf, x, MENU_TITLE_ROW + 2);
     let bottom = i32::from(buf.height()) - 1;
     print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
+}
+
+/// Left column of the scene camera's title and the lines under it.
+const CAMERA_LEFT: i32 = 2;
+
+/// Paints the scene camera's `view` over the whole of `buf`: the title,
+/// the zoom and the help line; the picture through the window in a frame,
+/// the caption over it and the text box over its corner.
+pub fn paint_camera(palette: &Palette, view: &SceneCameraView, buf: &mut GlyphBuffer) {
+    let c = |e| palette.engine(e);
+    let (black, text, hi) = (
+        c(EngineColor::Background),
+        c(EngineColor::Text),
+        c(EngineColor::Highlight),
+    );
+    buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
+    buf.print(CAMERA_LEFT, 0, &view.title, hi, black);
+    let bottom = i32::from(buf.height()) - 1;
+    let dim = c(EngineColor::TextDim);
+    buf.print(CAMERA_LEFT, bottom, &view.help, dim, black);
+    buf.print(CAMERA_LEFT, 2, &view.info, text, black);
+    let Some((picture, frame)) = &view.shown else {
+        return;
+    };
+
+    let window = view.layout.window;
+    let border = Rect::new(window.x - 1, window.y - 1, window.w + 2, window.h + 2);
+    buf.draw_box(border, BoxStyle::Single, c(EngineColor::Border), black);
+    buf.fill_rect(window, Cell::see_through(' ', text));
+    buf.set_backdrop(Rc::clone(picture), window, frame.origin_px, frame.zoom);
+    // Glyphs over the scene, with no box behind them.
+    buf.print_fg(window.x + 1, window.y, &view.caption, hi);
+
+    let text_box = view.layout.text_box;
+    let panel = c(EngineColor::Panel);
+    buf.fill_rect(text_box, Cell::new(' ', text, panel));
+    buf.draw_box(text_box, BoxStyle::Double, c(EngineColor::Focus), panel);
+    for (row, line) in (text_box.y + 1..).zip(&view.box_text) {
+        buf.print(text_box.x + 2, row, line, text, panel);
+    }
 }
 
 /// Prints `hint` (a screen's view holds the [`hint`](super::hint))

@@ -8,6 +8,7 @@ mod controller;
 mod grid;
 mod key_bindings;
 mod layout_picker;
+mod scene_camera;
 mod screens;
 mod scripts;
 mod sprites;

@@ -13,9 +13,10 @@
 //!
 //! With them, the rest of a grid stage's look: the tile [`Camera`], the
 //! virtual [`Cursor`], a path that follows it ([`steer()`]) and how long a
-//! unit's walk is shown ([`walk`]). Anything new shown on a map goes in
-//! the scene and is painted by every skin; it is never drawn straight into
-//! the buffer by a screen.
+//! unit's walk is shown ([`walk`]); and a whole map painted once to pan
+//! over ([`MapPicture`]). Anything new shown on a map goes in the scene
+//! and is painted by every skin; it is never drawn straight into the
+//! buffer by a screen.
 
 pub mod camera;
 pub mod corners;
@@ -23,6 +24,7 @@ pub mod cursor;
 pub mod glyph;
 pub mod layout;
 pub mod path;
+pub mod picture;
 pub mod scene;
 pub mod skin;
 pub mod sprite;
@@ -36,6 +38,7 @@ pub use camera::Camera;
 pub use cursor::Cursor;
 pub use glyph::GlyphSkin;
 pub use layout::{CELL_PX, Grid, Projection, px_rect};
+pub use picture::MapPicture;
 pub use scene::{
     CursorStyle, CursorView, MapScene, MapUnit, RangeLayer, RangeName, ThreatView, TileView, Tints,
 };

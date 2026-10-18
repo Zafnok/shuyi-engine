@@ -147,6 +147,13 @@ Carved so far:
   virtual `Cursor`, `steer` and walk timing, with walk speeds and colours
   as skin settings. The toy's grid game (`toy::grid`: a 10 × 8 `Field`,
   two pieces, terrain tiles) is played in both skins in `tests/it/grid.rs`.
+- `shuyi-ui` (1154): a whole grid map painted once to pan over
+  (`grid::MapPicture`: by a `GridSkin` and the game's `UnitPainter`, or
+  by any painter through `MapPicture::painted`); a pan's frame and paint
+  over such a picture (`cinematic::PanFrame`, `paint_pan`); and the
+  scene camera (`debug::SceneCameraScreen`), a debug tool that shows a
+  game's picture through a window, panned by the pixel and zoomed in
+  whole steps. The toy opens it on its field in `tests/it/scene_camera.rs`.
 - `shuyi-cli` (1117): the tools, binary `shuyi` (`cargo shuyi <command>`):
   `frame-png`, `font-atlas`, `check-keys`, `check-text`, `lang-status`,
   `web` and `private-assets`, on the project of a `shuyi.ron` (`project`:

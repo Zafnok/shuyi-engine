@@ -12,15 +12,17 @@
 //!
 //! The engine also gives what most shots move by: an [`ease_in_out`], and
 //! a [`Pan`] over a picture shown as the frame's backdrop (ADR-0048,
-//! [`cinema::view`]).
+//! [`cinema::view`]), its frame ([`PanFrame`]) and its paint
+//! ([`paint_pan`]).
 
 use crate::prelude::*;
+use alloc::rc::Rc;
 
 use shuyi_assets::cinematic::CinematicDef;
 
 use crate::ctx::{Ctx, GameData};
 use crate::frame::cinema;
-use crate::frame::color::EngineColor;
+use crate::frame::color::{EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 
@@ -204,6 +206,46 @@ impl Pan {
         let clip = (px(screen.w, console.cell_w), px(screen.h, console.cell_h));
         cinema::view(picture_px, clip, self.centre(progress), self.zoom)
     }
+
+    /// What the pan shows `progress` through the shot on a screen of
+    /// `screen`'s cells of `console`, over a picture `picture_px` big
+    /// ([`origin_px`](Self::origin_px)).
+    pub fn frame(
+        &self,
+        console: ConsoleSpec,
+        picture_px: (u32, u32),
+        screen: Rect,
+        progress: f32,
+    ) -> PanFrame {
+        PanFrame {
+            origin_px: self.origin_px(console, picture_px, screen, progress),
+            zoom: self.zoom,
+        }
+    }
+}
+
+/// A frame of a [`Pan`]: where its picture is behind the screen, as plain
+/// data.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PanFrame {
+    /// The picture's pixel at the screen's top-left ([`Pan::origin_px`]).
+    pub origin_px: (f32, f32),
+    /// Screen pixels per picture pixel.
+    pub zoom: u8,
+}
+
+/// Paints `frame` over the whole of `buf`: `picture` (a whole map, say:
+/// [`MapPicture`](crate::grid::MapPicture)) as its backdrop, behind cells
+/// that are all holes, in `palette`'s text color.
+pub fn paint_pan(
+    palette: &Palette,
+    picture: Rc<GlyphBuffer>,
+    frame: PanFrame,
+    buf: &mut GlyphBuffer,
+) {
+    let hole = Cell::see_through(' ', palette.engine(EngineColor::Text));
+    buf.fill_rect(buf.bounds(), hole);
+    buf.set_backdrop(picture, buf.bounds(), frame.origin_px, frame.zoom);
 }
 
 /// A game's shot, built once to be drawn at any moment: one of its shot

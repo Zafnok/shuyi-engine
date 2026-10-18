@@ -1,13 +1,18 @@
 //! The developer's debug screens: a menu of the game's tools
 //! ([`DebugMenuScreen`], with the game's [`DebugEntry`]s), the glyph
 //! sampler that shows every glyph of the font and every color of the
-//! palette ([`GlyphSamplerScreen`]), and the hint that names the Debug key
-//! ([`hint`]). Debug tools are in English only.
+//! palette ([`GlyphSamplerScreen`]), the scene camera over a picture of
+//! the game's ([`SceneCameraScreen`]), and the hint that names the Debug
+//! key ([`hint`]). Debug tools are in English only.
 //!
 //! **The look is a skin**: the menu says what it shows as a
-//! [`DebugMenuView`] and [`glyph::paint`] draws it.
+//! [`DebugMenuView`] and [`glyph::paint`] draws it; the scene camera's
+//! [`SceneCameraView`](camera::SceneCameraView), [`glyph::paint_camera`].
 
+pub mod camera;
 pub mod glyph;
+
+pub use camera::{CameraLayout, SceneCameraScreen};
 
 use crate::prelude::*;
 use core::fmt;

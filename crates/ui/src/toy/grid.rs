@@ -2,7 +2,7 @@
 //! letter each, the map's colors in the toy's palette, terrain tiles for
 //! the sprite skin, both skins, a painter of the pieces for each, and a
 //! stage: a 10 × 8 [`Field`] with two pieces, yours to move and one in the
-//! way.
+//! way, whose picture the scene camera shows ([`Field::camera`]).
 
 use crate::prelude::*;
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -17,10 +17,12 @@ use shuyi_assets::tileset::{
 use shuyi_core::{Dir, Grid as Map, Pos, Reach, TerrainId, reachable};
 
 use super::{Action, Toy, ToyCtx};
+use crate::debug::{CameraLayout, SceneCameraScreen};
 use crate::frame::color::{EngineColor, Palette, Rgb};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, PxRect, Rect, Sprite};
 use crate::grid::glyph::{self, GlyphSkin};
 use crate::grid::layout::Grid;
+use crate::grid::picture::MapPicture;
 use crate::grid::scene::{CursorStyle, CursorView, MapScene, MapUnit, RangeName};
 use crate::grid::skin::{
     GridSkin, Looks, MapColors, TerrainGlyphs, Terrains, UnitPainter, WalkSpeeds,
@@ -416,6 +418,14 @@ pub const MOVES: u32 = 4;
 /// console.
 pub const AREA: Rect = Rect::new(0, 0, 40, 20);
 
+/// Where the scene camera's window and text box go on the toy's console:
+/// a window of 24 × 10 cells (192 × 160 pixels: more than the field in
+/// glyphs at 1×, less from 2× up), the box over its bottom-right corner.
+pub const CAMERA: CameraLayout = CameraLayout {
+    window: Rect::new(2, 4, 24, 10),
+    text_box: Rect::new(18, 12, 20, 5),
+};
+
 /// A piece on its way along its path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Walk {
@@ -550,6 +560,40 @@ impl Field {
         }
         scene.clock_ms = self.clock_ms;
         scene
+    }
+
+    /// The whole field from its first tile, with its pieces where they
+    /// stand: no cursor, range or path. What a picture of it shows.
+    pub fn whole(&self) -> MapScene<Piece> {
+        let mut scene = MapScene::new(Pos::new(0, 0), (i32::from(FIELD.0), i32::from(FIELD.1)));
+        scene.set_terrain(|pos| self.map.get(pos).copied());
+        for piece in &self.pieces {
+            scene.push_unit(*piece);
+        }
+        scene
+    }
+
+    /// The whole field ([`whole`](Self::whole)) as its skin paints it, in
+    /// a buffer of `ctx`'s cells just big enough.
+    pub fn picture(&self, ctx: &ToyCtx) -> Option<MapPicture> {
+        let looks = Looks {
+            palette: &ctx.palette,
+            terrains: &Terrain,
+            lights: &ctx.game.lights,
+        };
+        let c = |e| ctx.palette.engine(e);
+        let blank = Cell::new(' ', c(EngineColor::Text), c(EngineColor::Background));
+        let (skin, units) = (self.skin.as_ref(), self.painter.as_ref());
+        MapPicture::paint(&looks, skin, units, &self.whole(), ctx.console, blank)
+    }
+
+    /// The scene camera over the field's [`picture`](Self::picture), in
+    /// the toy's [`CAMERA`] layout.
+    pub fn camera(&self, ctx: &ToyCtx) -> SceneCameraScreen {
+        let picture = self.picture(ctx).map(|p| p.scene);
+        // check-text: not player text (debug tools are English only)
+        let missing = "No field".to_owned();
+        SceneCameraScreen::new(ctx.console, picture, CAMERA, missing)
     }
 
     /// Moves the cursor `dir`, steering the path while a piece is picked

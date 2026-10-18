@@ -272,3 +272,39 @@ fn a_pan_eases_from_its_start_to_its_end() {
     let none = pan.origin_px(console, (400, 100), Rect::new(0, 0, -3, 0), 0.0);
     assert!(near(none, (100.0, 40.0)));
 }
+
+#[test]
+fn a_pans_frame_is_its_origin_and_zoom_and_paints_its_picture_behind_holes() {
+    let pan = Pan {
+        from: (100.0, 40.0),
+        to: (200.0, 20.0),
+        zoom: 2,
+    };
+    let console = ConsoleSpec::text(10, 4);
+    let screen = Rect::new(0, 0, 10, 4);
+    let frame = pan.frame(console, (400, 100), screen, 0.5);
+    assert_eq!(frame.zoom, 2);
+    assert_eq!(
+        frame.origin_px,
+        pan.origin_px(console, (400, 100), screen, 0.5)
+    );
+    // Painted over a stale buffer: every cell a hole in the text color,
+    // the picture behind the whole of it, and nothing else left.
+    let palette = crate::frame::color::tests::engine_palette();
+    let text = palette.engine(EngineColor::Text);
+    let stale = Cell::new('x', text, palette.engine(EngineColor::Panel));
+    let mut buf = GlyphBuffer::with_spec(console, stale);
+    let picture = Rc::new(GlyphBuffer::with_spec(console.sized(50, 7), stale));
+    paint_pan(&palette, Rc::clone(&picture), frame, &mut buf);
+    let backdrop = buf.backdrop().unwrap();
+    assert_eq!(backdrop.clip(), buf.bounds());
+    assert_eq!(backdrop.zoom(), 2);
+    assert!(near(backdrop.origin_px(), frame.origin_px));
+    assert_eq!(backdrop.scene(), &*picture);
+    for y in 0..4 {
+        for x in 0..10 {
+            assert_eq!(buf.get(x, y), Some(&Cell::see_through(' ', text)));
+        }
+    }
+    assert!(buf.items().is_empty());
+}
