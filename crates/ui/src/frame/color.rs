@@ -108,6 +108,15 @@ pub enum EngineColor {
     Highlight,
     /// Something going wrong.
     Warning,
+    /// The border of what has the focus, and the bar of a focused item.
+    Focus,
+    /// Behind everything: the screen around the panels.
+    Background,
+    /// What stands apart from the rest of a highlight: the keys that move
+    /// the cursor, say.
+    Accent,
+    /// Brighter than text: what just changed.
+    Bright,
 }
 
 impl EngineColor {
@@ -119,6 +128,10 @@ impl EngineColor {
         EngineColor::Border,
         EngineColor::Highlight,
         EngineColor::Warning,
+        EngineColor::Focus,
+        EngineColor::Background,
+        EngineColor::Accent,
+        EngineColor::Bright,
     ];
 
     /// Its name, which is the palette's name for it unless the game's
@@ -131,6 +144,10 @@ impl EngineColor {
             EngineColor::Border => "border",
             EngineColor::Highlight => "highlight",
             EngineColor::Warning => "warning",
+            EngineColor::Focus => "focus",
+            EngineColor::Background => "background",
+            EngineColor::Accent => "accent",
+            EngineColor::Bright => "bright",
         }
     }
 }
@@ -296,6 +313,10 @@ pub(crate) mod tests {
             ("border", [90, 110, 160]),
             ("highlight", [250, 210, 90]),
             ("warning", [220, 60, 50]),
+            ("focus", [120, 150, 220]),
+            ("background", [0, 0, 0]),
+            ("accent", [80, 200, 240]),
+            ("bright", [255, 255, 255]),
             ("grass", [40, 120, 50]),
         ]);
         Palette::new::<EngineColor>(&def).unwrap()
@@ -343,6 +364,10 @@ pub(crate) mod tests {
             ("highlight", [6, 6, 6]),
             ("warning", [7, 7, 7]),
             ("text", [8, 8, 8]),
+            ("focus", [10, 10, 10]),
+            ("background", [11, 11, 11]),
+            ("accent", [12, 12, 12]),
+            ("bright", [13, 13, 13]),
         ])
     }
 
@@ -357,7 +382,11 @@ pub(crate) mod tests {
                 "panel",
                 "border",
                 "highlight",
-                "warning"
+                "warning",
+                "focus",
+                "background",
+                "accent",
+                "bright"
             ]
         );
         for (i, &c) in EngineColor::ALL.iter().enumerate() {
@@ -378,7 +407,11 @@ pub(crate) mod tests {
                 "panel",
                 "border",
                 "highlight",
-                "warning"
+                "warning",
+                "focus",
+                "background",
+                "accent",
+                "bright"
             ]
         );
         assert_eq!(
@@ -390,7 +423,11 @@ pub(crate) mod tests {
                 "text_dim",
                 "border",
                 "highlight",
-                "warning"
+                "warning",
+                "focus",
+                "background",
+                "accent",
+                "bright"
             ]
         );
     }
@@ -435,7 +472,7 @@ pub(crate) mod tests {
         assert_eq!(p.lookup("grass"), Some(Rgb::new(40, 120, 50)));
         assert_eq!(p.lookup("no_such_colour"), None);
         let all: Vec<(&str, Rgb)> = p.iter().collect();
-        assert_eq!(all.len(), 7);
+        assert_eq!(all.len(), 11);
         assert!(all.windows(2).all(|w| w[0].0 < w[1].0));
         assert!(all.iter().all(|&(n, c)| p.lookup(n) == Some(c)));
     }

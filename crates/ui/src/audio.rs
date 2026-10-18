@@ -9,6 +9,10 @@
 //! have a clip that may be played. `V` is the game's
 //! [`ClipVariant`]: which of a line's clips plays.
 //!
+//! The engine's widgets and screens play the same few sounds for the same
+//! things on every screen ([`MenuSound`]); which cues those are is the
+//! game's ([`AudioConfig`], from [`GameData::audio_config`]).
+//!
 //! ```
 //! # use shuyi_ui::audio::{AudioQueue, AudioRequest};
 //! let mut audio = AudioQueue::<()>::default();
@@ -22,6 +26,69 @@ use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::dialogue::LineId;
 #[cfg(doc)]
 use shuyi_assets::voice::ClipVariant;
+
+#[cfg(doc)]
+use crate::GameData;
+
+/// The sounds the engine's widgets and screens play: the same cue means
+/// the same thing on every screen.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuSound {
+    /// The highlight moved.
+    Move,
+    /// Something was confirmed or opened.
+    Select,
+    /// Something was backed out of or closed.
+    Cancel,
+    /// Confirm on something that can't be chosen, e.g. a greyed-out item.
+    Denied,
+}
+
+/// Which of the game's sound cues the engine's widgets and screens play
+/// ([`MenuSound`], and the cursor's tick): the game's
+/// ([`GameData::audio_config`]). The default names them after what they
+/// are (`ui_move`, `ui_select`, `ui_cancel`, `ui_cursor`), with Denied
+/// playing `ui_cancel`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AudioConfig {
+    /// [`MenuSound::Move`]'s cue.
+    pub move_cue: &'static str,
+    /// [`MenuSound::Select`]'s cue.
+    pub select_cue: &'static str,
+    /// [`MenuSound::Cancel`]'s cue.
+    pub cancel_cue: &'static str,
+    /// [`MenuSound::Denied`]'s cue.
+    pub denied_cue: &'static str,
+    /// The cue a cursor plays once per step it moves.
+    pub cursor_cue: &'static str,
+}
+
+impl AudioConfig {
+    /// The cues named after what they are.
+    pub const DEFAULT: Self = Self {
+        move_cue: "ui_move",
+        select_cue: "ui_select",
+        cancel_cue: "ui_cancel",
+        denied_cue: "ui_cancel",
+        cursor_cue: "ui_cursor",
+    };
+
+    /// The cue of `sound`.
+    pub const fn cue(&self, sound: MenuSound) -> &'static str {
+        match sound {
+            MenuSound::Move => self.move_cue,
+            MenuSound::Select => self.select_cue,
+            MenuSound::Cancel => self.cancel_cue,
+            MenuSound::Denied => self.denied_cue,
+        }
+    }
+}
+
+impl Default for AudioConfig {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
 
 /// Something a screen wants heard. Cue ids are the ones in the game's
 /// audio manifest ([`AudioManifest`]).
@@ -75,12 +142,43 @@ impl<V> AudioRequest<V> {
 }
 
 /// The requests screens made this frame. `Game` empties it every frame.
-#[derive(Debug, Clone, Default, PartialEq)]
+/// It knows which cues the [`MenuSound`]s are ([`AudioConfig`]).
+#[derive(Debug, Clone, PartialEq)]
 pub struct AudioQueue<V> {
     requests: Vec<AudioRequest<V>>,
+    config: AudioConfig,
+}
+
+impl<V> Default for AudioQueue<V> {
+    fn default() -> Self {
+        Self::new(AudioConfig::DEFAULT)
+    }
 }
 
 impl<V> AudioQueue<V> {
+    /// An empty queue that plays the [`MenuSound`]s with `config`'s cues.
+    pub fn new(config: AudioConfig) -> Self {
+        Self {
+            requests: Vec::new(),
+            config,
+        }
+    }
+
+    /// Which cues the [`MenuSound`]s are.
+    pub fn config(&self) -> AudioConfig {
+        self.config
+    }
+
+    /// Plays a menu sound: its cue in the [`config`](Self::config).
+    pub fn menu(&mut self, sound: MenuSound) {
+        self.play_sound(self.config.cue(sound));
+    }
+
+    /// Plays the cursor's tick, once per step it moves.
+    pub fn cursor_tick(&mut self) {
+        self.play_sound(self.config.cursor_cue);
+    }
+
     /// Plays sound `cue` once at its own volume.
     pub fn play_sound(&mut self, cue: &str) {
         self.play_sound_at(cue, 1.0);
@@ -619,6 +717,50 @@ mod tests {
             expected.map(|r| r.cue().map(str::to_owned))[4..],
             [Some("e".to_owned()), Some("m".to_owned()), None]
         );
+    }
+
+    /// The queue plays each menu sound and the cursor's tick as its
+    /// config names them; by default after what they are.
+    #[test]
+    fn menu_sounds_and_the_cursor_play_the_configs_cues() {
+        let cues = |q: &mut AudioQueue| {
+            for sound in [
+                MenuSound::Move,
+                MenuSound::Select,
+                MenuSound::Cancel,
+                MenuSound::Denied,
+            ] {
+                q.menu(sound);
+            }
+            q.cursor_tick();
+            let taken = q.take();
+            taken
+                .iter()
+                .map(|r| r.cue().unwrap_or_default().to_owned())
+                .collect::<Vec<_>>()
+        };
+        let mut q = AudioQueue::default();
+        assert_eq!(q.config(), AudioConfig::default());
+        assert_eq!(
+            cues(&mut q),
+            [
+                "ui_move",
+                "ui_select",
+                "ui_cancel",
+                "ui_cancel",
+                "ui_cursor"
+            ]
+        );
+        let config = AudioConfig {
+            move_cue: "tick",
+            select_cue: "ding",
+            cancel_cue: "dong",
+            denied_cue: "buzz",
+            cursor_cue: "step",
+        };
+        let mut q = AudioQueue::new(config);
+        assert_eq!(q.config(), config);
+        assert_eq!(cues(&mut q), ["tick", "ding", "dong", "buzz", "step"]);
     }
 
     /// A manifest with a `fights` pool of three looped tracks and an

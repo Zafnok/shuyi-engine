@@ -6,6 +6,7 @@ mod audio;
 mod controller;
 mod key_bindings;
 mod layout_picker;
+mod screens;
 mod scripts;
 mod sprites;
 

@@ -107,6 +107,15 @@ Carved so far:
   (`toy`, the `toy` feature) gained a layout picker the first key opens
   and a gallery of pictures the Debug key opens; the Harness's tests drive
   it (`tests/it`).
+- `shuyi-ui` (1112): widgets (`widgets`: a menu and word wrap), screens
+  with the game's rows (`screens`: the Key bindings screen, the layout
+  picker, the options screen), the debug menu with the game's tools and
+  the glyph sampler (`debug`), the dialogue player with the game's hooks
+  and its text box (`dialogue`), the tips seen (`tips`), and the menu
+  sounds with the game's cues (`audio::AudioConfig`). Each screen's logic
+  says what it shows as a view and a glyph skin paints it with the
+  engine's colors. The toy game has a lobby of them and a scene read in
+  the text box (ADR-0087).
 - `shuyi-assets` (1040, written here): one-bit pictures (`bitmap`): the
   `.1bit` file a one-bit screen draws in place of a PNG, and the
   converter that makes one (`bitmap::convert`: enlarge, stretch, levels,

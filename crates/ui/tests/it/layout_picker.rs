@@ -25,7 +25,7 @@ fn the_first_key_opens_the_picker_and_does_nothing_else() {
     assert_eq!(h.screens(), ["home", "picker"]);
     assert_eq!(h.screen::<Picker>().map(|p| p.focus), Some(0));
     assert!(h.snapshot().starts_with("H P"), "{}", h.snapshot());
-    assert!(h.snapshot().contains("Right hand"), "{}", h.snapshot());
+    assert!(h.snapshot().contains("Right-handed"), "{}", h.snapshot());
 }
 
 #[test]

@@ -7,6 +7,7 @@ use super::*;
 use shuyi_assets::keymap::{Button, Chord, Key, RepeatDef};
 
 use crate::audio::AudioRequest;
+use crate::input::help_keys::key_name;
 use crate::storage::MemoryStorage;
 use crate::toy::{Action, DEBUG_LANG, LEFT_HANDED, Prefs, RIGHT_HANDED, Theme, Toy, ToyCtx, Voice};
 use crate::toy::{ctx, first_launch};
@@ -142,7 +143,7 @@ fn text_with_fills_values_then_the_keys_actions_are_on() {
     let mut c = ctx();
     assert_eq!(
         c.text_with("home.help", &[]),
-        "f opens · d quits · {Cursor} {Nope}"
+        "f opens · d quits · arrows {Nope}"
     );
     assert_eq!(
         c.text_with("home.greeting", &[("name", &"Mei")]),
@@ -151,12 +152,12 @@ fn text_with_fills_values_then_the_keys_actions_are_on() {
     // A value named like an action fills it instead.
     assert_eq!(
         c.text_with("home.help", &[("Confirm", &7)]),
-        "7 opens · d quits · {Cursor} {Nope}"
+        "7 opens · d quits · arrows {Nope}"
     );
     c.use_layout(LEFT_HANDED);
     assert_eq!(
         c.text_with("home.help", &[]),
-        "j opens · k quits · {Cursor} {Nope}"
+        "j opens · k quits · wasd {Nope}"
     );
     c.lang = code(DEBUG_LANG);
     assert_eq!(c.text_with("home.greeting", &[("name", &1)]), "HELLO, 1");

@@ -4,6 +4,24 @@
 //! [`Ctx::text_with`](crate::Ctx::text_with)).
 
 use crate::prelude::*;
+use shuyi_assets::keymap::ActionSet;
+
+use crate::input::help_keys::{HelpKeys, cursor_keys_name, key_name};
+
+/// The placeholder for the keys that move the cursor (`{Cursor}`).
+pub const CURSOR: &str = "Cursor";
+
+/// What a `{name}` placeholder that names a key says: [`{Cursor}`](CURSOR)
+/// the cursor keys, `{Confirm}` (an action's name) the key `keys` has for
+/// that action. `None` for any other name. What a game's text fills in by
+/// default ([`GameData::key_text`](crate::GameData::key_text)).
+pub fn key_text<A: ActionSet>(name: &str, keys: HelpKeys<'_, A>) -> Option<String> {
+    if name == CURSOR {
+        Some(cursor_keys_name(keys))
+    } else {
+        A::from_name(name).map(|action| key_name(keys, action))
+    }
+}
 use core::fmt::Display;
 
 /// `text` with each `{name}` that `args` names replaced by its value, and
