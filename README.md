@@ -91,7 +91,7 @@ Carved so far:
   two screens (`toy`, tests only) runs them.
 - `shuyi-app` (1110): the platform shell. `run` opens the window and
   runs the loop around `Game::frame`: the keyboard (`keys`) and
-  controllers (`pads`, gilrs and the web's `web/gamepad.js`, whose
+  controllers (`pads`, gilrs and the web's `engine/crates/cli/web/gamepad.js`, whose
   functions are `shuyi_pad_*`), blitting the frame (`render`), the
   sounds, music and voices (decoded off the main thread on native) and
   storage (`storage`: a file per key in the OS's data folder, or
@@ -144,6 +144,17 @@ Carved so far:
   virtual `Cursor`, `steer` and walk timing, with walk speeds and colours
   as skin settings. The toy's grid game (`toy::grid`: a 10 × 8 `Field`,
   two pieces, terrain tiles) is played in both skins in `tests/it/grid.rs`.
+- `shuyi-cli` (1117): the tools, binary `shuyi` (`cargo shuyi <command>`):
+  `frame-png`, `font-atlas`, `check-keys`, `check-text`, `lang-status`,
+  `web` and `private-assets`, on the project of a `shuyi.ron` (`project`:
+  the paths each check scans, the atlas's required glyphs, the web
+  build's package and the private repository). `frame-png` and
+  `lang-status` run the game: a game gives its `GameTools` (its Harness
+  started with its own options, its languages) in a tool program that
+  calls `main_with`, which `shuyi.ron` names and `shuyi` runs with
+  `cargo run`. The web shell is here (`cli/web/`, built into `shuyi`;
+  its README says how a game's binary gets `--allow-undefined`). The toy
+  game is a project too (`cli/toy/shuyi.ron`, the `toy` example).
 
 ## Third-party crates the engine may use
 

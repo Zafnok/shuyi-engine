@@ -45,7 +45,7 @@ macroquad.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 quad-snd = "0.2.8"
 # Controllers on Windows, Linux and macOS (ticket 0219, ADR-0034). The web
-# build reads the browser's Gamepad API through `web/gamepad.js` instead.
+# build reads the browser's Gamepad API through `engine/crates/cli/web/gamepad.js` instead.
 gilrs = "0.11.2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -21,9 +21,10 @@
 //! ```
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
-//! JS plugins' functions (`web/gamepad.js`'s, `quad-storage`'s) are
+//! JS plugins' functions (`engine/crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
-//! reaches the binary from its own build script.
+//! reaches the binary from its own build script
+//! (`engine/crates/cli/web/README.md` shows how).
 
 mod audio;
 pub mod keys;
