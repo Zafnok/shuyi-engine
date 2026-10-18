@@ -79,7 +79,11 @@ None.
 **Out (do not do):**
 - dithering sprites (3007);
 - drawing on the device (3010);
-- choosing the game's patterns, which is the game's work (game 1025).
+- choosing the game's patterns, which is the game's work (game 1025);
+- the new-game wizard's Playdate part. Either order: if 2504 is done,
+  add a starting pattern map for the template's palette roles to the
+  built-in template's `target-playdate` part in this PR; if not, 2504
+  adds it.
 
 ## Implementation steps
 

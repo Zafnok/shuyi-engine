@@ -53,7 +53,10 @@ None.
 - JSON schemas for the inputs and outputs, generated and checked in.
   A test fails if they change without a version bump.
 
-**Out (do not do):** MCP (1133); skills (1134).
+**Out (do not do):** MCP (1133); skills (1134); questions, templates
+made of parts and templates from outside the engine (2501–2505,
+ADR-0011). Keep the two templates as plain folders; 2501 turns them into
+parts.
 
 ## Implementation steps
 

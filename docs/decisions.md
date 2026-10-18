@@ -278,3 +278,46 @@ Then:
   unparks them. Visions of Shuyi doesn't need them.
 - **Inspired by, nothing copied.** No name, creature, art or sound from
   Rain World goes into the engine or its examples.
+
+## 2026-10-17: a wizard for new games, and MIDI music
+
+Source: Nick, in a Claude Code session on 2026-10-17.
+
+> "basically I want some create-react-app type command with templates and
+> let it be extensible too but it should be like do you want top down?
+> side scroller? and it can be both (i.e. transition between them) so let
+> player tick off multiple
+>
+> and if they want physics engine, what kind of physics, if they want
+> MIDI sound, what export targets they want to support, etc."
+
+Asked when the wizard should be built, Nick chose **after the MVP**, the
+recommended option. Asked whether MIDI should be parked, since the game
+doesn't need it, he chose **parked**, the recommended option.
+
+**Rules:**
+
+- **`shuyi new` asks.** With no template named, it asks the questions a
+  new game needs, one per concern, and each answer turns on what it
+  needs. The questions:
+  - the perspectives, more than one allowed: top-down, side view, and so
+    on. With more than one, the new game gets a stage for each and a way
+    to move between them;
+  - how bodies move: no physics, the movement kit, rigid bodies, or
+    procedural animation;
+  - the music: recorded files, MIDI, or both;
+  - the export targets, more than one allowed;
+  - online play.
+- **Every answer can be given without the questions**, as flags or as a
+  file, so agents and CI make the same games people do.
+- **Templates can be extended.** A template is data, and anyone can write
+  one. The engine's own templates use the same format.
+  [ADR-0011](adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
+  sets the design. Tickets 2501–2505 build it, after the MVP.
+- **Planned answers are shown, not offered.** An answer whose module
+  isn't built yet, or is parked, appears with its ticket. It can't be
+  picked until it is ready.
+- **MIDI is a module, and it is parked.**
+  [ADR-0012](adr/0012-midi-music-sequences-and-a-sound-bank-in-a-module.md)
+  sets its design. Tickets 2205 and 2206 are `Parked:` until Nick
+  unparks them. Visions of Shuyi doesn't need them.

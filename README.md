@@ -56,6 +56,12 @@ it is built for, and guides show how to move a game between
 perspectives
 ([ADR-0009](docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)).
 
+**Starting a game.** `shuyi new` asks what you want: one perspective or
+several with moves between them, how bodies move, the music, the export
+targets, online play. Every answer is also a flag, so agents and CI make
+games the same way. Templates are data, and anyone can write one
+([ADR-0011](docs/adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)).
+
 **Networking.** It is planned in layers, from LAN play to sessions,
 hosted servers, matchmaking and chat
 ([ADR-0006](docs/adr/0006-networking-in-layers-transports-sessions-sync-models-services.md)).

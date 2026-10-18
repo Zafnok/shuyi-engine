@@ -76,6 +76,25 @@ each piece is built for
 Both come before the first module (1128, 1140 or 2701) is built, so it
 lands in a place that already works.
 
+### Starting a game: the wizard
+
+Nick, 2026-10-17 ([`decisions.md`](decisions.md)): "some create-react-app
+type command with templates", extensible, that asks about perspectives
+(several at once, with moves between them), physics, music and export
+targets. After the MVP
+([ADR-0011](adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)).
+
+| Ticket | What |
+| ------ | ---- |
+| 2501 | Templates as data: `template.ron`, parts, a pure composer behind `shuyi new` |
+| 2502 | The wizard: one question per concern from the catalog, multi-pick, a flag per answer, the questions as JSON |
+| 2503 | Several perspectives in one game: a stage each, moves between them, a test that crosses them |
+| 2504 | Targets in the wizard: modules checked against targets, CI per target (after 3001 and 3004) |
+| 2505 | Templates from a folder or git at a revision, no code run, `shuyi template check` and `new` |
+
+The perspective tickets (1122, 1126, 1127) and the first move (1125) each
+add their part to the built-in template when they land.
+
 ### Export targets: the Steam Deck and the Playdate
 
 Nick, 2026-10-15 ([`decisions.md`](decisions.md)): Visions of Shuyi
@@ -118,4 +137,5 @@ for networking, styles for later". Each one's title starts with
 | 1135 | Research: visual scripting as a view over text | — |
 | 1140–1150 | Networking: lockstep, relay, browser, LAN, Steam, sessions, referee server, real time, accounts and ratings, chat, MMO and global chat research | the game's 0053 picks an online mode |
 | 2701–2704 | Procedural animation, a module (ADR-0010): bodies of points in `Fx`, limbs and gaits that find footholds, strips and rotated sprites to draw them, and a side-view cave example | Nick asks (2026-10-16: "this will be very late addition since it won't tie into visions of shuyi game") |
+| 2205–2206 | MIDI music, a module (ADR-0012): `.mid` and `.sf2` formats, a synth, cues that play a sequence, an example | Nick asks (2026-10-17: he chose to park it, since the game doesn't need it) |
 | 3014–3016 | Export targets that cost money and bring agreements: Nintendo Switch and the eShop, mobile (Android, iOS), research on PlayStation and Xbox | Nick asks (2026-10-15: "eventually nintendo eshop and maybe even mobile and console") |

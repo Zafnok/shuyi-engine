@@ -91,6 +91,10 @@ None.
 - the perspective markers (1120, 1122, 1126, 1127);
 - the guides (2004);
 - `shuyi remove` (add it when someone asks);
+- the wizard and its catalog fields (`pick`, `question`: 2502), and the
+  `targets` metadata field (2504). Write `shuyi add`'s `Cargo.toml` edit
+  as a library function, because 2501's composer calls it too
+  (ADR-0011 §3);
 - moving anything out of the default crates (ADR-0009 §1).
 
 ## Implementation steps

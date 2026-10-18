@@ -49,6 +49,11 @@ None.
   shows that it can't be used in a `TopDown` stage.
 - Guides (ADR-0009 §5): write `docs/guides/side-view.md` in full. If
   2004 isn't done, create the file and 2004 adds it to its list.
+- The new-game wizard (ADR-0011 §3–§4): set the `side-view` answer in
+  `docs/modules.ron` to ready, if 2502 has added it. If 2503 is done,
+  add the part `stage-side-view` to the built-in template: a room with
+  the platformer controller, generic over `SideView`, and its test. If
+  2503 isn't done, 2503 adds it.
 - Tests:
   - controller unit tests, including coyote time and the jump buffer at
     their exact step limits;

@@ -49,6 +49,12 @@ None.
     in the way;
   - the same inputs give the same positions.
 
+- The new-game wizard (ADR-0011 §3–§4). Set the `top-down` answer of
+  the perspective concern in `docs/modules.ron` to ready, if 2502 has
+  added it. If 2503 is done, add the part `stage-top-down` to the
+  built-in template: a stage with the top-down controller, generic over
+  `TopDown`, and its test. If 2503 isn't done, 2503 adds it.
+
 **Out (do not do):** slopes; the platformer controller (1127); rigid
 bodies (1128).
 
