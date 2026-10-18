@@ -29,7 +29,8 @@ tickets/
 | `27xx` | Game styles and examples (new tickets; the first ones are 1119–1128) |
 | `28xx` | Docs and community |
 | `29xx` | Research |
-| `30xx` | Export targets: platforms, devices, stores and performance budgets (ADR-0008) |
+| `30xx` | Export targets: platforms, devices, stores and performance budgets (ADR-0008, ADR-0012) |
+| `31xx` | 3D and HD-2D: the fixed-point 3D space, meshes, the 3D view, cameras, the diorama skin, and their examples (ADR-0011) |
 
 Any other four-digit id in a ticket's text is the **game repository's**
 ticket (`github.com/Zafnok/visions-of-shuyi/tree/main/tickets`): for
@@ -43,7 +44,7 @@ example 0804 (Nick's Chapter 1 playtest), 1102–1118 (the carve) and 1131
 id: "2201"
 title: Short imperative title
 type: feature        # feature | infra | decision | bug | research
-milestone: MVP       # MVP | After MVP | Parked: styles | Parked: networking | …
+milestone: MVP       # MVP | After MVP | Parked: styles | Parked: networking | Parked: 3D | …
 model: opus-5.5      # haiku-4.5 | sonnet-5 | opus-5.5 | fable-5.1
 effort: high         # low | medium | high | xhigh | max
 status: todo         # todo | in-progress | blocked | done

@@ -51,7 +51,10 @@ say whether a new developer would know where to start.
 - **Move guides**: `top-down-free-to-top-down-grid.md` as a planned page
   pointing at 1125, which writes it in full.
 - **A check**, part of `cargo xtask check-modules` (2003):
-  - every direction in `docs/modules.ron` has a direction guide;
+  - every direction in `docs/modules.ron` has a direction guide. The
+    parked 3D directions (ADR-0011 §2) get planned pages naming their
+    tickets: `first-person.md`, `third-person.md`, `top-down-3d.md` and
+    `hd-2d.md`;
   - every guide links only to modules and tickets that exist;
   - a guide marked planned names at least one open ticket.
 - **The docs site** (1132) publishes `docs/guides/` with the catalog.

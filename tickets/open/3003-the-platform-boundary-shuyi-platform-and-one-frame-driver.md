@@ -74,7 +74,9 @@ changes (a few lines).
 - `no_std` (3005);
 - the Playdate backend (3010);
 - the 1-bit output (3006); `present` takes the RGBA frame for now;
-- Steam's keyboard behind `TextInput` (the game's 0903).
+- Steam's keyboard behind `TextInput` (the game's 0903);
+- more than one screen (the parked 3023, ADR-0012 §5). Keep
+  `DisplayInfo` and `present` open to a list of surfaces later.
 
 ## Implementation steps
 

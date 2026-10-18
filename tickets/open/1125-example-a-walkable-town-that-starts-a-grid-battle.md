@@ -59,7 +59,9 @@ for him, not a sign-off.
   from this example. If 2004 is done, replace its planned pages. If not,
   create the files, and 2004 adds them to its list.
 
-**Out (do not do):** anything in our game; isometric (1126).
+**Out (do not do):** anything in our game; isometric (1126); mixing
+the example's rules with its skin. Keep them apart: the parked 3109
+redraws this example in HD-2D by changing only its skin.
 
 ## Implementation steps
 
