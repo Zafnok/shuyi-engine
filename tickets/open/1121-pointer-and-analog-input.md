@@ -47,7 +47,9 @@ None. Our game doesn't use these unless a later ticket says so.
 - The Harness scripts pointer moves, clicks and stick positions.
 - The rebinding screen (1112) lists axes.
 
-**Out (do not do):** gestures (pinch, swipe); on-screen touch controls.
+**Out (do not do):** gestures (pinch, swipe); on-screen touch controls;
+more than one screen. The parked 3023 (ADR-0012 §5) later adds a
+surface id to pointer events, in that surface's coordinates.
 
 ## Implementation steps
 

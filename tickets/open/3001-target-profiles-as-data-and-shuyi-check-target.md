@@ -75,7 +75,10 @@ None.
 - the controls check (3002);
 - colour checks (3006);
 - the budget checks (3008);
-- any backend.
+- any backend;
+- what each target's hardware can do (`capabilities`, the parked 3017,
+  ADR-0012 §1). It later moves `display.color` into
+  `capabilities.colour`, so keep the colour field easy to move.
 
 ## Implementation steps
 
