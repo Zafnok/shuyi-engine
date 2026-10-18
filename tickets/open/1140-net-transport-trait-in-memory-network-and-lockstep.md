@@ -66,7 +66,10 @@ None (technical). Scheduling: see above.
   (2003), and the catalog row.
 
 **Out (do not do):** real sockets (1141, 1143); servers (1141); anything
-in our game (0053).
+in our game (0053); lockstep over a tick game driven by commands, such
+as a real-time strategy game (the parked 2720, ADR-0015 §2). Keep the
+lockstep driver's turn exchange separate from `TurnRules`, so 2720 can
+reuse it for command turns.
 
 ## Implementation steps
 

@@ -141,6 +141,22 @@ unparked:
   3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
   3025, 3026). DS 3D (3025) also needs 3103 and 3107.
 
+On 2026-10-18 Nick added real-time strategy with a thousand units or
+more and the AI to run it, visual novels, and detective games
+([`decisions.md`](decisions.md)). These wait longer than the rest:
+**until after Visions of Shuyi launches**, not just the MVP. The order
+inside each, when unparked:
+
+- **Real-time strategy** (ADR-0015): 2705 (measure first) and 2706, then
+  2707, then 2708, 2709 and 2713, then 2710, 2711 and 2712, then the
+  economy (2733), the AI (2714, 2715) and the view (2716, then 2734),
+  then 2717, 2718 and the example (2719). Multiplayer (2720) needs 2706 and the networking ticket 1140.
+- **Visual novels** (ADR-0016): 2721, 2722, then 2723 and 2725, then
+  2724, then the example (2726).
+- **Detective games** (ADR-0016): after 2722, 2727, then 2728, 2729 and
+  2730, then the fair-play check (2731, after 2724), then the example
+  (2732, after 2726).
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle | the game's 0060 says the army walks around freely |
@@ -152,3 +168,6 @@ unparked:
 | 3014–3016 | Export targets that cost money and bring agreements: Nintendo Switch and the eShop, mobile (Android, iOS), research on PlayStation and Xbox | Nick asks (2026-10-15: "eventually nintendo eshop and maybe even mobile and console") |
 | 3017–3027 | The GBA and the DS (ADR-0012): target capabilities and the check that a game fits its target's hardware, toolchain research and the selling question, indexed colour, old ARM builds in CI, the GBA backend, its audio and device, two screens, the DS backend, DS hardware 3D, the DS device | Nick asks (2026-10-17: "I want GBA, and DS ports") |
 | 3101–3109 | 3D and HD-2D, as modules (ADR-0011): the 20.12 fixed-point space, glTF meshes, the 3D view and a software rasterizer, the GPU painter, 3D collision, cameras, the HD-2D diorama skin, and four templates with their examples (first person, third person, top-down 3D, HD-2D) | Nick asks (2026-10-17: "add true 3D support (all kinds, first person, third, top down with 3D models), and HD-2D") |
+| 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
+| 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
+| 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |

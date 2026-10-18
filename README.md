@@ -54,6 +54,15 @@ a 2D game's rules run under it unchanged. All of it is parked until the
 engine reaches parity with the game
 ([ADR-0011](docs/adr/0011-3d-fixed-point-space-a-3d-view-in-the-frame-and-hd-2d-as-a-skin.md)).
 
+**More kinds of game, later.** Real-time strategy with a thousand units
+or more, with the pathfinding, steering and computer opponents to run
+them
+([ADR-0015](docs/adr/0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md)),
+visual novels, and detective games with a check that every case can be
+solved
+([ADR-0016](docs/adr/0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md)).
+Each is a module, parked until after Visions of Shuyi launches.
+
 **Modules.** The default engine stays small. You pick a direction for
 each part of your game (its perspective, how bodies move and animate,
 online play) and add only the modules that fit it, such as rigid-body

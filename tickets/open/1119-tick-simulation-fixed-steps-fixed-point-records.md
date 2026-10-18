@@ -50,7 +50,9 @@ None (technical). Scheduling: see above.
 - A tiny example sim in the engine's tests: a dot moved by input with
   inertia.
 
-**Out (do not do):** collision (1122); world layers (1120); networking.
+**Out (do not do):** collision (1122); world layers (1120); networking;
+thousands of units (the parked 2705 measures an arena against columns
+and an ECS for the real-time strategy module, ADR-0015 §3).
 
 ## Implementation steps
 

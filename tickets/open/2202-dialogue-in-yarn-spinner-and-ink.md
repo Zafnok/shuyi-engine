@@ -60,7 +60,11 @@ None.
 **Out (do not do):**
 - an editor;
 - converting the game's `.dlg` files;
-- Twine or Twee (write a ticket if the research finds demand).
+- Twine or Twee (write a ticket if the research finds demand);
+- the visual novel's stage directions (`show`, `hide`, `bg`, and the
+  rest of ADR-0016 §2). They are parked with 2721, which adds their rows
+  to `docs/formats/dialogue.md`. Here, a command the runner doesn't know
+  passes through to the game as today.
 
 ## Implementation steps
 

@@ -63,7 +63,10 @@ None.
 **Out (do not do):**
 - threads (the Playdate has one core; the web has none we use);
 - making the bot smarter or cheaper (game tickets);
-- time-based limits of any kind.
+- time-based limits of any kind;
+- the real-time strategy AI (parked 2710, 2714, 2715, ADR-0015 §8). It
+  will use `Think` for decisions that recur every few steps, so keep
+  `Think` free of anything that assumes one decision per turn.
 
 ## Implementation steps
 

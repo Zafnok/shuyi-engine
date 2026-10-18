@@ -384,3 +384,52 @@ doesn't need it, he chose **parked**, the recommended option.
   [ADR-0014](adr/0014-midi-music-sequences-and-a-sound-bank-in-a-module.md)
   sets its design. Tickets 2205 and 2206 are `Parked:` until Nick
   unparks them. Visions of Shuyi doesn't need them.
+
+## 2026-10-18: real-time strategy at scale, visual novels, detective games
+
+Source: Nick, in a Claude Code session on 2026-10-18.
+
+> "I wanna be able to support high unit count RTS games and also visual
+> novel style games and detective games..... make tickets parked for
+> after visions of shuyi launches for all of these, I would imagine
+> thousand+ unit count RTS games need advanced optimized AI routines
+> provided"
+
+**Rules:**
+
+- **Three more kinds of game, each a module** (ADR-0009): the engine
+  names the kinds of game it serves, and these three join the list.
+  - **Real-time strategy with a thousand units or more**, and the AI to
+    run them: pathfinding shared by whole armies, units that steer
+    around each other, squads, and computer opponents that manage an
+    economy and an army. The engine provides these routines, so a game
+    doesn't write them.
+    [ADR-0015](adr/0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md)
+    sets the design. Tickets 2705–2720, 2733 and 2734.
+  - **Visual novels**: characters and backgrounds, text, choices, the
+    backlog, skipping read text, going back, saves anywhere, a gallery,
+    a route chart.
+  - **Detective games**: clues, investigation scenes, deductions,
+    testimony with contradictions, and a check that every case can be
+    solved from what the player can find.
+
+  [ADR-0016](adr/0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md)
+  sets the design of both. Tickets 2721–2726 (visual novels) and
+  2727–2732 (detective games).
+- **"Thousand+" is a number the engine is tested against.** The RTS
+  module's performance budgets (2718) start at 1 000 units moving and
+  fighting at 60 steps a second on the Steam Deck, with 5 000 as the
+  stretch. Every number is provisional until its device ticket measures
+  it, as ADR-0008 set.
+- **The AI is the engine's, and it stays fair and deterministic.** A
+  computer opponent sees only what its side sees, unless its difficulty
+  settings say otherwise, and it acts only through the commands a player
+  could give. It thinks in work units, never time (ADR-0008 §6), so it
+  decides the same on every device and replays stay exact.
+- **All of it is parked until after Visions of Shuyi launches.** That is
+  later than the other parked work, which waits for the MVP: these
+  tickets wait for the game's release. Nothing in the game needs them.
+  Tickets 2705–2734 are `Parked:` until Nick unparks them.
+- **Inspired by, nothing copied.** No name, character, story, art or
+  sound from existing strategy games, visual novels or mysteries goes
+  into the engine or its examples.
