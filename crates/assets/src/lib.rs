@@ -8,7 +8,8 @@
 //! text format of a grid map ([`grid_map`]); keymap files, generic over a
 //! game's actions ([`keymap`]); and the text of a story game:
 //! languages ([`lang`]), a names table ([`names`]), dialogue scripts
-//! ([`dialogue`]), voice clips by line ([`voice`]) and tips ([`tip`]). Each
+//! ([`dialogue`]), voice clips by line ([`voice`]) and tips ([`tip`]); and
+//! cinematics, timed shots of a game's own kinds ([`cinematic`]). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -27,6 +28,7 @@ mod prelude {
 pub mod audio;
 pub mod bitmap;
 pub mod bundle;
+pub mod cinematic;
 pub mod credits;
 pub mod dialogue;
 pub mod error;

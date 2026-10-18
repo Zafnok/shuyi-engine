@@ -3,6 +3,7 @@
 //! each file is a module.
 
 mod audio;
+mod cinematic;
 mod controller;
 mod key_bindings;
 mod layout_picker;

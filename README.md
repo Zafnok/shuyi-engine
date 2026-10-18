@@ -121,6 +121,14 @@ Carved so far:
   converter that makes one (`bitmap::convert`: enlarge, stretch, levels,
   Bayer dither, dark lines; ADR-0085). The game's table says which
   pictures and how.
+- `shuyi-assets` and `shuyi-ui` (1113): cinematics. The file
+  (`shuyi_assets::cinematic`): an id, a length from a music cue or in
+  seconds, shots at times in order, and lists the shots may share; the
+  game's shots plug in with their own checks (`ShotCheck`). The player
+  (`shuyi_ui::cinematic`): the timeline (`Timeline`, `Moment`), easing, a
+  pan over a backdrop (`Pan`) and `CinematicPlayer<S>`, which draws any
+  moment from the time alone and fades it; each shot kind draws itself
+  (`ShotPainter`). A toy cinematic of two shot kinds plays in `tests/it`.
 
 ## Third-party crates the engine may use
 

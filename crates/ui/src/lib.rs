@@ -17,7 +17,9 @@
 //!
 //! - [`widgets`] screens are built from: a menu and word wrap;
 //! - [`screens`] any game can use, with the game's rows: the layout
-//!   picker and the Key bindings screen.
+//!   picker and the Key bindings screen;
+//! - [`cinematic`]s: a timeline of a game's shots, each frame drawn from
+//!   the time alone.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -31,10 +33,11 @@ mod prelude {
     pub use alloc::{format, vec};
 
     #[cfg(not(feature = "std"))]
-    pub use crate::float::Float;
+    pub use crate::float::{Float, Round};
 }
 
 pub mod audio;
+pub mod cinematic;
 pub mod ctx;
 pub mod debug;
 pub mod dialogue;
