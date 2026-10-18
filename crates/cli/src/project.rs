@@ -75,6 +75,8 @@ pub struct Config {
     pub font_atlas: Option<FontAtlas>,
     /// `web`.
     pub web: Option<Web>,
+    /// `glyph-tiles`.
+    pub glyph_tiles: Option<GlyphTiles>,
     /// `private-assets`.
     pub private_assets: Option<PrivateAssets>,
 }
@@ -194,6 +196,38 @@ pub struct FontAtlas {
     pub required_glyphs: String,
     /// The README the generated `atlas.ron` points at, if any.
     pub readme: Option<String>,
+}
+
+/// `glyph-tiles`: a tileset of glyphs on colored squares
+/// ([`crate::glyph_tiles`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct GlyphTiles {
+    /// The folder holding the font atlas (`atlas.png` and `atlas.ron`).
+    pub font: String,
+    /// The palette file whose colors the tiles name.
+    pub palette: String,
+    /// Where the PNG goes.
+    pub out: String,
+    /// A tile's side, in pixels.
+    pub tile: u32,
+    /// Tiles per row of the picture.
+    pub columns: u32,
+    /// The tiles, in order.
+    pub tiles: Vec<GlyphTile>,
+}
+
+/// One tile of a [`GlyphTiles`].
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GlyphTile {
+    /// Its glyphs, side by side and centred.
+    pub glyphs: String,
+    /// The glyphs' color, by its palette name.
+    pub fg: String,
+    /// The square's color, by its palette name; `None` leaves it clear.
+    #[serde(default)]
+    pub bg: Option<String>,
 }
 
 /// The web build.

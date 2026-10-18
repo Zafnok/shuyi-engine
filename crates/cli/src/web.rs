@@ -97,12 +97,49 @@ fn profile_dir(release: bool) -> &'static str {
     if release { "release" } else { "debug" }
 }
 
-/// Where cargo places the wasm binary for the given options.
-fn wasm_artifact_path(rules: &Web, root: &Path, options: &Options) -> PathBuf {
-    root.join("target")
+/// Where cargo places the wasm binary for the given options, in its build
+/// folder `target`.
+fn wasm_artifact_path(rules: &Web, target: &Path, options: &Options) -> PathBuf {
+    target
         .join(TARGET)
         .join(profile_dir(options.release))
         .join(format!("{}.wasm", rules.bin))
+}
+
+/// The folder cargo builds the project at `root` into: `CARGO_TARGET_DIR`
+/// when it is set (from `root`, if relative), else `target` beside the
+/// workspace's manifest, since a project may be one folder of a bigger
+/// workspace (`cargo locate-project --workspace`), else `root/target`.
+pub fn target_dir(root: &Path) -> PathBuf {
+    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let manifest = Command::new(cargo)
+        .args(["locate-project", "--workspace", "--message-format", "plain"])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .map(|text| PathBuf::from(text.trim()));
+    target_dir_of(
+        root,
+        std::env::var_os("CARGO_TARGET_DIR"),
+        manifest.as_deref(),
+    )
+}
+
+/// [`target_dir`] from what it found: the variable's value and the
+/// workspace's manifest, if any.
+fn target_dir_of(
+    root: &Path,
+    variable: Option<std::ffi::OsString>,
+    manifest: Option<&Path>,
+) -> PathBuf {
+    if let Some(dir) = variable.filter(|dir| !dir.is_empty()) {
+        return root.join(dir);
+    }
+    manifest
+        .and_then(Path::parent)
+        .map_or_else(|| root.join("target"), |dir| dir.join("target"))
 }
 
 /// Builds and packages the web build, returning a one-line summary on success.
@@ -116,7 +153,7 @@ pub fn run(rules: &Web, root: &Path, options: &Options) -> Result<String, String
     if !status.success() {
         return Err(format!("cargo build exited with {status}"));
     }
-    package(&RealWasmOpt, rules, root, options)
+    package(&RealWasmOpt, rules, root, &target_dir(root), options)
 }
 
 /// Copies the wasm artifact and writes the web shell into the dist folder,
@@ -127,13 +164,14 @@ fn package(
     opt: &impl WasmOpt,
     rules: &Web,
     root: &Path,
+    target: &Path,
     options: &Options,
 ) -> Result<String, String> {
     let dist = root.join(&rules.dist);
     fs::create_dir_all(&dist).map_err(|e| format!("create {}: {e}", dist.display()))?;
 
     let wasm_name = format!("{}.wasm", rules.bin);
-    let wasm_src = wasm_artifact_path(rules, root, options);
+    let wasm_src = wasm_artifact_path(rules, target, options);
     let wasm_dst = dist.join(&wasm_name);
     fs::copy(&wasm_src, &wasm_dst)
         .map_err(|e| format!("copy {} to {}: {e}", wasm_src.display(), wasm_dst.display()))?;
@@ -350,7 +388,7 @@ mod tests {
     }
 
     fn write_wasm(root: &Path, options: &Options, content: &[u8]) {
-        let path = wasm_artifact_path(&rules(), root, options);
+        let path = wasm_artifact_path(&rules(), &root.join("target"), options);
         fs::create_dir_all(path.parent().unwrap()).unwrap();
         fs::write(path, content).unwrap();
     }
@@ -417,7 +455,7 @@ mod tests {
 
     #[test]
     fn wasm_artifact_path_uses_the_profile() {
-        let root = Path::new("/repo");
+        let root = Path::new("/repo/target");
         assert_eq!(
             wasm_artifact_path(&rules(), root, &debug()),
             Path::new("/repo/target/wasm32-unknown-unknown/debug/the-game.wasm")
@@ -429,13 +467,55 @@ mod tests {
     }
 
     #[test]
+    fn the_target_folder_is_the_variables_else_the_workspaces() {
+        let root = Path::new("/game");
+        let manifest = Some(Path::new("/repo/Cargo.toml"));
+        assert_eq!(
+            target_dir_of(root, Some("/out".into()), manifest),
+            Path::new("/out")
+        );
+        assert_eq!(
+            target_dir_of(root, Some("out".into()), manifest),
+            Path::new("/game/out")
+        );
+        assert_eq!(
+            target_dir_of(root, Some("".into()), manifest),
+            Path::new("/repo/target")
+        );
+        assert_eq!(
+            target_dir_of(root, None, manifest),
+            Path::new("/repo/target")
+        );
+        assert_eq!(target_dir_of(root, None, None), Path::new("/game/target"));
+    }
+
+    #[test]
+    fn the_target_folder_of_a_crate_in_a_workspace_is_the_workspaces() {
+        // This crate's folder is one of the workspace's: its build folder
+        // is the workspace's (unless the variable moves it).
+        let here = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let target = target_dir(here);
+        if std::env::var_os("CARGO_TARGET_DIR").is_none() {
+            assert_eq!(target.file_name().unwrap(), "target");
+            assert!(here.starts_with(target.parent().unwrap()));
+            assert_ne!(target, here.join("target"));
+        }
+        // Outside any workspace: the project's own.
+        let alone = fixture("target-alone");
+        if std::env::var_os("CARGO_TARGET_DIR").is_none() {
+            assert_eq!(target_dir(&alone), alone.join("target"));
+        }
+        fs::remove_dir_all(&alone).unwrap();
+    }
+
+    #[test]
     fn package_copies_wasm_and_writes_the_shell() {
         let root = fixture("package-basic");
         write_wasm(&root, &debug(), b"wasm-bytes");
         let opt = FakeWasmOpt(|_: &Path, _: &Path| -> Result<bool, String> {
             panic!("wasm-opt should not run for a debug build")
         });
-        let summary = package(&opt, &rules(), &root, &debug()).unwrap();
+        let summary = package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
         assert!(summary.contains("10 bytes"), "{summary}");
         let dist = root.join("dist/web");
         assert_eq!(fs::read(dist.join("the-game.wasm")).unwrap(), b"wasm-bytes");
@@ -469,7 +549,7 @@ mod tests {
         };
         fs::create_dir_all(root.join("music")).unwrap();
         let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
-        package(&opt, &bare, &root, &debug()).unwrap();
+        package(&opt, &bare, &root, &root.join("target"), &debug()).unwrap();
         assert!(!root.join("dist/web/music").exists());
         assert!(!root.join("dist/web/voice").exists());
         fs::remove_dir_all(&root).unwrap();
@@ -481,7 +561,7 @@ mod tests {
         write_wasm(&root, &debug(), b"w");
         let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
         // No music folder: an empty one is still made.
-        package(&opt, &rules(), &root, &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
         let music = root.join("dist/web/music");
         assert!(music.is_dir());
         assert_eq!(fs::read_dir(&music).unwrap().count(), 0);
@@ -490,7 +570,7 @@ mod tests {
         fs::write(root.join("music/README.md"), "doc").unwrap();
         fs::write(root.join("music/sub/x.ogg"), "nested").unwrap();
         fs::write(music.join("stale.ogg"), "old").unwrap();
-        package(&opt, &rules(), &root, &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
         let mut names: Vec<_> = fs::read_dir(&music)
             .unwrap()
             .map(|e| e.unwrap().file_name().into_string().unwrap())
@@ -512,7 +592,7 @@ mod tests {
         // A stale copy from an earlier build goes when the source is gone.
         fs::create_dir_all(voice.join("en")).unwrap();
         fs::write(voice.join("en/stale.ogg"), "old").unwrap();
-        package(&opt, &rules(), &root, &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
         assert!(!voice.exists());
         fs::create_dir_all(root.join("voice/en/scene")).unwrap();
         fs::write(root.join("voice/en/voice.ron"), "manifest").unwrap();
@@ -522,7 +602,7 @@ mod tests {
         fs::write(root.join("voice/en/scene/take.wav"), "source").unwrap();
         fs::write(root.join("voice/notes.md"), "doc").unwrap();
         fs::write(root.join("voice/ogg"), "no extension").unwrap();
-        package(&opt, &rules(), &root, &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
         let read = |path: &str| fs::read_to_string(voice.join(path)).ok();
         assert_eq!(read("en/voice.ron").as_deref(), Some("manifest"));
         assert_eq!(read("en/cast.ron").as_deref(), Some("cast"));
@@ -534,7 +614,7 @@ mod tests {
         // A file named `voice` is not a voice folder.
         fs::remove_dir_all(root.join("voice")).unwrap();
         fs::write(root.join("voice"), "a file").unwrap();
-        package(&opt, &rules(), &root, &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
         assert!(!voice.exists());
         fs::remove_dir_all(&root).unwrap();
     }
@@ -566,7 +646,7 @@ mod tests {
             fs::write(output, b"opt").unwrap();
             Ok(true)
         });
-        let summary = package(&opt, &rules(), &root, &release()).unwrap();
+        let summary = package(&opt, &rules(), &root, &root.join("target"), &release()).unwrap();
         assert!(summary.contains("3 bytes"), "{summary}");
         assert_eq!(
             fs::read(root.join("dist/web/the-game.wasm")).unwrap(),
@@ -584,7 +664,7 @@ mod tests {
             let root = fixture(&format!("package-release-{name}"));
             write_wasm(&root, &release(), b"unoptimized");
             let opt = FakeWasmOpt(|_: &Path, _: &Path| outcome.clone());
-            let summary = package(&opt, &rules(), &root, &release()).unwrap();
+            let summary = package(&opt, &rules(), &root, &root.join("target"), &release()).unwrap();
             assert!(summary.contains("11 bytes"), "{summary}");
             assert_eq!(
                 fs::read(root.join("dist/web/the-game.wasm")).unwrap(),
@@ -598,7 +678,7 @@ mod tests {
     fn package_reports_a_missing_wasm_artifact() {
         let root = fixture("package-missing-wasm");
         let opt = FakeWasmOpt(|_: &Path, _: &Path| panic!("not reached"));
-        let err = package(&opt, &rules(), &root, &debug()).unwrap_err();
+        let err = package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap_err();
         assert!(err.contains("copy"), "{err}");
         fs::remove_dir_all(&root).unwrap();
     }

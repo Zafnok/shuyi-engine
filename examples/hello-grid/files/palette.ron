@@ -1,0 +1,31 @@
+// Hello, Grid's colors by name: the engine's (its screens and widgets draw
+// with them) and the map's. `cargo shuyi glyph-tiles` paints the tileset
+// with the map's too, so both skins share them.
+{
+    // The engine's.
+    "text": "#e4e4dc",
+    "text_dim": "#8a8a80",
+    "panel": "#16161c",
+    "border": "#5a5a6e",
+    "highlight": "#ffd75a",
+    "warning": "#ff7a5a",
+    "focus": "#5ac8ff",
+    "background": "#0a0a0e",
+    "accent": "#a0e07a",
+    "bright": "#ffffff",
+
+    // The map's.
+    "floor_fg": "#4a4a56",
+    "floor_bg": "#20202a",
+    "wall_fg": "#8c8ca0",
+    "wall_bg": "#3c3c4e",
+    "goal_fg": "#ffd75a",
+    "goal_bg": "#3e3418",
+    "hero": "#5ac8ff",
+    "foe": "#ff5a5a",
+    "path": "#f0f0a0",
+    "cursor": "#ffffff",
+    "threat": "#ff5a5a",
+    // Where your piece can walk.
+    "move": "#3a64c8",
+}

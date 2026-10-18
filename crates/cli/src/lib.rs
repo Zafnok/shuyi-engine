@@ -1,6 +1,6 @@
-//! Shuyi Engine's tools, `shuyi`: `frame-png`, `font-atlas`, `check-keys`,
-//! `check-text`, `lang-status`, `web` and `private-assets`, each a module
-//! of library functions with a thin wrapper here.
+//! Shuyi Engine's tools, `shuyi`: `frame-png`, `font-atlas`, `glyph-tiles`,
+//! `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`,
+//! each a module of library functions with a thin wrapper here.
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds. Two
@@ -18,6 +18,7 @@ pub mod codec;
 pub mod font_atlas;
 pub mod frame_png;
 pub mod game;
+pub mod glyph_tiles;
 pub mod lang_status;
 pub mod private_assets;
 pub mod project;
@@ -44,6 +45,7 @@ commands:
   lang-status <code> [--only ui|data|dialogue] [--file <dlg>]
                                      list a language pack's missing, stale and orphaned text
   font-atlas <font.bdf>... <out-dir> build the font atlas from BDF fonts
+  glyph-tiles                        draw a tileset of the font's glyphs on colored squares
   frame-png <out.png> [steps]        render a scripted game frame to a PNG (frame-png --help)
   web [--release] [--<feature>...]   build and package the web (WASM) build
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
@@ -88,6 +90,7 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
             None => Ok(game::run_in_game_program(project, name, args)),
         },
         "font-atlas" => font_atlas(project, args),
+        "glyph-tiles" => glyph_tiles(project, args),
         "frame-png" => match game {
             Some(game) => Ok(frame_png(project, args, game)),
             None => Ok(game::run_in_game_program(project, name, args)),
@@ -213,6 +216,24 @@ fn font_atlas(project: &Project, args: &[String]) -> Outcome {
             }
         },
     )
+}
+
+fn glyph_tiles(project: &Project, args: &[String]) -> Outcome {
+    let rules = project.part(&project.config.glyph_tiles, "glyph-tiles", "glyph_tiles")?;
+    if !args.is_empty() {
+        eprintln!("usage: {} glyph-tiles", project.config.command());
+        return Ok(2);
+    }
+    Ok(match glyph_tiles::run(rules, &project.root) {
+        Ok(summary) => {
+            println!("{summary}");
+            0
+        }
+        Err(e) => {
+            eprintln!("glyph-tiles: {e}");
+            1
+        }
+    })
 }
 
 fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {

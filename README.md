@@ -4,9 +4,9 @@ This folder holds the code of **Shuyi Engine**, the open-source 2D engine
 that is being carved out of the game in this repository (ADR-0063 §1, §3).
 Code moves here one layer at a time (tickets 1103–1117), with no change in
 behavior; new generic work after a layer has moved is written here
-directly. Once the carve is done and an example game runs from engine
-crates alone (1118), ticket 1131 moves this folder to the engine's own
-repository with its history.
+directly. The carve is done and an example game runs from engine crates
+alone ([Hello, Grid](#the-first-example-hello-grid), 1118); ticket 1131
+moves this folder to the engine's own repository with its history.
 
 The engine knows nothing about the game: no game crate, no game asset
 folder, no class, character, story or Combat Art. `cargo xtask
@@ -34,7 +34,10 @@ crate.
 | `shuyi-assets` | `assets` | Bundle layers, images, fonts, palette, audio cues, languages, keymaps, tilesets, importers, error reports. |
 | `shuyi-ui` | `ui` | The frame, screens, input actions, widgets, skins, cinematics, the grid map and the test Harness. |
 | `shuyi-app` | `app` | The window, blitting, input devices, the audio backend, storage and the run loop. |
-| `shuyi-cli` | `cli` | Tools: `frame-png`, `font-atlas`, `check-keys`, `check-text`, `web`, and the rest. |
+| `shuyi-cli` | `cli` | Tools: `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `web`, and the rest. |
+
+The examples, games made from these crates alone, are in
+`engine/examples/` ([below](#the-first-example-hello-grid)).
 
 Carved so far:
 
@@ -155,6 +158,52 @@ Carved so far:
   `cargo run`. The web shell is here (`cli/web/`, built into `shuyi`;
   its README says how a game's binary gets `--allow-undefined`). The toy
   game is a project too (`cli/toy/shuyi.ron`, the `toy` example).
+
+- `shuyi-cli` (1118): `glyph-tiles`, a tileset drawn from the font's
+  glyphs on squares of palette colors (`glyph_tiles`), for a sprite skin
+  before there is art; `shuyi.ron`'s `glyph_tiles` lists the tiles. `web`
+  finds the binary in the workspace's build folder (a project may be one
+  folder of a bigger workspace). `shuyi-app` (1118): a key pressed and
+  let go within one frame is a tap, not a key held down (`keys::ordered`).
+
+## The first example: Hello, Grid
+
+`engine/examples/hello-grid/` is a small game made from the engine's
+crates alone: it depends on `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
+`shuyi-app` and (for its tools) `shuyi-cli`, and names no game crate.
+Its art is the Terminus font (OFL-1.1) and a tileset `glyph-tiles` draws
+from it; its sounds are made by code. Its README says how it is laid out.
+
+Run it, from the repository's root:
+
+```
+cargo run -p hello-grid
+```
+
+Build it for the web, from its folder (the page goes to `dist/web/`;
+serve that folder over HTTP):
+
+```
+cd engine/examples/hello-grid
+cargo shuyi web --release
+```
+
+Pages publishes that build at `/engine/hello-grid/`. CI builds it
+natively and for the web, and runs its tests: `cargo test -p hello-grid`.
+
+What it shows, and the engine's part in each:
+
+| In the game | The engine's |
+| ----------- | ------------ |
+| A title menu, an end screen | `shuyi_ui::widgets::Menu`; the screen stack (`Screen`, `Transition`, `Game`) |
+| Options with two settings (text speed, the map's look), saved | `shuyi_ui::screens::options` with the game's rows; `settings` (`GameSettings`); `storage` |
+| Key rebinding, from the options | `shuyi_ui::screens::key_bindings`; the keymap file (`shuyi_assets::keymap`) over the game's `ActionSet` |
+| A short scene before the stage | the `.dlg` format (`shuyi_assets::dialogue`), `shuyi_ui::dialogue`'s player and text box |
+| A 12 × 10 stage: walk your piece to the goal while a foe steps toward it | the `.map` format (`shuyi_assets::grid_map`); `shuyi_core`'s `TurnRules`, `Sides`, `reachable`, `flow_field`, `SimRng`; `shuyi_ui::grid`'s scene, cursor, path steering and walks |
+| Two looks of the map | the glyph skin and the sprite skin (`GridSkin`), with the game's `UnitPainter`s |
+| The foe's mind, and the bot test | `shuyi_core::bots`: `Bot`, `RandomBot`, `play` |
+| Its tests | the `Harness` (`shuyi_ui::harness`); `frame-png`'s `Painter`, as binary snapshots |
+| Its tools | `shuyi.ron` with `font-atlas`, `glyph-tiles`, `frame-png`, `lang-status` and `web` |
 
 ## Third-party crates the engine may use
 

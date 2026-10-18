@@ -117,20 +117,56 @@ pub fn fullscreen_shortcut() -> bool {
     })
 }
 
-/// This frame's key releases, then presses (with the current Shift state),
-/// then the characters typed (for text boxes, with the keyboard's layout).
+/// This frame's key events, in the order they happened ([`ordered`]), then
+/// the characters typed (for text boxes, with the keyboard's layout).
 pub fn poll() -> Vec<RawInputEvent> {
     let shift = is_key_down(KeyCode::LeftShift) || is_key_down(KeyCode::RightShift);
-    let released = get_keys_released()
-        .into_iter()
-        .filter_map(to_key)
-        .map(RawInputEvent::Up);
-    let pressed = get_keys_pressed()
-        .into_iter()
-        .filter_map(to_key)
-        .map(|key| RawInputEvent::Down(Chord { key, shift }));
-    let typed = std::iter::from_fn(get_char_pressed).map(RawInputEvent::Text);
-    released.chain(pressed).chain(typed).collect()
+    let keys = |codes: Vec<KeyCode>| -> Vec<(KeyCode, Key)> {
+        codes
+            .into_iter()
+            .filter_map(|code| Some((code, to_key(code)?)))
+            .collect()
+    };
+    let released = keys(get_keys_released().into_iter().collect());
+    let pressed = keys(get_keys_pressed().into_iter().collect());
+    let down = |key: Key| {
+        pressed
+            .iter()
+            .any(|&(code, k)| k == key && is_key_down(code))
+    };
+    let just = |list: &[(KeyCode, Key)]| list.iter().map(|&(_, key)| key).collect::<Vec<_>>();
+    let mut events = ordered(&just(&released), &just(&pressed), down, shift);
+    events.extend(std::iter::from_fn(get_char_pressed).map(RawInputEvent::Text));
+    events
+}
+
+/// A frame's key events in the order they happened, from what the window
+/// says of the frame: the keys `released` and `pressed` in it, and whether
+/// a key is `down` at its end. Releases come first (a key let go, then
+/// another pressed), then presses (with `shift`). A key both pressed and
+/// released in one frame was tapped if it is up at the end (pressed, then
+/// let go: its release comes after its press), or let go and pressed again
+/// if it is down; so a quick tap never reads as a key held down, which
+/// would repeat its action until the next release.
+pub fn ordered(
+    released: &[Key],
+    pressed: &[Key],
+    down: impl Fn(Key) -> bool,
+    shift: bool,
+) -> Vec<RawInputEvent> {
+    let tapped = |key: Key| released.contains(&key) && pressed.contains(&key) && !down(key);
+    let ups = released
+        .iter()
+        .filter(|&&key| !tapped(key))
+        .map(|&key| RawInputEvent::Up(key));
+    let downs = pressed
+        .iter()
+        .map(|&key| RawInputEvent::Down(Chord { key, shift }));
+    let taps = pressed
+        .iter()
+        .filter(|&&key| tapped(key))
+        .map(|&key| RawInputEvent::Up(key));
+    ups.chain(downs).chain(taps).collect()
 }
 
 #[cfg(test)]
@@ -231,6 +267,35 @@ mod tests {
             Key::KpDivide => KeyCode::KpDivide,
             Key::KpDecimal => KeyCode::KpDecimal,
         }
+    }
+
+    #[test]
+    fn a_frames_key_events_come_in_the_order_they_happened() {
+        let none = |_: Key| false;
+        let down = |c: Chord| RawInputEvent::Down(c);
+        let up = RawInputEvent::Up;
+        let plain = Chord::plain;
+        // A key let go and another pressed: the release first.
+        assert_eq!(
+            ordered(&[Key::A], &[Key::B], |k| k == Key::B, false),
+            [up(Key::A), down(plain(Key::B))]
+        );
+        // Tapped within the frame: pressed, then let go.
+        assert_eq!(
+            ordered(&[Key::Right], &[Key::Right], none, false),
+            [down(plain(Key::Right)), up(Key::Right)]
+        );
+        // Let go and pressed again: down at the end.
+        assert_eq!(
+            ordered(&[Key::Right], &[Key::Right], |k| k == Key::Right, false),
+            [up(Key::Right), down(plain(Key::Right))]
+        );
+        // Shift goes with the presses.
+        assert_eq!(
+            ordered(&[], &[Key::E, Key::F], none, true),
+            [down(Chord::shifted(Key::E)), down(Chord::shifted(Key::F))]
+        );
+        assert!(ordered(&[], &[], none, false).is_empty());
     }
 
     #[test]

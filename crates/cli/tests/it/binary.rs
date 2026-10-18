@@ -145,6 +145,7 @@ fn bad_arguments_print_the_usage() {
     font_atlas: (required_glyphs: "?"),
     web: (package: "game", bin: "game", features: ["debug"]),
     private_assets: (checkout: "private", pin_file: "private.rev", folders: ["game"]),
+    glyph_tiles: (font: "font", palette: "palette.ron", out: "tiles.png", tile: 24, columns: 4),
 )"#,
     )
     .unwrap();
@@ -153,6 +154,7 @@ fn bad_arguments_print_the_usage() {
             &["font-atlas", "one"][..],
             "usage: shuyi font-atlas <font.bdf>... <out-dir>",
         ),
+        (&["glyph-tiles", "one"], "usage: shuyi glyph-tiles"),
         (
             &["web", "--bogus"],
             "usage: shuyi web [--release] [--debug]",
@@ -169,6 +171,13 @@ fn bad_arguments_print_the_usage() {
     let output = shuyi(&dir, &["font-atlas", "no/such.bdf", "out"]);
     assert_eq!(output.status.code(), Some(1));
     assert!(stderr(&output).starts_with("font-atlas: reading no/such.bdf"));
+    let output = shuyi(&dir, &["glyph-tiles"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        stderr(&output).starts_with("glyph-tiles: reading "),
+        "{}",
+        stderr(&output)
+    );
     fs::remove_dir_all(&dir).unwrap();
 }
 
