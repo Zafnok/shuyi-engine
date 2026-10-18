@@ -58,7 +58,7 @@ fn frame_png_paints_what_the_harness_shows() {
     assert_eq!(png, picture(MapLook::Glyphs));
     // Twice the size with a scale of 2; the game's options are checked.
     let big = HelloTools.frame(&options, &script, Some(2)).unwrap();
-    assert_eq!((big.image.width, big.image.height), (1600, 1024));
+    assert_eq!((big.image.width, big.image.height), (768, 768));
     let seed = |value: &str| GameArg {
         flag: "--seed".to_owned(),
         value: Some(value.to_owned()),

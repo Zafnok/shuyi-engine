@@ -79,9 +79,8 @@ pub const REQUIRED_GLYPHS: &str = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJK
 /// The layout the game plays in: its keymap file's only one.
 pub const LAYOUT: Layout = Layout::named("Arrows");
 
-/// The game's console: 100 × 32 cells of 8 × 16 pixels, the size the
-/// engine's options and Key bindings screens are laid out for.
-pub const CONSOLE: ConsoleSpec = ConsoleSpec::text(100, 32);
+/// The game's console: 48 × 24 cells of 8 × 16 pixels.
+pub const CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
 
 /// The game's data and state, which its screens share.
 #[derive(Debug)]

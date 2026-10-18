@@ -27,7 +27,7 @@ use crate::skin::{self, StageView};
 use crate::{Action, Hello};
 
 /// The cells the map is shown in: all but the top and bottom rows.
-pub const AREA: Rect = Rect::new(0, 1, 100, 30);
+pub const AREA: Rect = Rect::new(0, 1, 48, 22);
 
 /// A piece on its way along its path.
 #[derive(Debug, Clone, PartialEq)]

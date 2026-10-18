@@ -61,8 +61,8 @@ fn quit_on_the_title_quits() {
 
 #[test]
 fn a_long_line_is_read_a_page_at_a_time() {
-    // A line of 400 characters: two pages of the box's three lines of 90.
-    let long = "word ".repeat(80);
+    // A line of 200 characters: two pages of the box's three lines of 42.
+    let long = "word ".repeat(40);
     let source = format!(
         "@scene long
 > {long}

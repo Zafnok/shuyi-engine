@@ -11,13 +11,18 @@ use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::print_centred;
 
-/// The panel, in cells, at its smallest: it grows down to fit its rows
+/// The panel, in cells, at its widest and smallest, on a 100-cell
+/// console: on another it is centred on the console's width, and as wide
+/// as the console if that is narrower; it grows down to fit its rows
 /// ([`panel`]).
 const PANEL: Rect = Rect::new(20, 3, 60, 20);
-/// Column of the row labels.
-const LABEL_X: i32 = PANEL.x + 4;
-/// Column of the row values.
-const VALUE_X: i32 = PANEL.x + 30;
+/// Column of the row labels, from the panel's left edge.
+const LABEL_DX: i32 = 4;
+/// Column of the row values, from the panel's left edge.
+const VALUE_DX: i32 = 30;
+/// Rows under the panel at the least: a blank one, the message's and the
+/// help line's.
+const BELOW_PANEL: i32 = 3;
 /// Panel rows that aren't the screen's rows: the top border, a blank row
 /// under it and the bottom border.
 const PANEL_FRAME_H: i32 = 3;
@@ -44,13 +49,18 @@ fn volume_text(level: u8, max: u8) -> String {
     format!("{bar} {level:>3}")
 }
 
-/// The panel for `view`: [`PANEL`], taller if its rows and the blank rows
-/// between their groups need more.
-fn panel(view: &OptionsView) -> Rect {
+/// The panel for `view` on `buf`: [`PANEL`] centred on the buffer's
+/// width and no wider than it; no taller than leaves room for the message
+/// under it, unless its rows and the blank rows between their groups need
+/// more.
+fn panel(view: &OptionsView, buf: &GlyphBuffer) -> Rect {
+    let width = i32::from(buf.width());
+    let w = PANEL.w.min(width);
+    let room = i32::from(buf.height()) - PANEL.y - BELOW_PANEL - 1;
     let gaps = view.rows.iter().filter(|r| r.starts_group).count();
     let lines = i32::try_from(view.rows.len() + gaps).unwrap_or(i32::MAX);
-    let h = PANEL.h.max(lines.saturating_add(PANEL_FRAME_H));
-    Rect::new(PANEL.x, PANEL.y, PANEL.w, h)
+    let h = PANEL.h.min(room).max(lines.saturating_add(PANEL_FRAME_H));
+    Rect::new((width - w) / 2, PANEL.y, w, h)
 }
 
 /// Paints `view` over the whole of `buf`.
@@ -59,18 +69,18 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     let (black, bg) = (c(EngineColor::Background), c(EngineColor::Panel));
     let (text, dim) = (c(EngineColor::Text), c(EngineColor::TextDim));
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
-    let panel = panel(view);
+    let panel = panel(view, buf);
     buf.fill_rect(panel, Cell::new(' ', text, bg));
     buf.draw_box(panel, BoxStyle::Single, c(EngineColor::Border), bg);
     let title = format!(" {} ", view.title);
-    buf.print(PANEL.x + 2, PANEL.y, &title, c(EngineColor::Highlight), bg);
+    buf.print(panel.x + 2, panel.y, &title, c(EngineColor::Highlight), bg);
 
-    let mut y = PANEL.y + 2;
+    let mut y = panel.y + 2;
     for row in &view.rows {
         if row.starts_group {
             y += 1;
         }
-        paint_row(ctx, buf, row, y);
+        paint_row(ctx, buf, row, panel, y);
         y += 1;
     }
 
@@ -89,10 +99,11 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     print_centred(buf, bottom, &view.help, dim, black);
 }
 
-/// Paints `row` on console row `y`: the focused row's label is a highlight
-/// bar; a value the cursor changes sits between two arrows; the number box
-/// is a highlight bar where the value was.
-fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, y: i32) {
+/// Paints `row` on console row `y` of `panel`: the focused row's label is a
+/// highlight bar; a value the cursor changes sits between two arrows; the
+/// number box is a highlight bar where the value was.
+fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, panel: Rect, y: i32) {
+    let (label_x, value_x) = (panel.x + LABEL_DX, panel.x + VALUE_DX);
     let c = |e| ctx.palette.engine(e);
     let (bg, text, dim) = (
         c(EngineColor::Panel),
@@ -101,16 +112,16 @@ fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, y:
     );
     let bar = c(EngineColor::Focus);
     if row.focused {
-        buf.print(LABEL_X - 1, y, &format!(" {} ", row.label), bg, bar);
+        buf.print(label_x - 1, y, &format!(" {} ", row.label), bg, bar);
     } else {
-        buf.print(LABEL_X, y, &row.label, text, bg);
+        buf.print(label_x, y, &row.label, text, bg);
     }
     let (value, adjustable) = match &row.value {
         ValueView::None => return,
         ValueView::NumberBox { digits, typing } => {
             let caret = if *typing { "_" } else { "" };
             let shown = format!(" {:<BOX_W$} ", format!("{digits}{caret}"));
-            buf.print(VALUE_X - 1, y, &shown, bg, bar);
+            buf.print(value_x - 1, y, &shown, bg, bar);
             return;
         }
         ValueView::Text { text, adjustable } => (text.clone(), *adjustable),
@@ -121,10 +132,10 @@ fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, y:
     } else {
         text
     };
-    buf.print(VALUE_X, y, &value, value_fg, bg);
+    buf.print(value_x, y, &value, value_fg, bg);
     if row.focused && adjustable {
-        buf.print(VALUE_X - 2, y, "◄", dim, bg);
-        let after = VALUE_X + i32::try_from(value.chars().count()).unwrap_or(0) + 1;
+        buf.print(value_x - 2, y, "◄", dim, bg);
+        let after = value_x + i32::try_from(value.chars().count()).unwrap_or(0) + 1;
         buf.print(after, y, "►", dim, bg);
     }
 }
@@ -216,6 +227,8 @@ mod tests {
 
     /// The console the skin is laid out for.
     const PC: ConsoleSpec = ConsoleSpec::text(100, 32);
+    /// A small console, which the skin fits.
+    const SMALL: ConsoleSpec = ConsoleSpec::text(48, 24);
 
     /// Row `y` of `view` as painted, trimmed.
     fn painted_row(c: &ToyCtx, view: &OptionsView, y: i32) -> String {
@@ -364,7 +377,7 @@ mod tests {
             let black = c.palette.engine(EngineColor::Background);
             let mut buf = GlyphBuffer::with_spec(PC, Cell::new(' ', black, black));
             paint(&c, &view(vec![row("Sound volume", value, true)]), &mut buf);
-            (VALUE_X - 1..i32::from(PC.cols))
+            (PANEL.x + VALUE_DX - 1..i32::from(PC.cols))
                 .take_while(|&x| buf.get(x, PANEL.y + 2).is_some_and(|cell| cell.bg == bar))
                 .count()
         };
@@ -453,5 +466,81 @@ mod tests {
             .map(|cell| cell.glyph)
             .collect();
         assert_eq!(lit, " Back ");
+    }
+
+    /// The rows of a game's options, the music volume focused, and a
+    /// message.
+    fn small_view() -> OptionsView {
+        let volume = |level| ValueView::Volume { level, max: 100 };
+        let mut look = row("Map look", words("Glyphs", true), false);
+        look.starts_group = true;
+        let mut keys = row("Key bindings", ValueView::None, false);
+        keys.starts_group = true;
+        let mut v = view(vec![
+            row("Text speed", words("Normal", true), false),
+            row("Fullscreen", words("Off", true), false),
+            row("Music volume", volume(100), true),
+            row("Sound volume", volume(65), false),
+            look,
+            keys,
+            row("Restore defaults", ValueView::None, false),
+        ]);
+        v.message = Some("Couldn't save: the change lasts until you quit".to_owned());
+        v
+    }
+
+    fn painted_small(c: &ToyCtx, view: &OptionsView) -> GlyphBuffer {
+        let black = c.palette.engine(EngineColor::Background);
+        let mut buf = GlyphBuffer::with_spec(SMALL, Cell::new(' ', black, black));
+        paint(c, view, &mut buf);
+        buf
+    }
+
+    /// On a 48-cell console the panel is the console's width and every
+    /// row's label and value is inside it; the message still shows, under
+    /// it.
+    #[test]
+    fn on_a_small_console_every_row_is_inside_the_panel() {
+        let c = ctx();
+        let v = small_view();
+        let buf = painted_small(&c, &v);
+        let row = |y| -> String {
+            (0..i32::from(SMALL.cols))
+                .map(|x| buf.get(x, y).map_or(' ', |c| c.glyph))
+                .collect()
+        };
+        assert_eq!(panel(&v, &buf), Rect::new(0, 3, 48, 17));
+        assert_eq!(
+            row(7),
+            format!("│   {:<24}◄ ██████████ 100 ►{:>2}", "Music volume", "│")
+        );
+        for y in 4..19 {
+            let line = row(y);
+            assert!(line.starts_with('│') && line.ends_with('│'), "{line}");
+        }
+        assert!(row(19).starts_with('└'));
+        assert_eq!(
+            row(21).trim(),
+            "Couldn't save: the change lasts until you quit"
+        );
+        assert_eq!(row(23).trim(), "help");
+        // On the game's console, the panel is where it always was.
+        let mut buf = GlyphBuffer::with_spec(
+            PC,
+            Cell::new(
+                ' ',
+                c.palette.engine(EngineColor::Background),
+                c.palette.engine(EngineColor::Background),
+            ),
+        );
+        paint(&c, &v, &mut buf);
+        assert_eq!(panel(&v, &buf), PANEL);
+    }
+
+    #[test]
+    fn the_small_console_snapshot() {
+        let c = ctx();
+        let buf = painted_small(&c, &small_view());
+        insta::assert_snapshot!(buf.to_snapshot(&c.palette));
     }
 }

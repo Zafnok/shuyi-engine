@@ -13,8 +13,8 @@ use shuyi_ui::Game;
 /// The window: the console at twice its size, and a small margin.
 const WINDOW: Window = Window {
     title: "Hello, Grid",
-    width: 100 * 8 * 2 + 16,
-    height: 32 * 16 * 2 + 16,
+    width: 48 * 8 * 2 + 16,
+    height: 24 * 16 * 2 + 16,
     icon: None,
 };
 

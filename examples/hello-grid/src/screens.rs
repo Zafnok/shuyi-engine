@@ -157,7 +157,7 @@ pub struct Talk {
 
 impl Talk {
     /// Characters a line of the box holds.
-    const WIDTH: usize = 90;
+    const WIDTH: usize = 42;
     /// Lines a page holds.
     const LINES: usize = 3;
 

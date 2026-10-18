@@ -136,7 +136,7 @@ pub fn terrain_tiles(image: ImageId) -> TerrainTiles {
 }
 
 /// How many times their size the tiles are drawn.
-pub const ZOOM: i32 = 2;
+pub const ZOOM: i32 = 1;
 
 /// The sprite skin of the tiles in `image`, zoomed [`ZOOM`] times.
 pub fn sprites(image: ImageId) -> SpriteSkin {

@@ -100,9 +100,9 @@ pub fn paint_title(palette: &Palette, view: &TitleView, buf: &mut GlyphBuffer) {
 
 /// Where the scene's text box goes: the bottom seven rows.
 pub const TALK_BOX: BoxPlace = BoxPlace {
-    frame: Rect::new(0, 25, 100, 7),
+    frame: Rect::new(0, 17, 48, 7),
     text_x: 2,
-    text_y: 27,
+    text_y: 19,
 };
 
 /// A scene's text box, with the speaker's name.

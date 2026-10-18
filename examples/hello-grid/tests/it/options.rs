@@ -56,10 +56,10 @@ fn the_map_look_is_kept_on_leaving_saved_and_drawn_with() {
     assert_eq!(h.screens(), ["title"]);
     let saved = h.ctx().storage.read(SETTINGS_KEY).unwrap().unwrap();
     assert!(saved.contains("look:Tiles"), "{saved}");
-    // The stage is drawn with the sprite skin's 24 px tiles at twice
-    // their size: 16 × 10 of them fit, where the glyph skin fits 50 × 30.
-    assert_eq!(StageScreen::view_tiles(h.ctx()), (16, 10));
-    assert_eq!(StageScreen::view_tiles(title(0).ctx()), (50, 30));
+    // The stage is drawn with the sprite skin's 24 px tiles at their own
+    // size: 16 × 14 of them fit, where the glyph skin fits 24 × 22.
+    assert_eq!(StageScreen::view_tiles(h.ctx()), (16, 14));
+    assert_eq!(StageScreen::view_tiles(title(0).ctx()), (24, 22));
     // With the tiles, the pieces are sprites of the tileset.
     h.keys("Up Enter Backspace");
     assert_eq!(h.screens(), ["title", "stage"]);
