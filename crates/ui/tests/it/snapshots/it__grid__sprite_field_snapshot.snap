@@ -1,0 +1,190 @@
+---
+source: engine/crates/ui/tests/it/grid.rs
+expression: h.snapshot()
+---
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:text bg:panel
+--- overlays ---
+under sprite 28,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,52 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,52 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,76 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,76 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,100 24x24  grid_tiles.png 48,0 24x24
+under sprite 172,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,100 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,124 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,124 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,148 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,148 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 100,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,172 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,172 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,196 24x24  grid_tiles.png 72,0 24x24
+under sprite 76,196 24x24  grid_tiles.png 72,0 24x24
+under sprite 100,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,196 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,196 24x24  grid_tiles.png 0,0 24x24
+under sprite 28,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 76,220 24x24  grid_tiles.png 72,0 24x24
+under sprite 100,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 124,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 148,220 24x24  grid_tiles.png 24,0 24x24
+under sprite 172,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 196,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 220,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 244,220 24x24  grid_tiles.png 0,0 24x24
+under sprite 52,52 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,52 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 100,52 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 28,76 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 52,76 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,76 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 100,76 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 124,76 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 28,100 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 52,100 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,100 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 100,100 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 124,100 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 148,100 24x24  grid_tiles.png 48,0 24x24 opacity=191 solid=move
+under sprite 28,124 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 52,124 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,124 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 100,124 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 124,124 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 28,148 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 52,148 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,148 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 124,148 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 28,172 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 52,172 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,172 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 100,172 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 124,172 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 52,196 24x24  grid_tiles.png 72,0 24x24 opacity=191 solid=move
+under sprite 76,196 24x24  grid_tiles.png 72,0 24x24 opacity=191 solid=move
+under sprite 100,196 24x24  grid_tiles.png 0,0 24x24 opacity=191 solid=move
+under sprite 76,220 24x24  grid_tiles.png 72,0 24x24 opacity=191 solid=move
+under 76,124 24x24  piece
+under 100,148 24x24  piece
+under 87,148 3x14  path
+under 87,159 3x27  path
+under 87,183 27x3  path
+under 111,183 27x3  path
+over  sprite 80,128 16x16  card.png 0,0 16x16
+over  sprite 104,152 16x16  card.png 0,0 16x16
+over  133,179 1x11  path
+over  134,180 1x9  path
+over  135,181 1x7  path
+over  136,182 1x5  path
+over  137,183 1x3  path
+over  138,184 1x1  path
+over  124,172 6x4  background
+over  124,172 4x6  background
+over  142,172 6x4  background
+over  144,172 4x6  background
+over  124,192 6x4  background
+over  124,190 4x6  background
+over  142,192 6x4  background
+over  144,190 4x6  background
+over  125,173 4x2  cursor
+over  125,173 2x4  cursor
+over  143,173 4x2  cursor
+over  145,173 2x4  cursor
+over  125,193 4x2  cursor
+over  125,191 2x4  cursor
+over  143,193 4x2  cursor
+over  145,191 2x4  cursor

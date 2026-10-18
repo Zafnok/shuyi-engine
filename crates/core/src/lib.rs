@@ -23,7 +23,7 @@ pub mod turn;
 
 pub use bots::{Bot, PlayError, RandomBot, Report, Sides, play, play_observed};
 pub use character::CharacterId;
-pub use grid::{Dir, Grid, GridSizeError, Pos, TileSet};
+pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};
 pub use history::{History, NoSuchPoint, Replayed};
 pub use path::{Reach, flow_field, reachable};
 pub use rng::{RandomSource, ScriptedRng, SimRng};

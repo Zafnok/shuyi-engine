@@ -19,7 +19,11 @@
 //! - [`screens`] any game can use, with the game's rows: the layout
 //!   picker and the Key bindings screen;
 //! - [`cinematic`]s: a timeline of a game's shots, each frame drawn from
-//!   the time alone.
+//!   the time alone;
+//! - the tactics kit's [`grid`] map: a scene of the visible tiles generic
+//!   over the game's units, the glyph and sprite skins that paint it (the
+//!   game's units by its own painter), the tile camera, the virtual
+//!   cursor, a path that follows it and how long a walk is shown.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -44,6 +48,7 @@ pub mod dialogue;
 pub mod float;
 pub mod frame;
 pub mod game;
+pub mod grid;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod input;

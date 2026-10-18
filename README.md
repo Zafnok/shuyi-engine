@@ -17,7 +17,7 @@ check-engine-boundary` fails CI when something here does (ADR-0063 §4).
 They live in the engine's repository,
 [Zafnok/shuyi-engine](https://github.com/Zafnok/shuyi-engine): its ADRs
 ("engine ADR-NNNN"), its engine-only tickets, its roadmap and product
-decisions. Only the carve's tickets (1102–1118, 1131) stay in this
+decisions. Only the carve's tickets (1102–1118, 1154, 1131) stay in this
 repository, because they change this repository's code.
 
 ## The crates
@@ -32,7 +32,7 @@ crate.
 | ----- | ------ | ---- |
 | `shuyi-core` | `core` | The seeded RNG, the simulation traits, and the tactics kit: grid, paths, turns. No I/O. |
 | `shuyi-assets` | `assets` | Bundle layers, images, fonts, palette, audio cues, languages, keymaps, tilesets, importers, error reports. |
-| `shuyi-ui` | `ui` | The frame, screens, input actions, widgets, skins, cinematics and the test Harness. |
+| `shuyi-ui` | `ui` | The frame, screens, input actions, widgets, skins, cinematics, the grid map and the test Harness. |
 | `shuyi-app` | `app` | The window, blitting, input devices, the audio backend, storage and the run loop. |
 | `shuyi-cli` | `cli` | Tools: `frame-png`, `font-atlas`, `check-keys`, `check-text`, `web`, and the rest. |
 
@@ -129,6 +129,21 @@ Carved so far:
   pan over a backdrop (`Pan`) and `CinematicPlayer<S>`, which draws any
   moment from the time alone and fades it; each shot kind draws itself
   (`ShotPainter`). A toy cinematic of two shot kinds plays in `tests/it`.
+- `shuyi-core`, `shuyi-assets` and `shuyi-ui` (1115): the tactics kit's
+  map (game ADR-0088). `shuyi_core::TerrainId` (a terrain is an index in
+  the game's table); `shuyi_assets::image::{ImageRect, Picture}` and
+  `shuyi_assets::tileset` (terrain tiles, looks, corner and tile layers,
+  the mix rule). `shuyi_ui::grid`: the scene of a game's units
+  (`MapScene<U>`, `MapUnit`, ranges as named `RangeLayer`s, the cursor,
+  path and threat), where tiles go (`Grid`, `Projection::TopDown`), the
+  corner rule, the path and threat arrows, the `GridSkin` trait with the
+  glyph skin and the sprite skin (ground from terrain tiles in the map's
+  look and light, or the glyph skin's ground), which paint the game's
+  units by its `UnitPainter` and take the game's palette, terrains and
+  lights as `Looks`; and the stage's pieces: the tile `Camera`, the
+  virtual `Cursor`, `steer` and walk timing, with walk speeds and colours
+  as skin settings. The toy's grid game (`toy::grid`: a 10 × 8 `Field`,
+  two pieces, terrain tiles) is played in both skins in `tests/it/grid.rs`.
 
 ## Third-party crates the engine may use
 

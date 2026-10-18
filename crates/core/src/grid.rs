@@ -1,5 +1,5 @@
 //! Grid geometry: positions, the four directions, a rectangular grid and
-//! sets of its tiles.
+//! sets of its tiles, and the terrain a tile is.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -19,6 +19,14 @@ pub struct Pos {
     /// Row.
     pub y: i32,
 }
+
+/// A terrain: its index in the game's table of terrains. The engine knows
+/// no terrain of its own; a game's map is a [`Grid`] of these, and its
+/// skins look each one up in the game's table.
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize,
+)]
+pub struct TerrainId(pub u16);
 
 impl Pos {
     /// Creates a position.

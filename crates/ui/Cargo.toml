@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-ui"
-description = "Shuyi Engine's UI: the frame (glyph console, sprites, backdrop, named colors, snapshots, one-bit renderer), input (actions, keymaps, repeat, controllers, saved bindings, help keys), screens on a stack, the context they share and the frame loop"
+description = "Shuyi Engine's UI: the frame (glyph console, sprites, backdrop, named colors, snapshots, one-bit renderer), input (actions, keymaps, repeat, controllers, saved bindings, help keys), screens on a stack, the context they share, the frame loop and the tactics kit's grid map"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,7 +14,7 @@ workspace = true
 [features]
 default = ["std"]
 # Without it the crate is `no_std` + `alloc` for the Playdate (ADR-0070 §3).
-std = ["shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
+std = ["shuyi-core/std", "shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
 # The developer's actions (those a player can't rebind) keep their keys
 # out of the player's reach in a release build too: the game turns it on
 # with its own debug tools (`DEBUG_TOOLS`).
@@ -34,6 +34,8 @@ harness = []
 toy = ["shuyi-assets/sample-actions"]
 
 [dependencies]
+# The tactics kit's grid: positions, directions, terrain ids and paths.
+shuyi-core = { path = "../core", default-features = false }
 # The keymap file format and `ActionSet`.
 shuyi-assets = { path = "../assets", default-features = false }
 thiserror.workspace = true

@@ -5,6 +5,7 @@
 mod audio;
 mod cinematic;
 mod controller;
+mod grid;
 mod key_bindings;
 mod layout_picker;
 mod screens;

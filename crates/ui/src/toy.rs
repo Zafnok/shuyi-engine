@@ -1,14 +1,18 @@
 //! A toy game for the engine's tests of the screens, the context, the
 //! frame loop and the test `Harness`: the sample
 //! game's actions and keymap file ([`crate::input::sample`]), a palette of
-//! the engine's colors in two themes, a few lines of text in English and
-//! in a debug language, one sound, three tracks and a pool, voiced lines
-//! with two variants, one setting of its own, one image, and its screens:
-//! [`Home`], the [`Menu`] over it, the layout [`Picker`] the first key
-//! opens and the [`Gallery`] of pictures the Debug key opens ([`hooks`]).
+//! the engine's colors (and a grid map's) in two themes, a few lines of
+//! text in English and in a debug language, one sound, three tracks and a
+//! pool, voiced lines with two variants, one setting of its own, two
+//! images, two lights, and its screens: [`Home`], the [`Menu`] over it,
+//! the layout [`Picker`] the first key opens, the [`Gallery`] of pictures
+//! the Debug key opens ([`hooks`]), and a grid map's stage
+//! ([`grid::Field`]).
 //!
 //! Built for this crate's tests and, with the `toy` feature, for its
 //! integration tests.
+
+pub mod grid;
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
@@ -22,6 +26,7 @@ use shuyi_assets::dialogue::{
 use shuyi_assets::image::{ImageId, ImageInfo, ImageTable};
 use shuyi_assets::keymap::{KeymapDef, Layout};
 use shuyi_assets::lang::{Lang, LangCode, PackRules, pack_from_sources};
+use shuyi_assets::lighting::Lighting;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{self, ClipVariant, Playable};
 
@@ -377,14 +382,19 @@ guide: Welcome in.
 @end
 ";
 
-/// A palette of the engine's colors, each a shade of `base`.
+/// A palette of the engine's colors, each a shade of `base`, and the grid
+/// map's ([`grid::MAP_PALETTE`]).
 fn palette(base: u8) -> PaletteDef {
-    let colors = EngineColor::ALL
+    let engine = EngineColor::ALL
         .iter()
         .zip(0u8..)
-        .map(|(c, i)| (c.name().to_owned(), [base, i, i]))
-        .collect();
-    PaletteDef { colors }
+        .map(|(c, i)| (c.name().to_owned(), [base, i, i]));
+    let map = grid::MAP_PALETTE
+        .iter()
+        .map(|&(name, rgb)| (name.to_owned(), rgb));
+    PaletteDef {
+        colors: engine.chain(map).collect(),
+    }
 }
 
 /// The size of [`CARD`].
@@ -423,8 +433,10 @@ pub struct Toy {
     pub applied: Vec<(u8, Option<u8>)>,
     /// The keys the toy kept a player's data under before profiles.
     pub old_keys: Vec<String>,
-    /// The image [`CARD`].
+    /// The images: [`CARD`] and the grid map's tiles ([`grid::TILES`]).
     pub images: ImageTable,
+    /// The lights a grid map may be in ([`grid::lights`]).
+    pub lights: Lighting,
     /// The toy's own level, one of [`SPEEDS`]' worth: an options row that
     /// isn't a setting, shown only while it is `Some`.
     pub level: Option<usize>,
@@ -510,8 +522,9 @@ impl Toy {
             applied: Vec::new(),
             old_keys: Vec::new(),
             images: ImageTable {
-                images: [(CARD, CARD_SIZE)].into(),
+                images: [(CARD, CARD_SIZE), (grid::TILES, grid::TILES_SIZE)].into(),
             },
+            lights: grid::lights(),
             level: None,
         }
     }

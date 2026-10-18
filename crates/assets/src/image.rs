@@ -41,6 +41,28 @@ impl ImageId {
     }
 }
 
+/// A rectangle of an image, in image pixels.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImageRect {
+    /// Left edge.
+    pub x: u32,
+    /// Top edge.
+    pub y: u32,
+    /// Width.
+    pub w: u32,
+    /// Height.
+    pub h: u32,
+}
+
+/// A picture: a rectangle of an image.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Picture {
+    /// The image.
+    pub image: ImageId,
+    /// Where in it.
+    pub rect: ImageRect,
+}
+
 /// Every image the game can draw, by bundle path (`/`-separated).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ImageTable {
