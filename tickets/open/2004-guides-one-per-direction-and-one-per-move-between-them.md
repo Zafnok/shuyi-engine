@@ -66,6 +66,11 @@ say whether a new developer would know where to start.
   pages;
 - tutorials longer than one page (the examples are the long form).
 
+**Either order with 2502** (the wizard, ADR-0013): if 2502 is done, each
+direction guide's "which template starts it" names the wizard answers
+and the `shuyi new … --no-input` command. If not, write the template
+name, and 2502 updates the guides.
+
 ## Implementation steps
 
 1. Write `docs/guides/README.md` and the top-down grid guide.

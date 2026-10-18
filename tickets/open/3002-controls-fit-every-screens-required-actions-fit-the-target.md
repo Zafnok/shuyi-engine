@@ -70,6 +70,9 @@ None.
 **Out (do not do):**
 - folding actions onto fewer buttons automatically (ADR-0008 says no);
 - on-screen touch controls (3015);
+- the new-game wizard's Playdate part. Either order: if 2504 is done,
+  add this check to the CI of the built-in template's `target-playdate`
+  part in this PR; if not, 2504 adds it;
 - the crank as an analog axis (it waits for parked 1121; `CrankForward`
   and `CrankBack` are discrete inputs here).
 

@@ -29,6 +29,16 @@ ADR-0011 §2 also says `shuyi new` with no template asks which
 direction, as a menu, and the same choice is a flag. Agents and scripts
 never meet a prompt (ADR-0005).
 
+**Either order with the wizard** (2501, 2502, [ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)): if 2502 is
+done, the menu is the wizard's perspective question. Then write no menu,
+and write the two templates as parts of the built-in template
+(`stage-first-person`, `stage-third-person` in
+`templates/shuyi-default`, each turning on the `3d` feature), set their
+answers in `docs/modules.ron` to ready, and the CI job makes the games
+with `shuyi new --no-input --perspective first-person` (and
+`third-person`). If 2502 isn't done, write the menu and the template
+folders as below, and 2501 and 2502 fold them in.
+
 It builds on 3104 (the GPU painter, so the example runs in a window and
 the browser), 3106 (the cameras, and through it 3105's mover), 1129
 (`shuyi new` and `templates/`) and 2004 (the guides and their check).

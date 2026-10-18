@@ -38,6 +38,12 @@ town-and-battle example), 1129 (`shuyi new` and `templates/`) and 2004
 works: if 3108 has landed, add the two templates to its menu; if not,
 3108 lists them when it lands.
 
+If the wizard (2502, [ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)) is done, there is no menu: write
+`stage-top-down-3d` as a part of the built-in template, and HD-2D as a
+part that applies when the *World drawing* answer `diorama` is picked
+over a grid, top-down or isometric stage. Set both answers in
+`docs/modules.ron` to ready.
+
 Copy nothing from Square Enix's games (`docs/decisions.md`,
 2026-10-17): no names, art or assets.
 

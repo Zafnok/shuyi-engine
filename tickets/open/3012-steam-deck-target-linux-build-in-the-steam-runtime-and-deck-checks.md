@@ -75,6 +75,9 @@ None. Running it on a real Deck is 3013.
 - Steamworks, Steam Input action sets, Steam Cloud and achievements (the
   game's 0903);
 - measuring on the device (3013);
+- the new-game wizard's Steam Deck part. Either order: if 2504 is done,
+  add the Deck export to the built-in template's `target-steam-deck`
+  part's CI matrix in this PR; if not, 2504 adds it;
 - an engine-drawn keyboard (the game already has a letter grid; Nick
   chose Steam's keyboard for the Steam build, game 0903).
 

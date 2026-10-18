@@ -143,6 +143,12 @@ None.
 - making the engine drop or swap a feature by itself (ADR-0012,
   *Alternatives*).
 
+**Either order with 2504** (the new-game wizard's targets, ADR-0013 §5):
+if 2504 is done, wire `capabilities_fit` into the wizard's composer as
+2504 describes, replacing its `limits` entry ("modules not checked
+against targets"), and add the `gba`, `nds` and `dsi` profiles to its
+targets question as planned. If not, 2504 calls it when it lands.
+
 ## Implementation steps
 
 1. Add `Capabilities`, `Surface`, `ThreeD`, `SpriteLimits`, `Memory` and

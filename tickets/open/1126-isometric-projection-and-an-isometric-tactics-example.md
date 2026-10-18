@@ -49,6 +49,10 @@ None.
   `Projection::Isometric`. The grid kit takes any marker.
 - Guides (ADR-0009 §5): write `docs/guides/isometric.md` in full. If 2004
   isn't done, create the file and 2004 adds it to its list.
+- The new-game wizard (ADR-0013 §3–§4): set the `isometric` answer in
+  `docs/modules.ron` to ready, if 2502 has added it. If 2503 is done,
+  add the part `stage-isometric` to the built-in template: a small
+  isometric grid stage and its test. If 2503 isn't done, 2503 adds it.
 
 **Out (do not do):**
 - isometric autotiling;
