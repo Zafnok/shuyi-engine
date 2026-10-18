@@ -61,3 +61,23 @@ fn text_is_centred_rounding_left() {
     let row: String = (0..10).map(|x| buf.get(x, 1).unwrap().glyph).collect();
     assert_eq!(row, "   abcd   ");
 }
+
+#[test]
+fn a_text_wider_than_the_buffer_starts_at_column_0_cut_with_an_ellipsis() {
+    use crate::frame::color::{EngineColor, tests::engine_palette};
+    use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
+    let p = engine_palette();
+    let (fg, bg) = (p.engine(EngineColor::Text), p.engine(EngineColor::Panel));
+    let mut buf = GlyphBuffer::new(10, 1, Cell::new(' ', fg, bg));
+    super::print_centred(&mut buf, 0, "abcdefghijklmn", fg, bg);
+    let row: String = (0..10).map(|x| buf.get(x, 0).unwrap().glyph).collect();
+    assert_eq!(row, "abcdefghi…");
+}
+
+#[test]
+fn cut_keeps_a_text_that_fits_and_ends_a_longer_one_with_an_ellipsis() {
+    assert_eq!(super::cut("abc", 3), "abc");
+    assert_eq!(super::cut("abcd", 3), "ab…");
+    assert_eq!(super::cut("abcd", 1), "…");
+    assert_eq!(super::cut("abcd", 0), "");
+}

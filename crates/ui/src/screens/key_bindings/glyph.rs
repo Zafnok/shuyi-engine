@@ -20,7 +20,7 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
-use crate::screens::print_centred;
+use crate::screens::{cut, print_centred};
 
 /// The panel, in cells, on a 100 × 32 console: at most this wide, with a
 /// margin of `PANEL.x` cells either side, and down to the row over the
@@ -168,15 +168,6 @@ fn widest_label<A: Copy + PartialEq>(view: &KeyBindingsView<A>, with_fixed: bool
         }
     };
     to_i32(view.rows().map(width).max().unwrap_or(0))
-}
-
-/// `text` in at most `w` cells: cut, its last cell a `…`, if it is longer.
-fn cut(text: &str, w: usize) -> String {
-    if text.chars().count() <= w {
-        return text.to_owned();
-    }
-    let kept: String = text.chars().take(w.saturating_sub(1)).collect();
-    if w == 0 { kept } else { kept + "…" }
 }
 
 /// The console rows of what is listed under the columns' headings: each
