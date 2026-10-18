@@ -81,7 +81,8 @@ asked is missing.
   terminal's, not the game's, so rule 8 doesn't apply to them. The help
   line under each prompt still names them.
 - **Flags** for every question: `--perspective`, `--bodies`,
-  `--music` (once 2205 adds it), `--online`, `--targets`, and `--set`
+  `--music` (once 2205 adds it), `--kind` (from 2003's *Kind of game*
+  concern, ADR-0015 §1), `--online`, `--targets`, and `--set`
   (2501) for template questions. A planned answer given by flag fails
   with its status and ticket. `--no-input`, or stdin not being a
   terminal, asks nothing and uses the defaults.

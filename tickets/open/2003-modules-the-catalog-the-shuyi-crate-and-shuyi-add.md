@@ -52,8 +52,12 @@ None.
   into a `ModuleInfo` type in `shuyi-cli`. The concerns and their
   answers are the table of ADR-0009 §2, with the answers ADR-0011 §2
   adds (first person, third person, top-down 3D; the *World drawing*
-  concern), kept as data in
-  `docs/modules.ron`, which the catalog and the check read.
+  concern) and the *Kind of game* concern ADR-0015 §1 adds (`kind`:
+  `tactics` ready once the carve is done; `rts`, `visual-novel` and
+  `mystery` parked), kept as data in
+  `docs/modules.ron`, which the catalog and the check read. A concern
+  can be marked `alternatives: false` when its answers can share a
+  stage; `kind` is the first.
 - **The catalog**, `docs/modules.md`, grouped by concern. It has a row
   per module, format plugin and platform backend: the name, the
   directions it serves, its status (planned, parked or ready) and its
@@ -62,6 +66,8 @@ None.
   - `shuyi-net` (1140–1150, parked);
   - `shuyi-procanim` (2701–2704, parked);
   - `shuyi-3d`, `shuyi-app-3d` and `shuyi-diorama` (3101–3109, parked);
+  - `shuyi-rts` (2705–2720, 2733–2734), `shuyi-vn` (2721–2726) and
+    `shuyi-mystery` (2727–2732), parked until after the game launches;
   - the format plugins of 2202–2204;
   - the backends `shuyi-app` and `shuyi-playdate` (3010), and
     `shuyi-gba` (3021) and `shuyi-nds` (3024), parked.
@@ -74,7 +80,7 @@ None.
     metadata, or no catalog row;
   - a module's `concern` or `answer` isn't in `docs/modules.ron`;
   - two modules answer the same concern without naming each other in
-    `alternatives`;
+    `alternatives`, unless the concern is marked `alternatives: false`;
   - a feature of `shuyi` names no catalog row.
 - **Two contract operations** (ADR-0005), as library functions with JSON
   output like the rest of 1129:
