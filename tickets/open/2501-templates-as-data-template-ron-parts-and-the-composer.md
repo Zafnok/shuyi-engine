@@ -19,7 +19,7 @@ Nick, 2026-10-17 (`docs/decisions.md`): a "create-react-app type command
 with templates", which is "extensible too". Several perspectives,
 physics, music and targets give too many combinations to keep as whole
 templates.
-[ADR-0011](../../docs/adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
+[ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
 §3 makes a template a folder of data made of **parts**, and a pure
 composer that turns a template and a set of answers into files.
 
@@ -89,7 +89,10 @@ None.
     flow screen, CI with the gates;
   - part `stage-top-down-grid`, when perspective is `top-down-grid`:
     1129's grid screen as a stage;
-  - `blank` is `base` alone.
+  - `blank` is `base` alone;
+  - if the parked 3108 or 3109 have landed with template folders
+    (`first-person`, `third-person`, `top-down-3d`, `hd-2d`), turn each
+    into a part the same way, and keep its name as a short name.
 - **Embedded:** the built-in template is embedded in the `shuyi` binary
   (`include_dir`, believed MIT OR Apache-2.0: check its `Cargo.toml`
   and `cargo deny` on the day; or a build step that writes it as
@@ -102,7 +105,7 @@ None.
 - more than one perspective, and moves between stages (2503);
 - targets checks and per-target CI (2504);
 - templates from a path or git, `shuyi template check` and `new` (2505);
-- any hook or script in a template (ADR-0011 §7: never).
+- any hook or script in a template (ADR-0013 §7: never).
 
 ## Implementation steps
 

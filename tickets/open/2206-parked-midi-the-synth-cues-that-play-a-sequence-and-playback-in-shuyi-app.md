@@ -17,7 +17,7 @@ completed:
 
 ## Context
 
-[ADR-0012](../../docs/adr/0012-midi-music-sequences-and-a-sound-bank-in-a-module.md)
+[ADR-0014](../../docs/adr/0014-midi-music-sequences-and-a-sound-bank-in-a-module.md)
 §3 and §4. 2205 reads `.mid` and `.sf2` files into a `Sequence` and a
 `SoundBank`. This ticket makes them sound:
 
@@ -85,7 +85,7 @@ whether it is what you meant by MIDI sound.
 
 - [ ] Rendering the fixture sequence offline matches the checked-in
       sample hash on Linux, and is within the stated tolerance on
-      Windows, macOS and the web (ADR-0012 §4).
+      Windows, macOS and the web (ADR-0014 §4).
 - [ ] The example plays in the desktop and web builds, and its Harness
       and replay tests pass.
 - [ ] A Harness run of the example lists the sequence cue as started.

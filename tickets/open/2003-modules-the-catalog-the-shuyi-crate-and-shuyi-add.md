@@ -44,9 +44,15 @@ None.
     module crate exists, it has no feature; add none in advance;
   - the example `hello-grid` (1118) depends on `shuyi` only.
 - **Module metadata** (ADR-0009 §4): `[package.metadata.shuyi]` with
-  `concern`, `answer`, `serves`, `alternatives` and `works_with`, read
+  `concern`, `answer`, `serves`, `alternatives` and `works_with` (the
+  parked 3017 later adds `needs`, ADR-0012 §1). One module may answer
+  several concerns, so `concern` and `answer` come as a list of pairs
+  (the parked `shuyi-3d` answers three perspectives and *World
+  drawing*). They are read
   into a `ModuleInfo` type in `shuyi-cli`. The concerns and their
-  answers are the table of ADR-0009 §2, kept as data in
+  answers are the table of ADR-0009 §2, with the answers ADR-0011 §2
+  adds (first person, third person, top-down 3D; the *World drawing*
+  concern), kept as data in
   `docs/modules.ron`, which the catalog and the check read.
 - **The catalog**, `docs/modules.md`, grouped by concern. It has a row
   per module, format plugin and platform backend: the name, the
@@ -55,8 +61,10 @@ None.
   - `shuyi-physics` (1128, parked);
   - `shuyi-net` (1140–1150, parked);
   - `shuyi-procanim` (2701–2704, parked);
+  - `shuyi-3d`, `shuyi-app-3d` and `shuyi-diorama` (3101–3109, parked);
   - the format plugins of 2202–2204;
-  - the backends `shuyi-app` and `shuyi-playdate` (3010).
+  - the backends `shuyi-app` and `shuyi-playdate` (3010), and
+    `shuyi-gba` (3021) and `shuyi-nds` (3024), parked.
 - **A check**, `cargo xtask check-modules`, run in CI and listed in the
   `run-gates` skill. It fails when:
   - a default crate (`shuyi-core`, `shuyi-assets`, `shuyi-ui`,
@@ -91,10 +99,9 @@ None.
 - the perspective markers (1120, 1122, 1126, 1127);
 - the guides (2004);
 - `shuyi remove` (add it when someone asks);
-- the wizard and its catalog fields (`pick`, `question`: 2502), and the
-  `targets` metadata field (2504). Write `shuyi add`'s `Cargo.toml` edit
+- the wizard and its catalog fields (`pick`, `question`: 2502). Write `shuyi add`'s `Cargo.toml` edit
   as a library function, because 2501's composer calls it too
-  (ADR-0011 §3);
+  (ADR-0013 §3);
 - moving anything out of the default crates (ADR-0009 §1).
 
 ## Implementation steps

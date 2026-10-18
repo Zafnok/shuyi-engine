@@ -82,14 +82,14 @@ Nick, 2026-10-17 ([`decisions.md`](decisions.md)): "some create-react-app
 type command with templates", extensible, that asks about perspectives
 (several at once, with moves between them), physics, music and export
 targets. After the MVP
-([ADR-0011](adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)).
+([ADR-0013](adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)).
 
 | Ticket | What |
 | ------ | ---- |
 | 2501 | Templates as data: `template.ron`, parts, a pure composer behind `shuyi new` |
 | 2502 | The wizard: one question per concern from the catalog, multi-pick, a flag per answer, the questions as JSON |
 | 2503 | Several perspectives in one game: a stage each, moves between them, a test that crosses them |
-| 2504 | Targets in the wizard: modules checked against targets, CI per target (after 3001 and 3004) |
+| 2504 | Targets in the wizard: the picked modules' needs checked against each target (with 3017), CI per target (after 3001 and 3004) |
 | 2505 | Templates from a folder or git at a revision, no code run, `shuyi template check` and `new` |
 
 The perspective tickets (1122, 1126, 1127) and the first move (1125) each
@@ -130,6 +130,17 @@ Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
 for networking, styles for later". Each one's title starts with
 `Parked:`. None is started until Nick unparks it.
 
+On 2026-10-17 Nick added 3D, HD-2D, and GBA and DS ports as engine
+features ([`decisions.md`](decisions.md)). Nothing in the game needs
+them, so they are parked like the rest. The order inside each, when
+unparked:
+
+- **3D:** 3101, then 3102 and 3105, then 3103, 3104 and 3106, then
+  3107, then the examples 3108 and 3109.
+- **The GBA and the DS:** 3017 and 3018 first, then 3019, 3020 and
+  3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
+  3025, 3026). DS 3D (3025) also needs 3103 and 3107.
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle | the game's 0060 says the army walks around freely |
@@ -137,5 +148,7 @@ for networking, styles for later". Each one's title starts with
 | 1135 | Research: visual scripting as a view over text | — |
 | 1140–1150 | Networking: lockstep, relay, browser, LAN, Steam, sessions, referee server, real time, accounts and ratings, chat, MMO and global chat research | the game's 0053 picks an online mode |
 | 2701–2704 | Procedural animation, a module (ADR-0010): bodies of points in `Fx`, limbs and gaits that find footholds, strips and rotated sprites to draw them, and a side-view cave example | Nick asks (2026-10-16: "this will be very late addition since it won't tie into visions of shuyi game") |
-| 2205–2206 | MIDI music, a module (ADR-0012): `.mid` and `.sf2` formats, a synth, cues that play a sequence, an example | Nick asks (2026-10-17: he chose to park it, since the game doesn't need it) |
+| 2205–2206 | MIDI music, a module (ADR-0014): `.mid` and `.sf2` formats, a synth, cues that play a sequence, an example | Nick asks (2026-10-17: he chose to park it, since the game doesn't need it) |
 | 3014–3016 | Export targets that cost money and bring agreements: Nintendo Switch and the eShop, mobile (Android, iOS), research on PlayStation and Xbox | Nick asks (2026-10-15: "eventually nintendo eshop and maybe even mobile and console") |
+| 3017–3027 | The GBA and the DS (ADR-0012): target capabilities and the check that a game fits its target's hardware, toolchain research and the selling question, indexed colour, old ARM builds in CI, the GBA backend, its audio and device, two screens, the DS backend, DS hardware 3D, the DS device | Nick asks (2026-10-17: "I want GBA, and DS ports") |
+| 3101–3109 | 3D and HD-2D, as modules (ADR-0011): the 20.12 fixed-point space, glTF meshes, the 3D view and a software rasterizer, the GPU painter, 3D collision, cameras, the HD-2D diorama skin, and four templates with their examples (first person, third person, top-down 3D, HD-2D) | Nick asks (2026-10-17: "add true 3D support (all kinds, first person, third, top down with 3D models), and HD-2D") |

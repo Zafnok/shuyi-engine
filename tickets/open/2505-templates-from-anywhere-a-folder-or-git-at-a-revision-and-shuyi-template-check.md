@@ -17,7 +17,7 @@ completed:
 
 Nick, 2026-10-17 (`docs/decisions.md`): templates, "and let it be
 extensible too".
-[ADR-0011](../../docs/adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
+[ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
 §7: anyone can write a template in the same format as the engine's own
 (2501). `shuyi new --template` takes a folder or a git repository at a
 pinned revision. No code from a template ever runs when a game is made,
@@ -76,7 +76,7 @@ None.
   license before passing `--yes`. If not, add that to 1134's scope.
 
 **Out (do not do):**
-- a template registry or a search command (ADR-0011 §7);
+- a template registry or a search command (ADR-0013 §7);
 - hooks, scripts or any code run by `shuyi new` (never);
 - templates written in another format (cargo-generate's).
 

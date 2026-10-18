@@ -20,7 +20,7 @@ transition between them) so let player tick off multiple". The wizard
 (2502) lets a developer pick several perspectives, but until this ticket
 each becomes a separate stage with nothing joining them.
 
-[ADR-0011](../../docs/adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
+[ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
 §4 sets the rule. A stage per perspective (ADR-0003 §1), generic over its
 marker (ADR-0009 §3). A flow screen that moves between them. The move
 part of a perspective that has a move guide (ADR-0009 §5), or a plain

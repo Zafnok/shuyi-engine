@@ -46,7 +46,13 @@ These come from the code that already runs the game.
 **Game styles.** The game's top-down grid comes first. Top-down free
 movement, isometric, side-scrolling, and moving between them come later
 ([ADR-0003](docs/adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md)).
-No 3D.
+
+**3D, later.** First person, third person, top-down 3D, and HD-2D (2D
+pixel-art characters in a lit 3D diorama) are planned as modules, still
+deterministic and still testable without a window. HD-2D is a skin, so
+a 2D game's rules run under it unchanged. All of it is parked until the
+engine reaches parity with the game
+([ADR-0011](docs/adr/0011-3d-fixed-point-space-a-3d-view-in-the-frame-and-hd-2d-as-a-skin.md)).
 
 **Modules.** The default engine stays small. You pick a direction for
 each part of your game (its perspective, how bodies move and animate,
@@ -60,12 +66,19 @@ perspectives
 several with moves between them, how bodies move, the music, the export
 targets, online play. Every answer is also a flag, so agents and CI make
 games the same way. Templates are data, and anyone can write one
-([ADR-0011](docs/adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)).
+([ADR-0013](docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)).
 
 **Networking.** It is planned in layers, from LAN play to sessions,
 hosted servers, matchmaking and chat
 ([ADR-0006](docs/adr/0006-networking-in-layers-transports-sessions-sync-models-services.md)).
 It is parked until the engine reaches parity with the game.
+
+**Targets.** Windows, Linux, macOS and the web come first, then the
+Steam Deck and the Playdate. The GBA, the DS, the Switch, mobile and
+other consoles are parked. Each target says what its hardware can do,
+and a game that needs more than that doesn't export there
+([ADR-0008](docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md),
+[ADR-0012](docs/adr/0012-gba-and-ds-targets-capabilities-indexed-colour-two-screens-and-homebrew.md)).
 
 ## Map of the repository
 

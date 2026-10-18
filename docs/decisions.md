@@ -279,6 +279,69 @@ Then:
 - **Inspired by, nothing copied.** No name, creature, art or sound from
   Rain World goes into the engine or its examples.
 
+## 2026-10-17: true 3D, HD-2D, and the GBA and DS
+
+Source: Nick, in a Claude Code session on 2026-10-17.
+
+> "I want you to add the following to the roadmap as engine features
+>
+> * So we added template support in future, with a create-react-app like
+>   interface, I want to expand on this and add true 3D support (all
+>   kinds, first person, third, top down with 3D models), and HD-2D (like
+>   final fantasy remakes)
+> * More port support, of course, not all hardware supports all
+>   features, but anyway, I want GBA, and DS ports. Right now I think we
+>   have native PC, with consoles planned, and Playdate in infancy. The
+>   other targets require their own considerations."
+
+**Rules:**
+
+- **The engine is no longer 2D only.** This lifts "without 3D" from
+  2026-10-14 (ADR-0003). 2D stays first: everything already planned
+  comes before 3D, and the default engine stays 2D. 3D is modules a game
+  opts into (ADR-0009).
+- **Three 3D directions and one hybrid.** Each is a template for
+  `shuyi new`, with its guide and example, as every direction has
+  (ADR-0009 §5–§6):
+  - **first person**;
+  - **third person**;
+  - **top-down 3D**: an overhead camera over 3D models;
+  - **HD-2D**: 2D pixel-art characters in a 3D diorama world, with
+    lighting, depth of field and bloom, as in Square Enix's HD-2D games
+    (Octopath Traveler, the Dragon Quest III and Live A Live remakes).
+    It is drawn by a skin, so the rules of a 2D game, grid tactics
+    included, run under it unchanged.
+
+  [ADR-0011](adr/0011-3d-fixed-point-space-a-3d-view-in-the-frame-and-hd-2d-as-a-skin.md)
+  sets the design. Tickets 3101–3109.
+- **The GBA and the DS are export targets.** Each is a profile, a
+  backend and a device ticket, as ADR-0008 set for every target.
+  [ADR-0012](adr/0012-gba-and-ds-targets-capabilities-indexed-colour-two-screens-and-homebrew.md)
+  sets the design. Tickets 3017–3027.
+- **Not every target runs every feature.** A target's profile says what
+  its hardware can do (3D or none, colours, screens, memory), and each
+  module says what it needs. A game that uses something its target
+  lacks doesn't export there: `shuyi check --target` names what doesn't
+  fit, as the Playdate's controls rule does. The engine never drops a
+  feature silently to make a game fit. Planned:
+  - **GBA**: 2D only;
+  - **DS**: 3D within its hardware's limits, HD-2D in a reduced form,
+    and two screens;
+  - **PC, the web, the Steam Deck**: everything.
+- **Inspired by, nothing copied.** No name, art or asset from Square
+  Enix's games goes into the engine or its examples, and nothing of
+  Nintendo's (logos, SDKs, firmware) goes into this repository.
+- **All of it is parked.** Nothing in Visions of Shuyi needs 3D, HD-2D,
+  the GBA or the DS, and the MVP is still parity with the game. Tickets
+  3017–3027 and 3101–3109 are `Parked:` until Nick unparks them.
+- **To ask Nick when unparked** (each ticket's *Nick input* says which):
+  - **Selling GBA and DS games.** Nintendo no longer licenses either
+    system, so a game ships as homebrew: a ROM for flash carts and
+    emulators, or a cartridge from a small publisher. Booting needs
+    Nintendo's logo in the ROM's header. A lawyer's look is worth it
+    before anyone sells one (3018).
+  - **Which comes first**, 3D or the handhelds, if both are unparked.
+
 ## 2026-10-17: a wizard for new games, and MIDI music
 
 Source: Nick, in a Claude Code session on 2026-10-17.
@@ -312,12 +375,12 @@ doesn't need it, he chose **parked**, the recommended option.
   file, so agents and CI make the same games people do.
 - **Templates can be extended.** A template is data, and anyone can write
   one. The engine's own templates use the same format.
-  [ADR-0011](adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
+  [ADR-0013](adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
   sets the design. Tickets 2501–2505 build it, after the MVP.
 - **Planned answers are shown, not offered.** An answer whose module
   isn't built yet, or is parked, appears with its ticket. It can't be
   picked until it is ready.
 - **MIDI is a module, and it is parked.**
-  [ADR-0012](adr/0012-midi-music-sequences-and-a-sound-bank-in-a-module.md)
+  [ADR-0014](adr/0014-midi-music-sequences-and-a-sound-bank-in-a-module.md)
   sets its design. Tickets 2205 and 2206 are `Parked:` until Nick
   unparks them. Visions of Shuyi doesn't need them.

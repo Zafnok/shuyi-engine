@@ -19,7 +19,7 @@ Nick, 2026-10-17 (`docs/decisions.md`): `shuyi new` should ask "do you
 want top down? side scroller?", let the developer "tick off multiple",
 and ask about physics, "what kind of physics", MIDI sound and export
 targets.
-[ADR-0011](../../docs/adr/0011-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
+[ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)
 §1, §2 and §6 set the design:
 
 - the questions come from the engine, from the catalog's concerns
@@ -42,20 +42,28 @@ asked is missing.
 
 **In:**
 - **The catalog gains two fields per concern** in `docs/modules.ron`
-  (ADR-0011 §1): `pick: One | Many` and `question: "…"`. Concerns
+  (ADR-0013 §1): `pick: One | Many` and `question: "…"`. Concerns
   today: perspective (`Many`), bodies and motion (`Many`), online play
   (`One`). Music comes with 2205. Update 2003's `check-modules` to
   require both fields.
-- **Perspectives are catalog answers.** Add the perspective concern's
-  answers to `docs/modules.ron` with their status: `top-down-grid`
-  ready; `top-down`, `isometric` and `side-view` with the status and
-  tickets of 1122, 1126 and 1127.
+- **Perspectives are catalog answers.** Make sure every answer of the
+  perspective concern in `docs/modules.ron` (2003 put them there) has a
+  status and its tickets: `top-down-grid` ready; `top-down`,
+  `isometric` and `side-view` from 1122, 1126 and 1127; `first-person`,
+  `third-person` and `top-down-3d` from 3108 and 3109 (ADR-0011 §2). The
+  *World drawing* concern (HD-2D) becomes a question like any other,
+  asked only when one of its answers other than the default is ready or
+  planned.
+- **The direction menu.** If the parked 3108 has already added a
+  direction menu to `shuyi new`, replace it with the wizard: its
+  directions are now perspective answers (ADR-0013 §1). Keep its tests'
+  promise that no terminal means no prompt.
 - **`wizard::questions(&Catalog, &Template) -> Vec<Question>`**, pure:
   1. the name and folder;
   2. the perspectives (`Many`);
   3. one question per catalog concern, in the catalog's order, skipping
      a concern none of whose answers applies to the perspectives picked
-     (bodies and motion isn't asked for grid-only games, ADR-0011 §1);
+     (bodies and motion isn't asked for grid-only games, ADR-0013 §1);
   4. the template's own questions;
   5. the targets (`Many`), from the target profiles (3001) if 3001 is
      done; if not, only `desktop` and `web`, and 2504 widens it.
@@ -85,7 +93,7 @@ asked is missing.
   into `shuyi.ron` under `created_with`.
 - **Each picked answer that is a module** turns it on through the
   template's parts or, if no part names it, through `shuyi add`'s code
-  directly (ADR-0011: every catalog answer works with no part).
+  directly (ADR-0013: every catalog answer works with no part).
 - **The skill pack:** if 1134 is done, update the `shuyi-new-game`
   skill to call `--questions --json`, ask its user, and pass the
   answers as flags. If not, add that to 1134's scope in this PR.

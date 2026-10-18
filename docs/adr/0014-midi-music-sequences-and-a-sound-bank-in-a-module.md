@@ -1,10 +1,10 @@
-# ADR-0012: MIDI music: sequences and a sound bank, in a module
+# ADR-0014: MIDI music: sequences and a sound bank, in a module
 
 - **Status:** Accepted; its tickets are parked
 - **Date:** 2026-10-17
 - **Related tickets:** 2205 (the formats and the music concern), 2206
   (the synth and playback), 2502 (the wizard asks about music), 3010
-  (the Playdate backend)
+  (the Playdate backend), 3017 (needs), 3027 (tracker music on the GBA)
 - **Extends:** ADR-0004 §6 (audio stays as it is: cues by id), ADR-0007
   (formats are plugins), ADR-0009 (modules), ADR-0002 §2 and §8 (layers
   and licenses)
@@ -45,7 +45,7 @@ The catalog (`docs/modules.ron`, ADR-0009 §2) gains a concern:
 | ------- | ------- | ----- |
 | Music | recorded files; MIDI with a sound bank | default (ADR-0004 §6); `shuyi-midi` (2205, 2206) |
 
-`pick` is `Many` (ADR-0011 §1): a game may use both, for example
+`pick` is `Many` (ADR-0013 §1): a game may use both, for example
 recorded music in the menus and MIDI in the levels.
 
 ### 2. A module, `shuyi-midi`
@@ -76,6 +76,10 @@ recorded music in the menus and MIDI in the levels.
   follows.
 - **The Playdate backend** (3010) plays a sequence with the SDK's own
   synth instead, when its ticket adds it.
+- **The module's needs** (ADR-0012 §1, 3017): `shuyi-midi` states
+  `ram_bytes` large enough for its bank and the synth, measured in 2206.
+  The GBA and the DS mix their music in software from tracker modules
+  (3027); MIDI on them is not planned.
 
 ### 4. Tests
 
@@ -108,6 +112,8 @@ recorded music in the menus and MIDI in the levels.
   is for: the size, and changing the music while it plays.
 - **MIDI in the default engine** — every game would pay for the synth
   and its dependency, which ADR-0009 §1 rules out.
-- **A tracker format (`.mod`, `.xm`) instead** — a fine module of its
-  own later, but Nick asked for MIDI, and `.mid` is what most composing
-  tools export.
+- **A tracker format (`.mod`, `.xm`) instead** — the parked 3027 plays
+  tracker modules on the GBA, where a SoundFont synth doesn't fit. On
+  other targets Nick asked for MIDI, and `.mid` is what most composing
+  tools export. A tracker answer to the music concern can follow 3027
+  if a game asks for it.

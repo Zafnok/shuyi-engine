@@ -51,7 +51,10 @@ say whether a new developer would know where to start.
 - **Move guides**: `top-down-free-to-top-down-grid.md` as a planned page
   pointing at 1125, which writes it in full.
 - **A check**, part of `cargo xtask check-modules` (2003):
-  - every direction in `docs/modules.ron` has a direction guide;
+  - every direction in `docs/modules.ron` has a direction guide. The
+    parked 3D directions (ADR-0011 §2) get planned pages naming their
+    tickets: `first-person.md`, `third-person.md`, `top-down-3d.md` and
+    `hd-2d.md`;
   - every guide links only to modules and tickets that exist;
   - a guide marked planned names at least one open ticket.
 - **The docs site** (1132) publishes `docs/guides/` with the catalog.
@@ -63,7 +66,7 @@ say whether a new developer would know where to start.
   pages;
 - tutorials longer than one page (the examples are the long form).
 
-**Either order with 2502** (the wizard, ADR-0011): if 2502 is done, each
+**Either order with 2502** (the wizard, ADR-0013): if 2502 is done, each
 direction guide's "which template starts it" names the wizard answers
 and the `shuyi new … --no-input` command. If not, write the template
 name, and 2502 updates the guides.

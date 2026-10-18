@@ -55,7 +55,7 @@ None.
 
 **Out (do not do):** MCP (1133); skills (1134); questions, templates
 made of parts and templates from outside the engine (2501–2505,
-ADR-0011). Keep the two templates as plain folders; 2501 turns them into
+ADR-0013). Keep the two templates as plain folders; 2501 turns them into
 parts.
 
 ## Implementation steps

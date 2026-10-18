@@ -19,10 +19,10 @@ completed:
 
 Nick, 2026-10-17 (`docs/decisions.md`): the new-game wizard asks "if
 they want MIDI sound".
-[ADR-0012](../../docs/adr/0012-midi-music-sequences-and-a-sound-bank-in-a-module.md)
+[ADR-0014](../../docs/adr/0014-midi-music-sequences-and-a-sound-bank-in-a-module.md)
 sets the design: music is a concern in the catalog, and MIDI is a module,
 `shuyi-midi`, with two formats (`mid`, `sf2`) and a `Sequence` that is
-plain data. This ticket is ADR-0012 §1, §2 and the format tests of §4.
+plain data. This ticket is ADR-0014 §1, §2 and the format tests of §4.
 Playing the music is 2206.
 
 ## Nick input
@@ -36,11 +36,15 @@ None.
   ADR-0009 §4:
   - metadata: concern `music`, answer `midi`, serves every direction,
     alternatives none (recorded music is the default and can share a
-    game), `targets = ["*"]` once 2504 adds the field;
+    game);
   - the README in its fixed order;
   - the `midi` feature of the `shuyi` crate (2003) and the catalog row;
   - the `shuyi-midi` skill if the skill pack (1134) is done; if not, add
-    it to 1134's list in this PR.
+    it to 1134's list in this PR;
+  - its `needs` (ADR-0012 §1), if 3017 is done: `ram_bytes` for the
+    largest fixture bank plus the synth, provisional until 2206 measures
+    it. If 3017 isn't done, 3017 gives it a `needs` key with the other
+    modules.
 - **The music concern** in `docs/modules.ron`: answers `recorded`
   (default, ready) and `midi` (this module), `pick: Many`, question
   "What plays the music?". If 2502 is done, the wizard asks it with no
@@ -74,7 +78,7 @@ None.
 
 **Out (do not do):**
 - the synth and playback (2206);
-- MIDI input from devices, and MIDI output to devices (ADR-0012,
+- MIDI input from devices, and MIDI output to devices (ADR-0014,
   alternatives);
 - tracker formats (`.mod`, `.xm`).
 

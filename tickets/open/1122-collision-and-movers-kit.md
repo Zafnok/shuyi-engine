@@ -48,8 +48,7 @@ None.
   - moving by `a` then by `b` equals moving by `a + b` when nothing is
     in the way;
   - the same inputs give the same positions.
-
-- The new-game wizard (ADR-0011 §3–§4). Set the `top-down` answer of
+- The new-game wizard (ADR-0013 §3–§4). Set the `top-down` answer of
   the perspective concern in `docs/modules.ron` to ready, if 2502 has
   added it. If 2503 is done, add the part `stage-top-down` to the
   built-in template: a stage with the top-down controller, generic over

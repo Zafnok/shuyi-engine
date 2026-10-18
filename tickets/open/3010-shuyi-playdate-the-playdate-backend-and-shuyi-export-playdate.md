@@ -99,7 +99,7 @@ Nothing here costs money. A device is needed only for 3011.
   to the formats the SDK plays (IMA ADPCM WAV), and play them through the
   SDK's sound API.
 - the crank as an analog axis (it waits for parked 1121);
-- MIDI sequences through the SDK's own synth (ADR-0012 §3). They wait
+- MIDI sequences through the SDK's own synth (ADR-0014 §3). They wait
   for parked 2205 and 2206; once those are done, write the follow-up
   ticket;
 - the accelerometer;

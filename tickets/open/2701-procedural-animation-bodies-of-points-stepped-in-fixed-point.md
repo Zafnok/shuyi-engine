@@ -38,7 +38,9 @@ None.
 
 **In:**
 - **`shuyi_core::fx` additions** (ADR-0010 §1):
-  - `Fx::sqrt` (the floor of the exact root, through `i64`);
+  - `Fx::sqrt` (the floor of the exact root, through `i64`). If the
+    parked 3101 has landed, `Fx` is `Fixed<8>` and these functions are
+    written once for `Fixed<F>`;
   - `FxVec2::length`, `length_squared` and `normalize` (zero stays
     zero);
   - `Angle::atan2(y, x)` and `Angle::acos(Fx)`, to the 256-step angle

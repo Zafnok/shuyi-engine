@@ -1,4 +1,4 @@
-# ADR-0011: Starting a game: a wizard over the catalog, and templates made of parts
+# ADR-0013: Starting a game: a wizard over the catalog, and templates made of parts
 
 - **Status:** Accepted
 - **Date:** 2026-10-17
@@ -6,10 +6,13 @@
   (the wizard), 2503 (several perspectives in one game), 2504 (targets in
   the wizard), 2505 (templates from anywhere), 1129 (`shuyi new`), 2003
   (the catalog and `shuyi add`), 2004 (guides), 3001 and 3004 (targets),
-  1134 (skills), 2205 and 2206 (MIDI)
+  1134 (skills), 2205 and 2206 (MIDI), 3017 (capabilities and needs),
+  3108 and 3109 (the 3D templates)
 - **Extends:** ADR-0005 §1–§2 (the contract and its surfaces), ADR-0009
   §2, §4 and §6 (concerns, module metadata, templates are directions),
-  ADR-0003 §1 (stages and the flow), ADR-0008 §1 (target profiles)
+  ADR-0003 §1 (stages and the flow), ADR-0008 §1 (target profiles),
+  ADR-0011 §2 (the direction menu of `shuyi new`), ADR-0012 §1
+  (capabilities and needs)
 
 ## Context
 
@@ -35,6 +38,14 @@ What the plans have:
   separate templates.
 - **Target profiles** (3001) and **`shuyi export`** (3004) exist per
   target, and the game manifest gets a `targets` table.
+- **Capabilities and needs** (ADR-0012 §1, the parked 3017): each
+  profile says what its hardware can do, each module states its `needs`,
+  and `capabilities_fit` says whether a game fits a target.
+- **The 3D directions** (ADR-0011 §2, parked 3101–3109) add first
+  person, third person and top-down 3D to the perspective concern, and a
+  *World drawing* concern whose answers include HD-2D. ADR-0011 §2 asks
+  `shuyi new` to list the directions as a menu when no template is
+  named, and 3108 builds that menu.
 
 What other tools do:
 
@@ -77,6 +88,12 @@ drawn clips of the default engine (ADR-0004 §3–§4), rigid-body physics
 2701). That is the question Nick called "what kind of physics". A game
 with only grid stages isn't asked it, because the grid kit moves its
 pieces itself.
+
+The 3D directions are answers like any other: first person, third
+person and top-down 3D under "Which perspectives?", and HD-2D under the
+*World drawing* concern (ADR-0011 §2). The direction menu ADR-0011 §2
+asks for is this wizard's perspective question; where the wizard
+exists, no separate menu is written.
 
 The time concern (turns or ticks) is not asked. It follows from the
 perspectives: a grid stage takes turns, every other stage takes ticks.
@@ -177,10 +194,14 @@ When more than one perspective is picked:
 
 - Picked targets fill the manifest's `targets` table (3001) with the
   profile's defaults.
-- Module metadata (ADR-0009 §4) gains `targets`: the target ids a module
-  builds for, with `["*"]` for all. The wizard refuses a module a picked
-  target doesn't take, and names both: "rigid-body physics isn't built
-  for `playdate`".
+- Before writing anything, the wizard runs the capabilities check
+  (`capabilities_fit`, ADR-0012 §1, 3017) on the picked modules' `needs`
+  against each picked target, and refuses a game that doesn't fit, with
+  the check's own words: "module shuyi-3d needs three_d: software;
+  target gba has three_d: none". No second list of targets per module is
+  kept: `needs` is the one place a module says what hardware it wants.
+  Until 3017 is built, the wizard skips this check and says so in
+  `limits`.
 - The new game's CI runs `shuyi check --target` and `shuyi export` for
   each picked target.
 - A target with its own duties brings its part. With `playdate` picked,

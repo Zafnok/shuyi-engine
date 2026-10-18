@@ -81,7 +81,10 @@ None.
 **Out (do not do):**
 - measuring on devices (3011, 3013);
 - the game's scenarios (a game ticket; write it and link it);
-- profiling tools and flame graphs (a later ticket if wanted).
+- profiling tools and flame graphs (a later ticket if wanted);
+- allocations per frame, the `frame_cycles` budget and the emulator
+  runner for the GBA and the DS (the parked 3020, ADR-0012 §7). Keep the
+  counting allocator able to report per frame.
 
 ## Implementation steps
 

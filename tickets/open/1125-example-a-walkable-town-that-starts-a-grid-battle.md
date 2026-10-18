@@ -58,13 +58,14 @@ for him, not a sign-off.
   and the move guide `docs/guides/top-down-free-to-top-down-grid.md`
   from this example. If 2004 is done, replace its planned pages. If not,
   create the files, and 2004 adds them to its list.
-
-- The new-game wizard (ADR-0011 §4): if 2503 is done, add the move
+- The new-game wizard (ADR-0013 §4): if 2503 is done, add the move
   `top-down → top-down-grid` to the built-in template, as a small
   version of this example's touch-to-battle, with its steps in
   `tests/moves/`. If 2503 isn't done, 2503 adds it.
 
-**Out (do not do):** anything in our game; isometric (1126).
+**Out (do not do):** anything in our game; isometric (1126); mixing
+the example's rules with its skin. Keep them apart: the parked 3109
+redraws this example in HD-2D by changing only its skin.
 
 ## Implementation steps
 

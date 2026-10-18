@@ -47,6 +47,9 @@ None. Our game's frames don't change.
     markers `TopDownGrid` and `TopDown`;
   - `WorldLayer`, `Camera` and a world scene are generic over
     `P: Perspective`, and the drawing side reads `P`'s projection;
+  - keep the 2D projection off `Perspective` itself (a trait of its
+    own for 2D markers), because the parked 3D markers (3101) have no
+    2D projection;
   - 1126 and 1127 add `Isometric` and `SideView`.
 
 **Out (do not do):** isometric projection (1126); rotation (2703 adds
