@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build and the no-std build; the ticket lint, typos and links once ticket 2002 lands). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build and the no-std build; the ticket lint, typos and links). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -42,15 +42,20 @@ cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf
 cargo build -p shuyi-ui --no-default-features --target thumbv7em-none-eabihf
 ```
 
-## The repository's own checks (ticket 2002)
+## The repository's own checks (CI's `tickets` job)
 
-These work once ticket 2002 lands:
+They run on every PR, docs-only ones too:
 
 ```bash
-cargo xtask ticket-lint                 # add --pr-branch t<NNNN>-<slug> as CI does
-cargo xtask check-links
-typos
+cargo xtask ticket-lint --pr-branch t<NNNN>-<slug>   # the branch, as CI does; without it on main
+cargo xtask check-links   # relative links in every *.md resolve (no network)
+typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```
+
+The ticket lint checks `game#NNNN` ids in `blocked_by` against the game
+repository's tickets with `gh api`, or against a local checkout with
+`--game-repo <path>`. With neither it warns and skips them; CI has no
+access to the game repository, so check them locally when you add one.
 
 Later tickets add their checks here, for example `check-keys` and
 `check-text` on the engine's own code (2006) and `check-skills`.

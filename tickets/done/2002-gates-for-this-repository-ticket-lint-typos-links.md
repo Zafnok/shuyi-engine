@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2002 — Gates for this repository before the code arrives
@@ -80,12 +80,51 @@ None.
 
 - [ ] `cargo xtask ticket-lint` passes on the repository, and its tests
       cover each changed rule.
-- [ ] `cargo xtask check-links` and `typos` pass.
-- [ ] CI runs all three on a PR.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo xtask check-links` and `typos` pass.
+- [x] CI runs all three on a PR.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: each lint rule, passing and failing.
 
 ## Completion notes
+
+- `crates/xtask` (repository tooling, `publish = false` like the rest of
+  the workspace) with `cargo xtask ticket-lint` and `cargo xtask
+  check-links`; the alias is in `.cargo/config.toml`. The workspace and
+  `rust-toolchain.toml` already came with the code (1131), so step 1 only
+  added the crate and the alias.
+- The lint is the game's `tickets.rs` with its tests, plus:
+  1. `game#NNNN` in `blocked_by`, checked against the game's
+     `tickets/open` and `tickets/done` with `gh api` or `--game-repo
+     <path>`; a malformed `game#` id is an error, an unreachable game a
+     warning. The game is only read when some ticket names one of its ids.
+     A plain id is never looked up in the game.
+  2. `Parked:` tickets must be `status: blocked` with a `> **Parked**`
+     note as the first thing under the `# ` heading.
+  3. The types are this repository's five; `nick_input` lost the game's
+     `answer-first`, which `tickets/README.md` doesn't list.
+  4. `--pr-branch t<NNNN>-<slug>` as in the game. It also reads CRLF
+     checkouts.
+- `check-links` parses Markdown with `pulldown-cmark` (MIT), so links in
+  code aren't links. It checks relative links and images, `/`-rooted
+  ones from the repository root, with exact letter case as on GitHub, and
+  skips web links and anchors. It skips `.git`, `target`, `dist`,
+  `node_modules` and the app's `.claude/worktrees`.
+- New dependencies, both permissive: `serde_norway` (MIT OR Apache-2.0,
+  as in the game) and `pulldown-cmark` without default features (MIT).
+- `_typos.toml` was already there from 1131 and needed no new words.
+- CI: a `tickets` job that always runs (not gated on `changes`), in
+  `ci-result`'s needs. CI's token can't read the private game repository,
+  so there the `game#` ids are warned about and skipped; the `run-gates`
+  skill says to check them locally (where `gh` is signed in) when adding
+  one.
+- Mutation testing: `tests/cli.rs` runs the binary for its commands,
+  options and exit codes. The `gh api` call itself (`list_on_github`) is
+  excluded in `.cargo/mutants.toml`, as `RealWasmOpt` is: no test machine
+  is sure to have `gh` signed in to the private game. What it does with
+  `gh`'s answer is `gh_listing`, tested on its own.
+- The repository had no lint errors, broken links or typos to fix.
+- Branch protection is Nick's setting: if he wants it, `ci-result` is the
+  one check to require (it now includes `tickets`).
