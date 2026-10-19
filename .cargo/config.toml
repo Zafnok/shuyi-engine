@@ -3,6 +3,10 @@
 # `shuyi.ron` in the working folder or above it.
 shuyi = "run -q -p shuyi-cli --"
 
+# The repository's own tools (`crates/xtask`, ticket 2002): `ticket-lint`
+# and `check-links`.
+xtask = "run -q -p xtask --"
+
 # rustup's self-contained x86_64-pc-windows-gnu linker ships without a full
 # mingw-w64 import library set (e.g. no libimm32.a, which macroquad needs for
 # IME support). Use a full MSYS2 mingw-w64 toolchain instead. Install with:
