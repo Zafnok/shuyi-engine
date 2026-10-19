@@ -52,11 +52,15 @@ from the game's glyph style.
   - the graph file format;
   - the first node library, taken from what 1125 and 1127 needed in code;
   - what each graph kind compiles to;
-  - the editor: a web tool with `egui-snarl` (MIT/Apache), or our own
-    glyph UI with the pointer (1121), or both.
+  - the graph panel's needs: what 2508 (the panel in the editor) must
+    show and check. Where the editor runs, and in what toolkit, is the
+    editor research's decision (2506). If 2506 is done, follow its ADR.
+    If it isn't, write down the panel's needs here, and 2506 picks the
+    toolkit with them in hand.
 - A throwaway spike (not committed) that builds one graph by hand,
   compiles it, and runs it in the platformer example.
-- Implementation tickets for the format, the compiler and the editor.
+- Implementation tickets for the format and the compiler, and a rewrite
+  of 2508 (the graph panel) to this ADR.
 
 **Out (do not do):**
 - building the editor;

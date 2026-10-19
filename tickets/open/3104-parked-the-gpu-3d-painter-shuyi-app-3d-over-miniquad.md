@@ -117,6 +117,8 @@ None.
   the exact gates stay on the software picture and on snapshot text
   (ADR-0011 §5). The same scene with each effect on is saved as a CI
   artefact for a look by eye.
+- **The debug view (2320).** If 2320 is done, draw its `Gizmo3`s as a
+  line pass, depth-tested unless `on_top`. If it isn't, 2320 does this.
 
 **Out (do not do):**
 - other backends' painters (the DS's is ADR-0012's);

@@ -53,6 +53,9 @@ None.
   `docs/modules.ron` to ready, if 2502 has added it. If 2503 is done,
   add the part `stage-isometric` to the built-in template: a small
   isometric grid stage and its test. If 2503 isn't done, 2503 adds it.
+- **The debug view (2318).** If 2318 is done, add the isometric
+  projection to its `Gizmos::push_world`, with its test. If it isn't,
+  2318 supports isometric layers itself.
 
 **Out (do not do):**
 - isometric autotiling;

@@ -104,6 +104,9 @@ None.
   and section 4 as the smallest working stage.
 - **The catalog**: `shuyi-3d`'s row claims first person and third
   person as ready.
+- **The debug view (2320).** If 2320 is done, the third-person example
+  calls its `bones` and `collision3` helpers. If it isn't, 2320 does
+  this.
 
 **Out (do not do):**
 - top-down 3D and HD-2D (3109);
