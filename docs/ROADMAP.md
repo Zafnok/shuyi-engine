@@ -116,6 +116,24 @@ The sweep also added notes to 3003 (a loading phase), 3010 (the
 game's front end as working code to lift) and 3011 (the report a
 shipped game keeps).
 
+### Seeing inside a running game: the debug view
+
+Nick, 2026-10-19 ([`decisions.md`](decisions.md)): see level layouts,
+collision bounds and skeletons in real time, in debug mode. The debug
+view draws gizmos (outlines, lines, crosses, labels) over the running
+game, by channel, from the debug menu. A gizmo is plain data, built
+read-only, so a replay with the view on has the same hash as one with
+it off. These two come after the MVP and need nothing parked:
+
+| Ticket | What |
+| ------ | ---- |
+| 2315 | Gizmos over the frame, channels on the debug menu, `frame-png --debug`, and the grid kit's layout as the first channel |
+| 2316 | In real time: pause, step one frame, slow motion, and a readout of the top screen |
+
+The channels for collision (2317), level layouts (2318), skeletons
+(2319) and 3D (2320) follow the parked work they draw, and are parked
+with it (*Parked*, below).
+
 ### Modules and directions
 
 Nick, 2026-10-16 ([`decisions.md`](decisions.md)): a developer sets a
@@ -196,6 +214,18 @@ unparked:
   3023, then the GBA (3021, then 3027 and 3022), then the DS (3024,
   3025, 3026). DS 3D (3025) also needs 3103 and 3107.
 
+On 2026-10-19 Nick asked for a visual editor like Godot's or Unreal's
+Blueprints, and for the debug view's channels
+([`decisions.md`](decisions.md)). The editor follows the visual
+scripting research (1135), which is parked, so it is parked too. Each
+channel is parked with the work it draws. The order, when unparked:
+
+- **The debug view's channels:** collision (2317) after 1122; level
+  layouts (2318) after 1120 and 1124; skeletons (2319) after 2318, 2701
+  and 2702; 3D (2320) after 3102, 3103 and 3105.
+- **The editor:** the research (2506) after 1129 and 2316, then the
+  shell (2507), then the graph panel (2508) after 1135.
+
 On 2026-10-18 Nick added real-time strategy with a thousand units or
 more and the AI to run it, visual novels, and detective games
 ([`decisions.md`](decisions.md)). These wait longer than the rest:
@@ -217,6 +247,8 @@ inside each, when unparked:
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle | the game's 0060 says the army walks around freely |
 | 1126–1128 | Isometric, side view (platformer), optional physics | — |
 | 1135 | Research: visual scripting as a view over text | — |
+| 2506–2508 | The editor (Godot- or Unreal-style): research on where it runs and how it talks to a running game through the tool contract, the shell with a live view, a tree and an inspector over settings files, and the graph panel over `*.graph.ron` | Nick asks (2026-10-19: "UI layer for visual code -- like Godot editor or Unreal Blueprints") |
+| 2317–2320 | The debug view's channels: collision bounds, level layouts, skeletons of procedural bodies, and 3D bones and colliders | the work each one draws is unparked (1122; 1120 and 1124; 2701 and 2702; 3102, 3103 and 3105) |
 | 1140–1150 | Networking: lockstep, relay, browser, LAN, Steam, sessions, referee server, real time, accounts and ratings, chat, MMO and global chat research | the game's 0053 picks an online mode |
 | 2701–2704 | Procedural animation, a module (ADR-0010): bodies of points in `Fx`, limbs and gaits that find footholds, strips and rotated sprites to draw them, and a side-view cave example | Nick asks (2026-10-16: "this will be very late addition since it won't tie into visions of shuyi game") |
 | 2205–2206 | MIDI music, a module (ADR-0014): `.mid` and `.sf2` formats, a synth, cues that play a sequence, an example | Nick asks (2026-10-17: he chose to park it, since the game doesn't need it) |

@@ -60,6 +60,9 @@ None.
   - a Harness playthrough of level 1 from a recorded input;
   - replay hashes;
   - snapshots.
+- **The debug view (2317).** If 2317 is done, the platformer example
+  calls its collision helpers, and draws the controller's ground and
+  wall probes as `Note` lines. If it isn't, 2317 does this.
 
 **Out (do not do):**
 - slopes, unless the example needs them;

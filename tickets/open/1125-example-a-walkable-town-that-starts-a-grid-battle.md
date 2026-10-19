@@ -62,6 +62,9 @@ for him, not a sign-off.
   `top-down → top-down-grid` to the built-in template, as a small
   version of this example's touch-to-battle, with its steps in
   `tests/moves/`. If 2503 isn't done, 2503 adds it.
+- **The debug view (2318).** If 2318 is done, the town calls its
+  `layout` and `sort` helpers from its screen's `debug_draw`. If it
+  isn't, 2318 does this.
 
 **Out (do not do):** anything in our game; isometric (1126); mixing
 the example's rules with its skin. Keep them apart: the parked 3109

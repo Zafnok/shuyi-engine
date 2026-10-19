@@ -58,6 +58,9 @@ None.
   so existing text snapshots of maps that fit don't change.
 - `UnitPainter::paint_over` (default: nothing), called by every kit skin
   after the units and the path's arrowhead and before the cursor.
+- **The debug view (2315).** If 2315 is done, add the edges where the
+  map goes on past the view to `grid::debug::layout_gizmos` (role
+  `Note`). If it isn't, 2315 does this.
 
 **Out (do not do):**
 - Any look for the marks: the kit paints none of its own.

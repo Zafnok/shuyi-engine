@@ -49,6 +49,9 @@ None (technical). Scheduling: see above.
   step exact counts (`harness.steps(n)`).
 - A tiny example sim in the engine's tests: a dot moved by input with
   inertia.
+- **The debug view (2316).** If 2316 is done, its step runs one fixed
+  simulation step here, and its readout names the step number. If 2316
+  isn't done, 2316 does this.
 
 **Out (do not do):** collision (1122); world layers (1120); networking;
 thousands of units (the parked 2705 measures an arena against columns

@@ -433,3 +433,33 @@ Source: Nick, in a Claude Code session on 2026-10-18.
 - **Inspired by, nothing copied.** No name, character, story, art or
   sound from existing strategy games, visual novels or mysteries goes
   into the engine or its examples.
+
+## 2026-10-19: a visual editor, and a debug view in real time
+
+Source: Nick, in a Claude Code session on 2026-10-19.
+
+> "add tickets for UI layer for visual code -- like Godot editor or
+> Unreal Blueprints + seeing level layouts and collisions bounds and
+> skeletons in realtime (debug mode)
+>
+> if it doesn't already exist in our roadmap"
+
+**Rules:**
+
+- **What already existed.** Visual scripting was the parked research
+  ticket 1135 (2026-10-14, ADR-0005 §5: a graph is a view over text).
+  It decided the graph, not an editor around it, and nothing showed a
+  running game's layouts, bounds or skeletons.
+- **The debug view comes after the MVP, not parked.** Tickets 2315 and
+  2316 draw gizmos over the running game by channel, and pause and
+  step it. They need nothing parked, and they help any game, Visions
+  of Shuyi's grid maps included. They never come before the game's
+  Chapter 1 work.
+- **Each channel is parked with what it draws.** Collision (2317),
+  level layouts (2318), skeletons (2319) and 3D (2320) draw parked
+  work. Each starts when that work is unparked and done.
+- **The editor is parked, with 1135.** Research on the workspace
+  (2506), then its shell with a live view, a tree and an inspector
+  (2507), then the graph panel (2508). It stays a view over text files:
+  agents and git read the same files a person edits in it.
+

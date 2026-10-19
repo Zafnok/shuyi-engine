@@ -74,6 +74,8 @@ they move become tuning in the creature files, or follow-up tickets.
 - **The guides** (2004): `side-view.md` and `top-down-free.md` list the
   module as an answer for bodies and motion.
 - **The catalog**: set the row to ready.
+- **The debug view (2319).** If 2319 is done, the cave example calls
+  its `skeleton` and `footholds` helpers. If it isn't, 2319 does this.
 
 **Out (do not do):**
 - gameplay beyond following the lure;
