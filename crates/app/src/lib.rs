@@ -384,7 +384,13 @@ mod tests {
         let manifest = read(&here.join("Cargo.toml"));
         assert_eq!(table(&manifest, "[lints.clippy]"), clippy);
         assert_eq!(table(&manifest, "[lints.rust]"), rust);
-        for other in ["crates/assets", "crates/cli", "crates/core", "crates/ui", "examples/hello-grid"] {
+        for other in [
+            "crates/assets",
+            "crates/cli",
+            "crates/core",
+            "crates/ui",
+            "examples/hello-grid",
+        ] {
             let manifest = read(&root.join(other).join("Cargo.toml"));
             assert_eq!(table(&manifest, "[lints]"), ["workspace = true"], "{other}");
         }

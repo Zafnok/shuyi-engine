@@ -35,7 +35,9 @@ Nick's Chapter 1 playtest (game ticket 0804):
   - the tools.
 - **1118**: a small example game made from engine crates alone.
 - **1131**: the `engine/` folder moves here with its history. The game
-  then depends on this repository by a pinned revision.
+  then depends on this repository by a pinned revision. Done 2026-10-19,
+  with this repository's code gates in CI and Pages for the examples
+  ([`carve.md`](carve.md)).
 
 ## Phase 2: the MVP, parity with the game
 
@@ -44,12 +46,14 @@ and agents can drive it. These tickets, in order:
 
 | Ticket | What |
 | ------ | ---- |
-| 2002 | This repository's gates: CI, the ticket lint, the license check |
+| 2002 | This repository's gates: the ticket lint, typos and links, in the CI 1131 started with the code gates |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
 | 1133 | An MCP server over the contract |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 1132 | Community files and a docs site with the examples playable in the browser |
+| 2006 | `check-keys` and `check-text` on the engine's own code |
+| 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
 

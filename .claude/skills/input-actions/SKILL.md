@@ -33,8 +33,8 @@ ADR-0031, ADR-0034, ADR-0053). The game's ticket 1106 made them generic:
   given.
 
 Everywhere else, code reacts to `FrameInput` actions (`is_pressed`,
-`is_held`) and nothing else. `check-keys` enforces this once the code
-arrives (game ticket 1117 moves it).
+`is_held`) and nothing else. `cargo shuyi check-keys` enforces this in a
+game's code; it doesn't scan the engine's own code yet (ticket 2006).
 
 ## Rules
 

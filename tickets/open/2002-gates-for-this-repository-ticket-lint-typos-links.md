@@ -27,9 +27,11 @@ This repository has two differences:
 - `blocked_by` may name game tickets as `game#NNNN` (`tickets/README.md`);
 - `Parked:` tickets have their own rules.
 
-When 1131 brings the code, it brings the full code gates (fmt, clippy,
-tests, mutation shards, `cargo deny`, the web build) and adds them to the
-CI this ticket starts.
+1131 came first (2026-10-19): it brought the code with the full code
+gates (fmt, clippy, tests, mutation shards, `cargo deny`, the web build)
+and started `.github/workflows/ci.yml` with them. This ticket adds its
+three checks to that CI, and its `xtask` crate to the workspace that
+came with the code.
 
 ## Nick input
 
@@ -55,11 +57,13 @@ None.
 - `typos` (with a `_typos.toml` that allows the engine's words) and a
   Markdown link check, written as a small `xtask` command that resolves
   relative links (no network).
-- `.github/workflows/ci.yml` runs the three on every PR and on `main`.
+- `.github/workflows/ci.yml` runs the three on every PR and on `main`,
+  beside the code gates; `typos` and the ticket lint always run, like the
+  game's `tickets` job, not only when code changes.
 - The `run-gates` skill lists them.
 
 **Out (do not do):**
-- the code gates (they come with 1131);
+- the code gates (1131 added them);
 - branch protection (Nick's GitHub setting; say so in the PR if he wants
   it).
 
