@@ -166,31 +166,32 @@ impl ListCursor {
             self.first = 0;
             return 0..0;
         }
-        let focus = self.focus;
+        let (focus, len) = (self.focus, self.len);
+        // A run of rows is taller the further it reaches, so each search
+        // below takes the first row that fits.
         let height = |r: Range<usize>| -> usize { heights[r].iter().sum() };
-        let mut first = match self.scroll {
+        let first = match self.scroll {
             Scroll::KeepInView => self.first.min(focus),
+            // As many rows above the focus as fill half the room left.
             Scroll::Centred => {
                 let half = room.saturating_sub(heights[focus]) / 2;
-                let mut first = focus;
-                while first > 0 && height(first - 1..focus) <= half {
-                    first -= 1;
-                }
-                first
+                (0..focus)
+                    .find(|&f| height(f..focus) <= half)
+                    .unwrap_or(focus)
             }
         };
         // The focus in view: drop rows from the top until it fits.
-        while first < focus && height(first..focus + 1) > room {
-            first += 1;
-        }
+        let first = (first..focus)
+            .find(|&f| height(f..focus + 1) <= room)
+            .unwrap_or(focus);
         // No empty room at the bottom while there are rows above to show.
-        while first > 0 && height(first - 1..self.len) <= room {
-            first -= 1;
-        }
-        let mut end = focus + 1;
-        while end < self.len && height(first..end + 1) <= room {
-            end += 1;
-        }
+        let first = (0..first)
+            .find(|&f| height(f..len) <= room)
+            .unwrap_or(first);
+        // As many rows after the focus as fit.
+        let end = (focus + 1..len)
+            .find(|&e| height(first..e + 1) > room)
+            .unwrap_or(len);
         self.first = first;
         first..end
     }
