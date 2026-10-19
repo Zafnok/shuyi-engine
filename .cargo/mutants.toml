@@ -33,6 +33,10 @@ exclude_re = [
     # `web`'s real `wasm-opt` is an optional tool no test machine is sure
     # to have; the logic around it runs on a fake.
     "<impl WasmOpt for RealWasmOpt>::optimize",
+    # The ticket lint's call to `gh api` needs `gh` signed in to the private
+    # game repository, which no test machine is sure to have; what it does
+    # with `gh`'s answer is `gh_listing`, tested on its own.
+    "list_on_github",
     # Hello, Grid has no voices: `OnlyClip` has one value, which is its
     # default, and no split variants, so `voice_variant`'s and `split`'s
     # only mutants are the same functions.

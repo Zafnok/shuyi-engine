@@ -120,6 +120,11 @@ None.
   so there the `game#` ids are warned about and skipped; the `run-gates`
   skill says to check them locally (where `gh` is signed in) when adding
   one.
+- Mutation testing: `tests/cli.rs` runs the binary for its commands,
+  options and exit codes. The `gh api` call itself (`list_on_github`) is
+  excluded in `.cargo/mutants.toml`, as `RealWasmOpt` is: no test machine
+  is sure to have `gh` signed in to the private game. What it does with
+  `gh`'s answer is `gh_listing`, tested on its own.
 - The repository had no lint errors, broken links or typos to fix.
 - Branch protection is Nick's setting: if he wants it, `ci-result` is the
   one check to require (it now includes `tickets`).

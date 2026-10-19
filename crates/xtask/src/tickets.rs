@@ -444,7 +444,8 @@ fn list_dir(dir: &Path) -> Result<Vec<String>, String> {
 }
 
 /// One folder's file names through `gh api` (the contents API lists up to
-/// 1000 files in a folder).
+/// 1000 files in a folder). What it does with `gh`'s answer is
+/// `gh_listing`, tested without `gh`.
 fn list_on_github(folder: &str) -> Result<Vec<String>, String> {
     let output = Command::new("gh")
         .args([
@@ -455,13 +456,29 @@ fn list_on_github(folder: &str) -> Result<Vec<String>, String> {
         ])
         .output()
         .map_err(|e| format!("`gh` is not available ({e}); pass --game-repo <path>"))?;
-    if !output.status.success() {
+    gh_listing(
+        folder,
+        output.status.success(),
+        &output.stdout,
+        &output.stderr,
+    )
+}
+
+/// The file names `gh api --jq '.[].name'` printed, one per line, or why it
+/// failed.
+fn gh_listing(
+    folder: &str,
+    success: bool,
+    stdout: &[u8],
+    stderr: &[u8],
+) -> Result<Vec<String>, String> {
+    if !success {
         return Err(format!(
             "`gh api` could not list the game's tickets/{folder} ({}); pass --game-repo <path>",
-            String::from_utf8_lossy(&output.stderr).trim()
+            String::from_utf8_lossy(stderr).trim()
         ));
     }
-    Ok(String::from_utf8_lossy(&output.stdout)
+    Ok(String::from_utf8_lossy(stdout)
         .lines()
         .map(str::to_string)
         .collect())
@@ -893,6 +910,36 @@ completed:
         let expected: HashSet<String> = ["1131", "0903"].map(str::to_string).into();
         assert_eq!(ids, expected);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn gh_listing_reads_one_name_per_line() {
+        assert_eq!(
+            gh_listing(
+                "open",
+                true,
+                b"1131-a.md
+README.md
+",
+                b""
+            ),
+            Ok(vec!["1131-a.md".to_string(), "README.md".to_string()])
+        );
+    }
+
+    #[test]
+    fn gh_listing_says_why_gh_failed() {
+        let why = gh_listing(
+            "done",
+            false,
+            b"1131-a.md
+",
+            b" HTTP 404 
+",
+        )
+        .unwrap_err();
+        assert!(why.contains("tickets/done (HTTP 404)"), "{why}");
+        assert!(why.contains("--game-repo"), "{why}");
     }
 
     #[test]
