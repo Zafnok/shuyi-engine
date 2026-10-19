@@ -4,3 +4,13 @@
 *.pending-snap
 .DS_Store
 Thumbs.db
+
+# Distribution / packaging output
+/dist/
+
+# Test & quality tooling output
+/mutants.out/
+/mutants.out.old/
+lcov.info
+*.profraw
+*.profdata

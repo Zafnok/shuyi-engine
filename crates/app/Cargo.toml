@@ -5,7 +5,7 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
-license-file.workspace = true
+license.workspace = true
 repository.workspace = true
 
 # The workspace lints (`[workspace.lints]` in the root Cargo.toml), copied
@@ -13,8 +13,8 @@ repository.workspace = true
 # `unsafe_code` is `deny` here instead of `forbid`, so the web build's
 # controller plugin can declare the JS functions it imports
 # (`src/pads/web.rs`, the only `#[allow(unsafe_code)]`; ADR-0034, and
-# ADR-0004 rule 5: no `unsafe` outside the platform). An xtask test keeps
-# the rest equal to the workspace's.
+# ADR-0004 rule 5: no `unsafe` outside the platform). A test in `lib.rs`
+# keeps the rest equal to the workspace's.
 [lints.rust]
 unsafe_code = "deny"
 missing_docs = "warn"
