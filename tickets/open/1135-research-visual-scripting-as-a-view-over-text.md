@@ -6,14 +6,14 @@ milestone: "Engine: public"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["game#1017", "1125", "1127"]
+blocked_by: ["2101", "1125", "1127"]
 nick_input: none
 completed:
 ---
 
 # 1135 — Research: visual scripting as a view over text
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the scripting runtime (the game's ticket 1017) and the examples 1125 and 1127. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the scripting runtime (2101, `shuyi-script`) and the examples 1125 and 1127. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -26,7 +26,8 @@ compiles to what the engine already runs, so there is no second runtime:
 - state machines;
 - triggers and their actions;
 - dialogue branches;
-- scripts for the scripting runtime (1011, 1017).
+- scripts for the scripting runtime (2101, which game#1017 uses for
+  the game's scripted rules).
 
 The research behind that decision:
 
@@ -63,7 +64,8 @@ from the game's glyph style.
 
 ## Implementation steps
 
-1. Read ADR-0005, game ADR-0021, 1011's ADR and 1017's runtime.
+1. Read ADR-0005, game ADR-0021, the game's mods ADR (game#1011) and
+   2101's runtime.
 2. List the logic in 1125 and 1127 that a designer would want to change
    without code.
 3. Do the spike. Write the ADR and the tickets.
