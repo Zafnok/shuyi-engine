@@ -1,0 +1,57 @@
+name: Sonar triage
+
+# Files SonarQube Cloud's *overall* backlog as batched GitHub issues labelled
+# `sonar`. The SonarCloud scan in ci.yml grades only new code, so nothing else
+# looks at what was already there (ADR-0017, ticket 2007; copied from the
+# game repository's workflow, game ADR-0071).
+#
+# This job does not run the scanner: ci.yml's coverage job already did on the
+# push to main. It only reads the API and syncs issues, so it needs no Rust.
+on:
+  schedule:
+    # Mondays, after the weekend's pushes to main have been analysed.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report what would change without creating, editing or closing anything"
+        type: boolean
+        default: true
+
+concurrency:
+  group: sonar-triage
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  triage:
+    name: triage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Sync Sonar findings to GitHub issues
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          # Read through the environment rather than interpolated into the
+          # script. Empty on a scheduled run, so the schedule applies.
+          DRY_RUN: ${{ inputs.dry_run }}
+        # SonarCloud reads are anonymous: the project is public, so no
+        # SONAR_TOKEN here. -PushResolutions is never passed in CI: it changes
+        # shared Sonar state and asks before acting (tools/sonar-triage/README.md).
+        run: |
+          if ($env:DRY_RUN -eq 'true') {
+            Write-Host '::notice::Dry run: re-run from the Actions tab with dry_run unticked to file issues.'
+            ./tools/sonar-triage/sonar-triage.ps1
+          }
+          else {
+            ./tools/sonar-triage/sonar-triage.ps1 -Apply
+          }
