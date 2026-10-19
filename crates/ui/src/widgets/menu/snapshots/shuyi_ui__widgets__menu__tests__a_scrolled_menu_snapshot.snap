@@ -1,0 +1,31 @@
+---
+source: crates/ui/src/widgets/menu/tests.rs
+assertion_line: 323
+expression: buf.to_snapshot(&p)
+---
+             
+ ┌────────▲┐ 
+ │ item 7  │ 
+ │ item 8  │ 
+ │ item 9  │ 
+ │ item 10 │ 
+ │ item 11 │ 
+ │ item 12 │ 
+ └────────▼┘ 
+             
+--- colours ---
+aaaaaaaaaaaaa
+abbbbbbbbbcba
+abcccccccccba
+abcccccccccba
+abcccccccccba
+abcccccccccba
+abcccccccccba
+abdddddddddba
+abbbbbbbbbcba
+aaaaaaaaaaaaa
+--- legend ---
+a = fg:text bg:background
+b = fg:border bg:panel
+c = fg:text bg:panel
+d = fg:panel bg:focus

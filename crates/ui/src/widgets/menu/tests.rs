@@ -259,6 +259,89 @@ fn the_view_lists_the_items_and_the_focus() {
     assert_eq!(Menu::new(vec![]).view().focused(), None);
 }
 
+/// A menu of `n` enabled items, `item 0` to `item n-1`.
+fn long_menu(n: usize) -> Menu {
+    menu(&vec![true; n])
+}
+
+#[test]
+fn a_menu_that_shows_every_item_has_no_window() {
+    let view = long_menu(3).view();
+    assert_eq!((view.first_shown, view.shown), (0, 3));
+    assert!(!view.more_above() && !view.more_below());
+    assert_eq!(view.shown_items().len(), 3);
+}
+
+#[test]
+fn a_scrolling_menu_shorter_than_its_box_shows_every_item() {
+    let view = long_menu(3).showing(6, Scroll::KeepInView).view();
+    assert_eq!((view.first_shown, view.shown), (0, 3));
+    assert!(!view.more_below());
+    // A box of no rows still shows the focus.
+    let view = long_menu(3)
+        .showing(0, Scroll::KeepInView)
+        .focused(2)
+        .view();
+    assert_eq!((view.first_shown, view.shown), (2, 1));
+    assert!(view.shown_items()[0].focused);
+}
+
+#[test]
+fn a_long_menu_scrolls_to_keep_the_focus_in_its_box() {
+    let mut m = long_menu(10).showing(4, Scroll::KeepInView);
+    let window = |m: &Menu| {
+        let v = m.view();
+        (v.first_shown, v.shown, v.more_above(), v.more_below())
+    };
+    assert_eq!(window(&m), (0, 4, false, true));
+    assert_eq!(focus_after(&mut m, &[CursorDown; 4]), 4);
+    assert_eq!(window(&m), (1, 4, true, true), "by one past the edge");
+    assert_eq!(focus_after(&mut m, &[CursorUp; 5]), 9, "wrapped");
+    assert_eq!(window(&m), (6, 4, true, false));
+    let shown: Vec<_> = m
+        .view()
+        .shown_items()
+        .iter()
+        .map(|i| i.label.clone())
+        .collect();
+    assert_eq!(shown, ["item 6", "item 7", "item 8", "item 9"]);
+    // The box is as tall as the rows it shows.
+    assert_eq!(glyph::size(&m.view()), (10, 6));
+}
+
+#[test]
+fn a_centred_menu_keeps_the_focus_in_the_middle() {
+    let m = long_menu(20).showing(5, Scroll::Centred).focused(10);
+    let v = m.view();
+    assert_eq!((v.first_shown, v.shown), (8, 5));
+    assert!(v.shown_items()[2].focused);
+}
+
+#[test]
+fn a_scrolled_menu_snapshot() {
+    use crate::frame::color::EngineColor;
+    use crate::frame::color::tests::engine_palette;
+    use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
+
+    let m = long_menu(20).showing(6, Scroll::KeepInView).focused(12);
+    let view = m.view();
+    assert_eq!((view.first_shown, view.shown), (7, 6));
+    let p = engine_palette();
+    let blank = Cell::new(
+        ' ',
+        p.engine(EngineColor::Text),
+        p.engine(EngineColor::Background),
+    );
+    let (w, h) = glyph::size(&view);
+    let mut buf = GlyphBuffer::new(
+        u16::try_from(w + 2).unwrap(),
+        u16::try_from(h + 2).unwrap(),
+        blank,
+    );
+    glyph::paint(&p, &view, &mut buf, 1, 1);
+    insta::assert_snapshot!(buf.to_snapshot(&p));
+}
+
 proptest! {
     #[test]
     fn focus_always_lands_on_an_enabled_item(

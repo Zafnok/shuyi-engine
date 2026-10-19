@@ -40,6 +40,7 @@ use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::fixed::{TextKey, text_key};
 use crate::screen::{FrameInput, Screen, Transition};
 use crate::settings::{MAX_VOLUME, TextSpeed};
+use crate::widgets::ListCursor;
 
 /// Text key ([`Ctx::text`]) of the screen title.
 pub const TITLE: &str = "options.title";
@@ -307,13 +308,9 @@ fn stepped_index(n: usize, current: usize, forward: bool, wrap: bool) -> usize {
     if n == 0 {
         return current;
     }
-    let i = current.min(n - 1);
-    match (forward, wrap) {
-        (true, true) => (i + 1) % n,
-        (true, false) => (i + 1).min(n - 1),
-        (false, true) => (i + n - 1) % n,
-        (false, false) => i.saturating_sub(1),
-    }
+    let mut cursor = ListCursor::new(n).at(current);
+    cursor.step(forward, wrap, |_| true);
+    cursor.focus()
 }
 
 /// `all`'s value one step after (`forward`) or before `current`, stopping

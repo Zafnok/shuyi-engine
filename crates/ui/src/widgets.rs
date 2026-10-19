@@ -1,9 +1,12 @@
-//! Reusable pieces screens are built from: a [`menu`] and [`word_wrap`]
-//! for text boxes. Each widget says what it shows as plain data (a view)
+//! Reusable pieces screens are built from: a [`menu`], the [`ListCursor`]
+//! that moves its focus (and any other list's), and [`word_wrap`] for text
+//! boxes. Each widget says what it shows as plain data (a view)
 //! and a skin paints it (`menu::glyph` for glyphs).
 
+pub mod list;
 pub mod menu;
 pub mod wrap;
 
+pub use list::{ListCursor, Scroll};
 pub use menu::{Menu, MenuEvent, MenuItem, MenuItemView, MenuView};
 pub use wrap::word_wrap;

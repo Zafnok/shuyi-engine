@@ -1,6 +1,8 @@
 //! The glyph look of a [`Menu`](super::Menu): paints a [`MenuView`] as a
 //! single-line box of text rows with the focused one as a bar and, when
-//! its items have notes, the focused item's note under a rule. Everything
+//! its items have notes, the focused item's note under a rule. A menu that
+//! scrolls shows its window, with a mark on the border where more items
+//! are out of the box. Everything
 //! about the look lives here; nothing here decides what the menu shows.
 //! Another look is another `paint` of the same view (game ADR-0054).
 
@@ -28,9 +30,9 @@ fn has_notes(view: &MenuView) -> bool {
 }
 
 /// Box size in cells: the widest label (or note, so the box keeps its
-/// width as the focus moves) plus a space and a border on each side, by
-/// one row per item plus the border, and a rule and a note row if any
-/// item has a note.
+/// width as the focus moves or the menu scrolls) plus a space and a border
+/// on each side, by one row per item shown plus the border, and a rule and
+/// a note row if any item has a note.
 pub fn size(view: &MenuView) -> (i32, i32) {
     let widest = view
         .items
@@ -40,7 +42,7 @@ pub fn size(view: &MenuView) -> (i32, i32) {
         .unwrap_or(0);
     let w = i32::try_from(widest).unwrap_or(i32::MAX).saturating_add(4);
     let notes = if has_notes(view) { 2 } else { 0 };
-    let h = i32::try_from(view.items.len())
+    let h = i32::try_from(view.shown_items().len())
         .unwrap_or(i32::MAX)
         .saturating_add(2 + notes);
     (w, h)
@@ -61,7 +63,10 @@ pub const fn suffix_color(kind: SuffixKind) -> EngineColor {
 /// [`TextDim`](EngineColor::TextDim), and the focused one as a bar of panel
 /// text on [`Focus`](EngineColor::Focus) (on the border's color for a
 /// disabled one: a menu that browses disabled items). Under the items, if
-/// any has a note: a border rule and the focused item's note in text.
+/// any has a note: a border rule and the focused item's note in text. A
+/// scrolled menu paints only the items it shows, with a `▲` in the top
+/// border if there are more above and a `▼` in the border under them if
+/// there are more below, in text.
 pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, y: i32) {
     let color = |e| palette.engine(e);
     let bg = color(EngineColor::Panel);
@@ -69,7 +74,7 @@ pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, 
     let rect = Rect::new(x, y, w, h);
     buf.fill_rect(rect, Cell::new(' ', color(EngineColor::Text), bg));
     buf.draw_box(rect, BoxStyle::Single, color(EngineColor::Border), bg);
-    for (row, item) in (y + 1..).zip(&view.items) {
+    for (row, item) in (y + 1..).zip(view.shown_items()) {
         let (fg, row_bg) = match (item.focused, item.enabled) {
             (true, false) => (bg, color(EngineColor::Border)),
             (false, false) => (color(EngineColor::TextDim), bg),
@@ -89,6 +94,14 @@ pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, 
             buf.print(at, row, text, fg, row_bg);
         }
     }
+    let notes = if has_notes(view) { 2 } else { 0 };
+    let mark = |buf: &mut GlyphBuffer, row, glyph| {
+        buf.set(
+            x + w - 2,
+            row,
+            Cell::new(glyph, color(EngineColor::Text), bg),
+        );
+    };
     if has_notes(view) {
         let rule = y + h - 3;
         let border = color(EngineColor::Border);
@@ -98,6 +111,12 @@ pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, 
         if let Some(note) = view.focused().and_then(|i| i.note.as_ref()) {
             buf.print(x + 2, rule + 1, note, color(EngineColor::Text), bg);
         }
+    }
+    if view.more_above() {
+        mark(buf, y, '▲');
+    }
+    if view.more_below() {
+        mark(buf, y + h - 1 - notes, '▼');
     }
 }
 
@@ -141,22 +160,18 @@ mod tests {
 
     #[test]
     fn the_box_is_the_widest_item_plus_a_space_and_border_each_side() {
-        assert_eq!(size(&MenuView { items: vec![] }), (4, 2));
-        let view = MenuView {
-            items: vec![item("a", true, true), item("bcd", false, false)],
-        };
+        assert_eq!(size(&MenuView::new(vec![])), (4, 2));
+        let view = MenuView::new(vec![item("a", true, true), item("bcd", false, false)]);
         assert_eq!(size(&view), (7, 4));
         // A suffix counts, with the space before it.
         let mut with = item("ab", true, true);
         with.suffix = Some(("(x)".to_owned(), SuffixKind::Warning));
-        assert_eq!(size(&MenuView { items: vec![with] }), (10, 3));
+        assert_eq!(size(&MenuView::new(vec![with])), (10, 3));
     }
 
     #[test]
     fn items_are_painted_one_to_a_row_inside_the_border() {
-        let view = MenuView {
-            items: vec![item("Move", true, false), item("Wait", true, true)],
-        };
+        let view = MenuView::new(vec![item("Move", true, false), item("Wait", true, true)]);
         let (buf, _) = painted(&view);
         assert_eq!(row(&buf, 1).trim(), "┌──────┐");
         assert_eq!(row(&buf, 2).trim(), "│ Move │");
@@ -166,13 +181,11 @@ mod tests {
 
     #[test]
     fn the_focused_item_is_a_bar_and_a_disabled_one_is_dim() {
-        let view = MenuView {
-            items: vec![
-                item("Move", true, false),
-                item("Attack", false, false),
-                item("Wait", true, true),
-            ],
-        };
+        let view = MenuView::new(vec![
+            item("Move", true, false),
+            item("Attack", false, false),
+            item("Wait", true, true),
+        ]);
         let (buf, p) = painted(&view);
         let bar = p.engine(EngineColor::Focus);
         let at = |x, y| *buf.get(x, y).unwrap();
@@ -192,9 +205,7 @@ mod tests {
         brace.note = Some("self: Def +5".to_owned());
         let mut push = item("Nudge", false, false);
         push.note = Some("push 1 tile, 5 on impact".to_owned());
-        let view = MenuView {
-            items: vec![brace, push],
-        };
+        let view = MenuView::new(vec![brace, push]);
         // As wide as the longest note, whichever item has the focus.
         assert_eq!(size(&view), (28, 6));
         let (buf, p) = painted(&view);
@@ -211,9 +222,7 @@ mod tests {
         let mut push = item("Nudge", false, true);
         push.note = Some("push".to_owned());
         push.suffix = Some(("no uses left".to_owned(), SuffixKind::Warning));
-        let view = MenuView {
-            items: vec![brace, push],
-        };
+        let view = MenuView::new(vec![brace, push]);
         let (buf, p) = painted(&view);
         let at = |x, y| *buf.get(x, y).unwrap();
         assert_eq!(at(2, 3).bg, p.engine(EngineColor::Border));
@@ -224,10 +233,27 @@ mod tests {
     }
 
     #[test]
+    fn a_scrolled_menu_marks_the_border_where_more_items_are() {
+        let mut items: Vec<_> = (0..5)
+            .map(|i| item(&format!("{i}"), true, i == 2))
+            .collect();
+        items[2].note = Some("two".to_owned());
+        let mut view = MenuView::new(items);
+        (view.first_shown, view.shown) = (1, 3);
+        assert_eq!(size(&view), (7, 7));
+        let (buf, _) = painted(&view);
+        assert_eq!(row(&buf, 1).trim(), "┌────▲┐");
+        assert_eq!(row(&buf, 2).trim(), "│ 1   │");
+        assert_eq!(row(&buf, 4).trim(), "│ 3   │");
+        // With notes, the mark below is on the rule.
+        assert_eq!(row(&buf, 5).trim(), "├────▼┤");
+        assert_eq!(row(&buf, 6).trim(), "│ two │");
+        assert_eq!(row(&buf, 7).trim(), "└─────┘");
+    }
+
+    #[test]
     fn a_menu_without_notes_has_no_rule() {
-        let view = MenuView {
-            items: vec![item("Wait", true, true)],
-        };
+        let view = MenuView::new(vec![item("Wait", true, true)]);
         assert_eq!(size(&view), (8, 3));
     }
 
@@ -237,9 +263,7 @@ mod tests {
         broken.suffix = Some(("(broken)".to_owned(), SuffixKind::Warning));
         let mut focused = item("Axe", true, true);
         focused.suffix = Some(("(worn)".to_owned(), SuffixKind::Warning));
-        let view = MenuView {
-            items: vec![broken, focused],
-        };
+        let view = MenuView::new(vec![broken, focused]);
         let (buf, p) = painted(&view);
         let at = |x, y| *buf.get(x, y).unwrap();
         // After the label and a space: column 3 + 5 on the first row.
