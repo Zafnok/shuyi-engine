@@ -57,9 +57,7 @@ pub trait Screen<G: GameData> {
     /// [`uncovered`](Self::uncovered). Not called when the screen above
     /// swaps itself for another ([`Transition::Replace`]). Does nothing
     /// unless the screen needs it.
-    fn covered(&mut self, ctx: &mut Ctx<G>) {
-        let _ = ctx;
-    }
+    fn covered(&mut self, _ctx: &mut Ctx<G>) {}
 
     /// Called when the screen above pops and this one is on top again:
     /// `result` is what it popped with ([`Transition::PopWith`]), `None`
