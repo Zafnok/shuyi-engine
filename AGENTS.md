@@ -81,7 +81,12 @@ game stays the engine's first user. Read [`README.md`](README.md), then
   - New engine tickets use `2001` and up (blocks in
     [`tickets/README.md`](tickets/README.md)).
   - Any other four-digit id in the text is a game ticket.
-  - In `blocked_by`, a game ticket is written `"game#NNNN"`.
+  - In `blocked_by`, a game ticket is written `"game#NNNN"`. The game
+    writes this repository's tickets `"engine#NNNN"`.
+- A request from the game becomes a ticket here as the `write-ticket`
+  skill's "A request from the game" says. The game's half of the process
+  is its `engine-change` skill
+  (`github.com/Zafnok/visions-of-shuyi/blob/main/.claude/skills/engine-change/SKILL.md`).
 - ADRs: "ADR-NNNN" means this repository's. "game ADR-NNNN" means the
   game's (`github.com/Zafnok/visions-of-shuyi/tree/main/docs/adr`).
 - The study behind all of this: the game repository's
