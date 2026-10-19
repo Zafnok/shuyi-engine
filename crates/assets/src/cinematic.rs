@@ -25,16 +25,77 @@
 //!   checks them with its shots.
 //! - Unknown fields are refused. Times are kept in whole milliseconds, so
 //!   a checked cinematic holds no floats and can be compared with `Eq`.
+//!
+//! As a format (ADR-0007), [`CinematicRon`] reads a file as written
+//! ([`CinematicFile`]); [`check`] then checks it against the game's music
+//! and shots.
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
+use core::fmt;
+use core::marker::PhantomData;
 
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
 use crate::audio::AudioManifest;
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
+
+impl<S: 'static, P: 'static> AssetKind for CinematicFile<S, P> {
+    const NAME: &'static str = "cinematic";
+}
+
+/// The cinematic file (`cinematic`, `.ron`) of a game whose shots are `S`
+/// and shared lists `P`, read as [`parse`] says: as written, before any
+/// check. [`check`] checks it, with the cinematic's file stem
+/// ([`AssetPath::stem`]), the music and the game's shots.
+pub struct CinematicRon<S, P = ()>(PhantomData<fn() -> (S, P)>);
+
+impl<S, P> CinematicRon<S, P> {
+    /// The format, for a game's shots `S` and lists `P`.
+    pub const fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<S, P> Default for CinematicRon<S, P> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<S, P> fmt::Debug for CinematicRon<S, P> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("CinematicRon")
+    }
+}
+
+impl<S: DeserializeOwned + 'static, P: DeserializeOwned + 'static> Format for CinematicRon<S, P> {
+    type Asset = CinematicFile<S, P>;
+
+    fn id(&self) -> &'static str {
+        "cinematic"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<CinematicFile<S, P>, Vec<ContentError>> {
+        parse(file.shown(), text(file, bytes)?).map_err(|e| vec![e])
+    }
+}
 
 /// The longest a cinematic that states its own length may be, in seconds.
 pub const MAX_SECONDS: f32 = 3600.0;

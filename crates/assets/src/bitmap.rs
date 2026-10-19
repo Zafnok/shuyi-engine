@@ -27,10 +27,66 @@
 //! | 8–9, 10–11 | width and height in pixels, each at least 1 |
 //! | 12–13, 14–15 | the source size, each at least 1 |
 //! | 16… | each style's rows, in order, then the mask's rows if any |
+//!
+//! As a format (ADR-0007), a one-bit picture in a PNG's place is read for
+//! the size of that PNG ([`OneBitInfo`]).
 use crate::prelude::*;
+
+use crate::error::ContentError;
+use crate::format::{AssetPath, DecodeCx, Format};
+use crate::image::ImageInfo;
 
 #[cfg(feature = "std")]
 pub mod convert;
+
+/// The most bytes a one-bit picture file may have: 16 MiB, far more than
+/// a one-bit screen's pictures need (the Playdate's whole screen is 12 KB
+/// a style).
+pub const MAX_BYTES: usize = 16 << 20;
+
+/// A one-bit picture in a PNG's place, read for the size of the PNG it
+/// was made from (`one-bit`), which [`ImageInfo::checked`] must allow. It
+/// claims no extension: it is found by its magic bytes at a PNG's path,
+/// so a `.1bit` file beside a PNG (a touched-up picture a build reads) is
+/// not an image of its own.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct OneBitInfo;
+
+impl Format for OneBitInfo {
+    type Asset = ImageInfo;
+
+    fn id(&self) -> &'static str {
+        "one-bit"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        Bitmap::is_bitmap(bytes)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<ImageInfo, Vec<ContentError>> {
+        source_info(bytes).map_err(|message| vec![ContentError::new(file.shown(), message)])
+    }
+}
+
+/// The checked source size of one-bit picture file `bytes`, or what is
+/// wrong with it.
+pub(crate) fn source_info(bytes: &[u8]) -> Result<ImageInfo, String> {
+    let (width, height) = Bitmap::parse(bytes)?.source_size();
+    ImageInfo::checked(u32::from(width), u32::from(height))
+}
 
 /// The first four bytes of a one-bit picture file.
 pub const MAGIC: [u8; 4] = *b"1BIT";
@@ -91,10 +147,15 @@ impl<'a> Bitmap<'a> {
         let plane = Self::plane_bytes(width, height);
         let has_mask = flags & HAS_MASK != 0;
         let body = &bytes[HEADER_BYTES..];
-        let planes_bytes = plane * usize::from(styles);
-        if body.len() != planes_bytes + if has_mask { plane } else { 0 } {
+        // Checked: on a 32-bit target (the web) 255 styles of the largest
+        // plane don't fit a `usize`.
+        let mask_bytes = if has_mask { plane } else { 0 };
+        let Some(planes_bytes) = plane
+            .checked_mul(usize::from(styles))
+            .filter(|&n| n.checked_add(mask_bytes) == Some(body.len()))
+        else {
             return Err("a one-bit picture's size doesn't match its header");
-        }
+        };
         let (planes, mask) = body.split_at(planes_bytes);
         Ok(Self {
             width,

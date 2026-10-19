@@ -9,6 +9,9 @@
 //! map) with a [`Directive`] type: the parser hands it every `@name` it
 //! doesn't know, and a scene keeps the steps it makes in order.
 //!
+//! As a format (ADR-0007), [`Dlg`] reads a file's scenes
+//! ([`DialogueFile`]), and [`scripts_from_parsed`] checks them.
+//!
 //! The format, for a game that adds no directive:
 //!
 //! ```text
@@ -42,6 +45,7 @@ mod present;
 
 use alloc::collections::BTreeMap;
 use core::fmt;
+use core::marker::PhantomData;
 
 pub use shuyi_core::CharacterId;
 
@@ -55,6 +59,7 @@ pub use parse::{Lines, ParsedScene, PartLines, bad_id, char_problem, is_id, pars
 pub use present::Present;
 
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 
 /// How much text a game's dialogue box and reply menu hold: the limits the
 /// checks keep a script to, counted in cells ([`text_width`]).
@@ -366,6 +371,75 @@ impl<D> Default for Scripts<D> {
     }
 }
 
+/// The scenes of one `.dlg` file as written, each with where it is: what
+/// the `.dlg` format ([`Dlg`]) reads. [`scripts_from_parsed`] checks them
+/// against the game's rules, once its characters, names and music are
+/// loaded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DialogueFile<D = NoDirective> {
+    /// Its scenes, in file order.
+    pub scenes: Vec<ParsedScene<D>>,
+}
+
+impl<D: 'static> AssetKind for DialogueFile<D> {
+    const NAME: &'static str = "dialogue";
+}
+
+/// The `.dlg` format (`dlg`, `.dlg`) of a game whose own directives are
+/// `D`: a file's scenes, with every syntax and structure error
+/// [`parse_dlg`] finds. The checks that need the game's rules are
+/// [`scripts_from_parsed`]'s.
+pub struct Dlg<D = NoDirective>(PhantomData<fn() -> D>);
+
+impl<D> Dlg<D> {
+    /// The format, for a game's directives `D`.
+    pub const fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<D> Default for Dlg<D> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<D> fmt::Debug for Dlg<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Dlg")
+    }
+}
+
+impl<D: Directive + 'static> Format for Dlg<D> {
+    type Asset = DialogueFile<D>;
+
+    fn id(&self) -> &'static str {
+        "dlg"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["dlg"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<DialogueFile<D>, Vec<ContentError>> {
+        let (scenes, errors) = parse_dlg(file.shown(), text(file, bytes)?);
+        if errors.is_empty() {
+            Ok(DialogueFile { scenes })
+        } else {
+            Err(errors)
+        }
+    }
+}
+
 /// Like [`scripts_from_sources`], for files given as `(file name,
 /// source)` where a `None` source is a file that isn't valid UTF-8 (an
 /// error).
@@ -406,6 +480,28 @@ pub fn scripts_from_sources<D: Directive, F: AsRef<str>>(
         errors.extend(e);
         scenes.extend(parsed);
     }
+    checked(scenes, errors, rules)
+}
+
+/// Validates scenes already parsed (`files`, from the `.dlg` format
+/// [`Dlg`], in file order) as [`scripts_from_sources`] does: each scene
+/// with [`check_scene`] and the game's own [`SceneRules::scene_problems`],
+/// then the scene ids across files.
+pub fn scripts_from_parsed<D: Directive>(
+    files: impl IntoIterator<Item = DialogueFile<D>>,
+    rules: &impl SceneRules<D>,
+) -> Result<Scripts<D>, Vec<ContentError>> {
+    let scenes = files.into_iter().flat_map(|file| file.scenes).collect();
+    checked(scenes, Vec::new(), rules)
+}
+
+/// [`Scripts`] of `scenes`, or every problem with them added to `errors`
+/// (those found parsing them), ordered by file and line.
+fn checked<D: Directive>(
+    scenes: Vec<ParsedScene<D>>,
+    mut errors: Vec<ContentError>,
+    rules: &impl SceneRules<D>,
+) -> Result<Scripts<D>, Vec<ContentError>> {
     for s in &scenes {
         errors.extend(check_scene(s, rules));
         errors.extend(rules.scene_problems(s));

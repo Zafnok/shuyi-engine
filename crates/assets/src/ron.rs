@@ -1,10 +1,80 @@
-//! Reading RON assets with `file:line:col` errors.
+//! Reading RON assets with `file:line:col` errors. As a format (ADR-0007),
+//! [`Ron`] reads any kind that serde reads: a game's own data tables.
 use crate::prelude::*;
+
+use core::fmt;
+use core::marker::PhantomData;
 
 use serde::de::{DeserializeOwned, DeserializeSeed};
 
 use crate::bundle::Bundle;
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+
+/// A RON file of a kind serde reads (`ron`, `.ron`, unless
+/// [`Ron::named`] says), read as [`parse_ron`] says: a game's data table,
+/// say, whose own checks run after.
+pub struct Ron<T> {
+    id: &'static str,
+    extensions: &'static [&'static str],
+    kind: PhantomData<fn() -> T>,
+}
+
+impl<T> Ron<T> {
+    /// The format `ron`, of `.ron` files.
+    pub const fn new() -> Self {
+        Self::named("ron", &["ron"])
+    }
+
+    /// The format `id`, of files with `extensions`.
+    pub const fn named(id: &'static str, extensions: &'static [&'static str]) -> Self {
+        Self {
+            id,
+            extensions,
+            kind: PhantomData,
+        }
+    }
+}
+
+impl<T> Default for Ron<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<T> fmt::Debug for Ron<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ron")
+            .field("id", &self.id)
+            .field("extensions", &self.extensions)
+            .finish()
+    }
+}
+
+impl<T: AssetKind + DeserializeOwned> Format for Ron<T> {
+    type Asset = T;
+
+    fn id(&self) -> &'static str {
+        self.id
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        self.extensions
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<T, Vec<ContentError>> {
+        parse_ron(file.shown(), text(file, bytes)?).map_err(|e| vec![e])
+    }
+}
 
 /// Loads and deserializes the RON file at `path` in `bundle`.
 pub fn load_ron<T: DeserializeOwned>(bundle: &Bundle, path: &str) -> Result<T, ContentError> {

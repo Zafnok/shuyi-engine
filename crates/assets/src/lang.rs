@@ -8,8 +8,11 @@
 //!
 //! The game names its folder and says what else its text must keep to
 //! ([`PackRules`]); the English of its data is the [`SourceText`] it builds.
+//! As a format (ADR-0007), one pack is read from its `lang.ron`
+//! ([`LangPackRon`]).
 use crate::prelude::*;
 
+mod formats;
 mod lines;
 mod source;
 
@@ -25,6 +28,7 @@ use crate::names::Names;
 use crate::ron::parse_ron;
 use crate::tip::placeholders;
 
+pub use formats::LangPackRon;
 pub use lines::{LineEntry, LineText, Orphan};
 pub use source::{LineKind, SourceLine, SourceText, names_key};
 

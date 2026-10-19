@@ -7,16 +7,19 @@
 //! timings and the sticks' thresholds.
 //!
 //! Nothing here names one game's actions or layouts: a game gives its
-//! actions as an [`ActionSet`] ([`action_set`]) and its file's text.
+//! actions as an [`ActionSet`] ([`action_set`]) and its file's text. As a
+//! format (ADR-0007): [`KeymapRon`].
 use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use core::fmt;
+use core::marker::PhantomData;
 use core::str::FromStr;
 
 use serde::Deserialize;
 
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
 
 pub mod action_set;
@@ -677,6 +680,58 @@ impl<A: ActionSet> Default for KeymapDef<A> {
             stick: StickDef::default(),
             crank: CrankDef::default(),
         }
+    }
+}
+
+impl<A: ActionSet> AssetKind for KeymapDef<A> {
+    const NAME: &'static str = "keymap";
+}
+
+/// The keymap file (`keymap`, `.ron`) of a game whose actions are `A`,
+/// checked as [`KeymapDef::from_source`] says.
+pub struct KeymapRon<A>(PhantomData<fn() -> A>);
+
+impl<A> KeymapRon<A> {
+    /// The format, for a game's actions `A`.
+    pub const fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
+impl<A> Default for KeymapRon<A> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<A> fmt::Debug for KeymapRon<A> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("KeymapRon")
+    }
+}
+
+impl<A: ActionSet> Format for KeymapRon<A> {
+    type Asset = KeymapDef<A>;
+
+    fn id(&self) -> &'static str {
+        "keymap"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<KeymapDef<A>, Vec<ContentError>> {
+        KeymapDef::from_source(file.shown(), text(file, bytes)?)
     }
 }
 

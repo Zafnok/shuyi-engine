@@ -7,6 +7,13 @@
 //! ([`crate::bitmap`]) at a PNG's path in place of the PNG: the table
 //! then gives the size of the PNG it was made from (its source size), so
 //! the image's id and size are the same as with the PNG.
+//!
+//! As formats (ADR-0007): an image's size is the [`ImageInfo`] kind, read
+//! by [`PngInfo`] and [`OneBitInfo`](crate::bitmap::OneBitInfo), and
+//! [`ImageTable::load_with`] builds the table with every image format a
+//! game registers. Its pixels are the [`Image`] kind, which `Png` reads
+//! with the `png` feature. A game that draws through `shuyi-app` needs
+//! none: the platform decodes a PNG's pixels when it uploads the picture.
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
@@ -14,6 +21,7 @@ use alloc::collections::BTreeMap;
 use crate::bitmap::Bitmap;
 use crate::bundle::Bundle;
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, Formats};
 
 /// The longest side an image may have, in pixels: what every graphics card
 /// the engine runs on (WebGL included) takes as one texture.
@@ -26,6 +34,145 @@ pub struct ImageInfo {
     pub width: u32,
     /// Height in pixels.
     pub height: u32,
+}
+
+impl ImageInfo {
+    /// The size `width × height`, if an image may have it: neither side
+    /// 0, nor over [`MAX_SIDE`]. Otherwise what is wrong, in plain words.
+    pub fn checked(width: u32, height: u32) -> Result<Self, String> {
+        if width == 0 || height == 0 {
+            return Err(format!(
+                "image is {width}×{height} px; both sides must be greater than 0"
+            ));
+        }
+        if width > MAX_SIDE || height > MAX_SIDE {
+            return Err(format!(
+                "image is {width}×{height} px; neither side may be over {MAX_SIDE}"
+            ));
+        }
+        Ok(Self { width, height })
+    }
+}
+
+impl AssetKind for ImageInfo {
+    const NAME: &'static str = "image";
+}
+
+/// An image's pixels: four bytes each (red, green, blue, alpha), row by
+/// row from the top.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Image {
+    /// Width in pixels.
+    pub width: u32,
+    /// Height in pixels.
+    pub height: u32,
+    /// `width × height × 4` bytes.
+    pub rgba: Vec<u8>,
+}
+
+impl Image {
+    /// Its size.
+    pub fn info(&self) -> ImageInfo {
+        ImageInfo {
+            width: self.width,
+            height: self.height,
+        }
+    }
+}
+
+impl AssetKind for Image {
+    const NAME: &'static str = "image pixels";
+}
+
+/// The first eight bytes of every PNG file.
+pub const PNG_SIGNATURE: &[u8; 8] = b"\x89PNG\r\n\x1a\n";
+
+/// The most bytes a PNG may have: 64 MiB, what a [`MAX_SIDE`] square of
+/// 8-bit RGBA pixels takes without compression.
+pub const MAX_PNG_BYTES: usize = 64 << 20;
+
+/// PNG read for its size (`png`, `.png`): only its header, never its
+/// pixels. The size must be one [`ImageInfo::checked`] allows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PngInfo;
+
+impl Format for PngInfo {
+    type Asset = ImageInfo;
+
+    fn id(&self) -> &'static str {
+        "png"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["png"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        bytes.starts_with(PNG_SIGNATURE)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_PNG_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<ImageInfo, Vec<ContentError>> {
+        png_info(bytes).map_err(|message| vec![ContentError::new(file.shown(), message)])
+    }
+}
+
+/// The checked size in PNG file `bytes`, or what is wrong with it.
+fn png_info(bytes: &[u8]) -> Result<ImageInfo, String> {
+    let (width, height) = png_size(bytes).ok_or("not a valid PNG file")?;
+    ImageInfo::checked(width, height)
+}
+
+/// PNG read for its pixels (`png`, `.png`), with the `png` feature. Its
+/// size is checked first, as [`PngInfo`] does, so a picture too big is
+/// refused before its pixels are decoded.
+#[cfg(feature = "png")]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Png;
+
+#[cfg(feature = "png")]
+impl Format for Png {
+    type Asset = Image;
+
+    fn id(&self) -> &'static str {
+        "png"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["png"]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        bytes.starts_with(PNG_SIGNATURE)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_PNG_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<Image, Vec<ContentError>> {
+        let error = |message: String| vec![ContentError::new(file.shown(), message)];
+        png_info(bytes).map_err(error)?;
+        let (width, height, rgba) = crate::bitmap::convert::png_pixels(bytes).map_err(error)?;
+        Ok(Image {
+            width,
+            height,
+            rgba,
+        })
+    }
 }
 
 /// Names one image of an [`ImageTable`]: its interned bundle path. Cheap to
@@ -81,6 +228,52 @@ impl ImageTable {
             .filter(|path| is_png(path) && !skip.contains(path))
             .map(|path| (path, bundle.bytes(path).unwrap_or_default()));
         Self::from_files(bundle, files)
+    }
+
+    /// Like [`ImageTable::load`], with the image formats of `formats`:
+    /// every file in `bundle` whose extension one of them claims
+    /// ([`Formats::claims`]), but those at the paths in `skip`, read by
+    /// them ([`ImageTable::from_files_with`]). With
+    /// [`Formats::standard`] it reads the files `load` reads.
+    pub fn load_with(
+        bundle: &Bundle,
+        formats: &Formats,
+        skip: &[&str],
+    ) -> Result<Self, Vec<ContentError>> {
+        let files = bundle
+            .files_under("")
+            .into_iter()
+            .filter(|path| formats.claims::<ImageInfo>(path) && !skip.contains(path))
+            .map(|path| (path, bundle.bytes(path).unwrap_or_default()));
+        Self::from_files_with(bundle, formats, files)
+    }
+
+    /// Like [`ImageTable::from_files`], each file read by the image
+    /// formats of `formats` ([`Formats::decode`]). With
+    /// [`Formats::standard`] it gives what `from_files` gives for files
+    /// named `.png`.
+    pub fn from_files_with<'a>(
+        bundle: &Bundle,
+        formats: &Formats,
+        files: impl IntoIterator<Item = (&'static str, &'a [u8])>,
+    ) -> Result<Self, Vec<ContentError>> {
+        let cx = DecodeCx::in_bundle(bundle).with_limits(formats.limits);
+        let mut images = BTreeMap::new();
+        let mut errors = Vec::new();
+        for (path, bytes) in files {
+            let file = AssetPath::in_bundle(bundle, path);
+            match formats.decode::<ImageInfo>(&file, bytes, &cx) {
+                Ok(info) => {
+                    images.insert(path, info);
+                }
+                Err(e) => errors.extend(e),
+            }
+        }
+        if errors.is_empty() {
+            Ok(Self { images })
+        } else {
+            Err(errors)
+        }
     }
 
     /// The table of `files` (bundle path and contents), or every problem
@@ -139,31 +332,18 @@ fn is_png(path: &str) -> bool {
 /// size of the PNG it was made from, or what is wrong with it in plain
 /// words.
 fn read_info(bytes: &[u8]) -> Result<ImageInfo, String> {
-    let (width, height) = if Bitmap::is_bitmap(bytes) {
-        let (width, height) = Bitmap::parse(bytes)?.source_size();
-        (u32::from(width), u32::from(height))
+    if Bitmap::is_bitmap(bytes) {
+        crate::bitmap::source_info(bytes)
     } else {
-        png_size(bytes).ok_or("not a valid PNG file")?
-    };
-    if width == 0 || height == 0 {
-        return Err(format!(
-            "image is {width}×{height} px; both sides must be greater than 0"
-        ));
+        png_info(bytes)
     }
-    if width > MAX_SIDE || height > MAX_SIDE {
-        return Err(format!(
-            "image is {width}×{height} px; neither side may be over {MAX_SIDE}"
-        ));
-    }
-    Ok(ImageInfo { width, height })
 }
 
 /// Width and height from a PNG's header, or `None` if `bytes` isn't a PNG.
 pub fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
-    const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
     // Signature, then the IHDR chunk: length (4), type (4), width (4), height (4).
     let header = bytes.get(..24)?;
-    if &header[..8] != SIGNATURE || &header[12..16] != b"IHDR" {
+    if &header[..8] != PNG_SIGNATURE || &header[12..16] != b"IHDR" {
         return None;
     }
     let be = |at: usize| {

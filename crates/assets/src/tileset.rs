@@ -23,6 +23,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 
 use shuyi_core::TerrainId;
 
+use crate::format::AssetKind;
 use crate::image::{ImageId, ImageRect};
 
 /// How many mixes four yes-or-no places have: a layer has a picture for
@@ -64,6 +65,12 @@ pub fn mix_name(m: u8) -> String {
         .map(|bit| if m & bit == 0 { MIX_OUT } else { MIX_IN })
         .iter()
         .collect()
+}
+
+/// The tileset kind (ADR-0007), with no format of the engine's: how a
+/// game writes its tiles is its own, and its format reads them into this.
+impl AssetKind for TerrainTiles {
+    const NAME: &'static str = "tileset";
 }
 
 /// A tileset's terrain tiles.

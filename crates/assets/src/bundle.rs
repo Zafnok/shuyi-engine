@@ -222,6 +222,12 @@ impl Bundle {
         bytes
     }
 
+    /// Whether a layer this thread reads has the file at `path`. Unlike
+    /// [`Bundle::bytes`], this reads nothing: the [`watch`]er isn't told.
+    pub fn has(&self, path: &str) -> bool {
+        find(self.read(), path).is_some()
+    }
+
     /// Whether a layer this thread reads leaves the file at `path` out on
     /// purpose ([`Layer::leaving_out`]): a loader then does without it
     /// instead of reporting it missing.
@@ -751,6 +757,19 @@ mod tests {
         assert!(matches!(elsewhere, Ok(true)));
     }
 
+    #[test]
+    fn a_bundle_has_the_files_a_layer_this_thread_reads_has() {
+        let bundle = with_tests();
+        assert!(bundle.has("top.txt"));
+        assert!(bundle.has("portraits/new.portrait"));
+        assert!(bundle.has("data/t.ron"));
+        assert!(!bundle.has("data/nope.ron"));
+        assert!(!bundle.has("data"));
+        // Inside `story_only`, the test layers' files are not there.
+        assert!(!story_only(|| bundle.has("data/t.ron")));
+        assert!(story_only(|| bundle.has("data/b.ron")));
+    }
+
     /// [`PUBLIC_TABLE`] without `data/b.ron`, which it leaves out.
     static TRIMMED: &[(&str, &[u8])] = &[
         ("data/a.ron", b"public a"),
@@ -814,6 +833,7 @@ mod tests {
             let _ = bundle.files_under("");
             let _ = bundle.display_path("top.txt");
             let _ = bundle.left_out("top.txt");
+            let _ = bundle.has("top.txt");
         });
         assert_eq!(
             seen,
