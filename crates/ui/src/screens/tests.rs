@@ -3,7 +3,8 @@
 
 /// The logic modules of the screens say what they show, never how it
 /// looks: none of them names a color, a rectangle, a box style or a cell,
-/// and each `draw` is one call to its skin with its view.
+/// and each `draw` is one call to its skin with its view (the glyph skin,
+/// or the painter the game gave, ticket 1045).
 #[test]
 fn the_logic_modules_name_no_cells_or_colours() {
     let sources = [
@@ -18,7 +19,10 @@ fn the_logic_modules_name_no_cells_or_colours() {
         let draws = source.matches("fn draw(").count();
         let paints = source
             .lines()
-            .filter(|l| l.contains("glyph::paint") && l.contains("(ctx, &self.view(ctx), buf);"))
+            .filter(|l| {
+                let skin = l.contains("glyph::paint") || l.contains("(self.paint)");
+                skin && l.contains("(ctx, &self.view(ctx), buf);")
+            })
             .count();
         assert!(
             draws > 0 && paints == draws,

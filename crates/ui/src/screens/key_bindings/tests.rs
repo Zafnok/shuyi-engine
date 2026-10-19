@@ -146,10 +146,13 @@ fn starts_on_the_first_slot_of_the_layout_in_use() {
     assert_eq!(s.side(), Side::Keyboard);
     let view = s.view(&c);
     assert_eq!(view.title, "Key bindings");
-    assert_eq!(view.switch.keyboard, "Keyboard · Left-handed");
-    assert_eq!(view.switch.controller, "Controller");
-    assert_eq!(view.switch.shown, Side::Keyboard);
-    assert!(!view.switch.focused);
+    assert_eq!(
+        view.switch.as_ref().unwrap().keyboard,
+        "Keyboard · Left-handed"
+    );
+    assert_eq!(view.switch.as_ref().unwrap().controller, "Controller");
+    assert_eq!(view.switch.as_ref().unwrap().shown, Side::Keyboard);
+    assert!(!view.switch.as_ref().unwrap().focused);
     assert_eq!(view.columns, ["Key 1", "Key 2", "Key 3"]);
     let headings: Vec<_> = view.groups.iter().map(|g| g.heading.as_str()).collect();
     assert_eq!(
@@ -763,6 +766,12 @@ fn pad_ctx() -> Ctx {
     c
 }
 
+/// The button watched during a capture, and for how many seconds it has
+/// been held.
+fn held(s: &KeyBindingsScreen) -> Option<(Button, f32)> {
+    s.held.map(|h| (h.first, h.secs))
+}
+
 /// A frame of `dt` seconds where the buttons `down` went down and `up` went
 /// up (and did nothing as actions).
 fn buttons(down: &[Button], up: &[Button], dt: f32) -> FrameInput {
@@ -865,7 +874,7 @@ fn the_controller_side_shows_buttons_as_the_pad_names_them() {
     assert!(row_of(&view, Action::Select).unmapped);
     assert!(!row_of(&view, Action::Rewind).unmapped);
     // The shown side is the controller.
-    assert_eq!(view.switch.shown, Side::Controller);
+    assert_eq!(view.switch.as_ref().unwrap().shown, Side::Controller);
     // A Sony pad's names; on the keyboard, an Xbox pad's.
     c.device = Device::Pad(PadKind::PlayStation);
     assert_eq!(shown(&s.view(&c), Action::EndTurn)[0], "Options");
@@ -874,12 +883,12 @@ fn the_controller_side_shows_buttons_as_the_pad_names_them() {
     // On the switch, it is the focus.
     s.update(&mut c, &act(&[CursorUp]));
     let view = s.view(&c);
-    assert!(view.switch.focused);
+    assert!(view.switch.as_ref().unwrap().focused);
     assert_eq!(view.focused(), None);
     s.update(&mut c, &act(&[CursorLeft]));
     let view = s.view(&c);
-    assert_eq!(view.switch.shown, Side::Keyboard);
-    assert!(view.switch.focused);
+    assert_eq!(view.switch.as_ref().unwrap().shown, Side::Keyboard);
+    assert!(view.switch.as_ref().unwrap().focused);
     assert_eq!(view.columns[0], "Key 1");
     assert_eq!(row_of(&view, Cancel).fixed, ["Escape"]);
 }
@@ -952,15 +961,15 @@ fn holding_a_button_backs_out_with_nothing_changed() {
     sounds(&mut c);
     // The frame it goes down in doesn't count, however long.
     s.update(&mut c, &buttons(&[Button::West], &[], 5.0));
-    assert_eq!(s.held, Some((Button::West, 0.0)));
+    assert_eq!(held(&s), Some((Button::West, 0.0)));
     s.update(&mut c, &buttons(&[], &[], 0.5));
     s.update(&mut c, &buttons(&[], &[], 0.25));
     assert!(s.is_capturing(), "not held long enough yet");
-    assert_eq!(s.held, Some((Button::West, 0.75)));
+    assert_eq!(held(&s), Some((Button::West, 0.75)));
     assert!(sounds(&mut c).is_empty());
     s.update(&mut c, &buttons(&[], &[], 0.25));
     assert!(!s.is_capturing(), "held for exactly the time");
-    assert_eq!(s.held, None);
+    assert_eq!(held(&s), None);
     assert!(!s.await_release, "no cursor button is held");
     assert_eq!(sounds(&mut c), [cue(MenuSound::Cancel)]);
     // Letting go afterwards does nothing.
@@ -986,26 +995,147 @@ fn a_bad_frame_time_neither_backs_out_nor_breaks_the_hold() {
     s.update(&mut c, &buttons(&[Button::West], &[], 0.0));
     s.update(&mut c, &buttons(&[], &[], f32::NAN));
     s.update(&mut c, &buttons(&[], &[], -3.0));
-    assert_eq!(s.held, Some((Button::West, 0.0)));
+    assert_eq!(held(&s), Some((Button::West, 0.0)));
     s.update(&mut c, &buttons(&[], &[], 1.5));
     assert!(!s.is_capturing());
 }
 
+/// Ticket 1045: with no keyboard the screen is the controller side alone:
+/// no switch (up from the first row is Restore defaults), and a keyboard
+/// key missing never blocks leaving.
 #[test]
-fn only_the_first_button_down_is_watched() {
+fn with_no_keyboard_only_the_controller_side_shows() {
+    let mut c = pad_ctx();
+    c.keyboard = Keyboard::Absent;
+    c.device = Device::Keyboard;
+    let layout = c.shown_layout().unwrap();
+    let mut keys = c.layout_bindings(layout);
+    for slot in 0..SLOTS {
+        keys.clear(Cancel, slot);
+    }
+    let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS).with_bindings(keys);
+    assert!(s.is_controller_only());
+    assert_eq!(s.side(), Side::Controller);
+    assert_eq!(s.view(&c).switch, None);
+    s.update(&mut c, &act(&[CursorUp]));
+    assert!(!s.is_on_switch());
+    assert_eq!(s.focus(), None, "Restore defaults");
+    assert!(s.view(&c).restore.focused);
+    s.update(&mut c, &act(&[CursorDown]));
+    assert_eq!(s.focus(), Some((CursorUp, 0)));
+    // Left and right on the first row move between slots, never sides.
+    s.update(&mut c, &act(&[CursorLeft]));
+    assert_eq!(s.side(), Side::Controller);
+    let t = s.update(&mut c, &act(&[Cancel]));
+    assert_eq!(format!("{t:?}"), "Pop");
+    // With a keyboard the same screen has the switch and is blocked.
+    let mut c = pad_ctx();
+    let mut keys = c.layout_bindings(layout);
+    for slot in 0..SLOTS {
+        keys.clear(Cancel, slot);
+    }
+    let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS).with_bindings(keys);
+    assert!(!s.is_controller_only() && s.view(&c).switch.is_some());
+    let t = s.update(&mut c, &act(&[Cancel]));
+    assert_eq!(format!("{t:?}"), "None");
+    assert_eq!(s.side(), Side::Keyboard);
+}
+
+/// Ticket 1045: a game's own painter paints the same view instead.
+#[test]
+fn a_game_may_paint_the_view_its_own_way() {
+    use crate::frame::color::Rgb;
+    use crate::frame::glyph_buffer::Cell;
+    /// Writes the title at the top left.
+    fn title(_: &Ctx, view: &KeyBindingsView, buf: &mut GlyphBuffer) {
+        let black = Rgb::new(0, 0, 0);
+        buf.fill_rect(buf.bounds(), Cell::new(' ', black, black));
+        buf.print(0, 0, &view.title, black, black);
+    }
+    let c = ctx();
+    let s = KeyBindingsScreen::new(&c, &KEY_ROWS).painted_by(title);
+    let ink = Rgb::new(0, 0, 0);
+    let stale = Cell::new('x', ink, ink);
+    let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(20, 2), stale);
+    s.draw(&c, &mut buf);
+    let mut expected = GlyphBuffer::with_spec(ConsoleSpec::text(20, 2), stale);
+    title(&c, &s.view(&c), &mut expected);
+    assert_eq!(buf, expected);
+    assert_eq!(buf.get(0, 0).map(|c| c.glyph), Some('K'));
+}
+
+/// Ticket 1045: two buttons down together make a chord of the two; a
+/// third is ignored, and the chord goes in when one of the two is let go.
+#[test]
+fn two_buttons_down_together_make_a_chord() {
     let mut c = pad_ctx();
     let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS);
     change(&mut s, &mut c, Info, 1);
-    // Two go down in one frame, then a third: the first is the one.
     s.update(&mut c, &buttons(&[Button::West, Button::Start], &[], 0.0));
     s.update(&mut c, &buttons(&[Button::RightStickPress], &[], 0.25));
-    // The others let go: still waiting.
-    let others = [Button::Start, Button::RightStickPress];
-    s.update(&mut c, &buttons(&[], &others, 0.25));
+    s.update(&mut c, &buttons(&[], &[Button::RightStickPress], 0.25));
     assert!(s.is_capturing());
-    assert_eq!(s.held, Some((Button::West, 0.5)));
-    s.update(&mut c, &buttons(&[], &[Button::West], 0.0));
-    assert_eq!(pad_names(&s, Info), ["North", "West", "-"]);
+    // Held together, however long, they don't back out.
+    s.update(&mut c, &buttons(&[], &[], 5.0));
+    assert!(s.is_capturing());
+    s.update(&mut c, &buttons(&[], &[Button::Start], 0.0));
+    assert!(!s.is_capturing());
+    assert_eq!(pad_names(&s, Info), ["North", "West+Start", "-"]);
+}
+
+/// Ticket 1045: a button of the capture still held when it ends (B of a
+/// chord, or one held to back out) does nothing when it is let go, even
+/// if its action comes then (the Playdate's B is Cancel on release).
+#[test]
+fn a_button_still_held_when_the_capture_ends_does_nothing_when_let_go() {
+    let mut c = pad_ctx();
+    let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS);
+    change(&mut s, &mut c, Info, 0);
+    s.update(&mut c, &buttons(&[Button::East], &[], 0.0));
+    s.update(&mut c, &buttons(&[Button::DpadRight], &[], 0.1));
+    s.update(&mut c, &buttons(&[], &[Button::DpadRight], 0.1));
+    assert!(!s.is_capturing());
+    assert_eq!(pad_names(&s, Info)[0], "East+DpadRight");
+    let let_go = |s: &mut KeyBindingsScreen, c: &mut Ctx| {
+        let frame = FrameInput::new(vec![Cancel], 0.0, vec![]);
+        let t = s.update(c, &frame.with_buttons(vec![], vec![Button::East]));
+        format!("{t:?}")
+    };
+    assert_eq!(let_go(&mut s, &mut c), "None");
+    assert_eq!(s.focus(), Some((Info, 0)));
+    // Then Cancel is Cancel again.
+    assert_eq!(format!("{:?}", s.update(&mut c, &act(&[Cancel]))), "Pop");
+    // Held alone to back out: the same.
+    let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS);
+    change(&mut s, &mut c, Info, 0);
+    s.update(&mut c, &buttons(&[Button::East], &[], 0.0));
+    s.update(&mut c, &buttons(&[], &[], 1.5));
+    assert!(!s.is_capturing());
+    assert_eq!(let_go(&mut s, &mut c), "None");
+    assert_eq!(format!("{:?}", s.update(&mut c, &act(&[Cancel]))), "Pop");
+}
+
+/// Ticket 1045: a second button pressed while the first is held (B held,
+/// then right) makes the chord; let go of the first, it goes in.
+#[test]
+fn a_button_pressed_while_another_is_held_makes_a_chord() {
+    let mut c = pad_ctx();
+    let mut s = KeyBindingsScreen::new(&c, &KEY_ROWS);
+    change(&mut s, &mut c, Info, 0);
+    s.update(&mut c, &buttons(&[Button::East], &[], 0.0));
+    s.update(&mut c, &buttons(&[], &[], 0.5));
+    s.update(&mut c, &buttons(&[Button::DpadRight], &[], 0.25));
+    assert_eq!(held(&s), Some((Button::East, 0.75)));
+    s.update(&mut c, &buttons(&[], &[Button::East], 0.0));
+    assert!(!s.is_capturing());
+    assert_eq!(pad_names(&s, Info)[0], "East+DpadRight");
+    s.update(&mut c, &buttons(&[], &[Button::DpadRight], 0.0));
+    // One let go before the next goes down: that one alone.
+    change(&mut s, &mut c, Info, 2);
+    s.update(&mut c, &buttons(&[Button::West], &[], 0.0));
+    s.update(&mut c, &buttons(&[], &[Button::West], 0.1));
+    assert!(!s.is_capturing());
+    assert_eq!(pad_names(&s, Info)[2], "West");
 }
 
 #[test]
@@ -1126,12 +1256,13 @@ fn on_a_controller_the_keyboard_side_still_takes_only_keys() {
     // A button let go isn't a key: still waiting.
     tap(&mut s, &mut c, Button::West);
     assert!(s.is_capturing());
-    assert_eq!(s.held, None);
+    assert_eq!(held(&s), None);
     assert_eq!(s.pad_bindings(), &c.pad_bindings());
     // Holding one backs out.
     s.update(&mut c, &buttons(&[Button::West], &[], 0.0));
     s.update(&mut c, &buttons(&[], &[], 1.0));
     assert!(!s.is_capturing());
+    s.update(&mut c, &buttons(&[], &[Button::West], 0.0));
     // And a key goes in.
     change(&mut s, &mut c, Info, 1);
     s.update(&mut c, &press("g"));
@@ -1166,7 +1297,7 @@ fn on_the_controller_side_the_keyboards_fixed_keys_still_work() {
     let escape = press("Escape").with_buttons(vec![], vec![Button::West]);
     s.update(&mut c, &escape);
     assert!(!s.is_capturing());
-    assert_eq!(s.held, None);
+    assert_eq!(held(&s), None);
     assert_eq!(pad_names(&s, Info), ["-", "-", "-"]);
 }
 
@@ -1183,7 +1314,7 @@ fn cursor_buttons_held_after_a_capture_dont_move_the_focus() {
     let held = FrameInput::new(vec![CursorDown], 0.1, vec![CursorDown]);
     s.update(&mut c, &held);
     assert_eq!(s.focus(), Some((Info, 0)));
-    s.update(&mut c, &act(&[]));
+    s.update(&mut c, &buttons(&[], &[Button::DpadDown], 0.0));
     s.update(&mut c, &held);
     assert_eq!(s.focus(), Some((Action::DangerZone, 0)));
     // A button tapped into a slot is up again: the next press moves.

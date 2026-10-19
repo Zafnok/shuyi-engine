@@ -273,8 +273,20 @@ const GAME: [GameOption; 2] = [
 fn parses_steps_in_order_and_the_games_options() {
     let parsed = parse_args(
         &args(&[
-            "out.png", "--keys", "F2 Up", "--wait", "0.5", "--pad", "South", "--light", "dusk",
-            "--keys", "f", "--scale", "3", "--map",
+            "out.png",
+            "--keys",
+            "F2 Up",
+            "--wait",
+            "0.5",
+            "--pad",
+            "South East+DpadDown",
+            "--light",
+            "dusk",
+            "--keys",
+            "f",
+            "--scale",
+            "3",
+            "--map",
         ]),
         &GAME,
     )
@@ -291,7 +303,7 @@ fn parses_steps_in_order_and_the_games_options() {
                 steps: vec![
                     Step::Keys("F2 Up".into()),
                     Step::Wait(0.5),
-                    Step::Pad("South".into()),
+                    Step::Pad("South East+DpadDown".into()),
                     Step::Keys("f".into()),
                 ],
             },
@@ -317,6 +329,7 @@ fn rejects_bad_arguments() {
         &["a.png", "--keys"],
         &["a.png", "--keys", "NoSuchKey"],
         &["a.png", "--pad", "Nope"],
+        &["a.png", "--pad", "South+Nope"],
         &["a.png", "--wait", "-1"],
         &["a.png", "--wait", "soon"],
         &["a.png", "--scale", "0"],

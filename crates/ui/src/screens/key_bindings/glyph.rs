@@ -218,7 +218,9 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
     let title = format!(" {} ", view.title);
     let highlight = c(EngineColor::Highlight);
     buf.print(at.heading_x(), at.panel.y, &title, highlight, bg);
-    paint_switch(ctx, buf, &view.switch, at.label_x);
+    if let Some(switch) = &view.switch {
+        paint_switch(ctx, buf, switch, at.label_x);
+    }
 
     for (j, heading) in view.columns.iter().enumerate() {
         // Over the gap after the slot too, a cell short of the next one.

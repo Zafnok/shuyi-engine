@@ -11,8 +11,9 @@ use crate::prelude::*;
 pub struct KeyBindingsView<A> {
     /// The screen's title.
     pub title: String,
-    /// The keyboard / controller switch.
-    pub switch: SwitchView,
+    /// The keyboard / controller switch; `None` with no keyboard, when the
+    /// controller side is the only one.
+    pub switch: Option<SwitchView>,
     /// The headings over the slot columns, left to right.
     pub columns: Vec<String>,
     /// The actions, grouped: the required ones, then the optional ones.

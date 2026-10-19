@@ -36,9 +36,9 @@ const VOLUME_BAR: u8 = 10;
 /// Cells of the number box, inside its highlight.
 const BOX_W: usize = 4;
 
-/// A volume as a bar of [`VOLUME_BAR`] cells (a half-filled cell for half
+/// A volume as a bar of ten cells (a half-filled cell for half
 /// a cell's worth or more) and its number.
-fn volume_text(level: u8, max: u8) -> String {
+pub fn volume_text(level: u8, max: u8) -> String {
     let level = level.min(max);
     let per_cell = (max / VOLUME_BAR).max(1);
     let full = usize::from(level / per_cell).min(usize::from(VOLUME_BAR));

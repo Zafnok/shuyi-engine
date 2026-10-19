@@ -52,6 +52,7 @@ root).
 steps (each may repeat):
   --keys \"F2 Up f\"   press and release each key chord in turn
   --pad \"South\"      press and release each controller button in turn
+                     (\"East+DpadDown\": those buttons together)
   --wait 0.5         let that many seconds pass
 
 options:
@@ -156,8 +157,8 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
             }
             "--pad" => {
                 let script = value()?;
-                for token in script.split_whitespace() {
-                    Button::parse(token).map_err(|e| format!("--pad: {e}"))?;
+                for button in script.split_whitespace().flat_map(|t| t.split('+')) {
+                    Button::parse(button).map_err(|e| format!("--pad: {e}"))?;
                 }
                 steps.push(Step::Pad(script));
             }

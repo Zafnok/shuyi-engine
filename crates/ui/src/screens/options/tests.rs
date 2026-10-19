@@ -6,6 +6,7 @@
 use shuyi_assets::keymap::{Chord, Key};
 
 use super::*;
+use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
 use crate::settings::{SETTINGS_KEY, Settings};
@@ -500,6 +501,27 @@ fn draw_paints_the_view_with_the_glyph_skin() {
     glyph::paint(&c, &s.view(&c), &mut painted);
     assert_eq!(drawn, painted);
     assert!(s.as_any().is_some());
+}
+
+/// A game's own painter paints the same view instead (ticket 1045).
+#[test]
+fn a_game_may_paint_the_view_its_own_way() {
+    /// Writes the focused row's label at the top left.
+    fn focused_label(_: &Ctx, view: &OptionsView, buf: &mut GlyphBuffer) {
+        let label = view.focused().map_or("", |r| r.label.as_str());
+        let cell = Cell::new(' ', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+        buf.fill_rect(buf.bounds(), cell);
+        buf.print(0, 0, label, Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+    }
+    let c = ctx();
+    let s = on("options.row.sound_volume").painted_by(focused_label);
+    let blank = Cell::new('x', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+    let mut drawn = GlyphBuffer::with_spec(ConsoleSpec::text(20, 2), blank);
+    s.draw(&c, &mut drawn);
+    let mut expected = GlyphBuffer::with_spec(ConsoleSpec::text(20, 2), blank);
+    focused_label(&c, &s.view(&c), &mut expected);
+    assert_eq!(drawn, expected);
+    assert_eq!(drawn.get(0, 0).map(|c| c.glyph), Some('S'));
 }
 
 #[test]

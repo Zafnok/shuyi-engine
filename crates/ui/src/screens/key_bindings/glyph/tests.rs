@@ -73,12 +73,12 @@ fn view(side: Side) -> KeyBindingsView {
     };
     KeyBindingsView {
         title: "Key bindings".to_owned(),
-        switch: SwitchView {
+        switch: Some(SwitchView {
             keyboard: "Keyboard · Left-handed".to_owned(),
             controller: "Controller".to_owned(),
             shown: side,
             focused: false,
-        },
+        }),
         columns: (1..=SLOTS).map(|n| format!("Key {n}")).collect(),
         groups: vec![
             group("Must have a key", true, KeyGroup::General),
@@ -299,6 +299,11 @@ fn a_row_that_lost_its_key_is_white_unless_the_cursor_is_on_it() {
     );
 }
 
+/// `v`'s switch.
+fn switch(v: &mut KeyBindingsView) -> &mut SwitchView {
+    v.switch.as_mut().unwrap()
+}
+
 #[test]
 fn the_switch_highlights_the_shown_side_and_is_a_bar_when_focused() {
     let c = ctx();
@@ -311,7 +316,7 @@ fn the_switch_highlights_the_shown_side_and_is_a_bar_when_focused() {
     );
     assert_eq!(fg(&buf, "Keyboard"), c.palette.engine(EngineColor::TextDim));
     // On the switch, the shown side is a bar.
-    v.switch.focused = true;
+    switch(&mut v).focused = true;
     let buf = painted(&c, &v);
     let bar = c.palette.engine(EngineColor::Focus);
     let x = x_of(&buf, 2, "Controller");
@@ -320,7 +325,7 @@ fn the_switch_highlights_the_shown_side_and_is_a_bar_when_focused() {
     assert_eq!(bg(x + 10), bar);
     assert_ne!(bg(x + 11), bar);
     assert_ne!(bg(x - 2), bar);
-    v.switch.shown = Side::Keyboard;
+    switch(&mut v).shown = Side::Keyboard;
     let buf = painted(&c, &v);
     assert_eq!(buf.get(LABEL_X - 1, 2).unwrap().bg, bar);
     assert_ne!(buf.get(x, 2).unwrap().bg, bar);

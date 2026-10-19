@@ -13,7 +13,15 @@
 //! No controller button is fixed, so the screen works with only a
 //! controller: a button goes in the slot when it is let go, holding any
 //! button backs out of a capture, and when the controller was used last
-//! Confirm on a slot offers [`CHOICES`] (change it or clear it).
+//! Confirm on a slot offers [`CHOICES`] (change it or clear it). A second
+//! button pressed while the first is held makes the slot a button chord
+//! of the two (ticket 1045, ADR-0079). A button of the capture still held
+//! when it ends does nothing when let go: on a pad whose buttons act when
+//! let go (the Playdate's B), it would otherwise back out of the screen.
+//!
+//! On a platform with no keyboard ([`Keyboard::Absent`], the Playdate) the
+//! screen shows the controller side alone: no switch, and leaving asks
+//! only that every required action has a button.
 //!
 //! Capture is the one place that reads raw key presses
 //! ([`FrameInput::pressed_chords`]) and raw button presses
@@ -24,8 +32,9 @@
 //! **The look is a skin.** This module decides what the screen
 //! shows and does, and says it as plain data: a [`KeyBindingsView`]
 //! ([`KeyBindingsScreen::view`]). [`glyph::paint`] draws that view as
-//! glyphs. Tests of what happened read the view; only [`glyph`]'s tests
-//! read cells.
+//! glyphs, unless the game gives another painter
+//! ([`KeyBindingsScreen::painted_by`]). Tests of what happened read the
+//! view; only the painters' tests read cells.
 
 pub mod glyph;
 pub mod view;
@@ -38,11 +47,11 @@ pub use view::{
 
 use core::fmt;
 
-use shuyi_assets::keymap::{ActionSet, Button, Chord, Layout, SLOTS, UiAction};
+use shuyi_assets::keymap::{ActionSet, Button, ButtonChord, Chord, Layout, SLOTS, UiAction};
 
 use super::layout_picker;
 use crate::audio::MenuSound;
-use crate::ctx::{CHORD_JOIN_TEXT, Ctx, GameData};
+use crate::ctx::{CHORD_JOIN_TEXT, Ctx, GameData, Keyboard};
 use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::bindings::{LayoutBindings, PadBindings};
 use crate::input::fixed::{
@@ -134,6 +143,35 @@ pub const MOVED_FLASH_SECS: f32 = 1.5;
 /// seconds (*tunable*). Let go sooner, it goes in the slot.
 pub const HOLD_TO_CANCEL_SECS: f32 = 1.0;
 
+/// What paints the screen's view: [`glyph::paint`], or the game's own
+/// ([`KeyBindingsScreen::painted_by`]).
+pub type Paint<G> = fn(&Ctx<G>, &KeyBindingsView<<G as GameData>::Action>, &mut GlyphBuffer);
+
+/// The controller buttons being pressed for a slot: the first to go down,
+/// for how many seconds it has been held, and the second, if one went down
+/// while it was held (a chord).
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Held {
+    first: Button,
+    secs: f32,
+    second: Option<Button>,
+}
+
+impl Held {
+    /// What the buttons make: the first alone, or the chord of the two.
+    fn chord(self) -> Option<ButtonChord> {
+        match self.second {
+            Some(second) => ButtonChord::pair(self.first, second),
+            None => Some(ButtonChord::single(self.first)),
+        }
+    }
+
+    /// Whether `button` is one of them.
+    fn has(self, button: Button) -> bool {
+        self.first == button || self.second == Some(button)
+    }
+}
+
 /// Whether `action` is one the game takes for a move (up, down, left,
 /// right): what moves the focus.
 fn is_cursor<A: ActionSet>(action: A) -> bool {
@@ -175,6 +213,11 @@ pub fn blocked_message<G: GameData>(
 pub struct KeyBindingsScreen<G: GameData> {
     /// The game's rows, in the order the screen lists them.
     rows: &'static [KeyRow<G::Action>],
+    /// What paints the view.
+    paint: Paint<G>,
+    /// Whether the platform has a keyboard: without one only the
+    /// controller side is shown.
+    keyboard: Keyboard,
     /// The layout being edited.
     layout: Layout,
     /// The keymap the screen was opened with: what steers it (`Game` keeps
@@ -195,9 +238,11 @@ pub struct KeyBindingsScreen<G: GameData> {
     slot: usize,
     /// Whether the focused slot is waiting for a key or button.
     capturing: bool,
-    /// The controller button held since it went down during a capture, and
-    /// for how many seconds.
-    held: Option<(Button, f32)>,
+    /// The controller buttons held since they went down during a capture.
+    held: Option<Held>,
+    /// Buttons of a capture that ended while they were held: the screen
+    /// does nothing until they are let go.
+    releasing: Vec<Button>,
     /// The focused line of [`CHOICES`], while they are open.
     choice: Option<usize>,
     /// The message under the panel, if any.
@@ -232,6 +277,8 @@ impl<G: GameData> Clone for KeyBindingsScreen<G> {
     fn clone(&self) -> Self {
         Self {
             rows: self.rows,
+            paint: self.paint,
+            keyboard: self.keyboard,
             layout: self.layout,
             opened_with: self.opened_with.clone(),
             side: self.side,
@@ -241,6 +288,7 @@ impl<G: GameData> Clone for KeyBindingsScreen<G> {
             slot: self.slot,
             capturing: self.capturing,
             held: self.held,
+            releasing: self.releasing.clone(),
             choice: self.choice,
             message: self.message.clone(),
             moved: self.moved,
@@ -257,16 +305,20 @@ impl<G: GameData> KeyBindingsScreen<G> {
     /// The screen listing `rows`, for the layout in use (the keymap file's
     /// first if none is chosen yet), focused on the first action's first
     /// slot, showing the side the player pressed last: the controller's
-    /// buttons after a button press, else the keys.
+    /// buttons after a button press, else the keys. With no keyboard
+    /// ([`Keyboard::Absent`]) it shows the controller's alone.
     pub fn new(ctx: &Ctx<G>, rows: &'static [KeyRow<G::Action>]) -> Self {
         // The loader refuses a keymap without layouts.
         let layout = ctx.shown_layout().unwrap_or(Layout::named("none"));
         let side = match ctx.device {
+            _ if ctx.keyboard == Keyboard::Absent => Side::Controller,
             Device::Keyboard => Side::Keyboard,
             Device::Pad(_) => Side::Controller,
         };
         Self {
             rows,
+            paint: glyph::paint,
+            keyboard: ctx.keyboard,
             layout,
             opened_with: ctx.keymap.clone(),
             side,
@@ -276,12 +328,27 @@ impl<G: GameData> KeyBindingsScreen<G> {
             slot: 0,
             capturing: false,
             held: None,
+            releasing: Vec::new(),
             choice: None,
             message: None,
             moved: None,
             asking_restore: false,
             await_release: false,
         }
+    }
+
+    /// The same screen with its view painted by `paint` instead of
+    /// [`glyph::paint`]: a game's look for a device of its own.
+    #[must_use]
+    pub fn painted_by(mut self, paint: Paint<G>) -> Self {
+        self.paint = paint;
+        self
+    }
+
+    /// Whether only the controller side is shown: the platform has no
+    /// keyboard, so there is no switch.
+    pub fn is_controller_only(&self) -> bool {
+        self.keyboard == Keyboard::Absent
     }
 
     /// The same screen editing `bindings` instead of the saved ones.
@@ -316,7 +383,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
 
     /// Whether the focus is on the keyboard / controller switch.
     pub fn is_on_switch(&self) -> bool {
-        self.row == self.switch_row()
+        !self.is_controller_only() && self.row == self.switch_row()
     }
 
     /// [`row`](Self::row) on Restore defaults, the row after the actions.
@@ -413,9 +480,10 @@ impl<G: GameData> KeyBindingsScreen<G> {
     }
 
     /// Moves the focus one row up or down, wrapping: the actions, Restore
-    /// defaults, the switch, and the first action again.
+    /// defaults, the switch (unless there is none), and the first action
+    /// again.
     fn move_row(&mut self, ctx: &mut Ctx<G>, down: bool) {
-        let rows = self.rows.len() + 2;
+        let rows = self.rows.len() + if self.is_controller_only() { 1 } else { 2 };
         self.row = if down {
             (self.row + 1) % rows
         } else {
@@ -602,57 +670,77 @@ impl<G: GameData> KeyBindingsScreen<G> {
     }
 
     /// This frame's controller buttons while capturing: the first button
-    /// to go down is watched. Let go before [`HOLD_TO_CANCEL_SECS`], it
-    /// goes in a slot that waits for a button; held that long, it backs out
-    /// of the capture with nothing changed.
+    /// to go down is watched, and a second that goes down while it is held.
+    /// When either is let go, the first alone, or the chord of the two,
+    /// goes in a slot that waits for a button. The first held alone for
+    /// [`HOLD_TO_CANCEL_SECS`] backs out of the capture with nothing
+    /// changed.
     fn capture_buttons(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) {
         let fresh = self.held.is_none();
+        let mut pressed = input.pressed_buttons().iter().copied();
         if fresh {
-            self.held = input.pressed_buttons().first().map(|&b| (b, 0.0));
+            self.held = pressed.next().map(|first| Held {
+                first,
+                secs: 0.0,
+                second: None,
+            });
         }
-        let Some((button, held_secs)) = self.held else {
+        let Some(mut held) = self.held else {
             return;
         };
-        if input.released_buttons().contains(&button) {
+        if held.second.is_none() {
+            held.second = pressed.find(|&b| b != held.first);
+        }
+        let released = input.released_buttons();
+        if released.iter().any(|&b| held.has(b)) {
             self.held = None;
-            self.tapped(ctx, button);
+            let still_down = [Some(held.first), held.second].into_iter().flatten();
+            self.releasing = still_down.filter(|b| !released.contains(b)).collect();
+            if let Some(chord) = held.chord() {
+                self.tapped(ctx, chord);
+            }
             return;
         }
         // The frame it went down in doesn't count; nor does a NaN frame.
-        let secs = if fresh {
-            0.0
-        } else {
-            held_secs + input.dt.max(0.0)
-        };
-        self.held = Some((button, secs));
-        if secs >= HOLD_TO_CANCEL_SECS {
+        if !fresh {
+            held.secs += input.dt.max(0.0);
+        }
+        self.held = Some(held);
+        if held.second.is_none() && held.secs >= HOLD_TO_CANCEL_SECS {
             self.abort_capture(ctx);
+            self.releasing = vec![held.first];
         }
     }
 
-    /// `button` was pressed and let go while capturing: on the controller
-    /// side it goes in the focused slot.
-    fn tapped(&mut self, ctx: &mut Ctx<G>, button: Button) {
+    /// `chord` (a button, or two) was pressed and let go while capturing:
+    /// on the controller side it goes in the focused slot.
+    fn tapped(&mut self, ctx: &mut Ctx<G>, chord: ButtonChord) {
         let (Side::Controller, Some((action, slot))) = (self.side, self.focus()) else {
             return;
         };
         // The focused action is rebindable and its slot exists.
-        if let Ok(from) = self.pad.bind(action, slot, button) {
+        if let Ok(from) = self.pad.bind(action, slot, chord) {
             self.captured(ctx, from);
         }
     }
 
     /// Cancel: saves and returns `true` if every required action has a key
-    /// and a button; otherwise shows the side that lacks one and names the
-    /// first action on the screen that does (the shown side first).
+    /// and a button (only a button, with no keyboard); otherwise shows the
+    /// side that lacks one and names the first action on the screen that
+    /// does (the shown side first).
     fn leave(&mut self, ctx: &mut Ctx<G>) -> bool {
         let other = match self.side {
             Side::Keyboard => Side::Controller,
             Side::Controller => Side::Keyboard,
         };
-        let blocked = [self.side, other]
-            .into_iter()
-            .find_map(|side| Some((side, self.first_unmapped(side)?)));
+        let sides = if self.is_controller_only() {
+            &[Side::Controller][..]
+        } else {
+            &[self.side, other][..]
+        };
+        let blocked = sides
+            .iter()
+            .find_map(|&side| Some((side, self.first_unmapped(side)?)));
         if let Some((side, action)) = blocked {
             self.side = side;
             self.message = Some(blocked_message(ctx, self.rows, side, action));
@@ -742,7 +830,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
         let km = ctx.help_keys().of(&self.opened_with);
         KeyBindingsView {
             title: ctx.text(TITLE).to_owned(),
-            switch: SwitchView {
+            switch: (!self.is_controller_only()).then(|| SwitchView {
                 keyboard: format!(
                     "{}{SEPARATOR}{}",
                     ctx.text(KEYBOARD_SIDE),
@@ -751,7 +839,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
                 controller: ctx.text(CONTROLLER_SIDE).to_owned(),
                 shown: self.side,
                 focused: self.is_on_switch(),
-            },
+            }),
             columns: columns.collect(),
             groups,
             restore: RestoreView {
@@ -825,6 +913,15 @@ impl<G: GameData> Screen<G> for KeyBindingsScreen<G> {
 
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         self.tick(input.dt);
+        if !self.releasing.is_empty() {
+            // What the capture's buttons do when let go isn't for here.
+            let up = input.released_buttons();
+            self.releasing.retain(|b| !up.contains(b));
+            self.await_release &= <G::Action as ActionSet>::ALL
+                .iter()
+                .any(|&a| is_cursor(a) && input.is_held(a));
+            return Transition::None;
+        }
         if self.capturing {
             // This frame's actions and repeats are ignored: the key or
             // button is for the slot.
@@ -884,7 +981,7 @@ impl<G: GameData> Screen<G> for KeyBindingsScreen<G> {
     }
 
     fn draw(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer) {
-        glyph::paint(ctx, &self.view(ctx), buf);
+        (self.paint)(ctx, &self.view(ctx), buf);
     }
 
     fn as_any(&self) -> Option<&dyn core::any::Any> {

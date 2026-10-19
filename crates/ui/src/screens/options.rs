@@ -17,11 +17,12 @@
 //!
 //! **The look is a skin.** This module decides what the screen shows and
 //! does, and says it as plain data: an [`OptionsView`]
-//! ([`OptionsScreen::view`]). [`glyph::paint`] draws that view as glyphs.
+//! ([`OptionsScreen::view`]). [`glyph::paint`] draws that view as glyphs,
+//! unless the game gives another painter ([`OptionsScreen::painted_by`]).
 //! Nothing here knows a cell, a colour or a position, so another look (a
-//! bought UI pack) is another painter of the same view. Tests of what
-//! happened read the view or the settings; only [`glyph`]'s tests read
-//! cells.
+//! bought UI pack, another device's screen) is another painter of the same
+//! view. Tests of what happened read the view or the settings; only the
+//! painters' tests read cells.
 
 pub mod glyph;
 pub mod view;
@@ -388,10 +389,16 @@ impl LeaveChoice {
 /// The game's rows, as they are now: the ones `ctx` shows, top to bottom.
 pub type Rows<G> = fn(&Ctx<G>) -> Vec<OptionRow<G>>;
 
+/// What paints the screen's view: [`glyph::paint`], or the game's own
+/// ([`OptionsScreen::painted_by`]).
+pub type Paint<G> = fn(&Ctx<G>, &OptionsView, &mut GlyphBuffer);
+
 /// The options screen. Cancel closes it, asking first if anything changed.
 pub struct OptionsScreen<G: GameData> {
     /// The game's rows.
     rows: Rows<G>,
+    /// What paints the view.
+    paint: Paint<G>,
     /// The focused row's key; the first row's until the cursor moves.
     row: Option<&'static str>,
     /// The settings as they were when the screen opened (taken on its
@@ -431,6 +438,7 @@ impl<G: GameData> OptionsScreen<G> {
     pub fn new(rows: Rows<G>) -> Self {
         Self {
             rows,
+            paint: glyph::paint,
             row: None,
             opened_with: None,
             opened_unsaved: Vec::new(),
@@ -439,6 +447,14 @@ impl<G: GameData> OptionsScreen<G> {
             typing: None,
             message: None,
         }
+    }
+
+    /// The same screen with its view painted by `paint` instead of
+    /// [`glyph::paint`]: a game's look for a device of its own.
+    #[must_use]
+    pub fn painted_by(mut self, paint: Paint<G>) -> Self {
+        self.paint = paint;
+        self
     }
 
     /// The same screen focused on the row `key` (on the first row while
@@ -914,7 +930,7 @@ impl<G: GameData> Screen<G> for OptionsScreen<G> {
     }
 
     fn draw(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer) {
-        glyph::paint(ctx, &self.view(ctx), buf);
+        (self.paint)(ctx, &self.view(ctx), buf);
     }
 
     fn as_any(&self) -> Option<&dyn core::any::Any> {
