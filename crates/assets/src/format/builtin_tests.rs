@@ -508,6 +508,13 @@ fn wav_and_ogg_read_a_sounds_header_as_the_manifest_check_does() {
         shown(alone(&OggVorbis, "a.ogg", &ogg(1, 48_000))),
         ["a.ogg: 48000 Hz; must be 44100 Hz"]
     );
+    // Through the registry, which keeps each format to its limit.
+    let standard = Formats::standard();
+    let read = |name: &str, bytes: &[u8]| {
+        standard.decode::<Sound>(&AssetPath::new(name), bytes, &DecodeCx::new())
+    };
+    assert_eq!(read("a.wav", &wav(1, rate, 1)), Ok(sound(1)));
+    assert_eq!(read("a.ogg", &ogg(2, rate)), Ok(sound(2)));
 }
 
 #[test]
@@ -533,6 +540,11 @@ fn a_music_track_is_a_whole_ogg_vorbis_file_whose_last_page_gives_its_length() {
         shown(alone(&OggVorbisTrack, "a.ogg", b"OggS")),
         ["a.ogg: not an OGG Vorbis file"]
     );
+    // Through the registry, which keeps the format to its limit.
+    let file = AssetPath::new("music/a.ogg");
+    let track =
+        Formats::standard().decode::<MusicTrack>(&file, &ogg_file(rate, 44_100), &DecodeCx::new());
+    assert_eq!(track.map(|t| t.length_ms), Ok(1000));
 }
 
 /// The manifest in `source`, read as [`audio::from_source`] reads it with

@@ -538,13 +538,14 @@ impl Formats {
                         .iter()
                         .any(|&extension| claims(old, extension))
             };
-            let mut i = 0;
-            while i < list.formats.len() {
-                if clash(&*list.formats[i]) {
-                    at.get_or_insert(i);
-                    replaced.push(list.formats.remove(i).id());
+            for old in core::mem::take(&mut list.formats) {
+                if clash(&*old) {
+                    // The place of the first replaced: after the formats
+                    // kept before it.
+                    at.get_or_insert(list.formats.len());
+                    replaced.push(old.id());
                 } else {
-                    i += 1;
+                    list.formats.push(old);
                 }
             }
         }
