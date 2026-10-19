@@ -133,23 +133,21 @@ fn link_exists(repo_root: &Path, from: &Path, dest: &str) -> bool {
 
 /// `%20` and the like, as GitHub reads them in a link; anything else is kept.
 fn percent_decode(s: &str) -> String {
-    let bytes = s.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        let hex = bytes
-            .get(i + 1..i + 3)
+    let mut out = Vec::with_capacity(s.len());
+    // Every step takes at least one byte off `rest`, so the loop ends
+    // whatever a mutant does to it.
+    let mut rest = s.as_bytes();
+    while let Some((&first, tail)) = rest.split_first() {
+        let hex = tail
+            .get(..2)
             .and_then(|h| std::str::from_utf8(h).ok())
             .and_then(|h| u8::from_str_radix(h, 16).ok());
-        match (bytes[i], hex) {
-            (b'%', Some(byte)) => {
-                out.push(byte);
-                i += 3;
-            }
-            (byte, _) => {
-                out.push(byte);
-                i += 1;
-            }
+        if let (b'%', Some(byte)) = (first, hex) {
+            out.push(byte);
+            rest = &tail[2..];
+        } else {
+            out.push(first);
+            rest = tail;
         }
     }
     String::from_utf8_lossy(&out).into_owned()
