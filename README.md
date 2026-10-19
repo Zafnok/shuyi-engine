@@ -163,6 +163,7 @@ What it shows, and the engine's part in each:
 | In the game | The engine's |
 | ----------- | ------------ |
 | A title menu, an end screen | `shuyi_ui::widgets::Menu`; the screen stack (`Screen`, `Transition`, `Game`) |
+| "Leave the stage?", asked on a screen of its own | a screen that pops with its answer (`Transition::pop_with`) and the stage that reads it (`Screen::uncovered`) |
 | Options with two settings (text speed, the map's look), saved | `shuyi_ui::screens::options` with the game's rows; `settings` (`GameSettings`); `storage` |
 | Key rebinding, from the options | `shuyi_ui::screens::key_bindings`; the keymap file (`shuyi_assets::keymap`) over the game's `ActionSet` |
 | A short scene before the stage | the `.dlg` format (`shuyi_assets::dialogue`), `shuyi_ui::dialogue`'s player and text box |

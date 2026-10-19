@@ -3,8 +3,9 @@
 //! the cursor steers its path; Confirm on a tile of its reach sends the
 //! command and shows the walk. Then the foe's mind ([`Chase`]) gives the
 //! foe's command, and its step is shown. Cancel puts your piece down, or
-//! asks whether to leave. The stage starts with its scene ([`Talk`]) over
-//! it, and ends on the [`End`] screen.
+//! asks whether to leave on a screen of its own ([`Leave`]), which pops
+//! with the answer. The stage starts with its scene ([`Talk`]) over it,
+//! and ends on the [`End`] screen.
 //!
 //! What it shows is a [`MapScene`] that the skin of the player's settings
 //! paints, and a [`StageView`] of the lines round it.
@@ -15,11 +16,11 @@ use shuyi_core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
 use shuyi_ui::audio::MenuSound;
 use shuyi_ui::frame::glyph_buffer::{GlyphBuffer, Rect};
 use shuyi_ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
-use shuyi_ui::{FrameInput, Screen, Transition};
+use shuyi_ui::{FrameInput, Screen, ScreenResult, Transition};
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
 
-use super::{End, HelloCtx, Talk};
+use super::{End, HelloCtx, Leave, Talk};
 use crate::map::{self, GLYPHS, Letters, MOVE, Piece, Terrain, Tiles};
 use crate::rules::{Chase, Command, Event, MOVES, Side, Stage};
 use crate::settings::MapLook;
@@ -55,7 +56,8 @@ pub struct StageScreen {
     pub walk: Option<Walk>,
     /// Whether the foe tripped on its last move.
     pub tripped: bool,
-    /// Whether it is asking whether to leave.
+    /// Whether it is asking whether to leave: the [`Leave`] question is
+    /// over it.
     pub leaving: bool,
     /// Whether the scene before the stage has been opened.
     briefed: bool,
@@ -147,12 +149,6 @@ impl StageScreen {
             } else {
                 ctx.text_with(help, &[])
             },
-            question: self.leaving.then(|| {
-                (
-                    ctx.text("stage.leave").to_owned(),
-                    ctx.text_with("stage.leave.answers", &[]),
-                )
-            }),
         }
     }
 
@@ -297,14 +293,6 @@ impl Screen<Hello> for StageScreen {
             return self.walked();
         }
         for &action in &input.actions {
-            if self.leaving {
-                match action.ui() {
-                    Some(UiAction::Confirm) => return Transition::Pop,
-                    Some(UiAction::Cancel) => self.leaving = false,
-                    _ => {}
-                }
-                continue;
-            }
             match action.ui() {
                 Some(UiAction::Up) => self.step(ctx, Dir::Up),
                 Some(UiAction::Down) => self.step(ctx, Dir::Down),
@@ -315,7 +303,10 @@ impl Screen<Hello> for StageScreen {
                     ctx.audio.menu(MenuSound::Cancel);
                     self.selected = None;
                 }
-                Some(UiAction::Cancel) => self.leaving = true,
+                Some(UiAction::Cancel) => {
+                    self.leaving = true;
+                    return Transition::Push(Box::new(Leave));
+                }
                 Some(UiAction::Debug) | None => {}
             }
             if self.walk.is_some() {
@@ -336,6 +327,16 @@ impl Screen<Hello> for StageScreen {
             skin::paint_stage(&ctx.palette, &self.view(ctx), buf);
             skin.paint(&looks, &scene, AREA, painter, buf);
         });
+    }
+
+    /// Back from the scene, or from the question: on a yes, it leaves too.
+    fn uncovered(&mut self, _: &mut HelloCtx, result: Option<ScreenResult>) -> Transition<Hello> {
+        self.leaving = false;
+        if result.and_then(ScreenResult::take::<bool>) == Some(true) {
+            Transition::Pop
+        } else {
+            Transition::None
+        }
     }
 
     fn as_any(&self) -> Option<&dyn Any> {

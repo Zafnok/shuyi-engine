@@ -20,7 +20,7 @@ use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::crank::Crank;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
-use crate::screen::{FrameInput, Screen, ScreenStack};
+use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
 
 /// A keyboard or controller event as the platform reports it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -323,10 +323,10 @@ impl<G: GameData> Game<G> {
                     .is_some_and(|n| self.hooks.debug_screens.contains(&n))
         });
         if let Some(hook) = first_key {
-            self.stack.push((hook.open)(&self.ctx));
+            self.open(hook);
         }
         if let Some(hook) = debug {
-            self.stack.push((hook.open)(&self.ctx));
+            self.open(hook);
         } else {
             // A chord button gives its own action when let go or after the
             // chord window: that is pad input too.
@@ -358,6 +358,12 @@ impl<G: GameData> Game<G> {
         self.quit = self.stack.update(&mut self.ctx, &input);
         self.sync_keymap();
         self.redraw();
+    }
+
+    /// Opens `hook`'s screen over the top one, which hears it is covered.
+    fn open(&mut self, hook: ScreenHook<G>) {
+        let screen = (hook.open)(&self.ctx);
+        self.stack.apply_in(&mut self.ctx, Transition::Push(screen));
     }
 
     /// The actions whose keys or buttons are held.

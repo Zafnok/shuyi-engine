@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2306 — A screen hands a result to the one below when it pops
@@ -94,12 +94,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A test pushes a screen that pops with `7u8`; the screen below
+- [x] A test pushes a screen that pops with `7u8`; the screen below
       gets `Some(7)` in `uncovered`.
-- [ ] A test checks `covered` is called once on push and `uncovered`
+- [x] A test checks `covered` is called once on push and `uncovered`
       once on pop, and neither on `Replace` of the top screen.
-- [ ] Every existing test passes unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Every existing test passes unchanged: every engine test does. One
+      test of the example changed, because the example's question moved
+      to a screen of its own (see below).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -109,5 +111,65 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** In `crates/ui/src/screen.rs`:
+
+- `Transition::PopWith(ScreenResult)`, made with
+  `Transition::pop_with(value)`. `ScreenResult` is a small wrapper over
+  `Box<dyn Any>` that also keeps the type's name, so `Debug` prints
+  `PopWith(u8)`. It reads back with `take::<T>()`, `get::<T>()`,
+  `is::<T>()` and `downcast::<T>()`.
+- `Screen::covered(ctx)` and `Screen::uncovered(ctx, result)`. Both
+  have defaults that do nothing.
+- `ScreenStack::apply_in(ctx, transition)` makes the calls.
+  `ScreenStack::update` uses it, and so do `Game`'s first-key and debug
+  hooks: their screens now cover the top screen like any push.
+- Popping the last screen still quits, and tells nobody. `Replace` and
+  `Quit` tell nobody either.
+
+There is no harness change: the harness drives `Game`, so it sees the
+same calls.
+
+ADR-0018 records the design.
+
+**Deviations.**
+
+- **`uncovered` returns a `Transition`.** The stack applies it at once,
+  in a loop. This lets a screen act on the answer in the same frame. The
+  game's flow (game#1158) needs this to push its next screen without one
+  frame of the flow drawn alone in between. The example needs it to
+  leave the stage on "yes". A screen that does nothing returns
+  `Transition::None`, which the default already does.
+- **`ScreenStack::apply(transition)` keeps its signature.** It changes
+  the stack alone, with no context and no calls, and a `PopWith` value
+  is dropped. The new `apply_in` sits beside it. Changing `apply` would
+  have changed the existing tests that call it.
+- **The example:** Hello, Grid's stage asked "Leave the stage?" inline,
+  with a flag. Now a `Leave` overlay screen (`screens.rs`) asks it and
+  pops with a `bool`, and the stage reads the answer in `uncovered`.
+  Keys, text and snapshots are as before. The stage's own question
+  branch went, and so did `StageView::question`.
+  `leaving_the_stage_asks_first` now reads the question from `Leave`
+  and the stack instead of from the stage's view.
+
+**Tests.**
+
+- Unit tests in `screen/tests.rs`:
+  - a value handed down;
+  - covered and uncovered on push, pop and replace;
+  - a lone screen and an empty stack;
+  - quitting;
+  - the transition from `uncovered` applied at once, including two
+    answers passed down;
+  - `apply` alone;
+  - `ScreenResult`.
+- In `game/tests.rs`, a test that the hook screens cover and uncover.
+- The example's yes/no is tested through the harness in `playthrough.rs`.
+
+**For the game.** The change is additive. Its one `match` on
+`Transition` (`crates/ui/src/flow.rs`) has a wildcard arm, so it builds
+at the next pin. No pin-bump PR exists yet: game#1158 moves the pin, then
+game#1159 follows.
+
+**Follow-ups:** none.
+
+**For Nick:** nothing to decide.

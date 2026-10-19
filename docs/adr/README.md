@@ -30,5 +30,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0015](0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md) | Real-time strategy at scale: command sims, units in columns, flow fields, and AI in layers | Accepted; its tickets are parked until after the game launches |
 | [0016](0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md) | Visual novels and detective games: a story stage, a case file, and a fair-play check | Accepted; its tickets are parked until after the game launches |
 | [0017](0017-sonar-backlog-becomes-batched-github-issues.md) | SonarCloud in CI, and its backlog as batched GitHub issues | Accepted; adopts game ADR-0071 |
+| [0018](0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md) | Screen results: a screen pops with a value, and hears when it is covered | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

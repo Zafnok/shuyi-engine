@@ -1,6 +1,7 @@
 //! The screens: the [`Title`], the scene before the stage ([`Talk`]), the
-//! stage itself ([`stage::StageScreen`]) and how it ended ([`End`]), with
-//! the engine's options and Key bindings screens opened from the title.
+//! stage itself ([`stage::StageScreen`]), the question whether to leave it
+//! ([`Leave`]) and how it ended ([`End`]), with the engine's options and
+//! Key bindings screens opened from the title.
 //! Each says what it shows as a view (plain data) and [`crate::skin`]
 //! paints it.
 
@@ -20,7 +21,7 @@ pub use stage::StageScreen;
 
 use crate::rules::Outcome;
 use crate::settings::MapLook;
-use crate::skin::{self, EndView, TitleView};
+use crate::skin::{self, EndView, QuestionView, TitleView};
 use crate::{Action, Hello};
 
 /// The game's context.
@@ -243,6 +244,47 @@ impl Screen<Hello> for Talk {
 
     fn as_any(&self) -> Option<&dyn Any> {
         Some(self)
+    }
+}
+
+/// Whether to leave the stage, asked over it on the bottom row: Confirm
+/// says yes and Cancel no. It pops with the answer, a `bool`, which the
+/// stage reads when it is uncovered.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Leave;
+
+impl Leave {
+    /// What it shows.
+    pub fn view(ctx: &HelloCtx) -> QuestionView {
+        QuestionView {
+            question: ctx.text("stage.leave").to_owned(),
+            answers: ctx.text_with("stage.leave.answers", &[]),
+        }
+    }
+}
+
+impl Screen<Hello> for Leave {
+    fn name(&self) -> &'static str {
+        "leave"
+    }
+
+    fn update(&mut self, _: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
+        for &action in &input.actions {
+            match action {
+                Action::Confirm => return Transition::pop_with(true),
+                Action::Cancel => return Transition::pop_with(false),
+                _ => {}
+            }
+        }
+        Transition::None
+    }
+
+    fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
+        skin::paint_question(&ctx.palette, &Self::view(ctx), buf);
+    }
+
+    fn is_overlay(&self) -> bool {
+        true
     }
 }
 

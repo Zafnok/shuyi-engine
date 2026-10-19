@@ -30,8 +30,15 @@ pub struct StageView {
     pub message: String,
     /// The help line (empty while a piece walks).
     pub help: String,
-    /// The question asked instead, with its answers, if one is.
-    pub question: Option<(String, String)>,
+}
+
+/// What a yes-or-no question over the stage shows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QuestionView {
+    /// The question.
+    pub question: String,
+    /// Its answers, with their keys.
+    pub answers: String,
 }
 
 /// What the end of a stage shows.
@@ -116,7 +123,7 @@ pub fn paint_talk(
 }
 
 /// The lines round the stage's map: the turn and what is happening on the
-/// top row, the help (or the question) on the bottom one.
+/// top row, the help on the bottom one.
 pub fn paint_stage(palette: &Palette, view: &StageView, buf: &mut GlyphBuffer) {
     let c = |e| palette.engine(e);
     let bg = c(EngineColor::Panel);
@@ -124,14 +131,19 @@ pub fn paint_stage(palette: &Palette, view: &StageView, buf: &mut GlyphBuffer) {
     let shown = buf.print(1, 0, &view.turn, c(EngineColor::Highlight), bg);
     let x = 1 + i32::from(shown) + 3;
     buf.print(x, 0, &view.message, c(EngineColor::Text), bg);
-    match &view.question {
-        Some((question, answers)) => {
-            let text = format!("{question}  {answers}");
-            let y = i32::from(buf.height()) - 1;
-            line(buf, y, &text, c(EngineColor::Warning), bg);
-        }
-        None => help(palette, buf, &view.help, bg),
-    }
+    help(palette, buf, &view.help, bg);
+}
+
+/// A question over the stage, on the bottom row in place of its help.
+pub fn paint_question(palette: &Palette, view: &QuestionView, buf: &mut GlyphBuffer) {
+    let bg = palette.engine(EngineColor::Panel);
+    let y = i32::from(buf.height()) - 1;
+    buf.fill_rect(
+        Rect::new(0, y, i32::from(buf.width()), 1),
+        Cell::new(' ', bg, bg),
+    );
+    let text = format!("{}  {}", view.question, view.answers);
+    line(buf, y, &text, palette.engine(EngineColor::Warning), bg);
 }
 
 /// The end of a stage: the headline, the menu, the help.
