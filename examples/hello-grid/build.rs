@@ -1,4 +1,4 @@
-//! The web shell's JS plugins (`engine/crates/cli/web/`: storage and
+//! The web shell's JS plugins (`crates/cli/web/`: storage and
 //! controllers) are functions the page provides at run time, not linked
 //! in: on the web the binary links with `--allow-undefined`, so `rust-lld`
 //! leaves them as imports (the web shell's README says why it is set

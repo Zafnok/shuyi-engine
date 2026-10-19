@@ -12,11 +12,11 @@ workspace = true
 
 [features]
 default = ["std"]
-# Without it the crate is `no_std` + `alloc` (ADR-0070 §6): a layer is then a
+# Without it the crate is `no_std` + `alloc` (game ADR-0070 §6): a layer is then a
 # file table (`Layer::table`), since `include_dir` needs `std`.
 std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std", "shuyi-core/std"]
 # `bitmap::convert::png_pixels`: a tool that makes one-bit pictures reads
-# the PNGs with it (ADR-0085). Only tools turn it on.
+# the PNGs with it (game ADR-0085). Only tools turn it on.
 png = ["std", "dep:png"]
 # `keymap::sample`, a sample game's actions and keymap file, for other
 # engine crates' tests of input (ticket 1107).

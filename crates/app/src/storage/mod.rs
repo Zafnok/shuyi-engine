@@ -1,4 +1,4 @@
-//! Platform [`Storage`] backends (ticket 0207, ADR-0009): files in the OS
+//! Platform [`Storage`] backends (ticket 0207, game ADR-0009): files in the OS
 //! data directory on native, `localStorage` on web.
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -1,5 +1,5 @@
-//! The keymap file format, generic over a game's [`ActionSet`] (ADR-0015,
-//! ADR-0031, ADR-0034, tickets 1106 and 1107): [`Key`]s and [`Chord`]s,
+//! The keymap file format, generic over a game's [`ActionSet`] (game ADR-0015,
+//! game ADR-0031, game ADR-0034, tickets 1106 and 1107): [`Key`]s and [`Chord`]s,
 //! controller [`Button`]s and [`ButtonChord`]s (two buttons together), the
 //! named [`Layout`]s a file lists, and
 //! [`KeymapDef`], a validated keymap file: each layout's default keys, the
@@ -251,7 +251,7 @@ impl fmt::Display for Chord {
 macro_rules! buttons {
     ($($variant:ident => $doc:literal,)+) => {
         /// A controller button, named by its **position** on an Xbox-shaped
-        /// pad, whatever is printed on it (ADR-0034). Each stick's four
+        /// pad, whatever is printed on it (game ADR-0034). Each stick's four
         /// directions count as buttons too, and so does a crank wound one
         /// notch either way (the Playdate's, ticket 1035: pressed and let go
         /// once per notch). `app` translates what the platform reports to
@@ -648,7 +648,7 @@ pub struct KeymapDef<A: ActionSet> {
     /// layout picker. After [`from_source`](Self::from_source) every action
     /// is present.
     pub pad: PadKeys<A>,
-    /// The default buttons of a Playdate (ADR-0070, ticket 1034), whose
+    /// The default buttons of a Playdate (game ADR-0070, ticket 1034), whose
     /// only buttons are the D-pad, A and B: the file's `playdate` table, or
     /// a copy of [`pad`](Self::pad) for a file without one. A game running
     /// on a Playdate uses it in place of `pad`

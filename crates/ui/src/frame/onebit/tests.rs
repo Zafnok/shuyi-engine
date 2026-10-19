@@ -378,7 +378,7 @@ fn a_sprite_draws_its_one_bit_picture() {
         sprite_frame(|s| s.painted(Paint::Shaded(dusk)), false),
         sprite_frame(|s| s, false)
     );
-    // Darkened to black (ADR-0075): where it shows, black, as a black
+    // Darkened to black (game ADR-0075): where it shows, black, as a black
     // silhouette is; at full brightness, as it is.
     let dark = |brightness| move |s: Sprite| Sprite { brightness, ..s };
     assert_eq!(
@@ -424,7 +424,7 @@ fn drawn(image: Image<'_>, src: Rect, dest: Rect, flip_x: bool) -> Vec<String> {
 }
 
 /// An 8 × 4 picture made from a 4 × 2 image enlarged twice before it was
-/// dithered (ADR-0085): drawn at the image's double size, each of its
+/// dithered (game ADR-0085): drawn at the image's double size, each of its
 /// pixels is one screen pixel, not a doubled one.
 #[test]
 fn an_enlarged_picture_draws_a_screen_pixel_a_pixel() {

@@ -199,7 +199,7 @@ fn a_painted_sprite_is_one_colour_or_dimmed_where_the_image_is_solid() {
     assert_eq!(dimmed.pixel(0, 0), rgba(white.dimmed()));
     assert_eq!(dimmed.pixel(1, 1), rgba(red.dimmed()));
     assert_ne!(red.dimmed(), red);
-    // Shaded: each pixel as it is in the light (ADR-0058).
+    // Shaded: each pixel as it is in the light (game ADR-0058).
     let dusk = Light::new(0.35, [0.62, 0.56, 0.46]);
     let shaded = render(Paint::Shaded(dusk), 255);
     assert_eq!(shaded.pixel(0, 0), Some([158, 143, 117, 255]));
@@ -210,7 +210,7 @@ fn a_painted_sprite_is_one_colour_or_dimmed_where_the_image_is_solid() {
     assert_eq!(plain.pixel(1, 1), rgba(red));
 }
 
-/// A darkened sprite (ADR-0075) is its colours times its brightness, after
+/// A darkened sprite (game ADR-0075) is its colours times its brightness, after
 /// its paint, and as solid as before: nothing under it shows through.
 #[test]
 fn a_darkened_sprite_is_darker_not_see_through() {

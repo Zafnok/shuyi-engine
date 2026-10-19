@@ -606,7 +606,7 @@ mod tests {
                 "crates/ui/src/input.rs",
                 "crates/playdate/src/pads.rs",
             ]),
-            platform_file: "engine/crates/app/src/keys.rs".to_owned(),
+            platform_file: "crates/app/src/keys.rs".to_owned(),
             test_support: strings(&["crates/ui/src/harness.rs"]),
             picture_files: strings(&[
                 "crates/ui/src/screens/layout_picker.rs",
@@ -678,7 +678,7 @@ mod tests {
         assert_eq!(rust("crates/ui/src/input.rs", read).len(), 2);
         let errs = rust("crates/app/src/main.rs", read);
         assert_eq!(errs.len(), 2, "{errs:?}");
-        assert!(errs[1].contains("outside engine/crates/app/src/keys.rs"));
+        assert!(errs[1].contains("outside crates/app/src/keys.rs"));
     }
 
     #[test]

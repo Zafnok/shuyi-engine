@@ -1,5 +1,5 @@
 //! Plays a cinematic (`shuyi_assets::cinematic`, ticket 1113; the game's
-//! ADR-0060): a [`Timeline`] says which shot a time falls in and how far
+//! game ADR-0060): a [`Timeline`] says which shot a time falls in and how far
 //! through it, and a [`CinematicPlayer`] has the shot draw itself there.
 //! What a shot shows is the game's: its shot kinds implement
 //! [`ShotPainter`].
@@ -11,7 +11,7 @@
 //! can draw any moment. The player has no clock of its own.
 //!
 //! The engine also gives what most shots move by: an [`ease_in_out`], and
-//! a [`Pan`] over a picture shown as the frame's backdrop (ADR-0048,
+//! a [`Pan`] over a picture shown as the frame's backdrop (game ADR-0048,
 //! [`cinema::view`]), its frame ([`PanFrame`]) and its paint
 //! ([`paint_pan`]).
 
@@ -166,7 +166,7 @@ pub fn ease_in_out(p: f32) -> f32 {
     p * p * (3.0 - 2.0 * p)
 }
 
-/// A pan over a picture shown as the frame's backdrop (ADR-0048): the
+/// A pan over a picture shown as the frame's backdrop (game ADR-0048): the
 /// picture's pixel `from` in the middle of the screen when the shot
 /// starts, `to` when it ends, eased in and out ([`ease_in_out`]), at one
 /// whole zoom for the whole shot.

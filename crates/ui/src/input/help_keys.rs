@@ -1,7 +1,7 @@
 //! Help text that names keys and controller buttons. Names always come
 //! from the active [`Keymap`], never string literals, because each layout
-//! binds actions to different keys (ADR-0015) and the player can rebind
-//! them (ADR-0031); and they follow the [`Device`] the player pressed last
+//! binds actions to different keys (game ADR-0015) and the player can rebind
+//! them (game ADR-0031); and they follow the [`Device`] the player pressed last
 //! (`docs/design/controls.md`, *Controller*): keys on the keyboard, the
 //! pad's own button names on a controller.
 //!

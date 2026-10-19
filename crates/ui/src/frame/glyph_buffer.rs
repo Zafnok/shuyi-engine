@@ -1,17 +1,17 @@
-//! The [`GlyphBuffer`] virtual console every screen draws into (ADR-0003).
+//! The [`GlyphBuffer`] virtual console every screen draws into (game ADR-0003).
 //!
 //! Positions are `i32` so callers can draw partly (or wholly) off-buffer:
 //! every primitive clips to the buffer and never panics.
 //!
 //! Besides cells, a buffer holds [`Item`]s, placed in console pixels:
 //! [`Overlay`]s, coloured rectangles for what whole cells can't draw (HP
-//! bars, the path line; ADR-0018), and [`Sprite`]s, pictures from image
-//! files (ADR-0038). Within a layer, items are drawn in the order they were
+//! bars, the path line; game ADR-0018), and [`Sprite`]s, pictures from image
+//! files (game ADR-0038). Within a layer, items are drawn in the order they were
 //! added. They belong to the cells they were drawn with: replacing cells
 //! ([`GlyphBuffer::fill_rect`], [`GlyphBuffer::blit`]) removes the parts of
 //! items over them.
 //!
-//! A buffer may also hold one [`Backdrop`] (ADR-0048): a second buffer, the
+//! A buffer may also hold one [`Backdrop`] (game ADR-0048): a second buffer, the
 //! *scene*, shown through a window of cells at a pixel offset and a whole
 //! zoom, behind the cells marked [`Cell::see_through`].
 
@@ -54,7 +54,7 @@ impl Cell {
         }
     }
 
-    /// A cell with no background (ADR-0048): `glyph` in `fg` over the
+    /// A cell with no background (game ADR-0048): `glyph` in `fg` over the
     /// buffer's [`Backdrop`]. A space is a plain hole.
     /// [`GlyphBuffer::print_fg`] over it keeps it see-through; anything
     /// that sets a whole cell makes it solid again.
@@ -139,7 +139,7 @@ impl Layer {
     }
 }
 
-/// A solid rectangle drawn on top of the cell grid (ADR-0018).
+/// A solid rectangle drawn on top of the cell grid (game ADR-0018).
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Overlay {
     /// Where, in console pixels.
@@ -157,7 +157,7 @@ impl Overlay {
     }
 }
 
-/// How a [`Sprite`]'s pixels are coloured (ADR-0049). Whichever it is, a
+/// How a [`Sprite`]'s pixels are coloured (game ADR-0049). Whichever it is, a
 /// pixel is as see-through as the image has it.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Default)]
 pub enum Paint {
@@ -170,7 +170,7 @@ pub enum Paint {
     /// Each pixel [dimmed](Rgb::dimmed): grey and darker (a unit that has
     /// acted).
     Dimmed,
-    /// Each pixel as it is in this light (ADR-0058): the ground of a map
+    /// Each pixel as it is in this light (game ADR-0058): the ground of a map
     /// at dusk.
     Shaded(Light),
 }
@@ -188,7 +188,7 @@ impl Paint {
     }
 }
 
-/// A picture on top of the cell grid (ADR-0038): part of an image file,
+/// A picture on top of the cell grid (game ADR-0038): part of an image file,
 /// scaled into a rectangle of console pixels. `app` draws it from a texture
 /// with nearest-pixel sampling, so whole-number scales stay sharp.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
@@ -400,7 +400,7 @@ fn subtract(r: Rect, hole: Rect) -> Vec<Rect> {
     .collect()
 }
 
-/// Border style for [`GlyphBuffer::draw_box`] (ADR-0012: single for panels,
+/// Border style for [`GlyphBuffer::draw_box`] (game ADR-0012: single for panels,
 /// double for focus/modal).
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum BoxStyle {
@@ -721,7 +721,7 @@ impl GlyphBuffer {
     /// is, 0 = black; clamped, and not a number counts as 1): every cell's
     /// colours, every rectangle's colour, every sprite's `brightness`, and
     /// the backdrop's scene the same way. Unlike [`dim`](Self::dim) it
-    /// leaves nothing out (ADR-0060, ADR-0075).
+    /// leaves nothing out (game ADR-0060, game ADR-0075).
     pub fn fade(&mut self, brightness: f32) {
         let brightness = if brightness.is_nan() {
             1.0

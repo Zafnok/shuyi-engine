@@ -12,8 +12,8 @@ repository.workspace = true
 # because one differs and Cargo can't override a single inherited lint:
 # `unsafe_code` is `deny` here instead of `forbid`, so the web build's
 # controller plugin can declare the JS functions it imports
-# (`src/pads/web.rs`, the only `#[allow(unsafe_code)]`; ADR-0034, and
-# ADR-0004 rule 5: no `unsafe` outside the platform). A test in `lib.rs`
+# (`src/pads/web.rs`, the only `#[allow(unsafe_code)]`; game ADR-0034, and
+# game ADR-0004 rule 5: no `unsafe` outside the platform). A test in `lib.rs`
 # keeps the rest equal to the workspace's.
 [lints.rust]
 unsafe_code = "deny"
@@ -39,13 +39,13 @@ macroquad.workspace = true
 
 # Storage on the web (ticket 0207): `localStorage`. Native resolves its
 # data directory by hand (see storage/native.rs) rather than pulling in the
-# `directories` crate, which drags in MPL-2.0 (denied by ADR-0013).
+# `directories` crate, which drags in MPL-2.0 (denied by game ADR-0013).
 # Native music decodes on a worker thread into its own quad-snd context
-# (ticket 0215, ADR-0028). The same version macroquad's `audio` feature uses.
+# (ticket 0215, game ADR-0028). The same version macroquad's `audio` feature uses.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 quad-snd = "0.2.8"
-# Controllers on Windows, Linux and macOS (ticket 0219, ADR-0034). The web
-# build reads the browser's Gamepad API through `engine/crates/cli/web/gamepad.js` instead.
+# Controllers on Windows, Linux and macOS (ticket 0219, game ADR-0034). The web
+# build reads the browser's Gamepad API through `crates/cli/web/gamepad.js` instead.
 gilrs = "0.11.2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

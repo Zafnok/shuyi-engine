@@ -1,4 +1,4 @@
-//! A headless test driver for any game on the engine (ADR-0007 layer 4):
+//! A headless test driver for any game on the engine (game ADR-0007 layer 4):
 //! scripted key and controller-button presses and waits in, in frames of
 //! 1/60 s, screen names, snapshots and the audio asked for out. No window,
 //! no clock, no sound card: a stand-in for the music player says what

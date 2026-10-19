@@ -1,4 +1,4 @@
-//! Save versions (ADR-0039): every save names the version of its format
+//! Save versions (game ADR-0039): every save names the version of its format
 //! that wrote it, and a build reads only its own version. A save of another
 //! version is refused, never migrated. [`SaveHeader`] reads the version of
 //! any save, even one whose other fields no longer parse, so the refusal

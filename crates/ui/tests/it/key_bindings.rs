@@ -1,4 +1,4 @@
-//! The player's key bindings through the Harness (ticket 1111, ADR-0031):
+//! The player's key bindings through the Harness (ticket 1111, game ADR-0031):
 //! a rebound key works at the next press, plain Escape always cancels,
 //! and each layout's keys are saved and come back at the next launch.
 

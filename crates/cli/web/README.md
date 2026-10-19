@@ -101,7 +101,7 @@ just be re-copied from the new version of the crate.
 
 ## The engine's own `gamepad.js`
 
-- Exposes the connected pads to `engine/crates/app/src/pads/web.rs` as
+- Exposes the connected pads to `crates/app/src/pads/web.rs` as
   its `shuyi_pad_*` functions. The two files must list the same functions
   and the same plugin version (`VERSION` here, `PLUGIN_VERSION` there):
   `shuyi-cli`'s tests fail otherwise. Bump both versions when the functions

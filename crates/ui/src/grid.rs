@@ -1,4 +1,4 @@
-//! The tactics kit's map (game ADR-0038, ADR-0088): a screen says *what*
+//! The tactics kit's map (game ADR-0038, game ADR-0088): a screen says *what*
 //! is on the visible part of a grid map as a [`MapScene`] (plain data),
 //! and a [`GridSkin`] says how it looks. The skin paints the ground (each
 //! tile's terrain, flashing where it just changed), the ranges by their

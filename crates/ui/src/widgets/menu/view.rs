@@ -1,7 +1,7 @@
 //! What a [`Menu`](super::Menu) shows, as plain data: its items with their
 //! labels and which one is focused, no cells or positions. A screen puts
 //! the [`MenuView`] in its own view and its skin paints it
-//! ([`super::glyph::paint`] today; ADR-0054).
+//! ([`super::glyph::paint`] today; game ADR-0054).
 
 use crate::prelude::*;
 

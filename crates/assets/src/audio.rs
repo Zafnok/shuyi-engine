@@ -16,7 +16,7 @@ use serde::Deserialize;
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron;
 
-/// Licenses a credit may have (ADR-0013, ADR-0027). `Own` is work we made.
+/// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
 pub const LICENSES: [&str; 4] = ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0", OWN];
 
 /// The license of work we made ourselves.
@@ -67,7 +67,7 @@ pub struct MusicCue {
     /// Whether it loops (the default) or plays once.
     pub looped: bool,
     /// How long the track plays, in milliseconds (never 0): where the music
-    /// clock wraps a looped track (ADR-0037). The game can't measure it
+    /// clock wraps a looped track (game ADR-0037). The game can't measure it
     /// (the player library gives no length), so it is data, checked
     /// against the file by a test.
     pub length_ms: u32,
@@ -196,7 +196,7 @@ pub struct Files<'a> {
 }
 
 /// The sample rate every file must have: quad-snd (native) plays at
-/// 44.1 kHz and resamples anything else crudely (ADR-0026).
+/// 44.1 kHz and resamples anything else crudely (game ADR-0026).
 pub const SAMPLE_RATE: u32 = 44_100;
 
 /// Why `bytes` (a file named `name`) isn't something the game can play:
@@ -1002,7 +1002,7 @@ mod tests {
                  (ADR-0027: CC0-1.0, CC-BY-3.0, CC-BY-4.0, Own)"
             ]
         );
-        // CC BY 3.0 is allowed too (Nick, ticket 0214; ADR-0027).
+        // CC BY 3.0 is allowed too (Nick, ticket 0214; game ADR-0027).
         let by3 = FULL.replace("\"CC-BY-4.0\"", "\"CC-BY-3.0\"");
         assert_eq!(errors(&by3), Vec::<String>::new());
     }

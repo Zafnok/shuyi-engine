@@ -1,6 +1,6 @@
 //! The scene camera (the game's ticket 0228, moved here in 1154): a
 //! picture (a whole map, [`MapPicture`](crate::grid::MapPicture)) as a
-//! backdrop (ADR-0048) behind a window of the console, panned by the pixel
+//! backdrop (game ADR-0048) behind a window of the console, panned by the pixel
 //! and zoomed in whole steps, with a caption and a text box over it. For
 //! checking by eye that a renderer keeps the scene sharp and seamless.
 //!

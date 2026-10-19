@@ -1,5 +1,5 @@
 //! The keys no player can rebind (`docs/design/controls.md`, *Rebinding
-//! keys*; ADR-0031): plain `Escape` backs out of the Key bindings screen's
+//! keys*; game ADR-0031): plain `Escape` backs out of the Key bindings screen's
 //! "Press a key…" and plain `Delete` empties a slot there, so neither can
 //! be bound ([`Chord::is_reserved`]); and a text box's own `Enter`,
 //! `Backspace` and `Escape`. Which action a fixed key also triggers in

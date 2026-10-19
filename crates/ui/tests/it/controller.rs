@@ -1,4 +1,4 @@
-//! Playing on a controller through the Harness (ticket 1111, ADR-0034):
+//! Playing on a controller through the Harness (ticket 1111, game ADR-0034):
 //! buttons act through the keymap, the context knows which device and
 //! kind of pad was used last, and help text names that device's keys.
 

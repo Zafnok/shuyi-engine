@@ -1,4 +1,4 @@
-//! Controllers (ticket 0219, ADR-0034): from each connected pad's raw state
+//! Controllers (ticket 0219, game ADR-0034): from each connected pad's raw state
 //! to the [`Button`] presses and releases [`InputState`] is fed. Pure:
 //! `app` fills a [`PadState`] per pad every frame (gilrs on native, the
 //! browser's Gamepad API on web) and [`Pads::update`] does the rest, so both
@@ -44,7 +44,7 @@ pub enum PadKind {
     PlayStation4,
     /// A Nintendo pad (Switch Pro controller, Joy-Cons).
     Nintendo,
-    /// The Playdate's own buttons (ADR-0070): the D-pad, A and B. Its
+    /// The Playdate's own buttons (game ADR-0070): the D-pad, A and B. Its
     /// front end reports A at the binding position `South` and B at
     /// `East`, so the default bindings make A Confirm and B Cancel
     /// (`docs/design/playdate.md`, *Buttons and the crank*).

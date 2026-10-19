@@ -1,15 +1,15 @@
-//! Plays each frame's audio (ADR-0026): the sound and voice requests and
+//! Plays each frame's audio (game ADR-0026): the sound and voice requests and
 //! the music commands `shuyi_ui::Game` returns in its `FrameOutput`.
 //!
 //! Sounds are embedded and decoded once at start-up. Music is loaded from
 //! the game's music folder when a track is about to play and freed when it
 //! stops, so at most two tracks (the one fading out and the next) are in
-//! memory. Voice clips ([`voice`], ADR-0046) are loaded the same way from
+//! memory. Voice clips ([`voice`], game ADR-0046) are loaded the same way from
 //! the game's voice folder. The device calls sit behind [`Backend`], so
 //! everything else here is tested without a sound card.
 //!
 //! It also knows when each track really started ([`Audio::music_playing`],
-//! ADR-0037): a track asked for only sounds once its file has loaded, and
+//! game ADR-0037): a track asked for only sounds once its file has loaded, and
 //! screens that keep time with the music need the real moment.
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -61,7 +61,7 @@ pub(crate) struct Audio<B: Backend> {
     abandoned: Vec<B::Loading>,
     /// Where music files are, e.g. `music` or `C:/Games/some-game/music`.
     music_dir: String,
-    /// The voice clips (ADR-0046).
+    /// The voice clips (game ADR-0046).
     voices: Voices<B>,
     rng: VariantRng,
     /// Problems to log (missing files, decode errors).
@@ -158,7 +158,7 @@ impl<B: Backend> Audio<B> {
     /// skipped: `music` already holds what they mean), applies the `music`
     /// commands and checks on tracks and clips still loading. `now` is the
     /// time in seconds on a clock that keeps running while the game isn't
-    /// drawn (ADR-0037): a track that starts in this call started at `now`.
+    /// drawn (game ADR-0037): a track that starts in this call started at `now`.
     pub(crate) fn play<V: ClipVariant>(
         &mut self,
         backend: &mut B,
@@ -355,7 +355,7 @@ pub(crate) fn platform_folder(folder: &str) -> String {
 }
 
 /// Picks sound variants (`audio.md`: footsteps vary each step). A small
-/// `SplitMix64`, separate from core's simulation RNG (ADR-0019): what
+/// `SplitMix64`, separate from core's simulation RNG (game ADR-0019): what
 /// plays never affects the game.
 pub(crate) struct VariantRng(u64);
 
@@ -381,7 +381,7 @@ impl VariantRng {
 
 /// The real backend: macroquad's audio (quad-snd). On native, music is
 /// decoded on a worker thread into its own quad-snd context
-/// ([`native_music`], ADR-0028); on the web the browser decodes it
+/// ([`native_music`], game ADR-0028); on the web the browser decodes it
 /// asynchronously, so it goes through macroquad like the sounds.
 pub(crate) mod device {
     use macroquad::audio::{
@@ -895,7 +895,7 @@ mod tests {
         fake.ready.push("music/title.ogg".into());
         audio.play::<Take>(&mut fake, &[], &[], 0.0);
         assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
-        // Started again once loaded (ADR-0026: `Start` on a ready track).
+        // Started again once loaded (game ADR-0026: `Start` on a ready track).
         audio.play::<Take>(&mut fake, &[], &[cmd(start, "title")], 0.0);
         assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
     }

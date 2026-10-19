@@ -1,4 +1,4 @@
-//! Native music loading off the main thread (ADR-0028).
+//! Native music loading off the main thread (game ADR-0028).
 //!
 //! quad-snd decodes a whole OGG inside `Sound::load`, which took 80–580 ms
 //! per track on the main thread. Music therefore gets its own quad-snd

@@ -1,4 +1,4 @@
-//! The frame (ADR-0003): the [`GlyphBuffer`] console every screen draws
+//! The frame (game ADR-0003): the [`GlyphBuffer`] console every screen draws
 //! into, [`ConsoleSpec`] cells big, with its pictures and rectangles
 //! ([`Item`]s, in [`Layer`]s) and its [`Backdrop`]; colors by name
 //! ([`Rgb`], [`Palette`]); the text form snapshot tests read

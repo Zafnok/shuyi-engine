@@ -1,7 +1,7 @@
 //! Where a scene's tiles go on the console, in pixels: what every grid
 //! skin works out from its own tile size, and the shared drawing (the path,
 //! the threat arrows) works from. The tiles are laid out by a
-//! [`Projection`]: today top-down squares only (engine ADR-0003 §6; the
+//! [`Projection`]: today top-down squares only (ADR-0003 §6; the
 //! isometric one is ticket 1126).
 
 use shuyi_core::Pos;
@@ -24,7 +24,7 @@ pub fn px_rect(cells: Rect) -> PxRect {
 
 /// How map tiles are laid on the screen: where a tile goes, from where it
 /// is in the view. Every skin and every drawing across tiles asks it,
-/// rather than assume squares in rows (engine ADR-0003 §6).
+/// rather than assume squares in rows (ADR-0003 §6).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum Projection {
     /// Seen from above: tiles in rows and columns, each the tile's size

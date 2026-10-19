@@ -2,7 +2,7 @@
 // browser's Gamepad API. This file is Shuyi Engine's own code, unlike the
 // vendored plugins next to it.
 //
-// The Rust side is engine/crates/app/src/pads/web.rs, which declares exactly the
+// The Rust side is crates/app/src/pads/web.rs, which declares exactly the
 // `shuyi_pad_*` functions below (a test of shuyi-cli compares the two lists)
 // and turns what they return into the game's buttons. All the rules (sticks as
 // directions, the Switch-style swap, several pads as one) live in Rust.
@@ -15,7 +15,7 @@
 (function () {
     "use strict";
 
-    // Keep equal to PLUGIN_VERSION in engine/crates/app/src/pads/web.rs.
+    // Keep equal to PLUGIN_VERSION in crates/app/src/pads/web.rs.
     var VERSION = 3;
 
     // The standard mapping's buttons before its optional extras: face

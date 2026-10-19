@@ -54,7 +54,7 @@ const PICTURE: [u8; 4] = [0b1010_0110, 0b0101_1001, 0b1111_0000, 0b0000_1111];
 const PICTURE_MASK: [u8; 4] = [u8::MAX, 0b1110_0111, 0b1100_0011, u8::MAX];
 
 /// The same 8 × 4 image as a picture enlarged 1.5 times before it was
-/// dithered (12 × 6), as the converter makes it (ADR-0085): rows of 2
+/// dithered (12 × 6), as the converter makes it (game ADR-0085): rows of 2
 /// bytes, its mask see-through at two corners.
 const BIG_PICTURE: [u8; 12] = [
     0b1100_1010,

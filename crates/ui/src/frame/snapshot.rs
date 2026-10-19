@@ -1,4 +1,4 @@
-//! Text dump of a [`GlyphBuffer`] for snapshot tests (ADR-0007):
+//! Text dump of a [`GlyphBuffer`] for snapshot tests (game ADR-0007):
 //!
 //! ```text
 //! <glyph rows, exactly width chars each, trailing spaces kept>
@@ -19,17 +19,17 @@
 //!
 //! The overlays section lists the buffer's items in drawing order, in
 //! console pixels; it is left out when there are none. A rectangle
-//! (ADR-0018) is `layer  x,y wxh  colour`. A sprite (ADR-0038) is
+//! (game ADR-0018) is `layer  x,y wxh  colour`. A sprite (game ADR-0038) is
 //! `layer  sprite x,y wxh  image x,y wxh`: where it is drawn (`dest`), the
 //! image's path in the asset bundle, and the part of the image shown
 //! (`src`). After that come, only when they aren't the default, ` flip`,
-//! ` opacity=N` (below 255), ` bright=N` (below 255: darkened, ADR-0075),
+//! ` opacity=N` (below 255), ` bright=N` (below 255: darkened, game ADR-0075),
 //! ` solid=colour`, ` dimmed` or
-//! ` shade=grey:red,green,blue` (how its pixels are coloured, ADR-0049; a
-//! shade is a light's numbers in thousandths, ADR-0058) and
+//! ` shade=grey:red,green,blue` (how its pixels are coloured, game ADR-0049; a
+//! shade is a light's numbers in thousandths, game ADR-0058) and
 //! ` clip=x,y wxh` (not all of `dest` is drawn).
 //!
-//! A see-through cell (ADR-0048) gets a key of its own, whose legend line
+//! A see-through cell (game ADR-0048) gets a key of its own, whose legend line
 //! says `bg:see-through`: in the colour rows a hole can't be taken for a
 //! blank cell. When the buffer has a backdrop, a line
 //! `--- backdrop: clip x,y wxh  origin x,y  zoom N ---` follows (the window

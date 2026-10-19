@@ -1,4 +1,4 @@
-//! Making a one-bit picture from a colour one, ahead of time (ADR-0085).
+//! Making a one-bit picture from a colour one, ahead of time (game ADR-0085).
 //! A tool runs it (a build script, a command); never the device.
 //!
 //! The picture is first **enlarged** to the size it is shown at: by

@@ -1,5 +1,5 @@
 //! The glyph skin: a grid map drawn with colored glyphs (game ADR-0018,
-//! ADR-0024, ADR-0029). A tile is two 8 × 16 cells: a 16 × 16 pixel
+//! game ADR-0024, game ADR-0029). A tile is two 8 × 16 cells: a 16 × 16 pixel
 //! square. That size is known only here.
 
 pub mod cursor;

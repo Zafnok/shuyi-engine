@@ -1,6 +1,6 @@
 //! [`Keymap`]: the lookup from key chords and controller buttons to a
-//! game's actions, plus the key-repeat timings (ADR-0015, ADR-0031,
-//! ADR-0034). Generic over the game's [`ActionSet`] (ticket 1106).
+//! game's actions, plus the key-repeat timings (game ADR-0015, game ADR-0031,
+//! game ADR-0034). Generic over the game's [`ActionSet`] (ticket 1106).
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
@@ -16,7 +16,7 @@ use super::state::Device;
 /// Lookup from chord, and from controller button or
 /// [button chord](ButtonChord), to actions, plus repeat and chord timings.
 /// A chord or button is on at most one action of each
-/// [group](ActionSet::Group) (ADR-0068), so one press can give an action of
+/// [group](ActionSet::Group) (game ADR-0068), so one press can give an action of
 /// each group: the screen on top reacts to the ones it uses.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Keymap<A: ActionSet> {

@@ -1,4 +1,4 @@
-//! Tests of see-through cells and the [`Backdrop`] (ADR-0048).
+//! Tests of see-through cells and the [`Backdrop`] (game ADR-0048).
 
 use std::rc::Rc;
 
@@ -200,7 +200,7 @@ fn fade_darkens_cells_rectangles_sprites_and_the_scene_alike() {
     let check = |b: &GlyphBuffer, cell: Cell| {
         assert_eq!(b.get(0, 0), Some(&cell));
         assert_eq!(b.overlays()[0].color, Rgb::new(50, 25, 101));
-        // Darker, as see-through as they were (ADR-0075).
+        // Darker, as see-through as they were (game ADR-0075).
         let looks: Vec<(u8, u8)> = b
             .sprites()
             .iter()

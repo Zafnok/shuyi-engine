@@ -1,4 +1,4 @@
-//! Shuyi Engine's platform shell (ADR-0004): the window, blitting the
+//! Shuyi Engine's platform shell (game ADR-0004): the window, blitting the
 //! frame ([`render`]), the keyboard ([`keys`]) and controllers ([`pads`]),
 //! the audio backend, storage ([`storage`]) and the run loop ([`run`]).
 //!
@@ -21,10 +21,10 @@
 //! ```
 //!
 //! On the web the game's binary must link with `--allow-undefined`: the
-//! JS plugins' functions (`engine/crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
+//! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
 //! reaches the binary from its own build script
-//! (`engine/crates/cli/web/README.md` shows how).
+//! (`crates/cli/web/README.md` shows how).
 
 mod audio;
 pub mod keys;
@@ -69,7 +69,7 @@ pub struct Icon {
     pub big: &'static [u8],
 }
 
-/// Where a game's voice clips are (ADR-0046): a folder shipped beside the
+/// Where a game's voice clips are (game ADR-0046): a folder shipped beside the
 /// game (not embedded), with a folder per language holding the manifest
 /// and the clips.
 #[derive(Debug, Clone, Copy)]
@@ -172,7 +172,7 @@ pub async fn run<G: GameData>(
     config: AppConfig<G>,
     make: impl FnOnce(&Platform) -> Result<Game<G>, String>,
 ) {
-    // Voices (ADR-0046): none, and nothing said, without the folder.
+    // Voices (game ADR-0046): none, and nothing said, without the folder.
     let voice_dir = config
         .voices
         .map(|v| audio::voice::platform_voice_dir(v.folder, v.lang));
@@ -191,7 +191,7 @@ pub async fn run<G: GameData>(
         Ok(game) => game,
         Err(e) => return show_errors(&e).await,
     };
-    // E.g. saved key bindings that had to be repaired (ADR-0031).
+    // E.g. saved key bindings that had to be repaired (game ADR-0031).
     for warning in game.ctx_mut().take_warnings() {
         warn!("{}", warning);
     }
@@ -229,7 +229,7 @@ pub async fn run<G: GameData>(
         let mut events = keys::poll();
         events.extend(pads.poll());
         if running {
-            // The music clock (ADR-0037): wall-clock time, which keeps
+            // The music clock (game ADR-0037): wall-clock time, which keeps
             // counting while a web tab is hidden and no frames run.
             let now = miniquad::date::now();
             game.set_music_playing(audio.music_playing(now));

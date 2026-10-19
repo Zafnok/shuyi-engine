@@ -1,5 +1,5 @@
 //! Cinematic files: a list of shots and when each starts, over a length
-//! of time (ticket 1113; the game's ADR-0060). The engine reads the file's
+//! of time (ticket 1113; game ADR-0060). The engine reads the file's
 //! frame and checks its times; what a shot shows is the game's own (`S`),
 //! checked by the game ([`ShotCheck`]) and played by
 //! `shuyi_ui::cinematic`.

@@ -1,5 +1,5 @@
 //! The ground a sprite skin paints from its terrain tiles (game
-//! ADR-0052): each tile's own picture, then the look's layers over them
+//! game ADR-0052): each tile's own picture, then the look's layers over them
 //! (pictures between tiles by the [corner rule](crate::grid::corners),
 //! and pictures on tiles), then what tints a tile. The pictures are
 //! shaded by the light the scene's map is in (game ADR-0058); the tints

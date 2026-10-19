@@ -1,10 +1,10 @@
-//! Blits a [`GlyphBuffer`] to the window with the font atlas (ADR-0003):
+//! Blits a [`GlyphBuffer`] to the window with the font atlas (game ADR-0003):
 //! integer-scaled, centred, black letterbox. The buffer's items are drawn
 //! scaled, in the order they were added: `Under` ones after the cell
-//! backgrounds, `Over` ones after the glyphs. A rectangle (ADR-0018) is a
-//! solid fill; a sprite (ADR-0038) is part of an image's texture, or of a
+//! backgrounds, `Over` ones after the glyphs. A rectangle (game ADR-0018) is a
+//! solid fill; a sprite (game ADR-0038) is part of an image's texture, or of a
 //! recoloured copy of it when the sprite isn't painted in the image's own
-//! colours (ADR-0049). A buffer's backdrop (ADR-0048), a second buffer
+//! colours (game ADR-0049). A buffer's backdrop (game ADR-0048), a second buffer
 //! panned and zoomed, is drawn the same way inside its window, behind the
 //! console.
 
@@ -111,7 +111,7 @@ impl Renderer {
     /// coordinates are divided by the DPI factor only because macroquad's
     /// default camera works in logical units.
     ///
-    /// With a backdrop (ADR-0048) the order is: the clear colour, the
+    /// With a backdrop (game ADR-0048) the order is: the clear colour, the
     /// scene inside its window, then the console over it, whose
     /// see-through cells have no background.
     pub fn draw(&mut self, buf: &GlyphBuffer) {
@@ -269,7 +269,7 @@ impl Renderer {
             return;
         };
         let [sx, sy, sw, sh] = sprite.clipped_src();
-        // Darker as the sprite's brightness has it (ADR-0075).
+        // Darker as the sprite's brightness has it (game ADR-0075).
         let tint = tint.scale(f32::from(sprite.brightness) / 255.0);
         draw_texture_ex(
             texture,

@@ -1,17 +1,17 @@
 //! Pads on the web: the browser's Gamepad API, through the `shuyi_gamepad`
-//! miniquad plugin in `engine/crates/cli/web/gamepad.js` (our own code, loaded by
-//! `engine/crates/cli/web/index.html`). Only pads the browser reports in its "standard"
+//! miniquad plugin in `crates/cli/web/gamepad.js` (our own code, loaded by
+//! `crates/cli/web/index.html`). Only pads the browser reports in its "standard"
 //! mapping are listed, so buttons and axes mean the same on every pad.
 
 use shuyi_ui::input::{PadId, PadKind, PadState};
 
 /// The plugin's version, which the JS loader compares with the `version`
-/// in `engine/crates/cli/web/gamepad.js` (a `shuyi-cli` test keeps them equal). Bump both when the
+/// in `crates/cli/web/gamepad.js` (a `shuyi-cli` test keeps them equal). Bump both when the
 /// functions below change.
 const PLUGIN_VERSION: u32 = 3;
 
-// The game's only `unsafe` (ADR-0034): declaring the functions
-// `engine/crates/cli/web/gamepad.js` provides, and exporting the version the loader asks for.
+// The game's only `unsafe` (game ADR-0034): declaring the functions
+// `crates/cli/web/gamepad.js` provides, and exporting the version the loader asks for.
 // They take and return plain numbers, and the JS answers 0 for a pad or
 // axis that isn't there, so calling them is safe.
 #[allow(unsafe_code)]

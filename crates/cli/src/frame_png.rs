@@ -387,7 +387,7 @@ impl Painter {
     }
 
     /// Draws `buf` with each console pixel `scale` × `scale` pixels big.
-    /// With a backdrop (ADR-0048): the clear colour, the scene inside its
+    /// With a backdrop (game ADR-0048): the clear colour, the scene inside its
     /// window, then the console over it, as in `app`.
     pub fn render(&self, buf: &GlyphBuffer, scale: u32) -> Image {
         let s = i64::from(scale);
@@ -520,7 +520,7 @@ impl Painter {
             return;
         };
         let opacity = f32::from(sprite.opacity) / 255.0;
-        // Darker as the sprite's brightness has it (ADR-0075).
+        // Darker as the sprite's brightness has it (game ADR-0075).
         let bright = f32::from(sprite.brightness) / 255.0;
         let src = sprite.clipped_src();
         blit(

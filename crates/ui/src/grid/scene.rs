@@ -1,5 +1,5 @@
 //! What is on the visible part of a grid map, as plain data (game
-//! ADR-0038): terrain (flashing where it just changed, or marked with what
+//! game ADR-0038): terrain (flashing where it just changed, or marked with what
 //! it would turn into), ranges, units, the cursor, the path and those that
 //! threaten a tile. No colors, glyphs, cells or pixels: a
 //! [`GridSkin`](super::GridSkin) turns a scene into those. The units are

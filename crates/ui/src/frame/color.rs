@@ -1,4 +1,4 @@
-//! Colors: [`Rgb`] values and the [`Palette`] of named colors (ADR-0012).
+//! Colors: [`Rgb`] values and the [`Palette`] of named colors (game ADR-0012).
 //!
 //! Code refers to colors by name, never raw RGB. The colors a game's code
 //! needs are its [`ColorSet`], an enum whose every name the palette must

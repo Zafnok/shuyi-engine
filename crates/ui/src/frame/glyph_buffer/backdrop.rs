@@ -1,4 +1,4 @@
-//! A buffer's [`Backdrop`] (ADR-0048): a second glyph picture, the *scene*,
+//! A buffer's [`Backdrop`] (game ADR-0048): a second glyph picture, the *scene*,
 //! seen through a window of console cells at a pixel offset and a whole
 //! zoom. `app` draws it behind the cells marked
 //! [`Cell::see_through`](super::Cell::see_through); every other cell draws

@@ -1,6 +1,6 @@
-//! Controllers (ticket 0219, ADR-0034): reads every connected pad's raw
+//! Controllers (ticket 0219, game ADR-0034): reads every connected pad's raw
 //! state each frame, with gilrs on native and the browser's Gamepad API
-//! (through `engine/crates/cli/web/gamepad.js`) on web, and hands it to `shuyi-ui`'s [`Pads`],
+//! (through `crates/cli/web/gamepad.js`) on web, and hands it to `shuyi-ui`'s [`Pads`],
 //! which holds all the rules (sticks as directions, the Switch-style swap,
 //! several pads as one). Like `keys.rs`, this only translates.
 

@@ -1,4 +1,4 @@
-//! Keyboard and controller input as a game's actions (ADR-0006, ADR-0034),
+//! Keyboard and controller input as a game's actions (game ADR-0006, game ADR-0034),
 //! generic over its [`ActionSet`] (tickets 1106 and 1107): a data-driven
 //! [`Keymap`] from chords and controller buttons to actions
 //! ([`keymap`](mod@keymap)), and [`InputState`] ([`state`]), which turns
@@ -11,7 +11,7 @@
 //! raw state into button presses, and [`crank`] a crank's turns; [`help_keys`]
 //! names keys and buttons in help text.
 //!
-//! **Fixed keys** ([`fixed`], ADR-0031): plain `Escape` backs out of
+//! **Fixed keys** ([`fixed`], game ADR-0031): plain `Escape` backs out of
 //! capturing a key and plain `Delete` empties a slot on a rebinding
 //! screen, so neither can be bound ([`Chord::is_reserved`]). Which action a
 //! fixed key also triggers in play is the game's

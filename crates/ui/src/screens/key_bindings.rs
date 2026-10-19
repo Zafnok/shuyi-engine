@@ -15,7 +15,7 @@
 //! button backs out of a capture, and when the controller was used last
 //! Confirm on a slot offers [`CHOICES`] (change it or clear it). A second
 //! button pressed while the first is held makes the slot a button chord
-//! of the two (ticket 1045, ADR-0079). A button of the capture still held
+//! of the two (ticket 1045, game ADR-0079). A button of the capture still held
 //! when it ends does nothing when let go: on a pad whose buttons act when
 //! let go (the Playdate's B), it would otherwise back out of the screen.
 //!
@@ -72,7 +72,7 @@ pub enum RowGroup {
     /// The other actions of the main key group.
     Optional,
     /// A key group of its own, whose keys may overlap the rest's
-    /// (ADR-0068), under the heading with this text key.
+    /// (game ADR-0068), under the heading with this text key.
     Shared(&'static str),
 }
 

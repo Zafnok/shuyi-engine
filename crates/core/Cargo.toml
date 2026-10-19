@@ -12,7 +12,7 @@ repository.workspace = true
 workspace = true
 
 # `std` is on by default; without it the crate builds with `no_std` +
-# `alloc` (for the Playdate, ADR-0070 §3).
+# `alloc` (for the Playdate, game ADR-0070 §3).
 [features]
 default = ["std"]
 std = ["serde/std"]

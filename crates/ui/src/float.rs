@@ -1,5 +1,5 @@
 //! The float methods `core` lacks, from `libm`, for the `no_std` build
-//! (ADR-0070 §3): import [`Float`] and [`Round`] only without `std`. With
+//! (game ADR-0070 §3): import [`Float`] and [`Round`] only without `std`. With
 //! `std` the standard methods are called, so the numbers stay exactly what
 //! they were; the tests below hold the two together. A game built on the
 //! engine without `std` imports them too.

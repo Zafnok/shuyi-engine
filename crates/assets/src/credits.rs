@@ -7,7 +7,7 @@
 //! A bought work names the files of the game's private folder it covers
 //! (the bought art, kept out of the public repository). It is shown only
 //! in a build that has files there, and [`uncredited`] finds the bought
-//! files no credit covers (ADR-0051).
+//! files no credit covers (game ADR-0051).
 use crate::prelude::*;
 
 use alloc::collections::BTreeSet;
@@ -19,7 +19,7 @@ use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron;
 
 /// Licenses an entry of the credits file may have, unless it is a bought
-/// work ([`FileCredit::private`]): ADR-0013's code and font lists.
+/// work ([`FileCredit::private`]): game ADR-0013's code and font lists.
 pub const LICENSES: [&str; 15] = [
     "MIT",
     "MIT-0",
@@ -119,7 +119,7 @@ fn is_custom(license: &str) -> bool {
 
 /// The bought files among `paths` (relative to the private folder) that
 /// no credit of `file` covers. Each needs one before it ships
-/// (ADR-0051).
+/// (game ADR-0051).
 pub fn uncredited<'a>(file: &CreditsFile, paths: &[&'a str]) -> Vec<&'a str> {
     let covered = |path: &str| file.credits.iter().any(|c| c.covers(path));
     let needs_one = paths.iter().filter(|p| **p != PRIVATE_README);

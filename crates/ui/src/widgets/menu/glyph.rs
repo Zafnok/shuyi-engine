@@ -2,7 +2,7 @@
 //! single-line box of text rows with the focused one as a bar and, when
 //! its items have notes, the focused item's note under a rule. Everything
 //! about the look lives here; nothing here decides what the menu shows.
-//! Another look is another `paint` of the same view (ADR-0054).
+//! Another look is another `paint` of the same view (game ADR-0054).
 
 use super::view::{MenuItemView, MenuView, SuffixKind};
 use crate::frame::color::{EngineColor, Palette};

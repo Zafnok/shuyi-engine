@@ -2,7 +2,7 @@
 //!
 //! The data directory is resolved by hand from environment variables rather
 //! than with the `directories` crate: it pulls in `dirs-sys`, which
-//! unconditionally depends on `option-ext` (MPL-2.0), denied by ADR-0013.
+//! unconditionally depends on `option-ext` (MPL-2.0), denied by game ADR-0013.
 
 use std::fs;
 use std::io;

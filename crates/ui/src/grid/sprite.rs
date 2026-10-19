@@ -1,4 +1,4 @@
-//! The sprite skin (game ADR-0038, ADR-0049, ADR-0052): a grid map's
+//! The sprite skin (game ADR-0038, game ADR-0049, game ADR-0052): a grid map's
 //! ground painted from a tileset's terrain tiles ([`TerrainTiles`]).
 //!
 //! - **With terrain tiles** it paints the whole ground: a tile is the

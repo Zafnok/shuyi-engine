@@ -1,4 +1,4 @@
-//! Sprite items (ticket 0231, ADR-0038): clipping, cutting and `blit`
+//! Sprite items (ticket 0231, game ADR-0038): clipping, cutting and `blit`
 //! follow the rules overlays have.
 
 use std::collections::HashMap;
@@ -153,7 +153,7 @@ fn a_paint_colours_a_pixel_and_a_painted_sprite_is_otherwise_the_same() {
     assert_eq!(Paint::Solid(grey).apply(RED), grey);
     assert_eq!(Paint::Dimmed.apply(RED), RED.dimmed());
     assert_ne!(RED.dimmed(), RED);
-    // A light's own sum (ADR-0058); the plain light changes nothing.
+    // A light's own sum (game ADR-0058); the plain light changes nothing.
     let dusk = shuyi_assets::lighting::Light::new(0.35, [0.62, 0.56, 0.46]);
     let shaded = Paint::Shaded(dusk).apply(RED);
     assert_eq!(shaded, dusk.apply([RED.r, RED.g, RED.b]).into());

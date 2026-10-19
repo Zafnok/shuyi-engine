@@ -1,4 +1,4 @@
-//! Pictures through the Harness (ticket 1111, ADR-0038): the toy's
+//! Pictures through the Harness (ticket 1111, game ADR-0038): the toy's
 //! `Gallery`, opened with the Debug key, puts sprite items in the frame,
 //! and a snapshot lists each as one line.
 

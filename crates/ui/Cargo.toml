@@ -13,7 +13,7 @@ workspace = true
 
 [features]
 default = ["std"]
-# Without it the crate is `no_std` + `alloc` for the Playdate (ADR-0070 §3).
+# Without it the crate is `no_std` + `alloc` for the Playdate (game ADR-0070 §3).
 std = ["shuyi-core/std", "shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
 # The developer's actions (those a player can't rebind) keep their keys
 # out of the player's reach in a release build too: the game turns it on
@@ -27,7 +27,7 @@ storage-conformance = []
 # The tests have it anyway.
 onebit-reference = []
 # `harness`: the headless test driver for a game's integration tests
-# (ADR-0017).
+# (game ADR-0017).
 harness = []
 # `toy`: a toy game of a few screens over the sample game's actions, for
 # this crate's integration tests.
@@ -39,12 +39,12 @@ shuyi-core = { path = "../core", default-features = false }
 # The keymap file format and `ActionSet`.
 shuyi-assets = { path = "../assets", default-features = false }
 thiserror.workspace = true
-# The player's saved key bindings (ADR-0031) and profiles.
+# The player's saved key bindings (game ADR-0031) and profiles.
 serde.workspace = true
 ron.workspace = true
-# `HashMap` without `std` (ADR-0070 §3).
+# `HashMap` without `std` (game ADR-0070 §3).
 hashbrown.workspace = true
-# Float maths without `std` (ADR-0070 §3).
+# Float maths without `std` (game ADR-0070 §3).
 libm.workspace = true
 
 [dev-dependencies]

@@ -1,6 +1,6 @@
 //! [`InputState`]: turns key and controller-button presses and releases
 //! plus frame time into a game's actions, with repeat for held repeatable
-//! keys and buttons (ADR-0015, ADR-0034), and button chords (ticket 1034).
+//! keys and buttons (game ADR-0015, game ADR-0034), and button chords (ticket 1034).
 //! Generic over the game's [`ActionSet`] (ticket 1106).
 //!
 //! **How a button chord fires.** A [button chord](ButtonChord) `X+Y` fires

@@ -1,4 +1,4 @@
-//! One-bit pictures (ADR-0085): the file a one-bit screen draws in place of
+//! One-bit pictures (game ADR-0085): the file a one-bit screen draws in place of
 //! a PNG, made ahead of time by [`convert`] so the device never decodes a
 //! PNG. Pixels are packed one bit a pixel in rows, the Playdate's own
 //! bitmap layout: each row [`stride`](Bitmap::stride) bytes, a byte's

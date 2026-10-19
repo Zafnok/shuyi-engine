@@ -1,4 +1,4 @@
-//! The one-bit renderer (ADR-0074): draws a [`GlyphBuffer`] the size of
+//! The one-bit renderer (game ADR-0074): draws a [`GlyphBuffer`] the size of
 //! the Playdate's screen (50 × 15 cells of 8 × 16 pixels,
 //! [`ConsoleSpec::text`](crate::frame::ConsoleSpec::text)) into a 400 × 240
 //! one-bit [`Frame`] laid out as the Playdate's own frame buffer, so its
@@ -10,13 +10,13 @@
 //! fixed to the screen's pixels, so neighbouring tiles line up.
 //!
 //! The order: the white ground; a backdrop's scene in its window
-//! (ADR-0048), drawn the same way; then the cell backgrounds, `Under`
+//! (game ADR-0048), drawn the same way; then the cell backgrounds, `Under`
 //! items, the white edges of [`Ink::BlackEdged`] glyphs, the glyphs,
 //! `Over` items, and last the [`Ink::Invert`] rectangles, which flip what
 //! is under them. Pictures are one-bit [`Image`]s (`docs/design/playdate.md`,
 //! *One-bit pictures*). Nothing here allocates.
 //!
-//! Made for the device's speed (ticket 1055, ADR-0077): 32-bit
+//! Made for the device's speed (ticket 1055, game ADR-0077): 32-bit
 //! coordinates, a pattern's byte looked up, whole bytes written whole,
 //! only the cells near the part being drawn visited, and
 //! [`render_changed`] redraws only where a frame differs from the last.
@@ -106,7 +106,7 @@ const fn ink_byte(ink: Ink, y: i32) -> u8 {
 }
 
 /// Each ink's [`ink_byte`] for the four rows its pattern repeats within
-/// (ADR-0074), by `ink as usize`.
+/// (game ADR-0074), by `ink as usize`.
 const PATTERNS: [[u8; 4]; Ink::ALL.len()] = {
     let mut table = [[0; 4]; Ink::ALL.len()];
     let mut i = 0;
@@ -1031,7 +1031,7 @@ fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &imp
             if !shows(sprite.opacity, x, y) {
                 continue;
             }
-            // A darkened picture (ADR-0075): fewer of its white pixels.
+            // A darkened picture (game ADR-0075): fewer of its white pixels.
             let white = white && shows(sprite.brightness, x, y);
             let white = match (solid, sprite.paint) {
                 (Some(ink), _) => ink_is_white(ink, x, y),

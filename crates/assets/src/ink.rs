@@ -1,4 +1,4 @@
-//! One-bit inks and their palette (the Playdate's, ADR-0074): a palette
+//! One-bit inks and their palette (the Playdate's, game ADR-0074): a palette
 //! file of inks gives each colour name an [`Ink`] instead of an RGB value.
 //! It loads as a [`PaletteDef`] like any other, each colour being its
 //! ink's reserved [`code`](Ink::code), so screens and skins draw with it
@@ -11,7 +11,7 @@ use crate::error::ContentError;
 use crate::palette::{PaletteDef, line_of_key};
 use crate::ron::parse_ron;
 
-/// How a one-bit pixel is coloured (ADR-0074). The patterns are fixed to the
+/// How a one-bit pixel is coloured (game ADR-0074). The patterns are fixed to the
 /// screen's pixels, so neighbouring tiles line up.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Ink {

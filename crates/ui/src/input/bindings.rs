@@ -1,5 +1,5 @@
-//! The player's key and button bindings (tickets 0217 and 0816, ADR-0031,
-//! ADR-0053): every rebindable action has [`SLOTS`] key slots and [`SLOTS`]
+//! The player's key and button bindings (tickets 0217 and 0816, game ADR-0031,
+//! game ADR-0053): every rebindable action has [`SLOTS`] key slots and [`SLOTS`]
 //! controller-button slots. Each layout keeps its own keys
 //! ([`LayoutBindings`]); the buttons are one setup shared by both layouts
 //! ([`PadBindings`]); the lot is saved as [`PlayerKeys`]. Rules from
@@ -178,7 +178,7 @@ pub struct LayoutBindings<A: ActionSet> {
     /// keymap file.
     fixed: Vec<(Chord, A)>,
     /// Whether those chords are reserved (builds with debug tools,
-    /// ADR-0023). Without debug tools a player may bind them, and their
+    /// game ADR-0023). Without debug tools a player may bind them, and their
     /// slot wins over Debug.
     fixed_reserved: bool,
 }

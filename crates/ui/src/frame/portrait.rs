@@ -1,4 +1,4 @@
-//! Drawing a picture in an area of cells (ADR-0043): one sprite item, the
+//! Drawing a picture in an area of cells (game ADR-0043): one sprite item, the
 //! image at the largest whole scale that fits, centred. A game's
 //! portraits are drawn this way.
 
@@ -35,7 +35,7 @@ pub fn fit_whole_scale(size: ImageInfo, frame: PxRect) -> Option<PxRect> {
 }
 
 /// The opacity of a picture dimmed by `dim` (0 = full color, 1 = gone):
-/// the renderer fades every pixel toward what is behind it (ADR-0018).
+/// the renderer fades every pixel toward what is behind it (game ADR-0018).
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // clamped to 0..=255
 pub fn dim_opacity(dim: f32) -> u8 {
     (255.0 * (1.0 - dim)).round().clamp(0.0, 255.0) as u8

@@ -35,7 +35,7 @@ pub enum UiAction {
 /// actions.
 pub trait ActionSet: Copy + Ord + Eq + Hash + Debug + 'static {
     /// Which actions may share a key or button: a key is on at most one
-    /// action of each group (ADR-0068). `()` for a game where no two
+    /// action of each group (game ADR-0068). `()` for a game where no two
     /// actions share one.
     type Group: Copy + Ord + Eq + Debug;
 

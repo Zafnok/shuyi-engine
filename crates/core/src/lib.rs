@@ -4,7 +4,7 @@
 //! below the assets: character ids and the `{token}` splitter.
 //!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
-//! crate sits on it and keeps its own rules, turn loop and data (ADR-0063
+//! crate sits on it and keeps its own rules, turn loop and data (game ADR-0063
 //! §2, §6).
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]

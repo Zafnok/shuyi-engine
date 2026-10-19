@@ -1,5 +1,5 @@
 //! Framing a shot over a [`Backdrop`](crate::frame::glyph_buffer::Backdrop)
-//! (ADR-0048): where the window has to start in the scene to look at a
+//! (game ADR-0048): where the window has to start in the scene to look at a
 //! point at a zoom. Pure arithmetic; the cinematic's shots (0817) and the
 //! debug menu's "Scene camera" use it.
 
