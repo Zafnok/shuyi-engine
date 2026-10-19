@@ -37,6 +37,39 @@ them without asking questions.
    excluding fixtures and snapshots. Split otherwise.
 6. **Check the dependency chain** (below).
 
+## A request from the game
+
+Most engine work starts in the game: a game session found that it needs
+the engine changed (the game's `engine-change` skill), often after an
+engine-friction review (game ADR-0092). Such a ticket is written by a
+session that knows the game well and the engine less, and worked by one
+that may know only the engine. So it must stand on its own. Its
+**Context** holds, in this order:
+
+1. **The game ticket**, as `game#NNNN`, with a link
+   (`github.com/Zafnok/visions-of-shuyi/blob/main/tickets/open/NNNN-….md`).
+   The game ticket is not a blocker: don't put it in `blocked_by`
+   unless the engine change really needs it done first.
+2. **The job in one sentence**, as a player or a reader of the code
+   would say it ("page a long line of text inside a panel with a
+   picture beside it").
+3. **The friction numbers**, copied from the row of the game's
+   `docs/engine/friction.md`: the estimate, the measured lines, the
+   ratio and the outcome. If the request didn't come from a friction
+   review, say so ("no friction review: a missing feature").
+4. **The generic shape**: the capability in the engine's words, never
+   the game's. It names no class, unit, faction, chapter, character,
+   story beat or game data id (`AGENTS.md` rule 4). "A text panel with a
+   portrait slot and paged text", not "the dialogue box".
+5. **An example from a game that isn't tactics** that would write the
+   same code: a farming game's shopkeeper, a platformer's sign post.
+   If you can't find one, it may belong in the tactics kit, or in the
+   game; say which and why.
+
+Its **Scope** says what changes for the game: whether the API breaks,
+and that the game's PR that moves the pin follows this one. Its
+**Completion notes** will name that game PR (`work-ticket` §5).
+
 ## Check the dependency chain
 
 A ticket is picked up when every id in `blocked_by` is done, so a

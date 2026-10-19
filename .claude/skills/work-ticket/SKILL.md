@@ -84,7 +84,10 @@ the PR.
 ## 5. Archive the ticket (same PR)
 
 1. Fill in `## Completion notes`: what was done, deviations, follow-up
-   tickets, and anything Nick should know.
+   tickets, and anything Nick should know. A ticket that names a game
+   ticket (`game#NNNN`) also lists the game PR that will move the pin to
+   this change (`Zafnok/visions-of-shuyi#N`), or the game ticket that
+   will, if that PR doesn't exist yet.
 2. Set `status: done` and `completed: YYYY-MM-DD`.
 3. `git mv tickets/open/<file>.md tickets/done/<file>.md`
 
