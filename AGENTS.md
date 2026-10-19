@@ -24,7 +24,10 @@ game stays the engine's first user. Read [`README.md`](README.md), then
 
 1. **Work one ticket at a time** from `tickets/open/`, with the
    `work-ticket` skill. One ticket = one branch = one PR. The PR moves the
-   ticket to `tickets/done/`.
+   ticket to `tickets/done/`. One exception: a GitHub issue labelled
+   `sonar` is its own ticket, filed weekly from SonarCloud and fixed with
+   the `sonar-fix` skill, one issue per PR
+   ([ADR-0017](docs/adr/0017-sonar-backlog-becomes-batched-github-issues.md)).
 2. **No unticketed work.** Found something else to do? Write a ticket
    (`write-ticket` skill).
 3. **Parked tickets stay parked.** A ticket whose title starts with
@@ -42,7 +45,10 @@ game stays the engine's first user. Read [`README.md`](README.md), then
      the clock: `shuyi-app` (macroquad), and later `shuyi-playdate`,
      `shuyi-gba`, `shuyi-nds` and private console backends ([ADR-0008](docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)).
 6. **Tests are the review.** Run the `run-gates` skill before pushing.
-   Never weaken a gate to pass it.
+   Never weaken a gate to pass it. CI also measures coverage and scans
+   with SonarCloud; a Sonar finding is argued with in
+   `tools/sonar-triage/policy.jsonc`, never with `// NOSONAR` or
+   `#[allow]` (the `sonar-triage` skill).
 7. **Licenses.** The engine is MIT OR Apache-2.0. Ship only
    dependencies and assets under the permissive licenses in ADR-0002 §8:
    no GPL, LGPL, MPL or copyleft, nothing non-commercial, nothing that

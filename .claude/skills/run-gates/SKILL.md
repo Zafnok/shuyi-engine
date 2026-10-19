@@ -68,6 +68,12 @@ the game against this working copy: in the game's checkout, `cargo
 xtask engine` puts this repository in its `shuyi-engine/` folder, and
 `cargo test --workspace` there builds the game on it.
 
+## Coverage and SonarCloud
+
+Not a local gate. CI's `coverage` job runs `cargo llvm-cov` without
+`shuyi-app` and the SonarCloud scan (ADR-0017). Findings come back as
+`sonar` GitHub issues (the `sonar-fix` skill), not as a failing check.
+
 ## Mutation testing
 
 Not a local gate: never run `cargo mutants` on Nick's machine. CI runs it

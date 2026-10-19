@@ -47,6 +47,7 @@ and agents can drive it. These tickets, in order:
 | Ticket | What |
 | ------ | ---- |
 | 2002 | This repository's gates: the ticket lint, typos and links, in the CI 1131 started with the code gates |
+| 2007 | Coverage and SonarCloud in CI, and the Sonar debt queue as batched GitHub issues, copied from the game |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
 | 1133 | An MCP server over the contract |

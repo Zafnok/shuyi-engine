@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2007 — Coverage, SonarCloud, and the Sonar debt queue as batched GitHub issues
@@ -102,17 +102,17 @@ already done.
 
 ## Acceptance criteria
 
-- [ ] `sonar-project.properties` names `Zafnok_shuyi-engine` and leaves
+- [x] `sonar-project.properties` names `Zafnok_shuyi-engine` and leaves
       out `crates/app`.
-- [ ] CI's `coverage` job runs on a code PR, uploads to SonarCloud, and
+- [x] CI's `coverage` job runs on a code PR, uploads to SonarCloud, and
       is green; `ci-result` needs it.
-- [ ] `.github/workflows/sonar-triage.yml` and `tools/sonar-triage/` are
+- [x] `.github/workflows/sonar-triage.yml` and `tools/sonar-triage/` are
       present, and a local dry run reads the new project without error.
-- [ ] The `sonar-triage` and `sonar-fix` skills name no game path, ADR
+- [x] The `sonar-triage` and `sonar-fix` skills name no game path, ADR
       or skill except game ADR-0071 as the origin.
-- [ ] The ADR exists, links game ADR-0071, and is in the index.
-- [ ] `AGENTS.md` rule 1 has the `sonar` issue exception.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR exists, links game ADR-0071, and is in the index.
+- [x] `AGENTS.md` rule 1 has the `sonar` issue exception.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -123,5 +123,33 @@ already done.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- Copied from the game repository at `947535088eda43d7c4cf949bff546cbef1765d13`
+  (`origin/main`): `sonar-project.properties`, the `coverage` job,
+  `sonar-triage.yml`, `tools/sonar-triage/` and the two skills. ADR-0017
+  adopts game ADR-0071 and links it.
+- **Project key:** confirmed anonymously with SonarCloud's
+  `api/components/search` for organization `zafnok`:
+  `Zafnok_shuyi-engine`.
+- **Changes from the game's copy:**
+  - the project key, the ADR path, `AGENTS.md` rule 11 for mentions, and
+    example paths that were the game's (`crates/core/src/turn.rs` now);
+  - `sonar-project.properties` scans `examples/` too, and its test
+    patterns are this repository's (`tests.rs`, `*_tests.rs`, `tests/`);
+  - the coverage and Clippy commands take `--locked`, as every other
+    cargo command in this repository's CI does;
+  - the skills cite ADR-0002 (layers, skins) and ADR-0007 where the game
+    cited its own ADRs, and `sonar-fix` adds that a fix changing the
+    public API is a ticket, because the game pins this repository;
+  - `run-gates` says coverage and Sonar are CI-only, not a local gate.
+- **Policy:** `policy.jsonc` starts empty, as the game's is: the game has
+  no rule verdicts to bring.
+- **Labels:** `sonar`, `tech-debt` and `sonar:<severity>` don't exist on
+  `Zafnok/shuyi-engine` yet. The script creates them on its first
+  `-Apply` (the Monday run, or the workflow from the Actions tab with
+  `dry_run` unticked); none were created by hand.
+- **Dry run** (`pwsh ./tools/sonar-triage/sonar-triage.ps1`, before the
+  first analysis): `fetched 0 / suppressed 0 / batches 0 / issues 0`,
+  then `created 0 / edited 0 / linked 0 / closed 0 / unchanged 0`. The
+  first findings arrive after the scan of `main` that follows the merge.
+- **Not done here (out of scope):** the Sonar check as a required check,
+  and a coverage threshold.

@@ -100,9 +100,10 @@ and a game that needs more than that doesn't export there
 | `docs/decisions.md` | The owner's product decisions: name, license, scope, what is parked |
 | `docs/adr/` | Technical decisions |
 | `tickets/` | The backlog, one ticket per pull request |
-| `.claude/skills/` | Skills for developing the engine: working a ticket, writing tickets and ADRs, the gates, input rules |
+| `.claude/skills/` | Skills for developing the engine: working a ticket, writing tickets and ADRs, the gates, input rules, the Sonar queue |
 | `crates/` | The engine's crates ([below](#the-crates)) |
 | `examples/` | Games made from the engine's crates alone ([below](#the-first-example-hello-grid)) |
+| `sonar-project.properties`, `tools/sonar-triage/` | SonarCloud's scan of the code in CI, and the weekly job that files its findings as `sonar` GitHub issues (ADR-0017) |
 | `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
