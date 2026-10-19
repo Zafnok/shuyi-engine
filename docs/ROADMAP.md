@@ -66,6 +66,27 @@ These are not parked, but they come after the MVP:
 - **2901**: research on better images with machine learning, as a
   separate repository with a loader plugin.
 
+### Requests from the game
+
+The engine parts of the game's open tickets, split off by game ticket
+1157 (2026-10-19). Each names its game ticket, and that game ticket
+waits for it (`engine#NNNN` in its `blocked_by`). 2304 and 2305 are
+small and hold up the game's Chapter 1 playtest fixes, so they come
+first, before the MVP's tickets above (they are part of the MVP:
+parity with what the game needs). The rest come when the game reaches
+them.
+
+| Ticket | What | For |
+| ------ | ---- | --- |
+| 2304 | The grid scene says where the map goes on past the view; the grid skins let a game paint over the units and under the cursor | game#0449 |
+| 2305 | The text box paints narration from the left when the game asks | game#0740 |
+| 2301 | Wide glyphs: two cells in the glyph buffer, from a wide font in the atlas | game#0236 |
+| 2302 | Line breaking for text without spaces, and a report of translated text too long for its place | game#0237 |
+| 2303 | Wide glyph sets per language, widths by language, Chinese line breaking | game#0239 |
+| 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
+| 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
+| 2102 | The `shuyi-script` module's example | 2101 |
+
 ### Modules and directions
 
 Nick, 2026-10-16 ([`decisions.md`](decisions.md)): a developer sets a

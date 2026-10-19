@@ -1,17 +1,17 @@
 ---
 id: "1124"
-title: "Parked: Tiled and LDtk maps, folders on disk as bundle layers, and hot reload in debug builds"
+title: "Parked: Tiled and LDtk maps, and hot reload of the folders on disk in debug builds"
 type: feature
 milestone: "Engine: real time"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1119"]
+blocked_by: ["1119", "2207"]
 nick_input: none
 completed:
 ---
 
-# 1124 — Tiled and LDtk maps; disk layers; hot reload
+# 1124 — Tiled and LDtk maps; hot reload
 
 > **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0060 says the army walks around freely (then 1119–1125 become game work). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
@@ -27,8 +27,8 @@ importers produce one `TileMap`:
 - object layers: named boxes and points with properties;
 - the map's own properties.
 
-Disk folders as bundle layers serve hot reload now and mods later
-(1011).
+Folders on disk become bundle layers in 2207 (a game's mods first:
+game#1012 and game#1014); this ticket reloads them.
 
 ## Nick input
 
@@ -43,8 +43,8 @@ None.
     `THIRD_PARTY_ASSETS.md`.
   Both have fixtures made with each tool's free editor.
 - `TileCollision` from a named layer (1122).
-- Disk layers: `Layer::Disk(path)`, read by `shuyi-app` and handed to
-  the bundle as bytes (only `shuyi-app` touches files, game ADR-0004).
+- Disk layers are 2207's: `shuyi-app` reads a folder into a layer
+  (only `shuyi-app` touches files, game ADR-0004).
 - Hot reload in debug builds: `shuyi-app` checks the modification times
   of the disk layers' files once a second. It then calls a reload hook
   that re-runs the loaders for the changed files. Errors show in a debug
@@ -58,7 +58,7 @@ disk layers (none on the web).
 
 1. Write `TileMap` and the Tiled importer, with fixtures.
 2. Add the LDtk types and importer, with fixtures.
-3. Add disk layers and hot reload, with a test that changes a fixture
+3. Add hot reload of 2207's disk layers, with a test that changes a fixture
    file through a fake clock and file source.
 
 ## Acceptance criteria
