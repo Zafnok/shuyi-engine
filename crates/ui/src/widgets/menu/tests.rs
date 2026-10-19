@@ -273,6 +273,20 @@ fn a_menu_that_shows_every_item_has_no_window() {
 }
 
 #[test]
+fn a_scrolling_menu_shorter_than_its_box_shows_every_item() {
+    let view = long_menu(3).showing(6, Scroll::KeepInView).view();
+    assert_eq!((view.first_shown, view.shown), (0, 3));
+    assert!(!view.more_below());
+    // A box of no rows still shows the focus.
+    let view = long_menu(3)
+        .showing(0, Scroll::KeepInView)
+        .focused(2)
+        .view();
+    assert_eq!((view.first_shown, view.shown), (2, 1));
+    assert!(view.shown_items()[0].focused);
+}
+
+#[test]
 fn a_long_menu_scrolls_to_keep_the_focus_in_its_box() {
     let mut m = long_menu(10).showing(4, Scroll::KeepInView);
     let window = |m: &Menu| {

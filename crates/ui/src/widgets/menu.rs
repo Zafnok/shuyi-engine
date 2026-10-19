@@ -240,10 +240,8 @@ impl Menu {
         });
         let n = self.items.len();
         let (first_shown, shown) = match self.rows_shown {
-            Some(rows) => {
-                let first = self.cursor.first_shown();
-                (first, rows.max(1).min(n - first.min(n)))
-            }
+            // The cursor keeps its window inside the list.
+            Some(rows) => (self.cursor.first_shown(), rows.max(1).min(n)),
             None => (0, n),
         };
         MenuView {

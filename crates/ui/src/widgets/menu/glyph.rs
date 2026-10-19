@@ -233,6 +233,25 @@ mod tests {
     }
 
     #[test]
+    fn a_scrolled_menu_marks_the_border_where_more_items_are() {
+        let mut items: Vec<_> = (0..5)
+            .map(|i| item(&format!("{i}"), true, i == 2))
+            .collect();
+        items[2].note = Some("two".to_owned());
+        let mut view = MenuView::new(items);
+        (view.first_shown, view.shown) = (1, 3);
+        assert_eq!(size(&view), (7, 7));
+        let (buf, _) = painted(&view);
+        assert_eq!(row(&buf, 1).trim(), "┌────▲┐");
+        assert_eq!(row(&buf, 2).trim(), "│ 1   │");
+        assert_eq!(row(&buf, 4).trim(), "│ 3   │");
+        // With notes, the mark below is on the rule.
+        assert_eq!(row(&buf, 5).trim(), "├────▼┤");
+        assert_eq!(row(&buf, 6).trim(), "│ two │");
+        assert_eq!(row(&buf, 7).trim(), "└─────┘");
+    }
+
+    #[test]
     fn a_menu_without_notes_has_no_rule() {
         let view = MenuView::new(vec![item("Wait", true, true)]);
         assert_eq!(size(&view), (8, 3));

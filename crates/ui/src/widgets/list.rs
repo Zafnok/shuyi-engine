@@ -131,7 +131,6 @@ impl ListCursor {
     pub fn set_len(&mut self, len: usize) {
         self.len = len;
         self.focus = self.focus.min(len.saturating_sub(1));
-        self.first = self.first.min(len.saturating_sub(1));
     }
 
     /// The rows a box of `rows_shown` rows shows: always the focus, placed
@@ -139,18 +138,18 @@ impl ListCursor {
     /// while there are rows before it to show instead. A box of no rows
     /// still shows the focused one. With no rows it is empty.
     pub fn window(&mut self, rows_shown: usize) -> Range<usize> {
+        if self.is_empty() {
+            self.first = 0;
+            return 0..0;
+        }
         let rows = rows_shown.max(1).min(self.len);
         let last_first = self.len - rows;
         let first = match self.scroll {
-            Scroll::KeepInView => {
-                if self.focus < self.first {
-                    self.focus
-                } else if self.focus >= self.first + rows {
-                    self.focus + 1 - rows
-                } else {
-                    self.first
-                }
-            }
+            // As little as it takes: the focus no higher than the top row
+            // and no lower than the bottom one.
+            Scroll::KeepInView => self
+                .first
+                .clamp((self.focus + 1).saturating_sub(rows), self.focus),
             Scroll::Centred => self.focus.saturating_sub((rows - 1) / 2),
         };
         self.first = first.min(last_first);
@@ -356,6 +355,10 @@ mod tests {
         assert_eq!(c.window_by_heights(&heights, 3), 4..5);
         // The whole list fits a tall box.
         assert_eq!(c.window_by_heights(&heights, 20), 0..6);
+        // A box that grows pulls the window back up, to an exact fit.
+        let mut c = ListCursor::new(3).at(2);
+        assert_eq!(c.window_by_heights(&[1, 1, 1], 1), 2..3);
+        assert_eq!(c.window_by_heights(&[1, 1, 1], 3), 0..3);
     }
 
     #[test]
