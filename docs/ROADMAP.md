@@ -87,6 +87,35 @@ them.
 | 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
 | 2102 | The `shuyi-script` module's example | 2101 |
 
+### Friction from the game
+
+Game ticket 1153 (2026-10-19) measured the game's biggest screens
+against what they should take with a good engine (game ADR-0092, its
+`docs/engine/friction.md`). What it found the engine missing, ranked
+there by ratio × how many screens shrink. None of it holds up the game:
+the game ships with its own code meanwhile, and its follow-up ticket
+deletes that code once the engine has the piece.
+
+| Ticket | What | For |
+| ------ | ---- | --- |
+| 2307 | A list cursor with wrap, disabled rows and a scroll window, under the menu | game#1160 |
+| 2306 | A screen hands a result to the one below when it pops; covered and uncovered hooks | game#1158, game#1159 |
+| 2208 | A folder loader on the bundle | game#1169 |
+| 2312 | A frame time you can trust, a clock a held key speeds up, the text box's Confirm step | game#1166 |
+| 2311 | Glyph drawing helpers: a titled box, a meter, text centred or cut | game#1165 |
+| 2309 | A question widget | game#1163 |
+| 2310 | A player profiles screen and a name entry widget | game#1164 |
+| 2308 | Menu items carry a value; labels are text keys | game#1162 |
+| 2313 | The kit's grid skin: zoom, a held walk speed, a per-frame painter, glyph-skin styles | game#1167 |
+| 2314 | Option rows for an enum setting | game#1168 |
+| 2209 | Word wrap in the assets crate, and a fits-its-box check | game#1169 |
+| 3028 | The Playdate backend runs the game on a stack of its own | game#1170 |
+| 3029 | The audio player for every backend, and Playdate audio | game#1170 |
+
+The sweep also added notes to 3003 (a loading phase), 3010 (the
+game's front end as working code to lift) and 3011 (the report a
+shipped game keeps).
+
 ### Modules and directions
 
 Nick, 2026-10-16 ([`decisions.md`](decisions.md)): a developer sets a

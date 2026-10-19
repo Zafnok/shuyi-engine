@@ -32,6 +32,25 @@ The device facts (ADR-0008, *Context*): 400 × 240 1-bit, refresh up to
 50 Hz, a Cortex-M7 at about 168 MHz, 16 MB of RAM, the d-pad, A, B, the
 crank, and the Menu button, which belongs to the system.
 
+**From the game's first engine-friction sweep** (game#1153,
+2026-10-19). The game already runs on the Playdate with its own front
+end (`crates/playdate` in the game, about 1,700 lines, its ADR-0070):
+working code for most of this ticket. Read it before step 1.
+
+- **The bindings.** The game's ADR-0070 §2 tried boozook's crates on
+  2026-10-15: `cargo-playdate` did not build on current nightly; with
+  its pinned nightly its Cargo could not read edition-2024 manifests;
+  its prebuilt bindings stop at SDK 2.6.2. The game uses a small C shim
+  compiled with the SDK's own headers instead (`shim/shim.c`, no
+  nightly, no bindgen). Re-check the crates in step 1, and take the
+  shim if they are still unusable.
+- **The buttons.** The game reports the SDK's A as `South` and B as
+  `East` (`src/pads.rs`), where this ticket says `East` and `West`.
+  Pick one rule and write it in the docs.
+- **Storage, memory and the panic handler** are in the game's
+  `src/storage.rs` (a `no_std` copy of `shuyi-app`'s native storage),
+  `src/pd/allocator.rs` and `src/pd/panic.rs`.
+
 ## Nick input
 
 **Setup** (about 15 minutes, free):
@@ -95,9 +114,9 @@ Nothing here costs money. A device is needed only for 3011.
   (Panic's help page *Sideloading*) and what is known not to work yet.
 
 **Out (do not do):**
-- **Audio.** Write the follow-up ticket when this lands: bake OGG and WAV
-  to the formats the SDK plays (IMA ADPCM WAV), and play them through the
-  SDK's sound API.
+- **Audio**: 3029 (written early by the game's friction sweep, game#1153,
+  because the game's front end has working code to lift).
+- **The game's own stack**: 3028.
 - the crank as an analog axis (it waits for parked 1121);
 - MIDI sequences through the SDK's own synth (ADR-0014 §3). They wait
   for parked 2205 and 2206; once those are done, write the follow-up

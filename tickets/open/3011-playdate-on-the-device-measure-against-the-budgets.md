@@ -71,6 +71,13 @@ check on the numbers.
   - `status` becomes `supported` once every scenario holds 30 fps.
 
   The PR carries the measurements that justify every number it changes.
+- **The report a shipped game keeps** (from the game's friction sweep,
+  game#1153). Lift from the game's Playdate front end (`src/report.rs`,
+  `src/pd/bench.rs`), which logs on every run, not only in a bench
+  build: when the loading card and the first frame were shown, the
+  slowest files to load (through the bundle's read hook), once a minute
+  the frame times, and the stack's high-water mark (3028). The backend
+  offers it; a game turns it on.
 - **If a scenario misses 30 fps.** Write a ticket per cause found (for
   example, the 1-bit conversion, the scene build, or the bot), each with
   its measurement. Don't fix them here.
