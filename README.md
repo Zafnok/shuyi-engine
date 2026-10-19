@@ -95,6 +95,7 @@ and a game that needs more than that doesn't export there
 | Path | What |
 | ---- | ---- |
 | `AGENTS.md` | How to work here (people and agents). `CLAUDE.md` points to it |
+| `CONTRIBUTING.md` | Issues, discussions and pull requests: what is welcome while the engine is early |
 | `docs/ROADMAP.md` | Phases: what comes first, what is parked |
 | `docs/decisions.md` | The owner's product decisions: name, license, scope, what is parked |
 | `docs/adr/` | Technical decisions |
