@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2307 — A list cursor with a scroll window
@@ -84,15 +84,15 @@ this one (game#1160).
 
 ## Acceptance criteria
 
-- [ ] Unit tests: wrap and no wrap, every row disabled but one, a
+- [x] Unit tests: wrap and no wrap, every row disabled but one, a
       removal at the end clamps, `KeepInView` moves the window by one
       at its edge, `Centred` keeps the focus in the middle, rows of
       different heights.
-- [ ] Property test: the focus is always inside the window and always
+- [x] Property test: the focus is always inside the window and always
       on an enabled row when one exists.
-- [ ] `Menu`'s existing tests pass unchanged; a new snapshot shows a
+- [x] `Menu`'s existing tests pass unchanged; a new snapshot shows a
       scrolled menu.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -101,5 +101,31 @@ this one (game#1160).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `widgets/list.rs`: `ListCursor` (`step`, `set_len`, `window`,
+  `window_by_heights`, and `settle`, which moves the focus off a row that
+  became disabled) and `Scroll` (`KeepInView`, `Centred`), with unit
+  tests and a property test (the focus is in both windows and on an
+  enabled row, through steps and a removal).
+- `Menu` keeps its focus in a `ListCursor`; its existing tests are
+  unchanged and pass. `Menu::showing(rows, scroll)` makes it scroll.
+- `MenuView` gains `first_shown` and `shown`, with `more_above()`,
+  `more_below()`, `shown_items()` and `MenuView::new(items)` (shows all).
+  The glyph skin paints only the window, with `▲`/`▼` on the border.
+  Snapshot: 20 items, 6 rows, focus on item 12.
+- `options.rs`'s `stepped_index` (and so `stepped`) steps a `ListCursor`.
+
+Deviations:
+- "Whether there is more above or below" is a method on `MenuView`, not a
+  field: it follows from `first_shown`, `shown` and the item count, so a
+  field could disagree with them.
+- The scroll rule is set on the cursor (`scrolling(Scroll)`), so
+  `window` takes only `rows_shown`, as the ticket's signature says.
+- `settle` is added: after `set_len` the focus may land on a disabled
+  row, and the property test needs a way back to an enabled one.
+
+For the game: `MenuView` has two new fields. The game builds it by hand
+in about seven places (mode select, game over, title, save, dialogue
+and Playdate tests); each becomes `MenuView::new(items)`. The game PR
+that moves the pin is game#1160's.
+
+Nick: nothing to decide.

@@ -1,7 +1,8 @@
 //! A vertical list menu: a title screen's, an action menu, a list of
 //! replies.
 //!
-//! The menu holds its items and its focus. What it shows is
+//! The menu holds its items and its focus (a [`ListCursor`]). What it
+//! shows is
 //! [`Menu::view`], plain data, and [`glyph::paint`] draws that view as
 //! glyphs: the screens' own skins call it for their menu.
 
@@ -13,6 +14,7 @@ pub use view::{MenuItemView, MenuView, SuffixKind};
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
 
+use super::list::{ListCursor, Scroll};
 use crate::audio::{AudioQueue, MenuSound};
 
 /// One menu entry.
@@ -78,11 +80,14 @@ pub enum MenuEvent {
 /// A vertical list of items in a single-line box. `CursorDown`/`CursorUp`
 /// move the focus (wrapping, skipping disabled items), `Confirm` chooses the
 /// focused item, `Cancel` cancels (unless the menu is
-/// [`without_cancel`](Self::without_cancel)).
+/// [`without_cancel`](Self::without_cancel)). A menu
+/// [`showing`](Self::showing) fewer rows than it has scrolls.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Menu {
     items: Vec<MenuItem>,
-    focus: usize,
+    cursor: ListCursor,
+    /// How many rows the box shows (all of them if `None`).
+    rows_shown: Option<usize>,
     /// Whether `Cancel` reports [`MenuEvent::Cancelled`].
     cancellable: bool,
     /// Whether the focus also stops on disabled items, so their notes can
@@ -96,8 +101,9 @@ impl Menu {
     pub fn new(items: Vec<MenuItem>) -> Self {
         let focus = items.iter().position(|i| i.enabled).unwrap_or(0);
         Self {
+            cursor: ListCursor::new(items.len()).at(focus),
             items,
-            focus,
+            rows_shown: None,
             cancellable: true,
             browse_disabled: false,
         }
@@ -119,13 +125,24 @@ impl Menu {
         self
     }
 
+    /// The same menu showing at most `rows` rows: a longer one scrolls,
+    /// its window following the focus by `scroll`.
+    #[must_use]
+    pub fn showing(mut self, rows: usize, scroll: Scroll) -> Self {
+        self.rows_shown = Some(rows);
+        self.cursor = self.cursor.scrolling(scroll);
+        self.follow();
+        self
+    }
+
     /// The same menu focused on item `index`, if it exists and the focus
     /// may stop on it (it is enabled, or the menu is
     /// [`browsing_disabled`](Self::browsing_disabled)).
     #[must_use]
     pub fn focused(mut self, index: usize) -> Self {
         if self.items.get(index).is_some_and(|i| self.stops_on(i)) {
-            self.focus = index;
+            self.cursor = self.cursor.at(index);
+            self.follow();
         }
         self
     }
@@ -142,7 +159,7 @@ impl Menu {
 
     /// Index of the focused item.
     pub fn focus(&self) -> usize {
-        self.focus
+        self.cursor.focus()
     }
 
     /// Handles one action, by what the game [takes it for](ActionSet::ui).
@@ -154,11 +171,12 @@ impl Menu {
             Some(UiAction::Down) => self.step(true),
             Some(UiAction::Up) => self.step(false),
             Some(UiAction::Confirm) => {
+                let focus = self.focus();
                 return self
                     .items
-                    .get(self.focus)
+                    .get(focus)
                     .filter(|i| i.enabled)
-                    .map(|_| MenuEvent::Chosen(self.focus));
+                    .map(|_| MenuEvent::Chosen(focus));
             }
             Some(UiAction::Cancel) if self.cancellable => return Some(MenuEvent::Cancelled),
             _ => {}
@@ -175,12 +193,12 @@ impl Menu {
         action: A,
         audio: &mut AudioQueue<V>,
     ) -> Option<MenuEvent> {
-        let before = self.focus;
+        let before = self.focus();
         let event = self.handle(action);
         let sound = match event {
             Some(MenuEvent::Chosen(_)) => Some(MenuSound::Select),
             Some(MenuEvent::Cancelled) => Some(MenuSound::Cancel),
-            None if self.focus != before => Some(MenuSound::Move),
+            None if self.focus() != before => Some(MenuSound::Move),
             None if action.ui() == Some(UiAction::Confirm) && !self.items.is_empty() => {
                 Some(MenuSound::Denied)
             }
@@ -196,32 +214,42 @@ impl Menu {
     /// (enabled, unless the menu browses disabled ones too), wrapping.
     /// Stays put if there is none.
     fn step(&mut self, down: bool) {
-        let n = self.items.len();
-        let next = (1..n)
-            .map(|k| {
-                if down {
-                    (self.focus + k) % n
-                } else {
-                    (self.focus + n - k) % n
-                }
-            })
-            .find(|&i| self.stops_on(&self.items[i]));
-        if let Some(i) = next {
-            self.focus = i;
+        let (items, browse) = (&self.items, self.browse_disabled);
+        if self.cursor.step(down, true, |i| items[i].enabled || browse) {
+            self.follow();
         }
     }
 
-    /// What the menu shows: every item, and which one has the focus.
+    /// Moves the window to keep the focus in it, if the menu scrolls.
+    fn follow(&mut self) {
+        if let Some(rows) = self.rows_shown {
+            self.cursor.window(rows);
+        }
+    }
+
+    /// What the menu shows: every item, which one has the focus, and the
+    /// window of them the box shows.
     pub fn view(&self) -> MenuView {
+        let focus = self.focus();
         let items = self.items.iter().enumerate().map(|(i, item)| MenuItemView {
             label: item.label.clone(),
             suffix: item.suffix.clone(),
             note: item.note.clone(),
             enabled: item.enabled,
-            focused: i == self.focus,
+            focused: i == focus,
         });
+        let n = self.items.len();
+        let (first_shown, shown) = match self.rows_shown {
+            Some(rows) => {
+                let first = self.cursor.first_shown();
+                (first, rows.max(1).min(n - first.min(n)))
+            }
+            None => (0, n),
+        };
         MenuView {
             items: items.collect(),
+            first_shown,
+            shown,
         }
     }
 }

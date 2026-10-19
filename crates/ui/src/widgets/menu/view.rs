@@ -8,11 +8,43 @@ use crate::prelude::*;
 /// The whole menu, as it is this frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MenuView {
-    /// The items, top to bottom.
+    /// The items, top to bottom: all of them, also those scrolled out of
+    /// the box.
     pub items: Vec<MenuItemView>,
+    /// The first item the box shows (0 unless the menu has scrolled).
+    pub first_shown: usize,
+    /// How many items the box shows from `first_shown` (all of them unless
+    /// the menu scrolls).
+    pub shown: usize,
 }
 
 impl MenuView {
+    /// A view of `items` that shows them all.
+    pub fn new(items: Vec<MenuItemView>) -> Self {
+        Self {
+            shown: items.len(),
+            items,
+            first_shown: 0,
+        }
+    }
+
+    /// The items the box shows, top to bottom.
+    pub fn shown_items(&self) -> &[MenuItemView] {
+        let first = self.first_shown.min(self.items.len());
+        let end = (first + self.shown).min(self.items.len());
+        &self.items[first..end]
+    }
+
+    /// Whether items are scrolled out above the box, so a skin can mark it.
+    pub fn more_above(&self) -> bool {
+        self.first_shown > 0
+    }
+
+    /// Whether items are scrolled out below the box.
+    pub fn more_below(&self) -> bool {
+        self.first_shown + self.shown < self.items.len()
+    }
+
     /// The focused item, if there is one.
     pub fn focused(&self) -> Option<&MenuItemView> {
         self.items.iter().find(|i| i.focused)

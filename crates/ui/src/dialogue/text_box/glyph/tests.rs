@@ -32,9 +32,7 @@ fn replies(labels: &[&str], focus: usize) -> MenuView {
         enabled: true,
         focused: i == focus,
     };
-    MenuView {
-        items: labels.iter().enumerate().map(item).collect(),
-    }
+    MenuView::new(labels.iter().enumerate().map(item).collect())
 }
 
 fn painted(view: &TextView, speaker: Option<&str>) -> (GlyphBuffer, Palette) {
