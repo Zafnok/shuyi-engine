@@ -4,12 +4,13 @@ An open-source 2D game engine in Rust, built so that you **and your coding
 agent** can make, run, see, test and replay a game without a window and
 without guessing.
 
-> **Status: planning.** The engine's code is being carved out of the game
-> it was built for, [Visions of Shuyi](https://github.com/Zafnok/visions-of-shuyi),
-> a Fire Emblem-like tactics game drawn with colored glyphs and sprites.
-> Until that move lands, this repository holds the engine's design
-> records, its tickets and the skills its developers use. See
-> [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> **Status: early, not yet released.** The engine's code was carved out of
+> the game it was built for, [Visions of Shuyi](https://github.com/Zafnok/visions-of-shuyi),
+> a Fire Emblem-like tactics game drawn with colored glyphs and sprites,
+> and moved here with its history on 2026-10-19 (the game's ticket 1131).
+> The game runs on it, pinned to a revision of this repository, and so
+> does one example. It isn't on crates.io yet, and its API still moves.
+> See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## What it is for
 
@@ -99,9 +100,75 @@ and a game that needs more than that doesn't export there
 | `docs/adr/` | Technical decisions |
 | `tickets/` | The backlog, one ticket per pull request |
 | `.claude/skills/` | Skills for developing the engine: working a ticket, writing tickets and ADRs, the gates, input rules |
+| `crates/` | The engine's crates ([below](#the-crates)) |
+| `examples/` | Games made from the engine's crates alone ([below](#the-first-example-hello-grid)) |
+| `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
+| `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
-The crates, examples and the engine's own shippable skills arrive with
-the code (`crates/`, `examples/`, `skills/`).
+The engine's own shippable skills arrive later (`skills/`, ticket 1134).
+
+## The crates
+
+Each sits under the game crate of the same layer (game ADR-0063 §2). The
+core is pure and deterministic, only the app touches the platform, time
+is an argument, and there's no `unsafe` outside the app. An engine crate
+never depends on a game.
+
+| Crate | Folder | Owns |
+| ----- | ------ | ---- |
+| `shuyi-core` | `crates/core` | The seeded RNG, the simulation traits, and the tactics kit: grid, paths, turns. No I/O. |
+| `shuyi-assets` | `crates/assets` | Bundle layers, images, fonts, palette, audio cues, languages, keymaps, tilesets, importers, error reports. |
+| `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics, the grid map and the test Harness. |
+| `shuyi-app` | `crates/app` | The window, blitting, input devices, the audio backend, storage and the run loop. |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+
+`shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for
+the Playdate): turn off their default `std` feature.
+
+A game depends on them by git revision until the first release:
+
+```toml
+[dependencies]
+shuyi-ui = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<commit>" }
+```
+
+## The first example: Hello, Grid
+
+`examples/hello-grid/` is a small game made from the engine's crates
+alone. Its art is the Terminus font (OFL-1.1) and a tileset `glyph-tiles`
+draws from it; its sounds are made by code. Its
+[README](examples/hello-grid/README.md) says how it is laid out.
+
+Run it, from the repository's root:
+
+```
+cargo run -p hello-grid
+```
+
+Build it for the web, from its folder (the page goes to `dist/web/`;
+serve that folder over HTTP):
+
+```
+cd examples/hello-grid
+cargo shuyi web --release
+```
+
+CI builds it natively and for the web and runs its tests (`cargo test -p
+hello-grid`), and Pages publishes the web build at `/hello-grid/`.
+
+What it shows, and the engine's part in each:
+
+| In the game | The engine's |
+| ----------- | ------------ |
+| A title menu, an end screen | `shuyi_ui::widgets::Menu`; the screen stack (`Screen`, `Transition`, `Game`) |
+| Options with two settings (text speed, the map's look), saved | `shuyi_ui::screens::options` with the game's rows; `settings` (`GameSettings`); `storage` |
+| Key rebinding, from the options | `shuyi_ui::screens::key_bindings`; the keymap file (`shuyi_assets::keymap`) over the game's `ActionSet` |
+| A short scene before the stage | the `.dlg` format (`shuyi_assets::dialogue`), `shuyi_ui::dialogue`'s player and text box |
+| A 12 × 10 stage: walk your piece to the goal while a foe steps toward it | the `.map` format (`shuyi_assets::grid_map`); `shuyi_core`'s `TurnRules`, `Sides`, `reachable`, `flow_field`, `SimRng`; `shuyi_ui::grid`'s scene, cursor, path steering and walks |
+| Two looks of the map | the glyph skin and the sprite skin (`GridSkin`), with the game's `UnitPainter`s |
+| The foe's mind, and the bot test | `shuyi_core::bots`: `Bot`, `RandomBot`, `play` |
+| Its tests | the `Harness` (`shuyi_ui::harness`); `frame-png`'s `Painter`, as binary snapshots |
+| Its tools | `shuyi.ron` with `font-atlas`, `glyph-tiles`, `frame-png`, `lang-status` and `web` |
 
 ## License
 

@@ -1,0 +1,43 @@
+[package]
+name = "shuyi-assets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license-file.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# Without it the crate is `no_std` + `alloc` (ADR-0070 §6): a layer is then a
+# file table (`Layer::table`), since `include_dir` needs `std`.
+std = ["dep:include_dir", "ron/std", "thiserror/std", "serde/std", "shuyi-core/std"]
+# `bitmap::convert::png_pixels`: a tool that makes one-bit pictures reads
+# the PNGs with it (ADR-0085). Only tools turn it on.
+png = ["std", "dep:png"]
+# `keymap::sample`, a sample game's actions and keymap file, for other
+# engine crates' tests of input (ticket 1107).
+sample-actions = []
+
+[dependencies]
+# The grid a `.map` file is read into (`grid_map`); character ids and the
+# `{token}` splitter, for dialogue and languages.
+shuyi-core = { path = "../core", default-features = false }
+serde.workspace = true
+ron.workspace = true
+include_dir = { workspace = true, optional = true }
+thiserror.workspace = true
+# The process-wide bundle, set once, without `std`.
+once_cell.workspace = true
+# Float rounding without `std` (lights).
+libm.workspace = true
+png = { version = "0.18", optional = true }
+
+[dev-dependencies]
+proptest.workspace = true
+# Its own tests read PNGs too (`bitmap::convert::png_pixels`), whatever
+# features the test run turns on.
+shuyi-assets = { path = ".", features = ["png"] }

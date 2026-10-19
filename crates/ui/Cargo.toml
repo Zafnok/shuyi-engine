@@ -1,0 +1,56 @@
+[package]
+name = "shuyi-ui"
+description = "Shuyi Engine's UI: the frame (glyph console, sprites, backdrop, named colors, snapshots, one-bit renderer), input (actions, keymaps, repeat, controllers, saved bindings, help keys), screens on a stack, the context they share, the frame loop and the tactics kit's grid map"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license-file.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# Without it the crate is `no_std` + `alloc` for the Playdate (ADR-0070 §3).
+std = ["shuyi-core/std", "shuyi-assets/std", "ron/std", "thiserror/std", "serde/std"]
+# The developer's actions (those a player can't rebind) keep their keys
+# out of the player's reach in a release build too: the game turns it on
+# with its own debug tools (`DEBUG_TOOLS`).
+debug-tools = []
+# `storage::conformance_suite`, for a platform's `Storage` (also without
+# `std`: a console's debug build runs it on the device's files).
+storage-conformance = []
+# `frame::onebit::reference`, the plain one-bit renderer the fast one must
+# equal (ticket 1055): for a bench build that times both on the device.
+# The tests have it anyway.
+onebit-reference = []
+# `harness`: the headless test driver for a game's integration tests
+# (ADR-0017).
+harness = []
+# `toy`: a toy game of a few screens over the sample game's actions, for
+# this crate's integration tests.
+toy = ["shuyi-assets/sample-actions"]
+
+[dependencies]
+# The tactics kit's grid: positions, directions, terrain ids and paths.
+shuyi-core = { path = "../core", default-features = false }
+# The keymap file format and `ActionSet`.
+shuyi-assets = { path = "../assets", default-features = false }
+thiserror.workspace = true
+# The player's saved key bindings (ADR-0031) and profiles.
+serde.workspace = true
+ron.workspace = true
+# `HashMap` without `std` (ADR-0070 §3).
+hashbrown.workspace = true
+# Float maths without `std` (ADR-0070 §3).
+libm.workspace = true
+
+[dev-dependencies]
+# The Harness and the toy game for the integration tests in tests/.
+shuyi-ui = { path = ".", features = ["harness", "toy"] }
+# A sample game's actions and keymap file for the tests.
+shuyi-assets = { path = "../assets", features = ["sample-actions"] }
+proptest.workspace = true
+insta.workspace = true

@@ -1,0 +1,81 @@
+---
+source: engine/crates/ui/tests/it/scene_camera.rs
+expression: h.snapshot()
+---
+  Scene camera (debug)                  
+                                        
+  zoom 4x   window starts at 56.0,44.0  
+ ┌────────────────────────┐             
+ │ Text over the scene    │             
+ │                        │             
+ │                        │             
+ │                        │             
+ │                        │             
+ │                        │             
+ │                        │             
+ │                        │             
+ │                ╔══════════════════╗  
+ │                ║ A text box drawn ║  
+ └────────────────║ over the scene   ║  
+                  ║ hides it.        ║  
+                  ╚══════════════════╝  
+                                        
+                                        
+  arrows pan (hold) · f zoom · d back   
+--- colours ---
+aabbbbbbbbbbbbbbbbbbbbaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+accccccccccccccccccccccccccaaaaaaaaaaaaa
+acdeeeeeeeeeeeeeeeeeeeddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddddddddddcaaaaaaaaaaaaa
+acddddddddddddddddffffffffffffffffffffaa
+acddddddddddddddddfggggggggggggggggggfaa
+acccccccccccccccccfggggggggggggggggggfaa
+aaaaaaaaaaaaaaaaaafggggggggggggggggggfaa
+aaaaaaaaaaaaaaaaaaffffffffffffffffffffaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhaaa
+--- legend ---
+a = fg:text bg:background
+b = fg:highlight bg:background
+c = fg:border bg:background
+d = fg:text bg:see-through
+e = fg:highlight bg:see-through
+f = fg:focus bg:panel
+g = fg:text bg:panel
+h = fg:text_dim bg:background
+--- backdrop: clip 2,4 24x10  origin 56.0,44.0  zoom 4 ---
+.,.,.,.,.,~~.,.,.,.,
+.,.,.,.,.,~~.,.,.,.,
+.,.,.,.,.,==.,.,.,.,
+.,.,y,.,.,~~.,.,.,.,
+.,.,.,f,.,~~.,.,.,.,
+.,.,.,.,.,~~.,.,.,.,
+.,:.:..,.,~~.,.,.,.,
+.,.,:..,.,~~.,.,.,.,
+--- colours ---
+aaaaaaaaaabbaaaaaaaa
+aaaaaaaaaabbaaaaaaaa
+aaaaaaaaaaccaaaaaaaa
+aaaadaaaaabbaaaaaaaa
+aaaaaadaaabbaaaaaaaa
+aaaaaaaaaabbaaaaaaaa
+aaeeeeaaaabbaaaaaaaa
+aaaaeeaaaabbaaaaaaaa
+--- legend ---
+a = fg:grass_fg bg:grass_bg
+b = fg:water_fg bg:water_bg
+c = fg:bridge_fg bg:bridge_bg
+d = fg:piece bg:grass_bg
+e = fg:text bg:background
+--- overlays ---
+over  33,62 14x2  piece
+over  49,78 14x2  piece

@@ -1,0 +1,64 @@
+---
+source: engine/crates/ui/src/screens/key_bindings/glyph/tests.rs
+expression: buf.to_snapshot(&c.palette)
+---
+                                                
+  ┌─ Key bindings ───────────────────────────┐  
+  │   Keyboard · Left-handed    Controller   │  
+  │                  Key 1   Key 2   Key 3   │  
+  │ Must have a key                          │  
+  │   Cursor up      f       Ctrl…   ·       │  
+  │   Cursor down    f       ·       ·       │  
+  │   Cursor left    f       ·       ·       │  
+  │   Cursor right   f       ·       ·       │  
+  │   Confirm              ! not mapped      │  
+  │   Cancel  + Es…  f       ·       ·       │  
+  │   End turn       ! not mapped            │  
+  │                                          │  
+  │   Restore defaults                       │  
+  │                                          │  
+  │                                          │  
+  │                                          │  
+  │                                          │  
+  │                                          │  
+  │                                          │  
+  │                                          │  
+  └──────────────────────────────────────────┘  
+           Give End turn a key first            
+                      help                      
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aabbccccccccccccccbbbbbbbbbbbbbbbbbbbbbbbbbbbbaa
+aabdddccccccccccccccccccccccddddeeeeeeeeeedddbaa
+aabddddddddddddddddddeeeeedddeeeeedddeeeeedddbaa
+aabdfffffffffffffffddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddedddddddbaa
+aabddddddddddddddddddddddddddedddddddedddddddbaa
+aabddddddddddddddddddddddddddedddddddedddddddbaa
+aabddddddddddddddddddddddddddedddddddedddddddbaa
+aabdddcccccccdddddddggggggdeeeeeeeeeeeeddddddbaa
+aabdddddddddddeeeeeddddddddddedddddddedddddddbaa
+aabddddddddddddddddddhhhhhhhhhhhhddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabddddddddddddddddddddddddddddddddddddddddddbaa
+aabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbaa
+aaaaaaaaaaaiiiiiiiiiiiiiiiiiiiiiiiiiaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaajjjjaaaaaaaaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:text bg:background
+b = fg:border bg:panel
+c = fg:highlight bg:panel
+d = fg:text bg:panel
+e = fg:text_dim bg:panel
+f = fg:focus bg:panel
+g = fg:panel bg:focus
+h = fg:warning bg:panel
+i = fg:warning bg:background
+j = fg:text_dim bg:background
