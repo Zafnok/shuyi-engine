@@ -62,6 +62,13 @@ changes (a few lines).
   records presented frames and plays scripted input. The Harness uses it
   instead of its own driver, so tests run the same `App::frame` the
   devices do.
+- **A loading phase** (from the game's friction sweep, game#1153): a
+  game's first load can take seconds on a slow device (3.7 s on the
+  Playdate), and a backend shows nothing until the first frame. `App`
+  starts in a loading state: its first frame paints a card the game
+  gives (a picture or a line of text), the next frames run the game's
+  load, then the title. The game's Playdate front end does this by hand
+  (`src/pd/entry.rs`, `Step::ShowCard`, `Load`, `Running`).
 - **Docs.** `docs/platform-backends.md` explains how to write a backend:
   the trait, what each method must do, the headless backend as a
   reference, and the rule that console backends stay private.
