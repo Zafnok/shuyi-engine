@@ -65,7 +65,7 @@ pub mod widgets;
 
 pub use ctx::{Ctx, GameData, IdleMotion, KeyPrompt, Keyboard};
 pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, ScreenHook};
-pub use screen::{FrameInput, Screen, ScreenStack, Transition};
+pub use screen::{FrameInput, Screen, ScreenResult, ScreenStack, Transition};
 
 /// Whether this build offers the developer's tools: debug builds, and
 /// release builds with the `debug-tools` feature. Then the keys of the

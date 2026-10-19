@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use hello_grid::map::MOVE;
 use hello_grid::rules::{Outcome, Side, TRIP_PERCENT};
-use hello_grid::screens::{End, StageScreen, Talk, Title};
+use hello_grid::screens::{End, Leave, StageScreen, Talk, Title};
 use shuyi_assets::dialogue::{DialogueTable, NoDirective, parse_dlg};
 use shuyi_core::{Pos, Sides, SimRng};
 use shuyi_ui::grid::MapUnit;
@@ -287,27 +287,30 @@ fn a_walk_is_shown_a_tile_at_a_time_then_the_foes_step() {
 fn leaving_the_stage_asks_first() {
     let mut h = title(1);
     h.keys("Enter Backspace Backspace");
+    // Asked on a screen of its own, over the stage.
+    assert_eq!(h.screens(), ["title", "stage", "leave"]);
     assert!(stage(&h).leaving);
-    let view = stage(&h).view(h.ctx());
-    assert_eq!(
-        view.question,
-        Some((
-            "Leave the stage?".to_owned(),
-            "Enter yes / Backspace no".to_owned()
-        ))
-    );
-    assert!(h.snapshot().contains("Leave the stage?"));
+    let view = Leave::view(h.ctx());
+    assert_eq!(view.question, "Leave the stage?");
+    assert_eq!(view.answers, "Enter yes / Backspace no");
+    let snapshot = h.snapshot();
+    assert!(snapshot.contains("Leave the stage?"), "{snapshot}");
+    assert!(snapshot.contains("Turn 1"), "the stage shows: {snapshot}");
+    assert!(!snapshot.contains("pick up"), "not its help: {snapshot}");
     let s = stage(&h);
     assert_eq!(s.scene(StageScreen::view_tiles(h.ctx())).cursor, None);
     // The cursor waits meanwhile.
     h.keys("Up");
     assert_eq!(stage(&h).cursor.pos, Pos::new(1, 8));
-    // No: back on the stage.
+    // No: back on the stage, which reads the answer.
     h.keys("Backspace Up");
+    assert_eq!(h.screens(), ["title", "stage"]);
     assert!(!stage(&h).leaving);
     assert_eq!(stage(&h).cursor.pos, Pos::new(1, 7));
-    // Yes: back at the title.
-    h.keys("Escape Enter");
+    // Yes: the stage leaves in the same frame, back at the title.
+    h.keys("Escape");
+    assert_eq!(h.top_screen(), "leave");
+    h.keys("Enter");
     assert_eq!(h.screens(), ["title"]);
 }
 

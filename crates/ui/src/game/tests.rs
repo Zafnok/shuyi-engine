@@ -9,7 +9,7 @@ use shuyi_assets::keymap::StickDef;
 use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::Cell;
 use crate::input::state::Device;
-use crate::screen::Transition;
+use crate::screen::{ScreenResult, Transition};
 use crate::toy::{
     Action, Home, LEFT_HANDED, Menu, RIGHT_HANDED, Toy, ToyCtx, Voice, ctx, first_launch,
 };
@@ -475,6 +475,44 @@ fn the_debug_key_opens_the_debug_screen_once() {
     let mut game = home(ctx()).with_debug_screens(true);
     tap(&mut game, Key::F2);
     assert_eq!(game.screens(), ["home"]);
+}
+
+/// A root screen that counts how often it was covered and uncovered.
+struct Watcher(Rc<RefCell<(u32, u32)>>);
+
+impl Screen<Toy> for Watcher {
+    fn name(&self) -> &'static str {
+        "watcher"
+    }
+    fn update(&mut self, _: &mut ToyCtx, _: &FrameInput<Action>) -> Transition<Toy> {
+        Transition::None
+    }
+    fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+    fn covered(&mut self, _: &mut ToyCtx) {
+        self.0.borrow_mut().0 += 1;
+    }
+    fn uncovered(&mut self, _: &mut ToyCtx, _: Option<ScreenResult>) -> Transition<Toy> {
+        self.0.borrow_mut().1 += 1;
+        Transition::None
+    }
+}
+
+/// Ticket 2306: the screens the game's hooks open cover the top screen
+/// like any push, and closing them uncovers it.
+#[test]
+fn the_hooks_screens_cover_the_top_screen() {
+    let seen = Rc::new(RefCell::new((0, 0)));
+    let mut game = Game::new(ctx(), Box::new(Watcher(Rc::clone(&seen))), hooks());
+    tap(&mut game, Key::F2);
+    assert_eq!(game.screens(), ["watcher", "tools"]);
+    assert_eq!(*seen.borrow(), (1, 0));
+    tap(&mut game, Key::D);
+    assert_eq!(game.screens(), ["watcher"]);
+    assert_eq!(*seen.borrow(), (1, 1));
+    let mut game = Game::new(first_launch(), Box::new(Watcher(Rc::clone(&seen))), hooks());
+    tap(&mut game, Key::Z);
+    assert_eq!(game.screens(), ["watcher", "picker"]);
+    assert_eq!(*seen.borrow(), (2, 1));
 }
 
 /// The frame that opens the debug screen doesn't reach the screen below.
