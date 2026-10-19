@@ -74,6 +74,11 @@ None (technical).
   - running a script that errors or hits a limit gives an error value
     and never panics; the caller decides what that means.
 - The WASM build and `cargo deny check` pass with the module built.
+- Without `std`: the ADR says whether the module builds for
+  `thumbv7em-none-eabihf` without `std` (the target of a handheld such
+  as the Playdate, ADR-0008). If it doesn't, the README says so, and a
+  game that builds its core without `std` keeps scripting behind a
+  feature of its own.
 
 **Out (do not do):**
 - Anything a game does with scripts: its view types, its effects, where
