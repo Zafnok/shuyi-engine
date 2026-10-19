@@ -64,9 +64,17 @@ game stays the engine's first user. Read [`README.md`](README.md), then
 
 ## Working with the game repository
 
-- Until the code arrives (the game's ticket 1131), the engine's code lives
-  in the game repository's `engine/` folder and is built and tested
-  there. The carve tickets (game 1102–1118) are in the game repository.
+- The engine's code was carved in the game repository's `engine/` folder
+  (game tickets 1102–1118 and 1154) and moved here with its history (game
+  ticket 1131). [`docs/carve.md`](docs/carve.md) says what came from where.
+- The game depends on this repository by a pinned git revision (its
+  `shuyi-engine.rev`). A game change that needs an engine change is an
+  engine PR here first, then a game PR that moves the pin. The game's
+  `cargo xtask engine` checks this repository out inside the game at the
+  pin, so one working copy edits both while the change is made.
+- A change here must not break the game at its next pin bump: when an
+  API changes, say so in the PR, and the game's PR that moves the pin
+  follows it.
 - Ticket ids:
   - `1119`–`1150` moved here from the game repository and kept their
     numbers.

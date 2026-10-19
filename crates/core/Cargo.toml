@@ -1,0 +1,25 @@
+[package]
+name = "shuyi-core"
+description = "Shuyi Engine's core: the seeded RNG, the simulation traits and the tactics kit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+# `std` is on by default; without it the crate builds with `no_std` +
+# `alloc` (for the Playdate, game ADR-0070 §3).
+[features]
+default = ["std"]
+std = ["serde/std"]
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+ron = { workspace = true, features = ["std"] }

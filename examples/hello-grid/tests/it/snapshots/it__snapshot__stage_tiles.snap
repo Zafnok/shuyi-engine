@@ -1,0 +1,6 @@
+---
+source: engine/examples/hello-grid/tests/it/snapshot.rs
+expression: "picture(MapLook::Tiles)"
+extension: png
+snapshot_kind: binary
+---

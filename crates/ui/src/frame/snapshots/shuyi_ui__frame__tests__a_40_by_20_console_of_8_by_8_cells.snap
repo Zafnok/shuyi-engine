@@ -1,0 +1,67 @@
+---
+source: engine/crates/ui/src/frame/tests.rs
+expression: snap
+---
+┌──────────────────────────────────────┐
+│ Forty by twenty                      │
+│ cells of 8x8                         │
+└──────────────────────────────────────┘
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+                                        
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+abcccccccccccccccbbbbbbbbbbbbbbbbbbbbbba
+abddddddddddddbbbbbbbbbbbbbbbbbbbbbbbbba
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbeeeeeeeeeebbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbeeeeeeeeeebbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbeeeeeeeeeebbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbeeeeeeeeeebbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+--- legend ---
+a = fg:border bg:panel
+b = fg:text bg:panel
+c = fg:highlight bg:panel
+d = fg:text_dim bg:panel
+e = fg:text bg:see-through
+--- overlays ---
+under sprite 240,40 64x64  images/face.png 0,0 16x16
+over  300,150 20x10  warning
+--- backdrop: clip 2,5 10x4  origin 4.0,2.0  zoom 2 ---
+""""""""
+"grass""
+""""""""
+""""""""
+--- colours ---
+aaaaaaaa
+abbbbbaa
+aaaaaaaa
+aaaaaaaa
+--- legend ---
+a = fg:text bg:panel
+b = fg:grass bg:panel

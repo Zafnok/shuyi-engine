@@ -1,0 +1,41 @@
+[package]
+name = "shuyi-cli"
+description = "Shuyi Engine's tools: frame-png, font-atlas, check-keys, check-text, lang-status, web and private-assets, run on a project its shuyi.ron describes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "shuyi"
+path = "src/main.rs"
+
+[[example]]
+# The toy game's tool program: `frame-png` and `lang-status` on the toy
+# (`toy/shuyi.ron`).
+name = "toy"
+required-features = ["toy"]
+
+[features]
+# `toy`: the toy game's tools (`shuyi_cli::toy`), for this crate's tests and
+# its `toy` example.
+toy = ["shuyi-ui/toy"]
+
+[dependencies]
+# Fonts, images, palettes, languages and credits.
+shuyi-assets = { path = "../assets" }
+# The frame `frame-png` paints and the Harness that plays a game's script.
+shuyi-ui = { path = "../ui", features = ["harness"] }
+serde = { workspace = true, features = ["std"] }
+# The project file, `shuyi.ron`, and the font atlas's `atlas.ron`.
+ron = { workspace = true, features = ["std"] }
+png = "0.18"
+
+[dev-dependencies]
+# The toy game's tools for the integration tests in tests/.
+shuyi-cli = { path = ".", features = ["toy"] }

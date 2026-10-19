@@ -1,8 +1,9 @@
 # Contributing
 
-Thanks for your interest. Shuyi Engine is at its **planning stage**: its
-code is still being carved out of the game it was built for, and lands
-here in one move (see [`docs/ROADMAP.md`](docs/ROADMAP.md)).
+Thanks for your interest. Shuyi Engine is **early and not yet
+released**: its code was carved out of the game it was built for and
+moved here on 2026-10-19, and its API still changes as the game needs (see
+[`docs/ROADMAP.md`](docs/ROADMAP.md)).
 
 **For now:**
 

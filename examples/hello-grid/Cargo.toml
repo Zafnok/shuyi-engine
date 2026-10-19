@@ -1,0 +1,46 @@
+[package]
+name = "hello-grid"
+description = "Shuyi Engine's first example: a small grid game made from engine crates alone"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "hello-grid"
+path = "src/main.rs"
+
+[[example]]
+# The game's tool program: `frame-png` and `lang-status` on this project
+# (`shuyi.ron`).
+name = "tools"
+required-features = ["tools"]
+
+[features]
+# `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
+# for its tool program and its tests.
+tools = ["dep:shuyi-cli", "shuyi-ui/harness"]
+
+[dependencies]
+shuyi-core = { path = "../../crates/core" }
+shuyi-assets = { path = "../../crates/assets" }
+shuyi-ui = { path = "../../crates/ui" }
+# The window, input devices, audio, storage and the run loop.
+shuyi-app = { path = "../../crates/app" }
+shuyi-cli = { path = "../../crates/cli", optional = true }
+# The entry point: `#[macroquad::main]` has to be in the binary.
+macroquad.workspace = true
+serde = { workspace = true, features = ["std"] }
+ron = { workspace = true, features = ["std"] }
+# The files under `files/`, embedded.
+include_dir.workspace = true
+
+[dev-dependencies]
+# The Harness and the tools for the tests in tests/.
+hello-grid = { path = ".", features = ["tools"] }
+insta.workspace = true

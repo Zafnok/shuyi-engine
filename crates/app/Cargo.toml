@@ -1,0 +1,61 @@
+[package]
+name = "shuyi-app"
+description = "Shuyi Engine's platform shell: the window, blitting, keyboard and controllers, the audio backend, storage and the run loop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+# The workspace lints (`[workspace.lints]` in the root Cargo.toml), copied
+# because one differs and Cargo can't override a single inherited lint:
+# `unsafe_code` is `deny` here instead of `forbid`, so the web build's
+# controller plugin can declare the JS functions it imports
+# (`src/pads/web.rs`, the only `#[allow(unsafe_code)]`; game ADR-0034, and
+# game ADR-0004 rule 5: no `unsafe` outside the platform). A test in `lib.rs`
+# keeps the rest equal to the workspace's.
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+
+[dependencies]
+shuyi-assets = { path = "../assets" }
+shuyi-ui = { path = "../ui" }
+macroquad.workspace = true
+
+# Storage on the web (ticket 0207): `localStorage`. Native resolves its
+# data directory by hand (see storage/native.rs) rather than pulling in the
+# `directories` crate, which drags in MPL-2.0 (denied by game ADR-0013).
+# Native music decodes on a worker thread into its own quad-snd context
+# (ticket 0215, game ADR-0028). The same version macroquad's `audio` feature uses.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+quad-snd = "0.2.8"
+# Controllers on Windows, Linux and macOS (ticket 0219, game ADR-0034). The web
+# build reads the browser's Gamepad API through `crates/cli/web/gamepad.js` instead.
+gilrs = "0.11.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+quad-storage = "0.1"
+
+[dev-dependencies]
+# Turns on `storage::conformance_suite` in tests.
+shuyi-ui = { path = "../ui", features = ["storage-conformance"] }
+# A voice variant for the voice player's tests.
+serde.workspace = true
+tempfile = "3"
+# Variant picking property test (audio.rs, ticket 0212).
+proptest.workspace = true

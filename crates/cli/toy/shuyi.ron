@@ -1,0 +1,6 @@
+// The toy game's project file (`shuyi_ui::toy`): `shuyi frame-png` and
+// `shuyi lang-status` run the toy through its tool program, this crate's
+// `toy` example.
+(
+    game: (package: "shuyi-cli", example: "toy", features: ["toy"]),
+)
