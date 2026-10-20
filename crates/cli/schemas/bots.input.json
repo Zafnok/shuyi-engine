@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BotsInput",
+  "description": "What `bots` plays.",
+  "type": "object",
+  "properties": {
+    "games": {
+      "description": "How many games.",
+      "type": "integer",
+      "format": "uint32",
+      "default": 10,
+      "minimum": 0
+    },
+    "seed": {
+      "description": "The first game's seed; each next game takes the next.",
+      "type": "integer",
+      "format": "uint64",
+      "default": 0,
+      "minimum": 0
+    },
+    "start": {
+      "description": "The game's own options, in the order given.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/GameArg"
+      }
+    },
+    "turns": {
+      "description": "The turn a play stops at if it hasn't ended.",
+      "type": "integer",
+      "format": "uint32",
+      "default": 200,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "GameArg": {
+      "description": "A game option as given.",
+      "type": "object",
+      "properties": {
+        "flag": {
+          "description": "Its flag.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Its value, if it takes one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "flag"
+      ]
+    }
+  }
+}

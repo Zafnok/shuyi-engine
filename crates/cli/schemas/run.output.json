@@ -1,0 +1,374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "$ref": "#/$defs/Op"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RunOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "Event": {
+      "description": "Something that happened while a session ran, with its frame (frames\ncount from 1).",
+      "oneOf": [
+        {
+          "description": "A screen opened.",
+          "type": "object",
+          "properties": {
+            "frame": {
+              "description": "The frame.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "opened"
+            },
+            "screen": {
+              "description": "Its name.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "frame",
+            "screen"
+          ]
+        },
+        {
+          "description": "A screen closed.",
+          "type": "object",
+          "properties": {
+            "frame": {
+              "description": "The frame.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "closed"
+            },
+            "screen": {
+              "description": "Its name.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "frame",
+            "screen"
+          ]
+        },
+        {
+          "description": "A music command to the platform.",
+          "type": "object",
+          "properties": {
+            "command": {
+              "description": "`load`, `start`, `gain` or `stop`.",
+              "type": "string"
+            },
+            "cue": {
+              "description": "The track's cue.",
+              "type": "string"
+            },
+            "frame": {
+              "description": "The frame.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "music"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "frame",
+            "command",
+            "cue"
+          ]
+        },
+        {
+          "description": "A voiced line asked to play.",
+          "type": "object",
+          "properties": {
+            "frame": {
+              "description": "The frame.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "voice"
+            },
+            "line": {
+              "description": "The line's id.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "frame",
+            "line"
+          ]
+        },
+        {
+          "description": "The game asked to quit.",
+          "type": "object",
+          "properties": {
+            "frame": {
+              "description": "The frame.",
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0
+            },
+            "kind": {
+              "type": "string",
+              "const": "quit"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "frame"
+          ]
+        },
+        {
+          "description": "Something in the game's rules, in the game's words (it gives no\nframe).",
+          "type": "object",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "game"
+            },
+            "text": {
+              "description": "What happened.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "text"
+          ]
+        }
+      ]
+    },
+    "Op": {
+      "description": "An operation of the contract.",
+      "oneOf": [
+        {
+          "description": "A new game from a template.",
+          "type": "string",
+          "const": "new"
+        },
+        {
+          "description": "Every error of the game's content.",
+          "type": "string",
+          "const": "check"
+        },
+        {
+          "description": "A key script played headless.",
+          "type": "string",
+          "const": "run"
+        },
+        {
+          "description": "The scene on screen.",
+          "type": "string",
+          "const": "scene"
+        },
+        {
+          "description": "A record replayed.",
+          "type": "string",
+          "const": "replay"
+        },
+        {
+          "description": "Bots playing the game.",
+          "type": "string",
+          "const": "bots"
+        },
+        {
+          "description": "A file read through the format registry.",
+          "type": "string",
+          "const": "import"
+        },
+        {
+          "description": "The toolchain checked.",
+          "type": "string",
+          "const": "doctor"
+        }
+      ]
+    },
+    "RunOutput": {
+      "description": "What `run` saw.",
+      "type": "object",
+      "properties": {
+        "events": {
+          "description": "What happened, in frame order, then the game's own events.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        },
+        "frame": {
+          "description": "The last frame drawn, in the snapshot text format.",
+          "type": "string"
+        },
+        "frames": {
+          "description": "The frames run in all.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "quit": {
+          "description": "The frame the game asked to quit in, if it did.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "scene": {
+          "description": "The scene on screen, if a stage is open.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Scene"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "screens": {
+          "description": "The open screens, bottom first.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sounds": {
+          "description": "The sound cues asked for, in order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Sound"
+          }
+        },
+        "top_screen": {
+          "description": "The top screen's name; empty once every screen has closed.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "top_screen",
+        "screens",
+        "frame",
+        "events",
+        "sounds"
+      ]
+    },
+    "Scene": {
+      "description": "The scene a stage shows, as text and as data.",
+      "type": "object",
+      "properties": {
+        "data": {
+          "description": "What the game says of it as data: its stage's state."
+        },
+        "kind": {
+          "description": "What kind of scene: `grid map`, or the game's own word.",
+          "type": "string"
+        },
+        "screen": {
+          "description": "The screen it is on.",
+          "type": "string"
+        },
+        "text": {
+          "description": "The scene as text: for a grid map, its tiles, units and cursor in\nthe scene's text form (`MapScene::to_text`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "screen",
+        "kind",
+        "text",
+        "data"
+      ]
+    },
+    "Sound": {
+      "description": "A sound cue asked to play.",
+      "type": "object",
+      "properties": {
+        "cue": {
+          "description": "The cue.",
+          "type": "string"
+        },
+        "frame": {
+          "description": "The frame.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "cue"
+      ]
+    }
+  }
+}

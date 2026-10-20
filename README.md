@@ -106,6 +106,8 @@ and a game that needs more than that doesn't export there
 | `sonar-project.properties`, `tools/sonar-triage/` | SonarCloud's scan of the code in CI, and the weekly job that files its findings as `sonar` GitHub issues (ADR-0017) |
 | `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
 | `docs/formats.md` | Asset kinds and file formats: the built-in formats, and how to write a format plugin |
+| `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, their JSON answers and schemas |
+| `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
 The engine's own shippable skills arrive later (`skills/`, ticket 1134).
@@ -123,7 +125,7 @@ never depends on a game.
 | `shuyi-assets` | `crates/assets` | Bundle layers, images, fonts, palette, audio cues, languages, keymaps, tilesets, importers, error reports. |
 | `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics, the grid map and the test Harness. |
 | `shuyi-app` | `crates/app` | The window, blitting, input devices, the audio backend, storage and the run loop. |
-| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, each with `--json`), and `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for
 the Playdate): turn off their default `std` feature.
@@ -133,6 +135,27 @@ A game depends on them by git revision until the first release:
 ```toml
 [dependencies]
 shuyi-ui = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<commit>" }
+```
+
+## Starting a game, and the tools on it
+
+`shuyi new` makes a game that builds and passes its own gates as it is:
+`grid` (a turn-based grid stage, with its rules in a crate of their own,
+a bot and records) or `blank` (one screen). From this repository:
+
+```
+cargo shuyi new grid ../moon-garden --engine-rev <commit>
+```
+
+In the new game's folder, `cargo shuyi` runs the engine's tools on it.
+Each answers for people, or with `--json` for a program, and says what
+it couldn't determine ([`docs/contract.md`](docs/contract.md)):
+
+```
+cargo shuyi check                                # every error in the game's files
+cargo shuyi run --script "Right Down" --frames 30   # screens, scene, events, sounds
+cargo shuyi bots 20                              # how 20 bot games ended
+cargo shuyi doctor                               # what the toolchain lacks
 ```
 
 ## The first example: Hello, Grid

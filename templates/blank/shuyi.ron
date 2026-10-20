@@ -1,0 +1,18 @@
+// {{name}}'s project file: what `cargo shuyi <command>` (the engine's
+// tools) builds and runs here. Paths are from this folder.
+(
+    command: "cargo shuyi",
+
+    // The game's tool program, for the commands that run the game:
+    // frame-png, lang-status, check, run, scene, replay, bots, import.
+    game: (package: "{{crate}}", example: "tools", features: ["tools"]),
+
+    // `cargo shuyi check-keys`: no key named in the game's code or text.
+    check_keys: (
+        rust: ["crates/game/src"],
+        assets: ["crates/game/files"],
+        not_text: ["crates/game/files/keymap.ron"],
+        key_files: ["crates/game/src/action.rs"],
+        hint: "react to an action (the keymap names the keys), or name a key through the player's keymap",
+    ),
+)

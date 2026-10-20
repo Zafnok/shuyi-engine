@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-cli"
-description = "Shuyi Engine's tools: frame-png, font-atlas, check-keys, check-text, lang-status, web and private-assets, run on a project its shuyi.ron describes"
+description = "Shuyi Engine's tools: the tool contract (new, check, run, scene, replay, bots, import, doctor, with JSON), and frame-png, font-atlas, check-keys, check-text, lang-status, web and private-assets, run on a project its shuyi.ron describes"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -27,6 +27,8 @@ required-features = ["toy"]
 toy = ["shuyi-ui/toy"]
 
 [dependencies]
+# The state hash `replay` compares, and the turn rules it re-runs.
+shuyi-core = { path = "../core" }
 # Fonts, images, palettes, languages and credits.
 shuyi-assets = { path = "../assets" }
 # The frame `frame-png` paints and the Harness that plays a game's script.
@@ -35,6 +37,11 @@ serde = { workspace = true, features = ["std"] }
 # The project file, `shuyi.ron`, and the font atlas's `atlas.ron`.
 ron = { workspace = true, features = ["std"] }
 png = "0.18"
+# The contract's answers as JSON (`--json`), and their JSON schemas.
+serde_json = "1"
+schemars = { version = "1", default-features = false, features = ["derive", "std"] }
+# `new`'s templates (`templates/` at the repository's root), embedded.
+include_dir.workspace = true
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.

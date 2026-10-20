@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "$ref": "#/$defs/Op"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NewOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "NewOutput": {
+      "description": "What `new` made.",
+      "type": "object",
+      "properties": {
+        "crate_name": {
+          "description": "Its crate's name.",
+          "type": "string"
+        },
+        "dir": {
+          "description": "The game's folder, as given.",
+          "type": "string"
+        },
+        "files": {
+          "description": "The files made, from its folder, `/`-separated, in order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "description": "The game's name.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "name",
+        "crate_name",
+        "files"
+      ]
+    },
+    "Op": {
+      "description": "An operation of the contract.",
+      "oneOf": [
+        {
+          "description": "A new game from a template.",
+          "type": "string",
+          "const": "new"
+        },
+        {
+          "description": "Every error of the game's content.",
+          "type": "string",
+          "const": "check"
+        },
+        {
+          "description": "A key script played headless.",
+          "type": "string",
+          "const": "run"
+        },
+        {
+          "description": "The scene on screen.",
+          "type": "string",
+          "const": "scene"
+        },
+        {
+          "description": "A record replayed.",
+          "type": "string",
+          "const": "replay"
+        },
+        {
+          "description": "Bots playing the game.",
+          "type": "string",
+          "const": "bots"
+        },
+        {
+          "description": "A file read through the format registry.",
+          "type": "string",
+          "const": "import"
+        },
+        {
+          "description": "The toolchain checked.",
+          "type": "string",
+          "const": "doctor"
+        }
+      ]
+    }
+  }
+}

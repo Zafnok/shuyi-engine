@@ -20,12 +20,14 @@ use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
 use shuyi_assets::image::{ImageId, ImageTable};
 use shuyi_ui::GameData;
 use shuyi_ui::frame::onebit::{self, Frame};
 use shuyi_ui::frame::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Rgb, Sprite};
-use shuyi_ui::harness::Harness;
+use shuyi_ui::harness::{FRAME_DT, Harness, MAX_FRAMES};
 use shuyi_ui::input::{Button, Chord};
 
 use crate::codec::{decode_png, encode_png};
@@ -85,18 +87,55 @@ never-hard-code-a-key rule doesn't apply to them.",
 }
 
 /// One step of the script, run in the order given.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "kebab-case")]
 pub enum Step {
-    /// `Harness::keys`.
+    /// `Harness::keys`: each chord pressed and released in turn
+    /// (`"Enter Up Shift+Space"`).
     Keys(String),
-    /// `Harness::pad`.
+    /// `Harness::pad`: each controller button pressed and released in
+    /// turn (`"South"`, `"East+DpadDown"`: those buttons together).
     Pad(String),
-    /// `Harness::wait`, in seconds.
+    /// `Harness::wait`: that many seconds pass, at most [`MAX_WAIT`] in
+    /// one step.
     Wait(f32),
 }
 
+/// The longest wait of one step, in seconds: the Harness's most frames
+/// in one wait.
+#[allow(clippy::cast_precision_loss)] // 2000 frames
+pub const MAX_WAIT: f32 = MAX_FRAMES as f32 * FRAME_DT;
+
+impl Step {
+    /// Whether the Harness can play it: names it knows, a wait it can
+    /// run. A step that isn't would panic the Harness.
+    pub fn check(&self) -> Result<(), String> {
+        match self {
+            Step::Keys(script) => {
+                for token in script.split_whitespace() {
+                    Chord::parse(token).map_err(|e| format!("keys: {e}"))?;
+                }
+            }
+            Step::Pad(script) => {
+                for button in script.split_whitespace().flat_map(|t| t.split('+')) {
+                    Button::parse(button).map_err(|e| format!("pad: {e}"))?;
+                }
+            }
+            Step::Wait(seconds) => {
+                if !(seconds.is_finite() && (0.0..=MAX_WAIT).contains(seconds)) {
+                    return Err(format!(
+                        "wait: {seconds} is not a number of seconds from 0 to {MAX_WAIT:.1}"
+                    ));
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 /// What to do in the game before taking the frame.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Script {
     /// The steps, in order.
     pub steps: Vec<Step>,
@@ -112,6 +151,29 @@ impl Script {
                 Step::Wait(seconds) => h.wait(*seconds),
             };
         }
+    }
+
+    /// Whether the Harness can play every step ([`Step::check`]).
+    pub fn check(&self) -> Result<(), String> {
+        self.steps.iter().try_for_each(Step::check)
+    }
+
+    /// Reads the script flag `flag` with its value `value`, if it is one:
+    /// `--keys` (or `--script`), `--pad` or `--wait`. A step the Harness
+    /// can't play is an error, not a panic later.
+    pub fn parse_step(flag: &str, value: &str) -> Option<Result<Step, String>> {
+        let step = match flag {
+            "--keys" | "--script" => Step::Keys(value.to_owned()),
+            "--pad" => Step::Pad(value.to_owned()),
+            "--wait" => match value.parse::<f32>() {
+                Ok(seconds) => Step::Wait(seconds),
+                Err(_) => {
+                    return Some(Err(format!("--wait: not a number of seconds: {value}")));
+                }
+            },
+            _ => return None,
+        };
+        Some(step.check().map(|()| step).map_err(|e| format!("--{e}")))
     }
 }
 
@@ -148,28 +210,11 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
                 .cloned()
         };
         match arg.as_str() {
-            "--keys" => {
-                let script = value()?;
-                for token in script.split_whitespace() {
-                    Chord::parse(token).map_err(|e| format!("--keys: {e}"))?;
-                }
-                steps.push(Step::Keys(script));
-            }
-            "--pad" => {
-                let script = value()?;
-                for button in script.split_whitespace().flat_map(|t| t.split('+')) {
-                    Button::parse(button).map_err(|e| format!("--pad: {e}"))?;
-                }
-                steps.push(Step::Pad(script));
-            }
-            "--wait" => {
+            "--keys" | "--pad" | "--wait" => {
                 let text = value()?;
-                let seconds = text
-                    .parse::<f32>()
-                    .ok()
-                    .filter(|s| s.is_finite() && *s >= 0.0)
-                    .ok_or_else(|| format!("--wait: not a number of seconds: {text}"))?;
-                steps.push(Step::Wait(seconds));
+                if let Some(step) = Script::parse_step(arg, &text) {
+                    steps.push(step?);
+                }
             }
             "--scale" => {
                 let text = value()?;

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CheckInput",
+  "description": "What `check` checks: everything the game loads (nothing to choose\nyet).",
+  "type": "object",
+  "additionalProperties": false
+}

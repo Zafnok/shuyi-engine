@@ -1,10 +1,11 @@
 //! Hello, Grid played through the engine's test Harness, by its bots and
 //! through its tools: the playthrough to the win, the bots over its
-//! `TurnRules`, the same seed and commands giving the same game, its
-//! options and key rebinding, its profiles, its files, and pictures of its
-//! frames.
+//! `TurnRules`, the tool contract's operations, the same seed and
+//! commands giving the same game, its options and key rebinding, its
+//! profiles, its files, and pictures of its frames.
 
 mod bots;
+mod contract;
 mod determinism;
 mod files;
 mod options;

@@ -48,6 +48,8 @@ pub struct StageScreen {
     pub stage: Stage,
     /// Every command sent to the rules, in order.
     pub commands: Vec<Command>,
+    /// Every event of the rules, in order.
+    pub events: Vec<Event>,
     /// The cursor.
     pub cursor: Cursor,
     /// Your piece's reach and path, while it is picked up.
@@ -81,6 +83,7 @@ impl StageScreen {
             cursor: Cursor::new(stage.hero()),
             stage,
             commands: Vec::new(),
+            events: Vec::new(),
             selected: None,
             walk: None,
             tripped: false,
@@ -156,6 +159,7 @@ impl StageScreen {
     fn send(&mut self, command: Command) -> Option<Vec<Event>> {
         let events = self.stage.apply(&command).ok()?;
         self.commands.push(command);
+        self.events.extend_from_slice(&events);
         Some(events)
     }
 

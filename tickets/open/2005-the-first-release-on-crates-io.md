@@ -45,6 +45,12 @@ public release".
   version for all `shuyi-*` crates, and what a breaking change needs (a
   note in the changelog, a pin bump in the game).
 - `CHANGELOG.md`, starting at the first release.
+- `shuyi new`'s templates (`templates/` at the root, embedded by
+  `crates/cli` with `include_dir`, ADR-0022 §7) are outside
+  `shuyi-cli`'s folder, so its package lacks them: move or copy them into
+  the crate (or a build step that writes them in), and check `cargo
+  package --list` names them. New games then depend on the released
+  version, not the repository's `main`.
 - A release workflow: on a tag `vX.Y.Z`, the gates, then `cargo publish`
   of each crate in dependency order (`shuyi-core`, `shuyi-assets`,
   `shuyi-ui`, `shuyi-app`, `shuyi-cli`), with a crates.io token as a

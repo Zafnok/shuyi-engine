@@ -1,0 +1,21 @@
+[package]
+name = "{{crate}}-rules"
+description = "{{name}}'s rules: pure and deterministic, over Shuyi Engine's TurnRules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+# The game's code calls it `rules` whatever the game is called.
+name = "rules"
+
+[lints]
+workspace = true
+
+[dependencies]
+# The grid, the turn rules, the seeded luck.
+shuyi-core.workspace = true
+# The stage's `.map` format (bytes in, no I/O).
+shuyi-assets.workspace = true
+serde.workspace = true

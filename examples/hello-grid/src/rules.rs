@@ -64,7 +64,7 @@ pub fn parse_map(file: &str, source: &str) -> Result<GridMap<TerrainId, Feature>
 }
 
 /// Who moves.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Side {
     /// You.
     Hero,
@@ -72,8 +72,9 @@ pub enum Side {
     Foe,
 }
 
-/// What a side asks for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What a side asks for. A record of a stage is its seed and these
+/// (`tools::StageRecord`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Command {
     /// Your piece walks to this tile, within its reach; its own tile waits.
     Move(Pos),
@@ -133,7 +134,7 @@ impl fmt::Display for Error {
 }
 
 /// How the stage ended.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Outcome {
     /// Your piece reached the goal on this turn.
     Won {
@@ -148,8 +149,10 @@ pub enum Outcome {
 }
 
 /// A stage being played: the map, the two pieces, whose move it is, the
-/// turn, the luck to come and, once it is over, how it ended.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// turn, the luck to come and, once it is over, how it ended. It
+/// serializes for its state hash (`shuyi_core::state_hash`), which a
+/// replay compares step by step.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Stage {
     map: Grid<TerrainId>,
     goal: Pos,

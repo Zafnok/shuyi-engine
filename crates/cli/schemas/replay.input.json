@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReplayInput",
+  "description": "What `replay` re-runs.",
+  "type": "object",
+  "properties": {
+    "other": {
+      "description": "A second record to run beside it; without one, the record is run\ntwice.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "record": {
+      "description": "The record's file, from the project's root.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "record"
+  ]
+}

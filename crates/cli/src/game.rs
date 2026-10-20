@@ -3,12 +3,21 @@
 //! The `shuyi` binary knows no game. A game gives its tools in a program
 //! of its own, which runs [`crate::main_with`] with them; `shuyi.ron`
 //! names that program ([`crate::project::GameProgram`]) and `shuyi` runs
-//! it with `cargo run` for `frame-png` and `lang-status`.
+//! it with `cargo run` for the commands that run the game: `frame-png`,
+//! `lang-status`, and the contract's `check`, `run`, `scene`, `replay`,
+//! `bots` and `import`.
 
 use std::process::Command;
 
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use shuyi_assets::ContentError;
 use shuyi_assets::lang::Lang;
 
+use crate::contract::bots::{BotsInput, BotsOutput};
+use crate::contract::import::Importers;
+use crate::contract::replay::{Record, ReplayRun};
+use crate::contract::session::Session;
 use crate::frame_png::{Script, Shot};
 use crate::project::Project;
 
@@ -26,11 +35,13 @@ pub struct GameOption {
 }
 
 /// A game option as given.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct GameArg {
     /// Its flag.
     pub flag: String,
     /// Its value, if it takes one.
+    #[serde(default)]
     pub value: Option<String>,
 }
 
@@ -45,9 +56,12 @@ pub struct GameLang {
     pub variants: Vec<String>,
 }
 
-/// What a game gives the commands that run it.
+/// What a game gives the commands that run it. Only `frame-png`'s and
+/// `lang-status`'s parts are required; a contract operation whose part a
+/// game leaves out answers that the game's tools don't offer it.
 pub trait GameTools {
-    /// The options the game adds to `frame-png` (none: `&[]`).
+    /// The options the game adds to `frame-png`, which also start its
+    /// game for `run`, `scene` and `bots` (none: `&[]`).
     fn frame_options(&self) -> &[GameOption];
 
     /// What else `frame-png --help` says about the game's pictures.
@@ -67,6 +81,46 @@ pub trait GameTools {
 
     /// The game's languages.
     fn lang(&self) -> Result<GameLang, String>;
+
+    /// `check`: every error of every validator of the game's content,
+    /// each with its file and, when known, its line.
+    fn check(&self) -> Result<Vec<ContentError>, String> {
+        Err(unsupported("check", "check"))
+    }
+
+    /// `run` and `scene`: the game started headless as `options` say
+    /// (its [`frame_options`](Self::frame_options)), most simply a
+    /// [`Headless`](crate::contract::session::Headless) over its Harness.
+    fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
+        let _ = options;
+        Err(unsupported("run and scene", "session"))
+    }
+
+    /// `replay`: `record`, in the game's record format, re-run by its
+    /// rules (for a turn game, [`turns`](crate::contract::replay::turns)).
+    fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
+        let _ = record;
+        Err(unsupported("replay", "replay"))
+    }
+
+    /// `bots`: the games `input` asks for, played by the game's bots and
+    /// summed up ([`tally`](crate::contract::bots::tally)).
+    fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
+        let _ = input;
+        Err(unsupported("bots", "bots"))
+    }
+
+    /// `import`: the kinds and formats to read a file with. The engine's
+    /// standard ones unless the game adds its own.
+    fn importers(&self) -> Importers {
+        Importers::standard()
+    }
+}
+
+/// What a game whose tools don't offer `op` answers: they lack the
+/// method `method`.
+pub fn unsupported(op: &str, method: &str) -> String {
+    format!("the game's tools don't offer {op} (GameTools::{method})")
 }
 
 /// Runs `command` with `args` in the game's tool program of `project`
@@ -126,5 +180,31 @@ mod tests {
         assert_eq!(Plain.frame_notes(), "");
         assert!(Plain.lang().unwrap().variants.is_empty());
         assert!(Plain.frame(&[], &Script::default(), None).is_err());
+    }
+
+    #[test]
+    fn a_game_offers_no_contract_operation_unless_it_says_so() {
+        assert_eq!(
+            Plain.check().unwrap_err(),
+            "the game's tools don't offer check (GameTools::check)"
+        );
+        let session = Plain.session(&[]).err().unwrap();
+        assert_eq!(
+            session,
+            "the game's tools don't offer run and scene (GameTools::session)"
+        );
+        let record = Record {
+            file: "a.ron".to_owned(),
+            text: String::new(),
+        };
+        assert!(
+            Plain
+                .replay(&record)
+                .unwrap_err()
+                .contains("GameTools::replay")
+        );
+        let bots = Plain.bots(&BotsInput::default()).unwrap_err();
+        assert!(bots.contains("GameTools::bots"));
+        assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
     }
 }

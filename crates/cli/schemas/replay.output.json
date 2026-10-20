@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "$ref": "#/$defs/Op"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ReplayOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "Difference": {
+      "description": "Where two runs part.",
+      "type": "object",
+      "properties": {
+        "hashes": {
+          "description": "Each run's hash at that step; none for a run that has no such\nstep.",
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "step": {
+          "description": "The first step whose hashes differ, or that only one run has.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "hashes"
+      ]
+    },
+    "Op": {
+      "description": "An operation of the contract.",
+      "oneOf": [
+        {
+          "description": "A new game from a template.",
+          "type": "string",
+          "const": "new"
+        },
+        {
+          "description": "Every error of the game's content.",
+          "type": "string",
+          "const": "check"
+        },
+        {
+          "description": "A key script played headless.",
+          "type": "string",
+          "const": "run"
+        },
+        {
+          "description": "The scene on screen.",
+          "type": "string",
+          "const": "scene"
+        },
+        {
+          "description": "A record replayed.",
+          "type": "string",
+          "const": "replay"
+        },
+        {
+          "description": "Bots playing the game.",
+          "type": "string",
+          "const": "bots"
+        },
+        {
+          "description": "A file read through the format registry.",
+          "type": "string",
+          "const": "import"
+        },
+        {
+          "description": "The toolchain checked.",
+          "type": "string",
+          "const": "doctor"
+        }
+      ]
+    },
+    "ReplayOutput": {
+      "description": "What `replay` found.",
+      "type": "object",
+      "properties": {
+        "first_difference": {
+          "description": "The first step where they differ, if they do.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Difference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runs": {
+          "description": "The two runs.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReplayRun"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "runs"
+      ]
+    },
+    "ReplayRun": {
+      "description": "One run of a record.",
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "description": "How the game ended, in the game's words, if it did.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "record": {
+          "description": "The record's file.",
+          "type": "string"
+        },
+        "steps": {
+          "description": "Step 0 (the state it starts in), then one step per command.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ReplayStep"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "record",
+        "steps"
+      ]
+    },
+    "ReplayStep": {
+      "description": "One step of a run: the state after a command.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command, in the game's words; none at step 0.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "events": {
+          "description": "What it did, in the game's words.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hash": {
+          "description": "The state's hash after it (sixteen hex digits).",
+          "type": "string"
+        },
+        "refused": {
+          "description": "Why the rules refused it, if they did (the state didn't change).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "step": {
+          "description": "The step: 0 before any command, then the command's place from 1.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "hash",
+        "events"
+      ]
+    }
+  }
+}

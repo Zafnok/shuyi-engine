@@ -61,6 +61,10 @@ None.
   `/`-separated paths relative to it; a file over the limit, or one that
   can't be read, is an error naming it. Nothing on the web.
 
+- `shuyi import` (`crates/cli/src/contract/import.rs`, ADR-0022 §6)
+  reads the files a file names from a bundle of its folder, which it
+  leaks once per call: make that folder bundle with this layer.
+
 **Out (do not do):**
 - Where a game's mods live, their manifest, order or checks (the game's).
 - Merging data tables entry by entry (the game's loaders).
