@@ -753,3 +753,45 @@ fn a_window_ending_inside_a_byte_cuts_the_scene_there() {
     // Black up to the window's edge at x = 18, white past it.
     assert!(!is_white(&fast, 17, 0) && is_white(&fast, 18, 0));
 }
+
+/// Shades that count how often each is asked.
+#[derive(Default)]
+struct Counted {
+    grounds: core::cell::Cell<u32>,
+    glyphs: core::cell::Cell<u32>,
+}
+
+impl Shades for Counted {
+    fn ground(&self, rgb: Rgb) -> Shade {
+        self.grounds.set(self.grounds.get() + 1);
+        InkShades.ground(rgb)
+    }
+
+    fn glyph(&self, rgb: Rgb) -> Shade {
+        self.glyphs.set(self.glyphs.get() + 1);
+        InkShades.glyph(rgb)
+    }
+
+    fn shape(&self, rgb: Rgb) -> Shade {
+        InkShades.shape(rgb)
+    }
+}
+
+/// Neighbouring cells mostly share their colours, so a colour's shade is
+/// asked once for a run of cells of it, not once a cell.
+#[test]
+fn a_run_of_one_colour_asks_its_shade_once() {
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let (a, b) = (Rgb::new(10, 10, 10), Rgb::new(200, 200, 200));
+    let mut buf = GlyphBuffer::new(50, 15, Cell::new('X', a, b));
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    let counted = Counted::default();
+    render_with(&buf, &font, &TestImages, &counted, &mut frame);
+    assert_eq!((counted.grounds.get(), counted.glyphs.get()), (1, 1));
+    // Another colour in the middle: asked again after it, and again back.
+    buf.set(10, 3, Cell::new('X', b, a));
+    let counted = Counted::default();
+    render_with(&buf, &font, &TestImages, &counted, &mut frame);
+    assert_eq!((counted.grounds.get(), counted.glyphs.get()), (3, 5));
+}

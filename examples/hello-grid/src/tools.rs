@@ -366,3 +366,18 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
         record: ron::to_string(&record).ok(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn errors_are_shown_a_line_each() {
+        let errors = [
+            ContentError::new("files/a.ron", "bad"),
+            ContentError::new("files/b.ron", "worse"),
+        ];
+        assert_eq!(lines(&errors), "files/a.ron: bad\nfiles/b.ron: worse");
+        assert_eq!(lines(&[]), "");
+    }
+}

@@ -249,6 +249,7 @@ fn a_row_mask_holds_the_displays_rows_only() {
     }
     assert_eq!(mask.rows().collect::<Vec<_>>(), [0, 31, 32, 239]);
     assert_eq!(mask.count(), 4);
+    assert!(!mask.is_empty());
     assert!(mask.contains(239) && !mask.contains(240) && !mask.contains(-1));
     assert!(!mask.contains(1));
 }
