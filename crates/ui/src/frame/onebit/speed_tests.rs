@@ -12,6 +12,7 @@ use shuyi_assets::ink::Ink;
 use super::*;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, Overlay, Rect};
+use crate::prelude::*;
 
 /// A font of 8 × 16 cells: `X` a block, `?` (the fallback) two corners,
 /// `[` and `]` a column at either side, `"` two dots, `#` every pixel.

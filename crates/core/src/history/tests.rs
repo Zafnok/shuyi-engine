@@ -1,5 +1,8 @@
 //! Tests of the history over a toy game.
 
+use alloc::string::ToString;
+use alloc::vec;
+
 use proptest::prelude::*;
 
 use super::*;

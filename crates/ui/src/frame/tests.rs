@@ -1,7 +1,7 @@
 //! The frame on a console of a size no game of the engine's uses yet:
 //! 40 × 20 cells of 8 × 8 pixels.
 
-use std::rc::Rc;
+use alloc::rc::Rc;
 
 use insta::assert_snapshot;
 use shuyi_assets::image::{ImageInfo, ImageTable};

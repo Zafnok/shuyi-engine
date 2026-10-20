@@ -113,6 +113,8 @@ impl Audio for Silent {
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec;
+
     use shuyi_assets::dialogue::LineId;
     use shuyi_ui::toy::Voice;
 

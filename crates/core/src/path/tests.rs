@@ -2,7 +2,8 @@
 //! costs and panics when asked about a tile outside it, so every test also
 //! checks that the searches never ask.
 
-use std::collections::{BTreeMap, BTreeSet};
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::String;
 
 use proptest::prelude::*;
 

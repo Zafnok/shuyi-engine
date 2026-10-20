@@ -37,8 +37,8 @@
 //! the zoom) and then the scene's own snapshot, in this same format.
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
 use core::fmt::Write as _;
-use hashbrown::HashMap;
 
 use crate::frame::color::{Palette, Rgb};
 use crate::frame::glyph_buffer::Cell;
@@ -57,7 +57,7 @@ impl GlyphBuffer {
         let cells = || (0..h).flat_map(move |y| (0..w).filter_map(move |x| self.get(x, y)));
         // A see-through cell's `bg` isn't shown, so it isn't part of its key.
         let pair = |c: &Cell| (c.fg, (!c.see_through).then_some(c.bg));
-        let mut keys: HashMap<(Rgb, Option<Rgb>), char> = HashMap::new();
+        let mut keys: BTreeMap<(Rgb, Option<Rgb>), char> = BTreeMap::new();
         let mut legend: Vec<(char, Rgb, Option<Rgb>)> = Vec::new();
         for c in cells() {
             let (fg, bg) = pair(c);
@@ -361,7 +361,7 @@ mod tests {
 
     #[test]
     fn a_backdrop_is_a_header_line_and_the_scenes_own_snapshot() {
-        use std::rc::Rc;
+        use alloc::rc::Rc;
         let p = engine_palette();
         let text = p.get(EngineColor::Text);
         let black = p.get(EngineColor::Panel);
@@ -421,7 +421,7 @@ mod tests {
         }
         let snap = b.to_snapshot(&p);
         let keys_row = snap.lines().nth(2).unwrap();
-        let keys: std::collections::HashSet<char> = keys_row.chars().collect();
+        let keys: alloc::collections::BTreeSet<char> = keys_row.chars().collect();
         assert_eq!(keys.len(), 70);
         assert!(keys_row.starts_with("abc"));
         assert_eq!(snap.lines().count(), 1 + 1 + 1 + 1 + 70);

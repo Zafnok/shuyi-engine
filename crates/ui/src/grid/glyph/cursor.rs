@@ -105,6 +105,7 @@ mod tests {
     use crate::frame::glyph_buffer::Cell;
     use crate::grid::cursor::Cursor;
     use crate::grid::glyph::tests::{AREA, layout_at};
+    use crate::prelude::*;
 
     /// The cursor's color, and what it fades toward.
     const CURSOR: Rgb = Rgb::new(250, 240, 90);

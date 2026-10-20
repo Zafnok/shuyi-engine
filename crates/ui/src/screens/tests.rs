@@ -62,7 +62,7 @@ fn text_is_centred_rounding_left() {
     assert_eq!(super::centre_x(&buf, 10), 0);
     assert_eq!(super::centre_x(&buf, 12), -1);
     super::print_centred(&mut buf, 1, "abcd", fg, bg);
-    let row: String = (0..10).map(|x| buf.get(x, 1).unwrap().glyph).collect();
+    let row: alloc::string::String = (0..10).map(|x| buf.get(x, 1).unwrap().glyph).collect();
     assert_eq!(row, "   abcd   ");
 }
 
@@ -74,7 +74,7 @@ fn a_text_wider_than_the_buffer_starts_at_column_0_cut_with_an_ellipsis() {
     let (fg, bg) = (p.engine(EngineColor::Text), p.engine(EngineColor::Panel));
     let mut buf = GlyphBuffer::new(10, 1, Cell::new(' ', fg, bg));
     super::print_centred(&mut buf, 0, "abcdefghijklmn", fg, bg);
-    let row: String = (0..10).map(|x| buf.get(x, 0).unwrap().glyph).collect();
+    let row: alloc::string::String = (0..10).map(|x| buf.get(x, 0).unwrap().glyph).collect();
     assert_eq!(row, "abcdefghi…");
 }
 

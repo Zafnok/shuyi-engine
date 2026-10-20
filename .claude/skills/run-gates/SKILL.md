@@ -48,14 +48,33 @@ cargo tree -p shuyi-platform --edges normal,build --target all --all-features --
   | grep -E '^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
 ```
 
-The crates a Playdate game builds without `std` (CI's `no-std` job; it
-needs `rustup target add thumbv7em-none-eabihf`):
+The crates a Playdate game builds without `std` (CI's `no-std` job,
+ADR-0008 §5). Add the target once:
 
 ```bash
-cargo build -p shuyi-core --no-default-features --target thumbv7em-none-eabihf
-cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf
-cargo build -p shuyi-ui --no-default-features --target thumbv7em-none-eabihf
+rustup target add thumbv7em-none-eabihf
 ```
+
+It builds on Windows with the GNU host toolchain. A library build for
+the target needs no linker for the target: only the build scripts and
+proc macros are linked, for the host, by MSYS2's `gcc` as usual.
+
+```bash
+cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --target thumbv7em-none-eabihf --locked
+cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
+cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
+RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
+```
+
+The last runs their tests without `std` on the host, the headless
+backend's included. The tests bring `std` in, and with it `std`'s float
+methods, so the `Float` imports the `no_std` code needs are unused there
+only; the target build denies every warning.
+
+Code that needs `std` goes behind `cfg(feature = "std")`: on the line
+with its `std::` path, or in a module whose file starts with
+`#![cfg(feature = "std")]`. A test that needs `std` (an asset converter,
+`catch_unwind`) gets `#[cfg(feature = "std")]` too.
 
 ## The repository's own checks (CI's `tickets` job)
 

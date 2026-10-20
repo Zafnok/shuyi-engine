@@ -784,7 +784,7 @@ proptest! {
         ),
     ) {
         let mut p = pads();
-        let mut down = std::collections::BTreeSet::new();
+        let mut down = alloc::collections::BTreeSet::new();
         for connected in &frames {
             for (button, pressed) in p.update(connected) {
                 if pressed {
