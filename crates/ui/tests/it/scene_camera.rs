@@ -3,8 +3,8 @@
 //! console, and a snapshot pins both the picture and where the window is.
 
 use insta::assert_snapshot;
+use shuyi_platform::harness::Harness;
 use shuyi_ui::debug::SceneCameraScreen;
-use shuyi_ui::harness::Harness;
 use shuyi_ui::toy::grid::Field;
 use shuyi_ui::toy::{self, Toy};
 use shuyi_ui::{Game, GameHooks};

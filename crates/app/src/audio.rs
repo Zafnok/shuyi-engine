@@ -1,5 +1,6 @@
 //! Plays each frame's audio (game ADR-0026): the sound and voice requests and
-//! the music commands `shuyi_ui::Game` returns in its `FrameOutput`.
+//! the music commands `shuyi_platform::App` hands the sound device
+//! ([`AudioFrame`](shuyi_platform::AudioFrame)).
 //!
 //! Sounds are embedded and decoded once at start-up. Music is loaded from
 //! the game's music folder when a track is about to play and freed when it
@@ -20,8 +21,8 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use shuyi_assets::audio::{AudioManifest, Files};
-use shuyi_assets::voice::ClipVariant;
-use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_platform::SoundRequest;
+use shuyi_ui::audio::MusicCommand;
 
 use self::voice::Voices;
 
@@ -154,20 +155,19 @@ impl<B: Backend> Audio<B> {
         }
     }
 
-    /// Plays one frame's sound and voice `requests` (music requests are
-    /// skipped: `music` already holds what they mean), applies the `music`
+    /// Plays one frame's sound and voice `requests`, applies the `music`
     /// commands and checks on tracks and clips still loading. `now` is the
     /// time in seconds on a clock that keeps running while the game isn't
     /// drawn (game ADR-0037): a track that starts in this call started at `now`.
-    pub(crate) fn play<V: ClipVariant>(
+    pub(crate) fn play(
         &mut self,
         backend: &mut B,
-        requests: &[AudioRequest<V>],
+        requests: &[SoundRequest],
         music: &[MusicCommand],
         now: f64,
     ) {
         for request in requests {
-            if let AudioRequest::PlaySound { cue, volume } = request {
+            if let SoundRequest::Sound { cue, volume } = request {
                 self.play_sound(backend, cue, *volume);
             }
             self.voices
@@ -508,6 +508,8 @@ mod tests {
     use proptest::prelude::*;
     use serde::Deserialize;
     use shuyi_assets::audio::{Bytes, CreditRef, MusicCue, SoundCue};
+    use shuyi_assets::voice::ClipVariant;
+    use shuyi_ui::audio::AudioRequest;
 
     use super::*;
 
@@ -537,6 +539,24 @@ mod tests {
 
     /// The audio requests of the tests.
     pub(crate) type Request = AudioRequest<Take>;
+
+    impl<B: Backend> Audio<B> {
+        /// [`play`](Audio::play) with the screens' own requests, as `App`
+        /// hands them to the device.
+        pub(crate) fn hear(
+            &mut self,
+            backend: &mut B,
+            requests: &[Request],
+            music: &[MusicCommand],
+            now: f64,
+        ) {
+            let requests: Vec<SoundRequest> = requests
+                .iter()
+                .filter_map(SoundRequest::from_request)
+                .collect();
+            self.play(backend, &requests, music, now);
+        }
+    }
 
     /// Runs a future that never waits on anything external.
     pub(crate) fn block_on<F: Future>(future: F) -> F::Output {
@@ -764,7 +784,7 @@ mod tests {
         let music_request = Request::PlayMusic {
             cue: "title".into(),
         };
-        audio.play(
+        audio.hear(
             &mut fake,
             &[sound("beep", 1.0), music_request, sound("beep", 0.5)],
             &[],
@@ -772,7 +792,7 @@ mod tests {
         );
         assert_eq!(fake.calls(), ["play wav100 0.50", "play wav100 0.25"]);
         // A sound whose file failed to decode is silent, not a crash.
-        audio.play(&mut fake, &[sound("broken", 1.0)], &[], 0.0);
+        audio.hear(&mut fake, &[sound("broken", 1.0)], &[], 0.0);
         assert!(fake.calls().is_empty());
         assert!(audio.take_warnings().is_empty());
     }
@@ -790,7 +810,7 @@ mod tests {
             audio.take_warnings()[0],
             "sound \"beep\": bundle/sfx/gone.wav: not in the asset bundle"
         );
-        audio.play(&mut fake, &[sound("nope", 1.0)], &[cmd(load, "nope")], 0.0);
+        audio.hear(&mut fake, &[sound("nope", 1.0)], &[cmd(load, "nope")], 0.0);
         assert_eq!(
             audio.take_warnings(),
             ["unknown sound cue \"nope\"", "unknown music cue \"nope\""]
@@ -803,7 +823,7 @@ mod tests {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         let steps: Vec<_> = (0..30).map(|_| sound("step", 1.0)).collect();
-        audio.play(&mut fake, &steps, &[], 0.0);
+        audio.hear(&mut fake, &steps, &[], 0.0);
         let calls = fake.calls();
         assert_eq!(calls.len(), 30);
         for variant in ["wav200", "wav300", "wav400"] {
@@ -818,24 +838,24 @@ mod tests {
     fn music_loads_then_starts_when_ready() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[cmd(load, "title"), cmd(start, "title")],
             0.0,
         );
         assert_eq!(fake.calls(), ["load music/title.ogg"]);
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert!(fake.calls().is_empty(), "still loading");
         fake.ready.push("music/title.ogg".into());
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert_eq!(fake.calls(), ["play music/title.ogg 0.80 looped"]);
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert!(fake.calls().is_empty(), "started once");
         // A fade scales the cue's own volume; then stop frees it.
-        audio.play::<Take>(&mut fake, &[], &[gain("title", 0.5)], 0.0);
+        audio.play(&mut fake, &[], &[gain("title", 0.5)], 0.0);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.40"]);
-        audio.play::<Take>(&mut fake, &[], &[cmd(stop, "title")], 0.0);
+        audio.play(&mut fake, &[], &[cmd(stop, "title")], 0.0);
         assert_eq!(fake.calls(), ["stop music/title.ogg"]);
         assert!(audio.tracks.is_empty());
     }
@@ -849,7 +869,7 @@ mod tests {
         audio.set_volumes(&mut fake, 0.5, 0.2);
         assert!(fake.calls().is_empty(), "nothing is playing yet");
         // Sounds: the cue's 50 %, the request's volume, the player's 20 %.
-        audio.play(
+        audio.hear(
             &mut fake,
             &[sound("beep", 1.0), sound("beep", 0.5)],
             &[],
@@ -858,7 +878,7 @@ mod tests {
         assert_eq!(fake.calls(), ["play wav100 0.10", "play wav100 0.05"]);
         // Music starts at the cue's 80 % times the player's 50 %.
         let begin = [cmd(load, "title"), cmd(start, "title")];
-        audio.play::<Take>(&mut fake, &[], &begin, 0.0);
+        audio.play(&mut fake, &[], &begin, 0.0);
         assert_eq!(
             fake.calls(),
             ["load music/title.ogg", "play music/title.ogg 0.40 looped"]
@@ -869,14 +889,14 @@ mod tests {
         assert!(fake.calls().is_empty());
         audio.set_volumes(&mut fake, 1.0, 0.2);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.80"]);
-        audio.play::<Take>(&mut fake, &[], &[gain("title", 0.5)], 0.0);
+        audio.play(&mut fake, &[], &[gain("title", 0.5)], 0.0);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.40"]);
         audio.set_volumes(&mut fake, 0.5, 0.2);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.20"]);
         // Silent: sounds and music at 0.
         audio.set_volumes(&mut fake, 0.0, 0.0);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.00"]);
-        audio.play(&mut fake, &[sound("beep", 1.0)], &[], 0.0);
+        audio.hear(&mut fake, &[sound("beep", 1.0)], &[], 0.0);
         assert_eq!(fake.calls(), ["play wav100 0.00"]);
     }
 
@@ -887,16 +907,16 @@ mod tests {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         let begin = [cmd(load, "title"), cmd(start, "title")];
-        audio.play::<Take>(&mut fake, &[], &begin, 0.0);
+        audio.play(&mut fake, &[], &begin, 0.0);
         fake.calls();
         // Still loading: nothing to change yet.
         audio.set_volumes(&mut fake, 0.25, 1.0);
         assert!(fake.calls().is_empty());
         fake.ready.push("music/title.ogg".into());
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
         // Started again once loaded (game ADR-0026: `Start` on a ready track).
-        audio.play::<Take>(&mut fake, &[], &[cmd(start, "title")], 0.0);
+        audio.play(&mut fake, &[], &[cmd(start, "title")], 0.0);
         assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
     }
 
@@ -905,9 +925,9 @@ mod tests {
         let mut fake = Fake::default();
         fake.ready.push("music/sting.ogg".into());
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(&mut fake, &[], &[cmd(load, "sting")], 0.0);
+        audio.play(&mut fake, &[], &[cmd(load, "sting")], 0.0);
         assert_eq!(fake.calls(), ["load music/sting.ogg"]);
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[gain("sting", 0.5), cmd(start, "sting")],
@@ -920,15 +940,15 @@ mod tests {
     fn a_gain_before_the_track_is_ready_applies_when_it_starts() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[cmd(load, "title"), cmd(start, "title")],
             0.0,
         );
-        audio.play::<Take>(&mut fake, &[], &[gain("title", 0.5)], 0.0);
+        audio.play(&mut fake, &[], &[gain("title", 0.5)], 0.0);
         fake.ready.push("music/title.ogg".into());
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert_eq!(
             fake.calls(),
             ["load music/title.ogg", "play music/title.ogg 0.40 looped"]
@@ -939,17 +959,17 @@ mod tests {
     fn a_stopped_load_is_polled_until_done_then_dropped() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[cmd(load, "title"), cmd(stop, "title")],
             0.0,
         );
         assert_eq!(audio.abandoned.len(), 1);
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert_eq!(audio.abandoned.len(), 1);
         fake.ready.push("music/title.ogg".into());
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert!(audio.abandoned.is_empty());
         assert_eq!(fake.calls(), ["load music/title.ogg"], "never played");
     }
@@ -960,7 +980,7 @@ mod tests {
         fake.broken.push("music/lost.ogg".into());
         let mut audio = audio(&mut fake);
         audio.take_warnings();
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[cmd(load, "lost"), cmd(start, "lost")],
@@ -970,7 +990,7 @@ mod tests {
             audio.take_warnings(),
             ["music \"lost\": music/lost.ogg: no such file"]
         );
-        audio.play::<Take>(&mut fake, &[], &[gain("lost", 0.5), cmd(stop, "lost")], 0.0);
+        audio.play(&mut fake, &[], &[gain("lost", 0.5), cmd(stop, "lost")], 0.0);
         assert_eq!(fake.calls(), ["load music/lost.ogg"]);
     }
 
@@ -979,14 +999,14 @@ mod tests {
         let mut fake = Fake::default();
         fake.ready.push("music/title.ogg".into());
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[cmd(load, "title"), cmd(start, "title")],
             0.0,
         );
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
-        audio.play::<Take>(&mut fake, &[], &[cmd(load, "title")], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[cmd(load, "title")], 0.0);
         assert_eq!(
             fake.calls(),
             [
@@ -1003,8 +1023,8 @@ mod tests {
         let mut fake = Fake::default();
         fake.ready.push("music/title.ogg".into());
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(&mut fake, &[], &[cmd(load, "title")], 0.0);
-        audio.play::<Take>(
+        audio.play(&mut fake, &[], &[cmd(load, "title")], 0.0);
+        audio.play(
             &mut fake,
             &[],
             &[gain("title", 0.5), cmd(stop, "title")],
@@ -1013,7 +1033,7 @@ mod tests {
         assert_eq!(fake.calls(), ["load music/title.ogg"]);
         assert!(audio.tracks.is_empty());
         // Commands for tracks that aren't there do nothing.
-        audio.play::<Take>(
+        audio.play(
             &mut fake,
             &[],
             &[cmd(start, "title"), gain("title", 1.0)],
@@ -1028,7 +1048,7 @@ mod tests {
         fake.ready.push("music/title.ogg".into());
         let mut audio = audio(&mut fake);
         let cmds = [cmd(load, "title"), cmd(start, "title"), cmd(load, "sting")];
-        audio.play::<Take>(&mut fake, &[], &cmds, 0.0);
+        audio.play(&mut fake, &[], &cmds, 0.0);
         audio.stop_all(&mut fake);
         assert!(audio.tracks.is_empty());
         assert_eq!(
@@ -1051,21 +1071,21 @@ mod tests {
         let mut audio = audio(&mut fake);
         assert_eq!(audio.music_playing(10.0), None);
         let cmds = [cmd(load, "title"), cmd(start, "title")];
-        audio.play::<Take>(&mut fake, &[], &cmds, 10.0);
-        audio.play::<Take>(&mut fake, &[], &[], 11.0);
+        audio.play(&mut fake, &[], &cmds, 10.0);
+        audio.play(&mut fake, &[], &[], 11.0);
         assert_eq!(audio.music_playing(11.5), None, "still loading");
         fake.ready.push("music/title.ogg".into());
         assert_eq!(audio.music_playing(12.0), None, "loaded, not yet started");
-        audio.play::<Take>(&mut fake, &[], &[], 12.5);
+        audio.play(&mut fake, &[], &[], 12.5);
         assert_eq!(audio.music_playing(12.5), Some(("title", 0.0)));
         assert_eq!(audio.music_playing(14.0), Some(("title", 1.5)));
         // A fade doesn't move it, and it keeps counting past the loop
         // (`ui` wraps it at the track's length).
-        audio.play::<Take>(&mut fake, &[], &[gain("title", 0.5)], 15.0);
+        audio.play(&mut fake, &[], &[gain("title", 0.5)], 15.0);
         assert_eq!(audio.music_playing(100.0), Some(("title", 87.5)));
         // A clock that stepped back gives 0, not a negative time.
         assert_eq!(audio.music_playing(12.0), Some(("title", 0.0)));
-        audio.play::<Take>(&mut fake, &[], &[cmd(stop, "title")], 101.0);
+        audio.play(&mut fake, &[], &[cmd(stop, "title")], 101.0);
         assert_eq!(audio.music_playing(101.0), None);
     }
 
@@ -1074,12 +1094,12 @@ mod tests {
         let mut fake = Fake::default();
         fake.ready.push("music/sting.ogg".into());
         let mut audio = audio(&mut fake);
-        audio.play::<Take>(&mut fake, &[], &[cmd(load, "sting")], 1.0);
+        audio.play(&mut fake, &[], &[cmd(load, "sting")], 1.0);
         assert_eq!(audio.music_playing(2.0), None, "ready, not asked to play");
-        audio.play::<Take>(&mut fake, &[], &[cmd(start, "sting")], 3.0);
+        audio.play(&mut fake, &[], &[cmd(start, "sting")], 3.0);
         assert_eq!(audio.music_playing(3.25), Some(("sting", 0.25)));
         // Loading it again replaces the track: silence until it restarts.
-        audio.play::<Take>(&mut fake, &[], &[cmd(load, "sting")], 4.0);
+        audio.play(&mut fake, &[], &[cmd(load, "sting")], 4.0);
         assert_eq!(audio.music_playing(4.5), None);
     }
 
@@ -1089,8 +1109,8 @@ mod tests {
         fake.broken.push("music/lost.ogg".into());
         let mut audio = audio(&mut fake);
         let cmds = [cmd(load, "lost"), cmd(start, "lost")];
-        audio.play::<Take>(&mut fake, &[], &cmds, 1.0);
-        audio.play::<Take>(&mut fake, &[], &[], 2.0);
+        audio.play(&mut fake, &[], &cmds, 1.0);
+        audio.play(&mut fake, &[], &[], 2.0);
         assert_eq!(audio.music_playing(3.0), None);
     }
 
@@ -1102,16 +1122,16 @@ mod tests {
         fake.ready.push("music/title.ogg".into());
         let mut audio = audio(&mut fake);
         let cmds = [cmd(load, "title"), cmd(start, "title")];
-        audio.play::<Take>(&mut fake, &[], &cmds, 1.0);
+        audio.play(&mut fake, &[], &cmds, 1.0);
         let fading = [cmd(load, "sting"), gain("title", 0.5)];
-        audio.play::<Take>(&mut fake, &[], &fading, 5.0);
+        audio.play(&mut fake, &[], &fading, 5.0);
         assert_eq!(audio.music_playing(5.25), Some(("title", 4.25)));
         // The fade ends before the new track has loaded: silence.
         let switch = [cmd(stop, "title"), cmd(start, "sting")];
-        audio.play::<Take>(&mut fake, &[], &switch, 5.5);
+        audio.play(&mut fake, &[], &switch, 5.5);
         assert_eq!(audio.music_playing(6.0), None);
         fake.ready.push("music/sting.ogg".into());
-        audio.play::<Take>(&mut fake, &[], &[], 7.0);
+        audio.play(&mut fake, &[], &[], 7.0);
         assert_eq!(audio.music_playing(7.5), Some(("sting", 0.5)));
     }
 
@@ -1125,9 +1145,9 @@ mod tests {
             fake.ready.push("music/sting.ogg".into());
             let mut audio = audio(&mut fake);
             let cmds = [cmd(load, first), cmd(load, second)];
-            audio.play::<Take>(&mut fake, &[], &cmds, 0.0);
-            audio.play::<Take>(&mut fake, &[], &[cmd(start, first)], 1.0);
-            audio.play::<Take>(&mut fake, &[], &[cmd(start, second)], 2.0);
+            audio.play(&mut fake, &[], &cmds, 0.0);
+            audio.play(&mut fake, &[], &[cmd(start, first)], 1.0);
+            audio.play(&mut fake, &[], &[cmd(start, second)], 2.0);
             assert_eq!(audio.music_playing(2.5), Some((second, 0.5)));
         }
     }

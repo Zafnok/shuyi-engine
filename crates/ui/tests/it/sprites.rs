@@ -2,7 +2,7 @@
 //! `Gallery`, opened with the Debug key, puts sprite items in the frame,
 //! and a snapshot lists each as one line.
 
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 use shuyi_ui::toy::{self, CARD, Toy};
 
 use crate::toy as home;

@@ -50,7 +50,8 @@ Set `status: in-progress` in the ticket's frontmatter.
   - `shuyi-core` is pure and deterministic, with no floats in a
     simulation;
   - `shuyi-assets` gets bytes and does no I/O;
-  - only `shuyi-app` touches the platform.
+  - only platform backends (`shuyi-app` today) touch devices;
+    `shuyi-platform` is the boundary they implement.
 - **Nothing of the game.** No game crate, no game data id, no game asset,
   no bought art (`AGENTS.md` rule 4).
 - **Input:** follow the `input-actions` skill (never a hard-coded key).

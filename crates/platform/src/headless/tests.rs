@@ -1,0 +1,234 @@
+//! The headless backend: its stand-in for the music player, the frames it
+//! keeps, its scripted input, storage and keyboard. Games run on it are
+//! tested in `tests/it/`.
+
+use shuyi_ui::frame::glyph_buffer::Cell;
+use shuyi_ui::input::{Chord, Key};
+
+use super::*;
+use crate::platform::Look;
+
+fn command(cue: &str, command: fn(String) -> MusicCommand) -> MusicCommand {
+    command(cue.into())
+}
+
+fn load(cue: String) -> MusicCommand {
+    MusicCommand::Load { cue }
+}
+
+fn start(cue: String) -> MusicCommand {
+    MusicCommand::Start { cue }
+}
+
+fn stop(cue: String) -> MusicCommand {
+    MusicCommand::Stop { cue }
+}
+
+/// `speaker` given one frame of `music` at `now`.
+fn play(speaker: &mut Speaker, music: &[MusicCommand], now: u64) {
+    let frame = AudioFrame {
+        requests: &[],
+        music,
+        music_volume: 1.0,
+        sound_volume: 1.0,
+        voice_volume: 1.0,
+    };
+    speaker.play(&frame, Millis(now));
+}
+
+#[test]
+fn the_speaker_counts_from_a_start_to_its_stop() {
+    let mut s = Speaker::default();
+    assert_eq!(s.music_playing(Millis(0)), None);
+    play(&mut s, &[command("a", load)], 1000);
+    assert_eq!(s.music_playing(Millis(1000)), None, "loaded, not started");
+    play(&mut s, &[command("a", start)], 1000);
+    assert_eq!(s.music_playing(Millis(1000)), Some(("a", 0.0)));
+    assert_eq!(s.music_playing(Millis(1750)), Some(("a", 0.75)));
+    // A clock that went backwards counts no time.
+    assert_eq!(s.music_playing(Millis(500)), Some(("a", 0.0)));
+    // A fade and other tracks' commands leave it playing.
+    let fade = MusicCommand::Gain {
+        cue: "a".into(),
+        gain: 0.5,
+    };
+    play(
+        &mut s,
+        &[fade, command("b", load), command("b", stop)],
+        1750,
+    );
+    assert_eq!(s.music_playing(Millis(1750)), Some(("a", 0.75)));
+    play(&mut s, &[command("a", stop)], 1750);
+    assert_eq!(s.music_playing(Millis(2750)), None);
+    // The next track counts from its own start; loading a track again
+    // replaces it, as the platform does.
+    play(&mut s, &[command("b", start)], 3000);
+    assert_eq!(s.music_playing(Millis(3500)), Some(("b", 0.5)));
+    play(&mut s, &[command("b", load)], 3500);
+    assert_eq!(s.music_playing(Millis(3500)), None);
+}
+
+#[test]
+fn the_speaker_sounds_after_its_load_delay_or_never() {
+    let mut s = Speaker::default();
+    s.set_load_delay(0.5);
+    play(&mut s, &[command("a", start)], 0);
+    assert_eq!(s.music_playing(Millis(0)), None);
+    assert_eq!(s.music_playing(Millis(250)), None);
+    assert_eq!(s.music_playing(Millis(500)), Some(("a", 0.0)));
+    assert_eq!(s.music_playing(Millis(750)), Some(("a", 0.25)));
+    for nonsense in [-1.0, f64::NAN] {
+        s.set_load_delay(nonsense);
+        assert_eq!(s.music_playing(Millis(250)), Some(("a", 0.25)));
+    }
+    s.set_silent();
+    assert_eq!(s.music_playing(Millis(750)), None);
+}
+
+#[test]
+fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
+    let mut s = Speaker::default();
+    assert_eq!(s.volumes(), (1.0, 1.0, 1.0));
+    let click = SoundRequest::Sound {
+        cue: "click".into(),
+        volume: 1.0,
+    };
+    let requests = [click];
+    let music = [command("a", start)];
+    let frame = AudioFrame {
+        requests: &requests,
+        music: &music,
+        music_volume: 0.5,
+        sound_volume: 0.25,
+        voice_volume: 0.75,
+    };
+    s.play(&frame, Millis(0));
+    assert_eq!(s.requests(), requests);
+    assert_eq!(s.music(), music);
+    assert_eq!(s.volumes(), (0.5, 0.25, 0.75));
+    play(&mut s, &[], 10);
+    assert!(s.requests().is_empty() && s.music().is_empty());
+    assert!(!s.stopped());
+    s.stop_all();
+    assert!(s.stopped());
+    assert_eq!(s.music_playing(Millis(20)), None);
+}
+
+fn buffer(glyph: char) -> GlyphBuffer {
+    let cell = Cell::new(glyph, Rgb::new(255, 255, 255), Rgb::new(0, 0, 0));
+    GlyphBuffer::new(4, 2, cell)
+}
+
+#[test]
+fn the_platform_keeps_the_last_frame_it_was_shown() {
+    let mut p = HeadlessPlatform::new();
+    assert_eq!((p.presented(), p.last_frame()), (0, None));
+    let card = Card::text("A game");
+    p.present(&Frame::new(Show::Card(&card)));
+    assert_eq!(p.last_frame(), Some(&Presented::Card(card)));
+    assert_eq!(p.last_frame().and_then(Presented::buffer), None);
+    let (a, b) = (buffer('a'), buffer('b'));
+    let black = Rgb::new(0, 0, 0);
+    let mut frame = Frame::new(Show::Game {
+        buffer: &a,
+        background: black,
+        look: None,
+    });
+    p.present(&frame);
+    assert_eq!(p.last_frame().and_then(Presented::buffer), Some(&a));
+    frame.show = Show::Game {
+        buffer: &b,
+        background: Rgb::new(1, 2, 3),
+        look: None,
+    };
+    frame.fullscreen = true;
+    p.present(&frame);
+    let kept = Presented::Game {
+        buffer: b,
+        background: Rgb::new(1, 2, 3),
+        fullscreen: true,
+    };
+    assert_eq!(p.last_frame(), Some(&kept));
+    p.present(&Frame::new(Show::Errors("no font")));
+    assert_eq!(p.last_frame(), Some(&Presented::Errors("no font".into())));
+    assert_eq!(p.presented(), 4);
+}
+
+#[test]
+fn a_frame_with_its_look_is_kept_as_without() {
+    let mut p = HeadlessPlatform::new();
+    let font = shuyi_assets::font::FontAtlasDef::default();
+    let images = shuyi_assets::image::ImageTable::default();
+    let a = buffer('a');
+    p.present(&Frame::new(Show::Game {
+        buffer: &a,
+        background: Rgb::new(0, 0, 0),
+        look: Some(Look {
+            font: &font,
+            images: &images,
+        }),
+    }));
+    assert_eq!(p.last_frame().and_then(Presented::buffer), Some(&a));
+}
+
+#[test]
+fn input_comes_one_queued_poll_at_a_time_and_events_all_at_once() {
+    let mut p = HeadlessPlatform::new();
+    let enter = Chord::plain(Key::Enter);
+    p.push_input(&[RawInputEvent::Down(enter)]);
+    p.push_input(&[RawInputEvent::Up(Key::Enter)]);
+    p.push_system(SystemEvent::Suspend);
+    p.push_system(SystemEvent::Resume);
+    let mut input = Vec::new();
+    p.poll_input(&mut input);
+    assert_eq!(input, [RawInputEvent::Down(enter)]);
+    p.poll_input(&mut input);
+    assert_eq!(
+        input,
+        [RawInputEvent::Down(enter), RawInputEvent::Up(Key::Enter)]
+    );
+    let mut events = Vec::new();
+    p.system_events(&mut events);
+    p.system_events(&mut events);
+    assert_eq!(events, [SystemEvent::Suspend, SystemEvent::Resume]);
+    input.clear();
+    p.poll_input(&mut input);
+    assert!(input.is_empty());
+}
+
+#[test]
+fn the_storage_is_handed_over_once_then_a_fresh_one() {
+    let mut saved = MemoryStorage::new();
+    saved.write("slot", "one").unwrap_or_else(|e| panic!("{e}"));
+    let mut p = HeadlessPlatform::new().with_storage(Box::new(saved));
+    let first = p.storage();
+    assert_eq!(first.read("slot"), Ok(Some("one".into())));
+    assert_eq!(p.storage().read("slot"), Ok(None));
+    assert_eq!(p.display(), HeadlessPlatform::DISPLAY);
+    let small = DisplayInfo::new(400, 240).one_bit();
+    assert_eq!(HeadlessPlatform::new().with_display(small).display(), small);
+}
+
+#[test]
+fn the_scripted_keyboard_answers_each_opening_in_turn() {
+    let ask = |text: &str| TextAsk {
+        prompt: "Name".into(),
+        text: text.into(),
+        max_chars: 8,
+    };
+    let keyboard = ScriptedKeyboard::new([TextAnswer::Typed("Ada".into())]);
+    let mut p = HeadlessPlatform::new().with_keyboard(keyboard);
+    let input = p.text_input().unwrap_or_else(|| panic!("no keyboard"));
+    assert_eq!(input.poll(), None);
+    assert!(input.open(&ask("")));
+    // One at a time.
+    assert!(!input.open(&ask("x")));
+    assert_eq!(input.poll(), Some(TextAnswer::Typed("Ada".into())));
+    assert_eq!(input.poll(), None);
+    // Out of answers: it cancels.
+    assert!(input.open(&ask("Ada")));
+    assert_eq!(input.poll(), Some(TextAnswer::Cancelled));
+    let asks = p.keyboard().map(ScriptedKeyboard::asks);
+    assert_eq!(asks, Some(&[ask(""), ask("Ada")][..]));
+    assert!(HeadlessPlatform::new().text_input().is_none());
+}

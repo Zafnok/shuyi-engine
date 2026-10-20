@@ -1,7 +1,7 @@
 //! The Harness's scripts (ticket 1111): key, typing, controller and wait
 //! scripts in frames of 1/60 s, and what it reports of the game.
 
-use shuyi_ui::harness::{FRAME_DT, Harness, MAX_FRAMES};
+use shuyi_platform::harness::{FRAME_DT, Harness, MAX_FRAMES};
 use shuyi_ui::input::Button;
 use shuyi_ui::toy::{Action, Home};
 use shuyi_ui::{KeyPrompt, RawInputEvent};

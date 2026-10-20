@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build and the no-std build; the ticket lint, typos and links). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the platform crate's dependencies and the no-std build; the ticket lint, typos and links). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -31,6 +31,13 @@ job; the page goes to its `dist/web/`):
 
 ```bash
 cd examples/hello-grid && cargo shuyi web --release
+```
+
+The platform boundary depends on no device crate (CI's `platform-deps`
+job): this prints nothing.
+
+```bash
+cargo tree -p shuyi-platform --edges normal,build --target all --all-features --prefix none --format '{p}' --locked   | grep -E '^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
 ```
 
 The crates a Playdate game builds without `std` (CI's `no-std` job; it

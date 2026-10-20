@@ -1,7 +1,9 @@
 //! A headless test driver for any game on the engine (game ADR-0007 layer 4):
 //! scripted key and controller-button presses and waits in, in frames of
 //! 1/60 s, screen names, snapshots and the audio asked for out. No window,
-//! no clock, no sound card: a stand-in for the music player says what
+//! no clock, no sound card: it runs the game in an [`App`] on the
+//! [`HeadlessPlatform`], through the same frame the devices run, and the
+//! headless backend's [`Speaker`](crate::headless::Speaker) says what music
 //! sounds, so a screen that keeps time with the music is tested too.
 //!
 //! A game wraps it with its own start-up and lookups (its flow, its
@@ -9,7 +11,7 @@
 //! feature.
 //!
 //! ```
-//! use shuyi_ui::harness::Harness;
+//! use shuyi_platform::harness::Harness;
 //! use shuyi_ui::toy;
 //!
 //! let mut h = Harness::new(toy::game());
@@ -20,18 +22,20 @@
 //! ```
 
 use crate::prelude::*;
+use alloc::{format, vec};
 use core::any::Any;
 
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
+use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
+use shuyi_ui::input::crank::Crank;
+use shuyi_ui::input::pad::PadKind;
+use shuyi_ui::input::state::Device;
+use shuyi_ui::storage::Storage;
+use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
-use crate::audio::{AudioRequest, MusicClock, MusicCommand};
-use crate::ctx::{Ctx, GameData, KeyPrompt};
-use crate::game::{Game, RawInputEvent};
-use crate::input::crank::Crank;
-use crate::input::frame_seconds;
-use crate::input::pad::PadKind;
-use crate::input::state::Device;
-use crate::storage::Storage;
+use crate::app::{App, FrameOutcome, SystemHook};
+use crate::headless::{HeadlessPlatform, Presented};
+use crate::platform::SystemEvent;
 
 /// Simulated length of one frame, in seconds (60 fps).
 pub const FRAME_DT: f32 = 1.0 / 60.0;
@@ -41,24 +45,20 @@ pub const FRAME_DT: f32 = 1.0 / 60.0;
 pub const MAX_FRAMES: u32 = 2_000;
 
 /// Drives a [`Game`] with simulated key presses and time, as the platform
-/// would.
+/// would: in an [`App`], on the [`HeadlessPlatform`].
 pub struct Harness<G: GameData> {
-    game: Game<G>,
+    app: App<G>,
+    platform: HeadlessPlatform,
     /// Every frame's audio requests, oldest first.
     audio: Vec<Vec<AudioRequest<G::Voice>>>,
     /// Every music command of the run, in order.
     music: Vec<MusicCommand>,
-    /// The simulated music player, for [`Ctx::music_clock`].
-    player: Player,
     /// The kind of controller [`pad`](Self::pad) presses buttons on.
     pad_kind: PadKind,
     /// The crank [`crank`](Self::crank) winds, on the [`use_pad`] pad.
     ///
     /// [`use_pad`]: Self::use_pad
     crank: Crank,
-    /// What the last frame told the platform: the music and sound volumes
-    /// and whether to fill the screen.
-    mixer: (f32, f32, bool),
     /// How many frames have run.
     frames: u32,
     /// The screens open before the first frame, then after each frame
@@ -70,65 +70,23 @@ pub struct Harness<G: GameData> {
     quit_frame: Option<u32>,
 }
 
-/// The Harness's stand-in for the platform's music player: which track
-/// "sounds" and for how long, worked out from the music commands and the
-/// frame times.
-#[derive(Debug, Default)]
-struct Player {
-    /// Seconds a track takes to load: it sounds that long after its
-    /// `Start`.
-    load_delay: f64,
-    /// Whether no track ever sounds (the music files are missing).
-    silent: bool,
-    /// The track started last, and the seconds since its `Start`.
-    started: Option<(String, f64)>,
-}
-
-impl Player {
-    /// Lets `dt` seconds pass (nonsense frame times don't count, as in
-    /// [`Game`]).
-    fn advance(&mut self, dt: f32) {
-        if let Some((_, since)) = &mut self.started {
-            *since += f64::from(frame_seconds(dt));
-        }
-    }
-
-    /// What the platform would report: the track sounding and for how
-    /// long.
-    fn playing(&self) -> Option<(&str, f64)> {
-        let (cue, since) = self.started.as_ref().filter(|_| !self.silent)?;
-        let elapsed = since - self.load_delay;
-        (elapsed >= 0.0).then_some((cue.as_str(), elapsed))
-    }
-
-    /// Follows one music command: a `Start` starts the count from 0; a
-    /// `Stop` (or a fresh `Load`) of that track ends it.
-    fn apply(&mut self, command: &MusicCommand) {
-        match command {
-            MusicCommand::Start { cue } => self.started = Some((cue.clone(), 0.0)),
-            MusicCommand::Stop { cue } | MusicCommand::Load { cue } => {
-                if self.started.as_ref().is_some_and(|(c, _)| c == cue) {
-                    self.started = None;
-                }
-            }
-            MusicCommand::Gain { .. } => {}
-        }
-    }
-}
-
 impl<G: GameData> Harness<G> {
     /// Drives `game` from where it is.
     pub fn new(game: Game<G>) -> Self {
+        Self::on(game, HeadlessPlatform::new())
+    }
+
+    /// Drives `game` from where it is on `platform` (one with a system
+    /// keyboard, say).
+    pub fn on(game: Game<G>, platform: HeadlessPlatform) -> Self {
         let stacks = vec![(0, game.screens())];
         Self {
-            game,
+            app: App::running(game),
+            platform,
             audio: Vec::new(),
             music: Vec::new(),
-            player: Player::default(),
             pad_kind: PadKind::default(),
             crank: Crank::new(CrankDef::default()),
-            // Nothing told yet: as the platform starts.
-            mixer: (1.0, 1.0, false),
             frames: 0,
             stacks,
             music_frames: Vec::new(),
@@ -136,12 +94,21 @@ impl<G: GameData> Harness<G> {
         }
     }
 
+    /// Gives the game `hook` for the system's events
+    /// ([`system`](Self::system)).
+    #[must_use]
+    pub fn with_system_hook(mut self, hook: SystemHook<G>) -> Self {
+        self.app.set_system_hook(hook);
+        self
+    }
+
     /// Waits for a key or button press, as a platform's first screen may
     /// ([`KeyPrompt::Waiting`]), and redraws.
     #[must_use]
     pub fn at_prompt(mut self) -> Self {
-        self.game.ctx_mut().key_prompt = KeyPrompt::Waiting;
-        self.game.redraw();
+        let game = self.game_mut();
+        game.ctx_mut().key_prompt = KeyPrompt::Waiting;
+        game.redraw();
         self
     }
 
@@ -149,21 +116,23 @@ impl<G: GameData> Harness<G> {
     /// [`Ctx::music_clock`] starts counting, that long after the game
     /// starts it (at once by default). Negative or NaN counts as 0.
     pub fn music_load_delay(&mut self, seconds: f32) -> &mut Self {
-        self.player.load_delay = f64::from(seconds.max(0.0));
+        self.platform
+            .speaker_mut()
+            .set_load_delay(f64::from(seconds));
         self
     }
 
     /// Makes no music ever sound, as when the music files are missing:
     /// [`Ctx::music_clock`] stays `None`.
     pub fn without_music(&mut self) -> &mut Self {
-        self.player.silent = true;
+        self.platform.speaker_mut().set_silent();
         self
     }
 
     /// Where the music is in its track, as the screens saw it in the last
     /// frame ([`Ctx::music_clock`]).
     pub fn music_clock(&self) -> Option<&MusicClock> {
-        self.game.ctx().music_clock.as_ref()
+        self.ctx().music_clock.as_ref()
     }
 
     /// From now on [`pad`](Self::pad) and [`hold_pad`](Self::hold_pad)
@@ -271,7 +240,14 @@ impl<G: GameData> Harness<G> {
     /// own menu does ([`Game::act`]), then runs a frame of [`FRAME_DT`]:
     /// the menu closes and the game goes on.
     pub fn act(&mut self, action: G::Action) -> &mut Self {
-        self.game.act(action);
+        self.game_mut().act(action);
+        self.frame(&[], FRAME_DT)
+    }
+
+    /// The system tells the game `event` (a suspend, a resume, a lost
+    /// focus), in a frame of [`FRAME_DT`] with no input.
+    pub fn system(&mut self, event: SystemEvent) -> &mut Self {
+        self.platform.push_system(event);
         self.frame(&[], FRAME_DT)
     }
 
@@ -319,26 +295,24 @@ impl<G: GameData> Harness<G> {
         panic!("Harness: more than {MAX_FRAMES} frames in one hold or wait");
     }
 
-    /// Runs one frame of `dt` seconds with `events`, as the platform does:
-    /// reports the music sounding, runs the frame, then records and
-    /// "plays" its audio. The scripts above are made of these.
+    /// Runs one frame of `dt` seconds with `events`, as a platform does:
+    /// the events go to the headless backend, which the [`App`] reads in
+    /// its frame (the music sounding, the update, the audio played, the
+    /// frame presented); then the audio is recorded. The scripts above
+    /// are made of these.
     pub fn frame(&mut self, events: &[RawInputEvent], dt: f32) -> &mut Self {
-        self.player.advance(dt);
-        self.game.set_music_playing(self.player.playing());
-        let out = self.game.frame(events, dt);
+        self.platform.push_input(events);
+        let outcome = self.app.frame_after(&mut self.platform, dt);
         self.frames += 1;
-        self.mixer = (out.music_volume, out.sound_volume, out.fullscreen);
-        self.audio.push(out.audio.to_vec());
-        self.music.extend_from_slice(out.music);
+        self.audio.push(self.app.audio().to_vec());
+        let music = self.app.music();
+        self.music.extend_from_slice(music);
         self.music_frames
-            .extend(core::iter::repeat_n(self.frames, out.music.len()));
-        for command in out.music {
-            self.player.apply(command);
-        }
-        if out.quit && self.quit_frame.is_none() {
+            .extend(core::iter::repeat_n(self.frames, music.len()));
+        if outcome == FrameOutcome::Quit && self.quit_frame.is_none() {
             self.quit_frame = Some(self.frames);
         }
-        let screens = self.game.screens();
+        let screens = self.screens();
         if self.stacks.last().is_none_or(|(_, last)| *last != screens) {
             self.stacks.push((self.frames, screens));
         }
@@ -417,14 +391,21 @@ impl<G: GameData> Harness<G> {
     }
 
     /// The volumes the last frame told the platform to play at, 0–1: the
-    /// music's and the sounds' ([`FrameOutput`](crate::FrameOutput)).
+    /// music's and the sounds' ([`AudioFrame`](crate::AudioFrame)).
     pub fn volumes(&self) -> (f32, f32) {
-        (self.mixer.0, self.mixer.1)
+        let (music, sound, _) = self.platform.speaker().volumes();
+        (music, sound)
     }
 
     /// Whether the last frame told the platform to fill the screen.
     pub fn fullscreen(&self) -> bool {
-        self.mixer.2
+        matches!(
+            self.platform.last_frame(),
+            Some(Presented::Game {
+                fullscreen: true,
+                ..
+            })
+        )
     }
 
     /// Every music command of the run so far, in order.
@@ -443,70 +424,97 @@ impl<G: GameData> Harness<G> {
 
     /// Name of the top screen; empty once every screen has closed.
     pub fn top_screen(&self) -> &'static str {
-        self.game.top_screen().unwrap_or("")
+        self.game().top_screen().unwrap_or("")
     }
 
     /// Names of the open screens, bottom first.
     pub fn screens(&self) -> Vec<&'static str> {
-        self.game.screens()
+        self.game().screens()
     }
 
     /// The top-most screen of type `T` on the stack, if it opts in
     /// ([`Game::screen`]).
     pub fn screen<T: Any>(&self) -> Option<&T> {
-        self.game.screen()
+        self.game().screen()
     }
 
     /// [`screen`](Self::screen), mutable, to drive it with scripted
     /// commands.
     pub fn screen_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.game.screen_mut()
+        self.game_mut().screen_mut()
     }
 
     /// The current frame in the snapshot format of
-    /// [`crate::frame::snapshot`].
+    /// [`shuyi_ui::frame::snapshot`].
     pub fn snapshot(&self) -> String {
-        self.game.buffer().to_snapshot(&self.game.ctx().palette)
+        let game = self.game();
+        game.buffer().to_snapshot(&game.ctx().palette)
     }
 
     /// The current frame as it would look had the player pressed `device`
     /// last: the same screen with that device's key or button names. For
     /// comparing play on a controller with the same play on the keyboard.
     pub fn snapshot_as(&mut self, device: Device) -> String {
-        let used = core::mem::replace(&mut self.game.ctx_mut().device, device);
-        self.game.redraw();
+        let game = self.game_mut();
+        let used = core::mem::replace(&mut game.ctx_mut().device, device);
+        game.redraw();
         let snapshot = self.snapshot();
-        self.game.ctx_mut().device = used;
-        self.game.redraw();
+        let game = self.game_mut();
+        game.ctx_mut().device = used;
+        game.redraw();
         snapshot
     }
 
     /// Whether the game has asked to quit.
     pub fn quit_requested(&self) -> bool {
-        self.game.quit_requested()
+        self.game().quit_requested()
     }
 
     /// The game being driven.
     pub fn game(&self) -> &Game<G> {
-        &self.game
+        self.app
+            .game()
+            .unwrap_or_else(|| panic!("Harness: the game isn't running"))
+    }
+
+    /// The game being driven, mutable.
+    fn game_mut(&mut self) -> &mut Game<G> {
+        self.app
+            .game_mut()
+            .unwrap_or_else(|| panic!("Harness: the game isn't running"))
+    }
+
+    /// The [`App`] running the game.
+    pub fn app(&self) -> &App<G> {
+        &self.app
+    }
+
+    /// The headless backend it runs on: the frames presented, the audio
+    /// played.
+    pub fn platform(&self) -> &HeadlessPlatform {
+        &self.platform
     }
 
     /// The shared context.
     pub fn ctx(&self) -> &Ctx<G> {
-        self.game.ctx()
+        self.game().ctx()
     }
 
     /// The shared context, to change it between key presses, e.g.
     /// `h.ctx_mut().set_layout_bindings(…)` to rebind keys as a key
     /// bindings screen would. The next frame uses the new keys.
     pub fn ctx_mut(&mut self) -> &mut Ctx<G> {
-        self.game.ctx_mut()
+        self.game_mut().ctx_mut()
     }
 
     /// Ends the run, handing back its storage, to start the next launch
     /// with it.
     pub fn into_storage(self) -> Box<dyn Storage> {
-        self.game.into_ctx().storage.into_computer()
+        let game = self
+            .app
+            .into_game()
+            .unwrap_or_else(|| panic!("Harness: the game isn't running"));
+        game.into_ctx().storage.into_computer()
     }
 }
 
@@ -523,6 +531,3 @@ fn parse_button(button: &str) -> Button {
         Err(e) => panic!("bad button in test script: {e}"),
     }
 }
-
-#[cfg(test)]
-mod tests;

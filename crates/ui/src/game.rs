@@ -167,6 +167,9 @@ pub struct Game<G: GameData> {
     /// This frame's audio requests and music commands.
     audio_out: Vec<AudioRequest<G::Voice>>,
     music_out: Vec<MusicCommand>,
+    /// The fixed simulation steps due in the next frame
+    /// ([`set_ticks`](Self::set_ticks)).
+    ticks: u32,
 }
 
 impl<G: GameData> Game<G> {
@@ -192,6 +195,7 @@ impl<G: GameData> Game<G> {
             music: MusicState::new(fade_secs),
             audio_out: Vec::new(),
             music_out: Vec::new(),
+            ticks: 0,
         };
         game.redraw();
         game
@@ -216,6 +220,14 @@ impl<G: GameData> Game<G> {
             playing.and_then(|(cue, elapsed)| MusicClock::from_elapsed(manifest, cue, elapsed));
     }
 
+    /// Says how many fixed simulation steps are due in the next
+    /// [`frame`](Self::frame) (ADR-0003 §2): its screen reads them as
+    /// [`FrameInput::ticks`]. The platform's `App` counts them from its
+    /// clock and calls this before every frame; a frame after none has 0.
+    pub fn set_ticks(&mut self, ticks: u32) {
+        self.ticks = ticks;
+    }
+
     /// Flips the Fullscreen setting, as a window's own shortcut does. The
     /// platform then switches the window on the next frame, and an options
     /// screen shows the new value.
@@ -232,8 +244,9 @@ impl<G: GameData> Game<G> {
         // Nonsense frame times pass no time, for the screens, the clock and
         // the music alike.
         let dt = frame_seconds(dt);
+        let ticks = core::mem::take(&mut self.ticks);
         if !self.quit {
-            self.step(events, dt);
+            self.step(events, dt, ticks);
             self.collect_audio(dt);
         }
         FrameOutput {
@@ -263,7 +276,7 @@ impl<G: GameData> Game<G> {
         self.music.update(dt, &mut self.music_out);
     }
 
-    fn step(&mut self, events: &[RawInputEvent], dt: f32) {
+    fn step(&mut self, events: &[RawInputEvent], dt: f32, ticks: u32) {
         // Bindings changed between frames (a test rebinding keys).
         self.sync_keymap();
         let mut pressed = Vec::new();
@@ -337,7 +350,8 @@ impl<G: GameData> Game<G> {
             let input = FrameInput::new(actions, dt, held)
                 .with_typing(pressed, text)
                 .with_buttons(buttons_down, buttons_up)
-                .with_pad(from_pad);
+                .with_pad(from_pad)
+                .with_ticks(ticks);
             self.quit = self.stack.update(&mut self.ctx, &input);
             self.sync_keymap();
         }

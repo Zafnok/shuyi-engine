@@ -7,7 +7,7 @@ use shuyi_ui::input::{Device, PadKind};
 use crate::toy;
 
 /// The gallery of pictures, opened with the Debug key.
-fn gallery() -> shuyi_ui::harness::Harness<shuyi_ui::toy::Toy> {
+fn gallery() -> shuyi_platform::harness::Harness<shuyi_ui::toy::Toy> {
     let mut h = toy();
     h.keys("F2");
     assert_eq!(h.screens(), ["home", "gallery"]);
@@ -15,7 +15,7 @@ fn gallery() -> shuyi_ui::harness::Harness<shuyi_ui::toy::Toy> {
 }
 
 /// The gallery's help line, the frame's last row.
-fn help(h: &shuyi_ui::harness::Harness<shuyi_ui::toy::Toy>) -> String {
+fn help(h: &shuyi_platform::harness::Harness<shuyi_ui::toy::Toy>) -> String {
     let rows = h.game().buffer().height();
     (0..h.game().buffer().width())
         .filter_map(|x| h.game().buffer().get(x.into(), i32::from(rows) - 1))

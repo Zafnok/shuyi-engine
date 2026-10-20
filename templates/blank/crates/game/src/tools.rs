@@ -10,8 +10,8 @@ use shuyi_assets::ContentError;
 use shuyi_cli::contract::session::{Headless, Session};
 use shuyi_cli::frame_png::{Image, Painter, Script, Shot};
 use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
+use shuyi_platform::harness::Harness;
 use shuyi_ui::GameData;
-use shuyi_ui::harness::Harness;
 
 use crate::{Data, FONT_PNG};
 

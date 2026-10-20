@@ -5,7 +5,7 @@
 use hello_grid::Hello;
 use hello_grid::rules::{Chase, Command, Event, Side, Stage};
 use shuyi_core::{Bot, RandomBot, TurnRules, play};
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 
 use crate::{play_out, stage, title, to_the_goal};
 

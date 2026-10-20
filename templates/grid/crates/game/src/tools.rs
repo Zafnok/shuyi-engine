@@ -20,8 +20,8 @@ use shuyi_cli::frame_png::{Image, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
 use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
+use shuyi_platform::harness::Harness;
 use shuyi_ui::GameData;
-use shuyi_ui::harness::Harness;
 
 use crate::stage::{StageScreen, Terrain};
 use crate::{Data, FONT_PNG};

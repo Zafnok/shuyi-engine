@@ -4,7 +4,7 @@
 //!
 //! A clip is loaded like a music track (on native, on game ADR-0028's worker
 //! thread). A scene says which clips are coming
-//! ([`AudioRequest::PreloadVoices`]); the next [`AHEAD`] of them are kept
+//! ([`SoundRequest::PreloadVoices`]); the next [`AHEAD`] of them are kept
 //! loaded, so a line's clip is ready when the line is shown. A clip that
 //! still isn't loaded [`LATE_SECS`] after it was asked for is not played:
 //! a voice starting in the middle of a line is worse than none.
@@ -12,8 +12,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use shuyi_assets::voice::{ClipVariant, clip_file};
-use shuyi_ui::audio::AudioRequest;
+use shuyi_platform::SoundRequest;
 
 use super::{Backend, folder_beside};
 
@@ -63,30 +62,28 @@ impl<B: Backend> Voices<B> {
 
     /// Applies one request (those that aren't about voices do nothing).
     /// Loads dropped before they finished go to `abandoned`.
-    pub(crate) fn request<V: ClipVariant>(
+    pub(crate) fn request(
         &mut self,
         backend: &mut B,
-        request: &AudioRequest<V>,
+        request: &SoundRequest,
         now: f64,
         abandoned: &mut Vec<B::Loading>,
     ) {
         match request {
-            AudioRequest::PlayVoice { line, variant } => {
-                let file = clip_file(line, *variant);
+            SoundRequest::Voice { clip } => {
+                let file = clip.clone();
                 self.stop(backend);
                 if let Some(at) = self.coming.iter().position(|f| *f == file) {
                     self.passed = at + 1;
                 }
                 self.asked = Some((file, now));
             }
-            AudioRequest::StopVoice => self.stop(backend),
-            AudioRequest::PreloadVoices { lines } => {
-                self.coming = lines.iter().map(|(l, v)| clip_file(l, *v)).collect();
+            SoundRequest::StopVoice => self.stop(backend),
+            SoundRequest::PreloadVoices { clips } => {
+                self.coming.clone_from(clips);
                 self.passed = 0;
             }
-            AudioRequest::PlaySound { .. }
-            | AudioRequest::PlayMusic { .. }
-            | AudioRequest::StopMusic => return,
+            SoundRequest::Sound { .. } => return,
         }
         self.keep_wanted(backend, abandoned);
     }
@@ -320,7 +317,7 @@ mod tests {
     fn one_voice_at_a_time_and_stop_stops_it() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[play(0)], &[], 0.0);
+        audio.hear(&mut fake, &[play(0)], &[], 0.0);
         assert_eq!(
             fake.calls(),
             [
@@ -328,7 +325,7 @@ mod tests {
                 format!("play {} 1.00", path(0))
             ]
         );
-        audio.play(&mut fake, &[play(1)], &[], 1.0);
+        audio.hear(&mut fake, &[play(1)], &[], 1.0);
         assert_eq!(
             fake.calls(),
             [
@@ -338,11 +335,11 @@ mod tests {
             ]
         );
         assert_eq!(held(&audio), [LINES[1]], "the first clip is freed");
-        audio.play(&mut fake, &[Request::StopVoice], &[], 2.0);
+        audio.hear(&mut fake, &[Request::StopVoice], &[], 2.0);
         assert_eq!(fake.calls(), [format!("stop {}", path(1))]);
         assert!(held(&audio).is_empty());
         // Stopping silence does nothing.
-        audio.play(&mut fake, &[Request::StopVoice], &[], 3.0);
+        audio.hear(&mut fake, &[Request::StopVoice], &[], 3.0);
         assert!(fake.calls().is_empty());
         assert!(
             audio.take_warnings().len() <= 1,
@@ -358,14 +355,14 @@ mod tests {
         let mut audio = audio(&mut fake);
         audio.set_voice_volume(&mut fake, 0.8);
         assert!(fake.calls().is_empty(), "nothing is playing yet");
-        audio.play(&mut fake, &[play(0)], &[], 0.0);
+        audio.hear(&mut fake, &[play(0)], &[], 0.0);
         assert_eq!(fake.calls()[1], format!("play {} 0.80", path(0)));
         audio.set_voice_volume(&mut fake, 0.3);
         assert_eq!(fake.calls(), [format!("volume {} 0.30", path(0))]);
         // The same volume again (every frame sends it) does nothing.
         audio.set_voice_volume(&mut fake, 0.3);
         assert!(fake.calls().is_empty());
-        audio.play(&mut fake, &[play(1)], &[], 1.0);
+        audio.hear(&mut fake, &[play(1)], &[], 1.0);
         assert_eq!(fake.calls()[2], format!("play {} 0.30", path(1)));
     }
 
@@ -373,14 +370,14 @@ mod tests {
     fn a_clip_plays_once_it_has_loaded_if_that_is_soon() {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[play(0)], &[], 10.0);
+        audio.hear(&mut fake, &[play(0)], &[], 10.0);
         assert_eq!(fake.calls(), [format!("load {}", path(0))]);
-        audio.play::<Take>(&mut fake, &[], &[], 10.2);
+        audio.play(&mut fake, &[], &[], 10.2);
         assert!(fake.calls().is_empty(), "still loading");
         fake.ready.push(path(0));
-        audio.play::<Take>(&mut fake, &[], &[], 10.0 + LATE_SECS);
+        audio.play(&mut fake, &[], &[], 10.0 + LATE_SECS);
         assert_eq!(fake.calls(), [format!("play {} 1.00", path(0))]);
-        audio.play::<Take>(&mut fake, &[], &[], 11.0);
+        audio.play(&mut fake, &[], &[], 11.0);
         assert!(fake.calls().is_empty(), "started once");
     }
 
@@ -389,19 +386,19 @@ mod tests {
         let mut fake = Fake::default();
         let mut audio = audio(&mut fake);
         audio.take_warnings();
-        audio.play(&mut fake, &[play(0)], &[], 10.0);
-        audio.play::<Take>(&mut fake, &[], &[], 10.31);
+        audio.hear(&mut fake, &[play(0)], &[], 10.0);
+        audio.play(&mut fake, &[], &[], 10.31);
         assert!(held(&audio).is_empty(), "given up on");
         assert_eq!(audio.abandoned.len(), 1);
         fake.ready.push(path(0));
-        audio.play::<Take>(&mut fake, &[], &[], 10.4);
+        audio.play(&mut fake, &[], &[], 10.4);
         assert_eq!(fake.calls(), [format!("load {}", path(0))], "never played");
         assert!(audio.abandoned.is_empty());
         assert!(audio.take_warnings().is_empty());
         // A clock that stepped back doesn't count as late.
         fake.ready.clear();
-        audio.play(&mut fake, &[play(1)], &[], 20.0);
-        audio.play::<Take>(&mut fake, &[], &[], 5.0);
+        audio.hear(&mut fake, &[play(1)], &[], 20.0);
+        audio.play(&mut fake, &[], &[], 5.0);
         assert_eq!(held(&audio), [LINES[1]]);
     }
 
@@ -410,7 +407,7 @@ mod tests {
     fn preloading_keeps_the_next_three_clips_and_frees_those_passed() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[preload(&[0, 1, 2, 3, 4])], &[], 0.0);
+        audio.hear(&mut fake, &[preload(&[0, 1, 2, 3, 4])], &[], 0.0);
         let loads = |files: &[usize]| -> Vec<String> {
             files.iter().map(|&i| format!("load {}", path(i))).collect()
         };
@@ -418,20 +415,20 @@ mod tests {
         assert_eq!(AHEAD, 3);
         // Saying the first line loads the fourth clip; the first is kept
         // while it plays.
-        audio.play(&mut fake, &[play(0)], &[], 1.0);
+        audio.hear(&mut fake, &[play(0)], &[], 1.0);
         let mut expected = loads(&[3]);
         expected.push(format!("play {} 1.00", path(0)));
         assert_eq!(fake.calls(), expected);
         assert_eq!(held(&audio), sorted(&[0, 1, 2, 3]));
         // Skipping to the third line frees the first two.
-        audio.play(&mut fake, &[play(2)], &[], 2.0);
+        audio.hear(&mut fake, &[play(2)], &[], 2.0);
         let mut expected = vec![format!("stop {}", path(0))];
         expected.extend(loads(&[4]));
         expected.push(format!("play {} 1.00", path(2)));
         assert_eq!(fake.calls(), expected);
         assert_eq!(held(&audio), sorted(&[2, 3, 4]));
         // A new scene's list replaces the old one; the voice plays on.
-        audio.play(&mut fake, &[preload(&[1])], &[], 3.0);
+        audio.hear(&mut fake, &[preload(&[1])], &[], 3.0);
         assert_eq!(fake.calls(), loads(&[1]));
         assert_eq!(held(&audio), sorted(&[1, 2]));
     }
@@ -440,7 +437,7 @@ mod tests {
     fn a_clip_outside_the_list_is_loaded_when_asked_for() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[preload(&[0, 1]), play(4)], &[], 0.0);
+        audio.hear(&mut fake, &[preload(&[0, 1]), play(4)], &[], 0.0);
         let calls = fake.calls();
         assert!(
             calls.contains(&format!("play {} 1.00", path(4))),
@@ -455,19 +452,19 @@ mod tests {
         let mut fake = all_ready();
         fake.length = Some(1.5);
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[play(0)], &[], 10.0);
-        audio.play::<Take>(&mut fake, &[], &[], 11.49);
+        audio.hear(&mut fake, &[play(0)], &[], 10.0);
+        audio.play(&mut fake, &[], &[], 11.49);
         assert_eq!(held(&audio), [LINES[0]]);
-        audio.play::<Take>(&mut fake, &[], &[], 11.5);
+        audio.play(&mut fake, &[], &[], 11.5);
         assert!(held(&audio).is_empty());
         // It ended by itself: nothing to stop.
         fake.calls();
-        audio.play(&mut fake, &[Request::StopVoice], &[], 12.0);
+        audio.hear(&mut fake, &[Request::StopVoice], &[], 12.0);
         assert!(fake.calls().is_empty());
         // A clip of unknown length is kept until it is stopped.
         fake.length = None;
-        audio.play(&mut fake, &[play(1)], &[], 20.0);
-        audio.play::<Take>(&mut fake, &[], &[], 9_999.0);
+        audio.hear(&mut fake, &[play(1)], &[], 20.0);
+        audio.play(&mut fake, &[], &[], 9_999.0);
         assert_eq!(held(&audio), [LINES[1]]);
     }
 
@@ -477,13 +474,13 @@ mod tests {
         fake.broken.push(path(0));
         let mut audio = audio(&mut fake);
         audio.take_warnings();
-        audio.play(&mut fake, &[play(0)], &[], 0.0);
+        audio.hear(&mut fake, &[play(0)], &[], 0.0);
         assert_eq!(
             audio.take_warnings(),
             [format!("voice clip {}: no such file", path(0))]
         );
         assert!(held(&audio).is_empty());
-        audio.play::<Take>(&mut fake, &[], &[], 0.1);
+        audio.play(&mut fake, &[], &[], 0.1);
         assert_eq!(fake.calls(), [format!("load {}", path(0))], "not retried");
         assert!(audio.take_warnings().is_empty());
     }
@@ -492,7 +489,7 @@ mod tests {
     fn stop_all_stops_the_voice_and_frees_every_clip() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[preload(&[0, 1, 2]), play(0)], &[], 0.0);
+        audio.hear(&mut fake, &[preload(&[0, 1, 2]), play(0)], &[], 0.0);
         fake.calls();
         audio.stop_all(&mut fake);
         assert_eq!(fake.calls(), [format!("stop {}", path(0))]);
@@ -503,7 +500,7 @@ mod tests {
     fn sound_and_music_requests_are_not_voices() {
         let mut fake = all_ready();
         let mut audio = audio(&mut fake);
-        audio.play(&mut fake, &[play(0)], &[], 0.0);
+        audio.hear(&mut fake, &[play(0)], &[], 0.0);
         fake.calls();
         let others = [
             Request::PlaySound {
@@ -515,7 +512,7 @@ mod tests {
             },
             Request::StopMusic,
         ];
-        audio.play(&mut fake, &others, &[], 0.1);
+        audio.hear(&mut fake, &others, &[], 0.1);
         assert_eq!(fake.calls(), ["play wav100 0.50"], "the voice plays on");
         assert_eq!(held(&audio), [LINES[0]]);
     }
@@ -532,7 +529,7 @@ mod tests {
         let mut audio = audio(&mut fake);
         audio.take_warnings();
         audio.set_voice_volume(&mut fake, 1.0);
-        audio.play::<Take>(&mut fake, &[], &[], 0.0);
+        audio.play(&mut fake, &[], &[], 0.0);
         assert!(audio.take_warnings().is_empty());
         assert!(fake.calls().is_empty());
     }

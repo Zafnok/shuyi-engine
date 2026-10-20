@@ -14,6 +14,7 @@ publish = false
 # depends on the engine's repository at a commit (its README).
 shuyi-assets = "{{engine.assets}}"
 shuyi-ui = "{{engine.ui}}"
+shuyi-platform = "{{engine.platform}}"
 shuyi-app = "{{engine.app}}"
 shuyi-cli = "{{engine.cli}}"
 # The window and the entry point, as the engine has them.

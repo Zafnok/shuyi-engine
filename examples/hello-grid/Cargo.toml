@@ -24,13 +24,15 @@ required-features = ["tools"]
 [features]
 # `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
 # for its tool program and its tests.
-tools = ["dep:shuyi-cli", "shuyi-ui/harness"]
+tools = ["dep:shuyi-cli", "shuyi-platform/harness"]
 
 [dependencies]
 shuyi-core = { path = "../../crates/core" }
 shuyi-assets = { path = "../../crates/assets" }
 shuyi-ui = { path = "../../crates/ui" }
-# The window, input devices, audio, storage and the run loop.
+# How the game starts (its loading card and load) and the Harness.
+shuyi-platform = { path = "../../crates/platform" }
+# The window, input devices, audio and storage: the macroquad backend.
 shuyi-app = { path = "../../crates/app" }
 shuyi-cli = { path = "../../crates/cli", optional = true }
 # The entry point: `#[macroquad::main]` has to be in the binary.

@@ -3,8 +3,8 @@
 //! (the toy's `Picker`) and does nothing else; the layout picked is used
 //! at once and found again at the next launch.
 
+use shuyi_platform::harness::Harness;
 use shuyi_ui::Keyboard;
-use shuyi_ui::harness::Harness;
 use shuyi_ui::toy::{self, LEFT_HANDED, Picker, RIGHT_HANDED, Toy};
 
 use crate::first_launch;

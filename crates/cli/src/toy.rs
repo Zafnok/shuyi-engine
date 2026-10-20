@@ -7,8 +7,8 @@
 
 use std::collections::BTreeMap;
 
+use shuyi_platform::harness::Harness;
 use shuyi_ui::GameData;
-use shuyi_ui::harness::Harness;
 use shuyi_ui::toy::{self, Toy};
 
 use crate::codec::encode_png;

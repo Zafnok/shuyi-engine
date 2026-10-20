@@ -164,6 +164,28 @@ jobs:
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-ui --no-default-features --target thumbv7em-none-eabihf --locked
 
+  # The platform boundary touches no device (ticket 3003, ADR-0008 §2):
+  # macroquad, gilrs and the audio crates stay out of `shuyi-platform`'s
+  # dependencies, on every target and with every feature.
+  platform-deps:
+    name: platform-deps
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - name: shuyi-platform depends on no device crate
+        run: |
+          cargo tree -p shuyi-platform --edges normal,build --target all --all-features             --prefix none --format '{p}' --locked > platform-tree.txt
+          devices='^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
+          if grep -E "$devices" platform-tree.txt; then
+            echo "::error::shuyi-platform depends on a device crate (above): only backends may"
+            exit 1
+          fi
+
   # Licenses, advisories, bans and sources (deny.toml).
   deny:
     name: deny
@@ -264,7 +286,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, deny, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, platform-deps, deny, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled
