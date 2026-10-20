@@ -53,4 +53,8 @@ exclude_re = [
     # an empty leaked `Vec` is the same function. Its other mutants are
     # caught.
     'OneBitInfo>::extensions -> .* with Vec::leak\(Vec::new\(\)\)',
+    # A grid skin has no zoom levels unless it says (`&[]`): the mutant that
+    # returns an empty leaked `Vec` is the same function. Its other mutants
+    # are caught.
+    'GridSkin::zoom_levels -> .* with Vec::leak\(Vec::new\(\)\)',
 ]

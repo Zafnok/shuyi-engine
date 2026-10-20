@@ -91,11 +91,7 @@ impl MapUnit for Piece {
 pub const WALK: WalkSpeeds = WalkSpeeds::of(8.0);
 
 /// The glyph skin.
-pub const GLYPHS: GlyphSkin = GlyphSkin {
-    colors: COLORS,
-    walk: WALK,
-    foot_px: 0,
-};
+pub const GLYPHS: GlyphSkin = GlyphSkin::new(COLORS, WALK, 0);
 
 /// The tileset's picture, in the game's images.
 pub const TILES_PNG: &str = "tiles.png";

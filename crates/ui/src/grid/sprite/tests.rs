@@ -181,6 +181,46 @@ fn the_zoom_multiplies_the_tile_and_divides_the_view() {
     assert_eq!(forced.grid(&scene, MAP_AREA).scale, 1);
 }
 
+/// A skin kept as a `dyn GridSkin` is asked for its zoom levels, and gives
+/// the same skin at another of them: the same tiles, a bigger tile size.
+#[test]
+fn a_zoomable_skin_gives_itself_at_each_of_its_levels() {
+    let kit = Kit::new();
+    // Sorted, each once, nothing below 1.
+    let zoomable = skin(&kit).with_zooms(&[3, 1, 0, 2, 1, -2]);
+    let s: Rc<dyn GridSkin<Piece>> = Rc::new(zoomable.clone());
+    assert_eq!(s.zoom_levels(), [1, 2, 3]);
+    assert_eq!(s.zoom(), Some(1));
+    let twice = s.at_zoom(2).unwrap();
+    assert_eq!(twice.zoom(), Some(2));
+    assert_eq!(twice.zoom_levels(), [1, 2, 3]);
+    assert_eq!((s.tile_size(), twice.tile_size()), ((24, 24), (48, 48)));
+    assert_eq!(twice.name(), s.name());
+    assert_eq!(twice.walk(), s.walk());
+    // Back again, and to a level it lacks: none.
+    assert_eq!(twice.at_zoom(1).unwrap().tile_size(), (24, 24));
+    assert!(s.at_zoom(4).is_none());
+    assert!(s.at_zoom(0).is_none());
+    // The concrete skin keeps its levels and its own zoom.
+    assert_eq!(zoomable.clone().zoomed(3).zoom(), 3);
+    assert_eq!(zoomable, skin(&kit).with_zooms(&[1, 2, 3]));
+    // Without levels it doesn't zoom, whatever it draws at.
+    let fixed: &dyn GridSkin<Piece> = &skin(&kit).zoomed(2);
+    assert!(fixed.zoom_levels().is_empty());
+    assert_eq!(fixed.zoom(), None);
+    assert!(fixed.at_zoom(2).is_none());
+    // Nor on glyph ground, levels or not.
+    let mixed: &dyn GridSkin<Piece> = &sheets().with_zooms(&[1, 2]);
+    assert!(mixed.zoom_levels().is_empty());
+    assert_eq!(mixed.zoom(), None);
+    assert!(mixed.at_zoom(1).is_none());
+    // Nor the glyph skin: its tile is two font cells.
+    let glyph: &dyn GridSkin<Piece> = &GLYPH;
+    assert!(glyph.zoom_levels().is_empty());
+    assert_eq!(glyph.zoom(), None);
+    assert!(glyph.at_zoom(1).is_none());
+}
+
 /// A scene with one of everything, painted at 1× into 2 × 2 tiles from
 /// the console's corner and at 2× into an area twice the size: the same
 /// items in the same order, every one twice as far from the corner and

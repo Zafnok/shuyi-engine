@@ -20,7 +20,9 @@ use super::{Action, Toy, ToyCtx};
 use crate::debug::{CameraLayout, SceneCameraScreen};
 use crate::frame::color::{EngineColor, Palette, Rgb};
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Overlay, PxRect, Rect, Sprite};
-use crate::grid::glyph::{self, GlyphSkin};
+use crate::grid::glyph::{
+    self, CursorLook, FlashLook, GlyphSkin, GlyphStyle, RangeLook, ThreatLook,
+};
 use crate::grid::layout::Grid;
 use crate::grid::picture::MapPicture;
 use crate::grid::scene::{CursorStyle, CursorView, MapScene, MapUnit, RangeName};
@@ -106,11 +108,23 @@ pub const PIECE: Rgb = Rgb::new(PIECE_RGB[0], PIECE_RGB[1], PIECE_RGB[2]);
 pub const MOVE: RangeName = RangeName("move");
 
 /// The glyph skin as the toy paints it: its pieces' bars are 2 pixels.
-pub const GLYPH: GlyphSkin = GlyphSkin {
-    colors: COLORS,
-    walk: WalkSpeeds::of(10.0),
-    foot_px: 2,
-};
+pub const GLYPH: GlyphSkin = GlyphSkin::new(COLORS, WalkSpeeds::of(10.0), 2);
+
+/// The glyph skin in a one-bit screen's style, an example of another look
+/// of its tiles: ranges fill their tiles, but the danger range (a game's
+/// painter would edge it); a changed tile flashes inverted; the cursor's
+/// marks are flat; the threat marks are the arrows' color, edged in the
+/// text color; and a cell is left at each side.
+pub const ONE_BIT: GlyphSkin = GLYPH.styled(GlyphStyle {
+    range: RangeLook::Fill {
+        glyphs: "text",
+        skip: &[RangeName("danger")],
+    },
+    flash: FlashLook::Invert,
+    cursor: CursorLook::Flat,
+    threat: ThreatLook::Plain { edge: "text" },
+    side_cells: 1,
+});
 
 /// How fast a piece walks under the sprite skin: slower, to be seen.
 pub const SPRITE_WALK: WalkSpeeds = WalkSpeeds {

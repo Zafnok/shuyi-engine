@@ -6,10 +6,13 @@
 //! game's own view of them, painted by the game's [`UnitPainter`] between
 //! the skin's layers.
 //!
-//! Two skins: the [`GlyphSkin`] draws each tile as two glyph cells, and
-//! the [`SpriteSkin`] paints the ground from a tileset's terrain tiles,
-//! with layers between tiles by the corner rule ([`corners`]) and the
-//! map's light. Both lay their tiles out top-down ([`Projection`]).
+//! Two skins: the [`GlyphSkin`] draws each tile as two glyph cells, in
+//! its own look or another [`GlyphStyle`] (a one-bit screen's), and the
+//! [`SpriteSkin`] paints the ground from a tileset's terrain tiles, with
+//! layers between tiles by the corner rule ([`corners`]) and the map's
+//! light, at any of the zooms it offers. Both lay their tiles out top-down
+//! ([`Projection`]). How a game with painters of its own and several looks
+//! uses them, with no skin trait of its own: [`skin`]'s docs.
 //!
 //! With them, the rest of a grid stage's look: the tile [`Camera`], the
 //! virtual [`Cursor`], a path that follows it ([`steer()`]) and how long a
@@ -36,7 +39,7 @@ pub mod walk;
 
 pub use camera::Camera;
 pub use cursor::Cursor;
-pub use glyph::GlyphSkin;
+pub use glyph::{GlyphSkin, GlyphStyle};
 pub use layout::{CELL_PX, Grid, Projection, px_rect};
 pub use picture::MapPicture;
 pub use scene::{

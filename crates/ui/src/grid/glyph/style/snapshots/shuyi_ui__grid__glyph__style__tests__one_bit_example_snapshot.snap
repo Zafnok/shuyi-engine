@@ -1,0 +1,31 @@
+---
+source: crates/ui/src/grid/glyph/style/tests.rs
+expression: buf.to_snapshot(&kit.palette)
+---
+x.,.,.,.,~~xxxxx
+x.,~~.,.,.,xxxxx
+xy,.,.,.,.,xxxxx
+xxxxxxxxxxxxxxxx
+--- colours ---
+abbccbbddeeaaaaa
+addeeddddddaaaaa
+afdddddddddaaaaa
+aaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:#010203 bg:#040506
+b = fg:text bg:move
+c = fg:text bg:attack
+d = fg:grass_fg bg:grass_bg
+e = fg:water_fg bg:water_bg
+f = fg:piece bg:grass_bg
+--- overlays ---
+over  56,16 16x16  #ff00ff
+over  9,46 14x2  piece
+over  39,32 3x1  cursor
+over  39,33 1x2  cursor
+over  53,32 3x1  cursor
+over  55,33 1x2  cursor
+over  39,45 3x1  cursor
+over  39,43 1x2  cursor
+over  53,45 3x1  cursor
+over  55,43 1x2  cursor

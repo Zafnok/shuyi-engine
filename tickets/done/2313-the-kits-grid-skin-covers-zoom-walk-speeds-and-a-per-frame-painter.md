@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 2313 — The kit's grid skin, enough for a game to use it directly
@@ -90,12 +90,12 @@ copied paint order (game#1167).
 
 ## Acceptance criteria
 
-- [ ] Every existing snapshot of the kit is unchanged.
-- [ ] A snapshot of the example skin shows a range as a fill and a
+- [x] Every existing snapshot of the kit is unchanged.
+- [x] A snapshot of the example skin shows a range as a fill and a
       flashed tile inverted.
-- [ ] A test asks a zoomable sprite skin for its levels and gets a skin
+- [x] A test asks a zoomable sprite skin for its levels and gets a skin
       at another zoom with a different `tile_size`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -103,5 +103,56 @@ copied paint order (game#1167).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done:**
+
+- **Zoom.** `GridSkin` has `zoom_levels()`, `zoom()` and
+  `at_zoom(zoom) -> Option<Rc<dyn GridSkin<U>>>`, none by default. A zoom
+  is a factor (console pixels per pixel of the art), not an index.
+  `SpriteSkin::with_zooms(&[1, 2])` gives a sprite skin its levels; it
+  zooms only when its terrain tiles paint the ground.
+- **Walk speeds.** `WalkSpeeds::held` was already there (ticket 1115):
+  nothing to add.
+- **The painter per frame.** `GridSkin::paint` already takes a
+  `&dyn UnitPainter<U>` per call, so a screen can build its painter in its
+  own `draw`. The painter is told the skin's `Grid`, which gives the
+  zoom. `grid::skin`'s module docs say how a game with its own painters
+  and several looks uses the kit with no skin trait of its own, with a
+  compiled example.
+- **`GlyphStyle`** (`grid::glyph::style`), on a new `GlyphSkin::style`
+  field: ranges `Tint` or `Fill { glyphs, skip }`, flashes `Blend` or
+  `Invert`, the cursor `Pulse` or `Flat`, threat marks `Highlighted` or
+  `Plain { edge }`, and `side_cells`. `GlyphStyle::PLAIN` is today's look,
+  and every existing snapshot is unchanged.
+- **The example** `toy::grid::ONE_BIT`, with a snapshot
+  (`one_bit_example_snapshot`) and unit tests for each part of the style.
+
+**Deviations:**
+
+- **`Fill` isn't `Fill(Cell)`.** One cell for every range would make all
+  the ranges look the same. The one-bit look shows each range as its own
+  pattern (move as dots, attack as lines). So a fill uses the range's own
+  color as the background, keeps the glyphs and colors them with a named
+  palette color. `skip` names ranges a game marks some other way: the
+  game's danger zone is an edge drawn by its painter in `paint_under`.
+- **More than range, flash and margin.** The game's
+  `map_view/playdate.rs` also draws its cursor differently (flat marks
+  that flip pixels, never two in one pixel, clipped to the whole area)
+  and its threat marks (arrow-colored, on a named edge). Without these in
+  the style, game#1167 couldn't remove its copied paint order, so they
+  are `CursorLook::Flat` and `ThreatLook::Plain`.
+- **No tileset id on `GridSkin`.** The game's `MapSkin::tileset_id` is
+  the game's own data. The docs say to keep it, and whatever else the
+  painter needs, next to the skin in a small struct of the game's own.
+
+**For the game (game#1167):** `GlyphSkin` has a new public field, so a
+struct literal of it no longer compiles. Use `GlyphSkin::new(colors,
+walk, foot_px)`, or add `style: GlyphStyle::PLAIN`. The game's `GLYPH`
+in `map_view/glyph.rs` needs that one-line change when game#1167 moves
+the pin. Its one-bit skin becomes `GLYPH.styled(GlyphStyle { range:
+RangeLook::Fill { glyphs: "map_marked_glyph", skip: &[danger] }, flash:
+FlashLook::Invert, cursor: CursorLook::Flat, threat: ThreatLook::Plain {
+edge: "map_threat_edge" }, side_cells: 1 })`, with the skin's threat
+color `"map_threat"`. The game's PR moving the pin is game#1167 (not
+opened yet).
+
+**Follow-ups:** none.
