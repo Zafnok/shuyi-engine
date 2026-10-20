@@ -619,3 +619,29 @@ On graphics:
     before 2402 and 2403 start. It can be changed later either way;
   - sound: the same, with 2902 deciding before 2210–2214 and
     3030–3032 start. quad-snd still goes.
+
+## 2026-10-20: Steam achievements and cloud saves get tickets
+
+Source: Nick, in a Claude Code session on 2026-10-20, after a comparison
+with Bevy 0.20 and Godot 4.6 found features no ticket covered, and two
+of them (Steam achievements and cloud saves, and reading Spine's files)
+were left as questions for him:
+
+> "anyway make sure steam achievements and cloud saves are covered by
+> some ticket so it's not lost"
+
+So, taking the recommendation he was offered (he may veto it):
+
+- **The engine gets an achievements service with no store in it** (3036):
+  achievements and stats as data, a local backend for builds with no
+  store, a test backend, an unlock notice and an achievements screen.
+- **Steam goes under it, behind the `steam` feature** (3037): Steamworks
+  achievements and stats, and saves in Steam Cloud (Auto-Cloud by
+  default, the Cloud API when a game needs it). 1144 already puts
+  Steamworks in the engine behind that feature for networking.
+- **What stays the game's** (2026-10-15, game ticket 0903): the Steam
+  partner account, the app id, the store page, and setting up the
+  achievements and the cloud quota on the Steamworks site.
+- Both tickets are parked like the rest, until after the MVP.
+
+Reading Spine's files is still open: Nick asked for more checking first.

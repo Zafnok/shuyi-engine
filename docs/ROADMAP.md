@@ -275,11 +275,11 @@ specifications, never copied. The order, when unparked:
 
 On 2026-10-20 a comparison with Bevy 0.20 and Godot 4.6 found engine
 features that no ticket covered (`AGENTS.md` rule 2). The game needs
-none of them, so each is parked under Nick's rule of 2026-10-14. Two
-more are questions for Nick, not tickets: Steam achievements and cloud
-saves (Steam is the game's ticket 0903 today), and reading Spine's
-files (its runtime license asks every user to own an editor license).
-The order, when unparked:
+none of them, so each is parked under Nick's rule of 2026-10-14. Nick
+then asked that Steam achievements and cloud saves have tickets too
+([`decisions.md`](decisions.md), 2026-10-20). Reading Spine's files is
+still a question for Nick (its runtime license asks every user to own
+an editor license). The order, when unparked:
 
 - **Animation beyond clips:** particles (2103) and state machines over
   clips (2104) after 1123; skeletal animation (2105) after 2703, then
@@ -294,6 +294,8 @@ The order, when unparked:
 - **2D effects:** screen effects (2326) on the wgpu renderer that 3034
   plans, then a game's own shaders (2327) and 2D lights (2328, also
   after 1120).
+- **Store services:** achievements and stats with no store in them
+  (3036), then Steam achievements, stats and cloud saves (3037).
 
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
@@ -316,4 +318,5 @@ The order, when unparked:
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |
 | 2325 | A frame profiler in the debug view: phase times, spans, a graph, and a trace file | Nick asks |
+| 3036–3037 | Store services: achievements and stats as data with a local backend, an unlock notice and an achievements screen, then Steam achievements, stats and Steam Cloud saves behind the `steam` feature | Nick asks (2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost") |
 | 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |

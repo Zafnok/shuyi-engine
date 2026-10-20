@@ -23,13 +23,21 @@ truth. 2105 builds rigs in our RON. This ticket reads the files bone
 tools write, so an artist's work goes straight in.
 
 DragonBones writes a skeleton file (`*_ske.json`) and a texture atlas
-(`*_tex.json` beside a PNG). Its runtimes are MIT (DragonBonesJS,
-`github.com/DragonBones/DragonBonesJS`, as third-party listings say;
-checked 2026-10-20 in those listings only; its LICENSE file is still to be read). Its
-format is documented in that repository. The original editor is reported
-discontinued; the DragonBonesJS docs point to LoongBones for making the
-files. Either way the format stays readable, and other engines' runtimes
-read it.
+(`*_tex.json` beside a PNG). What was checked on 2026-10-20 (GitHub, the
+`DragonBones` organization):
+
+- **The runtimes are MIT and maintained.** `DragonBonesJS`'s `LICENSE`
+  is MIT ("Copyright (c) 2012-2025 The DragonBones team"), with a
+  PixiJS 8 runtime added in May 2025. `DragonBonesCSharp`,
+  `DragonBonesUnity` and `Godot-DragonBones` had commits in 2026.
+- **The old desktop editor (DragonBones Pro) is gone; LoongBones
+  replaced it.** LoongBones is the same team's online editor, with
+  documentation updated in October 2026 (`DragonBones/Loongbones-doc`).
+  Its export panel offers "DragonBones JSON" with a data version to
+  pick, so the format is still what the tool writes. Its price could
+  not be confirmed: one forum post calls it free, another says it no
+  longer is.
+- So the format is alive, and the files artists make today import here.
 
 We write our own serde types from the documentation. No crate, and no
 code copied from a runtime.
@@ -45,8 +53,8 @@ None.
 ## Scope
 
 **In:**
-- **Check the license first.** Read `LICENSE` in the DragonBonesJS
-  repository and the format document's own terms. Record both, with the
+- **Check the license first.** Re-read `LICENSE` in the DragonBonesJS
+  repository (MIT on 2026-10-20) and the format document's own terms. Record both, with the
   date, in the Completion notes and in `docs/formats.md`. If either is
   not permissive (ADR-0002 §8), stop and ask Nick with the `ask-nick`
   skill.
@@ -55,7 +63,10 @@ None.
   standard format, with its id, extension, size limit and a property
   test that random bytes never panic it. It reads format 5.x
   (`version` and `compatibleVersion`), and rejects older versions with
-  a clear error.
+  a clear error. Export a small rig from LoongBones at the newest data
+  version it offers and list in the Completion notes any field this
+  reader doesn't know; fields it doesn't know are warnings, never
+  silently dropped.
   - the first armature, or the one named by the asset path's `#name`;
   - bones: `parent`, `transform` (`x`, `y`, `skX` as the rotation, in
     degrees, to 1119's `Angle`), `length`;
