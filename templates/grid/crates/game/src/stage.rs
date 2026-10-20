@@ -52,15 +52,15 @@ impl Terrains for Terrain {
 }
 
 /// The glyph skin: two cells a tile.
-pub const GLYPHS: GlyphSkin = GlyphSkin {
-    colors: MapColors {
+pub const GLYPHS: GlyphSkin = GlyphSkin::new(
+    MapColors {
         path: "path",
         cursor: "cursor",
         threat: "threat",
     },
-    walk: WalkSpeeds::of(8.0),
-    foot_px: 0,
-};
+    WalkSpeeds::of(8.0),
+    0,
+);
 
 /// Which piece.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

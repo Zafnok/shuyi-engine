@@ -19,6 +19,9 @@
 //! [`watch`] every file read, to log or time what it loads; with `std`,
 //! [`reading`] makes one thread read another bundle (a test of a smaller
 //! build's bundle).
+use alloc::collections::BTreeMap;
+
+use crate::error::ContentError;
 use crate::prelude::*;
 
 #[cfg(feature = "std")]
@@ -268,6 +271,69 @@ impl Bundle {
         list(self.read(), dir, true)
     }
 
+    /// Parses every file of extension `ext` (without the dot) directly inside
+    /// `dir` with `parse`, into a map by file name without the extension.
+    /// A file that is not valid UTF-8 is an error of `E` ([`NotText`]); every
+    /// broken file is reported, not only the first: the result is either the
+    /// whole map or all the errors, in file order.
+    ///
+    /// ```
+    /// use shuyi_assets::bundle::{Bundle, Layer};
+    /// use shuyi_assets::ContentError;
+    ///
+    /// static FILES: &[(&str, &[u8])] = &[("crops/a.txt", b"1"), ("crops/b.txt", b"2")];
+    /// let bundle = Bundle::new(vec![Layer::table("base", FILES)]);
+    /// let crops = bundle.load_each("crops", "txt", |file| {
+    ///     file.text
+    ///         .parse::<u32>()
+    ///         .map_err(|e| vec![ContentError::new(file.path, e.to_string())])
+    /// });
+    /// assert_eq!(crops.unwrap().get("b"), Some(&2));
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Every error `parse` returned, and a [`NotText`] for each file that
+    /// is not UTF-8.
+    pub fn load_each<T, E: From<NotText>>(
+        &self,
+        dir: &str,
+        ext: &str,
+        mut parse: impl FnMut(&LoadFile<'_>) -> Result<T, Vec<E>>,
+    ) -> Result<BTreeMap<String, T>, Vec<E>> {
+        let mut loaded = BTreeMap::new();
+        let mut errors = Vec::new();
+        for path in self.files_in(dir) {
+            let name = path.rsplit('/').next().unwrap_or(path);
+            let Some(stem) = name
+                .strip_suffix(ext)
+                .and_then(|stem| stem.strip_suffix('.'))
+            else {
+                continue;
+            };
+            let shown = self.display_path(path);
+            let Some(text) = self.file(path) else {
+                errors.push(NotText { path: shown }.into());
+                continue;
+            };
+            match parse(&LoadFile {
+                stem,
+                path: &shown,
+                text,
+            }) {
+                Ok(value) => {
+                    loaded.insert(stem.to_owned(), value);
+                }
+                Err(more) => errors.extend(more),
+            }
+        }
+        if errors.is_empty() {
+            Ok(loaded)
+        } else {
+            Err(errors)
+        }
+    }
+
     /// The human-facing name of `path`: under the name of the layer it is
     /// read from (`base/data/x.ron`), or of the first layer that is neither
     /// private nor test files when no layer has it.
@@ -285,6 +351,31 @@ impl Bundle {
         self.layers
             .iter()
             .any(|layer| layer.private && shown_under(shown, layer.name))
+    }
+}
+
+/// One file of a folder, as [`Bundle::load_each`] hands it to a parser.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LoadFile<'a> {
+    /// The file's name without its folder and extension (`data/a.ron` is `a`).
+    pub stem: &'a str,
+    /// The file's human-facing name ([`Bundle::display_path`]), for errors.
+    pub path: &'a str,
+    /// The file's text.
+    pub text: &'static str,
+}
+
+/// A file that is not valid UTF-8: what [`Bundle::load_each`] turns into
+/// the loader's own error type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NotText {
+    /// The file's human-facing name.
+    pub path: String,
+}
+
+impl From<NotText> for ContentError {
+    fn from(not_text: NotText) -> Self {
+        Self::new(not_text.path, "file is not valid UTF-8")
     }
 }
 
@@ -677,6 +768,39 @@ mod tests {
             ]
         );
         assert!(bundle.files_under("no_such_dir").is_empty());
+    }
+
+    /// A folder of two good files, a bad one, a binary one and another kind.
+    static FOLDER: &[(&str, &[u8])] = &[
+        ("n/a.num", b"1"),
+        ("n/b.num", b"2"),
+        ("n/bad.num", b"x"),
+        ("n/bin.num", &[0xff]),
+        ("n/other.txt", b"9"),
+    ];
+
+    fn parse_num(file: &LoadFile<'_>) -> Result<u32, Vec<ContentError>> {
+        file.text
+            .parse()
+            .map_err(|_| vec![ContentError::new(file.path, "not a number")])
+    }
+
+    #[test]
+    fn load_each_gathers_a_map_by_name_or_every_error() {
+        let bundle = Bundle::new(vec![Layer::table("base", FOLDER)]);
+        let errors = bundle.load_each("n", "num", parse_num).unwrap_err();
+        let files: Vec<_> = errors.iter().map(ToString::to_string).collect();
+        assert_eq!(files.len(), 2);
+        assert!(files[0].contains("base/n/bad.num") && files[0].contains("not a number"));
+        assert!(files[1].contains("base/n/bin.num") && files[1].contains("not valid UTF-8"));
+        let good = Bundle::new(vec![Layer::table("base", &FOLDER[..2])]);
+        let map = good.load_each("n", "num", parse_num).unwrap();
+        assert_eq!(
+            map.into_iter().collect::<Vec<_>>(),
+            [("a".to_owned(), 1), ("b".to_owned(), 2)]
+        );
+        let none = good.load_each("nope", "num", parse_num).unwrap();
+        assert!(none.is_empty());
     }
 
     /// A file that isn't UTF-8.
