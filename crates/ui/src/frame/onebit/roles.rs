@@ -70,7 +70,7 @@ impl PatternMap {
     }
 
     /// `rgb` dithered by its luminance.
-    const fn dithered(rgb: Rgb) -> Shade {
+    fn dithered(rgb: Rgb) -> Shade {
         Shade::rows(dither(255 - luminance(rgb)))
     }
 }

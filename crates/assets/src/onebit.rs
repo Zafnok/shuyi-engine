@@ -51,19 +51,20 @@ pub type Rows = [u8; 8];
 /// (black): black where `4 × order + 2 < darkness`, so 64 is
 /// [`Base::Dither25`], 128 [`Base::Dither50`] and 192
 /// [`Base::Dither75`] exactly, and the levels between fall evenly.
-pub const fn dither(darkness: u8) -> Rows {
+pub fn dither(darkness: u8) -> Rows {
+    // At most 4 × 63 + 2 = 254: no overflow.
+    rows_where(|x, y| 4 * BAYER[y][x] + 2 < darkness)
+}
+
+/// The rows of a pattern black where `black(x, y)` says (each 0 to 7).
+fn rows_where(black: impl Fn(usize, usize) -> bool) -> Rows {
     let mut rows = [0; 8];
-    let mut y = 0;
-    while y < 8 {
-        let mut x = 0;
-        while x < 8 {
-            // At most 4 × 63 + 2 = 254: no overflow.
-            if 4 * BAYER[y][x] + 2 >= darkness {
-                rows[y] |= 0x80 >> x;
+    for (y, row) in rows.iter_mut().enumerate() {
+        for x in 0..8 {
+            if !black(x, y) {
+                *row |= 0x80 >> x;
             }
-            x += 1;
         }
-        y += 1;
     }
     rows
 }
@@ -157,20 +158,8 @@ impl Base {
     }
 
     /// Its rows.
-    pub const fn rows(self) -> Rows {
-        let mut rows = [0; 8];
-        let mut y = 0;
-        while y < 8 {
-            let mut x = 0;
-            while x < 8 {
-                if !self.is_black(x, y) {
-                    rows[y] |= 0x80 >> x;
-                }
-                x += 1;
-            }
-            y += 1;
-        }
-        rows
+    pub fn rows(self) -> Rows {
+        rows_where(|x, y| self.is_black(x, y))
     }
 }
 
@@ -218,16 +207,13 @@ impl Pattern {
 
     /// Its rows, fixed to the screen: screen pixel `(x, y)` takes bit
     /// `x % 8` of row `y % 8`.
-    pub const fn rows(self) -> Rows {
-        let mut rows = self.base.rows();
+    pub fn rows(self) -> Rows {
+        let rows = self.base.rows();
         if self.inverted {
-            let mut y = 0;
-            while y < 8 {
-                rows[y] = !rows[y];
-                y += 1;
-            }
+            rows.map(|row| !row)
+        } else {
+            rows
         }
-        rows
     }
 
     /// How many of its 64 pixels are black.

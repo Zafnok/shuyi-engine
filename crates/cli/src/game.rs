@@ -184,8 +184,7 @@ pub trait GameTools {
     /// (ADR-0008 §4; `shuyi_assets::onebit::check`). `None`, the default,
     /// doesn't offer them, and `check --target` says they weren't checked.
     /// An error (the files don't load) fails the check.
-    fn one_bit(&self, target: &str) -> Option<Result<OneBitSkin, String>> {
-        let _ = target;
+    fn one_bit(&self, _target: &str) -> Option<Result<OneBitSkin, String>> {
         None
     }
 

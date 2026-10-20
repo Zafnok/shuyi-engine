@@ -153,6 +153,7 @@ fn a_pattern_is_spelled_as_its_base_or_inverted() {
     let twice: Pattern = ron::from_str("Inverted(Inverted(HLines))").unwrap();
     assert_eq!(twice, Pattern::from(Base::HLines));
     assert!(!twice.is_inverted());
+    assert!(Pattern::from(Base::HLines).inverted().is_inverted());
     assert_eq!(twice.base(), Base::HLines);
     assert!(Pattern::WHITE.is_solid());
     assert!(Pattern::WHITE.inverted().is_solid());
