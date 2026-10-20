@@ -91,6 +91,7 @@ fn cut_keeps_a_text_that_fits_and_ends_a_longer_one_with_an_ellipsis() {
 /// Cancel.
 #[test]
 fn every_screen_declares_its_actions() {
+    use crate::prelude::*;
     use crate::screen::Screen;
     use crate::toy::{self, Action, Toy};
     use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorRight, CursorUp};
