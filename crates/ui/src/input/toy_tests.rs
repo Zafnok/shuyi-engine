@@ -5,6 +5,8 @@
 
 use core::time::Duration;
 
+use crate::prelude::*;
+
 use shuyi_assets::keymap::KeymapDef;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, Layout, UiAction};
 

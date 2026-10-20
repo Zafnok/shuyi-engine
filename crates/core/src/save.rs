@@ -111,6 +111,9 @@ impl<'de> Visitor<'de> for VersionOnly {
 
 #[cfg(test)]
 mod tests {
+    use alloc::format;
+    use alloc::string::{String, ToString};
+
     use serde::de::value::{Error, U32Deserializer};
 
     use super::*;

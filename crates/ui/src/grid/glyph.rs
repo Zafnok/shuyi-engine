@@ -249,6 +249,7 @@ pub(crate) mod tests {
     use crate::grid::scene::{CursorStyle, CursorView, RangeName, ThreatView};
     use crate::grid::skin::NoUnits;
     use crate::grid::testing::{any_area, any_scene};
+    use crate::prelude::*;
     use crate::toy::grid::{GLYPH, GRASS, Kit, Letters, Piece, SAND, WATER};
 
     /// A 70 × 30-cell map area: 35 × 30 of this skin's tiles.

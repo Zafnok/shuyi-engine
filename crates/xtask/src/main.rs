@@ -2,8 +2,10 @@
 //!
 //! - `cargo xtask ticket-lint [--pr-branch <branch>] [--game-repo <path>]`
 //! - `cargo xtask check-links`
+//! - `cargo xtask check-no-std`
 
 mod links;
+mod no_std;
 mod tickets;
 
 use std::path::{Path, PathBuf};
@@ -15,7 +17,10 @@ usage:
       Check tickets/open and tickets/done (tickets/README.md). `game#NNNN` ids
       are checked against the game's checkout at <path>, or on GitHub with `gh`.
   cargo xtask check-links
-      Check that every relative link in the Markdown files resolves.";
+      Check that every relative link in the Markdown files resolves.
+  cargo xtask check-no-std
+      Check that shuyi-core, shuyi-ui and shuyi-platform use no `std::` path
+      outside `cfg(feature = \"std\")` (ADR-0008 §5).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -23,6 +28,7 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("ticket-lint") => ticket_lint(&root, &args[1..]),
         Some("check-links") if args.len() == 1 => report("check-links", &links::run(&root), &[]),
+        Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE

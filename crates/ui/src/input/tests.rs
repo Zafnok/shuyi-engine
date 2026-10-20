@@ -10,6 +10,7 @@ use super::sample::{
 };
 use super::state::seconds_to_micros;
 use super::*;
+use crate::prelude::*;
 use Action::{Confirm, CursorDown, CursorLeft, CursorRight, CursorUp, Info};
 
 fn chord(s: &str) -> Chord {

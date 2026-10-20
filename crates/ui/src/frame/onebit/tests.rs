@@ -11,6 +11,7 @@ use shuyi_assets::ink::Ink;
 use super::*;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, Layer, Overlay, Rect, Sprite};
+use crate::prelude::*;
 
 /// The colour reserved for `ink`.
 fn c(ink: Ink) -> Rgb {
@@ -475,7 +476,9 @@ fn a_picture_its_sources_size_samples_as_before() {
 
 /// A picture the converter made (`shuyi_assets::bitmap::convert`), read
 /// from its file, draws pixel for pixel as converted, see-through where
-/// the image was.
+/// the image was. The converter is `std`-only (ADR-0008 §5), so this test
+/// is too.
+#[cfg(feature = "std")]
 #[test]
 fn a_converted_picture_draws_as_converted() {
     use shuyi_assets::bitmap::Bitmap;

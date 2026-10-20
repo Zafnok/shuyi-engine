@@ -2,6 +2,8 @@
 //! the update and its steps, the audio, the frame presented), the loading
 //! card, suspend and resume, quitting, and the system keyboard.
 
+use alloc::collections::BTreeMap;
+use alloc::format;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
@@ -252,10 +254,16 @@ impl LookOfToy for Toy {
     }
 }
 
-static FONT: std::sync::LazyLock<shuyi_assets::font::FontAtlasDef> =
-    std::sync::LazyLock::new(Default::default);
-static IMAGES: std::sync::LazyLock<shuyi_assets::image::ImageTable> =
-    std::sync::LazyLock::new(Default::default);
+/// An empty font and image table: the toy draws neither.
+static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef {
+    cell_w: 0,
+    cell_h: 0,
+    columns: 0,
+    glyphs: BTreeMap::new(),
+};
+static IMAGES: shuyi_assets::image::ImageTable = shuyi_assets::image::ImageTable {
+    images: BTreeMap::new(),
+};
 
 #[test]
 fn the_game_is_shown_with_its_look_and_its_background() {

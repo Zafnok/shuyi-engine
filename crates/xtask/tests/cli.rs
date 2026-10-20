@@ -91,3 +91,17 @@ fn ticket_lint_rejects_an_unknown_option() {
         assert!(err.contains("usage:"), "{args:?}: {err}");
     }
 }
+
+#[test]
+fn check_no_std_passes_on_the_repository() {
+    let (ok, err) = xtask(&["check-no-std"]);
+    assert!(ok, "{err}");
+    assert!(err.contains("check-no-std: ok"), "{err}");
+}
+
+#[test]
+fn check_no_std_takes_no_arguments() {
+    let (ok, err) = xtask(&["check-no-std", "extra"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}

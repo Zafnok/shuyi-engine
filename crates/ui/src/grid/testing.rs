@@ -10,6 +10,7 @@ use super::scene::{
     CursorStyle, CursorView, MapScene, RangeLayer, RangeName, ThreatView, TileView,
 };
 use crate::frame::glyph_buffer::Rect;
+use crate::prelude::*;
 use crate::toy::grid::Piece;
 
 /// The toy's ranges, and one its palette lacks.

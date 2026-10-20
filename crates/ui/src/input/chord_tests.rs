@@ -10,6 +10,7 @@ use super::sample::{
     Action, InputState, KeyGroup, Keymap, PadBindings, PlayerKeys, RIGHT_HANDED, load_keymap,
 };
 use super::*;
+use crate::prelude::*;
 use Action::{
     Cancel, Confirm, CursorDown, CursorLeft, CursorRight, CursorUp, EndTurn, NextUnit, PrevUnit,
 };

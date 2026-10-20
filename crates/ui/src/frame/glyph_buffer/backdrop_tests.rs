@@ -1,6 +1,6 @@
 //! Tests of see-through cells and the [`Backdrop`] (game ADR-0048).
 
-use std::rc::Rc;
+use alloc::rc::Rc;
 
 use super::*;
 
@@ -238,7 +238,7 @@ fn fade_is_clamped_and_full_brightness_changes_nothing() {
         assert_eq!(b, busy(), "{same}");
         // Not even a copy of the scene is made.
         let shown = b.backdrop().map(Backdrop::scene);
-        assert!(shown.is_some_and(|shown| std::ptr::eq(shown, &raw const *scene)));
+        assert!(shown.is_some_and(|shown| core::ptr::eq(shown, &raw const *scene)));
     }
     for black in [0.0, -1.0, f32::NEG_INFINITY] {
         let mut b = busy();

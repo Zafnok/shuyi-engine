@@ -39,18 +39,16 @@ thiserror.workspace = true
 # The player's saved key bindings (game ADR-0031) and profiles.
 serde.workspace = true
 ron.workspace = true
-# `HashMap` without `std` (game ADR-0070 §3).
-hashbrown.workspace = true
 # Float maths without `std` (game ADR-0070 §3).
 libm.workspace = true
 
 [dev-dependencies]
 # The toy game for the integration tests in tests/.
-shuyi-ui = { path = ".", features = ["toy"] }
+shuyi-ui = { path = ".", default-features = false, features = ["toy"] }
 # The Harness the integration tests drive the toy with (a dev-dependency
 # cycle Cargo allows: it is built on this crate as the tests see it).
-shuyi-platform = { path = "../platform", features = ["harness"] }
+shuyi-platform = { path = "../platform", default-features = false, features = ["harness"] }
 # A sample game's actions and keymap file for the tests.
-shuyi-assets = { path = "../assets", features = ["sample-actions"] }
+shuyi-assets = { path = "../assets", default-features = false, features = ["sample-actions"] }
 proptest.workspace = true
 insta.workspace = true
