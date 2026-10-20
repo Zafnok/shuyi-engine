@@ -12,12 +12,12 @@ expression: h.snapshot()
       a small game made with Shuyi Engine       
                                                 
                                                 
-                  ┌─────────┐                   
-                  │ Play    │                   
-                  │ Options │                   
-                  │ Quit    │                   
-                  └─────────┘                   
-                                                
+                  ┌──────────┐                  
+                  │ Play     │                  
+                  │ Options  │                  
+                  │ Profiles │                  
+                  │ Quit     │                  
+                  └──────────┘                  
                                                 
                                                 
                                                 
@@ -37,12 +37,12 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaadddddddddddddddddddddddddddddddddddaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaeeeeeeeeeeeaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaefffffffffeaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaegggggggggeaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaegggggggggeaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaeeeeeeeeeeeaaaaaaaaaaaaaaaaaaa
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaeeeeeeeeeeeeaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaeffffffffffeaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaeggggggggggeaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaeggggggggggeaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaeggggggggggeaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaeeeeeeeeeeeeaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa

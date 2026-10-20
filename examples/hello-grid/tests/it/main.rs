@@ -1,13 +1,15 @@
 //! Hello, Grid played through the engine's test Harness, by its bots and
 //! through its tools: the playthrough to the win, the bots over its
 //! `TurnRules`, the same seed and commands giving the same game, its
-//! options and key rebinding, its files, and pictures of its frames.
+//! options and key rebinding, its profiles, its files, and pictures of its
+//! frames.
 
 mod bots;
 mod determinism;
 mod files;
 mod options;
 mod playthrough;
+mod profiles;
 mod snapshot;
 
 use hello_grid::Hello;
