@@ -389,7 +389,7 @@ or `--out <file>`) and says what went in, the sizes and the times:
 
 ```text
 bake: target/shuyi/game.shuyipak: 10 files, 6 baked (english, keymap, palette, dialogue, map, font atlas)
-  size: sources 41,223 bytes, pack 20,570 bytes (49%)
+  size: sources 41,223 bytes, pack 20,631 bytes (50%)
   baked in 2.4 ms
   load: sources 0.6 ms, pack 0.3 ms
 ```
@@ -405,11 +405,14 @@ pack (embedded, as `include_bytes!` embeds it) and reading from it.
 
 | Files | Loose | Pack | Load, loose | Load, pack (open + read) | Pack open alone |
 | ----- | ----- | ---- | ----------- | ------------------------ | --------------- |
-| Hello, Grid, native | 41,223 bytes | 20,570 bytes (50%) | 0.19 ms | 0.075 ms | 0.013 ms |
-| Hello, Grid, web | 41,223 bytes | 20,570 bytes (50%) | 0.22 ms | 0.055 ms | 0.010 ms |
+| Hello, Grid, native | 41,223 bytes | 20,631 bytes (50%) | 0.19 ms | 0.075 ms | 0.013 ms |
+| Hello, Grid, web | 41,223 bytes | 20,631 bytes (50%) | 0.22 ms | 0.055 ms | 0.010 ms |
 | the game's public assets, native | 813,487 bytes | 603,462 bytes (74%) | 1.15 ms | 0.85 ms | 0.25 ms |
 | the game's public assets, web | 813,487 bytes | 595,573 bytes (73%) | 1.17 ms | 0.91 ms | 0.27 ms |
 
+- **Hello, Grid's size** is today's. Its times were measured when its
+  keymap's buttons were written as numbers, 61 bytes smaller; they are
+  written by their names now, as target profiles read them.
 - **Hello, Grid** bakes every text file it loads: its English, keymap,
   palette, dialogue, map and font atlas. Its two PNG files stay as they are.
   It loads from its pack 2.5× faster natively and 4× faster on the web.
