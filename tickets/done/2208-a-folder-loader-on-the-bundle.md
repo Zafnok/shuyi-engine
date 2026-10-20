@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 2208 — A folder loader on the bundle
@@ -69,12 +69,12 @@ this one (game#1169).
 
 ## Acceptance criteria
 
-- [ ] Unit: a folder with two good files, one bad one and one of
+- [x] Unit: a folder with two good files, one bad one and one of
       another extension gives the two errors of the bad one only; with
       no bad file, the map of two by name.
-- [ ] Unit: a file that isn't UTF-8 gives one error naming its display
+- [x] Unit: a file that isn't UTF-8 gives one error naming its display
       path.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -82,5 +82,4 @@ this one (game#1169).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Added `Bundle::load_each(dir, ext, parse)` in `crates/assets/src/bundle.rs`, with `LoadFile` (stem, display path, text) and `NotText` (converts into `ContentError`; any `E: From<NotText>` works). Every error is gathered, in file order. No other engine loop uses `files_in(` and the engine has no free-function front for the default bundle, so nothing else moved. No follow-ups. Game PR to move the pin: game#1169 (not yet opened). Nick: nothing.
