@@ -143,6 +143,8 @@ mod tests {
 
     use super::*;
 
+    use crate::prelude::*;
+
     fn p(x: i32, y: i32) -> Pos {
         Pos::new(x, y)
     }

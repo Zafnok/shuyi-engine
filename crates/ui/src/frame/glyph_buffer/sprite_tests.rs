@@ -1,8 +1,8 @@
 //! Sprite items (ticket 0231, game ADR-0038): clipping, cutting and `blit`
 //! follow the rules overlays have.
 
-use std::collections::HashMap;
-use std::rc::Rc;
+use alloc::collections::BTreeMap;
+use alloc::rc::Rc;
 
 use proptest::prelude::*;
 use shuyi_assets::image::{ImageInfo, ImageTable};
@@ -570,7 +570,7 @@ proptest! {
     ) {
         let mut b = buf(w, h);
         // Per sprite tag: the pixels of cells replaced after it was added.
-        let mut replaced: HashMap<i32, Vec<PxRect>> = HashMap::new();
+        let mut replaced: BTreeMap<i32, Vec<PxRect>> = BTreeMap::new();
         let mut next_tag = 0;
         for op in ops {
             match op {

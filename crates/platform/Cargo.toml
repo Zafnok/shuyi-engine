@@ -17,7 +17,7 @@ workspace = true
 [features]
 default = ["std"]
 # Without it the crate is `no_std` + `alloc`, for the Playdate (ADR-0008 §5;
-# the CI gate is ticket 3005's).
+# CI's `no-std` job builds it so, ticket 3005).
 std = ["shuyi-assets/std", "shuyi-ui/std"]
 # `harness`: the headless test driver for a game's integration tests
 # (game ADR-0017).
@@ -31,5 +31,5 @@ shuyi-ui = { path = "../ui", default-features = false }
 
 [dev-dependencies]
 # The Harness and the toy game for the tests.
-shuyi-platform = { path = ".", features = ["harness"] }
-shuyi-ui = { path = "../ui", features = ["toy"] }
+shuyi-platform = { path = ".", default-features = false, features = ["harness"] }
+shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }

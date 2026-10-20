@@ -21,8 +21,6 @@ include_dir = "0.7"
 thiserror = { version = "2", default-features = false }
 once_cell = { version = "1", default-features = false, features = ["race", "alloc"] }
 libm = "0.2"
-# `HashMap` without `std` (game ADR-0070 §3).
-hashbrown = "0.17"
 proptest = "1"
 insta = "1"
 

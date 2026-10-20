@@ -289,7 +289,8 @@ impl TileSet {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use alloc::collections::BTreeSet;
+    use alloc::string::ToString;
 
     use proptest::prelude::*;
 

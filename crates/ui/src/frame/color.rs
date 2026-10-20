@@ -13,8 +13,9 @@ use core::any::TypeId;
 
 use shuyi_assets::palette::PaletteDef;
 
-/// A 24-bit RGB colour.
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+/// A 24-bit RGB colour. Ordered red, then green, then blue: an order for
+/// maps, not a look.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Rgb {
     /// Red channel.
     pub r: u8,

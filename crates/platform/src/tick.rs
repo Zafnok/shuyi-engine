@@ -53,6 +53,7 @@ impl TickClock {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::*;
 
     const STEP_NS: u64 = 16_666_667;
 

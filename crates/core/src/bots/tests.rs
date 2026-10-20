@@ -1,5 +1,6 @@
 //! Tests of the play loop over a toy game: tic-tac-toe.
 
+use alloc::format;
 use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;

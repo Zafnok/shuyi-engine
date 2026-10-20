@@ -151,7 +151,10 @@ jobs:
           cargo shuyi check --target all
           cargo shuyi check-keys
 
-  # The crates a Playdate game builds without `std` (game ADR-0070 §3, §6).
+  # The crates a Playdate game builds without `std` (ADR-0008 §5, ticket
+  # 3005): built for a target that has no `std` at all, their tests run
+  # without `std` on the host, and no `std::` path outside
+  # `cfg(feature = "std")`.
   no-std:
     name: no-std
     needs: changes
@@ -164,9 +167,18 @@ jobs:
       - run: rustup show
       - run: rustup target add thumbv7em-none-eabihf
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: cargo build -p shuyi-core --no-default-features --target thumbv7em-none-eabihf --locked
+      - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
-      - run: cargo build -p shuyi-ui --no-default-features --target thumbv7em-none-eabihf --locked
+      - run: cargo xtask check-no-std
+      # The same tests as with `std`, the headless backend's included. The
+      # test harness and the dev-dependencies bring `std` into the build,
+      # and with it `std`'s own float methods, which win over the `Float`
+      # trait the `no_std` code imports: those imports are unused here
+      # only. The target build above denies every warning.
+      - name: The tests without std
+        env:
+          RUSTFLAGS: -D warnings -A unused-imports
+        run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
 
   # The platform boundary touches no device (ticket 3003, ADR-0008 §2):
   # macroquad, gilrs and the audio crates stay out of `shuyi-platform`'s

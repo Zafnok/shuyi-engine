@@ -199,15 +199,11 @@ mod tests {
         }
     }
 
+    /// A storage that ignores writes and key validation must fail the suite.
     #[test]
+    #[should_panic(expected = "assertion `left == right` failed")]
     fn conformance_suite_rejects_a_broken_storage() {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            conformance_suite(&mut Broken);
-        }));
-        assert!(
-            result.is_err(),
-            "a storage that ignores writes and key validation must fail the suite"
-        );
+        conformance_suite(&mut Broken);
     }
 
     #[test]

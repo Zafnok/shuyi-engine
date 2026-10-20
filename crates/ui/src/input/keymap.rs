@@ -4,7 +4,6 @@
 
 use crate::prelude::*;
 use alloc::collections::BTreeMap;
-use hashbrown::HashMap;
 use shuyi_assets::keymap::KeymapDef;
 use shuyi_assets::keymap::{
     ActionSet, Button, ButtonChord, Chord, ChordDef, Key, Layout, RepeatDef, UiAction,
@@ -22,12 +21,12 @@ use super::state::Device;
 pub struct Keymap<A: ActionSet> {
     /// Every chord that does something, fixed keys included, with its
     /// actions in group order.
-    bindings: HashMap<Chord, Vec<A>>,
+    bindings: BTreeMap<Chord, Vec<A>>,
     /// Each action's own chords (not the fixed keys), in the order given.
     chords: BTreeMap<A, Vec<Chord>>,
     /// Every controller button or button chord that does something, with
     /// its actions in group order.
-    pad: HashMap<ButtonChord, Vec<A>>,
+    pad: BTreeMap<ButtonChord, Vec<A>>,
     /// Each action's buttons and button chords, in the order given.
     buttons: BTreeMap<A, Vec<ButtonChord>>,
     repeat: RepeatDef,
@@ -58,7 +57,7 @@ impl<A: ActionSet> Keymap<A> {
     /// [reserved](Chord::is_reserved) chords (plain `Escape` and `Delete`)
     /// are left out.
     pub fn new(bindings: impl IntoIterator<Item = (Chord, A)>, repeat: RepeatDef) -> Self {
-        let mut lookup = HashMap::new();
+        let mut lookup = BTreeMap::new();
         let mut chords: BTreeMap<A, Vec<Chord>> = BTreeMap::new();
         for (chord, action) in bindings {
             if chord.is_reserved() {
@@ -77,7 +76,7 @@ impl<A: ActionSet> Keymap<A> {
         Self {
             bindings: lookup,
             chords,
-            pad: HashMap::new(),
+            pad: BTreeMap::new(),
             buttons: BTreeMap::new(),
             repeat,
             chord: ChordDef::default(),
@@ -299,8 +298,8 @@ impl<A: ActionSet> Keymap<A> {
 
 /// Binds `item` to `action` in `lookup`, replacing (and returning) the
 /// action of the same group it had; its actions stay in group order.
-fn put<T: Copy + Eq + core::hash::Hash, A: ActionSet>(
-    lookup: &mut HashMap<T, Vec<A>>,
+fn put<T: Copy + Ord, A: ActionSet>(
+    lookup: &mut BTreeMap<T, Vec<A>>,
     item: T,
     action: A,
 ) -> Option<A> {

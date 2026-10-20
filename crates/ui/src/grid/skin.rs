@@ -311,6 +311,7 @@ pub fn cells_of(px: PxRect) -> Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::*;
     use crate::toy::grid::{Kit, Piece};
 
     /// A skin whose every tile is the pixel rectangle it was built with.

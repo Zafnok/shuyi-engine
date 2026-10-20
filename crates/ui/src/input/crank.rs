@@ -96,6 +96,8 @@ mod tests {
 
     use super::*;
 
+    use crate::prelude::*;
+
     fn crank(notch_degrees: u16) -> Crank {
         Crank::new(CrankDef { notch_degrees })
     }
