@@ -6,7 +6,7 @@ use alloc::borrow::Cow;
 use std::sync::OnceLock;
 
 use proptest::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::*;
 use crate::audio::{
@@ -51,7 +51,7 @@ fn alone<F: Format>(format: &F, path: &str, bytes: &[u8]) -> Result<F::Asset, Ve
 }
 
 /// A bundle of `files`, shown under `base`, kept for the rest of the run.
-fn bundle(files: Vec<(&'static str, Vec<u8>)>) -> &'static Bundle {
+pub(crate) fn bundle(files: Vec<(&'static str, Vec<u8>)>) -> &'static Bundle {
     let mut table: Vec<(&'static str, &'static [u8])> = files
         .into_iter()
         .map(|(path, bytes)| (path, &*Box::leak(bytes.into_boxed_slice())))
@@ -84,7 +84,7 @@ fn named<F: Format>(format: &F, id: &str, extensions: &[&str], max_bytes: usize)
 
 /// The start of a WAV file: a `LIST` chunk (odd-sized, so padded), then
 /// `fmt `.
-fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
+pub(crate) fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
     let mut w = b"RIFF\0\0\0\0WAVELIST\x05\0\0\0abcde\0fmt \x10\0\0\0".to_vec();
     w.extend_from_slice(&encoding.to_le_bytes());
     w.extend_from_slice(&channels.to_le_bytes());
@@ -117,7 +117,7 @@ fn ogg_page(granule: u64, body: &[u8]) -> Vec<u8> {
 
 /// A whole OGG Vorbis file's framing: [`ogg`]'s first page, filled out to
 /// the 30 bytes it declares, then a last page at `samples`.
-fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
+pub(crate) fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
     let mut o = ogg(2, rate);
     o.resize(29 + 30, 0);
     o.extend_from_slice(&ogg_page(samples, &[0; 40]));
@@ -125,7 +125,7 @@ fn ogg_file(rate: u32, samples: u64) -> Vec<u8> {
 }
 
 /// A 2 × 1 RGBA PNG of `pixels`.
-fn png_file(pixels: [u8; 8]) -> Vec<u8> {
+pub(crate) fn png_file(pixels: [u8; 8]) -> Vec<u8> {
     let mut out = Vec::new();
     {
         let mut encoder = png::Encoder::new(&mut out, 2, 1);
@@ -138,24 +138,24 @@ fn png_file(pixels: [u8; 8]) -> Vec<u8> {
 }
 
 /// The tests' terrains: `plain` and `water`.
-fn terrain(id: &str) -> Option<u8> {
+pub(crate) fn terrain(id: &str) -> Option<u8> {
     let at = ["plain", "water"].iter().position(|&t| t == id)?;
     u8::try_from(at).ok()
 }
 
 /// The tests' maps' format.
-const MAP_FORMAT: MapFormat<'static> = MapFormat {
+pub(crate) const MAP_FORMAT: MapFormat<'static> = MapFormat {
     looks: &["outdoor", "indoor"],
     max_size: 8,
 };
 
 /// The `.map` format of the tests' terrains.
-fn map_text() -> MapText<u8> {
+pub(crate) fn map_text() -> MapText<u8> {
     MapText::new(MAP_FORMAT, terrain)
 }
 
 /// The language packs of a game with no tokens and the tests' limits.
-fn lang_pack() -> LangPackRon {
+pub(crate) fn lang_pack() -> LangPackRon {
     LangPackRon::new(LIMITS, &NoTokens)
 }
 
@@ -170,8 +170,8 @@ fn rules(variants: &'static [&'static str]) -> PackRules<'static> {
 }
 
 /// The tests' shots.
-#[derive(Debug, Deserialize)]
-enum Shot {
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub(crate) enum Shot {
     Logo,
     Card(char),
 }
@@ -191,8 +191,8 @@ impl ShotCheck<Shot> for AnyShot {
 }
 
 /// The tests' data table, read by [`Ron`].
-#[derive(Debug, PartialEq, Eq, Deserialize)]
-struct Table {
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct Table {
     rows: Vec<u8>,
 }
 
@@ -217,11 +217,11 @@ impl SceneRules<Cue> for Rules {
     }
 }
 
-const PALETTE: &str = "{\"black\": \"#000000\", \"grass\": \"#00ff00\"}";
-const LIGHTS: &str = "{\"noon\": (grey: 0.0, tint: (1.0, 1.0, 1.0)), \"dusk\": (grey: 0.35, tint: (0.62, 0.56, 0.46))}";
-const NAMES: &str = "{\"hero\": \"Ana\", \"town\": \"Osk\"}";
-const ATLAS: &str = "(cell_w: 8, cell_h: 16, columns: 16, glyphs: {'a': 0, 'b': 1})";
-const CREDITS: &str = r#"(credits: [
+pub(crate) const PALETTE: &str = "{\"black\": \"#000000\", \"grass\": \"#00ff00\"}";
+pub(crate) const LIGHTS: &str = "{\"noon\": (grey: 0.0, tint: (1.0, 1.0, 1.0)), \"dusk\": (grey: 0.35, tint: (0.62, 0.56, 0.46))}";
+pub(crate) const NAMES: &str = "{\"hero\": \"Ana\", \"town\": \"Osk\"}";
+pub(crate) const ATLAS: &str = "(cell_w: 8, cell_h: 16, columns: 16, glyphs: {'a': 0, 'b': 1})";
+pub(crate) const CREDITS: &str = r#"(credits: [
     (id: "font", group: Fonts, title: "A Font", author: "Ann",
      source: "https://example.org/font", license: "OFL-1.1"),
 ])"#;
@@ -231,7 +231,7 @@ const BAD_CREDITS: &str = r#"(credits: [
     (id: "art", group: Art, title: "Art", author: "Bob",
      source: "https://example.org/art", license: "Custom (Shop)", private: ["/abs"]),
 ])"#;
-const MANIFEST: &str = r#"(
+pub(crate) const MANIFEST: &str = r#"(
     music_fade_ms: 500,
     sounds: [
         (id: "tick", files: ["sfx/tick.wav"], volume: 100, credit: Own),
@@ -242,7 +242,7 @@ const MANIFEST: &str = r#"(
     pools: [],
     credits: [],
 )"#;
-const SCRIPT: &str = "\
+pub(crate) const SCRIPT: &str = "\
 @scene gate
 @caption The gate, dusk
 @left mentor neutral
@@ -261,16 +261,16 @@ mentor: Still here.
 @endif
 @end
 ";
-const MAP: &str = "(name: \"Field\", legend: {'.': \"plain\", '~': \"water\"}, look: (tiles: \"indoor\"))\n---\n.~\n~.\n";
-const FILM: &str = "(id: \"title\", length: Seconds(10.0), shots: [(at: 0.0, shot: Logo), (at: 6.0, shot: Card('A'))])";
-const ENGLISH_UI: &str = r#"{"a.one": "One", "a.two": "Two {count}"}"#;
-const PACK_INFO: &str = r#"(name: "Test", made_by: Machine)"#;
-const PACK_UI: &str = r#"[(key: "a.one", source: "One", text: "Un")]"#;
-const TABLE: &str = "(rows: [1, 2])";
+pub(crate) const MAP: &str = "(name: \"Field\", legend: {'.': \"plain\", '~': \"water\"}, look: (tiles: \"indoor\"))\n---\n.~\n~.\n";
+pub(crate) const FILM: &str = "(id: \"title\", length: Seconds(10.0), shots: [(at: 0.0, shot: Logo), (at: 6.0, shot: Card('A'))])";
+pub(crate) const ENGLISH_UI: &str = r#"{"a.one": "One", "a.two": "Two {count}"}"#;
+pub(crate) const PACK_INFO: &str = r#"(name: "Test", made_by: Machine)"#;
+pub(crate) const PACK_UI: &str = r#"[(key: "a.one", source: "One", text: "Un")]"#;
+pub(crate) const TABLE: &str = "(rows: [1, 2])";
 
 /// The files the fuzzed files name: an atlas's picture, a manifest's
 /// sound, a pack's English and screen text.
-fn fixtures() -> &'static Bundle {
+pub(crate) fn fixtures() -> &'static Bundle {
     static FIXTURES: OnceLock<&'static Bundle> = OnceLock::new();
     FIXTURES.get_or_init(|| {
         bundle(vec![

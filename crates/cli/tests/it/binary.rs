@@ -231,7 +231,7 @@ fn new_doctor_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 16);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 18);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
@@ -314,7 +314,7 @@ fn import_outside_a_project_reads_the_engines_standard_kinds() {
 fn the_ops_that_run_the_game_say_they_need_its_tool_program() {
     let dir = scratch("no-game-ops");
     fs::write(dir.join("shuyi.ron"), "()").unwrap();
-    for op in ["check", "run", "scene", "replay", "bots"] {
+    for op in ["check", "run", "scene", "replay", "bots", "bake"] {
         let output = shuyi(&dir, &[op, "--json"]);
         assert_eq!(output.status.code(), Some(2), "{op}");
         let answer = json(&output);

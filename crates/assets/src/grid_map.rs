@@ -128,7 +128,7 @@ impl MapLook {
 
 /// A map's legend: tile character → terrain id as written, and what each
 /// resolved to.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Legend<T> {
     /// Character → terrain id, as written in the file.
     pub names: BTreeMap<char, String>,
@@ -170,7 +170,7 @@ impl<T: Copy + PartialEq> Legend<T> {
 
 /// A map read from a `.map` file: its tiles and features, the legend it
 /// was written with (for printing it back) and its look.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GridMap<T, F> {
     /// The map's display name.
     pub name: String,
@@ -181,7 +181,33 @@ pub struct GridMap<T, F> {
     /// The legend from the file.
     pub legend: Legend<T>,
     /// How the map looks.
+    #[serde(with = "look_in_full")]
     pub look: MapLook,
+}
+
+/// A map's look in a map's serde form (a baked map, `pack`): both fields,
+/// always. The look's own form leaves the default light out, which only a
+/// format that names its fields (RON) reads back.
+mod look_in_full {
+    use alloc::string::String;
+
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use super::MapLook;
+
+    pub(super) fn serialize<S: Serializer>(
+        look: &MapLook,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        (&look.tiles, &look.light).serialize(serializer)
+    }
+
+    pub(super) fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<MapLook, D::Error> {
+        let (tiles, light) = <(String, String)>::deserialize(deserializer)?;
+        Ok(MapLook { tiles, light })
+    }
 }
 
 impl<T: 'static, F: 'static> AssetKind for GridMap<T, F> {

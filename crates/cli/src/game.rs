@@ -5,14 +5,17 @@
 //! names that program ([`crate::project::GameProgram`]) and `shuyi` runs
 //! it with `cargo run` for the commands that run the game: `frame-png`,
 //! `lang-status`, and the contract's `check`, `run`, `scene`, `replay`,
-//! `bots` and `import`.
+//! `bots`, `import` and `bake`.
 
 use std::process::Command;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
+use shuyi_assets::bundle::Bundle;
+use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
+use shuyi_assets::pack::Bake;
 
 use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::import::Importers;
@@ -54,6 +57,18 @@ pub struct GameLang {
     /// The variants of a pack's line, in the pack files' order (`text_m`,
     /// `text_f`: `["m", "f"]`).
     pub variants: Vec<String>,
+}
+
+/// What a game bakes into its pack ([`GameTools::bake`]).
+#[derive(Debug)]
+pub struct GameBake {
+    /// Which assets of which kinds, and the game's stamp.
+    pub bake: Bake,
+    /// The bundle of its sources: the layers it ships for the target.
+    pub bundle: Bundle,
+    /// The formats its loaders read the sources with (the pack's own are
+    /// added to them).
+    pub formats: Formats,
 }
 
 /// What a game gives the commands that run it. Only `frame-png`'s and
@@ -114,6 +129,14 @@ pub trait GameTools {
     /// standard ones unless the game adds its own.
     fn importers(&self) -> Importers {
         Importers::standard()
+    }
+
+    /// `bake` and `check --baked`: what the game bakes for `target`
+    /// (`None` for its default bundle), from which bundle, read with which
+    /// formats. The target is the game's to pick layers and kinds by.
+    fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
+        let _ = target;
+        Err(unsupported("bake and check --baked", "bake"))
     }
 }
 
@@ -206,5 +229,9 @@ mod tests {
         let bots = Plain.bots(&BotsInput::default()).unwrap_err();
         assert!(bots.contains("GameTools::bots"));
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
+        assert_eq!(
+            Plain.bake(Some("desktop")).unwrap_err(),
+            "the game's tools don't offer bake and check --baked (GameTools::bake)"
+        );
     }
 }

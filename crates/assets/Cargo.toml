@@ -35,9 +35,16 @@ once_cell.workspace = true
 # Float rounding without `std` (lights).
 libm.workspace = true
 png = { version = "0.18", optional = true }
+# The pack (`pack`, ADR-0023): the binary form of a baked asset, and the
+# compression of a pack's files. Both without `std`, for the Playdate;
+# LZ4 in safe code, with its decoder checked so broken bytes are an error.
+postcard = { version = "1.1", default-features = false, features = ["alloc"] }
+lz4_flex = { version = "0.14", default-features = false, features = ["alloc", "safe-encode", "safe-decode", "checked-decode"] }
 
 [dev-dependencies]
 proptest.workspace = true
+# The pinned binary form of every engine kind (`pack`'s tests).
+insta.workspace = true
 # Its own tests read PNGs too (`bitmap::convert::png_pixels`), whatever
 # features the test run turns on.
 shuyi-assets = { path = ".", features = ["png"] }

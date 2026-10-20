@@ -19,8 +19,8 @@ mod source;
 use alloc::collections::{BTreeMap, BTreeSet};
 use core::fmt;
 
-use serde::Deserialize;
 use serde::de::{Deserializer, MapAccess, Visitor};
+use serde::{Deserialize, Serialize};
 
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
@@ -98,7 +98,7 @@ impl fmt::Display for LangCode {
 }
 
 /// Who made a pack's text.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum MadeBy {
     /// Machine-translated.
     Machine,
@@ -107,7 +107,7 @@ pub enum MadeBy {
 }
 
 /// A pack's `lang.ron`.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct LangInfo {
     /// The language's own name for itself.
@@ -117,7 +117,7 @@ pub struct LangInfo {
 }
 
 /// One piece of a pack's text.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Entry {
     /// Which text this is.
@@ -129,7 +129,7 @@ pub struct Entry {
 }
 
 /// One language other than English.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LangPack {
     /// Its name and who made it.
     pub info: LangInfo,

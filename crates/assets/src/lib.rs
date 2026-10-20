@@ -17,7 +17,9 @@
 //! Formats are plugins ([`format`](mod@format), ADR-0007): each kind of
 //! asset is a plain type, the parsers above are formats of their kinds,
 //! and a game registers its own kinds and formats beside the engine's in
-//! a [`Formats`] registry, then asks it for an asset by id.
+//! a [`Formats`] registry, then asks it for an asset by id. A game may
+//! ship its assets baked into one [`pack`] (`.shuyipak`), proven equal to
+//! its sources.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -47,6 +49,7 @@ pub mod keymap;
 pub mod lang;
 pub mod lighting;
 pub mod names;
+pub mod pack;
 pub mod palette;
 pub mod ron;
 pub mod target;

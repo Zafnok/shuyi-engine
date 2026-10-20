@@ -14,13 +14,14 @@ are the other two ways to reach them.
 | Op | Does | Needs |
 | -- | ---- | ----- |
 | `new <template> <dir>` | A new game in `dir` from `templates/grid` or `templates/blank` | nothing |
-| `check` | Loads the game's content through every validator: every error, with file, line and message | the game |
+| `check [--baked]` | Loads the game's content through every validator: every error, with file, line and message. With `--baked`, bakes the game's pack too, and every asset read from it must equal the one read from its source | the game |
 | `check --target <id \| all>` | Whether the game's frame at its scale fits a target's display inside its safe area, and its smallest text is as tall as the target asks (ADR-0008 §1): each problem with its target, its setting in `shuyi.ron`'s `targets` and the numbers; a warning doesn't fail it | the project file |
 | `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds | the game |
 | `scene [steps]` | The same, answering with the scene or stage on screen | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
 | `import <file> [--kind K] [--print]` | Reads a file through the format registry as every kind that knows it, or gives its errors | the game's kinds, or the engine's |
+| `bake [--target <id>] [--out <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors | the game |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker on the Windows GNU toolchain, and the web target, and says how to fix each | nothing |
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
@@ -41,7 +42,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 1,
+  "contract": 3,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null },
@@ -99,9 +100,11 @@ doesn't offer it:
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)` |
 | `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
+| `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 
-Hello, Grid's `src/tools.rs` and the grid template's
-`crates/game/src/tools.rs` write every one.
+Hello, Grid's `src/tools.rs` writes every one. The grid template's
+`crates/game/src/tools.rs` writes every one but `bake`: a new game ships
+its loose files until it chooses a pack.
 
 A state hash is `shuyi_core::state_hash`, over any `Serialize` state: the
 same on every platform and every run, if the state's maps are ordered.

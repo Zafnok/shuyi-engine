@@ -15,6 +15,7 @@
 //! with the `png` feature. A game that draws through `shuyi-app` needs
 //! none: the platform decodes a PNG's pixels when it uploads the picture.
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use alloc::collections::BTreeMap;
 
@@ -28,7 +29,7 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format, Formats};
 pub const MAX_SIDE: u32 = 4096;
 
 /// An image's size in pixels.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ImageInfo {
     /// Width in pixels.
     pub width: u32,
@@ -60,7 +61,7 @@ impl AssetKind for ImageInfo {
 
 /// An image's pixels: four bytes each (red, green, blue, alpha), row by
 /// row from the top.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Image {
     /// Width in pixels.
     pub width: u32,

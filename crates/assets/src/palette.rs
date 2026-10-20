@@ -3,6 +3,7 @@
 //! theme is another palette file with exactly the names of the default
 //! one ([`theme_problems`]). As a format (ADR-0007): [`PaletteRon`].
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use alloc::collections::BTreeMap;
 
@@ -59,7 +60,7 @@ impl Format for PaletteRon {
 }
 
 /// The validated palette: colour name → RGB.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PaletteDef {
     /// Every colour in the file, by name.
     pub colors: BTreeMap<String, [u8; 3]>,

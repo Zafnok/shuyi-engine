@@ -3,6 +3,7 @@
 //! as written. Translations and voice clips attach to it, so rewording a
 //! line gives it a new id and moving it does not.
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use alloc::collections::BTreeMap;
 use core::fmt;
@@ -18,7 +19,7 @@ pub const REPLY_SPEAKER: &str = "*";
 /// repeats of the same speaker and text in one scene. Unique across every
 /// dialogue file. Empty on a step built by hand until
 /// [`Scene::assign_line_ids`] runs (the parser runs it).
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
 pub struct LineId(String);
 
 impl LineId {
