@@ -257,6 +257,7 @@ mod tests {
         assert_eq!(parse_args(&args(&["--target", "web"])), Ok(on("web")));
         assert!(parse_args(&args(&["--target"])).is_err());
         assert!(parse_args(&args(&["web"])).is_err());
+        assert!(parse_args(&args(&["--targets", "web"])).is_err());
         assert_eq!(
             usage("shuyi"),
             "usage: shuyi check [--target <id | all>] [--json]"

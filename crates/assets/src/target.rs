@@ -363,6 +363,25 @@ mod tests {
     }
 
     #[test]
+    fn a_safe_area_may_leave_a_pixel_and_text_sizes_may_be_equal() {
+        let equal = profile("small", "").replace("good_text_px: 10", "good_text_px: 8");
+        assert!(read("small", &equal).is_ok());
+        let pixel = profile(
+            "small",
+            "safe_area: (left: 1, right: 398, top: 1, bottom: 238)",
+        );
+        assert!(read("small", &pixel).is_ok());
+        for insets in ["left: 1, right: 399", "top: 1, bottom: 239"] {
+            let none = profile("small", &format!("safe_area: ({insets})"));
+            assert_eq!(
+                read("small", &none).unwrap_err(),
+                ["t.ron: display: the safe area leaves nothing of 400 × 240"],
+                "{insets}"
+            );
+        }
+    }
+
+    #[test]
     fn a_size_shrinks_by_its_insets_and_shows_its_mode() {
         let insets = Insets {
             top: 10,

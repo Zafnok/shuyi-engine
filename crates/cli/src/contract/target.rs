@@ -109,6 +109,13 @@ pub fn engine_profiles() -> Result<BTreeMap<String, Profile>, Vec<ContentError>>
     read_all(files)
 }
 
+/// Whether the file shown as `shown` is a profile's: a `.ron` file.
+fn is_profile(shown: &str) -> bool {
+    AssetPath::new(shown)
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("ron"))
+}
+
 /// The profiles of `files` (each a shown name and its bytes; only `.ron`
 /// ones are read), by id, with every error of every file.
 fn read_all(
@@ -116,13 +123,7 @@ fn read_all(
 ) -> Result<BTreeMap<String, Profile>, Vec<ContentError>> {
     let mut out = BTreeMap::new();
     let mut errors = Vec::new();
-    for (shown, bytes) in files {
-        let extension = AssetPath::new(shown.as_str())
-            .extension()
-            .map(str::to_ascii_lowercase);
-        if extension.as_deref() != Some("ron") {
-            continue;
-        }
+    for (shown, bytes) in files.filter(|(shown, _)| is_profile(shown)) {
         match decode(&shown, &bytes) {
             Ok(profile) => {
                 out.insert(
@@ -159,6 +160,9 @@ pub fn profiles(
     let mut errors = Vec::new();
     for entry in entries.flatten() {
         let shown = format!("{dir}/{}", entry.file_name().to_string_lossy());
+        if !is_profile(&shown) {
+            continue;
+        }
         match fs::read(entry.path()) {
             Ok(bytes) => files.push((shown, bytes)),
             Err(e) => errors.push(ContentError::new(shown, e.to_string())),

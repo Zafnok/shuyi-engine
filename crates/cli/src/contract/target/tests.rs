@@ -155,6 +155,7 @@ fn a_fit_scale_is_the_smaller_of_across_and_down() {
     assert_eq!(small, Factor { num: 240, den: 512 });
     assert_eq!(small.shown(), "0.46");
     assert_eq!(Factor::whole(3).shown(), "3");
+    assert_eq!(Factor { num: 4, den: 2 }.shown(), "2");
     // A frame of nothing doesn't divide by zero.
     assert_eq!(scale_on(Scale::Fit, (0, 0), &deck), Factor::whole(800));
 }
@@ -366,6 +367,12 @@ fn a_games_profiles_add_to_the_engines_or_replace_one() {
         ..Config::default()
     };
     assert_eq!(profiles(&missing, &dir).unwrap_err()[0].file, "nope");
+    // A profile that can't be read is an error, even when the rest decode.
+    fs::remove_file(dir.join("t/bad.ron")).unwrap();
+    fs::create_dir_all(dir.join("t/folder.ron")).unwrap();
+    let errors = profiles(&config, &dir).unwrap_err();
+    let files: Vec<&str> = errors.iter().map(|e| e.file.as_str()).collect();
+    assert_eq!(files, ["t/folder.ron"]);
     assert_eq!(profiles(&Config::default(), &dir).unwrap().len(), 7);
     fs::remove_dir_all(&dir).unwrap();
 }

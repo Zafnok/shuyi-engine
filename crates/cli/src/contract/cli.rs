@@ -332,6 +332,26 @@ mod tests {
     }
 
     #[test]
+    fn check_with_a_target_runs_on_the_project_file_in_the_game_program_too() {
+        let mut p = project(PathBuf::from("."));
+        p.config = Config::parse(
+            r#"(targets: {"desktop": (frame: (800, 512), scale: integer, text_px: 16)})"#,
+        )
+        .unwrap();
+        // The fake game can't check targets: an answer of 0 is the project's.
+        assert_eq!(
+            with_game(&p, "check", &args(&["--target", "all"]), &Fake::default()),
+            0
+        );
+        assert_eq!(check_targets(&p, &args(&["--target", "all", "--json"])), 0);
+        assert_eq!(check_targets(&p, &args(&["--target", "web"])), 1);
+        assert_eq!(check_targets(&p, &args(&["--target"])), 2);
+        assert!(checks_targets("check", &args(&["--target", "all"])));
+        assert!(!checks_targets("check", &args(&["--json"])));
+        assert!(!checks_targets("run", &args(&["--target"])));
+    }
+
+    #[test]
     fn a_project_with_no_game_program_says_so() {
         assert_eq!(no_game("check", &args(&["--json"])), 2);
         assert_eq!(no_game("check", &[]), 2);
