@@ -41,8 +41,7 @@ pub mod view;
 
 use crate::prelude::*;
 pub use view::{
-    ChoicesView, GroupView, KeyBindingsView, QuestionView, RestoreView, RowView, SlotView,
-    SwitchView,
+    ChoicesView, GroupView, KeyBindingsView, RestoreView, RowView, SlotView, SwitchView,
 };
 
 use core::fmt;
@@ -57,11 +56,12 @@ use crate::input::bindings::{LayoutBindings, PadBindings};
 use crate::input::fixed::{
     capture_abort_key_name, clear_slot_key_name, is_capture_abort, is_clear_slot,
 };
-use crate::input::help_keys::SEPARATOR;
+use crate::input::help_keys::{HelpKeys, SEPARATOR};
 use crate::input::keymap::Keymap;
 use crate::input::pad::PadKind;
 use crate::input::state::Device;
 use crate::screen::{FrameInput, Screen, Transition};
+use crate::widgets::{Ask, AskView};
 
 /// What a row of the Key bindings screen sits under.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -250,8 +250,8 @@ pub struct KeyBindingsScreen<G: GameData> {
     /// The action that just lost a key to another slot, and the seconds its
     /// row stays highlighted.
     moved: Option<(G::Action, f32)>,
-    /// Whether the "restore the defaults?" question is open.
-    asking_restore: bool,
+    /// The "restore the defaults?" question, while it is open.
+    restoring: Option<Ask<bool>>,
     /// Set when a capture ends with a cursor key or button held: cursor
     /// moves are ignored until none is, because the one just pressed for
     /// the slot (or held to back out) may be one under the opened-with
@@ -268,7 +268,7 @@ impl<G: GameData> fmt::Debug for KeyBindingsScreen<G> {
             .field("slot", &self.slot)
             .field("capturing", &self.capturing)
             .field("choice", &self.choice)
-            .field("asking_restore", &self.asking_restore)
+            .field("restoring", &self.restoring.as_ref().map(Ask::key))
             .finish_non_exhaustive()
     }
 }
@@ -292,7 +292,7 @@ impl<G: GameData> Clone for KeyBindingsScreen<G> {
             choice: self.choice,
             message: self.message.clone(),
             moved: self.moved,
-            asking_restore: self.asking_restore,
+            restoring: self.restoring.clone(),
             await_release: self.await_release,
         }
     }
@@ -332,7 +332,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
             choice: None,
             message: None,
             moved: None,
-            asking_restore: false,
+            restoring: None,
             await_release: false,
         }
     }
@@ -409,18 +409,34 @@ impl<G: GameData> KeyBindingsScreen<G> {
 
     /// Whether the screen is asking before it restores the defaults.
     pub fn is_asking_restore(&self) -> bool {
-        self.asking_restore
+        self.restoring.is_some()
     }
 
     /// The question asked before restoring the shown side's defaults.
     pub fn restore_question(&self, ctx: &Ctx<G>) -> String {
-        match self.side {
-            Side::Keyboard => {
-                let layout = layout_picker::label(ctx, self.layout);
-                ctx.text_with("key_bindings.restore_keys", &[("layout", &layout)])
-            }
-            Side::Controller => ctx.text("key_bindings.restore_buttons").to_owned(),
-        }
+        Self::restore_view(ctx, &self.restore_ask(), self.layout, ctx.help_keys()).text
+    }
+
+    /// The question asked before restoring the shown side's defaults, as
+    /// it opens: yes on Confirm, no on Cancel.
+    fn restore_ask(&self) -> Ask<bool> {
+        let key = match self.side {
+            Side::Keyboard => "key_bindings.restore_keys",
+            Side::Controller => "key_bindings.restore_buttons",
+        };
+        Ask::yes_no(key, "key_bindings.restore_answers")
+    }
+
+    /// `ask`'s view, the keyboard's question naming `layout` and its
+    /// answers' keys those of `keys`.
+    fn restore_view(
+        ctx: &Ctx<G>,
+        ask: &Ask<bool>,
+        layout: Layout,
+        keys: HelpKeys<'_, G::Action>,
+    ) -> AskView<bool> {
+        let layout = layout_picker::label(ctx, layout);
+        ask.view_with_keys(ctx, keys, &[("layout", &layout)])
     }
 
     /// The message under the panel, if any.
@@ -545,7 +561,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
             return;
         }
         if self.focus().is_none() {
-            self.asking_restore = true;
+            self.restoring = Some(self.restore_ask());
         } else if matches!(ctx.device, Device::Pad(_)) {
             self.choice = Some(0);
         } else {
@@ -587,8 +603,11 @@ impl<G: GameData> KeyBindingsScreen<G> {
     /// shown side's defaults, Cancel backs out; either closes the question
     /// (and returns `true`). Nothing else does anything.
     fn answer_restore(&mut self, ctx: &mut Ctx<G>, action: G::Action) -> bool {
-        match action.ui() {
-            Some(UiAction::Confirm) => {
+        let Some(ask) = &mut self.restoring else {
+            return true;
+        };
+        match ask.handle(action, &mut ctx.audio) {
+            Some(true) => {
                 let def = ctx.game.keymap_def();
                 match self.side {
                     Side::Keyboard => self.bindings = LayoutBindings::defaults(def, self.layout),
@@ -597,10 +616,10 @@ impl<G: GameData> KeyBindingsScreen<G> {
                 self.moved = None;
                 ctx.audio.menu(MenuSound::Select);
             }
-            Some(UiAction::Cancel) => ctx.audio.menu(MenuSound::Cancel),
-            _ => return false,
+            Some(false) => ctx.audio.menu(MenuSound::Cancel),
+            None => return false,
         }
-        self.asking_restore = false;
+        self.restoring = None;
         true
     }
 
@@ -782,7 +801,7 @@ impl<G: GameData> KeyBindingsScreen<G> {
                 .collect::<Vec<_>>()
                 .join(SEPARATOR);
         }
-        if self.asking_restore {
+        if self.restoring.is_some() {
             return ctx.text_with_keys("key_bindings.help_restore", km, &[]);
         }
         if self.choice.is_some() {
@@ -848,10 +867,10 @@ impl<G: GameData> KeyBindingsScreen<G> {
             },
             not_mapped: ctx.help_keys().not_mapped().to_owned(),
             message: self.message.clone(),
-            question: self.asking_restore.then(|| QuestionView {
-                text: self.restore_question(ctx),
-                answers: ctx.text_with_keys("key_bindings.restore_answers", km, &[]),
-            }),
+            question: self
+                .restoring
+                .as_ref()
+                .map(|ask| Self::restore_view(ctx, ask, self.layout, km)),
             choices: self.choice.map(|focused| ChoicesView {
                 lines: CHOICES.map(|key| ctx.text(key).to_owned()).to_vec(),
                 focused,
@@ -935,7 +954,7 @@ impl<G: GameData> Screen<G> for KeyBindingsScreen<G> {
             }
             return Transition::None;
         }
-        if self.asking_restore {
+        if self.restoring.is_some() {
             for &action in &input.actions {
                 if self.answer_restore(ctx, action) {
                     break;
@@ -966,7 +985,7 @@ impl<G: GameData> Screen<G> for KeyBindingsScreen<G> {
                 Some(UiAction::Right) => self.move_across(ctx, true),
                 Some(UiAction::Confirm) => {
                     self.confirm(ctx);
-                    if self.capturing || self.asking_restore || self.choice.is_some() {
+                    if self.capturing || self.restoring.is_some() || self.choice.is_some() {
                         // The key that confirmed isn't the key to bind (or
                         // the answer), and nothing after it this frame
                         // counts.

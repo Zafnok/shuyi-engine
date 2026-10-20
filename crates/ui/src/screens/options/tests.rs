@@ -474,9 +474,10 @@ fn the_view_says_what_the_screen_shows() {
     let question = s.view(&c).question;
     assert_eq!(
         question,
-        Some(QuestionView {
+        Some(crate::widgets::AskView {
             text: "Restore every option to its default?".to_owned(),
-            answers: "f yes / d no".to_owned(),
+            answers: Vec::new(),
+            keys: Some("f yes / d no".to_owned()),
         })
     );
     press(&mut s, &mut c, &[Action::Confirm]);
@@ -677,18 +678,17 @@ fn leaving_with_a_change_asks_with_the_cursor_on_back() {
     let view = s.view(&c);
     let leaving = view.leaving.as_ref().unwrap();
     assert_eq!(leaving.text, "Keep these changes?");
-    let labels: Vec<&str> = leaving.choices.iter().map(|c| c.label.as_str()).collect();
+    let labels: Vec<&str> = leaving.answers.iter().map(|c| c.label.as_str()).collect();
     assert_eq!(labels, ["Keep", "Discard", "Back"]);
     assert_eq!(leaving.focused(), Some(LeaveChoice::Back));
     assert_eq!(view.help, "arrows choose · f pick · d back");
-    // The cursor moves between the answers and stops at the ends; the
+    // The cursor moves between the answers, going round at the ends; the
     // rows stay as they are.
     press(&mut s, &mut c, &[Action::CursorRight]);
-    assert_eq!(s.leaving(), Some(LeaveChoice::Back));
-    assert!(sounds(&mut c).is_empty());
-    press(&mut s, &mut c, &[Action::CursorUp]);
-    assert_eq!(s.leaving(), Some(LeaveChoice::Discard));
+    assert_eq!(s.leaving(), Some(LeaveChoice::Keep));
     assert_eq!(sounds(&mut c), ["ui_move"]);
+    press(&mut s, &mut c, &[Action::CursorUp]);
+    assert_eq!(s.leaving(), Some(LeaveChoice::Back));
     press(&mut s, &mut c, &[Action::CursorLeft, Action::CursorLeft]);
     assert_eq!(s.leaving(), Some(LeaveChoice::Keep));
     press(&mut s, &mut c, &[Action::CursorDown, Action::Info]);

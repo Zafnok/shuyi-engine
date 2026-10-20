@@ -5,6 +5,7 @@
 
 use super::Side;
 use crate::prelude::*;
+use crate::widgets::AskView;
 
 /// The whole screen, as it is this frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,8 +25,9 @@ pub struct KeyBindingsView<A> {
     pub not_mapped: String,
     /// A message for the player (a key can't be used, leaving is blocked).
     pub message: Option<String>,
-    /// The yes/no question open over the rows, if any.
-    pub question: Option<QuestionView>,
+    /// The yes/no question open over the rows, if any (no answers, but
+    /// the line naming its keys).
+    pub question: Option<AskView<bool>>,
     /// The choices open under the focused slot, if any (the controller
     /// side's change / clear).
     pub choices: Option<ChoicesView>,
@@ -123,15 +125,6 @@ pub struct RestoreView {
     pub label: String,
     /// Whether the cursor is on it.
     pub focused: bool,
-}
-
-/// A yes/no question.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct QuestionView {
-    /// The question.
-    pub text: String,
-    /// How to answer: the keys for yes and no.
-    pub answers: String,
 }
 
 /// The choices a slot offers.

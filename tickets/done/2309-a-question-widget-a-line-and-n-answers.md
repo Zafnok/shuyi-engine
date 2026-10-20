@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2309 — A question widget
@@ -70,10 +70,10 @@ this one (game#1163).
 
 ## Acceptance criteria
 
-- [ ] Unit: two and three answers, wrap, Cancel with and without a
+- [x] Unit: two and three answers, wrap, Cancel with and without a
       Cancel answer, Confirm returns the focused answer.
-- [ ] The options and Key bindings snapshots are unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The options and Key bindings snapshots are unchanged.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -82,5 +82,25 @@ this one (game#1163).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **What was done:** `widgets/ask.rs`: `Ask<T>` (a text key, the
+  answers each with a text key, the focus on a `ListCursor`, the answer
+  Cancel gives or none), `handle(action, audio) -> Option<T>` (the
+  cursor's four keys step with wrap and the move sound; Confirm gives the
+  focused answer, Cancel its answer), `Ask::yes_no` for a question
+  answered by Confirm and Cancel alone with its keys named under it,
+  `view` / `view_with_keys` (`AskView<T>`, `AnswerView<T>`) and
+  `ask::glyph::paint`, the box over whatever is under it. The options
+  screen's restore question and leave question and the Key bindings
+  screen's restore question are on it; `QuestionView`, `LeaveView`,
+  `ChoiceView` and the three private painters are gone. The options and
+  Key bindings snapshots and look tests read the same cells.
+- **Deviations:** the options screen's leave question now goes round at
+  the ends (the ticket asks for wrap; it used to stop there). Its test
+  says so.
+- **API change for the game:** `OptionsView::question` is an
+  `AskView<bool>`, `OptionsView::leaving` an `AskView<LeaveChoice>` and
+  `KeyBindingsView::question` an `AskView<bool>` (the yes/no's key line is
+  `keys`, its `answers` empty). A game painter of those views follows.
+  The game's PR that moves the pin is game#1163's (not opened yet).
+- **Follow-up tickets:** none.
+- **Nick:** nothing to decide.

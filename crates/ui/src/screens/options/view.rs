@@ -7,6 +7,7 @@
 
 use super::LeaveChoice;
 use crate::prelude::*;
+use crate::widgets::AskView;
 
 /// The whole screen, as it is this frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,10 +18,12 @@ pub struct OptionsView {
     pub rows: Vec<RowView>,
     /// A message for the player (something was done, or couldn't be).
     pub message: Option<String>,
-    /// The yes/no question open over the rows, if any.
-    pub question: Option<QuestionView>,
-    /// The question asked on leaving with changes, if it is open.
-    pub leaving: Option<LeaveView>,
+    /// The yes/no question open over the rows, if any (no answers, but
+    /// the line naming its keys).
+    pub question: Option<AskView<bool>>,
+    /// The question asked on leaving with changes, if it is open: keep
+    /// them, throw them away or stay.
+    pub leaving: Option<AskView<LeaveChoice>>,
     /// The help line: what the keys do here.
     pub help: String,
 }
@@ -91,41 +94,4 @@ impl ValueView {
             _ => None,
         }
     }
-}
-
-/// A yes/no question.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct QuestionView {
-    /// The question.
-    pub text: String,
-    /// How to answer: the keys for yes and no.
-    pub answers: String,
-}
-
-/// The question asked on leaving with changes: keep them, throw them away
-/// or stay.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LeaveView {
-    /// The question.
-    pub text: String,
-    /// The answers, in order.
-    pub choices: Vec<ChoiceView>,
-}
-
-impl LeaveView {
-    /// The answer in focus.
-    pub fn focused(&self) -> Option<LeaveChoice> {
-        self.choices.iter().find(|c| c.focused).map(|c| c.choice)
-    }
-}
-
-/// One answer to a question.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChoiceView {
-    /// Which answer it is.
-    pub choice: LeaveChoice,
-    /// Its name.
-    pub label: String,
-    /// Whether the cursor is on it.
-    pub focused: bool,
 }
