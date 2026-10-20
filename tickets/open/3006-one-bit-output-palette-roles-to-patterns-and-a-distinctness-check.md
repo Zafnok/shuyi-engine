@@ -79,6 +79,8 @@ None.
 **Out (do not do):**
 - dithering sprites (3007);
 - drawing on the device (3010);
+- checking the `distinct` groups as colour-blind players see them, and text
+  contrast (2324, which reuses this ticket's groups);
 - choosing the game's patterns, which is the game's work (game 1025);
 - the new-game wizard's Playdate part. Either order: if 2504 is done,
   add a starting pattern map for the template's palette roles to the

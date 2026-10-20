@@ -273,6 +273,28 @@ specifications, never copied. The order, when unparked:
 - **Repositories of their own** (2008): last, for each piece we wrote, when
   it is a full replacement and Nick says so.
 
+On 2026-10-20 a comparison with Bevy 0.20 and Godot 4.6 found engine
+features that no ticket covered (`AGENTS.md` rule 2). The game needs
+none of them, so each is parked under Nick's rule of 2026-10-14. Two
+more are questions for Nick, not tickets: Steam achievements and cloud
+saves (Steam is the game's ticket 0903 today), and reading Spine's
+files (its runtime license asks every user to own an editor license).
+The order, when unparked:
+
+- **Animation beyond clips:** particles (2103) and state machines over
+  clips (2104) after 1123; skeletal animation (2105) after 2703, then
+  DragonBones import (2216).
+- **Free movement:** the navigation mesh (2106) after 1122.
+- **Accessibility:** hold or toggle and slower timings (2404), the
+  accessibility tree (2322) and a text size the player picks (2323,
+  after 2209) need nothing parked; the colour-vision check (2324) after
+  3006; screen reader output (3035) after 2322 and the winit backend
+  that 3034 plans.
+- **The debug view:** the frame profiler (2325) after 2315 and 2316.
+- **2D effects:** screen effects (2326) on the wgpu renderer that 3034
+  plans, then a game's own shaders (2327) and 2D lights (2328, also
+  after 1120).
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle | the game's 0060 says the army walks around freely |
@@ -290,3 +312,8 @@ specifications, never copied. The order, when unparked:
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
 | 2902–2903, 2210–2215, 2402–2403, 3030–3034, 2008 | The platform layer (ADR-0021): research on sound and on controllers, then our own WAV, Ogg and Vorbis readers, a mixer and sound output, and our own controllers, if the research keeps them; web saves; file embedding; research on replacing macroquad with winit and a 2D renderer over wgpu; and each piece we wrote in a repository of its own | Nick asks (2026-10-19: "All parked until MVP") |
+| 2103–2105, 2216 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones import | Nick asks |
+| 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
+| 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |
+| 2325 | A frame profiler in the debug view: phase times, spans, a graph, and a trace file | Nick asks |
+| 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |

@@ -56,7 +56,8 @@ None.
   either way.
 - Fixtures: a small sheet made for the tests (CC0, ours).
 
-**Out (do not do):** skeletal animation; tweens on sprites (the cinematic
+**Out (do not do):** skeletal animation (2105); which clip plays when
+(state machines, 2104); particles (2103); tweens on sprites (the cinematic
 easing covers them).
 
 ## Implementation steps
