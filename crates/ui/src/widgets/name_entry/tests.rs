@@ -41,6 +41,9 @@ fn digits_are_allowed_only_where_the_rules_say() {
     assert!(!add_char(&mut name, '3', LETTERS));
     assert!(!add_char(&mut name, '!', PROFILE));
     assert_eq!(name, "Ab");
+    assert!(add_char(&mut name, '-', LETTERS));
+    assert!(add_char(&mut name, '\'', LETTERS));
+    assert_eq!(name, "Ab-'");
 }
 
 #[test]
@@ -153,6 +156,13 @@ fn the_grid_wraps_and_keeps_to_a_shorter_rows_last_cell() {
     assert_eq!(e.focus(), (4, 4), "round to the last row, its last cell");
     e.handle(CursorRight, &mut c);
     assert_eq!(e.focus(), (4, 0));
+    // Down from a long row's end to the short last row: its last cell.
+    let mut down = NameEntry::new("", LETTERS);
+    down.handle(CursorLeft, &mut c);
+    for _ in 0..4 {
+        down.handle(CursorDown, &mut c);
+    }
+    assert_eq!(down.focus(), (4, 4));
     // Done on a blank name is refused.
     e.handle(CursorLeft, &mut c);
     sounds(&mut c);

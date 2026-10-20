@@ -620,9 +620,9 @@ impl<G: GameData> ProfilesScreen<G> {
             Ok(()) => ctx.audio.menu(MenuSound::Select),
             Err(e) => self.refused(ctx, &e),
         }
-        // A row fewer: the focus stays in the list.
+        // A row fewer: the focus stays in the list. (The cursor learns the
+        // new number of rows on the next move.)
         let profiles = ctx.profiles().all().len();
-        self.rows.set_len(profiles + 1);
         self.rows = self
             .rows
             .clone()

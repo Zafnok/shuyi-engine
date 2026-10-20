@@ -358,6 +358,16 @@ fn cancel_on_an_empty_grid_closes_it_without_asking() {
 }
 
 #[test]
+fn the_screen_is_named_and_found_by_its_type() {
+    let c = ctx();
+    let s = ProfilesScreen::new(&c);
+    assert_eq!(s.name(), "profiles");
+    let any = s.as_any().unwrap_or_else(|| panic!("no Any"));
+    assert!(any.downcast_ref::<ProfilesScreen>().is_some());
+    assert!(format!("{s:?}").starts_with("ProfilesScreen {"));
+}
+
+#[test]
 fn a_game_paints_the_view_its_own_way() {
     fn titled(c: &Ctx, view: &ProfilesView, buf: &mut GlyphBuffer) {
         let text = c.palette.engine(EngineColor::Text);
