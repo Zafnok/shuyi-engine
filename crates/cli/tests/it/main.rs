@@ -1,8 +1,9 @@
-//! `shuyi` on projects: the binary itself on scratch projects, and the
-//! toy game's tools (`frame-png`, `lang-status`) as its tool program runs
-//! them.
+//! `shuyi` on projects: the binary itself on scratch projects, the toy
+//! game's tools (`frame-png`, `lang-status`) as its tool program runs
+//! them, and the contract's checked-in schemas.
 
 mod binary;
+mod schemas;
 mod toy;
 
 use std::path::PathBuf;

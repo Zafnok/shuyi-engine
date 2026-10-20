@@ -208,3 +208,123 @@ fn a_step_that_fails_exits_1_and_says_why() {
     );
     fs::remove_dir_all(&dir).unwrap();
 }
+
+/// `output`'s stdout as a JSON answer.
+fn json(output: &Output) -> serde_json::Value {
+    serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|e| panic!("not JSON ({e}): {}", stdout(output)))
+}
+
+#[test]
+fn new_doctor_and_schema_need_no_project() {
+    let dir = scratch("no-project-ops");
+    let output = shuyi(&dir, &["schema"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout(&output).lines().any(|l| l == "run.output"));
+    let output = shuyi(&dir, &["schema", "run.output"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(json(&output)["$schema"].is_string());
+    assert_eq!(shuyi(&dir, &["schema", "nope"]).status.code(), Some(2));
+    assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
+    let output = shuyi(&dir, &["schema", "--out", "s"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 16);
+
+    let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    let answer = json(&output);
+    assert_eq!(
+        (answer["op"].as_str(), answer["ok"].as_bool()),
+        (Some("new"), Some(true))
+    );
+    assert_eq!(answer["result"]["crate_name"], "g");
+    assert!(dir.join("g/crates/game/Cargo.toml").is_file());
+    let output = shuyi(&dir, &["new", "blank", "g"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(stderr(&output).trim(), "new: g is not empty");
+    let output = shuyi(&dir, &["new", "--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(
+        json(&output)["error"],
+        "a <template> and a <dir>, nothing else"
+    );
+    let output = shuyi(&dir, &["new", "grid"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr(&output).contains("usage: shuyi new <template> <dir>"));
+
+    let output = shuyi(&dir, &["doctor", "--json"]);
+    let answer = json(&output);
+    assert_eq!(answer["op"], "doctor");
+    assert_eq!(answer["result"]["checks"][0]["name"], "rust");
+    assert_eq!(shuyi(&dir, &["doctor", "x"]).status.code(), Some(2));
+    let output = shuyi(&dir, &["doctor"]);
+    assert!(
+        stdout(&output).starts_with("doctor: host "),
+        "{}",
+        stdout(&output)
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn import_outside_a_project_reads_the_engines_standard_kinds() {
+    let dir = scratch("import");
+    fs::write(dir.join("colors.ron"), "{ \"text\": \"#ffffff\" }").unwrap();
+    let output = shuyi(&dir, &["import", "colors.ron", "--json"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
+    let answer = json(&output);
+    let kinds: Vec<&str> = answer["result"]["read_as"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|r| r["kind"].as_str())
+        .collect();
+    assert!(kinds.contains(&"palette"), "{kinds:?}");
+    let limits = answer["limits"].as_array().unwrap();
+    assert!(
+        limits
+            .iter()
+            .any(|l| l.as_str().unwrap().starts_with("no project here"))
+    );
+    let output = shuyi(
+        &dir,
+        &["import", "colors.ron", "--kind", "palette", "--print"],
+    );
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout(&output).starts_with("import: colors.ron is palette: 1 color\n"));
+    let output = shuyi(&dir, &["import", "missing.ron"]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(stderr(&output).starts_with("import: missing.ron: "));
+    assert_eq!(shuyi(&dir, &["import"]).status.code(), Some(2));
+    // In a project with no game tool program, the same.
+    fs::write(dir.join("shuyi.ron"), "()").unwrap();
+    let output = shuyi(&dir, &["import", "colors.ron", "--json"]);
+    let limits = json(&output)["limits"].clone();
+    assert!(
+        limits.to_string().contains("names no game tool program"),
+        "{limits}"
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn the_ops_that_run_the_game_say_they_need_its_tool_program() {
+    let dir = scratch("no-game-ops");
+    fs::write(dir.join("shuyi.ron"), "()").unwrap();
+    for op in ["check", "run", "scene", "replay", "bots"] {
+        let output = shuyi(&dir, &[op, "--json"]);
+        assert_eq!(output.status.code(), Some(2), "{op}");
+        let answer = json(&output);
+        assert_eq!(answer["op"], op);
+        assert!(
+            answer["error"]
+                .as_str()
+                .unwrap()
+                .contains("names no game tool program"),
+            "{answer}"
+        );
+        let output = shuyi(&dir, &[op]);
+        assert!(stderr(&output).starts_with(&format!("{op}: shuyi.ron names no game")));
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}

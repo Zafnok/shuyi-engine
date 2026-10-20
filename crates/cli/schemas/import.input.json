@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ImportInput",
+  "description": "What `import` reads.",
+  "type": "object",
+  "properties": {
+    "file": {
+      "description": "The file, from the project's root (or the working folder outside a\nproject).",
+      "type": "string"
+    },
+    "kind": {
+      "description": "Only this kind (`palette`, `image`, `map`…); every kind if none.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "print": {
+      "description": "Whether to give the asset itself, not only its summary.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "file"
+  ]
+}

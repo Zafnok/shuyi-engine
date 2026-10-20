@@ -617,3 +617,66 @@ fn a_one_bit_frame_becomes_a_black_and_white_picture() {
     assert_eq!(picture.pixel(4, 0), Some([0, 0, 0, 255]));
     assert_eq!(picture.pixel(2, 2), Some([0, 0, 0, 255]));
 }
+
+#[test]
+fn a_step_the_harness_cant_play_is_refused() {
+    assert!(Step::Keys("Enter Shift+Space".into()).check().is_ok());
+    assert!(
+        Step::Keys("Nope".into())
+            .check()
+            .unwrap_err()
+            .starts_with("keys: ")
+    );
+    assert!(Step::Pad("South East+DpadDown".into()).check().is_ok());
+    assert!(
+        Step::Pad("South+Nope".into())
+            .check()
+            .unwrap_err()
+            .starts_with("pad: ")
+    );
+    assert!(Step::Wait(0.0).check().is_ok());
+    assert!(Step::Wait(MAX_WAIT).check().is_ok());
+    for bad in [-0.5, MAX_WAIT + 0.1, f32::NAN, f32::INFINITY] {
+        let error = Step::Wait(bad).check().unwrap_err();
+        assert!(error.starts_with("wait: "), "{error}");
+        assert!(error.ends_with("from 0 to 33.3"), "{error}");
+    }
+    let script = Script {
+        steps: vec![Step::Wait(1.0), Step::Keys("Nope".into())],
+    };
+    assert!(script.check().is_err());
+    assert!(Script::default().check().is_ok());
+}
+
+#[test]
+fn a_step_is_read_from_its_flag() {
+    assert_eq!(
+        Script::parse_step("--keys", "Up"),
+        Some(Ok(Step::Keys("Up".into())))
+    );
+    assert_eq!(
+        Script::parse_step("--script", "Up"),
+        Some(Ok(Step::Keys("Up".into())))
+    );
+    assert_eq!(
+        Script::parse_step("--pad", "South"),
+        Some(Ok(Step::Pad("South".into())))
+    );
+    assert_eq!(
+        Script::parse_step("--wait", "0.5"),
+        Some(Ok(Step::Wait(0.5)))
+    );
+    assert_eq!(
+        Script::parse_step("--wait", "soon"),
+        Some(Err("--wait: not a number of seconds: soon".into()))
+    );
+    let long = Script::parse_step("--wait", "100").unwrap().unwrap_err();
+    assert!(long.starts_with("--wait: 100 is not"), "{long}");
+    assert!(
+        Script::parse_step("--keys", "Nope")
+            .unwrap()
+            .unwrap_err()
+            .starts_with("--keys: ")
+    );
+    assert_eq!(Script::parse_step("--scale", "2"), None);
+}

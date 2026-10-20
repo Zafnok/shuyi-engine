@@ -27,6 +27,9 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   (`images/card` is `images/card.png`, or `images/card.txtimg` once a
   format claims that). Two such files is an error. The code that asks
   never sees which format read the file.
+- **`shuyi import <file>`** reads a file through the registry as every
+  kind whose formats know it, and says what it read or every error
+  ([`contract.md`](contract.md)).
 
 ## The rules
 

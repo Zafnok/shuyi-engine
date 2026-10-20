@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "$ref": "#/$defs/Op"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BotsOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "BotsOutput": {
+      "description": "What `bots` found.",
+      "type": "object",
+      "properties": {
+        "games": {
+          "description": "How many games were played.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "measures": {
+          "description": "The game's measures over the plays, by name.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Spread"
+          }
+        },
+        "outcomes": {
+          "description": "How many ended each way, by outcome.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0
+          }
+        },
+        "plays": {
+          "description": "Every play, in seed order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Play"
+          }
+        },
+        "turns": {
+          "description": "How many turns the plays took.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Spread"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "games",
+        "outcomes",
+        "measures",
+        "plays"
+      ]
+    },
+    "Op": {
+      "description": "An operation of the contract.",
+      "oneOf": [
+        {
+          "description": "A new game from a template.",
+          "type": "string",
+          "const": "new"
+        },
+        {
+          "description": "Every error of the game's content.",
+          "type": "string",
+          "const": "check"
+        },
+        {
+          "description": "A key script played headless.",
+          "type": "string",
+          "const": "run"
+        },
+        {
+          "description": "The scene on screen.",
+          "type": "string",
+          "const": "scene"
+        },
+        {
+          "description": "A record replayed.",
+          "type": "string",
+          "const": "replay"
+        },
+        {
+          "description": "Bots playing the game.",
+          "type": "string",
+          "const": "bots"
+        },
+        {
+          "description": "A file read through the format registry.",
+          "type": "string",
+          "const": "import"
+        },
+        {
+          "description": "The toolchain checked.",
+          "type": "string",
+          "const": "doctor"
+        }
+      ]
+    },
+    "Play": {
+      "description": "One play.",
+      "type": "object",
+      "properties": {
+        "commands": {
+          "description": "The commands applied.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "measures": {
+          "description": "The game's own measures of it, by name.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "outcome": {
+          "description": "How it ended, in the game's words, or [`UNFINISHED`].",
+          "type": "string"
+        },
+        "record": {
+          "description": "Its record, in the game's record format, for `replay`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "seed": {
+          "description": "Its seed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "turns": {
+          "description": "The turn it ended on (past the limit if the limit stopped it).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "seed",
+        "outcome",
+        "turns",
+        "commands",
+        "measures"
+      ]
+    },
+    "Spread": {
+      "description": "How a number spread over the plays.",
+      "type": "object",
+      "properties": {
+        "max": {
+          "description": "The largest.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "mean": {
+          "description": "The mean (the sum over the plays that have it).",
+          "type": "number",
+          "format": "double"
+        },
+        "min": {
+          "description": "The smallest.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "total": {
+          "description": "The sum.",
+          "type": "integer",
+          "format": "int64"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "max",
+        "total",
+        "mean"
+      ]
+    }
+  }
+}

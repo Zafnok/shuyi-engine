@@ -1,0 +1,15 @@
+// {{name}}'s colors by name: the engine's (its screens and widgets draw
+// with them), and the game's own after them.
+{
+    // The engine's.
+    "text": "#e4e4dc",
+    "text_dim": "#8a8a80",
+    "panel": "#16161c",
+    "border": "#5a5a6e",
+    "highlight": "#ffd75a",
+    "warning": "#ff7a5a",
+    "focus": "#5ac8ff",
+    "background": "#0a0a0e",
+    "accent": "#a0e07a",
+    "bright": "#ffffff",
+}

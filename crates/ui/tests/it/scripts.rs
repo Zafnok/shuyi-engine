@@ -206,6 +206,29 @@ fn reports_the_screens_the_frame_and_a_quit() {
 }
 
 #[test]
+fn the_screen_log_says_when_the_screens_changed_and_when_it_quit() {
+    let mut h = toy();
+    assert_eq!(h.frame_count(), 0);
+    assert_eq!(h.screen_log(), [(0, vec!["home"])]);
+    // The menu opens on frame 1 and closes on frame 5; the game quits on
+    // frame 7, leaving the screens as they were.
+    h.keys("f f d d");
+    assert_eq!(h.frame_count(), 8);
+    assert_eq!(
+        h.screen_log(),
+        [
+            (0, vec!["home"]),
+            (1, vec!["home", "menu"]),
+            (5, vec!["home"])
+        ]
+    );
+    assert_eq!(h.quit_frame(), Some(7));
+    h.keys("d");
+    assert_eq!(h.quit_frame(), Some(7));
+    assert_eq!(toy().quit_frame(), None);
+}
+
+#[test]
 fn a_screen_on_the_stack_is_changed_through_the_harness() {
     let mut h = toy();
     if let Some(home) = h.screen_mut::<Home>() {

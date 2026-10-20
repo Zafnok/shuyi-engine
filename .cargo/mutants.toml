@@ -42,6 +42,9 @@ exclude_re = [
     # only mutants are the same functions.
     "<impl GameData for Hello>::voice_variant",
     "<impl ClipVariant for OnlyClip>::split",
+    # Hello, Grid's files are embedded and load without an error, so its
+    # tools' `check` is `Ok(vec![])`: that mutant is the same function.
+    "<impl GameTools for HelloTools>::check",
     # The default `Format::sniff` is `false` (a format with no magic bytes
     # knows no file by them): its `false` mutant is the same function. Its
     # `true` mutant is caught.

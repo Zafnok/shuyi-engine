@@ -1,15 +1,32 @@
 //! The game's tools for `shuyi`: `frame-png` (a picture of a scripted
-//! frame, painted with the game's own font and tileset) and `lang-status`.
-//! `examples/tools.rs` is the tool program that runs them; the tests use
-//! them too.
+//! frame, painted with the game's own font and tileset), `lang-status`,
+//! and the tool contract's `check`, `run` and `scene` (the stage's map
+//! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
+//! against the foe's mind) and `import` (the stage's `.map` and the
+//! keymap besides the engine's kinds). `examples/tools.rs` is the tool
+//! program that runs them; the tests use them too.
 
+use std::collections::BTreeMap;
+
+use serde::{Deserialize, Serialize};
+use shuyi_assets::ContentError;
+use shuyi_assets::grid_map::{GridMap, MapText};
+use shuyi_assets::keymap::{KeymapDef, KeymapRon};
+use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
+use shuyi_cli::contract::import::Importers;
+use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
+use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Painter, Script, Shot};
+use shuyi_cli::serde_json::json;
 use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
+use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play_observed};
 use shuyi_ui::harness::Harness;
 use shuyi_ui::{Game, GameData, GameHooks};
 
+use crate::map::Terrain;
+use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage};
 use crate::screens::StageScreen;
-use crate::{FONT_PNG, Hello, MapLook};
+use crate::{Action, FONT_PNG, Hello, MapLook};
 
 /// The game's own `frame-png` options.
 pub const OPTIONS: [GameOption; 3] = [
@@ -112,13 +129,138 @@ impl GameTools for HelloTools {
     }
 
     fn lang(&self) -> Result<GameLang, String> {
-        let game = Hello::load().map_err(|errors| {
-            let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
-            errors.join("\n")
-        })?;
+        let game = loaded()?;
         Ok(GameLang {
             lang: game.lang().clone(),
             variants: Vec::new(),
         })
     }
+
+    fn check(&self) -> Result<Vec<ContentError>, String> {
+        Ok(Hello::load().err().unwrap_or_default())
+    }
+
+    fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
+        let harness = Start::from_options(options)?.harness();
+        let session = Headless::new(harness).with_scene(scene).with_events(events);
+        Ok(Box::new(session))
+    }
+
+    fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
+        let parsed: StageRecord =
+            ron::from_str(&record.text).map_err(|e| format!("{}: {e}", record.file))?;
+        let stage = Stage::new(&loaded()?.stage_map, parsed.seed)?;
+        turns(&record.file, stage, &parsed.commands)
+    }
+
+    fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
+        let map = loaded()?.stage_map;
+        let plays = (input.seed..input.seed + u64::from(input.games))
+            .map(|seed| bot_play(&map, seed, input.turns))
+            .collect::<Result<_, _>>()?;
+        Ok(tally(plays))
+    }
+
+    fn importers(&self) -> Importers {
+        let mut importers = Importers::standard();
+        // Neither kind has a format in the standard registry, so neither
+        // registration is refused.
+        let map = MapText::<TerrainId, Feature>::new(rules::FORMAT, rules::terrain_named);
+        let _ = importers.formats.register(map);
+        let _ = importers.formats.register(KeymapRon::<Action>::new());
+        importers
+            .kind::<GridMap<TerrainId, Feature>>(|map| {
+                format!(
+                    "{} tiles by {}, {} piece(s)",
+                    map.tiles.width(),
+                    map.tiles.height(),
+                    map.features.len()
+                )
+            })
+            .kind::<KeymapDef<Action>>(|keymap| format!("{} layout(s)", keymap.layouts.len()))
+    }
+}
+
+/// The game's data, or its errors in a line each.
+fn loaded() -> Result<Hello, String> {
+    Hello::load().map_err(|errors| {
+        let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        errors.join("\n")
+    })
+}
+
+/// A record of a stage: its seed and the commands sent to its rules. The
+/// game's record format for `replay`; `bots` writes one of each play.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StageRecord {
+    /// The stage's seed.
+    pub seed: u64,
+    /// The commands, in order.
+    pub commands: Vec<Command>,
+}
+
+/// The stage's scene in `h`: its map as the skin of the player's
+/// settings fits it, and the rules' state.
+pub fn scene(h: &Harness<Hello>) -> Result<Scene, String> {
+    let screen = h
+        .screen::<StageScreen>()
+        .ok_or_else(|| format!("no stage is open (the top screen is `{}`)", h.top_screen()))?;
+    let map = screen.scene(StageScreen::view_tiles(h.ctx()));
+    let state = &screen.stage;
+    let at = |p: Pos| json!({ "x": p.x, "y": p.y });
+    Ok(Scene {
+        screen: "stage".to_owned(),
+        kind: "grid map".to_owned(),
+        text: map.to_text(&Terrain),
+        data: json!({
+            "turn": state.turn(),
+            "to_move": format!("{:?}", state.side_to_move()),
+            "hero": at(state.hero()),
+            "foe": at(state.foe()),
+            "goal": at(state.goal()),
+            "outcome": state.outcome().map(|o| format!("{o:?}")),
+            "commands": screen.commands.len(),
+        }),
+    })
+}
+
+/// What happened in the rules of the stage in `h`, if one is open.
+pub fn events(h: &Harness<Hello>) -> Vec<String> {
+    h.screen::<StageScreen>()
+        .map(|stage| stage.events.iter().map(|e| format!("{e:?}")).collect())
+        .unwrap_or_default()
+}
+
+/// A play of the stage of `map` seeded `seed`, to its end or turn
+/// `limit`: a random bot of the same seed moves your piece, the foe's
+/// mind the foe. Its measure is how often the foe tripped.
+fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<Play, String> {
+    let mut stage = Stage::new(map, seed)?;
+    let mut hero = RandomBot::new(seed);
+    let mut foe = Chase;
+    let mut bots: [(Side, &mut dyn Bot<Stage>); 2] =
+        [(Side::Hero, &mut hero), (Side::Foe, &mut foe)];
+    let mut trips: i64 = 0;
+    let report = play_observed(&mut stage, &mut bots, limit, |_, _, events| {
+        trips += i64::from(events.contains(&Event::Tripped));
+    })
+    .map_err(|e| format!("seed {seed}: {e}"))?;
+    let outcome = match report.outcome {
+        Some(Outcome::Won { .. }) => "won",
+        Some(Outcome::Caught { .. }) => "caught",
+        None => UNFINISHED,
+    };
+    let record = StageRecord {
+        seed,
+        commands: report.commands.clone(),
+    };
+    Ok(Play {
+        seed,
+        outcome: outcome.to_owned(),
+        turns: report.turns,
+        commands: u32::try_from(report.commands.len()).unwrap_or(u32::MAX),
+        measures: BTreeMap::from([("foe trips".to_owned(), trips)]),
+        record: ron::to_string(&record).ok(),
+    })
 }

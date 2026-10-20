@@ -223,3 +223,27 @@ fn the_clock_follows_a_switch_of_track_once_the_fade_ends() {
         clock.position
     );
 }
+
+#[test]
+fn the_audio_log_says_which_frame_asked_for_what() {
+    let theme = AudioRequest::PlayMusic {
+        cue: "theme".into(),
+    };
+    let mut h = beeper();
+    // Frames 1 and 2: the click and its release; then 3 and 4.
+    h.keys("f d");
+    assert_eq!(h.frame_count(), 4);
+    assert_eq!(h.audio_log(), [(1, &click()), (3, &theme)]);
+    let music: Vec<(u32, MusicCommand)> = h
+        .music_log()
+        .into_iter()
+        .map(|(f, c)| (f, c.clone()))
+        .collect();
+    assert_eq!(music, [(3, load("theme")), (3, start("theme"))]);
+    // Cleared, the log starts again from the next frame.
+    h.clear_audio();
+    assert!(h.audio_log().is_empty());
+    assert!(h.music_log().is_empty());
+    h.wait(FRAME_DT).keys("f");
+    assert_eq!(h.audio_log(), [(6, &click())]);
+}

@@ -48,7 +48,7 @@ impl Pos {
 }
 
 /// One of the four grid directions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Dir {
     /// `+x`.
     Right,

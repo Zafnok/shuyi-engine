@@ -1,11 +1,14 @@
-//! Shuyi Engine's tools, `shuyi`: `frame-png`, `font-atlas`, `glyph-tiles`,
-//! `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`,
-//! each a module of library functions with a thin wrapper here.
+//! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
+//! `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, each
+//! with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
+//! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
+//! `private-assets`, each a module of library functions with a thin
+//! wrapper here.
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
-//! ([`project`]), which says what each command scans and builds. Two
-//! commands run the game itself, `frame-png` and `lang-status`; a game
-//! gives them what they need ([`GameTools`]) in a program of its own that
+//! ([`project`]), which says what each command scans and builds; `new`,
+//! `doctor` and `schema` need none. The commands that run the game itself
+//! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
 //! `game`) for them.
 //!
@@ -15,6 +18,7 @@
 pub mod check_keys;
 pub mod check_text;
 pub mod codec;
+pub mod contract;
 pub mod font_atlas;
 pub mod frame_png;
 pub mod game;
@@ -31,12 +35,25 @@ use std::path::{Path, PathBuf};
 
 pub use game::{GameArg, GameLang, GameOption, GameTools};
 pub use project::Project;
+/// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
+pub use serde_json;
 
 /// The usage text, with `command` as the tool's name.
 pub fn usage(command: &str) -> String {
     format!(
         "\
 usage: {command} <command>
+
+the tool contract (each also with --json; a wrong argument prints its usage):
+  new <template> <dir>               make a new game from a template: grid, blank
+  check                              every error of the game's content, with file and line
+  run [steps] [--frames N]           play a key script headless: screens, scene, events, sounds
+  scene [steps]                      the scene on screen after a script
+  replay <record> [<other>]          a state hash per step; where two runs part
+  bots <games>                       the game's bots play: outcomes and measures
+  import <file> [--print]            read a file through the format registry
+  doctor                             check the toolchain and say how to fix it
+  schema [<name> | --out <dir>]      the contract's JSON schemas
 
 commands:
   check-keys                         fail on keys hard-coded in game code or text
@@ -51,7 +68,7 @@ commands:
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
 
 It runs on the project in the first folder from here up that holds a
-{file}.",
+{file} (new, doctor and schema need none).",
         file = project::FILE
     )
 }
@@ -63,7 +80,24 @@ It runs on the project in the first folder from here up that holds a
 pub fn main_with(args: impl Iterator<Item = String>, game: Option<&dyn GameTools>) -> u8 {
     let args: Vec<String> = args.collect();
     let here = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    match Project::find(&here) {
+    let project = Project::find(&here);
+    if let Some((name, rest)) = args.split_first() {
+        let command = project
+            .as_ref()
+            .map_or("shuyi", |project| project.config.command());
+        if let Some(code) = contract::cli::without_project(name, rest, &here, command) {
+            return code;
+        }
+        if name == "import" && project.is_err() {
+            let (json, rest) = contract::cli::split_json(rest);
+            let importers = game.map_or_else(contract::import::Importers::standard, |game| {
+                game.importers()
+            });
+            let limit = "no project here: only the engine's standard kinds were tried";
+            return contract::cli::import(json, &rest, &importers, &here, Some(limit), "shuyi");
+        }
+    }
+    match project {
         Ok(project) => run(&project, &args, game),
         Err(e) => {
             eprintln!("{e}");
@@ -82,6 +116,31 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         println!("{}", usage(command));
         return 2;
     };
+    if let Some(code) = contract::cli::without_project(name, args, &project.root, command) {
+        return code;
+    }
+    if contract::cli::runs_the_game(name) {
+        return match game {
+            Some(game) => contract::cli::with_game(project, name, args, game),
+            None if name == "import" && project.config.game.is_none() => {
+                let (json, rest) = contract::cli::split_json(args);
+                let limit = format!(
+                    "{} names no game tool program: only the engine's standard kinds were tried",
+                    project::FILE
+                );
+                contract::cli::import(
+                    json,
+                    &rest,
+                    &contract::import::Importers::standard(),
+                    &project.root,
+                    Some(&limit),
+                    command,
+                )
+            }
+            None if project.config.game.is_none() => contract::cli::no_game(name, args),
+            None => game::run_in_game_program(project, name, args),
+        };
+    }
     let outcome = match name.as_str() {
         "check-keys" => check_keys(project, args),
         "check-text" => check_text(project, args),

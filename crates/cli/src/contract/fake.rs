@@ -1,0 +1,175 @@
+//! A game and a session made up for the contract's tests: each answer is
+//! what the test sets.
+
+use shuyi_assets::ContentError;
+use shuyi_assets::lang::Lang;
+
+use super::bots::{BotsInput, BotsOutput, tally};
+use super::replay::{Record, ReplayRun, ReplayStep};
+use super::session::{Event, Scene, Session, Sound};
+use crate::frame_png::{Script, Shot, Step};
+use crate::game::{GameArg, GameLang, GameOption, GameTools};
+
+/// A session that counts frames as the Harness does (two a key, sixty a
+/// second of waiting) and shows what it was given.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FakeSession {
+    /// Frames run.
+    pub frames: u32,
+    /// The open screens.
+    pub screens: Vec<String>,
+    /// The quit's frame.
+    pub quit: Option<u32>,
+    /// The scene, or why there is none.
+    pub scene: Result<Scene, String>,
+}
+
+impl FakeSession {
+    /// A session on screen `top`, with a scene of `text`.
+    pub fn on(top: &str, text: &str) -> Self {
+        Self {
+            frames: 0,
+            screens: vec![top.to_owned()],
+            quit: None,
+            scene: Ok(Scene {
+                screen: top.to_owned(),
+                kind: "grid map".to_owned(),
+                text: text.to_owned(),
+                data: serde_json::json!({ "turn": 1 }),
+            }),
+        }
+    }
+}
+
+impl Session for FakeSession {
+    fn play(&mut self, script: &Script) {
+        for step in &script.steps {
+            self.frames += match step {
+                Step::Keys(keys) | Step::Pad(keys) => {
+                    2 * u32::try_from(keys.split_whitespace().count()).unwrap_or(0)
+                }
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                Step::Wait(seconds) => (seconds * 60.0).ceil() as u32,
+            };
+        }
+    }
+
+    fn idle(&mut self, frames: u32) {
+        self.frames += frames;
+    }
+
+    fn frame_count(&self) -> u32 {
+        self.frames
+    }
+
+    fn screens(&self) -> Vec<String> {
+        self.screens.clone()
+    }
+
+    fn quit_frame(&self) -> Option<u32> {
+        self.quit
+    }
+
+    fn snapshot(&self) -> String {
+        "AB\n--- colours ---\nab\n".to_owned()
+    }
+
+    fn events(&self) -> Vec<Event> {
+        vec![Event::Opened {
+            frame: 1,
+            screen: self.screens.last().cloned().unwrap_or_default(),
+        }]
+    }
+
+    fn sounds(&self) -> Vec<Sound> {
+        vec![Sound {
+            frame: 1,
+            cue: "click".to_owned(),
+        }]
+    }
+
+    fn scene(&self) -> Result<Scene, String> {
+        self.scene.clone()
+    }
+}
+
+/// A game whose tools answer what the test sets.
+pub struct Fake {
+    /// `check`'s answer.
+    pub check: Result<Vec<ContentError>, String>,
+    /// `session`'s session, or why there is none.
+    pub session: Result<FakeSession, String>,
+    /// `replay`: a run of the record's text, a hash a line.
+    pub replay: Result<(), String>,
+    /// `bots`'s plays, or why there are none.
+    pub bots: Result<BotsOutput, String>,
+}
+
+impl Default for Fake {
+    fn default() -> Self {
+        Self {
+            check: Ok(Vec::new()),
+            session: Ok(FakeSession::on("stage", "map")),
+            replay: Ok(()),
+            bots: Ok(tally(Vec::new())),
+        }
+    }
+}
+
+/// The fake's start option.
+pub const OPTIONS: [GameOption; 1] = [GameOption {
+    flag: "--seed",
+    value: Some("N"),
+    help: "seed it\nwith N",
+}];
+
+impl GameTools for Fake {
+    fn frame_options(&self) -> &[GameOption] {
+        &OPTIONS
+    }
+
+    fn frame(&self, _: &[GameArg], _: &Script, _: Option<u32>) -> Result<Shot, String> {
+        Err("no frame".to_owned())
+    }
+
+    fn lang(&self) -> Result<GameLang, String> {
+        Ok(GameLang {
+            lang: Lang::default(),
+            variants: Vec::new(),
+        })
+    }
+
+    fn check(&self) -> Result<Vec<ContentError>, String> {
+        self.check.clone()
+    }
+
+    fn session(&self, _: &[GameArg]) -> Result<Box<dyn Session>, String> {
+        let session = self.session.clone()?;
+        Ok(Box::new(session))
+    }
+
+    /// Each line of the record is a step's hash; a line `refused` is a
+    /// refused command.
+    fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
+        self.replay.clone()?;
+        let steps = (0..)
+            .zip(record.text.lines())
+            .map(|(step, line)| ReplayStep {
+                step,
+                command: (step > 0).then(|| format!("Step{step}")),
+                hash: line.to_owned(),
+                events: vec!["Moved".to_owned()],
+                refused: (line == "refused").then(|| "no".to_owned()),
+            })
+            .collect();
+        Ok(ReplayRun {
+            record: record.file.clone(),
+            steps,
+            outcome: Some("Won".to_owned()),
+        })
+    }
+
+    fn bots(&self, _: &BotsInput) -> Result<BotsOutput, String> {
+        self.bots.clone()
+    }
+}

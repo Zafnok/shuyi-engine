@@ -59,6 +59,15 @@ pub struct Harness<G: GameData> {
     /// What the last frame told the platform: the music and sound volumes
     /// and whether to fill the screen.
     mixer: (f32, f32, bool),
+    /// How many frames have run.
+    frames: u32,
+    /// The screens open before the first frame, then after each frame
+    /// that changed them: the frame, and the names, bottom first.
+    stacks: Vec<(u32, Vec<&'static str>)>,
+    /// The frame of each of `music`'s commands.
+    music_frames: Vec<u32>,
+    /// The frame the game asked to quit in, once it has.
+    quit_frame: Option<u32>,
 }
 
 /// The Harness's stand-in for the platform's music player: which track
@@ -110,6 +119,7 @@ impl Player {
 impl<G: GameData> Harness<G> {
     /// Drives `game` from where it is.
     pub fn new(game: Game<G>) -> Self {
+        let stacks = vec![(0, game.screens())];
         Self {
             game,
             audio: Vec::new(),
@@ -119,6 +129,10 @@ impl<G: GameData> Harness<G> {
             crank: Crank::new(CrankDef::default()),
             // Nothing told yet: as the platform starts.
             mixer: (1.0, 1.0, false),
+            frames: 0,
+            stacks,
+            music_frames: Vec::new(),
+            quit_frame: None,
         }
     }
 
@@ -312,13 +326,58 @@ impl<G: GameData> Harness<G> {
         self.player.advance(dt);
         self.game.set_music_playing(self.player.playing());
         let out = self.game.frame(events, dt);
+        self.frames += 1;
         self.mixer = (out.music_volume, out.sound_volume, out.fullscreen);
         self.audio.push(out.audio.to_vec());
         self.music.extend_from_slice(out.music);
+        self.music_frames
+            .extend(core::iter::repeat_n(self.frames, out.music.len()));
         for command in out.music {
             self.player.apply(command);
         }
+        if out.quit && self.quit_frame.is_none() {
+            self.quit_frame = Some(self.frames);
+        }
+        let screens = self.game.screens();
+        if self.stacks.last().is_none_or(|(_, last)| *last != screens) {
+            self.stacks.push((self.frames, screens));
+        }
         self
+    }
+
+    /// How many frames have run since the Harness started.
+    pub fn frame_count(&self) -> u32 {
+        self.frames
+    }
+
+    /// The screens open before the first frame (frame 0), then after each
+    /// frame that changed them: the frame, and their names, bottom first.
+    pub fn screen_log(&self) -> &[(u32, Vec<&'static str>)] {
+        &self.stacks
+    }
+
+    /// The frame the game asked to quit in, if it has (frames count from
+    /// 1).
+    pub fn quit_frame(&self) -> Option<u32> {
+        self.quit_frame
+    }
+
+    /// Every audio request since the last [`clear_audio`](Self::clear_audio),
+    /// in order, each with the frame that asked for it.
+    pub fn audio_log(&self) -> Vec<(u32, &AudioRequest<G::Voice>)> {
+        let len = u32::try_from(self.audio.len()).unwrap_or(u32::MAX);
+        let first = self.frames.saturating_sub(len) + 1;
+        (first..)
+            .zip(&self.audio)
+            .flat_map(|(frame, requests)| requests.iter().map(move |r| (frame, r)))
+            .collect()
+    }
+
+    /// Every music command since the last
+    /// [`clear_audio`](Self::clear_audio), in order, each with the frame
+    /// that gave it.
+    pub fn music_log(&self) -> Vec<(u32, &MusicCommand)> {
+        self.music_frames.iter().copied().zip(&self.music).collect()
     }
 
     /// Every audio request of the run so far, in order.
@@ -378,6 +437,7 @@ impl<G: GameData> Harness<G> {
     pub fn clear_audio(&mut self) -> &mut Self {
         self.audio.clear();
         self.music.clear();
+        self.music_frames.clear();
         self
     }
 

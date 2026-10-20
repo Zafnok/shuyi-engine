@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DoctorInput",
+  "description": "What `doctor` checks: everything (nothing to choose yet).",
+  "type": "object",
+  "additionalProperties": false
+}
