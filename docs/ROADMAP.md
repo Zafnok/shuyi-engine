@@ -116,6 +116,16 @@ The sweep also added notes to 3003 (a loading phase), 3010 (the
 game's front end as working code to lift) and 3011 (the report a
 shipped game keeps).
 
+### A frame cap
+
+Nick, 2026-10-19 ([`decisions.md`](decisions.md)): a game runs at most
+60 frames a second unless its developer says otherwise, so a simple
+game doesn't max out a CPU. Part of the MVP:
+
+| Ticket | What |
+| ------ | ---- |
+| 2321 | A frame cap: 60 by default, set by the game and the player, working with vsync and VRR, and a request the platform confirms |
+
 ### Seeing inside a running game: the debug view
 
 Nick, 2026-10-19 ([`decisions.md`](decisions.md)): see level layouts,
