@@ -35,9 +35,9 @@ An artist animates bones in a tool; the game plays it back. Here:
 - the skin draws each slot as a rotated sprite. 2703 adds rotation to
   sprite items on world layers (1120).
 
-Spine import is 2217: a reader of our own, written from Spine's public
-format documentation, with the user bringing their own Spine license
-(Nick, 2026-10-20, `docs/decisions.md`).
+Spine import is 2217: the official runtime under an Essential license,
+or a reader of our own into this module's `Rig`, which Nick picks when
+it is unparked (2026-10-20, `docs/decisions.md`).
 
 ## Nick input
 

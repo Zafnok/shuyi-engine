@@ -671,7 +671,8 @@ Then:
 So:
 
 - **The engine may read Spine's JSON and atlas files** with a reader we
-  write ourselves (2217, parked like 2216).
+  write ourselves (2217, parked like 2216; the next entry makes this one
+  of two paths).
 - **It is written from Esoteric's public format documentation only.** No
   code from the Spine Runtimes is copied, translated or read while
   writing it, so the engine is neither the Spine Runtimes nor a work
@@ -691,3 +692,39 @@ So:
 - This is a reading of the license, not legal advice. If Esoteric ever
   objects, or changes its terms to cover the file format, the reader
   stops shipping until Nick decides again.
+
+## 2026-10-20: Spine import: an Essential license or our own reader, picked when unparked
+
+Source: Nick, in the same session, after the entry above was corrected:
+Esoteric allows its runtimes inside an engine, as long as each developer
+who builds with them has a Spine license, and a developer with one may
+ship a game to players who have none. On Esoteric's forum (thread 26587,
+2024-07-25), Esoteric's Nate confirms that Essential or Professional is
+enough (below the $500k revenue threshold) to put the runtimes into any
+number of one's own products.
+
+> "sounds like probably essentials license is all we would ever need and
+> it's $69 so I might just pull the trigger if we get to this milestone.
+> Otherwise we can park the ticket as TBD between essentials license and
+> our own reader but I have a feeling our own reader would cost more than
+> $69 in tokens"
+
+So:
+
+- **Spine import stays parked** (2217), and its first step is Nick's
+  pick between two paths:
+  - **A. The official runtime under an Essential license** ($69,
+    checked 2026-10-20), in an opt-in `shuyi-spine` module. Nick leans
+    this way: our own reader would likely cost more than $69 in tokens.
+  - **B. Our own reader**, written from the public format docs with no
+    Spine code, as the entry above sets out.
+- **If he picks A**, it carries duties to record then:
+  - an exception to ADR-0002 §8 for that one crate: its license is the
+    Spine Runtimes License, not a permissive one. It is never on by
+    default, and the engine's repository holds no Spine code;
+  - every developer who turns it on needs their own Spine license, and
+    the module's docs say so;
+  - the Essential license is for one named user (Nick), and ends if
+    revenue, investment or financing passes $500k in 12 months. What was
+    integrated while it was valid may still ship (Section 2.2); new
+    integration then needs Enterprise.

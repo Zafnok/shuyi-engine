@@ -42,9 +42,9 @@ DragonBones writes a skeleton file (`*_ske.json`) and a texture atlas
 We write our own serde types from the documentation. No crate, and no
 code copied from a runtime.
 
-Spine is not here: 2217 imports Spine's files, under its own
-clean-room rule. Either order with 2217: whichever lands first adds
-`shuyi_bones::import` and its feature, and the other reuses them.
+Spine is not here: 2217 imports Spine's files. If Nick picks its path
+B (a reader of our own), either order with 2217: whichever lands first
+adds `shuyi_bones::import` and its feature, and the other reuses them.
 
 ## Nick input
 
