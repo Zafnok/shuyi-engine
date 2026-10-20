@@ -13,7 +13,7 @@ completed:
 
 # 3030 — In-house sound: the mixer
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -24,7 +24,7 @@ hands the mix to the system. This ticket is the mixing, in `shuyi-sound`
 and 3032.
 
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§3 makes `shuyi-sound` `no_std`, so this mixer can also serve the Playdate
+§4 makes `shuyi-sound` `no_std`, so this mixer can also serve the Playdate
 (3029) and the GBA (3027). 3027 plans "an integer software mixer in
 shuyi-gba". The order between them:
 
@@ -34,7 +34,7 @@ shuyi-gba". The order between them:
   timing and its 8-bit output.
 
 Written from first principles and textbook signal processing, never from
-the source of quad-snd, rodio, cpal, kira or any other mixer (ADR-0021 §1).
+the source of quad-snd, rodio, cpal, kira or any other mixer (ADR-0021 §2).
 
 ## Nick input
 
@@ -67,7 +67,7 @@ None.
   output threads of 3031 and 3032 call it from the system's audio
   callback. Commands reach it through a fixed-size queue (a single
   producer and a single consumer, `no_std`), written here without
-  `unsafe`: `shuyi-sound` forbids it (ADR-0021 §5). Sounds are handed
+  `unsafe`: `shuyi-sound` forbids it (ADR-0021 §6). Sounds are handed
   over as shared `Pcm`s ahead of time and named in commands by a
   `SoundId`, so a command is plain `Copy` data. If a safe queue can't be
   made real-time safe, move the queue to `shuyi-sound-out`'s `sys`

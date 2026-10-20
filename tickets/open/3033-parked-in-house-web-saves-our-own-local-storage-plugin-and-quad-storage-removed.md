@@ -30,7 +30,7 @@ miniquad plugin with a version the loader checks. Written from MDN's *Web
 Storage API* (`localStorage`: `getItem`, `setItem`, `removeItem`, `key`,
 `length`), never from quad-storage's source
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§1).
+§2).
 
 ## Nick input
 

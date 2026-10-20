@@ -561,15 +561,18 @@ On graphics:
   it, with a web build, a Playdate build and the other targets, in under
   an hour and in few lines. Every new API is judged against it.
 - **The platform layer goes in-house, in this order:**
-  1. sound: our own WAV, Ogg and Vorbis readers, a mixer, and sound
-     output on each platform, replacing quad-snd and macroquad's audio
-     (tickets 2210–2214, 3030–3032);
-  2. controllers, replacing gilrs (2402, 2403);
+  1. sound, replacing quad-snd and macroquad's audio. The research
+     comes first (2902), then our own WAV, Ogg and Vorbis readers, a
+     mixer and sound output on each platform (2210–2214, 3030–3032), if
+     the research keeps that plan;
+  2. controllers, replacing gilrs. The research comes first (2903), then
+     2402 and 2403 if it keeps that plan;
   3. the two small ones: saves on the web, replacing `quad-storage`
      (3033), and putting a game's files in its binary, replacing
      `include_dir` (2215);
-  4. macroquad itself: the window, its input and the graphics. The
-     research comes first (3034).
+  4. macroquad itself: the window, its input and the graphics, through
+     winit and wgpu with our own 2D renderer on top. The research comes
+     first (3034).
   5. Each replacement moves to its own repository, which the engine
      depends on (2008).
 - **All of it is parked until the MVP.** Nobody starts these tickets
@@ -592,5 +595,27 @@ On graphics:
   > macroquad is higher level than this by a mile afaik."
 
   So the graphics go through `wgpu` (MIT OR Apache-2.0), which covers all
-  of those APIs, and our own 2D renderer sits on top of it. The window,
-  input and the run loop are still ours to replace. 3034 plans it.
+  of those APIs, and our own 2D renderer sits on top of it. 3034 plans
+  it.
+- **The window through winit; controllers and sound decided after
+  research.** Told that Bevy (the engine Nick names as the one to rival
+  someday) uses winit for its window, wgpu for its graphics, gilrs for
+  controllers and rodio for sound (checked on crates.io, Bevy 0.20,
+  2026-10-19):
+
+  > "we can use winit since it's not really something I wanna
+  > reimplement. The gilrs seems low stars and barely maintained so I
+  > still plan to skip it... I feel like of everything, controller is
+  > quite easy to add support for but this can be a 2 way door decision
+  > and we can make it much later in the future after additional
+  > research in a dedicated ticket. And for audio, we can look at our
+  > options as well when we get there."
+
+  So:
+  - the window and its input go through `winit` (Apache-2.0), as in
+    Bevy. Our own code is the run loop's glue and the 2D renderer;
+  - controllers: the plan is still to leave gilrs, but how (our own
+    code, or another library) is decided by a research ticket, 2903,
+    before 2402 and 2403 start. It can be changed later either way;
+  - sound: the same, with 2902 deciding before 2210–2214 and
+    3030–3032 start. quad-snd still goes.

@@ -6,14 +6,14 @@ milestone: "Engine: in-house platform"
 model: sonnet-5
 effort: medium
 status: blocked
-blocked_by: ["2201"]
+blocked_by: ["2201", "2902"]
 nick_input: none
 completed:
 ---
 
 # 2210 — In-house sound: the shuyi-sound crate and our own WAV reader
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -26,8 +26,8 @@ released January 2021), inside `Sound::load`
 
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
 sets the rules: written from specifications, never from another
-implementation's source (§1); a crate of its own that depends on no
-`shuyi-*` crate (§3); the engine registers it as formats (ADR-0007,
+implementation's source (§2); a crate of its own that depends on no
+`shuyi-*` crate (§4); the engine registers it as formats (ADR-0007,
 [ADR-0019](../../docs/adr/0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md)).
 
 This is the first sound ticket: the crate, the sample type every later
@@ -72,7 +72,7 @@ None.
 - Changing `shuyi-app`'s audio: the old path keeps working until 3032.
 - More than two channels, or WAV writing.
 - Opening the source of `hound`, `audrey`, quad-snd or any other WAV
-  reader (ADR-0021 §1).
+  reader (ADR-0021 §2).
 
 ## Implementation steps
 
@@ -93,7 +93,7 @@ None.
 6. Add `shuyi-sound` to the no-std job in CI (`.github/workflows/ci.yml`,
    the `run-gates` skill's no-std list).
 7. In the completion notes, list the documents used, by name and link
-   (ADR-0021 §1).
+   (ADR-0021 §2).
 
 ## Acceptance criteria
 

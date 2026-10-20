@@ -1,25 +1,25 @@
 ---
 id: "3034"
-title: "Parked: Research: replacing macroquad with our own window and input, and our own 2D renderer over wgpu (Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2, WebGPU), and the tickets to build it"
+title: "Parked: Research: replacing macroquad with winit for the window and input, and our own 2D renderer over wgpu (Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2, WebGPU), and the tickets to build it"
 type: research
 milestone: "Engine: in-house platform"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3003", "3032", "2403", "3033", "2215"]
+blocked_by: ["3003"]
 nick_input: none
 completed:
 ---
 
 # 3034 — Research: replacing macroquad
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after sound, controllers, web saves and file embedding are in-house (Nick's order). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after sound, controllers, web saves and file embedding (Nick's order; it needs only 3003, so the order is the roadmap's, not a blocker). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
 Nick, 2026-10-19 (`docs/decisions.md`): "eventually - macroquad replace",
 and "we should have a wide compat with all GFX libs". Once sound,
-controllers, web saves and file embedding are ours (3032, 2403, 3033,
+controllers, web saves and file embedding are replaced (2902, 2903, 3033,
 2215), macroquad does four jobs in `shuyi-app`:
 
 - the window, the run loop and the system's events;
@@ -34,13 +34,14 @@ and Metal, and its README rules out Vulkan and DirectX 12 (checked
 2026-10-19). Nick wants every graphics API, and he doesn't want us writing
 a backend per API: the graphics go through `wgpu`, and our own 2D renderer
 sits on top of it ("I don't wanna rewrite graphics bindings... so I think
-wgpu is safe", `docs/decisions.md`).
+wgpu is safe", `docs/decisions.md`). The window goes through `winit`,
+as in Bevy ("we can use winit since it's not really something I wanna
+reimplement").
 
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-sets the rules: written from specifications and the systems'
-documentation (§1), raw bindings only, with wgpu as the one exception for
-graphics (§2: `windows` for Win32, `objc2-*` for AppKit), crates of their
-own (§3), `unsafe` only in `sys` modules (§5). 3003
+sets the rules: wgpu for graphics and winit for the window and its input
+(§1); what we write on top is written from specifications and
+documentation (§2), in crates of their own (§4). 3003
 (the platform boundary) must be done first: the replacement implements
 `Platform`.
 
@@ -76,10 +77,12 @@ when (dropping a platform for a while, say), it asks Nick with the
     today's macroquad build;
   - the 3D plans (ADR-0011, the GPU painter in 3104) and whether the
     renderer must leave room for them now.
-- **The window and input.** Win32, AppKit, and X11 and Wayland on Linux
-  (both, or Wayland with XWayland covering X11), each from the system's
-  documentation. Text input and IME (3003's `TextInput`), high-DPI,
-  full screen, the Steam Deck's screen.
+- **The window and input over winit.** The run loop: how winit's event
+  loop drives `App::frame` (3003) on desktop and the web. Keyboard and
+  mouse to the engine's `RawInputEvent`s (`crates/app/src/keys.rs` today),
+  text input and IME (3003's `TextInput`), high-DPI, full screen, the
+  Steam Deck's screen, and suspend and resume (3003's `SystemEvent`).
+  Which winit version to pin, and how the engine moves to the next one.
 - **The web build moves to `wasm-bindgen`.** wgpu reaches the browser
   through `wasm-bindgen` and `web-sys`, so macroquad's loader
   (`mq_js_bundle.js`) and the rule against `wasm-bindgen` (game ADR-0034,
@@ -106,17 +109,17 @@ when (dropping a platform for a while, say), it asks Nick with the
 **Out (do not do):**
 - Building any of it.
 - Writing graphics backends of our own, per API (Nick, 2026-10-19).
-- Reading the source of miniquad, macroquad, winit, SDL, sokol or any
-  other window library (ADR-0021 §1). Their public documentation and
-  feature lists may be read, to know what users expect. wgpu is used, so
-  its documentation and examples are fair to read.
+- Writing a window layer of our own (Nick, 2026-10-19: winit).
+- Reading the source of miniquad or macroquad to copy how they draw
+  (ADR-0021 §2). wgpu and winit are used, so their documentation and
+  examples are fair to read (§2).
 
 ## Implementation steps
 
 1. Measure the frame (scope, first bullet) in the game at this engine's
    revision, and write the numbers in the report.
-2. Read the specifications and documentation for each API and system, and
-   list them in the report.
+2. Read wgpu's and winit's documentation and examples, and the WGSL
+   specification, and list what was used in the report.
 3. Prototype only what the decision needs, in a throwaway branch or
    scratch folder: for example the engine's frame painted through wgpu on
    each backend, natively and in a browser, to check the renderer's shape

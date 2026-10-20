@@ -13,7 +13,7 @@ completed:
 
 # 3032 — In-house sound output: Linux and macOS, and quad-snd removed
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -22,15 +22,15 @@ and the web, and the `in-house-sound` feature in `shuyi-app`. This ticket
 adds Linux (the Steam Deck included) and macOS. Then it makes the new
 sound the only sound and removes quad-snd, as
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§4 says.
+§5 says.
 
 Written from the ALSA library's API reference (`snd_pcm_open`,
 `snd_pcm_hw_params_*`, `snd_pcm_writei`, recovering from `-EPIPE`) and
 Apple's Core Audio documentation (Audio Unit `kAudioUnitSubType_DefaultOutput`,
 the render callback). Never from the source of quad-snd, cpal or any
-other output library (ADR-0021 §1). Bindings: `alsa-sys` (MIT) and
+other output library (ADR-0021 §2). Bindings: `alsa-sys` (MIT) and
 `objc2-audio-toolbox` / `objc2-core-audio` (Zlib OR Apache-2.0 OR MIT).
-Re-check both on the day (ADR-0021 §2).
+Re-check both on the day (ADR-0021 §3).
 
 On the Steam Deck and current desktop Linux, PipeWire serves ALSA clients,
 so ALSA reaches every Linux sound system with one backend.

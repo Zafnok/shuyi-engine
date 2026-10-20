@@ -6,14 +6,14 @@ milestone: "Engine: in-house platform"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: []
+blocked_by: ["2903"]
 nick_input: sign-off
 completed:
 ---
 
 # 2402 — In-house controllers: the crate, the mapping database, and Windows
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. In the roadmap's order it comes after sound (3032), but it doesn't need sound, so it can start once unparked.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the controller research (2903), which may keep, change or drop it.
 
 ## Context
 
@@ -26,14 +26,14 @@ browser's Gamepad API through our own `crates/cli/web/gamepad.js`, so only
 native changes.
 
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md):
-a crate of its own, `shuyi-pads` (§3), over raw bindings (§2), with
-`unsafe` only in its `sys` module (§5). It's written from Microsoft Learn
+a crate of its own, `shuyi-pads` (§4), over raw bindings (§3), with
+`unsafe` only in its `sys` module (§6). It's written from Microsoft Learn
 (XInput: `XInputGetState`, `XInputGetCapabilities`; Windows.Gaming.Input:
 `RawGameController`, `Gamepad`) and from the format of SDL's controller
 mapping database as its README describes it. Never from the source of
-gilrs, SDL or any other controller library (§1). SDL's
+gilrs, SDL or any other controller library (§2). SDL's
 `gamecontrollerdb.txt` (Zlib, `github.com/mdqinc/SDL_GameControllerDB`)
-is used **as data** (ADR-0021 §1), read by our own parser, with its notice
+is used **as data** (ADR-0021 §2), read by our own parser, with its notice
 in `THIRD_PARTY_ASSETS.md`.
 
 The `input-actions` skill's rules hold: the crate reports buttons, never

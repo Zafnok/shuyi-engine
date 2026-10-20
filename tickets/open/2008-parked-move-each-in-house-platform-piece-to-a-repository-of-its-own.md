@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: sonnet-5
 effort: medium
 status: blocked
-blocked_by: ["3032", "2403", "2215", "3034"]
+blocked_by: ["2902", "2903", "2215", "3034"]
 nick_input: setup
 completed:
 ---
@@ -21,14 +21,15 @@ Nick, 2026-10-19 (`docs/decisions.md`): each in-house piece moves to its
 own repository, which the engine depends on, "super down the line", once
 it's a full replacement.
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§3 made each one a crate with no `shuyi-*` dependency, so the move is
+§4 made each one a crate with no `shuyi-*` dependency, so the move is
 mechanical:
 
-- `shuyi-sound` (2210–2214, 3030);
-- `shuyi-sound-out` (3031, 3032);
-- `shuyi-pads` (2402, 2403);
+- `shuyi-sound` (2210–2214, 3030) and `shuyi-sound-out` (3031, 3032), if
+  the sound research (2902) kept our own code;
+- `shuyi-pads` (2402, 2403), if the controller research (2903) kept our
+  own code;
 - `shuyi-embed` (2215);
-- the window and graphics crates that 3034's tickets make. If those are
+- the 2D renderer crate that 3034's tickets make. If those are
   not all done when this is unparked, move the others, and leave a
   ticket for those.
 

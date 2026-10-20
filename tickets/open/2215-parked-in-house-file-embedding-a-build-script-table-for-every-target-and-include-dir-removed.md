@@ -30,8 +30,8 @@ The table already does everything the directory does, on every target. So
 the fix is to make the table easy and drop the directory. The work is
 ours: a build-script helper in a crate of its own
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§3), written from Cargo's build-script documentation, never from
-include_dir's source (§1).
+§4), written from Cargo's build-script documentation, never from
+include_dir's source (§2).
 
 Related: 2204 (the optimized pack) is a different way to ship files and
 doesn't change. 2207 adds layers from outside the binary, and either order

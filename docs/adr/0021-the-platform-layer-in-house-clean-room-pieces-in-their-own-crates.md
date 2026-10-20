@@ -1,17 +1,19 @@
-# ADR-0021: The platform layer in-house: written from specifications, in crates of their own, over raw OS bindings
+# ADR-0021: The platform layer in-house: written from specifications, in crates of their own, with wgpu and winit for graphics and the window
 
 - **Status:** Accepted
 - **Date:** 2026-10-19
-- **Related tickets:** 2210–2215, 2402, 2403, 3030–3034, 2008
+- **Related tickets:** 2902, 2903 (research first); 2210–2215, 2402, 2403,
+  3030–3034, 2008
 - **Extends:** ADR-0002 §8 (licenses) and §9 (`unsafe`), ADR-0008 §2
   (platform backends)
 
 ## Context
 
-Nick decided on 2026-10-19 (`docs/decisions.md`) that the platform layer
-goes in-house: sound first, then controllers, then web saves and the
-embedding of a game's files, then macroquad. Later, each piece moves to a
-repository of its own. All of it is parked until the MVP.
+Nick decided on 2026-10-19 (`docs/decisions.md`) that macroquad and the
+libraries around it leave the engine, in this order: sound, controllers,
+web saves and the embedding of a game's files, then macroquad. Later,
+each piece we write moves to a repository of its own. All of it is parked
+until the MVP.
 
 What the engine leans on today, checked on crates.io and the projects'
 repositories on 2026-10-19:
@@ -27,23 +29,65 @@ repositories on 2026-10-19:
 miniquad draws with OpenGL 2 and 3, GLES 2 and 3, WebGL 1 and Metal. Its
 README rules out Vulkan and DirectX 12.
 
-Three forces shape the work:
+Bevy, the engine Nick names as the one to rival someday, uses winit 0.30
+for its window, wgpu 30 for its graphics, gilrs 0.11 for controllers and
+rodio 0.22 for sound (`bevy_winit`, `bevy_render`, `bevy_gilrs` and
+`bevy_audio` 0.20 on crates.io, 2026-10-19).
 
-- **"Absolutely do not steal source code line by line"** (Nick). The
-  engine's code must be ours, so that its license is clean and the pieces
-  can stand alone later.
-- **Each piece becomes its own repository later.** It must be able to
-  leave without dragging the engine along.
+The forces:
+
+- **"Absolutely do not steal source code line by line"** (Nick). What we
+  write must be ours, so that its license is clean and the pieces can
+  stand alone later.
+- **Each piece we write becomes its own repository later.** It must be
+  able to leave without dragging the engine along.
+- **Not everything is worth writing.** Nick: "I don't wanna rewrite
+  graphics bindings... so I think wgpu is safe", and winit "since it's not
+  really something I wanna reimplement".
+- **Controllers and sound are two-way doors.** Nick: "this can be a 2 way
+  door decision and we can make it much later in the future after
+  additional research in a dedicated ticket. And for audio, we can look at
+  our options as well when we get there."
 - **The web build uses macroquad's loader, not `wasm-bindgen`** (game
-  ADR-0034, `AGENTS.md`). Whatever replaces it on the web reaches the
-  browser through our own JS, as the gamepad plugin
-  (`crates/cli/web/gamepad.js`) already does.
+  ADR-0034, `AGENTS.md`). wgpu and winit both need `wasm-bindgen` in the
+  browser.
 
 ## Decision
 
-### 1. Written from specifications, never copied
+### 1. What we use, what we write, and what research decides
 
-A replacement is written from public specifications and from the
+| Piece | Decision | Tickets |
+| ----- | -------- | ------- |
+| Graphics | **wgpu**, with our own 2D renderer on top | 3034, then the tickets it writes |
+| Window and its input | **winit** | the same |
+| Run loop | ours (`App::frame`, 3003), driven by winit's event loop | the same |
+| Web saves | ours: a `localStorage` plugin | 3033 |
+| A game's files in its binary | ours: `shuyi-embed` | 2215 |
+| Sound | quad-snd goes. **Research decides how** (our own code, as 2210–2214 and 3030–3032 plan, or a library) | 2902 first |
+| Controllers | gilrs goes. **Research decides how** (our own code, as 2402 and 2403 plan, or a library) | 2903 first |
+
+wgpu is lower level than macroquad: it opens no window, runs no loop,
+plays no sound and draws no sprites. It's one interface to Vulkan, Metal,
+Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU, with shaders written
+once in WGSL (MIT OR Apache-2.0; 30.0.1 of 2026-08-22). winit opens
+windows and reports their events on Windows, macOS, X11 and Wayland, the
+web, Android and iOS, with high-DPI and IME (Apache-2.0; 0.30.13 of
+2026-09-04; over 1 500 crates depend on it). Writing either ourselves
+would cost more than the rest of the platform layer together, for nothing
+a player would see.
+
+Both make breaking releases (wgpu about every three months), so the engine
+pins them and moves on purpose. On the web both reach the browser through
+`wasm-bindgen`, so the web build moves to it with macroquad's departure
+(3034 plans it).
+
+The research tickets 2902 and 2903 may keep, change or drop the build
+tickets that wait on them. Whatever they pick follows §2 to §6 if it's our
+own code, and ADR-0002 §8's licenses if it's a library.
+
+### 2. What we write is written from specifications, never copied
+
+Code we write is written from public specifications and from the
 operating system's or the browser's own documentation:
 
 - Ogg: RFC 3533. Vorbis: the Xiph *Vorbis I specification*. WAV: the
@@ -52,7 +96,7 @@ operating system's or the browser's own documentation:
 - Windows: Microsoft Learn (WASAPI, Windows.Gaming.Input, XInput, Raw
   Input and HID).
 - Apple: Apple's developer documentation (Core Audio, the Game
-  Controller framework, AppKit).
+  Controller framework).
 - Linux: the kernel's documentation (evdev, `input-event-codes.h`), and
   the ALSA library's API reference.
 - The web: MDN and the W3C specifications (Web Audio, the Gamepad API,
@@ -62,65 +106,50 @@ The rules for whoever works a ticket:
 
 - **Never open another implementation's source** for the piece being
   written, whatever its license: not lewton, stb_vorbis, libvorbis,
-  quad-snd, cpal, gilrs, SDL, miniquad or winit.
+  quad-snd, cpal, gilrs, SDL or miniquad.
 - **Other implementations may be run as black boxes.** For example,
   decoding a test file once to make an expected-output fixture, or
   comparing behaviour on a real pad. The tool runs; we never read its
   code.
+- **A library we use is read like any library.** wgpu's and winit's
+  documentation and examples are fair to read, since we call them rather
+  than reimplement them.
 - **A ticket's completion notes list the documents used**, by name and
   link, and the PR body says the code was written from them.
 - **Data under a permitted license may be used as data**, with its notice
   in `THIRD_PARTY_ASSETS.md`. For example, SDL's controller mapping
-  database (`gamecontrollerdb.txt`, Zlib) is read by our own parser.
+  database (`gamecontrollerdb.txt`, Zlib) read by our own parser.
 
-### 2. Raw OS bindings are not frameworks
+### 3. What we write sits on raw OS bindings
 
-A replacement may depend on crates that only declare an operating
+Our own platform code may depend on crates that only declare an operating
 system's or a driver's API, with no behaviour of their own, under ADR-0002
 §8's licenses. Checked 2026-10-19:
 
 | API | Crate | License |
 | --- | ----- | ------- |
 | Win32, WASAPI, XInput, Windows.Gaming.Input | `windows` (Microsoft) | MIT OR Apache-2.0 |
-| Apple frameworks (Core Audio, Game Controller, AppKit) | `objc2-*` | Zlib OR Apache-2.0 OR MIT |
+| Apple frameworks (Core Audio, Game Controller) | `objc2-*` | Zlib OR Apache-2.0 OR MIT |
 | ALSA | `alsa-sys` | MIT |
 | Linux system calls (evdev, inotify) | `rustix` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 
 A ticket re-checks the license on the day it adds the crate, from the
 crate's `Cargo.toml` and repository, and `cargo deny` checks it in CI.
-Libraries that do the job themselves (cpal, rodio, symphonia, gilrs, SDL,
-winit) are not bindings: the job is what we write.
 
-**One exception: graphics go through `wgpu`** (MIT OR Apache-2.0, 30.0.1
-of 2026-08-22, by the gfx-rs project; Firefox's WebGPU is built on it).
-Nick, 2026-10-19: "I don't wanna rewrite graphics bindings... so I think
-wgpu is safe". wgpu is lower level than macroquad: it opens no window,
-runs no loop, plays no sound and draws no sprites. It's one interface to
-Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU, with
-shaders written once in WGSL. Writing and keeping a backend per API
-ourselves would cost more than the rest of the platform layer together,
-for no gain a player would see. What we write on top of it is ours: the
-2D renderer that paints the engine's frame (batches, textures, the
-skins' render targets).
+### 4. Each piece we write is a crate of its own
 
-The cost, which 3034 deals with: on the web, wgpu reaches the browser
-through `wasm-bindgen` and `web-sys`, which the web build doesn't use
-today (game ADR-0034). wgpu also makes a breaking release about every
-three months, so the engine pins it and moves on purpose.
-
-### 3. Each piece is a crate of its own
-
-Each replacement is a crate in `crates/` that depends on no other
-`shuyi-*` crate, so it can move to its own repository later (2008)
-without changes:
+Each is a crate in `crates/` that depends on no other `shuyi-*` crate, so
+it can move to its own repository later (2008) without changes. Planned,
+if the research keeps them:
 
 | Crate | What | `no_std` |
 | ----- | ---- | -------- |
 | `shuyi-sound` | the WAV, Ogg and Vorbis readers, the mixer | yes (with `alloc`), so the Playdate and the GBA can use it |
 | `shuyi-sound-out` | sound output: WASAPI, Core Audio, ALSA, Web Audio | no |
 | `shuyi-pads` | controllers: Windows, Linux, macOS; the mapping database | no |
+| `shuyi-embed` | a game's files in its binary, from a build script | no (a build dependency) |
 
-3034 names the crates for the window and the 2D renderer over wgpu.
+3034 names the crate for the 2D renderer over wgpu.
 
 - **The engine adapts them.** `shuyi-assets` registers the readers as
   formats (ADR-0007, ADR-0019). `shuyi-app` (or the backend crate that
@@ -131,58 +160,62 @@ without changes:
   `Button` or actions, and the engine maps them (`AGENTS.md` rule 8).
 - **They are MIT OR Apache-2.0**, with the workspace's lints and gates.
 
-### 4. The old crate leaves in the same PR as its last replacement
+### 5. The old crate leaves in the same PR as its last replacement
 
-When the last ticket of a piece lands (3032 for sound, 2403 for
-controllers, 3033, 2215), it removes the old crate from `Cargo.toml`,
-and `cargo tree` shows it gone. Until then, the old and the new run side
-by side behind the same seam. A platform not yet replaced keeps the old
-crate.
+When the last ticket of a piece lands, it removes the old crate from
+`Cargo.toml`, and `cargo tree` shows it gone. Until then, the old and the
+new run side by side behind the same seam. A platform not yet replaced
+keeps the old crate.
 
-### 5. `unsafe` in the platform crates only, the way `shuyi-app` does it
+### 6. `unsafe` in the platform crates only, the way `shuyi-app` does it
 
 ADR-0002 §9 forbids `unsafe` outside `shuyi-app`. Calling an operating
-system's API needs it, so the crates that talk to the system get
+system's API needs it, so our crates that talk to the system get
 `shuyi-app`'s exception and its rules:
 
-- **The platform crates**: `shuyi-sound-out`, `shuyi-pads`, and the window
-  and graphics crates 3034 names. Each sets `unsafe_code = "deny"` instead
-  of `forbid` in its `[lints]`, and keeps a test that its lints are the
+- **The platform crates**: `shuyi-sound-out` and `shuyi-pads`, if the
+  research keeps them. Each sets `unsafe_code = "deny"` instead of
+  `forbid` in its `[lints]`, and keeps a test that its lints are the
   workspace's except that one, as `crates/app/src/lib.rs` does.
 - **`unsafe` lives only in a `sys` module** of each crate, under one
   `#[allow(unsafe_code)]` on that module. The rest of the crate wraps it in
   safe types.
 - **Every `unsafe` block has a `// SAFETY:` comment** saying why it holds
   (clippy's `undocumented_unsafe_blocks`, turned on in those crates).
-- **`shuyi-sound` stays `forbid`.** The decoders and the mixer are plain
-  code, and need no `unsafe`.
+- **`shuyi-sound` and `shuyi-embed` stay `forbid`.** They are plain code.
+- The renderer over wgpu and the window code over winit should need no
+  `unsafe`. If 3034 finds otherwise, it says why in its ADR.
 
 ## Consequences
 
-- No source code from another project, so the license is clean, and the
-  pieces can be published on their own.
-- Writing a Vorbis decoder, sound output on three systems and controllers
-  on three systems is real work: about fourteen tickets before macroquad
-  is even started. It is parked until the MVP, so the game doesn't pay for
-  it now.
-- We own the bugs. Hardware differences (pads, sound cards) that gilrs and
-  quad-snd already handle will come back as bug reports. Testing on real
-  devices is part of each output and controller ticket.
-- `shuyi-sound` being `no_std` means one decoder and one mixer for every
-  target, the Playdate (3029) and the GBA (3027) included.
-- The web keeps working without `wasm-bindgen`, through our own JS
-  plugins, as today.
+- What we write has no source code from another project, so the license
+  is clean, and the pieces can be published on their own.
+- The engine keeps two large outside libraries, wgpu and winit, like
+  Bevy. In return it gets every graphics API and every window system
+  without writing them. Their breaking releases are work we schedule.
+- The web build moves to `wasm-bindgen` when macroquad goes. The plugins
+  we write before then (3031, 3033) move with it.
+- Sound and controllers stay open until their research. If it chooses our
+  own code: a Vorbis decoder, sound output on three systems and
+  controllers on three systems is real work, about a dozen tickets. We
+  would own the hardware bugs that gilrs and quad-snd handle today, so
+  testing on real devices is part of each output and controller ticket.
+- If `shuyi-sound` is built, it's `no_std`, so one decoder and one mixer
+  serve every target, the Playdate (3029) and the GBA (3027) included.
 
 ## Alternatives considered
 
-- **Swap one library for another** (cpal and symphonia for quad-snd,
-  winit for macroquad's window). Lost: it is not in-house, which was
-  Nick's call. symphonia is MPL-2.0 and denied anyway. (wgpu is the
-  exception in §2: it is the graphics API layer, not a framework.)
-- **Our own backend per graphics API** (`ash`, `objc2-metal`, `windows`,
-  `glow`) and our own shader translation. Lost: a renderer per API, kept
-  up with drivers, for the same pixels wgpu already gives (Nick,
-  2026-10-19).
+- **Our own window and our own graphics backends** (`windows`, `objc2-*`
+  and Wayland and X11 for windows; `ash`, `objc2-metal` and `glow` for
+  graphics; our own shader translation). Lost: Nick doesn't want to
+  reimplement them, and they would cost more than everything else here
+  for the same pixels.
+- **Decide sound and controllers now.** Lost: both are two-way doors, the
+  work is after the MVP, and the libraries will have moved by then. The
+  research tickets decide with the facts of their day.
+- **Keep macroquad, and add wgpu beside it.** Lost: macroquad owns the
+  window and the loop, so wgpu can't get at the window without fighting
+  it, and the old GL path would stay.
 - **Fork the old crates and maintain them.** Lost: forking is copying
   their source, and we would own code we didn't write.
 - **Port a small public-domain decoder (stb_vorbis).** Lost: a line-by-line

@@ -13,7 +13,7 @@ completed:
 
 # 2211 — In-house sound: our own Ogg container reader
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -25,7 +25,7 @@ container. This ticket is the container only. The Vorbis decoder is
 Written from RFC 3533 (*The Ogg Encapsulation Format Version 0*), never
 from the source of the `ogg` crate, libogg or any other reader
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§1).
+§2).
 
 ## Nick input
 
@@ -71,7 +71,7 @@ None.
    packet ending exactly on a 255 boundary (followed by a 0 lacing
    value), a page with no packet ending (granule `-1`).
 5. One real `.ogg` fixture, made by us with a Vorbis encoder run as a
-   black box (ADR-0021 §1), under `crates/sound/tests/fixtures/ogg/`
+   black box (ADR-0021 §2), under `crates/sound/tests/fixtures/ogg/`
    with a `README.md` saying how it was made.
 6. In the completion notes, list the documents used, by name and link.
 

@@ -13,7 +13,7 @@ completed:
 
 # 2213 — In-house sound: Vorbis, part 2: floors, residues and coupling
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -25,7 +25,7 @@ Written from the Xiph *Vorbis I specification*, §4.3 (audio packet
 decode), §6 (floor 0), §7 (floor 1) and §8 (residues), never from another
 decoder's source
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§1).
+§2).
 
 ## Nick input
 

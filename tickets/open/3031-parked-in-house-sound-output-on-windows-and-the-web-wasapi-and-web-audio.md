@@ -13,7 +13,7 @@ completed:
 
 # 3031 — In-house sound output: Windows and the web
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -23,11 +23,11 @@ the mix to the system. That's this ticket for Windows and the web, and
 3032 for Linux and macOS.
 
 - [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md):
-  a crate of its own, `shuyi-sound-out`, over raw bindings only (§2). It is
+  a crate of its own, `shuyi-sound-out`, over raw bindings only (§3). It is
   written from Microsoft Learn (WASAPI: `IMMDeviceEnumerator`,
   `IAudioClient`, `IAudioRenderClient`, event-driven shared mode) and MDN
   and the W3C *Web Audio API* (`AudioContext`, `AudioWorklet`). Never from
-  the source of quad-snd, cpal or any other output library (§1).
+  the source of quad-snd, cpal or any other output library (§2).
 - 3003 puts audio behind the `Platform` trait, and 3029 moves the audio
   player's rules out of `shuyi-app`, behind a small backend trait. This
   ticket adds a second implementation of that backend trait, over
@@ -55,7 +55,7 @@ sounds wrong, cuts out, or starts late.
   - errors when there's no device, and a quiet fallback the caller picks
     (no sound rather than a crash).
 - **Windows**: WASAPI shared mode, event-driven, on its own thread, through
-  the `windows` crate (re-check its license on the day; ADR-0021 §2).
+  the `windows` crate (re-check its license on the day; ADR-0021 §3).
   Format negotiation: ask for 16-bit at the mixer's rate; if the device
   refuses, take its mix format (often 32-bit float at 48 kHz) and convert.
   Device changes (headphones plugged in): reopen the default device when

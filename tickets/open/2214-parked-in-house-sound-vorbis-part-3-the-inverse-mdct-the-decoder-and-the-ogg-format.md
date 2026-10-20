@@ -13,7 +13,7 @@ completed:
 
 # 2214 — In-house sound: Vorbis, part 3: the MDCT, the decoder and the format
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -28,7 +28,7 @@ Written from the Xiph *Vorbis I specification*, §1.3.2 (the window shape),
 and §A (Ogg mapping: granule positions and the last page's end trim).
 Never from another decoder's source
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§1).
+§2).
 
 Today, quad-snd decodes a whole track inside `Sound::load` (80–580 ms per
 track, `crates/app/src/audio/native_music.rs`), so the game decodes on a
@@ -83,7 +83,7 @@ None.
    on random input, within 1e-4 relative error.
 3. Windows and overlap-add, then the decoder loop.
 4. **Expected output.** Decode each fixture once with an existing
-   permissively licensed decoder **run as a black box** (ADR-0021 §1):
+   permissively licensed decoder **run as a black box** (ADR-0021 §2):
    for example, a throwaway program in the scratchpad that uses the
    `lewton` crate, which is still in the tree until 3032. Commit only its
    output (raw 16-bit samples, compressed if large) under

@@ -13,7 +13,7 @@ completed:
 
 # 2212 — In-house sound: Vorbis, part 1: the headers and codebooks
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
 
 ## Context
 
@@ -31,7 +31,7 @@ Written from the Xiph *Vorbis I specification*
 (`xiph.org/vorbis/doc/Vorbis_I_spec.html`). Never open the source of
 lewton, stb_vorbis, libvorbis, Tremor or any other decoder
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§1). The packets come from 2211's `PacketReader`.
+§2). The packets come from 2211's `PacketReader`.
 
 ## Nick input
 

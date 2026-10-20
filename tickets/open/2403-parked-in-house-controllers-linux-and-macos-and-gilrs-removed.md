@@ -13,7 +13,7 @@ completed:
 
 # 2403 — In-house controllers: Linux and macOS, and gilrs removed
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the controller research (2903), which may keep, change or drop it.
 
 ## Context
 
@@ -22,15 +22,15 @@ mapping database and Windows, and the `in-house-pads` feature. This ticket
 adds Linux (the Steam Deck included) and macOS, then makes them the only
 path and removes gilrs
 ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§4).
+§5).
 
 Written from the Linux kernel's documentation (the input subsystem,
 `Documentation/input/gamepad.rst` and `event-codes.rst`, the `EVIOCG*`
 ioctls in `linux/input.h`) and Apple's documentation for the Game
 Controller framework (`GCController`, `GCExtendedGamepad`). Never from
-the source of gilrs, SDL or any other controller library (ADR-0021 §1).
+the source of gilrs, SDL or any other controller library (ADR-0021 §2).
 Bindings: `rustix` (ioctls, `inotify`) and `objc2-game-controller`.
-Re-check both licenses on the day (§2).
+Re-check both licenses on the day (§3).
 
 ## Nick input
 
