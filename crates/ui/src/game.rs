@@ -209,6 +209,20 @@ impl<G: GameData> Game<G> {
         self
     }
 
+    /// Turns the screens' action guard on or off
+    /// ([`ScreenStack::guard_actions`]): while it is on, a screen that
+    /// declares its actions is handed only those. The test Harness turns
+    /// it on.
+    pub fn guard_actions(&mut self, on: bool) {
+        self.stack.guard_actions(on);
+    }
+
+    /// Every action held back from a screen that doesn't declare it, with
+    /// the screen's name ([`ScreenStack::undeclared`]).
+    pub fn undeclared_actions(&self) -> &[(&'static str, G::Action)] {
+        self.stack.undeclared()
+    }
+
     /// Tells the game what music is sounding, for [`Ctx::music_clock`]: the
     /// cue and the seconds since the track really started, or `None` in
     /// silence. The platform knows (a track starts once its file has

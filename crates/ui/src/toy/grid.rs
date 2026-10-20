@@ -656,6 +656,11 @@ impl Screen<Toy> for Field {
         "field"
     }
 
+    /// The cursor, Confirm to select and walk, Cancel to let go.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(crate::input::ui_actions(crate::input::NAVIGATION))
+    }
+
     fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
         let dt = input.dt();
         self.cursor.tick(dt);

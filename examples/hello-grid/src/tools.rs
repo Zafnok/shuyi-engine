@@ -3,8 +3,9 @@
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
 //! against the foe's mind), `import` (the stage's `.map` and the
-//! keymap besides the engine's kinds) and `bake` (its text baked into a
-//! pack, [`crate::bake`]). `examples/tools.rs` is the tool
+//! keymap besides the engine's kinds), `bake` (its text baked into a
+//! pack, [`crate::bake`]) and the controls `check --target` checks
+//! ([`controls`]). `examples/tools.rs` is the tool
 //! program that runs them; the tests use them too.
 
 use std::collections::BTreeMap;
@@ -23,6 +24,7 @@ use shuyi_cli::serde_json::json;
 use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools};
 use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play_observed};
 use shuyi_platform::harness::Harness;
+use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::{Game, GameData, GameHooks};
 
 use crate::map::Terrain;
@@ -182,6 +184,11 @@ impl GameTools for HelloTools {
             .kind::<KeymapDef<Action>>(|keymap| format!("{} layout(s)", keymap.layouts.len()))
     }
 
+    /// Its keymap and every screen it can show ([`crate::screens::all`]).
+    fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
+        Some(controls().map(|c| Box::new(c) as Box<dyn Controls>))
+    }
+
     /// One pack for every target: the game's files, its text baked.
     fn bake(&self, _target: Option<&str>) -> Result<GameBake, String> {
         Ok(GameBake {
@@ -190,6 +197,18 @@ impl GameTools for HelloTools {
             formats: crate::formats(),
         })
     }
+}
+
+/// The game's keymap and every screen it can show, for `check --target`.
+pub fn controls() -> Result<GameControls<Action>, String> {
+    let keymap = loaded()?.keymap_def().clone();
+    let mut ctx = crate::ctx(0);
+    let screens = crate::screens::all(&mut ctx);
+    Ok(screens
+        .iter()
+        .fold(GameControls::new(keymap), |game, screen| {
+            game.with(ScreenActions::of(screen.as_ref()))
+        }))
 }
 
 /// The game's data, or its errors in a line each.

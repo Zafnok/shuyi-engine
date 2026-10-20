@@ -127,7 +127,12 @@ fn the_commands_that_run_the_game_need_its_tool_program() {
     )
     .unwrap();
     // The contract's operations that run the game go there too.
-    for args in [&["lang-status", "xx"][..], &["check"], &["run", "--json"]] {
+    for args in [
+        &["lang-status", "xx"][..],
+        &["check"],
+        &["check", "--target", "all"],
+        &["run", "--json"],
+    ] {
         let output = shuyi(&dir, args);
         assert_ne!(output.status.code(), Some(0), "{args:?}");
         assert!(

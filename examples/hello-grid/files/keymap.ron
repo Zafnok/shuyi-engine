@@ -34,6 +34,29 @@
         "Confirm": ["South"],
         "Cancel": ["East"],
     },
+    // Each target's own buttons, named after its profile
+    // (`targets/<id>.ron`): `cargo shuyi check --target` checks that every
+    // screen's actions fit them.
+    targets: {
+        // The Playdate's d-pad, A (`East`) and B (`West`).
+        "playdate": {
+            "Up": ["DpadUp"],
+            "Down": ["DpadDown"],
+            "Left": ["DpadLeft"],
+            "Right": ["DpadRight"],
+            "Confirm": ["East"],
+            "Cancel": ["West"],
+        },
+        // The Deck's gamepad, as `pad`.
+        "steam-deck": {
+            "Up": ["DpadUp", "LeftStickUp"],
+            "Down": ["DpadDown", "LeftStickDown"],
+            "Left": ["DpadLeft", "LeftStickLeft"],
+            "Right": ["DpadRight", "LeftStickRight"],
+            "Confirm": ["South"],
+            "Cancel": ["East"],
+        },
+    },
     repeat: (delay_ms: 300, interval_ms: 70),
     stick: (press_percent: 50, release_percent: 35),
 )

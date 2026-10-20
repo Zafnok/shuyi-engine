@@ -652,6 +652,11 @@ impl<G: GameData> Screen<G> for ProfilesScreen<G> {
         Self::NAME
     }
 
+    /// Its rows, its menus and questions, and the name grid.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(crate::input::NAVIGATION))
+    }
+
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         let typing = self.naming.as_ref().is_some_and(|n| n.leaving.is_none());
         if typing {

@@ -48,7 +48,7 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   new <template> <dir>               make a new game from a template: grid, blank
   check [--baked]                    every error of the game's content, with file and line;
                                      --baked: and every way its pack differs from its sources
-  check --target <id | all>          whether the frame and its text fit a target's display
+  check --target <id | all>          whether the frame, its text and the controls fit a target
   run [steps] [--frames N]           play a key script headless: screens, scene, events, sounds
   scene [steps]                      the scene on screen after a script
   replay <record> [<other>]          a state hash per step; where two runs part
@@ -124,7 +124,12 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         return code;
     }
     if contract::cli::checks_targets(name, args) {
-        return contract::cli::check_targets(project, args);
+        // The controls need the game's tools: in its tool program.
+        return match game {
+            Some(game) => contract::cli::check_targets(project, args, Some(game)),
+            None if project.config.game.is_some() => game::run_in_game_program(project, name, args),
+            None => contract::cli::check_targets(project, args, None),
+        };
     }
     if contract::cli::runs_the_game(name) {
         return match game {

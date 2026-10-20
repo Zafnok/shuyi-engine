@@ -16,6 +16,7 @@ use shuyi_assets::bundle::Bundle;
 use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
 use shuyi_assets::pack::Bake;
+use shuyi_ui::input::fit::Controls;
 
 use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::import::Importers;
@@ -131,6 +132,16 @@ pub trait GameTools {
         Importers::standard()
     }
 
+    /// `check --target`: the game's keymap and every screen it can show,
+    /// for the check that its controls fit each target (ADR-0008 §3), most
+    /// simply a [`GameControls`](shuyi_ui::input::fit::GameControls).
+    /// `None`, the default, doesn't offer them: `check --target` then
+    /// checks the display alone and says so. An error (the game's files
+    /// don't load) fails the check.
+    fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
+        None
+    }
+
     /// `bake` and `check --baked`: what the game bakes for `target`
     /// (`None` for its default bundle), from which bundle, read with which
     /// formats. The target is the game's to pick layers and kinds by.
@@ -229,6 +240,7 @@ mod tests {
         let bots = Plain.bots(&BotsInput::default()).unwrap_err();
         assert!(bots.contains("GameTools::bots"));
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
+        assert!(Plain.controls().is_none());
         assert_eq!(
             Plain.bake(Some("desktop")).unwrap_err(),
             "the game's tools don't offer bake and check --baked (GameTools::bake)"

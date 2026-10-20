@@ -756,6 +756,13 @@ impl Screen<Toy> for Lobby {
         "lobby"
     }
 
+    /// Its menu's.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(crate::input::ui_actions(
+            crate::widgets::Menu::<()>::ACTIONS,
+        ))
+    }
+
     fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
         for &action in &input.actions {
             let Some(crate::widgets::MenuEvent::Chosen(choice)) =
@@ -850,6 +857,11 @@ impl Screen<Toy> for Talk {
         "talk"
     }
 
+    /// Confirm reads on (held, faster), Cancel leaves.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm, Action::Cancel])
+    }
+
     fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
         if self.player.is_finished() {
             return Transition::Pop;
@@ -908,6 +920,11 @@ impl Screen<Toy> for Home {
         "home"
     }
 
+    /// Confirm opens the menu, Cancel quits.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm, Action::Cancel])
+    }
+
     fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
         self.frames += 1;
         for action in &input.actions {
@@ -946,6 +963,11 @@ pub struct Menu;
 impl Screen<Toy> for Menu {
     fn name(&self) -> &'static str {
         "menu"
+    }
+
+    /// Confirm clicks, Cancel closes.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm, Action::Cancel])
     }
 
     fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
@@ -990,6 +1012,11 @@ impl Picker {
 impl Screen<Toy> for Picker {
     fn name(&self) -> &'static str {
         "picker"
+    }
+
+    /// Up and Down choose, Confirm picks.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::CursorUp, Action::CursorDown, Action::Confirm])
     }
 
     fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
@@ -1039,6 +1066,11 @@ pub struct Gallery;
 impl Screen<Toy> for Gallery {
     fn name(&self) -> &'static str {
         "gallery"
+    }
+
+    /// Cancel closes it.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Cancel])
     }
 
     fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {

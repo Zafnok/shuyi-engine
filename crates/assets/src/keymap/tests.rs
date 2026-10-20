@@ -175,7 +175,7 @@ fn left(k: &KeymapDef) -> Bindings {
 
 #[test]
 fn button_names_round_trip() {
-    assert_eq!(Button::ALL.len(), 16 + 4 + 4 + 2);
+    assert_eq!(Button::ALL.len(), 16 + 4 + 4 + 2 + 8);
     for (i, &b) in Button::ALL.iter().enumerate() {
         assert_eq!(b as usize, i);
         assert_eq!(Button::parse(&b.to_string()), Ok(b));
@@ -1113,4 +1113,130 @@ fn playdate_table_errors_say_so() {
         "{}",
         errs[0]
     );
+}
+
+/// A `targets` table holding a table for each of `ids`, every action `[]`
+/// but `extra`'s (the same in each).
+fn targets_table(ids: &[&str], skip: &str, extra: &str) -> String {
+    let lines: Vec<String> = Action::ALL
+        .iter()
+        .filter(|a| a.name() != skip)
+        .map(|a| format!("            \"{a}\": [],\n"))
+        .collect();
+    let tables: Vec<String> = ids
+        .iter()
+        .map(|id| {
+            format!(
+                "        \"{id}\": {{\n{}{extra}        }},\n",
+                lines.concat()
+            )
+        })
+        .collect();
+    format!("    targets: {{\n{}    }},\n", tables.concat())
+}
+
+/// ADR-0008 §3: a target's own buttons, named after its profile's id.
+#[test]
+fn a_target_plays_with_its_own_table_named_after_it() {
+    let extra = "            \"Confirm\": [\"East\"],\n";
+    let table = targets_table(&["steam-deck", "playdate"], "Confirm", extra);
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate(&table, "")).unwrap_or_default();
+    let east = vec![ButtonChord::single(Button::East)];
+    let deck = k.target_buttons("steam-deck").cloned().unwrap_or_default();
+    assert_eq!(deck.len(), Action::ALL.len());
+    assert_eq!(deck[&Action::Confirm], east);
+    assert_eq!(k.target_buttons("desktop"), None);
+    // `targets."playdate"` is the Playdate's table.
+    assert_eq!(k.playdate[&Action::Confirm], east);
+    assert_eq!(k.for_target("steam-deck").pad, deck);
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate(&table, "")).unwrap_or_default();
+    assert_eq!(k.clone().for_target("desktop").pad, k.pad, "none: the pad");
+    // The older `playdate` table is the Playdate's target table too.
+    let old = playdate_table("Confirm", "        \"Confirm\": [\"West\"],\n");
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate(&old, "")).unwrap_or_default();
+    let west = vec![ButtonChord::single(Button::West)];
+    assert_eq!(
+        k.target_buttons("playdate").map(|t| &t[&Action::Confirm]),
+        Some(&west)
+    );
+    assert_eq!(k.targets.len(), 1);
+    // A file without either has no target tables.
+    let k = KeymapDef::from_source("k.ron", &pad_source("", "")).unwrap_or_default();
+    assert!(k.targets.is_empty());
+}
+
+#[test]
+fn target_table_errors_say_so() {
+    let table = targets_table(&["steam-deck"], "Menu", "");
+    let errs = errors(&source_with_playdate(&table, ""));
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert!(
+        errs[0].ends_with(
+            "targets.\"steam-deck\": missing action \"Menu\" (list it with [] to leave it \
+             unbound)"
+        ),
+        "{}",
+        errs[0]
+    );
+    for bad in ["Steam-Deck", "steam_deck", ""] {
+        let table = targets_table(&[bad], "", "");
+        let errs = errors(&source_with_playdate(&table, ""));
+        assert_eq!(errs.len(), 1, "{bad:?}: {errs:?}");
+        assert!(
+            errs[0].contains(&format!(
+                "targets: target id \"{bad}\" must be 1 to 32 lowercase ASCII letters, digits \
+                 or -"
+            )),
+            "{}",
+            errs[0]
+        );
+    }
+    // The Playdate's buttons given both ways.
+    let both = format!(
+        "{}{}",
+        playdate_table("", ""),
+        targets_table(&["playdate"], "", "")
+    );
+    let errs = errors(&source_with_playdate(&both, ""));
+    assert_eq!(errs.len(), 1, "{errs:?}");
+    assert!(
+        errs[0].contains("the Playdate's buttons are given twice"),
+        "{}",
+        errs[0]
+    );
+}
+
+/// ADR-0008 §3: the system menu's items are buttons a table can bind,
+/// one at a time.
+#[test]
+fn system_menu_items_are_buttons_but_never_in_a_chord() {
+    assert_eq!(Button::system_menu(0), Some(Button::SystemMenu0));
+    assert_eq!(Button::system_menu(7), Some(Button::SystemMenu7));
+    assert_eq!(Button::system_menu(SYSTEM_MENU_ITEMS), None);
+    for slot in 0..SYSTEM_MENU_ITEMS {
+        let button = Button::system_menu(slot).unwrap_or(Button::South);
+        assert_eq!(button.system_menu_slot(), Some(slot));
+        assert_eq!(button.name(), format!("SystemMenu{slot}"));
+    }
+    assert_eq!(Button::CrankBack.system_menu_slot(), None);
+    assert_eq!(Button::South.system_menu_slot(), None);
+    let table = playdate_table("Info", "        \"Info\": [\"SystemMenu0\"],\n");
+    let k = KeymapDef::from_source("k.ron", &source_with_playdate(&table, "")).unwrap_or_default();
+    assert_eq!(
+        k.playdate[&Action::Info],
+        [ButtonChord::single(Button::SystemMenu0)]
+    );
+    for chord in ["SystemMenu0+South", "East+SystemMenu2"] {
+        let extra = format!("        \"Info\": [\"{chord}\"],\n");
+        let errs = errors(&source_with_playdate(&playdate_table("Info", &extra), ""));
+        assert_eq!(errs.len(), 1, "{errs:?}");
+        assert!(
+            errs[0].ends_with(
+                "can't be bound here: a system menu item is picked on its own, never with \
+                 another button"
+            ),
+            "{}",
+            errs[0]
+        );
+    }
 }

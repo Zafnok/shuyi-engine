@@ -20,7 +20,14 @@ ADR-0031, ADR-0034, ADR-0053). The game's ticket 1106 made them generic:
 - **Generic types**: `Keymap<A>`, `InputState<A>`, `FrameInput<A>`,
   `PlayerKeys<A>`, `HelpKeys<A>`.
 - **Layouts are data.** Named layouts live in the keymap file, never in an
-  enum.
+  enum. So do each target's own buttons (`targets: {"playdate": ...}`),
+  which a target without a keyboard needs (ADR-0025).
+- **Screens declare their actions** (`Screen::actions`): every action
+  the screen reacts to, through `ui()` or not. An engine screen or widget
+  declares the game's actions for its `UiAction`s (`ui_actions`, a
+  widget's `ACTIONS`). `cargo shuyi check --target` checks that each
+  screen's required actions bind to distinct buttons of the target, and
+  in the Harness a screen gets only the actions it declares.
 
 ## Only these places know about keys and buttons
 
@@ -73,5 +80,7 @@ game's code; it doesn't scan the engine's own code yet (ticket 2006).
 - [ ] No key names in player text or data; helpers and placeholders are
       used.
 - [ ] Works with a rebound key and with no key for optional actions.
+- [ ] A new or changed screen declares its actions (`Screen::actions`),
+      and `cargo shuyi check --target all` passes.
 - [ ] Text that names a key reads right on a controller.
 - [ ] `check-keys` passes, once it exists here.

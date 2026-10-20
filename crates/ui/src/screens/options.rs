@@ -864,6 +864,11 @@ impl<G: GameData> Screen<G> for OptionsScreen<G> {
         Self::NAME
     }
 
+    /// Its rows, its questions and the volume box on a controller.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(crate::input::NAVIGATION))
+    }
+
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         self.take_opened(ctx);
         if self.typing.is_some() {

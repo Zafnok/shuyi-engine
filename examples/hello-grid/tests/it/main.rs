@@ -7,6 +7,7 @@
 
 mod bots;
 mod contract;
+mod controls;
 mod determinism;
 mod files;
 mod options;

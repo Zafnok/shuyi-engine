@@ -851,3 +851,24 @@ fn an_action_from_outside_the_keys_reaches_the_top_screen() {
     game.act(Action::Confirm);
     assert_eq!(game.screens(), ["home"]);
 }
+
+/// With the guard on, the game's screens get only what they declare, and
+/// the game says what was held back; off, nothing is.
+#[test]
+fn the_guard_holds_back_what_a_screen_does_not_declare() {
+    let mut game = home(ctx());
+    game.act(Action::Info);
+    assert_eq!(game.undeclared_actions(), []);
+    game.guard_actions(true);
+    game.act(Action::Info);
+    game.act(Action::Confirm);
+    assert_eq!(game.undeclared_actions(), [("home", Action::Info)]);
+    assert_eq!(
+        game.screens(),
+        ["home", "menu"],
+        "Confirm still opens the menu"
+    );
+    game.guard_actions(false);
+    game.act(Action::Info);
+    assert_eq!(game.undeclared_actions().len(), 1);
+}

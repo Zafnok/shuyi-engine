@@ -181,6 +181,11 @@ impl<G: GameData> Screen<G> for DebugMenuScreen<G> {
         Self::NAME
     }
 
+    /// Its menu's.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(Menu::<()>::ACTIONS))
+    }
+
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         for &action in &input.actions {
             match self.menu.handle_with_sound(action, &mut ctx.audio) {
@@ -239,6 +244,11 @@ impl GlyphSamplerScreen {
 impl<G: GameData> Screen<G> for GlyphSamplerScreen {
     fn name(&self) -> &'static str {
         Self::NAME
+    }
+
+    /// Cancel closes it.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(&[UiAction::Cancel]))
     }
 
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {

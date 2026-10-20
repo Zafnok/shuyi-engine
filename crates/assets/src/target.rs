@@ -161,9 +161,11 @@ pub struct Input {
     pub buttons: Vec<Button>,
     /// Pairs of the buttons pressed together that count as one more input.
     pub chords: Vec<[Button; 2]>,
-    /// Analog inputs: `LeftStick`, `RightStick`, `Crank`.
+    /// Analog inputs: `LeftStick`, `RightStick`, `Crank`. A crank's notches
+    /// are buttons (`CrankForward`, `CrankBack`).
     pub axes: Vec<String>,
-    /// The items of the game's own the system menu holds.
+    /// The items of the game's own the system menu holds: a keymap binds
+    /// optional actions to `SystemMenu0` and on, up to this many.
     pub system_menu_slots: u8,
     /// Whether a mouse or another pointer exists.
     pub pointer: bool,
@@ -240,6 +242,14 @@ impl TargetProfile {
                 "frame_rate: floor {} must be from 1 to target {}",
                 rate.floor, rate.target
             ));
+        }
+        for button in &self.input.buttons {
+            if button.system_menu_slot().is_some() {
+                out.push(format!(
+                    "input: {button} is a system menu item, not a button: \
+                     system_menu_slots says how many the target has"
+                ));
+            }
         }
         for chord in &self.input.chords {
             for button in chord {
@@ -344,7 +354,7 @@ mod tests {
         let source = profile("other", "safe_area: (left: 200, right: 200)")
             .replace("min_text_px: 8", "min_text_px: 12")
             .replace("floor: 30", "floor: 40")
-            .replace("[\"East\", \"West\"]", "[\"East\"]")
+            .replace("[\"East\", \"West\"]", "[\"East\", \"SystemMenu0\"]")
             .replace(
                 "[(width: 400, height: 240)]",
                 "[(width: 400, height: 240), (mode: \"tiny\", width: 0, height: 9)]",
@@ -357,6 +367,8 @@ mod tests {
                 "t.ron: display: the safe area leaves nothing of 400 × 240",
                 "t.ron: display: size 0 × 9 tiny is empty",
                 "t.ron: frame_rate: floor 40 must be from 1 to target 30",
+                "t.ron: input: SystemMenu0 is a system menu item, not a button: system_menu_slots \
+                 says how many the target has",
                 "t.ron: input: chord East + West uses West, which is not in buttons",
             ]
         );

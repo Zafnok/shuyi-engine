@@ -1,6 +1,12 @@
 //! [`FrameInput`]: one frame's input as a screen sees it. Generic over the
 //! game's [`ActionSet`] (ticket 1106), and [`frame_seconds`], which makes
 //! a frame time a platform reports safe to add up.
+//!
+//! In tests, a screen sees only the actions it declares
+//! ([`Screen::actions`](crate::screen::Screen::actions), ADR-0008 §3):
+//! [`declared`](FrameInput::declared) filters a frame's input down to
+//! them, and asking whether an action it didn't declare is held fails the
+//! test.
 
 use crate::prelude::*;
 use shuyi_assets::keymap::{ActionSet, Button, Chord};
@@ -34,6 +40,10 @@ pub struct FrameInput<A: ActionSet> {
     buttons_up: Vec<Button>,
     /// The fixed simulation steps due this frame.
     ticks: u32,
+    /// The screen this input was [filtered](Self::declared) for, and the
+    /// actions it declares: asking about any other is a bug in the
+    /// screen's declaration.
+    declared: Option<(&'static str, Vec<A>)>,
 }
 
 impl<A: ActionSet> FrameInput<A> {
@@ -51,7 +61,24 @@ impl<A: ActionSet> FrameInput<A> {
             buttons_down: Vec::new(),
             buttons_up: Vec::new(),
             ticks: 0,
+            declared: None,
         }
+    }
+
+    /// This input as `screen` sees it when it declares that it reacts to
+    /// `declared` alone ([`Screen::actions`](crate::screen::Screen::actions)):
+    /// only those actions, with the actions held back (in order, as often
+    /// as they came). Asking the result whether an action outside
+    /// `declared` is [held](Self::is_held) panics: the screen reads an
+    /// action it didn't declare. Keys, buttons and text stay as they were.
+    pub fn declared(&self, screen: &'static str, declared: &[A]) -> (Self, Vec<A>) {
+        let (actions, missed) = self.actions.iter().partition(|a| declared.contains(a));
+        let input = Self {
+            actions,
+            declared: Some((screen, declared.to_vec())),
+            ..self.clone()
+        };
+        (input, missed)
     }
 
     /// The same input with the controller buttons that went `down` and
@@ -146,7 +173,19 @@ impl<A: ActionSet> FrameInput<A> {
 
     /// Whether a key bound to `action` is held (e.g. hold Confirm to
     /// fast-forward).
+    ///
+    /// # Panics
+    ///
+    /// On input [`declared`](Self::declared) for a screen that doesn't
+    /// declare `action`.
     pub fn is_held(&self, action: A) -> bool {
+        if let Some((screen, declared)) = &self.declared {
+            assert!(
+                declared.contains(&action),
+                "screen \"{screen}\" asks whether {action:?} is held, but doesn't declare it \
+                 (Screen::actions)"
+            );
+        }
         self.held.contains(&action)
     }
 }

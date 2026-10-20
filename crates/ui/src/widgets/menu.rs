@@ -168,6 +168,15 @@ pub struct Menu<T = ()> {
 }
 
 impl<T> Menu<T> {
+    /// What a menu reacts to ([`handle`](Self::handle)), for the screen
+    /// that shows it to declare ([`Screen::actions`](crate::screen::Screen::actions)).
+    pub const ACTIONS: &'static [UiAction] = &[
+        UiAction::Up,
+        UiAction::Down,
+        UiAction::Confirm,
+        UiAction::Cancel,
+    ];
+
     /// A menu focused on its first enabled item (or the first item, if none
     /// is enabled).
     pub fn new(items: Vec<MenuItem<T>>) -> Self {

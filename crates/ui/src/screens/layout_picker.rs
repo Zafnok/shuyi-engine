@@ -235,6 +235,11 @@ impl<G: GameData> Screen<G> for LayoutPickerScreen<G> {
         Self::NAME
     }
 
+    /// Its menu's.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(Menu::<()>::ACTIONS))
+    }
+
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         // Bound or not; the button does nothing else.
         if !self.cancellable && input.pad_pressed() {

@@ -100,8 +100,15 @@ fn the_same_check_answers_through_the_json_contract() {
         }])
     );
     assert_eq!(json["result"]["errors"], serde_json::json!([]));
+    // With no game tool program, the controls aren't checked, and it says so.
     assert!(
         json["limits"][0]
+            .as_str()
+            .unwrap()
+            .starts_with("the controls aren't checked: they need the game's tools")
+    );
+    assert!(
+        json["limits"][1]
             .as_str()
             .unwrap()
             .starts_with("desktop's display takes any size")

@@ -195,6 +195,11 @@ impl<G: GameData> Screen<G> for SceneCameraScreen {
         Self::NAME
     }
 
+    /// Confirm zooms, Cancel closes, the held directions pan.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(crate::input::NAVIGATION))
+    }
+
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         for &action in &input.actions {
             match action.ui() {

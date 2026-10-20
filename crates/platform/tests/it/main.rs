@@ -7,12 +7,13 @@ use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::headless::Presented;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::input::{PadKind, state::Device};
-use shuyi_ui::screen::{FrameInput, Screen, Transition};
+use shuyi_ui::screen::{FrameInput, Screen, ScreenStack, Transition};
 use shuyi_ui::settings::MAX_VOLUME;
 use shuyi_ui::storage::Storage;
 use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
-use shuyi_ui::{Game, GameData, GameHooks};
+use shuyi_ui::{Game, GameData, GameHooks, RawInputEvent};
 
 #[test]
 fn each_frame_shows_the_display_what_the_screens_drew() {
@@ -137,4 +138,65 @@ fn the_harness_says_what_music_sounds_and_how_loud() {
     let music = h.ctx().settings().music_factor();
     assert!(music > 0.0 && music < 1.0, "{music}");
     assert_eq!(h.volumes(), (music, 0.0));
+}
+
+/// A screen that declares Confirm alone, but pops on Cancel too, and
+/// with `peek` asks whether Cancel is held: a declaration that lies.
+struct Forgetful {
+    peek: bool,
+}
+
+impl Screen<Toy> for Forgetful {
+    fn name(&self) -> &'static str {
+        "forgetful"
+    }
+
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm])
+    }
+
+    fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
+        if self.peek && input.is_held(Action::Cancel) {
+            return Transition::Pop;
+        }
+        if input.actions.contains(&Action::Cancel) {
+            Transition::Pop
+        } else {
+            Transition::None
+        }
+    }
+
+    fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+}
+
+/// The toy's home with a [`Forgetful`] screen over it, in the Harness.
+fn forgetful(peek: bool) -> Harness<Toy> {
+    let mut stack = ScreenStack::new(Box::new(Home::default()));
+    stack.push(Box::new(Forgetful { peek }));
+    Harness::new(Game::with_stack(toy::ctx(), stack, GameHooks::default()))
+}
+
+#[test]
+fn a_screen_never_sees_an_action_it_does_not_declare_in_the_harness() {
+    let mut h = forgetful(false);
+    h.keys("Escape");
+    // Cancel was held back, so the screen didn't pop: a test that
+    // expected it to fails, and the log says why.
+    assert_eq!(h.screens(), ["home", "forgetful"]);
+    assert_eq!(h.undeclared(), [("forgetful", Action::Cancel)]);
+    // Without the Harness's guard, the same screen pops.
+    let mut stack = ScreenStack::new(Box::new(Home::default()));
+    stack.push(Box::new(Forgetful { peek: false }));
+    let mut game = Game::with_stack(toy::ctx(), stack, GameHooks::default());
+    let _ = game.frame(&[RawInputEvent::Down(Chord::plain(Key::Escape))], FRAME_DT);
+    assert_eq!(game.screens(), ["home"]);
+    assert_eq!(game.undeclared_actions(), []);
+}
+
+#[test]
+#[should_panic(
+    expected = "screen \"forgetful\" asks whether Cancel is held, but doesn't declare it"
+)]
+fn a_screen_asking_about_an_action_it_does_not_declare_fails_its_harness_test() {
+    forgetful(true).keys("Escape");
 }

@@ -85,3 +85,50 @@ fn cut_keeps_a_text_that_fits_and_ends_a_longer_one_with_an_ellipsis() {
     assert_eq!(super::cut("abcd", 1), "…");
     assert_eq!(super::cut("abcd", 0), "");
 }
+
+/// What each engine screen declares (ADR-0025), with the toy's actions:
+/// the layout picker its menu's, the others the cursor, Confirm and
+/// Cancel.
+#[test]
+fn every_screen_declares_its_actions() {
+    use crate::prelude::*;
+    use crate::screen::Screen;
+    use crate::toy::{self, Action, Toy};
+    use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorRight, CursorUp};
+    let c = toy::ctx();
+    let navigation = Some(vec![
+        CursorLeft,
+        CursorDown,
+        CursorUp,
+        CursorRight,
+        Confirm,
+        Cancel,
+    ]);
+    let screens: [(Box<dyn Screen<Toy>>, _); 4] = [
+        (
+            Box::new(super::options::OptionsScreen::new(toy::option_rows)),
+            navigation.clone(),
+        ),
+        (
+            Box::new(super::key_bindings::KeyBindingsScreen::new(
+                &c,
+                &toy::KEY_ROWS,
+            )),
+            navigation.clone(),
+        ),
+        (
+            Box::new(super::profiles::ProfilesScreen::new(&c)),
+            navigation,
+        ),
+        (
+            Box::new(super::layout_picker::LayoutPickerScreen::new(
+                &c,
+                &toy::LEGEND,
+            )),
+            Some(vec![CursorDown, CursorUp, Confirm, Cancel]),
+        ),
+    ];
+    for (screen, declared) in screens {
+        assert_eq!(screen.actions(), declared, "{}", screen.name());
+    }
+}

@@ -257,8 +257,12 @@ macro_rules! buttons {
         /// pad, whatever is printed on it (game ADR-0034). Each stick's four
         /// directions count as buttons too, and so does a crank wound one
         /// notch either way (the Playdate's, ticket 1035: pressed and let go
-        /// once per notch). `app` translates what the platform reports to
-        /// these; anything else on a pad is ignored.
+        /// once per notch), and so does an item of the game's own in the
+        /// system's menu (pressed and let go when the player picks it,
+        /// ADR-0008 §3). `app` translates what the platform reports to
+        /// these; anything else on a pad is ignored, and so are the
+        /// system's own buttons (the Playdate's Menu and Lock, the Deck's
+        /// Steam and Quick Access), which no keymap can name.
         ///
         /// The first 16 are in the order of the browser Gamepad API's
         /// "standard" mapping.
@@ -311,9 +315,34 @@ buttons! {
     RightStickRight => "The right stick pushed right.",
     CrankBack => "The crank wound one notch backwards (counterclockwise).",
     CrankForward => "The crank wound one notch forwards (clockwise).",
+    SystemMenu0 => "The first item of the game's own in the system's menu.",
+    SystemMenu1 => "The second item of the game's own in the system's menu.",
+    SystemMenu2 => "The third item of the game's own in the system's menu.",
+    SystemMenu3 => "The fourth item of the game's own in the system's menu.",
+    SystemMenu4 => "The fifth item of the game's own in the system's menu.",
+    SystemMenu5 => "The sixth item of the game's own in the system's menu.",
+    SystemMenu6 => "The seventh item of the game's own in the system's menu.",
+    SystemMenu7 => "The eighth item of the game's own in the system's menu.",
 }
 
+/// The system menu items a keymap can name: [`Button::SystemMenu0`] to
+/// [`Button::SystemMenu7`]. A target holds fewer
+/// (`shuyi_assets::target::Input::system_menu_slots`).
+pub const SYSTEM_MENU_ITEMS: u8 = 8;
+
 impl Button {
+    /// The system menu's item `slot` (from 0), if a keymap can name it
+    /// (below [`SYSTEM_MENU_ITEMS`]).
+    pub fn system_menu(slot: u8) -> Option<Self> {
+        let first = Self::ALL.iter().position(|&b| b == Self::SystemMenu0)?;
+        Self::ALL.get(first + usize::from(slot)).copied()
+    }
+
+    /// Which item of the system's menu this is (from 0), if it is one.
+    pub fn system_menu_slot(self) -> Option<u8> {
+        (0..SYSTEM_MENU_ITEMS).find(|&slot| Self::system_menu(slot) == Some(self))
+    }
+
     /// Looks a button up by its [`name`](Self::name) (exact match).
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.iter().copied().find(|b| b.name() == name)
@@ -685,8 +714,16 @@ pub struct KeymapDef<A: ActionSet> {
     /// only buttons are the D-pad, A and B: the file's `playdate` table, or
     /// a copy of [`pad`](Self::pad) for a file without one. A game running
     /// on a Playdate uses it in place of `pad`
-    /// ([`for_playdate`](Self::for_playdate)).
+    /// ([`for_playdate`](Self::for_playdate)). The same as
+    /// `targets["playdate"]` when the file has one.
     pub playdate: PadKeys<A>,
+    /// The default buttons on a target, by its profile's id
+    /// (`shuyi_assets::target`, ADR-0008 §3): the file's `targets` table,
+    /// with its `playdate` table as `"playdate"`. A target in it plays with
+    /// its own table in place of [`pad`](Self::pad)
+    /// ([`for_target`](Self::for_target)), and `shuyi check --target`
+    /// checks the target's controls on it.
+    pub targets: BTreeMap<String, PadKeys<A>>,
     /// Key-repeat timings, for held keys and held buttons alike.
     pub repeat: RepeatDef,
     /// How button chords fire (optional in the file).
@@ -705,6 +742,7 @@ impl<A: ActionSet> Default for KeymapDef<A> {
             layout_picker: BTreeMap::new(),
             pad: BTreeMap::new(),
             playdate: BTreeMap::new(),
+            targets: BTreeMap::new(),
             repeat: RepeatDef::default(),
             chord: ChordDef::default(),
             stick: StickDef::default(),
@@ -778,6 +816,10 @@ struct RawKeymap {
     /// Absent (empty) in a file for no Playdate.
     #[serde(default)]
     playdate: BTreeMap<String, Vec<String>>,
+    /// Target id → its default buttons; absent (empty) in a file with
+    /// none.
+    #[serde(default)]
+    targets: BTreeMap<String, BTreeMap<String, Vec<String>>>,
     repeat: RepeatDef,
     #[serde(default)]
     chord: ChordDef,
@@ -835,6 +877,22 @@ impl<A: ActionSet> KeymapDef<A> {
         self
     }
 
+    /// The default buttons of target `id` (its profile's id), if the file
+    /// gives that target a table of its own ([`targets`](Self::targets)).
+    pub fn target_buttons(&self, id: &str) -> Option<&PadKeys<A>> {
+        self.targets.get(id)
+    }
+
+    /// This keymap as target `id` uses it: the target's own table as the
+    /// default buttons, if it has one, else [`pad`](Self::pad).
+    #[must_use]
+    pub fn for_target(mut self, id: &str) -> Self {
+        if let Some(buttons) = self.targets.get(id) {
+            self.pad = buttons.clone();
+        }
+        self
+    }
+
     /// Whether the keymap has `layout` (a name from saved settings may
     /// name one it no longer has).
     pub fn has_layout(&self, layout: Layout) -> bool {
@@ -866,10 +924,12 @@ impl<A: ActionSet> KeymapDef<A> {
     /// layout's id), the same for the `layout_picker` section (except that
     /// unlisted actions are unbound there, and an action may have more than
     /// [`SLOTS`] chords: the picker isn't rebindable), and for the `pad`
-    /// and `playdate` sections (buttons and [button chords](ButtonChord)
-    /// instead of key chords, every action listed, none on an action that
-    /// [can't be rebound](ActionSet::is_rebindable)), plus bad repeat timing,
-    /// stick thresholds and crank notch size.
+    /// and `playdate` sections and each table of `targets` (buttons and
+    /// [button chords](ButtonChord) instead of key chords, every action
+    /// listed, none on an action that [can't be
+    /// rebound](ActionSet::is_rebindable), no system menu item in a chord),
+    /// plus a bad target id, a Playdate table given both ways, bad repeat
+    /// timing, stick thresholds and crank notch size.
     pub fn from_source(file: &str, source: &str) -> Result<Self, Vec<ContentError>> {
         let raw: RawKeymap = parse_ron(file, source).map_err(|e| vec![e])?;
         let mut errors = Vec::new();
@@ -894,11 +954,28 @@ impl<A: ActionSet> KeymapDef<A> {
                 Bindings::new()
             }
         };
-        let pad = validate_pad::<A>(file, source, "pad", &raw.pad, &mut errors);
+        let pad = validate_pad::<A>(file, source, "pad", "pad", &raw.pad, &mut errors);
+        let mut targets = validate_targets::<A>(file, source, &raw.targets, &mut errors);
         let playdate = if raw.playdate.is_empty() {
-            pad.clone()
+            targets
+                .get(PLAYDATE)
+                .cloned()
+                .unwrap_or_else(|| pad.clone())
         } else {
-            validate_pad::<A>(file, source, "playdate", &raw.playdate, &mut errors)
+            if raw.targets.contains_key(PLAYDATE) {
+                errors.push(positioned(
+                    ContentError::new(
+                        file,
+                        "the Playdate's buttons are given twice: as `playdate` and as \
+                         `targets.\"playdate\"` (keep one)",
+                    ),
+                    line_of_quoted(source, 0, PLAYDATE),
+                ));
+            }
+            let table =
+                validate_pad::<A>(file, source, PLAYDATE, PLAYDATE, &raw.playdate, &mut errors);
+            targets.insert(PLAYDATE.to_owned(), table.clone());
+            table
         };
         if raw.repeat.interval_ms == 0 {
             errors.push(positioned(
@@ -933,6 +1010,7 @@ impl<A: ActionSet> KeymapDef<A> {
                 layout_picker,
                 pad,
                 playdate,
+                targets,
                 repeat: raw.repeat,
                 chord: raw.chord,
                 stick: raw.stick,
@@ -996,16 +1074,67 @@ fn validate_layouts<A: ActionSet>(
     (layouts, layout_names)
 }
 
-/// A table of default controller buttons (`pad`, `playdate`) named
-/// `label`, validated; its errors go to `errors`.
+/// The Playdate's target id, and the name of its table of the file.
+const PLAYDATE: &str = "playdate";
+
+/// Most bytes in a target id of the `targets` table.
+const TARGET_ID_MAX: usize = 32;
+
+/// Whether `id` can be a target's id: 1 to [`TARGET_ID_MAX`] lowercase
+/// ASCII letters, digits and `-`, as the profiles' files are named
+/// (`steam-deck`).
+fn is_target_id(id: &str) -> bool {
+    (1..=TARGET_ID_MAX).contains(&id.len())
+        && id
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
+/// The file's `targets`: each target's table of default buttons,
+/// validated as `pad` is, by target id. Errors go to `errors`: a bad id,
+/// and every error of a table.
+fn validate_targets<A: ActionSet>(
+    file: &str,
+    source: &str,
+    raw: &BTreeMap<String, BTreeMap<String, Vec<String>>>,
+    errors: &mut Vec<ContentError>,
+) -> BTreeMap<String, PadKeys<A>> {
+    let mut targets = BTreeMap::new();
+    for (id, table) in raw {
+        if !is_target_id(id) {
+            let message = format!(
+                "targets: target id \"{id}\" must be 1 to {TARGET_ID_MAX} lowercase ASCII \
+                 letters, digits or -"
+            );
+            errors.push(positioned(
+                ContentError::new(file, message),
+                line_of_quoted(source, 0, id),
+            ));
+            continue;
+        }
+        let label = format!("targets.\"{id}\"");
+        let before = errors.len();
+        let buttons = validate_pad::<A>(file, source, &label, id, table, errors);
+        if errors.len() == before {
+            targets.insert(id.clone(), buttons);
+        }
+    }
+    targets
+}
+
+/// A table of default controller buttons (`pad`, `playdate`, a target's)
+/// named `label` in messages, validated; its errors go to `errors`. Its
+/// lines are searched for from the first that has `anchor` quoted or as a
+/// field.
 fn validate_pad<A: ActionSet>(
     file: &str,
     source: &str,
     label: &str,
+    anchor: &str,
     raw: &BTreeMap<String, Vec<String>>,
     errors: &mut Vec<ContentError>,
 ) -> PadKeys<A> {
-    let line = line_of_quoted(source, 0, label);
+    let line = line_of_quoted(source, 0, anchor);
     let from = line.map_or(0, |line| usize::try_from(line).unwrap_or(0));
     let pad = match validate_bindings::<A, ButtonChord>(file, source, from, label, true, raw) {
         Ok(buttons) => buttons,
@@ -1068,7 +1197,9 @@ impl Bound for ButtonChord {
     }
 
     fn refused(self) -> Option<&'static str> {
-        None
+        self.buttons()
+            .is_some_and(|(a, b)| a.system_menu_slot().or(b.system_menu_slot()).is_some())
+            .then_some("a system menu item is picked on its own, never with another button")
     }
 }
 
