@@ -252,6 +252,27 @@ inside each, when unparked:
   2730, then the fair-play check (2731, after 2724), then the example
   (2732, after 2726).
 
+On 2026-10-19 Nick decided macroquad and the libraries around it leave
+the engine, after the MVP ([`decisions.md`](decisions.md),
+[ADR-0021](adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)):
+graphics through wgpu and the window through winit, as in Bevy, with our
+own code for the rest where research says so. Ours is written from
+specifications, never copied. The order, when unparked:
+
+- **Sound:** the research (2902) first. If it keeps our own code: 2210,
+  then 2211, 2212, 2213 and 2214, then the mixer (3030), then output on
+  Windows and the web (3031), then Linux and macOS, which removes quad-snd
+  (3032).
+- **Controllers:** the research (2903) first. If it keeps our own code:
+  2402, then 2403, which removes gilrs.
+- **The two small ones:** web saves (3033) and file embedding (2215).
+  Neither needs anything else.
+- **macroquad:** the research (3034), which writes the ADR and the tickets
+  for winit and our own 2D renderer over wgpu, which draws on Vulkan,
+  Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU.
+- **Repositories of their own** (2008): last, for each piece we wrote, when
+  it is a full replacement and Nick says so.
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle | the game's 0060 says the army walks around freely |
@@ -268,3 +289,4 @@ inside each, when unparked:
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
+| 2902–2903, 2210–2215, 2402–2403, 3030–3034, 2008 | The platform layer (ADR-0021): research on sound and on controllers, then our own WAV, Ogg and Vorbis readers, a mixer and sound output, and our own controllers, if the research keeps them; web saves; file embedding; research on replacing macroquad with winit and a 2D renderer over wgpu; and each piece we wrote in a repository of its own | Nick asks (2026-10-19: "All parked until MVP") |
