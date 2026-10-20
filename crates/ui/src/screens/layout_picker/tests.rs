@@ -26,10 +26,10 @@ fn down_and_confirm_pick_left_handed_and_save_it() {
     let mut c = first_launch_ctx();
     let mut p = picker(&c);
     assert_eq!(p.name(), "layout_picker");
-    assert_eq!(p.focused(&c), Some(RIGHT_HANDED));
+    assert_eq!(p.focused(), Some(RIGHT_HANDED));
     let t = p.update(&mut c, &input(&[Action::CursorDown]));
     assert_eq!(format!("{t:?}"), "None");
-    assert_eq!(p.focused(&c), Some(LEFT_HANDED));
+    assert_eq!(p.focused(), Some(LEFT_HANDED));
     assert_eq!(c.layout(), None);
     let t = p.update(&mut c, &input(&[Action::Confirm]));
     assert_eq!(format!("{t:?}"), "Pop");
@@ -59,7 +59,7 @@ fn cancel_and_other_actions_do_nothing() {
     );
     assert_eq!(format!("{t:?}"), "None");
     assert_eq!(c.layout(), None);
-    assert_eq!(p.focused(&c), Some(RIGHT_HANDED));
+    assert_eq!(p.focused(), Some(RIGHT_HANDED));
 }
 
 /// Ticket 0226: any controller button closes the asked-for picker
@@ -73,7 +73,7 @@ fn a_pad_press_closes_only_the_asked_for_picker() {
     let mut p = picker(&c);
     assert_eq!(format!("{:?}", p.update(&mut c, &pad)), "Pop");
     assert_eq!(c.layout(), None);
-    assert_eq!(p.focused(&c), Some(RIGHT_HANDED));
+    assert_eq!(p.focused(), Some(RIGHT_HANDED));
     // A release alone isn't a press.
     let up = input(&[]).with_buttons(vec![], vec![Button::South]);
     assert_eq!(format!("{:?}", p.update(&mut c, &up)), "None");
@@ -254,5 +254,5 @@ fn the_picker_says_what_it_is_and_is_found_by_type() {
     assert!(shown.contains("cancellable: false"), "{shown}");
     let any = p.as_any().unwrap();
     assert!(any.downcast_ref::<LayoutPickerScreen>().is_some());
-    assert_eq!(p.clone().focused(&c), p.focused(&c));
+    assert_eq!(p.clone().focused(), p.focused());
 }

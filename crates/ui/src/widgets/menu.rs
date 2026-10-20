@@ -5,6 +5,33 @@
 //! shows is
 //! [`Menu::view`], plain data, and [`glyph::paint`] draws that view as
 //! glyphs: the screens' own skins call it for their menu.
+//!
+//! Each item stands for a value of the game's type, which the menu gives
+//! back when it is chosen, so a screen needs no list beside the menu to
+//! know what was picked. Its label is a [`Label`]: a text key the skin
+//! puts in the player's language when it paints, or text as it is, so a
+//! menu is built once, by logic that doesn't know the language.
+//!
+//! ```
+//! use shuyi_assets::keymap::sample::Action;
+//! use shuyi_ui::widgets::{Menu, MenuEvent, MenuItem};
+//!
+//! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+//! enum Seed {
+//!     Turnip,
+//!     Melon,
+//! }
+//!
+//! let mut seeds = Menu::new(vec![
+//!     MenuItem::keyed("seed.turnip").with_value(Seed::Turnip),
+//!     MenuItem::keyed("seed.melon").with_value(Seed::Melon),
+//! ]);
+//! seeds.handle(Action::CursorDown);
+//! assert_eq!(
+//!     seeds.handle(Action::Confirm),
+//!     Some(MenuEvent::Chosen(Seed::Melon))
+//! );
+//! ```
 
 pub mod glyph;
 pub mod view;
@@ -12,16 +39,23 @@ pub mod view;
 use crate::prelude::*;
 pub use view::{MenuItemView, MenuView, SuffixKind};
 
+use core::fmt::Display;
+
 use shuyi_assets::keymap::{ActionSet, UiAction};
 
 use super::list::{ListCursor, Scroll};
 use crate::audio::{AudioQueue, MenuSound};
+pub use crate::text::Label;
 
-/// One menu entry.
+/// One menu entry, standing for a `value` of the game's type (`()` for
+/// a menu whose screen only needs to know an item was chosen).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MenuItem {
-    /// Text shown.
-    pub label: String,
+pub struct MenuItem<T = ()> {
+    /// What the item stands for: what [`MenuEvent::Chosen`] gives back.
+    pub value: T,
+    /// Text shown: a text key the skin puts in the player's language, or
+    /// text as it is.
+    pub label: Label,
     /// Disabled items are drawn dim, skipped by the cursor and can't be chosen.
     pub enabled: bool,
     /// Text shown after the label (e.g. `(broken)`), and what it is.
@@ -32,14 +66,61 @@ pub struct MenuItem {
 }
 
 impl MenuItem {
-    /// An enabled item.
+    /// An enabled item showing `label` as it is.
     pub fn new(label: impl Into<String>) -> Self {
+        Self::labelled(Label::Text(label.into()))
+    }
+
+    /// An enabled item showing the text for `key` in the player's
+    /// language. Give its placeholders values with
+    /// [`with_arg`](Self::with_arg).
+    pub fn keyed(key: impl Into<String>) -> Self {
+        Self::labelled(Label::key(key))
+    }
+
+    /// A disabled item showing `label` as it is.
+    pub fn disabled(label: impl Into<String>) -> Self {
+        Self::new(label).with_enabled(false)
+    }
+
+    /// An enabled item showing `label`.
+    pub fn labelled(label: Label) -> Self {
         Self {
-            label: label.into(),
+            value: (),
+            label,
             enabled: true,
             suffix: None,
             note: None,
         }
+    }
+}
+
+impl<T> MenuItem<T> {
+    /// The same item standing for `value`.
+    #[must_use]
+    pub fn with_value<U>(self, value: U) -> MenuItem<U> {
+        MenuItem {
+            value,
+            label: self.label,
+            enabled: self.enabled,
+            suffix: self.suffix,
+            note: self.note,
+        }
+    }
+
+    /// The same item with the placeholder `{name}` of its keyed label
+    /// filled by `value` (a label of text as it is stays as it is).
+    #[must_use]
+    pub fn with_arg(mut self, name: impl Into<String>, value: impl Display) -> Self {
+        self.label = self.label.with_arg(name, value);
+        self
+    }
+
+    /// The same item, enabled or not.
+    #[must_use]
+    pub fn with_enabled(mut self, enabled: bool) -> Self {
+        self.enabled = enabled;
+        self
     }
 
     /// The same item with `text` of `kind` after its label.
@@ -56,23 +137,14 @@ impl MenuItem {
         self.note = Some(text.into());
         self
     }
-
-    /// A disabled item.
-    pub fn disabled(label: impl Into<String>) -> Self {
-        Self {
-            label: label.into(),
-            enabled: false,
-            suffix: None,
-            note: None,
-        }
-    }
 }
 
 /// What a menu reports back to its screen.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MenuEvent {
-    /// Confirm on the enabled item at this index.
-    Chosen(usize),
+pub enum MenuEvent<T = ()> {
+    /// Confirm on an enabled item: the value it stands for. (Its index is
+    /// still the menu's [`focus`](Menu::focus).)
+    Chosen(T),
     /// Cancel was pressed.
     Cancelled,
 }
@@ -83,8 +155,8 @@ pub enum MenuEvent {
 /// [`without_cancel`](Self::without_cancel)). A menu
 /// [`showing`](Self::showing) fewer rows than it has scrolls.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Menu {
-    items: Vec<MenuItem>,
+pub struct Menu<T = ()> {
+    items: Vec<MenuItem<T>>,
     cursor: ListCursor,
     /// How many rows the box shows (all of them if `None`).
     rows_shown: Option<usize>,
@@ -95,10 +167,10 @@ pub struct Menu {
     browse_disabled: bool,
 }
 
-impl Menu {
+impl<T> Menu<T> {
     /// A menu focused on its first enabled item (or the first item, if none
     /// is enabled).
-    pub fn new(items: Vec<MenuItem>) -> Self {
+    pub fn new(items: Vec<MenuItem<T>>) -> Self {
         let focus = items.iter().position(|i| i.enabled).unwrap_or(0);
         Self {
             cursor: ListCursor::new(items.len()).at(focus),
@@ -148,12 +220,17 @@ impl Menu {
     }
 
     /// The items, in order.
-    pub fn items(&self) -> &[MenuItem] {
+    pub fn items(&self) -> &[MenuItem<T>] {
         &self.items
     }
 
+    /// The value item `index` stands for, if it exists.
+    pub fn value(&self, index: usize) -> Option<&T> {
+        self.items.get(index).map(|i| &i.value)
+    }
+
     /// Whether the focus may stop on `item`.
-    fn stops_on(&self, item: &MenuItem) -> bool {
+    fn stops_on(&self, item: &MenuItem<T>) -> bool {
         item.enabled || self.browse_disabled
     }
 
@@ -163,10 +240,13 @@ impl Menu {
     }
 
     /// Handles one action, by what the game [takes it for](ActionSet::ui).
-    /// Returns an event for [`UiAction::Confirm`] on an enabled item and
-    /// for [`UiAction::Cancel`]; moves the focus for [`UiAction::Down`] and
-    /// [`UiAction::Up`]; ignores everything else.
-    pub fn handle<A: ActionSet>(&mut self, action: A) -> Option<MenuEvent> {
+    /// Returns an event for [`UiAction::Confirm`] on an enabled item (with
+    /// a copy of its value) and for [`UiAction::Cancel`]; moves the focus
+    /// for [`UiAction::Down`] and [`UiAction::Up`]; ignores everything else.
+    pub fn handle<A: ActionSet>(&mut self, action: A) -> Option<MenuEvent<T>>
+    where
+        T: Clone,
+    {
         match action.ui() {
             Some(UiAction::Down) => self.step(true),
             Some(UiAction::Up) => self.step(false),
@@ -176,7 +256,7 @@ impl Menu {
                     .items
                     .get(focus)
                     .filter(|i| i.enabled)
-                    .map(|_| MenuEvent::Chosen(focus));
+                    .map(|i| MenuEvent::Chosen(i.value.clone()));
             }
             Some(UiAction::Cancel) if self.cancellable => return Some(MenuEvent::Cancelled),
             _ => {}
@@ -192,7 +272,10 @@ impl Menu {
         &mut self,
         action: A,
         audio: &mut AudioQueue<V>,
-    ) -> Option<MenuEvent> {
+    ) -> Option<MenuEvent<T>>
+    where
+        T: Clone,
+    {
         let before = self.focus();
         let event = self.handle(action);
         let sound = match event {

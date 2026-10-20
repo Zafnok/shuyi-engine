@@ -19,8 +19,8 @@
 //!   label. As a constant, a call's own argument (`Some("heal")`), a
 //!   pattern (`"foot" =>`) or a value's name (`("count", &n)`) it is an id.
 //!
-//! The arguments of `text(…)` and `text_with(…)` are keys and value names,
-//! never text; those of an assertion, a panic or `expect` are never shown,
+//! The arguments of `text(…)`, `text_with(…)`, `MenuItem::keyed(…)` and
+//! `Label::key(…)` are keys and value names, never text; those of an assertion, a panic or `expect` are never shown,
 //! and neither is an attribute's (`#[error("…")]`). Tests, the test
 //! harness, the snapshots' text form and the debug screens are skipped.
 //! A literal the rules get wrong is let through with a
@@ -204,7 +204,11 @@ const QUIET: [&str; 14] = [
 /// What the call `path(` is (`path` as written: `MenuItem::new`, `print`).
 fn bracket_of(path: &str) -> Bracket {
     let name = path.rsplit("::").next().unwrap_or(path);
-    if name == "text" || name == "text_with" {
+    if name == "text"
+        || name == "text_with"
+        || path.ends_with("MenuItem::keyed")
+        || path.ends_with("Label::key")
+    {
         Bracket::Key
     } else if name.starts_with("print") && name != "println"
         || name.starts_with("draw")
@@ -825,7 +829,13 @@ mod tests {
         ] {
             assert!(bracket_of(sink) == Bracket::Sink, "{sink}");
         }
-        for key in ["text", "text_with", "Ctx::text"] {
+        for key in [
+            "text",
+            "text_with",
+            "Ctx::text",
+            "MenuItem::keyed",
+            "text::Label::key",
+        ] {
             assert!(bracket_of(key) == Bracket::Key, "{key}");
         }
         for quiet in [

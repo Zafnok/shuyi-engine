@@ -4,6 +4,7 @@
 //! ([`super::glyph::paint`] today; game ADR-0054).
 
 use crate::prelude::*;
+use crate::text::Label;
 
 /// The whole menu, as it is this frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,8 +55,9 @@ impl MenuView {
 /// One item of a menu.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MenuItemView {
-    /// Its text.
-    pub label: String,
+    /// Its text, as the menu holds it: the skin puts a key in the player's
+    /// language when it paints ([`Ctx::label`](crate::Ctx::label)).
+    pub label: Label,
     /// Text that follows the label (e.g. why it can't be chosen) and what
     /// it is.
     pub suffix: Option<(String, SuffixKind)>,

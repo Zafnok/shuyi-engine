@@ -26,7 +26,7 @@ fn text(lines: &[&str]) -> TextView {
 
 fn replies(labels: &[&str], focus: usize) -> MenuView {
     let item = |(i, &label): (usize, &&str)| MenuItemView {
-        label: label.to_owned(),
+        label: label.into(),
         suffix: None,
         note: None,
         enabled: true,
@@ -36,11 +36,12 @@ fn replies(labels: &[&str], focus: usize) -> MenuView {
 }
 
 fn painted(view: &TextView, speaker: Option<&str>) -> (GlyphBuffer, Palette) {
-    let p = engine_palette();
-    let black = p.engine(EngineColor::Background);
+    let mut c = crate::toy::ctx();
+    c.palette = engine_palette();
+    let black = c.palette.engine(EngineColor::Background);
     let mut buf = GlyphBuffer::new(40, 20, Cell::new('x', black, black));
-    paint(&p, &mut buf, PLACE, view, speaker);
-    (buf, p)
+    paint(&c, &mut buf, PLACE, view, speaker);
+    (buf, c.palette)
 }
 
 /// `len` cells of row `y` from column `x`.

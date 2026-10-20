@@ -7,16 +7,24 @@
 //! Another look is another `paint` of the same view (game ADR-0054).
 
 use super::view::{MenuItemView, MenuView, SuffixKind};
+use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
+use crate::prelude::*;
 
-/// Cells the label and suffix of `item` take.
-fn width(item: &MenuItemView) -> usize {
+/// What each item's label says, in the player's language: the view's
+/// labels as [`Ctx::label`] words them, in order.
+fn labels<G: GameData>(ctx: &Ctx<G>, view: &MenuView) -> Vec<String> {
+    view.items.iter().map(|i| ctx.label(&i.label)).collect()
+}
+
+/// Cells `label` and the suffix of `item` take.
+fn width(item: &MenuItemView, label: &str) -> usize {
     let suffix = item
         .suffix
         .as_ref()
         .map_or(0, |(t, _)| t.chars().count() + 1);
-    item.label.chars().count() + suffix
+    label.chars().count() + suffix
 }
 
 /// Cells the note of `item` takes.
@@ -29,15 +37,21 @@ fn has_notes(view: &MenuView) -> bool {
     view.items.iter().any(|i| i.note.is_some())
 }
 
-/// Box size in cells: the widest label (or note, so the box keeps its
-/// width as the focus moves or the menu scrolls) plus a space and a border
-/// on each side, by one row per item shown plus the border, and a rule and
-/// a note row if any item has a note.
-pub fn size(view: &MenuView) -> (i32, i32) {
+/// Box size in cells: the widest label in the player's language (or note,
+/// so the box keeps its width as the focus moves or the menu scrolls) plus
+/// a space and a border on each side, by one row per item shown plus the
+/// border, and a rule and a note row if any item has a note.
+pub fn size<G: GameData>(ctx: &Ctx<G>, view: &MenuView) -> (i32, i32) {
+    size_with(view, &labels(ctx, view))
+}
+
+/// [`size`], the labels worded as `labels`.
+fn size_with(view: &MenuView, labels: &[String]) -> (i32, i32) {
     let widest = view
         .items
         .iter()
-        .map(|i| width(i).max(note_width(i)))
+        .zip(labels)
+        .map(|(i, label)| width(i, label).max(note_width(i)))
         .max()
         .unwrap_or(0);
     let w = i32::try_from(widest).unwrap_or(i32::MAX).saturating_add(4);
@@ -66,15 +80,20 @@ pub const fn suffix_color(kind: SuffixKind) -> EngineColor {
 /// any has a note: a border rule and the focused item's note in text. A
 /// scrolled menu paints only the items it shows, with a `▲` in the top
 /// border if there are more above and a `▼` in the border under them if
-/// there are more below, in text.
-pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, y: i32) {
+/// there are more below, in text. Labels are in the player's language
+/// ([`Ctx::label`]).
+pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, x: i32, y: i32) {
+    let palette: &Palette = &ctx.palette;
     let color = |e| palette.engine(e);
     let bg = color(EngineColor::Panel);
-    let (w, h) = size(view);
+    let labels = labels(ctx, view);
+    let (w, h) = size_with(view, &labels);
     let rect = Rect::new(x, y, w, h);
     buf.fill_rect(rect, Cell::new(' ', color(EngineColor::Text), bg));
     buf.draw_box(rect, BoxStyle::Single, color(EngineColor::Border), bg);
-    for (row, item) in (y + 1..).zip(view.shown_items()) {
+    let first = view.first_shown.min(view.items.len());
+    let shown = view.shown_items().iter().zip(&labels[first..]);
+    for (row, (item, label)) in (y + 1..).zip(shown) {
         let (fg, row_bg) = match (item.focused, item.enabled) {
             (true, false) => (bg, color(EngineColor::Border)),
             (false, false) => (color(EngineColor::TextDim), bg),
@@ -82,9 +101,9 @@ pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, 
             (false, true) => (color(EngineColor::Text), bg),
         };
         buf.fill_rect(Rect::new(x + 1, row, w - 2, 1), Cell::new(' ', fg, row_bg));
-        buf.print(x + 2, row, &item.label, fg, row_bg);
+        buf.print(x + 2, row, label, fg, row_bg);
         if let Some((text, kind)) = &item.suffix {
-            let at = x + 3 + i32::try_from(item.label.chars().count()).unwrap_or(0);
+            let at = x + 3 + i32::try_from(label.chars().count()).unwrap_or(0);
             // On the focus bar the colour would vanish: keep the bar's.
             let fg = if item.focused {
                 fg
@@ -124,10 +143,22 @@ pub fn paint(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, x: i32, 
 mod tests {
     use super::*;
     use crate::frame::color::tests::engine_palette;
+    use crate::toy::ToyCtx;
+
+    /// The toy's context, painting in the engine's test palette.
+    fn ctx() -> ToyCtx {
+        let mut c = crate::toy::ctx();
+        c.palette = engine_palette();
+        c
+    }
+
+    fn size(view: &MenuView) -> (i32, i32) {
+        super::size(&ctx(), view)
+    }
 
     fn item(label: &str, enabled: bool, focused: bool) -> MenuItemView {
         MenuItemView {
-            label: label.to_owned(),
+            label: label.into(),
             suffix: None,
             note: None,
             enabled,
@@ -136,7 +167,8 @@ mod tests {
     }
 
     fn painted(view: &MenuView) -> (GlyphBuffer, Palette) {
-        let p = engine_palette();
+        let c = ctx();
+        let p = c.palette.clone();
         let (w, h) = size(view);
         let blank = Cell::new(
             ' ',
@@ -148,7 +180,7 @@ mod tests {
             u16::try_from(h + 2).unwrap(),
             blank,
         );
-        paint(&p, view, &mut buf, 1, 1);
+        paint(&c, view, &mut buf, 1, 1);
         (buf, p)
     }
 

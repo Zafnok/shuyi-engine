@@ -102,7 +102,10 @@ fn the_menu_runs_its_tools_and_reads_their_names_again() {
         let items = m.menu().items();
         items.iter().map(|i| i.label.clone()).collect::<Vec<_>>()
     };
-    assert_eq!(labels(&m), ["Gallery", "Count: 0"]);
+    assert_eq!(
+        labels(&m),
+        ["Gallery", "Count: 0"].map(crate::text::Label::from)
+    );
     let outcome = |m: &mut DebugMenuScreen<Toy>, c: &mut ToyCtx, a: &[Action]| {
         format!("{:?}", m.update(c, &frame(a)))
     };
@@ -114,7 +117,10 @@ fn the_menu_runs_its_tools_and_reads_their_names_again() {
         "None"
     );
     assert_eq!(runs.get(), 2);
-    assert_eq!(labels(&m), ["Gallery", "Count: 2"]);
+    assert_eq!(
+        labels(&m),
+        ["Gallery", "Count: 2"].map(crate::text::Label::from)
+    );
     assert_eq!(m.menu().focus(), 1);
     let cues: Vec<_> = c
         .audio
@@ -140,7 +146,7 @@ fn the_view_is_the_title_the_tools_and_the_help() {
     assert_eq!(view.title, "Debug tools");
     assert_eq!(view.menu, m.menu().view());
     assert_eq!(
-        view.menu.focused().map(|i| i.label.as_str()),
+        view.menu.focused().map(|i| c.label(&i.label)).as_deref(),
         Some("Count: 0")
     );
     assert_eq!(view.help, "arrows move · f choose · d back");

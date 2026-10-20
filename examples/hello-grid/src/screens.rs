@@ -78,8 +78,23 @@ pub fn option_rows(_: &HelloCtx) -> Vec<OptionRow<Hello>> {
     ]
 }
 
+/// What an item of the title's menu stands for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TitleChoice {
+    /// Starts a stage.
+    Play,
+    /// Opens the options.
+    Options,
+    /// Quits.
+    Quit,
+}
+
 /// The title menu's items, by their text keys, top to bottom.
-pub const TITLE_ITEMS: [&str; 3] = ["title.play", "title.options", "title.quit"];
+pub const TITLE_ITEMS: [(&str, TitleChoice); 3] = [
+    ("title.play", TitleChoice::Play),
+    ("title.options", TitleChoice::Options),
+    ("title.quit", TitleChoice::Quit),
+];
 
 /// The title: the game's name and a menu of Play, Options and Quit.
 #[derive(Debug, Default)]
@@ -94,8 +109,12 @@ impl Title {
         Self::default()
     }
 
-    fn menu(&self, ctx: &HelloCtx) -> Menu {
-        let items = TITLE_ITEMS.iter().map(|&key| MenuItem::new(ctx.text(key)));
+    /// The menu: its labels are text keys, put in the player's language
+    /// when the skin paints them.
+    fn menu(&self) -> Menu<TitleChoice> {
+        let items = TITLE_ITEMS
+            .iter()
+            .map(|&(key, choice)| MenuItem::keyed(key).with_value(choice));
         Menu::new(items.collect())
             .without_cancel()
             .focused(self.focus)
@@ -106,7 +125,7 @@ impl Title {
         TitleView {
             name: ctx.text("title.name").to_owned(),
             subtitle: ctx.text("title.subtitle").to_owned(),
-            menu: self.menu(ctx).view(),
+            menu: self.menu().view(),
             help: ctx.text_with("title.help", &[]),
         }
     }
@@ -118,18 +137,18 @@ impl Screen<Hello> for Title {
     }
 
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
-        let mut menu = self.menu(ctx);
+        let mut menu = self.menu();
         for &action in &input.actions {
             let event = menu.handle_with_sound(action, &mut ctx.audio);
             self.focus = menu.focus();
             match event {
-                Some(MenuEvent::Chosen(0)) => {
+                Some(MenuEvent::Chosen(TitleChoice::Play)) => {
                     return Transition::Push(Box::new(StageScreen::new(ctx)));
                 }
-                Some(MenuEvent::Chosen(1)) => {
+                Some(MenuEvent::Chosen(TitleChoice::Options)) => {
                     return Transition::Push(Box::new(OptionsScreen::new(option_rows)));
                 }
-                Some(MenuEvent::Chosen(_)) => return Transition::Quit,
+                Some(MenuEvent::Chosen(TitleChoice::Quit)) => return Transition::Quit,
                 Some(MenuEvent::Cancelled) | None => {}
             }
         }
@@ -137,7 +156,7 @@ impl Screen<Hello> for Title {
     }
 
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
-        skin::paint_title(&ctx.palette, &self.view(ctx), buf);
+        skin::paint_title(ctx, &self.view(ctx), buf);
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
@@ -235,7 +254,7 @@ impl Screen<Hello> for Talk {
 
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
         let view = self.view(ctx);
-        skin::paint_talk(&ctx.palette, &view, self.speaker(ctx).as_deref(), buf);
+        skin::paint_talk(ctx, &view, self.speaker(ctx).as_deref(), buf);
     }
 
     fn is_overlay(&self) -> bool {
@@ -298,8 +317,20 @@ pub struct End {
     pub focus: usize,
 }
 
+/// What an item of the end's menu stands for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EndChoice {
+    /// Plays the stage again.
+    Again,
+    /// Goes back to the title.
+    Title,
+}
+
 /// The end menu's items, by their text keys, top to bottom.
-pub const END_ITEMS: [&str; 2] = ["end.again", "end.title"];
+pub const END_ITEMS: [(&str, EndChoice); 2] = [
+    ("end.again", EndChoice::Again),
+    ("end.title", EndChoice::Title),
+];
 
 impl End {
     /// The end of a stage that ended so, on Play again.
@@ -307,8 +338,11 @@ impl End {
         Self { outcome, focus: 0 }
     }
 
-    fn menu(&self, ctx: &HelloCtx) -> Menu {
-        let items = END_ITEMS.iter().map(|&key| MenuItem::new(ctx.text(key)));
+    /// The menu, of text keys like the title's.
+    fn menu(&self) -> Menu<EndChoice> {
+        let items = END_ITEMS
+            .iter()
+            .map(|&(key, choice)| MenuItem::keyed(key).with_value(choice));
         Menu::new(items.collect())
             .without_cancel()
             .focused(self.focus)
@@ -323,7 +357,7 @@ impl End {
         EndView {
             headline: ctx.text_with(key, &[("turn", &turn)]),
             won,
-            menu: self.menu(ctx).view(),
+            menu: self.menu().view(),
             help: ctx.text_with("end.help", &[]),
         }
     }
@@ -335,15 +369,15 @@ impl Screen<Hello> for End {
     }
 
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
-        let mut menu = self.menu(ctx);
+        let mut menu = self.menu();
         for &action in &input.actions {
             let event = menu.handle_with_sound(action, &mut ctx.audio);
             self.focus = menu.focus();
             match event {
-                Some(MenuEvent::Chosen(0)) => {
+                Some(MenuEvent::Chosen(EndChoice::Again)) => {
                     return Transition::Replace(Box::new(StageScreen::new(ctx)));
                 }
-                Some(MenuEvent::Chosen(_)) => return Transition::Pop,
+                Some(MenuEvent::Chosen(EndChoice::Title)) => return Transition::Pop,
                 Some(MenuEvent::Cancelled) | None => {}
             }
         }
@@ -351,7 +385,7 @@ impl Screen<Hello> for End {
     }
 
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
-        skin::paint_end(&ctx.palette, &self.view(ctx), buf);
+        skin::paint_end(ctx, &self.view(ctx), buf);
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
