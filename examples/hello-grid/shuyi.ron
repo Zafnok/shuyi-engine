@@ -34,6 +34,15 @@
         ],
     ),
 
+    // `cargo shuyi check --target all`: the targets it ships on, each with
+    // its frame (48 × 24 cells of 8 × 16), its scale and its smallest text
+    // (the font's cell). Not the Playdate: the README says why.
+    targets: {
+        "desktop": (frame: (384, 384), scale: integer, text_px: 16),
+        "web": (frame: (384, 384), scale: integer, text_px: 16),
+        "steam-deck": (frame: (384, 384), scale: integer, text_px: 16),
+    },
+
     // `cargo shuyi web --release`: the web build, in `dist/web/`.
     web: (
         package: "hello-grid",

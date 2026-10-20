@@ -74,6 +74,7 @@ The standard ones, in `Formats::standard()`:
 | palette | `palette::PaletteDef` | `palette::PaletteRon` | `palette` | `ron` | none | 4 MiB |
 | lights | `lighting::Lighting` | `lighting::LightingRon` | `lights` | `ron` | none | 4 MiB |
 | names table | `names::Names` | `names::NamesRon` | `names` | `ron` | none | 4 MiB |
+| target profile | `target::TargetProfile` | `target::TargetRon` | `target-ron` | `ron` | none | 4 MiB |
 | dialogue | `dialogue::DialogueFile` (a file's scenes) | `dialogue::Dlg` | `dlg` | `dlg` | none | 4 MiB |
 
 The ones a game registers with its own types or rules:

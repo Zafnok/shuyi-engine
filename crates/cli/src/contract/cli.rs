@@ -144,6 +144,25 @@ fn schema(args: &[String], cwd: &Path, command: &str) -> u8 {
     }
 }
 
+/// Whether op `name` with `args` checks targets (`check --target`), which
+/// runs on the project file alone, without the game's tools.
+pub fn checks_targets(name: &str, args: &[String]) -> bool {
+    name == "check" && args.iter().any(|a| a == "--target")
+}
+
+/// `check --target` with `args` on `project`.
+pub fn check_targets(project: &Project, args: &[String]) -> u8 {
+    let (json, args) = split_json(args);
+    match check::parse_args(&args) {
+        Ok(input) => print(
+            json,
+            &check::targets(&project.config, &project.root, &input),
+            check::text,
+        ),
+        Err(e) => wrong(json, Op::Check, &e, &check::usage(project.config.command())),
+    }
+}
+
 /// Whether `name` is an op that runs on the project's game.
 pub fn runs_the_game(name: &str) -> bool {
     matches!(
@@ -159,14 +178,15 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
     let command = project.config.command();
     let options = game.frame_options();
     match name {
-        "check" => {
-            if !args.is_empty() {
-                let usage = format!("usage: {command} check [--json]");
-                return wrong(json, Op::Check, "no arguments", &usage);
-            }
-            let input = check::CheckInput::default();
-            print(json, &check::check(game, &input), check::text)
-        }
+        "check" => match check::parse_args(&args) {
+            Ok(input) if input.target.is_some() => print(
+                json,
+                &check::targets(&project.config, &project.root, &input),
+                check::text,
+            ),
+            Ok(input) => print(json, &check::check(game, &input), check::text),
+            Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
+        },
         "run" | "scene" => {
             let op = if name == "run" { Op::Run } else { Op::Scene };
             match run::parse_args(&args, options) {
@@ -309,6 +329,26 @@ mod tests {
         assert_eq!(with_game(&p, "scene", &[], &blank), 1);
         assert_eq!(with_game(&p, "run", &[], &blank), 0);
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn check_with_a_target_runs_on_the_project_file_in_the_game_program_too() {
+        let mut p = project(PathBuf::from("."));
+        p.config = Config::parse(
+            r#"(targets: {"desktop": (frame: (800, 512), scale: integer, text_px: 16)})"#,
+        )
+        .unwrap();
+        // The fake game can't check targets: an answer of 0 is the project's.
+        assert_eq!(
+            with_game(&p, "check", &args(&["--target", "all"]), &Fake::default()),
+            0
+        );
+        assert_eq!(check_targets(&p, &args(&["--target", "all", "--json"])), 0);
+        assert_eq!(check_targets(&p, &args(&["--target", "web"])), 1);
+        assert_eq!(check_targets(&p, &args(&["--target"])), 2);
+        assert!(checks_targets("check", &args(&["--target", "all"])));
+        assert!(!checks_targets("check", &args(&["--json"])));
+        assert!(!checks_targets("run", &args(&["--target"])));
     }
 
     #[test]

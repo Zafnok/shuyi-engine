@@ -47,6 +47,7 @@ usage: {command} <command>
 the tool contract (each also with --json; a wrong argument prints its usage):
   new <template> <dir>               make a new game from a template: grid, blank
   check                              every error of the game's content, with file and line
+  check --target <id | all>          whether the frame and its text fit a target's display
   run [steps] [--frames N]           play a key script headless: screens, scene, events, sounds
   scene [steps]                      the scene on screen after a script
   replay <record> [<other>]          a state hash per step; where two runs part
@@ -118,6 +119,9 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
     };
     if let Some(code) = contract::cli::without_project(name, args, &project.root, command) {
         return code;
+    }
+    if contract::cli::checks_targets(name, args) {
+        return contract::cli::check_targets(project, args);
     }
     if contract::cli::runs_the_game(name) {
         return match game {

@@ -9,7 +9,8 @@
 //! game's actions ([`keymap`]); and the text of a story game:
 //! languages ([`lang`]), a names table ([`names`]), dialogue scripts
 //! ([`dialogue`]), voice clips by line ([`voice`]) and tips ([`tip`]); and
-//! cinematics, timed shots of a game's own kinds ([`cinematic`]). Each
+//! cinematics, timed shots of a game's own kinds ([`cinematic`]); and
+//! export targets' profiles ([`target`]). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
 //!
@@ -48,6 +49,7 @@ pub mod lighting;
 pub mod names;
 pub mod palette;
 pub mod ron;
+pub mod target;
 pub mod text;
 pub mod tileset;
 pub mod tip;

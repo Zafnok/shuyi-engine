@@ -33,11 +33,19 @@ job; the page goes to its `dist/web/`):
 cd examples/hello-grid && cargo shuyi web --release
 ```
 
+Each example that lists `targets` in its `shuyi.ron` fits them (ADR-0008
+§1; CI's `wasm` job), from its folder:
+
+```bash
+cd examples/hello-grid && cargo shuyi check --target all
+```
+
 The platform boundary depends on no device crate (CI's `platform-deps`
 job): this prints nothing.
 
 ```bash
-cargo tree -p shuyi-platform --edges normal,build --target all --all-features --prefix none --format '{p}' --locked   | grep -E '^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
+cargo tree -p shuyi-platform --edges normal,build --target all --all-features --prefix none --format '{p}' --locked \
+  | grep -E '^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
 ```
 
 The crates a Playdate game builds without `std` (CI's `no-std` job; it
