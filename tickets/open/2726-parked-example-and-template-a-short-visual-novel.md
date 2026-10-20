@@ -111,7 +111,7 @@ None.
   against what the example uses, and correct them.
 - **The catalog**: set `shuyi-vn`'s row in `docs/modules.md` and the
   `visual-novel` answer in `docs/modules.ron` to ready.
-- **The docs site** (1132), if it is done: add the example to the
+- **The website** (2801), if it is done: add the example to the
   playable list.
 
 **Out (do not do):**

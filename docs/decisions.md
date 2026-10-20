@@ -761,3 +761,50 @@ the `spine-runtimes` README, read 2026-10-20; not legal advice):
 
 So path A of 2217 no longer needs Nick to buy anything for the engine.
 He needs a license only to test the module himself.
+
+## 2026-10-20: everything on Bevy's homepage, and a website like Bevy's
+
+Source: Nick, in a session of this repository:
+
+> "every feature outlined on Bevy's homepage should be available in
+> Shuyi engine at some point in the not so distant future.
+> https://bevy.org/ Ensure we have all features outlined there like hot
+> reload, fast compile, ECS system (perhaps optional)"
+
+> "also would be good if we have extensive documentation, a robust
+> tutorial, a newspage with automatic changelog, a devlog if I want to
+> post a manual update to community, and some sponsor segment. probably
+> hosted on github pages to start and can use custom domain later."
+
+Asked when the work happens, he chose the recommendation: **"New after
+MVP"**. Asked how people sponsor the engine: **"GitHub Sponsors +
+Ko-fi"**. Asked how he posts a devlog:
+
+> "just a normal blog that's hosted in a larger dev website the way Bevy
+> does it... I can pick if I wanna use claude or use my own hands and
+> brain..."
+
+So:
+
+- **Every feature on Bevy's homepage (read 2026-10-20) has a ticket.**
+  The list and where each one lives is in `docs/ROADMAP.md`, *Bevy's
+  homepage*. Features no ticket covered get new tickets.
+- **The new engine tickets come after the MVP, not parked.** They are
+  ordinary tickets, picked up once the MVP's are done. The ECS is
+  **optional**: an opt-in module beside the arena of plain structs
+  (ADR-0003 §4 stays the default).
+- **Bevy features already parked stay parked** until Nick unparks them:
+  3D (3101–3109), the wgpu renderer (3034, and 2326–2328 on it),
+  skeletal animation (2105), and mobile (3015). New tickets that need
+  them are parked with them.
+- **The website is part of the MVP.** It replaces the docs site in
+  1132, which keeps the community files. It is on GitHub Pages, with
+  room for a custom domain later (parked until Nick asks; buying a
+  domain costs money). It has extensive docs, a tutorial, a news page
+  with a changelog made automatically, a blog, and a sponsor page.
+- **The blog is an ordinary blog on the website, like Bevy's news.** A
+  post is a Markdown file. Nick writes it himself or asks Claude for a
+  draft; either way it is his choice, and merging it publishes it.
+- **Sponsors through GitHub Sponsors and Ko-fi.** Nick enrolls in both
+  himself (money, bank and tax details are his). The ticket lists his
+  steps and checks both platforms' fees on the day.

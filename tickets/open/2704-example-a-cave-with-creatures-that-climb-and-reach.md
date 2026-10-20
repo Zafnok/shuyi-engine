@@ -90,7 +90,7 @@ they move become tuning in the creature files, or follow-up tickets.
 3. Write the tests.
 4. Measure the WASM size. Write the README, the skill and its worked
    example, and the guide lines. Set the catalog row.
-5. Add the example to the docs site's playable list (1132).
+5. Add the example to the website's Examples page (2801).
 
 ## Acceptance criteria
 

@@ -82,8 +82,8 @@ None.
     the same scene text at every step**; `frame-png` pictures of the
     town and the battle under the diorama skin;
   - `shuyi check --target web` passes on both examples.
-- **The web builds** of both, and their places on the docs site's
-  playable list (1132).
+- **The web builds** of both, and their places on the website's
+  Examples page (2801).
 - **Templates** for `shuyi new` (1129):
   - `templates/top-down-3d`: the `3d` feature, one `Overhead3D` stage
     with the mover and the camera, a small room as `.glb`, tests;

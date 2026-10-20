@@ -71,7 +71,9 @@ and an ECS for the real-time strategy module, ADR-0015 §3).
    stable).
 3. `TickSim`, records, replay, `TickDriver`, Harness support.
 4. Decide, and write in the Completion notes, whether any example needs
-   an ECS (ADR-0003 §4). Default: no.
+   an ECS (ADR-0003 §4). Default: no. A game that wants one has the
+   opt-in `shuyi-ecs` module (2107), whose tick adapter is 2108's: if
+   2108 is done, check its adapter runs on this `TickSim`.
 
 ## Acceptance criteria
 

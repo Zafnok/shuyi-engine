@@ -52,11 +52,48 @@ and agents can drive it. These tickets, in order:
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
 | 1133 | An MCP server over the contract |
 | 1134 | The engine's skill pack (Agent Skills) |
-| 1132 | Community files and a docs site with the examples playable in the browser |
+| 1132 | Community files and the contribution policy |
+| 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
+| 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
+| 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
+| 2804 | News with an automatic changelog from the tickets done, and a post per release |
+| 2805 | The blog: Nick's posts in News, by hand or drafted by Claude |
+| 2806 | Sponsors: GitHub Sponsors and Ko-fi, a sponsor page and a strip on the home page |
 | 2006 | `check-keys` and `check-text` on the engine's own code |
 | 2005 | The first release on crates.io, and the game on versions |
 
 ## Phase 3: after the MVP
+
+### Bevy's homepage
+
+Nick, 2026-10-20 ([`decisions.md`](decisions.md)): "every feature outlined
+on Bevy's homepage should be available in Shuyi engine at some point in
+the not so distant future", with an ECS that may be optional. The new
+tickets come after the MVP and are not parked. Bevy features that were
+already parked stay parked until he unparks them. The website he asked
+for at the same time is in the MVP above (2801–2806, and 2807 parked).
+
+Each feature on bevy.org (read 2026-10-20), and where it lives:
+
+| Bevy's homepage | Here | State |
+| --------------- | ---- | ----- |
+| Data driven: an ECS, components as structs, systems as functions, queries, resources, change detection, a parallel scheduler | 2904 (research), 2107 (`shuyi-ecs`), 2108 (in a game, parallel with the same hashes, an example). Opt-in; the arena stays the default (ADR-0003 §4) | after MVP |
+| 2D renderer: sprite sheets, dynamic texture atlases, cameras, textures, materials | 1123 (sprite sheets), 2222 (atlases), 1120 (cameras), 2327 (materials and a game's shaders) | 2222 after MVP; the rest parked |
+| 3D renderer: lights, shadows, cameras, meshes, materials, glTF | 3101–3109 | parked |
+| Render graph | 3034 (wgpu, not tied to one API), 2331 (the graph) | parked |
+| Animation: skeletal rigs, blending, morph targets, glTF | 1123 (clips), 2104 (state machines), 2105 (2D skeletons), 3102 (glTF), 3110 (3D blending and morph targets) | parked |
+| Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3015 (mobile) | 3004 with the export targets; 3015 parked |
+| UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2330 (`.ui.ron`) | after MVP |
+| Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
+| Sound | `shuyi-app` today, 3029 for every backend | done, and 3029 |
+| Hot reload of assets | 2220 (every asset kind), 1124's maps through it | after MVP |
+| Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
+| Fast compiles | 2009 (measured, gated, a fast setup in the templates) | after MVP |
+| Free and open source, MIT or Apache 2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | done |
+
+The order, after the MVP: 2009 and 2220 first (each makes every later
+ticket nicer to work on), then 2329 and 2222, then 2904, 2107, 2108 and
+2221, then 2330 and 2905.
 
 These are not parked, but they come after the MVP:
 
@@ -320,4 +357,7 @@ same day; Visions of Shuyi never uses Spine). The order, when unparked:
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |
 | 2325 | A frame profiler in the debug view: phase times, spans, a graph, and a trace file | Nick asks |
 | 3036–3037 | Store services: achievements and stats as data with a local backend, an unlock notice and an achievements screen, then Steam achievements, stats and Steam Cloud saves behind the `steam` feature | Nick asks (2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost") |
+| 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3034 is unparked |
+| 3110 | 3D animation: several clips blended at once, and morph targets from glTF | 3D is unparked |
+| 2807 | A custom domain for the website | Nick has a domain (2026-10-20: "can use custom domain later") |
 | 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |

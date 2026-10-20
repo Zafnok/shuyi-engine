@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "1132"]
+blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804"]
 nick_input: sign-off
 completed:
 ---
@@ -44,7 +44,9 @@ public release".
 - A version policy as an ADR: semver, 0.x while the API moves, one
   version for all `shuyi-*` crates, and what a breaking change needs (a
   note in the changelog, a pin bump in the game).
-- `CHANGELOG.md`, starting at the first release.
+- `CHANGELOG.md`, starting at the first release, written by 2804's
+  `cargo xtask changelog --format keep-a-changelog`; its notes are the
+  GitHub release's body and the release's News post (2804).
 - `shuyi new`'s templates (`templates/` at the root, embedded by
   `crates/cli` with `include_dir`, ADR-0022 §7) are outside
   `shuyi-cli`'s folder, so its package lacks them: move or copy them into

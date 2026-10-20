@@ -19,6 +19,11 @@ completed:
 
 Nick, 2026-10-18 (`docs/decisions.md`): "I wanna be able to support high
 unit count RTS games".
+
+2904 (after MVP, not parked) researches an ECS as an opt-in module for
+any game, against the same rules. If it ran first, reuse its harness
+in `research/ecs/` and its numbers, and measure only what is new here
+(columns, and the scale of an army).
 [ADR-0015](../../docs/adr/0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md)
 §3 decides that the RTS module keeps its units in a table of columns
 (`UnitTable`), not in an `Arena<T>` of structs. Its last bullet says this
