@@ -210,11 +210,7 @@ impl<G: GameData> Screen<G> for SceneCameraScreen {
                 _ => {}
             }
         }
-        let step = if input.dt.is_finite() {
-            PAN_SPEED * input.dt.max(0.0)
-        } else {
-            0.0
-        };
+        let step = PAN_SPEED * input.dt();
         let held = |ui| {
             let down = G::Action::for_ui(ui).is_some_and(|a| input.is_held(a));
             f32::from(u8::from(down))

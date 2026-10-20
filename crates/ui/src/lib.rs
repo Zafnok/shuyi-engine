@@ -18,6 +18,8 @@
 //! - [`widgets`] screens are built from: a menu and word wrap;
 //! - [`screens`] any game can use, with the game's rows: the layout
 //!   picker and the Key bindings screen;
+//! - a [`hurry`] clock for something timed the player can hurry by
+//!   holding a key and finish with a press;
 //! - [`cinematic`]s: a timeline of a game's shots, each frame drawn from
 //!   the time alone;
 //! - the tactics kit's [`grid`] map: a scene of the visible tiles generic
@@ -51,6 +53,7 @@ pub mod game;
 pub mod grid;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
+pub mod hurry;
 pub mod input;
 pub mod profiles;
 pub mod screen;
@@ -65,6 +68,7 @@ pub mod widgets;
 
 pub use ctx::{Ctx, GameData, IdleMotion, KeyPrompt, Keyboard};
 pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, ScreenHook};
+pub use hurry::HurryClock;
 pub use screen::{FrameInput, Screen, ScreenResult, ScreenStack, Transition};
 
 /// Whether this build offers the developer's tools: debug builds, and

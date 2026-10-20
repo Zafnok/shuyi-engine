@@ -18,6 +18,7 @@ use crate::audio::{AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::crank::Crank;
+use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
@@ -228,6 +229,9 @@ impl<G: GameData> Game<G> {
     pub fn frame(&mut self, events: &[RawInputEvent], dt: f32) -> FrameOutput<'_, G::Voice> {
         self.audio_out.clear();
         self.music_out.clear();
+        // Nonsense frame times pass no time, for the screens, the clock and
+        // the music alike.
+        let dt = frame_seconds(dt);
         if !self.quit {
             self.step(events, dt);
             self.collect_audio(dt);
@@ -308,9 +312,7 @@ impl<G: GameData> Game<G> {
                 }
             }
         }
-        if dt.is_finite() {
-            self.ctx.clock_s += f64::from(dt.max(0.0));
-        }
+        self.ctx.clock_s += f64::from(dt);
         self.ctx.device = self.input.device();
         let actions = self.input.update(dt);
         let held = self.held();

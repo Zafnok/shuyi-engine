@@ -1,16 +1,25 @@
 //! [`FrameInput`]: one frame's input as a screen sees it. Generic over the
-//! game's [`ActionSet`] (ticket 1106).
+//! game's [`ActionSet`] (ticket 1106), and [`frame_seconds`], which makes
+//! a frame time a platform reports safe to add up.
 
 use crate::prelude::*;
 use shuyi_assets::keymap::{ActionSet, Button, Chord};
+
+/// `dt` as seconds that can pass: itself when finite and at least 0, else
+/// 0 (a NaN, an infinity or a negative frame time is a platform's
+/// nonsense, and no time passes).
+pub fn frame_seconds(dt: f32) -> f32 {
+    if dt.is_finite() { dt.max(0.0) } else { 0.0 }
+}
 
 /// One frame's input as a screen sees it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FrameInput<A: ActionSet> {
     /// Actions this frame, in order: key presses, then key repeats.
     pub actions: Vec<A>,
-    /// Seconds since the previous frame.
-    pub dt: f32,
+    /// Seconds since the previous frame: finite and at least 0
+    /// ([`frame_seconds`]).
+    dt: f32,
     /// Actions whose key is currently held down.
     held: Vec<A>,
     /// The chords pressed this frame, in order.
@@ -27,11 +36,12 @@ pub struct FrameInput<A: ActionSet> {
 
 impl<A: ActionSet> FrameInput<A> {
     /// Input for one frame; `held` lists the actions whose keys are down.
-    /// No [`pressed_chords`](Self::pressed_chords).
+    /// No [`pressed_chords`](Self::pressed_chords). A `dt` that is not
+    /// finite or is negative counts as 0 ([`frame_seconds`]).
     pub fn new(actions: Vec<A>, dt: f32, held: Vec<A>) -> Self {
         Self {
             actions,
-            dt,
+            dt: frame_seconds(dt),
             held,
             pressed: Vec::new(),
             text: Vec::new(),
@@ -50,6 +60,12 @@ impl<A: ActionSet> FrameInput<A> {
         self.buttons_down = down;
         self.buttons_up = up;
         self
+    }
+
+    /// Seconds since the previous frame: always finite and at least 0, so
+    /// a screen adds it up as it is.
+    pub fn dt(&self) -> f32 {
+        self.dt
     }
 
     /// The controller buttons that went down this frame (bound or not; by

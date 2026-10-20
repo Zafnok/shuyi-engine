@@ -277,11 +277,7 @@ impl Screen<Hello> for StageScreen {
             self.briefed = true;
             return Transition::Push(Box::new(Talk::new(ctx, "intro")));
         }
-        let dt = if input.dt.is_finite() {
-            input.dt.max(0.0)
-        } else {
-            0.0
-        };
+        let dt = input.dt();
         self.cursor.tick(dt);
         if let Some(w) = &mut self.walk {
             w.t += dt;

@@ -47,7 +47,7 @@ impl Screen<Toy> for Recorder {
     fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
         self.0.borrow_mut().push(Seen {
             actions: input.actions.clone(),
-            dt: input.dt,
+            dt: input.dt(),
             buttons: input.pressed_buttons().to_vec(),
             chords: input
                 .pressed_chords()

@@ -29,6 +29,7 @@ use shuyi_assets::voice::ClipVariant;
 
 #[cfg(doc)]
 use crate::GameData;
+use crate::input::frame_seconds;
 
 /// The sounds the engine's widgets and screens play: the same cue means
 /// the same thing on every screen.
@@ -459,9 +460,7 @@ impl MusicState {
         let (Some(current), Some(fade)) = (&self.current, &mut self.fade) else {
             return;
         };
-        if dt.is_finite() {
-            fade.elapsed += dt.max(0.0);
-        }
+        fade.elapsed += frame_seconds(dt);
         if fade.elapsed < self.fade_secs {
             out.push(MusicCommand::Gain {
                 cue: current.clone(),

@@ -484,12 +484,12 @@ impl<G: GameData> KeyBindingsScreen<G> {
         rows.find(|action| unmapped.contains(action))
     }
 
-    /// Counts the moved-row highlight down.
+    /// Counts the moved-row highlight down by `dt` seconds (a frame's:
+    /// finite and at least 0).
     fn tick(&mut self, dt: f32) {
         if let Some((_, left)) = &mut self.moved {
             *left -= dt;
-            // A NaN frame time ends the highlight too.
-            if left.is_nan() || *left <= 0.0 {
+            if *left <= 0.0 {
                 self.moved = None;
             }
         }
@@ -720,9 +720,9 @@ impl<G: GameData> KeyBindingsScreen<G> {
             }
             return;
         }
-        // The frame it went down in doesn't count; nor does a NaN frame.
+        // The frame it went down in doesn't count.
         if !fresh {
-            held.secs += input.dt.max(0.0);
+            held.secs += input.dt();
         }
         self.held = Some(held);
         if held.second.is_none() && held.secs >= HOLD_TO_CANCEL_SECS {
@@ -931,7 +931,7 @@ impl<G: GameData> Screen<G> for KeyBindingsScreen<G> {
     }
 
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
-        self.tick(input.dt);
+        self.tick(input.dt());
         if !self.releasing.is_empty() {
             // What the capture's buttons do when let go isn't for here.
             let up = input.released_buttons();

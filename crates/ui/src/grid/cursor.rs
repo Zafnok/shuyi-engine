@@ -9,6 +9,7 @@ use shuyi_core::{Dir, Pos};
 
 #[cfg(not(feature = "std"))]
 use crate::float::Float;
+use crate::input::frame_seconds;
 
 /// One full bright → dim → bright pulse, in seconds. *Tunable.*
 pub const BLINK_PERIOD: f32 = 1.0;
@@ -34,8 +35,7 @@ impl Cursor {
     /// Advances the pulse by `dt` seconds (negative or non-finite `dt`
     /// counts as zero).
     pub fn tick(&mut self, dt: f32) {
-        let dt = if dt.is_finite() { dt.max(0.0) } else { 0.0 };
-        self.blink_t = (self.blink_t + dt) % BLINK_PERIOD;
+        self.blink_t = (self.blink_t + frame_seconds(dt)) % BLINK_PERIOD;
     }
 
     /// Current brightness: `1` at the start of a pulse, down to

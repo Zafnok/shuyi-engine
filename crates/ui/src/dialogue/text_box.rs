@@ -8,14 +8,17 @@ pub mod glyph;
 
 use crate::prelude::*;
 
+use crate::hurry::{HURRY_DELAY, HURRY_FACTOR, HurryClock};
 use crate::widgets::menu::MenuView;
 use crate::widgets::word_wrap;
 
-/// Reveal speed multiplier while the key that goes on is held.
-pub const FAST_FORWARD: f32 = 6.0;
+/// Reveal speed multiplier while the key that goes on is held (the
+/// [`HurryClock`]'s default factor).
+pub const FAST_FORWARD: f32 = HURRY_FACTOR;
 /// Seconds that key must be held on a page before it reveals faster, so
-/// the tap that turned the page doesn't speed the next one up.
-pub const FAST_FORWARD_DELAY: f32 = 0.3;
+/// the tap that turned the page doesn't speed the next one up (the
+/// [`HurryClock`]'s default delay).
+pub const FAST_FORWARD_DELAY: f32 = HURRY_DELAY;
 /// The marker that says "press to go on" is lit for this long, then out
 /// for as long, while a page waits.
 pub const BLINK_S: f32 = 0.5;
@@ -32,9 +35,9 @@ pub struct TextBox {
     page: usize,
     /// Characters of the page revealed so far (fractional between frames).
     shown: f32,
-    /// Seconds the key that goes on has been held on this page, for the
+    /// How long the key that goes on has been held on this page, for the
     /// fast-forward ([`FAST_FORWARD_DELAY`]).
-    held_s: f32,
+    hurry: HurryClock,
     /// Seconds since the page was fully revealed, for the blinking marker.
     waiting: f32,
 }
@@ -57,7 +60,7 @@ impl TextBox {
             per_page: per_page.max(1),
             page: 0,
             shown: 0.0,
-            held_s: 0.0,
+            hurry: HurryClock::default(),
             waiting: 0.0,
         }
     }
@@ -106,6 +109,21 @@ impl TextBox {
         true
     }
 
+    /// What the key that goes on does: reveals the page being typed
+    /// ([`Step::Revealed`]), else turns to the next page
+    /// ([`Step::NextPage`]), else says the box is [`Step::Done`] and leaves
+    /// it as it is (its owner moves on to the next line, or closes it).
+    pub fn confirm(&mut self) -> Step {
+        if !self.is_revealed() {
+            self.reveal();
+            Step::Revealed
+        } else if self.next_page() {
+            Step::NextPage
+        } else {
+            Step::Done
+        }
+    }
+
     /// Shows the last page, all of it revealed (the line a choice answers).
     pub fn to_last_page(&mut self) {
         self.page = self.lines.len().saturating_sub(1) / self.per_page;
@@ -115,23 +133,19 @@ impl TextBox {
     /// The page starts over: nothing revealed, no key held, not waiting.
     fn start_page(&mut self) {
         self.shown = 0.0;
-        self.held_s = 0.0;
+        self.hurry.reset();
         self.waiting = 0.0;
     }
 
     /// The key that goes on is no longer counted as held (the box waits on
     /// something else).
     pub fn release(&mut self) {
-        self.held_s = 0.0;
+        self.hurry.release();
     }
 
     /// `dt` seconds on, with the key that goes on `held` or not.
     pub fn hold(&mut self, held: bool, dt: f32) {
-        if held {
-            self.held_s += dt;
-        } else {
-            self.held_s = 0.0;
-        }
+        self.hurry.hold(held, dt);
     }
 
     /// `dt` seconds of typing at `chars_per_s` (`None`: the whole page at
@@ -143,8 +157,7 @@ impl TextBox {
             return;
         }
         // The part of this frame past the delay goes faster.
-        let fast_dt = (self.held_s - FAST_FORWARD_DELAY).clamp(0.0, dt);
-        let dt = dt + fast_dt * (FAST_FORWARD - 1.0);
+        let dt = self.hurry.passing(dt);
         let len = page_len(self.page_lines());
         self.shown = match chars_per_s {
             Some(speed) => (self.shown + dt * speed).min(len),
@@ -157,6 +170,17 @@ impl TextBox {
     pub fn marker_lit(&self) -> bool {
         self.waiting % (2.0 * BLINK_S) < BLINK_S
     }
+}
+
+/// What the key that goes on did to a text box ([`TextBox::confirm`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Step {
+    /// The page was being typed: now it is all revealed.
+    Revealed,
+    /// The page was revealed: the next one is on screen, typing.
+    NextPage,
+    /// The last page was revealed: the box is done.
+    Done,
 }
 
 /// What the text box shows.

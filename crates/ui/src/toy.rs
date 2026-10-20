@@ -32,7 +32,7 @@ use shuyi_assets::voice::{self, ClipVariant, Playable};
 
 use crate::ctx::{Ctx, GameData};
 use crate::dialogue::text_box::{self, glyph::BoxPlace};
-use crate::dialogue::{DialoguePlayer, Plain, TextBox, TextView, WaitView};
+use crate::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use crate::frame::color::EngineColor;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
@@ -857,8 +857,8 @@ impl Screen<Toy> for Talk {
         for &action in &input.actions {
             match action {
                 Action::Cancel => return Transition::Pop,
-                Action::Confirm if !self.text.is_revealed() => self.text.reveal(),
-                Action::Confirm if !self.text.next_page() => {
+                // The last page read: the next line.
+                Action::Confirm if self.text.confirm() == Step::Done => {
                     self.player.advance();
                     if self.player.is_finished() {
                         return Transition::Pop;
@@ -868,9 +868,9 @@ impl Screen<Toy> for Talk {
                 _ => {}
             }
         }
-        self.text.hold(input.is_held(Action::Confirm), input.dt);
+        self.text.hold(input.is_held(Action::Confirm), input.dt());
         self.text
-            .type_on(input.dt, ctx.settings().text_speed.chars_per_s());
+            .type_on(input.dt(), ctx.settings().text_speed.chars_per_s());
         Transition::None
     }
 
