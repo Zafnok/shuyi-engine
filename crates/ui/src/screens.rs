@@ -1,12 +1,13 @@
 //! Screens any game can use, each with rows, entries or a legend the game
-//! gives: the [`layout_picker`], the [`key_bindings`] screen and the
-//! [`options`] screen. Each
+//! gives: the [`layout_picker`], the [`key_bindings`] screen, the
+//! [`options`] screen and the player [`profiles`] screen. Each
 //! says what it shows as plain data (a view) and a skin paints it
 //! (`glyph` for glyphs).
 
 pub mod key_bindings;
 pub mod layout_picker;
 pub mod options;
+pub mod profiles;
 
 use crate::prelude::*;
 

@@ -52,8 +52,8 @@ fn the_title_opens_the_stage_with_its_scene_read_over_it() {
 #[test]
 fn quit_on_the_title_quits() {
     let mut h = title(1);
-    h.keys("Down Down");
-    assert_eq!(h.screen::<Title>().map(|t| t.focus), Some(2));
+    h.keys("Down Down Down");
+    assert_eq!(h.screen::<Title>().map(|t| t.focus), Some(3));
     assert!(!h.quit_requested());
     h.keys("Enter");
     assert!(h.quit_requested());

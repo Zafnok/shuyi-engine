@@ -1,6 +1,6 @@
 // Hello, Grid's English: every screen's text by key. The engine's
-// screens (options, Key bindings, the dialogue box) name their keys; this
-// file gives them their words, and the game's own after them. A `{name}`
+// screens (options, Key bindings, profiles, the dialogue box) name their
+// keys; this file gives them their words, and the game's own after them. A `{name}`
 // that is an action's name shows that action's key ({Confirm}), `{Cursor}`
 // the cursor keys.
 {
@@ -70,6 +70,30 @@
     "key_bindings.help_choice": "{Cursor} move · {Confirm} select · {Cancel} back",
     "key_bindings.help_switch": "{CursorLeft}/{CursorRight} keyboard or controller · {Cursor} move · {Cancel} back",
     "key_bindings.help_slot_pad": "{Cursor} move · {Confirm} change · {Cancel} back",
+    "profile.title": "Profiles",
+    "profile.current": "in use",
+    "profile.add": "Add a profile",
+    "profile.name_box": "Profile name",
+    "profile.action.switch": "Use this profile",
+    "profile.action.rename": "Rename",
+    "profile.action.delete": "Delete",
+    "profile.question.delete": "Delete {name}? Its options go with it.",
+    "profile.answer.yes": "Yes",
+    "profile.answer.no": "No",
+    "profile.question.keep": "Keep this name?",
+    "profile.message.name_taken": "Another profile already has that name.",
+    "profile.message.too_many": "There can be at most {n} profiles.",
+    "profile.message.not_saved": "The profiles couldn't be saved.",
+    "profile.help.list": "{Cursor} move · {Confirm} choose · {Cancel} back",
+    "profile.help.add": "{Cursor} move · {Confirm} add · {Cancel} back",
+    "profile.help.none": "{Cursor} move · {Cancel} back",
+    "profile.help.actions": "{Cursor} move · {Confirm} select · {Cancel} back",
+    "profile.help.question": "{Cursor} choose · {Confirm} pick · {Cancel} back",
+    "name_entry.type_hint": "Type a name on your keyboard.",
+    "name_entry.grid.blank": "Blank",
+    "name_entry.grid.delete": "Delete",
+    "name_entry.grid.done": "Done",
+    "name_entry.help.grid": "{Cursor} choose · {Confirm} type · {Cancel} delete",
 
     // The keys and profiles the engine names.
     "keys.not_mapped": "! not mapped",
@@ -96,6 +120,7 @@
     "title.subtitle": "a small game made with Shuyi Engine",
     "title.play": "Play",
     "title.options": "Options",
+    "title.profiles": "Profiles",
     "title.quit": "Quit",
     "title.help": "{Cursor} choose · {Confirm} pick",
 

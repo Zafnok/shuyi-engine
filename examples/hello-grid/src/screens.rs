@@ -1,7 +1,7 @@
 //! The screens: the [`Title`], the scene before the stage ([`Talk`]), the
 //! stage itself ([`stage::StageScreen`]), the question whether to leave it
-//! ([`Leave`]) and how it ended ([`End`]), with the engine's options and
-//! Key bindings screens opened from the title.
+//! ([`Leave`]) and how it ended ([`End`]), with the engine's options, Key
+//! bindings and profiles screens opened from the title.
 //! Each says what it shows as a view (plain data) and [`crate::skin`]
 //! paints it.
 
@@ -14,6 +14,7 @@ use shuyi_ui::dialogue::{DialoguePlayer, Plain, TextBox, TextView, WaitView};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
 use shuyi_ui::screens::options::{self, OptionRow, OptionsScreen, RowAction, RowValue};
+use shuyi_ui::screens::profiles::ProfilesScreen;
 use shuyi_ui::widgets::{Menu, MenuEvent, MenuItem};
 use shuyi_ui::{Ctx, FrameInput, Screen, Transition};
 
@@ -85,18 +86,22 @@ pub enum TitleChoice {
     Play,
     /// Opens the options.
     Options,
+    /// Opens the player profiles.
+    Profiles,
     /// Quits.
     Quit,
 }
 
 /// The title menu's items, by their text keys, top to bottom.
-pub const TITLE_ITEMS: [(&str, TitleChoice); 3] = [
+pub const TITLE_ITEMS: [(&str, TitleChoice); 4] = [
     ("title.play", TitleChoice::Play),
     ("title.options", TitleChoice::Options),
+    ("title.profiles", TitleChoice::Profiles),
     ("title.quit", TitleChoice::Quit),
 ];
 
-/// The title: the game's name and a menu of Play, Options and Quit.
+/// The title: the game's name and a menu of Play, Options, Profiles and
+/// Quit.
 #[derive(Debug, Default)]
 pub struct Title {
     /// Which item has the focus.
@@ -137,6 +142,11 @@ impl Screen<Hello> for Title {
     }
 
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
+        if ctx.layout().is_none() {
+            // A profile just switched to or added has no layout of its
+            // own: the game's only one (until ticket 2401).
+            ctx.use_layout(crate::LAYOUT);
+        }
         let mut menu = self.menu();
         for &action in &input.actions {
             let event = menu.handle_with_sound(action, &mut ctx.audio);
@@ -147,6 +157,9 @@ impl Screen<Hello> for Title {
                 }
                 Some(MenuEvent::Chosen(TitleChoice::Options)) => {
                     return Transition::Push(Box::new(OptionsScreen::new(option_rows)));
+                }
+                Some(MenuEvent::Chosen(TitleChoice::Profiles)) => {
+                    return Transition::Push(Box::new(ProfilesScreen::new(ctx)));
                 }
                 Some(MenuEvent::Chosen(TitleChoice::Quit)) => return Transition::Quit,
                 Some(MenuEvent::Cancelled) | None => {}

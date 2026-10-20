@@ -2,7 +2,8 @@
 
 Shuyi Engine's first example: a small grid game made from the engine's
 crates alone. A title menu; options with two settings (the text speed and
-the map's look: glyphs or tiles) and the Key bindings screen; a short
+the map's look: glyphs or tiles) and the Key bindings screen; the
+engine's player profiles screen; a short
 scene; a 12 × 10 stage where you walk your piece (`@`) to the goal (`[]`)
 up to four tiles a turn, while a foe (`&`) steps one tile toward you after
 each of your moves, and sometimes trips; and a screen that says how it
@@ -28,7 +29,7 @@ cargo test -p hello-grid             # the tests
 | `files/` | Embedded: the keymap, palette, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
 | `files-src/` | Not embedded: the font the atlas is made from |
 | `shuyi.ron` | The project file of the engine's tools |
-| `tests/it/` | A playthrough, bots, determinism, options and key rebinding, the files, and pictures as snapshots |
+| `tests/it/` | A playthrough, bots, determinism, options and key rebinding, profiles, the files, and pictures as snapshots |
 
 ## Files made by the tools
 
