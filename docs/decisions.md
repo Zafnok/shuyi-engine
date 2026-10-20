@@ -464,6 +464,35 @@ Source: Nick, in a Claude Code session on 2026-10-19.
   agents and git read the same files a person edits in it.
 
 
+## 2026-10-19: a frame cap of 60 by default
+
+Source: Nick, in a Claude Code session on 2026-10-19.
+
+> "I want a default engine fps cap at 60
+>
+> this can be configurable by developer for their game, turned off
+> explicitly, turned on to higher value whatever they like, and should
+> respect vsync and VRR
+>
+> this is because too many engines make fps caps unlocked by default
+> which causes even simple games to max CPU which just feels bad
+>
+> options menu should expose this and we can have a messaging system to
+> change it safely i.e. engine::set_cap(120) --> and we have some
+> promise or something similar in rust-native terms..."
+
+**Rules:**
+
+- **60 by default.** A game made with the engine runs at most 60 frames
+  a second unless its developer says otherwise.
+- **The developer decides the default and the choices;** the cap can be
+  turned off, but only on purpose.
+- **The player can change it** on the options screen.
+- **It never fights the display:** with vsync or VRR the cap adds no
+  stutter.
+- **A game asks for a new cap and can check it took effect.** Ticket
+  2321.
+
 ## 2026-10-19: the platform layer goes in-house, and the end goal
 
 Source: Nick, in a Claude Code session on 2026-10-19, after asking how
