@@ -9,6 +9,7 @@ use shuyi_assets::keymap::Key;
 use super::view::{KeyRole, LayoutPickerView, LayoutView};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
+use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::print_centred;
@@ -120,29 +121,26 @@ fn paint_panel<G: GameData>(
     let c = |e| ctx.palette.engine(e);
     let bg = c(EngineColor::Panel);
     let rect = Rect::new(x, y, PANEL_W, PANEL_H);
-    buf.fill_rect(rect, Cell::new(' ', c(EngineColor::Text), bg));
-    let (style, border, title) = if layout.focused {
+    let (style, border, title, title_fg) = if layout.focused {
         (
             BoxStyle::Double,
             c(EngineColor::Focus),
             // check-text: not a data name (the view's own)
-            format!(" ► {} ", layout.name),
+            format!("► {}", layout.name),
+            c(EngineColor::Highlight),
         )
     } else {
         (
             BoxStyle::Single,
             c(EngineColor::Border),
-            // check-text: not a data name (the view's own)
-            format!(" {} ", layout.name),
+            layout.name.clone(),
+            c(EngineColor::Text),
         )
     };
-    buf.draw_box(rect, style, border, bg);
-    let title_fg = if layout.focused {
-        c(EngineColor::Highlight)
-    } else {
-        c(EngineColor::Text)
-    };
-    buf.print(x + 2, y, &title, title_fg, bg);
+    let look = PanelLook::new(style, c(EngineColor::Text), bg)
+        .border(border)
+        .title(title_fg);
+    buf.panel(rect, &look, Some(&title));
 
     let cap_fg = |key| c(role_colour(layout.role(key)));
     let dim = c(EngineColor::TextDim);

@@ -9,6 +9,7 @@
 use super::view::{MenuItemView, MenuView, SuffixKind};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
+use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 
@@ -89,8 +90,9 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, 
     let labels = labels(ctx, view);
     let (w, h) = size_with(view, &labels);
     let rect = Rect::new(x, y, w, h);
-    buf.fill_rect(rect, Cell::new(' ', color(EngineColor::Text), bg));
-    buf.draw_box(rect, BoxStyle::Single, color(EngineColor::Border), bg);
+    let look = PanelLook::new(BoxStyle::Single, color(EngineColor::Text), bg)
+        .border(color(EngineColor::Border));
+    buf.panel(rect, &look, None);
     let first = view.first_shown.min(view.items.len());
     let shown = view.shown_items().iter().zip(&labels[first..]);
     for (row, (item, label)) in (y + 1..).zip(shown) {

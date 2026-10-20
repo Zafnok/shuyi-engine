@@ -18,6 +18,7 @@ use super::Side;
 use super::view::{ChoicesView, KeyBindingsView, RowView, SlotView, SwitchView};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
+use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::{cut, print_centred};
@@ -211,11 +212,10 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
     let bar = c(EngineColor::Focus);
     let at = Layout::new(view, buf.width(), buf.height());
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
-    buf.fill_rect(at.panel, Cell::new(' ', text, bg));
-    buf.draw_box(at.panel, BoxStyle::Single, c(EngineColor::Border), bg);
-    let title = format!(" {} ", view.title);
-    let highlight = c(EngineColor::Highlight);
-    buf.print(at.heading_x(), at.panel.y, &title, highlight, bg);
+    let look = PanelLook::new(BoxStyle::Single, text, bg)
+        .border(c(EngineColor::Border))
+        .title(c(EngineColor::Highlight));
+    buf.panel(at.panel, &look, Some(&view.title));
     if let Some(switch) = &view.switch {
         paint_switch(ctx, buf, switch, at.label_x);
     }
@@ -387,8 +387,8 @@ fn paint_choices<G: GameData>(
     };
     let x = at.slot_x(choices.slot).min(at.right() - CHOICE_W);
     let rect = Rect::new(x, y, CHOICE_W, CHOICE_H);
-    buf.fill_rect(rect, Cell::new(' ', c(EngineColor::Text), bg));
-    buf.draw_box(rect, BoxStyle::Double, bar, bg);
+    let look = PanelLook::new(BoxStyle::Double, c(EngineColor::Text), bg).border(bar);
+    buf.panel(rect, &look, None);
     let inner = usize::try_from(CHOICE_W - 3).unwrap_or(0);
     for (i, choice) in (0..).zip(&choices.lines) {
         let (x, y) = (rect.x + 1, rect.y + 1 + i);

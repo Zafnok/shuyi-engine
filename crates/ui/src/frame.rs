@@ -6,12 +6,20 @@
 //! to a backdrop ([`cinema`]) and a picture to an area ([`portrait`]); and
 //! the one-bit renderer ([`onebit`]).
 //!
+//! The drawing helpers skins share ([`draw`]): [`GlyphBuffer::panel`] (a
+//! box with a title in its border), [`GlyphBuffer::meter`] (a bar that
+//! shows how full something is), [`GlyphBuffer::print_centred`] and
+//! [`GlyphBuffer::print_cut`] (a line centred in a rectangle, or cut to a
+//! width), next to [`GlyphBuffer::print`], [`GlyphBuffer::fill_rect`] and
+//! [`GlyphBuffer::draw_box`].
+//!
 //! The game picks the console's size when it starts; nothing here knows
 //! it.
 
 pub mod cinema;
 pub mod color;
 pub mod console;
+pub mod draw;
 pub mod glyph_buffer;
 pub mod onebit;
 pub mod portrait;

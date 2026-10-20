@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2311 — Glyph drawing helpers
@@ -78,10 +78,10 @@ this one (game#1165).
 
 ## Acceptance criteria
 
-- [ ] Unit (look): a meter at 0, 1, half, n-1 and n of n; a title
+- [x] Unit (look): a meter at 0, 1, half, n-1 and n of n; a title
       longer than the box is cut; centring an odd and an even width.
-- [ ] The engine's snapshots are unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The engine's snapshots are unchanged.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -89,5 +89,36 @@ this one (game#1165).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- New module `frame::draw` (`crates/ui/src/frame/draw.rs`), methods on
+  `GlyphBuffer`:
+  - `panel(rect, &PanelLook, title: Option<&str>)`: clears, frames, sets
+    the title in the top border two cells in, cut so the border keeps a
+    line and a corner each side;
+  - `meter(rect, filled, of, full, empty)`, with `meter_fill(cells,
+    filled, of)` for a meter drawn some other way (a pixel bar);
+  - `print_centred(rect, text, fg)` and `print_cut(x, y, width, text, fg)`,
+    both keeping the background like `print_fg`.
+  - `cut` moved here from `screens`, which re-exports it (no break).
+- `frame`'s docs list the helpers.
+- The options, Key bindings, layout picker and menu skins (and Key
+  bindings' choices box) paint their boxes with `panel`. Every snapshot is
+  unchanged.
+- **Deviations:**
+  - `panel` takes a `PanelLook` (style, border, title, text and
+    background colours) instead of `fg, bg`. The engine's panels clear to
+    the text colour but frame in the border colour and title in a
+    highlight, and the snapshots read every cell's colour.
+  - `meter` takes a `Rect` (every row is a bar) instead of `x, y, cells`,
+    which keeps it under clippy's argument limit.
+  - The game's copies don't share one rounding rule: its HP bars round
+    half up (`hp_fill`) and its EXP bars round down (`bar_cells`), and
+    neither keeps a cell for "almost empty" or "almost full". `meter_fill`
+    rounds half up and then applies the ticket's rule (not empty: at least
+    one full cell; not full: at least one empty one; one cell: rounding
+    alone). Moving the game onto it changes a bar at its edges, which is
+    game#1165's to accept.
+- `screens::print_centred` (prints with a background, centred on the
+  whole buffer) is kept as it is; the engine's help lines still use it.
+- **For the game:** additive. The game PR that moves the pin is
+  game#1165's (not opened yet).
+- Follow-up tickets: none.
