@@ -556,6 +556,53 @@ fn every_asset_of_a_kind_under_a_directory_loads_together() {
 }
 
 #[test]
+fn each_asset_of_a_kind_directly_in_a_folder_loads_on_its_own() {
+    /// Two word files (one broken), one of an extension no word format
+    /// claims, and one in a subfolder.
+    static FILES: &[(&str, &[u8])] = &[
+        ("crops/deep/d.low", b"deep"),
+        ("crops/notes.txt", b"text"),
+        ("crops/pumpkin.low", b"fine"),
+        ("crops/turnip.low", b"no-lower"),
+    ];
+    let (formats, bundle) = (words(), Bundle::new(vec![Layer::table("base", FILES)]));
+    let each: Vec<(&str, Result<String, Vec<String>>)> = formats
+        .load_each::<Word>(&bundle, "crops")
+        .into_iter()
+        .map(|(path, read)| {
+            let read = read
+                .map(|Word(word)| word)
+                .map_err(|errors| errors.iter().map(ToString::to_string).collect());
+            (path, read)
+        })
+        .collect();
+    assert_eq!(
+        each,
+        [
+            ("crops/pumpkin.low", Ok("lower:fine".to_owned())),
+            (
+                "crops/turnip.low",
+                Err(vec![
+                    "base/crops/turnip.low: lower can't read it".to_owned()
+                ])
+            ),
+        ]
+    );
+    // An empty or missing folder gives an empty map.
+    assert!(formats.load_each::<Word>(&bundle, "seasons").is_empty());
+    assert!(
+        formats
+            .load_each::<Word>(&bundle, "crops/deep/d.low")
+            .is_empty()
+    );
+    assert!(
+        formats
+            .load_each::<Word>(&Bundle::new(Vec::new()), "")
+            .is_empty()
+    );
+}
+
+#[test]
 fn a_registry_claims_the_extensions_of_its_kinds_formats_in_any_case() {
     let formats = words();
     assert!(formats.claims::<Word>("a.low"));

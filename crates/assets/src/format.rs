@@ -690,6 +690,10 @@ impl Formats {
     /// Every asset of kind `K` in `bundle` under directory `dir` (`""` for
     /// the whole bundle): each file there whose extension a format of the
     /// kind claims, by path. Reports every problem of every file.
+    ///
+    /// All or nothing over a tree: the assets come only when every file
+    /// reads, and folders below `dir` are read too. A loader that checks
+    /// each file after reading wants [`Formats::load_each`] instead.
     pub fn load_under<K: AssetKind>(
         &self,
         bundle: &Bundle,
@@ -713,6 +717,27 @@ impl Formats {
         } else {
             Err(errors)
         }
+    }
+
+    /// Each asset of kind `K` directly inside directory `dir` of `bundle`
+    /// (`""` for the root), by path: each file there whose extension a
+    /// format of the kind claims, with its asset or its errors.
+    ///
+    /// File by file in one folder: a broken file leaves the others read,
+    /// so checks that run after still see every good file, and folders
+    /// below `dir` (which may hold another kind with the same extension)
+    /// are not read. A missing folder gives an empty map.
+    pub fn load_each<K: AssetKind>(
+        &self,
+        bundle: &Bundle,
+        dir: &str,
+    ) -> BTreeMap<&'static str, Result<K, Vec<ContentError>>> {
+        bundle
+            .files_in(dir)
+            .into_iter()
+            .filter(|path| self.claims::<K>(path))
+            .map(|path| (path, self.read(bundle, path)))
+            .collect()
     }
 }
 

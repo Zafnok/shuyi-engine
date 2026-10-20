@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 2219 — A folder's assets file by file through the registry
@@ -80,11 +80,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Formats::load_each` returns each claimed file directly in the
+- [x] `Formats::load_each` returns each claimed file directly in the
       folder, read or with its errors, by path.
-- [ ] A broken file leaves the others read (a test).
-- [ ] Files in subfolders and of other extensions are not read (a test).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A broken file leaves the others read (a test).
+- [x] Files in subfolders and of other extensions are not read (a test).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -93,5 +93,16 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- Added `Formats::load_each::<K>(bundle, dir)`: each file directly in
+  `dir` that a format of `K` claims, by path, with its asset or its errors
+  (`BTreeMap<&'static str, Result<K, Vec<ContentError>>>`), read through
+  the private `read` so the registry's limits apply. Additive, no API
+  break.
+- `load_under`'s doc now says it is all or nothing over a tree and points
+  to `load_each`; `docs/formats.md` has a line for both.
+- One test: a broken file leaves the other read, with its errors naming
+  its file as the bundle shows it; a subfolder's file and another
+  extension are not read; an empty, missing or file-named folder gives an
+  empty map.
+- No deviations, no follow-up tickets. The game's side is game ticket
+  1176 (delete its `formats::load_in`, move the pin).
