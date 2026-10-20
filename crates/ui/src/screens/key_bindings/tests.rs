@@ -627,7 +627,7 @@ fn the_restore_question_can_be_backed_out_of() {
     assert!(sounds(&mut c).is_empty());
     let question = s.view(&c).question.unwrap();
     assert_eq!(question.text, "Restore the default keys for Right-handed?");
-    assert_eq!(question.answers, "f yes / d no");
+    assert_eq!(question.keys.as_deref(), Some("f yes / d no"));
     // Cancel closes the question, not the screen, and changes nothing;
     // what follows it that frame is dropped.
     let t = s.update(&mut c, &act(&[Cancel, Confirm, Cancel]));
@@ -640,7 +640,7 @@ fn the_restore_question_can_be_backed_out_of() {
     // The left-handed question names its layout and keys.
     let left = ctx().with_layout(LEFT_HANDED);
     let mut s = KeyBindingsScreen::new(&left, &KEY_ROWS);
-    s.asking_restore = true;
+    s.restoring = Some(s.restore_ask());
     assert_eq!(
         s.restore_question(&c),
         "Restore the default keys for Left-handed?"
@@ -648,7 +648,7 @@ fn the_restore_question_can_be_backed_out_of() {
     assert_eq!(s.help(&c), "j yes · k no");
     let question = s.view(&left).question.unwrap();
     assert_eq!(question.text, "Restore the default keys for Left-handed?");
-    assert_eq!(question.answers, "j yes / k no");
+    assert_eq!(question.keys.as_deref(), Some("j yes / k no"));
 }
 
 #[test]
@@ -1413,7 +1413,7 @@ fn restore_defaults_on_the_controller_side_resets_only_the_buttons() {
     assert_eq!(s.restore_question(&c), "Restore the default buttons?");
     let question = s.view(&c).question.unwrap();
     assert_eq!(question.text, "Restore the default buttons?");
-    assert_eq!(question.answers, "A yes / B no");
+    assert_eq!(question.keys.as_deref(), Some("A yes / B no"));
     s.update(&mut c, &act(&[Confirm]));
     assert_eq!(
         s.pad_bindings(),

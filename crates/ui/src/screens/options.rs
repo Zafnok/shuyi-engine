@@ -29,7 +29,7 @@ pub mod view;
 
 use crate::prelude::*;
 use core::fmt;
-pub use view::{ChoiceView, LeaveView, OptionsView, QuestionView, RowView, ValueView};
+pub use view::{OptionsView, RowView, ValueView};
 
 use shuyi_assets::keymap::{ActionSet, UiAction};
 
@@ -40,13 +40,14 @@ use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::fixed::{TextKey, text_key};
 use crate::screen::{FrameInput, Screen, Transition};
 use crate::settings::{MAX_VOLUME, TextSpeed};
-use crate::widgets::ListCursor;
+use crate::widgets::{Ask, ListCursor};
 
 /// Text key ([`Ctx::text`]) of the screen title.
 pub const TITLE: &str = "options.title";
 /// Text key of the question asked on leaving with changes.
 pub const LEAVE_QUESTION: &str = "options.question.keep";
-/// Text key of how a yes/no question is answered, with the keys.
+/// Text key of how a yes/no question is answered, with the keys
+/// ([`Ask::yes_no`]).
 pub const QUESTION_ANSWERS: &str = "options.question.answers";
 /// Text key of the message if something couldn't be saved.
 pub const NOT_SAVED_MESSAGE: &str = "options.message.not_saved";
@@ -139,7 +140,7 @@ pub enum RowAction<G: GameData> {
 }
 
 /// A yes/no question asked before something that can't be taken back with
-/// one key.
+/// one key ([`Ask::yes_no`] while it is open).
 pub struct Question<G: GameData> {
     /// The text key of the question; also what names it
     /// ([`OptionsScreen::asking`]).
@@ -159,6 +160,14 @@ impl<G: GameData> Copy for Question<G> {}
 impl<G: GameData> fmt::Debug for Question<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Question").field(&self.key).finish()
+    }
+}
+
+impl<G: GameData> Question<G> {
+    /// The question as it is asked: yes on Confirm, no on Cancel, its keys
+    /// named under it ([`QUESTION_ANSWERS`]).
+    pub fn ask(&self) -> Ask<bool> {
+        Ask::yes_no(self.key, QUESTION_ANSWERS)
     }
 }
 
@@ -381,6 +390,15 @@ impl LeaveChoice {
             LeaveChoice::Back => "options.leave.back",
         }
     }
+
+    /// The question asked on leaving with changes ([`LEAVE_QUESTION`]):
+    /// every answer, focused on staying, which Cancel answers too.
+    pub fn ask() -> Ask<LeaveChoice> {
+        let answers = LeaveChoice::ALL.map(|choice| (choice, choice.key()));
+        Ask::new(LEAVE_QUESTION, answers)
+            .focused_on(LeaveChoice::Back)
+            .cancelled_by(LeaveChoice::Back)
+    }
 }
 
 /// The game's rows, as they are now: the ones `ctx` shows, top to bottom.
@@ -404,8 +422,8 @@ pub struct OptionsScreen<G: GameData> {
     /// The values of the rows that aren't settings, by key, when the
     /// screen opened (taken with `opened_with`), for Discard.
     opened_unsaved: Vec<(&'static str, usize)>,
-    /// The answer in focus while the question asked on leaving is open.
-    leaving: Option<LeaveChoice>,
+    /// The question asked on leaving, while it is open.
+    leaving: Option<Ask<LeaveChoice>>,
     /// The question open, if any.
     asking: Option<Question<G>>,
     /// The volume box, while it is open on the focused volume row.
@@ -491,7 +509,7 @@ impl<G: GameData> OptionsScreen<G> {
     /// The answer in focus while the question asked on leaving with
     /// changes is open.
     pub fn leaving(&self) -> Option<LeaveChoice> {
-        self.leaving
+        self.leaving.as_ref().and_then(Ask::focus)
     }
 
     /// Whether any setting, or any row that isn't one, differs from when
@@ -578,21 +596,8 @@ impl<G: GameData> OptionsScreen<G> {
             title: ctx.text(TITLE).to_owned(),
             rows: rows.collect(),
             message: self.message.map(|key| ctx.text(key).to_owned()),
-            question: self.asking.map(|question| QuestionView {
-                text: ctx.text(question.key).to_owned(),
-                answers: ctx.text_with(QUESTION_ANSWERS, &[]),
-            }),
-            leaving: self.leaving.map(|focus| LeaveView {
-                text: ctx.text(LEAVE_QUESTION).to_owned(),
-                choices: LeaveChoice::ALL
-                    .into_iter()
-                    .map(|choice| ChoiceView {
-                        choice,
-                        label: ctx.text(choice.key()).to_owned(),
-                        focused: choice == focus,
-                    })
-                    .collect(),
-            }),
+            question: self.asking.map(|question| question.ask().view(ctx)),
+            leaving: self.leaving.as_ref().map(|ask| ask.view(ctx)),
             help: self.help(ctx),
         }
     }
@@ -746,13 +751,13 @@ impl<G: GameData> OptionsScreen<G> {
     /// out; either closes the question (and returns `true`). Nothing else
     /// does anything.
     fn answer(&mut self, ctx: &mut Ctx<G>, question: Question<G>, action: G::Action) -> bool {
-        match action.ui() {
-            Some(UiAction::Confirm) => {
+        match question.ask().handle(action, &mut ctx.audio) {
+            Some(true) => {
                 self.message = Some((question.yes)(ctx));
                 ctx.audio.menu(MenuSound::Select);
             }
-            Some(UiAction::Cancel) => ctx.audio.menu(MenuSound::Cancel),
-            _ => return false,
+            Some(false) => ctx.audio.menu(MenuSound::Cancel),
+            None => return false,
         }
         self.asking = None;
         true
@@ -762,7 +767,7 @@ impl<G: GameData> OptionsScreen<G> {
     /// to keep the changes, focused on staying.
     fn leave(&mut self, ctx: &mut Ctx<G>) -> Transition<G> {
         if self.changed(ctx) {
-            self.leaving = Some(LeaveChoice::Back);
+            self.leaving = Some(LeaveChoice::ask());
             self.message = None;
             ctx.audio.menu(MenuSound::Select);
             return Transition::None;
@@ -771,29 +776,15 @@ impl<G: GameData> OptionsScreen<G> {
         Transition::Pop
     }
 
-    /// An action while the question asked on leaving is open, focused on
-    /// `focus`: the cursor moves between the answers, Confirm picks one,
-    /// Cancel stays. Returns the transition and whether the question
-    /// closed.
-    fn answer_leave(
-        &mut self,
-        ctx: &mut Ctx<G>,
-        focus: LeaveChoice,
-        action: G::Action,
-    ) -> (Transition<G>, bool) {
-        let choice = match action.ui() {
-            Some(ui @ (UiAction::Up | UiAction::Left | UiAction::Down | UiAction::Right)) => {
-                let forward = matches!(ui, UiAction::Down | UiAction::Right);
-                let to = stepped(&LeaveChoice::ALL, focus, forward, false);
-                if to != focus {
-                    self.leaving = Some(to);
-                    ctx.audio.menu(MenuSound::Move);
-                }
-                return (Transition::None, false);
-            }
-            Some(UiAction::Confirm) => focus,
-            Some(UiAction::Cancel) => LeaveChoice::Back,
-            _ => return (Transition::None, false),
+    /// An action while the question asked on leaving is open: the cursor
+    /// moves between the answers, Confirm picks one, Cancel stays. Returns
+    /// the transition and whether the question closed.
+    fn answer_leave(&mut self, ctx: &mut Ctx<G>, action: G::Action) -> (Transition<G>, bool) {
+        let Some(ask) = &mut self.leaving else {
+            return (Transition::None, true);
+        };
+        let Some(choice) = ask.handle(action, &mut ctx.audio) else {
+            return (Transition::None, false);
         };
         self.leaving = None;
         match choice {
@@ -881,8 +872,8 @@ impl<G: GameData> Screen<G> for OptionsScreen<G> {
             return Transition::None;
         }
         for &action in &input.actions {
-            if let Some(focus) = self.leaving {
-                let (transition, closed) = self.answer_leave(ctx, focus, action);
+            if self.leaving.is_some() {
+                let (transition, closed) = self.answer_leave(ctx, action);
                 if closed {
                     // The answer ends this frame's keys.
                     return transition;

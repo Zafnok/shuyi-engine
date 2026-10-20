@@ -386,12 +386,13 @@ fn the_message_is_painted_under_the_panel_in_the_warning_colour() {
 fn the_question_is_a_box_in_the_middle_with_its_answers_under_it() {
     let c = ctx();
     let mut v = view(Side::Keyboard);
-    v.question = Some(QuestionView {
+    v.question = Some(crate::widgets::AskView {
         text: "Restore the default keys for Right-handed?".to_owned(),
-        answers: "f yes / d no".to_owned(),
+        answers: Vec::new(),
+        keys: Some("f yes / d no".to_owned()),
     });
     let buf = painted(&c, &v);
-    let top = (i32::from(PC.rows) - QUESTION_H) / 2;
+    let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;
     let border = format!("╔{}╗", "═".repeat(44));
     assert!(text(&buf, top).contains(&border), "{}", text(&buf, top));
     assert!(text(&buf, top + 2).contains("║ Restore the default keys for Right-handed? ║"));

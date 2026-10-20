@@ -4,12 +4,13 @@
 //! slider's blocks, the colours); nothing here decides what the screen
 //! shows or does. Another look is another `paint` of the same view.
 
-use super::view::{LeaveView, OptionsView, QuestionView, RowView, ValueView};
+use super::view::{OptionsView, RowView, ValueView};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::print_centred;
+use crate::widgets::ask;
 
 /// The panel, in cells, at its widest and smallest, on a 100-cell
 /// console: on another it is centred on the console's width, and as wide
@@ -26,11 +27,6 @@ const BELOW_PANEL: i32 = 3;
 /// Panel rows that aren't the screen's rows: the top border, a blank row
 /// under it and the bottom border.
 const PANEL_FRAME_H: i32 = 3;
-/// Height of a question's box: its two lines, a blank row above and below,
-/// and the border.
-const QUESTION_H: i32 = 6;
-/// Cells between two answers of the question asked on leaving.
-const CHOICE_GAP: usize = 3;
 /// Cells in a volume's bar.
 const VOLUME_BAR: u8 = 10;
 /// Cells of the number box, inside its highlight.
@@ -90,10 +86,10 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
         print_centred(buf, row, message, c(EngineColor::Highlight), black);
     }
     if let Some(question) = &view.question {
-        paint_question(ctx, buf, question);
+        ask::glyph::paint(&ctx.palette, question, buf);
     }
     if let Some(leaving) = &view.leaving {
-        paint_leave(ctx, buf, leaving);
+        ask::glyph::paint(&ctx.palette, leaving, buf);
     }
     let bottom = i32::from(buf.height()) - 1;
     print_centred(buf, bottom, &view.help, dim, black);
@@ -140,90 +136,12 @@ fn paint_row<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, row: &RowView, pa
     }
 }
 
-/// Paints `question` in a double-bordered box in the middle of the screen,
-/// with its answers under it (the look of the Key bindings screen's
-/// question).
-fn paint_question<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, question: &QuestionView) {
-    let c = |e| ctx.palette.engine(e);
-    let bg = c(EngineColor::Panel);
-    let widest = question
-        .text
-        .chars()
-        .count()
-        .max(question.answers.chars().count());
-    let w = i32::try_from(widest).unwrap_or(0) + 4;
-    let rect = Rect::new(
-        (i32::from(buf.width()) - w) / 2,
-        (i32::from(buf.height()) - QUESTION_H) / 2,
-        w,
-        QUESTION_H,
-    );
-    buf.fill_rect(rect, Cell::new(' ', c(EngineColor::Text), bg));
-    buf.draw_box(rect, BoxStyle::Double, c(EngineColor::Focus), bg);
-    buf.print(
-        rect.x + 2,
-        rect.y + 2,
-        &question.text,
-        c(EngineColor::Text),
-        bg,
-    );
-    let dim = c(EngineColor::TextDim);
-    buf.print(rect.x + 2, rect.y + 3, &question.answers, dim, bg);
-}
-
-/// The answers of `leaving` on one line: each name with a space either
-/// side, [`CHOICE_GAP`] cells apart. Returns the line and where each
-/// answer starts in it.
-fn choices_line(leaving: &LeaveView) -> (String, Vec<usize>) {
-    let mut line = String::new();
-    let mut starts = Vec::new();
-    for (i, choice) in leaving.choices.iter().enumerate() {
-        if i > 0 {
-            line.push_str(&" ".repeat(CHOICE_GAP));
-        }
-        starts.push(line.chars().count());
-        line.push(' ');
-        line.push_str(&choice.label);
-        line.push(' ');
-    }
-    (line, starts)
-}
-
-/// Paints the question asked on leaving in a double-bordered box in the
-/// middle of the screen (the look of [`paint_question`]), its answers on
-/// the line under it, the one in focus as a highlight bar.
-fn paint_leave<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, leaving: &LeaveView) {
-    let c = |e| ctx.palette.engine(e);
-    let (bg, text) = (c(EngineColor::Panel), c(EngineColor::Text));
-    let (line, starts) = choices_line(leaving);
-    let widest = leaving.text.chars().count().max(line.chars().count());
-    let w = i32::try_from(widest).unwrap_or(0) + 4;
-    let rect = Rect::new(
-        (i32::from(buf.width()) - w) / 2,
-        (i32::from(buf.height()) - QUESTION_H) / 2,
-        w,
-        QUESTION_H,
-    );
-    buf.fill_rect(rect, Cell::new(' ', text, bg));
-    buf.draw_box(rect, BoxStyle::Double, c(EngineColor::Focus), bg);
-    buf.print(rect.x + 2, rect.y + 2, &leaving.text, text, bg);
-    let bar = c(EngineColor::Focus);
-    for (choice, start) in leaving.choices.iter().zip(starts) {
-        let x = rect.x + 2 + i32::try_from(start).unwrap_or(0);
-        let shown = format!(" {} ", choice.label);
-        if choice.focused {
-            buf.print(x, rect.y + 3, &shown, bg, bar);
-        } else {
-            buf.print(x, rect.y + 3, &shown, text, bg);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::frame::console::ConsoleSpec;
     use crate::toy::{ToyCtx, ctx};
+    use crate::widgets::AskView;
 
     /// The console the skin is laid out for.
     const PC: ConsoleSpec = ConsoleSpec::text(100, 32);
@@ -421,11 +339,12 @@ mod tests {
     fn a_question_is_a_box_in_the_middle_with_its_answers_under_it() {
         let c = ctx();
         let mut v = view(vec![row("Reset tips", ValueView::None, true)]);
-        v.question = Some(QuestionView {
+        v.question = Some(AskView {
             text: "Show every tip again?".to_owned(),
-            answers: "f yes / d no".to_owned(),
+            answers: Vec::new(),
+            keys: Some("f yes / d no".to_owned()),
         });
-        let top = (i32::from(PC.rows) - QUESTION_H) / 2;
+        let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;
         assert!(painted_row(&c, &v, top).contains("╔═══════════════════════╗"));
         assert!(painted_row(&c, &v, top + 2).contains("║ Show every tip again? ║"));
         assert!(painted_row(&c, &v, top + 3).contains("║ f yes / d no          ║"));
@@ -434,23 +353,25 @@ mod tests {
 
     #[test]
     fn the_question_on_leaving_is_a_box_with_its_answers_in_a_line_the_focused_one_lit() {
-        use crate::screens::options::{ChoiceView, LeaveChoice};
+        use crate::screens::options::LeaveChoice;
+        use crate::widgets::AnswerView;
         let c = ctx();
         let mut v = view(vec![row("Text speed", words("Fast", true), true)]);
-        let choice = |choice, label: &str| ChoiceView {
-            choice,
+        let choice = |answer, label: &str| AnswerView {
+            answer,
             label: label.to_owned(),
-            focused: choice == LeaveChoice::Back,
+            focused: answer == LeaveChoice::Back,
         };
-        v.leaving = Some(LeaveView {
+        v.leaving = Some(AskView {
             text: "Keep these changes?".to_owned(),
-            choices: vec![
+            keys: None,
+            answers: vec![
                 choice(LeaveChoice::Keep, "Keep"),
                 choice(LeaveChoice::Discard, "Discard"),
                 choice(LeaveChoice::Back, "Back"),
             ],
         });
-        let top = (i32::from(PC.rows) - QUESTION_H) / 2;
+        let top = (i32::from(PC.rows) - ask::glyph::HEIGHT) / 2;
         // As wide as the answers' line, the wider.
         let question = format!("║ {:<27} ║", "Keep these changes?");
         assert!(painted_row(&c, &v, top + 2).contains(&question));

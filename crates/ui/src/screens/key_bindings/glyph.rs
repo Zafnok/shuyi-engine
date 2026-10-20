@@ -15,12 +15,13 @@
 //! empty when it shows).
 
 use super::Side;
-use super::view::{ChoicesView, KeyBindingsView, QuestionView, RowView, SlotView, SwitchView};
+use super::view::{ChoicesView, KeyBindingsView, RowView, SlotView, SwitchView};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::{cut, print_centred};
+use crate::widgets::ask;
 
 /// The panel, in cells, on a 100 × 32 console: at most this wide, with a
 /// margin of `PANEL.x` cells either side, and down to the row over the
@@ -52,9 +53,6 @@ const SLOT_PITCH: i32 = 18;
 const SLOT_MIN_W: usize = 9;
 /// What an empty slot shows.
 const EMPTY_SLOT: &str = "·";
-/// Height of the restore question's box: its two lines, a blank row above
-/// and below, and the border.
-const QUESTION_H: i32 = 6;
 /// The box of the choices, in cells: a line each and the border.
 const CHOICE_W: i32 = 12;
 const CHOICE_H: i32 = 4;
@@ -249,7 +247,7 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
         print_centred(buf, row, message, c(EngineColor::Warning), black);
     }
     if let Some(question) = &view.question {
-        paint_question(ctx, buf, question);
+        ask::glyph::paint(&ctx.palette, question, buf);
     }
     if let Some(choices) = &view.choices {
         let focused_y = view
@@ -367,41 +365,6 @@ fn note_x<A>(view: &KeyBindingsView<A>, row: &RowView<A>, at: &Layout) -> i32 {
 /// The column a cell after `row`'s last slot.
 fn after_slots<A>(row: &RowView<A>, at: &Layout) -> i32 {
     at.slot_x(row.slots.len()) + 1
-}
-
-/// Paints `question` in a double-bordered box in the middle of the screen,
-/// with its answers under it (the look of the battle's end-turn question).
-fn paint_question<G: GameData>(ctx: &Ctx<G>, buf: &mut GlyphBuffer, question: &QuestionView) {
-    let c = |e| ctx.palette.engine(e);
-    let bg = c(EngineColor::Panel);
-    let widest = question
-        .text
-        .chars()
-        .count()
-        .max(question.answers.chars().count());
-    let w = i32::try_from(widest).unwrap_or(0) + 4;
-    let rect = Rect::new(
-        (i32::from(buf.width()) - w) / 2,
-        (i32::from(buf.height()) - QUESTION_H) / 2,
-        w,
-        QUESTION_H,
-    );
-    buf.fill_rect(rect, Cell::new(' ', c(EngineColor::Text), bg));
-    buf.draw_box(rect, BoxStyle::Double, c(EngineColor::Focus), bg);
-    buf.print(
-        rect.x + 2,
-        rect.y + 2,
-        &question.text,
-        c(EngineColor::Text),
-        bg,
-    );
-    buf.print(
-        rect.x + 2,
-        rect.y + 3,
-        &question.answers,
-        c(EngineColor::TextDim),
-        bg,
-    );
 }
 
 /// Paints `choices` in a double-bordered box under the slot on console row

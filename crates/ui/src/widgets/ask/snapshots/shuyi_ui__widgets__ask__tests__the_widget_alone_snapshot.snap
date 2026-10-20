@@ -1,0 +1,26 @@
+---
+source: crates/ui/src/widgets/ask/tests.rs
+expression: buf.to_snapshot(&c.palette)
+---
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+xxx╔═════════════════════╗xxxx
+xxx║                     ║xxxx
+xxx║ Keep these changes? ║xxxx
+xxx║  Keep     Discard   ║xxxx
+xxx║                     ║xxxx
+xxx╚═════════════════════╝xxxx
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaabbbbbbbbbbbbbbbbbbbbbbbaaaa
+aaabcccccccccccccccccccccbaaaa
+aaabcccccccccccccccccccccbaaaa
+aaabccccccccccdddddddddccbaaaa
+aaabcccccccccccccccccccccbaaaa
+aaabbbbbbbbbbbbbbbbbbbbbbbaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+--- legend ---
+a = fg:background bg:background
+b = fg:focus bg:panel
+c = fg:text bg:panel
+d = fg:panel bg:focus
