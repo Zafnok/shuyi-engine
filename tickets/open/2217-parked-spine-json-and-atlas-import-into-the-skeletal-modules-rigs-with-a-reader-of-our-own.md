@@ -113,9 +113,9 @@ None.
 - Spine's binary `.skel` format (a follow-up if a game asks);
 - scale, shear, meshes, constraints and physics (each needs 2105 to
   support it first, as a follow-up of 2105);
-- the official Spine Runtimes, or any crate built on them
-  (`docs/decisions.md`: every game built with the engine would then need
-  a Spine license);
+- the official Spine Runtimes, or any crate built on them: their
+  license isn't one ADR-0002 §8 allows, so using them is a separate
+  decision for Nick (`docs/decisions.md`);
 - DragonBones (2216).
 
 ## Implementation steps

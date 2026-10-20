@@ -681,9 +681,13 @@ So:
   between the user and Esoteric. The engine's docs say so, and say
   that Spine is Esoteric Software's trademark and the engine isn't
   affiliated with it.
-- **The official runtimes stay out.** Wrapping them (as `rusty_spine` and
-  `bevy_spine` do) would make every game built with the engine need a
-  Spine license (Section 2.4), which ADR-0002 §8 doesn't allow.
+- **The official runtimes stay out, for now.** Wrapping them (as
+  `rusty_spine` and `bevy_spine` do) is allowed by Esoteric. Each
+  developer who builds a game with them needs their own Spine license
+  (Section 2.4), and with it may ship the game to players who have none
+  (Section 2.2). But the runtimes' license isn't one of the permissive
+  licenses ADR-0002 §8 allows, so using them is a separate decision for
+  Nick.
 - This is a reading of the license, not legal advice. If Esoteric ever
   objects, or changes its terms to cover the file format, the reader
   stops shipping until Nick decides again.
