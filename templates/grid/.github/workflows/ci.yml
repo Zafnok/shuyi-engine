@@ -32,5 +32,7 @@ jobs:
       - run: cargo test --workspace
       - name: Every error in the game's files
         run: cargo shuyi check
+      - name: The game fits every target it ships on
+        run: cargo shuyi check --target all
       - name: No key hard-coded in code or text
         run: cargo shuyi check-keys

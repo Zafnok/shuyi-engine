@@ -8,6 +8,15 @@
     game: (package: "{{crate}}", example: "tools", features: ["tools"]),
 
     // `cargo shuyi check-keys`: no key named in the game's code or text.
+    // `cargo shuyi check --target all`: the targets the game ships on (the
+    // engine's profiles, `targets/` in its repository), each with its
+    // frame in pixels (48 × 24 cells of 8 × 16), its scale (`integer` or
+    // `fit`) and its smallest text's height (the font's cell).
+    targets: {
+        "desktop": (frame: (384, 384), scale: integer, text_px: 16),
+        "web": (frame: (384, 384), scale: integer, text_px: 16),
+    },
+
     check_keys: (
         rust: ["crates/game/src", "crates/rules/src"],
         assets: ["crates/game/files"],

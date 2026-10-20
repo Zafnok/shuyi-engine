@@ -4,6 +4,7 @@
 
 mod binary;
 mod schemas;
+mod targets;
 mod toy;
 
 use std::path::PathBuf;

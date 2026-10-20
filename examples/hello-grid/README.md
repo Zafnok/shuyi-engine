@@ -49,12 +49,22 @@ From this folder, each with `--json` for an answer a program reads
 
 ```
 cargo shuyi check                                  # every error in files/
+cargo shuyi check --target all                     # it fits each target shuyi.ron lists
 cargo shuyi run --stage --script "z Right z" --frames 60
 cargo shuyi scene --stage                          # the stage's map and state
 cargo shuyi bots 30                                # a random walker against the foe
 cargo shuyi replay play.ron                        # a bot's record (bots --json), step by step
 cargo shuyi import files/stage.map
 ```
+
+## Targets
+
+`shuyi.ron` lists the desktop, the web and the Steam Deck, and `cargo
+shuyi check --target all` passes on each. On the Deck the 384 × 384 frame
+is shown at scale 2, so its 16 px text is 32 px. The Playdate is not
+listed: the frame is taller than its 240 px screen even at scale 1.
+Fitting it would take a smaller console for that target, which this
+example doesn't have.
 
 ## Art and licenses
 

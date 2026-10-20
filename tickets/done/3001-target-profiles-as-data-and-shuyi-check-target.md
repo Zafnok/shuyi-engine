@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2201", "1129", "game#1131"]
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 3001 — Target profiles as data
@@ -95,17 +95,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every file in `targets/` decodes, and a test checks the
+- [x] Every file in `targets/` decodes, and a test checks the
       `playdate` and `steam-deck` values against ADR-0008's tables.
-- [ ] `shuyi check --target playdate` on a fixture game with an
+- [x] `shuyi check --target playdate` on a fixture game with an
       800 × 512 frame fails with "frame 800 × 512 at scale 1 is larger
       than the display 400 × 240".
-- [ ] `shuyi check --target steam-deck` warns when the text is 9–11 px
+- [x] `shuyi check --target steam-deck` warns when the text is 9–11 px
       and fails below 9.
-- [ ] The same operation answers through the JSON contract, and a test
+- [x] The same operation answers through the JSON contract, and a test
       checks the JSON.
-- [ ] Truncated or random bytes give errors, never a panic.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Truncated or random bytes give errors, never a panic.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -117,5 +117,71 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+- **`shuyi_assets::target`**: `TargetProfile` (`id`, `status`,
+  `display`, `frame_rate`, `input`, `budgets`, `backend`), all integers
+  and `deny_unknown_fields`, read by the `TargetRon` format (`target-ron`),
+  which is registered by default. The decoder reports every problem of a
+  profile:
+  - an id that isn't the file's name;
+  - text sizes or frame rates out of order;
+  - an empty size, or a safe area that leaves nothing;
+  - a chord of buttons the target doesn't have.
+
+  A property test feeds it random, truncated and changed bytes.
+- **`targets/`**: the seven profiles from ADR-0008's two tables. Each
+  provisional number says which ticket measures it (3008, 3011, 3013,
+  3015). `switch`, `android` and `ios` are `Planned`; the others are
+  `Supported`, as the ticket says.
+- **`shuyi.ron`** gets `targets`, a table from target id to `(frame: (w,
+  h), scale: integer | fit, text_px)`, and `target_profiles`, an optional
+  folder of the game's own profiles. A game's profile adds a target, or
+  replaces the engine's with the same id. Both templates list `desktop`
+  and `web`, and their CI runs `cargo shuyi check --target all`.
+- **`check --target <id | all>`** is part of the contract's `check`.
+  - `CheckInput.target` and `CheckOutput.targets` are new, each report
+    holding its problems with level, check, setting and message.
+  - The contract version goes to 2, with the schemas regenerated.
+  - It runs on the project file alone, so no game tool program is built.
+  - `--json`, the text table and the exit code all follow the other
+    operations.
+- **Hello, Grid** lists `desktop`, `web` and `steam-deck`, and passes all
+  three. Its README says why the Playdate isn't listed: the 384 × 384
+  frame is taller than 240 px. CI's `wasm` job and the `run-gates` skill
+  run `check --target all` there.
+
+**Deviations.**
+- **The extension is `ron`, not `target.ron`.** The format registry
+  refuses an extension with a dot in it (ADR-0019), and ADR-0008 names
+  the files `targets/<id>.ron` anyway. Like every other RON kind, the kind
+  asked for says which format reads the file.
+- **`display.sizes` is a list.** It is empty for a window or a browser
+  canvas, which takes any size; their text is checked at scale 1, and the
+  answer says so in its limits. It has one entry per mode for the
+  Switch's handheld and docked. ADR-0008 says "width and height".
+- **Buttons are written as strings** (`"East"`), as keymap files write
+  them. `Button` gained a serde `Deserialize` by its name.
+- **The text check takes `text_px` from the game's `targets` entry**, not
+  from its font. The CLI doesn't load the game's font, and a game may use
+  a smaller font on one target.
+- **The fit scale.** `integer` is the largest whole scale that fits.
+  When even 1 doesn't fit, the error is the ticket's "frame W × H at
+  scale 1 is larger than the display …", or "… the safe area … of the
+  display …" when there are insets. `fit` is the largest factor, smaller
+  than 1 too, and the text shrinks with it.
+
+**API changes for the game** (none of its code is known to use them):
+- `CheckOutput` gained `targets`;
+- `CheckInput` gained `target`;
+- `Config` gained `targets` and `target_profiles`;
+- the contract is version 2.
+
+No game PR is needed for this ticket. The game's next pin bump carries
+it, and the game may then add its own `targets` table.
+
+**Follow-up tickets.** None.
+
+**For Nick.** The engine now knows each export target's screen, inputs
+and budgets, and `shuyi check --target playdate` says whether a game's
+screen fits. The game's 800 × 512 frame fails on the Playdate as
+expected.

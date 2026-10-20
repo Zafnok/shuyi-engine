@@ -91,6 +91,18 @@ pub fn parse_ron<T: DeserializeOwned>(file: &str, source: &str) -> Result<T, Con
     ::ron::from_str(source).map_err(|e| error(file, &e))
 }
 
+/// Like [`parse_ron`], with RON's `implicit_some` on: an optional field
+/// is written as its value, not in `Some(…)`.
+pub fn parse_ron_implicit_some<T: DeserializeOwned>(
+    file: &str,
+    source: &str,
+) -> Result<T, ContentError> {
+    ::ron::Options::default()
+        .with_default_extension(::ron::extensions::Extensions::IMPLICIT_SOME)
+        .from_str(source)
+        .map_err(|e| error(file, &e))
+}
+
 /// Like [`parse_ron`], reading with `seed`: for a value whose shape is
 /// known only at run time.
 pub fn parse_ron_seed<'de, S: DeserializeSeed<'de>>(

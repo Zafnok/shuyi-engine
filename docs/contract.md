@@ -15,6 +15,7 @@ are the other two ways to reach them.
 | -- | ---- | ----- |
 | `new <template> <dir>` | A new game in `dir` from `templates/grid` or `templates/blank` | nothing |
 | `check` | Loads the game's content through every validator: every error, with file, line and message | the game |
+| `check --target <id \| all>` | Whether the game's frame at its scale fits a target's display inside its safe area, and its smallest text is as tall as the target asks (ADR-0008 §1): each problem with its target, its setting in `shuyi.ron`'s `targets` and the numbers; a warning doesn't fail it | the project file |
 | `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds | the game |
 | `scene [steps]` | The same, answering with the scene or stage on screen | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
