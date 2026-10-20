@@ -96,6 +96,7 @@ fn confirm_gives_the_focused_answer_and_plays_nothing() {
 #[test]
 fn cancel_gives_its_answer_or_nothing() {
     let mut ask = three();
+    assert_eq!(ask.cancel(), Some(Leave::Back));
     press(&mut ask, &[CursorRight]);
     assert_eq!(press(&mut ask, &[Cancel]).0, [Some(Leave::Back)]);
     // The focus doesn't matter to Cancel, nor Cancel to the focus.
