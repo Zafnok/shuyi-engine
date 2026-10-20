@@ -15,7 +15,7 @@ use shuyi_core::{Dir, Pos, Sides, TerrainId, TurnRules};
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 use shuyi_ui::frame::{EngineColor, Palette};
 use shuyi_ui::grid::{
-    Camera, GlyphSkin, GlyphStyle, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit,
+    Camera, GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit,
     TerrainGlyphs, Terrains, UnitPainter, WalkSpeeds, glyph,
 };
 use shuyi_ui::{Ctx, FrameInput, Screen, Transition};
@@ -52,16 +52,15 @@ impl Terrains for Terrain {
 }
 
 /// The glyph skin: two cells a tile.
-pub const GLYPHS: GlyphSkin = GlyphSkin {
-    colors: MapColors {
+pub const GLYPHS: GlyphSkin = GlyphSkin::new(
+    MapColors {
         path: "path",
         cursor: "cursor",
         threat: "threat",
     },
-    walk: WalkSpeeds::of(8.0),
-    foot_px: 0,
-    style: GlyphStyle::PLAIN,
-};
+    WalkSpeeds::of(8.0),
+    0,
+);
 
 /// Which piece.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
