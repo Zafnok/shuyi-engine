@@ -372,12 +372,14 @@ pub fn controls(id: &str, found: Vec<FitProblem>) -> Vec<TargetProblem> {
     found
         .into_iter()
         .map(|p| {
-            let (level, setting) = match (p.rule, p.screen) {
-                (FitRule::Undeclared, Some(screen)) => {
-                    (Level::Warning, format!("screen \"{screen}\""))
-                }
-                _ if !p.is_error() => (Level::Warning, format!("keymap targets.\"{id}\"")),
-                _ => (Level::Error, format!("keymap targets.\"{id}\"")),
+            let level = if p.is_error() {
+                Level::Error
+            } else {
+                Level::Warning
+            };
+            let setting = match (p.rule, p.screen) {
+                (FitRule::Undeclared, Some(screen)) => format!("screen \"{screen}\""),
+                _ => format!("keymap targets.\"{id}\""),
             };
             TargetProblem {
                 level,

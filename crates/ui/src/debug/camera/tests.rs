@@ -295,3 +295,21 @@ fn says_so_when_there_is_no_picture() {
     assert_eq!(blank.map(|c| c.glyph), Some(' '));
     assert!(screen.view(&ctx).shown.is_none());
 }
+
+/// The camera declares the cursor, Confirm and Cancel (ADR-0025).
+#[test]
+fn the_camera_declares_its_actions() {
+    use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorRight, CursorUp};
+    let c = ctx();
+    assert_eq!(
+        Screen::<Toy>::actions(&camera(&c)),
+        Some(vec![
+            CursorLeft,
+            CursorDown,
+            CursorUp,
+            CursorRight,
+            Confirm,
+            Cancel
+        ])
+    );
+}

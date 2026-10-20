@@ -274,3 +274,19 @@ fn the_swatches_go_five_to_a_row_with_their_names_cut() {
         .collect();
     assert_eq!(shown, "a_very_long_co  ");
 }
+
+/// What the debug screens declare (ADR-0025): the menu its menu's
+/// actions, the sampler Cancel alone.
+#[test]
+fn the_debug_screens_declare_their_actions() {
+    use Action::{Cancel, Confirm, CursorDown, CursorUp};
+    let c = ctx();
+    let runs = Rc::new(Shared::new(0));
+    assert_eq!(
+        Screen::<Toy>::actions(&menu(&c, &runs)),
+        Some(vec![CursorDown, CursorUp, Confirm, Cancel])
+    );
+    let spec = crate::frame::console::ConsoleSpec::text(100, 32);
+    let sampler = GlyphSamplerScreen::new(&c, spec, &['a'], panels);
+    assert_eq!(Screen::<Toy>::actions(&sampler), Some(vec![Cancel]));
+}

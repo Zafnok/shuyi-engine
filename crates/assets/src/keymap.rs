@@ -962,7 +962,7 @@ impl<A: ActionSet> KeymapDef<A> {
                 .cloned()
                 .unwrap_or_else(|| pad.clone())
         } else {
-            if targets.contains_key(PLAYDATE) || raw.targets.contains_key(PLAYDATE) {
+            if raw.targets.contains_key(PLAYDATE) {
                 errors.push(positioned(
                     ContentError::new(
                         file,

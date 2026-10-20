@@ -67,21 +67,14 @@ impl<A: ActionSet> FrameInput<A> {
 
     /// This input as `screen` sees it when it declares that it reacts to
     /// `declared` alone ([`Screen::actions`](crate::screen::Screen::actions)):
-    /// only those actions, pressed and held, with the actions held back
-    /// (in order, as often as they came). Asking the result whether an
-    /// action outside `declared` is [held](Self::is_held) panics: the
-    /// screen reads an action it didn't declare. Keys, buttons and text
-    /// stay as they were.
+    /// only those actions, with the actions held back (in order, as often
+    /// as they came). Asking the result whether an action outside
+    /// `declared` is [held](Self::is_held) panics: the screen reads an
+    /// action it didn't declare. Keys, buttons and text stay as they were.
     pub fn declared(&self, screen: &'static str, declared: &[A]) -> (Self, Vec<A>) {
         let (actions, missed) = self.actions.iter().partition(|a| declared.contains(a));
         let input = Self {
             actions,
-            held: self
-                .held
-                .iter()
-                .copied()
-                .filter(|a| declared.contains(a))
-                .collect(),
             declared: Some((screen, declared.to_vec())),
             ..self.clone()
         };

@@ -103,6 +103,10 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # `check --target` checks the controls in the game's tool program,
+      # which builds natively.
+      - name: Install macroquad system libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
       - name: Hello, Grid fits every target it lists
         working-directory: examples/hello-grid
         run: cargo shuyi check --target all
