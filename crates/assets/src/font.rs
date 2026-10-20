@@ -1,6 +1,7 @@
 //! A bitmap font atlas: a grid of fixed-size glyph cells in one image, and
 //! a glyph map (a RON file) from `char` to cell index. The game names the
-//! two files and the glyphs it needs.
+//! two files and the glyphs it needs. As a format (ADR-0007), the glyph
+//! map is a sidecar read with the PNG beside it ([`FontAtlasRon`]).
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
@@ -8,8 +9,64 @@ use alloc::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::image::png_size;
 use crate::ron::parse_ron;
+
+impl AssetKind for FontAtlasDef {
+    const NAME: &'static str = "font atlas";
+}
+
+/// A font atlas's glyph map (`font-atlas`, `.ron`), checked as
+/// [`FontAtlasDef::from_source`] says against the PNG beside it with its
+/// name (`fonts/atlas.ron` and `fonts/atlas.png`) and the glyphs the game
+/// requires.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FontAtlasRon {
+    required: String,
+}
+
+impl FontAtlasRon {
+    /// The glyph map of an atlas that must hold every glyph of `required`.
+    pub fn requiring(required: impl Into<String>) -> Self {
+        Self {
+            required: required.into(),
+        }
+    }
+}
+
+impl Format for FontAtlasRon {
+    type Asset = FontAtlasDef;
+
+    fn id(&self) -> &'static str {
+        "font-atlas"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        cx: &DecodeCx<'_>,
+    ) -> Result<FontAtlasDef, Vec<ContentError>> {
+        let source = text(file, bytes)?;
+        let png = file.with_extension("png");
+        FontAtlasDef::from_source(
+            file.shown(),
+            source,
+            &cx.shown(&png),
+            cx.bytes(&png),
+            &self.required,
+        )
+    }
+}
 
 /// The glyph used when a cell's glyph is not in the atlas.
 pub const FALLBACK_GLYPH: char = '?';

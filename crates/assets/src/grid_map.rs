@@ -21,17 +21,20 @@
 //! problem is reported together, each with its line and column.
 //!
 //! The look is kept beside the tiles, for a skin to paint them by; the
-//! rules never need it.
+//! rules never need it. As a format (ADR-0007): [`MapText`].
 
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
+use core::fmt;
+use core::marker::PhantomData;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shuyi_core::{Grid, Pos};
 
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
 
 /// The line separating the RON header from the tile rows.
@@ -179,6 +182,74 @@ pub struct GridMap<T, F> {
     pub legend: Legend<T>,
     /// How the map looks.
     pub look: MapLook,
+}
+
+impl<T: 'static, F: 'static> AssetKind for GridMap<T, F> {
+    const NAME: &'static str = "map";
+}
+
+/// What a terrain id resolves to, in a [`MapText`].
+type Terrain<T> = Box<dyn Fn(&str) -> Option<T> + Send + Sync>;
+
+/// The `.map` format (`map`, `.map`) of a game's maps, read as [`parse`]
+/// says: the game's [`MapFormat`], what a legend's terrain id resolves to,
+/// and its features `F`.
+pub struct MapText<T, F = NoFeature> {
+    format: MapFormat<'static>,
+    terrain: Terrain<T>,
+    feature: PhantomData<fn() -> F>,
+}
+
+impl<T, F> MapText<T, F> {
+    /// Maps of `format`, their legends' terrain ids resolved by `terrain`.
+    pub fn new(
+        format: MapFormat<'static>,
+        terrain: impl Fn(&str) -> Option<T> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            format,
+            terrain: Box::new(terrain),
+            feature: PhantomData,
+        }
+    }
+}
+
+impl<T, F> fmt::Debug for MapText<T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MapText")
+            .field("format", &self.format)
+            .finish_non_exhaustive()
+    }
+}
+
+impl<T: Copy + Default + 'static, F: MapFeature + 'static> Format for MapText<T, F> {
+    type Asset = GridMap<T, F>;
+
+    fn id(&self) -> &'static str {
+        "map"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["map"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<GridMap<T, F>, Vec<ContentError>> {
+        parse(
+            file.shown(),
+            text(file, bytes)?,
+            &self.format,
+            &self.terrain,
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize)]

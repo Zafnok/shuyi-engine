@@ -1,13 +1,62 @@
 //! Named colours: a palette file (`{"name": "#RRGGBB", ...}`) that all
 //! drawing code refers to by name. The game says which names it needs; a
 //! theme is another palette file with exactly the names of the default
-//! one ([`theme_problems`]).
+//! one ([`theme_problems`]). As a format (ADR-0007): [`PaletteRon`].
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
 
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
+
+impl AssetKind for PaletteDef {
+    const NAME: &'static str = "palette";
+}
+
+/// A palette file (`palette`, `.ron`), checked as
+/// [`PaletteDef::from_source`] says against the colours the game
+/// requires.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PaletteRon {
+    required: Vec<String>,
+}
+
+impl PaletteRon {
+    /// A palette that must hold every colour of `required`.
+    pub fn requiring<S: Into<String>>(required: impl IntoIterator<Item = S>) -> Self {
+        Self {
+            required: required.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+impl Format for PaletteRon {
+    type Asset = PaletteDef;
+
+    fn id(&self) -> &'static str {
+        "palette"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<PaletteDef, Vec<ContentError>> {
+        let source = text(file, bytes)?;
+        let required: Vec<&str> = self.required.iter().map(String::as_str).collect();
+        PaletteDef::from_source(file.shown(), source, &required)
+    }
+}
 
 /// The validated palette: colour name → RGB.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

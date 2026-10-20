@@ -7,7 +7,8 @@
 //! A bought work names the files of the game's private folder it covers
 //! (the bought art, kept out of the public repository). It is shown only
 //! in a build that has files there, and [`uncredited`] finds the bought
-//! files no credit covers (game ADR-0051).
+//! files no credit covers (game ADR-0051). As a format (ADR-0007):
+//! [`CreditsRon`].
 use crate::prelude::*;
 
 use alloc::collections::BTreeSet;
@@ -16,7 +17,67 @@ use serde::Deserialize;
 
 use crate::audio::{self, AudioManifest};
 use crate::error::{ContentError, line_of};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
+
+impl AssetKind for CreditsFile {
+    const NAME: &'static str = "credits";
+}
+
+/// A credits file (`credits`, `.ron`), checked as [`from_source`] says,
+/// its errors naming the game's other files as [`Places`] does.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreditsRon {
+    audio_manifest: String,
+    private_root: String,
+}
+
+impl CreditsRon {
+    /// The credits of a game whose audio manifest errors call
+    /// `audio_manifest` and whose private folder they call `private_root`.
+    pub fn new(audio_manifest: impl Into<String>, private_root: impl Into<String>) -> Self {
+        Self {
+            audio_manifest: audio_manifest.into(),
+            private_root: private_root.into(),
+        }
+    }
+}
+
+impl Default for CreditsRon {
+    /// Errors call them "the audio manifest" and `private`.
+    fn default() -> Self {
+        Self::new("the audio manifest", "private")
+    }
+}
+
+impl Format for CreditsRon {
+    type Asset = CreditsFile;
+
+    fn id(&self) -> &'static str {
+        "credits"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<CreditsFile, Vec<ContentError>> {
+        let places = Places {
+            audio_manifest: &self.audio_manifest,
+            private_root: &self.private_root,
+        };
+        from_source(file.shown(), text(file, bytes)?, &places)
+    }
+}
 
 /// Licenses an entry of the credits file may have, unless it is a bought
 /// work ([`FileCredit::private`]): game ADR-0013's code and font lists.

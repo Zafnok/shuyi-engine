@@ -35,13 +35,22 @@ None.
 
 **In:**
 - `shuyi_assets::anim`: `Atlas` (named rectangles in an image),
-  `AnimationClip`, `AnimationSet`, `frame_at(clip, elapsed_ms)`.
-- Importers report errors with the file and the JSON path:
+  `AnimationClip`, `AnimationSet`, `frame_at(clip, elapsed_ms)`. `Atlas`
+  and `AnimationSet` are asset kinds (`AssetKind`, ADR-0019 §1).
+- The importers are `Format`s of those kinds (ADR-0007, ADR-0019;
+  `docs/formats.md` says how to write one), registered with
+  `Formats::register_standard`, each with its id, extension, limit and a
+  property test that random bytes never panic it. They report errors with
+  the file and the JSON path:
   - Aseprite JSON (`json-array` and `json-hash`, `frameTags` with
     direction and repeat, per-frame `duration`);
   - TexturePacker JSON (hash and array).
-- Our RON sidecar form of the same data, and `shuyi-cli import --print`
-  to turn an import into it.
+
+  Both read `.json`, and two formats of one kind can't claim one
+  extension (ADR-0019 §2): one claims `.json`, and the other is found by
+  sniffing its JSON (the tool named in its `meta.app`).
+- Our RON sidecar form of the same data, as a third format of each kind,
+  and `shuyi-cli import --print` to turn an import into it (its `Encode`).
 - Measure `asefile` behind an `aseprite` feature. Keep it only if it adds
   under 300 KB to the WASM build (ADR-0004 §2). Write down the number
   either way.

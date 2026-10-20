@@ -19,7 +19,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0004](0004-assets-standard-files-in-the-engines-own-data-out-and-a-deterministic-movement-kit.md) | Assets: standard files in, the engine's own data out; a deterministic movement kit, physics optional | Accepted (was game ADR-0065); extended by ADR-0007 |
 | [0005](0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md) | AI-native tooling: one contract, three surfaces (CLI, MCP, skills); visual scripting as a view over text | Accepted (was game ADR-0066) |
 | [0006](0006-networking-in-layers-transports-sessions-sync-models-services.md) | Networking in layers: transports, sessions, sync models, services; determinism is the contract | Accepted (was game ADR-0067); its tickets are parked |
-| [0007](0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md) | Formats are plugins: standard files always, optimized ones optional, text stays the source | Accepted |
+| [0007](0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md) | Formats are plugins: standard files always, optimized ones optional, text stays the source | Accepted; extended by ADR-0019 (the registry's rules) |
 | [0008](0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md) | Export targets: profiles as data, platform backends, controls that fit, 1-bit graphics, performance budgets | Accepted; the Switch, mobile and console tickets are parked; extended by ADR-0012 (capabilities) |
 | [0009](0009-modules-a-small-default-engine-and-opt-in-crates.md) | Modules: a small default engine, a direction per stage, and opt-in crates that say what they are for | Accepted; extends ADR-0003 §6 with perspective markers; extended by ADR-0013 (templates made of parts) and ADR-0015 (the *Kind of game* concern) |
 | [0010](0010-procedural-animation-bodies-limbs-and-strips.md) | Procedural animation: bodies of points in fixed-point, limbs that find their footing, and strips to draw them | Accepted; its tickets are parked |
@@ -31,5 +31,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0016](0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md) | Visual novels and detective games: a story stage, a case file, and a fair-play check | Accepted; its tickets are parked until after the game launches |
 | [0017](0017-sonar-backlog-becomes-batched-github-issues.md) | SonarCloud in CI, and its backlog as batched GitHub issues | Accepted; adopts game ADR-0071 |
 | [0018](0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md) | Screen results: a screen pops with a value, and hears when it is covered | Accepted |
+| [0019](0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md) | The format registry: kinds are types, a format reads one file, conflicts are per kind | Accepted; extends ADR-0007 |
 
 Template: [`0000-template.md`](0000-template.md).

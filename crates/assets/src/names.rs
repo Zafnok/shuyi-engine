@@ -1,7 +1,8 @@
 //! A names table: every display name of a story (characters, places,
 //! factions, terms) by stable id, so a rename is one line. Text refers to a
 //! name with a token, `{n:<id>}` (or `{N:<id>}` for a capital first
-//! letter), filled in by [`Names::substitute`] when it is shown.
+//! letter), filled in by [`Names::substitute`] when it is shown. As a
+//! format (ADR-0007): [`NamesRon`].
 use crate::prelude::*;
 
 use alloc::borrow::Cow;
@@ -11,6 +12,7 @@ use shuyi_core::text::{Part, split_tokens};
 
 use crate::dialogue::char_problem;
 use crate::error::{ContentError, line_of};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::lang::text_width;
 use crate::ron::parse_ron;
 
@@ -19,6 +21,39 @@ use crate::ron::parse_ron;
 pub struct Names {
     /// Display names by id.
     pub names: BTreeMap<String, String>,
+}
+
+impl AssetKind for Names {
+    const NAME: &'static str = "names table";
+}
+
+/// A names table (`names`, `.ron`), checked as [`from_source`] says.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NamesRon;
+
+impl Format for NamesRon {
+    type Asset = Names;
+
+    fn id(&self) -> &'static str {
+        "names"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<Names, Vec<ContentError>> {
+        from_source(file.shown(), text(file, bytes)?)
+    }
 }
 
 /// A name token: the inside of `{n:<id>}` or `{N:<id>}`.

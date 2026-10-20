@@ -12,6 +12,11 @@
 //! cinematics, timed shots of a game's own kinds ([`cinematic`]). Each
 //! is a pure parser; the game names its files, says what its own rules add,
 //! and reads them from its bundle.
+//!
+//! Formats are plugins ([`format`](mod@format), ADR-0007): each kind of
+//! asset is a plain type, the parsers above are formats of their kinds,
+//! and a game registers its own kinds and formats beside the engine's in
+//! a [`Formats`] registry, then asks it for an asset by id.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -33,6 +38,7 @@ pub mod credits;
 pub mod dialogue;
 pub mod error;
 pub mod font;
+pub mod format;
 pub mod grid_map;
 pub mod image;
 pub mod ink;
@@ -48,5 +54,6 @@ pub mod voice;
 
 pub use bundle::{Bundle, Files, Layer};
 pub use error::{ContentError, ContentErrors, line_of};
+pub use format::{AssetKind, AssetPath, DecodeCx, Encode, Format, Formats, Limits};
 pub use grid_map::{GridMap, MapFeature, MapFormat, MapLook};
 pub use ron::parse_ron;

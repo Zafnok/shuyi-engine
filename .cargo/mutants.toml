@@ -42,4 +42,12 @@ exclude_re = [
     # only mutants are the same functions.
     "<impl GameData for Hello>::voice_variant",
     "<impl ClipVariant for OnlyClip>::split",
+    # The default `Format::sniff` is `false` (a format with no magic bytes
+    # knows no file by them): its `false` mutant is the same function. Its
+    # `true` mutant is caught.
+    'replace Format::sniff -> bool with false',
+    # A one-bit picture claims no extension (`&[]`): the mutant that returns
+    # an empty leaked `Vec` is the same function. Its other mutants are
+    # caught.
+    'OneBitInfo>::extensions -> .* with Vec::leak\(Vec::new\(\)\)',
 ]

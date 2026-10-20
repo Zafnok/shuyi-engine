@@ -37,8 +37,14 @@ None.
 ## Scope
 
 **In:**
-- `shuyi_assets::tilemap::TileMap` and the two importers:
-  - Tiled: `tiled` with `default-features = false`;
+- `shuyi_assets::tilemap::TileMap`, an asset kind (`AssetKind`,
+  ADR-0019 §1), and the two importers as `Format`s of it (ADR-0007,
+  ADR-0019; `docs/formats.md` says how to write one), registered with
+  `Formats::register_standard`, each with its id, extension (`.tmx`,
+  `.ldtk`), limit and a property test that random bytes never panic it:
+  - Tiled: `tiled` with `default-features = false` (its TSX tilesets are
+    a `Format` of the tileset kind, or files the TMX format reads through
+    its `DecodeCx`);
   - LDtk: the vendored generated types with their MIT notice in
     `THIRD_PARTY_ASSETS.md`.
   Both have fixtures made with each tool's free editor.

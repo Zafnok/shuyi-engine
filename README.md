@@ -105,6 +105,7 @@ and a game that needs more than that doesn't export there
 | `examples/` | Games made from the engine's crates alone ([below](#the-first-example-hello-grid)) |
 | `sonar-project.properties`, `tools/sonar-triage/` | SonarCloud's scan of the code in CI, and the weekly job that files its findings as `sonar` GitHub issues (ADR-0017) |
 | `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
+| `docs/formats.md` | Asset kinds and file formats: the built-in formats, and how to write a format plugin |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
 The engine's own shippable skills arrive later (`skills/`, ticket 1134).

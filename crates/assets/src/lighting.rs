@@ -1,6 +1,6 @@
 //! Lights: named recipes for shading pictures, read from a RON file of
 //! `name: (grey: 0.35, tint: (0.62, 0.56, 0.46))` entries. Look data only:
-//! a game's rules never see it.
+//! a game's rules never see it. As a format (ADR-0007): [`LightingRon`].
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
@@ -8,7 +8,61 @@ use alloc::collections::BTreeMap;
 use serde::Deserialize;
 
 use crate::error::ContentError;
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
+use crate::grid_map::DEFAULT_LIGHT;
 use crate::ron::parse_ron;
+
+impl AssetKind for Lighting {
+    const NAME: &'static str = "lights";
+}
+
+/// A lights' file (`lights`, `.ron`), checked as [`from_source`] says,
+/// with the light a map that names none is in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LightingRon {
+    default: String,
+}
+
+impl LightingRon {
+    /// The lights of a game whose maps are in `default` unless they say.
+    pub fn new(default: impl Into<String>) -> Self {
+        Self {
+            default: default.into(),
+        }
+    }
+}
+
+impl Default for LightingRon {
+    /// Maps are in [`DEFAULT_LIGHT`] unless they say.
+    fn default() -> Self {
+        Self::new(DEFAULT_LIGHT)
+    }
+}
+
+impl Format for LightingRon {
+    type Asset = Lighting;
+
+    fn id(&self) -> &'static str {
+        "lights"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &["ron"]
+    }
+
+    fn max_bytes(&self) -> usize {
+        TEXT_MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<Lighting, Vec<ContentError>> {
+        from_source(file.shown(), text(file, bytes)?, &self.default)
+    }
+}
 
 /// How many parts a [`Light`]'s numbers are counted in: the file's `0.35`
 /// is kept as 350.

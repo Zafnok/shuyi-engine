@@ -7,7 +7,14 @@
 //! game itself may not be able to read. [`from_source`] checks what it can
 //! see, including each track's `length_ms` against its file
 //! ([`ogg_length_ms`]).
+//!
+//! As formats (ADR-0007): a sound file's header is the [`Sound`] kind
+//! ([`Wav`], [`OggVorbis`]), a music track's the [`MusicTrack`] kind
+//! ([`OggVorbisTrack`]), and the manifest is read by
+//! [`AudioManifestRon`].
 use crate::prelude::*;
+
+mod formats;
 
 use alloc::collections::{BTreeMap, BTreeSet};
 
@@ -15,6 +22,10 @@ use serde::Deserialize;
 
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron;
+
+pub use formats::{
+    AudioManifestRon, MAX_SOUND_BYTES, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
+};
 
 /// Licenses a credit may have (game ADR-0013, game ADR-0027). `Own` is work we made.
 pub const LICENSES: [&str; 4] = ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0", OWN];
@@ -212,13 +223,20 @@ pub fn format_problem(name: &str, bytes: &[u8]) -> Option<String> {
     };
     match format {
         Err(why) => Some(why.to_owned()),
-        Ok((channels, _)) if !(1..=2).contains(&channels) => {
-            Some(format!("{channels} channels; must be mono or stereo"))
-        }
-        Ok((_, rate)) if rate != SAMPLE_RATE => {
-            Some(format!("{rate} Hz; must be {SAMPLE_RATE} Hz"))
-        }
-        Ok(_) => None,
+        Ok((channels, rate)) => playable_problem(channels, rate),
+    }
+}
+
+/// Why a sound of `channels` channels at `rate` Hz isn't something the
+/// game can play, if it isn't: it must be mono or stereo, at
+/// [`SAMPLE_RATE`].
+fn playable_problem(channels: u16, rate: u32) -> Option<String> {
+    if !(1..=2).contains(&channels) {
+        Some(format!("{channels} channels; must be mono or stereo"))
+    } else if rate != SAMPLE_RATE {
+        Some(format!("{rate} Hz; must be {SAMPLE_RATE} Hz"))
+    } else {
+        None
     }
 }
 
@@ -495,13 +513,16 @@ impl Check<'_> {
     }
 }
 
+/// What a track whose length can't be read is told.
+const NO_LENGTH: &str = "its length can't be read (no last Ogg page)";
+
 /// Why a music cue's `length_ms` doesn't fit its file, which plays for
 /// `actual` milliseconds ([`ogg_length_ms`]): more than
 /// [`LENGTH_TOLERANCE_MS`] off, or the file's length can't be read. The
 /// message gives the value to write.
 fn length_problem(length_ms: u32, actual: Option<u32>) -> Option<String> {
     match actual {
-        None => Some("its length can't be read (no last Ogg page)".into()),
+        None => Some(NO_LENGTH.into()),
         Some(ms) if ms.abs_diff(length_ms) > LENGTH_TOLERANCE_MS => Some(format!(
             "it plays for {ms} ms, but length_ms is {length_ms}; write length_ms: {ms}"
         )),
