@@ -20,8 +20,9 @@ use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 const TITLE_DX: i32 = 2;
 
 /// Cells of a panel's top border that a title never covers: a corner and
-/// a line on each side, and a space each side of the title.
-const TITLE_FRAME: i32 = 2 * TITLE_DX + 2;
+/// a line on each side ([`TITLE_DX`] each), and a space each side of the
+/// title.
+const TITLE_FRAME: i32 = 6;
 
 /// `text` in at most `w` cells: cut, its last cell a `…`, if it is longer.
 ///
