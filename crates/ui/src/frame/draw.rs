@@ -19,6 +19,10 @@ use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 /// line.
 const TITLE_DX: i32 = 2;
 
+/// Cells of a panel's top border that a title never covers: a corner and
+/// a line on each side, and a space each side of the title.
+const TITLE_FRAME: i32 = 2 * TITLE_DX + 2;
+
 /// `text` in at most `w` cells: cut, its last cell a `…`, if it is longer.
 ///
 /// ```
@@ -132,8 +136,7 @@ impl GlyphBuffer {
         let Some(title) = title else {
             return;
         };
-        // Both sides keep a corner and a line, and the title a space each side.
-        let room = usize::try_from(rect.w.saturating_sub(2 * TITLE_DX + 2)).unwrap_or(0);
+        let room = usize::try_from(rect.w.saturating_sub(TITLE_FRAME)).unwrap_or(0);
         if room > 0 {
             let shown = format!(" {} ", cut(title, room));
             let x = rect.x.saturating_add(TITLE_DX);

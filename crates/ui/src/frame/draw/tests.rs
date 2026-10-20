@@ -53,8 +53,11 @@ fn a_meter_keeps_its_cells_colours_and_fills_every_row() {
     assert_eq!(row(&buf, 2), "██░░");
     assert_eq!(buf.get(0, 1), Some(&FULL));
     assert_eq!(buf.get(3, 2), Some(&EMPTY));
+    // Narrower than its row: the rest of the row is untouched.
+    buf.meter(Rect::new(1, 0, 2, 1), 1, 4, FULL, EMPTY);
+    assert_eq!(row(&buf, 0), ".█░.");
     buf.meter(Rect::new(0, 0, 0, 1), 1, 2, FULL, EMPTY);
-    assert_eq!(row(&buf, 0), "....");
+    assert_eq!(row(&buf, 0), ".█░.");
 }
 
 #[test]
@@ -112,6 +115,13 @@ fn centring_in_a_rectangle_cuts_and_keeps_the_background() {
     assert_eq!(row(&buf, 1), "..abc…..");
     assert_eq!(buf.get(2, 1), Some(&Cell::new('a', RED, BLUE)));
     assert_eq!(buf.print_centred(Rect::new(0, 0, 0, 1), "a", RED), 0);
+    // Five rows: the third; two: the first.
+    let mut buf = GlyphBuffer::new(1, 5, BLANK);
+    buf.print_centred(buf.bounds(), "a", RED);
+    assert_eq!(buf.get(0, 2).unwrap().glyph, 'a');
+    let mut buf = GlyphBuffer::new(1, 2, BLANK);
+    buf.print_centred(buf.bounds(), "a", RED);
+    assert_eq!(buf.get(0, 0).unwrap().glyph, 'a');
 }
 
 #[test]
