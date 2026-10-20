@@ -196,6 +196,68 @@ fn bakes_arguments_are_a_target_and_a_file() {
         "usage: shuyi bake [--target <id>] [--out <file>] [--json]"
     );
     assert_eq!(bytes(1_234_567), "1,234,567");
+    assert_eq!(bytes(123_456), "123,456");
     assert_eq!(bytes(12), "12");
     assert_eq!(ms(1_234), "1.2 ms");
+}
+
+#[test]
+fn the_text_says_how_big_the_pack_is_beside_its_sources() {
+    let output = BakeOutput {
+        errors: Vec::new(),
+        pack: Some(PackMade {
+            file: "p.shuyipak".to_owned(),
+            target: None,
+            files: 4,
+            baked: 1,
+            kinds: vec!["palette".to_owned()],
+            source_bytes: 200,
+            pack_bytes: 50,
+            bake_us: 1_500,
+            load_sources_us: 900,
+            load_pack_us: 300,
+        }),
+    };
+    assert_eq!(
+        text(&output),
+        "bake: p.shuyipak: 4 files, 1 baked (palette)\n  size: sources 200 bytes, pack 50 bytes \
+         (25%)\n  baked in 1.5 ms\n  load: sources 0.9 ms, pack 0.3 ms\n"
+    );
+}
+
+#[test]
+fn times_are_whole_microseconds_and_the_fastest_run_counts() {
+    assert_eq!(micros(Duration::from_micros(1_234)), 1_234);
+    assert_eq!(micros(Duration::from_nanos(999)), 0);
+    let mut runs = 0;
+    let slowest_first = fastest(|| {
+        runs += 1;
+        std::thread::sleep(Duration::from_millis(if runs == 1 { 20 } else { 2 }));
+    });
+    assert_eq!(runs, LOAD_RUNS);
+    assert!((2_000..20_000).contains(&slowest_first), "{slowest_first}");
+}
+
+#[test]
+fn a_load_is_timed_from_the_sources_and_from_the_pack() {
+    // A names table big enough that reading it takes milliseconds.
+    let entries: Vec<String> = (0..20_000)
+        .map(|i| format!("\"name{i}\": \"Name {i}\""))
+        .collect();
+    let table = format!("{{{}}}", entries.join(", "));
+    let table: &'static [u8] = table.into_bytes().leak();
+    let files: &'static [(&str, &[u8])] = vec![("data/names.ron", table)].leak();
+    let game = Fake {
+        sources: Some(files),
+        ..Fake::default()
+    };
+    let GameBake {
+        bake,
+        bundle,
+        formats,
+    } = prepared(&game, None).unwrap();
+    let bake = Bake::new(bake.stamp()).asset::<shuyi_assets::names::Names>("data/names");
+    let baked = bake.bake(&formats, &bundle, None).unwrap();
+    assert!(load_time(&bake, &formats, &bundle, None) > 100);
+    assert!(load_time(&bake, &formats, &bundle, Some(&baked.bytes)) > 100);
 }

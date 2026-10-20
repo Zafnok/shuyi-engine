@@ -702,3 +702,67 @@ proptest! {
         let _ = Packed::<LangPack>::new().decode(&file, &baked, &cx);
     }
 }
+
+#[test]
+fn the_checksum_is_pinned_and_folds_its_high_bits_down() {
+    // A change to the checksum changes every pack: make `VERSION` the next
+    // number with it.
+    assert_eq!(checksum(b""), 0xaf63_bd4c_2962_0a93);
+    assert_eq!(checksum(b"shuyi"), 0x5604_ea22_e166_71ac);
+    assert_eq!(checksum(b"0123456789abcdef!"), 0xa2b0_353e_3b2a_fb8a);
+    // Without the fold, flipping the top bit of two words would cancel.
+    let mut flipped = *b"0123456789abcdef";
+    flipped[7] ^= 0x80;
+    flipped[15] ^= 0x80;
+    assert_ne!(checksum(&flipped), checksum(b"0123456789abcdef"));
+}
+
+#[test]
+fn a_file_lz4_cant_make_smaller_is_stored_and_borrowed() {
+    // LZ4 makes these 15 bytes into 15: no smaller, so they are stored.
+    let same = vec![
+        114, 46, 97, 97, 97, 97, 97, 148, 80, 97, 200, 132, 63, 251, 183,
+    ];
+    assert_eq!(lz4_flex::block::compress(&same).len(), same.len());
+    let bytes = raw_pack(&test_info(), &[("a.bin".to_owned(), same.clone())]);
+    let pack = Pack::open(&bytes, STAMP).unwrap();
+    let file = &pack.files()[0];
+    assert!(matches!(file.bytes, Cow::Borrowed(_)), "{file:?}");
+    assert_eq!((file.stored, &*file.bytes), (15, same.as_slice()));
+    // A compressed one is unpacked into memory of its own.
+    let bytes = raw_pack(&test_info(), &[("b.bin".to_owned(), vec![0; 100])]);
+    let pack = Pack::open(&bytes, STAMP).unwrap();
+    assert!(matches!(pack.files()[0].bytes, Cow::Owned(_)));
+}
+
+#[test]
+fn the_limits_hold_at_their_edges() {
+    let stored = Codec::Stored;
+    // Exactly the most bytes passes that check (and fails the next).
+    assert_eq!(
+        opened(vec![entry("a", stored, 0, 0, MAX_UNPACKED_BYTES)], b""),
+        "the pack is broken: a is stored with two sizes"
+    );
+    // Exactly LZ4's most is tried, and these bytes don't unpack.
+    assert_eq!(
+        opened(vec![entry("a", Codec::Lz4, 0, 1, MAX_RATIO)], b"\x00"),
+        "the pack is broken: a doesn't unpack"
+    );
+    // Fewer bytes than the entry says is as broken as bytes that don't
+    // unpack at all.
+    let short = lz4_flex::block::compress(b"abcabcabcabcabcabc");
+    let length = short.len() as u64;
+    assert_eq!(
+        opened(vec![entry("a", Codec::Lz4, 0, length, 30)], &short),
+        "the pack is broken: a doesn't unpack"
+    );
+    assert_eq!(
+        opened(vec![entry("a", Codec::Lz4, 0, length, 18)], &short),
+        "ok: 1 file(s)"
+    );
+    // Exactly the most files opens.
+    let most = (0..MAX_FILES)
+        .map(|i| entry(&format!("{i:06}"), stored, 0, 0, 0))
+        .collect();
+    assert_eq!(opened(most, b""), format!("ok: {MAX_FILES} file(s)"));
+}
