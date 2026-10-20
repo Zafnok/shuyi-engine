@@ -308,9 +308,13 @@ fn parses_steps_in_order_and_the_games_options() {
                 ],
             },
             scale: Some(3),
+            target: None,
             game: vec![game("--light", Some("dusk")), game("--map", None)],
         }
     );
+    let on = parse_args(&args(&["a.png", "--target", "playdate"]), &GAME).unwrap();
+    assert_eq!(on.target.as_deref(), Some("playdate"));
+    assert!(parse_args(&args(&["a.png", "--target"]), &GAME).is_err());
     let zero = parse_args(&args(&["a.png", "--wait", "0", "--scale", "8"]), &[]).unwrap();
     assert_eq!(
         (zero.script.steps, zero.scale),
@@ -407,37 +411,58 @@ fn temp_dir(name: &str) -> PathBuf {
 fn run_writes_the_games_picture_and_says_what_it_shows() {
     let dir = temp_dir("run");
     let options = parse_args(&args(&["out/a.png", "--keys", "f", "--scale", "3"]), &GAME).unwrap();
-    let said = run(&dir, &options, &Snapshot).unwrap();
+    let said = run(&dir, &options, &Snapshot, None).unwrap();
     assert_eq!(said, "frame-png: 1 steps → out/a.png (3×1)");
     let (w, h, rgba) = decode_png(&fs::read(dir.join("out/a.png")).unwrap()).unwrap();
     assert_eq!((w, h), (3, 1));
     assert_eq!(&rgba[..4], &[1, 2, 3, 255]);
     // The game's warning follows; its error is the command's.
     let options = parse_args(&args(&["b.png", "--light", "dusk"]), &GAME).unwrap();
-    let said = run(&dir, &options, &Snapshot).unwrap();
+    let said = run(&dir, &options, &Snapshot, None).unwrap();
     assert!(
         said.starts_with("frame-png: 0 steps → b.png (2×1)\nwarning: "),
         "{said}"
     );
     let options = parse_args(&args(&["c.png", "--map"]), &GAME).unwrap();
-    let error = run(&dir, &options, &Snapshot).unwrap_err();
+    let error = run(&dir, &options, &Snapshot, None).unwrap_err();
     assert_eq!(error, "--map: no battle on screen (title)");
     assert!(!dir.join("c.png").exists());
     // A folder that can't be made, or a file that can't be written.
     fs::write(dir.join("file"), "x").unwrap();
     let options = parse_args(&args(&["file/d.png"]), &GAME).unwrap();
     assert!(
-        run(&dir, &options, &Snapshot)
+        run(&dir, &options, &Snapshot, None)
             .unwrap_err()
             .starts_with("creating ")
     );
     fs::create_dir_all(dir.join("e.png")).unwrap();
     let options = parse_args(&args(&["e.png"]), &GAME).unwrap();
     assert!(
-        run(&dir, &options, &Snapshot)
+        run(&dir, &options, &Snapshot, None)
             .unwrap_err()
             .starts_with("writing ")
     );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_one_bit_target_is_painted_as_its_display_shows_it() {
+    let dir = temp_dir("target");
+    let profiles = crate::contract::target::engine_profiles().unwrap();
+    let options = parse_args(&args(&["a.png", "--target", "playdate"]), &GAME).unwrap();
+    let playdate = Some(&profiles["playdate"].profile);
+    assert_eq!(
+        run(&dir, &options, &Snapshot, playdate).unwrap_err(),
+        "the game's tools don't offer frame-png --target on a one-bit target \
+         (GameTools::frame_one_bit)"
+    );
+    assert!(!dir.join("a.png").exists());
+    // A target in colour shows the game's own frame.
+    let desktop = Some(&profiles["desktop"].profile);
+    let said = run(&dir, &options, &Snapshot, desktop).unwrap();
+    assert_eq!(said, "frame-png: 0 steps → a.png (2×1)");
+    let usage = usage("shuyi", &GAME, "");
+    assert!(usage.contains("  --target ID          as target ID's display shows it"));
     fs::remove_dir_all(&dir).unwrap();
 }
 

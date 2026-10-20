@@ -725,10 +725,10 @@ fn runs_cross_bytes_and_clip() {
         },
     };
     let bits = 0b1011u64 << 60 | 1;
-    target.run(1, 3, bits, Pen::Ink(Ink::Black));
+    target.run(1, 3, bits, Pen::ink(Ink::Black));
     target.run(2, 3, u64::MAX, Pen::Flip);
-    target.run(0, 3, u64::MAX, Pen::Ink(Ink::Black));
-    target.run(3, 3, u64::MAX, Pen::Ink(Ink::Black));
+    target.run(0, 3, u64::MAX, Pen::ink(Ink::Black));
+    target.run(3, 3, u64::MAX, Pen::ink(Ink::Black));
     target.run(2, -60, u64::MAX, Pen::Flip);
     assert_eq!(
         text(&frame, 0, 0, 24, 4),

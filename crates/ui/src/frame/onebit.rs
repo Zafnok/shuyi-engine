@@ -4,10 +4,19 @@
 //! one-bit [`Frame`] laid out as the Playdate's own frame buffer, so its
 //! front end copies it to the screen as it is.
 //!
-//! Colours become [`Ink`]s: a colour that is an ink's reserved
-//! [code](Ink::code) (the Playdate's palette is made of them) is drawn in
-//! that ink, any other one white or black by its brightness. Patterns are
-//! fixed to the screen's pixels, so neighbouring tiles line up.
+//! Colours become [`Shade`]s, 8 × 8 patterns fixed to the screen's pixels
+//! (so neighbouring tiles line up and patterns don't swim when things
+//! move), as a [`Shades`] says. Two say it:
+//!
+//! - **The game's inks** ([`InkShades`], game ADR-0074): a colour that is
+//!   an ink's reserved [code](Ink::code) (the Playdate's palette is made
+//!   of them) is drawn in that ink, any other one white or black by its
+//!   brightness. [`render`] draws with them.
+//! - **Roles' patterns** ([`PatternMap`], ADR-0008 §4): the skin's palette
+//!   names its colours by role, and its pattern map gives each role a
+//!   foreground and a background [`Pattern`]. A colour of no role is
+//!   dithered by its [`luminance`]; a glyph's is solid, white or black, as
+//!   text is never dithered. [`to_one_bit`] draws with them.
 //!
 //! The order: the white ground; a backdrop's scene in its window
 //! (game ADR-0048), drawn the same way; then the cell backgrounds, `Under`
@@ -29,9 +38,13 @@ use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageId;
 use shuyi_assets::ink::Ink;
+pub use shuyi_assets::onebit::{Base, Pattern, PatternMapDef, RolePatterns, Rows};
 
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::{GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
+
+mod roles;
+pub use roles::{OneBitFrame, PatternMap, RowMask, changed_rows, luminance, to_one_bit};
 
 #[cfg(any(test, feature = "onebit-reference"))]
 pub mod reference;
@@ -92,40 +105,118 @@ pub const fn ink_is_white(ink: Ink, x: i32, y: i32) -> bool {
     }
 }
 
-/// The eight pixels of screen row `y` that `ink` paints in a byte of a
-/// [`Frame`]: every pattern repeats within 8 pixels across, so the byte is
-/// the same all along the row.
-const fn ink_byte(ink: Ink, y: i32) -> u8 {
-    let mut byte = 0;
-    let mut x = 0;
-    while x < 8 {
-        byte = (byte << 1) + if ink_is_white(ink, x, y) { 1 } else { 0 };
-        x += 1;
-    }
-    byte
+/// How a colour is drawn: an 8 × 8 pattern fixed to the screen, and
+/// what two of the game's inks do besides.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Shade {
+    /// The pattern: screen pixel `(x, y)` takes bit `x % 8` (from the
+    /// highest) of row `y % 8`, a set bit white. Every pattern repeats
+    /// within 8 pixels across, so a row's byte is the same all along it.
+    pub rows: Rows,
+    /// A glyph in it gets a white edge one pixel wide around it
+    /// ([`Ink::BlackEdged`]).
+    pub edged: bool,
+    /// A rectangle in it flips the pixels under it, after everything else
+    /// ([`Ink::Invert`]); anything else in it is drawn in the pattern.
+    pub flips: bool,
 }
 
-/// Each ink's [`ink_byte`] for the four rows its pattern repeats within
-/// (game ADR-0074), by `ink as usize`.
-const PATTERNS: [[u8; 4]; Ink::ALL.len()] = {
-    let mut table = [[0; 4]; Ink::ALL.len()];
+impl Shade {
+    /// Pattern `rows`, and nothing more.
+    pub const fn rows(rows: Rows) -> Self {
+        Self {
+            rows,
+            edged: false,
+            flips: false,
+        }
+    }
+
+    /// How `ink` draws ([`ink_is_white`]).
+    #[allow(clippy::cast_sign_loss)] // 0..8
+    pub const fn of_ink(ink: Ink) -> Self {
+        let mut rows = [0; 8];
+        let mut y = 0;
+        while y < 8 {
+            let mut x = 0;
+            while x < 8 {
+                if ink_is_white(ink, x, y) {
+                    rows[y as usize] |= 0x80 >> x;
+                }
+                x += 1;
+            }
+            y += 1;
+        }
+        Self {
+            rows,
+            edged: matches!(ink, Ink::BlackEdged),
+            flips: matches!(ink, Ink::Invert),
+        }
+    }
+
+    /// The eight pixels of screen row `y` it paints in a byte of a
+    /// [`Frame`].
+    #[allow(clippy::cast_sign_loss)] // 0..8
+    pub const fn row(self, y: i32) -> u8 {
+        self.rows[(y & 7) as usize]
+    }
+
+    /// Whether it makes screen pixel `(x, y)` white.
+    pub const fn is_white(self, x: i32, y: i32) -> bool {
+        self.row(y) >> (7 - (x & 7)) & 1 == 1
+    }
+}
+
+impl From<Pattern> for Shade {
+    fn from(pattern: Pattern) -> Self {
+        Self::rows(pattern.rows())
+    }
+}
+
+/// What a frame's colours are drawn in.
+pub trait Shades {
+    /// A cell's background in `rgb`.
+    fn ground(&self, rgb: Rgb) -> Shade;
+    /// A glyph in `rgb`.
+    fn glyph(&self, rgb: Rgb) -> Shade;
+    /// A rectangle, or a sprite painted solid, in `rgb`.
+    fn shape(&self, rgb: Rgb) -> Shade;
+}
+
+/// The game's inks (game ADR-0074): everything in `rgb` is drawn in
+/// [`ink_of`]`(rgb)`.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct InkShades;
+
+/// Each ink's [`Shade`], by `ink as usize`.
+const INK_SHADES: [Shade; Ink::ALL.len()] = {
+    let mut table = [Shade::rows([0; 8]); Ink::ALL.len()];
     let mut i = 0;
     while i < Ink::ALL.len() {
-        let ink = Ink::ALL[i];
-        let (mut row, mut y) = (0, 0);
-        while row < 4 {
-            table[ink as usize][row] = ink_byte(ink, y);
-            (row, y) = (row + 1, y + 1);
-        }
+        table[Ink::ALL[i] as usize] = Shade::of_ink(Ink::ALL[i]);
         i += 1;
     }
     table
 };
 
-/// [`ink_byte`], looked up.
-#[allow(clippy::cast_sign_loss)] // 0..4
-const fn pattern(ink: Ink, y: i32) -> u8 {
-    PATTERNS[ink as usize][(y & 3) as usize]
+impl InkShades {
+    /// How `ink` draws, looked up.
+    const fn of(ink: Ink) -> Shade {
+        INK_SHADES[ink as usize]
+    }
+}
+
+impl Shades for InkShades {
+    fn ground(&self, rgb: Rgb) -> Shade {
+        Self::of(ink_of(rgb))
+    }
+
+    fn glyph(&self, rgb: Rgb) -> Shade {
+        Self::of(ink_of(rgb))
+    }
+
+    fn shape(&self, rgb: Rgb) -> Shade {
+        Self::of(ink_of(rgb))
+    }
 }
 
 /// The index in a [`Frame`] of the byte holding screen pixel `(x, y)`,
@@ -357,10 +448,11 @@ impl Phase {
     }
 }
 
-/// Draws `buf` into `out`, from its top-left corner; whatever lies past
-/// 400 × 240 pixels is cut off. See the [module](self) for the order.
+/// Draws `buf` into `out` in the game's inks ([`InkShades`]), from its
+/// top-left corner; whatever lies past 400 × 240 pixels is cut off. See
+/// the [module](self) for the order.
 pub fn render(buf: &GlyphBuffer, font: &Font<'_>, images: &impl Images, out: &mut Frame) {
-    render_marked(buf, font, images, out, &mut |_| {});
+    render_with(buf, font, images, &InkShades, out);
 }
 
 /// [`render`], calling `mark` as each [`Phase`] ends (the Playdate's
@@ -372,10 +464,38 @@ pub fn render_marked(
     out: &mut Frame,
     mark: &mut impl FnMut(Phase),
 ) {
+    render_marked_with(buf, font, images, &InkShades, out, mark);
+}
+
+/// [`render`], its colours drawn as `shades` says.
+pub fn render_with(
+    buf: &GlyphBuffer,
+    font: &Font<'_>,
+    images: &impl Images,
+    shades: &impl Shades,
+    out: &mut Frame,
+) {
+    render_marked_with(buf, font, images, shades, out, &mut |_| {});
+}
+
+/// [`render_with`], calling `mark` as each [`Phase`] ends.
+pub fn render_marked_with(
+    buf: &GlyphBuffer,
+    font: &Font<'_>,
+    images: &impl Images,
+    shades: &impl Shades,
+    out: &mut Frame,
+    mark: &mut impl FnMut(Phase),
+) {
     // The two unused bytes of each row too.
     out.fill(u8::MAX);
     mark(Phase::Ground);
-    draw(buf, font, images, out, Clip::SCREEN, mark);
+    let look = Look {
+        font,
+        images,
+        shades,
+    };
+    draw(buf, &look, out, Clip::SCREEN, mark);
 }
 
 /// Makes `out`, which holds `old` as [`render`] drew it, hold `new` as
@@ -390,8 +510,21 @@ pub fn render_changed(
     images: &impl Images,
     out: &mut Frame,
 ) {
+    render_changed_with(old, new, font, images, &InkShades, out);
+}
+
+/// [`render_changed`], the colours drawn as `shades` says (as they were
+/// for `old`).
+pub fn render_changed_with(
+    old: &GlyphBuffer,
+    new: &GlyphBuffer,
+    font: &Font<'_>,
+    images: &impl Images,
+    shades: &impl Shades,
+    out: &mut Frame,
+) {
     if old.spec() != new.spec() {
-        render(new, font, images, out);
+        render_with(new, font, images, shades, out);
         return;
     }
     let mut dirty = Tiles::default();
@@ -418,14 +551,27 @@ pub fn render_changed(
             dirty.add(place.screen(backdrop.clip_px()));
         }
     }
+    let look = Look {
+        font,
+        images,
+        shades,
+    };
     for region in dirty.regions() {
         Target {
             frame: &mut *out,
             clip: region,
         }
-        .fill(region, Pen::Ink(Ink::White));
-        draw(new, font, images, out, region, &mut |_| {});
+        .fill(region, Pen::WHITE);
+        draw(new, &look, out, region, &mut |_| {});
     }
+}
+
+/// What the renderer draws with: the font, the pictures, and what each
+/// colour is drawn in.
+struct Look<'a, I, S> {
+    font: &'a Font<'a>,
+    images: &'a I,
+    shades: &'a S,
 }
 
 /// The 8 × 16 pixel tiles of the screen (50 × 15) that must be redrawn,
@@ -476,10 +622,9 @@ impl Tiles {
 
 /// Draws `buf` over the white ground of `region` of `out`: its backdrop's
 /// scene, then its own layers.
-fn draw(
+fn draw<I: Images, S: Shades>(
     buf: &GlyphBuffer,
-    font: &Font<'_>,
-    images: &impl Images,
+    look: &Look<'_, I, S>,
     out: &mut Frame,
     region: Clip,
     mark: &mut impl FnMut(Phase),
@@ -499,7 +644,7 @@ fn draw(
                 y: window.y0 + offset(dy),
                 scale: i32::from(backdrop.zoom()),
             };
-            draw_layers(&mut scene, backdrop.scene(), at, font, images, &mut |_| {});
+            draw_layers(&mut scene, backdrop.scene(), at, look, &mut |_| {});
         }
     }
     mark(Phase::Backdrop);
@@ -507,7 +652,7 @@ fn draw(
         frame: out,
         clip: region,
     };
-    draw_layers(&mut target, buf, place, font, images, mark);
+    draw_layers(&mut target, buf, place, look, mark);
 }
 
 /// A scene's pixel offset, held within ±2³⁰: a scene that far out is off
@@ -642,19 +787,27 @@ struct Target<'f> {
 /// What a run of pixels does to the frame.
 #[derive(Copy, Clone)]
 enum Pen {
-    /// Paints them in the ink.
-    Ink(Ink),
+    /// Paints them in the shade's pattern.
+    Paint(Shade),
     /// Flips them.
     Flip,
 }
 
 impl Pen {
+    /// Paints white.
+    const WHITE: Self = Self::ink(Ink::White);
+
+    /// Paints in `ink`.
+    const fn ink(ink: Ink) -> Self {
+        Self::Paint(InkShades::of(ink))
+    }
+
     /// Byte `byte` with this pen applied to the pixels `mask` selects, on
     /// screen row `y`.
     const fn apply(self, byte: u8, mask: u8, y: i32) -> u8 {
         match self {
-            // The ink's bits where `mask` is set, the frame's elsewhere.
-            Pen::Ink(ink) => byte ^ ((byte ^ pattern(ink, y)) & mask),
+            // The pattern's bits where `mask` is set, the frame's elsewhere.
+            Pen::Paint(shade) => byte ^ ((byte ^ shade.row(y)) & mask),
             Pen::Flip => byte ^ mask,
         }
     }
@@ -731,7 +884,7 @@ impl Target<'_> {
             row[first] = pen.apply(row[first], left, y);
             let whole = &mut row[first + 1..last];
             match pen {
-                Pen::Ink(ink) => whole.fill(pattern(ink, y)),
+                Pen::Paint(shade) => whole.fill(shade.row(y)),
                 Pen::Flip => whole.iter_mut().for_each(|byte| *byte = !*byte),
             }
             row[last] = pen.apply(row[last], right, y);
@@ -752,16 +905,16 @@ impl Target<'_> {
 
 /// Draws `buf`'s cells and items at `at` into `target`: cell backgrounds
 /// (never a see-through cell's), `Under` items, the white edges of
-/// edged glyphs, the glyphs, `Over` items, the invert rectangles. Only
+/// edged glyphs, the glyphs, `Over` items, the flipping rectangles. Only
 /// the cells that may reach into the clip are visited.
-fn draw_layers(
+fn draw_layers<I: Images, S: Shades>(
     target: &mut Target<'_>,
     buf: &GlyphBuffer,
     at: Place,
-    font: &Font<'_>,
-    images: &impl Images,
+    look: &Look<'_, I, S>,
     mark: &mut impl FnMut(Phase),
 ) {
+    let (font, shades) = (look.font, look.shades);
     let reach = Reach::of(buf, font, at.scale);
     let clip = target.clip;
     let columns = Reach::span(
@@ -797,42 +950,43 @@ fn draw_layers(
             })
         })
     };
-    let mut inks = Inks::default();
-    // Neighbouring backgrounds of one ink are filled as one rectangle.
+    let mut grounds = Remembered::new(|rgb| shades.ground(rgb));
+    // Neighbouring backgrounds of one shade are filled as one rectangle.
     for y in rows.clone() {
         let mut from = (columns.start, None);
         for x in columns.start..=columns.end {
             let cell = (x < columns.end).then(|| buf.get(x, y)).flatten();
-            let ink = cell.filter(|c| !c.see_through).map(|c| inks.of(c.bg));
-            if ink != from.1 {
-                if let Some(ink) = from.1 {
-                    target.fill(span(from.0, x, y), Pen::Ink(ink));
+            let shade = cell.filter(|c| !c.see_through).map(|c| grounds.of(c.bg));
+            if shade != from.1 {
+                if let Some(shade) = from.1 {
+                    target.fill(span(from.0, x, y), Pen::Paint(shade));
                 }
-                from = (x, ink);
+                from = (x, shade);
             }
         }
     }
     mark(Phase::Backgrounds);
-    draw_items(target, buf, Layer::Under, at, images);
+    draw_items(target, buf, Layer::Under, at, look);
     mark(Phase::Under);
+    let mut glyphs = Remembered::new(|rgb| shades.glyph(rgb));
     for (top_left, cell) in cells() {
-        if cell.glyph != ' ' && inks.of(cell.fg) == Ink::BlackEdged {
+        if cell.glyph != ' ' && glyphs.of(cell.fg).edged {
             draw_glyph(target, font, cell.glyph, top_left, at.scale, Glyph::Edge);
         }
     }
     mark(Phase::Edges);
     for (top_left, cell) in cells() {
         if cell.glyph != ' ' {
-            let ink = Glyph::Ink(inks.of(cell.fg));
-            draw_glyph(target, font, cell.glyph, top_left, at.scale, ink);
+            let shade = Glyph::Paint(glyphs.of(cell.fg));
+            draw_glyph(target, font, cell.glyph, top_left, at.scale, shade);
         }
     }
     mark(Phase::Glyphs);
-    draw_items(target, buf, Layer::Over, at, images);
+    draw_items(target, buf, Layer::Over, at, look);
     mark(Phase::Over);
     for item in buf.items() {
         if let Item::Rect(o) = item
-            && ink_of(o.color) == Ink::Invert
+            && shades.shape(o.color).flips
         {
             target.fill(at.screen(o.rect), Pen::Flip);
         }
@@ -840,55 +994,49 @@ fn draw_layers(
     mark(Phase::Invert);
 }
 
-/// [`ink_of`], remembering the last colour asked: neighbouring cells
-/// mostly share their colours.
-#[derive(Copy, Clone)]
-struct Inks {
-    rgb: Rgb,
-    ink: Ink,
+/// A colour's shade, remembering the last colour asked: neighbouring
+/// cells mostly share their colours.
+struct Remembered<F> {
+    last: Option<(Rgb, Shade)>,
+    shade: F,
 }
 
-impl Default for Inks {
-    fn default() -> Self {
-        let rgb = Rgb::new(0, 0, 0);
-        Self {
-            rgb,
-            ink: ink_of(rgb),
+impl<F: Fn(Rgb) -> Shade> Remembered<F> {
+    const fn new(shade: F) -> Self {
+        Self { last: None, shade }
+    }
+
+    /// The shade `rgb` is drawn in.
+    fn of(&mut self, rgb: Rgb) -> Shade {
+        match self.last {
+            Some((last, shade)) if last == rgb => shade,
+            _ => {
+                let shade = (self.shade)(rgb);
+                self.last = Some((rgb, shade));
+                shade
+            }
         }
     }
 }
 
-impl Inks {
-    /// The ink `rgb` is drawn in.
-    fn of(&mut self, rgb: Rgb) -> Ink {
-        if rgb != self.rgb {
-            *self = Self {
-                rgb,
-                ink: ink_of(rgb),
-            };
-        }
-        self.ink
-    }
-}
-
-/// Draws `buf`'s items of `layer` in order, but for the invert
+/// Draws `buf`'s items of `layer` in order, but for the flipping
 /// rectangles, which are drawn last.
-fn draw_items(
+fn draw_items<I: Images, S: Shades>(
     target: &mut Target<'_>,
     buf: &GlyphBuffer,
     layer: Layer,
     at: Place,
-    images: &impl Images,
+    look: &Look<'_, I, S>,
 ) {
     for item in buf.items().iter().filter(|item| item.layer() == layer) {
         match item {
             Item::Rect(o) => {
-                let ink = ink_of(o.color);
-                if ink != Ink::Invert {
-                    target.fill(at.screen(o.rect), Pen::Ink(ink));
+                let shade = look.shades.shape(o.color);
+                if !shade.flips {
+                    target.fill(at.screen(o.rect), Pen::Paint(shade));
                 }
             }
-            Item::Sprite(s) => draw_sprite(target, s, at, images),
+            Item::Sprite(s) => draw_sprite(target, s, at, look),
         }
     }
 }
@@ -896,8 +1044,8 @@ fn draw_items(
 /// What part of a glyph is drawn.
 #[derive(Copy, Clone)]
 enum Glyph {
-    /// The glyph's pixels in this ink.
-    Ink(Ink),
+    /// The glyph's pixels in this shade.
+    Paint(Shade),
     /// White around it, one screen pixel wide all round (corners too).
     Edge,
 }
@@ -922,12 +1070,12 @@ fn draw_glyph(
         return;
     };
     match part {
-        Glyph::Ink(ink) => {
+        Glyph::Paint(shade) => {
             let mut y = top;
             for &byte in rows {
                 let bits = widen(byte, scale);
                 for _ in 0..scale {
-                    target.run(y, left, bits, Pen::Ink(ink));
+                    target.run(y, left, bits, Pen::Paint(shade));
                     y += 1;
                 }
             }
@@ -946,7 +1094,7 @@ fn draw_glyph(
                 // From one pixel left of the cell.
                 let near = (row(dy - 1) | row(dy) | row(dy + 1)) >> 1;
                 let edge = near | near << 1 | near >> 1;
-                target.run(top + dy, left - 1, edge, Pen::Ink(Ink::White));
+                target.run(top + dy, left - 1, edge, Pen::WHITE);
             }
         }
     }
@@ -986,20 +1134,25 @@ fn shows(opacity: u8, x: i32, y: i32) -> bool {
 /// the picture's pixel under its centre, as nearest sampling does
 /// ([`Image::sample`]), coloured as its paint says. Without an image it is
 /// a grey rectangle.
-fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &impl Images) {
+fn draw_sprite<I: Images, S: Shades>(
+    target: &mut Target<'_>,
+    sprite: &Sprite,
+    at: Place,
+    look: &Look<'_, I, S>,
+) {
     let shown = at.screen(sprite.clip).within(target.clip);
     if shown.is_empty() {
         return;
     }
-    let Some(image) = images.image(sprite.image) else {
-        target.fill(shown, Pen::Ink(Ink::Grey));
+    let Some(image) = look.images.image(sprite.image) else {
+        target.fill(shown, Pen::ink(Ink::Grey));
         return;
     };
     let (src, dest) = (sprite.src, sprite.dest);
     let (src_w, src_h) = (i64::from(src.w), i64::from(src.h));
     let (dest_w, dest_h) = (i64::from(dest.w), i64::from(dest.h));
     let solid = match sprite.paint {
-        Paint::Solid(color) => Some(ink_of(color)),
+        Paint::Solid(color) => Some(look.shades.shape(color)),
         Paint::Image | Paint::Dimmed | Paint::Shaded(_) => None,
     };
     for y in shown.y0..shown.y1 {
@@ -1034,7 +1187,7 @@ fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &imp
             // A darkened picture (game ADR-0075): fewer of its white pixels.
             let white = white && shows(sprite.brightness, x, y);
             let white = match (solid, sprite.paint) {
-                (Some(ink), _) => ink_is_white(ink, x, y),
+                (Some(shade), _) => shade.is_white(x, y),
                 // One-bit has no dimming: every other pixel goes white
                 // (`docs/design/playdate.md`, the faded listener).
                 (None, Paint::Dimmed) => white || ink_is_white(Ink::Grey, x, y),

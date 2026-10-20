@@ -196,6 +196,11 @@
           "description": "The required actions of each screen bind to distinct inputs of the\ntarget.",
           "type": "string",
           "const": "controls"
+        },
+        {
+          "description": "On a one-bit display, every role has patterns and the roles that\ntell things apart stay distinct.",
+          "type": "string",
+          "const": "one-bit"
         }
       ]
     },
@@ -229,6 +234,13 @@
           "description": "What is wrong, with the numbers.",
           "type": "string"
         },
+        "roles": {
+          "description": "The palette roles a one-bit problem is about (`team.player`).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "screen": {
           "description": "The screen a controls problem is about, if one.",
           "type": [
@@ -237,7 +249,7 @@
           ]
         },
         "setting": {
-          "description": "The game's setting it is about: in `shuyi.ron`\n(`targets.\"playdate\".frame`), the keymap file's table for the\ntarget (`keymap targets.\"playdate\"`), or a screen's declaration\n(`screen \"title\"`).",
+          "description": "The game's setting it is about: in `shuyi.ron`\n(`targets.\"playdate\".frame`), the keymap file's table for the\ntarget (`keymap targets.\"playdate\"`), a screen's declaration\n(`screen \"title\"`), or the skin's pattern map\n(`files/palette@onebit.ron`).",
           "type": "string"
         }
       },

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["3001"]
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 3006 — 1-bit output
@@ -99,15 +99,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A fixture skin with `team.player` and `team.enemy` both mapped to
+- [x] A fixture skin with `team.player` and `team.enemy` both mapped to
       `Dither50` in a `distinct` group fails the check, naming both roles.
-- [ ] The same frame converts to the same bits on native and web (a
+- [x] The same frame converts to the same bits on native and web (a
       fixture hash checked in).
-- [ ] `changed_rows` after moving the cursor one cell marks only that
+- [x] `changed_rows` after moving the cursor one cell marks only that
       cell's rows (test).
-- [ ] `frame-png --target playdate` of an example screen matches its
+- [x] `frame-png --target playdate` of an example screen matches its
       checked-in PNG.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -119,5 +119,67 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done, as [ADR-0026](../../docs/adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md)
+records:
+
+- **Patterns** (`shuyi_assets::onebit::{Base, Pattern}`, re-exported from
+  `shuyi_ui::frame::onebit`): the ten bases and `Inverted(…)` of each,
+  8 × 8 bits, a dither of N % with N % black pixels in Bayer 8 × 8 order.
+  Distinct means "doesn't look alike": two patterns collide when one is
+  the other moved (`Dither50` and its inverse, `Dither25` and
+  `Inverted(Dither75)`).
+- **The pattern map** (`PatternMapDef`, standard format `pattern-map`,
+  `palette@onebit.ron` beside the palette): `roles` with `fg` and `bg`
+  (`fg` if not said), `distinct` groups and `text` roles. Its binary form
+  is pinned in the pack's snapshot, as every engine kind's is.
+- **The check** (`shuyi_assets::onebit::check`), run by `check --target`
+  on every `color: OneBit` target through the new optional
+  `GameTools::one_bit`: every palette role has patterns, every named role
+  exists, roles of one colour share patterns, `distinct` foregrounds
+  don't look alike (naming both roles), text is black on white or the
+  inverse (a warning). Problems carry their `roles`; the contract is
+  version 5.
+- **The conversion**: the existing fast one-bit renderer (and its
+  reference) now take a `Shades`; the game's inks are one
+  (`InkShades`, unchanged results), `PatternMap` the other.
+  `to_one_bit`, `OneBitFrame` (400 × 240, rows of 52 bytes, padded to
+  32-bit words), `changed_rows` and `RowMask`. Integers only; the
+  fast-equals-reference proptests run with role patterns too.
+- **`frame-png --target <id>`**: on a one-bit profile it asks the game's
+  new optional `GameTools::frame_one_bit`; other targets paint as usual.
+- **Hello, Grid** has `files/palette@onebit.ron`, a test that it passes
+  the check, and a snapshot of `frame-png --target playdate` of its title.
+
+Deviations:
+
+- The module is `shuyi_ui::frame::onebit` (it already existed), and
+  `Pattern` is defined in `shuyi-assets` because the format reads it.
+- `to_one_bit` also takes the one-bit font and the sprites' one-bit
+  pictures: glyphs and sprites can't be drawn without them.
+- Palettes already name colours by role, so there was nothing to
+  migrate. The frame holds colours, so `PatternMap` finds a colour's role
+  by its RGB; roles sharing a colour must share patterns (the check says
+  so).
+- A glyph is drawn in its role's foreground pattern; only a colour of no
+  role is forced solid. Text roles are held to black and white by the
+  check's warning.
+- "Same bits on native and web": the fixture's hash is pinned and the
+  code uses integers only, but the test runs natively; CI runs no tests
+  in wasm.
+- Hello, Grid's 384 × 384 frame is taller than the Playdate's screen
+  (its README already said why it doesn't list the Playdate), so its
+  snapshot is the top 400 × 240, and `check --target playdate` can't run
+  on it from `shuyi.ron`; its test runs the same check through
+  `GameTools::one_bit`. Its pack now holds the map as a plain file.
+- 2504 isn't done, so the template's starting map is 2504's.
+
+Notes for the game's next pin: `GameTools` gains two methods with
+defaults (nothing to do); `frame_png::run` takes the target's profile
+(pass `None`), `frame_png::Options` has a `target` field, and
+`TargetProblem` a `roles` field. The contract's version is 5. Choosing
+the game's patterns is game ticket 1025, which can move from inks to
+roles a screen at a time.
+
+No follow-up tickets.
+
+Nick: nothing to decide.

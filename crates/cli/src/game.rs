@@ -15,7 +15,9 @@ use shuyi_assets::ContentError;
 use shuyi_assets::bundle::Bundle;
 use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
+use shuyi_assets::onebit::PatternMapDef;
 use shuyi_assets::pack::Bake;
+use shuyi_assets::palette::PaletteDef;
 use shuyi_ui::input::fit::Controls;
 
 use crate::contract::bots::{BotsInput, BotsOutput};
@@ -72,6 +74,21 @@ pub struct GameBake {
     pub formats: Formats,
 }
 
+/// A skin's one-bit look ([`GameTools::one_bit`]): its palette of roles
+/// and the pattern map beside it (ADR-0008 §4).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OneBitSkin {
+    /// The palette's file, as messages show it.
+    pub palette_file: String,
+    /// The palette: each role's colour.
+    pub palette: PaletteDef,
+    /// The pattern map's file, as messages show it
+    /// (`files/palette@onebit.ron`).
+    pub map_file: String,
+    /// The pattern map.
+    pub map: PatternMapDef,
+}
+
 /// What a game gives the commands that run it. Only `frame-png`'s and
 /// `lang-status`'s parts are required; a contract operation whose part a
 /// game leaves out answers that the game's tools don't offer it.
@@ -94,6 +111,25 @@ pub trait GameTools {
         script: &Script,
         scale: Option<u32>,
     ) -> Result<Shot, String>;
+
+    /// `frame-png --target <id>` on a one-bit target: as
+    /// [`frame`](Self::frame), but painted as the target's display shows
+    /// it, most simply with [`to_one_bit`](shuyi_ui::frame::onebit::to_one_bit)
+    /// and [`one_bit_picture`](crate::frame_png::one_bit_picture), each of
+    /// its pixels `scale` × `scale` (1 if `None`).
+    fn frame_one_bit(
+        &self,
+        target: &str,
+        options: &[GameArg],
+        script: &Script,
+        scale: Option<u32>,
+    ) -> Result<Shot, String> {
+        let _ = (target, options, script, scale);
+        Err(unsupported(
+            "frame-png --target on a one-bit target",
+            "frame_one_bit",
+        ))
+    }
 
     /// The game's languages.
     fn lang(&self) -> Result<GameLang, String>;
@@ -139,6 +175,17 @@ pub trait GameTools {
     /// checks the display alone and says so. An error (the game's files
     /// don't load) fails the check.
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
+        None
+    }
+
+    /// `check --target` on a one-bit target: the skin's palette and its
+    /// pattern map for `target`, for the check that every role has
+    /// patterns and the roles that tell things apart stay distinct
+    /// (ADR-0008 §4; `shuyi_assets::onebit::check`). `None`, the default,
+    /// doesn't offer them, and `check --target` says they weren't checked.
+    /// An error (the files don't load) fails the check.
+    fn one_bit(&self, target: &str) -> Option<Result<OneBitSkin, String>> {
+        let _ = target;
         None
     }
 
@@ -241,6 +288,14 @@ mod tests {
         assert!(bots.contains("GameTools::bots"));
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
         assert!(Plain.controls().is_none());
+        assert!(Plain.one_bit("playdate").is_none());
+        assert_eq!(
+            Plain
+                .frame_one_bit("playdate", &[], &Script::default(), None)
+                .unwrap_err(),
+            "the game's tools don't offer frame-png --target on a one-bit target \
+             (GameTools::frame_one_bit)"
+        );
         assert_eq!(
             Plain.bake(Some("desktop")).unwrap_err(),
             "the game's tools don't offer bake and check --baked (GameTools::bake)"

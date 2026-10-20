@@ -32,6 +32,7 @@ use crate::keymap::{KeymapDef, KeymapRon, sample};
 use crate::lang::{self, Lang, LangCode, LangFile, LangPack, LangPackRon, PackRules, SourceText};
 use crate::lighting::{self, LightingRon};
 use crate::names::{self, Names, NamesRon};
+use crate::onebit::{PatternMapDef, PatternMapRon};
 use crate::palette::{PaletteDef, PaletteRon};
 use crate::ron::{Ron, parse_ron};
 
@@ -218,6 +219,7 @@ impl SceneRules<Cue> for Rules {
 }
 
 pub(crate) const PALETTE: &str = "{\"black\": \"#000000\", \"grass\": \"#00ff00\"}";
+pub(crate) const PATTERN_MAP: &str = "(roles: {\"black\": (fg: Black), \"grass\": (fg: Inverted(Dither25), bg: HLines)}, distinct: [[\"black\", \"grass\"]], text: [\"black\"])";
 pub(crate) const LIGHTS: &str = "{\"noon\": (grey: 0.0, tint: (1.0, 1.0, 1.0)), \"dusk\": (grey: 0.35, tint: (0.62, 0.56, 0.46))}";
 pub(crate) const NAMES: &str = "{\"hero\": \"Ana\", \"town\": \"Osk\"}";
 pub(crate) const ATLAS: &str = "(cell_w: 8, cell_h: 16, columns: 16, glyphs: {'a': 0, 'b': 1})";
@@ -304,6 +306,7 @@ fn every_built_in_has_its_id_extensions_and_limit() {
         TEXT_MAX_BYTES,
     );
     named(&PaletteRon::default(), "palette", &["ron"], TEXT_MAX_BYTES);
+    named(&PatternMapRon, "pattern-map", &["ron"], TEXT_MAX_BYTES);
     named(&LightingRon::default(), "lights", &["ron"], TEXT_MAX_BYTES);
     named(&NamesRon, "names", &["ron"], TEXT_MAX_BYTES);
     named(&Dlg::<NoDirective>::new(), "dlg", &["dlg"], TEXT_MAX_BYTES);
@@ -679,6 +682,23 @@ fn a_palette_holds_the_colours_the_game_requires() {
 }
 
 #[test]
+fn a_pattern_map_is_read_as_from_source_reads_it() {
+    let read = alone(&PatternMapRon, "p@onebit.ron", PATTERN_MAP.as_bytes());
+    assert_eq!(
+        read,
+        PatternMapDef::from_source("p@onebit.ron", PATTERN_MAP)
+    );
+    assert!(read.is_ok());
+    // Beside the palette, standard: its kind is a pattern map.
+    let files = bundle(vec![
+        ("data/palette.ron", PALETTE.into()),
+        ("data/palette@onebit.ron", PATTERN_MAP.into()),
+    ]);
+    let map = Formats::standard().load::<PatternMapDef>(files, "data/palette@onebit");
+    assert_eq!(map, read);
+}
+
+#[test]
 fn lights_have_the_light_of_a_map_that_names_none() {
     let read = alone(&LightingRon::default(), "l.ron", LIGHTS.as_bytes());
     assert_eq!(read, lighting::from_source("l.ron", LIGHTS, "noon"));
@@ -1031,6 +1051,7 @@ fn every_text_format_refuses_bytes_that_arent_utf8() {
     refuses(&FontAtlasRon::default());
     refuses(&PaletteRon::default());
     refuses(&LightingRon::default());
+    refuses(&PatternMapRon);
     refuses(&NamesRon);
     refuses(&Dlg::<NoDirective>::new());
     refuses(&map_text());
@@ -1180,6 +1201,7 @@ proptest! {
         text in TEXT,
         palette in edited(PALETTE),
         lights in edited(LIGHTS),
+        patterns in edited(PATTERN_MAP),
         names in edited(NAMES),
         atlas in edited(ATLAS),
         credits in edited(BAD_CREDITS),
@@ -1189,6 +1211,9 @@ proptest! {
         let random_text = [random.as_slice(), text.as_bytes()];
         for bytes in random_text.iter().copied().chain([palette.as_bytes()]) {
             decodes(&PaletteRon::requiring(["black"]), "p.ron", bytes);
+        }
+        for bytes in random_text.iter().copied().chain([patterns.as_bytes()]) {
+            decodes(&PatternMapRon, "p@onebit.ron", bytes);
         }
         for bytes in random_text.iter().copied().chain([lights.as_bytes()]) {
             decodes(&LightingRon::default(), "l.ron", bytes);

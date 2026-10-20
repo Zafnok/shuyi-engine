@@ -1,0 +1,6 @@
+---
+source: examples/hello-grid/tests/it/onebit.rs
+expression: png
+extension: png
+snapshot_kind: binary
+---
