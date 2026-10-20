@@ -28,7 +28,7 @@ use shuyi_assets::parse_ron;
 use shuyi_assets::voice::ClipVariant;
 use shuyi_core::TerrainId;
 use shuyi_ui::frame::{ConsoleSpec, EngineColor};
-use shuyi_ui::{Ctx, Game, GameData, GameHooks};
+use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
 
 pub use action::Action;
 pub use settings::Prefs;
@@ -195,6 +195,13 @@ pub fn ctx(seed: u64) -> Ctx<Data> {
 pub fn game(mut ctx: Ctx<Data>) -> Game<Data> {
     let stage = stage::StageScreen::new(&mut ctx);
     Game::new(ctx, Box::new(stage), GameHooks::default())
+}
+
+/// Every screen the game can show, overlays on their own, for the check
+/// that its controls fit each target (`cargo shuyi check --target`): its
+/// own and any of the engine's it opens. A new screen goes here too.
+pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
+    vec![Box::new(stage::StageScreen::new(ctx))]
 }
 
 /// Which clip of a voiced line plays: the game has no voices, so only

@@ -3,16 +3,19 @@
 //! names, input to a test, not game code.
 
 use std::fs;
+use std::path::Path;
 
 use game::stage::StageScreen;
-use game::tools::{StageRecord, Tools, harness};
+use game::tools::{StageRecord, Tools, controls, harness};
 use rules::{Command, Outcome, Stage};
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::bots::{BotsInput, bots};
-use shuyi_cli::contract::check::{CheckInput, check};
+use shuyi_cli::contract::check::{CheckInput, check, targets};
 use shuyi_cli::contract::import::{ImportInput, import};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, scene};
+use shuyi_cli::contract::target::engine_profiles;
+use shuyi_cli::project::Project;
 use shuyi_core::{Dir, Pos, TurnRules};
 use shuyi_platform::harness::Harness;
 
@@ -141,4 +144,36 @@ fn import_reads_the_stages_map() {
     assert!(answer.ok, "{answer:?}");
     let read = &answer.result.unwrap().read_as;
     assert_eq!(read[0].summary, "map: 12 tiles by 8, 2 piece(s)");
+}
+
+#[test]
+fn every_screen_declares_its_actions_and_they_fit_every_target() {
+    let game = controls().unwrap_or_else(|e| panic!("{e}"));
+    let names: Vec<&str> = game.screens().iter().map(|s| s.screen).collect();
+    assert_eq!(names, ["stage"]);
+    assert!(game.screens().iter().all(|s| s.actions.is_some()));
+    // The targets shuyi.ron lists, as `cargo shuyi check --target all`
+    // checks them.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let project = Project::load(&root).unwrap_or_else(|e| panic!("{e}"));
+    let profiles = engine_profiles().unwrap_or_else(|e| panic!("{e:?}"));
+    assert!(!project.config.targets.is_empty());
+    for id in project.config.targets.keys() {
+        assert_eq!(game.fit(&profiles[id].profile), [], "{id}");
+    }
+    let answer = targets(&project.config, &project.root, &all_targets(), Some(&Tools));
+    assert!(answer.ok, "{answer:?}");
+    assert!(
+        !answer.limits.iter().any(|l| l.contains("controls aren't")),
+        "{:?}",
+        answer.limits
+    );
+}
+
+/// `check --target all`'s input.
+fn all_targets() -> CheckInput {
+    CheckInput {
+        target: Some("all".to_owned()),
+        ..CheckInput::default()
+    }
 }

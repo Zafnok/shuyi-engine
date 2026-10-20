@@ -34,6 +34,13 @@
         "Confirm": ["South"],
         "Cancel": ["East"],
     },
+    // Each target's own buttons, named after its profile (`targets/<id>.ron`
+    // in the engine's repository): a target of shuyi.ron that has no
+    // keyboard (a Steam Deck, a Playdate) needs a table here, as
+    // `"steam-deck": { "Up": ["DpadUp"], … }`. `cargo shuyi check --target`
+    // checks that every screen's actions fit them. Desktop and web play
+    // with the keys above.
+    targets: {},
     repeat: (delay_ms: 300, interval_ms: 70),
     stick: (press_percent: 50, release_percent: 35),
 )
