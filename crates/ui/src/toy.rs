@@ -705,18 +705,40 @@ pub fn lobby() -> Game<Toy> {
 #[derive(Debug)]
 pub struct Lobby {
     /// The menu.
-    pub menu: crate::widgets::Menu,
+    pub menu: crate::widgets::Menu<LobbyChoice>,
+}
+
+/// What an item of the [`Lobby`] stands for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LobbyChoice {
+    /// Opens the options.
+    Options,
+    /// Opens the Key bindings screen.
+    KeyBindings,
+    /// Opens the [`Talk`].
+    Talk,
+    /// Quits.
+    Quit,
 }
 
 impl Lobby {
     /// The lobby's items, top to bottom.
     pub const ITEMS: [&str; 4] = ["Options", "Key bindings", "Talk", "Quit"];
 
+    /// What the [`ITEMS`](Self::ITEMS) stand for, in their order.
+    const CHOICES: [LobbyChoice; 4] = [
+        LobbyChoice::Options,
+        LobbyChoice::KeyBindings,
+        LobbyChoice::Talk,
+        LobbyChoice::Quit,
+    ];
+
     /// The lobby, on its first item.
     pub fn new() -> Self {
         let items = Self::ITEMS
             .iter()
-            .map(|&i| crate::widgets::MenuItem::new(i));
+            .zip(Self::CHOICES)
+            .map(|(&i, choice)| crate::widgets::MenuItem::new(i).with_value(choice));
         Self {
             menu: crate::widgets::Menu::new(items.collect()).without_cancel(),
         }
@@ -736,19 +758,21 @@ impl Screen<Toy> for Lobby {
 
     fn update(&mut self, ctx: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
         for &action in &input.actions {
-            match self.menu.handle_with_sound(action, &mut ctx.audio) {
-                Some(crate::widgets::MenuEvent::Chosen(0)) => {
-                    return Transition::Push(Box::new(options::OptionsScreen::new(option_rows)));
+            let Some(crate::widgets::MenuEvent::Chosen(choice)) =
+                self.menu.handle_with_sound(action, &mut ctx.audio)
+            else {
+                continue;
+            };
+            return match choice {
+                LobbyChoice::Options => {
+                    Transition::Push(Box::new(options::OptionsScreen::new(option_rows)))
                 }
-                Some(crate::widgets::MenuEvent::Chosen(1)) => {
-                    return Transition::Push(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)));
+                LobbyChoice::KeyBindings => {
+                    Transition::Push(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)))
                 }
-                Some(crate::widgets::MenuEvent::Chosen(2)) => {
-                    return Transition::Push(Box::new(Talk::new(ctx, "hall")));
-                }
-                Some(crate::widgets::MenuEvent::Chosen(_)) => return Transition::Quit,
-                _ => {}
-            }
+                LobbyChoice::Talk => Transition::Push(Box::new(Talk::new(ctx, "hall"))),
+                LobbyChoice::Quit => Transition::Quit,
+            };
         }
         Transition::None
     }
@@ -756,7 +780,7 @@ impl Screen<Toy> for Lobby {
     fn draw(&self, ctx: &ToyCtx, buf: &mut GlyphBuffer) {
         let bg = ctx.palette.engine(EngineColor::Background);
         buf.fill_rect(buf.bounds(), Cell::new(' ', bg, bg));
-        crate::widgets::menu::glyph::paint(&ctx.palette, &self.menu.view(), buf, 1, 1);
+        crate::widgets::menu::glyph::paint(ctx, &self.menu.view(), buf, 1, 1);
     }
 
     fn as_any(&self) -> Option<&dyn Any> {
@@ -859,7 +883,7 @@ impl Screen<Toy> for Talk {
             None => None,
         };
         let speaker = speaking.map(|p| p.character.0.as_str());
-        text_box::glyph::paint(&ctx.palette, buf, TALK_BOX, &self.view(ctx), speaker);
+        text_box::glyph::paint(ctx, buf, TALK_BOX, &self.view(ctx), speaker);
     }
 
     fn is_overlay(&self) -> bool {

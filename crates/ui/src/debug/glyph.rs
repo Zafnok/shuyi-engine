@@ -25,9 +25,9 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &DebugMenuView, buf: &mut GlyphBuf
     buf.fill_rect(buf.bounds(), Cell::new(' ', c(EngineColor::Text), black));
     let hi = c(EngineColor::Highlight);
     print_centred(buf, MENU_TITLE_ROW, &view.title, hi, black);
-    let (w, _) = menu::glyph::size(&view.menu);
+    let (w, _) = menu::glyph::size(ctx, &view.menu);
     let x = centre_x(buf, usize::try_from(w).unwrap_or(0));
-    menu::glyph::paint(&ctx.palette, &view.menu, buf, x, MENU_TITLE_ROW + 2);
+    menu::glyph::paint(ctx, &view.menu, buf, x, MENU_TITLE_ROW + 2);
     let bottom = i32::from(buf.height()) - 1;
     print_centred(buf, bottom, &view.help, c(EngineColor::TextDim), black);
 }

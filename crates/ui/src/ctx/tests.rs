@@ -164,6 +164,26 @@ fn text_with_fills_values_then_the_keys_actions_are_on() {
 }
 
 #[test]
+fn a_label_is_a_keys_text_in_the_players_language_or_text_as_it_is() {
+    use crate::text::Label;
+    let mut c = ctx();
+    let greeting = Label::key("home.greeting").with_arg("name", "Mei");
+    assert_eq!(c.label(&greeting), "Hello, Mei");
+    assert_eq!(
+        c.label(&Label::key("home.help")),
+        "f opens · d quits · arrows {Nope}"
+    );
+    assert_eq!(c.label(&Label::from("home.greeting")), "home.greeting");
+    // Text takes no values.
+    assert_eq!(
+        c.label(&Label::from("{name}").with_arg("name", 1)),
+        "{name}"
+    );
+    c.lang = code(DEBUG_LANG);
+    assert_eq!(c.label(&greeting), "HELLO, Mei");
+}
+
+#[test]
 fn help_keys_name_keys_on_the_device_with_the_languages_words() {
     let mut c = ctx();
     assert_eq!(c.help_keys().not_mapped(), "! not mapped");

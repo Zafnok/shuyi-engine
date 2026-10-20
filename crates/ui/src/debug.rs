@@ -109,7 +109,8 @@ pub struct DebugMenuView {
 /// Cancel closes it. A tool that opens nothing leaves the menu on it, its
 /// names read again.
 pub struct DebugMenuScreen<G: GameData> {
-    menu: Menu,
+    /// Each item stands for its entry's index in `entries`.
+    menu: Menu<usize>,
     entries: Vec<DebugEntry<G>>,
 }
 
@@ -133,17 +134,18 @@ impl<G: GameData> DebugMenuScreen<G> {
     }
 
     /// The menu of `entries`' names now.
-    fn menu_of(ctx: &Ctx<G>, entries: &[DebugEntry<G>]) -> Menu {
+    fn menu_of(ctx: &Ctx<G>, entries: &[DebugEntry<G>]) -> Menu<usize> {
         Menu::new(
             entries
                 .iter()
-                .map(|e| MenuItem::new(e.label(ctx)))
+                .enumerate()
+                .map(|(i, e)| MenuItem::new(e.label(ctx)).with_value(i))
                 .collect(),
         )
     }
 
-    /// The menu: its items and focus.
-    pub fn menu(&self) -> &Menu {
+    /// The menu: its items, each standing for its tool's index, and focus.
+    pub fn menu(&self) -> &Menu<usize> {
         &self.menu
     }
 

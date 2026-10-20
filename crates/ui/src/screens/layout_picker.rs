@@ -72,7 +72,7 @@ fn layouts<G: GameData>(ctx: &Ctx<G>) -> Vec<Layout> {
 /// choosing: that player is on the controller. Pops itself once a layout
 /// is picked.
 pub struct LayoutPickerScreen<G: GameData> {
-    menu: Menu,
+    menu: Menu<Layout>,
     /// Whether Cancel backs out without changing anything (opened from
     /// the options).
     cancellable: bool,
@@ -126,19 +126,19 @@ impl<G: GameData> LayoutPickerScreen<G> {
         }
     }
 
-    /// One line per layout. The menu only keeps the focus: it is never
-    /// drawn, so its lines have no text.
-    fn menu(ctx: &Ctx<G>) -> Menu {
+    /// One line per layout, standing for it. The menu only keeps the
+    /// focus: it is never drawn, so its lines have no text.
+    fn menu(ctx: &Ctx<G>) -> Menu<Layout> {
         let items = layouts(ctx)
             .into_iter()
-            .map(|_| MenuItem::new(String::new()));
+            .map(|layout| MenuItem::new(String::new()).with_value(layout));
         Menu::new(items.collect())
     }
 
     /// The focused layout (`None` only for a keymap with no layouts, which
     /// the loader refuses).
-    pub fn focused(&self, ctx: &Ctx<G>) -> Option<Layout> {
-        layouts(ctx).get(self.menu.focus()).copied()
+    pub fn focused(&self) -> Option<Layout> {
+        self.menu.value(self.menu.focus()).copied()
     }
 
     /// The bottom help line: every Cursor up and Cursor down key, then every
@@ -187,7 +187,7 @@ impl<G: GameData> LayoutPickerScreen<G> {
     /// ([`glyph::paint`]): each layout with its legend and what every key
     /// of its keyboard does, the one in focus, and the help line.
     pub fn view(&self, ctx: &Ctx<G>) -> LayoutPickerView {
-        let focused = self.focused(ctx);
+        let focused = self.focused();
         let layouts = layouts(ctx).into_iter().map(|layout| {
             let km = ctx.keymap_for(layout);
             LayoutView {
@@ -242,13 +242,10 @@ impl<G: GameData> Screen<G> for LayoutPickerScreen<G> {
         }
         for &action in &input.actions {
             match self.menu.handle_with_sound(action, &mut ctx.audio) {
-                Some(MenuEvent::Chosen(i)) => {
-                    if let Some(&layout) = layouts(ctx).get(i) {
-                        // If saving fails the layout is still used this
-                        // session; the player is just asked again next
-                        // launch.
-                        let _ = ctx.choose_layout(layout);
-                    }
+                Some(MenuEvent::Chosen(layout)) => {
+                    // If saving fails the layout is still used this
+                    // session; the player is just asked again next launch.
+                    let _ = ctx.choose_layout(layout);
                     return Transition::Pop;
                 }
                 Some(MenuEvent::Cancelled) => return Transition::Pop,

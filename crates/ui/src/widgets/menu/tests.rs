@@ -5,25 +5,26 @@ use shuyi_assets::keymap::sample::Action;
 
 use super::*;
 use crate::audio::AudioConfig;
+use crate::toy;
 use Action::{Cancel, Confirm, CursorDown, CursorLeft, CursorUp, Info};
 
-fn menu(enabled: &[bool]) -> Menu {
+/// A menu of items standing for their indexes, enabled as `enabled` says.
+fn menu(enabled: &[bool]) -> Menu<usize> {
     Menu::new(
         enabled
             .iter()
             .enumerate()
-            .map(|(i, &on)| MenuItem {
-                label: format!("item {i}"),
-                enabled: on,
-                suffix: None,
-                note: None,
+            .map(|(i, &on)| {
+                MenuItem::new(format!("item {i}"))
+                    .with_value(i)
+                    .with_enabled(on)
             })
             .collect(),
     )
 }
 
 /// The sound cues `actions` play on `m`, in order.
-fn sounds(m: &mut Menu, actions: &[Action]) -> Vec<String> {
+fn sounds<T: Clone>(m: &mut Menu<T>, actions: &[Action]) -> Vec<String> {
     let mut audio = AudioQueue::<()>::new(CUES);
     for &a in actions {
         m.handle_with_sound(a, &mut audio);
@@ -76,7 +77,7 @@ fn a_disabled_item_is_denied() {
     let mut m = menu(&[false, false]);
     assert_eq!(sounds(&mut m, &[Confirm]), ["buzz"]);
     // An empty menu has nothing to deny.
-    assert!(sounds(&mut Menu::new(vec![]), &[Confirm]).is_empty());
+    assert!(sounds(&mut Menu::<()>::new(vec![]), &[Confirm]).is_empty());
 }
 
 #[test]
@@ -100,7 +101,7 @@ fn without_cancel_ignores_cancel() {
     assert_eq!(m.handle(Confirm), Some(MenuEvent::Chosen(0)));
 }
 
-fn focus_after(m: &mut Menu, actions: &[Action]) -> usize {
+fn focus_after<T: Clone>(m: &mut Menu<T>, actions: &[Action]) -> usize {
     for &a in actions {
         m.handle(a);
     }
@@ -154,12 +155,12 @@ fn nothing_enabled_nothing_chosen() {
 
 #[test]
 fn empty_menu_is_harmless() {
-    let mut m = Menu::new(vec![]);
+    let mut m = Menu::<()>::new(vec![]);
     for &a in <Action as ActionSet>::ALL {
         m.handle(a);
     }
     assert_eq!(m.handle(Confirm), None);
-    assert_eq!(glyph::size(&m.view()), (4, 2));
+    assert_eq!(glyph::size(&toy::ctx(), &m.view()), (4, 2));
 }
 
 #[test]
@@ -214,16 +215,112 @@ fn item_constructors() {
     assert_eq!(
         MenuItem::new("a"),
         MenuItem {
-            label: "a".into(),
+            value: (),
+            label: Label::Text("a".into()),
             enabled: true,
             suffix: None,
             note: None,
         }
     );
     assert!(!MenuItem::disabled("b").enabled);
+    assert_eq!(
+        MenuItem::disabled("b"),
+        MenuItem::new("b").with_enabled(false)
+    );
+    assert_eq!(
+        MenuItem::keyed("home.greeting").with_arg("name", 3).label,
+        Label::key("home.greeting").with_arg("name", "3")
+    );
     let m = Menu::new(vec![MenuItem::new("a"), MenuItem::disabled("bcd")]);
-    assert_eq!(m.items()[1].label, "bcd");
-    assert_eq!(glyph::size(&m.view()), (7, 4));
+    assert_eq!(m.items()[1].label, Label::from("bcd"));
+    assert_eq!(glyph::size(&toy::ctx(), &m.view()), (7, 4));
+}
+
+/// What a farming game's seed list stands for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Seed {
+    Turnip,
+    Melon,
+    Pumpkin,
+}
+
+/// A seed list whose melons are sold out.
+fn seeds() -> Menu<Seed> {
+    Menu::new(vec![
+        MenuItem::new("Turnip").with_value(Seed::Turnip),
+        MenuItem::new("Melon")
+            .with_value(Seed::Melon)
+            .with_enabled(false),
+        MenuItem::new("Pumpkin").with_value(Seed::Pumpkin),
+    ])
+}
+
+#[test]
+fn confirm_gives_back_the_chosen_items_value() {
+    let mut m = seeds();
+    assert_eq!(m.handle(Confirm), Some(MenuEvent::Chosen(Seed::Turnip)));
+    // The sold-out melon is skipped, and its value never chosen.
+    m.handle(CursorDown);
+    assert_eq!(m.focus(), 2);
+    assert_eq!(m.handle(Confirm), Some(MenuEvent::Chosen(Seed::Pumpkin)));
+    let mut m = seeds().browsing_disabled().focused(1);
+    assert_eq!(m.value(1), Some(&Seed::Melon));
+    assert_eq!(m.handle(Confirm), None);
+    assert_eq!(m.value(3), None);
+}
+
+#[test]
+fn the_view_keeps_a_keyed_label_and_the_skin_words_it() {
+    let m = Menu::new(vec![
+        MenuItem::keyed("home.greeting").with_arg("name", "Mei"),
+        MenuItem::new("home.greeting"),
+    ]);
+    let view = m.view();
+    assert_eq!(
+        view.items[0].label,
+        Label::key("home.greeting").with_arg("name", "Mei")
+    );
+    let mut c = toy::ctx();
+    // As wide as "Hello, Mei" and "home.greeting", the longer.
+    assert_eq!(glyph::size(&c, &view), (17, 4));
+    c.lang = shuyi_assets::lang::LangCode::new(toy::DEBUG_LANG).unwrap();
+    assert_eq!(c.label(&view.items[0].label), "HELLO, Mei");
+}
+
+/// `view` painted with `ctx` on a blank buffer one cell bigger each side.
+fn painted(ctx: &toy::ToyCtx, view: &MenuView) -> String {
+    use crate::frame::color::EngineColor;
+    use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
+
+    let p = &ctx.palette;
+    let blank = Cell::new(
+        ' ',
+        p.engine(EngineColor::Text),
+        p.engine(EngineColor::Background),
+    );
+    let (w, h) = glyph::size(ctx, view);
+    let mut buf = GlyphBuffer::new(
+        u16::try_from(w + 2).unwrap(),
+        u16::try_from(h + 2).unwrap(),
+        blank,
+    );
+    glyph::paint(ctx, view, &mut buf, 1, 1);
+    buf.to_snapshot(p)
+}
+
+#[test]
+fn a_keyed_menu_snapshot_in_two_languages() {
+    let m = Menu::new(vec![
+        MenuItem::keyed("home.greeting").with_arg("name", "Mei"),
+        MenuItem::keyed("keys.arrows"),
+        // Stale in the debug language: English there too.
+        MenuItem::keyed("menu.title"),
+    ]);
+    let mut c = toy::ctx();
+    c.palette = crate::frame::color::tests::engine_palette();
+    insta::assert_snapshot!("keyed_menu_english", painted(&c, &m.view()));
+    c.lang = shuyi_assets::lang::LangCode::new(toy::DEBUG_LANG).unwrap();
+    insta::assert_snapshot!("keyed_menu_debug_language", painted(&c, &m.view()));
 }
 
 #[test]
@@ -237,14 +334,14 @@ fn the_view_lists_the_items_and_the_focus() {
     let shown: Vec<_> = view
         .items
         .iter()
-        .map(|i| (i.label.as_str(), i.enabled, i.focused))
+        .map(|i| (i.label.clone(), i.enabled, i.focused))
         .collect();
     assert_eq!(
         shown,
         [
-            ("Move", true, true),
-            ("Attack", false, false),
-            ("Wait", true, false)
+            ("Move".into(), true, true),
+            ("Attack".into(), false, false),
+            ("Wait".into(), true, false)
         ]
     );
     assert_eq!(
@@ -252,15 +349,18 @@ fn the_view_lists_the_items_and_the_focus() {
         Some((" (no foe)".to_owned(), SuffixKind::Warning))
     );
     assert_eq!(view.items[0].suffix, None);
-    assert_eq!(view.focused().map(|i| i.label.as_str()), Some("Move"));
+    assert_eq!(view.focused().map(|i| &i.label), Some(&"Move".into()));
     // The focus follows the menu, and an empty menu has none.
     m.handle(CursorDown);
-    assert_eq!(m.view().focused().map(|i| i.label.as_str()), Some("Wait"));
-    assert_eq!(Menu::new(vec![]).view().focused(), None);
+    assert_eq!(
+        m.view().focused().map(|i| i.label.clone()),
+        Some("Wait".into())
+    );
+    assert_eq!(Menu::<()>::new(vec![]).view().focused(), None);
 }
 
 /// A menu of `n` enabled items, `item 0` to `item n-1`.
-fn long_menu(n: usize) -> Menu {
+fn long_menu(n: usize) -> Menu<usize> {
     menu(&vec![true; n])
 }
 
@@ -289,7 +389,7 @@ fn a_scrolling_menu_shorter_than_its_box_shows_every_item() {
 #[test]
 fn a_long_menu_scrolls_to_keep_the_focus_in_its_box() {
     let mut m = long_menu(10).showing(4, Scroll::KeepInView);
-    let window = |m: &Menu| {
+    let window = |m: &Menu<usize>| {
         let v = m.view();
         (v.first_shown, v.shown, v.more_above(), v.more_below())
     };
@@ -304,9 +404,10 @@ fn a_long_menu_scrolls_to_keep_the_focus_in_its_box() {
         .iter()
         .map(|i| i.label.clone())
         .collect();
-    assert_eq!(shown, ["item 6", "item 7", "item 8", "item 9"]);
+    let words = ["item 6", "item 7", "item 8", "item 9"].map(Label::from);
+    assert_eq!(shown, words);
     // The box is as tall as the rows it shows.
-    assert_eq!(glyph::size(&m.view()), (10, 6));
+    assert_eq!(glyph::size(&toy::ctx(), &m.view()), (10, 6));
 }
 
 #[test]
@@ -319,27 +420,12 @@ fn a_centred_menu_keeps_the_focus_in_the_middle() {
 
 #[test]
 fn a_scrolled_menu_snapshot() {
-    use crate::frame::color::EngineColor;
-    use crate::frame::color::tests::engine_palette;
-    use crate::frame::glyph_buffer::{Cell, GlyphBuffer};
-
     let m = long_menu(20).showing(6, Scroll::KeepInView).focused(12);
     let view = m.view();
     assert_eq!((view.first_shown, view.shown), (7, 6));
-    let p = engine_palette();
-    let blank = Cell::new(
-        ' ',
-        p.engine(EngineColor::Text),
-        p.engine(EngineColor::Background),
-    );
-    let (w, h) = glyph::size(&view);
-    let mut buf = GlyphBuffer::new(
-        u16::try_from(w + 2).unwrap(),
-        u16::try_from(h + 2).unwrap(),
-        blank,
-    );
-    glyph::paint(&p, &view, &mut buf, 1, 1);
-    insta::assert_snapshot!(buf.to_snapshot(&p));
+    let mut c = toy::ctx();
+    c.palette = crate::frame::color::tests::engine_palette();
+    insta::assert_snapshot!(painted(&c, &view));
 }
 
 proptest! {

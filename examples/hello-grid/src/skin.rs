@@ -7,6 +7,7 @@ use shuyi_ui::dialogue::text_box::{self, glyph::BoxPlace};
 use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use shuyi_ui::frame::{EngineColor, Palette, Rgb};
 use shuyi_ui::widgets::menu::{self, MenuView};
+use shuyi_ui::{Ctx, GameData};
 
 /// What the title shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,14 +82,16 @@ fn help(palette: &Palette, buf: &mut GlyphBuffer, text: &str, bg: Rgb) {
 }
 
 /// `menu` centred across `buf`, its top on row `y`.
-fn centred_menu(palette: &Palette, view: &MenuView, buf: &mut GlyphBuffer, y: i32) {
-    let (w, _) = menu::glyph::size(view);
+/// Its labels are in the player's language.
+fn centred_menu<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffer, y: i32) {
+    let (w, _) = menu::glyph::size(ctx, view);
     let x = (i32::from(buf.width()) - w).max(0) / 2;
-    menu::glyph::paint(palette, view, buf, x, y);
+    menu::glyph::paint(ctx, view, buf, x, y);
 }
 
 /// The title: the name in a box, the line under it, the menu, the help.
-pub fn paint_title(palette: &Palette, view: &TitleView, buf: &mut GlyphBuffer) {
+pub fn paint_title<G: GameData>(ctx: &Ctx<G>, view: &TitleView, buf: &mut GlyphBuffer) {
+    let palette = &ctx.palette;
     let bg = clear(palette, buf);
     let c = |e| palette.engine(e);
     let width = i32::try_from(view.name.chars().count()).unwrap_or(0) + 6;
@@ -101,7 +104,7 @@ pub fn paint_title(palette: &Palette, view: &TitleView, buf: &mut GlyphBuffer) {
     );
     line(buf, 4, &view.name, c(EngineColor::Highlight), bg);
     line(buf, 7, &view.subtitle, c(EngineColor::TextDim), bg);
-    centred_menu(palette, &view.menu, buf, 10);
+    centred_menu(ctx, &view.menu, buf, 10);
     help(palette, buf, &view.help, bg);
 }
 
@@ -113,13 +116,13 @@ pub const TALK_BOX: BoxPlace = BoxPlace {
 };
 
 /// A scene's text box, with the speaker's name.
-pub fn paint_talk(
-    palette: &Palette,
+pub fn paint_talk<G: GameData>(
+    ctx: &Ctx<G>,
     view: &TextView,
     speaker: Option<&str>,
     buf: &mut GlyphBuffer,
 ) {
-    text_box::glyph::paint(palette, buf, TALK_BOX, view, speaker);
+    text_box::glyph::paint(ctx, buf, TALK_BOX, view, speaker);
 }
 
 /// The lines round the stage's map: the turn and what is happening on the
@@ -147,7 +150,8 @@ pub fn paint_question(palette: &Palette, view: &QuestionView, buf: &mut GlyphBuf
 }
 
 /// The end of a stage: the headline, the menu, the help.
-pub fn paint_end(palette: &Palette, view: &EndView, buf: &mut GlyphBuffer) {
+pub fn paint_end<G: GameData>(ctx: &Ctx<G>, view: &EndView, buf: &mut GlyphBuffer) {
+    let palette = &ctx.palette;
     let bg = clear(palette, buf);
     let color = if view.won {
         EngineColor::Accent
@@ -155,6 +159,6 @@ pub fn paint_end(palette: &Palette, view: &EndView, buf: &mut GlyphBuffer) {
         EngineColor::Warning
     };
     line(buf, 6, &view.headline, palette.engine(color), bg);
-    centred_menu(palette, &view.menu, buf, 10);
+    centred_menu(ctx, &view.menu, buf, 10);
     help(palette, buf, &view.help, bg);
 }

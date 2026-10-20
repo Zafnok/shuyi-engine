@@ -6,6 +6,7 @@
 //! upward to list them under the line being answered.
 
 use super::{TextView, WaitView};
+use crate::ctx::{Ctx, GameData};
 use crate::frame::color::{EngineColor, Palette};
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
@@ -44,14 +45,16 @@ pub fn box_rect(place: BoxPlace, text: &TextView) -> (Rect, i32) {
 }
 
 /// Paints `text` in a box at `place`, with `speaker`'s name on its border
-/// (none for narration).
-pub fn paint(
-    palette: &Palette,
+/// (none for narration). The replies' labels are in the player's language
+/// ([`Ctx::label`]).
+pub fn paint<G: GameData>(
+    ctx: &Ctx<G>,
     buf: &mut GlyphBuffer,
     place: BoxPlace,
     text: &TextView,
     speaker: Option<&str>,
 ) {
+    let palette = &ctx.palette;
     let c = |e| palette.engine(e);
     let bg = c(EngineColor::Panel);
     let (frame, text_y) = box_rect(place, text);
@@ -71,7 +74,7 @@ pub fn paint(
     if let Some(choices) = &text.choices {
         let gap = i32::from(!text.lines.is_empty());
         let first = text_y + i32::try_from(text.lines.len()).unwrap_or(0) + gap;
-        paint_choices(palette, buf, place.text_x, choices, first);
+        paint_choices(ctx, buf, place.text_x, choices, first);
     }
     if let Some(waiting) = &text.waiting {
         paint_waiting(palette, buf, place.frame, waiting);
@@ -125,8 +128,14 @@ fn paint_lines(
 
 /// The replies from row `first` at column `x`, the focused one marked and
 /// bright.
-fn paint_choices(palette: &Palette, buf: &mut GlyphBuffer, x: i32, choices: &MenuView, first: i32) {
-    let c = |e| palette.engine(e);
+fn paint_choices<G: GameData>(
+    ctx: &Ctx<G>,
+    buf: &mut GlyphBuffer,
+    x: i32,
+    choices: &MenuView,
+    first: i32,
+) {
+    let c = |e| ctx.palette.engine(e);
     let bg = c(EngineColor::Panel);
     for (y, item) in (first..).zip(&choices.items) {
         let (marker, fg) = if item.focused {
@@ -134,7 +143,8 @@ fn paint_choices(palette: &Palette, buf: &mut GlyphBuffer, x: i32, choices: &Men
         } else {
             ("  ", c(EngineColor::Text))
         };
-        buf.print(x, y, &format!("{marker}{}", item.label), fg, bg);
+        let label = ctx.label(&item.label);
+        buf.print(x, y, &format!("{marker}{label}"), fg, bg);
     }
 }
 

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2307"]
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2308 — Menu items carry a value, and labels are text keys
@@ -73,10 +73,10 @@ uses (game#1162).
 
 ## Acceptance criteria
 
-- [ ] A test builds a `Menu<Seed>`-style menu of an example enum and
+- [x] A test builds a `Menu<Seed>`-style menu of an example enum and
       gets the enum value back on Confirm.
-- [ ] A snapshot shows a keyed label painted in a test language.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A snapshot shows a keyed label painted in a test language.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -85,5 +85,28 @@ uses (game#1162).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_ui::text::Label` (`Key { key, args }` or `Text`) and
+  `Ctx::label`, which words one through `Ctx::text_with`.
+- `MenuItem<T = ()>` with `value` and `label: Label`; `MenuItem::new`
+  and `disabled` take text, `keyed` takes a key, plus `with_arg`,
+  `with_value` and `with_enabled`. `Menu<T = ()>` gives
+  `MenuEvent::Chosen(T)` and `Menu::value(i)`.
+- The view keeps the label; `widgets::menu::glyph::{size, paint}` and
+  `dialogue::text_box::glyph::paint` now take `&Ctx<G>` and word labels
+  when they paint.
+- Engine uses: the debug menu (`Menu<usize>`), the layout picker
+  (`Menu<Layout>`; `focused()` lost its unused `ctx`), the toy's lobby
+  (`LobbyChoice`), and hello-grid's title and end menus (keyed, with
+  `TitleChoice` and `EndChoice`; no rebuild with translated text).
+- Module docs carry a seed list chosen by value. Tests: chosen values,
+  disabled items, keyed and literal labels, `Ctx::label`, and snapshots
+  of one keyed menu in English and the toy's debug language.
+- Small addition: `check-text` treats the arguments of `MenuItem::keyed`
+  and `Label::key` as keys, so a keyed menu isn't counted as literal text.
+- [ADR-0020](../../docs/adr/0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md)
+  records the shape.
+- **For the game:** breaking (`MenuEvent::Chosen`, `MenuItem`'s fields,
+  the two skins' signatures, `LayoutPickerScreen::focused`). The game's PR
+  that moves the pin is game#1162's; it doesn't exist yet. Not built
+  against the game here.
+- No follow-up tickets. Nick input: none.

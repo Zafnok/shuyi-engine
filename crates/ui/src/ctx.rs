@@ -374,6 +374,22 @@ impl<G: GameData> Ctx<G> {
         self.text_with_keys(key, self.help_keys(), args)
     }
 
+    /// What `label` says to the player: a key's text filled in by
+    /// [`text_with`](Self::text_with), or the text as it is. What a skin
+    /// calls on the labels of the view it paints.
+    pub fn label(&self, label: &crate::text::Label) -> String {
+        match label {
+            crate::text::Label::Key { key, args } => {
+                let args: Vec<(&str, &dyn Display)> = args
+                    .iter()
+                    .map(|(name, value)| (name.as_str(), value as &dyn Display))
+                    .collect();
+                self.text_with(key, &args)
+            }
+            crate::text::Label::Text(text) => text.clone(),
+        }
+    }
+
     /// [`text_with`](Self::text_with), naming the keys `keys` has rather
     /// than the active ones: for a screen steered by the keys it was
     /// opened with while the player changes them.

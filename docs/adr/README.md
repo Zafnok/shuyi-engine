@@ -32,5 +32,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0017](0017-sonar-backlog-becomes-batched-github-issues.md) | SonarCloud in CI, and its backlog as batched GitHub issues | Accepted; adopts game ADR-0071 |
 | [0018](0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md) | Screen results: a screen pops with a value, and hears when it is covered | Accepted |
 | [0019](0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md) | The format registry: kinds are types, a format reads one file, conflicts are per kind | Accepted; extends ADR-0007 |
+| [0020](0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md) | Menu items carry a value, and views hold labels the skin translates | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).
