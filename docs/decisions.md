@@ -581,6 +581,16 @@ On graphics:
   documentation. [ADR-0021](adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
   says how.
 - **Same license as the engine.** Every new piece is MIT OR Apache-2.0.
-- **Every graphics API.** The engine's own graphics layer covers Vulkan,
+- **Every graphics API, through wgpu.** The engine draws on Vulkan,
   Metal, Direct3D 12, OpenGL and GLES, and WebGL 2 and WebGPU on the
-  web, not only what miniquad covers. 3034 picks how.
+  web, not only what miniquad covers. Asked whether that meant writing a
+  backend per graphics API ourselves, Nick said no:
+
+  > "I mean... I don't wanna rewrite graphics bindings... so I think wgpu
+  > is safe...?
+  >
+  > macroquad is higher level than this by a mile afaik."
+
+  So the graphics go through `wgpu` (MIT OR Apache-2.0), which covers all
+  of those APIs, and our own 2D renderer sits on top of it. The window,
+  input and the run loop are still ours to replace. 3034 plans it.

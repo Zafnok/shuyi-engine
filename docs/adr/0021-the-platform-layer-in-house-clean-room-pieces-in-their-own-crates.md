@@ -52,11 +52,11 @@ operating system's or the browser's own documentation:
 - Windows: Microsoft Learn (WASAPI, Windows.Gaming.Input, XInput, Raw
   Input and HID).
 - Apple: Apple's developer documentation (Core Audio, the Game
-  Controller framework, Metal).
+  Controller framework, AppKit).
 - Linux: the kernel's documentation (evdev, `input-event-codes.h`), and
   the ALSA library's API reference.
 - The web: MDN and the W3C specifications (Web Audio, the Gamepad API,
-  Web Storage, WebGL 2, WebGPU).
+  Web Storage).
 
 The rules for whoever works a ticket:
 
@@ -81,17 +81,32 @@ system's or a driver's API, with no behaviour of their own, under ADR-0002
 
 | API | Crate | License |
 | --- | ----- | ------- |
-| Win32, WASAPI, XInput, Windows.Gaming.Input, Direct3D 12 | `windows` (Microsoft) | MIT OR Apache-2.0 |
-| Apple frameworks (Core Audio, Game Controller, Metal, AppKit) | `objc2-*` | Zlib OR Apache-2.0 OR MIT |
+| Win32, WASAPI, XInput, Windows.Gaming.Input | `windows` (Microsoft) | MIT OR Apache-2.0 |
+| Apple frameworks (Core Audio, Game Controller, AppKit) | `objc2-*` | Zlib OR Apache-2.0 OR MIT |
 | ALSA | `alsa-sys` | MIT |
 | Linux system calls (evdev, inotify) | `rustix` | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
-| Vulkan | `ash` | MIT OR Apache-2.0 |
-| OpenGL, GLES, WebGL | `glow` | MIT OR Apache-2.0 OR Zlib |
 
 A ticket re-checks the license on the day it adds the crate, from the
 crate's `Cargo.toml` and repository, and `cargo deny` checks it in CI.
 Libraries that do the job themselves (cpal, rodio, symphonia, gilrs, SDL,
-winit, wgpu) are not bindings: the job is what we write.
+winit) are not bindings: the job is what we write.
+
+**One exception: graphics go through `wgpu`** (MIT OR Apache-2.0, 30.0.1
+of 2026-08-22, by the gfx-rs project; Firefox's WebGPU is built on it).
+Nick, 2026-10-19: "I don't wanna rewrite graphics bindings... so I think
+wgpu is safe". wgpu is lower level than macroquad: it opens no window,
+runs no loop, plays no sound and draws no sprites. It's one interface to
+Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and WebGPU, with
+shaders written once in WGSL. Writing and keeping a backend per API
+ourselves would cost more than the rest of the platform layer together,
+for no gain a player would see. What we write on top of it is ours: the
+2D renderer that paints the engine's frame (batches, textures, the
+skins' render targets).
+
+The cost, which 3034 deals with: on the web, wgpu reaches the browser
+through `wasm-bindgen` and `web-sys`, which the web build doesn't use
+today (game ADR-0034). wgpu also makes a breaking release about every
+three months, so the engine pins it and moves on purpose.
 
 ### 3. Each piece is a crate of its own
 
@@ -105,7 +120,7 @@ without changes:
 | `shuyi-sound-out` | sound output: WASAPI, Core Audio, ALSA, Web Audio | no |
 | `shuyi-pads` | controllers: Windows, Linux, macOS; the mapping database | no |
 
-3034 names the crates for the window and the graphics.
+3034 names the crates for the window and the 2D renderer over wgpu.
 
 - **The engine adapts them.** `shuyi-assets` registers the readers as
   formats (ADR-0007, ADR-0019). `shuyi-app` (or the backend crate that
@@ -161,9 +176,13 @@ system's API needs it, so the crates that talk to the system get
 ## Alternatives considered
 
 - **Swap one library for another** (cpal and symphonia for quad-snd,
-  winit and wgpu for macroquad). Lost: it is not in-house, which was
-  Nick's call. symphonia is MPL-2.0 and denied anyway. winit and wgpu
-  need `wasm-bindgen` on the web.
+  winit for macroquad's window). Lost: it is not in-house, which was
+  Nick's call. symphonia is MPL-2.0 and denied anyway. (wgpu is the
+  exception in §2: it is the graphics API layer, not a framework.)
+- **Our own backend per graphics API** (`ash`, `objc2-metal`, `windows`,
+  `glow`) and our own shader translation. Lost: a renderer per API, kept
+  up with drivers, for the same pixels wgpu already gives (Nick,
+  2026-10-19).
 - **Fork the old crates and maintain them.** Lost: forking is copying
   their source, and we would own code we didn't write.
 - **Port a small public-domain decoder (stb_vorbis).** Lost: a line-by-line

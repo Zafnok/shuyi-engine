@@ -265,8 +265,9 @@ quad-storage, include_dir and, last, macroquad. The order, when unparked:
 - **The two small ones:** web saves (3033) and file embedding (2215).
   Neither needs anything else.
 - **macroquad:** the research (3034), which writes the ADR and the tickets
-  for our own window, input and graphics on Vulkan, Metal, Direct3D 12,
-  OpenGL and GLES, WebGL 2 and WebGPU.
+  for our own window and input, and our own 2D renderer over wgpu, which
+  draws on Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2 and
+  WebGPU.
 - **Repositories of their own** (2008): last, when each piece is a full
   replacement and Nick says so.
 
@@ -286,4 +287,4 @@ quad-storage, include_dir and, last, macroquad. The order, when unparked:
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2210–2215, 2402–2403, 3030–3034, 2008 | The platform layer in-house (ADR-0021): our own WAV, Ogg and Vorbis readers, a mixer, sound output on Windows, the web, Linux and macOS; controllers on Windows, Linux and macOS; web saves; file embedding; research on replacing macroquad with every graphics API; and each piece in a repository of its own | Nick asks (2026-10-19: "All parked until MVP") |
+| 2210–2215, 2402–2403, 3030–3034, 2008 | The platform layer in-house (ADR-0021): our own WAV, Ogg and Vorbis readers, a mixer, sound output on Windows, the web, Linux and macOS; controllers on Windows, Linux and macOS; web saves; file embedding; research on replacing macroquad (our own window and input, a 2D renderer over wgpu); and each piece in a repository of its own | Nick asks (2026-10-19: "All parked until MVP") |
