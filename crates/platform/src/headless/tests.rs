@@ -86,6 +86,18 @@ fn the_speaker_sounds_after_its_load_delay_or_never() {
 }
 
 #[test]
+fn the_platforms_speaker_is_the_one_it_plays_on() {
+    let mut p = HeadlessPlatform::new();
+    p.speaker_mut().set_load_delay(0.5);
+    play(p.speaker_mut(), &[command("a", start)], 0);
+    let audio = p.audio();
+    assert_eq!(audio.music_playing(Millis(250)), None);
+    assert_eq!(audio.music_playing(Millis(750)), Some(("a", 0.25)));
+    p.speaker_mut().set_silent();
+    assert_eq!(p.speaker().music_playing(Millis(750)), None);
+}
+
+#[test]
 fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     let mut s = Speaker::default();
     assert_eq!(s.volumes(), (1.0, 1.0, 1.0));

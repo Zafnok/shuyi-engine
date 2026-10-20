@@ -383,7 +383,8 @@ fn the_setup_puts_the_platform_into_the_games_context() {
     assert_eq!(ctx.idle_motion, IdleMotion::On);
     assert_eq!(ctx.key_prompt, KeyPrompt::Off);
     assert_eq!(ctx.keyboard, Keyboard::Absent);
-    assert_ne!(ctx.music_seed, shuyi_ui::ctx::DEFAULT_MUSIC_SEED);
+    assert_eq!(ctx.music_seed, mix(1_700_000_000_000));
+    assert_eq!(ctx.music_seed, 0x0D0D_FFE4_EF39_1603);
     assert_eq!(
         ctx.storage.computer().read("from-before"),
         Ok(Some("yes".into()))
@@ -419,6 +420,7 @@ fn a_game_that_quits_stops_its_audio_and_keeps_its_last_frame() {
     let mut app = App::running(game);
     let mut p = HeadlessPlatform::new();
     let _ = app.frame(&mut p, Millis(0));
+    assert!(!app.has_quit() && !p.speaker().stopped());
     p.push_input(&press(Key::Escape));
     assert_eq!(app.frame(&mut p, Millis(17)), FrameOutcome::Quit);
     assert!(app.has_quit() && p.speaker().stopped());
@@ -605,7 +607,76 @@ fn a_driver_with_its_own_clock_gives_the_screens_its_exact_frame_times() {
 }
 
 #[test]
+fn a_manifest_the_game_cant_use_is_a_warning_given_once() {
+    let start = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        |setup| Ok(toy::game_on(setup.ctx(toy::ctx()))),
+    )
+    .before_load(|setup| setup.voice_manifest = Some("not a manifest".into()));
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    assert!(app.take_warnings().is_empty(), "nothing loaded yet");
+    let _ = app.frame(&mut p, Millis(16));
+    let warnings = app.take_warnings();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].starts_with("no voices: "), "{warnings:?}");
+    assert!(app.take_warnings().is_empty());
+}
+
+#[test]
+fn the_game_is_handed_back_once_it_has_loaded() {
+    let start: Start<Toy> = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        |_| Err("broken".to_owned()),
+    );
+    assert!(App::new(start).into_game().is_none());
+    let app = App::running(toy::game());
+    let game = app.into_game().unwrap_or_else(|| panic!("no game"));
+    assert_eq!(game.screens(), ["home"]);
+}
+
+#[test]
+fn the_music_a_frame_asked_for_is_its_commands() {
+    /// Asks for the toy's theme in its first update.
+    struct Theme;
+    impl Screen<Toy> for Theme {
+        fn name(&self) -> &'static str {
+            "theme"
+        }
+        fn update(&mut self, ctx: &mut ToyCtx, _: &FrameInput<Action>) -> Transition<Toy> {
+            if ctx.music_clock.is_none() {
+                ctx.audio.play_music("theme");
+            }
+            Transition::None
+        }
+        fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+    }
+    let mut app = App::running(Game::new(toy::ctx(), Box::new(Theme), GameHooks::default()));
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let theme = |cue: &str| cue == "theme";
+    assert!(
+        app.music()
+            .iter()
+            .any(|c| matches!(c, MusicCommand::Start { cue } if theme(cue))),
+        "{:?}",
+        app.music()
+    );
+    assert_eq!(p.speaker().music(), app.music());
+    // The device says it sounds; the next frame asks for nothing more.
+    let _ = app.frame(&mut p, Millis(500));
+    assert!(app.music().is_empty());
+    let clock = running(&app).ctx().music_clock.clone();
+    assert_eq!(clock.map(|c| c.cue), Some("theme".to_owned()));
+}
+
+#[test]
 fn a_seed_from_the_clock_differs_launch_to_launch() {
+    // SplitMix64's first outputs from these states.
+    assert_eq!(mix(0), 0xE220_A839_7B1D_CDAF);
+    assert_eq!(mix(1), 0x910A_2DEC_8902_5CC1);
     assert_ne!(mix(1_700_000_000_000), mix(1_700_000_000_001));
-    assert_ne!(mix(0), 0);
 }

@@ -135,6 +135,7 @@ mod tests {
     fn an_ask_goes_to_the_platform_and_its_answer_back_once() {
         let mut keyboard = SystemKeyboard::default();
         keyboard.set_present(true);
+        assert!(keyboard.is_present());
         assert!(keyboard.ask(name("A")));
         // Asked again before the platform took it: the later ask wins.
         assert!(keyboard.ask(name("Ab")));

@@ -117,7 +117,7 @@ impl Speaker {
     /// the game starts it (at once by default). Negative or NaN counts as
     /// 0.
     pub fn set_load_delay(&mut self, seconds: f64) {
-        self.load_delay = if seconds > 0.0 { seconds } else { 0.0 };
+        self.load_delay = seconds.max(0.0);
     }
 
     /// Makes no music ever sound, as when the music files are missing.
