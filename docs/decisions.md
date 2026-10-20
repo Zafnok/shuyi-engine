@@ -727,4 +727,37 @@ So:
   - the Essential license is for one named user (Nick), and ends if
     revenue, investment or financing passes $500k in 12 months. What was
     integrated while it was valid may still ship (Section 2.2); new
-    integration then needs Enterprise.
+    integration then needs Enterprise. (Refined in the next entry: the
+    engine needs no license of Nick's to carry the runtime.)
+
+## 2026-10-20: Spine and a free engine; the game never uses Spine
+
+Source: Nick, in the same session:
+
+> "given our engine is intended to be FOSS I think this $500K doesn't
+> apply, and visions of shuyi will never use spine so it should be
+> stripped in shipping"
+
+What the terms say about it (the Spine Runtimes License, Exhibit A, and
+the `spine-runtimes` README, read 2026-10-20; not legal advice):
+
+- **A free engine needs no license of Nick's to carry the runtime.**
+  Exhibit A's second branch lets anyone integrate the runtimes into
+  software free of charge, as long as each user of that software has
+  their own Spine license. The README says toolkits usually take this
+  branch. So `shuyi-spine` takes it: the engine pays nothing, and each
+  developer who turns the module on brings their own license.
+- **The $500k threshold is about the license holder, not the product.**
+  It counts all of the holder's revenue, investment and financing, so a
+  game's sales count even when the engine is free. It matters only for
+  whoever holds an Essential or Professional license: each developer for
+  their own games, and Nick only if he holds one to test the module
+  (running it is using it). If Nick's revenue passes $500k, testing the
+  module needs Enterprise, or a maintainer with their own license.
+- **Visions of Shuyi never turns `shuyi-spine` on.** The module is
+  opt-in and never a default feature, so the game's builds hold no Spine
+  code. The game's own `cargo deny` allows no Spine license, so the
+  module can't come in by accident.
+
+So path A of 2217 no longer needs Nick to buy anything for the engine.
+He needs a license only to test the module himself.

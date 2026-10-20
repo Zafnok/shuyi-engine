@@ -1,6 +1,6 @@
 ---
 id: "2217"
-title: "Parked: Spine import: the official Spine runtime in an opt-in module under an Essential license, or a reader of our own (Nick picks when unparked)"
+title: "Parked: Spine import: the official Spine runtime in an opt-in module whose users bring their own Spine license, or a reader of our own (Nick picks when unparked)"
 type: feature
 milestone: "Engine: animation"
 model: opus-5.5
@@ -20,8 +20,8 @@ completed:
 Spine is the most used 2D bone tool. 2105 builds rigs in our own RON,
 and 2216 imports DragonBones. This ticket brings in Spine's exports.
 
-`docs/decisions.md` has two 2026-10-20 entries on Spine; read both. In
-short:
+`docs/decisions.md` has three 2026-10-20 entries on Spine; read all
+three. In short:
 
 - Esoteric's terms (the Spine Editor License Agreement, last updated
   2025-04-05, Section 2 and Exhibit A) allow its runtimes inside an
@@ -33,13 +33,20 @@ short:
 - A reader we write ourselves from the public format docs is not the
   Spine Runtimes, so those terms don't bind it. The user still needs a
   Spine license to make the files.
+- A free engine needs no license of Nick's to carry the runtime: the
+  Spine Runtimes License (Exhibit A, second paragraph) lets a toolkit
+  integrate it free of charge as long as each of its users has their own
+  Spine license. Nick needs a license only to test the module himself.
 - Nick leans to path A: "I have a feeling our own reader would cost
   more than $69 in tokens".
+- **Visions of Shuyi never uses Spine** (Nick, 2026-10-20): the game
+  never turns this module on, and its `cargo deny` (permissive licenses
+  only, no exceptions) keeps it out.
 
 | | A. The official runtime | B. Our own reader |
 | --- | --- | --- |
 | Spine features | all of them (meshes, IK, physics), matching the editor | only what 2105 supports (no scale, meshes, IK or physics until 2105 grows) |
-| Cost | an Essential license, $69 (checked 2026-10-20), for Nick | our time and tokens, now and at every Spine version |
+| Cost | nothing for the engine; an Essential license, $69 (checked 2026-10-20), if Nick tests it himself | our time and tokens, now and at every Spine version |
 | License | the Spine Runtimes License: an exception to ADR-0002 §8 for one opt-in crate | permissive, like the rest |
 | Users | each developer who turns it on needs a Spine license (they need one to make the files anyway) | the same, for the editor |
 | Determinism | poses in floats: fine for drawing, not for hitboxes | poses in `Fx`, like the rest of the engine |
@@ -52,9 +59,11 @@ Bring the table above, re-check the Essential price and the license
 date, and say whether path A's runtime builds for the web (step A1).
 Record the answer in `docs/decisions.md`. If it is A:
 
-- **Setup:** Nick buys a Spine Essential license at
-  `esotericsoftware.com/spine-purchase` in his own name (it is for one
-  named user), before the runtime is first built into anything.
+- **Setup:** if Nick wants to run the module's tests himself, he buys a
+  Spine Essential license at `esotericsoftware.com/spine-purchase` in his
+  own name (it is for one named user, and needs Enterprise once his
+  revenue, investment or financing passes $500k in 12 months). The
+  engine itself needs none.
 - The decision records the exception to ADR-0002 §8 for the one crate.
 
 ## Scope
@@ -72,9 +81,12 @@ Record the answer in `docs/decisions.md`. If it is A:
   (`wasm32`, which needs a C compiler for wasm). Write what you found in
   the Completion notes before going on.
 - **The crate `shuyi-spine`** in `crates/spine`:
-  - its `license` field and a `LICENSE` file say the Spine Runtimes
-    License applies to it, and that the engine's MIT OR Apache-2.0 does
-    not cover the runtime;
+  - it takes Exhibit A's second paragraph: the runtime is integrated
+    free of charge, and each developer who uses the module brings their
+    own Spine license. Its `license` field and a `LICENSE` file say the
+    Spine Runtimes License applies, include that license's text and
+    copyright notice (Exhibit A requires it), and say the engine's MIT
+    OR Apache-2.0 does not cover the runtime;
   - it is opt-in only: never a default feature, and in the `shuyi`
     crate (2003) only behind its own feature, if 2003 is done;
   - `deny.toml` allows the Spine license **for this crate only** (a
@@ -97,7 +109,7 @@ Record the answer in `docs/decisions.md`. If it is A:
   characters unless their terms allow it in a public repository.
 
 **Out:** the Playdate and other `no_std` targets; editing Spine files;
-a Spine viewer tool.
+a Spine viewer tool; Visions of Shuyi (it never turns the module on).
 
 ### Path B: a reader of our own
 
