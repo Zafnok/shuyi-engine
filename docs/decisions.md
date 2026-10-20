@@ -619,3 +619,145 @@ On graphics:
     before 2402 and 2403 start. It can be changed later either way;
   - sound: the same, with 2902 deciding before 2210–2214 and
     3030–3032 start. quad-snd still goes.
+
+## 2026-10-20: Steam achievements and cloud saves get tickets
+
+Source: Nick, in a Claude Code session on 2026-10-20, after a comparison
+with Bevy 0.20 and Godot 4.6 found features no ticket covered, and two
+of them (Steam achievements and cloud saves, and reading Spine's files)
+were left as questions for him:
+
+> "anyway make sure steam achievements and cloud saves are covered by
+> some ticket so it's not lost"
+
+So, taking the recommendation he was offered (he may veto it):
+
+- **The engine gets an achievements service with no store in it** (3036):
+  achievements and stats as data, a local backend for builds with no
+  store, a test backend, an unlock notice and an achievements screen.
+- **Steam goes under it, behind the `steam` feature** (3037): Steamworks
+  achievements and stats, and saves in Steam Cloud (Auto-Cloud by
+  default, the Cloud API when a game needs it). 1144 already puts
+  Steamworks in the engine behind that feature for networking.
+- **What stays the game's** (2026-10-15, game ticket 0903): the Steam
+  partner account, the app id, the store page, and setting up the
+  achievements and the cloud quota on the Steamworks site.
+- Both tickets are parked like the rest, until after the MVP.
+
+Reading Spine's files is still open: Nick asked for more checking first.
+
+## 2026-10-20: the engine may read Spine's files, with a reader of our own
+
+Source: Nick, in the same session, after the Spine Editor License
+Agreement (last updated 2025-04-05, `esotericsoftware.com/spine-editor-license`)
+and the `EsotericSoftware/spine-runtimes` repository were read. Section 2
+of the agreement and its Exhibit A (the Spine Runtimes License) restrict
+integrating Esoteric's runtime libraries, or works derived from them.
+They say nothing about a reader written from the public format
+documentation. The editor's own license terms (no commercial use of
+Trial or Education work, Enterprise above the revenue threshold) bind
+whoever makes the files.
+
+> "to me it sounds like we can load spine output files so long as user
+> is using their own ver of spine to make them...?"
+
+Then:
+
+> "Yes. Record in decisions.md that the engine may read Spine files with
+> our own reader, written from the public format docs with no Spine
+> code, and the user brings their own Spine license. Add a parked Spine
+> JSON import ticket beside 2216 on PR 24."
+
+So:
+
+- **The engine may read Spine's JSON and atlas files** with a reader we
+  write ourselves (2217, parked like 2216; the next entry makes this one
+  of two paths).
+- **It is written from Esoteric's public format documentation only.** No
+  code from the Spine Runtimes is copied, translated or read while
+  writing it, so the engine is neither the Spine Runtimes nor a work
+  derived from them. This is ADR-0021 §2's rule (written from
+  specifications, never copied) applied to a file format.
+- **The user brings their own Spine license.** Making the files is
+  between the user and Esoteric. The engine's docs say so, and say
+  that Spine is Esoteric Software's trademark and the engine isn't
+  affiliated with it.
+- **The official runtimes stay out, for now.** Wrapping them (as
+  `rusty_spine` and `bevy_spine` do) is allowed by Esoteric. Each
+  developer who builds a game with them needs their own Spine license
+  (Section 2.4), and with it may ship the game to players who have none
+  (Section 2.2). But the runtimes' license isn't one of the permissive
+  licenses ADR-0002 §8 allows, so using them is a separate decision for
+  Nick.
+- This is a reading of the license, not legal advice. If Esoteric ever
+  objects, or changes its terms to cover the file format, the reader
+  stops shipping until Nick decides again.
+
+## 2026-10-20: Spine import: an Essential license or our own reader, picked when unparked
+
+Source: Nick, in the same session, after the entry above was corrected:
+Esoteric allows its runtimes inside an engine, as long as each developer
+who builds with them has a Spine license, and a developer with one may
+ship a game to players who have none. On Esoteric's forum (thread 26587,
+2024-07-25), Esoteric's Nate confirms that Essential or Professional is
+enough (below the $500k revenue threshold) to put the runtimes into any
+number of one's own products.
+
+> "sounds like probably essentials license is all we would ever need and
+> it's $69 so I might just pull the trigger if we get to this milestone.
+> Otherwise we can park the ticket as TBD between essentials license and
+> our own reader but I have a feeling our own reader would cost more than
+> $69 in tokens"
+
+So:
+
+- **Spine import stays parked** (2217), and its first step is Nick's
+  pick between two paths:
+  - **A. The official runtime under an Essential license** ($69,
+    checked 2026-10-20), in an opt-in `shuyi-spine` module. Nick leans
+    this way: our own reader would likely cost more than $69 in tokens.
+  - **B. Our own reader**, written from the public format docs with no
+    Spine code, as the entry above sets out.
+- **If he picks A**, it carries duties to record then:
+  - an exception to ADR-0002 §8 for that one crate: its license is the
+    Spine Runtimes License, not a permissive one. It is never on by
+    default, and the engine's repository holds no Spine code;
+  - every developer who turns it on needs their own Spine license, and
+    the module's docs say so;
+  - the Essential license is for one named user (Nick), and ends if
+    revenue, investment or financing passes $500k in 12 months. What was
+    integrated while it was valid may still ship (Section 2.2); new
+    integration then needs Enterprise. (Refined in the next entry: the
+    engine needs no license of Nick's to carry the runtime.)
+
+## 2026-10-20: Spine and a free engine; the game never uses Spine
+
+Source: Nick, in the same session:
+
+> "given our engine is intended to be FOSS I think this $500K doesn't
+> apply, and visions of shuyi will never use spine so it should be
+> stripped in shipping"
+
+What the terms say about it (the Spine Runtimes License, Exhibit A, and
+the `spine-runtimes` README, read 2026-10-20; not legal advice):
+
+- **A free engine needs no license of Nick's to carry the runtime.**
+  Exhibit A's second branch lets anyone integrate the runtimes into
+  software free of charge, as long as each user of that software has
+  their own Spine license. The README says toolkits usually take this
+  branch. So `shuyi-spine` takes it: the engine pays nothing, and each
+  developer who turns the module on brings their own license.
+- **The $500k threshold is about the license holder, not the product.**
+  It counts all of the holder's revenue, investment and financing, so a
+  game's sales count even when the engine is free. It matters only for
+  whoever holds an Essential or Professional license: each developer for
+  their own games, and Nick only if he holds one to test the module
+  (running it is using it). If Nick's revenue passes $500k, testing the
+  module needs Enterprise, or a maintainer with their own license.
+- **Visions of Shuyi never turns `shuyi-spine` on.** The module is
+  opt-in and never a default feature, so the game's builds hold no Spine
+  code. The game's own `cargo deny` allows no Spine license, so the
+  module can't come in by accident.
+
+So path A of 2217 no longer needs Nick to buy anything for the engine.
+He needs a license only to test the module himself.

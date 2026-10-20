@@ -52,6 +52,9 @@ asks for. Two Steam accounts that own the app, for the manual test.
 
 **Out (do not do):**
 - leaderboards (1148);
+- achievements, stats and cloud saves (3036, 3037). Either order: if
+  3037 is done, it added the `steam` feature and the link check, and
+  this ticket reuses them;
 - Remote Play Together (needs no code).
 
 ## Implementation steps

@@ -96,7 +96,8 @@ None.
   route (2710);
 - steering and pushing (2711);
 - reading maps if 1124 isn't done (see above);
-- a navigation mesh (ADR-0015, *Alternatives*);
+- a navigation mesh (ADR-0015, *Alternatives*); 2106 builds one for a
+  few free movers, not for armies;
 - what places and removes buildings in play (2733, the RTS economy; see
   2707's *Out*). Here, spawns and removals of footprint kinds are
   enough.

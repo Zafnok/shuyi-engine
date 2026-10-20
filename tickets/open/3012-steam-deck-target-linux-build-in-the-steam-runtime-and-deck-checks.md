@@ -72,8 +72,8 @@ None. Running it on a real Deck is 3013.
   covers, and what is the game's (0903).
 
 **Out (do not do):**
-- Steamworks, Steam Input action sets, Steam Cloud and achievements (the
-  game's 0903);
+- Steamworks, Steam Input action sets (the game's 0903);
+- Steam achievements and Steam Cloud saves (3036, 3037);
 - measuring on the device (3013);
 - the new-game wizard's Steam Deck part. Either order: if 2504 is done,
   add the Deck export to the built-in template's `target-steam-deck`

@@ -1,0 +1,111 @@
+---
+id: "2324"
+title: "Parked: Colour vision: a check that distinct palette roles stay apart for protanopia, deuteranopia and tritanopia, text contrast, and frame-png through each"
+type: feature
+milestone: "Engine: accessibility"
+model: sonnet-5
+effort: medium
+status: blocked
+blocked_by: ["3006"]
+nick_input: none
+completed:
+---
+
+# 2324 — Colour vision: distinct roles stay apart
+
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): the game doesn't ask for it, so this waits until after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`) and after 3006. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+
+## Context
+
+Found by the 2026-10-20 comparison with Bevy 0.20 and Godot 4.6, under
+accessibility: games offer colour-blind palettes. Shuyi can already
+ship them: a game's colour themes are palettes
+(`GameSettings::Theme`, `GameData::theme_def`), and the player picks one
+on the options screen. What's missing is a way for the developer to know
+a theme works.
+
+[ADR-0008](../../docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)
+§4 already has the idea: skins name colours by role, and the palette
+file lists groups of roles that must stay distinct (`team.player`,
+`team.enemy`, `team.ally`). 3006 checks those groups on 1-bit. This
+ticket checks the same groups as players with colour vision deficiency
+see them, so a game knows that red and green sides look the same to
+about one man in twelve.
+
+It is a tool (`shuyi-cli`), not the simulation, so it may use floats.
+
+## Nick input
+
+None.
+
+## Scope
+
+**In:**
+- **`shuyi_cli::vision`:**
+  - `Vision::{Protan, Deutan, Tritan, Achromat}` and
+    `simulate(vision, rgb) -> rgb`, in linear RGB, with the matrices of
+    Machado, Oliveira and Fernandes (2009) at full severity, written
+    from the paper, with a citation in the docs;
+  - distance in OKLab (Björn Ottosson, 2020, from the published
+    formulas).
+- **The check**, next to 3006's distinct check (in `shuyi check`, or
+  where 3006 put it):
+  - for the default palette and every theme, for each vision, every
+    pair of roles in a `distinct` group is at least a set distance apart
+    after simulation. The worker picks the distance on the fixtures,
+    and writes the number and why in the module docs;
+  - a vision that **no** theme passes is an error; a theme that fails a
+    vision another theme passes is a note ("theme `deutan` covers
+    deuteranopia"). So a game can ship one theme per vision;
+  - **text contrast:** the palette file may list pairs, `contrast:
+    [(text, panel), …]`. Each pair must reach a contrast ratio of 4.5:1
+    (WCAG 2.x relative luminance). Below is a warning.
+- **`frame-png --vision <protan|deutan|tritan|achromat>`** writes the
+  frame as that vision sees it, after painting, so a person or an agent
+  can look.
+- **Fixtures:** a palette that fails deuteranopia, and a theme that
+  fixes it.
+- **The guide**, `docs/accessibility.md` (created here, or by 2322 or
+  2323 if one is done first): one theme per vision, and never colour
+  alone: a side also gets a shape or a glyph.
+
+**Out (do not do):**
+- recolouring a theme automatically ("daltonization");
+- checking images and sprites (the check reads palettes only);
+- the 1-bit check (3006) and indexed colour (3019).
+
+## Implementation steps
+
+1. Read ADR-0008 §4 and 3006's palette roles and distinct groups.
+2. Write `simulate` and the OKLab distance, with tests against values
+   worked by hand from the papers.
+3. Write the check and the contrast rule, with the fixtures.
+4. Add `frame-png --vision`.
+5. Write the guide section.
+6. Run the gates.
+
+## Acceptance criteria
+
+- [ ] The failing fixture fails for deuteranopia, naming the group, the
+      two roles and the distance; with the fixing theme it passes, with
+      a note.
+- [ ] A contrast pair below 4.5:1 warns, naming both roles and the
+      ratio.
+- [ ] `frame-png --vision deutan` on the toy game is committed and
+      reviewed.
+- [ ] `simulate` on white and black gives white and black for every
+      vision.
+- [ ] All gates in the `run-gates` skill pass.
+
+## Tests required
+
+- Unit: `simulate` on a handful of colours against hand-worked values;
+  OKLab distance of equal colours is 0; the contrast ratio of black on
+  white is 21.
+- Property: distances are symmetric and never negative.
+- Snapshot / integration: the fixtures through the check; one
+  `frame-png --vision` picture.
+
+## Completion notes
+
+*(Filled in by the session that completes the ticket.)*

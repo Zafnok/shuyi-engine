@@ -138,6 +138,7 @@ None.
 
 **Out (do not do):**
 - pausing, stepping, slow motion and a readout of state (2316);
+- a frame profiler (2325);
 - collision, world layers, skeletons and 3D (2317–2320);
 - gizmos in world coordinates. There are no world layers until 1120,
   and 2318 adds the camera transform;

@@ -76,7 +76,14 @@ when (dropping a platform for a while, say), it asks Nick with the
   - the build size: wgpu's added size, natively and in the `.wasm`, against
     today's macroquad build;
   - the 3D plans (ADR-0011, the GPU painter in 3104) and whether the
-    renderer must leave room for them now.
+    renderer must leave room for them now;
+  - room for the 2D effects that wait on this renderer: a chain of
+    screen passes (2326), a game's own WGSL passes and sprite materials
+    (2327), and 2D lights with normal maps (2328). When this research
+    writes the renderer's ticket, add its id to the `blocked_by` of
+    2326, and the winit backend's ticket to the `blocked_by` of 3035
+    (screen reader output through AccessKit, which joins a winit
+    window).
 - **The window and input over winit.** The run loop: how winit's event
   loop drives `App::frame` (3003) on desktop and the web. Keyboard and
   mouse to the engine's `RawInputEvent`s (`crates/app/src/keys.rs` today),
