@@ -19,6 +19,7 @@
 mod ground;
 
 use crate::prelude::*;
+use alloc::rc::Rc;
 
 use shuyi_assets::image::{ImageRect, Picture};
 use shuyi_assets::tileset::TerrainTiles;
@@ -39,6 +40,9 @@ pub struct SpriteSkin {
     /// How big the art is drawn, when the tiles paint the ground: at
     /// least 1.
     zoom: i32,
+    /// The zooms a player may pick from, smallest first: none unless
+    /// given ([`with_zooms`](Self::with_zooms)).
+    zooms: Vec<i32>,
     /// The glyph skin: its colors, and its ground without terrain tiles.
     glyph: GlyphSkin,
     /// How fast a walk is shown.
@@ -52,8 +56,30 @@ impl SpriteSkin {
         Self {
             terrain,
             zoom: 1,
+            zooms: Vec::new(),
             glyph,
             walk,
+        }
+    }
+
+    /// The same skin, offering `levels` as its
+    /// [`zoom_levels`](GridSkin::zoom_levels) when its terrain tiles paint
+    /// the ground: sorted, each once, those below 1 left out.
+    #[must_use]
+    pub fn with_zooms(mut self, levels: &[i32]) -> Self {
+        let mut zooms: Vec<i32> = levels.iter().copied().filter(|&z| z >= 1).collect();
+        zooms.sort_unstable();
+        zooms.dedup();
+        self.zooms = zooms;
+        self
+    }
+
+    /// The zooms it offers: its levels with terrain tiles, none on the
+    /// glyph skin's tiles (font cells).
+    fn levels(&self) -> &[i32] {
+        match self.terrain {
+            Some(_) => &self.zooms,
+            None => &[],
         }
     }
 
@@ -210,6 +236,23 @@ impl<U> GridSkin<U> for SpriteSkin {
 
     fn walk(&self) -> WalkSpeeds {
         self.walk
+    }
+
+    /// The levels it was given ([`SpriteSkin::with_zooms`]), with terrain
+    /// tiles; none without.
+    fn zoom_levels(&self) -> &[i32] {
+        self.levels()
+    }
+
+    fn zoom(&self) -> Option<i32> {
+        (!self.levels().is_empty()).then_some(self.zoom)
+    }
+
+    fn at_zoom(&self, zoom: i32) -> Option<Rc<dyn GridSkin<U>>> {
+        if !self.levels().contains(&zoom) {
+            return None;
+        }
+        Some(Rc::new(self.clone().zoomed(zoom)))
     }
 
     /// The ground (terrain tinted by flashes and ranges), what lies under

@@ -1,8 +1,10 @@
 //! The glyph skin: a grid map drawn with colored glyphs (game ADR-0018,
 //! game ADR-0024, game ADR-0029). A tile is two 8 × 16 cells: a 16 × 16 pixel
-//! square. That size is known only here.
+//! square. That size is known only here. A [`GlyphStyle`] changes how
+//! ranges, flashes, the cursor and the threat marks show on those tiles.
 
 pub mod cursor;
+pub mod style;
 
 use shuyi_core::{Pos, TerrainId};
 
@@ -13,6 +15,8 @@ use super::skin::{GridSkin, Looks, MapColors, UnitPainter, WalkSpeeds};
 use super::threat;
 use crate::frame::color::EngineColor;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
+
+pub use style::{CursorLook, FlashLook, GlyphStyle, RangeLook, ThreatLook};
 
 /// Cells per map tile, across (a tile is two glyphs wide, game ADR-0018).
 pub const TILE_W_CELLS: i32 = 2;
@@ -28,7 +32,7 @@ pub const fn tile_px() -> (i32, i32) {
 pub const OVERLAY_BLEND: f32 = 0.75;
 
 /// A grid map as colored glyphs: each tile its terrain's two glyphs, the
-/// ranges tinting their background.
+/// ranges tinting their background (in its [plain style](GlyphStyle::PLAIN)).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GlyphSkin {
     /// The palette's names of the path's, the cursor's and the threat
@@ -39,6 +43,10 @@ pub struct GlyphSkin {
     /// How many pixels at the foot of a tile the units' own marks use (a
     /// game's HP bar): the cursor's lower arms stay above them.
     pub foot_px: i32,
+    /// How ranges, flashes, the cursor and the threat marks show, and the
+    /// cells left at the sides. (The sprite skin's glyph ground is always
+    /// in the plain style.)
+    pub style: GlyphStyle,
 }
 
 impl<U> GridSkin<U> for GlyphSkin {
@@ -51,19 +59,20 @@ impl<U> GridSkin<U> for GlyphSkin {
     }
 
     fn view_tiles(&self, area: Rect) -> (i32, i32) {
-        view_tiles(area)
+        self.style.view_tiles(area)
     }
 
     fn grid(&self, scene: &MapScene<U>, area: Rect) -> Grid {
-        Layout::new(scene, area).grid()
+        self.style.layout(scene, area).grid()
     }
 
     fn walk(&self) -> WalkSpeeds {
         self.walk
     }
 
-    /// Terrain, then the ranges tinting it, then the units, the path and
-    /// the cursor; over them all, the threat arrows and marks.
+    /// Terrain, then the ranges on it, then what lies under the units, the
+    /// units, the path and the cursor; over them all, the threat arrows and
+    /// marks.
     fn paint(
         &self,
         looks: &Looks,
@@ -72,23 +81,42 @@ impl<U> GridSkin<U> for GlyphSkin {
         units: &dyn UnitPainter<U>,
         buf: &mut GlyphBuffer,
     ) {
-        let layout = Layout::new(scene, area);
+        let style = &self.style;
+        let layout = style.layout(scene, area);
         let grid = layout.grid();
-        draw_tiles(looks, buf, scene, &layout);
+        style.draw_tiles(looks, buf, scene, &layout);
         units.paint_under(scene, &grid, buf);
         units.paint(scene, &grid, buf);
         let color = looks.path(&self.colors);
         for overlay in path::path_overlays(&scene.path, &grid, color) {
             buf.add_overlay(overlay);
         }
-        self.draw_cursor(looks, buf, scene, &layout);
+        style.draw_cursor(self.cursor_ink(looks), buf, scene, &layout, area);
         // From the edge of each enemy's tile: never over its letters.
-        let colors = looks.threat(&self.colors);
+        let colors = style.threat_colors(looks, &self.colors);
         threat::paint(scene, &grid, threat::Start::Edge, colors, buf);
     }
 }
 
 impl GlyphSkin {
+    /// The skin of `colors` in the plain style, showing a walk at `walk`,
+    /// its cursor's lower arms above the `foot_px` pixels at a tile's foot.
+    pub const fn new(colors: MapColors, walk: WalkSpeeds, foot_px: i32) -> Self {
+        Self {
+            colors,
+            walk,
+            foot_px,
+            style: GlyphStyle::PLAIN,
+        }
+    }
+
+    /// The same skin in `style`.
+    #[must_use]
+    pub const fn styled(mut self, style: GlyphStyle) -> Self {
+        self.style = style;
+        self
+    }
+
     /// How its cursor looks in `looks`' colors.
     pub fn cursor_ink(&self, looks: &Looks) -> cursor::CursorInk {
         cursor::CursorInk {
@@ -98,7 +126,8 @@ impl GlyphSkin {
         }
     }
 
-    /// Draws the scene's cursor, if it is on a tile of `layout`.
+    /// Draws the scene's cursor, if it is on a tile of `layout`, as the
+    /// plain style does.
     pub fn draw_cursor<U>(
         &self,
         looks: &Looks,
@@ -199,36 +228,14 @@ pub fn draw_terrain(looks: &Looks, buf: &mut GlyphBuffer, id: TerrainId, (x, y):
     }
 }
 
-/// Draws every tile: its terrain (tiles off the map are left as they are,
-/// blank); a tile whose terrain just changed flashes, its background tinted
-/// towards its glyph color, fading out; then its ranges tint it, the first
-/// laid on undermost; and a tile that would change is drawn as the terrain
-/// it would become instead.
+/// Draws every tile in the plain style ([`GlyphStyle::draw_tiles`]): its
+/// terrain (tiles off the map are left as they are, blank); a tile whose
+/// terrain just changed flashes, its background tinted towards its glyph
+/// color, fading out; then its ranges tint it, the first laid on
+/// undermost; and a tile that would change is drawn as the terrain it would
+/// become instead.
 pub fn draw_tiles<U>(looks: &Looks, buf: &mut GlyphBuffer, scene: &MapScene<U>, layout: &Layout) {
-    let tints = scene.tints();
-    for dy in 0..layout.tiles.1 {
-        for dx in 0..layout.tiles.0 {
-            let Some(tile) = scene.tile_at(dx, dy) else {
-                continue;
-            };
-            let (x, y) = (layout.cell.0 + TILE_W_CELLS * dx, layout.cell.1 + dy);
-            let cells = Rect::new(x, y, TILE_W_CELLS, 1);
-            if let Some(id) = tile.terrain {
-                draw_terrain(looks, buf, id, (x, y));
-            }
-            for &strength in &tile.flashes {
-                if let Some(fg) = buf.get(x, y).map(|c| c.fg) {
-                    buf.blend_bg(cells, fg, OVERLAY_BLEND * strength);
-                }
-            }
-            for &kind in tints.at(dx, dy) {
-                buf.blend_bg(cells, looks.range(kind), OVERLAY_BLEND);
-            }
-            if let Some(id) = tile.becomes {
-                draw_terrain(looks, buf, id, (x, y));
-            }
-        }
-    }
+    GlyphStyle::PLAIN.draw_tiles(looks, buf, scene, layout);
 }
 
 #[cfg(test)]

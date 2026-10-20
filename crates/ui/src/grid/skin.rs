@@ -3,6 +3,79 @@
 //! game's [`UnitPainter`] paints its units, between the skin's layers.
 //! What the skin paints with besides the scene (the palette, the game's
 //! terrains, the lights) it is given as [`Looks`].
+//!
+//! # A game with its own painters and several looks
+//!
+//! A game keeps its skins as `Rc<dyn GridSkin<U>>` and needs no skin
+//! trait of its own:
+//!
+//! - **The painter is built each frame.** [`GridSkin::paint`] takes the
+//!   [`UnitPainter`] per call, so a screen builds it in its own `draw`
+//!   from that frame's context (its palette, its unit pictures) and passes
+//!   a reference. The painter is told the skin's [`Grid`], whose
+//!   [`zoom`](Grid::zoom) and [`art_tile`](Grid::art_tile) say how big to
+//!   paint.
+//! - **What the painter needs is kept beside the skin.** Which painter
+//!   goes with which skin (a tileset of the game's unit pictures, a
+//!   one-bit painter) is the game's: a small struct or enum of its own
+//!   holding the skin and that, not a trait.
+//! - **Zoom** is the skin's: [`zoom_levels`](GridSkin::zoom_levels),
+//!   [`zoom`](GridSkin::zoom) and [`at_zoom`](GridSkin::at_zoom), none
+//!   for a skin that can't.
+//! - **Walk speeds** are the skin's too: [`WalkSpeeds`], with a speed for
+//!   while a key is held to hurry another side's turn.
+//! - **Another look of the same tiles** (a one-bit screen's) is the
+//!   glyph skin with a [`GlyphStyle`](super::glyph::style::GlyphStyle).
+//!
+//! ```
+//! use std::rc::Rc;
+//!
+//! use shuyi_ui::frame::glyph_buffer::{GlyphBuffer, Rect};
+//! use shuyi_ui::grid::{Grid, GridSkin, MapScene, UnitPainter};
+//! use shuyi_ui::toy::grid::{GLYPH, Kit, Piece};
+//!
+//! /// The game's painter, borrowing what one frame paints with.
+//! struct Pieces<'a> {
+//!     kit: &'a Kit,
+//! }
+//!
+//! impl UnitPainter<Piece> for Pieces<'_> {
+//!     fn paint(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
+//!         // Paints `scene.units` in `self.kit`'s colors and pictures, at
+//!         // `grid.zoom()`.
+//!         let _ = (self.kit, scene, grid, buf);
+//!     }
+//! }
+//!
+//! /// The game's look: a skin, and whatever its painter needs.
+//! struct MapLook {
+//!     skin: Rc<dyn GridSkin<Piece>>,
+//! }
+//!
+//! impl MapLook {
+//!     /// What the screen's `draw` does each frame.
+//!     fn draw(&self, kit: &Kit, scene: &MapScene<Piece>, buf: &mut GlyphBuffer) {
+//!         let painter = Pieces { kit };
+//!         let area = Rect::new(0, 0, 40, 20);
+//!         self.skin.paint(&kit.looks(), scene, area, &painter, buf);
+//!     }
+//!
+//!     /// The same look at `zoom`, if its skin zooms to it.
+//!     fn at_zoom(&self, zoom: i32) -> Option<Self> {
+//!         Some(Self { skin: self.skin.at_zoom(zoom)? })
+//!     }
+//! }
+//!
+//! let kit = Kit::new();
+//! let look = MapLook { skin: Rc::new(GLYPH) };
+//! let black = shuyi_ui::frame::Rgb::new(0, 0, 0);
+//! let mut buf = GlyphBuffer::new(40, 20, shuyi_ui::frame::Cell::new(' ', black, black));
+//! look.draw(&kit, &MapScene::new(shuyi_core::Pos::new(0, 0), (4, 4)), &mut buf);
+//! // The glyph skin's tile is two font cells: it doesn't zoom.
+//! assert!(look.at_zoom(2).is_none());
+//! ```
+
+use alloc::rc::Rc;
 
 use shuyi_assets::lighting::Lighting;
 use shuyi_core::{Pos, TerrainId};
@@ -183,8 +256,27 @@ pub trait GridSkin<U>: core::fmt::Debug {
     /// How fast a unit's walk is shown under this skin.
     fn walk(&self) -> WalkSpeeds;
 
-    /// Paints `scene` into the cells of `area`, its units by `units`.
-    /// Touches nothing outside it.
+    /// The zooms it can draw the map at, smallest first: console pixels
+    /// per pixel of its art. None if it can't zoom (the glyph skin: its
+    /// tile is two font cells).
+    fn zoom_levels(&self) -> &[i32] {
+        &[]
+    }
+
+    /// The zoom it draws at, or `None` if it can't zoom.
+    fn zoom(&self) -> Option<i32> {
+        None
+    }
+
+    /// The same skin drawing at `zoom`, or `None` if `zoom` isn't one of
+    /// its [`zoom_levels`](Self::zoom_levels).
+    fn at_zoom(&self, _zoom: i32) -> Option<Rc<dyn GridSkin<U>>> {
+        None
+    }
+
+    /// Paints `scene` into the cells of `area`, its units by `units`: a
+    /// painter the caller may build each frame, from what that frame paints
+    /// with (see the [module's docs](self)). Touches nothing outside it.
     fn paint(
         &self,
         looks: &Looks,
@@ -274,6 +366,11 @@ mod tests {
         assert_eq!(cells(Some(r(-16, -16, 16, 16))), Some(r(-2, -1, 2, 1)));
         assert_eq!(cells(Some(r(-1, -1, 2, 2))), Some(r(-1, -1, 2, 2)));
         assert_eq!(cells(None), None);
+        // A skin can't zoom unless it says it can.
+        let fixed: &dyn GridSkin<Piece> = &Fixed(None);
+        assert!(fixed.zoom_levels().is_empty());
+        assert_eq!(fixed.zoom(), None);
+        assert!(fixed.at_zoom(1).is_none());
     }
 
     #[test]
