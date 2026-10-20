@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5
 effort: medium
 status: todo
-blocked_by: ["2003", "1132"]
+blocked_by: ["2003", "2802"]
 nick_input: sign-off
 completed:
 ---
@@ -24,7 +24,7 @@ designed and well documented at all steps."
 §5 sets two kinds of guide in `docs/guides/`: a direction guide for each
 kind of game, and a move guide for each move a game can make between
 stages. The catalog (2003) lists the directions and modules. The docs
-site (1132) publishes the guides.
+site's book (2802) publishes the guides.
 
 At the MVP only one direction is built: top-down grid with turns, the
 game's own. The others are parked. Their guides exist from the start as
@@ -57,7 +57,8 @@ say whether a new developer would know where to start.
     `hd-2d.md`;
   - every guide links only to modules and tickets that exist;
   - a guide marked planned names at least one open ticket.
-- **The docs site** (1132) publishes `docs/guides/` with the catalog.
+- **The book** (2802) publishes `docs/guides/` with the catalog, as a
+  part after its chapters.
 - **The skill pack** (1134): the `shuyi-new-game` skill sends an agent
   to the direction guide before it chooses a template.
 

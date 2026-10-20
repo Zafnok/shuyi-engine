@@ -73,8 +73,8 @@ None.
     hash list;
   - `frame-png` pictures (3103's software painter) at three steps, and
     their 3D view snapshots.
-- **The web build** of the example, and its place on the docs site's
-  playable list (1132).
+- **The web build** of the example, and its place on the website's
+  Examples page (2801).
 - **Templates** `templates/first-person` and `templates/third-person`
   for `shuyi new` (1129):
   - each turns on the `3d` feature of `shuyi`, and no other module;

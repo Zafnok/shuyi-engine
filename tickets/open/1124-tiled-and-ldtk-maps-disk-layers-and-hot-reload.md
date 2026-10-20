@@ -1,6 +1,6 @@
 ---
 id: "1124"
-title: "Parked: Tiled and LDtk maps, and hot reload of the folders on disk in debug builds"
+title: "Parked: Tiled and LDtk maps, as formats that reload with the rest through 2220"
 type: feature
 milestone: "Engine: real time"
 model: opus-5.5
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 1124 — Tiled and LDtk maps; hot reload
+# 1124 — Tiled and LDtk maps
 
 > **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0060 says the army walks around freely (then 1119–1125 become game work). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
@@ -28,7 +28,9 @@ importers produce one `TileMap`:
 - the map's own properties.
 
 Folders on disk become bundle layers in 2207 (a game's mods first:
-game#1012 and game#1014); this ticket reloads them.
+game#1012 and game#1014). Hot reload of every asset kind is 2220's
+(after MVP, not parked); the maps here reload through it with no extra
+code, because they are formats.
 
 ## Nick input
 
@@ -51,10 +53,10 @@ None.
 - `TileCollision` from a named layer (1122).
 - Disk layers are 2207's: `shuyi-app` reads a folder into a layer
   (only `shuyi-app` touches files, game ADR-0004).
-- Hot reload in debug builds: `shuyi-app` checks the modification times
-  of the disk layers' files once a second. It then calls a reload hook
-  that re-runs the loaders for the changed files. Errors show in a debug
-  overlay instead of crashing.
+- Hot reload is 2220's. **Either order:** if 2220 is done, a test
+  shows a changed `.tmx` reloading through `Hot<TileMap>`, including a
+  change to a TSX tileset it reads; if not, 2220's own tests cover maps
+  once this lands, and this ticket adds nothing for reload.
 - `shuyi-cli import <map> --print` prints the map as our text.
 
 **Out (do not do):** mods' folder and load order (1014); the web build's
@@ -64,15 +66,15 @@ disk layers (none on the web).
 
 1. Write `TileMap` and the Tiled importer, with fixtures.
 2. Add the LDtk types and importer, with fixtures.
-3. Add hot reload of 2207's disk layers, with a test that changes a fixture
-   file through a fake clock and file source.
+3. If 2220 is done, add the map reload test through its headless
+   script.
 
 ## Acceptance criteria
 
 - [ ] Both fixtures import to the same expected `TileMap` (a snapshot of
       its text dump).
 - [ ] A broken fixture names the file and the place in it.
-- [ ] The hot reload test passes.
+- [ ] If 2220 is done, a changed map and a changed tileset reload.
 - [ ] `cargo deny check` passes, and the WASM build passes with both
       importers.
 - [ ] All gates in the `run-gates` skill pass.
@@ -80,6 +82,6 @@ disk layers (none on the web).
 ## Tests required
 
 - Fixture and snapshot tests as above.
-- Unit: reload with a fake file source.
+- Integration: map reload through 2220's script, if 2220 is done.
 
 ## Completion notes

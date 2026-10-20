@@ -90,9 +90,9 @@ None.
     error naming the primitive;
   - `pixel` is true when the base colour texture's sampler uses
     `NEAREST` for magnification (Blender's *Closest*);
-  - `CUBICSPLINE` channels, morph targets and required extensions are
-    errors naming the file and the place; optional extensions are
-    ignored and listed in the decode's `limits`;
+  - `CUBICSPLINE` channels, morph targets (3110 adds them) and required
+    extensions are errors naming the file and the place; optional
+    extensions are ignored and listed in the decode's `limits`;
   - size limits from `DecodeCx`: bytes, vertices, joints (256) and
     channels.
 - **Format `obj`** behind the `obj` feature of `shuyi-3d`, our own

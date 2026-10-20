@@ -1,6 +1,6 @@
 ---
 id: "1132"
-title: "The engine's community files, contribution policy, and a docs site with the examples playable in the browser"
+title: "The engine's community files and contribution policy"
 type: infra
 milestone: "Engine: public"
 model: sonnet-5
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 1132 — Community files, contribution policy, docs site
+# 1132 — Community files and contribution policy
 
 ## Context
 
@@ -29,6 +29,11 @@ The research (the game repository's [feasibility report](https://github.com/Zafn
 ADR-0005 §4 says pull requests are judged by the gates and a clear
 description, however they were written.
 
+This ticket used to hold the docs site too. Nick asked on 2026-10-20 for
+a website like Bevy's (`docs/decisions.md`), so the site is 2801–2806
+now, and this ticket keeps the community files. 2801 links them from its
+Community page.
+
 ## Nick input
 
 None. The policy comes from 0059.
@@ -42,31 +47,26 @@ None. The policy comes from 0059.
   changes.
 - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, and
   issue and PR templates.
-- A docs site on Pages built from `docs/` with a static site
-  generator under an allowed license. It has a getting-started page that
-  uses `shuyi new`, a page per style linking its playable example, a
-  page per crate, and the skills and MCP setup once 1133 and 1134 are
-  done.
 - `AGENTS.md` at the repository root.
 
 **Out (do not do):**
 - a forum or Discord (ask Nick first; that is a time commitment for him);
-- trademark registration (Nick's, outside the repository).
+- trademark registration (Nick's, outside the repository);
+- the website (2801–2806).
 
 ## Implementation steps
 
 1. Write the files.
-2. Build the docs site and Pages workflow, and link the examples.
+2. If 2801 is done, link them from its Community page.
 
 ## Acceptance criteria
 
-- [ ] The docs site is live, and each example plays from it.
 - [ ] The repository shows the community files in GitHub's community
       profile.
 - [ ] All gates pass.
 
 ## Tests required
 
-- Pages build in CI.
+- The link check (`cargo xtask check-links`) over the new files.
 
 ## Completion notes

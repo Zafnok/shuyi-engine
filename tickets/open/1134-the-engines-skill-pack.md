@@ -64,7 +64,7 @@ None.
 1. Write `check-skills` and its tests.
 2. Write the skills and their worked examples, three or four per PR if
    the diff grows past one PR's worth (split into follow-up tickets).
-3. Do the packaging, and add a docs page (1132).
+3. Do the packaging, and add the book's page on it (2802).
 
 ## Acceptance criteria
 
