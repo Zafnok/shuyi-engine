@@ -99,4 +99,7 @@ this one and deletes its copy (game#1169).
 - Language packs' line checks are unchanged (out of scope).
 - Game: the pin-bump PR that deletes the game's `page_lines` is game#1169
   (no PR yet).
+- Deviation: `main` was red (`templates (grid)`): #25 added `style` to
+  `GlyphSkin` and the grid template didn't set it. This PR adds
+  `style: GlyphStyle::PLAIN` to `templates/grid/.../stage.rs` so CI is green.
 - No follow-up tickets. Nick input: none.
