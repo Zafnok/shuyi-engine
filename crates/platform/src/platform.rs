@@ -8,6 +8,7 @@ use core::time::Duration;
 
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageTable;
+pub use shuyi_assets::target::Color;
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
@@ -51,18 +52,6 @@ impl Millis {
     }
 }
 
-/// How many colours a display shows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[non_exhaustive]
-pub enum ColorDepth {
-    /// Full colour: the frame's own RGBA.
-    #[default]
-    Rgba8,
-    /// Black and white (the Playdate's): the frame becomes 1-bit (ticket
-    /// 3006).
-    OneBit,
-}
-
 /// What a backend's display is (ADR-0008 §2). One screen for now; a
 /// device with more (the DS) reports them here once ticket 3023 adds
 /// surfaces.
@@ -73,8 +62,10 @@ pub struct DisplayInfo {
     pub width: u32,
     /// Its height in device pixels.
     pub height: u32,
-    /// How many colours it shows.
-    pub color: ColorDepth,
+    /// How many colours it shows, in a target profile's terms
+    /// ([`Color`], ADR-0008 §1): on `OneBit` the frame becomes 1-bit
+    /// (ticket 3006).
+    pub color: Color,
 }
 
 impl DisplayInfo {
@@ -83,14 +74,14 @@ impl DisplayInfo {
         Self {
             width,
             height,
-            color: ColorDepth::Rgba8,
+            color: Color::Rgba8,
         }
     }
 
     /// The same display in black and white.
     #[must_use]
     pub const fn one_bit(mut self) -> Self {
-        self.color = ColorDepth::OneBit;
+        self.color = Color::OneBit;
         self
     }
 }
@@ -256,8 +247,8 @@ mod tests {
     fn a_display_is_full_colour_unless_said() {
         let screen = DisplayInfo::new(400, 240);
         assert_eq!((screen.width, screen.height), (400, 240));
-        assert_eq!(screen.color, ColorDepth::Rgba8);
-        assert_eq!(screen.one_bit().color, ColorDepth::OneBit);
+        assert_eq!(screen.color, Color::Rgba8);
+        assert_eq!(screen.one_bit().color, Color::OneBit);
         assert!(!Frame::new(Show::Errors("x")).fullscreen);
     }
 }

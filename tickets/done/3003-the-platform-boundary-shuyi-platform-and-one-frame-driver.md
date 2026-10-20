@@ -204,6 +204,14 @@ Game ticket 1175 says all of it
 adds it, and puts it in 1170's `blocked_by`). The game PR that moves
 the pin is 1175's, not opened yet; this engine PR merges first.
 
+**After 2204 and 3001 landed** (merged into this branch): nothing in
+them changes the boundary. 2204's packs are read by a game's own load
+(`Hello::from_pack` fits inside `Start`'s load), and pictures and sounds
+stay files the backend reads. 3001's target profiles name a display's
+colour as `shuyi_assets::target::Color`, so `DisplayInfo::color` uses that
+type instead of a `ColorDepth` of its own. A profile's `backend` names the
+crate that implements `Platform` (`shuyi-app`).
+
 **Follow-ups:** none new. The macroquad backend sends no `Suspend`,
 `Resume` or focus events yet: the Steam Deck's are 3012's, Android's
 3015's.

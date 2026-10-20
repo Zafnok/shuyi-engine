@@ -95,6 +95,9 @@ pub trait Platform {
   the game's data, which loads in a frame. The buffer is the full-colour
   `GlyphBuffer`; 3006 adds the 1-bit form. `DisplayInfo` and `Frame` are
   non-exhaustive so 3023 can add surfaces without breaking a backend.
+  `DisplayInfo::color` is `shuyi_assets::target::Color`, the type a target
+  profile's display names (3001), so a backend's display and a target's
+  profile say colour depth the same way.
 - **`SystemEvent`**: `Suspend`, `Resume`, `FocusLost`, `FocusGained`,
   `QuitRequested`, `LowBattery`, and `ToggleFullscreen` (the window's own
   shortcut, which flips the player's Fullscreen setting, as `shuyi-app`'s

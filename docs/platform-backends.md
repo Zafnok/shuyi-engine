@@ -100,8 +100,10 @@ the player quits.
 ### `display(&self) -> DisplayInfo`
 
 The display as it is now, in device pixels, and whether it shows colour
-(`ColorDepth::Rgba8`) or black and white (`OneBit`). `App` hands it to the
-game's load (`Setup::display`), where a game may pick its console to fit.
+(`Color::Rgba8`) or black and white (`OneBit`): the same
+`shuyi_assets::target::Color` a target profile's display names (ADR-0008
+§1). `App` hands it to the game's load (`Setup::display`), where a game
+may pick its console to fit.
 
 ### `present(&mut self, frame: &Frame)`
 

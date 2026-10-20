@@ -41,6 +41,6 @@ pub mod tick;
 
 pub use app::{App, Card, FrameOutcome, Load, LookOf, Setup, Start, SystemHook};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
-pub use platform::{ColorDepth, DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
+pub use platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
 pub use shuyi_ui::storage::Storage;
 pub use text_input::{TextAnswer, TextAsk, TextInput};
