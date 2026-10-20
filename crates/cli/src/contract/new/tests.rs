@@ -203,7 +203,14 @@ fn the_arguments_name_a_template_and_a_folder() {
     assert!(parse_args(&args(&["grid"])).is_err());
     assert!(parse_args(&args(&["grid", "a", "b"])).is_err());
     assert!(parse_args(&args(&["grid", "a", "--name"])).is_err());
-    assert!(parse_args(&args(&["grid", "a", "--bogus"])).is_err());
+    assert_eq!(
+        parse_args(&args(&["grid", "a", "--bogus"])).unwrap_err(),
+        "unknown option: --bogus"
+    );
+    assert_eq!(
+        parse_args(&args(&["grid", "--bogus"])).unwrap_err(),
+        "unknown option: --bogus"
+    );
     let unknown = parse_args(&args(&["platformer", "a"])).unwrap_err();
     assert_eq!(
         unknown,

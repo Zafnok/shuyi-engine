@@ -126,13 +126,16 @@ fn the_commands_that_run_the_game_need_its_tool_program() {
         r#"(game: (package: "no-such-game"))"#,
     )
     .unwrap();
-    let output = shuyi(&dir, &["lang-status", "xx"]);
-    assert_ne!(output.status.code(), Some(0));
-    assert!(
-        stderr(&output).contains("Cargo.toml"),
-        "{}",
-        stderr(&output)
-    );
+    // The contract's operations that run the game go there too.
+    for args in [&["lang-status", "xx"][..], &["check"], &["run", "--json"]] {
+        let output = shuyi(&dir, args);
+        assert_ne!(output.status.code(), Some(0), "{args:?}");
+        assert!(
+            stderr(&output).contains("Cargo.toml"),
+            "{args:?}: {}",
+            stderr(&output)
+        );
+    }
     fs::remove_dir_all(&dir).unwrap();
 }
 

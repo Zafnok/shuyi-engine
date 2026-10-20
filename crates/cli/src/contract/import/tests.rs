@@ -220,6 +220,13 @@ fn the_arguments_are_a_file_a_kind_and_print() {
     for bad in [&[][..], &["a", "b"], &["a", "--kind"], &["a", "--bogus"]] {
         assert!(parse_args(&args(bad)).is_err(), "{bad:?}");
     }
+    // A flag is never taken for the file.
+    for flags in [&["--bogus"][..], &["a", "--bogus"]] {
+        assert_eq!(
+            parse_args(&args(flags)).unwrap_err(),
+            "unknown option: --bogus"
+        );
+    }
 }
 
 #[test]
