@@ -1,6 +1,7 @@
 //! The game's tools for the engine's `shuyi` (`cargo shuyi <command>`):
 //! `frame-png` (a picture of a frame, painted with the game's own font),
-//! `lang-status`, and the tool contract's `check`, `run` and `import`.
+//! `lang-status`, the tool contract's `check`, `run` and `import`,
+//! and the controls `check --target` checks ([`controls`]).
 //! `scene`, `replay` and `bots` come with a stage and rules: the
 //! `GameTools` methods of those names (`shuyi new grid` shows them).
 //! `examples/tools.rs` is the tool program that runs them; the tests use
@@ -12,8 +13,9 @@ use shuyi_cli::frame_png::{Image, Painter, Script, Shot};
 use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
 use shuyi_platform::harness::Harness;
 use shuyi_ui::GameData;
+use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 
-use crate::{Data, FONT_PNG};
+use crate::{Action, Data, FONT_PNG};
 
 /// The game in the Harness, at its title.
 pub fn harness() -> Harness<Data> {
@@ -33,6 +35,19 @@ pub fn picture(h: &Harness<Data>, scale: u32) -> Result<Image, String> {
         clear,
     )?;
     Ok(painter.render(h.game().buffer(), scale))
+}
+
+/// The game's keymap and every screen it can show ([`crate::screens`]),
+/// for `cargo shuyi check --target`.
+pub fn controls() -> Result<GameControls<Action>, String> {
+    let keymap = loaded()?.keymap_def().clone();
+    let mut ctx = crate::ctx();
+    let screens = crate::screens(&mut ctx);
+    Ok(screens
+        .iter()
+        .fold(GameControls::new(keymap), |game, screen| {
+            game.with(ScreenActions::of(screen.as_ref()))
+        }))
 }
 
 /// The game's data, or its errors in a line each.
@@ -90,5 +105,10 @@ impl GameTools for Tools {
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
         no_options(options)?;
         Ok(Box::new(Headless::new(harness())))
+    }
+
+    /// Its keymap and every screen it can show ([`controls`]).
+    fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
+        Some(controls().map(|c| Box::new(c) as Box<dyn Controls>))
     }
 }

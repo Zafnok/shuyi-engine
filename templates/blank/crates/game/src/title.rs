@@ -52,6 +52,11 @@ impl Screen<Data> for Title {
         "title"
     }
 
+    /// Cancel leaves.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Cancel])
+    }
+
     fn update(&mut self, _: &mut GameCtx, input: &FrameInput<Action>) -> Transition<Data> {
         if input
             .actions

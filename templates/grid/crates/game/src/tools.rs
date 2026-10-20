@@ -2,8 +2,9 @@
 //! `frame-png` (a picture of a frame, painted with the game's own font),
 //! `lang-status`, and the tool contract's `check`, `run` and `scene` (the
 //! stage's map scene and state), `replay` (a [`StageRecord`]), `bots`
-//! (the engine's random bot) and `import` (the stage's `.map` besides the
-//! engine's kinds). `examples/tools.rs` is the tool program that runs
+//! (the engine's random bot), `import` (the stage's `.map` besides the
+//! engine's kinds) and the controls `check --target` checks
+//! ([`controls`]). `examples/tools.rs` is the tool program that runs
 //! them; the tests use them too.
 
 use std::collections::BTreeMap;
@@ -22,9 +23,10 @@ use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
 use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
 use shuyi_platform::harness::Harness;
 use shuyi_ui::GameData;
+use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 
 use crate::stage::{StageScreen, Terrain};
-use crate::{Data, FONT_PNG};
+use crate::{Action, Data, FONT_PNG};
 
 /// The game's own options, for `frame-png`, `run` and `scene`.
 pub const OPTIONS: [GameOption; 1] = [GameOption {
@@ -107,6 +109,19 @@ pub fn events(h: &Harness<Data>) -> Vec<String> {
     h.screen::<StageScreen>()
         .map(|screen| screen.events.iter().map(|e| format!("{e:?}")).collect())
         .unwrap_or_default()
+}
+
+/// The game's keymap and every screen it can show ([`crate::screens`]),
+/// for `cargo shuyi check --target`.
+pub fn controls() -> Result<GameControls<Action>, String> {
+    let keymap = loaded()?.keymap_def().clone();
+    let mut ctx = crate::ctx(0);
+    let screens = crate::screens(&mut ctx);
+    Ok(screens
+        .iter()
+        .fold(GameControls::new(keymap), |game, screen| {
+            game.with(ScreenActions::of(screen.as_ref()))
+        }))
 }
 
 /// The game's data, or its errors in a line each.
@@ -215,5 +230,10 @@ impl GameTools for Tools {
                 map.features.len()
             )
         })
+    }
+
+    /// Its keymap and every screen it can show ([`controls`]).
+    fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
+        Some(controls().map(|c| Box::new(c) as Box<dyn Controls>))
     }
 }

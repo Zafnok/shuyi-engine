@@ -230,6 +230,11 @@ impl Screen<Data> for StageScreen {
         "stage"
     }
 
+    /// The four steps, Confirm to start again and Cancel to leave.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(Action::ALL.to_vec())
+    }
+
     fn update(&mut self, ctx: &mut GameCtx, input: &FrameInput<Action>) -> Transition<Data> {
         for &action in &input.actions {
             let over = self.stage.outcome().is_some();

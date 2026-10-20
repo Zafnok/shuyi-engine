@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["3002"]
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 3038 — The templates declare their controls
@@ -73,11 +73,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] In both templates, every screen declares its actions.
-- [ ] `cargo shuyi check --target all` in a new game of either template
+- [x] In both templates, every screen declares its actions.
+- [x] `cargo shuyi check --target all` in a new game of either template
       passes, and its limits don't say the controls aren't checked.
-- [ ] The templates' own tests pass in CI's template job.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The templates' own tests pass in CI's template job.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -86,5 +86,18 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- Both templates' screens declare their actions: grid's stage all six,
+  blank's title only Cancel.
+- Each template's `lib.rs` has `screens(ctx)`, every screen the game can
+  show (the `screens::all` of hello-grid; neither template has a
+  `screens` module, and neither opens an engine screen yet).
+- Each template's `tools.rs` has `controls()` (a `GameControls` of the
+  keymap and those screens) and `GameTools::controls` returns it.
+- Both keymap files get an empty `targets: {}` with a comment saying
+  where a target without a keyboard puts its buttons. The templates list
+  only `desktop` and `web`, which have keyboards, so no table is needed.
+- A test in each template: the screens listed, each declaring its
+  actions; `GameControls::fit` empty on every target of its `shuyi.ron`;
+  and `check --target all` passing without the "controls aren't checked"
+  limit.
+- No engine change, no follow-up ticket. Nick input: none.
