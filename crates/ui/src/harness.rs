@@ -28,6 +28,7 @@ use crate::audio::{AudioRequest, MusicClock, MusicCommand};
 use crate::ctx::{Ctx, GameData, KeyPrompt};
 use crate::game::{Game, RawInputEvent};
 use crate::input::crank::Crank;
+use crate::input::frame_seconds;
 use crate::input::pad::PadKind;
 use crate::input::state::Device;
 use crate::storage::Storage;
@@ -78,10 +79,8 @@ impl Player {
     /// Lets `dt` seconds pass (nonsense frame times don't count, as in
     /// [`Game`]).
     fn advance(&mut self, dt: f32) {
-        if let Some((_, since)) = &mut self.started
-            && dt.is_finite()
-        {
-            *since += f64::from(dt.max(0.0));
+        if let Some((_, since)) = &mut self.started {
+            *since += f64::from(frame_seconds(dt));
         }
     }
 

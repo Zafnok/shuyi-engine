@@ -10,7 +10,7 @@ pub mod stage;
 use std::any::Any;
 
 use shuyi_assets::dialogue::{Present, Side as Speaker};
-use shuyi_ui::dialogue::{DialoguePlayer, Plain, TextBox, TextView, WaitView};
+use shuyi_ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
 use shuyi_ui::screens::options::{self, OptionRow, OptionsScreen, RowAction, RowValue};
@@ -245,8 +245,8 @@ impl Screen<Hello> for Talk {
         for &action in &input.actions {
             match action {
                 Action::Cancel => return Transition::Pop,
-                Action::Confirm if !self.text.is_revealed() => self.text.reveal(),
-                Action::Confirm if !self.text.next_page() => {
+                // The last page read: the next line.
+                Action::Confirm if self.text.confirm() == Step::Done => {
                     self.player.advance();
                     if self.player.is_finished() {
                         return Transition::Pop;
@@ -259,9 +259,9 @@ impl Screen<Hello> for Talk {
         if self.player.is_finished() {
             return Transition::Pop;
         }
-        self.text.hold(input.is_held(Action::Confirm), input.dt);
+        self.text.hold(input.is_held(Action::Confirm), input.dt());
         self.text
-            .type_on(input.dt, ctx.settings().text_speed.chars_per_s());
+            .type_on(input.dt(), ctx.settings().text_speed.chars_per_s());
         Transition::None
     }
 

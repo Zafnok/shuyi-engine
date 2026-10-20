@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-19
 ---
 
 # 2312 — A frame time you can trust, and a clock the player can hurry
@@ -83,15 +83,15 @@ moves its pin follows this one (game#1166).
 
 ## Acceptance criteria
 
-- [ ] Unit: `FrameInput::new` with `NaN`, `-1.0` and `INFINITY` gives
+- [x] Unit: `FrameInput::new` with `NaN`, `-1.0` and `INFINITY` gives
       `dt` 0; with `0.016` gives `0.016`.
-- [ ] Unit: `HurryClock` passes `dt` unheld, `dt` times the factor
+- [x] Unit: `HurryClock` passes `dt` unheld, `dt` times the factor
       after the delay, and the part of a frame that crosses the delay
       at each speed.
-- [ ] Unit: `confirm` on a page being typed reveals it; on a revealed
+- [x] Unit: `confirm` on a page being typed reveals it; on a revealed
       page with another after it turns; on the last page says `Done`.
-- [ ] The text box's existing tests pass unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The text box's existing tests pass unchanged.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -99,5 +99,35 @@ moves its pin follows this one (game#1166).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **`dt`:** `FrameInput::dt` is now private, read with `dt()`, and is
+  always finite and at least 0: `FrameInput::new` (its only constructor;
+  the `with_*` builders keep it) cleans it with the new public
+  `shuyi_ui::input::frame_seconds`. Private, not a documented public
+  field, because a public field can be written after construction and the
+  promise would be only a debug assertion; the getter makes it hold
+  always. `Game::frame` also cleans its `dt` once at the top, so the
+  clock and the music get the same seconds as the screens. The checks on
+  `input.dt` are gone from the debug camera, the toy's grid field, the
+  example's stage and the Key bindings screen. Public functions that take
+  a raw `f32` themselves (`Cursor::tick`, `MusicState::update`, the
+  harness's music player) keep their documented guard, now the one
+  shared `frame_seconds` instead of each its own copy.
+- **`HurryClock`** (`shuyi_ui::hurry`, re-exported at the crate root):
+  `tick(dt, held) -> f32`, split into `hold` and `passing` for the text
+  box's existing two-call API; `release`, `skip`, `is_skipped`, `reset`;
+  public `delay` and `factor` fields defaulting to `HURRY_DELAY` 0.3 and
+  `HURRY_FACTOR` 6 (today's text box values). The skip is a flag the
+  owner reads and finishes its step on: the clock doesn't know where the
+  step ends. The text box's fast forward runs on it;
+  `FAST_FORWARD` and `FAST_FORWARD_DELAY` stay, as the clock's defaults.
+- **`TextBox::confirm() -> Step`** (`Revealed`, `NextPage`, `Done`;
+  `Step` re-exported from `shuyi_ui::dialogue`). The toy's and the
+  example's talk screens use it.
+- **One test changed:** the Key bindings screen's test said "a NaN frame
+  time ends the moved-row highlight". A NaN can no longer reach a screen
+  (it is 0 seconds), so the test now says a NaN frame passes no time, and
+  the screen's NaN check went. The text box's tests are unchanged.
+- **For the game (game#1166):** its reads of `input.dt` become
+  `input.dt()`, and its 13 cleanups of it can go. The game PR that moves
+  the pin is game#1166's; this engine PR merges first.
+- No follow-up tickets. Nick input: none.

@@ -878,6 +878,17 @@ proptest! {
 }
 
 #[test]
+fn a_frame_time_is_never_negative_or_not_a_number() {
+    for dt in [f32::NAN, -1.0, f32::INFINITY, f32::NEG_INFINITY] {
+        let input = FrameInput::new(Vec::<Action>::new(), dt, Vec::new());
+        assert_eq!(input.dt().to_bits(), 0.0_f32.to_bits(), "{dt}");
+    }
+    let input = FrameInput::new(Vec::<Action>::new(), 0.016, Vec::new());
+    assert_eq!(input.dt().to_bits(), 0.016_f32.to_bits());
+    assert_eq!(frame_seconds(-0.0).to_bits(), 0.0_f32.to_bits());
+}
+
+#[test]
 fn a_frame_holds_what_the_player_did_this_frame() {
     let held = FrameInput::new(vec![Confirm], 0.016, vec![Confirm, CursorUp]);
     assert_eq!(held.actions, [Confirm]);

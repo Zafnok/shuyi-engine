@@ -45,7 +45,7 @@ pub use fixed::{
     TextKey, capture_abort_key_name, clear_slot_key_name, is_capture_abort, is_clear_slot,
     text_key, text_key_names,
 };
-pub use frame::FrameInput;
+pub use frame::{FrameInput, frame_seconds};
 pub use help_keys::{ARROWS, HelpKeys};
 pub use keymap::{ChordWait, Keymap};
 pub use pad::{ButtonSet, PadId, PadKind, PadState, Pads};

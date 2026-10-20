@@ -643,11 +643,7 @@ impl Screen<Toy> for Field {
     }
 
     fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
-        let dt = if input.dt.is_finite() {
-            input.dt.max(0.0)
-        } else {
-            0.0
-        };
+        let dt = input.dt();
         self.cursor.tick(dt);
         // Whole milliseconds of a frame: far fewer than u64 holds.
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]

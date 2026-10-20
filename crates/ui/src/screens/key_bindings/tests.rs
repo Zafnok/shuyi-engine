@@ -421,11 +421,12 @@ fn a_key_used_elsewhere_moves_and_its_old_row_is_highlighted_briefly() {
     s.update(&mut c, &FrameInput::new(vec![], 0.5, vec![]));
     assert_eq!(s.moved, None);
     assert!(!lost(&s, &c, Info));
-    // A NaN frame time ends it rather than leaving it on for good.
+    // A NaN frame time passes no time (FrameInput makes it 0).
     bind(&mut s, &mut c, Confirm, 2, "w");
-    assert!(s.moved.is_some());
+    let moved = s.moved;
+    assert!(moved.is_some());
     s.update(&mut c, &FrameInput::new(vec![], f32::NAN, vec![]));
-    assert_eq!(s.moved, None);
+    assert_eq!(s.moved, moved);
     // Its own row, when focused, is the focused one (a skin shows the
     // cursor over the highlight).
     bind(&mut s, &mut c, Info, 0, "s");

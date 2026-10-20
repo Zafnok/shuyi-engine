@@ -168,7 +168,7 @@ fn screens_see_actions_dt_and_held_keys() {
     game.frame(&[RawInputEvent::Up(Key::F)], 0.0);
     let seen = seen.borrow();
     assert_eq!(seen[0].actions, [Action::CursorRight, Action::Confirm]);
-    assert!((seen[0].dt - 0.1).abs() < f32::EPSILON);
+    assert!((seen[0].dt() - 0.1).abs() < f32::EPSILON);
     assert!(seen[0].is_held(Action::CursorRight));
     assert!(seen[0].is_held(Action::Confirm));
     assert!(seen[1].actions.is_empty());

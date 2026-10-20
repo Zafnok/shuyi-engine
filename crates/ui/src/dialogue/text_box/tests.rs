@@ -133,3 +133,27 @@ fn the_marker_is_out_from_half_a_second_on() {
     b.type_on(BLINK_S, Some(10.0));
     assert!(b.marker_lit(), "lit again at a second");
 }
+
+#[test]
+fn confirm_reveals_the_page_then_turns_it_then_is_done() {
+    let mut b = TextBox::new(TEXT, 11, 2);
+    b.type_on(0.1, Some(10.0));
+    assert_eq!(b.confirm(), Step::Revealed, "a page being typed");
+    assert!(b.is_revealed());
+    assert_eq!(
+        b.confirm(),
+        Step::NextPage,
+        "a revealed page, another after"
+    );
+    assert_eq!(b.page_lines(), ["eeeee fffff", "ggggg hhhhh"]);
+    assert_eq!(b.shown(), 0, "the next page types from its start");
+    assert_eq!(b.confirm(), Step::Revealed);
+    assert_eq!(b.confirm(), Step::NextPage);
+    assert_eq!(b.confirm(), Step::Revealed);
+    assert_eq!(b.confirm(), Step::Done, "the last page");
+    assert_eq!(b.confirm(), Step::Done, "and stays so");
+    assert_eq!(b.page_lines(), ["iiiii jjjjj"]);
+    assert!(b.is_revealed());
+    // An empty box is revealed at once: done.
+    assert_eq!(TextBox::new("", 11, 2).confirm(), Step::Done);
+}
