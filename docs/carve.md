@@ -81,6 +81,10 @@ and so are the ADRs named "game ADR-NNNN".
   (`toy`, the `toy` feature) gained a layout picker the first key opens
   and a gallery of pictures the Debug key opens; the Harness's tests drive
   it (`tests/it`).
+
+  Since the carve, this repository's ticket 3003 moved the run loop out of
+  `shuyi-app` into `shuyi-platform`'s `App`, which every backend drives,
+  and the Harness to `shuyi_platform::harness`, over its headless backend.
 - `shuyi-ui` (1112): widgets (`widgets`: a menu and word wrap), screens
   with the game's rows (`screens`: the Key bindings screen, the layout
   picker, the options screen), the debug menu with the game's tools and

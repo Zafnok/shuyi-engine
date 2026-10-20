@@ -184,6 +184,22 @@ fn screens_see_actions_dt_and_held_keys() {
 }
 
 #[test]
+fn the_steps_due_reach_the_next_frame_only() {
+    let (mut game, seen) = spied();
+    game.frame(&[], 0.1);
+    game.set_ticks(3);
+    game.frame(&[], 0.05);
+    // Told for one frame: the next has none unless told again.
+    game.frame(&[], 0.0);
+    game.set_ticks(1);
+    // An update from outside the keys passes no time and no steps.
+    game.act(Action::Confirm);
+    game.frame(&[], 0.0);
+    let ticks: Vec<u32> = seen.borrow().iter().map(FrameInput::ticks).collect();
+    assert_eq!(ticks, [0, 3, 0, 0, 1]);
+}
+
+#[test]
 fn screens_see_the_keys_pressed_and_the_text_typed() {
     let (mut game, seen) = spied();
     let events = [

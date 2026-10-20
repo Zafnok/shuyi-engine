@@ -32,6 +32,8 @@ pub struct FrameInput<A: ActionSet> {
     buttons_down: Vec<Button>,
     /// The controller buttons that went up this frame, in order.
     buttons_up: Vec<Button>,
+    /// The fixed simulation steps due this frame.
+    ticks: u32,
 }
 
 impl<A: ActionSet> FrameInput<A> {
@@ -48,6 +50,7 @@ impl<A: ActionSet> FrameInput<A> {
             pad: false,
             buttons_down: Vec::new(),
             buttons_up: Vec::new(),
+            ticks: 0,
         }
     }
 
@@ -66,6 +69,23 @@ impl<A: ActionSet> FrameInput<A> {
     /// a screen adds it up as it is.
     pub fn dt(&self) -> f32 {
         self.dt
+    }
+
+    /// The same input with `ticks` fixed simulation steps due.
+    #[must_use]
+    pub fn with_ticks(mut self, ticks: u32) -> Self {
+        self.ticks = ticks;
+        self
+    }
+
+    /// How many fixed simulation steps are due this frame (ADR-0003 §2: 60
+    /// a second, at most 4 a frame): a stage with a tick simulation steps
+    /// it this many times. The platform's `App` counts them from its clock
+    /// (`shuyi_platform::tick`); 0 while the game is suspended, in an
+    /// update with no time passing ([`Game::act`](crate::Game::act)) and
+    /// in a frame no `App` ran.
+    pub fn ticks(&self) -> u32 {
+        self.ticks
     }
 
     /// The controller buttons that went down this frame (bound or not; by

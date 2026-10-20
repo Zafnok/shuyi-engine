@@ -3,9 +3,9 @@
 //! for, the volumes it told the platform, and a music clock that counts
 //! from when a track starts sounding.
 
+use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::GlyphBuffer;
-use shuyi_ui::harness::{FRAME_DT, Harness};
 use shuyi_ui::settings::MAX_VOLUME;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx, Voice};
 use shuyi_ui::{FrameInput, Game, GameHooks, Screen, Transition};

@@ -45,17 +45,12 @@ pub fn web_prefix(name: &str) -> String {
     format!("{name}/")
 }
 
-/// The key the debug-only [`smoke_check`] writes and removes.
-#[cfg(debug_assertions)]
+/// The key [`smoke_check`] writes and removes.
 const SMOKE_TEST_KEY: &str = "smoke_test";
 
-/// Debug-only startup check: writes and reads back a throwaway key and logs
-/// the result, then removes it.
-///
-/// A `#[cfg(debug_assertions)]` island: in a release build, none of this —
-/// including its `macroquad::prelude::{error, info}` imports — is compiled,
-/// so it can't trip `unused_imports`/`dead_code` under `-D warnings` there.
-#[cfg(debug_assertions)]
+/// A startup check, which the backend runs in debug builds as it hands the
+/// game its storage: writes and reads back a throwaway key and logs the
+/// result, then removes it.
 pub fn smoke_check(storage: &mut dyn Storage) {
     use macroquad::prelude::{error, info};
 
@@ -65,7 +60,6 @@ pub fn smoke_check(storage: &mut dyn Storage) {
     }
 }
 
-#[cfg(debug_assertions)]
 fn run_smoke_check(storage: &mut dyn Storage) -> Result<(), shuyi_ui::storage::StorageError> {
     storage.write(SMOKE_TEST_KEY, "ok")?;
     let read_back = storage.read(SMOKE_TEST_KEY)?;

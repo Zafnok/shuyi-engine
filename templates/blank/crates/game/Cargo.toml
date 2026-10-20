@@ -25,12 +25,14 @@ workspace = true
 [features]
 # `tools`: the game's tools for the engine's `shuyi` (`game::tools`), for
 # its tool program and its tests.
-tools = ["dep:shuyi-cli", "shuyi-ui/harness"]
+tools = ["dep:shuyi-cli", "shuyi-platform/harness"]
 
 [dependencies]
 shuyi-assets.workspace = true
 shuyi-ui.workspace = true
-# The window, input devices, audio, storage and the run loop.
+# How the game starts (its loading card and load) and the Harness.
+shuyi-platform.workspace = true
+# The window, input devices, audio and storage: the macroquad backend.
 shuyi-app.workspace = true
 shuyi-cli = { workspace = true, optional = true }
 # The entry point: `#[macroquad::main]` has to be in the binary.

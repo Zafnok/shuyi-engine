@@ -2,7 +2,8 @@
 //! through its tools: the playthrough to the win, the bots over its
 //! `TurnRules`, the tool contract's operations, the same seed and
 //! commands giving the same game, its options and key rebinding, its
-//! profiles, its files, its pack, and pictures of its frames.
+//! profiles, its files, its pack, pictures of its frames, and a sleep and
+//! a wake.
 
 mod bots;
 mod contract;
@@ -13,13 +14,14 @@ mod pack;
 mod playthrough;
 mod profiles;
 mod snapshot;
+mod suspend;
 
 use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::screens::StageScreen;
 use hello_grid::tools::Start;
 use shuyi_core::{Pos, TurnRules, flow_field};
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 
 /// The game at its title, its first stage seeded with `seed`.
 pub fn title(seed: u64) -> Harness<Hello> {

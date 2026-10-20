@@ -46,7 +46,11 @@ None (technical). Scheduling: see above.
   step.
 - `shuyi_ui::tick::TickDriver` holds a screen's accumulator: at most 4
   steps a frame, then it slows down rather than spiral. The Harness can
-  step exact counts (`harness.steps(n)`).
+  step exact counts (`harness.steps(n)`). *Since ticket 3003 the
+  accumulator is `shuyi_platform::App`'s (`shuyi_platform::tick`,
+  ADR-0024 §4): a screen reads the steps due as `FrameInput::ticks()`,
+  so `TickDriver` steps the simulation that many times and keeps no
+  clock of its own.*
 - A tiny example sim in the engine's tests: a dot moved by input with
   inertia.
 - **The debug view (2316).** If 2316 is done, its step runs one fixed

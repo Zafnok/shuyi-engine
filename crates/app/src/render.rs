@@ -303,7 +303,8 @@ impl Renderer {
 }
 
 /// Decodes PNG file `png` into a texture drawn with nearest-pixel sampling.
-fn upload(png: &[u8]) -> Result<Texture2D, String> {
+/// A texture of PNG file `png`, or why it can't be decoded.
+pub(crate) fn upload(png: &[u8]) -> Result<Texture2D, String> {
     let image =
         Image::from_file_with_format(png, Some(ImageFormat::Png)).map_err(|e| e.to_string())?;
     let texture = Texture2D::from_image(&image);
@@ -329,7 +330,8 @@ fn recoloured(png: &[u8], recolour: Recolour) -> Option<Texture2D> {
     Some(texture)
 }
 
-fn color(c: Rgb) -> Color {
+/// `c` as macroquad's colour.
+pub(crate) fn color(c: Rgb) -> Color {
     Color::from_rgba(c.r, c.g, c.b, 255)
 }
 

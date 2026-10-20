@@ -30,6 +30,7 @@ use crate::input::state::Device;
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
+use crate::system_keyboard::SystemKeyboard;
 
 /// [`Storage`] key under which the player's key and controller-button
 /// bindings are saved ([`PlayerKeys::to_ron`]).
@@ -303,6 +304,10 @@ pub struct Ctx<G: GameData> {
     /// [`Game`](crate::Game) starts, along with the
     /// [`device`](Self::device) it has.
     pub keyboard: Keyboard,
+    /// The system's own keyboard for a text box (a console's, Steam's on
+    /// the Steam Deck), if the platform has one: absent here, and the
+    /// platform's `App` says so before every frame.
+    pub system_keyboard: SystemKeyboard,
     /// The language screen text is shown in: English until the player
     /// picks another. The game's debug language
     /// ([`GameData::debug_lang`]) counts only with
@@ -349,6 +354,7 @@ impl<G: GameData> Ctx<G> {
             clock_s: 0.0,
             key_prompt: KeyPrompt::Off,
             keyboard: Keyboard::Present,
+            system_keyboard: SystemKeyboard::default(),
             lang: LangCode::english(),
             english: LangCode::english(),
         })

@@ -4,7 +4,7 @@
 //! layout switched through the layout picker), the Key bindings screen
 //! with the toy's rows, and a scene read in the engine's text box.
 
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 use shuyi_ui::screens::options::{LeaveChoice, OptionsScreen, ValueView};
 use shuyi_ui::settings::{SETTINGS_KEY, TextSpeed};
 use shuyi_ui::storage::Storage;

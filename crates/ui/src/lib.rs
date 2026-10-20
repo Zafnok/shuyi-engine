@@ -11,9 +11,9 @@
 //!   game's part in it, [`GameData`]) and the frame loop ([`Game`]), with
 //!   the player's [`settings`] and [`profiles`], [`storage`], [`audio`]
 //!   requests and the music, and [`text`] placeholders;
-//! - the test `harness` that drives a game without a window
-//!   (the `harness` feature), and a `toy` game to try things on
-//!   (the `toy` feature).
+//! - a `toy` game to try things on (the `toy` feature); the test Harness
+//!   that drives a game without a window is `shuyi_platform::harness`;
+//! - the [`system_keyboard`] a text box may ask the platform for.
 //!
 //! - [`widgets`] screens are built from: a menu and word wrap;
 //! - [`screens`] any game can use, with the game's rows: the layout
@@ -51,8 +51,6 @@ pub mod float;
 pub mod frame;
 pub mod game;
 pub mod grid;
-#[cfg(any(test, feature = "harness"))]
-pub mod harness;
 pub mod hurry;
 pub mod input;
 pub mod profiles;
@@ -60,6 +58,7 @@ pub mod screen;
 pub mod screens;
 pub mod settings;
 pub mod storage;
+pub mod system_keyboard;
 pub mod text;
 pub mod tips;
 #[cfg(any(test, feature = "toy"))]

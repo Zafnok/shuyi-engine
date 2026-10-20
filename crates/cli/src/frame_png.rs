@@ -24,10 +24,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
 use shuyi_assets::image::{ImageId, ImageTable};
+use shuyi_platform::harness::{FRAME_DT, Harness, MAX_FRAMES};
 use shuyi_ui::GameData;
 use shuyi_ui::frame::onebit::{self, Frame};
 use shuyi_ui::frame::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Rgb, Sprite};
-use shuyi_ui::harness::{FRAME_DT, Harness, MAX_FRAMES};
 use shuyi_ui::input::{Button, Chord};
 
 use crate::codec::{decode_png, encode_png};

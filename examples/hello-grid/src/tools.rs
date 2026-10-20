@@ -22,7 +22,7 @@ use shuyi_cli::frame_png::{Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools};
 use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play_observed};
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 use shuyi_ui::{Game, GameData, GameHooks};
 
 use crate::map::Terrain;

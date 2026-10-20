@@ -34,7 +34,7 @@ pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
 
 /// The engine's crates a template may depend on, by their folder under
 /// `crates/`.
-pub const ENGINE_CRATES: [&str; 5] = ["core", "assets", "ui", "app", "cli"];
+pub const ENGINE_CRATES: [&str; 6] = ["core", "assets", "ui", "platform", "app", "cli"];
 
 /// A template of the engine's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

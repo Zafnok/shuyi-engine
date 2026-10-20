@@ -31,8 +31,10 @@ toy = ["shuyi-ui/toy"]
 shuyi-core = { path = "../core" }
 # Fonts, images, palettes, languages and credits.
 shuyi-assets = { path = "../assets" }
-# The frame `frame-png` paints and the Harness that plays a game's script.
-shuyi-ui = { path = "../ui", features = ["harness"] }
+# The frame `frame-png` paints.
+shuyi-ui = { path = "../ui" }
+# The Harness that plays a game's script.
+shuyi-platform = { path = "../platform", features = ["harness"] }
 serde = { workspace = true, features = ["std"] }
 # The project file, `shuyi.ron`, and the font atlas's `atlas.ron`.
 ron = { workspace = true, features = ["std"] }

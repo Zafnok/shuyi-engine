@@ -374,6 +374,7 @@ dependencies = [
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-core",
+ "shuyi-platform",
  "shuyi-ui",
 ]
 
@@ -1088,6 +1089,7 @@ dependencies = [
  "quad-storage",
  "serde",
  "shuyi-assets",
+ "shuyi-platform",
  "shuyi-ui",
  "tempfile",
 ]
@@ -1124,6 +1126,7 @@ dependencies = [
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-core",
+ "shuyi-platform",
  "shuyi-ui",
 ]
 
@@ -1134,6 +1137,15 @@ dependencies = [
  "proptest",
  "ron",
  "serde",
+]
+
+[[package]]
+name = "shuyi-platform"
+version = "0.1.0"
+dependencies = [
+ "shuyi-assets",
+ "shuyi-platform",
+ "shuyi-ui",
 ]
 
 [[package]]
@@ -1148,6 +1160,7 @@ dependencies = [
  "serde",
  "shuyi-assets",
  "shuyi-core",
+ "shuyi-platform",
  "shuyi-ui",
  "thiserror",
 ]

@@ -1,0 +1,655 @@
+//! [`App`]: a whole game behind one call per frame, for the backend's own
+//! loop (ADR-0008 §2, ADR-0023). The backend calls [`App::frame`] with its
+//! clock; `App` reads the system's events and the input from the
+//! [`Platform`], steps the game ([`Game`]: its screens and input state)
+//! and its fixed simulation steps ([`TickClock`]), hands the frame's audio
+//! to the sound device and the frame to the display.
+//!
+//! A game starts in a loading phase ([`Start`]): the first frame shows a
+//! [`Card`] the game gives, the next loads the game behind it, and the
+//! frames after run it. On [`SystemEvent::Suspend`] the game's hook saves
+//! and `App` stops stepping; on [`SystemEvent::Resume`] it forgets the
+//! time it was away, so a sleep never becomes a burst of catch-up steps.
+
+use crate::prelude::*;
+use core::time::Duration;
+
+use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_ui::frame::Rgb;
+use shuyi_ui::input::frame_seconds;
+use shuyi_ui::storage::Storage;
+use shuyi_ui::system_keyboard::TextAnswer;
+use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, Keyboard, RawInputEvent};
+
+use crate::audio::{AudioFrame, SoundRequest};
+use crate::platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
+use crate::text_input::TextInput;
+use crate::tick::TickClock;
+
+/// What a frame tells the backend's loop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[must_use]
+pub enum FrameOutcome {
+    /// Call [`App::frame`] again next frame.
+    Continue,
+    /// The game has quit (it asked to, or the player closed it). A backend
+    /// that can close does; one that can't (a web page) may go on calling
+    /// [`App::frame`], which shows the last frame in silence.
+    Quit,
+}
+
+/// What the screen shows while the game's data loads, from the first frame
+/// (a slow device takes seconds to load a game, and shows nothing until a
+/// frame is drawn). Drawn by the backend with what it has of its own, since
+/// the game's font isn't loaded yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Card {
+    /// A line of text (the game's name, say), centred, in the backend's
+    /// own font.
+    Text {
+        /// The line.
+        line: String,
+        /// Its colour.
+        ink: Rgb,
+        /// The colour of the rest of the screen.
+        background: Rgb,
+    },
+    /// A picture from the game's files, by path, centred at the largest
+    /// whole scale that fits.
+    Picture {
+        /// Its path among the game's files.
+        path: String,
+        /// The colour of the rest of the screen.
+        background: Rgb,
+    },
+}
+
+/// White, a card's ink until said.
+const WHITE: Rgb = Rgb::new(255, 255, 255);
+/// Black, a card's background until said.
+const BLACK: Rgb = Rgb::new(0, 0, 0);
+
+impl Card {
+    /// `line` in white on black.
+    pub fn text(line: impl Into<String>) -> Self {
+        Self::Text {
+            line: line.into(),
+            ink: WHITE,
+            background: BLACK,
+        }
+    }
+
+    /// The picture at `path` among the game's files, on black.
+    pub fn picture(path: impl Into<String>) -> Self {
+        Self::Picture {
+            path: path.into(),
+            background: BLACK,
+        }
+    }
+
+    /// The same card in `ink` (a picture has none) on `background`.
+    #[must_use]
+    pub fn colored(self, ink: Rgb, background: Rgb) -> Self {
+        match self {
+            Self::Text { line, .. } => Self::Text {
+                line,
+                ink,
+                background,
+            },
+            Self::Picture { path, .. } => Self::Picture { path, background },
+        }
+    }
+
+    /// The colour around what it shows.
+    pub fn background(&self) -> Rgb {
+        match self {
+            Self::Text { background, .. } | Self::Picture { background, .. } => *background,
+        }
+    }
+}
+
+/// What the platform gives a game as it loads: what goes into its context
+/// ([`ctx`](Self::ctx)). A backend with more to give (the voice manifest it
+/// read) adds it with [`Start::before_load`].
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct Setup {
+    /// The display, for a game that picks its console to fit it.
+    pub display: DisplayInfo,
+    /// Where the game's saves and settings persist ([`Platform::storage`]).
+    pub storage: Box<dyn Storage>,
+    /// A seed from the clock, different each launch: the music's random
+    /// picks, and a game's own luck where it wants that.
+    pub seed: u64,
+    /// The text of the voice manifest the backend read, if it found one.
+    pub voice_manifest: Option<String>,
+    /// Whether the device has a keyboard: [`Keyboard::Present`] unless the
+    /// backend says not.
+    pub keyboard: Keyboard,
+    /// Whether the game waits for a first key press (browsers block sound
+    /// until one): [`KeyPrompt::Waiting`] unless the backend says not.
+    pub key_prompt: KeyPrompt,
+}
+
+impl Setup {
+    /// `ctx` on this platform: its saves and settings in the platform's
+    /// storage, the voices the voice manifest allows, idle motion on, the
+    /// keyboard and key prompt the backend says, and the music seeded from
+    /// the clock so each launch picks differently.
+    pub fn ctx<G: GameData>(self, mut ctx: Ctx<G>) -> Ctx<G> {
+        ctx.idle_motion = IdleMotion::On;
+        ctx.music_seed = self.seed;
+        ctx.key_prompt = self.key_prompt;
+        ctx.keyboard = self.keyboard;
+        let mut ctx = ctx.with_storage(self.storage);
+        if let Some(manifest) = &self.voice_manifest {
+            ctx.set_voice_manifest(manifest);
+        }
+        ctx
+    }
+}
+
+/// A game's load: its data read and its game made from the [`Setup`], or
+/// why it can't start (shown instead of the game).
+pub type Load<G> = Box<dyn FnOnce(Setup) -> Result<Game<G>, String>>;
+
+/// Where a game's frame finds what it is painted with, in its data.
+pub type LookOf<G> = fn(&G) -> Look<'_>;
+
+/// The game's hook for the system's events: it hears each one after `App`
+/// has done its part. On [`SystemEvent::Suspend`],
+/// [`QuitRequested`](SystemEvent::QuitRequested) and
+/// [`LowBattery`](SystemEvent::LowBattery) it is where the game saves what
+/// it hasn't; on [`FocusLost`](SystemEvent::FocusLost) it may pause.
+pub type SystemHook<G> = fn(&mut Game<G>, SystemEvent);
+
+/// How a game starts: the card shown while it loads, the load, where its
+/// look is and its hook for the system's events.
+pub struct Start<G: GameData> {
+    /// What the first frame shows.
+    pub card: Card,
+    /// Runs on the second frame, the card on the screen.
+    pub load: Load<G>,
+    /// What the game's frames are painted with.
+    pub look: LookOf<G>,
+    /// The game's hook for the system's events, if it has one.
+    pub on_system: Option<SystemHook<G>>,
+}
+
+impl<G: GameData> Start<G> {
+    /// A game that shows `card`, then loads with `load`, painted with what
+    /// `look` finds in its data.
+    pub fn new(
+        card: Card,
+        look: LookOf<G>,
+        load: impl FnOnce(Setup) -> Result<Game<G>, String> + 'static,
+    ) -> Self {
+        Self {
+            card,
+            load: Box::new(load),
+            look,
+            on_system: None,
+        }
+    }
+
+    /// The same start with the game's hook for the system's events.
+    #[must_use]
+    pub fn on_system(mut self, hook: SystemHook<G>) -> Self {
+        self.on_system = Some(hook);
+        self
+    }
+
+    /// The same start with `before` run on the setup ahead of the game's
+    /// load: a backend's own part (the voice manifest it read).
+    #[must_use]
+    pub fn before_load(self, before: impl FnOnce(&mut Setup) + 'static) -> Self {
+        let load = self.load;
+        Self {
+            load: Box::new(move |mut setup| {
+                before(&mut setup);
+                load(setup)
+            }),
+            ..self
+        }
+    }
+}
+
+/// Where the game is.
+enum Phase<G: GameData> {
+    /// Loading: the card, and the load until it has run.
+    Loading {
+        card: Card,
+        load: Option<Load<G>>,
+        /// Whether a frame has shown the card.
+        shown: bool,
+    },
+    /// The game runs.
+    Running(Box<Game<G>>),
+    /// The load failed: why.
+    Failed(String),
+}
+
+/// The time one frame covers.
+#[derive(Debug, Clone, Copy)]
+struct Elapsed {
+    /// The time on the backend's clock, for the sound device.
+    now: Millis,
+    /// Seconds since the last frame, for the screens.
+    dt: f32,
+    /// Fixed simulation steps due.
+    ticks: u32,
+}
+
+/// `App`'s clock: the backend's time at the last frame, or the driver's
+/// own, and the fixed steps owed.
+#[derive(Debug, Default)]
+struct Clock {
+    /// The backend's time at the last frame; `None` before the first and
+    /// after a restart, when a frame counts no time.
+    last: Option<Millis>,
+    /// The time on a driver's own clock ([`App::frame_after`]).
+    driven: Duration,
+    ticks: TickClock,
+}
+
+impl Clock {
+    /// A frame at `now` on the backend's clock.
+    fn at(&mut self, now: Millis) -> Elapsed {
+        let elapsed = self.last.map_or(Duration::ZERO, |last| now.since(last));
+        self.last = Some(now);
+        Elapsed {
+            now,
+            dt: elapsed.as_secs_f32(),
+            ticks: self.ticks.advance(elapsed),
+        }
+    }
+
+    /// A frame `seconds` after the last on the driver's own clock.
+    fn after(&mut self, seconds: f32) -> Elapsed {
+        let dt = frame_seconds(seconds);
+        let elapsed = Duration::try_from_secs_f32(dt).unwrap_or(Duration::ZERO);
+        self.driven = self.driven.saturating_add(elapsed);
+        Elapsed {
+            now: Millis(0).after(self.driven),
+            dt,
+            ticks: self.ticks.advance(elapsed),
+        }
+    }
+
+    /// Forgets the time since the last frame and the steps owed: the next
+    /// frame starts counting again.
+    fn restart(&mut self) {
+        self.last = None;
+        self.ticks.reset();
+    }
+}
+
+/// The lists one frame fills, kept to save allocating them each frame.
+struct Lists<V> {
+    input: Vec<RawInputEvent>,
+    system: Vec<SystemEvent>,
+    sounds: Vec<SoundRequest>,
+    audio: Vec<AudioRequest<V>>,
+    music: Vec<MusicCommand>,
+}
+
+/// A game run one frame at a time by a backend's loop.
+pub struct App<G: GameData> {
+    phase: Phase<G>,
+    look: Option<LookOf<G>>,
+    on_system: Option<SystemHook<G>>,
+    clock: Clock,
+    suspended: bool,
+    focused: bool,
+    quit: bool,
+    lists: Lists<G::Voice>,
+    /// Problems found while loading, for the backend's log.
+    warnings: Vec<String>,
+}
+
+impl<G: GameData> App<G> {
+    /// A game that starts as `start` says: the card, then the load.
+    pub fn new(start: Start<G>) -> Self {
+        let Start {
+            card,
+            load,
+            look,
+            on_system,
+        } = start;
+        Self::in_phase(
+            Phase::Loading {
+                card,
+                load: Some(load),
+                shown: false,
+            },
+            Some(look),
+            on_system,
+        )
+    }
+
+    /// `game`, already loaded and running: for a test, which has no look to
+    /// paint with ([`Show::Game`]'s `look` is `None`).
+    pub fn running(game: Game<G>) -> Self {
+        Self::in_phase(Phase::Running(Box::new(game)), None, None)
+    }
+
+    fn in_phase(
+        phase: Phase<G>,
+        look: Option<LookOf<G>>,
+        on_system: Option<SystemHook<G>>,
+    ) -> Self {
+        Self {
+            phase,
+            look,
+            on_system,
+            clock: Clock::default(),
+            suspended: false,
+            focused: true,
+            quit: false,
+            lists: Lists {
+                input: Vec::new(),
+                system: Vec::new(),
+                sounds: Vec::new(),
+                audio: Vec::new(),
+                music: Vec::new(),
+            },
+            warnings: Vec::new(),
+        }
+    }
+
+    /// Gives the game `hook` for the system's events, in place of any it
+    /// had.
+    pub fn set_system_hook(&mut self, hook: SystemHook<G>) {
+        self.on_system = Some(hook);
+    }
+
+    /// Runs one frame at `now` on the backend's clock: the system's events,
+    /// then the input, the game's update and its fixed steps, the audio,
+    /// and the frame to present. The time since the last frame is what the
+    /// screens see and the steps are made of; the first frame, and the
+    /// first after a load or a [`SystemEvent::Resume`], count none.
+    pub fn frame(&mut self, platform: &mut impl Platform, now: Millis) -> FrameOutcome {
+        self.system_events(platform);
+        let elapsed = self.clock.at(now);
+        self.run(platform, elapsed)
+    }
+
+    /// Runs one frame `seconds` after the last on a clock of the driver's
+    /// own, as [`frame`](Self::frame) does otherwise: for a driver whose
+    /// frames a clock in whole milliseconds can't give (the test Harness's,
+    /// exactly 1/60 s), or a backend whose system says how long the last
+    /// frame took. A driver uses this or `frame`, never both.
+    pub fn frame_after(&mut self, platform: &mut impl Platform, seconds: f32) -> FrameOutcome {
+        self.system_events(platform);
+        let elapsed = self.clock.after(seconds);
+        self.run(platform, elapsed)
+    }
+
+    /// Reads the system's events and acts on them; a resume restarts the
+    /// clock before this frame reads it.
+    fn system_events(&mut self, platform: &mut impl Platform) {
+        let mut events = core::mem::take(&mut self.lists.system);
+        events.clear();
+        platform.system_events(&mut events);
+        for &event in &events {
+            self.on_system_event(event);
+        }
+        self.lists.system = events;
+    }
+
+    fn on_system_event(&mut self, event: SystemEvent) {
+        if self.quit {
+            return;
+        }
+        match event {
+            SystemEvent::Suspend => self.suspended = true,
+            SystemEvent::Resume => {
+                self.suspended = false;
+                self.clock.restart();
+            }
+            SystemEvent::FocusLost => self.focused = false,
+            SystemEvent::FocusGained => self.focused = true,
+            SystemEvent::QuitRequested => self.quit = true,
+            SystemEvent::ToggleFullscreen => {
+                if let Some(game) = self.game_mut() {
+                    game.toggle_fullscreen();
+                }
+            }
+            SystemEvent::LowBattery => {}
+        }
+        if let (Some(hook), Phase::Running(game)) = (self.on_system, &mut self.phase) {
+            hook(game, event);
+        }
+    }
+
+    fn run(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
+        self.lists.audio.clear();
+        self.lists.music.clear();
+        if self.suspended && !self.quit {
+            // Suspended: nothing steps and nothing is shown.
+            drain(platform, &mut self.lists.input);
+            return FrameOutcome::Continue;
+        }
+        let mut loading = None;
+        match &mut self.phase {
+            Phase::Loading { card, load, shown } => {
+                if *shown && !self.quit {
+                    loading = load.take();
+                } else {
+                    *shown = true;
+                    platform.present(&Frame::new(Show::Card(card)));
+                    drain(platform, &mut self.lists.input);
+                }
+            }
+            Phase::Running(game) if !self.quit => {
+                step(platform, game, &mut self.lists, elapsed);
+                if game.quit_requested() {
+                    platform.audio().stop_all();
+                    self.quit = true;
+                }
+                present_game(platform, game, self.look);
+            }
+            Phase::Running(game) => {
+                // The game has quit: its last frame, in silence.
+                drain(platform, &mut self.lists.input);
+                present_game(platform, game, self.look);
+            }
+            Phase::Failed(errors) => {
+                platform.present(&Frame::new(Show::Errors(errors)));
+                drain(platform, &mut self.lists.input);
+            }
+        }
+        if let Some(load) = loading {
+            self.load(platform, load, elapsed.now);
+        }
+        if self.quit {
+            FrameOutcome::Quit
+        } else {
+            FrameOutcome::Continue
+        }
+    }
+
+    /// Runs the game's load, the card on the screen, and shows the game it
+    /// made, or why it couldn't.
+    fn load(&mut self, platform: &mut impl Platform, load: Load<G>, now: Millis) {
+        let setup = Setup {
+            display: platform.display(),
+            storage: platform.storage(),
+            seed: mix(now.0),
+            voice_manifest: None,
+            keyboard: Keyboard::Present,
+            key_prompt: KeyPrompt::Waiting,
+        };
+        drain(platform, &mut self.lists.input);
+        match load(setup) {
+            Ok(mut game) => {
+                // E.g. saved key bindings that had to be repaired.
+                self.warnings.extend(game.ctx_mut().take_warnings());
+                present_game(platform, &game, self.look);
+                self.phase = Phase::Running(Box::new(game));
+            }
+            Err(errors) => {
+                platform.present(&Frame::new(Show::Errors(&errors)));
+                self.phase = Phase::Failed(errors);
+            }
+        }
+        // The game's time starts now, not before its load.
+        self.clock.restart();
+    }
+
+    /// The game, once it has loaded.
+    pub fn game(&self) -> Option<&Game<G>> {
+        match &self.phase {
+            Phase::Running(game) => Some(game),
+            Phase::Loading { .. } | Phase::Failed(_) => None,
+        }
+    }
+
+    /// The game, once it has loaded, to change from outside a frame (a
+    /// test, a platform's own menu: [`Game::act`]).
+    pub fn game_mut(&mut self) -> Option<&mut Game<G>> {
+        match &mut self.phase {
+            Phase::Running(game) => Some(game),
+            Phase::Loading { .. } | Phase::Failed(_) => None,
+        }
+    }
+
+    /// Ends the run, handing back the game if it loaded.
+    pub fn into_game(self) -> Option<Game<G>> {
+        match self.phase {
+            Phase::Running(game) => Some(*game),
+            Phase::Loading { .. } | Phase::Failed(_) => None,
+        }
+    }
+
+    /// Whether the game hasn't loaded yet.
+    pub fn is_loading(&self) -> bool {
+        matches!(self.phase, Phase::Loading { .. })
+    }
+
+    /// Why the game couldn't start, if its load failed.
+    pub fn errors(&self) -> Option<&str> {
+        match &self.phase {
+            Phase::Failed(errors) => Some(errors),
+            Phase::Loading { .. } | Phase::Running(_) => None,
+        }
+    }
+
+    /// Whether the system has suspended the game.
+    pub fn is_suspended(&self) -> bool {
+        self.suspended
+    }
+
+    /// Whether the game's window has the player's attention (until the
+    /// system says otherwise, it has).
+    pub fn is_focused(&self) -> bool {
+        self.focused
+    }
+
+    /// Whether the game has quit.
+    pub fn has_quit(&self) -> bool {
+        self.quit
+    }
+
+    /// Problems found while loading (saved key bindings that had to be
+    /// repaired, say), for the backend's log; each is given once.
+    pub fn take_warnings(&mut self) -> Vec<String> {
+        core::mem::take(&mut self.warnings)
+    }
+
+    /// The audio the screens asked for in the last frame, in order, as they
+    /// asked (the device got it as [`SoundRequest`]s).
+    pub fn audio(&self) -> &[AudioRequest<G::Voice>] {
+        &self.lists.audio
+    }
+
+    /// The music commands of the last frame, in order.
+    pub fn music(&self) -> &[MusicCommand] {
+        &self.lists.music
+    }
+}
+
+/// Reads the input into `input` and drops it: a frame where nothing takes
+/// it.
+fn drain(platform: &mut impl Platform, input: &mut Vec<RawInputEvent>) {
+    input.clear();
+    platform.poll_input(input);
+    input.clear();
+}
+
+/// One frame of the running game: the input, the system keyboard's
+/// answer, the music sounding and the steps due go in; the update runs;
+/// its audio goes to the device and a keyboard it asked for opens.
+fn step<G: GameData>(
+    platform: &mut impl Platform,
+    game: &mut Game<G>,
+    lists: &mut Lists<G::Voice>,
+    elapsed: Elapsed,
+) {
+    lists.input.clear();
+    platform.poll_input(&mut lists.input);
+    let keyboard = &mut game.ctx_mut().system_keyboard;
+    let text_input = platform.text_input();
+    keyboard.set_present(text_input.is_some());
+    if keyboard.is_waiting()
+        && let Some(answer) = text_input.and_then(TextInput::poll)
+    {
+        keyboard.answer(answer);
+    }
+    game.set_music_playing(platform.audio().music_playing(elapsed.now));
+    game.set_ticks(elapsed.ticks);
+    let out = game.frame(&lists.input, elapsed.dt);
+    lists.audio.extend_from_slice(out.audio);
+    lists.music.extend_from_slice(out.music);
+    let (music_volume, sound_volume, voice_volume) =
+        (out.music_volume, out.sound_volume, out.voice_volume);
+    lists.sounds.clear();
+    let sounds = lists.audio.iter().filter_map(SoundRequest::from_request);
+    lists.sounds.extend(sounds);
+    let audio = AudioFrame {
+        requests: &lists.sounds,
+        music: &lists.music,
+        music_volume,
+        sound_volume,
+        voice_volume,
+    };
+    platform.audio().play(&audio, elapsed.now);
+    let keyboard = &mut game.ctx_mut().system_keyboard;
+    if let Some(ask) = keyboard.take_ask() {
+        let opened = platform.text_input().is_some_and(|input| input.open(&ask));
+        if !opened {
+            keyboard.answer(TextAnswer::Cancelled);
+        }
+    }
+}
+
+/// Presents `game`'s last frame, on its background, in the window mode
+/// its settings ask for.
+fn present_game<G: GameData>(
+    platform: &mut impl Platform,
+    game: &Game<G>,
+    look: Option<LookOf<G>>,
+) {
+    let ctx = game.ctx();
+    let show = Show::Game {
+        buffer: game.buffer(),
+        background: ctx.game.blank_cell(&ctx.palette).bg,
+        look: look.map(|look| look(&ctx.game)),
+    };
+    let mut frame = Frame::new(show);
+    frame.fullscreen = ctx.settings().fullscreen;
+    platform.present(&frame);
+}
+
+/// `x` mixed (`SplitMix64`'s finalizer), so two launches a millisecond
+/// apart get seeds far apart.
+fn mix(x: u64) -> u64 {
+    let mut z = x.wrapping_add(0x9E37_79B9_7F4A_7C15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z ^ (z >> 31)
+}
+
+#[cfg(test)]
+mod tests;

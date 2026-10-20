@@ -9,9 +9,9 @@
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
-use shuyi_ui::harness::{FRAME_DT, Harness};
 
 use crate::frame_png::Script;
 

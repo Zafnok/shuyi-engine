@@ -6,8 +6,8 @@
 
 use insta::assert_snapshot;
 use shuyi_core::Pos;
+use shuyi_platform::harness::Harness;
 use shuyi_ui::grid::{GridSkin, MapScene, MapUnit};
-use shuyi_ui::harness::Harness;
 use shuyi_ui::toy::grid::{AREA, Field, GLYPH, MOVE, Piece, SPRITE_WALK};
 use shuyi_ui::toy::{self, Toy};
 use shuyi_ui::{Game, GameHooks};

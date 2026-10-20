@@ -14,7 +14,7 @@ use shuyi_cli::contract::import::{ImportInput, import};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, scene};
 use shuyi_core::{Dir, Pos, TurnRules};
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 
 fn stage(h: &Harness<game::Data>) -> &StageScreen {
     h.screen::<StageScreen>()

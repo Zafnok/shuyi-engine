@@ -16,8 +16,8 @@ mod sprites;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use shuyi_platform::harness::Harness;
 use shuyi_ui::frame::GlyphBuffer;
-use shuyi_ui::harness::Harness;
 use shuyi_ui::input::Button;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
 use shuyi_ui::{FrameInput, Game, GameHooks, Screen, Transition};

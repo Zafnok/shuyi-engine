@@ -107,6 +107,7 @@ and a game that needs more than that doesn't export there
 | `docs/carve.md` | What came from the game, layer by layer, and the game's tickets that moved it |
 | `docs/formats.md` | Asset kinds and file formats: the built-in formats, and how to write a format plugin |
 | `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, their JSON answers and schemas |
+| `docs/platform-backends.md` | How to write a platform backend: the `Platform` trait, what each method must do, the headless backend as a reference, and why console backends stay private |
 | `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
@@ -115,16 +116,17 @@ The engine's own shippable skills arrive later (`skills/`, ticket 1134).
 ## The crates
 
 Each sits under the game crate of the same layer (game ADR-0063 §2). The
-core is pure and deterministic, only the app touches the platform, time
-is an argument, and there's no `unsafe` outside the app. An engine crate
-never depends on a game.
+core is pure and deterministic, only platform backends touch devices,
+time is an argument, and there's no `unsafe` outside the app. An engine
+crate never depends on a game.
 
 | Crate | Folder | Owns |
 | ----- | ------ | ---- |
 | `shuyi-core` | `crates/core` | The seeded RNG, the simulation traits, and the tactics kit: grid, paths, turns. No I/O. |
 | `shuyi-assets` | `crates/assets` | Bundle layers, images, fonts, palette, audio cues, languages, keymaps, tilesets, importers, error reports. |
-| `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics, the grid map and the test Harness. |
-| `shuyi-app` | `crates/app` | The window, blitting, input devices, the audio backend, storage and the run loop. |
+| `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics and the grid map. |
+| `shuyi-platform` | `crates/platform` | The platform boundary: the `Platform` trait every backend implements, `App`, which runs one frame of a game for the backend's loop (the loading card, fixed steps, suspend and resume), the headless backend and the test Harness. No devices ([`docs/platform-backends.md`](docs/platform-backends.md)). |
+| `shuyi-app` | `crates/app` | The macroquad backend, for desktop and the web: the window, blitting, input devices, the audio player and storage, and the loop that drives `App`. |
 | `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, each with `--json`), and `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for

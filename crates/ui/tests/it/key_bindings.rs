@@ -2,7 +2,7 @@
 //! a rebound key works at the next press, plain Escape always cancels,
 //! and each layout's keys are saved and come back at the next launch.
 
-use shuyi_ui::harness::Harness;
+use shuyi_platform::harness::Harness;
 use shuyi_ui::input::{Chord, Layout, LayoutBindings};
 use shuyi_ui::toy::{self, Action, LEFT_HANDED, RIGHT_HANDED, Toy};
 

@@ -9,8 +9,8 @@ use hello_grid::rules::{Outcome, Side, TRIP_PERCENT};
 use hello_grid::screens::{End, Leave, StageScreen, Talk, Title};
 use shuyi_assets::dialogue::{DialogueTable, NoDirective, parse_dlg};
 use shuyi_core::{Pos, Sides, SimRng};
+use shuyi_platform::harness::Harness;
 use shuyi_ui::grid::MapUnit;
-use shuyi_ui::harness::Harness;
 use shuyi_ui::{Game, GameHooks};
 
 use crate::{play_out, stage, title, to_the_foe, to_the_goal, walk_to};
