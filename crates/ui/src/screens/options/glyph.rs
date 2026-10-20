@@ -7,6 +7,7 @@
 use super::view::{OptionsView, RowView, ValueView};
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::EngineColor;
+use crate::frame::draw::PanelLook;
 use crate::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use crate::prelude::*;
 use crate::screens::print_centred;
@@ -66,10 +67,10 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &OptionsView, buf: &mut GlyphBuffe
     let (text, dim) = (c(EngineColor::Text), c(EngineColor::TextDim));
     buf.fill_rect(buf.bounds(), Cell::new(' ', text, black));
     let panel = panel(view, buf);
-    buf.fill_rect(panel, Cell::new(' ', text, bg));
-    buf.draw_box(panel, BoxStyle::Single, c(EngineColor::Border), bg);
-    let title = format!(" {} ", view.title);
-    buf.print(panel.x + 2, panel.y, &title, c(EngineColor::Highlight), bg);
+    let look = PanelLook::new(BoxStyle::Single, text, bg)
+        .border(c(EngineColor::Border))
+        .title(c(EngineColor::Highlight));
+    buf.panel(panel, &look, Some(&view.title));
 
     let mut y = panel.y + 2;
     for row in &view.rows {

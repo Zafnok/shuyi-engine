@@ -10,6 +10,8 @@ pub mod options;
 
 use crate::prelude::*;
 
+pub use crate::frame::draw::cut;
+
 use crate::ctx::{Ctx, GameData};
 use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::GlyphBuffer;
@@ -41,15 +43,6 @@ pub fn print_centred(buf: &mut GlyphBuffer, y: i32, text: &str, fg: Rgb, bg: Rgb
     let shown = cut(text, usize::from(buf.width()));
     let x = centre_x(buf, shown.chars().count());
     buf.print(x, y, &shown, fg, bg);
-}
-
-/// `text` in at most `w` cells: cut, its last cell a `…`, if it is longer.
-pub fn cut(text: &str, w: usize) -> String {
-    if text.chars().count() <= w {
-        return text.to_owned();
-    }
-    let kept: String = text.chars().take(w.saturating_sub(1)).collect();
-    if w == 0 { kept } else { kept + "…" }
 }
 
 #[cfg(test)]
