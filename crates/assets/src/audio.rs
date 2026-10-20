@@ -18,7 +18,7 @@ mod formats;
 
 use alloc::collections::{BTreeMap, BTreeSet};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{ContentError, line_of};
 use crate::ron::parse_ron;
@@ -41,7 +41,7 @@ pub const MAX_VOLUME: u8 = 100;
 pub const LENGTH_TOLERANCE_MS: u32 = 20;
 
 /// The validated audio manifest.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct AudioManifest {
     /// How long a music track fades out before the next one starts, in
     /// milliseconds (`audio.md`: 0.5 s, *tunable*).
@@ -57,7 +57,7 @@ pub struct AudioManifest {
 }
 
 /// A sound effect: one of its files plays each time.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SoundCue {
     /// The variants, relative to `base/audio/`; one is picked at random
     /// each time the cue plays. At least one.
@@ -69,7 +69,7 @@ pub struct SoundCue {
 }
 
 /// A music track.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MusicCue {
     /// The track, relative to the `music/` folder.
     pub file: String,
@@ -91,7 +91,7 @@ fn yes() -> bool {
 }
 
 /// Who made a sound or a track.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum CreditRef {
     /// We made it.
     Own,
@@ -114,7 +114,7 @@ impl CreditRef {
 }
 
 /// One third-party work, for the credits screen (`audio.md` rule 3).
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Credit {
     /// The work's title.
     pub title: String,

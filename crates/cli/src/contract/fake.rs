@@ -2,13 +2,18 @@
 //! what the test sets.
 
 use shuyi_assets::ContentError;
+use shuyi_assets::bundle::{Bundle, Layer};
+use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
+use shuyi_assets::names::Names;
+use shuyi_assets::pack::Bake;
+use shuyi_assets::palette::PaletteDef;
 
 use super::bots::{BotsInput, BotsOutput, tally};
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, Scene, Session, Sound};
 use crate::frame_png::{Script, Shot, Step};
-use crate::game::{GameArg, GameLang, GameOption, GameTools};
+use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
 /// second of waiting) and shows what it was given.
@@ -103,7 +108,17 @@ pub struct Fake {
     pub replay: Result<(), String>,
     /// `bots`'s plays, or why there are none.
     pub bots: Result<BotsOutput, String>,
+    /// The files `bake` bakes (its names table and palette are baked), or
+    /// none if it doesn't offer `bake`.
+    pub sources: Option<&'static [(&'static str, &'static [u8])]>,
 }
+
+/// A game's sources: a names table, a palette and a picture.
+pub static SOURCES: &[(&str, &[u8])] = &[
+    ("data/names.ron", br#"{"hero": "Ana"}"#),
+    ("data/palette.ron", br##"{"black": "#000000"}"##),
+    ("images/a.png", b"not really a picture"),
+];
 
 impl Default for Fake {
     fn default() -> Self {
@@ -112,6 +127,7 @@ impl Default for Fake {
             session: Ok(FakeSession::on("stage", "map")),
             replay: Ok(()),
             bots: Ok(tally(Vec::new())),
+            sources: Some(SOURCES),
         }
     }
 }
@@ -171,5 +187,16 @@ impl GameTools for Fake {
 
     fn bots(&self, _: &BotsInput) -> Result<BotsOutput, String> {
         self.bots.clone()
+    }
+
+    fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
+        let sources = self.sources.ok_or("no bake")?;
+        Ok(GameBake {
+            bake: Bake::new(format!("fake for {}", target.unwrap_or("all")))
+                .asset::<Names>("data/names")
+                .asset::<PaletteDef>("data/palette"),
+            bundle: Bundle::new(vec![Layer::table("base", sources)]),
+            formats: Formats::standard(),
+        })
     }
 }

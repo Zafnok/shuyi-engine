@@ -4,6 +4,7 @@
 //! letter), filled in by [`Names::substitute`] when it is shown. As a
 //! format (ADR-0007): [`NamesRon`].
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use alloc::borrow::Cow;
 use alloc::collections::BTreeMap;
@@ -17,7 +18,7 @@ use crate::lang::text_width;
 use crate::ron::parse_ron;
 
 /// Every display name, by name id.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Names {
     /// Display names by id.
     pub names: BTreeMap<String, String>,

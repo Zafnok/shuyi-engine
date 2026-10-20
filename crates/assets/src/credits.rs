@@ -13,7 +13,7 @@ use crate::prelude::*;
 
 use alloc::collections::BTreeSet;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::audio::{self, AudioManifest};
 use crate::error::{ContentError, line_of};
@@ -101,7 +101,7 @@ pub const LICENSES: [&str; 15] = [
 
 /// The kinds of work the credits screen groups by, in the order it shows
 /// them.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub enum CreditGroup {
     /// Music tracks (from the audio manifest's music cues).
     Music,
@@ -133,7 +133,7 @@ impl CreditGroup {
 }
 
 /// One entry of the credits file.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct FileCredit {
     /// Stable id, unique in the file.
@@ -194,7 +194,7 @@ struct RawFile {
 }
 
 /// The validated credits file, in file order, hidden entries included.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreditsFile {
     /// The entries.
     pub credits: Vec<FileCredit>,

@@ -118,6 +118,11 @@
           "const": "import"
         },
         {
+          "description": "The game's sources baked into a pack.",
+          "type": "string",
+          "const": "bake"
+        },
+        {
           "description": "The toolchain checked.",
           "type": "string",
           "const": "doctor"

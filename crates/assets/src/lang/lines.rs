@@ -9,6 +9,7 @@ use core::fmt;
 
 use serde::de::DeserializeSeed;
 use serde::de::{self, Deserializer, MapAccess, Visitor};
+use serde::{Deserialize, Serialize};
 
 use super::source::{LineKind, SourceText};
 use super::{Lang, LangCode, LangPack, PackRules};
@@ -124,7 +125,7 @@ impl<'de> Visitor<'de> for RawLines<'_> {
 }
 
 /// A line in a pack's language.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LineText {
     /// The same whichever variant is played (`text`).
     One(String),
@@ -154,7 +155,7 @@ impl LineText {
 }
 
 /// One dialogue line or caption of a pack.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LineEntry {
     /// The line id, or the caption key.
     pub key: String,

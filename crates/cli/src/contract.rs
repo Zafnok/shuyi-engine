@@ -7,13 +7,14 @@
 //! | Op | Does | Module |
 //! | -- | ---- | ------ |
 //! | `new <template> <dir>` | a new game from `templates/grid` or `templates/blank` | [`new`] |
-//! | `check` | every error of every validator of the game's content | [`check`] |
+//! | `check [--baked]` | every error of every validator of the game's content; with `--baked`, every way its pack differs from its sources | [`check`] |
 //! | `check --target <id>` | whether the game's frame and text fit a target's display | [`check`], [`target`] |
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds | [`run`] |
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
 //! | `bots <n>` | the engine's bots play n games: outcomes and measures | [`bots`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
+//! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
 //!
 //! Every answer is an [`Answer`]: the contract's [`VERSION`], the
@@ -25,6 +26,7 @@
 //! ([`schemas`]) and checked in under `crates/cli/schemas/`. A test fails
 //! when they change and [`VERSION`] doesn't.
 
+pub mod bake;
 pub mod bots;
 pub mod check;
 pub mod cli;
@@ -47,7 +49,7 @@ use shuyi_assets::ContentError;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -67,13 +69,15 @@ pub enum Op {
     Bots,
     /// A file read through the format registry.
     Import,
+    /// The game's sources baked into a pack.
+    Bake,
     /// The toolchain checked.
     Doctor,
 }
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 8] = [
+    pub const ALL: [Op; 9] = [
         Op::New,
         Op::Check,
         Op::Run,
@@ -81,6 +85,7 @@ impl Op {
         Op::Replay,
         Op::Bots,
         Op::Import,
+        Op::Bake,
         Op::Doctor,
     ];
 
@@ -94,6 +99,7 @@ impl Op {
             Op::Replay => "replay",
             Op::Bots => "bots",
             Op::Import => "import",
+            Op::Bake => "bake",
             Op::Doctor => "doctor",
         }
     }
@@ -265,6 +271,7 @@ pub fn schemas() -> Vec<SchemaFile> {
             Op::Replay => pair::<replay::ReplayInput, replay::ReplayOutput>(op),
             Op::Bots => pair::<bots::BotsInput, bots::BotsOutput>(op),
             Op::Import => pair::<import::ImportInput, import::ImportOutput>(op),
+            Op::Bake => pair::<bake::BakeInput, bake::BakeOutput>(op),
             Op::Doctor => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op),
         })
         .collect()

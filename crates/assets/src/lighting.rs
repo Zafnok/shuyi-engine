@@ -5,7 +5,7 @@ use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
@@ -72,7 +72,7 @@ const PARTS: u16 = 1000;
 /// `grey` of the way to its own grey, then its red, green and blue are
 /// multiplied by `tint`. The numbers are thousandths (0 to 1000), so a
 /// light is a plain value a frame item can carry and compare.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Light {
     /// How far a colour goes to its own grey: 0 = not at all, 1000 = grey.
     pub grey: u16,
@@ -141,7 +141,7 @@ fn to_channel(v: f32) -> u8 {
 }
 
 /// Every light, by name.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Lighting {
     /// The lights by name.
     pub lights: BTreeMap<String, Light>,

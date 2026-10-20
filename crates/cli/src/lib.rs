@@ -1,5 +1,5 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
-//! `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, each
+//! `check`, `run`, `scene`, `replay`, `bots`, `import`, `bake`, `doctor`, each
 //! with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
@@ -33,7 +33,7 @@ pub mod web;
 
 use std::path::{Path, PathBuf};
 
-pub use game::{GameArg, GameLang, GameOption, GameTools};
+pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools};
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
@@ -46,13 +46,16 @@ usage: {command} <command>
 
 the tool contract (each also with --json; a wrong argument prints its usage):
   new <template> <dir>               make a new game from a template: grid, blank
-  check                              every error of the game's content, with file and line
+  check [--baked]                    every error of the game's content, with file and line;
+                                     --baked: and every way its pack differs from its sources
   check --target <id | all>          whether the frame and its text fit a target's display
   run [steps] [--frames N]           play a key script headless: screens, scene, events, sounds
   scene [steps]                      the scene on screen after a script
   replay <record> [<other>]          a state hash per step; where two runs part
   bots <games>                       the game's bots play: outcomes and measures
   import <file> [--print]            read a file through the format registry
+  bake [--target <id>] [--out <file>]
+                                     bake the game's sources into one pack: sizes and times
   doctor                             check the toolchain and say how to fix it
   schema [<name> | --out <dir>]      the contract's JSON schemas
 

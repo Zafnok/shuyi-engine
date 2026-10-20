@@ -4,7 +4,9 @@
 use shuyi_assets::keymap::{ActionSet, Chord, Key, UiAction};
 
 /// Everything a player of Hello, Grid can ask for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Action {
     /// Move the cursor (or a menu's focus) up.
     Up,

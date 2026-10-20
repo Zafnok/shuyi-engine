@@ -36,7 +36,9 @@ pub fn keymap() -> KeymapDef<Action> {
 const FIXED_KEYS: [(Chord, Action); 1] = [(Chord::plain(Key::Escape), Action::Cancel)];
 
 /// Everything a player of the sample game can ask for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 pub enum Action {
     /// Move the cursor one tile left.
     CursorLeft,
