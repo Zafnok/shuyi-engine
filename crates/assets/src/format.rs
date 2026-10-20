@@ -478,7 +478,9 @@ impl Formats {
     /// directives, actions, shots) or follow its rules (the glyphs it
     /// needs, its language rules) are the game's to register, with them.
     pub fn register_standard(&mut self) -> Result<(), RegisterError> {
-        use crate::{audio, bitmap, credits, dialogue, font, image, lighting, names, palette};
+        use crate::{
+            audio, bitmap, credits, dialogue, font, image, lighting, names, palette, target,
+        };
         self.register(image::PngInfo)?;
         self.register(bitmap::OneBitInfo)?;
         #[cfg(feature = "png")]
@@ -493,6 +495,7 @@ impl Formats {
         self.register(lighting::LightingRon::default())?;
         self.register(names::NamesRon)?;
         self.register(dialogue::Dlg::<dialogue::NoDirective>::new())?;
+        self.register(target::TargetRon)?;
         Ok(())
     }
 

@@ -103,6 +103,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Hello, Grid fits every target it lists
+        working-directory: examples/hello-grid
+        run: cargo shuyi check --target all
       - name: Build Hello, Grid for the web
         working-directory: examples/hello-grid
         run: cargo shuyi web --release
@@ -145,6 +148,7 @@ jobs:
           cargo clippy --workspace --all-targets -- -D warnings
           cargo test --workspace
           cargo shuyi check
+          cargo shuyi check --target all
           cargo shuyi check-keys
 
   # The crates a Playdate game builds without `std` (game ADR-0070 §3, §6).

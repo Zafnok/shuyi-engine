@@ -588,6 +588,7 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     use crate::lighting::Lighting;
     use crate::names::Names;
     use crate::palette::PaletteDef;
+    use crate::target::TargetProfile;
 
     let formats = Formats::standard();
     assert_eq!(formats.ids::<ImageInfo>(), ["png", "one-bit"]);
@@ -603,10 +604,11 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.ids::<Lighting>(), ["lights"]);
     assert_eq!(formats.ids::<Names>(), ["names"]);
     assert_eq!(formats.ids::<DialogueFile>(), ["dlg"]);
+    assert_eq!(formats.ids::<TargetProfile>(), ["target-ron"]);
     assert_eq!(formats.limits, Limits::NONE);
     // Every kind: nothing else.
     let kinds = format!("{formats:?}").matches("\", [\"").count();
-    assert_eq!(kinds, 11);
+    assert_eq!(kinds, 12);
     // Registered again, the first is refused.
     let mut twice = Formats::standard();
     assert_eq!(

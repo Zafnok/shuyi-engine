@@ -1,0 +1,18 @@
+// Nintendo Switch (ADR-0008 §1), parked (3014): its inputs and budgets are
+// 3014's to fill.
+(
+    id: "switch",
+    status: Planned,
+    display: (
+        sizes: [
+            (mode: "handheld", width: 1280, height: 720),
+            (mode: "docked", width: 1920, height: 1080),
+        ],
+        color: Rgba8,
+        min_text_px: 12,
+        good_text_px: 16,
+    ),
+    frame_rate: (target: 60, floor: 60),
+    input: (),
+    backend: "private",
+)

@@ -340,6 +340,15 @@ impl FromStr for Button {
     }
 }
 
+/// A button in a data file (a target's inputs, `shuyi_assets::target`) is
+/// its [`name`](Button::name).
+impl<'de> Deserialize<'de> for Button {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let name = String::deserialize(deserializer)?;
+        Self::parse(&name).map_err(serde::de::Error::custom)
+    }
+}
+
 impl fmt::Display for Button {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.name())

@@ -69,6 +69,22 @@ fn every_template_fills_every_placeholder() {
 }
 
 #[test]
+fn every_templates_game_ships_on_the_desktop_and_the_web_and_fits_them() {
+    for template in Template::ALL {
+        let files = files(template, "Moon Garden", "moon-garden", &Engine::Main, None).unwrap();
+        let text = &files.iter().find(|(p, _)| p == "shuyi.ron").unwrap().1;
+        let config = crate::project::Config::parse(&String::from_utf8_lossy(text)).unwrap();
+        let ids: Vec<&str> = config.targets.keys().map(String::as_str).collect();
+        assert_eq!(ids, ["desktop", "web"], "{template:?}");
+        let input = crate::contract::check::CheckInput {
+            target: Some("all".to_owned()),
+        };
+        let answer = crate::contract::check::targets(&config, Path::new("."), &input);
+        assert!(answer.ok, "{template:?}: {answer:?}");
+    }
+}
+
+#[test]
 fn an_unknown_placeholder_is_an_error_naming_its_file_and_line() {
     let error = fill("a.rs", "one\ntwo {{nope}} three", "N", "n", &[]).unwrap_err();
     assert_eq!(

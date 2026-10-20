@@ -57,16 +57,39 @@
       "type": "object",
       "properties": {
         "errors": {
-          "description": "Every error, in the order the game's validators found them.",
+          "description": "Every error of the game's content, in the order the game's\nvalidators found them (none with a target).",
           "type": "array",
           "items": {
             "$ref": "#/$defs/Problem"
+          }
+        },
+        "targets": {
+          "description": "Each target checked, with its problems (none without a target).",
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/TargetReport"
           }
         }
       },
       "additionalProperties": false,
       "required": [
         "errors"
+      ]
+    },
+    "Level": {
+      "description": "How bad a target problem is.",
+      "oneOf": [
+        {
+          "description": "The game doesn't fit the target: the check fails.",
+          "type": "string",
+          "const": "error"
+        },
+        {
+          "description": "It fits, short of what the target recommends.",
+          "type": "string",
+          "const": "warning"
+        }
       ]
     },
     "Op": {
@@ -149,6 +172,77 @@
       "required": [
         "file",
         "message"
+      ]
+    },
+    "TargetCheck": {
+      "description": "Which check found a target problem.",
+      "oneOf": [
+        {
+          "description": "The frame at its scale fits the display.",
+          "type": "string",
+          "const": "fits"
+        },
+        {
+          "description": "The smallest text is tall enough.",
+          "type": "string",
+          "const": "text"
+        }
+      ]
+    },
+    "TargetProblem": {
+      "description": "A problem of the game on one target.",
+      "type": "object",
+      "properties": {
+        "check": {
+          "description": "The check that found it.",
+          "$ref": "#/$defs/TargetCheck"
+        },
+        "level": {
+          "description": "An error or a warning.",
+          "$ref": "#/$defs/Level"
+        },
+        "message": {
+          "description": "What is wrong, with the numbers.",
+          "type": "string"
+        },
+        "setting": {
+          "description": "The game's setting it is about, in `shuyi.ron`\n(`targets.\"playdate\".frame`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "check",
+        "setting",
+        "message"
+      ]
+    },
+    "TargetReport": {
+      "description": "What `check --target` found on one target.",
+      "type": "object",
+      "properties": {
+        "problems": {
+          "description": "Every problem, errors and warnings, display by display.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TargetProblem"
+          }
+        },
+        "profile": {
+          "description": "The profile's file: the engine's (`targets/playdate.ron`) or the\ngame's.",
+          "type": "string"
+        },
+        "target": {
+          "description": "The target's id.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "profile",
+        "problems"
       ]
     }
   }

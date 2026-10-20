@@ -1,7 +1,17 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CheckInput",
-  "description": "What `check` checks: everything the game loads (nothing to choose\nyet).",
+  "description": "What `check` checks: everything the game loads, or with `target`, how\nthe game fits a target.",
   "type": "object",
+  "properties": {
+    "target": {
+      "description": "The target to check the game against, by its profile's id, or\n`all` for every target in the game's `shuyi.ron`. Without it, the\ngame's content is checked.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    }
+  },
   "additionalProperties": false
 }

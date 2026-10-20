@@ -33,6 +33,13 @@ job; the page goes to its `dist/web/`):
 cd examples/hello-grid && cargo shuyi web --release
 ```
 
+Each example that lists `targets` in its `shuyi.ron` fits them (ADR-0008
+§1; CI's `wasm` job), from its folder:
+
+```bash
+cd examples/hello-grid && cargo shuyi check --target all
+```
+
 The crates a Playdate game builds without `std` (CI's `no-std` job; it
 needs `rustup target add thumbv7em-none-eabihf`):
 

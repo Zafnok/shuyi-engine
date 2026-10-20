@@ -1,11 +1,13 @@
 //! The project file, `shuyi.ron`, at a game's root: which paths each check
 //! scans, the game's tool program (for the commands that run the game),
 //! the font atlas's rules, the web build's package and the private
-//! repository's settings. A command whose part is missing says so.
+//! repository's settings, and the targets the game ships on. A command
+//! whose part is missing says so.
 //!
 //! Every path is relative to the project's root (the folder holding
 //! `shuyi.ron`) and written with `/`.
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -79,6 +81,13 @@ pub struct Config {
     pub glyph_tiles: Option<GlyphTiles>,
     /// `private-assets`.
     pub private_assets: Option<PrivateAssets>,
+    /// `check --target`: the targets the game ships on, by the id of
+    /// their profile (ADR-0008 §1), and how it shows its frame on each.
+    /// It lists only those.
+    pub targets: BTreeMap<String, TargetSetting>,
+    /// The folder of the game's own target profiles, if it has any: each
+    /// adds a target, or replaces the engine's of its id.
+    pub target_profiles: Option<String>,
 }
 
 impl Config {
@@ -95,6 +104,30 @@ impl Config {
     pub fn command(&self) -> &str {
         self.command.as_deref().unwrap_or("shuyi")
     }
+}
+
+/// How a game shows its frame on one target.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TargetSetting {
+    /// Its frame's width and height, in logical pixels.
+    pub frame: (u16, u16),
+    /// How the frame is scaled to the display.
+    pub scale: Scale,
+    /// The height of the smallest text on screen, in logical pixels: the
+    /// font's cell height.
+    pub text_px: u16,
+}
+
+/// How a frame is scaled to a display.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Scale {
+    /// By the largest whole number that fits: pixels stay square and
+    /// sharp.
+    Integer,
+    /// By the largest factor that fits, whole or not, smaller than 1 too.
+    Fit,
 }
 
 /// The game's tool program: a program of the game that runs
@@ -330,6 +363,31 @@ mod tests {
         assert_eq!(config.font_atlas.unwrap().required_glyphs, "?ab");
         assert!(Config::parse("(colour: 1)").is_err());
         assert!(Config::parse("(web: (name: \"x\"))").is_err());
+    }
+
+    #[test]
+    fn targets_are_a_table_of_settings_by_id() {
+        let text = r#"(
+    targets: {
+        "desktop": (frame: (800, 512), scale: integer, text_px: 16),
+        "web": (frame: (400, 240), scale: fit, text_px: 8),
+    },
+    target_profiles: "files/targets",
+)"#;
+        let config = Config::parse(text).unwrap();
+        assert_eq!(
+            config.targets["desktop"],
+            TargetSetting {
+                frame: (800, 512),
+                scale: Scale::Integer,
+                text_px: 16,
+            }
+        );
+        assert_eq!(config.targets["web"].scale, Scale::Fit);
+        assert_eq!(config.target_profiles.as_deref(), Some("files/targets"));
+        assert!(
+            Config::parse("(targets: {\"a\": (frame: (1, 1), scale: none, text_px: 1)})").is_err()
+        );
     }
 
     #[test]

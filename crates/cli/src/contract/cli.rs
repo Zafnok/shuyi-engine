@@ -144,6 +144,25 @@ fn schema(args: &[String], cwd: &Path, command: &str) -> u8 {
     }
 }
 
+/// Whether op `name` with `args` checks targets (`check --target`), which
+/// runs on the project file alone, without the game's tools.
+pub fn checks_targets(name: &str, args: &[String]) -> bool {
+    name == "check" && args.iter().any(|a| a == "--target")
+}
+
+/// `check --target` with `args` on `project`.
+pub fn check_targets(project: &Project, args: &[String]) -> u8 {
+    let (json, args) = split_json(args);
+    match check::parse_args(&args) {
+        Ok(input) => print(
+            json,
+            &check::targets(&project.config, &project.root, &input),
+            check::text,
+        ),
+        Err(e) => wrong(json, Op::Check, &e, &check::usage(project.config.command())),
+    }
+}
+
 /// Whether `name` is an op that runs on the project's game.
 pub fn runs_the_game(name: &str) -> bool {
     matches!(
@@ -159,14 +178,15 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
     let command = project.config.command();
     let options = game.frame_options();
     match name {
-        "check" => {
-            if !args.is_empty() {
-                let usage = format!("usage: {command} check [--json]");
-                return wrong(json, Op::Check, "no arguments", &usage);
-            }
-            let input = check::CheckInput::default();
-            print(json, &check::check(game, &input), check::text)
-        }
+        "check" => match check::parse_args(&args) {
+            Ok(input) if input.target.is_some() => print(
+                json,
+                &check::targets(&project.config, &project.root, &input),
+                check::text,
+            ),
+            Ok(input) => print(json, &check::check(game, &input), check::text),
+            Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
+        },
         "run" | "scene" => {
             let op = if name == "run" { Op::Run } else { Op::Scene };
             match run::parse_args(&args, options) {
