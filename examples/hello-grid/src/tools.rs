@@ -2,14 +2,16 @@
 //! frame, painted with the game's own font and tileset), `lang-status`,
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
-//! against the foe's mind) and `import` (the stage's `.map` and the
-//! keymap besides the engine's kinds). `examples/tools.rs` is the tool
+//! against the foe's mind), `import` (the stage's `.map` and the
+//! keymap besides the engine's kinds) and `bake` (its text baked into a
+//! pack, [`crate::bake`]). `examples/tools.rs` is the tool
 //! program that runs them; the tests use them too.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
+use shuyi_assets::bundle::Bundle;
 use shuyi_assets::grid_map::{GridMap, MapText};
 use shuyi_assets::keymap::{KeymapDef, KeymapRon};
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
@@ -18,7 +20,7 @@ use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
-use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
+use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools};
 use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play_observed};
 use shuyi_platform::harness::Harness;
 use shuyi_ui::{Game, GameData, GameHooks};
@@ -178,6 +180,15 @@ impl GameTools for HelloTools {
                 )
             })
             .kind::<KeymapDef<Action>>(|keymap| format!("{} layout(s)", keymap.layouts.len()))
+    }
+
+    /// One pack for every target: the game's files, its text baked.
+    fn bake(&self, _target: Option<&str>) -> Result<GameBake, String> {
+        Ok(GameBake {
+            bake: crate::bake(),
+            bundle: Bundle::new(vec![crate::layer()]),
+            formats: crate::formats(),
+        })
     }
 }
 

@@ -10,7 +10,7 @@
 //! and instructions `u64`.
 use crate::prelude::*;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
@@ -52,7 +52,7 @@ impl Format for TargetRon {
 }
 
 /// One export target.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TargetProfile {
     /// Its id, which `shuyi check --target` and a game's `shuyi.ron` name
@@ -75,7 +75,7 @@ pub struct TargetProfile {
 }
 
 /// Whether the engine runs on a target yet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Status {
     /// The target's example runs on the device.
     Supported,
@@ -84,7 +84,7 @@ pub enum Status {
 }
 
 /// A target's screen.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Display {
     /// The sizes it shows, in device pixels: one, or one per mode (the
@@ -105,7 +105,7 @@ pub struct Display {
 }
 
 /// A screen's size, in device pixels.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Size {
     /// The mode it is the size in (`handheld`, `docked`), if the display
@@ -119,7 +119,7 @@ pub struct Size {
 }
 
 /// How many colours a display shows.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Color {
     /// Full colour, 8 bits a channel and alpha.
     Rgba8,
@@ -128,7 +128,7 @@ pub enum Color {
 }
 
 /// Insets from each edge of a display, in device pixels.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Insets {
     /// From the top.
@@ -142,7 +142,7 @@ pub struct Insets {
 }
 
 /// The frames a second a game holds on a target.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FrameRate {
     /// What it aims at.
@@ -152,7 +152,7 @@ pub struct FrameRate {
 }
 
 /// What the player can press on a target (ADR-0008 §3).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Input {
     /// The pad's buttons, by position, as [`Button`] names them. The
@@ -175,7 +175,7 @@ pub struct Input {
 
 /// What a game may spend on a target (ADR-0008 §6). A budget left out is
 /// not measured there yet.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Budgets {
     /// The most instructions one frame of the engine's work may take in

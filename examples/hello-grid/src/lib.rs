@@ -8,7 +8,10 @@
 //! This crate is the game; `src/main.rs` hands it to the engine's platform
 //! shell, and `examples/tools.rs` to the engine's tools. Its files are in
 //! `files/`, embedded: the keys, the palette, the text, the scene, the
-//! stage, the font atlas and the tileset.
+//! stage, the font atlas and the tileset. It reads them through the
+//! engine's format registry ([`formats`]), so the same loader reads them
+//! from a pack that `cargo shuyi bake` made of them ([`Hello::from_pack`],
+//! [`bake`]).
 
 pub mod action;
 pub mod map;
@@ -23,17 +26,21 @@ pub mod tools;
 use std::collections::BTreeMap;
 
 use include_dir::{Dir, include_dir};
+use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
 use shuyi_assets::audio::AudioManifest;
-use shuyi_assets::dialogue::{DialogueTable, NoDirective, parse_dlg};
-use shuyi_assets::font::FontAtlasDef;
-use shuyi_assets::grid_map::GridMap;
-use shuyi_assets::image::{ImageId, ImageInfo, ImageTable};
-use shuyi_assets::keymap::{KeymapDef, Layout};
+use shuyi_assets::bundle::{Bundle, Layer};
+use shuyi_assets::dialogue::{DialogueFile, DialogueTable};
+use shuyi_assets::font::{FontAtlasDef, FontAtlasRon};
+use shuyi_assets::format::{AssetKind, Formats};
+use shuyi_assets::grid_map::{GridMap, MapText};
+use shuyi_assets::image::{ImageId, ImageTable};
+use shuyi_assets::keymap::{KeymapDef, KeymapRon, Layout};
 use shuyi_assets::lang::Lang;
 use shuyi_assets::lighting::Lighting;
-use shuyi_assets::palette::PaletteDef;
-use shuyi_assets::parse_ron;
+use shuyi_assets::pack::{Bake, Pack};
+use shuyi_assets::palette::{PaletteDef, PaletteRon};
+use shuyi_assets::ron::Ron;
 use shuyi_assets::voice::ClipVariant;
 use shuyi_core::TerrainId;
 use shuyi_ui::frame::{ConsoleSpec, EngineColor};
@@ -52,10 +59,55 @@ pub fn file(path: &str) -> Option<&'static [u8]> {
     FILES.get_file(path).map(include_dir::File::contents)
 }
 
-/// The embedded text file at `path`.
-fn text(path: &str) -> Result<&'static str, Vec<ContentError>> {
-    let bytes = file(path).ok_or_else(|| vec![ContentError::new(path, "file not found")])?;
-    std::str::from_utf8(bytes).map_err(|e| vec![ContentError::new(path, e.to_string())])
+/// The game's files as a bundle layer, shown under `files`
+/// (`files/palette.ron`).
+pub fn layer() -> Layer {
+    Layer::dir("files", &FILES)
+}
+
+/// The game's English screen text, by key: `en.ron`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct English(pub BTreeMap<String, String>);
+
+impl AssetKind for English {
+    const NAME: &'static str = "english";
+}
+
+/// The game's formats: the engine's standard ones, its palette with the
+/// engine's colours and its font atlas with the glyphs it draws, and its
+/// own kinds (its keys, its stage and its English).
+pub fn formats() -> Formats {
+    let mut formats = Formats::standard();
+    let colors: Vec<&str> = EngineColor::ALL.iter().map(|c| c.name()).collect();
+    // Each replaces the standard one of its kind, or is the first of its
+    // kind: none is refused.
+    let _ = formats.replace(PaletteRon::requiring(colors));
+    let _ = formats.replace(FontAtlasRon::requiring(REQUIRED_GLYPHS));
+    let _ = formats.register(KeymapRon::<Action>::new());
+    let _ = formats.register(MapText::<TerrainId, Feature>::new(
+        rules::FORMAT,
+        rules::terrain_named,
+    ));
+    let _ = formats.register(Ron::<English>::new());
+    formats
+}
+
+/// What a pack of the game says it was baked for: the game and its
+/// version, since its own kinds change only with it.
+pub const PACK_STAMP: &str = concat!("hello-grid ", env!("CARGO_PKG_VERSION"));
+
+/// What `cargo shuyi bake` bakes of the game: every text file it loads.
+/// Its pictures stay as they are: the platform draws them, and the font
+/// atlas's format reads its picture beside it.
+pub fn bake() -> Bake {
+    Bake::new(PACK_STAMP)
+        .asset::<English>("en.ron")
+        .asset::<KeymapDef<Action>>("keymap.ron")
+        .asset::<PaletteDef>("palette.ron")
+        .asset::<DialogueFile>("intro.dlg")
+        .asset::<GridMap<TerrainId, Feature>>("stage.map")
+        .asset::<FontAtlasDef>(FONT_RON)
 }
 
 /// What `load` gives, or `None` with its problems added to `errors`.
@@ -107,39 +159,56 @@ pub struct Hello {
 impl Hello {
     /// The game's data from its embedded files, or every problem found.
     pub fn load() -> Result<Self, Vec<ContentError>> {
+        Self::load_from(&Bundle::new(vec![layer()]), &formats())
+    }
+
+    /// The game's data from pack `bytes` (embedded with `include_bytes!`),
+    /// which `cargo shuyi bake` made of its files, or every problem found:
+    /// the same loader, over the pack.
+    pub fn from_pack(bytes: &'static [u8]) -> Result<Self, Vec<ContentError>> {
+        let problem = |e: String| vec![ContentError::new("pack", e)];
+        let pack = Pack::open(bytes, PACK_STAMP).map_err(|e| problem(e.to_string()))?;
+        let mut formats = formats();
+        bake()
+            .register(&mut formats)
+            .map_err(|e| problem(e.to_string()))?;
+        Self::load_from(&Bundle::new(vec![pack.into_layer("pack")]), &formats)
+    }
+
+    /// The game's data from `bundle`, read with `formats`, or every
+    /// problem found.
+    pub fn load_from(bundle: &Bundle, formats: &Formats) -> Result<Self, Vec<ContentError>> {
         let mut errors = Vec::new();
-        let english = gather(&mut errors, || {
-            parse_ron::<BTreeMap<String, String>>("en.ron", text("en.ron")?).map_err(|e| vec![e])
-        });
+        let english = gather(&mut errors, || formats.load::<English>(bundle, "en.ron"));
         let keymap = gather(&mut errors, || {
-            KeymapDef::from_source("keymap.ron", text("keymap.ron")?)
+            formats.load::<KeymapDef<Action>>(bundle, "keymap.ron")
         });
-        let names: Vec<&str> = EngineColor::ALL.iter().map(|c| c.name()).collect();
         let palette = gather(&mut errors, || {
-            PaletteDef::from_source("palette.ron", text("palette.ron")?, &names)
+            formats.load::<PaletteDef>(bundle, "palette.ron")
         });
         let dialogue = gather(&mut errors, || {
-            let (parsed, errors) = parse_dlg::<NoDirective>("intro.dlg", text("intro.dlg")?);
-            if !errors.is_empty() {
-                return Err(errors);
-            }
-            let scenes = parsed.into_iter().map(|p| (p.scene.id.clone(), p.scene));
+            let file = formats.load::<DialogueFile>(bundle, "intro.dlg")?;
+            let scenes = file
+                .scenes
+                .into_iter()
+                .map(|p| (p.scene.id.clone(), p.scene));
             Ok(DialogueTable {
                 scenes: scenes.collect(),
                 files: BTreeMap::new(),
             })
         });
         let stage_map = gather(&mut errors, || {
-            let problem = |e: String| vec![ContentError::new("stage.map", e)];
-            let map = rules::parse_map("stage.map", text("stage.map")?).map_err(problem)?;
-            rules::Stage::new(&map, 0).map_err(problem)?;
+            let map = formats.load::<GridMap<TerrainId, Feature>>(bundle, "stage.map")?;
+            rules::Stage::new(&map, 0)
+                .map_err(|e| vec![ContentError::new(bundle.display_path("stage.map"), e)])?;
             Ok(map)
         });
         let font = gather(&mut errors, || {
-            let png = file(FONT_PNG);
-            FontAtlasDef::from_source(FONT_RON, text(FONT_RON)?, FONT_PNG, png, REQUIRED_GLYPHS)
+            formats.load::<FontAtlasDef>(bundle, FONT_RON)
         });
-        let images = gather(&mut errors, images_table);
+        let images = gather(&mut errors, || {
+            ImageTable::load_with(bundle, formats, &[FONT_PNG])
+        });
         match (english, keymap, palette, dialogue, stage_map, font, images) {
             (
                 Some(english),
@@ -150,7 +219,7 @@ impl Hello {
                 Some(font),
                 Some(images),
             ) => Ok(Self {
-                lang: Lang::new(english, BTreeMap::new()),
+                lang: Lang::new(english.0, BTreeMap::new()),
                 keymap,
                 audio: sound::manifest(),
                 palette,
@@ -187,17 +256,6 @@ impl Hello {
         self.seed = self.seed.wrapping_add(1);
         seed
     }
-}
-
-/// The image table: `tiles.png`.
-fn images_table() -> Result<ImageTable, Vec<ContentError>> {
-    let png = file(map::TILES_PNG)
-        .ok_or_else(|| vec![ContentError::new(map::TILES_PNG, "file not found")])?;
-    let (width, height) = shuyi_assets::image::png_size(png)
-        .ok_or_else(|| vec![ContentError::new(map::TILES_PNG, "not a valid PNG file")])?;
-    Ok(ImageTable {
-        images: [(map::TILES_PNG, ImageInfo { width, height })].into(),
-    })
 }
 
 impl GameData for Hello {

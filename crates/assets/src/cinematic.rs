@@ -35,8 +35,8 @@ use alloc::collections::BTreeMap;
 use core::fmt;
 use core::marker::PhantomData;
 
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 use crate::audio::AudioManifest;
 use crate::error::ContentError;
@@ -127,10 +127,13 @@ pub struct ShotDef<S> {
 /// A cinematic file as written, before any check: `S` is a shot and `P`
 /// a list of `actions` as the game writes them (`()` for a game whose
 /// shots share none).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     deny_unknown_fields,
-    bound(deserialize = "S: Deserialize<'de>, P: Deserialize<'de>")
+    bound(
+        serialize = "S: Serialize, P: Serialize",
+        deserialize = "S: Deserialize<'de>, P: Deserialize<'de>"
+    )
 )]
 pub struct CinematicFile<S, P = ()> {
     /// The cinematic's id; it must be the file's name.
@@ -145,7 +148,7 @@ pub struct CinematicFile<S, P = ()> {
 }
 
 /// How long a cinematic is, as its file says.
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum Length {
     /// As long as this music cue.
     Music(String),
@@ -154,8 +157,11 @@ pub enum Length {
 }
 
 /// A shot as written, and when it starts.
-#[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields, bound(deserialize = "S: Deserialize<'de>"))]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(
+    deny_unknown_fields,
+    bound(serialize = "S: Serialize", deserialize = "S: Deserialize<'de>")
+)]
 pub struct TimedShot<S> {
     /// Seconds from the start.
     pub at: f32,

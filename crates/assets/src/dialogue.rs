@@ -37,6 +37,7 @@
 //! @end
 //! ```
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 mod check;
 mod line_id;
@@ -137,7 +138,7 @@ impl<D> Parsed<D> {
 }
 
 /// The directives of a game that adds none: there are no such steps.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum NoDirective {}
 
 impl Directive for NoDirective {
@@ -151,7 +152,7 @@ impl Directive for NoDirective {
 }
 
 /// A side of the dialogue screen, where one portrait stands.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Side {
     /// The left portrait.
     Left,
@@ -180,7 +181,7 @@ impl Side {
 
 /// One step of a scene, in script order. `D` is the game's own
 /// directives.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Step<D = NoDirective> {
     /// `@caption <text>`: a location/time caption, shown until the next one.
     Caption {
@@ -247,7 +248,7 @@ pub enum Step<D = NoDirective> {
 }
 
 /// What a `@music` line asks for.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MusicLine {
     /// `@music <cue>`: switch to this music cue.
     Cue(String),
@@ -269,7 +270,7 @@ impl MusicLine {
 }
 
 /// One reply the player can pick: `* <tone>: <text>`, then its reaction.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChoiceOption<D = NoDirective> {
     /// The reply's tone (`earnest`, `wry`…), for writers; not shown.
     pub tone: String,
@@ -310,7 +311,7 @@ impl<D> Step<D> {
 }
 
 /// One scene: `@scene <id>` … `@end`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Scene<D = NoDirective> {
     /// Scene id, unique across every dialogue file.
     pub id: String,
@@ -376,7 +377,7 @@ impl<D> Default for Scripts<D> {
 /// the `.dlg` format ([`Dlg`]) reads. [`scripts_from_parsed`] checks them
 /// against the game's rules, once its characters, names and music are
 /// loaded.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DialogueFile<D = NoDirective> {
     /// Its scenes, in file order.
     pub scenes: Vec<ParsedScene<D>>,

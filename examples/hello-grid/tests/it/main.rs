@@ -2,13 +2,15 @@
 //! through its tools: the playthrough to the win, the bots over its
 //! `TurnRules`, the tool contract's operations, the same seed and
 //! commands giving the same game, its options and key rebinding, its
-//! profiles, its files, pictures of its frames, and a sleep and a wake.
+//! profiles, its files, its pack, pictures of its frames, and a sleep and
+//! a wake.
 
 mod bots;
 mod contract;
 mod determinism;
 mod files;
 mod options;
+mod pack;
 mod playthrough;
 mod profiles;
 mod snapshot;

@@ -12,7 +12,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use super::{Answer, Op, bots, check, doctor, import, new, replay, run, schemas};
+use super::{Answer, Op, bake, bots, check, doctor, import, new, replay, run, schemas};
 use crate::game::GameTools;
 use crate::project::Project;
 
@@ -167,7 +167,7 @@ pub fn check_targets(project: &Project, args: &[String]) -> u8 {
 pub fn runs_the_game(name: &str) -> bool {
     matches!(
         name,
-        "check" | "run" | "scene" | "replay" | "bots" | "import"
+        "check" | "run" | "scene" | "replay" | "bots" | "import" | "bake"
     )
 }
 
@@ -186,6 +186,10 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
             ),
             Ok(input) => print(json, &check::check(game, &input), check::text),
             Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
+        },
+        "bake" => match bake::parse_args(&args) {
+            Ok(input) => print(json, &bake::bake(game, project, &input), bake::text),
+            Err(e) => wrong(json, Op::Bake, &e, &bake::usage(command)),
         },
         "run" | "scene" => {
             let op = if name == "run" { Op::Run } else { Op::Scene };
@@ -281,7 +285,7 @@ mod tests {
 
     #[test]
     fn the_ops_that_run_the_game_are_named() {
-        for op in ["check", "run", "scene", "replay", "bots", "import"] {
+        for op in ["check", "run", "scene", "replay", "bots", "import", "bake"] {
             assert!(runs_the_game(op), "{op}");
         }
         for other in ["new", "doctor", "schema", "frame-png", "check-keys"] {
@@ -306,6 +310,10 @@ mod tests {
         assert_eq!(code(&["check", "--json"]), 0);
         assert_eq!(code(&["check", "x"]), 2);
         assert_eq!(code(&["check", "x", "--json"]), 2);
+        assert_eq!(code(&["check", "--baked"]), 0);
+        assert_eq!(code(&["bake", "--out", "p.shuyipak"]), 0);
+        assert!(dir.join("p.shuyipak").is_file());
+        assert_eq!(code(&["bake", "--bogus"]), 2);
         assert_eq!(code(&["run", "--script", "Enter", "--frames", "2"]), 0);
         assert_eq!(code(&["run", "--bogus"]), 2);
         assert_eq!(code(&["scene", "--json"]), 0);
@@ -377,7 +385,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 16);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 18);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

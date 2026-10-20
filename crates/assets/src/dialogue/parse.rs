@@ -2,12 +2,13 @@
 //! (unknown directives, bad ids, missing `@end`, blocks left open, non-ASCII
 //! text); checks that need the whole scene or other files are in `check`.
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::{CharacterId, ChoiceOption, Directive, LineId, MusicLine, Scene, Side, Step};
 use crate::error::ContentError;
 
 /// A scene as written in a file, with the source lines the checks point at.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ParsedScene<D = super::NoDirective> {
     /// The scene.
     pub scene: Scene<D>,
@@ -21,7 +22,7 @@ pub struct ParsedScene<D = super::NoDirective> {
 
 /// Where the steps of one list of steps (a scene's, a reaction's, one part
 /// of an `@if` block) are in the file.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct Lines {
     /// 1-based line where each step starts, in the order of the steps.
     pub steps: Vec<u32>,
@@ -34,7 +35,7 @@ pub struct Lines {
 
 /// Where one part of a block is: an option of a `@choice`, or one of the
 /// two parts of an `@if` block.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PartLines {
     /// 1-based line that starts it: the option's `* tone: text`, the
     /// `@if`, or the `@else` (the `@if`'s line when it has no `@else`).

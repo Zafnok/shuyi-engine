@@ -324,6 +324,120 @@ The toy's tests are the checklist for any format:
 ## Optimized formats
 
 An optimized format is derived from a text source by a tool and tested
-equal to it (ADR-0007 §4). The first is the pack of ticket 2204, which
-uses `Encode` and the registry. JPEG, WebP, QOI, JPEG XL, FLAC and MP3
-come as plugins in ticket 2203; Yarn Spinner and Ink in ticket 2202.
+equal to it (ADR-0007 §4). The first is the pack below. JPEG, WebP, QOI,
+JPEG XL, FLAC and MP3 come as plugins in ticket 2203; Yarn Spinner and
+Ink in ticket 2202.
+
+## The pack
+
+A game may ship its files as one pack (`.shuyipak`,
+[ADR-0023](adr/0023-the-pack-one-indexed-file-of-baked-assets-proven-equal-to-its-sources.md)),
+made by `shuyi bake` from its sources, in place of its loose files or
+under them. The code is `shuyi_assets::pack`; its reader builds without
+`std`, for the Playdate.
+
+- **What is in it.** Every file of the game's bundle, at its own path. A
+  file the game bakes holds the assets read from it in their binary form
+  (postcard), so loading it parses no text. Every other file (a picture
+  the platform draws, a sound it plays) holds its own bytes. Each file is
+  compressed with LZ4 when that makes it smaller.
+- **Loading from it.** The pack is a bundle layer, and the registry finds
+  a baked file by its magic bytes, so the code that asks for an asset
+  doesn't change. A game registers the pack's formats once:
+
+  ```rust
+  static PACK: &[u8] = include_bytes!("../target/shuyi/game.shuyipak");
+
+  let bake = game_bake(); // the same `Bake` its tools give `shuyi bake`
+  let mut formats = formats();
+  bake.register(&mut formats)?;
+  let pack = Pack::open(PACK, PACK_STAMP)?;
+  let bundle = Bundle::new(vec![pack.into_layer("pack")]);
+  let palette = formats.load::<PaletteDef>(&bundle, "data/palette")?;
+  ```
+
+  A file the pack keeps as it is borrows the pack's bytes; only a
+  compressed one is unpacked into memory of its own.
+- **What a game bakes.** Its tools' `GameTools::bake(target)` gives a
+  `Bake`: each asset as its loaders ask for it, `.asset::<K>(id)` or
+  `.under::<K>(dir)`, and the game's **stamp** (its version, say). It also
+  gives the bundle of its sources and its formats. A baked kind is
+  `Serialize + DeserializeOwned + PartialEq + Debug`: every engine kind
+  is, and a game's own kinds derive the same. Bake only kinds whose files
+  nothing else reads raw: not a PNG the platform draws, nor a sound it
+  plays, nor a picture a font atlas reads beside it.
+- **Proven equal.** `shuyi check --baked` bakes the game in memory and
+  reads every baked asset from the pack and from its source: they must be
+  equal (`Bake::check`). Every other file must be the same bytes, and no
+  file may be missing or extra. The pack's own tests do the same for one
+  file of every kind of the built-in formats.
+- **Refused, never migrated.** A pack of another `pack::VERSION`, or
+  baked with another stamp, is refused with a message to bake it again.
+  So is a pack cut short or changed: a checksum covers every byte, and
+  every size is checked before anything is allocated. `pack::VERSION`
+  goes up whenever the binary form of an engine kind changes; a pinned
+  snapshot of every engine kind's binary form fails until it does. A
+  game changes its stamp when one of its own baked kinds changes.
+- **Targets.** `shuyi bake --target <id>` takes a target with a profile
+  (the engine's in `targets/`, or the game's), passes it to the game,
+  which picks the layers and kinds it bakes for it, and the pack records
+  it (`PackInfo::target`). Ticket 3007 bakes one-bit pictures for the
+  Playdate through it.
+
+`shuyi bake` writes `target/shuyi/game.shuyipak` (or `<target>.shuyipak`,
+or `--out <file>`) and says what went in, the sizes and the times:
+
+```text
+bake: target/shuyi/game.shuyipak: 10 files, 6 baked (english, keymap, palette, dialogue, map, font atlas)
+  size: sources 41,223 bytes, pack 20,631 bytes (50%)
+  baked in 2.4 ms
+  load: sources 0.6 ms, pack 0.3 ms
+```
+
+### Measurements
+
+Measured on 2026-10-20 on Nick's machine (Windows 11, x86-64), in a
+release build. "Web" is the same program built for
+`wasm32-unknown-unknown` and run in Chromium (the desktop app's
+browser). Each load is the mean of many runs. It reads every baked asset
+through the registry: from the embedded loose files, or by opening the
+pack (embedded, as `include_bytes!` embeds it) and reading from it.
+
+| Files | Loose | Pack | Load, loose | Load, pack (open + read) | Pack open alone |
+| ----- | ----- | ---- | ----------- | ------------------------ | --------------- |
+| Hello, Grid, native | 41,223 bytes | 20,631 bytes (50%) | 0.19 ms | 0.075 ms | 0.013 ms |
+| Hello, Grid, web | 41,223 bytes | 20,631 bytes (50%) | 0.22 ms | 0.055 ms | 0.010 ms |
+| the game's public assets, native | 813,487 bytes | 603,462 bytes (74%) | 1.15 ms | 0.85 ms | 0.25 ms |
+| the game's public assets, web | 813,487 bytes | 595,573 bytes (73%) | 1.17 ms | 0.91 ms | 0.27 ms |
+
+- **Hello, Grid's size** is today's. Its times were measured when its
+  keymap's buttons were written as numbers, 61 bytes smaller; they are
+  written by their names now, as target profiles read them.
+- **Hello, Grid** bakes every text file it loads: its English, keymap,
+  palette, dialogue, map and font atlas. Its two PNG files stay as they are.
+  It loads from its pack 2.5× faster natively and 4× faster on the web.
+- **The game's public assets** are Visions of Shuyi's `assets/` folder
+  (122 files) at its commit of 2026-10-20. The game hasn't adopted the
+  pack, so only the kinds the engine reads without the game's own types
+  were baked:
+  - the palette and three themes, the names, the lights and the credits;
+  - the audio manifest, the font atlas and the English screen text;
+  - the dialogue, its directives read as any directive.
+
+  That is 11 files and 109 KB of sources, all read 25% faster from the
+  pack. The game's data tables (classes, items, maps, battles, …) went in
+  as their own bytes; baking them needs the game's types to derive
+  serde, which is the game's change.
+- **Size.** Text shrinks to about a third. PNG and OGG files are compressed
+  already and are kept as they are, so they set the size of a game's
+  pack.
+- **Opening** is the checksum, the index, and unpacking the compressed
+  files. Before stored files borrowed the pack's bytes and the checksum
+  read 64-bit words, opening the game's pack took 0.61 ms and ate the
+  whole gain.
+- **Bytes per platform.** LZ4's output differs between a 64-bit and a
+  32-bit baker (603,462 against 595,573 bytes), so the pack's bytes do
+  too. The assets read from it don't.
+- **Not measured:** a pack's effect on a whole game's start-up, with
+  every data table baked. That waits for the game to give its kinds a
+  binary form and its tools a `bake`.

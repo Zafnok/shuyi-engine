@@ -22,7 +22,7 @@ pub(crate) const LIMITS: DialogueLimits = DialogueLimits {
 };
 
 /// The tests' game's directives.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(crate) enum Cue {
     /// `@weather <id>`: stays in force until the next one.
     Weather(String),

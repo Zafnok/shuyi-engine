@@ -720,4 +720,4 @@ impl Formats {
 mod tests;
 
 #[cfg(test)]
-mod builtin_tests;
+pub(crate) mod builtin_tests;

@@ -16,7 +16,7 @@ use core::fmt;
 use core::marker::PhantomData;
 use core::str::FromStr;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::ContentError;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
@@ -36,7 +36,7 @@ macro_rules! keys {
     ($($variant:ident => $name:literal,)+) => {
         /// A hardware-agnostic keyboard key. `app` translates platform key
         /// codes to these; anything without a variant is ignored.
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         pub enum Key {
             $(
                 #[doc = concat!("The `", $name, "` key.")]
@@ -173,7 +173,7 @@ impl fmt::Display for Key {
 
 /// A key plus modifier state, e.g. `h` or `Shift+h`. `Shift+h` and `h` are
 /// different chords.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Chord {
     /// The key pressed.
     pub key: Key,
@@ -340,8 +340,14 @@ impl FromStr for Button {
     }
 }
 
-/// A button in a data file (a target's inputs, `shuyi_assets::target`) is
-/// its [`name`](Button::name).
+/// A button in a data file (a target's inputs, `shuyi_assets::target`) and
+/// in a baked keymap (`pack`) is its [`name`](Button::name).
+impl Serialize for Button {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.name())
+    }
+}
+
 impl<'de> Deserialize<'de> for Button {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let name = String::deserialize(deserializer)?;
@@ -361,7 +367,7 @@ impl fmt::Display for Button {
 /// `"East+South"` is the same chord as `"South+East"` (and is shown as the
 /// latter). How a chord fires is the input's business
 /// (`shuyi_ui::input::state`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ButtonChord {
     first: Button,
     second: Option<Button>,
@@ -465,7 +471,7 @@ impl fmt::Display for ButtonChord {
 }
 
 /// Key-repeat timings for held repeatable actions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct RepeatDef {
     /// Time from the press to the first repeat, in milliseconds.
@@ -487,7 +493,7 @@ impl Default for RepeatDef {
 /// ([`Button::LeftStickUp`] and the rest), in percent of its full travel.
 /// `release_percent` is below `press_percent`, so a stick resting near the
 /// edge of the dead zone doesn't flicker.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct StickDef {
     /// A direction starts once the stick is pushed at least this far.
@@ -508,7 +514,7 @@ impl Default for StickDef {
 /// How [`ButtonChord`]s fire (`shuyi_ui::input::state`): a chord button
 /// whose own action waits for its partner waits at most `window_ms`
 /// (unless it waits for its release).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChordDef {
     /// How long, in milliseconds, two buttons pressed one after the other
@@ -525,7 +531,7 @@ impl Default for ChordDef {
 /// How a crank turns into [`Button::CrankBack`] and
 /// [`Button::CrankForward`] presses (`shuyi_ui::input::crank`): one per
 /// `notch_degrees` wound.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CrankDef {
     /// How far, in degrees, the crank is wound for one notch (1 to 360).
@@ -622,6 +628,21 @@ impl fmt::Display for Layout {
     }
 }
 
+/// A layout's binary form (a baked keymap, `pack`) is its name.
+impl Serialize for Layout {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(self.name())
+    }
+}
+
+impl<'de> Deserialize<'de> for Layout {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let name = String::deserialize(deserializer)?;
+        Self::from_name(&name)
+            .ok_or_else(|| serde::de::Error::custom(format!("{name:?} is not a layout name")))
+    }
+}
+
 /// Validated bindings as a lookup: each chord maps to exactly one action
 /// (of one [group](ActionSet::Group)). Unbound chords are absent.
 pub type Bindings<A> = BTreeMap<Chord, A>;
@@ -644,7 +665,7 @@ pub type PadKeys<A> = BTreeMap<A, Vec<ButtonChord>>;
 /// The validated keymap: every [`Layout`]'s default keys, the layout
 /// picker's bindings, the default controller buttons, plus the key-repeat
 /// timings and stick thresholds they share.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeymapDef<A: ActionSet> {
     /// Layout → its default keys. After
     /// [`from_source`](Self::from_source) every layout the file lists is

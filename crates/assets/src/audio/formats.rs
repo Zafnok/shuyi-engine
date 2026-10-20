@@ -2,6 +2,7 @@
 //! track's, and the manifest. Only headers are read; the platform decodes
 //! the samples when it plays them.
 use crate::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use alloc::borrow::Cow;
 
@@ -19,7 +20,7 @@ pub const MAX_SOUND_BYTES: usize = 64 << 20;
 /// A sound file's header: what the engine knows of a sound before the
 /// platform plays it. Every one is mono or stereo, at
 /// [`SAMPLE_RATE`](super::SAMPLE_RATE).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sound {
     /// 1 or 2.
     pub channels: u16,
@@ -32,7 +33,7 @@ impl AssetKind for Sound {
 }
 
 /// A music track's header, and how long it plays.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MusicTrack {
     /// 1 or 2.
     pub channels: u16,
