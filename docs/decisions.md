@@ -645,3 +645,45 @@ So, taking the recommendation he was offered (he may veto it):
 - Both tickets are parked like the rest, until after the MVP.
 
 Reading Spine's files is still open: Nick asked for more checking first.
+
+## 2026-10-20: the engine may read Spine's files, with a reader of our own
+
+Source: Nick, in the same session, after the Spine Editor License
+Agreement (last updated 2025-04-05, `esotericsoftware.com/spine-editor-license`)
+and the `EsotericSoftware/spine-runtimes` repository were read. Section 2
+of the agreement and its Exhibit A (the Spine Runtimes License) restrict
+integrating Esoteric's runtime libraries, or works derived from them.
+They say nothing about a reader written from the public format
+documentation. The editor's own license terms (no commercial use of
+Trial or Education work, Enterprise above the revenue threshold) bind
+whoever makes the files.
+
+> "to me it sounds like we can load spine output files so long as user
+> is using their own ver of spine to make them...?"
+
+Then:
+
+> "Yes. Record in decisions.md that the engine may read Spine files with
+> our own reader, written from the public format docs with no Spine
+> code, and the user brings their own Spine license. Add a parked Spine
+> JSON import ticket beside 2216 on PR 24."
+
+So:
+
+- **The engine may read Spine's JSON and atlas files** with a reader we
+  write ourselves (2217, parked like 2216).
+- **It is written from Esoteric's public format documentation only.** No
+  code from the Spine Runtimes is copied, translated or read while
+  writing it, so the engine is neither the Spine Runtimes nor a work
+  derived from them. This is ADR-0021 §2's rule (written from
+  specifications, never copied) applied to a file format.
+- **The user brings their own Spine license.** Making the files is
+  between the user and Esoteric. The engine's docs say so, and say
+  that Spine is Esoteric Software's trademark and the engine isn't
+  affiliated with it.
+- **The official runtimes stay out.** Wrapping them (as `rusty_spine` and
+  `bevy_spine` do) would make every game built with the engine need a
+  Spine license (Section 2.4), which ADR-0002 §8 doesn't allow.
+- This is a reading of the license, not legal advice. If Esoteric ever
+  objects, or changes its terms to cover the file format, the reader
+  stops shipping until Nick decides again.

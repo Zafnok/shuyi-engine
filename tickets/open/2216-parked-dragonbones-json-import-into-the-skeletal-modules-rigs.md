@@ -42,9 +42,9 @@ DragonBones writes a skeleton file (`*_ske.json`) and a texture atlas
 We write our own serde types from the documentation. No crate, and no
 code copied from a runtime.
 
-Spine is not here: whether the engine reads Spine's files is a question
-for Nick (its runtime license asks every user to own an editor
-license).
+Spine is not here: 2217 imports Spine's files, under its own
+clean-room rule. Either order with 2217: whichever lands first adds
+`shuyi_bones::import` and its feature, and the other reuses them.
 
 ## Nick input
 
@@ -94,7 +94,7 @@ None.
   never copied from DragonBones's samples.
 
 **Out (do not do):**
-- Spine (a question for Nick, not a ticket);
+- Spine (2217);
 - scale, skew, meshes, IK (2105 doesn't have them; a follow-up of 2105
   first);
 - the binary DragonBones format (`.dbbin`).

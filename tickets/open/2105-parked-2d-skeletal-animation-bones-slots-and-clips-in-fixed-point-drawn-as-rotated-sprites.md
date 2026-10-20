@@ -35,9 +35,9 @@ An artist animates bones in a tool; the game plays it back. Here:
 - the skin draws each slot as a rotated sprite. 2703 adds rotation to
   sprite items on world layers (1120).
 
-Spine import is not here: whether the engine reads Spine's files is a
-question for Nick (its runtime license asks every user to own an editor
-license). See the list for Nick in the PR that wrote this ticket.
+Spine import is 2217: a reader of our own, written from Spine's public
+format documentation, with the user bringing their own Spine license
+(Nick, 2026-10-20, `docs/decisions.md`).
 
 ## Nick input
 
@@ -92,7 +92,7 @@ None.
   them as errors);
 - mesh attachments and deformation, IK constraints, physics on bones;
 - DragonBones import (2216);
-- Spine (a question for Nick, not a ticket);
+- Spine import (2217);
 - a state machine that picks the clip (2104 picks clips; mixing two of
   this module's clips by its states is a follow-up once both are done).
 
