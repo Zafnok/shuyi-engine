@@ -832,6 +832,29 @@ fn text_length_limits() {
 }
 
 #[test]
+fn a_line_must_fit_the_box_once_its_tokens_are_longest() {
+    // 40 wide, 2 lines. "{hero}" is 11 cells at its longest.
+    let words = ["a".repeat(24), "b".repeat(24)];
+    let short = format!("scout: {} {}", words[0], words[1]);
+    assert_eq!(errors(&scene(&short)), [] as [&str; 0]);
+    // A third long word takes a third line, though the text is short enough.
+    let three = format!("scout: {} {} {}", words[0], words[1], words[0]);
+    assert_eq!(
+        errors(&scene(&three)),
+        ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
+    );
+    // A short token leaves the line on two pages; its longest value doesn't.
+    let pad = "a".repeat(27);
+    let fits = format!("scout: {pad} {} {{hero}}", "b".repeat(10));
+    assert_eq!(errors(&scene(&fits)), [] as [&str; 0]);
+    let spills = format!("scout: {pad} {} {{hero}}", "b".repeat(31));
+    assert_eq!(
+        errors(&scene(&spills)),
+        ["t.dlg:4: text takes 3 lines of 40 characters; the box shows 2"]
+    );
+}
+
+#[test]
 fn option_limits() {
     let long = "x".repeat(LIMITS.max_option + 1);
     let reaction = "  > a\n".repeat(5);

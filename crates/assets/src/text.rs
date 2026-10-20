@@ -1,4 +1,4 @@
-//! Word wrap for text boxes.
+//! Word wrap for text boxes, the one the checks and the boxes share.
 
 use crate::prelude::*;
 

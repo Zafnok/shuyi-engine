@@ -48,6 +48,7 @@ pub mod lighting;
 pub mod names;
 pub mod palette;
 pub mod ron;
+pub mod text;
 pub mod tileset;
 pub mod tip;
 pub mod voice;

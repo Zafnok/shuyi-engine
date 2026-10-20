@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-20
 ---
 
 # 2209 — Word wrap in the assets crate, and a fits-its-box check
@@ -72,11 +72,11 @@ this one and deletes its copy (game#1169).
 
 ## Acceptance criteria
 
-- [ ] `word_wrap`'s tests pass in the new place, and `shuyi_ui`'s
+- [x] `word_wrap`'s tests pass in the new place, and `shuyi_ui`'s
       callers build unchanged.
-- [ ] Unit: a line with a token whose longest value pushes it to a
+- [x] Unit: a line with a token whose longest value pushes it to a
       second page is reported; the same line with a short token isn't.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -84,5 +84,19 @@ this one and deletes its copy (game#1169).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `word_wrap` and its tests moved to `shuyi_assets::text`;
+  `shuyi_ui::widgets::word_wrap` re-exports it, and the `wrap` module of
+  `shuyi-ui` is gone (nothing else named it).
+- `lines_at_longest(text, tokens, longest_name, width)` in
+  `shuyi_assets::dialogue`, beside `longest_width` (they share
+  `token_cells`). It takes `longest_name` as `longest_width` does, so
+  name tokens count as the longest name. Each token is written as that
+  many letters, then wrapped.
+- `check_scene` reports an error, "text takes N lines of W characters; the
+  box shows M", for speech and narration, as it does for `max_text`. It
+  is skipped when the line is already over `max_text`, so a line gets one
+  message.
+- Language packs' line checks are unchanged (out of scope).
+- Game: the pin-bump PR that deletes the game's `page_lines` is game#1169
+  (no PR yet).
+- No follow-up tickets. Nick input: none.

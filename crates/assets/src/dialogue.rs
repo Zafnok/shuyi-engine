@@ -50,7 +50,8 @@ use core::marker::PhantomData;
 pub use shuyi_core::CharacterId;
 
 pub use check::{
-    NoTokens, SceneRules, Tokens, check_duplicates, check_scene, longest_width, token_problems,
+    NoTokens, SceneRules, Tokens, check_duplicates, check_scene, lines_at_longest, longest_width,
+    token_problems,
 };
 pub use line_id::{
     Line, LineId, NARRATION_SPEAKER, REPLY_SPEAKER, caption_key, line_hash, scene_of,

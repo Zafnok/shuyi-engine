@@ -9,10 +9,9 @@ pub mod ask;
 pub mod list;
 pub mod menu;
 pub mod name_entry;
-pub mod wrap;
 
 pub use ask::{AnswerView, Ask, AskView};
 pub use list::{ListCursor, Scroll};
 pub use menu::{Menu, MenuEvent, MenuItem, MenuItemView, MenuView};
 pub use name_entry::{NameBox, NameEntry, NameEvent, NameRules};
-pub use wrap::word_wrap;
+pub use shuyi_assets::text::word_wrap;
