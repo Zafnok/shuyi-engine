@@ -33,6 +33,11 @@ Split out of 3021, the GBA backend, to keep that ticket one PR.
 
 Until this lands, `shuyi-gba`'s `audio()` is silent (3021).
 
+The in-house mixer (3030, parked) is an integer mixer in `shuyi-sound`,
+which builds without `std`. Either order works: if 3030 is done first,
+use its mixer here and keep only the GBA's timing and 8-bit output; if
+this is done first, 3030 moves this mixer into `shuyi-sound`.
+
 ## Nick input
 
 None.

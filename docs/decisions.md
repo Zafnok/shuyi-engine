@@ -463,3 +463,95 @@ Source: Nick, in a Claude Code session on 2026-10-19.
   (2507), then the graph panel (2508). It stays a view over text files:
   agents and git read the same files a person edits in it.
 
+
+## 2026-10-19: the platform layer goes in-house, and the end goal
+
+Source: Nick, in a Claude Code session on 2026-10-19, after asking how
+much the engine leans on frameworks. The check (crates.io and the
+repositories, 2026-10-19): the core crates (`shuyi-core`, `shuyi-ui`,
+`shuyi-assets`) use no framework. Only `shuyi-app` does, through
+macroquad, quad-snd and gilrs. gilrs was released in January and May
+2026, with commits into August 2026. quad-snd's last release was in May
+2024, and the OGG and WAV readers it brings (`audrey`, `lewton`) were last
+released in January 2021. The web build's saves (`quad-storage`) were
+last released in August 2021, and `include_dir` in June 2024. miniquad,
+under macroquad, draws with OpenGL, GLES, WebGL 1 and Metal, and its
+README rules out Vulkan and DirectX 12.
+
+> "I think probably at some point we can look at swapping this out for
+> in-house. Anything else that's framework sized? text file parsing is
+> fine, math is fine"
+
+> "lets check the other deps make sure they have good maintenance...
+>
+> anyway here's my ordering and reasoning...
+>
+> 1st - replace gilrs bc that is scary af
+> 2nd - replace quadsnd for same reason
+>
+> lets scope other candidates here...
+>
+> eventually - macroquad replace
+>
+> and super down the line - carve each of these new things into their
+> own repos which we pull into engine
+>
+> but this will be super down the line bc we want to make the engine
+> work well enough and I want them to be full fledged replacements
+> first. Absolutely do not steal source code line by line.
+>
+> These will also be permissive use like the engine.
+>
+> And the end goal for my Shuyi engine is to be the #1 AI friendly Rust
+> cross plat 2D engine (eventually 3D) with a wide variety of ports!!
+>
+> it should take less than an hour to make a wide port range game with
+> basic functionality, like snake or mario. You should be able to say
+> "make me snake game with shuyi engine" and ai can do it super quick,
+> with a web ver, a playdate ver, etc. all done in not too many LOC."
+
+Told that gilrs is maintained and quad-snd is the one that went quiet, he
+chose **sound first**. Asked when the work starts, he chose **parked until
+the MVP**. Shown the full list, he confirmed:
+
+> "Yes: sound (with our own OGG/WAV readers), controllers, the two small
+> ones (web saves, asset packing), then macroquad, then separate repos.
+> All parked until MVP."
+
+On graphics:
+
+> "it looked like macroquad might be lagging on support for graphics
+> libs like GL and Vulkan and Metal etc we should have a wide compat
+> with all GFX libs"
+
+**Rules:**
+
+- **The end goal.** Shuyi Engine aims to be the most AI-friendly
+  cross-platform 2D engine in Rust, 3D later, with many ports. The
+  measure: an agent asked "make me a snake game with Shuyi Engine" makes
+  it, with a web build, a Playdate build and the other targets, in under
+  an hour and in few lines. Every new API is judged against it.
+- **The platform layer goes in-house, in this order:**
+  1. sound: our own WAV, Ogg and Vorbis readers, a mixer, and sound
+     output on each platform, replacing quad-snd and macroquad's audio
+     (tickets 2210–2214, 3030–3032);
+  2. controllers, replacing gilrs (2402, 2403);
+  3. the two small ones: saves on the web, replacing `quad-storage`
+     (3033), and putting a game's files in its binary, replacing
+     `include_dir` (2215);
+  4. macroquad itself: the window, its input and the graphics. The
+     research comes first (3034).
+  5. Each replacement moves to its own repository, which the engine
+     depends on (2008).
+- **All of it is parked until the MVP.** Nobody starts these tickets
+  until Nick unparks them. The repositories (2008) wait longer, until
+  each piece is a full replacement, and Nick says when.
+- **Written by us, never copied.** No source code is copied, translated
+  line by line or closely paraphrased from another library. Each piece is
+  written from the format's specification and the operating system's
+  documentation. [ADR-0021](adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
+  says how.
+- **Same license as the engine.** Every new piece is MIT OR Apache-2.0.
+- **Every graphics API.** The engine's own graphics layer covers Vulkan,
+  Metal, Direct3D 12, OpenGL and GLES, and WebGL 2 and WebGPU on the
+  web, not only what miniquad covers. 3034 picks how.

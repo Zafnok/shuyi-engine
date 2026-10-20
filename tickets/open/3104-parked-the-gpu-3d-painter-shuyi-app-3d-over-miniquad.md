@@ -45,6 +45,11 @@ crate of its own that depends on `shuyi-app` and `shuyi-3d`, and
 `shuyi-app-3d` touches the GPU for 3D, so it counts as backend code
 (`AGENTS.md` rule 5).
 
+macroquad and miniquad are to be replaced by our own window and graphics
+layer (Nick, 2026-10-19; research 3034, parked). If 3034's tickets are
+done first, this painter is written over that layer instead of miniquad,
+and 3034's ADR says how. If this is done first, 3034 plans its move.
+
 ## Nick input
 
 None.
