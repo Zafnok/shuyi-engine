@@ -18,6 +18,7 @@ use super::{
 use crate::error::ContentError;
 use crate::lang::text_width;
 use crate::names::{Names, is_name_id, name_token};
+use crate::text::word_wrap;
 
 /// The `{tokens}` a game fills in itself, besides the names table's
 /// (`{n:<id>}`, [`Names`]): a player-named hero's name, say.
@@ -209,12 +210,37 @@ pub fn longest_width(text: &str, tokens: &dyn Tokens, longest_name: Option<usize
     split_tokens(text)
         .map(|part| match part {
             Part::Text(t) | Part::Unclosed(t) => text_width(t),
-            Part::Token(t) => match (name_token(t), longest_name) {
-                (Some(_), Some(longest)) => longest,
-                _ => tokens.longest(t).unwrap_or(text_width(t) + 2),
-            },
+            Part::Token(t) => token_cells(t, tokens, longest_name),
         })
         .sum()
+}
+
+/// Cells `{token}` takes at its longest, as [`longest_width`] counts it.
+fn token_cells(token: &str, tokens: &dyn Tokens, longest_name: Option<usize>) -> usize {
+    match (name_token(token), longest_name) {
+        (Some(_), Some(longest)) => longest,
+        _ => tokens.longest(token).unwrap_or(text_width(token) + 2),
+    }
+}
+
+/// Lines `text` takes in a box `width` cells wide ([`word_wrap`]) once
+/// every token is filled in as its longest: each token is written out as
+/// that many letters, with the tokens and names counted as in
+/// [`longest_width`]. A line that fits the box here fits it with any
+/// player's name.
+pub fn lines_at_longest(
+    text: &str,
+    tokens: &dyn Tokens,
+    longest_name: Option<usize>,
+    width: usize,
+) -> usize {
+    let filled: String = split_tokens(text)
+        .map(|part| match part {
+            Part::Text(t) | Part::Unclosed(t) => t.to_owned(),
+            Part::Token(t) => "W".repeat(token_cells(t, tokens, longest_name)),
+        })
+        .collect();
+    word_wrap(&filled, width).len()
 }
 
 /// What is wrong with name token `{token}`, if anything: its id must be in
@@ -277,6 +303,12 @@ impl<R> Checker<'_, R> {
                 self.err(line, message);
             }
         }
+    }
+
+    /// [`lines_at_longest`] of `text`, with the names of the table.
+    fn pages(&self, text: &str) -> usize {
+        let name = self.names.map(Names::longest);
+        lines_at_longest(text, self.tokens, name, self.limits.box_width)
     }
 
     /// [`longest_width`] of `text`, with the names of the table.
@@ -413,6 +445,16 @@ impl<R> Checker<'_, R> {
                 self.err(
                     line,
                     format!("text is {len} characters; the limit is {limit}"),
+                );
+            } else if self.pages(text) > self.limits.box_lines {
+                let lines = self.pages(text);
+                let box_lines = self.limits.box_lines;
+                self.err(
+                    line,
+                    format!(
+                        "text takes {lines} lines of {} characters; the box shows {box_lines}",
+                        self.limits.box_width
+                    ),
                 );
             }
         }
