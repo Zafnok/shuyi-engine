@@ -150,6 +150,24 @@ mod tests {
     }
 
     #[test]
+    fn only_rust_files_are_read_in_every_folder_of_src() {
+        let root = std::env::temp_dir().join(format!("xtask-no-std-{}", std::process::id()));
+        for krate in CRATES {
+            fs::create_dir_all(root.join(krate).join("src/deep")).unwrap();
+        }
+        let core = root.join("crates/core/src");
+        fs::write(core.join("deep/bad.rs"), "use std::io;\n").unwrap();
+        fs::write(core.join("notes.md"), "use std::io;\n").unwrap();
+        fs::write(core.join("snapshot.snap"), "std::fs\n").unwrap();
+        let errors = run(&root);
+        let _ = fs::remove_dir_all(&root);
+        assert_eq!(
+            errors,
+            ["crates/core/src/deep/bad.rs:1: a `std::` path outside `cfg(feature = \"std\")`"]
+        );
+    }
+
+    #[test]
     fn a_missing_crate_folder_is_an_error() {
         let errors = run(Path::new("no-such-repository"));
         assert_eq!(errors.len(), CRATES.len(), "{errors:?}");
