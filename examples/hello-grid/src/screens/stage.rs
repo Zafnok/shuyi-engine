@@ -276,6 +276,11 @@ impl Screen<Hello> for StageScreen {
         "stage"
     }
 
+    /// The cursor, Confirm to pick and walk, Cancel to let go or to leave.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(Action::ALL.to_vec())
+    }
+
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
         if !self.briefed {
             self.briefed = true;

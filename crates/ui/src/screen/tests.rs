@@ -379,3 +379,90 @@ fn a_result_is_read_as_its_type() {
     let dbg = |t: Transition<Toy>| format!("{t:?}");
     assert_eq!(dbg(Transition::pop_with(true)), "PopWith(bool)");
 }
+
+/// A screen that declares Confirm alone and logs the actions it gets.
+struct Picky {
+    log: Log,
+}
+
+impl Screen<Toy> for Picky {
+    fn name(&self) -> &'static str {
+        "picky"
+    }
+
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm])
+    }
+
+    fn update(&mut self, _: &mut ToyCtx, input: &FrameInput<Action>) -> Transition<Toy> {
+        let held = input.is_held(Action::Confirm);
+        self.log
+            .borrow_mut()
+            .push(format!("{:?} held {held}", input.actions));
+        Transition::None
+    }
+
+    fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+}
+
+/// With the guard on, a screen that declares its actions gets only
+/// those, and the rest are logged; off (a game's own stack), it gets
+/// everything. A screen that declares nothing gets everything either way.
+#[test]
+fn the_guard_hands_a_screen_only_the_actions_it_declares() {
+    let mut ctx = ctx();
+    let log = Log::default();
+    let input = FrameInput::new(
+        vec![Action::Cancel, Action::Confirm, Action::Info],
+        0.25,
+        vec![Action::Confirm, Action::Cancel],
+    );
+    let mut stack = ScreenStack::new(Box::new(Picky {
+        log: Rc::clone(&log),
+    }));
+    stack.update(&mut ctx, &input);
+    assert_eq!(drain(&log), ["[Cancel, Confirm, Info] held true"]);
+    assert_eq!(stack.undeclared(), []);
+    stack.guard_actions(true);
+    stack.update(&mut ctx, &input);
+    assert_eq!(drain(&log), ["[Confirm] held true"]);
+    assert_eq!(
+        stack.undeclared(),
+        [("picky", Action::Cancel), ("picky", Action::Info)]
+    );
+    stack.push(Probe::boxed("open", false, &log));
+    stack.update(&mut ctx, &input);
+    assert_eq!(drain(&log), ["update open [Cancel, Confirm, Info]"]);
+    assert_eq!(stack.undeclared().len(), 2);
+}
+
+/// What a screen declares, its input keeps: the time, the keys, and how
+/// often each action came.
+#[test]
+fn declared_input_keeps_all_but_the_other_actions() {
+    let input = FrameInput::new(
+        vec![Action::Confirm, Action::Cancel, Action::Confirm],
+        0.5,
+        vec![Action::Cancel],
+    )
+    .with_ticks(2)
+    .with_typing(vec![], vec!['a']);
+    let (seen, missed) = input.declared("s", &[Action::Confirm]);
+    assert_eq!(seen.actions, [Action::Confirm, Action::Confirm]);
+    assert_eq!(missed, [Action::Cancel]);
+    assert!(!seen.is_held(Action::Confirm));
+    assert!((seen.dt() - 0.5).abs() < f32::EPSILON);
+    assert_eq!((seen.ticks(), seen.text()), (2, &['a'][..]));
+    let (all, none) = input.declared("s", &[Action::Confirm, Action::Cancel]);
+    assert!(all.is_held(Action::Cancel));
+    assert_eq!(all.actions, input.actions);
+    assert!(none.is_empty());
+}
+
+#[test]
+#[should_panic(expected = "screen \"s\" asks whether Cancel is held, but doesn't declare it")]
+fn asking_about_an_undeclared_action_panics() {
+    let input = FrameInput::<Action>::new(vec![], 0.0, vec![Action::Cancel]);
+    let (seen, _) = input.declared("s", &[Action::Confirm]);
+    let _ = seen.is_held(Action::Cancel);
+}

@@ -66,6 +66,13 @@ listed: the frame is taller than its 240 px screen even at scale 1.
 Fitting it would take a smaller console for that target, which this
 example doesn't have.
 
+The controls fit every target, the Playdate too. Every screen declares
+the actions it reacts to, and `files/keymap.ron` has a table of buttons
+for the Playdate (the d-pad, A and B) and one for the Deck. `check
+--target` checks that each screen's required actions (all six) bind to
+distinct buttons of the target (ADR-0025). `screens::all` lists the
+screens it checks.
+
 ## Art and licenses
 
 Terminus Font 4.49.1 (`files-src/ter-u16n.bdf`, unmodified, and the atlas

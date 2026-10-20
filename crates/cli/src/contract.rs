@@ -8,7 +8,7 @@
 //! | -- | ---- | ------ |
 //! | `new <template> <dir>` | a new game from `templates/grid` or `templates/blank` | [`new`] |
 //! | `check [--baked]` | every error of every validator of the game's content; with `--baked`, every way its pack differs from its sources | [`check`] |
-//! | `check --target <id>` | whether the game's frame and text fit a target's display | [`check`], [`target`] |
+//! | `check --target <id>` | whether the game's frame, text and controls fit a target | [`check`], [`target`] |
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds | [`run`] |
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
@@ -49,7 +49,7 @@ use shuyi_assets::ContentError;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

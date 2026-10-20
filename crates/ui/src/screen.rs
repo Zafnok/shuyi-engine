@@ -14,6 +14,13 @@
 //! screen below in [`uncovered`](Screen::uncovered). A screen also hears
 //! when one is pushed over it ([`covered`](Screen::covered)) and when that
 //! one goes, with or without a value.
+//!
+//! A screen declares the actions it reacts to ([`actions`](Screen::actions),
+//! ADR-0008 §3), so `shuyi check --target` can tell whether its required
+//! ones fit a target's buttons. To keep the declarations honest, a stack
+//! with its [guard](ScreenStack::guard_actions) on (the test Harness's)
+//! hands a screen only the actions it declares, and logs the others
+//! ([`ScreenStack::undeclared`]).
 
 use crate::prelude::*;
 use core::any::Any;
@@ -39,6 +46,21 @@ pub trait Screen<G: GameData> {
     /// Whether the screen below shows through (drawn first, then this one).
     fn is_overlay(&self) -> bool {
         false
+    }
+
+    /// The actions this screen reacts to, in any order (ADR-0008 §3):
+    /// every one it reads from its input, through [`ActionSet::ui`] or
+    /// not. `None`, the default, has not declared them, and counts as
+    /// every action of the game: `shuyi check --target` warns about it.
+    /// An overlay declares its own, and is checked on its own.
+    ///
+    /// [`ui_actions`](crate::input::ui_actions) gives a game's actions for
+    /// the [`UiAction`](crate::input::UiAction)s an engine screen or
+    /// widget reacts to.
+    ///
+    /// [`ActionSet::ui`]: crate::input::ActionSet::ui
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        None
     }
 
     /// This screen as [`Any`], for tests that look inside a screen on the
@@ -176,12 +198,20 @@ impl<G: GameData> fmt::Debug for Transition<G> {
 /// at the top-most opaque screen and goes up through the overlays above it.
 pub struct ScreenStack<G: GameData> {
     screens: Vec<Box<dyn Screen<G>>>,
+    /// Whether a screen gets only the actions it declares
+    /// ([`guard_actions`](Self::guard_actions)).
+    guard: bool,
+    /// The actions held back from a screen that doesn't declare them,
+    /// oldest first, with the screen's name.
+    undeclared: Vec<(&'static str, G::Action)>,
 }
 
 impl<G: GameData> Default for ScreenStack<G> {
     fn default() -> Self {
         Self {
             screens: Vec::new(),
+            guard: false,
+            undeclared: Vec::new(),
         }
     }
 }
@@ -191,7 +221,27 @@ impl<G: GameData> ScreenStack<G> {
     pub fn new(root: Box<dyn Screen<G>>) -> Self {
         Self {
             screens: vec![root],
+            ..Self::default()
         }
+    }
+
+    /// Turns the guard on or off: while it is on, a screen that declares
+    /// its actions ([`Screen::actions`]) is handed only those
+    /// ([`FrameInput::declared`]), and the others are logged
+    /// ([`undeclared`](Self::undeclared)). So a test of a screen that reacts
+    /// to an action it didn't declare fails. The test Harness turns it on;
+    /// a game never needs to.
+    pub fn guard_actions(&mut self, on: bool) {
+        self.guard = on;
+    }
+
+    /// Every action held back from a screen that doesn't declare it while
+    /// the [guard](Self::guard_actions) was on, oldest first, with the
+    /// screen's name. A player pressing a key the screen has no use for
+    /// lands here too: it says why a screen didn't react, not that it is
+    /// wrong.
+    pub fn undeclared(&self) -> &[(&'static str, G::Action)] {
+        &self.undeclared
     }
 
     /// Whether no screen is open (the game should quit).
@@ -241,7 +291,17 @@ impl<G: GameData> ScreenStack<G> {
         let Some(top) = self.screens.last_mut() else {
             return true;
         };
-        let transition = top.update(ctx, input);
+        let declared = self.guard.then(|| top.actions()).flatten();
+        let transition = match declared {
+            Some(declared) => {
+                let name = top.name();
+                let (input, missed) = input.declared(name, &declared);
+                self.undeclared
+                    .extend(missed.into_iter().map(|a| (name, a)));
+                top.update(ctx, &input)
+            }
+            None => top.update(ctx, input),
+        };
         self.apply_in(ctx, transition)
     }
 

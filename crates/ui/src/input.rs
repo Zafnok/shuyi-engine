@@ -18,11 +18,20 @@
 //! ([`ActionSet::fixed_keys`]). `Shift+Escape` and `Shift+Delete` are
 //! ordinary chords.
 //!
+//! A screen declares the actions it reacts to
+//! ([`Screen::actions`](crate::screen::Screen::actions)); [`ui_actions`]
+//! gives them for an engine screen or widget, which reacts to
+//! [`UiAction`]s. [`fit`] checks that the required ones fit a target's
+//! buttons (ADR-0008 §3).
+//!
 //! [`Key`], [`Chord`], [`Button`] and [`Layout`] are the keymap file's
 //! (`shuyi_assets::keymap`) and re-exported here.
 
+use alloc::vec::Vec;
+
 pub mod bindings;
 pub mod crank;
+pub mod fit;
 pub mod fixed;
 pub mod frame;
 pub mod help_keys;
@@ -54,3 +63,25 @@ pub use shuyi_assets::keymap::{
     LAYOUT_NAME_MAX, Layout, LayoutKeys, PadKeys, RepeatDef, SLOTS, StickDef, UiAction,
 };
 pub use state::{Device, Input, InputState, MAX_REPEATS_PER_UPDATE};
+
+/// What the engine's menu-like screens react to: the four directions,
+/// Confirm and Cancel.
+pub const NAVIGATION: &[UiAction] = &[
+    UiAction::Up,
+    UiAction::Down,
+    UiAction::Left,
+    UiAction::Right,
+    UiAction::Confirm,
+    UiAction::Cancel,
+];
+
+/// The game's actions that [`ActionSet::ui`] takes for one of `uis`, in
+/// [`ActionSet::ALL`] order: what an engine screen or widget that reacts
+/// to `uis` declares ([`Screen::actions`](crate::screen::Screen::actions)).
+pub fn ui_actions<A: ActionSet>(uis: &[UiAction]) -> Vec<A> {
+    A::ALL
+        .iter()
+        .copied()
+        .filter(|a| a.ui().is_some_and(|ui| uis.contains(&ui)))
+        .collect()
+}

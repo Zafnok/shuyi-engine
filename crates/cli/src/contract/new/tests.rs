@@ -80,7 +80,7 @@ fn every_templates_game_ships_on_the_desktop_and_the_web_and_fits_them() {
             target: Some("all".to_owned()),
             ..crate::contract::check::CheckInput::default()
         };
-        let answer = crate::contract::check::targets(&config, Path::new("."), &input);
+        let answer = crate::contract::check::targets(&config, Path::new("."), &input, None);
         assert!(answer.ok, "{template:?}: {answer:?}");
     }
 }

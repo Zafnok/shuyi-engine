@@ -930,6 +930,11 @@ impl<G: GameData> Screen<G> for KeyBindingsScreen<G> {
         Self::NAME
     }
 
+    /// Its rows and slots, and its questions; the keys and buttons it captures are not actions.
+    fn actions(&self) -> Option<Vec<G::Action>> {
+        Some(crate::input::ui_actions(crate::input::NAVIGATION))
+    }
+
     fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> Transition<G> {
         self.tick(input.dt());
         if !self.releasing.is_empty() {

@@ -77,8 +77,12 @@ impl<G: GameData> Harness<G> {
     }
 
     /// Drives `game` from where it is on `platform` (one with a system
-    /// keyboard, say).
-    pub fn on(game: Game<G>, platform: HeadlessPlatform) -> Self {
+    /// keyboard, say). Its screens get only the actions they declare
+    /// ([`Game::guard_actions`]), so a screen reacting to one it didn't
+    /// declare fails its test ([`undeclared`](Self::undeclared) says which
+    /// were held back).
+    pub fn on(mut game: Game<G>, platform: HeadlessPlatform) -> Self {
+        game.guard_actions(true);
         let stacks = vec![(0, game.screens())];
         Self {
             app: App::running(game),
@@ -463,6 +467,13 @@ impl<G: GameData> Harness<G> {
         game.ctx_mut().device = used;
         game.redraw();
         snapshot
+    }
+
+    /// Every action held back from a screen that doesn't declare it
+    /// ([`Screen::actions`](shuyi_ui::Screen::actions)), oldest first, with
+    /// the screen's name: why a screen didn't react to a key.
+    pub fn undeclared(&self) -> &[(&'static str, G::Action)] {
+        self.game().undeclared_actions()
     }
 
     /// Whether the game has asked to quit.

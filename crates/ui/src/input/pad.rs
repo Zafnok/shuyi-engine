@@ -163,12 +163,20 @@ fn names(button: Button) -> [&'static str; 3] {
         Button::RightStickRight => ["R-stick →"; 3],
         Button::CrankBack => ["Crank back"; 3],
         Button::CrankForward => ["Crank forward"; 3],
+        Button::SystemMenu0 => ["Menu item 1"; 3],
+        Button::SystemMenu1 => ["Menu item 2"; 3],
+        Button::SystemMenu2 => ["Menu item 3"; 3],
+        Button::SystemMenu3 => ["Menu item 4"; 3],
+        Button::SystemMenu4 => ["Menu item 5"; 3],
+        Button::SystemMenu5 => ["Menu item 6"; 3],
+        Button::SystemMenu6 => ["Menu item 7"; 3],
+        Button::SystemMenu7 => ["Menu item 8"; 3],
     }
 }
 
 /// A set of [`Button`]s.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct ButtonSet(u32);
+pub struct ButtonSet(u64);
 
 impl ButtonSet {
     /// No buttons.
@@ -205,8 +213,8 @@ impl ButtonSet {
 }
 
 /// `button`'s bit: its index in [`Button::ALL`].
-fn bit(button: Button) -> u32 {
-    1 << (button as u32)
+fn bit(button: Button) -> u64 {
+    1 << (button as u64)
 }
 
 impl FromIterator<Button> for ButtonSet {
@@ -244,7 +252,7 @@ impl PadState {
     pub fn from_standard(buttons: u32, axes: [f32; 4]) -> Self {
         let [left_x, left_y, right_x, right_y] = axes;
         Self {
-            buttons: ButtonSet(buttons & ((1 << STANDARD_BUTTONS) - 1)),
+            buttons: ButtonSet(u64::from(buttons) & ((1 << STANDARD_BUTTONS) - 1)),
             left_stick: (left_x, left_y),
             right_stick: (right_x, right_y),
         }

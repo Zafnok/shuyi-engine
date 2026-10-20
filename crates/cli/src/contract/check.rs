@@ -7,8 +7,10 @@
 //!
 //! `check --target <id>` checks instead that the game fits target `id`,
 //! or every target its `shuyi.ron` lists with `--target all`
-//! ([`super::target`]). It needs only the project file, not the game's
-//! tools, and passes when no target has an error; warnings don't fail it.
+//! ([`super::target`]). The display needs only the project file; the
+//! controls need the game's tools too, and without them the answer says
+//! they weren't checked. It passes when no target has an error; warnings
+//! don't fail it.
 
 use std::fmt::Write as _;
 use std::path::Path;
@@ -19,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use super::target::{self, Level, TargetReport};
 use super::{Answer, Op, Problem, bake};
 use crate::game::GameTools;
-use crate::project::Config;
+use crate::project::{Config, FILE};
 
 /// What `check` checks: everything the game loads (with `baked`, its pack
 /// too), or with `target`, how the game fits a target.
@@ -50,13 +52,12 @@ pub struct CheckOutput {
 }
 
 /// `check`: every error of `game`'s content, and with `baked`, every way
-/// its pack differs from its sources. A target is checked by [`targets`],
-/// on the project file; the game's tools can't.
+/// its pack differs from its sources. A target is checked by [`targets`].
 pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
     if input.target.is_some() {
         return Answer::failed(
             Op::Check,
-            "check --target runs on the project file, not in the game's tools",
+            "check --target is checked by check::targets, with the project file",
         );
     }
     let found = game.check().and_then(|mut errors| {
@@ -85,8 +86,14 @@ pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
 }
 
 /// `check --target`: how the game of `config` (the project at `root`)
-/// fits the targets `input` asks for.
-pub fn targets(config: &Config, root: &Path, input: &CheckInput) -> Answer<CheckOutput> {
+/// fits the targets `input` asks for; its controls too with its tools,
+/// `game`.
+pub fn targets(
+    config: &Config,
+    root: &Path,
+    input: &CheckInput,
+    game: Option<&dyn GameTools>,
+) -> Answer<CheckOutput> {
     let Some(asked) = &input.target else {
         return Answer::failed(Op::Check, "no target asked for");
     };
@@ -106,6 +113,27 @@ pub fn targets(config: &Config, root: &Path, input: &CheckInput) -> Answer<Check
     };
     let mut reports = Vec::new();
     let mut limits = Vec::new();
+    let controls = match game.map(GameTools::controls) {
+        Some(Some(Ok(controls))) => Some(controls),
+        Some(Some(Err(e))) => {
+            return Answer::failed(Op::Check, format!("the game's controls don't load: {e}"));
+        }
+        Some(None) => {
+            limits.push(
+                "the controls aren't checked: the game's tools don't offer them \
+                 (GameTools::controls)"
+                    .to_owned(),
+            );
+            None
+        }
+        None => {
+            limits.push(format!(
+                "the controls aren't checked: they need the game's tools, and {FILE} names no \
+                 game tool program (`game`)"
+            ));
+            None
+        }
+    };
     for (id, setting) in settings {
         let Some(profile) = profiles.get(id) else {
             let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
@@ -122,13 +150,18 @@ pub fn targets(config: &Config, root: &Path, input: &CheckInput) -> Answer<Check
                 "{id}'s display takes any size: its frame fits, and its text is checked at scale 1"
             ));
         }
+        let mut problems = target::check_target(id, setting, &profile.profile);
+        if let Some(controls) = &controls {
+            problems.extend(target::controls(id, controls.fit(&profile.profile)));
+        }
         reports.push(TargetReport {
             target: id.to_owned(),
             profile: profile.file.clone(),
-            problems: target::check_target(id, setting, &profile.profile),
+            problems,
         });
     }
-    limits.push("only the frame's fit and the text's size are checked yet".to_owned());
+    limits
+        .push("only the frame's fit, the text's size and the controls are checked yet".to_owned());
     let ok = !reports.iter().any(TargetReport::failed);
     let output = CheckOutput {
         errors: Vec::new(),
@@ -217,6 +250,7 @@ mod tests {
 
     use super::*;
     use crate::contract::fake::Fake;
+    use crate::contract::target::TargetCheck;
 
     #[test]
     fn check_passes_with_no_error_and_lists_each_with_where() {
@@ -289,9 +323,9 @@ mod tests {
             usage("shuyi"),
             "usage: shuyi check [--baked | --target <id | all>] [--json]"
         );
-        // The game's tools check content, not targets.
+        // Targets are `targets`'s.
         let answer = check(&Fake::default(), &on("web"));
-        assert!(answer.error.unwrap().contains("project file"));
+        assert!(answer.error.unwrap().contains("check::targets"));
     }
 
     #[test]
@@ -305,7 +339,7 @@ mod tests {
         )
         .unwrap();
         let root = Path::new(".");
-        let deck = targets(&config, root, &on("steam-deck"));
+        let deck = targets(&config, root, &on("steam-deck"), None);
         assert!(deck.ok, "a warning passes");
         let out = deck.result.as_ref().unwrap();
         assert_eq!(out.targets.len(), 1);
@@ -318,9 +352,13 @@ mod tests {
         );
         assert_eq!(
             deck.limits,
-            ["only the frame's fit and the text's size are checked yet"]
+            [
+                "the controls aren't checked: they need the game's tools, and shuyi.ron names no \
+                 game tool program (`game`)",
+                "only the frame's fit, the text's size and the controls are checked yet"
+            ]
         );
-        let all = targets(&config, root, &on("all"));
+        let all = targets(&config, root, &on("all"), None);
         assert!(!all.ok, "the Playdate fails");
         let out = all.result.as_ref().unwrap();
         let ids: Vec<&str> = out.targets.iter().map(|r| r.target.as_str()).collect();
@@ -333,11 +371,11 @@ mod tests {
             "{}",
             text(out)
         );
-        assert_eq!(all.limits.len(), 2, "desktop takes any size");
+        assert_eq!(all.limits.len(), 3, "desktop takes any size");
         // A target not listed, or listed with no profile.
-        assert!(targets(&config, root, &on("web")).error.is_some());
+        assert!(targets(&config, root, &on("web"), None).error.is_some());
         assert!(
-            targets(&config, root, &CheckInput::default())
+            targets(&config, root, &CheckInput::default(), None)
                 .error
                 .is_some()
         );
@@ -345,7 +383,7 @@ mod tests {
             r#"(targets: {"moon": (frame: (1, 1), scale: fit, text_px: 9)})"#,
         )
         .unwrap();
-        let answer = targets(&unknown, root, &on("moon"));
+        let answer = targets(&unknown, root, &on("moon"), None);
         assert!(
             answer
                 .error
@@ -356,12 +394,74 @@ mod tests {
             target_profiles: Some("no-such-folder".to_owned()),
             ..config
         };
-        let answer = targets(&broken, root, &on("all"));
+        let answer = targets(&broken, root, &on("all"), None);
         assert!(
             answer
                 .error
                 .unwrap()
                 .starts_with("the target profiles don't load: no-such-folder: ")
+        );
+    }
+
+    #[test]
+    fn with_the_games_tools_its_controls_are_checked_on_each_target() {
+        let config = crate::project::Config::parse(
+            r#"(targets: {
+    "playdate": (frame: (400, 240), scale: integer, text_px: 16),
+    "desktop": (frame: (400, 240), scale: integer, text_px: 16),
+})"#,
+        )
+        .unwrap();
+        let root = Path::new(".");
+        let game = Fake {
+            controls: Some(Ok(())),
+            ..Fake::default()
+        };
+        let all = targets(&config, root, &on("all"), Some(&game));
+        assert!(!all.ok, "the Playdate has no table");
+        let out = all.result.as_ref().unwrap();
+        let desktop = &out.targets[0];
+        assert!(!desktop.failed(), "a keyboard reaches everything");
+        assert_eq!(desktop.problems.len(), 1);
+        let warning = &desktop.problems[0];
+        assert_eq!(
+            (warning.level, warning.check, warning.setting.as_str()),
+            (Level::Warning, TargetCheck::Controls, "screen \"title\"")
+        );
+        assert_eq!(warning.screen.as_deref(), Some("title"));
+        let playdate = &out.targets[1];
+        assert_eq!(playdate.problems.len(), 2);
+        let error = &playdate.problems[1];
+        assert_eq!(
+            (error.level, error.setting.as_str()),
+            (Level::Error, "keymap targets.\"playdate\"")
+        );
+        assert!(
+            text(out).contains(
+                "  error: playdate: keymap targets.\"playdate\": the keymap file has no buttons \
+                 for playdate, which has no keyboard"
+            ),
+            "{}",
+            text(out)
+        );
+        assert!(!all.limits.iter().any(|l| l.contains("controls aren't")));
+        // A game whose tools don't offer them: said, and the display alone.
+        let answer = targets(&config, root, &on("playdate"), Some(&Fake::default()));
+        assert!(answer.ok);
+        assert_eq!(
+            answer.limits[0],
+            "the controls aren't checked: the game's tools don't offer them (GameTools::controls)"
+        );
+        // A game whose controls don't load fails.
+        let broken = Fake {
+            controls: Some(Err("keymap.ron: bad".to_owned())),
+            ..Fake::default()
+        };
+        let answer = targets(&config, root, &on("playdate"), Some(&broken));
+        assert!(!answer.ok);
+        assert_eq!(
+            answer.error.as_deref(),
+            Some("the game's controls don't load: keymap.ron: bad")
         );
     }
 }

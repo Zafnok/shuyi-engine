@@ -1,12 +1,16 @@
 //! `check --target <id>`: whether the game fits a target (ADR-0008 §1),
 //! by the target's profile and the game's setting for it in `shuyi.ron`
-//! ([`TargetSetting`]). Two checks for now:
+//! ([`TargetSetting`]). Three checks for now:
 //!
 //! - **Fits.** The frame times its scale fits the display inside its safe
 //!   area.
 //! - **Text.** The smallest text (the font's cell height × the scale) is
 //!   at least the profile's `min_text_px` (an error) and its
 //!   `good_text_px` (a warning).
+//! - **Controls.** On every screen of the game, the required actions it
+//!   declares bind to distinct inputs of the target, in the keymap file's
+//!   table named after it ([`shuyi_ui::input::fit`]; [`controls`]). It
+//!   needs the game's tools (`GameTools::controls`).
 //!
 //! The engine's profiles are the files of `targets/` at the repository's
 //! root, embedded; a game's own (`shuyi.ron`'s `target_profiles`) add to
@@ -21,6 +25,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::target::{Size, TargetProfile, TargetRon};
 use shuyi_assets::{AssetPath, ContentError, DecodeCx, Format};
+use shuyi_ui::input::fit::{FitProblem, FitRule};
 
 use crate::project::{Config, FILE, Scale, TargetSetting};
 
@@ -48,6 +53,9 @@ pub enum TargetCheck {
     Fits,
     /// The smallest text is tall enough.
     Text,
+    /// The required actions of each screen bind to distinct inputs of the
+    /// target.
+    Controls,
 }
 
 /// A problem of the game on one target.
@@ -58,11 +66,39 @@ pub struct TargetProblem {
     pub level: Level,
     /// The check that found it.
     pub check: TargetCheck,
-    /// The game's setting it is about, in `shuyi.ron`
-    /// (`targets."playdate".frame`).
+    /// The game's setting it is about: in `shuyi.ron`
+    /// (`targets."playdate".frame`), the keymap file's table for the
+    /// target (`keymap targets."playdate"`), or a screen's declaration
+    /// (`screen "title"`).
     pub setting: String,
     /// What is wrong, with the numbers.
     pub message: String,
+    /// The screen a controls problem is about, if one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub screen: Option<String>,
+    /// The actions a controls problem is about, by name.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub actions: Vec<String>,
+    /// The inputs a controls problem is about, as the keymap file names
+    /// them (`East`, `East+West`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inputs: Vec<String>,
+}
+
+impl TargetProblem {
+    /// A problem of the display's (`check` [`Fits`](TargetCheck::Fits) or
+    /// [`Text`](TargetCheck::Text)) with `setting`.
+    fn display(level: Level, check: TargetCheck, setting: String, message: String) -> Self {
+        Self {
+            level,
+            check,
+            setting,
+            message,
+            screen: None,
+            actions: Vec::new(),
+            inputs: Vec::new(),
+        }
+    }
 }
 
 /// What `check --target` found on one target.
@@ -277,14 +313,12 @@ pub fn check_target(
                             size.name()
                         )
                     };
-                    out.push(TargetProblem {
-                        level: Level::Error,
-                        check: TargetCheck::Fits,
-                        setting: format!("{key}.frame"),
-                        message: format!(
-                            "frame {width} × {height} at scale 1 is larger than {place}"
-                        ),
-                    });
+                    out.push(TargetProblem::display(
+                        Level::Error,
+                        TargetCheck::Fits,
+                        format!("{key}.frame"),
+                        format!("frame {width} × {height} at scale 1 is larger than {place}"),
+                    ));
                     // The text is checked as the frame would show if it
                     // fitted.
                     Factor::whole(1)
@@ -320,15 +354,42 @@ pub fn check_target(
             None
         };
         if let Some((level, message)) = problem {
-            out.push(TargetProblem {
+            out.push(TargetProblem::display(
                 level,
-                check: TargetCheck::Text,
-                setting: format!("{key}.text_px"),
+                TargetCheck::Text,
+                format!("{key}.text_px"),
                 message,
-            });
+            ));
         }
     }
     out
+}
+
+/// What the controls' check found on target `id` ([`FitProblem`]s), as
+/// target problems: errors, but for a screen that doesn't declare its
+/// actions, a warning.
+pub fn controls(id: &str, found: Vec<FitProblem>) -> Vec<TargetProblem> {
+    found
+        .into_iter()
+        .map(|p| {
+            let (level, setting) = match (p.rule, p.screen) {
+                (FitRule::Undeclared, Some(screen)) => {
+                    (Level::Warning, format!("screen \"{screen}\""))
+                }
+                _ if !p.is_error() => (Level::Warning, format!("keymap targets.\"{id}\"")),
+                _ => (Level::Error, format!("keymap targets.\"{id}\"")),
+            };
+            TargetProblem {
+                level,
+                check: TargetCheck::Controls,
+                setting,
+                message: p.message,
+                screen: p.screen.map(str::to_owned),
+                actions: p.actions.iter().map(|&a| a.to_owned()).collect(),
+                inputs: p.inputs,
+            }
+        })
+        .collect()
 }
 
 /// The targets `target` asks for in `config`: itself, or every one with

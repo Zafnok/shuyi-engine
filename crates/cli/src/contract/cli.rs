@@ -150,13 +150,14 @@ pub fn checks_targets(name: &str, args: &[String]) -> bool {
     name == "check" && args.iter().any(|a| a == "--target")
 }
 
-/// `check --target` with `args` on `project`.
-pub fn check_targets(project: &Project, args: &[String]) -> u8 {
+/// `check --target` with `args` on `project`, with the game's tools
+/// `game` if they are at hand.
+pub fn check_targets(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
     let (json, args) = split_json(args);
     match check::parse_args(&args) {
         Ok(input) => print(
             json,
-            &check::targets(&project.config, &project.root, &input),
+            &check::targets(&project.config, &project.root, &input, game),
             check::text,
         ),
         Err(e) => wrong(json, Op::Check, &e, &check::usage(project.config.command())),
@@ -181,7 +182,7 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         "check" => match check::parse_args(&args) {
             Ok(input) if input.target.is_some() => print(
                 json,
-                &check::targets(&project.config, &project.root, &input),
+                &check::targets(&project.config, &project.root, &input, Some(game)),
                 check::text,
             ),
             Ok(input) => print(json, &check::check(game, &input), check::text),
@@ -346,14 +347,27 @@ mod tests {
             r#"(targets: {"desktop": (frame: (800, 512), scale: integer, text_px: 16)})"#,
         )
         .unwrap();
-        // The fake game can't check targets: an answer of 0 is the project's.
+        // The fake game offers no controls: an answer of 0 is the
+        // project's.
         assert_eq!(
             with_game(&p, "check", &args(&["--target", "all"]), &Fake::default()),
             0
         );
-        assert_eq!(check_targets(&p, &args(&["--target", "all", "--json"])), 0);
-        assert_eq!(check_targets(&p, &args(&["--target", "web"])), 1);
-        assert_eq!(check_targets(&p, &args(&["--target"])), 2);
+        assert_eq!(
+            check_targets(&p, &args(&["--target", "all", "--json"]), None),
+            0
+        );
+        assert_eq!(check_targets(&p, &args(&["--target", "web"]), None), 1);
+        assert_eq!(check_targets(&p, &args(&["--target"]), None), 2);
+        // With its controls, a warning: its title declares nothing.
+        let game = Fake {
+            controls: Some(Ok(())),
+            ..Fake::default()
+        };
+        assert_eq!(
+            check_targets(&p, &args(&["--target", "all"]), Some(&game)),
+            0
+        );
         assert!(checks_targets("check", &args(&["--target", "all"])));
         assert!(!checks_targets("check", &args(&["--json"])));
         assert!(!checks_targets("run", &args(&["--target"])));

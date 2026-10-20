@@ -81,6 +81,54 @@ fn buttons_are_named_as_the_pad_in_use_labels_them() {
             "Crank forward",
             "Crank forward",
         ),
+        (
+            Button::SystemMenu0,
+            "Menu item 1",
+            "Menu item 1",
+            "Menu item 1",
+        ),
+        (
+            Button::SystemMenu1,
+            "Menu item 2",
+            "Menu item 2",
+            "Menu item 2",
+        ),
+        (
+            Button::SystemMenu2,
+            "Menu item 3",
+            "Menu item 3",
+            "Menu item 3",
+        ),
+        (
+            Button::SystemMenu3,
+            "Menu item 4",
+            "Menu item 4",
+            "Menu item 4",
+        ),
+        (
+            Button::SystemMenu4,
+            "Menu item 5",
+            "Menu item 5",
+            "Menu item 5",
+        ),
+        (
+            Button::SystemMenu5,
+            "Menu item 6",
+            "Menu item 6",
+            "Menu item 6",
+        ),
+        (
+            Button::SystemMenu6,
+            "Menu item 7",
+            "Menu item 7",
+            "Menu item 7",
+        ),
+        (
+            Button::SystemMenu7,
+            "Menu item 8",
+            "Menu item 8",
+            "Menu item 8",
+        ),
     ];
     assert_eq!(table.map(|row| row.0), Button::ALL);
     for (button, xbox, playstation, nintendo) in table {

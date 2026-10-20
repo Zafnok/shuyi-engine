@@ -222,6 +222,11 @@ pub struct NameEntry {
 }
 
 impl NameEntry {
+    /// What the grid reacts to ([`handle`](Self::handle)), for the screen
+    /// that shows it to declare
+    /// ([`Screen::actions`](crate::screen::Screen::actions)).
+    pub const ACTIONS: &'static [UiAction] = crate::input::NAVIGATION;
+
     /// The grid for `name`, on its first letter.
     pub fn new(name: &str, rules: NameRules) -> Self {
         Self {

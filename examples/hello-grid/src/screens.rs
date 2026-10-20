@@ -12,6 +12,7 @@ use std::any::Any;
 use shuyi_assets::dialogue::{Present, Side as Speaker};
 use shuyi_ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::input::ui_actions;
 use shuyi_ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
 use shuyi_ui::screens::options::{self, OptionRow, OptionsScreen, RowAction, RowValue};
 use shuyi_ui::screens::profiles::ProfilesScreen;
@@ -79,6 +80,22 @@ pub fn option_rows(_: &HelloCtx) -> Vec<OptionRow<Hello>> {
     ]
 }
 
+/// Every screen the game can show, overlays on their own, for the check
+/// that its controls fit each target (`cargo shuyi check --target`,
+/// ADR-0008 §3): its own and the engine's it opens.
+pub fn all(ctx: &mut HelloCtx) -> Vec<Box<dyn Screen<Hello>>> {
+    vec![
+        Box::new(Title::new()),
+        Box::new(StageScreen::new(ctx)),
+        Box::new(Talk::new(ctx, "intro")),
+        Box::new(Leave),
+        Box::new(End::new(Outcome::Won { turn: 1 })),
+        Box::new(OptionsScreen::new(option_rows)),
+        Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)),
+        Box::new(ProfilesScreen::new(ctx)),
+    ]
+}
+
 /// What an item of the title's menu stands for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TitleChoice {
@@ -139,6 +156,11 @@ impl Title {
 impl Screen<Hello> for Title {
     fn name(&self) -> &'static str {
         "title"
+    }
+
+    /// Its menu's.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(ui_actions(Menu::<()>::ACTIONS))
     }
 
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
@@ -241,6 +263,11 @@ impl Screen<Hello> for Talk {
         "talk"
     }
 
+    /// Confirm reads on (held, faster), Cancel leaves.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm, Action::Cancel])
+    }
+
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
         for &action in &input.actions {
             match action {
@@ -298,6 +325,11 @@ impl Leave {
 impl Screen<Hello> for Leave {
     fn name(&self) -> &'static str {
         "leave"
+    }
+
+    /// Confirm says yes, Cancel no.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(vec![Action::Confirm, Action::Cancel])
     }
 
     fn update(&mut self, _: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {
@@ -379,6 +411,11 @@ impl End {
 impl Screen<Hello> for End {
     fn name(&self) -> &'static str {
         "end"
+    }
+
+    /// Its menu's.
+    fn actions(&self) -> Option<Vec<Action>> {
+        Some(ui_actions(Menu::<()>::ACTIONS))
     }
 
     fn update(&mut self, ctx: &mut HelloCtx, input: &FrameInput<Action>) -> Transition<Hello> {

@@ -8,6 +8,9 @@ use shuyi_assets::lang::Lang;
 use shuyi_assets::names::Names;
 use shuyi_assets::pack::Bake;
 use shuyi_assets::palette::PaletteDef;
+use shuyi_ui::input::KeymapDef;
+use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
+use shuyi_ui::toy::Action;
 
 use super::bots::{BotsInput, BotsOutput, tally};
 use super::replay::{Record, ReplayRun, ReplayStep};
@@ -111,6 +114,10 @@ pub struct Fake {
     /// The files `bake` bakes (its names table and palette are baked), or
     /// none if it doesn't offer `bake`.
     pub sources: Option<&'static [(&'static str, &'static [u8])]>,
+    /// Whether it offers its controls (a keymap with no table of a
+    /// target's, and a title screen that declares nothing), or why they
+    /// don't load; `None`: it doesn't offer them.
+    pub controls: Option<Result<(), String>>,
 }
 
 /// A game's sources: a names table, a palette and a picture.
@@ -128,6 +135,7 @@ impl Default for Fake {
             replay: Ok(()),
             bots: Ok(tally(Vec::new())),
             sources: Some(SOURCES),
+            controls: None,
         }
     }
 }
@@ -187,6 +195,20 @@ impl GameTools for Fake {
 
     fn bots(&self, _: &BotsInput) -> Result<BotsOutput, String> {
         self.bots.clone()
+    }
+
+    fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {
+        let offered = self.controls.clone()?;
+        if let Err(e) = offered {
+            return Some(Err(e));
+        }
+        let title = ScreenActions::<Action> {
+            screen: "title",
+            actions: None,
+        };
+        Some(Ok(Box::new(
+            GameControls::new(KeymapDef::default()).with(title),
+        )))
     }
 
     fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
