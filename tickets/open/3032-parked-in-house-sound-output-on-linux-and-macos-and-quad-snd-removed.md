@@ -50,7 +50,11 @@ at hand, say so, and the ticket notes that macOS was tested only in CI.
   `dlopen`, so a machine without it runs silent instead of failing to
   start. If `alsa-sys` can only link at build time, write the few
   function declarations ourselves, from the reference, and `dlopen`
-  them.
+  them. When `libasound` is loaded at run time, doctor's `lib-alsa`
+  row (`crates/cli/src/contract/doctor/linux.rs`, 2513) changes from
+  `pkg-config --modversion alsa` to the soname `libasound.so.2`. The
+  row's packages, and the package lines of every
+  `scripts/setup-linux.sh`, follow if the package changes.
 - **macOS**: a default-output Audio Unit with a render callback, through
   the `objc2-*` crates.
 - **The switch**: `in-house-sound` becomes the only path:
@@ -86,6 +90,7 @@ at hand, say so, and the ticket notes that macOS was tested only in CI.
 
 - [ ] Sound and music play on Linux and macOS as on Windows.
 - [ ] A Linux machine without `libasound` starts and runs silent.
+- [ ] doctor's `lib-alsa` check looks for the soname, and its tests say so.
 - [ ] `cargo tree` shows none of the crates listed above.
 - [ ] The game builds and plays at this revision with no code change.
 - [ ] The PR body says the code was written from the documents listed in
@@ -99,6 +104,8 @@ at hand, say so, and the ticket notes that macOS was tested only in CI.
   device calls behind a small trait and a fake.
 - Integration: the same null-output golden test as 3031, on Linux and
   macOS runners.
+- Unit: doctor's `lib-alsa` row (2513's tests on fakes) passes when
+  `libasound.so.2` is found by soname and fails without it.
 - Manual: step 5.
 
 ## Completion notes

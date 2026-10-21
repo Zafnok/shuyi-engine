@@ -44,10 +44,22 @@ say whether a new developer would know where to start.
 - **Direction guides**, each in the fixed order of ADR-0009 §5 (the
   template, what it uses, what looks related but isn't for it, which
   example to read first):
-  - `top-down-grid.md`, written in full from `hello-grid` (1118);
+  - `top-down-grid.md`, written in full from `hello-grid` (1118).
+    **Either order with 2117:** if 2117 is done, it says the kit's
+    topologies (four-way by default, eight-way with `Topology::Square8`)
+    and `find_path` from one tile to another; if not, 2117 adds that
+    paragraph. It ends with a short planned section, *In real time*: a
+    grid that steps in real time (snake) waits for 1119 and 2739, both
+    parked. Until then a turn game times its rules in turns with 2115's
+    timers, never with `dt`. 2739 replaces the section with the full
+    one. If 2739 is done first, the file already has its full section:
+    keep it and write the rest around it;
   - `top-down-free.md`, `isometric.md` and `side-view.md`, as planned
     pages: one paragraph, the parked tickets, and what not to use
-    meanwhile.
+    meanwhile;
+  - `hex-grid.md` as a planned page: hex grids, parked until after
+    Visions of Shuyi launches (Nick, 2026-10-20), naming 2121 and 2740.
+    2740 writes it in full.
 - **Move guides**: `top-down-free-to-top-down-grid.md` as a planned page
   pointing at 1125, which writes it in full.
 - **A check**, part of `cargo xtask check-modules` (2003):

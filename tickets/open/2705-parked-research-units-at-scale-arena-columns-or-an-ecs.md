@@ -6,7 +6,7 @@ milestone: "Engine: real-time strategy"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1119"]
+blocked_by: ["1119", "2116"]
 nick_input: none
 completed:
 ---
@@ -36,7 +36,8 @@ compile time, a readable dump). This ticket is that spike, at the scale
 of an RTS.
 
 It needs 1119 (`Fx`, `FxVec2`, `Arena<T>`, the core's seeded random
-numbers and hash). The answer decides how 2707 is written.
+numbers and hash) and 2116 (golden tables, and the wasm32 runner of
+CI's `determinism` job). The answer decides how 2707 is written.
 
 ## Nick input
 
@@ -97,8 +98,13 @@ None.
   6. **Determinism:**
      - a hash of every unit, in serial order, after every step;
      - two native runs give the same 1 000-step hash list;
-     - native and web give the same list (run the web build under
-       `wasm32-wasip1` with `wasmtime`, as 1119 does for `Fx`);
+     - native and wasm32 give the same list: the 1 000-step hash list
+       is a golden table (2116's `shuyi_assets::golden`), and the bench
+       crate joins the wasm32 run of CI's `determinism` job (or runs
+       under the same runner locally). The crate is outside the
+       workspace, so it joins as a step of its own with
+       `--manifest-path research/units-at-scale/Cargo.toml`, and the
+       last commit removes that step with the crate;
      - for `hecs` and `bevy_ecs`, write down what it took to make the
        result independent of query and archetype order.
   7. **Readability of a text dump:** a dump of 10 units from each, put in
@@ -153,7 +159,7 @@ None.
 - [ ] All contenders end with the same hash after 600 steps at 1 000
       units, and the report shows it.
 - [ ] Each contender's 1 000-step hash list is the same twice natively
-      and on the web, or the report says why not.
+      and on wasm32, or the report says why not.
 - [ ] The licenses of `hecs` and `bevy_ecs` are recorded with their
       source and date.
 - [ ] The verdict is written. If it goes against ADR-0015 §3, the new
@@ -166,8 +172,8 @@ None.
 
 - Equivalence: the four contenders' hashes after 600 steps at 1 000
   units are equal.
-- Determinism: native twice, and native against web, for each
-  contender.
+- Determinism: native twice, and native against wasm32 through the
+  golden table, for each contender.
 - No other tests: the code is deleted.
 
 ## Completion notes

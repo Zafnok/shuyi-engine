@@ -59,7 +59,9 @@ asked is missing.
   directions are now perspective answers (ADR-0013 §1). Keep its tests'
   promise that no terminal means no prompt.
 - **`wizard::questions(&Catalog, &Template) -> Vec<Question>`**, pure:
-  1. the name and folder;
+  1. the name and folder, then, if 3048 is done, the game's id
+     (reverse-DNS, default `com.example.<crate>`, checked by 3048's
+     rule);
   2. the perspectives (`Many`);
   3. one question per catalog concern, in the catalog's order, skipping
      a concern none of whose answers applies to the perspectives picked
@@ -80,18 +82,22 @@ asked is missing.
 - **Keys:** the prompt library's own keys (arrows, space, enter) are a
   terminal's, not the game's, so rule 8 doesn't apply to them. The help
   line under each prompt still names them.
-- **Flags** for every question: `--perspective`, `--bodies`,
-  `--music` (once 2205 adds it), `--kind` (from 2003's *Kind of game*
-  concern, ADR-0015 §1), `--online`, `--targets`, and `--set`
-  (2501) for template questions. A planned answer given by flag fails
-  with its status and ticket. `--no-input`, or stdin not being a
-  terminal, asks nothing and uses the defaults.
+- **Flags** for every question: `--id` (if 3048 is done, see below),
+  `--perspective`, `--bodies`, `--music` (once 2205 adds it), `--kind`
+  (from 2003's *Kind of game* concern, ADR-0015 §1), `--online`,
+  `--targets`, and `--set` (2501) for template questions. A planned
+  answer given by flag fails with its status and ticket. `--no-input`,
+  or stdin not being a terminal, asks nothing and uses the defaults.
 - **`shuyi new <dir> --questions --json`** returns the questions, their
   answers and their status, and makes nothing. Its schema is checked
   like the rest of the contract (1129).
 - **At the end** the wizard prints the one `shuyi new … --no-input`
   command that makes the same game, and the composer writes the answers
   into `shuyi.ron` under `created_with`.
+- **The game's id, either order with 3048:** if 3048 is done, the
+  composer writes the id into `shuyi.ron`'s `app.id`, and `app-info`
+  writes the template's `app_info.rs`. If 3048 isn't done, nothing:
+  3048 adds the question and the flag (its scope says so).
 - **Each picked answer that is a module** turns it on through the
   template's parts or, if no part names it, through `shuyi add`'s code
   directly (ADR-0013: every catalog answer works with no part).
@@ -115,6 +121,7 @@ asked is missing.
    answers, and update `check-modules` and its fixtures.
 2. Write `wizard::questions`, with the skipping rule, and its tests.
 3. Write the prompts, the flags, `--no-input` and `--questions --json`.
+   Check whether 3048 is done; if so, add the id question and `--id`.
 4. Print the equivalent command and write `created_with`.
 5. Update the skill (or 1134's scope) and the docs.
 
@@ -132,6 +139,10 @@ asked is missing.
       backend, or through the answers the prompts produce).
 - [ ] With every ready answer picked, the new game builds and passes its
       tests in CI.
+- [ ] If 3048 is done, `shuyi new demo --no-input --id org.example.demo`
+      writes that id into `shuyi.ron`'s `app.id` and `app_info.rs`, and
+      the game passes `app-info --check`. A bad id by flag fails with
+      3048's error.
 - [ ] `check-modules` fails on a concern without `pick` or `question`.
 - [ ] Nick's sign-off is recorded in the Completion notes.
 - [ ] All gates in the `run-gates` skill pass.

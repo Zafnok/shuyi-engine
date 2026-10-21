@@ -27,8 +27,9 @@ movers. Rigid bodies in floats are a separate module later
 Gameplay never reads a bone (ADR-0011 §4): hits use these shapes only.
 
 It builds on 3101 (`Fx12`, `FxVec3`, `FxTransform`, `Angle16`, `sqrt`)
-and 1122 (the 2D kit's names and rules: `Mover`, `Trigger`, the grid
-broad phase, settings in RON).
+and 1122 (the 2D kit's names and rules: `Mover`, `Trigger`,
+`CollisionLayers` and its rule for what meets what, the grid broad
+phase, settings in RON).
 
 3102 (meshes) and this ticket can land in either order. If 3102 has
 landed, add `TriMesh::from_mesh(&Mesh, &FxTransform)` here. If not,
@@ -63,6 +64,10 @@ None.
   - `shape_cast(shape, from, delta) -> Option<Hit>` for spheres and
     capsules: steps of at most half the radius until the first overlap,
     then 8 rounds of bisection. Documented, and exact under replay;
+  - every static collider and moving shape carries 1122's
+    `CollisionLayers`, and `ray_cast` and `shape_cast` take a filter
+    `{ mask: u32, exclude: Option<collider id> }` with the same rules as
+    2124's 2D `QueryFilter`, so a shot skips its shooter in 3D as in 2D;
   - every query returns hits sorted by (distance, collider id, triangle
     index), so ties never depend on memory order.
 - **The character mover**, `CharacterMover`, with settings in RON
@@ -123,7 +128,8 @@ None.
 
 ## Tests required
 
-- Unit: each shape pair, casts, the fixture room, triggers.
+- Unit: each shape pair, casts (with mask 0 they hit nothing, and a
+  shot that excludes its shooter skips it), the fixture room, triggers.
 - Property: broad phase against brute force; no overlap; additivity;
   determinism.
 - Fixture: the dump on native and `wasm32`; the RON errors.

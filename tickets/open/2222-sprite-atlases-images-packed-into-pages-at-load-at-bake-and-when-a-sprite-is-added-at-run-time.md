@@ -53,6 +53,12 @@ None.
   equality test covers an atlas fixture.
 - **In `shuyi-app`:** the sprite skin draws a sprite from its atlas page
   and rectangle; a page that changed is uploaded again before the frame.
+- **In the raster** (`shuyi_ui::frame::raster` if 2332 is done; else
+  `frame-png`'s `Painter`, and 2332 moves it): atlas pages and inserted
+  sprites are drawn as the window draws them, so `frame-png` keeps
+  showing what players see. Either order with 2018: if 2018 is done,
+  add an atlas sprite and an inserted one to its render card; if not,
+  2018's card includes them.
 - Fixtures: images of our own, made for the tests.
 
 **Out (do not do):**
@@ -63,7 +69,8 @@ None.
 
 1. Write the packer and its tests.
 2. Add `insert`, the spec format and the bake support.
-3. Draw from atlases in `shuyi-app`.
+3. Draw from atlases in `shuyi-app` and in the raster (or `frame-png`'s
+   `Painter` if 2332 isn't done).
 4. Run the gates.
 
 ## Acceptance criteria
@@ -74,6 +81,8 @@ None.
 - [ ] An atlas packed at load equals the baked one (the pack's test).
 - [ ] An inserted sprite is drawn on the next frame (a `frame-png`
       snapshot).
+- [ ] If 2018 is done, its render card holds an atlas sprite and an
+      inserted one, and its `render` job passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

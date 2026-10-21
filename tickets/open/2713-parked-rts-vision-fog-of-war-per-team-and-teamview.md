@@ -78,9 +78,11 @@ None.
   unseen, `.` explored, `#` visible).
 
 **Out (do not do):**
-- memory of buildings seen earlier (ghosts in explored cells), heights
-  and line of sight blocked by terrain: later tickets if a game needs
-  them;
+- memory of buildings seen earlier (ghosts in explored cells) and
+  heights: later tickets if a game needs them;
+- line of sight blocked by terrain: per tile it is `shuyi_core::sight`
+  (2120, parked with roguelikes); fog of war that uses it is a later
+  ticket if a game needs it;
 - the drawing of fog and the minimap (2716);
 - the AI that reads `TeamView` (2714, 2715);
 - threads (2717).

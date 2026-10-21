@@ -6,14 +6,14 @@ milestone: "Engine: real time"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["1120", "1121", "1122", "1123", "1124"]
+blocked_by: ["1120", "1121", "1122", "1123", "1124", "2360"]
 nick_input: none
 completed:
 ---
 
 # 1125 — Example: a walkable town that starts a grid battle
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0060 says the army walks around freely (then 1119–1125 become game work). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): after Visions of Shuyi launches, not only after the MVP (`docs/decisions.md`, 2026-10-20). Unparked early only if the game needs it: its ticket 0060 says the army walks around freely (then 1119–1125 become game work), or it asks for a piece of this through its `engine-change` skill, which is then split out and unparked alone. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -40,9 +40,10 @@ for him, not a sign-off.
 - `examples/town-and-battle/` uses `shuyi-*` only, with CC0 art
   (Kenney's top-down packs, or similar, credited in
   `THIRD_PARTY_ASSETS.md`):
-  - a Tiled town map (1124);
+  - a Tiled town map (1124), drawn by 2360's tile-layer items;
   - a walking, animated player (1123) with analog movement (1121) and
-    collision (1122), followed by a camera (1120);
+    collision (1122), followed by a camera (1120) with damped follow (a
+    follow fraction under `(1, 1)`);
   - two NPCs with `.dlg` lines;
   - touching an enemy pushes a grid battle stage built from the 12×10
     tiles around the touch point, with the tactics kit (1114–1116);

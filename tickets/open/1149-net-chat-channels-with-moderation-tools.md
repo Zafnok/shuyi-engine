@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1148"]
+blocked_by: ["1148", "2346"]
 nick_input: none
 completed:
 ---
@@ -47,9 +47,30 @@ None to build it. Turning chat on in our game comes with 0053.
 - **Report:** a message plus context goes to a moderation queue in
   `shuyi-services`. A small moderation command lets someone list, act on
   and close reports.
-- A text-input widget that respects `check-text`, and an IME note for
-  later languages.
+- A text-input widget that respects `check-text`, built on the name
+  box's typing (2346: the letters of any language the font draws, the
+  IME on only while the box is open through `Ctx::takes_text`).
+  - The IME's composing text comes from 3034's tickets; miniquad 0.4.11
+    has none.
+  - Paste from the clipboard, on an action the player binds, never a key
+    (the `input-actions` skill). miniquad 0.4.11 has
+    `window::clipboard_get` and `clipboard_set` on desktop. On the web,
+    its loader (`crates/cli/web/mq_js_bundle.js`) keeps the text of the
+    browser's last paste event for `clipboard_get`, and writes
+    `clipboard_set`'s text on the browser's next copy or cut. So no JS
+    plugin of our own is needed; the PR says how paste behaves there.
+    3034's replacement may change this.
 - A chat panel in `shuyi-ui` (logic, view and skin) that games can place.
+- **Either order with 2367** (overlays that let the screen below run):
+  if 2367 is done and the panel opens as a screen over a running match,
+  its `passes` is `Passes::Undeclared` and it declares only the chat
+  actions, so the match keeps running and keeps its own actions; if 2367
+  isn't done, the panel is a widget the match screen draws and feeds
+  itself, and no chat screen is pushed. Either way, while the chat box
+  takes typed text, the match gets none of its actions, so a letter
+  typed in chat doesn't also fire the match's action on that key: the
+  chat screen then declares nothing (`None` takes every action, and only
+  time goes down), or the match screen stops reading its actions.
 - Tests:
   - filtering;
   - limits;
@@ -64,7 +85,7 @@ None to build it. Turning chat on in our game comes with 0053.
 
 ## Implementation steps
 
-1. Write the channels and the limits.
+1. Write the channels and the limits. Read 2367's ADR if 2367 is done.
 2. Write the filter, block and report.
 3. Build the moderation command and the panel.
 4. Write the tests and the docs: "what running chat means", with the

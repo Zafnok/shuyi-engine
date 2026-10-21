@@ -41,7 +41,13 @@ None.
 **In:**
 - **Palette roles as data.** A skin's palette file maps role names to
   colours. If the skin format has no named roles yet, this ticket adds
-  them, and the old palettes become roles with a migration.
+  them, and the old palettes become roles; the old form is still read
+  for one more minor release (2005's rule). **Either order with
+  2517:** if 2517 is done, list the old form as changes of
+  `PaletteRon` (`Format::changes`: a `Change::rename` where only a
+  name changes, a `Change::manual` otherwise), so `shuyi check` warns
+  and `shuyi upgrade` rewrites or explains it; if not, 2517 lists it
+  when it lands.
 - **The pattern set** in `shuyi_ui::onebit::Pattern`, 8 × 8 bits each:
   - `Black`, `White`;
   - `Dither25`, `Dither50`, `Dither75` (Bayer 8 × 8 ordered thresholds);
@@ -55,8 +61,9 @@ None.
   - `to_one_bit(frame: &Frame, map: &PatternMap) -> OneBitFrame`, a
     bitmap whose rows are padded to 32 bits, as the Playdate's LCD
     expects;
-  - cells and rectangles use their role's patterns, anchored to the
-    screen (so patterns don't swim when things move);
+  - cells, rectangles and shapes (2336; if 2336 isn't done, it does
+    this for shapes) use their role's patterns, anchored to the screen
+    (so patterns don't swim when things move);
   - a colour with no role is dithered with Bayer 8 × 8 on its luminance
     `(77·r + 150·g + 29·b) >> 8`;
   - glyphs are drawn solid in their role's foreground (text is never
@@ -70,6 +77,11 @@ None.
   - every role the skin uses has a pattern;
   - roles in one `distinct` group have different foreground patterns;
   - text roles are `Black` on `White`, or the inverse (warn otherwise).
+  - **Either order with 2347:** if 2347 is done, its optional palette
+    names `key` and `key_bg` are text roles here: they get patterns in
+    the map, `key` on `key_bg` keeps the text rule (black on white, or
+    the inverse), and `key` and `text` form a default `distinct` group
+    when the palette has `key`; if not, 2347 does it.
 - **`frame-png --target playdate`** renders the `OneBitFrame` at
   400 × 240 (or the game's frame for that target), scaled by an integer
   for viewing.
@@ -101,8 +113,11 @@ None.
 
 - [ ] A fixture skin with `team.player` and `team.enemy` both mapped to
       `Dither50` in a `distinct` group fails the check, naming both roles.
-- [ ] The same frame converts to the same bits on native and web (a
-      fixture hash checked in).
+- [ ] The same frame converts to the same bits on x64, ARM64 and
+      wasm32: a row of a golden table (2116's `shuyi_assets::golden`)
+      in `shuyi-ui`, whose tests CI's `determinism` job runs on wasm32.
+      Either order with 2116: if it isn't done, a plain checked-in
+      hash, which 2116's job then runs.
 - [ ] `changed_rows` after moving the cursor one cell marks only that
       cell's rows (test).
 - [ ] `frame-png --target playdate` of an example screen matches its

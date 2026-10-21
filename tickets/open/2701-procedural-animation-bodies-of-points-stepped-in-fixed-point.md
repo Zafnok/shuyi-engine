@@ -43,8 +43,13 @@ None.
     written once for `Fixed<F>`;
   - `FxVec2::length`, `length_squared` and `normalize` (zero stays
     zero);
-  - `Angle::atan2(y, x)` and `Angle::acos(Fx)`, to the 256-step angle
-    of 1119's sine table.
+  - `Angle::atan2(y, x)` and `Angle::acos(Fx)`, to 2335's 256-step
+    `Angle` (`shuyi_core::angle`) and its sine table.
+  - **Either order with 2106 and 2122:** if this ticket isn't done
+    first, each of them adds what it needs of these (2106: `Fx::sqrt`;
+    2122: `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`, to 2335's
+    `Angle`) as specified here. Use what exists, add the rest, and keep
+    one golden table of their results, as step 1 says.
 - **The crate** `crates/procanim` (`shuyi-procanim`), following
   ADR-0009 §4:
   - a `view` feature, empty here, filled by 2703;
@@ -80,12 +85,17 @@ None.
 - limbs and gaits (2702);
 - drawing (2703);
 - the example game (2704);
-- collision with boxes (2704 adds it if the example needs it).
+- collision with boxes (2704 adds it if the example needs it);
+- code over a store: `Body` and `BodyDef` are plain values stepped by a
+  function, naming neither `Arena<T>` nor `shuyi-ecs`'s `World` (2904's
+  ADR), and a game keeps its bodies in whichever store it uses.
 
 ## Implementation steps
 
-1. Add the `fx` functions with property tests and a checked-in table of
-   results, compared on native and `wasm32`, as 1119 does for `Fx`.
+1. Add the `fx` functions with property tests and a golden table of
+   results (2116's `shuyi_assets::golden`), checked by CI's `test` job
+   (x64, ARM64) and `determinism` job (wasm32). Add the crate's `-p` to
+   that job if the functions live outside `shuyi-core`.
 2. Create the crate, its metadata, its feature in `shuyi`, the README's
    start, and the catalog row.
 3. Write `Body` and `step`, with unit tests on hand-made bodies: a
@@ -96,8 +106,8 @@ None.
 ## Acceptance criteria
 
 - [ ] `Fx::sqrt` is the floor of the exact root for every non-negative
-      input (property test), and the trig table matches on native and
-      wasm.
+      input (property test), and the trig table matches its golden
+      table in CI's `test` and `determinism` jobs.
 - [ ] A pinned point never moves, over random pushes (property test).
 - [ ] After `step`, no point's circle overlaps a solid tile, starting
       from any position outside solids (property test, 10,000 cases).

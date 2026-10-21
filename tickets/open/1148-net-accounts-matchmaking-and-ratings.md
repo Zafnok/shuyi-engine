@@ -6,7 +6,7 @@ milestone: "Engine: networking"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["1146"]
+blocked_by: ["1146", "3054"]
 nick_input: setup
 completed:
 ---
@@ -47,19 +47,31 @@ our game without 0053.
 
 **In:**
 - `shuyi-services` is a server crate: tokio, Postgres through `sqlx`
-  with `default-features = false` and rustls with ring, checked with
+  with `default-features = false` and rustls with ring, its root
+  certificates from the system's store (sqlx 0.8's
+  `tls-rustls-ring-native-roots` feature; check the name in the version
+  used), never `webpki-roots`, whose CDLA-Permissive-2.0 is not on
+  `deny.toml`'s allow list (2601 has the same rule), checked with
   `cargo deny`.
   - **Accounts.** A device id, or a Steam auth ticket when the `steam`
-    feature is on. No passwords. A display name with the word filter
-    (1149's `rustrict`).
+    feature is on. The client asks for the ticket through the one Steam
+    client (the `steam` module in `shuyi-app`, 3037 or 1144) and never
+    starts Steam itself. No passwords. A display name with the word
+    filter (1149's `rustrict`).
   - **Matchmaking queue.** Rating ranges that widen while waiting.
     Matches are handed to a referee.
   - **Ratings.** Glicko-2 via `skillratings` for one-against-one, and
     Weng-Lin for teams. Ratings update only from referee-recorded or
     re-simulated results.
-  - **Leaderboards.** Read from the same verified results.
+  - **Leaderboards.** Read from the same verified results. A score
+    submitted through 3054's `Leaderboards` counts only when the record
+    it carries (`Submission::record`) re-simulates, like 1146's result
+    record, to the score it claims. On the client, `shuyi-net` gets a
+    backend implementing 3054's `Leaderboards` over this server.
 - A client API in `shuyi-net` for queueing, cancelling, getting matched,
-  and reading a rating.
+  and reading a rating. It may reach the services over HTTP through
+  2601's capability (`Ctx::http`), which works on native and in the web
+  build once 2601's two backend tickets are done.
 - Data rules, written in `docs/net-services.md`:
   - what is stored and for how long;
   - account deletion;
@@ -68,16 +80,20 @@ our game without 0053.
   - queue pairing;
   - rating updates against the published Glicko-2 worked example;
   - a forged result is refused;
+  - a forged score (a record that doesn't replay to it) is refused;
   - deletion removes everything.
 
 **Out (do not do):**
+- the `Leaderboards` trait, local high-score tables and Steam's boards
+  (3054);
 - chat (1149);
 - running a public instance;
 - anything in our game.
 
 ## Implementation steps
 
-1. Write the schema, the services, and the client API.
+1. Write the schema, the services, the client API and its
+   `Leaderboards` backend.
 2. Write the tests.
 3. Write the docs and the data rules, plus a draft privacy policy for
    Nick in `docs/`.
@@ -91,6 +107,8 @@ our game without 0053.
 
 ## Tests required
 
-- Integration: services with Postgres; ratings; forged results; deletion.
+- Integration: services with Postgres; ratings; forged results; a
+  forged score (a record that doesn't replay to it) is refused;
+  deletion.
 
 ## Completion notes

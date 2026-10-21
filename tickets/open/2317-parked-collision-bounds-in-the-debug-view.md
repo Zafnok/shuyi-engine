@@ -50,7 +50,12 @@ None.
     the trigger's name as a label when it has one;
   - `hit_gizmos(&MoveResult, to_px, &mut Gizmos)`: a cross on the
     contact point and a short line along the side that was hit
-    (`Note`).
+    (`Note`);
+  - `cast_gizmos(from, to, hit: Option<&Hit>, to_px, &mut Gizmos)` for
+    2124's casts: a `Line` from `from` to the hit point (or to `to`
+    when nothing was hit), and at a hit a `Cross` and a short line
+    along the side entered, all `Note`. **Either order with 2124:** if
+    2124 is done, add it here; if not, 2124 adds it.
 
   `to_px` maps world pixels to console pixels:
   - if 2318 has landed, use its camera transform;
@@ -79,7 +84,7 @@ None.
 ## Implementation steps
 
 1. Read 2315's ADR, `shuyi_ui::debug::gizmo`, and 1122's
-   `shuyi_core::collide`.
+   `shuyi_core::collide` (and 2124's `collide::query`, if it is done).
 2. Write `debug/collide.rs` and its tests on hand-drawn maps.
 3. Register the `collision` and `collision_grid` channels, and call
    the helpers from the tick example's room.
@@ -99,7 +104,8 @@ None.
 ## Tests required
 
 - Unit: each helper on a 4 × 4 map, with a one-way tile and a trigger.
-  `px` rounding at ±0.5.
+  `px` rounding at ±0.5. `cast_gizmos` with and without a hit, if 2124
+  is done.
 - Property: no gizmo falls outside the view's pixel bounds.
 - Snapshot / integration: the example room with `collision` on, and
   with `collision_grid` on.

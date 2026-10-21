@@ -51,11 +51,16 @@ None.
   sorted keys, a trailing comma (RON's `PrettyConfig`).
 
 **Out (do not do):**
-- Writers for `.dlg`, `.map`, keymaps, cinematics and language packs
-  (their files hold comments and layout a writer would lose; a ticket of
-  their own if wanted).
+- Writers for `.dlg`, `.map`, keymaps and cinematics (their files hold
+  comments and layout a writer would lose; a ticket of their own if
+  wanted). Language packs belong to the parked 2227, which writes PO
+  files and the pack files a PO import changes (not as an `Encode`: a
+  pack is several files).
 - Tiled, LDtk and Aseprite (tickets 1123 and 1124).
 - Changing what any format reads.
+- Bringing a game's files up to a newer form of a format: 2517 rewrites
+  old names in the text at token spans and keeps comments; a writer here
+  would lose them.
 
 ## Implementation steps
 

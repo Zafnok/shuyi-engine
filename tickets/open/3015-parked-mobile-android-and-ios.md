@@ -22,9 +22,11 @@ macroquad runs on Android and iOS (its README), so the `shuyi-app`
 backend can reach phones. The `android` and `ios` profiles exist as
 `planned` (3001). Four things are missing:
 
-- **Touch controls.** A turn-based grid game plays well by touch, but
-  the engine has no pointer input yet (parked 1121), and 1121 leaves out
-  on-screen controls.
+- **Touch controls.** A turn-based grid game plays well by touch.
+  2405 (After MVP) reads taps as pointer presses on menus and grid maps,
+  and 2407 (parked) plans on-screen controls for phones' browsers. This
+  ticket reuses them. Nothing yet turns those controls on in the
+  `android` and `ios` profiles, or lets the player move them.
 - **Safe areas.** Notches and rounded corners.
 - **The lifecycle.** The phone pauses and kills apps in the background.
 - **Store builds.** Signing and the store packages.
@@ -46,20 +48,31 @@ splits it.
 ## Scope
 
 **In** (after the split):
-- **On-screen controls as an input profile.** A virtual d-pad and
-  buttons drawn by the engine, whose positions and sizes are data the
-  player can move. The `android` and `ios` profiles list them, and
-  3002's check applies.
-- **Direct touch.** Tapping a tile or a menu row, through 1121's
-  pointer, which must be unparked first, or which this ticket asks Nick
-  to unpark.
+- **On-screen controls as an input profile.** The control set, the hit
+  test, `PadKind::Touch`, swipes and the controls-fit rule are 2407's
+  plan. Either order: if 2407's split tickets are done, this ticket
+  turns on their on-screen profile field in `android.ron` and `ios.ron`
+  and adds the examples' `android` and `ios` tables. If 3015 is
+  unparked first, its touch-controls ticket follows 2407's plan, and
+  2407 closes into it. This ticket keeps the player moving and resizing
+  the controls, saved with the settings.
+- **Direct touch.** Tapping a tile or a menu row, through 2405's
+  pointer (a tap is its primary press); 2407's on-screen controls for
+  everything else.
 - **Safe areas.** They come from the platform, and the frame is laid out
   inside them.
 - **The lifecycle.** Going to the background sends `Suspend` (3003). The
   game saves, and resumes where it was.
 - **Exporters.** `android` (an AAB or APK; macroquad's own Android tool,
   license checked) and `ios` (an Xcode project built in CI on macOS).
-  Signing uses secrets Nick sets up.
+  Signing uses secrets Nick sets up, read from environment variables
+  with fixed names, as 3051 does for the desktop. If 3051 is done, the
+  `ios` exporter reuses its temporary keychain step and its `Redactor`.
+  If not, this ticket writes them and 3051 reuses them. Each store
+  package's id, name, version and icons come from `shuyi.ron`'s `app`
+  part (3048). Android's application id allows no `-`, which 3048's id
+  allows, so the Android exporter maps it to `_` and `check --target
+  android` warns that it did.
 - **On a device:** the bench scenarios on a four-year-old mid-range
   phone, against the budgets.
 
@@ -70,14 +83,16 @@ splits it.
 ## Implementation steps
 
 1. Wait for Nick to unpark it and decide.
-2. Split it into tickets: touch controls, lifecycle and safe areas, the
-   Android exporter, the iOS exporter, and measuring on a device.
+2. Split it into tickets: touch controls (what 2407's split hasn't
+   done: the player moving and resizing them, and the `android` and
+   `ios` profiles), lifecycle and safe areas, the Android exporter, the
+   iOS exporter, and measuring on a device.
 3. Work them in that order.
 
 ## Acceptance criteria
 
 - [ ] Nick's decision is recorded.
-- [ ] The split tickets exist, with dependencies (including 1121).
+- [ ] The split tickets exist, with dependencies (including 2405 and 2407).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

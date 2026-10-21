@@ -29,10 +29,11 @@ like the 2D one (ADR-0003 §3). This ticket lays the ground every other
 - the crate, its metadata, its feature in `shuyi`, and the three 3D
   perspective markers (ADR-0011 §2, ADR-0009 §3).
 
-It builds on 1119 (`Fx`, `FxVec2`, the 256-step sine table, the
-checked-in table of results), 1120 (the `Perspective` trait) and 2003
-(the `shuyi` crate, module metadata, the catalog and
-`cargo xtask check-modules`).
+It builds on 1119 (`Fx`, `FxVec2`, and its golden table of `Fx`
+results on 2116's `shuyi_assets::golden`), 2335 (the 256-step `Angle`
+and its sine table, in units of 1/65 536 like this ticket's), 1120 (the
+`Perspective` trait) and 2003 (the `shuyi` crate, module metadata, the
+catalog and `cargo xtask check-modules`).
 
 Two open tickets touch the same ground. Either order works with each:
 
@@ -72,14 +73,17 @@ None.
     turn. Use octant reduction and a binary search of the 3D sine table
     below, or CORDIC with 16 rounds; pick one, and document its error
     bound;
-  - 1119's 256-step `Angle::atan2` (and `acos`, if 2701 added it) is
-    built on `atan2_turn16`, rounded to its 256 steps.
+  - `Angle::atan2` on 2335's 256-step `Angle` (and `acos`, if 2701
+    added it) is built on `atan2_turn16`, rounded to its 256 steps.
 - **The crate** `crates/3d` (`shuyi-3d`), following ADR-0009 §4:
   - `#![cfg_attr(not(feature = "std"), no_std)]` with `extern crate
     alloc`, and a `std` feature on by default;
   - a `draw` feature, empty here, filled by 3103;
   - `#![deny(clippy::float_arithmetic)]` on every module outside
     `draw`, so no float enters the simulation part;
+  - its entry in `tools/layers.ron` (2015): `engine` and `outside` as
+    built, `devices: false`, and `floats: true`, because the ban is per
+    module outside `draw`, not in `lib.rs`;
   - metadata under `[package.metadata.shuyi]`: concern *Perspective*,
     answers first person, third person and top-down 3D; concern *World
     drawing*, answer full 3D, alternative `shuyi-diorama`; `serves`:
@@ -144,19 +148,24 @@ None.
    must pass unchanged. Add a property test that compares `Fx` with
    `FxBefore` for every operator.
 3. Write `fx::int` with `isqrt_u64` and `atan2_turn16`, and the generic
-   `sqrt`. Rebuild 1119's `Angle::atan2` (and 2701's functions, if they
-   exist) on them.
+   `sqrt`. Build `Angle::atan2` for 2335's `Angle` (and 2701's other
+   functions, if they exist) on them.
 4. Create `crates/3d`: `Cargo.toml` with the metadata and features, the
-   README, the `3d` feature in `crates/shuyi`, and the catalog row. Run
-   `cargo xtask check-modules`.
+   README, its `tools/layers.ron` entry, the `3d` feature in
+   `crates/shuyi`, and the catalog row. Run `cargo xtask check-modules`
+   and `cargo xtask check-layers`.
 5. Write `xtask gen-sin-table`, check in the table, and write
    `Angle16`.
 6. Write `FxVec3`, `FxMat3`, `FxTransform` and `FxQuat`, each with unit
    tests on hand-worked values.
 7. Add the markers, with a unit test that each implements `Perspective`.
-8. Extend 1119's checked-in table of results with `Fx12` and
-   `shuyi_3d::space` operations, compared on native and `wasm32` as
-   1119 does.
+8. Add a golden table of `Fx12` and `shuyi_3d::space` operations in the
+   crate's `tests/golden/` (`crates/3d/tests/golden/space.ron`), through
+   2116's `shuyi_assets::golden` (a dev-dependency on `shuyi-assets`
+   with `default-features = false, features = ["golden"]`, as 1119's).
+   Add `-p shuyi-3d` to the wasm32 `cargo test` of CI's `determinism`
+   job, and to what the `run-gates` skill's *Golden tables* section says
+   runs there.
 
 ## Acceptance criteria
 
@@ -177,11 +186,13 @@ None.
       angle.
 - [ ] After 1 000 random `FxQuat` products with `renormalize` every
       step, the length stays within 2 steps of 1 (property test).
-- [ ] The table of results matches on native and `wasm32`.
+- [ ] `Fx12` and `shuyi_3d::space` results match their golden table in
+      CI's `test` and `determinism` jobs (x64, ARM64, wasm32).
 - [ ] `shuyi-3d` builds with `--no-default-features`, and
       `clippy::float_arithmetic` finds nothing outside `draw`.
 - [ ] `cargo xtask check-modules` passes, with the `3d` feature and the
       row set to building.
+- [ ] `cargo xtask check-layers` passes with `shuyi-3d`'s entry.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -190,7 +201,8 @@ None.
   quaternion drift.
 - Exhaustive: `Angle16` over every angle.
 - Unit: hand-worked vectors, matrices and transforms; the markers.
-- Determinism: the table of results on native and `wasm32`.
+- Determinism: the golden table of `Fx12` and `shuyi_3d::space`
+  results, in CI's `test` and `determinism` jobs.
 
 ## Completion notes
 

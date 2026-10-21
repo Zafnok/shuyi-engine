@@ -41,6 +41,12 @@ None.
     program into a temporary folder (`git clone --no-checkout`, then
     `git checkout <rev>`), and `shuyi doctor` (1129) reports whether
     `git` is found. No git library is added.
+- **Either order with 2513** (doctor's Linux table): CI's bare
+  `ubuntu:24.04` container has no `git`. If a missing `git` fails doctor
+  and 2513 is done, add `git` as a row of its table (`git` for apt, dnf
+  and pacman, found by `git --version`) and to every
+  `scripts/setup-linux.sh`, so the container's doctor passes. If 2513
+  isn't done, it adds the row (its own clause says so).
 - **Nothing runs.** The loader reads `template.ron` and files, and
   nothing else. A template folder holding `build.rs`, scripts or
   binaries is fine: they are copied as files and run only when the
@@ -52,10 +58,17 @@ None.
   on. `--yes` skips that question; `--no-input` without `--yes` refuses,
   so CI never uses a stranger's template by accident. A license outside
   ADR-0002 §8 adds a warning line; it isn't a refusal.
+- **Either order with 2526:** whichever lands first writes this
+  question (it shows a source, revision and license, reads `--yes`, and
+  refuses under `--no-input` without `--yes`) as one function in
+  `shuyi_cli::contract`, and the other calls it.
 - **`shuyi template check <dir> [--build]`**, a contract operation with
   JSON output:
   - everything `Template::load` checks (2501);
   - every placeholder in every file is known;
+  - if 2223 is done, the credits pass (`check` on each game it makes,
+    with its `credits` part), so a shared template's third-party files
+    carry credits; if not, 2223 adds it;
   - every combination of the template's own answers and the perspective
     answers its parts name composes, or fails with a `requires` or
     `conflicts` rule the template states;
@@ -84,8 +97,10 @@ None.
 
 1. Write the source parsing and the git fetch, with errors that say how
    to fix each case.
-2. Show the template's details, and add `--yes`.
-3. Write `template check`, then `--build` with the cap.
+2. Show the template's details, and add `--yes` (2526's question if it
+   is done, or write it in `shuyi_cli::contract`).
+3. Write `template check` (with 2223's credits pass if it is done), then
+   `--build` with the cap.
 4. Write `template new`.
 5. Add the engine CI job, the docs and the skill.
 
@@ -101,6 +116,9 @@ None.
 - [ ] `shuyi template check` passes on the built-in template and on the
       output of `shuyi template new`, and fails on fixture templates for
       each rule, naming the file and rule.
+- [ ] If 2223 is done, `shuyi template check` fails on a fixture
+      template with a third-party file that no credit covers, naming
+      the file.
 - [ ] `shuyi template check --json` matches its schema.
 - [ ] All gates in the `run-gates` skill pass.
 

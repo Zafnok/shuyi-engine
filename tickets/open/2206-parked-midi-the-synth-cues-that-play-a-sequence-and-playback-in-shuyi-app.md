@@ -6,7 +6,7 @@ milestone: "Engine: MIDI music"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2205"]
+blocked_by: ["2205", "2342", "2344"]
 nick_input: sign-off
 completed:
 ---
@@ -24,7 +24,8 @@ completed:
 - a pure synth in `shuyi-midi` that renders samples, with no I/O and no
   clock;
 - cues (ADR-0004 §6) that play a sequence with a bank, started and
-  stopped by id like any cue;
+  stopped by a `SoundId` handle like a looped sound cue (2344's
+  `start_sound` and `stop_sound`);
 - `shuyi-app` feeding the synth's samples to the audio device.
 
 The Playdate plays MIDI with its SDK's own synth; that belongs to the
@@ -44,10 +45,13 @@ whether it is what you meant by MIDI sound.
   `render(&mut self, left: &mut [f32], right: &mut [f32])`. No I/O, no
   clock, no `unsafe`.
 - **Cues:** the cue manifest (ADR-0004 §6) gains a kind, `Sequence {
-  sequence, bank }`, beside recorded files. Logic starts and stops it by
-  id, and changes tempo and muting through cue commands, so logic stays
-  deterministic. The Harness reports a started sequence cue like any
-  sound (1129's `run` lists sounds started).
+  sequence, bank }`, beside recorded files. Like a recorded music cue, a
+  sequence cue takes an optional `group` (2342), `music` by default, and
+  plays at its group's gain, ducking (2343) included. Logic starts and
+  stops it by its `SoundId` (2344), and changes tempo and muting through
+  cue commands, so logic stays deterministic. The Harness reports a
+  started sequence cue like any sound (1129's `run` lists sounds
+  started).
 - **`shuyi-app`**, behind its own `midi` feature: it owns a `Synth` per
   playing sequence cue and fills the audio device's buffer from it.
   macroquad's audio plays whole sounds, so check its API on the day; if
@@ -66,6 +70,11 @@ whether it is what you meant by MIDI sound.
   replay test, and a `frame-png` picture (ADR-0009 §4).
 - **The guides:** if 2004 is done, each direction guide's "modules" list
   gains MIDI as an option for music.
+
+**Either order:**
+- **2343** (ducking): if it is done, a rule that lowers `music` lowers a
+  sequence cue in `music` too, through the gains it already plays at;
+  if not, nothing here, since 2343 multiplies into those same gains.
 
 **Out (do not do):**
 - the Playdate's MIDI (3010 decides it when it is worked);

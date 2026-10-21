@@ -52,9 +52,31 @@ None.
     PR. PRs with no ticket (Sonar fixes, small game PRs) are counted on
     one line per release ("12 Sonar fixes");
   - **breaking changes:** a ticket's completion notes may have a line
-    starting `Breaking:`. Each such line is listed first, under
-    "Breaking changes", for the game and other users to read before a
-    pin bump (`AGENTS.md`, *Working with the game repository*);
+    starting `Breaking:` (under `## Completion notes`, after an optional
+    `- `, in 2010's form `Breaking: <crate>[, <crate>…]: <item>: <what a
+    game changes>`; read with `breaking_lines` in
+    `crates/xtask/src/tickets.rs`. Either order with 2010: whichever
+    lands second reuses the first's function). Each such line is listed
+    first, under "Breaking changes", for the game and other users to
+    read before a pin bump (`AGENTS.md`, *Working with the game
+    repository*);
+  - **migration blocks:** under a `Breaking:` line, a fenced block with
+    the info string `migration`, in YAML (parsed with `serde_norway`,
+    already an xtask dependency). Its fields:
+    - `since`: the engine version that first has the change, `X.Y.Z`
+      (the workspace `version` after the PR);
+    - `what`: one sentence;
+    - `old` and `new`: the old and new path or signature;
+    - `before` and `after`: a game's code before and after;
+    - `find` (optional): literal strings that occur in `before` and not
+      in `after`, and so mark a call site in a game's code.
+
+    A ticket may have several. Each release's notes get a "Migration
+    guide" section after "Breaking changes", in the Markdown, Zola and
+    keep-a-changelog outputs: each block's `what`, `old` → `new`, and
+    `before` and `after` as Rust code blocks. A block that doesn't parse
+    is an error naming the file and line. The shape is documented in
+    `tickets/README.md`, in a new section *Breaking changes*;
   - writes Markdown to stdout, or with `--site <dir>` Zola pages:
     `changelog.md`, and one `release-vX-Y-Z.md` post per tag with the
     release's date, the `release` tag, and the generated notes;
@@ -73,29 +95,50 @@ None.
   generated notes. Nick or Claude writes it when they want one; with
   none, the post is the notes alone.
 - **The `work-ticket` skill:** its completion notes step says to add a
-  `Breaking:` line for each API change the game must follow.
+  `Breaking:` line for each API change the game must follow, and under
+  it a `migration` block (`tickets/README.md`, *Breaking changes*). The
+  step also says: when CI's `game` workflow (2014) ran on the PR, write
+  one `Breaking:` line per engine item its report lists as `new`. If
+  2014 is done first, it has already pointed the PR's game line at the
+  report, and this ticket adds the `Breaking:` lines beside it.
+  **Either order with 2010:** if 2010 is done, the step is already there
+  (2010 added it with CI's `api` job, which fails a breaking PR without
+  the line), so keep one step and add the `migration` block and the
+  `game` report's `new` items to it; if not, add it here, and 2010 keeps
+  it.
 - **2005** (the first release) writes `CHANGELOG.md` with this tool in
   its release workflow, and uses its notes as the GitHub release's body.
 
 **Out (do not do):**
 - the release workflow itself (2005);
 - posting anywhere but the site (social media, Discord);
-- weekly digests (a follow-up if Nick wants one).
+- weekly digests (a follow-up if Nick wants one);
+- CI's check that a breaking PR has a `Breaking:` line (2010), the
+  check that each line has a `migration` block (2523), and building the
+  game against a PR (2014);
+- the machine-readable copy of the blocks shipped in `shuyi-cli`, and
+  the `shuyi migrations` op and `shuyi-upgrade` skill that read it
+  (2523).
 
 ## Implementation steps
 
 1. Write the parser of ticket frontmatter (reuse `tickets.rs`'s), the
-   history reader behind its trait, and the grouping.
-2. Write the three outputs.
+   history reader behind its trait, the grouping, and the `Breaking:`
+   reader (2010's `breaking_lines` if 2010 is done; else
+   write it in `tickets.rs` for 2010 to reuse). Write the `migration`
+   block parser `pub(crate)`, so 2523 reuses it.
+2. Write the three outputs, each with its migration guide section.
 3. Add it to `pages.yml` and `.gitignore`, and the News templates.
-4. Change the `work-ticket` skill and 2005.
+4. Write the *Breaking changes* section of `tickets/README.md`, and
+   change the `work-ticket` skill and 2005.
 5. Run the gates.
 
 ## Acceptance criteria
 
 - [ ] On a fake history with two tags, tickets in four blocks, a
-      `Breaking:` line and three Sonar PRs, the output matches a
-      committed snapshot in each of the three formats.
+      `Breaking:` line, a `migration` block and three Sonar PRs, the
+      output matches a committed snapshot in each of the three formats,
+      and the snapshot shows the block's migration guide section.
 - [ ] The live News page lists release posts (or, before the first tag,
       monthly ones) and the Changelog page lists every ticket in
       `tickets/done/`.
@@ -106,7 +149,8 @@ None.
 ## Tests required
 
 - Unit: grouping by tag and by area; the Sonar count; `Breaking:` lines;
-  a ticket in `done/` with no PR found (listed without a PR link).
+  a `migration` block parsed; a bad one reported with file and line; a
+  ticket in `done/` with no PR found (listed without a PR link).
 - Snapshot: the three formats on the fake history.
 
 ## Completion notes

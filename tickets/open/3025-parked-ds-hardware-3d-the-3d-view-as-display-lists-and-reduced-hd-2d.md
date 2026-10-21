@@ -6,7 +6,7 @@ milestone: "Parked: export targets"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3024", "3103", "3107"]
+blocked_by: ["2229", "3024", "3103", "3107"]
 nick_input: none
 completed:
 ---
@@ -65,8 +65,11 @@ None.
     hardware's formats, and its triangle count;
   - each `Material`'s texture becomes a DS texture in a paletted format
     (16 or 256 colours, through 3019's quantizer) or direct colour,
-    chosen per material in its sidecar. Pixel-art textures stay
-    unfiltered, which the DS is anyway;
+    chosen per texture image in its import settings (2229): a `ds`
+    section, such as `stone.png.meta` holding
+    `(ds: (texture: paletted16))`, with a folder's default in
+    `_folder.meta`, registered in `Formats::register_standard`.
+    Pixel-art textures stay unfiltered, which the DS is anyway;
   - the bake reports each mesh's triangles and the texture bytes per
     stage against the profile, and too many texture bytes for a stage is
     an error naming the stage;
@@ -133,8 +136,8 @@ None.
 
 1. Re-read the 3D parts of `docs/targets/nds.md` (3018). Fix the profile
    if a number differs.
-2. Write `DsMesh` and the DS texture forms, their `Format`s, the bake
-   and the equality tests.
+2. Write `DsMesh` and the DS texture forms, their `Format`s, the `ds`
+   import settings section, the bake and the equality tests.
 3. Write the bindings for the 3D calls the painter uses, in 3024's
    `sys.rs`, and extend the fake hardware with a recorder of 3D commands.
 4. Write the painter: camera, meshes, billboards, lights, effects.

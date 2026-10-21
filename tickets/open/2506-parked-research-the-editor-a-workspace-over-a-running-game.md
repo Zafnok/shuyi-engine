@@ -6,14 +6,14 @@ milestone: "Engine: editor"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1129", "2316"]
+blocked_by: ["1129", "2316", "2521"]
 nick_input: sign-off
 completed:
 ---
 
 # 2506 — Research: the editor, a workspace over a running game
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the tool contract (1129) and the debug view in real time (2316). It belongs with the parked visual scripting research (1135). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the tool contract (1129), the debug view in real time (2316) and the live link (2521). It belongs with the parked visual scripting research (1135). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -48,9 +48,17 @@ What is already decided, and the editor must keep:
   inspector may *show* live state. Changing it while the game runs
   either goes through a command or input that a replay records, or it
   is not allowed.
+- **Debug commands are the recorded way in** (2356). A screen declares
+  commands with typed arguments, and each changes state only by
+  sending the game's own command, which records hold. The inspector's
+  live edits can go through the same path.
 - **The debug view is shared** (2315, 2316). The editor's live view
   turns on the same channels and uses the same pause and step. It does
   not have its own gizmos.
+- **One description of a game's types** (2907's ADR). The tree and the
+  inspector read a running game's values, paths and shapes through it.
+  A settings file's shape comes from `shuyi kinds` (2515), which agrees
+  with it. The editor adds no model of its own.
 - **The web build has no `wasm-bindgen`** (game ADR-0034). `egui` on
   the web needs `eframe`, which uses it. So does any toolkit built on
   `web-sys`.
@@ -75,20 +83,33 @@ Nick comments on the scope and the look, not on the code.
      - a native app on `egui`/`eframe` (MIT/Apache) that runs the game
        in its own window or in a panel;
      - a web tool served by `shuyi edit`, talking to a native game
-       over a local socket;
-     - an in-game editor in our glyph UI with the pointer (1121).
+       over the live link (2521);
+     - an in-game editor in our glyph UI with the pointer (2405).
 
      For each: its build time on Nick's machine (GNU toolchain, no
      MSVC), its licenses (checked with `cargo deny`), and whether it
      needs `wasm-bindgen`.
-  2. **How it talks to the game:** the tool contract's operations it
-     needs, and any it adds, such as `watch` (a stream of frames and
-     gizmos), `pause`, `step` and `channels`. These operations are
-     added to the contract, so the CLI and MCP get them too.
+  2. **How it talks to the game:** over the live link (2521's ADR),
+     which already carries a running build's status, frame text,
+     window picture, input (actions by name) and log. Decide only the
+     operations the editor adds to the link and the contract, such as
+     `watch` (a stream of frames and gizmos) and `channels`. Pause and
+     step are 2316's `DebugPause` and `DebugStep` actions, sent as
+     `act` steps. What is added goes into both the link and the
+     contract, so the CLI and MCP get it too.
+
+     Going back is already in the contract: `--until` on `run`,
+     `scene` and `frame-png`, and MCP's `seek` (2357). In a running
+     build, 2357's `DebugBack` action goes back, sent as an `act` step
+     like pause and step. The editor uses them rather than a way of its
+     own.
   3. **Its panels on day one**, each with what it edits:
-     - the live view, with the channels, pause, step and slow motion;
+     - the live view, with the channels, pause, step, slow motion and
+       going back (2357);
      - the screen stack, and the stage's tree (layers, units, bodies);
-     - the inspector over a module's settings files;
+     - the inspector over a module's settings files (their shapes come
+       from `shuyi kinds`, 2515; this ADR doesn't pick another schema
+       source);
      - the graph panel (1135's format);
      - levels: in-editor, or opened in Tiled or LDtk with hot reload
        (1124).
@@ -113,8 +134,9 @@ Nick comments on the scope and the look, not on the code.
 
 ## Implementation steps
 
-1. Read ADR-0002, ADR-0005, ADR-0007, ADR-0009 §4, 2315's ADR, 1129's
-   contract and 1135 (and its ADR, if it is done).
+1. Read ADR-0002, ADR-0005, ADR-0007, ADR-0009 §4, 2907's ADR, 2315's
+   ADR, 2521's ADR and `shuyi_platform::link`, 1129's contract and 1135
+   (and its ADR, if it is done).
 2. Look at how Godot's editor, Unreal's editor, LDtk and Bevy's editor
    prototypes split panels and talk to a running game. Write down what
    to take and what to leave, with sources. Copy no code or art.

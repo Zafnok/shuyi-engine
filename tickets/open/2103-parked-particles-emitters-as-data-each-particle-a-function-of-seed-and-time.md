@@ -6,14 +6,14 @@ milestone: "Engine: animation"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["1119", "1123"]
+blocked_by: ["1119", "2114", "2231", "2335", "2337"]
 nick_input: none
 completed:
 ---
 
 # 2103 — Particles: emitters as data, painted by the skin
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): the game doesn't need particles, so this waits until after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`) and after 1119 and 1123. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): the game doesn't need particles, so this waits until after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`) and after 1119, 2114, 2231, 2335 and 2337. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -30,8 +30,13 @@ and `frame-png` can draw any moment without running the steps before it.
 
 This ticket builds on:
 
-- 1119: `Fx`, the 256-step angle and its sine table, and steps;
-- 1123: `AnimationClip` and `frame_at`, so a particle can be a clip.
+- 1119: `Fx` and steps;
+- 2114: `mix_at(seed, index)` in `shuyi_core::rng`, SplitMix64's
+  `index`-th output with no state;
+- 2231: `AnimationClip` and `frame_at`, so a particle can be a clip;
+- 2335: the 256-step `Angle` and its sine table;
+- 2337: `Paint::Tinted` and `Blend`, so a particle's look can be tinted
+  and added or multiplied.
 
 Graphics are a skin (ADR-0002 §4, `AGENTS.md` rule 9). Logic says where
 the particles are, and the skin decides how they look: a glyph skin
@@ -63,9 +68,8 @@ None.
     Iterator<Item = Particle>`. Particle `i` is born at
     `i / rate` seconds (after the burst), lives the life its own random
     numbers pick, and is at `origin + v·t + ½·a·t²` at age `t`. Its
-    random numbers come from a stateless mix of `(seed, i)`
-    (SplitMix64's finalizer, written in `rng.rs` beside `SimRng`), never
-    from `SimRng`'s stream, so particle `i` never depends on the
+    random numbers come from `shuyi_core::rng::mix_at(seed, i)` (2114),
+    never from `SimRng`'s stream, so particle `i` never depends on the
     others or on which steps were computed before.
   - It walks only the indices born in `[now − longest life, now]`, so
     the cost is the particles alive, not every particle ever born.
@@ -86,9 +90,12 @@ None.
     looks: &[(char, role)], &mut GlyphBuffer)`, that draws each particle
     as a character in the cell it is in, on the `Over` layer;
   - a sprite skin, `particles::sprite`, that draws each one as a frame
-    of a clip (1123), on a world layer. **Either order with 1120:** if
+    of a clip (2231), on a world layer. **Either order with 1120:** if
     1120 is done, add it here; if not, add a line to 1120's scope
     asking for it, and leave the sprite skin to 1120.
+  - the sprite skin's looks may carry a `Paint::Tinted` colour and a
+    `Blend` (2337), so sparks can be additive (`Blend::Add`) and smoke
+    can darken (`Blend::Multiply`);
   - snapshot lines for particles (`frame/snapshot.rs`), with positions
     rounded to pixels, and the format's doc comment updated.
 - **An example:** the tick example from 1119 (the dot) leaves a trail of
@@ -101,16 +108,25 @@ None.
   needs the emitter's past positions); particles here move with the
   emitter's `origin`, and a burst at a point is a new emitter;
 - attractors, sub-emitters, trails as strips (2703 draws strips);
+- particles that speed up or slow down over their life along an ease
+  curve (a follow-up could give `EmitterDef` a `shuyi_core::ease::Ease`,
+  2109);
 - GPU particles and the wgpu renderer (3034);
-- an editor for emitters (2506–2508).
+- an editor for emitters (2506–2508);
+- systems or components of `shuyi-ecs`, or code over `Arena<T>`:
+  `EmitterDef`, `Emitter` and `particles_at` are plain values and a pure
+  function that name neither store (2904's ADR), and a game keeps its
+  `Emitter`s in whichever store it uses.
 
 ## Implementation steps
 
-1. Read ADR-0004 §3, 1119's `Fx` and `Angle`, and 1123's `anim`.
-2. Write the mix function and its tests in `shuyi_core::rng`.
+1. Read ADR-0004 §3, 1119's `Fx`, 2335's `Angle`, and 2231's `anim`.
+2. Use `mix_at` from `shuyi_core::rng` (2114); write no second mix
+   function.
 3. Write `EmitterDef`, `Emitter` and `particles_at`, with property tests.
 4. Write `EmitterRon` and register it; add fixtures (ours, CC0).
-5. Write the view, the glyph skin and, if 1120 is done, the sprite skin.
+5. Write the view, the glyph skin and, if 1120 is done, the sprite skin
+   with its tints and blends (2337).
 6. Add the example's trail, its snapshots, and the skill table's line
    in `docs/` if the `shuyi-animate` skill exists (1134); otherwise
    1134 covers it from ADR-0005.
@@ -135,8 +151,8 @@ None.
 - Unit: a burst of 3 at step 0; a rate of 10 a second over 1 s; a
   particle dying exactly at its life's end; gravity bends the path.
 - Property: same inputs ⇒ same particles; particles never appear before
-  their birth; the count never passes the cap; the mix function's output
-  for `(seed, i)` doesn't depend on any other index.
+  their birth; the count never passes the cap; particle `i`'s numbers
+  come only from `mix_at(seed, i)`.
 - Snapshot / integration: the example's trail at three steps; a
   determinism fixture holding the hash of the particles at ten steps.
 

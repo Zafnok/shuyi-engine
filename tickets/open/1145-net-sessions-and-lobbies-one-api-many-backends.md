@@ -36,14 +36,28 @@ None. Our game's lobby look comes later with 0053.
 - `trait SessionBackend` with:
   - `create(settings)`;
   - `list(filter)`;
-  - `join(code or id)`;
+  - `join(JoinToken)`: a `JoinToken` is a room code, a session id or a
+    backend's own token, with a text form (`Display` and `FromStr`) for
+    links, the command line and Steam's `connect`;
   - `set_ready`;
   - `start`;
   - `leave`;
   - `metadata`;
-  - `events()`.
+  - `events()`, which include `SessionEvent::JoinRequested(JoinToken)`:
+    a backend's own join request (Steam's, 1144) or the one from launch.
   The relay and LAN backends implement it now. Steam's does too, if
   1144 is done; if 1144 isn't done, 1144 implements it later.
+- **A join at launch:** `shuyi-app` reads `--join <token>` from the
+  command line, and on the web 1142 reads `?join=`. Either becomes
+  a launch join token the platform hands in at load, as a field of
+  `Setup` (`crates/platform/src/app.rs`) beside `seed`. `Setup` is
+  `#[non_exhaustive]`, so the field is additive. `shuyi-platform`
+  doesn't depend on `shuyi-net`, so the field holds the token's text,
+  and the lobby screen parses it with `JoinToken`'s `FromStr` and joins
+  it on its first frame. `SystemEvent` is `Copy` today
+  (`crates/platform/src/platform.rs`), so a join request that arrives
+  while the game runs reaches the session through the backend's
+  `events()`, not through `SystemEvent`.
 - Player names are strings the game gives. There are no accounts here
   (1148).
 - `shuyi-ui::screens::lobby`: create or join by code, a player list,
@@ -51,29 +65,55 @@ None. Our game's lobby look comes later with 0053.
   its own text keys. `check-keys` and `check-text` must pass.
 - `examples/hello-grid` (1118) gets a two-player online mode
   through the lobby, over the relay and the LAN.
+- **Peers through the contract, in either order with 2529:** if 2529 is
+  done, `examples/hello-grid/src/tools.rs` offers `GameTools::peers`
+  through `shuyi_net::tools::MemoryPeers`, `hello-grid`'s `tools`
+  feature turns on `shuyi-net/tools`, and a CI test runs `cargo shuyi
+  peers 2 --net seed=1,loss=10,delay=2` on it. If 2529 isn't done, 2529
+  does that.
+- **Either order with 3055:** if 3055 is done, the lobby screen sets the
+  presence group (the session's id and its player count) and the join
+  token's text (`Ctx::set_presence_group`, `Ctx::set_presence_join`)
+  while the session takes players, and clears both when it closes.
+  Steam then shows "Join Game" through `connect`. If 3055 isn't done,
+  3055 does this when it is.
 
 **Out (do not do):**
 - matchmaking queues (1148);
 - chat (1149);
-- our game's lobby.
+- our game's lobby;
+- rich presence (3055); the Steam overlay's invite dialog and Steam's
+  join callbacks (1144); reading the join link in the browser (1142).
 
 ## Implementation steps
 
-1. Write the trait and adapt the two backends.
+1. Write the trait, `JoinToken` and `SessionEvent`, and adapt the two
+   backends.
 2. Build the lobby screen, with Harness tests over the in-memory network
    (a `MemorySession` backend for tests).
-3. Add the example's online mode, with an integration test that runs two
+3. Add the launch join token: `Setup`'s field, `--join` in `shuyi-app`,
+   and the lobby joining it on its first frame.
+4. Add the example's online mode, with an integration test that runs two
    Harness games and a relay in one process.
+5. Do 2529's and 3055's parts if they are done.
 
 ## Acceptance criteria
 
 - [ ] Two Harness instances of `hello-grid` find each other, ready up and
       play to the end over the relay and over loopback LAN in CI.
+- [ ] A game started with a launch join token joins that room on its
+      first frame.
+- [ ] If 2529 is done: `hello-grid`'s CI test of `cargo shuyi peers 2
+      --net seed=1,loss=10,delay=2` answers `ok`.
 - [ ] All gates pass.
 
 ## Tests required
 
 - Integration: as above.
+- Integration: a Harness game started with a launch join token joins
+  that room on its first frame over `MemorySession`.
+- Unit: a `JoinToken`'s text form reads back equal (`Display`, then
+  `FromStr`).
 - Snapshot: the lobby screen.
 
 ## Completion notes

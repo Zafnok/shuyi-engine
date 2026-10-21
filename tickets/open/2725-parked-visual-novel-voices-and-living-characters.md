@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2722", "1123"]
+blocked_by: ["2722", "2231", "2342", "2226", "2344"]
 nick_input: none
 completed:
 ---
@@ -31,13 +31,15 @@ What it builds on:
 - 2722: `VnPresenter` (time on the screen, outside `VnState`) and
   `VnScene`'s character layers;
 - 2723: auto mode (it must wait for the voice), skip, going back, the
-  backlog's voice hook, and `VnSettings`;
-- 1123: `AnimationClip` and `frame_at(clip, elapsed_ms)`, a pure
-  function of time.
+  backlog's voice hook, and the quick menu;
+- 2231: `AnimationClip` and `frame_at(clip, elapsed_ms)`, a pure
+  function of time;
+- 2342: sound groups, with the voice volume as the `voice` group's;
+- 2226: `Lang::chain`, a language's fallback chain.
 
 Playing sound stays in the platform backend, `shuyi-app` (`AGENTS.md`
-rule 5). The story and the scene only say which voice plays, at what
-volume, and when it stops.
+rule 5). The story and the scene only say which voice plays, in which
+sound group, and when it stops.
 
 **The mouth: an envelope, with a flap clip as the fallback.** A voice's
 loudness over time is measured once by a tool, at bake time, and
@@ -62,7 +64,9 @@ None.
   - a shown line's voice is found by its line id, per language, by the
     convention game ADR-0045 sets. If it sets none, use
     `voices/<language>/<line id>` with any audio extension the formats
-    know, falling back to the base language;
+    know, falling back along the language's chain (2226's
+    `Lang::chain`: `pt-BR`, then `pt`, then the game's source
+    language);
   - the `voice <line id>` direction (2721) overrides it, to reuse
     another line's voice;
   - a line with no voice is fine and plays silent;
@@ -86,16 +90,24 @@ None.
   - a fuzz-style test and a determinism fixture (ADR-0007 §5), with a
     short fixture voice we make (CC0-1.0, ours, listed in
     `THIRD_PARTY_ASSETS.md` as our own, created if it doesn't exist).
-- **Playing voices** through the engine's sound path: the `Audio` trait
-  if 3003 is done, otherwise `shuyi-app`'s sound calls.
-  - It needs `play(sound, volume) -> handle` and `stop(handle)`, with
-    volume an integer from 0 to 100. Add them if missing. `shuyi-app`
-    turns the integer into macroquad's volume;
+- **Playing voices** through the engine's sound path: `AudioRequest`
+  and the platform's `Audio` trait (3003).
+  - A voice clip plays with `PlayVoice` and stops with `StopVoice`, as
+    today. Any other sound it must stop uses 2344's `start_sound` and
+    `stop_sound`, never a second kind of handle. Its volume is its
+    group's gain (below), which `shuyi-app` turns into its own volume.
+    Add another handle only if a voice clip needs one these don't give.
+    If 3029 is done, add whatever is missing to its shared backend
+    trait, not to `shuyi-app` alone;
   - the story's screen plays the voice when a line is shown, and stops
     it on `Advance`, on skip, on going back, and on load;
-  - **volume**: `VnSettings` (2723) gains `voice_volume` and a volume
-    per voiced character, each 0–100. The volume sent is their product
-    divided by 100. The quick menu's settings get a row each.
+  - **volume**: the voice volume is the `voice` sound group's (2342),
+    not a `VnSettings` field. A volume per voiced character is a group
+    under `voice`, declared in the audio manifest. 2342 plays every
+    clip in `voice`, so this ticket adds the clip's group to
+    `AudioRequest::PlayVoice` and `SoundRequest::Voice`, and the player
+    plays it at that group's gain (`Gains::group`). The quick menu gets
+    a row for `voice` and one for each character's group.
 - **Auto waits for the voice**: 2723's auto sends `Advance` only after
   the reveal, the pause, and the voice's `duration_ms`. With no
   envelope, it doesn't wait for the voice, and the README says to bake
@@ -105,13 +117,13 @@ None.
 - **Mouths** in `CharacterDef`: `mouth: Option<Mouth>` with:
   - `frames`: per expression, a list of mouth pictures from closed to
     open (2 to 4), drawn as a layer over the face;
-  - `mode`: `Envelope` (the default) or `Flap { clip }` (a 1123 clip).
+  - `mode`: `Envelope` (the default) or `Flap { clip }` (a 2231 clip).
   - `mouth_frame(envelope, elapsed_ms, frame_count) -> usize`, pure:
     level × (frame count − 1) / 3. Past the end, the mouth is closed;
   - only the character speaking the voiced line moves their mouth. With
     no voice playing, every mouth is closed.
 - **Blinking** in `CharacterDef`: `blink: Option<Blink>` with:
-  - a clip per expression (1123), drawn as a layer over the eyes;
+  - a clip per expression (2231), drawn as a layer over the eyes;
   - `every_ms: (min, max)`, in whole ms.
   - The gaps between blinks come from the core's seeded random numbers,
     seeded from the story's seed and the character's id, so two runs
@@ -137,11 +149,11 @@ None.
 1. Write the voice lookup and its unit tests, with a fake asset list.
 2. Write `VoiceEnvelope` and `voice-ron`, then the tool that writes it,
    with the fixture voice.
-3. Add `play` and `stop` with an integer volume where they are missing,
-   in the platform side and `shuyi-app`. Use a fake audio that records
-   calls in tests.
-4. Play and stop voices from the story's screen; add the volume
-   settings; make auto wait; fill the backlog hook.
+3. Add the clip's group to `PlayVoice` and `SoundRequest::Voice`, and
+   play the clip at that group's gain in `shuyi-app` (in 3029's shared
+   player if it is done). Use a fake audio that records calls in tests.
+4. Play and stop voices from the story's screen; add the quick menu's
+   volume rows; make auto wait; fill the backlog hook.
 5. Add `mouth` and `blink` to `CharacterDef` (update its fixtures and
    determinism hash), then `mouth_frame` and the blink schedule in the
    presenter, then the layers in `build_scene`.
@@ -149,8 +161,8 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A shown line with a voice plays it once at the right volume; a
-      line without one plays nothing (fake audio test).
+- [ ] A shown line with a voice plays it once, in its speaker's group;
+      a line without one plays nothing (fake audio test).
 - [ ] `Advance`, skip, going back and loading each stop the voice
       playing (fake audio test).
 - [ ] The fixture voice's envelope is the same file on every run, and
@@ -171,8 +183,8 @@ None.
 
 ## Tests required
 
-- Unit: the voice lookup and its fallback; `mouth_frame`; the volume
-  product; the check rules.
+- Unit: the voice lookup and its fallback along the chain;
+  `mouth_frame`; the clip's group on `PlayVoice`; the check rules.
 - Property: the blink schedule's bounds and determinism; voices never
   change the replay hash.
 - Fuzz-style: random bytes into `voice-ron` never panic.

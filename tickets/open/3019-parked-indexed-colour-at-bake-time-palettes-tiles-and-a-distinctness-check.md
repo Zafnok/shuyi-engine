@@ -6,7 +6,7 @@ milestone: "Parked: export targets"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2204", "3007", "3017"]
+blocked_by: ["2116", "2204", "2229", "3007", "3017"]
 nick_input: none
 completed:
 ---
@@ -56,8 +56,8 @@ None.
     fuzz-style test.
 - **Palette groups.** Images that share palettes on the device are
   quantized together: one group per world layer, one for sprites, one
-  for the glyph cells. An image's sidecar names its group; the default
-  is `sprites`.
+  for the glyph cells. An image's import settings (2229) name its group
+  in its `indexed` section; the default is `sprites`.
 - **The quantizer**, integers only and deterministic:
   1. **median cut** over a group's opaque pixels, to the target's
      colour count, splitting the box with the widest channel and taking
@@ -71,9 +71,11 @@ None.
      report counts it;
   4. **ordered dither**, optional per image: Bayer 8 × 8 before the
      nearest-colour step.
-- **Per-image settings** in the sidecar: `indexed: (group: "sprites",
-  bpp: 4, dither: none | bayer, alpha_cut: 128)`. With no sidecar, the
-  defaults apply.
+- **Per-image settings** are an `indexed` section of the image's import
+  settings (2229: `<image>.meta`, or a folder's `_folder.meta`):
+  `(group: "sprites", bpp: 4, dither: none | bayer, alpha_cut: 128)`, a
+  type implementing `ImportSettings`, registered in
+  `Formats::register_standard`. With none, the defaults apply.
 - **Tiles are de-duplicated** within a group, flipped matches
   included, because the hardware flips tiles for free. The bake reports
   the tile count of each group against the target's video RAM
@@ -111,6 +113,7 @@ None.
 
 **Out (do not do):**
 - run-time quantizing;
+- the settings file itself, its folder defaults and its errors (2229);
 - baking audio (3027 for the GBA; the DS's audio is 3024's);
 - turning a map layer into the hardware's screen entries (3021);
 - DS textures for 3D (3025);
@@ -125,7 +128,7 @@ None.
    colours than one bank).
 3. Write the bank assignment, the de-duplication with flips, and the
    tile counts.
-4. Add the sidecar settings and the dither.
+4. Register the `indexed` section (2229) and add the dither.
 5. Add the role file, its `Format`, and the check.
 6. Wire `--target gba` and `--target nds` into `bake`, with the override
    layers, the report and the contact sheet.
@@ -134,8 +137,9 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The quantizer's output on each fixture matches its checked-in
-      bytes, on native and web.
+- [ ] The quantizer's output on each fixture matches its row in a
+      golden table (2116's `shuyi_assets::golden`), checked on x64,
+      ARM64 and wasm32 by CI's `test` and `determinism` jobs.
 - [ ] A fixture skin with `team.player` and `team.enemy` on the same
       `Bgr555` colour in a `distinct` group fails `shuyi check --target
       gba`, naming both roles.
@@ -154,6 +158,8 @@ None.
   hand-checked images; bank assignment; flip de-duplication.
 - Property: random images never panic, every output index is in range,
   and the output has the source's size rounded up to whole tiles.
+- Golden: the quantizer's output on each fixture, natively and on
+  wasm32 (2116).
 - Snapshot: one `frame-png --target gba` per example.
 - Integration: bake an example for `gba` and load it through the
   headless backend.

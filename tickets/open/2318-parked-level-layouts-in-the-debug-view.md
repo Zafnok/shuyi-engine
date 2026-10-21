@@ -22,7 +22,8 @@ realtime (debug mode)". 2315's debug view has a `grid` channel for the
 grid kit, which is enough for turn-based maps. A free-moving world
 needs more. 1120 gives it:
 
-- `WorldLayer`s placed in world pixels;
+- `WorldLayer`s placed in world pixels, each with an optional viewport
+  (split screen, insets);
 - a `Camera` with a dead zone, bounds and shake;
 - parallax;
 - sort keys `(z, y, order)`.
@@ -49,8 +50,9 @@ None.
 **In:**
 - **World gizmos:** `Gizmos::push_world(channel, role, gizmo, &Camera,
   &WorldLayer)`. It maps a gizmo given in world pixels to console
-  pixels through the layer's parallax and the camera's position and
-  zoom, the same way the frame places that layer's sprites. It uses
+  pixels through the layer's parallax, its viewport (1120) and the
+  camera's position and zoom, the same way the frame places that
+  layer's sprites, and drops what falls outside the viewport. It uses
   the one function the frame uses, so the two can never disagree.
   2317's `to_px` becomes a call to it.
 - **The `layout` channel**, helpers in `shuyi_ui::debug::layout`:
@@ -63,7 +65,14 @@ None.
     entity layer, with its name or type as a label (`Note`), from
     1124's level types;
   - the level's own bounds, and, for LDtk, each level's rectangle in
-    the world (`Bounds`).
+    the world (`Bounds`);
+  - **either order with 2362:** if 2362 is done, each room's rectangle
+    (`Bounds`) with its index as a label, the look-ahead point, and
+    during a blend the blend's goal, as crosses (`Note`). If 2362 isn't
+    done, 2362 adds them to this channel;
+  - **either order with 2360:** if 2360 is done, each tile-layer item's
+    map bounds and its `visible` tile rectangle (`Bounds`). If 2360
+    isn't done, 2360 adds them to this channel when it lands.
 - **The `sort` channel:** each sprite item in the world layers gets
   its sort key as a small label at its foot (`z,y,order`), and a
   `Cross` at the point its `y` is measured from. It is separate from
@@ -90,7 +99,8 @@ None.
    sprite at the same world point.
 3. Write `debug/layout.rs` and the two channels.
 4. Change 2317's `to_px` to use `push_world`, if 2317 is done.
-5. Run the gates.
+5. Do the either-order parts for 2362 and 2360.
+6. Run the gates.
 
 ## Acceptance criteria
 
@@ -98,16 +108,22 @@ None.
       sprite's console pixel, for parallax 1, ½ and 0, and zoom 1–4.
 - [ ] With `layout` on, the example's snapshot lists the dead zone, the
       bounds and each object's outline and label.
+- [ ] If 2362 is done, with `layout` on, the example's snapshot lists
+      each room and the look-ahead point.
+- [ ] If 2360 is done, with `layout` on, the example's snapshot lists
+      each tile layer's map bounds and `visible` rectangle.
 - [ ] With `sort` on, every world sprite has a sort-key label.
 - [ ] The replay hash is the same with the channels on and off.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: `push_world` for each parallax and zoom; each helper on a small
-  hand-made level, one from Tiled and one from LDtk (1124's fixtures).
-- Property: for any camera position and zoom, `push_world` of a
-  sprite's position equals the frame's own placement.
+- Unit: `push_world` for each parallax and zoom, and in a viewport that
+  isn't at (0, 0), where a gizmo outside the viewport is dropped; each
+  helper on a small hand-made level, one from Tiled and one from LDtk
+  (1124's fixtures).
+- Property: for any camera position, zoom and viewport, `push_world` of
+  a sprite's position equals the frame's own placement.
 - Snapshot / integration: the example with `layout` on, and with `sort`
   on.
 

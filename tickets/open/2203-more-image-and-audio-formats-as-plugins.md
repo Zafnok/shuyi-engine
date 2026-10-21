@@ -49,14 +49,22 @@ None.
 - **Each format has:**
   - a feature;
   - fixtures (our own files, CC0);
-  - a decode test against a checked-in pixel or sample hash
-    (determinism, ADR-0007 §5);
+  - a golden row: the hash of what it decodes from its fixture (pixels
+    for an image, the header for a sound) in 2116's
+    `crates/assets/tests/golden/formats.ron`, named
+    `<kind>: <format id>` as 2116 names its rows (determinism,
+    ADR-0007 §5). Its feature
+    joins `shuyi-assets`'s self dev-dependency, so CI's `test` job
+    (x64, ARM64) and `determinism` job (wasm32) build and check it.
+    **Either order with 2116:** if it isn't done, pin the hashes in a
+    plain test, and 2116 moves them into its table;
   - a fuzz-style test.
 - **A size table.** `docs/formats.md` gets the WASM size each feature
   adds.
 
 **Out (do not do):** encoding (only decoders); the optimized pack (2204);
-anything learned or neural (2901).
+anything learned or neural (2901); pinning decoded audio samples (a
+sound's asset is its header, as in 2116's Out).
 
 ## Implementation steps
 
@@ -68,13 +76,20 @@ anything learned or neural (2901).
 ## Acceptance criteria
 
 - [ ] Every format that passed step 1 decodes its fixtures to the
-      checked-in hashes on native and web (or the CI equivalent).
+      hashes in 2116's `crates/assets/tests/golden/formats.ron` (pixels
+      for an image, the header for a sound; decoded samples aren't
+      pinned), checked by CI's `test` job (x64, ARM64) and
+      `determinism` job (wasm32), with the formats' features added to
+      `shuyi-assets`'s self dev-dependency. Either order with 2116: if
+      it isn't done, pin the hashes in a plain test, and 2116 moves
+      them into its table.
 - [ ] `cargo deny check` passes with every feature on.
 - [ ] `docs/formats.md` has the license and size table.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Fixture, determinism and property tests per format.
+- Fixture, determinism (a golden row, or a plain pinned test if 2116
+  isn't done) and property tests per format.
 
 ## Completion notes

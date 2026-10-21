@@ -39,8 +39,8 @@ they move become tuning in the creature files, or follow-up tickets.
 
 **In:**
 - **`examples/cave-crawl`**: a `SideView` tick stage on a small tile
-  cave (a Tiled or LDtk map through 1124 if it is done, otherwise our
-  `.map`). It has:
+  cave (a Tiled or LDtk map through 1124, drawn by 2360, if both are
+  done; otherwise our `.map`). It has:
   - **a crawler**: a long body with four legs and a tail. It climbs
     floors, walls and ceilings toward a lure that the player moves with
     the pointer or a stick (1121), through actions only (the

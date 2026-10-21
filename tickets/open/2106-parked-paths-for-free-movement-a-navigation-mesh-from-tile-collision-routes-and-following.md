@@ -68,14 +68,24 @@ None.
     - `None` when `from` or `to` is not walkable or they aren't
       connected.
   - **Square roots:** the distances need `Fx::sqrt`. **Either order
-    with 2701:** if 2701 is done, use its `Fx::sqrt`. If not, add it
-    here as 2701 specifies (the floor of the exact root, through
-    `i64`), and change 2701's text to say it exists.
+    with 2701 and 2122:** if either is done, use its `Fx::sqrt`. If
+    not, add it here as 2701 specifies (the floor of the exact root,
+    through `i64`), and change 2701's and 2122's text to say it exists.
   - `Path { points: Vec<(Fx, Fx)> }` and `Path::follow(&mut self, pos,
     speed) -> (Fx, Fx)`: the motion for this step toward the next
     point, dropping a point when it is reached and slowing to stop
     exactly on the last one. A game passes the motion to 1122's
     `Mover`.
+  - **Either order with 2122:** if 2122 is done, `Path` holds a
+    polyline `shuyi_core::curve::Curve` (`Curve::lines(points, false)`)
+    instead of its own `points`, and `follow` reads its corners from
+    it. `Curve::lines` refuses two points in one place, so a route
+    from a point to itself is handled before the curve is built. If
+    2122 isn't done, write `Path` as above, and 2122 then writes a
+    follow-up ticket that makes the change. `follow` stays this
+    ticket's: it steers from where the mover really is, which
+    collision can stop, and 2122's `CurveFollower` (which moves by
+    distance, and nothing stops) doesn't do that.
 - **Changes to the map:** rebuild the mesh. Document the cost
   (measured on a 256 × 256 map in a test), and nothing incremental.
 - **The debug view:** if 2315 is done, a `nav` channel helper,
@@ -90,14 +100,20 @@ None.
 - polygon obstacles from Tiled or LDtk object layers (a follow-up after
   1124);
 - movers avoiding each other (steering; for armies, 2711);
+- following a curve by distance, with loops and ping-pong (2122's
+  `CurveFollower`);
 - jumps, ladders and other links between areas;
 - crowds and flow fields (2709, 2710);
-- 3D navigation.
+- 3D navigation;
+- code over a store: `NavMesh`, `Path` and `route` name neither
+  `Arena<T>` nor `shuyi-ecs`'s `World` (2904's ADR), and a game keeps
+  each follower's `Path` in whichever store it uses.
 
 ## Implementation steps
 
 1. Read 1122's `collide`, `shuyi_core::path` (its determinism rules),
-   and 2709's text for the A* tie-breaks it chose.
+   2709's text for the A* tie-breaks it chose, and 2122's
+   `shuyi_core::curve` if it is done.
 2. Write the rectangle merge and portals, with tests on hand-drawn maps.
 3. Write `route` with clearance and the funnel.
 4. Write `Path::follow`.

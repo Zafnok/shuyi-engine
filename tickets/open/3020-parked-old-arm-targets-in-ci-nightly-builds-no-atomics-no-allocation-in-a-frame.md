@@ -6,7 +6,7 @@ milestone: "Parked: export targets"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["3018", "3005", "3008"]
+blocked_by: ["3018", "3005", "3008", "2012"]
 nick_input: none
 completed:
 ---
@@ -55,8 +55,9 @@ None.
 
 **In:**
 - **The CI builds**, on every PR, on Linux, with the nightly that 3018
-  pinned (written once, in `ci/nightly-old-arm.txt`, and read by the job
-  and the skill):
+  pinned (written once, as the `channel` of
+  `ci/old-arm/rust-toolchain.toml`, and read by the job and the
+  `run-gates` skill):
   - `cargo +<nightly> build -Z build-std=core,alloc --target
     thumbv4t-none-eabi --no-default-features -p shuyi-core -p shuyi-ui
     -p shuyi-platform -p shuyi-assets` (the pack reader's features only,
@@ -76,7 +77,9 @@ None.
   calls to `alloc` and `realloc` per frame. `shuyi bench` reports
   `allocs_per_frame` (the most, after the first frame of each stage).
   `App` (3003) marks the frame a stage starts, so the bench knows where
-  "first frame" is.
+  "first frame" is. If 2368 is done, that call counter is already in
+  3008's allocator (2368 shows allocations per frame in the debug
+  view); use it. If not, add it here, and 2368 uses it.
 - **Two budget fields** in the profile format (a version bump with
   defaults, so other profiles are unchanged):
   - `budgets.frame_cycles: Option<u64>`;
@@ -109,6 +112,16 @@ None.
   `rustup toolchain install` and `rust-src` lines, and notes that the
   emulator runner runs in CI only. Check that the library builds need no
   linker on Windows with the GNU toolchain, and say so.
+- **Who moves the pinned nightly and when** goes in a section of the
+  `bump-rust` skill (2012). Dependabot's `rust-toolchain` ecosystem
+  moves a dated nightly (`nightly-YYYY-MM-DD`) only in a
+  `rust-toolchain` or `rust-toolchain.toml` file. That is why the
+  nightly is pinned in `ci/old-arm/rust-toolchain.toml`, in a folder of
+  its own, and not in a plain text file. Add that folder
+  (`/ci/old-arm`) to the `rust-toolchain` update in
+  `.github/dependabot.yml`. `cargo xtask check-toolchain` compares only
+  the root and `templates/` pins, so that folder needs no exception
+  there.
 
 **Out (do not do):**
 - the backends (3021, 3024);
@@ -121,17 +134,21 @@ None.
 
 ## Implementation steps
 
-1. Add the pinned nightly file and the two CI builds. Fix what breaks in
-   the four crates; list each change in the PR.
+1. Add `ci/old-arm/rust-toolchain.toml` with the pinned nightly, and
+   the two CI builds. Fix what breaks in the four crates; list each
+   change in the PR.
 2. Add the `disallowed-types` entries, and replace any `Arc` in those
    crates with `Rc` or a design without shared ownership.
-3. Add the allocation counting and the stage-start marker. Add the two
-   budget fields and their values in the two profiles.
+3. Add the allocation counting (or use 2368's, if it is done) and the
+   stage-start marker. Add the two budget fields and their values in
+   the two profiles.
 4. Write the bench ROMs and the emulator runner. Run each scenario three
    times in CI and check the counts are the same.
 5. Add the gate and the docs. For each scenario over budget, write a
    ticket.
-6. Update the `run-gates` skill.
+6. Update the `run-gates` skill. Add the pinned nightly's section to
+   the `bump-rust` skill and `/ci/old-arm` to the `rust-toolchain`
+   update in `.github/dependabot.yml`.
 
 ## Acceptance criteria
 
@@ -148,6 +165,9 @@ None.
 - [ ] A fixture that burns cycles in a loop fails on `gba`, naming the
       frame and both numbers.
 - [ ] Tickets exist for each example scenario over a budget, or none is.
+- [ ] `.github/dependabot.yml`'s `rust-toolchain` update lists
+      `/ci/old-arm`, the `bump-rust` skill has a section on the pinned
+      nightly, and `cargo xtask check-toolchain` still passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

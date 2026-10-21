@@ -65,14 +65,29 @@ None.
 - **The mixer**, `shuyi_gba::mix`, `no_std`, integers only:
   - a fixed number of voices (set in the profile's audio settings),
     each with a sample, a position in 16.16, a step, a volume and a pan;
+  - which sound loses when the voices are all busy is 2345's rule (the
+    cue rules in `App`, with the manifest's `max_voices` at most this
+    number), so the mixer never picks a loser on its own: a play with
+    every voice busy is refused, never mixed over another voice and
+    never stealing one;
   - the tracker player steps rows and effects once per frame;
   - it fills one frame's buffer for each of the two sample channels,
     which a timer and DMA play from a double buffer;
   - it is a pure function of its state, so its output on the host equals
     its output on the device, and a host test checks it bit for bit.
 - **`Audio` for `shuyi-gba`** (3003's trait): play and stop a sound
-  effect, play, stop and fade music, and a master volume from the
-  game's settings.
+  effect, and play, stop and fade music, each at the frame's gain for
+  its cue (`AudioFrame::gains`, 2342), which already holds the player's
+  master volume and any ducking (2343). If 2342 isn't done, at the
+  frame's `sound_volume` and `music_volume`.
+  **Either order with 3029.** If 3029 is done, implement its shared
+  backend trait under its player, so that cue volumes, fades and the
+  music clock are not written again. Fill in the provided methods this
+  mixer can play (pause and resume, a rate as the voice's step, and a
+  pan if the trait has one by then, 2363), and leave the rest at their
+  defaults. If 3017 is done, list them in `targets/gba.ron`'s audio
+  `features`. If 3029 is not done, write the 3003 trait as described,
+  and 3029 moves the GBA onto its shared trait.
 - **Budgets.** The bench scenarios (3008) get one with music and four
   sound effects at once, run by the emulator runner (3020) against the
   `gba` `frame_cycles` budget.
@@ -114,7 +129,8 @@ None.
 ## Tests required
 
 - Unit: sample conversion, each supported effect, voice mixing and
-  clipping.
+  clipping; a play with every voice busy is refused, never mixed over
+  another voice.
 - Property: random songs and samples never panic, and a frame always
   gives exactly one frame of samples.
 - Integration: the example's ROM plays its song in the emulator, with

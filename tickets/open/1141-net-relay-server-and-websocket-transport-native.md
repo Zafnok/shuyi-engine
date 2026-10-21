@@ -71,6 +71,14 @@ online (0053). This ticket only gives a Docker image and instructions.
 - [ ] The Docker image builds in CI.
 - [ ] `cargo deny check` passes. TLS uses `rustls` with `ring`, never
       `aws-lc-rs`, because aws-lc-rs needs NASM on the GNU toolchain.
+      Root certificates come from the system's store
+      (`rustls-native-certs`, through `tokio-tungstenite`'s native-roots
+      feature), never `webpki-roots` or `webpki-root-certs`: both are
+      CDLA-Permissive-2.0, which is not on `deny.toml`'s allow list
+      (2601 has the same rule). If `WsTransport` sits behind a cargo
+      feature that is off by default, `cargo deny check` must see that
+      feature, since `deny.toml`'s `[graph]` checks default features
+      only.
 - [ ] All gates pass.
 
 ## Tests required

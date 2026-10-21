@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2904", "2003"]
+blocked_by: ["2904", "2003", "2015"]
 nick_input: none
 completed:
 ---
@@ -57,7 +57,15 @@ None.
     by entity, and `World::load` from it, for tests, agents and saves
     (scenes use it, 2221);
   - no floats in the module's own code (`AGENTS.md` rule 5); a game's
-    components may hold `Fx` (1119) or integers.
+    components may hold `Fx` (1119) or integers. Hold it as 2015 holds
+    `shuyi-core`: put
+    `#![cfg_attr(not(test), deny(clippy::float_arithmetic))]` in
+    `crates/ecs/src/lib.rs`.
+- **Entries in `tools/layers.ron`** (2015) for `shuyi-ecs`, and for
+  `shuyi-ecs-macros` if it exists: the engine crates each may use, its
+  outside crates, `devices: false`, and `floats: false` for
+  `shuyi-ecs`. `cargo xtask check-layers` fails on a `shuyi-*` crate
+  with no entry.
 - **Module metadata** (2003): concern "simulation", one line on what it
   is for ("many things with mixed parts, as in Bevy"), and what it
   conflicts with: nothing.
@@ -74,7 +82,8 @@ None.
 1. Read 2904's ADR and research notes.
 2. Write the crate's core: world, entities, storage, queries.
 3. Add resources, change detection, commands and the schedule.
-4. Add the hash, the dump and load, and the module metadata.
+4. Add the hash, the dump and load, the module metadata, the float ban
+   and the `tools/layers.ron` entries.
 5. Run the gates.
 
 ## Acceptance criteria
@@ -89,6 +98,7 @@ None.
       test over random worlds).
 - [ ] A cycle in `.after`/`.before` is an error naming both systems.
 - [ ] The crate builds for `thumbv7em-none-eabihf`.
+- [ ] `cargo xtask check-layers` passes with the new crates' entries.
 - [ ] All gates in the `run-gates` skill pass, mutation testing in CI
       included.
 

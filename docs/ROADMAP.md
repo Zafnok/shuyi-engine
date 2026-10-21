@@ -42,20 +42,37 @@ Nick's Chapter 1 playtest (game ticket 0804):
 ## Phase 2: the MVP, parity with the game
 
 The engine does everything the game needs today, from this repository,
-and agents can drive it. These tickets, in order:
+and agents can drive it. On 2026-10-20 Nick added protections for the
+code to the MVP, before the first release (the second comparison, in
+phase 3 below): 2010–2017, 2509, 2511, 2513, 2808, 3039 and 3040.
+These tickets, in order:
 
 | Ticket | What |
 | ------ | ---- |
 | 2002 | This repository's gates: the ticket lint, typos and links, in the CI 1131 started with the code gates |
 | 2007 | Coverage and SonarCloud in CI, and the Sonar debt queue as batched GitHub issues, copied from the game |
+| 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, `main` protected by its required checks |
+| 2017 | The backlog and the docs kept true as tickets land: a lint warning on clauses about done tickets, `contract.md` tested |
+| 2011 | Dependabot for the crates and the pinned actions, a weekly security workflow, a Dependabot PR as its own ticket |
+| 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
+| 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
+| 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
+| 2014 | Visions of Shuyi built against each engine PR and nightly `main`, report-only |
+| 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
+| 2509 | Problem codes: a code and a help line on every error the contract gives, `shuyi explain`, an exit code for "fix the setup" |
+| 3040 | One log for the engine and the game, kept by `App` and carried in the contract's answers |
+| 2513 | Zero setup on Linux: `shuyi doctor` checks the system libraries, a setup script, a dev container |
+| 2511 | The short path: engine defaults for every `GameData` part, a prelude, `run_game`, and a minimal template |
 | 1133 | An MCP server over the contract |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 1132 | Community files and the contribution policy |
+| 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
 | 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
+| 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
 | 2805 | The blog: Nick's posts in News, by hand or drafted by Claude |
 | 2806 | Sponsors: GitHub Sponsors and Ko-fi, a sponsor page and a strip on the home page |
@@ -78,22 +95,22 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | Bevy's homepage | Here | State |
 | --------------- | ---- | ----- |
 | Data driven: an ECS, components as structs, systems as functions, queries, resources, change detection, a parallel scheduler | 2904 (research), 2107 (`shuyi-ecs`), 2108 (in a game, parallel with the same hashes, an example). Opt-in; the arena stays the default (ADR-0003 §4) | after MVP |
-| 2D renderer: sprite sheets, dynamic texture atlases, cameras, textures, materials | 1123 (sprite sheets), 2222 (atlases), 1120 (cameras), 2327 (materials and a game's shaders) | 2222 after MVP; the rest parked |
+| 2D renderer: sprite sheets, dynamic texture atlases, cameras, textures, materials | 1123 and 2231 (sprite sheets and clips), 2222 (atlases), 2335–2338 (rotation, shapes, tints and blends, nine-slice), 1120 (cameras), 2327 (materials and a game's shaders) | 2222 and 2335–2338 after MVP; the rest parked |
 | 3D renderer: lights, shadows, cameras, meshes, materials, glTF | 3101–3109 | parked |
 | Render graph | 3034 (wgpu, not tied to one API), 2331 (the graph) | parked |
-| Animation: skeletal rigs, blending, morph targets, glTF | 1123 (clips), 2104 (state machines), 2105 (2D skeletons), 3102 (glTF), 3110 (3D blending and morph targets) | parked |
+| Animation: skeletal rigs, blending, morph targets, glTF | 1123 and 2231 (clips), 2104 (state machines), 2105 (2D skeletons), 3102 (glTF), 3110 (3D blending and morph targets) | parked |
 | Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3015 (mobile) | 3004 with the export targets; 3015 parked |
-| UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2330 (`.ui.ron`) | after MVP |
+| UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
 | Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
-| Sound | `shuyi-app` today, 3029 for every backend | done, and 3029 |
+| Sound | `shuyi-app` today (cues, variants, fades, streamed music), 3029 for every backend; 2341–2345 and 2225 (crossfades, groups and ducking, handles, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
 | Hot reload of assets | 2220 (every asset kind), 1124's maps through it | after MVP |
 | Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
 | Fast compiles | 2009 (measured, gated, a fast setup in the templates) | after MVP |
 | Free and open source, MIT or Apache 2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | done |
 
 The order, after the MVP: 2009 and 2220 first (each makes every later
-ticket nicer to work on), then 2329 and 2222, then 2904, 2107, 2108 and
-2221, then 2330 and 2905.
+ticket nicer to work on), then 2329 and 2222, then 2355, then 2904,
+2107, 2108 and 2221, then 2330 and 2905.
 
 These are not parked, but they come after the MVP:
 
@@ -102,6 +119,173 @@ These are not parked, but they come after the MVP:
 - **2204**: an optimized pack format for shipping.
 - **2901**: research on better images with machine learning, as a
   separate repository with a loader plugin.
+
+### The second comparison: Unity, Unreal and the 2D engines
+
+Nick, 2026-10-20 ([`decisions.md`](decisions.md)): a comparison with
+Bevy 0.20, Godot 4.7, Unity 6, Unreal Engine 5.8, GameMaker, Defold and
+Construct 3 looked at features, and at how the engine is built. Its
+protections for the code are in the MVP (phase 2). What most 2D games
+expect is below, after the MVP and not parked. The rest is parked
+(*Parked*, below), and so is the real-time work, until Visions of Shuyi
+launches.
+
+Some of these close the engine part of a game ticket, so they come when
+the game reaches it, whatever their place below: 2339 (game#0813,
+screen transitions), 2347 (game#0250, key names that stand out), 2228
+(game#1013, mod tables merged by id), 2342 (game#0826, the voices'
+volume), and 2226 and 2349 (game#0825, the language option).
+
+**Seeing what players see:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2332 | The raster: `frame-png`'s painter in `shuyi-ui`, the picture every backend must match |
+| 2018 | The real window checked in CI under Xvfb, against the raster |
+| 2019 | The web build checked in CI in headless Chromium, against the raster |
+| 2514 | Frames over time from `frame-png`: a sheet, an APNG or a GIF, and the same from MCP |
+
+**Drawing:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2333 | Scale modes: integer or fit, one placement for the window and `check --target`, and the player's pick |
+| 2335 | Rotated sprites: an angle around a pivot and `flip_y`, with an integer `Angle` in `shuyi-core` |
+| 2336 | Drawn shapes for every game: lines, circles and polygons |
+| 2337 | Tints and blend modes on sprites and overlays |
+| 2338 | Nine-slice and tiled pictures, and a picture frame for the engine's panels and text boxes |
+| 2224 | Proportional fonts: an ADR for text off the cell grid, BMFont, and TTF and OTF baked by the font tools |
+| 2334 | Text runs: proportional text placed in pixels, with an outline and a shadow, and pixel-placed UI |
+| 2339 | Screen transition looks: fade, wipe and dissolve, on every painter |
+| 2340 | Frame shake and flash, and the player's settings for reduced motion and flashing |
+
+**Sound:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2342 | Sound groups as data: a master volume and a volume per group on a loudness curve |
+| 2343 | Ducking: a group lowered while a voice plays |
+| 2344 | Looped sounds with handles, paused under a pause menu and while the system suspends the game |
+| 2345 | Cue rules as data: variants without repeats, random volume, copy caps, minimum gaps and priority |
+| 2341 | Music crossfades and fade-ins, with today's fade-out-then-start as the default |
+| 2225 | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
+
+**Text and languages:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2350 | The font atlas keeps the characters the text uses, and `shuyi check` fails on text it can't draw |
+| 2351 | Built-in English for the engine's own text keys, which a game's text overrides |
+| 2226 | Language tags in BCP 47, a fallback chain per key, and a source language the game declares |
+| 2348 | Messages that choose their words: plural, ordinal and select in a subset of ICU MessageFormat |
+| 2349 | The player's language: a setting per profile, an options row, the system's languages at first start |
+| 2346 | Typing names in any language: letters the font draws, accented pages, the IME in the name box |
+| 2353 | A generated pseudo-language and a Harness walk over every screen for cut text |
+| 2347 | Styled text: key names that stand out, and colour roles inside a line |
+| 2354 | A grid cursor: `ListCursor` in two dimensions |
+| 2355 | `FocusMap`: the d-pad moves between the widgets of a laid-out screen (after 2329, before 2330) |
+
+**The core:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2109 | Ease curves in integers, and tweens and sequences drawn from the time alone |
+| 2114 | RNG helpers: ranges, chances, picks, shuffles, bags, named streams and forks |
+| 2115 | Timers in steps or turns |
+| 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
+| 2112 | A level solver: breadth-first search over any `TurnRules` game |
+| 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units |
+
+**Data, saves and versions:**
+
+| Ticket | What |
+| ------ | ---- |
+| 3045 | Saves that survive a power cut: flushed writes and the last good copy kept |
+| 2110 | Save migrations: an opt-in chain of steps from older versions, and golden fixtures of each |
+| 2111 | Stamped records: the engine, the game and the content that made a record or a save |
+| 2228 | `Bundle::versions`: every layer's copy of a file, for loaders that merge layers |
+| 2229 | Import settings beside any file and per folder |
+| 2230 | JSON and CSV tables as formats of a game's own data kinds |
+| 2515 | `shuyi kinds`: every kind a game registers, with a JSON schema of each format |
+| 2516 | References between assets checked, and unused shipped files reported |
+| 2517 | Format upgrades: old names warned about, and `shuyi upgrade` rewriting a game's files |
+| 2523 | The `shuyi-upgrade` skill: a game moved to a newer engine |
+| 2906 | Research: asset memory, lifetimes, groups and loading in steps |
+| 2907 | Research: one description of a game's types for scripts, scenes, schemas and agents (before 2101 and 2221) |
+
+**Debugging, and agents:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2116 | Determinism fixtures, the same on x64, ARM64 and wasm32 in CI |
+| 2020 | Fuzzing in CI over every registered format and the pack, and a threat model |
+| 2518 | Session records at the platform boundary, played back exactly in the Harness |
+| 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
+| 3041 | Log sinks in shipped builds: a log file, and the browser console on the web |
+| 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |
+| 2520 | `shuyi crash` and `replay --crash`, with the debug file kept for each release |
+| 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
+| 2357 | Rewind: seek a session to any frame by replaying it headless |
+| 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
+| 2522 | The live link for the web build and for a Steam Deck on the LAN |
+| 2510 | Compiler messages on the traits a game implements |
+| 2512 | The lines a game's author owns, counted, with a CI cap on the minimal template |
+| 2524 | An agent eval of the end goal: tasks as data, a grader through the contract, reference solutions in CI |
+| 2525 | Scheduled agent runs of the eval, within a budget Nick sets |
+| 2527 | `shuyi soak`: random legal commands, save and reload at every step, and a failure shrunk to a short record |
+| 2528 | `shuyi web --serve`: served on localhost or the LAN, rebuilt and reloaded on change |
+
+**The platform, and shipping:**
+
+| Ticket | What |
+| ------ | ---- |
+| 3042 | Focus on the desktop and the web: held input let go on focus loss, and a game may pause or mute |
+| 3043 | The web lifecycle: a hidden tab suspends and saves, and a closing page saves |
+| 3044 | The window opens as it was left, and the cursor hides when idle and in fullscreen |
+| 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
+| 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
+| 3048 | A game's identity in `shuyi.ron`: name, id, version, publisher and one icon |
+| 3049 | The identity in every package: icons, version resources, `Info.plist`, `.desktop` files |
+| 2223 | Credits are the game's: every third-party file covered, and the credits in every build's notices |
+| 3050 | Release a game from a tag: every target's package built in CI, a GitHub Release, and itch.io |
+| 3052 | The web shell: a download progress bar, and readable errors in place of a black page |
+
+**The ecosystem:**
+
+| Ticket | What |
+| ------ | ---- |
+| 2358 | Modules join a running game: an ADR and a `Module` trait (before 2003) |
+| 2526 | Outside modules: `shuyi add` of a crate at a version or revision, read with no code run |
+| 2809 | An Assets page on the website, with other people's work if Nick says yes |
+
+The order, after the MVP, beside the Bevy tickets above (2009 and 2220
+stay first):
+
+1. What lets the rest be checked: 2332, 2514, 2116, 2020, 2524, 2111
+   and 2518 (which waits for 2111).
+2. What keeps players' data safe, before the game ships on Steam
+   (game#0903): 3045, 3042, 3043, 3041, 3046 and 2110.
+3. The rest, a group at a time, each in the order of its table. The
+   shipping group goes with 3004, and 2112 comes before 3009.
+
+### The end goal
+
+Nick, 2026-10-19 ([`decisions.md`](decisions.md)): "it should take less
+than an hour to make a wide port range game with basic functionality,
+like snake or mario". On 2026-10-20 he put Visions of Shuyi first: the
+real-time work both of those games need waits until the game launches.
+So the end goal has two chains, and each waits for the launch at its
+real-time step:
+
+| Game | The chain |
+| ---- | --------- |
+| Snake | 2511, 2114 and 2115 (MVP and after MVP), then 1119 (real time, parked), then 2739 (the arcade template and a snake example). The web build works today; the Playdate build needs 3010 |
+| A platformer | 1119, 1120, 1122, 1123 and 2231, 1124 and 2360 (all parked), then 1127 (the platformer and its template) |
+
+Until then, the agent eval (2524, 2525) measures the end goal on
+turn-based games, and 2511 and 2512 keep the lines a game's author owns
+few. The small games of the gallery (2736–2738) and the roguelike
+(2735) are the eval's reference answers once they are unparked.
 
 ### Requests from the game
 
@@ -233,7 +417,7 @@ The tickets, in order:
 | 3005 | `no_std` core, UI and platform, gated in CI |
 | 3008 | Performance budgets: `shuyi bench`, gated in CI |
 | 3006 | 1-bit output: patterns per palette role, a check that sides stay distinct |
-| 3007 | 1-bit sprites at bake time, hand-drawn overrides per target (after 2204) |
+| 3007 | 1-bit sprites at bake time, hand-drawn overrides per target (after 2204 and 2229) |
 | 3009 | Bots think in slices: the frame rate holds, the decision never changes |
 | 3012 | Steam Deck target |
 | 3013 | Steam Deck on the device: frame times and battery |
@@ -249,6 +433,15 @@ ticket 1025, parked until after launch.
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
 for networking, styles for later". Each one's title starts with
 `Parked:`. None is started until Nick unparks it.
+
+On 2026-10-20 Nick put the game first, the way Jai is built for one game
+and happens to handle many ([`decisions.md`](decisions.md)): "unless
+these real-time work tickets overlap with visions of shuyi they should
+be parked until visions of shuyi is complete". So the real-time work
+(1119–1128, and the tickets built on it below) waits until Visions of
+Shuyi launches, not only until the MVP. The game's 0060 still unparks
+1119–1125, and a piece the game asks for through its `engine-change`
+skill is split out and unparked alone.
 
 On 2026-10-17 Nick added 3D, HD-2D, and GBA and DS ports as engine
 features ([`decisions.md`](decisions.md)). Nothing in the game needs
@@ -335,10 +528,60 @@ same day; Visions of Shuyi never uses Spine). The order, when unparked:
 - **Store services:** achievements and stats with no store in them
   (3036), then Steam achievements, stats and cloud saves (3037).
 
+On 2026-10-20 a second comparison, with Unity, Unreal and the 2D engines
+too, parked what the game doesn't need (phase 3, *The second
+comparison*, has the rest). The order, when unparked:
+
+- **Real time** (until the launch, like 1119–1128): 1119, with its
+  input latch, then 1120. Animation clips for any game (2231) need
+  nothing parked, then animated tiles and unit frames (2359). The
+  tile-layer painter (2360) after 1120, 1124 and 2231, and before 1125
+  and 1127. Drawing between steps (2361) after 1119 and 1120; camera
+  feel (2362) after 1120; game speed and hit-stop (2123) after 1119;
+  curves and a follower (2122) after 1119; collision queries (2124)
+  after 1122; map objects as the game's types (2232) with 1124;
+  positional sound (2363) and local multiplayer seats (2406) need
+  nothing parked. The arcade template and snake (2739) after 1119.
+- **Animation and sound:** cinematic tracks and markers (2364) after
+  2109 and 2339; a beat and bar clock (2365) after 2341.
+- **Accessibility and input:** captions for sounds (2366) and rumble
+  (2408) need nothing parked.
+- **Screens:** overlay screens that let the screen below run (2367),
+  with its first user, 3036 or 1119.
+- **Localization:** translator exchange files (2227) after 2302; the
+  engine's screens machine-translated (2352) after 2351 and 2350; research on
+  right-to-left and shaped scripts (2908) after 2301.
+- **The debug view:** memory (2368) after 2315, 2316 and 3008.
+- **Store services and the network:** leaderboards (3054) after 3036;
+  presence (3055) after 3036 and 3037; HTTP requests (2601) with their
+  first user; crash reports sent (3047) after 3046 and 2601; several
+  peers in one headless run (2529) after 1140.
+- **Export targets that cost money or need a yes:** phones' browsers
+  (2407) after 2405; paid signing (3051) after 3004.
+
+The same day Nick added three kinds of game. Like real-time strategy,
+visual novels and detective games, they wait until after Visions of
+Shuyi launches. The order inside each, when unparked:
+
+- **Roguelikes:** field of view (2120) needs nothing; noise (2118),
+  then the level generators (2119), then the example (2735).
+- **A gallery of small games:** match-3 (2736) and the card battle
+  (2737) in either order; the brick-breaker and the shooter (2738)
+  after 1119, 1122 and 2739.
+- **Hex grids:** 2121 after 2117, then 2740.
+
+Video (2909) waits with the visual novels.
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
-| 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle | the game's 0060 says the army walks around freely |
-| 1126–1128 | Isometric, side view (platformer), optional physics | — |
+| 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle. Waits until Visions of Shuyi launches (2026-10-20) | the game's 0060 says the army walks around freely, or the game asks for a piece |
+| 1126–1128 | Isometric, side view (platformer), optional physics. Wait until Visions of Shuyi launches (2026-10-20) | — |
+| 2231, 2359–2363, 2122–2124, 2232, 2406, 2739 | Real time from the second comparison: clips for any game, animated tiles, the tile-layer painter, drawing between steps, camera feel, positional sound, curves, game speed and hit-stop, collision queries, map objects as the game's types, local multiplayer seats, and the arcade template with snake | the game asks for the piece (each ticket's Parked note says how) |
+| 2364–2368, 2408, 2227, 2352, 2908 | Cinematic tracks, a beat clock, captions for sounds, overlay screens that let the screen below run, memory in the debug view, rumble, translator files, machine-translated engine screens, and research on right-to-left scripts | Nick asks |
+| 3047, 3054–3055, 2601, 2529 | Crash reports sent, leaderboards, presence, HTTP requests, several peers in one headless run | Nick asks; 2529 with networking |
+| 2407, 3051 | Phones' browsers as a way to play a web build; paid code signing | Nick decides (each ticket asks) |
+| 2118–2121, 2735–2738, 2740 | Roguelikes, a gallery of small games, and hex grids | Nick asks, after the game launches (2026-10-20) |
+| 2909 | Research: video playback | with the visual novels |
 | 1135 | Research: visual scripting as a view over text | — |
 | 2506–2508 | The editor (Godot- or Unreal-style): research on where it runs and how it talks to a running game through the tool contract, the shell with a live view, a tree and an inspector over settings files, and the graph panel over `*.graph.ron` | Nick asks (2026-10-19: "UI layer for visual code -- like Godot editor or Unreal Blueprints") |
 | 2317–2320 | The debug view's channels: collision bounds, level layouts, skeletons of procedural bodies, and 3D bones and colliders | the work each one draws is unparked (1122; 1120 and 1124; 2701 and 2702; 3102, 3103 and 3105) |

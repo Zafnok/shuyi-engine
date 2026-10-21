@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2101", "1125", "1127"]
+blocked_by: ["2101", "1125", "1127", "2907"]
 nick_input: none
 completed:
 ---
@@ -50,7 +50,9 @@ from the game's glyph style.
 **In:**
 - An ADR that decides four things:
   - the graph file format;
-  - the first node library, taken from what 1125 and 1127 needed in code;
+  - the first node library, taken from what 1125 and 1127 needed in code,
+    with node inputs and outputs typed through 2907's ADR (one
+    description of a game's types);
   - what each graph kind compiles to;
   - the graph panel's needs: what 2508 (the panel in the editor) must
     show and check. Where the editor runs, and in what toolkit, is the
@@ -68,8 +70,8 @@ from the game's glyph style.
 
 ## Implementation steps
 
-1. Read ADR-0005, game ADR-0021, the game's mods ADR (game#1011) and
-   2101's runtime.
+1. Read ADR-0005, game ADR-0021, the game's mods ADR (game#1011),
+   2101's runtime and 2907's ADR.
 2. List the logic in 1125 and 1127 that a designer would want to change
    without code.
 3. Do the spike. Write the ADR and the tickets.

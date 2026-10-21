@@ -116,8 +116,9 @@ None.
     the board, and the last answer shown. For blanks: each sentence
     with its slots' drafts, which slots are confirmed, the open list
     when a slot is being filled, and the group size;
-  - `BoardScreen` reacts to `UiAction`s and the pointer (1121) where
-    there is one. Adding an item opens 2727's case file in `Choose`
+  - `BoardScreen` reacts to `UiAction`s and the pointer (2405: hit
+    areas in the frame, hover and click) where there is one. Adding an
+    item opens 2727's case file in `Choose`
     mode. Filling a slot opens a list. It declares its actions (3002) if
     3002 is done, and fits the `playdate` fixture layout then;
   - `BoardSkin`: text, slots and lists as glyph cells; item pictures

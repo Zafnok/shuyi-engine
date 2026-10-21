@@ -6,18 +6,18 @@ milestone: "Engine: animation"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["1119", "1123"]
+blocked_by: ["1119", "2231", "2335"]
 nick_input: none
 completed:
 ---
 
 # 2104 — Animation state machines over clips
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): the game doesn't need it, so this waits until after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`) and after 1119 and 1123. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): the game doesn't need it, so this waits until after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`) and after 1119, 2231 and 2335. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
-Found by the 2026-10-20 comparison with Bevy 0.20 and Godot 4.6. 1123
+Found by the 2026-10-20 comparison with Bevy 0.20 and Godot 4.6. 2231
 gives clips: `AnimationClip` and `frame_at(clip, elapsed_ms)`. Which
 clip plays is left to each game. Every character game then writes the
 same code: idle until moving, walk while moving, jump on a press, back
@@ -43,13 +43,13 @@ None.
 ## Scope
 
 **In:**
-- **`shuyi_assets::anim::graph`**, beside 1123's `anim`:
+- **`shuyi_assets::anim::graph`**, beside 2231's `anim`:
   - `AnimGraph`, an asset kind (`AssetKind::NAME = "anim_graph"`), read
     by `AnimGraphRon` (ADR-0007, ADR-0019), registered in
     `Formats::register_standard`, with a property test that random
     bytes never panic it;
   - **parameters**, named, each `Bool`, `Int` (`i32`), `Trigger` (used
-    up by the transition that reads it) or `Dir` (1119's `Angle`, or
+    up by the transition that reads it) or `Dir` (2335's `Angle`, or
     none while still). The game sets them each step.
   - **states**, named, each one of:
     - `Clip(clip id)`;
@@ -61,10 +61,19 @@ None.
   - **transitions**, each `from` a state or `Any`, `to` a state, and
     `when`, a list of conditions that must all hold:
     `param == value`, `param > n`, `param < n`, `trigger param`, and
-    `ended` (the clip finished; only for `Once` and `n times` clips).
+    `ended` (the clip finished, read from 2231's `AnimationClip::ended`;
+    only for `Once` and `Times(n)` clips).
     They are tried in the order written. At most one fires per step.
   - **events**, per clip: `(frame index, name)`, such as a footstep on
-    frames 2 and 6.
+    frames 2 and 6. Events between two steps follow one rule,
+    `shuyi_core::timer::crossed` (2364): a mark at `m` is crossed when
+    `prev < m <= now`, a backward jump or a seek crosses nothing, and a
+    range longer than one loop crosses each mark once. Entering a state
+    is the first call (`prev` is none), so an event on the first frame
+    fires then. **Either order with 2364:** if it is done, use
+    `crossed`; if not, write `crossed` in `shuyi_core::timer` with the
+    rule and tests in 2364's Scope (creating the module if 2115 hasn't),
+    and 2364 uses it.
   - checks, with file and line: an unknown clip, parameter or state;
     `ended` on a looping clip (an error); a state nothing reaches (a
     warning); a parameter of the wrong type in a condition.
@@ -73,13 +82,14 @@ None.
     `Copy` and serde: all a simulation stores;
   - `AnimGraph::step(&self, state, &Params, step, ms_per_step) ->
     Stepped { state, events: Vec<&str>, used_triggers }`. Events are
-    every frame entered since the previous step, in order, even when a
-    step is longer than a frame;
-  - `AnimGraph::frame(&self, state, step) -> FrameRef`, through 1123's
+    every frame entered since the previous step, by `crossed`, in
+    order, even when a step is longer than a frame;
+  - `AnimGraph::frame(&self, state, step) -> FrameRef`, through 2231's
     `frame_at`.
-- **The toy and the example:** a test graph on 1123's fixture sheet
-  with idle, walk in four directions, and a one-shot action that
-  returns to idle when it ends.
+- **The toy and the example:** a test graph on 2231's fixture set (its
+  own clips over the fixture's picture, since that set holds only
+  `splash`, `waves` and `wind`) with idle, walk in four directions, and
+  a one-shot action that returns to idle when it ends.
 - **The debug readout:** if 2316 is done, a helper that a screen's
   readout calls to show `state name, clip, frame`. If not, skip it and
   say so in the Completion notes.
@@ -88,15 +98,18 @@ None.
 - mixing two poses or cross-fading (bones, 2105);
 - layers (upper and lower body on separate graphs): a follow-up if a
   game needs one;
-- tweens on sprites (the cinematic easing covers them);
+- tweens on sprites (`shuyi_core::ease::Tween`, 2109);
 - showing the graph as boxes and wires (the graph panel, 2508, can add
   `*.anim_graph.ron` later).
 
 ## Implementation steps
 
-1. Read ADR-0004 §3, 1123's `anim` module and 1119's `Angle`.
+1. Read ADR-0004 §3, 2231's `anim` module, 2335's `Angle` and 2364's
+   rule for marks between two times. Check whether 2364 and 2115 are
+   done.
 2. Write the types and the checks, with fixtures.
-3. Write `step` and `frame`, with unit and property tests.
+3. Write `step` and `frame`, with unit and property tests. If 2364
+   isn't done, write `crossed` first, with its tests.
 4. Add the test graph and its snapshot tests.
 5. Run the gates.
 
@@ -108,7 +121,8 @@ None.
 - [ ] A trigger fires one transition and is then used up.
 - [ ] A direction set turning from right to down switches clip without
       restarting the elapsed time.
-- [ ] Events fire once per frame entered, in order, at any step length.
+- [ ] Events fire once per frame entered, in order, at any step length;
+      a step longer than one loop fires each event once (`crossed`).
 - [ ] Bad fixtures give errors with file and line; random bytes never
       panic the format.
 - [ ] All gates in the `run-gates` skill pass.
@@ -116,7 +130,9 @@ None.
 ## Tests required
 
 - Unit: each condition; `Any` transitions; transition order; the
-  direction pick at ties and when still; events across a long step.
+  direction pick at ties and when still; events across a long step
+  and on entering a state; `crossed`'s tests from 2364 if this ticket
+  writes it.
 - Property: replay of random parameter lists; `step` is pure (same
   input, same output).
 - Snapshot / integration: the test graph through a scripted walk,

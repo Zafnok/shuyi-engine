@@ -6,7 +6,7 @@ milestone: "Engine: accessibility"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: []
+blocked_by: ["2405"]
 nick_input: none
 completed:
 ---
@@ -43,7 +43,11 @@ None.
 **In:**
 - **`shuyi_ui::access`**, plain data, `no_std` with `alloc`:
   - `AccessNode { id: NodeId, role: Role, name: String, value:
-    Option<String>, state: NodeState, children: Vec<AccessNode> }`;
+    Option<String>, state: NodeState, bounds: Option<PxRect>, children:
+    Vec<AccessNode> }`. `bounds` is the widget's or item's hit area in
+    the frame (2405's `GlyphBuffer::hits`, matched by widget key and
+    item), for magnifiers and touch exploration. It is `None` where a
+    widget records none (2405 keeps only the top screen's hits);
   - `Role`: `Window`, `Dialog`, `Menu`, `MenuItem`, `List`, `ListItem`,
     `CheckBox`, `Slider`, `TextInput`, `Button`, `Text`, `Group`.
     `#[non_exhaustive]`;
@@ -65,10 +69,22 @@ None.
   - the name entry (2310) as a `TextInput` with its text;
   - the profiles, key bindings and layout picker screens, and the
     debug menu;
-  - the text box (dialogue) as `Text` with the page shown.
+  - the text box (dialogue) as `Text` with the page shown;
+  - on a screen whose widgets share the focus through 2355's `Focus`
+    (`Screen::widget_focus`), the tree's `focus` is the focused item
+    inside the widget `Focus::at()` names; a menu with
+    `MenuView::active` false has no focused item.
+
+  Text that a view holds as `StyledText` (2347: help lines, a question's
+  keys, the text box's wait corner) gives its `plain()` as the node's
+  name. A `Key` span is read as written, with no extra word (a follow-up
+  may announce it as a key).
 - **Announcements:** `Ctx::announce(key, args, Politeness)` for things
   said without the focus moving ("Saved", "Turn 3"). `Polite` waits,
   `Assertive` interrupts. They are collected per frame.
+- **Either order with 2366 (parked):** if 2366 is done, `Game` announces
+  each new sound caption line (not a repeat) `Polite` through
+  `Ctx::announce` while sound captions are on; if not, 2366 does it.
 - **`Game::frame`** builds the tree from the stack: the top screen and
   the overlays over it (screens under an opaque one are hidden). It
   hands an `AccessUpdate { tree: Option<AccessTree>, announcements }`
@@ -76,7 +92,12 @@ None.
   by value). **Either order with 3003:** if 3003 is done, it goes to a
   `Platform::access(&AccessUpdate)` with a default that does nothing;
   if not, it goes out with what `Game::frame` returns, and 3003 moves
-  it.
+  it. **Either order with 2367** (overlays that let the screen below
+  run): if 2367 is done, the focus is in the top-most running screen
+  that takes actions, so a `Passes::Everything` notice never holds it,
+  and the screens a pass-through overlay lets run are in the tree under
+  it; if 2367 isn't done, every overlay is modal and the focus is in the
+  top screen.
 - **Seeing it:** `frame-png --access <file>` writes the tree as indented
   text, one node a line (`menu "Options"`, `  slider "Music volume" 7/10
   focused`). If 1129 is done, `shuyi scene --access` prints it too.
@@ -95,7 +116,7 @@ None.
 ## Implementation steps
 
 1. Read ADR-0020, the menu, question, options, name entry and profiles
-   modules, and `Game::frame`.
+   modules, `Game::frame`, and 2355's `focus` module.
 2. Write the `access` types and the text printer.
 3. Add `Screen::describe`, and implement it on each engine screen and
    widget, with a snapshot test each.
@@ -108,6 +129,7 @@ None.
 - [ ] Each engine screen's tree has a committed text snapshot.
 - [ ] Moving the menu cursor moves `focus` to that item's node, and
       nothing else in the tree changes.
+- [ ] A menu row's node has its row's bounds.
 - [ ] A frame where nothing changed gives `tree: None`.
 - [ ] An announcement is handed out once, on the frame it was made.
 - [ ] Node ids are unique within a tree, and stable across frames.

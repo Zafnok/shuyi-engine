@@ -6,7 +6,7 @@ milestone: "Engine: 2D effects"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1120", "2326"]
+blocked_by: ["1120", "2229", "2326"]
 nick_input: none
 completed:
 ---
@@ -46,8 +46,11 @@ None.
   frame's time (as particles are, 2103), so a picture of any moment is
   the same. UI and glyph layers are never lit. Snapshot lines list the
   lights.
-- **Normal maps:** an atlas's sidecar may name a normal map image beside
-  its image (`normal: "hero_n.png"`). It is checked to be the same size.
+- **Normal maps:** an image's import settings (2229) may name a normal
+  map image beside it, in a `lit` section: `hero.png.meta` holding
+  `(lit: (normal: "hero_n.png"))`, a type implementing
+  `ImportSettings`, registered in `Formats::register_standard`. It is
+  checked to be the same size.
   A sprite without one is lit as if it faced the viewer.
 - **The wgpu renderer:** per-pixel light on lit layers: ambient plus
   each light, Lambert with the normal map, falloff to zero at the
@@ -69,10 +72,10 @@ None.
 
 ## Implementation steps
 
-1. Read 2326 and the renderer, 1120's world layers, and 1123's atlas
-   sidecar.
+1. Read 2326 and the renderer, 1120's world layers, and 2229's import
+   settings.
 2. Add lights to the frame, with snapshot lines and the checks.
-3. Load normal maps from the sidecar.
+3. Register the `lit` section (2229) and load normal maps through it.
 4. Write the CPU reference, with unit tests.
 5. Write the WGSL lighting, and extend the GPU-against-CPU test.
 6. Add the example.

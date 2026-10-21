@@ -56,6 +56,10 @@ None.
   `leaving_out` flags work on such a layer as on the others: a file
   there replaces the file at the same path in a layer after it, and a
   file only there is added.
+- Either order with 2228: if 2228 is done, `Bundle::versions` reads the
+  new variant through the same private walk, and a unit test checks
+  that a run-time layer's copy of a path comes before an embedded
+  layer's copy of it; if not, 2228 adds that test.
 - In `shuyi-app`, native only: `read_folder(path, name, max_file_bytes)
   -> Result<Layer, ...>`, every file under the folder as one such layer,
   `/`-separated paths relative to it; a file over the limit, or one that
@@ -67,10 +71,17 @@ None.
 
 **Out (do not do):**
 - Where a game's mods live, their manifest, order or checks (the game's).
-- Merging data tables entry by entry (the game's loaders).
+- Merging data tables entry by entry (the game's loaders, over 2228's
+  `Bundle::versions` and `Formats::load_versions`, which read every
+  layer's copy of a file; the merge rules stay the game's).
 - Zip files.
+- Files fetched over the network as a layer: 2601 (parked) gives HTTP
+  requests; a layer of fetched files is a later ticket, and Nick's call.
 - Watching folders and reloading: 1124, which waits for this ticket
   and builds hot reload on these layers.
+- Fuzzing the formats a layer's files reach: 2020. It should be done
+  before game#1014 ships mods to players, but this ticket doesn't wait
+  for it.
 
 **For the game:** additive. The game's PRs that use it (game#1012,
 game#1014) move its pin after this one.
@@ -78,6 +89,7 @@ game#1014) move its pin after this one.
 ## Implementation steps
 
 1. Read ADR-0004 §1, `crates/assets/src/bundle.rs` and its tests.
+   Check whether 2228 is in `tickets/done/`.
 2. Add the run-time variant of `Files` and the constructor with its
    checks. Keep the existing constructors `const` and unchanged.
 3. Make `find` and `list` (and everything built on them) read the new
@@ -95,6 +107,8 @@ game#1014) move its pin after this one.
       from it (unit test).
 - [ ] Bad paths are refused with the layer's name and the path in the
       message (unit tests).
+- [ ] If 2228 is done: `Bundle::versions` gives a run-time layer's copy
+      of a path before an embedded layer's copy of it (unit test).
 - [ ] `read_folder` reads a temporary folder into a layer, and refuses a
       file over the limit (test).
 - [ ] The WASM build passes; nothing reads files on the web.

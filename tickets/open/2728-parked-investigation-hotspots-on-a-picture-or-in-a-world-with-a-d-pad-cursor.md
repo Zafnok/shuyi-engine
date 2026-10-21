@@ -6,7 +6,7 @@ milestone: "Engine: detective games"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2727", "1121"]
+blocked_by: ["2727", "2405"]
 nick_input: none
 completed:
 ---
@@ -21,13 +21,14 @@ completed:
 §7: a detective game is investigated by examining things, on a picture
 or in a world. Each thing is a **hotspot** with conditions and an
 action. The player points at it with a pointer where there is one
-(1121), and with only a d-pad the cursor jumps between hotspots, so
+(2405), and with only a d-pad the cursor jumps between hotspots, so
 investigation fits every target (3002, ADR-0008 §3). Pixel hunting is
 not a feature: the scene says which hotspots are found.
 
 This ticket builds on 2727 (`CaseState`, `MysteryRules`, its mode stack
-and node call) and 1121 (pointer input). Every choice the player makes
-is a command in `MysteryRules`, so an investigation replays.
+and node call) and 2405 (pointer input in console pixels). Every choice
+the player makes is a command in `MysteryRules`, so an investigation
+replays.
 
 **World hotspots, either order with 1122** (collision, movers and
 triggers):
@@ -96,10 +97,17 @@ None.
     with a d-pad give the same record.
 - **`CaseState` gains** `examined: BTreeSet<(PlaceId, HotspotId)>`. The
   scene marks those hotspots as found.
-- **Pointer picking** (1121): the screen maps the pointer from console
-  pixels to picture pixels through the picture's place in the scene
-  (integer offset and scale), and `hit` picks the top hotspot there.
-  Moving over one selects it; the confirm input examines it.
+- **Pointer picking** (2405): `FrameInput::pointer()`, whose `at` is in
+  console pixels. The screen maps `at` to picture pixels through the
+  picture's place in the scene (integer offset and scale), and `hit`
+  picks the top hotspot there. Hover selects it on a frame the pointer
+  `moved`, and a click examines it, as 2405's menus do. A still pointer
+  never takes the selection back from the d-pad. A click here is a
+  release whose press began on the same hotspot (`hit` gives the same
+  one at `down_at` and at `at`), as 2405's grid stage clicks a tile:
+  `PointerInput::clicked` knows only the rectangles a painter records,
+  and a hotspot may be a polygon. The confirm input examines the
+  selected hotspot too.
 - **The d-pad cursor**: the hotspots there now, in reading order. Sort
   by anchor `y`; anchors within `row_band` pixels of the first in a row
   (default 8, set in `mystery.ron`) form one row, sorted by `x`; `order`
@@ -129,7 +137,7 @@ None.
 - testimony (2730);
 - the fair-play check (2731), which reads these files later;
 - the example (2732);
-- pointer input itself (1121) and triggers themselves (1122);
+- pointer input itself (2405) and triggers themselves (1122);
 - moving or animated hotspots (write a ticket if a game asks);
 - hiding hotspots until the pointer is over them: the scene always
   lists every hotspot there now (ADR-0016 §7).

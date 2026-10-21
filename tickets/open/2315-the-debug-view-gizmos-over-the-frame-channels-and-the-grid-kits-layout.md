@@ -40,6 +40,8 @@ Later channels add themselves:
 - collision bounds: 2317;
 - level layouts in world layers: 2318;
 - skeletons of procedural bodies: 2319;
+- online play: a `net` channel that 1140 brings (round trip, loss,
+  bytes per channel, the lockstep turn, hash agreement);
 - 3D: 2320.
 
 Pausing and stepping one frame are 2316. The editor (2506–2508) shows
@@ -110,9 +112,18 @@ None.
   Colors come from the role through `EngineColor` (the debug tools'
   look), never from the game's palette. A label prints in glyph cells
   at its position, in the frame's own font.
-- **The renderers:** `shuyi-app`'s `render.rs` draws `Item::Gizmo` with
-  macroquad's lines and outlines. `frame-png` draws it with the same
-  pixel rules (a one-pixel line, Bresenham, integer only).
+- **The renderers:** `shuyi-app`'s `render.rs` and `frame-png` both
+  draw `Item::Gizmo` as runs of whole console pixels from one integer
+  rule (`shuyi-app` with one `draw_rectangle` per run, not macroquad's
+  lines), so the window equals `frame-png`. **Either order with
+  2336:** if 2336 is done, gizmo lines and circles use
+  `shuyi_ui::frame::shape`'s width-1 line and circle-outline rules. If
+  not, write those two rules in `frame::shape` as 2336's scope says
+  (Bresenham with the error term starting at `dx + dy`; the midpoint
+  circle from `1 - r`), and 2336 builds on them. **Either order with
+  2332:** if 2332 is done, `frame-png`'s painter is
+  `crates/ui/src/frame/raster.rs`; if not, `crates/cli/src/frame_png.rs`,
+  and 2332 moves it.
 - **The snapshot** (`frame/snapshot.rs`): gizmos are listed in the
   overlays section, one line each, as
   `over  gizmo <channel> <role> rect x,y wxh` (and `line x,y x,y`,
@@ -133,33 +144,44 @@ None.
 - **`frame-png --debug <channel>[,<channel>…]`** draws the named
   channels. An agent then sees what a person sees with the view on.
   `all` turns every channel on.
+- **Either order with 2514:** if 2514 is done, `--debug` draws the
+  channels on every frame that `--every` and `--count` capture (a test
+  with a two-frame sheet); if not, 2514 does that.
 - The toy game (`toy::grid`) calls the helper, and its tests in
   `tests/it/grid.rs` use it.
 
 **Out (do not do):**
 - pausing, stepping, slow motion and a readout of state (2316);
 - a frame profiler (2325);
+- a game's drawn shapes (`Item::Shape`, wide lines, fills and
+  polygons): 2336. Only the width-1 line and circle-outline rules may
+  land here (the renderers above);
 - collision, world layers, skeletons and 3D (2317–2320);
 - gizmos in world coordinates. There are no world layers until 1120,
   and 2318 adds the camera transform;
-- an inspector or anything that edits state (the editor, 2506–2508);
+- an inspector or anything that edits state (the editor, 2506–2508).
+  Debug commands that change state through the game's own commands are
+  2356;
 - new actions or keys. The debug menu is the only way in.
 
 ## Implementation steps
 
 1. Read `crates/ui/src/debug.rs`, `debug/glyph.rs`, `screen.rs`,
    `game.rs`, `frame/glyph_buffer.rs` and `frame/snapshot.rs`, and the
-   `input-actions` skill.
+   `input-actions` skill. Read 2336's `frame/shape.rs` and 2514's
+   `--every` and `--count` if they are done.
 2. Write the ADR.
 3. Add `debug/gizmo.rs` with the types and their unit tests.
 4. Add `Item::Gizmo` to the frame, its snapshot lines, and its drawing
-   in `crates/app/src/render.rs` and `crates/cli/src/frame_png`.
+   as runs in `crates/app/src/render.rs` and `crates/cli/src/frame_png`,
+   through `frame::shape`'s width-1 rules (2336's, or written here).
 5. Add `Screen::debug_draw`, the call from `ScreenStack`, and
    `Ctx::debug_view`, with saving in the engine's settings.
 6. Add the "Debug view" screen to the debug menu.
 7. Write `grid::debug::layout_gizmos` and call it from the toy's grid
    game.
-8. Add `--debug` to `frame-png`.
+8. Add `--debug` to `frame-png`, on every captured frame if 2514 is
+   done.
 9. Run the gates.
 
 ## Acceptance criteria
@@ -182,13 +204,15 @@ None.
 ## Tests required
 
 - Unit: `Gizmos::push` keeps order, and skips a channel that is off.
-  Each gizmo's snapshot line. Bresenham lines in all eight octants.
+  Each gizmo's snapshot line. Bresenham lines in all eight octants and
+  the midpoint circle, if this ticket writes them in `frame::shape`.
 - Property: `layout_gizmos` never yields a gizmo outside the buffer's
   `pixel_bounds`, for any map size, view and camera.
 - Snapshot / integration:
   - the toy's grid game with `grid` on, in both skins;
   - the "Debug view" screen;
-  - the Harness replay-hash test above.
+  - the Harness replay-hash test above;
+  - `--debug grid` on a two-frame sheet, if 2514 is done.
 
 ## Completion notes
 

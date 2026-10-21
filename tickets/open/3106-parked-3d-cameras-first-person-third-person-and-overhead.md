@@ -6,7 +6,7 @@ milestone: "Parked: 3D"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["3105", "1121"]
+blocked_by: ["3105", "1121", "2510"]
 nick_input: none
 completed:
 ---
@@ -35,8 +35,9 @@ A look never reads a key or a mouse (`AGENTS.md` rule 8). It reads
 actions from `TickInput`, where sticks and the pointer are quantized
 (1121), so records replay exactly. Read the `input-actions` skill first.
 
-It builds on 3105 (shape casts for the orbit) and 1121 (axis actions,
-pointer input, the Harness's stick and pointer scripts).
+It builds on 3105 (shape casts for the orbit), 1121 (axis actions,
+pointer input, the Harness's stick and pointer scripts) and 2510
+(`cargo xtask compile-messages`, which checks what the compiler says).
 
 3103 (the 3D view) and this ticket can land in either order. If 3103
 has landed, add `From<CameraPose> for Camera3` here. If not, 3103 adds
@@ -91,6 +92,8 @@ None.
 - a free-fly debug camera (a later ticket if wanted);
 - camera shake and cinematic paths in 3D;
 - head bob and weapon sway (a game's job);
+- drawing the camera between two steps on displays faster than 60 Hz
+  (2361 does it for 2D world layers; a follow-up for 3D);
 - the examples and templates (3108, 3109).
 
 ## Implementation steps
@@ -103,13 +106,17 @@ None.
 4. Write `OverheadFollow`: dead zone, bounds, eased turn.
 5. Write the RON settings and their formats.
 6. Write a `compile_fail` doc test per rig, using it with a wrong
-   marker.
+   marker, and a `compile-messages` fixture per rig (2510), with
+   `crates/3d` added to the path dependencies of the package it writes.
 7. Write the Harness tests.
 
 ## Acceptance criteria
 
-- [ ] Each rig in a stage of another marker fails to compile, and the
-      message names both markers (`compile_fail` doc tests, three).
+- [ ] Each rig in a stage of another marker fails to compile
+      (`compile_fail` doc tests, three), and the message names both
+      markers (three fixtures in 2510's `cargo xtask compile-messages`;
+      a `compile_fail` doc test checks only that the code fails, not
+      what the compiler says).
 - [ ] A scripted stick at half deflection turns the first-person look at
       half the rate (Harness test).
 - [ ] Pitch never passes its clamp, over random input (property test).
@@ -127,6 +134,8 @@ None.
 - Unit: each rig's rules.
 - Property: clamp, the corridor, dead zone and bounds, replay.
 - Doc tests: the three `compile_fail` cases.
+- Fixtures: the three message checks in `cargo xtask compile-messages`
+  (2510).
 - Integration: the Harness stick and pointer tests.
 
 ## Completion notes

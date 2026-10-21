@@ -92,7 +92,10 @@ None.
 - a production panel and building placement (2734);
 - sound;
 - isometric drawing of the scene beyond what 1120's projection already
-  gives (1126 owns the isometric projection).
+  gives (1126 owns the isometric projection);
+- a minimap drawn through a second world layer with its own camera and
+  viewport (1120 allows one): this minimap is drawn from coarse grids,
+  which costs less and shows only what the team has seen.
 
 ## Implementation steps
 

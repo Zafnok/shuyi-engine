@@ -56,6 +56,13 @@ check on the numbers.
   peak heap over the SDK's console log.
 - **Collecting the log** over USB, with the SDK's tools (the Simulator's
   device console, or `pdutil`; record which one works on Windows).
+- **Run on the device from the computer.** `shuyi export playdate --run
+  --device` (3004's run step, beside 3010's Simulator run) installs the
+  `.pdx` and starts it over USB through the SDK's `pdutil` (its install
+  and run commands, checked in the SDK's docs on the day). Then it
+  prints the device's console log by the route *Collecting the log*
+  finds. A missing device or SDK says how to fix it. The bench steps use
+  it.
 - **The report** in `docs/targets/playdate.md`, per scenario:
   - frame time p50, p99 and the worst frame;
   - dropped frames (frames over 33.3 ms);
@@ -77,7 +84,9 @@ check on the numbers.
   build: when the loading card and the first frame were shown, the
   slowest files to load (through the bundle's read hook), once a minute
   the frame times, and the stack's high-water mark (3028). The backend
-  offers it; a game turns it on.
+  offers it; a game turns it on. Its lines go out the way App's lines do
+  on the Playdate (3010's sink, the SDK's console), with the category
+  `platform` of 3040's log.
 - **If a scenario misses 30 fps.** Write a ticket per cause found (for
   example, the 1-bit conversion, the scene build, or the bot), each with
   its measurement. Don't fix them here.
@@ -89,13 +98,17 @@ check on the numbers.
 
 ## Implementation steps
 
-1. Add `--bench` to the exporter and the in-game scenario menu.
+1. Add `--bench` and `--run --device` to the exporter, and the in-game
+   scenario menu.
 2. Run every scenario five times, and keep the median run of each.
 3. Write the report and calibrate the profile.
 4. Write the follow-up tickets.
 
 ## Acceptance criteria
 
+- [ ] `shuyi export playdate --run --device` installs and starts the
+      example on the device, and its log reaches the terminal
+      (Completion notes).
 - [ ] `docs/targets/playdate.md` has every scenario's numbers, with the
       hardware revision and the SDK version.
 - [ ] The `playdate` profile's budgets are set from the measurements, and
