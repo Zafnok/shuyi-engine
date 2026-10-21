@@ -394,9 +394,13 @@ fn weights_are_halved_only_as_far_as_one_draw_needs() {
 
 #[test]
 fn many_equal_weights_still_fit_one_draw() {
+    // 70 000 weights of 65 536 overflow a `u32`: each is halved once, and
+    // every candidate can still be picked, the last half too.
     let means = vec![0; 70_000];
     let mut rng = SimRng::new(2);
-    assert!(pick(&means, 10, &mut rng) < means.len());
+    let picks: Vec<usize> = (0..20).map(|_| pick(&means, 10, &mut rng)).collect();
+    assert!(picks.iter().all(|&index| index < means.len()), "{picks:?}");
+    assert!(picks.iter().any(|&index| index >= 35_000), "{picks:?}");
 }
 
 #[test]

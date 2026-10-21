@@ -7,7 +7,7 @@
 use hello_grid::Hello;
 use hello_grid::rules::{Chase, Outcome, Side, Stage, hero_order, playout, score};
 use shuyi_core::{
-    Bot, Horizon, RandomBot, Report, Rollout, RolloutSettings, Sides, TurnRules, play,
+    Bot, Determinize, Horizon, RandomBot, Report, Rollout, RolloutSettings, Sides, TurnRules, play,
 };
 
 /// The stage of the game's map, seeded with `seed`.
@@ -119,10 +119,21 @@ fn the_foe_scores_the_negation_of_the_hero() {
     let start = stage(0);
     let mut end = start.clone();
     let open = score(&start, &end, Side::Hero);
-    assert_eq!(score(&start, &end, Side::Foe), -open);
     // A step that brings your piece nearer the goal scores better for it.
     let nearer = hero_order(&end, end.legal_commands())[0];
     end.apply(&nearer).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(end.side_to_move(), Side::Foe);
-    assert!(score(&start, &end, Side::Hero) > open);
+    let hero = score(&start, &end, Side::Hero);
+    assert!(hero > open);
+    assert_ne!(hero, 0);
+    assert_eq!(score(&start, &end, Side::Foe), -hero);
+}
+
+#[test]
+fn a_determinized_stage_has_only_its_luck_redrawn() {
+    // Two stages that differ only in their luck are the same copy.
+    let copy = stage(1).determinize(Side::Hero, 99);
+    assert_eq!(stage(2).determinize(Side::Hero, 99), copy);
+    assert_eq!(copy, stage(99));
+    assert_ne!(copy, stage(1));
 }
