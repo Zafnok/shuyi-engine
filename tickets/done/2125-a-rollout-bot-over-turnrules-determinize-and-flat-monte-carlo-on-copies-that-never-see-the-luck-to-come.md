@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2125 — A rollout bot: Determinize and flat Monte Carlo
@@ -252,32 +252,32 @@ and keep the fixtures' tests here.
 
 ## Acceptance criteria
 
-- [ ] In Nim, at temperature 0 with `Horizon::Turns(20)` and a playout
+- [x] In Nim, at temperature 0 with `Horizon::Turns(20)` and a playout
       player that takes `pile % 4` (1 when that is 0), the bot takes
       the winning amount from every pile of 1 to 20 that isn't a
       multiple of 4.
-- [ ] In the dice race, two states that differ only in their `SimRng`
+- [x] In the dice race, two states that differ only in their `SimRng`
       get the same command (property test over pairs of seeds).
-- [ ] Slicing: `advance(1)` repeated, `advance(7)`, `advance(100)` and
+- [x] Slicing: `advance(1)` repeated, `advance(7)`, `advance(100)` and
       `advance(u32::MAX)` give the same command on every fixture
       (property test with random slice sizes).
-- [ ] The same bot seed and the same state give the same command twice.
-- [ ] `exp2_q16` equals a table of known values (0, -0.5, -1, -2.25,
+- [x] The same bot seed and the same state give the same command twice.
+- [x] `exp2_q16` equals a table of known values (0, -0.5, -1, -2.25,
       -31, -33 in 16.16), and temperature 0 always picks the best mean.
-- [ ] At a temperature, over 1 000 decisions with different bot seeds, a
+- [x] At a temperature, over 1 000 decisions with different bot seeds, a
       candidate `temperature` points below another is picked about half
       as often (between 40% and 60% of its count).
-- [ ] A `determinize` that changes the root's commands, or a candidate
+- [x] A `determinize` that changes the root's commands, or a candidate
       the copy refuses, makes the bot panic with a message naming
       `determinize`.
-- [ ] No decision applies more than `candidates × samples × (commands + 1)`
+- [x] No decision applies more than `candidates × samples × (commands + 1)`
       commands (a counting `Playout` in the test).
-- [ ] Hello-grid's rollout hero wins more of seeds 0 to 19 against
+- [x] Hello-grid's rollout hero wins more of seeds 0 to 19 against
       `Chase` than the random hero does.
-- [ ] Hello-grid's existing records and snapshots pass unchanged.
-- [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
+- [x] Hello-grid's existing records and snapshots pass unchanged.
+- [x] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
       `no-std` job).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -290,6 +290,61 @@ and keep the fixtures' tests here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick. Name the game PR
-that moves the pin: game#0506's.)*
+**Done.**
+
+- `shuyi_core::bots::determinize`: `Determinize` and `Evaluate` (with
+  the blanket impl for closures).
+- `shuyi_core::bots::rollout`: `Order` (and `Unordered`), `Playout`,
+  `Horizon`, `RolloutSettings` (serde), `Rollout` and `RolloutSearch`
+  with `advance`, and `exp2_q16`. All re-exported from `shuyi_core`, and
+  the crate docs name them. No float anywhere in `bots`, tests included.
+- Fixtures in `bots/fixtures.rs` (a dice race and Nim, whose
+  `determinize` can be made to lie) and 25 tests in
+  `bots/rollout/tests.rs`, three of them property tests.
+- [ADR-0027](../../docs/adr/0027-bots-that-plan-see-a-determinized-copy-integer-rollouts-shared-seeds-and-work-units.md).
+- Hello-grid: `Stage`'s `Determinize` (the luck redrawn),
+  `distances_to_goal`, `score`, `hero_order`, `Walk` and `playout`, the
+  tests in `tests/it/bots.rs` and the README lines. The stage screen
+  and `bot_play` are unchanged, and so are the records and snapshots.
+- **The counts:** of stages 0 to 19 against `Chase`, the rollout hero
+  (8 candidates, 4 samples, `Horizon::Turns(3)`, 12 commands,
+  temperature 0) won **20**, the random hero **2**.
+
+**Deviations.**
+
+- `RolloutSearch` has three more type parameters and a lifetime than
+  the ticket's `RolloutSearch<R>`: `RolloutSearch<'a, R, O, P, E>`. It
+  borrows its bot, because the playout player, the score and the bot's
+  `SimRng` (the pick at the end) live there. It keeps its own clone of
+  the root, so the state is free while it thinks. `advance` has the
+  ticket's signature. `Rollout::search(&rules)` starts one.
+- `Bot` gains a blanket impl for `FnMut(&R) -> R::Command`. Without it
+  the ticket's `pub fn playout(stage: &Stage) -> Command` is not a
+  `Playout`: the blanket impl for every `Bot` takes the place of one for
+  closures, and the two can't both exist. The game's `Bot` impls are
+  all for its own structs, so nothing clashes (checked in the game's
+  `crates/bots`).
+- `exp2_q16` takes an `i64` (the 16.16 exponent; a positive one counts
+  as 0) and is public in `bots::rollout`, not re-exported. Between the
+  table's entries it reads straight from one to the next, so it never
+  rises. -31 and -33 both give 0 in 16.16; the guard against shifting
+  past 32 halvings is a `checked_shr`.
+- When the weights' total doesn't fit `roll_below`'s `u32` (more than
+  65 535 candidates), every weight is halved as often as it needs.
+- The copy's side to move is checked too, with its commands.
+- Size: about 1 450 lines, against the 450 guessed. Most of it is the
+  tests and fixtures the ticket lists (about 700) and the docs.
+  Hello-grid's part is about 170 lines, so moving it out would not bring
+  the PR near 600, and it is done and tested; it stays.
+- 1134's `skills/shuyi-balance-bots/SKILL.md` doesn't exist yet, and
+  2015's float ban isn't in; neither either-order part applied.
+
+**For the game.** Nothing breaks: `Bot`, `play` and `RandomBot` are as
+they were, and only the blanket `Bot` impl for closures is new. The
+game PR that moves the pin is game#0506's (it implements `Determinize`,
+`Order`, `Playout` and `Evaluate` for its battle); it doesn't exist yet.
+
+**Follow-ups.** None new: 2113, 2126, 2127 and 3009 already build on
+this.
+
+**Nick:** nothing to decide.

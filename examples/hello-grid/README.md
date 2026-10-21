@@ -19,7 +19,7 @@ cargo test -p hello-grid             # the tests
 
 | Path | What |
 | ---- | ---- |
-| `src/rules.rs` | The rules, over the engine's `TurnRules` and `Sides`, and the foe's mind (`Chase`, a `Bot`) |
+| `src/rules.rs` | The rules, over the engine's `TurnRules` and `Sides`; the foe's mind (`Chase`, a `Bot`); and what a rollout bot plans with: the stage's `Determinize` (the luck redrawn), its `score`, and `Walk`, a plain walker for your piece |
 | `src/screens.rs`, `src/screens/stage.rs` | The screens: title, scene, stage, end; the options' rows |
 | `src/skin.rs`, `src/map.rs` | The look: each screen's view painted with glyphs; the map's terrains, pieces and both skins |
 | `src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
@@ -56,6 +56,11 @@ cargo shuyi bots 30                                # a random walker against the
 cargo shuyi replay play.ron                        # a bot's record (bots --json), step by step
 cargo shuyi import files/stage.map
 ```
+
+`tests/it/bots.rs` also plays a rollout hero (`shuyi_core::Rollout`)
+against the foe: it tries the tiles nearest the goal on copies of the
+stage whose luck is redrawn, and wins far more often than the random
+walker.
 
 ## Targets
 
