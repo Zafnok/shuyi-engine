@@ -97,6 +97,13 @@ None.
     `play_observed` with the entrant's bots and its measure. A refused
     command stops the run with the `PlayError` (a bug in a bot, never
     skipped).
+  - `run` is two public halves, so a caller with threads (a game's
+    tool, on `std`) can play seed ranges on threads of its own and
+    judge them once: `play_tries(stage, entrant, seeds: Range<u64>, turns) -> Result<Vec<Tried>, PlayError<R>>`
+    and `judge(tries: Vec<(String, Vec<Tried>)>, checks) -> Result<PlaytestReport, PlaytestError>`
+    (the entrant's name and its tries in seed order; `judge` sorts
+    them by seed, so the report never depends on how the seeds were
+    split).
   - **The checks**, `Serialize` and `Deserialize`, so a game keeps them
     in a data file:
     - `Condition { measure: String, min: Option<i64>, max: Option<i64> }`,
@@ -173,7 +180,8 @@ None.
 - the rollout bot (2125) and autobalance (2127);
 - wall time, or any clock (the game times its tries);
 - a history of runs over time (the game keeps its own);
-- running tries on several threads;
+- running tries on several threads (the caller may, through
+  `play_tries` and `judge`);
 - moving `bots`/`tally` onto this runner (they stay; a follow-up may
   merge them if both are kept);
 - any game's success rules or band values.
@@ -209,6 +217,9 @@ follow-up ticket and keep the library and its hello-grid test here.
 - [ ] Unit test: the median of `[3, 1, 4, 2]` is 2; `Unknown` when an
       entrant has no try meeting `among`.
 - [ ] Unit test: a check naming a missing entrant fails before any try.
+- [ ] `judge` over seeds 0–49 played as one range, and as the ranges
+      0–16, 17–33 and 34–49 given in reverse order, gives the same
+      report as `run`.
 - [ ] The same stage, entrants, tries and checks give the same report.
 - [ ] `cargo shuyi playtest --tries 50` in `examples/hello-grid` prints
       the table with ✓ for every check, and exits 0.
