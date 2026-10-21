@@ -23,6 +23,9 @@ pub struct MapScene<U> {
     pub origin: Pos,
     /// Visible tiles, across × down.
     pub size: (i32, i32),
+    /// The sides of the view the map goes on past: for a game's marks at
+    /// those edges. None unless set ([`MapEdges::of_view`]).
+    pub more: MapEdges,
     /// The visible tiles, row by row: `size.0 × size.1` of them.
     pub tiles: Vec<TileView>,
     /// The ranges shown, in the order laid on: on a tile in two, the
@@ -51,6 +54,103 @@ pub struct MapScene<U> {
     /// The screen's animation clock, in milliseconds: what a skin or a
     /// unit painter moves its marks by. It only ever goes forward.
     pub clock_ms: u64,
+}
+
+/// The sides of a view the map goes on past: there is more map to its
+/// left, to its right, above it or below it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct MapEdges {
+    /// Across: more map left of the view (`before`), right of it
+    /// (`after`).
+    pub x: Ends,
+    /// Down: more map above the view (`before`), below it (`after`).
+    pub y: Ends,
+}
+
+/// Whether the map goes on before and after a view, along one axis.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub struct Ends {
+    /// More map before the view's first tile (left, or above).
+    pub before: bool,
+    /// More map after its last (right, or below).
+    pub after: bool,
+}
+
+impl Ends {
+    /// Neither end.
+    pub const NONE: Self = Self {
+        before: false,
+        after: false,
+    };
+
+    /// The ends a view `len` tiles long from `start` leaves map past, on a
+    /// map `map_len` tiles long from 0.
+    fn of_view(start: i32, len: i32, map_len: i32) -> Self {
+        let end = i64::from(start) + i64::from(len.max(0));
+        Self {
+            before: start > 0,
+            after: end < i64::from(map_len),
+        }
+    }
+}
+
+impl MapEdges {
+    /// The map goes on past no side: it all fits in the view.
+    pub const NONE: Self = Self {
+        x: Ends::NONE,
+        y: Ends::NONE,
+    };
+
+    /// The sides a view of `size` tiles from `origin` leaves map past, on
+    /// a map of `map_size` tiles (across × down) from `(0, 0)`: left when
+    /// the view starts right of the map's first column, right when it
+    /// ends before its last, and the same up and down. A map smaller than
+    /// the view (centred in it, from a negative origin) goes on past none.
+    pub fn of_view(origin: Pos, size: (i32, i32), map_size: (i32, i32)) -> Self {
+        Self {
+            x: Ends::of_view(origin.x, size.0, map_size.0),
+            y: Ends::of_view(origin.y, size.1, map_size.1),
+        }
+    }
+
+    /// More map left of the view.
+    pub const fn left(self) -> bool {
+        self.x.before
+    }
+
+    /// More map right of the view.
+    pub const fn right(self) -> bool {
+        self.x.after
+    }
+
+    /// More map above the view.
+    pub const fn up(self) -> bool {
+        self.y.before
+    }
+
+    /// More map below the view.
+    pub const fn down(self) -> bool {
+        self.y.after
+    }
+
+    /// Whether the map goes on past any side.
+    pub const fn any(self) -> bool {
+        self.left() || self.right() || self.up() || self.down()
+    }
+
+    /// The sides set, by name, in the order left, right, up, down.
+    pub fn names(self) -> Vec<&'static str> {
+        let sides = [
+            (self.left(), "left"),
+            (self.right(), "right"),
+            (self.up(), "up"),
+            (self.down(), "down"),
+        ];
+        sides
+            .into_iter()
+            .filter_map(|(set, name)| set.then_some(name))
+            .collect()
+    }
 }
 
 /// One visible tile.
@@ -189,6 +289,7 @@ impl<U> MapScene<U> {
         Self {
             origin,
             size,
+            more: MapEdges::NONE,
             tiles: vec![TileView::default(); count],
             ranges: Vec::new(),
             rim: vec![None; rim_len(size)],
@@ -399,7 +500,9 @@ impl<U: MapUnit> MapScene<U> {
     /// The clock isn't in it (nothing happens by it), nor the ring of
     /// terrain round the view (it is the map's, one tile further out). A
     /// look other than a map's usual one ends the first line: `look
-    /// indoor`; so does a light other than the usual: `light dusk`.
+    /// indoor`; so does a light other than the usual: `light dusk`. The
+    /// sides the map goes on past follow it in a line of their own, only
+    /// when there are some: `more right down`.
     ///
     /// ```text
     /// origin (-10,-11) size 35x30
@@ -435,6 +538,9 @@ impl<U: MapUnit> MapScene<U> {
             let _ = write!(out, " light {}", self.look.light);
         }
         out.push('\n');
+        if self.more.any() {
+            let _ = writeln!(out, "more {}", self.more.names().join(" "));
+        }
         let tints = self.tints();
         for dy in 0..h {
             let row = self.row_text(terrains, &tints, dy);
@@ -532,6 +638,7 @@ mod tests {
         // The ring round a 4 × 2 view: 6 above, 6 below, 2 at each side.
         assert_eq!(s.rim, vec![None; 16]);
         assert_eq!(s.look, MapLook::default());
+        assert_eq!(s.more, MapEdges::NONE);
         // A negative size is an empty view.
         let none = MapScene::<Piece>::new(p(0, 0), (-3, 5));
         assert_eq!((none.size, none.tiles.len()), ((0, 5), 0));
@@ -639,6 +746,75 @@ mod tests {
         assert_eq!(s.terrain_near(2, -1), None);
         s.set_terrain(|_| Some(TerrainId(1)));
         assert_eq!(s.rim, vec![Some(TerrainId(1)); 3]);
+    }
+
+    #[test]
+    fn the_map_goes_on_past_the_sides_the_view_leaves_map_beyond() {
+        let edges = |left, right, up, down| MapEdges {
+            x: Ends {
+                before: left,
+                after: right,
+            },
+            y: Ends {
+                before: up,
+                after: down,
+            },
+        };
+        // A map 20 × 4 seen 8 × 4 at a time: at its left edge, in the
+        // middle and at its right edge.
+        let wide = |x| MapEdges::of_view(p(x, 0), (8, 4), (20, 4));
+        assert_eq!(wide(0), edges(false, true, false, false));
+        assert_eq!(wide(6), edges(true, true, false, false));
+        assert_eq!(wide(12), edges(true, false, false, false));
+        // The same down a map 5 × 30 seen 5 × 10 at a time.
+        let tall = |y| MapEdges::of_view(p(0, y), (5, 10), (5, 30));
+        assert_eq!(tall(0), edges(false, false, false, true));
+        assert_eq!(tall(10), edges(false, false, true, true));
+        assert_eq!(tall(20), edges(false, false, true, false));
+        // Both ways at once.
+        let both = MapEdges::of_view(p(3, 2), (4, 4), (10, 10));
+        assert_eq!(both, edges(true, true, true, true));
+        // A map smaller than the view, centred in it: none.
+        let small = MapEdges::of_view(p(-3, -2), (12, 8), (6, 4));
+        assert_eq!(small, MapEdges::NONE);
+        assert!(!small.any());
+        assert_eq!(MapEdges::default(), MapEdges::NONE);
+        // Far out, nothing overflows; a negative size is an empty view.
+        let far = MapEdges::of_view(p(i32::MAX, i32::MAX), (i32::MAX, i32::MAX), (1, 1));
+        assert_eq!(far, edges(true, false, true, false));
+        let empty = MapEdges::of_view(p(0, 0), (-4, -4), (1, 1));
+        assert_eq!(empty, edges(false, true, false, true));
+        // Each side counts towards any, and is named.
+        for one in [
+            edges(true, false, false, false),
+            edges(false, true, false, false),
+            edges(false, false, true, false),
+            edges(false, false, false, true),
+        ] {
+            assert!(one.any(), "{one:?}");
+            assert_eq!(one.names().len(), 1, "{one:?}");
+        }
+        let all = edges(true, true, true, true).names();
+        assert_eq!(all, ["left", "right", "up", "down"]);
+    }
+
+    #[test]
+    fn the_text_lists_the_sides_the_map_goes_on_past_only_when_there_are_some() {
+        let mut s = MapScene::<Piece>::new(p(0, -1), (2, 1));
+        let plain = s.to_text(&Terrain);
+        assert!(!plain.contains("more"), "{plain}");
+        // A map that fits: no line.
+        s.more = MapEdges::of_view(p(0, 0), s.size, (2, 1));
+        assert_eq!(s.to_text(&Terrain), plain);
+        let after = Ends {
+            before: false,
+            after: true,
+        };
+        s.more = MapEdges { x: after, y: after };
+        assert_eq!(
+            s.to_text(&Terrain),
+            "origin (0,-1) size 2x1\nmore right down\n  -1: -*2\nunits 0\ncursor -\npath -\n"
+        );
     }
 
     #[test]

@@ -70,9 +70,10 @@ impl<U> GridSkin<U> for GlyphSkin {
         self.walk
     }
 
-    /// Terrain, then the ranges on it, then what lies under the units, the
-    /// units, the path and the cursor; over them all, the threat arrows and
-    /// marks.
+    /// Terrain, then the ranges on it, then what lies under the units
+    /// ([`UnitPainter::paint_under`]), the units, the path, what lies over
+    /// them ([`UnitPainter::paint_over`]) and the cursor; over them all,
+    /// the threat arrows and marks.
     fn paint(
         &self,
         looks: &Looks,
@@ -91,6 +92,7 @@ impl<U> GridSkin<U> for GlyphSkin {
         for overlay in path::path_overlays(&scene.path, &grid, color) {
             buf.add_overlay(overlay);
         }
+        units.paint_over(scene, &grid, buf);
         style.draw_cursor(self.cursor_ink(looks), buf, scene, &layout, area);
         // From the edge of each enemy's tile: never over its letters.
         let colors = style.threat_colors(looks, &self.colors);
@@ -244,7 +246,7 @@ pub(crate) mod tests {
 
     use super::*;
     use crate::frame::color::Rgb;
-    use crate::frame::glyph_buffer::Layer;
+    use crate::frame::glyph_buffer::{Layer, Overlay};
     use crate::grid::layout::px_rect;
     use crate::grid::scene::{CursorStyle, CursorView, RangeName, ThreatView};
     use crate::grid::skin::NoUnits;
@@ -555,6 +557,75 @@ pub(crate) mod tests {
             buf.get(1, 0),
             Some(&Cell::new(sand.glyphs[1], text, background))
         );
+    }
+
+    /// The pieces' letters, and over them a mark: a `^` on each piece's
+    /// left cell and a rectangle of [`MARK`] on its tile.
+    struct Marked;
+
+    /// The color of [`Marked`]'s rectangles.
+    const MARK: Rgb = Rgb::new(9, 8, 7);
+
+    impl UnitPainter<Piece> for Marked {
+        fn paint(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
+            Letters.paint(scene, grid, buf);
+        }
+
+        fn paint_over(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
+            for piece in &scene.units {
+                if let (Some((x, y)), Some(tile)) = (cell_of(grid, piece.pos), grid.rect(piece.pos))
+                    && let Some(&cell) = buf.get(x, y)
+                {
+                    buf.set(x, y, Cell { glyph: '^', ..cell });
+                    buf.add_overlay(Overlay::new(tile, MARK, Layer::Over));
+                }
+            }
+        }
+    }
+
+    /// What the painter lays over the units goes over them and the path,
+    /// and under the cursor.
+    #[test]
+    fn what_lies_over_the_units_is_painted_under_the_cursor() {
+        let kit = Kit::new();
+        let looks = kit.looks();
+        let area = Rect::new(10, 5, 8, 3);
+        let mut scene = MapScene::new(p(2, 2), (4, 3));
+        scene.push_unit(Piece::new(4, 'f', p(4, 2)));
+        scene.path = vec![p(2, 2), p(3, 2)];
+        let paint = |scene: &MapScene<Piece>, units: &dyn UnitPainter<Piece>| {
+            let mut buf = blank();
+            GLYPH.paint(&looks, scene, area, units, &mut buf);
+            buf
+        };
+        let bare = paint(&scene, &Marked);
+        // Over the piece's letter.
+        assert_eq!(bare.get(14, 5).map(|c| c.glyph), Some('^'));
+        // Its rectangle last: after the piece's bar and the path.
+        let colors: Vec<Rgb> = bare.overlays().iter().map(|o| o.color).collect();
+        let path = looks.path(&GLYPH.colors);
+        let piece = kit.palette.lookup("piece").unwrap();
+        let mut expect = vec![piece];
+        expect.extend([path; 7]);
+        expect.push(MARK);
+        assert_eq!(colors, expect);
+        // The cursor comes after it.
+        scene.cursor = Some(CursorView {
+            pos: p(4, 2),
+            brightness: 1.0,
+            style: CursorStyle::Corners,
+        });
+        let with = paint(&scene, &Marked);
+        let n = bare.overlays().len();
+        assert_eq!(&with.overlays()[..n], bare.overlays());
+        let cursor = looks.cursor(&GLYPH.colors);
+        assert_eq!(with.overlays()[n..].len(), 8);
+        assert!(with.overlays()[n..].iter().all(|o| o.color == cursor));
+        // A painter that lays nothing over the units: the letter, and no
+        // mark.
+        let letters = paint(&scene, &Letters);
+        assert_eq!(letters.overlays().len(), n + 8 - 1);
+        assert_eq!(letters.get(14, 5).map(|c| c.glyph), Some('f'));
     }
 
     #[test]

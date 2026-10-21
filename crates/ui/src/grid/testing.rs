@@ -7,7 +7,7 @@ use shuyi_assets::grid_map::MapLook;
 use shuyi_core::{Pos, TerrainId};
 
 use super::scene::{
-    CursorStyle, CursorView, MapScene, RangeLayer, RangeName, ThreatView, TileView,
+    CursorStyle, CursorView, Ends, MapEdges, MapScene, RangeLayer, RangeName, ThreatView, TileView,
 };
 use crate::frame::glyph_buffer::Rect;
 use crate::prelude::*;
@@ -80,6 +80,7 @@ prop_compose! {
     pub(crate) fn any_scene()(
         origin in any_pos(),
         size in (-2..45i32, -2..40i32),
+        more in (any::<bool>(), any::<bool>(), any::<bool>(), any::<bool>()),
         tiles in prop::collection::vec(any_tile(), 0..200),
         ranges in prop::collection::vec(any_range(), 0..4),
         rim in prop::collection::vec(prop::option::of(0u16..6), 0..180),
@@ -94,7 +95,10 @@ prop_compose! {
         let rim = rim.into_iter().map(|id| id.map(TerrainId)).collect();
         let look = MapLook { tiles: look.to_owned(), light: light.to_owned() };
         let threat = threat.map(|(tile, enemies)| ThreatView { tile, enemies });
-        MapScene { origin, size, tiles, ranges, rim, look, units, cursor, path, threat, clock_ms }
+        let x = Ends { before: more.0, after: more.1 };
+        let y = Ends { before: more.2, after: more.3 };
+        let more = MapEdges { x, y };
+        MapScene { origin, size, more, tiles, ranges, rim, look, units, cursor, path, threat, clock_ms }
     }
 }
 

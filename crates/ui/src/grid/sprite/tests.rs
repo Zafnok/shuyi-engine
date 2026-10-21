@@ -418,6 +418,89 @@ fn the_path_runs_under_the_pieces_and_its_arrowhead_over_them() {
     );
 }
 
+/// The cards, and over them a rectangle of [`MARK`] on each piece's tile.
+struct Marked {
+    cards: Cards,
+}
+
+/// The color of [`Marked`]'s rectangles.
+const MARK: Rgb = Rgb::new(9, 8, 7);
+
+impl UnitPainter<Piece> for Marked {
+    fn paint_under(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
+        self.cards.paint_under(scene, grid, buf);
+    }
+
+    fn paint(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
+        self.cards.paint(scene, grid, buf);
+    }
+
+    fn paint_over(&self, scene: &MapScene<Piece>, grid: &Grid, buf: &mut GlyphBuffer) {
+        for piece in &scene.units {
+            if let Some(tile) = grid.rect(piece.pos) {
+                buf.add_overlay(Overlay::new(tile, MARK, Layer::Over));
+            }
+        }
+    }
+}
+
+/// What the painter lays over the units goes over the cards and the
+/// path's arrowhead, and under the cursor: with terrain tiles and
+/// without.
+#[test]
+fn what_lies_over_the_units_is_painted_under_the_cursor() {
+    let kit = Kit::new();
+    let looks = kit.looks();
+    let path = looks.path(&GLYPH.colors);
+    let painter = Marked {
+        cards: Cards { card: kit.card() },
+    };
+    for s in [skin(&kit), sheets()] {
+        let name = GridSkin::<Piece>::name(&s);
+        let mut scene = plains();
+        scene.push_unit(Piece::new(4, 'f', p(1, 1)));
+        scene.path = vec![p(0, 1), p(1, 1)];
+        let paint = |scene: &MapScene<Piece>| {
+            let mut buf = blank();
+            s.paint(&looks, scene, Rect::new(2, 1, 6, 4), &painter, &mut buf);
+            buf
+        };
+        let bare = paint(&scene);
+        let kinds: Vec<&str> = bare
+            .items()
+            .iter()
+            .map(|i| match i {
+                Item::Sprite(s) if s.image == kit.card() => "card",
+                Item::Rect(o) if o.color == path => "path",
+                Item::Rect(o) if o.color == MARK => "mark",
+                _ => "other",
+            })
+            .collect();
+        // The card, then the arrowhead, then the mark, last and once.
+        let card = kinds.iter().position(|&k| k == "card");
+        let last_path = kinds.iter().rposition(|&k| k == "path");
+        assert!(card.is_some() && card < last_path, "{name}: {kinds:?}");
+        assert_eq!(kinds.last(), Some(&"mark"), "{name}");
+        assert_eq!(kinds.iter().filter(|&&k| k == "mark").count(), 1, "{name}");
+        // The cursor's marks come after it.
+        scene.cursor = Some(CursorView {
+            pos: p(1, 1),
+            brightness: 1.0,
+            style: CursorStyle::Corners,
+        });
+        let with = paint(&scene);
+        let n = bare.items().len();
+        assert_eq!(&with.items()[..n], bare.items(), "{name}");
+        assert!(with.items().len() > n, "{name}");
+        let cursor = looks.cursor(&GLYPH.colors);
+        let cursor_marks = with.items()[n..].iter().filter(|i| match i {
+            Item::Rect(o) => o.color == cursor,
+            Item::Sprite(_) => false,
+        });
+        assert!(cursor_marks.count() > 0, "{name}");
+    }
+}
+
 /// The threat arrows and marks are the last things painted, over the
 /// pieces and the cursor, on the skin's own tiles at its zoom: with
 /// terrain tiles and without, from the middle of the foe's tile.
