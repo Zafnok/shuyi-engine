@@ -9,7 +9,8 @@ without guessing.
 > a Fire Emblem-like tactics game drawn with colored glyphs and sprites,
 > and moved here with its history on 2026-10-19 (the game's ticket 1131).
 > The game runs on it, pinned to a revision of this repository, and so
-> does one example. It isn't on crates.io yet, and its API still moves.
+> does one example. Its crates on crates.io are empty 0.0.0 placeholders
+> that hold the names until the first release, and its API still moves.
 > See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## What it is for

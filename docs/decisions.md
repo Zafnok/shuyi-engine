@@ -887,3 +887,34 @@ Asked which new kinds of game get parked tickets, he picked
   crash reports, the community directory and the names of other
   people's modules, phones' browsers as a target, machine-translated
   engine screens, and stores beyond Steam.
+
+## 2026-10-21: the crate names are held on crates.io
+
+Asked whether the `shuyi-*` names were free on crates.io, Claude checked
+the 55 names the docs and tickets plan: none was taken, and a search for
+"shuyi" found no crate at all. Ticket 2005 allowed holding the names
+early with empty 0.0.0 versions. Nick:
+
+> "is kebab case standard for Rust crates? if so, I guess get a headstart
+> on 2005 and reserve the 6 for now"
+
+Claude answered that both styles are common on crates.io (`tokio-util`,
+`serde_json`), that crates.io treats `-` and `_` as the same name, and
+that code writes `shuyi_core` either way, so the names stay as chosen.
+
+**Rules:**
+
+- **Six names are held.** `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
+  `shuyi-platform`, `shuyi-app` and `shuyi-cli` were published on
+  2026-10-21 as empty 0.0.0 placeholders, owned by `Zafnok`. Each is a
+  library with no code, both license files, and a README that points
+  here. The repository's own crates stay `publish = false` until 2005.
+- **The token.** Nick made it for this run only: the `publish-new`
+  scope, the crates `shuyi-*`, a short expiry. It was revoked after the
+  run. Its value is recorded nowhere.
+- **Only these six.** The other planned names (`shuyi-sound`,
+  `shuyi-playdate` and the rest) are not held. crates.io forbids
+  holding names "for a prolonged period" with no development behind
+  them, so each is published when its crate is real.
+- **2005 publishes the next version of each** through trusted
+  publishing, with no publish by hand.
