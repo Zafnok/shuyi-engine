@@ -634,6 +634,7 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     use crate::image::{Image, ImageInfo};
     use crate::lighting::Lighting;
     use crate::names::Names;
+    use crate::onebit::PatternMapDef;
     use crate::palette::PaletteDef;
     use crate::target::TargetProfile;
 
@@ -648,6 +649,7 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.ids::<CreditsFile>(), ["credits"]);
     assert_eq!(formats.ids::<FontAtlasDef>(), ["font-atlas"]);
     assert_eq!(formats.ids::<PaletteDef>(), ["palette"]);
+    assert_eq!(formats.ids::<PatternMapDef>(), ["pattern-map"]);
     assert_eq!(formats.ids::<Lighting>(), ["lights"]);
     assert_eq!(formats.ids::<Names>(), ["names"]);
     assert_eq!(formats.ids::<DialogueFile>(), ["dlg"]);
@@ -655,7 +657,7 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.limits, Limits::NONE);
     // Every kind: nothing else.
     let kinds = format!("{formats:?}").matches("\", [\"").count();
-    assert_eq!(kinds, 12);
+    assert_eq!(kinds, 13);
     // Registered again, the first is refused.
     let mut twice = Formats::standard();
     assert_eq!(

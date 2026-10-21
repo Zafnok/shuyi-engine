@@ -38,5 +38,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0023](0023-the-pack-one-indexed-file-of-baked-assets-proven-equal-to-its-sources.md) | The pack: one indexed file of baked assets, a bundle layer, proven equal to its sources | Accepted; extends ADR-0007 §4 and ADR-0019 |
 | [0024](0024-the-platform-boundary-app-runs-a-frame-time-in-milliseconds-storage-handed-over-and-the-harness-on-the-headless-backend.md) | The platform boundary as built: App runs a frame, time in milliseconds, storage handed over, and the Harness on the headless backend | Accepted; extends ADR-0008 §2 and ADR-0003 §2 |
 | [0025](0025-controls-fit-screens-declare-actions-targets-have-button-tables-and-the-harness-holds-back-the-rest.md) | Controls that fit: screens declare their actions, targets have button tables, and the Harness holds back the rest | Accepted; extends ADR-0008 §3 |
+| [0026](0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md) | One bit by role: a pattern map beside the palette, colours find their roles, and the renderer takes its shades | Accepted; extends ADR-0008 §4 |
 
 Template: [`0000-template.md`](0000-template.md).

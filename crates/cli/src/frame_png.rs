@@ -6,7 +6,10 @@
 //! the game's Harness, which the game's [`GameTools::frame`] starts with
 //! the game's own options, and writes the picture the game paints of it.
 //! A game paints a frame with [`Painter`], or, for a one-bit screen, with
-//! the one-bit renderer and [`one_bit_picture`].
+//! the one-bit renderer and [`one_bit_picture`]. With `--target <id>`, a
+//! target whose display is black and white gets the picture its device
+//! shows ([`GameTools::frame_one_bit`]: the frame drawn in its roles'
+//! patterns, ADR-0008 §4).
 //!
 //! [`Painter`] is a software copy of `shuyi-app`'s renderer, pixel for
 //! pixel at whole scales: the clear colour, cell backgrounds, `Under`
@@ -24,6 +27,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
 use shuyi_assets::image::{ImageId, ImageTable};
+use shuyi_assets::target::{Color, TargetProfile};
 use shuyi_platform::harness::{FRAME_DT, Harness, MAX_FRAMES};
 use shuyi_ui::GameData;
 use shuyi_ui::frame::onebit::{self, Frame};
@@ -59,6 +63,8 @@ steps (each may repeat):
 
 options:
   --scale N            whole-number scale, 1 to {MAX_SCALE} (the game says what by default)
+  --target ID          as target ID's display shows it: on a one-bit one (the
+                       Playdate), black and white in the skin's patterns
 "
     );
     for option in options {
@@ -186,6 +192,9 @@ pub struct Options {
     pub script: Script,
     /// Pixels per console pixel, if given.
     pub scale: Option<u32>,
+    /// The target whose display to show it as, by its profile's id, if
+    /// given.
+    pub target: Option<String>,
     /// The game's own options, in the order given.
     pub game: Vec<GameArg>,
 }
@@ -199,6 +208,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
         out: PathBuf::new(),
         script: Script::default(),
         scale: None,
+        target: None,
         game: Vec::new(),
     };
     let steps = &mut parsed.script.steps;
@@ -227,6 +237,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
                         })?,
                 );
             }
+            "--target" => parsed.target = Some(value()?),
             flag if flag.starts_with("--") => {
                 let option = options
                     .iter()
@@ -258,11 +269,23 @@ pub struct Shot {
     pub warning: Option<String>,
 }
 
-/// Runs the command: the game plays the script and paints the frame,
+/// Runs the command: the game plays the script and paints the frame, as
+/// the display of `target` (the profile of [`Options::target`]) shows it,
 /// which is written under `root` (if `out` is relative); returns what to
 /// print.
-pub fn run(root: &Path, options: &Options, game: &dyn GameTools) -> Result<String, String> {
-    let shot = game.frame(&options.game, &options.script, options.scale)?;
+pub fn run(
+    root: &Path,
+    options: &Options,
+    game: &dyn GameTools,
+    target: Option<&TargetProfile>,
+) -> Result<String, String> {
+    let (game_options, script, scale) = (&options.game, &options.script, options.scale);
+    let shot = match target {
+        Some(profile) if profile.display.color == Color::OneBit => {
+            game.frame_one_bit(&profile.id, game_options, script, scale)?
+        }
+        _ => game.frame(game_options, script, scale)?,
+    };
     let png = encode_png(shot.image.width, shot.image.height, &shot.image.rgba)?;
     let path = root.join(&options.out);
     if let Some(dir) = path.parent() {

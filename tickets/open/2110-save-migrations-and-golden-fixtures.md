@@ -238,9 +238,9 @@ players keep after a patch.
 - Packs: ADR-0023 §5 keeps them refused; bake again.
 - Visions of Shuyi's own saves: the game adopts this in its own ticket,
   after Nick's answer.
-- Asset files in older forms: 3006's palettes and 3017's target profiles
-  may read an old form through `Migrate`; rewriting a game's files to
-  the current form is 2517.
+- Asset files in older forms: 3017's target profiles may read an old
+  form through `Migrate` (3006 changed no palette form); rewriting a
+  game's files to the current form is 2517.
 - A serde-traced shape hash (`serde-reflection`, `schemars`): the
   fixtures catch changes to the shapes they hold, with no dependency.
   ADR-0023's Alternatives keep it as an idea if fixtures prove too easy

@@ -215,9 +215,10 @@ not parked.
   2315's Scope: its gizmos' lines and circles draw through
   `frame::shape`'s width-1 rules in every renderer, not with
   macroquad's lines.
-- **Either order with 3006:** if 3006 is done, a shape's colour goes
-  through its pattern map as a rectangle's does. If not, 3006 treats
-  shapes as it treats rectangles.
+- **1-bit (3006 is done, ADR-0026):** a shape's colour goes through the
+  one-bit renderer's `Shades` (the game's inks, or a `PatternMap`) as a
+  rectangle's does, in `shuyi_ui::frame::onebit`'s fast renderer and its
+  reference, and the fast-equals-reference property tests cover shapes.
 - **Either order with 2018:** if 2018 is done, add shapes of each kind
   to its render card (`shuyi_ui::frame::raster::card`); its `match` on
   `Item` has no `_` arm, so it doesn't compile until the card shows

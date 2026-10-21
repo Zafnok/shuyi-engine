@@ -4,9 +4,11 @@
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
 //! against the foe's mind), `import` (the stage's `.map` and the
 //! keymap besides the engine's kinds), `bake` (its text baked into a
-//! pack, [`crate::bake`]) and the controls `check --target` checks
-//! ([`controls`]). `examples/tools.rs` is the tool
-//! program that runs them; the tests use them too.
+//! pack, [`crate::bake`]), the controls `check --target` checks
+//! ([`controls`]), and its look on a one-bit target: the pattern map
+//! `check --target` checks ([`one_bit_skin`]) and `frame-png --target
+//! playdate` paints with ([`one_bit_picture`]). `examples/tools.rs` is the
+//! tool program that runs them; the tests use them too.
 
 use std::collections::BTreeMap;
 
@@ -15,15 +17,18 @@ use shuyi_assets::ContentError;
 use shuyi_assets::bundle::Bundle;
 use shuyi_assets::grid_map::{GridMap, MapText};
 use shuyi_assets::keymap::{KeymapDef, KeymapRon};
+use shuyi_assets::onebit::PatternMapDef;
+use shuyi_assets::palette::PaletteDef;
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
-use shuyi_cli::frame_png::{Painter, Script, Shot};
+use shuyi_cli::frame_png::{self, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
-use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools};
+use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
 use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play_observed};
 use shuyi_platform::harness::Harness;
+use shuyi_ui::frame::onebit::{Font, PatternMap, to_one_bit};
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::{Game, GameData, GameHooks};
 
@@ -108,6 +113,47 @@ pub fn picture(h: &Harness<Hello>, scale: u32) -> Result<shuyi_cli::frame_png::I
     Ok(painter.render(h.game().buffer(), scale))
 }
 
+/// The skin's pattern map, beside its palette in `files/` (ADR-0008 §4).
+pub const PATTERN_MAP: &str = "palette@onebit.ron";
+
+/// The font atlas's one-bit rows (`cargo shuyi font-atlas` writes them
+/// beside it), which a one-bit screen draws glyphs with.
+pub const FONT_1BIT: &str = "font/atlas_1bit.bin";
+
+/// The skin's palette and its pattern map: its look on a one-bit target.
+pub fn one_bit_skin() -> Result<OneBitSkin, String> {
+    let bundle = Bundle::new(vec![crate::layer()]);
+    let formats = crate::formats();
+    let palette = formats
+        .load::<PaletteDef>(&bundle, "palette.ron")
+        .map_err(|e| lines(&e))?;
+    let map = formats
+        .load::<PatternMapDef>(&bundle, PATTERN_MAP)
+        .map_err(|e| lines(&e))?;
+    Ok(OneBitSkin {
+        palette_file: bundle.display_path("palette.ron"),
+        palette,
+        map_file: bundle.display_path(PATTERN_MAP),
+        map,
+    })
+}
+
+/// The frame `h` shows as a one-bit target's display shows it: in the
+/// skin's patterns, its glyphs from the font's one-bit rows (a sprite,
+/// whose picture isn't made one-bit yet, is a grey rectangle), each pixel
+/// `scale` × `scale` pixels.
+pub fn one_bit_picture(
+    h: &Harness<Hello>,
+    scale: u32,
+) -> Result<shuyi_cli::frame_png::Image, String> {
+    let ctx = h.ctx();
+    let map = PatternMap::new(ctx.palette.iter(), &one_bit_skin()?.map);
+    let bits = crate::file(FONT_1BIT).ok_or("no one-bit font atlas")?;
+    let font = Font::new(&ctx.game.font, bits)?;
+    let frame = to_one_bit(h.game().buffer(), &map, &font, &());
+    Ok(frame_png::one_bit_picture(frame.bytes(), scale))
+}
+
 /// The game's tools.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct HelloTools;
@@ -127,6 +173,24 @@ impl GameTools for HelloTools {
         script.play(&mut h);
         Ok(Shot {
             image: picture(&h, scale.unwrap_or(1))?,
+            shows: h.top_screen().to_owned(),
+            warning: None,
+        })
+    }
+
+    /// The frame as [`one_bit_picture`] paints it: the same on every
+    /// one-bit target, the Playdate's 400 × 240 screen.
+    fn frame_one_bit(
+        &self,
+        _target: &str,
+        options: &[GameArg],
+        script: &Script,
+        scale: Option<u32>,
+    ) -> Result<Shot, String> {
+        let mut h = Start::from_options(options)?.harness();
+        script.play(&mut h);
+        Ok(Shot {
+            image: one_bit_picture(&h, scale.unwrap_or(1))?,
             shows: h.top_screen().to_owned(),
             warning: None,
         })
@@ -189,6 +253,11 @@ impl GameTools for HelloTools {
         Some(controls().map(|c| Box::new(c) as Box<dyn Controls>))
     }
 
+    /// Its palette and pattern map, the same on every one-bit target.
+    fn one_bit(&self, _target: &str) -> Option<Result<OneBitSkin, String>> {
+        Some(one_bit_skin())
+    }
+
     /// One pack for every target: the game's files, its text baked.
     fn bake(&self, _target: Option<&str>) -> Result<GameBake, String> {
         Ok(GameBake {
@@ -213,10 +282,13 @@ pub fn controls() -> Result<GameControls<Action>, String> {
 
 /// The game's data, or its errors in a line each.
 fn loaded() -> Result<Hello, String> {
-    Hello::load().map_err(|errors| {
-        let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
-        errors.join("\n")
-    })
+    Hello::load().map_err(|e| lines(&e))
+}
+
+/// `errors`, a line each.
+fn lines(errors: &[ContentError]) -> String {
+    let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
+    errors.join("\n")
 }
 
 /// A record of a stage: its seed and the commands sent to its rules. The
@@ -293,4 +365,19 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
         measures: BTreeMap::from([("foe trips".to_owned(), trips)]),
         record: ron::to_string(&record).ok(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn errors_are_shown_a_line_each() {
+        let errors = [
+            ContentError::new("files/a.ron", "bad"),
+            ContentError::new("files/b.ron", "worse"),
+        ];
+        assert_eq!(lines(&errors), "files/a.ron: bad\nfiles/b.ron: worse");
+        assert_eq!(lines(&[]), "");
+    }
 }

@@ -83,9 +83,9 @@ None.
   move as a `Change::manual` of `TargetRon` (`Format::changes`), so
   `shuyi check` warns and `shuyi upgrade` says what to do, and add the
   target profile kind to `Importers::standard()` so `upgrade` finds a
-  game's own profiles; if not, 2517 lists it when it lands. If 3006 has
-  landed, its 1-bit check reads the new field; if not, 3006 reads it
-  when it lands.
+  game's own profiles; if not, 2517 lists it when it lands. 3006's one-bit
+  check (done; `check --target` runs it on every `color: OneBit`
+  target) reads the new field in this PR.
 - **The run-time facts read the same profiles.** 3053's
   `PlatformFacts::from_profile` reads `quit`, `display.windowed` and
   `input`'s `pointer`, `touch` and `keyboard`. If this ticket moves a

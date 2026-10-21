@@ -304,12 +304,12 @@ None.
 - **The MCP server (1133, done before 2005):** if it makes its tools
   from `Op::ALL`, `upgrade` is a tool with no more work; if it lists
   them by hand, add it.
-- **Either order with 3006 and 3017:** if 3006 is done and its palettes
-  read an old form, list that form as changes of `PaletteRon`. If 3017
-  is done, list its move of `display.color` as a `Change::manual` of
-  `TargetRon`, and add the target profile kind to
-  `Importers::standard()` so `upgrade` finds a game's own profiles. If
-  either isn't done, it lists its change when it lands.
+- **Either order with 3017:** if 3017 is done, list its move of
+  `display.color` as a `Change::manual` of `TargetRon`, and add the
+  target profile kind to `Importers::standard()` so `upgrade` finds a
+  game's own profiles; if not, 3017 lists its change when it lands.
+  3006 (done) changed no palette form (palettes already named colours
+  by role), so `PaletteRon` has no changes to list.
 - **Size:** if the PR passes about 600 changed lines (the schemas,
   fixtures and snapshots not counted), the warnings in `shuyi check`
   (`CheckOutput::warnings`, the root on `check::check`, the 2516

@@ -76,6 +76,7 @@ The standard ones, in `Formats::standard()`:
 | credits | `credits::CreditsFile` | `credits::CreditsRon` | `credits` | `ron` | none | 4 MiB |
 | font atlas | `font::FontAtlasDef` | `font::FontAtlasRon` | `font-atlas` | `ron` | none | 4 MiB |
 | palette | `palette::PaletteDef` | `palette::PaletteRon` | `palette` | `ron` | none | 4 MiB |
+| pattern map | `onebit::PatternMapDef` | `onebit::PatternMapRon` | `pattern-map` | `ron` | none | 4 MiB |
 | lights | `lighting::Lighting` | `lighting::LightingRon` | `lights` | `ron` | none | 4 MiB |
 | names table | `names::Names` | `names::NamesRon` | `names` | `ron` | none | 4 MiB |
 | target profile | `target::TargetProfile` | `target::TargetRon` | `target-ron` | `ron` | none | 4 MiB |
@@ -148,7 +149,8 @@ What each one reads:
 | `Cinematic` | `cinematic::CinematicFile<S, P>`: a file as written |
 | `Keymap` | `keymap::KeymapDef<A>` |
 
-The engine's other kinds: `palette::PaletteDef`, `lighting::Lighting`,
+The engine's other kinds: `palette::PaletteDef`, `onebit::PatternMapDef`,
+`lighting::Lighting`,
 `names::Names`, `audio::AudioManifest` and `credits::CreditsFile`.
 
 ### Checks after loading
@@ -163,7 +165,8 @@ assets loaded, with the functions that were there before the registry:
   `cinematic::check`, with the file's stem (`AssetPath::stem`);
 - a voice manifest against the dialogue (`voice::from_source`), a cast
   against who speaks (`voice::cast_from_source`), tips against the
-  game's placeholders and faces (`tip::from_source`), a one-bit palette
+  game's placeholders and faces (`tip::from_source`), a pattern map
+  against its palette (`onebit::check`, [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md)), a one-bit palette
   against the base one (`PaletteDef::from_ink_source`), a theme against
   the default (`palette::theme_problems`), and the credits merged with the
   audio manifest (`credits::merge`);

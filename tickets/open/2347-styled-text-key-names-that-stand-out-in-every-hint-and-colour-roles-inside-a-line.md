@@ -267,9 +267,10 @@ game's palette names `key`.
 - **Either order with 2330:** if 2330 is done, its `Text` node paints
   with `Ctx::label_styled` and `print_styled` in this PR; if not, 2330
   does it.
-- **Either order with 3006:** if 3006 is done, `key` and `key_bg` get
-  patterns in its pattern map, and `key` joins a `distinct` group with
-  `text`; if not, 3006 does it.
+- **1-bit (3006 is done, ADR-0026):** `key` and `key_bg` are palette
+  roles, so `hello-grid`'s pattern map (`palette@onebit.ron`) gives them
+  patterns, lists them among its `text` roles, and puts `key` in a
+  `distinct` group with `text`; its one-bit check test still passes.
 - **Size:** if the PR would pass about 600 changed lines (snapshots not
   counted), step 7 (the templates, the rest of `hello-grid` and the
   `key` in their palettes) goes to a follow-up ticket written with the

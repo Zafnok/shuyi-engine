@@ -1,6 +1,6 @@
 //! `check --target <id>`: whether the game fits a target (ADR-0008 §1),
 //! by the target's profile and the game's setting for it in `shuyi.ron`
-//! ([`TargetSetting`]). Three checks for now:
+//! ([`TargetSetting`]). Four checks for now:
 //!
 //! - **Fits.** The frame times its scale fits the display inside its safe
 //!   area.
@@ -11,6 +11,11 @@
 //!   declares bind to distinct inputs of the target, in the keymap file's
 //!   table named after it ([`shuyi_ui::input::fit`]; [`controls`]). It
 //!   needs the game's tools (`GameTools::controls`).
+//! - **One bit.** On a target whose display is black and white, every
+//!   role of the skin's palette has patterns, the roles that tell things
+//!   apart stay distinct, and text is black on white or the inverse
+//!   (ADR-0008 §4; [`shuyi_assets::onebit::check`]; [`one_bit`]). It needs
+//!   the game's tools (`GameTools::one_bit`).
 //!
 //! The engine's profiles are the files of `targets/` at the repository's
 //! root, embedded; a game's own (`shuyi.ron`'s `target_profiles`) add to
@@ -23,10 +28,12 @@ use std::path::Path;
 use include_dir::{Dir, include_dir};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use shuyi_assets::onebit::{self, Severity};
 use shuyi_assets::target::{Size, TargetProfile, TargetRon};
 use shuyi_assets::{AssetPath, ContentError, DecodeCx, Format};
 use shuyi_ui::input::fit::{FitProblem, FitRule};
 
+use crate::game::OneBitSkin;
 use crate::project::{Config, FILE, Scale, TargetSetting};
 
 /// The engine's target profiles, embedded.
@@ -56,6 +63,9 @@ pub enum TargetCheck {
     /// The required actions of each screen bind to distinct inputs of the
     /// target.
     Controls,
+    /// On a one-bit display, every role has patterns and the roles that
+    /// tell things apart stay distinct.
+    OneBit,
 }
 
 /// A problem of the game on one target.
@@ -68,8 +78,9 @@ pub struct TargetProblem {
     pub check: TargetCheck,
     /// The game's setting it is about: in `shuyi.ron`
     /// (`targets."playdate".frame`), the keymap file's table for the
-    /// target (`keymap targets."playdate"`), or a screen's declaration
-    /// (`screen "title"`).
+    /// target (`keymap targets."playdate"`), a screen's declaration
+    /// (`screen "title"`), or the skin's pattern map
+    /// (`files/palette@onebit.ron`).
     pub setting: String,
     /// What is wrong, with the numbers.
     pub message: String,
@@ -83,6 +94,9 @@ pub struct TargetProblem {
     /// them (`East`, `East+West`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<String>,
+    /// The palette roles a one-bit problem is about (`team.player`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub roles: Vec<String>,
 }
 
 impl TargetProblem {
@@ -97,6 +111,7 @@ impl TargetProblem {
             screen: None,
             actions: Vec::new(),
             inputs: Vec::new(),
+            roles: Vec::new(),
         }
     }
 }
@@ -389,7 +404,30 @@ pub fn controls(id: &str, found: Vec<FitProblem>) -> Vec<TargetProblem> {
                 screen: p.screen.map(str::to_owned),
                 actions: p.actions.iter().map(|&a| a.to_owned()).collect(),
                 inputs: p.inputs,
+                roles: Vec::new(),
             }
+        })
+        .collect()
+}
+
+/// What the one-bit check finds of `skin` ([`shuyi_assets::onebit::check`]),
+/// as target problems about its pattern map: errors, but for text that
+/// isn't black and white, a warning.
+pub fn one_bit(skin: &OneBitSkin) -> Vec<TargetProblem> {
+    onebit::check(&skin.palette, &skin.map)
+        .into_iter()
+        .map(|p| TargetProblem {
+            level: match p.severity {
+                Severity::Error => Level::Error,
+                Severity::Warning => Level::Warning,
+            },
+            check: TargetCheck::OneBit,
+            setting: skin.map_file.clone(),
+            message: p.message,
+            screen: None,
+            actions: Vec::new(),
+            inputs: Vec::new(),
+            roles: p.roles,
         })
         .collect()
 }

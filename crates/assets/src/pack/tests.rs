@@ -19,7 +19,7 @@ use crate::dialogue::{DialogueFile, Dlg};
 use crate::font::FontAtlasDef;
 use crate::format::builtin_tests::{
     ATLAS, CREDITS, ENGLISH_UI, FILM, LIGHTS, MANIFEST, MAP, NAMES, PACK_INFO, PACK_UI, PALETTE,
-    SCRIPT, Shot, TABLE, Table, bundle, lang_pack, map_text, ogg_file, png_file, wav,
+    PATTERN_MAP, SCRIPT, Shot, TABLE, Table, bundle, lang_pack, map_text, ogg_file, png_file, wav,
 };
 use crate::format::{Formats, RegisterError};
 use crate::grid_map::{GridMap, NoFeature};
@@ -28,6 +28,7 @@ use crate::keymap::{KeymapDef, KeymapRon, sample};
 use crate::lang::LangPack;
 use crate::lighting::Lighting;
 use crate::names::Names;
+use crate::onebit::PatternMapDef;
 use crate::palette::PaletteDef;
 use crate::ron::Ron;
 use crate::target::TargetProfile;
@@ -57,6 +58,7 @@ fn sources() -> &'static Bundle {
             ("fonts/atlas.ron", ATLAS.into()),
             ("fonts/atlas.png", png_header(128, 16)),
             ("data/palette.ron", PALETTE.into()),
+            ("data/palette@onebit.ron", PATTERN_MAP.into()),
             ("data/lights.ron", LIGHTS.into()),
             ("data/names.ron", NAMES.into()),
             ("dialogue/gate.dlg", SCRIPT.into()),
@@ -101,6 +103,7 @@ fn every_kind() -> Bake {
         .asset::<CreditsFile>("data/credits")
         .asset::<FontAtlasDef>("fonts/atlas.ron")
         .asset::<PaletteDef>("data/palette")
+        .asset::<PatternMapDef>("data/palette@onebit")
         .asset::<Lighting>("data/lights")
         .asset::<Names>("data/names")
         .under::<DialogueFile<Cue>>("dialogue")
@@ -146,8 +149,8 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
     assert_eq!(bake.load(&formats, sources()), []);
     assert_eq!(bake.load(&formats, &pack), []);
     let unbaked = bundle(vec![("data/names.ron", b"[".to_vec())]);
-    // One error for each asset asked for by id: ten missing, one broken.
-    assert_eq!(bake.load(&formats, unbaked).len(), 11);
+    // One error for each asset asked for by id: eleven missing, one broken.
+    assert_eq!(bake.load(&formats, unbaked).len(), 12);
     // Each kind, by hand, read through the registry as a loader reads it.
     let palette = formats.load::<PaletteDef>(&pack, "data/palette").unwrap();
     assert_eq!(palette.colors.get("grass"), Some(&[0, 255, 0]));
@@ -595,6 +598,7 @@ fn the_binary_form_of_every_engine_kind_is_pinned_by_the_pack_version() {
     form!(CreditsFile, "data/credits.ron");
     form!(FontAtlasDef, "fonts/atlas.ron");
     form!(PaletteDef, "data/palette.ron");
+    form!(PatternMapDef, "data/palette@onebit.ron");
     form!(Lighting, "data/lights.ron");
     form!(Names, "data/names.ron");
     form!(DialogueFile<Cue>, "dialogue/gate.dlg");
