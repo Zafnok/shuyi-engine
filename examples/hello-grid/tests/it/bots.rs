@@ -130,6 +130,32 @@ fn the_foe_scores_the_negation_of_the_hero() {
 }
 
 #[test]
+fn a_finished_stage_scores_its_outcome() {
+    let mut seen = (false, false);
+    for seed in 0..60 {
+        let mut end = stage(seed);
+        let mut hero = RandomBot::new(seed);
+        let mut bots: [(Side, &mut dyn Bot<Stage>); 2] =
+            [(Side::Hero, &mut hero), (Side::Foe, &mut Chase)];
+        play(&mut end, &mut bots, 200).unwrap_or_else(|e| panic!("seed {seed}: {e}"));
+        let hero = match end.outcome() {
+            Some(Outcome::Won { .. }) => {
+                seen.0 = true;
+                1000
+            }
+            Some(Outcome::Caught { .. }) => {
+                seen.1 = true;
+                -1000
+            }
+            None => continue,
+        };
+        assert_eq!(score(&stage(seed), &end, Side::Hero), hero, "seed {seed}");
+        assert_eq!(score(&stage(seed), &end, Side::Foe), -hero, "seed {seed}");
+    }
+    assert_eq!(seen, (true, true));
+}
+
+#[test]
 fn a_determinized_stage_has_only_its_luck_redrawn() {
     // Two stages that differ only in their luck are the same copy.
     let copy = stage(1).determinize(Side::Hero, 99);
