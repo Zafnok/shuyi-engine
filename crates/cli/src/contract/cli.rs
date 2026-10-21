@@ -12,7 +12,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use super::{Answer, Op, bake, bots, check, doctor, import, new, replay, run, schemas};
+use super::{Answer, Op, bake, bots, check, doctor, import, new, playtest, replay, run, schemas};
 use crate::game::GameTools;
 use crate::project::Project;
 
@@ -168,7 +168,7 @@ pub fn check_targets(project: &Project, args: &[String], game: Option<&dyn GameT
 pub fn runs_the_game(name: &str) -> bool {
     matches!(
         name,
-        "check" | "run" | "scene" | "replay" | "bots" | "import" | "bake"
+        "check" | "run" | "scene" | "replay" | "bots" | "playtest" | "import" | "bake"
     )
 }
 
@@ -224,6 +224,10 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         "bots" => match bots::parse_args(&args, options) {
             Ok(input) => print(json, &bots::bots(game, &input), bots::text),
             Err(e) => wrong(json, Op::Bots, &e, &bots::usage(command, options)),
+        },
+        "playtest" => match playtest::parse_args(&args, options) {
+            Ok(input) => print(json, &playtest::playtest(game, &input), playtest::text),
+            Err(e) => wrong(json, Op::Playtest, &e, &playtest::usage(command, options)),
         },
         _ => import(json, &args, &game.importers(), &project.root, None, command),
     }
@@ -286,7 +290,9 @@ mod tests {
 
     #[test]
     fn the_ops_that_run_the_game_are_named() {
-        for op in ["check", "run", "scene", "replay", "bots", "import", "bake"] {
+        for op in [
+            "check", "run", "scene", "replay", "bots", "playtest", "import", "bake",
+        ] {
             assert!(runs_the_game(op), "{op}");
         }
         for other in ["new", "doctor", "schema", "frame-png", "check-keys"] {
@@ -326,6 +332,8 @@ mod tests {
         assert_eq!(code(&["replay", "missing.ron"]), 1);
         assert_eq!(code(&["bots", "3"]), 0);
         assert_eq!(code(&["bots"]), 2);
+        assert_eq!(code(&["playtest", "--tries", "3"]), 0);
+        assert_eq!(code(&["playtest", "3"]), 2);
         assert_eq!(code(&["import", "a.ron"]), 1);
         assert_eq!(code(&["import"]), 2);
         // A scene that isn't there fails the op, not its arguments.
@@ -399,7 +407,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 18);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 20);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

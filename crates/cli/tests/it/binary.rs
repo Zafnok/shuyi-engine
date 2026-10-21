@@ -236,7 +236,7 @@ fn new_doctor_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 18);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 20);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));

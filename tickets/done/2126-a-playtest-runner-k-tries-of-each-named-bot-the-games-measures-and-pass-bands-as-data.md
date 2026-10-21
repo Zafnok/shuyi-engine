@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2126 — A playtest runner with pass bands
@@ -210,24 +210,24 @@ follow-up ticket and keep the library and its hello-grid test here.
 
 ## Acceptance criteria
 
-- [ ] Unit test: a rate of 59, 60, 85 and 86 successes in 100 against
+- [x] Unit test: a rate of 59, 60, 85 and 86 successes in 100 against
       band 60–85 gives `Below`, `Within`, `Within`, `Above`.
-- [ ] Unit test: a floor of 20 blocks a run with 19 successes in 100
+- [x] Unit test: a floor of 20 blocks a run with 19 successes in 100
       and not one with 20.
-- [ ] Unit test: the median of `[3, 1, 4, 2]` is 2; `Unknown` when an
+- [x] Unit test: the median of `[3, 1, 4, 2]` is 2; `Unknown` when an
       entrant has no try meeting `among`.
-- [ ] Unit test: a check naming a missing entrant fails before any try.
-- [ ] `judge` over seeds 0–49 played as one range, and as the ranges
+- [x] Unit test: a check naming a missing entrant fails before any try.
+- [x] `judge` over seeds 0–49 played as one range, and as the ranges
       0–16, 17–33 and 34–49 given in reverse order, gives the same
       report as `run`.
-- [ ] The same stage, entrants, tries and checks give the same report.
-- [ ] `cargo shuyi playtest --tries 50` in `examples/hello-grid` prints
+- [x] The same stage, entrants, tries and checks give the same report.
+- [x] `cargo shuyi playtest --tries 50` in `examples/hello-grid` prints
       the table with ✓ for every check, and exits 0.
-- [ ] `docs/contract.md` lists `playtest`, and its schema is in the
+- [x] `docs/contract.md` lists `playtest`, and its schema is in the
       schema set.
-- [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
+- [x] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
       `no-std` job).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -241,6 +241,51 @@ follow-up ticket and keep the library and its hello-grid test here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick. Name the game PR
-that moves the pin: game#0506's.)*
+What was done:
+
+- `shuyi_core::bots::playtest` (`crates/core/src/bots/playtest.rs`):
+  `Measures`, `Measure`, `Entrant`, `Tries`, `Tried`, `Condition`,
+  `Band`, `Want`, `Check` (`Rate`, `Median`), `run`, and its halves
+  `play_tries` and `judge`, the verdicts (`RateVerdict`,
+  `MedianVerdict`), and `PlaytestReport` with `Display` (the table, then
+  every try). 12 tests, among them a property test of the band.
+- `shuyi playtest [--tries N] [--seed N] [--turns N]` in `shuyi-cli`
+  (`contract/playtest.rs`), `GameTools::playtest` (unsupported by
+  default), `bots`' limits, `ok` is `!blocked`. Contract version 6 and
+  its schemas; `docs/contract.md` lists it. 1133 isn't done, so its
+  ticket now names `playtest` among the tools.
+- Hello-grid: `StageMeasure` (`won`, `turns`, `foe trips`), the entrants
+  `random` (a `RandomBot` hero) and `walk` (2125's `Walk`, already
+  there), `playtest.ron`, `GameTools::playtest`, `tests/it/playtest.rs`.
+
+The numbers on seeds 0–49 (turn limit 200): `random` won 5 of 50, `walk`
+50 of 50; the median turns of won tries were 4 for `walk` and 28 for
+`random`. So the bands are `random` 5–20% with a floor of 1%, and `walk`
+90–100%. On seeds 0–99 (the default 100 tries) `random` wins 14 and the
+bands still hold.
+
+Deviations:
+
+- The checks are in `examples/hello-grid/playtest.ron`, beside
+  `shuyi.ron`, not in `files/`: `bake` packs every file of `files/`, so
+  the tools' data would have shipped inside the game.
+- `PlaytestError::Play` carries the entrant's name beside the
+  `PlayError`, and `judge` returns `UnknownEntrant` (a struct that
+  `PlaytestError` wraps), so `judge` needs no game type.
+- The report's JSON schema needs `JsonSchema` on the core's types: they
+  derive it behind a new optional `schema` feature of `shuyi-core`
+  (`schemars`, already a dependency of `shuyi-cli`), which only
+  `shuyi-cli` turns on. A `no_std` build doesn't see it.
+- A try's line in the table writes its outcome as the game's `Debug`
+  (`Won { turn: 36 }`), or `unfinished`, rather than `Some(…)`.
+- Hello-grid's `playtest` refuses the game's start options (`--stage`,
+  `--tiles`): they choose how the window starts, which a playtest
+  doesn't use.
+- `bots.rs` lends `playtest` two helpers (`options_text`, `game_arg`);
+  `bots`' behaviour is unchanged.
+
+For the game: nothing breaks; `GameTools` gains a method with a default.
+The game PR that moves the pin is game#0506's (not opened yet), which puts
+its runner on this one.
+
+Nick input: none.

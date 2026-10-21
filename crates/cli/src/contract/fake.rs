@@ -12,7 +12,12 @@ use shuyi_ui::input::KeymapDef;
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::toy::Action;
 
+use shuyi_core::bots::playtest::{
+    Band, Check, EntrantTries, Found, Judged, PlaytestReport, RateVerdict, Tried,
+};
+
 use super::bots::{BotsInput, BotsOutput, tally};
+use super::playtest::PlaytestInput;
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, Scene, Session, Sound};
 use crate::frame_png::{Script, Shot, Step};
@@ -111,6 +116,8 @@ pub struct Fake {
     pub replay: Result<(), String>,
     /// `bots`'s plays, or why there are none.
     pub bots: Result<BotsOutput, String>,
+    /// `playtest`'s report, or why there is none.
+    pub playtest: Result<PlaytestReport, String>,
     /// The files `bake` bakes (its names table and palette are baked), or
     /// none if it doesn't offer `bake`.
     pub sources: Option<&'static [(&'static str, &'static [u8])]>,
@@ -137,10 +144,42 @@ impl Default for Fake {
             session: Ok(FakeSession::on("stage", "map")),
             replay: Ok(()),
             bots: Ok(tally(Vec::new())),
+            playtest: Ok(report(Some("Won"), false)),
             sources: Some(SOURCES),
             controls: None,
             one_bit: None,
         }
+    }
+}
+
+/// A report of one try, unfinished if `outcome` is `None`, blocked if
+/// `blocked`.
+pub fn report(outcome: Option<&str>, blocked: bool) -> PlaytestReport {
+    PlaytestReport {
+        entrants: vec![EntrantTries {
+            name: "walk".to_owned(),
+            tries: vec![Tried {
+                seed: 0,
+                outcome: outcome.map(str::to_owned),
+                turns: 3,
+                measures: [("won".to_owned(), 1)].into(),
+            }],
+        }],
+        checks: vec![Judged {
+            check: Check::Rate {
+                entrant: "walk".to_owned(),
+                success: Vec::new(),
+                band: Band { min: 0, max: 100 },
+                floor: None,
+            },
+            found: Found::Rate {
+                successes: 1,
+                count: 1,
+                verdict: RateVerdict::Within,
+                blocked,
+            },
+        }],
+        blocked,
     }
 }
 
@@ -199,6 +238,10 @@ impl GameTools for Fake {
 
     fn bots(&self, _: &BotsInput) -> Result<BotsOutput, String> {
         self.bots.clone()
+    }
+
+    fn playtest(&self, _: &PlaytestInput) -> Result<PlaytestReport, String> {
+        self.playtest.clone()
     }
 
     fn controls(&self) -> Option<Result<Box<dyn Controls>, String>> {

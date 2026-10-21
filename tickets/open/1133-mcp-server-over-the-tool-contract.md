@@ -38,7 +38,8 @@ None.
 
 **In:**
 - `shuyi mcp` is an MCP server over stdio. Each contract operation is a
-  tool, with the JSON schemas from 1129.
+  tool, with the JSON schemas from 1129 (`playtest`, from 2126, among
+  them).
 - A tool whose answer failed returns that answer as it is, with its
   `code` and `help` (2509), as an MCP error result, so a client
   branches on `code`, never on the message. `explain` (2509) is a tool

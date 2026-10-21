@@ -1,6 +1,6 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
-//! `check`, `run`, `scene`, `replay`, `bots`, `import`, `bake`, `doctor`, each
-//! with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
+//! `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`, `bake`,
+//! `doctor`, each with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
 //! wrapper here.
@@ -55,6 +55,7 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   scene [steps]                      the scene on screen after a script
   replay <record> [<other>]          a state hash per step; where two runs part
   bots <games>                       the game's bots play: outcomes and measures
+  playtest [--tries N]               each named bot's tries against the game's bands
   import <file> [--print]            read a file through the format registry
   bake [--target <id>] [--out <file>]
                                      bake the game's sources into one pack: sizes and times
