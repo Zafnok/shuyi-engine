@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2112", "3009"]
+blocked_by: ["2112", "3009", "2125"]
 nick_input: none
 completed:
 ---
@@ -39,17 +39,25 @@ Shuyi today:
   proves a puzzle can be won. It can't play one side against another.
 - 3009: `shuyi_core::think::Think` and `Progress`, a decision spread
   over frames in work units.
+- 2125 (split out of this ticket on 2026-10-21): `Determinize` and
+  `Evaluate` in `shuyi_core::bots::determinize`, and the rollout bot
+  (flat Monte Carlo on determinized copies) in `shuyi_core::bots::rollout`,
+  with hello-grid's `Determinize`, `score`, `distances_to_goal` and
+  `Walk`. It waits for nothing, because the game's playtest bots
+  (game#0506) run on a PC and need it now. This ticket builds on it:
+  the trees here search the same copies and score them the same way.
 
 Nick's rule of 2026-10-18 (`docs/decisions.md`): the AI is the
 engine's, fair and deterministic; a computer opponent sees only what its
 side sees, unless its difficulty settings say otherwise; it thinks in
 work units, never time. This ticket gives every turn game with sides a
 computer opponent, or a playtest bot stronger than `RandomBot`, that
-keeps that rule. The game writes only a score and a `determinize`.
+keeps that rule. The game writes only a score and a `determinize`
+(2125's traits).
 
 Why it matters. Visions of Shuyi doesn't ask for it: its enemy AI is
 game code, and a wide tactics map branches too much for a game-tree
-search. It serves turn games with two sides and few commands a turn:
+search (its playtest bots use 2125's rollout bot instead). It serves turn games with two sides and few commands a turn:
 board games, small skirmishes, hello-grid's hero, and the hero of a
 card battle in a test (2737, parked until after the launch). Until the
 launch, the end goal of 2026-10-19 is measured on turn-based games
@@ -65,26 +73,19 @@ None.
 ## Scope
 
 **In:**
-- **`shuyi_core::search` gains three submodules**, `no_std`, declared
-  in 2112's `crates/core/src/search.rs`: `determinize.rs`, `minimax.rs`
-  and `mcts.rs` in `crates/core/src/search/`. Tests go in
-  `search/minimax/tests.rs` and `search/mcts/tests.rs`, and the fixture
-  games both use in `search/fixtures.rs` (`#[cfg(test)]`). It stays in
+- **`shuyi_core::search` gains two submodules**, `no_std`, declared
+  in 2112's `crates/core/src/search.rs`: `minimax.rs` and `mcts.rs` in
+  `crates/core/src/search/`. Tests go in `search/minimax/tests.rs` and
+  `search/mcts/tests.rs`, and the fixture games both use in
+  `search/fixtures.rs` (`#[cfg(test)]`; reuse 2125's dice race and Nim
+  from `bots/fixtures.rs` rather than writing them twice). It stays in
   `shuyi-core` beside the solver: it is generic, adds no dependency, and
   a game that never names it pays nothing (ADR-0009 §1).
-  - **`trait Determinize: Sides + Clone { fn determinize(&self, side: Self::Side, seed: u64) -> Self; }`**:
-    a copy of the state as `side` knows it, with everything it can't
-    see redrawn from `seed`: the luck to come (a new
-    `SimRng::new(seed)`), and the other sides' hidden things (a hand of
-    cards dealt again from what is left). A game with no luck and
-    nothing hidden returns `self.clone()` and says so in a comment. A
-    game whose difficulty lets a bot see more says so in its
-    `determinize`. **The bots take only games that implement it**, so
-    every game chooses what its bots may see.
-  - **`trait Evaluate<R: Sides> { fn score(&self, rules: &R, side: R::Side) -> i32; }`**:
-    how good a state is for `side`, higher is better, in whole points. A
-    finished game scores its outcome. A blanket impl for
-    `Fn(&R, R::Side) -> i32`, so a closure works.
+  - **`Determinize` and `Evaluate` are 2125's**
+    (`shuyi_core::bots::determinize`). **The bots take only games that
+    implement `Determinize`**, so every game chooses what its bots may
+    see. A leaf is scored by `Evaluate::score(root, leaf, side)`, the
+    root being the state the decision began in.
   - **The bot's side** is the side to move when a decision starts.
   - **`Minimax<E>`**: alpha-beta, depth first, by iterative deepening.
     `MinimaxSettings { depth: u32, nodes: u32, samples: u32 }`, with
@@ -144,32 +145,23 @@ None.
     `u32::MAX`. The search keeps its stack and tree in the value, not on
     the call stack. Every draw from the bot's `SimRng` happens in a
     fixed order inside the search, so slice sizes never change them.
-  - Re-exports in `crates/core/src/lib.rs`: `Determinize`, `Evaluate`,
-    `Minimax`, `MinimaxSettings`, `MinimaxSearch`, `Mcts`,
-    `MctsSettings` and `MctsSearch`, and the crate docs' line on
-    `search` names the bots.
+  - Re-exports in `crates/core/src/lib.rs`: `Minimax`,
+    `MinimaxSettings`, `MinimaxSearch`, `Mcts`, `MctsSettings` and
+    `MctsSearch`, and the crate docs' line on `search` names the bots.
 - **An ADR** (the next free number in `docs/adr/`, with the `write-adr`
-  skill): search bots see a copy from `Determinize`, never the state
-  itself; scores and UCB in integers; work units and slice
-  independence; ties by `legal_commands` order. It extends ADR-0008 §6
-  (work units) and records how the 2026-10-18 rule ("sees only what its
-  side sees") is kept.
-- **Hello-grid shows it** (`examples/hello-grid/`):
-  - `Stage` implements `Determinize` in `src/rules.rs`: its `rng` is
-    redrawn, and nothing else is hidden;
-  - `pub fn score(stage: &Stage, side: Side) -> i32` in the same file.
-    For the hero, `Won` is 1 000 and `Caught` is -1 000; between them,
-    the foe's steps to the hero (`distances_to_hero`) minus the hero's
-    steps to the goal (a new `distances_to_goal`, a `flow_field` from
-    the goal), with 99 for a tile no path reaches. The foe's score is
-    the negation;
+  skill), extending 2125's (copies from `Determinize`, integers, work
+  units): the UCB in integers; slice independence through 3009's
+  `Think`; ties by `legal_commands` order; when a game should pick
+  minimax or MCTS over 2125's rollout bot (few commands a turn, replies
+  that matter).
+- **Hello-grid shows it** (`examples/hello-grid/`), with 2125's
+  `Determinize`, `score` and `distances_to_goal`:
   - `tests/it/bots.rs`: a minimax hero against `Chase` wins more of
     seeds 0 to 19 than `RandomBot` does (both counts in the Completion
     notes), and the first command of a minimax hero and of an MCTS hero
     doesn't change when only the stage's seed does;
-  - `README.md`: the `src/rules.rs` row names `Determinize` and the
-    score, and a sentence after the tools block says
-    `tests/it/bots.rs` plays a minimax hero against the foe;
+  - `README.md`: the sentence 2125 added after the tools block also
+    says `tests/it/bots.rs` plays a minimax hero against the foe;
   - the stage screen's foe stays `Chase`, and `bots`' hero stays
     `RandomBot`, so records and snapshots don't change.
 - **Either order with 1134:** if `skills/shuyi-balance-bots/SKILL.md`
@@ -180,6 +172,7 @@ None.
 
 **Out (do not do):**
 - the level solver (2112);
+- `Determinize`, `Evaluate` and the rollout bot (2125, done first);
 - expectimax with chance nodes. A game would have to list each roll's
   outcomes; a follow-up when a game asks;
 - transposition tables, move ordering beyond `legal_commands`, opening
@@ -189,8 +182,7 @@ None.
 - learned agents;
 - the soak bot (2527), which plays random commands on purpose;
 - one description of a game's types and how a view differs from the
-  state (2907). If its ADR is in, this ticket's ADR says how
-  `Determinize` fits it;
+  state (2907). How `Determinize` fits it is 2125's ADR's job;
 - the game's own enemy AI, and moving it onto these bots (game
   tickets);
 - a new example game. The gallery of small games (2736, 2737) is parked
@@ -202,16 +194,13 @@ None.
 ## Implementation steps
 
 1. Read 2112's `search` module, 3009's `think` module and its slicing
-   test, `bots.rs`, and ADR-0008 §6. If 2013's ADR on
+   test, `bots.rs`, 2125's `bots/determinize.rs`, `bots/rollout.rs`
+   and ADR, and ADR-0008 §6. If 2013's ADR on
    `#[non_exhaustive]` and constructors is in `docs/adr/`, follow it
    for `MinimaxSettings` and `MctsSettings`.
-2. Write `Determinize` and `Evaluate` in `determinize.rs`, and the
-   fixtures in `search/fixtures.rs`:
-   - Nim: take 1 to 3, the last take wins;
+2. Write the fixtures in `search/fixtures.rs`, reusing 2125's Nim
+   and dice race (move them where both test modules reach them):
    - tic-tac-toe;
-   - a dice race: two sides take turns, and a side either steps 2 or
-     rolls 1 to 6 from the state's `SimRng` and moves that many; the
-     first to reach 20 wins;
    - a game where one side makes two picks in a row before the other
      side's one, whose best line the test works out by hand.
 3. Write `Minimax` as a resumable search: a `Vec` of frames in the
@@ -219,15 +208,15 @@ None.
 4. Write `Mcts`: its tree is a `Vec` of nodes with child indices, and
    the loop over copies is the same as minimax's.
 5. Write the tests below, then the ADR.
-6. Add hello-grid's `Determinize`, `score`, `distances_to_goal`, its
-   tests and the README lines. Keep the bot test's settings small
+6. Add hello-grid's tests and the README lines (its `Determinize`,
+   `score` and `distances_to_goal` are 2125's). Keep the bot test's settings small
    (depth 2 and 2 samples, for example) so the 20 plays take a few
    seconds in a debug build.
 7. Do the either-order parts that apply, and run the gates.
 
 Size: if the diff runs well past 600 changed lines (fixture games
 aside), move `Mcts` and its tests to a follow-up ticket, and keep
-`Determinize`, `Evaluate`, `Minimax` and hello-grid's part here. 2737's
+`Minimax` and hello-grid's part here. 2737's
 clause with 2113 then names that ticket for its `Mcts` hero.
 
 ## Acceptance criteria

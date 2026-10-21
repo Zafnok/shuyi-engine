@@ -76,7 +76,7 @@ tools read that one description:
   `MapScene::to_text` (`crates/ui/src/grid/scene.rs` line 424).
 
 Two designs already keep a view apart from the state: 1146 (parked)
-gives each player a `PlayerView::View` the game writes, and 2113's
+gives each player a `PlayerView::View` the game writes, and 2125's
 `Determinize` redraws the luck to come before a bot searches.
 
 Built apart, that is four or more registries to keep in step for years.
@@ -182,7 +182,7 @@ None. This is technical.
   3. **Names:** how a type gets its stable name (serde's container name,
      `schemars`' schema name, or a name given at registration).
   4. **State and view:** the rule for need 6, and how it fits 1146's
-     `PlayerView` and 2113's `Determinize`.
+     `PlayerView` and 2125's `Determinize`.
   5. **Paths:** the syntax, used alike by the contract, 2524's grader,
      the inspector (2507) and scenes (2221).
   6. **Text dumps:** whether `MapScene::to_text` and the kits' planned
@@ -226,8 +226,8 @@ None. This is technical.
   it, extend it to a game's state and view types, and state any
   difference. If not, this ADR decides, and 2515 follows it (its own
   clause says so).
-- **Either order with 2113:** if 2113 is done, point 4 starts from its
-  `Determinize`. If not, 2113's ADR says how `Determinize` fits this one
+- **Either order with 2125:** if 2125 is done, point 4 starts from its
+  `Determinize`. If not, 2125's ADR says how `Determinize` fits this one
   (its own clause says so).
 - `docs/adr/README.md`: the new ADR's row, and "extended by ADR-NNNN" on
   the rows of ADR-0005, ADR-0009 and ADR-0022.
