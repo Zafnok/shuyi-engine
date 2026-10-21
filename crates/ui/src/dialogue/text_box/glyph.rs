@@ -15,6 +15,16 @@ use crate::widgets::menu::MenuView;
 /// Cells between the log's key hint and the key that goes on.
 const LOG_HINT_GAP: i32 = 3;
 
+/// Where narration (lines nobody says) sits in a text box.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum NarrationAlign {
+    /// Across the middle of the box; a lone line in the middle row too.
+    #[default]
+    Centred,
+    /// From [`BoxPlace::text_x`] like speech; a lone line on the first row.
+    Left,
+}
+
 /// Where a text box goes on the console.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BoxPlace {
@@ -24,6 +34,8 @@ pub struct BoxPlace {
     pub text_x: i32,
     /// The row of the text's first line.
     pub text_y: i32,
+    /// Where narration sits: [`NarrationAlign::Centred`] or from `text_x`.
+    pub narration: NarrationAlign,
 }
 
 /// The box `text` is painted in at `place`, and its first text row. While
@@ -94,10 +106,10 @@ fn paint_frame(palette: &Palette, buf: &mut GlyphBuffer, speaker: Option<&str>, 
     }
 }
 
-/// The revealed part of the page from row `text_y`. Narration is dim and
-/// centred; vertically too when `alone` (nothing follows it in the box):
-/// one line goes in the middle of the three rows (two or three fill them
-/// from the top).
+/// The revealed part of the page from row `text_y`. Narration is dim and,
+/// unless `place.narration` is `Left`, centred; vertically too when `alone`
+/// (nothing follows it in the box): one line goes in the middle of the
+/// three rows (two or three fill them from the top).
 fn paint_lines(
     palette: &Palette,
     buf: &mut GlyphBuffer,
@@ -114,9 +126,10 @@ fn paint_lines(
     } else {
         c(EngineColor::Text)
     };
-    let top = text_y + i32::from(narration && text.lines.len() == 1 && alone);
+    let centred = narration && place.narration == NarrationAlign::Centred;
+    let top = text_y + i32::from(centred && text.lines.len() == 1 && alone);
     for ((y, line), visible) in (top..).zip(&text.lines).zip(text.revealed()) {
-        let x = if narration {
+        let x = if centred {
             let len = i32::try_from(line.chars().count()).unwrap_or(0);
             place.frame.x + (place.frame.w - len) / 2
         } else {

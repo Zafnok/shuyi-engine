@@ -10,6 +10,7 @@ const PLACE: BoxPlace = BoxPlace {
     frame: Rect::new(0, 10, 40, 7),
     text_x: 3,
     text_y: 12,
+    narration: NarrationAlign::Centred,
 };
 
 fn text(lines: &[&str]) -> TextView {
@@ -168,4 +169,30 @@ fn a_waiting_page_names_the_key_the_log_and_blinks() {
     });
     let (buf, _) = painted(&view, None);
     assert!(row(&buf, 15).ends_with("  f    │"), "{}", row(&buf, 15));
+}
+
+#[test]
+fn left_narration_starts_at_text_x_and_a_lone_line_sits_on_the_first_row() {
+    let left = BoxPlace {
+        narration: NarrationAlign::Left,
+        ..PLACE
+    };
+    let paint = |lines: &[&str]| {
+        let mut view = text(lines);
+        view.narration = true;
+        let mut c = crate::toy::ctx();
+        c.palette = engine_palette();
+        let black = c.palette.engine(EngineColor::Background);
+        let mut buf = GlyphBuffer::new(40, 20, Cell::new('x', black, black));
+        paint(&c, &mut buf, left, &view, None);
+        (buf, c.palette)
+    };
+    let (buf, p) = paint(&["It rains."]);
+    assert_eq!(cells(&buf, 12, 3, 9), "It rains.");
+    assert_eq!(buf.get(3, 12).unwrap().fg, p.engine(EngineColor::TextDim));
+    assert_eq!(row(&buf, 13).trim_matches(['│', ' ']), "");
+    let (buf, _) = paint(&["One.", "Two.", "Three."]);
+    assert_eq!(cells(&buf, 12, 3, 4), "One.");
+    assert_eq!(cells(&buf, 13, 3, 4), "Two.");
+    assert_eq!(cells(&buf, 14, 3, 6), "Three.");
 }

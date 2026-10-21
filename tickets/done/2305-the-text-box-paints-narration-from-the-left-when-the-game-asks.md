@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2305 — The text box paints narration from the left when the game asks
@@ -75,10 +75,10 @@ this one (game#0740).
 
 ## Acceptance criteria
 
-- [ ] With `Centred`, every existing snapshot is unchanged.
-- [ ] With `Left`, a narration line starts at `text_x` and a single line
+- [x] With `Centred`, every existing snapshot is unchanged.
+- [x] With `Left`, a narration line starts at `text_x` and a single line
       sits on the first text row (tests of a look, reading cells).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -89,5 +89,13 @@ this one (game#0740).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Added `NarrationAlign` (`Centred`, the default and today's look, and
+`Left`) and `BoxPlace::narration`; `paint_lines` centres only for `Centred`.
+2013 isn't done, so the field is added as written: a `BoxPlace` struct
+literal gains `narration: NarrationAlign::Centred` (the toy's and
+hello-grid's places and the tests' are updated). 2013 will make
+`NarrationAlign` `#[non_exhaustive]`, set `Centred` in `BoxPlace::new` and
+add `with_narration`. Existing snapshots are unchanged. New test:
+`left_narration_starts_at_text_x_and_a_lone_line_sits_on_the_first_row`
+(one line and three lines). Game PR to move the pin: not yet opened
+(game#0740). No follow-ups; nothing for Nick.
