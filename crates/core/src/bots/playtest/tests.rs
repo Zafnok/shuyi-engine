@@ -480,6 +480,80 @@ fn the_report_reads_as_a_table() {
     );
 }
 
+/// A game that refuses every command, saying so in words.
+struct Locked;
+
+/// Why [`Locked`] refuses.
+#[derive(Debug)]
+struct Shut;
+
+impl fmt::Display for Shut {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("the door is shut")
+    }
+}
+
+impl TurnRules for Locked {
+    type Command = u8;
+    type Event = ();
+    type Error = Shut;
+    type Outcome = ();
+
+    fn check(&self, _: &u8) -> Result<(), Shut> {
+        Err(Shut)
+    }
+
+    fn apply(&mut self, _: &u8) -> Result<Vec<()>, Shut> {
+        Err(Shut)
+    }
+
+    fn legal_commands(&self) -> Vec<u8> {
+        Vec::new()
+    }
+
+    fn outcome(&self) -> Option<()> {
+        None
+    }
+}
+
+impl Sides for Locked {
+    type Side = u8;
+
+    fn side_to_move(&self) -> u8 {
+        0
+    }
+
+    fn turn(&self) -> u32 {
+        1
+    }
+}
+
+#[test]
+fn a_playtest_error_says_what_went_wrong() {
+    let unknown: PlaytestError<Locked> = UnknownEntrant {
+        check: 2,
+        entrant: "nobody".to_string(),
+    }
+    .into();
+    assert_eq!(
+        unknown.to_string(),
+        "check 3 names `nobody`, who isn't in the run"
+    );
+    let refused: PlaytestError<Locked> = PlaytestError::Play {
+        entrant: "knocker".to_string(),
+        error: PlayError {
+            command: 7,
+            side: 0,
+            turn: 1,
+            error: Shut,
+        },
+    };
+    assert_eq!(
+        refused.to_string(),
+        "knocker: turn 1, 0 to move: 7 refused: the door is shut"
+    );
+}
+
 proptest! {
     #[test]
     fn a_band_gives_one_verdict_and_within_iff_inside(
