@@ -1,5 +1,7 @@
 //! Playtest bots over any [`TurnRules`] game: players made of code, the
-//! loop that lets them play a game to its end, and a seeded random bot.
+//! loop that lets them play a game to its end, a seeded random bot, and a
+//! bot that plans on copies of the game ([`rollout`], over
+//! [`determinize`]).
 //!
 //! A game's own bots (a baseline, personas) implement [`Bot`] for its
 //! state, and its measures watch the loop through [`play_observed`]. Bots
@@ -11,6 +13,12 @@ use core::fmt;
 
 use crate::rng::SimRng;
 use crate::turn::TurnRules;
+
+pub mod determinize;
+pub mod rollout;
+
+pub use determinize::{Determinize, Evaluate};
+pub use rollout::{Horizon, Order, Playout, Rollout, RolloutSearch, RolloutSettings, Unordered};
 
 /// A game whose state says whose move it is and which turn it is, so a
 /// loop can ask the right bot for each command.
@@ -37,6 +45,14 @@ pub trait Bot<R: TurnRules> {
     /// side to move. It should be one [`TurnRules::check`] accepts; a
     /// refused command ends the play with a [`PlayError`].
     fn choose(&mut self, rules: &R) -> R::Command;
+}
+
+/// A function of the state is a bot (one with no seed, or a seed of its
+/// own captured).
+impl<R: TurnRules, F: FnMut(&R) -> R::Command> Bot<R> for F {
+    fn choose(&mut self, rules: &R) -> R::Command {
+        self(rules)
+    }
 }
 
 /// How a play went.
@@ -226,5 +242,7 @@ impl<R: TurnRules> Bot<R> for RandomBot {
     }
 }
 
+#[cfg(test)]
+mod fixtures;
 #[cfg(test)]
 mod tests;

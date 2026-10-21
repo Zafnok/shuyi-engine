@@ -1,11 +1,14 @@
 //! The engine's bots playing the stage's rules (`shuyi_core::bots`): a
 //! random bot for your piece against the foe's own mind, and against
-//! another random bot. Every command a bot chooses is one the rules
+//! another random bot, and a rollout bot that plans on copies of the
+//! stage against the foe. Every command a bot chooses is one the rules
 //! accept, every play ends, and the same seeds play the same game.
 
 use hello_grid::Hello;
-use hello_grid::rules::{Chase, Outcome, Side, Stage};
-use shuyi_core::{Bot, RandomBot, Report, play};
+use hello_grid::rules::{Chase, Outcome, Side, Stage, hero_order, playout, score};
+use shuyi_core::{
+    Bot, Horizon, RandomBot, Report, Rollout, RolloutSettings, Sides, TurnRules, play,
+};
 
 /// The stage of the game's map, seeded with `seed`.
 fn stage(seed: u64) -> Stage {
@@ -16,10 +19,39 @@ fn stage(seed: u64) -> Stage {
 /// A play of stage `seed` to its end (or turn 200), your piece moved by
 /// a random bot of `seed`, the foe by `foe`.
 fn play_with(seed: u64, foe: &mut dyn Bot<Stage>) -> Report<Stage> {
+    play_hero(seed, &mut RandomBot::new(seed), foe)
+}
+
+/// A play of stage `seed` to its end (or turn 200), your piece moved by
+/// `hero`, the foe by `foe`.
+fn play_hero(seed: u64, hero: &mut dyn Bot<Stage>, foe: &mut dyn Bot<Stage>) -> Report<Stage> {
     let mut stage = stage(seed);
-    let mut hero = RandomBot::new(seed);
-    let mut bots: [(Side, &mut dyn Bot<Stage>); 2] = [(Side::Hero, &mut hero), (Side::Foe, foe)];
+    let mut bots: [(Side, &mut dyn Bot<Stage>); 2] = [(Side::Hero, hero), (Side::Foe, foe)];
     play(&mut stage, &mut bots, 200).unwrap_or_else(|e| panic!("seed {seed}: {e}"))
+}
+
+/// A rollout bot for your piece: 8 candidates nearest the goal, each
+/// played out on 4 copies for 3 turns, the best taken.
+fn rollout_hero(seed: u64) -> impl Bot<Stage> {
+    let settings = RolloutSettings {
+        candidates: 8,
+        samples: 4,
+        horizon: Horizon::Turns(3),
+        commands: 12,
+        temperature: 0,
+    };
+    Rollout::new(hero_order, playout, score, settings, seed)
+}
+
+/// How many of stages 0 to 19 your piece wins against the chaser, moved
+/// by the bot `hero` makes for each seed.
+fn wins<B: Bot<Stage>>(hero: impl Fn(u64) -> B) -> usize {
+    (0..20)
+        .filter(|&seed| {
+            let report = play_hero(seed, &mut hero(seed), &mut Chase);
+            matches!(report.outcome, Some(Outcome::Won { .. }))
+        })
+        .count()
 }
 
 #[test]
@@ -59,4 +91,38 @@ fn the_same_seeds_play_the_same_game() {
     for seed in [0, 7, 42] {
         assert_eq!(play_with(seed, &mut Chase), play_with(seed, &mut Chase));
     }
+}
+
+#[test]
+fn a_rollout_hero_wins_more_than_a_random_one() {
+    let planned = wins(rollout_hero);
+    let random = wins(RandomBot::new);
+    // Recorded in ticket 2125's completion notes.
+    eprintln!("of stages 0 to 19, the rollout hero won {planned}, the random hero {random}");
+    assert!(planned > random, "rollout {planned}, random {random}");
+}
+
+#[test]
+fn a_rollout_hero_never_sees_the_luck_to_come() {
+    let first = rollout_hero(3).choose(&stage(0));
+    for seed in 1..20 {
+        assert_eq!(
+            rollout_hero(3).choose(&stage(seed)),
+            first,
+            "stage seed {seed}"
+        );
+    }
+}
+
+#[test]
+fn the_foe_scores_the_negation_of_the_hero() {
+    let start = stage(0);
+    let mut end = start.clone();
+    let open = score(&start, &end, Side::Hero);
+    assert_eq!(score(&start, &end, Side::Foe), -open);
+    // A step that brings your piece nearer the goal scores better for it.
+    let nearer = hero_order(&end, end.legal_commands())[0];
+    end.apply(&nearer).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(end.side_to_move(), Side::Foe);
+    assert!(score(&start, &end, Side::Hero) > open);
 }

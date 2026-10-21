@@ -7,13 +7,16 @@
 //!
 //! [`Chase`] is the foe's mind: a [`Bot`] that steps towards your piece.
 //! The stage screen asks it for the foe's commands, and the bot test lets
-//! it play against a random bot.
+//! it play against a random bot and against a rollout bot
+//! (`shuyi_core::Rollout`). That one plans on copies of the stage from
+//! [`Determinize`], ordered by [`hero_order`], played on by [`playout`]
+//! ([`Walk`] and [`Chase`]) and judged by [`score`].
 
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
 use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat};
-use shuyi_core::{Bot, Dir, Grid, Pos, Reach, Sides, SimRng, TerrainId, TurnRules};
+use shuyi_core::{Bot, Determinize, Dir, Grid, Pos, Reach, Sides, SimRng, TerrainId, TurnRules};
 use shuyi_core::{flow_field, reachable};
 
 /// Floor: anyone walks it.
@@ -245,6 +248,12 @@ impl Stage {
         flow_field(self.map.width(), self.map.height(), [self.hero], cost)
     }
 
+    /// How many steps each tile is from the goal, walls in the way.
+    pub fn distances_to_goal(&self) -> Grid<Option<u32>> {
+        let cost = |pos: Pos| self.walkable(pos).then_some(1);
+        flow_field(self.map.width(), self.map.height(), [self.goal], cost)
+    }
+
     fn check_side(&self, side: Side) -> Result<(), Error> {
         if self.outcome.is_some() {
             return Err(Error::Over);
@@ -392,6 +401,80 @@ impl Bot<Stage> for Chase {
             }
         }
         Command::Step(best.1)
+    }
+}
+
+impl Determinize for Stage {
+    /// The luck to come (the foe's trips) is redrawn; nothing else is
+    /// hidden, so your side sees the whole board.
+    fn determinize(&self, _: Side, seed: u64) -> Self {
+        Self {
+            rng: SimRng::new(seed),
+            ..self.clone()
+        }
+    }
+}
+
+/// The steps a distance grid gives for `pos`: 99 for a tile no path
+/// reaches.
+fn steps(distances: &Grid<Option<u32>>, pos: Pos) -> i32 {
+    let steps = distances.get(pos).copied().flatten().unwrap_or(99);
+    i32::try_from(steps).unwrap_or(99).min(99)
+}
+
+/// How good `end` is for `side`, in points. For your piece: 1 000 for a
+/// win, -1 000 for being caught, and between them the foe's steps to
+/// your piece minus your piece's steps to the goal. The foe's score is
+/// its negation. Only the end counts: `start` is unused.
+pub fn score(_start: &Stage, end: &Stage, side: Side) -> i32 {
+    let hero = match end.outcome {
+        Some(Outcome::Won { .. }) => 1000,
+        Some(Outcome::Caught { .. }) => -1000,
+        None => {
+            steps(&end.distances_to_hero(), end.foe) - steps(&end.distances_to_goal(), end.hero)
+        }
+    };
+    match side {
+        Side::Hero => hero,
+        Side::Foe => -hero,
+    }
+}
+
+/// Your piece's candidates, nearest the goal first: the tiles in reach,
+/// sorted by their steps to the goal (in reach order among equals).
+pub fn hero_order(stage: &Stage, mut commands: Vec<Command>) -> Vec<Command> {
+    let distances = stage.distances_to_goal();
+    commands.sort_by_key(|command| match command {
+        Command::Move(to) => steps(&distances, *to),
+        Command::Step(_) => i32::MAX,
+    });
+    commands
+}
+
+/// A plain walker for your piece: the tile in reach closest to the goal
+/// (the first in reach order among equals).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Walk;
+
+impl Bot<Stage> for Walk {
+    fn choose(&mut self, stage: &Stage) -> Command {
+        let distances = stage.distances_to_goal();
+        let to = stage
+            .reach()
+            .tiles()
+            .iter()
+            .min_by_key(|&to| steps(&distances, to))
+            .unwrap_or(stage.hero);
+        Command::Move(to)
+    }
+}
+
+/// How a rollout bot plays a copy of the stage on: [`Walk`] for your
+/// piece, [`Chase`] for the foe.
+pub fn playout(stage: &Stage) -> Command {
+    match stage.side {
+        Side::Hero => Walk.choose(stage),
+        Side::Foe => Chase.choose(stage),
     }
 }
 
