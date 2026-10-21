@@ -51,13 +51,13 @@ The sign-off also:
   (the ADR's rule, below), so he can say otherwise;
 - asks again who the backup is, if Nick chose nobody in 2016 (its
   option C);
-- holds the first publish's setup, which is Nick's own clicks. For the
-  first publish, Nick makes the one-run token and revokes it after. He
-  then adds this repository's `release.yml` and the `release`
-  environment as the trusted publisher on each crate's settings page on
-  crates.io, and turns on the setting that refuses API tokens for the
-  crate if crates.io offers it. The session writes the clicks here,
-  checked against crates.io on the day, before it asks.
+- holds the release's setup, which is Nick's own clicks. The crates
+  exist already (the 0.0.0 placeholders, below), so no token is made
+  for this release: Nick adds this repository's `release.yml` and the
+  `release` environment as the trusted publisher on each crate's
+  settings page on crates.io, and turns on the setting that refuses API
+  tokens for the crate if crates.io offers it. The session writes the
+  clicks here, checked against crates.io on the day, before it asks.
 
 ## Scope
 
@@ -179,20 +179,19 @@ The sign-off also:
   `release` environment with `permissions: id-token: write`. It gets a
   short-lived token through crates.io trusted publishing
   (`rust-lang/crates-io-auth-action`, pinned by SHA). crates.io lets a
-  crate trust a workflow only once the crate exists. So the first
-  version of each crate is published by hand, with a token Nick makes
-  for that run (the scopes `publish-new` and `publish-update`, the
-  `shuyi-*` crates, expiring within a day) and revokes afterwards.
-  Check this against crates.io's docs on the day. No job of the tag's
-  run reads the Actions cache.
+  crate trust a workflow only once the crate exists. The six crates
+  exist since the 0.0.0 placeholders (below), so the first real version
+  goes out through the workflow too, with no publish by hand. Check
+  this against crates.io's docs on the day. No job of the tag's run
+  reads the Actions cache.
 - **Owners and the credential** (`docs/continuity.md`, 2016): if Nick
   chose a backup with crates.io rights in 2016 (option A), after the
-  first publish (or the name-reserving 0.0.0 one) Nick invites them to
-  every `shuyi-*` crate (`cargo owner --add <login> <crate>`, with a
-  token that has the `change-owners` scope, or the crate's settings
-  page), and they accept on crates.io. `docs/continuity.md`'s crates.io
-  row names the owners, the trusted publisher, and the first publish's
-  token: its scopes, its expiry and that it was revoked, never its
+  release, Nick invites them to every `shuyi-*` crate (`cargo owner
+  --add <login> <crate>`, with a token that has the `change-owners`
+  scope, or the crate's settings page), and they accept on crates.io.
+  `docs/continuity.md`'s crates.io row names the owners, the trusted
+  publisher, and the placeholders' token (`docs/decisions.md`,
+  2026-10-21): its scope, its crates and that it was revoked, never its
   value.
 - **Docs at the release's version** (2808): the release workflow runs
   `cargo xtask llms --full-only --out <dir>` at the tag and attaches
@@ -209,8 +208,13 @@ The sign-off also:
   already checked the tag). It attaches the packages, a `SHA256SUMS`
   and attestations (`actions/attest`; the repository is public) to the
   engine's GitHub Release. If not, 3050 adds this job when it lands.
-- Reserving the names early is allowed (an empty 0.0.0 publish) if Nick
-  wants them held before the MVP; ask in the sign-off.
+- The names are held already: on 2026-10-21 Nick had the six crates
+  published as empty 0.0.0 placeholders, owned by `Zafnok`
+  (`docs/decisions.md`). The first release is the next version of each
+  and replaces the placeholder's README and description. Nick wants no
+  real version until the engine is stable, so the placeholders don't
+  hurry this ticket; only a threat to the names would, and he is asked
+  first (`docs/decisions.md`, 2026-10-21).
 - In the game repository: a ticket that moves the game from the git
   revision to the released versions (`shuyi-engine.rev` and `cargo xtask
   engine-pin` retire, or stay for the local checkout only).

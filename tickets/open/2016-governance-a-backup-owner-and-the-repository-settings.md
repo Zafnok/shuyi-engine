@@ -70,7 +70,8 @@ What Shuyi has today:
 What is planned:
 
 - 2005 publishes the `shuyi-*` crates with one owner, through crates.io
-  trusted publishing after a first publish with a one-run token.
+  trusted publishing. The six crates exist already as 0.0.0
+  placeholders, owned by `Zafnok` (`docs/decisions.md`, 2026-10-21).
 - 2806 adds GitHub Sponsors and Ko-fi. 2807 (parked) adds a domain.
 - 2011 adds Dependabot's version updates, a weekly advisory check,
   zizmor as a job under `ci-result`, and CodeQL with a `codeql-result`
@@ -223,7 +224,10 @@ Then tell the session "done". It checks the result, read-only, with
     - the SonarCloud organization, which signs in through GitHub;
     - GitHub Pages and its `github-pages` environment (no secret:
       `pages.yml` deploys with the workflow's own token);
-    - crates.io owners and the release credential: "none yet, 2005";
+    - crates.io: the owner `Zafnok` of the six `shuyi-*` placeholder
+      crates and the revoked token that published them
+      (`docs/decisions.md`, 2026-10-21); the release credential: "none
+      yet, 2005";
     - GitHub Sponsors and Ko-fi. **Either order with 2806:** if 2806 is
       done, write their rows; if not, 2806 adds them;
     - the domain: "none yet, 2807";
