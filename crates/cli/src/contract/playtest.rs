@@ -136,6 +136,10 @@ mod tests {
         assert_eq!((input.tries, input.seed, input.turns), (5, 9, 50));
         assert_eq!(input.start[0].flag, "--hard");
         assert_eq!(parse_args(&[], &[]).unwrap(), PlaytestInput::default());
+        assert_eq!(
+            parse_args(&args(&["3"]), &options).unwrap_err(),
+            "no <games> here, only flags: 3"
+        );
         for bad in [
             &["3"][..],
             &["--tries"],

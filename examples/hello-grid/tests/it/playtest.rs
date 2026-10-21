@@ -4,12 +4,16 @@
 
 use hello_grid::Hello;
 use hello_grid::rules::Stage;
+use hello_grid::rules::{Command, Error, Side};
 use hello_grid::tools::{ENTRANTS, HelloTools, playtest_checks, playtest_run};
 use shuyi_cli::GameArg;
+use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
 use shuyi_core::bots::playtest::{
-    Found, MedianVerdict, PlaytestReport, RateVerdict, Tries, judge, play_tries,
+    Found, MedianVerdict, PlaytestError, PlaytestReport, RateVerdict, Tries, UnknownEntrant, judge,
+    play_tries,
 };
+use shuyi_core::{PlayError, Pos};
 
 const FIFTY: Tries = Tries {
     count: 50,
@@ -99,4 +103,56 @@ fn the_tool_contract_passes_and_takes_no_start_option() {
     });
     let error = playtest(&HelloTools, &with_option).error.unwrap();
     assert_eq!(error, "playtest takes no start option, not --stage");
+}
+
+#[test]
+fn the_random_hero_trips_the_foe_as_often_as_in_bots() {
+    // `bots` plays the same games: a random hero of the seed, the chaser.
+    let plays = bots(
+        &HelloTools,
+        &BotsInput {
+            games: 50,
+            ..BotsInput::default()
+        },
+    )
+    .result
+    .unwrap()
+    .plays;
+    let report = fifty();
+    let random = &report.entrants[0];
+    assert_eq!(random.name, "random");
+    let trips: Vec<i64> = random
+        .tries
+        .iter()
+        .map(|t| t.measures["foe trips"])
+        .collect();
+    let counted: Vec<i64> = plays.iter().map(|p| p.measures["foe trips"]).collect();
+    assert_eq!(trips, counted);
+    assert!(trips.iter().any(|&n| n > 1), "{trips:?}");
+}
+
+#[test]
+fn a_playtest_error_says_what_went_wrong() {
+    let unknown: PlaytestError<Stage> = UnknownEntrant {
+        check: 0,
+        entrant: "nobody".to_owned(),
+    }
+    .into();
+    assert_eq!(
+        unknown.to_string(),
+        "check 1 names `nobody`, who isn't in the run"
+    );
+    let refused: PlaytestError<Stage> = PlaytestError::Play {
+        entrant: "walk".to_owned(),
+        error: PlayError {
+            command: Command::Move(Pos::new(0, 0)),
+            side: Side::Hero,
+            turn: 3,
+            error: Error::Over,
+        },
+    };
+    assert_eq!(
+        refused.to_string(),
+        "walk: turn 3, Hero to move: Move(Pos { x: 0, y: 0 }) refused: the stage is over"
+    );
 }

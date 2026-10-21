@@ -130,6 +130,7 @@ fn a_median_check_compares_two_entrants() {
         median_check("slow", Want::Higher, "fast"),
         median_check("fast", Want::Lower, "never"),
         median_check("fast", Want::Lower, "fast"),
+        median_check("fast", Want::Higher, "fast"),
     ];
     let report = judge(tries, &checks).unwrap();
     let verdicts: Vec<(Option<i64>, Option<i64>, MedianVerdict)> = report
@@ -151,6 +152,7 @@ fn a_median_check_compares_two_entrants() {
             (Some(2), Some(7), MedianVerdict::Fail),
             (Some(7), Some(2), MedianVerdict::Pass),
             (Some(2), None, MedianVerdict::Unknown),
+            (Some(2), Some(2), MedianVerdict::Fail),
             (Some(2), Some(2), MedianVerdict::Fail),
         ]
     );
