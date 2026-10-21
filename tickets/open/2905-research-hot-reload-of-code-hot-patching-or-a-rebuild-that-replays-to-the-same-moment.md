@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2220"]
+blocked_by: ["2220", "2518", "2519"]
 nick_input: none
 completed:
 ---
@@ -22,11 +22,15 @@ the running game. Bevy now has experimental code hot patching through
 `subsecond` (from Dioxus).
 
 Shuyi has something most engines don't: the whole game is
-deterministic and its inputs are recorded (ADR-0002; replays, the
-harness). So a rebuild can restart the game and replay the session's
+deterministic (ADR-0002), and a session record (2518) holds every input
+that reaches it at the platform boundary, which debug builds write
+(2519). So a rebuild can restart the game and replay the session's
 inputs to the moment the developer was at, with the new code. That may
 be good enough, works on every platform the game builds for, and needs
 no unsafe patching.
+
+2357 builds the replay to a frame and the hand-over to the device that
+this needs, for going back in the debug view.
 
 This ticket compares the ways and writes the ADR and tickets.
 
@@ -40,10 +44,17 @@ None. This is technical.
 - **The options**, each tried on Hello, Grid and the tutorial's game
   (2803, if done):
   1. **Rebuild and replay:** `shuyi run --watch-code` rebuilds on a
-     change to `src/`, starts the new binary, and replays the record so
-     far. Measure: time from save to the same frame, with 2009's
+     change to `src/`, starts the new binary, and replays the session
+     record so far (2518's `SessionRecord`, which the debug build
+     writes, 2519) through 2518's `session::Playback` from the game's
+     real `Start`. The replay to a frame and the hand-over to the
+     device are 2357's: `App`'s rewind, a headless replay checked by
+     hash, then the swap with the clock restarted, sound restarted and
+     held input forgotten. If 2357 is done, the prototype reuses them.
+     If not, the ADR says to reuse them rather than build a second
+     replay. Measure: time from save to the same frame, with 2009's
      setup; what happens when the new code makes the record diverge
-     (stop at the first step whose hash differs, and say so).
+     (`Playback` stops at the first frame whose hash differs: say so).
   2. **Hot patching with `subsecond`:** license (check on the day),
      what it needs (its CLI, a nightly or stable toolchain), whether it
      works on Windows with the GNU toolchain (`AGENTS.md`,
@@ -65,7 +76,9 @@ None. This is technical.
 
 ## Implementation steps
 
-1. Prototype option 1 in a branch, measuring it.
+1. Read 2518's `SessionRecord` and `Playback`, 2519's debug-build
+   records, and 2357's rewind if it is done. Prototype option 1 in a
+   branch on them, measuring it.
 2. Try options 2 and 3 on Hello, Grid on Windows GNU and Linux.
 3. Write the notes, the ADR and the tickets.
 

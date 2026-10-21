@@ -46,16 +46,18 @@ skill) which way to go, with a recommendation.
 **In:**
 - **What the engine needs from pads**: the standard layout, hot-plugging,
   the pad's kind (for button names and the Switch-style swap), sticks and
-  triggers as values (1121), and what later work may want (rumble, motion,
-  Steam Deck controls, mobile).
+  triggers as values (1121), rumble (2408, parked: gilrs's force feedback
+  on Windows and Linux, the browser's `vibrationActuator` on the web), and
+  what later work may want (motion, Steam Deck controls, mobile).
 - **The options:**
   - our own code, as 2402 and 2403 plan;
   - keeping gilrs, with its health measured on the day (releases, open
     issues, response times, who maintains it);
   - other libraries maintained on the day (SDL3's gamepad API through
     bindings, under Zlib, would bring a C library; others as found). For
-    each: license (on the day), what it pulls in, platforms, and whether it
-    needs `wasm-bindgen` (the web keeps its own path either way).
+    each: license (on the day), what it pulls in, platforms, force feedback
+    per platform, and whether it needs `wasm-bindgen` (the web keeps its
+    own path either way).
 - **Test on real pads** where possible: an Xbox pad, a PlayStation pad, a
   Switch Pro pad, the Steam Deck.
 - **Outputs:**

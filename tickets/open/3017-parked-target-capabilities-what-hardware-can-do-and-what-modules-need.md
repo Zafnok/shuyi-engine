@@ -48,6 +48,11 @@ None.
   `TargetProfile`:
   - `colour`: `Rgba8`, `OneBit`, or `Indexed { banks, colours_per_bank,
     bits_per_pixel }`;
+  - `blend`: `Full` (every `Blend` mode and `Paint::Tinted`, drawn as
+    `shuyi_ui::frame::blend` says, 2337), `OneBit` (add as lighten,
+    multiply as darken, tint drawn as the image: the one-bit renderer's
+    rule), or `None` (blending is per layer and a tint is a palette
+    swap; 3021 and 3024 confirm);
   - `screens`: a list of `Surface { id, size, touch }`, where `size` is
     `Any` or `Fixed(w, h)` in device pixels;
   - `three_d`: `None`, `Software { max_triangles }`, `Hardware {
@@ -56,46 +61,81 @@ None.
     max_per_line })`, with `max_per_line` an `Option`;
   - `memory`: `ram_bytes` and `video_ram_bytes`, each an `Option<u64>`
     (`None` means no fixed limit; the heap budget still applies);
-  - `audio`: `channels` (`Option<u8>`) and `music` (`Streamed` or
-    `Mixed`).
-- **`display.color` moves to `capabilities.colour`.** The profile
-  format's version goes up. An older file is read with a migration, so a
-  game's own profile keeps loading. If 3006 has landed, its 1-bit check
-  reads the new field; if not, 3006 reads it when it lands.
+  - `audio`: `channels` (`Option<u8>`), `music` (`Streamed` or
+    `Mixed`), and `features`: the set of `AudioFeature`s the target's
+    backend plays beyond cues and music, which are `Pause`, `Rate`,
+    `Pan` and `LoopRegion`. They are named after the provided methods of
+    3029's shared backend trait (`pause` and `resume`, `set_rate`, and
+    the pan and the loop region that 2363 and 2902's follow-up add to
+    it). A backend ticket that implements one adds it to its profile.
+- **The voice limit.** The cue rules' voice limit is the smaller of the
+  audio manifest's `max_voices` (2345's part two adds it) and the
+  target's `channels`, a `None` on either side being no limit. `shuyi
+  check --target` warns when a game's `max_voices` is over its target's
+  `channels`: a warning in the target's report, which doesn't fail.
+  **Either order with 2345:** if its part two is done, `App` caps
+  `max_voices` with `channels` here; if not, it reads `channels` when it
+  lands.
+- **`display.color` moves to `capabilities.colour`.** The profile format
+  has no version field (read 2026-10-20). `display.color` is still read
+  for one more minor release (2005's rule), so a game's own profile
+  keeps loading. **Either order with 2517:** if 2517 is done, list the
+  move as a `Change::manual` of `TargetRon` (`Format::changes`), so
+  `shuyi check` warns and `shuyi upgrade` says what to do, and add the
+  target profile kind to `Importers::standard()` so `upgrade` finds a
+  game's own profiles; if not, 2517 lists it when it lands. 3006's one-bit
+  check (done; `check --target` runs it on every `color: OneBit`
+  target) reads the new field in this PR.
+- **The run-time facts read the same profiles.** 3053's
+  `PlatformFacts::from_profile` reads `quit`, `display.windowed` and
+  `input`'s `pointer`, `touch` and `keyboard`. If this ticket moves a
+  field it reads (touch into `screens`' `Surface.touch`, say), change
+  `from_profile` in the same PR, so check time and run time read one
+  place. If 3053 isn't done, it reads them where this ticket leaves
+  them.
 - **Every profile gets its capabilities**, with a comment on each
   provisional number naming the ticket that checks it:
 
-  | Profile | `colour` | `screens` | `three_d` | `sprites` | `memory` (RAM / video RAM) | `audio` |
-  | ------- | -------- | --------- | --------- | --------- | -------------------------- | ------- |
-  | `desktop` | `Rgba8` | one, `Any` | `Full` | none | none / none | none, `Streamed` |
-  | `web` | `Rgba8` | one, `Any` | `Full` (WebGL 2) | none | none / none | none, `Streamed` |
-  | `steam-deck` | `Rgba8` | one, 1280 × 800, `touch: false` | `Full` | none | 16 GB / none | none, `Streamed` |
-  | `playdate` | `OneBit` | one, 400 × 240 | `Software { max_triangles: 300 }` (prov., ADR-0011 §8) | none | 16 MB / 0 | none, `Streamed` |
-  | `switch` (planned) | `Rgba8` | one, 1280 × 720 | `Full` | none | to be filled by 3014 | to be filled by 3014 |
-  | `android`, `ios` (planned) | `Rgba8` | one, `Any`, `touch: true` | `Full` (prov.) | none | none / none | none, `Streamed` |
+  | Profile | `colour` | `blend` | `screens` | `three_d` | `sprites` | `memory` (RAM / video RAM) | `audio` |
+  | ------- | -------- | ------- | --------- | --------- | --------- | -------------------------- | ------- |
+  | `desktop` | `Rgba8` | `Full` | one, `Any` | `Full` | none | none / none | none, `Streamed` |
+  | `web` | `Rgba8` | `Full` | one, `Any` | `Full` (WebGL 2) | none | none / none | none, `Streamed` |
+  | `steam-deck` | `Rgba8` | `Full` | one, 1280 × 800, `touch: false` | `Full` | none | 16 GB / none | none, `Streamed` |
+  | `playdate` | `OneBit` | `OneBit` | one, 400 × 240 | `Software { max_triangles: 300 }` (prov., ADR-0011 §8) | none | 16 MB / 0 | none, `Streamed` |
+  | `switch` (planned) | `Rgba8` | `Full` | one, 1280 × 720 | `Full` | none | to be filled by 3014 | to be filled by 3014 |
+  | `android`, `ios` (planned) | `Rgba8` | `Full` | one, `Any`, `touch: true` | `Full` (prov.) | none | none / none | none, `Streamed` |
 
   The Steam Deck's screen is a touchscreen, but Deck Verified wants
   nothing to need it (ADR-0008 §1), so it says `touch: false` with a
   comment saying why.
+
+  Each profile's audio `features` comes from what its backend plays on
+  the day. For quad-snd 0.2.8 (desktop, web, Steam Deck) it is `[]`:
+  quad-snd can't pause (2344 mutes instead), change the rate, pan or
+  loop a region. A ticket that gives that backend a feature (2902's
+  chosen stack, say) adds it. The Playdate's comes from 3029. The
+  GBA's and the DS's are provisional, from 3027 and 3024.
 - **Three new profiles, `status: planned`**, from ADR-0012 §2 and §3, so
   that the bake (3019), the CI builds (3020) and the two-screen work
   (3023) have a real profile to read. The backend tickets (3021, 3024)
   check every value and complete them:
   - `targets/gba.ron`: 240 × 160, `Indexed { banks: 16,
-    colours_per_bank: 16, bits_per_pixel: 4 }`, `three_d: None`,
-    sprites `{ max: 128, max_per_line: Some(32) }` (prov., 3018), RAM
-    294 912 (32 KB + 256 KB) and video RAM 98 304, audio 2 channels
-    `Mixed`, text 8 / 8 px, 60 / 30 fps, inputs as in ADR-0012 §2,
-    `backend: shuyi-gba`;
+    colours_per_bank: 16, bits_per_pixel: 4 }`, `blend: None`,
+    `three_d: None`, sprites `{ max: 128, max_per_line: Some(32) }`
+    (prov., 3018), RAM 294 912 (32 KB + 256 KB) and video RAM 98 304,
+    audio 2 channels `Mixed`, text 8 / 8 px, 60 / 30 fps, inputs as in
+    ADR-0012 §2, `backend: shuyi-gba`;
   - `targets/nds.ron`: two surfaces of 256 × 192, the lower one
     `touch: true`; `colour` is the 2D layers' `Indexed { 16, 16, 4 }`,
     and the 3D engine's 15-bit colour is part of `three_d`;
-    `three_d: Hardware { max_triangles: 2048, max_texture_bytes: 524288
-    (prov.), effects: [fog, edge_marking, toon, alpha] }`; sprites
+    `blend: None`; `three_d: Hardware { max_triangles: 2048,
+    max_texture_bytes: 524288 (prov.), effects: [fog, edge_marking,
+    toon, alpha] }`; sprites
     `{ max: 128 }` per screen; RAM 4 MiB, video RAM 671 744 (656 KB);
     audio 16 channels `Mixed` (prov., 3018); text 8 / 10 px; inputs as
     in ADR-0012 §3; `backend: shuyi-nds`;
-  - `targets/dsi.ron`: as `nds`, with 16 MiB of RAM.
+  - `targets/dsi.ron`: as `nds` (`blend: None` too), with 16 MiB of
+    RAM.
 - **`Needs`**, in `shuyi_assets::target`, one type read from three
   places:
   - a module's `[package.metadata.shuyi.needs]` (2003's `ModuleInfo`
@@ -106,9 +146,13 @@ None.
     do without (3107's diorama skin uses it).
 
   Its fields: `colour` (`Any`, `Indexed { min_colours }` or `Rgba8`),
+  `blend` (the `Blend` modes a skin uses, each optional or required),
   `three_d` (a level, and optionally `triangles` and `effects`),
-  `sprites` (`at_once`, `per_line`), `ram_bytes`, `touch`. Every field
-  is optional, and an empty table means "runs on every target".
+  `sprites` (`at_once`, `per_line`), `ram_bytes`, `touch`, `audio` (a
+  list of `AudioFeature`s, each one required or optional). Every field
+  is optional, and an empty table means "runs on every target". An
+  `optional` list may be in any of the three places: it names the
+  effects, blend modes and audio features its source can do without.
 - **Every module states its needs.** `cargo xtask check-modules` (2003)
   fails when a module crate has no `needs` key at all, so "runs
   everywhere" is said on purpose, never by forgetting. The catalog
@@ -126,7 +170,14 @@ None.
   - `colour: Rgba8` fails on `Indexed` and `OneBit`; `Indexed {
     min_colours }` fails on `OneBit`, and on an `Indexed` target with
     fewer colours;
-  - sprites, RAM and touch compare numbers and flags.
+  - sprites, RAM and touch compare numbers and flags;
+  - `blend`: `Full` and `OneBit` have every mode (`OneBit` by its
+    rule), and `None` has `Alpha` only. A required `blend` mode a target
+    lacks fails, and an optional one goes in `left_out`;
+  - an audio feature that is not in the target's `features` fails,
+    unless it is optional, in which case it goes in `left_out`. Example:
+    a game that changes a sound's rate (3029's `set_rate`) on a target
+    whose backend has no `Rate`.
 - **The error text** names the source, the need and what the target
   has, for example: "module shuyi-3d needs three_d: software; target
   gba has three_d: none", and "stage battle needs 200 sprites at once;
@@ -141,7 +192,9 @@ None.
 - any backend (3021, 3024);
 - measuring or setting budgets (3008, 3020);
 - making the engine drop or swap a feature by itself (ADR-0012,
-  *Alternatives*).
+  *Alternatives*);
+- a version field in the profile format, or a `Migrate` chain for it:
+  2110's chain is for saves, and 2005's rule keeps the old name read.
 
 **Either order with 2504** (the new-game wizard's targets, ADR-0013 §5):
 if 2504 is done, wire `capabilities_fit` into the wizard's composer as
@@ -149,12 +202,18 @@ if 2504 is done, wire `capabilities_fit` into the wizard's composer as
 against targets"), and add the `gba`, `nds` and `dsi` profiles to its
 targets question as planned. If not, 2504 calls it when it lands.
 
+**Either order with 2337** (tint and blend modes): if 2337 is done,
+`blend` and the skin's `blend` need are in this PR as above. If not,
+leave both out and add a line to 2337 saying it adds them, with the
+rule in *The check*.
+
 ## Implementation steps
 
-1. Add `Capabilities`, `Surface`, `ThreeD`, `SpriteLimits`, `Memory` and
-   `AudioCaps` to `crates/assets/src/target.rs`, with the version bump
-   and the `display.color` migration. Extend the property test on random
-   bytes (ADR-0007).
+1. Add `Capabilities`, `Surface`, `BlendCaps`, `ThreeD`, `SpriteLimits`,
+   `Memory`, `AudioCaps` and `AudioFeature` to
+   `crates/assets/src/target.rs`, with `display.color` still read for
+   one release and, if 2517 is done, listed as a change. Extend the
+   property test on random bytes (ADR-0007).
 2. Add `capabilities` to the seven existing files in `targets/`, and
    write `gba.ron`, `nds.ron` and `dsi.ron` from ADR-0012.
 3. Add `Needs` and its decoding from TOML (module metadata, the
@@ -165,14 +224,15 @@ targets question as planned. If not, 2504 calls it when it lands.
 5. Write `capabilities_fit` with a test per rule, then wire it into
    `check --target`, its JSON output and the CLI's text table.
 6. Add fixture games: one with a 3D module on `gba`, one stage with 200
-   sprites, one skin with an optional and a required effect on `nds`.
+   sprites, one skin with an optional and a required effect on `nds`,
+   one game that needs `audio: [Rate]`.
 
 ## Acceptance criteria
 
 - [ ] Every file in `targets/` decodes, and a test checks the `gba` and
       `nds` values against ADR-0012 §2 and §3.
-- [ ] A profile in the old format (with `display.color`) loads through
-      the migration (fixture).
+- [ ] A profile in the old format (with `display.color`) still loads,
+      and if 2517 is done `shuyi check` warns on it (fixture).
 - [ ] A fixture game with a module that needs `three_d: software` fails
       `shuyi check --target gba` with the module, the need and
       "three_d: none" in the message, and passes on `desktop`.
@@ -186,12 +246,18 @@ targets question as planned. If not, 2504 calls it when it lands.
 - [ ] `cargo xtask check-modules` fails on a fixture module with no
       `needs` key.
 - [ ] The JSON output matches its schema (1129's schema test).
+- [ ] A fixture game that needs `audio: [Rate]` fails `shuyi check
+      --target` on a profile without `Rate`. With `Rate` optional, it
+      passes and lists `Rate` in `left_out`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: each rule of `capabilities_fit`, passing and failing; the
-  `three_d` ordering; the migration.
+  `three_d` ordering; the `blend` rule passing and failing; the audio
+  features rule; the voice limit is the smaller of `max_voices` and
+  `channels`; the warning when `max_voices` is over `channels`; an old
+  profile's `display.color` still read.
 - Property: random `Needs` against random profiles never panic, and an
   empty `Needs` fits every profile.
 - Integration: `shuyi check --target` on the fixture games, through the

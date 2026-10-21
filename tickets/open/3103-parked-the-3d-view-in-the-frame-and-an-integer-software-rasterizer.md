@@ -6,7 +6,7 @@ milestone: "Parked: 3D"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3101", "3102", "1120"]
+blocked_by: ["3101", "3102", "1120", "2332"]
 nick_input: none
 completed:
 ---
@@ -37,8 +37,9 @@ it gets an ADR (the `write-adr` skill) extending ADR-0011 §5 and
 ADR-0003 §5.
 
 It builds on 3101 (`Fx12`, transforms, `Angle16`), 3102 (meshes,
-materials, textures) and 1120 (world layers, their order and snapshot
-lines).
+materials, textures), 1120 (world layers, their order and snapshot
+lines) and 2332 (the raster: `frame-png`'s painter moved into
+`shuyi_ui::frame::raster`).
 
 3106 (cameras) and this ticket can land in either order. If 3106 has
 landed, add `From<CameraPose> for Camera3` here. If not, 3106 adds it.
@@ -58,8 +59,12 @@ None.
     kind, ordered with the others, so 2D layers and glyph cells draw
     over and under it as today;
   - `trait ModulePainter` with `module()` and `paint(&self, layer: &dyn
-    ModuleLayer, assets, target: &mut RgbaImage) -> PaintReport`, and a
-    `Painters` registry that `frame-png` uses;
+    ModuleLayer, assets, target: &mut shuyi_ui::frame::raster::Image)
+    -> PaintReport`, and a `Painters` registry in
+    `shuyi_ui::frame::raster` (2332) that the raster `Painter` calls for
+    module layers, so `frame-png` and a game painting with the raster
+    both get it. Both sit behind `shuyi-ui`'s `raster` feature, as the
+    raster does;
   - a module layer with no painter is drawn as a grey box labelled with
     the module's name, and `frame-png` lists it in its `limits`. It is
     never silently blank.
@@ -89,10 +94,12 @@ None.
     dropped (1/4096 is `0.000244140625`), so a snapshot is exact and
     readable;
   - a golden test for one view with one of each.
-- **`shuyi_3d::raster`** (behind `draw`, `no_std` with `alloc`):
+- **`shuyi_3d::raster`** (behind `draw`, which turns on `shuyi-ui`'s
+  `raster` feature; `no_std` with `alloc`):
   - `fn render(view: &View3d, assets: &Assets3, w: u16, h: u16) ->
-    (RgbaImage, RasterReport)`, where `Assets3` looks up loaded meshes,
-    materials and textures by `AssetPath`;
+    (Image, RasterReport)`, where `Image` is the raster's
+    (`shuyi_ui::frame::raster::Image`, 2332) and `Assets3` looks up
+    loaded meshes, materials and textures by `AssetPath`;
   - vertices to camera space with `FxTransform`, projection in
     integers, clipping against the near plane, back faces culled unless
     the material is double-sided;
@@ -124,8 +131,10 @@ None.
 ## Implementation steps
 
 1. Write the ADR for the module layer (the `write-adr` skill). Add the
-   hook and the `Painters` registry to `shuyi-ui` and `frame-png`, with
-   a fixture module layer that prints two lines and paints a square.
+   hook to `shuyi_ui::frame`, and `ModulePainter` and the `Painters`
+   registry to `shuyi_ui::frame::raster` (`frame-png` uses it through
+   2332's wrapper), with a fixture module layer that prints two lines
+   and paints a square.
 2. Write `shuyi_3d::view`, its snapshot lines and the golden test.
 3. Write the rasterizer one stage at a time, each with unit tests on
    tiny images (4 × 4 to 16 × 16): one flat triangle, two triangles

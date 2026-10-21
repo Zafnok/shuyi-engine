@@ -6,7 +6,7 @@ milestone: "Engine: accessibility"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2209"]
+blocked_by: ["2209", "2018"]
 nick_input: none
 completed:
 ---
@@ -26,12 +26,21 @@ Shuyi draws text in a console: `cols × rows` cells of `cell_w × cell_h`
 logical pixels (`ConsoleSpec`, `crates/ui/src/frame/console.rs`). The
 game picks one with `GameData::console()` (game ADR-0070 §6), and the
 console is scaled to fit the window (game ADR-0012). The player has no
-say. 3001's check makes sure a target's smallest text is big enough;
-that is the developer's floor, not the player's choice.
+say in the console. The window may show the logical frame at a whole or
+a fractional scale (2333's `ScaleMode`). `glyph_scale` here sizes the
+cells inside the logical frame and stays whole either way; under `Fit`,
+glyphs are still drawn with nearest sampling into the whole-scale
+picture that 2333 then smooths. 3001's check makes sure a target's
+smallest text is big enough; that is the developer's floor, not the
+player's choice.
 
 Bigger text in the same window means bigger cells, so fewer of them.
 Screens that lay out by the buffer's size keep working; screens that
 assume 80 columns don't, and the check here finds them.
+
+Sound captions (2366, parked) are drawn in cells by
+`sound_captions::paint`, which reads the buffer's width and height, so
+they follow the text size with no work here.
 
 ## Nick input
 
@@ -48,20 +57,41 @@ None.
   `cols` and `rows` shrink to what fits the same logical frame. Sprites
   and rectangles, placed in pixels, don't move.
 - **The setting:** `Settings::text_size: u8`, an index into the game's
-  list, saved with the engine's settings (old saves read as 0). A row
+  list, saved with the engine's settings (old saves read as 0).
+  **Either order with 2110:** if it is done, each versioned settings
+  form that gains the field (2110 versions 2511's `()` form and the grid
+  template's) raises its `VERSION`, reads the old version by
+  `Self::deserialize` in `Migrate::upgrade`, and adds a `v<N>_*.ron`
+  fixture beside the old ones, which must still read (its saves test
+  fails otherwise); if not, 2110's version 1 has it. A row
   `OptionRow::text_size()` for the options screen. **Either order with
   2314:** if 2314 is done, make it an enum option row; if not, a
-  stepped row like `text_speed`, and 2314 converts it.
+  stepped row like `text_speed`, and 2314 converts it. **Either order
+  with 2351:** if it is done, the row's own text keys get their English
+  in the engine's `crates/ui/lang/en/ui.ron`; if not, in the toy's
+  `en.ron`, and 2351 moves them. The labels of the sizes the game
+  offers (`TextSize::label`) stay the game's.
 - **Switching:** when the setting changes, `Game::frame` makes a new
   `GlyphBuffer` with the new spec on the next frame. Screens draw from
   their state each frame, so they redraw at the new size.
-- **The renderers:** `shuyi-app`'s `render.rs` and `frame-png` draw a
-  glyph at `glyph_scale` with nearest-neighbour sampling, with
-  identical pixels on a test frame.
+- **The renderers:** `shuyi-app`'s `render.rs` and the raster
+  (`shuyi_ui::frame::raster`, 2332) draw a glyph at `glyph_scale` with
+  nearest-neighbour sampling, with the same pixels: a capture at the
+  second size, on 2018's render card or in a hello-grid plan, compared
+  by 2018's `render` CI job.
+- **Text runs (2334), if done:** a run keeps its position, and its
+  glyphs, advances, line height, and outline and shadow offsets grow by
+  `glyph_scale`, so text placed in pixels grows with the cells. The
+  check covers runs too (`TextRun::cut`). If 2334 isn't done, nothing
+  here.
 - **The check:** a harness helper, `harness::check_text_sizes(&mut
   Harness, screens)`, draws each named screen at every offered size and
   reports text cut off or drawn past the buffer, with 2209's
   fits-its-box check, naming the screen, the size and the text key.
+  **Either order with 2353:** if 2353 is done, build `check_text_sizes`
+  on its walk (`shuyi_platform::harness::walk`: its `Stop` list and its
+  cut finding) and run it at every offered size. If not, write the
+  check so 2353 can reuse it, and 2353 moves it onto its walk.
   **Either order with 3001:** if 3001 is done, its text check runs at
   every offered size too.
 - **The toy game** offers two sizes, and its tests run the check.
@@ -74,16 +104,25 @@ None.
 - per-element sizes, such as only the dialogue bigger;
 - changing the game's own screens (the game's tickets, after the check
   shows which ones);
-- a second, larger font in the atlas (a follow-up if a game wants a
-  sharper big font than a scaled one).
+- a second cell font in the atlas (a follow-up if a game asks). A
+  sharper big font for text off the grid is a proportional font drawn
+  as a text run (2224, 2334);
+- a console that grows by whole cells when the window's shape changes
+  (an aspect policy like Godot's `expand`, found by the 2026-10-20
+  comparison): a follow-up ticket once this one is done, reusing its
+  new buffer for a new console size and 2333's `place`.
 
 ## Implementation steps
 
 1. Read `ConsoleSpec`, `GlyphBuffer::new`, `GameData`, `Settings` and the
-   options rows, and 2209's check.
+   options rows, 2209's check, and 2018's render card and plans. Check
+   which of 2110, 2314, 2334, 2351, 2353 and 3001 are done.
 2. Add `TextSize`, the default, the setting and its saved form.
-3. Rebuild the buffer on a change; scale glyphs in both renderers.
-4. Write the harness check and run it on the toy game.
+3. Rebuild the buffer on a change; scale glyphs in `shuyi-app` and the
+   raster, and text runs if 2334 is done. Add the capture at the second
+   size.
+4. Write the harness check (on 2353's walk if it is done) and run it on
+   the toy game.
 5. Write the guide section.
 6. Run the gates.
 
@@ -97,16 +136,19 @@ None.
 - [ ] A screen that draws at column 79 at every size fails the check,
       naming the screen and the size.
 - [ ] Old saved settings load with size 0.
-- [ ] `shuyi-app` and `frame-png` give identical pixels for a scaled
-      glyph on the test frame.
+- [ ] `shuyi-app` and the raster give the same pixels for a scaled
+      glyph (2018's `render` job passes with a capture at the second
+      size).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: cols and rows for each scale; the setting's saved form.
+- Unit: cols and rows for each scale; the setting's saved form; a text
+  run's advances and line height at each scale, if 2334 is done.
 - Property: for any scale, every cell lies inside the logical frame.
 - Snapshot / integration: the toy game's screens at both sizes; the
-  check failing on a bad screen.
+  check failing on a bad screen; the capture at the second size in
+  2018's `render` job.
 
 ## Completion notes
 

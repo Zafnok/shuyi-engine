@@ -88,7 +88,10 @@ None.
     there, with its shadow;
   - **the camera** from the stage's 2D camera: the same target, follow
     and bounds, seen from the file's tilt, distance and field of view.
-    Shake carries over;
+    Shake carries over; so do 2362's look-ahead, rooms and blends (if
+    2362 is done), which only move the 2D camera's position and zoom
+    (rooms take the place of bounds while following), so the diorama
+    camera reads them with no code of its own;
   - the lights and effects from the file (`fog` fills the view's fog,
     3103).
 - **Picking stays 2D.** `DioramaSkin` implements a `WorldPick` hook

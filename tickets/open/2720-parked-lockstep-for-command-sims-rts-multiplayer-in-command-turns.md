@@ -53,7 +53,7 @@ None.
 **In:**
 - **`shuyi_net::lockstep::CommandLockstep<S: CommandSim>`**:
   - settings: `steps_per_turn` (default 4) and `delay_turns` (default 2);
-  - 1140's handshake (engine version, the game's content hash, the
+  - 1140's handshake (the peers' `Made` stamps from 2111, and the
     seed), plus the two settings, which must match;
   - **sending:** a command issued during turn `t` is scheduled for the
     first step of turn `t + delay_turns`. Each peer sends one
@@ -72,7 +72,12 @@ None.
     frame budget), and rejoins at the next turn that hasn't been sent.
 - **The driver:** `CommandDriver` (2706) gets a gate: it asks the
   session whether the next step may run, and `issue` goes through the
-  session instead of the local queue.
+  session instead of the local queue. While the session drives the
+  steps, a peer's `Ctx::game_speed` (2123) only makes it wait: the gate
+  sets the pace. **Either order with 2123:** if it is done, add a test
+  that a peer at `GameSpeed::DOUBLE` ends with the same hash list as one
+  at `NORMAL`, at the slower peer's pace; if not, 2123's ADR says the
+  speed is local, and nothing more is needed here.
 - **Tests over `MemoryNetwork`** (1140), with seeded loss, delay,
   reordering and duplicates on the unreliable channel, and delay on the
   reliable one:
@@ -98,7 +103,14 @@ None.
 - hidden information and a referee server (1146): lockstep shows every
   peer the whole state;
 - rollback (1147);
-- the RTS view's network status display (a later ticket if wanted).
+- the RTS view's network status display (a later ticket if wanted);
+- a game speed every peer shares as a session setting (a follow-up if a
+  game asks);
+- checking that machines of different kinds (x64, ARM64, wasm32) give
+  the same hash lists: 2116 does it for the engine's crates, in CI's
+  `test` job (x64, ARM64) and its `determinism` job (wasm32), and
+  `shuyi-rts` joins the wasm32 run (2707). The tests here run every peer
+  in one process.
 
 ## Implementation steps
 
@@ -122,6 +134,9 @@ None.
 - [ ] No step of a turn runs before every peer's packet for it arrived
       (property test with the network's delay at its maximum).
 - [ ] The handshake refuses peers with different settings.
+- [ ] If 2123 is done: a peer at `GameSpeed::DOUBLE` and one at `NORMAL`
+      end with the same hash list, at the `NORMAL` peer's pace
+      (integration test).
 - [ ] `shuyi-net` doesn't depend on `shuyi-rts` (`cargo tree`).
 - [ ] All gates in the `run-gates` skill pass.
 

@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["2723", "1129"]
+blocked_by: ["2723", "1129", "2332", "2110"]
 nick_input: none
 completed:
 ---
@@ -53,7 +53,9 @@ None.
 
 **In:**
 - **`VnSave`** in `shuyi_vn::save`, asset kind `VnSave`, format
-  `vn-save` (RON text, `format_version: 1`, `deny_unknown_fields`):
+  `vn-save` (RON text, `deny_unknown_fields`; its version field is
+  `version`, version 1, so `SaveHeader` reads it, and `VnSave`
+  implements `SaveFormat` and `Migrate` (2110)):
   - the story id, the seed, and the commands, each as `(command,
     at_line: LineId)`; a `Choose` also records the picked choice's line
     id;
@@ -75,8 +77,8 @@ None.
     matches, and return `Restored { state, commands, notice }` with a
     notice the save screen shows. A save never fails to load because a
     line's text changed;
-  - a save of another story, or a newer `format_version`, is a clear
-    error.
+  - a save of another story, or a newer version, is a clear error
+    (`SaveError::Newer`, naming both versions).
 - **Going back across a load**: `history::back` (2721) replays from the
   nearest snapshot instead of from the start when there is one.
 - **The save and load screens**, glyph cells and sprite items:
@@ -92,9 +94,9 @@ None.
     turn the frame into pixels with the code behind `frame-png`, scaled
     down by a whole factor, then encode PNG bytes. No window, no
     clock, deterministic bytes;
-  - if that code lives only in `shuyi-cli`, move the function that turns
-    a `Frame` into pixels into the crate that owns `Frame`, and keep
-    `frame-png` calling it. A game can't depend on `shuyi-cli`;
+  - that code is `shuyi_ui::frame::raster::Painter` (2332), turned on
+    by `shuyi-vn` through `shuyi-ui`'s `raster` feature (a game can't
+    depend on `shuyi-cli`);
   - the PNG encoder is the one the engine already uses for `frame-png`.
     If it is not pure Rust or not allowed on the web build, say so and
     store raw pixels instead.
@@ -139,6 +141,8 @@ None.
   owns it; if 2725 lands first, it adds the rule to this ticket's scope
   and this PR writes it);
 - the example and its saves (2726);
+- movies in the gallery (2909 researches video; a ticket it writes adds
+  them);
 - anything of the detective module's fair-play check (2731).
 
 If the PR grows well past about 600 changed lines, split the route
@@ -153,7 +157,7 @@ in the Completion notes.
    line's text fixed, with a line added, with a choice reordered, and
    with a line removed.
 3. Make `history::back` start from snapshots.
-4. Move the frame-to-pixels function if needed; write the thumbnail.
+4. Write the thumbnail with 2332's `raster::Painter`.
 5. Write the save and load screens.
 6. Write `VnProfile`, the gallery and the endings list.
 7. Write `StoryGraph`, then the check rules with one bad fixture story

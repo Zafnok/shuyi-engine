@@ -41,7 +41,13 @@ None.
    - choices;
    - variables and conditions;
    - commands (our `@music`, portraits);
-   - line ids for voice and translation (game ADR-0045, game ADR-0046).
+   - line ids for voice and translation (game ADR-0045, game ADR-0046);
+   - plural, ordinal and select markup (Yarn's `[plural]`, `[ordinal]`
+     and `[select]`). 2348 gives screen and data text these choices as
+     ICU messages, but dialogue lines don't take that syntax. Refuse the
+     markup with a clear error naming the file and line. If the research
+     finds the markup in common use, write a follow-up ticket that brings
+     2348's syntax to dialogue lines.
 
    Each feature is supported, supported with a limit, or refused with a
    clear error. For Ink, decide between two routes:

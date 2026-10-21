@@ -69,15 +69,16 @@ None.
   silently dropped.
   - the first armature, or the one named by the asset path's `#name`;
   - bones: `parent`, `transform` (`x`, `y`, `skX` as the rotation, in
-    degrees, to 1119's `Angle`), `length`;
+    degrees, to 2335's `Angle`), `length`;
   - slots: `parent` bone, `displayIndex`, draw order;
   - skins: displays of `type: "image"` become attachments with their
     transform;
   - animations: `duration` in frames at the armature's `frameRate`, to
     ms; bone `rotateFrame` and `translateFrame`; slot `displayFrame`;
-    `frame` events. `tweenEasing: null` is stepped, `0` is linear; any
-    other easing or `curve` becomes linear with a warning naming the
-    JSON path.
+    `frame` events. `tweenEasing: null` is `Steps(1)` and `0` is
+    `Linear` (2105's keys take a `shuyi_core::ease::Ease`, 2109); any
+    other `tweenEasing`, and a Bézier `curve`, becomes `Linear` with a
+    warning naming the JSON path.
   - Everything 2105 doesn't support is an error naming the JSON path:
     `scX` or `scY` other than 1, a skew (`skX ≠ skY`), mesh, armature
     and bounding-box displays, IK, FFD and nested armatures.
@@ -97,12 +98,16 @@ None.
 - Spine (2217);
 - scale, skew, meshes, IK (2105 doesn't have them; a follow-up of 2105
   first);
+- keeping a Bézier `curve` as a curve: 2105's keys take an `Ease`, which
+  has no curve through points. Keys that take the `Points` curve of
+  2109's follow-up are a follow-up of 2105 first;
 - the binary DragonBones format (`.dbbin`).
 
 ## Implementation steps
 
 1. Check the licenses, as above.
-2. Read 2105's ADR and `Rig`, and 1123's sniffing rule for `.json`.
+2. Read 2105's ADR and `Rig`, 2109's `Ease`, and 1123's sniffing rule
+   for `.json`.
 3. Write the serde types for the 5.x format, from the documentation.
 4. Write the conversion to `Rig`, with errors that name the JSON path.
 5. Write the atlas format.

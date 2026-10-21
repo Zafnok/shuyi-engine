@@ -61,8 +61,14 @@ None.
   - a line at the frame budget: the cap's frame time from 2321
     (16.7 ms at 60);
   - labels: p50, p99, the worst frame, and the five spans with the
-    largest mean.
-- **The readout** (2316): one line, "frame 4.1 ms (p99 7.9)".
+    largest mean;
+  - **either order with 2368:** if 2368 is done, use its ring
+    (`debug::memory::Ring<T>`) for the 240 frames and the bars, and draw
+    this graph below the memory graph when both channels are on. If not,
+    write the ring here, as a `Ring<T>` whose length is set when it is
+    made (240 here), and 2368 uses it and the bar drawing.
+- **The readout** (2316): one line, "frame 4.1 ms (p99 7.9)". It comes
+  before 2368's heap line.
 - **Measuring in `shuyi-app`:** around update, draw, paint and present,
   with the backend's clock. **Either order with 3003:** if 3003 is
   done, through its `Platform`; if not, in `shuyi-app` directly, and
@@ -77,13 +83,17 @@ None.
 **Out (do not do):**
 - GPU times (they need timestamp queries on the wgpu renderer; a
   follow-up after 3034);
-- memory profiling;
+- memory: 2368 (parked), which shares this ticket's ring and bars
+  (either order);
 - Tracy or the `tracing` crate (a follow-up if a developer asks);
+- log messages with levels and categories (3040), and the shipped
+  build's log file (3041): this ticket measures time only;
 - budgets in CI (3008).
 
 ## Implementation steps
 
-1. Read 2315's ADR and `debug` module, 2316's readout, and 2321's cap.
+1. Read 2315's ADR and `debug` module, 2316's readout, 2321's cap, and
+   2368's ring if it is done.
 2. Write `FrameTimes`, the ring, the percentiles and spans, with a fake
    clock.
 3. Add the channel and the readout line.

@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["game#1131", "2003"]
+blocked_by: ["game#1131", "2003", "2116"]
 nick_input: none
 completed:
 ---
@@ -34,7 +34,9 @@ What it builds on:
   `grep -rn "DialogueScene" crates/`.
 - **Formats are plugins** ([ADR-0007](../../docs/adr/0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md)
   §2, §5): every new file kind is a `Format`, never panics, and is
-  deterministic.
+  deterministic. Its determinism fixture is a row in its crate's golden
+  table (2116's `shuyi_assets::golden`), checked by CI's `test` job on
+  x64 and ARM64 and by its `determinism` job on wasm32.
 - **Module duties** ([ADR-0009](../../docs/adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)
   §4) and the catalog, the `shuyi` crate and `shuyi add` (2003).
 - **The *Kind of game* concern** ([ADR-0015](../../docs/adr/0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md)
@@ -163,7 +165,10 @@ None.
     the picture placed on the place), in whole pixels;
   - `deny_unknown_fields`; errors name the file and line;
   - a fuzz-style test (random bytes never panic) and a determinism
-    fixture (the decoded value's hash is checked in).
+    fixture: the decoded value's hash is a row of
+    `crates/vn/tests/golden/formats.ron`, a golden table (2116's
+    `shuyi_assets::golden`, a dev-dependency with its `golden` feature,
+    checked by a test with `golden` in its name).
 - **The story's settings**: `vn.ron`, asset kind `VnConfig`, format
   `vn-ron`:
   - `places`: name to a point in screen pixels (integers). The defaults
@@ -173,8 +178,12 @@ None.
     Defaults exist for the first four;
   - `commands`: the game's own command names;
   - `back_past_choices`;
-  - the same fuzz-style test and determinism fixture.
+  - the same fuzz-style test, and a row in the same golden table.
 - Both formats are registered by the module's `register(&mut Formats)`.
+- **CI:** `-p shuyi-vn` joins the wasm32 `cargo test` of CI's
+  `determinism` job (2116), so the golden table and the module's tests
+  run on wasm32 too. A test that needs threads or unwinding gets 2116's
+  WASI `ignore` attribute; any other failure there is a determinism bug.
 
 **Out (do not do):**
 - the scene, the skin, transitions drawn, and text revealed over time
@@ -196,8 +205,9 @@ None.
    sections, and the catalog and `docs/modules.ron` changes. Run
    `cargo xtask check-modules`.
 2. Write `CharacterDef` and `VnConfig` with their formats, fixtures
-   (good and bad files), the fuzz-style tests and the determinism
-   fixtures.
+   (good and bad files), the fuzz-style tests and the golden table
+   (start it as `{}` and bless it with `cargo xtask golden --bless`).
+   Add `-p shuyi-vn` to the `determinism` job's wasm32 run.
 3. Write `Direction` and its parser over a command's words, with one
    unit test per command and per error.
 4. Write `Story::build`: read every scene's commands into directions,
@@ -230,7 +240,9 @@ None.
 - [ ] A command listed in `vn.ron`'s `commands` comes out as
       `VnEvent::Custom` with its arguments.
 - [ ] `character-ron` and `vn-ron` pass their fuzz-style tests, and
-      their decode hashes match the checked-in values.
+      their decode hashes match their rows in a golden table (2116's
+      `shuyi_assets::golden`), with `-p shuyi-vn` in the wasm32 run of
+      CI's `determinism` job.
 - [ ] If 2202 is done, the fixture's one scene in Yarn and one in Ink
       give the same `VnState` hashes as the same scene in `.dlg`.
 - [ ] `cargo xtask check-modules` passes, with the `visual-novel`
@@ -249,8 +261,9 @@ None.
   hashes.
 - Fuzz-style: random bytes into `character-ron` and `vn-ron` never
   panic.
-- Fixture and determinism: decode hashes for both formats; the state
-  dump of the fixture story at each stop (snapshot).
+- Fixture and determinism: decode hashes for both formats as golden
+  rows, natively in the `test` job and on wasm32 in the `determinism`
+  job; the state dump of the fixture story at each stop (snapshot).
 - Integration: the fixture story played to each ending.
 
 ## Completion notes

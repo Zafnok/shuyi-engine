@@ -22,7 +22,9 @@ asset packing)" go in-house after controllers. The web build saves through
 `quad-storage` 0.1.3 (last release August 2021), in
 `crates/app/src/storage/web.rs`, with its JS vendored as
 `crates/cli/web/quad-storage.js` and `sapp_jsutils.js` and their license
-files.
+files. Today `quad-storage.js` calls `localStorage.setItem` with no `try`
+(line 26), so a full or blocked store throws through the frame instead of
+returning an error.
 
 The pattern to follow is already in the repository: `crates/app/src/pads/web.rs`
 declares functions our own `crates/cli/web/gamepad.js` provides, as a
@@ -48,6 +50,10 @@ None.
 - **`localStorage` that throws** (private windows, storage turned off, the
   quota full): every call catches it and returns an error code, and Rust
   turns it into a `StorageError`, so the game warns and plays on.
+- **Writes stay synchronous:** `set` and `remove` call `localStorage`
+  inside the call and return after it, never batched or deferred. 3043
+  saves inside the browser's `visibilitychange` and `pagehide` events, and
+  a deferred write is lost when the page closes.
 - **`crates/app/src/storage/web.rs`** on the plugin, with the same
   `WebStorage` API and key prefix. The `extern` block is the only `unsafe`,
   as in `pads/web.rs`, under the same comment rules.
@@ -67,7 +73,8 @@ None.
 **Out (do not do):**
 - IndexedDB, or saves larger than `localStorage` allows: write a ticket
   if a game's saves outgrow it.
-- Native storage (`storage/native.rs` is already our own).
+- Native storage (`storage/native.rs` is already our own; its writes
+  surviving a power cut are 3045).
 
 ## Implementation steps
 

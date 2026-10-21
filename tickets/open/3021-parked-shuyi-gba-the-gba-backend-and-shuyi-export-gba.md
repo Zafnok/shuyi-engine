@@ -6,7 +6,7 @@ milestone: "Parked: export targets"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3018", "3003", "3004", "3017", "3019", "3020"]
+blocked_by: ["3018", "3003", "3004", "3017", "3019", "3020", "3045"]
 nick_input: none
 completed:
 ---
@@ -40,6 +40,7 @@ This ticket builds on:
 - the capabilities and the planned `gba` profile (3017);
 - images, glyphs and palettes baked to tiles (3019);
 - the pinned nightly, no atomics, and the emulator runner (3020);
+- the power-cut suite every backend's storage runs (3045);
 - the toolchain, emulator and header tool 3018 chose.
 
 **Audio is split out** to 3027 (samples and music baked for the GBA and
@@ -68,22 +69,31 @@ None. Selling is 3018's question.
   - **2D world layers** (1120) go to BG1–BG3 in mode 0. Each layer's
     camera and parallax become its scroll registers, written in the
     vertical blank. A map larger than a screen block is streamed one row
-    or column at a time as the camera moves;
+    or column at a time as the camera moves. Each background shows one
+    tile-layer item (2360): its tiles become screen-block entries with
+    the hardware's horizontal and vertical flip bits; Tiled's diagonal
+    flip, which the hardware lacks, becomes a transposed copy of the
+    tile made at bake time and counted in its group's tiles (3019); an
+    animated tile rewrites its entries when its frame changes. Sprite
+    items in world layers stay hardware sprites. If 2360 isn't done,
+    leave tile layers out and write a follow-up ticket blocked by 2360;
   - **sprite items** go to hardware sprites (OAM), from the baked
     images, through a shadow OAM copied by DMA in the vertical blank.
-    Rotated items (2703) use the affine sprites and their 32 matrices;
-  - **a frame that doesn't fit** the hardware: more world layers than
-    backgrounds, more sprites than 128 or than the per-line limit (3018's
-    table), more affine items than 32. Where it can be seen at bake time
-    (a stage's declared needs, 3017, and its map's tile layers), it is a
-    check error. For the layers, this ticket adds
-    `capabilities.tile_layers: Option<u8>` (3 on `gba`, because BG0
-    holds the cells; `None` elsewhere) and a `tile_layers` need that a
-    stage gets from its map (1124) or declares. If the DS backend (3024)
-    landed first, it added the field and a drawing part shared by both
-    backends; reuse them. At run time,
-    the extra items are dropped, counted in a `PresentStats`, and logged
-    once per frame through the emulator's debug output;
+    Rotated sprites (2335) use the affine sprites and their 32 matrices;
+  - **a frame that doesn't fit** the hardware: more tile-layer items
+    than backgrounds, a world layer whose viewport (1120) isn't the
+    whole screen, more sprites than 128 or than the per-line limit
+    (3018's table), more affine items than 32. Where it can be seen at
+    bake time (a stage's declared needs, 3017, and the tile-layer items
+    its map gives, 2360), it is a check error. For the layers, this
+    ticket adds `capabilities.tile_layers: Option<u8>` (3 on `gba`,
+    because BG0 holds the cells; `None` elsewhere) and a `tile_layers`
+    need that a stage gets from its map (one per shown tile layer, as
+    2360's `MapTiles::all` builds them) or declares. If the DS backend
+    (3024) landed first, it added the field and a drawing part shared
+    by both backends; reuse them. At run time, the extra items are
+    dropped, counted in a `PresentStats`, and logged once per frame
+    through the emulator's debug output;
   - **the frame driver**: the main loop halts until the vertical blank,
     then calls `App::frame` with `now` = vertical blanks × 1000 / 60 ms,
     in integers. So a tick stage takes exactly one step per frame, runs
@@ -93,7 +103,9 @@ None. Selling is 3018's question.
     chosen in the game's export settings (`targets.gba.save = "sram" |
     "flash64" | "flash128"`). Each write goes to the other of two slots
     with a sequence number and a checksum, and loading takes the newest
-    valid one, so a power cut mid-write loses only that write. Use
+    valid one, so a power cut mid-write loses only that write. The fake
+    save memory (below) is a `PowerCutRig`, and the storage passes
+    3045's `power_cut_suite` over it. Use
     `gba`'s save support if it has it (3018 says), or write the flash
     command sequences here;
   - **memory**: the heap in external RAM, through the `no_std`
@@ -140,6 +152,9 @@ None. Selling is 3018's question.
 - audio (3027);
 - affine and bitmap background modes (write a ticket when a game needs
   rotated backgrounds);
+- a world layer's viewport through the hardware windows, and split
+  screen by changing scroll registers mid-frame (write a ticket when a
+  game needs either on the GBA);
 - 3D, HD-2D and rigid-body physics (the profile says `three_d: None`);
 - link-cable play;
 - measuring on a device (3022).
@@ -167,8 +182,9 @@ None. Selling is 3018's question.
   - [ ] a camera moving 3 px writes 3 to the scroll register, and touches
         no tile;
   - [ ] 130 sprite items show 128, and `PresentStats` counts 2 dropped;
-  - [ ] a save survives a simulated power cut mid-write, and the older
-        slot loads;
+  - [ ] the storage passes `shuyi_ui::storage::power_cut_suite` (3045)
+        over the fake save memory, with a cut at any byte or sector
+        operation, and after a cut mid-write the older slot loads;
   - [ ] 60 vertical blanks step a tick stage exactly 60 times.
 - [ ] A fixture stage with four tile layers fails `shuyi check --target
       gba`, naming the stage and both numbers.

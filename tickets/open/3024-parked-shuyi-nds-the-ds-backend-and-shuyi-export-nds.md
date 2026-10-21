@@ -6,7 +6,7 @@ milestone: "Parked: export targets"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3018", "3003", "3004", "3017", "3019", "3020", "3023"]
+blocked_by: ["3018", "3003", "3004", "3017", "3019", "3020", "3023", "3045"]
 nick_input: none
 completed:
 ---
@@ -47,6 +47,7 @@ It builds on:
 - images baked to tiles and palettes (3019);
 - the pinned nightly and the emulator runner (3020);
 - two surfaces and pointers per surface (3023);
+- saves that survive a power cut, and the suite that checks them (3045);
 - BlocksDS, the emulator and `ndstool` as 3018 chose them.
 
 **3D is not in this ticket** (3025).
@@ -79,16 +80,20 @@ None. Selling is 3018's question.
     screen is a game setting. A game with one surface uses the top
     screen, and the lower one shows nothing;
   - **each 2D engine** draws as ADR-0012 §2 says for the GBA: glyph cells on one
-    background, world layers on the others with hardware scroll, sprite
-    items as hardware sprites (affine when rotated), and the same
-    overflow rules (check error at bake time, counted drop at run time).
-    Either order works with the GBA backend: if 3021 has landed, share
+    background, world layers on the others with hardware scroll (each
+    background showing one tile-layer item from 2360, mapped as 3021
+    maps it), sprite items as hardware sprites (affine when rotated),
+    and the same overflow rules (check error at bake time, counted drop
+    at run time). If 2360 isn't done, write a follow-up ticket for the
+    world layers, as 2360's Out says, and draw the cells and the sprites
+    here. Either order works with the GBA backend: if 3021 has landed, share
     its code where the hardware is the same, through a small crate both
     use, and reuse its `capabilities.tile_layers` (3 per engine here);
     if not, write the shared part and the field here, and 3021 reuses
     them. Record which in the PR;
-  - **touch**: `libnds`'s touch reading becomes pointer events (1121)
-    on the lower surface, in that surface's coordinates (3023);
+  - **touch**: `libnds`'s touch reading becomes pointer events (2405's
+    `PointerMoved`, `PointerDown`, `PointerUp` and `PointerLeft`) on the
+    lower surface, in that surface's coordinates (3023);
   - **the lid**: closing it sends `SystemEvent::Suspend` (so `App` saves
     and stops stepping, 3003), then the system sleeps; opening it sends
     `Resume`;
@@ -97,7 +102,8 @@ None. Selling is 3018's question.
     takes exactly one step per frame;
   - **storage**: save slots and settings as files on the flash cart's
     or the DSi's SD card, through BlocksDS's file system support, in the
-    game's folder, written atomically (a temporary file, then rename);
+    game's folder, written in the order `FileStorage` uses after 3045 (a
+    temporary file, the last good copy kept as `.bak`, then the rename);
   - **audio**: sound effects only, baked to the formats the stock ARM7
     core's sound channels play, through `libnds`'s sound calls. Music is
     a follow-up ticket written when this lands (it may reuse 3027's
@@ -161,7 +167,8 @@ None. Selling is 3018's question.
 5. Write the exporter. Add the CI build and export.
 6. Export `hello-grid`, run the replay in the emulator, and fix what's
    found.
-7. Write the docs, the catalog row and the music follow-up ticket.
+7. Write the docs, the catalog row and the music follow-up ticket (and
+   the world-layer one, if 2360 wasn't done).
 
 ## Acceptance criteria
 
@@ -174,7 +181,8 @@ None. Selling is 3018's question.
         surface as a pointer at (10, 20);
   - [ ] closing the lid sends `Suspend`, and the game's save hook runs
         once;
-  - [ ] a save survives a simulated crash mid-write;
+  - [ ] the storage passes `shuyi_ui::storage::power_cut_suite` (3045)
+        over the fake hardware's files;
   - [ ] 130 sprite items on one engine show 128, and 2 are counted.
 - [ ] `shuyi-nds` builds in 3020's `armv5te-none-eabi` job.
 - [ ] `cargo deny check` passes, and every BlocksDS part linked into the

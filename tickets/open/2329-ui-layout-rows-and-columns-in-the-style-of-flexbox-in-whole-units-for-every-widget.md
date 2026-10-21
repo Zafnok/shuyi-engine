@@ -57,23 +57,41 @@ None.
 - **Widgets measure themselves:** a `Measure` trait (the minimum size a
   widget needs: a menu's longest label and its rows, a text box's
   lines) used by `Fit`.
+- **Either order with 2334:** if 2334 is done, its `TextLabel`
+  implements `Measure` in pixels, with `shuyi_ui::frame::text::measure`;
+  if not, 2334 does it.
 - **Screens use it:** the options screen (`crates/ui/src/screens/`) and
   one other engine screen move to a layout, with their `frame-png`
   snapshots unchanged (or changed on purpose, said in the PR).
+- **Either order with 2353:** if 2353 is done, the two moved screens
+  also pass its walk in the pseudo-language (no cut text), so a layout
+  leaves room for translated text. If not, 2353's walk covers them when
+  it lands.
 - The book's chapter on the frame (2802, if done) gets a section.
 
 **Out (do not do):**
 - UI declared in a data file (2330);
 - CSS grid, absolute positioning, scrolling containers (the list cursor,
   2307, already scrolls a menu);
+- moving the focus between laid-out widgets with the d-pad (2355, which
+  waits for this ticket);
+- hit areas for the pointer: painters record them in the frame as they
+  paint inside this layout's rectangles (2405), and `Layout` is not a
+  second list of them;
+- a reading direction and mirrored rows for right-to-left languages
+  (2908, parked research). Here `Start` and `End` mean left and right on
+  a horizontal axis (`justify` in a `Row`, `align` in a `Column`), and
+  `Style`'s docs say so;
 - moving every screen at once.
 
 ## Implementation steps
 
 1. Write the layout types and the solver, rows first, then columns,
    then wrap.
-2. Add `Measure` for the widgets.
-3. Move the two screens over, keeping their snapshots.
+2. Add `Measure` for the widgets, and for 2334's `TextLabel` if it is
+   done.
+3. Move the two screens over, keeping their snapshots (and 2353's walk,
+   if it is done).
 4. Run the gates.
 
 ## Acceptance criteria

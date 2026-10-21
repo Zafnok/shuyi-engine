@@ -59,7 +59,9 @@ None.
     deuteranopia"). So a game can ship one theme per vision;
   - **text contrast:** the palette file may list pairs, `contrast:
     [(text, panel), …]`. Each pair must reach a contrast ratio of 4.5:1
-    (WCAG 2.x relative luminance). Below is a warning.
+    (WCAG 2.x relative luminance). Below is a warning. When a palette
+    names `key` (2347), the pair `(key, key_bg)` is checked by default,
+    or `(key, panel)` when the palette has no `key_bg`.
 - **`frame-png --vision <protan|deutan|tritan|achromat>`** writes the
   frame as that vision sees it, after painting, so a person or an agent
   can look.

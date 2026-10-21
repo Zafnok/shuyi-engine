@@ -1,6 +1,9 @@
 [default.extend-words]
 # Fragments from hyphenated tokens that typos splits (e.g. "CC-BY-ND").
 nd = "nd"
+# The GNU toolchain's Windows runtime DLL, `libgcc_s_seh-1.dll` (SEH:
+# structured exception handling).
+seh = "seh"
 
 [files]
 extend-exclude = [

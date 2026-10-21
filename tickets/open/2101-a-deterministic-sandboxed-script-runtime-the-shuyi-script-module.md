@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: []
+blocked_by: ["2907"]
 nick_input: none
 completed:
 ---
@@ -68,9 +68,12 @@ None (technical).
     network access, integer maths only, an operation and a memory limit;
   - `compile(name, source)`: an error names the file and line (the
     bundle's display path);
-  - a way for the game to register its read-only view types and to read
-    back plain values (numbers, booleans, strings, lists and maps of
-    them);
+  - the game's read-only view types, and the plain values read back
+    (numbers, booleans, strings, lists and maps of them), are described
+    as 2907's ADR says: one description of a game's types, by default
+    serde, handed to the runtime through its serde bridge
+    (`rhai::serde::to_dynamic` and `from_dynamic` for Rhai). No registry
+    of the module's own;
   - running a script that errors or hits a limit gives an error value
     and never panics; the caller decides what that means.
 - The WASM build and `cargo deny check` pass with the module built.
@@ -79,6 +82,15 @@ None (technical).
   as the Playdate, ADR-0008). If it doesn't, the README says so, and a
   game that builds its core without `std` keeps scripting behind a
   feature of its own.
+- **Either order with 2116:** if it is done, add `-p shuyi-script` to
+  the wasm32 `cargo test` of CI's `determinism` job, and a golden table
+  `crates/script/tests/golden/scripts.ron` (2116's
+  `shuyi_assets::golden`, a dev-dependency with its `golden` feature,
+  checked by a test with `golden` in its name) holding what three
+  fixture scripts return on fixed views. The same values are then
+  checked on x64, ARM64 and wasm32. If not, keep the property test, and
+  2116 adds the crate and the table. Don't build a one-off wasm32 check
+  here.
 
 **Out (do not do):**
 - Anything a game does with scripts: its view types, its effects, where
@@ -86,6 +98,11 @@ None (technical).
 - The module's example (2102).
 - Visual scripting (1135).
 - Scripts that change state directly, or that run on a clock.
+- Joining the frame loop. The runtime is a library the game's rules call
+  and installs no `Module`, because 2358's ADR keeps a library call the
+  default. A debug menu entry or a contract op for scripts comes through
+  2358's seam, and its follow-up for module contract ops, when someone
+  asks for one.
 
 **For the game:** additive (a new module). The game's PR that uses it
 (game#1017) moves its pin after this one.
@@ -93,13 +110,14 @@ None (technical).
 ## Implementation steps
 
 1. Read ADR-0002 (layers, determinism, licenses), ADR-0005 §5 and
-   ADR-0009 §4.
+   ADR-0009 §4, and 2907's ADR (how a game's types are described).
 2. Spike the two strongest candidates for size and determinism; write the
    ADR and its index row.
 3. Add `crates/script` with the chosen runtime's features cut to what the
    ADR allows; the metadata and README.
 4. The API above, with its tests.
-5. Check the WASM build and `cargo deny check`.
+5. Check the WASM build and `cargo deny check`; work the either-order
+   clause with 2116.
 
 ## Acceptance criteria
 
@@ -113,12 +131,16 @@ None (technical).
 - [ ] A script can't read a clock, a random source, a file or the
       network (tests that each such call fails to compile or errors).
 - [ ] The WASM build and `cargo deny check` pass.
+- [ ] If 2116 is done, the fixture scripts' values match their golden
+      table in CI's `test` and `determinism` jobs.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: compile errors, limits, reading back values.
 - Property: determinism over generated views.
+- Golden (if 2116 is done): three fixture scripts' values in
+  `crates/script/tests/golden/scripts.ron`.
 
 ## Completion notes
 

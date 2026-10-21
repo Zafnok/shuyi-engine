@@ -6,14 +6,14 @@ milestone: "Engine: more styles"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1122"]
+blocked_by: ["1122", "2116"]
 nick_input: none
 completed:
 ---
 
 # 1128 — Optional rigid-body physics (rapier2d)
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0060 says the army walks around freely (then 1119–1125 become game work). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): after Visions of Shuyi launches, not only after the MVP (`docs/decisions.md`, 2026-10-20). Unparked early only if the game needs it: its ticket 0060 says the army walks around freely (then 1119–1125 become game work), or it asks for a piece of this through its `engine-change` skill, which is then split out and unparked alone. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -39,11 +39,20 @@ None.
 - A `PhysicsWorld` stepped from a `TickSim::step` at the fixed rate.
   Bodies and colliders are created from data. Positions cross between
   `Fx` and `f32` at this crate's edge. Events come back as engine events.
+- Colliders take 1122's `CollisionLayers`, mapped onto rapier's
+  `InteractionGroups` (`memberships` from `layer`, `filter` from
+  `mask`) as each collider's `collision_groups`, so a game that moves
+  from the default movers to this module keeps its layer data. A unit
+  test shows two colliders interact in rapier exactly when 1122's rule
+  says they meet.
 - A `hash()` over body positions and velocities (their bits), so replays
   and networking (ADR-0006) can check agreement.
-- A test that runs the same scene natively and as `wasm32` and gets the
-  same hashes, against a checked-in table if running wasm in CI is
-  impractical.
+- A golden table (2116's `shuyi_assets::golden`),
+  `crates/physics/tests/golden/scene.ron`, of the test scene's hash per
+  step. The test that checks it has `golden` in its name, as 2116 asks.
+  `-p shuyi-physics` joins the wasm32 `cargo test` of CI's
+  `determinism` job, so the same hashes are checked on x64, ARM64 and
+  wasm32.
 - Measure the size it adds to a WASM build and record it.
 - Module duties (ADR-0009 §4): the metadata (concern: bodies and motion;
   answer: rigid-body physics; alternatives: the default movers and
@@ -57,21 +66,24 @@ None.
 
 ## Implementation steps
 
-1. Write the crate, the stepping and the conversion.
-2. Write the determinism test and the size measurement.
+1. Write the crate, the stepping, the conversion and the layer mapping.
+2. Write the golden table's test, add `-p shuyi-physics` to the
+   `determinism` job, and measure the size.
 3. Add a small example scene (boxes falling on a slope) in the crate's
    tests.
 
 ## Acceptance criteria
 
-- [ ] The same hashes come out natively and on wasm, or match the
-      checked-in table.
+- [ ] The scene's hashes match its golden table in CI's `test` and
+      `determinism` jobs.
 - [ ] `cargo deny check` passes.
 - [ ] The size is recorded in the Completion notes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Integration: the determinism test.
+- Unit: the layer mapping, against 1122's rule.
+- Golden: the scene's table, natively in CI's `test` job (x64, ARM64)
+  and on wasm32 in its `determinism` job.
 
 ## Completion notes

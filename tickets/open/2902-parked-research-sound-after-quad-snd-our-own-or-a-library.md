@@ -32,6 +32,14 @@ Windows and the web (3031) and on Linux and macOS (3032).
 §1 leaves the choice to this ticket. Bevy, the engine Nick names as the
 one to rival someday, uses rodio (over cpal) for sound.
 
+The 2026-10-20 comparison with Bevy 0.20, Godot 4.7, Unity 6 and Unreal
+5.8 found that a needs list copied from today's code is too short.
+Bevy's sink pauses, changes speed, seeks and mutes. Godot's web export,
+in its default Sample mode, drops bus effects, reverb and Doppler.
+quad-snd 0.2.8's `PlaySoundParams` is only `{ looped, volume }`. Judged
+against today's features alone, the research could pick a stack no
+bigger than quad-snd.
+
 This ticket decides with the facts of its day, then keeps, changes or
 drops those tickets.
 
@@ -44,10 +52,39 @@ calls: how much is ours, how long it takes, and what it costs the game.
 ## Scope
 
 **In:**
-- **What the engine needs from sound**, from the code and 3029's backend
-  trait: sound effects (WAV, OGG), streamed music with fades and loops,
-  variants, the music clock, the web, the Playdate and the GBA (3027,
-  3029), and the formats of 2203 (FLAC, MP3).
+- **What the engine needs from sound**, from the code, from 3029's shared
+  backend trait and from the after-MVP sound tickets. Mark each need
+  required or noted:
+  - required, as today: sound effects (WAV, OGG), streamed music with
+    fades and loops, variants, the music clock, the web, the Playdate
+    and the GBA (3027, 3029), and the formats of 2203 (FLAC, MP3);
+  - required, from 3029's provided methods and the tickets that call
+    them: pausing and resuming a playing sound (3029's `pause` and
+    `resume`, for 2344; quad-snd can only mute); a playback rate for
+    pitch (3029's `set_rate`, which no backend plays today; 3030's
+    resampler plans one); handles that set the volume of one playing
+    copy of a sound or stop it alone, while other copies play on (2344's
+    fades, 2345's copy caps, 2725's voices); and a voice limit whose one
+    rule for which sound loses is 2345's, decided in `App`, so a stack
+    that drops or steals voices on its own must let that be turned off
+    (2345);
+  - required for music: looping a region of a streamed track (an intro
+    played once, then a region looped with no gap: the ticket under
+    **Outputs**), and two streams sounding at once with opposite fades
+    (2341's crossfade);
+  - nothing more for group volumes and ducking (2342, 2343): they are
+    the player's rules over `set_volume`;
+  - noted, and required if 2363 is unparked first: a stereo pan per
+    voice (a left and a right volume for each sound, for positioned
+    sound, 2363);
+  - noted, not required: effects on groups (reverb, filters, a
+    limiter), and seeking to any time in a streamed track. 2211 and 2214
+    leave seeking out. The loop region above jumps back to the region's
+    start, by seeking or by decoding from the top again, so say whether
+    each decoder can seek.
+
+  Judge every candidate, in each layer, on every need, so that the stack
+  chosen plays at least what 3029's trait carries.
 - **The options**, each for decoding, mixing and output separately, since
   the answer may differ per layer (for example, our own decoders and
   mixer over a library's output):
@@ -64,6 +101,18 @@ calls: how much is ours, how long it takes, and what it costs the game.
   - a report, `docs/research/2902-sound-after-quad-snd.md`;
   - Nick's answer in `docs/decisions.md`;
   - an ADR if the choice adds a dependency or changes ADR-0021;
+  - a ticket for intro-then-loop regions on the chosen sound path (the
+    `write-ticket` skill; 2341 and 2365 leave it here): `loop_start_ms`
+    and `loop_end_ms` on `MusicCue`, checked against `length_ms`;
+    `MusicClock` wrapping into the region (and 2365's beat clock with
+    it, if 2365 is done); the loop points read from the Ogg file's
+    `LOOPSTART` and `LOOPLENGTH` comments (2212 keeps the comments; with
+    a library decoder, its comment reader), with the manifest able to
+    override them (ADR-0007); a provided method on 3029's shared backend
+    trait, with its `Unsupported` default, and one warning on a backend
+    that can only loop the whole file. It says how the Playdate file
+    player's loop range (3029) and a GBA tracker song's restart point
+    (3027) map onto the same fields;
   - the tickets updated: kept as they are, rewritten for the chosen
     library, or closed (moved to `tickets/done/` with a completion note
     saying why they were dropped).
@@ -75,18 +124,25 @@ calls: how much is ours, how long it takes, and what it costs the game.
 
 ## Implementation steps
 
-1. List the needs (scope, first bullet) from the code and 3029.
+1. List the needs (scope, first bullet) from the code, 3029's trait and
+   2341 to 2345.
 2. Survey the candidates and fill a table in the report.
 3. Measure the shortlist.
 4. Ask Nick, with a recommendation, and record his answer.
-5. Update or close the tickets, and `docs/ROADMAP.md`'s order.
+5. Update or close the tickets, write the intro-then-loop ticket
+   (Outputs), and update `docs/ROADMAP.md`'s order.
 
 ## Acceptance criteria
 
 - [ ] The report covers decoding, mixing and output, with the facts dated.
+- [ ] The report's table marks each need of the first bullet for each
+      candidate and each layer: played, played with our code on top, or
+      not. A required need that no candidate plays is named, together
+      with the ticket that would write it.
 - [ ] Nick's answer is in `docs/decisions.md`, verbatim.
 - [ ] Every ticket in 2210–2214 and 3030–3032 is kept, rewritten or closed
-      to match, and the ticket lint passes.
+      to match, the intro-then-loop ticket is in `tickets/open/`, and the
+      ticket lint passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

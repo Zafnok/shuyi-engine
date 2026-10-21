@@ -6,14 +6,14 @@ milestone: "Engine: real time"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1119"]
+blocked_by: ["1119", "1120"]
 nick_input: none
 completed:
 ---
 
 # 1122 — Collision and movement kit
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0060 says the army walks around freely (then 1119–1125 become game work). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): after Visions of Shuyi launches, not only after the MVP (`docs/decisions.md`, 2026-10-20). Unparked early only if the game needs it: its ticket 0060 says the army walks around freely (then 1119–1125 become game work), or it asks for a piece of this through its `engine-change` skill, which is then split out and unparked alone. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -37,17 +37,35 @@ None.
   - a uniform-grid broad phase;
   - `Mover::move_x` / `move_y`, which keep the fractional remainder, step
     one pixel at a time, and return what they hit;
-  - `Trigger` enter and leave events.
+  - `Trigger` enter and leave events;
+  - `CollisionLayers { layer: u32, mask: u32 }`, bits: the layers a
+    thing is in and the layers it meets. `CollisionLayers::DEFAULT` is
+    layer `1`, mask `u32::MAX`. Every box the broad phase holds, every
+    `Trigger`, every `Mover`, and each `TileCollision` (one value for
+    all its tiles) carry one. Two things meet when
+    `a.layer & b.mask != 0 && b.layer & a.mask != 0`, the rule of
+    rapier's `InteractionGroups` (1128). A mover stops only at what it
+    meets, a trigger reports only what it meets, and the broad phase
+    pairs only what meets. A game that sets none gets the same
+    behaviour as with no layers;
+  - every box in the broad phase has an id that a mover's hit and a
+    trigger's event name, and the broad phase can list the boxes of one
+    cell in id order (2124's queries walk its cells).
 - `shuyi_core::controllers::top_down`: 8-way and analog movement with
   acceleration, top speed and friction, all as data (RON). It works with
   the `TopDown` perspective marker only (ADR-0009 §3, markers from
   1120), and a `compile_fail` doc test shows it can't be used with
   another one.
 - Property tests:
-  - a mover never ends inside a solid tile or box;
+  - a mover never ends inside a solid tile or box whose layers it
+    meets;
   - moving by `a` then by `b` equals moving by `a + b` when nothing is
     in the way;
-  - the same inputs give the same positions.
+  - the same inputs give the same positions;
+  - with every layer `DEFAULT`, the same moves give the same positions
+    and hits as with layers ignored;
+  - a mover never stops at a box or tile whose layers it doesn't meet,
+    and a trigger never reports one.
 - The new-game wizard (ADR-0013 §3–§4). Set the `top-down` answer of
   the perspective concern in `docs/modules.ron` to ready, if 2502 has
   added it. If 2503 is done, add the part `stage-top-down` to the
@@ -55,7 +73,13 @@ None.
   `TopDown`, and its test. If 2503 isn't done, 2503 adds it.
 
 **Out (do not do):** slopes; the platformer controller (1127); rigid
-bodies (1128).
+bodies (1128); queries that move nothing: segment casts, point and
+overlap queries, and mover probes (2124); code over a store. The kit is
+plain values and pure functions that name neither `shuyi_core::arena`
+(`Arena<T>`, `Id<T>`) nor `shuyi-ecs`'s `World` or `Entity` (the kit
+rule of 2904's ADR). The broad phase gives each box its own id (the
+`BoxId` 2124 reads), `Trigger` events name boxes by that id, and a game
+maps it to its things in whichever store it uses.
 
 ## Implementation steps
 

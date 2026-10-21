@@ -48,8 +48,14 @@ None.
     Eq + Serialize + DeserializeOwned`, `type Event`, `fn step(&mut
     self, due: &[Timed<Self::Command>]) -> Vec<Self::Event>`, `fn
     hash(&self) -> u64`.
-  - `CommandRecord<C> { format_version: u32, seed: u64, steps: u64,
-    commands: Vec<Timed<C>> }`:
+  - `CommandRecord<C> { format_version: u32, made: Made, seed: u64,
+    steps: u64, commands: Vec<Timed<C>> }`:
+    - `made` is 2111's stamp: the engine version, the game's stamp and
+      the content fingerprint. `replay_commands` takes the build's
+      `Made` too, and refuses a record whose `made` differs from it,
+      naming both (`Made::check`). **Either order with 2111:** if 2111
+      isn't done, leave `made` out; 2111 adds it when it lands after
+      this;
     - `steps` is the run's length, so steps after the last command
       replay too;
     - `commands` are kept ordered by step, then player, then the order
@@ -77,9 +83,11 @@ None.
     command in compact RON.
   - Nothing here reads a clock, a file or a float.
 - **In `shuyi_ui::tick`**, beside 1119's `TickDriver`:
-  - `CommandDriver<S: CommandSim>`: the same accumulator, with at most 4
-    steps a frame and the same slow-down rule as `TickDriver`. Share the
-    accumulator code; don't copy it.
+  - `CommandDriver<S: CommandSim>`: steps the sim `FrameInput::ticks()`
+    times, as `TickDriver` does. The accumulator is `App`'s `TickClock`
+    (ADR-0024 §4), so it gets the same cap and, once 2123 is done, the
+    game speed. Share the stepping code with `TickDriver`; don't copy
+    it.
   - `issue(player, command)` schedules a local command for `now + delay`
     steps. `delay` is a setting, `1` by default (the next step); 2720
     sets lockstep's.
@@ -100,7 +108,14 @@ None.
 - computer players issuing commands (2714, 2715);
 - a `replay` operation for command records in the tool contract. If
   1129 has a `replay` operation when this lands, write a follow-up
-  ticket for it.
+  ticket for it;
+- a soak of command sims: `shuyi_core::soak` (2527) checks `TurnRules`
+  games only. When this lands, write a follow-up ticket for the same
+  reload-per-step check over a `CommandSim`, as for the contract's
+  `replay` above;
+- a generic queue of delayed events: 2115 left `Delayed<E>` out of
+  `shuyi_core::timer`. If a ticket adds one before this starts,
+  `CommandQueue` builds on it rather than beside it.
 
 ## Implementation steps
 
@@ -110,7 +125,7 @@ None.
 2. Add `CommandQueue` and `replay_commands`.
 3. Add the text dump and serde, with a format version.
 4. Add `CommandDriver` in `crates/ui/src/tick.rs`, sharing the
-   accumulator with `TickDriver`.
+   stepping code with `TickDriver`.
 5. Add the Harness methods.
 6. Write `Beacons` and its tests.
 
@@ -127,8 +142,10 @@ None.
 - [ ] A record round-trips through RON unchanged.
 - [ ] A snapshot of `Beacons`' record dump after 120 Harness steps
       passes.
-- [ ] `shuyi-core` still builds with no floats in `tick` (the existing
-      lint or a grep test), and for `wasm32-unknown-unknown`.
+- [ ] `shuyi-core` still builds with no floats in `tick` (2015's
+      `#![cfg_attr(not(test), deny(clippy::float_arithmetic))]` in
+      `crates/core/src/lib.rs` passes), and for
+      `wasm32-unknown-unknown`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -26,7 +26,9 @@ completed:
 A 2D game should meet the frame time easily. Battery is where a careless
 engine shows: drawing every frame at full speed when nothing changed, or
 a busy loop. This ticket measures on a real Deck and records the numbers
-in `docs/targets/steam-deck.md`.
+in `docs/targets/steam-deck.md`. It also gives the `steam-deck` exporter
+(3012) the run step 3004 defines, so a session puts a build on the Deck
+and starts it from the computer over SSH.
 
 ## Nick input
 
@@ -36,7 +38,11 @@ in `docs/targets/steam-deck.md`.
 2. Put the example on it. The session will give the exact steps from
    `docs/targets/steam-deck.md` (3012): either the SteamOS Devkit Client
    from Windows, or copying the folder over and adding it as a non-Steam
-   game in desktop mode.
+   game in desktop mode. Or, once: in desktop mode, set a password with
+   `passwd` in Konsole, turn on SSH with `sudo systemctl enable --now
+   sshd`, and read the Deck's address in its network settings. The
+   session then puts the example on the Deck and starts it with `shuyi
+   export steam-deck --run --host deck@<address>`.
 3. Say which model it is (LCD or OLED).
 
 **Sign-off:** play the example on the Deck for five minutes in handheld
@@ -46,6 +52,18 @@ feels smooth.
 ## Scope
 
 **In:**
+- **Run from the computer.** `shuyi export steam-deck --run --host
+  <user@address>` (3004's run step) copies the package to
+  `~/shuyi/<game>/` on the Deck with the system's `scp` (OpenSSH;
+  Windows 11 ships the client) and unpacks it. It starts the launch
+  script with the system's `ssh` in the Deck's desktop session, and
+  prints the game's stdout and stderr until the game exits or the
+  command is stopped. A missing `ssh` or a refused login says how to set
+  it up. `docs/targets/steam-deck.md` gains this route beside the
+  SteamOS Devkit Client. If it passes about 600 changed lines, it goes
+  to a follow-up ticket (After MVP, `30xx`, written with the
+  `write-ticket` skill), with its criterion below, and this ticket's
+  measurements use the Devkit Client.
 - **Frame times.** Log them with MangoHud (MIT; built into SteamOS's
   performance overlay), by launching with `MANGOHUD_CONFIG` set to log
   frame times to a CSV. Run every bench scenario (3008) five times.
@@ -63,7 +81,8 @@ feels smooth.
   set `status: supported` if all budgets hold.
 - **If the idle draw is over 8 W.** Write a ticket. The likely fix is to
   present only when the frame changed, or to cap the frame rate on idle
-  screens.
+  screens. 3043's background frame cap covers only a window without
+  focus; an idle screen that has the focus needs that new ticket.
 
 **Out (do not do):**
 - optimizing (follow-up tickets);
@@ -71,21 +90,27 @@ feels smooth.
 
 ## Implementation steps
 
-1. Write the measuring steps in the docs, so they can be repeated.
-2. Measure, report and calibrate.
-3. Write the follow-up tickets for any misses.
+1. Write the `steam-deck` run step, its tests and its docs, and start
+   the example on the Deck with it.
+2. Write the measuring steps in the docs, so they can be repeated.
+3. Measure, report and calibrate.
+4. Write the follow-up tickets for any misses.
 
 ## Acceptance criteria
 
 - [ ] `docs/targets/steam-deck.md` has every scenario's numbers, the
       power draw, and the model.
 - [ ] The budgets are set from the measurements, and the PR shows them.
+- [ ] `shuyi export steam-deck --run --host` starts the example on the
+      Deck, and its output reaches the terminal (Completion notes).
 - [ ] Nick's sign-off is recorded.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- None beyond the gates. This ticket measures.
+- Unit: the `scp` and `ssh` commands the run step builds from `--host`
+  and the game's name, and the message when `ssh` is missing.
+- Manual: the run on the Deck, and the measurements.
 
 ## Completion notes
 

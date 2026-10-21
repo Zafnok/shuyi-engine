@@ -6,7 +6,7 @@ milestone: "Engine: MIDI music"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["2201", "2003"]
+blocked_by: ["2201", "2003", "2116"]
 nick_input: none
 completed:
 ---
@@ -55,6 +55,12 @@ None.
   integer ticks, the ticks per quarter note, the tempo map, and the
   length in ticks. No floats. A `Sequence` can be built in code with a
   small builder, and it has a text form, `*.seq.ron`.
+- **Either order with 2365** (parked: a beat and bar clock for recorded
+  music): if 2365 is done, add `Sequence::beat_at(tick) ->
+  shuyi_core::beat::BeatPos`, with beats from the ticks per quarter note
+  and bars from the time signature (4/4 if the `Sequence` keeps none),
+  so a screen keeps time with MIDI and recorded music the same way. If
+  not, 2365 adds it when it is worked.
 - **`SoundBank`** in `shuyi_midi::bank`: the `.sf2` file's bytes, checked
   to parse, with its preset names listed.
 - **Formats** (ADR-0007), registered by the module's `register` call:
@@ -71,6 +77,12 @@ None.
   `THIRD_PARTY_ASSETS.md` as our own: two short `.mid` files (one track,
   several tracks with a tempo change) and the smallest `.sf2` that holds
   one instrument.
+- **A golden table**, `crates/midi/tests/golden/formats.ron`, through
+  2116's `shuyi_assets::golden` (a dev-dependency on `shuyi-assets`
+  with its `golden` feature), checked by a test with `golden` in its
+  name: one row per fixture, the `state_hash` of what its format
+  decodes. `-p shuyi-midi` joins the wasm32 `cargo test` of CI's
+  `determinism` job.
 - **A sound bank for games.** Look for a General MIDI bank under
   CC0-1.0, CC-BY-3.0 or CC-BY-4.0. Record what you found, with links
   and dates, in the README. If none passes, the engine ships none, and
@@ -87,13 +99,15 @@ None.
 1. Check the crates' licenses and web builds; record the results.
 2. Write the crate, its metadata, README and catalog row.
 3. Write `Sequence`, its builder and `seq-ron`.
-4. Write the `mid` and `sf2` formats, with fixtures and tests.
+4. Write the `mid` and `sf2` formats, with fixtures, tests and the
+   golden table.
 5. Add the music concern to the catalog.
 
 ## Acceptance criteria
 
-- [ ] Each fixture `.mid` decodes to a checked-in `Sequence` hash on
-      native and web (or the CI equivalent).
+- [ ] Each fixture `.mid` decodes to the `Sequence` hash in a golden
+      table (2116's `shuyi_assets::golden`), and `-p shuyi-midi` joins
+      the wasm32 `cargo test` of CI's `determinism` job.
 - [ ] A `.mid` fixture and its `.seq.ron` give equal `Sequence`s.
 - [ ] `cargo deny check` passes with the `midi` feature on.
 - [ ] `check-modules` passes, with the music concern and the module's
@@ -103,8 +117,10 @@ None.
 
 ## Tests required
 
-- Unit: the builder; tick and tempo maths with no floats.
-- Fixture and determinism: decode hashes per format.
+- Unit: the builder; tick and tempo maths with no floats;
+  `Sequence::beat_at`, if 2365 is done.
+- Golden: decode hashes per format in `formats.ron`, natively in CI's
+  `test` job and on wasm32 in its `determinism` job.
 - Fuzz-style: arbitrary bytes into `mid`, `seq-ron` and `sf2` never
   panic.
 

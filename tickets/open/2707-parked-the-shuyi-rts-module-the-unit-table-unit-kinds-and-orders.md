@@ -6,7 +6,7 @@ milestone: "Engine: real-time strategy"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["2705", "2706", "2003", "2201"]
+blocked_by: ["2705", "2706", "2003", "2201", "2116"]
 nick_input: none
 completed:
 ---
@@ -39,6 +39,9 @@ It builds on:
   false` and `rts` as a parked answer.
 - **2201**, the format registry: `*.unit.ron` is a format
   ([ADR-0007](../../docs/adr/0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md)).
+- **2116**, golden tables (`shuyi_assets::golden`) and CI's
+  `determinism` job, which check the format's fixture on x64, ARM64
+  and wasm32.
 
 Units move in straight lines only here. Paths are 2709 and 2710,
 steering 2711, combat 2712.
@@ -121,8 +124,9 @@ None.
     speed, each error naming the file and the kind;
   - **the format** (ADR-0007): `unit-kind`, extension `.unit.ron`, a
     `Format` registered by `shuyi_rts::register`, a fuzz-style test,
-    and a determinism fixture (a checked-in hash of the decoded fixture
-    kinds, the same on native and web).
+    and a determinism fixture (the decoded fixture kinds' hash as a row
+    of a golden table, 2116's `shuyi_assets::golden`, with `-p
+    shuyi-rts` in the wasm32 run of CI's `determinism` job).
 - **Commands, `shuyi_rts::orders`** (ADR-0015 §2):
   - `RtsCommand<G = NoGameCommand>`:
     - `Move { units, to, queued }`;
@@ -201,9 +205,9 @@ None.
       and emits `CommandIgnored`.
 - [ ] With no removals, every row runs exactly once in any `k`
       consecutive steps (property test on `Buckets`).
-- [ ] The fixture kinds decode to the checked-in hash on native and web;
-      each bad fixture gives an error naming the file and the kind;
-      arbitrary bytes into the format never panic.
+- [ ] The fixture kinds decode to their golden row in CI's `test` and
+      `determinism` jobs; each bad fixture gives an error naming the
+      file and the kind; arbitrary bytes into the format never panic.
 - [ ] A snapshot of the text dump after 120 steps of the fixture passes.
 - [ ] `cargo xtask check-modules` passes, with `rts` building under `kind`.
 - [ ] `shuyi-rts` builds with `--no-default-features` and depends only on
@@ -217,7 +221,8 @@ None.
 - Property: `UnitTable` against a model; stale ids; replay determinism;
   buckets.
 - Fuzz-style: arbitrary bytes into the `unit-kind` format never panic.
-- Fixture and determinism: the decoded kinds' hash, native and web.
+- Fixture and determinism: the decoded kinds' golden row (x64, ARM64,
+  wasm32).
 - Snapshot: the text dump after 120 steps.
 
 ## Completion notes

@@ -56,7 +56,9 @@ Say if any button does the wrong thing or a pad isn't seen.
     triggers as `u16`;
   - `PadInfo`: a stable id while plugged in, the name, the USB vendor and
     product ids, and `Layout` (Xbox, PlayStation, Nintendo, other), so the
-    engine's `PadKind` can be filled;
+    engine's `PadKind` can be filled. Seats (2406, parked) give a pad to
+    a player by this id, so it must not change while the pad stays
+    plugged in. A pad unplugged and plugged back may get a new one;
   - `Pads::new() -> Result<Pads, PadsError>`, `Pads::poll(&mut self) ->
     &[(PadInfo, StandardPad)]`, with pads plugged in and removed since
     the last poll picked up;
@@ -79,11 +81,22 @@ Say if any button does the wrong thing or a pad isn't seen.
   `shuyi-pads` source behind a cargo feature `in-house-pads`, off by
   default, producing the same `PadState`s. On Linux and macOS the feature
   uses the `null` backend until 2403.
+- **Rumble, either order with 2408 (parked):** if 2408 is done, the
+  `in-house-pads` source gives `PadInput`'s `Motors`
+  (`shuyi_platform::rumble::Motors`) the same `Source::set_motors` and
+  `Source::stop_motors` as the gilrs source. The crate stays free of
+  `shuyi-*`, so it gets its own call,
+  `Pads::set_motors(id, strong: u16, weak: u16)`: XInput's
+  `XInputSetState` for Xbox-style pads, written from Microsoft Learn.
+  XInput holds a level until told otherwise, so the source lets go
+  itself when `for_ms` runs out. Other pads get no rumble on Windows
+  unless the documents show a cheap path (re-check on the day). If 2408
+  isn't done, nothing here.
 
 **Out (do not do):**
 - Linux and macOS (2403), and removing gilrs (2403).
-- Rumble, lights, motion sensors, touchpads, batteries: write a ticket
-  when a game asks.
+- Lights, motion sensors, touchpads, batteries: write a ticket when a
+  game asks.
 - Analog input as actions (1121, parked): this crate already reports sticks
   and triggers as values. Either order works with 1121: if 1121 is done
   first, keep its `RawInputEvent`s unchanged.
@@ -99,7 +112,7 @@ Say if any button does the wrong thing or a pad isn't seen.
    exist yet, as `AGENTS.md` rule 7 says).
 3. The parser, then the mapping, tested on lines written in the tests.
 4. XInput, then `RawGameController`, then the de-duplication.
-5. The engine side behind `in-house-pads`.
+5. The engine side behind `in-house-pads`, with rumble if 2408 is done.
 6. CI: build `shuyi-pads` for Windows, and run its tests with the `null`
    backend everywhere.
 7. Play the game on Windows with the pads at hand.
@@ -118,6 +131,8 @@ Say if any button does the wrong thing or a pad isn't seen.
       license.
 - [ ] The PR body says the code was written from the documents listed in
       the completion notes.
+- [ ] If 2408 is done: an Xbox pad rumbles for a cue with
+      `in-house-pads` on.
 - [ ] Nick signs off.
 - [ ] All gates in the `run-gates` skill pass.
 

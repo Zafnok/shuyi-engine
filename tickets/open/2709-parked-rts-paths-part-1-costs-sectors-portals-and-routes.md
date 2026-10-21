@@ -6,7 +6,7 @@ milestone: "Engine: real-time strategy"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["2707"]
+blocked_by: ["2707", "2116"]
 nick_input: none
 completed:
 ---
@@ -56,7 +56,9 @@ None.
     (true for ground, false for air);
   - the format (ADR-0007): `movement-class`, extension `.movement.ron`,
     registered by `shuyi_rts::register`, with a fuzz-style test and a
-    determinism fixture;
+    determinism fixture (each fixture's decoded hash as a row of
+    `shuyi-rts`'s golden table, 2116's `shuyi_assets::golden`, which
+    2707 runs on wasm32 in CI's `determinism` job);
   - `UnitKinds` resolves each kind's `movement` name, with an error
     naming the file and the kind when it is unknown.
 - **Costs, `CostGrid`**, one per movement class: a `u8` per cell, 255 a
@@ -66,7 +68,13 @@ None.
   `map_version: u64`.
 - **Moves between cells:** 8 directions, straight cost 10 and diagonal
   14, times the terrain cost. A diagonal is allowed only when both
-  straight neighbours are open (no cutting corners).
+  straight neighbours are open (no cutting corners). **Either order
+  with 2117:** if 2117 is done, take the eight directions, the step
+  costs and the corner rule from `shuyi_core` (`Dir8`,
+  `Topology::Square8(Diagonals::OCTILE)`, `Topology::steps` and
+  `step_weight`), and use `Topology::distance` as `route`'s octile
+  heuristic, rather than writing them again in `shuyi_rts::paths`. If
+  not, write them here.
 - **Sectors and portals:**
   - sectors of 16 × 16 cells by default (a setting);
   - along each border between two sectors, each longest run of cells
@@ -122,9 +130,10 @@ None.
       `cells_changed` equals a graph built from scratch (property test).
 - [ ] Two runs over the same map give the same graph dump and the same
       routes.
-- [ ] Each movement-class fixture decodes to its checked-in hash on
-      native and web; bad fixtures name the file; arbitrary bytes never
-      panic.
+- [ ] Each movement-class fixture decodes to its row in a golden table
+      (2116's `shuyi_assets::golden`), checked on x64, ARM64 and wasm32
+      by CI's `test` and `determinism` jobs; bad fixtures name the file;
+      arbitrary bytes never panic.
 - [ ] `TerrainGrid::from_layer` reads the fixture map (only if 1124 is
       done), or 1124's scope has the note.
 - [ ] All gates in the `run-gates` skill pass.
@@ -135,6 +144,7 @@ None.
   wall in the middle, a closed border); corner cutting; tie-breaks.
 - Property: routes against BFS; local rebuild against full rebuild.
 - Fuzz-style: arbitrary bytes into the `movement-class` format.
-- Fixture and determinism: the movement-class hash, native and web.
+- Fixture and determinism: the movement-class fixtures' golden rows, on
+  x64, ARM64 and wasm32 (CI's `test` and `determinism` jobs).
 
 ## Completion notes

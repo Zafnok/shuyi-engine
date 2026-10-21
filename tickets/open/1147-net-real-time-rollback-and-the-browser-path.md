@@ -49,6 +49,16 @@ None.
    prediction by repeating the last input, a resimulate window, and
    desync hashes every N steps. Compare them on licenses, the WASM build
    under our loader, code size, and test results under seeded faults.
+   Both spikes keep 1119's rule that a step's events are handed on once
+   (its Scope, *A step's events are handed on once*:
+   `TickDriver::rewind_to`). The ADR says what happens to events that a
+   correction changes. An event the predicted run handed on, which the
+   corrected run doesn't make (a sound already heard), is not taken
+   back. An event the corrected run adds is handed on at once, unless
+   its step is more than K steps old. The ADR picks K, and says what
+   `TickDriver` keeps to tell an added event from one already handed
+   on, since `rewind_to` alone hands on no event of a step that runs
+   again.
 2. **Snapshots.** Spike naia (it works with macroquad on the web; its
    server is native) against our own snapshots over `Transport`. Our own
    version is delta-compressed state per client, interpolation buffers,
@@ -59,7 +69,10 @@ None.
    - WebTransport (91.6% of browsers);
    - moving the web build to `wasm-bindgen`, which game ADR-0034 would need
      amended, and the pad plugin re-done.
-4. Write an ADR with the three choices and why. Write the implementation
+4. Write an ADR with the three choices and why. The ADR also says how a
+   rollback session treats 2123's game speed (`Ctx::game_speed`), done
+   or not: ignored while the session drives the steps, or one speed
+   every peer agrees on as a session setting. Write the implementation
    tickets.
 
 **Out (do not do):**
@@ -77,6 +90,10 @@ None.
 ## Acceptance criteria
 
 - [ ] The ADR exists with measurements and the alternatives.
+- [ ] The ADR states how the events of re-simulated steps are handed
+      on, sounds first. The rollback implementation ticket's tests
+      include a rollback over a step whose sound cue must play exactly
+      once, checked through the Harness's `audio_log`.
 - [ ] Implementation tickets exist, and `cargo xtask ticket-lint` passes.
 
 ## Tests required

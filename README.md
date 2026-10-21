@@ -45,7 +45,9 @@ These come from the code that already runs the game.
   ([ADR-0005](docs/adr/0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md)).
 
 **Game styles.** The game's top-down grid comes first. Top-down free
-movement, isometric, side-scrolling, and moving between them come later
+movement, isometric, side-scrolling, and moving between them come after
+Visions of Shuyi launches, unless the game needs them sooner. The engine
+is built for one game first, and happens to handle many
 ([ADR-0003](docs/adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md)).
 
 **3D, later.** First person, third person, top-down 3D, and HD-2D (2D
@@ -61,8 +63,10 @@ them
 ([ADR-0015](docs/adr/0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md)),
 visual novels, and detective games with a check that every case can be
 solved
-([ADR-0016](docs/adr/0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md)).
-Each is a module, parked until after Visions of Shuyi launches.
+([ADR-0016](docs/adr/0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md)),
+roguelikes, hex grids, and a gallery of small games in common genres.
+Each is a module or an example, parked until after Visions of Shuyi
+launches.
 
 **Modules.** The default engine stays small. You pick a direction for
 each part of your game (its perspective, how bodies move and animate,

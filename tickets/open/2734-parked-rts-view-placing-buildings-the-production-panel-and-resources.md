@@ -6,7 +6,7 @@ milestone: "Engine: real-time strategy"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["2733", "2716"]
+blocked_by: ["2733", "2716", "2354", "2355"]
 nick_input: none
 completed:
 ---
@@ -50,7 +50,10 @@ None.
   - choosing an entry sends `Produce`; choosing a queued item sends
     `CancelProduce`;
   - entries are reached by actions (move, confirm, cancel) as well as
-    the pointer, so the panel works with only a d-pad.
+    the pointer, so the panel works with only a d-pad. Its entries move
+    on 2354's `GridCursor` if they form a grid, and the focus passes
+    between the panel and the screen's other widgets with 2355's
+    `Focus`, over the screen's layout (2329).
 - **Setting a rally point**: an action, then a place, a resource node or
   a unit, sends `Rally`.
 - **The resource bar**: the local player's `Stock` and supply (used /
@@ -73,7 +76,8 @@ None.
 
 1. Add placement mode to the view's player state, with the ghost in the
    scene and `can_place` through `TeamView`.
-2. Add the production panel and the resource bar as glyph widgets.
+2. Add the production panel and the resource bar as glyph widgets, with
+   the panel's moves on `GridCursor` and `Focus`.
 3. Add rally and idle-worker actions to the view's `ActionSet` entries.
 4. Write the scene text form lines and the tests below.
 

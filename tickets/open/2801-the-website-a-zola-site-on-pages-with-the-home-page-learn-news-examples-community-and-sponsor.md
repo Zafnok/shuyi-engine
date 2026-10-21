@@ -84,8 +84,9 @@ and says whether the home page says what the engine is.
     `/examples/<name>/`. Hello, Grid moves there from `/hello-grid/`.
     The old path redirects (a Zola `aliases` page).
   - **Community:** GitHub issues, `CONTRIBUTING.md`, the code of
-    conduct, and the security policy (from 1132; if 1132 isn't done,
-    link the repository and add the rest in 1132).
+    conduct, the security policy (from 1132; if 1132 isn't done, link
+    the repository and add the rest in 1132), and `GOVERNANCE.md` (from
+    2016; if 2016 isn't done, 2016 adds the link).
   - **Sponsor:** a page saying sponsorship is coming. 2806 fills it.
   - A footer with the licenses (MIT OR Apache-2.0), the repository, and
     the feed.
@@ -93,11 +94,15 @@ and says whether the home page says what the engine is.
   - downloads Zola at the pinned version from its GitHub release and
     checks its SHA-256 against a value in the workflow;
   - builds the examples (as now), then `zola build`, copies each
-    example's `dist/web` into `public/examples/<name>/`, and uploads
-    `public/`.
+    example's `dist/web` into `public/examples/<name>/` whole, so each
+    example's `NOTICES.txt` (3039) goes with it, and the Examples page
+    links each example's notices beside it (if 3039 isn't done, 3039
+    adds the link); then it uploads `public/`.
 - **CI** (`ci.yml`, on pull requests): `zola check` (internal links and
-  anchors), and `cargo xtask check-links` over `site/content/`. A pull
-  request that breaks the site fails before it merges.
+  anchors), and `cargo xtask check-links` over `site/content/`, which
+  leaves Zola's internal links (`@/…`) to `zola check`: `is_relative` in
+  `crates/xtask/src/links.rs` skips them, with a test. A pull request
+  that breaks the site fails before it merges.
 - **Locally:** `site/README.md` says how to preview: `winget install -e
   --id getzola.zola`, then `zola serve` in `site/`. Nothing in the
   engine's build needs Zola.
@@ -105,10 +110,30 @@ and says whether the home page says what the engine is.
 **Out (do not do):**
 - the book's chapters, the tutorial, the changelog, blog tooling, sponsor
   accounts (2802–2806);
+- `llms.txt`, `llms-full.txt` and Markdown twins of the Learn pages
+  (2808), which also adds their links on the Learn page and in the
+  footer;
+- an Assets page of modules, templates, tools and games, the engine's
+  own and, if Nick says yes, other people's: 2809, after the first
+  release (2005), which adds an Assets item to the base template's menu
+  after Examples;
 - a custom domain (2807, parked);
 - search (Zola's built-in index is a follow-up if Learn grows past a
   few dozen pages);
 - comments, analytics or anything that sets a cookie;
+- animated previews on the Examples cards: 2514 makes an APNG or a GIF
+  of a game's frames; putting them on the cards is a follow-up after
+  both;
+- an automatic check that each example's web build loads in a browser
+  (2019, after the MVP, adds every build `pages.yml` publishes to its
+  `web-render` job);
+- playing the examples on a phone, which has no keyboard (2407,
+  parked);
+- Hello, Grid's Quit, which freezes its web build: 3053 hides it where
+  the platform can't quit (either order; moving the example to
+  `/examples/hello-grid/` doesn't change it). An example added to the
+  Examples page offers Quit only where `ctx.platform.can_quit()` once
+  3053 is done;
 - a logo or a brand (Nick's).
 
 ## Implementation steps

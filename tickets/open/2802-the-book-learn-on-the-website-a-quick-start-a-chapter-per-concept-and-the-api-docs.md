@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: sonnet-5
 effort: high
 status: todo
-blocked_by: ["2801"]
+blocked_by: ["2801", "2511", "2513"]
 nick_input: none
 completed:
 ---
@@ -39,10 +39,22 @@ None.
   of plain text with short examples:
   1. **Quick start:** install Rust (with the GNU toolchain note for
      Windows from `AGENTS.md`, *Environment*), `cargo install --locked
-     shuyi-cli` (or from git until 2005), `shuyi new`, `shuyi run`,
-     `shuyi web`.
+     shuyi-cli` (or from git until 2005), `shuyi new blank` and what
+     each of its files is on the short path (2511: `BasicGame`,
+     `run_game`, `BasicTools`), `shuyi run`, `shuyi web`. On Linux,
+     `bash scripts/setup-linux.sh` in the new game's folder before
+     `shuyi run` (2513; `cargo install shuyi-cli` itself needs only a
+     C linker). An "Open in GitHub Codespaces" link to the engine's
+     repository (`https://codespaces.new/Zafnok/shuyi-engine?quickstart=1`,
+     2513's dev container), to try it with nothing installed, billed to
+     whoever opens it.
   2. **A game and its screens:** `Game`, `GameData`, `Screen`, the
-     screen stack, results (ADR-0018), `Ctx`.
+     screen stack, results (ADR-0018), `Ctx`. The short path first
+     (`BasicGame`, `BasicData` with its own part, `UiAction` as the
+     action set), then `GameData` by hand for a game that outgrows it.
+     Text by key: the game's English, the engine's English beneath it,
+     and how a game overrides an engine key, if 2351 is done (if not,
+     2351 adds that paragraph, as its clause says).
   3. **Actions, never keys:** `ActionSet`, keymaps, rebinding, how text
      names a key (the `input-actions` skill, for people).
   4. **The frame and skins:** views as plain data, glyph and sprite
@@ -53,12 +65,35 @@ None.
      undo, determinism and the hash.
   7. **Saves and settings:** `Storage`, profiles, settings.
   8. **Testing:** the harness, replays, bots, snapshot tests of frames
-     (`frame-png`).
+     (`frame-png`), and, if 2112 is done, proving a level winnable with
+     `solve` (a snippet in `site/snippets/`; if not, 2112 adds that
+     section).
   9. **Targets and export:** target profiles, `shuyi check --target`,
-     the web build.
+     the web build, and, if 3050 is done, releasing from a tag (the
+     template README's "Releasing" section; if not, 3050 adds that
+     section).
   10. **Tools for agents:** the tool contract (`docs/contract.md`),
       and the MCP server and skill pack once 1133 and 1134 are done
-      (until then, a line saying they are coming).
+      (until then, a line saying they are coming). The problem codes
+      and `shuyi explain` (2509): a page per code under
+      `/learn/errors/`, written from `crates/cli/errors/*.md` into
+      `site/content/learn/errors/` before `zola build` (so 2808's
+      twins cover them), and this chapter links the list; if
+      2509 isn't done, a line saying they are coming.
+  11. **Coming from another engine:** a table that maps words from
+      Godot, Unity, Bevy, GameMaker and PICO-8 to Shuyi's, each row
+      linked to the chapter that explains it. For example: a Godot
+      scene, a Unity scene or a GameMaker room is a `Screen` on the
+      screen stack; a node, a GameObject, a Bevy entity or a GameMaker
+      instance is a plain struct the game owns, in a screen or in the
+      state its `TurnRules` changes (the arena of ADR-0003 §4 comes
+      with the parked tick path), or an entity of `shuyi-ecs` once 2107
+      is done; an input map or input actions are an `ActionSet` and the
+      player's keymap; `_process`, `Update()`, a Bevy system or a Step
+      event is `Screen::update`, with state changed through commands
+      (`TurnRules`); resources and imports are kinds and formats
+      through the registry. Check each name against the code when
+      writing it; a word with no counterpart says so.
 - **Code that compiles:** `site/snippets/`, a crate in the workspace
   (`publish = false`) whose `src/` holds each chapter's code as
   functions and tests, marked with `// ANCHOR: name` and `// ANCHOR_END:
@@ -72,22 +107,34 @@ None.
 - **Keeping it current:**
   - the `work-ticket` skill gains a step: a ticket that adds or changes
     something public updates its chapter in the same PR, or says in
-    its completion notes why none is needed;
+    its completion notes why none is needed. **Either order with
+    2017:** if 2017 is done, this step goes beside its §5 step 4
+    (*Settle what named this ticket*) and keeps it; if not, 2017 keeps
+    this one;
   - the write-ticket template's acceptance criteria gain the line "The
     book's chapter is updated (2802), or the completion notes say why
     not".
 - **2004's guides** (one per direction) go in the book as a part after
-  chapter 10 when 2004 is done; 2004 points here.
+  chapter 11 when 2004 is done; 2004 points here.
+- **The compiler messages on the engine's traits (2510):** if 2510 is
+  done, the links in its `note`s point at source files on GitHub;
+  change them to the book's chapters, and the `//~` texts of its
+  fixtures (`crates/xtask/compile-messages/`) with them. If 2510 isn't
+  done, nothing here (2510 links the chapters itself).
 
 **Out (do not do):**
 - the tutorial (2803);
 - translations of the book;
+- `llms.txt`, `llms-full.txt` and a Markdown twin of each Learn page
+  (2808). Any shortcode in Learn other than `snippet` will need an
+  expansion in 2808's `cargo xtask llms`;
 - chapters for modules that don't exist yet (each module's ticket adds
   its own).
 
 ## Implementation steps
 
 1. Read the README, the ADRs named above, and `docs/contract.md`.
+   Check which of 2351, 2509, 2510 and 3050 are done.
 2. Write the snippets crate and the shortcode, with one chapter's
    snippets.
 3. Write the chapters, each with its snippets.
@@ -97,7 +144,7 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Ten chapters are live under `/learn/book/`.
+- [ ] Eleven chapters are live under `/learn/book/`.
 - [ ] Every code block in the book comes from `site/snippets/` through
       the shortcode (a CI grep finds no fenced Rust block in
       `site/content/learn/book/` that isn't a shortcode).

@@ -1,12 +1,12 @@
 ---
 id: "2326"
-title: "Parked: Screen effects as skin data: a chain of passes over the painted frame (CRT, bloom, palette remap, vignette, flash) on the wgpu renderer, with reference pictures in frame-png"
+title: "Parked: Screen effects as skin data: a chain of passes over the painted frame (CRT, bloom, palette remap, vignette) on the wgpu renderer, with reference pictures in frame-png"
 type: feature
 milestone: "Engine: 2D effects"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3034"]
+blocked_by: ["3034", "2018", "2340"]
 nick_input: none
 completed:
 ---
@@ -25,10 +25,12 @@ field and bloom in 3107), but the 2D frame has none.
 
 A text-first engine is a good home for a CRT look, and games use a few
 screen effects again and again: bloom, a palette remap (day and night,
-a sepia memory), a vignette, a flash when something is hit.
+a sepia memory), a vignette, a flash when something is hit (2340 draws
+a whole-frame flash on every painter, the one-bit one included, through
+the frame's veil from 2339).
 
 Graphics are a skin (ADR-0002 §4, `AGENTS.md` rule 9). Logic says
-"hurt"; the skin picks the flash. Effects are data the skin hands in
+"hurt"; the skin picks the look. Effects are data the skin hands in
 with the frame, so tests of what happened never read them, and tests of
 a look do.
 
@@ -53,32 +55,35 @@ None.
   - `Remap { to: palette id }`: every colour of the game's palette
     becomes the same role's colour in another palette (day to night);
   - `Vignette { strength: u8 }`;
-  - `Flash { colour: role, amount: u8 }`;
   - `optional`: a target that can't run it drops it (3017's
     capabilities: either order; if 3017 is done, register `effects` as
     a need, `optional` or required);
   - `flashing`: dropped when the player turns flashing off (below).
 - **The frame** carries the chain: `GlyphBuffer` gains `effects:
   Option<EffectsRef { chain id, amounts }>`, where `amounts` lets the
-  skin fade a pass in and out (a flash at 255, then 128, then 0). One
+  skin fade a pass in and out (a vignette at 255, then 128, then 0). One
   snapshot line lists it; the format's doc comment says so.
 - **The wgpu renderer** runs the chain after painting: one WGSL pass
   each, ping-ponging two render targets. Passes that look at pixels
-  (bloom, remap, vignette, flash) run at the frame's logical size;
+  (bloom, remap, vignette) run at the frame's logical size;
   `Crt` runs at the window's size, last.
-- **`frame-png`** runs a CPU reference of each pass, in integers where
-  the pass allows, so an agent sees the effect without a GPU.
+- **The raster** (`shuyi_ui::frame::raster`, 2332) runs a CPU reference
+  of each pass, in integers where the pass allows, so `frame-png` shows
+  an agent the effect without a GPU, and the window is compared with it.
 - **GPU against CPU:** a test renders a test frame through both and
-  compares, within a tolerance per channel (the worker picks it on the
-  test frame and writes why). It runs where a wgpu adapter exists: CI
-  can use a software adapter (lavapipe on Linux, WARP on Windows); say
-  in the Completion notes which.
+  compares, within the plan's `Tolerance` (the worker picks it on the
+  test frames and writes why). It runs through 2018's capture mode, on
+  the wgpu backend that 3034's tickets build, with
+  `shuyi_platform::capture` plans and `raster::compare` (2332). Use
+  2018's `render` CI job, with lavapipe as the software adapter. Each
+  effect gets a test frame in a plan.
 - **Player settings** (photosensitivity): `Settings::screen_effects`
-  (on or off) and `Settings::flashing` (on or off), saved, with option
-  rows. With effects off, only `Remap` runs (it can carry meaning,
+  (on or off), saved, with an option row. `Settings::flashing` is
+  2340's (with its row, its three-flashes-a-second rule and its gentle
+  cap); this ticket reads it: a pass marked `flashing` is dropped when
+  it is off. With effects off, only `Remap` runs (it can carry meaning,
   such as night).
-- **The toy game** gets a CRT chain and a flash when a test action
-  fires.
+- **The toy game** gets a CRT chain.
 
 **Out (do not do):**
 - a game's own shaders and sprite materials (2327);
@@ -86,25 +91,28 @@ None.
 - 3D effects (3103, 3104, 3107);
 - effects on targets without shaders (the Playdate, the GBA, the DS):
   `optional` passes are dropped there, and this ticket adds nothing for
-  them.
+  them;
+- a whole-frame flash and shake, and transition looks, on every painter
+  (2340, 2339).
 
 ## Implementation steps
 
-1. Read 3034's ADR and the wgpu renderer, ADR-0002 §4, and 3017 if done.
+1. Read 3034's ADR and the wgpu renderer, ADR-0002 §4, 2332's raster,
+   2018's ADR and capture mode, 2340's settings, and 3017 if done.
 2. Write `EffectChain`, its format and checks, and the frame's field and
    snapshot line.
-3. Write the CPU reference of each pass, with unit tests.
+3. Write the CPU reference of each pass in the raster, with unit tests.
 4. Write the WGSL passes and the chain in the renderer.
-5. Add the GPU-against-CPU test.
-6. Add the settings, the rows and the toy game's chain.
+5. Add a plan with a test frame per effect, run in 2018's `render` job.
+6. Add the `screen_effects` setting, its row and the toy game's chain.
 7. Run the gates.
 
 ## Acceptance criteria
 
 - [ ] Each pass's CPU reference has a committed `frame-png` picture of
       the test frame, reviewed.
-- [ ] The GPU output matches the CPU reference within the tolerance, in
-      CI.
+- [ ] The GPU output matches the CPU reference within the plan's
+      tolerance, in 2018's `render` job on lavapipe.
 - [ ] With flashing off, a `flashing` pass never runs (a test).
 - [ ] A frame with no effects draws the same pixels as before (the
       existing snapshots don't change).
@@ -115,9 +123,10 @@ None.
 ## Tests required
 
 - Unit: each CPU pass on small images; amounts at 0 and 255; the
-  settings' saved form.
+  `screen_effects` setting's saved form.
 - Property: a pass at amount 0 leaves the image unchanged.
-- Snapshot / integration: each pass's picture; GPU against CPU.
+- Snapshot / integration: each pass's picture; GPU against CPU through
+  the capture plans in the `render` job.
 
 ## Completion notes
 

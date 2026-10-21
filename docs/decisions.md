@@ -808,3 +808,82 @@ So:
 - **Sponsors through GitHub Sponsors and Ko-fi.** Nick enrolls in both
   himself (money, bank and tax details are his). The ticket lists his
   steps and checks both platforms' fees on the day.
+
+## 2026-10-20: a second comparison, with Unity and Unreal; the engine is built for one game first
+
+Source: Nick, in a session of this repository:
+
+> "I want to ensure we're on track for long-term maintainability, and
+> the ability to have a competitive edge. Check our current features,
+> our planned features, against the best Rust engine (Bevy, presumably)
+> and the best normal game engine (presumably Godot, Unreal, or Unity).
+> See if there are obvious gaps in our planned features, or the way we
+> are building towards our goals, against these benchmarks."
+
+The comparison (2026-10-20) read Bevy 0.20, Godot 4.7, Unity 6 (6.3 LTS
+and 6.6), Unreal Engine 5.8, and the 2D engines GameMaker, Defold and
+Construct 3. It looked at features, and at how the engine is built:
+its process, its architecture, its upkeep over years and its edge. It
+found about 118 gaps a ticket could close, in three groups. Asked when
+each group happens, Nick chose the recommendation, **"Split by
+group"**:
+
+- about 14 small protections for the code go in the MVP, before the
+  first release: a check that names API breaks, Dependabot, a build of
+  Visions of Shuyi against the engine's `main`, governance, license
+  notices in web builds, and logs and error codes agents can read;
+- about 75 features most 2D games expect come after the MVP, not
+  parked;
+- about 26 for things the game doesn't need stay parked.
+
+Asked whether the real-time work that his end goal's snake and Mario
+need should be unparked:
+
+> "unless these real-time work tickets overlap with visions of shuyi
+> they should be parked until visions of shuyi is complete since it's
+> the first game I want to be launched with the engine... think like
+> how Jonathan Blow is handling his Jai programming language, its
+> primarily built for one game but it happens to handle a lot of games"
+
+Asked which new kinds of game get parked tickets, he picked
+**roguelikes**, **a gallery of small games** and **hex grids**.
+
+**Rules:**
+
+- **Built for one game first.** As Jai is built for Jonathan Blow's
+  games, the engine is built for Visions of Shuyi first, and happens to
+  handle many other games. Work the game doesn't need never goes ahead
+  of work it does.
+- **Real time waits for the game's launch.** The real-time tickets
+  (1119–1125 and 1127), and the tickets built on them (1126, 1128,
+  2106, 2317, 2318, and this comparison's real-time tickets), are
+  parked until Visions of Shuyi launches, not only until the MVP. This
+  replaces "after the MVP" (2026-10-14) for them. What the game needs
+  comes sooner:
+  - the game's ticket 0060 (the army walks around freely) still
+    unparks 1119–1125;
+  - a piece the game asks for through its `engine-change` skill is
+    split out and unparked on its own.
+- **The end goal waits with it.** Snake and a platformer need that
+  real-time work, so they come after the launch too. Until then the
+  agent check of the end goal measures turn-based games.
+  [`ROADMAP.md`](ROADMAP.md), *The end goal*, shows the chain.
+- **The protections are in the MVP,** and the first release (2005) waits
+  for the ones a release needs. [`ROADMAP.md`](ROADMAP.md), phase 2,
+  lists them.
+- **The features most games expect come after the MVP, not parked.**
+  [`ROADMAP.md`](ROADMAP.md), phase 3, lists them in order. Some take
+  the turn-game half of a parked ticket (the mouse in menus and on grid
+  maps from 1121, rotated sprites and drawn shapes from 2703); the
+  real-time half stays parked.
+- **Three more kinds of game, parked until after the launch.**
+  Roguelikes, a gallery of small games and hex grids join the kinds of
+  game the engine serves (ADR-0009). Under the rule above they wait for
+  the launch, as real-time strategy, visual novels and detective games
+  do (2026-10-18), not only for the MVP. Nick may veto that reading.
+- **Decisions left for later** are in the tickets that need them
+  (`nick_input`): how much the scheduled agent check may spend, paid
+  code signing, a backup owner and the repository's settings, sending
+  crash reports, the community directory and the names of other
+  people's modules, phones' browsers as a target, machine-translated
+  engine screens, and stores beyond Steam.

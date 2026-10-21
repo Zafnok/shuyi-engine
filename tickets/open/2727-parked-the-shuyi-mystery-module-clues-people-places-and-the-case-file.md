@@ -6,7 +6,7 @@ milestone: "Engine: detective games"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["2722"]
+blocked_by: ["2722", "2116"]
 nick_input: none
 completed:
 ---
@@ -31,7 +31,9 @@ screen. It builds on:
 - 2721: `VnState`, `VnRules: TurnRules`, stage directions read as
   dialogue commands, characters as data;
 - 2722: `VnScene` and the visual novel skin, which the case file screen
-  sits on top of.
+  sits on top of;
+- 2116: golden tables (`shuyi_assets::golden`) and CI's `determinism`
+  job, which check the formats' decode hashes on x64, ARM64 and wasm32.
 
 The later tickets add to this crate: investigation (2728), deductions
 (2729), testimony and penalties (2730), the fair-play check and hints
@@ -216,7 +218,12 @@ screen and `MysteryStage` into a parked ticket of their own
 2. Write `shuyi_mystery::data`: `Clue`, `Person`, `Place`, `ClueStage`,
    `ClueRole`, their ids as newtypes over `String`, and the three
    formats in `shuyi_mystery::formats`, with good and bad fixtures in
-   `crates/mystery/tests/fixtures/`.
+   `crates/mystery/tests/fixtures/`. The good fixtures' decode hashes
+   go in a golden table, `crates/mystery/tests/golden/formats.ron`,
+   through 2116's `shuyi_assets::golden` (a dev-dependency on
+   `shuyi-assets` with its `golden` feature), checked by a test with
+   `golden` in its name. Add `-p shuyi-mystery` to the wasm32 run of
+   CI's `determinism` job.
 3. Write `CaseState` with `find_clue`, `update_clue`, `meet_person`,
    `update_person`, `hash` and `dump`.
 4. Write `MysteryRules`: the command enum, the mode stack, `@clue` and
@@ -237,8 +244,9 @@ screen and `MysteryStage` into a parked ticket of their own
       lists `mystery`.
 - [ ] `cargo build -p shuyi-mystery --no-default-features` builds
       without `shuyi-ui`.
-- [ ] Each good fixture decodes to a checked-in hash, the same on
-      native and in the web build's CI job.
+- [ ] Each good fixture decodes to its row in a golden table (2116's
+      `shuyi_assets::golden`), and `-p shuyi-mystery` joins the wasm32
+      run of CI's `determinism` job.
 - [ ] Each bad fixture gives an error naming its file and line.
 - [ ] Playing the story fixture gives a checked-in `CaseState` dump,
       and replaying its commands gives the same hash at every step.
@@ -261,8 +269,10 @@ screen and `MysteryStage` into a parked ticket of their own
   random command lists never leave a clue at an earlier stage than
   before; `legal_commands` equals the set `check` accepts; a refused
   command leaves the hash unchanged.
-- Fixture and determinism: decode hashes per format; the story
-  fixture's dump and per-step hashes.
+- Golden: decode hashes per format in `formats.ron`, natively in CI's
+  `test` job (x64, ARM64) and on wasm32 in its `determinism` job.
+- Fixture and determinism: the story fixture's dump and per-step
+  hashes.
 - Snapshot: the `CaseFileScene` dump; one `frame-png` picture of the
   case file skin (a test of a look, so it reads cells and sprites).
 

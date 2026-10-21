@@ -6,7 +6,7 @@ milestone: "Engine: animation"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2105"]
+blocked_by: ["2105", "2336"]
 nick_input: decision
 completed:
 ---
@@ -95,8 +95,10 @@ Record the answer in `docs/decisions.md`. If it is A:
 - **What it does:** loads a Spine export (JSON or binary, with its
   atlas) through the runtime, poses it at a time, mixes animations as
   the runtime does, and hands the skin a list of textured triangles and
-  quads for a world layer (1120). If the frame has no triangle items by
-  then, add them, with `frame-png` drawing them too.
+  quads for a world layer (1120). The frame has solid polygons (2336)
+  but no textured triangles: add textured triangles on 2336's pixel
+  rule (pixel centres, half-open edges) through a `for_each_run` like
+  `Shape`'s, with `frame-png` and the 1-bit renderers drawing them too.
 - **Determinism:** poses are for drawing only. The docs say a game must
   never read bone positions from this module into its rules (use 2105's
   `Fx` rigs, or the game's own data, for hitboxes).
@@ -128,10 +130,15 @@ a Spine viewer tool; Visions of Shuyi (it never turns the module on).
   - the current stable Spine version (`skeleton.spine`); another version
     is a clear error naming it;
   - bones (`name`, `parent`, `length`, `x`, `y`, `rotation` in degrees,
-    to 1119's `Angle`), slots, skins of `region` attachments, events,
+    to 2335's `Angle`), slots, skins of `region` attachments, events,
     and animations: bone `rotate` and `translate`, slot `attachment`,
-    `events`; seconds to ms; `stepped` and linear curves, Bézier as
-    linear with a warning;
+    `events`; seconds to ms;
+  - curves: `stepped` as `Steps(1)` and linear as `Linear` (2105's keys
+    take a `shuyi_core::ease::Ease`, 2109), and Bézier as a
+    `shuyi_core::ease::Points` curve (the follow-up 2109 writes) sampled
+    at 17 evenly spaced x and rounded to thousandths once, at load. If
+    no ticket has added `Points` by then, a Bézier is `Linear` with a
+    warning naming the JSON path;
   - floats rounded to `Fx` once, at load, by one tested function;
   - everything 2105 doesn't support (scale, shear, meshes, clipping,
     constraints, physics, deform) is an error naming the JSON path.
@@ -151,8 +158,9 @@ physics (follow-ups of 2105 first).
 
 ## Implementation steps
 
-1. Read both 2026-10-20 Spine entries in `docs/decisions.md`, 2105's ADR
-   and `Rig`, and 2216 if done.
+1. Read the three 2026-10-20 Spine entries in `docs/decisions.md`,
+   2105's ADR and `Rig`, 2109's `shuyi_core::ease`, 2336's pixel rule
+   (`shuyi_ui::frame::shape`), and 2216 if done.
 2. For path A, do step A1. Then ask Nick (above) and record the answer.
 3. Path A: the crate, its license files and `deny.toml` exception, the
    loader and the triangle items, the docs, the tests.
@@ -176,10 +184,14 @@ physics (follow-ups of 2105 first).
 ## Tests required
 
 - Path A: loading and posing a test export; the triangles drawn equal
-  in `shuyi-app` and `frame-png` on a test frame; a build of the engine
-  without the feature contains no Spine code (`cargo tree`).
+  in `shuyi-app` and `frame-png` on a test frame; the fast 1-bit
+  renderer equals the reference with triangles in its frames; two
+  triangles that share an edge never both cover a pixel (property
+  test); a build of the engine without the feature contains no Spine
+  code (`cargo tree`).
 - Path B: degrees to `Angle`; seconds to ms; float to `Fx` rounding;
-  random bytes; round trip.
+  `stepped` to `Steps(1)`, linear to `Linear`, and a Bézier to its 17
+  points; random bytes; round trip.
 
 ## Completion notes
 

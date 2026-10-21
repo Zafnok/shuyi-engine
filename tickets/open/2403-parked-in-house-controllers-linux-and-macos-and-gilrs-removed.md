@@ -48,24 +48,38 @@ that macOS was tested only in CI.
   The kernel's gamepad mapping (`BTN_SOUTH` and friends) is used when the
   driver gives it. Otherwise the mapping database from 2402, with the GUID
   built from the bus, vendor, product and version (`EVIOCGID`). A device
-  that can't be opened (permissions) is skipped with one log line.
+  that can't be opened (permissions) is skipped with one
+  `log::warn!(target: "input", …)` line, which 3041's sinks write.
   `libudev` isn't used.
 - **The Steam Deck's controls** appear as a pad through Steam's virtual
   device. Check it, and note in the completion notes how it showed up.
 - **macOS**: `GCController` notifications for connect and disconnect, and
   `GCExtendedGamepad`'s elements read each poll. The framework maps pads
   itself, so the database isn't used there.
+- **Rumble, either order with 2408 (parked):** if 2408 is done, Linux
+  carries it over through the kernel's force feedback interface, written
+  from `Documentation/input/ff.rst`: upload an `FF_RUMBLE` effect with
+  `EVIOCSFF`, play it by writing an `EV_FF` event, and remove it with
+  `EVIOCRMFF`. A pad needs its device opened read-write for this. Opened
+  read-only, it gets no rumble and one log line. So removing gilrs keeps
+  rumble on Linux and the Steam Deck. macOS stays without rumble, as
+  with gilrs. If 2408 isn't done, nothing here.
 - **The switch**: `in-house-pads` becomes the only path:
   - remove `gilrs` from `crates/app/Cargo.toml`;
   - delete the gilrs source in `crates/app/src/pads/native.rs`;
   - remove the feature flag.
 - **Check**: `cargo tree --workspace` shows none of `gilrs`, `gilrs-core`
   or `vec_map`.
+- **libudev**: with gilrs gone, if nothing else needs libudev
+  (`cargo tree -i libudev-sys` is empty), remove the `lib-udev` row from
+  doctor's Linux table (`crates/cli/src/contract/doctor/linux.rs`, 2513)
+  and libudev's package from the `APT`, `DNF` and `PACMAN` lines of
+  every `scripts/setup-linux.sh`.
 - **For the game:** `shuyi-app`'s API is unchanged, so the game's next pin
   bump needs no code change. Say so in the PR.
 
 **Out (do not do):**
-- Rumble, lights, motion, batteries (as 2402).
+- Lights, motion, batteries (as 2402).
 - BSDs.
 - iOS and Android.
 
@@ -74,11 +88,11 @@ that macOS was tested only in CI.
 1. `crates/pads/src/linux.rs`, `src/linux/sys.rs`, `src/macos.rs`,
    `src/macos/sys.rs`.
 2. Linux: finding devices, reading capabilities, events, hot-plugging,
-   mapping.
+   mapping, and rumble if 2408 is done.
 3. macOS: notifications and polling.
 4. CI builds `shuyi-pads` for Linux and macOS, and tests the event parser
    on recorded event streams.
-5. Make the switch (scope above).
+5. Make the switch and drop libudev if nothing needs it (scope above).
 6. Build the game against this working copy (`run-gates`, *The game at the
    next pin*), then test on the Steam Deck or Linux, and on macOS if
    possible.
@@ -93,6 +107,8 @@ that macOS was tested only in CI.
 - [ ] The game builds and plays at this revision with no code change.
 - [ ] The PR body says the code was written from the documents listed in
       the completion notes.
+- [ ] If 2408 is done: a pad on Linux or the Steam Deck rumbles for a
+      cue after gilrs is removed.
 - [ ] Nick signs off.
 - [ ] All gates in the `run-gates` skill pass.
 

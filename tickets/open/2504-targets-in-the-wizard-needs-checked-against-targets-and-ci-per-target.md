@@ -59,10 +59,28 @@ None.
 - **The manifest:** for each picked target, a `targets` entry with the
   profile's default frame size and scale (3001).
 - **The new game's CI** (`.github/workflows/ci.yml` in the base part)
-  gets a matrix over the picked targets, each running `shuyi check
-  --target <id>` and `shuyi export <id>` (3004). A target whose exporter
-  needs a tool CI can't have (the Playdate SDK) runs the check only, and
-  the workflow says why in a comment.
+  gets a matrix over the picked targets (through 3050's `export.yml`
+  and plan if 3050 is done), each running `shuyi check --target <id>`
+  and `shuyi export <id>` (3004). For `desktop`, the export entries are
+  3004's desktop exporters, each on the runner the engine's own CI
+  uses: `windows`, `linux` inside the Steam Linux Runtime ("sniper")
+  SDK container, and `macos` (the universal app) on `macos-latest`.
+  `linux-arm64` on `ubuntu-24.04-arm` is a commented line the developer
+  turns on. Copy the container line from the engine's
+  `.github/workflows/ci.yml`, so a game's Linux package has the
+  engine's glibc floor and passes 3004's library audit. A target whose
+  exporter needs a tool CI can't have (the Playdate SDK) runs the check
+  only, and the workflow says why in a comment.
+- **Either order with 3050** (release a game from a tag): if 3050 is
+  done, the new game's per-target CI job calls the template's
+  `.github/workflows/export.yml` (3050). The matrix comes from `cargo
+  shuyi export --plan --json`, so the game's targets are named once, in
+  `shuyi.ron`. The Playdate's check-only comes from the plan's `ci:
+  check-only` (or from its `limits` entry while 3010 has no Playdate
+  exporter), and no matrix is written into `ci.yml`. If the plan lists
+  `linux-arm64`, a `jq` filter on it drops that entry, and a commented
+  line keeps it for a developer who turns it on. If 3050 isn't done,
+  3050's scope says it does this when it lands.
 - **Target parts** in the built-in template:
   - `target-playdate`, when `playdate` is picked: if 3006 is done, a
     palette pattern map with the template's roles; if 3002 is done, its
@@ -85,15 +103,19 @@ None.
 1. Widen the targets question to the profiles.
 2. Add the check to the composer, before writing, or the `limits` entry
    if 3017 isn't done.
-3. Write the manifest entries and the CI matrix in the base part.
+3. Write the manifest entries and the CI matrix in the base part (the
+   calls to 3050's `export.yml`, from its plan, if 3050 is done).
 4. Write the Playdate and Steam Deck parts, with what 3002, 3006 and
    3012 give if they are done.
 
 ## Acceptance criteria
 
 - [ ] `shuyi new demo --no-input --targets desktop,web,playdate` makes a
-      game whose manifest lists three targets and whose CI has three
-      matrix entries.
+      game whose manifest lists three targets. Its CI checks each of
+      them and has an entry per exporter of each picked target: it
+      exports `windows`, `linux` (in the sniper container), `macos` and
+      `web` (from 3050's plan if 3050 is done, where `desktop` gives the
+      first three). The Playdate entry is a check only.
 - [ ] If 3017 is done: a fixture module with `needs.three_d =
       "software"` picked with `--targets playdate,web` passes, and with
       a fixture profile of `three_d: none` fails before writing, with

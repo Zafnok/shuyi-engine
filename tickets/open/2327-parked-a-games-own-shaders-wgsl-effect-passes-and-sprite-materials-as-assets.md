@@ -6,7 +6,7 @@ milestone: "Engine: 2D effects"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2326"]
+blocked_by: ["2326", "2337"]
 nick_input: none
 completed:
 ---
@@ -20,8 +20,12 @@ completed:
 Found by the 2026-10-20 comparison with Bevy 0.20 and Godot 4.6. Godot
 has its canvas shader language; Bevy has `Material2d` with WGSL. 2326
 gives built-in screen effects. Games also want their own: water that
-ripples, a sprite that dissolves, an outline on the selected unit, one
-sprite flashing white when hit, a team's colours on a shared sprite.
+ripples, a sprite that dissolves, an outline on the selected unit, a
+team's colours on a shared sprite. A sprite flashing in one colour is
+`Paint::Solid` today, and a tint, an additive glow or a multiply shadow
+is `Paint::Tinted` or `Blend` (2337) on every renderer, so a material is
+for what those can't do. Palette swap stays the team-colour tool,
+because a multiply tint over full-colour art looks muddy.
 
 WGSL is wgpu's language ([ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
 §1). Shaders are assets like any other (ADR-0007): text files, checked
@@ -45,13 +49,17 @@ None.
   - a **pass** shader gets the frame so far (texture and sampler),
     the frame's time in ms, and up to 16 `vec4<f32>` parameters;
   - a **material** gets the sprite's texture region, its palette role's
-    colour, the frame's time, and up to 4 `vec4<f32>` parameters.
+    colour, its tint (`Paint::Tinted`'s colour, white without one), the
+    frame's time, and up to 4 `vec4<f32>` parameters.
   A shader whose bindings don't match fails at load, naming what's
   wrong.
 - **Passes:** 2326's `EffectChain` gains `Custom { shader: id, params:
   {name: [f32; 4]} }`.
 - **Materials:** sprite items gain `material: Option<MaterialRef { id,
-  params }>`. The snapshot line lists it.
+  params }>`. The snapshot line lists it. A sprite with a material keeps
+  its `blend` (2337) as the pipeline's blend state, and its
+  `Paint::Tinted` colour is an input of the material, not applied after
+  it.
 - **A built-in `palette_swap` material:** a sprite drawn in one ramp of
   roles is drawn in another (`from: [roles]`, `to: [roles]`), for team
   colours. It has a CPU reference in `frame-png`.

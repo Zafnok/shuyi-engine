@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2301", "2302"]
+blocked_by: ["2301", "2302", "2226"]
 nick_input: none
 completed:
 ---
@@ -51,12 +51,16 @@ None.
 - The atlas format: wide glyphs per set.
 - A pack's `lang.ron` (`shuyi_assets::lang::LangInfo`): which wide set it
   uses, and whether its punctuation is wide.
+- 2350's check of text against the atlas (`font::undrawn`): a pack's
+  wide characters against the set it names.
 - Looking a wide glyph up by language, in every renderer.
 - Widths by language: the width table of 2301 per language.
 - The wrapping rules for Chinese in `word_wrap` (2302).
 
 **Out (do not do):**
-- Traditional Chinese; typing Chinese.
+- Traditional Chinese; typing Chinese (2346 turns a Windows IME on in
+  a name box; its composing text drawn in the box is parked 3034's
+  research).
 - Any game's fonts, packs or text.
 - Changing any narrow glyph, or the glyphs of a single wide set.
 
@@ -67,9 +71,12 @@ PR follows this one (game#0239).
 ## Implementation steps
 
 1. **The tool.** `--wide` takes a named set and may be given more than
-   once (`--wide ja=<font.bdf> --wide zhhans=<font.bdf>`). A set's
-   glyphs are the wide characters used by the packs that name it
-   (step 3), plus that set's fixed minimum from the project file (one
+   once (`--wide ja=<font.bdf> --wide zh-Hans=<font.bdf>`). A set's
+   name is the atlas's own word, not a language tag; a pack names its
+   set in `lang.ron` (step 3). The Simplified Chinese pack's folder is
+   the tag `zh-Hans` (2226). A set's glyphs are the wide characters used
+   by the packs that name it (step 3; from 2350's `Lang::texts`, by
+   pack), plus that set's fixed minimum from the project file (one
    string per set name). Sets are laid out one after another after the
    narrow glyphs.
 2. **The atlas.** `FontAtlasDef`'s wide glyphs become a map per set
@@ -77,12 +84,13 @@ PR follows this one (game#0239).
    several sets.
 3. **The pack.** `lang.ron` gains `wide_font: Option<String>` (a set
    name) and `wide_punctuation: bool` (default `false`). Validation: a
-   pack's `wide_font` names a set the atlas has, and every wide
-   character of the pack's text is in that set. The staleness check of
-   2301 covers every set.
+   pack's `wide_font` names a set the atlas has. 2350's check
+   (`shuyi_assets::font::undrawn`) learns sets: a pack's wide characters
+   must be in the set it names, so `shuyi check` fails when one is
+   missing. It covers every set.
 4. **Look-up.** One function in `shuyi-ui`: the current language's set
-   first, then any other set that has the character (a language menu
-   shows `日本語` and `简体中文` at the same time, whatever the
+   first, then any other set that has the character (the language row
+   of 2349 shows `日本語` and `简体中文` at the same time, whatever the
    language is). `shuyi-app`'s renderer, the one-bit renderer and
    `frame-png` all use it.
 5. **Widths by language.** With `wide_punctuation`, `“ ” ‘ ’ … —` are
@@ -109,8 +117,8 @@ PR follows this one (game#0239).
 - [ ] A Chinese paragraph wraps within the width with no line starting
       with `，` or `。`, none ending with `“`, and `……` never split (unit
       tests with real sentences).
-- [ ] A pack that uses a character its set lacks fails validation; the
-      staleness check fails when a pack gains a new character (tests).
+- [ ] A pack that uses a wide character its set lacks fails 2350's
+      check in `shuyi check` (test).
 - [ ] Every existing snapshot, the narrow atlas cells and an atlas with
       one wide set are unchanged.
 - [ ] All gates in the `run-gates` skill pass.
@@ -118,7 +126,7 @@ PR follows this one (game#0239).
 ## Tests required
 
 - Unit: set look-up and fall-back; widths by language; each new breaking
-  rule; atlas and pack validation.
+  rule; atlas and pack validation; 2350's check with two sets.
 - Property: 2302's wrap properties (width, round trip) hold with
   `wide_punctuation` on.
 - Snapshot / integration: the frame pictures; the look tests read cells, as

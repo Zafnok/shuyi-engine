@@ -6,7 +6,7 @@ milestone: "Parked: 3D"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3103", "3003", "3017"]
+blocked_by: ["3103", "3003", "3017", "2018"]
 nick_input: none
 completed:
 ---
@@ -35,8 +35,10 @@ the version macroquad pins is the one used, so there is only one copy.
 
 It builds on 3103 (the 3D view, the module layer hook, the painter
 registry), 3003 (`shuyi-app` as the macroquad backend of
-`shuyi-platform`) and 3017 (target capabilities: the web profile's
-`three_d` capability records what the web can run).
+`shuyi-platform`), 3017 (target capabilities: the web profile's
+`three_d` capability records what the web can run) and 2018 (the
+capture mode and the `render` CI job that compare a window with the
+raster).
 
 `shuyi-app` is a default crate, and 2003's `check-modules` fails when a
 default crate depends on a module (ADR-0009 §4). So the painter is a
@@ -115,13 +117,14 @@ None.
     budgets (or high, with a comment saying why);
   - an effect the web can't run is then a `shuyi check --target web`
     error unless the skin marks it `optional` (3107).
-- **Look tests.** On Linux CI, under Xvfb with Mesa's llvmpipe, render
-  3103's fixture scene with shadows and effects off, and compare it
-  with the software reference with a tolerance (at most 2 % of pixels
-  differ by more than 24 in any channel). It is never the exact gate;
-  the exact gates stay on the software picture and on snapshot text
-  (ADR-0011 §5). The same scene with each effect on is saved as a CI
-  artefact for a look by eye.
+- **Look tests.** Through 2018's capture mode and `render` CI job (Xvfb,
+  Mesa's llvmpipe): add 3103's fixture scene, with shadows and effects
+  off, to its plans or render card. Compare it with the raster (2332,
+  with 3103's painter registered) by `raster::compare`, at a plan
+  tolerance of at most 2 % of pixels over 24 in any channel. It is
+  never the exact gate; the exact gates stay on the software picture
+  and on snapshot text (ADR-0011 §5). The same scene with each effect
+  on is saved as a CI artefact for a look by eye.
 - **The debug view (2320).** If 2320 is done, draw its `Gizmo3`s as a
   line pass, depth-tested unless `on_top`. If it isn't, 2320 does this.
 
@@ -131,7 +134,9 @@ None.
 - colour grading from a lookup image;
 - screen-space reflections, ambient occlusion and other effects not in
   ADR-0011 §7;
-- the diorama skin (3107).
+- the diorama skin (3107);
+- a CI job of its own for 3D: the look test runs in 2018's `render`
+  job.
 
 ## Implementation steps
 
@@ -146,15 +151,15 @@ None.
 5. Add the shadow map, then fog.
 6. Add the effect passes, one at a time, each checked on desktop and in
    the web build.
-7. Add the look test and its CI job. Record the web's effects in its
-   profile.
+7. Add the fixture scene and its tolerance to 2018's `render` job.
+   Record the web's effects in its profile.
 
 ## Acceptance criteria
 
 - [ ] `check-modules` passes with no exception added: `cargo tree -p
       shuyi-app` shows no `shuyi-3d` and no `shuyi-app-3d`.
 - [ ] A game without the `3d` feature builds exactly as before.
-- [ ] The look test passes within the tolerance on Linux CI.
+- [ ] The look test passes within the tolerance in 2018's `render` job.
 - [ ] The web build passes and draws the fixture scene in the browser
       pane, and the PR notes each effect's result on WebGL 2.
 - [ ] The `web` profile's `three_d` matches what ran on WebGL 2. If it
@@ -167,7 +172,7 @@ None.
 ## Tests required
 
 - Unit: `Fx12` to `f32`; clip sampling; the light limit.
-- Integration: the look test under llvmpipe.
+- Integration: the look test in 2018's `render` job, under llvmpipe.
 - Manual: each effect on desktop and on WebGL 2, noted in the PR.
 
 ## Completion notes

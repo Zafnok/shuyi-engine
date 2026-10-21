@@ -13,7 +13,7 @@ completed:
 
 # 1126 — Isometric projection and example
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Unparked early only if the game's ticket 0060 says the army walks around freely (then 1119–1125 become game work). Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): after Visions of Shuyi launches, not only after the MVP (`docs/decisions.md`, 2026-10-20). Unparked early only if the game needs it: its ticket 0060 says the army walks around freely (then 1119–1125 become game work), or it asks for a piece of this through its `engine-change` skill, which is then split out and unparked alone. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -37,7 +37,14 @@ None.
   `SideView`, and a method for each of: tile to world, world to tile
   (the nearest diamond), and depth key. 1115 left a hook for this in the
   grid kit's math. The grid kit's scene and skins now take a
-  projection.
+  projection. **Either order with 2405:** if 2405 is done, its
+  `Projection::tile_at` (moved onto this `Projection`) and
+  `GridSkin::tile_at` pick through this world to tile, so the pointer
+  picks isometric tiles, and 2405's round-trip property test (every
+  pixel of every drawn tile gives that tile) runs on the isometric skin
+  too. If not, add to 2405's scope in this PR: "`tile_at` picks
+  through every variant of `shuyi_ui::world::Projection` (1126), and
+  the round-trip property test runs on the isometric skin too".
 - An isometric grid skin: per-tile pictures, units y-sorted by depth,
   and a cursor drawn as a diamond.
 - Free placement on an isometric map for tick stages, so a mover in
@@ -59,7 +66,19 @@ None.
 
 **Out (do not do):**
 - isometric autotiling;
+- isometric tile layers from Tiled maps through 2360's tile-layer item
+  (tiles placed by `Projection::Isometric`, drawn back to front, culled
+  through world to tile of the view's corners): a follow-up ticket,
+  written when this lands (step 4), blocked by 2360 if 2360 isn't done
+  then. 2360 draws orthogonal maps only and refuses an isometric one;
 - real elevation rules;
+- hex grids (2121, 2740, parked until after the launch): a hex map is
+  another topology, not a projection of the square grid (2121's ADR
+  amends ADR-0003 §6). If 2740 is done first, carry its
+  `Projection::Hex` into `shuyi_ui::world::Projection` unchanged, with
+  its tests, and give it the depth key 2740 names (the row for pointy
+  top; for flat top, the row, then 1 on a shifted column and 0 on the
+  others);
 - 3D.
 
 ## Implementation steps
@@ -67,10 +86,12 @@ None.
 1. Write the projection with property tests. `world_to_tile(tile_to_world(t))
    == t` for all tiles. Every world pixel inside a diamond picks that
    diamond.
-2. Make the grid kit use it. The game's top-down snapshots must not
-   change.
+2. Make the grid kit use it, 2405's `tile_at` included if 2405 is done.
+   The game's top-down snapshots must not change.
 3. Build the skin and the example, with a Harness playthrough, a bot
    match and snapshots.
+4. Write the follow-up ticket for isometric tile layers (Out) with the
+   `write-ticket` skill.
 
 ## Acceptance criteria
 
@@ -82,7 +103,8 @@ None.
 
 ## Tests required
 
-- Property: the projection round trip and picking.
+- Property: the projection round trip and picking; 2405's tile round
+  trip on the isometric skin, if 2405 is done.
 - Integration: the example.
 
 ## Completion notes

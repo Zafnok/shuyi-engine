@@ -45,6 +45,9 @@ None.
 
 **Out (do not do):**
 - Changing what the checks look for.
+- Checking that every text key the engine's code names has English:
+  2351's test does that (`crates/ui/tests/it/engine_english.rs`).
+  `check-text` keeps counting literals.
 
 ## Implementation steps
 

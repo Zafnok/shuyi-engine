@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: []
+blocked_by: ["2513"]
 nick_input: none
 completed:
 ---
@@ -52,7 +52,12 @@ None.
      (it may not with MSYS2's libraries: measure), the default on
      macOS. Written into the templates' `.cargo/config.toml`
      (`templates/`, the `shuyi new` output) behind a comment saying
-     how to turn it off.
+     how to turn it off. If the Linux linker it writes there isn't
+     part of rustup (`mold`, or `clang` driving `rust-lld`), add its
+     package to the table in `crates/cli/src/contract/doctor/linux.rs`
+     and to the `APT`, `DNF` and `PACMAN` lines of every
+     `scripts/setup-linux.sh` (2513). Otherwise CI's bare-container
+     `templates` job and the copy tests fail.
   2. **A `dynamic` feature** like Bevy's `dynamic_linking`: a
      `shuyi-dylib` crate (`crate-type = ["dylib"]`) that re-exports the
      engine's crates, used by a game's `dev` builds only. Windows DLLs
@@ -89,7 +94,9 @@ None.
 1. Write the tool and run it on CI runners to get the baseline.
 2. Try each option, one at a time, recording each one's numbers in the
    PR description.
-3. Keep what helps, in the templates and the root `Cargo.toml`.
+3. Keep what helps, in the templates and the root `Cargo.toml`. A
+   Linux linker outside rustup also goes in 2513's table and setup
+   scripts.
 4. Write the budget and the CI job.
 5. Write the page, and run the gates.
 
@@ -99,7 +106,8 @@ None.
       the `check` rebuild and the dependency count.
 - [ ] The PR description has a table of each option's effect on the
       rebuild, on both runners.
-- [ ] A game made with `shuyi new` gets the setup that helped.
+- [ ] A game made with `shuyi new` gets the setup that helped, and
+      CI's bare-container `templates` job still passes with it.
 - [ ] CI fails when the rebuild passes the budget (shown by a PR-local
       test run with the budget set to 0 s) or when the dependency count
       grows.

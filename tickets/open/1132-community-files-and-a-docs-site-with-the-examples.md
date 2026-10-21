@@ -6,8 +6,8 @@ milestone: "Engine: public"
 model: sonnet-5
 effort: medium
 status: todo
-blocked_by: ["game#1131"]
-nick_input: none
+blocked_by: ["game#1131", "2016"]
+nick_input: decision
 completed:
 ---
 
@@ -34,9 +34,22 @@ a website like Bevy's (`docs/decisions.md`), so the site is 2801–2806
 now, and this ticket keeps the community files. 2801 links them from its
 Community page.
 
+2016 comes first: it turns on private vulnerability reporting, the
+channel `SECURITY.md` names, and records the response time Nick chose.
+
 ## Nick input
 
-None. The policy comes from 0059.
+**Decision**, with the `ask-nick` skill: which community channel the
+engine opens at its first public release. The choices:
+
+- none yet (issues only);
+- GitHub Discussions in this repository (free, no new account; Nick
+  turns it on in the repository's settings);
+- a Discord server (a time commitment: someone must answer, and the
+  server belongs to Nick's account).
+
+Recommended: GitHub Discussions. Record it in `docs/decisions.md`. The
+contribution policy itself still comes from 0059.
 
 ## Scope
 
@@ -45,22 +58,52 @@ None. The policy comes from 0059.
   DCO sign-off if chosen, and that the gates are the review. It covers
   how AI-assisted work is judged and that issues come first for large
   changes.
-- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), `SECURITY.md`, and
-  issue and PR templates.
+- `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and issue and PR
+  templates.
+- `SECURITY.md`, with:
+  - a *Supported versions* line: before the first release, `main` only;
+    after it, the latest 0.x release only, with no backports or LTS
+    (2005's version policy; Bevy too supports only its latest minor
+    version);
+  - how to report: GitHub's private vulnerability reporting (the
+    Security tab's "Report a vulnerability", which 2016's setup turns
+    on), never a public issue;
+  - the response time Nick chose in 2016 (`docs/decisions.md`);
+  - a link to the threat model for untrusted files (`docs/formats.md`,
+    *Untrusted files*, from 2020). It says that, for a file the engine
+    reads, a panic, memory or time without bound, or two different
+    results from the same bytes is a security bug to report privately.
+    **Either order with 2020:** if 2020 isn't done, `SECURITY.md` leaves
+    this out, and 2020 adds the link when it lands.
+- `CONTRIBUTING.md` and `SECURITY.md` link `GOVERNANCE.md` (2016), and
+  `GOVERNANCE.md`'s line on security reports gets a link to
+  `SECURITY.md`.
+- The channel Nick picks, linked from `CONTRIBUTING.md` and, if 2801 is
+  done, from its Community page.
 - `AGENTS.md` at the repository root.
 
 **Out (do not do):**
-- a forum or Discord (ask Nick first; that is a time commitment for him);
+- a forum or Discord, unless Nick picks one in the decision above.
+  Creating the server or turning Discussions on is Nick's (his account,
+  the repository's settings);
 - trademark registration (Nick's, outside the repository);
-- the website (2801–2806).
+- the website (2801–2806);
+- `GOVERNANCE.md`, the list of accounts and secrets
+  (`docs/continuity.md`) and the repository's settings (2016).
 
 ## Implementation steps
 
-1. Write the files.
-2. If 2801 is done, link them from its Community page.
+1. Ask Nick which community channel (`ask-nick`) and record his answer
+   in `docs/decisions.md`.
+2. Write the files.
+3. If 2801 is done, link them and the channel from its Community page.
 
 ## Acceptance criteria
 
+- [ ] `docs/decisions.md` has Nick's answer on the community channel.
+- [ ] `SECURITY.md` has the supported versions, the private channel and
+      the response time from 2016, and the link to *Untrusted files* if
+      2020 is done.
 - [ ] The repository shows the community files in GitHub's community
       profile.
 - [ ] All gates pass.

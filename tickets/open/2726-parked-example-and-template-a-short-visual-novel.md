@@ -91,7 +91,7 @@ None.
   2004's order:
   - which template starts it (the part above);
   - which kits and modules it uses: `shuyi-vn`, the dialogue formats,
-    1123's clips;
+    2231's clips;
   - what looks related but isn't for it: the plain dialogue box of a
     turn or tick game, cinematics (timed shots, not a story the player
     reads), and `shuyi-mystery` for clues and deductions (2727–2732);

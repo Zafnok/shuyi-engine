@@ -72,6 +72,13 @@ method with a default), except where a game builds `MapScene` with a
 struct literal. The game's PR that moves its pin follows this one
 (game#0449).
 
+**Either order with 2013:** if 2013 is done, `MapScene` is
+`#[non_exhaustive]`, so no game builds it by a struct literal and this
+change is fully additive (say so in the PR), and `MapEdges` takes the
+shape 2013's ADR gives a plain value (exhaustive, with public fields).
+If 2013 isn't done, keep the exception above; 2013 makes `MapScene`
+non-exhaustive afterwards.
+
 ## Implementation steps
 
 1. Add `MapEdges` and the field; set it in `MapScene::new`; add the

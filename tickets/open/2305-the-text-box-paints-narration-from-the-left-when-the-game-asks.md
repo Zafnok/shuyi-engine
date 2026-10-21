@@ -42,6 +42,14 @@ None.
 - An alignment for narration in `BoxPlace` (e.g. `narration:
   NarrationAlign` with `Centred`, today's look, and `Left`, from
   `text_x` like speech), read by `paint_lines`.
+- **Either order with 2013:** if 2013 is done, `BoxPlace` is
+  `#[non_exhaustive]` with `BoxPlace::new(frame, text_x, text_y)`. `new`
+  sets `narration` to `Centred`, and this ticket adds `#[must_use] pub
+  const fn with_narration(self, narration: NarrationAlign) -> BoxPlace`
+  (games build `BoxPlace` in `const` items). `NarrationAlign` is
+  `#[non_exhaustive]`, as 2013's ADR asks of a choice that may grow. If
+  2013 isn't done, add the field as written; 2013 then sets it in `new`,
+  adds the setter and makes `NarrationAlign` `#[non_exhaustive]`.
 - With `Left`: narration lines start at `text_x` and a single line stays
   on the first text row (as speech does); narration keeps its dim color.
 
@@ -49,16 +57,20 @@ None.
 - The color of narration, the caption line, or the speaker's name.
 - Any game's box or text.
 
-**For the game:** `BoxPlace` gains a field, so a game that builds it
-with a struct literal adds it (`Centred` keeps its look). The game's PR
-that moves its pin follows this one (game#0740).
+**For the game:** if 2013 is done, the new field is additive, because a
+game builds `BoxPlace` with `BoxPlace::new`. If not, `BoxPlace` gains a
+field, so a game that builds it with a struct literal adds it
+(`Centred` keeps its look). The game's PR that moves its pin follows
+this one (game#0740).
 
 ## Implementation steps
 
-1. Add the enum (documented) and the field.
+1. Add the enum (documented) and the field, and `with_narration` if
+   2013 is done.
 2. `paint_lines`: branch on it for the column and the vertical place.
 3. Update every `BoxPlace` the engine builds (the examples' and the
-   tests') with `Centred`, so nothing changes.
+   tests') with `Centred`, so nothing changes (if 2013 is done, the
+   places built with `BoxPlace::new` need no change).
 4. Tests and the docs of the skin.
 
 ## Acceptance criteria
@@ -71,6 +83,9 @@ that moves its pin follows this one (game#0740).
 ## Tests required
 
 - Unit (look): both alignments, one line and three lines.
+- Unit, if 2013 is done: `BoxPlace::new` gives `Centred`, and a `const`
+  item built with `BoxPlace::new(..).with_narration(NarrationAlign::Left)`
+  compiles.
 
 ## Completion notes
 

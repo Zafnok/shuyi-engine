@@ -6,7 +6,7 @@ milestone: "Engine: accessibility"
 model: sonnet-5
 effort: medium
 status: blocked
-blocked_by: []
+blocked_by: ["3042"]
 nick_input: none
 completed:
 ---
@@ -51,7 +51,11 @@ None.
   and `is_repeatable` is a keymap error (a latched repeat would never
   stop).
 - **The player's settings**, in the engine's `Settings` and its saved
-  form (old saves read as the defaults):
+  form (old saves read as the defaults; if 2110 is done, each versioned
+  settings form this changes, the engine's `()` settings and the grid
+  template's, raises its `VERSION`, reads the old version by
+  `Self::deserialize` in `Migrate::upgrade`, and adds a `v<N>_*.ron`
+  fixture, written by this build, beside the old ones):
   - `toggled`: the names of the actions the player set to toggle (by
     name, as the saved bindings are);
   - `repeat`: `None` (the game's), or a `RepeatDef` from three presets
@@ -62,8 +66,9 @@ None.
 - **`InputState`:**
   - a toggled action latches on its press: `is_held` is true until the
     next press; its release does nothing;
-  - a lost focus (the window, the Steam overlay) clears latches as it
-    clears held keys, so nothing stays stuck;
+  - a lost focus or a suspend clears latches as it clears held keys:
+    `InputState::forget_held` (3042), which `App` calls on `FocusLost`
+    and `Suspend`, forgets latches too, so nothing stays stuck;
   - `InputState::set_player_input(&PlayerInput)` applies the three
     settings; `Game` calls it when they change.
 - **Option rows:** `OptionRow::toggle(action)`, a row per `can_toggle`
@@ -71,6 +76,10 @@ None.
   `OptionRow::chord_time()`. A game adds them to its options list.
   **Either order with 2314:** if 2314 is done, they are enum option
   rows; if not, stepped rows, and 2314 converts them.
+  **Either order with 2351:** if it is done, the English of the keys
+  these rows name goes in the engine's `crates/ui/lang/en/ui.ron`; if
+  not, in the toy's `en.ron`, and 2351 moves it. A `toggle(action)`
+  row's action label stays the game's.
 - **The toy game** has one `can_toggle` action and the three rows.
 
 **Out (do not do):**
@@ -78,15 +87,19 @@ None.
 - alternatives to button mashing or quick-time events (game rules);
 - help text that says "press" instead of "hold" for a toggled action (a
   follow-up with 2006's `check-text`, if a game names holding in its
-  text).
+  text);
+- the motion, shake and flashing settings (2340). Both tickets add to
+  `Settings` and every repository game's saved form; whichever lands
+  second follows the first's shape.
 
 ## Implementation steps
 
-1. Read the `input-actions` skill, `InputState`, `Keymap`, `RepeatDef`
-   and `Settings`.
+1. Read the `input-actions` skill, `InputState` (with 3042's
+   `forget_held`), `Keymap`, `RepeatDef` and `Settings`. Check whether
+   2110, 2314, 2340 and 2351 are done.
 2. Add `can_toggle` and the keymap check.
 3. Add the settings and their saved form.
-4. Add latching, the focus rule and `set_player_input`.
+4. Add latching, latches in `forget_held` and `set_player_input`.
 5. Add the rows and use them in the toy game.
 6. Run the gates.
 
@@ -94,19 +107,21 @@ None.
 
 - [ ] A toggled action is held from its first press to its second, and
       not after its release.
-- [ ] Losing focus clears a latch.
+- [ ] Losing focus or a suspend clears a latch.
 - [ ] The slower repeat preset repeats later and less often than the
       game's, by the preset's numbers, under a scripted held key.
 - [ ] A longer chord window lets a chord through that the game's window
       misses.
-- [ ] Settings saved before this ticket load with the defaults.
+- [ ] Settings saved before this ticket load with the defaults (if 2110
+      is done, the old fixtures in each changed form's
+      `tests/saves/settings/` still read).
 - [ ] A keymap with an action both toggled and repeatable fails to load,
       naming it.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: latching; focus loss; each preset; the chord window; the saved
+- Unit: latching; focus loss and suspend; each preset; the chord window; the saved
   form, old and new.
 - Property: for random press and release scripts, a toggled action is
   held exactly between odd and even presses.

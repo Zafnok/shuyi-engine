@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2722"]
+blocked_by: ["2722", "2405"]
 nick_input: none
 completed:
 ---
@@ -94,10 +94,17 @@ None.
 - **Going back**, the `Back` action: calls 2721's `history::back(…,
   1)`, rebuilds the presenter at the earlier line, fully revealed, and
   rebuilds the backlog. It obeys `back_past_choices`.
-- **Pointer, either order with 1121**: if the parked 1121 is done, a
-  pointer press on the text box sends `Advance`, and on a choice picks
-  it, through the actions 1121 defines. If not, 1121 is not this
-  ticket's job.
+- **Pointer, through 2405:** pointing is not a key (2405's ADR), so
+  nothing binds it, and it is never the only way.
+  - `VnSkin` records the text box as a hit area (2405's
+    `GlyphBuffer::hit_cells`, item `Hit::AREA`) and each shown choice as
+    its index under a second `WidgetKey`. The skin records them, not the
+    scene (rule 9).
+  - `VnStage` reads `FrameInput::pointer()`. A click on the text box
+    does what `Advance` does, so it also turns skip off. A click on a
+    choice picks it as Confirm does, and a disabled choice is not
+    picked. On a frame the pointer moved over a choice, that choice is
+    selected, by 2405's menu rules.
 
 **Out (do not do):**
 - saves, the gallery, endings in the profile and the route chart
@@ -105,6 +112,9 @@ None.
 - voices, and waiting for them in auto mode (2725);
 - hiding the text box to look at the picture, and going forward again
   after going back (write a ticket if the example shows a need);
+- the pointer on the quick menu and the backlog, and the wheel scrolling
+  the backlog (write a ticket if the example shows a need); the pointer
+  as a game action (1121, parked);
 - naming any key or button in code, data the engine ships, or text.
 
 ## Implementation steps
@@ -120,7 +130,7 @@ None.
 5. Write the `Back` action over `history::back`.
 6. Write the quick menu with the settings rows.
 7. If 3002 is done, declare the screens' actions and add the fixture
-   layouts. If 1121 is done, add the pointer presses.
+   layouts. Add the pointer clicks (2405).
 
 ## Acceptance criteria
 
@@ -142,6 +152,9 @@ None.
       `--target steam-deck` pass on the fixture game with only the
       required actions bound, and every optional action is reachable
       from the quick menu (Harness test).
+- [ ] A click on the text box sends the same commands as `Advance`, and
+      a click on a choice the same as picking it with the keys (Harness
+      test with 2405's `click`).
 - [ ] `check-keys` passes, and no text the engine ships names a key.
 - [ ] All gates in the `run-gates` skill pass.
 
@@ -154,6 +167,7 @@ None.
 - Snapshot: the backlog overlay's scene dump; the quick menu's.
 - Integration: a Harness test that skips to the first unread line,
   opens the backlog, goes back one line, and reaches every optional
-  action through the quick menu.
+  action through the quick menu; a Harness test that advances and picks
+  a choice with clicks.
 
 ## Completion notes
