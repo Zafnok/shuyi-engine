@@ -211,9 +211,10 @@ The sign-off also:
 - The names are held already: on 2026-10-21 Nick had the six crates
   published as empty 0.0.0 placeholders, owned by `Zafnok`
   (`docs/decisions.md`). The first release is the next version of each
-  and replaces the placeholder's README and description. crates.io
-  forbids holding a name "for a prolonged period" with no development
-  behind it, so the placeholders are not a reason to delay this ticket.
+  and replaces the placeholder's README and description. Nick wants no
+  real version until the engine is stable, so the placeholders don't
+  hurry this ticket; only a threat to the names would, and he is asked
+  first (`docs/decisions.md`, 2026-10-21).
 - In the game repository: a ticket that moves the game from the git
   revision to the released versions (`shuyi-engine.rev` and `cargo xtask
   engine-pin` retire, or stay for the local checkout only).

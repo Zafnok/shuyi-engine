@@ -918,3 +918,18 @@ that code writes `shuyi_core` either way, so the names stay as chosen.
   them, so each is published when its crate is real.
 - **2005 publishes the next version of each** through trusted
   publishing, with no publish by hand.
+
+Told that the placeholders would be published, Nick added:
+
+> "yea for now we're just doing name reservation, not any publishing
+> until we're more stable unless we have to in order to keep the name
+> reservation"
+
+- **No real version before the engine is stable.** The placeholders
+  hold the names; 2005 still waits for the MVP and the protections it
+  is blocked by. The names do not hurry it.
+- **Unless the names are at risk.** If crates.io questions a
+  placeholder (its policy lets the team ask an owner to justify a
+  crate before removing it), the answer points at this repository's
+  activity. A real version goes out early only if that is what keeping
+  the names takes, and Nick is asked first.
