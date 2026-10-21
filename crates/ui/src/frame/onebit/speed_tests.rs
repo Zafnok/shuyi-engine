@@ -341,6 +341,64 @@ proptest! {
         let full = fast(&new);
         prop_assert!(*frame == *full, "first differs at {:?}", first_difference(&frame, &full));
     }
+
+    #[test]
+    fn with_roles_the_fast_renderer_draws_as_the_reference_does(buf in buffer()) {
+        let (fast, slow) = (fast_with_roles(&buf), slow_with_roles(&buf));
+        prop_assert!(fast == slow, "first differs at {:?}", first_difference(&fast, &slow));
+    }
+
+    #[test]
+    fn with_roles_redrawing_what_changed_gives_the_full_render(
+        old in buffer(),
+        edits in prop::collection::vec(edit(), 0..8),
+    ) {
+        let new = edits.iter().fold(old.clone(), |buf, edit| edit.apply(buf));
+        let (atlas, bits) = test_font();
+        let font = Font::new(&atlas, &bits).unwrap();
+        let mut frame = fast_with_roles(&old);
+        render_changed_with(&old, &new, &font, &TestImages, &roles(), &mut frame);
+        let full = fast_with_roles(&new);
+        prop_assert!(*frame == *full, "first differs at {:?}", first_difference(&frame, &full));
+    }
+}
+
+/// A pattern map of [`colors`]: the first six are roles, each of its own
+/// patterns, foreground and background apart; the rest are of no role.
+fn roles() -> PatternMap {
+    let patterns: Vec<Pattern> = Base::ALL
+        .iter()
+        .flat_map(|&base| [Pattern::new(base), Pattern::new(base).inverted()])
+        .collect();
+    let names: Vec<String> = (0..6).map(|i| format!("role.{i}")).collect();
+    let def = PatternMapDef {
+        roles: (0..)
+            .zip(&names)
+            .map(|(i, name)| {
+                let fg = patterns[(2 * i + 3) % patterns.len()];
+                let bg = patterns[(5 * i + 1) % patterns.len()];
+                (name.clone(), RolePatterns::new(fg, bg))
+            })
+            .collect(),
+        ..PatternMapDef::default()
+    };
+    PatternMap::new(names.iter().map(String::as_str).zip(colors()), &def)
+}
+
+fn fast_with_roles(buf: &GlyphBuffer) -> Box<Frame> {
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    render_with(buf, &font, &TestImages, &roles(), &mut frame);
+    frame
+}
+
+fn slow_with_roles(buf: &GlyphBuffer) -> Box<Frame> {
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    reference::render_with(buf, &font, &TestImages, &roles(), &mut frame);
+    frame
 }
 
 /// Every ink's looked-up byte is the pattern's pixels, on every row and
@@ -349,7 +407,7 @@ proptest! {
 fn pattern_bytes_are_the_inks_pixels() {
     for ink in Ink::ALL {
         for y in 0..HEIGHT {
-            let byte = pattern(ink, y);
+            let byte = InkShades::of(ink).row(y);
             for x in 0..WIDTH {
                 let white = byte >> (7 - (x & 7)) & 1 == 1;
                 assert_eq!(white, ink_is_white(ink, x, y), "{ink:?} at ({x}, {y})");
@@ -397,9 +455,9 @@ fn a_byte_at_a_whole_cell_is_written_whole_only_inside_the_clip() {
         },
     };
     let bits = u64::from(0b1000_0001u8) << 56;
-    target.run(0, 0, bits, Pen::Ink(Ink::Black));
-    target.run(0, 8, bits, Pen::Ink(Ink::Black));
-    target.run(0, 16, bits, Pen::Ink(Ink::Black));
+    target.run(0, 0, bits, Pen::ink(Ink::Black));
+    target.run(0, 8, bits, Pen::ink(Ink::Black));
+    target.run(0, 16, bits, Pen::ink(Ink::Black));
     target.run(0, 16, bits >> 1, Pen::Flip);
     let row: String = (0..24)
         .map(|x| if is_white(&frame, x, 0) { '.' } else { '#' })
@@ -694,4 +752,46 @@ fn a_window_ending_inside_a_byte_cuts_the_scene_there() {
     );
     // Black up to the window's edge at x = 18, white past it.
     assert!(!is_white(&fast, 17, 0) && is_white(&fast, 18, 0));
+}
+
+/// Shades that count how often each is asked.
+#[derive(Default)]
+struct Counted {
+    grounds: core::cell::Cell<u32>,
+    glyphs: core::cell::Cell<u32>,
+}
+
+impl Shades for Counted {
+    fn ground(&self, rgb: Rgb) -> Shade {
+        self.grounds.set(self.grounds.get() + 1);
+        InkShades.ground(rgb)
+    }
+
+    fn glyph(&self, rgb: Rgb) -> Shade {
+        self.glyphs.set(self.glyphs.get() + 1);
+        InkShades.glyph(rgb)
+    }
+
+    fn shape(&self, rgb: Rgb) -> Shade {
+        InkShades.shape(rgb)
+    }
+}
+
+/// Neighbouring cells mostly share their colours, so a colour's shade is
+/// asked once for a run of cells of it, not once a cell.
+#[test]
+fn a_run_of_one_colour_asks_its_shade_once() {
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let (a, b) = (Rgb::new(10, 10, 10), Rgb::new(200, 200, 200));
+    let mut buf = GlyphBuffer::new(50, 15, Cell::new('X', a, b));
+    let mut frame = Box::new([0u8; FRAME_BYTES]);
+    let counted = Counted::default();
+    render_with(&buf, &font, &TestImages, &counted, &mut frame);
+    assert_eq!((counted.grounds.get(), counted.glyphs.get()), (1, 1));
+    // Another colour in the middle: asked again after it, and again back.
+    buf.set(10, 3, Cell::new('X', b, a));
+    let counted = Counted::default();
+    render_with(&buf, &font, &TestImages, &counted, &mut frame);
+    assert_eq!((counted.grounds.get(), counted.glyphs.get()), (3, 5));
 }

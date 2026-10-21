@@ -16,7 +16,7 @@ use super::bots::{BotsInput, BotsOutput, tally};
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, Scene, Session, Sound};
 use crate::frame_png::{Script, Shot, Step};
-use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools};
+use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
 /// second of waiting) and shows what it was given.
@@ -118,6 +118,9 @@ pub struct Fake {
     /// target's, and a title screen that declares nothing), or why they
     /// don't load; `None`: it doesn't offer them.
     pub controls: Option<Result<(), String>>,
+    /// Its one-bit skin, or why it doesn't load; `None`: it doesn't offer
+    /// one.
+    pub one_bit: Option<Result<OneBitSkin, String>>,
 }
 
 /// A game's sources: a names table, a palette and a picture.
@@ -136,6 +139,7 @@ impl Default for Fake {
             bots: Ok(tally(Vec::new())),
             sources: Some(SOURCES),
             controls: None,
+            one_bit: None,
         }
     }
 }
@@ -209,6 +213,10 @@ impl GameTools for Fake {
         Some(Ok(Box::new(
             GameControls::new(KeymapDef::default()).with(title),
         )))
+    }
+
+    fn one_bit(&self, _target: &str) -> Option<Result<OneBitSkin, String>> {
+        self.one_bit.clone()
     }
 
     fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {

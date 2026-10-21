@@ -33,7 +33,9 @@ pub mod web;
 
 use std::path::{Path, PathBuf};
 
-pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools};
+use shuyi_assets::target::TargetProfile;
+
+pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
@@ -326,7 +328,19 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
             return 2;
         }
     };
-    match frame_png::run(&project.root, &options, game) {
+    let target = match options
+        .target
+        .as_deref()
+        .map(|id| target_profile(project, id))
+    {
+        None => None,
+        Some(Ok(profile)) => Some(profile),
+        Some(Err((code, e))) => {
+            eprintln!("frame-png: {e}");
+            return code;
+        }
+    };
+    match frame_png::run(&project.root, &options, game, target.as_ref()) {
         Ok(summary) => {
             println!("{summary}");
             0
@@ -336,6 +350,30 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
             1
         }
     }
+}
+
+/// The profile of target `id` (the engine's or the game's), or the exit
+/// code and what is wrong: the profiles don't load (1), or none has that
+/// id (2).
+fn target_profile(project: &Project, id: &str) -> Result<TargetProfile, (u8, String)> {
+    let profiles =
+        contract::target::profiles(&project.config, &project.root).map_err(|errors| {
+            let shown: Vec<String> = errors.iter().map(ToString::to_string).collect();
+            (
+                1,
+                format!("the target profiles don't load: {}", shown.join("; ")),
+            )
+        })?;
+    profiles.get(id).map(|p| p.profile.clone()).ok_or_else(|| {
+        let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
+        (
+            2,
+            format!(
+                "--target: no target profile \"{id}\"; the profiles are {}",
+                known.join(", ")
+            ),
+        )
+    })
 }
 
 fn web(project: &Project, args: &[String]) -> Outcome {

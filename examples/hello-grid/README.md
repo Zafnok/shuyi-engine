@@ -26,7 +26,7 @@ cargo test -p hello-grid             # the tests
 | `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
 | `src/main.rs` | The binary: what the platform shell needs to know |
 | `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `import`), and the tool program `shuyi` runs them in |
-| `files/` | Embedded: the keymap, palette, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
+| `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
 | `files-src/` | Not embedded: the font the atlas is made from |
 | `shuyi.ron` | The project file of the engine's tools |
 | `tests/it/` | A playthrough, bots, the tool contract, determinism, options and key rebinding, profiles, the files, and pictures as snapshots |
@@ -72,6 +72,15 @@ for the Playdate (the d-pad, A and B) and one for the Deck. `check
 --target` checks that each screen's required actions (all six) bind to
 distinct buttons of the target (ADR-0025). `screens::all` lists the
 screens it checks.
+
+Its look fits a black and white screen too. `files/palette@onebit.ron`
+gives each color of the palette, by its name, a pattern of 8 × 8 pixels
+(ADR-0008 §4), and keeps apart what the colors tell apart: your piece from
+the foe, the floor from the walls and the goal. A test checks it as
+`check --target` checks a one-bit target. `cargo shuyi frame-png
+title.png --target playdate` paints the title as the Playdate would show
+it, the top 240 pixels of the frame:
+`tests/it/snapshots/it__onebit__title_playdate.snap.png`.
 
 ## Art and licenses
 

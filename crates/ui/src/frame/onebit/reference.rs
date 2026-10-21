@@ -8,7 +8,9 @@
 use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::ink::Ink;
 
-use super::{Font, Frame, HEIGHT, Image, Images, Phase, ROW_BYTES, WIDTH, ink_is_white, ink_of};
+use super::{
+    Font, Frame, HEIGHT, Image, Images, InkShades, Phase, ROW_BYTES, Shade, Shades, WIDTH,
+};
 use crate::frame::glyph_buffer::{GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
 
 /// Draws `buf` into `out` exactly as [`render`](super::render) does.
@@ -21,6 +23,30 @@ pub fn render_marked(
     buf: &GlyphBuffer,
     font: &Font<'_>,
     images: &impl Images,
+    out: &mut Frame,
+    mark: &mut impl FnMut(Phase),
+) {
+    render_marked_with(buf, font, images, &InkShades, out, mark);
+}
+
+/// Draws `buf` into `out` exactly as [`render_with`](super::render_with)
+/// does.
+pub fn render_with(
+    buf: &GlyphBuffer,
+    font: &Font<'_>,
+    images: &impl Images,
+    shades: &impl Shades,
+    out: &mut Frame,
+) {
+    render_marked_with(buf, font, images, shades, out, &mut |_| {});
+}
+
+/// [`render_with`], calling `mark` as each [`Phase`] ends.
+pub fn render_marked_with(
+    buf: &GlyphBuffer,
+    font: &Font<'_>,
+    images: &impl Images,
+    shades: &impl Shades,
     out: &mut Frame,
     mark: &mut impl FnMut(Phase),
 ) {
@@ -47,15 +73,19 @@ pub fn render_marked(
             y: window.y0 + dy,
             scale: i64::from(backdrop.zoom()),
         };
-        draw_layers(&mut scene, backdrop.scene(), at, font, images, &mut |_| {});
+        let look = (font, images, shades);
+        draw_layers(&mut scene, backdrop.scene(), at, look, &mut |_| {});
     }
     mark(Phase::Backdrop);
-    draw_layers(&mut target, buf, place, font, images, mark);
+    draw_layers(&mut target, buf, place, (font, images, shades), mark);
 }
 
-/// The eight pixels of screen row `y` that `ink` paints in a byte.
-fn ink_byte(ink: Ink, y: i32) -> u8 {
-    (0..8).fold(0, |byte, x| (byte << 1) + u8::from(ink_is_white(ink, x, y)))
+/// The eight pixels of screen row `y` that `shade` paints in a byte.
+#[allow(clippy::cast_possible_truncation)] // a screen row
+fn shade_byte(shade: Shade, y: i64) -> u8 {
+    (0..8).fold(0, |byte, x| {
+        (byte << 1) + u8::from(shade.is_white(x, y as i32))
+    })
 }
 
 /// The index in a [`Frame`] of the byte holding screen pixel `(x, y)`.
@@ -133,7 +163,7 @@ struct Target<'f> {
 
 #[derive(Copy, Clone)]
 enum Pen {
-    Ink(Ink),
+    Paint(Shade),
     Flip,
 }
 
@@ -152,7 +182,7 @@ impl Target<'_> {
             mask &= u8::MAX << (start + 8 - hi).max(0);
             let byte = &mut self.frame[byte_index(start, y)];
             *byte = match pen {
-                Pen::Ink(ink) => *byte ^ ((*byte ^ ink_byte(ink, y as i32)) & mask),
+                Pen::Paint(shade) => *byte ^ ((*byte ^ shade_byte(shade, y)) & mask),
                 Pen::Flip => *byte ^ mask,
             };
         }
@@ -179,14 +209,17 @@ impl Target<'_> {
     }
 }
 
-fn draw_layers(
+/// The font, the pictures and the colours' shades.
+type Look<'a, I, S> = (&'a Font<'a>, &'a I, &'a S);
+
+fn draw_layers<I: Images, S: Shades>(
     target: &mut Target<'_>,
     buf: &GlyphBuffer,
     at: Place,
-    font: &Font<'_>,
-    images: &impl Images,
+    look: Look<'_, I, S>,
     mark: &mut impl FnMut(Phase),
 ) {
+    let (font, _, shades) = look;
     let spec = buf.spec();
     let (cell_w, cell_h) = (i32::from(spec.cell_w), i32::from(spec.cell_h));
     let cells = || {
@@ -199,14 +232,14 @@ fn draw_layers(
     };
     for (rect, cell) in cells() {
         if !cell.see_through {
-            target.fill(rect, Pen::Ink(ink_of(cell.bg)));
+            target.fill(rect, Pen::Paint(shades.ground(cell.bg)));
         }
     }
     mark(Phase::Backgrounds);
-    draw_items(target, buf, Layer::Under, at, images);
+    draw_items(target, buf, Layer::Under, at, look);
     mark(Phase::Under);
     for (rect, cell) in cells() {
-        if ink_of(cell.fg) == Ink::BlackEdged {
+        if shades.glyph(cell.fg).edged {
             draw_glyph(target, font, cell.glyph, rect, at.scale, Glyph::Edge);
         }
     }
@@ -218,15 +251,15 @@ fn draw_layers(
             cell.glyph,
             rect,
             at.scale,
-            Glyph::Ink(ink_of(cell.fg)),
+            Glyph::Paint(shades.glyph(cell.fg)),
         );
     }
     mark(Phase::Glyphs);
-    draw_items(target, buf, Layer::Over, at, images);
+    draw_items(target, buf, Layer::Over, at, look);
     mark(Phase::Over);
     for item in buf.items() {
         if let Item::Rect(o) = item
-            && ink_of(o.color) == Ink::Invert
+            && shades.shape(o.color).flips
         {
             target.fill(at.screen(o.rect), Pen::Flip);
         }
@@ -234,29 +267,29 @@ fn draw_layers(
     mark(Phase::Invert);
 }
 
-fn draw_items(
+fn draw_items<I: Images, S: Shades>(
     target: &mut Target<'_>,
     buf: &GlyphBuffer,
     layer: Layer,
     at: Place,
-    images: &impl Images,
+    look: Look<'_, I, S>,
 ) {
     for item in buf.items().iter().filter(|item| item.layer() == layer) {
         match item {
             Item::Rect(o) => {
-                let ink = ink_of(o.color);
-                if ink != Ink::Invert {
-                    target.fill(at.screen(o.rect), Pen::Ink(ink));
+                let shade = look.2.shape(o.color);
+                if !shade.flips {
+                    target.fill(at.screen(o.rect), Pen::Paint(shade));
                 }
             }
-            Item::Sprite(s) => draw_sprite(target, s, at, images),
+            Item::Sprite(s) => draw_sprite(target, s, at, look),
         }
     }
 }
 
 #[derive(Copy, Clone)]
 enum Glyph {
-    Ink(Ink),
+    Paint(Shade),
     Edge,
 }
 
@@ -281,16 +314,17 @@ fn draw_glyph(
         byte.map_or(0, |&byte| widen(byte, scale))
     };
     match part {
-        Glyph::Ink(ink) => {
+        Glyph::Paint(shade) => {
             for dy in 0..height {
-                target.run(cell.y0 + dy, cell.x0, row(dy), Pen::Ink(ink));
+                target.run(cell.y0 + dy, cell.x0, row(dy), Pen::Paint(shade));
             }
         }
         Glyph::Edge => {
             for dy in -1..=height {
                 let near = (row(dy - 1) | row(dy) | row(dy + 1)) >> 1;
                 let edge = near | near << 1 | near >> 1;
-                target.run(cell.y0 + dy, cell.x0 - 1, edge, Pen::Ink(Ink::White));
+                let white = Pen::Paint(Shade::of_ink(Ink::White));
+                target.run(cell.y0 + dy, cell.x0 - 1, edge, white);
             }
         }
     }
@@ -314,17 +348,22 @@ fn shows(opacity: u8, x: i64, y: i64) -> bool {
     u32::from(opacity) * 16 > rank * 255 + 127
 }
 
-fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &impl Images) {
+fn draw_sprite<I: Images, S: Shades>(
+    target: &mut Target<'_>,
+    sprite: &Sprite,
+    at: Place,
+    look: Look<'_, I, S>,
+) {
     let shown = at.screen(sprite.clip).within(target.clip);
-    let Some(image) = images.image(sprite.image) else {
-        target.fill(shown, Pen::Ink(Ink::Grey));
+    let Some(image) = look.1.image(sprite.image) else {
+        target.fill(shown, Pen::Paint(Shade::of_ink(Ink::Grey)));
         return;
     };
     let (src, dest) = (sprite.src, sprite.dest);
     let (src_w, src_h) = (i64::from(src.w), i64::from(src.h));
     let (dest_w, dest_h) = (i64::from(dest.w), i64::from(dest.h));
     let solid = match sprite.paint {
-        Paint::Solid(color) => Some(ink_of(color)),
+        Paint::Solid(color) => Some(look.2.shape(color)),
         Paint::Image | Paint::Dimmed | Paint::Shaded(_) => None,
     };
     for y in shown.y0..shown.y1 {
@@ -359,8 +398,10 @@ fn draw_sprite(target: &mut Target<'_>, sprite: &Sprite, at: Place, images: &imp
             let white = white && shows(sprite.brightness, x, y);
             #[allow(clippy::cast_possible_truncation)] // screen pixels
             let white = match (solid, sprite.paint) {
-                (Some(ink), _) => ink_is_white(ink, x as i32, y as i32),
-                (None, Paint::Dimmed) => white || ink_is_white(Ink::Grey, x as i32, y as i32),
+                (Some(shade), _) => shade.is_white(x as i32, y as i32),
+                (None, Paint::Dimmed) => {
+                    white || Shade::of_ink(Ink::Grey).is_white(x as i32, y as i32)
+                }
                 (None, _) => white,
             };
             target.set(x, y, white);
