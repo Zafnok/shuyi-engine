@@ -194,7 +194,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2115 | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
 | 2112 | A level solver: breadth-first search over any `TurnRules` game |
-| 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units |
+| 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units (after 2125, 2112 and 3009) |
 
 **Data, saves and versions:**
 
@@ -307,6 +307,17 @@ them.
 | 2207 | Bundle layers from outside the binary: files handed in at run time, a folder on disk | game#1012, game#1014 |
 | 2101 | A deterministic, sandboxed script runtime: the `shuyi-script` module, and the ADR choosing its language | game#1017 |
 | 2102 | The `shuyi-script` module's example | 2101 |
+| 2125 | A rollout bot: `Determinize`, and flat Monte Carlo on copies that never see the luck to come (split out of 2113) | game#0506 |
+| 2126 | A playtest runner: K tries of each named bot, the game's measures, pass bands as data, `shuyi playtest` | game#0506 |
+| 2127 | An autobalance search: the game's knobs change a stage, never the bots, until every bot is in its band (after 2126) | game#0509 |
+
+The playtest bots (2125–2127, 2026-10-21) are on the game's Act 1
+critical path: its persona bots (game#0506) and autobalance
+(game#0509) wait for them, and every Act 1 battle is balanced with
+them. So they come with 2304 and 2305, ahead of the MVP's tickets.
+2125 and 2126 wait for nothing and can run side by side; 2127 follows
+2126. They run on a PC and don't wait for slicing (3009): its first
+real user is the game's enemy AI on the Playdate (game#1051).
 
 ### Friction from the game
 
@@ -418,7 +429,7 @@ The tickets, in order:
 | 3008 | Performance budgets: `shuyi bench`, gated in CI |
 | 3006 | 1-bit output: patterns per palette role, a check that sides stay distinct |
 | 3007 | 1-bit sprites at bake time, hand-drawn overrides per target (after 2204 and 2229) |
-| 3009 | Bots think in slices: the frame rate holds, the decision never changes |
+| 3009 | Bots think in slices: the frame rate holds, the decision never changes (first user: the game's enemy AI on the Playdate, game#1051) |
 | 3012 | Steam Deck target |
 | 3013 | Steam Deck on the device: frame times and battery |
 | 3010 | The Playdate backend and `shuyi export playdate` |

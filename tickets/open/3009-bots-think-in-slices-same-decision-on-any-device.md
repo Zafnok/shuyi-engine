@@ -35,6 +35,16 @@ Two rules hold together:
   slicing counts work units, never time. A slow device reaches the same
   decision, only later.
 
+**Its first real user is the game's enemy AI on the Playdate**
+(game#1051, `github.com/Zafnok/visions-of-shuyi/blob/main/tickets/open/1051-enemy-ai-plans-once-per-phase.md`;
+noted 2026-10-21). On Nick's Playdate a 14-enemy phase thinks for
+1.2 s in all (game#1026). game#1051 plans the phase once in the game
+and doesn't wait for this ticket; when this lands, the game's PR that
+moves the pin implements `Think` for its enemy AI (as Scope says). The
+game's playtest bots don't need slicing: they run on a PC, on 2125's
+rollout bot, which keeps its loop in `RolloutSearch` so that
+`impl Think` for it is a few lines here.
+
 ## Nick input
 
 None.
@@ -56,7 +66,11 @@ None.
   `step(u32::MAX)` give the same answer on every fixture. 2113's minimax
   and MCTS bots implement `Think` when they land (2113 waits for this
   ticket). The game's own enemy AI implements it in the game, in the PR
-  that moves the pin.
+  that moves the pin. Either order with 2125: if it is done, add
+  `impl Think for RolloutSearch` (`step(units)` is its
+  `advance(units)`) and a slicing test on its fixtures; if not, 2125's
+  `RolloutSearch::advance` is written to fit and its PR adds nothing
+  here.
 - **A frame-time budget in `App`.** `shuyi-platform`'s `App` gives a
   thinking bot `units_per_frame` from the target profile (a new
   `budgets.think_units_per_frame`; calibrated by 3011 and 3013). The

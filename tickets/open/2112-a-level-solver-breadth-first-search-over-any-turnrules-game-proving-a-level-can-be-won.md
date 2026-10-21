@@ -175,7 +175,7 @@ None.
 
 **Out (do not do):**
 - bots that play one side against another, and hiding luck or hidden
-  things from the searcher (`Determinize`): 2113;
+  things from the searcher (`Determinize`): 2125 and 2113;
 - a `Bot` that plays by `solve`: it would see the luck to come, which
   `Bot`'s docs forbid. A test plays the line `solve` returns instead;
 - the `Think` trait (3009, which implements it for `Solver`);
