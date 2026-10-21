@@ -140,6 +140,17 @@ fn a_search_does_no_work_on_zero_units_and_keeps_its_answer() {
 }
 
 #[test]
+fn a_decision_takes_exactly_its_units() {
+    // 3 candidates × 2 samples: the candidate alone, or it and 2 replies.
+    for (horizon, units) in [(Horizon::Sides(0), 6), (Horizon::Sides(3), 18)] {
+        let mut bot = nim_bot(3, 2, horizon, 0);
+        let mut search = bot.search(&Nim::new(10));
+        assert_eq!(search.advance(units - 1), None, "{horizon:?}");
+        assert!(search.advance(1).is_some(), "{horizon:?}");
+    }
+}
+
+#[test]
 fn the_order_and_the_cap_choose_the_candidates() {
     // The more it takes, the better: the best candidate is the last tried.
     let taken =
