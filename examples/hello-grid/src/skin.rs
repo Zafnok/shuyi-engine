@@ -3,7 +3,10 @@
 //! engine's skins ([`crate::map`]); this paints the lines round it.
 
 use shuyi_ui::dialogue::TextView;
-use shuyi_ui::dialogue::text_box::{self, glyph::BoxPlace};
+use shuyi_ui::dialogue::text_box::{
+    self,
+    glyph::{BoxPlace, NarrationAlign},
+};
 use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
 use shuyi_ui::frame::{EngineColor, Palette, Rgb};
 use shuyi_ui::widgets::menu::{self, MenuView};
@@ -113,6 +116,7 @@ pub const TALK_BOX: BoxPlace = BoxPlace {
     frame: Rect::new(0, 17, 48, 7),
     text_x: 2,
     text_y: 19,
+    narration: NarrationAlign::Centred,
 };
 
 /// A scene's text box, with the speaker's name.

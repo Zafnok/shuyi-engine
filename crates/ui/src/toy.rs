@@ -31,7 +31,10 @@ use shuyi_assets::palette::PaletteDef;
 use shuyi_assets::voice::{self, ClipVariant, Playable};
 
 use crate::ctx::{Ctx, GameData};
-use crate::dialogue::text_box::{self, glyph::BoxPlace};
+use crate::dialogue::text_box::{
+    self,
+    glyph::{BoxPlace, NarrationAlign},
+};
 use crate::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use crate::frame::color::EngineColor;
 use crate::frame::console::ConsoleSpec;
@@ -801,6 +804,7 @@ pub const TALK_BOX: BoxPlace = BoxPlace {
     frame: Rect::new(0, 13, 40, 7),
     text_x: 2,
     text_y: 15,
+    narration: NarrationAlign::Centred,
 };
 
 /// A scene of the toy's, read in the engine's text box: Confirm reveals the
