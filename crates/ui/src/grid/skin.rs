@@ -226,6 +226,12 @@ pub trait UnitPainter<U> {
     /// the glyph skin, after the ground), before its arrowhead and the
     /// cursor.
     fn paint(&self, scene: &MapScene<U>, grid: &Grid, buf: &mut GlyphBuffer);
+
+    /// What lies over the units and under the cursor (marks at the edges
+    /// the map goes on past, [`MapScene::more`]): painted after the units
+    /// and the path, before the cursor and the threat arrows. Nothing
+    /// unless the painter says.
+    fn paint_over(&self, _scene: &MapScene<U>, _grid: &Grid, _buf: &mut GlyphBuffer) {}
 }
 
 /// Paints no units: a map shown with nobody on it, or the ground alone.

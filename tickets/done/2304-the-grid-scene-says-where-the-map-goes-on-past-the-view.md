@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2304 — The grid scene says where the map goes on past the view
@@ -93,16 +93,16 @@ non-exhaustive afterwards.
 
 ## Acceptance criteria
 
-- [ ] The helper gives the right sides at the left edge, in the middle
+- [x] The helper gives the right sides at the left edge, in the middle
       and at the right edge of a map wider than the view, the same down
       a taller map, and none for a map smaller than the view (unit
       tests).
-- [ ] `to_text` shows the sides only when some side is set; existing
+- [x] `to_text` shows the sides only when some side is set; existing
       snapshots are unchanged.
-- [ ] In each skin, a test painter's `paint_over` is drawn over the
+- [x] In each skin, a test painter's `paint_over` is drawn over the
       units and under the cursor (a test of a look, reading cells or
       items).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -111,5 +111,21 @@ non-exhaustive afterwards.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `MapScene::more: MapEdges` (none from `MapScene::new`), with
+  `MapEdges::of_view(origin, size, map_size)` and `left()`, `right()`,
+  `up()`, `down()`, `any()`. `to_text` adds a `more right down` line after
+  the first one, only when some side is set.
+- `UnitPainter::paint_over` (default: nothing), called by the glyph skin
+  and the sprite skin (with and without terrain tiles) after the units and
+  the path's arrowhead, before the cursor. Each skin's `paint` doc says the
+  order.
+- **Deviation:** the ticket suggested four `bool` fields. Clippy's pedantic
+  `struct_excessive_bools` denies that (and a gate can't be allowed away),
+  so `MapEdges` is two axes, `x` and `y`, each an `Ends { before, after }`,
+  with `left()`/`right()`/`up()`/`down()` to read them. Both are plain
+  values with public fields, as 2013 asks of plain values.
+- 2013 isn't done, so a game that builds `MapScene` by a struct literal
+  must add `more`; everything else is additive.
+- 2315 isn't done: the debug view's edge gizmos are 2315's.
+- Game: the PR that moves the pin is game#0449's (not yet opened).
+- Nick input: none.

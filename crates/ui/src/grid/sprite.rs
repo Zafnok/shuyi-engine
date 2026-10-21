@@ -13,8 +13,9 @@
 //!   tile).
 //!
 //! Either way the path's line goes under the units and its arrowhead over
-//! them, and the threat arrows start in the middle of a unit's tile, over
-//! its picture.
+//! them, then the unit painter's [`paint_over`](UnitPainter::paint_over)
+//! under the cursor, and the threat arrows start in the middle of a unit's
+//! tile, over its picture.
 
 mod ground;
 
@@ -256,8 +257,10 @@ impl<U> GridSkin<U> for SpriteSkin {
     }
 
     /// The ground (terrain tinted by flashes and ranges), what lies under
-    /// the units, the path's line, the units, the path's arrowhead, then
-    /// the cursor; over them all, the threat arrows and marks.
+    /// the units ([`UnitPainter::paint_under`]), the path's line, the
+    /// units, the path's arrowhead, what lies over them
+    /// ([`UnitPainter::paint_over`]), then the cursor; over them all, the
+    /// threat arrows and marks.
     fn paint(
         &self,
         looks: &Looks,
@@ -285,6 +288,7 @@ impl<U> GridSkin<U> for SpriteSkin {
         for overlay in arrowhead {
             buf.add_overlay(overlay);
         }
+        units.paint_over(scene, &grid, buf);
         if self.terrain.is_some() {
             self.paint_own_cursor(looks, scene, &grid, buf);
         } else {

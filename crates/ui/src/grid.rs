@@ -43,7 +43,8 @@ pub use glyph::{GlyphSkin, GlyphStyle};
 pub use layout::{CELL_PX, Grid, Projection, px_rect};
 pub use picture::MapPicture;
 pub use scene::{
-    CursorStyle, CursorView, MapScene, MapUnit, RangeLayer, RangeName, ThreatView, TileView, Tints,
+    CursorStyle, CursorView, Ends, MapEdges, MapScene, MapUnit, RangeLayer, RangeName, ThreatView,
+    TileView, Tints,
 };
 pub use skin::{
     GridSkin, Looks, MapColors, NoUnits, TerrainGlyphs, Terrains, UnitPainter, WalkSpeeds,
