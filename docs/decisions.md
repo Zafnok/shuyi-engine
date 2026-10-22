@@ -915,7 +915,9 @@ that code writes `shuyi_core` either way, so the names stay as chosen.
 - **Only these six.** The other planned names (`shuyi-sound`,
   `shuyi-playdate` and the rest) are not held. crates.io forbids
   holding names "for a prolonged period" with no development behind
-  them, so each is published when its crate is real.
+  them, so each is published when its crate is real. (A seventh,
+  `shuyi`, followed on 2026-10-22: see *the bare name `shuyi` is held
+  too*.)
 - **2005 publishes the next version of each** through trusted
   publishing, with no publish by hand.
 
@@ -974,3 +976,33 @@ He then chose to have parked tickets written for the gaps.
   with its usual look. 2911 researches light (3D and 2D) and sound.
 - All four tickets are parked like the rest, until Nick unparks them or
   the game asks for one.
+
+## 2026-10-22: the bare name `shuyi` is held too
+
+Asked whether more crate names should be held, Claude checked crates.io
+again: the six placeholders are live, and `shuyi` was still free. Ticket
+2003 plans a crate by that name (`crates/shuyi`): it re-exports the other
+crates and has one feature per module, so it is the one crate a game
+adds and the name people type first. The 2026-10-21 run left it out only
+because the crate doesn't exist yet. Nick:
+
+> "Yes, hold `shuyi` too."
+
+**Rules:**
+
+- **`shuyi` is held** as an empty 0.0.0 placeholder like the six (a
+  library with no code, both license files, a README that points here),
+  owned by `Zafnok`. A crate with real work planned behind it (2003)
+  fits the 2026-10-21 rule against holding names with nothing behind
+  them.
+- **The token.** The 2026-10-21 token's crate scope `shuyi-*` doesn't
+  match the bare name, and it was revoked anyway. Nick made a new one
+  for this run only: the `publish-new` scope, the crate `shuyi` only, a
+  short expiry, revoked after the run. Its value is recorded nowhere.
+- **Still no defensive names.** `shuyi-engine` (the repository's name)
+  and `shuyi_engine` are free, but no crate is planned under them, so
+  they are not held; crates.io's policy is against exactly that. The
+  planned module crates are still published when each is real.
+- **2003, not 2005, publishes its first real version**, since 2003
+  (after the MVP) is where the crate is written. It goes through trusted
+  publishing like the others, with no publish by hand.
