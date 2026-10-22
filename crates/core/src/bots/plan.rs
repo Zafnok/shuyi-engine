@@ -307,9 +307,11 @@ where
             return Phase::Between;
         };
         // At the root, the candidates left say which first command this is.
+        // Lazily: deeper, a partial turn may have more candidates than the
+        // root has first commands.
         let first = parent
             .first
-            .unwrap_or(self.firsts.len() - parent.candidates.len() - 1);
+            .unwrap_or_else(|| self.firsts.len() - parent.candidates.len() - 1);
         Phase::Building(Building {
             first,
             command,
