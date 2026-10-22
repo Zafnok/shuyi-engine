@@ -30,6 +30,7 @@ use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
 use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
+use shuyi_ui::log::LogRing;
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
@@ -498,6 +499,13 @@ impl<G: GameData> Harness<G> {
     /// The [`App`] running the game.
     pub fn app(&self) -> &App<G> {
         &self.app
+    }
+
+    /// The game's log, kept by its [`App`]: every line from frame 0 (what
+    /// its context logged before the Harness started), each with the frame
+    /// it was given in.
+    pub fn log(&self) -> &LogRing {
+        self.app.log()
     }
 
     /// The headless backend it runs on: the frames presented, the audio

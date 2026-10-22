@@ -50,8 +50,8 @@ let mut app = shuyi_platform::App::new(start); // the game's `Start`
 loop {
     let now = Millis(device_clock_ms());
     let outcome = app.frame(&mut platform, now);
-    for warning in app.take_warnings() {
-        log(&warning);
+    for line in app.take_new_log() {
+        device_log(line.level, line.category.name(), &line.text);
     }
     if outcome == FrameOutcome::Quit {
         break; // or keep calling `frame`, which shows the last frame
@@ -59,6 +59,14 @@ loop {
     wait_for_next_frame();
 }
 ```
+
+`app.take_new_log()` gives each line of the game's log once, after the
+frame it was logged in: a `shuyi_ui::log::LogLine` with its frame, its
+level (`Error`, `Warn`, `Info`, `Debug`), its category and its English
+text. Hand each to the device's own log (`shuyi-app` prints them with
+macroquad's macros). `App` keeps the last 500 itself (`app.log()`), for
+tests and tools, and `app.set_log_filter` says which levels it keeps
+(`Info` and more serious by default).
 
 `App::frame` is synchronous. Anything the device can only do
 asynchronously, or only once the game's data exists (decoding its sounds,
@@ -116,7 +124,8 @@ next. `frame.show` is one of:
   `ink` on `background`; `Card::Picture` is an image from the game's
   files by path, centred at the largest whole scale that fits.
 - `Show::Errors(&str)`: why the game couldn't start. Show the text (the
-  backend's font, wrapped), and log it once.
+  backend's font, wrapped). `App` logs it once, at `Error`, so the
+  backend needn't.
 - `Show::Game { buffer, background, look, .. }`: the game's console, a
   `GlyphBuffer` of glyph cells and sprite items in full colour, on
   `background` (also the letterbox's). `look` holds the game's font atlas

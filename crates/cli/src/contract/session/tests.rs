@@ -35,6 +35,41 @@ fn a_music_command_is_named_with_its_cue() {
     assert_eq!(music(&MusicCommand::Stop { cue: cue() }), ("stop", "theme"));
 }
 
+/// A session that says only what a session must.
+struct Bare;
+
+impl Session for Bare {
+    fn play(&mut self, _: &Script) {}
+    fn idle(&mut self, _: u32) {}
+    fn frame_count(&self) -> u32 {
+        0
+    }
+    fn screens(&self) -> Vec<String> {
+        Vec::new()
+    }
+    fn quit_frame(&self) -> Option<u32> {
+        None
+    }
+    fn snapshot(&self) -> String {
+        String::new()
+    }
+    fn events(&self) -> Vec<Event> {
+        Vec::new()
+    }
+    fn sounds(&self) -> Vec<Sound> {
+        Vec::new()
+    }
+    fn scene(&self) -> Result<Scene, String> {
+        Err("none".to_owned())
+    }
+}
+
+#[test]
+fn a_session_that_says_nothing_of_its_log_has_none() {
+    assert!(Bare.log().is_empty());
+    assert_eq!(Bare.log_dropped(), 0);
+}
+
 #[cfg(feature = "toy")]
 mod toy {
     use shuyi_ui::toy;
@@ -109,5 +144,46 @@ mod toy {
             })
         });
         assert_eq!(s.scene().unwrap().screen, "home");
+    }
+
+    #[test]
+    fn a_session_logs_what_its_harness_logs() {
+        use shuyi_ui::profiles::ProfileId;
+        use shuyi_ui::settings::SETTINGS_KEY;
+        use shuyi_ui::storage::{MemoryStorage, Storage};
+
+        let mut storage = MemoryStorage::new();
+        let key = ProfileId::FIRST.key(SETTINGS_KEY);
+        storage.write(&key, "nonsense").unwrap();
+        let ctx = toy::launch(Box::new(storage));
+        let s = Headless::new(Harness::new(toy::game_on(ctx)));
+        let log = s.log();
+        assert_eq!(log.len(), 1, "{log:?}");
+        let entry = &log[0];
+        assert_eq!(
+            (entry.frame, entry.level.as_str(), entry.category.as_str()),
+            (0, "warn", "storage")
+        );
+        assert!(
+            entry.text.starts_with("settings: unreadable: "),
+            "{entry:?}"
+        );
+        assert_eq!(s.log_dropped(), 0);
+        assert!(session().log().is_empty());
+    }
+
+    #[test]
+    fn a_session_counts_the_lines_its_log_dropped() {
+        use shuyi_ui::log::{LOG_LINES, LogCategory, LogLevel};
+
+        let mut h = Harness::new(toy::game());
+        for n in 0..=LOG_LINES {
+            h.ctx_mut()
+                .log(LogLevel::Info, LogCategory::Game, format!("{n}"));
+        }
+        h.frame(&[], FRAME_DT);
+        let s = Headless::new(h);
+        assert_eq!(s.log_dropped(), 1);
+        assert_eq!(s.log().len(), LOG_LINES);
     }
 }

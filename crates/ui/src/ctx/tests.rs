@@ -817,3 +817,61 @@ fn a_game_that_leaves_the_defaults_has_no_debug_language_voices_or_old_keys() {
     c.change_settings(|s| s.game.speed = 1).unwrap();
     assert_eq!(c.settings().game.speed, 1);
 }
+
+#[test]
+fn a_line_logged_waits_with_its_level_and_category_until_taken() {
+    let mut c = ctx();
+    c.log(LogLevel::Info, LogCategory::Game, "hello");
+    let (lines, dropped) = c.take_log();
+    assert_eq!(
+        lines,
+        [LogLine {
+            frame: 0,
+            level: LogLevel::Info,
+            category: LogCategory::Game,
+            text: "hello".to_owned(),
+        }]
+    );
+    assert_eq!(dropped, 0);
+    assert_eq!(c.take_log(), (Vec::new(), 0));
+}
+
+#[test]
+fn saved_data_that_cant_be_read_is_logged_by_what_it_is_about() {
+    let mut c = launch(Failing);
+    c.set_voice_manifest("not a manifest");
+    let (lines, _) = c.take_log();
+    let said: Vec<_> = lines.iter().map(|l| (l.level, l.category)).collect();
+    assert_eq!(
+        said,
+        [
+            (LogLevel::Warn, LogCategory::Storage),
+            (LogLevel::Warn, LogCategory::Input),
+            (LogLevel::Warn, LogCategory::Storage),
+            (LogLevel::Warn, LogCategory::Audio),
+        ]
+    );
+}
+
+#[test]
+fn too_many_lines_waiting_drop_the_oldest_and_count_them() {
+    let mut c = ctx();
+    for n in 0..=LOG_LINES {
+        c.log(LogLevel::Debug, LogCategory::Game, format!("{n}"));
+    }
+    let (lines, dropped) = c.take_log();
+    assert_eq!(lines.len(), LOG_LINES);
+    assert_eq!(lines[0].text, "1");
+    assert_eq!(dropped, 1);
+}
+
+#[test]
+fn take_warnings_takes_every_line_and_gives_the_warnings_and_errors() {
+    let mut c = ctx();
+    c.log(LogLevel::Info, LogCategory::Game, "info");
+    c.log(LogLevel::Warn, LogCategory::Game, "warn");
+    c.log(LogLevel::Debug, LogCategory::Game, "debug");
+    c.log(LogLevel::Error, LogCategory::Game, "error");
+    assert_eq!(c.take_warnings(), ["warn", "error"]);
+    assert_eq!(c.take_log(), (Vec::new(), 0));
+}

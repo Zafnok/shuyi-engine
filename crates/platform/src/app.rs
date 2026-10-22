@@ -10,13 +10,20 @@
 //! frames after run it. On [`SystemEvent::Suspend`] the game's hook saves
 //! and `App` stops stepping; on [`SystemEvent::Resume`] it forgets the
 //! time it was away, so a sleep never becomes a burst of catch-up steps.
+//!
+//! `App` keeps the log (ADR-0030): at the end of every frame it takes the
+//! lines the game logged ([`Ctx::log`]), stamps them with the frame's
+//! number and keeps the last [`LOG_LINES`] for tests, tools and the
+//! backend's sinks ([`App::take_new_log`]).
 
 use crate::prelude::*;
+use alloc::format;
 use core::time::Duration;
 
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::input::frame_seconds;
+use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRing};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, Keyboard, RawInputEvent};
@@ -304,8 +311,17 @@ pub struct App<G: GameData> {
     focused: bool,
     quit: bool,
     lists: Lists<G::Voice>,
-    /// Problems found while loading, for the backend's log.
-    warnings: Vec<String>,
+    /// Frames run: 0 before the first.
+    frames: u32,
+    /// The last lines logged, stamped with their frame.
+    log: LogRing,
+    /// What enters `log`.
+    log_filter: LogFilter,
+    /// The sequence number of the first line [`take_new_log`] hasn't
+    /// given.
+    ///
+    /// [`take_new_log`]: Self::take_new_log
+    log_read: u64,
 }
 
 impl<G: GameData> App<G> {
@@ -330,8 +346,11 @@ impl<G: GameData> App<G> {
 
     /// `game`, already loaded and running: for a test, which has no look to
     /// paint with ([`Show::Game`]'s `look` is `None`).
+    /// What its context logged before is taken, at frame 0.
     pub fn running(game: Game<G>) -> Self {
-        Self::in_phase(Phase::Running(Box::new(game)), None, None)
+        let mut app = Self::in_phase(Phase::Running(Box::new(game)), None, None);
+        app.take_game_log();
+        app
     }
 
     fn in_phase(
@@ -354,7 +373,10 @@ impl<G: GameData> App<G> {
                 audio: Vec::new(),
                 music: Vec::new(),
             },
-            warnings: Vec::new(),
+            frames: 0,
+            log: LogRing::new(LOG_LINES),
+            log_filter: LogFilter::default(),
+            log_read: 0,
         }
     }
 
@@ -370,9 +392,9 @@ impl<G: GameData> App<G> {
     /// screens see and the steps are made of; the first frame, and the
     /// first after a load or a [`SystemEvent::Resume`], count none.
     pub fn frame(&mut self, platform: &mut impl Platform, now: Millis) -> FrameOutcome {
-        self.system_events(platform);
+        self.begin(platform);
         let elapsed = self.clock.at(now);
-        self.run(platform, elapsed)
+        self.end(platform, elapsed)
     }
 
     /// Runs one frame `seconds` after the last on a clock of the driver's
@@ -381,9 +403,47 @@ impl<G: GameData> App<G> {
     /// exactly 1/60 s), or a backend whose system says how long the last
     /// frame took. A driver uses this or `frame`, never both.
     pub fn frame_after(&mut self, platform: &mut impl Platform, seconds: f32) -> FrameOutcome {
-        self.system_events(platform);
+        self.begin(platform);
         let elapsed = self.clock.after(seconds);
-        self.run(platform, elapsed)
+        self.end(platform, elapsed)
+    }
+
+    /// A frame's start: its number, and the system's events.
+    fn begin(&mut self, platform: &mut impl Platform) {
+        self.frames = self.frames.saturating_add(1);
+        self.system_events(platform);
+    }
+
+    /// The rest of a frame, then the lines the game logged in it.
+    fn end(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
+        let outcome = self.run(platform, elapsed);
+        self.take_game_log();
+        outcome
+    }
+
+    /// Takes the lines the game has logged, stamped with this frame, and
+    /// counts those its context dropped.
+    fn take_game_log(&mut self) {
+        let Phase::Running(game) = &mut self.phase else {
+            return;
+        };
+        let (lines, dropped) = game.ctx_mut().take_log();
+        self.log.add_dropped(dropped);
+        for line in lines {
+            self.log_line(line.level, line.category, line.text);
+        }
+    }
+
+    /// Keeps a line of this frame's, if the filter lets it in.
+    fn log_line(&mut self, level: LogLevel, category: LogCategory, text: String) {
+        if self.log_filter.allows(category, level) {
+            self.log.push(LogLine {
+                frame: self.frames,
+                level,
+                category,
+                text,
+            });
+        }
     }
 
     /// Reads the system's events and acts on them; a resume restarts the
@@ -483,13 +543,13 @@ impl<G: GameData> App<G> {
         };
         drain(platform, &mut self.lists.input);
         match load(setup) {
-            Ok(mut game) => {
-                // E.g. saved key bindings that had to be repaired.
-                self.warnings.extend(game.ctx_mut().take_warnings());
+            Ok(game) => {
                 present_game(platform, &game, self.look);
                 self.phase = Phase::Running(Box::new(game));
             }
             Err(errors) => {
+                let (level, category) = (LogLevel::Error, LogCategory::Platform);
+                self.log_line(level, category, format!("the game didn't load: {errors}"));
                 platform.present(&Frame::new(Show::Errors(&errors)));
                 self.phase = Phase::Failed(errors);
             }
@@ -552,10 +612,31 @@ impl<G: GameData> App<G> {
         self.quit
     }
 
-    /// Problems found while loading (saved key bindings that had to be
-    /// repaired, say), for the backend's log; each is given once.
-    pub fn take_warnings(&mut self) -> Vec<String> {
-        core::mem::take(&mut self.warnings)
+    /// The frames run: 0 before the first, then one more for each
+    /// [`frame`](Self::frame) or [`frame_after`](Self::frame_after). The
+    /// frame the log's lines carry.
+    pub fn frame_number(&self) -> u32 {
+        self.frames
+    }
+
+    /// Which lines the log keeps from now on: [`LogLevel::Info`] and more
+    /// serious until set.
+    pub fn set_log_filter(&mut self, filter: LogFilter) {
+        self.log_filter = filter;
+    }
+
+    /// The log: the last [`LOG_LINES`] lines, oldest first, and how many
+    /// were dropped.
+    pub fn log(&self) -> &LogRing {
+        &self.log
+    }
+
+    /// The log's lines since the last call, oldest first, for the
+    /// backend's sinks: each line is given once.
+    pub fn take_new_log(&mut self) -> Vec<LogLine> {
+        let lines = self.log.since(self.log_read).cloned().collect();
+        self.log_read = self.log.next_seq();
+        lines
     }
 
     /// The audio the screens asked for in the last frame, in order, as they

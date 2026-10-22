@@ -16,8 +16,8 @@ are the other two ways to reach them.
 | `new <template> <dir>` | A new game in `dir` from `templates/grid` or `templates/blank` | nothing |
 | `check [--baked]` | Loads the game's content through every validator: every error, with file, line and message. With `--baked`, bakes the game's pack too, and every asset read from it must equal the one read from its source | the game |
 | `check --target <id \| all>` | Whether the game's frame at its scale fits a target's display inside its safe area, and its smallest text is as tall as the target asks (ADR-0008 §1): each problem with its target, its setting in `shuyi.ron`'s `targets` and the numbers; with the game's tools, that each screen's required actions fit the target's inputs (ADR-0025), and on a one-bit target that every palette role has patterns and the roles of a `distinct` group stay apart (ADR-0026, each problem with its `roles`); a warning doesn't fail it | the project file; the game for the controls and the patterns |
-| `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds | the game |
-| `scene [steps]` | The same, answering with the scene or stage on screen | the game |
+| `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log) | the game |
+| `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
 | `playtest [--tries N]` | Each of the game's named bots plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. It fails only when a bot falls under a check's floor | the game |
@@ -44,10 +44,10 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 7,
+  "contract": 8,
   "op": "scene",
   "ok": false,
-  "result": { "frames": 0, "top_screen": "title", "scene": null },
+  "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
   "error": null,
   "code": null,
   "help": null,
@@ -75,6 +75,28 @@ Every operation answers with the same shape, `Answer<T>`:
 document. The exit code is 0 when `ok`, else its code's class's: 1 when
 it ran and failed, 2 for wrong arguments, 3 for a setup to fix (with
 `--json`, a failed answer with the error, its code and its help).
+
+## The log
+
+`run` and `scene` answer with the game's log, `log`: what the engine
+and the game logged while it ran (settings it couldn't read, a voice
+manifest it refused, a game's own lines), oldest first. Each line is:
+
+```json
+{ "frame": 0, "level": "warn", "category": "storage", "text": "settings: unreadable: …, using the defaults" }
+```
+
+- `frame` is the frame it was logged in. Frames count from 1; 0 is
+  before the first (what the game logged as it started).
+- `level` is `error`, `warn`, `info` or `debug`; the log keeps `info`
+  and more serious.
+- `category` is what it is about: `assets`, `audio`, `input`,
+  `screens`, `storage`, `platform`, or `game` for the game's own lines.
+- `text` is English, never translated.
+
+The log keeps the last 500 lines. When it dropped older ones, `limits`
+says how many. For people, `shuyi run` and `shuyi scene` print the
+warnings and errors.
 
 ## Problem codes
 

@@ -19,7 +19,7 @@ use shuyi_core::bots::playtest::{
 use super::bots::{BotsInput, BotsOutput, tally};
 use super::playtest::PlaytestInput;
 use super::replay::{Record, ReplayRun, ReplayStep};
-use super::session::{Event, Scene, Session, Sound};
+use super::session::{Event, LogEntry, Scene, Session, Sound};
 use crate::frame_png::{Script, Shot, Step};
 use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
 
@@ -35,6 +35,10 @@ pub struct FakeSession {
     pub quit: Option<u32>,
     /// The scene, or why there is none.
     pub scene: Result<Scene, String>,
+    /// The log's lines.
+    pub log: Vec<LogEntry>,
+    /// How many lines the log dropped.
+    pub log_dropped: u32,
 }
 
 impl FakeSession {
@@ -50,6 +54,8 @@ impl FakeSession {
                 text: text.to_owned(),
                 data: serde_json::json!({ "turn": 1 }),
             }),
+            log: Vec::new(),
+            log_dropped: 0,
         }
     }
 }
@@ -103,6 +109,14 @@ impl Session for FakeSession {
 
     fn scene(&self) -> Result<Scene, String> {
         self.scene.clone()
+    }
+
+    fn log(&self) -> Vec<LogEntry> {
+        self.log.clone()
+    }
+
+    fn log_dropped(&self) -> u32 {
+        self.log_dropped
     }
 }
 

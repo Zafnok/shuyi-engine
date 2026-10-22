@@ -9,6 +9,7 @@ use core::cell::RefCell;
 
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer};
 use shuyi_ui::input::{Chord, Key};
+use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
 use shuyi_ui::screen::{FrameInput, Screen, Transition};
 use shuyi_ui::storage::MemoryStorage;
 use shuyi_ui::system_keyboard::TextAsk;
@@ -397,7 +398,7 @@ fn the_setup_puts_the_platform_into_the_games_context() {
         ctx.storage.computer().read("from-before"),
         Ok(Some("yes".into()))
     );
-    assert!(app.take_warnings().is_empty());
+    assert!(app.take_new_log().is_empty());
 }
 
 #[test]
@@ -625,12 +626,117 @@ fn a_manifest_the_game_cant_use_is_a_warning_given_once() {
     let mut app = App::new(start);
     let mut p = HeadlessPlatform::new();
     let _ = app.frame(&mut p, Millis(0));
-    assert!(app.take_warnings().is_empty(), "nothing loaded yet");
+    assert!(app.take_new_log().is_empty(), "nothing loaded yet");
     let _ = app.frame(&mut p, Millis(16));
-    let warnings = app.take_warnings();
-    assert_eq!(warnings.len(), 1, "{warnings:?}");
-    assert!(warnings[0].starts_with("no voices: "), "{warnings:?}");
-    assert!(app.take_warnings().is_empty());
+    let lines = app.take_new_log();
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let line = &lines[0];
+    assert_eq!(
+        (line.frame, line.level, line.category),
+        (2, LogLevel::Warn, LogCategory::Audio)
+    );
+    assert!(line.text.starts_with("no voices: "), "{lines:?}");
+    assert!(app.take_new_log().is_empty());
+    assert_eq!(app.log().lines().len(), 1, "still kept");
+}
+
+#[test]
+fn the_games_lines_carry_the_frame_they_were_taken_in() {
+    let mut ctx = toy::ctx();
+    ctx.log(LogLevel::Info, LogCategory::Game, "before");
+    let mut app = App::running(toy::game_on(ctx));
+    let mut p = HeadlessPlatform::new();
+    assert_eq!(app.frame_number(), 0);
+    for _ in 0..3 {
+        let _ = app.frame_after(&mut p, 1.0 / 60.0);
+    }
+    assert_eq!(app.frame_number(), 3);
+    app.game_mut()
+        .unwrap_or_else(|| panic!("not running"))
+        .ctx_mut()
+        .log(LogLevel::Warn, LogCategory::Game, "between");
+    let _ = app.frame_after(&mut p, 1.0 / 60.0);
+    let said: Vec<_> = app
+        .log()
+        .lines()
+        .map(|l| (l.frame, l.text.as_str()))
+        .collect();
+    assert_eq!(said, [(0, "before"), (4, "between")]);
+}
+
+#[test]
+fn a_suspended_frame_still_takes_the_games_lines() {
+    let mut app = App::running(toy::game());
+    let mut p = HeadlessPlatform::new();
+    p.push_system(SystemEvent::Suspend);
+    let _ = app.frame(&mut p, Millis(0));
+    assert!(app.is_suspended());
+    app.game_mut()
+        .unwrap_or_else(|| panic!("not running"))
+        .ctx_mut()
+        .log(LogLevel::Info, LogCategory::Game, "asleep");
+    let _ = app.frame(&mut p, Millis(16));
+    let frames: Vec<_> = app.log().lines().map(|l| l.frame).collect();
+    assert_eq!(frames, [2]);
+}
+
+#[test]
+fn take_new_log_gives_each_line_once_in_order() {
+    let mut app = App::running(toy::game());
+    let mut p = HeadlessPlatform::new();
+    let mut taken = Vec::new();
+    for n in 0..4u32 {
+        let ctx = app
+            .game_mut()
+            .unwrap_or_else(|| panic!("not running"))
+            .ctx_mut();
+        for k in 0..n {
+            ctx.log(LogLevel::Info, LogCategory::Game, format!("{n}.{k}"));
+        }
+        let _ = app.frame(&mut p, Millis(16 * u64::from(n)));
+        taken.extend(app.take_new_log().into_iter().map(|l| l.text));
+    }
+    assert_eq!(taken, ["1.0", "2.0", "2.1", "3.0", "3.1", "3.2"]);
+    assert!(app.take_new_log().is_empty());
+}
+
+#[test]
+fn the_filter_keeps_lines_below_its_level_out() {
+    let mut app = App::running(toy::game());
+    app.set_log_filter(LogFilter::new(LogLevel::Warn));
+    let mut p = HeadlessPlatform::new();
+    let ctx = app
+        .game_mut()
+        .unwrap_or_else(|| panic!("not running"))
+        .ctx_mut();
+    ctx.log(LogLevel::Info, LogCategory::Game, "info");
+    ctx.log(LogLevel::Warn, LogCategory::Game, "warn");
+    let _ = app.frame(&mut p, Millis(0));
+    let kept: Vec<_> = app.log().lines().map(|l| l.text.as_str()).collect();
+    assert_eq!(kept, ["warn"]);
+    assert_eq!(app.log().dropped(), 0, "filtered out isn't dropped");
+}
+
+#[test]
+fn a_failed_load_logs_its_errors_once() {
+    let start: Start<Toy> = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        |_| Err("data/stage.ron: missing".to_owned()),
+    );
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new();
+    for n in 0..4 {
+        let _ = app.frame(&mut p, Millis(16 * n));
+    }
+    let lines: Vec<_> = app.log().lines().collect();
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let line = lines[0];
+    assert_eq!(
+        (line.frame, line.level, line.category),
+        (2, LogLevel::Error, LogCategory::Platform)
+    );
+    assert!(line.text.ends_with("data/stage.ron: missing"), "{line:?}");
 }
 
 #[test]

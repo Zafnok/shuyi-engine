@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_ui::log::LogLine;
 
 use crate::frame_png::Script;
 
@@ -88,6 +89,33 @@ pub struct Sound {
     pub cue: String,
 }
 
+/// A line of the game's log.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LogEntry {
+    /// The frame it was given in (frames count from 1; 0 is before the
+    /// first).
+    pub frame: u32,
+    /// How serious it is: `error`, `warn`, `info` or `debug`.
+    pub level: String,
+    /// What it is about: `assets`, `audio`, `input`, `screens`, `storage`,
+    /// `platform` or `game`.
+    pub category: String,
+    /// What it says, in English.
+    pub text: String,
+}
+
+impl From<&LogLine> for LogEntry {
+    fn from(line: &LogLine) -> Self {
+        Self {
+            frame: line.frame,
+            level: line.level.name().to_owned(),
+            category: line.category.name().to_owned(),
+            text: line.text.clone(),
+        }
+    }
+}
+
 /// A game running headless.
 pub trait Session {
     /// Plays `script`'s steps, in order.
@@ -117,6 +145,16 @@ pub trait Session {
 
     /// The scene on screen, or why there is none.
     fn scene(&self) -> Result<Scene, String>;
+
+    /// The game's log, oldest first: its last lines (none by default).
+    fn log(&self) -> Vec<LogEntry> {
+        Vec::new()
+    }
+
+    /// How many older lines the log dropped (0 by default).
+    fn log_dropped(&self) -> u32 {
+        0
+    }
 }
 
 /// What a game says its scene is, from its Harness.
@@ -287,6 +325,14 @@ impl<G: GameData> Session for Headless<G> {
 
     fn scene(&self) -> Result<Scene, String> {
         (self.scene)(&self.harness)
+    }
+
+    fn log(&self) -> Vec<LogEntry> {
+        self.harness.log().lines().map(LogEntry::from).collect()
+    }
+
+    fn log_dropped(&self) -> u32 {
+        self.harness.log().dropped()
     }
 }
 

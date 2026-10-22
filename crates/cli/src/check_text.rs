@@ -183,7 +183,7 @@ impl Bracket {
 
 /// The calls and macros whose text no player reads, by name; anything
 /// starting with `assert` or `debug_assert` is one too.
-const QUIET: [&str; 14] = [
+const QUIET: [&str; 15] = [
     "panic",
     "unreachable",
     "unimplemented",
@@ -193,6 +193,8 @@ const QUIET: [&str; 14] = [
     "println",
     "eprintln",
     "dbg",
+    // `Ctx::log(…)`: the log is English, never translated.
+    "log",
     // Attributes: `#[allow(…, reason = "…")]`.
     "allow",
     "warn",
@@ -700,6 +702,18 @@ fn f(x: Option<u8>) -> u8 {
 }
 ";
         assert_eq!(found(source), ["16: Shown {y}"]);
+    }
+
+    #[test]
+    fn a_line_of_the_log_is_never_shown() {
+        assert!(QUIET.contains(&"log"));
+        let source = "fn update(&mut self, ctx: &mut Ctx) {
+    ctx.log(LogLevel::Warn, LogCategory::Game, \"Lost the save\");
+    self.log(LogLevel::Info, LogCategory::Game, format!(\"Moved to {x}\"));
+    let shown = format!(\"Shown {x}\");
+}
+";
+        assert_eq!(found(source), ["4: Shown {x}"]);
     }
 
     #[test]

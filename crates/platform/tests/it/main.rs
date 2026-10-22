@@ -9,9 +9,11 @@ use shuyi_platform::headless::Presented;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::input::{PadKind, state::Device};
+use shuyi_ui::log::{LogCategory, LogLevel};
+use shuyi_ui::profiles::ProfileId;
 use shuyi_ui::screen::{FrameInput, Screen, ScreenStack, Transition};
-use shuyi_ui::settings::MAX_VOLUME;
-use shuyi_ui::storage::Storage;
+use shuyi_ui::settings::{MAX_VOLUME, SETTINGS_KEY};
+use shuyi_ui::storage::{MemoryStorage, Storage};
 use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
 use shuyi_ui::{Game, GameData, GameHooks, RawInputEvent};
 
@@ -199,4 +201,37 @@ fn a_screen_never_sees_an_action_it_does_not_declare_in_the_harness() {
 )]
 fn a_screen_asking_about_an_action_it_does_not_declare_fails_its_harness_test() {
     forgetful(true).keys("Escape");
+}
+
+#[test]
+fn the_harness_log_starts_with_what_the_game_logged_before_it() {
+    let mut storage = MemoryStorage::new();
+    let key = ProfileId::FIRST.key(SETTINGS_KEY);
+    storage.write(&key, "nonsense").unwrap();
+    let h = Harness::new(toy::game_on(toy::launch(Box::new(storage))));
+    let lines: Vec<_> = h.log().lines().collect();
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    let line = lines[0];
+    assert_eq!(
+        (line.frame, line.level, line.category),
+        (0, LogLevel::Warn, LogCategory::Storage)
+    );
+    assert!(line.text.starts_with("settings: unreadable: "), "{line:?}");
+}
+
+#[test]
+fn a_line_logged_between_frames_carries_the_next() {
+    let mut h = Harness::new(toy::game());
+    for _ in 0..3 {
+        h.frame(&[], FRAME_DT);
+    }
+    assert_eq!(h.frame_count(), 3);
+    h.ctx_mut().log(LogLevel::Info, LogCategory::Game, "hello");
+    h.frame(&[], FRAME_DT);
+    let said: Vec<_> = h
+        .log()
+        .lines()
+        .map(|l| (l.frame, l.text.as_str()))
+        .collect();
+    assert_eq!(said, [(4, "hello")]);
 }

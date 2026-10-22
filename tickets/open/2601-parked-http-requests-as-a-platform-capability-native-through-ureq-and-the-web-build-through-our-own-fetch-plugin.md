@@ -201,10 +201,10 @@ from the two sections after **Out**.
     fetch;
   - `docs/platform-backends.md`: the two new steps in "What one frame
     does", a `### http(&mut self)` section, and a line in the checklist;
-  - **either order with 3040:** if it is done, `App` logs each request
-    at `Debug`, category `Platform`: the method, the host and the
-    purpose, then the status, the bytes and the time. Never the query,
-    a header or a body. If not, nothing is logged;
+  - **the log (3040, done):** `App` logs each request at `Debug`,
+    category `Platform`: the method, the host and the purpose, then the
+    status, the bytes and the time. Never the query, a header or a
+    body;
   - **either order with 3053:** if it is done, its platform facts say
     whether HTTP is present; if not, `HttpQueue::is_present` is enough,
     and 3053 needs nothing from here.
@@ -416,7 +416,7 @@ Its acceptance criteria:
 ## Implementation steps
 
 1. Read ADR-0006, ADR-0024, `system_keyboard.rs`, `App`'s `run` and
-   `step`, and `headless.rs`. Check whether 2013, 3040 and 3053 are
+   `step`, and `headless.rs`. Check whether 2013 and 3053 are
    done.
 2. Unless `tickets/open` already holds them, write the two follow-up
    tickets with the `write-ticket` skill, from the two sections above:

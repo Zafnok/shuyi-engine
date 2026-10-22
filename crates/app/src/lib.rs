@@ -44,6 +44,7 @@ use macroquad::prelude::*;
 use shuyi_assets::audio::Files;
 use shuyi_platform::{App, FrameOutcome, Millis, Start, TextInput};
 use shuyi_ui::GameData;
+use shuyi_ui::log::{LogLevel, LogLine};
 
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
@@ -164,8 +165,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         let now = Millis::from_secs_f64(miniquad::date::now());
         let outcome = app.frame(&mut platform, now);
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
-        for warning in app.take_warnings() {
-            warn!("{}", warning);
+        for line in app.take_new_log() {
+            print_line(&line);
         }
         if !platform.started()
             && let Some(game) = app.game()
@@ -179,6 +180,17 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
             break;
         }
         next_frame().await;
+    }
+}
+
+/// Prints a line of App's log with macroquad's macro for its level.
+fn print_line(line: &LogLine) {
+    let (category, text) = (line.category.name(), &line.text);
+    match line.level {
+        LogLevel::Error => error!("{}: {}", category, text),
+        LogLevel::Warn => warn!("{}: {}", category, text),
+        LogLevel::Info => info!("{}: {}", category, text),
+        _ => debug!("{}: {}", category, text),
     }
 }
 

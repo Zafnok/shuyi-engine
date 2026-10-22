@@ -211,10 +211,9 @@ None.
     debug-only variant of the game's own enum, never in
     `legal_commands`;
   - if they don't exist yet, 1134 covers it (edit requested there).
-- **The log, in either order with 3040:** if 3040's log is done,
-  `Game::command` also logs each line and its result with `Ctx::log`
-  (level `Info`, category `Game`: the commands are the game's). If it
-  isn't, 3040 needs nothing from here.
+- **The log (3040, done):** `Game::command` also logs each line and its
+  result with `Ctx::log` (level `Info`, category `Game`: the commands
+  are the game's).
 - **Session records, in either order with 2518:** if 2518 is done, a
   command run between frames goes through `App::command(&mut self,
   line: &str) -> Result<String, String>` (new), which runs
@@ -307,7 +306,7 @@ None.
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
    ADR-0022 §3, and the `input-actions` skill. Check which of 1133,
-   1134, 2010, 2013, 2518, 2521, 2907 and 3040 are done.
+   1134, 2010, 2013, 2518, 2521 and 2907 are done.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,
