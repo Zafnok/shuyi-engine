@@ -3,7 +3,9 @@
 //! and bots that play a game to its end, among them a rollout bot that
 //! plans on copies of the game: [`Determinize`], [`Evaluate`], [`Order`],
 //! [`Unordered`], [`Playout`], [`Rollout`], [`RolloutSettings`],
-//! [`RolloutSearch`] and [`Horizon`], and a playtest runner that checks
+//! [`RolloutSearch`] and [`Horizon`], a turn planner that plans its
+//! side's whole turn on them: [`TurnPlan`], [`PlanSettings`] and
+//! [`PlanSearch`], and a playtest runner that checks
 //! how often each of several bots succeeds, [`bots::playtest`]), a hash of a state that replays
 //! compare, with what text and stories need below the assets: character
 //! ids and the `{token}` splitter.
@@ -28,8 +30,9 @@ pub mod text;
 pub mod turn;
 
 pub use bots::{
-    Bot, Determinize, Evaluate, Horizon, Order, PlayError, Playout, RandomBot, Report, Rollout,
-    RolloutSearch, RolloutSettings, Sides, Unordered, play, play_observed,
+    Bot, Determinize, Evaluate, Horizon, Order, PlanSearch, PlanSettings, PlayError, Playout,
+    RandomBot, Report, Rollout, RolloutSearch, RolloutSettings, Sides, TurnPlan, Unordered, play,
+    play_observed,
 };
 pub use character::CharacterId;
 pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};

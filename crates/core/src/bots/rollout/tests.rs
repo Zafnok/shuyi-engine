@@ -89,13 +89,12 @@ where
     E: Evaluate<R>,
 {
     let mut search = bot.search(rules);
-    let mut i = 0;
-    loop {
+    for i in 0..1_000_000 {
         if let Some(command) = search.advance(slices[i % slices.len()]) {
             return command;
         }
-        i += 1;
     }
+    panic!("no command in a million slices");
 }
 
 #[test]

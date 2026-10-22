@@ -150,13 +150,11 @@ impl<O, P, E> Rollout<O, P, E> {
             !candidates.is_empty(),
             "no command to choose from: the game lists none, or its order dropped them all"
         );
-        let seeds = (0..at_least_one(self.settings.samples))
-            .map(|_| {
-                let high = u64::from(self.rng.next_u32());
-                let low = u64::from(self.rng.next_u32());
-                (high << 32) + low
-            })
+        let seeds = draw_seeds(&mut self.rng, self.settings.samples);
+        let mut playouts: Vec<(usize, u64)> = (0..candidates.len())
+            .flat_map(|candidate| seeds.iter().map(move |&seed| (candidate, seed)))
             .collect();
+        playouts.reverse();
         RolloutSearch {
             root: rules.clone(),
             side: rules.side_to_move(),
@@ -164,7 +162,7 @@ impl<O, P, E> Rollout<O, P, E> {
             sums: alloc::vec![0; candidates.len()],
             candidates,
             seeds,
-            next: 0,
+            playouts,
             playing: None,
             chosen: None,
             bot: self,
@@ -187,11 +185,9 @@ where
     ///
     /// As [`Rollout::search`] and [`RolloutSearch::advance`] do.
     fn choose(&mut self, rules: &R) -> R::Command {
-        let mut search = self.search(rules);
-        loop {
-            if let Some(command) = search.advance(u32::MAX) {
-                return command;
-            }
+        match self.search(rules).work(u64::MAX) {
+            Progress::Chosen(command) => command,
+            Progress::Working => panic!("a decision took more than u64::MAX units"),
         }
     }
 }
@@ -209,9 +205,11 @@ pub struct RolloutSearch<'a, R: Sides, O, P, E> {
     seeds: Vec<u64>,
     /// Each candidate's sum of scores.
     sums: Vec<i64>,
-    /// The next playout to start: candidate `next / seeds.len()`, on seed
-    /// `next % seeds.len()`.
-    next: usize,
+    /// The playouts still to start, as a candidate and a seed, the next
+    /// one last: each candidate on every seed, in order. Each is taken
+    /// off as it starts, so the search keeps no count that could run past
+    /// them.
+    playouts: Vec<(usize, u64)>,
     playing: Option<Playing<R>>,
     chosen: Option<R::Command>,
 }
@@ -245,19 +243,30 @@ where
     /// commands than the real state, or refuses a candidate: a bug in the
     /// game's [`Determinize::determinize`].
     pub fn advance(&mut self, units: u32) -> Option<R::Command> {
+        match self.work(u64::from(units)) {
+            Progress::Chosen(command) => Some(command),
+            Progress::Working => None,
+        }
+    }
+
+    /// [`advance`](Self::advance), on as many as `u64::MAX` units: a
+    /// [`Progress`], which no step can fake, so a search that stopped
+    /// moving fails at once instead of spinning.
+    fn work(&mut self, units: u64) -> Progress<R::Command> {
         let mut left = units;
         loop {
             if let Some(chosen) = &self.chosen {
-                return Some(chosen.clone());
+                return Progress::Chosen(chosen.clone());
             }
             let Some(mut playing) = self.playing.take() else {
-                if self.next == self.candidates.len() * self.seeds.len() {
-                    self.chosen = Some(self.pick());
-                } else if left == 0 {
-                    return None;
-                } else {
+                if left == 0 && !self.playouts.is_empty() {
+                    return Progress::Working;
+                }
+                if let Some((candidate, seed)) = self.playouts.pop() {
                     left -= 1;
-                    self.playing = Some(self.start());
+                    self.playing = Some(self.start(candidate, seed));
+                } else {
+                    self.chosen = Some(self.pick());
                 }
                 continue;
             };
@@ -265,7 +274,7 @@ where
                 self.finish(&playing);
             } else if left == 0 {
                 self.playing = Some(playing);
-                return None;
+                return Progress::Working;
             } else {
                 left -= 1;
                 let command = self.bot.playout.command(&playing.copy);
@@ -280,24 +289,11 @@ where
         }
     }
 
-    /// The next playout: a copy from `determinize`, checked, with its
-    /// candidate applied.
-    fn start(&mut self) -> Playing<R> {
-        let candidate = self.next / self.seeds.len();
-        let seed = self.seeds[self.next % self.seeds.len()];
-        self.next += 1;
-        let mut copy = self.root.determinize(self.side, seed);
-        assert!(
-            copy.side_to_move() == self.side && copy.legal_commands() == self.legal,
-            "determinize changed the commands at the root (seed {seed}): a copy must list \
-             the state's legal commands, in the same order"
-        );
-        let applied = copy.apply(&self.candidates[candidate]).is_ok();
-        assert!(
-            applied,
-            "the copy from determinize refused candidate {candidate} (seed {seed}): a copy must \
-             accept the state's legal commands"
-        );
+    /// A playout of `candidate` on `seed`: a copy from `determinize`,
+    /// checked, with its candidate applied.
+    fn start(&self, candidate: usize, seed: u64) -> Playing<R> {
+        let mut copy = checked_copy(&self.root, self.side, &self.legal, seed);
+        apply_candidate(&mut copy, &self.candidates[candidate], candidate, seed);
         let mut playing = Playing {
             candidate,
             copy,
@@ -350,15 +346,81 @@ fn note_side<R: Sides>(playing: &mut Playing<R>) {
     }
 }
 
+/// How far a search got on the units it was given. It has no default,
+/// so a mutant of a search's step can't return one and leave the search
+/// spinning in place.
+pub(super) enum Progress<C> {
+    /// The units ran out first.
+    Working,
+    /// The decision is made.
+    Chosen(C),
+}
+
+/// `samples` seeds for a decision's copies (at least 1), each two draws
+/// from `rng`, high half first.
+pub(super) fn draw_seeds(rng: &mut SimRng, samples: u32) -> Vec<u64> {
+    (0..at_least_one(samples))
+        .map(|_| {
+            let high = u64::from(rng.next_u32());
+            let low = u64::from(rng.next_u32());
+            (high << 32) + low
+        })
+        .collect()
+}
+
+/// `root`'s copy for `side` from `seed`, checked to list `legal` (the
+/// root's legal commands) with `side` to move.
+///
+/// # Panics
+///
+/// With a message naming `determinize` when it doesn't.
+pub(super) fn checked_copy<R: Determinize>(
+    root: &R,
+    side: R::Side,
+    legal: &[R::Command],
+    seed: u64,
+) -> R
+where
+    R::Command: PartialEq,
+{
+    let copy = root.determinize(side, seed);
+    assert!(
+        copy.side_to_move() == side && copy.legal_commands() == legal,
+        "determinize changed the commands at the root (seed {seed}): a copy must list \
+         the state's legal commands, in the same order"
+    );
+    copy
+}
+
+/// Applies the root's candidate number `index` to a root's `copy` made
+/// from `seed`.
+///
+/// # Panics
+///
+/// With a message naming `determinize` when the copy refuses it.
+pub(super) fn apply_candidate<R: Determinize>(
+    copy: &mut R,
+    candidate: &R::Command,
+    index: usize,
+    seed: u64,
+) {
+    let applied = copy.apply(candidate).is_ok();
+    assert!(
+        applied,
+        "the copy from determinize refused candidate {index} (seed {seed}): a copy must \
+         accept the state's legal commands"
+    );
+}
+
 /// `n`, but at least 1, as a length.
-fn at_least_one(n: u32) -> usize {
+pub(super) fn at_least_one(n: u32) -> usize {
     usize::try_from(n.max(1)).unwrap_or(usize::MAX)
 }
 
 /// The index `means` pick: at `temperature` 0 the best (the first among
 /// equals); otherwise a base-2 softmax, a mean `temperature` points below
 /// the best weighing half as much, and one draw from `rng`.
-fn pick(means: &[i64], temperature: u32, rng: &mut SimRng) -> usize {
+pub(super) fn pick(means: &[i64], temperature: u32, rng: &mut SimRng) -> usize {
     let best = means.iter().copied().max().unwrap_or(0);
     let best_index = means.iter().position(|&mean| mean == best).unwrap_or(0);
     if temperature == 0 {
