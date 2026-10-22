@@ -92,9 +92,8 @@ None.
 - `lint` failing (exit 3) when `shuyi.ron` lacks a part: it records a
   limit and runs what the project has, by design;
 - `check-keys` and `check-text` on the engine's own code (2006).
-- **Either order with 2022:** if 2022 is done, remove `check-keys` from
-  the grid template's gates in `run-gates`' templates section too; if
-  not, 2022 copies the gates from `ci.yml` as this ticket leaves them.
+- Remove `check-keys` from the grid template's gates in `run-gates`'
+  templates section too (2022 added it).
 
 ## Implementation steps
 
@@ -107,8 +106,7 @@ None.
    binary's), and `lint` gets the file and line with no parsing.
 3. `lint` calls `check_text::verdict`; a test for the note as a limit.
 4. The CI steps and the template's gates. Run the templates job's
-   commands locally for `grid` (the `run-gates` skill, or 2022's
-   section if it is there).
+   commands locally for `grid` (the `run-gates` skill's templates section).
 
 ## Acceptance criteria
 

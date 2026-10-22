@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2022 — The Markdown a test reads counts as code, and run-gates runs the templates job
@@ -107,15 +107,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `changes.yml` classes `docs/contract.md`, `README.md`,
+- [x] `changes.yml` classes `docs/contract.md`, `README.md`,
       `crates/cli/errors/*.md` and every path under `templates/` as code,
       and `docs/ROADMAP.md`, `tickets/**`, `.claude/**` and
       `CONTRIBUTING.md` as docs-only (the PR body shows the loop's
       output).
-- [ ] The `run-gates` skill has the templates section, and its commands
+- [x] The `run-gates` skill has the templates section, and its commands
       pass on Nick's machine for `grid` and `blank`.
-- [ ] `docs/README.md`'s contract row names `crates/cli/tests/it/docs.rs`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `docs/README.md`'s contract row names `crates/cli/tests/it/docs.rs`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -123,5 +123,10 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as scoped. `changes.yml` now counts `crates/**`, `templates/**`,
+`examples/**`, `docs/contract.md` and the root `README.md` as code; the
+classifier loop gave the expected answer for all nine sample paths. The
+`run-gates` skill has the templates section (both templates' commands
+pass locally, MSYS2 on `PATH`). The docs map's contract row names
+`docs.rs`; `ci.yml`'s comments name `check-docs`. No docs beyond these;
+no follow-ups. Nick: nothing.
