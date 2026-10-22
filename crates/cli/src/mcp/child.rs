@@ -11,7 +11,7 @@ use std::sync::mpsc::{Receiver, channel};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use super::host::{Reply, Request};
+use super::host::{REPLY, Reply, Request};
 use super::server::{Launch, Link};
 use crate::contract::codes::{self, Code};
 use crate::project::{FILE, Project};
@@ -135,11 +135,10 @@ impl Link for Program {
                 Ok(0) | Err(_) => return Err(self.stopped()),
                 Ok(_) => {}
             }
-            // A line that is no reply is the game's own printing.
-            if let Ok(reply) = serde_json::from_str::<Reply>(line.trim())
-                && (reply.answer.is_some() || reply.error.is_some())
-            {
-                return Ok(reply);
+            // A line without the mark is the game's own printing.
+            if let Some(reply) = line.trim_end().strip_prefix(REPLY) {
+                return serde_json::from_str(reply)
+                    .map_err(|e| format!("the game's tool program sent a broken reply ({e})"));
             }
         }
     }

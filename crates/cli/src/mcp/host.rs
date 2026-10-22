@@ -1,6 +1,6 @@
 //! The game's side of `shuyi mcp`: `shuyi mcp-host`, run in the game's
 //! tool program, answers the server's [`Request`]s, one JSON line each on
-//! stdin, with a [`Reply`] line each on stdout. It answers the
+//! stdin, with a [`Reply`] line each on stdout, after the mark [`REPLY`]. It answers the
 //! operations that run the game with the game's tools, and keeps the
 //! session's game ([`Host`]).
 //!
@@ -30,6 +30,10 @@ use crate::contract::{
 use crate::frame_png::MAX_SCALE;
 use crate::game::{GameArg, GameTools, code_of};
 use crate::project::{FILE, Project};
+
+/// What starts each reply line, so the server tells replies from what
+/// the game prints itself.
+pub const REPLY: &str = "shuyi-mcp-reply ";
 
 /// What the server asks the host: the tool of `op`, with its input.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -383,7 +387,7 @@ pub fn serve(
         };
         // A reply of strings, numbers and lists: serializing can't fail.
         let line = serde_json::to_string(&reply).unwrap_or_default();
-        if writeln!(output, "{line}")
+        if writeln!(output, "{REPLY}{line}")
             .and_then(|()| output.flush())
             .is_err()
         {

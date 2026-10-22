@@ -359,7 +359,7 @@ fn the_host_answers_a_line_with_a_line() {
     let replies: Vec<Reply> = String::from_utf8(output)
         .unwrap()
         .lines()
-        .map(|line| serde_json::from_str(line).unwrap())
+        .map(|line| serde_json::from_str(line.strip_prefix(REPLY).unwrap()).unwrap())
         .collect();
     assert_eq!(replies.len(), 4);
     assert_eq!(replies[0].answer.as_ref().unwrap()["op"], "start");
