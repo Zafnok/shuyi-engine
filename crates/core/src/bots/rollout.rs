@@ -185,11 +185,9 @@ where
     ///
     /// As [`Rollout::search`] and [`RolloutSearch::advance`] do.
     fn choose(&mut self, rules: &R) -> R::Command {
-        let mut search = self.search(rules);
-        loop {
-            if let Some(command) = search.advance(u32::MAX) {
-                return command;
-            }
+        match self.search(rules).work(u64::MAX) {
+            Progress::Chosen(command) => command,
+            Progress::Working => panic!("a decision took more than u64::MAX units"),
         }
     }
 }
@@ -245,14 +243,24 @@ where
     /// commands than the real state, or refuses a candidate: a bug in the
     /// game's [`Determinize::determinize`].
     pub fn advance(&mut self, units: u32) -> Option<R::Command> {
+        match self.work(u64::from(units)) {
+            Progress::Chosen(command) => Some(command),
+            Progress::Working => None,
+        }
+    }
+
+    /// [`advance`](Self::advance), on as many as `u64::MAX` units: a
+    /// [`Progress`], which no step can fake, so a search that stopped
+    /// moving fails at once instead of spinning.
+    fn work(&mut self, units: u64) -> Progress<R::Command> {
         let mut left = units;
         loop {
             if let Some(chosen) = &self.chosen {
-                return Some(chosen.clone());
+                return Progress::Chosen(chosen.clone());
             }
             let Some(mut playing) = self.playing.take() else {
                 if left == 0 && !self.playouts.is_empty() {
-                    return None;
+                    return Progress::Working;
                 }
                 if let Some((candidate, seed)) = self.playouts.pop() {
                     left -= 1;
@@ -266,7 +274,7 @@ where
                 self.finish(&playing);
             } else if left == 0 {
                 self.playing = Some(playing);
-                return None;
+                return Progress::Working;
             } else {
                 left -= 1;
                 let command = self.bot.playout.command(&playing.copy);
@@ -336,6 +344,16 @@ fn note_side<R: Sides>(playing: &mut Playing<R>) {
         playing.side = side;
         playing.changes = playing.changes.saturating_add(1);
     }
+}
+
+/// How far a search got on the units it was given. It has no default,
+/// so a mutant of a search's step can't return one and leave the search
+/// spinning in place.
+pub(super) enum Progress<C> {
+    /// The units ran out first.
+    Working,
+    /// The decision is made.
+    Chosen(C),
 }
 
 /// `samples` seeds for a decision's copies (at least 1), each two draws

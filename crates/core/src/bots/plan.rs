@@ -37,7 +37,9 @@ use serde::{Deserialize, Serialize};
 use super::Bot;
 use super::Sides;
 use super::determinize::{Determinize, Evaluate};
-use super::rollout::{Order, apply_candidate, at_least_one, checked_copy, draw_seeds, pick};
+use super::rollout::{
+    Order, Progress, apply_candidate, at_least_one, checked_copy, draw_seeds, pick,
+};
 use crate::rng::SimRng;
 
 /// How a [`TurnPlan`] bot thinks: data, so a persona's settings can be a
@@ -157,11 +159,9 @@ where
     ///
     /// As [`TurnPlan::search`] and [`PlanSearch::advance`] do.
     fn choose(&mut self, rules: &R) -> R::Command {
-        let mut search = self.search(rules);
-        loop {
-            if let Some(command) = search.advance(u32::MAX) {
-                return command;
-            }
+        match self.search(rules).work(u64::MAX) {
+            Progress::Chosen(command) => command,
+            Progress::Working => panic!("a decision took more than u64::MAX units"),
         }
     }
 }
@@ -249,12 +249,22 @@ where
     /// one of its candidates: a bug in the game's
     /// [`Determinize::determinize`].
     pub fn advance(&mut self, units: u32) -> Option<R::Command> {
+        match self.work(u64::from(units)) {
+            Progress::Chosen(command) => Some(command),
+            Progress::Working => None,
+        }
+    }
+
+    /// [`advance`](Self::advance), on as many as `u64::MAX` units: a
+    /// [`Progress`], which no step can fake, so a search that stopped
+    /// moving fails at once instead of spinning.
+    fn work(&mut self, units: u64) -> Progress<R::Command> {
         let mut left = units;
         loop {
             self.phase = match core::mem::replace(&mut self.phase, Phase::Between) {
                 Phase::Chosen(command) => {
                     self.phase = Phase::Chosen(command.clone());
-                    return Some(command);
+                    return Progress::Chosen(command);
                 }
                 Phase::Between => self.next(),
                 Phase::Building(building) => {
@@ -270,7 +280,7 @@ where
                         Phase::Building(self.step(building))
                     } else if left == 0 {
                         self.phase = Phase::Building(building);
-                        return None;
+                        return Progress::Working;
                     } else {
                         left -= 1;
                         Phase::Building(self.step(building))

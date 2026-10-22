@@ -87,7 +87,10 @@
    step that did nothing, or a count that stopped rising, could otherwise
    spin the search forever without spending a unit (a mutant that only a
    timeout would catch). `RolloutSearch` holds its playouts to start the
-   same way.
+   same way. Both searches' loops return a `Progress` (working, or the
+   command chosen), which has no default, and `choose` runs that loop
+   once on `u64::MAX` units instead of calling `advance` until it
+   answers; a search that stopped moving fails at once.
 
 ## Consequences
 
