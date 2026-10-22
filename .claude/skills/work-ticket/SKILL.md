@@ -95,6 +95,17 @@ the PR.
    will, if that PR doesn't exist yet.
 3. Set `status: done` and `completed: YYYY-MM-DD`.
 4. `git mv tickets/open/<file>.md tickets/done/<file>.md`
+5. **Settle what named this ticket.** Run `grep -rnw "<NNNN>"
+   tickets/open`, and for each hit:
+   - a clause that waits on it (*either order with NNNN*, *if NNNN is
+     done*, *NNNN, if done*): rewrite it as what now holds, and drop the
+     other branch;
+   - a promised follow-up: write it now (the `write-ticket` skill), and
+     point the promise at its number;
+   - a `blocked_by` entry: leave it, it is met.
+
+   `cargo xtask ticket-lint` then prints no warning naming NNNN. In a
+   parked ticket only the clause changes.
 
 ## 6. Commit and PR
 

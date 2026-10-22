@@ -91,6 +91,10 @@ The ticket lint checks `game#NNNN` ids in `blocked_by` against the game
 repository's tickets with `gh api`, or against a local checkout with
 `--game-repo <path>`. With neither it warns and skips them; CI has no
 access to the game repository, so check them locally when you add one.
+It also warns on a clause in an open ticket that waits on a done one
+("if NNNN is done", "either order with NNNN"); the PR closing a ticket
+settles the clauses that name it (the `work-ticket` skill, §5). On CI the
+warnings show on the PR.
 
 Later tickets add their checks here, for example `check-keys` and
 `check-text` on the engine's own code (2006) and `check-skills`.
