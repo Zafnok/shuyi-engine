@@ -80,7 +80,7 @@ None to build it. Turning chat on in our game comes with 0053.
 
 **Out (do not do):**
 - global chat;
-- voice chat;
+- voice chat (2910 researches it);
 - anything in our game.
 
 ## Implementation steps

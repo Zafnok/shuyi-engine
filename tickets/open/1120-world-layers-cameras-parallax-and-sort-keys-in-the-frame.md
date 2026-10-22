@@ -144,6 +144,9 @@ None. Our game's frames don't change.
   - 1126 and 1127 add `Isometric` and `SideView`.
 
 **Out (do not do):**
+- a light blended over the time of day on world layers: 2369 gives the
+  grid scene `look.blend`, and a world layer takes the same field in
+  the ticket that first needs it;
 - isometric projection (1126);
 - drawing between the last two steps (2361);
 - look-ahead, rooms that hold the camera, blends between camera goals,

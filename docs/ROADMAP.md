@@ -608,6 +608,19 @@ Shuyi launches. The order inside each, when unparked:
 
 Video (2909) waits with the visual novels.
 
+On 2026-10-22 Nick asked about weather, a day and night, proximity audio
+and voice chat, and ray- and path-traced light and sound
+([`decisions.md`](decisions.md)). Proximity audio is 2363, above. The
+rest, when unparked:
+
+- **A day and night:** the light cycle (2369) needs nothing parked.
+- **Weather:** ambiences (2370) after particles (2103), 2337 and 2344.
+- **Voice chat:** the research (2910), with networking; it ends with a
+  question to Nick.
+- **Ray and path tracing:** the research (2911), for PCs and current
+  consoles only, behind a `ray_tracing` capability (3017); best after
+  3034, which plans the renderer it needs.
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle. Waits until Visions of Shuyi launches (2026-10-20) | the game's 0060 says the army walks around freely, or the game asks for a piece |
@@ -641,3 +654,6 @@ Video (2909) waits with the visual novels.
 | 3111 | 3D meshes in the pack: meshes, materials, skeletons and clips baked as postcard sections and proven equal to their glTF | 3D is unparked |
 | 2807 | A custom domain for the website | Nick has a domain (2026-10-20: "can use custom domain later") |
 | 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |
+| 2369–2370 | A light cycle for day and night, and ambiences for weather (particles across the view, an overlay and a looped sound, with a fade) | the game asks (2026-10-22); 2370 with particles (2103) |
+| 2910 | Research: voice chat and proximity voice, ending with a question to Nick | with networking |
+| 2911 | Research: ray- and path-traced light and sound, an opt-in module behind a `ray_tracing` capability, for PCs and current consoles | Nick asks (2026-10-22: "would be for diff comp targets like PC, new gen consoles") |

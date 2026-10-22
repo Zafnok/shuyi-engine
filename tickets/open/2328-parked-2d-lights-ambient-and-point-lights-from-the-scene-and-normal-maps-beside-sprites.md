@@ -65,7 +65,10 @@ None.
   the dot carries.
 
 **Out (do not do):**
-- shadows and occluders (a follow-up if a game asks);
+- shadows and occluders (a follow-up if a game asks; traced 2D light
+  with soft shadows and bounces: 2911 researches it);
+- blending the ambient light over a day (2369's light cycle; either
+  order with 2369 says how the two meet);
 - lights that change the simulation;
 - 3D lights (3103, 3104);
 - emissive maps (a follow-up).

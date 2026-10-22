@@ -283,7 +283,9 @@ None.
   game asks;
 - several listeners at once (split screen: 1120's views, 2406's seats):
   one listener a frame here;
-- Doppler, HRTF, occlusion, reverb zones and filters by distance;
+- Doppler, HRTF, occlusion, reverb zones and filters by distance
+  (occlusion and reverb traced through the level: 2911 researches them;
+  proximity voice over this falloff: 2910);
 - 3D sound: none of the 3D tickets (3101–3109) has it. A follow-up
   there if a 3D game asks;
 - stereo on quad-snd, or replacing it (2902, 3030–3032). The mixer's
