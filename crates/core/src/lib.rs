@@ -7,8 +7,8 @@
 //! side's whole turn on them: [`TurnPlan`], [`PlanSettings`] and
 //! [`PlanSearch`], and a playtest runner that checks
 //! how often each of several bots succeeds, [`bots::playtest`]), a hash of a state that replays
-//! compare, with what text and stories need below the assets: character
-//! ids and the `{token}` splitter.
+//! compare, the version every [`save`] names, and what text and stories
+//! need below the assets: character ids and the `{token}` splitter.
 //!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
 //! crate sits on it and keeps its own rules, turn loop and data (game ADR-0063
