@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2017 — The backlog and the docs kept true as tickets land
@@ -299,28 +299,28 @@ docs test, the skills and items 2 to 8 here.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask ticket-lint` warns, and still exits 0, on an open
+- [x] `cargo xtask ticket-lint` warns, and still exits 0, on an open
       ticket with a clause in each of the four forms about a done
       ticket, naming the file, the line and the id.
-- [ ] It doesn't warn on a clause in a fenced code block, a clause in a
+- [x] It doesn't warn on a clause in a fenced code block, a clause in a
       done ticket, a clause about an open ticket, or a done id named
       outside the four forms.
-- [ ] With `GITHUB_ACTIONS=true`, each warning is also printed on
+- [x] With `GITHUB_ACTIONS=true`, each warning is also printed on
       stdout as a `::warning::` line with `%`, CR and LF escaped;
       without it, stdout has none.
-- [ ] After the sweep, `cargo xtask ticket-lint` on the repository
+- [x] After the sweep, `cargo xtask ticket-lint` on the repository
       prints no warning about a clause.
-- [ ] `crates/cli/tests/it/docs.rs` passes. The PR description shows it
+- [x] `crates/cli/tests/it/docs.rs` passes. The PR description shows it
       failing in local runs with the example's `contract` set to 3, with
       a field added to the example, with a field left out, and with the
       `bake` row removed.
-- [ ] The parked `31xx` ticket exists, 3102's Out line names it, and
+- [x] The parked `31xx` ticket exists, 3102's Out line names it, and
       the ticket lint passes on both.
-- [ ] Each item of the sweep is done, or the PR says it was already
+- [x] Each item of the sweep is done, or the PR says it was already
       done.
-- [ ] The `work-ticket`, `write-ticket` and `run-gates` skills say what
+- [x] The `work-ticket`, `write-ticket` and `run-gates` skills say what
       the Scope says.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -353,4 +353,38 @@ docs test, the skills and items 2 to 8 here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-10-21, on a branch stacked on 2128's PR
+(`t2128-turn-planner`) with `main` merged in.
+
+- **The lint.** `find_clauses` in `crates/xtask/src/tickets.rs` reads
+  the four forms over the words of an open ticket's body, outside fenced
+  blocks; `check_clauses` gives one warning per file, line and done id.
+  `report` in `main.rs` prints each warning on stdout as `::warning::`
+  when `GITHUB_ACTIONS` is `true` (`annotation`).
+- **The docs test.** `crates/cli/tests/it/docs.rs`: the example answer
+  parses as `Answer<SceneOutput>`, serializes back to the same JSON, is
+  a `scene` answer and shows `VERSION`; every `Op` has its row and every
+  row is an `Op` or `schema`; README's `shuyi-cli` row names every op.
+- **The skills.** `work-ticket` §5 step 5 (after 2810's *Write the docs*
+  and the `git mv`), `write-ticket`'s dependency chain, and `run-gates`.
+- **The sweep:**
+  1. the lint found 36 clauses in 30 tickets (2509, 2125, 3001, 3002,
+     3003, 3006, 1129 and 2204 had closed); each now states what holds.
+     Only the clause changed in parked tickets;
+  2. 3111, "Parked: 3D meshes in the pack", written, with a row in
+     `docs/ROADMAP.md`'s parked table; 3102's Out line names it;
+  3. already done: `docs/contract.md` showed `"contract": 7`, today's
+     `VERSION`, since 2509;
+  4. the README row lacked `bake`, and `playtest` and `explain` too: all
+     three added (the new test asked for them);
+  5. the crate docs of `shuyi-ui`, `shuyi-core` and `shuyi-assets` name
+     every `pub mod`; the three `shuyi-platform` files cite ADR-0024;
+  6. 3104 names 2220's hook. 2220 puts it on `Module` (`Module::reloaded`),
+     not on `GameHooks` as this ticket's Scope said, so 3104 says that;
+  7. already done: 2003 and 2005 list `shuyi-platform`, and 2321's
+     Related clause on 3003 was settled;
+  8. `changes.yml` says "game ADR-0014".
+- **Deviations:** none beyond item 6's hook name.
+- **Docs:** the skills are this change's docs (the `document` skill's map
+  sends rules of work to the skills); no public item of a crate changed.
+- **Follow-up tickets:** 3111 (parked).

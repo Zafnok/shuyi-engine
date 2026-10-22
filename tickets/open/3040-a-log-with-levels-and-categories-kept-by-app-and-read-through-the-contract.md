@@ -204,11 +204,10 @@ None.
     the log, and a short *The log* section says what a line holds, that
     frames count from 1 with 0 for before the first frame, and the limit
     of 500 lines; and *The answer*'s example (a `scene` answer) gains
-    `"log": []` in its `result` and the new version in `contract` (2017
-    adds a test that parses that example as an `Answer<SceneOutput>`).
-    **Either order with 2017:** if it is done, its test in
-    `crates/cli/tests/it/docs.rs` fails until the example has `log`; if
-    not, the example is right when 2017 starts.
+    `"log": []` in its `result` and the new version in `contract`. 2017's
+    test in `crates/cli/tests/it/docs.rs` parses that example as an
+    `Answer<SceneOutput>`, and fails until the example has `log` and the
+    new version.
 - **Size:** if the diff, fixtures and snapshots aside, passes about 600
   changed lines, `LogFilter` and `App::set_log_filter` move to 3041,
   which reads a filter from text anyway. App then keeps every level
@@ -235,8 +234,8 @@ None.
 1. Read ADR-0005, ADR-0022 and ADR-0024; `crates/ui/src/ctx.rs` and
    `crates/ui/src/profiles.rs`; `crates/platform/src/app.rs`, its tests
    and `harness.rs`; `crates/cli/src/contract/run.rs`, `session.rs` and
-   `fake.rs`; `crates/cli/src/check_text.rs`. Check whether 2013, 2017
-   and 2509 are done.
+   `fake.rs`; `crates/cli/src/check_text.rs`. Check whether 2013 is
+   done (2017 and 2509 are).
 2. Write the ADR.
 3. Write `shuyi_ui::log` (`pub mod log;` in `crates/ui/src/lib.rs`), its
    unit tests and the `LogRing` property test.
