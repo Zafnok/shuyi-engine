@@ -4,6 +4,13 @@
   "description": "What an operation answers.",
   "type": "object",
   "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "contract": {
       "description": "The contract's version ([`VERSION`]).",
       "type": "integer",
@@ -12,6 +19,13 @@
     },
     "error": {
       "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
       "type": [
         "string",
         "null"
@@ -136,6 +150,11 @@
           "description": "The toolchain checked.",
           "type": "string",
           "const": "doctor"
+        },
+        {
+          "description": "A problem code's page.",
+          "type": "string",
+          "const": "explain"
         }
       ]
     }

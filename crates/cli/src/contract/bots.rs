@@ -10,8 +10,8 @@ use std::fmt::Write as _;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{Answer, Op};
-use crate::game::{GameArg, GameOption, GameTools};
+use super::{Answer, Op, codes};
+use crate::game::{GameArg, GameOption, GameTools, code_of};
 
 /// The most games one `bots` plays.
 pub const MAX_GAMES: u32 = 10_000;
@@ -136,11 +136,13 @@ pub fn bots(game: &dyn GameTools, input: &BotsInput) -> Answer<BotsOutput> {
     if input.games == 0 || input.games > MAX_GAMES {
         return Answer::failed(
             Op::Bots,
+            codes::WRONG_ARGUMENTS,
             format!("games: 1 to {MAX_GAMES}, not {}", input.games),
         );
     }
     if input.seed.checked_add(u64::from(input.games)).is_none() {
-        return Answer::failed(Op::Bots, "seed: too big for that many games");
+        let error = "seed: too big for that many games";
+        return Answer::failed(Op::Bots, codes::WRONG_ARGUMENTS, error);
     }
     match game.bots(input) {
         Ok(output) => {
@@ -157,7 +159,7 @@ pub fn bots(game: &dyn GameTools, input: &BotsInput) -> Answer<BotsOutput> {
             }
             Answer::new(Op::Bots, true, output, limits)
         }
-        Err(e) => Answer::failed(Op::Bots, e),
+        Err(e) => Answer::failed(Op::Bots, code_of(&e), e),
     }
 }
 
@@ -364,7 +366,9 @@ mod tests {
         assert!(bots(&game, &input(1, 0)).limits.is_empty());
         assert!(bots(&game, &input(MAX_GAMES, 0)).ok);
         for (games, seed) in [(0, 0), (MAX_GAMES + 1, 0)] {
-            let error = bots(&game, &input(games, seed)).error.unwrap();
+            let answer = bots(&game, &input(games, seed));
+            assert_eq!(answer.exit_code(), 2);
+            let error = answer.error.unwrap();
             assert!(error.starts_with("games: 1 to 10000"), "{error}");
         }
         assert_eq!(
@@ -376,10 +380,16 @@ mod tests {
             bots: Err("no stage".into()),
             ..Fake::default()
         };
-        assert_eq!(
-            bots(&broken, &input(1, 0)).error.as_deref(),
-            Some("no stage")
-        );
+        let answer = bots(&broken, &input(1, 0));
+        assert_eq!(answer.error.as_deref(), Some("no stage"));
+        assert_eq!(answer.code.as_deref(), Some("SH3002"));
+        // A game whose tools leave bots out.
+        let left_out = Fake {
+            bots: Err(crate::game::unsupported("bots", "bots")),
+            ..Fake::default()
+        };
+        let answer = bots(&left_out, &input(1, 0));
+        assert_eq!(answer.code.as_deref(), Some("SH3001"));
     }
 
     #[test]

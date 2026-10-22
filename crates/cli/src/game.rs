@@ -23,6 +23,7 @@ use shuyi_ui::input::fit::Controls;
 use shuyi_core::bots::playtest::PlaytestReport;
 
 use crate::contract::bots::{BotsInput, BotsOutput};
+use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
 use crate::contract::playtest::PlaytestInput;
 use crate::contract::replay::{Record, ReplayRun};
@@ -208,21 +209,39 @@ pub trait GameTools {
     }
 }
 
+/// What [`unsupported`]'s errors start with, which
+/// [`is_unsupported`] tells them by.
+const UNSUPPORTED: &str = "the game's tools don't offer ";
+
 /// What a game whose tools don't offer `op` answers: they lack the
 /// method `method`.
 pub fn unsupported(op: &str, method: &str) -> String {
-    format!("the game's tools don't offer {op} (GameTools::{method})")
+    format!("{UNSUPPORTED}{op} (GameTools::{method})")
+}
+
+/// Whether `error`, from a [`GameTools`] method, is [`unsupported`]'s:
+/// the game left the method at its default.
+pub fn is_unsupported(error: &str) -> bool {
+    error.starts_with(UNSUPPORTED)
+}
+
+/// The problem code of `error`, from a [`GameTools`] method:
+/// [`codes::NOT_OFFERED`] if [`is_unsupported`], else
+/// [`codes::GAME_ERROR`].
+pub fn code_of(error: &str) -> Code {
+    if is_unsupported(error) {
+        codes::NOT_OFFERED
+    } else {
+        codes::GAME_ERROR
+    }
 }
 
 /// Runs `command` with `args` in the game's tool program of `project`
-/// and returns its exit code.
+/// and returns its exit code; 3 if there is none, or cargo doesn't start
+/// ([`codes::PROJECT_FILE`], [`codes::TOOLCHAIN`]).
 pub fn run_in_game_program(project: &Project, command: &str, args: &[String]) -> u8 {
     let Some(program) = &project.config.game else {
-        eprintln!(
-            "{command}: {} names no game tool program (`game`), and {command} runs the game",
-            crate::project::FILE
-        );
-        return 2;
+        return crate::contract::cli::no_game(command, args);
     };
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     match Command::new(cargo)
@@ -234,10 +253,12 @@ pub fn run_in_game_program(project: &Project, command: &str, args: &[String]) ->
             .code()
             .and_then(|code| u8::try_from(code).ok())
             .unwrap_or(1),
-        Err(e) => {
-            eprintln!("{command}: cannot run cargo: {e}");
-            1
-        }
+        Err(e) => crate::contract::cli::setup_failed(
+            command,
+            args,
+            codes::TOOLCHAIN,
+            &format!("cannot run cargo: {e}"),
+        ),
     }
 }
 
@@ -312,5 +333,23 @@ mod tests {
             Plain.bake(Some("desktop")).unwrap_err(),
             "the game's tools don't offer bake and check --baked (GameTools::bake)"
         );
+    }
+
+    #[test]
+    fn a_method_left_at_its_default_is_told_from_the_games_own_errors() {
+        let error = Plain.bots(&BotsInput::default()).unwrap_err();
+        assert!(is_unsupported(&error));
+        assert_eq!(code_of(&error), codes::NOT_OFFERED);
+        assert!(!is_unsupported("records/a.ron: no turn 4"));
+        assert_eq!(code_of("records/a.ron: no turn 4"), codes::GAME_ERROR);
+    }
+
+    #[test]
+    fn with_no_game_tool_program_a_command_that_runs_the_game_exits_3() {
+        let project = Project {
+            root: std::path::PathBuf::from("."),
+            config: crate::project::Config::default(),
+        };
+        assert_eq!(run_in_game_program(&project, "frame-png", &[]), 3);
     }
 }

@@ -33,7 +33,7 @@ use core::any::Any;
 use core::fmt;
 
 use crate::bundle::Bundle;
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 
 /// A kind of asset: the plain type a [`Format`] reads into. The engine's
 /// kinds are its own types (`ImageInfo`, `PaletteDef`, `DialogueFile`…);
@@ -294,8 +294,9 @@ impl<'a> DecodeCx<'a> {
 /// The text of a text format's file `bytes`, or the error that it isn't
 /// valid UTF-8.
 pub fn text<'b>(file: &AssetPath, bytes: &'b [u8]) -> Result<&'b str, Vec<ContentError>> {
-    core::str::from_utf8(bytes)
-        .map_err(|_| vec![ContentError::new(file.shown(), "file is not valid UTF-8")])
+    core::str::from_utf8(bytes).map_err(|_| {
+        vec![ContentError::new(file.shown(), "file is not valid UTF-8").with_code(codes::NOT_TEXT)]
+    })
 }
 
 /// `format`'s asset in `bytes` (the file `file`), unless the file is
@@ -314,7 +315,9 @@ pub fn decode_with<F: Format + ?Sized>(
             format.id(),
             <F::Asset as AssetKind>::NAME
         );
-        return Err(vec![ContentError::new(file.shown(), message)]);
+        return Err(vec![
+            ContentError::new(file.shown(), message).with_code(codes::TOO_BIG),
+        ]);
     }
     format.decode(file, bytes, cx)
 }
@@ -638,7 +641,7 @@ impl Formats {
         } else {
             format!("the {kind} formats are {}", ids.join(", "))
         };
-        ContentError::new(file.shown(), format!("{why}; {known}"))
+        ContentError::new(file.shown(), format!("{why}; {known}")).with_code(codes::NO_FORMAT)
     }
 
     /// The path of the asset of kind `K` with id `id`: the file at `id`
@@ -656,22 +659,26 @@ impl Formats {
             .map(|extension| format!("{id}.{extension}"))
             .collect();
         let found: Vec<&String> = tried.iter().filter(|path| bundle.has(path)).collect();
-        let message = match found.as_slice() {
+        let (code, message) = match found.as_slice() {
             [path] => return Ok((*path).clone()),
-            [] if tried.is_empty() => NOT_FOUND.to_owned(),
-            [] => format!("{NOT_FOUND}, nor {}", tried.join(" nor ")),
+            [] if tried.is_empty() => (codes::MISSING_FILE, NOT_FOUND.to_owned()),
+            [] => (
+                codes::MISSING_FILE,
+                format!("{NOT_FOUND}, nor {}", tried.join(" nor ")),
+            ),
             many => {
                 let shown: Vec<String> =
                     many.iter().map(|path| bundle.display_path(path)).collect();
-                format!(
+                let message = format!(
                     "{} files could be this {}: {}; name the one meant with its extension",
                     shown.len(),
                     K::NAME,
                     shown.join(", ")
-                )
+                );
+                (codes::AMBIGUOUS_FILE, message)
             }
         };
-        Err(ContentError::new(bundle.display_path(id), message))
+        Err(ContentError::new(bundle.display_path(id), message).with_code(code))
     }
 
     /// The asset of kind `K` with id `id` in `bundle` ([`Formats::find`]),

@@ -20,8 +20,8 @@ use shuyi_assets::bundle::Bundle;
 use shuyi_assets::format::Formats;
 use shuyi_assets::pack::{Bake, Pack};
 
-use super::{Answer, Op, Problem, target};
-use crate::game::{GameBake, GameTools};
+use super::{Answer, Op, Problem, codes, target};
+use crate::game::{GameBake, GameTools, code_of};
 use crate::project::Project;
 
 /// Where a pack goes when `--out` doesn't say, from the project's root:
@@ -167,7 +167,7 @@ fn unknown_target(project: &Project, target: &str) -> Option<String> {
 pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answer<BakeOutput> {
     let target = input.target.as_deref();
     if let Some(why) = target.and_then(|target| unknown_target(project, target)) {
-        return Answer::failed(Op::Bake, why);
+        return Answer::failed(Op::Bake, codes::TARGET, why);
     }
     let GameBake {
         bake,
@@ -175,7 +175,7 @@ pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answe
         formats,
     } = match prepared(game, target) {
         Ok(prepared) => prepared,
-        Err(e) => return Answer::failed(Op::Bake, e),
+        Err(e) => return Answer::failed(Op::Bake, code_of(&e), e),
     };
     let start = Instant::now();
     let baked = match bake.bake(&formats, &bundle, target) {
@@ -198,7 +198,7 @@ pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answe
         .map_or(Ok(()), fs::create_dir_all)
         .and_then(|()| fs::write(&path, &baked.bytes));
     if let Err(e) = written {
-        return Answer::failed(Op::Bake, format!("{file}: {e}"));
+        return Answer::failed(Op::Bake, codes::FILE, format!("{file}: {e}"));
     }
     let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
     let pack = PackMade {
@@ -293,6 +293,7 @@ pub fn text(output: &BakeOutput) -> String {
         for error in &output.errors {
             let _ = writeln!(out, "  {error}");
         }
+        out.push_str(&codes::help_lines(&output.errors));
     }
     if let Some(pack) = &output.pack {
         let target = pack

@@ -25,15 +25,34 @@ fn stderr(output: &Output) -> String {
 }
 
 #[test]
-fn outside_a_project_it_says_so_and_exits_2() {
+fn outside_a_project_it_says_so_and_exits_3() {
     let dir = scratch("no-project");
     let output = shuyi(&dir, &["check-keys"]);
-    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(output.status.code(), Some(3));
+    let said = stderr(&output);
     assert!(
-        stderr(&output).contains("no shuyi.ron in "),
-        "{}",
-        stderr(&output)
+        said.starts_with("check-keys: error[SH1001]: no shuyi.ron in "),
+        "{said}"
     );
+    assert!(said.contains("\n  see: shuyi explain SH1001\n"), "{said}");
+    assert!(said.contains("\nusage: shuyi <command>\n"), "{said}");
+    // An op asked for JSON answers it, and nothing else.
+    let output = shuyi(&dir, &["check", "--json"]);
+    assert_eq!(output.status.code(), Some(3));
+    let answer = json(&output);
+    assert_eq!(
+        (answer["op"].as_str(), answer["ok"].as_bool()),
+        (Some("check"), Some(false))
+    );
+    assert_eq!(answer["code"], "SH1001");
+    assert!(answer["help"].as_str().unwrap().contains("shuyi new"));
+    assert!(stderr(&output).is_empty(), "{}", stderr(&output));
+    // The same op for people says it, then the usage.
+    let output = shuyi(&dir, &["check"]);
+    assert_eq!(output.status.code(), Some(3));
+    let said = stderr(&output);
+    assert!(said.starts_with("check: error[SH1001]: "), "{said}");
+    assert!(said.contains("\nusage: shuyi <command>\n"), "{said}");
     fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -51,13 +70,14 @@ fn a_project_is_found_from_a_folder_below_it() {
     );
     let output = shuyi(&dir, &["bogus"]);
     assert_eq!(output.status.code(), Some(2));
-    assert!(stderr(&output).starts_with("unknown command: bogus\n"));
+    assert!(stderr(&output).starts_with("tools: error[SH0001]: unknown command: bogus\n"));
     // A command whose part the project lacks.
     let output = shuyi(&dir, &["check-keys"]);
-    assert_eq!(output.status.code(), Some(2));
-    assert_eq!(
-        stderr(&output).trim(),
-        "check-keys: shuyi.ron has no `check_keys`"
+    assert_eq!(output.status.code(), Some(3));
+    assert!(
+        stderr(&output).starts_with("check-keys: error[SH1002]: shuyi.ron has no `check_keys`\n"),
+        "{}",
+        stderr(&output)
     );
     fs::remove_dir_all(&dir).unwrap();
 }
@@ -114,9 +134,9 @@ fn the_commands_that_run_the_game_need_its_tool_program() {
     fs::write(dir.join("shuyi.ron"), "()").unwrap();
     for command in ["frame-png", "lang-status"] {
         let output = shuyi(&dir, &[command, "x"]);
-        assert_eq!(output.status.code(), Some(2), "{command}");
+        assert_eq!(output.status.code(), Some(3), "{command}");
         assert!(
-            stderr(&output).contains("names no game tool program"),
+            stderr(&output).contains("error[SH1002]: shuyi.ron names no game tool program"),
             "{command}"
         );
     }
@@ -224,7 +244,7 @@ fn json(output: &Output) -> serde_json::Value {
 }
 
 #[test]
-fn new_doctor_and_schema_need_no_project() {
+fn new_doctor_explain_and_schema_need_no_project() {
     let dir = scratch("no-project-ops");
     let output = shuyi(&dir, &["schema"]);
     assert_eq!(output.status.code(), Some(0));
@@ -236,7 +256,7 @@ fn new_doctor_and_schema_need_no_project() {
     assert_eq!(shuyi(&dir, &["schema", "a", "b"]).status.code(), Some(2));
     let output = shuyi(&dir, &["schema", "--out", "s"]);
     assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
-    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 20);
+    assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 22);
 
     let output = shuyi(&dir, &["new", "blank", "g", "--json"]);
     assert_eq!(output.status.code(), Some(0), "{}", stdout(&output));
@@ -248,8 +268,8 @@ fn new_doctor_and_schema_need_no_project() {
     assert_eq!(answer["result"]["crate_name"], "g");
     assert!(dir.join("g/crates/game/Cargo.toml").is_file());
     let output = shuyi(&dir, &["new", "blank", "g"]);
-    assert_eq!(output.status.code(), Some(1));
-    assert_eq!(stderr(&output).trim(), "new: g is not empty");
+    assert_eq!(output.status.code(), Some(2));
+    assert!(stderr(&output).starts_with("new: error[SH0001]: g is not empty\n"));
     let output = shuyi(&dir, &["new", "--json"]);
     assert_eq!(output.status.code(), Some(2));
     assert_eq!(
@@ -264,6 +284,12 @@ fn new_doctor_and_schema_need_no_project() {
     let answer = json(&output);
     assert_eq!(answer["op"], "doctor");
     assert_eq!(answer["result"]["checks"][0]["name"], "rust");
+    // 0 on a complete toolchain, 3 with its code if a check failed.
+    match output.status.code() {
+        Some(0) => assert!(answer["code"].is_null()),
+        Some(3) => assert_eq!(answer["code"], "SH1003"),
+        other => panic!("doctor exited {other:?}"),
+    }
     assert_eq!(shuyi(&dir, &["doctor", "x"]).status.code(), Some(2));
     let output = shuyi(&dir, &["doctor"]);
     assert!(
@@ -271,6 +297,20 @@ fn new_doctor_and_schema_need_no_project() {
         "{}",
         stdout(&output)
     );
+
+    let output = shuyi(&dir, &["explain"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(
+        stdout(&output).starts_with("SH0001  usage "),
+        "{}",
+        stdout(&output)
+    );
+    let output = shuyi(&dir, &["explain", "SH2003"]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(stdout(&output).starts_with("# SH2003: A file isn't there\n"));
+    let output = shuyi(&dir, &["explain", "SH9999", "--json"]);
+    assert_eq!(output.status.code(), Some(2));
+    assert_eq!(json(&output)["code"], "SH0001");
     fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -302,7 +342,7 @@ fn import_outside_a_project_reads_the_engines_standard_kinds() {
     assert!(stdout(&output).starts_with("import: colors.ron is palette: 1 color\n"));
     let output = shuyi(&dir, &["import", "missing.ron"]);
     assert_eq!(output.status.code(), Some(1));
-    assert!(stderr(&output).starts_with("import: missing.ron: "));
+    assert!(stderr(&output).starts_with("import: error[SH3004]: missing.ron: "));
     assert_eq!(shuyi(&dir, &["import"]).status.code(), Some(2));
     // In a project with no game tool program, the same.
     fs::write(dir.join("shuyi.ron"), "()").unwrap();
@@ -321,9 +361,10 @@ fn the_ops_that_run_the_game_say_they_need_its_tool_program() {
     fs::write(dir.join("shuyi.ron"), "()").unwrap();
     for op in ["check", "run", "scene", "replay", "bots", "bake"] {
         let output = shuyi(&dir, &[op, "--json"]);
-        assert_eq!(output.status.code(), Some(2), "{op}");
+        assert_eq!(output.status.code(), Some(3), "{op}");
         let answer = json(&output);
         assert_eq!(answer["op"], op);
+        assert_eq!(answer["code"], "SH1002");
         assert!(
             answer["error"]
                 .as_str()
@@ -332,7 +373,10 @@ fn the_ops_that_run_the_game_say_they_need_its_tool_program() {
             "{answer}"
         );
         let output = shuyi(&dir, &[op]);
-        assert!(stderr(&output).starts_with(&format!("{op}: shuyi.ron names no game")));
+        assert!(
+            stderr(&output).starts_with(&format!("{op}: error[SH1002]: shuyi.ron names no game"))
+        );
+        assert_eq!(output.status.code(), Some(3), "{op}");
     }
     fs::remove_dir_all(&dir).unwrap();
 }

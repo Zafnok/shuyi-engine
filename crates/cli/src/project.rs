@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
+use crate::contract::codes::{self, Code};
+
 /// The project file's name.
 pub const FILE: &str = "shuyi.ron";
 
@@ -38,25 +40,27 @@ impl Project {
     }
 
     /// The project of the first folder from `start` up that holds a
-    /// `shuyi.ron`.
-    pub fn find(start: &Path) -> Result<Self, String> {
+    /// `shuyi.ron`, or the problem code and the message why there is
+    /// none: no file ([`codes::NO_PROJECT`]), or one that doesn't read
+    /// ([`codes::PROJECT_FILE`]).
+    pub fn find(start: &Path) -> Result<Self, (Code, String)> {
         let root = start
             .ancestors()
             .find(|dir| dir.join(FILE).is_file())
-            .ok_or_else(|| format!("no {FILE} in {} or a folder above it", start.display()))?;
-        Self::load(root)
+            .ok_or_else(|| {
+                (
+                    codes::NO_PROJECT,
+                    format!("no {FILE} in {} or a folder above it", start.display()),
+                )
+            })?;
+        Self::load(root).map_err(|e| (codes::PROJECT_FILE, e))
     }
 
-    /// The part `part` of the config, or the error that names it as
-    /// missing for `command`.
-    pub fn part<'a, T>(
-        &self,
-        part: &'a Option<T>,
-        command: &str,
-        name: &str,
-    ) -> Result<&'a T, String> {
+    /// The part `part` of the config, named `name`, or the error that
+    /// names it as missing (a [`codes::PROJECT_FILE`] problem).
+    pub fn part<'a, T>(&self, part: &'a Option<T>, name: &str) -> Result<&'a T, String> {
         part.as_ref()
-            .ok_or_else(|| format!("{command}: {FILE} has no `{name}`"))
+            .ok_or_else(|| format!("{FILE} has no `{name}`"))
     }
 }
 
@@ -440,10 +444,15 @@ mod tests {
         assert_eq!(project.root, dir);
         assert_eq!(project.config.command(), "t");
         fs::write(dir.join(FILE), "(nope)").unwrap();
-        let error = Project::find(&deep).unwrap_err();
+        let (code, error) = Project::find(&deep).unwrap_err();
+        assert_eq!(code, codes::PROJECT_FILE);
         assert!(error.contains(FILE), "{error}");
-        let missing = project.part(&project.config.web, "web", "web").unwrap_err();
-        assert_eq!(missing, "web: shuyi.ron has no `web`");
+        let missing = project.part(&project.config.web, "web").unwrap_err();
+        assert_eq!(missing, "shuyi.ron has no `web`");
+        fs::remove_file(dir.join(FILE)).unwrap();
+        let (code, error) = Project::find(&deep).unwrap_err();
+        assert_eq!(code, codes::NO_PROJECT);
+        assert!(error.starts_with("no shuyi.ron in "), "{error}");
         fs::remove_dir_all(&dir).unwrap();
     }
 }

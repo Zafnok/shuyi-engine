@@ -24,6 +24,7 @@ are the other two ways to reach them.
 | `import <file> [--kind K] [--print]` | Reads a file through the format registry as every kind that knows it, or gives its errors | the game's kinds, or the engine's |
 | `bake [--target <id>] [--out <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors | the game |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker on the Windows GNU toolchain, and the web target, and says how to fix each | nothing |
+| `explain [<code>]` | Every problem code, or one code's page: what it means and how to fix it ([below](#problem-codes)) | nothing |
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
 A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
@@ -43,11 +44,13 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 3,
+  "contract": 7,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null },
   "error": null,
+  "code": null,
+  "help": null,
   "limits": ["no scene: no stage is open (the top screen is `title`)"]
 }
 ```
@@ -59,13 +62,58 @@ Every operation answers with the same shape, `Answer<T>`:
 - `result` is what the operation found or made. It is absent when the
   operation could not run, and `error` says why ("the game's tools don't
   offer bots (GameTools::bots)").
+- `code` is the error's problem code (`SH3001`), and `help` how to fix
+  it ([Problem codes](#problem-codes)). An answer that ran and failed on
+  the setup has them too (`doctor` with a failed check: `SH1003`). A
+  problem in a file (`check`'s and `import`'s `errors`) has its own
+  `code` and `help` when its class has one.
 - `limits` says what the operation could not determine: frames after the
   game quit, a stage that isn't open, a record that ran twice in one
   process only, a kind printed without a writer of our text format.
 
 `shuyi <op>` prints the answer for people; `--json` prints it as one JSON
-document. The exit code is 0 when `ok`, 1 when not, and 2 for wrong
-arguments (with `--json`, a failed answer with the error).
+document. The exit code is 0 when `ok`, else its code's class's: 1 when
+it ran and failed, 2 for wrong arguments, 3 for a setup to fix (with
+`--json`, a failed answer with the error, its code and its help).
+
+## Problem codes
+
+Every error the contract gives has a stable code, `SH` and four digits
+([ADR-0028](adr/0028-problem-codes-a-stable-code-by-class-a-help-line-a-page-and-exit-code-3-for-the-setup.md)).
+Its first digit is its class, and the class sets the exit code:
+
+| Class | Codes | Exit code | Means |
+| ----- | ----- | --------- | ----- |
+| usage | `SH0nnn` | 2 | the arguments or the input are wrong: change the command |
+| setup | `SH1nnn` | 3 | the project file or the toolchain needs fixing: fix it, then run the same command again |
+| content | `SH2nnn` | 1 | a file of the game's content has a problem |
+| operation | `SH3nnn` | 1 | the operation failed on something else: the game's tools, a target, a file it reads or writes |
+
+An answer without a code that isn't `ok` exits 1: it ran and found
+something (`check`'s errors, two runs that differ). No exit code means
+"retry as it is".
+
+For people, an error reads:
+
+```text
+check: error[SH1002]: shuyi.ron names no game tool program (`game`), and check runs the game
+  help: fix shuyi.ron as the message says, then run the same command again
+  see: shuyi explain SH1002
+```
+
+and a problem `files/stage.ron:3:4: error[SH2001]: Expected comma`, with
+one `help[SH2001]: …` line after the list per code used.
+
+`shuyi explain` lists every code; `shuyi explain SH2003` (or its name,
+`missing-file`) prints its page, from
+[`crates/cli/errors/`](../crates/cli/errors/). The table is
+`shuyi_cli::contract::codes::TABLE`; the content codes are
+`shuyi_assets::error::codes`.
+
+A code is never reused or renumbered: a retired one keeps its row and
+its page. **A new error gets a new code, its row and its page in the
+same PR**; a test fails on a page with no row, a code twice, or a row no
+source uses.
 
 ## The schemas
 

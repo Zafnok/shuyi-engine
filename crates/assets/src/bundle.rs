@@ -375,7 +375,7 @@ pub struct NotText {
 
 impl From<NotText> for ContentError {
     fn from(not_text: NotText) -> Self {
-        Self::new(not_text.path, "file is not valid UTF-8")
+        Self::new(not_text.path, "file is not valid UTF-8").with_code(crate::error::codes::NOT_TEXT)
     }
 }
 

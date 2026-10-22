@@ -170,14 +170,17 @@ fn a_file_no_kind_reads_gives_the_errors_of_those_that_claim_it() {
             .message
             .starts_with("no format of these kinds knows its bytes")
     );
+    assert_eq!(error.code.as_deref(), Some("SH2005"));
     assert_eq!(error.line, None);
     assert_eq!(
         unknown.limits,
         ["the importers of Tiled, LDtk and Aseprite files come with tickets 1123 and 1124"]
     );
     let missing = import(&importers, &dir, &input("gone.ron", None, false));
+    assert_eq!(missing.code.as_deref(), Some("SH3004"));
     assert!(missing.error.unwrap().starts_with("gone.ron: "));
     let no_kind = import(&importers, &dir, &input("notes.txt", Some("tune"), false));
+    assert_eq!(no_kind.exit_code(), 2);
     assert!(
         no_kind
             .error
@@ -245,16 +248,52 @@ fn what_import_found_reads_for_people() {
                 text: Some("Names\n".into()),
             },
         ],
-        errors: vec![Problem {
-            file: "a.ron".into(),
-            line: Some(1),
-            column: None,
-            message: "bad".into(),
-        }],
+        errors: vec![Problem::from(
+            &ContentError::new("a.ron", "bad").at(1, None),
+        )],
     };
     assert_eq!(
         text(&out),
         "import: a.ron is palette: 1 color\nPaletteDef\nimport: a.ron is names table: 1 \
          name\nNames\nimport: 1 error(s)\n  a.ron:1: bad\n"
     );
+    // A problem with a code says it, and its help follows the list.
+    let coded = ImportOutput {
+        read_as: Vec::new(),
+        errors: vec![Problem::from(
+            &ContentError::new("a.ron", "Expected comma")
+                .at(3, Some(4))
+                .with_code(shuyi_assets::error::codes::PARSE),
+        )],
+        ..out
+    };
+    let help = crate::contract::codes::help_of("SH2001").unwrap();
+    assert_eq!(
+        text(&coded),
+        format!(
+            "import: 1 error(s)\n  a.ron:3:4: error[SH2001]: Expected comma\nhelp[SH2001]: {help}\n"
+        )
+    );
+}
+
+#[test]
+fn a_ron_syntax_error_is_a_parse_problem_with_its_help() {
+    let dir = scratch("syntax");
+    fs::write(dir.join("colors.ron"), "{ \"text\" \"#ffffff\" }").unwrap();
+    let answer = import(
+        &Importers::standard(),
+        &dir,
+        &input("colors.ron", Some("palette"), false),
+    );
+    assert!(!answer.ok);
+    assert_eq!(answer.exit_code(), 1);
+    let json: serde_json::Value = serde_json::from_str(&answer.to_json()).unwrap();
+    let problem = &json["result"]["errors"][0];
+    assert_eq!(problem["code"], "SH2001", "{problem}");
+    assert_eq!(
+        problem["help"],
+        crate::contract::codes::help_of("SH2001").unwrap()
+    );
+    assert_eq!(problem["line"], 1);
+    fs::remove_dir_all(&dir).unwrap();
 }

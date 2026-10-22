@@ -17,11 +17,14 @@
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
+//! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
 //!
 //! Every answer is an [`Answer`]: the contract's [`VERSION`], the
 //! operation, whether it passed, its result or the error that stopped it,
 //! and its **limits**, what it could not determine ("no scene: the top
-//! screen is no stage").
+//! screen is no stage"). An error carries a problem code and a help line
+//! ([`codes`]), and the code's class sets the exit code: 0 passed, 1
+//! failed, 2 wrong arguments, 3 fix the setup, then run it again.
 //!
 //! The schemas of every input and answer are generated from these types
 //! ([`schemas`]) and checked in under `crates/cli/schemas/`. A test fails
@@ -31,7 +34,9 @@ pub mod bake;
 pub mod bots;
 pub mod check;
 pub mod cli;
+pub mod codes;
 pub mod doctor;
+pub mod explain;
 #[cfg(test)]
 mod fake;
 pub mod import;
@@ -49,10 +54,12 @@ use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
 use shuyi_core::bots::playtest::PlaytestReport;
 
+use codes::Code;
+
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -78,11 +85,13 @@ pub enum Op {
     Bake,
     /// The toolchain checked.
     Doctor,
+    /// A problem code's page.
+    Explain,
 }
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 10] = [
+    pub const ALL: [Op; 11] = [
         Op::New,
         Op::Check,
         Op::Run,
@@ -93,6 +102,7 @@ impl Op {
         Op::Import,
         Op::Bake,
         Op::Doctor,
+        Op::Explain,
     ];
 
     /// Its name on the command line.
@@ -108,6 +118,7 @@ impl Op {
             Op::Import => "import",
             Op::Bake => "bake",
             Op::Doctor => "doctor",
+            Op::Explain => "explain",
         }
     }
 
@@ -132,6 +143,12 @@ pub struct Answer<T> {
     pub result: Option<T>,
     /// Why it could not run, if it could not.
     pub error: Option<String>,
+    /// The problem code of its error (`SH1002`), or of its failure when
+    /// it ran and failed on the setup (`doctor`); `shuyi explain <code>`
+    /// prints its page.
+    pub code: Option<String>,
+    /// How to fix it, with the code.
+    pub help: Option<String>,
     /// What it could not determine, in plain words.
     pub limits: Vec<String>,
 }
@@ -145,20 +162,43 @@ impl<T> Answer<T> {
             ok,
             result: Some(result),
             error: None,
+            code: None,
+            help: None,
             limits,
         }
     }
 
-    /// Operation `op`, which could not run because of `error`.
-    pub fn failed(op: Op, error: impl Into<String>) -> Self {
+    /// Operation `op`, which could not run because of `error`, a problem
+    /// of code `code`, with its row's help.
+    pub fn failed(op: Op, code: Code, error: impl Into<String>) -> Self {
         Self {
             contract: VERSION,
             op,
             ok: false,
             result: None,
             error: Some(error.into()),
+            code: None,
+            help: None,
             limits: Vec::new(),
         }
+        .with_code(code)
+    }
+
+    /// This answer with problem code `code` and its row's help: for an
+    /// answer that ran and failed on the setup.
+    #[must_use]
+    pub fn with_code(mut self, code: Code) -> Self {
+        self.code = Some(code.0.to_owned());
+        self.help = codes::help_of(code.0).map(str::to_owned);
+        self
+    }
+
+    /// This answer with `help` instead of its code's: a usage, or what
+    /// to fix first.
+    #[must_use]
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.help = Some(help.into());
+        self
     }
 
     /// This answer with `limit` added to its limits.
@@ -168,9 +208,14 @@ impl<T> Answer<T> {
         self
     }
 
-    /// The process exit code for it: 0 if it passed, 1 if not.
+    /// The process exit code for it: 0 if it passed, else its code's
+    /// class's ([`codes::Class::exit_code`]), 1 with no code.
     pub fn exit_code(&self) -> u8 {
-        u8::from(!self.ok)
+        if self.ok {
+            0
+        } else {
+            codes::exit_code(self.code.as_deref())
+        }
     }
 
     /// The answer as JSON, one document, pretty-printed.
@@ -182,14 +227,27 @@ impl<T> Answer<T> {
         serde_json::to_string_pretty(self).unwrap_or_default()
     }
 
-    /// The answer for people: the result as `text` writes it, or the
-    /// error, then the limits.
+    /// The answer for people: the result as `text` writes it, then the
+    /// error with its code and help ([`codes::said`]), then the limits.
     pub fn to_text(&self, text: impl FnOnce(&T) -> String) -> String {
-        let mut out = match (&self.result, &self.error) {
-            (Some(result), _) => text(result),
-            (None, Some(error)) => format!("{}: {error}\n", self.op.name()),
-            (None, None) => String::new(),
-        };
+        let mut out = self.result.as_ref().map(text).unwrap_or_default();
+        match (&self.code, &self.error) {
+            (Some(code), error) => {
+                let title = codes::entry(code).map_or("", |entry| entry.title);
+                let message = error.as_deref().unwrap_or(title);
+                out.push_str(&codes::said(
+                    self.op.name(),
+                    code,
+                    message,
+                    self.help.as_deref(),
+                ));
+            }
+            (None, Some(error)) => {
+                // Writing to a `String` can't fail.
+                let _ = writeln!(out, "{}: {error}", self.op.name());
+            }
+            (None, None) => {}
+        }
         if !self.limits.is_empty() {
             out.push_str("limits:\n");
             for limit in &self.limits {
@@ -213,6 +271,10 @@ pub struct Problem {
     pub column: Option<u32>,
     /// What is wrong.
     pub message: String,
+    /// Its problem code (`SH2001`), if its class has one.
+    pub code: Option<String>,
+    /// How to fix it, with the code.
+    pub help: Option<String>,
 }
 
 impl From<&ContentError> for Problem {
@@ -222,6 +284,11 @@ impl From<&ContentError> for Problem {
             line: e.line,
             column: e.column,
             message: e.message.clone(),
+            code: e.code.map(|code| code.0.to_owned()),
+            help: e
+                .code
+                .and_then(|code| codes::help_of(code.0))
+                .map(str::to_owned),
         }
     }
 }
@@ -234,6 +301,9 @@ impl std::fmt::Display for Problem {
             if let Some(column) = self.column {
                 write!(f, ":{column}")?;
             }
+        }
+        if let Some(code) = &self.code {
+            write!(f, ": error[{code}]")?;
         }
         write!(f, ": {}", self.message)
     }
@@ -281,6 +351,7 @@ pub fn schemas() -> Vec<SchemaFile> {
             Op::Import => pair::<import::ImportInput, import::ImportOutput>(op),
             Op::Bake => pair::<bake::BakeInput, bake::BakeOutput>(op),
             Op::Doctor => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op),
+            Op::Explain => pair::<explain::ExplainInput, explain::ExplainOutput>(op),
         })
         .collect()
 }

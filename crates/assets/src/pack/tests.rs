@@ -244,6 +244,11 @@ fn the_check_finds_every_way_a_pack_differs_from_its_sources() {
             "pack/readme.txt: the pack has this file and the sources don't",
         ]
     );
+    assert!(
+        bake.check(&formats, changed, &pack)
+            .iter()
+            .all(|e| e.code == Some(crate::error::codes::PACK_DIFFERS))
+    );
 }
 
 #[test]

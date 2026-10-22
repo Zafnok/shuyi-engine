@@ -128,6 +128,8 @@ fn new_makes_the_game_in_an_empty_folder_only() {
     // Not again on top of it.
     let again = new(&dir, &input);
     assert_eq!(again.error.as_deref(), Some("Moon Garden is not empty"));
+    assert_eq!(again.code.as_deref(), Some("SH0001"));
+    assert_eq!(again.exit_code(), 2);
     fs::remove_dir_all(&dir).unwrap();
 }
 

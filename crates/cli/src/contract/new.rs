@@ -24,6 +24,7 @@ use include_dir::{Dir, DirEntry, include_dir};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::codes::{self, Code};
 use super::{Answer, Op};
 
 /// The engine's templates, embedded.
@@ -286,21 +287,26 @@ fn write(dir: &Path, files: &[(String, Vec<u8>)]) -> Result<(), String> {
 pub fn new(cwd: &Path, input: &NewInput) -> Answer<NewOutput> {
     match make(cwd, input) {
         Ok((output, limits)) => Answer::new(Op::New, true, output, limits),
-        Err(e) => Answer::failed(Op::New, e),
+        Err((code, e)) => Answer::failed(Op::New, code, e),
     }
 }
 
-fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), String> {
+/// The game `input` asks for, made under `cwd`, with its limits; or the
+/// problem code and why not: an input refused
+/// ([`codes::WRONG_ARGUMENTS`]), or files that can't be filled or
+/// written ([`codes::FILE`]).
+fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code, String)> {
+    let refused = |e| (codes::WRONG_ARGUMENTS, e);
     let dir = cwd.join(&input.dir);
     let folder = std::path::absolute(&dir)
         .ok()
         .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
         .unwrap_or_default();
     let name = input.name.clone().unwrap_or(folder);
-    check_name(&name)?;
-    let krate = crate_name(&name)?;
+    check_name(&name).map_err(refused)?;
+    let krate = crate_name(&name).map_err(refused)?;
     if !is_empty_dir(&dir) {
-        return Err(format!("{} is not empty", input.dir));
+        return Err(refused(format!("{} is not empty", input.dir)));
     }
     let mut limits = Vec::new();
     let root = match &input.engine {
@@ -315,12 +321,12 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), String
         Engine::Rev { rev } => {
             let hex = rev.chars().all(|c| c.is_ascii_hexdigit());
             if !(hex && (7..=40).contains(&rev.len())) {
-                return Err(format!("--engine-rev: not a commit: {rev}"));
+                return Err(refused(format!("--engine-rev: not a commit: {rev}")));
             }
             None
         }
         Engine::Path { path } => {
-            let root = engine_root(cwd, path)?;
+            let root = engine_root(cwd, path).map_err(refused)?;
             limits.push(format!(
                 "the game builds with the engine checkout at {root}: it moves with that folder"
             ));
@@ -333,8 +339,9 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), String
         &krate,
         &input.engine,
         root.as_deref(),
-    )?;
-    write(&dir, &files)?;
+    )
+    .map_err(|e| (codes::FILE, e))?;
+    write(&dir, &files).map_err(|e| (codes::FILE, e))?;
     limits.push(format!(
         "the game was made, not built: run `cargo test` in {}",
         input.dir

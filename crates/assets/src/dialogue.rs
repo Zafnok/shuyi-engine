@@ -60,7 +60,7 @@ pub use line_id::{
 pub use parse::{Lines, ParsedScene, PartLines, bad_id, char_problem, is_id, parse_dlg};
 pub use present::Present;
 
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 
 /// How much text a game's dialogue box and reply menu hold: the limits the
@@ -454,7 +454,9 @@ pub fn scripts_from_files<D: Directive>(
     for (file, source) in files {
         match source {
             Some(source) => sources.push((file, *source)),
-            None => errors.push(ContentError::new(file, "file is not valid UTF-8")),
+            None => errors.push(
+                ContentError::new(file, "file is not valid UTF-8").with_code(codes::NOT_TEXT),
+            ),
         }
     }
     match scripts_from_sources(&sources, rules) {

@@ -13,7 +13,7 @@ use serde::de::DeserializeOwned;
 
 use super::{Content, PackInfo, Packed, write};
 use crate::bundle::Bundle;
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, Formats, RegisterError};
 
 /// A kind that can be baked: it has a binary form (serde, both ways), and
@@ -143,7 +143,9 @@ impl<K: Bakeable> BakeKind for KindOf<K> {
             "the {} read from the pack differs from the one read from its source",
             K::NAME
         );
-        Err(vec![ContentError::new(shown, message)])
+        Err(vec![
+            ContentError::new(shown, message).with_code(codes::PACK_DIFFERS),
+        ])
     }
 
     fn register(&self, formats: &mut Formats) -> Result<(), RegisterError> {
@@ -389,7 +391,10 @@ impl Bake {
         for path in &sources {
             let shown = pack.display_path(path);
             let Some(bytes) = pack.bytes(path) else {
-                errors.push(ContentError::new(shown, "the pack lacks this file"));
+                errors.push(
+                    ContentError::new(shown, "the pack lacks this file")
+                        .with_code(codes::PACK_DIFFERS),
+                );
                 continue;
             };
             match planned.get(*path) {
@@ -401,10 +406,10 @@ impl Bake {
                     }
                 }
                 None if Some(bytes) != source.bytes(path) => {
-                    errors.push(ContentError::new(
-                        shown,
-                        "the pack's copy differs from the file",
-                    ));
+                    errors.push(
+                        ContentError::new(shown, "the pack's copy differs from the file")
+                            .with_code(codes::PACK_DIFFERS),
+                    );
                 }
                 None => {}
             }
@@ -413,7 +418,10 @@ impl Bake {
         for path in pack.files_under("") {
             if !sources.contains(path) {
                 let message = "the pack has this file and the sources don't";
-                errors.push(ContentError::new(pack.display_path(path), message));
+                errors.push(
+                    ContentError::new(pack.display_path(path), message)
+                        .with_code(codes::PACK_DIFFERS),
+                );
             }
         }
         errors

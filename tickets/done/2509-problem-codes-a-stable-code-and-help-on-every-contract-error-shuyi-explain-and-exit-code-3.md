@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2509 — Problem codes, shuyi explain and exit code 3
@@ -364,28 +364,28 @@ None.
 
 ## Acceptance criteria
 
-- [ ] In a folder with no `shuyi.ron`, `shuyi check --json` prints an
+- [x] In a folder with no `shuyi.ron`, `shuyi check --json` prints an
       answer with `"code": "SH1001"` and a help, and exits 3.
-- [ ] In a project whose `shuyi.ron` names no game tool program,
+- [x] In a project whose `shuyi.ron` names no game tool program,
       `shuyi check` exits 3 with `SH1002`; wrong arguments exit 2 with
       `SH0001`; `replay missing.ron` exits 1 with `SH3004`; a fake game
       without `bots` answers `SH3001`; a `doctor` with a failed check
       answers `SH1003` and exits 3.
-- [ ] `shuyi explain` lists every code, `shuyi explain SH2003` prints
+- [x] `shuyi explain` lists every code, `shuyi explain SH2003` prints
       its page, and `shuyi explain SH9999` exits 2 with `SH0001`.
-- [ ] A RON file with a syntax error, read by `import`, gives a problem
+- [x] A RON file with a syntax error, read by `import`, gives a problem
       with `"code": "SH2001"` and its row's help.
-- [ ] `Answer::failed` can't be called without a code.
-- [ ] The gate test passes, and its checker fails on fake tables with a
+- [x] `Answer::failed` can't be called without a code.
+- [x] The gate test passes, and its checker fails on fake tables with a
       page and no row, a code twice, and a row nothing uses.
-- [ ] The schemas, `VERSION` and `versions.json` agree (the schema
+- [x] The schemas, `VERSION` and `versions.json` agree (the schema
       test).
-- [ ] `docs/contract.md` shows `code`, `help`, the current version and
+- [x] `docs/contract.md` shows `code`, `help`, the current version and
       the exit codes 0 to 3.
-- [ ] `shuyi-assets` still builds for `thumbv7em-none-eabihf`.
-- [ ] CI's `templates` job passes with the templates' new `AGENTS.md`
+- [x] `shuyi-assets` still builds for `thumbv7em-none-eabihf`.
+- [x] CI's `templates` job passes with the templates' new `AGENTS.md`
       lines.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -410,4 +410,74 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done.**
+
+- `shuyi_assets::error::Code` and `codes` (`PARSE` … `PACK_DIFFERS`,
+  `SH2001`–`SH2007`); `ContentError` gains `code`, `with_code` and
+  `not_found`. Coded at the format registry (`text`, `decode_with`,
+  `unread`, `find`), `NotText`, the RON reader (`parse_ron`'s error and
+  `load_ron`'s missing file), the language formats, the font, the
+  language pack, the dialogue reader's non-UTF-8 file, and
+  `Bake::check` (its three messages and `same`'s "differs").
+- `crates/cli/src/contract/codes.rs`: `Class`, `Entry`, `TABLE` (15
+  rows), `entry`, `help_of`, `exit_code`, `said` (the
+  `op: error[CODE]` block) and `help_lines`; the pages in
+  `crates/cli/errors/`; the gate in `codes/tests.rs`, its checker tested
+  on fake tables.
+- `Answer` gains `code` and `help`; `Answer::failed(op, code, error)`;
+  `with_code`, `with_help`; `exit_code` by class. `Problem` gains `code`
+  and `help`, and prints `error[CODE]`. `check`, `import` and `bake`
+  print one `help[CODE]` line per code after their problems.
+- `game::is_unsupported` and `game::code_of`; every site that passes on
+  a `GameTools` error uses `code_of` (`check`, its controls and one-bit
+  skin, `run`/`scene`, `replay`, `bots`, `playtest`, `bake`).
+- Setup: `Project::find` returns `(Code, String)` (`SH1001` or
+  `SH1002`); `contract::cli::setup_failed` says a setup error once for
+  `main_with` (JSON answer for an op with `--json`, else the text and the
+  usage), `no_game`, `run_in_game_program` (no program, or cargo that
+  doesn't start: `SH1003`) and the commands whose part `shuyi.ron`
+  lacks. All exit 3.
+- `doctor`: `Check::fix` is `help`; a failed check answers `SH1003`
+  (exit 3) with its help.
+- `explain` (`contract/explain.rs`), an op needing no project, by code
+  or name; schemas regenerated (22 files), `VERSION` 7 and its
+  `versions.json` line.
+- ADR-0028; `docs/contract.md` (`explain`, the answer's `code` and
+  `help`, version 7, *Problem codes*); the usage text and doc comments;
+  the templates' `AGENTS.md`.
+
+**Deviations.**
+
+- **Size: SH2008–SH2010 moved to ticket 2530**, as *Size* says: the PR
+  is about 1,500 changed lines of Rust (half of them tests) without the
+  pages and schemas. The keymap's, language packs' and maps' problems
+  keep `code: null` until 2530.
+- The ticket's counts were written before `playtest` (2126): the schema
+  count is **22**, not 20, and `VERSION` went from 6 to **7**, not 5.
+  `playtest`'s refusals and the game's errors got codes like `bots`'.
+- `Project::part` lost its `command` argument and says
+  "shuyi.ron has no `web`"; the command's name comes first in the coded
+  line instead (`web: error[SH1002]: …`).
+- Also coded, beyond the table's sites, the same classes where the same
+  message is given: `load_ron`'s missing file, the dialogue reader's
+  non-UTF-8 file, `Bake::check`'s "the pack has this file and the
+  sources don't" and its kinds' "read from the pack differs"; `check`'s
+  one-bit skin that doesn't load (the game's error: `code_of`); and
+  `schema`'s two refusals print `error[SH0001]`.
+- `explain` takes a code's name too (`shuyi explain missing-file`), and
+  its JSON entries carry `exit_code` and `help` beside the fields the
+  ticket lists.
+- A failed answer's text indents a multi-line help (a usage) under
+  `help:`.
+
+**Either-order tickets.** None of 2010, 2013, 2017, 2111, 2513,
+2515–2521, 2527, 2802 or 3040 is done, so each picks up its part as its
+own text says.
+
+**For the game.** `ContentError` has a new field, `code`; the game
+builds `ContentError` with `new` only, so its pin bump builds
+unchanged. `Answer::failed` takes a code, `Answer` and `Problem` have
+`code` and `help`, `doctor::Check::fix` is `help`, `Project::find`'s
+error is `(Code, String)` and `Project::part` takes no command: none of
+these is used by the game's code. Its CI or scripts that expected exit
+2 for a missing `shuyi.ron`, part or game tool program get 3 now.

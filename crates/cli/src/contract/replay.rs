@@ -16,8 +16,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_core::{TurnRules, state_hash};
 
+use super::codes::{self, Code};
 use super::{Answer, Op};
-use crate::game::GameTools;
+use crate::game::{GameTools, code_of};
 
 /// What `replay` re-runs.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -157,16 +158,18 @@ fn read(root: &Path, path: &str) -> Result<Record, String> {
 /// `replay`: `input`'s records, under `root`, re-run by `game`.
 pub fn replay(game: &dyn GameTools, root: &Path, input: &ReplayInput) -> Answer<ReplayOutput> {
     let runs = (|| {
-        let first = read(root, &input.record)?;
+        let read = |path| read(root, path).map_err(|e| (codes::FILE, e));
+        let first = read(&input.record)?;
         let second = match &input.other {
-            Some(other) => read(root, other)?,
+            Some(other) => read(other)?,
             None => first.clone(),
         };
-        Ok::<_, String>([game.replay(&first)?, game.replay(&second)?])
+        let replay = |record| game.replay(record).map_err(|e| (code_of(&e), e));
+        Ok::<_, (Code, String)>([replay(&first)?, replay(&second)?])
     })();
     let runs = match runs {
         Ok(runs) => runs,
-        Err(e) => return Answer::failed(Op::Replay, e),
+        Err((code, e)) => return Answer::failed(Op::Replay, code, e),
     };
     let difference = first_difference(&runs[0], &runs[1]);
     let mut limits = Vec::new();
@@ -383,15 +386,22 @@ mod tests {
         );
         // What can't be read or run says why.
         let missing = replay(&Fake::default(), &dir, &input("a.ron", Some("no.ron")));
+        assert_eq!(missing.code.as_deref(), Some("SH3004"));
+        assert_eq!(missing.exit_code(), 1);
         assert!(missing.error.unwrap().starts_with("no.ron: "));
         let game = Fake {
             replay: Err("bad record".into()),
             ..Fake::default()
         };
-        assert_eq!(
-            replay(&game, &dir, &input("a.ron", None)).error.as_deref(),
-            Some("bad record")
-        );
+        let bad = replay(&game, &dir, &input("a.ron", None));
+        assert_eq!(bad.code.as_deref(), Some("SH3002"));
+        assert_eq!(bad.error.as_deref(), Some("bad record"));
+        let unsupported = Fake {
+            replay: Err(crate::game::unsupported("replay", "replay")),
+            ..Fake::default()
+        };
+        let answer = replay(&unsupported, &dir, &input("a.ron", None));
+        assert_eq!(answer.code.as_deref(), Some("SH3001"));
         fs::remove_dir_all(&dir).unwrap();
     }
 
