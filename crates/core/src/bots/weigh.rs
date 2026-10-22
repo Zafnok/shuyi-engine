@@ -80,7 +80,8 @@ impl<const N: usize> Weights<N> {
             .fold(0_i128, |sum, (&count, weight)| {
                 sum.saturating_add(i128::from(count) * i128::from(weight))
             });
-        i32::try_from(sum).unwrap_or(if sum < 0 { i32::MIN } else { i32::MAX })
+        let clamped = sum.clamp(i128::from(i32::MIN), i128::from(i32::MAX));
+        i32::try_from(clamped).unwrap_or_default()
     }
 
     /// The weight of the feature `name` among `names`, or `None` when it
