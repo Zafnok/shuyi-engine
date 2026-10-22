@@ -34,6 +34,7 @@ pub use action::Action;
 pub use settings::Prefs;
 
 /// The game's files, embedded.
+// check-text: not player text, a folder
 static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
 
 /// The embedded file at `path` (relative to `files/`), if there is one.
@@ -42,6 +43,7 @@ pub fn file(path: &str) -> Option<&'static [u8]> {
 }
 
 /// The embedded text file at `path`.
+// check-text: not player text, a content error `cargo shuyi check` shows
 fn text(path: &str) -> Result<&'static str, Vec<ContentError>> {
     let bytes = file(path).ok_or_else(|| vec![ContentError::new(path, "file not found")])?;
     std::str::from_utf8(bytes).map_err(|e| vec![ContentError::new(path, e.to_string())])
@@ -62,9 +64,11 @@ pub const FONT_PNG: &str = "font/atlas.png";
 
 /// The glyphs the game draws: printable ASCII, and the box and shape
 /// glyphs of its map and the engine's widgets.
+// check-text: not player text, the font's glyphs
 pub const REQUIRED_GLYPHS: &str = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~·…─│┌┐└┘├┤┬┴┼═║╔╗╚╝▓▲▼◄►";
 
 /// The layout the game plays in: its keymap file's only one.
+// check-text: not player text, the keymap file's name for it
 pub const LAYOUT: Layout = Layout::named("Arrows");
 
 /// The game's console: 48 × 24 cells of 8 × 16 pixels.

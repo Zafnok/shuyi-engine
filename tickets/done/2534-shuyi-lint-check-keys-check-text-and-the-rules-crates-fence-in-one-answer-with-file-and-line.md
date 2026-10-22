@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2015"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2534 — `shuyi lint`: the game's code checks in one answer
@@ -87,16 +87,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi lint --json` on a game made with `shuyi new grid` answers
+- [x] `shuyi lint --json` on a game made with `shuyi new grid` answers
       no finding and no limit.
-- [ ] With a `HashMap`, an `f32`, `Instant::now()` and `1.5 * 2.0`
+- [x] With a `HashMap`, an `f32`, `Instant::now()` and `1.5 * 2.0`
       appended to the rules, it answers one finding each, with file and
       line, and exits 1.
-- [ ] With `shuyi-ui` added to the rules' dependencies, it answers a
+- [x] With `shuyi-ui` added to the rules' dependencies, it answers a
       finding naming `shuyi-ui` and the `cargo tree -i` command.
-- [ ] A hard-coded key and a literal screen string are findings too.
-- [ ] Without `rules` in `shuyi.ron`, the answer's `limits` say so.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A hard-coded key and a literal screen string are findings too.
+- [x] Without `rules` in `shuyi.ron`, the answer's `limits` say so.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -108,5 +108,44 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi lint [--json]` (`crates/cli/src/contract/lint.rs`) is a contract
+  operation and an MCP tool that takes `project`. It runs `check-keys` and
+  `check-text` in process, and `cargo clippy -p <rules> --message-format=json
+  -- -D warnings` and `cargo tree` from the project's root through a
+  `Cargo` trait (faked in the tests). Clippy's JSON is read for
+  `disallowed_types`, `disallowed_methods` and `float_arithmetic`, each
+  with file, line, column and clippy's reason; `cargo tree` for the crates
+  of `NEVER`, each with its `cargo tree -i` command. A rules crate that
+  doesn't compile, a cargo that fails, and a part `shuyi.ron` lacks are
+  limits; a cargo that doesn't start answers `SH1003`.
+- `lint` runs on the project, never in the game's tool program: in `shuyi
+  mcp` it runs in the server, and `cargo shuyi lint` answers from the
+  game's tool program without asking it for anything.
+- New problem codes `SH2101` hard-coded-key, `SH2102` screen-text,
+  `SH2103` rules-fence and `SH2104` rules-dependency, in the content class
+  (exit 1): a finding is a problem in a file of the game, at a line. The
+  `SH21nn` block keeps them apart from `shuyi_assets`' content codes.
+- Contract version 10: the `lint` schemas, and `lint` in `Op`.
+- `shuyi.ron` has `rules` (the rules package). The grid template sets it,
+  and gains a `check_text` part with `max_literals: 0` over
+  `crates/game/src`, skipping the tool program, the window, the settings
+  file and the actions' keymap names; five ids in `lib.rs` and `stage.rs`
+  got a `// check-text: not player text` comment with the reason. The
+  template's CI and `AGENTS.md` gates run `cargo shuyi lint`.
+- **Deviation:** `check-text` findings are every literal only when there
+  are more than `max_literals` (as `check-text` itself fails), so a game
+  with an allowance isn't flooded.
+- `lint::NEVER` is a third copy of the template's layers-test list; a test
+  keeps them equal, and the docs map's *Pairs* row says so.
+- CI's `templates` job (grid) makes a game, breaks it as the acceptance
+  criteria say, and checks each finding with `jq`; then removes `rules`
+  and checks the limit. Verified locally on a made grid game: clean (no
+  finding, no limit), broken (seven findings, exit 1), without `rules` (the
+  limit).
+- `cargo shuyi lint` builds the game's tool program first, so code that
+  doesn't compile stops it before lint runs; `shuyi lint` from the engine's
+  binary, or the MCP tool, still answers.
+- Noticed, not fixed: `SH3005`'s help line in `codes.rs` has a run of
+  spaces in the middle (a lost line continuation); a one-line fix for any
+  ticket that touches the codes next.
+- Nick: nothing to decide.

@@ -154,6 +154,59 @@ jobs:
           cargo shuyi check
           cargo shuyi check --target all
           cargo shuyi check-keys
+          cargo shuyi lint
+      # `shuyi lint` (ticket 2534): one finding each, with file and line,
+      # for a hash map, a float, a clock and float arithmetic in the rules,
+      # a screen crate under them, a key named in a screen and a screen's
+      # literal text; without `rules` in shuyi.ron, a limit says so.
+      - name: shuyi lint finds what breaks the game's code
+        if: matrix.template == 'grid'
+        working-directory: ${{ runner.temp }}/demo
+        run: |
+          cp -r crates "$RUNNER_TEMP/crates" && cp shuyi.ron "$RUNNER_TEMP/shuyi.ron"
+          cat >> crates/rules/src/lib.rs <<'RUST'
+
+          /// Breaks every rule the fence names.
+          pub fn breaks_the_rules(tiles: &std::collections::BTreeMap<u8, u8>) -> usize {
+              let _ = std::collections::HashMap::<u8, u8>::new();
+              let _: f32 = 0.0;
+              let _ = std::time::Instant::now();
+              let _ = 1.5 * 2.0;
+              tiles.len()
+          }
+          RUST
+          echo 'shuyi-ui.workspace = true' >> crates/rules/Cargo.toml
+          cat >> crates/game/src/stage.rs <<'RUST'
+
+          /// Names a key and writes a screen's text.
+          pub fn breaks_the_screens(buf: &mut GlyphBuffer, fg: shuyi_ui::frame::Rgb) {
+              buf.print(0, 0, "Press Space to go", fg, fg);
+          }
+          RUST
+          if cargo shuyi lint --json > lint.json; then
+            cat lint.json
+            echo "::error::shuyi lint passed on code that breaks the rules"
+            exit 1
+          fi
+          found=$(jq -r '.result.findings[] | "\(.code) \(.file):\(.line)"' lint.json)
+          echo "$found"
+          for expected in 'SH2101 crates/game/src/stage.rs' 'SH2102 crates/game/src/stage.rs' \
+            'SH2104 crates/rules/Cargo.toml:null'; do
+            if ! grep -qF "$expected" <<< "$found"; then
+              echo "::error::shuyi lint did not find: $expected"
+              exit 1
+            fi
+          done
+          if [ "$(grep -c '^SH2103 crates/rules/src/lib.rs:[0-9]' <<< "$found")" != 4 ]; then
+            echo "::error::shuyi lint did not find the fence's four breaks, one each"
+            exit 1
+          fi
+          jq -e '.result.findings[] | select(.code == "SH2104") | .command == "cargo tree -p demo-rules -i shuyi-ui"' lint.json
+          rm -r crates && cp -r "$RUNNER_TEMP/crates" crates
+          sed -i '/^    rules: /d' shuyi.ron
+          cargo shuyi lint --json > lint.json
+          jq -e '.ok and (.limits | any(test("names no rules package")))' lint.json
+          cp "$RUNNER_TEMP/shuyi.ron" shuyi.ron
       # The rules crate's fence (ticket 2015, ADR-0032 §4): clippy names a
       # hash map, a float, a clock and float arithmetic in the rules, and
       # the layers test fails on a screen crate under them.

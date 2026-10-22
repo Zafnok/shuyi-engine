@@ -44,6 +44,7 @@ same command again; 1, it ran and found something wrong.
 | Command | What it tells you |
 | ------- | ----------------- |
 | `cargo shuyi check` | every error in `files/`, with file and line |
+| `cargo shuyi lint` | everything wrong with the code's shape, with file and line: a key named in code or text, screen text written in the code instead of `files/en.ron`, and what keeps `crates/rules` from being pure (a hash map, a float, the clock, files, a screen or device crate under it), each saying what to use instead |
 | `cargo shuyi run --script "Right Down" --frames 30` | the screens, the scene, what happened and the sounds |
 | `cargo shuyi scene --script "Right"` | the stage's map and state |
 | `cargo shuyi bots 20` | how 20 games played by bots ended, with a record of each |
@@ -65,4 +66,5 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 cargo shuyi check
 cargo shuyi check-keys
+cargo shuyi lint
 ```

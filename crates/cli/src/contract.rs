@@ -10,6 +10,7 @@
 //! | `new <template> <dir>` | a new game from `templates/grid` or `templates/blank` | [`new`] |
 //! | `check [--baked]` | every error of every validator of the game's content; with `--baked`, every way its pack differs from its sources | [`check`] |
 //! | `check --target <id>` | whether the game's frame, text and controls fit a target | [`check`], [`target`] |
+//! | `lint` | the game's code: `check-keys`, `check-text` and the rules crate's fence, each finding with file and line | [`lint`] |
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds | [`run`] |
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
@@ -44,6 +45,7 @@ pub mod explain;
 #[cfg(test)]
 pub(crate) mod fake;
 pub mod import;
+pub mod lint;
 pub mod new;
 pub mod playtest;
 pub mod replay;
@@ -63,7 +65,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -73,6 +75,8 @@ pub enum Op {
     New,
     /// Every error of the game's content.
     Check,
+    /// What is wrong with the shape of the game's code.
+    Lint,
     /// A key script played headless.
     Run,
     /// The scene on screen.
@@ -108,9 +112,10 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 11] = [
+    pub const ALL: [Op; 12] = [
         Op::New,
         Op::Check,
+        Op::Lint,
         Op::Run,
         Op::Scene,
         Op::Replay,
@@ -139,6 +144,7 @@ impl Op {
         match self {
             Op::New => "new",
             Op::Check => "check",
+            Op::Lint => "lint",
             Op::Run => "run",
             Op::Scene => "scene",
             Op::Replay => "replay",
@@ -387,6 +393,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
     match (op, session) {
         (Op::New, _) => pair::<new::NewInput, new::NewOutput>(name),
         (Op::Check, _) => pair::<check::CheckInput, check::CheckOutput>(name),
+        (Op::Lint, _) => pair::<lint::LintInput, lint::LintOutput>(name),
         (Op::Run, _) => pair::<run::RunInput, run::RunOutput>(name),
         (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(name),
         (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(name),

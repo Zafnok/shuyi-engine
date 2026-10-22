@@ -1,5 +1,5 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
-//! `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`, `bake`,
+//! `check`, `lint`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`, `bake`,
 //! `doctor`, `explain`, each with `--json`; [`contract`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
@@ -56,6 +56,8 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   check [--baked]                    every error of the game's content, with file and line;
                                      --baked: and every way its pack differs from its sources
   check --target <id | all>          whether the frame, its text and the controls fit a target
+  lint                               the game's code: check-keys, check-text and the rules
+                                     crate's fence, each finding with file and line
   run [steps] [--frames N]           play a key script headless: screens, scene, events, sounds
   scene [steps]                      the scene on screen after a script
   replay <record> [<other>]          a state hash per step; where two runs part
@@ -160,6 +162,10 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
             // It says so if the project names no game tool program.
             None => game::run_in_game_program(project, name, args),
         };
+    }
+    if name == "lint" {
+        // On the project's files and cargo: in this program or the game's.
+        return contract::cli::lint(project, args, &contract::lint::ThisMachine);
     }
     if contract::cli::checks_targets(name, args) {
         // The controls need the game's tools: in its tool program.

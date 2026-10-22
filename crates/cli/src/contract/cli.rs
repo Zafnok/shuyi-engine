@@ -6,9 +6,10 @@
 //! to fix before running it again (`SH1nnn`: no project, a project file
 //! that lacks what it needs, the toolchain).
 //!
-//! `new`, `doctor`, `explain` and `schema` need no project. The others run
-//! on the project's game, in its tool program; `import` without one reads
-//! only the engine's standard kinds.
+//! `new`, `doctor`, `explain` and `schema` need no project. `lint` runs on
+//! the project, not its game. The others run on the project's game, in its
+//! tool program; `import` without one reads only the engine's standard
+//! kinds.
 
 use std::fs;
 use std::path::Path;
@@ -17,7 +18,8 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, bake, bots, check, doctor, explain, import, new, playtest, replay, run, schemas,
+    Answer, Op, bake, bots, check, doctor, explain, import, lint, new, playtest, replay, run,
+    schemas,
 };
 use crate::game::GameTools;
 use crate::project::Project;
@@ -192,6 +194,17 @@ pub fn check_targets(project: &Project, args: &[String], game: Option<&dyn GameT
         ),
         Err(e) => wrong(json, Op::Check, &e, &check::usage(project.config.command())),
     }
+}
+
+/// `lint` with `args` on `project`, running cargo with `cargo`.
+pub fn lint(project: &Project, args: &[String], cargo: &dyn lint::Cargo) -> u8 {
+    let (json, args) = split_json(args);
+    if !args.is_empty() {
+        let usage = lint::usage(project.config.command());
+        return wrong(json, Op::Lint, "no arguments", &usage);
+    }
+    let input = lint::LintInput::default();
+    print(json, &lint::lint(cargo, project, &input), lint::text)
 }
 
 /// Whether `name` is an op that runs on the project's game.
@@ -441,7 +454,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 36);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 38);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

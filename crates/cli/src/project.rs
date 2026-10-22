@@ -77,6 +77,9 @@ pub struct Config {
     pub check_keys: Option<CheckKeys>,
     /// `check-text`.
     pub check_text: Option<CheckText>,
+    /// The game's rules package, which `lint` checks is fenced: clippy's
+    /// bans and no screen, device or tool crate under it (ADR-0032 §4).
+    pub rules: Option<String>,
     /// `font-atlas`.
     pub font_atlas: Option<FontAtlas>,
     /// `web`.

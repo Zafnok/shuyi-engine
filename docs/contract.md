@@ -16,6 +16,7 @@ is another way to reach them.
 | `new <template> <dir>` | A new game in `dir` from `templates/grid` or `templates/blank` | nothing |
 | `check [--baked]` | Loads the game's content through every validator: every error, with file, line and message. With `--baked`, bakes the game's pack too, and every asset read from it must equal the one read from its source | the game |
 | `check --target <id \| all>` | Whether the game's frame at its scale fits a target's display inside its safe area, and its smallest text is as tall as the target asks (ADR-0008 §1): each problem with its target, its setting in `shuyi.ron`'s `targets` and the numbers; with the game's tools, that each screen's required actions fit the target's inputs (ADR-0025), and on a one-bit target that every palette role has patterns and the roles of a `distinct` group stay apart (ADR-0026, each problem with its `roles`); a warning doesn't fail it | the project file; the game for the controls and the patterns |
+| `lint` | Everything wrong with the shape of the game's code, each finding with its file, line, problem code and what to do: `check-keys`' findings (`SH2101`), `check-text`'s (`SH2102`: every literal when there are more than `check_text.max_literals`, and every data name a screen reads), and the rules crate's fence ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) §4) on the package `shuyi.ron`'s `rules` names: `cargo clippy` read for `disallowed_types`, `disallowed_methods` and `float_arithmetic`, with clippy's reason (`SH2103`, with the column), and `cargo tree` for a screen, device or tool crate or outside luck under it (`SH2104`, with the `cargo tree -i` that shows the way in). A part `shuyi.ron` lacks is a limit | the project file and cargo |
 | `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log) | the game |
 | `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
@@ -44,7 +45,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 9,
+  "contract": 10,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -129,8 +130,9 @@ one `help[SH2001]: …` line after the list per code used.
 `shuyi explain` lists every code; `shuyi explain SH2003` (or its name,
 `missing-file`) prints its page, from
 [`crates/cli/errors/`](../crates/cli/errors/). The table is
-`shuyi_cli::contract::codes::TABLE`; the content codes are
-`shuyi_assets::error::codes`.
+`shuyi_cli::contract::codes::TABLE`; the content codes of the game's
+files are `shuyi_assets::error::codes`, and those of its code, `SH21nn`
+(`lint`), are the table's.
 
 A code is never reused or renumbered: a retired one keeps its row and
 its page. **A new error gets a new code, its row and its page in the
@@ -163,9 +165,10 @@ operation is a tool: its input is the operation's input schema
 (`run.input.json`), and its result is the operation's answer, as
 structured content and as JSON text. An answer that isn't `ok` is an
 error result, with its `code` and `help` as they are: branch on the
-`code`. The tools that run the game take `project`, the game's folder
-from the server's working folder (the server's own project if it is
-left out).
+`code`. The tools that run the game, and `lint`, take `project`, the
+game's folder from the server's working folder (the server's own project
+if it is left out). `lint` runs in the server, not the game's tool
+program.
 
 A **session** keeps one game running headless between calls:
 
@@ -236,7 +239,8 @@ builds and passes its own gates as it is:
 - `blank`: one screen with the game's name.
 
 Each has its crates, `shuyi.ron`, `AGENTS.md` (and `CLAUDE.md`), CI with
-the gates (`fmt`, `clippy`, the tests, `check`, `check-keys`), and the
+the gates (`fmt`, `clippy`, the tests, `check`, `check-keys`; `grid`'s
+also `lint`), and the
 `cargo shuyi` alias. The game depends on the engine's repository at
 `main`, at `--engine-rev <commit>`, or on the checkout at
 `--engine-path <dir>`. CI makes a game from each template on every pull

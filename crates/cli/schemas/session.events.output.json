@@ -266,6 +266,11 @@
           "const": "check"
         },
         {
+          "description": "What is wrong with the shape of the game's code.",
+          "type": "string",
+          "const": "lint"
+        },
+        {
           "description": "A key script played headless.",
           "type": "string",
           "const": "run"
