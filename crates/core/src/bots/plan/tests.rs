@@ -285,6 +285,26 @@ fn the_order_of_each_partial_turn_chooses_its_candidates() {
 }
 
 #[test]
+fn a_partial_turn_may_have_more_candidates_than_the_root() {
+    // One first command (raise 0), then every command: the deeper partial
+    // turn has three candidates where the root had one (game#0506 found
+    // this overflowing in a debug build).
+    let first_raise_only = |rules: &Counters, commands: Vec<Counter>| -> Vec<Counter> {
+        if rules.raised == [false, false] {
+            commands
+                .into_iter()
+                .filter(|c| *c == Counter::Raise(0))
+                .collect()
+        } else {
+            commands
+        }
+    };
+    let sure = Counters::at([0, 0], false, 0);
+    let mut bot = TurnPlan::new(first_raise_only, points_ahead, settings(1, 3, 2, 1, 0), 0);
+    assert_eq!(bot.choose(&sure), Counter::Raise(0));
+}
+
+#[test]
 fn a_won_game_ends_the_plan() {
     // The combo reaches the goal; the copies stop there, and the order is
     // never asked about a won game.
