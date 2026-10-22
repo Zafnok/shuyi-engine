@@ -137,8 +137,7 @@ impl<O, E> TurnPlan<O, E> {
             firsts,
             children: Vec::new(),
             depth: 1,
-            building: None,
-            chosen: None,
+            phase: Phase::Between,
             bot: self,
         }
     }
@@ -188,8 +187,18 @@ pub struct PlanSearch<'a, R: Sides, O, E> {
     children: Vec<(i64, Partial<R>)>,
     /// How many commands the partial turns being built hold.
     depth: usize,
-    building: Option<Building<R>>,
-    chosen: Option<R::Command>,
+    phase: Phase<R>,
+}
+
+/// Where a search is. Each step of its loop returns the next phase, so no
+/// step can leave the search where it was.
+enum Phase<R: Sides> {
+    /// Between partial turns: the next one is to be started.
+    Between,
+    /// A partial turn being built.
+    Building(Building<R>),
+    /// The decision is made.
+    Chosen(R::Command),
 }
 
 /// A partial turn: its copies, played as far as its commands go.
@@ -242,64 +251,68 @@ where
     pub fn advance(&mut self, units: u32) -> Option<R::Command> {
         let mut left = units;
         loop {
-            if let Some(chosen) = &self.chosen {
-                return Some(chosen.clone());
-            }
-            let Some(building) = &self.building else {
-                self.start();
-                continue;
+            self.phase = match core::mem::replace(&mut self.phase, Phase::Between) {
+                Phase::Chosen(command) => {
+                    self.phase = Phase::Chosen(command.clone());
+                    return Some(command);
+                }
+                Phase::Between => self.next(),
+                Phase::Building(building) => {
+                    let built = building.copies.len();
+                    if built == self.seeds.len() {
+                        self.finish(building);
+                        Phase::Between
+                    } else if self
+                        .parents
+                        .last()
+                        .is_some_and(|parent| !parent.copies[built].playing)
+                    {
+                        Phase::Building(self.step(building))
+                    } else if left == 0 {
+                        self.phase = Phase::Building(building);
+                        return None;
+                    } else {
+                        left -= 1;
+                        Phase::Building(self.step(building))
+                    }
+                }
             };
-            let built = building.copies.len();
-            if built == self.seeds.len() {
-                self.finish();
-            } else if self
-                .parents
-                .last()
-                .is_some_and(|parent| !parent.copies[built].playing)
-            {
-                self.step();
-            } else if left == 0 {
-                return None;
-            } else {
-                left -= 1;
-                self.step();
-            }
         }
     }
 
-    /// Starts the next partial turn at this depth: the last parent's next
-    /// candidate. A parent with none left is done; at the depth's end, the
-    /// best are kept to extend, or the decision is made.
-    fn start(&mut self) {
+    /// What follows a partial turn: the last parent's next candidate to
+    /// build. A parent with none left is done; at the depth's end, the best
+    /// are kept to extend, or the decision is made.
+    fn next(&mut self) -> Phase<R> {
         let Some(parent) = self.parents.last_mut() else {
             if self.children.is_empty() {
-                self.chosen = Some(self.pick());
-            } else {
-                self.deepen();
+                return Phase::Chosen(self.pick());
             }
-            return;
+            let children = core::mem::take(&mut self.children);
+            self.parents = self.deepen(children);
+            return Phase::Between;
         };
         let Some(command) = parent.candidates.pop() else {
             self.parents.pop();
-            return;
+            return Phase::Between;
         };
         // At the root, the candidates left say which first command this is.
         let first = parent
             .first
             .unwrap_or(self.firsts.len() - parent.candidates.len() - 1);
-        self.building = Some(Building {
+        Phase::Building(Building {
             first,
             command,
             copies: Vec::with_capacity(self.seeds.len()),
             sum: 0,
-        });
+        })
     }
 
-    /// Builds the next copy of the partial turn under way: its parent's
-    /// copy with the candidate applied, if that copy is still playing.
-    fn step(&mut self) {
-        let (Some(building), Some(parent)) = (&mut self.building, self.parents.last()) else {
-            return;
+    /// `building` with its next copy: its parent's copy with the candidate
+    /// applied, if that copy is still playing.
+    fn step(&self, mut building: Building<R>) -> Building<R> {
+        let Some(parent) = self.parents.last() else {
+            return building;
         };
         let index = building.copies.len();
         let from = &parent.copies[index];
@@ -317,14 +330,12 @@ where
         let score = self.bot.eval.score(&self.root, &state, self.side);
         building.sum = building.sum.saturating_add(i64::from(score));
         building.copies.push(Sample { state, playing });
+        building
     }
 
     /// Scores the partial turn just built into its first command's value,
     /// and keeps it if it may be extended.
-    fn finish(&mut self) {
-        let Some(building) = self.building.take() else {
-            return;
-        };
+    fn finish(&mut self, building: Building<R>) {
         let samples = i64::try_from(self.seeds.len()).unwrap_or(i64::MAX);
         let mean = building.sum.div_euclid(samples);
         let value = &mut self.values[building.first];
@@ -340,15 +351,15 @@ where
         }
     }
 
-    /// Goes a depth deeper: the `width` best partial turns just built (the
-    /// earlier among equals) become the parents, each with its candidates,
-    /// the game's order of its first playing copy's legal commands.
-    fn deepen(&mut self) {
-        let mut children = core::mem::take(&mut self.children);
+    /// Goes a depth deeper: the parents to extend, the `width` best of the
+    /// partial turns just built (the earlier among equals), the next one
+    /// last, each with its candidates: the game's order of its first
+    /// playing copy's legal commands.
+    fn deepen(&mut self, mut children: Vec<(i64, Partial<R>)>) -> Vec<Partial<R>> {
         children.sort_by_key(|&(score, _)| Reverse(score));
         children.truncate(at_least_one(self.bot.settings.width));
         let cap = at_least_one(self.bot.settings.candidates);
-        self.parents.clear();
+        let mut parents = Vec::with_capacity(children.len());
         for (_, mut partial) in children {
             if let Some(copy) = partial.copies.iter().find(|copy| copy.playing) {
                 let legal = copy.state.legal_commands();
@@ -356,10 +367,11 @@ where
                 partial.candidates.truncate(cap);
                 partial.candidates.reverse();
             }
-            self.parents.push(partial);
+            parents.push(partial);
         }
-        self.parents.reverse();
+        parents.reverse();
         self.depth += 1;
+        parents
     }
 
     /// The decision: each first command's best value, then the pick.

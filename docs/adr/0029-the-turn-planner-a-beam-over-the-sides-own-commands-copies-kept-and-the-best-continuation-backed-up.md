@@ -82,7 +82,12 @@
    however the work is sliced, so slicing never changes the command.
    Work that applies no command (scoring, cloning a stopped copy,
    choosing the beam) is not a unit and runs even when the units are
-   spent.
+   spent. Each step of the loop returns the search's next phase, and the
+   work left is held in stacks the loop takes from, never in counts: a
+   step that did nothing, or a count that stopped rising, could otherwise
+   spin the search forever without spending a unit (a mutant that only a
+   timeout would catch). `RolloutSearch` holds its playouts to start the
+   same way.
 
 ## Consequences
 

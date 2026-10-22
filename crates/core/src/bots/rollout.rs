@@ -151,6 +151,10 @@ impl<O, P, E> Rollout<O, P, E> {
             "no command to choose from: the game lists none, or its order dropped them all"
         );
         let seeds = draw_seeds(&mut self.rng, self.settings.samples);
+        let mut playouts: Vec<(usize, u64)> = (0..candidates.len())
+            .flat_map(|candidate| seeds.iter().map(move |&seed| (candidate, seed)))
+            .collect();
+        playouts.reverse();
         RolloutSearch {
             root: rules.clone(),
             side: rules.side_to_move(),
@@ -158,7 +162,7 @@ impl<O, P, E> Rollout<O, P, E> {
             sums: alloc::vec![0; candidates.len()],
             candidates,
             seeds,
-            next: 0,
+            playouts,
             playing: None,
             chosen: None,
             bot: self,
@@ -203,9 +207,11 @@ pub struct RolloutSearch<'a, R: Sides, O, P, E> {
     seeds: Vec<u64>,
     /// Each candidate's sum of scores.
     sums: Vec<i64>,
-    /// The next playout to start: candidate `next / seeds.len()`, on seed
-    /// `next % seeds.len()`.
-    next: usize,
+    /// The playouts still to start, as a candidate and a seed, the next
+    /// one last: each candidate on every seed, in order. Each is taken
+    /// off as it starts, so the search keeps no count that could run past
+    /// them.
+    playouts: Vec<(usize, u64)>,
     playing: Option<Playing<R>>,
     chosen: Option<R::Command>,
 }
@@ -245,13 +251,14 @@ where
                 return Some(chosen.clone());
             }
             let Some(mut playing) = self.playing.take() else {
-                if self.next == self.candidates.len() * self.seeds.len() {
-                    self.chosen = Some(self.pick());
-                } else if left == 0 {
+                if left == 0 && !self.playouts.is_empty() {
                     return None;
-                } else {
+                }
+                if let Some((candidate, seed)) = self.playouts.pop() {
                     left -= 1;
-                    self.playing = Some(self.start());
+                    self.playing = Some(self.start(candidate, seed));
+                } else {
+                    self.chosen = Some(self.pick());
                 }
                 continue;
             };
@@ -274,12 +281,9 @@ where
         }
     }
 
-    /// The next playout: a copy from `determinize`, checked, with its
-    /// candidate applied.
-    fn start(&mut self) -> Playing<R> {
-        let candidate = self.next / self.seeds.len();
-        let seed = self.seeds[self.next % self.seeds.len()];
-        self.next += 1;
+    /// A playout of `candidate` on `seed`: a copy from `determinize`,
+    /// checked, with its candidate applied.
+    fn start(&self, candidate: usize, seed: u64) -> Playing<R> {
         let mut copy = checked_copy(&self.root, self.side, &self.legal, seed);
         apply_candidate(&mut copy, &self.candidates[candidate], candidate, seed);
         let mut playing = Playing {
