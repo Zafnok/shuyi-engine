@@ -216,7 +216,12 @@ pub fn diff(old: &str, new: &str) -> String {
         }
     }
     let (mut i, mut j, mut out) = (0, 0, String::new());
-    while i < a.len() || j < b.len() {
+    // Each line is marked once, so a step for each line of either side is
+    // enough (a shared line takes one step for two).
+    for _ in 0..a.len() + b.len() {
+        if i == a.len() && j == b.len() {
+            break;
+        }
         if i < a.len() && j < b.len() && a[i] == b[j] {
             let _ = writeln!(out, "  {}", a[i]);
             (i, j) = (i + 1, j + 1);
