@@ -53,7 +53,7 @@ None.
 **Out (do not do):**
 - Anything in the game: its PR deletes its own `--crank` and
   `--then-pad` options and moves the pin after this one (game ticket
-  1181, blocked by this).
+  1182, blocked by this).
 - Docking or undocking the crank, or its absolute angle.
 
 No API breaks: a new step and a new `Step` variant (a game matching on
