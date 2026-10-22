@@ -220,7 +220,8 @@ pub fn diff(old: &str, new: &str) -> String {
         if i < a.len() && j < b.len() && a[i] == b[j] {
             let _ = writeln!(out, "  {}", a[i]);
             (i, j) = (i + 1, j + 1);
-        } else if i < a.len() && (j == b.len() || common[i + 1][j] >= common[i][j + 1]) {
+        } else if i < a.len() && common[i + 1][j] == common[i][j] {
+            // Leaving a[i] out keeps the most lines shared.
             let _ = writeln!(out, "- {}", a[i]);
             i += 1;
         } else {
