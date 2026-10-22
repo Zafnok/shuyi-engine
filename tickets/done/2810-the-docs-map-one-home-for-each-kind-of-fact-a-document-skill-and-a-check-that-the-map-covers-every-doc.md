@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2810 — The docs map
@@ -239,19 +239,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `docs/README.md` has the three tables, *What each task reads* with
+- [x] `docs/README.md` has the three tables, *What each task reads* with
       a row per ticket block, the five rules and *Pairs*.
-- [ ] `cargo xtask check-docs` passes on the repository, and fails on a
+- [x] `cargo xtask check-docs` passes on the repository, and fails on a
       new uncovered `docs/x.md` (the PR shows it failing in a local
       run).
-- [ ] CI's `tickets` job runs `check-docs`.
-- [ ] `.claude/skills/document/SKILL.md` exists, with a description that
+- [x] CI's `tickets` job runs `check-docs`.
+- [x] `.claude/skills/document/SKILL.md` exists, with a description that
       says when and when not, and no copy of the map.
-- [ ] `work-ticket` §0 reads the map and the task's docs, §1 reads
+- [x] `work-ticket` §0 reads the map and the task's docs, §1 reads
       `tickets/README.md` and `ROADMAP.md`, and §5 starts with *Write
       the docs*.
-- [ ] `AGENTS.md` and `run-gates` say what the Scope says.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `AGENTS.md` and `run-gates` say what the Scope says.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -268,4 +268,30 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `docs/README.md` is the map: a table each for people making games,
+  engine developers and Nick; *What each task reads*, one row per block
+  `20xx`–`31xx`; the five rules; and *Pairs* (the layer rules, the
+  contract's operations, and one more found on the way: the `run-gates`
+  skill and `ci.yml`, which the skill says it mirrors).
+- `cargo xtask check-docs` (`crates/xtask/src/docs.rs`) reuses
+  `links.rs`'s walk, link parser, `display_path` and `percent_decode`
+  (now `pub(crate)`). A link covers a file when its path, worked out
+  from the text, is a whole-component prefix of the file's path. Run
+  locally, it passes on the repository, and fails on a new `docs/x.md`
+  with `docs/x.md: not in the docs map; add a row to docs/README.md (the
+  document skill)`.
+- Rows the first run of the check asked for, beyond the ticket's list:
+  `templates/*/README.md` (covered by the `templates/` row, which now
+  says it holds a new game's README too) and `docs/adr/README.md`
+  (the ADR row links it).
+- Rustdoc's row has no link: a link to `crates/` would cover every
+  Markdown file under it, so `crates/cli/web/README.md` and the error
+  pages keep rows of their own.
+- The `document` skill links the map and holds no copy. `work-ticket`
+  §0 reads `AGENTS.md`, the map, the ticket and its block's docs; §1
+  reads `tickets/README.md` and `ROADMAP.md` only when choosing a
+  ticket; §5 starts with *Write the docs*. CI's `tickets` job runs
+  `check-docs` after `check-links`, and `run-gates` lists it.
+- 2802, 1134, 2004 and 2808 still say they add their rows (and 1134 its
+  pairs); nothing changed in them.
+- Docs: this ticket is the docs change; the map's own row covers it.
