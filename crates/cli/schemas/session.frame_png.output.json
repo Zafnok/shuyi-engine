@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "$ref": "#/$defs/Op"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FramePngOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "FramePngOutput": {
+      "description": "What `frame_png` painted (the picture itself is the tool's image).",
+      "type": "object",
+      "properties": {
+        "frames": {
+          "description": "The frames run in all.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "height": {
+          "description": "Its height in pixels.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "top_screen": {
+          "description": "The top screen's name.",
+          "type": "string"
+        },
+        "width": {
+          "description": "The picture's width in pixels.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "top_screen",
+        "width",
+        "height"
+      ]
+    },
+    "Op": {
+      "description": "An operation of the contract.",
+      "oneOf": [
+        {
+          "description": "A new game from a template.",
+          "type": "string",
+          "const": "new"
+        },
+        {
+          "description": "Every error of the game's content.",
+          "type": "string",
+          "const": "check"
+        },
+        {
+          "description": "A key script played headless.",
+          "type": "string",
+          "const": "run"
+        },
+        {
+          "description": "The scene on screen.",
+          "type": "string",
+          "const": "scene"
+        },
+        {
+          "description": "A record replayed.",
+          "type": "string",
+          "const": "replay"
+        },
+        {
+          "description": "Bots playing the game.",
+          "type": "string",
+          "const": "bots"
+        },
+        {
+          "description": "Named bots' tries judged against the game's checks.",
+          "type": "string",
+          "const": "playtest"
+        },
+        {
+          "description": "A file read through the format registry.",
+          "type": "string",
+          "const": "import"
+        },
+        {
+          "description": "The game's sources baked into a pack.",
+          "type": "string",
+          "const": "bake"
+        },
+        {
+          "description": "The toolchain checked.",
+          "type": "string",
+          "const": "doctor"
+        },
+        {
+          "description": "A problem code's page.",
+          "type": "string",
+          "const": "explain"
+        },
+        {
+          "description": "The MCP session's game started headless.",
+          "type": "string",
+          "const": "start"
+        },
+        {
+          "description": "The MCP session's game played on: a script, then idle frames.",
+          "type": "string",
+          "const": "step"
+        },
+        {
+          "description": "A picture of the MCP session's frame.",
+          "type": "string",
+          "const": "frame_png"
+        },
+        {
+          "description": "What happened in the MCP session's game.",
+          "type": "string",
+          "const": "events"
+        },
+        {
+          "description": "The MCP session's game started again.",
+          "type": "string",
+          "const": "reset"
+        },
+        {
+          "description": "The MCP session's game stopped.",
+          "type": "string",
+          "const": "stop"
+        }
+      ]
+    }
+  }
+}

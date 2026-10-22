@@ -78,7 +78,7 @@ one of the protections Nick put in the MVP, before the first release
   folder. The templates' `.cargo/config.toml` sets a linker only for
   `x86_64-pc-windows-gnu`, which Linux ignores: nothing to change
   there.
-- Planned: the MCP server (1133) and its `shuyi mcp install`, local
+- The MCP server (1133, done) and its `shuyi mcp install`, local
   only; the book's quick start (2802), which says nothing about Linux;
   the first release (2005), after which `cargo install --locked
   shuyi-cli` gives the `shuyi` binary.
@@ -298,8 +298,8 @@ None.
 **Out (do not do):**
 - `doctor --fix`, or doctor running `sudo` or a package manager: the
   script installs;
-- registering the MCP server in the dev container (1133, which gets
-  that line once both are done);
+- registering the MCP server in the dev containers (2531, after this
+  ticket);
 - the book's quick start (2802 adds the Linux line and the Codespaces
   link);
 - installing the engine's `shuyi` binary in the container (`cargo

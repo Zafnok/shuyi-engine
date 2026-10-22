@@ -199,11 +199,13 @@ None.
     - otherwise runs it through `send`, so `commands` (and so a
       `StageRecord`) holds it, clears `selected` (a picked-up piece),
       and replies `placed foe at 3,4`.
-- **MCP, in either order with 1133:**
-  - if 1133 is done, add a `command` tool to its session (input:
-    `line`; answer: the reply, and whether it ran) and let `step` take a
-    script's `command` steps;
-  - if 1133 isn't done, 1133 adds them (edit requested there).
+- **MCP** (1133, done; ADR-0031): add a `command` tool to its session
+  (input: `line`; answer: the reply, and whether it ran): an `Op`
+  variant in `Op::SESSION`, its arm in `mcp::host::Host::call` and
+  `mcp::description`, and its schemas `session.command.*.json`. `step`
+  plays the contract's `Script`, so a script's `command` steps reach it
+  with no change; add one to the scripted client test
+  (`crates/cli/tests/it/mcp.rs`).
 - **The skills, in either order with 1134:**
   - if 1134's `shuyi-debug-replay` and `shuyi-test` skills exist, add a
     short section: reach a bug's state with a command the game declares

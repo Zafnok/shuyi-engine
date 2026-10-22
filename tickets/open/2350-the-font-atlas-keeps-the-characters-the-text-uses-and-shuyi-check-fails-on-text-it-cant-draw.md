@@ -200,7 +200,7 @@ None.
      limit "the text is checked against the font atlas once the content
      loads without errors";
    - no schema changes: the errors are `Problem`s and the notes are
-     limits, so `--json` (and 1133's MCP server, once it exists) carry
+     limits, so `--json` (and the MCP server, `shuyi mcp`) carry
      them as they are;
    - **why `check` and not the game's load:** a game whose atlas lacks a
      glyph still loads and runs (it shows `?`), so `font-atlas`, which

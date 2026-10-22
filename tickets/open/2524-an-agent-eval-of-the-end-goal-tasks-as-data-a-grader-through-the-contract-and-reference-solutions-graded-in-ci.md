@@ -131,10 +131,8 @@ None. Spending money on agent runs is 2525's question.
     method, and that `Step` gained a variant: a game's exhaustive
     `match` on `Step` needs an arm for it (a `Breaking:` line, if 2010
     is done and `Step` isn't `#[non_exhaustive]` by then).
-  - **Either order with 1133:** if it is done and its `step` tool plays
-    the contract's `Script`, it gets `act` with it; if its step has a
-    type of its own, add `act` there too. If 1133 isn't done, nothing
-    here.
+  - **MCP** (1133, done): its `step` tool plays the contract's
+    `Script`, so it gets `act` with it.
   - **Either order with 2521:** if 2521 is done, `attach` reads
     `--act` itself and looks actions up with
     `shuyi_platform::link::press_for`: move that `--act` into

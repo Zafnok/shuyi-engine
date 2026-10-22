@@ -70,6 +70,16 @@ fn a_session_that_says_nothing_of_its_log_has_none() {
     assert_eq!(Bare.log_dropped(), 0);
 }
 
+#[test]
+fn a_session_that_paints_nothing_says_the_game_offers_no_picture() {
+    let error = Bare.picture(Some(2)).unwrap_err();
+    assert_eq!(
+        error,
+        "the game's tools don't offer a picture of a session's frame (GameTools::session, with Headless::with_picture)"
+    );
+    assert!(crate::game::is_unsupported(&error));
+}
+
 #[cfg(feature = "toy")]
 mod toy {
     use shuyi_ui::toy;
@@ -144,6 +154,21 @@ mod toy {
             })
         });
         assert_eq!(s.scene().unwrap().screen, "home");
+    }
+
+    #[test]
+    fn a_session_paints_its_frame_if_the_game_says_how() {
+        assert!(session().picture(None).is_err());
+        let s = session().with_picture(|h, scale| {
+            let side = scale.unwrap_or(1) * h.frame_count().max(1);
+            Ok(Image {
+                width: side,
+                height: 1,
+                rgba: vec![0; side as usize * 4],
+            })
+        });
+        assert_eq!(s.picture(Some(3)).unwrap().width, 3);
+        assert_eq!(s.picture(None).unwrap().width, 1);
     }
 
     #[test]

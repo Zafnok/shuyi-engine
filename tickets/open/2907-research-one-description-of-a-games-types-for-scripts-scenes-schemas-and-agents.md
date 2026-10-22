@@ -205,9 +205,8 @@ None. This is technical.
   `blocked_by`) for point 8: `Scene.data` derived in Hello, Grid and the
   templates, and path reads in the contract. It keeps the keys 2524's
   tasks read in `scene.data` (`turn` and the others), or changes those
-  tasks in the same PR. If 1133 is still open, its `scene` tool gains
-  the path read in its scope, edited in this PR; if 1133 is done, the
-  follow-up adds it.
+  tasks in the same PR. 1133 is done: the follow-up adds the path read
+  to its `scene` tools (the one-off and the session's).
 - **Tickets this changes**, in the same PR: 2101, 2221, 2506, 2507 and
   1135 name the ADR by number and its choice in their scope (where they
   say "2907's ADR", put the number). 2107, 2356, 2515, 2524, 2904 and

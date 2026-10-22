@@ -63,4 +63,8 @@ exclude_re = [
     # returns an empty leaked `Vec` is the same function. Its other mutants
     # are caught.
     'GridSkin::zoom_levels -> .* with Vec::leak\(Vec::new\(\)\)',
+    # The MCP server's game tool program is ended when the server drops it:
+    # a process killed and reaped leaves nothing a test can read (it would
+    # end anyway once its stdin closes).
+    "<impl Drop for Program>::drop",
 ]

@@ -80,8 +80,10 @@ Set `status: in-progress` in the ticket's frontmatter.
 
 ## 4. Verify
 
-Run the `run-gates` skill. Walk the **Acceptance criteria** and tick each
-box honestly. If one can't be met, say so in the Completion notes and
+Run the `run-gates` skill. Check a change a player sees through the MCP
+session tools (the root `.mcp.json`) on `examples/hello-grid`: `start`,
+`step`, `scene`, `frame_png`; not by reading the Harness's code to drive
+it. Walk the **Acceptance criteria** and tick each box honestly. If one can't be met, say so in the Completion notes and
 the PR.
 
 ## 5. Archive the ticket (same PR)

@@ -299,9 +299,7 @@ None.
   If not, 2501 moves them with the rest.
 - **Either order with 2013:** if it is done, `UpgradeInput` and the new
   public types follow its ADR. If not, 2013 covers them.
-- **The MCP server (1133, done before 2005):** if it makes its tools
-  from `Op::ALL`, `upgrade` is a tool with no more work; if it lists
-  them by hand, add it.
+- **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
 - **Either order with 3017:** if 3017 is done, list its move of
   `display.color` as a `Change::manual` of `TargetRon`, and add the
   target profile kind to `Importers::standard()` so `upgrade` finds a

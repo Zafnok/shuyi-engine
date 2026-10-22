@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["1129", "2509", "3040", "2810"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 1133 — MCP server over the tool contract
@@ -118,16 +118,74 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The scripted client test passes in CI.
-- [ ] `shuyi mcp install --dry-run` prints what it would write.
-- [ ] The root `.mcp.json` registers the server, and a Claude Code
+- [x] The scripted client test passes in CI.
+- [x] `shuyi mcp install --dry-run` prints what it would write.
+- [x] The root `.mcp.json` registers the server, and a Claude Code
       session in this repository lists its tools (a manual check noted
       in the PR).
-- [ ] `cargo deny check` passes.
-- [ ] All gates pass.
+- [x] `cargo deny check` passes.
+- [x] All gates pass.
 
 ## Tests required
 
 - Integration: the stdio client test.
 
 ## Completion notes
+
+- **What was done.** `shuyi mcp` (`crates/cli/src/mcp.rs` and
+  `mcp/`): a hand-written JSON-RPC 2.0 layer over stdio (`initialize`,
+  `ping`, `tools/list`, `tools/call`), no new dependency. Every operation
+  of `Op::ALL` is a tool with its 1129 schemas (`playtest` among them),
+  and the session tools `start`, `step`, `scene`, `frame_png`, `events`,
+  `reset` and `stop`. A failed answer is an MCP error result carrying the
+  answer as it is (`code`, `help`); `explain` is a tool. `step` answers
+  as `run` and `scene` as `scene`, both with 3040's `log`; the server
+  keeps no log. `shuyi mcp install [--dry-run] [--yes] [--command …]`
+  writes Claude Code's `.mcp.json` always and Cursor's, VS Code's and
+  Gemini CLI's files where it finds them, showing a diff, asking, and
+  keeping `<file>.bak`. The root `.mcp.json` is the dry run's Claude
+  Code file with `cargo run -q -p shuyi-cli --` (a test checks). The
+  `work-ticket` skill's §4 and the docs map gained their lines.
+  ADR-0031 records the design.
+- **How the session runs.** The server runs no game: a tool that runs
+  the game goes to the game's tool program, `cargo run` as the hidden
+  `shuyi mcp-host` (JSON lines on stdin and stdout). The session keeps
+  that program running from `start` to `stop`, so `start` rebuilds the
+  game after an agent edits it; a build error or a panic comes back as
+  the new code `SH3005` with the program's last output. The session's
+  game is one field on each side (`Server::game`, the host's
+  `Live::game`) for 2529.
+- **Deviations.**
+  - The contract's one-off `scene` and the session's `scene` share a
+    name: in MCP, `scene` is the session's (no input), and `run`
+    answers with a one-off run's scene. The session tools are `Op`
+    variants (`Op::SESSION`), so each answer has its own `op`; their
+    schemas are checked in as `session.<tool>.*.json`, and the
+    contract's version is 9.
+  - Painting the session's frame needed `Session::picture` (default:
+    not offered, `SH3001`) and `Headless::with_picture`; Hello, Grid and
+    both templates wire it.
+  - Two new problem codes: `SH0002` (`no-session`) and `SH3005`
+    (`game-program`), with their pages.
+  - The stdio test lives in `crates/cli/tests/it/mcp.rs` and runs the
+    real `shuyi` binary from the repository's root against
+    `examples/hello-grid`, as the root `.mcp.json` does; `start` builds
+    Hello, Grid's tool program with cargo inside the test.
+- **Either-order items.** 2356 isn't done: its MCP clause now says what
+  to add (a `command` session tool; `step` already plays the contract's
+  `Script`). 2513 isn't done: 2531 registers the server in the dev
+  containers, blocked by 2513. The clauses of the open tickets that
+  named 1133 are settled (2225, 2350, 2356, 2361, 2406, 2513, 2515,
+  2517, 2520, 2523, 2524, 2527, 2907).
+- **Follow-up tickets.** 2531.
+- **The game.** No breaking change: `Op` gains variants (the game
+  doesn't match on it), and `Session` gains a defaulted method. The
+  game's tools can wire `Headless::with_picture` when it moves its pin,
+  and run `cargo shuyi mcp install` to get the server; no game ticket
+  needed.
+- **Manual check.** `claude mcp list` in this repository lists `shuyi:
+  cargo run -q -p shuyi-cli -- mcp`, pending approval: Claude Code asks
+  before it runs a project's server. Running `claude` here and
+  approving it shows the tools; the stdio test drives the same command
+  through `initialize`, `tools/list` and the session.
+- **Nick.** Nothing to decide.

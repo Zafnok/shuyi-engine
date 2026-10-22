@@ -20,7 +20,7 @@ use super::bots::{BotsInput, BotsOutput, tally};
 use super::playtest::PlaytestInput;
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, LogEntry, Scene, Session, Sound};
-use crate::frame_png::{Script, Shot, Step};
+use crate::frame_png::{Image, Script, Shot, Step};
 use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
@@ -117,6 +117,18 @@ impl Session for FakeSession {
 
     fn log_dropped(&self) -> u32 {
         self.log_dropped
+    }
+
+    /// A picture one pixel high, a pixel wide per frame run, each
+    /// `scale` × `scale`.
+    fn picture(&self, scale: Option<u32>) -> Result<Image, String> {
+        let scale = scale.unwrap_or(1);
+        let (width, height) = (self.frames.max(1) * scale, scale);
+        Ok(Image {
+            width,
+            height,
+            rgba: vec![255; width as usize * height as usize * 4],
+        })
     }
 }
 

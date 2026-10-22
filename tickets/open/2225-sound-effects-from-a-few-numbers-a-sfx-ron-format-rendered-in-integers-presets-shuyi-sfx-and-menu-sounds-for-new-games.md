@@ -296,8 +296,7 @@ parked.
     with `sfx::render` before the ADPCM step. If not, 3029 does it.
   - **2003.** If it is done, the catalog gets a row for the `sfx`
     feature, a format plugin. If not, 2003 lists it.
-  - **1133.** If it is done, `sfx` is one more tool there, as every op
-    is. If not, nothing to do.
+  - **MCP.** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
   - **2116.** If it is done, the presets' WAV hashes are rows of
     `crates/assets/tests/golden/sfx.ron` (through
     `shuyi_assets::golden`) in place of this ticket's own table, and

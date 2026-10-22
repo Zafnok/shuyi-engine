@@ -6,8 +6,8 @@ typed input and a typed answer
 [ADR-0022](adr/0022-the-tool-contract-answers-with-limits-schemas-by-version-and-a-session-over-the-harness.md)).
 They are library functions in `shuyi_cli::contract`
 (`crates/cli/src/contract.rs`), and `shuyi <op>` runs them on the
-command line. The MCP server (ticket 1133) and the skills (ticket 1134)
-are the other two ways to reach them.
+command line. The MCP server, `shuyi mcp` ([below](#the-mcp-server)),
+is another way to reach them.
 
 ## The operations
 
@@ -44,7 +44,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 8,
+  "contract": 9,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -156,6 +156,49 @@ fingerprint is not the one
 3. raise `contract::VERSION` by one;
 4. add the line the test asks for to `versions.json`.
 
+## The MCP server
+
+`shuyi mcp` serves the contract over MCP, on stdin and stdout. Each
+operation is a tool: its input is the operation's input schema
+(`run.input.json`), and its result is the operation's answer, as
+structured content and as JSON text. An answer that isn't `ok` is an
+error result, with its `code` and `help` as they are: branch on the
+`code`. The tools that run the game take `project`, the game's folder
+from the server's working folder (the server's own project if it is
+left out).
+
+A **session** keeps one game running headless between calls:
+
+| Tool | Input | Does |
+| ---- | ----- | ---- |
+| `start` | `project`, `start` (the game's start options) | builds the game's tool program and starts its game; the answer lists the options it offers. A game already running is stopped |
+| `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start |
+| `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
+| `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
+| `events` | nothing | what happened since the start, and the sounds |
+| `reset` | nothing | the game started again as `start` started it |
+| `stop` | nothing | the game stopped |
+
+Their schemas are `session.<tool>.input.json` and
+`session.<tool>.output.json`. The one-off `scene` is the session's here:
+`run` answers with a one-off run's scene. A session tool with no game
+running answers `SH0002`. The game runs in the game's tool program
+(`cargo run`, as `shuyi mcp-host`), which `start` builds, so call
+`start` again after changing the game's code. A program that doesn't
+build, or stops, answers `SH3005` with the last of its output, and ends
+the session. A game paints the session's frame with
+`Headless::with_picture`.
+
+`shuyi mcp install` registers the server with the agents it finds, in
+the project's folder: Claude Code's `.mcp.json` always, and Cursor's,
+VS Code's and Gemini CLI's files where it finds them. It shows the
+changes and asks before writing, and keeps each file it changes as
+`<file>.bak`. `--yes` doesn't ask; `--dry-run` writes nothing and prints
+each file as it would write it (Claude Code's is also what `claude
+--mcp-config <file>` reads). The entry runs `--command`'s words and
+`mcp`: the project's `command` (`cargo shuyi` in a new game) unless
+given.
+
 ## What a game gives
 
 The `shuyi` binary knows no game. A game gives its tools in a program of
@@ -167,7 +210,7 @@ doesn't offer it:
 | Method | For | What a game writes |
 | ------ | --- | ------------------ |
 | `check` | `check` | its loader's errors (`ContentError`s) |
-| `session` | `run`, `scene` | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON) and `with_events` (its rules' events) |
+| `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)` |
 | `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
 | `playtest` | `playtest` | its `Entrant`s, `Measure` and checks (a data file of `shuyi_core::bots::playtest::Check`s), run by `playtest::run` |

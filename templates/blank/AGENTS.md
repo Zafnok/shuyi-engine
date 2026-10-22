@@ -47,6 +47,7 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi import crates/game/files/palette.ron` | what a file reads as, or its errors |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
+| `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it |
 
 `scene`, `replay` and `bots` need a stage and rules: the game's tools
 offer them once `tools.rs` does (`shuyi new grid` shows how).

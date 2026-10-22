@@ -1,11 +1,12 @@
 //! A game running headless, for the operations that play it (`run`,
-//! `scene`) and the MCP server's session (ticket 1133): [`Session`], which
-//! any game gives as a [`Headless`] over its [`Harness`].
+//! `scene`) and the MCP server's session ([`crate::mcp`]): [`Session`],
+//! which any game gives as a [`Headless`] over its [`Harness`].
 //!
 //! The engine drives the session and reads it; the game says only how its
-//! Harness starts and, if it has one, what its scene is
-//! ([`Headless::with_scene`]) and what happened in its rules
-//! ([`Headless::with_events`]).
+//! Harness starts and, if it has them, what its scene is
+//! ([`Headless::with_scene`]), what happened in its rules
+//! ([`Headless::with_events`]) and how its frame looks
+//! ([`Headless::with_picture`]).
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,7 +15,8 @@ use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
 
-use crate::frame_png::Script;
+use crate::frame_png::{Image, Script};
+use crate::game::unsupported;
 
 /// The scene a stage shows, as text and as data.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -155,10 +157,24 @@ pub trait Session {
     fn log_dropped(&self) -> u32 {
         0
     }
+
+    /// The current frame as the game paints it, each console pixel
+    /// `scale` × `scale` (the game's choice if `None`). By default the
+    /// game offers none.
+    fn picture(&self, scale: Option<u32>) -> Result<Image, String> {
+        let _ = scale;
+        Err(unsupported(
+            "a picture of a session's frame",
+            "session, with Headless::with_picture",
+        ))
+    }
 }
 
 /// What a game says its scene is, from its Harness.
 type SceneOf<G> = Box<dyn Fn(&Harness<G>) -> Result<Scene, String>>;
+
+/// How a game paints its Harness's frame, at a scale if one is given.
+type PictureOf<G> = Box<dyn Fn(&Harness<G>, Option<u32>) -> Result<Image, String>>;
 
 /// What a game says happened in its rules, from its Harness.
 type EventsOf<G> = Box<dyn Fn(&Harness<G>) -> Vec<String>>;
@@ -168,6 +184,7 @@ pub struct Headless<G: GameData> {
     harness: Harness<G>,
     scene: SceneOf<G>,
     events: EventsOf<G>,
+    picture: Option<PictureOf<G>>,
 }
 
 impl<G: GameData> Headless<G> {
@@ -182,6 +199,7 @@ impl<G: GameData> Headless<G> {
                 ))
             }),
             events: Box::new(|_| Vec::new()),
+            picture: None,
         }
     }
 
@@ -199,6 +217,17 @@ impl<G: GameData> Headless<G> {
     #[must_use]
     pub fn with_events(mut self, events: impl Fn(&Harness<G>) -> Vec<String> + 'static) -> Self {
         self.events = Box::new(events);
+        self
+    }
+
+    /// This session, its frame painted by `picture` (most simply the
+    /// game's `frame-png` painter over the Harness's frame).
+    #[must_use]
+    pub fn with_picture(
+        mut self,
+        picture: impl Fn(&Harness<G>, Option<u32>) -> Result<Image, String> + 'static,
+    ) -> Self {
+        self.picture = Some(Box::new(picture));
         self
     }
 
@@ -333,6 +362,16 @@ impl<G: GameData> Session for Headless<G> {
 
     fn log_dropped(&self) -> u32 {
         self.harness.log().dropped()
+    }
+
+    fn picture(&self, scale: Option<u32>) -> Result<Image, String> {
+        match &self.picture {
+            Some(picture) => picture(&self.harness, scale),
+            None => Err(unsupported(
+                "a picture of a session's frame",
+                "session, with Headless::with_picture",
+            )),
+        }
     }
 }
 

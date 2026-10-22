@@ -243,9 +243,8 @@ None.
   that write data files (`shuyi-new-game`, `shuyi-import-art`,
   `shuyi-ship`): read the file's shape with `shuyi kinds <kind> --json`
   before writing it. If not, add that line to 1134's scope in this PR.
-- **Either order with 1133:** if `shuyi mcp` makes its tools from
-  `Op::ALL`, `kinds` is a tool with no more work. If it lists them by
-  hand, add `kinds`, and to its test that lists every tool.
+- **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program). `kinds` runs the game's importers, so it runs
+  the game.
 - **Problem codes (2509):** the unknown kind takes `SH0001`
   (`wrong-arguments`), as `import --kind` with no such kind does.
 - **Either order with 2013:** if 2013 is done, the new public types
