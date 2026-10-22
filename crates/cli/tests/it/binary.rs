@@ -47,6 +47,12 @@ fn outside_a_project_it_says_so_and_exits_3() {
     assert_eq!(answer["code"], "SH1001");
     assert!(answer["help"].as_str().unwrap().contains("shuyi new"));
     assert!(stderr(&output).is_empty(), "{}", stderr(&output));
+    // The same op for people says it, then the usage.
+    let output = shuyi(&dir, &["check"]);
+    assert_eq!(output.status.code(), Some(3));
+    let said = stderr(&output);
+    assert!(said.starts_with("check: error[SH1001]: "), "{said}");
+    assert!(said.contains("\nusage: shuyi <command>\n"), "{said}");
     fs::remove_dir_all(&dir).unwrap();
 }
 
