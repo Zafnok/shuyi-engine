@@ -46,8 +46,9 @@ What Shuyi has today:
 - `crates/cli/tests/it/schemas.rs` (1129): the checked-in schemas are
   what the types generate, and `versions.json` lists
   `contract::VERSION`. Nothing reads `docs/contract.md`.
-- 2802 compiles the book's snippets in a crate CI builds, and adds a
-  `work-ticket` step for book chapters. 2004's guides are doc tests.
+- 2802 compiles the book's snippets in a crate CI builds, and 2810's
+  docs map sends a ticket's change to its chapter. 2004's guides are
+  doc tests.
   Neither covers ticket text, `docs/contract.md` or the crates' own
   docs.
 
@@ -215,9 +216,10 @@ None.
 
 **Either order:**
 
-- **Either order with 2802**, which adds its own `work-ticket` step
-  (book chapters): both steps go in, and whichever lands second keeps
-  the other's.
+- **Either order with 2810**, which adds a first step to `work-ticket`
+  §5 (*Write the docs*, the `document` skill): both steps go in, and
+  whichever lands second keeps the other's. 2802 adds no step of its
+  own: its chapters are a row of 2810's map.
 - **Either order with 2509 and 3040**, which change the answer (2509's
   `code` and `help` on `Answer`, 3040's `log` on `SceneOutput`) and
   raise `VERSION`. Each updates `docs/contract.md`'s example in its own

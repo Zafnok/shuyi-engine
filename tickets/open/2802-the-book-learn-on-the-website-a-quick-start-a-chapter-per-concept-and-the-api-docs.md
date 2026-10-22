@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: sonnet-5
 effort: high
 status: todo
-blocked_by: ["2801", "2511", "2513"]
+blocked_by: ["2801", "2511", "2513", "2810"]
 nick_input: none
 completed:
 ---
@@ -105,12 +105,14 @@ None.
   copied to `/api/`. Learn links each crate's page. Once crates are on
   crates.io (2005), docs.rs links are added beside them.
 - **Keeping it current:**
-  - the `work-ticket` skill gains a step: a ticket that adds or changes
-    something public updates its chapter in the same PR, or says in
-    its completion notes why none is needed. **Either order with
-    2017:** if 2017 is done, this step goes beside its §5 step 4
-    (*Settle what named this ticket*) and keeps it; if not, 2017 keeps
-    this one;
+  - the book's chapters get their row in the docs map,
+    `docs/README.md` (2810), under *People making games*: its home is
+    `site/content/learn/book/` and `site/snippets/`, updated by "a
+    change that adds or changes something public". Its *Pairs* table
+    gains the rustdoc and the chapter of each public concept. There is
+    no `work-ticket` step of its own: §5's *Write the docs* (2810)
+    reaches the chapter through the map. The *What each task reads*
+    table names the chapter for each ticket block it covers;
   - the write-ticket template's acceptance criteria gain the line "The
     book's chapter is updated (2802), or the completion notes say why
     not".
@@ -139,7 +141,7 @@ None.
    snippets.
 3. Write the chapters, each with its snippets.
 4. Add `cargo doc` to `pages.yml`, and the Learn links.
-5. Change the `work-ticket` skill and the ticket template.
+5. Add the book's row to `docs/README.md`, and its line to the ticket template.
 6. Run the gates.
 
 ## Acceptance criteria
@@ -150,7 +152,7 @@ None.
       `site/content/learn/book/` that isn't a shortcode).
 - [ ] Renaming a public function a snippet uses fails CI.
 - [ ] `/api/` holds each workspace crate's rustdoc.
-- [ ] The `work-ticket` skill and `tickets/TEMPLATE.md` carry the rule.
+- [ ] `docs/README.md` has the book's row and pairs, and `tickets/TEMPLATE.md` carries the rule.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
