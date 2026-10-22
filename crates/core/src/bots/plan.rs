@@ -132,13 +132,11 @@ impl<O, E> TurnPlan<O, E> {
             parents: alloc::vec![Partial {
                 first: None,
                 copies,
-                candidates: firsts.clone(),
+                candidates: firsts.iter().rev().cloned().collect(),
             }],
             firsts,
             children: Vec::new(),
             depth: 1,
-            parent: 0,
-            candidate: 0,
             building: None,
             chosen: None,
             bot: self,
@@ -182,16 +180,14 @@ pub struct PlanSearch<'a, R: Sides, O, E> {
     firsts: Vec<R::Command>,
     /// The best score of a partial turn starting with each first command.
     values: Vec<i64>,
-    /// The partial turns being extended: at depth 1, the root alone.
+    /// The partial turns being extended, the next one last: at depth 1,
+    /// the root alone.
     parents: Vec<Partial<R>>,
     /// The partial turns built at this depth that may be extended, with
     /// their scores.
     children: Vec<(i64, Partial<R>)>,
     /// How many commands the partial turns being built hold.
     depth: usize,
-    /// The next partial turn to build: this parent's candidate.
-    parent: usize,
-    candidate: usize,
     building: Option<Building<R>>,
     chosen: Option<R::Command>,
 }
@@ -203,7 +199,9 @@ struct Partial<R: Sides> {
     first: Option<usize>,
     /// One per seed.
     copies: Vec<Sample<R>>,
-    /// The commands it is extended by, once it is kept.
+    /// The commands it is still to be extended by, the next one last.
+    /// Each is taken off as its partial turn is built, so the search
+    /// keeps no count that could run past them.
     candidates: Vec<R::Command>,
 }
 
@@ -218,6 +216,8 @@ struct Sample<R> {
 /// A partial turn being built, one copy at a time.
 struct Building<R: Sides> {
     first: usize,
+    /// The command its parent's copies are extended by.
+    command: R::Command,
     copies: Vec<Sample<R>>,
     /// The sum of its copies' scores.
     sum: i64,
@@ -252,7 +252,11 @@ where
             let built = building.copies.len();
             if built == self.seeds.len() {
                 self.finish();
-            } else if !self.parents[self.parent].copies[built].playing {
+            } else if self
+                .parents
+                .last()
+                .is_some_and(|parent| !parent.copies[built].playing)
+            {
                 self.step();
             } else if left == 0 {
                 return None;
@@ -263,45 +267,48 @@ where
         }
     }
 
-    /// Starts the next partial turn at this depth; at the depth's end,
-    /// keeps the best to extend, or makes the decision.
+    /// Starts the next partial turn at this depth: the last parent's next
+    /// candidate. A parent with none left is done; at the depth's end, the
+    /// best are kept to extend, or the decision is made.
     fn start(&mut self) {
-        while self
-            .parents
-            .get(self.parent)
-            .is_some_and(|parent| self.candidate == parent.candidates.len())
-        {
-            self.parent += 1;
-            self.candidate = 0;
-        }
-        if let Some(parent) = self.parents.get(self.parent) {
-            self.building = Some(Building {
-                first: parent.first.unwrap_or(self.candidate),
-                copies: Vec::with_capacity(self.seeds.len()),
-                sum: 0,
-            });
-        } else if self.children.is_empty() {
-            self.chosen = Some(self.pick());
-        } else {
-            self.deepen();
-        }
+        let Some(parent) = self.parents.last_mut() else {
+            if self.children.is_empty() {
+                self.chosen = Some(self.pick());
+            } else {
+                self.deepen();
+            }
+            return;
+        };
+        let Some(command) = parent.candidates.pop() else {
+            self.parents.pop();
+            return;
+        };
+        // At the root, the candidates left say which first command this is.
+        let first = parent
+            .first
+            .unwrap_or(self.firsts.len() - parent.candidates.len() - 1);
+        self.building = Some(Building {
+            first,
+            command,
+            copies: Vec::with_capacity(self.seeds.len()),
+            sum: 0,
+        });
     }
 
     /// Builds the next copy of the partial turn under way: its parent's
     /// copy with the candidate applied, if that copy is still playing.
     fn step(&mut self) {
-        let Some(building) = &mut self.building else {
+        let (Some(building), Some(parent)) = (&mut self.building, self.parents.last()) else {
             return;
         };
         let index = building.copies.len();
-        let parent = &self.parents[self.parent];
         let from = &parent.copies[index];
         let mut state = from.state.clone();
         let mut playing = from.playing;
         if playing {
-            let command = &parent.candidates[self.candidate];
+            let command = &building.command;
             if parent.first.is_none() {
-                apply_candidate(&mut state, command, self.candidate, self.seeds[index]);
+                apply_candidate(&mut state, command, building.first, self.seeds[index]);
             } else {
                 playing = state.apply(command).is_ok();
             }
@@ -331,7 +338,6 @@ where
             };
             self.children.push((mean, partial));
         }
-        self.candidate += 1;
     }
 
     /// Goes a depth deeper: the `width` best partial turns just built (the
@@ -348,12 +354,12 @@ where
                 let legal = copy.state.legal_commands();
                 partial.candidates = self.bot.order.order(&copy.state, legal);
                 partial.candidates.truncate(cap);
+                partial.candidates.reverse();
             }
             self.parents.push(partial);
         }
+        self.parents.reverse();
         self.depth += 1;
-        self.parent = 0;
-        self.candidate = 0;
     }
 
     /// The decision: each first command's best value, then the pick.
