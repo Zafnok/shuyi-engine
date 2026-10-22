@@ -76,13 +76,12 @@ where
     E: Evaluate<R>,
 {
     let mut search = bot.search(rules);
-    let mut i = 0;
-    loop {
+    for i in 0..1_000_000 {
         if let Some(command) = search.advance(slices[i % slices.len()]) {
             return command;
         }
-        i += 1;
     }
+    panic!("no command in a million slices");
 }
 
 /// The units a decision in `rules` takes, and its command.
@@ -94,13 +93,12 @@ where
     E: Evaluate<R>,
 {
     let mut search = bot.search(rules);
-    let mut taken = 1;
-    loop {
+    for taken in 1..1_000_000 {
         if let Some(command) = search.advance(1) {
             return (taken, command);
         }
-        taken += 1;
     }
+    panic!("no command in a million units");
 }
 
 /// The most units the documented bound lets a decision take.
