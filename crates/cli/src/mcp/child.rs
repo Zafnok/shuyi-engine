@@ -7,9 +7,9 @@
 use std::fmt::Write as _;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::mpsc::{Receiver, channel};
 use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use super::host::{Reply, Request};
 use super::server::{Launch, Link};
@@ -18,9 +18,6 @@ use crate::project::{FILE, Project};
 
 /// How much of the program's last output an error keeps, in bytes.
 const TAIL: usize = 6000;
-
-/// How long a stopping program may take before it is killed.
-const STOP_WAIT: Duration = Duration::from_secs(5);
 
 /// Launches the game's tool program with cargo (`$CARGO`, or `cargo`).
 #[derive(Debug, Clone, Copy, Default)]
@@ -54,13 +51,17 @@ impl<'a> Launch<'a> for Cargo {
         };
         let tail = Arc::new(Mutex::new(Vec::new()));
         let kept = Arc::clone(&tail);
-        let reader = std::thread::spawn(move || keep_tail(stderr, &kept));
+        let (ended, copied) = channel();
+        std::thread::spawn(move || {
+            keep_tail(stderr, &kept);
+            let _ = ended.send(());
+        });
         Ok(Box::new(Program {
             child,
             stdin: Some(stdin),
             stdout: BufReader::new(stdout),
             tail,
-            reader: Some(reader),
+            copied,
         }))
     }
 }
@@ -88,7 +89,8 @@ struct Program {
     stdin: Option<ChildStdin>,
     stdout: BufReader<ChildStdout>,
     tail: Arc<Mutex<Vec<u8>>>,
-    reader: Option<JoinHandle<()>>,
+    /// Hears when its stderr has been copied to the end.
+    copied: Receiver<()>,
 }
 
 impl Program {
@@ -98,15 +100,7 @@ impl Program {
         self.stdin = None;
         let status = self.child.wait().ok().and_then(|status| status.code());
         // Its stderr closes as it ends: let the copy catch up, briefly.
-        if let Some(reader) = self.reader.take() {
-            let since = Instant::now();
-            while !reader.is_finished() && since.elapsed() < Duration::from_secs(1) {
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            if reader.is_finished() {
-                let _ = reader.join();
-            }
-        }
+        let _ = self.copied.recv_timeout(Duration::from_secs(1));
         let tail = self
             .tail
             .lock()
@@ -152,18 +146,14 @@ impl Link for Program {
 }
 
 impl Drop for Program {
-    /// Closes its stdin, which ends it, and kills it if it doesn't end in
-    /// [`STOP_WAIT`].
+    /// Closes its stdin and ends it: nothing it would still say is
+    /// wanted.
     fn drop(&mut self) {
         self.stdin = None;
-        let since = Instant::now();
-        while since.elapsed() < STOP_WAIT {
-            if !matches!(self.child.try_wait(), Ok(None)) {
-                return;
-            }
-            std::thread::sleep(Duration::from_millis(20));
-        }
         let _ = self.child.kill();
         let _ = self.child.wait();
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -132,7 +132,7 @@ fn check_keys_and_check_text_scan_the_projects_folders() {
 fn the_commands_that_run_the_game_need_its_tool_program() {
     let dir = scratch("no-game");
     fs::write(dir.join("shuyi.ron"), "()").unwrap();
-    for command in ["frame-png", "lang-status"] {
+    for command in ["frame-png", "lang-status", "mcp-host"] {
         let output = shuyi(&dir, &[command, "x"]);
         assert_eq!(output.status.code(), Some(3), "{command}");
         assert!(
@@ -149,6 +149,7 @@ fn the_commands_that_run_the_game_need_its_tool_program() {
     // The contract's operations that run the game go there too.
     for args in [
         &["lang-status", "xx"][..],
+        &["mcp-host"],
         &["check"],
         &["check", "--target", "all"],
         &["run", "--json"],

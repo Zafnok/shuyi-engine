@@ -325,6 +325,12 @@ pub fn install(
     Ok(out)
 }
 
+/// Whether the line `input` gives says yes (`y`, `Y` or `yes`).
+pub fn said_yes(input: &mut impl BufRead) -> bool {
+    let mut answer = String::new();
+    input.read_line(&mut answer).is_ok() && matches!(answer.trim(), "y" | "Y" | "yes")
+}
+
 /// `path` from `root`, for people.
 fn shown_path(root: &Path, path: &Path) -> String {
     path.strip_prefix(root)
@@ -356,9 +362,7 @@ pub fn main(args: &[String], cwd: &Path) -> u8 {
     let mut ask = |question: &str| {
         print!("{question}");
         let _ = std::io::Write::flush(&mut std::io::stdout());
-        let mut answer = String::new();
-        std::io::stdin().lock().read_line(&mut answer).is_ok()
-            && matches!(answer.trim(), "y" | "Y" | "yes")
+        said_yes(&mut std::io::stdin().lock())
     };
     match install(root, &options, &Machine::this(), &command, &mut ask) {
         Ok(out) => {

@@ -96,13 +96,99 @@ fn an_agent_is_found_by_its_folder_or_its_program() {
         found(&machine),
         ["Claude Code", "Cursor", "VS Code", "Gemini CLI"]
     );
-    assert!(
-        Machine::this()
-            .path
-            .iter()
-            .all(|p| !p.as_os_str().is_empty())
-    );
+    let this = Machine::this();
+    assert!(!this.path.is_empty() && this.home.is_some(), "{this:?}");
     fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The length of the longest common subsequence of `a` and `b`, counted
+/// the slow way.
+fn common(a: &[&str], b: &[&str]) -> usize {
+    match (a.split_first(), b.split_first()) {
+        (Some((x, a_rest)), Some((y, b_rest))) if x == y => 1 + common(a_rest, b_rest),
+        (Some((_, a_rest)), Some((_, b_rest))) => common(a_rest, b).max(common(a, b_rest)),
+        _ => 0,
+    }
+}
+
+/// Every text of up to `lines` lines of `a` and `b`.
+fn texts(lines: usize) -> Vec<String> {
+    let mut all = vec![String::new()];
+    let mut last = vec![Vec::<&str>::new()];
+    for _ in 0..lines {
+        let next: Vec<Vec<&str>> = last
+            .iter()
+            .flat_map(|text| {
+                ["a", "b"].map(|line| {
+                    let mut longer = text.clone();
+                    longer.push(line);
+                    longer
+                })
+            })
+            .collect();
+        all.extend(next.iter().map(|text| {
+            text.join(
+                "
+",
+            )
+        }));
+        last = next;
+    }
+    all
+}
+
+#[test]
+fn the_diff_keeps_each_side_and_the_most_lines_they_share() {
+    let all = texts(4);
+    for old in &all {
+        for new in &all {
+            let out = diff(old, new);
+            let side = |drop: &str| -> Vec<&str> {
+                out.lines()
+                    .filter(|line| !line.starts_with(drop))
+                    .map(|line| &line[2..])
+                    .collect()
+            };
+            let (a, b): (Vec<&str>, Vec<&str>) = (old.lines().collect(), new.lines().collect());
+            assert_eq!(side("+ "), a, "{old:?} {new:?}: {out}");
+            assert_eq!(side("- "), b, "{old:?} {new:?}: {out}");
+            let kept = out.lines().filter(|line| line.starts_with("  ")).count();
+            assert_eq!(kept, common(&a, &b), "{old:?} {new:?}: {out}");
+        }
+    }
+}
+
+#[test]
+fn only_a_yes_is_a_yes() {
+    for (line, yes) in [
+        (
+            "y
+", true,
+        ),
+        (
+            "Y
+", true,
+        ),
+        (
+            "yes
+", true,
+        ),
+        (
+            "n
+", false,
+        ),
+        (
+            "
+", false,
+        ),
+        ("", false),
+        (
+            "yep
+", false,
+        ),
+    ] {
+        assert_eq!(said_yes(&mut line.as_bytes()), yes, "{line:?}");
+    }
 }
 
 #[test]

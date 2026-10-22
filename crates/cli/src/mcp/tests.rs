@@ -34,6 +34,20 @@ fn every_operation_and_session_tool_is_a_tool_once() {
 }
 
 #[test]
+fn each_tool_says_what_it_does_in_its_own_words() {
+    let listed = tools();
+    let mut descriptions: Vec<&str> = listed
+        .iter()
+        .filter_map(|tool| tool["description"].as_str())
+        .collect();
+    assert!(descriptions.iter().all(|d| d.ends_with('.')));
+    descriptions.sort_unstable();
+    descriptions.dedup();
+    assert_eq!(descriptions.len(), listed.len());
+    assert_ne!(description(Op::Scene, false), description(Op::Scene, true));
+}
+
+#[test]
 fn the_tools_that_run_the_game_take_a_project() {
     let takes: Vec<&str> = Op::ALL
         .into_iter()
@@ -79,6 +93,17 @@ fn the_server_answers_each_line_with_a_line() {
         .collect();
     assert_eq!(ids, [json!(1), json!(2)]);
     assert!(text.ends_with('\n'));
+}
+
+#[test]
+fn mcp_install_installs() {
+    let dir = std::env::temp_dir().join(format!("shuyi-mcp-main-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let args = ["install".to_owned(), "--dry-run".to_owned()];
+    assert_eq!(main(&args, &dir), 0);
+    assert!(!dir.join(".mcp.json").exists(), "a dry run writes nothing");
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]

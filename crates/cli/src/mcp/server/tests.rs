@@ -102,22 +102,22 @@ fn it_speaks_json_rpc() {
     let parse: Value = serde_json::from_str(&server.handle("{nope").unwrap()).unwrap();
     assert_eq!(
         (parse["id"].clone(), parse["error"]["code"].as_i64()),
-        (Value::Null, Some(PARSE_ERROR))
+        (Value::Null, Some(-32_700))
     );
     let invalid = handled(&mut server, &json!({ "jsonrpc": "2.0", "id": 4 }));
-    assert_eq!(invalid["error"]["code"], INVALID_REQUEST);
+    assert_eq!(invalid["error"]["code"], -32_600);
     let invalid = handled(&mut server, &json!([1, 2]));
-    assert_eq!(invalid["error"]["code"], INVALID_REQUEST);
+    assert_eq!(invalid["error"]["code"], -32_600);
     let unknown = handled(
         &mut server,
         &json!({ "jsonrpc": "2.0", "id": 5, "method": "resources/list" }),
     );
-    assert_eq!(unknown["error"]["code"], METHOD_NOT_FOUND);
+    assert_eq!(unknown["error"]["code"], -32_601);
     let unknown = handled(
         &mut server,
         &json!({ "jsonrpc": "2.0", "id": 6, "method": "tools/call", "params": { "name": "fly" } }),
     );
-    assert_eq!(unknown["error"]["code"], INVALID_PARAMS);
+    assert_eq!(unknown["error"]["code"], -32_602);
     assert_eq!(unknown["error"]["message"], "Unknown tool: fly");
     fs::remove_dir_all(&dir).unwrap();
 }

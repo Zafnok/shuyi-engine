@@ -157,8 +157,8 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
                     std::io::stdout().lock(),
                 )
             }
-            None if project.config.game.is_some() => game::run_in_game_program(project, name, args),
-            None => contract::cli::no_game(name, args),
+            // It says so if the project names no game tool program.
+            None => game::run_in_game_program(project, name, args),
         };
     }
     if contract::cli::checks_targets(name, args) {
