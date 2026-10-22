@@ -10,6 +10,7 @@ mod links;
 mod no_std;
 mod tickets;
 
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -79,10 +80,12 @@ fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
 /// stdout as a workflow command too, so it shows on the PR.
 fn report(check: &str, errors: &[String], warnings: &[String]) -> ExitCode {
     let on_github = std::env::var("GITHUB_ACTIONS").is_ok_and(|v| v == "true");
+    let mut stdout = std::io::stdout().lock();
     for warning in warnings {
         eprintln!("warning: {warning}");
         if on_github {
-            println!("{}", annotation(warning));
+            // A warning that can't be annotated is still on stderr.
+            let _ = writeln!(stdout, "{}", annotation(warning));
         }
     }
     for error in errors {
