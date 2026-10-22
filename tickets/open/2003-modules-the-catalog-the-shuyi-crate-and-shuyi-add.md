@@ -48,7 +48,11 @@ None.
     `pub use shuyi_app::run_game;` (2511's short path);
   - it has one cargo feature per module, all off by default. Until a
     module crate exists, it has no feature; add none in advance;
-  - the example `hello-grid` (1118) depends on `shuyi` only.
+  - the example `hello-grid` (1118) depends on `shuyi` only;
+  - the name is already held on crates.io by an empty 0.0.0
+    placeholder (`docs/decisions.md`, 2026-10-22). The crate's first
+    real version goes through trusted publishing like the others (2005),
+    never a publish by hand.
 - **Modules that are turned on join the game** (2358's ADR):
   `shuyi::enabled_modules<G: GameData>() -> Vec<Box<dyn
   shuyi_ui::module::Module<G>>>` gives the `Module` of each module
