@@ -104,9 +104,13 @@ None.
     one, `--wav` renders it to listen to, and these are the fields to
     change. Either order with 2225: if it isn't done when this runs,
     2225 adds the section.
-  - `shuyi-gates` names the rules crate's guards from 2015:
-    `crates/rules/clippy.toml`, the `deny(clippy::float_arithmetic)` in
-    `src/lib.rs` and `tests/layers.rs`. It says what each error means
+  - `shuyi-gates` starts from `cargo shuyi lint` (2534): one answer with
+    every finding's code, file and line, from `check-keys`, `check-text`
+    and the rules crate's fence, and `shuyi explain <code>` for each
+    code's page. Then it names the rules crate's guards from 2015 that
+    `lint` reads: `crates/rules/clippy.toml`, the
+    `deny(clippy::float_arithmetic)` in `src/lib.rs` and
+    `tests/layers.rs`. It says what each error means
     and what to use instead (`BTreeMap`, `SimRng`, a `Command`, whole
     numbers), and that a failure is fixed in the code, never by
     loosening the file or the test.

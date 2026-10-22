@@ -142,7 +142,7 @@ a Spine viewer tool; Visions of Shuyi (it never turns the module on).
   - floats rounded to `Fx` once, at load, by one tested function;
   - everything 2105 doesn't support (scale, shear, meshes, clipping,
     constraints, physics, deform) is an error naming the JSON path.
-- **`SpineAtlas`**, a format of 1123's `Atlas` kind for the text
+- **`SpineAtlas`**, a format of the `Atlas` kind (2222's, which 1123 imports into) for the text
   `.atlas` file.
 - **`shuyi-cli import --print`** gives the RON, and import, print and
   read back give the same `Rig` (ADR-0007 §4).

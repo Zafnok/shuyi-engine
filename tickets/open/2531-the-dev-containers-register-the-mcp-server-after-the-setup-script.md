@@ -34,6 +34,13 @@ A container has no installed `shuyi` (2513 leaves `cargo install` to
 shuyi-cli --` in the engine, `cargo shuyi` in a template (the alias runs
 the game's own tool program, which serves `mcp` too).
 
+Since 2535, `mcp install` ends by running the entry it wrote with
+`--ready`, which builds the server and the game's tool program. So the
+container's creation also takes that first build (minutes, cold), and
+the agent's first connection is then quick instead of timing out. That
+is the point of 2535, so keep it; the README's line (Scope) also says
+that the container's first creation takes that build.
+
 ## Nick input
 
 None.

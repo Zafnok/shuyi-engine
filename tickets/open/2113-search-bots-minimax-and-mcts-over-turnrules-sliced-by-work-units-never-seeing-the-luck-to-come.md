@@ -46,6 +46,15 @@ Shuyi today:
   `Walk`. It waits for nothing, because the game's playtest bots
   (game#0506) run on a PC and need it now. This ticket builds on it:
   the trees here search the same copies and score them the same way.
+- 2128: the turn planner (`shuyi_core::bots::plan`, ADR-0029), a beam
+  over one side's own commands for its whole turn, on the same
+  determinized copies. It plans one side and searches no replies;
+  minimax and MCTS here do. The code it shares with the rollout bot
+  (`draw_seeds`, `checked_copy`, `apply_candidate`, `pick`) is
+  `pub(super)` in `bots/rollout.rs` (its `Progress` becomes 3009's
+  `think::Progress`). This ticket's bots are a third
+  user: move those items to a module of their own
+  (`bots/shared.rs`), and use them from all three.
 
 Nick's rule of 2026-10-18 (`docs/decisions.md`): the AI is the
 engine's, fair and deterministic; a computer opponent sees only what its
@@ -57,7 +66,7 @@ keeps that rule. The game writes only a score and a `determinize`
 
 Why it matters. Visions of Shuyi doesn't ask for it: its enemy AI is
 game code, and a wide tactics map branches too much for a game-tree
-search (its playtest bots use 2125's rollout bot instead). It serves turn games with two sides and few commands a turn:
+search (its playtest bots use 2128's turn planner instead). It serves turn games with two sides and few commands a turn:
 board games, small skirmishes, hello-grid's hero, and the hero of a
 card battle in a test (2737, parked until after the launch). Until the
 launch, the end goal of 2026-10-19 is measured on turn-based games
@@ -172,6 +181,7 @@ None.
 **Out (do not do):**
 - the level solver (2112);
 - `Determinize`, `Evaluate` and the rollout bot (2125, done first);
+- the turn planner (2128, done), beyond moving the shared code;
 - expectimax with chance nodes. A game would have to list each roll's
   outcomes; a follow-up when a game asks;
 - transposition tables, move ordering beyond `legal_commands`, opening
@@ -194,7 +204,7 @@ None.
 
 1. Read 2112's `search` module, 3009's `think` module and its slicing
    test, `bots.rs`, 2125's `bots/determinize.rs`, `bots/rollout.rs`
-   and ADR, and ADR-0008 §6. If 2013's ADR on
+   and ADR, 2128's `bots/plan.rs` and ADR-0029, and ADR-0008 §6. If 2013's ADR on
    `#[non_exhaustive]` and constructors is in `docs/adr/`, follow it
    for `MinimaxSettings` and `MctsSettings`.
 2. Write the fixtures in `search/fixtures.rs`, reusing 2125's Nim

@@ -18,7 +18,10 @@ completed:
 Nick, 2026-10-20 ([`docs/decisions.md`](../../docs/decisions.md)): every feature
 on Bevy's homepage. Its 2D renderer lists "sprite sheets, dynamic
 texture atlases". Sprite sheets come with 1123 (Aseprite and
-TexturePacker, parked) and the glyph atlas exists (`crates/cli/src/font_atlas.rs`).
+TexturePacker, parked), which imports a sheet into this ticket's
+`Atlas` as an atlas of one page, so there is one `Atlas` type for
+sheets and for packed images. The glyph atlas exists
+(`crates/cli/src/font_atlas.rs`).
 What is missing is packing loose images into atlas pages, so a
 backend binds one texture for many sprites, and adding one at run time
 (a player's avatar, text rendered once, a generated icon).
@@ -37,7 +40,9 @@ None.
 - **`shuyi_assets::atlas`:**
   - `AtlasBuilder::new(page_size, padding)`, `.add(name, &Bitmap)`, and
     `.build() -> Atlas` with pages (`Bitmap`s) and a table of name to
-    page and rectangle;
+    page and rectangle. `Atlas` is plain data that an importer can fill
+    without the packer (1123 does, and adds the optional fields a
+    trimmed frame needs);
   - a skyline packer, images sorted by height then name, so the result
     doesn't depend on the order they were added;
   - `Atlas::insert(name, &Bitmap) -> Result<Placed, Full>` for a sprite

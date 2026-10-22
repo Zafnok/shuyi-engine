@@ -57,6 +57,8 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 | 2007 | Coverage and SonarCloud in CI, and the Sonar debt queue as batched GitHub issues, copied from the game |
 | 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, `main` protected by its required checks |
 | 2017 | The backlog and the docs kept true as tickets land: a lint warning on clauses about done tickets, `contract.md` tested |
+| 2022 | The Markdown a test reads counts as code in CI, and `run-gates` runs the templates job |
+| 2023 | The ticket lint reads every way a ticket waits on another, and the docs too; a done ticket has no unchecked box |
 | 2011 | Dependabot for the crates and the pinned actions, a weekly security workflow, a Dependabot PR as its own ticket |
 | 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
@@ -73,6 +75,7 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 | 1133 | An MCP server over the contract |
 | 2531 | The dev containers register the MCP server after the setup script |
 | 2535 | The MCP server is built before an agent connects, and says when the engine moved under it |
+| 2542 | The CLI's seams: the stale-server limit says which side is newer, one target lookup, one `cargo`, each answer's schema names its op |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
@@ -237,6 +240,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2522 | The live link for the web build and for a Steam Deck on the LAN |
 | 2510 | Compiler messages on the traits a game implements |
 | 2534 | `shuyi lint`: `check-keys`, `check-text` and the rules crate's fence in one answer, with file and line |
+| 2543 | The rules crate's fence proved once in CI, and `lint` takes `check-keys`' and `check-text`'s findings as data |
 | 2512 | The lines a game's author owns, counted, with a CI cap on the minimal template |
 | 2524 | An agent eval of the end goal: tasks as data, a grader through the contract, reference solutions in CI |
 | 2525 | Scheduled agent runs of the eval, within a budget Nick sets |
@@ -326,6 +330,9 @@ them.
 | 2532 | `shuyi playtest` plays the game's entrants itself: every core, a stage or each, chosen entrants, time per try | game#1180 |
 | 2533 | `shuyi playtest` keeps a history: `was …` lines and summary lines from named measures (after 2532) | game#1180 |
 | 2021 | A reusable playtest workflow; the grid template calls it (after 2532 and 2533) | game#1180 |
+| 2133 | The bots' data made alike: settings that refuse unknown fields, one band distance, a seed for an entrant's bots, personas in an ADR | 2125–2130 |
+| 2541 | One operation plays a game's bots: `bots` folded into `playtest` (after 2532 and 2533) | 2126 |
+| 2540 | `frame-png` scripts wind the crank: a `--crank DEGREES` step beside `--keys`, `--pad` and `--wait` | game#1182 |
 
 The playtest bots (2125–2128, 2026-10-21) are on the game's Act 1
 critical path: its persona bots (game#0506) and autobalance
@@ -345,6 +352,13 @@ and a CI workflow. None holds up the game, which plays with its own
 code meanwhile (game#1180 moves onto them). 2129, 2130, 2131 and 2532
 wait for nothing and can run side by side; 2132 follows 2131, 2533
 follows 2532, 2021 follows both.
+
+2133 and 2541 (2026-10-22) come from a retro of the PRs that built the
+bots and the playtest command: 2133 evens out what seven tickets left
+between the bots' modules and waits for nothing; 2541 folds the older
+`bots` operation into `playtest` once 2532 and 2533 have reshaped it.
+2540 is the game's: its Playdate screens behind the crank (game#1039)
+have a workaround in the game until it lands.
 
 ### Friction from the game
 

@@ -37,9 +37,21 @@ None.
 ## Scope
 
 **In:**
-- `shuyi_assets::anim::Atlas` (named rectangles in an image), an asset
-  kind (`AssetKind`, ADR-0019 §1), beside 2231's `AnimationClip`,
-  `AnimationSet` and `frame_at`.
+- The importers fill `shuyi_assets::atlas::Atlas`, 2222's asset kind
+  (`AssetKind`, ADR-0019 §1) of pages and a table of name to page and
+  rectangle. An imported sheet is an atlas of one page, the sheet's
+  image, with each frame a named rectangle; there is one `Atlas` type for
+  sheets and for packed images, so the sprite skin draws both the same
+  way. What an import needs that packing doesn't (a trimmed frame's
+  offset and its size before trimming, as TexturePacker's
+  `spriteSourceSize` and `sourceSize` give) is added here as optional
+  fields of an entry. **Either order with 2222:** if 2222 is done, add
+  those fields to its `Atlas`; if not, write `Atlas` in
+  `shuyi_assets::atlas` with the shape 2222's Scope names, and 2222
+  adds the packer to it.
+- The clips stay 2231's (`AnimationClip<ImageRect>`, `AnimationSet`,
+  `frame_at`): an importer fills a clip's frames with the rectangles of
+  the atlas's entries.
 - The importers are `Format`s of `Atlas` and of 2231's `AnimationSet`
   (ADR-0007, ADR-0019; `docs/formats.md` says how to write one),
   registered with `Formats::register_standard`, each with its id,
@@ -64,7 +76,11 @@ None.
   sniffing its JSON (the tool named in its `meta.app`).
 - Our RON sidecar form of `Atlas`, as a third format of it (2231 has
   `AnimationSet`'s), and `shuyi import --print` to turn an import into
-  it (its `Encode`).
+  it (its `Encode`). It is the atlas's table, not 2222's `atlas.ron`
+  (`AtlasSpec`, which says what to pack). Both are RON formats of the
+  `Atlas` kind, and two formats of one kind can't claim one extension
+  (ADR-0019 §2): tell them apart as ADR-0019 allows (by file name, as
+  `atlas.ron` is, or by sniffing), and say how in the completion notes.
 - Measure `asefile` behind an `aseprite` feature. Keep it only if it adds
   under 300 KB to the WASM build (ADR-0004 §2). Write down the number
   either way.
@@ -80,7 +96,9 @@ and a tick game keeps `(clip, start_step)` in whichever store it uses.
 
 ## Implementation steps
 
-1. Read 2231's `anim` module, then write `Atlas` and its RON form.
+1. Read 2231's `anim` module and 2222's `atlas` module (if 2222 is
+   done), then add the import fields to `Atlas` (or write it, as Scope
+   says) and its RON form.
 2. Write the two importers with fixture files and error tests.
 3. Do the `asefile` measurement.
 
