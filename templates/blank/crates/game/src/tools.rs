@@ -104,7 +104,9 @@ impl GameTools for Tools {
 
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
         no_options(options)?;
-        Ok(Box::new(Headless::new(harness())))
+        let session =
+            Headless::new(harness()).with_picture(|h, scale| picture(h, scale.unwrap_or(1)));
+        Ok(Box::new(session))
     }
 
     /// Its keymap and every screen it can show ([`controls`]).

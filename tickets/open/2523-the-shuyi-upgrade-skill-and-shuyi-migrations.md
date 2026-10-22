@@ -210,9 +210,7 @@ asked in 2005's sign-off.
     (`crates/cli/schemas/migrations.input.json` and
     `migrations.output.json`), and `crates/cli/schemas/versions.json`
     gets the new fingerprint (ADR-0022 §5);
-  - **1133's tools:** 1133 is done by then (2005 waits for it). If its
-    tools come from `Op::ALL`, `migrations` is a tool with no more work;
-    if it lists them by hand, add it.
+  - **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
 - **The skill, `skills/shuyi-upgrade/SKILL.md`,** in 1134's pack and its
   format (frontmatter, when to use it and when not, the steps, the ops
   it names):

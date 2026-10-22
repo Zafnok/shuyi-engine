@@ -1,6 +1,7 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
 //! `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`, `bake`,
-//! `doctor`, `explain`, each with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
+//! `doctor`, `explain`, each with `--json`; [`contract`]), the contract as
+//! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
 //! wrapper here.
@@ -24,6 +25,7 @@ pub mod frame_png;
 pub mod game;
 pub mod glyph_tiles;
 pub mod lang_status;
+pub mod mcp;
 pub mod private_assets;
 pub mod project;
 pub mod test_card;
@@ -65,6 +67,8 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   doctor                             check the toolchain and say how to fix it
   explain [<code>]                   every problem code (SH2003), or one code's page
   schema [<name> | --out <dir>]      the contract's JSON schemas
+  mcp                                serve the contract over MCP (stdio), with a session
+  mcp install [--dry-run] [--yes]    register the server with the agents found here
 
 commands:
   check-keys                         fail on keys hard-coded in game code or text
@@ -77,9 +81,10 @@ commands:
   frame-png <out.png> [steps]        render a scripted game frame to a PNG (frame-png --help)
   web [--release] [--<feature>...]   build and package the web (WASM) build
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
+  mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, explain and schema need none). An error has a problem
+{file} (new, doctor, explain, schema and mcp need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix
 ({command} doctor, {file}) before running it again.",
@@ -140,6 +145,21 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
     };
     if let Some(code) = contract::cli::without_project(name, args, &project.root, command) {
         return code;
+    }
+    if name == "mcp-host" {
+        return match game {
+            Some(game) => {
+                let stdin = std::io::stdin();
+                mcp::host::serve(
+                    game,
+                    project.clone(),
+                    stdin.lock(),
+                    std::io::stdout().lock(),
+                )
+            }
+            None if project.config.game.is_some() => game::run_in_game_program(project, name, args),
+            None => contract::cli::no_game(name, args),
+        };
     }
     if contract::cli::checks_targets(name, args) {
         // The controls need the game's tools: in its tool program.

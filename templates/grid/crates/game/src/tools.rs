@@ -197,7 +197,8 @@ impl GameTools for Tools {
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
         let session = Headless::new(harness(seed_of(options)?))
             .with_scene(scene)
-            .with_events(events);
+            .with_events(events)
+            .with_picture(|h, scale| picture(h, scale.unwrap_or(1)));
         Ok(Box::new(session))
     }
 

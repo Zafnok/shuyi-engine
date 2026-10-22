@@ -150,14 +150,11 @@ fn limits(session: &dyn Session, scene: &Result<Scene, String>) -> Vec<String> {
     limits
 }
 
-/// `run`: plays `input` in `game`.
-pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
-    let session = match played(Op::Run, game, input) {
-        Ok(session) => session,
-        Err(answer) => return answer,
-    };
+/// What `session` shows after its run, as `run` answers it, with its
+/// limits.
+pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
     let scene = session.scene();
-    let limits = limits(&*session, &scene);
+    let limits = limits(session, &scene);
     let screens = session.screens();
     let output = RunOutput {
         frames: session.frame_count(),
@@ -170,18 +167,13 @@ pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
         sounds: session.sounds(),
         log: session.log(),
     };
-    Answer::new(Op::Run, true, output, limits)
+    (output, limits)
 }
 
-/// `scene`: plays `input` in `game`, and answers with the scene. It
-/// passes if there is one.
-pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
-    let session = match played(Op::Scene, game, input) {
-        Ok(session) => session,
-        Err(answer) => return answer,
-    };
+/// The scene `session` shows, as `scene` answers it, with its limits.
+pub fn scene_output(session: &dyn Session) -> (SceneOutput, Vec<String>) {
     let scene = session.scene();
-    let limits = limits(&*session, &scene);
+    let limits = limits(session, &scene);
     let screens = session.screens();
     let output = SceneOutput {
         frames: session.frame_count(),
@@ -189,7 +181,30 @@ pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
         scene: scene.ok(),
         log: session.log(),
     };
-    Answer::new(Op::Scene, output.scene.is_some(), output, limits)
+    (output, limits)
+}
+
+/// `run`: plays `input` in `game`.
+pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
+    match played(Op::Run, game, input) {
+        Ok(session) => {
+            let (output, limits) = run_output(&*session);
+            Answer::new(Op::Run, true, output, limits)
+        }
+        Err(answer) => answer,
+    }
+}
+
+/// `scene`: plays `input` in `game`, and answers with the scene. It
+/// passes if there is one.
+pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
+    match played(Op::Scene, game, input) {
+        Ok(session) => {
+            let (output, limits) = scene_output(&*session);
+            Answer::new(Op::Scene, output.scene.is_some(), output, limits)
+        }
+        Err(answer) => answer,
+    }
 }
 
 /// The usage of `run` (and `scene`, if `op` says so), with the game's

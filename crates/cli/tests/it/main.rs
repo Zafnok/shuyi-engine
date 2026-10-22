@@ -1,10 +1,12 @@
-//! `shuyi` on projects: the binary itself on scratch projects, the toy
+//! `shuyi` on projects: the binary itself on scratch projects, its MCP
+//! server driven over stdio against Hello, Grid, the toy
 //! game's tools (`frame-png`, `lang-status`) as its tool program runs
 //! them, the contract's checked-in schemas, and `docs/contract.md` and the
 //! README against the contract.
 
 mod binary;
 mod docs;
+mod mcp;
 mod schemas;
 mod targets;
 mod toy;

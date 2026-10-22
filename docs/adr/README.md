@@ -43,5 +43,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0028](0028-problem-codes-a-stable-code-by-class-a-help-line-a-page-and-exit-code-3-for-the-setup.md) | Problem codes: a stable code by class, a help line, a page, and exit code 3 for the setup | Accepted; extends ADR-0022 §1 |
 | [0029](0029-the-turn-planner-a-beam-over-the-sides-own-commands-copies-kept-and-the-best-continuation-backed-up.md) | The turn planner: a beam over the side's own commands, copies kept, and the best continuation backed up | Accepted; extends ADR-0027 |
 | [0030](0030-the-log-plain-lines-kept-per-app-output-only-and-handed-to-the-backends-sinks.md) | The log: plain lines with a level, a category and a frame, kept per App, output only, and handed to the backend's sinks | Accepted; extends ADR-0022 and ADR-0024 |
+| [0031](0031-the-mcp-server-hand-written-json-rpc-the-game-in-its-tool-program-and-session-tools-as-ops.md) | The MCP server: hand-written JSON-RPC, the game in its tool program, and session tools as operations | Accepted; extends ADR-0005, ADR-0022 and ADR-0028 |
 
 Template: [`0000-template.md`](0000-template.md).

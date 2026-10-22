@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "shuyi": {
+      "args": [
+        "run",
+        "-q",
+        "-p",
+        "shuyi-cli",
+        "--",
+        "mcp"
+      ],
+      "command": "cargo"
+    }
+  }
+}

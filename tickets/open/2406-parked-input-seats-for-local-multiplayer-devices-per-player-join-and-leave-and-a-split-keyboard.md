@@ -261,7 +261,7 @@ online)?
     regenerate `crates/cli/schemas/` and add the version's line to
     `versions.json` (ADR-0022 §5). The fake session
     (`crates/cli/src/contract/fake.rs`) and whatever else plays a
-    `Script` (1133's session `step`, if done) get the prefix with no
+    `Script` (1133's session `step`) get the prefix with no
     change of their own.
 - **Controls checked per player count:**
   - `shuyi_assets::target::Input::local_players: u8`: how many people

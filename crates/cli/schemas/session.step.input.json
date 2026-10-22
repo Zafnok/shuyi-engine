@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StepInput",
+  "description": "What `step` plays.",
+  "type": "object",
+  "properties": {
+    "frames": {
+      "description": "Frames to run after the script with no input.",
+      "type": "integer",
+      "format": "uint32",
+      "default": 0,
+      "minimum": 0
+    },
+    "script": {
+      "description": "The steps to play, as `run`'s script.",
+      "$ref": "#/$defs/Script",
+      "default": {
+        "steps": []
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "Script": {
+      "description": "What to do in the game before taking the frame.",
+      "type": "object",
+      "properties": {
+        "steps": {
+          "description": "The steps, in order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "steps"
+      ]
+    },
+    "Step": {
+      "description": "One step of the script, run in the order given.",
+      "oneOf": [
+        {
+          "description": "`Harness::keys`: each chord pressed and released in turn\n(`\"Enter Up Shift+Space\"`).",
+          "type": "object",
+          "properties": {
+            "keys": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "keys"
+          ]
+        },
+        {
+          "description": "`Harness::pad`: each controller button pressed and released in\nturn (`\"South\"`, `\"East+DpadDown\"`: those buttons together).",
+          "type": "object",
+          "properties": {
+            "pad": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "pad"
+          ]
+        },
+        {
+          "description": "`Harness::wait`: that many seconds pass, at most [`MAX_WAIT`] in\none step.",
+          "type": "object",
+          "properties": {
+            "wait": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "wait"
+          ]
+        }
+      ]
+    }
+  }
+}

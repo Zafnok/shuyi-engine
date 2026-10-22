@@ -237,9 +237,9 @@ None. The sentence this supersedes is Claude's own technical choice
   - The step changes the contract's schemas: raise `contract::VERSION`
     and add the line to `crates/cli/schemas/versions.json`, as
     `docs/contract.md` says.
-  - **1133.** Its MCP tools take a script, so they play the step with
-    nothing more. If 1133 is done, its scripted client test gains one
-    `overstep` step.
+  - **1133** (done). Its MCP tools take a script, so they play the step
+    with nothing more. Its scripted client test
+    (`crates/cli/tests/it/mcp.rs`) gains one `overstep` step.
 - **The pointer. Either order with 1121:** whatever reads a pointer in
   world pixels (1121) must use the camera as drawn, so a click lands
   where the player saw things. If 1121 is done, make it so and test a

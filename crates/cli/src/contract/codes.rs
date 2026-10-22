@@ -27,6 +27,8 @@ use super::Problem;
 
 /// `wrong-arguments`: the arguments or the input are wrong.
 pub const WRONG_ARGUMENTS: Code = Code("SH0001");
+/// `no-session`: an MCP session tool was called with no game started.
+pub const NO_SESSION: Code = Code("SH0002");
 /// `no-project`: no `shuyi.ron` here or above.
 pub const NO_PROJECT: Code = Code("SH1001");
 /// `project-file`: `shuyi.ron` doesn't read, or lacks what the command
@@ -42,6 +44,9 @@ pub const GAME_ERROR: Code = Code("SH3002");
 pub const TARGET: Code = Code("SH3003");
 /// `file`: a file the operation reads or writes can't be.
 pub const FILE: Code = Code("SH3004");
+/// `game-program`: the game's tool program didn't build, or stopped
+/// before it answered.
+pub const GAME_PROGRAM: Code = Code("SH3005");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -141,6 +146,14 @@ pub static TABLE: &[Entry] = &[
         "SH0001",
         "The command's arguments or input are wrong",
         "read the usage, change the command, and run it again"
+    ),
+    row!(
+        NO_SESSION,
+        "no-session",
+        Usage,
+        "SH0002",
+        "No game is running in the MCP session",
+        "call `start` first (with the game's folder as `project`), then the session's other tools"
     ),
     row!(
         NO_PROJECT,
@@ -281,6 +294,14 @@ pub static TABLE: &[Entry] = &[
         "SH3004",
         "A file the operation reads or writes can't be",
         "check the path and the folder's permissions: the message gives the system's reason"
+    ),
+    row!(
+        GAME_PROGRAM,
+        "game-program",
+        Operation,
+        "SH3005",
+        "The game's tool program didn't build, or stopped before it answered",
+        "fix what its output in the message says (a compile error, a panic), then call the tool          again; the session, if one ran, has ended: `start` it again"
     ),
 ];
 

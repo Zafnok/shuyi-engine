@@ -286,9 +286,7 @@ section (soak in CI; a shrunk record turned into a regression test with
 when a save or a replay misbehaves, since `replay` can't see state the
 serde form leaves out. If 1134 isn't done, 1134 adds them when it lands.
 
-**Either order with 1133:** if `shuyi mcp` lists its tools from
-`Op::ALL`, `soak` comes with no change. If it lists them by hand, add
-`soak`, and to its test that lists every tool.
+**MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program). `soak` runs the game.
 
 **Problem codes (2509):** `soak`'s refused arguments take `SH0001`,
 the game's errors `SH3001` or `SH3002` through the same helpers as

@@ -155,6 +155,36 @@
           "description": "A problem code's page.",
           "type": "string",
           "const": "explain"
+        },
+        {
+          "description": "The MCP session's game started headless.",
+          "type": "string",
+          "const": "start"
+        },
+        {
+          "description": "The MCP session's game played on: a script, then idle frames.",
+          "type": "string",
+          "const": "step"
+        },
+        {
+          "description": "A picture of the MCP session's frame.",
+          "type": "string",
+          "const": "frame_png"
+        },
+        {
+          "description": "What happened in the MCP session's game.",
+          "type": "string",
+          "const": "events"
+        },
+        {
+          "description": "The MCP session's game started again.",
+          "type": "string",
+          "const": "reset"
+        },
+        {
+          "description": "The MCP session's game stopped.",
+          "type": "string",
+          "const": "stop"
         }
       ]
     }

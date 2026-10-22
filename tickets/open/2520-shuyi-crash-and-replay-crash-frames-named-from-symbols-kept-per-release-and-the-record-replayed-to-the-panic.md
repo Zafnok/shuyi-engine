@@ -216,9 +216,10 @@ None.
   - with 2509 (problem codes): if it is done, each refusal here gets a
     problem code and its help. If not, 2509 gives them codes (its
     either-order list names 2520);
-  - with 1133 (the MCP server): if it is done, check that its tools
-    include `crash` and `replay`'s `crash` flag, since it makes a tool
-    of each operation. If not, nothing here;
+  - the MCP server (1133, done) makes a tool of each operation in
+    `Op::ALL`: give `crash` its arms in `mcp::host::one_off` and
+    `mcp::description`, and `replay`'s `crash` flag comes with its
+    input;
   - with 2010 (public API diffs): if it is done, the completion notes
     carry a `Breaking:` line for each public struct that gained a field
     (`ReplayInput`, `ReplayStep`, `ReplayOutput`, and `CrashReport`

@@ -2,7 +2,8 @@
 //! or a person runs on a game, each a library function with a typed input
 //! and output that serde reads and writes and JSON schemas describe. The
 //! CLI (`shuyi <op> [--json]`) is one surface over them; the MCP server
-//! (ticket 1133) and the skills (ticket 1134) are the others.
+//! (`shuyi mcp`, [`crate::mcp`]) is another, where each is a tool and a
+//! session keeps one game running between calls.
 //!
 //! | Op | Does | Module |
 //! | -- | ---- | ------ |
@@ -26,6 +27,9 @@
 //! ([`codes`]), and the code's class sets the exit code: 0 passed, 1
 //! failed, 2 wrong arguments, 3 fix the setup, then run it again.
 //!
+//! The MCP server's session tools (`start`, `step`, `scene`, `frame_png`,
+//! `events`, `reset`, `stop`; [`Op::SESSION`]) answer the same way.
+//!
 //! The schemas of every input and answer are generated from these types
 //! ([`schemas`]) and checked in under `crates/cli/schemas/`. A test fails
 //! when they change and [`VERSION`] doesn't.
@@ -38,7 +42,7 @@ pub mod codes;
 pub mod doctor;
 pub mod explain;
 #[cfg(test)]
-mod fake;
+pub(crate) mod fake;
 pub mod import;
 pub mod new;
 pub mod playtest;
@@ -59,7 +63,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -87,6 +91,19 @@ pub enum Op {
     Doctor,
     /// A problem code's page.
     Explain,
+    /// The MCP session's game started headless.
+    Start,
+    /// The MCP session's game played on: a script, then idle frames.
+    Step,
+    /// A picture of the MCP session's frame.
+    #[serde(rename = "frame_png")]
+    FramePng,
+    /// What happened in the MCP session's game.
+    Events,
+    /// The MCP session's game started again.
+    Reset,
+    /// The MCP session's game stopped.
+    Stop,
 }
 
 impl Op {
@@ -105,7 +122,19 @@ impl Op {
         Op::Explain,
     ];
 
-    /// Its name on the command line.
+    /// The MCP server's session tools ([`crate::mcp`]), in the order it
+    /// lists them: `scene` is the session's, not the one-off operation.
+    pub const SESSION: [Op; 7] = [
+        Op::Start,
+        Op::Step,
+        Op::Scene,
+        Op::FramePng,
+        Op::Events,
+        Op::Reset,
+        Op::Stop,
+    ];
+
+    /// Its name on the command line, or as an MCP tool.
     pub fn name(self) -> &'static str {
         match self {
             Op::New => "new",
@@ -119,10 +148,17 @@ impl Op {
             Op::Bake => "bake",
             Op::Doctor => "doctor",
             Op::Explain => "explain",
+            Op::Start => "start",
+            Op::Step => "step",
+            Op::FramePng => "frame_png",
+            Op::Events => "events",
+            Op::Reset => "reset",
+            Op::Stop => "stop",
         }
     }
 
-    /// The operation named `name` on the command line.
+    /// The operation named `name` on the command line (not a session
+    /// tool).
     pub fn named(name: &str) -> Option<Op> {
         Op::ALL.into_iter().find(|op| op.name() == name)
     }
@@ -325,35 +361,57 @@ fn file(name: String, schema: &Schema) -> SchemaFile {
     SchemaFile { name, text }
 }
 
-/// The schemas of `op`'s input `I` and answer `Answer<O>`.
-fn pair<I: JsonSchema, O: JsonSchema>(op: Op) -> [SchemaFile; 2] {
+/// The schemas of an input `I` and an answer `Answer<O>`, named `name`
+/// (`run.input.json`, `run.output.json`).
+fn pair<I: JsonSchema, O: JsonSchema>(name: &str) -> [SchemaFile; 2] {
     [
-        file(format!("{}.input.json", op.name()), &schema_for!(I)),
-        file(
-            format!("{}.output.json", op.name()),
-            &schema_for!(Answer<O>),
-        ),
+        file(format!("{name}.input.json"), &schema_for!(I)),
+        file(format!("{name}.output.json"), &schema_for!(Answer<O>)),
     ]
 }
 
-/// Every operation's input and output schema, in [`Op::ALL`]'s order.
+/// The schemas of `op`'s input and answer: as the CLI and the MCP tool
+/// of its name take it, or, if `session`, as the MCP server's session
+/// tool does (named `session.<op>`; [`Op::SESSION`]).
+pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
+    use crate::mcp::{
+        EventsOutput, FramePngInput, FramePngOutput, NoInput, StartInput, StartOutput, StepInput,
+        StopOutput,
+    };
+    let name = if session {
+        format!("session.{}", op.name())
+    } else {
+        op.name().to_owned()
+    };
+    let name = name.as_str();
+    match (op, session) {
+        (Op::New, _) => pair::<new::NewInput, new::NewOutput>(name),
+        (Op::Check, _) => pair::<check::CheckInput, check::CheckOutput>(name),
+        (Op::Run, _) => pair::<run::RunInput, run::RunOutput>(name),
+        (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(name),
+        (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(name),
+        (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(name),
+        (Op::Bots, _) => pair::<bots::BotsInput, bots::BotsOutput>(name),
+        (Op::Playtest, _) => pair::<playtest::PlaytestInput, PlaytestReport>(name),
+        (Op::Import, _) => pair::<import::ImportInput, import::ImportOutput>(name),
+        (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(name),
+        (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(name),
+        (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(name),
+        (Op::Start, _) => pair::<StartInput, StartOutput>(name),
+        (Op::Step, _) => pair::<StepInput, run::RunOutput>(name),
+        (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(name),
+        (Op::Events, _) => pair::<NoInput, EventsOutput>(name),
+        (Op::Reset, _) => pair::<NoInput, StartOutput>(name),
+        (Op::Stop, _) => pair::<NoInput, StopOutput>(name),
+    }
+}
+
+/// Every operation's input and output schema, in [`Op::ALL`]'s order,
+/// then the MCP server's session tools' ([`Op::SESSION`]).
 pub fn schemas() -> Vec<SchemaFile> {
-    Op::ALL
-        .into_iter()
-        .flat_map(|op| match op {
-            Op::New => pair::<new::NewInput, new::NewOutput>(op),
-            Op::Check => pair::<check::CheckInput, check::CheckOutput>(op),
-            Op::Run => pair::<run::RunInput, run::RunOutput>(op),
-            Op::Scene => pair::<run::RunInput, run::SceneOutput>(op),
-            Op::Replay => pair::<replay::ReplayInput, replay::ReplayOutput>(op),
-            Op::Bots => pair::<bots::BotsInput, bots::BotsOutput>(op),
-            Op::Playtest => pair::<playtest::PlaytestInput, PlaytestReport>(op),
-            Op::Import => pair::<import::ImportInput, import::ImportOutput>(op),
-            Op::Bake => pair::<bake::BakeInput, bake::BakeOutput>(op),
-            Op::Doctor => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op),
-            Op::Explain => pair::<explain::ExplainInput, explain::ExplainOutput>(op),
-        })
-        .collect()
+    let ops = Op::ALL.into_iter().flat_map(|op| op_schemas(op, false));
+    let session = Op::SESSION.into_iter().flat_map(|op| op_schemas(op, true));
+    ops.chain(session).collect()
 }
 
 /// The fingerprint of `files`: a hash of their names and texts, which

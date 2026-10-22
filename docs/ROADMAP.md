@@ -71,6 +71,7 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 | 2513 | Zero setup on Linux: `shuyi doctor` checks the system libraries, a setup script, a dev container |
 | 2511 | The short path: engine defaults for every `GameData` part, a prelude, `run_game`, and a minimal template |
 | 1133 | An MCP server over the contract |
+| 2531 | The dev containers register the MCP server after the setup script |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |

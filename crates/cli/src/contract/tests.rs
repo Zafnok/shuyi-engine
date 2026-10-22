@@ -129,10 +129,16 @@ fn a_problem_with_a_code_says_it_with_its_rows_help() {
 fn every_op_has_an_input_and_an_output_schema() {
     let files = schemas();
     let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
-    assert_eq!(names.len(), Op::ALL.len() * 2);
+    assert_eq!(names.len(), (Op::ALL.len() + Op::SESSION.len()) * 2);
     for op in Op::ALL {
         for side in ["input", "output"] {
             let name = format!("{}.{side}.json", op.name());
+            assert!(names.contains(&name.as_str()), "{name}");
+        }
+    }
+    for op in Op::SESSION {
+        for side in ["input", "output"] {
+            let name = format!("session.{}.{side}.json", op.name());
             assert!(names.contains(&name.as_str()), "{name}");
         }
     }

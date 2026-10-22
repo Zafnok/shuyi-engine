@@ -79,9 +79,12 @@ pub fn no_game(name: &str, args: &[String]) -> u8 {
 }
 
 /// Runs `name` with `args` if it is an op that needs no project (`new`,
-/// `doctor`, `explain`, `schema`), in the working folder `cwd`; `None` if
-/// it isn't.
+/// `doctor`, `explain`, `schema`, and `mcp`, which finds a project per
+/// call), in the working folder `cwd`; `None` if it isn't.
 pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -> Option<u8> {
+    if name == "mcp" {
+        return Some(crate::mcp::main(args, cwd));
+    }
     let (json, args) = split_json(args);
     Some(match name {
         "new" => match new::parse_args(&args) {
@@ -438,7 +441,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 22);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 36);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(
