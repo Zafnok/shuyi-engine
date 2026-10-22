@@ -235,6 +235,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
 | 2522 | The live link for the web build and for a Steam Deck on the LAN |
 | 2510 | Compiler messages on the traits a game implements |
+| 2534 | `shuyi lint`: `check-keys`, `check-text` and the rules crate's fence in one answer, with file and line |
 | 2512 | The lines a game's author owns, counted, with a CI cap on the minimal template |
 | 2524 | An agent eval of the end goal: tasks as data, a grader through the contract, reference solutions in CI |
 | 2525 | Scheduled agent runs of the eval, within a budget Nick sets |

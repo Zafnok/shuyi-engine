@@ -24,8 +24,8 @@ do. The decisions behind it are
   time on its clock. The engine never loops and never reads a clock.
 - **Only a backend touches a device** (`AGENTS.md` rule 5): windows,
   files, audio devices, controllers, the clock. `shuyi-platform` itself
-  touches none, and CI's `platform-deps` job keeps macroquad, gilrs and
-  audio crates out of it.
+  touches none, and `cargo xtask check-layers` (CI's `layers` job) keeps
+  macroquad, gilrs and audio crates out of it.
 - **Nothing of a game in a backend** (`AGENTS.md` rule 4). What a game
   wants of its backend (a card, a voice folder) it says through `Start`
   and the backend's config.

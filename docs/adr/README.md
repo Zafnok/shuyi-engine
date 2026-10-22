@@ -44,5 +44,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0029](0029-the-turn-planner-a-beam-over-the-sides-own-commands-copies-kept-and-the-best-continuation-backed-up.md) | The turn planner: a beam over the side's own commands, copies kept, and the best continuation backed up | Accepted; extends ADR-0027 |
 | [0030](0030-the-log-plain-lines-kept-per-app-output-only-and-handed-to-the-backends-sinks.md) | The log: plain lines with a level, a category and a frame, kept per App, output only, and handed to the backend's sinks | Accepted; extends ADR-0022 and ADR-0024 |
 | [0031](0031-the-mcp-server-hand-written-json-rpc-the-game-in-its-tool-program-and-session-tools-as-ops.md) | The MCP server: hand-written JSON-RPC, the game in its tool program, and session tools as operations | Accepted; extends ADR-0005, ADR-0022 and ADR-0028 |
+| [0032](0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) | The layers as data, checked over cargo metadata, a float ban in the simulations, and a new game's rules crate kept pure | Accepted; extends ADR-0002 §1–§2, ADR-0008 §2 and ADR-0024 §1 |
 
 Template: [`0000-template.md`](0000-template.md).

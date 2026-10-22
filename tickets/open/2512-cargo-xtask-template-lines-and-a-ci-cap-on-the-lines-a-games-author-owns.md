@@ -34,9 +34,9 @@ stay small by rule.
   knows no strings and no `/* */` blocks.
 - CI's `tickets` job (`.github/workflows/ci.yml`) builds the xtask and
   runs `ticket-lint` and `check-links` on every PR, docs-only ones too.
+- 2015 added `serde`, `serde_json` and `ron` to the xtask, and the
+  first RON file under `tools/`, `tools/layers.ron`.
 - Planned, not done:
-  - 2015 (MVP) adds `serde`, `serde_json` and `ron` to the xtask, and
-    the first RON file under `tools/`, `tools/layers.ron`;
   - 2009 (after the MVP) gates a game's rebuild time and its dependency
     count against `tools/compile-budget.ron`. It doesn't count lines;
   - 2524 (the agent eval) counts the lines an agent adds, with `git
@@ -165,13 +165,12 @@ choice, and it only goes down.
   them. All three are under MIT OR Apache-2.0, already in `Cargo.lock`
   through `shuyi-cli`, and allowed by `deny.toml`'s `[licenses] allow`
   list. `cargo deny` sees no new crate.
+- **From 2015:** the xtask already has the three crates, and
+  `tools/line-budget.ron` follows the comment style of
+  `tools/layers.ron`.
 - **Either order:**
-  - **2015** (check-layers, MVP): if it is done, the xtask already has
-    the three crates, and `tools/line-budget.ron` follows the comment
-    style of its `tools/layers.ron`. If not, add them here.
-  - **2009** (compile times): both add a budget under `tools/`. If 2009
-    is done and 2015 isn't, follow `tools/compile-budget.ron`'s comment
-    style. Nothing else is shared.
+  - **2009** (compile times): both add a budget under `tools/`.
+    Nothing else is shared.
   - **2501** (templates as parts): if it is done, `templates/blank` and
     `templates/grid` are gone. The counter then counts each built-in
     short name (`blank`, `grid`) from `compose`'s plan, with the files'
@@ -199,7 +198,7 @@ choice, and it only goes down.
 
 1. Read `crates/xtask/src/main.rs`, `no_std.rs` (`code_of`,
    `rust_files`), `crates/xtask/Cargo.toml`, the `tickets` job in
-   `ci.yml`, and the three folders. Check which of 2015, 2009 and 2501
+   `ci.yml`, and the three folders. Check which of 2009 and 2501
    are done (*Either order*).
 2. Write the `.rs` scanner in `template_lines.rs`, then the line rule
    and the `#[cfg(test)]` items on it, with fixtures as strings.

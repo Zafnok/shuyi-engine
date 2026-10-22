@@ -12,8 +12,8 @@ repository.workspace = true
 workspace = true
 
 # No window, sound card, file or clock here (ADR-0008 §2): only backends
-# touch devices. CI's `platform-deps` job keeps macroquad, gilrs and every
-# audio crate out of this crate's dependencies.
+# touch devices. `cargo xtask check-layers` (CI's `layers` job) keeps
+# macroquad, gilrs and every audio crate out of this crate's dependencies.
 [features]
 default = ["std"]
 # Without it the crate is `no_std` + `alloc`, for the Playdate (ADR-0008 §5;

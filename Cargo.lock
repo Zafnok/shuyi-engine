@@ -1516,6 +1516,9 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "pulldown-cmark",
+ "ron",
+ "serde",
+ "serde_json",
  "serde_norway",
 ]
 

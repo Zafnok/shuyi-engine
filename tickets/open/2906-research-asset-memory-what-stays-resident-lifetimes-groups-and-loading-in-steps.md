@@ -151,8 +151,8 @@ None. This is technical.
       `unsafe_code = "deny"`, with one `#[allow(unsafe_code)]` module, a
       `// SAFETY:` comment on every `unsafe` block, and a test like
       `shuyi-app`'s `the_lints_are_the_workspace_lints_except_unsafe_code`
-      (ADR-0021 §6 is the pattern). If 2015 is done, it gets an entry
-      in `tools/layers.ron` (no engine crates, `outside: Only([])`,
+      (ADR-0021 §6 is the pattern). It gets an entry in
+      `tools/layers.ron` (no engine crates, `outside: Only([])`,
       `devices: false`);
     - the ADR below names that crate as one more place ADR-0002 §9
       allows `unsafe`, as ADR-0021 §6 did for the platform crates;

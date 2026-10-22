@@ -31,6 +31,7 @@ repository has no row here.
 | What is to be done | [`tickets/`](../tickets/) (the `write-ticket` skill) | finds work, or finishes a ticket |
 | The order tickets are done in | [`ROADMAP.md`](ROADMAP.md) | adds a ticket to a phase, or moves one |
 | What came from the game | [`carve.md`](carve.md) | moves more of the game's code here |
+| Which engine crate may depend on which, the outside crates of the pure ones, and where devices and floats may be | [`tools/layers.ron`](../tools/layers.ron), checked by `cargo xtask check-layers` ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md)) | adds an engine crate, an edge between engine crates, or an outside crate of a pure crate |
 | The Sonar policy and its script | [`tools/sonar-triage/README.md`](../tools/sonar-triage/README.md) | changes how Sonar findings are triaged |
 | The MCP server sessions here use: `shuyi mcp`, run as `cargo run -q -p shuyi-cli -- mcp` | [`.mcp.json`](../.mcp.json), what `cargo shuyi mcp install --dry-run --command "cargo run -q -p shuyi-cli --"` prints for Claude Code (a test checks) | changes how the server is run or registered |
 | The web shell a game's web build runs in | [`crates/cli/web/README.md`](../crates/cli/web/README.md) | changes the page, the loader or the files `shuyi web` writes |
@@ -96,6 +97,7 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The layer, skin and key rules | [`AGENTS.md`](../AGENTS.md), rules 5, 8 and 9 | `templates/*/AGENTS.md`, *The layers* | nothing yet |
 | The contract's operations | [`contract.md`](contract.md), *The operations* | [`README.md`](../README.md), the `shuyi-cli` row | nothing yet (ticket 2017 adds `docs.rs`) |
 | The local gates | the `run-gates` skill | `.github/workflows/ci.yml` | nothing yet |
+| The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/grid/crates/rules/tests/layers.rs` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`) |
 
 Coming homes get their rows when they land: the book (2802), the
 engine's skill pack, `skills/` (1134, which adds the `input-actions` and

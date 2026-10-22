@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the platform crate's dependencies and the no-std build; the ticket lint, typos, links and the docs map). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers and the no-std build; the ticket lint, typos, links and the docs map). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -40,12 +40,14 @@ Each example that lists `targets` in its `shuyi.ron` fits them (ADR-0008
 cd examples/hello-grid && cargo shuyi check --target all
 ```
 
-The platform boundary depends on no device crate (CI's `platform-deps`
-job): this prints nothing.
+The crates' layers (CI's `layers` job, ADR-0032): which engine crate
+depends on which, the outside crates of the pure ones, no device crate
+below any crate but the backend's, and the float ban in the simulations,
+as `tools/layers.ron` writes them. A new engine crate, engine edge or
+outside crate of a pure crate adds its line there in the same PR.
 
 ```bash
-cargo tree -p shuyi-platform --edges normal,build --target all --all-features --prefix none --format '{p}' --locked \
-  | grep -E '^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
+cargo xtask check-layers
 ```
 
 The crates a Playdate game builds without `std` (CI's `no-std` job,

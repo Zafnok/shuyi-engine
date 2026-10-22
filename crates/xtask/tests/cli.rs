@@ -154,3 +154,17 @@ fn check_no_std_takes_no_arguments() {
     assert!(!ok);
     assert!(err.contains("usage:"), "{err}");
 }
+
+#[test]
+fn check_layers_passes_on_the_repository() {
+    let (ok, err) = xtask(&["check-layers"]);
+    assert!(ok, "{err}");
+    assert!(err.contains("check-layers: ok"), "{err}");
+}
+
+#[test]
+fn check_layers_takes_no_arguments() {
+    let (ok, err) = xtask(&["check-layers", "extra"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}

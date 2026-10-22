@@ -47,6 +47,10 @@ Where each kind of fact is written, and what each task reads first, is in
    - only platform backends touch windows, files, audio devices and
      the clock: `shuyi-app` (macroquad), and later `shuyi-playdate`,
      `shuyi-gba`, `shuyi-nds` and private console backends ([ADR-0008](docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)).
+   - [`tools/layers.ron`](tools/layers.ron) holds the layers as data, and
+     `cargo xtask check-layers` checks them ([ADR-0032](docs/adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md)).
+     A new engine crate, engine edge or outside crate of a pure crate adds
+     its line there in the same PR.
 6. **Tests are the review.** Run the `run-gates` skill before pushing.
    Never weaken a gate to pass it. CI also measures coverage and scans
    with SonarCloud; a Sonar finding is argued with in

@@ -18,6 +18,8 @@
 //! §2, §6).
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
+// No floats in a simulation (ADR-0002 §2, ADR-0032); tests may use them.
+#![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 extern crate alloc;
 

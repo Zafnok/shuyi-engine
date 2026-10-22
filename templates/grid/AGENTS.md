@@ -14,7 +14,11 @@ these are the ones a game on it keeps.
   clock, no floats, no randomness but the seeded `SimRng` kept in the
   state. The state changes only through commands (`TurnRules::apply`).
   The same seed and the same commands always give the same game, which
-  replays, bots and tests rest on.
+  replays, bots and tests rest on. Clippy (`crates/rules/clippy.toml`)
+  and the layers test (`crates/rules/tests/layers.rs`) turn these rules
+  into errors, each saying what to use instead. Fix a failure in the
+  code, never by loosening `clippy.toml` or the test (a test that must
+  use a float writes `#[expect(clippy::disallowed_types, reason = "...")]`).
 - `crates/game` is everything else: the game's data (`files/`, embedded),
   its screens, its look, its tools. Only the engine's `shuyi-app`
   touches the window, the files, the audio device and the clock.

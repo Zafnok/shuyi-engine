@@ -1,0 +1,30 @@
+# The rules are pure and deterministic (AGENTS.md, "The layers"). This
+# file replaces the workspace's clippy.toml for this crate, so it
+# repeats that file's two lines.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "its order changes from run to run, so replays differ: use BTreeMap" },
+    { path = "std::collections::HashSet", reason = "its order changes from run to run, so replays differ: use BTreeSet" },
+    { path = "hashbrown::HashMap", reason = "its order depends on its hasher: use BTreeMap", allow-invalid = true },
+    { path = "hashbrown::HashSet", reason = "its order depends on its hasher: use BTreeSet", allow-invalid = true },
+    { path = "f32", reason = "floats can come out differently on another machine or the web: count in whole tiles, turns or hundredths" },
+    { path = "f64", reason = "floats can come out differently on another machine or the web: count in whole tiles, turns or hundredths" },
+]
+disallowed-methods = [
+    { path = "std::time::Instant::now", reason = "the rules have no clock: count turns, or put the time in a Command" },
+    { path = "std::time::SystemTime::now", reason = "the rules have no clock: count turns, or put the time in a Command" },
+    { path = "std::env::var", reason = "the rules read no settings: pass them in when the state is made, or in a Command" },
+    { path = "std::env::var_os", reason = "the rules read no settings: pass them in when the state is made, or in a Command" },
+    { path = "std::thread::spawn", reason = "the rules run on one thread, so a replay plays the same" },
+    { path = "std::fs::read", reason = "the rules do no I/O: crates/game hands them the file's text, as parse_map takes it" },
+    { path = "std::fs::read_to_string", reason = "the rules do no I/O: crates/game hands them the file's text, as parse_map takes it" },
+    { path = "std::fs::write", reason = "the rules do no I/O: crates/game saves" },
+    { path = "std::fs::File::open", reason = "the rules do no I/O: crates/game hands them the file's text, as parse_map takes it" },
+    { path = "std::fs::File::create", reason = "the rules do no I/O: crates/game saves" },
+    { path = "rand::random", reason = "the only luck is the SimRng kept in the state", allow-invalid = true },
+    { path = "rand::rng", reason = "the only luck is the SimRng kept in the state", allow-invalid = true },
+    { path = "rand::thread_rng", reason = "the only luck is the SimRng kept in the state", allow-invalid = true },
+    { path = "getrandom::fill", reason = "the only luck is the SimRng kept in the state", allow-invalid = true },
+]

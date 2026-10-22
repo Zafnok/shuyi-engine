@@ -1,0 +1,114 @@
+// The engine's layers as data (ADR-0032, extending ADR-0002 §1): which
+// engine crate may depend on which, which outside crates a pure crate may
+// use, and where device crates and floats may be. `cargo xtask
+// check-layers` (crates/xtask/src/layers.rs) checks it against
+// `cargo metadata --all-features`, and CI's `layers` job runs it.
+//
+// A new engine crate, a new edge between engine crates, or a new outside
+// crate in a pure crate adds its line here in the same PR, so each is a
+// visible choice.
+(
+    // The crates only a platform backend may reach (ADR-0008 §2): windows,
+    // input devices and audio. A trailing `*` is a prefix (`quad-*` is
+    // `quad-snd`, not `quadtree`). A new game's rules crate keeps a copy, in
+    // templates/grid/crates/rules/tests/layers.rs (a test checks).
+    devices: [
+        "macroquad",
+        "miniquad",
+        "quad-*",
+        "gilrs",
+        "gilrs-core",
+        "cpal",
+        "rodio",
+        "kira",
+        "alsa",
+        "alsa-sys",
+        "coreaudio-rs",
+        "coreaudio-sys",
+        "oboe",
+        "symphonia",
+        "lewton",
+        "hound",
+    ],
+    // One entry per engine crate (a workspace member named `shuyi-*`):
+    // - `engine`: the engine crates it may depend on (normal and build
+    //   dependencies; dev-dependencies are free), down ADR-0002 §1's table;
+    //   what it may use, not what it must;
+    // - `outside`: `Only([...])`, kept exact, or `Any`;
+    // - `devices`: `false` when no device crate may be anywhere below it;
+    // - `floats`: `false` when its `src/lib.rs` must deny
+    //   `clippy::float_arithmetic` (a simulation, ADR-0002 §2).
+    crates: {
+        "shuyi-core": (
+            engine: [],
+            outside: Only([
+                // Saves, records and settings are plain data.
+                "serde",
+                // The JSON schemas of the playtest report, for the tool
+                // contract (its optional `schema` feature).
+                "schemars",
+            ]),
+            devices: false,
+            floats: false,
+        ),
+        "shuyi-assets": (
+            engine: ["shuyi-core"],
+            outside: Only([
+                // The engine's own formats are RON files read into plain data.
+                "serde",
+                "ron",
+                // A game's files, embedded (with `std`).
+                "include_dir",
+                // Typed errors (ADR-0002 §9).
+                "thiserror",
+                // The process-wide bundle, set once, without `std`.
+                "once_cell",
+                // Float rounding without `std` (lights: drawing, not rules).
+                "libm",
+                // PNG pictures, for the tools that convert them (optional).
+                "png",
+                // The pack (ADR-0023): its binary form and its compression.
+                "postcard",
+                "lz4_flex",
+            ]),
+            devices: false,
+            floats: true,
+        ),
+        "shuyi-ui": (
+            engine: ["shuyi-core", "shuyi-assets"],
+            outside: Only([
+                // Typed errors (ADR-0002 §9).
+                "thiserror",
+                // The player's saved key bindings and profiles.
+                "serde",
+                "ron",
+                // Float maths without `std`, for drawing.
+                "libm",
+            ]),
+            devices: false,
+            floats: true,
+        ),
+        "shuyi-platform": (
+            // `shuyi-core` is below it too (ADR-0032 amends ADR-0024 §1).
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui"],
+            outside: Only([]),
+            devices: false,
+            floats: true,
+        ),
+        "shuyi-app": (
+            // The macroquad backend: the one crate that reaches devices.
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform"],
+            outside: Any,
+            devices: true,
+            floats: true,
+        ),
+        "shuyi-cli": (
+            // The tools run headless, in CI and for agents (ADR-0005 §1):
+            // never `shuyi-app`, and no device.
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform"],
+            outside: Any,
+            devices: false,
+            floats: true,
+        ),
+    },
+)

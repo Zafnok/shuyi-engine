@@ -56,11 +56,10 @@ comparison*).
   - the `work-ticket` skill (§3, *Public API*): a version bump and a
     `CHANGELOG.md` line, but only after the first crates.io release.
 - `.github/workflows/ci.yml` has the jobs `changes`, `fmt`, `clippy`,
-  `test`, `docs`, `wasm`, `templates`, `no-std`, `platform-deps`,
-  `deny`, `machete`, `coverage`, `tickets` and `ci-result` (2015
-  replaces `platform-deps` with `layers`). None reads the public API.
-  `crates/xtask/src/main.rs` has `ticket-lint`, `check-links` and
-  `check-no-std` (2015 adds `check-layers`).
+  `test`, `docs`, `wasm`, `templates`, `no-std`, `layers`, `deny`,
+  `machete`, `coverage`, `tickets` and `ci-result`. None reads the
+  public API. `crates/xtask/src/main.rs` has `ticket-lint`,
+  `check-links`, `check-docs`, `check-no-std` and `check-layers`.
 - The tool contract has a mechanical check: ADR-0022 §5's schema test
   fails when the JSON schemas change without a new `contract::VERSION`.
   The Rust API has nothing like it.
