@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2126"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2127 — An autobalance search over knobs
@@ -169,19 +169,19 @@ Size: about 400 changed lines (the search about 200, its tests about
 
 ## Acceptance criteria
 
-- [ ] On the coin race, a target set too high comes back to the
+- [x] On the coin race, a target set too high comes back to the
       setting worked out by hand, and an authored stage already inside
       its bands stops with `AlreadyInBands` after one evaluation.
-- [ ] The prune step removes a change that isn't needed (a fixture with
+- [x] The prune step removes a change that isn't needed (a fixture with
       a second knob that does nothing).
-- [ ] With a budget of 3 evaluations, the search stops with `Budget`
+- [x] With a budget of 3 evaluations, the search stops with `Budget`
       and the best setting seen.
-- [ ] The same inputs give the same `Balanced` twice.
-- [ ] Hello-grid's `tests/it/balance.rs` passes, and its existing
+- [x] The same inputs give the same `Balanced` twice.
+- [x] Hello-grid's `tests/it/balance.rs` passes, and its existing
       records and snapshots pass unchanged.
-- [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
+- [x] `shuyi-core` still builds for `thumbv7em-none-eabihf` (CI's
       `no-std` job).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -193,6 +193,62 @@ Size: about 400 changed lines (the search about 200, its tests about
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick. Name the game PR
-that moves the pin: game#0509's.)*
+What was done:
+
+- `shuyi_core::bots::balance` (`crates/core/src/bots/balance.rs`): `Knob`,
+  `BalanceSettings`, `distance`, `Stop` (`AlreadyInBands`, `InBands`,
+  `Stuck`, `Budget`), `Change`, `Balanced` with `Display`, and
+  `autobalance`: before, the pattern search at `quick` tries, the
+  confirm at `tries` (carrying on at `tries` when it fails), the prune,
+  and the budget, as the ticket says. Every setting's distance is cached
+  by its steps and try count, so no setting plays twice at one count.
+  `Knob`, `BalanceSettings`, `autobalance`, `Balanced` and `Stop` are
+  re-exported at the crate root. 14 tests on a coin race whose right
+  setting is worked out by hand (target 9 to target 4, in 8
+  evaluations), two of them property tests.
+- Hello-grid: `Tuning { trip_percent, foe_waits }`, `Stage::with_tuning`,
+  `Stage::tuning` and `Stage::retuned`; the tuning is written only when
+  it isn't the default, so every record, hash and snapshot is unchanged.
+  The foe's waiting turns give a new `Event::Waited`. The knobs `Trip`
+  (five points a step, 0% to 75%, stride 2) and `HeadStart` (0 to 3
+  turns) in `src/tools.rs`, and `tests/it/balance.rs`.
+
+Measured on seeds 0–49 (turn limit 200): the walker wins 50 of 50 at
+every tuning (trip 0% to 75%, any head start), and the foe stumbles at
+least once in its tries 0, 11, 16, 20 and 30 times out of 50 at trip 0%,
+5%, 10%, 15% and 20%. From trip 0% with `playtest.ron`'s checks and a
+band of 50–70% on that, the search lands on trip +4 (20%, 30 of 50).
+
+Deviations:
+
+- **The band is on the walker's `foe trips`, not on its wins.** The
+  walker wins every try at every tuning, so no band on its wins can be
+  missed at trip 0%. The random hero's wins do rise with the trip chance
+  (about 11% at 0% to 43% at 75% over 400 tries), but they dip just above
+  0% (37 of 400 at 10% against 47 at 0%), so the pattern search sticks
+  at the stage as authored. The check is "the foe stumbles at least once
+  in 50–70% of the walker's tries", still a band on `walk`.
+- **The knobs are over `Stage`, not `(map, Tuning)`.** 2126's entrants
+  start a `Stage`, and a stage at turn 1 is its map and its tuning, so a
+  knob retunes the stage (`Stage::retuned`) and the entrants stay as they
+  are. Each knob holds the authored value it counts its steps from.
+- A change is a `Change { knob, step, what }` struct, not a tuple. The
+  stop of a search that lands is `Stop::InBands`.
+- A knob at 0 isn't applied. A search stopped by `Stuck` or `Budget`
+  keeps its setting only when it plays nearer its bands at `tries` than
+  the stage as authored, and the quick runs keep one evaluation back for
+  that full run, so `evaluations` is never passed.
+- The strides halve as a shift by a pass number, each pass makes at most
+  one move per evaluation, and the prune walks a finite range, so no
+  mutant of a comparison or a counter can stall the search (what 2128's
+  mutation shards ran into).
+
+Follow-up tickets: none. 1134's search clause now says the autobalance
+search is done.
+
+For the game: nothing breaks. `Stage` (hello-grid) is the only type that
+changed, and `shuyi-core` only gains items. The game PR that moves the
+pin is game#0509's (not opened yet): it writes the battle's knobs and
+makes `cargo xtask autobalance` a thin wrapper over `autobalance`.
+
+Nick input: none.

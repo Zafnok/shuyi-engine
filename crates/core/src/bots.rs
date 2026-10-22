@@ -2,9 +2,11 @@
 //! loop that lets them play a game to its end, a seeded random bot, two
 //! bots that plan on copies of the game (over [`determinize`]): one that
 //! weighs its next command alone ([`rollout`]) and one that plans its
-//! side's whole turn, several commands deep ([`plan`]), and a playtest
+//! side's whole turn, several commands deep ([`plan`]), a playtest
 //! runner that lets several bots play a stage many times and checks how
-//! often each succeeds ([`playtest`]).
+//! often each succeeds ([`playtest`]), and an autobalance search that
+//! changes the stage, never the bots, until each succeeds about as often
+//! as wanted ([`balance`]).
 //!
 //! A game's own bots (a baseline, personas) implement [`Bot`] for its
 //! state, and its measures watch the loop through [`play_observed`]. Bots
@@ -17,11 +19,13 @@ use core::fmt;
 use crate::rng::SimRng;
 use crate::turn::TurnRules;
 
+pub mod balance;
 pub mod determinize;
 pub mod plan;
 pub mod playtest;
 pub mod rollout;
 
+pub use balance::{BalanceSettings, Balanced, Knob, Stop, autobalance};
 pub use determinize::{Determinize, Evaluate};
 pub use plan::{PlanSearch, PlanSettings, TurnPlan};
 pub use rollout::{Horizon, Order, Playout, Rollout, RolloutSearch, RolloutSettings, Unordered};

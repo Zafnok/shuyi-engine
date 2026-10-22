@@ -19,18 +19,18 @@ cargo test -p hello-grid             # the tests
 
 | Path | What |
 | ---- | ---- |
-| `src/rules.rs` | The rules, over the engine's `TurnRules` and `Sides`; the foe's mind (`Chase`, a `Bot`); and what a rollout bot plans with: the stage's `Determinize` (the luck redrawn), its `score`, and `Walk`, a plain walker for your piece |
+| `src/rules.rs` | The rules, over the engine's `TurnRules` and `Sides`, and a stage's `Tuning` (the foe's trip chance, and how many turns it waits); the foe's mind (`Chase`, a `Bot`); and what a rollout bot plans with: the stage's `Determinize` (the luck redrawn), its `score`, and `Walk`, a plain walker for your piece |
 | `src/screens.rs`, `src/screens/stage.rs` | The screens: title, scene, stage, end; the options' rows |
 | `src/skin.rs`, `src/map.rs` | The look: each screen's view painted with glyphs; the map's terrains, pieces and both skins |
 | `src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
 | `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
 | `src/main.rs` | The binary: what the platform shell needs to know |
-| `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`), and the tool program `shuyi` runs them in |
+| `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
 | `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
 | `files-src/` | Not embedded: the font the atlas is made from |
 | `shuyi.ron` | The project file of the engine's tools |
 | `playtest.ron` | The playtest's checks: how often each hero should reach the goal (`cargo shuyi playtest`) |
-| `tests/it/` | A playthrough, bots and a playtest, the tool contract, determinism, options and key rebinding, profiles, the files, and pictures as snapshots |
+| `tests/it/` | A playthrough, bots, a playtest and an autobalance search (`balance.rs`: a foe that never trips is tuned until the walker sees it stumble in 50–70% of tries), the tool contract, determinism, options and key rebinding, profiles, the files, and pictures as snapshots |
 
 ## Files made by the tools
 

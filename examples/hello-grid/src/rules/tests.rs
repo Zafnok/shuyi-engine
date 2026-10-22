@@ -307,3 +307,73 @@ fn errors_say_what_was_refused() {
     );
     assert_eq!(Error::Blocked(Dir::Up).to_string(), "the foe can't step Up");
 }
+
+fn tuned(seed: u64, tuning: Tuning) -> Stage {
+    corridor(seed).retuned(tuning)
+}
+
+#[test]
+fn the_tuning_sets_the_trip_chance() {
+    let never = Tuning {
+        trip_percent: 0,
+        ..Tuning::default()
+    };
+    let mut s = tuned(seed_where(true), never);
+    s.apply(&Command::Move(p(1, 1))).unwrap();
+    assert_eq!(
+        s.apply(&Command::Step(Some(Dir::Right))).unwrap(),
+        [Event::Stepped {
+            from: p(3, 1),
+            to: p(4, 1)
+        }]
+    );
+    let always = Tuning {
+        trip_percent: 100,
+        ..Tuning::default()
+    };
+    let mut s = tuned(seed_where(false), always);
+    s.apply(&Command::Move(p(1, 1))).unwrap();
+    assert_eq!(
+        s.apply(&Command::Step(Some(Dir::Right))).unwrap(),
+        [Event::Tripped]
+    );
+}
+
+#[test]
+fn a_foe_that_waits_skips_its_first_turns() {
+    let waits = Tuning {
+        foe_waits: 2,
+        ..Tuning::default()
+    };
+    let mut s = tuned(0, waits);
+    for turn in 1..=2 {
+        assert_eq!(
+            s.apply(&Command::Move(p(1, 1))).unwrap().last(),
+            Some(&Event::Waited)
+        );
+        assert_eq!((s.side_to_move(), s.turn()), (Side::Hero, turn + 1));
+    }
+    s.apply(&Command::Move(p(1, 1))).unwrap();
+    assert_eq!((s.side_to_move(), s.turn()), (Side::Foe, 3));
+    assert_eq!(s.foe(), p(3, 1));
+}
+
+#[test]
+fn only_a_tuning_other_than_the_default_is_written() {
+    let plain = ron::to_string(&corridor(0)).unwrap();
+    assert!(!plain.contains("tuning"), "{plain}");
+    assert_eq!(corridor(0).tuning(), Tuning::default());
+    let waits = Tuning {
+        foe_waits: 1,
+        ..Tuning::default()
+    };
+    let written = ron::to_string(&tuned(0, waits)).unwrap();
+    assert!(written.contains("foe_waits:1"), "{written}");
+    let map = parse_map(
+        "t.map",
+        "(name: \"t\", legend: { '.': \"floor\", '#': \"wall\", '>': \"goal\" }, \
+         features: { (1, 1): Hero, (3, 1): Foe })\n---\n#######\n#....>#\n#######",
+    )
+    .unwrap();
+    assert_eq!(Stage::with_tuning(&map, 0, waits).unwrap(), tuned(0, waits));
+}

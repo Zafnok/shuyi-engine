@@ -5,6 +5,7 @@
 //! rebinding, its profiles, its files, its look on a one-bit screen, its pack, pictures
 //! of its frames, and a sleep and a wake.
 
+mod balance;
 mod bots;
 mod contract;
 mod controls;
