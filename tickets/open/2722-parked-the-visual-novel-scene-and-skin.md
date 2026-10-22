@@ -134,8 +134,8 @@ None.
   a `VnPresenter`:
   - it reacts to `UiAction`s only (the `input-actions` skill): Confirm
     advances through `on_advance`, Up and Down move the selected choice,
-    Confirm picks it. It declares them through `Screen::actions` if 3002
-    is done;
+    Confirm picks it. It declares them through `Screen::actions`
+    (3002);
   - it never names a key or a button, in code or in text;
   - it returns the story's outcome to the flow screen when the story
     ends.

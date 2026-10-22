@@ -115,8 +115,7 @@ None.
 
 **Out (do not do):**
 - **an optimized mesh format.** It is derived at bake time in 2204's
-  pack and tested equal to its glTF (ADR-0011 §4, ADR-0007 §4). Write
-  that as a parked follow-up ticket when 2204 is done;
+  pack and tested equal to its glTF (ADR-0011 §4, ADR-0007 §4): 3111;
 - glTF's node tree and scenes (a level with many placed meshes). Write
   a ticket if 3108 needs one;
 - glTF cameras and lights (they come from the scene, 3103);

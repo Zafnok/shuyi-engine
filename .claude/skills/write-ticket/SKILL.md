@@ -85,13 +85,19 @@ missing id means a session starts work it can't finish.
 - **Each open ticket the text names** is one of three things, and the
   ticket says which:
   - *needed first*: it goes in `blocked_by`;
-  - *either order works*: the text says what to do in each case;
+  - *either order works*: the text says what to do in each case, in
+    the words the ticket lint reads: "**Either order with NNNN:** if
+    NNNN is done, …; if not, …". The PR that closes NNNN settles it
+    (the `work-ticket` skill, §5);
   - *not this ticket's job*: it goes under **Out**.
 - **Look the other way too.** Search `tickets/open/` for tickets this one
   unblocks or makes wrong, and update them in the same PR.
 - **Game tickets** go in `blocked_by` as `"game#NNNN"`. If the engine
   change needs a game change, write that ticket in the game repository
   too, and link both ways.
+- **A follow-up you can name now, write now**, instead of promising one
+  for later. It is parked if its work is parked, and its `blocked_by`
+  holds what it waits for.
 - **Parked work.** A follow-up of a parked ticket is parked too: give it
   the `Parked:` title prefix and the note.
-- Run `cargo xtask ticket-lint` (after 2002 lands).
+- Run `cargo xtask ticket-lint`.

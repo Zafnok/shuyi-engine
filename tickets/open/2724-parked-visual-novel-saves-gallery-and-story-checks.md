@@ -88,7 +88,7 @@ None.
     load as optional actions of `VnAction` (2723), also in the quick
     menu;
   - they react to actions only, and declare them through
-    `Screen::actions` if 3002 is done.
+    `Screen::actions` (3002).
 - **Thumbnails** in `shuyi_vn::view::thumb`:
   - render the current `VnScene` with `VnSkin` into a `Frame`, then
     turn the frame into pixels with the code behind `frame-png`, scaled

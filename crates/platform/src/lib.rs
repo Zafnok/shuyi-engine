@@ -1,4 +1,4 @@
-//! Shuyi Engine's platform boundary (ADR-0008 §2, ADR-0023): the
+//! Shuyi Engine's platform boundary (ADR-0008 §2, ADR-0024): the
 //! [`Platform`] trait a backend implements, and [`App`], which runs one
 //! frame of a game each time the backend's own loop calls
 //! [`App::frame`] with its clock.

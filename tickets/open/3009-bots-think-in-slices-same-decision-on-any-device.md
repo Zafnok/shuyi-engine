@@ -66,11 +66,9 @@ None.
   `step(u32::MAX)` give the same answer on every fixture. 2113's minimax
   and MCTS bots implement `Think` when they land (2113 waits for this
   ticket). The game's own enemy AI implements it in the game, in the PR
-  that moves the pin. Either order with 2125: if it is done, add
-  `impl Think for RolloutSearch` (`step(units)` is its
-  `advance(units)`) and a slicing test on its fixtures; if not, 2125's
-  `RolloutSearch::advance` is written to fit and its PR adds nothing
-  here.
+  that moves the pin. 2125's bot is done: add `impl Think for
+  Rollout` (`step(units)` is its `advance(units)`) and a slicing test on
+  its fixtures.
 - **A frame-time budget in `App`.** `shuyi-platform`'s `App` gives a
   thinking bot `units_per_frame` from the target profile (a new
   `budgets.think_units_per_frame`; calibrated by 3011 and 3013). The

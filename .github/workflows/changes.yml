@@ -2,7 +2,7 @@ name: Changes
 
 # Reusable: decides whether a pull request touches anything besides docs, so
 # heavy jobs can be skipped with `if:` (a skipped job still reports a status,
-# unlike a workflow skipped by a `paths` filter). See ADR-0014.
+# unlike a workflow skipped by a `paths` filter). See game ADR-0014.
 #
 # Docs-only paths: `*.md` anywhere, `docs/**`, `tickets/**`, `.claude/**`.
 # Any other event (push, schedule, workflow_dispatch) always counts as code.

@@ -620,5 +620,6 @@ Video (2909) waits with the visual novels.
 | 3036–3037 | Store services: achievements and stats as data with a local backend, an unlock notice and an achievements screen, then Steam achievements, stats and Steam Cloud saves behind the `steam` feature | Nick asks (2026-10-20: "make sure steam achievements and cloud saves are covered by some ticket so it's not lost") |
 | 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3034 is unparked |
 | 3110 | 3D animation: several clips blended at once, and morph targets from glTF | 3D is unparked |
+| 3111 | 3D meshes in the pack: meshes, materials, skeletons and clips baked as postcard sections and proven equal to their glTF | 3D is unparked |
 | 2807 | A custom domain for the website | Nick has a domain (2026-10-20: "can use custom domain later") |
 | 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |

@@ -119,8 +119,8 @@ None.
   - `BoardScreen` reacts to `UiAction`s and the pointer (2405: hit
     areas in the frame, hover and click) where there is one. Adding an
     item opens 2727's case file in `Choose`
-    mode. Filling a slot opens a list. It declares its actions (3002) if
-    3002 is done, and fits the `playdate` fixture layout then;
+    mode. Filling a slot opens a list. It declares its actions (3002), and
+    fits the `playdate` fixture layout;
   - `BoardSkin`: text, slots and lists as glyph cells; item pictures
     as sprite items.
 

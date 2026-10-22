@@ -6,10 +6,12 @@
 //! ([`font`]), named colours ([`palette`], [`ink`]) and their one-bit
 //! patterns ([`onebit`]), lights ([`lighting`]),
 //! the audio manifest ([`audio`]) and the credits ([`credits`]); the `.map`
-//! text format of a grid map ([`grid_map`]); keymap files, generic over a
+//! text format of a grid map ([`grid_map`]) and a tileset's terrain tiles
+//! ([`tileset`]); keymap files, generic over a
 //! game's actions ([`keymap`]); and the text of a story game:
 //! languages ([`lang`]), a names table ([`names`]), dialogue scripts
-//! ([`dialogue`]), voice clips by line ([`voice`]) and tips ([`tip`]); and
+//! ([`dialogue`]), voice clips by line ([`voice`]), tips ([`tip`]) and
+//! word wrap for text boxes ([`text`]); and
 //! cinematics, timed shots of a game's own kinds ([`cinematic`]); and
 //! export targets' profiles ([`target`]). Each
 //! is a pure parser; the game names its files, says what its own rules add,

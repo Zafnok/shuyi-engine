@@ -226,10 +226,10 @@ None.
     with that version's `/v<x.y>/llms-full.txt`.
 - **Either order with 2511**, which rewrites the blank template: change
   the sentence that links the engine's `AGENTS.md` wherever it then is.
-- **Either order with 2803, 2004 and 2509:** 2803's pages are in
+- **Either order with 2803 and 2004:** 2803's pages are in
   `site/content/learn/tutorial/`, so they get twins and an H2 with no
   change here. 2004's guides (`docs/guides/`) and 2509's error pages
-  (`crates/cli/errors/`) reach Learn through 2802. If they land in
+  (`crates/cli/errors/`, already written) reach Learn through 2802. If they land in
   `site/content/learn/` as Markdown files before `zola build`, they get
   twins too, as long as `ci.yml` makes the same copy before its `cargo
   xtask llms`. If they come in through a shortcode, that ticket's PR

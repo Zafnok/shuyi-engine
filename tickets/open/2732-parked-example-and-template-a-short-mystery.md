@@ -84,9 +84,8 @@ None.
     statement with the meter;
   - `shuyi check` on the example passes, with the fair-play check and
     no warnings. CI runs it;
-  - if 3002 is done: `shuyi check --target playdate` and
-    `--target steam-deck` pass on the example. If not, 3002 adds the
-    example to its list.
+  - `shuyi check --target playdate` and `--target steam-deck` pass on
+    the example (3002).
 - **The web build** of the example builds in CI, like the other
   examples.
 - **The template part** (ADR-0013, 2501): `kind-mystery` in

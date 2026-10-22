@@ -221,8 +221,7 @@ None.
   8 × 16 cells) through `BasicGame::console`, if the fight fits it.
   `shuyi.ron` then lists `playdate` (frame `(400, 240)`, scale
   `integer`, text 16 px) beside `desktop`, `web` and `steam-deck`, and
-  the palette's roles stay apart in 1-bit (3006's check, if 3006 is
-  done). If it doesn't fit, use `ConsoleSpec::text(48, 24)` as hello-grid does,
+  the palette's roles stay apart in 1-bit (3006's check). If it doesn't fit, use `ConsoleSpec::text(48, 24)` as hello-grid does,
   and the README says why the Playdate is left out, as hello-grid's
   does.
 - **The font:** the screens draw only glyphs of 2511's `BASIC_GLYPHS`

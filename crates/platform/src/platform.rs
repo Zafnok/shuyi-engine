@@ -1,4 +1,4 @@
-//! [`Platform`]: what a backend gives the engine (ADR-0008 §2, ADR-0023),
+//! [`Platform`]: what a backend gives the engine (ADR-0008 §2, ADR-0024),
 //! and the plain data that crosses it: the time ([`Millis`]), the
 //! display ([`DisplayInfo`]), a [`Frame`] to show and the system's
 //! events ([`SystemEvent`]).

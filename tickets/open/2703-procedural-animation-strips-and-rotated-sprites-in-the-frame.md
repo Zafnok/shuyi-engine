@@ -47,8 +47,7 @@ None.
 - **Renderers**: `shuyi-app` and the raster (`shuyi_ui::frame::raster`,
   2332) draw strips, with the same pixels on a test scene that goes on
   2018's render card.
-- **1-bit**: if 3006 is done, strips fill with their role's pattern.
-  Otherwise, write a follow-up ticket for it and link it from 3006.
+- **1-bit**: strips fill with their role's pattern (3006).
 - **A default skin** in the module: chains as strips, pieces as rotated
   sprites (2335), sorted by the body's lowest point.
 

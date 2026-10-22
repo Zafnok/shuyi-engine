@@ -143,9 +143,7 @@ None.
   - `text` shows each run's stamp; the contract's `VERSION` goes up and
     the schemas and `crates/cli/schemas/versions.json` are regenerated
     (ADR-0022 §5);
-  - **Either order with 2509:** if it is done, the refusal gets its own
-    problem code and help. If not, 2509 gives it one with the contract's
-    other errors.
+  - the refusal gets its own problem code and help (2509's table).
 - **The grid template and hello-grid stamp their records:**
   - each crate's `lib.rs` gets `pub fn made() -> Made`:
     `Made::new(stamp, bundle.fingerprint())` over the bundle of its

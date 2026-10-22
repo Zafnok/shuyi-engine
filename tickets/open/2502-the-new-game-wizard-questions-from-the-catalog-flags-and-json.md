@@ -67,8 +67,7 @@ asked is missing.
      a concern none of whose answers applies to the perspectives picked
      (bodies and motion isn't asked for grid-only games, ADR-0013 §1);
   4. the template's own questions;
-  5. the targets (`Many`), from the target profiles (3001) if 3001 is
-     done; if not, only `desktop` and `web`, and 2504 widens it.
+  5. the targets (`Many`), from the target profiles (3001).
 
   Each answer carries its status (`Ready`, `Planned { ticket }`,
   `Parked { ticket }`) and a one-line description from the module's

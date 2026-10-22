@@ -1,5 +1,5 @@
 //! [`App`]: a whole game behind one call per frame, for the backend's own
-//! loop (ADR-0008 §2, ADR-0023). The backend calls [`App::frame`] with its
+//! loop (ADR-0008 §2, ADR-0024). The backend calls [`App::frame`] with its
 //! clock; `App` reads the system's events and the input from the
 //! [`Platform`], steps the game ([`Game`]: its screens and input state)
 //! and its fixed simulation steps ([`TickClock`]), hands the frame's audio

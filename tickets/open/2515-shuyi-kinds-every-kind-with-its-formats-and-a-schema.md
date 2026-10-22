@@ -246,9 +246,8 @@ None.
 - **Either order with 1133:** if `shuyi mcp` makes its tools from
   `Op::ALL`, `kinds` is a tool with no more work. If it lists them by
   hand, add `kinds`, and to its test that lists every tool.
-- **Either order with 2509:** if problem codes exist, the unknown kind
-  takes `SH0001` (`wrong-arguments`), as `import --kind` with no such
-  kind does. If not, 2509 adds it.
+- **Problem codes (2509):** the unknown kind takes `SH0001`
+  (`wrong-arguments`), as `import --kind` with no such kind does.
 - **Either order with 2013:** if 2013 is done, the new public types
   (`KindFormats`, `FormatInfo`, the op's input and output) follow its
   ADR.

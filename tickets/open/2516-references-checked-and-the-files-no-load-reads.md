@@ -225,9 +225,8 @@ None.
   as read when its file was read, and a `_folder.meta` when any file in
   its folder or below was read. If not, the ADR states that rule, and
   2229 follows it.
-- **Either order with 2509:** if 2509 is done, the dangling-reference
-  error and the unread-file warning get codes and help. If not, 2509
-  gives them codes.
+- **Problem codes (2509):** the dangling-reference error and the
+  unread-file warning get codes and help.
 - **Either order with 2515:** if 2515 is done, `Ref<K>` implements
   `JsonSchema` behind its `schema` feature: a string whose description
   names kind `K`. If not, 2515 adds that impl with the feature.

@@ -7,17 +7,22 @@
 //! - [`input`]: a game's actions from keys and controller buttons through
 //!   a keymap, held keys and repeat, the player's saved bindings and the
 //!   names of keys in help text;
-//! - [`screen`]s on a stack, the context they share ([`Ctx`], with the
-//!   game's part in it, [`GameData`]) and the frame loop ([`Game`]), with
-//!   the player's [`settings`] and [`profiles`], [`storage`], [`audio`]
-//!   requests and the music, and [`text`] placeholders;
+//! - [`screen`]s on a stack, the context they share ([`ctx`]: [`Ctx`],
+//!   with the game's part in it, [`GameData`]) and the frame loop
+//!   ([`game`]: [`Game`]), with the player's [`settings`] and
+//!   [`profiles`], [`storage`], [`audio`] requests and the music, and
+//!   [`text`] placeholders;
 //! - a `toy` game to try things on (the `toy` feature); the test Harness
 //!   that drives a game without a window is `shuyi_platform::harness`;
-//! - the [`system_keyboard`] a text box may ask the platform for.
+//! - the [`system_keyboard`] a text box may ask the platform for;
+//! - the float methods `core` lacks, for the `no_std` build ([`float`]).
 //!
-//! - [`widgets`] screens are built from: a menu and word wrap;
-//! - [`screens`] any game can use, with the game's rows: the layout
-//!   picker and the Key bindings screen;
+//! - [`widgets`] screens are built from (that module lists them);
+//! - [`screens`] any game can use, with the game's rows (that module
+//!   lists them);
+//! - [`dialogue`]: a `.dlg` scene played one text box at a time;
+//! - one-time [`tips`] and which have been shown;
+//! - the developer's [`debug`] screens;
 //! - a [`hurry`] clock for something timed the player can hurry by
 //!   holding a key and finish with a press;
 //! - [`cinematic`]s: a timeline of a game's shots, each frame drawn from

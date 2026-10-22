@@ -75,8 +75,7 @@ None.
   - a save made mid-story restores to the same state;
   - `shuyi check` passes on the example with no problems, and
     `shuyi route-chart` matches a checked-in Mermaid file;
-  - if 3002 is done, `shuyi check --target playdate` and `--target
-    steam-deck` pass.
+  - `shuyi check --target playdate` and `--target steam-deck` pass.
 - **The template part** (2501): in `templates/shuyi-default/`, a part
   `kind-visual-novel`, `when: Picked(kind, visual-novel)`:
   - it turns on the `vn` module, adds a story stage, a starter `.dlg`

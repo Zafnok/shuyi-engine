@@ -70,9 +70,7 @@ None.
 - **The readout** (2316): one line, "frame 4.1 ms (p99 7.9)". It comes
   before 2368's heap line.
 - **Measuring in `shuyi-app`:** around update, draw, paint and present,
-  with the backend's clock. **Either order with 3003:** if 3003 is
-  done, through its `Platform`; if not, in `shuyi-app` directly, and
-  3003 moves it.
+  with the backend's clock, through 3003's `Platform`.
 - **`frame-png --debug profile`** works with the fake clock, which
   moves by fixed amounts per phase and span, so its snapshot is stable.
 - **Saving a profile:** a "Save profile" entry on the debug menu writes

@@ -82,10 +82,8 @@ None.
   line keeps it for a developer who turns it on. If 3050 isn't done,
   3050's scope says it does this when it lands.
 - **Target parts** in the built-in template:
-  - `target-playdate`, when `playdate` is picked: if 3006 is done, a
-    palette pattern map with the template's roles; if 3002 is done, its
-    check in CI. If either isn't done, the part leaves it out, and that
-    ticket adds it (their scopes say so);
+  - `target-playdate`, when `playdate` is picked: a palette pattern
+    map with the template's roles (3006), and its check in CI (3002);
   - `target-steam-deck`, when `steam-deck` is picked: if 3012 is done,
     its export in the matrix; if not, 3012 adds it (its scope says so).
 - **The JSON** of `--questions` (2502) gives each module's `needs` and

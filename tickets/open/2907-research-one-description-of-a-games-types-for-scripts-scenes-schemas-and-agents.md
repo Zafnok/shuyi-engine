@@ -226,9 +226,7 @@ None. This is technical.
   it, extend it to a game's state and view types, and state any
   difference. If not, this ADR decides, and 2515 follows it (its own
   clause says so).
-- **Either order with 2125:** if 2125 is done, point 4 starts from its
-  `Determinize`. If not, 2125's ADR says how `Determinize` fits this one
-  (its own clause says so).
+- Point 4 starts from 2125's `Determinize`.
 - `docs/adr/README.md`: the new ADR's row, and "extended by ADR-NNNN" on
   the rows of ADR-0005, ADR-0009 and ADR-0022.
 

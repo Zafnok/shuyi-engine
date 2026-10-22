@@ -92,8 +92,7 @@ None.
   on its walk (`shuyi_platform::harness::walk`: its `Stop` list and its
   cut finding) and run it at every offered size. If not, write the
   check so 2353 can reuse it, and 2353 moves it onto its walk.
-  **Either order with 3001:** if 3001 is done, its text check runs at
-  every offered size too.
+  3001's text check runs at every offered size too.
 - **The toy game** offers two sizes, and its tests run the check.
 - **The guide**, `docs/accessibility.md` (created here, or by 2322 if it
   is done first): lay screens out from `buf.cols()` and `buf.rows()`,
