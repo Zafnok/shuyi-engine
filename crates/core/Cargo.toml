@@ -16,9 +16,13 @@ workspace = true
 [features]
 default = ["std"]
 std = ["serde/std"]
+# JSON schemas of the playtest report and its checks, for the tool
+# contract (`shuyi-cli`).
+schema = ["dep:schemars"]
 
 [dependencies]
 serde.workspace = true
+schemars = { version = "1", optional = true, default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 proptest.workspace = true

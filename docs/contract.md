@@ -20,6 +20,7 @@ are the other two ways to reach them.
 | `scene [steps]` | The same, answering with the scene or stage on screen | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
+| `playtest [--tries N]` | Each of the game's named bots plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. It fails only when a bot falls under a check's floor | the game |
 | `import <file> [--kind K] [--print]` | Reads a file through the format registry as every kind that knows it, or gives its errors | the game's kinds, or the engine's |
 | `bake [--target <id>] [--out <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors | the game |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker on the Windows GNU toolchain, and the web target, and says how to fix each | nothing |
@@ -29,8 +30,8 @@ A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
 released in turn), `--pad "South"` (controller buttons, by position) or
 `--wait 0.5` (seconds). Key and button names are the Harness's test-script
 names. The game's own start options (`frame-png --help` lists them, such
-as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene` and `bots`
-too.
+as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots` and
+`playtest` too.
 
 From a game's folder, `cargo shuyi <op>` runs them (the alias the
 templates write in `.cargo/config.toml`, or the engine's for its own
@@ -99,6 +100,7 @@ doesn't offer it:
 | `session` | `run`, `scene` | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON) and `with_events` (its rules' events) |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)` |
 | `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
+| `playtest` | `playtest` | its `Entrant`s, `Measure` and checks (a data file of `shuyi_core::bots::playtest::Check`s), run by `playtest::run` |
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
 | `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 

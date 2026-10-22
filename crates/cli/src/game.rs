@@ -5,7 +5,7 @@
 //! names that program ([`crate::project::GameProgram`]) and `shuyi` runs
 //! it with `cargo run` for the commands that run the game: `frame-png`,
 //! `lang-status`, and the contract's `check`, `run`, `scene`, `replay`,
-//! `bots`, `import` and `bake`.
+//! `bots`, `playtest`, `import` and `bake`.
 
 use std::process::Command;
 
@@ -20,8 +20,11 @@ use shuyi_assets::pack::Bake;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_ui::input::fit::Controls;
 
+use shuyi_core::bots::playtest::PlaytestReport;
+
 use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::import::Importers;
+use crate::contract::playtest::PlaytestInput;
 use crate::contract::replay::{Record, ReplayRun};
 use crate::contract::session::Session;
 use crate::frame_png::{Script, Shot};
@@ -162,6 +165,14 @@ pub trait GameTools {
         Err(unsupported("bots", "bots"))
     }
 
+    /// `playtest`: the tries `input` asks for, of each of the game's named
+    /// bots, measured and judged by the game's checks
+    /// ([`run`](shuyi_core::bots::playtest::run)).
+    fn playtest(&self, input: &PlaytestInput) -> Result<PlaytestReport, String> {
+        let _ = input;
+        Err(unsupported("playtest", "playtest"))
+    }
+
     /// `import`: the kinds and formats to read a file with. The engine's
     /// standard ones unless the game adds its own.
     fn importers(&self) -> Importers {
@@ -285,6 +296,8 @@ mod tests {
         );
         let bots = Plain.bots(&BotsInput::default()).unwrap_err();
         assert!(bots.contains("GameTools::bots"));
+        let playtest = Plain.playtest(&PlaytestInput::default()).unwrap_err();
+        assert!(playtest.contains("GameTools::playtest"));
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
         assert!(Plain.controls().is_none());
         assert!(Plain.one_bit("playdate").is_none());

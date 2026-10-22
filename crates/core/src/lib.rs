@@ -3,7 +3,8 @@
 //! and bots that play a game to its end, among them a rollout bot that
 //! plans on copies of the game: [`Determinize`], [`Evaluate`], [`Order`],
 //! [`Unordered`], [`Playout`], [`Rollout`], [`RolloutSettings`],
-//! [`RolloutSearch`] and [`Horizon`]), a hash of a state that replays
+//! [`RolloutSearch`] and [`Horizon`], and a playtest runner that checks
+//! how often each of several bots succeeds, [`bots::playtest`]), a hash of a state that replays
 //! compare, with what text and stories need below the assets: character
 //! ids and the `{token}` splitter.
 //!

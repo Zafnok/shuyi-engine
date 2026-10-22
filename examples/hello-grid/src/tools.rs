@@ -2,7 +2,8 @@
 //! frame, painted with the game's own font and tileset), `lang-status`,
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
-//! against the foe's mind), `import` (the stage's `.map` and the
+//! against the foe's mind), `playtest` (a random hero and a walker,
+//! [`ENTRANTS`], judged by `playtest.ron`), `import` (the stage's `.map` and the
 //! keymap besides the engine's kinds), `bake` (its text baked into a
 //! pack, [`crate::bake`]), the controls `check --target` checks
 //! ([`controls`]), and its look on a one-bit target: the pattern map
@@ -21,19 +22,25 @@ use shuyi_assets::onebit::PatternMapDef;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
+use shuyi_cli::contract::playtest::PlaytestInput;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
-use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play_observed};
+use shuyi_core::bots::playtest::{
+    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries,
+};
+use shuyi_core::{
+    Bot, Determinize, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
+};
 use shuyi_platform::harness::Harness;
 use shuyi_ui::frame::onebit::{Font, PatternMap, to_one_bit};
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::{Game, GameData, GameHooks};
 
 use crate::map::Terrain;
-use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage};
+use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Walk};
 use crate::screens::StageScreen;
 use crate::{Action, FONT_PNG, Hello, MapLook};
 
@@ -229,6 +236,22 @@ impl GameTools for HelloTools {
         Ok(tally(plays))
     }
 
+    /// [`ENTRANTS`] on the stage, judged by `playtest.ron`.
+    fn playtest(&self, input: &PlaytestInput) -> Result<PlaytestReport, String> {
+        if let Some(option) = input.start.first() {
+            return Err(format!(
+                "playtest takes no start option, not {}",
+                option.flag
+            ));
+        }
+        let tries = Tries {
+            count: input.tries,
+            seed: input.seed,
+            turns: input.turns,
+        };
+        playtest_run(&tries)
+    }
+
     fn importers(&self) -> Importers {
         let mut importers = Importers::standard();
         // Neither kind has a format in the standard registry, so neither
@@ -364,6 +387,93 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
         commands: u32::try_from(report.commands.len()).unwrap_or(u32::MAX),
         measures: BTreeMap::from([("foe trips".to_owned(), trips)]),
         record: ron::to_string(&record).ok(),
+    })
+}
+
+/// How a playtest measures a try of the stage: `won` (1 if your piece
+/// reached the goal, else 0), `turns` (the turn it stopped on) and `foe
+/// trips` (how often the foe tripped).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct StageMeasure {
+    trips: i64,
+}
+
+impl Measure<Stage> for StageMeasure {
+    fn observe(&mut self, _: &Stage, _: &Command, events: &[Event]) {
+        self.trips += i64::from(events.contains(&Event::Tripped));
+    }
+
+    fn finish(self: Box<Self>, report: &Report<Stage>, _: &Stage) -> Measures {
+        let won = matches!(report.outcome, Some(Outcome::Won { .. }));
+        Measures::from([
+            ("won".to_owned(), i64::from(won)),
+            ("turns".to_owned(), i64::from(report.turns)),
+            ("foe trips".to_owned(), self.trips),
+        ])
+    }
+}
+
+/// A playtest's hero: a named bot for your piece against the foe's mind
+/// ([`Chase`]).
+#[derive(Debug, Clone, Copy)]
+pub struct Hero {
+    /// Its name in `playtest.ron`.
+    pub name: &'static str,
+    /// Its bot for the try of a seed.
+    pub bot: fn(u64) -> Box<dyn Bot<Stage>>,
+}
+
+impl Entrant<Stage, Stage> for Hero {
+    fn name(&self) -> &str {
+        self.name
+    }
+
+    /// The stage with its luck seeded `seed` (a copy whose luck is
+    /// redrawn is the stage of that seed).
+    fn start(&self, stage: &Stage, seed: u64) -> Stage {
+        stage.determinize(Side::Hero, seed)
+    }
+
+    fn bots(&self, seed: u64) -> Vec<(Side, Box<dyn Bot<Stage>>)> {
+        vec![(Side::Hero, (self.bot)(seed)), (Side::Foe, Box::new(Chase))]
+    }
+
+    fn measure(&self) -> Box<dyn Measure<Stage>> {
+        Box::new(StageMeasure::default())
+    }
+}
+
+/// The playtest's heroes: `random` (a random bot of the try's seed) and
+/// `walk` ([`Walk`], to the tile in reach nearest the goal).
+pub const ENTRANTS: [Hero; 2] = [
+    Hero {
+        name: "random",
+        bot: |seed| Box::new(RandomBot::new(seed)),
+    },
+    Hero {
+        name: "walk",
+        bot: |_| Box::new(Walk),
+    },
+];
+
+/// The playtest's checks, `playtest.ron` beside `shuyi.ron`: the tools'
+/// data, not the game's, so not in `files/` and its pack.
+pub fn playtest_checks() -> Result<Vec<Check>, String> {
+    let text = include_str!("../playtest.ron");
+    ron::from_str(text).map_err(|e| format!("playtest.ron: {e}"))
+}
+
+/// [`ENTRANTS`] play the stage as `tries` says, judged by
+/// [`playtest_checks`].
+pub fn playtest_run(tries: &Tries) -> Result<PlaytestReport, String> {
+    let stage = Stage::new(&loaded()?.stage_map, 0)?;
+    let entrants: Vec<&dyn Entrant<Stage, Stage>> = ENTRANTS
+        .iter()
+        .map(|e| e as &dyn Entrant<Stage, Stage>)
+        .collect();
+    playtest::run(&stage, &entrants, tries, &playtest_checks()?).map_err(|e| match e {
+        PlaytestError::UnknownEntrant(e) => format!("playtest.ron: {e}"),
+        PlaytestError::Play { .. } => e.to_string(),
     })
 }
 

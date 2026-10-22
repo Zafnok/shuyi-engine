@@ -13,6 +13,7 @@
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
 //! | `bots <n>` | the engine's bots play n games: outcomes and measures | [`bots`] |
+//! | `playtest` | the game's named bots each play K tries, judged against its bands | [`playtest`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
@@ -35,6 +36,7 @@ pub mod doctor;
 mod fake;
 pub mod import;
 pub mod new;
+pub mod playtest;
 pub mod replay;
 pub mod run;
 pub mod session;
@@ -45,11 +47,12 @@ use std::fmt::Write as _;
 use schemars::{JsonSchema, Schema, schema_for};
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
+use shuyi_core::bots::playtest::PlaytestReport;
 
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -67,6 +70,8 @@ pub enum Op {
     Replay,
     /// Bots playing the game.
     Bots,
+    /// Named bots' tries judged against the game's checks.
+    Playtest,
     /// A file read through the format registry.
     Import,
     /// The game's sources baked into a pack.
@@ -77,13 +82,14 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 9] = [
+    pub const ALL: [Op; 10] = [
         Op::New,
         Op::Check,
         Op::Run,
         Op::Scene,
         Op::Replay,
         Op::Bots,
+        Op::Playtest,
         Op::Import,
         Op::Bake,
         Op::Doctor,
@@ -98,6 +104,7 @@ impl Op {
             Op::Scene => "scene",
             Op::Replay => "replay",
             Op::Bots => "bots",
+            Op::Playtest => "playtest",
             Op::Import => "import",
             Op::Bake => "bake",
             Op::Doctor => "doctor",
@@ -270,6 +277,7 @@ pub fn schemas() -> Vec<SchemaFile> {
             Op::Scene => pair::<run::RunInput, run::SceneOutput>(op),
             Op::Replay => pair::<replay::ReplayInput, replay::ReplayOutput>(op),
             Op::Bots => pair::<bots::BotsInput, bots::BotsOutput>(op),
+            Op::Playtest => pair::<playtest::PlaytestInput, PlaytestReport>(op),
             Op::Import => pair::<import::ImportInput, import::ImportOutput>(op),
             Op::Bake => pair::<bake::BakeInput, bake::BakeOutput>(op),
             Op::Doctor => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op),

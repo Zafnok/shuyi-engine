@@ -168,6 +168,13 @@ pub fn usage(command: &str, options: &[GameOption]) -> String {
          The game's bots play <games> games (1 to {MAX_GAMES}), seeded N, N + 1, …\n\
          (0 first by default), each stopped at turn --turns (200 by default).\n"
     );
+    out.push_str(&options_text(options));
+    out
+}
+
+/// The game's start `options`, a line each, for a usage.
+pub fn options_text(options: &[GameOption]) -> String {
+    let mut out = String::new();
     for option in options {
         let name = match option.value {
             Some(value) => format!("{} {value}", option.flag),
@@ -204,17 +211,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<BotsInput, 
                 input.turns =
                     u32::try_from(number(&value()?)?).map_err(|_| format!("{arg}: too big"))?;
             }
-            flag if flag.starts_with("--") => {
-                let option = options
-                    .iter()
-                    .find(|option| option.flag == flag)
-                    .ok_or_else(|| format!("unknown option: {flag}"))?;
-                let value = option.value.map(|_| value()).transpose()?;
-                input.start.push(GameArg {
-                    flag: flag.to_owned(),
-                    value,
-                });
-            }
+            flag if flag.starts_with("--") => input.start.push(game_arg(flag, options, value)?),
             text if games.is_none() => {
                 games = Some(
                     text.parse::<u32>()
@@ -226,6 +223,24 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<BotsInput, 
     }
     input.games = games.ok_or("missing <games>")?;
     Ok(input)
+}
+
+/// The game's start option `flag`, one of `options`, with its value from
+/// `value` if it takes one.
+pub fn game_arg(
+    flag: &str,
+    options: &[GameOption],
+    value: impl FnOnce() -> Result<String, String>,
+) -> Result<GameArg, String> {
+    let option = options
+        .iter()
+        .find(|option| option.flag == flag)
+        .ok_or_else(|| format!("unknown option: {flag}"))?;
+    let value = option.value.map(|_| value()).transpose()?;
+    Ok(GameArg {
+        flag: flag.to_owned(),
+        value,
+    })
 }
 
 /// What `bots` found, for people.

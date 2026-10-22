@@ -1,7 +1,8 @@
 //! Playtest bots over any [`TurnRules`] game: players made of code, the
 //! loop that lets them play a game to its end, a seeded random bot, and a
 //! bot that plans on copies of the game ([`rollout`], over
-//! [`determinize`]).
+//! [`determinize`]), and a playtest runner that lets several bots play a
+//! stage many times and checks how often each succeeds ([`playtest`]).
 //!
 //! A game's own bots (a baseline, personas) implement [`Bot`] for its
 //! state, and its measures watch the loop through [`play_observed`]. Bots
@@ -15,6 +16,7 @@ use crate::rng::SimRng;
 use crate::turn::TurnRules;
 
 pub mod determinize;
+pub mod playtest;
 pub mod rollout;
 
 pub use determinize::{Determinize, Evaluate};

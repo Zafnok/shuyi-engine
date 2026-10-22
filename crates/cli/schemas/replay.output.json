@@ -113,6 +113,11 @@
           "const": "bots"
         },
         {
+          "description": "Named bots' tries judged against the game's checks.",
+          "type": "string",
+          "const": "playtest"
+        },
+        {
           "description": "A file read through the format registry.",
           "type": "string",
           "const": "import"
