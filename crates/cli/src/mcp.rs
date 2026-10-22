@@ -38,15 +38,17 @@ pub mod server;
 
 use std::io::{BufRead, Write};
 use std::path::Path;
+use std::process::Command;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use crate::contract::session::{Event, Sound};
-use crate::contract::{Op, op_schemas};
+use crate::contract::{Op, VERSION, op_schemas};
 use crate::frame_png::Script;
 use crate::game::{GameArg, GameOption};
+use crate::project::Project;
 
 /// A session tool's input that takes nothing.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -332,14 +334,19 @@ pub fn usage(command: &str) -> String {
     format!(
         "\
 usage: {command} mcp                    serve the tool contract over MCP on stdin and stdout
+       {command} mcp --ready            build what the server needs, then exit
        {command} mcp install [--dry-run] [--yes] [--command \"<how to run shuyi>\"]
                                      register the server with the agents found here
 
-install shows what it will change and asks before writing, keeping a
-backup of each file it changes; --yes doesn't ask, and --dry-run writes
-nothing and prints each file as it would write it. The server is run as
---command's words and `mcp` (the project's `command` in shuyi.ron, or
-`shuyi`, if not given)."
+--ready builds the server (it runs through the same command) and the
+game's tool program, if shuyi.ron names one, so an agent's first
+connection doesn't wait for a compile: run it after updating the engine,
+then reconnect the server. install shows what it will change and asks
+before writing, keeping a backup of each file it changes, then runs the
+server with --ready; --yes doesn't ask, and --dry-run writes nothing and
+prints each file as it would write it. The server is run as --command's
+words and `mcp` (the project's `command` in shuyi.ron, or `shuyi`, if not
+given)."
     )
 }
 
@@ -360,11 +367,44 @@ pub fn main(args: &[String], cwd: &Path) -> u8 {
             }
         }
         Some((first, rest)) if first == "install" => install::main(rest, cwd),
+        Some((first, [])) if first == "--ready" => ready(cwd),
         Some(_) => {
             eprintln!("{}", usage("shuyi"));
             2
         }
     }
+}
+
+/// `shuyi mcp --ready` in `cwd`: the server is built (this process is
+/// it), and so is the game's tool program if the project names one, with
+/// cargo's output passed through. Returns the exit code: 1 if the program
+/// didn't build.
+fn ready(cwd: &Path) -> u8 {
+    if let Ok(project) = Project::find(cwd)
+        && let Some(program) = &project.config.game
+    {
+        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+        let built = Command::new(cargo)
+            .args(program.cargo_build_args())
+            .current_dir(&project.root)
+            .status();
+        match built {
+            Ok(status) if status.success() => {}
+            Ok(status) => {
+                let code = status
+                    .code()
+                    .map_or_else(String::new, |c| format!(" (exit code {c})"));
+                eprintln!("mcp: the game's tool program didn't build{code}");
+                return 1;
+            }
+            Err(e) => {
+                eprintln!("mcp: cannot run cargo: {e}");
+                return 1;
+            }
+        }
+    }
+    println!("mcp: ready (contract {VERSION})");
+    0
 }
 
 /// Serves MCP messages from `input`, one per line, writing each response

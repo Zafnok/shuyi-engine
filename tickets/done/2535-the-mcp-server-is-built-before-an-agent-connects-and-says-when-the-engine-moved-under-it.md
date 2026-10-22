@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["1133"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2535 — The MCP server is ready before an agent connects, and says when it is out of date
@@ -115,13 +115,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi mcp --ready` builds and prints `mcp: ready (contract N)`;
+- [x] `shuyi mcp --ready` builds and prints `mcp: ready (contract N)`;
       in Hello, Grid's folder it builds its tool program too.
-- [ ] `shuyi mcp install` runs the entry with `--ready` after writing,
+- [x] `shuyi mcp install` runs the entry with `--ready` after writing,
       and not on a dry run.
-- [ ] A host answer of another contract gets the limit naming both
+- [x] A host answer of another contract gets the limit naming both
       versions and the command to run.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -132,5 +132,30 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi mcp --ready` (`mcp::ready`): builds the game's tool program
+  with `GameProgram::cargo_build_args` (the same package, program and
+  features as `cargo_args`, so `start`'s `cargo run` has nothing left to
+  compile), cargo's output passed through, then prints `mcp: ready
+  (contract N)`; 1 if the program doesn't build, 2 for any other
+  argument. In Hello, Grid's folder, `cargo run -q -p shuyi-cli -- mcp
+  --ready` built its tools and printed `mcp: ready (contract 9)`.
+- `mcp install` runs the entry it wrote with `--ready` after writing,
+  through a `ready` closure (the real one is `install::run_ready`, its
+  output passed through), and says how long it took. Over 20 s
+  (`install::SLOW`) it names `MCP_TIMEOUT` (milliseconds), which Claude
+  Code's MCP docs confirm sets the startup wait. Nothing written (a
+  dry run, a declined answer, or files that have the server already)
+  runs nothing. The closure is handed what install has said so far, so
+  the "wrote" lines are printed before the build's output.
+- `server::stale`: a host answer whose `contract` isn't the server's
+  `VERSION` gets the limit, with the project's `command` (the session
+  keeps the command of the project it started). It is added in
+  `answer_of`, so `start`, the session tools and one-off operations all
+  say it.
+- Docs: `docs/contract.md`, *The MCP server*; the usage of `shuyi mcp`
+  and `shuyi`; both templates' `AGENTS.md` row for `mcp install`. The
+  clause in 1134 that waited on this ticket now says to run `cargo shuyi
+  mcp --ready` before reconnecting.
+- game#1181 is still open, so no game ticket was written: it can add
+  `cargo shuyi mcp --ready` before the reconnect itself when it is done.
+- No API a game calls changed (`GameProgram` gained a method).

@@ -16,6 +16,11 @@ fn claude() -> &'static Agent {
     &AGENTS[0]
 }
 
+/// A ready run that must not happen.
+fn no_ready(_: &str) -> Result<Duration, String> {
+    panic!("no ready run")
+}
+
 #[test]
 fn an_entry_runs_the_command_with_mcp() {
     assert_eq!(
@@ -227,7 +232,15 @@ fn a_dry_run_writes_nothing_and_prints_each_file() {
         ..Options::default()
     };
     let mut never = |_: &str| -> bool { panic!("a dry run asks nothing") };
-    let out = install(&dir, &options, &Machine::default(), "shuyi", &mut never).unwrap();
+    let out = install(
+        &dir,
+        &options,
+        &Machine::default(),
+        "shuyi",
+        &mut never,
+        &mut no_ready,
+    )
+    .unwrap();
     let expected = format!(
         "mcp install: would write .mcp.json (Claude Code):\n{}",
         claude().file_text(None, "shuyi").unwrap()
@@ -256,7 +269,7 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
         asked.push(question.to_owned());
         false
     };
-    let out = install(&dir, &options, &machine, "shuyi", &mut no).unwrap();
+    let out = install(&dir, &options, &machine, "shuyi", &mut no, &mut no_ready).unwrap();
     assert_eq!(out, "mcp install: nothing written\n");
     assert!(
         asked[0].starts_with(".mcp.json (Claude Code):\n"),
@@ -268,10 +281,21 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
     assert!(!dir.join(".mcp.json.bak").exists());
 
     let mut yes = |_: &str| true;
-    let out = install(&dir, &options, &machine, "shuyi", &mut yes).unwrap();
+    let mut said = String::new();
+    let mut ready = |so_far: &str| {
+        said.push_str(so_far);
+        Ok(Duration::from_secs(1))
+    };
+    let out = install(&dir, &options, &machine, "shuyi", &mut yes, &mut ready).unwrap();
+    // What it wrote is said before the ready run, which says how long it
+    // took.
+    assert_eq!(
+        said,
+        "mcp install: wrote .mcp.json (Claude Code), its old text in .mcp.json.bak\n"
+    );
     assert_eq!(
         out,
-        "mcp install: wrote .mcp.json (Claude Code), its old text in .mcp.json.bak\n"
+        "mcp install: the server is ready (\"shuyi mcp --ready\" took 1.0 s)\n"
     );
     let backup = fs::read_to_string(dir.join(".mcp.json.bak")).unwrap();
     assert!(!backup.contains("shuyi"));
@@ -282,7 +306,7 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
     );
 
     let mut never = |_: &str| -> bool { panic!("nothing to ask") };
-    let out = install(&dir, &options, &machine, "shuyi", &mut never).unwrap();
+    let out = install(&dir, &options, &machine, "shuyi", &mut never, &mut no_ready).unwrap();
     assert_eq!(
         out,
         "mcp install: .mcp.json (Claude Code) has the server already\n"
@@ -294,14 +318,91 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
         yes: true,
         ..Options::default()
     };
-    let out = install(&dir, &options, &machine, "shuyi", &mut never).unwrap();
+    let mut said = String::new();
+    let mut ready = |so_far: &str| {
+        said.push_str(so_far);
+        Ok(Duration::from_secs(1))
+    };
+    install(&dir, &options, &machine, "shuyi", &mut never, &mut ready).unwrap();
     assert!(
-        out.ends_with("mcp install: wrote .cursor/mcp.json (Cursor)\n")
-            || out.ends_with("mcp install: wrote .cursor\\mcp.json (Cursor)\n"),
-        "{out}"
+        said.ends_with("mcp install: wrote .cursor/mcp.json (Cursor)\n")
+            || said.ends_with("mcp install: wrote .cursor\\mcp.json (Cursor)\n"),
+        "{said}"
     );
     // A file it can't read stops it before anything is written.
     fs::write(dir.join(".cursor/mcp.json"), "{nope").unwrap();
-    assert!(install(&dir, &options, &machine, "cargo shuyi", &mut never).is_err());
+    assert!(
+        install(
+            &dir,
+            &options,
+            &machine,
+            "cargo shuyi",
+            &mut never,
+            &mut no_ready
+        )
+        .is_err()
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_slow_ready_run_says_how_to_wait_longer_and_a_failed_one_is_the_error() {
+    let dir = scratch("ready");
+    let options = Options {
+        yes: true,
+        ..Options::default()
+    };
+    let machine = Machine::default();
+    let mut never = |_: &str| -> bool { panic!("--yes asks nothing") };
+    let mut slow = |_: &str| Ok(SLOW + Duration::from_millis(1500));
+    let out = install(
+        &dir,
+        &options,
+        &machine,
+        "cargo shuyi",
+        &mut never,
+        &mut slow,
+    )
+    .unwrap();
+    let lines: Vec<&str> = out.lines().collect();
+    assert_eq!(
+        lines[0],
+        "mcp install: the server is ready (\"cargo shuyi mcp --ready\" took 21.5 s)"
+    );
+    assert!(lines[1].contains("MCP_TIMEOUT"), "{out}");
+    assert!(
+        lines[1].contains("run \"cargo shuyi mcp --ready\" after each update"),
+        "{out}"
+    );
+    // Just at the line, no hint.
+    fs::remove_file(dir.join(".mcp.json")).unwrap();
+    let mut at = |_: &str| Ok(SLOW);
+    let out = install(&dir, &options, &machine, "shuyi", &mut never, &mut at).unwrap();
+    assert!(!out.contains("MCP_TIMEOUT"), "{out}");
+
+    fs::remove_file(dir.join(".mcp.json")).unwrap();
+    let mut failed = |_: &str| Err("error[E0425]: cannot find value `x`".to_owned());
+    let error = install(&dir, &options, &machine, "shuyi", &mut never, &mut failed).unwrap_err();
+    assert_eq!(error, "error[E0425]: cannot find value `x`");
+    // The file is written all the same: the next ready run builds it.
+    assert!(dir.join(".mcp.json").is_file());
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_ready_run_runs_the_command_with_mcp_ready() {
+    let dir = scratch("run-ready");
+    let error = run_ready(&dir, "no-such-shuyi-program --x").unwrap_err();
+    assert!(
+        error.starts_with("cannot run \"no-such-shuyi-program --x mcp --ready\": "),
+        "{error}"
+    );
+    // `cargo mcp --ready` is no cargo command: it fails, and says what
+    // was run.
+    let error = run_ready(&dir, "cargo").unwrap_err();
+    assert!(
+        error.starts_with("\"cargo mcp --ready\" failed (exit code "),
+        "{error}"
+    );
     fs::remove_dir_all(&dir).unwrap();
 }

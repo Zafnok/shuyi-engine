@@ -1,8 +1,10 @@
 //! `shuyi mcp install`: registers the server with the agents it finds, in
 //! each one's project file of MCP servers, in the project's folder (or
 //! the working folder outside one). It shows what changes and asks before
-//! writing, and keeps each file it changes as `<file>.bak`. `--dry-run`
-//! writes nothing and prints each file as it would write it.
+//! writing, and keeps each file it changes as `<file>.bak`, then runs the
+//! entry it wrote with `--ready`, so the server is built before an agent
+//! first connects and waits for it. `--dry-run` writes nothing and prints
+//! each file as it would write it.
 //!
 //! | Agent | File | Found by |
 //! | ----- | ---- | -------- |
@@ -17,6 +19,8 @@ use std::fmt::Write as _;
 use std::fs;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
+use std::process::Command;
+use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value, json};
 
@@ -24,6 +28,10 @@ use crate::project::Project;
 
 /// The server's name in each agent's file.
 pub const NAME: &str = "shuyi";
+
+/// A ready run longer than this gets the hint of how to make Claude Code
+/// wait longer for a server to start.
+pub const SLOW: Duration = Duration::from_secs(20);
 
 /// An agent the server can be registered with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -271,6 +279,8 @@ pub fn parse_args(args: &[String]) -> Result<Options, String> {
 
 /// Installs as `options` say in `root`, on `machine`, the server run as
 /// `command`; `ask` is asked whether to write the files it is shown.
+/// After writing, `ready` is given what there is to print so far and runs
+/// the server with `--ready`: how long that took, or why it failed.
 /// Returns what to print, or the error.
 pub fn install(
     root: &Path,
@@ -278,6 +288,7 @@ pub fn install(
     machine: &Machine,
     command: &str,
     ask: &mut dyn FnMut(&str) -> bool,
+    ready: &mut dyn FnMut(&str) -> Result<Duration, String>,
 ) -> Result<String, String> {
     let planned = plan(root, machine, command)?;
     let (same, changed): (Vec<Planned>, Vec<Planned>) = planned
@@ -328,7 +339,46 @@ pub fn install(
         fs::write(&p.path, &p.new).map_err(|e| format!("{}: {e}", p.path.display()))?;
         let _ = writeln!(out, "{wrote}");
     }
+    let took = ready(&std::mem::take(&mut out))?;
+    let _ = writeln!(
+        out,
+        "mcp install: the server is ready (\"{command} mcp --ready\" took {:.1} s)",
+        took.as_secs_f64()
+    );
+    if took > SLOW {
+        let _ = writeln!(
+            out,
+            "mcp install: Claude Code may stop waiting for the server to start when it builds \
+             this long, after the engine changes: run \"{command} mcp --ready\" after each \
+             update, or make it wait longer with the MCP_TIMEOUT environment variable, in \
+             milliseconds (MCP_TIMEOUT=300000 claude)"
+        );
+    }
     Ok(out)
+}
+
+/// Runs the server as `command`'s words and `mcp --ready` in `root`, its
+/// output passed through: how long it took, or why it failed.
+pub fn run_ready(root: &Path, command: &str) -> Result<Duration, String> {
+    let mut words = command.split_whitespace();
+    let program = words.next().unwrap_or(NAME);
+    let started = Instant::now();
+    let status = Command::new(program)
+        .args(words)
+        .args(["mcp", "--ready"])
+        .current_dir(root)
+        .status()
+        .map_err(|e| format!("cannot run \"{command} mcp --ready\": {e}"))?;
+    if status.success() {
+        return Ok(started.elapsed());
+    }
+    let code = status
+        .code()
+        .map_or_else(String::new, |c| format!(" (exit code {c})"));
+    Err(format!(
+        "\"{command} mcp --ready\" failed{code}: the server won't start until it builds; its \
+         error is above"
+    ))
 }
 
 /// Whether the line `input` gives says yes (`y`, `Y` or `yes`).
@@ -370,7 +420,13 @@ pub fn main(args: &[String], cwd: &Path) -> u8 {
         let _ = std::io::Write::flush(&mut std::io::stdout());
         said_yes(&mut std::io::stdin().lock())
     };
-    match install(root, &options, &Machine::this(), &command, &mut ask) {
+    let mut ready = |said: &str| {
+        print!("{said}");
+        let _ = std::io::Write::flush(&mut std::io::stdout());
+        run_ready(root, &command)
+    };
+    let machine = Machine::this();
+    match install(root, &options, &machine, &command, &mut ask, &mut ready) {
         Ok(out) => {
             print!("{out}");
             0

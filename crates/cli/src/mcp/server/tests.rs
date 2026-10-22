@@ -367,15 +367,89 @@ fn a_host_that_stops_ends_the_session_with_its_output() {
 
 #[test]
 fn a_host_that_answers_nothing_is_a_game_program_error() {
-    let (answer, png) = answer_of(Op::Bots, Reply::default());
+    let (answer, png) = answer_of(Op::Bots, Reply::default(), "shuyi");
     assert_eq!(answer["code"], "SH3005");
     assert!(png.is_none());
     let refused = Reply {
         error: Some("is its engine older than the server's?".into()),
         ..Reply::default()
     };
-    let (answer, _) = answer_of(Op::Step, refused);
+    let (answer, _) = answer_of(Op::Step, refused, "shuyi");
     assert_eq!(answer["error"], "is its engine older than the server's?");
+}
+
+/// A host whose engine speaks contract `contract`.
+struct Speaks {
+    contract: u32,
+}
+
+impl Link for Speaks {
+    fn call(&mut self, request: &Request) -> Result<Reply, String> {
+        let mut answer = crate::contract::Answer::new(request.op, true, json!({}), Vec::new());
+        answer.contract = self.contract;
+        Ok(Reply {
+            answer: Some(serde_json::to_value(answer).unwrap()),
+            ..Reply::default()
+        })
+    }
+}
+
+impl<'a> Launch<'a> for Speaks {
+    fn launch(&self, _: &Project) -> Result<Box<dyn Link + 'a>, (Code, String)> {
+        Ok(Box::new(Speaks {
+            contract: self.contract,
+        }))
+    }
+}
+
+#[test]
+fn a_server_older_than_the_games_engine_says_so() {
+    let limit = stale(&json!({ "contract": VERSION + 1 }), VERSION, "cargo shuyi").unwrap();
+    assert_eq!(
+        limit,
+        format!(
+            "the game's engine speaks contract {} and this server {VERSION}: the server was \
+             built before the engine changed; run \"cargo shuyi mcp --ready\", then reconnect \
+             it (in Claude Code: /mcp)",
+            VERSION + 1
+        )
+    );
+    assert_eq!(
+        stale(&json!({ "contract": VERSION }), VERSION, "shuyi"),
+        None
+    );
+    assert_eq!(stale(&json!({}), VERSION, "shuyi"), None);
+
+    // Through the server: `start`, each session tool and a one-off
+    // operation say it, with the project's command.
+    let dir = scratch(
+        "stale",
+        r#"(command: "cargo shuyi", game: (package: "fake"))"#,
+    );
+    let newer = VERSION + 1;
+    let mut server = Server::new(dir.clone(), Box::new(Speaks { contract: newer }));
+    for (name, arguments) in [
+        ("start", json!({})),
+        ("step", json!({})),
+        ("bots", json!({})),
+    ] {
+        let result = called(&mut server, name, &arguments);
+        let limits = &result["structuredContent"]["limits"];
+        assert_eq!(limits.as_array().map(Vec::len), Some(1), "{name}: {result}");
+        assert!(
+            limits[0]
+                .as_str()
+                .unwrap()
+                .contains("run \"cargo shuyi mcp --ready\""),
+            "{name}: {result}"
+        );
+    }
+    let mut server = Server::new(dir.clone(), Box::new(Speaks { contract: VERSION }));
+    for name in ["start", "step", "bots"] {
+        let result = called(&mut server, name, &json!({}));
+        assert_eq!(result["structuredContent"]["limits"], json!([]), "{name}");
+    }
+    fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]

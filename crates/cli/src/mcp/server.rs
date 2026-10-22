@@ -14,8 +14,8 @@ use serde_json::{Value, json};
 
 use super::host::{Reply, Request, failed, no_session, one_off};
 use super::{StartInput, takes_project, tool, tools};
-use crate::contract::Op;
 use crate::contract::codes::{self, Code};
+use crate::contract::{Op, VERSION};
 use crate::project::Project;
 
 /// The MCP protocol versions the server speaks, newest first: it answers
@@ -50,6 +50,9 @@ pub struct Server<'a> {
     launch: Box<dyn Launch<'a> + 'a>,
     /// The session's game: the host it runs in.
     game: Option<Box<dyn Link + 'a>>,
+    /// The session's project's `command`, for what its answers say to
+    /// run.
+    command: String,
 }
 
 /// A JSON-RPC error's code: the message isn't JSON.
@@ -92,6 +95,7 @@ impl<'a> Server<'a> {
             cwd,
             launch,
             game: None,
+            command: "shuyi".to_owned(),
         }
     }
 
@@ -184,7 +188,7 @@ impl<'a> Server<'a> {
             input: arguments,
         };
         match host.call(&request) {
-            Ok(reply) => answer_of(op, reply),
+            Ok(reply) => answer_of(op, reply, project.config.command()),
             Err(e) => (failed(op, codes::GAME_PROGRAM, e), None),
         }
     }
@@ -243,11 +247,12 @@ impl<'a> Server<'a> {
             input: json!({ "start": input.start }),
         };
         let (mut answer, _) = match host.call(&request) {
-            Ok(reply) => answer_of(op, reply),
+            Ok(reply) => answer_of(op, reply, project.config.command()),
             Err(e) => return failed(op, codes::GAME_PROGRAM, e),
         };
         if answer["ok"] == true {
             self.game = Some(host);
+            project.config.command().clone_into(&mut self.command);
         }
         if let Some(list) = answer["limits"].as_array_mut() {
             list.extend(limits.into_iter().map(Value::String));
@@ -266,7 +271,7 @@ impl<'a> Server<'a> {
         };
         match game.call(&request) {
             Ok(reply) => {
-                let (answer, png) = answer_of(op, reply);
+                let (answer, png) = answer_of(op, reply, &self.command);
                 if op == Op::Stop && answer["ok"] == true {
                     self.game = None;
                 }
@@ -280,16 +285,41 @@ impl<'a> Server<'a> {
     }
 }
 
-/// The answer and the picture of `reply` to the tool of `op`: a host
-/// that answered nothing is a [`codes::GAME_PROGRAM`] answer.
-fn answer_of(op: Op, reply: Reply) -> (Value, Option<String>) {
+/// The answer and the picture of `reply` to the tool of `op`, in a
+/// project whose `command` is `command`: a host that answered nothing is a
+/// [`codes::GAME_PROGRAM`] answer, and one of another contract than the
+/// server's gets the limit that says so ([`stale`]).
+fn answer_of(op: Op, reply: Reply, command: &str) -> (Value, Option<String>) {
     match (reply.answer, reply.error) {
-        (Some(answer), _) => (answer, reply.png),
+        (Some(mut answer), _) => {
+            if let Some(limit) = stale(&answer, VERSION, command)
+                && let Some(limits) = answer["limits"].as_array_mut()
+            {
+                limits.push(Value::String(limit));
+            }
+            (answer, reply.png)
+        }
         (None, error) => {
             let error = error.unwrap_or_else(|| "the game's tool program answered nothing".into());
             (failed(op, codes::GAME_PROGRAM, error), None)
         }
     }
+}
+
+/// The limit a host's `answer` gets when its engine speaks another
+/// contract than `version`, the server's: the server was built before the
+/// engine changed, and `command mcp --ready` and a reconnect bring it up to
+/// date. None when they speak the same one: a change of the engine that
+/// changes no schema leaves the server's tools right.
+pub fn stale(answer: &Value, version: u32, command: &str) -> Option<String> {
+    let theirs = answer.get("contract")?.as_u64()?;
+    (theirs != u64::from(version)).then(|| {
+        format!(
+            "the game's engine speaks contract {theirs} and this server {version}: the server was \
+             built before the engine changed; run \"{command} mcp --ready\", then reconnect it \
+             (in Claude Code: /mcp)"
+        )
+    })
 }
 
 /// `initialize`'s result: the protocol version, the tools, the server.

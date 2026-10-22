@@ -381,3 +381,45 @@ fn the_ops_that_run_the_game_say_they_need_its_tool_program() {
     }
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn mcp_ready_builds_what_the_server_needs_and_exits() {
+    let dir = scratch("mcp-ready");
+    // Outside a project there is only the server, and it is built.
+    let output = shuyi(&dir, &["mcp", "--ready"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert_eq!(
+        stdout(&output),
+        format!("mcp: ready (contract {})\n", shuyi_cli::contract::VERSION)
+    );
+    assert_eq!(shuyi(&dir, &["mcp", "--ready", "x"]).status.code(), Some(2));
+    // A game tool program that doesn't build is the build's error, and 1.
+    fs::write(
+        dir.join("shuyi.ron"),
+        r#"(game: (package: "no-such-game"))"#,
+    )
+    .unwrap();
+    let output = shuyi(&dir, &["mcp", "--ready"]);
+    assert_eq!(output.status.code(), Some(1));
+    let said = stderr(&output);
+    assert!(said.contains("Cargo.toml"), "{said}");
+    assert!(
+        said.contains("mcp: the game's tool program didn't build"),
+        "{said}"
+    );
+    assert!(stdout(&output).is_empty(), "{}", stdout(&output));
+    // One that builds is built, and the server is ready.
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"tiny-game\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[workspace]\n",
+    )
+    .unwrap();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(dir.join("src/main.rs"), "fn main() {}\n").unwrap();
+    fs::write(dir.join("shuyi.ron"), r#"(game: (package: "tiny-game"))"#).unwrap();
+    let output = shuyi(&dir, &["mcp", "--ready"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(stdout(&output).starts_with("mcp: ready (contract "));
+    assert!(dir.join("target").is_dir(), "the program was built");
+    fs::remove_dir_all(&dir).unwrap();
+}

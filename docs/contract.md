@@ -200,7 +200,16 @@ changes and asks before writing, and keeps each file it changes as
 each file as it would write it (Claude Code's is also what `claude
 --mcp-config <file>` reads). The entry runs `--command`'s words and
 `mcp`: the project's `command` (`cargo shuyi` in a new game) unless
-given.
+given. After writing, it runs that entry with `--ready` and says how
+long the build took.
+
+The entry builds the server from the project's own engine (a game's
+moves with its pin), so after updating the engine (a pull here, a pin
+move in a game) run `<command> mcp --ready`, which builds the server and
+the game's tool program and prints `mcp: ready (contract N)`, then
+reconnect the server (in Claude Code, `/mcp`). A server older than the
+game's engine adds a limit to each answer from the game that says so,
+naming both contracts.
 
 ## What a game gives
 
