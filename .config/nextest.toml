@@ -1,9 +1,0 @@
-# nextest runs only in the PR mutation gate (game ADR-0073); `cargo test`
-# runs everywhere else. The `mutants` profile is chosen there by
-# `NEXTEST_PROFILE=mutants`.
-
-# A caught mutant needs one failing test, so the run stops at the first
-# failure and also stops the tests still running, instead of waiting for
-# them.
-[profile.mutants]
-fail-fast = { max-fail = 1, terminate = "immediate" }

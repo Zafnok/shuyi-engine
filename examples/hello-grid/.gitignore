@@ -1,4 +1,0 @@
-# The web build (`cargo shuyi web`).
-/dist/
-# The pack (`cargo shuyi bake`).
-/target/

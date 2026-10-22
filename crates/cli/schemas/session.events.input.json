@@ -1,7 +1,0 @@
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "NoInput",
-  "description": "A session tool's input that takes nothing.",
-  "type": "object",
-  "additionalProperties": false
-}
