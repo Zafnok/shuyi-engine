@@ -184,7 +184,7 @@ None.
   - `CaseFileScreen` reads `CaseState` and never changes it. It reacts
     to `UiAction`s only (Up, Down, Left, Right, Confirm, Cancel): left
     and right change the tab. It declares its actions (`Screen::actions`,
-    3002) if 3002 is done;
+    3002);
   - a "new" mark on rows found since the screen was last open. It is
     the screen's own state, not `CaseState`, so it never changes a
     replay (as ADR-0016 §3 keeps conveniences out of the story);

@@ -89,10 +89,9 @@ None.
   the overlays over it (screens under an opaque one are hidden). It
   hands an `AccessUpdate { tree: Option<AccessTree>, announcements }`
   out with the frame. The tree is `Some` only when it changed (compared
-  by value). **Either order with 3003:** if 3003 is done, it goes to a
-  `Platform::access(&AccessUpdate)` with a default that does nothing;
-  if not, it goes out with what `Game::frame` returns, and 3003 moves
-  it. **Either order with 2367** (overlays that let the screen below
+  by value). It goes to a
+  `Platform::access(&AccessUpdate)` (3003's boundary) with a default
+  that does nothing. **Either order with 2367** (overlays that let the screen below
   run): if 2367 is done, the focus is in the top-most running screen
   that takes actions, so a `Passes::Everything` notice never holds it,
   and the screens a pass-through overlay lets run are in the tree under
@@ -100,7 +99,7 @@ None.
   top screen.
 - **Seeing it:** `frame-png --access <file>` writes the tree as indented
   text, one node a line (`menu "Options"`, `  slider "Music volume" 7/10
-  focused`). If 1129 is done, `shuyi scene --access` prints it too.
+  focused`), and `shuyi scene --access` (1129) prints it too.
 - **A warning in debug builds:** a screen that returns `None` is logged
   once by name, so a game sees which screens a screen reader can't read.
 - **A guide**, `docs/accessibility.md`: what a game's screens should

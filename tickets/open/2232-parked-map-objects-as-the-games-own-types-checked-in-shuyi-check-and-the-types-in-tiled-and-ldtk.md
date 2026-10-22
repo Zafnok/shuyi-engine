@@ -312,9 +312,8 @@ None.
   "Levels from Tiled and LDtk", shows a `Thing` enum, the loader, the
   line in `check`, and `map-types`. If 2802 is done, the book's chapter
   on assets links to it.
-- **Either order with 2509** (in the MVP, so done by then): the new
-  errors and problems get codes from its table. If not, 2509 gives them
-  codes.
+- **Problem codes:** the new errors and problems get codes from 2509's
+  table.
 - **Either order with 2516:** if 2516 is done, `read` marks the map's
   file for its reference collection, as `format::decode_with` does, so
   a `file` property read into a `Ref<K>` is checked by `shuyi check`

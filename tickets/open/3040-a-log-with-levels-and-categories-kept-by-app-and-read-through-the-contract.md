@@ -179,9 +179,8 @@ None.
   - the schemas regenerated, `contract::VERSION` raised by one (it is 4
     at `crates/cli/src/contract.rs:52` today), and the line in
     `crates/cli/schemas/versions.json`, as `docs/contract.md`, *The
-    schemas*, says. **Either order with 2509** (problem codes): both
-    change the answers, and whichever lands second raises the version
-    again.
+    schemas*, says. 2509 (problem codes) already raised the version for
+    its own fields, so this raises it once more from there.
 - **`check-text`:** `log` joins `QUIET` (`crates/cli/src/check_text.rs:186`),
   so a literal inside `ctx.log(…)` is never counted (`QUIET` grows to 15
   names). The `// check-text: not player text` markers at `ctx.rs:453`

@@ -214,8 +214,9 @@ each part is one PR.
   `shuyi.ron` lists `desktop`, `web`, `steam-deck` and `playdate`, each
   `(frame: (400, 240), scale: integer, text_px: 16)`, with a
   `check_keys` section as the templates' have, the `game` tool program
-  and a `web` section (`title: "Match Three"`). If 3006 is done, a
-  `palette@onebit.ron` and a `frame-png --target playdate` picture. If
+  and a `web` section (`title: "Match Three"`). It has a
+  `palette@onebit.ron` (3006) and a `frame-png --target playdate`
+  picture. If
   3010 is done, `shuyi export playdate` builds it.
 - **The tools** (`src/tools.rs`, and `examples/tools.rs` calling
   `shuyi_cli::main_with`): its own `GameTools`, which calls 2511's

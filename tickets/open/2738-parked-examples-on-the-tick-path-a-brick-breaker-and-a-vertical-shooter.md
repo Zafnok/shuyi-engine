@@ -144,7 +144,7 @@ None. When it unparks is his call (above).
   - **a frame the Playdate fits:** `ConsoleSpec::text(50, 15)`, 400 ×
     240 at scale 1, holding the field and a score line. `shuyi.ron`
     lists `desktop`, `web`, `steam-deck` and `playdate`. The palette's
-    roles stay apart in 1-bit (3006's check, if 3006 is done).
+    roles stay apart in 1-bit (3006's check).
   - **the tools** (`src/tools.rs`): a `GameTools` that calls
     `BasicTools`' methods for the rest, with `session` (a `Headless`
     with a scene, `Headless::with_scene`, holding `score`, `lives`,

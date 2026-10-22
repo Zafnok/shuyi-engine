@@ -290,11 +290,10 @@ serde form leaves out. If 1134 isn't done, 1134 adds them when it lands.
 `Op::ALL`, `soak` comes with no change. If it lists them by hand, add
 `soak`, and to its test that lists every tool.
 
-**Either order with 2509:** if problem codes exist, `soak`'s refused
-arguments take `SH0001`, the game's errors `SH3001` or `SH3002` through
-the same helpers as `bots`, and a record `--save` can't write `SH3004`.
-A failure the soak finds is a verdict (`ok: false`), not an error, and
-gets no code. If 2509 isn't done, 2509 adds these sites when it lands.
+**Problem codes (2509):** `soak`'s refused arguments take `SH0001`,
+the game's errors `SH3001` or `SH3002` through the same helpers as
+`bots`, and a record `--save` can't write `SH3004`. A failure the soak
+finds is a verdict (`ok: false`), not an error, and gets no code.
 
 **The public API.** `Op` gains a variant, and `Op::ALL`'s type changes
 from `[Op; 9]` to `[Op; 10]`. If 2010's job reports a break (a new

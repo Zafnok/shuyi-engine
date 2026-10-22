@@ -106,8 +106,8 @@ None.
     here to 2727's action set, which a game maps from its own
     `ActionSet` (the `input-actions` skill); the help line names its
     input through `HelpKeys`. It is required on this screen. The
-    screen declares its actions (3002) if 3002 is done, and fits the
-    `playdate` fixture layout then;
+    screen declares its actions (3002), and fits the `playdate` fixture
+    layout;
   - the skin draws the meter and the statement number as glyph cells,
     over the visual novel skin's text box.
 

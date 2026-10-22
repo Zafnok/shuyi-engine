@@ -53,11 +53,10 @@ None.
     every optional action, plus the settings below. So a target with
     few inputs (the Playdate) still reaches all of them, and 3002's
     check passes with only the required ones bound;
-  - if 3002 is done, `VnStage`, the quick menu and the backlog declare
-    their actions with `Screen::actions`, and a fixture game's
-    `playdate` and `steam-deck` layouts pass `shuyi check --target`. The
-    layouts are data in the fixture's keymap file. If 3002 isn't done,
-    3002 checks these screens when it lands;
+  - `VnStage`, the quick menu and the backlog declare their actions
+    with `Screen::actions` (3002), and a fixture game's `playdate` and
+    `steam-deck` layouts pass `shuyi check --target`. The layouts are
+    data in the fixture's keymap file;
   - the README (2726 finishes it) says how a gamepad, the Steam Deck
     and the Playdate reach each action, by action name only. Which input
     does what is the game's keymap data, never the engine's text.
@@ -129,8 +128,8 @@ None.
 4. Write `Backlog` and its overlay screen.
 5. Write the `Back` action over `history::back`.
 6. Write the quick menu with the settings rows.
-7. If 3002 is done, declare the screens' actions and add the fixture
-   layouts. Add the pointer clicks (2405).
+7. Declare the screens' actions and add the fixture layouts (3002).
+   Add the pointer clicks (2405).
 
 ## Acceptance criteria
 
@@ -148,8 +147,8 @@ None.
       a broken stored value loads the defaults and reports it.
 - [ ] The backlog after going back has the same entries as a run that
       never went past that line.
-- [ ] If 3002 is done, `shuyi check --target playdate` and
-      `--target steam-deck` pass on the fixture game with only the
+- [ ] `shuyi check --target playdate` and `--target steam-deck`
+      pass on the fixture game with only the
       required actions bound, and every optional action is reachable
       from the quick menu (Harness test).
 - [ ] A click on the text box sends the same commands as `Advance`, and

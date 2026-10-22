@@ -135,8 +135,8 @@ for Nick (parked 3047 asks it for crash reports).
   - The contract's `VERSION` (`crates/cli/src/contract.rs:52`) goes up,
     the schemas and `crates/cli/schemas/versions.json` are regenerated
     (ADR-0022 §5, `docs/contract.md`'s *The schemas*), and
-    `docs/contract.md` gets the flags. If 2509 is done, a differing
-    frame and a refused stamp get problem codes and help.
+    `docs/contract.md` gets the flags. A differing frame and a refused
+    stamp get problem codes and help (2509's table).
 - **MCP:** 1133's `start` takes `session` and `any_stamp` as `run`
   does, and `step`, `scene` and `frame_png` go on from the frame it
   stopped on. Its scripted client test gains a start from Hello, Grid's

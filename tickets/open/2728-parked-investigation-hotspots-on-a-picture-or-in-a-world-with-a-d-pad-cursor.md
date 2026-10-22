@@ -119,11 +119,11 @@ None.
   there now (id, bounding box, found or not, selected or not, label key
   when selected), and the place's name. `InvestigationScreen` builds it
   and reacts to `UiAction`s and the pointer only. It declares its
-  actions (3002) if 3002 is done. Its skin draws the marks as sprite
+  actions (3002). Its skin draws the marks as sprite
   items and the label as glyph cells; what a mark looks like is the
   skin's.
-- **A Playdate fit test**: if 3002 is done, a fixture keymap layout
-  named `playdate` passes `controls_fit` for the investigation screen.
+- **A Playdate fit test**: a fixture keymap layout named `playdate`
+  passes `controls_fit` (3002) for the investigation screen.
 - **World hotspots** (only if 1122 is done): `WorldHotspots` maps a
   1122 `Trigger` on a thing in a tick stage to a hotspot's `when` and
   `action`. Shapes are the trigger's box; polygons are pictures only.

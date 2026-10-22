@@ -286,12 +286,10 @@ None.
   ticket adds `CheckOutput::warnings`. Whichever lands second keeps the
   other's field, prints its own after it in `check::text`, and raises
   `contract::VERSION` again.
-- **Either order with 2509:** if problem codes exist, the warning and
-  the manual change get new rows in 2509's table (content codes
-  `SH2nnn`, named `old-name` and `upgrade-by-hand`), each with its page
-  and a help naming `shuyi upgrade`; the warnings carry them in
-  `Problem`'s `code` and `help`. If not, 2509 gives them codes when it
-  lands.
+- **Problem codes (2509):** the warning and the manual change get new
+  rows in 2509's table (content codes `SH2nnn`, named `old-name` and
+  `upgrade-by-hand`), each with its page and a help naming `shuyi
+  upgrade`; the warnings carry them in `Problem`'s `code` and `help`.
 - **Either order with 2523:** if 2523 is done, add a step to
   `skills/shuyi-upgrade/SKILL.md`, after the game builds on the new
   engine: run `cargo shuyi upgrade`, then `cargo shuyi check`. If 2523
