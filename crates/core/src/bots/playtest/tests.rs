@@ -574,3 +574,151 @@ proptest! {
         prop_assert_eq!(verdict == RateVerdict::Above, !inside && !below);
     }
 }
+
+/// A tier of the targets' fixture.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+enum Tier {
+    Easy,
+    Hard,
+}
+
+/// Targets for three entrants, `base` a baseline with none of its own.
+const TARGETS: &str = r#"(
+    success: {
+        "a": [(measure: "won", min: Some(1))],
+        "b": [(measure: "won", min: Some(1)), (measure: "deaths", max: Some(0))],
+    },
+    bands: {
+        Easy: {"a": (min: 70, max: 90), "b": (min: 50, max: 80)},
+    },
+    floors: {"a": 20},
+    medians: [(entrant: "b", measure: "turns", among: [(measure: "won", min: Some(1))], want: Lower, than: "base")],
+)"#;
+
+fn targets() -> Targets<Tier> {
+    ron::from_str(TARGETS).unwrap()
+}
+
+#[test]
+fn targets_give_a_rate_per_entrant_with_a_band_then_the_medians() {
+    let checks = targets().checks(&Tier::Easy, &["a", "b", "base"]);
+    let b_success = vec![
+        won()[0].clone(),
+        Condition {
+            measure: "deaths".to_string(),
+            min: None,
+            max: Some(0),
+        },
+    ];
+    assert_eq!(
+        checks,
+        vec![
+            rate("a", 70, 90, Some(20)),
+            Check::Rate {
+                entrant: "b".to_string(),
+                success: b_success,
+                band: Band { min: 50, max: 80 },
+                floor: None,
+            },
+            median_check("b", Want::Lower, "base"),
+        ]
+    );
+}
+
+#[test]
+fn a_median_whose_other_entrant_doesnt_play_is_left_out() {
+    let checks = targets().checks(&Tier::Easy, &["a", "b"]);
+    assert_eq!(checks.len(), 2);
+    assert!(checks.iter().all(|c| matches!(c, Check::Rate { .. })));
+}
+
+#[test]
+fn a_tier_without_bands_gives_only_the_medians() {
+    let checks = targets().checks(&Tier::Hard, &["a", "b", "base"]);
+    assert_eq!(checks, vec![median_check("b", Want::Lower, "base")]);
+}
+
+#[test]
+fn unknown_entrants_are_the_names_the_game_has_none_for() {
+    let text = r#"(
+        success: {"a": []},
+        bands: {Easy: {"a": (min: 0, max: 100), "c": (min: 0, max: 100)}},
+        floors: {"b": 10},
+        medians: [(entrant: "d", measure: "turns", want: Higher, than: "a"),
+                  (entrant: "c", measure: "turns", want: Lower, than: "d")],
+    )"#;
+    let targets: Targets<Tier> = ron::from_str(text).unwrap();
+    assert_eq!(targets.unknown_entrants(&["a", "b"]), vec!["c", "d"]);
+    assert!(targets.unknown_entrants(&["a", "b", "c", "d"]).is_empty());
+}
+
+#[test]
+fn an_unknown_field_in_targets_is_an_error() {
+    let text = "(success: {}, faster: ())";
+    assert!(ron::from_str::<Targets<Tier>>(text).is_err());
+    let text =
+        r#"(success: {}, medians: [(entrant: "a", measure: "t", want: Lower, than: "b", by: 1)])"#;
+    assert!(ron::from_str::<Targets<Tier>>(text).is_err());
+}
+
+#[test]
+fn targets_with_only_success_rules_give_no_checks() {
+    let targets: Targets<Tier> = ron::from_str(r#"(success: {"a": []})"#).unwrap();
+    assert!(targets.checks(&Tier::Easy, &["a"]).is_empty());
+}
+
+#[cfg(feature = "schema")]
+#[test]
+fn targets_over_string_tiers_have_a_schema() {
+    let schema = schemars::schema_for!(Targets<String>);
+    let json = schema.as_value().to_string();
+    assert!(json.contains("bands") && json.contains("MedianTarget"));
+}
+
+/// Any targets over tiers 0 to 2 and names from a small pool.
+fn any_targets() -> impl Strategy<Value = Targets<u8>> {
+    let name = prop::sample::select(vec!["a", "b", "c", "d", "e"]).prop_map(str::to_string);
+    let band = (0..=100_u32, 0..=100_u32).prop_map(|(min, max)| Band { min, max });
+    let median = (name.clone(), name.clone()).prop_map(|(entrant, than)| MedianTarget {
+        entrant,
+        measure: "turns".to_string(),
+        among: Vec::new(),
+        want: Want::Lower,
+        than,
+    });
+    (
+        prop::collection::btree_map(name.clone(), Just(won()), 0..5),
+        prop::collection::btree_map(
+            0..3_u8,
+            prop::collection::btree_map(name.clone(), band, 0..5),
+            0..3,
+        ),
+        prop::collection::btree_map(name.clone(), 0..=100_u32, 0..5),
+        prop::collection::vec(median, 0..5),
+    )
+        .prop_map(|(success, bands, floors, medians)| Targets {
+            success,
+            bands,
+            floors,
+            medians,
+        })
+}
+
+proptest! {
+    #[test]
+    fn targets_checks_name_only_the_entrants_that_play(
+        targets in any_targets(),
+        tier in 0..3_u8,
+        entrants in prop::sample::subsequence(vec!["a", "b", "c", "d", "e"], 0..=5),
+    ) {
+        let checks = targets.checks(&tier, &entrants);
+        for check in &checks {
+            for name in check.entrants() {
+                prop_assert!(entrants.contains(&name));
+            }
+        }
+        // So judging them never meets an unknown entrant.
+        let tries = entrants.iter().map(|n| ((*n).to_string(), tries(1, 2))).collect();
+        prop_assert!(judge(tries, &checks).is_ok());
+    }
+}

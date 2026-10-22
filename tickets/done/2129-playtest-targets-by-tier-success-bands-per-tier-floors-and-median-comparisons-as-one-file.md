@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2129 — Playtest targets by tier
@@ -129,16 +129,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Targets::<Tier>::checks(&Tier::Easy, &["a", "b", "base"])` on the
+- [x] `Targets::<Tier>::checks(&Tier::Easy, &["a", "b", "base"])` on the
       fixture gives `Rate` checks for `a` and `b` (in that order, with
       `a`'s floor and none for `b`) and none for `base`, then the median.
-- [ ] A median whose `than` doesn't play is left out; a tier missing
+- [x] A median whose `than` doesn't play is left out; a tier missing
       from `bands` gives only the medians.
-- [ ] `unknown_entrants(&["a", "b"])` on a file that names `c` in a band
+- [x] `unknown_entrants(&["a", "b"])` on a file that names `c` in a band
       and `d` in a median gives `["c", "d"]`.
-- [ ] An unknown field in the file is an error (`deny_unknown_fields`).
-- [ ] With the `schema` feature, `Targets<String>` derives a schema.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] An unknown field in the file is an error (`deny_unknown_fields`).
+- [x] With the `schema` feature, `Targets<String>` derives a schema.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -149,5 +149,21 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_core::bots::playtest::Targets<T>` and `MedianTarget`, in a
+  `targets` submodule (`crates/core/src/bots/playtest/targets.rs`, since
+  the module was already 683 lines), re-exported from `playtest`. Serde
+  with `deny_unknown_fields` and explicit bounds; `JsonSchema` behind
+  `schema`.
+- `Targets::checks` and `Targets::unknown_entrants` as the steps say.
+- Tests in `playtest/tests.rs`: the fixture's checks for `Easy` (rates
+  for `a` and `b` in order, `a`'s floor, none for `base`, then the
+  median), a median whose `than` doesn't play, a tier with no bands,
+  unknown entrants, unknown fields, a schema of `Targets<String>`, and a
+  property test that every check names only entrants that play (and so
+  `judge` accepts them).
+- Docs: the module docs gain a paragraph and a RON example;
+  `docs/contract.md`'s game-parts `playtest` row names both ways to give
+  checks. Ticket 1134's skill-pack clause on 2129 is settled.
+- Deviation: none. The game's use is game#1180, which moves the pin
+  after this merges; no API it uses changed.
+- Nick: nothing to decide.

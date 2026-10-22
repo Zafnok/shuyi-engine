@@ -213,7 +213,7 @@ doesn't offer it:
 | `session` | `run`, `scene`, the MCP session | `Headless::new(harness)`, with `with_scene` (its stage's `MapScene` as text and its state as JSON), `with_events` (its rules' events) and `with_picture` (its `frame-png` painter, for `frame_png`) |
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)` |
 | `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
-| `playtest` | `playtest` | its `Entrant`s, `Measure` and checks (a data file of `shuyi_core::bots::playtest::Check`s), run by `playtest::run` |
+| `playtest` | `playtest` | its `Entrant`s, `Measure` and checks: a data file of `shuyi_core::bots::playtest::Check`s, or a `playtest::Targets` file by tier whose `checks` gives a stage's; run by `playtest::run` |
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
 | `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 
