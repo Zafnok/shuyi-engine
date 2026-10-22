@@ -424,6 +424,42 @@ mod tests {
         assert!(!checks_targets("run", &args(&["--target"])));
     }
 
+    /// A cargo that runs and finds nothing.
+    struct QuietCargo;
+
+    impl lint::Cargo for QuietCargo {
+        fn run(&self, _root: &Path, _args: &[&str]) -> Result<lint::Ran, String> {
+            Ok(lint::Ran {
+                success: true,
+                ..lint::Ran::default()
+            })
+        }
+    }
+
+    #[test]
+    fn lint_answers_with_its_exit_code() {
+        let dir = std::env::temp_dir().join(format!("shuyi-cli-lint-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("src")).unwrap();
+        let mut p = project(dir.clone());
+        p.config.rules = Some("r".to_owned());
+        assert_eq!(lint(&p, &[], &QuietCargo), 0);
+        assert_eq!(lint(&p, &args(&["--json"]), &QuietCargo), 0);
+        assert_eq!(lint(&p, &args(&["x"]), &QuietCargo), 2);
+        fs::write(
+            dir.join("src/a.rs"),
+            "fn f() {\n    let _ = Key::Space;\n}\n",
+        )
+        .unwrap();
+        p.config.check_keys = Some(crate::project::CheckKeys {
+            rust: vec!["src".to_owned()],
+            ..crate::project::CheckKeys::default()
+        });
+        assert_eq!(lint(&p, &[], &QuietCargo), 1);
+        assert_eq!(lint(&p, &args(&["--json"]), &QuietCargo), 1);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
     #[test]
     fn a_project_with_no_game_program_says_so() {
         assert_eq!(no_game("check", &args(&["--json"])), 3);

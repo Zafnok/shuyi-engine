@@ -458,3 +458,53 @@ fn this_machines_cargo_runs_or_says_why_not() {
     assert!(ran.stdout.starts_with("cargo "));
     assert_eq!(last_line(""), "no output");
 }
+
+#[test]
+fn a_findings_place_is_its_primary_span_not_its_first() {
+    let stdout = json!({
+        "reason": "compiler-message",
+        "message": {
+            "level": "error",
+            "message": "use of a disallowed type `f32`",
+            "code": {"code": "clippy::disallowed_types"},
+            "spans": [
+                {"file_name": "src/a.rs", "line_start": 1, "column_start": 1, "is_primary": false},
+                {"file_name": "src/b.rs", "line_start": 7, "column_start": 3, "is_primary": true},
+            ],
+            "children": [],
+        }
+    })
+    .to_string();
+    let found = clippy_findings(Path::new("."), &stdout);
+    assert_eq!(
+        (found[0].file.as_str(), found[0].line, found[0].column),
+        ("src/b.rs", Some(7), Some(3))
+    );
+}
+
+#[test]
+fn rules_that_fail_only_on_other_lints_are_checked() {
+    let mut project = game("other");
+    project.config.rules = Some("demo-rules".to_owned());
+    let cargo = FakeCargo {
+        clippy: Ran {
+            success: false,
+            stdout: message(
+                Some("clippy::implicit_hasher"),
+                "parameter of type `HashMap` should be generalized",
+                None,
+                &[],
+            ),
+            stderr: "error: could not compile `demo-rules`".to_owned(),
+        },
+        tree: Ran {
+            success: true,
+            ..Ran::default()
+        },
+        ..FakeCargo::default()
+    };
+    let answer = lint(&cargo, &project, &LintInput::default());
+    assert!(answer.ok, "the other lint is clippy's own gate's");
+    assert_eq!(answer.limits.len(), 2, "{:?}", answer.limits);
+    fs::remove_dir_all(&project.root).unwrap();
+}
