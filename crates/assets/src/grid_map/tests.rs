@@ -42,6 +42,16 @@ fn parse_map(src: &str) -> Result<Map, Vec<ContentError>> {
     parse("m.map", src, &FORMAT, terrain)
 }
 
+/// The codes of `src`'s errors, in order.
+fn codes_of(src: &str) -> Vec<Option<crate::error::Code>> {
+    parse_map(src)
+        .err()
+        .unwrap_or_default()
+        .iter()
+        .map(|e| e.code)
+        .collect()
+}
+
 fn errors(src: &str) -> Vec<String> {
     parse_map(src)
         .err()
@@ -100,6 +110,10 @@ fn unknown_legend_char() {
             "m.map:8:1: 'x' is not in the legend"
         ]
     );
+    assert_eq!(
+        codes_of(&format!("{HEADER}..\n.x\nx.\n")),
+        [Some(codes::UNKNOWN_NAME); 2]
+    );
 }
 
 #[test]
@@ -121,6 +135,7 @@ fn unknown_terrain_in_legend() {
         errors(src),
         ["m.map:5:5: legend 'L': unknown terrain \"lava\""]
     );
+    assert_eq!(codes_of(src), [Some(codes::UNKNOWN_NAME)]);
 }
 
 #[test]
@@ -152,10 +167,18 @@ fn size_limits() {
         errors(&format!("{HEADER}{wide}\n")),
         ["m.map:6:65: map is 65 tiles wide; the maximum is 64"]
     );
+    assert_eq!(
+        codes_of(&format!("{HEADER}{wide}\n")),
+        [Some(codes::OUT_OF_RANGE)]
+    );
     let tall = ".\n".repeat(65);
     assert_eq!(
         errors(&format!("{HEADER}{tall}")),
         ["m.map:70:1: map is 65 tiles tall; the maximum is 64"]
+    );
+    assert_eq!(
+        codes_of(&format!("{HEADER}{tall}")),
+        [Some(codes::OUT_OF_RANGE)]
     );
     let max = format!("{}\n", ".".repeat(64)).repeat(64);
     let map = parse_map(&format!("{HEADER}{max}")).unwrap();

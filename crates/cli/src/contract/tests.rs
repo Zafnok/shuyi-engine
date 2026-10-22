@@ -147,3 +147,22 @@ fn every_op_has_an_input_and_an_output_schema() {
     assert_ne!(fingerprint(&changed), fingerprint(&files));
     assert_eq!(fingerprint(&files).len(), 16);
 }
+
+#[test]
+fn a_validators_problem_carries_its_code_and_help() {
+    use shuyi_assets::keymap::KeymapDef;
+    use shuyi_ui::input::sample::Action;
+
+    let source = "(layouts: [(id: \"LeftHanded\", name: \"l\", keys: {\"Jumpp\": []})], \
+                  layout_picker: {}, pad: {}, repeat: (delay_ms: 1, interval_ms: 1), \
+                  stick: (press_percent: 50, release_percent: 35))";
+    let errors = KeymapDef::<Action>::from_source("base/data/keymap.ron", source).unwrap_err();
+    let unknown = errors
+        .iter()
+        .map(Problem::from)
+        .find(|p| p.message.contains("unknown action \"Jumpp\""))
+        .unwrap_or_else(|| panic!("{errors:?}"));
+    let json: serde_json::Value = serde_json::to_value(&unknown).unwrap();
+    assert_eq!(json["code"], "SH2008");
+    assert_eq!(json["help"], codes::help_of("SH2008").unwrap());
+}

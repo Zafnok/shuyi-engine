@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2509"]
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2530 — Problem codes for the validators: unknown-name, duplicate and out-of-range
@@ -80,15 +80,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A keymap with an unknown action, read by `shuyi check` or
+- [x] A keymap with an unknown action, read by `shuyi check` or
       `shuyi import`, gives a problem with `"code": "SH2008"` and its
       row's help.
-- [ ] A text key used twice gives `SH2009`; a crank notch out of range
+- [x] A text key used twice gives `SH2009`; a crank notch out of range
       and a map too wide give `SH2010`.
-- [ ] `shuyi explain SH2009` prints its page.
-- [ ] The codes' gate test passes.
-- [ ] `shuyi-assets` still builds for `thumbv7em-none-eabihf`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi explain SH2009` prints its page.
+- [x] The codes' gate test passes.
+- [x] `shuyi-assets` still builds for `thumbv7em-none-eabihf`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -104,5 +104,24 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `UNKNOWN_NAME` (`SH2008`), `DUPLICATE` (`SH2009`) and `OUT_OF_RANGE`
+  (`SH2010`) in `shuyi_assets::error::codes`, their rows in `TABLE` and
+  their pages `crates/cli/errors/SH2008.md` … `SH2010.md`.
+- Coded sites, as the table says: the keymap's unknown action and the
+  chord and button parse errors, a binding listed twice or bound to two
+  actions, a layout listed twice, the repeat interval and the crank
+  notch; a text key used twice in English, in a pack's `ui.ron` and
+  `data.ron`, and in a dialogue file; a map's unknown terrain, a tile not
+  in the legend, a map too wide and too tall. No message changed.
+- To code one message of several pushed by one closure, the language
+  packs' `err` closures (`lang.rs`, `lang/lines.rs`) became `at`, which
+  makes the error and leaves the push to the caller.
+- Tests: each site's existing test asserts its code; a new test of a
+  dialogue key used twice (there was none); a CLI test that a keymap's
+  unknown action becomes a problem with `"code": "SH2008"` and its row's
+  help, which is what `shuyi check` and `shuyi import` print.
+- Not coded, as the ticket's *Out* says: the credits' and tips' "the id
+  is used twice", and the keymap's other checks (a reserved key, too
+  many bindings, a missing action, the stick thresholds). A later ticket
+  can give them codes from the same table if an agent needs them.
+- No API break: `code` was in the answer's shape already.

@@ -33,7 +33,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use shuyi_core::{Grid, Pos};
 
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
 
@@ -325,7 +325,8 @@ where
             let (line, col) = legend_position(&lines[..sep], c, id);
             errors.push(
                 ContentError::new(file, format!("legend '{c}': unknown terrain \"{id}\""))
-                    .at(line, Some(col)),
+                    .at(line, Some(col))
+                    .with_code(codes::UNKNOWN_NAME),
             );
         }
     }
@@ -425,7 +426,8 @@ impl<T: Copy + Default> Rows<'_, T> {
                     file,
                     format!("map is {width} tiles wide; the maximum is {max}"),
                 )
-                .at(first_line, Some(column_number(max))),
+                .at(first_line, Some(column_number(max)))
+                .with_code(codes::OUT_OF_RANGE),
             );
         }
         if rows.len() > max {
@@ -434,7 +436,8 @@ impl<T: Copy + Default> Rows<'_, T> {
                     file,
                     format!("map is {} tiles tall; the maximum is {max}", rows.len()),
                 )
-                .at(rows[max].0, Some(1)),
+                .at(rows[max].0, Some(1))
+                .with_code(codes::OUT_OF_RANGE),
             );
         }
         let mut cells = Vec::with_capacity(width * rows.len());
@@ -458,7 +461,8 @@ impl<T: Copy + Default> Rows<'_, T> {
                     None if self.legend.contains_key(&c) => cells.push(T::default()),
                     None => errors.push(
                         ContentError::new(file, format!("'{c}' is not in the legend"))
-                            .at(*line, Some(column_number(i))),
+                            .at(*line, Some(column_number(i)))
+                            .with_code(codes::UNKNOWN_NAME),
                     ),
                 }
             }

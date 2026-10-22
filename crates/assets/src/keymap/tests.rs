@@ -159,6 +159,16 @@ fn source_with(skip: &str, extra: &str) -> String {
     ])
 }
 
+/// The codes of `src`'s errors, in order.
+fn codes_of(src: &str) -> Vec<Option<crate::error::Code>> {
+    KeymapDef::from_source("k.ron", src)
+        .err()
+        .unwrap_or_default()
+        .iter()
+        .map(|e| e.code)
+        .collect()
+}
+
 fn errors(src: &str) -> Vec<String> {
     KeymapDef::from_source("k.ron", src)
         .err()
@@ -266,6 +276,8 @@ fn pad_button_listed_twice_is_error() {
         "{}",
         errs[0]
     );
+    let src = pad_source("Info", "        \"Info\": [\"West\", \"West\"],\n");
+    assert_eq!(codes_of(&src), [Some(codes::DUPLICATE)]);
 }
 
 #[test]
@@ -355,6 +367,11 @@ fn pad_unknown_button_and_action_are_errors() {
         "{}",
         errs[1]
     );
+    let src = pad_source(
+        "Info",
+        "        \"Info\": [\"f\"],\n        \"Attack\": [],\n",
+    );
+    assert_eq!(codes_of(&src), [Some(codes::UNKNOWN_NAME); 2]);
 }
 
 #[test]
@@ -478,6 +495,7 @@ fn unknown_action_is_error_with_line() {
         errs[0].message
     );
     assert!(errs[0].message.contains("Confirm"));
+    assert_eq!(errs[0].code, Some(codes::UNKNOWN_NAME));
     let line = u32::try_from(Action::ALL.len() + 4).unwrap_or(0);
     assert_eq!(errs[0].line, Some(line));
 }
@@ -490,6 +508,7 @@ fn bad_chord_is_error() {
     assert!(errs[0].contains("layout \"LeftHanded\""), "{}", errs[0]);
     assert!(errs[0].contains("\"Info\""), "{}", errs[0]);
     assert!(errs[0].contains("\"Ctrl+i\""), "{}", errs[0]);
+    assert_eq!(codes_of(&src), [Some(codes::UNKNOWN_NAME)]);
 }
 
 #[test]
@@ -540,6 +559,7 @@ fn duplicate_chord_in_one_action_is_error() {
     let errs = errors(&src);
     assert_eq!(errs.len(), 1);
     assert!(errs[0].contains("listed twice"), "{}", errs[0]);
+    assert_eq!(codes_of(&src), [Some(codes::DUPLICATE)]);
 }
 
 #[test]
@@ -601,6 +621,7 @@ fn a_layout_listed_twice_or_badly_named_is_error_with_line() {
     // Only the layouts themselves: their contents aren't checked.
     assert_eq!(errs.len(), 2);
     assert_eq!(errs[0].message, "layout \"LeftHanded\" is listed twice");
+    assert_eq!(errs[0].code, Some(codes::DUPLICATE));
     let line = |n: usize| u32::try_from(3 + n * (Action::ALL.len() + 2)).ok();
     assert_eq!(errs[0].line, line(2));
     assert_eq!(
@@ -618,6 +639,7 @@ fn zero_interval_is_error() {
         .unwrap_or_default();
     assert_eq!(errs.len(), 1);
     assert!(errs[0].message.contains("interval_ms"), "{}", errs[0]);
+    assert_eq!(errs[0].code, Some(codes::OUT_OF_RANGE));
     let line = u32::try_from(3 + 2 * (Action::ALL.len() + 2) + 1).unwrap_or(0);
     assert_eq!(errs[0].line, Some(line));
 }
@@ -1061,6 +1083,7 @@ fn the_crank_notch_is_read_from_the_file() {
             "{}",
             errs[0]
         );
+        assert_eq!(codes_of(&src), [Some(codes::OUT_OF_RANGE)]);
     }
     let table = playdate_table(
         "Info",

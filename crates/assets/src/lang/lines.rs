@@ -17,7 +17,7 @@ use crate::dialogue::{
     ChoiceOption, DialogueLimits, LineId, Scene, Step, caption_key, longest_width, scene_of,
     token_problems,
 };
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::names::Names;
 
 /// What every caption key starts with.
@@ -239,39 +239,34 @@ pub(super) fn add_lines(
         .map_err(|e| errors.push(e))
         .unwrap_or_default();
     for entry in raw {
-        let mut err = |message: String| {
-            errors.push(ContentError::new(
-                file,
-                format!("\"{}\": {message}", entry.key),
-            ));
-        };
+        let at = |message: &str| ContentError::new(file, format!("\"{}\": {message}", entry.key));
         if scene_of_key(&entry.key).is_none() {
-            err("not a line id or a caption key".to_owned());
+            errors.push(at("not a line id or a caption key"));
         }
         if lines.contains_key(&entry.key) {
-            err("the key is used twice".to_owned());
+            errors.push(at("the key is used twice").with_code(codes::DUPLICATE));
         }
         let every = entry.variants.len() == rules.variants.len();
         let text = match (entry.text, entry.variants.is_empty()) {
             (Some(text), true) => LineText::One(text),
             (None, false) if every => LineText::Variants(entry.variants),
             _ => {
-                err(variants_message(rules.variants));
+                errors.push(at(&variants_message(rules.variants)));
                 continue;
             }
         };
         let english = data.lines.get(&entry.key);
         for text in text.all() {
             if text.trim().is_empty() {
-                err("the text must not be empty".to_owned());
+                errors.push(at("the text must not be empty"));
             }
             for problem in token_problems(text, rules.tokens, Some(&data.names)) {
-                err(problem);
+                errors.push(at(&problem));
             }
             let width = longest_width(text, rules.tokens, Some(names.longest()));
             match english.and_then(|line| limit(line.kind, &rules.limits)) {
                 Some(limit) if width > limit => {
-                    err(format!("text is {width} cells; the limit is {limit}"));
+                    errors.push(at(&format!("text is {width} cells; the limit is {limit}")));
                 }
                 _ => {}
             }
