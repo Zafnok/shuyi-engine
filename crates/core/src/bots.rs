@@ -1,8 +1,10 @@
 //! Playtest bots over any [`TurnRules`] game: players made of code, the
-//! loop that lets them play a game to its end, a seeded random bot, and a
-//! bot that plans on copies of the game ([`rollout`], over
-//! [`determinize`]), and a playtest runner that lets several bots play a
-//! stage many times and checks how often each succeeds ([`playtest`]).
+//! loop that lets them play a game to its end, a seeded random bot, two
+//! bots that plan on copies of the game (over [`determinize`]): one that
+//! weighs its next command alone ([`rollout`]) and one that plans its
+//! side's whole turn, several commands deep ([`plan`]), and a playtest
+//! runner that lets several bots play a stage many times and checks how
+//! often each succeeds ([`playtest`]).
 //!
 //! A game's own bots (a baseline, personas) implement [`Bot`] for its
 //! state, and its measures watch the loop through [`play_observed`]. Bots
@@ -16,10 +18,12 @@ use crate::rng::SimRng;
 use crate::turn::TurnRules;
 
 pub mod determinize;
+pub mod plan;
 pub mod playtest;
 pub mod rollout;
 
 pub use determinize::{Determinize, Evaluate};
+pub use plan::{PlanSearch, PlanSettings, TurnPlan};
 pub use rollout::{Horizon, Order, Playout, Rollout, RolloutSearch, RolloutSettings, Unordered};
 
 /// A game whose state says whose move it is and which turn it is, so a

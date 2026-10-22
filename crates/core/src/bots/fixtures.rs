@@ -1,5 +1,6 @@
-//! Toy games for the bots' tests: a dice race (luck in the state) and Nim
-//! (no luck, nothing hidden).
+//! Toy games for the bots' tests: a dice race (luck in the state), Nim
+//! (no luck, nothing hidden) and counters (several commands a turn, a
+//! combo, and luck).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -216,6 +217,156 @@ pub(crate) fn nim_perfect(nim: &Nim) -> u32 {
         0 => 1,
         take => take,
     }
+}
+
+/// The most commands a side issues in one turn of [`Counters`].
+pub(crate) const PER_TURN: u32 = 3;
+
+/// What raising both counters in one turn of [`Counters`] earns.
+pub(crate) const COMBO: i32 = 10;
+
+/// The points a side of [`Counters`] wins on.
+pub(crate) const GOAL: i32 = 30;
+
+/// A [`Counters`] command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Counter {
+    /// Raises counter 0 or 1, for a point.
+    Raise(usize),
+    /// Ends the side's turn.
+    End,
+}
+
+/// Two sides take turns of up to [`PER_TURN`] commands. Raising a
+/// counter costs a point; raising both in one turn earns [`COMBO`], so
+/// the first raise only pays off with the second. With slips on, a raise
+/// slips one time in four (the state's luck): its counter stays down,
+/// and a slip of counter 0 knocks counter 1 over, which can't be raised
+/// again that turn. The first side to [`GOAL`] points wins.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Counters {
+    pub(crate) points: [i32; 2],
+    /// The counters raised this turn.
+    pub(crate) raised: [bool; 2],
+    /// Whether counter 1 fell this turn.
+    pub(crate) fallen: bool,
+    /// The commands issued this turn.
+    pub(crate) played: u32,
+    /// The turns of either side that have ended.
+    turns: u32,
+    slips: bool,
+    rng: SimRng,
+}
+
+impl Counters {
+    /// Counters from the start, their luck seeded with `seed`, raises
+    /// slipping.
+    pub(crate) fn new(seed: u64) -> Self {
+        Self::at([0, 0], true, seed)
+    }
+
+    /// Counters with the sides on `points`, side 0 to move, raises
+    /// slipping when `slips` says.
+    pub(crate) fn at(points: [i32; 2], slips: bool, seed: u64) -> Self {
+        Self {
+            points,
+            raised: [false; 2],
+            fallen: false,
+            played: 0,
+            turns: 0,
+            slips,
+            rng: SimRng::new(seed),
+        }
+    }
+
+    fn end_turn(&mut self) {
+        self.turns += 1;
+        self.raised = [false; 2];
+        self.fallen = false;
+        self.played = 0;
+    }
+}
+
+impl TurnRules for Counters {
+    type Command = Counter;
+    /// The side's points after the command.
+    type Event = i32;
+    type Error = ();
+    /// The side that won.
+    type Outcome = usize;
+
+    fn check(&self, command: &Counter) -> Result<(), ()> {
+        let refused = match *command {
+            Counter::Raise(counter) => {
+                counter > 1 || self.raised[counter] || (counter == 1 && self.fallen)
+            }
+            Counter::End => false,
+        };
+        if refused || self.outcome().is_some() {
+            Err(())
+        } else {
+            Ok(())
+        }
+    }
+
+    fn apply(&mut self, command: &Counter) -> Result<Vec<i32>, ()> {
+        self.check(command)?;
+        let side = self.side_to_move();
+        if let Counter::Raise(counter) = *command {
+            self.points[side] -= 1;
+            if self.slips && self.rng.roll_below(4) == 0 {
+                self.fallen |= counter == 0;
+            } else {
+                self.raised[counter] = true;
+                if self.raised == [true, true] {
+                    self.points[side] += COMBO;
+                }
+            }
+            self.played += 1;
+        }
+        if *command == Counter::End || self.played == PER_TURN {
+            self.end_turn();
+        }
+        Ok(vec![self.points[side]])
+    }
+
+    fn legal_commands(&self) -> Vec<Counter> {
+        [Counter::Raise(0), Counter::Raise(1), Counter::End]
+            .into_iter()
+            .filter(|command| self.check(command).is_ok())
+            .collect()
+    }
+
+    fn outcome(&self) -> Option<usize> {
+        self.points.iter().position(|&points| points >= GOAL)
+    }
+}
+
+impl Sides for Counters {
+    type Side = usize;
+
+    fn side_to_move(&self) -> usize {
+        usize::try_from(self.turns % 2).unwrap_or(0)
+    }
+
+    fn turn(&self) -> u32 {
+        self.turns / 2 + 1
+    }
+}
+
+impl Determinize for Counters {
+    /// The luck to come is redrawn; nothing else is hidden.
+    fn determinize(&self, _: usize, seed: u64) -> Self {
+        Self {
+            rng: SimRng::new(seed),
+            ..self.clone()
+        }
+    }
+}
+
+/// How far ahead `side` of [`Counters`] is, in points.
+pub(crate) fn points_ahead(_: &Counters, end: &Counters, side: usize) -> i32 {
+    end.points[side] - end.points[1 - side]
 }
 
 /// A finished game's score for `side`: 1 000 for a win, -1 000 for a

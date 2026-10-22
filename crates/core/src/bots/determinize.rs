@@ -21,8 +21,8 @@ pub trait Determinize: Sides + Clone {
     ///
     /// The copy must list the same [`legal_commands`](crate::TurnRules::legal_commands)
     /// as `self`, in the same order, and accept each of them: the
-    /// [`Rollout`](crate::Rollout) bot checks the list and panics when it
-    /// differs.
+    /// [`Rollout`](crate::Rollout) and [`TurnPlan`](crate::TurnPlan) bots
+    /// check the list and panic when it differs.
     ///
     /// A game with no luck and nothing hidden returns `self.clone()` and
     /// says so in a comment. A game whose difficulty lets a bot see more

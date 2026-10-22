@@ -150,13 +150,7 @@ impl<O, P, E> Rollout<O, P, E> {
             !candidates.is_empty(),
             "no command to choose from: the game lists none, or its order dropped them all"
         );
-        let seeds = (0..at_least_one(self.settings.samples))
-            .map(|_| {
-                let high = u64::from(self.rng.next_u32());
-                let low = u64::from(self.rng.next_u32());
-                (high << 32) + low
-            })
-            .collect();
+        let seeds = draw_seeds(&mut self.rng, self.settings.samples);
         RolloutSearch {
             root: rules.clone(),
             side: rules.side_to_move(),
@@ -286,18 +280,8 @@ where
         let candidate = self.next / self.seeds.len();
         let seed = self.seeds[self.next % self.seeds.len()];
         self.next += 1;
-        let mut copy = self.root.determinize(self.side, seed);
-        assert!(
-            copy.side_to_move() == self.side && copy.legal_commands() == self.legal,
-            "determinize changed the commands at the root (seed {seed}): a copy must list \
-             the state's legal commands, in the same order"
-        );
-        let applied = copy.apply(&self.candidates[candidate]).is_ok();
-        assert!(
-            applied,
-            "the copy from determinize refused candidate {candidate} (seed {seed}): a copy must \
-             accept the state's legal commands"
-        );
+        let mut copy = checked_copy(&self.root, self.side, &self.legal, seed);
+        apply_candidate(&mut copy, &self.candidates[candidate], candidate, seed);
         let mut playing = Playing {
             candidate,
             copy,
@@ -350,15 +334,71 @@ fn note_side<R: Sides>(playing: &mut Playing<R>) {
     }
 }
 
+/// `samples` seeds for a decision's copies (at least 1), each two draws
+/// from `rng`, high half first.
+pub(super) fn draw_seeds(rng: &mut SimRng, samples: u32) -> Vec<u64> {
+    (0..at_least_one(samples))
+        .map(|_| {
+            let high = u64::from(rng.next_u32());
+            let low = u64::from(rng.next_u32());
+            (high << 32) + low
+        })
+        .collect()
+}
+
+/// `root`'s copy for `side` from `seed`, checked to list `legal` (the
+/// root's legal commands) with `side` to move.
+///
+/// # Panics
+///
+/// With a message naming `determinize` when it doesn't.
+pub(super) fn checked_copy<R: Determinize>(
+    root: &R,
+    side: R::Side,
+    legal: &[R::Command],
+    seed: u64,
+) -> R
+where
+    R::Command: PartialEq,
+{
+    let copy = root.determinize(side, seed);
+    assert!(
+        copy.side_to_move() == side && copy.legal_commands() == legal,
+        "determinize changed the commands at the root (seed {seed}): a copy must list \
+         the state's legal commands, in the same order"
+    );
+    copy
+}
+
+/// Applies the root's candidate number `index` to a root's `copy` made
+/// from `seed`.
+///
+/// # Panics
+///
+/// With a message naming `determinize` when the copy refuses it.
+pub(super) fn apply_candidate<R: Determinize>(
+    copy: &mut R,
+    candidate: &R::Command,
+    index: usize,
+    seed: u64,
+) {
+    let applied = copy.apply(candidate).is_ok();
+    assert!(
+        applied,
+        "the copy from determinize refused candidate {index} (seed {seed}): a copy must \
+         accept the state's legal commands"
+    );
+}
+
 /// `n`, but at least 1, as a length.
-fn at_least_one(n: u32) -> usize {
+pub(super) fn at_least_one(n: u32) -> usize {
     usize::try_from(n.max(1)).unwrap_or(usize::MAX)
 }
 
 /// The index `means` pick: at `temperature` 0 the best (the first among
 /// equals); otherwise a base-2 softmax, a mean `temperature` points below
 /// the best weighing half as much, and one draw from `rng`.
-fn pick(means: &[i64], temperature: u32, rng: &mut SimRng) -> usize {
+pub(super) fn pick(means: &[i64], temperature: u32, rng: &mut SimRng) -> usize {
     let best = means.iter().copied().max().unwrap_or(0);
     let best_index = means.iter().position(|&mean| mean == best).unwrap_or(0);
     if temperature == 0 {

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-21
 ---
 
 # 2128 — A turn planner
@@ -142,25 +142,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On the combo fixture, `TurnPlan` at temperature 0 with `depth ≥ 2`
+- [x] On the combo fixture, `TurnPlan` at temperature 0 with `depth ≥ 2`
       picks the first step of the combo, which a `Rollout` with the same
       `Order` and `Evaluate` (its playout ending the turn at once) and the
       same budget does not.
-- [ ] With `depth` 1, `width` 1, `candidates` N and `samples` S it picks
+- [x] With `depth` 1, `width` 1, `candidates` N and `samples` S it picks
       what a `Rollout` with `candidates` N, `samples` S, horizon
       `Sides(1)` and a playout that ends the side's turn at once picks,
       for the same seed (a planner one command deep is the rollout bot).
-- [ ] It never peeks at the luck to come: on two states that differ only
+- [x] It never peeks at the luck to come: on two states that differ only
       in their real luck, the same seed picks the same command.
-- [ ] Same seed and state, same command; slicing `advance` into units of
+- [x] Same seed and state, same command; slicing `advance` into units of
       1, 7 or `u32::MAX` gives the same command.
-- [ ] A refused command in one copy ends that copy's plan and is scored
+- [x] A refused command in one copy ends that copy's plan and is scored
       where it stopped (a fixture where a piece falls in some copies).
-- [ ] The work done never exceeds the documented bound.
-- [ ] `PlanSettings` round-trips through RON.
-- [ ] Docs: module docs, `bots.rs`, the ADR; no game names (the leak
+- [x] The work done never exceeds the documented bound.
+- [x] `PlanSettings` round-trips through RON.
+- [x] Docs: module docs, `bots.rs`, the ADR; no game names (the leak
       test).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -173,6 +173,57 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick; name game#0506's
-PR that moves the pin.)*
+**What was done.**
+
+- `shuyi_core::bots::plan`: `TurnPlan<O, E>`, `PlanSettings` and
+  `PlanSearch`, re-exported from `bots` and the crate root beside
+  `Rollout`. A beam over the side's own commands, as the steps say:
+  shared seeds and root copies, the candidates of each partial turn from
+  the order of its first copy still playing, mean scores, and a first
+  command worth its best partial turn (itself included). The pick is the
+  rollout bot's softmax.
+- `rollout.rs` shares its seed drawing, root check, candidate application,
+  `at_least_one` and `pick` with `plan.rs` (`pub(super)`); the rollout
+  bot's behaviour is unchanged (its tests are untouched and pass).
+- A fixture, `Counters`: up to three commands a turn, a combo that pays
+  only when both counters are raised in one turn, raises that slip from
+  the state's luck, and a slip that knocks the other counter over (the
+  refused command). With slips off it is deterministic, for the exact
+  unit counts.
+- [ADR-0029](../../docs/adr/0029-the-turn-planner-a-beam-over-the-sides-own-commands-copies-kept-and-the-best-continuation-backed-up.md)
+  records the planner's rules and extends ADR-0027.
+- Tests: every acceptance criterion; zero settings count as one; the
+  beam keeps the best (the earlier among equals); each partial turn's
+  order chooses its candidates; a won game ends the plan; the root
+  checks panic as the rollout bot's do; a planner beats a random bot.
+  Property tests: one command deep it is the rollout bot (same command,
+  and the same next command); the luck to come never changes the
+  command; slicing never does; the command is legal and the work within
+  the bound.
+
+**Deviations.**
+
+- The work bound is tighter than the ticket's: each partial turn keeps
+  its copies, so extending one applies one command per copy instead of
+  replaying the whole list. A decision does at most `samples ×
+  candidates × (1 + width × (depth − 1))` units, the ticket's
+  `samples × depth × (candidates + width × candidates × (depth − 1))`
+  divided by `depth`. The memory cost is in ADR-0029's consequences.
+- "Its first copy" is read as its first copy *still playing*: a stopped
+  first copy may already be on the other side's move, whose commands
+  aren't the side's.
+- Only partial turns with a copy still playing take a place in the beam;
+  a finished one has nothing to extend, and its score already counts
+  toward its first command's value.
+- "The same budget" in the first criterion is read as the same
+  candidates, samples and most units: the rollout bot there has
+  `commands` 4, so its bound (3 × 8 × 5) equals the planner's (8 × 3 ×
+  (1 + 2 × 2)).
+- There is no automated "leak test" in the repository; the new code and
+  docs were checked by hand for game names, and hold none.
+
+**Follow-ups.** None.
+
+**For Nick.** Nothing to decide. The game's personas can now plan a whole
+turn (game#0506); the game ticket game#0506 moves the pin to this change
+and builds its personas on `TurnPlan`. No API the game uses changed.
