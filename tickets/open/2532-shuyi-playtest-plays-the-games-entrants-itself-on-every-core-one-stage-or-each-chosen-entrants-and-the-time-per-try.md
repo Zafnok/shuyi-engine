@@ -81,6 +81,9 @@ None.
 - The history, `was …` lines and summary lines from measures: 2533.
 - Targets by tier: 2129 (the game builds its checks with it).
 - A CI workflow: 2021.
+- `shuyi autobalance`: 2541, which reuses this ticket's thread pool, so
+  keep the pool in a module of its own (not inside the playtest
+  operation).
 - Stopping a try early, or slicing a try over frames (3009).
 - The game's use of it (game#1180).
 

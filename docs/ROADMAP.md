@@ -326,6 +326,7 @@ them.
 | 2532 | `shuyi playtest` plays the game's entrants itself: every core, a stage or each, chosen entrants, time per try | game#1180 |
 | 2533 | `shuyi playtest` keeps a history: `was …` lines and summary lines from named measures (after 2532) | game#1180 |
 | 2021 | A reusable playtest workflow; the grid template calls it (after 2532 and 2533) | game#1180 |
+| 2541 | `shuyi autobalance`: the search for a game's stage on every core, a time limit, the stage written back (after 2532) | game#1183 |
 
 The playtest bots (2125–2128, 2026-10-21) are on the game's Act 1
 critical path: its persona bots (game#0506) and autobalance
@@ -344,7 +345,9 @@ areas and candidate order, the command's threads, history and summary,
 and a CI workflow. None holds up the game, which plays with its own
 code meanwhile (game#1180 moves onto them). 2129, 2130, 2131 and 2532
 wait for nothing and can run side by side; 2132 follows 2131, 2533
-follows 2532, 2021 follows both.
+follows 2532, 2021 follows both. 2541 (2026-10-22, from the game's
+retro of its last 50 PRs) does the same for autobalance before the game
+writes its own command: it follows 2532 and shares its thread pool.
 
 ### Friction from the game
 
@@ -374,6 +377,15 @@ deletes that code once the engine has the piece.
 The sweep also added notes to 3003 (a loading phase), 3010 (the
 game's front end as working code to lift) and 3011 (the report a
 shipped game keeps).
+
+The game's retro of its last 50 PRs (2026-10-22) added two more, and
+notes to 2021 (a push's changed files and a lever script) and 3010
+(`pdc` and a big unoptimized ELF):
+
+| Ticket | What | For |
+| ------ | ---- | --- |
+| 2233 | The bundle's folder loader file by file, as the registry's is, and one all-or-nothing helper | game#1186 |
+| 2371 | A one-bit look for the engine's screens and widgets | game#1184 |
 
 ### A frame cap
 
