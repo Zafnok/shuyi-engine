@@ -11,6 +11,27 @@
 //! Every number is an integer, so a report is the same on every machine:
 //! a band compares `successes * 100` with `min * count`, and the median
 //! of an even count is the lower middle value.
+//!
+//! The checks are a flat list, or come from [`Targets`]: what each
+//! entrant should achieve on a stage of each of the game's tiers, said
+//! once. Given a stage's tier and the entrants that play,
+//! [`Targets::checks`] gives that stage's checks. A game reads the file
+//! itself (the core does no I/O), over its own tier type:
+//!
+//! ```ron
+//! (
+//!     success: {
+//!         "casual": [(measure: "won", min: Some(1))],
+//!         "expert": [(measure: "won", min: Some(1)), (measure: "deaths", max: Some(0))],
+//!     },
+//!     bands: {
+//!         Easy: {"casual": (min: 70, max: 90), "expert": (min: 80, max: 100)},
+//!         Hard: {"casual": (min: 30, max: 50), "expert": (min: 50, max: 75)},
+//!     },
+//!     floors: {"casual": 20},
+//!     medians: [(entrant: "expert", measure: "turns", want: Lower, than: "casual")],
+//! )
+//! ```
 
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
@@ -23,6 +44,10 @@ use core::ops::Range;
 use serde::{Deserialize, Serialize};
 
 use super::{Bot, PlayError, Report, Sides, play_observed};
+
+mod targets;
+
+pub use targets::{MedianTarget, Targets};
 
 /// The game's measures of one try, by name. A success or a loss is a
 /// measure too (`"won"` 1 or 0), so every check reads measures only.

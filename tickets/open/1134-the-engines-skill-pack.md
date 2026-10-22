@@ -130,8 +130,9 @@ None.
     prove a level winnable with `shuyi_core::search::solve` in a game's
     `check`, and `shuyi-balance-bots` shows the minimax and MCTS bots.
     If not, each of those tickets adds its section when it lands.
-    Either order with 2129, 2130, 2131, 2132, 2532, 2533 and 2021: if
-    they are done, `shuyi-balance-bots` also shows targets by tier,
+    `shuyi-balance-bots` also shows targets by tier
+    (`shuyi_core::bots::playtest::Targets`). Either order with 2130,
+    2131, 2132, 2532, 2533 and 2021: if they are done, it also shows
     personas as data (planner settings and weights), the tactics kit's
     threat areas and candidate order, `shuyi playtest`'s options and
     history, and the reusable playtest workflow. If not, each adds its
