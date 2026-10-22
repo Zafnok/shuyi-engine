@@ -38,14 +38,18 @@ pub fn run(repo_root: &Path) -> Vec<String> {
     errors
 }
 
-fn display_path(root: &Path, file: &Path) -> String {
+pub(crate) fn display_path(root: &Path, file: &Path) -> String {
     file.strip_prefix(root)
         .unwrap_or(file)
         .to_string_lossy()
         .replace('\\', "/")
 }
 
-fn markdown_files(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> std::io::Result<()> {
+pub(crate) fn markdown_files(
+    root: &Path,
+    dir: &Path,
+    out: &mut Vec<PathBuf>,
+) -> std::io::Result<()> {
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
@@ -68,7 +72,7 @@ fn markdown_files(root: &Path, dir: &Path, out: &mut Vec<PathBuf>) -> std::io::R
 /// The relative links and images of a Markdown text, with the line each one
 /// starts on. Links in code are not links; web links, `mailto:` and links to
 /// an anchor in the same file are left out.
-fn relative_links(text: &str) -> Vec<(usize, String)> {
+pub(crate) fn relative_links(text: &str) -> Vec<(usize, String)> {
     let mut links = Vec::new();
     for (event, range) in Parser::new(text).into_offset_iter() {
         let Event::Start(Tag::Link { dest_url: dest, .. } | Tag::Image { dest_url: dest, .. }) =
@@ -132,7 +136,7 @@ fn link_exists(repo_root: &Path, from: &Path, dest: &str) -> bool {
 }
 
 /// `%20` and the like, as GitHub reads them in a link; anything else is kept.
-fn percent_decode(s: &str) -> String {
+pub(crate) fn percent_decode(s: &str) -> String {
     let mut out = Vec::with_capacity(s.len());
     // Every step takes at least one byte off `rest`, so the loop ends
     // whatever a mutant does to it.

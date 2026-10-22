@@ -18,7 +18,7 @@ use core::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 use crate::ron::parse_ron;
 
@@ -979,7 +979,8 @@ impl<A: ActionSet> KeymapDef<A> {
         };
         if raw.repeat.interval_ms == 0 {
             errors.push(positioned(
-                ContentError::new(file, "repeat interval_ms must be at least 1"),
+                ContentError::new(file, "repeat interval_ms must be at least 1")
+                    .with_code(codes::OUT_OF_RANGE),
                 line_of_quoted(source, 0, "repeat"),
             ));
         }
@@ -999,7 +1000,8 @@ impl<A: ActionSet> KeymapDef<A> {
         }
         if !(1..=360).contains(&raw.crank.notch_degrees) {
             errors.push(positioned(
-                ContentError::new(file, "crank notch_degrees must be 1 to 360"),
+                ContentError::new(file, "crank notch_degrees must be 1 to 360")
+                    .with_code(codes::OUT_OF_RANGE),
                 line_of_quoted(source, 0, "crank"),
             ));
         }
@@ -1059,7 +1061,10 @@ fn validate_layouts<A: ActionSet>(
         };
         if !listed.insert(layout) {
             let message = format!("layout \"{layout}\" is listed twice");
-            errors.push(positioned(ContentError::new(file, message), start));
+            errors.push(positioned(
+                ContentError::new(file, message).with_code(codes::DUPLICATE),
+                start,
+            ));
             continue;
         }
         let label = format!("layout \"{layout}\"");
@@ -1227,15 +1232,17 @@ fn validate_bindings<A: ActionSet, T: Bound>(
             line_of_quoted(source, from, key),
         )
     };
+    let coded_at = |key: &str, message: String, code| err_at(key, message).with_code(code);
     for (action_name, names) in actions {
         let Some(action) = A::from_name(action_name) else {
             let known: Vec<&str> = A::ALL.iter().map(|a| a.name()).collect();
-            errors.push(err_at(
+            errors.push(coded_at(
                 action_name,
                 format!(
                     "unknown action \"{action_name}\"; known actions: {}",
                     known.join(", ")
                 ),
+                codes::UNKNOWN_NAME,
             ));
             continue;
         };
@@ -1256,9 +1263,10 @@ fn validate_bindings<A: ActionSet, T: Bound>(
             let bound = match T::parse_name(text) {
                 Ok(bound) => bound,
                 Err(why) => {
-                    errors.push(err_at(
+                    errors.push(coded_at(
                         action_name,
                         format!("action \"{action_name}\": {why}"),
+                        codes::UNKNOWN_NAME,
                     ));
                     continue;
                 }
@@ -1277,7 +1285,7 @@ fn validate_bindings<A: ActionSet, T: Bound>(
                         other.name()
                     )
                 };
-                errors.push(err_at(action_name, message));
+                errors.push(coded_at(action_name, message, codes::DUPLICATE));
             } else {
                 bindings.insert((action.group(), bound), action);
                 listed.push(bound);

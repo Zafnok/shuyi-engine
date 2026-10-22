@@ -227,6 +227,30 @@ pub static TABLE: &[Entry] = &[
          loses something"
     ),
     row!(
+        content::UNKNOWN_NAME,
+        "unknown-name",
+        Content,
+        "SH2008",
+        "A name in the file isn't one it may use",
+        "use one of the names the message lists, or fix the spelling"
+    ),
+    row!(
+        content::DUPLICATE,
+        "duplicate",
+        Content,
+        "SH2009",
+        "Something given once is given twice",
+        "keep one of the two: remove or rename the other"
+    ),
+    row!(
+        content::OUT_OF_RANGE,
+        "out-of-range",
+        Content,
+        "SH2010",
+        "A number or a size is out of range",
+        "bring it within the range the message gives"
+    ),
+    row!(
         NOT_OFFERED,
         "not-offered",
         Operation,

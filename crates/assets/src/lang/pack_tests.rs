@@ -99,6 +99,19 @@ fn pack(data_ron: &str, dialogue: &[(&str, &str)]) -> Result<LangPack, Vec<Strin
         .map_err(|e| e.iter().map(ToString::to_string).collect())
 }
 
+/// The errors of a pack with dialogue file `gate.ron` holding `entries`.
+fn line_problems(entries: &str) -> Vec<ContentError> {
+    let sources = PackSources {
+        info: ("xx/lang.ron", INFO),
+        ui: ("xx/ui.ron", "[]"),
+        data: Some(("xx/data.ron", "[]")),
+        dialogue: vec![("xx/dialogue/gate.ron", entries)],
+    };
+    pack_from_files(&sources, &BTreeMap::new(), Some(&source()), &RULES)
+        .err()
+        .unwrap_or_default()
+}
+
 fn line_errors(entries: &str) -> Vec<String> {
     pack("[]", &[("xx/dialogue/gate.ron", entries)])
         .err()
@@ -234,6 +247,21 @@ fn a_dialogue_entry_has_text_or_every_variant() {
     assert_eq!(not_a_list.len(), 1);
     let not_an_entry = line_errors("[1]");
     assert_eq!(not_an_entry.len(), 1);
+}
+
+#[test]
+fn a_dialogue_key_used_twice_fails() {
+    let one = entry("Gone.", "Parti.");
+    let errors = line_problems(&format!("[{one}, {one}]"));
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(
+        errors[0].to_string(),
+        format!(
+            "xx/dialogue/gate.ron: {:?}: the key is used twice",
+            id("Gone.")
+        )
+    );
+    assert_eq!(errors[0].code, Some(codes::DUPLICATE));
 }
 
 #[test]

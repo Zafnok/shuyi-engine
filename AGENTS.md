@@ -9,6 +9,9 @@ It is carved out of the game **Visions of Shuyi**
 game stays the engine's first user. Read [`README.md`](README.md), then
 [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+Where each kind of fact is written, and what each task reads first, is in
+[`docs/README.md`](docs/README.md), the docs map (the `document` skill).
+
 ## Who decides what
 
 - **Nick (owner)** decides the product: the name, the license, when

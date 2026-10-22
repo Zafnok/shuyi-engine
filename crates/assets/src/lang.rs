@@ -23,7 +23,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::{Deserialize, Serialize};
 
 use crate::dialogue::{DialogueLimits, Tokens};
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::names::Names;
 use crate::ron::parse_ron;
 use crate::tip::placeholders;
@@ -318,10 +318,10 @@ pub fn english_from_source(
             ));
         }
         if english.contains_key(&key) {
-            errors.push(ContentError::new(
-                file,
-                format!("\"{key}\": the key is used twice"),
-            ));
+            errors.push(
+                ContentError::new(file, format!("\"{key}\": the key is used twice"))
+                    .with_code(codes::DUPLICATE),
+            );
         }
         english.insert(key, text);
     }
@@ -415,24 +415,21 @@ fn entries(
         .unwrap_or_default();
     let mut by_key = BTreeMap::new();
     for entry in entries {
-        let mut err = |message: &str| {
-            errors.push(ContentError::new(
-                file,
-                format!("\"{}\": {message}", entry.key),
-            ));
-        };
+        let at = |message: &str| ContentError::new(file, format!("\"{}\": {message}", entry.key));
         if !english.contains_key(&entry.key) {
-            err(no_key);
+            errors.push(at(no_key));
         }
         if by_key.contains_key(&entry.key) {
-            err("the key is used twice");
+            errors.push(at("the key is used twice").with_code(codes::DUPLICATE));
         }
         let names = |text| placeholders(text).into_iter().collect::<BTreeSet<_>>();
         if names(&entry.text) != names(&entry.source) {
-            err("the text and its source must have the same placeholders");
+            errors.push(at(
+                "the text and its source must have the same placeholders",
+            ));
         }
         if let Some(problem) = data_text_problem(&entry.key, &entry.text, data_problem) {
-            err(&problem);
+            errors.push(at(&problem));
         }
         by_key.insert(entry.key.clone(), entry);
     }
@@ -717,6 +714,12 @@ mod tests {
                 "en/ui.ron: \"ok_1.x\": the key is used twice".to_owned(),
             ]
         );
+        let codes: Vec<_> = english_from_source("en/ui.ron", source)
+            .unwrap_err()
+            .iter()
+            .map(|e| e.code)
+            .collect();
+        assert_eq!(codes, [None, None, None, Some(codes::DUPLICATE)]);
     }
 
     #[test]
@@ -792,6 +795,10 @@ mod tests {
             pack(ui).unwrap_err(),
             ["xx/ui.ron: \"a.one\": the key is used twice"]
         );
+        let errors =
+            pack_from_sources(("xx/lang.ron", INFO), ("xx/ui.ron", ui), &english(), &RULES)
+                .unwrap_err();
+        assert_eq!(errors[0].code, Some(codes::DUPLICATE));
     }
 
     #[test]

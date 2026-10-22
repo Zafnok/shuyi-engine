@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: opus-5.5
 effort: xhigh
 status: todo
-blocked_by: ["1129", "2015", "2509", "2511"]
+blocked_by: ["1129", "2015", "2509", "2511", "2810"]
 nick_input: none
 completed:
 ---
@@ -76,6 +76,20 @@ None.
   version the game builds with (2808's `{{engine.docs}}`), never to a
   fixed URL on `main`. Either order with 2808: until it is done, that
   `AGENTS.md` links `blob/main`.
+- **One source for what is true of every game.** Some of these skills
+  teach what a skill of this repository already teaches:
+  `shuyi-input` and `input-actions`, `shuyi-gates` and `run-gates`.
+  The shipped skill becomes the source for what holds in every game.
+  Ours keeps only what holds in this repository alone (the engine's
+  own crates, CI's jobs, the game at the next pin, Nick's machine) and
+  links the shipped skill for the rest, in this PR. A rule is never
+  written in both. The docs map (`docs/README.md`, 2810) gets:
+  - a row for `skills/` under *People making games*;
+  - each such pair in its *Pairs* table;
+  - a line in *What each task reads*: the `25xx` block reads
+    `skills/`.
+
+  A later skill that overlaps one of ours follows the same rule.
 - What particular skills teach beyond ADR-0005 §3's table:
   - `shuyi-new-game` teaches the short path first (2511): `shuyi new
     blank`, `BasicGame`, `BasicData`, `run_game`, `BasicTools`. It says
@@ -201,6 +215,9 @@ None.
       Only the skills that wait for parked tickets have none.
 - [ ] Installing the plugin in Claude Code lists the skills (manual
       check noted in the PR).
+- [ ] `input-actions` and `run-gates` hold only what is this
+      repository's and link `shuyi-input` and `shuyi-gates`, and
+      `docs/README.md` lists both pairs.
 - [ ] All gates pass.
 
 ## Tests required

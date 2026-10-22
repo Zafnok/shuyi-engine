@@ -188,6 +188,11 @@ None.
   - `site/README.md` gets a short section: what the tool writes, the
     twin rule, the URL rule, the budget, and that a new shortcode needs
     its expansion in `llms.rs`.
+- **The docs map** (`docs/README.md`, 2810, done before 2802): a row
+  for `llms.txt`, its twins and `site/llms-header.md` under *People
+  making games*. They are generated from Learn, so the row says to
+  change Learn and never a twin (the map's rule 2). Another row for
+  `site/README.md` under *Engine developers*.
 - **`pages.yml`:** one `BASE_URL` value goes to `zola build --base-url`
   and to `cargo xtask llms --base-url`. The tool runs after `zola build`
   and 2802's `cargo doc` copy, before the upload, with `--commit ${{

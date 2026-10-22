@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["1129", "2509", "3040"]
+blocked_by: ["1129", "2509", "3040", "2810"]
 nick_input: none
 completed:
 ---
@@ -72,6 +72,18 @@ None.
   shuyi-cli --` in the engine, `cargo shuyi` in a template. If that
   can't work, the completion notes say why. If 2513 isn't done, write a
   ticket for these lines (`write-ticket`), blocked by 2513.
+- **This repository uses it too.** A checked-in `.mcp.json` at the
+  root registers the server for sessions that work on the engine.
+  This repository has no installed `shuyi`, so the entry runs `cargo
+  run -q -p shuyi-cli -- mcp`. Its content is what `shuyi mcp install
+  --dry-run` writes for Claude Code, with that command in place of
+  `shuyi`. The `work-ticket` skill's §4 (*Verify*) gains one line: a
+  change a player sees is checked through the session tools on
+  `examples/hello-grid` (`start`, `step`, `scene`, `frame_png`), not by
+  reading the Harness's code to drive it. The docs map
+  (`docs/README.md`, 2810) gets a row for `.mcp.json` under *Engine
+  developers*, and *What each task reads* says to use the session
+  tools for the `23xx` and `27xx` blocks.
 - An MCP library under an allowed license (check with `cargo deny`), or
   a small hand-written JSON-RPC layer if none fits.
 - A test drives the server with a scripted client over stdio against
@@ -108,6 +120,9 @@ None.
 
 - [ ] The scripted client test passes in CI.
 - [ ] `shuyi mcp install --dry-run` prints what it would write.
+- [ ] The root `.mcp.json` registers the server, and a Claude Code
+      session in this repository lists its tools (a manual check noted
+      in the PR).
 - [ ] `cargo deny check` passes.
 - [ ] All gates pass.
 

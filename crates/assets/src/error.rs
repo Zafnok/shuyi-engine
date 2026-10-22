@@ -37,6 +37,13 @@ pub mod codes {
     pub const TOO_BIG: Code = Code("SH2006");
     /// `pack-differs`: a baked pack differs from its sources.
     pub const PACK_DIFFERS: Code = Code("SH2007");
+    /// `unknown-name`: a name the file uses isn't one it may: an action,
+    /// a key or button, a terrain, a tile character.
+    pub const UNKNOWN_NAME: Code = Code("SH2008");
+    /// `duplicate`: something the file may give once is given twice.
+    pub const DUPLICATE: Code = Code("SH2009");
+    /// `out-of-range`: a number or a size is outside what it may be.
+    pub const OUT_OF_RANGE: Code = Code("SH2010");
 }
 
 /// One problem found while loading or validating an asset.

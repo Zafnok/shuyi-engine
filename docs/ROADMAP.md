@@ -45,10 +45,14 @@ The engine does everything the game needs today, from this repository,
 and agents can drive it. On 2026-10-20 Nick added protections for the
 code to the MVP, before the first release (the second comparison, in
 phase 3 below): 2010–2017, 2509, 2511, 2513, 2808, 3039 and 3040.
-These tickets, in order:
+On 2026-10-21 he asked for the docs to start early, so that our own
+sessions search less: the docs map (2810) comes first, and the MCP
+server (1133), the skill pack (1134), the book (2802) and the guides
+(2004) write into it. These tickets, in order:
 
 | Ticket | What |
 | ------ | ---- |
+| 2810 | The docs map: one home for each kind of fact, by who reads it, a `document` skill, and `check-docs` |
 | 2002 | This repository's gates: the ticket lint, typos and links, in the CI 1131 started with the code gates |
 | 2007 | Coverage and SonarCloud in CI, and the Sonar debt queue as batched GitHub issues, copied from the game |
 | 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, `main` protected by its required checks |

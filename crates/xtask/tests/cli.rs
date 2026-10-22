@@ -47,6 +47,20 @@ fn check_links_takes_no_arguments() {
 }
 
 #[test]
+fn check_docs_passes_on_the_repository() {
+    let (ok, err) = xtask(&["check-docs"]);
+    assert!(ok, "{err}");
+    assert!(err.contains("check-docs: ok"), "{err}");
+}
+
+#[test]
+fn check_docs_takes_no_arguments() {
+    let (ok, err) = xtask(&["check-docs", "extra"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}
+
+#[test]
 fn ticket_lint_passes_on_the_repository() {
     let (ok, err) = xtask(&["ticket-lint", "--game-repo", &no_game()]);
     assert!(ok, "{err}");

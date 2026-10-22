@@ -11,14 +11,16 @@ so discipline here is the whole quality system.
 
 ## 0. Orient
 
-1. Read `AGENTS.md`, `tickets/README.md` and `docs/ROADMAP.md`.
-2. Read the ticket fully, then every ADR, decision and game-repository
-   page it links.
+1. Read `AGENTS.md` and `docs/README.md` (the docs map).
+2. Read the ticket fully, then the docs that the map's *What each task
+   reads* names for its block, then every ADR, decision and
+   game-repository page the ticket links.
 
 ## 1. Choose the ticket
 
-- If the user named a ticket, use it.
-- Otherwise list ready tickets: `status: todo`, every `blocked_by` done.
+- If the user named a ticket, use it, and read neither file below.
+- Otherwise read `tickets/README.md` and `docs/ROADMAP.md`, and list
+  ready tickets: `status: todo`, every `blocked_by` done.
   - A plain id is done when it is in this repository's `tickets/done/`.
   - A `game#NNNN` id is done when it is in the game repository's
     `tickets/done/`. Check with `gh api
@@ -84,13 +86,15 @@ the PR.
 
 ## 5. Archive the ticket (same PR)
 
-1. Fill in `## Completion notes`: what was done, deviations, follow-up
+1. **Write the docs.** Run the `document` skill over the change, or say
+   in the completion notes why the change needs none.
+2. Fill in `## Completion notes`: what was done, deviations, follow-up
    tickets, and anything Nick should know. A ticket that names a game
    ticket (`game#NNNN`) also lists the game PR that will move the pin to
    this change (`Zafnok/visions-of-shuyi#N`), or the game ticket that
    will, if that PR doesn't exist yet.
-2. Set `status: done` and `completed: YYYY-MM-DD`.
-3. `git mv tickets/open/<file>.md tickets/done/<file>.md`
+3. Set `status: done` and `completed: YYYY-MM-DD`.
+4. `git mv tickets/open/<file>.md tickets/done/<file>.md`
 
 ## 6. Commit and PR
 
