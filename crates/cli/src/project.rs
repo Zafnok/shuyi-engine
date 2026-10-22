@@ -155,9 +155,25 @@ pub struct GameProgram {
 impl GameProgram {
     /// The `cargo` arguments that run `command` with `args` in it.
     pub fn cargo_args(&self, command: &str, args: &[String]) -> Vec<String> {
-        let mut out: Vec<String> = ["run", "--quiet", "-p", &self.package]
-            .map(str::to_owned)
-            .to_vec();
+        let mut out = self.selected(&["run", "--quiet"]);
+        out.push("--".to_owned());
+        out.extend(self.args.iter().cloned());
+        out.push(command.to_owned());
+        out.extend(args.iter().cloned());
+        out
+    }
+
+    /// The `cargo` arguments that build it as [`Self::cargo_args`] runs
+    /// it, so that run has nothing left to compile.
+    pub fn cargo_build_args(&self) -> Vec<String> {
+        self.selected(&["build"])
+    }
+
+    /// `first`, then the arguments that pick the program and its
+    /// features.
+    fn selected(&self, first: &[&str]) -> Vec<String> {
+        let mut out: Vec<String> = first.iter().map(|s| (*s).to_owned()).collect();
+        out.extend(["-p".to_owned(), self.package.clone()]);
         if let Some(bin) = &self.bin {
             out.extend(["--bin".to_owned(), bin.clone()]);
         }
@@ -167,10 +183,6 @@ impl GameProgram {
         if !self.features.is_empty() {
             out.extend(["--features".to_owned(), self.features.join(",")]);
         }
-        out.push("--".to_owned());
-        out.extend(self.args.iter().cloned());
-        out.push(command.to_owned());
-        out.extend(args.iter().cloned());
         out
     }
 }
@@ -429,6 +441,22 @@ mod tests {
                 "--",
                 "--first",
                 "lang-status"
+            ])
+        );
+        // Built as it is run: the same package, program and features.
+        assert_eq!(plain.cargo_build_args(), args(&["build", "-p", "tools"]));
+        assert_eq!(
+            example.cargo_build_args(),
+            args(&[
+                "build",
+                "-p",
+                "engine",
+                "--bin",
+                "b",
+                "--example",
+                "toy",
+                "--features",
+                "toy,x"
             ])
         );
     }

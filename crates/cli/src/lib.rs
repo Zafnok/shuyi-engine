@@ -68,6 +68,7 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   explain [<code>]                   every problem code (SH2003), or one code's page
   schema [<name> | --out <dir>]      the contract's JSON schemas
   mcp                                serve the contract over MCP (stdio), with a session
+  mcp --ready                        build the server and the game's tool program, then exit
   mcp install [--dry-run] [--yes]    register the server with the agents found here
 
 commands:

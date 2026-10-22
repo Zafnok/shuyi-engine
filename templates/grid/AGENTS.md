@@ -52,7 +52,7 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi import crates/game/files/stage.map` | what a file reads as, or its errors |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
-| `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it |
+| `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine: after updating the engine, run `cargo shuyi mcp --ready` and reconnect the server |
 
 ## The gates
 
