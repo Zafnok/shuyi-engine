@@ -6,7 +6,8 @@
 //! runner that lets several bots play a stage many times and checks how
 //! often each succeeds ([`playtest`]), and an autobalance search that
 //! changes the stage, never the bots, until each succeeds about as often
-//! as wanted ([`balance`]).
+//! as wanted ([`balance`]), and a score made of the game's named counts
+//! times a persona's weights, with personas as data ([`weigh`]).
 //!
 //! A game's own bots (a baseline, personas) implement [`Bot`] for its
 //! state, and its measures watch the loop through [`play_observed`]. Bots
@@ -24,11 +25,13 @@ pub mod determinize;
 pub mod plan;
 pub mod playtest;
 pub mod rollout;
+pub mod weigh;
 
 pub use balance::{BalanceSettings, Balanced, Knob, Stop, autobalance};
 pub use determinize::{Determinize, Evaluate};
 pub use plan::{PlanSearch, PlanSettings, TurnPlan};
 pub use rollout::{Horizon, Order, Playout, Rollout, RolloutSearch, RolloutSettings, Unordered};
+pub use weigh::{Persona, UnknownFeature, Weighted, Weights};
 
 /// A game whose state says whose move it is and which turn it is, so a
 /// loop can ask the right bot for each command.
