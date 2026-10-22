@@ -316,6 +316,13 @@ them.
 | 2126 | A playtest runner: K tries of each named bot, the game's measures, pass bands as data, `shuyi playtest` | game#0506 |
 | 2127 | An autobalance search: the game's knobs change a stage, never the bots, until every bot is in its band (after 2126) | game#0509 |
 | 2128 | A turn planner: a bot that plans its side's whole turn, several commands deep, on determinized copies (after 2125) | game#0506 |
+| 2129 | Playtest targets by tier: success rules, a band per tier, floors and median comparisons in one file | game#1180 |
+| 2130 | Weighted features: a bot's score as named counts times weights from a file, and personas as data | game#1180 |
+| 2131 | Threat areas in the tactics kit: what each piece can strike next turn, the danger at a tile, walking distance to goals | game#1180 |
+| 2132 | A planner's candidate order: each piece's best strike first, advances and holds, the end of the turn kept (after 2131) | game#1180 |
+| 2532 | `shuyi playtest` plays the game's entrants itself: every core, a stage or each, chosen entrants, time per try | game#1180 |
+| 2533 | `shuyi playtest` keeps a history: `was …` lines and summary lines from named measures (after 2532) | game#1180 |
+| 2021 | A reusable playtest workflow; the grid template calls it (after 2532 and 2533) | game#1180 |
 
 The playtest bots (2125–2128, 2026-10-21) are on the game's Act 1
 critical path: its persona bots (game#0506) and autobalance
@@ -325,6 +332,16 @@ time, the personas couldn't coordinate their pieces and stalled. So they come wi
 2125 and 2126 wait for nothing and can run side by side; 2127 follows
 2126. They run on a PC and don't wait for slicing (3009): its first
 real user is the game's enemy AI on the Playdate (game#1051).
+
+2129–2132, 2532, 2533 and 2021 (2026-10-22) move what game#0506 had
+to write itself into the engine, so a game gets playtest personas and a
+playtest command out of the box (Nick, 2026-10-22, after game#0506
+merged): targets by tier, weighted scoring, a tactics bot's threat
+areas and candidate order, the command's threads, history and summary,
+and a CI workflow. None holds up the game, which plays with its own
+code meanwhile (game#1180 moves onto them). 2129, 2130, 2131 and 2532
+wait for nothing and can run side by side; 2132 follows 2131, 2533
+follows 2532, 2021 follows both.
 
 ### Friction from the game
 
