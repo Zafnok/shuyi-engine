@@ -75,7 +75,7 @@ None.
 - **The GPU painter**, registered for the `shuyi-3d` module layer
   (3103's `ModulePainter`, in its GPU form through the hook):
   - meshes and textures uploaded once per asset, and again on hot
-    reload (2220's `reloaded` hook on `GameHooks`);
+    reload (2220's module hook, `Module::reloaded`);
   - `Fx12` turned into `f32` here, after the scene is built (ADR-0011
     §3);
   - textures: `FilterMode::Nearest` when the material's `pixel` flag is
