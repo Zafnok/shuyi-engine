@@ -1,5 +1,5 @@
 ---
-id: "2541"
+id: "2544"
 title: "One operation plays a game's bots: `bots` folded into `playtest`, which answers each try's commands and record for `replay`"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2541 — One operation plays a game's bots: `bots` folded into `playtest`
+# 2544 — One operation plays a game's bots: `bots` folded into `playtest`
 
 ## Context
 
@@ -105,6 +105,11 @@ None.
   CLI's answer grows;
 - 2527's soak, which reads its input from what is here when it lands;
 - the game's use of `playtest` (game#1180).
+
+**Either order with 2541:** if 2541 is done, `shuyi autobalance` plays
+its tries through the same plan: move it onto the plan as this ticket
+leaves it, with its answer and its tests unchanged; if not, 2541 builds
+on the plan as it is then.
 
 ## Implementation steps
 

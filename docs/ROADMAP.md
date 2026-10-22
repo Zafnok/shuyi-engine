@@ -330,8 +330,9 @@ them.
 | 2532 | `shuyi playtest` plays the game's entrants itself: every core, a stage or each, chosen entrants, time per try | game#1180 |
 | 2533 | `shuyi playtest` keeps a history: `was …` lines and summary lines from named measures (after 2532) | game#1180 |
 | 2021 | A reusable playtest workflow; the grid template calls it (after 2532 and 2533) | game#1180 |
+| 2541 | `shuyi autobalance`: the search for a game's stage on every core, a time limit, the stage written back (after 2532) | game#1183 |
 | 2133 | The bots' data made alike: settings that refuse unknown fields, one band distance, a seed for an entrant's bots, personas in an ADR | 2125–2130 |
-| 2541 | One operation plays a game's bots: `bots` folded into `playtest` (after 2532 and 2533) | 2126 |
+| 2544 | One operation plays a game's bots: `bots` folded into `playtest` (after 2532 and 2533) | 2126 |
 | 2540 | `frame-png` scripts wind the crank: a `--crank DEGREES` step beside `--keys`, `--pad` and `--wait` | game#1182 |
 
 The playtest bots (2125–2128, 2026-10-21) are on the game's Act 1
@@ -351,11 +352,13 @@ areas and candidate order, the command's threads, history and summary,
 and a CI workflow. None holds up the game, which plays with its own
 code meanwhile (game#1180 moves onto them). 2129, 2130, 2131 and 2532
 wait for nothing and can run side by side; 2132 follows 2131, 2533
-follows 2532, 2021 follows both.
+follows 2532, 2021 follows both. 2541 (2026-10-22, from the game's
+retro of its last 50 PRs) does the same for autobalance before the game
+writes its own command: it follows 2532 and shares its thread pool.
 
-2133 and 2541 (2026-10-22) come from a retro of the PRs that built the
+2133 and 2544 (2026-10-22) come from a retro of the PRs that built the
 bots and the playtest command: 2133 evens out what seven tickets left
-between the bots' modules and waits for nothing; 2541 folds the older
+between the bots' modules and waits for nothing; 2544 folds the older
 `bots` operation into `playtest` once 2532 and 2533 have reshaped it.
 2540 is the game's: its Playdate screens behind the crank (game#1039)
 have a workaround in the game until it lands.
@@ -388,6 +391,15 @@ deletes that code once the engine has the piece.
 The sweep also added notes to 3003 (a loading phase), 3010 (the
 game's front end as working code to lift) and 3011 (the report a
 shipped game keeps).
+
+The game's retro of its last 50 PRs (2026-10-22) added two more, and
+notes to 2021 (a push's changed files and a lever script) and 3010
+(`pdc` and a big unoptimized ELF):
+
+| Ticket | What | For |
+| ------ | ---- | --- |
+| 2233 | The bundle's folder loader file by file, as the registry's is, and one all-or-nothing helper | game#1186 |
+| 2371 | A one-bit look for the engine's screens and widgets | game#1184 |
 
 ### A frame cap
 

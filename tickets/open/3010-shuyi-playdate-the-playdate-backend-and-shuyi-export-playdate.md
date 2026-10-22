@@ -54,6 +54,20 @@ working code for most of this ticket. Read it before step 1.
 - **Storage, memory and the panic handler** are in the game's
   `src/storage.rs` (a `no_std` copy of `shuyi-app`'s native storage),
   `src/pd/allocator.rs` and `src/pd/panic.rs`.
+- **`pdc` crashes on a big unoptimized ELF** (game#1056, 2026-10-22;
+  added from the game's retro of its last 50 PRs). The SDK's
+  `link_map.ld` discards `.ARM.exidx` but not each function's own
+  `.ARM.exidx.*`, and `--emit-relocs` keeps a `.rel.ARM.exidx.*` beside
+  each. An unoptimized game of about 57,000 functions makes an ELF of
+  more than 65,280 sections, which uses the ELF's extended section
+  numbering (`e_shnum = 0`), and `pdc` 3.1.2 crashes reading it
+  (`0xc0000005`, no message). The release build (LTO, one codegen unit)
+  stays far under. The game's fix: after the device link of a debug
+  build, `arm-none-eabi-objcopy --remove-section=.ARM.exidx*
+  --remove-section=.rel.ARM.exidx*` (the game's
+  `crates/xtask/src/playdate.rs`, `device_steps`). Any game built on
+  this backend will hit it once it grows; the exporter's build step
+  does the same for a debug build.
 
 ## Nick input
 
@@ -146,7 +160,9 @@ Nothing here costs money. A device is needed only for 3011.
      with 3039's `notices` module (the crates for
      `thumbv7em-none-eabihf`, the game's license texts and credits), as
      every 3004 package does;
-  6. it runs the SDK's `pdc`;
+  6. it runs the SDK's `pdc` (a debug build first drops the ELF's
+     per-function unwind sections, as the *From the game's first
+     engine-friction sweep* list above says);
   7. it reports the `.pdx` size against the profile's `package_bytes`.
 
   A missing SDK gives the setup steps above.
@@ -168,7 +184,10 @@ Nothing here costs money. A device is needed only for 3011.
   why. Running on the device is 3011's.
 - **One example on the Playdate.** The smallest example (the game's
   1118 example game) gets a `playdate` layout, a pattern map and a frame
-  that fits, and it exports.
+  that fits, and it exports. **Either order with 2371:** if 2371 is
+  done, the example's Options screen uses its one-bit painters (the
+  one-bit look of the engine's screens and widgets); if not, 2371 adds
+  that.
 - **Docs.** `docs/targets/playdate.md` gets how to build, sideload
   (Panic's help page *Sideloading*) and what is known not to work yet.
 - **The agent eval.** If 2524 is done: add `playdate` to the `targets`

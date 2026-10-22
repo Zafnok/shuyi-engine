@@ -96,7 +96,7 @@ None.
 - `session.frame_png` taking a `target`: it would change the `Session`
   trait, nobody has asked for the Playdate's picture over MCP, and
   `frame-png --target playdate` gives it;
-- merging `bots` into `playtest` (2541).
+- merging `bots` into `playtest` (2544).
 
 ## Implementation steps
 

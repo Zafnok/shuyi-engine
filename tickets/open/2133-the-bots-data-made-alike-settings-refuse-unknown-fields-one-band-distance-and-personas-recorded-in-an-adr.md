@@ -110,7 +110,10 @@ None.
 - changing what `Persona` holds, or adding rollout personas;
 - `play_tries` changing the seed it hands `Entrant::bots`: a game's own
   entrant decides, with `bot_seed`;
-- the CLI's `bots` and `playtest` operations (2541).
+- the CLI's `bots` and `playtest` operations (2544);
+- `autobalance_by` and its stop check in `bots/balance.rs` (2541). Both
+  tickets edit that file, in different functions: this one only
+  `distance`, whose results don't change.
 
 ## Implementation steps
 

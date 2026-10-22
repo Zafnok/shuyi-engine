@@ -191,10 +191,10 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
 - `SoakInput`: `games`, `seed`, `turns` and `start`, with the same
   defaults and limits as `BotsInput` (`MAX_GAMES`, the seed check), and
   `save: Option<String>`, a folder under the project's root.
-  **Either order with 2541:** if 2541 is done, `bots` is folded into
+  **Either order with 2544:** if 2544 is done, `bots` is folded into
   `playtest`: name the count `tries` and take the defaults and limits
   from `PlaytestInput`, and read "`bots`" in this ticket as
-  `playtest`; if not, use `BotsInput`'s as written, and 2541 renames
+  `playtest`; if not, use `BotsInput`'s as written, and 2544 renames
   them.
 - `SoakOutput { games: u32, steps: u64, unfinished: u32, failures:
   Vec<SoakFailure> }`. `SoakFailure { seed: u64, check: String, step:
