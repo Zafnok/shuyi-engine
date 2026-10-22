@@ -40,8 +40,14 @@ None.
   `key_files`, `crates/app/src/keys.rs` as the `platform_file`, the test
   support files, and the engine's own screens' words.
 - Fix what the checks find, or list a file with the reason beside it.
-- Both checks in CI (`ci.yml`, beside the ticket lint 2002 adds) and in
-  the `run-gates` skill.
+- Both checks in CI and in the `run-gates` skill, as one command:
+  `cargo run -q -p shuyi-cli -- lint` (2534), which runs `check-keys` and
+  `check-text` and gives each finding a problem code, a file and a line.
+  The engine's `shuyi.ron` names no `rules` package, so the `lint`
+  answer's limit about the rules crate's fence is expected: the engine's
+  own layers are `cargo xtask check-layers`' (ADR-0032). The CI step
+  goes in the `test` job or a job of its own gated like it, since it
+  needs the code built.
 
 **Out (do not do):**
 - Changing what the checks look for.
@@ -57,8 +63,8 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi check-keys` and `cargo shuyi check-text` pass at the
-      root and run in CI.
+- [ ] `cargo run -q -p shuyi-cli -- lint` at the root has no finding,
+      and runs in CI and in `run-gates`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

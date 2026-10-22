@@ -64,7 +64,7 @@ None.
   - `slots`, in draw order: name, bone, the attachment shown at rest,
     and a palette role for tint (optional), drawn as `Paint::Tinted`
     (2337);
-  - `attachments`: an atlas region (1123's `Atlas`) with an offset and
+  - `attachments`: an atlas region (2222's `Atlas`, which 1123 imports sheets into) with an offset and
     a rotation from its bone;
   - `skins`: named sets of attachments per slot (a sword and an axe on
     the same hand slot);
@@ -112,7 +112,7 @@ None.
 ## Implementation steps
 
 1. Read ADR-0010 §7, 2335's rotated sprites and `shuyi_core::angle`,
-   1123's `Atlas`, 2109's `shuyi_core::ease`, and 1119's `Fx`. Check
+   2222's `Atlas` and 1123's importers, 2109's `shuyi_core::ease`, and 1119's `Fx`. Check
    whether 2364 is done (`crossed`).
 2. Write the ADR.
 3. Write the rig types, `RigRon` and its checks, with fixtures.

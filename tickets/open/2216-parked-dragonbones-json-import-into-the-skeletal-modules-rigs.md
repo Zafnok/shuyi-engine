@@ -82,7 +82,7 @@ None.
   - Everything 2105 doesn't support is an error naming the JSON path:
     `scX` or `scY` other than 1, a skew (`skX ≠ skY`), mesh, armature
     and bounding-box displays, IK, FFD and nested armatures.
-- **`DragonBonesAtlas`**, a format of 1123's `Atlas` kind for
+- **`DragonBonesAtlas`**, a format of the `Atlas` kind (2222's, which 1123 imports into) for
   `*_tex.json` (`imagePath`, `SubTexture` with `name`, `x`, `y`,
   `width`, `height`, and `frameX`, `frameY`, `frameWidth`,
   `frameHeight`). 1123's Aseprite and TexturePacker formats already

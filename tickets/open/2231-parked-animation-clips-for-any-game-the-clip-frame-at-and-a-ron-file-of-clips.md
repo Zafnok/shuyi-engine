@@ -61,9 +61,9 @@ Shuyi today:
   only a path from the file's folder is found there. A set of clips
   names its picture the same way.
 
-This ticket takes the clip core out of 1123. 1123 keeps `Atlas`, the
-Aseprite and TexturePacker importers and the `asefile` measurement, and
-waits for this one.
+This ticket takes the clip core out of 1123. 1123 keeps the Aseprite
+and TexturePacker importers (into 2222's `Atlas`) and the `asefile`
+measurement, and waits for this one.
 
 Why it matters:
 
@@ -226,16 +226,16 @@ None.
     picture from its own folder (`anim/water.ron` names `water.png`,
     the bundle's `anim/water.png`);
   - the table *The kinds of ADR-0007 §1*: `AnimationSet` is
-    `anim::AnimationSet` (2231), and `Atlas` with the importers is
-    1123's.
+    `anim::AnimationSet` (2231), `Atlas` is 2222's, and the importers
+    are 1123's.
 - **For the game:** no API break. Everything is new except two derives
   on `ImageRect` and a function made `pub(crate)`, and
   `Formats::standard()` gains a format of a new kind, which clashes
   with nothing. The PR says so.
 
 **Out (do not do):**
-- `Atlas`, the Aseprite and TexturePacker importers, and `asefile`
-  (1123);
+- `Atlas` (2222), and the Aseprite and TexturePacker importers and
+  `asefile` (1123);
 - which clip plays when, direction sets and frame events (2104);
 - animated tiles and unit frames in the grid kit (2359), and the
   tile-layer painter with Tiled's tile animations (2360, 1124);

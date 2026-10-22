@@ -41,9 +41,10 @@ noted 2026-10-21). On Nick's Playdate a 14-enemy phase thinks for
 1.2 s in all (game#1026). game#1051 plans the phase once in the game
 and doesn't wait for this ticket; when this lands, the game's PR that
 moves the pin implements `Think` for its enemy AI (as Scope says). The
-game's playtest bots don't need slicing: they run on a PC, on 2125's
-rollout bot, which keeps its loop in `RolloutSearch` so that
-`impl Think` for it is a few lines here.
+game's playtest bots don't need slicing: they run on a PC, on 2128's
+turn planner (ADR-0029; they began on 2125's rollout bot). Both keep
+their loop in a value (`RolloutSearch`, `PlanSearch`), so `impl Think`
+for each is a few lines here.
 
 ## Nick input
 
@@ -58,6 +59,10 @@ None.
     `Done(decision)`;
   - a "unit" is whatever the bot counts: a node visited or a move scored.
     The bot defines it, and it never depends on time.
+  - `crates/core/src/bots/rollout.rs` already has a `pub(super) enum
+    Progress<C> { Working, Chosen(C) }`, which the rollout bot and the
+    turn planner step with. `think::Progress` replaces it: one type, not
+    two of the same name.
 - **The engine's search implements `Think`.** 2112's
   `shuyi_core::search::Solver` already runs in `step(units)` slices,
   with its state in the value: add `impl Think for Solver`, where a unit
@@ -68,7 +73,9 @@ None.
   ticket). The game's own enemy AI implements it in the game, in the PR
   that moves the pin. 2125's bot is done: add `impl Think for
   Rollout` (`step(units)` is its `advance(units)`) and a slicing test on
-  its fixtures.
+  its fixtures. 2128's planner is done too: the same for `TurnPlan`
+  (`step(units)` is `PlanSearch::advance(units)`,
+  `crates/core/src/bots/plan.rs`), with a slicing test on its fixtures.
 - **A frame-time budget in `App`.** `shuyi-platform`'s `App` gives a
   thinking bot `units_per_frame` from the target profile (a new
   `budgets.think_units_per_frame`; calibrated by 3011 and 3013). The
@@ -103,6 +110,8 @@ None.
 - [ ] On every solver fixture (2112), slicing by 1, 7, 100 and unlimited
       units gives the same decision (property test with random slice
       sizes).
+- [ ] The rollout bot (2125) and the turn planner (2128) give the same
+      decision sliced by 1 unit as unsliced, on their fixtures.
 - [ ] Replays recorded before the change replay the same.
 - [ ] The search bench scenario stays under the `playdate`
       instruction budget per frame.
