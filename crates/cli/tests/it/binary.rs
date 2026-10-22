@@ -408,5 +408,18 @@ fn mcp_ready_builds_what_the_server_needs_and_exits() {
         "{said}"
     );
     assert!(stdout(&output).is_empty(), "{}", stdout(&output));
+    // One that builds is built, and the server is ready.
+    fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"tiny-game\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[workspace]\n",
+    )
+    .unwrap();
+    fs::create_dir_all(dir.join("src")).unwrap();
+    fs::write(dir.join("src/main.rs"), "fn main() {}\n").unwrap();
+    fs::write(dir.join("shuyi.ron"), r#"(game: (package: "tiny-game"))"#).unwrap();
+    let output = shuyi(&dir, &["mcp", "--ready"]);
+    assert_eq!(output.status.code(), Some(0), "{}", stderr(&output));
+    assert!(stdout(&output).starts_with("mcp: ready (contract "));
+    assert!(dir.join("target").is_dir(), "the program was built");
     fs::remove_dir_all(&dir).unwrap();
 }
