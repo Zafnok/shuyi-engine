@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2130 — Weighted features and personas as data
@@ -113,17 +113,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Weights::from_named` on a map naming an undeclared feature fails
+- [x] `Weights::from_named` on a map naming an undeclared feature fails
       with `UnknownFeature`, and its message lists the known names.
-- [ ] `score` saturates: counts of `i64::MAX` with weight 2 give
+- [x] `score` saturates: counts of `i64::MAX` with weight 2 give
       `i32::MAX`, never a wrap.
-- [ ] A missing weight is 0.
-- [ ] Two `Persona`s parsed from one RON map, on the same fixture state,
+- [x] A missing weight is 0.
+- [x] Two `Persona`s parsed from one RON map, on the same fixture state,
       make `TurnPlan` pick different first commands.
-- [ ] `Weighted` is an `Evaluate` with no allocation per call (a test
+- [x] `Weighted` is an `Evaluate` with no allocation per call (a test
       that counts with `#[global_allocator]` is not needed: `score` takes
       and returns no heap type).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -133,5 +133,33 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **Done:** `shuyi_core::bots::weigh` (`crates/core/src/bots/weigh.rs`),
+  re-exported from `bots`: `Weights<N>` (`from_named`, `score`, `get`),
+  `UnknownFeature` (an `Error`, "no feature \"x\" (there: a, b, c)"),
+  `Weighted<F, N>` (an `Evaluate`) and `Persona<X>` (serde,
+  `deny_unknown_fields`, `weights` and `game` defaulted). Module docs carry
+  the RON example; `bots.rs`'s list names the module.
+- **Tests** (`weigh/tests.rs`, on the bots fixtures' Nim with three
+  features "won", "lost", "taken"): the unknown feature and its message,
+  a missing weight, saturation both ways, `Weighted` as an `Evaluate`,
+  two personas parsed from one RON map with opposite "taken" weights
+  picking 3 and 1 through `TurnPlan` at temperature 0 (the pile comes
+  from the persona's own `game` extras), a persona with no weights or
+  extras, unknown fields refused, and the property that `score` is the
+  `i128` sum clamped into `i32`.
+- **Deviations:**
+  - `score` sums in `i128` (products of `i64 × i32` never overflow
+    there), not in saturating `i64`: a saturating `i64` sum differs from
+    the true sum when a huge term is later cancelled, so the ticket's own
+    property ("equals the `i128` sum clamped") couldn't hold. Still
+    integer-only, no allocation.
+  - `get` takes the names too (`get(&names, "won")`): `Weights` holds
+    only the numbers, as step 2 says.
+  - The three-feature counts function lives in the module's tests rather
+    than in `fixtures.rs`, its only user.
+  - `Persona` has no JSON schema derive: `PlanSettings` has none.
+- **Docs:** rustdoc only (the module docs); no contract operation, format
+  or file of the engine changed.
+- **Game:** game#1180 moves the game's `persona.rs` onto this and moves
+  the pin. API is additive; nothing the game uses changed.
+- **Follow-ups:** none.
