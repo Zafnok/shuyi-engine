@@ -310,11 +310,13 @@ them.
 | 2125 | A rollout bot: `Determinize`, and flat Monte Carlo on copies that never see the luck to come (split out of 2113) | game#0506 |
 | 2126 | A playtest runner: K tries of each named bot, the game's measures, pass bands as data, `shuyi playtest` | game#0506 |
 | 2127 | An autobalance search: the game's knobs change a stage, never the bots, until every bot is in its band (after 2126) | game#0509 |
+| 2128 | A turn planner: a bot that plans its side's whole turn, several commands deep, on determinized copies (after 2125) | game#0506 |
 
-The playtest bots (2125–2127, 2026-10-21) are on the game's Act 1
+The playtest bots (2125–2128, 2026-10-21) are on the game's Act 1
 critical path: its persona bots (game#0506) and autobalance
 (game#0509) wait for them, and every Act 1 battle is balanced with
-them. So they come with 2304 and 2305, ahead of the MVP's tickets.
+them. 2128 came from game#0506's first real battle: one command at a
+time, the personas couldn't coordinate their pieces and stalled. So they come with 2304 and 2305, ahead of the MVP's tickets.
 2125 and 2126 wait for nothing and can run side by side; 2127 follows
 2126. They run on a PC and don't wait for slicing (3009): its first
 real user is the game's enemy AI on the Playdate (game#1051).
