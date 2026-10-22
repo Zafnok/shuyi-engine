@@ -78,6 +78,31 @@ with its `std::` path, or in a module whose file starts with
 `#![cfg(feature = "std")]`. A test that needs `std` (an asset converter,
 `catch_unwind`) gets `#[cfg(feature = "std")]` too.
 
+## A new game from each template (CI's `templates` job)
+
+`shuyi new` makes a game from each template, and the made game runs its
+own gates. From the repository root, for `grid` and then `blank`:
+
+```bash
+cargo run -q -p shuyi-cli --locked -- new grid ../demo-grid --engine-path "$PWD"
+cd ../demo-grid
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo shuyi check
+cargo shuyi check --target all
+cargo shuyi check-keys
+cargo shuyi lint
+```
+
+`templates/` is not in the workspace, so `cargo fmt --all` here never
+formats its files; the made game's `cargo fmt --all --check` is what
+catches them (rustfmt's import order has failed CI this way).
+
+Two more steps of the job run only in CI: that the rules crate's fence
+holds, and that `shuyi lint` finds what breaks the game's code (both on the
+`grid` game, with code written to break them).
+
 ## The repository's own checks (CI's `tickets` job)
 
 They run on every PR, docs-only ones too:

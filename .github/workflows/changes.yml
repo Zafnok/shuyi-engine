@@ -4,7 +4,15 @@ name: Changes
 # heavy jobs can be skipped with `if:` (a skipped job still reports a status,
 # unlike a workflow skipped by a `paths` filter). See game ADR-0014.
 #
-# Docs-only paths: `*.md` anywhere, `docs/**`, `tickets/**`, `.claude/**`.
+# Code paths, whatever their extension (a test or the build reads them):
+#   - `crates/**`: `crates/cli/errors/*.md` is built into the binary with
+#     `include_str!` (`contract/codes.rs`);
+#   - `templates/**`: `shuyi new` copies them, and the `templates` job
+#     builds a game from each;
+#   - `examples/**`: their tests read their own files;
+#   - `docs/contract.md` and the root `README.md`: `crates/cli/tests/it/docs.rs`
+#     checks them against `Op::ALL` and `contract::VERSION`.
+# The rest is docs-only: other `*.md`, `docs/**`, `tickets/**`, `.claude/**`.
 # Any other event (push, schedule, workflow_dispatch) always counts as code.
 
 on:
@@ -45,6 +53,7 @@ jobs:
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
+              crates/*|templates/*|examples/*|docs/contract.md|README.md) echo "code: $path"; code=true ;;
               *.md|docs/*|tickets/*|.claude/*) echo "docs: $path" ;;
               *) echo "code: $path"; code=true ;;
             esac
