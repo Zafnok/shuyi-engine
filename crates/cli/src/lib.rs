@@ -4,7 +4,8 @@
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
-//! wrapper here.
+//! wrapper here; and the pool of threads the slow ones play on
+//! ([`pool`]).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
@@ -26,6 +27,7 @@ pub mod game;
 pub mod glyph_tiles;
 pub mod lang_status;
 pub mod mcp;
+pub mod pool;
 pub mod private_assets;
 pub mod project;
 pub mod test_card;
@@ -40,7 +42,7 @@ use shuyi_assets::target::TargetProfile;
 use contract::Op;
 use contract::codes;
 
-pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
+pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan};
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
@@ -62,7 +64,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   scene [steps]                      the scene on screen after a script
   replay <record> [<other>]          a state hash per step; where two runs part
   bots <games>                       the game's bots play: outcomes and measures
-  playtest [--tries N]               each named bot's tries against the game's bands
+  playtest [--stage ID] [--entrant NAME] [--tries N]
+                                     each named bot's tries, on every core, against the
+                                     game's bands
   import <file> [--print]            read a file through the format registry
   bake [--target <id>] [--out <file>]
                                      bake the game's sources into one pack: sizes and times

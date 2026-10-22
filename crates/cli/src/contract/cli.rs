@@ -46,6 +46,25 @@ fn print<T: Serialize>(json: bool, answer: &Answer<T>, text: impl FnOnce(&T) -> 
     answer.exit_code()
 }
 
+/// `answer`, also written to `path` as the JSON `--json` prints. If it
+/// can't be, the answer keeps its result but fails with [`codes::FILE`],
+/// naming the file as given, `file`.
+fn also_written<T: Serialize>(mut answer: Answer<T>, path: &Path, file: &Path) -> Answer<T> {
+    if let Err(e) = fs::write(
+        path,
+        format!(
+            "{}
+",
+            answer.to_json()
+        ),
+    ) {
+        answer.ok = false;
+        answer.error = Some(format!("--report {}: {e}", file.display()));
+        answer = answer.with_code(codes::FILE);
+    }
+    answer
+}
+
 /// Says that `op`'s arguments are wrong (`error`), with its `usage` as
 /// the help, as `json` says; the exit code is 2 ([`codes::WRONG_ARGUMENTS`]).
 fn wrong(json: bool, op: Op, error: &str, usage: &str) -> u8 {
@@ -269,7 +288,14 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
             Err(e) => wrong(json, Op::Bots, &e, &bots::usage(command, options)),
         },
         "playtest" => match playtest::parse_args(&args, options) {
-            Ok(input) => print(json, &playtest::playtest(game, &input), playtest::text),
+            Ok(parsed) => {
+                let answer = playtest::playtest(game, &parsed.input);
+                let answer = match &parsed.report {
+                    Some(file) => also_written(answer, &project.root.join(file), file),
+                    None => answer,
+                };
+                print(json, &answer, |outputs| playtest::text(outputs))
+            }
             Err(e) => wrong(json, Op::Playtest, &e, &playtest::usage(command, options)),
         },
         _ => import(json, &args, &game.importers(), &project.root, None, command),
@@ -377,6 +403,16 @@ mod tests {
         assert_eq!(code(&["bots"]), 2);
         assert_eq!(code(&["playtest", "--tries", "3"]), 0);
         assert_eq!(code(&["playtest", "3"]), 2);
+        assert_eq!(code(&["playtest", "--tries", "3", "--report", "r.json"]), 0);
+        let written = fs::read_to_string(dir.join("r.json")).unwrap();
+        let written: Answer<Vec<playtest::PlaytestOutput>> =
+            serde_json::from_str(&written).unwrap();
+        assert!(written.ok);
+        assert_eq!(written.result.unwrap()[0].report.entrants[0].tries.len(), 3);
+        assert_eq!(
+            code(&["playtest", "--report", "no/such/r.json", "--json"]),
+            1
+        );
         assert_eq!(code(&["import", "a.ron"]), 1);
         assert_eq!(code(&["import"]), 2);
         // A scene that isn't there fails the op, not its arguments.
@@ -388,6 +424,39 @@ mod tests {
         };
         assert_eq!(with_game(&p, "scene", &[], &blank), 1);
         assert_eq!(with_game(&p, "run", &[], &blank), 0);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_report_file_holds_the_json_the_answer_prints() {
+        let dir = std::env::temp_dir().join(format!("shuyi-cli-report-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let answer = Answer::new(Op::Playtest, true, 7u8, vec!["a limit".to_owned()]);
+        let file = Path::new("r.json");
+        assert_eq!(also_written(answer.clone(), &dir.join(file), file), answer);
+        let written = fs::read_to_string(dir.join(file)).unwrap();
+        assert_eq!(
+            written,
+            format!(
+                "{}
+",
+                answer.to_json()
+            )
+        );
+        // A file that can't be written fails the answer, which keeps its
+        // result.
+        let file = Path::new("missing/r.json");
+        let failed = also_written(answer, &dir.join(file), file);
+        assert!(!failed.ok);
+        assert_eq!(failed.result, Some(7));
+        assert_eq!(failed.code.as_deref(), Some("SH3004"));
+        assert!(
+            failed
+                .error
+                .unwrap()
+                .starts_with("--report missing/r.json: ")
+        );
         fs::remove_dir_all(&dir).unwrap();
     }
 

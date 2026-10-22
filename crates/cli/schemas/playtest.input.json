@@ -1,15 +1,39 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PlaytestInput",
-  "description": "What `playtest` plays.",
+  "description": "What `playtest` plays. A number left out is the game's default\n([`GameTools::playtest_defaults`]).",
   "type": "object",
   "properties": {
+    "entrants": {
+      "description": "The entrants that play, by name or by a group's name; the game's\ndefault ones if empty.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "every_stage": {
+      "description": "Every stage of the game, in its order, a report each.",
+      "type": "boolean",
+      "default": false
+    },
     "seed": {
       "description": "The first try's seed; each next try takes the next.",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "format": "uint64",
-      "default": 0,
+      "default": null,
       "minimum": 0
+    },
+    "stage": {
+      "description": "The stage, one of the game's; needed when it has several, unless\n`every_stage`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
     },
     "start": {
       "description": "The game's own options, in the order given.",
@@ -19,18 +43,34 @@
         "$ref": "#/$defs/GameArg"
       }
     },
-    "tries": {
-      "description": "How many tries of each bot.",
-      "type": "integer",
+    "threads": {
+      "description": "The threads to play on; one a core if left out. The report never\ndepends on it.",
+      "type": [
+        "integer",
+        "null"
+      ],
       "format": "uint32",
-      "default": 100,
+      "default": null,
+      "minimum": 0
+    },
+    "tries": {
+      "description": "How many tries of each entrant.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
       "minimum": 0
     },
     "turns": {
       "description": "The turn a try stops at if it hasn't ended.",
-      "type": "integer",
+      "type": [
+        "integer",
+        "null"
+      ],
       "format": "uint32",
-      "default": 200,
+      "default": null,
       "minimum": 0
     }
   },

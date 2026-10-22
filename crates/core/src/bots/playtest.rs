@@ -241,8 +241,9 @@ pub enum Check {
 }
 
 impl Check {
-    /// The entrants it names.
-    fn entrants(&self) -> Vec<&str> {
+    /// The entrants it names: a game keeps the checks whose entrants all
+    /// play.
+    pub fn entrants(&self) -> Vec<&str> {
         match self {
             Check::Rate { entrant, .. } => alloc::vec![entrant.as_str()],
             Check::Median { entrant, than, .. } => alloc::vec![entrant.as_str(), than.as_str()],

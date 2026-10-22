@@ -1,17 +1,20 @@
 //! A playtest of the stage (`shuyi_core::bots::playtest`): the random
 //! hero and the walker each play seeds 0 to 49, judged by
-//! `playtest.ron`.
+//! `playtest.ron`, by the core's runner and by the tool contract's
+//! `playtest` on threads.
 
 use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::rules::{Command, Error, Side};
 use hello_grid::tools::{ENTRANTS, HelloTools, playtest_checks, playtest_run};
 use shuyi_cli::GameArg;
+use shuyi_cli::contract::Answer;
 use shuyi_cli::contract::bots::{BotsInput, bots};
-use shuyi_cli::contract::playtest::{PlaytestInput, playtest};
+use shuyi_cli::contract::playtest::{PlaytestInput, PlaytestOutput, playtest};
+use shuyi_cli::serde_json;
 use shuyi_core::bots::playtest::{
-    Found, MedianVerdict, PlaytestError, PlaytestReport, RateVerdict, Tries, UnknownEntrant, judge,
-    play_tries,
+    Check, Found, MedianVerdict, PlaytestError, PlaytestReport, RateVerdict, Tries, UnknownEntrant,
+    judge, play_tries,
 };
 use shuyi_core::{PlayError, Pos};
 
@@ -87,22 +90,103 @@ fn seed_ranges_judged_in_any_order_give_the_same_report() {
     assert_eq!(judge(parts, &checks).unwrap(), fifty());
 }
 
-#[test]
-fn the_tool_contract_passes_and_takes_no_start_option() {
-    let input = PlaytestInput {
-        tries: 50,
+/// `playtest`'s input of fifty tries, with `more`.
+fn input(more: impl FnOnce(&mut PlaytestInput)) -> PlaytestInput {
+    let mut input = PlaytestInput {
+        tries: Some(50),
         ..PlaytestInput::default()
     };
-    let answer = playtest(&HelloTools, &input);
+    more(&mut input);
+    input
+}
+
+/// `playtest`'s one report of `input`.
+fn answered(input: &PlaytestInput) -> PlaytestOutput {
+    let answer = playtest(&HelloTools, input);
     assert!(answer.ok, "{:?}", answer.error);
-    assert_eq!(answer.result.unwrap(), fifty());
-    let mut with_option = input;
-    with_option.start.push(GameArg {
-        flag: "--stage".to_owned(),
-        value: None,
+    let mut outputs = answer.result.unwrap_or_else(|| panic!("no result"));
+    assert_eq!(outputs.len(), 1);
+    outputs.remove(0)
+}
+
+#[test]
+fn the_tool_contract_passes_and_takes_no_start_option() {
+    let output = answered(&input(|_| {}));
+    assert_eq!(output.report, fifty());
+    assert_eq!(output.stage, None);
+    assert_eq!(output.title, "the stage (files/stage.map)");
+    let names: Vec<&str> = output.entrants.iter().map(|p| p.name.as_str()).collect();
+    assert_eq!(names, ["random", "walk"]);
+    let with_option = input(|i| {
+        i.start.push(GameArg {
+            flag: "--stage".to_owned(),
+            value: None,
+        });
     });
     let error = playtest(&HelloTools, &with_option).error.unwrap();
     assert_eq!(error, "playtest takes no start option, not --stage");
+}
+
+#[test]
+fn the_report_is_the_same_on_one_thread_or_four() {
+    let one = answered(&input(|i| i.threads = Some(1)));
+    let four = answered(&input(|i| i.threads = Some(4)));
+    assert_eq!(one.report, fifty());
+    assert_eq!(four.report, one.report);
+}
+
+#[test]
+fn an_entrant_asked_for_plays_alone_with_its_own_checks() {
+    let walk = answered(&input(|i| i.entrants = vec!["walk".to_owned()]));
+    let names: Vec<&str> = walk
+        .report
+        .entrants
+        .iter()
+        .map(|e| e.name.as_str())
+        .collect();
+    assert_eq!(names, ["walk"]);
+    // Of playtest.ron's checks, walk's rate alone: the median compares it
+    // with the random hero, who doesn't play.
+    let checks = playtest_checks().unwrap_or_else(|e| panic!("{e}"));
+    let judged: Vec<&Check> = walk.report.checks.iter().map(|j| &j.check).collect();
+    assert_eq!(judged, [&checks[1]]);
+    assert_eq!(walk.report.entrants[0], fifty().entrants[1]);
+    let nobody = playtest(
+        &HelloTools,
+        &input(|i| i.entrants = vec!["nobody".to_owned()]),
+    );
+    assert_eq!(
+        nobody.error.as_deref(),
+        Some("entrant: no nobody; the entrants: random, walk")
+    );
+}
+
+#[test]
+fn the_command_writes_the_json_answer_to_its_report_file() {
+    let dir = std::env::temp_dir().join(format!("hello-grid-playtest-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("out.json");
+    let args = [
+        "playtest",
+        "--tries",
+        "50",
+        "--threads",
+        "3",
+        "--report",
+        file.to_str().unwrap(),
+    ];
+    let code = shuyi_cli::main_with(args.iter().map(|a| (*a).to_owned()), Some(&HelloTools));
+    assert_eq!(code, 0);
+    let text = std::fs::read_to_string(&file).unwrap();
+    let answer: Answer<Vec<PlaytestOutput>> = serde_json::from_str(&text).unwrap();
+    assert!(answer.ok);
+    let output = &answer.result.unwrap()[0];
+    assert_eq!(output.report, fifty());
+    // Each entrant's speed is in the answer.
+    assert_eq!(output.entrants.len(), 2);
+    assert!(output.entrants.iter().all(|p| p.seconds_per_try > 0.0));
+    std::fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]

@@ -15,7 +15,7 @@
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
 //! | `bots <n>` | the engine's bots play n games: outcomes and measures | [`bots`] |
-//! | `playtest` | the game's named bots each play K tries, judged against its bands | [`playtest`] |
+//! | `playtest` | the game's named bots each play K tries on every core, timed and judged against its bands | [`playtest`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
@@ -58,14 +58,13 @@ use std::fmt::Write as _;
 use schemars::{JsonSchema, Schema, schema_for};
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
-use shuyi_core::bots::playtest::PlaytestReport;
 
 use codes::Code;
 
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -399,7 +398,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(name),
         (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(name),
         (Op::Bots, _) => pair::<bots::BotsInput, bots::BotsOutput>(name),
-        (Op::Playtest, _) => pair::<playtest::PlaytestInput, PlaytestReport>(name),
+        (Op::Playtest, _) => pair::<playtest::PlaytestInput, Vec<playtest::PlaytestOutput>>(name),
         (Op::Import, _) => pair::<import::ImportInput, import::ImportOutput>(name),
         (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(name),
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(name),

@@ -7,6 +7,7 @@
 //! `lang-status`, and the contract's `check`, `run`, `scene`, `replay`,
 //! `bots`, `playtest`, `import` and `bake`.
 
+use std::collections::BTreeMap;
 use std::process::Command;
 
 use schemars::JsonSchema;
@@ -20,12 +21,12 @@ use shuyi_assets::pack::Bake;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_ui::input::fit::Controls;
 
-use shuyi_core::bots::playtest::PlaytestReport;
+use shuyi_core::bots::playtest::{Check, Tried, Tries};
 
 use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
-use crate::contract::playtest::PlaytestInput;
+use crate::contract::playtest::{DEFAULT_TRIES, PlaytestInput};
 use crate::contract::replay::{Record, ReplayRun};
 use crate::contract::session::Session;
 use crate::frame_png::{Script, Shot};
@@ -92,6 +93,40 @@ pub struct OneBitSkin {
     /// The pattern map.
     pub map: PatternMapDef,
 }
+
+/// What `playtest` plays on one of the game's stages
+/// ([`GameTools::playtest_plan`]): its entrants, its checks, and how one
+/// try is played. The command picks the entrants asked for, plays their
+/// tries on every core, times them and judges them once.
+pub struct PlaytestPlan {
+    /// Shown at the top of the report: the stage and its tier, say.
+    pub title: String,
+    /// Every entrant, in report order: its name and a label (a mode), if
+    /// any.
+    pub entrants: Vec<(String, Option<String>)>,
+    /// Named groups of entrants (`"all"`), which `--entrant` takes too.
+    pub groups: BTreeMap<String, Vec<String>>,
+    /// The entrants that play when `--entrant` isn't given (all of them
+    /// if empty).
+    pub default_entrants: Vec<String>,
+    /// The checks over the entrants that play, given their names: a
+    /// check naming an entrant who doesn't play is left out.
+    pub checks: PlaytestChecks,
+    /// One try: of the entrant at that index of
+    /// [`entrants`](Self::entrants), from that seed, stopped at that turn
+    /// if it hasn't ended. Tries run on several threads at once, in any
+    /// order; most simply [`play_tries`](shuyi_core::bots::playtest::play_tries)
+    /// over the one seed.
+    pub play: PlayTry,
+}
+
+/// A plan's checks ([`PlaytestPlan::checks`]): given the names of the
+/// entrants that play, the checks over them.
+pub type PlaytestChecks = Box<dyn Fn(&[&str]) -> Vec<Check> + Send + Sync>;
+
+/// A plan's one try ([`PlaytestPlan::play`]): entrant index, seed, the
+/// turn it stops at.
+pub type PlayTry = Box<dyn Fn(usize, u64, u32) -> Result<Tried, String> + Send + Sync>;
 
 /// What a game gives the commands that run it. Only `frame-png`'s and
 /// `lang-status`'s parts are required; a contract operation whose part a
@@ -166,12 +201,31 @@ pub trait GameTools {
         Err(unsupported("bots", "bots"))
     }
 
-    /// `playtest`: the tries `input` asks for, of each of the game's named
-    /// bots, measured and judged by the game's checks
-    /// ([`run`](shuyi_core::bots::playtest::run)).
-    fn playtest(&self, input: &PlaytestInput) -> Result<PlaytestReport, String> {
-        let _ = input;
-        Err(unsupported("playtest", "playtest"))
+    /// `playtest --stage`: the ids of the game's playtest stages, in the
+    /// order `--every-stage` plays them. Empty, the default: one unnamed
+    /// stage.
+    fn playtest_stages(&self) -> Vec<String> {
+        Vec::new()
+    }
+
+    /// `playtest`: the plan of `stage` (one of
+    /// [`playtest_stages`](Self::playtest_stages), `None` if there are
+    /// none), started as `input`'s game options say. Its numbers are those
+    /// the tries are played with, the game's defaults filled in.
+    fn playtest_plan(
+        &self,
+        stage: Option<&str>,
+        input: &PlaytestInput,
+    ) -> Result<PlaytestPlan, String> {
+        let _ = (stage, input);
+        Err(unsupported("playtest", "playtest_plan"))
+    }
+
+    /// `playtest`: how many tries, from which seed, stopped at which turn,
+    /// when the input doesn't say. The engine's defaults
+    /// ([`DEFAULT_TRIES`]) unless the game has its own.
+    fn playtest_defaults(&self) -> Tries {
+        DEFAULT_TRIES
     }
 
     /// `import`: the kinds and formats to read a file with. The engine's
@@ -317,8 +371,13 @@ mod tests {
         );
         let bots = Plain.bots(&BotsInput::default()).unwrap_err();
         assert!(bots.contains("GameTools::bots"));
-        let playtest = Plain.playtest(&PlaytestInput::default()).unwrap_err();
-        assert!(playtest.contains("GameTools::playtest"));
+        let playtest = Plain
+            .playtest_plan(None, &PlaytestInput::default())
+            .err()
+            .unwrap();
+        assert!(playtest.contains("GameTools::playtest_plan"));
+        assert!(Plain.playtest_stages().is_empty());
+        assert_eq!(Plain.playtest_defaults(), DEFAULT_TRIES);
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
         assert!(Plain.controls().is_none());
         assert!(Plain.one_bit("playdate").is_none());

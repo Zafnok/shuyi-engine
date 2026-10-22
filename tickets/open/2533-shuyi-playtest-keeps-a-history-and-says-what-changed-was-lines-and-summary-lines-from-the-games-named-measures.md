@@ -102,7 +102,8 @@ None.
    entrant's name and label, ` · ` between them, then 2532's time per
    try; wrap to a second line, indented, past 100 characters.
 3. **History**: a record is `{ date: "2026-10-22 14:05 UTC", commit,
-   title, stage, entrants, options, output }` (2532's answer), one JSON
+   title, stage, entrants, options, output }` (one stage's
+   `PlaytestOutput` of 2532's answer, a list of them), one JSON
    line per run. The file is `<stage or "stage">-<entrants joined by
    "+">[-<game options>].jsonl`, the options as `flag=value` with
    anything outside `[A-Za-z0-9_.=-]` turned into `_`. The commit is

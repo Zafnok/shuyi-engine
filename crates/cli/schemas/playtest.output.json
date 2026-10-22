@@ -48,14 +48,13 @@
     },
     "result": {
       "description": "What it found or made; absent when it could not run.",
-      "anyOf": [
-        {
-          "$ref": "#/$defs/PlaytestReport"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/PlaytestOutput"
+      }
     }
   },
   "additionalProperties": false,
@@ -454,6 +453,67 @@
           "type": "string",
           "const": "stop"
         }
+      ]
+    },
+    "Played": {
+      "description": "How one entrant's tries went, besides the report: its label and its\nspeed.",
+      "type": "object",
+      "properties": {
+        "label": {
+          "description": "Its label in the game's plan (a mode), if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Its name.",
+          "type": "string"
+        },
+        "seconds_per_try": {
+          "description": "The wall time of a try, on average, in seconds: the one number\nthat changes with the machine and the thread count.",
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "seconds_per_try"
+      ]
+    },
+    "PlaytestOutput": {
+      "description": "What `playtest` found on one stage.",
+      "type": "object",
+      "properties": {
+        "entrants": {
+          "description": "Every entrant that played, in report order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Played"
+          }
+        },
+        "report": {
+          "description": "The tries and the checks' verdicts.",
+          "$ref": "#/$defs/PlaytestReport"
+        },
+        "stage": {
+          "description": "The stage, if the game names its stages.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "description": "The plan's title.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "report",
+        "entrants"
       ]
     },
     "PlaytestReport": {
