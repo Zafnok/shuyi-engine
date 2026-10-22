@@ -1,13 +1,13 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
 //! `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`, `bake`,
-//! `doctor`, each with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
+//! `doctor`, `explain`, each with `--json`; [`contract`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
 //! wrapper here.
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
-//! `doctor` and `schema` need none. The commands that run the game itself
+//! `doctor`, `explain` and `schema` need none. The commands that run the game itself
 //! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
 //! `game`) for them.
@@ -35,6 +35,9 @@ use std::path::{Path, PathBuf};
 
 use shuyi_assets::target::TargetProfile;
 
+use contract::Op;
+use contract::codes;
+
 pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
@@ -60,6 +63,7 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   bake [--target <id>] [--out <file>]
                                      bake the game's sources into one pack: sizes and times
   doctor                             check the toolchain and say how to fix it
+  explain [<code>]                   every problem code (SH2003), or one code's page
   schema [<name> | --out <dir>]      the contract's JSON schemas
 
 commands:
@@ -75,7 +79,10 @@ commands:
   private-assets [--library | --pin] fetch the private files into their checkout, or pin it
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor and schema need none).",
+{file} (new, doctor, explain and schema need none). An error has a problem
+code: `{command} explain <code>` says what it means. The exit code is 0
+when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix
+({command} doctor, {file}) before running it again.",
         file = project::FILE
     )
 }
@@ -83,7 +90,9 @@ It runs on the project in the first folder from here up that holds a
 /// Runs the command `args` on the project of the working folder, with the
 /// game's tools if this is the game's tool program, and returns the exit
 /// code: 0 for success, 1 for a failed check or step, 2 for wrong
-/// arguments or a project file that lacks what the command needs.
+/// arguments (`SH0nnn`), 3 for a setup to fix before running it again
+/// (`SH1nnn`: no project, a project file that lacks what the command
+/// needs, no game tool program, cargo that doesn't start).
 pub fn main_with(args: impl Iterator<Item = String>, game: Option<&dyn GameTools>) -> u8 {
     let args: Vec<String> = args.collect();
     let here = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
@@ -106,10 +115,16 @@ pub fn main_with(args: impl Iterator<Item = String>, game: Option<&dyn GameTools
     }
     match project {
         Ok(project) => run(&project, &args, game),
-        Err(e) => {
-            eprintln!("{e}");
-            eprintln!("{}", usage("shuyi"));
-            2
+        Err((code, e)) => {
+            let (name, rest) = args
+                .split_first()
+                .map_or(("shuyi", &[][..]), |(name, rest)| (name.as_str(), rest));
+            let exit = contract::cli::setup_failed(name, rest, code, &e);
+            // An op asked for JSON gets the answer alone.
+            if Op::named(name).is_none() || !contract::cli::split_json(rest).0 {
+                eprintln!("{}", usage("shuyi"));
+            }
+            exit
         }
     }
 }
@@ -172,23 +187,26 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         "web" => web(project, args),
         "private-assets" => private_assets(project, args),
         other => {
-            eprintln!("unknown command: {other}");
+            let error = format!("unknown command: {other}");
+            eprint!(
+                "{}",
+                codes::said(command, codes::WRONG_ARGUMENTS.0, &error, None)
+            );
             eprintln!("{}", usage(command));
             Ok(2)
         }
     };
     outcome.unwrap_or_else(|missing| {
-        eprintln!("{missing}");
-        2
+        contract::cli::setup_failed(name, args, codes::PROJECT_FILE, &missing)
     })
 }
 
 /// A command's exit code, or the error that the project file lacks its
-/// part.
+/// part (a [`codes::PROJECT_FILE`] problem).
 type Outcome = Result<u8, String>;
 
 fn check_keys(project: &Project, args: &[String]) -> Outcome {
-    let rules = project.part(&project.config.check_keys, "check-keys", "check_keys")?;
+    let rules = project.part(&project.config.check_keys, "check_keys")?;
     if !args.is_empty() {
         eprintln!("usage: {} check-keys", project.config.command());
         return Ok(2);
@@ -206,7 +224,7 @@ fn check_keys(project: &Project, args: &[String]) -> Outcome {
 }
 
 fn check_text(project: &Project, args: &[String]) -> Outcome {
-    let rules = project.part(&project.config.check_text, "check-text", "check_text")?;
+    let rules = project.part(&project.config.check_text, "check_text")?;
     if !args.is_empty() {
         eprintln!("usage: {} check-text", project.config.command());
         return Ok(2);
@@ -271,7 +289,7 @@ fn lang_status(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
 }
 
 fn font_atlas(project: &Project, args: &[String]) -> Outcome {
-    let rules = project.part(&project.config.font_atlas, "font-atlas", "font_atlas")?;
+    let rules = project.part(&project.config.font_atlas, "font_atlas")?;
     let command = project.config.command();
     let Some((out_dir, fonts @ [_, ..])) = args.split_last() else {
         eprintln!("usage: {command} font-atlas <font.bdf>... <out-dir>");
@@ -293,7 +311,7 @@ fn font_atlas(project: &Project, args: &[String]) -> Outcome {
 }
 
 fn glyph_tiles(project: &Project, args: &[String]) -> Outcome {
-    let rules = project.part(&project.config.glyph_tiles, "glyph-tiles", "glyph_tiles")?;
+    let rules = project.part(&project.config.glyph_tiles, "glyph_tiles")?;
     if !args.is_empty() {
         eprintln!("usage: {} glyph-tiles", project.config.command());
         return Ok(2);
@@ -378,7 +396,7 @@ fn target_profile(project: &Project, id: &str) -> Result<TargetProfile, (u8, Str
 }
 
 fn web(project: &Project, args: &[String]) -> Outcome {
-    let rules = project.part(&project.config.web, "web", "web")?;
+    let rules = project.part(&project.config.web, "web")?;
     let options = match web::parse_args(rules, project.config.command(), args) {
         Ok(options) => options,
         Err(e) => {
@@ -399,11 +417,7 @@ fn web(project: &Project, args: &[String]) -> Outcome {
 }
 
 fn private_assets(project: &Project, args: &[String]) -> Outcome {
-    let rules = project.part(
-        &project.config.private_assets,
-        "private-assets",
-        "private_assets",
-    )?;
+    let rules = project.part(&project.config.private_assets, "private_assets")?;
     let command = project.config.command();
     let mode = match private_assets::parse_args(rules, command, args) {
         Ok(mode) => mode,

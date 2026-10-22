@@ -10,8 +10,8 @@ use serde::{Deserialize, Serialize};
 use shuyi_core::bots::playtest::PlaytestReport;
 
 use super::bots::{MAX_GAMES, game_arg, options_text};
-use super::{Answer, Op};
-use crate::game::{GameArg, GameOption, GameTools};
+use super::{Answer, Op, codes};
+use crate::game::{GameArg, GameOption, GameTools, code_of};
 
 /// What `playtest` plays.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -43,11 +43,13 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<PlaytestR
     if input.tries == 0 || input.tries > MAX_GAMES {
         return Answer::failed(
             Op::Playtest,
+            codes::WRONG_ARGUMENTS,
             format!("tries: 1 to {MAX_GAMES}, not {}", input.tries),
         );
     }
     if input.seed.checked_add(u64::from(input.tries)).is_none() {
-        return Answer::failed(Op::Playtest, "seed: too big for that many tries");
+        let error = "seed: too big for that many tries";
+        return Answer::failed(Op::Playtest, codes::WRONG_ARGUMENTS, error);
     }
     match game.playtest(input) {
         Ok(report) => {
@@ -67,7 +69,7 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<PlaytestR
             };
             Answer::new(Op::Playtest, !report.blocked, report, limits)
         }
-        Err(e) => Answer::failed(Op::Playtest, e),
+        Err(e) => Answer::failed(Op::Playtest, code_of(&e), e),
     }
 }
 

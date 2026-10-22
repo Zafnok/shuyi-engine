@@ -131,10 +131,7 @@ impl FontAtlasDef {
             .map(|m| ContentError::new(file, m))
             .collect();
         match png.map(png_size) {
-            None => errors.push(ContentError::new(
-                png_file,
-                "file not found in asset bundle",
-            )),
+            None => errors.push(ContentError::not_found(png_file)),
             Some(None) => errors.push(ContentError::new(png_file, "not a valid PNG file")),
             Some(Some((w, h))) => errors.extend(
                 def.image_problems(w, h)

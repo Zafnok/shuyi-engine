@@ -8,7 +8,7 @@ use core::marker::PhantomData;
 use serde::de::{DeserializeOwned, DeserializeSeed};
 
 use crate::bundle::Bundle;
-use crate::error::ContentError;
+use crate::error::{ContentError, codes};
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, text};
 
 /// A RON file of a kind serde reads (`ron`, `.ron`, unless
@@ -81,7 +81,7 @@ pub fn load_ron<T: DeserializeOwned>(bundle: &Bundle, path: &str) -> Result<T, C
     let display = bundle.display_path(path);
     let text = bundle
         .file(path)
-        .ok_or_else(|| ContentError::new(&display, "file not found in asset bundle"))?;
+        .ok_or_else(|| ContentError::not_found(&display))?;
     parse_ron(&display, text)
 }
 
@@ -120,7 +120,9 @@ fn error(file: &str, e: &::ron::error::SpannedError) -> ContentError {
     // `span.end` is the offending token; `span.start` can be the
     // whitespace before it.
     let pos = e.span.end;
-    ContentError::new(file, e.code.to_string()).at(to_u32(pos.line), Some(to_u32(pos.col)))
+    ContentError::new(file, e.code.to_string())
+        .at(to_u32(pos.line), Some(to_u32(pos.col)))
+        .with_code(codes::PARSE)
 }
 
 fn to_u32(n: usize) -> u32 {
@@ -151,6 +153,7 @@ mod tests {
         assert_eq!(err.file, "base/data/t.ron");
         assert_eq!(err.line, Some(3));
         assert_eq!(err.column, Some(10));
+        assert_eq!(err.code, Some(codes::PARSE));
         assert!(err.to_string().starts_with("base/data/t.ron:3:10: "));
     }
 

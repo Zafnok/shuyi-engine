@@ -1,18 +1,24 @@
 //! The contract on the command line: `shuyi <op> [args] [--json]`. Each
 //! op's arguments become its input, its answer is printed for people or,
-//! with `--json`, as one JSON document ([`Answer::to_json`]), and the exit
-//! code is 0 if it passed, 1 if not, 2 for wrong arguments.
+//! with `--json`, as one JSON document ([`Answer::to_json`]). An error
+//! carries a problem code ([`codes`]), and the exit code is 0 if it
+//! passed, 1 if not, 2 for wrong arguments (`SH0nnn`), and 3 for a setup
+//! to fix before running it again (`SH1nnn`: no project, a project file
+//! that lacks what it needs, the toolchain).
 //!
-//! `new`, `doctor` and `schema` need no project. The others run on the
-//! project's game, in its tool program; `import` without one reads only
-//! the engine's standard kinds.
+//! `new`, `doctor`, `explain` and `schema` need no project. The others run
+//! on the project's game, in its tool program; `import` without one reads
+//! only the engine's standard kinds.
 
 use std::fs;
 use std::path::Path;
 
 use serde::Serialize;
 
-use super::{Answer, Op, bake, bots, check, doctor, import, new, playtest, replay, run, schemas};
+use super::codes::{self, Code};
+use super::{
+    Answer, Op, bake, bots, check, doctor, explain, import, new, playtest, replay, run, schemas,
+};
 use crate::game::GameTools;
 use crate::project::Project;
 
@@ -38,36 +44,43 @@ fn print<T: Serialize>(json: bool, answer: &Answer<T>, text: impl FnOnce(&T) -> 
     answer.exit_code()
 }
 
-/// Says that `op`'s arguments are wrong (`error`), with its `usage`, as
-/// `json` says; the exit code is 2.
+/// Says that `op`'s arguments are wrong (`error`), with its `usage` as
+/// the help, as `json` says; the exit code is 2 ([`codes::WRONG_ARGUMENTS`]).
 fn wrong(json: bool, op: Op, error: &str, usage: &str) -> u8 {
-    if json {
-        println!("{}", Answer::<()>::failed(op, error).to_json());
-    } else {
-        eprintln!("{}: {error}\n\n{usage}", op.name());
-    }
-    2
+    let answer = Answer::<()>::failed(op, codes::WRONG_ARGUMENTS, error).with_help(usage);
+    print(json, &answer, |()| String::new())
 }
 
-/// Says that op `name` (one that [`runs_the_game`]) can't run: the
-/// project names no game tool program. The exit code is 2.
-pub fn no_game(name: &str, args: &[String]) -> u8 {
+/// Says that command `name` can't run with `args`: its setup is wrong
+/// (`error`, of setup code `code`). An op with `--json` answers a failed
+/// [`Answer`]; anything else says it for people. Returns the code's exit
+/// code, 3.
+pub fn setup_failed(name: &str, args: &[String], code: Code, error: &str) -> u8 {
     let (json, _) = split_json(args);
+    match Op::named(name) {
+        Some(op) if json => println!("{}", Answer::<()>::failed(op, code, error).to_json()),
+        _ => eprint!(
+            "{}",
+            codes::said(name, code.0, error, codes::help_of(code.0))
+        ),
+    }
+    codes::exit_code(Some(code.0))
+}
+
+/// Says that command `name` (one that runs the game) can't run with
+/// `args`: the project names no game tool program
+/// ([`codes::PROJECT_FILE`]). The exit code is 3.
+pub fn no_game(name: &str, args: &[String]) -> u8 {
     let error = format!(
         "{} names no game tool program (`game`), and {name} runs the game",
         crate::project::FILE
     );
-    match Op::named(name) {
-        Some(op) if json => {
-            println!("{}", Answer::<()>::failed(op, error).to_json());
-        }
-        _ => eprintln!("{name}: {error}"),
-    }
-    2
+    setup_failed(name, args, codes::PROJECT_FILE, &error)
 }
 
 /// Runs `name` with `args` if it is an op that needs no project (`new`,
-/// `doctor`, `schema`), in the working folder `cwd`; `None` if it isn't.
+/// `doctor`, `explain`, `schema`), in the working folder `cwd`; `None` if
+/// it isn't.
 pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -> Option<u8> {
     let (json, args) = split_json(args);
     Some(match name {
@@ -91,6 +104,10 @@ pub fn without_project(name: &str, args: &[String], cwd: &Path, command: &str) -
                 doctor::text,
             )
         }
+        "explain" => match explain::parse_args(&args) {
+            Ok(input) => print(json, &explain::explain(&input), explain::text),
+            Err(e) => wrong(json, Op::Explain, &e, &explain::usage(command)),
+        },
         "schema" => schema(&args, cwd, command),
         _ => return None,
     })
@@ -133,12 +150,22 @@ fn schema(args: &[String], cwd: &Path, command: &str) -> u8 {
                 print!("{}", file.text);
                 0
             } else {
-                eprintln!("schema: no schema {name} (`{command} schema` lists them)");
+                let help = format!("`{command} schema` lists them");
+                let error = format!("no schema {name}");
+                eprint!(
+                    "{}",
+                    codes::said("schema", codes::WRONG_ARGUMENTS.0, &error, Some(&help))
+                );
                 2
             }
         }
         _ => {
-            eprintln!("usage: {command} schema [<name> | --out <dir>]");
+            let usage = format!("usage: {command} schema [<name> | --out <dir>]");
+            let error = "a schema's name, --out <dir>, or nothing";
+            eprint!(
+                "{}",
+                codes::said("schema", codes::WRONG_ARGUMENTS.0, error, Some(&usage))
+            );
             2
         }
     }
@@ -383,13 +410,17 @@ mod tests {
 
     #[test]
     fn a_project_with_no_game_program_says_so() {
-        assert_eq!(no_game("check", &args(&["--json"])), 2);
-        assert_eq!(no_game("check", &[]), 2);
-        assert_eq!(no_game("frame-png", &args(&["--json"])), 2);
+        assert_eq!(no_game("check", &args(&["--json"])), 3);
+        assert_eq!(no_game("check", &[]), 3);
+        assert_eq!(no_game("frame-png", &args(&["--json"])), 3);
+        assert_eq!(
+            setup_failed("run", &[], codes::TOOLCHAIN, "cannot run cargo"),
+            3
+        );
     }
 
     #[test]
-    fn the_ops_without_a_project_are_new_doctor_and_schema() {
+    fn the_ops_without_a_project_are_new_doctor_explain_and_schema() {
         let dir = std::env::temp_dir().join(format!("shuyi-cli-free-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
@@ -407,28 +438,49 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 20);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 22);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(
             without_project("schema", &args(&["--out", "f"]), &dir, "shuyi"),
             Some(1)
         );
-        assert_eq!(
-            without_project("doctor", &args(&["--json"]), &dir, "shuyi").map(|c| c <= 1),
-            Some(true)
-        );
+        assert!(matches!(
+            without_project("doctor", &args(&["--json"]), &dir, "shuyi"),
+            Some(0 | 3)
+        ));
         assert_eq!(
             without_project("new", &args(&["blank", "g", "--json"]), &dir, "shuyi"),
             Some(0)
         );
         assert_eq!(
             without_project("new", &args(&["blank", "g"]), &dir, "shuyi"),
-            Some(1)
+            Some(2)
         );
         assert_eq!(without_project("new", &[], &dir, "shuyi"), Some(2));
         assert_eq!(
             without_project("doctor", &args(&["x"]), &dir, "shuyi"),
+            Some(2)
+        );
+        assert_eq!(without_project("explain", &[], &dir, "shuyi"), Some(0));
+        assert_eq!(
+            without_project("explain", &args(&["SH2003", "--json"]), &dir, "shuyi"),
+            Some(0)
+        );
+        assert_eq!(
+            without_project("explain", &args(&["SH9999"]), &dir, "shuyi"),
+            Some(2)
+        );
+        assert_eq!(
+            without_project("explain", &args(&["a", "b"]), &dir, "shuyi"),
+            Some(2)
+        );
+        assert_eq!(
+            without_project("schema", &args(&["nope"]), &dir, "shuyi"),
+            Some(2)
+        );
+        assert_eq!(
+            without_project("schema", &args(&["a", "b", "c"]), &dir, "shuyi"),
             Some(2)
         );
         fs::remove_dir_all(&dir).unwrap();

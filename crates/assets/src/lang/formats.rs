@@ -8,9 +8,7 @@ use super::{
 };
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
-use crate::format::{
-    AssetKind, AssetPath, DecodeCx, Format, NOT_FOUND, TEXT_MAX_BYTES, join, text,
-};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
 
 impl AssetKind for LangPack {
     const NAME: &'static str = "language pack";
@@ -123,13 +121,13 @@ impl Format for LangPackRon {
         let english = english_from_source(
             &english_shown,
             cx.text(&english_path)
-                .ok_or_else(|| vec![ContentError::new(&english_shown, NOT_FOUND)])?,
+                .ok_or_else(|| vec![ContentError::not_found(&english_shown)])?,
         )?;
         let mut errors = Vec::new();
         let mut read = |path: &str| {
             let source = cx.text(path);
             if source.is_none() {
-                errors.push(ContentError::new(cx.shown(path), NOT_FOUND));
+                errors.push(ContentError::not_found(cx.shown(path)));
             }
             source.map(|source| (cx.shown(path), source))
         };

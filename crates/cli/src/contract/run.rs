@@ -10,9 +10,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::session::{Event, Scene, Session, Sound};
-use super::{Answer, Op};
+use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
-use crate::game::{GameArg, GameOption, GameTools};
+use crate::game::{GameArg, GameOption, GameTools, code_of};
 
 /// The most frames `frames` may ask for: about 28 simulated minutes.
 pub const MAX_IDLE_FRAMES: u32 = 100_000;
@@ -86,10 +86,12 @@ fn played<T>(
     game: &dyn GameTools,
     input: &RunInput,
 ) -> Result<Box<dyn Session>, Answer<T>> {
-    input.check().map_err(|e| Answer::failed(op, e))?;
+    input
+        .check()
+        .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
     let mut session = game
         .session(&input.start)
-        .map_err(|e| Answer::failed(op, e))?;
+        .map_err(|e| Answer::failed(op, code_of(&e), e))?;
     session.play(&input.script);
     session.idle(input.frames);
     Ok(session)

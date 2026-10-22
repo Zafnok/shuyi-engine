@@ -86,11 +86,19 @@ fn bake_refuses_sources_with_errors_and_makes_no_pack() {
         shown.starts_with("bake: 2 error(s) in the sources; no pack made\n"),
         "{shown}"
     );
-    assert!(shown.contains("base/data/names.ron:1:"), "{shown}");
     assert!(
-        shown.contains("base/data/palette: file not found"),
+        shown.contains("base/data/names.ron:1:1: error[SH2001]: "),
         "{shown}"
     );
+    assert!(
+        shown.contains("base/data/palette: error[SH2003]: file not found"),
+        "{shown}"
+    );
+    assert!(shown.contains("\nhelp[SH2003]: "), "{shown}");
+    assert!(shown.ends_with(&format!(
+        "help[SH2001]: {}\n",
+        codes::help_of("SH2001").unwrap()
+    )));
     assert!(!dir.join(OUT_DIR).exists());
     fs::remove_dir_all(&dir).unwrap();
 }

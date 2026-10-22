@@ -32,6 +32,11 @@ tool program (`crates/game/src/tools.rs`). Each takes `--json` for an
 answer a program can read, which also says what it couldn't determine
 (its `limits`).
 
+A command that fails names a problem code (`error[SH1002]`), with a help
+line. The exit code says what to do: 2, change the command; 3, fix the
+setup (`shuyi.ron`, or the toolchain: `cargo shuyi doctor`), then run the
+same command again; 1, it ran and found something wrong.
+
 | Command | What it tells you |
 | ------- | ----------------- |
 | `cargo shuyi check` | every error in `files/`, with file and line |
@@ -42,6 +47,7 @@ answer a program can read, which also says what it couldn't determine
 | `cargo shuyi frame-png stage.png --script "Right"` | a picture of a frame, with no window |
 | `cargo shuyi import crates/game/files/stage.map` | what a file reads as, or its errors |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
+| `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
 
 ## The gates
 

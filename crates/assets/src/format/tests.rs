@@ -478,6 +478,28 @@ fn an_asset_is_found_by_its_path_or_by_its_path_without_an_extension() {
 }
 
 #[test]
+fn each_problem_of_the_registry_has_its_code() {
+    let (mut formats, bundle) = (words(), bundle());
+    let code = |id: &str, formats: &Formats| {
+        formats
+            .load::<Word>(&bundle, id)
+            .err()
+            .and_then(|errors| errors[0].code)
+    };
+    assert_eq!(code("words/z", &formats), Some(codes::MISSING_FILE));
+    assert_eq!(code("words/b", &formats), Some(codes::AMBIGUOUS_FILE));
+    assert_eq!(code("notes/d.txt", &formats), Some(codes::NO_FORMAT));
+    formats.limits = Limits { max_bytes: 1 };
+    assert_eq!(code("words/a", &formats), Some(codes::TOO_BIG));
+    let not_text = text(&AssetPath::new("a.ron"), &[0xff]).err();
+    assert_eq!(not_text.unwrap_or_default()[0].code, Some(codes::NOT_TEXT));
+    let from_bundle = ContentError::from(crate::bundle::NotText {
+        path: "b.ron".to_owned(),
+    });
+    assert_eq!(from_bundle.code, Some(codes::NOT_TEXT));
+}
+
+#[test]
 fn an_asset_is_loaded_by_id_from_the_bundle_with_the_limits_of_the_registry() {
     let (mut formats, bundle) = (words(), bundle());
     let load = |formats: &Formats, id: &str| {

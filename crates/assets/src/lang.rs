@@ -555,10 +555,7 @@ pub fn from_files(
     let read = |path: &str, errors: &mut Vec<ContentError>| {
         let source = find(path).and_then(|f| f.source);
         if source.is_none() {
-            errors.push(ContentError::new(
-                display(path),
-                "file not found in asset bundle",
-            ));
+            errors.push(ContentError::not_found(display(path)));
         }
         source
     };

@@ -28,7 +28,7 @@ use shuyi_assets::lighting::Lighting;
 use shuyi_assets::names::Names;
 use shuyi_assets::palette::PaletteDef;
 
-use super::{Answer, Op, Problem};
+use super::{Answer, Op, Problem, codes};
 
 /// The most files of the file's folder read for the files it names.
 pub const MAX_FOLDER_FILES: usize = 1_000;
@@ -289,7 +289,7 @@ pub fn import(importers: &Importers, root: &Path, input: &ImportInput) -> Answer
     let path = root.join(&input.file);
     let bytes = match fs::read(&path) {
         Ok(bytes) => bytes,
-        Err(e) => return Answer::failed(Op::Import, format!("{}: {e}", input.file)),
+        Err(e) => return Answer::failed(Op::Import, codes::FILE, format!("{}: {e}", input.file)),
     };
     let kinds: Vec<&dyn ImportKind> = importers
         .kinds
@@ -301,6 +301,7 @@ pub fn import(importers: &Importers, root: &Path, input: &ImportInput) -> Answer
         let known = importers.kinds().join(", ");
         return Answer::failed(
             Op::Import,
+            codes::WRONG_ARGUMENTS,
             format!(
                 "no kind `{}`: the kinds are {known}",
                 input.kind.as_deref().unwrap_or_default()
@@ -361,15 +362,13 @@ pub fn import(importers: &Importers, root: &Path, input: &ImportInput) -> Answer
             ));
         }
     } else if !claimed {
-        errors.push(Problem {
-            file: input.file.clone(),
-            line: None,
-            column: None,
-            message: format!(
-                "no format of these kinds knows its bytes or claims its extension: {}",
-                importers.kinds().join(", ")
-            ),
-        });
+        let message = format!(
+            "no format of these kinds knows its bytes or claims its extension: {}",
+            importers.kinds().join(", ")
+        );
+        let error = ContentError::new(input.file.clone(), message)
+            .with_code(shuyi_assets::error::codes::NO_FORMAT);
+        errors.push(Problem::from(&error));
         limits.push(
             "the importers of Tiled, LDtk and Aseprite files come with tickets 1123 and 1124"
                 .to_owned(),
@@ -422,6 +421,7 @@ pub fn text(output: &ImportOutput) -> String {
         for error in &output.errors {
             let _ = writeln!(out, "  {error}");
         }
+        out.push_str(&codes::help_lines(&output.errors));
     }
     out
 }

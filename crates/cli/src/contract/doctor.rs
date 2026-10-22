@@ -1,8 +1,9 @@
 //! `doctor`: checks the toolchain a game on the engine builds with: Rust
 //! and Cargo, rustup's targets, MSYS2's linker on the Windows GNU
 //! toolchain (`AGENTS.md`), and the web target. Each check says what it
-//! found and, if it failed, how to fix it. It passes when every check
-//! does.
+//! found and, if it failed, how to fix it (its help). It passes when
+//! every check does; when one fails, it answers [`codes::TOOLCHAIN`] and
+//! exits 3.
 //!
 //! What it runs and looks at goes through a [`Probe`], so its tests can
 //! give it any machine.
@@ -14,7 +15,7 @@ use std::process::Command;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::{Answer, Op};
+use super::{Answer, Op, codes};
 
 /// The web build's target.
 pub const WASM_TARGET: &str = "wasm32-unknown-unknown";
@@ -39,7 +40,7 @@ pub struct Check {
     /// What it found, if anything.
     pub found: Option<String>,
     /// How to fix it, if it failed.
-    pub fix: Option<String>,
+    pub help: Option<String>,
 }
 
 /// What `doctor` found.
@@ -85,17 +86,18 @@ fn pass(name: &str, found: impl Into<String>) -> Check {
         name: name.to_owned(),
         ok: true,
         found: Some(found.into()),
-        fix: None,
+        help: None,
     }
 }
 
-/// A check that failed: `found` (if anything) and how to `fix` it.
-fn fail(name: &str, found: Option<String>, fix: impl Into<String>) -> Check {
+/// A check that failed: `found` (if anything) and how to fix it
+/// (`help`).
+fn fail(name: &str, found: Option<String>, help: impl Into<String>) -> Check {
     Check {
         name: name.to_owned(),
         ok: false,
         found,
-        fix: Some(fix.into()),
+        help: Some(help.into()),
     }
 }
 
@@ -192,7 +194,14 @@ pub fn doctor(probe: &dyn Probe, _input: &DoctorInput) -> Answer<DoctorOutput> {
     limits.push(
         "the system libraries macroquad links on Linux (ALSA, X11, GL) are not checked".to_owned(),
     );
-    Answer::new(Op::Doctor, ok, output, limits)
+    let answer = Answer::new(Op::Doctor, ok, output, limits);
+    if ok {
+        answer
+    } else {
+        answer
+            .with_code(codes::TOOLCHAIN)
+            .with_help("fix each failed check as its help says, then run doctor again")
+    }
 }
 
 /// What `doctor` found, for people.
@@ -209,8 +218,8 @@ pub fn text(output: &DoctorOutput) -> String {
             let _ = write!(out, ": {found}");
         }
         out.push('\n');
-        if let Some(fix) = &check.fix {
-            let _ = writeln!(out, "       fix: {fix}");
+        if let Some(help) = &check.help {
+            let _ = writeln!(out, "       help: {help}");
         }
     }
     out
@@ -277,6 +286,7 @@ mod tests {
         );
         let answer = doctor(&machine, &DoctorInput::default());
         assert!(answer.ok, "{answer:?}");
+        assert_eq!((answer.code.as_deref(), answer.exit_code()), (None, 0));
         let output = answer.result.unwrap();
         assert_eq!(output.host.as_deref(), Some("x86_64-unknown-linux-gnu"));
         assert_eq!(
@@ -301,15 +311,15 @@ mod tests {
         let output = checks(&machine);
         assert_eq!(names(&output, false), ["msys2-gcc", "wasm-target"]);
         let msys = &output.checks[3];
-        assert!(msys.fix.as_deref().unwrap().contains("MSYS2.MSYS2"));
+        assert!(msys.help.as_deref().unwrap().contains("MSYS2.MSYS2"));
         let wasm = output.checks.last().unwrap();
         assert_eq!(
-            wasm.fix.as_deref(),
+            wasm.help.as_deref(),
             Some("for the web build: `rustup target add wasm32-unknown-unknown`")
         );
         let said = text(&output);
         assert!(
-            said.contains("  FAIL msys2-gcc\n       fix: the GNU toolchain"),
+            said.contains("  FAIL msys2-gcc\n       help: the GNU toolchain"),
             "{said}"
         );
         // At MSYS2's place, or on PATH, it passes.
@@ -328,14 +338,27 @@ mod tests {
     fn without_rust_every_check_says_how_to_install_it() {
         let answer = doctor(&Fake::default(), &DoctorInput::default());
         assert!(!answer.ok);
-        assert_eq!(answer.exit_code(), 1);
+        assert_eq!(answer.code.as_deref(), Some("SH1003"));
+        assert_eq!(answer.exit_code(), 3);
+        assert!(
+            answer
+                .help
+                .as_deref()
+                .unwrap()
+                .contains("then run doctor again")
+        );
+        let said = answer.to_text(text);
+        assert!(
+            said.contains("doctor: error[SH1003]: A piece of the toolchain is missing\n"),
+            "{said}"
+        );
         let output = answer.result.as_ref().unwrap();
         assert_eq!(output.host, None);
         assert_eq!(
             names(output, false),
             ["rust", "cargo", "rustup", "wasm-target"]
         );
-        assert!(output.checks.iter().all(|c| c.fix.is_some()));
+        assert!(output.checks.iter().all(|c| c.help.is_some()));
         assert!(answer.limits[0].contains("MSYS2 was not checked"));
         assert!(text(output).starts_with("doctor: host unknown\n"));
         // Another host's MSVC toolchain needs no MSYS2.

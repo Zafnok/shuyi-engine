@@ -20,8 +20,8 @@ use serde::{Deserialize, Serialize};
 use shuyi_assets::target::Color;
 
 use super::target::{self, Level, TargetReport};
-use super::{Answer, Op, Problem, bake};
-use crate::game::GameTools;
+use super::{Answer, Op, Problem, bake, codes};
+use crate::game::{GameTools, code_of};
 use crate::project::{Config, FILE};
 
 /// What `check` checks: everything the game loads (with `baked`, its pack
@@ -58,6 +58,7 @@ pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
     if input.target.is_some() {
         return Answer::failed(
             Op::Check,
+            codes::WRONG_ARGUMENTS,
             "check --target is checked by check::targets, with the project file",
         );
     }
@@ -82,7 +83,7 @@ pub fn check(game: &dyn GameTools, input: &CheckInput) -> Answer<CheckOutput> {
             };
             Answer::new(Op::Check, output.errors.is_empty(), output, limits)
         }
-        Err(e) => Answer::failed(Op::Check, e),
+        Err(e) => Answer::failed(Op::Check, code_of(&e), e),
     }
 }
 
@@ -96,11 +97,11 @@ pub fn targets(
     game: Option<&dyn GameTools>,
 ) -> Answer<CheckOutput> {
     let Some(asked) = &input.target else {
-        return Answer::failed(Op::Check, "no target asked for");
+        return Answer::failed(Op::Check, codes::WRONG_ARGUMENTS, "no target asked for");
     };
     let settings = match target::asked(config, asked) {
         Ok(settings) => settings,
-        Err(e) => return Answer::failed(Op::Check, e),
+        Err(e) => return Answer::failed(Op::Check, codes::TARGET, e),
     };
     let profiles = match target::profiles(config, root) {
         Ok(profiles) => profiles,
@@ -108,6 +109,7 @@ pub fn targets(
             let shown: Vec<String> = errors.iter().map(ToString::to_string).collect();
             return Answer::failed(
                 Op::Check,
+                codes::TARGET,
                 format!("the target profiles don't load: {}", shown.join("; ")),
             );
         }
@@ -117,7 +119,8 @@ pub fn targets(
     let controls = match game.map(GameTools::controls) {
         Some(Some(Ok(controls))) => Some(controls),
         Some(Some(Err(e))) => {
-            return Answer::failed(Op::Check, format!("the game's controls don't load: {e}"));
+            let error = format!("the game's controls don't load: {e}");
+            return Answer::failed(Op::Check, code_of(&e), error);
         }
         Some(None) => {
             limits.push(
@@ -140,6 +143,7 @@ pub fn targets(
             let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
             return Answer::failed(
                 Op::Check,
+                codes::TARGET,
                 format!(
                     "no target profile \"{id}\"; the profiles are {}",
                     known.join(", ")
@@ -161,6 +165,7 @@ pub fn targets(
                 Some(Some(Err(e))) => {
                     return Answer::failed(
                         Op::Check,
+                        code_of(&e),
                         format!("the game's one-bit skin for {id} doesn't load: {e}"),
                     );
                 }
@@ -263,6 +268,7 @@ pub fn text(output: &CheckOutput) -> String {
         // Writing to a `String` can't fail.
         let _ = writeln!(out, "  {error}");
     }
+    out.push_str(&codes::help_lines(&output.errors));
     out
 }
 
