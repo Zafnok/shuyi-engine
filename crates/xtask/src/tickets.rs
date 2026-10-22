@@ -5,6 +5,10 @@
 //! repository's differences: `blocked_by` may name a game ticket as
 //! `game#NNNN`, `Parked:` tickets have their own rules, and the valid `type`s
 //! are this repository's.
+//!
+//! It also warns, never fails, on a clause in an open ticket that waits on a
+//! ticket already done ("if NNNN is done", ticket 2017): the PR that closed
+//! it should have settled the clause (the `work-ticket` skill, §5).
 
 use std::collections::HashSet;
 use std::fs;
@@ -73,6 +77,20 @@ struct Ticket {
     folder: Folder,
     fields: TicketFields,
     errors: Vec<String>,
+    /// The clauses that wait on other tickets, read from open tickets only.
+    clauses: Vec<Clause>,
+}
+
+/// A clause in a ticket's body that waits on other tickets, such as "if
+/// 2204 is done".
+#[derive(Debug, PartialEq, Eq)]
+struct Clause {
+    /// The clause's first line in the file, frontmatter counted.
+    line: usize,
+    /// The clause's words, as read.
+    text: String,
+    /// The ticket ids it waits on.
+    ids: Vec<String>,
 }
 
 /// Where `game#NNNN` ids are checked.
@@ -144,6 +162,7 @@ pub fn run(repo_root: &Path, pr_branch: Option<&str>, game: &GameSource) -> Repo
         report.errors.extend(check_pr_branch(&tickets, branch));
     }
 
+    report.warnings.extend(check_clauses(&tickets));
     report
 }
 
@@ -175,6 +194,11 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
     let mut fields = TicketFields::default();
     // A checkout with CRLF line endings reads the same as one with LF.
     let content = content.replace("\r\n", "\n");
+    // Done tickets are history: their clauses are never read.
+    let clauses = match (folder, extract_frontmatter(&content)) {
+        (Folder::Open, Some((_, body))) => find_clauses(body, first_line_of(&content, body)),
+        _ => Vec::new(),
+    };
 
     match extract_frontmatter(&content) {
         None => errors.push("missing or malformed frontmatter (no `---` delimiters)".to_string()),
@@ -188,6 +212,7 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
                         folder,
                         fields,
                         errors,
+                        clauses,
                     };
                 };
 
@@ -267,7 +292,177 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
         folder,
         fields,
         errors,
+        clauses,
     }
+}
+
+/// The line, counted from 1, on which `body` (a suffix of `content`) starts.
+fn first_line_of(content: &str, body: &str) -> usize {
+    let before = &content[..content.len() - body.len()];
+    before.matches('\n').count() + 1
+}
+
+/// One word of a ticket's body: lower-cased and its edges stripped of
+/// Markdown and punctuation, whether a comma was among what was stripped from
+/// its end, and its line.
+struct Word {
+    text: String,
+    comma: bool,
+    line: usize,
+}
+
+/// What is stripped from a word's edges.
+fn is_edge(c: char) -> bool {
+    matches!(
+        c,
+        '*' | '_' | '`' | '(' | ')' | '[' | ']' | '{' | '}' | ',' | ':' | ';' | '.'
+    )
+}
+
+/// The words of `body` outside fenced code blocks, each with its line.
+/// `first_line` is the body's first line in the file.
+fn words(body: &str, first_line: usize) -> Vec<Word> {
+    let mut words = Vec::new();
+    let mut fenced = false;
+    for (n, line) in body.lines().enumerate() {
+        if line.trim_start().starts_with("```") {
+            fenced = !fenced;
+            continue;
+        }
+        if fenced {
+            continue;
+        }
+        for raw in line.split_whitespace() {
+            let tail = &raw[raw.trim_end_matches(is_edge).len()..];
+            words.push(Word {
+                text: raw.trim_matches(is_edge).to_lowercase(),
+                comma: tail.contains(','),
+                line: first_line + n,
+            });
+        }
+    }
+    words
+}
+
+/// Whether `words`, from `at`, read `expected` word for word.
+fn reads(words: &[Word], at: usize, expected: &[&str]) -> bool {
+    expected
+        .iter()
+        .enumerate()
+        .all(|(i, e)| words.get(at + i).is_some_and(|w| w.text == *e))
+}
+
+/// The ids from `at`: one four-digit id, or several joined by `,`, `and` or
+/// `or`. Returns them and the index of the word after the last one; no ids
+/// when the word at `at` isn't one.
+fn ids_at(words: &[Word], at: usize) -> (Vec<String>, usize) {
+    let mut ids = Vec::new();
+    let mut i = at;
+    while let Some(word) = words.get(i).filter(|w| is_four_digits(&w.text)) {
+        ids.push(word.text.clone());
+        i += 1;
+        let next = words.get(i).map(|w| w.text.as_str());
+        let joined = matches!(next, Some("and" | "or"))
+            && words.get(i + 1).is_some_and(|w| is_four_digits(&w.text));
+        if joined {
+            i += 1;
+        } else if !word.comma {
+            break;
+        }
+    }
+    (ids, i)
+}
+
+/// The clause `words[start..end]`, which waits on `ids`.
+fn clause(words: &[Word], start: usize, end: usize, ids: Vec<String>) -> Clause {
+    let last = end - 1;
+    let text = words[start..end]
+        .iter()
+        .zip(start..)
+        .map(|(w, i)| {
+            if w.comma && i < last {
+                format!("{},", w.text)
+            } else {
+                w.text.clone()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    Clause {
+        line: words[start].line,
+        text,
+        ids,
+    }
+}
+
+/// The clause that starts at `words[start]`, if one does, in one of the
+/// forms `find_clauses` names.
+fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
+    let word = words[start].text.as_str();
+    if is_four_digits(word) && words[start].comma && reads(words, start + 1, &["if", "done"]) {
+        return Some(clause(words, start, start + 3, vec![word.to_string()]));
+    }
+    let (ids, end) = match word {
+        "either" if reads(words, start, &["either", "order", "with"]) => ids_at(words, start + 3),
+        "either" if reads(words, start, &["either", "order", "works", "with"]) => {
+            ids_at(words, start + 4)
+        }
+        "if" | "when" => {
+            let (ids, end) = ids_at(words, start + 1);
+            let verbs: &[&str] = if word == "if" {
+                &["is", "are"]
+            } else {
+                &["is"]
+            };
+            let done = verbs.iter().any(|v| reads(words, end, &[*v, "done"]));
+            (if done { ids } else { Vec::new() }, end + 2)
+        }
+        _ => return None,
+    };
+    (!ids.is_empty()).then(|| clause(words, start, end, ids))
+}
+
+/// The clauses in `body` that wait on other tickets, in exactly these forms,
+/// in any case, across line breaks and Markdown emphasis:
+///
+/// 1. `either order with <ids>` (and `either order works with <ids>`);
+/// 2. `if <ids> is done` (and `are done`);
+/// 3. `when <ids> is done`;
+/// 4. `<id>, if done`, as in "the book (NNNN, if done)".
+///
+/// `<ids>` is one four-digit id, or several joined by `,`, `and` or `or`.
+/// Fenced code blocks are skipped. `first_line` is the body's first line in
+/// the file.
+fn find_clauses(body: &str, first_line: usize) -> Vec<Clause> {
+    let words = words(body, first_line);
+    (0..words.len())
+        .filter_map(|start| clause_at(&words, start))
+        .collect()
+}
+
+/// One warning per file, line and id for each clause of an open ticket that
+/// waits on a ticket in `tickets/done/`.
+fn check_clauses(tickets: &[Ticket]) -> Vec<String> {
+    let done: HashSet<&str> = tickets
+        .iter()
+        .filter(|t| t.folder == Folder::Done)
+        .filter_map(|t| t.fields.id.as_deref())
+        .collect();
+    let mut seen = HashSet::new();
+    let mut warnings = Vec::new();
+    for ticket in tickets {
+        for clause in &ticket.clauses {
+            for id in clause.ids.iter().filter(|id| done.contains(id.as_str())) {
+                if seen.insert((&ticket.display_path, clause.line, id)) {
+                    warnings.push(format!(
+                        "{}:{}: \"{}\": {id} is done, so settle the clause (work-ticket §5)",
+                        ticket.display_path, clause.line, clause.text
+                    ));
+                }
+            }
+        }
+    }
+    warnings
 }
 
 /// A `Parked:` ticket has `status: blocked` and a `> **Parked**` note as the
@@ -536,6 +731,7 @@ mod tests {
                 blocked_by: Some(blocked_by.iter().map(|s| (*s).to_string()).collect()),
             },
             errors: Vec::new(),
+            clauses: Vec::new(),
         }
     }
 
@@ -989,6 +1185,217 @@ README.md
         assert_eq!(ticket_id_from_branch("t304-pathfinding"), None);
         assert_eq!(ticket_id_from_branch("main"), None);
         assert_eq!(ticket_id_from_branch("t2304"), None);
+    }
+
+    // -- clauses about other tickets --
+
+    /// The ids of each clause `find_clauses` finds in `body`.
+    fn clause_ids(body: &str) -> Vec<Vec<String>> {
+        find_clauses(body, 1).into_iter().map(|c| c.ids).collect()
+    }
+
+    fn ids(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| (*s).to_string()).collect()
+    }
+
+    #[test]
+    fn finds_each_form_in_any_case() {
+        for (body, text) in [
+            ("Either order with 2204: fine.", "either order with 2204"),
+            (
+                "EITHER ORDER WORKS WITH 2204.",
+                "either order works with 2204",
+            ),
+            ("Then, if 2204 is done, use it.", "if 2204 is done"),
+            ("If 2204 IS DONE use it.", "if 2204 is done"),
+            ("if 2204 are done", "if 2204 are done"),
+            ("When 2204 is done, use it.", "when 2204 is done"),
+            ("the book (2204, if done).", "2204, if done"),
+            ("The book (2204, IF DONE).", "2204, if done"),
+        ] {
+            let found = find_clauses(body, 1);
+            assert_eq!(found.len(), 1, "{body}: {found:?}");
+            assert_eq!(found[0].text, text, "{body}");
+            assert_eq!(found[0].ids, ids(&["2204"]), "{body}");
+        }
+    }
+
+    #[test]
+    fn reads_ids_joined_by_commas_and_or() {
+        assert_eq!(
+            clause_ids("if 2001, 2002 and 2003 are done"),
+            vec![ids(&["2001", "2002", "2003"])]
+        );
+        assert_eq!(
+            clause_ids("either order with 2001 or 2002."),
+            vec![ids(&["2001", "2002"])]
+        );
+        assert_eq!(
+            clause_ids("Either order with 2001, 2002, and 2003: x"),
+            vec![ids(&["2001", "2002", "2003"])]
+        );
+        let found = find_clauses("if 2001, 2002 and 2003 are done", 1);
+        assert_eq!(found[0].text, "if 2001, 2002 and 2003 are done");
+    }
+
+    #[test]
+    fn ids_stop_where_no_id_follows() {
+        assert_eq!(
+            clause_ids("either order with 2001 and the rest."),
+            vec![ids(&["2001"])]
+        );
+        assert_eq!(
+            clause_ids("either order with 2001, then x"),
+            vec![ids(&["2001"])]
+        );
+        let found = find_clauses("either order with 2001 and the rest", 1);
+        assert_eq!(found[0].text, "either order with 2001");
+    }
+
+    #[test]
+    fn needs_the_whole_form() {
+        for body in [
+            "if 2204 is",
+            "if 2204 is ready",
+            "if 2204 were done",
+            "when 2204 are done",
+            "when 2204",
+            "if done",
+            "if 22044 is done",
+            "if two is done",
+            "either order",
+            "either order with",
+            "either way with 2204",
+            "either order about 2204",
+            "either order works for 2204",
+            "2204 if done",
+            "2204, if",
+            "2204, when done",
+            "2204, if ready",
+            "abcd, if done",
+            "then 2204 is done",
+            "2204",
+        ] {
+            assert!(find_clauses(body, 1).is_empty(), "{body}");
+        }
+    }
+
+    #[test]
+    fn a_clause_may_run_across_lines_and_emphasis() {
+        let body = "Intro.\n- **Either order\nwith 2204:** text.\n";
+        let found = find_clauses(body, 10);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].line, 11);
+        assert_eq!(found[0].ids, ids(&["2204"]));
+        assert_eq!(clause_ids("If `2204`\nis _done_, x"), vec![ids(&["2204"])]);
+        assert_eq!(clause_ids("(**2204**), if done"), vec![ids(&["2204"])]);
+    }
+
+    #[test]
+    fn skips_fenced_code_blocks() {
+        let body =
+            "```text\nif 2204 is done\n```\n  ```\nif 2205 is done\n  ```\nif 2206 is done\n";
+        let found = find_clauses(body, 1);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].ids, ids(&["2206"]));
+        assert_eq!(found[0].line, 7);
+    }
+
+    #[test]
+    fn counts_the_frontmatter_in_the_line() {
+        let content = VALID_FRONTMATTER.replace("# body", "# body\n\nif 2204 is done");
+        let t = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &content);
+        assert_eq!(t.clauses.len(), 1);
+        assert_eq!(t.clauses[0].line, 16);
+        let crlf = content.replace('\n', "\r\n");
+        let t = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &crlf);
+        assert_eq!(t.clauses[0].line, 16);
+    }
+
+    #[test]
+    fn a_done_ticket_has_no_clauses() {
+        let content = VALID_FRONTMATTER.replace("# body", "if 2204 is done");
+        let t = parse_ticket("p".to_string(), Folder::Done, "2106-x.md", &content);
+        assert!(t.clauses.is_empty());
+    }
+
+    fn with_clauses(id: &str, folder: Folder, body: &str) -> Ticket {
+        Ticket {
+            clauses: find_clauses(body, 1),
+            ..ticket(id, folder, "todo", &[])
+        }
+    }
+
+    #[test]
+    fn warns_on_done_ids_only() {
+        let tickets = vec![
+            ticket("2001", Folder::Done, "done", &[]),
+            ticket("2002", Folder::Open, "todo", &[]),
+            ticket("2003", Folder::Done, "done", &[]),
+            with_clauses(
+                "2100",
+                Folder::Open,
+                "x\nif 2001, 2002 and 2003 are done, y; 2003 is old. 2002, if done",
+            ),
+        ];
+        let warnings = check_clauses(&tickets);
+        assert_eq!(
+            warnings,
+            vec![
+                "tickets/open/2100-x.md:2: \"if 2001, 2002 and 2003 are done\": 2001 is done, \
+                 so settle the clause (work-ticket §5)",
+                "tickets/open/2100-x.md:2: \"if 2001, 2002 and 2003 are done\": 2003 is done, \
+                 so settle the clause (work-ticket §5)",
+            ]
+        );
+    }
+
+    #[test]
+    fn warns_once_per_file_line_and_id() {
+        let tickets = vec![
+            ticket("2001", Folder::Done, "done", &[]),
+            with_clauses(
+                "2100",
+                Folder::Open,
+                "if 2001 is done (2001, if done)\nif 2001 is done",
+            ),
+            with_clauses("2101", Folder::Open, "if 2001 is done"),
+        ];
+        let warnings = check_clauses(&tickets);
+        assert_eq!(warnings.len(), 3, "{warnings:#?}");
+        assert!(warnings[0].starts_with("tickets/open/2100-x.md:1: "));
+        assert!(warnings[1].starts_with("tickets/open/2100-x.md:2: "));
+        assert!(warnings[2].starts_with("tickets/open/2101-x.md:1: "));
+    }
+
+    #[test]
+    fn run_warns_on_a_stale_clause_without_failing() {
+        let root = make_temp_tickets_dir("run-stale-clause");
+        let open = VALID_FRONTMATTER
+            .replace("\"2102\", \"game#1131\"", "")
+            .replace(
+                "# body",
+                "# body\n\nIf 2102 is done, x.\n\n```\nif 2102 is done\n```",
+            );
+        fs::write(root.join("tickets/open/2106-x.md"), open).unwrap();
+        let done = VALID_FRONTMATTER
+            .replace("2106", "2102")
+            .replace("\"2102\", \"game#1131\"", "")
+            .replace("status: todo", "status: done")
+            .replace("completed:", "completed: 2026-10-21")
+            .replace("# body", "if 2106 is done");
+        fs::write(root.join("tickets/done/2102-x.md"), done).unwrap();
+
+        let report = run(&root, None, &GameSource::Checkout(&root));
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+        assert_eq!(
+            report.warnings,
+            vec![
+                "tickets/open/2106-x.md:16: \"if 2102 is done\": 2102 is done, so settle the \
+                 clause (work-ticket §5)"
+            ]
+        );
+        let _ = fs::remove_dir_all(&root);
     }
 
     // -- end to end over the real repo --

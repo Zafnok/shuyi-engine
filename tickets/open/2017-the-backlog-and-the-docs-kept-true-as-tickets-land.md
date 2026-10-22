@@ -5,7 +5,7 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: in-progress
 blocked_by: []
 nick_input: none
 completed:

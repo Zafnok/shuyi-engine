@@ -68,6 +68,41 @@ fn ticket_lint_passes_on_the_repository() {
     assert!(err.contains("warning: "), "game# ids are skipped: {err}");
 }
 
+/// `ticket-lint` on the repository, with `GITHUB_ACTIONS` set to `true` or
+/// removed (CI sets it), and what it printed on stdout.
+fn ticket_lint_stdout(on_github: bool) -> String {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_xtask"));
+    command
+        .args(["ticket-lint", "--game-repo", &no_game()])
+        .current_dir(std::env::temp_dir());
+    if on_github {
+        command.env("GITHUB_ACTIONS", "true");
+    } else {
+        command.env_remove("GITHUB_ACTIONS");
+    }
+    let output = command
+        .output()
+        .unwrap_or_else(|e| panic!("the xtask binary does not run: {e}"));
+    assert!(output.status.success());
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+#[test]
+fn ticket_lint_annotates_its_warnings_on_github_actions() {
+    let out = ticket_lint_stdout(true);
+    assert!(
+        out.lines().any(|l| l.starts_with("::warning::")),
+        "game# ids are skipped: {out}"
+    );
+    assert!(out.lines().all(|l| l.starts_with("::warning::")), "{out}");
+}
+
+#[test]
+fn ticket_lint_prints_no_annotation_off_github_actions() {
+    let out = ticket_lint_stdout(false);
+    assert!(!out.contains("::warning::"), "{out}");
+}
+
 #[test]
 fn ticket_lint_accepts_a_branch_that_names_no_ticket() {
     let (ok, err) = xtask(&[
