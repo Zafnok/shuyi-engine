@@ -84,10 +84,10 @@ None.
 - Stopping a try early, or slicing a try over frames (3009).
 - The game's use of it (game#1180).
 
-**Either order with 1133:** if 1133 (the MCP server, open as engine
-PR 56, which touches `crates/cli/schemas/` and `contract/`) is done,
-rebase on it and regenerate its schemas too; if not, 1133 picks up the
-new `playtest` schema when it lands.
+**The MCP server (1133, done):** its `playtest` tool takes the
+operation's input schema, so regenerating `crates/cli/schemas/` as
+`docs/contract.md` says gives the tool the new input with no other
+change.
 
 ## Implementation steps
 
