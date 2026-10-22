@@ -25,7 +25,7 @@ use crate::contract::import::Importers;
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::Session;
 use crate::contract::{
-    Answer, Op, bake, bots, check, doctor, explain, import, new, playtest, replay,
+    Answer, Op, bake, bots, check, doctor, explain, import, lint, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
 use crate::game::{GameArg, GameTools, code_of};
@@ -165,6 +165,10 @@ pub fn one_off(
                 }
             })
         }
+        Op::Lint => match project {
+            Ok(p) => answered(op, input, |i| lint::lint(&lint::ThisMachine, p, &i)),
+            Err((code, error)) => failed(op, *code, error.clone()),
+        },
         Op::Run => needs(&|game, _| answered(op, input.clone(), |i| run::run(game, &i))),
         Op::Scene => needs(&|game, _| answered(op, input.clone(), |i| run::scene(game, &i))),
         Op::Replay => {

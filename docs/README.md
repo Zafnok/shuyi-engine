@@ -97,7 +97,7 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The layer, skin and key rules | [`AGENTS.md`](../AGENTS.md), rules 5, 8 and 9 | `templates/*/AGENTS.md`, *The layers* | nothing yet |
 | The contract's operations | [`contract.md`](contract.md), *The operations* | [`README.md`](../README.md), the `shuyi-cli` row | nothing yet (ticket 2017 adds `docs.rs`) |
 | The local gates | the `run-gates` skill | `.github/workflows/ci.yml` | nothing yet |
-| The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/grid/crates/rules/tests/layers.rs` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`) |
+| The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the book (2802), the
 engine's skill pack, `skills/` (1134, which adds the `input-actions` and

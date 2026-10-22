@@ -7,7 +7,6 @@
     // frame-png, lang-status, check, run, scene, replay, bots, import.
     game: (package: "{{crate}}", example: "tools", features: ["tools"]),
 
-    // `cargo shuyi check-keys`: no key named in the game's code or text.
     // `cargo shuyi check --target all`: the targets the game ships on (the
     // engine's profiles, `targets/` in its repository), each with its
     // frame in pixels (48 × 24 cells of 8 × 16), its scale (`integer` or
@@ -17,6 +16,28 @@
         "web": (frame: (384, 384), scale: integer, text_px: 16),
     },
 
+    // `cargo shuyi lint`: check-keys, check-text and the rules crate's
+    // fence (clippy's bans in crates/rules/clippy.toml, and no screen or
+    // device crate under it), each finding with its file and line.
+    rules: "{{crate}}-rules",
+
+    // `cargo shuyi check-text`: no screen text written in the code, asked
+    // for by key from files/en.ron instead. The tool program, the window,
+    // the settings file and the actions' keymap names aren't screens.
+    check_text: (
+        dir: "crates/game/src",
+        max_literals: 0,
+        skip: [
+            "crates/game/src/tools.rs",
+            "crates/game/src/main.rs",
+            "crates/game/src/settings.rs",
+            "crates/game/src/action.rs",
+        ],
+        hint: "put the text in files/en.ron and ask for it by key with ctx.text",
+        name_hint: "show a name through the game's language file, not its data's English",
+    ),
+
+    // `cargo shuyi check-keys`: no key named in the game's code or text.
     check_keys: (
         rust: ["crates/game/src", "crates/rules/src"],
         assets: ["crates/game/files"],

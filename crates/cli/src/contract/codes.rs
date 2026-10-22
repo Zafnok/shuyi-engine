@@ -13,8 +13,9 @@
 //!
 //! A code is never reused or renumbered: a retired one keeps its row and
 //! its page. A new error gets a new code, its row and its page in the same
-//! change. The content codes are `shuyi_assets::error::codes`; the tools'
-//! own are here.
+//! change. The content codes of the game's files are
+//! `shuyi_assets::error::codes`; those of its code, `SH21nn` (`lint`), and
+//! the tools' own are here.
 
 use std::fmt::Write as _;
 
@@ -36,6 +37,18 @@ pub const NO_PROJECT: Code = Code("SH1001");
 pub const PROJECT_FILE: Code = Code("SH1002");
 /// `toolchain`: a piece of the toolchain is missing or doesn't start.
 pub const TOOLCHAIN: Code = Code("SH1003");
+/// `hard-coded-key`: the game's code or text names a key (`lint`'s
+/// `check-keys`).
+pub const HARD_CODED_KEY: Code = Code("SH2101");
+/// `screen-text`: a screen's text is written in its code, or a screen
+/// reads a data name itself (`lint`'s `check-text`).
+pub const SCREEN_TEXT: Code = Code("SH2102");
+/// `rules-fence`: the rules crate uses what its fence bans: a hash map, a
+/// float, a clock, file I/O, outside luck (`lint`).
+pub const RULES_FENCE: Code = Code("SH2103");
+/// `rules-dependency`: the rules crate depends on a screen, device or
+/// tool crate, or on outside luck (`lint`).
+pub const RULES_DEPENDENCY: Code = Code("SH2104");
 /// `not-offered`: the game's tools don't offer the operation.
 pub const NOT_OFFERED: Code = Code("SH3001");
 /// `game-error`: the game's tools failed.
@@ -262,6 +275,38 @@ pub static TABLE: &[Entry] = &[
         "SH2010",
         "A number or a size is out of range",
         "bring it within the range the message gives"
+    ),
+    row!(
+        HARD_CODED_KEY,
+        "hard-coded-key",
+        Content,
+        "SH2101",
+        "The game's code or text names a key",
+        "react to an action instead, and name a key in text through the player's keymap"
+    ),
+    row!(
+        SCREEN_TEXT,
+        "screen-text",
+        Content,
+        "SH2102",
+        "A screen's text is written in its code",
+        "put the text in the language file and ask for it by key; show a data name through the game's words helpers"
+    ),
+    row!(
+        RULES_FENCE,
+        "rules-fence",
+        Content,
+        "SH2103",
+        "The rules use what keeps them from being pure and deterministic",
+        "use what the message's reason names: BTreeMap for a hash map, whole numbers for a float, turns or a Command for the time, crates/game for files, the state's SimRng for luck"
+    ),
+    row!(
+        RULES_DEPENDENCY,
+        "rules-dependency",
+        Content,
+        "SH2104",
+        "The rules depend on a screen, device or tool crate",
+        "remove the dependency from the rules (the command shows the way in) and move the code that needs it to crates/game"
     ),
     row!(
         NOT_OFFERED,

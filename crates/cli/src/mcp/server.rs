@@ -165,7 +165,7 @@ impl<'a> Server<'a> {
             return (failed(op, codes::WRONG_ARGUMENTS, error), None);
         }
         let project = self.project(folder.as_deref());
-        let runs_in_game = takes_project(op, false)
+        let runs_in_game = crate::contract::cli::runs_the_game(op.name())
             && project
                 .as_ref()
                 .is_ok_and(|project| project.config.game.is_some());

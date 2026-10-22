@@ -183,6 +183,9 @@ fn description(op: Op, session: bool) -> &'static str {
              code. With `baked`, its pack too; with `target`, whether its frame, text and \
              controls fit a target (or `all`)."
         }
+        (Op::Lint, _) => {
+            "Check the game's code: keys named in code or text (check-keys), screen text              written as literals (check-text), and the rules crate's fence (clippy's bans on hash              maps, floats, clocks, files and outside luck; no screen or device crate under it).              Each finding with its file, line and code."
+        }
         (Op::Run, _) => {
             "Start the game headless as its start options say, play a script of keys, pad \
              buttons and waits, run idle frames: the screens, the scene, the frame as text, what \
@@ -246,9 +249,9 @@ fn description(op: Op, session: bool) -> &'static str {
 }
 
 /// Whether the tool of `op` takes `project`: the operations that run the
-/// game.
+/// game, and `lint`.
 pub fn takes_project(op: Op, session: bool) -> bool {
-    !session && crate::contract::cli::runs_the_game(op.name())
+    !session && (crate::contract::cli::runs_the_game(op.name()) || op == Op::Lint)
 }
 
 /// The schema of `project`, which every tool that runs the game takes.
@@ -264,7 +267,13 @@ fn project_schema() -> Value {
 /// `project`.
 fn schema_value(text: &str, project: bool) -> Value {
     let mut schema: Value = serde_json::from_str(text).unwrap_or_else(|_| json!({}));
-    if project && let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut)
+    if project
+        && let Some(properties) = schema.as_object_mut().and_then(|schema| {
+            schema
+                .entry("properties")
+                .or_insert_with(|| json!({}))
+                .as_object_mut()
+        })
     {
         properties.insert("project".to_owned(), project_schema());
     }

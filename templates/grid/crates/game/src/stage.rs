@@ -52,6 +52,7 @@ impl Terrains for Terrain {
 }
 
 /// The glyph skin: two cells a tile.
+// check-text: not player text, the palette's names
 pub const GLYPHS: GlyphSkin = GlyphSkin::new(
     MapColors {
         path: "path",
@@ -226,6 +227,7 @@ impl StageScreen {
 }
 
 impl Screen<Data> for StageScreen {
+    // check-text: not player text, the screen's id
     fn name(&self) -> &'static str {
         "stage"
     }

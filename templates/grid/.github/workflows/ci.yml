@@ -36,3 +36,5 @@ jobs:
         run: cargo shuyi check --target all
       - name: No key hard-coded in code or text
         run: cargo shuyi check-keys
+      - name: No key, no screen text in the code, and the rules kept pure
+        run: cargo shuyi lint
