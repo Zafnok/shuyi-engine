@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5
 effort: medium
 status: todo
-blocked_by: ["2003", "2802"]
+blocked_by: ["2003", "2802", "2810"]
 nick_input: sign-off
 completed:
 ---
@@ -73,6 +73,10 @@ say whether a new developer would know where to start.
   part after its chapters.
 - **The skill pack** (1134): the `shuyi-new-game` skill sends an agent
   to the direction guide before it chooses a template.
+- **The docs map** (`docs/README.md`, 2810): a row for `docs/guides/`
+  under *People making games*, updated by "a change that adds a
+  module, a direction or a move", and a line in *What each task reads*
+  for the tickets that add one.
 
 **Out (do not do):**
 - writing guides for directions that aren't built, beyond the planned
