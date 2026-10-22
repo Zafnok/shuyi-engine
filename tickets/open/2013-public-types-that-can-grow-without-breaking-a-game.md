@@ -117,7 +117,9 @@ this ticket stops most of them from happening.
   since a struct literal can't compile outside `shuyi-app` once
   `Window` is non-exhaustive. 3046 (After MVP) adds `AppConfig::crash`.
 - Many MVP and After MVP tickets say "if 2013 is done, the new public
-  types follow its rules; if not, 2013 covers them" (2509, 3040, 2018,
+  types follow its rules; if not, 2013 covers them" (2509, 3040 (done:
+  `LogLevel`, `LogCategory`, `LogLine`, `LogRing` and `LogFilter` in
+  `shuyi_ui::log`, and `LogEntry` in the contract), 2018,
   2109, 2114, 2228, 2229, 2332, 2335, 2337, 3044, 3048 and others).
 
 **Why it matters:**

@@ -1,15 +1,16 @@
 //! `run` and `scene`: the game started headless as the game's options
 //! say, a script of keys, controller buttons and waits played, and some
 //! frames more. `run` answers with the top screen, the frame as text, the
-//! scene, what happened and the sounds asked for; `scene` with the scene
-//! alone.
+//! scene, what happened, the sounds asked for and the game's log; `scene`
+//! with the scene and the log.
 
 use std::fmt::Write as _;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use shuyi_ui::log::LOG_LINES;
 
-use super::session::{Event, Scene, Session, Sound};
+use super::session::{Event, LogEntry, Scene, Session, Sound};
 use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
 use crate::game::{GameArg, GameOption, GameTools, code_of};
@@ -50,6 +51,8 @@ pub struct RunOutput {
     pub events: Vec<Event>,
     /// The sound cues asked for, in order.
     pub sounds: Vec<Sound>,
+    /// The game's log, oldest first: its last lines.
+    pub log: Vec<LogEntry>,
 }
 
 /// What `scene` saw.
@@ -62,6 +65,8 @@ pub struct SceneOutput {
     pub top_screen: String,
     /// The scene, if a stage is open.
     pub scene: Option<Scene>,
+    /// The game's log, oldest first: its last lines.
+    pub log: Vec<LogEntry>,
 }
 
 impl RunInput {
@@ -127,14 +132,22 @@ pub fn limits_of(
     limits
 }
 
-/// What `session` couldn't show after its run, `scene` its scene.
+/// What `session` couldn't show after its run, `scene` its scene: also
+/// the lines its log dropped.
 fn limits(session: &dyn Session, scene: &Result<Scene, String>) -> Vec<String> {
-    limits_of(
+    let mut limits = limits_of(
         session.frame_count(),
         session.quit_frame(),
         !session.screens().is_empty(),
         scene.as_ref().err().map(String::as_str),
-    )
+    );
+    let dropped = session.log_dropped();
+    if dropped > 0 {
+        limits.push(format!(
+            "the log keeps the last {LOG_LINES} lines: {dropped} earlier line(s) were dropped"
+        ));
+    }
+    limits
 }
 
 /// `run`: plays `input` in `game`.
@@ -155,6 +168,7 @@ pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
         frame: session.snapshot(),
         events: session.events(),
         sounds: session.sounds(),
+        log: session.log(),
     };
     Answer::new(Op::Run, true, output, limits)
 }
@@ -173,6 +187,7 @@ pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
         frames: session.frame_count(),
         top_screen: screens.last().cloned().unwrap_or_default(),
         scene: scene.ok(),
+        log: session.log(),
     };
     Answer::new(Op::Scene, output.scene.is_some(), output, limits)
 }
@@ -262,6 +277,22 @@ fn event_text(event: &Event) -> String {
     }
 }
 
+/// The log's warnings and errors, for people.
+fn log_text(out: &mut String, log: &[LogEntry]) {
+    let serious = |entry: &&LogEntry| matches!(entry.level.as_str(), "warn" | "error");
+    if !log.iter().any(|entry| serious(&entry)) {
+        return;
+    }
+    out.push_str("log (warnings and errors; every line with --json):\n");
+    for entry in log.iter().filter(serious) {
+        let _ = writeln!(
+            out,
+            "  frame {}: {} {}: {}",
+            entry.frame, entry.level, entry.category, entry.text
+        );
+    }
+}
+
 /// `scene`, for people.
 fn scene_text(out: &mut String, scene: Option<&Scene>) {
     if let Some(scene) = scene {
@@ -294,6 +325,7 @@ pub fn text(output: &RunOutput) -> String {
             let _ = writeln!(out, "  {}", event_text(event));
         }
     }
+    log_text(&mut out, &output.log);
     if !output.sounds.is_empty() {
         let sounds: Vec<String> = output
             .sounds
@@ -322,6 +354,7 @@ pub fn scene_output_text(output: &SceneOutput) -> String {
         "scene: after {} frame(s), top screen {}\n",
         output.frames, output.top_screen
     );
+    log_text(&mut out, &output.log);
     scene_text(&mut out, output.scene.as_ref());
     out
 }

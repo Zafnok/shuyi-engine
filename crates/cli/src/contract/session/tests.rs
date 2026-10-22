@@ -110,4 +110,30 @@ mod toy {
         });
         assert_eq!(s.scene().unwrap().screen, "home");
     }
+
+    #[test]
+    fn a_session_logs_what_its_harness_logs() {
+        use shuyi_ui::profiles::ProfileId;
+        use shuyi_ui::settings::SETTINGS_KEY;
+        use shuyi_ui::storage::{MemoryStorage, Storage};
+
+        let mut storage = MemoryStorage::new();
+        let key = ProfileId::FIRST.key(SETTINGS_KEY);
+        storage.write(&key, "nonsense").unwrap();
+        let ctx = toy::launch(Box::new(storage));
+        let s = Headless::new(Harness::new(toy::game_on(ctx)));
+        let log = s.log();
+        assert_eq!(log.len(), 1, "{log:?}");
+        let entry = &log[0];
+        assert_eq!(
+            (entry.frame, entry.level.as_str(), entry.category.as_str()),
+            (0, "warn", "storage")
+        );
+        assert!(
+            entry.text.starts_with("settings: unreadable: "),
+            "{entry:?}"
+        );
+        assert_eq!(s.log_dropped(), 0);
+        assert!(session().log().is_empty());
+    }
 }

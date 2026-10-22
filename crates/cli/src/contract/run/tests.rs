@@ -271,6 +271,7 @@ fn what_run_and_scene_saw_reads_for_people() {
         frame: "XY".into(),
         events: Vec::new(),
         sounds: Vec::new(),
+        log: Vec::new(),
     };
     assert_eq!(
         text(&bare),
@@ -285,9 +286,81 @@ fn what_run_and_scene_saw_reads_for_people() {
             text: "map\n".into(),
             data: serde_json::Value::Null,
         }),
+        log: Vec::new(),
     };
     assert_eq!(
         scene_output_text(&shown),
         "scene: after 3 frame(s), top screen stage\nscene (grid map, on stage):\nmap\n"
+    );
+}
+
+fn entry(frame: u32, level: &str, text: &str) -> LogEntry {
+    LogEntry {
+        frame,
+        level: level.into(),
+        category: "storage".into(),
+        text: text.into(),
+    }
+}
+
+/// A game whose session logged a warning and an info line, and dropped
+/// `dropped` older ones.
+fn logged(dropped: u32) -> Fake {
+    let mut session = FakeSession::on("stage", "map");
+    session.log = vec![
+        entry(0, "warn", "settings: unreadable"),
+        entry(2, "info", "hi"),
+    ];
+    session.log_dropped = dropped;
+    Fake {
+        session: Ok(session),
+        ..Fake::default()
+    }
+}
+
+#[test]
+fn run_and_scene_answer_with_the_log() {
+    let game = logged(0);
+    let ran = run(&game, &RunInput::default());
+    assert_eq!(ran.result.as_ref().unwrap().log.len(), 2);
+    assert!(ran.limits.is_empty(), "{:?}", ran.limits);
+    let json = serde_json::to_string(&ran).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Answer<RunOutput>>(&json).unwrap(),
+        ran
+    );
+    let seen = scene(&game, &RunInput::default());
+    assert_eq!(seen.result.as_ref().unwrap().log.len(), 2);
+    let json = serde_json::to_string(&seen).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Answer<SceneOutput>>(&json).unwrap(),
+        seen
+    );
+}
+
+#[test]
+fn dropped_lines_are_a_limit() {
+    let limit = "the log keeps the last 500 lines: 3 earlier line(s) were dropped";
+    assert_eq!(run(&logged(3), &RunInput::default()).limits, [limit]);
+    assert_eq!(scene(&logged(3), &RunInput::default()).limits, [limit]);
+}
+
+#[test]
+fn the_text_shows_the_logs_warnings_and_errors() {
+    let game = logged(0);
+    let warn = "log (warnings and errors; every line with --json):\n  \
+                frame 0: warn storage: settings: unreadable\n";
+    let said = text(&run(&game, &RunInput::default()).result.unwrap());
+    assert!(
+        said.contains(&format!("frame 1: opened stage\n{warn}")),
+        "{said}"
+    );
+    assert!(!said.contains("hi"), "{said}");
+    let said = scene_output_text(&scene(&game, &RunInput::default()).result.unwrap());
+    assert!(
+        said.starts_with(&format!(
+            "scene: after 0 frame(s), top screen stage\n{warn}"
+        )),
+        "{said}"
     );
 }

@@ -68,8 +68,6 @@ pub(crate) struct Macroquad {
     /// The loading card's picture and its path, once decoded (`None` if it
     /// doesn't decode).
     card_picture: Option<(String, Option<Texture2D>)>,
-    /// The errors last logged, so each is logged once.
-    logged: String,
     /// Whether the window fills the screen: it starts windowed.
     fullscreen: bool,
     /// The controllers, once the game's stick thresholds are known.
@@ -95,7 +93,6 @@ impl Macroquad {
             renderer: None,
             broken: None,
             card_picture: None,
-            logged: String::new(),
             fullscreen: false,
             pads: None,
             sound: Sound::default(),
@@ -146,11 +143,14 @@ impl Macroquad {
             };
             match made {
                 Ok(renderer) => self.renderer = Some(renderer),
-                Err(e) => self.broken = Some(e),
+                Err(e) => {
+                    error!("{}", e);
+                    self.broken = Some(e);
+                }
             }
         }
-        if let Some(broken) = self.broken.clone() {
-            self.draw_errors(&broken);
+        if let Some(broken) = &self.broken {
+            Self::draw_errors(broken);
         } else if let Some(renderer) = &mut self.renderer {
             renderer.set_clear(background);
             renderer.draw(buffer);
@@ -160,11 +160,9 @@ impl Macroquad {
     /// Shows errors instead of the game (with macroquad's built-in font,
     /// since the game's may be what failed): asset errors, only reachable if
     /// a broken asset slipped past the game's tests, or a wrong command line.
-    fn draw_errors(&mut self, text: &str) {
-        if self.logged != text {
-            error!("{}", text);
-            text.clone_into(&mut self.logged);
-        }
+    /// `App` logs a failed load, and [`draw_game`](Self::draw_game) a
+    /// renderer that can't start.
+    fn draw_errors(text: &str) {
         clear_background(BLACK);
         let mut y = 40.0;
         for line in crate::wrap(text, crate::ERROR_WIDTH).lines() {
@@ -251,7 +249,7 @@ impl Platform for Macroquad {
         }
         match frame.show {
             Show::Card(card) => self.draw_card(card),
-            Show::Errors(text) => self.draw_errors(text),
+            Show::Errors(text) => Self::draw_errors(text),
             Show::Game {
                 buffer,
                 background,

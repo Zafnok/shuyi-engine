@@ -27,6 +27,7 @@ use crate::input::bindings::{LayoutBindings, PadBindings, PlayerKeys};
 use crate::input::help_keys::HelpKeys;
 use crate::input::keymap::Keymap;
 use crate::input::state::Device;
+use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -228,8 +229,8 @@ pub struct Ctx<G: GameData> {
     /// The player's key bindings for every layout and their controller
     /// buttons, loaded from `storage`.
     player_keys: PlayerKeys<G::Action>,
-    /// Problems found while loading saved data, for the platform to log.
-    warnings: Vec<String>,
+    /// The lines logged and not yet taken ([`log`](Self::log)).
+    log_lines: LogRing,
     /// Where saves and settings persist: a
     /// [`MemoryStorage`](crate::storage::MemoryStorage) until the platform
     /// swaps in its own with [`with_storage`](Self::with_storage).
@@ -337,7 +338,7 @@ impl<G: GameData> Ctx<G> {
             device: Device::default(),
             layout: None,
             player_keys: PlayerKeys::default(),
-            warnings: Vec::new(),
+            log_lines: LogRing::new(LOG_LINES),
             storage: ProfileStore::default(),
             profiles,
             stored_settings: settings.clone(),
@@ -444,14 +445,17 @@ impl<G: GameData> Ctx<G> {
 
     /// Takes the text of the voice manifest the platform read, and keeps
     /// the clips that may be played ([`GameData::voices`]). A manifest the
-    /// game can't use leaves no voices and a warning
-    /// ([`take_warnings`](Self::take_warnings)).
+    /// game can't use leaves no voices and a warning in the log
+    /// ([`log`](Self::log)).
     pub fn set_voice_manifest(&mut self, source: &str) {
         self.voices = match self.game.voices(source) {
             Ok(playable) => playable,
             Err(why) => {
-                // check-text: not player text (a warning for the log)
-                self.warnings.push(format!("no voices: {why}"));
+                self.log(
+                    LogLevel::Warn,
+                    LogCategory::Audio,
+                    format!("no voices: {why}"),
+                );
                 Playable::default()
             }
         };
@@ -601,18 +605,42 @@ impl<G: GameData> Ctx<G> {
             ),
         };
         self.player_keys = keys;
-        self.warnings.extend(
-            warnings
-                .into_iter()
-                .map(|w| format!("{KEYBINDINGS_KEY}: {w}")),
-        );
+        for warning in warnings {
+            let (level, category) = (LogLevel::Warn, LogCategory::Input);
+            self.log(level, category, format!("{KEYBINDINGS_KEY}: {warning}"));
+        }
         self.refresh_keymap();
     }
 
-    /// Takes the warnings gathered while loading saved data (e.g. repaired
-    /// key bindings), for the platform to log.
+    /// Logs `text` at `level` about `category`: kept, with frame 0, until
+    /// the platform takes it ([`take_log`](Self::take_log)) and stamps it
+    /// with its frame. Past [`LOG_LINES`] waiting, the oldest is dropped
+    /// and counted. English, never translated: no player reads it.
+    pub fn log(&mut self, level: LogLevel, category: LogCategory, text: impl Into<String>) {
+        self.log_lines.push(LogLine {
+            frame: 0,
+            level,
+            category,
+            text: text.into(),
+        });
+    }
+
+    /// Takes the lines waiting, oldest first, and how many were dropped
+    /// before they were taken: for the platform's `App`.
+    pub fn take_log(&mut self) -> (Vec<LogLine>, u32) {
+        self.log_lines.take()
+    }
+
+    /// Takes every line waiting, and returns the text of the warnings and
+    /// errors among them (e.g. repaired key bindings): for a front end
+    /// without the platform's `App`.
     pub fn take_warnings(&mut self) -> Vec<String> {
-        core::mem::take(&mut self.warnings)
+        let (lines, _) = self.take_log();
+        lines
+            .into_iter()
+            .filter(|line| line.level <= LogLevel::Warn)
+            .map(|line| line.text)
+            .collect()
     }
 
     /// Builder form of [`use_layout`](Self::use_layout).
@@ -748,9 +776,12 @@ impl<G: GameData> Ctx<G> {
             Err(e) => Err(format!("can't be read: {e}")),
         };
         self.settings = loaded.unwrap_or_else(|why| {
-            // check-text: not player text (a warning for the log)
-            self.warnings
-                .push(format!("{SETTINGS_KEY}: {why}, using the defaults"));
+            let (level, category) = (LogLevel::Warn, LogCategory::Storage);
+            self.log(
+                level,
+                category,
+                format!("{SETTINGS_KEY}: {why}, using the defaults"),
+            );
             Settings::default()
         });
         self.settings.layout = self.saved_layout();
@@ -771,7 +802,9 @@ impl<G: GameData> Ctx<G> {
         let lang = self.game.lang();
         let (profiles, warnings) =
             profiles::load(&mut *storage, &old_keys, |n| numbered_profile(lang, n));
-        self.warnings.extend(warnings);
+        for warning in warnings {
+            self.log(LogLevel::Warn, LogCategory::Storage, warning);
+        }
         self.storage = ProfileStore::new(storage, profiles.current());
         self.profiles = profiles;
         self.load_player_keys();

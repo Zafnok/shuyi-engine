@@ -66,6 +66,37 @@
     "limits"
   ],
   "$defs": {
+    "LogEntry": {
+      "description": "A line of the game's log.",
+      "type": "object",
+      "properties": {
+        "category": {
+          "description": "What it is about: `assets`, `audio`, `input`, `screens`, `storage`,\n`platform` or `game`.",
+          "type": "string"
+        },
+        "frame": {
+          "description": "The frame it was given in (frames count from 1; 0 is before the\nfirst).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "level": {
+          "description": "How serious it is: `error`, `warn`, `info` or `debug`.",
+          "type": "string"
+        },
+        "text": {
+          "description": "What it says, in English.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "level",
+        "category",
+        "text"
+      ]
+    },
     "Op": {
       "description": "An operation of the contract.",
       "oneOf": [
@@ -164,6 +195,13 @@
           "format": "uint32",
           "minimum": 0
         },
+        "log": {
+          "description": "The game's log, oldest first: its last lines.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LogEntry"
+          }
+        },
         "scene": {
           "description": "The scene, if a stage is open.",
           "anyOf": [
@@ -183,7 +221,8 @@
       "additionalProperties": false,
       "required": [
         "frames",
-        "top_screen"
+        "top_screen",
+        "log"
       ]
     }
   }

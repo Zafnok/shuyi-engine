@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 3040 — A log with levels and categories, kept by App and read through the contract
@@ -257,44 +257,44 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A Harness over the toy, whose storage holds `nonsense` under the
+- [x] A Harness over the toy, whose storage holds `nonsense` under the
       first profile's settings key (as
       `unreadable_settings_give_the_defaults_and_a_warning` in
       `crates/ui/src/ctx/tests.rs` sets it up), has one line in
       `Harness::log()`: frame 0, `Warn`, `Storage`, its text starting
       with `settings: unreadable: `.
-- [ ] A line logged through `harness.ctx_mut().log(…)` after frame 3 and
+- [x] A line logged through `harness.ctx_mut().log(…)` after frame 3 and
       before frame 4 carries frame 4.
-- [ ] The ring keeps the last 500 of 600 lines and counts 100 dropped.
-- [ ] `App::take_new_log` returns each line once, in order, across calls.
-- [ ] With the filter at `Warn`, an `Info` line never enters the ring.
-- [ ] A failed load leaves one `Error` line, category `Platform`, with its
+- [x] The ring keeps the last 500 of 600 lines and counts 100 dropped.
+- [x] `App::take_new_log` returns each line once, in order, across calls.
+- [x] With the filter at `Warn`, an `Info` line never enters the ring.
+- [x] A failed load leaves one `Error` line, category `Platform`, with its
       errors.
-- [ ] `Session::log` of a `Headless` session over that Harness returns
+- [x] `Session::log` of a `Headless` session over that Harness returns
       the line as a `LogEntry` with `frame` 0, `level` `"warn"` and
       `category` `"storage"`.
-- [ ] `run`'s and `scene`'s answers over a `FakeSession` with two lines
+- [x] `run`'s and `scene`'s answers over a `FakeSession` with two lines
       carry both in `log`, and each answer's JSON reads back as the same
       `Answer<RunOutput>` or `Answer<SceneOutput>`. With `log_dropped`
       at 3, the limits hold "the log keeps the last 500 lines: 3 earlier
       line(s) were dropped".
-- [ ] The schemas tests (`crates/cli/tests/it/schemas.rs`) pass with the
+- [x] The schemas tests (`crates/cli/tests/it/schemas.rs`) pass with the
       new version and its fingerprint in `versions.json`.
-- [ ] `docs/contract.md`'s example answer has `"log": []` in `result`
+- [x] `docs/contract.md`'s example answer has `"log": []` in `result`
       and the new `contract::VERSION` in `contract`.
-- [ ] `check-text` counts no literal inside `ctx.log(…)` (a unit test in
+- [x] `check-text` counts no literal inside `ctx.log(…)` (a unit test in
       `check_text.rs`).
-- [ ] `Ctx` has no `warnings` field, and the existing tests of
+- [x] `Ctx` has no `warnings` field, and the existing tests of
       `Ctx::take_warnings` pass unchanged.
-- [ ] Outside tests, only `App`, the Harness, the contract and backends
+- [x] Outside tests, only `App`, the Harness, the contract and backends
       call `App::log`, `App::take_new_log` or `Ctx::take_log` (the `rg`
       output in the PR description).
-- [ ] `shuyi-ui` and `shuyi-platform` still build for
+- [x] `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf` (CI's `no-std` job).
-- [ ] The PR says the API change for the game's pin bump:
+- [x] The PR says the API change for the game's pin bump:
       `App::take_warnings` is gone (`App::take_new_log` replaces it);
       `Ctx::take_warnings` stays.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -320,4 +320,46 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done as scoped, with ADR-0030 for the log.
+
+- `shuyi_ui::log` holds `LogLevel`, `LogCategory`, `LogLine`, `LOG_LINES`,
+  `LogRing` and `LogFilter`, with unit tests and the `LogRing` property
+  test. Its `since` and `lines` return the `VecDeque`'s iterator, not a
+  `Vec`. Both enums also have an `ALL` list, which their `from_name` uses.
+- `Ctx` logs through `Ctx::log` and hands lines over with `Ctx::take_log`.
+  Its `warnings` field is gone. `Ctx::take_warnings` stays, and its
+  existing tests pass unchanged.
+- `App` counts frames, keeps the ring, filters what goes in, logs a failed
+  load (`the game didn't load: …`, `Error`, `Platform`), and offers
+  `App::log`, `App::take_new_log`, `App::set_log_filter` and
+  `App::frame_number`. `App::take_warnings` is gone. The Harness has
+  `Harness::log`.
+- The contract has `LogEntry`, `Session::log` and `Session::log_dropped`
+  (both with default bodies), the `log` field in `RunOutput` and
+  `SceneOutput`, the limit for dropped lines, and the warnings and errors
+  in the text. The schemas are regenerated and the contract's version is
+  now **8**: 2509 had already raised it to 7.
+- `check-text`: `log` joins `QUIET` (15 names). The two markers are gone.
+  The settings and key-binding lines now build their `format!` inside the
+  `log(…)` call, so they need no marker.
+- `shuyi-app` prints each line with the macro for its level, as
+  `category: text`. The renderer's error is logged once, where `broken`
+  is set. `draw_errors` no longer logs and is now an associated function,
+  so the `logged` field is gone.
+- **Size:** about 360 changed lines of non-test code, under the 600 the
+  ticket allows, so `LogFilter` and `App::set_log_filter` stayed here.
+- **Docs:** `docs/contract.md` (the rows, *The log*, and the example at
+  version 8 with `"log": []`) and `docs/platform-backends.md` (the loop
+  and `Show::Errors`).
+- **Settled clauses:** 2356 and 2601 (the log is done), and 2013's list of
+  types it covers.
+- **The game's pin bump:** `App::take_warnings` is gone, and
+  `App::take_new_log` replaces it. `Ctx::take_warnings` stays.
+  `RunOutput` and `SceneOutput` gained a field, which matters only to
+  code that builds them by struct literal.
+- Who calls the log outside tests: `App` calls `Ctx::take_log`, the
+  Harness calls `App::log`, the contract reads `Harness::log`, and
+  `shuyi-app` calls `App::take_new_log`. `Ctx::take_warnings` also calls
+  `Ctx::take_log`, inside `Ctx`.
+
+Nick input: none.
