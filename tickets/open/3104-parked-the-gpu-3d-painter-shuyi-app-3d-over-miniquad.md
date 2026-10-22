@@ -132,6 +132,7 @@ None.
 - other backends' painters (the DS's is ADR-0012's);
 - more than one shadow-casting light;
 - colour grading from a lookup image;
+- ray-traced and path-traced light (2911 researches it);
 - screen-space reflections, ambient occlusion and other effects not in
   ADR-0011 §7;
 - the diorama skin (3107);

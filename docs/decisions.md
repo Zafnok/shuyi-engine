@@ -933,3 +933,44 @@ Told that the placeholders would be published, Nick added:
   crate before removing it), the answer points at this repository's
   activity. A real version goes out early only if that is what keeping
   the names takes, and Nick is asked first.
+
+## 2026-10-22: weather, day and night, voice chat and ray tracing get tickets
+
+Source: Nick, in a Claude Code session on 2026-10-22:
+
+> "some random thoughts I have are supporting weather system, day/night
+> cycle, and proximity audio and voice chat (voice chat in multiplayer
+> enabled games)
+>
+> also raytraced path traced visuals and audio"
+
+Told which already had tickets and which were engine or game, and that
+ray tracing would be a poor fit for the small targets, he added:
+
+> "I mean obv the ray and path tracing would be for diff comp targets
+> like PC, new gen consoles and wouldn't be shipped for i.e. GBA... we
+> already have feature toggles and target toggles in our roadmap
+> right...?"
+
+He then chose to have parked tickets written for the gaps.
+
+**Rules:**
+
+- **Proximity audio already had a ticket**: 2363 (positional 2D sound),
+  parked with the real-time work.
+- **A day and night is engine look, the day's meaning is the game's.**
+  2369 blends named lights over the game's own clock; when shops close
+  or what comes out at night stays the game's.
+- **Weather's rules are the game's.** 2370 brings its look and sound
+  together (particles across the view, a tinted overlay, a looped
+  sound, a fade between them); what rain or snow does is the game's.
+- **Voice chat is researched first, and shipping it is Nick's call.**
+  2910 ends with a question to him on the duties it brings
+  (moderation, minors, the stores' rules).
+- **Ray and path tracing are an opt-in module for PCs and current
+  consoles.** It is behind a new `ray_tracing` capability (ADR-0012 §1,
+  3017) that the Playdate, the GBA and the DS never have, and is
+  optional by default, so a game that turns it on still runs elsewhere
+  with its usual look. 2911 researches light (3D and 2D) and sound.
+- All four tickets are parked like the rest, until Nick unparks them or
+  the game asks for one.
