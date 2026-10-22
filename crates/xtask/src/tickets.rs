@@ -357,20 +357,23 @@ fn reads(words: &[Word], at: usize, expected: &[&str]) -> bool {
 /// when the word at `at` isn't one.
 fn ids_at(words: &[Word], at: usize) -> (Vec<String>, usize) {
     let mut ids = Vec::new();
-    let mut i = at;
-    while let Some(word) = words.get(i).filter(|w| is_four_digits(&w.text)) {
-        ids.push(word.text.clone());
-        i += 1;
-        let next = words.get(i).map(|w| w.text.as_str());
-        let joined = matches!(next, Some("and" | "or"))
-            && words.get(i + 1).is_some_and(|w| is_four_digits(&w.text));
-        if joined {
-            i += 1;
-        } else if !word.comma {
+    let mut end = at;
+    // Whether the next word may be an id: the first one, or one after a
+    // comma or a joining word. A `for` over the words, so it always ends.
+    let mut open = true;
+    for (i, word) in words.iter().enumerate().skip(at) {
+        let joins = matches!(word.text.as_str(), "and" | "or");
+        if open && is_four_digits(&word.text) {
+            ids.push(word.text.clone());
+            end = i + 1;
+            open = word.comma;
+        } else if joins && i == end && !ids.is_empty() {
+            open = true;
+        } else {
             break;
         }
     }
-    (ids, i)
+    (ids, end)
 }
 
 /// The clause `words[start..end]`, which waits on `ids`.
@@ -1250,6 +1253,21 @@ README.md
         );
         let found = find_clauses("either order with 2001 and the rest", 1);
         assert_eq!(found[0].text, "either order with 2001");
+        assert_eq!(
+            clause_ids("either order with 2001 and and 2002"),
+            vec![ids(&["2001"])]
+        );
+        assert_eq!(
+            clause_ids("either order with 2001 2002"),
+            vec![ids(&["2001"])]
+        );
+        assert_eq!(
+            clause_ids("either order with 2001 the 2002"),
+            vec![ids(&["2001"])]
+        );
+        assert!(clause_ids("either order with and 2001").is_empty());
+        assert!(clause_ids("if 2001 2002 is done").is_empty());
+        assert!(clause_ids("if 2001 then is done").is_empty());
     }
 
     #[test]
