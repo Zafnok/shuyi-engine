@@ -4,6 +4,8 @@
 //! tile, and catches you if it steps onto your tile. Each step it may trip
 //! instead ([`TRIP_PERCENT`]), rolled from the seeded RNG kept in the
 //! state, so the same seed and the same commands always play out the same.
+//! A stage's [`Tuning`] can change the trip chance and give your piece a
+//! head start: the knobs of `tools::knobs` turn it.
 //!
 //! [`Chase`] is the foe's mind: a [`Bot`] that steps towards your piece.
 //! The stage screen asks it for the foe's commands, and the bot test lets
@@ -40,6 +42,31 @@ pub const MOVES: u32 = 4;
 
 /// The chance, in percent, that the foe trips and stays where it is.
 pub const TRIP_PERCENT: u8 = 25;
+
+/// How a stage is tuned: the knobs of an autobalance search turn these
+/// (`tools::knobs`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Tuning {
+    /// The chance, in percent, that the foe trips on a step.
+    pub trip_percent: u8,
+    /// How many of its first turns the foe skips.
+    pub foe_waits: u8,
+}
+
+impl Default for Tuning {
+    /// [`TRIP_PERCENT`], and no wait.
+    fn default() -> Self {
+        Self {
+            trip_percent: TRIP_PERCENT,
+            foe_waits: 0,
+        }
+    }
+}
+
+/// Whether `value` is its type's default: a field that is isn't written.
+fn is_default<T: Default + PartialEq>(value: &T) -> bool {
+    *value == T::default()
+}
 
 /// What a `.map` tile may hold besides its terrain: where the pieces start.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -106,6 +133,8 @@ pub enum Event {
     },
     /// The foe tripped and stayed where it was.
     Tripped,
+    /// The foe skipped its turn: one of its first [`Tuning::foe_waits`].
+    Waited,
     /// The foe stayed where it was, on purpose.
     Stayed,
     /// The foe is on your tile: you lost.
@@ -152,9 +181,10 @@ pub enum Outcome {
 }
 
 /// A stage being played: the map, the two pieces, whose move it is, the
-/// turn, the luck to come and, once it is over, how it ended. It
-/// serializes for its state hash (`shuyi_core::state_hash`), which a
-/// replay compares step by step.
+/// turn, the luck to come, its [`Tuning`] and, once it is over, how it
+/// ended. It serializes for its state hash (`shuyi_core::state_hash`),
+/// which a replay compares step by step; the tuning only when it isn't the
+/// default, so a stage of [`Stage::new`] hashes as it always has.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Stage {
     map: Grid<TerrainId>,
@@ -165,13 +195,24 @@ pub struct Stage {
     turn: u32,
     rng: SimRng,
     outcome: Option<Outcome>,
+    #[serde(skip_serializing_if = "is_default")]
+    tuning: Tuning,
 }
 
 impl Stage {
-    /// The stage of `map`, its luck seeded with `seed`: your move, turn 1.
-    /// Fails unless the map has exactly one goal tile, one `Hero` and one
-    /// `Foe`, on floor tiles of their own.
+    /// The stage of `map`, its luck seeded with `seed`: your move, turn 1,
+    /// tuned the default way. Fails unless the map has exactly one goal
+    /// tile, one `Hero` and one `Foe`, on floor tiles of their own.
     pub fn new(map: &GridMap<TerrainId, Feature>, seed: u64) -> Result<Self, String> {
+        Self::with_tuning(map, seed, Tuning::default())
+    }
+
+    /// [`Stage::new`], tuned as `tuning` says.
+    pub fn with_tuning(
+        map: &GridMap<TerrainId, Feature>,
+        seed: u64,
+        tuning: Tuning,
+    ) -> Result<Self, String> {
         let tiles: Vec<Pos> = map.tiles.positions().collect();
         let goals: Vec<Pos> = tiles
             .iter()
@@ -207,7 +248,23 @@ impl Stage {
             turn: 1,
             rng: SimRng::new(seed),
             outcome: None,
+            tuning,
         })
+    }
+
+    /// How it is tuned.
+    pub fn tuning(&self) -> Tuning {
+        self.tuning
+    }
+
+    /// This stage tuned as `tuning` says instead: how a knob changes a
+    /// stage before it is played.
+    #[must_use]
+    pub fn retuned(&self, tuning: Tuning) -> Self {
+        Self {
+            tuning,
+            ..self.clone()
+        }
     }
 
     /// The terrain.
@@ -318,6 +375,9 @@ impl TurnRules for Stage {
                 if to == self.goal {
                     events.push(Event::Reached);
                     self.outcome = Some(Outcome::Won { turn: self.turn });
+                } else if self.turn <= u32::from(self.tuning.foe_waits) {
+                    events.push(Event::Waited);
+                    self.next_turn();
                 } else {
                     self.side = Side::Foe;
                 }
@@ -328,7 +388,7 @@ impl TurnRules for Stage {
             }
             Command::Step(Some(dir)) => {
                 let to = self.step_to(dir)?;
-                if self.rng.roll_percent() < TRIP_PERCENT {
+                if self.rng.roll_percent() < self.tuning.trip_percent {
                     events.push(Event::Tripped);
                 } else {
                     events.push(Event::Stepped { from: self.foe, to });

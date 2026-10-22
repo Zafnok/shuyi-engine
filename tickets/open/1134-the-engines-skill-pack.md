@@ -123,13 +123,13 @@ None.
     `check_saved_forms` checks, with what its failure asks. If 2110
     isn't done when the skill is written, the skill leaves saves out and
     2110 adds the paragraph.
-  - Search, either order with 2112, 2113 and 2125–2127: if they are
-    done, `shuyi-test` shows how to prove a level winnable with
-    `shuyi_core::search::solve` in a game's `check`, and
-    `shuyi-balance-bots` shows `Determinize`, the rollout bot, the
-    minimax and MCTS bots, the playtest runner with its bands, and the
-    autobalance search. If not, each of those tickets adds its section
-    when it lands.
+  - Search: `shuyi-balance-bots` shows `Determinize`, the rollout bot,
+    the playtest runner with its bands, and the autobalance search
+    (`shuyi_core::autobalance` and the game's `Knob`s). Either order
+    with 2112 and 2113: if they are done, `shuyi-test` shows how to
+    prove a level winnable with `shuyi_core::search::solve` in a game's
+    `check`, and `shuyi-balance-bots` shows the minimax and MCTS bots.
+    If not, each of those tickets adds its section when it lands.
   - Motion, either order with 2514: if 2514 is done, `shuyi-test`,
     `shuyi-animate` and `shuyi-cinematic` say to check motion with a
     sheet (`frame-png --every <seconds> --count <n>`, or the MCP

@@ -5,10 +5,13 @@
 //! [`Unordered`], [`Playout`], [`Rollout`], [`RolloutSettings`],
 //! [`RolloutSearch`] and [`Horizon`], a turn planner that plans its
 //! side's whole turn on them: [`TurnPlan`], [`PlanSettings`] and
-//! [`PlanSearch`], and a playtest runner that checks
-//! how often each of several bots succeeds, [`bots::playtest`]), a hash of a state that replays
-//! compare, the version every [`save`] names, and what text and stories
-//! need below the assets: character ids and the `{token}` splitter.
+//! [`PlanSearch`], a playtest runner that checks how often each of
+//! several bots succeeds, [`bots::playtest`], and an autobalance search
+//! whose [`Knob`]s change a stage until each lands in its band:
+//! [`autobalance`], [`BalanceSettings`], [`Balanced`] and [`Stop`]), a
+//! hash of a state that replays compare, the version every [`save`]
+//! names, and what text and stories need below the assets: character ids
+//! and the `{token}` splitter.
 //!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
 //! crate sits on it and keeps its own rules, turn loop and data (game ADR-0063
@@ -30,9 +33,9 @@ pub mod text;
 pub mod turn;
 
 pub use bots::{
-    Bot, Determinize, Evaluate, Horizon, Order, PlanSearch, PlanSettings, PlayError, Playout,
-    RandomBot, Report, Rollout, RolloutSearch, RolloutSettings, Sides, TurnPlan, Unordered, play,
-    play_observed,
+    BalanceSettings, Balanced, Bot, Determinize, Evaluate, Horizon, Knob, Order, PlanSearch,
+    PlanSettings, PlayError, Playout, RandomBot, Report, Rollout, RolloutSearch, RolloutSettings,
+    Sides, Stop, TurnPlan, Unordered, autobalance, play, play_observed,
 };
 pub use character::CharacterId;
 pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};

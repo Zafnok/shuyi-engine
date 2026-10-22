@@ -3,7 +3,8 @@
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
 //! against the foe's mind), `playtest` (a random hero and a walker,
-//! [`ENTRANTS`], judged by `playtest.ron`), `import` (the stage's `.map` and the
+//! [`ENTRANTS`], judged by `playtest.ron`), the knobs an autobalance search
+//! turns ([`Trip`] and [`HeadStart`]), `import` (the stage's `.map` and the
 //! keymap besides the engine's kinds), `bake` (its text baked into a
 //! pack, [`crate::bake`]), the controls `check --target` checks
 //! ([`controls`]), and its look on a one-bit target: the pattern map
@@ -12,6 +13,7 @@
 //! tool program that runs them; the tests use them too.
 
 use std::collections::BTreeMap;
+use std::ops::RangeInclusive;
 
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
@@ -32,7 +34,7 @@ use shuyi_core::bots::playtest::{
     self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries,
 };
 use shuyi_core::{
-    Bot, Determinize, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
+    Bot, Determinize, Knob, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
 };
 use shuyi_platform::harness::Harness;
 use shuyi_ui::frame::onebit::{Font, PatternMap, to_one_bit};
@@ -40,7 +42,7 @@ use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::{Game, GameData, GameHooks};
 
 use crate::map::Terrain;
-use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Walk};
+use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Tuning, Walk};
 use crate::screens::StageScreen;
 use crate::{Action, FONT_PNG, Hello, MapLook};
 
@@ -475,6 +477,118 @@ pub fn playtest_run(tries: &Tries) -> Result<PlaytestReport, String> {
         PlaytestError::UnknownEntrant(e) => format!("playtest.ron: {e}"),
         PlaytestError::Play { .. } => e.to_string(),
     })
+}
+
+/// The highest trip chance [`Trip`] goes to, in percent.
+pub const MOST_TRIPS: u8 = 75;
+
+/// The longest wait [`HeadStart`] gives the foe, in turns.
+pub const MOST_WAITS: u8 = 3;
+
+/// A knob of the foe's trip chance, from a stage tuned with `from`: five
+/// points a step, from 0% to [`MOST_TRIPS`], two steps at first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Trip {
+    /// The trip chance of the stage as authored, in percent.
+    pub from: u8,
+}
+
+impl Trip {
+    /// The chance `step` gives, if it is from 0% to [`MOST_TRIPS`].
+    fn percent(self, step: i32) -> Option<u8> {
+        let percent = step.checked_mul(5)?.checked_add(i32::from(self.from))?;
+        u8::try_from(percent).ok().filter(|&p| p <= MOST_TRIPS)
+    }
+}
+
+impl Knob<Stage> for Trip {
+    fn name(&self) -> &'static str {
+        "trip"
+    }
+
+    fn range(&self) -> RangeInclusive<i32> {
+        let from = i32::from(self.from);
+        -(from / 5)..=((i32::from(MOST_TRIPS) - from) / 5).max(0)
+    }
+
+    fn stride(&self) -> u32 {
+        2
+    }
+
+    fn apply(&self, stage: &Stage, step: i32) -> Option<Stage> {
+        let trip_percent = self.percent(step)?;
+        Some(stage.retuned(Tuning {
+            trip_percent,
+            ..stage.tuning()
+        }))
+    }
+
+    fn describe(&self, step: i32) -> String {
+        let percent = self
+            .percent(step)
+            .map_or_else(|| "?".to_owned(), |p| p.to_string());
+        format!("the foe trips {percent}% of the time, not {}%", self.from)
+    }
+}
+
+/// A knob of your head start, from a stage tuned with `from`: the foe
+/// skips one more of its first turns a step, up to [`MOST_WAITS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeadStart {
+    /// The foe's wait in the stage as authored, in turns.
+    pub from: u8,
+}
+
+impl HeadStart {
+    /// The wait `step` gives, if it is from 0 to [`MOST_WAITS`] turns.
+    fn waits(self, step: i32) -> Option<u8> {
+        let waits = step.checked_add(i32::from(self.from))?;
+        u8::try_from(waits).ok().filter(|&w| w <= MOST_WAITS)
+    }
+}
+
+impl Knob<Stage> for HeadStart {
+    fn name(&self) -> &'static str {
+        "head start"
+    }
+
+    fn range(&self) -> RangeInclusive<i32> {
+        let from = i32::from(self.from);
+        -from..=(i32::from(MOST_WAITS) - from).max(0)
+    }
+
+    fn apply(&self, stage: &Stage, step: i32) -> Option<Stage> {
+        let foe_waits = self.waits(step)?;
+        Some(stage.retuned(Tuning {
+            foe_waits,
+            ..stage.tuning()
+        }))
+    }
+
+    fn describe(&self, step: i32) -> String {
+        let turns = |n: u8| match n {
+            1 => "1 turn".to_owned(),
+            n => format!("{n} turns"),
+        };
+        let waits = self.waits(step).map_or_else(|| "?".to_owned(), turns);
+        format!(
+            "the foe waits {waits} before it moves, not {}",
+            turns(self.from)
+        )
+    }
+}
+
+/// The knobs of a stage tuned as `tuning` says: [`Trip`], then
+/// [`HeadStart`].
+pub fn knobs(tuning: Tuning) -> (Trip, HeadStart) {
+    (
+        Trip {
+            from: tuning.trip_percent,
+        },
+        HeadStart {
+            from: tuning.foe_waits,
+        },
+    )
 }
 
 #[cfg(test)]
