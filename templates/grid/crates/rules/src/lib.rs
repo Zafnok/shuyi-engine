@@ -5,6 +5,7 @@
 //! in the state. If the two meet, you are caught. The same seed and the
 //! same commands always play out the same, so a record of a game is its
 //! seed and its commands.
+#![cfg_attr(not(test), deny(clippy::float_arithmetic))]
 
 use std::fmt;
 

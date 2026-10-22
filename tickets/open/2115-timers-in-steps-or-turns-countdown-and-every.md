@@ -124,11 +124,9 @@ None.
     reaches `shuyi-core` only through `shuyi-ui` today, so
     `crates/platform/Cargo.toml` gains `shuyi-core = { path =
     "../core", default-features = false }`, and its `std` feature adds
-    `"shuyi-core/std"`. No new outside dependency. **Either order with
-    2015:** if 2015 is done, its `tools/layers.ron` already lets
-    `shuyi-platform` depend on `shuyi-core`, so `cargo xtask
-    check-layers` passes. If not, CI's `platform-deps` job is
-    unaffected: `shuyi-core` is no device crate.
+    `"shuyi-core/std"`. No new outside dependency. 2015's
+    `tools/layers.ron` already lets `shuyi-platform` depend on
+    `shuyi-core`, so `cargo xtask check-layers` passes.
   - **`steps_from_ms(ms: u32) -> u32`**, a `const fn`: whole steps at
     `STEPS_PER_SECOND`, rounded up, so any time above 0 is at least one
     step: `(ms * STEPS_PER_SECOND + 999) / 1000` in `u64`. The result
@@ -287,7 +285,7 @@ None.
 
 - [ ] `shuyi_core::timer` has `Countdown`, `Every`, `STEPS_PER_SECOND`
       and `steps_from_ms`, re-exported at the crate root, with no float
-      (2015's float ban passes, if 2015 is done).
+      (2015's float ban passes).
 - [ ] `shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of the
       core's, and the existing `TickClock` tests pass unchanged.
 - [ ] `steps_from_ms` gives 0 for 0, 1 for 1 and for 16, 2 for 17, 3

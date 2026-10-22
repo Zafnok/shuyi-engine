@@ -154,6 +154,49 @@ jobs:
           cargo shuyi check
           cargo shuyi check --target all
           cargo shuyi check-keys
+      # The rules crate's fence (ticket 2015, ADR-0032 §4): clippy names a
+      # hash map, a float, a clock and float arithmetic in the rules, and
+      # the layers test fails on a screen crate under them.
+      - name: The rules crate's fence holds
+        if: matrix.template == 'grid'
+        working-directory: ${{ runner.temp }}/demo
+        run: |
+          lib=crates/rules/src/lib.rs
+          cp "$lib" "$RUNNER_TEMP/lib.rs"
+          cat >> "$lib" <<'RUST'
+
+          /// Breaks every rule the fence names.
+          pub fn breaks_the_rules(_tiles: &std::collections::HashMap<u8, u8>, x: f32) -> f32 {
+              let _ = std::time::Instant::now();
+              x + 1.5 * 2.0
+          }
+          RUST
+          if cargo clippy -p demo-rules --message-format=short -- -D warnings 2> clippy.txt; then
+            echo "::error::clippy passed on rules that break the fence"
+            exit 1
+          fi
+          for message in \
+            'disallowed type `std::collections::HashMap`' \
+            'disallowed type `f32`' \
+            'disallowed method `std::time::Instant::now`' \
+            'floating-point arithmetic detected'; do
+            if ! grep -qF "$message" clippy.txt; then
+              cat clippy.txt
+              echo "::error::clippy did not say: $message"
+              exit 1
+            fi
+          done
+          cp "$RUNNER_TEMP/lib.rs" "$lib"
+          echo 'shuyi-ui.workspace = true' >> crates/rules/Cargo.toml
+          if cargo test -p demo-rules --test layers > layers.txt 2>&1; then
+            echo "::error::the layers test passed on rules that depend on shuyi-ui"
+            exit 1
+          fi
+          if ! grep -qF 'demo-rules depends on shuyi-ui' layers.txt; then
+            cat layers.txt
+            echo "::error::the layers test did not name shuyi-ui"
+            exit 1
+          fi
 
   # The crates a Playdate game builds without `std` (ADR-0008 §5, ticket
   # 3005): built for a target that has no `std` at all, their tests run
@@ -184,11 +227,12 @@ jobs:
           RUSTFLAGS: -D warnings -A unused-imports
         run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
 
-  # The platform boundary touches no device (ticket 3003, ADR-0008 §2):
-  # macroquad, gilrs and the audio crates stay out of `shuyi-platform`'s
-  # dependencies, on every target and with every feature.
-  platform-deps:
-    name: platform-deps
+  # The crates' layers as tools/layers.ron writes them (ticket 2015,
+  # ADR-0032): which engine crate depends on which, the outside crates of
+  # the pure ones, no device crate below any crate but the backend's, and
+  # the float ban in the simulations. It replaces the `platform-deps` job.
+  layers:
+    name: layers
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
@@ -197,14 +241,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - name: shuyi-platform depends on no device crate
-        run: |
-          cargo tree -p shuyi-platform --edges normal,build --target all --all-features             --prefix none --format '{p}' --locked > platform-tree.txt
-          devices='^(macroquad|miniquad|quad-[a-z0-9-]+|gilrs|gilrs-core|cpal|rodio|kira|alsa|alsa-sys|coreaudio-rs|coreaudio-sys|oboe|symphonia|lewton|hound) '
-          if grep -E "$devices" platform-tree.txt; then
-            echo "::error::shuyi-platform depends on a device crate (above): only backends may"
-            exit 1
-          fi
+      - run: cargo xtask check-layers
 
   # Licenses, advisories, bans and sources (deny.toml).
   deny:
@@ -308,7 +345,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, platform-deps, deny, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, deny, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

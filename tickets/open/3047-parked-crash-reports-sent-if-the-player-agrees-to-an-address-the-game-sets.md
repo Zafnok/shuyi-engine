@@ -195,9 +195,8 @@ in the PR that unparks it, before any code.
 - **Public types:** `CrashSending` and `SendState` are
   `#[non_exhaustive]`. Either order with 2013: if it is done, follow its
   rules for public types; if not, 2013 covers these with the rest.
-- **Either order with 2015:** if it is done, `serde_json` joins
-  `shuyi-platform`'s `outside` list in `tools/layers.ron`, with its
-  comment; if not, 2015 lists it.
+- **`tools/layers.ron`:** `serde_json` joins `shuyi-platform`'s
+  `outside` list, with its comment.
 - **What changes for the game:** additions only. `Settings` gains a
   field (it has a private field, so no game builds it with a struct
   literal), `Start` a builder, `Ctx` two methods and `LastCrash` a
@@ -275,7 +274,7 @@ in the PR that unparks it, before any code.
       *Ask*, *Always* and *Never*, keeps *Never*, and the saved settings
       read it back.
 - [ ] `Cargo.lock` gains no crate; `cargo xtask check-no-std` and CI's
-      `layers` job (`platform-deps` if 2015 isn't done) pass with
+      `layers` job pass with
       `serde_json` in `shuyi-platform`.
 - [ ] The ADR is written and listed in `docs/adr/README.md`.
 - [ ] All gates in the `run-gates` skill pass.

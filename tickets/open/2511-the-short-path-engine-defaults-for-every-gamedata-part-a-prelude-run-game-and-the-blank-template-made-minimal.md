@@ -363,9 +363,6 @@ None.
     `frame` turns idle motion on and adds a running transition to
     `Shot::shows`; `BasicTools::frame` does the same. If not, 2339 puts
     it in `BasicTools::frame` (its clause says so).
-  - **2015** (a new game's rules crate kept pure): the blank template
-    has no rules crate, so its `clippy.toml`, float ban and layers test
-    don't reach it in either order.
   - **2513** (setup on Linux): if it is done, the blank template keeps
     `scripts/setup-linux.sh`, `.devcontainer/` and their rows in its
     `README.md`. If not, 2513 adds them to it.

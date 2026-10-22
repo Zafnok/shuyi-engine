@@ -287,8 +287,7 @@ their tests) moves to a follow-up ticket of the same milestone (the
       two steps of each other, and `distance` is never more than the
       cheapest path's cost when every tile costs 1 (property tests).
 - [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf`, and has no
-      float in the new code (2015's ban if it is done; if not,
-      `grep -nE "f32|f64"` on the changed files finds nothing new).
+      float in the new code (2015's float ban passes).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

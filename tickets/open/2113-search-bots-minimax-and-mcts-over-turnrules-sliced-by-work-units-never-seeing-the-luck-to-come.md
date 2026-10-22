@@ -166,9 +166,8 @@ None.
     `RandomBot`, so records and snapshots don't change.
 - **Either order with 1134:** if `skills/shuyi-balance-bots/SKILL.md`
   exists, add a short section on the search bots and `Determinize`.
-- **Either order with 2015:** if its float ban in `shuyi-core` is in,
-  `search` passes it. If not, no `f32` or `f64` appears in `search`
-  outside tests.
+- **The float ban:** `search` passes 2015's float ban in `shuyi-core`
+  (`deny(clippy::float_arithmetic)` outside tests).
 
 **Out (do not do):**
 - the level solver (2112);

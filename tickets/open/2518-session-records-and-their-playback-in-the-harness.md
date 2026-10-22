@@ -127,7 +127,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
   `SoundRequest` (`shuyi-platform`) gain `Serialize` only
   (`state_hash` takes floats by their bits). `shuyi-platform` gains
   `serde` and `ron` (both already workspace dependencies, MIT OR
-  Apache-2.0, allowed by `deny.toml`) and, if 2015 is done, both join
+  Apache-2.0, allowed by `deny.toml`), and both join
   `shuyi-platform`'s `outside` list in `tools/layers.ron`, with a
   comment (session records), in the same PR. It also gains `shuyi-core`
   (for `state_hash` and 2111's `Made`). All three come without default
@@ -349,10 +349,9 @@ privacy question for Nick, which parked 3047 asks for crash reports).
    `app.rs` (`frame`, `system_events`, `run`, `load`, `step`, `drain`),
    `headless.rs`, `harness.rs`, `docs/platform-backends.md`, and 2111's
    `shuyi_core::made`.
-2. Add the serde derives and the dependencies (and the
-   `tools/layers.ron` lines if 2015 is done); check the `no-std` job and
-   `cargo xtask check-layers` locally (the `platform-deps` job if 2015
-   isn't done) (`run-gates`).
+2. Add the serde derives and the dependencies, and the
+   `tools/layers.ron` lines; check the `no-std` job and
+   `cargo xtask check-layers` locally (`run-gates`).
 3. Write `shuyi_platform::session`: `SessionRecord`, `FrameRecord`,
    `KeyboardFrame`, `SessionError`, `Stamps`, `FrameDifference` and
    `Played`, the text form and the version check, with round-trip
@@ -412,8 +411,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
 - [ ] Each either-order partner that is done has its value recorded and
       played back, with a test.
 - [ ] `shuyi-platform` and `shuyi-ui` still build for
-      `thumbv7em-none-eabihf`, and `cargo xtask check-layers` passes
-      (the `platform-deps` job if 2015 isn't done).
+      `thumbv7em-none-eabihf`, and `cargo xtask check-layers` passes.
 - [ ] The ADR is written and listed in `docs/adr/README.md`.
 - [ ] All gates in the `run-gates` skill pass.
 

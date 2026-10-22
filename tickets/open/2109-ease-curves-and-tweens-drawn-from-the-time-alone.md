@@ -347,8 +347,8 @@ None.
       the defaults.
 - [ ] `shuyi-core` and `shuyi-ui` still build for
       `thumbv7em-none-eabihf`, and `cargo clippy -p shuyi-core --lib --
-      -D clippy::float_arithmetic` passes (2015's float ban, if 2015 is
-      done, passes too).
+      -D clippy::float_arithmetic` passes (2015's float ban in its
+      `lib.rs` passes too).
 - [ ] `ease_f32(&Ease::Smooth, p)` is within 2/65536 of
       `cinematic::ease_in_out(p)` across 0 to 1, and no `frame-png` or
       scene snapshot in the repository changes.

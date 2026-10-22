@@ -144,11 +144,9 @@ None. Spending money on agent runs is 2525's question.
   `crates/xtask/src/eval/task.rs` with `serde` and `ron`
   (`deny_unknown_fields`). These are the repository's tooling files, not
   a game's assets, so they don't go through the format registry
-  (ADR-0007 is about a game's assets). **Either order with 2015:** if
-  it is done, the xtask already has `serde` (with `derive`),
-  `serde_json` and `ron` (with `std`); if not, add them as 2015's step
-  3 says (all MIT OR Apache-2.0, allowed by `deny.toml`, already in
-  `Cargo.lock`). Fields:
+  (ADR-0007 is about a game's assets). The xtask already has `serde`
+  (with `derive`), `serde_json` and `ron` (with `std`), from 2015.
+  Fields:
   - `id`;
   - `prompt`: the words the agent gets, verbatim, and nothing else;
   - `template`: the template the agent's project starts from (`"grid"`),

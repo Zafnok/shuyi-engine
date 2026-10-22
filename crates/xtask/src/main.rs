@@ -4,8 +4,10 @@
 //! - `cargo xtask check-links`
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-no-std`
+//! - `cargo xtask check-layers`
 
 mod docs;
+mod layers;
 mod links;
 mod no_std;
 mod tickets;
@@ -27,7 +29,11 @@ usage:
       Check that the docs map (docs/README.md) links every Markdown file.
   cargo xtask check-no-std
       Check that shuyi-core, shuyi-ui and shuyi-platform use no `std::` path
-      outside `cfg(feature = \"std\")` (ADR-0008 §5).";
+      outside `cfg(feature = \"std\")` (ADR-0008 §5).
+  cargo xtask check-layers
+      Check the crates' layers against tools/layers.ron (ADR-0032): which
+      engine crate depends on which, the outside crates of the pure ones,
+      no device crate below them and the float ban in the simulations.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -37,6 +43,7 @@ fn main() -> ExitCode {
         Some("check-links") if args.len() == 1 => report("check-links", &links::run(&root), &[]),
         Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
+        Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE

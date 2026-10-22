@@ -76,7 +76,7 @@ What Shuyi has today (read 2026-10-21):
     which builds the `AppConfig` from a `BasicGame`. Its Out leaves the
     crash hook in `run_game` to this ticket;
   - 2013 (MVP) makes `AppConfig` `#[non_exhaustive]` with
-    `AppConfig::new`; 2015 (MVP) replaces CI's `platform-deps` job with
+    `AppConfig::new`; 2015 replaced CI's `platform-deps` job with
     `cargo xtask check-layers` over `tools/layers.ron`;
   - 3041 writes that log to a file in shipped builds, and sets a panic
     hook that writes the panic's line into it;
@@ -110,9 +110,8 @@ anywhere is 3047's question for Nick.
   with `alloc`. `serde` and `ron` become dependencies of
   `shuyi-platform` from the workspace, as `shuyi-ui` has them, so no
   new crate enters `Cargo.lock`. The ADR below amends ADR-0024 §1 to
-  allow them. `tools/layers.ron`: if 2015 is done, `shuyi-platform`'s
-  `Only` list gains `serde` and `ron`, each with a comment saying what
-  for; if not, 2015 writes the file from `cargo metadata` as it is. The
+  allow them. `tools/layers.ron`: `shuyi-platform`'s `Only` list gains
+  `serde` and `ron`, each with a comment saying what for. The
   property tests need `proptest` as a dev-dependency (workspace):
   - `CrashReport`, plain data, `#[non_exhaustive]` (2520 adds fields):
     - `version: u32`, 1;
@@ -341,7 +340,7 @@ anywhere is 3047's question for Nick.
    3048 are done.
 2. Write `shuyi_platform::crash`: the report, its keys, `parse`,
    `to_text` and `keep_newest`, with their tests. Add `serde`, `ron`
-   and `proptest`, and `tools/layers.ron`'s line if 2015 is done.
+   and `proptest`, and `tools/layers.ron`'s line.
 3. Add `Setup::last_crash`, `Start::crash_record` and
    `App::crash_record`, tested through the headless backend.
 4. Write `crates/app/src/crash.rs`: `CrashReports`, `install`, the hook,
@@ -384,8 +383,7 @@ anywhere is 3047's question for Nick.
       (a unit test with `BasicGame`).
 - [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`
       (`cargo xtask check-no-std`), and `cargo xtask check-layers`
-      passes (CI's `layers` job from 2015; the `platform-deps` job if
-      2015 isn't done).
+      passes (CI's `layers` job).
 - [ ] The ADR is written and listed in `docs/adr/README.md`.
 - [ ] All gates in the `run-gates` skill pass.
 

@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2015 — check-layers, a float ban in shuyi-core, and a pure rules crate in new games
@@ -418,5 +418,40 @@ swap here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as scoped:
+
+- `tools/layers.ron` holds the layers, and `cargo xtask check-layers`
+  (`crates/xtask/src/layers.rs`) checks the five rules over `cargo
+  metadata --all-features --locked`. CI's `layers` job runs it in place
+  of `platform-deps`, and `ci-result` needs it. The `run-gates` skill,
+  `crates/platform/Cargo.toml` and `docs/platform-backends.md` name it.
+- `shuyi-core` denies `clippy::float_arithmetic` outside tests.
+- `templates/grid/crates/rules` has its `clippy.toml`, the float ban,
+  `tests/layers.rs` and the two sentences in `AGENTS.md`. A game made
+  with `shuyi new grid --engine-path` passed its gates, and the proof
+  step, run by hand on it, found the four clippy messages and the layers
+  test failing on `shuyi-ui`. CI's `templates` job runs the proof for
+  `grid`.
+- ADR-0032, with its row in `docs/adr/README.md`. Docs: a docs map row
+  for `tools/layers.ron`, a pair for the device list (checked by a test
+  of the xtask), and a line in `AGENTS.md` rule 5.
+
+Deviations:
+
+- `shuyi-core` now also declares `schemars` (optional, its `schema`
+  feature, added by 2129 after this ticket was written), so its
+  `outside` list is `serde` and `schemars`: the file was written from
+  `cargo metadata` as it stood, as the ticket said.
+- The diff runs past 600 lines, mostly `layers.rs`'s tests and its
+  `cargo metadata` fixture. The ticket's size rule says to move the
+  rules crate's guard to a follow-up; it is about 150 of those lines and
+  splitting it wouldn't shrink the rest, so it stayed here, and 1134 and
+  2511 needed no new blocker.
+- A device's own dependencies aren't followed: the device rule names
+  the first device crate on each way down (`macroquad`, not also
+  `miniquad` under it).
+
+Follow-up: 2534 owns ADR-0005 §1's `lint` operation (`check-keys`,
+`check-text` and the rules crate's fence in one answer).
+
+For Nick: nothing changes for the game; no public API changed.
