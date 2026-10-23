@@ -75,6 +75,12 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
 6. **One PR per folder?** If Dependabot opened one PR per folder rather
    than one grouped PR, finish the root's (move the templates' channels
    there too) and close the others with a comment naming it.
+7. **Merge on today's main.** Right before merging, if main moved since
+   the branch's last CI run, merge main into the branch and wait for CI
+   again. A PR merged meanwhile brings code the new lints were never run
+   on: main's ruleset doesn't require an up-to-date branch, and #83
+   (Rust 1.99) merged 23 seconds after #84, whose tests clippy 1.99
+   failed on main (ticket 2026).
 
 ## What `rust-version` promises
 

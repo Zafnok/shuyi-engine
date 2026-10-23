@@ -211,7 +211,7 @@ fn a_removed_line_only() {
         Vec::new(),
     );
     assert_eq!(api.removed, lines(&["pub fn b()"]));
-    assert!(api.added.is_empty());
+    assert_eq!(api.added, Vec::<String>::new());
     assert!(!api.new);
 }
 
@@ -223,7 +223,7 @@ fn an_added_line_only() {
         &lines(&["pub fn a()", "pub fn b()"]),
         Vec::new(),
     );
-    assert!(api.removed.is_empty());
+    assert_eq!(api.removed, Vec::<String>::new());
     assert_eq!(api.added, lines(&["pub fn b()"]));
 }
 
@@ -255,7 +255,7 @@ fn a_crate_new_in_the_head_adds_every_item() {
         Vec::new(),
     );
     assert!(api.new);
-    assert!(api.removed.is_empty());
+    assert_eq!(api.removed, Vec::<String>::new());
     assert_eq!(
         api.added,
         lines(&["pub mod shuyi_net", "pub fn shuyi_net::a()"])
@@ -486,7 +486,7 @@ fn named_crates_read_the_list_before_the_item() {
         vec!["shuyi-core", "shuyi-ui"]
     );
     assert_eq!(named_crates("Breaking: shuyi-core"), vec!["shuyi-core"]);
-    assert!(named_crates("Breaking: : x").is_empty());
+    assert_eq!(named_crates("Breaking: : x"), Vec::<&str>::new());
 }
 
 #[test]
@@ -610,7 +610,10 @@ fn the_summary_shows_exactly_200_lines_without_a_cut() {
 #[test]
 fn every_tool_present_is_nothing_missing() {
     let root = PathBuf::from("root");
-    assert!(missing_tools(&root, &Fake::new(&root).with_tools()).is_empty());
+    assert_eq!(
+        missing_tools(&root, &Fake::new(&root).with_tools()),
+        Vec::<String>::new()
+    );
 }
 
 #[test]
@@ -874,7 +877,7 @@ fn no_merge_base_is_an_error() {
         outcome.errors,
         vec!["`git merge-base HEAD main` failed:\nfatal: Not a valid object name main".to_string()]
     );
-    assert!(outcome.summary.is_empty());
+    assert_eq!(outcome.summary, "");
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -892,7 +895,7 @@ fn a_semver_build_error_fails_the_run_and_still_removes_the_base() {
     let outcome = run(&root, &options, &fake);
     assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
     assert!(outcome.errors[0].contains("without naming a break"));
-    assert!(outcome.summary.is_empty());
+    assert_eq!(outcome.summary, "");
     assert_eq!(
         fake.ran().last().map(String::as_str),
         Some("head: git worktree prune")
@@ -1031,7 +1034,7 @@ fn the_system_runner_runs_a_command() {
         .run(Path::new("."), "git", &["no-such-command"])
         .unwrap();
     assert!(!failed.ok);
-    assert!(!failed.stderr.is_empty());
+    assert_ne!(failed.stderr, "");
     assert!(
         System
             .run(Path::new("."), "no-such-program-xtask", &[])
@@ -1080,7 +1083,7 @@ fn an_empty_summary_writes_nothing() {
     let file = root.join("summary.md");
     let mut out = Vec::new();
     assert_eq!(write_summary("", Some(&file), &mut out), None);
-    assert!(out.is_empty());
+    assert_eq!(out, Vec::<u8>::new());
     assert!(!file.exists());
     let _ = fs::remove_dir_all(&root);
 }

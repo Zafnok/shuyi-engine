@@ -1264,7 +1264,10 @@ README.md
 
     #[test]
     fn breaking_lines_are_none_without_completion_notes() {
-        assert!(breaking_lines("## Scope\n\nBreaking: shuyi-core: `f`: call `g`.\n").is_empty());
+        assert_eq!(
+            breaking_lines("## Scope\n\nBreaking: shuyi-core: `f`: call `g`.\n"),
+            Vec::<&str>::new()
+        );
     }
 
     // -- clauses about other tickets --
