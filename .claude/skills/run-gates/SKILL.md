@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers and the no-std build; the ticket lint, typos, links and the docs map). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers and the no-std build; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -110,6 +110,7 @@ They run on every PR, docs-only ones too:
 ```bash
 cargo xtask ticket-lint --pr-branch t<NNNN>-<slug>   # the branch, as CI does; without it on main
 cargo xtask check-links   # relative links in every *.md resolve (no network)
+cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
 ```

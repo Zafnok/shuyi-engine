@@ -170,6 +170,20 @@ fn check_layers_takes_no_arguments() {
 }
 
 #[test]
+fn check_toolchain_passes_on_the_repository() {
+    let (ok, err) = xtask(&["check-toolchain"]);
+    assert!(ok, "{err}");
+    assert!(err.contains("check-toolchain: ok"), "{err}");
+}
+
+#[test]
+fn check_toolchain_takes_no_arguments() {
+    let (ok, err) = xtask(&["check-toolchain", "extra"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}
+
+#[test]
 fn api_refuses_an_unknown_option() {
     let (ok, err) = xtask(&["api", "--bless"]);
     assert!(!ok);

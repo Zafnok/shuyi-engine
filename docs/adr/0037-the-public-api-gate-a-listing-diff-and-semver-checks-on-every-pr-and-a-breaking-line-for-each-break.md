@@ -77,7 +77,8 @@ every PR, so version numbers can't say what kind of change a PR is.
 
    They move together with the toolchain pin: a PR that moves
    `rust-toolchain.toml` moves the nightly and the tools when the new
-   toolchain needs it (2012's `bump-rust` skill gets that step). Without
+   toolchain needs it (the `bump-rust` skill's checklist has that step).
+   Without
    a tool, or at another version, the command prints the install line
    and fails.
 

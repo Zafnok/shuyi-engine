@@ -117,6 +117,7 @@ Where each kind of fact is written, and what each task reads first, is in
 - Use `cargo install --locked <tool>`; `cargo-binstall` doesn't build
   there.
 - Never run mutation testing on Nick's machine (CI runs it).
+- The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`
   (game ADR-0034). A crate that needs `wasm-bindgen` doesn't work in the
   web build without a JS plugin of our own.

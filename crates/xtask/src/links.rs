@@ -8,7 +8,7 @@ use std::path::{Component, Path, PathBuf};
 use pulldown_cmark::{Event, Parser, Tag};
 
 /// Folders never searched for Markdown, by name.
-const SKIPPED_DIRS: &[&str] = &[".git", "target", "node_modules", "dist"];
+pub(crate) const SKIPPED_DIRS: &[&str] = &[".git", "target", "node_modules", "dist"];
 /// Folders never searched for Markdown, by path from the root: the app's
 /// worktrees are other checkouts of this repository.
 const SKIPPED_PATHS: &[&str] = &[".claude/worktrees"];

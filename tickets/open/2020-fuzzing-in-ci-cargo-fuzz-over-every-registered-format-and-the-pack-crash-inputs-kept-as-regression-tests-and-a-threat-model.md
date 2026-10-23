@@ -332,11 +332,10 @@ it is technical.
     if not, 1132 adds the link;
   - with 2011: if Dependabot is set up, add `/fuzz` to its cargo
     directories; if not, 2011 covers `fuzz/Cargo.toml`;
-  - with 2012: `check-toolchain` checks only the stable pins, so
-    `FUZZ_TOOLCHAIN` stays outside it. If its `bump-rust` skill exists,
-    add one line there: the fuzz nightly moves on its own, by the
-    comment in `fuzz.yml`. If not, the comment in `fuzz.yml` is the
-    rule;
+  - with 2012 (done): `check-toolchain` checks only the stable pins,
+    so `FUZZ_TOOLCHAIN` stays outside it. Add one line to its
+    `bump-rust` skill's *Don'ts*: the fuzz nightly moves on its own, by
+    the comment in `fuzz.yml`;
   - with 2203: formats it has already added behind features join
     `fuzz`'s list; formats it adds later follow the skills' line;
   - with 2230: if it is done, register `Json<Table>` and a `Csv<T, R>`

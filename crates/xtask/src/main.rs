@@ -5,6 +5,7 @@
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask check-toolchain`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]`
 
 mod api;
@@ -13,6 +14,7 @@ mod layers;
 mod links;
 mod no_std;
 mod tickets;
+mod toolchain;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -36,6 +38,10 @@ usage:
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
       no device crate below them and the float ban in the simulations.
+  cargo xtask check-toolchain
+      Check that the pinned Rust is the same everywhere (the bump-rust skill):
+      the root's exact channel, the templates' channels, every workspace's
+      rust-version, the members' inherited one and Dependabot's folders.
   cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]
       Show the public API change of the crates a game uses, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
@@ -52,6 +58,9 @@ fn main() -> ExitCode {
         Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("check-toolchain") if args.len() == 1 => {
+            report("check-toolchain", &toolchain::run(&root), &[])
+        }
         Some("api") => api(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");

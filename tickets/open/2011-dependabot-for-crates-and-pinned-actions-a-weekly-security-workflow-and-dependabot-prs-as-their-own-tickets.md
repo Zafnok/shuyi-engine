@@ -320,23 +320,20 @@ up on crates.io in 2005's sign-off.
   - the README's *Map of the repository*: a row for
     `.github/dependabot.yml` and the security workflows.
 - **Either order:**
-  - with 2012 (the pinned Rust): if 2012 landed first,
-    `.github/dependabot.yml` already exists with its `rust-toolchain`
-    update. Add this ticket's updates beside it, never replace the
-    file. Put `check-pins` before its `check-toolchain` in the
-    `tickets` job and in `run-gates`. In the `bump-rust` skill, the
-    line that says to write a ticket first (until this ADR exists)
-    points at this ADR instead. If not, 2012 adds its update and check
-    beside these;
+  - with 2012 (the pinned Rust, done): `.github/dependabot.yml`
+    already exists with its `rust-toolchain` update. Add this ticket's
+    updates beside it, never replace the file. Put `check-pins` before
+    its `check-toolchain` in the `tickets` job and in `run-gates`. In
+    the `bump-rust` skill, the line that says to write a ticket first
+    (until this ADR exists) points at this ADR instead;
   - with 2019: if `tools/web-check` exists, add a `pip` entry for
     `/tools/web-check` (weekly, the same cooldown, its updates in one
     group). If not, 2019 adds it;
   - with 2020: if `fuzz/Cargo.toml` exists, `/fuzz` joins the cargo
     directories. If not, 2020 adds it;
-  - with 2010 (the public API diff): if it is done, the skill's step 3
-    says that its `api` job fails a Dependabot PR that breaks the API,
-    and that such an upgrade goes to step 6. If not, 2010 adds that
-    line;
+  - with 2010 (the public API diff, done): the skill's step 3 says
+    that CI's `api` job fails a Dependabot PR that breaks the API
+    (ADR-0037 §5), and that such an upgrade goes to step 6;
   - with 2014 (the game built against each PR): if it is done, the
     skill's step 3 reads the `game` job's summary instead of building
     the game locally, and keeps the local build for fixing a failure.
@@ -381,8 +378,8 @@ up on crates.io in 2005's sign-off.
    `codeql.yml`, `scorecard.yml`. Also read game ticket 0103's
    completion notes (`tickets/done/0103-security-and-supply-chain-gates.md`):
    the cooldown, and the SHA of an annotated tag versus its commit.
-2. Write `.github/dependabot.yml`, after checking each key against the
-   options reference (or add to 2012's, if it is there).
+2. Add this ticket's updates to `.github/dependabot.yml` (2012's),
+   after checking each key against the options reference.
 3. Make `links.rs`'s skipped folders and `display_path` `pub(crate)`.
    Write `crates/xtask/src/pins.rs` with its tests, register it in
    `main.rs` and the crate's `description`, and add the step to CI's

@@ -284,11 +284,10 @@ None.
   If not, 2013's ADR cites this one, and adding `#[non_exhaustive]` to
   an existing type is a break, so 2013's PR carries the `Breaking:`
   lines this job asks for.
-- **Either order with 2012.** A PR that moves the pinned toolchain
-  (`rust-toolchain.toml`) moves this job's nightly date and tool
-  versions too when the tools need it. The ADR says so. If 2012 is
-  done, its `bump-rust` skill's checklist gets that step. If not, 2012
-  adds it.
+- **The pinned Rust (2012, done).** A PR that moves the pinned
+  toolchain (`rust-toolchain.toml`) moves this job's nightly date and
+  tool versions too when the tools need it. The ADR says so, and the
+  `bump-rust` skill's checklist gets that step in this PR.
 - **Either order with 2116.** 2116's `cargo xtask golden --breaks`
   asks for a `Breaking:` line when a golden table's value changes,
   using `ticket_id_from_branch` and `breaking_lines` too. If 2116 is
@@ -442,7 +441,9 @@ for, and keep the listing diff, the semver findings and the CI job here.
   docs map gives these facts; `run-gates` and `ci.yml` stay a pair. No
   rustdoc or game-facing doc changes: `xtask` is never shipped.
 - **Settled** the clauses in open tickets that waited on 2010
-  (`work-ticket` §5).
+  (`work-ticket` §5). 2012 landed while this was worked: its `bump-rust`
+  skill's checklist has the new step 3 (move the `api` job's nightly and
+  tools), and 2011's line says what its skill writes.
 - **For the game:** no API change, and no game PR.
 
 No break.

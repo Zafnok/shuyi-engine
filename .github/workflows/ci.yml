@@ -394,8 +394,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # The ticket lint, the Markdown links, the docs map (`check-docs`) and
-  # typos. Cheap, and tickets and
+  # The ticket lint, the Markdown links, the docs map (`check-docs`), the
+  # pinned Rust (`check-toolchain`) and typos. Cheap, and tickets and
   # docs are what they check, so this always runs: never gated on
   # `needs.changes` (game ADR-0014), like the game's `tickets` job.
   tickets:
@@ -422,6 +422,8 @@ jobs:
           fi
       - name: Check Markdown links
         run: cargo xtask check-links
+      - name: Check the pinned Rust
+        run: cargo xtask check-toolchain
       - name: Check the docs map
         run: cargo xtask check-docs
       - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe # v2.87.27
