@@ -27,10 +27,13 @@ Where each kind of fact is written, and what each task reads first, is in
 
 1. **Work one ticket at a time** from `tickets/open/`, with the
    `work-ticket` skill. One ticket = one branch = one PR. The PR moves the
-   ticket to `tickets/done/`. One exception: a GitHub issue labelled
-   `sonar` is its own ticket, filed weekly from SonarCloud and fixed with
-   the `sonar-fix` skill, one issue per PR
-   ([ADR-0017](docs/adr/0017-sonar-backlog-becomes-batched-github-issues.md)).
+   ticket to `tickets/done/`. Two exceptions, each one PR:
+   - a GitHub issue labelled `sonar`, filed weekly from SonarCloud and
+     fixed with the `sonar-fix` skill
+     ([ADR-0017](docs/adr/0017-sonar-backlog-becomes-batched-github-issues.md));
+   - a Dependabot PR, or a GitHub issue labelled `advisory` from the
+     weekly advisory check, worked with the `dependency-upkeep` skill
+     ([ADR-0037](docs/adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)).
 2. **No unticketed work.** Found something else to do? Write a ticket
    (`write-ticket` skill).
 3. **Parked tickets stay parked.** A ticket whose title starts with
@@ -52,8 +55,10 @@ Where each kind of fact is written, and what each task reads first, is in
      A new engine crate, engine edge or outside crate of a pure crate adds
      its line there in the same PR.
 6. **Tests are the review.** Run the `run-gates` skill before pushing.
-   Never weaken a gate to pass it. CI also measures coverage and scans
-   with SonarCloud; a Sonar finding is argued with in
+   Never weaken a gate to pass it. CI also measures coverage, scans
+   with SonarCloud, audits the workflows with zizmor and the code with
+   CodeQL; a zizmor finding wrong here goes in `.github/zizmor.yml` with
+   why. A Sonar finding is argued with in
    `tools/sonar-triage/policy.jsonc`, never with `// NOSONAR` or
    `#[allow]` (the `sonar-triage` skill).
 7. **Licenses.** The engine is MIT OR Apache-2.0. Ship only

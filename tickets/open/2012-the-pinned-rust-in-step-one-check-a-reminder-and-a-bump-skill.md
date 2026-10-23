@@ -188,18 +188,12 @@ None.
   work for this ecosystem, leave `groups` out: the skill then says what
   to do with one PR per folder. No new scheduled workflow is written for
   this.
-- **Either order with 2011** (Dependabot for crates and actions):
-  - if 2011 is done, add this update to its `.github/dependabot.yml`,
-    put `check-toolchain` after its `check-pins` in the `tickets` job
-    and in `run-gates`, and the skill points at 2011's ADR for why a
-    Dependabot PR is its own ticket. A `rust-toolchain` PR is finished
-    with `bump-rust`, not `dependency-upkeep`;
-  - if not, create `.github/dependabot.yml` with `version: 2` and this
-    update alone; 2011 adds its own updates and check beside these.
-    Until 2011's ADR exists, the skill says the session first writes a
-    ticket for the bump with the `write-ticket` skill (`AGENTS.md`
-    rule 2), and the bump PR moves it to `tickets/done/` as any
-    ticket's PR does.
+- **With 2011 (done)** (Dependabot for crates and actions): add this
+  update to its `.github/dependabot.yml`, put `check-toolchain` after
+  its `check-pins` in the `tickets` job and in `run-gates`, and the
+  skill points at ADR-0037 §5 for why a Dependabot PR is its own ticket.
+  A `rust-toolchain` PR is finished with `bump-rust`, not
+  `dependency-upkeep`.
 - **Either order with 2010** (the public API diff): its `api` job pins
   a nightly date and the versions of `cargo-semver-checks` and
   `cargo-public-api` (consts in `crates/xtask/src/api.rs`, the same ones

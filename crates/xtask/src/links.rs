@@ -45,6 +45,14 @@ pub(crate) fn display_path(root: &Path, file: &Path) -> String {
         .replace('\\', "/")
 }
 
+/// Whether the folder `dir` is one never searched: by its name
+/// ([`SKIPPED_DIRS`]) or its path from `root` ([`SKIPPED_PATHS`]).
+pub(crate) fn is_skipped_dir(root: &Path, dir: &Path) -> bool {
+    dir.file_name()
+        .is_some_and(|name| SKIPPED_DIRS.iter().any(|d| name == *d))
+        || SKIPPED_PATHS.iter().any(|p| display_path(root, dir) == *p)
+}
+
 pub(crate) fn markdown_files(
     root: &Path,
     dir: &Path,
@@ -53,13 +61,8 @@ pub(crate) fn markdown_files(
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
         let path = entry.path();
-        let name = entry.file_name();
         if entry.file_type()?.is_dir() {
-            let skipped = SKIPPED_DIRS.iter().any(|d| name == *d)
-                || SKIPPED_PATHS
-                    .iter()
-                    .any(|p| display_path(root, &path) == *p);
-            if !skipped {
+            if !is_skipped_dir(root, &path) {
                 markdown_files(root, &path, out)?;
             }
         } else if path.extension().is_some_and(|ext| ext == "md") {

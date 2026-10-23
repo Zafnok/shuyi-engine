@@ -330,8 +330,8 @@ it is technical.
 - **Either order:**
   - with 1132: if `SECURITY.md` exists, link *Untrusted files* from it;
     if not, 1132 adds the link;
-  - with 2011: if Dependabot is set up, add `/fuzz` to its cargo
-    directories; if not, 2011 covers `fuzz/Cargo.toml`;
+  - with 2011 (done): add `/fuzz` to `.github/dependabot.yml`'s cargo
+    update (as `directories: ["/", "/fuzz"]`);
   - with 2012: `check-toolchain` checks only the stable pins, so
     `FUZZ_TOOLCHAIN` stays outside it. If its `bump-rust` skill exists,
     add one line there: the fuzz nightly moves on its own, by the

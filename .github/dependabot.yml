@@ -1,0 +1,47 @@
+# Dependency upkeep (ticket 2011, ADR-0037). A Dependabot PR is a ticket of
+# its own, worked with the `dependency-upkeep` skill. Dependabot's comment
+# commands are never used (AGENTS.md rule 11): an `ignore` entry here does
+# their job.
+version: 2
+updates:
+  # The workspace (`crates/*`, `examples/*`). The templates' manifests hold
+  # `{{...}}` placeholders; `cargo xtask check-pins` keeps their
+  # requirements equal to the root's.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    # A crate goes in the first group that matches it.
+    groups:
+      # These move together, with the JS vendored in crates/cli/web/ and
+      # deny.toml's ignores, whatever the update type.
+      backend:
+        patterns:
+          - "macroquad"
+          - "miniquad"
+          - "quad-*"
+          - "sapp-jsutils"
+          - "gilrs*"
+      # A 0.x bump that breaks semver comes in a PR of its own.
+      cargo-minor-patch:
+        update-types:
+          - minor
+          - patch
+
+  # The root's workflows and the templates' (which `shuyi new` copies into
+  # every game), in one PR a week so the templates move with the root.
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+      - "/templates/blank/.github/workflows"
+      - "/templates/grid/.github/workflows"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns:
+          - "*"

@@ -5,11 +5,13 @@
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask check-pins`
 
 mod docs;
 mod layers;
 mod links;
 mod no_std;
+mod pins;
 mod tickets;
 
 use std::io::Write as _;
@@ -33,7 +35,11 @@ usage:
   cargo xtask check-layers
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
-      no device crate below them and the float ban in the simulations.";
+      no device crate below them and the float ban in the simulations.
+  cargo xtask check-pins
+      Check that every workflow's actions are pinned by commit SHA, one SHA per
+      action, every template's workflows in .github/dependabot.yml, and the
+      templates' requirements equal to the root's (ADR-0037).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -44,6 +50,7 @@ fn main() -> ExitCode {
         Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
