@@ -294,11 +294,10 @@ None.
   done, reuse the `pub(crate)` `ticket_id_from_branch` and the
   `breaking_lines` it wrote, and its split of calls from logic, instead
   of a second copy. If not, 2116 reuses this ticket's.
-- **Either order with 2011.** If 2011 is done, its `dependency-upkeep`
-  skill's step 3 (*A requirement change*) says the `api` job fails a
-  Dependabot PR that breaks the API (the rule's case 3), and such an
-  upgrade goes to its step 6 (a ticket of its own). If not, 2011 adds
-  that line.
+- **With 2011 (done).** The `dependency-upkeep` skill's step 3 (*A
+  requirement change*) says the `api` job fails a Dependabot PR that
+  breaks the API (the rule's case 3), and such an upgrade goes to its
+  step 6 (a ticket of its own).
 - **Either order with 2513.** If 2513 is done, the job installs the
   system libraries with `bash scripts/setup-linux.sh`, as the other
   jobs do. If not, the job uses the `clippy` job's `apt-get` line, and
