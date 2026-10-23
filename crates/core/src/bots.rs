@@ -80,7 +80,8 @@ pub struct Report<R: TurnRules> {
 }
 
 /// A command the game refused during a play: a bug in a bot, never
-/// skipped.
+/// skipped. Build it with [`PlayError::new`] (ADR-0039).
+#[non_exhaustive]
 pub struct PlayError<R: Sides> {
     /// The refused command.
     pub command: R::Command,
@@ -90,6 +91,19 @@ pub struct PlayError<R: Sides> {
     pub turn: u32,
     /// Why it was refused.
     pub error: R::Error,
+}
+
+impl<R: Sides> PlayError<R> {
+    /// `side`'s command `command`, issued on turn `turn`, refused with
+    /// `error`.
+    pub fn new(command: R::Command, side: R::Side, turn: u32, error: R::Error) -> Self {
+        Self {
+            command,
+            side,
+            turn,
+            error,
+        }
+    }
 }
 
 // By hand rather than derived: a derive would ask the game's state itself

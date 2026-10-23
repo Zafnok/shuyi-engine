@@ -941,3 +941,54 @@ fn a_toggle_and_a_volume_that_arent_settings_are_put_back_on_discard() {
         assert_eq!((c.debug_tools, c.voice_volume), (on, 8), "on: {on}");
     }
 }
+
+#[test]
+fn the_row_values_constructors_give_the_variants() {
+    fn on(_: &ToyCtx) -> bool {
+        true
+    }
+    fn set_on(_: &mut ToyCtx, _: bool) -> bool {
+        false
+    }
+    fn values(_: &ToyCtx) -> Vec<&'static str> {
+        vec!["a", "b"]
+    }
+    fn which(_: &ToyCtx) -> usize {
+        1
+    }
+    fn set_which(_: &mut ToyCtx, _: usize) -> bool {
+        false
+    }
+    fn volume(_: &ToyCtx) -> u8 {
+        40
+    }
+    fn set_volume(_: &mut ToyCtx, _: u8) -> bool {
+        false
+    }
+    fn shown(_: &ToyCtx) -> Option<String> {
+        None
+    }
+    fn refuse(_: &mut ToyCtx) -> RowAction<Toy> {
+        RowAction::Refuse(None)
+    }
+    fn help(_: &ToyCtx) -> &'static str {
+        HELP_OPEN
+    }
+    let ctx = ctx();
+    assert!(matches!(
+        RowValue::<Toy>::toggle(on, set_on),
+        RowValue::Toggle { get, .. } if get(&ctx)
+    ));
+    assert!(matches!(
+        RowValue::<Toy>::choice(values, which, set_which),
+        RowValue::Choice { values, get, .. } if values(&ctx) == ["a", "b"] && get(&ctx) == 1
+    ));
+    assert!(matches!(
+        RowValue::<Toy>::volume(volume, set_volume),
+        RowValue::Volume { get, .. } if get(&ctx) == 40
+    ));
+    assert!(matches!(
+        RowValue::<Toy>::action(shown, refuse, help),
+        RowValue::Action { value, help, .. } if value(&ctx).is_none() && help(&ctx) == HELP_OPEN
+    ));
+}

@@ -167,13 +167,8 @@ fn busy() -> GlyphBuffer {
 /// [`busy`], and its scene as someone else holds it.
 fn busy_sharing() -> (GlyphBuffer, Rc<GlyphBuffer>) {
     use shuyi_assets::image::{ImageInfo, ImageTable};
-    let size = ImageInfo {
-        width: 16,
-        height: 16,
-    };
-    let table = ImageTable {
-        images: [("a.png", size)].into(),
-    };
+    let size = ImageInfo::new(16, 16);
+    let table = ImageTable::new([("a.png", size)].into());
     let image = table.id("a.png").unwrap();
     let px = Rect::new(0, 0, 16, 16);
     let fill = |b: &mut GlyphBuffer| {

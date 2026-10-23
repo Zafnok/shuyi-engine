@@ -28,8 +28,10 @@ use crate::format::{AssetKind, AssetPath, DecodeCx, Format, Formats};
 /// the engine runs on (WebGL included) takes as one texture.
 pub const MAX_SIDE: u32 = 4096;
 
-/// An image's size in pixels.
+/// An image's size in pixels. Build it with [`ImageInfo::new`] or
+/// [`ImageInfo::checked`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct ImageInfo {
     /// Width in pixels.
     pub width: u32,
@@ -38,6 +40,13 @@ pub struct ImageInfo {
 }
 
 impl ImageInfo {
+    /// The size `width × height`, unchecked: [`checked`](Self::checked)
+    /// says whether an image may have it.
+    #[must_use]
+    pub const fn new(width: u32, height: u32) -> Self {
+        Self { width, height }
+    }
+
     /// The size `width × height`, if an image may have it: neither side
     /// 0, nor over [`MAX_SIDE`]. Otherwise what is wrong, in plain words.
     pub fn checked(width: u32, height: u32) -> Result<Self, String> {
@@ -211,14 +220,23 @@ pub struct Picture {
     pub rect: ImageRect,
 }
 
-/// Every image the game can draw, by bundle path (`/`-separated).
+/// Every image the game can draw, by bundle path (`/`-separated). Build it
+/// with [`ImageTable::new`], [`Default`] or [`ImageTable::load`]
+/// (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
 pub struct ImageTable {
     /// Size by path.
     pub images: BTreeMap<&'static str, ImageInfo>,
 }
 
 impl ImageTable {
+    /// The table of `images`, their sizes by path.
+    #[must_use]
+    pub const fn new(images: BTreeMap<&'static str, ImageInfo>) -> Self {
+        Self { images }
+    }
+
     /// Reads the size of every PNG in `bundle` but those at the paths in
     /// `skip` (e.g. a font atlas, checked on its own), reporting every bad
     /// file.
@@ -532,6 +550,29 @@ mod tests {
         assert_eq!(
             messages(ImageTable::load(&self::bundle(broken), &[])),
             ["base/images/bad.png: not a valid PNG file"]
+        );
+    }
+
+    /// A size and a table as games build theirs, in `const` items.
+    const SIZE: ImageInfo = ImageInfo::new(16, 8);
+    const NONE: ImageTable = ImageTable::new(BTreeMap::new());
+
+    #[test]
+    fn the_constructors_give_the_literals() {
+        assert_eq!(
+            SIZE,
+            ImageInfo {
+                width: 16,
+                height: 8,
+            }
+        );
+        assert_eq!(ImageInfo::checked(16, 8), Ok(SIZE));
+        assert_eq!(NONE, ImageTable::default());
+        assert_eq!(
+            ImageTable::new([("a.png", SIZE)].into()),
+            ImageTable {
+                images: [("a.png", SIZE)].into(),
+            }
         );
     }
 }

@@ -18,11 +18,7 @@ use shuyi_core::bots::playtest::{
 };
 use shuyi_core::{PlayError, Pos};
 
-const FIFTY: Tries = Tries {
-    count: 50,
-    seed: 0,
-    turns: 200,
-};
+const FIFTY: Tries = Tries::new(50, 0, 200);
 
 fn fifty() -> PlaytestReport {
     playtest_run(&FIFTY).unwrap_or_else(|e| panic!("{e}"))
@@ -217,24 +213,15 @@ fn the_random_hero_trips_the_foe_as_often_as_in_bots() {
 
 #[test]
 fn a_playtest_error_says_what_went_wrong() {
-    let unknown: PlaytestError<Stage> = UnknownEntrant {
-        check: 0,
-        entrant: "nobody".to_owned(),
-    }
-    .into();
+    let unknown: PlaytestError<Stage> = UnknownEntrant::new(0, "nobody").into();
     assert_eq!(
         unknown.to_string(),
         "check 1 names `nobody`, who isn't in the run"
     );
-    let refused: PlaytestError<Stage> = PlaytestError::Play {
-        entrant: "walk".to_owned(),
-        error: PlayError {
-            command: Command::Move(Pos::new(0, 0)),
-            side: Side::Hero,
-            turn: 3,
-            error: Error::Over,
-        },
-    };
+    let refused: PlaytestError<Stage> = PlaytestError::play(
+        "walk",
+        PlayError::new(Command::Move(Pos::new(0, 0)), Side::Hero, 3, Error::Over),
+    );
     assert_eq!(
         refused.to_string(),
         "walk: turn 3, Hero to move: Move(Pos { x: 0, y: 0 }) refused: the stage is over"

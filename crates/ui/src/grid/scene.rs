@@ -245,8 +245,10 @@ impl CursorStyle {
     }
 }
 
-/// The cursor as shown on the map.
+/// The cursor as shown on the map. Build it with [`CursorView::new`]
+/// (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct CursorView {
     /// The tile it is on.
     pub pos: Pos,
@@ -254,6 +256,19 @@ pub struct CursorView {
     pub brightness: f32,
     /// The player's cursor style.
     pub style: CursorStyle,
+}
+
+impl CursorView {
+    /// The cursor on tile `pos`, at `brightness` in its pulse, drawn in
+    /// `style`.
+    #[must_use]
+    pub const fn new(pos: Pos, brightness: f32, style: CursorStyle) -> Self {
+        Self {
+            pos,
+            brightness,
+            style,
+        }
+    }
 }
 
 /// Those that could attack a tile in their next turn: an arrow from each
@@ -1045,5 +1060,17 @@ mod tests {
             assert!(s.to_text(&Terrain).contains(&line), "{name}");
         }
         assert_eq!(CursorStyle::default(), CursorStyle::Corners);
+    }
+
+    #[test]
+    fn a_new_cursor_is_the_literal() {
+        assert_eq!(
+            CursorView::new(Pos::new(2, 3), 0.5, CursorStyle::TileGlow),
+            CursorView {
+                pos: Pos::new(2, 3),
+                brightness: 0.5,
+                style: CursorStyle::TileGlow,
+            }
+        );
     }
 }

@@ -1369,3 +1369,23 @@ proptest! {
         prop_assert_eq!(bare(&parsed[0].scene.steps), scene.steps);
     }
 }
+
+#[test]
+fn a_new_table_is_the_literal_read_from_no_file() {
+    let scene = Scene::<NoDirective> {
+        id: "intro".into(),
+        steps: Vec::new(),
+    };
+    let scenes: BTreeMap<String, Scene> = [("intro".into(), scene)].into();
+    assert_eq!(
+        DialogueTable::new(scenes.clone()),
+        DialogueTable {
+            scenes,
+            files: BTreeMap::new(),
+        }
+    );
+    assert_eq!(
+        DialogueTable::<NoDirective>::new(BTreeMap::new()),
+        DialogueTable::default()
+    );
+}

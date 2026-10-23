@@ -31,10 +31,7 @@ fn config() -> AppConfig {
 
 /// What the game's frames are painted with.
 fn look(game: &Hello) -> Look<'_> {
-    Look {
-        font: &game.font,
-        images: &game.images,
-    }
+    Look::new(&game.font, &game.images)
 }
 
 /// The game on the platform's `setup`, at its title. The stages' luck is

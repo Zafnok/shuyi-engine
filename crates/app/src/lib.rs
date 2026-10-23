@@ -24,7 +24,7 @@
 //! }
 //!
 //! fn look(game: &MyGame) -> Look<'_> {
-//!     Look { font: &game.font, images: &game.images }
+//!     Look::new(&game.font, &game.images)
 //! }
 //!
 //! #[macroquad::main(window_conf)]
@@ -341,13 +341,7 @@ fn sound_left_out(_: &str) -> bool {
 /// storage's name, its files from the installed bundle and its font's
 /// picture; no sounds, no voices and no system keyboard.
 fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> AppConfig {
-    let sounds = Files {
-        sound: &no_sound,
-        sound_shown: &sound_shown,
-        sound_left_out: &sound_left_out,
-        music_dir: "music",
-        music: None,
-    };
+    let sounds = Files::new(&no_sound, &sound_shown, &sound_left_out, "music");
     AppConfig::new(
         basic_window(game),
         game.storage_name(),

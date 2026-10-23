@@ -73,8 +73,10 @@ impl AssetKind for TerrainTiles {
     const NAME: &'static str = "tileset";
 }
 
-/// A tileset's terrain tiles.
+/// A tileset's terrain tiles. Build it with [`TerrainTiles::new`]
+/// (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TerrainTiles {
     /// The image the tiles are in.
     pub image: ImageId,
@@ -90,6 +92,18 @@ pub struct TerrainTiles {
 }
 
 impl TerrainTiles {
+    /// The tiles of `image`, `tile_px` each, in the look `look` and no
+    /// other (`looks` starts empty).
+    #[must_use]
+    pub const fn new(image: ImageId, tile_px: (u32, u32), look: Look) -> Self {
+        Self {
+            image,
+            tile_px,
+            look,
+            looks: BTreeMap::new(),
+        }
+    }
+
     /// The look a map naming `name` is painted as: that look if the
     /// tileset has it, else its own.
     pub fn look(&self, name: &str) -> &Look {
@@ -236,5 +250,24 @@ mod tests {
         assert_eq!(tiles.look("indoor"), &indoor);
         assert_eq!(tiles.look("outdoor"), &own);
         assert_eq!(tiles.look("cave"), &own);
+    }
+
+    #[test]
+    fn new_tiles_are_the_literal_with_no_other_look() {
+        let look = Look {
+            tiles: BTreeMap::new(),
+            layers: alloc::vec::Vec::new(),
+        };
+        let images = ImageTable::new([("tiles.png", crate::image::ImageInfo::new(48, 24))].into());
+        let image = images.id("tiles.png").unwrap();
+        assert_eq!(
+            TerrainTiles::new(image, (24, 24), look.clone()),
+            TerrainTiles {
+                image,
+                tile_px: (24, 24),
+                look,
+                looks: BTreeMap::new(),
+            }
+        );
     }
 }

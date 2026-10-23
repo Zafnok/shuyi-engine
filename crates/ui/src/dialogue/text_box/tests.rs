@@ -159,3 +159,26 @@ fn confirm_reveals_the_page_then_turns_it_then_is_done() {
     // An empty box is revealed at once: done.
     assert_eq!(TextBox::new("", 11, 2).confirm(), Step::Done);
 }
+
+#[test]
+fn the_views_constructors_give_the_literals() {
+    assert_eq!(
+        TextView::new(vec!["Hello".to_owned()], 3),
+        TextView {
+            narration: false,
+            lines: vec!["Hello".to_owned()],
+            shown: 3,
+            choices: None,
+            skip: None,
+            waiting: None,
+        }
+    );
+    assert_eq!(
+        WaitView::new("Enter", true),
+        WaitView {
+            key: "Enter".to_owned(),
+            log_hint: None,
+            marker: true,
+        }
+    );
+}

@@ -48,13 +48,8 @@ fn card_png() -> Vec<u8> {
 /// A painter with the tiny atlas and the test card, if `with_card`.
 fn painter(with_card: bool) -> (Painter, ImageTable) {
     let (atlas, png) = tiny_atlas();
-    let size = ImageInfo {
-        width: test_card::SIZE,
-        height: test_card::SIZE,
-    };
-    let table = ImageTable {
-        images: [(TEST_CARD_PATH, size)].into(),
-    };
+    let size = ImageInfo::new(test_card::SIZE, test_card::SIZE);
+    let table = ImageTable::new([(TEST_CARD_PATH, size)].into());
     let card = card_png();
     let read = |path: &str| (with_card && path == TEST_CARD_PATH).then_some(card.as_slice());
     (

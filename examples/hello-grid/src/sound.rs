@@ -27,11 +27,7 @@ pub fn manifest() -> AudioManifest {
     ];
     let mut audio = AudioManifest::default();
     for (cue, file) in cues {
-        let sound = SoundCue {
-            files: vec![file.to_owned()],
-            volume: 60,
-            credit: CreditRef::Own,
-        };
+        let sound = SoundCue::new(vec![file.to_owned()], 60, CreditRef::Own);
         audio.sounds.insert(cue.to_owned(), sound);
     }
     audio
@@ -40,13 +36,7 @@ pub fn manifest() -> AudioManifest {
 /// The sound files for the platform: the blips, made when asked for; no
 /// music folder.
 pub fn files() -> Files<'static> {
-    Files {
-        sound: &file,
-        sound_shown: &shown,
-        sound_left_out: &left_out,
-        music_dir: "music",
-        music: None,
-    }
+    Files::new(&file, &shown, &left_out, "music")
 }
 
 /// How errors name a sound file: as the manifest does.

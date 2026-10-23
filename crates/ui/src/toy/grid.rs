@@ -138,10 +138,7 @@ pub const SPRITE_WALK: WalkSpeeds = WalkSpeeds {
 pub const TILES: &str = "grid_tiles.png";
 
 /// The size of [`TILES`].
-pub const TILES_SIZE: ImageInfo = ImageInfo {
-    width: 192,
-    height: 144,
-};
+pub const TILES_SIZE: ImageInfo = ImageInfo::new(192, 144);
 
 /// The 24 px tile at `(column, row)` of [`TILES`].
 pub const fn tile_at(column: u32, row: u32) -> ImageRect {
@@ -174,12 +171,7 @@ fn row_look(row: u32) -> Look {
 /// The toy's terrain tiles in `image`: each terrain's tile on row 0, in id
 /// order.
 pub fn tiles(image: ImageId) -> TerrainTiles {
-    TerrainTiles {
-        image,
-        tile_px: (24, 24),
-        look: row_look(0),
-        looks: BTreeMap::new(),
-    }
+    TerrainTiles::new(image, (24, 24), row_look(0))
 }
 
 /// `tiles` with an indoor look: each terrain's tile on row 3.

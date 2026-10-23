@@ -477,3 +477,20 @@ proptest! {
         prop_assert_eq!(parts.choose(&race), whole.choose(&race));
     }
 }
+
+/// Settings as games build theirs, in a `const` item.
+const PLANNER: RolloutSettings = RolloutSettings::new(8, 4, Horizon::Turns(3), 12, 0);
+
+#[test]
+fn new_settings_are_the_literal() {
+    assert_eq!(
+        PLANNER,
+        RolloutSettings {
+            candidates: 8,
+            samples: 4,
+            horizon: Horizon::Turns(3),
+            commands: 12,
+            temperature: 0,
+        }
+    );
+}

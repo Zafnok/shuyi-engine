@@ -300,13 +300,8 @@ const PICTURE_MASK: [u8; 2] = [0b1111_0000, 0b1000_0000];
 
 /// A made-up image's id.
 fn picture_id() -> ImageId {
-    let size = shuyi_assets::image::ImageInfo {
-        width: 4,
-        height: 2,
-    };
-    let table = shuyi_assets::image::ImageTable {
-        images: [("p.png", size)].into(),
-    };
+    let size = shuyi_assets::image::ImageInfo::new(4, 2);
+    let table = shuyi_assets::image::ImageTable::new([("p.png", size)].into());
     table.id("p.png").unwrap()
 }
 

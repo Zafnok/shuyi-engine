@@ -265,16 +265,13 @@ mod tests {
         use crate::frame::glyph_buffer::{Layer, Overlay};
         let p = engine_palette();
         let text = p.get(EngineColor::Text);
-        let images = shuyi_assets::image::ImageTable {
-            images: [(
+        let images = shuyi_assets::image::ImageTable::new(
+            [(
                 "images/test_card.png",
-                shuyi_assets::image::ImageInfo {
-                    width: 16,
-                    height: 16,
-                },
+                shuyi_assets::image::ImageInfo::new(16, 16),
             )]
             .into(),
-        };
+        );
         let card = images.id("images/test_card.png").unwrap();
         let src = Rect::new(0, 0, 16, 16);
         let mut b = GlyphBuffer::new(20, 6, Cell::new(' ', text, text));

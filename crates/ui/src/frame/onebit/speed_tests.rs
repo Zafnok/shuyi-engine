@@ -89,13 +89,8 @@ const BIG_MASK: [u8; 12] = [
 /// The test picture's id: `q.png` (the enlarged picture) if `big`, else
 /// `p.png`; both stand for an 8 × 4 image.
 fn picture_id(big: bool) -> ImageId {
-    let size = shuyi_assets::image::ImageInfo {
-        width: 8,
-        height: 4,
-    };
-    let table = shuyi_assets::image::ImageTable {
-        images: [("p.png", size), ("q.png", size)].into(),
-    };
+    let size = shuyi_assets::image::ImageInfo::new(8, 4);
+    let table = shuyi_assets::image::ImageTable::new([("p.png", size), ("q.png", size)].into());
     table.id(if big { "q.png" } else { "p.png" }).unwrap()
 }
 

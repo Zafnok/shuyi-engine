@@ -123,11 +123,11 @@ impl StageScreen {
             scene.push_unit(Piece { side, pos });
         }
         if self.walk.is_none() && !self.leaving {
-            scene.cursor = Some(CursorView {
-                pos: self.cursor.pos,
-                brightness: self.cursor.brightness(),
-                style: CursorStyle::Corners,
-            });
+            scene.cursor = Some(CursorView::new(
+                self.cursor.pos,
+                self.cursor.brightness(),
+                CursorStyle::Corners,
+            ));
         }
         scene
     }
@@ -322,11 +322,7 @@ impl Screen<Hello> for StageScreen {
     }
 
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
-        let looks = shuyi_ui::grid::Looks {
-            palette: &ctx.palette,
-            terrains: &Terrain,
-            lights: &ctx.game.lights,
-        };
+        let looks = shuyi_ui::grid::Looks::new(&ctx.palette, &Terrain, &ctx.game.lights);
         Self::with_skin(ctx, |skin, painter| {
             let scene = self.scene(skin.view_tiles(AREA));
             skin::paint_stage(&ctx.palette, &self.view(ctx), buf);

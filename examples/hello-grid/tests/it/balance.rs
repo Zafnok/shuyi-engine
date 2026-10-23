@@ -14,30 +14,17 @@ use shuyi_core::bots::playtest::{Band, Check, Condition, Entrant, Found, Playtes
 use shuyi_core::{BalanceSettings, Balanced, Knob, Stop, autobalance};
 
 /// Seeds 0 to 49 decide, quick runs of 10, at most 40 runs.
-const SETTINGS: BalanceSettings = BalanceSettings {
-    tries: Tries {
-        count: 50,
-        seed: 0,
-        turns: 200,
-    },
-    quick: 10,
-    evaluations: 40,
-};
+const SETTINGS: BalanceSettings = BalanceSettings::new(Tries::new(50, 0, 200), 10, 40);
 
 /// The foe should stumble at least once in 50–70% of the walker's tries.
 /// With no trip chance it never does: 0 of 50 (measured once, with these
 /// seeds); at 20% it does in 30 of 50, at 15% in 20.
 fn stumbles() -> Check {
-    Check::Rate {
-        entrant: "walk".to_owned(),
-        success: vec![Condition {
-            measure: "foe trips".to_owned(),
-            min: Some(1),
-            max: None,
-        }],
-        band: Band { min: 50, max: 70 },
-        floor: None,
-    }
+    Check::rate(
+        "walk",
+        vec![Condition::new("foe trips").with_min(Some(1))],
+        Band { min: 50, max: 70 },
+    )
 }
 
 /// A knob that writes down every step it is applied with.
@@ -124,11 +111,11 @@ fn a_foe_that_never_trips_is_tuned_until_every_rate_is_in_its_band() {
     assert_eq!(found.stop, Stop::InBands);
     assert_eq!(
         found.changes,
-        [Change {
-            knob: "trip".to_owned(),
-            step: 4,
-            what: "the foe trips 20% of the time, not 0%".to_owned(),
-        }]
+        [Change::new(
+            "trip",
+            4,
+            "the foe trips 20% of the time, not 0%"
+        )]
     );
     assert_eq!(
         found.stage.tuning(),

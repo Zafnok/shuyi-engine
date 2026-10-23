@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2013"]
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2024 — The engine's other config and views moved onto constructors (ui, platform, assets, core)
@@ -93,15 +93,15 @@ in 2010's form. The game's PR that moves the pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] Every row of ADR-0039's table marked 2024 is `#[non_exhaustive]`
+- [x] Every row of ADR-0039's table marked 2024 is `#[non_exhaustive]`
       with its constructors, or the completion notes say which moved to
       a new ticket and its number.
-- [ ] No file under `templates/` or `examples/` builds those types by a
+- [x] No file under `templates/` or `examples/` builds those types by a
       struct literal.
-- [ ] Games made with `shuyi new grid` and `shuyi new blank` pass the
+- [x] Games made with `shuyi new grid` and `shuyi new blank` pass the
       template gate; hello-grid's snapshots don't change.
-- [ ] The completion notes carry the `Breaking:` lines.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The completion notes carry the `Breaking:` lines.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -113,4 +113,51 @@ in 2010's form. The game's PR that moves the pin follows this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Kind 2** (`#[non_exhaustive]`, a `new`, `const` where it can be):
+  `Looks`, `MapColors`, `TerrainGlyphs`, `Look`, `audio::Files` (with
+  `with_music`), `SoundCue`, `MapFormat`, `TerrainTiles` (`looks` starts
+  empty), `DialogueTable` (`files` starts empty), `ImageTable`,
+  `ImageInfo`, `Tries`, `BalanceSettings`, `RolloutSettings`, and
+  `Condition` (`new(measure)`, `with_min`, `with_max`; not `const`, it
+  holds a `String`). No field read from a file changed its serde.
+- **Kind 3:** `TextView::new(lines, shown)`, `WaitView::new(key, marker)`,
+  `CursorView::new`, `Change::new`, `PlayError::new`,
+  `UnknownEntrant::new`; the rest is assigned.
+- **Kind 6:** `RowValue`, `Check` and `PlaytestError` are
+  `#[non_exhaustive]`, and so is each struct-like variant, built with
+  `RowValue::toggle`, `choice`, `volume`, `action`, `Check::rate`,
+  `Check::median` and `PlaytestError::play`. A check's optional parts
+  are set with `Check::with_floor` (a rate's) and `Check::with_among` (a
+  median's); each leaves the other kind as it was.
+- **Literals moved** in `templates/grid`, hello-grid (`src/` and
+  `tests/`), `shuyi-app`, `shuyi-cli`, and the other engine crates' code
+  and tests that built another crate's types. Literals inside a type's
+  own crate stay.
+- **Tests:** each defining crate's tests check that `new` gives the
+  literal, and each `with_<field>` in a `const` item where the type can
+  be one (`Files::with_music`; `Condition` and `Check` can't be
+  `const`). hello-grid's tests and snapshots pass unchanged, and games
+  made from `grid` and `blank` pass the template gate.
+- **Deviation, size:** the PR is about 1,000 changed lines, past the
+  ticket's 600, and was not split at a crate boundary: most of it is
+  call sites moved mechanically and the constructors' tests, and a split
+  would break the game twice at consecutive pin bumps where the ticket
+  promises once.
+- **Deviation, schemas:** `Tries`, `BalanceSettings`, `Change`, `Check`
+  and `Condition` derive the contract's JSON schemas from their doc
+  comments, so their type-level docs don't gain the "Build it with" line
+  the others got (it would have changed the schemas and the contract's
+  version for no change in shape). Their constructors' docs say it.
+- **Docs:** rustdoc on each type and constructor; no page under `docs/`
+  built these types by literal. Ticket 2366's clause on `SoundCue` now
+  says it is under ADR-0039.
+- **Not checked through the MCP tools:** nothing a player sees changed.
+- **Game:** anything that builds these types by literal moves to the
+  constructors, and a `match` on `PlaytestError`, `Check` or `RowValue`
+  needs a `_` arm; the game's PR that moves the pin follows this one
+  (not yet opened).
+
+Breaking: shuyi-ui: Looks, MapColors, TerrainGlyphs, TextView, WaitView, CursorView, RowValue: build them with their `new` (TextView and WaitView then assign the rest) and RowValue with RowValue::toggle, choice, volume or action; a match on RowValue needs a `_` arm and `..` in each variant
+Breaking: shuyi-platform: Look: build it with Look::new
+Breaking: shuyi-assets: audio::Files, SoundCue, MapFormat, TerrainTiles, DialogueTable, ImageTable, ImageInfo: build them with their `new` (Files::new(..).with_music(..))
+Breaking: shuyi-core: Tries, BalanceSettings, RolloutSettings, Condition, Change, PlayError, UnknownEntrant, Check, PlaytestError: build them with their `new`, Condition with with_min and with_max, Check with Check::rate or Check::median (and with_floor, with_among), PlaytestError::Play with PlaytestError::play; a match on Check or PlaytestError needs a `_` arm and `..` in each variant

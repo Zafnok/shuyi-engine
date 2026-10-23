@@ -123,19 +123,11 @@ fn the_arguments_name_the_stage_the_entrants_the_search_and_its_limits() {
 
 #[test]
 fn a_number_not_given_is_the_default_and_the_plan_is_asked_with_them() {
-    let defaults = Tries {
-        count: 100,
-        seed: 3,
-        turns: 50,
-    };
+    let defaults = Tries::new(100, 3, 50);
     let given = AutobalanceInput::default();
     assert_eq!(
         given.settings(&defaults),
-        BalanceSettings {
-            tries: defaults,
-            quick: 20,
-            evaluations: DEFAULT_BUDGET,
-        }
+        BalanceSettings::new(defaults, 20, DEFAULT_BUDGET)
     );
     // A fifth of the tries, at least one.
     let few = AutobalanceInput {
@@ -272,14 +264,7 @@ fn a_stage_too_hard_is_eased_into_its_band() {
     let output = answer.result.unwrap();
     assert!(output.in_bands);
     assert_eq!(output.stop, Stop::InBands);
-    assert_eq!(
-        output.changes,
-        [Change {
-            knob: "ease".to_owned(),
-            step: -3,
-            what: "3 easier".to_owned(),
-        }]
-    );
+    assert_eq!(output.changes, [Change::new("ease", -3, "3 easier")]);
     assert_eq!((walk_won(&output.before), walk_won(&output.after)), (2, 5));
     assert_eq!(output.evaluations, 4);
     assert_eq!(output.written, None);

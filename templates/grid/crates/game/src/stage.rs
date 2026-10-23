@@ -47,18 +47,14 @@ impl Terrains for Terrain {
 
     fn glyphs(&self, id: TerrainId) -> Option<TerrainGlyphs<'_>> {
         let &(glyphs, fg, bg) = TERRAIN_LOOKS.get(usize::from(id.0))?;
-        Some(TerrainGlyphs { glyphs, fg, bg })
+        Some(TerrainGlyphs::new(glyphs, fg, bg))
     }
 }
 
 /// The glyph skin: two cells a tile.
 // check-text: not player text, the palette's names
 pub const GLYPHS: GlyphSkin = GlyphSkin::new(
-    MapColors {
-        path: "path",
-        cursor: "cursor",
-        threat: "threat",
-    },
+    MapColors::new("path", "cursor", "threat"),
     WalkSpeeds::of(8.0),
     0,
 );
@@ -270,11 +266,7 @@ impl Screen<Data> for StageScreen {
         );
         let last = i32::from(buf.height()) - 1;
         buf.print(1, last, &view.help, c(EngineColor::TextDim), bg);
-        let looks = Looks {
-            palette,
-            terrains: &Terrain,
-            lights: &ctx.game.lights,
-        };
+        let looks = Looks::new(palette, &Terrain, &ctx.game.lights);
         let scene = self.scene(Self::view_tiles());
         GLYPHS.paint(&looks, &scene, AREA, &Letters { palette }, buf);
     }

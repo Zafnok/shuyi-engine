@@ -88,10 +88,15 @@ pub struct OptionRow<G: GameData> {
     pub unsaved: bool,
 }
 
-/// What a row shows beside its label, and what changes it.
+/// What a row shows beside its label, and what changes it. Build it with
+/// [`RowValue::toggle`], [`choice`](RowValue::choice),
+/// [`volume`](RowValue::volume) or [`action`](RowValue::action): kinds of
+/// row and their fields may come, and never break a game (ADR-0039).
+#[non_exhaustive]
 pub enum RowValue<G: GameData> {
     /// On or off: the cursor's left key turns it off, the right key on,
     /// Confirm the other way.
+    #[non_exhaustive]
     Toggle {
         /// Whether it is on.
         get: fn(&Ctx<G>) -> bool,
@@ -100,6 +105,7 @@ pub enum RowValue<G: GameData> {
     },
     /// One of several values: the cursor's keys step through them,
     /// stopping at the ends, and Confirm goes round.
+    #[non_exhaustive]
     Choice {
         /// The text keys of the values offered, in the order they step.
         values: fn(&Ctx<G>) -> Vec<&'static str>,
@@ -110,6 +116,7 @@ pub enum RowValue<G: GameData> {
     },
     /// A volume, 0 to [`MAX_VOLUME`]: the keys move its slider by
     /// [`VOLUME_STEP`], Confirm opens a box to type the number.
+    #[non_exhaustive]
     Volume {
         /// The volume.
         get: fn(&Ctx<G>) -> u8,
@@ -117,6 +124,7 @@ pub enum RowValue<G: GameData> {
         set: fn(&mut Ctx<G>, u8) -> bool,
     },
     /// Something Confirm does.
+    #[non_exhaustive]
     Action {
         /// What the row shows beside its label, if anything (the layout
         /// in use, say).
@@ -126,6 +134,43 @@ pub enum RowValue<G: GameData> {
         /// The text key of the help line while it has the focus.
         help: fn(&Ctx<G>) -> &'static str,
     },
+}
+
+impl<G: GameData> RowValue<G> {
+    /// An on-or-off row: `get` says whether it is on, `set` turns it on or
+    /// off.
+    pub const fn toggle(get: fn(&Ctx<G>) -> bool, set: fn(&mut Ctx<G>, bool) -> bool) -> Self {
+        RowValue::Toggle { get, set }
+    }
+
+    /// A row of one of `values`: `get` says which it shows, `set` puts one
+    /// in.
+    pub const fn choice(
+        values: fn(&Ctx<G>) -> Vec<&'static str>,
+        get: fn(&Ctx<G>) -> usize,
+        set: fn(&mut Ctx<G>, usize) -> bool,
+    ) -> Self {
+        RowValue::Choice { values, get, set }
+    }
+
+    /// A volume row: `get` reads the volume, `set` sets it.
+    pub const fn volume(get: fn(&Ctx<G>) -> u8, set: fn(&mut Ctx<G>, u8) -> bool) -> Self {
+        RowValue::Volume { get, set }
+    }
+
+    /// A row Confirm does `confirm` on, showing `value` beside its label
+    /// and `help` while it has the focus.
+    pub const fn action(
+        value: fn(&Ctx<G>) -> Option<String>,
+        confirm: fn(&mut Ctx<G>) -> RowAction<G>,
+        help: fn(&Ctx<G>) -> &'static str,
+    ) -> Self {
+        RowValue::Action {
+            value,
+            confirm,
+            help,
+        }
+    }
 }
 
 /// What Confirm on an [`RowValue::Action`] row does.

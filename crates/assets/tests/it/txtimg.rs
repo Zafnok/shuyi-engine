@@ -226,10 +226,7 @@ fn a_registered_format_reads_an_image_with_no_change_to_the_code_that_asks_for_i
         height: 1,
         rgba: RED_THEN_CLEAR.to_vec(),
     };
-    let size = ImageInfo {
-        width: 2,
-        height: 1,
-    };
+    let size = ImageInfo::new(2, 1);
     // The engine's own formats read the PNG, and know no text image.
     let standard = Formats::standard();
     assert_eq!(card(&standard, &pngs), Ok(expected.clone()));

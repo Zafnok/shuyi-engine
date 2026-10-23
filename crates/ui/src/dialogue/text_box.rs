@@ -183,8 +183,10 @@ pub enum Step {
     Done,
 }
 
-/// What the text box shows.
+/// What the text box shows. Build it with [`TextView::new`] and assign the
+/// rest (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TextView {
     /// Whether the text is narration (nobody says it).
     pub narration: bool,
@@ -203,6 +205,19 @@ pub struct TextView {
 }
 
 impl TextView {
+    /// The page `lines`, its first `shown` characters revealed: not
+    /// narration, with no replies, no skip question and not waiting.
+    pub fn new(lines: Vec<String>, shown: usize) -> Self {
+        Self {
+            narration: false,
+            lines,
+            shown,
+            choices: None,
+            skip: None,
+            waiting: None,
+        }
+    }
+
     /// The revealed part of each line of the page.
     pub fn revealed(&self) -> Vec<String> {
         let mut budget = self.shown;
@@ -224,8 +239,10 @@ pub struct SkipView {
     pub answers: String,
 }
 
-/// What shows while a page waits for the key that goes on.
+/// What shows while a page waits for the key that goes on. Build it with
+/// [`WaitView::new`] and assign the rest (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct WaitView {
     /// The name of the key that goes on.
     pub key: String,
@@ -233,6 +250,18 @@ pub struct WaitView {
     pub log_hint: Option<String>,
     /// Whether the marker that says "press to go on" is lit: it blinks.
     pub marker: bool,
+}
+
+impl WaitView {
+    /// Waiting for the key named `key`, the marker lit as `marker` says,
+    /// with no log hint.
+    pub fn new(key: impl Into<String>, marker: bool) -> Self {
+        Self {
+            key: key.into(),
+            log_hint: None,
+            marker,
+        }
+    }
 }
 
 #[cfg(test)]

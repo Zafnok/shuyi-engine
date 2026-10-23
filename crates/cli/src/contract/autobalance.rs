@@ -74,22 +74,22 @@ pub struct AutobalanceInput {
 impl AutobalanceInput {
     /// The tries it asks for, `defaults` filling in what it leaves out.
     pub fn tries(&self, defaults: &Tries) -> Tries {
-        Tries {
-            count: self.tries.unwrap_or(defaults.count),
-            seed: self.seed.unwrap_or(defaults.seed),
-            turns: self.turns.unwrap_or(defaults.turns),
-        }
+        Tries::new(
+            self.tries.unwrap_or(defaults.count),
+            self.seed.unwrap_or(defaults.seed),
+            self.turns.unwrap_or(defaults.turns),
+        )
     }
 
     /// The search it asks for, `defaults` filling in the tries it leaves
     /// out.
     pub fn settings(&self, defaults: &Tries) -> BalanceSettings {
         let tries = self.tries(defaults);
-        BalanceSettings {
+        BalanceSettings::new(
             tries,
-            quick: self.quick.unwrap_or((tries.count / 5).max(1)),
-            evaluations: self.budget.unwrap_or(DEFAULT_BUDGET),
-        }
+            self.quick.unwrap_or((tries.count / 5).max(1)),
+            self.budget.unwrap_or(DEFAULT_BUDGET),
+        )
     }
 }
 

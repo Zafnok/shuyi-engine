@@ -37,17 +37,13 @@ impl Terrains for Terrain {
 
     fn glyphs(&self, id: TerrainId) -> Option<TerrainGlyphs<'_>> {
         let &(glyphs, fg, bg) = TERRAIN_LOOKS.get(usize::from(id.0))?;
-        Some(TerrainGlyphs { glyphs, fg, bg })
+        Some(TerrainGlyphs::new(glyphs, fg, bg))
     }
 }
 
 /// The palette's names of the path's, the cursor's and the threat's
 /// colors.
-pub const COLORS: MapColors = MapColors {
-    path: "path",
-    cursor: "cursor",
-    threat: "threat",
-};
+pub const COLORS: MapColors = MapColors::new("path", "cursor", "threat");
 
 /// The range of tiles your picked-up piece can walk to: the palette's
 /// `move` tints it.
@@ -120,15 +116,14 @@ pub fn terrain_tiles(image: ImageId) -> TerrainTiles {
     let tiles = (0..TERRAIN_LOOKS.len())
         .map(|i| (TerrainId(u16::try_from(i).unwrap_or(0)), tile_rect(i)))
         .collect();
-    TerrainTiles {
+    TerrainTiles::new(
         image,
-        tile_px: (TILE_PX, TILE_PX),
-        look: TileLook {
+        (TILE_PX, TILE_PX),
+        TileLook {
             tiles,
             layers: Vec::new(),
         },
-        looks: std::collections::BTreeMap::new(),
-    }
+    )
 }
 
 /// How many times their size the tiles are drawn.
@@ -236,16 +231,9 @@ mod tests {
                 h: 24
             }
         );
-        let table = shuyi_assets::image::ImageTable {
-            images: [(
-                TILES_PNG,
-                shuyi_assets::image::ImageInfo {
-                    width: 192,
-                    height: 24,
-                },
-            )]
-            .into(),
-        };
+        let table = shuyi_assets::image::ImageTable::new(
+            [(TILES_PNG, shuyi_assets::image::ImageInfo::new(192, 24))].into(),
+        );
         let tiles = terrain_tiles(table.id(TILES_PNG).unwrap());
         assert_eq!(tiles.look.tiles.len(), 3);
         assert_eq!(tiles.look.tiles[&TerrainId(2)], tile_rect(2));

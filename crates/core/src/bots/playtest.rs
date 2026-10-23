@@ -85,6 +85,7 @@ pub trait Entrant<S, R: Sides> {
 /// plays the same seeds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub struct Tries {
     /// How many tries.
     pub count: u32,
@@ -95,6 +96,12 @@ pub struct Tries {
 }
 
 impl Tries {
+    /// `count` tries from seed `seed`, each stopped at turn `turns`.
+    #[must_use]
+    pub const fn new(count: u32, seed: u64, turns: u32) -> Self {
+        Self { count, seed, turns }
+    }
+
     /// The seeds of the tries.
     pub fn seeds(&self) -> Range<u64> {
         self.seed..self.seed.saturating_add(u64::from(self.count))
@@ -122,6 +129,7 @@ pub struct Tried {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Condition {
     /// The measure's name.
     pub measure: String,
@@ -134,6 +142,29 @@ pub struct Condition {
 }
 
 impl Condition {
+    /// The measure called `measure`, with no bounds
+    /// ([`with_min`](Self::with_min) and [`with_max`](Self::with_max) set
+    /// them).
+    pub fn new(measure: impl Into<String>) -> Self {
+        Self {
+            measure: measure.into(),
+            min: None,
+            max: None,
+        }
+    }
+
+    /// The condition with its least value `min`.
+    #[must_use]
+    pub fn with_min(self, min: Option<i64>) -> Self {
+        Self { min, ..self }
+    }
+
+    /// The condition with its greatest value `max`.
+    #[must_use]
+    pub fn with_max(self, max: Option<i64>) -> Self {
+        Self { max, ..self }
+    }
+
     /// Whether `measures` meet it.
     pub fn met_by(&self, measures: &Measures) -> bool {
         measures.get(&self.measure).is_some_and(|&value| {
@@ -209,9 +240,11 @@ pub enum MedianVerdict {
 /// A check of a run, kept as data.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[non_exhaustive]
 pub enum Check {
     /// The share of `entrant`'s tries that meet every `success` condition
     /// is within `band`. A share under `floor` percent blocks the run.
+    #[non_exhaustive]
     Rate {
         /// The entrant checked.
         entrant: String,
@@ -225,6 +258,7 @@ pub enum Check {
     },
     /// The median of `measure` over `entrant`'s tries that meet `among`
     /// is lower or higher than the same median of entrant `than`.
+    #[non_exhaustive]
     Median {
         /// The entrant checked.
         entrant: String,
@@ -241,6 +275,56 @@ pub enum Check {
 }
 
 impl Check {
+    /// A [`Rate`](Check::Rate): the share of `entrant`'s tries that meet
+    /// every `success` condition is within `band`, with no floor
+    /// ([`with_floor`](Self::with_floor) sets one).
+    pub fn rate(entrant: impl Into<String>, success: Vec<Condition>, band: Band) -> Self {
+        Check::Rate {
+            entrant: entrant.into(),
+            success,
+            band,
+            floor: None,
+        }
+    }
+
+    /// A [`Median`](Check::Median): the median of `measure` over all of
+    /// `entrant`'s tries leans `want` of entrant `than`'s
+    /// ([`with_among`](Self::with_among) narrows the tries).
+    pub fn median(
+        entrant: impl Into<String>,
+        measure: impl Into<String>,
+        want: Want,
+        than: impl Into<String>,
+    ) -> Self {
+        Check::Median {
+            entrant: entrant.into(),
+            measure: measure.into(),
+            among: Vec::new(),
+            want,
+            than: than.into(),
+        }
+    }
+
+    /// The check with its floor `floor`, if it is a rate; any other check
+    /// as it was.
+    #[must_use]
+    pub fn with_floor(mut self, floor: Option<u32>) -> Self {
+        if let Check::Rate { floor: f, .. } = &mut self {
+            *f = floor;
+        }
+        self
+    }
+
+    /// The check over the tries that meet `among`, if it is a median; any
+    /// other check as it was.
+    #[must_use]
+    pub fn with_among(mut self, among: Vec<Condition>) -> Self {
+        if let Check::Median { among: a, .. } = &mut self {
+            *a = among;
+        }
+        self
+    }
+
     /// The entrants it names: a game keeps the checks whose entrants all
     /// play.
     pub fn entrants(&self) -> Vec<&str> {
@@ -313,13 +397,25 @@ pub struct PlaytestReport {
     pub blocked: bool,
 }
 
-/// A check names an entrant that isn't in the run.
+/// A check names an entrant that isn't in the run. Build it with
+/// [`UnknownEntrant::new`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct UnknownEntrant {
     /// The check's place in the list, from 0.
     pub check: usize,
     /// The name.
     pub entrant: String,
+}
+
+impl UnknownEntrant {
+    /// Check `check` (from 0) names `entrant`.
+    pub fn new(check: usize, entrant: impl Into<String>) -> Self {
+        Self {
+            check,
+            entrant: entrant.into(),
+        }
+    }
 }
 
 impl fmt::Display for UnknownEntrant {
@@ -333,17 +429,30 @@ impl fmt::Display for UnknownEntrant {
     }
 }
 
-/// Why a playtest stopped.
+/// Why a playtest stopped. More reasons may come (ADR-0039).
+#[non_exhaustive]
 pub enum PlaytestError<R: Sides> {
     /// A check names an entrant that isn't in the run.
     UnknownEntrant(UnknownEntrant),
-    /// A bot's command was refused: a bug in a bot, never skipped.
+    /// A bot's command was refused: a bug in a bot, never skipped. Build
+    /// it with [`PlaytestError::play`].
+    #[non_exhaustive]
     Play {
         /// The entrant whose bot it was.
         entrant: String,
         /// The refusal.
         error: PlayError<R>,
     },
+}
+
+impl<R: Sides> PlaytestError<R> {
+    /// `entrant`'s bot's command was refused with `error`.
+    pub fn play(entrant: impl Into<String>, error: PlayError<R>) -> Self {
+        PlaytestError::Play {
+            entrant: entrant.into(),
+            error,
+        }
+    }
 }
 
 impl<R: Sides> From<UnknownEntrant> for PlaytestError<R> {

@@ -243,10 +243,10 @@ None.
   - **2342, 2344 and 2345** each add a field to `SoundCue`. The later
     to land rebases onto the other's `SoundCue` and bumps
     `pack::VERSION` again.
-  - **Public types (ADR-0039):** `SoundCue` and `MusicCue` move under it
-    in this PR if they aren't yet (2024 moves `SoundCue`), as its *When*
-    rule says of a type that next gains a field: `#[non_exhaustive]`,
-    with a `new` that leaves `caption` at `None`.
+  - **Public types (ADR-0039):** `SoundCue` is under it (2024), and its
+    `new` leaves `caption` at `None`. `MusicCue` moves under it in this
+    PR, as its *When* rule says of a type that next gains a field:
+    `#[non_exhaustive]`, with a `new` that leaves `caption` at `None`.
   - **2218:** if it is done, its `AudioManifestRon` writer writes
     `caption` only when it is `Some`, in the implicit-`Some` form, and
     its round trip covers a captioned cue. If not, 2218 does it.

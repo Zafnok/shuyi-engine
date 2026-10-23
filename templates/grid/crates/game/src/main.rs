@@ -36,22 +36,13 @@ fn left_out(_: &str) -> bool {
 
 /// What the macroquad backend needs to know about the game.
 fn config() -> AppConfig {
-    let sounds = Files {
-        sound: &no_sound,
-        sound_shown: &shown,
-        sound_left_out: &left_out,
-        music_dir: "music",
-        music: None,
-    };
+    let sounds = Files::new(&no_sound, &shown, &left_out, "music");
     AppConfig::new(WINDOW, STORAGE_NAME, game::file, FONT_PNG, sounds)
 }
 
 /// What the game's frames are painted with.
 fn look(data: &Data) -> Look<'_> {
-    Look {
-        font: &data.font,
-        images: &data.images,
-    }
+    Look::new(&data.font, &data.images)
 }
 
 /// The game on the platform's `setup`, on its stage. The stages' luck is

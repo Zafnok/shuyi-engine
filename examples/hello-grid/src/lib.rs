@@ -192,10 +192,7 @@ impl Hello {
                 .scenes
                 .into_iter()
                 .map(|p| (p.scene.id.clone(), p.scene));
-            Ok(DialogueTable {
-                scenes: scenes.collect(),
-                files: BTreeMap::new(),
-            })
+            Ok(DialogueTable::new(scenes.collect()))
         });
         let stage_map = gather(&mut errors, || {
             let map = formats.load::<GridMap<TerrainId, Feature>>(bundle, "stage.map")?;

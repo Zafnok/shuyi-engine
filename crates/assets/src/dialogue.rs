@@ -328,8 +328,10 @@ impl<D> Default for Scene<D> {
     }
 }
 
-/// Every scene of every dialogue file, by id.
+/// Every scene of every dialogue file, by id. Build it with
+/// [`DialogueTable::new`] or [`Default`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DialogueTable<D = NoDirective> {
     /// Scenes by id.
     pub scenes: BTreeMap<String, Scene<D>>,
@@ -348,6 +350,16 @@ impl<D> Default for DialogueTable<D> {
 }
 
 impl<D> DialogueTable<D> {
+    /// The table of `scenes`, by id, read from no file (`files` starts
+    /// empty).
+    #[must_use]
+    pub const fn new(scenes: BTreeMap<String, Scene<D>>) -> Self {
+        Self {
+            scenes,
+            files: BTreeMap::new(),
+        }
+    }
+
     /// The scene with id `id`.
     pub fn get(&self, id: &str) -> Option<&Scene<D>> {
         self.scenes.get(id)

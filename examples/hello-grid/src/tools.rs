@@ -528,7 +528,7 @@ pub fn playtest_run(tries: &Tries) -> Result<PlaytestReport, String> {
         .collect();
     playtest::run(&stage, &entrants, tries, &playtest_checks()?).map_err(|e| match e {
         PlaytestError::UnknownEntrant(e) => format!("playtest.ron: {e}"),
-        PlaytestError::Play { .. } => e.to_string(),
+        _ => e.to_string(),
     })
 }
 
