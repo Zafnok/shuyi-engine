@@ -169,6 +169,16 @@ fn a_number_not_given_is_the_games_default() {
     }
     // The fake's walker stops at the turn limit.
     assert_eq!(report.entrants[0].tries[0].turns, 60);
+    // The game's plan is asked for with the numbers filled in, the rest as
+    // given.
+    let planned = game.planned.lock().unwrap().clone();
+    let want = PlaytestInput {
+        tries: Some(3),
+        seed: Some(1),
+        turns: Some(60),
+        ..PlaytestInput::default()
+    };
+    assert_eq!(planned, [want]);
     // A number given wins over the game's.
     let answer = playtest(&game, &input(2, |i| i.turns = Some(9)));
     let report = &answer.result.unwrap()[0].report;
@@ -327,6 +337,19 @@ fn the_report_is_the_same_on_any_number_of_threads() {
 }
 
 #[test]
+fn an_entrants_time_is_the_mean_of_its_tries() {
+    // Four tries of 10 ms each: 10 ms a try, give or take the sleep's
+    // overshoot, not their sum.
+    let game = fake(FakePlaytest {
+        sleep: Duration::from_millis(10),
+        ..FakePlaytest::default()
+    });
+    let answer = playtest(&game, &input(4, |i| i.entrants = args(&["walk"])));
+    let seconds = answer.result.unwrap()[0].entrants[0].seconds_per_try;
+    assert!((0.01..0.04).contains(&seconds), "{seconds}");
+}
+
+#[test]
 fn a_try_that_fails_stops_the_playtest_naming_it() {
     let game = fake(FakePlaytest {
         fail: Some(3),
@@ -371,6 +394,8 @@ fn what_the_playtest_found_reads_for_people() {
     let mut outputs = answer.result.unwrap();
     outputs[0].entrants[0].seconds_per_try = 2.5;
     outputs[0].entrants[1].seconds_per_try = 0.001;
+    assert_eq!(seconds(0.01), "0.01");
+    assert_eq!(seconds(0.009), "< 0.01");
     let text = text(&outputs);
     let cave = format!(
         "the fake on cave\n\n{}\nwalk · 2.50 s per try\nrun  · fast · < 0.01 s per try\n",

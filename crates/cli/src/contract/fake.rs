@@ -1,6 +1,9 @@
 //! A game and a session made up for the contract's tests: each answer is
 //! what the test sets.
 
+use std::sync::Mutex;
+use std::time::Duration;
+
 use shuyi_assets::ContentError;
 use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::format::Formats;
@@ -142,6 +145,8 @@ pub struct Fake {
     pub bots: Result<BotsOutput, String>,
     /// Its playtest, or why its plan doesn't load.
     pub playtest: Result<FakePlaytest, String>,
+    /// The inputs its playtest plans were asked for with, in turn.
+    pub planned: Mutex<Vec<PlaytestInput>>,
     /// The files `bake` bakes (its names table and palette are baked), or
     /// none if it doesn't offer `bake`.
     pub sources: Option<&'static [(&'static str, &'static [u8])]>,
@@ -169,6 +174,7 @@ impl Default for Fake {
             replay: Ok(()),
             bots: Ok(tally(Vec::new())),
             playtest: Ok(FakePlaytest::default()),
+            planned: Mutex::new(Vec::new()),
             sources: Some(SOURCES),
             controls: None,
             one_bit: None,
@@ -182,7 +188,7 @@ impl Default for Fake {
 /// turns be lower than `walk`'s. Each try ends `outcome` (unfinished if
 /// `None`), `walk`'s at the turn limit and `run`'s a turn sooner, won
 /// unless its stage's name starts with `hard`; the try of seed `fail`
-/// fails.
+/// fails, and each takes `sleep`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FakePlaytest {
     /// Its stages.
@@ -195,6 +201,8 @@ pub struct FakePlaytest {
     pub outcome: Option<&'static str>,
     /// The seed whose try fails.
     pub fail: Option<u64>,
+    /// How long each try takes.
+    pub sleep: Duration,
 }
 
 impl Default for FakePlaytest {
@@ -205,6 +213,7 @@ impl Default for FakePlaytest {
             default_entrants: Vec::new(),
             outcome: Some("Won"),
             fail: None,
+            sleep: Duration::ZERO,
         }
     }
 }
@@ -307,11 +316,14 @@ impl GameTools for Fake {
     fn playtest_plan(
         &self,
         stage: Option<&str>,
-        _: &PlaytestInput,
+        input: &PlaytestInput,
     ) -> Result<PlaytestPlan, String> {
+        if let Ok(mut planned) = self.planned.lock() {
+            planned.push(input.clone());
+        }
         let fake = self.playtest.clone()?;
         let won = i64::from(!stage.is_some_and(|s| s.starts_with("hard")));
-        let (outcome, fail) = (fake.outcome, fake.fail);
+        let (outcome, fail, sleep) = (fake.outcome, fake.fail, fake.sleep);
         Ok(PlaytestPlan {
             title: format!("the fake on {}", stage.unwrap_or("its stage")),
             entrants: vec![
@@ -322,6 +334,7 @@ impl GameTools for Fake {
             default_entrants: fake.default_entrants,
             checks: Box::new(fake_checks),
             play: Box::new(move |entrant, seed, turns| {
+                std::thread::sleep(sleep);
                 if fail == Some(seed) {
                     return Err("refused".to_owned());
                 }

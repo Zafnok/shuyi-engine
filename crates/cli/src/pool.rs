@@ -92,7 +92,10 @@ mod tests {
             assert!(done[0].1 >= Duration::from_millis(12), "{:?}", done[0].1);
         }
         assert!(run(&[] as &[u64], 4, &slow(0)).unwrap().is_empty());
-        assert!(cores() >= 1);
+        assert_eq!(
+            cores(),
+            thread::available_parallelism().map_or(1, std::num::NonZero::get)
+        );
     }
 
     #[test]
@@ -106,6 +109,14 @@ mod tests {
             }
         };
         assert_eq!(run(&work, 1, &fails).unwrap_err(), "item 3");
+        // On one thread, nothing after the failing item runs.
+        let started = AtomicUsize::new(0);
+        let counted = |i: &u64| {
+            started.fetch_add(1, Ordering::Relaxed);
+            fails(i)
+        };
+        assert!(run(&work, 1, &counted).is_err());
+        assert_eq!(started.load(Ordering::Relaxed), 4);
         // On several threads too, though a later item may fail first.
         for threads in [2, 4, 8] {
             assert_eq!(run(&work, threads, &fails).unwrap_err(), "item 3");
