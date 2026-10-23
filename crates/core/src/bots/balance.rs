@@ -420,19 +420,19 @@ where
         Ok(point)
     }
 
-    /// The distance of `point` at the full count, or `None` if it can't
-    /// be had: the run kept back for the setting the search ends on,
-    /// which a stop doesn't stop.
+    /// The distance of `point` at the full count, or `None` if a knob
+    /// can't apply there: the run kept back for the setting the search
+    /// ends on, which a stop doesn't stop. A setting the search ends on
+    /// was either run in full already or run at fewer tries, which kept
+    /// this evaluation back, so it never goes over the budget.
     fn last(&mut self, point: &[i32]) -> Result<Option<u64>, E> {
         let full = self.full();
         if let Some(&d) = self.distances.get(&(point.to_vec(), full)) {
             return Ok(Some(d));
         }
         match self.build(point) {
-            Some(stage) if self.used < self.settings.evaluations => {
-                Ok(Some(self.run(point, full, &stage)?))
-            }
-            _ => Ok(None),
+            Some(stage) => Ok(Some(self.run(point, full, &stage)?)),
+            None => Ok(None),
         }
     }
 

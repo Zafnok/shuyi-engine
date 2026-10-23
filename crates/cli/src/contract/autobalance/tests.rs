@@ -192,6 +192,13 @@ fn autobalance_checks_its_numbers_and_the_stage_then_asks_the_game() {
         wrong(&input(|i| i.budget = Some(MAX_BUDGET + 1))),
         "budget: 1 to 10000, not 10001"
     );
+    // The bounds themselves are allowed.
+    for budget in [1, MAX_BUDGET] {
+        let answer = autobalance(&game, &input(|i| i.budget = Some(budget)));
+        assert!(answer.error.is_none(), "{budget}: {:?}", answer.error);
+    }
+    let answer = autobalance(&game, &input(|i| i.quick = Some(10)));
+    assert!(answer.error.is_none(), "{:?}", answer.error);
     assert_eq!(
         wrong(&input(|i| i.threads = Some(0))),
         "threads: at least 1"
