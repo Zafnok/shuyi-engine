@@ -196,3 +196,29 @@ fn check_toolchain_takes_no_arguments() {
     assert!(!ok);
     assert!(err.contains("usage:"), "{err}");
 }
+
+#[test]
+fn api_refuses_an_unknown_option() {
+    let (ok, err) = xtask(&["api", "--bless"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}
+
+#[test]
+fn api_without_its_tools_prints_their_install_lines() {
+    // No `cargo`, `rustup` or `git` on an empty PATH: the command stops at
+    // its tools, on any machine.
+    let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
+        .args(["api", "--base", "HEAD"])
+        .env("PATH", "")
+        .current_dir(std::env::temp_dir())
+        .output()
+        .unwrap_or_else(|e| panic!("the xtask binary does not run: {e}"));
+    let err = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success());
+    assert!(
+        err.contains("cargo install --locked cargo-semver-checks@"),
+        "{err}"
+    );
+    assert!(err.contains("api: 3 error(s)"), "{err}");
+}

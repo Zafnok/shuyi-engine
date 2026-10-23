@@ -91,8 +91,9 @@ Where each kind of fact is written, and what each task reads first, is in
   `cargo xtask engine` checks this repository out inside the game at the
   pin, so one working copy edits both while the change is made.
 - A change here must not break the game at its next pin bump: when an
-  API changes, say so in the PR, and the game's PR that moves the pin
-  follows it.
+  API changes, write a `Breaking:` line in the ticket's completion notes
+  (CI's `api` job finds the change, [ADR-0038](docs/adr/0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md)),
+  and the game's PR that moves the pin follows it.
 - Ticket ids:
   - `1119`–`1150` moved here from the game repository and kept their
     numbers.

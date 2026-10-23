@@ -7,7 +7,9 @@
 //! - `cargo xtask check-layers`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
+//! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]`
 
+mod api;
 mod docs;
 mod layers;
 mod links;
@@ -45,7 +47,13 @@ usage:
   cargo xtask check-toolchain
       Check that the pinned Rust is the same everywhere (the bump-rust skill):
       the root's exact channel, the templates' channels, every workspace's
-      rust-version, the members' inherited one and Dependabot's folders.";
+      rust-version, the members' inherited one and Dependabot's folders.
+  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]
+      Show the public API change of the crates a game uses, against <rev> (by
+      default `git merge-base HEAD main`): the listing diff (cargo-public-api)
+      and the breaks (cargo-semver-checks), appending the Markdown to <file>.
+      With --pr-branch, a break needs a `Breaking:` line in the branch's
+      ticket (ADR-0038).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -60,6 +68,7 @@ fn main() -> ExitCode {
         Some("check-toolchain") if args.len() == 1 => {
             report("check-toolchain", &toolchain::run(&root), &[])
         }
+        Some("api") => api(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -97,6 +106,21 @@ fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
     };
     let found = tickets::run(root, pr_branch, &game);
     report("ticket-lint", &found.errors, &found.warnings)
+}
+
+fn api(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = api::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let outcome = api::run(root, &options, &api::System);
+    let mut errors = outcome.errors;
+    errors.extend(api::write_summary(
+        &outcome.summary,
+        options.summary.as_deref(),
+        &mut std::io::stdout().lock(),
+    ));
+    report("api", &errors, &outcome.warnings)
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

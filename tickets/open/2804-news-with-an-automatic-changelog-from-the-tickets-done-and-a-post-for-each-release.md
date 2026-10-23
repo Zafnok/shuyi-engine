@@ -54,9 +54,9 @@ None.
   - **breaking changes:** a ticket's completion notes may have a line
     starting `Breaking:` (under `## Completion notes`, after an optional
     `- `, in 2010's form `Breaking: <crate>[, <crate>…]: <item>: <what a
-    game changes>`; read with `breaking_lines` in
-    `crates/xtask/src/tickets.rs`. Either order with 2010: whichever
-    lands second reuses the first's function). Each such line is listed
+    game changes>`; read with 2010's `breaking_lines` in
+    `crates/xtask/src/tickets.rs`, the one reader of these lines,
+    ADR-0038 §6). Each such line is listed
     first, under "Breaking changes", for the game and other users to
     read before a pin bump (`AGENTS.md`, *Working with the game
     repository*);
@@ -101,11 +101,10 @@ None.
   one `Breaking:` line per engine item its report lists as `new`. If
   2014 is done first, it has already pointed the PR's game line at the
   report, and this ticket adds the `Breaking:` lines beside it.
-  **Either order with 2010:** if 2010 is done, the step is already there
-  (2010 added it with CI's `api` job, which fails a breaking PR without
-  the line), so keep one step and add the `migration` block and the
-  `game` report's `new` items to it; if not, add it here, and 2010 keeps
-  it.
+  **With 2010** (done): the step is already there (`work-ticket` §5
+  step 2; 2010 added it with CI's `api` job, which fails a breaking PR
+  without the line), so keep one step and add the `migration` block and
+  the `game` report's `new` items to it.
 - **2005** (the first release) writes `CHANGELOG.md` with this tool in
   its release workflow, and uses its notes as the GitHub release's body.
 
@@ -124,8 +123,7 @@ None.
 
 1. Write the parser of ticket frontmatter (reuse `tickets.rs`'s), the
    history reader behind its trait, the grouping, and the `Breaking:`
-   reader (2010's `breaking_lines` if 2010 is done; else
-   write it in `tickets.rs` for 2010 to reuse). Write the `migration`
+   reader (reuse 2010's `breaking_lines`). Write the `migration`
    block parser `pub(crate)`, so 2523 reuses it.
 2. Write the three outputs, each with its migration guide section.
 3. Add it to `pages.yml` and `.gitignore`, and the News templates.

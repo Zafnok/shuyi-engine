@@ -48,19 +48,31 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
    one line gets a local `#[allow(clippy::…)]` with a comment saying why,
    as the code already does; never a crate-wide allow (`AGENTS.md`
    rule 6).
-3. **Run the `run-gates` skill on Windows with the GNU host and MSYS2**,
+3. **Move the `api` job's nightly and tools** (ADR-0038 §3), the consts
+   `NIGHTLY`, `SEMVER_CHECKS` and `PUBLIC_API` in
+   `crates/xtask/src/api.rs` and their lines in `ci.yml` (a test keeps
+   them equal):
+   - **for a new minor**, `NIGHTLY` becomes the first nightly of that
+     minor (an older one refuses the new `rust-version`) whose rustdoc
+     JSON format the pinned `cargo-public-api` reads; if none does, move
+     `PUBLIC_API` to the release that reads it;
+   - **when the `api` job fails to read the new stable's rustdoc JSON**,
+     move `SEMVER_CHECKS` to the release that reads it.
+
+   Run `cargo xtask api` once with the new pins.
+4. **Run the `run-gates` skill on Windows with the GNU host and MSYS2**,
    as Nick's machine builds. CI's Windows leg builds with MSVC, so only
    this run checks that the GNU link still works. The no-std build and the
    web build are part of it. A session that can't run on the GNU host says
    so in the PR, and the PR waits for that run.
-4. **Tell the game, for a new minor.** The PR body says: "The game needs
+5. **Tell the game, for a new minor.** The PR body says: "The game needs
    Rust X.Y at its next pin bump." Write the game ticket that moves the
    game's `rust-toolchain.toml` (and its `rust-version`) in that pin bump,
    as the `work-ticket` skill's §6 says for any change the game must
    follow. Once a job builds the game against engine PRs (ticket 2014), it
    shows the game failing on its older Rust on this PR: that is expected,
    and the game ticket fixes it.
-5. **One PR per folder?** If Dependabot opened one PR per folder rather
+6. **One PR per folder?** If Dependabot opened one PR per folder rather
    than one grouped PR, finish the root's (move the templates' channels
    there too) and close the others with a comment naming it.
 

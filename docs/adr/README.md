@@ -50,5 +50,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0035](0035-the-mcp-server-follows-the-sessions-folder-roots-a-forwarded-server-per-workspace-and-a-restart-when-the-engine-moves.md) | The MCP server follows the session's folder: roots, a forwarded server per workspace, and a restart when the engine moves | Accepted; extends ADR-0031 |
 | [0036](0036-the-short-path-ready-made-parts-beside-the-long-form.md) | The short path: ready-made parts beside the long form | Accepted; extends ADR-0019 and ADR-0024 |
 | [0037](0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md) | Dependency upkeep: Dependabot, a weekly advisory check, workflow audits, and bot work as its own ticket | Accepted; adopts game ADR-0008's supply-chain rows; extends ADR-0017 §3 |
+| [0038](0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md) | The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break | Accepted; extends ADR-0002 §7 and ADR-0017 |
 
 Template: [`0000-template.md`](0000-template.md).

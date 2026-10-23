@@ -66,16 +66,20 @@ that may know only the engine. So it must stand on its own. Its
    If you can't find one, it may belong in the tactics kit, or in the
    game; say which and why.
 
-Its **Scope** says what changes for the game: whether the API breaks,
-and that the game's PR that moves the pin follows this one. Its
-**Completion notes** will name that game PR (`work-ticket` §5).
+Its **Scope** says what changes for the game: whether the API breaks
+(CI's `api` job finds it, and each break gets a `Breaking:` line in the
+ticket's completion notes, ADR-0038 §6), and that the game's PR that
+moves the pin follows this one. Its **Completion notes** will name that
+game PR (`work-ticket` §5).
 
 **A small change needs no ticket here.** A change of a few lines with
 nothing to decide (a doc fix, a missing re-export, a typo in an error
 message), made and merged by the same game session, uses the game's
 ticket as its ticket: branch `game-NNNN-<slug>`, PR title `Game NNNN:
 <what it does>`, and the PR body says the game ticket and that the
-game's PR moving the pin follows it.
+game's PR moving the pin follows it. Such a change never breaks the
+API: the `api` job fails a break on a branch with no ticket of this
+repository.
 
 ## Check the dependency chain
 

@@ -232,8 +232,8 @@ that matches them exhaustively or builds them adds the new one (`Frame`
 gains one too, but it is `#[non_exhaustive]`). Unless 2351 is done, the
 game's English gains `name_entry.grid.page`, which a language with two
 pages shows. A pack baked before this is refused with a message to bake
-it again (`pack::VERSION`). The PR says so (with a `Breaking:` line if
-2010 is done), and the game's PR that moves its pin follows it. On
+it again (`pack::VERSION`). The PR says so, with a `Breaking:` line
+(2010), and the game's PR that moves its pin follows it. On
 Windows the game's players get the IME off during play. If the game
 answers game#0042 with a kana grid, its Japanese pack lists the pages
 as `Rows` once 2301 is done.

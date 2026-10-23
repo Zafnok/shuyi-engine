@@ -215,8 +215,8 @@ None.
 - **For the game:** `PanelLook` gains a field (a struct literal adds
   `frame: None`, unless 2013 has already made `PanelLook` one that
   grows without a break), and `ask::glyph::paint` and the name boxes'
-  painters gain an argument. The PR says so, with a `Breaking:` line if
-  2010 is done, and the game's PR that moves its pin follows it. The
+  painters gain an argument. The PR says so, with a `Breaking:` line
+  (2010), and the game's PR that moves its pin follows it. The
   game sets no frame, so it draws as before.
 - **Lines in other tickets**, so the plans that touch this stay true:
   - 1127 (parked), its step 2: the backdrop that repeats sideways is

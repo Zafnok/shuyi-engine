@@ -228,8 +228,8 @@ After MVP, with their acceptance criteria, and the PR says so.
    `crates/ui/src/game.rs` (`with_stack`, `collect_audio`,
    `set_music_playing`, `is_known`), `crates/app/src/audio.rs`
    (`Audio::music`, `poll`, `music_playing` and their tests) and
-   `crates/platform/src/headless.rs` (`Speaker`). Check whether 3029,
-   2013 and 2010 are done.
+   `crates/platform/src/headless.rs` (`Speaker`). Check whether 3029
+   and 2013 are done.
 2. `MusicSwitch`, the two manifest fields (`RawFile` and
    `AudioManifest`), `music_switch()`, their tests, and the pack
    version.

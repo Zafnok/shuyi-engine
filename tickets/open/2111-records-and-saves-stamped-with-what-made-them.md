@@ -194,8 +194,8 @@ None.
   gains a public field, which a game built with `Layer::dir`,
   `Layer::table` and the builders doesn't notice. `PackInfo`,
   `ReplayInput` and `ReplayRun` gain a field each, and `GameTools` a
-  defaulted method. Say so in the PR, with 2010's `Breaking:` lines if
-  it is done; the game's PR that moves the pin follows.
+  defaulted method. Say so in the PR, with 2010's `Breaking:` lines;
+  the game's PR that moves the pin follows.
 
 **Out (do not do):**
 - What a game does with a save made with other content: its own load

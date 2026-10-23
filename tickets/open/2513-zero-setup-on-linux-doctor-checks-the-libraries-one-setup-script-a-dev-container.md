@@ -287,11 +287,13 @@ None.
     `help` and `doctor::text` prints `help:`, so this ticket's rows and
     tests say `help` where Scope says `fix`. If not, 2509 renames them
     with the rest.
-  - **2010** (the `api` job) or any job added first with an apt line:
-    this ticket turns that line into the script too; the workflow test
-    below finds any left. If 2010 is done, its job reports
-    `Probe::read` as a break, and the completion notes carry a
-    `Breaking:` line for `shuyi-cli` saying a game builds unchanged.
+  - **2010** (done: the `api` job, which installs the libraries with
+    the `clippy` job's apt line) or any job added first with an apt
+    line: this ticket turns that line into the script too; the workflow
+    test below finds any left. 2010's job reports `Probe::read` as a
+    break (a new required method of a public trait), and the completion
+    notes carry a `Breaking:` line for `shuyi-cli` saying a game builds
+    unchanged.
   - **2012** (the pinned Rust): the script and the dev container name
     no Rust version, so `check-toolchain` needs nothing new.
 

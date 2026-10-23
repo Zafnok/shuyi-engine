@@ -14,6 +14,11 @@ name: Changes
 #     checks them against `Op::ALL` and `contract::VERSION`.
 # The rest is docs-only: other `*.md`, `docs/**`, `tickets/**`, `.claude/**`.
 # Any other event (push, schedule, workflow_dispatch) always counts as code.
+#
+# `crates` is narrower (ticket 2010, the `api` job): a pull request that
+# changes the crates' code or what builds them (`crates/**`, the root
+# `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`). Always 'true' on other
+# events.
 
 on:
   workflow_call:
@@ -21,6 +26,9 @@ on:
       code:
         description: "'true' unless the event is a pull request that only changes docs-only paths"
         value: ${{ jobs.detect.outputs.code }}
+      crates:
+        description: "'true' unless the event is a pull request that changes no crate, Cargo.toml, Cargo.lock or rust-toolchain.toml"
+        value: ${{ jobs.detect.outputs.crates }}
 
 permissions:
   contents: read
@@ -31,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.classify.outputs.code }}
+      crates: ${{ steps.classify.outputs.crates }}
     steps:
       # On pull_request, HEAD is the PR merge commit; HEAD^1 is the base tip.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,16 +56,22 @@ jobs:
           if [ "$EVENT_NAME" != "pull_request" ]; then
             echo "Event $EVENT_NAME: always run everything."
             echo "code=true" >> "$GITHUB_OUTPUT"
+            echo "crates=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           code=false
+          crates=false
           while IFS= read -r path; do
             [ -z "$path" ] && continue
+            case "$path" in
+              crates/*|Cargo.toml|Cargo.lock|rust-toolchain.toml) crates=true ;;
+            esac
             case "$path" in
               crates/*|templates/*|examples/*|docs/contract.md|README.md) echo "code: $path"; code=true ;;
               *.md|docs/*|tickets/*|.claude/*) echo "docs: $path" ;;
               *) echo "code: $path"; code=true ;;
             esac
           done < <(git diff --name-only --no-renames HEAD^1 HEAD)
-          echo "code=$code"
+          echo "code=$code crates=$crates"
           echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "crates=$crates" >> "$GITHUB_OUTPUT"
