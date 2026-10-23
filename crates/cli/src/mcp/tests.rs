@@ -57,7 +57,16 @@ fn the_tools_that_run_the_game_take_a_project() {
     assert_eq!(
         takes,
         [
-            "check", "lint", "run", "scene", "replay", "bots", "playtest", "import", "bake"
+            "check",
+            "lint",
+            "run",
+            "scene",
+            "replay",
+            "bots",
+            "playtest",
+            "autobalance",
+            "import",
+            "bake"
         ]
     );
     assert!(!takes_project(Op::Scene, true));

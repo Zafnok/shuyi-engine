@@ -18,8 +18,8 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, bake, bots, check, doctor, explain, import, lint, new, playtest, replay, run,
-    schemas,
+    Answer, Op, autobalance, bake, bots, check, doctor, explain, import, lint, new, playtest,
+    replay, run, schemas,
 };
 use crate::game::GameTools;
 use crate::project::Project;
@@ -230,7 +230,15 @@ pub fn lint(project: &Project, args: &[String], cargo: &dyn lint::Cargo) -> u8 {
 pub fn runs_the_game(name: &str) -> bool {
     matches!(
         name,
-        "check" | "run" | "scene" | "replay" | "bots" | "playtest" | "import" | "bake"
+        "check"
+            | "run"
+            | "scene"
+            | "replay"
+            | "bots"
+            | "playtest"
+            | "autobalance"
+            | "import"
+            | "bake"
     )
 }
 
@@ -298,6 +306,19 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
             }
             Err(e) => wrong(json, Op::Playtest, &e, &playtest::usage(command, options)),
         },
+        "autobalance" => match autobalance::parse_args(&args, options) {
+            Ok(input) => print(
+                json,
+                &autobalance::autobalance(game, &input),
+                autobalance::text,
+            ),
+            Err(e) => wrong(
+                json,
+                Op::Autobalance,
+                &e,
+                &autobalance::usage(command, options),
+            ),
+        },
         _ => import(json, &args, &game.importers(), &project.root, None, command),
     }
 }
@@ -360,7 +381,15 @@ mod tests {
     #[test]
     fn the_ops_that_run_the_game_are_named() {
         for op in [
-            "check", "run", "scene", "replay", "bots", "playtest", "import", "bake",
+            "check",
+            "run",
+            "scene",
+            "replay",
+            "bots",
+            "playtest",
+            "autobalance",
+            "import",
+            "bake",
         ] {
             assert!(runs_the_game(op), "{op}");
         }
@@ -413,6 +442,10 @@ mod tests {
             code(&["playtest", "--report", "no/such/r.json", "--json"]),
             1
         );
+        assert_eq!(code(&["autobalance", "--tries", "10", "--quick", "10"]), 0);
+        assert_eq!(code(&["autobalance", "--tries", "10", "--budget", "2"]), 1);
+        assert_eq!(code(&["autobalance", "3"]), 2);
+        assert_eq!(code(&["autobalance", "--quick", "0", "--json"]), 2);
         assert_eq!(code(&["import", "a.ron"]), 1);
         assert_eq!(code(&["import"]), 2);
         // A scene that isn't there fails the op, not its arguments.
@@ -559,7 +592,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 38);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 40);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2532"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2541 — `shuyi autobalance`
@@ -122,17 +122,17 @@ gives the server an `autobalance` tool with no other change. Check that
 
 ## Acceptance criteria
 
-- [ ] 2127's tests pass unchanged; `autobalance_by` with a fake
+- [x] 2127's tests pass unchanged; `autobalance_by` with a fake
       evaluator gives the same `Balanced` as `autobalance`.
-- [ ] `shuyi autobalance` on hello-grid finds a change set and prints
+- [x] `shuyi autobalance` on hello-grid finds a change set and prints
       it; the same with `--threads 1` and `--threads 4`.
-- [ ] `--budget 3` stops with `Stop::Budget`; `--time 0` stops before the
+- [x] `--budget 3` stops with `Stop::Budget`; `--time 0` stops before the
       second evaluation with `Stop::Stopped`, keeping the best setting.
-- [ ] `--apply` calls the plan's `write` with the changed stage (fake
+- [x] `--apply` calls the plan's `write` with the changed stage (fake
       game test); without it, nothing is written.
-- [ ] The JSON answer matches its schema; the contract's schema test
+- [x] The JSON answer matches its schema; the contract's schema test
       passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -142,5 +142,56 @@ gives the server an `autobalance` tool with no other change. Check that
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.**
+- Core (`bots/balance.rs`): `autobalance_by(stage, knobs, settings,
+  evaluate, should_stop)`. The search is now generic over the two closures.
+  `autobalance` is `autobalance_by` with `playtest::run` and `|| false`.
+  `Stop::Stopped` is new: `should_stop` is asked before each run of the
+  search, never before the stage as authored or the kept-back run of the
+  setting it ends on. So `should_stop` that is true at once gives one
+  evaluation and no change. A stop while pruning keeps `Stop::InBands`,
+  as a budget does.
+- CLI: `AutobalancePlan` and `GameTools::autobalance_plan` (`game.rs`),
+  and the `autobalance` operation (`contract/autobalance.rs`), wired into
+  the CLI, the usage, the MCP server and the host. Contract 12, with the
+  new schemas.
+- Fake game and Hello, Grid implement the plan. Hello, Grid's stage is
+  tuned by `balance.ron` (tools data beside `playtest.ron`: a foe that
+  never trips, plus `balance.rs`'s stumble band). `--apply` rewrites that
+  file, in exactly the form a test pins.
+
+**Deviations.**
+- `autobalance_by` takes no `checks`. The report `evaluate` returns
+  already holds them judged, and `distance` reads them from there.
+- The plan's shape: `AutobalancePlan` mirrors `PlaytestPlan` (title,
+  entrants, groups, defaults, checks), and its `stage` is a
+  `Box<dyn TunableStage>`, most simply a `Tunable<S>` (the stage, its
+  `Knob<S>`s, `play(&S, entrant, seed, turns)`, `write(&S)`). The CLI
+  never sees `S`: `TunableStage::search` runs `autobalance_by` inside the
+  generic impl and hands the CLI a one-try closure per evaluation, which
+  it plays on the pool and judges. This keeps the game's knobs typed
+  `Knob<Stage>`, with no `Any` and no downcasts. `--apply` is a flag of
+  `search`, because only the generic side holds the found `S`.
+- 2127's tests: every assertion is unchanged, but one test
+  (`the_prune_removes_a_change_that_isnt_needed`) built the private
+  `Search` struct by hand. It now builds it with `Search::new` and a
+  `playtest::run` closure, since the struct's fields changed.
+- `--turns` was added beside `--seed` (the `Tries` it fills has it, as
+  `playtest` does). The JSON answer has the search's `settings`,
+  `in_bands`, `written` and `seconds`.
+- 2532's helpers in `contract/playtest.rs` (`choose`, `stages`,
+  `check_tries`, `threads`, and `play` split into `checks_of` and
+  `played`) now take plain fields, so both operations share them;
+  `playtest`'s behaviour is unchanged.
+- The grid template doesn't write `autobalance_plan` (it needs knobs of
+  its own stage); `docs/contract.md` says so.
+
+**MCP.** The `autobalance` tool comes from the schemas. `apply` stays in
+it but is marked as writing files: its field says "This writes files of
+the game", and the tool's description says it "changes the project".
+
+**Game.** No API the game uses changed: `PlaytestPlan` and `GameTools`'
+other methods are as they were, and `autobalance_plan` has a default.
+The game's move onto this is game#1183, whose PR will move the pin.
+
+**Follow-ups.** None.

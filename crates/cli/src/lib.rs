@@ -1,6 +1,6 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
-//! `check`, `lint`, `run`, `scene`, `replay`, `bots`, `playtest`, `import`, `bake`,
-//! `doctor`, `explain`, each with `--json`; [`contract`]), the contract as
+//! `check`, `lint`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
+//! `import`, `bake`, `doctor`, `explain`, each with `--json`; [`contract`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
@@ -42,7 +42,10 @@ use shuyi_assets::target::TargetProfile;
 use contract::Op;
 use contract::codes;
 
-pub use game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan};
+pub use game::{
+    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
+    Tunable,
+};
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
@@ -67,6 +70,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the
                                      game's bands
+  autobalance [--stage ID] [--budget N] [--time SECONDS] [--apply]
+                                     change the stage until each named bot is in its band:
+                                     the changes, before and after; --apply writes it
   import <file> [--print]            read a file through the format registry
   bake [--target <id>] [--out <file>]
                                      bake the game's sources into one pack: sizes and times

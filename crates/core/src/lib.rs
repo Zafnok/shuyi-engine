@@ -8,10 +8,10 @@
 //! [`PlanSearch`], a playtest runner that checks how often each of
 //! several bots succeeds, [`bots::playtest`], and an autobalance search
 //! whose [`Knob`]s change a stage until each lands in its band:
-//! [`autobalance`], [`BalanceSettings`], [`Balanced`] and [`Stop`]), a
-//! hash of a state that replays compare, the version every [`save`]
-//! names, and what text and stories need below the assets: character ids
-//! and the `{token}` splitter.
+//! [`autobalance`], [`autobalance_by`], [`BalanceSettings`], [`Balanced`]
+//! and [`Stop`]), a hash of a state that replays compare, the version
+//! every [`save`] names, and what text and stories need below the assets:
+//! character ids and the `{token}` splitter.
 //!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
 //! crate sits on it and keeps its own rules, turn loop and data (game ADR-0063
@@ -37,7 +37,7 @@ pub mod turn;
 pub use bots::{
     BalanceSettings, Balanced, Bot, Determinize, Evaluate, Horizon, Knob, Order, PlanSearch,
     PlanSettings, PlayError, Playout, RandomBot, Report, Rollout, RolloutSearch, RolloutSettings,
-    Sides, Stop, TurnPlan, Unordered, autobalance, play, play_observed,
+    Sides, Stop, TurnPlan, Unordered, autobalance, autobalance_by, play, play_observed,
 };
 pub use character::CharacterId;
 pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};

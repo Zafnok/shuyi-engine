@@ -141,6 +141,11 @@
           "const": "playtest"
         },
         {
+          "description": "A stage changed until the game's named bots land in their bands.",
+          "type": "string",
+          "const": "autobalance"
+        },
+        {
           "description": "A file read through the format registry.",
           "type": "string",
           "const": "import"

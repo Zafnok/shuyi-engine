@@ -16,6 +16,7 @@
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
 //! | `bots <n>` | the engine's bots play n games: outcomes and measures | [`bots`] |
 //! | `playtest` | the game's named bots each play K tries on every core, timed and judged against its bands | [`playtest`] |
+//! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
@@ -35,6 +36,7 @@
 //! ([`schemas`]) and checked in under `crates/cli/schemas/`. A test fails
 //! when they change and [`VERSION`] doesn't.
 
+pub mod autobalance;
 pub mod bake;
 pub mod bots;
 pub mod check;
@@ -64,7 +66,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 11;
+pub const VERSION: u32 = 12;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -86,6 +88,8 @@ pub enum Op {
     Bots,
     /// Named bots' tries judged against the game's checks.
     Playtest,
+    /// A stage changed until the game's named bots land in their bands.
+    Autobalance,
     /// A file read through the format registry.
     Import,
     /// The game's sources baked into a pack.
@@ -111,7 +115,7 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 12] = [
+    pub const ALL: [Op; 13] = [
         Op::New,
         Op::Check,
         Op::Lint,
@@ -120,6 +124,7 @@ impl Op {
         Op::Replay,
         Op::Bots,
         Op::Playtest,
+        Op::Autobalance,
         Op::Import,
         Op::Bake,
         Op::Doctor,
@@ -149,6 +154,7 @@ impl Op {
             Op::Replay => "replay",
             Op::Bots => "bots",
             Op::Playtest => "playtest",
+            Op::Autobalance => "autobalance",
             Op::Import => "import",
             Op::Bake => "bake",
             Op::Doctor => "doctor",
@@ -399,6 +405,9 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(name),
         (Op::Bots, _) => pair::<bots::BotsInput, bots::BotsOutput>(name),
         (Op::Playtest, _) => pair::<playtest::PlaytestInput, Vec<playtest::PlaytestOutput>>(name),
+        (Op::Autobalance, _) => {
+            pair::<autobalance::AutobalanceInput, autobalance::AutobalanceOutput>(name)
+        }
         (Op::Import, _) => pair::<import::ImportInput, import::ImportOutput>(name),
         (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(name),
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(name),

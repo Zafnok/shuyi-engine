@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AutobalanceInput",
+  "description": "What `autobalance` searches. A number left out is the default: the\ngame's for the tries ([`GameTools::playtest_defaults`]), the engine's\nfor the rest.",
+  "type": "object",
+  "properties": {
+    "apply": {
+      "description": "Have the game write the changed stage to its files. This writes\nfiles of the game.",
+      "type": "boolean",
+      "default": false
+    },
+    "budget": {
+      "description": "The most evaluations (each a run of every entrant's tries), the\nstage as authored's among them: 100 if left out.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "entrants": {
+      "description": "The entrants that play, by name or by a group's name; the game's\ndefault ones if empty.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
+    },
+    "quick": {
+      "description": "The tries of each entrant in the search's own runs, from the same\nfirst seed: a fifth of `tries` (at least 1) if left out.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "seed": {
+      "description": "The first try's seed; each next try takes the next.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "default": null,
+      "minimum": 0
+    },
+    "stage": {
+      "description": "The stage, one of the game's; needed when it has several.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "start": {
+      "description": "The game's own options, in the order given.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/GameArg"
+      }
+    },
+    "threads": {
+      "description": "The threads to play on; one a core if left out. What it finds never\ndepends on it.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "time": {
+      "description": "Stop the search after this many seconds, with the best setting\nseen (whose run at `tries` still follows); no limit if left out.\nWhat it finds then depends on the machine.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "default": null,
+      "minimum": 0
+    },
+    "tries": {
+      "description": "How many tries of each entrant decide whether a stage is in its\nbands: the stage as authored and the one found play this many.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
+    "turns": {
+      "description": "The turn a try stops at if it hasn't ended.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "GameArg": {
+      "description": "A game option as given.",
+      "type": "object",
+      "properties": {
+        "flag": {
+          "description": "Its flag.",
+          "type": "string"
+        },
+        "value": {
+          "description": "Its value, if it takes one.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "flag"
+      ]
+    }
+  }
+}

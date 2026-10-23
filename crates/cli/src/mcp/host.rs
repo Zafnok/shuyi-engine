@@ -25,7 +25,8 @@ use crate::contract::import::Importers;
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::Session;
 use crate::contract::{
-    Answer, Op, bake, bots, check, doctor, explain, import, lint, new, playtest, replay,
+    Answer, Op, autobalance, bake, bots, check, doctor, explain, import, lint, new, playtest,
+    replay,
 };
 use crate::frame_png::MAX_SCALE;
 use crate::game::{GameArg, GameTools, code_of};
@@ -177,6 +178,9 @@ pub fn one_off(
         Op::Bots => needs(&|game, _| answered(op, input.clone(), |i| bots::bots(game, &i))),
         Op::Playtest => {
             needs(&|game, _| answered(op, input.clone(), |i| playtest::playtest(game, &i)))
+        }
+        Op::Autobalance => {
+            needs(&|game, _| answered(op, input.clone(), |i| autobalance::autobalance(game, &i)))
         }
         Op::Bake => needs(&|game, p| answered(op, input.clone(), |i| bake::bake(game, p, &i))),
         Op::Start | Op::Step | Op::FramePng | Op::Events | Op::Reset | Op::Stop => failed(

@@ -22,6 +22,7 @@ is another way to reach them.
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
 | `playtest [--stage <id> \| --every-stage] [--entrant <name>]... [--tries N] [--seed N] [--turns N] [--threads N] [--report <file>]` | Each of the game's named bots (its entrants) plays N tries from the same seeds; the game's checks say per bot whether it succeeded as often as its band wants (✓, ✗ too hard, ⚠ too easy) and compare medians between bots. The tries run on every core (`--threads`), each timed: every entrant's answer has its seconds per try, the one number that changes with the machine. The report never depends on the thread count. `--stage` picks one of the game's stages (needed when it has several), `--every-stage` plays each in turn, a report each; `--entrant` picks entrants or a group of them (the game's choice by default, all of them if it has none); a number not given is the game's default (100 tries from seed 0, to turn 200, unless it says). `--report` also writes the JSON answer to a file. It fails only when a bot falls under a check's floor | the game |
+| `autobalance [--stage <id>] [--entrant <name>]... [--tries N] [--quick N] [--budget N] [--time <seconds>] [--seed N] [--turns N] [--threads N] [--apply]` | The game's knobs change one of its stages, never its bots, until each of its entrants succeeds as often as its checks' bands want (`shuyi_core::autobalance_by`): the smallest change the search finds, each in the knob's own words, why it stopped, and the reports before and after. The stage as authored and the one found play `--tries` tries; the search's own runs play `--quick` (a fifth of them). Each setting's tries run on every core and are judged once in seed order, so what it finds never depends on `--threads`. It stops at `--budget` evaluations (100) or, with `--time`, after that many seconds, with the best setting seen: a limit says so, since that depends on the machine. `--apply` has the game write the changed stage to its files, and the answer lists them. It fails while a rate is outside its band | the game |
 | `import <file> [--kind K] [--print]` | Reads a file through the format registry as every kind that knows it, or gives its errors | the game's kinds, or the engine's |
 | `bake [--target <id>] [--out <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors | the game |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker on the Windows GNU toolchain, and the web target, and says how to fix each | nothing |
@@ -32,8 +33,8 @@ A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
 released in turn), `--pad "South"` (controller buttons, by position) or
 `--wait 0.5` (seconds). Key and button names are the Harness's test-script
 names. The game's own start options (`frame-png --help` lists them, such
-as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots` and
-`playtest` too.
+as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots`,
+`playtest` and `autobalance` too.
 
 From a game's folder, `cargo shuyi <op>` runs them (the alias the
 templates write in `.cargo/config.toml`, or the engine's for its own
@@ -45,7 +46,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 11,
+  "contract": 12,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -226,12 +227,14 @@ doesn't offer it:
 | `replay` | `replay` | its record parsed, and `replay::turns(file, first_state, &commands)` |
 | `bots` | `bots` | each play by `shuyi_core::play`, summed up by `bots::tally` |
 | `playtest_plan`, `playtest_stages`, `playtest_defaults` | `playtest` | a `PlaytestPlan` for a stage: a title, its entrants by name (each with a label, a mode, if it has one), named groups of them (`"all"`), the default ones, its checks over the entrants that play (a data file of `shuyi_core::bots::playtest::Check`s, or a `playtest::Targets` file by tier whose `checks` gives a stage's, keeping those whose `Check::entrants` all play), and a `Sync` function playing one try of one entrant from one seed, most simply `playtest::play_tries` over that seed; its stages' ids, if it has several; and its own default tries, seed and turn limit, if not the engine's |
+| `autobalance_plan` | `autobalance` | an `AutobalancePlan` for a stage: a title, its entrants, groups, default entrants and checks as its `PlaytestPlan` has them, and the stage it may change, a boxed `Tunable` over the game's own stage type `S`: the stage as authored, its knobs (`shuyi_core::Knob<S>`, in the order the search tries them), a `Sync` function playing one try of one entrant from one seed on a given stage (most simply `playtest::play_tries` over that seed), and one writing a changed stage to the game's files, giving the files it wrote. Its stages and tries are `playtest`'s |
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
 | `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 
 Hello, Grid's `src/tools.rs` writes every one. The grid template's
-`crates/game/src/tools.rs` writes every one but `bake`: a new game ships
-its loose files until it chooses a pack.
+`crates/game/src/tools.rs` writes every one but `bake`, which a new game
+leaves out until it chooses a pack, and `autobalance_plan`, which needs
+knobs of its own stage.
 
 A state hash is `shuyi_core::state_hash`, over any `Serialize` state: the
 same on every platform and every run, if the state's maps are ordered.

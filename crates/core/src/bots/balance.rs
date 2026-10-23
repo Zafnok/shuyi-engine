@@ -2,7 +2,9 @@
 //! a time (one more enemy, a weaker trap, a later ambush), the
 //! [`playtest`] runner replays it with the bots, and the search stops when
 //! every rate check is inside its band. [`autobalance`] does it all and
-//! says what it changed, in the knobs' own words.
+//! says what it changed, in the knobs' own words. [`autobalance_by`] is
+//! the same search with the caller playing each setting (on threads of
+//! its own) and saying when to stop (a time limit).
 //!
 //! **The bots never change.** Only the stage does: the search takes the
 //! entrants and the checks as they are and has no way to reach their
@@ -101,8 +103,9 @@ pub fn distance(report: &PlaytestReport) -> u64 {
 pub enum Stop {
     /// The stage as authored was in every band: nothing changed.
     AlreadyInBands,
-    /// The change set puts every rate in its band. If the budget ran out
-    /// while it was being pruned, it may be larger than it had to be.
+    /// The change set puts every rate in its band. If the budget ran out,
+    /// or the caller said to stop, while it was being pruned, it may be
+    /// larger than it had to be.
     InBands,
     /// No knob's step brought the stage any nearer its bands: the change
     /// set is the nearest the search came.
@@ -110,6 +113,9 @@ pub enum Stop {
     /// The budget of evaluations ran out first: the change set is the
     /// best setting seen.
     Budget,
+    /// The caller said to stop ([`autobalance_by`]'s `should_stop`, such
+    /// as the tools' time limit): the change set is the best setting seen.
+    Stopped,
 }
 
 impl fmt::Display for Stop {
@@ -119,6 +125,7 @@ impl fmt::Display for Stop {
             Stop::InBands => "in every band",
             Stop::Stuck => "stuck: no knob brings it nearer its bands",
             Stop::Budget => "out of evaluations: the best setting seen",
+            Stop::Stopped => "stopped: the best setting seen",
         })
     }
 }
@@ -173,8 +180,9 @@ enum Eval {
     Distance(u64),
     /// A knob can't apply there.
     Inapplicable,
-    /// The budget doesn't allow the run.
-    Budget,
+    /// The search may run nothing more: [`Stop::Budget`] or
+    /// [`Stop::Stopped`].
+    Ended(Stop),
 }
 
 /// What a round over the knobs found.
@@ -183,17 +191,23 @@ enum Move {
     Better(u64),
     /// No step lowers it.
     None,
-    /// The budget ran out.
-    Budget,
+    /// The search may run nothing more: [`Stop::Budget`] or
+    /// [`Stop::Stopped`].
+    Ended(Stop),
 }
 
 /// A search in progress: what it was given, and every run it made.
-struct Search<'a, S, R: Sides> {
+struct Search<'a, S, F, G> {
     stage: &'a S,
     knobs: &'a [&'a dyn Knob<S>],
-    entrants: &'a [&'a dyn Entrant<S, R>],
-    checks: &'a [Check],
     settings: &'a BalanceSettings,
+    /// Plays a setting: [`autobalance_by`]'s `evaluate`.
+    evaluate: F,
+    /// Whether to stop before the next run: [`autobalance_by`]'s
+    /// `should_stop`.
+    should_stop: G,
+    /// Whether `should_stop` has said so.
+    stopped: bool,
     /// The distance of every setting run, by its steps and try count.
     distances: BTreeMap<(Vec<i32>, u32), u64>,
     /// The report of every setting run at the full try count.
@@ -202,11 +216,32 @@ struct Search<'a, S, R: Sides> {
     used: u32,
 }
 
-impl<S: Clone, R: Sides> Search<'_, S, R>
+impl<'a, S: Clone, E, F, G> Search<'a, S, F, G>
 where
-    R::Command: Clone,
-    R::Outcome: fmt::Debug,
+    F: FnMut(&S, &Tries) -> Result<PlaytestReport, E>,
+    G: FnMut() -> bool,
 {
+    /// A search of `stage` by `knobs` that has made no run yet.
+    fn new(
+        stage: &'a S,
+        knobs: &'a [&'a dyn Knob<S>],
+        settings: &'a BalanceSettings,
+        evaluate: F,
+        should_stop: G,
+    ) -> Self {
+        Self {
+            stage,
+            knobs,
+            settings,
+            evaluate,
+            should_stop,
+            stopped: false,
+            distances: BTreeMap::new(),
+            reports: BTreeMap::new(),
+            used: 0,
+        }
+    }
+
     /// The full try count.
     fn full(&self) -> u32 {
         self.settings.tries.count
@@ -234,10 +269,23 @@ where
         d
     }
 
+    /// Plays `stage`, the setting `point`, at `count` tries, and records
+    /// it.
+    fn run(&mut self, point: &[i32], count: u32, stage: &S) -> Result<u64, E> {
+        let tries = Tries {
+            count,
+            ..self.settings.tries
+        };
+        let report = (self.evaluate)(stage, &tries)?;
+        self.used += 1;
+        Ok(self.record(point, count, report))
+    }
+
     /// The distance of `point` at `count` tries, run unless it was run
     /// before. A run at fewer tries than the full count keeps one
-    /// evaluation back, for the full run of the setting it ends on.
-    fn eval(&mut self, point: &[i32], count: u32) -> Result<Eval, PlaytestError<R>> {
+    /// evaluation back, for the full run of the setting it ends on. Once
+    /// `should_stop` says so, it runs nothing more.
+    fn eval(&mut self, point: &[i32], count: u32) -> Result<Eval, E> {
         if let Some(&d) = self.distances.get(&(point.to_vec(), count)) {
             return Ok(Eval::Distance(d));
         }
@@ -246,19 +294,17 @@ where
         };
         let kept = u32::from(count != self.full());
         if self.used.saturating_add(kept) >= self.settings.evaluations {
-            return Ok(Eval::Budget);
+            return Ok(Eval::Ended(Stop::Budget));
         }
-        let tries = Tries {
-            count,
-            ..self.settings.tries
-        };
-        let report = playtest::run(&stage, self.entrants, &tries, self.checks)?;
-        self.used += 1;
-        Ok(Eval::Distance(self.record(point, count, report)))
+        self.stopped = self.stopped || (self.should_stop)();
+        if self.stopped {
+            return Ok(Eval::Ended(Stop::Stopped));
+        }
+        Ok(Eval::Distance(self.run(point, count, &stage)?))
     }
 
     /// Whether `point` is in every band at the full try count.
-    fn in_bands(&mut self, point: &[i32]) -> Result<bool, PlaytestError<R>> {
+    fn in_bands(&mut self, point: &[i32]) -> Result<bool, E> {
         let full = self.full();
         Ok(matches!(self.eval(point, full)?, Eval::Distance(0)))
     }
@@ -272,7 +318,7 @@ where
         strides: &[i32],
         count: u32,
         here: u64,
-    ) -> Result<Move, PlaytestError<R>> {
+    ) -> Result<Move, E> {
         let knobs = self.knobs;
         for ((k, knob), &stride) in knobs.iter().enumerate().zip(strides) {
             let range = knob.range();
@@ -293,7 +339,7 @@ where
                         *point = next;
                         return Ok(Move::Better(d));
                     }
-                    Eval::Budget => return Ok(Move::Budget),
+                    Eval::Ended(stop) => return Ok(Move::Ended(stop)),
                     Eval::Distance(_) | Eval::Inapplicable => {}
                 }
             }
@@ -310,7 +356,7 @@ where
     /// `level`). A move lowers the distance, so a pass makes at most one
     /// move per evaluation; the passes and the moves are bounded loops,
     /// so the search ends whatever its comparisons say.
-    fn pattern(&mut self) -> Result<(Vec<i32>, Stop), PlaytestError<R>> {
+    fn pattern(&mut self) -> Result<(Vec<i32>, Stop), E> {
         let full = self.full();
         let mut count = self.settings.quick;
         let mut point = vec![0; self.knobs.len()];
@@ -319,8 +365,10 @@ where
             .iter()
             .map(|k| i32::try_from(k.stride()).unwrap_or(i32::MAX))
             .collect();
-        let Eval::Distance(mut here) = self.eval(&point, count)? else {
-            return Ok((point, Stop::Budget));
+        let mut here = match self.eval(&point, count)? {
+            Eval::Distance(d) => d,
+            Eval::Ended(stop) => return Ok((point, stop)),
+            Eval::Inapplicable => return Ok((point, Stop::Budget)),
         };
         for level in 0..u32::BITS {
             let strides: Vec<i32> = bases.iter().map(|&b| (b >> level).max(1)).collect();
@@ -332,13 +380,14 @@ where
                             count = full;
                             here = d;
                         }
-                        Eval::Inapplicable | Eval::Budget => return Ok((point, Stop::Budget)),
+                        Eval::Ended(stop) => return Ok((point, stop)),
+                        Eval::Inapplicable => return Ok((point, Stop::Budget)),
                     }
                 }
                 match self.round(&mut point, &strides, count, here)? {
                     Move::Better(d) => here = d,
                     Move::None => break,
-                    Move::Budget => return Ok((point, Stop::Budget)),
+                    Move::Ended(stop) => return Ok((point, stop)),
                 }
             }
             if strides.iter().all(|&s| s == 1) {
@@ -351,7 +400,7 @@ where
     /// `point`, in every band at the full count, with each changed knob
     /// in order tried at 0, then nearer 0 one step at a time, keeping
     /// each change that stays in every band.
-    fn prune(&mut self, mut point: Vec<i32>) -> Result<Vec<i32>, PlaytestError<R>> {
+    fn prune(&mut self, mut point: Vec<i32>) -> Result<Vec<i32>, E> {
         for k in 0..point.len() {
             let step = point[k];
             let mut trial = point.clone();
@@ -371,6 +420,22 @@ where
         Ok(point)
     }
 
+    /// The distance of `point` at the full count, or `None` if a knob
+    /// can't apply there: the run kept back for the setting the search
+    /// ends on, which a stop doesn't stop. A setting the search ends on
+    /// was either run in full already or run at fewer tries, which kept
+    /// this evaluation back, so it never goes over the budget.
+    fn last(&mut self, point: &[i32]) -> Result<Option<u64>, E> {
+        let full = self.full();
+        if let Some(&d) = self.distances.get(&(point.to_vec(), full)) {
+            return Ok(Some(d));
+        }
+        match self.build(point) {
+            Some(stage) => Ok(Some(self.run(point, full, &stage)?)),
+            None => Ok(None),
+        }
+    }
+
     /// What the search found, ending on `point`. A setting no nearer its
     /// bands at the full count than the stage as authored is dropped.
     fn finish(
@@ -378,11 +443,10 @@ where
         point: &[i32],
         before: PlaytestReport,
         stop: Stop,
-    ) -> Result<Balanced<S>, PlaytestError<R>> {
-        let full = self.full();
+    ) -> Result<Balanced<S>, E> {
         let origin = vec![0; self.knobs.len()];
-        let found = match self.eval(point, full)? {
-            Eval::Distance(d) if d < distance(&before) => self
+        let found = match self.last(point)? {
+            Some(d) if d < distance(&before) => self
                 .build(point)
                 .zip(self.reports.get(point).cloned())
                 .map(|(stage, after)| (point.to_vec(), stage, after)),
@@ -443,6 +507,9 @@ where
 ///
 /// A check naming an entrant not in the run fails before any try is
 /// played; a refused command stops the search.
+///
+/// It is [`autobalance_by`], each setting played by [`playtest::run`],
+/// never told to stop.
 pub fn autobalance<S: Clone, R: Sides>(
     stage: &S,
     knobs: &[&dyn Knob<S>],
@@ -454,19 +521,41 @@ where
     R::Command: Clone,
     R::Outcome: fmt::Debug,
 {
-    let mut search = Search {
+    autobalance_by(
         stage,
         knobs,
-        entrants,
-        checks,
         settings,
-        distances: BTreeMap::new(),
-        reports: BTreeMap::new(),
-        used: 0,
-    };
-    let before = playtest::run(stage, entrants, &settings.tries, checks)?;
-    search.used = 1;
+        |stage, tries| playtest::run(stage, entrants, tries, checks),
+        || false,
+    )
+}
+
+/// [`autobalance`]'s search, each setting played by `evaluate`: the
+/// report of the stage it is given, played as the [`Tries`] it is given
+/// say, its checks judged (a caller with threads plays the seeds on them
+/// and [`playtest::judge`]s them once). Its first error stops the search.
+///
+/// Before each run of the search, `should_stop` is asked whether to stop
+/// (a caller's clock: the core reads none). Once it says so, the search
+/// stops ([`Stop::Stopped`]) with the best setting seen, kept back one
+/// evaluation as for [`Stop::Budget`]: the stage as authored and the
+/// setting it ends on are always played at `settings.tries`, so a search
+/// told to stop at once makes the one run of the stage as authored.
+///
+/// Given the same reports from `evaluate` and the same answers from
+/// `should_stop`, it makes the same runs in the same order and finds the
+/// same changes.
+pub fn autobalance_by<S: Clone, E>(
+    stage: &S,
+    knobs: &[&dyn Knob<S>],
+    settings: &BalanceSettings,
+    evaluate: impl FnMut(&S, &Tries) -> Result<PlaytestReport, E>,
+    should_stop: impl FnMut() -> bool,
+) -> Result<Balanced<S>, E> {
+    let mut search = Search::new(stage, knobs, settings, evaluate, should_stop);
     let origin = vec![0; knobs.len()];
+    let before = (search.evaluate)(stage, &settings.tries)?;
+    search.used = 1;
     let (point, stop) = if search.record(&origin, settings.tries.count, before.clone()) == 0 {
         (origin, Stop::AlreadyInBands)
     } else {

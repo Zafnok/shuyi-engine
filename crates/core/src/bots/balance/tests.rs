@@ -11,7 +11,8 @@ use proptest::prelude::*;
 
 use super::*;
 use crate::bots::playtest::{
-    Band, Condition, Judged, Measure, Measures, MedianVerdict, RateVerdict, UnknownEntrant, Want,
+    Band, Condition, Judged, Measure, Measures, MedianVerdict, RateVerdict, Tried, UnknownEntrant,
+    Want, judge,
 };
 use crate::bots::{Bot, Report};
 use crate::turn::TurnRules;
@@ -370,16 +371,13 @@ fn the_prune_removes_a_change_that_isnt_needed() {
     let knobs: [&dyn Knob<i32>; 2] = [&idle, &target];
     let entrants: [&dyn Entrant<i32, CoinRace>; 1] = [&Counter];
     let checks = band(60, 70);
-    let mut search = Search {
-        stage: &9,
-        knobs: &knobs,
-        entrants: &entrants,
-        checks: &checks,
-        settings: &SETTINGS,
-        distances: BTreeMap::new(),
-        reports: BTreeMap::new(),
-        used: 0,
-    };
+    let mut search = Search::new(
+        &9,
+        &knobs,
+        &SETTINGS,
+        |stage: &i32, tries: &Tries| playtest::run(stage, &entrants, tries, &checks),
+        || false,
+    );
     // The idle knob at +2 with target 3 (70%): the idle knob goes, and the
     // target goes to 4 (60%).
     assert_eq!(search.prune(vec![2, -6]).unwrap(), [0, -5]);
@@ -409,6 +407,182 @@ fn a_check_naming_no_entrant_fails_before_any_try() {
         error,
         PlaytestError::UnknownEntrant(UnknownEntrant { check: 0, .. })
     ));
+}
+
+/// The coin race's search by [`autobalance_by`], each setting played by
+/// the runner and never told to stop: what it found, and the try counts
+/// of the runs it asked for, in turn.
+fn search_by(target: i32, knob: &Target, settings: &BalanceSettings) -> (Balanced<i32>, Vec<u32>) {
+    let checks = band(60, 70);
+    let asked = RefCell::new(Vec::new());
+    let found = autobalance_by(
+        &target,
+        &[knob],
+        settings,
+        |stage: &i32, tries: &Tries| {
+            asked.borrow_mut().push(tries.count);
+            playtest::run(stage, &[&Counter], tries, &checks)
+        },
+        || false,
+    )
+    .unwrap();
+    (found, asked.into_inner())
+}
+
+#[test]
+fn by_the_runner_it_finds_what_autobalance_finds() {
+    for settings in [
+        SETTINGS,
+        BalanceSettings {
+            evaluations: 4,
+            ..SETTINGS
+        },
+    ] {
+        let (found, asked) = search_by(9, &Target::new(-9..=0, 2), &settings);
+        let want = search(9, &[&Target::new(-9..=0, 2)], &band(60, 70), &settings);
+        assert_eq!(found, want);
+        // One run a call, the stage as authored first, in full.
+        assert_eq!(asked.len(), usize::try_from(found.evaluations).unwrap());
+        assert_eq!(asked[0], 100);
+    }
+    // Before, the quick runs of 0, -2, -4 and -6, then -6, -5 and -4 in
+    // full.
+    let (_, asked) = search_by(9, &Target::new(-9..=0, 2), &SETTINGS);
+    assert_eq!(asked, [100, 10, 10, 10, 10, 100, 100, 100]);
+}
+
+/// The coin race's report of `target` at `tries`, made up without a game:
+/// the try of seed `s` is won when `s % 10` reaches the target.
+fn made_up(target: i32, tries: &Tries, checks: &[Check]) -> Result<PlaytestReport, UnknownEntrant> {
+    let played = tries
+        .seeds()
+        .map(|seed| Tried {
+            seed,
+            outcome: None,
+            turns: 1,
+            measures: [(
+                "won".to_string(),
+                i64::from(i32::try_from(seed % 10).unwrap() >= target),
+            )]
+            .into(),
+        })
+        .collect();
+    judge(vec![("counter".to_string(), played)], checks)
+}
+
+#[test]
+fn a_made_up_evaluator_steers_the_search_as_the_runner_does() {
+    let checks = band(60, 70);
+    let knob = Target::new(-9..=0, 2);
+    let found = autobalance_by(
+        &9,
+        &[&knob],
+        &SETTINGS,
+        |&stage: &i32, tries: &Tries| made_up(stage, tries, &checks),
+        || false,
+    )
+    .unwrap();
+    let want = search(9, &[&Target::new(-9..=0, 2)], &checks, &SETTINGS);
+    assert_eq!(
+        (found.stage, &found.changes, found.stop, found.evaluations),
+        (want.stage, &want.changes, want.stop, want.evaluations)
+    );
+    assert_eq!(found.after.checks, want.after.checks);
+    assert_eq!(found.before.checks, want.before.checks);
+}
+
+#[test]
+fn the_first_error_of_the_evaluator_stops_the_search() {
+    let checks = band(60, 70);
+    let mut calls = 0;
+    let error = autobalance_by(
+        &9,
+        &[&Target::new(-9..=0, 2)],
+        &SETTINGS,
+        |&stage: &i32, tries: &Tries| {
+            calls += 1;
+            if calls == 3 {
+                return Err(format!("run {calls}"));
+            }
+            made_up(stage, tries, &checks).map_err(|e| e.to_string())
+        },
+        || false,
+    )
+    .unwrap_err();
+    assert_eq!((error.as_str(), calls), ("run 3", 3));
+}
+
+/// The coin race's search from target 9 by the runner, `should_stop`
+/// saying to stop from its `from`th question on: what it found, and how
+/// often it was asked.
+fn stopped_from(from: u32) -> (Balanced<i32>, u32) {
+    let checks = band(60, 70);
+    let knob = Target::new(-9..=0, 2);
+    let mut asked = 0;
+    let found = autobalance_by(
+        &9,
+        &[&knob],
+        &SETTINGS,
+        |stage: &i32, tries: &Tries| playtest::run(stage, &[&Counter], tries, &checks),
+        || {
+            asked += 1;
+            asked >= from
+        },
+    )
+    .unwrap();
+    (found, asked)
+}
+
+#[test]
+fn told_to_stop_at_once_it_plays_the_stage_as_authored_alone() {
+    let (found, asked) = stopped_from(1);
+    assert_eq!((found.stop, found.evaluations), (Stop::Stopped, 1));
+    assert_eq!((found.stage, found.changes.len()), (9, 0));
+    assert_eq!(found.after, found.before);
+    // Asked before the first run of the search, and never again.
+    assert_eq!(asked, 1);
+    assert!(
+        found
+            .to_string()
+            .starts_with("stopped: the best setting seen · 1 evaluations\nno change\n")
+    );
+}
+
+#[test]
+fn told_to_stop_later_it_keeps_the_best_setting_seen_and_plays_it_in_full() {
+    // Asked before the quick runs of 0 and -2, then told to stop before
+    // -4: -2, the best seen, plays in full, as with a budget of 4.
+    let (found, asked) = stopped_from(3);
+    assert_eq!((found.stop, found.evaluations), (Stop::Stopped, 4));
+    assert_eq!((found.stage, successes(&found.after)), (7, 30));
+    assert_eq!(asked, 3);
+    let budget = BalanceSettings {
+        evaluations: 4,
+        ..SETTINGS
+    };
+    let spent = search(9, &[&Target::new(-9..=0, 2)], &band(60, 70), &budget);
+    assert_eq!(
+        (found.stage, found.changes, found.after),
+        (spent.stage, spent.changes, spent.after)
+    );
+}
+
+#[test]
+fn a_stop_while_pruning_keeps_a_setting_in_every_band() {
+    // -6 is in the band in full (the fifth question); told to stop before
+    // -5, the prune keeps -6.
+    let (found, asked) = stopped_from(6);
+    assert_eq!((found.stop, found.stage), (Stop::InBands, 3));
+    assert_eq!((found.evaluations, asked), (6, 6));
+    assert_eq!(distance(&found.after), 0);
+    // Told to stop as it confirms -6 in full, it plays -6 in full all the
+    // same: the run kept back.
+    let (found, _) = stopped_from(5);
+    assert_eq!(
+        (found.stop, found.stage, found.evaluations),
+        (Stop::Stopped, 3, 6)
+    );
+    assert_eq!(successes(&found.after), 70);
 }
 
 #[test]
