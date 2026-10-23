@@ -12,8 +12,11 @@ use shuyi_assets::audio::{Bytes, Files};
 use shuyi_platform::{Card, Look, Setup, Start};
 use shuyi_ui::Game;
 
+/// The game's name, on its window.
+const NAME: &str = "{{name}}";
+
 /// The window: the console at twice its size, and a small margin.
-const WINDOW: Window = Window::new("{{name}}", 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
+const WINDOW: Window = Window::new(NAME, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
 
 /// Where the settings and key bindings are kept: never change it, or every
 /// player's are lost.

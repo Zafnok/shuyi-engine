@@ -155,6 +155,13 @@ jobs:
           cargo shuyi check --target all
           cargo shuyi check-keys
           cargo shuyi lint
+      # Ticket 2548: a long name lays out the same, so the game's own fmt
+      # gate passes whatever it is called.
+      - name: A game with a long name passes cargo fmt
+        run: |
+          cargo run -q -p shuyi-cli --locked -- new "$TEMPLATE" "$RUNNER_TEMP/long" \
+            --name "A Much Longer Game Name Than Demo, To Test" --engine-path "$GITHUB_WORKSPACE"
+          cd "$RUNNER_TEMP/long" && cargo fmt --all --check
       # `shuyi lint` (ticket 2534): one finding each, with file and line,
       # for a hash map, a float, a clock and float arithmetic in the rules,
       # a screen crate under them, a key named in a screen and a screen's
