@@ -1,10 +1,12 @@
 //! Hello, Grid played through the engine's test Harness, by its bots and
 //! through its tools: the playthrough to the win, the bots over its
-//! `TurnRules` and a playtest of them, the tool contract's operations,
+//! `TurnRules`, a playtest of them and an autobalance of its stage, the
+//! tool contract's operations,
 //! the same seed and commands giving the same game, its options and key
 //! rebinding, its profiles, its files, its look on a one-bit screen, its pack, pictures
 //! of its frames, and a sleep and a wake.
 
+mod autobalance;
 mod balance;
 mod bots;
 mod contract;

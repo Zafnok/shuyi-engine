@@ -1,7 +1,8 @@
 //! A game and a session made up for the contract's tests: each answer is
 //! what the test sets.
 
-use std::sync::Mutex;
+use std::ops::RangeInclusive;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use shuyi_assets::ContentError;
@@ -15,14 +16,19 @@ use shuyi_ui::input::KeymapDef;
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::toy::Action;
 
+use shuyi_core::Knob;
 use shuyi_core::bots::playtest::{Band, Check, Condition, Tried, Tries, Want};
 
+use super::autobalance::AutobalanceInput;
 use super::bots::{BotsInput, BotsOutput, tally};
 use super::playtest::{DEFAULT_TRIES, PlaytestInput};
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, LogEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
-use crate::game::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan};
+use crate::game::{
+    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
+    Tunable,
+};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
 /// second of waiting) and shows what it was given.
@@ -147,6 +153,12 @@ pub struct Fake {
     pub playtest: Result<FakePlaytest, String>,
     /// The inputs its playtest plans were asked for with, in turn.
     pub planned: Mutex<Vec<PlaytestInput>>,
+    /// Its autobalance, or why its plan doesn't load.
+    pub balance: Result<FakeBalance, String>,
+    /// The inputs its autobalance plans were asked for with, in turn.
+    pub balanced: Mutex<Vec<AutobalanceInput>>,
+    /// The stages its autobalance wrote, in turn.
+    pub wrote: Arc<Mutex<Vec<u32>>>,
     /// The files `bake` bakes (its names table and palette are baked), or
     /// none if it doesn't offer `bake`.
     pub sources: Option<&'static [(&'static str, &'static [u8])]>,
@@ -175,6 +187,9 @@ impl Default for Fake {
             bots: Ok(tally(Vec::new())),
             playtest: Ok(FakePlaytest::default()),
             planned: Mutex::new(Vec::new()),
+            balance: Ok(FakeBalance::default()),
+            balanced: Mutex::new(Vec::new()),
+            wrote: Arc::new(Mutex::new(Vec::new())),
             sources: Some(SOURCES),
             controls: None,
             one_bit: None,
@@ -215,6 +230,56 @@ impl Default for FakePlaytest {
             fail: None,
             sleep: Duration::ZERO,
         }
+    }
+}
+
+/// The fake's autobalance: its playtest's entrants and checks on a stage
+/// that is a number, `hard`, the try of seed `s` won when `s % 10`
+/// reaches it. Over seeds in tens, `hard` 5 or less is in the checks'
+/// band (half the tries or more won). Its knob, `ease`, lowers it a step
+/// at a time; writing a stage records it in [`Fake::wrote`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FakeBalance {
+    /// The stage as authored.
+    pub hard: u32,
+    /// Why writing fails, if it does.
+    pub write_fails: Option<&'static str>,
+    /// Whether every try reaches the turn limit unfinished (won or lost
+    /// all the same).
+    pub unfinished: bool,
+}
+
+impl Default for FakeBalance {
+    /// Hard 8: two tries in ten won.
+    fn default() -> Self {
+        Self {
+            hard: 8,
+            write_fails: None,
+            unfinished: false,
+        }
+    }
+}
+
+/// The fake's knob: a step lowers `hard` by one.
+struct Ease {
+    from: u32,
+}
+
+impl Knob<u32> for Ease {
+    fn name(&self) -> &'static str {
+        "ease"
+    }
+
+    fn range(&self) -> RangeInclusive<i32> {
+        -i32::try_from(self.from).unwrap_or(0)..=0
+    }
+
+    fn apply(&self, hard: &u32, step: i32) -> Option<u32> {
+        hard.checked_add_signed(step)
+    }
+
+    fn describe(&self, step: i32) -> String {
+        format!("{} easier", step.unsigned_abs())
     }
 }
 
@@ -346,6 +411,55 @@ impl GameTools for Fake {
                     turns,
                     measures: [("won".to_owned(), won), ("turns".to_owned(), turns.into())].into(),
                 })
+            }),
+        })
+    }
+
+    fn autobalance_plan(
+        &self,
+        stage: Option<&str>,
+        input: &AutobalanceInput,
+    ) -> Result<AutobalancePlan, String> {
+        if let Ok(mut balanced) = self.balanced.lock() {
+            balanced.push(input.clone());
+        }
+        let fake = self.balance.clone()?;
+        let (wrote, unfinished, fails) =
+            (Arc::clone(&self.wrote), fake.unfinished, fake.write_fails);
+        Ok(AutobalancePlan {
+            title: format!("the fake on {}", stage.unwrap_or("its stage")),
+            entrants: vec![
+                ("walk".to_owned(), None),
+                ("run".to_owned(), Some("fast".to_owned())),
+            ],
+            groups: [("all".to_owned(), vec!["walk".to_owned(), "run".to_owned()])].into(),
+            default_entrants: Vec::new(),
+            checks: Box::new(fake_checks),
+            stage: Box::new(Tunable {
+                stage: fake.hard,
+                knobs: vec![Box::new(Ease { from: fake.hard })],
+                play: Box::new(move |&hard, entrant, seed, turns| {
+                    // `run` ends a turn sooner than `walk`.
+                    let turns = turns.saturating_sub(u32::try_from(entrant).unwrap_or(0));
+                    let won = i64::from(seed % 10 >= u64::from(hard));
+                    let outcome = if won == 1 { "Won" } else { "Lost" };
+                    Ok(Tried {
+                        seed,
+                        outcome: (!unfinished).then(|| outcome.to_owned()),
+                        turns,
+                        measures: [("won".to_owned(), won), ("turns".to_owned(), turns.into())]
+                            .into(),
+                    })
+                }),
+                write: Box::new(move |&hard| {
+                    if let Some(e) = fails {
+                        return Err(e.to_owned());
+                    }
+                    if let Ok(mut wrote) = wrote.lock() {
+                        wrote.push(hard);
+                    }
+                    Ok(vec!["stage.ron".to_owned()])
+                }),
             }),
         })
     }

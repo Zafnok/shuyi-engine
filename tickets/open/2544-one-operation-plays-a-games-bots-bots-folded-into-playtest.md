@@ -106,10 +106,11 @@ None.
 - 2527's soak, which reads its input from what is here when it lands;
 - the game's use of `playtest` (game#1180).
 
-**Either order with 2541:** if 2541 is done, `shuyi autobalance` plays
-its tries through the same plan: move it onto the plan as this ticket
-leaves it, with its answer and its tests unchanged; if not, 2541 builds
-on the plan as it is then.
+**`shuyi autobalance` (2541, done)** plays its tries through the same
+helpers (`contract::playtest`'s `choose`, `checks_of` and `played`) and
+an `AutobalancePlan` whose entrants and checks mirror the
+`PlaytestPlan`'s: move it onto the plan as this ticket leaves it, with
+its answer and its tests unchanged.
 
 ## Implementation steps
 

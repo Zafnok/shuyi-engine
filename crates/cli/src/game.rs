@@ -5,7 +5,7 @@
 //! names that program ([`crate::project::GameProgram`]) and `shuyi` runs
 //! it with `cargo run` for the commands that run the game: `frame-png`,
 //! `lang-status`, and the contract's `check`, `run`, `scene`, `replay`,
-//! `bots`, `playtest`, `import` and `bake`.
+//! `bots`, `playtest`, `autobalance`, `import` and `bake`.
 
 use std::collections::BTreeMap;
 use std::process::Command;
@@ -21,8 +21,10 @@ use shuyi_assets::pack::Bake;
 use shuyi_assets::palette::PaletteDef;
 use shuyi_ui::input::fit::Controls;
 
-use shuyi_core::bots::playtest::{Check, Tried, Tries};
+use shuyi_core::bots::playtest::{Check, PlaytestReport, Tried, Tries};
+use shuyi_core::{BalanceSettings, Balanced, Knob, autobalance_by};
 
+use crate::contract::autobalance::AutobalanceInput;
 use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
@@ -128,6 +130,133 @@ pub type PlaytestChecks = Box<dyn Fn(&[&str]) -> Vec<Check> + Send + Sync>;
 /// turn it stops at.
 pub type PlayTry = Box<dyn Fn(usize, u64, u32) -> Result<Tried, String> + Send + Sync>;
 
+/// What `autobalance` searches on one of the game's stages
+/// ([`GameTools::autobalance_plan`]): who plays it and how they are judged,
+/// as a [`PlaytestPlan`] says, and the stage it may change, its type the
+/// game's ([`Tunable`]). The command picks the entrants asked for and runs
+/// the search (`shuyi_core::autobalance_by`), each setting's tries played
+/// on every core and judged once.
+pub struct AutobalancePlan {
+    /// Shown at the top of the answer: the stage and its tier, say.
+    pub title: String,
+    /// Every entrant, in report order: its name and a label (a mode), if
+    /// any.
+    pub entrants: Vec<(String, Option<String>)>,
+    /// Named groups of entrants (`"all"`), which `--entrant` takes too.
+    pub groups: BTreeMap<String, Vec<String>>,
+    /// The entrants that play when `--entrant` isn't given (all of them
+    /// if empty).
+    pub default_entrants: Vec<String>,
+    /// The checks over the entrants that play, given their names: the
+    /// bands the search lands them in.
+    pub checks: PlaytestChecks,
+    /// The stage as authored, its knobs, how a try is played on a changed
+    /// stage and how one is written: most simply a boxed [`Tunable`].
+    pub stage: Box<dyn TunableStage>,
+}
+
+/// The stage an [`AutobalancePlan`] may change, of the game's stage
+/// definition type `S`: the command never sees `S`, only what the search
+/// found ([`TunableStage`]).
+pub struct Tunable<S> {
+    /// The stage as authored.
+    pub stage: S,
+    /// What the search may change, in the order it tries them.
+    pub knobs: Vec<Box<dyn Knob<S>>>,
+    /// One try on a stage: the stage (as authored, or changed by the
+    /// knobs), the entrant at that index of the plan's entrants, the seed,
+    /// the turn it stops at. Tries run on several threads at once, in any
+    /// order; most simply [`play_tries`](shuyi_core::bots::playtest::play_tries)
+    /// over the one seed.
+    pub play: StagePlay<S>,
+    /// Writes a changed stage back to the game's files (`--apply`): the
+    /// files written, as the game shows them.
+    pub write: StageWrite<S>,
+}
+
+/// A [`Tunable`]'s one try: the stage, entrant index, seed, the turn it
+/// stops at.
+pub type StagePlay<S> = Box<dyn Fn(&S, usize, u64, u32) -> Result<Tried, String> + Send + Sync>;
+
+/// A [`Tunable`]'s writer: the files it wrote of a changed stage.
+pub type StageWrite<S> = Box<dyn Fn(&S) -> Result<Vec<String>, String>>;
+
+/// How the search has a setting played: given one try on the stage of
+/// that setting (entrant index, seed, the turn it stops at) and the tries
+/// to play, their report, judged. `autobalance` plays them on its threads.
+pub type Evaluate<'a> = dyn FnMut(
+        &(dyn Fn(usize, u64, u32) -> Result<Tried, String> + Sync),
+        &Tries,
+    ) -> Result<PlaytestReport, String>
+    + 'a;
+
+/// A [`Tunable`] of any stage type, as `autobalance` runs it.
+pub trait TunableStage {
+    /// The search over the stage (`shuyi_core::autobalance_by`) as
+    /// `settings` say, each setting played by `evaluate`, asking
+    /// `should_stop` before each run; with `apply`, the stage found is
+    /// written if it changed.
+    fn search(
+        &self,
+        settings: &BalanceSettings,
+        evaluate: &mut Evaluate<'_>,
+        should_stop: &mut dyn FnMut() -> bool,
+        apply: bool,
+    ) -> Result<Searched, String>;
+}
+
+/// What [`TunableStage::search`] found.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Searched {
+    /// The changes, the reports before and after and why it stopped; the
+    /// stage itself stays the game's.
+    pub balanced: Balanced<()>,
+    /// With `apply`: the files the game wrote (none if nothing changed),
+    /// or why it couldn't.
+    pub written: Option<Result<Vec<String>, String>>,
+}
+
+impl<S: Clone + Sync> TunableStage for Tunable<S> {
+    fn search(
+        &self,
+        settings: &BalanceSettings,
+        evaluate: &mut Evaluate<'_>,
+        should_stop: &mut dyn FnMut() -> bool,
+        apply: bool,
+    ) -> Result<Searched, String> {
+        let knobs: Vec<&dyn Knob<S>> = self.knobs.iter().map(AsRef::as_ref).collect();
+        let play = &self.play;
+        let found = autobalance_by(
+            &self.stage,
+            &knobs,
+            settings,
+            |stage, tries| {
+                let one = |e: usize, seed: u64, turns: u32| play(stage, e, seed, turns);
+                evaluate(&one, tries)
+            },
+            should_stop,
+        )?;
+        let written = apply.then(|| {
+            if found.changes.is_empty() {
+                Ok(Vec::new())
+            } else {
+                (self.write)(&found.stage)
+            }
+        });
+        Ok(Searched {
+            balanced: Balanced {
+                stage: (),
+                changes: found.changes,
+                before: found.before,
+                after: found.after,
+                stop: found.stop,
+                evaluations: found.evaluations,
+            },
+            written,
+        })
+    }
+}
+
 /// What a game gives the commands that run it. Only `frame-png`'s and
 /// `lang-status`'s parts are required; a contract operation whose part a
 /// game leaves out answers that the game's tools don't offer it.
@@ -226,6 +355,19 @@ pub trait GameTools {
     /// ([`DEFAULT_TRIES`]) unless the game has its own.
     fn playtest_defaults(&self) -> Tries {
         DEFAULT_TRIES
+    }
+
+    /// `autobalance`: the plan of `stage` (one of
+    /// [`playtest_stages`](Self::playtest_stages), `None` if there are
+    /// none), started as `input`'s game options say. Its numbers are those
+    /// the search runs with, the defaults filled in.
+    fn autobalance_plan(
+        &self,
+        stage: Option<&str>,
+        input: &AutobalanceInput,
+    ) -> Result<AutobalancePlan, String> {
+        let _ = (stage, input);
+        Err(unsupported("autobalance", "autobalance_plan"))
     }
 
     /// `import`: the kinds and formats to read a file with. The engine's
@@ -376,6 +518,14 @@ mod tests {
             .err()
             .unwrap();
         assert!(playtest.contains("GameTools::playtest_plan"));
+        let balance = Plain
+            .autobalance_plan(None, &AutobalanceInput::default())
+            .err()
+            .unwrap();
+        assert_eq!(
+            balance,
+            "the game's tools don't offer autobalance (GameTools::autobalance_plan)"
+        );
         assert!(Plain.playtest_stages().is_empty());
         assert_eq!(Plain.playtest_defaults(), DEFAULT_TRIES);
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());

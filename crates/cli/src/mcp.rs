@@ -212,6 +212,14 @@ fn description(op: Op, session: bool) -> &'static str {
              tries of a `stage` (or `every_stage`) on every core; the game's checks say per bot \
              whether it succeeded as often as its band wants, and each bot's time per try."
         }
+        (Op::Autobalance, _) => {
+            "Change a `stage` with the game's knobs, never its bots, until each of its named \
+             bots (`entrants`) succeeds as often as its checks' bands want: the smallest change \
+             the search finds, in the knobs' words, and the reports before and after. Each \
+             setting's tries run on every core; it stops at `budget` evaluations or after \
+             `time` seconds. With `apply`, the game writes the changed stage to its files: it \
+             changes the project."
+        }
         (Op::Import, _) => {
             "Read a file (from the game's folder) through the format registry as every kind \
              that knows it, or give its errors."

@@ -3,8 +3,9 @@
 //! and the tool contract's `check`, `run` and `scene` (the stage's map
 //! scene and state), `replay` (a [`StageRecord`]), `bots` (a random bot
 //! against the foe's mind), `playtest` (a random hero and a walker,
-//! [`ENTRANTS`], judged by `playtest.ron`), the knobs an autobalance search
-//! turns ([`Trip`] and [`HeadStart`]), `import` (the stage's `.map` and the
+//! [`ENTRANTS`], judged by `playtest.ron`), `autobalance` (the knobs it
+//! turns, [`Trip`] and [`HeadStart`], on the stage `balance.ron` tunes,
+//! [`autobalance_plan`]), `import` (the stage's `.map` and the
 //! keymap besides the engine's kinds), `bake` (its text baked into a
 //! pack, [`crate::bake`]), the controls `check --target` checks
 //! ([`controls`]), and its look on a one-bit target: the pattern map
@@ -14,6 +15,7 @@
 
 use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
@@ -22,6 +24,7 @@ use shuyi_assets::grid_map::{GridMap, MapText};
 use shuyi_assets::keymap::{KeymapDef, KeymapRon};
 use shuyi_assets::onebit::PatternMapDef;
 use shuyi_assets::palette::PaletteDef;
+use shuyi_cli::contract::autobalance::AutobalanceInput;
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
 use shuyi_cli::contract::playtest::PlaytestInput;
@@ -29,7 +32,10 @@ use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
-use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan};
+use shuyi_cli::{
+    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
+    Tunable,
+};
 use shuyi_core::bots::playtest::{
     self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
 };
@@ -255,6 +261,24 @@ impl GameTools for HelloTools {
             ));
         }
         playtest_plan()
+    }
+
+    /// The stage tuned as `balance.ron` says, searched as
+    /// [`autobalance_plan`] says; `--apply` writes `balance.ron` beside
+    /// `shuyi.ron`.
+    fn autobalance_plan(
+        &self,
+        _stage: Option<&str>,
+        input: &AutobalanceInput,
+    ) -> Result<AutobalancePlan, String> {
+        if let Some(option) = input.start.first() {
+            return Err(format!(
+                "autobalance takes no start option, not {}",
+                option.flag
+            ));
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).join(BALANCE_FILE);
+        autobalance_plan(path)
     }
 
     fn importers(&self) -> Importers {
@@ -620,6 +644,90 @@ pub fn knobs(tuning: Tuning) -> (Trip, HeadStart) {
     )
 }
 
+/// The autobalance's file, beside `shuyi.ron`: the tools' data, like
+/// `playtest.ron`, so not in `files/` and its pack.
+pub const BALANCE_FILE: &str = "balance.ron";
+
+/// What `balance.ron` holds: the stage the autobalance search starts from,
+/// and the bands it should land the heroes in besides `playtest.ron`'s.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Balance {
+    /// How `files/stage.map` is tuned as authored: where the search
+    /// starts, and what `--apply` writes the tuning found to.
+    pub tuning: Tuning,
+    /// The checks besides `playtest.ron`'s.
+    pub checks: Vec<Check>,
+}
+
+/// What comes before the RON in `balance.ron`.
+const BALANCE_HEADER: &str = "\
+// The autobalance's stage (`cargo shuyi autobalance`): files/stage.map
+// tuned as `tuning` says, which the search changes with the knobs of
+// `src/tools.rs`, until the heroes land in the bands of playtest.ron and
+// of `checks`. `cargo shuyi autobalance --apply` writes the tuning it
+// finds here; the game itself plays the tuning of `rules::Tuning::default`.
+";
+
+/// `balance.ron`, read.
+pub fn balance() -> Result<Balance, String> {
+    let text = include_str!("../balance.ron");
+    ron::from_str(text).map_err(|e| format!("{BALANCE_FILE}: {e}"))
+}
+
+/// `balance` as `balance.ron` holds it: its comment, then its RON.
+pub fn balance_text(balance: &Balance) -> Result<String, String> {
+    // The same file on every machine: RON's own new line is the system's.
+    let config = ron::ser::PrettyConfig::new()
+        .indentor("    ")
+        .new_line("\n");
+    let ron = ron::ser::to_string_pretty(balance, config).map_err(|e| e.to_string())?;
+    Ok(format!("{BALANCE_HEADER}{ron}\n"))
+}
+
+/// The autobalance's plan: [`ENTRANTS`] on `files/stage.map` tuned as
+/// `balance.ron` says, judged by those of [`playtest_checks`] and of its
+/// `checks` whose entrants all play, changed by [`knobs`], each try played
+/// by [`play_tries`] from its seed alone. The stage found is written to
+/// `path` with its new tuning.
+pub fn autobalance_plan(path: PathBuf) -> Result<AutobalancePlan, String> {
+    let file = balance()?;
+    let stage = Stage::with_tuning(&loaded()?.stage_map, 0, file.tuning)?;
+    let mut checks = playtest_checks()?;
+    checks.extend(file.checks.iter().cloned());
+    let (trip, head_start) = knobs(file.tuning);
+    Ok(AutobalancePlan {
+        title: format!("the stage (files/stage.map), tuned as {BALANCE_FILE} says"),
+        entrants: ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
+        groups: BTreeMap::new(),
+        default_entrants: Vec::new(),
+        checks: Box::new(move |names| {
+            checks
+                .iter()
+                .filter(|c| c.entrants().iter().all(|e| names.contains(e)))
+                .cloned()
+                .collect()
+        }),
+        stage: Box::new(Tunable {
+            stage,
+            knobs: vec![Box::new(trip), Box::new(head_start)],
+            play: Box::new(|stage, entrant, seed, turns| {
+                let mut tries = play_tries(stage, &ENTRANTS[entrant], seed..seed + 1, turns)
+                    .map_err(|e| e.to_string())?;
+                tries.pop().ok_or_else(|| "no try".to_owned())
+            }),
+            write: Box::new(move |stage: &Stage| {
+                let text = balance_text(&Balance {
+                    tuning: stage.tuning(),
+                    checks: file.checks.clone(),
+                })?;
+                std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+                Ok(vec![BALANCE_FILE.to_owned()])
+            }),
+        }),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -632,5 +740,14 @@ mod tests {
         ];
         assert_eq!(lines(&errors), "files/a.ron: bad\nfiles/b.ron: worse");
         assert_eq!(lines(&[]), "");
+    }
+
+    #[test]
+    fn balance_ron_is_as_apply_writes_it() {
+        let file = balance().unwrap();
+        assert_eq!(
+            balance_text(&file).unwrap(),
+            include_str!("../balance.ron").replace("\r\n", "\n")
+        );
     }
 }

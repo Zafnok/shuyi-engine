@@ -27,7 +27,7 @@ pub mod playtest;
 pub mod rollout;
 pub mod weigh;
 
-pub use balance::{BalanceSettings, Balanced, Knob, Stop, autobalance};
+pub use balance::{BalanceSettings, Balanced, Knob, Stop, autobalance, autobalance_by};
 pub use determinize::{Determinize, Evaluate};
 pub use plan::{PlanSearch, PlanSettings, TurnPlan};
 pub use rollout::{Horizon, Order, Playout, Rollout, RolloutSearch, RolloutSettings, Unordered};

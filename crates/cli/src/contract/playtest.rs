@@ -8,19 +8,19 @@
 //! order, so the report never depends on the thread count. The answer
 //! passes unless a rate fell under its floor.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_core::bots::playtest::{PlaytestReport, Tried, Tries, judge};
+use shuyi_core::bots::playtest::{Check, PlaytestReport, Tried, Tries, judge};
 
 use super::bots::{MAX_GAMES, game_arg, options_text};
 use super::codes::Code;
 use super::{Answer, Op, codes};
-use crate::game::{GameArg, GameOption, GameTools, PlaytestPlan, code_of};
+use crate::game::{GameArg, GameOption, GameTools, PlaytestChecks, PlaytestPlan, code_of};
 use crate::pool;
 
 /// The tries when neither the input nor the game says: 100 from seed 0,
@@ -101,20 +101,18 @@ pub struct PlaytestOutput {
 pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<PlaytestOutput>> {
     let failed = |code: Code, error: String| Answer::failed(Op::Playtest, code, error);
     let tries = input.tries(&game.playtest_defaults());
-    if tries.count == 0 || tries.count > MAX_GAMES {
-        let error = format!("tries: 1 to {MAX_GAMES}, not {}", tries.count);
-        return failed(codes::WRONG_ARGUMENTS, error);
+    if let Err(e) = check_tries(&tries) {
+        return failed(codes::WRONG_ARGUMENTS, e);
     }
-    if tries.seed.checked_add(u64::from(tries.count)).is_none() {
-        let error = "seed: too big for that many tries".to_owned();
-        return failed(codes::WRONG_ARGUMENTS, error);
-    }
-    let threads = match input.threads {
-        Some(0) => return failed(codes::WRONG_ARGUMENTS, "threads: at least 1".to_owned()),
-        Some(n) => usize::try_from(n).unwrap_or(usize::MAX),
-        None => pool::cores(),
+    let threads = match threads(input.threads) {
+        Ok(threads) => threads,
+        Err(e) => return failed(codes::WRONG_ARGUMENTS, e),
     };
-    let stages = match stages(&game.playtest_stages(), input) {
+    let stages = match stages(
+        &game.playtest_stages(),
+        input.stage.as_deref(),
+        input.every_stage,
+    ) {
         Ok(stages) => stages,
         Err(e) => return failed(codes::WRONG_ARGUMENTS, e),
     };
@@ -131,7 +129,12 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<Playt
             Ok(plan) => plan,
             Err(e) => return failed(code_of(&e), e),
         };
-        let chosen = match choose(&plan, &input.entrants) {
+        let chosen = match choose(
+            &plan.entrants,
+            &plan.groups,
+            &plan.default_entrants,
+            &input.entrants,
+        ) {
             Ok(chosen) => chosen,
             Err((code, e)) => return failed(code, e),
         };
@@ -164,16 +167,44 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<Playt
     Answer::new(Op::Playtest, ok, outputs, limits)
 }
 
-/// The stages `input` plays of the game's `stages` (`None`: the one
-/// unnamed stage), or why it names none.
-fn stages(stages: &[String], input: &PlaytestInput) -> Result<Vec<Option<String>>, String> {
+/// Whether `tries` can be played: 1 to [`MAX_GAMES`] of them, each seed
+/// a `u64`.
+pub(crate) fn check_tries(tries: &Tries) -> Result<(), String> {
+    if tries.count == 0 || tries.count > MAX_GAMES {
+        return Err(format!("tries: 1 to {MAX_GAMES}, not {}", tries.count));
+    }
+    if tries.seed.checked_add(u64::from(tries.count)).is_none() {
+        return Err("seed: too big for that many tries".to_owned());
+    }
+    Ok(())
+}
+
+/// The threads `asked` for, or one a core if `None`.
+pub(crate) fn threads(asked: Option<u32>) -> Result<usize, String> {
+    match asked {
+        Some(0) => Err("threads: at least 1".to_owned()),
+        Some(n) => Ok(usize::try_from(n).unwrap_or(usize::MAX)),
+        None => Ok(pool::cores()),
+    }
+}
+
+/// The stages to play of the game's `stages` (`None`: the one unnamed
+/// stage): the one named `stage`, or each if `every_stage`; or why it
+/// names none.
+pub(crate) fn stages(
+    stages: &[String],
+    stage: Option<&str>,
+    every_stage: bool,
+) -> Result<Vec<Option<String>>, String> {
     let list = || stages.join(", ");
-    match (&input.stage, input.every_stage) {
+    match (stage, every_stage) {
         (Some(_), true) => Err("stage or every stage, not both".to_owned()),
         (Some(stage), false) if stages.is_empty() => {
             Err(format!("stage: the game has no stages, not {stage}"))
         }
-        (Some(stage), false) if stages.contains(stage) => Ok(vec![Some(stage.clone())]),
+        (Some(stage), false) if stages.iter().any(|s| s == stage) => {
+            Ok(vec![Some(stage.to_owned())])
+        }
         (Some(stage), false) => Err(format!("stage: no {stage}; the stages: {}", list())),
         (None, _) if stages.is_empty() => Ok(vec![None]),
         (None, false) if stages.len() > 1 => Err(format!(
@@ -185,23 +216,28 @@ fn stages(stages: &[String], input: &PlaytestInput) -> Result<Vec<Option<String>
     }
 }
 
-/// The indexes of the plan's entrants that `asked` names (by name or
-/// group, in report order), or its default ones if `asked` is empty, or
-/// every one if it has none. A name that is neither is the asker's error;
-/// a group or default naming no entrant is the game's.
-fn choose(plan: &PlaytestPlan, asked: &[String]) -> Result<Vec<usize>, (Code, String)> {
-    let index = |name: &str| plan.entrants.iter().position(|(n, _)| n == name);
+/// The indexes of a plan's `entrants` that `asked` names (by name or by
+/// one of its `groups`, in report order), or its `defaults` if `asked` is
+/// empty, or every one if it has none. A name that is neither is the
+/// asker's error; a group or default naming no entrant is the game's.
+pub(crate) fn choose(
+    entrants: &[(String, Option<String>)],
+    groups: &BTreeMap<String, Vec<String>>,
+    defaults: &[String],
+    asked: &[String],
+) -> Result<Vec<usize>, (Code, String)> {
+    let index = |name: &str| entrants.iter().position(|(n, _)| n == name);
     let (names, code): (&[String], Code) = if asked.is_empty() {
-        (&plan.default_entrants, codes::GAME_ERROR)
+        (defaults, codes::GAME_ERROR)
     } else {
         (asked, codes::WRONG_ARGUMENTS)
     };
     if names.is_empty() {
-        return Ok((0..plan.entrants.len()).collect());
+        return Ok((0..entrants.len()).collect());
     }
     let mut chosen = BTreeSet::new();
     for name in names {
-        if let Some(group) = plan.groups.get(name) {
+        if let Some(group) = groups.get(name) {
             for member in group {
                 let e = index(member).ok_or_else(|| {
                     let error = format!("the group {name} names {member}, who isn't an entrant");
@@ -214,14 +250,14 @@ fn choose(plan: &PlaytestPlan, asked: &[String]) -> Result<Vec<usize>, (Code, St
         } else {
             let mut error = format!(
                 "entrant: no {name}; the entrants: {}",
-                plan.entrants
+                entrants
                     .iter()
                     .map(|(n, _)| n.as_str())
                     .collect::<Vec<_>>()
                     .join(", ")
             );
-            if !plan.groups.is_empty() {
-                let groups: Vec<&str> = plan.groups.keys().map(String::as_str).collect();
+            if !groups.is_empty() {
+                let groups: Vec<&str> = groups.keys().map(String::as_str).collect();
                 let _ = write!(error, "; the groups: {}", groups.join(", "));
             }
             return Err((code, error));
@@ -231,9 +267,11 @@ fn choose(plan: &PlaytestPlan, asked: &[String]) -> Result<Vec<usize>, (Code, St
 }
 
 /// One stage's report and speeds.
-struct StagePlayed {
-    report: PlaytestReport,
-    entrants: Vec<Played>,
+pub(crate) struct StagePlayed {
+    /// The tries, judged.
+    pub(crate) report: PlaytestReport,
+    /// Each entrant's speed.
+    pub(crate) entrants: Vec<Played>,
 }
 
 /// The `chosen` entrants of `plan` play `tries` on `threads` threads,
@@ -244,30 +282,51 @@ fn play(
     tries: &Tries,
     threads: usize,
 ) -> Result<StagePlayed, String> {
-    let names: Vec<&str> = chosen
-        .iter()
-        .map(|&e| plan.entrants[e].0.as_str())
-        .collect();
-    let checks = (plan.checks)(&names);
-    // A check naming an entrant who doesn't play fails before a try is
-    // played: judging no tries says so.
+    let checks = checks_of(&plan.checks, &plan.entrants, chosen)?;
+    played(&plan.entrants, chosen, &checks, tries, threads, &*plan.play)
+}
+
+/// A plan's `checks` over the `chosen` of its `entrants`, or why they
+/// can't judge them: a check names an entrant who doesn't play.
+pub(crate) fn checks_of(
+    checks: &PlaytestChecks,
+    entrants: &[(String, Option<String>)],
+    chosen: &[usize],
+) -> Result<Vec<Check>, String> {
+    let names: Vec<&str> = chosen.iter().map(|&e| entrants[e].0.as_str()).collect();
+    let checks = checks(&names);
+    // Judging no tries says so, before a try is played.
     let none = names
         .iter()
         .map(|n| ((*n).to_owned(), Vec::new()))
         .collect();
     judge(none, &checks).map_err(|e| format!("the game's checks: {e}"))?;
+    Ok(checks)
+}
+
+/// The `chosen` of a plan's `entrants` play `tries` on `threads` threads,
+/// each try by `play` (entrant index, seed, the turn it stops at), timed,
+/// and `checks` judge them once in seed order.
+pub(crate) fn played(
+    entrants: &[(String, Option<String>)],
+    chosen: &[usize],
+    checks: &[Check],
+    tries: &Tries,
+    threads: usize,
+    play: &(dyn Fn(usize, u64, u32) -> Result<Tried, String> + Sync),
+) -> Result<StagePlayed, String> {
     let work: Vec<(usize, u64)> = chosen
         .iter()
         .flat_map(|&e| tries.seeds().map(move |seed| (e, seed)))
         .collect();
     let one = |&(e, seed): &(usize, u64)| {
-        (plan.play)(e, seed, tries.turns)
-            .map_err(|error| format!("{}: try {seed}: {error}", plan.entrants[e].0))
+        play(e, seed, tries.turns)
+            .map_err(|error| format!("{}: try {seed}: {error}", entrants[e].0))
     };
     let done = pool::run(&work, threads, &one)?;
-    let mut parts: Vec<(String, Vec<Tried>)> = names
+    let mut parts: Vec<(String, Vec<Tried>)> = chosen
         .iter()
-        .map(|n| ((*n).to_owned(), Vec::new()))
+        .map(|&e| (entrants[e].0.clone(), Vec::new()))
         .collect();
     let mut took = vec![Duration::ZERO; chosen.len()];
     for ((e, _), (tried, elapsed)) in work.iter().zip(done) {
@@ -275,13 +334,13 @@ fn play(
         parts[at].1.push(tried);
         took[at] += elapsed;
     }
-    let report = judge(parts, &checks).map_err(|e| format!("the game's checks: {e}"))?;
+    let report = judge(parts, checks).map_err(|e| format!("the game's checks: {e}"))?;
     let entrants = chosen
         .iter()
         .zip(took)
         .map(|(&e, took)| Played {
-            name: plan.entrants[e].0.clone(),
-            label: plan.entrants[e].1.clone(),
+            name: entrants[e].0.clone(),
+            label: entrants[e].1.clone(),
             seconds_per_try: took.as_secs_f64() / f64::from(tries.count),
         })
         .collect();
@@ -391,7 +450,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<PlaytestArg
 }
 
 /// A try's wall time for people: two decimals, or under a hundredth.
-fn seconds(s: f64) -> String {
+pub(crate) fn seconds(s: f64) -> String {
     if s < 0.01 {
         "< 0.01".to_owned()
     } else {

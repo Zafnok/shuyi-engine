@@ -1,0 +1,28 @@
+// The autobalance's stage (`cargo shuyi autobalance`): files/stage.map
+// tuned as `tuning` says, which the search changes with the knobs of
+// `src/tools.rs`, until the heroes land in the bands of playtest.ron and
+// of `checks`. `cargo shuyi autobalance --apply` writes the tuning it
+// finds here; the game itself plays the tuning of `rules::Tuning::default`.
+(
+    tuning: (
+        trip_percent: 0,
+        foe_waits: 0,
+    ),
+    checks: [
+        Rate(
+            entrant: "walk",
+            success: [
+                (
+                    measure: "foe trips",
+                    min: Some(1),
+                    max: None,
+                ),
+            ],
+            band: (
+                min: 50,
+                max: 70,
+            ),
+            floor: None,
+        ),
+    ],
+)
