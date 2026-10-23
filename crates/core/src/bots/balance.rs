@@ -58,6 +58,7 @@ pub trait Knob<S> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct BalanceSettings {
     /// The full run, which decides "in band": the stage as authored and
     /// the stage found are both played this way.
@@ -67,6 +68,19 @@ pub struct BalanceSettings {
     /// The most runs of the playtest runner the search makes, the first
     /// run of the stage as authored among them.
     pub evaluations: u32,
+}
+
+impl BalanceSettings {
+    /// The full run `tries`, quick runs of `quick` tries, and at most
+    /// `evaluations` runs.
+    #[must_use]
+    pub const fn new(tries: Tries, quick: u32, evaluations: u32) -> Self {
+        Self {
+            tries,
+            quick,
+            evaluations,
+        }
+    }
 }
 
 /// How far `report`'s rates lie outside their bands: over every
@@ -134,6 +148,7 @@ impl fmt::Display for Stop {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Change {
     /// The knob's name.
     pub knob: String,
@@ -141,6 +156,17 @@ pub struct Change {
     pub step: i32,
     /// The knob's words for the step.
     pub what: String,
+}
+
+impl Change {
+    /// Knob `knob` moved by `step`, which it words as `what`.
+    pub fn new(knob: impl Into<String>, step: i32, what: impl Into<String>) -> Self {
+        Self {
+            knob: knob.into(),
+            step,
+            what: what.into(),
+        }
+    }
 }
 
 /// What the search found. Its `Display` says why it stopped, the changes

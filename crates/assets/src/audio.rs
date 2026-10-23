@@ -56,8 +56,10 @@ pub struct AudioManifest {
     pub credits: BTreeMap<String, Credit>,
 }
 
-/// A sound effect: one of its files plays each time.
+/// A sound effect: one of its files plays each time. Build it with
+/// [`SoundCue::new`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct SoundCue {
     /// The variants, relative to `base/audio/`; one is picked at random
     /// each time the cue plays. At least one.
@@ -66,6 +68,19 @@ pub struct SoundCue {
     pub volume: u8,
     /// Who made it.
     pub credit: CreditRef,
+}
+
+impl SoundCue {
+    /// The sound of `files` (one picked each time), at `volume` percent,
+    /// made by `credit`.
+    #[must_use]
+    pub const fn new(files: Vec<String>, volume: u8, credit: CreditRef) -> Self {
+        Self {
+            files,
+            volume,
+            credit,
+        }
+    }
 }
 
 /// A music track.
@@ -190,7 +205,8 @@ pub type Bytes = Option<alloc::borrow::Cow<'static, [u8]>>;
 
 /// How to read the referenced files, and how errors name them. `music` is
 /// `None` where the music folder can't be seen (the game itself, which
-/// does no file I/O).
+/// does no file I/O). Build it with [`Files::new`] (ADR-0039).
+#[non_exhaustive]
 pub struct Files<'a> {
     /// Reads a sound file, by its name in the manifest (e.g. `sfx/x.wav`).
     pub sound: &'a dyn Fn(&str) -> Bytes,
@@ -204,6 +220,35 @@ pub struct Files<'a> {
     pub music_dir: &'a str,
     /// Reads a file in the music folder.
     pub music: Option<&'a dyn Fn(&str) -> Bytes>,
+}
+
+impl<'a> Files<'a> {
+    /// Sound files read by `sound`, named in errors by `sound_shown`, left
+    /// out where `sound_left_out` says, and a music folder shown as
+    /// `music_dir` that can't be seen (`music` is `None`:
+    /// [`with_music`](Self::with_music) changes it).
+    #[must_use]
+    pub const fn new(
+        sound: &'a dyn Fn(&str) -> Bytes,
+        sound_shown: &'a dyn Fn(&str) -> String,
+        sound_left_out: &'a dyn Fn(&str) -> bool,
+        music_dir: &'a str,
+    ) -> Self {
+        Self {
+            sound,
+            sound_shown,
+            sound_left_out,
+            music_dir,
+            music: None,
+        }
+    }
+
+    /// The files with the music folder read by `music`: usable in a
+    /// `const` item.
+    #[must_use]
+    pub const fn with_music(self, music: Option<&'a dyn Fn(&str) -> Bytes>) -> Self {
+        Self { music, ..self }
+    }
 }
 
 /// The sample rate every file must have: quad-snd (native) plays at
@@ -1121,5 +1166,38 @@ mod tests {
             1
         );
         assert_eq!(errors(&EMPTY.replace("pools: [], ", "")).len(), 1);
+    }
+
+    #[test]
+    fn the_constructors_give_the_literals() {
+        fn none(_: &str) -> Bytes {
+            None
+        }
+        fn shown(name: &str) -> String {
+            format!("base/audio/{name}")
+        }
+        fn kept(_: &str) -> bool {
+            false
+        }
+        /// Files as games build theirs, in a `const` item.
+        const FILES: Files<'static> = Files::new(&none, &shown, &kept, "music");
+        const WITH_MUSIC: Files<'static> = FILES.with_music(Some(&none));
+        assert_eq!(
+            SoundCue::new(alloc::vec!["sfx/a.wav".into()], 60, CreditRef::Own),
+            SoundCue {
+                files: alloc::vec!["sfx/a.wav".into()],
+                volume: 60,
+                credit: CreditRef::Own,
+            }
+        );
+        assert_eq!((FILES.music_dir, FILES.music.is_none()), ("music", true));
+        assert_eq!((FILES.sound_shown)("x.wav"), "base/audio/x.wav");
+        assert!(!(FILES.sound_left_out)("x.wav"));
+        assert!((FILES.sound)("x.wav").is_none());
+        assert!(
+            WITH_MUSIC
+                .music
+                .is_some_and(|music| music("a.ogg").is_none())
+        );
     }
 }

@@ -80,10 +80,7 @@ pub enum Feature {
 impl MapFeature for Feature {}
 
 /// The `.map` format of a stage: one tile look, at most 32 tiles a side.
-pub const FORMAT: MapFormat<'static> = MapFormat {
-    looks: &[grid_map::DEFAULT_TILES],
-    max_size: 32,
-};
+pub const FORMAT: MapFormat<'static> = MapFormat::new(&[grid_map::DEFAULT_TILES], 32);
 
 /// Reads stage map `source` (errors name it `file`).
 pub fn parse_map(file: &str, source: &str) -> Result<GridMap<TerrainId, Feature>, String> {

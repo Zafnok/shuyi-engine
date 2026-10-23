@@ -87,8 +87,11 @@ use crate::frame::color::{EngineColor, Palette, Rgb};
 use crate::frame::glyph_buffer::{GlyphBuffer, PxRect, Rect};
 
 /// How the glyph skin draws one terrain: its two glyphs, in the palette's
-/// colors of these names.
+/// colors of these names. Build it with [`TerrainGlyphs::new`]: a struct
+/// literal doesn't compile outside this crate, so a new field never breaks
+/// a game (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct TerrainGlyphs<'a> {
     /// The tile's two glyphs, left then right.
     pub glyphs: [char; 2],
@@ -96,6 +99,14 @@ pub struct TerrainGlyphs<'a> {
     pub fg: &'a str,
     /// The palette's name of the tile's background.
     pub bg: &'a str,
+}
+
+impl<'a> TerrainGlyphs<'a> {
+    /// The glyphs `glyphs`, in the palette's color `fg` on its `bg`.
+    #[must_use]
+    pub const fn new(glyphs: [char; 2], fg: &'a str, bg: &'a str) -> Self {
+        Self { glyphs, fg, bg }
+    }
 }
 
 /// A game's terrains, as far as its map's look goes: what each is called,
@@ -112,8 +123,10 @@ pub trait Terrains {
 /// cursor and the threat arrows in: what the game's palette calls them.
 /// The ranges are painted in the colors of their own names; a threat's
 /// marks are the engine's highlight color, and every dark edge (and what
-/// the cursor fades toward) its background color.
+/// the cursor fades toward) its background color. Build it with
+/// [`MapColors::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct MapColors {
     /// The path's line and arrowhead.
     pub path: &'static str,
@@ -123,9 +136,24 @@ pub struct MapColors {
     pub threat: &'static str,
 }
 
+impl MapColors {
+    /// The path in the palette's color `path`, the cursor in `cursor` and
+    /// the threat arrows in `threat`.
+    #[must_use]
+    pub const fn new(path: &'static str, cursor: &'static str, threat: &'static str) -> Self {
+        Self {
+            path,
+            cursor,
+            threat,
+        }
+    }
+}
+
 /// What a skin paints a scene with besides the scene itself: the palette,
-/// the game's terrains and the lights a map may be in.
+/// the game's terrains and the lights a map may be in. Build it with
+/// [`Looks::new`] (ADR-0039).
 #[derive(Clone, Copy)]
+#[non_exhaustive]
 pub struct Looks<'a> {
     /// The colors.
     pub palette: &'a Palette,
@@ -145,7 +173,22 @@ impl core::fmt::Debug for Looks<'_> {
     }
 }
 
-impl Looks<'_> {
+impl<'a> Looks<'a> {
+    /// The looks of `palette`'s colors, the game's `terrains` and its
+    /// `lights`.
+    #[must_use]
+    pub const fn new(
+        palette: &'a Palette,
+        terrains: &'a dyn Terrains,
+        lights: &'a Lighting,
+    ) -> Self {
+        Self {
+            palette,
+            terrains,
+            lights,
+        }
+    }
+
     /// The palette's color called `name`, or the engine's `fallback`
     /// (a palette checked against the game's colors has every name the
     /// game uses, so this only guards against a bug).
@@ -464,5 +507,34 @@ mod tests {
         NoUnits.paint(&scene, &grid, &mut buf);
         assert_eq!(buf, before);
         assert!(format!("{looks:?}").starts_with("Looks"));
+    }
+
+    /// [`MapColors`] as games build theirs, in a `const` item.
+    const COLORS: MapColors = MapColors::new("path", "cursor", "threat");
+
+    #[test]
+    fn the_constructors_give_the_literals() {
+        assert_eq!(
+            TerrainGlyphs::new(['~', '~'], "water_fg", "water_bg"),
+            TerrainGlyphs {
+                glyphs: ['~', '~'],
+                fg: "water_fg",
+                bg: "water_bg",
+            }
+        );
+        assert_eq!(
+            COLORS,
+            MapColors {
+                path: "path",
+                cursor: "cursor",
+                threat: "threat",
+            }
+        );
+        let kit = Kit::new();
+        let literal = kit.looks();
+        let looks = Looks::new(literal.palette, literal.terrains, literal.lights);
+        assert!(core::ptr::eq(looks.palette, literal.palette));
+        assert!(core::ptr::eq(looks.lights, literal.lights));
+        assert!(core::ptr::addr_eq(looks.terrains, literal.terrains));
     }
 }

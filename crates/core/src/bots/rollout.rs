@@ -76,8 +76,9 @@ pub enum Horizon {
 }
 
 /// How a [`Rollout`] bot thinks: data, so a persona's settings can be a
-/// file.
+/// file. Build it with [`RolloutSettings::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct RolloutSettings {
     /// How many of the ordered commands are tried, from the first. 0
     /// counts as 1.
@@ -93,6 +94,28 @@ pub struct RolloutSettings {
     /// this many points below the best is half as likely. 0 always picks
     /// the best.
     pub temperature: u32,
+}
+
+impl RolloutSettings {
+    /// The first `candidates` commands tried, each played out on `samples`
+    /// copies until `horizon`, at most `commands` commands a playout, the
+    /// pick straying by `temperature`.
+    #[must_use]
+    pub const fn new(
+        candidates: u32,
+        samples: u32,
+        horizon: Horizon,
+        commands: u32,
+        temperature: u32,
+    ) -> Self {
+        Self {
+            candidates,
+            samples,
+            horizon,
+            commands,
+            temperature,
+        }
+    }
 }
 
 /// A computer player that plans on copies of the game: flat Monte Carlo

@@ -724,3 +724,103 @@ proptest! {
         prop_assert!(judge(tries, &checks).is_ok());
     }
 }
+
+/// Tries as games build theirs, in a `const` item.
+const TEN: Tries = Tries::new(10, 4, 30);
+
+#[test]
+fn the_constructors_give_the_literals() {
+    assert_eq!(
+        TEN,
+        Tries {
+            count: 10,
+            seed: 4,
+            turns: 30,
+        }
+    );
+    let won = Condition::new("won").with_min(Some(1)).with_max(Some(3));
+    assert_eq!(
+        won,
+        Condition {
+            measure: "won".into(),
+            min: Some(1),
+            max: Some(3),
+        }
+    );
+    assert_eq!(
+        Condition::new("won"),
+        Condition {
+            measure: "won".into(),
+            min: None,
+            max: None,
+        }
+    );
+    let band = Band { min: 50, max: 70 };
+    let rate = Check::rate("walk", vec![won.clone()], band);
+    assert_eq!(
+        rate,
+        Check::Rate {
+            entrant: "walk".into(),
+            success: vec![won.clone()],
+            band,
+            floor: None,
+        }
+    );
+    assert_eq!(
+        rate.clone().with_floor(Some(20)),
+        Check::Rate {
+            entrant: "walk".into(),
+            success: vec![won.clone()],
+            band,
+            floor: Some(20),
+        }
+    );
+    assert_eq!(rate.clone().with_among(vec![won.clone()]), rate);
+    let median = Check::median("run", "turns", Want::Lower, "walk");
+    assert_eq!(
+        median,
+        Check::Median {
+            entrant: "run".into(),
+            measure: "turns".into(),
+            among: Vec::new(),
+            want: Want::Lower,
+            than: "walk".into(),
+        }
+    );
+    assert_eq!(
+        median.clone().with_among(vec![won.clone()]),
+        Check::Median {
+            entrant: "run".into(),
+            measure: "turns".into(),
+            among: vec![won],
+            want: Want::Lower,
+            than: "walk".into(),
+        }
+    );
+    assert_eq!(median.clone().with_floor(Some(20)), median);
+    assert_eq!(
+        UnknownEntrant::new(2, "nobody"),
+        UnknownEntrant {
+            check: 2,
+            entrant: "nobody".into(),
+        }
+    );
+}
+
+#[test]
+fn a_refusal_built_by_its_constructors_is_the_literal() {
+    let error = PlayError::<Nim>::new(4, 1, 7, ());
+    let PlayError {
+        command,
+        side,
+        turn,
+        error: (),
+    } = error;
+    assert_eq!((command, side, turn), (4, 1, 7));
+    let play = PlaytestError::<Nim>::play("walk", PlayError::new(4, 1, 7, ()));
+    assert!(matches!(
+        play,
+        PlaytestError::Play { ref entrant, error: PlayError { command: 4, side: 1, turn: 7, .. } }
+            if entrant == "walk"
+    ));
+}

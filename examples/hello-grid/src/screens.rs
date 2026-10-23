@@ -58,22 +58,22 @@ pub fn option_rows(_: &HelloCtx) -> Vec<OptionRow<Hello>> {
         OptionRow::text_speed(),
         OptionRow::new(
             "options.row.look",
-            RowValue::Choice {
-                values: |_| MapLook::ALL.iter().map(|&(_, key)| key).collect(),
-                get: |ctx| ctx.settings().game.look.index(),
-                set: |ctx, i| {
+            RowValue::choice(
+                |_| MapLook::ALL.iter().map(|&(_, key)| key).collect(),
+                |ctx| ctx.settings().game.look.index(),
+                |ctx, i| {
                     let look = MapLook::ALL.get(i).map_or(MapLook::Glyphs, |&(l, _)| l);
                     ctx.preview_settings(|s| s.game.look = look)
                 },
-            },
+            ),
         ),
         OptionRow::new(
             "options.row.key_bindings",
-            RowValue::Action {
-                value: |_| None,
-                confirm: |ctx| RowAction::Open(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS))),
-                help: |_| options::HELP_OPEN,
-            },
+            RowValue::action(
+                |_| None,
+                |ctx| RowAction::Open(Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS))),
+                |_| options::HELP_OPEN,
+            ),
         )
         .starting_group(),
         OptionRow::restore_defaults().starting_group(),
@@ -231,19 +231,13 @@ impl Talk {
 
     /// What its text box shows.
     pub fn view(&self, ctx: &HelloCtx) -> TextView {
-        let waiting = self.text.is_revealed().then(|| WaitView {
-            key: ctx.text_with("talk.next", &[]),
-            log_hint: None,
-            marker: self.text.marker_lit(),
-        });
-        TextView {
-            narration: self.player.current().narration,
-            lines: self.text.page_lines().to_vec(),
-            shown: self.text.shown(),
-            choices: None,
-            skip: None,
-            waiting,
-        }
+        let mut view = TextView::new(self.text.page_lines().to_vec(), self.text.shown());
+        view.narration = self.player.current().narration;
+        view.waiting = self
+            .text
+            .is_revealed()
+            .then(|| WaitView::new(ctx.text_with("talk.next", &[]), self.text.marker_lit()));
+        view
     }
 
     /// The name of whoever speaks now, if anyone does.

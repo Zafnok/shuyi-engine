@@ -446,7 +446,7 @@ pin follows this one.
   `templates/blank` builds no engine type by literal since 2511.
 - **Deviation:** the follow-up is two tickets, not one, since the table's
   remaining types are past one PR's 600 lines:
-  [2024](../open/2024-the-engines-other-config-and-views-moved-onto-constructors-shuyi-ui-shuyi-platform-shuyi-assets-and-shuyi-core.md)
+  [2024](2024-the-engines-other-config-and-views-moved-onto-constructors-shuyi-ui-shuyi-platform-shuyi-assets-and-shuyi-core.md)
   (`shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core`) and
   [2025](../open/2025-the-contracts-inputs-and-the-game-tools-types-moved-onto-constructors-in-shuyi-cli.md)
   (`shuyi-cli`).

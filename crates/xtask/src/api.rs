@@ -44,6 +44,9 @@ pub const NIGHTLY: &str = "nightly-2026-07-06";
 
 /// Where the base is checked out, under the repository's root.
 const BASE_DIR: &str = "target/api-base";
+/// Where the base is built, beside its tree in the head's target folder
+/// (which CI's cache keeps).
+const BASE_TARGET_DIR: &str = "target/api-base-target";
 
 /// The most diff lines the summary shows for one crate.
 const DIFF_LIMIT: usize = 200;
@@ -321,9 +324,13 @@ fn remove_worktree(root: &Path, runner: &dyn Runner) {
 /// semver findings.
 fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, String> {
     let base_root = root.join(BASE_DIR);
-    // The base builds in the head's target folder, which has its
-    // dependencies built already.
     let target_dir = root.join("target");
+    // The base builds in a target folder of its own. In the head's, its
+    // engine crates would have the head's units' hashes (a workspace
+    // crate's hash takes its path from the workspace's root, the same in
+    // both), and sources older than the head's builds: the base would be
+    // built on the head's crates.
+    let base_target_dir = root.join(BASE_TARGET_DIR);
     let in_base = packages(&base_root, runner)?;
     API_CRATES
         .iter()
@@ -332,7 +339,7 @@ fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, Str
             if !in_base.contains(name) {
                 return Ok(CrateApi::new(name, None, &head, Vec::new()));
             }
-            let base = listing(&base_root, name, &target_dir, runner)?;
+            let base = listing(&base_root, name, &base_target_dir, runner)?;
             let findings = semver(root, name, &base_root, runner)?;
             Ok(CrateApi::new(name, Some(&base), &head, findings))
         })

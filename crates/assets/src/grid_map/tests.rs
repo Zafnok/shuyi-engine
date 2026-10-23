@@ -441,3 +441,17 @@ proptest! {
         prop_assert_eq!(parsed.ok().and_then(|m| print(&m)), Some(printed));
     }
 }
+
+/// A format as games build theirs, in a `const` item.
+const SMALL: MapFormat<'static> = MapFormat::new(&[DEFAULT_TILES], 8);
+
+#[test]
+fn a_new_format_is_the_literal() {
+    assert_eq!(
+        SMALL,
+        MapFormat {
+            looks: &[DEFAULT_TILES],
+            max_size: 8,
+        }
+    );
+}

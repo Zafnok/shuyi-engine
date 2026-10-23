@@ -23,13 +23,8 @@ fn buf(w: u16, h: u16) -> GlyphBuffer {
 
 /// Two made-up 16×16 images.
 fn images() -> [ImageId; 2] {
-    let size = ImageInfo {
-        width: 16,
-        height: 16,
-    };
-    let table = ImageTable {
-        images: [("a.png", size), ("b.png", size)].into(),
-    };
+    let size = ImageInfo::new(16, 16);
+    let table = ImageTable::new([("a.png", size), ("b.png", size)].into());
     [table.id("a.png").unwrap(), table.id("b.png").unwrap()]
 }
 

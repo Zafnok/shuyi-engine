@@ -401,10 +401,7 @@ fn palette(base: u8) -> PaletteDef {
 }
 
 /// The size of [`CARD`].
-const CARD_SIZE: ImageInfo = ImageInfo {
-    width: 16,
-    height: 16,
-};
+const CARD_SIZE: ImageInfo = ImageInfo::new(16, 16);
 
 /// A track of `cue`, looped, 10 s long.
 fn track(cue: &str) -> MusicCue {
@@ -483,11 +480,7 @@ impl Toy {
             music_fade_ms: 500,
             ..AudioManifest::default()
         };
-        let click = SoundCue {
-            files: vec!["click.wav".to_owned()],
-            volume: 100,
-            credit: CreditRef::Own,
-        };
+        let click = SoundCue::new(vec!["click.wav".to_owned()], 100, CreditRef::Own);
         audio.sounds.insert("click".to_owned(), click.clone());
         // The engine's menu sounds, by their default names.
         let config = crate::audio::AudioConfig::DEFAULT;
@@ -507,13 +500,12 @@ impl Toy {
         audio.pools.insert("fights".to_owned(), fights);
         let (parsed, errors) = parse_dlg::<NoDirective>("hall.dlg", SCENE);
         assert!(errors.is_empty(), "{errors:?}");
-        let dialogue = DialogueTable {
-            scenes: parsed
+        let dialogue = DialogueTable::new(
+            parsed
                 .into_iter()
                 .map(|p| (p.scene.id.clone(), p.scene))
                 .collect(),
-            files: BTreeMap::new(),
-        };
+        );
         Self {
             lang,
             keymap: crate::input::sample::load_keymap().unwrap_or_else(|e| panic!("{e:?}")),
@@ -524,9 +516,7 @@ impl Toy {
             voice: Voice::Only,
             applied: Vec::new(),
             old_keys: Vec::new(),
-            images: ImageTable {
-                images: [(CARD, CARD_SIZE), (grid::TILES, grid::TILES_SIZE)].into(),
-            },
+            images: ImageTable::new([(CARD, CARD_SIZE), (grid::TILES, grid::TILES_SIZE)].into()),
             lights: grid::lights(),
             level: None,
         }

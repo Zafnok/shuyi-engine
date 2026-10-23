@@ -702,3 +702,26 @@ proptest! {
         prop_assert_eq!(found.changes.is_empty(), found.stage == authored);
     }
 }
+
+/// Settings as games build theirs, in a `const` item.
+const QUICK: BalanceSettings = BalanceSettings::new(Tries::new(20, 0, 50), 5, 12);
+
+#[test]
+fn the_constructors_give_the_literals() {
+    assert_eq!(
+        QUICK,
+        BalanceSettings {
+            tries: Tries::new(20, 0, 50),
+            quick: 5,
+            evaluations: 12,
+        }
+    );
+    assert_eq!(
+        Change::new("trip", 4, "20%"),
+        Change {
+            knob: "trip".into(),
+            step: 4,
+            what: "20%".into(),
+        }
+    );
+}

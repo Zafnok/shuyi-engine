@@ -2,8 +2,6 @@
 //! the scene read, the stage walked to the goal, the end screen and back
 //! to the title; caught by the foe; and leaving the stage.
 
-use std::collections::BTreeMap;
-
 use hello_grid::map::MOVE;
 use hello_grid::rules::{Outcome, Side, TRIP_PERCENT};
 use hello_grid::screens::{End, Leave, StageScreen, Talk, Title};
@@ -73,13 +71,12 @@ fn a_long_line_is_read_a_page_at_a_time() {
     let (parsed, errors) = parse_dlg::<NoDirective>("long.dlg", &source);
     assert!(errors.is_empty(), "{errors:?}");
     let mut ctx = hello_grid::ctx(0);
-    ctx.game.dialogue = DialogueTable {
-        scenes: parsed
+    ctx.game.dialogue = DialogueTable::new(
+        parsed
             .into_iter()
             .map(|p| (p.scene.id.clone(), p.scene))
             .collect(),
-        files: BTreeMap::new(),
-    };
+    );
     let talk = Talk::new(&ctx, "long");
     let mut h = Harness::new(Game::new(ctx, Box::new(talk), GameHooks::default()));
     let line = |h: &Harness<hello_grid::Hello>| {

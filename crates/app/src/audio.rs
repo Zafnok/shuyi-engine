@@ -677,10 +677,12 @@ mod tests {
 
     fn manifest() -> AudioManifest {
         let mut m = AudioManifest::default();
-        let sound = |files: &[&str], volume| SoundCue {
-            files: files.iter().map(|f| (*f).to_owned()).collect(),
-            volume,
-            credit: CreditRef::Own,
+        let sound = |files: &[&str], volume| {
+            SoundCue::new(
+                files.iter().map(|f| (*f).to_owned()).collect(),
+                volume,
+                CreditRef::Own,
+            )
         };
         m.sounds.insert("beep".into(), sound(&["sfx/beep.wav"], 50));
         let steps = ["sfx/step_1.wav", "sfx/step_2.wav", "sfx/step_3.wav"];
@@ -729,13 +731,7 @@ mod tests {
 
     /// The sounds of [`bytes`], named by [`shown`].
     pub(crate) fn files() -> Files<'static> {
-        Files {
-            sound: &bytes,
-            sound_shown: &shown,
-            sound_left_out: &|_: &str| false,
-            music_dir: "music",
-            music: None,
-        }
+        Files::new(&bytes, &shown, &|_: &str| false, "music")
     }
 
     pub(crate) fn audio(backend: &mut Fake) -> Audio<Fake> {

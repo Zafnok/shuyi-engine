@@ -755,7 +755,12 @@ fn a_run_compares_every_crate_and_removes_the_base() {
     )));
     let target = root.join("target").to_string_lossy().into_owned();
     assert!(ran.contains(&format!(
-        "base: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {target}"
+        "head: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {target}"
+    )));
+    // The base builds apart, so it never builds on the head's crates.
+    let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
+    assert!(ran.contains(&format!(
+        "base: cargo +{NIGHTLY} public-api -p shuyi-ui --simplified --target-dir {base_target}"
     )));
     // `shuyi-cli` is new: listed in the head only, and never checked.
     assert!(

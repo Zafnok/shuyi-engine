@@ -88,13 +88,23 @@ impl DisplayInfo {
 
 /// What a game's frame is painted with: the font atlas and the pictures in
 /// the game's data. A backend makes its textures (or 1-bit glyphs) from
-/// them the first time it sees them.
+/// them the first time it sees them. Build it with [`Look::new`]
+/// (ADR-0039).
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct Look<'a> {
     /// The font atlas the glyph cells are drawn from.
     pub font: &'a FontAtlasDef,
     /// The pictures the sprite items name.
     pub images: &'a ImageTable,
+}
+
+impl<'a> Look<'a> {
+    /// The look of glyphs from `font` and pictures from `images`.
+    #[must_use]
+    pub const fn new(font: &'a FontAtlasDef, images: &'a ImageTable) -> Self {
+        Self { font, images }
+    }
 }
 
 /// What a frame shows.
@@ -250,5 +260,23 @@ mod tests {
         assert_eq!(screen.color, Color::Rgba8);
         assert_eq!(screen.one_bit().color, Color::OneBit);
         assert!(!Frame::new(Show::Errors("x")).fullscreen);
+    }
+
+    #[test]
+    fn a_new_look_is_the_literal() {
+        let font = FontAtlasDef {
+            cell_w: 8,
+            cell_h: 8,
+            columns: 16,
+            glyphs: alloc::collections::BTreeMap::new(),
+        };
+        let images = ImageTable::default();
+        let look = Look::new(&font, &images);
+        let literal = Look {
+            font: &font,
+            images: &images,
+        };
+        assert!(core::ptr::eq(look.font, literal.font));
+        assert!(core::ptr::eq(look.images, literal.images));
     }
 }

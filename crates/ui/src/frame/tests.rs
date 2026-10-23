@@ -22,13 +22,8 @@ fn a_40_by_20_console_of_8_by_8_cells() {
     let p = engine_palette();
     let text = p.engine(EngineColor::Text);
     let panel = p.engine(EngineColor::Panel);
-    let size = ImageInfo {
-        width: 16,
-        height: 16,
-    };
-    let images = ImageTable {
-        images: [("images/face.png", size)].into(),
-    };
+    let size = ImageInfo::new(16, 16);
+    let images = ImageTable::new([("images/face.png", size)].into());
     let face = images.id("images/face.png").unwrap();
 
     let mut buf = GlyphBuffer::with_spec(SMALL, Cell::new(' ', text, panel));

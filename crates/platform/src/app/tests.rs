@@ -265,9 +265,8 @@ static FONT: shuyi_assets::font::FontAtlasDef = shuyi_assets::font::FontAtlasDef
     columns: 0,
     glyphs: BTreeMap::new(),
 };
-static IMAGES: shuyi_assets::image::ImageTable = shuyi_assets::image::ImageTable {
-    images: BTreeMap::new(),
-};
+static IMAGES: shuyi_assets::image::ImageTable =
+    shuyi_assets::image::ImageTable::new(BTreeMap::new());
 
 #[test]
 fn the_game_is_shown_with_its_look_and_its_background() {

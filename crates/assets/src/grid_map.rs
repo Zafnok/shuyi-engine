@@ -45,14 +45,24 @@ pub const DEFAULT_TILES: &str = "outdoor";
 pub const DEFAULT_LIGHT: &str = "noon";
 
 /// What a game's maps may be: the tile looks there are, and how big a map
-/// may be.
+/// may be. Build it with [`MapFormat::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct MapFormat<'a> {
     /// The sets of terrain pictures a map may name in its `look`.
     /// [`DEFAULT_TILES`] should be one of them.
     pub looks: &'a [&'a str],
     /// Largest width and height, in tiles.
     pub max_size: usize,
+}
+
+impl<'a> MapFormat<'a> {
+    /// Maps that may name the tile looks `looks`, at most `max_size` tiles
+    /// a side.
+    #[must_use]
+    pub const fn new(looks: &'a [&'a str], max_size: usize) -> Self {
+        Self { looks, max_size }
+    }
 }
 
 /// A game's tile feature, as written in a map header after the tile's

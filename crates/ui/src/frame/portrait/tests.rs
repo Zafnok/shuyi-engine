@@ -11,7 +11,7 @@ const BLANK: Cell = Cell::new(' ', Rgb::new(200, 200, 200), Rgb::new(0, 0, 0));
 const FRAME: PxRect = Rect::new(0, 0, 256, 256);
 
 fn size(width: u32, height: u32) -> ImageInfo {
-    ImageInfo { width, height }
+    ImageInfo::new(width, height)
 }
 
 /// The one sprite of a `width × height` picture drawn in the 32 × 16
@@ -23,9 +23,7 @@ fn drawn(
     dim: f32,
     mirror: bool,
 ) -> Option<Sprite> {
-    let table = ImageTable {
-        images: [("faces/t.png", size(width, height))].into(),
-    };
+    let table = ImageTable::new([("faces/t.png", size(width, height))].into());
     let image = table.id("faces/t.png").unwrap();
     let mut buf = GlyphBuffer::new(cells.0, cells.1, BLANK);
     let before = buf.clone();
@@ -62,9 +60,7 @@ fn a_small_picture_fills_the_area_at_4x() {
 
 #[test]
 fn the_area_follows_the_cells_size() {
-    let table = ImageTable {
-        images: [("faces/t.png", size(16, 16))].into(),
-    };
+    let table = ImageTable::new([("faces/t.png", size(16, 16))].into());
     let image = table.id("faces/t.png").unwrap();
     // 8 × 8 cells: a 4 × 4-cell area is 32 × 32 pixels.
     let spec = ConsoleSpec {

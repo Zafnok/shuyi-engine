@@ -287,25 +287,17 @@ impl Knob<u32> for Ease {
 pub fn fake_checks(names: &[&str]) -> Vec<Check> {
     let mut checks: Vec<Check> = names
         .iter()
-        .map(|&name| Check::Rate {
-            entrant: name.to_owned(),
-            success: vec![Condition {
-                measure: "won".to_owned(),
-                min: Some(1),
-                max: None,
-            }],
-            band: Band { min: 50, max: 100 },
-            floor: Some(50),
+        .map(|&name| {
+            Check::rate(
+                name.to_owned(),
+                vec![Condition::new("won").with_min(Some(1))],
+                Band { min: 50, max: 100 },
+            )
+            .with_floor(Some(50))
         })
         .collect();
     if names.contains(&"walk") && names.contains(&"run") {
-        checks.push(Check::Median {
-            entrant: "run".to_owned(),
-            measure: "turns".to_owned(),
-            among: Vec::new(),
-            want: Want::Lower,
-            than: "walk".to_owned(),
-        });
+        checks.push(Check::median("run", "turns", Want::Lower, "walk"));
     }
     checks
 }

@@ -33,13 +33,7 @@ fn play_hero(seed: u64, hero: &mut dyn Bot<Stage>, foe: &mut dyn Bot<Stage>) -> 
 /// A rollout bot for your piece: 8 candidates nearest the goal, each
 /// played out on 4 copies for 3 turns, the best taken.
 fn rollout_hero(seed: u64) -> impl Bot<Stage> {
-    let settings = RolloutSettings {
-        candidates: 8,
-        samples: 4,
-        horizon: Horizon::Turns(3),
-        commands: 12,
-        temperature: 0,
-    };
+    let settings = RolloutSettings::new(8, 4, Horizon::Turns(3), 12, 0);
     Rollout::new(hero_order, playout, score, settings, seed)
 }
 
