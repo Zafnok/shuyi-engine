@@ -215,8 +215,8 @@ None.
 - **For the game:** `PanelLook` gains a field and moves under ADR-0039
   (a struct literal moves to its constructor), and `ask::glyph::paint`
   and the name boxes' painters gain an argument. The PR says so, with a
-  `Breaking:` line if 2010 is done, and the game's PR that moves its
-  pin follows it. The game sets no frame, so it draws as before.
+  `Breaking:` line (2010), and the game's PR that moves its pin follows
+  it. The game sets no frame, so it draws as before.
 - **Lines in other tickets**, so the plans that touch this stay true:
   - 1127 (parked), its step 2: the backdrop that repeats sideways is
     `tiled_sprites` with an origin that scrolls;

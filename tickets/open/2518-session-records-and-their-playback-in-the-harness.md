@@ -312,7 +312,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
   doesn't notice, but a struct literal of it no longer builds. The
   boundary's types gain serde derives, and `SoundRequest` and
   `MusicCommand` gain `Serialize`. Say so in the PR, with 2010's
-  `Breaking:` line if 2010 is done; the game's PR that moves the pin
+  `Breaking:` line; the game's PR that moves the pin
   follows.
 - **Size:** if the PR passes about 600 changed lines (the ADR and
   docs aside), the Harness part (`Harness::start`, `start_recording`,

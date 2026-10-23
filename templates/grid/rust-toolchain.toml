@@ -1,4 +1,4 @@
 # The Rust the engine builds with; move it when the engine does.
 [toolchain]
-channel = "1.98.1"
+channel = "1.99.1"
 components = ["rustfmt", "clippy"]

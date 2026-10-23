@@ -1067,7 +1067,8 @@ mod tests {
         let m = from_source("a.ron", &several, &all_files()).unwrap_or_default();
         let ids = m.sounds.get("footfall").map(|s| s.credit.ids().to_vec());
         assert_eq!(ids, Some(vec!["steps".to_owned(), "sunrise".to_owned()]));
-        assert!(CreditRef::Own.ids().is_empty());
+        let got = CreditRef::Own.ids();
+        assert!(got.is_empty(), "{got:?}");
         let unknown = FULL.replace(r#"Credit("steps")"#, r#"Credits(["steps", "stepz"])"#);
         assert_eq!(
             errors(&unknown),

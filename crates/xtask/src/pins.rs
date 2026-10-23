@@ -498,7 +498,8 @@ mod tests {
              - uses: github/codeql-action/analyze@{SHA} # v4\n\
              - uses: actions/checkout@{OTHER} # v7\n"
         );
-        assert!(check_workflows(&[workflow(".github/workflows/a.yml", &text)]).is_empty());
+        let seen = check_workflows(&[workflow(".github/workflows/a.yml", &text)]);
+        assert!(seen.is_empty(), "{seen:?}");
     }
 
     #[test]
@@ -550,7 +551,8 @@ updates:
     #[test]
     fn a_listed_template_folder_passes() {
         let folders = vec!["/templates/grid/.github/workflows".to_string()];
-        assert!(check_dependabot(DEPENDABOT_TEXT, &folders).is_empty());
+        let got = check_dependabot(DEPENDABOT_TEXT, &folders);
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]
@@ -573,7 +575,8 @@ updates:
     #[test]
     fn a_single_directory_counts() {
         let text = "updates:\n  - package-ecosystem: github-actions\n    directory: /t/.github/workflows\n";
-        assert!(check_dependabot(text, &["/t/.github/workflows".to_string()]).is_empty());
+        let seen = check_dependabot(text, &["/t/.github/workflows".to_string()]);
+        assert!(seen.is_empty(), "{seen:?}");
     }
 
     #[test]
@@ -672,7 +675,8 @@ macroquad = { version = \"0.4\", features = [\"audio\"] }
 ron = \"0.12\"
 serde = { version = \"1\", features = [\"derive\"] }
 ";
-        assert!(check_template(ROOT_TOML, "templates/grid/Cargo.toml", template).is_empty());
+        let seen = check_template(ROOT_TOML, "templates/grid/Cargo.toml", template);
+        assert!(seen.is_empty(), "{seen:?}");
     }
 
     #[test]

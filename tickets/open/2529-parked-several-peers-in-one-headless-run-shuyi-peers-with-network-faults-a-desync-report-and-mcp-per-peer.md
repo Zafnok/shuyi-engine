@@ -251,10 +251,10 @@ None.
 - **For the game:** additive. `GameTools` gains a defaulted method, so
   the game's tools still build. `Op` gains a variant and `Op::ALL`
   grows to ten, so a game that matches `contract::Op` exhaustively adds
-  an arm. 2010 and 2013 are MVP tickets, so they come first: the new
-  public types follow 2013's ADR, and if 2010's check calls `Op::Peers`
-  a break, the completion notes carry its `Breaking:` line for
-  `shuyi-cli`. The game's PR that moves the pin follows this one.
+  an arm. 2010 is done, and 2013 is an MVP ticket, so it comes first:
+  the new public types follow 2013's ADR, and if 2010's check calls
+  `Op::Peers` a break, the completion notes carry its `Breaking:` line
+  for `shuyi-cli`. The game's PR that moves the pin follows this one.
 - **Size and the split:** the operation, its driver, the wiring and
   their tests are about 450 changed lines; `MemoryPeers` and its
   integration test about 200; the docs about 60; MCP about 150. With

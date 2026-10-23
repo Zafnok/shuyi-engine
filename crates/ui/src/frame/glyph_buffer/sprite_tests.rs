@@ -87,12 +87,15 @@ fn cells_replaced_over_a_base_take_what_stands_above_them() {
     };
     let tile = Rect::new(2, 1, 2, 1);
     // The whole tile: nothing is left, not even the head above it.
-    assert!(cut(standing(0), tile).is_empty());
+    let found = cut(standing(0), tile);
+    assert!(found.is_empty(), "{found:?}");
     // Without a base, the head stays (cells own only what is over them).
     assert_eq!(cut(at(16, 10, 16, 20), tile), [Rect::new(16, 10, 16, 6)]);
     // A copy 1 px left or right of the tile goes whole too.
-    assert!(cut(standing(-1), tile).is_empty());
-    assert!(cut(standing(1), tile).is_empty());
+    let found = cut(standing(-1), tile);
+    assert!(found.is_empty(), "{found:?}");
+    let found = cut(standing(1), tile);
+    assert!(found.is_empty(), "{found:?}");
     // Half the tile: that half, and the head above it.
     let left_half = Rect::new(2, 1, 1, 1);
     assert_eq!(
@@ -121,7 +124,8 @@ fn cells_replaced_over_a_base_take_what_stands_above_them() {
         base: Some(Rect::new(0, 16, 16, 16)),
         ..at(1, 10, 16, 20)
     };
-    assert!(cut(first, Rect::new(0, 1, 2, 1)).is_empty());
+    let found = cut(first, Rect::new(0, 1, 2, 1));
+    assert!(found.is_empty(), "{found:?}");
     // A base two cells tall, its top cell replaced: the head goes, and
     // what stands on the lower cell stays.
     let tall = Sprite {
@@ -196,7 +200,8 @@ fn add_sprite_clips_only_the_clip() {
             },
         ]
     );
-    assert!(b.overlays().is_empty());
+    let found = b.overlays();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(b.items().len(), 3);
 }
 
@@ -366,7 +371,8 @@ fn blit_offsets_dest_and_clip_and_clips_the_clip() {
             ..s
         }]
     );
-    assert!(b.overlays().is_empty());
+    let found = b.overlays();
+    assert!(found.is_empty(), "{found:?}");
     // Over the right and bottom edges.
     let mut b = buf(4, 4);
     b.blit(&src, 3, 3);

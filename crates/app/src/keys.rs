@@ -295,7 +295,8 @@ mod tests {
             ordered(&[], &[Key::E, Key::F], none, true),
             [down(Chord::shifted(Key::E)), down(Chord::shifted(Key::F))]
         );
-        assert!(ordered(&[], &[], none, false).is_empty());
+        let found = ordered(&[], &[], none, false);
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]

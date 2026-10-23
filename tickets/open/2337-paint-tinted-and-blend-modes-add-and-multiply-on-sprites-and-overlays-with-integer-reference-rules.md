@@ -244,7 +244,7 @@ None.
   search of its code found no exhaustive `match` on `Paint`; if one
   exists, it gets a `Tinted` arm in the game's PR that moves the pin.
   The new variant and fields are still breaks of `shuyi-ui` to
-  cargo-semver-checks: if 2010 is done, the completion notes carry its
+  cargo-semver-checks (2010's `api` job): the completion notes carry a
   `Breaking:` line, and the PR says the game's pin bump follows.
 
 **Out (do not do):**

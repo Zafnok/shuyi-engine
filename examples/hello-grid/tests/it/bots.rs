@@ -72,7 +72,7 @@ fn a_random_bot_against_the_chaser_always_plays_to_an_end() {
             None => panic!("seed {seed}: no end in 200 turns"),
         }
         // A command for each side's move: yours, then the foe's.
-        assert!(!report.commands.is_empty());
+        assert!(!report.commands.is_empty(), "{:?}", report.commands);
     }
     // A random walker sometimes finds the goal, and is sometimes caught.
     assert!(won > 0 && caught > 0, "won {won}, caught {caught}");

@@ -17,7 +17,8 @@ fn text_is_wrapped_into_pages_of_so_many_lines() {
     assert_eq!(b.page_lines(), ["iiiii jjjjj"]);
     // No text is one empty page; a page of no lines is a page of one.
     let mut empty = TextBox::new("", 11, 2);
-    assert!(empty.page_lines().is_empty());
+    let found = empty.page_lines();
+    assert!(found.is_empty(), "{found:?}");
     assert!(empty.is_revealed());
     assert!(!empty.next_page());
     let mut one = TextBox::new("ab cd", 2, 0);
@@ -101,7 +102,8 @@ fn the_last_page_shows_revealed_for_a_choice() {
     assert!(b.is_revealed());
     let mut b = TextBox::new("", 11, 2);
     b.to_last_page();
-    assert!(b.page_lines().is_empty());
+    let found = b.page_lines();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

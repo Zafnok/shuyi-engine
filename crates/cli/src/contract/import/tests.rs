@@ -43,7 +43,8 @@ fn the_standard_kinds_are_the_engines() {
     ] {
         assert!(kinds.contains(&kind), "{kind}: {kinds:?}");
     }
-    assert!(Importers::new(Formats::new()).kinds().is_empty());
+    let found = Importers::new(Formats::new()).kinds();
+    assert!(found.is_empty(), "{found:?}");
     assert!(format!("{:?}", Importers::standard()).contains("palette"));
 }
 
@@ -89,7 +90,7 @@ fn a_file_is_read_as_every_kind_that_knows_it() {
             text: None,
         }]
     );
-    assert!(out.errors.is_empty());
+    assert!(out.errors.is_empty(), "{:?}", out.errors);
     assert!(answer.limits.is_empty(), "{:?}", answer.limits);
     // Every kind: a palette's file is a names table too.
     let answer = import(&importers, &dir, &input("colors.ron", None, false));
@@ -137,7 +138,7 @@ fn print_gives_our_text_format_or_the_asset_as_read() {
         answer.result.unwrap().read_as[0].text.as_deref(),
         Some("1 colors")
     );
-    assert!(answer.limits.is_empty());
+    assert!(answer.limits.is_empty(), "{:?}", answer.limits);
     fs::remove_dir_all(&dir).unwrap();
 }
 

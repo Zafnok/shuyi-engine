@@ -65,7 +65,8 @@ fn a_stage_plays_to_its_end_and_confirm_starts_the_next() {
     assert_eq!(screen.seed, 5);
     h.keys("Enter");
     assert_eq!(stage(&h).seed, 6);
-    assert!(stage(&h).commands.is_empty());
+    let found = &stage(&h).commands;
+    assert!(found.is_empty(), "{found:?}");
     h.keys("Backspace");
     assert!(h.quit_requested());
 }
@@ -157,7 +158,11 @@ fn every_screen_declares_its_actions_and_they_fit_every_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let project = Project::load(&root).unwrap_or_else(|e| panic!("{e}"));
     let profiles = engine_profiles().unwrap_or_else(|e| panic!("{e:?}"));
-    assert!(!project.config.targets.is_empty());
+    assert!(
+        !project.config.targets.is_empty(),
+        "{:?}",
+        project.config.targets
+    );
     for id in project.config.targets.keys() {
         assert_eq!(game.fit(&profiles[id].profile), [], "{id}");
     }

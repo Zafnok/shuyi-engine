@@ -47,6 +47,8 @@ the bot (`AGENTS.md` rule 11). An `ignore` entry in
    - if the public API changes (the engine's API shows a type of the
      crate that moved), it is step 6: the game must follow (`AGENTS.md`,
      *Working with the game repository*), so it is a ticket of its own.
+     CI's `api` job fails a Dependabot PR that breaks the API (ADR-0038
+     §5: no break without a ticket), and its summary shows the change.
 4. **Actions:** if Dependabot left a template's pin behind
    (`cargo xtask check-pins` names it), push the bump onto its branch.
    An action keeps one SHA across the repository.

@@ -118,7 +118,7 @@ fn a_time_of_0_keeps_the_stage_as_authored_and_the_command_fails() {
     assert_eq!(answer.exit_code(), 1);
     let output = answer.result.unwrap_or_else(|| panic!("no result"));
     assert_eq!((output.stop, output.evaluations), (Stop::Stopped, 1));
-    assert!(output.changes.is_empty());
+    assert!(output.changes.is_empty(), "{:?}", output.changes);
     assert!(!output.in_bands);
     assert_eq!(answer.limits.len(), 1);
 }

@@ -231,7 +231,7 @@ mod tests {
     fn the_files_load() {
         let data = Data::load().unwrap_or_else(|e| panic!("{e:?}"));
         assert!(data.font.glyphs.len() >= REQUIRED_GLYPHS.chars().count());
-        assert!(data.images.images.is_empty());
+        assert!(data.images.images.is_empty(), "{:?}", data.images.images);
     }
 
     #[test]
@@ -244,6 +244,7 @@ mod tests {
         assert!(ctx.game.theme_def(()).is_none());
         assert_eq!(ctx.game.voice_variant(), OnlyClip);
         assert_eq!(OnlyClip.suffix(), "");
-        assert!(OnlyClip::split().is_empty());
+        let got = OnlyClip::split();
+        assert!(got.is_empty(), "{got:?}");
     }
 }

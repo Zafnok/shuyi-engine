@@ -66,7 +66,8 @@ impl Session for Bare {
 
 #[test]
 fn a_session_that_says_nothing_of_its_log_has_none() {
-    assert!(Bare.log().is_empty());
+    let found = Bare.log();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(Bare.log_dropped(), 0);
 }
 
@@ -194,7 +195,8 @@ mod toy {
             "{entry:?}"
         );
         assert_eq!(s.log_dropped(), 0);
-        assert!(session().log().is_empty());
+        let found = session().log();
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]

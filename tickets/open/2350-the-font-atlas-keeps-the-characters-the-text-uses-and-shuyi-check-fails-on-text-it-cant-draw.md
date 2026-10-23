@@ -260,8 +260,8 @@ move to a follow-up ticket (`write-ticket`).
 - The game's atlas changes only if its text uses a character outside
   `ATLAS_RANGES` that its fonts have.
 
-The PR says so (with a `Breaking:` line if 2010 is done), and the game's
-PR that moves its pin follows it.
+The PR says so, with a `Breaking:` line (2010), and the game's PR that
+moves its pin follows it.
 
 **Out (do not do):**
 - Wide (CJK) glyphs, wide sets per language and widths by language:

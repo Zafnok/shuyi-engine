@@ -146,10 +146,10 @@ None.
   card and one test), and about 300 are new (the wrapper, `compare` and
   the tests). The PR shows the move with `git diff --color-moved`.
 - **Either order:**
-  - with 2010 (MVP, a `Breaking:` line for each API break): if it is
-    done, this ticket's completion notes carry `Breaking: shuyi-cli:
+  - with 2010 (done, a `Breaking:` line for each API break): this
+    ticket's completion notes carry `Breaking: shuyi-cli:
     frame_png::Image::decode: call frame_png::decode_image(png)
-    instead`; if not, the PR body says the same;
+    instead`, and the PR body repeats it;
   - `Tolerance`, `Comparison` and `raster::Painter` follow ADR-0039
     (`#[non_exhaustive]` and constructors);
   - with 2514 (frames over time from `frame-png`): its sheet and
@@ -233,8 +233,8 @@ None.
       refuses an unknown key.
 - [ ] `cargo xtask check-no-std` passes with the new files.
 - [ ] The API change for the game (`Image::decode` →
-      `frame_png::decode_image`) is in the PR body, and in a
-      `Breaking:` line if 2010 is done.
+      `frame_png::decode_image`) is in a `Breaking:` line (2010) and
+      in the PR body.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -156,8 +156,10 @@ fn formats_are_kept_per_kind_in_the_order_they_were_registered() {
     assert_eq!(formats.ids::<Number>(), ["digits"]);
     assert_eq!(formats.ids::<Word>(), ["upper", "either", "lower"]);
     // A kind with no format has none.
-    assert!(Formats::new().ids::<Word>().is_empty());
-    assert!(Formats::new().extensions::<Word>().is_empty());
+    let got = Formats::new().ids::<Word>();
+    assert!(got.is_empty(), "{got:?}");
+    let got = Formats::new().extensions::<Word>();
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -611,17 +613,12 @@ fn each_asset_of_a_kind_directly_in_a_folder_loads_on_its_own() {
         ]
     );
     // An empty or missing folder gives an empty map.
-    assert!(formats.load_each::<Word>(&bundle, "seasons").is_empty());
-    assert!(
-        formats
-            .load_each::<Word>(&bundle, "crops/deep/d.low")
-            .is_empty()
-    );
-    assert!(
-        formats
-            .load_each::<Word>(&Bundle::new(Vec::new()), "")
-            .is_empty()
-    );
+    let seen = formats.load_each::<Word>(&bundle, "seasons");
+    assert!(seen.is_empty(), "{seen:?}");
+    let seen = formats.load_each::<Word>(&bundle, "crops/deep/d.low");
+    assert!(seen.is_empty(), "{seen:?}");
+    let seen = formats.load_each::<Word>(&Bundle::new(Vec::new()), "");
+    assert!(seen.is_empty(), "{seen:?}");
 }
 
 #[test]
@@ -760,7 +757,8 @@ fn a_context_reads_the_files_a_file_names_from_its_bundle() {
     );
     assert_eq!(alone.shown("a/b.txt"), "a/b.txt");
     assert!(!alone.left_out("a/gone.txt"));
-    assert!(alone.files_under("a").is_empty());
+    let seen = alone.files_under("a");
+    assert!(seen.is_empty(), "{seen:?}");
     assert_eq!(alone.limits, Limits::NONE);
     let default = DecodeCx::default();
     assert!(default.bundle.is_none() && default.limits == Limits::default());

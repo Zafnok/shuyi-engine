@@ -130,13 +130,15 @@ fn with_pad_looks_buttons_up_and_lists_them_in_order() {
         km.buttons_for(CursorDown),
         vec![Button::DpadDown, Button::LeftStickDown]
     );
-    assert!(km.buttons_for(Info).is_empty());
+    let found = km.buttons_for(Info);
+    assert!(found.is_empty(), "{found:?}");
     // The keys are untouched, and a keymap has no buttons by itself.
     assert_eq!(km.action(chord("f")), Some(Confirm));
     assert_eq!(km.chords_for(CursorLeft), vec![chord("h"), chord("Left")]);
     let keys_only = test_keymap(170, 55);
     assert_eq!(keys_only.pad_action(Button::South), None);
-    assert!(keys_only.buttons_for(Confirm).is_empty());
+    let found = keys_only.buttons_for(Confirm);
+    assert!(found.is_empty(), "{found:?}");
     assert_ne!(km, keys_only);
 }
 
@@ -153,7 +155,8 @@ fn a_repeated_button_keeps_its_last_action_and_with_pad_replaces_the_table() {
     assert_eq!(km.pad_action(Button::South), Some(Info));
     let km = km.with_pad([(Button::West, Confirm)]);
     assert_eq!(km.buttons_for(Confirm), vec![Button::West]);
-    assert!(km.buttons_for(Info).is_empty());
+    let found = km.buttons_for(Info);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(km.pad_action(Button::South), None);
     assert_eq!(km.pad_action(Button::East), None);
 }
@@ -179,7 +182,8 @@ fn every_keymap_from_the_definition_has_the_default_buttons() {
         // Unused by default.
         assert_eq!(km.pad_action(Button::RightStickPress), None);
         assert_eq!(km.pad_action(Button::RightStickUp), None);
-        assert!(km.buttons_for(Action::Debug).is_empty());
+        let found = km.buttons_for(Action::Debug);
+        assert!(found.is_empty(), "{found:?}");
         for action in Action::ALL {
             assert_eq!(km.buttons_for(action), def.buttons(action), "{action}");
         }
@@ -488,7 +492,8 @@ fn a_button_press_emits_once_and_is_held_until_released() {
 fn unbound_buttons_are_ignored() {
     let mut s = pad_state();
     s.pad_down(Button::RightStickPress, PAD);
-    assert!(s.held_pairs().is_empty());
+    let found = s.held_pairs();
+    assert!(found.is_empty(), "{found:?}");
     s.pad_up(Button::RightStickPress);
     assert_eq!(s.update(ms(500)), vec![]);
     // Without buttons in the keymap, every button is unbound.
@@ -897,7 +902,8 @@ fn a_frame_holds_what_the_player_did_this_frame() {
     assert!(!held.is_held(Info));
     assert!(!held.pad_pressed());
     assert_eq!(held.pressed_chords(), []);
-    assert!(held.text().is_empty());
+    let found = held.text();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(held.pressed_buttons(), []);
     assert_eq!(held.released_buttons(), []);
 
@@ -929,7 +935,8 @@ fn the_game_can_start_on_a_pad_and_mark_the_keyboard_used() {
     s.keyboard_used();
     assert_eq!(s.device(), Device::Keyboard);
     // Nothing else happens: no action, nothing held.
-    assert!(s.update(0.0).is_empty());
+    let found = s.update(0.0);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(default_state().device(), Device::Keyboard);
 }
 

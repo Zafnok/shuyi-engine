@@ -289,7 +289,7 @@ mod tests {
         let answer = check(&Fake::default(), &CheckInput::default());
         assert!(answer.ok);
         assert_eq!(answer.op, Op::Check);
-        assert!(answer.limits.is_empty());
+        assert!(answer.limits.is_empty(), "{:?}", answer.limits);
         assert_eq!(text(answer.result.as_ref().unwrap()), "check: OK\n");
         let game = Fake {
             check: Ok(vec![
@@ -316,7 +316,8 @@ mod tests {
             check: Ok(vec![ContentError::new("a.ron", "bad").at(1, None)]),
             ..Fake::default()
         };
-        assert!(check(&lined, &CheckInput::default()).limits.is_empty());
+        let got = check(&lined, &CheckInput::default()).limits;
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]

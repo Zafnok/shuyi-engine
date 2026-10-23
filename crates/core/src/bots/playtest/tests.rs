@@ -649,7 +649,8 @@ fn unknown_entrants_are_the_names_the_game_has_none_for() {
     )"#;
     let targets: Targets<Tier> = ron::from_str(text).unwrap();
     assert_eq!(targets.unknown_entrants(&["a", "b"]), vec!["c", "d"]);
-    assert!(targets.unknown_entrants(&["a", "b", "c", "d"]).is_empty());
+    let got = targets.unknown_entrants(&["a", "b", "c", "d"]);
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -664,7 +665,8 @@ fn an_unknown_field_in_targets_is_an_error() {
 #[test]
 fn targets_with_only_success_rules_give_no_checks() {
     let targets: Targets<Tier> = ron::from_str(r#"(success: {"a": []})"#).unwrap();
-    assert!(targets.checks(&Tier::Easy, &["a"]).is_empty());
+    let got = targets.checks(&Tier::Easy, &["a"]);
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[cfg(feature = "schema")]

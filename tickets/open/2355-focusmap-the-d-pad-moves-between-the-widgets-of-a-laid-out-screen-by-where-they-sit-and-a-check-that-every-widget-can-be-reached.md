@@ -188,7 +188,7 @@ None.
 
 **For the game:** `MenuView` gains a field, so code that builds one with
 a struct literal adds `active: true` (`MenuView::new` sets it). The PR
-says so (a `Breaking:` line if 2010 is done), and the game's PR that
+says so, with a `Breaking:` line (2010), and the game's PR that
 moves its pin follows it. The rest is additive.
 
 **Out (do not do):**
@@ -221,7 +221,7 @@ moves its pin follows it. The rest is additive.
    `Layout`, its rectangle type), `widgets/menu.rs`, `menu/view.rs` and
    `menu/glyph.rs`, `screen.rs`, `game.rs`,
    `crates/platform/src/harness.rs` and `crates/ui/tests/it/main.rs`.
-   Check whether 2354, 2405, 2334 and 2010 are done.
+   Check whether 2354, 2405 and 2334 are done.
 2. Write `FocusNode`, `FocusMap` and `FocusError` in
    `crates/ui/src/focus.rs`, declare the module in `lib.rs`, with unit
    and property tests.

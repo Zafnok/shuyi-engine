@@ -385,11 +385,8 @@ fn plain_errors(src: &str, rules: &impl SceneRules<NoDirective>) -> Vec<String> 
 fn the_rules_defaults_let_everything_through() {
     let src = "@scene a\n@left anyone neutral\nanyone: Hi {n:any_id}.\n@music what\n@end\n";
     assert_eq!(plain_errors(src, &Minimal), [] as [&str; 0]);
-    assert!(
-        Minimal
-            .scene_problems(&parse_dlg("t.dlg", src).0[0])
-            .is_empty()
-    );
+    let got = Minimal.scene_problems(&parse_dlg("t.dlg", src).0[0]);
+    assert!(got.is_empty(), "{got:?}");
     // Without the game's advice, a name written out gets the engine's.
     let names = Names {
         names: [("smith".to_owned(), "Ada".to_owned())].into(),
@@ -1159,9 +1156,15 @@ fn sides_steps_and_music() {
 #[test]
 fn a_table_and_scripts_start_empty() {
     let table = DialogueTable::<Cue>::default();
-    assert!(table.scenes.is_empty() && table.files.is_empty());
+    assert!(table.scenes.is_empty(), "{:?}", table.scenes);
+    assert!(table.files.is_empty(), "{:?}", table.files);
     let scripts = Scripts::<Cue>::default();
-    assert!(scripts.parsed.is_empty() && scripts.table.scenes.is_empty());
+    assert!(scripts.parsed.is_empty(), "{:?}", scripts.parsed);
+    assert!(
+        scripts.table.scenes.is_empty(),
+        "{:?}",
+        scripts.table.scenes
+    );
     assert_eq!(Scene::<Cue>::default().id, "");
     assert!(NoDirective::parse("weather", "x").is_none());
     assert_eq!(NoTokens.longest("hero"), None);

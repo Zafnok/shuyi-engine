@@ -260,7 +260,7 @@ mod tests {
         assert_eq!(c.focus(), 0);
         assert_eq!(c.window(4), 0..0);
         assert_eq!(c.window_by_heights(&[], 4), 0..0);
-        assert!(c.is_empty());
+        assert!(c.is_empty(), "{c:?}");
     }
 
     #[test]

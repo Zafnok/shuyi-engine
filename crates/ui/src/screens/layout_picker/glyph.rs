@@ -275,7 +275,8 @@ mod tests {
         assert!(text(&buf, SECOND + PANEL_H - 1).contains('╚'));
         assert_eq!(text(&buf, i32::from(PC.rows) - 1).trim(), "help");
         // The gap between the panels is blank.
-        assert!(text(&buf, FIRST_PANEL_ROW + PANEL_H).trim().is_empty());
+        let found = text(&buf, FIRST_PANEL_ROW + PANEL_H);
+        assert!(found.trim().is_empty(), "{found:?}");
     }
 
     #[test]

@@ -206,17 +206,20 @@ fn a_zoomable_skin_gives_itself_at_each_of_its_levels() {
     assert_eq!(zoomable, skin(&kit).with_zooms(&[1, 2, 3]));
     // Without levels it doesn't zoom, whatever it draws at.
     let fixed: &dyn GridSkin<Piece> = &skin(&kit).zoomed(2);
-    assert!(fixed.zoom_levels().is_empty());
+    let found = fixed.zoom_levels();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(fixed.zoom(), None);
     assert!(fixed.at_zoom(2).is_none());
     // Nor on glyph ground, levels or not.
     let mixed: &dyn GridSkin<Piece> = &sheets().with_zooms(&[1, 2]);
-    assert!(mixed.zoom_levels().is_empty());
+    let found = mixed.zoom_levels();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(mixed.zoom(), None);
     assert!(mixed.at_zoom(1).is_none());
     // Nor the glyph skin: its tile is two font cells.
     let glyph: &dyn GridSkin<Piece> = &GLYPH;
-    assert!(glyph.zoom_levels().is_empty());
+    let found = glyph.zoom_levels();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(glyph.zoom(), None);
     assert!(glyph.at_zoom(1).is_none());
 }

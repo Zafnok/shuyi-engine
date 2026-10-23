@@ -163,7 +163,8 @@ fn the_view_is_the_title_the_tools_and_the_help() {
         row(&drawn, 12)
     );
     assert_eq!(row(&drawn, 19).trim(), view.help);
-    assert!(row(&drawn, 0).trim().is_empty());
+    let got = row(&drawn, 0);
+    assert!(got.trim().is_empty(), "{got:?}");
 }
 
 /// A sample panel: a row of `#`s from `top`.
@@ -224,7 +225,8 @@ fn the_sampler_screen_draws_the_sampler_and_closes_on_cancel() {
     assert_eq!(buf, glyph::sampler(spec, &c.palette, &glyphs, panels));
     let stay = screen.update(&mut c, &frame(&[Action::Confirm]));
     assert!(matches!(stay, Transition::None));
-    assert!(c.audio.take().is_empty());
+    let got = c.audio.take();
+    assert!(got.is_empty(), "{got:?}");
     let pop = screen.update(&mut c, &frame(&[Action::Confirm, Action::Cancel]));
     assert!(matches!(pop, Transition::Pop));
     assert_eq!(c.audio.take()[0].cue(), Some("ui_cancel"));

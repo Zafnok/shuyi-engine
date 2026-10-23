@@ -117,7 +117,8 @@ fn clippy_is_read_for_the_fences_lints_each_once_with_its_reason() {
     assert!(found.iter().all(|f| f.check == LintCheck::RulesFence));
     assert!(found.iter().all(|f| f.code == "SH2103"));
     assert_eq!(found[0].help.as_deref(), codes::help_of("SH2103"));
-    assert!(clippy_findings(root, "not json\n").is_empty());
+    let seen = clippy_findings(root, "not json\n");
+    assert!(seen.is_empty(), "{seen:?}");
     assert!(compile_error(root, &stdout).is_none(), "lints aren't");
 }
 
@@ -189,14 +190,12 @@ fn cargo_tree_is_read_for_the_crates_the_rules_never_reach() {
             .starts_with("demo-rules depends on shuyi-ui: ")
     );
     assert!(found.iter().all(|f| f.code == "SH2104" && f.line.is_none()));
-    assert!(
-        tree_findings(
-            root,
-            "demo-rules",
-            "demo-rules v0.1.0 (/game/crates/rules)\n"
-        )
-        .is_empty()
+    let seen = tree_findings(
+        root,
+        "demo-rules",
+        "demo-rules v0.1.0 (/game/crates/rules)\n",
     );
+    assert!(seen.is_empty(), "{seen:?}");
     // A tree with no path says the root's manifest.
     let found = tree_findings(root, "r", "r v0.1.0\nrand v0.9.0\n");
     assert_eq!(found[0].file, "Cargo.toml");
@@ -320,7 +319,8 @@ fn without_its_parts_lint_says_what_it_did_not_check() {
             "the rules crate's fence wasn't checked: shuyi.ron names no rules package (`rules`)",
         ]
     );
-    assert!(cargo.ran.borrow().is_empty());
+    let got = cargo.ran.borrow();
+    assert!(got.is_empty(), "{got:?}");
     assert_eq!(text(answer.result.as_ref().unwrap()), "lint: OK\n");
     fs::remove_dir_all(&project.root).unwrap();
 }

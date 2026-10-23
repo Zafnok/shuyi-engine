@@ -1,0 +1,33 @@
+    Building shuyi-core v0.1.0 (current)
+error: running cargo-doc on crate 'shuyi-core' failed with output:
+-----
+ Documenting shuyi-core v0.1.0 (D:\work\shuyi-engine\crates\core)
+error[E0364]: `state_hash` is only public within the crate, and cannot be re-exported outside
+  --> D:\work\shuyi-engine\crates\core\src\lib.rs:44:38
+   |
+44 | pub use hash::{HashError, StateHash, state_hash};
+   |                                      ^^^^^^^^^^
+   |
+note: consider marking `state_hash` as `pub` in the imported module
+  --> D:\work\shuyi-engine\crates\core\src\lib.rs:44:38
+   |
+44 | pub use hash::{HashError, StateHash, state_hash};
+   |                                      ^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0364`.
+error: could not document `shuyi-core`
+
+-----
+
+error: failed to build rustdoc for crate shuyi-core v0.1.0
+note: this is usually due to a compilation error in the crate,
+      and is unlikely to be a bug in cargo-semver-checks
+note: the following command can be used to reproduce the error:
+      cargo new --lib example &&
+          cd example &&
+          echo '[workspace]' >> Cargo.toml &&
+          cargo add --path \\?\D:\work\shuyi-engine\crates\core --features default,schema,std &&
+          cargo check &&
+          cargo doc
+
+error: aborting due to failure to build rustdoc for crate shuyi-core v0.1.0

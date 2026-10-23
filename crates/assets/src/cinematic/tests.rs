@@ -291,7 +291,7 @@ fn a_game_checks_its_shots_with_the_lists_they_share() {
     assert_eq!(shots, [Kept::Count(2), Kept::Card('B')]);
     // Without lists, `actions` may be left out.
     let raw: CinematicFile<ToyShot, Vec<u8>> = parse("c.ron", &source("Seconds(1)", CARD)).unwrap();
-    assert!(raw.actions.is_empty());
+    assert!(raw.actions.is_empty(), "{:?}", raw.actions);
 }
 
 #[test]

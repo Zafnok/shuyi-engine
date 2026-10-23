@@ -283,7 +283,8 @@ fn a_stage_too_hard_is_eased_into_its_band() {
     assert_eq!((walk_won(&output.before), walk_won(&output.after)), (2, 5));
     assert_eq!(output.evaluations, 4);
     assert_eq!(output.written, None);
-    assert!(game.wrote.lock().unwrap().is_empty());
+    let got = game.wrote.lock().unwrap();
+    assert!(got.is_empty(), "{got:?}");
     assert!(output.seconds >= 0.0);
     // At the default quick runs of 20 tries, the stage as authored plays
     // quick too, and -3 and -2 in full: three runs more.
@@ -340,7 +341,7 @@ fn a_time_of_0_stops_before_the_second_evaluation() {
     let output = answer.result.unwrap();
     assert_eq!((output.stop, output.evaluations), (Stop::Stopped, 1));
     // The best setting seen: the stage as authored.
-    assert!(output.changes.is_empty());
+    assert!(output.changes.is_empty(), "{:?}", output.changes);
     assert_eq!(output.after, output.before);
     assert_eq!(
         answer.limits,
@@ -373,7 +374,8 @@ fn apply_has_the_game_write_the_changed_stage_and_only_then() {
     let output = found(&easy, &input(|i| i.apply = true));
     assert_eq!(output.stop, Stop::AlreadyInBands);
     assert_eq!(output.written, Some(Vec::new()));
-    assert!(easy.wrote.lock().unwrap().is_empty());
+    let got = easy.wrote.lock().unwrap();
+    assert!(got.is_empty(), "{got:?}");
     // A stage the game can't write fails the answer, which keeps what the
     // search found.
     let stuck = fake(FakeBalance {

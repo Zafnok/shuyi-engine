@@ -296,6 +296,43 @@ jobs:
       - run: rustup show
       - run: cargo xtask check-layers
 
+  # The public API of the crates a game uses (ticket 2010, ADR-0038): what
+  # merging adds to each crate's listing (cargo-public-api) and its breaks
+  # (cargo-semver-checks), against the base's tip, in the job summary. A
+  # break needs a `Breaking:` line in the branch's ticket. On a pull
+  # request HEAD is the merge commit and HEAD^1 the base's tip, as in
+  # changes.yml.
+  api:
+    name: api
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.crates == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - run: rustup show
+      # The nightly, and the tools' versions below, are the consts in
+      # crates/xtask/src/api.rs; they move with rust-toolchain.toml.
+      - run: rustup toolchain install nightly-2026-05-23 --profile minimal
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # `shuyi-app`'s dependencies need them to be documented.
+      - name: Install macroquad system libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - uses: taiki-e/install-action@ab6895351a88b908e96a4697860d4ffea5e57dbe # v2.87.27
+        with:
+          tool: cargo-semver-checks@0.51.0
+      # install-action doesn't carry cargo-public-api.
+      - run: cargo install --locked cargo-public-api@0.52.0
+      - name: Show the public API change
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          # Warnings are the clippy and test jobs' gate: a lint only the
+          # nightly has must not fail this job as a build error.
+          RUSTFLAGS: ""
+        run: cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --summary "$GITHUB_STEP_SUMMARY"
+
   # Licenses, advisories, bans and sources (deny.toml).
   deny:
     name: deny
@@ -423,7 +460,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, deny, zizmor, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, api, deny, zizmor, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

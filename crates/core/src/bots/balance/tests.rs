@@ -264,7 +264,8 @@ fn a_stage_already_in_its_bands_stops_after_one_evaluation() {
     assert_eq!(found.evaluations, 1);
     assert_eq!((found.stage, found.changes.len()), (4, 0));
     assert_eq!(found.after, found.before);
-    assert!(knob.applied().is_empty());
+    let got = knob.applied();
+    assert!(got.is_empty(), "{got:?}");
     assert!(
         found
             .to_string()

@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
-- **Related tickets:** 2013 (this), 2010 (the public API gate), 2005
+- **Related tickets:** 2013 (this), 2010 (the public API gate,
+  ADR-0038), 2005
   (the version policy and 0.1), 2304, 2305 and 2321 (new fields on
   `MapScene`, `BoxPlace` and `Window`), 2511 (`BasicGame`), 2803 (the
   tutorial's box-pushing puzzle), 3044, 3046 and 3048 (more on `Window`
@@ -185,7 +186,7 @@ with `LogLine::new`), `LogEntry` and the codes' `Entry` (kind 3, built
 only in `shuyi-cli`). `Code`, `LogLevel`, `LogCategory`, `LogRing`,
 `LogFilter`, `BasicData` and `BasicTools` already follow it.
 
-**Its neighbours.** 2010's ADR is the gate that sees a break; this one
+**Its neighbours.** ADR-0038 (2010) is the gate that sees a break; this one
 makes most of them not happen. 2005's version policy cites this ADR and
 doesn't restate it.
 

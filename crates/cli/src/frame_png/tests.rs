@@ -322,7 +322,7 @@ fn parses_steps_in_order_and_the_games_options() {
     );
     let plain = parse_args(&args(&["a.png"]), &GAME).unwrap();
     assert_eq!((plain.scale, plain.game), (None, Vec::new()));
-    assert!(plain.script.steps.is_empty());
+    assert!(plain.script.steps.is_empty(), "{:?}", plain.script.steps);
 }
 
 #[test]

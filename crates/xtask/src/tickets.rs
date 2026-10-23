@@ -713,10 +713,39 @@ fn check_pr_branch(tickets: &[Ticket], branch: &str) -> Vec<String> {
     }
 }
 
-fn ticket_id_from_branch(branch: &str) -> Option<&str> {
+/// The ticket a branch named `t<NNNN>-<slug>` is for, or `None` for any
+/// other branch (`main`, `sonar/…`, `dependabot/…`, `game-NNNN-…`).
+pub(crate) fn ticket_id_from_branch(branch: &str) -> Option<&str> {
     let rest = branch.strip_prefix('t')?;
     let (id, _slug) = rest.split_once('-')?;
     is_four_digits(id).then_some(id)
+}
+
+/// The heading of the section a ticket's `Breaking:` lines go in.
+const COMPLETION_NOTES: &str = "## Completion notes";
+
+/// The `Breaking:` lines of a ticket (ADR-0038): each line under `## Completion
+/// notes` that starts with `Breaking:`, after an optional `- ` list marker,
+/// returned from `Breaking:` on. Lines in any other section don't count.
+pub(crate) fn breaking_lines(body: &str) -> Vec<&str> {
+    let mut in_notes = false;
+    let mut found = Vec::new();
+    // `lines` drops a CR before each LF too.
+    for line in body.lines() {
+        if line.starts_with("# ") || line.starts_with("## ") {
+            in_notes = line.trim_end() == COMPLETION_NOTES;
+            continue;
+        }
+        if !in_notes {
+            continue;
+        }
+        let text = line.trim_start();
+        let text = text.strip_prefix("- ").unwrap_or(text);
+        if text.starts_with("Breaking:") {
+            found.push(text);
+        }
+    }
+    found
 }
 
 #[cfg(test)]
@@ -1026,7 +1055,7 @@ completed:
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&[]));
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("unknown ticket id `2099`"));
-        assert!(warnings.is_empty());
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1036,7 +1065,8 @@ completed:
             ticket("2101", Folder::Open, "todo", &["2100"]),
         ];
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&[]));
-        assert!(errors.is_empty() && warnings.is_empty());
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1051,7 +1081,8 @@ completed:
     fn allows_a_game_ticket_the_game_has() {
         let tickets = vec![ticket("2100", Folder::Open, "todo", &["game#1131"])];
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&["1131"]));
-        assert!(errors.is_empty() && warnings.is_empty());
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1060,7 +1091,7 @@ completed:
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&["1131"]));
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("unknown game ticket `game#9999`"));
-        assert!(warnings.is_empty());
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1155,7 +1186,8 @@ README.md
     #[test]
     fn pr_branch_ok_when_ticket_is_done() {
         let tickets = vec![ticket("2304", Folder::Done, "done", &[])];
-        assert!(check_pr_branch(&tickets, "t2304-pathfinding").is_empty());
+        let left = check_pr_branch(&tickets, "t2304-pathfinding");
+        assert!(left.is_empty(), "{left:?}");
     }
 
     #[test]
@@ -1177,9 +1209,12 @@ README.md
     #[test]
     fn pr_branch_ignores_non_ticket_branches() {
         let tickets: Vec<Ticket> = Vec::new();
-        assert!(check_pr_branch(&tickets, "main").is_empty());
-        assert!(check_pr_branch(&tickets, "dependabot/cargo/foo-1.2.3").is_empty());
-        assert!(check_pr_branch(&tickets, "claude/some-work").is_empty());
+        let left = check_pr_branch(&tickets, "main");
+        assert!(left.is_empty(), "{left:?}");
+        let left = check_pr_branch(&tickets, "dependabot/cargo/foo-1.2.3");
+        assert!(left.is_empty(), "{left:?}");
+        let left = check_pr_branch(&tickets, "claude/some-work");
+        assert!(left.is_empty(), "{left:?}");
     }
 
     #[test]
@@ -1188,6 +1223,48 @@ README.md
         assert_eq!(ticket_id_from_branch("t304-pathfinding"), None);
         assert_eq!(ticket_id_from_branch("main"), None);
         assert_eq!(ticket_id_from_branch("t2304"), None);
+    }
+
+    // -- Breaking: lines --
+
+    #[test]
+    fn breaking_lines_reads_the_completion_notes_with_or_without_a_marker() {
+        let body = "# 2100 — A\n\n## Scope\n\nBreaking: shuyi-ui: not here\n\n\
+                    ## Completion notes\n\nDone.\n\n\
+                    Breaking: shuyi-core: `Grid::new`: pass the size.\n\
+                    - Breaking: shuyi-ui, shuyi-app: `Frame`: build it with `Frame::new`.\n\
+                    Not Breaking: this one.\n";
+        assert_eq!(
+            breaking_lines(body),
+            vec![
+                "Breaking: shuyi-core: `Grid::new`: pass the size.",
+                "Breaking: shuyi-ui, shuyi-app: `Frame`: build it with `Frame::new`.",
+            ]
+        );
+    }
+
+    #[test]
+    fn breaking_lines_reads_crlf_line_endings() {
+        let body = "## Completion notes\r\n\r\n- Breaking: shuyi-core: `f`: call `g`.\r\n";
+        assert_eq!(
+            breaking_lines(body),
+            vec!["Breaking: shuyi-core: `f`: call `g`."]
+        );
+    }
+
+    #[test]
+    fn breaking_lines_stop_at_the_next_section() {
+        let body = "## Completion notes\n\nBreaking: shuyi-core: `f`: call `g`.\n\n\
+                    ## Later\n\nBreaking: shuyi-ui: `h`: gone.\n";
+        assert_eq!(
+            breaking_lines(body),
+            vec!["Breaking: shuyi-core: `f`: call `g`."]
+        );
+    }
+
+    #[test]
+    fn breaking_lines_are_none_without_completion_notes() {
+        assert!(breaking_lines("## Scope\n\nBreaking: shuyi-core: `f`: call `g`.\n").is_empty());
     }
 
     // -- clauses about other tickets --
@@ -1265,9 +1342,12 @@ README.md
             clause_ids("either order with 2001 the 2002"),
             vec![ids(&["2001"])]
         );
-        assert!(clause_ids("either order with and 2001").is_empty());
-        assert!(clause_ids("if 2001 2002 is done").is_empty());
-        assert!(clause_ids("if 2001 then is done").is_empty());
+        let left = clause_ids("either order with and 2001");
+        assert!(left.is_empty(), "{left:?}");
+        let left = clause_ids("if 2001 2002 is done");
+        assert!(left.is_empty(), "{left:?}");
+        let left = clause_ids("if 2001 then is done");
+        assert!(left.is_empty(), "{left:?}");
     }
 
     #[test]
@@ -1334,7 +1414,7 @@ README.md
     fn a_done_ticket_has_no_clauses() {
         let content = VALID_FRONTMATTER.replace("# body", "if 2204 is done");
         let t = parse_ticket("p".to_string(), Folder::Done, "2106-x.md", &content);
-        assert!(t.clauses.is_empty());
+        assert!(t.clauses.is_empty(), "{:?}", t.clauses);
     }
 
     fn with_clauses(id: &str, folder: Folder, body: &str) -> Ticket {
@@ -1478,7 +1558,7 @@ README.md
         let report = run(&root, None, &GameSource::Checkout(&root));
         let errors = report.errors;
 
-        assert!(!errors.is_empty());
+        assert!(!errors.is_empty(), "{errors:?}");
         assert!(
             errors
                 .iter()

@@ -592,7 +592,8 @@ mod tests {
         let file = from_source("c.ron", &with_bought()).unwrap_or_default();
         assert_eq!(file.credits[1].private, ["units/", "tilesets/pack.ron"]);
         assert_eq!(file.credits[1].group, CreditGroup::Art);
-        assert!(file.credits[0].private.is_empty());
+        let got = &file.credits[0].private;
+        assert!(got.is_empty(), "{got:?}");
         // An open licence isn't a bought work's, and a custom one is only
         // a bought work's.
         for bad in [
@@ -649,7 +650,8 @@ mod tests {
             uncredited(&CreditsFile::default(), &paths),
             paths[1..].to_vec()
         );
-        assert!(uncredited(&file, &[]).is_empty());
+        let got = uncredited(&file, &[]);
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]

@@ -110,7 +110,8 @@ fn the_replies_grow_the_box_upward_under_the_line_they_answer() {
     let (buf, p) = painted(&view, Some("Guide"));
     assert!(row(&buf, 9).starts_with("┌── Guide"));
     assert!(row(&buf, 11).starts_with("│  Ready?"));
-    assert!(row(&buf, 12).trim_matches(['│', ' ']).is_empty());
+    let found = row(&buf, 12);
+    assert!(found.trim_matches(['│', ' ']).is_empty(), "{found:?}");
     assert!(row(&buf, 13).starts_with("│    Yes."));
     assert!(row(&buf, 14).starts_with("│  > No."));
     assert!(row(&buf, 15).starts_with("│    Later."));

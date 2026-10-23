@@ -363,7 +363,8 @@ mod tests {
             bots: Ok(tally(vec![recorded])),
             ..Fake::default()
         };
-        assert!(bots(&game, &input(1, 0)).limits.is_empty());
+        let got = bots(&game, &input(1, 0)).limits;
+        assert!(got.is_empty(), "{got:?}");
         assert!(bots(&game, &input(MAX_GAMES, 0)).ok);
         for (games, seed) in [(0, 0), (MAX_GAMES + 1, 0)] {
             let answer = bots(&game, &input(games, seed));

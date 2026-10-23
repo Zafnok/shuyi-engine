@@ -127,7 +127,8 @@ fn left_and_right_step_a_setting_and_stop_at_the_ends() {
     let mut s = on("options.row.fullscreen");
     press(&mut s, &mut c, &[CursorLeft]);
     assert!(!c.settings().fullscreen);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     press(&mut s, &mut c, &[CursorRight, CursorRight]);
     assert!(c.settings().fullscreen);
     assert_eq!(sounds(&mut c), ["ui_move"]);
@@ -289,7 +290,8 @@ fn the_volume_box_steps_by_one_on_a_controller() {
     sounds(&mut c);
     s.update(&mut c, &pad(&[Action::CursorUp]));
     assert_eq!(s.typing().and_then(NumberBox::value), Some(100));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     c.change_settings(|s| s.music_volume = 0).unwrap();
     s.update(&mut c, &pad(&[Action::Cancel]));
     s.update(&mut c, &pad(&[Action::Confirm]));
@@ -386,7 +388,8 @@ fn a_row_that_isnt_a_setting_is_kept_or_put_back_with_the_settings() {
     // Left stops at the first; right steps on, and stops at the last.
     press(&mut s, &mut c, &[Action::CursorLeft]);
     assert_eq!(c.game.level, Some(0));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     assert!(!s.changed(&c));
     press(&mut s, &mut c, &[Action::CursorRight]);
     assert_eq!(c.game.level, Some(1));
@@ -553,7 +556,8 @@ fn the_layout_and_key_bindings_rows_open_their_screens() {
         assert_eq!(press(&mut on(row), &mut c, &keys), "None");
     }
     assert_eq!(*c.settings(), before);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(
         on("options.row.layout").help(&c),
         "arrows move · f open · d back"
@@ -835,7 +839,8 @@ fn a_screen_with_no_rows_does_nothing_but_leave() {
         Action::CursorDown,
     ];
     assert_eq!(press(&mut s, &mut c, &keys), "None");
-    assert!(s.view(&c).rows.is_empty());
+    let found = s.view(&c).rows;
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(press(&mut s, &mut c, &[Action::Cancel]), "Pop");
 }
 

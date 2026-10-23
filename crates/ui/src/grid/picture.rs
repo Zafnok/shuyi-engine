@@ -142,7 +142,8 @@ mod tests {
         assert_eq!(shown.scene.get(0, 0), bare.scene.get(0, 0));
         assert_ne!(shown, bare);
         assert!(shown.scene.backdrop().is_none());
-        assert!(shown.scene.sprites().is_empty());
+        let found = shown.scene.sprites();
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]

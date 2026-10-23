@@ -68,8 +68,8 @@ Why it matters:
 - **The game:** nothing it draws changes. It stays all glyph cells by
   its own rule (game ADR-0038 §3). `FontAtlasDef` and `read_font` are
   untouched. The one API change is the new parameter of
-  `font_atlas::run`: the PR says so (with a `Breaking:` line if 2010 is
-  done), and the game's PR that moves its pin follows it.
+  `font_atlas::run`: the PR says so, with a `Breaking:` line (2010), and
+  the game's PR that moves its pin follows it.
 - **Other 2D games:** a score, a "+100" over an enemy, a title or a name
   needs text off the grid, in the font the developer has. Nick
   (2026-10-14, choosing the engine's name, `docs/decisions.md`): glyph

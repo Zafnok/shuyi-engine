@@ -121,11 +121,13 @@ fn a_frame_takes_input_then_acts_steps_plays_and_presents() {
     // A sixtieth of a second later: one step, the time to the millisecond.
     assert_eq!(app.frame(&mut p, Millis(1017)), FrameOutcome::Continue);
     let second = log.borrow()[1].clone();
-    assert!(second.actions.is_empty());
+    assert!(second.actions.is_empty(), "{:?}", second.actions);
     assert!((second.dt - 0.017).abs() < 1e-6, "{}", second.dt);
     assert_eq!(second.ticks, 1);
-    assert!(p.speaker().requests().is_empty());
-    assert!(app.audio().is_empty());
+    let found = p.speaker().requests();
+    assert!(found.is_empty(), "{found:?}");
+    let found = app.audio();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!((p.presented(), shown_glyph(&p)), (2, Some('2')));
 }
 
@@ -176,7 +178,8 @@ fn suspended_ten_minutes_the_game_steps_at_most_once_after_resuming() {
     assert!(app.is_suspended());
     assert_eq!(log.borrow().len(), updates);
     assert_eq!(p.presented(), presented);
-    assert!(p.speaker().requests().is_empty());
+    let found = p.speaker().requests();
+    assert!(found.is_empty(), "{found:?}");
     let game = running(&app);
     assert_eq!(
         game.ctx().storage.read("save"),
@@ -235,7 +238,7 @@ fn the_card_shows_first_then_the_load_runs_behind_it_then_the_game() {
     // from before the load.
     let _ = app.frame(&mut p, Millis(3716));
     let seen = log.borrow()[0].clone();
-    assert!(seen.actions.is_empty());
+    assert!(seen.actions.is_empty(), "{:?}", seen.actions);
     assert_eq!((seen.dt, seen.ticks), (0.0, 0));
     assert_eq!(shown_glyph(&p), Some('1'));
     assert_eq!(p.presented(), 3);
@@ -398,7 +401,8 @@ fn the_setup_puts_the_platform_into_the_games_context() {
         ctx.storage.computer().read("from-before"),
         Ok(Some("yes".into()))
     );
-    assert!(app.take_new_log().is_empty());
+    let found = app.take_new_log();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -636,7 +640,8 @@ fn a_manifest_the_game_cant_use_is_a_warning_given_once() {
         (2, LogLevel::Warn, LogCategory::Audio)
     );
     assert!(line.text.starts_with("no voices: "), "{lines:?}");
-    assert!(app.take_new_log().is_empty());
+    let found = app.take_new_log();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(app.log().lines().len(), 1, "still kept");
 }
 
@@ -697,7 +702,8 @@ fn take_new_log_gives_each_line_once_in_order() {
         taken.extend(app.take_new_log().into_iter().map(|l| l.text));
     }
     assert_eq!(taken, ["1.0", "2.0", "2.1", "3.0", "3.1", "3.2"]);
-    assert!(app.take_new_log().is_empty());
+    let found = app.take_new_log();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -782,7 +788,8 @@ fn the_music_a_frame_asked_for_is_its_commands() {
     assert_eq!(p.speaker().music(), app.music());
     // The device says it sounds; the next frame asks for nothing more.
     let _ = app.frame(&mut p, Millis(500));
-    assert!(app.music().is_empty());
+    let found = app.music();
+    assert!(found.is_empty(), "{found:?}");
     let clock = running(&app).ctx().music_clock.clone();
     assert_eq!(clock.map(|c| c.cue), Some("theme".to_owned()));
 }

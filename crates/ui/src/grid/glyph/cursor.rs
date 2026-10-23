@@ -247,7 +247,8 @@ mod tests {
         assert_eq!(cell(&buf, 11), Cell::new('.', Rgb::new(1, 1, 1), bright));
         assert_eq!(cell(&buf, 9).bg, bg);
         assert_eq!(cell(&buf, 12).bg, bg);
-        assert!(buf.overlays().is_empty());
+        let found = buf.overlays();
+        assert!(found.is_empty(), "{found:?}");
         c.tick(0.5);
         let mut dim = dots();
         draw(&mut dim, &c, CursorStyle::TileGlow, 10, 4);
@@ -262,7 +263,8 @@ mod tests {
             for (x, y) in [(0, 0), (68, 29), (0, 29), (68, 0)] {
                 let mut buf = dots();
                 draw(&mut buf, &c, style, x, y);
-                assert!(!buf.overlays().is_empty());
+                let found = buf.overlays();
+                assert!(!found.is_empty(), "{found:?}");
                 for r in rects(&buf) {
                     assert_eq!(
                         r.intersect(&view),

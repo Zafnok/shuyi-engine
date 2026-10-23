@@ -1,0 +1,12 @@
+    Building shuyi-core v0.1.0 (current)
+       Built [  11.034s] (current)
+     Parsing shuyi-core v0.1.0 (current)
+      Parsed [   0.014s] (current)
+    Building shuyi-core v0.1.0 (baseline)
+       Built [   7.465s] (baseline)
+     Parsing shuyi-core v0.1.0 (baseline)
+      Parsed [   0.013s] (baseline)
+    Checking shuyi-core v0.1.0 -> v0.1.0 (assume minor change)
+     Checked [   0.024s] 202 checks: 202 pass, 58 skip
+     Summary no semver update required
+    Finished [  20.463s] shuyi-core

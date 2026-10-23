@@ -26,7 +26,8 @@ fn the_debug_key_opens_the_gallery_once_and_cancel_closes_it() {
     h.keys("d");
     assert_eq!(h.screens(), ["home"]);
     // The home screen is drawn without the gallery's pictures.
-    assert!(h.game().buffer().sprites().is_empty());
+    let found = h.game().buffer().sprites();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

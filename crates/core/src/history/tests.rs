@@ -92,19 +92,20 @@ fn played(adds: &[u32]) -> (History<Tally>, Vec<Tally>) {
 #[test]
 fn a_new_history_has_its_first_state_and_no_commands() {
     let history = History::new(Tally::new(1));
-    assert!(history.is_empty());
+    assert!(history.is_empty(), "{history:?}");
     assert_eq!(history.len(), 0);
     assert_eq!(history.commands(), &[] as &[u32]);
     assert_eq!(history.initial(), &Tally::new(1));
     assert_eq!(history.state_at(0), Tally::new(1));
     assert_eq!(history.state_at(3), Tally::new(1));
-    assert!(history.replay().is_empty());
+    let found = history.replay();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
 fn point_n_is_the_game_after_its_first_n_commands() {
     let (history, points) = played(&[2, 3, 1]);
-    assert!(!history.is_empty());
+    assert!(!history.is_empty(), "{history:?}");
     assert_eq!(history.len(), 3);
     assert_eq!(history.commands(), &[2, 3, 1]);
     for (n, point) in points.iter().enumerate() {
@@ -145,7 +146,7 @@ fn a_rewind_forgets_the_point_and_everything_after() {
     assert_eq!(history.rewind_to(1), Ok(points[1].clone()));
     assert_eq!(history.commands(), &[1]);
     assert_eq!(history.rewind_to(0), Ok(points[0].clone()));
-    assert!(history.is_empty());
+    assert!(history.is_empty(), "{history:?}");
 }
 
 #[test]

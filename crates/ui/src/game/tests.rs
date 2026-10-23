@@ -103,7 +103,8 @@ fn popping_the_last_screen_quits() {
     let mut game = Game::new(ctx(), Box::new(Menu), GameHooks::default());
     assert!(tap(&mut game, Key::D));
     assert_eq!(game.top_screen(), None);
-    assert!(game.screens().is_empty());
+    let got = game.screens();
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -171,7 +172,8 @@ fn screens_see_actions_dt_and_held_keys() {
     assert!((seen[0].dt() - 0.1).abs() < f32::EPSILON);
     assert!(seen[0].is_held(Action::CursorRight));
     assert!(seen[0].is_held(Action::Confirm));
-    assert!(seen[1].actions.is_empty());
+    let got = &seen[1].actions;
+    assert!(got.is_empty(), "{got:?}");
     assert!(seen[1].is_held(Action::CursorRight));
     assert!(!seen[1].is_held(Action::Confirm));
     assert!(game.input().is_held(Action::CursorRight));
@@ -180,7 +182,8 @@ fn screens_see_actions_dt_and_held_keys() {
         seen[0].pressed_chords(),
         [Chord::plain(Key::Right), Chord::plain(Key::F)]
     );
-    assert!(seen[1].pressed_chords().is_empty());
+    let got = seen[1].pressed_chords();
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -218,8 +221,10 @@ fn screens_see_the_keys_pressed_and_the_text_typed() {
     let pressed = [Chord::plain(Key::A), Chord::shifted(Key::Z)];
     assert_eq!(seen[0].pressed_chords(), pressed);
     assert_eq!(seen[0].text(), ['a', 'é']);
-    assert!(seen[1].pressed_chords().is_empty());
-    assert!(seen[1].text().is_empty());
+    let got = seen[1].pressed_chords();
+    assert!(got.is_empty(), "{got:?}");
+    let got = seen[1].text();
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -239,7 +244,8 @@ fn screens_see_the_buttons_that_went_down_and_up() {
     );
     assert_eq!(seen[0].actions, [Action::Confirm]);
     assert!(seen[0].is_held(Action::Confirm));
-    assert!(seen[0].released_buttons().is_empty());
+    let got = seen[0].released_buttons();
+    assert!(got.is_empty(), "{got:?}");
     assert_eq!(
         seen[1].released_buttons(),
         [Button::South, Button::RightStickUp]
@@ -538,7 +544,8 @@ fn the_debug_key_frame_goes_to_no_screen() {
     let mut game = Game::new(ctx(), Box::new(Spy(Rc::clone(&seen))), hooks());
     game.frame(&[down(Key::F2), down(Key::F)], 0.0);
     assert_eq!(game.screens(), ["spy", "tools"]);
-    assert!(seen.borrow().is_empty());
+    let got = seen.borrow();
+    assert!(got.is_empty(), "{got:?}");
 }
 
 /// Plays `click` on Confirm, the track `drums` on Cancel, quits (with a
@@ -600,11 +607,12 @@ fn frames_carry_the_audio_screens_asked_for() {
     assert_eq!(out.music, [load, start]);
     let out = game.frame(&[down(Key::F)], 0.0);
     assert_eq!(out.audio, [click(1.0)]);
-    assert!(out.music.is_empty());
+    assert!(out.music.is_empty(), "{:?}", out.music);
     // Each frame holds only its own requests.
     let out = game.frame(&[RawInputEvent::Up(Key::F)], 0.0);
-    assert!(out.audio.is_empty());
-    assert!(game.ctx().audio.pending().is_empty());
+    assert!(out.audio.is_empty(), "{:?}", out.audio);
+    let got = game.ctx().audio.pending();
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -651,8 +659,8 @@ fn the_quitting_frame_still_sounds_and_later_ones_are_silent() {
     assert!(out.quit);
     assert_eq!(out.audio[1..], [click(0.5)]);
     let out = game.frame(&[RawInputEvent::Up(Key::Up), down(Key::F)], 0.0);
-    assert!(out.audio.is_empty());
-    assert!(out.music.is_empty());
+    assert!(out.audio.is_empty(), "{:?}", out.audio);
+    assert!(out.music.is_empty(), "{:?}", out.music);
 }
 
 #[test]
@@ -752,7 +760,7 @@ fn the_context_is_handed_back_with_its_storage() {
 fn hooks_say_which_screens() {
     let none = GameHooks::<Toy>::default();
     assert!(none.first_key.is_none() && none.debug.is_none());
-    assert!(none.debug_screens.is_empty());
+    assert!(none.debug_screens.is_empty(), "{:?}", none.debug_screens);
     let hook = hooks().debug.unwrap();
     let copy = hook;
     assert_eq!(format!("{copy:?}"), "ScreenHook(tools)");

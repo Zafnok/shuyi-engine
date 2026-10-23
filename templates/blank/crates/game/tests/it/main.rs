@@ -24,7 +24,7 @@ fn the_title_shows_the_games_name_and_cancel_leaves() {
     assert_eq!(h.screens(), ["title"]);
     let view = Title::view(h.ctx());
     assert!(h.snapshot().contains(&view.name), "{}", h.snapshot());
-    assert!(!view.help.is_empty());
+    assert!(!view.help.is_empty(), "{:?}", view.help);
     h.keys("Backspace");
     assert!(h.quit_requested());
 }
@@ -69,7 +69,11 @@ fn every_screen_declares_its_actions_and_they_fit_every_target() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let project = Project::load(&root).unwrap_or_else(|e| panic!("{e}"));
     let profiles = engine_profiles().unwrap_or_else(|e| panic!("{e:?}"));
-    assert!(!project.config.targets.is_empty());
+    assert!(
+        !project.config.targets.is_empty(),
+        "{:?}",
+        project.config.targets
+    );
     for id in project.config.targets.keys() {
         assert_eq!(controls.fit(&profiles[id].profile), [], "{id}");
     }

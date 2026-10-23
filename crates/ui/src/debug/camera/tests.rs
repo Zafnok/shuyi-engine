@@ -74,7 +74,8 @@ fn it_starts_at_one_x_over_the_middle_of_the_picture() {
     let screen = Field::pictures(&ctx).camera(&ctx);
     let picture = screen.picture().unwrap();
     assert_eq!((picture.width(), picture.height()), (30, 12));
-    assert!(!picture.sprites().is_empty());
+    let found = picture.sprites();
+    assert!(!found.is_empty(), "{found:?}");
     assert!(near(screen.centre(), (120.0, 96.0)));
 }
 

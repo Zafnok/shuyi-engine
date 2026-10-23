@@ -540,6 +540,7 @@ mod tests {
             "the one-bit atlas holds cells up to 8 pixels wide, not 9"
         );
         let empty = FontAtlasDef::default();
-        assert!(one_bit(&empty, 0, &[]).unwrap().is_empty());
+        let found = one_bit(&empty, 0, &[]).unwrap();
+        assert!(found.is_empty(), "{found:?}");
     }
 }

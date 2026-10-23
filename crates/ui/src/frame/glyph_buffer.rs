@@ -867,10 +867,14 @@ mod tests {
 
     #[test]
     fn rect_is_empty() {
-        assert!(Rect::new(0, 0, 0, 1).is_empty());
-        assert!(Rect::new(0, 0, 1, 0).is_empty());
-        assert!(Rect::new(0, 0, -1, 1).is_empty());
-        assert!(!Rect::new(0, 0, 1, 1).is_empty());
+        let found = Rect::new(0, 0, 0, 1);
+        assert!(found.is_empty(), "{found:?}");
+        let found = Rect::new(0, 0, 1, 0);
+        assert!(found.is_empty(), "{found:?}");
+        let found = Rect::new(0, 0, -1, 1);
+        assert!(found.is_empty(), "{found:?}");
+        let found = Rect::new(0, 0, 1, 1);
+        assert!(!found.is_empty(), "{found:?}");
     }
 
     #[test]
@@ -1081,7 +1085,8 @@ mod tests {
     fn overlays_are_added_and_clipped() {
         let mut b = buf(3, 2);
         assert_eq!(b.pixel_bounds(), Rect::new(0, 0, 24, 32));
-        assert!(b.overlays().is_empty());
+        let found = b.overlays();
+        assert!(found.is_empty(), "{found:?}");
         b.add_overlay(over(2, 14, 16, 2));
         b.add_overlay(Overlay::new(Rect::new(-4, 30, 10, 5), BLUE, Layer::Under));
         b.add_overlay(over(20, 0, 10, 1));
@@ -1118,7 +1123,8 @@ mod tests {
         let mut b = buf(3, 3);
         b.blit(&src, i32::MAX, i32::MIN);
         b.blit(&src, i32::MIN, i32::MAX);
-        assert!(b.overlays().is_empty());
+        let found = b.overlays();
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]
@@ -1147,14 +1153,16 @@ mod tests {
         b.blit(&src, 0, 1);
         assert!(b.overlays().iter().all(|o| o.rect.y < 16 || o.rect.x >= 8));
         b.fill_rect(b.bounds(), BLANK);
-        assert!(b.overlays().is_empty());
+        let found = b.overlays();
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]
     fn subtract_cases() {
         let r = Rect::new(0, 0, 10, 10);
         assert_eq!(subtract(r, Rect::new(20, 0, 5, 5)), [r]);
-        assert!(subtract(r, Rect::new(-1, -1, 20, 20)).is_empty());
+        let found = subtract(r, Rect::new(-1, -1, 20, 20));
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(
             subtract(r, Rect::new(2, 3, 4, 5)),
             [

@@ -65,10 +65,10 @@ Shuyi today:
   warning. Only the text is stale: `run-gates` lines 89–92 say "CI has
   no access to the game repository".
 
-Planned, and not this: 2804's `Breaking:` lines and 2005's version
-policy are written by hand, and 2010 diffs the public API of each PR
-and asks for a `Breaking:` line when it breaks. None of them compiles
-the game.
+Planned or done, and not this: the `Breaking:` lines (2010, 2804) and
+2005's version policy are written by hand, and 2010 (done, ADR-0038)
+diffs the public API of each PR in CI's `api` job and asks for a
+`Breaking:` line when it breaks. None of them compiles the game.
 
 Why it matters. The MVP is parity with the game, and the engine is
 built for that game first (decisions, 2026-10-20, *Built for one game
@@ -257,13 +257,13 @@ None. It is a CI choice, and the game repository is already public.
 
 **Either order:**
 
-- **With 2010 and 2804** (the `Breaking:` lines). If either is done,
-  `work-ticket` already asks for `Breaking:` lines: its step also says
-  each item the `game` report lists as `new` has one. If neither is
-  done, add nothing: a `new` item comes from an API change, and the
-  step they add covers it. If 2010 is done, its rewording of the
-  `AGENTS.md` bullet and its pointer in *The game at the next pin*
-  stay; this ticket's sentences go beside them.
+- **With 2010 (done) and 2804** (the `Breaking:` lines). `work-ticket`
+  §5 step 2 already asks for `Breaking:` lines (2010): that step also
+  says each item the `game` report lists as `new` has one. If 2804 is
+  done, its `migration` block is in the same step; keep one step. 2010's
+  rewording of the `AGENTS.md` bullet and its pointer in `run-gates`'
+  *The game at the next pin* stay; this ticket's sentences go beside
+  them.
 - **With 2513** (the Linux setup script): step 2 of the `game` job.
 - **With 2011** (Dependabot, done): the `dependency-upkeep` skill's
   step 3 ("build the game against the branch") reads the `game` job's

@@ -225,7 +225,8 @@ fn left_and_right_move_between_the_slots_and_stop_at_the_ends() {
     s.update(&mut c, &act(&[CursorUp, CursorUp]));
     sounds(&mut c);
     s.update(&mut c, &act(&[CursorRight, CursorLeft]));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     s.update(&mut c, &act(&[CursorDown, CursorDown]));
     assert_eq!(s.focus(), Some((CursorUp, 1)));
 }
@@ -292,7 +293,8 @@ fn a_cursor_key_captured_and_still_held_doesnt_move_the_focus() {
     sounds(&mut c);
     s.update(&mut c, &held(&[CursorDown, CursorDown, CursorRight]));
     assert_eq!(s.focus(), Some((Info, 1)));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     // Other actions still work meanwhile.
     s.update(&mut c, &held(&[Confirm]));
     assert!(s.is_capturing());
@@ -352,7 +354,8 @@ fn the_clear_key_is_ignored_while_capturing() {
     assert!(s.is_capturing());
     assert_eq!(s.bindings(), &before);
     assert_eq!(s.message(), None);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     // A key pressed after it in the same frame is still captured.
     let both = act(&[]).with_typing(vec![chord("Delete"), chord("g"), chord("h")], vec![]);
     s.update(&mut c, &both);
@@ -460,7 +463,8 @@ fn the_clear_key_empties_the_focused_slot() {
     assert_eq!(sounds(&mut c), [cue(MenuSound::Select)]);
     // An empty slot: nothing to do, no sound.
     s.update(&mut c, &press("Delete"));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     // A required action's last key may be emptied too.
     focus_on(&mut s, &mut c, Confirm, 0);
     s.update(&mut c, &press("Delete"));
@@ -625,7 +629,8 @@ fn the_restore_question_can_be_backed_out_of() {
     s.update(&mut c, &other);
     assert!(s.is_asking_restore());
     assert_eq!(s.focus(), None);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     let question = s.view(&c).question.unwrap();
     assert_eq!(question.text, "Restore the default keys for Right-handed?");
     assert_eq!(question.keys.as_deref(), Some("f yes / d no"));
@@ -676,7 +681,8 @@ fn other_actions_do_nothing() {
     assert_eq!(format!("{t:?}"), "None");
     assert_eq!(s.focus(), Some((CursorUp, 0)));
     assert_eq!(s.bindings(), &before);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     // An unbound key pressed while not capturing does nothing either.
     s.update(&mut c, &press("g"));
     assert_eq!(s.bindings(), &before);
@@ -714,8 +720,10 @@ fn the_view_lists_slots_fixed_keys_and_not_mapped_notes() {
     assert_eq!(row_of(&view, Cancel).fixed, ["Escape"]);
     assert_eq!(shown(&view, Action::EndTurn)[0], "Space");
     assert_eq!(shown(&view, Action::ToggleAutoEnd)[0], "Shift+Space");
-    assert!(row_of(&view, Action::EndTurn).fixed.is_empty());
-    assert!(row_of(&view, Confirm).fixed.is_empty());
+    let found = &row_of(&view, Action::EndTurn).fixed;
+    assert!(found.is_empty(), "{found:?}");
+    let found = &row_of(&view, Confirm).fixed;
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(view.not_mapped, crate::input::help_keys::NOT_MAPPED);
     // Optional and unmapped: a note that doesn't block leaving. Required and
     // unmapped: one that does.
@@ -825,7 +833,8 @@ fn the_switch_row_shows_the_keyboard_or_the_controller() {
     // Left on the keyboard side: already there.
     s.update(&mut c, &act(&[CursorLeft]));
     assert_eq!(s.side(), Side::Keyboard);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(s.message(), Some("old"));
     s.update(&mut c, &act(&[CursorRight]));
     assert_eq!(s.side(), Side::Controller);
@@ -833,7 +842,8 @@ fn the_switch_row_shows_the_keyboard_or_the_controller() {
     assert_eq!((s.message(), s.moved), (None, None));
     s.update(&mut c, &act(&[CursorRight]));
     assert_eq!(s.side(), Side::Controller);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     s.update(&mut c, &act(&[CursorLeft]));
     assert_eq!(s.side(), Side::Keyboard);
     // Confirm flips it, either way, and opens nothing.
@@ -913,7 +923,8 @@ fn with_the_keyboard_confirm_captures_a_button_let_go() {
     assert!(s.is_capturing());
     assert_eq!(pad_names(&s, Info), ["North", "-", "-"]);
     assert_eq!(s.bindings(), &screen(&c).bindings);
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     // Letting go does.
     s.update(&mut c, &buttons(&[], &[Button::RightStickPress], 0.0));
     assert!(!s.is_capturing());
@@ -967,7 +978,8 @@ fn holding_a_button_backs_out_with_nothing_changed() {
     s.update(&mut c, &buttons(&[], &[], 0.25));
     assert!(s.is_capturing(), "not held long enough yet");
     assert_eq!(held(&s), Some((Button::West, 0.75)));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     s.update(&mut c, &buttons(&[], &[], 0.25));
     assert!(!s.is_capturing(), "held for exactly the time");
     assert_eq!(held(&s), None);
@@ -977,7 +989,8 @@ fn holding_a_button_backs_out_with_nothing_changed() {
     s.update(&mut c, &buttons(&[], &[Button::West], 0.0));
     assert_eq!(s.pad_bindings(), &c.pad_bindings());
     assert_eq!(s.focus(), Some((Info, 0)));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(HOLD_TO_CANCEL_SECS.to_bits(), 1.0_f32.to_bits());
 
     // Let go just before the time: it binds.
@@ -1181,7 +1194,8 @@ fn on_a_controller_confirm_offers_change_or_clear() {
     s.update(&mut c, &press("Delete"));
     assert_eq!(s.choice(), Some(1));
     assert_eq!(s.focus(), Some((Info, 0)));
-    assert!(sounds(&mut c).is_empty());
+    let found = sounds(&mut c);
+    assert!(found.is_empty(), "{found:?}");
     // A button going down while they are open isn't captured.
     tap(&mut s, &mut c, Button::West);
     assert_eq!(s.pad_bindings(), &c.pad_bindings());
