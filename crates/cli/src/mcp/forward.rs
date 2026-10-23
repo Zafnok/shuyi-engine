@@ -331,27 +331,23 @@ impl Process {
         out
     }
 
-    /// Its next line: waiting for it with `wait`, else none if none came
-    /// yet. `Err` once its stdout has closed.
-    fn line(&mut self, wait: bool) -> Result<Option<String>, ()> {
-        if wait {
-            return self.lines.recv().map(Some).map_err(|_| ());
-        }
-        match self.lines.try_recv() {
-            Ok(line) => Ok(Some(line)),
-            Err(TryRecvError::Empty) => Ok(None),
-            Err(TryRecvError::Disconnected) => Err(()),
-        }
-    }
-
-    /// Reads its lines until the response to `id`: `Err` if it stops
-    /// first, none if `wait` is false and it hasn't come yet.
+    /// Reads its lines until the response to `id`, waiting for each with
+    /// `wait`: `Err` if it stops first, none if `wait` is false and it
+    /// hasn't come yet.
     fn response(&mut self, id: u64, wait: bool) -> Result<Option<Value>, String> {
         loop {
-            let line = match self.line(wait) {
-                Ok(Some(line)) => line,
-                Ok(None) => return Ok(None),
-                Err(()) => return Err(self.stopped()),
+            let next = if wait {
+                self.lines.recv().ok()
+            } else {
+                match self.lines.try_recv() {
+                    Ok(line) => Some(line),
+                    Err(TryRecvError::Empty) => return Ok(None),
+                    Err(TryRecvError::Disconnected) => None,
+                }
+            };
+            // Its stdout closed.
+            let Some(line) = next else {
+                return Err(self.stopped());
             };
             // A notification, or a line that isn't JSON: not the answer.
             let Ok(message) = serde_json::from_str::<Value>(&line) else {

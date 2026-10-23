@@ -83,10 +83,12 @@ fn it_initializes_then_sends_each_request_and_reads_until_its_answer() {
         (asked["method"].as_str(), asked["id"].as_u64()),
         (Some("tools/list"), Some(1))
     );
-    // The next request has the next id.
+    // The next request has the next id: its answer, then the pipe closes,
+    // so one waiting for another id stops instead of waiting forever.
     server
         .send(r#"{"jsonrpc":"2.0","id":2,"result":{"ok":1}}"#.to_owned())
         .unwrap();
+    drop(server);
     let answer = process
         .request("tools/call", &json!({ "name": "explain" }))
         .unwrap();

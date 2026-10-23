@@ -465,9 +465,7 @@ pub fn serve(
         for message in &messages {
             writeln!(output, "{message}")?;
         }
-        if !messages.is_empty() {
-            output.flush()?;
-        }
+        output.flush()?;
     }
 }
 

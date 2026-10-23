@@ -472,20 +472,23 @@ fn a_result_is_an_error_unless_its_answer_is_ok() {
 }
 
 /// What the fake forwarded servers were asked: each server started (its
-/// words and folder), and each tool called (its name and arguments).
+/// words and folder), each tool called (its name and arguments), and the
+/// folder of each server asked for its tools.
 #[derive(Default)]
 struct Asked {
     spawned: RefCell<Vec<(String, PathBuf)>>,
     called: RefCell<Vec<(String, Value)>>,
+    listed: RefCell<Vec<PathBuf>>,
 }
 
 /// Workspaces by folder (the longest that a folder is in), and forwarded
-/// servers that list `tools`, answer every call, or `fail`, and are ready
-/// once `ready` is.
+/// servers that list `tools`, answer every call (a `start` of
+/// `"fail"` not ok), or stop while `fail` is set, and are ready once
+/// `ready` is.
 struct Workspaces {
     of: Vec<(PathBuf, PathBuf)>,
     tools: Vec<Value>,
-    fail: bool,
+    fail: Rc<Cell<bool>>,
     ready: Rc<Cell<bool>>,
     asked: Rc<Asked>,
 }
@@ -498,7 +501,7 @@ impl Workspaces {
                 .map(|(folder, ws)| (folder.to_path_buf(), PathBuf::from(ws)))
                 .collect(),
             tools: tools(),
-            fail: false,
+            fail: Rc::default(),
             ready: Rc::new(Cell::new(true)),
             asked: Rc::default(),
         }
@@ -520,18 +523,20 @@ impl<'a> Forwarding<'a> for Workspaces {
             .borrow_mut()
             .push((words.join(" "), root.to_path_buf()));
         Box::new(Forwarded {
+            root: root.to_path_buf(),
             tools: self.tools.clone(),
-            fail: self.fail,
+            fail: Rc::clone(&self.fail),
             ready: Rc::clone(&self.ready),
             asked: Rc::clone(&self.asked),
         })
     }
 }
 
-/// A fake forwarded server.
+/// A fake forwarded server, run in `root`.
 struct Forwarded {
+    root: PathBuf,
     tools: Vec<Value>,
-    fail: bool,
+    fail: Rc<Cell<bool>>,
     ready: Rc<Cell<bool>>,
     asked: Rc<Asked>,
 }
@@ -542,7 +547,7 @@ const DIDNT_BUILD: &str = "the project's own server (\"cargo shuyi mcp\" in ther
 
 impl Forward for Forwarded {
     fn ready(&mut self, wait: bool) -> Option<Result<(), String>> {
-        if self.fail {
+        if self.fail.get() {
             Some(Err(DIDNT_BUILD.to_owned()))
         } else {
             (wait || self.ready.get()).then_some(Ok(()))
@@ -550,18 +555,22 @@ impl Forward for Forwarded {
     }
 
     fn request(&mut self, method: &str, params: &Value) -> Result<Value, String> {
-        if self.fail {
+        if self.fail.get() {
             return Err(DIDNT_BUILD.to_owned());
         }
         let result = match method {
-            "tools/list" => json!({ "tools": self.tools }),
+            "tools/list" => {
+                self.asked.listed.borrow_mut().push(self.root.clone());
+                json!({ "tools": self.tools })
+            }
             "tools/call" => {
                 let name = params["name"].as_str().unwrap().to_owned();
                 self.asked
                     .called
                     .borrow_mut()
                     .push((name.clone(), params["arguments"].clone()));
-                let answer = json!({ "ok": true, "op": name, "by": "forwarded", "limits": [] });
+                let ok = !(name == "start" && params["arguments"]["start"] == "fail");
+                let answer = json!({ "ok": ok, "op": name, "by": "forwarded", "limits": [] });
                 tool_result(&answer, None)
             }
             _ => panic!("{method}"),
@@ -691,6 +700,7 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     let game = Fake::default();
     let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
     let asked = Rc::clone(&workspaces.asked);
+    let fail = Rc::clone(&workspaces.fail);
     let (mut server, written) = forwarding(&own, &theirs, &game, workspaces);
     // Started at the roots' answer, and its list is the server's: no
     // notification.
@@ -739,6 +749,12 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     assert!(result["structuredContent"]["by"].is_null());
     assert_eq!(asked.called.borrow().len(), before);
 
+    // A one-off call there is no session, and nor is a start that fails.
+    assert!(!server.has_game());
+    let result = called(&mut server, "start", &json!({ "start": "fail" }));
+    assert_eq!(result["isError"], true, "{result}");
+    assert!(!server.has_game());
+
     // The session runs where `start` went, and a start elsewhere ends it.
     assert_eq!(called(&mut server, "start", &json!({}))["isError"], false);
     assert!(server.has_game());
@@ -755,6 +771,13 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     let result = called(&mut server, "step", &json!({}));
     assert_eq!(result["isError"], false, "{result}");
     assert_eq!(asked.called.borrow().len(), before, "the server's own game");
+
+    // A session there ends when its server stops.
+    assert_eq!(called(&mut server, "start", &json!({}))["isError"], false);
+    fail.set(true);
+    let result = called(&mut server, "step", &json!({}));
+    assert_eq!(result["structuredContent"]["code"], "SH3005", "{result}");
+    assert!(!server.has_game());
     fs::remove_dir_all(&own).unwrap();
     fs::remove_dir_all(&theirs).unwrap();
 }
@@ -795,6 +818,7 @@ fn the_tool_list_follows_the_session_folders_server() {
     workspaces.ready.set(false);
     let ready = Rc::clone(&workspaces.ready);
     let asked = Rc::clone(&workspaces.asked);
+    let fail = Rc::clone(&workspaces.fail);
     let (mut server, written) = forwarding(&own, &theirs, &game, workspaces);
     // Still building: nothing yet, and the server's own list.
     assert!(written.is_empty());
@@ -825,6 +849,26 @@ fn the_tool_list_follows_the_session_folders_server() {
         Path::new(asked.called.borrow()[0].1["project"].as_str().unwrap()),
         theirs.join("up")
     );
+    // A tool on neither list is unknown.
+    let unknown = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": { "name": "swim" } }),
+    );
+    assert_eq!(unknown["error"]["code"], -32_602);
+    // One only the followed server knows, once it stopped, can't be
+    // answered.
+    fail.set(true);
+    let gone = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": { "name": "fly" } }),
+    );
+    assert_eq!(gone["error"]["code"], -32_603);
+    assert!(
+        gone["error"]["message"]
+            .as_str()
+            .unwrap()
+            .ends_with("cannot find value")
+    );
     fs::remove_dir_all(&own).unwrap();
     fs::remove_dir_all(&theirs).unwrap();
 }
@@ -834,8 +878,8 @@ fn a_forwarded_server_that_doesnt_build_is_an_error_result_with_its_output() {
     let own = scratch("fail-own", GAME);
     let theirs = scratch("fail-theirs", GAME);
     let game = Fake::default();
-    let mut workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
-    workspaces.fail = true;
+    let workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    workspaces.fail.set(true);
     let asked = Rc::clone(&workspaces.asked);
     let (mut server, written) = forwarding(&own, &theirs, &game, workspaces);
     assert!(written.is_empty());
@@ -895,8 +939,8 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
     assert_eq!(names, ["start", "step", "bots"]);
 
     // If the fresh one doesn't start, the limit says what to do.
-    let mut workspaces = Workspaces::new(&[(&dir, "own")]);
-    workspaces.fail = true;
+    let workspaces = Workspaces::new(&[(&dir, "own")]);
+    workspaces.fail.set(true);
     let mut server = Server::new(dir.clone(), Box::new(Speaks { contract: newer }))
         .forwarding(Box::new(workspaces));
     let result = called(&mut server, "bots", &json!({}));
@@ -918,4 +962,60 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
             .starts_with("a fresh server of this checkout didn't start: ")
     );
     fs::remove_dir_all(&dir).unwrap();
+}
+
+/// Launches hosts whose engine speaks the contract `contract` says when
+/// they are launched.
+struct Moving {
+    contract: Rc<Cell<u32>>,
+}
+
+impl<'a> Launch<'a> for Moving {
+    fn launch(&self, _: &Project) -> Result<Box<dyn Link + 'a>, (Code, String)> {
+        Ok(Box::new(Speaks {
+            contract: self.contract.get(),
+        }))
+    }
+}
+
+#[test]
+fn a_restart_keeps_the_session_that_runs_and_the_list_the_server_follows() {
+    let own = scratch("moved-own", GAME);
+    let theirs = scratch("moved-theirs", GAME);
+    let contract = Rc::new(Cell::new(VERSION));
+    let mut workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    workspaces
+        .tools
+        .push(json!({ "name": "fly", "inputSchema": { "type": "object" } }));
+    workspaces.ready.set(false);
+    let ready = Rc::clone(&workspaces.ready);
+    let asked = Rc::clone(&workspaces.asked);
+    let mut server = Server::new(
+        own.clone(),
+        Box::new(Moving {
+            contract: Rc::clone(&contract),
+        }),
+    )
+    .forwarding(Box::new(workspaces));
+    let own_project = json!({ "project": own.display().to_string() });
+    // A session of the server's own, before the engine moves.
+    let result = called(&mut server, "start", &own_project);
+    assert_eq!(result["isError"], false, "{result}");
+    // The session folder is another workspace's, still building.
+    initialized(&mut server, true);
+    assert!(rooted(&mut server, &theirs).is_empty());
+    // The engine moves: a one-off call goes to a fresh server.
+    contract.set(VERSION + 1);
+    let result = called(&mut server, "bots", &own_project);
+    assert_eq!(result["structuredContent"]["by"], "forwarded", "{result}");
+    // The session's game runs on where it ran.
+    let result = called(&mut server, "step", &json!({}));
+    assert_eq!(result["isError"], false, "{result}");
+    assert!(result["structuredContent"]["by"].is_null(), "{result}");
+    // The list followed is still the session folder's.
+    ready.set(true);
+    assert_eq!(server.poll().len(), 1);
+    assert_eq!(*asked.listed.borrow(), std::slice::from_ref(&theirs));
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
 }
