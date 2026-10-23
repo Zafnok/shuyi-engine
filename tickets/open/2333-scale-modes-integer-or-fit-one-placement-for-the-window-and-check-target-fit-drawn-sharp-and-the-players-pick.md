@@ -277,8 +277,8 @@ game's choice, through its `engine-change` skill.
 already has a private one, so no game builds it field by field. A test
 of the game's that matches or builds `Presented::Game` with every field
 listed (no `..`) needs `scale` added. The game's PR that moves the pin
-follows this one. 2010's `api` job shows the new items. If 2013 is
-done, the new public types follow its rule.
+follows this one. 2010's `api` job shows the new items. The new public
+types follow ADR-0039.
 
 ## Implementation steps
 
@@ -289,7 +289,7 @@ done, the new public types follow its rule.
    `crates/cli/src/game.rs`, `crates/platform/src/app.rs` (`run`,
    `present_game`), `headless.rs` and `harness.rs`, and `settings.rs`,
    `toy.rs` and `screens/options.rs` in `shuyi-ui`. Check which of
-   2013, 2110, 2314, 2321, 2346, 2351, 2405 and 3012 are done.
+   2110, 2314, 2321, 2346, 2351, 2405 and 3012 are done.
 2. Write `ScaleMode`, move `Factor`, write `scale`, `place` and
    `MAX_DRAW_PX`, and put `layout` on `place`, with the tests below.
 3. Move `check --target` onto them. Its tests pass unchanged.

@@ -107,13 +107,13 @@ wording reads right.
 - **Vsync, a developer setting:** `shuyi_app::Window` gains `vsync:
   bool`; `window_conf` sets `platform.swap_interval` to `Some(1)` or
   `Some(0)`. miniquad only reads it when the window opens, so it is not
-  a player setting here. If 2013 is done, `Window` is
-  `#[non_exhaustive]` with `Window::new`. `new` sets `vsync` to its
-  default, and this ticket adds `#[must_use] pub const fn
-  with_vsync(self, vsync: bool) -> Window`. The new public types
-  (`FrameCap`, `CapError`, `CapRequest`, `CapStatus`, `Pacing`) follow
-  2013's ADR. If 2013 isn't done, add the field as written; 2013 then
-  sets it in `Window::new` and adds the setter.
+  a player setting here. `Window` is `#[non_exhaustive]` with
+  `Window::new` (ADR-0039). `new` sets `vsync` to its default, and this
+  ticket adds `#[must_use] pub const fn with_vsync(self, vsync: bool) ->
+  Window`. The new public types (`FrameCap`, `CapError`, `CapRequest`,
+  `CapStatus`, `Pacing`) follow ADR-0039; in `shuyi-app`, clippy's
+  `exhaustive_structs` and `exhaustive_enums` fail on one that isn't
+  `#[non_exhaustive]`.
 - **The pacer, in `shuyi-app`** (a new `pacing.rs`): a pure struct that
   is given times (seconds as `f64`) and answers how long to wait, so it
   is tested without a clock; `run` feeds it `miniquad::date::now()` and
@@ -192,9 +192,8 @@ wording reads right.
 
 **For the game:** the API is additive. `Settings` has a `pub(crate)`
 field, so no game builds it by literal, and `Settings::frame_cap` is
-additive. `shuyi_app::Window` gains `vsync`: this is additive if 2013 is
-done (a game builds `Window` with `Window::new`); if not, a struct
-literal needs the new field. The game's
+additive. `shuyi_app::Window` gains `vsync`, which is additive: a
+game builds `Window` with `Window::new` (ADR-0039). The game's
 settings file should save `frame_cap` like the toy's, or the player's
 choice isn't kept. The game's PR that moves its pin follows this one.
 
@@ -214,7 +213,7 @@ choice isn't kept. The game's PR that moves its pin follows this one.
    `next_frame`, the web skip (keeping the skipped frames' input), and
    `Pacing` through `App` to `Game::set_pacing`.
 6. The short path's two parts (2511), and the either-order parts whose
-   partner is done (2013, 2314, 2351, 2518).
+   partner is done (2314, 2351, 2518).
 7. The ADR. Measure CPU with hello-grid at 60 and Unlimited on a desktop
    and put the numbers in the completion notes.
 

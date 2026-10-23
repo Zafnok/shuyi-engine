@@ -43,6 +43,14 @@
 //! reaches the binary from its own build script
 //! (`crates/cli/web/README.md` shows how).
 
+// Every public type here is config a game fills in, so each is
+// `#[non_exhaustive]` with a constructor and may gain fields without
+// breaking a game (ADR-0039). The lints hold that here only: in the other
+// crates most public types are plain values that rightly stay exhaustive.
+// They live in this file, not in `Cargo.toml`, because its `[lints]` must
+// stay a copy of the workspace's (the test at the bottom).
+#![warn(clippy::exhaustive_structs, clippy::exhaustive_enums)]
+
 mod audio;
 mod backend;
 pub mod keys;
@@ -63,8 +71,20 @@ use shuyi_ui::log::{LogLevel, LogLine};
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
 
-/// The window a game opens.
+/// The window a game opens. Build it with [`Window::new`]: a struct
+/// literal doesn't compile outside this crate, so a new field never breaks
+/// a game (ADR-0039).
+///
+/// ```compile_fail
+/// let window = shuyi_app::Window {
+///     title: "A game",
+///     width: 640,
+///     height: 480,
+///     icon: None,
+/// };
+/// ```
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct Window {
     /// The title bar's text.
     pub title: &'static str,
@@ -76,8 +96,30 @@ pub struct Window {
     pub icon: Option<Icon>,
 }
 
+impl Window {
+    /// A window titled `title`, `width` × `height` pixels at start, with
+    /// no icon ([`with_icon`](Self::with_icon) gives one).
+    #[must_use]
+    pub const fn new(title: &'static str, width: i32, height: i32) -> Self {
+        Self {
+            title,
+            width,
+            height,
+            icon: None,
+        }
+    }
+
+    /// The window with `icon` (`None` for none): usable in a `const`
+    /// item.
+    #[must_use]
+    pub const fn with_icon(self, icon: Option<Icon>) -> Self {
+        Self { icon, ..self }
+    }
+}
+
 /// A window icon: PNG files of 16, 32 and 64 pixels square.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct Icon {
     /// The 16 × 16 picture.
     pub small: &'static [u8],
@@ -87,10 +129,19 @@ pub struct Icon {
     pub big: &'static [u8],
 }
 
+impl Icon {
+    /// An icon of the three pictures, 16, 32 and 64 pixels square.
+    #[must_use]
+    pub const fn new(small: &'static [u8], medium: &'static [u8], big: &'static [u8]) -> Self {
+        Self { small, medium, big }
+    }
+}
+
 /// Where a game's voice clips are (game ADR-0046): a folder shipped beside the
 /// game (not embedded), with a folder per language holding the manifest
 /// and the clips.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct VoiceFiles {
     /// The folder beside the game, e.g. `voice`.
     pub folder: &'static str,
@@ -100,8 +151,22 @@ pub struct VoiceFiles {
     pub manifest: &'static str,
 }
 
+impl VoiceFiles {
+    /// The clips in `folder`, in its folder for `lang`, listed by the
+    /// manifest file `manifest`.
+    #[must_use]
+    pub const fn new(folder: &'static str, lang: &'static str, manifest: &'static str) -> Self {
+        Self {
+            folder,
+            lang,
+            manifest,
+        }
+    }
+}
+
 /// What a game tells the macroquad backend. How it starts, loads and is
-/// painted is its [`Start`].
+/// painted is its [`Start`]. Build it with [`AppConfig::new`].
+#[non_exhaustive]
 pub struct AppConfig {
     /// The window.
     pub window: Window,
@@ -123,6 +188,30 @@ pub struct AppConfig {
     /// (Steam's on-screen keyboard is the game's: its ticket 0903);
     /// `None` where the player types on keys.
     pub text_input: Option<Box<dyn TextInput>>,
+}
+
+impl AppConfig {
+    /// The config of a game with every field it must choose, with no
+    /// voices and no system keyboard: a game that has them assigns
+    /// [`voices`](Self::voices) and [`text_input`](Self::text_input).
+    #[must_use]
+    pub const fn new(
+        window: Window,
+        storage_name: &'static str,
+        files: fn(&str) -> Option<&'static [u8]>,
+        font_png: &'static str,
+        sounds: Files<'static>,
+    ) -> Self {
+        Self {
+            window,
+            storage_name,
+            files,
+            font_png,
+            sounds,
+            voices: None,
+            text_input: None,
+        }
+    }
 }
 
 /// The window settings for macroquad's entry point
@@ -221,12 +310,11 @@ const BASIC_MARGIN: i32 = 16;
 fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Window {
     let console = game.console_spec();
     let side = |cells: u16, cell: u16| i32::from(cells) * i32::from(cell) * 2 + BASIC_MARGIN;
-    Window {
-        title: game.name(),
-        width: side(console.cols, console.cell_w),
-        height: side(console.rows, console.cell_h),
-        icon: None,
-    }
+    Window::new(
+        game.name(),
+        side(console.cols, console.cell_w),
+        side(console.rows, console.cell_h),
+    )
 }
 
 /// A file of the bundle [`run_game`] installed.
@@ -253,21 +341,20 @@ fn sound_left_out(_: &str) -> bool {
 /// storage's name, its files from the installed bundle and its font's
 /// picture; no sounds, no voices and no system keyboard.
 fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> AppConfig {
-    AppConfig {
-        window: basic_window(game),
-        storage_name: game.storage_name(),
-        files: installed_file,
-        font_png: FONT_PNG,
-        sounds: Files {
-            sound: &no_sound,
-            sound_shown: &sound_shown,
-            sound_left_out: &sound_left_out,
-            music_dir: "music",
-            music: None,
-        },
-        voices: None,
-        text_input: None,
-    }
+    let sounds = Files {
+        sound: &no_sound,
+        sound_shown: &sound_shown,
+        sound_left_out: &sound_left_out,
+        music_dir: "music",
+        music: None,
+    };
+    AppConfig::new(
+        basic_window(game),
+        game.storage_name(),
+        installed_file,
+        FONT_PNG,
+        sounds,
+    )
 }
 
 /// Prints a line of App's log with macroquad's macro for its level.
@@ -330,18 +417,9 @@ mod tests {
 
     #[test]
     fn an_icon_that_does_not_decode_is_none() {
-        let broken = Icon {
-            small: b"not a png",
-            medium: b"not a png",
-            big: b"not a png",
-        };
+        let broken = Icon::new(b"not a png", b"not a png", b"not a png");
         assert!(window_icon(&broken).is_none());
-        let window = Window {
-            title: "A game",
-            width: 640,
-            height: 480,
-            icon: Some(broken),
-        };
+        let window = Window::new("A game", 640, 480).with_icon(Some(broken));
         let conf = window_conf(&window);
         assert!(conf.icon.is_none());
         assert_eq!(
@@ -351,6 +429,45 @@ mod tests {
                 conf.window_height
             ),
             ("A game", 640, 480)
+        );
+    }
+
+    /// A window built in a `const` item, as games build theirs.
+    const ICONED: Window =
+        Window::new("A game", 640, 480).with_icon(Some(Icon::new(b"small", b"medium", b"big")));
+
+    #[test]
+    fn a_new_window_has_no_icon_and_with_icon_sets_one() {
+        let window = Window::new("A game", 640, 480);
+        assert_eq!(
+            (window.title, window.width, window.height),
+            ("A game", 640, 480)
+        );
+        assert!(window.icon.is_none());
+        let icon = ICONED.icon.unwrap();
+        assert_eq!(
+            (icon.small, icon.medium, icon.big),
+            (&b"small"[..], &b"medium"[..], &b"big"[..])
+        );
+        assert!(ICONED.with_icon(None).icon.is_none());
+    }
+
+    #[test]
+    fn a_new_config_has_no_voices_and_no_system_keyboard() {
+        let mut config = basic_config(&basic());
+        config = AppConfig::new(
+            config.window,
+            "a-game",
+            installed_file,
+            FONT_PNG,
+            config.sounds,
+        );
+        assert!(config.voices.is_none() && config.text_input.is_none());
+        config.voices = Some(VoiceFiles::new("voice", "en", "voice.ron"));
+        let voices = config.voices.unwrap();
+        assert_eq!(
+            (voices.folder, voices.lang, voices.manifest),
+            ("voice", "en", "voice.ron")
         );
     }
 

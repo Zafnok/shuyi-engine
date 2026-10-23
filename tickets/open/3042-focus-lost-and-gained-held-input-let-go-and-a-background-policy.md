@@ -249,8 +249,8 @@ choice, made in its own repository.
   `App::is_paused`, the `Background` types). Its hook now hears
   `FocusLost` and `FocusGained` on the desktop and the web; if it
   matches on `SystemEvent`, its `_` arm already covers them. The game's
-  PR that moves the pin follows this one. If 2013 is done, the new
-  public types follow its rule.
+  PR that moves the pin follows this one. The new public types follow
+  ADR-0039.
 - **Size:** if the PR passes about 600 changed lines, the background
   policy (`Background`, `GameSettings::BACKGROUND`, the pause and the
   mute, with their tests) goes to a follow-up ticket (the
@@ -288,8 +288,8 @@ choice, made in its own repository.
    (`crates/platform/src/app/tests.rs`); `crates/ui/src/input/state.rs`,
    `input/pad.rs` (`Pads::update`), `game.rs` and `settings.rs`;
    ADR-0024 §5 and `docs/platform-backends.md`; macroquad 0.4.16's
-   `src/lib.rs:826-861` and `src/input.rs:231-252`. Check whether 2013,
-   2018, 2342, 2405, 3041 and 3044 are done.
+   `src/lib.rs:826-861` and `src/input.rs:231-252`. Check whether 2018,
+   2342, 2405, 3041 and 3044 are done.
 2. `InputState::forget_held`, `set_keymap` on top of it, and
    `Game::forget_held_input`, with unit tests. If 2405 is done, the
    pointer part too.

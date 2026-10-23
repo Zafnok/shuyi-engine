@@ -192,9 +192,8 @@ in the PR that unparks it, before any code.
   send crash reports, only to its own address, and only with the
   player's answer; what a sent report holds, and what only with a
   second yes; three tries at most.
-- **Public types:** `CrashSending` and `SendState` are
-  `#[non_exhaustive]`. Either order with 2013: if it is done, follow its
-  rules for public types; if not, 2013 covers these with the rest.
+- **Public types (ADR-0039):** `CrashSending` and `SendState` are
+  `#[non_exhaustive]`, and follow its rules for public types.
 - **`tools/layers.ron`:** `serde_json` joins `shuyi-platform`'s
   `outside` list, with its comment.
 - **What changes for the game:** additions only. `Settings` gains a
@@ -228,7 +227,7 @@ in the PR that unparks it, before any code.
    record his answers in `docs/decisions.md`. If they differ from the
    recommendations, rewrite **Scope** to match before writing code.
 2. Check that 3046, 2601 and 2601's two backend tickets are in
-   `tickets/done/`, and whether 2013, 2015 and 2351 are. Read 3046's
+   `tickets/done/`, and whether 2015 and 2351 are. Read 3046's
    `crates/platform/src/crash.rs`, `Setup::last_crash` and
    `Start::crash_record`; 2601's `crates/ui/src/http.rs` and the HTTP
    part of `step` in `crates/platform/src/app.rs`; `TextSpeed` in

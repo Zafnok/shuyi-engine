@@ -243,17 +243,17 @@ None.
   - **2342, 2344 and 2345** each add a field to `SoundCue`. The later
     to land rebases onto the other's `SoundCue` and bumps
     `pack::VERSION` again.
-  - **2013:** if its ADR is merged, `SoundCue` and `MusicCue` move under
-    it in this PR, as its *When* rule says of a type that next gains a
-    field: `#[non_exhaustive]`, with a `new` that leaves `caption` at
-    `None`. If not, the literals get `caption: None` as above.
+  - **Public types (ADR-0039):** `SoundCue` and `MusicCue` move under it
+    in this PR if they aren't yet (2024 moves `SoundCue`), as its *When*
+    rule says of a type that next gains a field: `#[non_exhaustive]`,
+    with a `new` that leaves `caption` at `None`.
   - **2218:** if it is done, its `AudioManifestRon` writer writes
     `caption` only when it is `Some`, in the implicit-`Some` form, and
     its round trip covers a captioned cue. If not, 2218 does it.
 - **What changes for the game:**
   - `SoundCue` and `MusicCue` gain a public field. A code search of the
     game's repository on 2026-10-20 found `SoundCue {` struct literals
-    in its code, so those need `caption: None` (or `new`, under 2013).
+    in its code, so those move to `SoundCue::new` (ADR-0039).
     The PR says so in a `Breaking:` line (2010).
   - `Settings` gains a field (additive); `GameData` gains a defaulted
     method (additive); old manifests read as before. The game's
@@ -288,7 +288,7 @@ None.
    `crates/ui/src/game.rs`, `crates/ui/src/ctx.rs`, `settings.rs`,
    `screens/options.rs`, `toy.rs`, `crates/ui/tests/it/audio.rs` (the
    toy's `Beeper` Harness), and hello-grid's `sound.rs`, `screens.rs`,
-   `screens/stage.rs`, `settings.rs` and `lib.rs`. Read 2013, 2218,
+   `screens/stage.rs`, `settings.rs` and `lib.rs`. Read 2218,
    2322, 2323, 2340, 2342, 2344, 2345, 2351 and 2225, and note which are
    done.
 2. Add the `caption` field, the implicit-`Some` read and the `cc.` rule

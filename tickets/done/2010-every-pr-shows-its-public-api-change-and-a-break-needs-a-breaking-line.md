@@ -280,10 +280,10 @@ None.
   already has its `Breaking:` step: keep one step, in the form above,
   and make 2804's reader call `breaking_lines`. If not, this ticket adds
   the step and the function, and 2804 reuses both.
-- **Either order with 2013.** If 2013 is done, the ADR cites its ADR.
-  If not, 2013's ADR cites this one, and adding `#[non_exhaustive]` to
-  an existing type is a break, so 2013's PR carries the `Breaking:`
-  lines this job asks for.
+- **Public types (ADR-0039).** The ADR cites ADR-0039, which cites this
+  one. 2013's PR carried its own `Breaking:` lines, in this job's form,
+  for the types it made `#[non_exhaustive]`, so nothing is left here
+  for them.
 - **The pinned Rust (2012, done).** A PR that moves the pinned
   toolchain (`rust-toolchain.toml`) moves this job's nightly date and
   tool versions too when the tools need it. The ADR says so, and the
@@ -338,8 +338,8 @@ and `AGENTS.md`. Its later pin bumps read the `Breaking:` lines.
      summary lists the new one as added.
    Link the three runs from this PR's body.
 6. Write the ADR, the skills' and `AGENTS.md`'s lines, and the
-   *Either order* lines for each of 2804, 2013, 2012, 2116, 2011 and
-   2513 that is done.
+   *Either order* lines for each of 2804, 2012, 2116, 2011 and 2513
+   that is done.
 7. Run the gates.
 
 Size: if the diff runs well past 600 changed lines (fixtures aside),

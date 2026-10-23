@@ -144,9 +144,9 @@ None.
 **For the game:** additive. `GridCursor`, `GoalColumn` and
 `UiAction::dir` are new, and `NameEntry` and `KeyBindingsScreen` keep
 their public API, so no `Breaking:` line (2010). The game's PR that
-moves its pin needs no change. If 2013 is done, `GridCursor` and
-`GoalColumn` follow its ADR; if not, `GridCursor` has private fields
-and constructors, as `ListCursor` has, and 2013 covers `GoalColumn`.
+moves its pin needs no change. `GridCursor` and `GoalColumn` follow
+ADR-0039: `GridCursor` has private fields and constructors, as
+`ListCursor` has.
 
 **Out (do not do):**
 - A drawn grid widget (cells, a box, a skin): this is a cursor, as
@@ -167,8 +167,8 @@ and constructors, as `ListCursor` has, and 2013 covers `GoalColumn`.
 1. Read `widgets/list.rs` and its tests, `name_entry.rs` and its tests,
    and `key_bindings.rs` (`move_row`, `move_across`, `restore_row`,
    `switch_row`, `focus`, `is_on_switch`, `view`, `row_view`, and the
-   `Debug` and `Clone` impls) and its tests. Check whether 2355, 2346
-   and 2013 are done.
+   `Debug` and `Clone` impls) and its tests. Check whether 2355 and
+   2346 are done.
 2. Add `UiAction::dir` with a unit test, unless 2355 added it, and use
    it in `toy/grid.rs`.
 3. Write `GridCursor` and `GoalColumn` in `widgets/grid_cursor.rs`,

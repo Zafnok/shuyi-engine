@@ -16,7 +16,11 @@ use shuyi_core::{Pos, TerrainId};
 use super::skin::Terrains;
 
 /// The visible part of a grid map, with units of the game's kind `U`.
+/// Build it with [`MapScene::new`] and assign the rest: a struct literal
+/// doesn't compile outside this crate, so a new field never breaks a game
+/// (ADR-0039).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct MapScene<U> {
     /// The map tile at the view's top-left (negative, or past the map, when
     /// the map is smaller than the view).

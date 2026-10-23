@@ -279,9 +279,8 @@ None.
     `AudioManifestRon` writer writes the rule fields that aren't the
     default, and its round trip covers a cue with rules. If not, 2218
     picks them up.
-  - **2013** (public types that can grow): if it is done, `CueRules`,
-    `Pick`, `DroppedSound` and `DropWhy` follow its rule. If not,
-    `DropWhy` is `#[non_exhaustive]` as above.
+  - **Public types (ADR-0039):** `CueRules`, `Pick`, `DroppedSound` and
+    `DropWhy` follow it; `DropWhy` is `#[non_exhaustive]` as above.
 - **Part two**, written as a ticket in step 1 and not done in this PR:
   - the data: `max_copies: Option<u8>` (at most this many copies of the
     cue sound at once), `when_full: WhenFull` (`Skip`, the default: the
@@ -372,8 +371,8 @@ None.
    `crates/app/src/backend.rs`, `crates/platform/src/app.rs` (`step`,
    `Lists`, `load`, `running`), `crates/platform/src/audio.rs`,
    `crates/platform/src/harness.rs`, and `crates/cli/src/contract/run.rs`,
-   `session.rs` and `fake.rs`. Check whether 3029, 2344, 2342, 2363,
-   2218 and 2013 are done (the either-order clauses).
+   `session.rs` and `fake.rs`. Check whether 3029, 2344, 2342, 2363
+   and 2218 are done (the either-order clauses).
 3. The data: `CueRules`, `Pick`, the RON fields, `parse_ron_implicit_some`,
    the check, `SoundCue::new` and the literals, the pack version and
    its snapshot. `FULL` must load to the same values, with the default

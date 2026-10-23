@@ -244,13 +244,12 @@ None.
     `targets/` into a crate's package, embed the profiles from there.
     If not, embed them from `targets/`, and 2005 moves them for both
     `shuyi-cli` and `shuyi-app`.
-  - **2013** (`#[non_exhaustive]` and constructors): if it is done,
-    `PlatformFacts` and `Quit` follow its rules, and `Platform::facts`
-    is a stated exception to its rule that a new trait method gets a
-    default body: `Platform` is implemented by backends, not games, and
-    a default would hand a new backend the desktop's facts. The ADR says
-    so. If 2013 is not done, 2013 covers these types, and its rule on
-    traits names this exception (its scope says so).
+  - **Public types (ADR-0039):** `PlatformFacts` and `Quit` follow it,
+    and `Platform::facts` is a stated exception to its rule that a new
+    trait method gets a default body: `Platform` is implemented by
+    backends, not games, and a default would hand a new backend the
+    desktop's facts. ADR-0039's rule on traits names this exception, and
+    this ticket's ADR says why.
 - **For the game:** the API breaks. `Ctx::keyboard` and
   `Setup::keyboard` become `ctx.platform.keyboard` and
   `setup.platform.keyboard`, and any `Platform` of the game's own

@@ -94,6 +94,8 @@ pub struct Sound {
 /// A line of the game's log.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct LogEntry {
     /// The frame it was given in (frames count from 1; 0 is before the
     /// first).

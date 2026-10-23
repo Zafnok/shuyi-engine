@@ -204,13 +204,12 @@ None.
     no flag kept. Never true for `Loop`;
   - the docs say how a caller with a `u64` clock calls it:
     `u32::try_from(now.saturating_sub(start)).unwrap_or(u32::MAX)`.
-- **Public types follow 2013.** If 2013 is done, they follow its ADR.
-  If not: `Ease`, `Family` and `Repeat` are `#[non_exhaustive]`, and
-  `Tween` is `#[non_exhaustive]` with `Tween::new(from, to, duration)`
-  and `with_delay`, `with_ease`, `with_repeat` and `with_yoyo` (`const
-  fn` where the compiler allows), as 2013's "config a game fills in"
-  plans. Either way a curve or a field can be added later without a
-  break.
+- **Public types (ADR-0039):** `Ease`, `Family` and `Repeat` are
+  `#[non_exhaustive]`, and `Tween` is `#[non_exhaustive]` with
+  `Tween::new(from, to, duration)` and `with_delay`, `with_ease`,
+  `with_repeat` and `with_yoyo` (`const fn` where the compiler allows),
+  as the ADR asks of config a game fills in. So a curve or a field can
+  be added later without a break.
 - **Names.** `shuyi_core` re-exports `Ease`, `Easing`, `Family`, `Lerp`
   and `Tween` at its root, and its crate docs (`crates/core/src/lib.rs`)
   name ease curves and tweens. `Repeat` stays under `shuyi_core::ease`.

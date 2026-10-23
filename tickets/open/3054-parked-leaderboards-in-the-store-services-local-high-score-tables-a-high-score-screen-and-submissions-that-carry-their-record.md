@@ -118,8 +118,7 @@ None.
 - **The service**, in `shuyi_ui::leaderboards`
   (`crates/ui/src/leaderboards.rs`). It builds without `std` (3005):
   `use crate::prelude::*` and `alloc`, as `storage.rs` does. Its types
-  follow 2013's ADR on `#[non_exhaustive]` (2013 is in the MVP, so it is
-  done before this is unparked):
+  follow ADR-0039 on `#[non_exhaustive]`:
   - `Submission { board: BoardId, score: i32, record: Option<String>,
     by: Player }`. `record` is the run's record as the game's
     `GameTools::replay` reads it, stamped as 2111 stamps records if 2111

@@ -311,8 +311,7 @@ None.
     get codes, and "no build listening" is a setup code with exit code
     3 (fix the setup, then retry: start the build). If not, 2509 covers
     them;
-  - with 2013: if it is done, the new public types follow its rules.
-    If not, 2013 covers them.
+  - the new public types follow ADR-0039.
 - **Size.** If the PR passes about 600 changed lines (fixtures,
   snapshots and the generated schemas not counted), the MCP part goes
   to a follow-up ticket (`write-ticket`), After MVP, blocked by 2521,

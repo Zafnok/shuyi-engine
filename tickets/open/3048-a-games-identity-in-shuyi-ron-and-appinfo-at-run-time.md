@@ -272,7 +272,7 @@ choices.
   - **3044** (the window): if it is done, the grid template's and
     hello-grid's `WINDOW` is `Window::console(APP.name, CONSOLE, 2,
     16).with_icon(APP.window_icon)`, and they call
-    `window_conf(&WINDOW, APP.storage)`. 2013 makes `Window`
+    `window_conf(&WINDOW, APP.storage)`. 2013 made `Window`
     `#[non_exhaustive]`, so neither a struct literal nor `..` compiles
     outside `shuyi-app`. The blank template's window is `run_game`'s.
     If 3044 isn't done, it makes that change (its scope says so).

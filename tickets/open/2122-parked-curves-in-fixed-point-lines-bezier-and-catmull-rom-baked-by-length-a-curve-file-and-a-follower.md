@@ -187,10 +187,9 @@ None.
   - A view that draws from the time alone (ADR-0004 §3) needs no
     follower: it calls `sample` with the speed times the steps since
     it started. The module docs say so.
-- **Public types and 2013. Either order:** if 2013 is done, the new
-  public types follow its ADR (`#[non_exhaustive]` and constructors).
-  If not, `CurveError`, `FollowEnd`, `FollowEvent` and `CurveKind` are
-  `#[non_exhaustive]`, and 2013's sweep covers the rest.
+- **Public types (ADR-0039):** the new public types follow it
+  (`#[non_exhaustive]` and constructors); `CurveError`, `FollowEnd`,
+  `FollowEvent` and `CurveKind` are `#[non_exhaustive]`.
 - **The `fx` functions this needs. Either order with 2701 and 2106:**
   `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`. If 2701 or 2106 is
   done, use what it added. If not, add the missing ones here as 2701

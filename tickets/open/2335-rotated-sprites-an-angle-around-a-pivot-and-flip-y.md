@@ -228,9 +228,8 @@ and follow the MVP.
   so in the PR; the game's PR that moves the pin follows it. No game
   snapshot changes. If 2014 is done, its job shows what the game makes
   of this PR.
-- **Either order with 2013:** if 2013 is done, the new public types
-  follow its rules (`#[non_exhaustive]`, constructors). If not, 2013
-  covers them.
+- **Public types (ADR-0039):** the new public types follow it
+  (`#[non_exhaustive]`, constructors).
 - **Either order with 2018:** if 2018 is done, add this ticket's test
   scene to its comparison of the window with the raster. If not,
   compare a captured window frame with `frame-png` by hand, note it in

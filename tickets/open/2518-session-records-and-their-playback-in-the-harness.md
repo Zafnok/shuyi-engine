@@ -290,9 +290,9 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     the line on the next `FrameRecord` (`commands: Vec<String>`);
     playback runs it before that frame. If not, 2356 adds it (its own
     clause says so);
-  - with 2013: if it is done, the new public types follow its ADR, and
-    `Start`, which gains two fields here, moves under it in this PR (its
-    rule for an existing type). If not, 2013 covers them.
+  - the new public types follow ADR-0039, and `Start`, which gains two
+    fields here, moves under it in this PR (its rule for an existing
+    type).
 - **An ADR** (the `write-adr` skill, the next free number): what a
   session record holds and why `App` records it; the frame's hash and
   why it leaves the picture out; the text form and the version rule;
@@ -367,7 +367,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
    `play_to` and `play_all`, sharing the per-frame bookkeeping of
    `Harness::frame` (the audio log, the screen log, the quit frame).
 7. Add the either-order parts whose partner is done (2220, 2321, 2356,
-   3053, 2013, 2015).
+   3053, 2015).
 8. Write the property, divergence and boundary tests on the toy game
    (`shuyi_ui::toy`). Tests that need a store, a system keyboard or a
    clock that goes back record on `App` and a `HeadlessPlatform` built

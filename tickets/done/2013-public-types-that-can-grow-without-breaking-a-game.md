@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: opus-5.5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2013 — Public types that can grow without breaking a game
@@ -369,27 +369,27 @@ pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] The ADR exists, with its row in `docs/adr/README.md`. It gives
+- [x] The ADR exists, with its row in `docs/adr/README.md`. It gives
       each kind a rule and an example, records the lint counts and the
       choice to hold the lints in `shuyi-app` only, and has the table.
-- [ ] `Window`, `Icon`, `VoiceFiles`, `AppConfig`, `BoxPlace` and
+- [x] `Window`, `Icon`, `VoiceFiles`, `AppConfig`, `BoxPlace` and
       `MapScene` are `#[non_exhaustive]`. Each has a `new`, and
       `Window::new`, `Window::with_icon`, `Icon::new`, `VoiceFiles::new`
       and `BoxPlace::new` are `const fn`s.
-- [ ] A `compile_fail` doctest on `Window` and one on `BoxPlace` show
+- [x] A `compile_fail` doctest on `Window` and one on `BoxPlace` show
       that a struct literal giving every field doesn't compile outside
       the crate.
-- [ ] `shuyi-app`'s `lib.rs` turns on the two lints, clippy passes with
+- [x] `shuyi-app`'s `lib.rs` turns on the two lints, clippy passes with
       `-D warnings`, and no `#[allow]` or `#[expect]` quiets them.
       Removing `#[non_exhaustive]` from `Window` makes clippy fail
       (tried by hand, said in the PR).
-- [ ] No file under `templates/` or `examples/` builds the six types by
+- [x] No file under `templates/` or `examples/` builds the six types by
       a struct literal, and games made with `shuyi new grid` and `shuyi
       new blank` pass the template gate.
-- [ ] The `write-ticket` and `work-ticket` skills have their lines.
-- [ ] The completion notes carry the `Breaking:` lines, and name the
+- [x] The `write-ticket` and `work-ticket` skills have their lines.
+- [x] The completion notes carry the `Breaking:` lines, and name the
       follow-up ticket or say there is none.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -408,4 +408,69 @@ pin follows this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **The ADR:** [ADR-0039](../../docs/adr/0039-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md),
+  with its row. Eight kinds, each with a rule and an example; the lint
+  counts and why the lints live in `shuyi-app` only; the table of the
+  types the templates and hello-grid build by literal.
+- **`field_reassign_with_default`:** quiet. With `RunInput`
+  `#[non_exhaustive]`, a scratch test in `crates/cli/tests/it/` writing
+  `let mut input = RunInput::default(); input.frames = 3;` passed
+  `cargo clippy -p shuyi-cli --all-targets -- -D warnings`; both undone.
+- **`shuyi-app`:** `Window`, `Icon`, `VoiceFiles` and `AppConfig` are
+  `#[non_exhaustive]`, with `const fn` `Window::new`, `Window::with_icon`,
+  `Icon::new`, `VoiceFiles::new` and `AppConfig::new` (a `const fn` too:
+  it compiles as one). `run_game`'s `basic_window` and `basic_config` use
+  them. `#![warn(clippy::exhaustive_structs, clippy::exhaustive_enums)]`
+  is at the top of `lib.rs`, with no `#[allow]` or `#[expect]`. Removing
+  `#[non_exhaustive]` from `Window` by hand made `cargo clippy -p
+  shuyi-app --all-targets -- -D warnings` fail with
+  `exhaustive_structs`.
+- **`shuyi-ui`:** `BoxPlace` is `#[non_exhaustive]` with `const fn
+  BoxPlace::new` (narration `Centred`, as 2305 is done) and
+  `with_narration`; `NarrationAlign` and `MapScene` are
+  `#[non_exhaustive]` (2304 is done: `MapEdges` stays a plain value).
+- **The compile_fail doctests** on `Window` and `BoxPlace` were each run
+  once as a plain doctest: both fail with E0639 (*cannot create
+  non-exhaustive struct using struct expression*), so they fail for the
+  right reason.
+- **Types other tickets left to 2013:** 2509's and 3040's. `ContentError`
+  (already built with `new`, `at` and `with_code`), `LogEntry` and the
+  codes' `Entry` are `#[non_exhaustive]`; `LogLine` too, with
+  `LogLine::new`, which `shuyi-platform`'s `App` now uses. `Code`,
+  `LogLevel`, `LogCategory`, `LogRing`, `LogFilter`, and 2511's
+  `BasicData` and `BasicTools` already followed the ADR (a plain value, two
+  non-exhaustive enums, private fields). 2125's `RolloutSettings` is in
+  the table (2024).
+- **Literals moved:** `templates/grid/crates/game/src/main.rs`,
+  `examples/hello-grid/src/main.rs` and `examples/hello-grid/src/skin.rs`.
+  `templates/blank` builds no engine type by literal since 2511.
+- **Deviation:** the follow-up is two tickets, not one, since the table's
+  remaining types are past one PR's 600 lines:
+  [2024](../open/2024-the-engines-other-config-and-views-moved-onto-constructors-shuyi-ui-shuyi-platform-shuyi-assets-and-shuyi-core.md)
+  (`shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core`) and
+  [2025](../open/2025-the-contracts-inputs-and-the-game-tools-types-moved-onto-constructors-in-shuyi-cli.md)
+  (`shuyi-cli`).
+- **Either order:** 2010 landed while this PR was open: ADR-0039 cites
+  ADR-0038, and the `Breaking:` lines below answer its `api` job. 2321,
+  1134, 2802, 2803, 2014, 3044, 3046 and 3048 aren't done; their
+  clauses now say what holds. 2304, 2305 and 2511 are done, as above.
+- **Renumbered:** the ADR was written as 0037; 2011 and 2010 took 0037
+  and 0038 first, so it is ADR-0039.
+- **Settled clauses:** every open ticket's clause that waited on 2013
+  (58 tickets) now says what holds under ADR-0039. Types not in the
+  table move under the ADR in the PR that next adds to them: 2337's
+  `Paint`, `Sprite` and `Overlay`, 2338's `PanelLook`, 2229's
+  `RegisterError`. 2321 and 3046 build on `Window::new` and
+  `AppConfig::new`; 3044 adds only `Window::console`.
+- **Not checked through the MCP tools:** nothing a player sees changed;
+  hello-grid's tests and snapshots pass unchanged.
+- **Docs:** the ADR holds the rule; the types' doc comments say how to
+  build them. No page under `docs/` built these types by literal.
+- **Game:** its `main.rs` and anything else that builds these types by
+  literal moves to the constructors; the game's PR that moves the pin
+  follows this one (not yet opened).
+
+Breaking: shuyi-app: Window, Icon, VoiceFiles, AppConfig: build them with Window::new(..).with_icon(..), Icon::new, VoiceFiles::new and AppConfig::new, and assign voices and text_input
+Breaking: shuyi-ui: BoxPlace, MapScene, LogLine, NarrationAlign: build BoxPlace with BoxPlace::new(..).with_narration(..), MapScene with MapScene::new and field assignments, LogLine with LogLine::new; a match on NarrationAlign needs a `_` arm
+Breaking: shuyi-assets: ContentError: build it with ContentError::new and its methods
+Breaking: shuyi-cli: LogEntry, contract::codes::Entry: read them field by field; they can't be built by literal

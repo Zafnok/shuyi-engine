@@ -225,9 +225,8 @@ not parked.
   them. If not, compare a captured window frame of the test scene with
   `frame-png` by hand, note it in the PR, and 2018's card takes shapes
   when it is written.
-- **Either order with 2013:** if 2013 is done, `Shape`, `ShapeKind`
-  and `Fill` follow its ADR (`#[non_exhaustive]` where they may grow,
-  constructors). If not, 2013 covers them.
+- **Public types (ADR-0039):** `Shape`, `ShapeKind` and `Fill` follow
+  it (`#[non_exhaustive]` where they may grow, constructors).
 - **Either order with 2802:** if 2802 is done, chapter 4 of the book
   (the frame and skins) gets a short section on shapes, its code in
   `site/snippets/` as 2802 says. If not, 2802 writes the chapter from

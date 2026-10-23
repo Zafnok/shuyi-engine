@@ -233,9 +233,8 @@ None.
 - **For the game:** additive. `Screen` gains defaulted methods, and
   with the console `Ctx` gains a field (it has private fields, so no
   game builds it field by field). A game that matches `frame_png::Step` or
-  `session::Event` exhaustively must add an arm. **Either order with
-  2013:** if it is done, the new public types follow its rules; if not,
-  2013 covers them. If 2010's check calls the new variants a break,
+  `session::Event` exhaustively must add an arm. The new public types
+  follow ADR-0039. If 2010's check calls the new variants a break,
   the PR carries its `Breaking:` line. The game's PR
   that moves the pin follows this one.
 - **The console** (the last step; step 9 says when it moves to a
@@ -308,7 +307,7 @@ None.
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
    ADR-0022 §3, and the `input-actions` skill. Check which of 1133,
-   1134, 2013, 2518, 2521 and 2907 are done.
+   1134, 2518, 2521 and 2907 are done.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,

@@ -208,9 +208,9 @@ None.
 - **Either order with 2408 (parked):** it adds `Settings::vibration`
   and its row, and saves it in the same forms. Whichever lands second
   follows the first's shape.
-- **Either order with 2013:** if done, the new public types follow its
-  ADR (`Shake` and `Flash` as config with `new` and `with_` methods,
-  `Motion` as a setting's choices); if not, 2013 covers them.
+- **Public types (ADR-0039):** the new public types follow it (`Shake`
+  and `Flash` as config with `new` and `with_` methods, `Motion` as a
+  setting's choices).
 - **What changes for the game:** additive. `Settings` gains three
   public fields; no game can build it as a struct literal (`layout` is
   `pub(crate)`). A game that offers the rows saves the fields in its own
@@ -237,7 +237,7 @@ None.
 ## Implementation steps
 
 1. Read 2339's ADR and code, `settings.rs`, `options.rs`, `toy.rs`,
-   `ctx.rs`, `game.rs`, `onebit.rs` and the two painters; 2013, 2110,
+   `ctx.rs`, `game.rs`, `onebit.rs` and the two painters; 2110,
    2314, 2332, 2351, 2359 and 2511 if done.
 2. Add `Motion`, `shake_strength` and `flashing` to `Settings`, the
    saved forms, the three rows, their text, the toy's rows and

@@ -137,9 +137,7 @@ None.
   `versions` records its path when found, as `bytes` does, through the
   shared helper. If not, 2516 adds its recording in that helper, so
   `versions` is recorded too.
-- **Either order with 2013.** If 2013's ADR on `#[non_exhaustive]` and
-  constructors is in, `LayerCopy` follows it; if not, it is a plain
-  struct with public fields and 2013's sweep covers it.
+- **Public types (ADR-0039):** `LayerCopy` follows it.
 
 **Out (do not do):**
 - Merging entries: a `Merge` trait, `Keyed<T>`, remove lists, key

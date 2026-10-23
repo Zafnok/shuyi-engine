@@ -209,15 +209,14 @@ None.
     and `┤` joins when its look has a frame; the rule's `─` stays.
 - With no frame, every screen draws as today, and every existing
   snapshot is unchanged.
-- **Public types follow 2013.** If 2013 is done, `NineSlice`,
-  `EdgeFill`, `CentreFill` and `PanelLook`'s new field follow its ADR.
-  If not, 2013's sweep covers them.
-- **For the game:** `PanelLook` gains a field (a struct literal adds
-  `frame: None`, unless 2013 has already made `PanelLook` one that
-  grows without a break), and `ask::glyph::paint` and the name boxes'
-  painters gain an argument. The PR says so, with a `Breaking:` line
-  (2010), and the game's PR that moves its pin follows it. The
-  game sets no frame, so it draws as before.
+- **Public types (ADR-0039):** `NineSlice`, `EdgeFill` and `CentreFill`
+  follow it. `PanelLook` isn't under it yet, and this PR adds to it, so
+  it moves under it here, as the ADR's *When* says.
+- **For the game:** `PanelLook` gains a field and moves under ADR-0039
+  (a struct literal moves to its constructor), and `ask::glyph::paint`
+  and the name boxes' painters gain an argument. The PR says so, with a
+  `Breaking:` line (2010), and the game's PR that moves its pin follows
+  it. The game sets no frame, so it draws as before.
 - **Lines in other tickets**, so the plans that touch this stay true:
   - 1127 (parked), its step 2: the backdrop that repeats sideways is
     `tiled_sprites` with an origin that scrolls;

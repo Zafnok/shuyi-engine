@@ -437,12 +437,8 @@ impl<G: GameData> App<G> {
     /// Keeps a line of this frame's, if the filter lets it in.
     fn log_line(&mut self, level: LogLevel, category: LogCategory, text: String) {
         if self.log_filter.allows(category, level) {
-            self.log.push(LogLine {
-                frame: self.frames,
-                level,
-                category,
-                text,
-            });
+            self.log
+                .push(LogLine::new(self.frames, level, category, text));
         }
     }
 

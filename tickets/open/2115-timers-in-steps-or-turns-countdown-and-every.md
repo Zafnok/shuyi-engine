@@ -177,9 +177,8 @@ None.
   - `shuyi_core` re-exports `Countdown`, `Every`, `STEPS_PER_SECOND`
     and `steps_from_ms` at its root, and the crate docs' first sentence
     names timers.
-  - **Public types follow 2013** (`#[non_exhaustive]`, constructors) if
-    2013 is done. If not, the private fields and constructors above
-    already let fields be added without a break.
+  - **Public types (ADR-0039):** the private fields and constructors
+    above are its kind 8, so fields can be added without a break.
 - **The module docs: two kinds of time.**
   - *Simulation time* is steps or turns. A tick game steps its rules
     once for each of `input.ticks()` and advances its timers by 1 in

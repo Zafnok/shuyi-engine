@@ -80,7 +80,7 @@ Set `status: in-progress` in the ticket's frontmatter.
   and after the first crates.io release (ADR-0038): a break needs a
   `Breaking:` line (§5). After that release, a break also needs a
   version bump and a line in `CHANGELOG.md`. The game's pin update is a
-  game PR.
+  game PR. A public type you add, or add to, follows ADR-0039 (2013).
 
 ## 4. Verify
 
