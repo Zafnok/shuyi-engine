@@ -108,25 +108,12 @@ fn api(root: &Path, args: &[String]) -> ExitCode {
     };
     let outcome = api::run(root, &options, &api::System);
     let mut errors = outcome.errors;
-    if !outcome.summary.is_empty() {
-        // A summary that can't be printed is still in the file.
-        let _ = writeln!(std::io::stdout().lock(), "{}", outcome.summary);
-        if let Some(path) = &options.summary
-            && let Err(e) = append(path, &outcome.summary)
-        {
-            errors.push(format!("{}: {e}", path.display()));
-        }
-    }
+    errors.extend(api::write_summary(
+        &outcome.summary,
+        options.summary.as_deref(),
+        &mut std::io::stdout().lock(),
+    ));
     report("api", &errors, &outcome.warnings)
-}
-
-/// Appends `text` to the file at `path`, creating it if needed.
-fn append(path: &Path, text: &str) -> std::io::Result<()> {
-    let mut file = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(path)?;
-    writeln!(file, "{text}")
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on
