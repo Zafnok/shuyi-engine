@@ -65,7 +65,10 @@ drop the flag.
   committed at [`mq_js_bundle-LICENSE-MIT.txt`](mq_js_bundle-LICENSE-MIT.txt)).
 
 When bumping the `macroquad` crate version, re-vendor this file from the
-matching tag (or commit, if no tag exists) and update this note.
+matching tag (or commit, if no tag exists) and update this note. The
+bump comes as Dependabot's `backend` group, which moves macroquad,
+miniquad, the `quad-*` crates, `sapp-jsutils` and `gilrs` together (the
+`dependency-upkeep` skill, ADR-0037).
 
 ## Vendored `sapp_jsutils.js` and `quad-storage.js`
 
@@ -97,7 +100,8 @@ matching tag (or commit, if no tag exists) and update this note.
 
 When bumping the `quad-storage` crate version, re-vendor `quad-storage.js`
 from the matching commit/tag and update this note; `sapp_jsutils.js` can
-just be re-copied from the new version of the crate.
+just be re-copied from the new version of the crate. Both come in
+Dependabot's `backend` group too.
 
 ## The engine's own `gamepad.js`
 

@@ -19,6 +19,8 @@ so discipline here is the whole quality system.
 ## 1. Choose the ticket
 
 - If the user named a ticket, use it, and read neither file below.
+- A Dependabot PR or an `advisory` issue is worked with the
+  `dependency-upkeep` skill instead (ADR-0037 §5).
 - Otherwise read `tickets/README.md` and `docs/ROADMAP.md`, and list
   ready tickets: `status: todo`, every `blocked_by` done.
   - A plain id is done when it is in this repository's `tickets/done/`.

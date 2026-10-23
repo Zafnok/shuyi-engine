@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2011 — Dependabot for crates and pinned actions, a weekly security workflow, and Dependabot PRs as their own tickets
@@ -473,4 +473,50 @@ job, `security.yml`, the ADR and the skill here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `.github/dependabot.yml`: cargo at `/` with the `backend` group before
+  `cargo-minor-patch`; github-actions over `/` and both templates'
+  workflow folders in one `actions` group; both weekly with a 7-day
+  cooldown. Each key was checked against GitHub's options reference
+  (2026-10-23). The reference doesn't say outright whether one group
+  over three directories makes one PR (`group-by: dependency-name` would
+  make one PR *per action*, so it is not used); if Dependabot splits
+  them, `check-pins` and the skill's step 4 bring the templates along.
+- `cargo xtask check-pins` (`crates/xtask/src/pins.rs`) with its four
+  rules and tests, in CI's `tickets` job and `run-gates`. **Deviation:**
+  rather than making `links.rs`'s `SKIPPED_DIRS` and `SKIPPED_PATHS`
+  `pub(crate)`, `links.rs` gained `pub(crate) fn is_skipped_dir`, which
+  both walks use; the lists stay in one place either way.
+- `zizmor` job in `ci.yml`, in `ci-result`'s `needs`:
+  `zizmorcore/zizmor-action` v0.7.1 (v0.8.0 was a day old), `inputs: .`,
+  `min-severity: medium`, `advanced-security: false`. **Deviation:** the
+  ticket named `.`, `templates/blank` and `templates/grid`; zizmor
+  collects every `.github/workflows` folder under `.`, the templates'
+  included (its log lists them), so naming them again only made
+  duplicates. 2501's clause is updated to say so.
+- zizmor 1.31.1 ran locally offline and online (with a token): no
+  findings at medium or above in any workflow, the templates' included,
+  so there is no `.github/zizmor.yml`.
+- `security.yml` (schedule and `workflow_dispatch` only; `advisories`
+  job, `issues: write` on it alone, the issue step through `gh` with the
+  run URL in `env:`), `codeql.yml` (`rust` and `actions`,
+  `codeql-result`) and `scorecard.yml`. New pins:
+  `github/codeql-action` v4.39.0 (v4.39.1 was two days old) and
+  `ossf/scorecard-action` v2.5.0, each the commit its annotated tag
+  points to. Scorecard's workflow has `contents: read` at the top rather
+  than the game's `read-all`.
+- ADR-0037, the `dependency-upkeep` skill, and the pointers (`AGENTS.md`
+  rules 1 and 6, `work-ticket` §1, `sonar-fix`, `deny.toml`,
+  `crates/cli/web/README.md`, the README's map, the docs map's 20xx row
+  and a new pair row checked by `check-pins`).
+- Settled the clauses that waited on 2011 in 2010, 2012, 2014, 2016,
+  2019, 2020 and 2501. 2010, 2012, 2014, 2016, 2019 and 2020 aren't done,
+  so the lines they add (2010's and 2014's step 3, 2016's
+  `NOT_REQUIRED`, 2019's `pip` entry, 2020's `/fuzz`) are theirs.
+- Docs: the `document` skill's homes are the ADR, the skill, the
+  README's map and the docs map; no public item changed.
+- 2012 landed while the PR was open: this ticket's updates sit beside
+  its `rust-toolchain` update in `.github/dependabot.yml`, `check-pins`
+  runs before `check-toolchain` in the `tickets` job and `run-gates`, and
+  the `bump-rust` skill's "the bump is a ticket" line now points at
+  ADR-0037 §5.
+- Step 7 and step 8: see the PR.
