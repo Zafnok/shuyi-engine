@@ -21,6 +21,8 @@ use crate::game::unsupported;
 /// The scene a stage shows, as text and as data.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// A view a game builds with `Scene::new`: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct Scene {
     /// The screen it is on.
     pub screen: String,
@@ -31,6 +33,23 @@ pub struct Scene {
     pub text: String,
     /// What the game says of it as data: its stage's state.
     pub data: serde_json::Value,
+}
+
+impl Scene {
+    /// The scene of kind `kind` on the screen `screen`, as the text `text`,
+    /// with no data (`null`; assign [`data`](Self::data)).
+    pub fn new(
+        screen: impl Into<String>,
+        kind: impl Into<String>,
+        text: impl Into<String>,
+    ) -> Self {
+        Self {
+            screen: screen.into(),
+            kind: kind.into(),
+            text: text.into(),
+            data: serde_json::Value::Null,
+        }
+    }
 }
 
 /// Something that happened while a session ran, with its frame (frames

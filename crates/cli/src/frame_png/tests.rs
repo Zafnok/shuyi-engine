@@ -700,3 +700,20 @@ fn a_step_is_read_from_its_flag() {
     );
     assert_eq!(Script::parse_step("--scale", "2"), None);
 }
+
+#[test]
+fn a_new_shot_has_no_warning_and_a_new_script_its_steps() {
+    let image = Image {
+        width: 1,
+        height: 1,
+        rgba: vec![0, 0, 0, 255],
+    };
+    let literal = Shot {
+        image: image.clone(),
+        shows: "title".to_owned(),
+        warning: None,
+    };
+    assert_eq!(Shot::new(image, "title"), literal);
+    let steps = vec![Step::Keys("Enter".to_owned()), Step::Wait(0.5)];
+    assert_eq!(Script::new(steps.clone()), Script { steps });
+}

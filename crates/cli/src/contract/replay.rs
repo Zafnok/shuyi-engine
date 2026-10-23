@@ -23,6 +23,9 @@ use crate::game::{GameTools, code_of};
 /// What `replay` re-runs.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An input: built with `ReplayInput::new` (or `default()`) and its fields
+// assigned, it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct ReplayInput {
     /// The record's file, from the project's root.
     pub record: String,
@@ -30,6 +33,17 @@ pub struct ReplayInput {
     /// twice.
     #[serde(default)]
     pub other: Option<String>,
+}
+
+impl ReplayInput {
+    /// The record in the file `record`, run twice (no
+    /// [`other`](Self::other)).
+    pub fn new(record: impl Into<String>) -> Self {
+        Self {
+            record: record.into(),
+            other: None,
+        }
+    }
 }
 
 /// A record handed to the game: its file's name and its text.
@@ -440,5 +454,14 @@ mod tests {
             first_difference: None,
         };
         assert_eq!(text(&none), "");
+    }
+
+    #[test]
+    fn a_new_input_runs_its_record_twice() {
+        let literal = ReplayInput {
+            record: "a.ron".to_owned(),
+            other: None,
+        };
+        assert_eq!(ReplayInput::new("a.ron"), literal);
     }
 }

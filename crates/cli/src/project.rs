@@ -18,8 +18,10 @@ use crate::contract::codes::{self, Code};
 /// The project file's name.
 pub const FILE: &str = "shuyi.ron";
 
-/// A project: its root and what its `shuyi.ron` says.
+/// A project: its root and what its `shuyi.ron` says. Build it with
+/// [`Project::new`] or [`Project::load`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Project {
     /// The folder holding `shuyi.ron`.
     pub root: PathBuf,
@@ -28,6 +30,14 @@ pub struct Project {
 }
 
 impl Project {
+    /// The project at `root` whose `shuyi.ron` says `config`.
+    pub fn new(root: impl Into<PathBuf>, config: Config) -> Self {
+        Self {
+            root: root.into(),
+            config,
+        }
+    }
+
     /// The project whose `shuyi.ron` is in `root`.
     pub fn load(root: &Path) -> Result<Self, String> {
         let path = root.join(FILE);
@@ -485,5 +495,18 @@ mod tests {
         assert_eq!(code, codes::NO_PROJECT);
         assert!(error.starts_with("no shuyi.ron in "), "{error}");
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_new_project_is_its_root_and_config() {
+        let config = Config {
+            command: Some("cargo shuyi".to_owned()),
+            ..Config::default()
+        };
+        let literal = Project {
+            root: PathBuf::from("game"),
+            config: config.clone(),
+        };
+        assert_eq!(Project::new("game", config), literal);
     }
 }

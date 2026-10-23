@@ -21,6 +21,9 @@ pub const MAX_IDLE_FRAMES: u32 = 100_000;
 /// What `run` and `scene` play.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
 pub struct RunInput {
     /// The game's own start options (`frame-png --help` lists them), in
     /// the order given.

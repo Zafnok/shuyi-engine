@@ -142,12 +142,19 @@ impl Step {
 /// What to do in the game before taking the frame.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// Built with `Script::new` or `default()`: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct Script {
     /// The steps, in order.
     pub steps: Vec<Step>,
 }
 
 impl Script {
+    /// The script of `steps`, in order.
+    pub fn new(steps: Vec<Step>) -> Self {
+        Self { steps }
+    }
+
     /// Plays the steps in `h`.
     pub fn play<G: GameData>(&self, h: &mut Harness<G>) {
         for step in &self.steps {
@@ -257,8 +264,9 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
     Ok(parsed)
 }
 
-/// What a game shows of a frame.
+/// What a game shows of a frame. Build it with [`Shot::new`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct Shot {
     /// The picture.
     pub image: Image,
@@ -267,6 +275,17 @@ pub struct Shot {
     /// What the summary warns about it, if anything (a picture of art the
     /// game may not hand out).
     pub warning: Option<String>,
+}
+
+impl Shot {
+    /// The picture `image` of the screen `shows`, with no warning.
+    pub fn new(image: Image, shows: impl Into<String>) -> Self {
+        Self {
+            image,
+            shows: shows.into(),
+            warning: None,
+        }
+    }
 }
 
 /// Runs the command: the game plays the script and paints the frame, as

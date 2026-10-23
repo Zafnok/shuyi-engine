@@ -50,11 +50,9 @@ fn check_finds_no_error_in_the_games_files() {
 
 #[test]
 fn run_plays_from_the_title_into_the_stages_scene() {
-    let input = RunInput {
-        script: keys("Enter"),
-        frames: 2,
-        ..RunInput::default()
-    };
+    let mut input = RunInput::default();
+    input.script = keys("Enter");
+    input.frames = 2;
     let answer = run(&HelloTools, &input);
     assert!(answer.ok, "{answer:?}");
     let out = answer.result.unwrap();
@@ -89,11 +87,9 @@ fn run_plays_from_the_title_into_the_stages_scene() {
 #[test]
 fn run_says_what_it_could_not_see() {
     // Quit from the title: Down three times, then Enter.
-    let input = RunInput {
-        script: keys("Down Down Down Enter"),
-        frames: 5,
-        ..RunInput::default()
-    };
+    let mut input = RunInput::default();
+    input.script = keys("Down Down Down Enter");
+    input.frames = 5;
     let answer = run(&HelloTools, &input);
     let out = answer.result.as_ref().unwrap();
     assert_eq!(out.quit, Some(7));
@@ -107,20 +103,16 @@ fn run_says_what_it_could_not_see() {
         ]
     );
     // A script the Harness can't play is refused before it starts.
-    let bad = RunInput {
-        script: keys("NoSuchKey"),
-        ..RunInput::default()
-    };
+    let mut bad = RunInput::default();
+    bad.script = keys("NoSuchKey");
     let refused = run(&HelloTools, &bad);
     assert!(!refused.ok);
     assert!(refused.error.unwrap().starts_with("keys: "));
-    let unknown = RunInput {
-        start: vec![GameArg {
-            flag: "--hard".into(),
-            value: None,
-        }],
-        ..RunInput::default()
-    };
+    let mut unknown = RunInput::default();
+    unknown.start = vec![GameArg {
+        flag: "--hard".into(),
+        value: None,
+    }];
     assert_eq!(
         run(&HelloTools, &unknown).error.as_deref(),
         Some("unknown option --hard")
@@ -129,11 +121,9 @@ fn run_says_what_it_could_not_see() {
 
 #[test]
 fn scene_dumps_the_stage_and_its_state() {
-    let input = RunInput {
-        start: on_the_stage(),
-        script: keys("z Right"),
-        ..RunInput::default()
-    };
+    let mut input = RunInput::default();
+    input.start = on_the_stage();
+    input.script = keys("z Right");
     let answer = scene(&HelloTools, &input);
     assert!(answer.ok, "{answer:?}");
     let scene = answer.result.unwrap().scene.unwrap();
@@ -147,18 +137,23 @@ fn scene_dumps_the_stage_and_its_state() {
     assert!(title.limits[0].starts_with("no scene: no stage is open"));
 }
 
+/// `replay`'s input: the record `record`, beside `other` if given.
+fn replay_of(record: &str, other: Option<&str>) -> ReplayInput {
+    let mut input = ReplayInput::new(record);
+    input.other = other.map(str::to_owned);
+    input
+}
+
 fn scene_at_title() -> contract::Answer<contract::run::SceneOutput> {
     scene(&HelloTools, &RunInput::default())
 }
 
 #[test]
 fn bots_play_the_stage_and_measure_it() {
-    let input = BotsInput {
-        games: 30,
-        seed: 0,
-        turns: 200,
-        start: Vec::new(),
-    };
+    let mut input = BotsInput::default();
+    input.games = 30;
+    input.seed = 0;
+    input.turns = 200;
     let answer = bots(&HelloTools, &input);
     assert!(answer.ok, "{answer:?}");
     let out = answer.result.unwrap();
@@ -172,7 +167,8 @@ fn bots_play_the_stage_and_measure_it() {
     assert_eq!(out.plays[3].seed, 3);
     // The same seeds play the same games.
     assert_eq!(bots(&HelloTools, &input).result.unwrap(), out);
-    let none = BotsInput { games: 0, ..input };
+    let mut none = input;
+    none.games = 0;
     assert!(
         bots(&HelloTools, &none)
             .error
@@ -184,26 +180,16 @@ fn bots_play_the_stage_and_measure_it() {
 #[test]
 fn replay_hashes_every_step_and_finds_where_two_records_part() {
     let dir = scratch("replay");
-    let plays = bots(
-        &HelloTools,
-        &BotsInput {
-            games: 2,
-            ..BotsInput::default()
-        },
-    )
-    .result
-    .unwrap()
-    .plays;
+    let mut two_games = BotsInput::default();
+    two_games.games = 2;
+    let plays = bots(&HelloTools, &two_games).result.unwrap().plays;
     let (a, b) = (
         plays[0].record.clone().unwrap(),
         plays[1].record.clone().unwrap(),
     );
     fs::write(dir.join("a.ron"), &a).unwrap();
     fs::write(dir.join("b.ron"), &b).unwrap();
-    let once = ReplayInput {
-        record: "a.ron".to_owned(),
-        other: None,
-    };
+    let once = replay_of("a.ron", None);
     let answer = replay(&HelloTools, &dir, &once);
     assert!(answer.ok, "{answer:?}");
     let out = answer.result.unwrap();
@@ -218,10 +204,7 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
     );
     assert!(out.first_difference.is_none());
     // Two records of different seeds part at the start.
-    let two = ReplayInput {
-        record: "a.ron".to_owned(),
-        other: Some("b.ron".to_owned()),
-    };
+    let two = replay_of("a.ron", Some("b.ron"));
     let answer = replay(&HelloTools, &dir, &two);
     assert!(!answer.ok);
     let difference = answer.result.unwrap().first_difference.unwrap();
@@ -231,14 +214,7 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
     bad.commands
         .insert(0, hello_grid::rules::Command::Step(None));
     fs::write(dir.join("bad.ron"), ron::to_string(&bad).unwrap()).unwrap();
-    let answer = replay(
-        &HelloTools,
-        &dir,
-        &ReplayInput {
-            record: "bad.ron".to_owned(),
-            other: None,
-        },
-    );
+    let answer = replay(&HelloTools, &dir, &replay_of("bad.ron", None));
     let run = &answer.result.as_ref().unwrap().runs[0];
     assert_eq!(run.steps[1].refused.as_deref(), Some("it is Hero's move"));
     assert_eq!(run.steps[1].hash, run.steps[0].hash);
@@ -248,14 +224,7 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
             .iter()
             .any(|l| l.contains("refused 1 command"))
     );
-    let missing = replay(
-        &HelloTools,
-        &dir,
-        &ReplayInput {
-            record: "nope.ron".to_owned(),
-            other: None,
-        },
-    );
+    let missing = replay(&HelloTools, &dir, &replay_of("nope.ron", None));
     assert!(missing.error.unwrap().starts_with("nope.ron: "));
     fs::remove_dir_all(&dir).unwrap();
 }
@@ -264,15 +233,9 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
 fn import_reads_the_games_files_as_their_kinds() {
     let importers = HelloTools.importers();
     let read = |file: &str, print: bool| {
-        import(
-            &importers,
-            root(),
-            &ImportInput {
-                file: file.to_owned(),
-                kind: None,
-                print,
-            },
-        )
+        let mut input = ImportInput::new(file);
+        input.print = print;
+        import(&importers, root(), &input)
     };
     let map = read("files/stage.map", false);
     assert!(map.ok, "{map:?}");
@@ -300,17 +263,7 @@ fn import_reports_every_error_with_its_line() {
     fs::write(dir.join("broken.map"), "(\n    name: 3,\n)\n---\n").unwrap();
     fs::write(dir.join("notes.txt"), "hello").unwrap();
     let importers = HelloTools.importers();
-    let read = |file: &str| {
-        import(
-            &importers,
-            &dir,
-            &ImportInput {
-                file: file.to_owned(),
-                kind: None,
-                print: false,
-            },
-        )
-    };
+    let read = |file: &str| import(&importers, &dir, &ImportInput::new(file));
     let broken = read("broken.map");
     assert!(!broken.ok);
     let errors = broken.result.unwrap().errors;
@@ -342,13 +295,10 @@ fn doctor_finds_the_rust_this_test_was_built_with() {
 fn new_makes_a_game_from_each_template() {
     let dir = scratch("new");
     for template in Template::ALL {
-        let input = NewInput {
-            template,
-            dir: template.name().to_owned(),
-            name: Some(format!("Demo {}", template.name())),
-            engine: Engine::Path {
-                path: root().join("../..").to_string_lossy().into_owned(),
-            },
+        let mut input = NewInput::new(template, template.name());
+        input.name = Some(format!("Demo {}", template.name()));
+        input.engine = Engine::Path {
+            path: root().join("../..").to_string_lossy().into_owned(),
         };
         let answer = new(&dir, &input);
         assert!(answer.ok, "{answer:?}");
@@ -368,11 +318,10 @@ fn new_makes_a_game_from_each_template() {
 #[test]
 fn run_lists_the_rules_events_after_the_engines() {
     // Pick your piece up, steer it a tile right, send it; then the foe.
-    let input = RunInput {
-        start: on_the_stage(),
-        script: keys("z Right z"),
-        frames: 60,
-    };
+    let mut input = RunInput::default();
+    input.start = on_the_stage();
+    input.script = keys("z Right z");
+    input.frames = 60;
     let out = run(&HelloTools, &input).result.unwrap();
     let game: Vec<&str> = out
         .events

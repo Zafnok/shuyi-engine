@@ -28,6 +28,9 @@ use crate::project::{Config, FILE};
 /// too), or with `target`, how the game fits a target.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
 pub struct CheckInput {
     /// The target to check the game against, by its profile's id, or
     /// `all` for every target in the game's `shuyi.ron`. Without it, the

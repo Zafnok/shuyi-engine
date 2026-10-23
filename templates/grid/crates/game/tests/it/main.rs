@@ -79,11 +79,9 @@ fn check_finds_no_error_in_the_files() {
 
 #[test]
 fn run_and_scene_show_the_stage_after_a_script() {
-    let input = RunInput {
-        script: keys("Right Right"),
-        frames: 10,
-        ..RunInput::default()
-    };
+    let mut input = RunInput::default();
+    input.script = keys("Right Right");
+    input.frames = 10;
     let answer = run(&Tools, &input);
     assert!(answer.ok, "{answer:?}");
     let out = answer.result.unwrap();
@@ -99,10 +97,8 @@ fn run_and_scene_show_the_stage_after_a_script() {
 
 #[test]
 fn the_bots_play_to_an_end_and_their_records_replay() {
-    let input = BotsInput {
-        games: 20,
-        ..BotsInput::default()
-    };
+    let mut input = BotsInput::default();
+    input.games = 20;
     let answer = bots(&Tools, &input);
     assert!(answer.ok, "{answer:?}");
     let out = answer.result.unwrap();
@@ -112,10 +108,7 @@ fn the_bots_play_to_an_end_and_their_records_replay() {
     fs::create_dir_all(&dir).unwrap();
     let record = out.plays[0].record.clone().unwrap();
     fs::write(dir.join("play.ron"), &record).unwrap();
-    let input = ReplayInput {
-        record: "play.ron".to_owned(),
-        other: None,
-    };
+    let input = ReplayInput::new("play.ron");
     let answer = replay(&Tools, &dir, &input);
     assert!(answer.ok, "{answer:?}");
     let run = &answer.result.unwrap().runs[0];
@@ -136,11 +129,7 @@ fn the_bots_play_to_an_end_and_their_records_replay() {
 #[test]
 fn import_reads_the_stages_map() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let input = ImportInput {
-        file: "files/stage.map".to_owned(),
-        kind: None,
-        print: false,
-    };
+    let input = ImportInput::new("files/stage.map");
     let answer = import(&Tools.importers(), root, &input);
     assert!(answer.ok, "{answer:?}");
     let read = &answer.result.unwrap().read_as;
@@ -177,8 +166,7 @@ fn every_screen_declares_its_actions_and_they_fit_every_target() {
 
 /// `check --target all`'s input.
 fn all_targets() -> CheckInput {
-    CheckInput {
-        target: Some("all".to_owned()),
-        ..CheckInput::default()
-    }
+    let mut input = CheckInput::default();
+    input.target = Some("all".to_owned());
+    input
 }

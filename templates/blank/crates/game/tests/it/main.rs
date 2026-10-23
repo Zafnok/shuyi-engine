@@ -37,11 +37,9 @@ fn check_finds_no_error_in_the_files() {
 
 #[test]
 fn run_says_the_game_quit_and_has_no_scene() {
-    let input = RunInput {
-        script: keys("Backspace"),
-        frames: 3,
-        ..RunInput::default()
-    };
+    let mut input = RunInput::default();
+    input.script = keys("Backspace");
+    input.frames = 3;
     let answer = run(&tools(), &input);
     assert!(answer.ok, "{answer:?}");
     let out = answer.result.as_ref().unwrap();
@@ -93,8 +91,7 @@ fn every_screen_declares_its_actions_and_they_fit_every_target() {
 
 /// `check --target all`'s input.
 fn all_targets() -> CheckInput {
-    CheckInput {
-        target: Some("all".to_owned()),
-        ..CheckInput::default()
-    }
+    let mut input = CheckInput::default();
+    input.target = Some("all".to_owned());
+    input
 }
