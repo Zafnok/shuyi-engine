@@ -67,8 +67,10 @@ fn records_the_audio_screens_ask_for() {
         cue: "theme".into(),
     };
     let mut h = beeper();
-    assert!(h.audio_requests().is_empty());
-    assert!(h.last_frame_audio().is_empty());
+    let found = h.audio_requests();
+    assert!(found.is_empty(), "{found:?}");
+    let found = h.last_frame_audio();
+    assert!(found.is_empty(), "{found:?}");
     h.keys("f");
     assert_eq!(h.audio_requests(), [click()]);
     assert_eq!(h.sounds(), ["click"]);
@@ -77,9 +79,12 @@ fn records_the_audio_screens_ask_for() {
     assert_eq!(h.sounds(), ["click", "click"]);
     assert_eq!(h.music_commands(), [load("theme"), start("theme")]);
     h.clear_audio();
-    assert!(h.audio_requests().is_empty());
-    assert!(h.music_commands().is_empty());
-    assert!(h.sounds().is_empty());
+    let found = h.audio_requests();
+    assert!(found.is_empty(), "{found:?}");
+    let found = h.music_commands();
+    assert!(found.is_empty(), "{found:?}");
+    let found = h.sounds();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -87,15 +92,18 @@ fn last_frame_audio_is_the_last_frame_only() {
     let mut h = beeper();
     // `keys` presses in one frame and releases in the next.
     h.keys("f");
-    assert!(h.last_frame_audio().is_empty());
+    let found = h.last_frame_audio();
+    assert!(found.is_empty(), "{found:?}");
     h.hold("f", 0.0);
     // The hold's press, then its release: the click is a frame back.
-    assert!(h.last_frame_audio().is_empty());
+    let found = h.last_frame_audio();
+    assert!(found.is_empty(), "{found:?}");
     let f = shuyi_ui::input::Chord::parse("f").unwrap_or_else(|e| panic!("{e}"));
     h.frame(&[shuyi_ui::RawInputEvent::Down(f)], FRAME_DT);
     assert_eq!(h.last_frame_audio(), [click()]);
     h.wait(0.1);
-    assert!(h.last_frame_audio().is_empty());
+    let found = h.last_frame_audio();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(h.audio_requests(), [click(), click(), click()]);
 }
 
@@ -242,8 +250,10 @@ fn the_audio_log_says_which_frame_asked_for_what() {
     assert_eq!(music, [(3, load("theme")), (3, start("theme"))]);
     // Cleared, the log starts again from the next frame.
     h.clear_audio();
-    assert!(h.audio_log().is_empty());
-    assert!(h.music_log().is_empty());
+    let found = h.audio_log();
+    assert!(found.is_empty(), "{found:?}");
+    let found = h.music_log();
+    assert!(found.is_empty(), "{found:?}");
     h.wait(FRAME_DT).keys("f");
     assert_eq!(h.audio_log(), [(6, &click())]);
 }

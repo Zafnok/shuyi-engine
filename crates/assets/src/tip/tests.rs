@@ -59,7 +59,8 @@ fn a_good_file_loads_in_order() {
     assert_eq!(table.for_trigger(Trigger::Swam), None);
     assert_eq!(table.tips[0].face_or("calm"), "calm");
     assert_eq!(table.tips[1].face_or("calm"), "wince");
-    assert!(TipTable::<Trigger>::default().tips.is_empty());
+    let found = TipTable::<Trigger>::default().tips;
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

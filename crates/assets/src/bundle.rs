@@ -653,7 +653,9 @@ mod tests {
             ["bought", "base", "bought-tests", "tests"]
         );
         assert_eq!(names(merged().shipped()), names(merged().layers()));
-        assert!(merged().tests().is_empty());
+        let bundle = merged();
+        let got = bundle.tests();
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]
@@ -729,7 +731,8 @@ mod tests {
         assert_eq!(merged().files_in("portraits"), [path]);
         let public = Bundle::new(vec![PUBLIC]);
         assert_eq!(public.file(path), None);
-        assert!(public.files_in("portraits").is_empty());
+        let listed = public.files_in("portraits");
+        assert!(listed.is_empty(), "{listed:?}");
     }
 
     #[test]
@@ -754,7 +757,8 @@ mod tests {
         assert_eq!(bundle.files_in("data"), ["data/a.ron", "data/b.ron"]);
         assert_eq!(bundle.files_in(""), ["top.txt"]);
         // `deep` has no files of its own, only in the directory below.
-        assert!(bundle.files_in("deep").is_empty());
+        let listed = bundle.files_in("deep");
+        assert!(listed.is_empty(), "{listed:?}");
         assert_eq!(bundle.files_under("deep"), ["deep/x/y.txt", "deep/x/z.txt"]);
         assert_eq!(
             bundle.files_under(""),
@@ -767,7 +771,8 @@ mod tests {
                 "top.txt",
             ]
         );
-        assert!(bundle.files_under("no_such_dir").is_empty());
+        let listed = bundle.files_under("no_such_dir");
+        assert!(listed.is_empty(), "{listed:?}");
     }
 
     /// A folder of two good files, a bad one, a binary one and another kind.
@@ -800,7 +805,7 @@ mod tests {
             [("a".to_owned(), 1), ("b".to_owned(), 2)]
         );
         let none = good.load_each("nope", "num", parse_num).unwrap();
-        assert!(none.is_empty());
+        assert!(none.is_empty(), "{none:?}");
     }
 
     /// A file that isn't UTF-8.

@@ -731,7 +731,8 @@ mod tests {
         );
         // A tile that would change: nothing.
         tile.becomes = Some(WATER);
-        assert!(tints(&looks, &tile, &[ATTACK]).is_empty());
+        let found = tints(&looks, &tile, &[ATTACK]);
+        assert!(found.is_empty(), "{found:?}");
         // Off the map, a flash has no color to go towards.
         let off = TileView {
             terrain: None,
@@ -812,6 +813,7 @@ mod tests {
         let kit = Kit::new();
         let s = shore(&kit);
         let empty = MapScene::<Piece>::new(Pos::new(0, 0), (3, 3));
-        assert!(painted(&kit, &s, &empty).items().is_empty());
+        let found = painted(&kit, &s, &empty);
+        assert!(found.items().is_empty(), "{:?}", found.items());
     }
 }

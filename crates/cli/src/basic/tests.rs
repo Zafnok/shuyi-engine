@@ -97,7 +97,7 @@ fn the_text_and_check_come_from_the_files() {
         lang.lang.english("title.subtitle"),
         Some("made with Shuyi Engine")
     );
-    assert!(lang.variants.is_empty());
+    assert!(lang.variants.is_empty(), "{:?}", lang.variants);
     assert_eq!(tools(GOOD).check(), Ok(Vec::new()));
     let errors = tools(BROKEN).check().unwrap_or_default();
     assert_eq!(errors.len(), 1, "{errors:?}");

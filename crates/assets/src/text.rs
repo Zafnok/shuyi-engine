@@ -65,8 +65,10 @@ mod tests {
 
     #[test]
     fn empty_and_extra_spaces() {
-        assert!(word_wrap("", 5).is_empty());
-        assert!(word_wrap("   ", 5).is_empty());
+        let found = word_wrap("", 5);
+        assert!(found.is_empty(), "{found:?}");
+        let found = word_wrap(" ", 5);
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(word_wrap("  a   b  ", 5), ["a b"]);
         assert_eq!(word_wrap("ab", 0), ["a", "b"]);
     }

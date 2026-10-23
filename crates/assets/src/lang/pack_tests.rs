@@ -212,8 +212,10 @@ fn a_data_entry_keeps_to_the_names_and_the_games_rules() {
 fn a_dialogue_entry_has_text_or_every_variant() {
     let key = id("Gone.");
     let entry = |fields: &str| format!("[(key: {key:?}, source: \"Gone.\", {fields})]");
-    assert!(line_errors(&entry("text: \"Parti.\"")).is_empty());
-    assert!(line_errors(&entry("text_a: \"Parti.\", text_b: \"Partie.\"")).is_empty());
+    let got = line_errors(&entry("text: \"Parti.\""));
+    assert!(got.is_empty(), "{got:?}");
+    let got = line_errors(&entry("text_a: \"Parti.\", text_b: \"Partie.\""));
+    assert!(got.is_empty(), "{got:?}");
     for bad in [
         "text_a: \"x\"",
         "text_b: \"x\"",

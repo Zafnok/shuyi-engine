@@ -119,7 +119,10 @@ fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     assert_eq!(s.music(), music);
     assert_eq!(s.volumes(), (0.5, 0.25, 0.75));
     play(&mut s, &[], 10);
-    assert!(s.requests().is_empty() && s.music().is_empty());
+    let found = s.requests();
+    assert!(found.is_empty(), "{found:?}");
+    let found = s.music();
+    assert!(found.is_empty(), "{found:?}");
     assert!(!s.stopped());
     s.stop_all();
     assert!(s.stopped());
@@ -205,7 +208,7 @@ fn input_comes_one_queued_poll_at_a_time_and_events_all_at_once() {
     assert_eq!(events, [SystemEvent::Suspend, SystemEvent::Resume]);
     input.clear();
     p.poll_input(&mut input);
-    assert!(input.is_empty());
+    assert!(input.is_empty(), "{input:?}");
 }
 
 #[test]

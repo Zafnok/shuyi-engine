@@ -38,7 +38,8 @@ fn an_input_the_harness_cant_play_is_refused() {
 
 #[test]
 fn the_limits_say_what_a_run_could_not_see() {
-    assert!(limits_of(10, None, true, None).is_empty());
+    let found = limits_of(10, None, true, None);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(
         limits_of(10, Some(4), true, None),
         ["the game asked to quit on frame 4: the 6 frame(s) after it changed nothing"]
@@ -74,7 +75,7 @@ fn run_reports_the_session_after_its_script_and_frames() {
     assert!(out.frame.starts_with("AB\n"));
     assert_eq!(out.events.len(), 1);
     assert_eq!(out.sounds[0].cue, "click");
-    assert!(answer.limits.is_empty());
+    assert!(answer.limits.is_empty(), "{:?}", answer.limits);
 }
 
 #[test]

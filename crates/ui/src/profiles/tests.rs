@@ -381,7 +381,8 @@ fn profile_errors_say_what_happened() {
         ProfileError::NameTaken,
         ProfileError::LastOne,
     ] {
-        assert!(!e.to_string().is_empty());
+        let found = e.to_string();
+        assert!(!found.is_empty(), "{found:?}");
     }
 }
 

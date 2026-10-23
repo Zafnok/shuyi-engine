@@ -245,14 +245,14 @@ fn a_limit_of_zero_or_a_game_already_over_plays_nothing() {
     let mut game = TicTacToe::default();
     let report = play(&mut game, &mut [(Mark::X, &mut x), (Mark::O, &mut o)], 0).unwrap();
     assert_eq!((report.outcome, report.turns), (None, 1));
-    assert!(report.commands.is_empty());
+    assert!(report.commands.is_empty(), "{:?}", report.commands);
     assert_eq!(game, TicTacToe::default());
 
     let (_, mut over) = random_game(3);
     let before = over.clone();
     let report = play(&mut over, &mut [(Mark::X, &mut x), (Mark::O, &mut o)], 10).unwrap();
     assert_eq!(report.outcome, before.outcome());
-    assert!(report.commands.is_empty());
+    assert!(report.commands.is_empty(), "{:?}", report.commands);
     assert_eq!(over, before);
 }
 

@@ -767,7 +767,8 @@ version = "1.2.3"
             identifiers_starting(text, "shuyi_pad_"),
             ["shuyi_pad_axis", "shuyi_pad_poll"]
         );
-        assert!(identifiers_starting(text, "nope_").is_empty());
+        let got = identifiers_starting(text, "nope_");
+        assert!(got.is_empty(), "{got:?}");
     }
 
     /// The number after `before` on the line of `text` that starts with it.

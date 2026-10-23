@@ -441,7 +441,7 @@ pub(super) fn pick(means: &[i64], temperature: u32, rng: &mut SimRng) -> usize {
 
 /// How many halvings bring `total` into a `u32`, for one draw.
 fn fit_shift(total: u64) -> u32 {
-    u64::BITS - (total >> 32).leading_zeros()
+    (total >> 32).bit_width()
 }
 
 /// The index whose share of `weights`, laid end to end, holds `roll`;

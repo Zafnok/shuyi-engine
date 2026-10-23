@@ -711,7 +711,8 @@ mod tests {
         ];
         assert_eq!(q.pending(), expected);
         assert_eq!(q.take(), expected);
-        assert!(q.pending().is_empty());
+        let found = q.pending();
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(
             expected.map(|r| r.cue().map(str::to_owned))[4..],
             [Some("e".to_owned()), Some("m".to_owned()), None]

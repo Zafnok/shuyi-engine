@@ -98,8 +98,10 @@ fn a_picked_up_piece_shows_where_it_can_go_and_its_path_follows_the_cursor() {
         assert_eq!(scene(&h).path, [p(2, 3), p(2, 4), p(2, 5), p(3, 5)]);
         // Cancel puts it down.
         h.keys("d");
-        assert!(scene(&h).ranges.is_empty());
-        assert!(scene(&h).path.is_empty());
+        let found = scene(&h).ranges;
+        assert!(found.is_empty(), "{found:?}");
+        let found = scene(&h).path;
+        assert!(found.is_empty(), "{found:?}");
     }
 }
 

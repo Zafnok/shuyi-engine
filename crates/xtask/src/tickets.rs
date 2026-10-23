@@ -1026,7 +1026,7 @@ completed:
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&[]));
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("unknown ticket id `2099`"));
-        assert!(warnings.is_empty());
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1036,7 +1036,8 @@ completed:
             ticket("2101", Folder::Open, "todo", &["2100"]),
         ];
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&[]));
-        assert!(errors.is_empty() && warnings.is_empty());
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1051,7 +1052,8 @@ completed:
     fn allows_a_game_ticket_the_game_has() {
         let tickets = vec![ticket("2100", Folder::Open, "todo", &["game#1131"])];
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&["1131"]));
-        assert!(errors.is_empty() && warnings.is_empty());
+        assert!(errors.is_empty(), "{errors:?}");
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1060,7 +1062,7 @@ completed:
         let (errors, warnings) = check_blocked_by_exists(&tickets, &game(&["1131"]));
         assert_eq!(errors.len(), 1);
         assert!(errors[0].contains("unknown game ticket `game#9999`"));
-        assert!(warnings.is_empty());
+        assert!(warnings.is_empty(), "{warnings:?}");
     }
 
     #[test]
@@ -1155,7 +1157,8 @@ README.md
     #[test]
     fn pr_branch_ok_when_ticket_is_done() {
         let tickets = vec![ticket("2304", Folder::Done, "done", &[])];
-        assert!(check_pr_branch(&tickets, "t2304-pathfinding").is_empty());
+        let left = check_pr_branch(&tickets, "t2304-pathfinding");
+        assert!(left.is_empty(), "{left:?}");
     }
 
     #[test]
@@ -1177,9 +1180,12 @@ README.md
     #[test]
     fn pr_branch_ignores_non_ticket_branches() {
         let tickets: Vec<Ticket> = Vec::new();
-        assert!(check_pr_branch(&tickets, "main").is_empty());
-        assert!(check_pr_branch(&tickets, "dependabot/cargo/foo-1.2.3").is_empty());
-        assert!(check_pr_branch(&tickets, "claude/some-work").is_empty());
+        let left = check_pr_branch(&tickets, "main");
+        assert!(left.is_empty(), "{left:?}");
+        let left = check_pr_branch(&tickets, "dependabot/cargo/foo-1.2.3");
+        assert!(left.is_empty(), "{left:?}");
+        let left = check_pr_branch(&tickets, "claude/some-work");
+        assert!(left.is_empty(), "{left:?}");
     }
 
     #[test]
@@ -1265,9 +1271,12 @@ README.md
             clause_ids("either order with 2001 the 2002"),
             vec![ids(&["2001"])]
         );
-        assert!(clause_ids("either order with and 2001").is_empty());
-        assert!(clause_ids("if 2001 2002 is done").is_empty());
-        assert!(clause_ids("if 2001 then is done").is_empty());
+        let left = clause_ids("either order with and 2001");
+        assert!(left.is_empty(), "{left:?}");
+        let left = clause_ids("if 2001 2002 is done");
+        assert!(left.is_empty(), "{left:?}");
+        let left = clause_ids("if 2001 then is done");
+        assert!(left.is_empty(), "{left:?}");
     }
 
     #[test]
@@ -1334,7 +1343,7 @@ README.md
     fn a_done_ticket_has_no_clauses() {
         let content = VALID_FRONTMATTER.replace("# body", "if 2204 is done");
         let t = parse_ticket("p".to_string(), Folder::Done, "2106-x.md", &content);
-        assert!(t.clauses.is_empty());
+        assert!(t.clauses.is_empty(), "{:?}", t.clauses);
     }
 
     fn with_clauses(id: &str, folder: Folder, body: &str) -> Ticket {
@@ -1478,7 +1487,7 @@ README.md
         let report = run(&root, None, &GameSource::Checkout(&root));
         let errors = report.errors;
 
-        assert!(!errors.is_empty());
+        assert!(!errors.is_empty(), "{errors:?}");
         assert!(
             errors
                 .iter()

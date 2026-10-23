@@ -170,7 +170,8 @@ fn empty_stack_quits_and_draws_nothing() {
     let mut stack = ScreenStack::default();
     assert!(stack.is_empty());
     assert!(stack.update(&mut ctx(), &input(&[])));
-    assert!(draws(&stack, &log).is_empty());
+    let got = draws(&stack, &log);
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -278,7 +279,8 @@ fn covered_on_push_uncovered_on_pop_neither_on_replace() {
     assert!(drain(&log).is_empty(), "a replace tells nobody");
     assert_eq!(stack.names(), ["a", "c"]);
     assert!(!stack.apply_in(&mut ctx, Transition::None));
-    assert!(drain(&log).is_empty());
+    let got = drain(&log);
+    assert!(got.is_empty(), "{got:?}");
     assert!(!stack.apply_in(&mut ctx, Transition::Pop));
     assert_eq!(drain(&log), ["uncovered a None"]);
     assert_eq!(stack.names(), ["a"]);
@@ -299,7 +301,8 @@ fn a_lone_screen_has_nobody_to_tell() {
     let mut empty = ScreenStack::default();
     assert!(!empty.apply_in(&mut ctx, Transition::Push(Probe::boxed("c", false, &log))));
     assert_eq!(empty.names(), ["c"]);
-    assert!(drain(&log).is_empty());
+    let got = drain(&log);
+    assert!(got.is_empty(), "{got:?}");
 }
 
 /// Popping the last screen quits, with or without a value, and nobody
@@ -316,7 +319,8 @@ fn quitting_tells_nobody() {
     let mut stack = ScreenStack::new(Probe::boxed("a", false, &log));
     assert!(stack.apply_in(&mut ctx, Transition::Pop));
     assert!(stack.is_empty());
-    assert!(drain(&log).is_empty());
+    let got = drain(&log);
+    assert!(got.is_empty(), "{got:?}");
 }
 
 /// What `uncovered` returns applies at once: a screen can push the next
@@ -359,7 +363,8 @@ fn apply_changes_the_stack_alone() {
     assert!(!stack.apply(Transition::Push(Probe::boxed("b", false, &log))));
     assert!(!stack.apply(Transition::pop_with(7u8)));
     assert_eq!(stack.names(), ["a"]);
-    assert!(drain(&log).is_empty());
+    let got = drain(&log);
+    assert!(got.is_empty(), "{got:?}");
     assert!(stack.apply(Transition::pop_with(7u8)), "the last one quits");
 }
 
@@ -456,7 +461,7 @@ fn declared_input_keeps_all_but_the_other_actions() {
     let (all, none) = input.declared("s", &[Action::Confirm, Action::Cancel]);
     assert!(all.is_held(Action::Cancel));
     assert_eq!(all.actions, input.actions);
-    assert!(none.is_empty());
+    assert!(none.is_empty(), "{none:?}");
 }
 
 #[test]

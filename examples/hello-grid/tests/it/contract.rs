@@ -44,7 +44,8 @@ fn check_finds_no_error_in_the_games_files() {
     let answer = check(&HelloTools, &CheckInput::default());
     assert!(answer.ok, "{answer:?}");
     assert_eq!(answer.op, contract::Op::Check);
-    assert!(answer.result.unwrap().errors.is_empty());
+    let got = answer.result.unwrap().errors;
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -313,7 +314,7 @@ fn import_reports_every_error_with_its_line() {
     let broken = read("broken.map");
     assert!(!broken.ok);
     let errors = broken.result.unwrap().errors;
-    assert!(!errors.is_empty());
+    assert!(!errors.is_empty(), "{errors:?}");
     assert_eq!(errors[0].file, "broken.map");
     assert!(errors[0].line.is_some(), "{errors:?}");
     let unknown = read("notes.txt");

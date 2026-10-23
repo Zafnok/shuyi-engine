@@ -91,7 +91,8 @@ mod tests {
             // Each item slept its time, and was timed doing it.
             assert!(done[0].1 >= Duration::from_millis(12), "{:?}", done[0].1);
         }
-        assert!(run(&[] as &[u64], 4, &slow(0)).unwrap().is_empty());
+        let found = run(&[] as &[u64], 4, &slow(0)).unwrap();
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(
             cores(),
             thread::available_parallelism().map_or(1, std::num::NonZero::get)

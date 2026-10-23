@@ -307,7 +307,8 @@ mod tests {
         assert_eq!(run.steps[1].hash, hash(1));
         // Refused: the state, and its hash, stay.
         assert_eq!(run.steps[2].refused.as_deref(), Some("5 is too many"));
-        assert!(run.steps[2].events.is_empty());
+        let got = &run.steps[2].events;
+        assert!(got.is_empty(), "{got:?}");
         assert_eq!(run.steps[2].hash, hash(1));
         assert_eq!(run.steps[4].step, 4);
         assert_eq!(run.steps[4].hash, hash(3));

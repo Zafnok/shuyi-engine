@@ -116,7 +116,8 @@ fn buttons_joined_by_plus_go_down_together_in_the_order_written() {
     let log = log.borrow();
     assert_eq!(log.len(), 2);
     assert_eq!(log[0].buttons, [Button::East, Button::DpadRight]);
-    assert!(log[1].buttons.is_empty());
+    let found = &log[1].buttons;
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

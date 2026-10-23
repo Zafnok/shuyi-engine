@@ -71,17 +71,12 @@ fn it_speaks_json_rpc() {
     );
     assert_eq!(init["result"]["protocolVersion"], PROTOCOL_VERSIONS[0]);
     // Notifications and responses want no answer.
-    assert!(
-        server
-            .handle(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#)
-            .is_empty()
-    );
-    assert!(
-        server
-            .handle(r#"{"jsonrpc":"2.0","id":5,"result":{}}"#)
-            .is_empty()
-    );
-    assert!(server.handle("  ").is_empty());
+    let seen = server.handle(r#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#);
+    assert!(seen.is_empty(), "{seen:?}");
+    let seen = server.handle(r#"{"jsonrpc":"2.0","id":5,"result":{}}"#);
+    assert!(seen.is_empty(), "{seen:?}");
+    let seen = server.handle(" ");
+    assert!(seen.is_empty(), "{seen:?}");
     let ping = handled(
         &mut server,
         &json!({ "jsonrpc": "2.0", "id": "p", "method": "ping" }),
@@ -635,10 +630,12 @@ fn the_server_asks_for_roots_only_when_the_client_has_them() {
     // An answer with no root, or one that isn't a file, leaves the
     // working folder.
     let none = json!({ "jsonrpc": "2.0", "id": ROOTS, "result": { "roots": [] } });
-    assert!(server.handle(&none.to_string()).is_empty());
+    let got = server.handle(&none.to_string());
+    assert!(got.is_empty(), "{got:?}");
     let web = json!({ "jsonrpc": "2.0", "id": ROOTS,
                       "result": { "roots": [{ "uri": "https://example.com" }] } });
-    assert!(server.handle(&web.to_string()).is_empty());
+    let got = server.handle(&web.to_string());
+    assert!(got.is_empty(), "{got:?}");
     assert_eq!(server.folder(), dir.as_path());
     fs::remove_dir_all(&dir).unwrap();
 }
@@ -658,7 +655,8 @@ fn a_relative_project_is_from_the_first_root() {
     let result = called(&mut server, "start", &json!({ "project": "a game" }));
     assert_eq!(code(&result), "SH1002");
     initialized(&mut server, true);
-    assert!(rooted(&mut server, &root).is_empty());
+    let got = rooted(&mut server, &root);
+    assert!(got.is_empty(), "{got:?}");
     assert_eq!(server.folder(), root.as_path());
     let result = called(&mut server, "start", &json!({ "project": "a game" }));
     assert_eq!(result["isError"], false, "{result}");
@@ -805,7 +803,8 @@ fn a_project_outside_a_workspace_or_with_no_server_is_the_servers_own() {
     rooted(&mut server, &bare);
     let result = called(&mut server, "check", &json!({}));
     assert_eq!(result["structuredContent"]["code"], "SH1001", "{result}");
-    assert!(asked.spawned.borrow().is_empty());
+    let got = asked.spawned.borrow();
+    assert!(got.is_empty(), "{got:?}");
     fs::remove_dir_all(&own).unwrap();
     fs::remove_dir_all(&other).unwrap();
     fs::remove_dir_all(&bare).unwrap();
@@ -825,8 +824,9 @@ fn the_tool_list_follows_the_session_folders_server() {
     let fail = Rc::clone(&workspaces.fail);
     let (mut server, written) = forwarding(&own, &theirs, &game, workspaces);
     // Still building: nothing yet, and the server's own list.
-    assert!(written.is_empty());
-    assert!(server.poll().is_empty());
+    assert!(written.is_empty(), "{written:?}");
+    let got = server.poll();
+    assert!(got.is_empty(), "{got:?}");
     let list = handled(
         &mut server,
         &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }),
@@ -886,7 +886,7 @@ fn a_forwarded_server_that_doesnt_build_is_an_error_result_with_its_output() {
     workspaces.fail.set(true);
     let asked = Rc::clone(&workspaces.asked);
     let (mut server, written) = forwarding(&own, &theirs, &game, workspaces);
-    assert!(written.is_empty());
+    assert!(written.is_empty(), "{written:?}");
     for name in ["start", "bots"] {
         let result = called(&mut server, name, &json!({}));
         assert_eq!(result["isError"], true);
@@ -1007,7 +1007,8 @@ fn a_restart_keeps_the_session_that_runs_and_the_list_the_server_follows() {
     assert_eq!(result["isError"], false, "{result}");
     // The session folder is another workspace's, still building.
     initialized(&mut server, true);
-    assert!(rooted(&mut server, &theirs).is_empty());
+    let got = rooted(&mut server, &theirs);
+    assert!(got.is_empty(), "{got:?}");
     // The engine moves: a one-off call goes to a fresh server.
     contract.set(VERSION + 1);
     let result = called(&mut server, "bots", &own_project);

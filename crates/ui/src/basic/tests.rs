@@ -55,11 +55,12 @@ fn the_standard_files_load_into_the_games_data() {
         Some(Layout::named("Arrows"))
     );
     assert!(data.palette_def().get("highlight").is_some());
-    assert!(data.audio_manifest().sounds.is_empty());
+    let found = &data.audio_manifest().sounds;
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(data.console(), CONSOLE);
     assert!(data.font.glyphs.len() >= BASIC_GLYPHS.chars().count());
     // The font's picture is the font's, not a picture of the game's.
-    assert!(data.images.images.is_empty());
+    assert!(data.images.images.is_empty(), "{:?}", data.images.images);
     assert!(data.bundle.has(FONT_PNG));
 }
 

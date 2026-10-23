@@ -224,7 +224,8 @@ fn moving_the_cursor_one_cell_changes_only_that_cells_rows() {
         (64..80).collect::<Vec<_>>()
     );
     assert_eq!(changed.count(), 16);
-    assert!(after.changed_rows(&after).is_empty());
+    let found = after.changed_rows(&after);
+    assert!(found.is_empty(), "{found:?}");
     // Down a cell: its old row and its new one.
     let mut down = screen();
     down.print(0, 0, "| || |", INK, PAPER);
@@ -243,13 +244,13 @@ fn moving_the_cursor_one_cell_changes_only_that_cells_rows() {
 #[test]
 fn a_row_mask_holds_the_displays_rows_only() {
     let mut mask = RowMask::default();
-    assert!(mask.is_empty());
+    assert!(mask.is_empty(), "{mask:?}");
     for y in [-1, 0, 31, 32, 239, 240, 1000] {
         mask.insert(y);
     }
     assert_eq!(mask.rows().collect::<Vec<_>>(), [0, 31, 32, 239]);
     assert_eq!(mask.count(), 4);
-    assert!(!mask.is_empty());
+    assert!(!mask.is_empty(), "{mask:?}");
     assert!(mask.contains(239) && !mask.contains(240) && !mask.contains(-1));
     assert!(!mask.contains(1));
 }

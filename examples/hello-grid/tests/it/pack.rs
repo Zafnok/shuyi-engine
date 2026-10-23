@@ -37,7 +37,8 @@ fn the_game_loads_from_its_pack_what_it_loads_from_its_files() {
     };
     assert_eq!(kinds("palette.ron"), ["palette"]);
     assert_eq!(kinds("stage.map"), ["map"]);
-    assert!(kinds("tiles.png").is_empty());
+    let found = kinds("tiles.png");
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(pack.get("tiles.png"), hello_grid::file("tiles.png"));
 }
 

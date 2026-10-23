@@ -125,7 +125,7 @@ fn a_persona_may_leave_out_its_weights_and_extras() {
         "(settings: (width: 1, candidates: 1, depth: 1, samples: 1, temperature: 0))",
     )
     .unwrap();
-    assert!(persona.weights.is_empty());
+    assert!(persona.weights.is_empty(), "{:?}", persona.weights);
     assert_eq!(persona.weights(&NAMES).unwrap(), Weights([0; 3]));
 }
 

@@ -632,7 +632,7 @@ mod tests {
         assert_eq!(s.tiles, vec![TileView::default(); 8]);
         assert_eq!(s.tiles[0].terrain, None);
         assert!(s.units.is_empty() && s.path.is_empty() && s.cursor.is_none());
-        assert!(s.ranges.is_empty());
+        assert!(s.ranges.is_empty(), "{:?}", s.ranges);
         assert_eq!(s.threat, None);
         assert_eq!(s.clock_ms, 0);
         // The ring round a 4 × 2 view: 6 above, 6 below, 2 at each side.
@@ -846,11 +846,14 @@ mod tests {
         s.tint([p(3, 2), p(2, 1)], MOVE);
         assert_eq!(s.tints_at(p(1, 1)), [DANGER]);
         assert_eq!(s.tints_at(p(3, 2)), [DANGER, MOVE]);
-        assert!(s.tints_at(p(2, 2)).is_empty());
-        assert!(s.tints_at(p(0, 0)).is_empty());
+        let found = s.tints_at(p(2, 2));
+        assert!(found.is_empty(), "{found:?}");
+        let found = s.tints_at(p(0, 0));
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(s.tinted(DANGER), [p(1, 1), p(3, 2)]);
         assert_eq!(s.tinted(MOVE), [p(2, 1), p(3, 2)]);
-        assert!(s.tinted(ATTACK).is_empty());
+        let found = s.tinted(ATTACK);
+        assert!(found.is_empty(), "{found:?}");
         // Each layer holds only its visible tiles, as given.
         let layer = |kind, tiles: &[Pos]| RangeLayer {
             kind,
@@ -886,7 +889,8 @@ mod tests {
         let tints = s.tints();
         assert_eq!(tints.at(2, 0), [MOVE]);
         assert_eq!(tints.at(0, 1), [MOVE, HEAL]);
-        assert!(tints.at(0, 0).is_empty());
+        let found = tints.at(0, 0);
+        assert!(found.is_empty(), "{found:?}");
         // Outside the view: none, never the next row's.
         let far = [
             (3, 0),
@@ -911,9 +915,11 @@ mod tests {
         s.tiles.truncate(3);
         let short = s.tints();
         assert_eq!(short.at(2, 0), [MOVE]);
-        assert!(short.at(0, 1).is_empty());
+        let found = short.at(0, 1);
+        assert!(found.is_empty(), "{found:?}");
         s.tint([p(1, 2)], DANGER);
-        assert!(s.tints_at(p(1, 2)).is_empty());
+        let found = s.tints_at(p(1, 2));
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]
@@ -948,8 +954,10 @@ mod tests {
         assert_eq!(s.unit_at(p(3, 2)).map(|u| u.id), Some(7));
         assert_eq!(s.unit_at(p(1, 1)), None);
         assert_eq!(s.tints_at(p(2, 1)), [DANGER, MOVE]);
-        assert!(s.tints_at(p(1, 1)).is_empty());
-        assert!(s.tints_at(p(0, 0)).is_empty());
+        let found = s.tints_at(p(1, 1));
+        assert!(found.is_empty(), "{found:?}");
+        let found = s.tints_at(p(0, 0));
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(s.terrain_at(p(2, 1)), Some(TerrainId(4)));
         assert_eq!(s.terrain_at(p(1, 1)), None);
         assert_eq!(s.terrain_at(p(9, 9)), None);

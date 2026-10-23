@@ -32,7 +32,7 @@ mod tests {
     #[test]
     fn the_files_load() {
         let data = game().data().unwrap_or_else(|e| panic!("{e:?}"));
-        assert!(data.images.images.is_empty());
+        assert!(data.images.images.is_empty(), "{:?}", data.images.images);
         assert!(game().ctx().is_ok());
     }
 }

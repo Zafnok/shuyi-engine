@@ -486,7 +486,8 @@ mod tests {
     fn a_game_adds_no_options_or_notes_unless_it_says_so() {
         assert_eq!(Plain.frame_options(), &[]);
         assert_eq!(Plain.frame_notes(), "");
-        assert!(Plain.lang().unwrap().variants.is_empty());
+        let got = Plain.lang().unwrap().variants;
+        assert!(got.is_empty(), "{got:?}");
         assert!(Plain.frame(&[], &Script::default(), None).is_err());
     }
 
@@ -526,7 +527,8 @@ mod tests {
             balance,
             "the game's tools don't offer autobalance (GameTools::autobalance_plan)"
         );
-        assert!(Plain.playtest_stages().is_empty());
+        let got = Plain.playtest_stages();
+        assert!(got.is_empty(), "{got:?}");
         assert_eq!(Plain.playtest_defaults(), DEFAULT_TRIES);
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
         assert!(Plain.controls().is_none());

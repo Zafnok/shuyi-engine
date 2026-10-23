@@ -221,7 +221,8 @@ fn your_piece_on_the_goal_wins_and_the_game_is_over() {
         ]
     );
     assert_eq!(s.outcome(), Some(Outcome::Won { turn: 1 }));
-    assert!(s.legal_commands().is_empty());
+    let found = s.legal_commands();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(s.check(&Command::Step(None)), Err(Error::Over));
     assert_eq!(s.apply(&Command::Move(p(3, 1))), Err(Error::Over));
     assert_eq!(s.side_to_move(), Side::Hero);
@@ -244,7 +245,8 @@ fn the_foe_stepping_onto_your_tile_catches_you() {
     );
     assert_eq!(s.outcome(), Some(Outcome::Caught { turn: 1 }));
     assert_eq!((s.side_to_move(), s.turn()), (Side::Foe, 1));
-    assert!(s.legal_commands().is_empty());
+    let found = s.legal_commands();
+    assert!(found.is_empty(), "{found:?}");
     // A trip onto your tile catches no one.
     let mut s = corridor(seed_where(true));
     s.apply(&Command::Move(p(2, 1))).unwrap();
