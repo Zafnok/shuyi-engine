@@ -234,6 +234,15 @@ fn this_repository_mcp_json_is_what_install_writes_for_claude_code() {
         ".mcp.json is not what `cargo shuyi mcp install --dry-run --command \"{ENGINE_COMMAND}\"` \
          prints for Claude Code: write that"
     );
+    // And Claude Code waits for the server's first build, as install sets.
+    let settings = std::fs::read_to_string(root().join(shuyi_cli::mcp::install::SETTINGS))
+        .unwrap()
+        .replace("\r\n", "\n");
+    assert_eq!(
+        Ok(settings.clone()),
+        shuyi_cli::mcp::install::settings_text(Some(&settings)),
+        ".claude/settings.json doesn't set what `mcp install` sets"
+    );
 }
 
 /// How this repository runs `shuyi`, which has none installed.

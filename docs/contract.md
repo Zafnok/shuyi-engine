@@ -200,8 +200,15 @@ changes and asks before writing, and keeps each file it changes as
 each file as it would write it (Claude Code's is also what `claude
 --mcp-config <file>` reads). The entry runs `--command`'s words and
 `mcp`: the project's `command` (`cargo shuyi` in a new game) unless
-given. After writing, it runs that entry with `--ready` and says how
-long the build took.
+given. For Claude Code it also sets `MCP_TIMEOUT` to 5 minutes in the
+project's `.claude/settings.json`, so Claude Code waits for the server's
+first build to finish. After writing, it runs that entry with `--ready`
+and says how long the build took.
+
+On Windows the server, and the game's tool program it starts, move their
+own program into `.shuyi-running/` beside it as they start, and leave a
+copy in its place, so a build while they run writes a fresh program
+instead of waiting for them to stop.
 
 The entry builds the server from the project's own engine (a game's
 moves with its pin), so after updating the engine (a pull here, a pin

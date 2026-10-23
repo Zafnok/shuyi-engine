@@ -53,8 +53,9 @@ Two MCP features let the server do this itself (spec 2025-06-18):
   { listChanged: true }` sends it, and the client fetches `tools/list`
   again.
 
-2545 must be done first: the server started in the main checkout must
-connect at all, and two sessions in one worktree share its program.
+2545 made the server started in the main checkout connect while
+another runs: on Windows each server moves its program aside, so two
+sessions in one worktree share its program without blocking a build.
 
 **Either order with 2542:** if 2542 is done, its two-way `stale` message
 is the limit written when a fresh server fails to start (Scope, *A stale

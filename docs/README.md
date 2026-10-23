@@ -33,7 +33,7 @@ repository has no row here.
 | What came from the game | [`carve.md`](carve.md) | moves more of the game's code here |
 | Which engine crate may depend on which, the outside crates of the pure ones, and where devices and floats may be | [`tools/layers.ron`](../tools/layers.ron), checked by `cargo xtask check-layers` ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md)) | adds an engine crate, an edge between engine crates, or an outside crate of a pure crate |
 | The Sonar policy and its script | [`tools/sonar-triage/README.md`](../tools/sonar-triage/README.md) | changes how Sonar findings are triaged |
-| The MCP server sessions here use: `shuyi mcp`, run as `cargo run -q -p shuyi-cli -- mcp` | [`.mcp.json`](../.mcp.json), what `cargo shuyi mcp install --dry-run --command "cargo run -q -p shuyi-cli --"` prints for Claude Code (a test checks) | changes how the server is run or registered |
+| The MCP server sessions here use: `shuyi mcp`, run as `cargo run -q -p shuyi-cli -- mcp` | [`.mcp.json`](../.mcp.json) and [`.claude/settings.json`](../.claude/settings.json), what `cargo shuyi mcp install --dry-run --command "cargo run -q -p shuyi-cli --"` prints for Claude Code (a test checks) | changes how the server is run or registered |
 | The web shell a game's web build runs in | [`crates/cli/web/README.md`](../crates/cli/web/README.md) | changes the page, the loader or the files `shuyi web` writes |
 | Where each fact is written | this file | makes a new home for docs (rule 5) |
 

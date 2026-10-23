@@ -31,6 +31,7 @@
 //! failed answer is an MCP error result with the answer as it is, its
 //! `code` and its `help`.
 
+pub mod aside;
 pub mod child;
 pub mod host;
 pub mod install;
@@ -356,6 +357,10 @@ given)."
 pub fn main(args: &[String], cwd: &Path) -> u8 {
     match args.split_first() {
         None => {
+            if cfg!(windows) {
+                // So a build while it runs can write a fresh program.
+                aside::this_program();
+            }
             let mut server = server::Server::new(cwd.to_path_buf(), Box::new(child::Cargo));
             let stdin = std::io::stdin();
             let stdout = std::io::stdout();
