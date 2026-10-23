@@ -85,11 +85,13 @@ None.
   adds (first person, third person, top-down 3D; the *World drawing*
   concern) and the *Kind of game* concern ADR-0015 §1 adds (`kind`:
   `tactics` ready once the carve is done; `rts`, `visual-novel`,
-  `mystery` and `roguelike` parked), kept as data in
+  `mystery`, `roguelike`, `dungeon-crawler`, `party-rpg` and
+  `action-rpg` parked), kept as data in
   `docs/modules.ron`, which the catalog and the check read. The
   Perspective concern also lists `hex grid`, parked (2121, 2740),
   answered by the default grid kit rather than a module (2121's ADR adds
-  it to ADR-0009 §2's answers). A concern can be marked
+  it to ADR-0009 §2's answers), and `first-person grid`, parked,
+  answered by `shuyi-crawl` (ADR-0033 §1). A concern can be marked
   `alternatives: false` when its answers can share a stage; `kind` is
   the first. Every module crate also has its entry in
   `tools/layers.ron` (2015): the engine crates it may use, its outside
@@ -105,6 +107,10 @@ None.
   - `shuyi-3d`, `shuyi-app-3d` and `shuyi-diorama` (3101–3109, parked);
   - `shuyi-rts` (2705–2720, 2733–2734), `shuyi-vn` (2721–2726) and
     `shuyi-mystery` (2727–2732), parked until after the game launches;
+  - `shuyi-crawl` (2741–2744, 2753–2755), `shuyi-rpg` (2745–2752,
+    2758, 2759) and `shuyi-action` (2756, 2757, 2760–2762, 2764),
+    answering `kind: dungeon-crawler`, `party-rpg` and `action-rpg`,
+    parked until after the game launches (ADR-0033, ADR-0034);
   - `shuyi-procgen` (2118, 2119, 2735), answering `kind: roguelike`,
     parked until after the game launches; its field of view is in
     `shuyi-core` (2120, parked with it);
