@@ -724,7 +724,7 @@ pub(crate) fn ticket_id_from_branch(branch: &str) -> Option<&str> {
 /// The heading of the section a ticket's `Breaking:` lines go in.
 const COMPLETION_NOTES: &str = "## Completion notes";
 
-/// The `Breaking:` lines of a ticket (ADR-0037): each line under `## Completion
+/// The `Breaking:` lines of a ticket (ADR-0038): each line under `## Completion
 /// notes` that starts with `Breaking:`, after an optional `- ` list marker,
 /// returned from `Breaking:` on. Lines in any other section don't count.
 pub(crate) fn breaking_lines(body: &str) -> Vec<&str> {

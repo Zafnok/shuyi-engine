@@ -6,7 +6,7 @@ description: Fix one batch of SonarQube findings filed as a GitHub issue labelle
 # Fix a Sonar batch
 
 One `sonar`-labelled GitHub issue is one PR. The issue body **is** the
-ticket (goal, findings table, acceptance criteria): the one exception to
+ticket (goal, findings table, acceptance criteria): an exception to
 "work one ticket at a time from `tickets/open/`" (`AGENTS.md` hard rule 1,
 [ADR-0017](../../../docs/adr/0017-sonar-backlog-becomes-batched-github-issues.md)).
 There is no ticket file to write or move.
@@ -67,7 +67,7 @@ then stop.
    criterion with what proves it, `Closes #<n>` (and the parent too, if this
    was its last open part), and any finding that no longer reproduced. No
    bare `@word` anywhere (`AGENTS.md` rule 11). A Sonar PR never breaks
-   the public API: CI's `api` job fails one that does (ADR-0037 §5).
+   the public API: CI's `api` job fails one that does (ADR-0038 §5).
    Revert that part and write a ticket for it (`write-ticket`). Then
    stop: don't pick up the next batch, or a sibling part, in the same
    session.

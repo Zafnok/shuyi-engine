@@ -56,7 +56,7 @@ None.
     `- `, in 2010's form `Breaking: <crate>[, <crate>…]: <item>: <what a
     game changes>`; read with 2010's `breaking_lines` in
     `crates/xtask/src/tickets.rs`, the one reader of these lines,
-    ADR-0037 §6). Each such line is listed
+    ADR-0038 §6). Each such line is listed
     first, under "Breaking changes", for the game and other users to
     read before a pin bump (`AGENTS.md`, *Working with the game
     repository*);

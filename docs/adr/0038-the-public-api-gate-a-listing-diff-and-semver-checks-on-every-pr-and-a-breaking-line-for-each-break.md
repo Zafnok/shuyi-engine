@@ -1,4 +1,4 @@
-# ADR-0037: The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break
+# ADR-0038: The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break
 
 - **Status:** Accepted
 - **Date:** 2026-10-23

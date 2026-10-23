@@ -19,6 +19,8 @@ so discipline here is the whole quality system.
 ## 1. Choose the ticket
 
 - If the user named a ticket, use it, and read neither file below.
+- A Dependabot PR or an `advisory` issue is worked with the
+  `dependency-upkeep` skill instead (ADR-0037 §5).
 - Otherwise read `tickets/README.md` and `docs/ROADMAP.md`, and list
   ready tickets: `status: todo`, every `blocked_by` done.
   - A plain id is done when it is in this repository's `tickets/done/`.
@@ -75,7 +77,7 @@ Set `status: in-progress` in the ticket's frontmatter.
 - **A new architectural choice** needs an ADR in the same PR (the
   `write-adr` skill).
 - **Public API:** CI's `api` job finds the breaks on every PR, before
-  and after the first crates.io release (ADR-0037): a break needs a
+  and after the first crates.io release (ADR-0038): a break needs a
   `Breaking:` line (§5). After that release, a break also needs a
   version bump and a line in `CHANGELOG.md`. The game's pin update is a
   game PR.
@@ -99,7 +101,7 @@ the PR.
    will, if that PR doesn't exist yet.
 
    Add one `Breaking:` line per break of the public API, a file format
-   or a golden value, in the notes (ADR-0037 §6):
+   or a golden value, in the notes (ADR-0038 §6):
 
    ```text
    Breaking: <crate>[, <crate>…]: <item>: <what a game changes>

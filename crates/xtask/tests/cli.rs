@@ -170,6 +170,20 @@ fn check_layers_takes_no_arguments() {
 }
 
 #[test]
+fn check_pins_passes_on_the_repository() {
+    let (ok, err) = xtask(&["check-pins"]);
+    assert!(ok, "{err}");
+    assert!(err.contains("check-pins: ok"), "{err}");
+}
+
+#[test]
+fn check_pins_takes_no_arguments() {
+    let (ok, err) = xtask(&["check-pins", "extra"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}
+
+#[test]
 fn check_toolchain_passes_on_the_repository() {
     let (ok, err) = xtask(&["check-toolchain"]);
     assert!(ok, "{err}");

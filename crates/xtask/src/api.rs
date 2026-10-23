@@ -1,5 +1,5 @@
 //! `cargo xtask api`: what a change does to the public API of the crates a
-//! game uses (ticket 2010, ADR-0037).
+//! game uses (ticket 2010, ADR-0038).
 //!
 //! For each crate of [`API_CRATES`] it lists the public items of the head
 //! (the working tree) and of the base (a `git worktree` at the base
@@ -390,7 +390,7 @@ fn listing(
 }
 
 /// `cargo-semver-checks`'s findings on `krate` against the base. Only the
-/// lints that need a major version run (ADR-0037 §4).
+/// lints that need a major version run (ADR-0038 §4).
 fn semver(
     root: &Path,
     krate: &str,
@@ -506,7 +506,7 @@ pub fn rule(
     let Some(id) = ticket_id_from_branch(branch) else {
         return Verdict::Fail(format!(
             "branch `{branch}` names no ticket, and a change with no ticket never breaks \
-             the public API (ADR-0037). Write a ticket for it (the `write-ticket` skill).\n\
+             the public API (ADR-0038). Write a ticket for it (the `write-ticket` skill).\n\
              {breaks}"
         ));
     };

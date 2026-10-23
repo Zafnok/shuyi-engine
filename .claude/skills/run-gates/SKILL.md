@@ -110,6 +110,7 @@ They run on every PR, docs-only ones too:
 ```bash
 cargo xtask ticket-lint --pr-branch t<NNNN>-<slug>   # the branch, as CI does; without it on main
 cargo xtask check-links   # relative links in every *.md resolve (no network)
+cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)
 cargo xtask check-docs    # every *.md has a row in the docs map, docs/README.md
 typos                     # install with `cargo install --locked typos-cli`; words to allow go in _typos.toml
@@ -130,7 +131,7 @@ Later tickets add their checks here, for example `check-keys` and
 ## The public API (CI's `api` job)
 
 Not a local gate: it needs a nightly and two tools. CI runs it on every
-PR that changes a crate (ADR-0037): it shows what merging adds to the
+PR that changes a crate (ADR-0038): it shows what merging adds to the
 public API of the six crates a game uses, and fails a break that the
 branch's ticket has no `Breaking:` line for (the `work-ticket` skill,
 §5). Before pushing a change you think breaks, run it from the

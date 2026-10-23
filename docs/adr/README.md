@@ -29,7 +29,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0014](0014-midi-music-sequences-and-a-sound-bank-in-a-module.md) | MIDI music: sequences and a sound bank, in a module | Accepted; its tickets are parked |
 | [0015](0015-real-time-strategy-at-scale-command-sims-columns-flow-fields-and-ai-in-layers.md) | Real-time strategy at scale: command sims, units in columns, flow fields, and AI in layers | Accepted; its tickets are parked until after the game launches |
 | [0016](0016-visual-novels-and-detective-games-a-story-stage-a-case-file-and-a-fair-play-check.md) | Visual novels and detective games: a story stage, a case file, and a fair-play check | Accepted; its tickets are parked until after the game launches |
-| [0017](0017-sonar-backlog-becomes-batched-github-issues.md) | SonarCloud in CI, and its backlog as batched GitHub issues | Accepted; adopts game ADR-0071 |
+| [0017](0017-sonar-backlog-becomes-batched-github-issues.md) | SonarCloud in CI, and its backlog as batched GitHub issues | Accepted; adopts game ADR-0071; extended by ADR-0037 |
 | [0018](0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md) | Screen results: a screen pops with a value, and hears when it is covered | Accepted |
 | [0019](0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md) | The format registry: kinds are types, a format reads one file, conflicts are per kind | Accepted; extends ADR-0007 |
 | [0020](0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md) | Menu items carry a value, and views hold labels the skin translates | Accepted |
@@ -49,6 +49,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0034](0034-action-rpgs-a-hero-in-real-time-loot-rolled-from-affix-tables-skills-with-cooldowns-and-packs-of-monsters.md) | Action RPGs: a hero in real time, loot rolled from affix tables, skills with cooldowns, and packs of monsters | Accepted; extends ADR-0033; its tickets are parked until after the game launches |
 | [0035](0035-the-mcp-server-follows-the-sessions-folder-roots-a-forwarded-server-per-workspace-and-a-restart-when-the-engine-moves.md) | The MCP server follows the session's folder: roots, a forwarded server per workspace, and a restart when the engine moves | Accepted; extends ADR-0031 |
 | [0036](0036-the-short-path-ready-made-parts-beside-the-long-form.md) | The short path: ready-made parts beside the long form | Accepted; extends ADR-0019 and ADR-0024 |
-| [0037](0037-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md) | The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break | Accepted; extends ADR-0002 §7 and ADR-0017 |
+| [0037](0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md) | Dependency upkeep: Dependabot, a weekly advisory check, workflow audits, and bot work as its own ticket | Accepted; adopts game ADR-0008's supply-chain rows; extends ADR-0017 §3 |
+| [0038](0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md) | The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break | Accepted; extends ADR-0002 §7 and ADR-0017 |
 
 Template: [`0000-template.md`](0000-template.md).

@@ -305,12 +305,10 @@ Then tell the session "done". It checks the result, read-only, with
 - **`docs/decisions.md`:** Nick's two answers.
 - **Either order with 2801:** if 2801 is done, add `GOVERNANCE.md` to
   its Community page; if not, 2801 links it.
-- **Either order with 2011:** if 2011 is done, `NOT_REQUIRED` holds
-  its `codeql-result`, with a comment naming 2011's ADR (CodeQL is not
-  a required check; its zizmor job is under `ci-result`). If not,
-  2011's pull request fails the workflow test above until it puts
-  `codeql-result` there. Either way 2005 runs `cargo xtask
-  repo-settings` before the release.
+- **With 2011 (done):** `NOT_REQUIRED` holds `codeql.yml`'s
+  `codeql-result`, with a comment naming ADR-0037 (CodeQL is not a
+  required check; the zizmor job is under `ci-result`). 2005 runs
+  `cargo xtask repo-settings` before the release.
 
 **Out (do not do):**
 - changing any setting, ruleset, secret, collaborator or account, from
@@ -379,7 +377,7 @@ Then tell the session "done". It checks the result, read-only, with
 - [ ] `cargo xtask repo-settings` exits 0 on the day the pull request
       opens. Its output and the date are in `docs/continuity.md`.
 - [ ] `REQUIRED_CHECKS` holds `ci-result` and `mutants (diff)` (and
-      `NOT_REQUIRED` 2011's `codeql-result` if 2011 is done), and the
+      `NOT_REQUIRED` 2011's `codeql-result`), and the
       workflow test passes:
       every `*-result` job's check is in `REQUIRED_CHECKS` or
       `NOT_REQUIRED`.
