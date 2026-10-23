@@ -13,8 +13,9 @@
 //! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`core`, `assets`, `ui`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
 //!
 //! The game's Rust code names its own crates `game` and `rules` (their
-//! `[lib] name`), so its Rust holds a placeholder only in a string (the
-//! window's title). No other `{{` may be in a template's text.
+//! `[lib] name`), so its Rust holds a placeholder only in a string: the
+//! game's name and its storage's name, in `lib.rs`. No other `{{` may be
+//! in a template's text.
 
 use std::fmt::Write as _;
 use std::fs;

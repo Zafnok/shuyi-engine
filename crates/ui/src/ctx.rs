@@ -90,7 +90,11 @@ pub trait GameData: Debug + Sized + 'static {
     fn console(&self) -> ConsoleSpec;
 
     /// The palette of a color `theme`; `None` keeps the palette there is.
-    fn theme_def(&self, theme: <Self::Settings as GameSettings>::Theme) -> Option<&PaletteDef>;
+    /// By default the game has one palette: always `None`.
+    fn theme_def(&self, theme: <Self::Settings as GameSettings>::Theme) -> Option<&PaletteDef> {
+        let _ = theme;
+        None
+    }
 
     /// Which of the game's sound cues the engine's widgets and screens
     /// play for a menu's moves and choices and a cursor's steps: by
@@ -117,8 +121,11 @@ pub trait GameData: Debug + Sized + 'static {
     }
 
     /// Which clip of a line plays now, where a line has several (who the
-    /// player made the hero, say).
-    fn voice_variant(&self) -> Self::Voice;
+    /// player made the hero, say). By default the variant's default: a
+    /// line's only clip.
+    fn voice_variant(&self) -> Self::Voice {
+        Self::Voice::default()
+    }
 
     /// The clips that may be played, from the text of the voice manifest
     /// the platform read: those whose line still says what they say. `Err`

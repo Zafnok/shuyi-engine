@@ -21,7 +21,7 @@
 //! assert_eq!(h.sounds(), ["click"]);
 //! ```
 
-use crate::prelude::*;
+use crate::alloc_prelude::*;
 use alloc::{format, vec};
 use core::any::Any;
 

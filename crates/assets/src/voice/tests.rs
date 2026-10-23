@@ -319,3 +319,10 @@ fn line_texts_lists_every_line() {
     assert_eq!(texts.len(), 4);
     assert_eq!(texts[hello().as_str()], "Hello.");
 }
+
+#[test]
+fn no_voices_is_the_only_clip_and_no_split() {
+    assert_eq!(().suffix(), "");
+    assert!(().is_only());
+    assert!(<() as ClipVariant>::split().is_empty());
+}

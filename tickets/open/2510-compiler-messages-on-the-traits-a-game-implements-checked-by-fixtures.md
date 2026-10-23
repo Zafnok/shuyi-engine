@@ -177,11 +177,12 @@ None.
   in turn and record the first error before the attributes and after,
   as a table. Errors the attribute can't change (above) are listed as
   rustc's own.
-- **Either order with 2511** (engine defaults for the parts of
-  `GameData`, a prelude, `run_game`): if it is done, the fixtures start
-  from its minimal template, and the notes name its defaults where a
-  default spares an impl. If not, the notes say what to write today, and
-  2511 updates the notes its defaults make wrong (its clause says so).
+- **The short path (2511, done):** the fixtures start from its minimal
+  template (`templates/blank`, on `BasicGame`), and the notes name its
+  defaults where a default spares an impl: `GameData::theme_def` and
+  `voice_variant` have bodies, `()` is a `ClipVariant` and a
+  `GameSettings`, `UiAction` is an `ActionSet`, and `BasicData` is a
+  whole `GameData` (ADR-0036).
 - **For the game:** no API change. The attributes change only what the
   compiler says, and the PR says so.
 

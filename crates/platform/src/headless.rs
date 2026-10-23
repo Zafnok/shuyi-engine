@@ -9,7 +9,7 @@
 //! smallest complete backend, for anyone writing one
 //! (`docs/platform-backends.md`).
 
-use crate::prelude::*;
+use crate::alloc_prelude::*;
 use alloc::collections::VecDeque;
 
 use shuyi_ui::RawInputEvent;

@@ -82,6 +82,59 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     fn from_ron(text: &str) -> Result<Settings<Self>, String>;
 }
 
+/// The saved form of the settings of a game with none of its own
+/// ([`GameSettings`] for `()`): the engine's, and the layout picked by its
+/// name. What isn't there reads as its default.
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default, rename = "Settings")]
+struct EngineOnly {
+    text_speed: TextSpeed,
+    fullscreen: bool,
+    music_volume: u8,
+    sound_volume: u8,
+    layout: Option<String>,
+}
+
+impl Default for EngineOnly {
+    fn default() -> Self {
+        Self::of(&Settings::default())
+    }
+}
+
+impl EngineOnly {
+    fn of(s: &Settings<()>) -> Self {
+        Self {
+            text_speed: s.text_speed,
+            fullscreen: s.fullscreen,
+            music_volume: s.music_volume,
+            sound_volume: s.sound_volume,
+            layout: s.layout.map(|l| l.name().to_owned()),
+        }
+    }
+}
+
+/// No settings of the game's own, and one palette: the engine's settings
+/// alone, saved as one record (`Settings(text_speed: Fast, …)`).
+impl GameSettings for () {
+    type Theme = ();
+
+    fn to_ron(s: &Settings<Self>) -> String {
+        ron::to_string(&EngineOnly::of(s)).unwrap_or_default()
+    }
+
+    fn from_ron(text: &str) -> Result<Settings<Self>, String> {
+        let file: EngineOnly = ron::from_str(text).map_err(|e| format!("unreadable: {e}"))?;
+        Ok(Settings {
+            text_speed: file.text_speed,
+            fullscreen: file.fullscreen,
+            music_volume: file.music_volume,
+            sound_volume: file.sound_volume,
+            layout: file.layout.as_deref().and_then(Layout::from_name),
+            ..Settings::default()
+        })
+    }
+}
+
 /// Everything an options screen sets: the engine's settings and the
 /// game's. The defaults are a new player's.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -230,6 +283,39 @@ mod tests {
         assert_eq!(text, Prefs::to_ron(&s));
         assert_eq!(Settings::from_ron(&text), Ok(s));
         assert!(Settings::from_ron("nonsense").is_err());
+    }
+
+    #[test]
+    fn a_game_with_no_settings_of_its_own_saves_the_engines() {
+        let mut s = super::Settings::<()>::default().with_layout(LEFT_HANDED);
+        s.text_speed = TextSpeed::Instant;
+        s.sound_volume = 12;
+        assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
+        let s = super::Settings::<()>::default();
+        assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
+    }
+
+    #[test]
+    fn the_blank_templates_saved_settings_read_back_through_no_settings() {
+        // What `shuyi new blank`'s `Prefs::to_ron` wrote before its game
+        // took `()` for its settings.
+        let saved = "(text_speed:Fast,fullscreen:true,music_volume:3,sound_volume:7)";
+        let s = super::Settings::<()> {
+            text_speed: TextSpeed::Fast,
+            fullscreen: true,
+            music_volume: 3,
+            sound_volume: 7,
+            ..super::Settings::default()
+        };
+        assert_eq!(super::Settings::from_ron(saved), Ok(s));
+        assert_eq!(
+            super::Settings::from_ron("Settings()"),
+            Ok(super::Settings::<()>::default())
+        );
+        assert!(super::Settings::<()>::from_ron("(fullscreen: maybe)").is_err());
+        // A layout no keymap could name is dropped, not an error.
+        let odd = super::Settings::<()>::from_ron("(layout: Some(\"two words\"))");
+        assert_eq!(odd.map(|s| s.layout()), Ok(None));
     }
 
     #[test]

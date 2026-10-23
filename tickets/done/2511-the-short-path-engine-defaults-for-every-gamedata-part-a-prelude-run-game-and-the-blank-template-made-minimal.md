@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2511 — The short path: engine defaults, a prelude, run_game, and a minimal blank template
@@ -457,28 +457,28 @@ blocked by this one for those parts is then blocked by the follow-up.
 
 ## Acceptance criteria
 
-- [ ] The blank template's Rust outside tests is at most 120 lines by
+- [x] The blank template's Rust outside tests is at most 120 lines by
       the rule in *Context* (437 today). The PR description gives both
       counts and says how they were made.
-- [ ] Its `src/action.rs`, `src/settings.rs` and `src/tools.rs` are
+- [x] Its `src/action.rs`, `src/settings.rs` and `src/tools.rs` are
       gone. `main.rs` is one call, and `lib.rs` names the game's files,
       its data type and its first screen.
-- [ ] `UiAction::ALL` is the six moves, and a keymap file that names
+- [x] `UiAction::ALL` is the six moves, and a keymap file that names
       `Debug` is refused as an unknown action.
-- [ ] A game from `shuyi new blank` passes CI's templates job (fmt,
+- [x] A game from `shuyi new blank` passes CI's templates job (fmt,
       clippy, the tests, `check`, `check --target all`, `check-keys`).
       Its title's `frame-png` is the same bytes as in step 1.
-- [ ] A settings record written by today's blank game (its
+- [x] A settings record written by today's blank game (its
       `Prefs::to_ron`) reads back as the same settings through `()`, in a
       test with the text inline.
-- [ ] The grid template, hello-grid, the toy and every test outside the
+- [x] The grid template, hello-grid, the toy and every test outside the
       blank template compile with no change: the long form still works.
-- [ ] `shuyi-assets`, `shuyi-ui` and `shuyi-platform` still build for
+- [x] `shuyi-assets`, `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf` (CI's `no-std` job), and
       `cargo xtask check-no-std` passes.
-- [ ] The ADR is written and listed, and the docs say what *Scope*
+- [x] The ADR is written and listed, and the docs say what *Scope*
       says.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -512,4 +512,49 @@ blocked by this one for those parts is then blocked by the follow-up.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done as scoped, with ADR-0036.
+
+- **Lines** (the rule in *Context*, counted with a small script over a
+  game made by `shuyi new blank --name Demo`): **439 before**
+  (`lib.rs` 130, `main.rs` 57, `action.rs` 55, `settings.rs` 42,
+  `title.rs` 64, `tools.rs` 86, `examples/tools.rs` 5; the *Context*
+  said 437, two lines apart in `tools.rs`), **71 after** (`lib.rs` 10,
+  `main.rs` 4, `title.rs` 51, `examples/tools.rs` 6). 2512's cap starts
+  from 71.
+- **Step 1 and 6:** a game made from the template before and after
+  passed fmt, clippy, its tests, `check`, `check --target all`,
+  `check-keys` and `lint`, and its title's `frame-png` is the same bytes.
+  Today's `Prefs::to_ron` was run in the old game to get the record the
+  `()` settings test reads inline
+  (`(text_speed:Fast,fullscreen:true,music_volume:3,sound_volume:7)`).
+- **Small choices:**
+  - `BasicGame` also has `every_screen(&mut ctx)` (the screens the
+    `screens` builder gives, or the first alone), which `BasicTools`'
+    `controls` and the template's test use, and `BASIC_CONSOLE`.
+  - `BasicTools` has `harness()` (an `Err` of the files' problems, not a
+    panic, so `frame-png` on broken files says why) and `picture()`, for
+    a game's own `GameTools` that adds a scene to its session.
+  - `BasicData`'s file names are consts (`ENGLISH_RON`, `KEYMAP_RON`,
+    `PALETTE_RON`, `FONT_RON`, `FONT_PNG`) and its own-part reader is
+    the type `Own<T>`.
+  - `run_game`'s pure functions are `basic_window` and `basic_config`
+    (private, tested in `crates/app/src/lib.rs`).
+  - The blank template's `[workspace.dependencies]` keep `shuyi-assets`
+    and `shuyi-ui` (the engine's crates a game grows into, and what
+    `new`'s placeholder test reads); its game crate depends on
+    `shuyi-platform`, `shuyi-app`, `include_dir` and, for the tools,
+    `shuyi-cli`. `macroquad`, `serde` and `ron` are gone.
+  - "When the game outgrows the short path" is in the template's
+    `AGENTS.md`; its `README.md` points there.
+- **Either order:** none of 2013, 2010, 2321, 2351, 2006, 2316, 2357,
+  2339, 2513, 2114, 2510 and 2003 was done, so their clauses there were
+  rewritten as what now holds (2013, 2114, 2316, 2321, 2339, 2340, 2347,
+  2351, 2366, 2510, 2516, 2808, 3044).
+- **For the game:** no API change: new items, two default bodies, and
+  impls of the engine's traits for `()` and `UiAction`. The game's next
+  pin bump needs nothing for this.
+- **Docs:** rustdoc of the new modules and crate docs, `docs/contract.md`
+  (*What a game gives*, *The templates*), `docs/formats.md` (the
+  `english` kind and `BasicData`'s files), `README.md`'s crate rows,
+  `shuyi-app`'s module doc (short form first), `new.rs`'s module doc, and
+  the template's `AGENTS.md` and `README.md`.

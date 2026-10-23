@@ -218,13 +218,10 @@ None. Which look the game uses stays Nick's choice in game#0813.
     `frame` only, not in `harness`, which its tests use) and the blank
     template's turn idle motion on with `Harness::ctx_mut`, as the
     game's frame tool does, so `frame-png --keys … --wait 0.2` shows a
-    look half way. **Either order with 2511** (the blank template's
-    tools become `shuyi_cli::BasicTools`): if 2511 is done, in
-    `BasicTools::frame`; if not, in
-    `templates/blank/crates/game/src/tools.rs`'s `frame`, and add a
-    line to 2511 saying `BasicTools::frame` does the same. The
-    templates aren't formatted by `cargo fmt --all`; CI's template job
-    checks them.
+    look half way. The blank template's tools are
+    `shuyi_cli::BasicTools` (2511), so its part is in
+    `BasicTools::frame` (`crates/cli/src/basic.rs`). The grid template
+    isn't formatted by `cargo fmt --all`; CI's template job checks it.
   - Each of these `frame`s, when `Game::transition()` is still `Some`
     after the script, adds the look and its progress to `Shot::shows`
     (`options, fade 542/1000`). Without it, `frame-png --keys …` alone

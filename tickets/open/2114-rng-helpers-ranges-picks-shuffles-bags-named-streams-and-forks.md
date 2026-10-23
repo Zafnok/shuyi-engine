@@ -183,12 +183,12 @@ None.
   putting a pickup on a free cell with `pick`, and drawing pieces from
   a `Bag` of seven.
 - **Either order:**
-  - with 2511: if its prelude (`shuyi_platform::prelude`) is done, add
-    `Bag` to it, and `RandomSource` if it lacks it. `shuyi-platform`
-    then gains a direct `shuyi-core` dependency (already in its tree
-    through `shuyi-ui`), with `default-features = false` as `shuyi-ui`
-    has it, so it stays `no_std`. If not, 2511 takes them from the crate
-    root (its clause says so);
+  - with 2511 (done): add `Bag` and `RandomSource` to its prelude
+    (`shuyi_platform::prelude`, `crates/platform/src/lib.rs`).
+    `shuyi-platform` then gains a direct `shuyi-core` dependency
+    (already in its tree through `shuyi-ui`), with
+    `default-features = false` as `shuyi-ui` has it, so it stays
+    `no_std`, and its line in `tools/layers.ron`;
   - with 1134: if its `shuyi-stage-grid` skill is done, add a short
     section naming these helpers and streams; if not, 1134 does it (its
     scope says so);

@@ -106,9 +106,11 @@ this ticket stops most of them from happening.
   `Breaking:` line. Its either-order clause with 2013 is written.
 - 2005 (MVP) writes the version policy as an ADR and publishes 0.1. It
   waits for this ticket (an edit request there).
-- 2511 (MVP) adds `BasicGame`, with private fields, two constructors and
-  the builder methods `console` and `screens`, and `run_game`, which
-  builds a `Window` and an `AppConfig` inside `shuyi-app`.
+- 2511 (done, ADR-0036) added `BasicGame`, with private fields, two
+  constructors and the builder methods `console` and `screens`, and
+  `run_game`, which builds a `Window` and an `AppConfig` inside
+  `shuyi-app` (`basic_window` and `basic_config` in
+  `crates/app/src/lib.rs`).
 - 3044 (After MVP) adds `Window::console(..)`, and
   `Window::with_icon(self, icon: Option<Icon>)` if this ticket hasn't;
   its clause with 2013 says both follow this ticket's rule once it is
@@ -196,7 +198,7 @@ None.
      type whose fields keep an invariant or that a game never reads
      field by field. Its optional parts are set by `#[must_use]` methods
      that take and return `self`, named for what they set (2511's
-     `BasicGame::console`, if 2511 is done).
+     `BasicGame::console`).
 
   The ADR also says:
   - **When:** a new public type follows it in the PR that adds it. An
@@ -302,13 +304,14 @@ None.
   default, add `#[must_use] pub const fn with_vsync(self, vsync: bool)
   -> Window`, and 2321's new public types follow the ADR. If not, 2321
   adds the setter.
-- **2511** (engine defaults, a prelude, `run_game` and a minimal
-  template). If it is done, the ADR gives `BasicGame` as kind 8's
-  example (private fields, its constructors and its builder methods,
-  kept as they are), its other new public types follow the ADR, and the
-  minimal template's literals move with the rest. If not, 2511 builds on
-  the constructors, and `run_game` uses `Window::new` and
-  `AppConfig::new`.
+- **2511** (done: engine defaults, a prelude, `run_game` and a minimal
+  template). The ADR gives `BasicGame` as kind 8's example (private
+  fields, its constructors and its builder methods, kept as they are),
+  its other new public types (`BasicData`, `BasicTools`) follow the ADR,
+  and `run_game`'s two literals (`basic_window`'s `Window` and
+  `basic_config`'s `AppConfig`) move to `Window::new` and
+  `AppConfig::new` with the rest. The minimal template builds no engine
+  type by literal.
 - **3044, 3048 and 3046** (After MVP, so most likely after this one).
   If 3044 is done, `Window::with_icon` exists: keep it as 3044 wrote it,
   and don't add a second one. 3048 waits for this ticket and writes
@@ -336,7 +339,7 @@ pin follows this one.
 ## Implementation steps
 
 1. Read ADR-0024, `docs/platform-backends.md`, 2010 and 2005. Check
-   which of 2010, 2304, 2305, 2321, 2511, 1134, 2802, 2803, 2014, 3044,
+   which of 2010, 2304, 2305, 2321, 1134, 2802, 2803, 2014, 3044,
    3046 and 3048 are done. Search `tickets/done/` for "2013".
 2. List the engine types the templates and hello-grid build by literal:
    search `examples/hello-grid/` and `templates/` for `Name {`, where

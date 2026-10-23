@@ -79,4 +79,19 @@ exclude_re = [
     # `move_aside`, tested on its own; the call is tested on Windows
     # (`a_running_server_moves_its_program_aside_…` in `tests/it/binary.rs`).
     "replace this_program with \\(\\)",
+    # The default `theme_def` is `None` (one palette): its `None` mutant is
+    # the same function. Its other mutant is caught.
+    'replace GameData::theme_def -> .* with None',
+    # The default `voice_variant` is the variant's default: its
+    # `Default::default()` mutant is the same function.
+    'replace GameData::voice_variant -> Self::Voice with Default::default\(\)',
+    # `()` has no split variants (`&[]`): the mutant that returns an empty
+    # leaked `Vec` is the same function. Its other mutant is caught.
+    '<impl ClipVariant for \(\)>::split -> .* with Vec::leak\(Vec::new\(\)\)',
+    # `BasicData` has no sounds: its manifest is always the default, so the
+    # mutant that returns a leaked default is the same function.
+    '<impl GameData for BasicData<A, T>>::audio_manifest -> .* with Box::leak\(Box::new\(Default::default\(\)\)\)',
+    # `BasicTools` has no frame options (`&[]`): the mutant that returns an
+    # empty leaked `Vec` is the same function.
+    '<impl GameTools for BasicTools<A, T>>::frame_options -> .* with Vec::leak\(Vec::new\(\)\)',
 ]

@@ -109,9 +109,7 @@ None.
   - the toy's (`crates/ui/src/toy.rs`);
   - the grid template's (`templates/grid/crates/game/src/settings.rs`);
   - the engine's `impl GameSettings for ()` (`crates/ui/src/settings.rs`,
-    from 2511, which the blank template uses). 2511 is MVP and should
-    land first; if it hasn't, `templates/blank/crates/game/src/settings.rs`
-    instead;
+    from 2511, which the blank template uses);
   - `examples/hello-grid/src/settings.rs`.
 
   The templates aren't formatted by `cargo fmt --all`; CI's template

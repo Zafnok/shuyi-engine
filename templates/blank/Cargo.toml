@@ -17,10 +17,7 @@ shuyi-ui = "{{engine.ui}}"
 shuyi-platform = "{{engine.platform}}"
 shuyi-app = "{{engine.app}}"
 shuyi-cli = "{{engine.cli}}"
-# The window and the entry point, as the engine has them.
-macroquad = { version = "0.4", features = ["audio"] }
-serde = { version = "1", features = ["derive"] }
-ron = "0.12"
+# The game's files, embedded.
 include_dir = "0.7"
 
 [workspace.lints.rust]

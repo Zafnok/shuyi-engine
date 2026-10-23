@@ -276,6 +276,13 @@ doesn't offer it:
 | `importers` | `import` | `Importers::standard()` and its own formats and kinds |
 | `bake` | `bake`, `check --baked` | a `GameBake`: its `Bake` (the assets it bakes and its stamp), the bundle of its sources for the target, and its formats |
 
+A game on the short path (a `shuyi_platform::BasicGame`) gives
+`shuyi_cli::BasicTools::new(game)`: `frame` and `frame-png`, `lang`,
+`check` (its files' errors), `session` (`Headless` over its Harness, with
+no scene) and `controls` (its keymap and every screen it can show). A
+game that adds a scene, a record, bots, importers or a bake writes its
+own `GameTools` and calls `BasicTools`' methods for the rest.
+
 Hello, Grid's `src/tools.rs` writes every one. The grid template's
 `crates/game/src/tools.rs` writes every one but `bake`, which a new game
 leaves out until it chooses a pack, and `autobalance_plan`, which needs
@@ -293,7 +300,10 @@ builds and passes its own gates as it is:
   wanderer takes a random step after each of yours), a game crate with
   one stage screen painted by the engine's glyph skin, a bot, records,
   and every operation of the contract wired;
-- `blank`: one screen with the game's name.
+- `blank`: one screen with the game's name, on the short path: its
+  `lib.rs` names its files, its data type (`BasicData<UiAction>`) and its
+  first screen in a `BasicGame`; its `main` is one call
+  (`shuyi_app::run_game`); its tool program is `BasicTools`.
 
 Each has its crates, `shuyi.ron`, `AGENTS.md` (and `CLAUDE.md`), CI with
 the gates (`fmt`, `clippy`, the tests, `check`, `check-keys`; `grid`'s

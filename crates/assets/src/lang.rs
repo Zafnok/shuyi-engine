@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::{ContentError, codes};
+use crate::format::AssetKind;
 use crate::names::Names;
 use crate::ron::parse_ron;
 use crate::tip::placeholders;
@@ -159,6 +160,17 @@ pub struct LangStatus {
     /// Dialogue entries whose line English no longer has (it was reworded
     /// or cut), each with the line it most likely became.
     pub orphans: Vec<Orphan>,
+}
+
+/// A game's English screen text by key, as one file (`en.ron`) holds it:
+/// a kind ([`AssetKind`]) read with `Ron::<English>::new()`
+/// ([`Ron`](crate::ron::Ron)). [`Lang::new`] takes its map.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct English(pub BTreeMap<String, String>);
+
+impl AssetKind for English {
+    const NAME: &'static str = "english";
 }
 
 /// English's text and every pack.
@@ -639,6 +651,31 @@ mod pack_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn english_is_read_through_the_registry() {
+        use crate::bundle::{Bundle, Layer};
+        use crate::format::Formats;
+        use crate::ron::Ron;
+
+        static FILES: &[(&str, &[u8])] = &[
+            ("bad.ron", b"{ \"a\": 1 }"),
+            ("en.ron", b"{ \"title.name\": \"Demo\" }"),
+        ];
+        let bundle = Bundle::new(vec![Layer::table("files", FILES)]);
+        let mut formats = Formats::standard();
+        formats.register(Ron::<English>::new()).unwrap();
+        let english = formats.load::<English>(&bundle, "en.ron").unwrap();
+        assert_eq!(
+            english.0.get("title.name").map(String::as_str),
+            Some("Demo")
+        );
+        let errors = formats.load::<English>(&bundle, "bad.ron").unwrap_err();
+        assert!(
+            errors[0].to_string().starts_with("files/bad.ron:1:"),
+            "{errors:?}"
+        );
+    }
 
     const ENGLISH_SOURCE: &str = r#"{
         "a.one": "One",

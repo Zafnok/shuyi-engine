@@ -14,14 +14,16 @@ cargo shuyi                  # the engine's tools on it (AGENTS.md)
 
 | Path | What |
 | ---- | ---- |
-| `crates/game/src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
+| `crates/game/src/lib.rs` | The game: its name, its files, its data type and its first screen |
+| `crates/game/src/main.rs` | Runs it in a window |
 | `crates/game/src/title.rs` | The one screen |
-| `crates/game/src/action.rs`, `settings.rs` | What a player can ask for, and the settings kept |
-| `crates/game/src/tools.rs`, `examples/tools.rs` | The game's tools, and the program `cargo shuyi` runs them in |
+| `crates/game/examples/tools.rs` | The program `cargo shuyi` runs the engine's tools in |
 | `crates/game/files/` | Embedded: the keys, the palette, the English text and the font |
 | `crates/game/tests/` | The game played through the engine's Harness, and through its tools |
 | `shuyi.ron` | The project file of the engine's tools |
 | `AGENTS.md` | How to work on the game, for people and agents |
+
+It is on the engine's short path; `AGENTS.md` says how it grows past it.
 
 ## Art and licenses
 

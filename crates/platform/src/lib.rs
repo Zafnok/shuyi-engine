@@ -10,6 +10,9 @@
 //! - [`App`]: the game's screens and input state ([`shuyi_ui::Game`]), its
 //!   fixed simulation steps ([`tick`]), suspend and resume, and the
 //!   loading phase ([`Start`], [`Card`]);
+//! - [`BasicGame`] ([`basic`]): a game on the short path, described once
+//!   for its binary, its tools and its tests, and the [`prelude`] such a
+//!   game names;
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature).
@@ -23,7 +26,7 @@
 extern crate alloc;
 
 /// What `std`'s prelude gives for free, for the `no_std` build.
-mod prelude {
+mod alloc_prelude {
     pub use alloc::borrow::ToOwned;
     pub use alloc::boxed::Box;
     pub use alloc::string::{String, ToString};
@@ -32,6 +35,7 @@ mod prelude {
 
 pub mod app;
 pub mod audio;
+pub mod basic;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
@@ -41,6 +45,23 @@ pub mod tick;
 
 pub use app::{App, Card, FrameOutcome, Load, LookOf, Setup, Start, SystemHook};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
+pub use basic::BasicGame;
 pub use platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
 pub use shuyi_ui::storage::Storage;
 pub use text_input::{TextAnswer, TextAsk, TextInput};
+
+/// What a game on the short path names (ADR-0036), and the start types a
+/// game names when it leaves it. Anything else is named by its module's
+/// path.
+pub mod prelude {
+    pub use shuyi_assets::keymap::{ActionSet, UiAction};
+    pub use shuyi_assets::{Bundle, ContentError, Layer};
+    pub use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
+    pub use shuyi_ui::frame::{ConsoleSpec, EngineColor, Rgb};
+    pub use shuyi_ui::screens::print_centred;
+    pub use shuyi_ui::{
+        BasicData, Ctx, FrameInput, Game, GameData, GameHooks, Screen, ScreenResult, Transition,
+    };
+
+    pub use crate::{BasicGame, Card, Look, Setup, Start};
+}

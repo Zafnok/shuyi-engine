@@ -158,11 +158,12 @@ wording reads right.
   game was given (`pacing: Option<Pacing>`, written when it changes)
   and `session::Playback` hands it back. If not, 2518 does it (its own
   clause says so).
-- **Either order with 2511 (the short path):** if it is done, the
-  engine's `impl GameSettings for ()` saves `frame_cap` with
-  `serde(default)`, as the toy's file does, and `shuyi_app::run_game`
-  builds its `Window` with `vsync` set to the default the templates
-  get. If not, 2511 does both (its clause says so).
+- **The short path (2511, done):** the engine's
+  `impl GameSettings for ()` (`crates/ui/src/settings.rs`, its
+  `EngineOnly` record) saves `frame_cap` with `serde(default)`, as the
+  toy's file does, and `shuyi_app::run_game`'s window
+  (`basic_window` in `crates/app/src/lib.rs`) sets `vsync` to the
+  default the templates get.
 - **Docs:** the `Window::vsync` and `FrameCap` docs say the default and
   why, and that for VRR a cap a few frames under the display's refresh
   (141 on a 144 Hz display) keeps the display in its variable range.
@@ -212,8 +213,8 @@ choice isn't kept. The game's PR that moves its pin follows this one.
 5. Wire it into `run`: `Window::vsync`, `window_conf`, the wait before
    `next_frame`, the web skip (keeping the skipped frames' input), and
    `Pacing` through `App` to `Game::set_pacing`.
-6. The either-order parts whose partner is done (2013, 2314, 2351,
-   2511, 2518).
+6. The short path's two parts (2511), and the either-order parts whose
+   partner is done (2013, 2314, 2351, 2518).
 7. The ADR. Measure CPU with hello-grid at 60 and Unlimited on a desktop
    and put the numbers in the completion notes.
 

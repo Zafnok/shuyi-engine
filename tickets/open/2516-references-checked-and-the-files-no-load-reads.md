@@ -153,9 +153,9 @@ None.
     `Some(Err(e))`.
   - Hello, Grid gets it through its `bake`, with no change.
   - `shuyi_cli::BasicTools` (2511) writes it: a `Bundle` of its
-    `BasicGame`'s files layer, as `BasicData::load` reads, and
-    `BasicData::formats()`. Add an accessor for the layer to
-    `BasicGame` if 2511 left none. It must not load the data: a game
+    `BasicGame`'s files layer (`BasicGame::bundle`), as
+    `BasicData::load` reads, and `BasicData::formats()`. It must not
+    load the data: a game
     whose files are broken still gets its errors.
   - `Fake` (`crates/cli/src/contract/fake.rs`) writes it, for the tests.
   - The grid template's tools (`templates/grid/crates/game/src/tools.rs`)

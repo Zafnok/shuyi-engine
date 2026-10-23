@@ -226,9 +226,9 @@ game's palette names `key`.
     `{done}`, `{delete}` and `{cancel}`; the layout picker's `{up}`,
     `{down}` and `{confirm}` (`layout_picker.rs:163`); the key bindings
     screen's `{key}` and `{clear}` (`key_bindings.rs:795`, `:819`);
-  - the help lines of `templates/blank` (`crates/game/src/title.rs`;
-    if 2511 is done, it prints its lines with `screens::print_centred`,
-    and its help line moves to `print_centred_styled`),
+  - the help lines of `templates/blank` (`crates/game/src/title.rs`,
+    which prints its lines with `screens::print_centred`: its help line
+    moves to `print_centred_styled`),
     `templates/grid` (`crates/game/src/stage.rs`) and
     `examples/hello-grid` (the views in `src/skin.rs` and its `help`
     painter at line 79);
