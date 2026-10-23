@@ -448,4 +448,4 @@ for, and keep the listing diff, the semver findings and the CI job here.
   line").
 - **For the game:** no API change, and no game PR.
 
-Breaking: shuyi-core: `Grid::in_bounds`: the demo makes it `pub(crate)`; compare `pos` with `width()` and `height()` instead.
+No break.

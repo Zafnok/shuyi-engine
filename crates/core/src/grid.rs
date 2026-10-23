@@ -39,6 +39,12 @@ impl Pos {
         a.x.abs_diff(b.x) + a.y.abs_diff(b.y)
     }
 
+    /// Whether this is the origin, `(0, 0)` (added by the API demo).
+    #[must_use]
+    pub fn is_origin(self) -> bool {
+        self.x == 0 && self.y == 0
+    }
+
     /// The adjacent position in direction `dir` (may be out of bounds).
     #[must_use]
     pub fn step(self, dir: Dir) -> Pos {
@@ -124,7 +130,7 @@ impl<T> Grid<T> {
     }
 
     /// Whether `pos` is inside the grid.
-    pub(crate) fn in_bounds(&self, pos: Pos) -> bool {
+    pub fn in_bounds(&self, pos: Pos) -> bool {
         pos.x >= 0 && pos.y >= 0 && pos.x < i32::from(self.width) && pos.y < i32::from(self.height)
     }
 
