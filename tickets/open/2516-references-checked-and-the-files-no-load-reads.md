@@ -233,7 +233,7 @@ None.
 - **Either order with 2517:** the unread files stay in `files` and do
   not go in `CheckOutput::warnings`: they are a report about one run,
   not a problem of a file.
-- **Public types (ADR-0037):** the new public types follow it.
+- **Public types (ADR-0038):** the new public types follow it.
 - **Docs:**
   - `docs/formats.md` gets a section "References": `Ref<K>`, what is
     checked, ids as paths, loads through `Formats` for a file and a

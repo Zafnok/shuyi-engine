@@ -172,7 +172,7 @@ from the two sections after **Out**.
   - `Ctx` gains `pub http: HttpQueue`, absent until the platform says
     otherwise;
   - the new enums and structs that may grow are `#[non_exhaustive]`,
-    and every new public type follows ADR-0037.
+    and every new public type follows ADR-0038.
 - **`shuyi_platform::http`** (`crates/platform/src/http.rs`),
   re-exporting the types above:
   - `trait Http { fn send(&mut self, id: RequestId, request:

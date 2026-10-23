@@ -335,7 +335,7 @@ MVP, not parked.
     its serde derives (they are on the enum) and a pointer session plays
     back with the same hash per frame (a test). If not, 2518 records
     them as it records any `RawInputEvent`.
-12. The new public types follow ADR-0037.
+12. The new public types follow ADR-0038.
 13. No new dependency.
 
 **For the game:** `RawInputEvent` gains variants, which breaks a

@@ -45,7 +45,7 @@
 
 // Every public type here is config a game fills in, so each is
 // `#[non_exhaustive]` with a constructor and may gain fields without
-// breaking a game (ADR-0037). The lints hold that here only: in the other
+// breaking a game (ADR-0038). The lints hold that here only: in the other
 // crates most public types are plain values that rightly stay exhaustive.
 // They live in this file, not in `Cargo.toml`, because its `[lints]` must
 // stay a copy of the workspace's (the test at the bottom).
@@ -73,7 +73,7 @@ use crate::backend::Macroquad;
 
 /// The window a game opens. Build it with [`Window::new`]: a struct
 /// literal doesn't compile outside this crate, so a new field never breaks
-/// a game (ADR-0037).
+/// a game (ADR-0038).
 ///
 /// ```compile_fail
 /// let window = shuyi_app::Window {

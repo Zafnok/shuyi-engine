@@ -33,7 +33,7 @@ them without asking questions.
    - A new dependency names its license and how it was checked.
    - A new file format follows ADR-0007 (a `Format`, fuzz-style test,
      determinism fixture).
-   - A new public type follows ADR-0037 (2013): one that may grow is
+   - A new public type follows ADR-0038 (2013): one that may grow is
      `#[non_exhaustive]` with a constructor, and a new field on such a
      type is additive. Say which in the Scope.
 5. **Keep it small:** one PR's worth, roughly 600 changed lines or fewer

@@ -225,7 +225,7 @@ not parked.
   them. If not, compare a captured window frame of the test scene with
   `frame-png` by hand, note it in the PR, and 2018's card takes shapes
   when it is written.
-- **Public types (ADR-0037):** `Shape`, `ShapeKind` and `Fill` follow
+- **Public types (ADR-0038):** `Shape`, `ShapeKind` and `Fill` follow
   it (`#[non_exhaustive]` where they may grow, constructors).
 - **Either order with 2802:** if 2802 is done, chapter 4 of the book
   (the frame and skins) gets a short section on shapes, its code in

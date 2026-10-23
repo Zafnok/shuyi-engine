@@ -169,7 +169,7 @@ None.
   fixture). Its `determinism` job builds them through the self
   dev-dependency above. If not, 2116 adds the rows. Until then the
   three-format test, with its value written out, is the fixture.
-- **Public types (ADR-0037):** both formats keep their fields private
+- **Public types (ADR-0038):** both formats keep their fields private
   behind constructors, as `Ron` does (the ADR's kind 8), so a new field
   breaks no game.
 - **Docs:** `docs/formats.md`'s table of formats a game registers gets a

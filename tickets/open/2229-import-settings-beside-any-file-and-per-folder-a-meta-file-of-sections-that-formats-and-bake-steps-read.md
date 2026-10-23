@@ -247,7 +247,7 @@ None.
 - **For the game:** additive, except the new `RegisterError` variants:
   a `match` on `RegisterError` with no wildcard arm stops compiling.
   The PR says so, and the game's PR that moves the pin follows it.
-- **Public types (ADR-0037):** the new types follow it. `RegisterError`
+- **Public types (ADR-0038):** the new types follow it. `RegisterError`
   is still exhaustive, and this PR adds to it, so it becomes
   `#[non_exhaustive]` here, as the ADR's *When* says.
 - **Either order with 2220.** If 2220 is done, add a test that a `Hot`

@@ -208,7 +208,7 @@ None.
 - **Either order with 2408 (parked):** it adds `Settings::vibration`
   and its row, and saves it in the same forms. Whichever lands second
   follows the first's shape.
-- **Public types (ADR-0037):** the new public types follow it (`Shake`
+- **Public types (ADR-0038):** the new public types follow it (`Shake`
   and `Flash` as config with `new` and `with_` methods, `Motion` as a
   setting's choices).
 - **What changes for the game:** additive. `Settings` gains three

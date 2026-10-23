@@ -225,7 +225,7 @@ None.
     (`ReplayInput`, `ReplayStep`, `ReplayOutput`, and `CrashReport`
     unless it is `#[non_exhaustive]`). If not, the PR body says the same;
   - the new public types (`CodeFrame`, `CrashInput`, `CrashOutput`,
-    `NamedFrame`, `PanicAt`, `CrashReplay`) follow ADR-0037
+    `NamedFrame`, `PanicAt`, `CrashReplay`) follow ADR-0038
     (`#[non_exhaustive]` and constructors).
 - **Docs:** `docs/contract.md`'s table gains `crash` and `replay
   --crash`. `docs/crash-reports.md` (3046) gains: reading a report with

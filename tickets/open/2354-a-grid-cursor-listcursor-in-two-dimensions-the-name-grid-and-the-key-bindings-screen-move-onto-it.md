@@ -145,7 +145,7 @@ None.
 `UiAction::dir` are new, and `NameEntry` and `KeyBindingsScreen` keep
 their public API, so no `Breaking:` line (2010). The game's PR that
 moves its pin needs no change. `GridCursor` and `GoalColumn` follow
-ADR-0037: `GridCursor` has private fields and constructors, as
+ADR-0038: `GridCursor` has private fields and constructors, as
 `ListCursor` has.
 
 **Out (do not do):**

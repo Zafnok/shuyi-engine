@@ -255,7 +255,7 @@ game's palette names `key`.
   `key_name` and `GameData::key_text` keep their signatures. With no
   `key` in its palette, the game's snapshots don't change; game#0250
   picks its look. Say all this in the PR.
-- **Public types (ADR-0037):** `TextRole` and `TextSpan` follow it
+- **Public types (ADR-0038):** `TextRole` and `TextSpan` follow it
   (`#[non_exhaustive]` and constructors).
 - **Either order with 2301:** if 2301 is done, `StyledText::width` and
   `cut` take its `CellWidths`, and `print_styled` advances two cells

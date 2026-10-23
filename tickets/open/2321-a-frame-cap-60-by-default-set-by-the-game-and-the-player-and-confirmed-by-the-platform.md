@@ -108,10 +108,10 @@ wording reads right.
   bool`; `window_conf` sets `platform.swap_interval` to `Some(1)` or
   `Some(0)`. miniquad only reads it when the window opens, so it is not
   a player setting here. `Window` is `#[non_exhaustive]` with
-  `Window::new` (ADR-0037). `new` sets `vsync` to its default, and this
+  `Window::new` (ADR-0038). `new` sets `vsync` to its default, and this
   ticket adds `#[must_use] pub const fn with_vsync(self, vsync: bool) ->
   Window`. The new public types (`FrameCap`, `CapError`, `CapRequest`,
-  `CapStatus`, `Pacing`) follow ADR-0037; in `shuyi-app`, clippy's
+  `CapStatus`, `Pacing`) follow ADR-0038; in `shuyi-app`, clippy's
   `exhaustive_structs` and `exhaustive_enums` fail on one that isn't
   `#[non_exhaustive]`.
 - **The pacer, in `shuyi-app`** (a new `pacing.rs`): a pure struct that
@@ -193,7 +193,7 @@ wording reads right.
 **For the game:** the API is additive. `Settings` has a `pub(crate)`
 field, so no game builds it by literal, and `Settings::frame_cap` is
 additive. `shuyi_app::Window` gains `vsync`, which is additive: a
-game builds `Window` with `Window::new` (ADR-0037). The game's
+game builds `Window` with `Window::new` (ADR-0038). The game's
 settings file should save `frame_cap` like the toy's, or the player's
 choice isn't kept. The game's PR that moves its pin follows this one.
 

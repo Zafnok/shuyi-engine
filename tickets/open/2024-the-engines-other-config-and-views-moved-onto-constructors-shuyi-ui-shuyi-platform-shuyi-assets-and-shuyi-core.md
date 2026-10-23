@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0037](../../docs/adr/0037-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md)
+[ADR-0038](../../docs/adr/0038-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md)
 (ticket 2013) sorts public types into eight kinds and gives each a rule.
 2013 moved `shuyi-app`'s `Window`, `Icon`, `VoiceFiles` and `AppConfig`,
 `shuyi-ui`'s `BoxPlace` and `MapScene`, and `LogLine`, `LogEntry`,
@@ -32,7 +32,7 @@ None.
 
 ## Scope
 
-**In:** the rows of ADR-0037's table marked 2024, each as its kind says:
+**In:** the rows of ADR-0038's table marked 2024, each as its kind says:
 
 - **Kind 2** (config, `#[non_exhaustive]`, a `new` taking what every
   game must choose, a `const fn` where it can be, and `#[must_use] pub
@@ -72,7 +72,7 @@ None.
 - `shuyi-cli`'s rows (2025).
 - The table's kind 1 types (`Cell`, `ImageRect`, `Pos`, `Band`): they
   stay exhaustive.
-- The exhaustive lints outside `shuyi-app` (ADR-0037 says why).
+- The exhaustive lints outside `shuyi-app` (ADR-0038 says why).
 - Renaming anything, or changing what a type holds.
 
 **For the game:** a break, once. Outside their crates these types can no
@@ -82,7 +82,7 @@ in 2010's form. The game's PR that moves the pin follows this one.
 
 ## Implementation steps
 
-1. Read ADR-0037. For each type, read its definition and every literal
+1. Read ADR-0038. For each type, read its definition and every literal
    of it outside its crate (`git grep -n "TypeName {"`).
 2. Add `#[non_exhaustive]` and the constructor(s), with doc comments
    saying which fields `new` sets and to what.
@@ -93,7 +93,7 @@ in 2010's form. The game's PR that moves the pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] Every row of ADR-0037's table marked 2024 is `#[non_exhaustive]`
+- [ ] Every row of ADR-0038's table marked 2024 is `#[non_exhaustive]`
       with its constructors, or the completion notes say which moved to
       a new ticket and its number.
 - [ ] No file under `templates/` or `examples/` builds those types by a

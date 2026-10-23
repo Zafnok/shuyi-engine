@@ -77,7 +77,7 @@ Set `status: in-progress` in the ticket's frontmatter.
 - **Public API:** after the first crates.io release, a breaking change
   needs a version bump and a line in `CHANGELOG.md`. The game's pin
   update is a game PR. A public type you add, or add to, follows
-  ADR-0037 (2013).
+  ADR-0038 (2013).
 
 ## 4. Verify
 

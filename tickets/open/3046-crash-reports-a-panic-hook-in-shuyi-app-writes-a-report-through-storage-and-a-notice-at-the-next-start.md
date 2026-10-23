@@ -76,7 +76,7 @@ What Shuyi has today (read 2026-10-21):
     which builds the `AppConfig` from a `BasicGame`. Its Out leaves the
     crash hook in `run_game` to this ticket;
   - 2013 made `AppConfig` `#[non_exhaustive]` with `AppConfig::new`
-    (ADR-0037); 2015 replaced CI's `platform-deps` job with
+    (ADR-0038); 2015 replaced CI's `platform-deps` job with
     `cargo xtask check-layers` over `tools/layers.ron`;
   - 3041 writes that log to a file in shipped builds, and sets a panic
     hook that writes the panic's line into it;
@@ -170,10 +170,10 @@ anywhere is 3047's question for Nick.
     site. `CrashReports::off()` has `keep: 0` and installs nothing.
     `Default` is `CrashReports::new("")`;
   - `AppConfig` gains `crash: CrashReports`. `AppConfig` is
-    `#[non_exhaustive]` with `AppConfig::new` (ADR-0037). `crash` is a
+    `#[non_exhaustive]` with `AppConfig::new` (ADR-0038). `crash` is a
     public field that `AppConfig::new` sets to
     `CrashReports::default()`, and a game changes it by assigning the
-    field (ADR-0037 gives `with_*` setters only to types games build in
+    field (ADR-0038 gives `with_*` setters only to types games build in
     `const` items), so the change is additive;
   - `crash::install(reports, storage: impl Fn() -> Box<dyn Storage> +
     Send + Sync + 'static)`, which `run` calls before its first frame

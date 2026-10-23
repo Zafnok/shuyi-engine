@@ -302,7 +302,7 @@ finds is a verdict (`ok: false`), not an error, and gets no code.
 from `[Op; 9]` to `[Op; 10]`. If 2010's job reports a break (a new
 variant is one unless `Op` is `#[non_exhaustive]`), the PR has its
 `Breaking:` line. A new `GameTools` method with a default breaks no
-game's tools. Follow ADR-0037 for every new public type: `SoakInput` as an
+game's tools. Follow ADR-0038 for every new public type: `SoakInput` as an
 input with a `Default`, `Check` and `Verdict` as enums that may grow,
 and `Checks`, `Failure` and `Shrunk`.
 

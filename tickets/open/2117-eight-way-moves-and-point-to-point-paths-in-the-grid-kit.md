@@ -196,7 +196,7 @@ None.
   - the docs of `MapScene::path` (`crates/ui/src/grid/scene.rs`) and
     `path_overlays` say they draw four-way steps. Docs only; drawing a
     diagonal is the follow-up under *Out*.
-- **Public types (ADR-0037):** `Topology`, `Diagonals`, `Corners`,
+- **Public types (ADR-0038):** `Topology`, `Diagonals`, `Corners`,
   `PathOptions` and `TilePath` are `#[non_exhaustive]` (fields stay
   public to read), with the constructors, constants, `Default` and
   `with_*` methods above. `Dir8` stays exhaustive, a closed set.
@@ -232,7 +232,7 @@ None.
 
 1. Read `crates/core/src/grid.rs`, `crates/core/src/path.rs` and
    `crates/core/src/path/tests.rs` (its `Costs` maps and brute-force
-   references), and ADR-0037.
+   references), and ADR-0038.
 2. Add `Dir8`, `Pos::step8`, `Pos::chebyshev` and `Grid::neighbors8`,
    with tests.
 3. Write `Topology`, `Diagonals` and `Corners` with `steps`,

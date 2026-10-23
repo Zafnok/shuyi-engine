@@ -122,7 +122,7 @@ None.
     would drop the console a whole scale;
   - `Window` is `#[non_exhaustive]` with `Window::new` and
     `Window::with_icon` (`const`, taking `Option<Icon>`, the field's own
-    type), as ADR-0037 asks. This ticket adds only `Window::console`,
+    type), as ADR-0038 asks. This ticket adds only `Window::console`,
     built on `Window::new`, and keeps `with_icon`;
   - the grid template and hello-grid use it, and `shuyi_app::run_game`
     (2511) builds its window with it (its `basic_window`, in

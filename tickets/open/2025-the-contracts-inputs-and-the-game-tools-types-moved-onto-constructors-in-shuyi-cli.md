@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-[ADR-0037](../../docs/adr/0037-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md)
+[ADR-0038](../../docs/adr/0038-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md)
 (ticket 2013) sorts public types into eight kinds and gives each a rule.
 Its table lists the engine types the templates and hello-grid build by
 literal, with the ticket that moves each. This one has `shuyi-cli`'s
@@ -33,7 +33,7 @@ None.
 
 ## Scope
 
-**In:** the rows of ADR-0037's table marked 2025:
+**In:** the rows of ADR-0038's table marked 2025:
 
 - **Kind 4** (inputs with a `Default`, `#[non_exhaustive]`; callers
   write `let mut input = X::default();` and assign fields): `RunInput`,
@@ -67,7 +67,7 @@ None.
 - `GameArg` (kind 1: a flag and its value; it stays exhaustive).
 - The JSON the contract reads and writes: serde attributes don't change,
   so no schema changes (ADR-0022 §5's schema test stays green).
-- The exhaustive lints in `shuyi-cli` (ADR-0037 says why).
+- The exhaustive lints in `shuyi-cli` (ADR-0038 says why).
 
 **For the game:** a break, once, for a game's tools and tests that
 build these types by literal. The completion notes carry a `Breaking:
@@ -76,7 +76,7 @@ follows this one.
 
 ## Implementation steps
 
-1. Read ADR-0037. For each type, read its definition and every literal
+1. Read ADR-0038. For each type, read its definition and every literal
    of it outside `shuyi-cli` (`git grep -n "TypeName {"`).
 2. Add `#[non_exhaustive]`, the `Default`s and the constructors, with
    doc comments saying which fields `new` sets and to what.
@@ -87,7 +87,7 @@ follows this one.
 
 ## Acceptance criteria
 
-- [ ] Every row of ADR-0037's table marked 2025 is `#[non_exhaustive]`
+- [ ] Every row of ADR-0038's table marked 2025 is `#[non_exhaustive]`
       with its `Default` or constructors, or the completion notes say
       which moved to a new ticket and its number.
 - [ ] No file under `templates/` or `examples/` builds those types by a

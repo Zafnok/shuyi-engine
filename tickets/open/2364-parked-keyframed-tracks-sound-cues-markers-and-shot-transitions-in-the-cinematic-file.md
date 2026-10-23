@@ -299,7 +299,7 @@ than one PR. The last paragraph of **In** says how to split.
 - **What changes for the game:** the API grows, and nothing is renamed.
   Code that builds `CinematicDef`, `ShotDef`, `CinematicFile` or
   `TimedShot` as a struct literal must add the new fields; follow
-  ADR-0037's rule for public types. The PR says which call
+  ADR-0038's rule for public types. The PR says which call
   sites change, and the game's PR that moves its pin follows it.
 - **The split.** Do first the part that holds what the game asked for,
   if this ticket was unparked for a game's request; otherwise part 1.

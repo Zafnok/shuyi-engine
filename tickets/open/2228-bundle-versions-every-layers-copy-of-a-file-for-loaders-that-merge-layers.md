@@ -137,7 +137,7 @@ None.
   `versions` records its path when found, as `bytes` does, through the
   shared helper. If not, 2516 adds its recording in that helper, so
   `versions` is recorded too.
-- **Public types (ADR-0037):** `LayerCopy` follows it.
+- **Public types (ADR-0038):** `LayerCopy` follows it.
 
 **Out (do not do):**
 - Merging entries: a `Merge` trait, `Keyed<T>`, remove lists, key

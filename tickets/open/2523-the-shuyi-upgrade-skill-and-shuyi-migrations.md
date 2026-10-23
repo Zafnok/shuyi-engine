@@ -290,7 +290,7 @@ asked in 2005's sign-off.
   It extends 2005's version-policy ADR and ADR-0022.
 - **For the game:** nothing changes in its files. The library API gains
   a variant of `Op`, a break for a game that matches on it unless `Op`
-  is `#[non_exhaustive]` by then (ADR-0037's rule for enums that grow).
+  is `#[non_exhaustive]` by then (ADR-0038's rule for enums that grow).
   If 2010's job reports it, write the `Breaking:` line and its
   `migration` block (the new arm; no `find`, the compiler finds it),
   and run `cargo xtask migrations`; the game's PR that moves the pin

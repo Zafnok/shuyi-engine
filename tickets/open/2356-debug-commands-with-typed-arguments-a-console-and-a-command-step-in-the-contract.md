@@ -234,7 +234,7 @@ None.
   with the console `Ctx` gains a field (it has private fields, so no
   game builds it field by field). A game that matches `frame_png::Step` or
   `session::Event` exhaustively must add an arm. The new public types
-  follow ADR-0037. If 2010 is done and its check calls the new
+  follow ADR-0038. If 2010 is done and its check calls the new
   variants a break, the PR carries its `Breaking:` line. The game's PR
   that moves the pin follows this one.
 - **The console** (the last step; step 9 says when it moves to a

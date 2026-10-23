@@ -47,7 +47,7 @@ pub mod codes {
 }
 
 /// One problem found while loading or validating an asset. Build it with
-/// [`ContentError::new`] and its methods (ADR-0037).
+/// [`ContentError::new`] and its methods (ADR-0038).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[non_exhaustive]
 pub struct ContentError {

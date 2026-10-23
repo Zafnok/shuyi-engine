@@ -18,7 +18,7 @@ use super::skin::Terrains;
 /// The visible part of a grid map, with units of the game's kind `U`.
 /// Build it with [`MapScene::new`] and assign the rest: a struct literal
 /// doesn't compile outside this crate, so a new field never breaks a game
-/// (ADR-0037).
+/// (ADR-0038).
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub struct MapScene<U> {

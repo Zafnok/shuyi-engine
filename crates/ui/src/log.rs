@@ -99,7 +99,7 @@ impl LogCategory {
     }
 }
 
-/// One line of the log. Build it with [`LogLine::new`] (ADR-0037).
+/// One line of the log. Build it with [`LogLine::new`] (ADR-0038).
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct LogLine {
