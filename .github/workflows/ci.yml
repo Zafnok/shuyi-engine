@@ -315,7 +315,7 @@ jobs:
       - run: rustup show
       # The nightly, and the tools' versions below, are the consts in
       # crates/xtask/src/api.rs; they move with rust-toolchain.toml.
-      - run: rustup toolchain install nightly-2026-05-23 --profile minimal
+      - run: rustup toolchain install nightly-2026-07-06 --profile minimal
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # `shuyi-app`'s dependencies need them to be documented.
       - name: Install macroquad system libraries

@@ -683,7 +683,7 @@ fn the_nightly_is_known_by_its_name_on_any_host() {
     assert!(is_the_nightly(&format!(
         "{NIGHTLY}-x86_64-pc-windows-gnu (active)"
     )));
-    assert!(!is_the_nightly("nightly-2026-05-230-x86_64"));
+    assert!(!is_the_nightly(&format!("{NIGHTLY}0-x86_64")));
     assert!(!is_the_nightly(&format!("stable {NIGHTLY}")));
     assert!(!is_the_nightly(""));
 }

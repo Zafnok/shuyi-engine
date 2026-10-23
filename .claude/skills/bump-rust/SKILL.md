@@ -55,7 +55,11 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
    - **for a new minor**, `NIGHTLY` becomes the first nightly of that
      minor (an older one refuses the new `rust-version`) whose rustdoc
      JSON format the pinned `cargo-public-api` reads; if none does, move
-     `PUBLIC_API` to the release that reads it;
+     `PUBLIC_API` to the release that reads it. A nightly's version is
+     in `https://static.rust-lang.org/dist/<date>/channel-rust-nightly.toml`
+     (`[pkg.rustc]`), and "reads it" means `cargo xtask api` passes on
+     it. Skipping this step leaves the `api` job failing on every PR
+     with "rustc X.Y-nightly is not supported" (ticket 2026);
    - **when the `api` job fails to read the new stable's rustdoc JSON**,
      move `SEMVER_CHECKS` to the release that reads it.
 
