@@ -5,8 +5,10 @@
 //! Each operation of the contract is a tool, its input the operation's
 //! input ([`crate::contract::op_schemas`]), its answer the operation's
 //! [`Answer`](crate::contract::Answer). The tools that run the game take
-//! `project`, the game's folder, from the server's working folder; the
-//! server's own project if it is left out.
+//! `project`, the game's folder, from the session's folder (the client's
+//! first root, or the server's working folder); the session folder's own
+//! project if it is left out. A project in another cargo workspace than
+//! the server's is answered by that workspace's own server ([`forward`]).
 //!
 //! A **session** keeps one game running headless between calls, so an
 //! agent can play it, look at it and play on:
@@ -33,13 +35,16 @@
 
 pub mod aside;
 pub mod child;
+pub mod forward;
 pub mod host;
 pub mod install;
 pub mod server;
 
-use std::io::{BufRead, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::Command;
+use std::sync::mpsc::{RecvTimeoutError, channel};
+use std::time::Duration;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -61,8 +66,8 @@ pub struct NoInput {}
 #[serde(deny_unknown_fields, default)]
 pub struct StartInput {
     /// The game's folder (the one holding its `shuyi.ron`, or one below
-    /// it), from the server's working folder; the server's own project if
-    /// none.
+    /// it), from the session's folder; the session folder's own project
+    /// if none.
     pub project: Option<String>,
     /// The game's own start options (`start`'s answer lists them), in the
     /// order given.
@@ -270,7 +275,8 @@ pub fn takes_project(op: Op, session: bool) -> bool {
 fn project_schema() -> Value {
     json!({
         "description": "The game's folder (the one holding its `shuyi.ron`, or one below it), \
-                        from the server's working folder; the server's own project if none.",
+                        from the session's folder (the agent's working folder); the session \
+                        folder's own project if none.",
         "type": ["string", "null"],
     })
 }
@@ -350,11 +356,13 @@ usage: {command} mcp                    serve the tool contract over MCP on stdi
 
 --ready builds the server (it runs through the same command) and the
 game's tool program, if shuyi.ron names one, so an agent's first
-connection doesn't wait for a compile: run it after updating the engine,
-then reconnect the server. install shows what it will change and asks
-before writing, keeping a backup of each file it changes, then runs the
-server with --ready; --yes doesn't ask, and --dry-run writes nothing and
-prints each file as it would write it. The server is run as --command's
+connection doesn't wait for a compile. A running server follows the
+agent's folder and the engine by itself: a project in another workspace
+goes to that workspace's own server, and a server whose engine moved
+under it hands its calls to a fresh one. install shows what it will
+change and asks before writing, keeping a backup of each file it
+changes, then runs the server with --ready; --yes doesn't ask, and
+--dry-run writes nothing and prints each file as it would write it. The server is run as --command's
 words and `mcp` (the project's `command` in shuyi.ron, or `shuyi`, if not
 given)."
     )
@@ -370,9 +378,11 @@ pub fn main(args: &[String], cwd: &Path) -> u8 {
                 aside::this_program();
             }
             let mut server = server::Server::new(cwd.to_path_buf(), Box::new(child::Cargo));
-            let stdin = std::io::stdin();
+            if std::env::var_os(forward::FORWARDED).is_none() {
+                server = server.forwarding(Box::new(forward::Processes));
+            }
             let stdout = std::io::stdout();
-            match serve(&mut server, stdin.lock(), stdout.lock()) {
+            match serve(&mut server, BufReader::new(std::io::stdin()), stdout.lock()) {
                 Ok(()) => 0,
                 Err(e) => {
                     eprintln!("mcp: {e}");
@@ -421,21 +431,44 @@ fn ready(cwd: &Path) -> u8 {
     0
 }
 
-/// Serves MCP messages from `input`, one per line, writing each response
-/// to `output` on a line of its own, until `input` ends.
+/// How long the server waits for a message before it looks whether a
+/// project's own server it follows is ready.
+const POLL: Duration = Duration::from_millis(200);
+
+/// Serves MCP messages from `input`, one per line, writing each message
+/// the server has for one on a line of its own, and the notification that
+/// its tools changed when they do ([`server::Server::poll`]), until `input`
+/// ends.
 pub fn serve(
     server: &mut server::Server<'_>,
-    input: impl BufRead,
+    input: impl BufRead + Send + 'static,
     mut output: impl Write,
 ) -> std::io::Result<()> {
-    for line in input.lines() {
-        let line = line?;
-        if let Some(response) = server.handle(&line) {
-            writeln!(output, "{response}")?;
+    let (sent, lines) = channel();
+    std::thread::spawn(move || {
+        for line in input.lines() {
+            if sent.send(line).is_err() {
+                break;
+            }
+        }
+    });
+    loop {
+        let messages = match lines.recv_timeout(POLL) {
+            Ok(line) => {
+                let mut messages = server.handle(&line?);
+                messages.extend(server.poll());
+                messages
+            }
+            Err(RecvTimeoutError::Timeout) => server.poll(),
+            Err(RecvTimeoutError::Disconnected) => return Ok(()),
+        };
+        for message in &messages {
+            writeln!(output, "{message}")?;
+        }
+        if !messages.is_empty() {
             output.flush()?;
         }
     }
-    Ok(())
 }
 
 #[cfg(test)]

@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2545"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2546 — The MCP server follows the session's checkout
@@ -57,10 +57,8 @@ Two MCP features let the server do this itself (spec 2025-06-18):
 another runs: on Windows each server moves its program aside, so two
 sessions in one worktree share its program without blocking a build.
 
-**Either order with 2542:** if 2542 is done, its two-way `stale` message
-is the limit written when a fresh server fails to start (Scope, *A stale
-server restarts*). If not, 2542's item 1 applies to that limit when it
-is worked.
+2542 is not done: its item 1 changes the `stale` message, which is now
+the limit written only when a fresh server fails to start.
 
 ## Nick input
 
@@ -177,21 +175,21 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With a client that declares roots, a relative `project` resolves
+- [x] With a client that declares roots, a relative `project` resolves
       against the first root, not the working folder.
-- [ ] A call whose project is in another workspace is answered by that
+- [x] A call whose project is in another workspace is answered by that
       workspace's own server (the fake sees it, with `project` made
       absolute), and the client gets the answer under its own id.
-- [ ] When the session folder's server lists other tools, the client gets
+- [x] When the session folder's server lists other tools, the client gets
       `notifications/tools/list_changed`, then that list.
-- [ ] A host answer of another contract in the server's own workspace
+- [x] A host answer of another contract in the server's own workspace
       starts a fresh server for it, and the call is answered by it.
-- [ ] A forwarded server that doesn't build gives an error result with a
+- [x] A forwarded server that doesn't build gives an error result with a
       code and its stderr's last lines.
-- [ ] Closing the server's stdin ends every forwarded server (the
+- [x] Closing the server's stdin ends every forwarded server (the
       integration test).
-- [ ] The completion notes say what Claude Code sent in step 1.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The completion notes say what Claude Code sent in step 1.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -210,5 +208,74 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What Claude Code sent (step 1).** Claude Code 2.1.291, headless
+(`claude -p … --mcp-config <file>`), a probe build logging each message
+to a file (Claude Code logs a server's stderr only while it connects):
+
+- first a `server/discover` request (protocol `2026-07-28`), which the
+  server answers "Method not found", then `initialize` with protocol
+  `2025-11-25` and `capabilities: { "roots": { "listChanged": true },
+  "elicitation": { "form": {}, "url": {} } }`;
+- it sends `tools/list` right after `notifications/initialized`,
+  *before* it answers the server's `roots/list`; so the first list is
+  always the server's own, and a different one comes by
+  `notifications/tools/list_changed`;
+- the `roots/list` answer is one root, the session's working folder:
+  `file:///C:/Users/…/scratchpad/probe/work` (a drive, forward slashes;
+  a worktree session gave `file:///D:/shuyi-engine/.claude/worktrees/…`).
+
+Claude Code declares `roots.listChanged`, so it will say when the
+session's folder changes: follow-up **2547** reads the roots again then.
+
+**What was done.**
+- `mcp/forward.rs`: the `Forward` and `Forwarding` seam, `Processes`
+  (cargo's `locate-project --workspace`, canonical paths without the `\\?\` prefix)
+  and `Process` (the child, its stdin, its stdout's lines on a thread, its
+  stderr's tail through `child::keep_tail`), `words` (how a project's own
+  server is run), `path_of_uri`.
+- `Server::handle` returns `Vec<String>`; `Server::poll` sends
+  `notifications/tools/list_changed`; `serve` reads stdin on a thread and
+  polls every 200 ms. `Server::forwarding` turns forwarding on (`mcp::main`
+  does, unless `SHUYI_MCP_FORWARDED` is set).
+- The tools list `listChanged: true`; SH3005's help line and page name
+  the project's own server; `docs/contract.md`, the usage text and the
+  templates' `AGENTS.md` lines drop "run `--ready` and reconnect".
+- [ADR-0035](../../docs/adr/0035-the-mcp-server-follows-the-sessions-folder-roots-a-forwarded-server-per-workspace-and-a-restart-when-the-engine-moves.md)
+  records the design.
+- Checked live: a server started in `D:\shuyi-engine` (as the desktop app
+  does) with Claude Code in this worktree started the worktree's own
+  server at the roots' answer, and Claude Code's `explain` call was
+  answered by it.
+
+**Deviations.**
+- **A folder with no `command` uses the workspace's `.mcp.json`.** The
+  engine repository has no `shuyi.ron` at its root, so an engine
+  worktree's session folder named no command. The forwarded server is the
+  project's `command` and `mcp`; else the `shuyi` entry of the
+  workspace's `.mcp.json` (the engine's is `cargo run -q -p shuyi-cli --
+  mcp`), run in the workspace; else `shuyi mcp` in a project; else the
+  server answers itself.
+- **`SHUYI_MCP_FORWARDED`.** A forwarded server forwards nothing, so a
+  stale restart can't chain.
+- **Session tools follow `start`.** A `start` forwarded to a workspace
+  keeps the session there (`step`, `scene`, … go to it), and a `start`
+  elsewhere stops it first.
+- **A tool only the followed list has** goes to the followed server.
+- **The contract is 13.** The `start` input's `project` description now
+  says "from the session's folder"; that changed
+  `session.start.input.json`, so `VERSION` rose (`versions.json`, the
+  example answer in `docs/contract.md`). No shape changed.
+- **SH3005's help line** is rewritten with single spaces, so 2542's
+  item 2 now only has `lint`'s description left (its text says so).
+- The `project` description doesn't say "an absolute path is safest":
+  Claude Code declares roots.
+
+**API change for the game.** `mcp::server::Server::handle` returns
+`Vec<String>` instead of `Option<String>`, and `mcp::serve` takes an
+input that is `Send + 'static`. The game's PR that moves the pin follows
+if a game test drives either.
+
+**Notes for Nick.** A worktree session's tools now build and run that
+worktree's engine and game by themselves: no `--ready`, no reconnect.
+The first call in a fresh worktree waits for its build (about 27
+seconds cold); the build starts as the session connects.

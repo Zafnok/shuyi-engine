@@ -97,12 +97,10 @@ None.
     (`with_own`), a `GameTools` of its own, or `GameData` by hand.
   - `shuyi-new-game` says how an agent gets the MCP server
     (`docs/contract.md`, *The MCP server*): `cargo shuyi mcp install`
-    once, `.mcp.json` checked in, and after updating the engine, run
-    `cargo shuyi mcp --ready` (2535), then reconnect the server.
-    **Either order with 2546:** if 2546 is done, the skill says instead
-    that the server follows the session's folder and the engine by
-    itself, so there is nothing to reconnect; if not, 2546 changes the
-    skill's line when it is worked.
+    once, and `.mcp.json` checked in. The server follows the session's
+    folder and the engine by itself (2546), so there is nothing to
+    rebuild or reconnect after updating the engine; `cargo shuyi mcp
+    --ready` (2535) is for a first build before connecting.
   - `shuyi-new-game` has a short section on sound effects (2225). A cue
     names a `.sfx.ron` file, `shuyi sfx <preset> --out <file>` writes
     one, `--wav` renders it to listen to, and these are the fields to

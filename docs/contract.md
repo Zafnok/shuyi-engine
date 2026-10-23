@@ -46,7 +46,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 12,
+  "contract": 13,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -167,9 +167,15 @@ operation is a tool: its input is the operation's input schema
 structured content and as JSON text. An answer that isn't `ok` is an
 error result, with its `code` and `help` as they are: branch on the
 `code`. The tools that run the game, and `lint`, take `project`, the
-game's folder from the server's working folder (the server's own project
-if it is left out). `lint` runs in the server, not the game's tool
-program.
+game's folder from the session's folder (the session folder's own
+project if it is left out). `lint` runs in the server, not the game's
+tool program.
+
+The **session's folder** is the client's first root: a client that
+declares `roots` in `initialize` gets a `roots/list` request after
+`notifications/initialized` (Claude Code lists the session's working
+folder, a worktree's in a worktree session). Without roots it is the
+server's working folder.
 
 A **session** keeps one game running headless between calls:
 
@@ -212,12 +218,44 @@ copy in its place, so a build while they run writes a fresh program
 instead of waiting for them to stop.
 
 The entry builds the server from the project's own engine (a game's
-moves with its pin), so after updating the engine (a pull here, a pin
-move in a game) run `<command> mcp --ready`, which builds the server and
-the game's tool program and prints `mcp: ready (contract N)`, then
-reconnect the server (in Claude Code, `/mcp`). A server older than the
-game's engine adds a limit to each answer from the game that says so,
-naming both contracts.
+moves with its pin). `<command> mcp --ready` builds the server and the
+game's tool program and prints `mcp: ready (contract N)`, so a first
+connection doesn't wait for a build.
+
+**Each project gets its own server.** A client may start the server in
+another checkout than the session's: Claude Code's desktop app starts a
+worktree session's server in the repository's main checkout. So each
+call's project is looked up to its cargo workspace (`cargo
+locate-project --workspace`, once per project root), and a project in
+another workspace than the server's goes to that workspace's
+**forwarded server**: a `shuyi mcp` built from that workspace's engine,
+one per workspace, kept for the session. It is the project's `command`
+and `mcp`, run in its root; or, with no `command` in its `shuyi.ron` (or
+no `shuyi.ron`, as at the engine repository's root), the `shuyi` entry
+of the workspace's `.mcp.json`, run there; or `shuyi mcp` in the
+project's root. A folder outside any workspace, or with neither a
+project nor an entry, is the server's own. The call goes on with its
+`project` (and `new`'s `dir`) made absolute, and its answer comes back
+as it is. When the session's folder is in another workspace, its server
+starts at the roots' answer, so its build runs while the agent works; a
+call waits for it. One that doesn't build, or stops, answers `SH3005`
+with the last of its output, and the next call starts it again. A
+forwarded server forwards nothing itself (it runs with
+`SHUYI_MCP_FORWARDED` set), and it ends when its stdin closes, as the
+server does, so nothing runs from a worktree's `target` once its session
+ends.
+
+**The tool list follows.** The server declares `tools: { listChanged:
+true }`. Once the session folder's forwarded server is ready, the server
+fetches its `tools/list`; if it differs from its own, it sends
+`notifications/tools/list_changed` and from then lists those tools, and
+hands a tool it doesn't know itself to that server.
+
+**A stale server restarts.** When the game's engine speaks another
+contract than the server (the checkout moved under a running server), a
+call in the server's own workspace goes to a fresh forwarded server of
+that workspace, and so does every later one. Only if that one doesn't
+start does the answer get a limit naming both contracts.
 
 ## What a game gives
 
