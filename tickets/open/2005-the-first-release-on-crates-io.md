@@ -70,7 +70,7 @@ The sign-off also:
   - **What a breaking change needs:** a `Breaking:` line and a
     `migration` block under it in the ticket's completion notes (2804),
     a version bump after the first release (`work-ticket` §3), and a
-    pin bump in the game. It cites ADR-0037 (2010) for how a break is
+    pin bump in the game. It cites ADR-0038 (2010) for how a break is
     found (CI's `api` job: cargo-semver-checks against each PR's base) and
     recorded (a `Breaking:` line in the ticket's completion notes)
     instead of restating it, and it says how the `Breaking:` lines since

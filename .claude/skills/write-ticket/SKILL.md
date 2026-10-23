@@ -68,7 +68,7 @@ that may know only the engine. So it must stand on its own. Its
 
 Its **Scope** says what changes for the game: whether the API breaks
 (CI's `api` job finds it, and each break gets a `Breaking:` line in the
-ticket's completion notes, ADR-0037 §6), and that the game's PR that
+ticket's completion notes, ADR-0038 §6), and that the game's PR that
 moves the pin follows this one. Its **Completion notes** will name that
 game PR (`work-ticket` §5).
 

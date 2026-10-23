@@ -294,11 +294,10 @@ None.
   done, reuse the `pub(crate)` `ticket_id_from_branch` and the
   `breaking_lines` it wrote, and its split of calls from logic, instead
   of a second copy. If not, 2116 reuses this ticket's.
-- **Either order with 2011.** If 2011 is done, its `dependency-upkeep`
-  skill's step 3 (*A requirement change*) says the `api` job fails a
-  Dependabot PR that breaks the API (the rule's case 3), and such an
-  upgrade goes to its step 6 (a ticket of its own). If not, 2011 adds
-  that line.
+- **With 2011 (done).** The `dependency-upkeep` skill's step 3 (*A
+  requirement change*) says the `api` job fails a Dependabot PR that
+  breaks the API (the rule's case 3), and such an upgrade goes to its
+  step 6 (a ticket of its own).
 - **Either order with 2513.** If 2513 is done, the job installs the
   system libraries with `bash scripts/setup-linux.sh`, as the other
   jobs do. If not, the job uses the `clippy` job's `apt-get` line, and
@@ -394,7 +393,7 @@ for, and keep the listing diff, the semver findings and the CI job here.
   `api/tests.rs`) and CI's `api` job, as the Scope says. `changes.yml`
   has the `crates` output, and `api` is in `ci-result`'s `needs`.
   `ticket_id_from_branch` is `pub(crate)` and `breaking_lines` is new in
-  `tickets.rs`. ADR-0037 is the gate.
+  `tickets.rs`. ADR-0038 is the gate.
 - **The versions (step 1):**
   - `cargo-semver-checks` 0.51.0 (2026-10-03), the newest; it reads the
     rustdoc JSON of the pinned 1.98.1. `taiki-e/install-action`
@@ -409,7 +408,7 @@ for, and keep the listing diff, the semver findings and the CI job here.
     as given, whatever the versions say (`check_release.rs`), and
     `minor` runs only the lints whose required update is major. Without
     it the tool derives the type from the versions, which would turn
-    every lint off once 2005 makes a crate 0.2.0. ADR-0037 §4.
+    every lint off once 2005 makes a crate 0.2.0. ADR-0038 §4.
   - `--baseline-root target/api-base` finds the package in the base's
     workspace, and `-p` checks a `publish = false` crate. 0.51.0 has no
     machine-readable output: the text is parsed (`--- failure <lint>:`,
@@ -443,7 +442,10 @@ for, and keep the listing diff, the semver findings and the CI job here.
 - **Settled** the clauses in open tickets that waited on 2010
   (`work-ticket` §5). 2012 landed while this was worked: its `bump-rust`
   skill's checklist has the new step 3 (move the `api` job's nightly and
-  tools), and 2011's line says what its skill writes.
+  tools). 2011 landed too, before this: its ADR took the number 0037,
+  so this one is ADR-0038, and its `dependency-upkeep` skill's step 3
+  gets the line on the `api` job here (2011's "if not, 2010 adds that
+  line").
 - **For the game:** no API change, and no game PR.
 
 No break.

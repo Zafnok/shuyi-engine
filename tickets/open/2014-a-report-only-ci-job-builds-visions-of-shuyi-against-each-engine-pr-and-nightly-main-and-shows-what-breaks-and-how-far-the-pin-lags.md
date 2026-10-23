@@ -66,7 +66,7 @@ Shuyi today:
   no access to the game repository".
 
 Planned or done, and not this: the `Breaking:` lines (2010, 2804) and
-2005's version policy are written by hand, and 2010 (done, ADR-0037)
+2005's version policy are written by hand, and 2010 (done, ADR-0038)
 diffs the public API of each PR in CI's `api` job and asks for a
 `Breaking:` line when it breaks. None of them compiles the game.
 
@@ -265,10 +265,9 @@ None. It is a CI choice, and the game repository is already public.
   *The game at the next pin* stay; this ticket's sentences go beside
   them.
 - **With 2513** (the Linux setup script): step 2 of the `game` job.
-- **With 2011** (Dependabot): if its `dependency-upkeep` skill exists,
-  its step 3 ("build the game against the branch") reads the `game`
-  job's summary instead, and keeps the local build for fixing. If not,
-  2011 adds that.
+- **With 2011** (Dependabot, done): the `dependency-upkeep` skill's
+  step 3 ("build the game against the branch") reads the `game` job's
+  summary instead, and keeps the local build for fixing.
 
 **For the game:** no API change, and no change in the game's
 repository. This is CI, `xtask`, skill text and `AGENTS.md`. The
