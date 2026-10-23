@@ -16,11 +16,17 @@ static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
 /// from `files/`, with the six moves of `files/keymap.ron` as its actions.
 pub type Data = BasicData<UiAction>;
 
-/// The game: its name, where the player's settings and keys are kept
-/// (never change it, or every player's are lost), its files and its first
-/// screen.
+/// The game's name.
+const NAME: &str = "{{name}}";
+
+/// Where the player's settings and keys are kept: never change it, or
+/// every player's are lost.
+const STORAGE_NAME: &str = "{{crate}}";
+
+/// The game: its name, where the player's settings and keys are kept, its
+/// files and its first screen.
 pub fn game() -> BasicGame<UiAction> {
-    BasicGame::new("{{name}}", "{{crate}}", Layer::dir("files", &FILES), |_| {
+    BasicGame::new(NAME, STORAGE_NAME, Layer::dir("files", &FILES), |_| {
         Box::new(title::Title)
     })
 }

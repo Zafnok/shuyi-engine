@@ -14,8 +14,10 @@
 //!
 //! The game's Rust code names its own crates `game` and `rules` (their
 //! `[lib] name`), so its Rust holds a placeholder only in a string: the
-//! game's name and its storage's name, in `lib.rs`. No other `{{` may be
-//! in a template's text.
+//! game's name and its storage's name, each the whole of its own `const`
+//! (`blank`'s `lib.rs`, `grid`'s `main.rs`), so rustfmt lays the code out
+//! the same whatever the names' length. No other `{{` may be in a
+//! template's text.
 
 use std::fmt::Write as _;
 use std::fs;

@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2548 — A game made from the blank template passes cargo fmt whatever its name
@@ -68,10 +68,10 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new blank` and `shuyi new grid` with a long name make games
+- [x] `shuyi new blank` and `shuyi new grid` with a long name make games
       that pass `cargo fmt --all --check`.
-- [ ] CI checks a long name, so this doesn't come back.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] CI checks a long name, so this doesn't come back.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -80,5 +80,23 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- The only Rust lines with a placeholder were `blank`'s `game()` call
+  in `crates/game/src/lib.rs` and `grid`'s `WINDOW` in
+  `crates/game/src/main.rs` (grid's `STORAGE_NAME` was already a `const`).
+  Each name is now the whole of its own `const` (`NAME`,
+  `STORAGE_NAME`), and the calls name the consts, so rustfmt lays them
+  out the same for any name. The other `{{name}}` places are Markdown,
+  TOML and RON, which rustfmt doesn't read.
+- Reproduced: the old `blank` moves under `a-much-longer-game-name`; the
+  old `grid` line fit with that name by one column and moves under a
+  longer one.
+- CI's `templates` job makes each template a second time, named
+  `A Much Longer Game Name Than Demo, To Test`, and runs `cargo fmt --all
+  --check` on it; that name moves both old layouts.
+- Checked locally: `blank` and `grid` made as `demo`,
+  `a-much-longer-game-name` and a 41-character name all pass `cargo fmt
+  --all --check`, and the long-name games pass the whole template gate.
+  Of the engine's gates, ran fmt, clippy, `shuyi-cli`'s tests and the
+  repository's checks; no dependency, crate or example changed.
+- The `new.rs` module doc now says the names sit in their own consts.
+- No break. No follow-up tickets.
