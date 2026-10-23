@@ -632,6 +632,8 @@ fn a_missing_tool_prints_its_install_line() {
         );
     let missing = missing_tools(&root, &fake);
     assert_eq!(missing.len(), 3, "{missing:?}");
+    assert!(missing[0].contains("is not installed"), "{missing:?}");
+    assert!(missing[1].contains("is not installed"), "{missing:?}");
     assert!(missing[0].ends_with(&format!(
         "\n    cargo install --locked cargo-semver-checks@{SEMVER_CHECKS}"
     )));
@@ -1047,4 +1049,47 @@ fn ci_installs_the_pinned_tools_and_nightly() {
     ] {
         assert!(ci.contains(&pinned), "ci.yml lacks `{pinned}`");
     }
+}
+
+#[test]
+fn a_summary_is_printed_and_appended_to_its_file() {
+    let root = temp_root("summary");
+    let file = root.join("summary.md");
+    fs::write(&file, "before\n").unwrap();
+    let mut out = Vec::new();
+    assert_eq!(write_summary("## Public API", Some(&file), &mut out), None);
+    assert_eq!(write_summary("again", Some(&file), &mut out), None);
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        "before\n## Public API\nagain\n"
+    );
+    assert_eq!(String::from_utf8(out).unwrap(), "## Public API\nagain\n");
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_summary_without_a_file_is_only_printed() {
+    let mut out = Vec::new();
+    assert_eq!(write_summary("## Public API", None, &mut out), None);
+    assert_eq!(String::from_utf8(out).unwrap(), "## Public API\n");
+}
+
+#[test]
+fn an_empty_summary_writes_nothing() {
+    let root = temp_root("empty-summary");
+    let file = root.join("summary.md");
+    let mut out = Vec::new();
+    assert_eq!(write_summary("", Some(&file), &mut out), None);
+    assert!(out.is_empty());
+    assert!(!file.exists());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_summary_file_that_cannot_be_written_is_an_error() {
+    let root = temp_root("bad-summary");
+    // A folder can't be opened as a file to append to.
+    let error = write_summary("## Public API", Some(&root), &mut Vec::new()).unwrap();
+    assert!(error.starts_with(&root.display().to_string()), "{error}");
+    let _ = fs::remove_dir_all(&root);
 }

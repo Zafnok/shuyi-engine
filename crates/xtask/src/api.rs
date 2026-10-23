@@ -654,6 +654,32 @@ fn details(out: &mut String, krate: &CrateApi) {
     out.push_str("\n</details>\n");
 }
 
+/// Prints `summary` to `out` and appends it to `file` (CI's
+/// `$GITHUB_STEP_SUMMARY`), creating the file if needed. An empty summary
+/// (the comparison failed) writes nothing. The error says the file couldn't
+/// be written.
+pub fn write_summary(
+    summary: &str,
+    file: Option<&Path>,
+    out: &mut dyn std::io::Write,
+) -> Option<String> {
+    if summary.is_empty() {
+        return None;
+    }
+    // A summary that can't be printed is still in the file.
+    let _ = writeln!(out, "{summary}");
+    let path = file?;
+    fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .and_then(|mut file| {
+            std::io::Write::write_all(&mut file, format!("{summary}\n").as_bytes())
+        })
+        .err()
+        .map(|e| format!("{}: {e}", path.display()))
+}
+
 /// The ticket `id` in `tickets/done/`, if it is there.
 fn done_ticket(root: &Path, id: &str) -> Option<String> {
     let prefix = format!("{id}-");
