@@ -4,6 +4,20 @@
 # their job.
 version: 2
 updates:
+  # The pinned Rust (ticket 2012): one PR moves the engine's and the
+  # templates' rust-toolchain.toml; the bump-rust skill finishes it.
+  # `cargo xtask check-toolchain` fails when a template's folder is left out.
+  - package-ecosystem: rust-toolchain
+    directories: ["/", "/templates/blank", "/templates/grid"]
+    schedule:
+      interval: weekly
+    # A quick point release comes out first.
+    cooldown:
+      default-days: 14
+    groups:
+      rust-toolchain:
+        group-by: dependency-name
+
   # The workspace (`crates/*`, `examples/*`). The templates' manifests hold
   # `{{...}}` placeholders; `cargo xtask check-pins` keeps their
   # requirements equal to the root's.

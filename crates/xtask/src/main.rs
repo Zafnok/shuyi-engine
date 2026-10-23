@@ -6,6 +6,7 @@
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
 //! - `cargo xtask check-pins`
+//! - `cargo xtask check-toolchain`
 
 mod docs;
 mod layers;
@@ -13,6 +14,7 @@ mod links;
 mod no_std;
 mod pins;
 mod tickets;
+mod toolchain;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -39,7 +41,11 @@ usage:
   cargo xtask check-pins
       Check that every workflow's actions are pinned by commit SHA, one SHA per
       action, every template's workflows in .github/dependabot.yml, and the
-      templates' requirements equal to the root's (ADR-0037).";
+      templates' requirements equal to the root's (ADR-0037).
+  cargo xtask check-toolchain
+      Check that the pinned Rust is the same everywhere (the bump-rust skill):
+      the root's exact channel, the templates' channels, every workspace's
+      rust-version, the members' inherited one and Dependabot's folders.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -51,6 +57,9 @@ fn main() -> ExitCode {
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
         Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
+        Some("check-toolchain") if args.len() == 1 => {
+            report("check-toolchain", &toolchain::run(&root), &[])
+        }
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE

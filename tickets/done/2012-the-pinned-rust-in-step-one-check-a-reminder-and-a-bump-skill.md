@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2012 — The pinned Rust in step: one check, a reminder and a bump skill
@@ -315,20 +315,20 @@ in this PR. The first bump of a minor after it comes with a game ticket
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask check-toolchain` prints `check-toolchain: ok` on the
+- [x] `cargo xtask check-toolchain` prints `check-toolchain: ok` on the
       repository, and the unit tests show it failing, with the file
       named, for each of the five rules.
-- [ ] CI's `tickets` job runs it on every PR, docs-only ones too.
-- [ ] `.github/dependabot.yml` has a `rust-toolchain` update for `/` and
+- [x] CI's `tickets` job runs it on every PR, docs-only ones too.
+- [x] `.github/dependabot.yml` has a `rust-toolchain` update for `/` and
       the folder of every template's `rust-toolchain.toml`, with weekly
       checks and a 14-day cooldown, and the PR description quotes
       GitHub's options reference for `directories`, `cooldown` and
       `groups` (or says why `groups` was left out).
-- [ ] `.claude/skills/bump-rust/SKILL.md` holds when, who, the checklist
+- [x] `.claude/skills/bump-rust/SKILL.md` holds when, who, the checklist
       steps, the `rust-version` rule and the don'ts.
-- [ ] The `run-gates` skill lists `cargo xtask check-toolchain`, and
+- [x] The `run-gates` skill lists `cargo xtask check-toolchain`, and
       `AGENTS.md` and `README.md` name the `bump-rust` skill.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -360,4 +360,32 @@ in this PR. The first bump of a minor after it comes with a game ticket
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `cargo xtask check-toolchain` (`crates/xtask/src/toolchain.rs`) checks
+  the five rules and prints `check-toolchain: ok` on the repository. Its
+  25 unit tests assert the exact message for each rule, the walk (one
+  folder deeper, `target` skipped) and the line reader. It shares
+  `links.rs`'s `SKIPPED_DIRS` (now `pub(crate)`) and `display_path`. No
+  new dependency: the TOML files are read line by line, `dependabot.yml`
+  with `serde_norway`.
+- It runs in CI's `tickets` job after `check-links`, and is listed in the
+  `run-gates` skill.
+- `.github/dependabot.yml` is new, with the `rust-toolchain` update alone
+  (2011 is not done; it adds its updates beside it). Deviation: no
+  `patterns` beside `group-by: dependency-name`. GitHub's options
+  reference doesn't require it, and its example for `group-by` in
+  *Optimizing the creation of pull requests for Dependabot version
+  updates* has none. The reference lists `rust-toolchain` as the
+  `package-ecosystem` value and Rust toolchain in its cooldown table.
+- The `bump-rust` skill holds who and when, the checklist, the
+  `rust-version` rule and the don'ts. 2011 is not done, so it says to
+  write a ticket for the bump first. 2010 and 2020 are not done either:
+  their tickets now say to add their steps to the skill.
+- Docs: the skill is the written rule; the root `rust-toolchain.toml`
+  comment, `AGENTS.md` *Environment* and the README's `.claude/skills/`
+  row point at it. No other page changes (the `document` skill: no public
+  item, format or contract changes).
+- Gates run on Windows with the GNU host: fmt, clippy, `xtask` tests and
+  docs, deny, machete, and the repository's own checks. The web, no-std
+  and template builds weren't rerun, because this change touches none of
+  their code.
+- For the game: no API change and no toolchain move.

@@ -1,3 +1,5 @@
+# The pinned Rust. `cargo xtask check-toolchain` keeps the templates'
+# channels and every `rust-version` equal to it; the `bump-rust` skill moves it.
 [toolchain]
 channel = "1.98.1"
 components = ["rustfmt", "clippy"]
