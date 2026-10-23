@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["1133", "2535"]
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2545 — A running MCP server never blocks the next build
@@ -148,19 +148,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On Windows, with `shuyi mcp` running from `target/debug/shuyi.exe`,
+- [x] On Windows, with `shuyi mcp` running from `target/debug/shuyi.exe`,
       a change to `crates/cli/src/main.rs` and `cargo build -p
       shuyi-cli` succeeds, and so does a second server's start.
-- [ ] On Windows, a game's `start` after an edit to the game's code
+- [x] On Windows, a game's `start` after an edit to the game's code
       succeeds while the server runs (the toy game, `crates/cli/toy`,
       or hello-grid).
-- [ ] A program with no twin in `deps/` is never moved.
-- [ ] `.shuyi-running/` holds only files of programs running now after
+- [x] A program with no twin in `deps/` is never moved.
+- [x] `.shuyi-running/` holds only files of programs running now after
       any start.
-- [ ] Either `MCP_TIMEOUT` is in this repository's `.claude/settings.json`
+- [x] Either `MCP_TIMEOUT` is in this repository's `.claude/settings.json`
       and `mcp install` writes it, with the documentation's words quoted
       in the completion notes, or the completion notes say why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -178,5 +178,81 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.**
+
+- `crates/cli/src/mcp/aside.rs`: `move_aside(exe, pid)` and `sweep(dir)`,
+  with `this_program()` for the call sites. The server arm of `mcp::main`
+  and the `mcp-host` arm in `lib.rs` (only when the program is the game's
+  own, `Some(game)`) call it under `if cfg!(windows)`. Errors are the
+  stderr line `mcp: couldn't move the program aside: …`.
+- `mcp install` writes Claude Code's `.claude/settings.json` after its
+  `.mcp.json`, with `env.MCP_TIMEOUT` at `"300000"`. It goes through the
+  same diff, ask, `.bak` and `--dry-run` as the other files. A longer wait
+  already in the file is kept. 2535's `MCP_TIMEOUT` advice line and `SLOW`
+  are gone. This repository has `.claude/settings.json` with the same
+  setting, and the test that checks `.mcp.json` checks it too.
+- The line for an already-written file now says `is set up already`
+  instead of `has the server already`, since the settings file holds no
+  server.
+- `docs/contract.md` (*The MCP server*) and `docs/README.md` (the row of
+  the server's files) say both.
+
+**What Claude Code's documentation says (checked 2026-10-22).**
+
+- code.claude.com *Environment variables*: `MCP_TIMEOUT`: "Timeout in
+  milliseconds for MCP server startup (default: 30000, or 30 seconds)".
+- *Settings reference*, `env`: scope "Any file". Under *When Claude Code
+  applies `env` values*, "Variables Claude Code classifies as safe, such
+  as model selection, timeouts and limits, and feature toggles: at startup
+  from every settings file". `MCP_TIMEOUT` is not among the variables
+  project settings can't set.
+- One limit the docs name: when the Claude Desktop app starts the session,
+  a variable its launch environment already sets wins over `env`. That
+  doesn't apply here unless the app sets `MCP_TIMEOUT` itself.
+
+**Deviations.**
+
+- **A copy is left in the program's place.** As the ticket wrote it, the
+  move left nothing at cargo's names until the next build. The workspace
+  tests then failed: the MCP tests run `target/debug/shuyi.exe mcp`, and
+  every other test that spawns `CARGO_BIN_EXE_shuyi` found no program.
+  Another session's `cargo run` between its build and its start would
+  fail the same way. So each name now gets a copy of the program, with
+  its modified time (copy, move the program aside, move the copy in).
+  No process runs from the copy, so a build can replace it, and an
+  unchanged checkout needs no relink: `cargo build` after a server starts
+  says `Finished` without `Compiling`. This is not the copy the ticket
+  rules out: the process runs from the moved file, not from a copy.
+
+- The twin is looked for in `deps/` **and beside the program**. Cargo
+  writes an example's hashed twin in `examples/` itself, not in
+  `examples/deps/`, and a game's tool program is often an example
+  (hello-grid's and the toy's are). Without this, `mcp-host` was never
+  moved. A `cargo install`ed `shuyi` still has no twin either place.
+- On Windows, a running program's *second* hard-link name can be deleted.
+  So after a sweep, `.shuyi-running/` holds one name of each running
+  program, not two. That still meets "only files of programs running now".
+
+**Checked by hand on Windows (Nick's machine).**
+
+- With `target/debug/shuyi.exe mcp` running, `cargo build -p shuyi-cli`
+  with no change didn't relink. After a `touch` of
+  `crates/cli/src/main.rs` it relinked in 1.0 s.
+  A second server then started and answered `ping`.
+- With hello-grid's `mcp-host` running (`cargo run --example tools`), a
+  `touch` of its `src/lib.rs` and `cargo build --example tools` succeeded.
+  `start` twice through a scripted client, with an edit between, succeeded
+  both times.
+
+**Not covered.** No game repository exists here where the server and the
+game's tool program are one binary (`cargo shuyi mcp` in a game). That
+case is the same lock as the server's own program, checked above.
+
+**For Nick.** Nothing to do. On Windows, new sessions keep connecting
+while older ones run, and Claude Code waits up to 5 minutes for the
+server's first build. A game gets the 5-minute wait the next time it runs
+`cargo shuyi mcp install`.
+
+**API change for the game's pin bump:** `mcp::install::SLOW` is removed.
+`SETTINGS`, `MCP_TIMEOUT` and `settings_text` are new. The game doesn't
+use `SLOW`.

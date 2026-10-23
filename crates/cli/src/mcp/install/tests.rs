@@ -242,15 +242,19 @@ fn a_dry_run_writes_nothing_and_prints_each_file() {
     )
     .unwrap();
     let expected = format!(
-        "mcp install: would write .mcp.json (Claude Code):\n{}",
-        claude().file_text(None, "shuyi").unwrap()
+        "mcp install: would write .mcp.json (Claude Code):\n{}\
+         mcp install: would write .claude/settings.json (Claude Code):\n{}",
+        claude().file_text(None, "shuyi").unwrap(),
+        settings_text(None).unwrap()
     );
     assert_eq!(out, expected);
     assert!(!dir.join(".mcp.json").exists());
+    assert!(!dir.join(SETTINGS).exists());
     // Through `main`, in a project: its own command.
     fs::write(dir.join("shuyi.ron"), r#"(command: "cargo shuyi")"#).unwrap();
     assert_eq!(main(&["--dry-run".to_owned()], &dir), 0);
     assert!(!dir.join(".mcp.json").exists());
+    assert!(!dir.join(".claude").exists());
     fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -277,7 +281,12 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
         asked[0]
     );
     assert!(asked[0].contains("+     \"shuyi\": {"), "{}", asked[0]);
-    assert!(asked[0].ends_with("write 1 file(s)? [y/N] "));
+    assert!(
+        asked[0].contains(".claude/settings.json (Claude Code):\n+ {\n+   \"env\": {\n"),
+        "{}",
+        asked[0]
+    );
+    assert!(asked[0].ends_with("write 2 file(s)? [y/N] "));
     assert!(!dir.join(".mcp.json.bak").exists());
 
     let mut yes = |_: &str| true;
@@ -291,7 +300,8 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
     // took.
     assert_eq!(
         said,
-        "mcp install: wrote .mcp.json (Claude Code), its old text in .mcp.json.bak\n"
+        "mcp install: wrote .mcp.json (Claude Code), its old text in .mcp.json.bak\n\
+         mcp install: wrote .claude/settings.json (Claude Code)\n"
     );
     assert_eq!(
         out,
@@ -309,7 +319,8 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
     let out = install(&dir, &options, &machine, "shuyi", &mut never, &mut no_ready).unwrap();
     assert_eq!(
         out,
-        "mcp install: .mcp.json (Claude Code) has the server already\n"
+        "mcp install: .mcp.json (Claude Code) is set up already\n\
+         mcp install: .claude/settings.json (Claude Code) is set up already\n"
     );
 
     // `--yes` doesn't ask, and a new file has no backup.
@@ -346,7 +357,7 @@ fn it_asks_writes_keeps_a_backup_and_knows_when_it_is_done() {
 }
 
 #[test]
-fn a_slow_ready_run_says_how_to_wait_longer_and_a_failed_one_is_the_error() {
+fn a_ready_run_says_how_long_it_took_and_a_failed_one_is_the_error() {
     let dir = scratch("ready");
     let options = Options {
         yes: true,
@@ -354,7 +365,7 @@ fn a_slow_ready_run_says_how_to_wait_longer_and_a_failed_one_is_the_error() {
     };
     let machine = Machine::default();
     let mut never = |_: &str| -> bool { panic!("--yes asks nothing") };
-    let mut slow = |_: &str| Ok(SLOW + Duration::from_millis(1500));
+    let mut slow = |_: &str| Ok(Duration::from_millis(61_500));
     let out = install(
         &dir,
         &options,
@@ -364,21 +375,11 @@ fn a_slow_ready_run_says_how_to_wait_longer_and_a_failed_one_is_the_error() {
         &mut slow,
     )
     .unwrap();
-    let lines: Vec<&str> = out.lines().collect();
+    // Claude Code waits for it however long: install set how long.
     assert_eq!(
-        lines[0],
-        "mcp install: the server is ready (\"cargo shuyi mcp --ready\" took 21.5 s)"
+        out,
+        "mcp install: the server is ready (\"cargo shuyi mcp --ready\" took 61.5 s)\n"
     );
-    assert!(lines[1].contains("MCP_TIMEOUT"), "{out}");
-    assert!(
-        lines[1].contains("run \"cargo shuyi mcp --ready\" after each update"),
-        "{out}"
-    );
-    // Just at the line, no hint.
-    fs::remove_file(dir.join(".mcp.json")).unwrap();
-    let mut at = |_: &str| Ok(SLOW);
-    let out = install(&dir, &options, &machine, "shuyi", &mut never, &mut at).unwrap();
-    assert!(!out.contains("MCP_TIMEOUT"), "{out}");
 
     fs::remove_file(dir.join(".mcp.json")).unwrap();
     let mut failed = |_: &str| Err("error[E0425]: cannot find value `x`".to_owned());
@@ -387,6 +388,37 @@ fn a_slow_ready_run_says_how_to_wait_longer_and_a_failed_one_is_the_error() {
     // The file is written all the same: the next ready run builds it.
     assert!(dir.join(".mcp.json").is_file());
     fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn claude_codes_settings_wait_for_the_servers_first_build_and_keep_the_rest() {
+    let wait = |text: &str| -> Value {
+        serde_json::from_str::<Value>(text).unwrap()["env"]["MCP_TIMEOUT"].clone()
+    };
+    assert_eq!(
+        settings_text(None).unwrap(),
+        "{\n  \"env\": {\n    \"MCP_TIMEOUT\": \"300000\"\n  }\n}\n"
+    );
+    assert_eq!(settings_text(Some(" \n")), settings_text(None));
+    // Other keys stay, in `env` and out of it.
+    let text = settings_text(Some(
+        r#"{"permissions": {"allow": ["Bash(ls)"]}, "env": {"A": "1", "MCP_TIMEOUT": "10000"}}"#,
+    ))
+    .unwrap();
+    let file: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(file["permissions"]["allow"], json!(["Bash(ls)"]));
+    assert_eq!(file["env"]["A"], "1");
+    assert_eq!(wait(&text), "300000");
+    // A longer wait is kept.
+    let text = settings_text(Some(r#"{"env": {"MCP_TIMEOUT": "600000"}}"#)).unwrap();
+    assert_eq!(wait(&text), "600000");
+    // So is the same wait, as it is written.
+    let text = settings_text(Some(r#"{"env": {"MCP_TIMEOUT": " 300000"}}"#)).unwrap();
+    assert_eq!(wait(&text), " 300000");
+    // A file it can't merge into is the error.
+    assert!(settings_text(Some("[]")).is_err());
+    assert!(settings_text(Some("{nope")).is_err());
+    assert!(settings_text(Some(r#"{"env": []}"#)).is_err());
 }
 
 #[test]

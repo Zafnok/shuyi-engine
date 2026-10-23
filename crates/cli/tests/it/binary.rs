@@ -423,3 +423,49 @@ fn mcp_ready_builds_what_the_server_needs_and_exits() {
     assert!(dir.join("target").is_dir(), "the program was built");
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[cfg(windows)]
+#[test]
+fn a_running_server_moves_its_program_aside_so_a_build_can_write_a_fresh_one() {
+    use std::io::{BufRead, BufReader, Write};
+    use std::process::Stdio;
+
+    // A program as cargo leaves it: in `debug/`, hard-linked from `deps/`.
+    let dir = scratch("mcp-aside").join("debug");
+    fs::create_dir_all(dir.join("deps")).unwrap();
+    let twin = dir.join("deps/shuyi-0123abcd.exe");
+    fs::copy(env!("CARGO_BIN_EXE_shuyi"), &twin).unwrap();
+    let exe = dir.join("shuyi.exe");
+    fs::hard_link(&twin, &exe).unwrap();
+    let mut server = Command::new(&exe)
+        .arg("mcp")
+        .current_dir(&dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = server.stdin.take().unwrap();
+    let mut stdout = BufReader::new(server.stdout.take().unwrap());
+    let mut ask = |id: u32, method: &str| {
+        let request = serde_json::json!({ "jsonrpc": "2.0", "id": id, "method": method,
+            "params": { "protocolVersion": "2025-06-18", "capabilities": {},
+                        "clientInfo": { "name": "the test", "version": "1" } } });
+        writeln!(stdin, "{request}").unwrap();
+        stdin.flush().unwrap();
+        let mut line = String::new();
+        stdout.read_line(&mut line).unwrap();
+        serde_json::from_str::<serde_json::Value>(&line).unwrap()
+    };
+    // It answers once it has moved its program.
+    assert_eq!(ask(1, "ping")["id"], 1);
+    // A build writes new files at both names while it runs.
+    fs::write(&exe, b"a fresh build").unwrap();
+    fs::write(&twin, b"a fresh build").unwrap();
+    assert_eq!(fs::read_dir(dir.join(".shuyi-running")).unwrap().count(), 2);
+    let init = ask(2, "initialize");
+    assert_eq!(init["result"]["serverInfo"]["name"], "shuyi", "{init}");
+    server.kill().unwrap();
+    server.wait().unwrap();
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}

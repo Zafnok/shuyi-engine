@@ -14,6 +14,9 @@
 //! | Gemini CLI | `.gemini/settings.json` | `.gemini/` here or in the home folder |
 //!
 //! Claude Code's file is also what `claude --mcp-config <file>` reads.
+//! For Claude Code it also sets `MCP_TIMEOUT` in the project's
+//! `.claude/settings.json`, so Claude Code waits for the server's first
+//! build to finish ([`SETTINGS`]).
 
 use std::fmt::Write as _;
 use std::fs;
@@ -29,9 +32,13 @@ use crate::project::Project;
 /// The server's name in each agent's file.
 pub const NAME: &str = "shuyi";
 
-/// A ready run longer than this gets the hint of how to make Claude Code
-/// wait longer for a server to start.
-pub const SLOW: Duration = Duration::from_secs(20);
+/// Claude Code's project settings, from the project's folder.
+pub const SETTINGS: &str = ".claude/settings.json";
+
+/// How long Claude Code waits for a server to start, in milliseconds
+/// (its `MCP_TIMEOUT`; 30 s if unset): 5 minutes, so a cold build of the
+/// server finishes first.
+pub const MCP_TIMEOUT: u64 = 300_000;
 
 /// An agent the server can be registered with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -175,6 +182,37 @@ impl Agent {
     }
 }
 
+/// Claude Code's settings with `env`'s `MCP_TIMEOUT` at least
+/// [`MCP_TIMEOUT`], from the file as it is (`old`, if there is one),
+/// everything else in it kept; or why it can't be (not a JSON object).
+pub fn settings_text(old: Option<&str>) -> Result<String, String> {
+    let mut file = match old.map(str::trim) {
+        None | Some("") => Map::new(),
+        Some(text) => match serde_json::from_str::<Value>(text) {
+            Ok(Value::Object(file)) => file,
+            Ok(_) => return Err(format!("{SETTINGS}: not a JSON object")),
+            Err(e) => return Err(format!("{SETTINGS}: not JSON ({e})")),
+        },
+    };
+    let env = file
+        .entry("env".to_owned())
+        .or_insert_with(|| Value::Object(Map::new()));
+    let Value::Object(env) = env else {
+        return Err(format!("{SETTINGS}: `env` is not an object"));
+    };
+    // A longer wait already set is kept.
+    let set = env
+        .get("MCP_TIMEOUT")
+        .and_then(Value::as_str)
+        .and_then(|ms| ms.trim().parse::<u64>().ok());
+    if set.is_none_or(|ms| ms < MCP_TIMEOUT) {
+        env.insert("MCP_TIMEOUT".to_owned(), json!(MCP_TIMEOUT.to_string()));
+    }
+    let mut text = serde_json::to_string_pretty(&Value::Object(file)).unwrap_or_default();
+    text.push('\n');
+    Ok(text)
+}
+
 /// One file to write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Planned {
@@ -189,23 +227,33 @@ pub struct Planned {
 }
 
 /// The file of each agent found in `root` or on `machine`, with the
-/// server run as `command`'s words and `mcp`.
+/// server run as `command`'s words and `mcp`, and Claude Code's settings
+/// after its file.
 pub fn plan(root: &Path, machine: &Machine, command: &str) -> Result<Vec<Planned>, String> {
-    AGENTS
-        .iter()
-        .filter(|agent| agent.found(root, machine))
-        .map(|agent| {
-            let path = root.join(agent.file);
+    let mut planned = Vec::new();
+    for agent in AGENTS.iter().filter(|agent| agent.found(root, machine)) {
+        let path = root.join(agent.file);
+        let old = fs::read_to_string(&path).ok();
+        let new = agent.file_text(old.as_deref(), command)?;
+        planned.push(Planned {
+            agent: agent.name,
+            path,
+            old,
+            new,
+        });
+        if agent.file == AGENTS[0].file {
+            let path = root.join(SETTINGS);
             let old = fs::read_to_string(&path).ok();
-            let new = agent.file_text(old.as_deref(), command)?;
-            Ok(Planned {
+            let new = settings_text(old.as_deref())?;
+            planned.push(Planned {
                 agent: agent.name,
                 path,
                 old,
                 new,
-            })
-        })
-        .collect()
+            });
+        }
+    }
+    Ok(planned)
 }
 
 /// The lines of `old` and `new`, each marked: `  ` both have it, `- `
@@ -299,7 +347,7 @@ pub fn install(
     for p in &same {
         let _ = writeln!(
             out,
-            "mcp install: {} ({}) has the server already",
+            "mcp install: {} ({}) is set up already",
             shown(p),
             p.agent
         );
@@ -345,15 +393,6 @@ pub fn install(
         "mcp install: the server is ready (\"{command} mcp --ready\" took {:.1} s)",
         took.as_secs_f64()
     );
-    if took > SLOW {
-        let _ = writeln!(
-            out,
-            "mcp install: Claude Code may stop waiting for the server to start when it builds \
-             this long, after the engine changes: run \"{command} mcp --ready\" after each \
-             update, or make it wait longer with the MCP_TIMEOUT environment variable, in \
-             milliseconds (MCP_TIMEOUT=300000 claude)"
-        );
-    }
     Ok(out)
 }
 

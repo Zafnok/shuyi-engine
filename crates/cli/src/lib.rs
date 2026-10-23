@@ -162,6 +162,10 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
     if name == "mcp-host" {
         return match game {
             Some(game) => {
+                if cfg!(windows) {
+                    // The server's `start` relinks this program.
+                    mcp::aside::this_program();
+                }
                 let stdin = std::io::stdin();
                 mcp::host::serve(
                     game,
