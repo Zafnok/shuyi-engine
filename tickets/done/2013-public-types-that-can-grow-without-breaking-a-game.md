@@ -408,7 +408,7 @@ pin follows this one.
 
 ## Completion notes
 
-- **The ADR:** [ADR-0038](../../docs/adr/0038-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md),
+- **The ADR:** [ADR-0039](../../docs/adr/0039-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md),
   with its row. Eight kinds, each with a rule and an example; the lint
   counts and why the lints live in `shuyi-app` only; the table of the
   types the templates and hello-grid build by literal.
@@ -454,7 +454,7 @@ pin follows this one.
   3048 aren't done; their clauses now say what holds. 2304, 2305 and
   2511 are done, as above.
 - **Settled clauses:** every open ticket's clause that waited on 2013
-  (58 tickets) now says what holds under ADR-0038. Types not in the
+  (58 tickets) now says what holds under ADR-0039. Types not in the
   table move under the ADR in the PR that next adds to them: 2337's
   `Paint`, `Sprite` and `Overlay`, 2338's `PanelLook`, 2229's
   `RegisterError`. 2321 and 3046 build on `Window::new` and

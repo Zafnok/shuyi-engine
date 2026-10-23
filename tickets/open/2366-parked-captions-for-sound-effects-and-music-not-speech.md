@@ -243,7 +243,7 @@ None.
   - **2342, 2344 and 2345** each add a field to `SoundCue`. The later
     to land rebases onto the other's `SoundCue` and bumps
     `pack::VERSION` again.
-  - **Public types (ADR-0038):** `SoundCue` and `MusicCue` move under it
+  - **Public types (ADR-0039):** `SoundCue` and `MusicCue` move under it
     in this PR if they aren't yet (2024 moves `SoundCue`), as its *When*
     rule says of a type that next gains a field: `#[non_exhaustive]`,
     with a `new` that leaves `caption` at `None`.
@@ -253,7 +253,7 @@ None.
 - **What changes for the game:**
   - `SoundCue` and `MusicCue` gain a public field. A code search of the
     game's repository on 2026-10-20 found `SoundCue {` struct literals
-    in its code, so those move to `SoundCue::new` (ADR-0038).
+    in its code, so those move to `SoundCue::new` (ADR-0039).
     The PR says so in a `Breaking:` line (2010).
   - `Settings` gains a field (additive); `GameData` gains a defaulted
     method (additive); old manifests read as before. The game's

@@ -278,7 +278,7 @@ None.
     Whichever lands second reuses the first's code instead of writing
     it again: one helper in `crates/app/src/readback.rs`, and
     `capture::Plan::frames` or `shuyi_platform::link`'s step frames;
-  - the new public types follow ADR-0038;
+  - the new public types follow ADR-0039;
   - 1120, 2703, 2323, 2301 and 2222 say in their own clauses how their
     scenes join the card or a plan.
 

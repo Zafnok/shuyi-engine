@@ -250,7 +250,7 @@ choice, made in its own repository.
   `FocusLost` and `FocusGained` on the desktop and the web; if it
   matches on `SystemEvent`, its `_` arm already covers them. The game's
   PR that moves the pin follows this one. The new public types follow
-  ADR-0038.
+  ADR-0039.
 - **Size:** if the PR passes about 600 changed lines, the background
   policy (`Background`, `GameSettings::BACKGROUND`, the pause and the
   mute, with their tests) goes to a follow-up ticket (the

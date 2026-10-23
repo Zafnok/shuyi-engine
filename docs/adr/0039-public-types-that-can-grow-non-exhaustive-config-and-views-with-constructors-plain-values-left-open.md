@@ -1,4 +1,4 @@
-# ADR-0038: Public types that can grow: non-exhaustive config and views with constructors, plain values left open
+# ADR-0039: Public types that can grow: non-exhaustive config and views with constructors, plain values left open
 
 - **Status:** Accepted
 - **Date:** 2026-10-23

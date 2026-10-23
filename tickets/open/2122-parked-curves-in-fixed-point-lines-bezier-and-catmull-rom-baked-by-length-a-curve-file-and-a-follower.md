@@ -187,7 +187,7 @@ None.
   - A view that draws from the time alone (ADR-0004 §3) needs no
     follower: it calls `sample` with the speed times the steps since
     it started. The module docs say so.
-- **Public types (ADR-0038):** the new public types follow it
+- **Public types (ADR-0039):** the new public types follow it
   (`#[non_exhaustive]` and constructors); `CurveError`, `FollowEnd`,
   `FollowEvent` and `CurveKind` are `#[non_exhaustive]`.
 - **The `fx` functions this needs. Either order with 2701 and 2106:**

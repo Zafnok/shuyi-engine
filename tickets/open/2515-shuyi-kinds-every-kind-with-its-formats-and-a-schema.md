@@ -247,7 +247,7 @@ None.
   the game.
 - **Problem codes (2509):** the unknown kind takes `SH0001`
   (`wrong-arguments`), as `import --kind` with no such kind does.
-- **Public types (ADR-0038):** the new public types (`KindFormats`,
+- **Public types (ADR-0039):** the new public types (`KindFormats`,
   `FormatInfo`, the op's input and output) follow it.
 - `docs/formats.md`: a section "A format's schema", on `TextSchema`, the
   examples and `shuyi kinds`.

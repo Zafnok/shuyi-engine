@@ -208,7 +208,7 @@ A frame number here counts `App::frame` calls from 1, as 2518's
     from: its card, look, system hook, 2518's `made` and `state_hash`,
     and the rerun;
   - 2518 adds `made` and `state_hash` to `Start` first. Give `rerun` the
-    same treatment under ADR-0038 (2518 moves `Start` under it): if
+    same treatment under ADR-0039 (2518 moves `Start` under it): if
     `Start` is `#[non_exhaustive]` or has private fields by then, the
     field is additive. If not, it breaks a struct literal or an exhaustive
     pattern of `Start` in a game. Nothing in this repository writes one

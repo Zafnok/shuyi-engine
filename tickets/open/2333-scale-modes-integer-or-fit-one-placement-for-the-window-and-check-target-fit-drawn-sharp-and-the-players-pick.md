@@ -278,7 +278,7 @@ already has a private one, so no game builds it field by field. A test
 of the game's that matches or builds `Presented::Game` with every field
 listed (no `..`) needs `scale` added. The game's PR that moves the pin
 follows this one. If 2010 is done, its API diff shows the new items. The
-new public types follow ADR-0038.
+new public types follow ADR-0039.
 
 ## Implementation steps
 

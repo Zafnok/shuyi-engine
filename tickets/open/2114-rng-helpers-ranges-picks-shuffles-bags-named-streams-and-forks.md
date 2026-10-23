@@ -199,7 +199,7 @@ None.
     tests. 2116's `determinism` job runs `shuyi-core`'s tests on
     wasm32, so they are checked on x64, ARM64 and wasm32 whichever
     ticket lands first;
-  - `Bag` follows ADR-0038's rules for public types.
+  - `Bag` follows ADR-0039's rules for public types.
 
 **Out (do not do):**
 - weighted tables as data: a checked `WeightedTable` (2119, parked with

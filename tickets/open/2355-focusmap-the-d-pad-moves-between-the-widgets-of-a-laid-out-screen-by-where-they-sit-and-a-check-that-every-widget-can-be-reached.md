@@ -178,7 +178,7 @@ None.
    layout; the widget first, then a neighbour set by hand, the way back,
    the geometry and wrap; kept directions; the reachability check. It
    names 2330 as the `.ui.ron` side and 2405 as the pointer's. The new
-   public types follow ADR-0038, with private fields and constructors
+   public types follow ADR-0039, with private fields and constructors
    where they keep an invariant, as `ListCursor` has.
 8. If the PR would pass about 600 changed lines (fixtures and snapshots
    not counted), part 4, and part 6 if 2405 is done, go to a follow-up

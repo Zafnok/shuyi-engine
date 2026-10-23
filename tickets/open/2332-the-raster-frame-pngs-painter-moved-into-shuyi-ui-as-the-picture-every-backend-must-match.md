@@ -150,7 +150,7 @@ None.
     done, this ticket's completion notes carry `Breaking: shuyi-cli:
     frame_png::Image::decode: call frame_png::decode_image(png)
     instead`; if not, the PR body says the same;
-  - `Tolerance`, `Comparison` and `raster::Painter` follow ADR-0038
+  - `Tolerance`, `Comparison` and `raster::Painter` follow ADR-0039
     (`#[non_exhaustive]` and constructors);
   - with 2514 (frames over time from `frame-png`): its sheet and
     encoders stay in `shuyi-cli` either way; if it is done first, they

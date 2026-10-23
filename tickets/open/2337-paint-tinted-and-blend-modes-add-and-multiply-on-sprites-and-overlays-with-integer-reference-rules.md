@@ -233,7 +233,7 @@ None.
 - **Either order with 2802** (the book): if 2802 is done, its chapter
   "The frame and skins" (`site/content/learn/book/`) gets a short
   section with a tinted sprite and an additive one. If not, nothing.
-- **Public types (ADR-0038):** `Blend` (a set that may grow) is
+- **Public types (ADR-0039):** `Blend` (a set that may grow) is
   `#[non_exhaustive]`. `Paint`, `Sprite` and `Overlay` aren't under the
   ADR yet, and neither its table nor 2024 moves them, so they move
   under it in this PR, which adds to them, as its *When* says. Then a

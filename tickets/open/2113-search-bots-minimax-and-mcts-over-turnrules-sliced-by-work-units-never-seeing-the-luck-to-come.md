@@ -205,7 +205,7 @@ None.
 1. Read 2112's `search` module, 3009's `think` module and its slicing
    test, `bots.rs`, 2125's `bots/determinize.rs`, `bots/rollout.rs`
    and ADR, 2128's `bots/plan.rs` and ADR-0029, and ADR-0008 §6.
-   Follow ADR-0038 (`#[non_exhaustive]` and constructors) for
+   Follow ADR-0039 (`#[non_exhaustive]` and constructors) for
    `MinimaxSettings` and `MctsSettings`.
 2. Write the fixtures in `search/fixtures.rs`, reusing 2125's Nim
    and dice race (move them where both test modules reach them):

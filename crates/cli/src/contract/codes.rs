@@ -116,7 +116,7 @@ impl Class {
     }
 }
 
-/// A code's row, read field by field (ADR-0038).
+/// A code's row, read field by field (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct Entry {

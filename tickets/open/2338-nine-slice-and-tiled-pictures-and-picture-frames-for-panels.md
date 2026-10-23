@@ -209,10 +209,10 @@ None.
     and `┤` joins when its look has a frame; the rule's `─` stays.
 - With no frame, every screen draws as today, and every existing
   snapshot is unchanged.
-- **Public types (ADR-0038):** `NineSlice`, `EdgeFill` and `CentreFill`
+- **Public types (ADR-0039):** `NineSlice`, `EdgeFill` and `CentreFill`
   follow it. `PanelLook` isn't under it yet, and this PR adds to it, so
   it moves under it here, as the ADR's *When* says.
-- **For the game:** `PanelLook` gains a field and moves under ADR-0038
+- **For the game:** `PanelLook` gains a field and moves under ADR-0039
   (a struct literal moves to its constructor), and `ask::glyph::paint`
   and the name boxes' painters gain an argument. The PR says so, with a
   `Breaking:` line if 2010 is done, and the game's PR that moves its

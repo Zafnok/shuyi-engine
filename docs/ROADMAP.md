@@ -241,8 +241,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
 | 2522 | The live link for the web build and for a Steam Deck on the LAN |
 | 2510 | Compiler messages on the traits a game implements |
-| 2024 | The other config and views a game builds moved onto constructors (ADR-0038): `shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core` |
-| 2025 | The contract's inputs and the game tools' types moved onto constructors (ADR-0038) |
+| 2024 | The other config and views a game builds moved onto constructors (ADR-0039): `shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core` |
+| 2025 | The contract's inputs and the game tools' types moved onto constructors (ADR-0039) |
 | 2534 | `shuyi lint`: `check-keys`, `check-text` and the rules crate's fence in one answer, with file and line |
 | 2543 | The rules crate's fence proved once in CI, and `lint` takes `check-keys`' and `check-text`'s findings as data |
 | 2512 | The lines a game's author owns, counted, with a CI cap on the minimal template |

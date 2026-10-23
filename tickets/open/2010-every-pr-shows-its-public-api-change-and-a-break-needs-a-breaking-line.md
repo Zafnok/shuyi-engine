@@ -280,7 +280,7 @@ None.
   already has its `Breaking:` step: keep one step, in the form above,
   and make 2804's reader call `breaking_lines`. If not, this ticket adds
   the step and the function, and 2804 reuses both.
-- **Public types (ADR-0038).** The ADR cites ADR-0038, which cites this
+- **Public types (ADR-0039).** The ADR cites ADR-0039, which cites this
   one. 2013's PR carried its own `Breaking:` lines, in this job's form,
   for the types it made `#[non_exhaustive]`, so nothing is left here
   for them.

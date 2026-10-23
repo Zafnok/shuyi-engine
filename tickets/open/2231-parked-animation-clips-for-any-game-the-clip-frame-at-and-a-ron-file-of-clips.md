@@ -212,7 +212,7 @@ None.
   `kind_with_text::<AnimationSet>`, summed up with the file's `count`
   helper as `3 clips: splash, waves, wind`, with `--print` writing its
   RON through `Encode`.
-- **Public types (ADR-0038):** the new types follow it, and the
+- **Public types (ADR-0039):** the new types follow it, and the
   Scope's choices are written in the PR (whether `AnimationClip` and
   `AnimationSet` are `#[non_exhaustive]`, with `AnimationClip::new` as
   their constructor).

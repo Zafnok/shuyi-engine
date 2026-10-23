@@ -297,7 +297,7 @@ None.
 - **Either order with 2501:** if 2501 is done, the templates' changes
   go where its parts in `templates/shuyi-default` now hold those files.
   If not, 2501 moves them with the rest.
-- **Public types (ADR-0038):** `UpgradeInput` (an input, its kind 4)
+- **Public types (ADR-0039):** `UpgradeInput` (an input, its kind 4)
   and the new public types follow it.
 - **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
 - **Either order with 3017:** if 3017 is done, list its move of

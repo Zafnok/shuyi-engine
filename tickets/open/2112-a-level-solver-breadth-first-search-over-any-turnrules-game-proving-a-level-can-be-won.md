@@ -194,7 +194,7 @@ None.
 
 1. Read `turn.rs`, `bots.rs`, `hash.rs` and `path.rs` for the house
    style, and `path/tests.rs` for the layout of tests in a folder. Follow
-   ADR-0038 (`#[non_exhaustive]` and constructors) for `Limits`,
+   ADR-0039 (`#[non_exhaustive]` and constructors) for `Limits`,
    `Solve` and `SolveError`.
 2. Write `search.rs`: the module docs with the rules above, the types,
    `Solver::new`, `Solver::step` and `solve`. Keep the hash function a

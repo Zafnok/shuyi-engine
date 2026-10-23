@@ -290,7 +290,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     the line on the next `FrameRecord` (`commands: Vec<String>`);
     playback runs it before that frame. If not, 2356 adds it (its own
     clause says so);
-  - the new public types follow ADR-0038, and `Start`, which gains two
+  - the new public types follow ADR-0039, and `Start`, which gains two
     fields here, moves under it in this PR (its rule for an existing
     type).
 - **An ADR** (the `write-adr` skill, the next free number): what a

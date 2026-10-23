@@ -185,7 +185,7 @@ None.
     volumes move opposite ways);
   - if not, change `shuyi-app`'s player; 3029 moves it with the rest
     (3029 gets an edit for this).
-- **Public types (ADR-0038):** the types this PR adds or adds to
+- **Public types (ADR-0039):** the types this PR adds or adds to
   follow it, as its *When* says: `MusicSwitch` is `#[non_exhaustive]`
   with the three constructors (so 2365 can add a field without a
   break); `AudioManifest`, and the `PlayMusic` and `Start` variants,

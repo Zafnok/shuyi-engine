@@ -295,7 +295,7 @@ None.
 - **What changes for the game:** `AudioRequest` and `SoundRequest` gain
   variants (an exhaustive match breaks), `SoundCue` gains a field,
   `Audio` gains two methods, and packs are rebaked for the new version.
-  The new public types follow ADR-0038. The PR says so, and the game's
+  The new public types follow ADR-0039. The PR says so, and the game's
   PR that moves the pin follows it.
 
 **Size.** If the PR passes about 600 changed lines (snapshots not

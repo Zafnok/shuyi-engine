@@ -254,7 +254,7 @@ None.
     is missing, add `-p shuyi-procgen` to that run;
   - the rows change only under 2118's ADR's rule for seeds: a PR that
     moves one carries a `Breaking:` line.
-- **Public types (ADR-0038):** `CaveRules`, `RoomRules`, `WalkRules`,
+- **Public types (ADR-0039):** `CaveRules`, `RoomRules`, `WalkRules`,
   `Repair`, `RulesError` and `TableError` are `#[non_exhaustive]`,
   `Cell` and `Room` stay exhaustive (plain values), and `WeightedTable`
   keeps its fields private.
@@ -293,7 +293,7 @@ None.
 ## Implementation steps
 
 1. Read 2118's ADR, crate and README, 2114's helpers and ADR, 2116's
-   `shuyi_assets::golden` and ADR-0038. Check whether
+   `shuyi_assets::golden` and ADR-0039. Check whether
    2117 is done.
 2. Write `Cell`, the three rules types with their raw forms and checks,
    and the corridor helper, with unit tests.

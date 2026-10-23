@@ -16,7 +16,7 @@ use crate::widgets::menu::MenuView;
 const LOG_HINT_GAP: i32 = 3;
 
 /// Where narration (lines nobody says) sits in a text box. More ways may
-/// come (ADR-0038).
+/// come (ADR-0039).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum NarrationAlign {
@@ -29,7 +29,7 @@ pub enum NarrationAlign {
 
 /// Where a text box goes on the console. Build it with [`BoxPlace::new`]:
 /// a struct literal doesn't compile outside this crate, so a new field
-/// never breaks a game (ADR-0038).
+/// never breaks a game (ADR-0039).
 ///
 /// ```compile_fail
 /// use shuyi_ui::dialogue::text_box::glyph::{BoxPlace, NarrationAlign};

@@ -192,7 +192,7 @@ in the PR that unparks it, before any code.
   send crash reports, only to its own address, and only with the
   player's answer; what a sent report holds, and what only with a
   second yes; three tries at most.
-- **Public types (ADR-0038):** `CrashSending` and `SendState` are
+- **Public types (ADR-0039):** `CrashSending` and `SendState` are
   `#[non_exhaustive]`, and follow its rules for public types.
 - **`tools/layers.ron`:** `serde_json` joins `shuyi-platform`'s
   `outside` list, with its comment.
