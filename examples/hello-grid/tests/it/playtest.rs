@@ -6,7 +6,7 @@
 use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::rules::{Command, Error, Side};
-use hello_grid::tools::{ENTRANTS, HelloTools, playtest_checks, playtest_run};
+use hello_grid::tools::{ENTRANTS, HelloTools, playtest_checks, playtest_error, playtest_run};
 use shuyi_cli::GameArg;
 use shuyi_cli::contract::Answer;
 use shuyi_cli::contract::bots::{BotsInput, bots};
@@ -226,4 +226,11 @@ fn a_playtest_error_says_what_went_wrong() {
         refused.to_string(),
         "walk: turn 3, Hero to move: Move(Pos { x: 0, y: 0 }) refused: the stage is over"
     );
+    // The tools blame `playtest.ron` for a check naming nobody who plays,
+    // and say a refusal as it is.
+    assert_eq!(
+        playtest_error(&unknown),
+        "playtest.ron: check 1 names `nobody`, who isn't in the run"
+    );
+    assert_eq!(playtest_error(&refused), refused.to_string());
 }

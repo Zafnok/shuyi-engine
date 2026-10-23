@@ -148,6 +148,18 @@ in 2010's form. The game's PR that moves the pin follows this one.
   comments, so their type-level docs don't gain the "Build it with" line
   the others got (it would have changed the schemas and the contract's
   version for no change in shape). Their constructors' docs say it.
+- **Deviation, the `api` gate:** `cargo xtask api` built the base in the
+  head's target folder. There a workspace crate's units hash the same in
+  both trees (cargo takes their path from the workspace's root), and the
+  base's sources were older than the head's builds, so the base's
+  `shuyi-cli` was built on the head's `shuyi-core` and failed on this PR's
+  first push. The base now builds in `target/api-base-target`, and the
+  xtask's test checks it. The first PR to change a type that another
+  engine crate builds hit it; it is fixed here because this PR can't pass
+  without it.
+- **Mutants:** the `_` arm the new `PlaytestError` needs in hello-grid's
+  tools left its `UnknownEntrant` arm untested; that arm is now
+  `tools::playtest_error`, checked in hello-grid's playtest test.
 - **Docs:** rustdoc on each type and constructor; no page under `docs/`
   built these types by literal. Ticket 2366's clause on `SoundCue` now
   says it is under ADR-0039.

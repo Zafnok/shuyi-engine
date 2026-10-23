@@ -526,10 +526,16 @@ pub fn playtest_run(tries: &Tries) -> Result<PlaytestReport, String> {
         .iter()
         .map(|e| e as &dyn Entrant<Stage, Stage>)
         .collect();
-    playtest::run(&stage, &entrants, tries, &playtest_checks()?).map_err(|e| match e {
+    playtest::run(&stage, &entrants, tries, &playtest_checks()?).map_err(|e| playtest_error(&e))
+}
+
+/// What a playtest's error says: a check naming an entrant who doesn't
+/// play is `playtest.ron`'s.
+pub fn playtest_error(e: &PlaytestError<Stage>) -> String {
+    match e {
         PlaytestError::UnknownEntrant(e) => format!("playtest.ron: {e}"),
         _ => e.to_string(),
-    })
+    }
 }
 
 /// The highest trip chance [`Trip`] goes to, in percent.
