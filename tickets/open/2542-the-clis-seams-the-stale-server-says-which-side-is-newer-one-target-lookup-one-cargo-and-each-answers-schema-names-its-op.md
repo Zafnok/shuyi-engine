@@ -68,6 +68,10 @@ None.
    project, register the project's own (`<command> mcp install`), else
    run "<command> mcp --ready" and reconnect it". `docs/contract.md`,
    *The MCP server*, says both in one sentence each.
+   **Either order with 2546:** if 2546 is done, `stale`'s limit is
+   written only when the server's fresh restart fails to start, so change
+   the message there and leave the restart alone; if not, 2546 keeps this
+   two-way message as that limit.
 2. **The two strings** are one sentence each with single spaces, and a
    test over every row of the codes table (help line and page title) and
    every MCP tool description fails on two spaces in a row or a line

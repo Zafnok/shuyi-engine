@@ -76,6 +76,8 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 | 2531 | The dev containers register the MCP server after the setup script |
 | 2535 | The MCP server is built before an agent connects, and says when the engine moved under it |
 | 2542 | The CLI's seams: the stale-server limit says which side is newer, one target lookup, one `cargo`, each answer's schema names its op |
+| 2545 | A running MCP server never blocks the next build: it moves its own program aside on Windows, and a cold build has time to finish |
+| 2546 | The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
