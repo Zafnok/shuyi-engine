@@ -124,7 +124,7 @@ impl<T> Grid<T> {
     }
 
     /// Whether `pos` is inside the grid.
-    pub fn in_bounds(&self, pos: Pos) -> bool {
+    pub(crate) fn in_bounds(&self, pos: Pos) -> bool {
         pos.x >= 0 && pos.y >= 0 && pos.x < i32::from(self.width) && pos.y < i32::from(self.height)
     }
 
