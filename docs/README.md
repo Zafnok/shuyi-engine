@@ -56,7 +56,7 @@ A ticket from `1119`–`1150` reads the row of its area.
 
 | Block | Area | Read first |
 | ----- | ---- | ---------- |
-| `20xx` | Repository and foundation | the `run-gates` skill, `.github/workflows/ci.yml`, [ADR-0002](adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md), [ADR-0017](adr/0017-sonar-backlog-becomes-batched-github-issues.md) |
+| `20xx` | Repository and foundation | the `run-gates` skill, `.github/workflows/ci.yml`, [ADR-0002](adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md), [ADR-0017](adr/0017-sonar-backlog-becomes-batched-github-issues.md), [ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md) |
 | `21xx` | Core and simulation | [ADR-0002](adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md), [ADR-0003](adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md), [ADR-0004](adr/0004-assets-standard-files-in-the-engines-own-data-out-and-a-deterministic-movement-kit.md), [ADR-0027](adr/0027-bots-that-plan-see-a-determinized-copy-integer-rollouts-shared-seeds-and-work-units.md) |
 | `22xx` | Assets and formats | [`formats.md`](formats.md), [ADR-0007](adr/0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md), [ADR-0019](adr/0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md), [ADR-0023](adr/0023-the-pack-one-indexed-file-of-baked-assets-proven-equal-to-its-sources.md) |
 | `23xx` | Frame, screens and skins | the MCP session tools (`.mcp.json`: `start`, `step`, `scene`, `frame_png` on `examples/hello-grid`) to see a change, [ADR-0002](adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md) §4, [ADR-0018](adr/0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md), [ADR-0020](adr/0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md), [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md) |
@@ -97,6 +97,7 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The layer, skin and key rules | [`AGENTS.md`](../AGENTS.md), rules 5, 8 and 9 | `templates/*/AGENTS.md`, *The layers* | nothing yet |
 | The contract's operations | [`contract.md`](contract.md), *The operations* | [`README.md`](../README.md), the `shuyi-cli` row | `crates/cli/tests/it/docs.rs` |
 | The local gates | the `run-gates` skill | `.github/workflows/ci.yml` | nothing yet |
+| The actions' pins and the shared crates' requirements | `.github/workflows/`, and the root's `[workspace.dependencies]` in `Cargo.toml` | `templates/*/.github/workflows/`, and each template's `Cargo.toml` | `cargo xtask check-pins` ([ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)) |
 | The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the book (2802), the

@@ -308,6 +308,25 @@ jobs:
           persist-credentials: false
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
 
+  # The workflows audited (ticket 2011, ADR-0037 §4): `.` collects every
+  # `.github/workflows` folder below it, the templates' included. Findings
+  # fail the job and show in its log; a finding wrong for this repository
+  # goes in .github/zizmor.yml with why.
+  zizmor:
+    name: zizmor
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+        with:
+          inputs: .
+          min-severity: medium
+          advanced-security: false
+
   # Dependencies no crate uses.
   machete:
     name: machete
@@ -357,8 +376,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # The ticket lint, the Markdown links, the docs map (`check-docs`), the
-  # pinned Rust (`check-toolchain`) and typos. Cheap, and tickets and
+  # The ticket lint, the Markdown links, the pins (`check-pins`), the
+  # pinned Rust (`check-toolchain`), the docs map (`check-docs`) and typos.
+  # Cheap, and tickets and
   # docs are what they check, so this always runs: never gated on
   # `needs.changes` (game ADR-0014), like the game's `tickets` job.
   tickets:
@@ -385,6 +405,8 @@ jobs:
           fi
       - name: Check Markdown links
         run: cargo xtask check-links
+      - name: Check the actions' pins and the templates' requirements
+        run: cargo xtask check-pins
       - name: Check the pinned Rust
         run: cargo xtask check-toolchain
       - name: Check the docs map
@@ -401,7 +423,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, deny, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, deny, zizmor, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

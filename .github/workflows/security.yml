@@ -1,0 +1,49 @@
+name: Security
+
+# The weekly advisory check (ticket 2011, ADR-0037 §3): a RustSec advisory
+# published in a week with no push still shows. PRs and pushes run ci.yml's
+# full `deny` job. A failure opens one `advisory` issue, or comments on the
+# open one: the queue the `dependency-upkeep` skill works.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    name: advisories
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check advisories
+      # The run's URL goes in through env, never into the script itself.
+      - name: Open or update the advisory issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create advisory --force --color B60205 \
+            --description "A RustSec advisory found by the weekly check (security.yml)"
+          number=$(gh issue list --label advisory --state open --json number --jq '.[0].number // empty')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "The advisory check failed again: $RUN_URL"
+          else
+            gh issue create --label advisory \
+              --title "Advisory: cargo deny check advisories failed" \
+              --body "The weekly advisory check failed: $RUN_URL
+
+          Work it with the \`dependency-upkeep\` skill (ADR-0037): one PR on an \`advisory/<id>\` branch that says \`Closes\` this issue."
+          fi

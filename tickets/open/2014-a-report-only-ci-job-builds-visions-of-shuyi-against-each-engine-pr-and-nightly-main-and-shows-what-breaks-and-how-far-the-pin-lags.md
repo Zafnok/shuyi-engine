@@ -265,10 +265,9 @@ None. It is a CI choice, and the game repository is already public.
   `AGENTS.md` bullet and its pointer in *The game at the next pin*
   stay; this ticket's sentences go beside them.
 - **With 2513** (the Linux setup script): step 2 of the `game` job.
-- **With 2011** (Dependabot): if its `dependency-upkeep` skill exists,
-  its step 3 ("build the game against the branch") reads the `game`
-  job's summary instead, and keeps the local build for fixing. If not,
-  2011 adds that.
+- **With 2011** (Dependabot, done): the `dependency-upkeep` skill's
+  step 3 ("build the game against the branch") reads the `game` job's
+  summary instead, and keeps the local build for fixing.
 
 **For the game:** no API change, and no change in the game's
 repository. This is CI, `xtask`, skill text and `AGENTS.md`. The

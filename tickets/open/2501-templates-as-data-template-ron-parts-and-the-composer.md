@@ -168,8 +168,8 @@ None.
    `templates/shuyi-default` as parts, and embed it. Count the grid
    game's code, move its stage onto the short path, and count it again.
    Move `.github/dependabot.yml`'s github-actions `directories` to the
-   parts' workflow folders in the same PR, and point 2011's zizmor job
-   at them in place of `templates/blank` and `templates/grid`. 2011's
+   parts' workflow folders in the same PR (2011's zizmor job reads `.`,
+   which finds every `.github/workflows` folder, so it needs no change). 2011's
    `cargo xtask check-pins` fails until they name them, and it also
    checks that the parts' `[workspace.dependencies]` requirements equal
    the root's. Move the `rust-toolchain` update's `directories` to the

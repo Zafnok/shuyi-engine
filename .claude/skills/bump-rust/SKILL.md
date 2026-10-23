@@ -18,10 +18,10 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
   a session finishes it before the next stable is out (six weeks). The
   new lints then come one release at a time.
 - **A bump PR holds nothing else.**
-- **The bump is a ticket.** Until a Dependabot ADR says otherwise (ticket
-  2011), first write a ticket for the bump with the `write-ticket` skill
-  (`AGENTS.md` rule 2). Work it on the Dependabot branch, and the bump PR
-  moves it to `tickets/done/` as any ticket's PR does.
+- **The Dependabot PR is the ticket**
+  ([ADR-0037](../../../docs/adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)
+  §5): no ticket file to write or move. Work it on the Dependabot branch
+  with this skill, not `dependency-upkeep`.
 - **On a new minor**, Dependabot's PR fails `check-toolchain` until
   `rust-version` moves (its rule 3). That is the reminder working, not a
   fault.

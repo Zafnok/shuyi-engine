@@ -1,0 +1,68 @@
+name: CodeQL
+
+# The game's CodeQL (game ADR-0008), adopted by ticket 2011 (ADR-0037 §4):
+# Rust and the workflows. JavaScript is left out: the engine's own JS is
+# crates/cli/web/gamepad.js, and the rest is vendored upstream files.
+# `codeql-result` is not a required check; a session reads it with every
+# other check before a merge.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * 1" # weekly, Monday 07:00 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: changes
+    uses: ./.github/workflows/changes.yml
+
+  analyze:
+    name: analyze (${{ matrix.language }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [rust, actions]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+        with:
+          category: "/language:${{ matrix.language }}"
+
+  # One check for the workflow. Matrix jobs skipped by `if:` report one
+  # check with an unexpanded name (game ADR-0014).
+  codeql-result:
+    name: codeql-result
+    if: always()
+    needs: [changes, analyze]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any needed job failed or was cancelled
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          if echo "$NEEDS" | jq -e '[.[].result] | any(. == "failure" or . == "cancelled")' > /dev/null; then
+            echo "::error::A needed job failed or was cancelled."
+            exit 1
+          fi

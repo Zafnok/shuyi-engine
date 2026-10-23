@@ -19,7 +19,9 @@ db-path = "$CARGO_HOME/advisory-dbs"
 db-urls = ["https://github.com/rustsec/advisory-db"]
 # Every RUSTSEC advisory is denied unless it is ignored here with a
 # reason. Known advisories in macroquad's own dependency tree, with no
-# fixed version upstream; revisit whenever upgrading macroquad.
+# fixed version upstream; revisit whenever upgrading macroquad. The
+# weekly advisory check (security.yml) files a new one as an `advisory`
+# issue, worked with the `dependency-upkeep` skill (ADR-0037).
 ignore = [
     { id = "RUSTSEC-2025-0035", reason = "macroquad soundness issues (mutable statics); no fix upstream, no safe alternative chosen yet; revisit on macroquad upgrade" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser (via fontdue via macroquad) is unmaintained; no fix upstream; revisit on macroquad upgrade" },

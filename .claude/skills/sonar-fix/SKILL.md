@@ -6,7 +6,7 @@ description: Fix one batch of SonarQube findings filed as a GitHub issue labelle
 # Fix a Sonar batch
 
 One `sonar`-labelled GitHub issue is one PR. The issue body **is** the
-ticket (goal, findings table, acceptance criteria): the one exception to
+ticket (goal, findings table, acceptance criteria): an exception to
 "work one ticket at a time from `tickets/open/`" (`AGENTS.md` hard rule 1,
 [ADR-0017](../../../docs/adr/0017-sonar-backlog-becomes-batched-github-issues.md)).
 There is no ticket file to write or move.

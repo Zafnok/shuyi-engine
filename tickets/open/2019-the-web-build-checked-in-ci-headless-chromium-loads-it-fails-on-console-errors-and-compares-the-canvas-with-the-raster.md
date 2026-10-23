@@ -176,9 +176,9 @@ None.
   allow-listed with a reason. The `run-gates` skill names the job as
   CI-only.
 - **Either order:**
-  - with 2011 (Dependabot): if it is done, `.github/dependabot.yml`
-    gets a `pip` entry for `/tools/web-check` (weekly, the same
-    cooldown, its updates in one group); if not, 2011 adds it;
+  - with 2011 (Dependabot, done): `.github/dependabot.yml` gets a `pip`
+    entry for `/tools/web-check` (weekly, the same cooldown, its updates
+    in one group);
   - with 3041 (log sinks): if it is done, the capture lines go through
     its sink, with the target `platform` (3040's `LogCategory`, shown
     at `Info` by default), and `check.py` matches them inside its
