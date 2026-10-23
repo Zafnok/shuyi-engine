@@ -74,4 +74,9 @@ exclude_re = [
     # a process killed and reaped leaves nothing a test can read (it would
     # end anyway once its stdin closes).
     "<impl Drop for Program>::drop",
+    # A server moves its own program aside on Windows only, and mutants run
+    # on Linux, where nothing calls `this_program`. What it does is
+    # `move_aside`, tested on its own; the call is tested on Windows
+    # (`a_running_server_moves_its_program_aside_…` in `tests/it/binary.rs`).
+    "replace this_program with \\(\\)",
 ]

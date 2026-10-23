@@ -21,6 +21,9 @@ use std::time::SystemTime;
 /// The folder, beside the program, its moved files go to.
 pub const RUNNING: &str = ".shuyi-running";
 
+/// The most files one process moves under its pid.
+const NAMES: u32 = 1000;
+
 /// The length and modified time of `path`: what a hard link shares.
 fn stamp(path: &Path) -> Option<(u64, SystemTime)> {
     let meta = fs::metadata(path).ok()?;
@@ -103,20 +106,19 @@ pub fn move_aside(exe: &Path, pid: u32) -> Result<Vec<PathBuf>, String> {
     let running = dir.join(RUNNING);
     sweep(&running);
     fs::create_dir_all(&running).map_err(|e| format!("{}: {e}", running.display()))?;
-    let mut n = 0u32;
+    // The names not taken, in order, each looked at only when it is due.
+    let ext = exe.extension().and_then(|e| e.to_str());
+    let mut names = (0..NAMES)
+        .map(|n| match ext {
+            Some(ext) => running.join(format!("{stem}-{pid}-{n}.{ext}")),
+            None => running.join(format!("{stem}-{pid}-{n}")),
+        })
+        .filter(|to| !to.exists());
     let mut moved = Vec::new();
     for from in std::iter::once(exe.to_path_buf()).chain(twins) {
-        let to = loop {
-            let mut name = format!("{stem}-{pid}-{n}");
-            if let Some(ext) = exe.extension().and_then(|e| e.to_str()) {
-                name = format!("{name}.{ext}");
-            }
-            n += 1;
-            let to = running.join(name);
-            if !to.exists() {
-                break to;
-            }
-        };
+        let to = names
+            .next()
+            .ok_or_else(|| format!("{}: no free name for {pid}", running.display()))?;
         put_aside(&from, &to)?;
         moved.push(to);
     }

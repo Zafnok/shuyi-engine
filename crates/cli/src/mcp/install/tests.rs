@@ -412,6 +412,9 @@ fn claude_codes_settings_wait_for_the_servers_first_build_and_keep_the_rest() {
     // A longer wait is kept.
     let text = settings_text(Some(r#"{"env": {"MCP_TIMEOUT": "600000"}}"#)).unwrap();
     assert_eq!(wait(&text), "600000");
+    // So is the same wait, as it is written.
+    let text = settings_text(Some(r#"{"env": {"MCP_TIMEOUT": " 300000"}}"#)).unwrap();
+    assert_eq!(wait(&text), " 300000");
     // A file it can't merge into is the error.
     assert!(settings_text(Some("[]")).is_err());
     assert!(settings_text(Some("{nope")).is_err());

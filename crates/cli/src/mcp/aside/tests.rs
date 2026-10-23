@@ -74,6 +74,21 @@ fn an_examples_twin_beside_it_is_moved_too() {
 }
 
 #[test]
+fn a_program_with_no_extension_keeps_none() {
+    let dir = scratch("no-extension");
+    let twin = dir.join("deps/shuyi-0123abcd");
+    fs::write(&twin, b"program").unwrap();
+    let exe = dir.join("shuyi");
+    fs::hard_link(&twin, &exe).unwrap();
+    let running = dir.join(RUNNING);
+    assert_eq!(
+        move_aside(&exe, 7).unwrap(),
+        [running.join("shuyi-7-0"), running.join("shuyi-7-1")]
+    );
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
+#[test]
 fn a_deps_file_of_another_length_or_time_is_left() {
     let dir = scratch("other");
     let (exe, twin) = built(&dir);
