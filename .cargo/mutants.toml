@@ -63,6 +63,13 @@ exclude_re = [
     # returns an empty leaked `Vec` is the same function. Its other mutants
     # are caught.
     'GridSkin::zoom_levels -> .* with Vec::leak\(Vec::new\(\)\)',
+    # The default `playtest_stages` is `Vec::new()`: its only viable
+    # mutant, `vec![]`, is the same function.
+    'replace GameTools::playtest_stages -> Vec<String> with vec!\[\]',
+    # The pool skips an item past the earliest failure (`i > failed`). An
+    # item's index is checked once, before it runs, and only a run item
+    # fails, so `i` never equals `failed` there: `>=` is the same test.
+    'pool\.rs:\d+:\d+: replace > with >= in run',
     # The MCP server's game tool program is ended when the server drops it:
     # a process killed and reaped leaves nothing a test can read (it would
     # end anyway once its stdin closes).

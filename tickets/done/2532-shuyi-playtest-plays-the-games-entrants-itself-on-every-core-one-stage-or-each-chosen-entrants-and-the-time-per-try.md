@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-22
 ---
 
 # 2532 — `shuyi playtest` plays the tries itself, on every core
@@ -151,20 +151,20 @@ change.
 
 ## Acceptance criteria
 
-- [ ] `shuyi playtest` on hello-grid gives the same report as before
+- [x] `shuyi playtest` on hello-grid gives the same report as before
       this ticket (its existing test), and the same with `--threads 1`
       and `--threads 4`.
-- [ ] `--entrant walk` plays only `walk`, and its checks are only those
+- [x] `--entrant walk` plays only `walk`, and its checks are only those
       `checks(&["walk"])` returns; `--entrant nobody` fails listing the
       names.
-- [ ] A fake game with two stages: `--stage` missing fails naming both;
+- [x] A fake game with two stages: `--stage` missing fails naming both;
       `--every-stage` answers two reports and exits 1 when either is
       blocked.
-- [ ] A fake game whose `playtest_defaults` sets `seed: 1, turns: 60`
+- [x] A fake game whose `playtest_defaults` sets `seed: 1, turns: 60`
       plays from seed 1 to turn 60 when neither flag is given.
-- [ ] `--report out.json` writes the same JSON as `--json` prints.
-- [ ] Every entrant has a `seconds_per_try` in the answer and its line.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `--report out.json` writes the same JSON as `--json` prints.
+- [x] Every entrant has a `seconds_per_try` in the answer and its line.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -176,5 +176,43 @@ change.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **The plan.** `GameTools::playtest` is gone; a game gives
+  `playtest_stages`, `playtest_plan` and `playtest_defaults`, and
+  `shuyi_cli::PlaytestPlan` is the ticket's struct (its two closures named
+  as the types `PlaytestChecks` and `PlayTry`, which clippy's
+  `type_complexity` asks for).
+- **The pool** is its own module, `shuyi_cli::pool::run`, for 2541 to
+  reuse. It hands back the answers in work order. Once an item fails no
+  thread starts a later one, but every earlier one still runs, so the
+  error reported is the first failing try in seed order whatever the
+  thread count. A worker's panic is resumed on the main thread.
+- **The answer** is `Answer<Vec<PlaytestOutput>>`: a list on every run, one
+  report a stage, with `stage`, `title`, `report` and `entrants`
+  (`Played { name, label, seconds_per_try }`). One shape whether or not
+  `--every-stage` is given. Contract version 11.
+- **Deviations:**
+  - `playtest_defaults` returns the core's `Tries` (count, seed,
+    turns), not a `PlaytestInput`. The input's `tries`, `seed` and
+    `turns` are now `Option`s, so "not given" can be told apart, and the
+    defaults are three plain numbers, `DEFAULT_TRIES` (100 from seed 0
+    to turn 200) unless the game has its own. `playtest_plan` gets the
+    input with the numbers filled in.
+  - `--report` is a command-line option like `--json`, not a field of the
+    input: an MCP caller already gets the JSON. The path is read from the
+    project's folder, like `bake --out`. If the file can't be written,
+    the answer keeps its result and fails with `SH3004`.
+  - `shuyi_core::bots::playtest::Check::entrants` is now public, so a
+    game can keep the checks whose entrants all play (hello-grid does).
+  - Before any try is played, a check that names an entrant who doesn't
+    play fails the run (judging no tries says so).
+- **hello-grid** gives a plan (`tools::playtest_plan`): one stage, its two
+  entrants, and `playtest.ron`'s checks filtered to the entrants that
+  play. Its tests through `main_with` cover `--threads 1` and `4`,
+  `--entrant walk`, `--entrant nobody` and `--report`.
+- **Tickets that named this one:** 1134's either-order clause drops 2532,
+  2541's step 4 names the pool's module, and 2533's history record names
+  one stage's `PlaytestOutput`.
+- **The game:** it never implemented `GameTools::playtest`, so its next
+  pin bump builds as it is. game#1180 moves its `cargo xtask playtest`
+  onto this (no game PR yet).
+- No follow-up tickets.

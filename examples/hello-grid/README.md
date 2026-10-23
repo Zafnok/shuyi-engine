@@ -55,6 +55,7 @@ cargo shuyi run --stage --script "z Right z" --frames 60
 cargo shuyi scene --stage                          # the stage's map and state
 cargo shuyi bots 30                                # a random walker against the foe
 cargo shuyi playtest --tries 50                    # each hero against playtest.ron's bands
+cargo shuyi playtest --entrant walk --threads 1    # the walker alone, on one thread
 cargo shuyi replay play.ron                        # a bot's record (bots --json), step by step
 cargo shuyi import files/stage.map
 ```

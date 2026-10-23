@@ -29,9 +29,9 @@ use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
-use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin};
+use shuyi_cli::{GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan};
 use shuyi_core::bots::playtest::{
-    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries,
+    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
 };
 use shuyi_core::{
     Bot, Determinize, Knob, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
@@ -241,20 +241,20 @@ impl GameTools for HelloTools {
         Ok(tally(plays))
     }
 
-    /// [`ENTRANTS`] on the stage, judged by `playtest.ron`.
-    fn playtest(&self, input: &PlaytestInput) -> Result<PlaytestReport, String> {
+    /// [`ENTRANTS`] on the stage, judged by `playtest.ron`
+    /// ([`playtest_plan`]).
+    fn playtest_plan(
+        &self,
+        _stage: Option<&str>,
+        input: &PlaytestInput,
+    ) -> Result<PlaytestPlan, String> {
         if let Some(option) = input.start.first() {
             return Err(format!(
                 "playtest takes no start option, not {}",
                 option.flag
             ));
         }
-        let tries = Tries {
-            count: input.tries,
-            seed: input.seed,
-            turns: input.turns,
-        };
-        playtest_run(&tries)
+        playtest_plan()
     }
 
     fn importers(&self) -> Importers {
@@ -468,8 +468,34 @@ pub fn playtest_checks() -> Result<Vec<Check>, String> {
     ron::from_str(text).map_err(|e| format!("playtest.ron: {e}"))
 }
 
+/// The playtest's plan: [`ENTRANTS`] on the one stage, each try played
+/// by [`play_tries`] from its seed alone, and those of
+/// [`playtest_checks`] whose entrants all play.
+pub fn playtest_plan() -> Result<PlaytestPlan, String> {
+    let stage = Stage::new(&loaded()?.stage_map, 0)?;
+    let checks = playtest_checks()?;
+    Ok(PlaytestPlan {
+        title: "the stage (files/stage.map)".to_owned(),
+        entrants: ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
+        groups: BTreeMap::new(),
+        default_entrants: Vec::new(),
+        checks: Box::new(move |names| {
+            checks
+                .iter()
+                .filter(|c| c.entrants().iter().all(|e| names.contains(e)))
+                .cloned()
+                .collect()
+        }),
+        play: Box::new(move |entrant, seed, turns| {
+            let mut tries = play_tries(&stage, &ENTRANTS[entrant], seed..seed + 1, turns)
+                .map_err(|e| e.to_string())?;
+            tries.pop().ok_or_else(|| "no try".to_owned())
+        }),
+    })
+}
+
 /// [`ENTRANTS`] play the stage as `tries` says, judged by
-/// [`playtest_checks`].
+/// [`playtest_checks`], on this thread.
 pub fn playtest_run(tries: &Tries) -> Result<PlaytestReport, String> {
     let stage = Stage::new(&loaded()?.stage_map, 0)?;
     let entrants: Vec<&dyn Entrant<Stage, Stage>> = ENTRANTS

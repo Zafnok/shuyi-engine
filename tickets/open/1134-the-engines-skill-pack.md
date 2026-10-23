@@ -140,11 +140,13 @@ None.
     If not, each of those tickets adds its section when it lands.
     `shuyi-balance-bots` also shows targets by tier
     (`shuyi_core::bots::playtest::Targets`) and personas as data
-    (planner settings and weights: `shuyi_core::bots::weigh`). Either
-    order with 2131, 2132, 2532, 2533 and 2021: if they are done, it
-    also shows the tactics kit's threat areas and candidate order,
-    `shuyi playtest`'s options and history, and the reusable playtest
-    workflow. If not, each adds its lines when it lands.
+    (planner settings and weights: `shuyi_core::bots::weigh`), and
+    `shuyi playtest`'s options (`--stage`, `--every-stage`, `--entrant`,
+    `--threads`, `--report`) and a game's `PlaytestPlan`. Either order
+    with 2131, 2132, 2533 and 2021: if they are done, it also shows the
+    tactics kit's threat areas and candidate order, `shuyi playtest`'s
+    history, and the reusable playtest workflow. If not, each adds its
+    lines when it lands.
   - Motion, either order with 2514: if 2514 is done, `shuyi-test`,
     `shuyi-animate` and `shuyi-cinematic` say to check motion with a
     sheet (`frame-png --every <seconds> --count <n>`, or the MCP

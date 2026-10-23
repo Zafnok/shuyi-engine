@@ -208,8 +208,9 @@ fn description(op: Op, session: bool) -> &'static str {
              measures."
         }
         (Op::Playtest, _) => {
-            "Each of the game's named bots plays `tries` tries; the game's checks say per bot \
-             whether it succeeded as often as its band wants."
+            "Each of the game's named bots (its `entrants`, or the game's choice) plays `tries` \
+             tries of a `stage` (or `every_stage`) on every core; the game's checks say per bot \
+             whether it succeeded as often as its band wants, and each bot's time per try."
         }
         (Op::Import, _) => {
             "Read a file (from the game's folder) through the format registry as every kind \

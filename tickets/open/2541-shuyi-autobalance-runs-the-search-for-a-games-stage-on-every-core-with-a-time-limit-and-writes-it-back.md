@@ -114,8 +114,8 @@ gives the server an `autobalance` tool with no other change. Check that
    object): pick the simplest shape that lets `play` and `write` take a
    changed stage without the CLI knowing its type, and say why in the
    PR.
-4. **The operation**: options, the pool (move 2532's into a module both
-   use if it isn't one), the clock for `--time`, the answer.
+4. **The operation**: options, the pool (2532's `shuyi_cli::pool::run`,
+   a module of its own), the clock for `--time`, the answer.
 5. **hello-grid** and the fake game: a plan each; tests through the
    binary.
 6. **Docs**.
