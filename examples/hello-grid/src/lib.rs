@@ -338,7 +338,8 @@ mod tests {
     #[test]
     fn a_line_has_only_its_one_clip() {
         assert_eq!(OnlyClip.suffix(), "");
-        assert!(OnlyClip::split().is_empty());
+        let got = OnlyClip::split();
+        assert!(got.is_empty(), "{got:?}");
         assert!(OnlyClip.is_only());
     }
 

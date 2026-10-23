@@ -105,7 +105,8 @@ fn a_sprite_skinned_field_is_a_picture_of_sprites() {
     assert_eq!((scene.width(), scene.height()), (30, 12));
     assert_eq!(scene.sprites().len(), 10 * 8 + 2);
     // The console's own items stay its own: the picture's aren't copied in.
-    assert!(h.game().buffer().items().is_empty());
+    let found = h.game().buffer().items();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

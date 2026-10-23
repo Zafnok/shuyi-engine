@@ -83,7 +83,9 @@ impl Renderer {
                 Ok(texture) => {
                     textures.insert(id, texture);
                 }
-                Err(e) => warn!("image {}: {}", id.path(), e),
+                Err(e) => {
+                    warn!("image {}: {}", id.path(), e);
+                }
             }
         }
         Ok(Self {

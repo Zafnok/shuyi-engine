@@ -423,7 +423,7 @@ mod tests {
     fn tile_set_basics() {
         let mut set = TileSet::new(10, 10);
         assert_eq!((set.width(), set.height()), (10, 10));
-        assert!(set.is_empty());
+        assert!(set.is_empty(), "{set:?}");
         assert_eq!(set.len(), 0);
         assert!(set.insert(p(4, 6)));
         assert!(!set.insert(p(4, 6)));
@@ -434,7 +434,7 @@ mod tests {
             assert!(!set.insert(outside));
             assert!(!set.contains(outside));
         }
-        assert!(!set.is_empty());
+        assert!(!set.is_empty(), "{set:?}");
         assert_eq!(set.len(), 4);
         assert!(set.contains(p(4, 6)));
         assert!(set.contains(p(3, 6)));
@@ -456,7 +456,8 @@ mod tests {
         assert_eq!(set.len(), 129);
         assert_eq!(set.iter().collect::<Vec<_>>(), all);
         assert!(!set.contains(p(0, 43)));
-        assert!(TileSet::new(0, 0).is_empty());
+        let found = TileSet::new(0, 0);
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(TileSet::new(0, 5).iter().count(), 0);
     }
 

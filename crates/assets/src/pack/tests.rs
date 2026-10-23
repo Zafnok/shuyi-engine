@@ -444,7 +444,8 @@ fn a_pack_keeps_a_file_as_it_is_when_compressing_doesnt_make_it_smaller() {
     assert_eq!(pack.get("a.bin"), Some(&repeated[..]));
     assert_eq!(pack.get("b.bin"), Some(&noise[..]));
     assert_eq!(pack.get("d.bin"), None);
-    assert!(pack.files()[0].kinds.is_empty());
+    let got = &pack.files()[0].kinds;
+    assert!(got.is_empty(), "{got:?}");
 }
 
 /// `bytes`, its body changed by `change`, with the checksum made right

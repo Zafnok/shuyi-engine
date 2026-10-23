@@ -219,7 +219,8 @@ fn the_safe_area_is_what_the_frame_must_fit() {
     );
     // At fit, 680 / 800 across decides: 0.85, and 16 px of text is 13.
     let fit = setting((800, 512), Scale::Fit, 16);
-    assert!(check_target("deck", &fit, &profile).is_empty());
+    let found = check_target("deck", &fit, &profile);
+    assert!(found.is_empty(), "{found:?}");
     let small = check_target("deck", &setting((800, 512), Scale::Fit, 12), &profile);
     assert_eq!(
         shown(&small),
@@ -265,14 +266,12 @@ fn text_on_the_deck_warns_from_9_to_11_px_and_fails_below_9() {
 #[test]
 fn a_display_of_any_size_shows_the_frame_at_scale_1() {
     let desktop = engine("desktop");
-    assert!(
-        check_target(
-            "desktop",
-            &setting((800, 512), Scale::Integer, 16),
-            &desktop
-        )
-        .is_empty()
+    let found = check_target(
+        "desktop",
+        &setting((800, 512), Scale::Integer, 16),
+        &desktop,
     );
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(
         shown(&check_target(
             "desktop",

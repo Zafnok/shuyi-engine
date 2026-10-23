@@ -169,7 +169,9 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     if let (Some(voices), Some(dir)) = (&config.voices, &voice_dir) {
         match read_voice_manifest(dir, voices.manifest).await {
             Ok(manifest) => voice_manifest = manifest,
-            Err(e) => warn!("no voices: {}", e),
+            Err(e) => {
+                warn!("no voices: {}", e);
+            }
         }
     }
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
@@ -272,10 +274,18 @@ fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> App
 fn print_line(line: &LogLine) {
     let (category, text) = (line.category.name(), &line.text);
     match line.level {
-        LogLevel::Error => error!("{}: {}", category, text),
-        LogLevel::Warn => warn!("{}: {}", category, text),
-        LogLevel::Info => info!("{}: {}", category, text),
-        _ => debug!("{}: {}", category, text),
+        LogLevel::Error => {
+            error!("{}: {}", category, text);
+        }
+        LogLevel::Warn => {
+            warn!("{}: {}", category, text);
+        }
+        LogLevel::Info => {
+            info!("{}: {}", category, text);
+        }
+        _ => {
+            debug!("{}: {}", category, text);
+        }
     }
 }
 

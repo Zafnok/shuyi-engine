@@ -138,7 +138,8 @@ fn the_range_laid_on_last_fills_its_tiles_but_a_skipped_one() {
     assert_eq!(cell(7), Cell::new(g.glyphs[0], fg, bg));
     assert_eq!(cell(8), Cell::new(g.glyphs[1], fg, bg));
     assert_eq!(cell(9), blank());
-    assert!(buf.overlays().is_empty());
+    let found = buf.overlays();
+    assert!(found.is_empty(), "{found:?}");
     // A tile off the map is filled too: its cells' glyphs kept.
     let mut scene = MapScene::<Piece>::new(p(0, 0), (1, 1));
     scene.tint([p(0, 0)], MOVE);
@@ -285,8 +286,10 @@ fn a_flat_cursor_shows_in_the_side_cells_but_not_past_the_area() {
     // On the last row of the area: the lower arms are inside it too.
     assert_eq!(flat(CursorStyle::Corners, p(0, 2)).len(), 8);
     // Off the view: nothing.
-    assert!(flat(CursorStyle::Corners, p(5, 0)).is_empty());
-    assert!(flat(CursorStyle::Corners, p(0, 3)).is_empty());
+    let found = flat(CursorStyle::Corners, p(5, 0));
+    assert!(found.is_empty(), "{found:?}");
+    let found = flat(CursorStyle::Corners, p(0, 3));
+    assert!(found.is_empty(), "{found:?}");
     // With no side cell, the left arms' column is off the area: the
     // uprights go, the flat arms lose a pixel.
     let mut scene = MapScene::<Piece>::new(p(0, 0), (1, 1));
@@ -313,7 +316,8 @@ fn a_flat_cursor_shows_in_the_side_cells_but_not_past_the_area() {
     assert_eq!(rects[3], r(0, 13, 2, 1));
     // No cursor: nothing.
     scene.cursor = None;
-    assert!(draw(&scene).is_empty());
+    let found = draw(&scene);
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

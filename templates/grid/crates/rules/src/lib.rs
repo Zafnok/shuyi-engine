@@ -380,7 +380,8 @@ mod tests {
         let events = s.apply(&Command::Step(Dir::Right)).unwrap();
         assert_eq!(events.last(), Some(&Event::Reached));
         assert_eq!(s.outcome(), Some(Outcome::Won { turn: 1 }));
-        assert!(s.legal_commands().is_empty());
+        let found = s.legal_commands();
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(s.apply(&Command::Step(Dir::Left)), Err(Error::Over));
         assert_eq!(Error::Over.to_string(), "the stage is over");
     }

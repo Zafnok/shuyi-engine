@@ -793,8 +793,10 @@ mod tests {
         assert_eq!(fake.calls(), ["play wav100 0.50", "play wav100 0.25"]);
         // A sound whose file failed to decode is silent, not a crash.
         audio.hear(&mut fake, &[sound("broken", 1.0)], &[], 0.0);
-        assert!(fake.calls().is_empty());
-        assert!(audio.take_warnings().is_empty());
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
+        let got = audio.take_warnings();
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]
@@ -815,7 +817,8 @@ mod tests {
             audio.take_warnings(),
             ["unknown sound cue \"nope\"", "unknown music cue \"nope\""]
         );
-        assert!(fake.calls().is_empty());
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]
@@ -886,7 +889,8 @@ mod tests {
         // The same volumes again change nothing; a new music volume
         // reaches the track playing, and a fade multiplies with it.
         audio.set_volumes(&mut fake, 0.5, 0.2);
-        assert!(fake.calls().is_empty());
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
         audio.set_volumes(&mut fake, 1.0, 0.2);
         assert_eq!(fake.calls(), ["volume music/title.ogg 0.80"]);
         audio.play(&mut fake, &[], &[gain("title", 0.5)], 0.0);
@@ -911,7 +915,8 @@ mod tests {
         fake.calls();
         // Still loading: nothing to change yet.
         audio.set_volumes(&mut fake, 0.25, 1.0);
-        assert!(fake.calls().is_empty());
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
         fake.ready.push("music/title.ogg".into());
         audio.play(&mut fake, &[], &[], 0.0);
         assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
@@ -970,7 +975,7 @@ mod tests {
         assert_eq!(audio.abandoned.len(), 1);
         fake.ready.push("music/title.ogg".into());
         audio.play(&mut fake, &[], &[], 0.0);
-        assert!(audio.abandoned.is_empty());
+        assert!(audio.abandoned.is_empty(), "{:?}", audio.abandoned);
         assert_eq!(fake.calls(), ["load music/title.ogg"], "never played");
     }
 
@@ -1039,7 +1044,8 @@ mod tests {
             &[cmd(start, "title"), gain("title", 1.0)],
             0.0,
         );
-        assert!(fake.calls().is_empty());
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]

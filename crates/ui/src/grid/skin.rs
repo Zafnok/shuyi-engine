@@ -375,7 +375,8 @@ mod tests {
         assert_eq!(cells(None), None);
         // A skin can't zoom unless it says it can.
         let fixed: &dyn GridSkin<Piece> = &Fixed(None);
-        assert!(fixed.zoom_levels().is_empty());
+        let found = fixed.zoom_levels();
+        assert!(found.is_empty(), "{found:?}");
         assert_eq!(fixed.zoom(), None);
         assert!(fixed.at_zoom(1).is_none());
     }

@@ -77,13 +77,15 @@ fn a_disabled_item_is_denied() {
     let mut m = menu(&[false, false]);
     assert_eq!(sounds(&mut m, &[Confirm]), ["buzz"]);
     // An empty menu has nothing to deny.
-    assert!(sounds(&mut Menu::<()>::new(vec![]), &[Confirm]).is_empty());
+    let found = sounds(&mut Menu::<()>::new(vec![]), &[Confirm]);
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
 fn doing_nothing_is_silent() {
     let mut m = menu(&[false, false]);
-    assert!(sounds(&mut m, &[CursorDown, CursorUp]).is_empty());
+    let found = sounds(&mut m, &[CursorDown, CursorUp]);
+    assert!(found.is_empty(), "{found:?}");
     // A single enabled item: the focus has nowhere to go.
     let mut m = menu(&[false, true, false]);
     assert_eq!(

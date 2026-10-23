@@ -297,7 +297,8 @@ mod tests {
         // Other colours, same names: nothing wrong.
         let mut same = palette(&["a", "b", "c"]);
         same.colors.insert("a".into(), [9, 9, 9]);
-        assert!(theme_problems("t.ron", &base, &same).is_empty());
+        let found = theme_problems("t.ron", &base, &same);
+        assert!(found.is_empty(), "{found:?}");
         let other = palette(&["a", "c", "d", "e"]);
         let text: Vec<String> = theme_problems("t.ron", &base, &other)
             .iter()

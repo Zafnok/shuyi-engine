@@ -239,10 +239,13 @@ fn pad_section_loads_in_file_order() {
         k.buttons(Action::CursorUp),
         [Button::LeftStickUp, Button::DpadUp, Button::RightStickUp]
     );
-    assert!(k.buttons(Action::Confirm).is_empty());
+    let found = k.buttons(Action::Confirm);
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(k.pad.len(), Action::ALL.len());
     assert_eq!(k.stick, StickDef::default());
-    assert!(KeymapDef::default().buttons(Action::CursorUp).is_empty());
+    let keymap = KeymapDef::default();
+    let found = keymap.buttons(Action::CursorUp);
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -347,7 +350,8 @@ fn pad_button_on_debug_is_error_with_line() {
     );
     assert_eq!(errs[0].line, pad_line(Action::ALL.len() - 1));
     // Listed empty, it is fine.
-    assert!(errors(&pad_source("", "")).is_empty());
+    let got = errors(&pad_source("", ""));
+    assert!(got.is_empty(), "{got:?}");
 }
 
 #[test]
@@ -1185,7 +1189,7 @@ fn a_target_plays_with_its_own_table_named_after_it() {
     assert_eq!(k.targets.len(), 1);
     // A file without either has no target tables.
     let k = KeymapDef::from_source("k.ron", &pad_source("", "")).unwrap_or_default();
-    assert!(k.targets.is_empty());
+    assert!(k.targets.is_empty(), "{:?}", k.targets);
 }
 
 #[test]

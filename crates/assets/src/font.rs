@@ -288,11 +288,13 @@ mod tests {
                 "columns must be greater than 0"
             ]
         );
-        assert!(def.image_problems(0, 0).is_empty());
+        let got = def.image_problems(0, 0);
+        assert!(got.is_empty(), "{got:?}");
         let mut def = required_only();
         def.cell_h = 0;
         assert_eq!(def.problems(REQUIRED), ["cell_h must be greater than 0"]);
-        assert!(def.image_problems(0, 0).is_empty());
+        let got = def.image_problems(0, 0);
+        assert!(got.is_empty(), "{got:?}");
     }
 
     #[test]

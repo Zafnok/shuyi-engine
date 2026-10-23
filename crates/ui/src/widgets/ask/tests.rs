@@ -127,7 +127,7 @@ fn a_yes_no_is_confirm_or_cancel_and_moves_nowhere() {
     assert_eq!(ask.key(), "options.question.restore");
     let (answers, sounds) = press(&mut ask, &[CursorRight, CursorUp, Confirm, Cancel]);
     assert_eq!(answers, [None, None, Some(true), Some(false)]);
-    assert!(sounds.is_empty());
+    assert!(sounds.is_empty(), "{sounds:?}");
 }
 
 #[test]

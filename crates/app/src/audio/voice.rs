@@ -337,10 +337,12 @@ mod tests {
         assert_eq!(held(&audio), [LINES[1]], "the first clip is freed");
         audio.hear(&mut fake, &[Request::StopVoice], &[], 2.0);
         assert_eq!(fake.calls(), [format!("stop {}", path(1))]);
-        assert!(held(&audio).is_empty());
+        let found = held(&audio);
+        assert!(found.is_empty(), "{found:?}");
         // Stopping silence does nothing.
         audio.hear(&mut fake, &[Request::StopVoice], &[], 3.0);
-        assert!(fake.calls().is_empty());
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
         assert!(
             audio.take_warnings().len() <= 1,
             "only the broken test sound"
@@ -361,7 +363,8 @@ mod tests {
         assert_eq!(fake.calls(), [format!("volume {} 0.30", path(0))]);
         // The same volume again (every frame sends it) does nothing.
         audio.set_voice_volume(&mut fake, 0.3);
-        assert!(fake.calls().is_empty());
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
         audio.hear(&mut fake, &[play(1)], &[], 1.0);
         assert_eq!(fake.calls()[2], format!("play {} 0.30", path(1)));
     }
@@ -393,8 +396,9 @@ mod tests {
         fake.ready.push(path(0));
         audio.play(&mut fake, &[], &[], 10.4);
         assert_eq!(fake.calls(), [format!("load {}", path(0))], "never played");
-        assert!(audio.abandoned.is_empty());
-        assert!(audio.take_warnings().is_empty());
+        assert!(audio.abandoned.is_empty(), "{:?}", audio.abandoned);
+        let found = audio.take_warnings();
+        assert!(found.is_empty(), "{found:?}");
         // A clock that stepped back doesn't count as late.
         fake.ready.clear();
         audio.hear(&mut fake, &[play(1)], &[], 20.0);
@@ -456,11 +460,13 @@ mod tests {
         audio.play(&mut fake, &[], &[], 11.49);
         assert_eq!(held(&audio), [LINES[0]]);
         audio.play(&mut fake, &[], &[], 11.5);
-        assert!(held(&audio).is_empty());
+        let found = held(&audio);
+        assert!(found.is_empty(), "{found:?}");
         // It ended by itself: nothing to stop.
         fake.calls();
         audio.hear(&mut fake, &[Request::StopVoice], &[], 12.0);
-        assert!(fake.calls().is_empty());
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
         // A clip of unknown length is kept until it is stopped.
         fake.length = None;
         audio.hear(&mut fake, &[play(1)], &[], 20.0);
@@ -479,10 +485,12 @@ mod tests {
             audio.take_warnings(),
             [format!("voice clip {}: no such file", path(0))]
         );
-        assert!(held(&audio).is_empty());
+        let found = held(&audio);
+        assert!(found.is_empty(), "{found:?}");
         audio.play(&mut fake, &[], &[], 0.1);
         assert_eq!(fake.calls(), [format!("load {}", path(0))], "not retried");
-        assert!(audio.take_warnings().is_empty());
+        let found = audio.take_warnings();
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]
@@ -493,7 +501,8 @@ mod tests {
         fake.calls();
         audio.stop_all(&mut fake);
         assert_eq!(fake.calls(), [format!("stop {}", path(0))]);
-        assert!(held(&audio).is_empty());
+        let found = held(&audio);
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]
@@ -530,8 +539,10 @@ mod tests {
         audio.take_warnings();
         audio.set_voice_volume(&mut fake, 1.0);
         audio.play(&mut fake, &[], &[], 0.0);
-        assert!(audio.take_warnings().is_empty());
-        assert!(fake.calls().is_empty());
+        let found = audio.take_warnings();
+        assert!(found.is_empty(), "{found:?}");
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]

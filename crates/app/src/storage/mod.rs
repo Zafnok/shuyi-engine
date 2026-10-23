@@ -55,8 +55,12 @@ pub fn smoke_check(storage: &mut dyn Storage) {
     use macroquad::prelude::{error, info};
 
     match run_smoke_check(storage) {
-        Ok(()) => info!("storage: smoke check passed"),
-        Err(e) => error!("storage: smoke check failed: {e}"),
+        Ok(()) => {
+            info!("storage: smoke check passed");
+        }
+        Err(e) => {
+            error!("storage: smoke check failed: {e}");
+        }
     }
 }
 

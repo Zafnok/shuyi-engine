@@ -310,7 +310,8 @@ fn chords_bound_by_the_player_work_and_save() {
     }
     assert_eq!(only.unmapped_required(), [EndTurn]);
     assert_eq!(only.bind(EndTurn, 0, pair(South, East)), Ok(None));
-    assert!(only.unmapped_required().is_empty());
+    let found = only.unmapped_required();
+    assert!(found.is_empty(), "{found:?}");
     let km = Keymap::new([], REPEAT).with_pad(only.pairs());
     let mut s = InputState::new(km);
     assert_eq!(frame(&mut s, &[(South, true), (East, true)], 0), [EndTurn]);

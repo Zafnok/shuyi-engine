@@ -131,7 +131,7 @@ mod tests {
                 );
             }
         }
-        assert!(audio.music.is_empty());
+        assert!(audio.music.is_empty(), "{:?}", audio.music);
         assert_eq!(file("loud.wav"), None);
         let files = files();
         assert_eq!((files.sound)("move.wav"), file("move.wav"));

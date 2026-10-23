@@ -42,8 +42,10 @@ fn defaults_fill_the_first_slots_in_file_order() {
     );
     let left = LayoutBindings::defaults(&def(), LEFT_HANDED);
     assert_eq!(names(left.slots(Confirm)), ["j", "-", "-"]);
-    assert!(b.unmapped_required().is_empty());
-    assert!(left.unmapped_required().is_empty());
+    let found = b.unmapped_required();
+    assert!(found.is_empty(), "{found:?}");
+    let found = left.unmapped_required();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -217,7 +219,8 @@ fn unmapped_required_lists_exactly_the_required_actions_with_no_key() {
     // Losing an optional action's key doesn't count.
     let mut b = right();
     b.clear(Info, 0);
-    assert!(b.unmapped_required().is_empty());
+    let found = b.unmapped_required();
+    assert!(found.is_empty(), "{found:?}");
     // Moving Confirm's only key away does.
     b.bind(Info, 0, chord("f")).ok();
     assert_eq!(b.unmapped_required(), [Confirm]);
@@ -475,7 +478,7 @@ fn bad_and_reserved_chords_and_extra_slots_are_dropped() {
     );
     // Short slot lists are padded with empty slots.
     let (b, warnings) = load(&saved("\"Info\": [Some(\"g\")]"));
-    assert!(warnings.is_empty());
+    assert!(warnings.is_empty(), "{warnings:?}");
     assert_eq!(names(b.slots(Info)), ["g", "-", "-"]);
 }
 
@@ -523,7 +526,7 @@ fn a_required_action_left_unmapped_resets_the_layout() {
 #[test]
 fn a_repaired_layout_equal_to_the_defaults_has_no_entry() {
     let (keys, warnings) = PlayerKeys::from_ron(&saved("\"Confirm\": [Some(\"f\")]"), &def());
-    assert!(warnings.is_empty());
+    assert!(warnings.is_empty(), "{warnings:?}");
     assert!(!keys.is_custom(RIGHT_HANDED));
 }
 
@@ -557,7 +560,8 @@ fn default_buttons_fill_the_first_slots_in_file_order() {
     assert_eq!(buttons(b.slots(Cancel)), ["East", "-", "-"]);
     assert_eq!(buttons(b.slots(Action::Select)), ["-", "-", "-"]);
     assert_eq!(buttons(b.slots(Debug)), ["-", "-", "-"]);
-    assert!(b.unmapped_required().is_empty());
+    let found = b.unmapped_required();
+    assert!(found.is_empty(), "{found:?}");
     assert!(b.is_unmapped(Action::Menu) && !b.is_unmapped(Info));
     assert_eq!(b.find(KeyGroup::General, Button::South), Some((Confirm, 0)));
     assert_eq!(
@@ -842,7 +846,7 @@ fn unknown_actions_and_buttons_and_extra_slots_are_dropped() {
     // A short list is padded, and an action that isn't stored keeps its
     // default buttons.
     let (b, warnings) = load_pad(&saved_pad("\"Info\": [Some(\"RightStickPress\")]"));
-    assert!(warnings.is_empty());
+    assert!(warnings.is_empty(), "{warnings:?}");
     assert_eq!(buttons(b.slots(Info)), ["RightStickPress", "-", "-"]);
     assert_eq!(buttons(b.slots(Confirm)), ["South", "-", "-"]);
 }
@@ -882,7 +886,7 @@ fn a_required_action_left_without_a_button_resets_the_buttons_only() {
     // Buttons repaired to the defaults have no entry.
     let same = saved_pad("\"Confirm\": [Some(\"South\")]");
     let (keys, warnings) = PlayerKeys::from_ron(&same, &def());
-    assert!(warnings.is_empty());
+    assert!(warnings.is_empty(), "{warnings:?}");
     assert!(!keys.is_custom_pad());
 }
 

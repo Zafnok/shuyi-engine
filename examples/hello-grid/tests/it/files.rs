@@ -57,7 +57,8 @@ fn the_font_atlas_is_what_font_atlas_makes_of_the_bdf() {
     .unwrap();
     let committed = std::str::from_utf8(embedded(FONT_RON)).unwrap();
     assert_eq!(committed, ron, "files/font/atlas.ron is stale");
-    assert!(atlas.def.problems(REQUIRED_GLYPHS).is_empty());
+    let found = atlas.def.problems(REQUIRED_GLYPHS);
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]

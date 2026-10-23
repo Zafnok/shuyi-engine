@@ -118,7 +118,7 @@ fn playtest_checks_the_tries_the_seeds_and_the_threads_then_asks_the_game() {
     let answer = playtest(&game, &input(1, |_| {}));
     assert!(answer.ok, "{:?}", answer.error);
     assert_eq!(answer.op, Op::Playtest);
-    assert!(answer.limits.is_empty());
+    assert!(answer.limits.is_empty(), "{:?}", answer.limits);
     assert!(playtest(&game, &input(MAX_GAMES, |_| {})).ok);
     for tries in [0, MAX_GAMES + 1] {
         let answer = playtest(&game, &input(tries, |_| {}));

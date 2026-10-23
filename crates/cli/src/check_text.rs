@@ -968,7 +968,7 @@ mod tests {
         assert_eq!(hits[0].file, "crates/ui/src/screens/foo.rs");
         // A missing tree is reported, not passed over.
         let (hits, errors) = run(&rules(), &root);
-        assert!(hits.is_empty());
+        assert!(hits.is_empty(), "{hits:?}");
         assert_eq!(errors.len(), 1, "{errors:?}");
     }
 }

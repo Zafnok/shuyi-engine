@@ -132,7 +132,8 @@ mod tests {
 
     #[test]
     fn a_one_tile_path_draws_nothing() {
-        assert!(rects(&[p(2, 2)]).is_empty());
+        let found = rects(&[p(2, 2)]);
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]

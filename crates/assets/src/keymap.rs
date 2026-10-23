@@ -39,7 +39,7 @@ macro_rules! keys {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         pub enum Key {
             $(
-                #[doc = concat!("The `", $name, "` key.")]
+                #[doc = concat!("The `` ", $name, " `` key.")]
                 $variant,
             )+
         }

@@ -76,7 +76,7 @@ fn parses_valid_map() {
         map.legend.names.get(&'~').map(String::as_str),
         Some("water")
     );
-    assert!(map.features.is_empty());
+    assert!(map.features.is_empty(), "{:?}", map.features);
 }
 
 #[test]
@@ -386,7 +386,8 @@ fn a_feature_has_no_problem_unless_the_game_says() {
 #[test]
 fn a_game_without_features_has_none() {
     let map = parse::<u16, NoFeature>("m.map", &format!("{HEADER}..\n"), &FORMAT, terrain);
-    assert!(map.unwrap().features.is_empty());
+    let found = map.unwrap().features;
+    assert!(found.is_empty(), "{found:?}");
     let errs = parse::<u16, NoFeature>("m.map", FEATURES, &FORMAT, terrain).unwrap_err();
     assert_eq!(errs.len(), 1);
 }

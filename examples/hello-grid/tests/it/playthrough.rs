@@ -164,7 +164,7 @@ fn walking_into_the_foe_gets_you_caught_and_play_again_starts_anew() {
     let again = stage(&h);
     assert_eq!(again.stage.turn(), 1);
     assert_eq!(again.stage.side_to_move(), Side::Hero);
-    assert!(again.commands.is_empty());
+    assert!(again.commands.is_empty(), "{:?}", again.commands);
     assert_eq!(h.ctx().game.seed, 5);
 }
 
@@ -198,7 +198,8 @@ fn a_picked_up_piece_shows_its_reach_and_the_path_follows_the_cursor() {
     // Confirm off the reach keeps it picked up; Cancel puts it down.
     h.keys("Up Up Enter");
     assert!(stage(&h).selected.is_some());
-    assert!(stage(&h).commands.is_empty());
+    let found = &stage(&h).commands;
+    assert!(found.is_empty(), "{found:?}");
     h.keys("Backspace");
     assert!(stage(&h).selected.is_none());
     assert_eq!(h.screens(), ["title", "stage"]);

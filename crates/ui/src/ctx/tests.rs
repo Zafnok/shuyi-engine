@@ -63,7 +63,8 @@ fn a_new_ctx_starts_on_the_games_palette_console_and_picker_keys() {
     assert_eq!(c.key_prompt, KeyPrompt::Off);
     assert_eq!(c.music_seed, DEFAULT_MUSIC_SEED);
     assert_eq!(c.music_clock, None);
-    assert!(c.audio.pending().is_empty());
+    let found = c.audio.pending();
+    assert!(found.is_empty(), "{found:?}");
     assert!(c.clock_s.abs() < f64::EPSILON);
     assert!(c.voices_on);
     assert_eq!(c.voice_volume, DEFAULT_VOICE_VOLUME);
@@ -231,10 +232,12 @@ fn only_lines_with_a_playable_clip_are_said() {
     // No manifest yet: nothing has a voice.
     c.play_voice(&lines[0]);
     assert!(!c.has_voice(&lines[0]));
-    assert!(c.audio.pending().is_empty());
+    let found = c.audio.pending();
+    assert!(found.is_empty(), "{found:?}");
     let manifest = c.game.manifest(&[(0, "Only")]);
     c.set_voice_manifest(&manifest);
-    assert!(c.take_warnings().is_empty());
+    let found = c.take_warnings();
+    assert!(found.is_empty(), "{found:?}");
     assert!(c.has_voice(&lines[0]));
     assert!(!c.has_voice(&lines[1]));
     c.play_voice(&lines[0]);
@@ -248,7 +251,8 @@ fn only_lines_with_a_playable_clip_are_said() {
     assert!(!c.has_voice(&lines[0]));
     c.play_voice(&lines[0]);
     c.preload_voices(&lines);
-    assert!(c.audio.pending().is_empty());
+    let found = c.audio.pending();
+    assert!(found.is_empty(), "{found:?}");
     // Stopping is always passed on: a voice may still be playing.
     c.stop_voice();
     assert_eq!(c.audio.take(), [AudioRequest::StopVoice]);
@@ -261,7 +265,8 @@ fn a_split_line_plays_the_games_variant() {
     let lines = c.game.lines();
     let manifest = c.game.manifest(&[(1, "Low"), (1, "High")]);
     c.set_voice_manifest(&manifest);
-    assert!(c.take_warnings().is_empty());
+    let found = c.take_warnings();
+    assert!(found.is_empty(), "{found:?}");
     c.game.voice = Voice::Low;
     c.play_voice(&lines[1]);
     c.game.voice = Voice::High;
@@ -308,7 +313,8 @@ fn a_manifest_the_game_refuses_leaves_no_voices_and_a_warning() {
         "{warnings:?}"
     );
     assert!(!c.has_voice(&lines[0]), "the earlier manifest is gone");
-    assert!(c.take_warnings().is_empty());
+    let found = c.take_warnings();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -411,7 +417,8 @@ fn settings_are_saved_on_change_and_loaded_with_the_storage() {
     let storage = core::mem::take(&mut c.storage).into_computer();
     let mut again = first_launch().with_storage(storage);
     assert_eq!(again.settings(), c.settings());
-    assert!(again.take_warnings().is_empty());
+    let found = again.take_warnings();
+    assert!(found.is_empty(), "{found:?}");
     // The game was told what it loaded.
     assert_eq!(again.game.applied, [(5, None)]);
 }
@@ -537,7 +544,8 @@ fn a_failing_storage_leaves_the_defaults_and_a_warning_for_each() {
         ]
     );
     assert_eq!(*c.settings(), Settings::default());
-    assert!(c.take_warnings().is_empty());
+    let found = c.take_warnings();
+    assert!(found.is_empty(), "{found:?}");
     // A failed save still changes the settings, and switches the layout.
     assert!(c.change_settings(|s| s.sound_volume = 1).is_err());
     assert_eq!(c.settings().sound_volume, 1);
@@ -575,7 +583,8 @@ fn set_layout_bindings_saves_and_switches_the_layout_in_use() {
     let mut again = ctx().with_storage(storage);
     assert_eq!(again.layout_bindings(RIGHT_HANDED), b);
     assert_eq!(again.keymap, b.keymap(def.repeat).with_default_pad(&def));
-    assert!(again.take_warnings().is_empty());
+    let found = again.take_warnings();
+    assert!(found.is_empty(), "{found:?}");
     // A failed save still switches them.
     let mut failing = launch(Failing).with_layout(LEFT_HANDED);
     assert!(
@@ -799,7 +808,8 @@ fn a_game_that_leaves_the_defaults_has_no_debug_language_voices_or_old_keys() {
     let bare = Bare(Toy::new());
     assert_eq!(bare.debug_lang(), None);
     assert!(bare.voices("(clips: [])").is_err());
-    assert!(bare.keys_before_profiles().is_empty());
+    let found = bare.keys_before_profiles();
+    assert!(found.is_empty(), "{found:?}");
     assert_eq!(bare.old_layout_key(), None);
     let mut c = Ctx::new(bare).unwrap();
     c.lang = code(DEBUG_LANG);

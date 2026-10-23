@@ -241,7 +241,7 @@ fn the_playable_clips_say_what_their_line_says() {
     let m = manifest(&full());
     let playable = m.playable(&d, spoken);
     assert_eq!(playable.len(), 4);
-    assert!(!playable.is_empty());
+    assert!(!playable.is_empty(), "{playable:?}");
     let line = |id: String| LineId::new(id);
     assert_eq!(
         playable.variant_for(&line(hello()), Weather::Rain),
@@ -263,7 +263,8 @@ fn the_playable_clips_say_what_their_line_says() {
     for c in &m.clips {
         assert!(!VoiceManifest::is_stale(c, &d, spoken), "{c:?}");
     }
-    assert!(Playable::<Weather>::default().is_empty());
+    let found = Playable::<Weather>::default();
+    assert!(found.is_empty(), "{found:?}");
 }
 
 #[test]
@@ -272,17 +273,20 @@ fn clips_that_cannot_say_their_line_are_stale() {
     // Reworded: the clip says other words.
     let reworded = manifest(&[clip(&hello(), "", "Hello there.")]);
     assert!(VoiceManifest::is_stale(&reworded.clips[0], &d, spoken));
-    assert!(reworded.playable(&d, spoken).is_empty());
+    let found = reworded.playable(&d, spoken);
+    assert!(found.is_empty(), "{found:?}");
     // One clip for a line that changes, or a line no clip can say.
     let both = manifest(&[clip(&sky(), "", "The sky is bright.")]);
     assert!(VoiceManifest::is_stale(&both.clips[0], &d, spoken));
     let name = manifest(&[clip(&named(), "", "Welcome back, Ed.")]);
-    assert!(name.playable(&d, spoken).is_empty());
+    let found = name.playable(&d, spoken);
+    assert!(found.is_empty(), "{found:?}");
     // A line that is gone.
     let mut gone = manifest(&[clip(&hello(), "", "Hello.")]);
     gone.clips[0].line = LineId::new("s_00000000");
     assert!(VoiceManifest::is_stale(&gone.clips[0], &d, spoken));
-    assert!(gone.playable(&d, spoken).is_empty());
+    let found = gone.playable(&d, spoken);
+    assert!(found.is_empty(), "{found:?}");
     // Only the stale ones are left out.
     let some = manifest(&[clip(&hello(), "", "Hi."), clip(&narration(), "", "Hello.")]);
     assert_eq!(some.playable(&d, spoken).len(), 1);
@@ -324,5 +328,6 @@ fn line_texts_lists_every_line() {
 fn no_voices_is_the_only_clip_and_no_split() {
     assert_eq!(().suffix(), "");
     assert!(().is_only());
-    assert!(<() as ClipVariant>::split().is_empty());
+    let found = <() as ClipVariant>::split();
+    assert!(found.is_empty(), "{found:?}");
 }

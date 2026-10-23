@@ -306,5 +306,6 @@ fn a_pans_frame_is_its_origin_and_zoom_and_paints_its_picture_behind_holes() {
             assert_eq!(buf.get(x, y), Some(&Cell::see_through(' ', text)));
         }
     }
-    assert!(buf.items().is_empty());
+    let found = buf.items();
+    assert!(found.is_empty(), "{found:?}");
 }

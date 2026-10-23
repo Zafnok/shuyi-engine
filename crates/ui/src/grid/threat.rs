@@ -410,10 +410,12 @@ mod tests {
         assert_eq!(tip(p(5, 4)), (75, 72));
         // One on the tile itself (it can't be) has none.
         for start in [Start::Middle, Start::Edge] {
-            assert!(arrow(p(4, 4), p(4, 4), &grid(), start).is_empty());
+            let found = arrow(p(4, 4), p(4, 4), &grid(), start);
+            assert!(found.is_empty(), "{found:?}");
         }
         let none = threat(p(4, 4), &[p(4, 4)]);
-        assert!(rects(&none, &grid(), COLORS.arrow).is_empty());
+        let found = rects(&none, &grid(), COLORS.arrow);
+        assert!(found.is_empty(), "{found:?}");
     }
 
     #[test]
@@ -508,7 +510,8 @@ mod tests {
         let view = Grid::top_down(p(2, 2), (8, 4), (16, 16), (4, 4), 1);
         // The enemy is on the tile's row, three tiles past the right edge.
         let t = threat(p(3, 3), &[p(8, 3)]);
-        assert!(rects(&t, &view, COLORS.mark).is_empty());
+        let found = rects(&t, &view, COLORS.mark);
+        assert!(found.is_empty(), "{found:?}");
         let red = rects(&t, &view, COLORS.arrow);
         // From the tip, 3 px right of the tile's middle (32, 28), to the
         // view's right edge at x 72.
@@ -552,7 +555,7 @@ mod tests {
             })
             .collect();
         assert_eq!(twice, doubled);
-        assert!(!twice.is_empty());
+        assert!(!twice.is_empty(), "{twice:?}");
     }
 
     #[test]
@@ -585,6 +588,7 @@ mod tests {
             buf.overlays(),
             threat_overlays(&t, &grid(), Start::Edge, COLORS)
         );
-        assert!(!buf.overlays().is_empty());
+        let found = buf.overlays();
+        assert!(!found.is_empty(), "{found:?}");
     }
 }
