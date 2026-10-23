@@ -18,6 +18,7 @@
 //! `key = value` lines), which is all these files use. A missing or
 //! unreadable file is an error, never a pass.
 
+use std::cmp::Ordering;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -144,12 +145,12 @@ fn workspace_rust_version(name: &str, text: &str, pin: &str, required: bool) -> 
             "{name}: no `rust-version` in `[workspace.package]`; set it to `\"{want}\"`, the pin's X.Y"
         ));
     };
-    let why = match version_of(&have) {
-        Some(v) if v == (pin_major, pin_minor) => return None,
-        Some(v) if v < (pin_major, pin_minor) => format!(
+    let why = match version_of(&have).map(|v| v.cmp(&(pin_major, pin_minor))) {
+        Some(Ordering::Equal) => return None,
+        Some(Ordering::Less) => format!(
             "is below the pin's `{want}`: nothing in CI builds on an older Rust, so a lower `rust-version` needs the `msrv` job first (the `bump-rust` skill)"
         ),
-        Some(_) => {
+        Some(Ordering::Greater) => {
             format!("is above the pin's `{want}`: cargo would refuse to build on the pinned Rust")
         }
         None => "is not a Rust version `X.Y`".to_owned(),
@@ -317,14 +318,11 @@ fn has_table(text: &str, table: &str) -> bool {
 }
 
 /// The value of `key` in `[table]`: a quoted string without its quotes, or
-/// the bare value (`true`), without a trailing comment.
+/// the bare value (`true`), without a trailing comment. A commented-out
+/// line is never a header or the key: it starts with `#`.
 fn value_of(text: &str, table: &str, key: &str) -> Option<String> {
     let mut current = None;
     for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
         if let Some(header) = header_of(line) {
             current = Some(header);
             continue;
