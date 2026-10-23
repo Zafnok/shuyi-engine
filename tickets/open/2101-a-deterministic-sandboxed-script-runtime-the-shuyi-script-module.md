@@ -100,9 +100,9 @@ None (technical).
 - Scripts that change state directly, or that run on a clock.
 - Joining the frame loop. The runtime is a library the game's rules call
   and installs no `Module`, because 2358's ADR keeps a library call the
-  default. A debug menu entry or a contract op for scripts comes through
-  2358's seam, and its follow-up for module contract ops, when someone
-  asks for one.
+  default. A debug menu entry for scripts comes through 2372 (a
+  module's debug entries), and a contract op through the follow-up for
+  module contract ops, when someone asks for one.
 
 **For the game:** additive (a new module). The game's PR that uses it
 (game#1017) moves its pin after this one.

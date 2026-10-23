@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2013"]
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2358 — Modules join a running game
@@ -307,33 +307,35 @@ works for any crate either way.
 
 ## Acceptance criteria
 
-- [ ] The ADR records the nine points above, and the index lists it.
-- [ ] Harness: with modules A then B installed, each frame runs A's
+- [x] The ADR records the nine points above, and the index lists it.
+- [x] Harness: with modules A then B installed, each frame runs A's
       `before_update`, B's, then the top screen's `update`, in that
       order (a log both modules and the screen write to, kept as A's
       state on `Ctx`).
-- [ ] Harness: A and B each add one overlay (`GlyphBuffer::add_overlay`)
+- [x] Harness: A and B each add one overlay (`GlyphBuffer::add_overlay`)
       and set one glyph on the same cell in `draw_over`. Their overlays
       come after any of the stack's in the snapshot, A's before B's, and
       the shared cell shows B's glyph. The snapshot is committed.
-- [ ] A module that overrides `before_update` and `draw_over` but
+- [x] A module that overrides `before_update` and `draw_over` but
       declares no hook is never called (a counting module).
-- [ ] A screen reads with `ctx.module_state::<T>()` what a module's
+- [x] A screen reads with `ctx.module_state::<T>()` what a module's
       `before_update` wrote; without the module it gets `None`.
-- [ ] Installing a module of the same name twice gives `SameName`, and
+- [x] Installing a module of the same name twice gives `SameName`, and
       two modules putting the same type on `Ctx` give `SameState`
       naming both.
-- [ ] The toy game played by the same keys with a module that only
+- [x] The toy game played by the same keys with a module that only
       draws has the same `screen_log`, `audio_log` and `quit_frame` in
       the Harness as without it.
 - [ ] `DebugMenuScreen::new` lists a module's entries after the game's;
-      with no module its menu is as before.
-- [ ] `run --json` lists the modules with their hooks, states and debug
-      entries; the schema test passes at the new version.
-- [ ] `Bare` builds and runs a frame.
-- [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
-- [ ] `examples/hello-grid` and the templates build with no change.
-- [ ] All gates in the `run-gates` skill pass.
+      with no module its menu is as before. *(Moved to 2372 by the Size
+      clause.)*
+- [x] `run --json` lists the modules with their hooks, states and debug
+      entries; the schema test passes at the new version. *(The debug
+      entries with 2372.)*
+- [x] `Bare` builds and runs a frame.
+- [x] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
+- [x] `examples/hello-grid` and the templates build with no change.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -349,4 +351,57 @@ works for any crate either way.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-10-23.
+
+- **The ADR** is
+  [ADR-0040](../../docs/adr/0040-modules-join-a-running-game-a-library-first-a-module-trait-with-declared-hooks-and-state-by-type-on-the-context.md),
+  with its row in the index. It records the nine points; point 9 names
+  the alternatives, and *Alternatives considered* gives why each lost.
+- **`shuyi_ui::module`** (`crates/ui/src/module.rs`): `Module<G>`,
+  `Hook` (`#[non_exhaustive]`, `Hook::name`), `Install` (`hook`,
+  `state`), `InstalledModule` (`#[non_exhaustive]`, with `new`, kind 3
+  of ADR-0039) and `ModuleError` (`SameName`, `SameState`). A name that
+  isn't `snake_case` ASCII fails a `debug_assert!` at install.
+- **State by type on `Ctx`:** the private `Ctx::modules`
+  (`module::States`: each state's `TypeId`, type name, module and
+  `Box<dyn Any>`, in install order), with `module_state` and
+  `module_state_mut`. Its `Debug` lists the states by type name.
+- **`Game`:** `with_module`, `with_modules`, `modules()`;
+  `before_update` in `Game::step` right after `self.held()`, so not in
+  `act` and not after a quit; `draw_over` in `Game::redraw` after the
+  stack.
+- **The contract:** `ModuleEntry` (`#[non_exhaustive]`, as `LogEntry`
+  is), `Session::modules` (defaulted), `Headless::modules`,
+  `RunOutput::modules`; `shuyi run`'s text for people says `modules:
+  name (hooks)` when there are any. Contract 14, schemas regenerated
+  (`run.output`, `session.step.output`), `versions.json` and
+  `docs/contract.md` updated.
+- **`Bare`** in `crates/platform/tests/it/bare.rs` (with the toy game
+  and the platform's own `Silent`), and the rule under *The rules* in
+  `docs/platform-backends.md`.
+- **Either order:** 2316 isn't done, and its clause now says what holds.
+  2315 isn't done: its Scope gains the line that its gizmos are painted
+  after the modules' `draw_over` loop.
+
+**Deviations:**
+
+- **Size:** the PR passed about 600 changed lines (about 920 without the
+  ADR, the schemas, the snapshot and the tickets, some 570 of them
+  tests), so the debug menu's entries (`Install::debug_entry`, the
+  `debug_entries` lists and step 5) went to **2372**, as the Size clause
+  says. ADR-0040 §4 still describes them and names 2372. The acceptance
+  box for the debug menu is 2372's now, and `run --json` lists hooks and
+  states, without debug entries.
+- `RunOutput` became `#[non_exhaustive]` as it gained `modules`
+  (ADR-0039: a type moves under it in the PR that next adds to it). The
+  `api` job sees that as the one break below. No game builds a
+  `RunOutput`.
+- A module's state records the module that put it there too, so
+  `SameState` names both modules.
+
+**Follow-up tickets:** 2372 (a module's debug menu entries). 2101 now
+points its debug entry at 2372.
+
+Breaking: shuyi-cli: RunOutput: it is `#[non_exhaustive]` and has a `modules` field; a game reads it field by field and changes nothing (only shuyi-cli builds it)
+
+Nick input: none.

@@ -271,6 +271,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | Ticket | What |
 | ------ | ---- |
 | 2358 | Modules join a running game: an ADR and a `Module` trait (before 2003) |
+| 2372 | A module's debug menu entries, after 2358 |
 | 2526 | Outside modules: `shuyi add` of a crate at a version or revision, read with no code run |
 | 2809 | An Assets page on the website, with other people's work if Nick says yes |
 

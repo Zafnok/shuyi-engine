@@ -1,7 +1,10 @@
 //! The test Harness on the headless backend, driving the toy game
 //! (`shuyi_ui::toy`) through `App::frame` as a device's backend does: what
-//! the display is shown, the system's events, and quitting. The Harness's
+//! the display is shown, the system's events, and quitting; and a backend
+//! of only the methods every backend must have (`bare`). The Harness's
 //! scripts are tested in `shuyi-ui`'s `tests/it`, over the toy's screens.
+
+mod bare;
 
 use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::{FRAME_DT, Harness};

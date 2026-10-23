@@ -112,6 +112,9 @@ None.
   Colors come from the role through `EngineColor` (the debug tools'
   look), never from the game's palette. A label prints in glyph cells
   at its position, in the frame's own font.
+  The gizmos are painted after the modules' `draw_over` loop in
+  `Game::redraw` (2358, ADR-0040), so they stay over the modules'
+  drawing; the snapshot test checks it with a module that draws.
 - **The renderers:** `shuyi-app`'s `render.rs` and `frame-png` both
   draw `Item::Gizmo` as runs of whole console pixels from one integer
   rule (`shuyi-app` with one `draw_rectangle` per run, not macroquad's

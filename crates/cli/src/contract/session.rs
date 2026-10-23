@@ -6,7 +6,8 @@
 //! Harness starts and, if it has them, what its scene is
 //! ([`Headless::with_scene`]), what happened in its rules
 //! ([`Headless::with_events`]) and how its frame looks
-//! ([`Headless::with_picture`]).
+//! ([`Headless::with_picture`]). The modules its game installed are read
+//! from the game itself.
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -14,6 +15,7 @@ use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
+use shuyi_ui::module::InstalledModule;
 
 use crate::frame_png::{Image, Script};
 use crate::game::unsupported;
@@ -139,6 +141,31 @@ impl From<&LogLine> for LogEntry {
     }
 }
 
+/// A module installed in the game, with what it declared (ADR-0040).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct ModuleEntry {
+    /// Its name.
+    pub name: String,
+    /// The hooks the game calls on it, in the frame loop: `before_update`
+    /// (before the screens' update), `draw_over` (over their drawing).
+    pub hooks: Vec<String>,
+    /// The types of the state it put on the context.
+    pub states: Vec<String>,
+}
+
+impl From<&InstalledModule> for ModuleEntry {
+    fn from(module: &InstalledModule) -> Self {
+        Self {
+            name: module.name.to_owned(),
+            hooks: module.hooks.iter().map(|h| h.name().to_owned()).collect(),
+            states: module.states.iter().map(|&s| s.to_owned()).collect(),
+        }
+    }
+}
+
 /// A game running headless.
 pub trait Session {
     /// Plays `script`'s steps, in order.
@@ -177,6 +204,12 @@ pub trait Session {
     /// How many older lines the log dropped (0 by default).
     fn log_dropped(&self) -> u32 {
         0
+    }
+
+    /// The modules installed in the game, in install order (none by
+    /// default).
+    fn modules(&self) -> Vec<ModuleEntry> {
+        Vec::new()
     }
 
     /// The current frame as the game paints it, each console pixel
@@ -383,6 +416,11 @@ impl<G: GameData> Session for Headless<G> {
 
     fn log_dropped(&self) -> u32 {
         self.harness.log().dropped()
+    }
+
+    fn modules(&self) -> Vec<ModuleEntry> {
+        let modules = self.harness.game().modules();
+        modules.iter().map(ModuleEntry::from).collect()
     }
 
     fn picture(&self, scale: Option<u32>) -> Result<Image, String> {

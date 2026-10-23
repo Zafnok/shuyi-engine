@@ -52,5 +52,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0037](0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md) | Dependency upkeep: Dependabot, a weekly advisory check, workflow audits, and bot work as its own ticket | Accepted; adopts game ADR-0008's supply-chain rows; extends ADR-0017 §3 |
 | [0038](0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md) | The public API gate: a listing diff and semver checks on every PR, and a `Breaking:` line for each break | Accepted; extends ADR-0002 §7 and ADR-0017 |
 | [0039](0039-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md) | Public types that can grow: non-exhaustive config and views with constructors, plain values left open | Accepted |
+| [0040](0040-modules-join-a-running-game-a-library-first-a-module-trait-with-declared-hooks-and-state-by-type-on-the-context.md) | Modules join a running game: a library first, a `Module` trait with declared hooks, and state by type on the context | Accepted; extends ADR-0009 §6 and §8 and ADR-0024 §2 and §5 |
 
 Template: [`0000-template.md`](0000-template.md).
