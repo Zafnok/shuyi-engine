@@ -55,13 +55,9 @@ fn a_pack_of_another_game_or_version_is_refused() {
 
 #[test]
 fn check_baked_passes_on_the_game() {
-    let answer = check(
-        &HelloTools,
-        &CheckInput {
-            baked: true,
-            ..CheckInput::default()
-        },
-    );
+    let mut input = CheckInput::default();
+    input.baked = true;
+    let answer = check(&HelloTools, &input);
     assert!(answer.ok, "{answer:?}");
 }
 
@@ -69,10 +65,7 @@ fn check_baked_passes_on_the_game() {
 fn bake_writes_the_games_pack() {
     let dir = std::env::temp_dir().join(format!("hello-grid-bake-{}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
-    let project = Project {
-        root: dir.clone(),
-        config: Config::default(),
-    };
+    let project = Project::new(dir.clone(), Config::default());
     let answer = bake(&HelloTools, &project, &BakeInput::default());
     assert!(answer.ok, "{answer:?}");
     let made = answer.result.unwrap().pack.unwrap();

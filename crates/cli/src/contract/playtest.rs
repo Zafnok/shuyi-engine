@@ -31,6 +31,9 @@ pub const DEFAULT_TRIES: Tries = Tries::new(100, 0, 200);
 /// ([`GameTools::playtest_defaults`]).
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
 pub struct PlaytestInput {
     /// The stage, one of the game's; needed when it has several, unless
     /// `every_stage`.

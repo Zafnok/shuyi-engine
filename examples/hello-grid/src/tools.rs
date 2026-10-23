@@ -54,21 +54,15 @@ use crate::{Action, FONT_PNG, Hello, MapLook};
 
 /// The game's own `frame-png` options.
 pub const OPTIONS: [GameOption; 3] = [
-    GameOption {
-        flag: "--stage",
-        value: None,
-        help: "start on the stage, its scene seen, not at the title",
-    },
-    GameOption {
-        flag: "--tiles",
-        value: None,
-        help: "draw the map with the tileset (the Tiles look), not glyphs",
-    },
-    GameOption {
-        flag: "--seed",
-        value: Some("N"),
-        help: "seed the stage's luck with N (0 by default)",
-    },
+    GameOption::new(
+        "--stage",
+        "start on the stage, its scene seen, not at the title",
+    ),
+    GameOption::new(
+        "--tiles",
+        "draw the map with the tileset (the Tiles look), not glyphs",
+    ),
+    GameOption::new("--seed", "seed the stage's luck with N (0 by default)").with_value(Some("N")),
 ];
 
 /// How a game in the Harness starts.
@@ -145,12 +139,12 @@ pub fn one_bit_skin() -> Result<OneBitSkin, String> {
     let map = formats
         .load::<PatternMapDef>(&bundle, PATTERN_MAP)
         .map_err(|e| lines(&e))?;
-    Ok(OneBitSkin {
-        palette_file: bundle.display_path("palette.ron"),
+    Ok(OneBitSkin::new(
+        bundle.display_path("palette.ron"),
         palette,
-        map_file: bundle.display_path(PATTERN_MAP),
+        bundle.display_path(PATTERN_MAP),
         map,
-    })
+    ))
 }
 
 /// The frame `h` shows as a one-bit target's display shows it: in the
@@ -186,11 +180,7 @@ impl GameTools for HelloTools {
     ) -> Result<Shot, String> {
         let mut h = Start::from_options(options)?.harness();
         script.play(&mut h);
-        Ok(Shot {
-            image: picture(&h, scale.unwrap_or(1))?,
-            shows: h.top_screen().to_owned(),
-            warning: None,
-        })
+        Ok(Shot::new(picture(&h, scale.unwrap_or(1))?, h.top_screen()))
     }
 
     /// The frame as [`one_bit_picture`] paints it: the same on every
@@ -204,19 +194,15 @@ impl GameTools for HelloTools {
     ) -> Result<Shot, String> {
         let mut h = Start::from_options(options)?.harness();
         script.play(&mut h);
-        Ok(Shot {
-            image: one_bit_picture(&h, scale.unwrap_or(1))?,
-            shows: h.top_screen().to_owned(),
-            warning: None,
-        })
+        Ok(Shot::new(
+            one_bit_picture(&h, scale.unwrap_or(1))?,
+            h.top_screen(),
+        ))
     }
 
     fn lang(&self) -> Result<GameLang, String> {
         let game = loaded()?;
-        Ok(GameLang {
-            lang: game.lang().clone(),
-            variants: Vec::new(),
-        })
+        Ok(GameLang::new(game.lang().clone(), Vec::new()))
     }
 
     fn check(&self) -> Result<Vec<ContentError>, String> {
@@ -312,11 +298,11 @@ impl GameTools for HelloTools {
 
     /// One pack for every target: the game's files, its text baked.
     fn bake(&self, _target: Option<&str>) -> Result<GameBake, String> {
-        Ok(GameBake {
-            bake: crate::bake(),
-            bundle: Bundle::new(vec![crate::layer()]),
-            formats: crate::formats(),
-        })
+        Ok(GameBake::new(
+            crate::bake(),
+            Bundle::new(vec![crate::layer()]),
+            crate::formats(),
+        ))
     }
 }
 
@@ -363,20 +349,17 @@ pub fn scene(h: &Harness<Hello>) -> Result<Scene, String> {
     let map = screen.scene(StageScreen::view_tiles(h.ctx()));
     let state = &screen.stage;
     let at = |p: Pos| json!({ "x": p.x, "y": p.y });
-    Ok(Scene {
-        screen: "stage".to_owned(),
-        kind: "grid map".to_owned(),
-        text: map.to_text(&Terrain),
-        data: json!({
-            "turn": state.turn(),
-            "to_move": format!("{:?}", state.side_to_move()),
-            "hero": at(state.hero()),
-            "foe": at(state.foe()),
-            "goal": at(state.goal()),
-            "outcome": state.outcome().map(|o| format!("{o:?}")),
-            "commands": screen.commands.len(),
-        }),
-    })
+    let mut scene = Scene::new("stage", "grid map", map.to_text(&Terrain));
+    scene.data = json!({
+        "turn": state.turn(),
+        "to_move": format!("{:?}", state.side_to_move()),
+        "hero": at(state.hero()),
+        "foe": at(state.foe()),
+        "goal": at(state.goal()),
+        "outcome": state.outcome().map(|o| format!("{o:?}")),
+        "commands": screen.commands.len(),
+    });
+    Ok(scene)
 }
 
 /// What happened in the rules of the stage in `h`, if one is open.
@@ -409,14 +392,11 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
         seed,
         commands: report.commands.clone(),
     };
-    Ok(Play {
-        seed,
-        outcome: outcome.to_owned(),
-        turns: report.turns,
-        commands: u32::try_from(report.commands.len()).unwrap_or(u32::MAX),
-        measures: BTreeMap::from([("foe trips".to_owned(), trips)]),
-        record: ron::to_string(&record).ok(),
-    })
+    let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
+    let mut play = Play::new(seed, outcome, report.turns, commands);
+    play.measures = BTreeMap::from([("foe trips".to_owned(), trips)]);
+    play.record = ron::to_string(&record).ok();
+    Ok(play)
 }
 
 /// How a playtest measures a try of the stage: `won` (1 if your piece
@@ -498,24 +478,22 @@ pub fn playtest_checks() -> Result<Vec<Check>, String> {
 pub fn playtest_plan() -> Result<PlaytestPlan, String> {
     let stage = Stage::new(&loaded()?.stage_map, 0)?;
     let checks = playtest_checks()?;
-    Ok(PlaytestPlan {
-        title: "the stage (files/stage.map)".to_owned(),
-        entrants: ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
-        groups: BTreeMap::new(),
-        default_entrants: Vec::new(),
-        checks: Box::new(move |names| {
+    Ok(PlaytestPlan::new(
+        "the stage (files/stage.map)",
+        ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
+        Box::new(move |names| {
             checks
                 .iter()
                 .filter(|c| c.entrants().iter().all(|e| names.contains(e)))
                 .cloned()
                 .collect()
         }),
-        play: Box::new(move |entrant, seed, turns| {
+        Box::new(move |entrant, seed, turns| {
             let mut tries = play_tries(&stage, &ENTRANTS[entrant], seed..seed + 1, turns)
                 .map_err(|e| e.to_string())?;
             tries.pop().ok_or_else(|| "no try".to_owned())
         }),
-    })
+    ))
 }
 
 /// [`ENTRANTS`] play the stage as `tries` says, judged by
@@ -702,27 +680,25 @@ pub fn autobalance_plan(path: PathBuf) -> Result<AutobalancePlan, String> {
     let mut checks = playtest_checks()?;
     checks.extend(file.checks.iter().cloned());
     let (trip, head_start) = knobs(file.tuning);
-    Ok(AutobalancePlan {
-        title: format!("the stage (files/stage.map), tuned as {BALANCE_FILE} says"),
-        entrants: ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
-        groups: BTreeMap::new(),
-        default_entrants: Vec::new(),
-        checks: Box::new(move |names| {
+    Ok(AutobalancePlan::new(
+        format!("the stage (files/stage.map), tuned as {BALANCE_FILE} says"),
+        ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
+        Box::new(move |names| {
             checks
                 .iter()
                 .filter(|c| c.entrants().iter().all(|e| names.contains(e)))
                 .cloned()
                 .collect()
         }),
-        stage: Box::new(Tunable {
+        Box::new(Tunable::new(
             stage,
-            knobs: vec![Box::new(trip), Box::new(head_start)],
-            play: Box::new(|stage, entrant, seed, turns| {
+            vec![Box::new(trip), Box::new(head_start)],
+            Box::new(|stage, entrant, seed, turns| {
                 let mut tries = play_tries(stage, &ENTRANTS[entrant], seed..seed + 1, turns)
                     .map_err(|e| e.to_string())?;
                 tries.pop().ok_or_else(|| "no try".to_owned())
             }),
-            write: Box::new(move |stage: &Stage| {
+            Box::new(move |stage: &Stage| {
                 let text = balance_text(&Balance {
                     tuning: stage.tuning(),
                     checks: file.checks.clone(),
@@ -730,8 +706,8 @@ pub fn autobalance_plan(path: PathBuf) -> Result<AutobalancePlan, String> {
                 std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
                 Ok(vec![BALANCE_FILE.to_owned()])
             }),
-        }),
-    })
+        )),
+    ))
 }
 
 #[cfg(test)]

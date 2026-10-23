@@ -88,10 +88,8 @@ fn seed_ranges_judged_in_any_order_give_the_same_report() {
 
 /// `playtest`'s input of fifty tries, with `more`.
 fn input(more: impl FnOnce(&mut PlaytestInput)) -> PlaytestInput {
-    let mut input = PlaytestInput {
-        tries: Some(50),
-        ..PlaytestInput::default()
-    };
+    let mut input = PlaytestInput::default();
+    input.tries = Some(50);
     more(&mut input);
     input
 }
@@ -188,16 +186,9 @@ fn the_command_writes_the_json_answer_to_its_report_file() {
 #[test]
 fn the_random_hero_trips_the_foe_as_often_as_in_bots() {
     // `bots` plays the same games: a random hero of the seed, the chaser.
-    let plays = bots(
-        &HelloTools,
-        &BotsInput {
-            games: 50,
-            ..BotsInput::default()
-        },
-    )
-    .result
-    .unwrap()
-    .plays;
+    let mut fifty_games = BotsInput::default();
+    fifty_games.games = 50;
+    let plays = bots(&HelloTools, &fifty_games).result.unwrap().plays;
     let report = fifty();
     let random = &report.entrants[0];
     assert_eq!(random.name, "random");

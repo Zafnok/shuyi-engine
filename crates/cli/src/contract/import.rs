@@ -39,6 +39,9 @@ pub const MAX_FOLDER_BYTES: usize = 64 << 20;
 /// What `import` reads.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An input: built with `ImportInput::new` (or `default()`) and its fields
+// assigned, it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct ImportInput {
     /// The file, from the project's root (or the working folder outside a
     /// project).
@@ -49,6 +52,17 @@ pub struct ImportInput {
     /// Whether to give the asset itself, not only its summary.
     #[serde(default)]
     pub print: bool,
+}
+
+impl ImportInput {
+    /// The file `file`, read as every kind, summarised (not printed).
+    pub fn new(file: impl Into<String>) -> Self {
+        Self {
+            file: file.into(),
+            kind: None,
+            print: false,
+        }
+    }
 }
 
 /// The file read as one kind.

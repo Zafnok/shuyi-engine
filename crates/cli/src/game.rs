@@ -34,8 +34,10 @@ use crate::contract::session::Session;
 use crate::frame_png::{Script, Shot};
 use crate::project::Project;
 
-/// An option a game adds to `frame-png`.
+/// An option a game adds to `frame-png`. Build it with
+/// [`GameOption::new`] (ADR-0039).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct GameOption {
     /// The flag (`--light`).
     pub flag: &'static str,
@@ -45,6 +47,25 @@ pub struct GameOption {
     /// What it does, for the usage text (lines after the first are
     /// indented under it).
     pub help: &'static str,
+}
+
+impl GameOption {
+    /// The flag `flag`, explained by `help`, taking no value
+    /// ([`with_value`](Self::with_value) names one).
+    #[must_use]
+    pub const fn new(flag: &'static str, help: &'static str) -> Self {
+        Self {
+            flag,
+            value: None,
+            help,
+        }
+    }
+
+    /// The option with its value called `value` in the usage text.
+    #[must_use]
+    pub const fn with_value(self, value: Option<&'static str>) -> Self {
+        Self { value, ..self }
+    }
 }
 
 /// A game option as given.
@@ -58,8 +79,10 @@ pub struct GameArg {
     pub value: Option<String>,
 }
 
-/// A game's languages, for `lang-status`.
+/// A game's languages, for `lang-status`. Build it with
+/// [`GameLang::new`] (ADR-0039).
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct GameLang {
     /// The game's English and its packs, with the data's and dialogue's
     /// English.
@@ -69,8 +92,18 @@ pub struct GameLang {
     pub variants: Vec<String>,
 }
 
-/// What a game bakes into its pack ([`GameTools::bake`]).
+impl GameLang {
+    /// The game's languages `lang`, a pack's line in the variants
+    /// `variants`.
+    pub fn new(lang: Lang, variants: Vec<String>) -> Self {
+        Self { lang, variants }
+    }
+}
+
+/// What a game bakes into its pack ([`GameTools::bake`]). Build it with
+/// [`GameBake::new`] (ADR-0039).
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct GameBake {
     /// Which assets of which kinds, and the game's stamp.
     pub bake: Bake,
@@ -81,9 +114,22 @@ pub struct GameBake {
     pub formats: Formats,
 }
 
+impl GameBake {
+    /// The bake `bake` of the sources `bundle`, read with `formats`.
+    pub fn new(bake: Bake, bundle: Bundle, formats: Formats) -> Self {
+        Self {
+            bake,
+            bundle,
+            formats,
+        }
+    }
+}
+
 /// A skin's one-bit look ([`GameTools::one_bit`]): its palette of roles
-/// and the pattern map beside it (ADR-0008 §4).
+/// and the pattern map beside it (ADR-0008 §4). Build it with
+/// [`OneBitSkin::new`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct OneBitSkin {
     /// The palette's file, as messages show it.
     pub palette_file: String,
@@ -96,10 +142,30 @@ pub struct OneBitSkin {
     pub map: PatternMapDef,
 }
 
+impl OneBitSkin {
+    /// The palette `palette` from the file `palette_file`, and the pattern
+    /// map `map` from `map_file`.
+    pub fn new(
+        palette_file: impl Into<String>,
+        palette: PaletteDef,
+        map_file: impl Into<String>,
+        map: PatternMapDef,
+    ) -> Self {
+        Self {
+            palette_file: palette_file.into(),
+            palette,
+            map_file: map_file.into(),
+            map,
+        }
+    }
+}
+
 /// What `playtest` plays on one of the game's stages
 /// ([`GameTools::playtest_plan`]): its entrants, its checks, and how one
 /// try is played. The command picks the entrants asked for, plays their
-/// tries on every core, times them and judges them once.
+/// tries on every core, times them and judges them once. Build it with
+/// [`PlaytestPlan::new`] and assign the rest (ADR-0039).
+#[non_exhaustive]
 pub struct PlaytestPlan {
     /// Shown at the top of the report: the stage and its tier, say.
     pub title: String,
@@ -122,6 +188,28 @@ pub struct PlaytestPlan {
     pub play: PlayTry,
 }
 
+impl PlaytestPlan {
+    /// The plan titled `title`: `entrants` judged by `checks`, a try played
+    /// by `play`. It has no [`groups`](Self::groups), and every entrant
+    /// plays unless `--entrant` says ([`default_entrants`](Self::default_entrants)
+    /// empty).
+    pub fn new(
+        title: impl Into<String>,
+        entrants: Vec<(String, Option<String>)>,
+        checks: PlaytestChecks,
+        play: PlayTry,
+    ) -> Self {
+        Self {
+            title: title.into(),
+            entrants,
+            groups: BTreeMap::new(),
+            default_entrants: Vec::new(),
+            checks,
+            play,
+        }
+    }
+}
+
 /// A plan's checks ([`PlaytestPlan::checks`]): given the names of the
 /// entrants that play, the checks over them.
 pub type PlaytestChecks = Box<dyn Fn(&[&str]) -> Vec<Check> + Send + Sync>;
@@ -135,7 +223,9 @@ pub type PlayTry = Box<dyn Fn(usize, u64, u32) -> Result<Tried, String> + Send +
 /// as a [`PlaytestPlan`] says, and the stage it may change, its type the
 /// game's ([`Tunable`]). The command picks the entrants asked for and runs
 /// the search (`shuyi_core::autobalance_by`), each setting's tries played
-/// on every core and judged once.
+/// on every core and judged once. Build it with [`AutobalancePlan::new`]
+/// and assign the rest (ADR-0039).
+#[non_exhaustive]
 pub struct AutobalancePlan {
     /// Shown at the top of the answer: the stage and its tier, say.
     pub title: String,
@@ -155,9 +245,32 @@ pub struct AutobalancePlan {
     pub stage: Box<dyn TunableStage>,
 }
 
+impl AutobalancePlan {
+    /// The plan titled `title`: `entrants` judged by `checks` on `stage`.
+    /// It has no [`groups`](Self::groups), and every entrant plays unless
+    /// `--entrant` says ([`default_entrants`](Self::default_entrants)
+    /// empty).
+    pub fn new(
+        title: impl Into<String>,
+        entrants: Vec<(String, Option<String>)>,
+        checks: PlaytestChecks,
+        stage: Box<dyn TunableStage>,
+    ) -> Self {
+        Self {
+            title: title.into(),
+            entrants,
+            groups: BTreeMap::new(),
+            default_entrants: Vec::new(),
+            checks,
+            stage,
+        }
+    }
+}
+
 /// The stage an [`AutobalancePlan`] may change, of the game's stage
 /// definition type `S`: the command never sees `S`, only what the search
-/// found ([`TunableStage`]).
+/// found ([`TunableStage`]). Build it with [`Tunable::new`] (ADR-0039).
+#[non_exhaustive]
 pub struct Tunable<S> {
     /// The stage as authored.
     pub stage: S,
@@ -172,6 +285,24 @@ pub struct Tunable<S> {
     /// Writes a changed stage back to the game's files (`--apply`): the
     /// files written, as the game shows them.
     pub write: StageWrite<S>,
+}
+
+impl<S> Tunable<S> {
+    /// The stage `stage`, changed by `knobs`, a try on it played by `play`
+    /// and a changed one written by `write`.
+    pub fn new(
+        stage: S,
+        knobs: Vec<Box<dyn Knob<S>>>,
+        play: StagePlay<S>,
+        write: StageWrite<S>,
+    ) -> Self {
+        Self {
+            stage,
+            knobs,
+            play,
+            write,
+        }
+    }
 }
 
 /// A [`Tunable`]'s one try: the stage, entrant index, seed, the turn it
@@ -461,6 +592,7 @@ pub fn run_in_game_program(project: &Project, command: &str, args: &[String]) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shuyi_core::bots::playtest::Band;
 
     /// A game that adds nothing to `frame-png`.
     struct Plain;
@@ -562,5 +694,83 @@ mod tests {
             config: crate::project::Config::default(),
         };
         assert_eq!(run_in_game_program(&project, "frame-png", &[]), 3);
+    }
+
+    #[test]
+    fn each_new_gives_the_literal_it_replaces() {
+        const SEED: GameOption = GameOption::new("--seed", "seed it").with_value(Some("N"));
+        let literal = GameOption {
+            flag: "--seed",
+            value: Some("N"),
+            help: "seed it",
+        };
+        assert_eq!(SEED, literal);
+        let plain = GameOption::new("--hard", "harder");
+        assert_eq!(
+            (plain.flag, plain.value, plain.help),
+            ("--hard", None, "harder")
+        );
+        let lang = GameLang::new(Lang::default(), vec!["m".to_owned()]);
+        assert_eq!(lang.variants, ["m"]);
+        let skin = OneBitSkin::new(
+            "p.ron",
+            PaletteDef::default(),
+            "m.ron",
+            PatternMapDef::default(),
+        );
+        let literal = OneBitSkin {
+            palette_file: "p.ron".to_owned(),
+            palette: PaletteDef::default(),
+            map_file: "m.ron".to_owned(),
+            map: PatternMapDef::default(),
+        };
+        assert_eq!(skin, literal);
+        let made = GameBake::new(Bake::new("v1"), Bundle::new(Vec::new()), Formats::new());
+        let literal = GameBake {
+            bake: Bake::new("v1"),
+            bundle: Bundle::new(Vec::new()),
+            formats: Formats::new(),
+        };
+        assert_eq!(format!("{made:?}"), format!("{literal:?}"));
+    }
+
+    #[test]
+    fn a_plan_starts_with_no_groups_and_every_entrant_by_default() {
+        let entrants = vec![
+            ("a".to_owned(), None),
+            ("b".to_owned(), Some("hard".to_owned())),
+        ];
+        let plan = PlaytestPlan::new(
+            "stage",
+            entrants.clone(),
+            Box::new(|names| vec![Check::rate(names[0], Vec::new(), Band { min: 0, max: 100 })]),
+            Box::new(|_, _, _| Err("no try".to_owned())),
+        );
+        assert_eq!(plan.title, "stage");
+        assert_eq!(plan.entrants, entrants);
+        assert!(plan.groups.is_empty() && plan.default_entrants.is_empty());
+        assert_eq!((plan.checks)(&["a"]).len(), 1);
+        assert_eq!((plan.play)(0, 0, 1).unwrap_err(), "no try");
+        let tunable = Tunable::new(
+            7_u32,
+            Vec::new(),
+            Box::new(|stage: &u32, _, _, _| Err(format!("stage {stage}"))),
+            Box::new(|_: &u32| Ok(vec!["s.ron".to_owned()])),
+        );
+        assert_eq!(tunable.stage, 7);
+        assert!(tunable.knobs.is_empty());
+        assert_eq!((tunable.play)(&3, 0, 0, 1).unwrap_err(), "stage 3");
+        assert_eq!((tunable.write)(&3).unwrap(), ["s.ron"]);
+        let plan = AutobalancePlan::new(
+            "tuned",
+            entrants.clone(),
+            Box::new(|_| Vec::new()),
+            Box::new(tunable),
+        );
+        assert_eq!(plan.title, "tuned");
+        assert_eq!(plan.entrants, entrants);
+        assert!(plan.groups.is_empty() && plan.default_entrants.is_empty());
+        let got = (plan.checks)(&["a"]);
+        assert!(got.is_empty(), "{got:?}");
     }
 }

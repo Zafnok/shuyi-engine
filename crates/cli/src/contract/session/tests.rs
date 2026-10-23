@@ -214,3 +214,14 @@ mod toy {
         assert_eq!(s.log().len(), LOG_LINES);
     }
 }
+
+#[test]
+fn a_new_scene_has_no_data() {
+    let literal = Scene {
+        screen: "stage".to_owned(),
+        kind: "grid map".to_owned(),
+        text: "@ (1,1)".to_owned(),
+        data: serde_json::Value::Null,
+    };
+    assert_eq!(Scene::new("stage", "grid map", "@ (1,1)"), literal);
+}

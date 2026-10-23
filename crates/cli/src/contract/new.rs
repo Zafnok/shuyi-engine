@@ -76,6 +76,8 @@ impl Template {
 /// Where the new game gets the engine from.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "from", rename_all = "kebab-case", deny_unknown_fields)]
+// More places may come (ADR-0039).
+#[non_exhaustive]
 pub enum Engine {
     /// The engine's repository at its `main` branch.
     #[default]
@@ -95,6 +97,9 @@ pub enum Engine {
 /// What `new` makes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An input: built with `NewInput::new` (a template and a folder have no
+// default) and its fields assigned, it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct NewInput {
     /// The template.
     pub template: Template,
@@ -107,6 +112,19 @@ pub struct NewInput {
     /// Where it gets the engine from.
     #[serde(default)]
     pub engine: Engine,
+}
+
+impl NewInput {
+    /// A game from `template` in the folder `dir`, named for its folder,
+    /// on the engine's `main` ([`Engine::Main`]).
+    pub fn new(template: Template, dir: impl Into<String>) -> Self {
+        Self {
+            template,
+            dir: dir.into(),
+            name: None,
+            engine: Engine::Main,
+        }
+    }
 }
 
 /// What `new` made.

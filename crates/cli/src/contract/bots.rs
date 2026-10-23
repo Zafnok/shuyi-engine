@@ -22,6 +22,9 @@ pub const UNFINISHED: &str = "unfinished";
 /// What `bots` plays.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
 pub struct BotsInput {
     /// How many games.
     pub games: u32,
@@ -47,6 +50,8 @@ impl Default for BotsInput {
 /// One play.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An answer a game builds with `Play::new`: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct Play {
     /// Its seed.
     pub seed: u64,
@@ -60,6 +65,21 @@ pub struct Play {
     pub measures: BTreeMap<String, i64>,
     /// Its record, in the game's record format, for `replay`.
     pub record: Option<String>,
+}
+
+impl Play {
+    /// The play seeded `seed` that ended `outcome` on turn `turns` after
+    /// `commands` commands, with no measures and no record.
+    pub fn new(seed: u64, outcome: impl Into<String>, turns: u32, commands: u32) -> Self {
+        Self {
+            seed,
+            outcome: outcome.into(),
+            turns,
+            commands,
+            measures: BTreeMap::new(),
+            record: None,
+        }
+    }
 }
 
 /// How a number spread over the plays.
@@ -414,5 +434,18 @@ mod tests {
             usage.ends_with("\n  --seed N             the seed\n"),
             "{usage}"
         );
+    }
+
+    #[test]
+    fn a_new_play_has_no_measures_and_no_record() {
+        let literal = Play {
+            seed: 4,
+            outcome: "won".to_owned(),
+            turns: 9,
+            commands: 18,
+            measures: BTreeMap::new(),
+            record: None,
+        };
+        assert_eq!(Play::new(4, "won", 9, 18), literal);
     }
 }

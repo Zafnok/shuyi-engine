@@ -313,3 +313,14 @@ fn what_new_made_reads_for_people() {
         "new: Game (game) in g, 2 file(s)\n  Cargo.toml\n  README.md\n"
     );
 }
+
+#[test]
+fn a_new_input_names_the_game_for_its_folder_on_mains_engine() {
+    let literal = NewInput {
+        template: Template::Blank,
+        dir: "games/moon".to_owned(),
+        name: None,
+        engine: Engine::Main,
+    };
+    assert_eq!(NewInput::new(Template::Blank, "games/moon"), literal);
+}

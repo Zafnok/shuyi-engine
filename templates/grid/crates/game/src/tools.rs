@@ -29,11 +29,11 @@ use crate::stage::{StageScreen, Terrain};
 use crate::{Action, Data, FONT_PNG};
 
 /// The game's own options, for `frame-png`, `run` and `scene`.
-pub const OPTIONS: [GameOption; 1] = [GameOption {
-    flag: "--seed",
-    value: Some("N"),
-    help: "seed the first stage's luck with N (0 by default)",
-}];
+pub const OPTIONS: [GameOption; 1] = [GameOption::new(
+    "--seed",
+    "seed the first stage's luck with N (0 by default)",
+)
+.with_value(Some("N"))];
 
 /// The first stage's seed `options` ask for.
 pub fn seed_of(options: &[GameArg]) -> Result<u64, String> {
@@ -88,20 +88,17 @@ pub fn scene(h: &Harness<Data>) -> Result<Scene, String> {
     let map = screen.scene(StageScreen::view_tiles());
     let stage = &screen.stage;
     let at = |p: Pos| json!({ "x": p.x, "y": p.y });
-    Ok(Scene {
-        screen: "stage".to_owned(),
-        kind: "grid map".to_owned(),
-        text: map.to_text(&Terrain),
-        data: json!({
-            "seed": screen.seed,
-            "turn": stage.turn(),
-            "hero": at(stage.hero()),
-            "wanderer": at(stage.wanderer()),
-            "goal": at(stage.goal()),
-            "outcome": stage.outcome().map(|o| format!("{o:?}")),
-            "commands": screen.commands.len(),
-        }),
-    })
+    let mut scene = Scene::new("stage", "grid map", map.to_text(&Terrain));
+    scene.data = json!({
+        "seed": screen.seed,
+        "turn": stage.turn(),
+        "hero": at(stage.hero()),
+        "wanderer": at(stage.wanderer()),
+        "goal": at(stage.goal()),
+        "outcome": stage.outcome().map(|o| format!("{o:?}")),
+        "commands": screen.commands.len(),
+    });
+    Ok(scene)
 }
 
 /// What happened in the rules of the stage in `h`.
@@ -149,14 +146,11 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
         commands: report.commands.clone(),
     };
     let distance = Pos::manhattan(stage.hero(), stage.goal());
-    Ok(Play {
-        seed,
-        outcome: outcome.to_owned(),
-        turns: report.turns,
-        commands: u32::try_from(report.commands.len()).unwrap_or(u32::MAX),
-        measures: BTreeMap::from([("tiles from the goal".to_owned(), i64::from(distance))]),
-        record: ron::to_string(&record).ok(),
-    })
+    let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
+    let mut play = Play::new(seed, outcome, report.turns, commands);
+    play.measures = BTreeMap::from([("tiles from the goal".to_owned(), i64::from(distance))]);
+    play.record = ron::to_string(&record).ok();
+    Ok(play)
 }
 
 /// The game's tools.
@@ -176,18 +170,11 @@ impl GameTools for Tools {
     ) -> Result<Shot, String> {
         let mut h = harness(seed_of(options)?);
         script.play(&mut h);
-        Ok(Shot {
-            image: picture(&h, scale.unwrap_or(1))?,
-            shows: h.top_screen().to_owned(),
-            warning: None,
-        })
+        Ok(Shot::new(picture(&h, scale.unwrap_or(1))?, h.top_screen()))
     }
 
     fn lang(&self) -> Result<GameLang, String> {
-        Ok(GameLang {
-            lang: loaded()?.lang().clone(),
-            variants: Vec::new(),
-        })
+        Ok(GameLang::new(loaded()?.lang().clone(), Vec::new()))
     }
 
     fn check(&self) -> Result<Vec<ContentError>, String> {

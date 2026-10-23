@@ -21,12 +21,10 @@ use shuyi_core::{BalanceSettings, Stop};
 /// Seeds 0 to 49 decide, quick runs of 10, at most 40 runs: the search of
 /// `balance.rs`.
 fn input(more: impl FnOnce(&mut AutobalanceInput)) -> AutobalanceInput {
-    let mut input = AutobalanceInput {
-        tries: Some(50),
-        quick: Some(10),
-        budget: Some(40),
-        ..AutobalanceInput::default()
-    };
+    let mut input = AutobalanceInput::default();
+    input.tries = Some(50);
+    input.quick = Some(10);
+    input.budget = Some(40);
     more(&mut input);
     input
 }

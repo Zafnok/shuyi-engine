@@ -448,7 +448,7 @@ pin follows this one.
   remaining types are past one PR's 600 lines:
   [2024](2024-the-engines-other-config-and-views-moved-onto-constructors-shuyi-ui-shuyi-platform-shuyi-assets-and-shuyi-core.md)
   (`shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core`) and
-  [2025](../open/2025-the-contracts-inputs-and-the-game-tools-types-moved-onto-constructors-in-shuyi-cli.md)
+  [2025](../done/2025-the-contracts-inputs-and-the-game-tools-types-moved-onto-constructors-in-shuyi-cli.md)
   (`shuyi-cli`).
 - **Either order:** 2010 landed while this PR was open: ADR-0039 cites
   ADR-0038, and the `Breaking:` lines below answer its `api` job. 2321,

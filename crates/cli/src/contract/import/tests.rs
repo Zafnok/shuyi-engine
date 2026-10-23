@@ -298,3 +298,13 @@ fn a_ron_syntax_error_is_a_parse_problem_with_its_help() {
     assert_eq!(problem["line"], 1);
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn a_new_input_reads_every_kind_and_prints_nothing() {
+    let literal = ImportInput {
+        file: "a.map".to_owned(),
+        kind: None,
+        print: false,
+    };
+    assert_eq!(ImportInput::new("a.map"), literal);
+}

@@ -70,10 +70,8 @@ fn every_screen_a_tour_of_the_game_opens_is_one_the_check_knows() {
 fn check_target_checks_the_controls_with_the_games_tools() {
     let project =
         Project::load(Path::new(env!("CARGO_MANIFEST_DIR"))).unwrap_or_else(|e| panic!("{e}"));
-    let input = CheckInput {
-        target: Some("all".to_owned()),
-        ..CheckInput::default()
-    };
+    let mut input = CheckInput::default();
+    input.target = Some("all".to_owned());
     let answer = targets(&project.config, &project.root, &input, Some(&HelloTools));
     assert!(answer.ok, "{answer:?}");
     assert!(

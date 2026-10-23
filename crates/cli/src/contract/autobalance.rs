@@ -38,6 +38,9 @@ pub const MAX_BUDGET: u32 = 10_000;
 /// for the rest.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
 pub struct AutobalanceInput {
     /// The stage, one of the game's; needed when it has several.
     pub stage: Option<String>,

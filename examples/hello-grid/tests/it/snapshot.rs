@@ -45,9 +45,7 @@ fn the_title_and_the_end_as_text() {
 
 #[test]
 fn frame_png_paints_what_the_harness_shows() {
-    let script = Script {
-        steps: vec![Step::Keys("Enter Up Right Right".to_owned())],
-    };
+    let script = Script::new(vec![Step::Keys("Enter Up Right Right".to_owned())]);
     let options = [GameArg {
         flag: "--stage".to_owned(),
         value: None,
