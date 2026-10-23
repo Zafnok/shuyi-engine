@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2010 — Every PR shows its public API change, and a break needs a Breaking: line
@@ -391,4 +391,58 @@ for, and keep the listing diff, the semver findings and the CI job here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **`cargo xtask api`** (`crates/xtask/src/api.rs`, tests in
+  `api/tests.rs`) and CI's `api` job, as the Scope says. `changes.yml`
+  has the `crates` output, and `api` is in `ci-result`'s `needs`.
+  `ticket_id_from_branch` is `pub(crate)` and `breaking_lines` is new in
+  `tickets.rs`. ADR-0037 is the gate.
+- **The versions (step 1):**
+  - `cargo-semver-checks` 0.51.0 (2026-10-03), the newest; it reads the
+    rustdoc JSON of the pinned 1.98.1. `taiki-e/install-action`
+    v2.87.27 carries it.
+  - `cargo-public-api` 0.52.0 (2026-05-25), the newest. Its lockfile has
+    `rustdoc-types` 0.57.3, so it reads rustdoc JSON format 57 only.
+    install-action doesn't carry it: `cargo install --locked`.
+  - `nightly-2026-05-23`: the first 1.98.0 nightly (the workspace's
+    `rust-version` is 1.98), and its rustdoc writes format 57 (format 58
+    came in late June). It builds and lists every crate.
+  - `--release-type minor`: in 0.51.0 an explicit release type is used
+    as given, whatever the versions say (`check_release.rs`), and
+    `minor` runs only the lints whose required update is major. Without
+    it the tool derives the type from the versions, which would turn
+    every lint off once 2005 makes a crate 0.2.0. ADR-0037 §4.
+  - `--baseline-root target/api-base` finds the package in the base's
+    workspace, and `-p` checks a `publish = false` crate. 0.51.0 has no
+    machine-readable output: the text is parsed (`--- failure <lint>:`,
+    the items under `Failed in:`, and the `Summary` line on stderr).
+- **Fixtures (step 2)** in `crates/xtask/tests/fixtures/api/`, captured
+  from 0.51.0 on `shuyi-core` with the local paths shortened: a pass, one
+  finding (`function_missing`), two lints (`function_missing` and
+  `struct_missing`), and a build error (a re-export of an item made
+  `pub(crate)`). A body that doesn't type-check is no build error for
+  rustdoc, so the fixture breaks a re-export instead.
+- **Run locally** on Windows (GNU): a pass on `main`'s tip, and, in
+  about 2 minutes warm, on a working tree that made `ScriptedRng` `pub(crate)` and
+  added a function, a failure naming `shuyi-core`, `struct_missing` and
+  both paths of `ScriptedRng`, with the added function in the diff.
+- **The demo PR (step 5):** *(links below, once run).*
+- **Deviations:**
+  - **Size.** The diff is about 780 lines of code and 1000 of tests,
+    past the Implementation steps' 600. Moving the rule and the
+    `Breaking:` line to a follow-up would have left the listing diff,
+    the semver check and the job well past 600 too, and the open
+    tickets already lean on the `Breaking:` line, so it stayed whole.
+  - The `Breaking:` step went in the `work-ticket` skill's §5 step 2
+    (the completion notes), not step 1 (the docs).
+  - A test checks that `ci.yml` installs the nightly and the two tools at
+    the consts' versions.
+  - On a lost line without a semver finding the command also prints a
+    GitHub warning, besides the summary's.
+- **Docs:** the ADR, the four skills and `AGENTS.md` are the homes the
+  docs map gives these facts; `run-gates` and `ci.yml` stay a pair. No
+  rustdoc or game-facing doc changes: `xtask` is never shipped.
+- **Settled** the clauses in open tickets that waited on 2010
+  (`work-ticket` §5).
+- **For the game:** no API change, and no game PR.
+
+No break.

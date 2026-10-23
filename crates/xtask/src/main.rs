@@ -5,7 +5,9 @@
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]`
 
+mod api;
 mod docs;
 mod layers;
 mod links;
@@ -33,7 +35,13 @@ usage:
   cargo xtask check-layers
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
-      no device crate below them and the float ban in the simulations.";
+      no device crate below them and the float ban in the simulations.
+  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]
+      Show the public API change of the crates a game uses, against <rev> (by
+      default `git merge-base HEAD main`): the listing diff (cargo-public-api)
+      and the breaks (cargo-semver-checks), appending the Markdown to <file>.
+      With --pr-branch, a break needs a `Breaking:` line in the branch's
+      ticket (ADR-0037).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -44,6 +52,7 @@ fn main() -> ExitCode {
         Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("api") => api(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -81,6 +90,34 @@ fn ticket_lint(root: &Path, args: &[String]) -> ExitCode {
     };
     let found = tickets::run(root, pr_branch, &game);
     report("ticket-lint", &found.errors, &found.warnings)
+}
+
+fn api(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = api::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let outcome = api::run(root, &options, &api::System);
+    let mut errors = outcome.errors;
+    if !outcome.summary.is_empty() {
+        // A summary that can't be printed is still in the file.
+        let _ = writeln!(std::io::stdout().lock(), "{}", outcome.summary);
+        if let Some(path) = &options.summary
+            && let Err(e) = append(path, &outcome.summary)
+        {
+            errors.push(format!("{}: {e}", path.display()));
+        }
+    }
+    report("api", &errors, &outcome.warnings)
+}
+
+/// Appends `text` to the file at `path`, creating it if needed.
+fn append(path: &Path, text: &str) -> std::io::Result<()> {
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    writeln!(file, "{text}")
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

@@ -230,8 +230,8 @@ None.
   with `Window::new`, which compiles unchanged; if not, `Window` keeps
   its fields, so its literal compiles. Either way it may move to
   `Window::console`. The game's PR that moves the pin follows this one,
-  and the PR description says so. If 2010 is done, the PR carries the
-  `Breaking:` line its job asks for.
+  and the PR description says so. The PR carries any `Breaking:` line
+  2010's job asks for.
 - **Either order:**
   - with 2321 (`Window::vsync`): if 2321 is done, `Window::console` sets
     `vsync` to 2321's default (through `Window::new` if 2013 is done);

@@ -254,8 +254,8 @@ None.
 - **For the game:** the API breaks. `Ctx::keyboard` and
   `Setup::keyboard` become `ctx.platform.keyboard` and
   `setup.platform.keyboard`, and any `Platform` of the game's own
-  implements `facts`. Say so in the PR (with 2010's `Breaking:` line if
-  2010 is done). The game's PR that moves the pin follows it.
+  implements `facts`. Say so in the PR, with 2010's `Breaking:` line.
+  The game's PR that moves the pin follows it.
 - **Size:** if the PR passes about 600 changed lines, the two
   templates' part (Cancel and the help where `!can_quit()`, the grid
   template's new keys, both `AGENTS.md` lines, and the 2803 clause) goes

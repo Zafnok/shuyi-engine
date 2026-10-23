@@ -74,9 +74,11 @@ Set `status: in-progress` in the ticket's frontmatter.
   and a non-crate asset gets a row in `THIRD_PARTY_ASSETS.md`.
 - **A new architectural choice** needs an ADR in the same PR (the
   `write-adr` skill).
-- **Public API:** after the first crates.io release, a breaking change
-  needs a version bump and a line in `CHANGELOG.md`. The game's pin
-  update is a game PR.
+- **Public API:** CI's `api` job finds the breaks on every PR, before
+  and after the first crates.io release (ADR-0037): a break needs a
+  `Breaking:` line (§5). After that release, a break also needs a
+  version bump and a line in `CHANGELOG.md`. The game's pin update is a
+  game PR.
 
 ## 4. Verify
 
@@ -95,6 +97,15 @@ the PR.
    ticket (`game#NNNN`) also lists the game PR that will move the pin to
    this change (`Zafnok/visions-of-shuyi#N`), or the game ticket that
    will, if that PR doesn't exist yet.
+
+   Add one `Breaking:` line per break of the public API, a file format
+   or a golden value, in the notes (ADR-0037 §6):
+
+   ```text
+   Breaking: <crate>[, <crate>…]: <item>: <what a game changes>
+   ```
+
+   CI's `api` job fails a break whose crate no line names.
 3. Set `status: done` and `completed: YYYY-MM-DD`.
 4. `git mv tickets/open/<file>.md tickets/done/<file>.md`
 5. **Settle what named this ticket.** Run `grep -rnw "<NNNN>"
@@ -115,7 +126,8 @@ the PR.
 - Title: `[NNNN] <ticket title>`. **No bare `@word`** in a title, body,
   commit message or comment. Use backticks.
 - Body: summary bullets, the acceptance criteria (checked), follow-up
-  tickets, and a `Nick input:` line.
+  tickets, the ticket's `Breaking:` lines (or "No break"), and a `Nick
+  input:` line.
 - If the game must change too (a pin bump, a call site), write or link
   the game ticket. Say in both PRs which merges first: the engine's.
 - Don't run mutation testing locally; CI runs it. Push, open the PR,

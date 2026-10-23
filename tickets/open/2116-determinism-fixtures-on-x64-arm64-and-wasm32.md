@@ -334,15 +334,12 @@ is 2110's and 2111's.
        message says to write one.
     Without `--pr-branch` (a local run) it prints what it found and
     passes.
-  - Every `git` and `cargo` call goes through one function the tests
-    replace, as `tickets.rs` splits `list_on_github` (the call) from
-    `gh_listing` (the logic). If 2010 is done, use its `Runner`.
-  - **Either order with 2010:** if it is done, reuse its
-    `breaking_lines` and the `pub(crate)` `ticket_id_from_branch`
-    (`crates/xtask/src/tickets.rs`, line 518 today). If not, make
-    `ticket_id_from_branch` `pub(crate)` and write `breaking_lines(body:
-    &str) -> Vec<&str>` there as 2010's scope describes it, and 2010
-    reuses both.
+  - Every `git` and `cargo` call goes through 2010's `Runner` trait
+    (`crates/xtask/src/api.rs`), which the tests fake, as `api.rs`'s
+    own tests do.
+  - **With 2010** (done): reuse its `breaking_lines` and
+    `ticket_id_from_branch`, both `pub(crate)` in
+    `crates/xtask/src/tickets.rs`.
 
 - **The rule, written down:**
   - **Either order with 2005:** its version-policy ADR counts a changed

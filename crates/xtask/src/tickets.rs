@@ -713,10 +713,39 @@ fn check_pr_branch(tickets: &[Ticket], branch: &str) -> Vec<String> {
     }
 }
 
-fn ticket_id_from_branch(branch: &str) -> Option<&str> {
+/// The ticket a branch named `t<NNNN>-<slug>` is for, or `None` for any
+/// other branch (`main`, `sonar/…`, `dependabot/…`, `game-NNNN-…`).
+pub(crate) fn ticket_id_from_branch(branch: &str) -> Option<&str> {
     let rest = branch.strip_prefix('t')?;
     let (id, _slug) = rest.split_once('-')?;
     is_four_digits(id).then_some(id)
+}
+
+/// The heading of the section a ticket's `Breaking:` lines go in.
+const COMPLETION_NOTES: &str = "## Completion notes";
+
+/// The `Breaking:` lines of a ticket (ADR-0037): each line under `## Completion
+/// notes` that starts with `Breaking:`, after an optional `- ` list marker,
+/// returned from `Breaking:` on. Lines in any other section don't count.
+pub(crate) fn breaking_lines(body: &str) -> Vec<&str> {
+    let mut in_notes = false;
+    let mut found = Vec::new();
+    // `lines` drops a CR before each LF too.
+    for line in body.lines() {
+        if line.starts_with("# ") || line.starts_with("## ") {
+            in_notes = line.trim_end() == COMPLETION_NOTES;
+            continue;
+        }
+        if !in_notes {
+            continue;
+        }
+        let text = line.trim_start();
+        let text = text.strip_prefix("- ").unwrap_or(text);
+        if text.starts_with("Breaking:") {
+            found.push(text);
+        }
+    }
+    found
 }
 
 #[cfg(test)]
@@ -1188,6 +1217,48 @@ README.md
         assert_eq!(ticket_id_from_branch("t304-pathfinding"), None);
         assert_eq!(ticket_id_from_branch("main"), None);
         assert_eq!(ticket_id_from_branch("t2304"), None);
+    }
+
+    // -- Breaking: lines --
+
+    #[test]
+    fn breaking_lines_reads_the_completion_notes_with_or_without_a_marker() {
+        let body = "# 2100 — A\n\n## Scope\n\nBreaking: shuyi-ui: not here\n\n\
+                    ## Completion notes\n\nDone.\n\n\
+                    Breaking: shuyi-core: `Grid::new`: pass the size.\n\
+                    - Breaking: shuyi-ui, shuyi-app: `Frame`: build it with `Frame::new`.\n\
+                    Not Breaking: this one.\n";
+        assert_eq!(
+            breaking_lines(body),
+            vec![
+                "Breaking: shuyi-core: `Grid::new`: pass the size.",
+                "Breaking: shuyi-ui, shuyi-app: `Frame`: build it with `Frame::new`.",
+            ]
+        );
+    }
+
+    #[test]
+    fn breaking_lines_reads_crlf_line_endings() {
+        let body = "## Completion notes\r\n\r\n- Breaking: shuyi-core: `f`: call `g`.\r\n";
+        assert_eq!(
+            breaking_lines(body),
+            vec!["Breaking: shuyi-core: `f`: call `g`."]
+        );
+    }
+
+    #[test]
+    fn breaking_lines_stop_at_the_next_section() {
+        let body = "## Completion notes\n\nBreaking: shuyi-core: `f`: call `g`.\n\n\
+                    ## Later\n\nBreaking: shuyi-ui: `h`: gone.\n";
+        assert_eq!(
+            breaking_lines(body),
+            vec!["Breaking: shuyi-core: `f`: call `g`."]
+        );
+    }
+
+    #[test]
+    fn breaking_lines_are_none_without_completion_notes() {
+        assert!(breaking_lines("## Scope\n\nBreaking: shuyi-core: `f`: call `g`.\n").is_empty());
     }
 
     // -- clauses about other tickets --

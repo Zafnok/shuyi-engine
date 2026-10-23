@@ -66,9 +66,11 @@ then stop.
 8. **PR:** title `[sonar #<n>] <issue title>`, body listing each acceptance
    criterion with what proves it, `Closes #<n>` (and the parent too, if this
    was its last open part), and any finding that no longer reproduced. No
-   bare `@word` anywhere (`AGENTS.md` rule 11). If the fix changes the
-   public API, say so, as `AGENTS.md` asks of every PR. Then stop: don't
-   pick up the next batch, or a sibling part, in the same session.
+   bare `@word` anywhere (`AGENTS.md` rule 11). A Sonar PR never breaks
+   the public API: CI's `api` job fails one that does (ADR-0037 §5).
+   Revert that part and write a ticket for it (`write-ticket`). Then
+   stop: don't pick up the next batch, or a sibling part, in the same
+   session.
 
 ## Rules that trip agents up here
 

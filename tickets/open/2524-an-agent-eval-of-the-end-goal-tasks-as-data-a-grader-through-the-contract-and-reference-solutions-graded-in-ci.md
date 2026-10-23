@@ -129,8 +129,8 @@ None. Spending money on agent runs is 2525's question.
     names in place of `--script` and key names.
   - The PR says the contract changed, that `Session` gained a default
     method, and that `Step` gained a variant: a game's exhaustive
-    `match` on `Step` needs an arm for it (a `Breaking:` line, if 2010
-    is done and `Step` isn't `#[non_exhaustive]` by then).
+    `match` on `Step` needs an arm for it (a `Breaking:` line, 2010,
+    if `Step` isn't `#[non_exhaustive]` by then).
   - **MCP** (1133, done): its `step` tool plays the contract's
     `Script`, so it gets `act` with it.
   - **Either order with 2521:** if 2521 is done, `attach` reads

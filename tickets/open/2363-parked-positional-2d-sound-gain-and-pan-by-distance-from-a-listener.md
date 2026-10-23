@@ -76,8 +76,8 @@ Planned around it:
   hands out;
 - 2218 (After MVP): writers of the engine's text formats, the audio
   manifest's among them;
-- 2010 and 2013 (MVP): a `Breaking:` line on a PR that breaks the API,
-  and the rules for public types that can grow;
+- 2010 (done) and 2013 (MVP): a `Breaking:` line on a PR that breaks
+  the API, and the rules for public types that can grow;
 - 3029 (After MVP): the player's rules shared by every backend, and the
   Playdate's audio, whose SDK sample player has a left and a right
   volume;

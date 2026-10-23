@@ -168,3 +168,10 @@ fn check_layers_takes_no_arguments() {
     assert!(!ok);
     assert!(err.contains("usage:"), "{err}");
 }
+
+#[test]
+fn api_refuses_an_unknown_option() {
+    let (ok, err) = xtask(&["api", "--bless"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}

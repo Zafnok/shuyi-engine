@@ -235,7 +235,7 @@ not parked.
 - **What changes for the game:** `Item` gains a variant, so an
   exhaustive `match` on `Item` breaks. The game has a few, in its map
   drawing and its tests, so its PR that moves the pin adds the arm. Say
-  so in this PR. If 2010 is done, the completion notes carry its
+  so in this PR. The completion notes carry 2010's
   `Breaking:` line (`Breaking: shuyi-ui: Item: a new variant, Shape;
   add an arm to an exhaustive match`). No game snapshot changes.
 

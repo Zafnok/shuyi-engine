@@ -258,8 +258,8 @@ None.
   with no wildcard arm, or builds `ScreenActions` as a struct literal,
   changes at its pin bump; a `tools.rs` that uses `ScreenActions::of`
   (as the templates and `examples/hello-grid` do) needs no change. The
-  PR says so, and the game's PR that moves the pin follows it. If 2010
-  is done, the completion notes carry its `Breaking:` lines
+  PR says so, and the game's PR that moves the pin follows it. The
+  completion notes carry 2010's `Breaking:` lines
   (`Breaking: shuyi-ui: FitRule: #[non_exhaustive] and a new variant,
   Taken; add a wildcard arm` and `Breaking: shuyi-ui: ScreenActions:
   #[non_exhaustive] with two new fields; build it with of, declared or

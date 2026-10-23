@@ -340,8 +340,8 @@ MVP, not parked.
 
 **For the game:** `RawInputEvent` gains variants, which breaks a
 `match` on it with no `_` arm, and `MenuView` gains a field, which
-breaks building one with a struct literal. The PR says so (a
-`Breaking:` line if 2010 is done), and the game's PR that moves its pin
+breaks building one with a struct literal. The PR says so, with a
+`Breaking:` line (2010), and the game's PR that moves its pin
 follows it. The rest is additive.
 
 **Out (do not do):**
@@ -399,8 +399,8 @@ follows it. The rest is additive.
    `crates/app/src/backend.rs`, `keys.rs` and `render.rs`,
    `crates/platform/src/platform.rs`, `harness.rs` and `headless.rs`,
    and Hello, Grid's `screens.rs`, `screens/stage.rs`, `skin.rs` and
-   `tests/it/main.rs`. Check whether 2333, 2355, 3042, 2518, 2010 and
-   2013 are done. If the follow-up for the other widgets doesn't exist,
+   `tests/it/main.rs`. Check whether 2333, 2355, 3042, 2518 and 2013
+   are done. If the follow-up for the other widgets doesn't exist,
    write it now (Out).
 2. Write the hit areas and the stack's rule, with their tests.
 3. Add the events, `Pointer`, `PointerInput`, `FrameInput::pointer` and

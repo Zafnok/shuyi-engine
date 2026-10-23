@@ -102,8 +102,8 @@ this ticket stops most of them from happening.
   breaks where a game builds `MapScene` with a struct literal.
 - 2305 (MVP): `BoxPlace` gains `narration`.
 - 2321 (MVP): `shuyi_app::Window` gains `vsync`.
-- 2010 (MVP) shows the public API change on every PR and asks for a
-  `Breaking:` line. Its either-order clause with 2013 is written.
+- 2010 (done, ADR-0037) shows the public API change on every PR (CI's
+  `api` job) and asks for a `Breaking:` line for each break.
 - 2005 (MVP) writes the version policy as an ADR and publishes 0.1. It
   waits for this ticket (an edit request there).
 - 2511 (done, ADR-0036) added `BasicGame`, with private fields, two
@@ -216,8 +216,8 @@ None.
   - **A table** of every engine type the templates and hello-grid build
     by literal (in `src/` and `tests/`): its crate, its kind (1 to 8),
     and whether it changes in this PR or in the follow-up.
-  - **Its neighbours:** 2010's ADR is the gate. 2005's version policy
-    cites this ADR and doesn't restate it.
+  - **Its neighbours:** ADR-0037 (2010) is the gate. 2005's version
+    policy cites this ADR and doesn't restate it.
   - Its row goes in `docs/adr/README.md`.
 - **`shuyi-app`** (`crates/app/src/lib.rs`):
   - `#[non_exhaustive]` on `Window`, `Icon`, `VoiceFiles` and
@@ -288,10 +288,10 @@ None.
 
 **Either order:**
 
-- **2010.** If it is done, the ADR cites 2010's ADR, and its `api` job
+- **2010** (done, ADR-0037). The ADR cites ADR-0037, and its `api` job
   reports this PR's breaks (each type made non-exhaustive); the
-  `Breaking:` lines below answer it. If not, write the lines in 2010's
-  form anyway, and 2010's ADR cites this one.
+  `Breaking:` lines below answer it. ADR-0037 §9 already leaves the
+  shape of public types to this ADR.
 - **2304.** If it is done, `MapScene` has its new field already, and
   `MapEdges` follows the ADR (four sides: a plain value). If not, 2304
   adds the field later, and it is additive.
@@ -338,8 +338,8 @@ pin follows this one.
 
 ## Implementation steps
 
-1. Read ADR-0024, `docs/platform-backends.md`, 2010 and 2005. Check
-   which of 2010, 2304, 2305, 2321, 1134, 2802, 2803, 2014, 3044,
+1. Read ADR-0024, ADR-0037 (2010), `docs/platform-backends.md` and
+   2005. Check which of 2304, 2305, 2321, 1134, 2802, 2803, 2014, 3044,
    3046 and 3048 are done. Search `tickets/done/` for "2013".
 2. List the engine types the templates and hello-grid build by literal:
    search `examples/hello-grid/` and `templates/` for `Name {`, where

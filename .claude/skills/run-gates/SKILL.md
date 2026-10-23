@@ -126,13 +126,31 @@ warnings show on the PR.
 Later tickets add their checks here, for example `check-keys` and
 `check-text` on the engine's own code (2006) and `check-skills`.
 
+## The public API (CI's `api` job)
+
+Not a local gate: it needs a nightly and two tools. CI runs it on every
+PR that changes a crate (ADR-0037): it shows what merging adds to the
+public API of the six crates a game uses, and fails a break that the
+branch's ticket has no `Breaking:` line for (the `work-ticket` skill,
+§5). Before pushing a change you think breaks, run it from the
+repository root:
+
+```bash
+cargo xtask api --pr-branch t<NNNN>-<slug>   # against `git merge-base HEAD main`; without --pr-branch, no rule
+```
+
+Without a tool it prints the line that installs it (`cargo install
+--locked …`, `rustup toolchain install nightly-… --profile minimal`).
+
 ## The game at the next pin
 
 An API change here breaks the game when it moves its pin
-(`shuyi-engine.rev` in the game repository). Before pushing one, build
-the game against this working copy: in the game's checkout, `cargo
-xtask engine` puts this repository in its `shuyi-engine/` folder, and
-`cargo test --workspace` there builds the game on it.
+(`shuyi-engine.rev` in the game repository). The ticket's `Breaking:`
+lines tell the game's pin bump what changed and what to do. Before
+pushing one, build the game against this working copy: in the game's
+checkout, `cargo xtask engine` puts this repository in its
+`shuyi-engine/` folder, and `cargo test --workspace` there builds the
+game on it.
 
 ## Coverage and SonarCloud
 

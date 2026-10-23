@@ -283,8 +283,8 @@ ships (rule 7, `deny.toml`) don't change.
    `docs/formats.md`.
 7. Say in the PR that the game's credits file loads unchanged, that the
    error texts changed, and that the pack version moved (rebake any
-   pack). The game's PR that moves the pin follows it. If 2010 is done,
-   the completion notes carry its `Breaking:` lines: `CreditsFile`,
+   pack). The game's PR that moves the pin follows it. The completion
+   notes carry `Breaking:` lines (2010): `CreditsFile`,
    `FileCredit` and `AudioManifest` gain public fields, the pack
    version, and `contract::check::check`'s new argument.
 8. Run the gates.
