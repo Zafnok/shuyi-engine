@@ -68,7 +68,7 @@ impl<'a> Launch<'a> for Cargo {
 
 /// Copies `from` to this process's stderr, keeping its last [`TAIL`]
 /// bytes in `tail`.
-fn keep_tail(mut from: impl Read, tail: &Mutex<Vec<u8>>) {
+pub(super) fn keep_tail(mut from: impl Read, tail: &Mutex<Vec<u8>>) {
     let mut buf = [0u8; 4096];
     while let Ok(n) = from.read(&mut buf) {
         if n == 0 {

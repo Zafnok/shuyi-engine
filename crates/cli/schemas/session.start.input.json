@@ -5,7 +5,7 @@
   "type": "object",
   "properties": {
     "project": {
-      "description": "The game's folder (the one holding its `shuyi.ron`, or one below\nit), from the server's working folder; the server's own project if\nnone.",
+      "description": "The game's folder (the one holding its `shuyi.ron`, or one below\nit), from the session's folder; the session folder's own project\nif none.",
       "type": [
         "string",
         "null"

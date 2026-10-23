@@ -346,7 +346,9 @@ pub static TABLE: &[Entry] = &[
         Operation,
         "SH3005",
         "The game's tool program didn't build, or stopped before it answered",
-        "fix what its output in the message says (a compile error, a panic), then call the tool          again; the session, if one ran, has ended: `start` it again"
+        "fix what its output in the message says (a compile error, a panic) in the game's tool \
+         program, or in the project's own MCP server when the message names that, then call the \
+         tool again; the session, if one ran, has ended: `start` it again"
     ),
 ];
 

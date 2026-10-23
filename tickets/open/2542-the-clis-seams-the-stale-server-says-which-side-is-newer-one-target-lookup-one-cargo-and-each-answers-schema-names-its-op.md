@@ -38,7 +38,9 @@ repeated or misread another's:
    1133) and in `lint`'s MCP tool description (`mcp.rs`, 2534), so each
    has about ten spaces mid-sentence. Both reach agents: every SH3005
    answer, and `tools/list`. 2534's completion notes saw the first and
-   didn't fix it.
+   didn't fix it. 2546 rewrote SH3005's help line with single spaces;
+   `lint`'s description still has the run, and the test below is still
+   wanted.
 3. **"No target profile" three times.** `lib.rs`' `target_profile` (for
    `frame-png --target`, 3006) exits 2 with no problem code. `check
    --target` (`contract/check.rs`) fails with `codes::TARGET` (SH3003).
@@ -68,10 +70,9 @@ None.
    project, register the project's own (`<command> mcp install`), else
    run "<command> mcp --ready" and reconnect it". `docs/contract.md`,
    *The MCP server*, says both in one sentence each.
-   **Either order with 2546:** if 2546 is done, `stale`'s limit is
-   written only when the server's fresh restart fails to start, so change
-   the message there and leave the restart alone; if not, 2546 keeps this
-   two-way message as that limit.
+   Since 2546, `stale`'s limit is written only when the server's fresh
+   restart (a forwarded server of its own workspace) fails to start:
+   change the message there and leave the restart alone.
 2. **The two strings** are one sentence each with single spaces, and a
    test over every row of the codes table (help line and page title) and
    every MCP tool description fails on two spaces in a row or a line

@@ -469,3 +469,124 @@ fn a_running_server_moves_its_program_aside_so_a_build_can_write_a_fresh_one() {
     server.wait().unwrap();
     fs::remove_dir_all(dir.parent().unwrap()).unwrap();
 }
+
+/// Whether a process runs the program `exe`: on Windows its file can't
+/// be deleted while one does (and is deleted once none does); elsewhere
+/// `ps` lists it.
+fn runs(exe: &Path) -> bool {
+    if cfg!(windows) {
+        exe.exists() && fs::remove_file(exe).is_err()
+    } else {
+        let listed = Command::new("ps")
+            .args(["-A", "-o", "args="])
+            .output()
+            .unwrap_or_else(|e| panic!("ps: {e}"));
+        let exe = exe.display().to_string();
+        stdout(&listed)
+            .lines()
+            .any(|line| line.trim().starts_with(&exe))
+    }
+}
+
+#[test]
+fn a_project_in_another_workspace_is_answered_by_its_own_server_which_ends_with_the_server() {
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::process::Stdio;
+    use std::time::{Duration, Instant};
+
+    // A copy of the toy game in a workspace of its own, whose `.mcp.json`
+    // runs a copy of the program, so the test can tell its process.
+    let game = scratch("mcp-forward-game");
+    fs::write(
+        game.join("Cargo.toml"),
+        "[package]\nname = \"toy-copy\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n[workspace]\n",
+    )
+    .unwrap();
+    fs::create_dir_all(game.join("src")).unwrap();
+    fs::write(game.join("src/lib.rs"), "").unwrap();
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("toy/shuyi.ron"),
+        game.join("shuyi.ron"),
+    )
+    .unwrap();
+    fs::create_dir_all(game.join("bin")).unwrap();
+    let exe = game
+        .join("bin")
+        .join(Path::new(env!("CARGO_BIN_EXE_shuyi")).file_name().unwrap());
+    fs::copy(env!("CARGO_BIN_EXE_shuyi"), &exe).unwrap();
+    let entry = serde_json::json!({ "mcpServers": { "shuyi": {
+        "command": exe.display().to_string(), "args": ["mcp"] } } });
+    fs::write(game.join(".mcp.json"), entry.to_string()).unwrap();
+
+    let cwd = scratch("mcp-forward-cwd");
+    let mut server = Command::new(env!("CARGO_BIN_EXE_shuyi"))
+        .arg("mcp")
+        .current_dir(&cwd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = server.stdin.take().unwrap();
+    let mut stdout = BufReader::new(server.stdout.take().unwrap());
+    let mut stderr = server.stderr.take().unwrap();
+    let said = std::thread::spawn(move || {
+        let mut said = String::new();
+        let _ = stderr.read_to_string(&mut said);
+        said
+    });
+    // It owns the server's stdin: dropping it closes it.
+    let mut send = move |message: serde_json::Value| {
+        writeln!(stdin, "{message}").unwrap();
+        stdin.flush().unwrap();
+    };
+    let mut read = || {
+        let mut line = String::new();
+        stdout.read_line(&mut line).unwrap();
+        serde_json::from_str::<serde_json::Value>(&line).unwrap()
+    };
+    send(
+        serde_json::json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
+        "params": { "protocolVersion": "2025-11-25", "capabilities": { "roots": {} },
+                    "clientInfo": { "name": "the test", "version": "1" } } }),
+    );
+    assert_eq!(read()["id"], 1);
+    send(serde_json::json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }));
+    let asked = read();
+    assert_eq!(asked["method"], "roots/list", "{asked}");
+    let path = game.display().to_string().replace('\\', "/");
+    let uri = if path.starts_with('/') {
+        format!("file://{path}")
+    } else {
+        format!("file:///{path}")
+    };
+    send(serde_json::json!({ "jsonrpc": "2.0", "id": asked["id"],
+        "result": { "roots": [{ "uri": uri }] } }));
+    send(
+        serde_json::json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+        "params": { "name": "explain", "arguments": { "code": "SH3005" } } }),
+    );
+    // The same program lists the same tools: no notification comes first.
+    let answer = read();
+    assert_eq!(answer["id"], 2, "{answer}");
+    assert_eq!(answer["result"]["isError"], false, "{answer}");
+    assert!(runs(&exe), "the project's own server runs");
+
+    drop(send);
+    server.wait().unwrap();
+    let said = said.join().unwrap();
+    assert!(
+        said.contains("is answered by the project's own server"),
+        "{said}"
+    );
+    let ended = Instant::now();
+    while runs(&exe) {
+        assert!(
+            ended.elapsed() < Duration::from_secs(10),
+            "the project's own server outlived the server"
+        );
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    fs::remove_dir_all(&game).unwrap();
+    fs::remove_dir_all(&cwd).unwrap();
+}
