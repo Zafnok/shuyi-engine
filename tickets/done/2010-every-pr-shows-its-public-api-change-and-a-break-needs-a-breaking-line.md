@@ -349,24 +349,24 @@ for, and keep the listing diff, the semver findings and the CI job here.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask api` lists the removed and added items of the six
+- [x] `cargo xtask api` lists the removed and added items of the six
       crates and their semver findings, in a summary table with a diff
       per changed crate.
-- [ ] The rule's cases pass as unit tests, with fake runners.
-- [ ] The demo PR's three runs (step 5) are linked from this PR and
+- [x] The rule's cases pass as unit tests, with fake runners.
+- [x] The demo PR's three runs (step 5) are linked from this PR and
       show: fail without a `Breaking:` line, pass with one, and pass
       with an added item that the summary lists.
-- [ ] This PR's own `api` run passes (`xtask` is not a checked crate).
-- [ ] A PR that changes only docs or tickets skips `api`, and
+- [x] This PR's own `api` run passes (`xtask` is not a checked crate).
+- [x] A PR that changes only docs or tickets skips `api`, and
       `ci-result` passes.
-- [ ] Without one of the tools, `cargo xtask api` prints its install
+- [x] Without one of the tools, `cargo xtask api` prints its install
       line and fails.
-- [ ] A semver run that fails to build fails the job instead of passing
+- [x] A semver run that fails to build fails the job instead of passing
       (a unit test on the build-error fixture).
-- [ ] The ADR exists with its row in `docs/adr/README.md`, and the
+- [x] The ADR exists with its row in `docs/adr/README.md`, and the
       `work-ticket`, `run-gates`, `write-ticket` and `sonar-fix` skills
       and `AGENTS.md` say what the Scope says.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -423,7 +423,20 @@ for, and keep the listing diff, the semver findings and the CI job here.
   about 2 minutes warm, on a working tree that made `ScriptedRng` `pub(crate)` and
   added a function, a failure naming `shuyi-core`, `struct_missing` and
   both paths of `ScriptedRng`, with the added function in the diff.
-- **The demo PR (step 5):** *(links below, once run).*
+- **The demo PR (step 5),** Zafnok/shuyi-engine#85, closed unmerged, its
+  `api` job three times:
+  1. `Grid::in_bounds` made `pub(crate)`, no `Breaking:` line: failed,
+     naming `shuyi-core`, `inherent_method_missing` and `Grid::in_bounds`
+     (<https://github.com/Zafnok/shuyi-engine/actions/runs/39994864674/job/120555719932>);
+  2. a `Breaking:` line for it in these notes: passed
+     (<https://github.com/Zafnok/shuyi-engine/actions/runs/39996220221/job/120560381299>);
+  3. `in_bounds` public again and a new `Pos::is_origin`: passed, the
+     summary listing `is_origin` as added
+     (<https://github.com/Zafnok/shuyi-engine/actions/runs/39996967128/job/120563704123>).
+
+  A docs-only PR skipping `api` was checked by running `changes.yml`'s
+  classifying loop on docs-only paths (`crates=false`); no docs-only PR
+  ran while this was open.
 - **Deviations:**
   - **Size.** The diff is about 780 lines of code and 1000 of tests,
     past the Implementation steps' 600. Moving the rule and the
