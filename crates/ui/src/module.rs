@@ -30,20 +30,14 @@ pub trait Module<G: GameData>: 'static {
 
     /// Declares what it does: its hooks and its state on the context. By
     /// default nothing.
-    fn install(&mut self, install: &mut Install<'_, G>) {
-        let _ = install;
-    }
+    fn install(&mut self, _install: &mut Install<'_, G>) {}
 
     /// Runs each frame `dt` seconds long, after the input and before the
     /// top screen's update ([`Hook::BeforeUpdate`]).
-    fn before_update(&mut self, ctx: &mut Ctx<G>, dt: f32) {
-        let _ = (ctx, dt);
-    }
+    fn before_update(&mut self, _ctx: &mut Ctx<G>, _dt: f32) {}
 
     /// Draws over the screens, after them ([`Hook::DrawOver`]).
-    fn draw_over(&self, ctx: &Ctx<G>, buf: &mut GlyphBuffer) {
-        let _ = (ctx, buf);
-    }
+    fn draw_over(&self, _ctx: &Ctx<G>, _buf: &mut GlyphBuffer) {}
 }
 
 /// A place in the frame loop where the game calls a module.

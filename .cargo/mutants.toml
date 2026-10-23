@@ -27,6 +27,9 @@ exclude_re = [
     # The default `Session::log` is `Vec::new()`: its only viable mutant,
     # `vec![]`, is the same function.
     "replace Session::log -> Vec<LogEntry>",
+    # The default `Session::modules` is `Vec::new()`: its only viable
+    # mutant, `vec![]`, is the same function.
+    "replace Session::modules -> Vec<ModuleEntry>",
     # The default `audio_config` is `AudioConfig::DEFAULT`, which is also
     # `AudioConfig::default()`: its only mutant is the same function.
     "GameData::audio_config",
