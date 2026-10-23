@@ -175,55 +175,10 @@ impl<'a> Forwarding<'a> for Processes {
     }
 
     fn spawn(&self, words: &[String], root: &Path) -> Box<dyn Forward + 'a> {
-        let named = format!(
-            "the project's own server (\"{}\" in {})",
-            words.join(" "),
-            root.display()
-        );
-        let Some((program, args)) = words.split_first() else {
-            return Box::new(Failed(format!("{named} has no command")));
-        };
-        eprintln!("mcp: {} is answered by {named}", root.display());
-        let spawned = Command::new(program)
-            .args(args)
-            .current_dir(root)
-            .env(FORWARDED, "1")
-            // So `cargo` picks the toolchain of the project's checkout.
-            .env_remove("RUSTUP_TOOLCHAIN")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
-        let mut child = match spawned {
-            Ok(child) => child,
-            Err(e) => return Box::new(Failed(format!("{named} didn't start: {e}"))),
-        };
-        let (Some(stdin), Some(stdout), Some(stderr)) =
-            (child.stdin.take(), child.stdout.take(), child.stderr.take())
-        else {
-            let _ = child.kill();
-            return Box::new(Failed(format!("{named} started without its pipes")));
-        };
-        let (sent, lines) = channel();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stdout).lines() {
-                let Ok(line) = line else { break };
-                if sent.send(line).is_err() {
-                    break;
-                }
-            }
-        });
-        let tail = Arc::new(Mutex::new(Vec::new()));
-        let kept = Arc::clone(&tail);
-        let (ended, copied) = channel();
-        std::thread::spawn(move || {
-            keep_tail(stderr, &kept);
-            let _ = ended.send(());
-        });
-        let mut process = Process::new(named, Box::new(stdin), lines, tail);
-        process.child = Some(child);
-        process.copied = Some(copied);
-        Box::new(process)
+        match Process::start(words, root) {
+            Ok(process) => Box::new(process),
+            Err(why) => Box::new(Failed(why)),
+        }
     }
 }
 
@@ -287,6 +242,60 @@ impl Process {
             },
         }));
         process
+    }
+
+    /// `words` run in `root` as a forwarded server, or why it didn't
+    /// start.
+    fn start(words: &[String], root: &Path) -> Result<Self, String> {
+        let named = format!(
+            "the project's own server (\"{}\" in {})",
+            words.join(" "),
+            root.display()
+        );
+        let Some((program, args)) = words.split_first() else {
+            return Err(format!("{named} has no command"));
+        };
+        eprintln!("mcp: {} is answered by {named}", root.display());
+        let spawned = Command::new(program)
+            .args(args)
+            .current_dir(root)
+            .env(FORWARDED, "1")
+            // So `cargo` picks the toolchain of the project's checkout.
+            .env_remove("RUSTUP_TOOLCHAIN")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn();
+        let mut child = match spawned {
+            Ok(child) => child,
+            Err(e) => return Err(format!("{named} didn't start: {e}")),
+        };
+        let (Some(stdin), Some(stdout), Some(stderr)) =
+            (child.stdin.take(), child.stdout.take(), child.stderr.take())
+        else {
+            let _ = child.kill();
+            return Err(format!("{named} started without its pipes"));
+        };
+        let (sent, lines) = channel();
+        std::thread::spawn(move || {
+            for line in BufReader::new(stdout).lines() {
+                let Ok(line) = line else { break };
+                if sent.send(line).is_err() {
+                    break;
+                }
+            }
+        });
+        let tail = Arc::new(Mutex::new(Vec::new()));
+        let kept = Arc::clone(&tail);
+        let (ended, copied) = channel();
+        std::thread::spawn(move || {
+            keep_tail(stderr, &kept);
+            let _ = ended.send(());
+        });
+        let mut process = Self::new(named, Box::new(stdin), lines, tail);
+        process.child = Some(child);
+        process.copied = Some(copied);
+        Ok(process)
     }
 
     /// Writes `message` on a line of its stdin; false if it is closed.

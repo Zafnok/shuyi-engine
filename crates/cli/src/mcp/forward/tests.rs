@@ -254,3 +254,36 @@ fn cargo_finds_a_folders_workspace() {
     assert_eq!(Processes.workspace(&dir.join("missing")), None);
     fs::remove_dir_all(&dir).unwrap();
 }
+
+/// Whether the process `pid` runs.
+fn runs(pid: u32) -> bool {
+    if cfg!(windows) {
+        let filter = format!("PID eq {pid}");
+        let listed = Command::new("tasklist")
+            .args(["/FI", &filter, "/NH"])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&listed.stdout).contains(&format!(" {pid} "))
+    } else {
+        Command::new("kill")
+            .args(["-0", &pid.to_string()])
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success())
+    }
+}
+
+#[test]
+fn dropping_a_forwarded_server_ends_it() {
+    // A program that never reads its stdin, so only the drop ends it.
+    let words: Vec<String> = if cfg!(windows) {
+        vec!["ping".into(), "-n".into(), "60".into(), "127.0.0.1".into()]
+    } else {
+        vec!["sleep".into(), "60".into()]
+    };
+    let process = Process::start(&words, &std::env::temp_dir()).unwrap();
+    let pid = process.child.as_ref().unwrap().id();
+    assert!(runs(pid), "it started");
+    drop(process);
+    assert!(!runs(pid), "it ended with the drop");
+}

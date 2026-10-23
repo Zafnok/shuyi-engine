@@ -771,6 +771,10 @@ fn a_call_in_another_workspace_is_answered_by_its_own_server() {
     let result = called(&mut server, "step", &json!({}));
     assert_eq!(result["isError"], false, "{result}");
     assert_eq!(asked.called.borrow().len(), before, "the server's own game");
+    // A one-off call there leaves the server's own game running.
+    called(&mut server, "explain", &json!({}));
+    let result = called(&mut server, "step", &json!({}));
+    assert_eq!(result["isError"], false, "{result}");
 
     // A session there ends when its server stops.
     assert_eq!(called(&mut server, "start", &json!({}))["isError"], false);
