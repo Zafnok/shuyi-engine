@@ -5,12 +5,14 @@
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask check-toolchain`
 
 mod docs;
 mod layers;
 mod links;
 mod no_std;
 mod tickets;
+mod toolchain;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -33,7 +35,11 @@ usage:
   cargo xtask check-layers
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
-      no device crate below them and the float ban in the simulations.";
+      no device crate below them and the float ban in the simulations.
+  cargo xtask check-toolchain
+      Check that the pinned Rust is the same everywhere (the bump-rust skill):
+      the root's exact channel, the templates' channels, every workspace's
+      rust-version, the members' inherited one and Dependabot's folders.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -44,6 +50,9 @@ fn main() -> ExitCode {
         Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("check-toolchain") if args.len() == 1 => {
+            report("check-toolchain", &toolchain::run(&root), &[])
+        }
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE

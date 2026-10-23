@@ -284,11 +284,10 @@ None.
   one. 2013's PR carried its own `Breaking:` lines, in this job's form,
   for the types it made `#[non_exhaustive]`, so nothing is left here
   for them.
-- **Either order with 2012.** A PR that moves the pinned toolchain
-  (`rust-toolchain.toml`) moves this job's nightly date and tool
-  versions too when the tools need it. The ADR says so. If 2012 is
-  done, its `bump-rust` skill's checklist gets that step. If not, 2012
-  adds it.
+- **The pinned Rust (2012, done).** A PR that moves the pinned
+  toolchain (`rust-toolchain.toml`) moves this job's nightly date and
+  tool versions too when the tools need it. The ADR says so, and the
+  `bump-rust` skill's checklist gets that step in this PR.
 - **Either order with 2116.** 2116's `cargo xtask golden --breaks`
   asks for a `Breaking:` line when a golden table's value changes,
   using `ticket_id_from_branch` and `breaking_lines` too. If 2116 is
