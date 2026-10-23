@@ -1006,3 +1006,63 @@ because the crate doesn't exist yet. Nick:
 - **2003, not 2005, publishes its first real version**, since 2003
   (after the MVP) is where the crate is written. It goes through trusted
   publishing like the others, with no publish by hand.
+
+## 2026-10-22: dungeon crawlers, Diablo-likes and more roguelike pieces, engine-shaped, with a demo per genre
+
+Source: Nick, in a Claude Code session on 2026-10-22:
+
+> "another game type I like a lot is Wizardry first person dungeon
+> crawler, especially the intro to Variant Daphne... what I would want
+> most is a single player party blobber (i.e. 1 character only not 4 or
+> 6 party) but anyway support for any character amount is ok... but if
+> we can have tickets to add support for this type of game too, however
+> you think makes sense to add it or if you think all the tickets in our
+> backlog will already support it you can let me know too"
+
+While the tickets were being written, he added:
+
+> "I also want support for roguelikes, and Diablo-likes"
+
+> "ensure these are all 'engine-shaped' tickets and not 'game-shaped'
+> tickets -- be sure they pass the bar to be engine features or provided
+> templates rather than specific game features shipped in an engine"
+
+> "though certainly we can build one of each genre as a demo of the
+> engine..."
+
+**Rules:**
+
+- **Nothing in the backlog served a first-person crawler.** The grid kit
+  has cells, not walls between them, and nothing drew a grid from
+  inside or ran a party RPG. ADR-0033 adds two modules: `shuyi-crawl`
+  (the labyrinth: 2741–2744, 2753, 2755) and `shuyi-rpg` (a party of
+  any size, sheets, items, battles, abilities, encounters, shops:
+  2745–2752), with the example and template in 2754.
+- **A party of one comes first.** Every part of `shuyi-rpg` is tested
+  with a party of one and a full one. The crawler template starts with
+  a party of one (`max: 1`); raising `max` gives a full party with no
+  other change.
+- **Daphne's opening needs nothing new.** It is a cinematic, then
+  dialogue over the labyrinth's view before the first step. The crawler
+  example has an opening of that shape, with its own story.
+- **Diablo-likes** get ADR-0034: a `shuyi-action` module for real-time
+  hits, skills, packs and the HUD, loot rolled from affix tables and an
+  inventory grid in `shuyi-rpg`, and waypoints in the default crates
+  (2756–2764). They wait for the real-time work, like the rest of it.
+- **Roguelikes already had tickets** (2118–2120, 2735). The gaps were a
+  turn order by speed (2765), a message log (2766), progress kept
+  between runs (2767), and the genre's habits in its template (2768).
+- **The bar for engine work** (ADR-0033 §17). A piece goes in an engine
+  crate when at least two different kinds of game would use it as it
+  is and it names no game's content. A genre's habit (Wizardry's
+  trapped chests, a town of an inn and a temple, permadeath, potions
+  that look different each run, a town portal) goes in that genre's
+  template, as code and data the new game owns, edits or deletes. Each
+  engine ticket says which kinds of game use it.
+- **One demo per genre.** Each genre's example is a small complete game
+  made only from the engine, with its own story, numbers and art made
+  for it, copying no other game. It is also the genre's integration
+  test.
+- All of it is parked until after Visions of Shuyi launches, like the
+  other kinds of game. The 3D labyrinth skin (2753) also waits for the
+  3D work.

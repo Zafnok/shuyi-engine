@@ -651,6 +651,29 @@ rest, when unparked:
   consoles only, behind a `ray_tracing` capability (3017); best after
   3034, which plans the renderer it needs.
 
+Later on 2026-10-22 Nick added first-person dungeon crawlers (a party
+of one first, any size allowed) and Diablo-likes, asked for the
+roguelike gaps, and set the bar: engine pieces must serve several kinds
+of game, a genre's habits go in its template, and each genre gets a demo
+([`decisions.md`](decisions.md), ADR-0033 §17). They wait until after
+Visions of Shuyi launches. The order inside each, when unparked:
+
+- **Dungeon crawlers** (ADR-0033): `shuyi-crawl` (2741), then the view
+  (2742), then the 2D skins (2743, after 2336 and 2109) and the automap
+  (2744). `shuyi-rpg` (2745), then items (2746), making characters
+  (2747) and battles (2748), then the battle screen (2749), abilities
+  (2750), encounters and drops (2751), then shops and services (2752).
+  Then the example and template (2754), then the explorer bot and
+  playtest (2755). The 3D skin (2753) after 3102–3104.
+- **Action RPGs** (ADR-0034), after the real-time work (1119, 1121,
+  1122, 2124, 2106, 1126): hits (2756), then skills (2757), spawners
+  (2760), moving to a pointed place (2761) and the HUD (2762). Loot
+  (2758) and the inventory grid (2759) need only 2746. Waypoints (2763)
+  need nothing. Then the example and template (2764).
+- **Roguelikes, the gaps:** turn order by speed (2765), the message log
+  (2766) and progress between runs (2767) need nothing; the template's
+  habits (2768) after them, 2735 and 2746.
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle. Waits until Visions of Shuyi launches (2026-10-20) | the game's 0060 says the army walks around freely, or the game asks for a piece |
@@ -687,3 +710,6 @@ rest, when unparked:
 | 2369–2370 | A light cycle for day and night, and ambiences for weather (particles across the view, an overlay and a looped sound, with a fade) | the game asks (2026-10-22); 2370 with particles (2103) |
 | 2910 | Research: voice chat and proximity voice, ending with a question to Nick | with networking |
 | 2911 | Research: ray- and path-traced light and sound, an opt-in module behind a `ray_tracing` capability, for PCs and current consoles | Nick asks (2026-10-22: "would be for diff comp targets like PC, new gen consoles") |
+| 2741–2755 | Dungeon crawlers, two modules (ADR-0033): `shuyi-crawl` (a labyrinth of cells and walls, moving as turn rules, the view as plain data, lines, pictures and 3D skins, the automap and travel, an explorer bot) and `shuyi-rpg` (a party of one or more, sheets as data, items, making characters and the roster, front-view battles, abilities, encounters and drops, shops and services), and a demo with an opening, a town and two floors | Nick asks, after the game launches (2026-10-22: "if we can have tickets to add support for this type of game too"); 2753 also waits for 3D |
+| 2756–2764 | Action RPGs (ADR-0034): `shuyi-action` (hits and hurts, skills with cooldowns, spawners and aggro, moving to a pointed place, the HUD), loot rolled from affix tables and an inventory grid in `shuyi-rpg`, waypoints, and a demo | the same, after the real-time work (2026-10-22: "I also want support for roguelikes, and Diablo-likes") |
+| 2765–2768 | Roguelike gaps: turn order by speed, a message log, progress kept between runs, and the genre's habits in its template | the same; 2765 and 2766 sooner if the game asks |
