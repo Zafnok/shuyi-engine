@@ -338,15 +338,26 @@ fn the_report_is_the_same_on_any_number_of_threads() {
 
 #[test]
 fn an_entrants_time_is_the_mean_of_its_tries() {
-    // Four tries of 10 ms each: 10 ms a try, give or take the sleep's
-    // overshoot, not their sum.
+    // Four tries of 10 ms each, on one thread: a try takes 10 ms or more
+    // (a sleep overshoots by as much as the machine is busy), and four of
+    // them one after another fit in the playtest's own time. Their sum,
+    // 40 ms or more, wouldn't four times over.
     let game = fake(FakePlaytest {
         sleep: Duration::from_millis(10),
         ..FakePlaytest::default()
     });
-    let answer = playtest(&game, &input(4, |i| i.entrants = args(&["walk"])));
+    let started = std::time::Instant::now();
+    let answer = playtest(
+        &game,
+        &input(4, |i| {
+            i.entrants = args(&["walk"]);
+            i.threads = Some(1);
+        }),
+    );
+    let wall = started.elapsed().as_secs_f64();
     let seconds = answer.result.unwrap()[0].entrants[0].seconds_per_try;
-    assert!((0.01..0.04).contains(&seconds), "{seconds}");
+    assert!(seconds >= 0.01, "{seconds}");
+    assert!(seconds * 4.0 <= wall, "{seconds} a try, {wall} in all");
 }
 
 #[test]
