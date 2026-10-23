@@ -224,8 +224,9 @@ None.
   - the module's table of placeholders gains the row. Games on a
     released version come with 2005, which fills the same placeholder
     with that version's `/v<x.y>/llms-full.txt`.
-- **Either order with 2511**, which rewrites the blank template: change
-  the sentence that links the engine's `AGENTS.md` wherever it then is.
+- **The blank template after 2511 (done):** the sentence that links the
+  engine's `AGENTS.md` is still in `templates/blank/AGENTS.md`'s second
+  paragraph; change it there.
 - **Either order with 2803 and 2004:** 2803's pages are in
   `site/content/learn/tutorial/`, so they get twins and an H2 with no
   change here. 2004's guides (`docs/guides/`) and 2509's error pages

@@ -7,6 +7,8 @@
 //! - [`input`]: a game's actions from keys and controller buttons through
 //!   a keymap, held keys and repeat, the player's saved bindings and the
 //!   names of keys in help text;
+//! - [`basic`]: [`BasicData`], a ready-made [`GameData`] read from the
+//!   files every game on the short path has;
 //! - [`screen`]s on a stack, the context they share ([`ctx`]: [`Ctx`],
 //!   with the game's part in it, [`GameData`]) and the frame loop
 //!   ([`game`]: [`Game`]), with the player's [`settings`] and
@@ -50,6 +52,7 @@ mod prelude {
 }
 
 pub mod audio;
+pub mod basic;
 pub mod cinematic;
 pub mod ctx;
 pub mod debug;
@@ -73,6 +76,7 @@ pub mod tips;
 pub mod toy;
 pub mod widgets;
 
+pub use basic::BasicData;
 pub use ctx::{Ctx, GameData, IdleMotion, KeyPrompt, Keyboard};
 pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, ScreenHook};
 pub use hurry::HurryClock;

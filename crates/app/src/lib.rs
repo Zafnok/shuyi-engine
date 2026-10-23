@@ -5,8 +5,18 @@
 //! `shuyi_platform::App::frame` once per frame of macroquad's, on desktop,
 //! the web and the Steam Deck.
 //!
-//! A game's binary keeps macroquad's entry point, which has to be in the
-//! binary, and hands over how it starts ([`Start`]):
+//! A game on the short path (ADR-0036) runs from a plain `main`, with
+//! [`run_game`] and its `BasicGame`:
+//!
+//! ```ignore
+//! fn main() {
+//!     shuyi_app::run_game(game::game());
+//! }
+//! ```
+//!
+//! A game of its own shape keeps macroquad's entry point, which has to be
+//! in the binary, and hands over its [`AppConfig`] and how it starts
+//! ([`Start`]):
 //!
 //! ```ignore
 //! fn window_conf() -> macroquad::window::Conf {
@@ -40,10 +50,14 @@ pub mod pads;
 pub mod render;
 pub mod storage;
 
+use core::fmt::Debug;
+
 use macroquad::prelude::*;
-use shuyi_assets::audio::Files;
-use shuyi_platform::{App, FrameOutcome, Millis, Start, TextInput};
+use shuyi_assets::audio::{Bytes, Files};
+use shuyi_assets::keymap::ActionSet;
+use shuyi_platform::{App, BasicGame, FrameOutcome, Millis, Start, TextInput};
 use shuyi_ui::GameData;
+use shuyi_ui::basic::FONT_PNG;
 use shuyi_ui::log::{LogLevel, LogLine};
 
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
@@ -183,6 +197,77 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     }
 }
 
+/// Runs a game on the short path until it quits, in a window of its
+/// console at twice its size: its files become the process's bundle, and
+/// [`run`] starts it as [`BasicGame::start`] says, with no sounds, no
+/// voices and no system keyboard. Called from a plain `fn main`.
+pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
+    // Only the binary installs the bundle: the tools and the tests read
+    // the one the game's data holds, since one test process runs many
+    // games. A bundle installed before (none is) would stay.
+    let _ = shuyi_assets::bundle::install(game.bundle());
+    let window = basic_window(&game);
+    // What `#[macroquad::main]` expands to (macroquad_macro 0.1.8).
+    macroquad::Window::from_config(window_conf(&window), run(basic_config(&game), game.start()));
+}
+
+/// The margin around a short-path game's console, in pixels.
+const BASIC_MARGIN: i32 = 16;
+
+/// The window of a game on the short path: its console at twice its size
+/// and a small margin, titled with its name.
+fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Window {
+    let console = game.console_spec();
+    let side = |cells: u16, cell: u16| i32::from(cells) * i32::from(cell) * 2 + BASIC_MARGIN;
+    Window {
+        title: game.name(),
+        width: side(console.cols, console.cell_w),
+        height: side(console.rows, console.cell_h),
+        icon: None,
+    }
+}
+
+/// A file of the bundle [`run_game`] installed.
+fn installed_file(path: &str) -> Option<&'static [u8]> {
+    shuyi_assets::bundle::installed()?.bytes(path)
+}
+
+/// No sound file: a game on the short path has none.
+fn no_sound(_: &str) -> Bytes {
+    None
+}
+
+/// How errors name a sound file.
+fn sound_shown(name: &str) -> String {
+    name.to_owned()
+}
+
+/// Whether a build leaves a sound file out on purpose: none does.
+fn sound_left_out(_: &str) -> bool {
+    false
+}
+
+/// What the backend needs to know about a game on the short path: its
+/// storage's name, its files from the installed bundle and its font's
+/// picture; no sounds, no voices and no system keyboard.
+fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> AppConfig {
+    AppConfig {
+        window: basic_window(game),
+        storage_name: game.storage_name(),
+        files: installed_file,
+        font_png: FONT_PNG,
+        sounds: Files {
+            sound: &no_sound,
+            sound_shown: &sound_shown,
+            sound_left_out: &sound_left_out,
+            music_dir: "music",
+            music: None,
+        },
+        voices: None,
+        text_input: None,
+    }
+}
+
 /// Prints a line of App's log with macroquad's macro for its level.
 fn print_line(line: &LogLine) {
     let (category, text) = (line.category.name(), &line.text);
@@ -257,6 +342,40 @@ mod tests {
             ),
             ("A game", 640, 480)
         );
+    }
+
+    /// A game on the short path with no files.
+    fn basic() -> BasicGame<shuyi_assets::keymap::UiAction> {
+        let files = shuyi_assets::bundle::Layer::table("files", &[]);
+        BasicGame::new("A game", "a-game", files, |_| unreachable!("never started"))
+    }
+
+    #[test]
+    fn a_short_path_games_window_is_its_console_twice_and_a_margin() {
+        let window = basic_window(&basic());
+        assert_eq!(
+            (window.title, window.width, window.height),
+            ("A game", 784, 784)
+        );
+        assert!(window.icon.is_none());
+        let small = basic().console(shuyi_ui::frame::ConsoleSpec::text(20, 10));
+        let window = basic_window(&small);
+        assert_eq!((window.width, window.height), (336, 336));
+    }
+
+    #[test]
+    fn a_short_path_games_config_is_silent_and_reads_its_font() {
+        let config = basic_config(&basic());
+        assert_eq!(config.storage_name, "a-game");
+        assert_eq!(config.font_png, "font/atlas.png");
+        assert_eq!(config.window.title, "A game");
+        assert_eq!((config.sounds.sound)("sfx/move.wav"), None);
+        assert_eq!((config.sounds.sound_shown)("sfx/move.wav"), "sfx/move.wav");
+        assert!(!(config.sounds.sound_left_out)("sfx/move.wav"));
+        assert!(config.sounds.music.is_none());
+        assert!(config.voices.is_none() && config.text_input.is_none());
+        // Nothing is installed in the tests: no file is found.
+        assert_eq!((config.files)("font/atlas.png"), None);
     }
 
     /// The lines of `manifest`'s `[header]` table, without comments and

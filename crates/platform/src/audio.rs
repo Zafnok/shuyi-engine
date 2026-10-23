@@ -7,7 +7,7 @@
 //! volume, picking a variant, fades, the music clock) are the backend's
 //! player's until ticket 3029 moves them here.
 
-use crate::prelude::*;
+use crate::alloc_prelude::*;
 
 use shuyi_assets::voice::{ClipVariant, clip_file};
 use shuyi_ui::audio::{AudioRequest, MusicCommand};

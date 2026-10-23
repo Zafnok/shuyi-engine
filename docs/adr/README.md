@@ -48,5 +48,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0033](0033-dungeon-crawlers-a-labyrinth-of-cells-and-walls-a-view-as-plain-data-skins-from-lines-to-3d-and-a-party-of-any-size.md) | Dungeon crawlers: a labyrinth of cells and walls, a view as plain data, skins from lines to 3D, a party of any size, and the bar for engine, template and example | Accepted; its tickets are parked until after the game launches |
 | [0034](0034-action-rpgs-a-hero-in-real-time-loot-rolled-from-affix-tables-skills-with-cooldowns-and-packs-of-monsters.md) | Action RPGs: a hero in real time, loot rolled from affix tables, skills with cooldowns, and packs of monsters | Accepted; extends ADR-0033; its tickets are parked until after the game launches |
 | [0035](0035-the-mcp-server-follows-the-sessions-folder-roots-a-forwarded-server-per-workspace-and-a-restart-when-the-engine-moves.md) | The MCP server follows the session's folder: roots, a forwarded server per workspace, and a restart when the engine moves | Accepted; extends ADR-0031 |
+| [0036](0036-the-short-path-ready-made-parts-beside-the-long-form.md) | The short path: ready-made parts beside the long form | Accepted; extends ADR-0019 and ADR-0024 |
 
 Template: [`0000-template.md`](0000-template.md).

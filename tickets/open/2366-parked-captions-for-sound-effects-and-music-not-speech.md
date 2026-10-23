@@ -180,9 +180,8 @@ None.
   today): the toy's (`crates/ui/src/toy.rs`), hello-grid's
   (`examples/hello-grid/src/settings.rs`), the grid template's
   (`templates/grid/crates/game/src/settings.rs`), and the engine's
-  `impl GameSettings for ()` (`crates/ui/src/settings.rs`, from 2511,
-  MVP) or, if 2511 hasn't landed, the blank template's
-  (`templates/blank/crates/game/src/settings.rs`). `cargo fmt --all`
+  `impl GameSettings for ()` (`crates/ui/src/settings.rs`, from 2511),
+  which the blank template uses. `cargo fmt --all`
   doesn't format `templates/`; CI's templates job does.
 - **Text:** `options.row.sound_captions` ("Sound captions") and
   `sound_captions.repeat` go in `crates/ui/src/toy/en.ron` and

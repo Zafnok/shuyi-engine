@@ -16,7 +16,7 @@
 //! number and keeps the last [`LOG_LINES`] for tests, tools and the
 //! backend's sinks ([`App::take_new_log`]).
 
-use crate::prelude::*;
+use crate::alloc_prelude::*;
 use alloc::format;
 use core::time::Duration;
 

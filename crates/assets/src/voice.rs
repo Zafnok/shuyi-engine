@@ -48,6 +48,18 @@ pub trait ClipVariant: Copy + Ord + Default + Debug + DeserializeOwned + 'static
     }
 }
 
+/// No voices: a line has only its only clip (`()`, as the engine says
+/// "none" elsewhere).
+impl ClipVariant for () {
+    fn suffix(self) -> &'static str {
+        ""
+    }
+
+    fn split() -> &'static [Self] {
+        &[]
+    }
+}
+
 /// Who or what made a clip (the credits say which voices are generated).
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]

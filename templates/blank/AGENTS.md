@@ -23,14 +23,15 @@ these are the ones a game on it keeps.
 - **Graphics are a skin.** A screen builds plain data (a view) and a
   skin paints it. Tests of what happened read the view or the state;
   only tests of a look read cells and colors.
-- **Never hard-code a key.** Code reacts to actions (`src/action.rs`);
-  the keys are the player's, in `files/keymap.ron`, and text names a key
-  as `{Confirm}`, which shows the player's own key.
+- **Never hard-code a key.** Code reacts to actions (the six moves of
+  `UiAction`); the keys are the player's, in `files/keymap.ron`, and text
+  names a key as `{Confirm}`, which shows the player's own key.
 
 ## The tools
 
 `cargo shuyi <command>` runs the engine's tools on this game, in its own
-tool program (`crates/game/src/tools.rs`). Each takes `--json` for an
+tool program (`crates/game/examples/tools.rs`, with the engine's
+`BasicTools`). Each takes `--json` for an
 answer a program can read, which also says what it couldn't determine
 (its `limits`).
 
@@ -50,7 +51,34 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine, and follows it: a worktree's calls go to a server built from that worktree, and a server whose engine moved under it hands its calls to a fresh one |
 
 `scene`, `replay` and `bots` need a stage and rules: the game's tools
-offer them once `tools.rs` does (`shuyi new grid` shows how).
+offer them once it writes its own `GameTools` (`shuyi new grid` shows
+how).
+
+## The short path
+
+The game is on the engine's short path: `crates/game/src/lib.rs` names
+its files, its data type (`BasicData<UiAction>`: the text, the keys, the
+palette and the font from `files/`) and its first screen in a
+`BasicGame`; `src/main.rs` runs it with `shuyi_app::run_game`;
+`examples/tools.rs` gives its tools with `BasicTools`. A screen names
+what it needs from `shuyi_platform::prelude`.
+
+## When the game outgrows the short path
+
+Grow it by adding a part, not by rewriting the start:
+
+- **Its own actions:** an enum of its own that implements `ActionSet`
+  (a debug key, a map's actions), in place of `UiAction`, with its
+  names in `files/keymap.ron`.
+- **A part of its own:** `BasicGame::with_own`, with a function that
+  reads it from the files (a stage, a table of rules): it is
+  `BasicData::own`.
+- **Its own tools:** a `GameTools` of its own (a scene, records, bots),
+  which calls `BasicTools`' methods for the rest. `shuyi new grid` shows
+  one.
+- **The long form:** its own `GameData` (sounds, voices, themes,
+  settings of its own, `GameHooks`), and macroquad's entry point calling
+  `shuyi_app::run` with its `AppConfig`.
 
 ## The gates
 

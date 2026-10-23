@@ -3,7 +3,7 @@
 //! display ([`DisplayInfo`]), a [`Frame`] to show and the system's
 //! events ([`SystemEvent`]).
 
-use crate::prelude::*;
+use crate::alloc_prelude::*;
 use core::time::Duration;
 
 use shuyi_assets::font::FontAtlasDef;

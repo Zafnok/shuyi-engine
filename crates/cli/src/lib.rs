@@ -12,11 +12,13 @@
 //! `doctor`, `explain` and `schema` need none. The commands that run the game itself
 //! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
-//! `game`) for them.
+//! `game`) for them. A game on the short path gives [`BasicTools`]
+//! ([`basic`]).
 //!
 //! A CLI tool prints to stdout by design, so `print_stdout` is allowed here.
 #![allow(clippy::print_stdout)]
 
+pub mod basic;
 pub mod check_keys;
 pub mod check_text;
 pub mod codec;
@@ -42,6 +44,7 @@ use shuyi_assets::target::TargetProfile;
 use contract::Op;
 use contract::codes;
 
+pub use basic::BasicTools;
 pub use game::{
     AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
     Tunable,

@@ -54,9 +54,10 @@ None.
   PR says so for the game's pin bump. Like `Debug`, they act
   only with debug tools on, and the sample `ActionSet`
   (`keymap/sample.rs`, `sample.ron`) marks them not rebindable.
-  Map them in the sample and in the toy game. If 2511 is done, they get
-  their arms in `UiAction`'s own `ActionSet` impl, neither required nor
-  rebindable, and stay out of `ALL` (2511's rule); if not, 2511 adds them.
+  Map them in the sample and in the toy game. They get their arms in
+  `UiAction`'s own `ActionSet` impl (`keymap/action_set.rs`), neither
+  required nor rebindable, with `ui` `Some(self)`, and stay out of `ALL`
+  (ADR-0036 §3).
 - **`DebugView` gains** `paused: bool`, `slow: u8` (1 = normal speed,
   2–8 = one update every *n* frames) and a pending step.
 - **`Game::frame`:**

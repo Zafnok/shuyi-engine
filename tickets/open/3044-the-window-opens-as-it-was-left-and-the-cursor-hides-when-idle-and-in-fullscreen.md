@@ -126,11 +126,11 @@ None.
     also `const`. `Window::console` builds on `Window::new` if 2013 is
     done;
   - the grid template and hello-grid use it, and `shuyi_app::run_game`
-    (2511) builds its window with it, since the blank template has no
-    `WINDOW` after 2511: `Window::console("…", CONSOLE, 2, 16)`, which
-    is today's 784 × 784 (`game::CONSOLE` in the template,
-    `hello_grid::CONSOLE` in hello-grid, the `BasicGame`'s console in
-    `run_game`).
+    (2511) builds its window with it (its `basic_window`, in
+    `crates/app/src/lib.rs`), since the blank template has no `WINDOW`:
+    `Window::console("…", CONSOLE, 2, 16)`, which is today's 784 × 784
+    (`game::CONSOLE` in the grid template, `hello_grid::CONSOLE` in
+    hello-grid, the `BasicGame`'s console in `run_game`).
 - **A record per computer**, owned by the backend, never by the game or
   a profile (`crates/app/src/window.rs`, new):
   - the storage key `window` (`WINDOW_KEY`), beside the computer's
@@ -242,11 +242,9 @@ None.
     template and hello-grid from `Window::new` to `Window::console`. If
     not, 2013 makes `Window` non-exhaustive and keeps `console` and
     `with_icon` as this ticket made them;
-  - with 2511 (`run_game`): if it is done, the blank template has no
-    `WINDOW` or `window_conf`, and `run_game`'s window function uses
-    `Window::console` and the new `window_conf` as above. If not, the
-    blank template moves as the grid template does, and 2511 builds
-    `run_game` on them;
+  - 2511 (`run_game`) is done: the blank template has no `WINDOW` or
+    `window_conf`, and `run_game`'s window function (`basic_window`)
+    uses `Window::console` and the new `window_conf` as above;
   - with 3048 (the game's identity): if it is done, the grid template
     and hello-grid write
     `Window::console(APP.name, CONSOLE, 2, 16).with_icon(APP.window_icon)`
@@ -321,8 +319,8 @@ None.
    warning; the starting mode; game frames only for `fullscreen`; the
    first-frame `set_fullscreen(true)` (Windows only); leaving fullscreen
    on Windows; `after_frame`; and the write at quit in `run`.
-5. Move the grid template, hello-grid and `run_game` (or the blank
-   template, if 2511 isn't done) to `Window::console` and the new
+5. Move the grid template, hello-grid and `run_game` to
+   `Window::console` and the new
    `window_conf`. `cargo fmt --all` doesn't reach `templates/`, so format
    their files by hand (CI's template job checks them).
 6. Write the docs. Run hello-grid on Windows and check: resize, quit,
@@ -363,8 +361,8 @@ None.
 - [ ] `Opened`: what `window_conf` stores from `conf_from`'s answer
       (the mode and the warning) is taken once; with nothing stored,
       the take gives `None`. One test touches the `static`.
-- [ ] The grid template, hello-grid and `run_game` (or the blank
-      template, if 2511 isn't done) open with `Window::console`, and
+- [ ] The grid template, hello-grid and `run_game` open with
+      `Window::console`, and
       CI's template job passes.
 - [ ] The PR says what was seen on Windows for the checks in step 6.
 - [ ] All gates in the `run-gates` skill pass.

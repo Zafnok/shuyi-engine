@@ -91,6 +91,7 @@ The ones a game registers with its own types or rules:
 | cinematic | `cinematic::CinematicFile<S, P>` | `cinematic::CinematicRon<S, P>` | `cinematic` | `ron` | its shots and shared lists |
 | dialogue | `dialogue::DialogueFile<D>` | `dialogue::Dlg<D>` | `dlg` | `dlg` | its directives |
 | language pack | `lang::LangPack` | `lang::LangPackRon` | `lang-pack` | `ron` | its limits, tokens, variants, data-text rules and data text |
+| english | `lang::English`: the screen text by key, as one file (`en.ron`) holds it | `ron::Ron<English>` | `ron` | `ron` | nothing |
 | its own | any type serde reads | `ron::Ron<T>` | `ron`, or its own | `ron`, or its own | the type |
 
 Some formats are configured with the game's rules. They replace the
@@ -152,6 +153,13 @@ What each one reads:
 The engine's other kinds: `palette::PaletteDef`, `onebit::PatternMapDef`,
 `lighting::Lighting`,
 `names::Names`, `audio::AudioManifest` and `credits::CreditsFile`.
+
+A game on the short path ([ADR-0036](adr/0036-the-short-path-ready-made-parts-beside-the-long-form.md))
+reads its files with `shuyi_ui::basic::BasicData::formats()`: the standard
+formats, the palette with the engine's colours, the font atlas with
+`BASIC_GLYPHS`, its keymap and its English. `BasicData::load` reads
+`en.ron`, `keymap.ron`, `palette.ron`, `font/atlas.ron` (with
+`font/atlas.png` beside it) and every other picture.
 
 ### Checks after loading
 

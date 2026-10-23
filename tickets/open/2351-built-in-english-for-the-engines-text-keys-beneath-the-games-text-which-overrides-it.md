@@ -144,10 +144,8 @@ None.
   - both templates. The grid template's `Data::load`
     (`templates/grid/crates/game/src/lib.rs:95`, its `Lang::new` at
     line 119) makes the call. The blank template gets it through
-    `BasicData::load` (`crates/ui/src/basic.rs`, 2511), which it uses;
-    if 2511 isn't done yet, the call goes in the blank template's own
-    `Data::load` (`templates/blank/crates/game/src/lib.rs:83`, its
-    `Lang::new` at line 101). Both `en.ron` drop the three `keys.*`
+    `BasicData::load` (`crates/ui/src/basic.rs`, 2511, its `Lang::new`),
+    which it uses. Both `en.ron` drop the three `keys.*`
     lines. `layout.arrows` stays: it names their keymap's layout
     (`files/keymap.ron`). This also gives a new game's first profile
     its name, "Player 1".
@@ -159,9 +157,8 @@ None.
 - `docs/formats.md`, its **A language pack** bullet: one sentence on
   `LangPackRon::with_engine_english`.
 - **Either order:**
-  - **2511** (engine defaults for every `GameData` part): if it is
-    done, its default language data is built with
-    `with_engine_english`; if not, 2511 does that.
+  - **2511** (done): `BasicData::load` builds its `Lang` with
+    `with_engine_english`, as the bullet above says.
   - **2226** (language tags and a source language the game declares):
     if it is done, the engine's English sits beneath the game's source
     text whatever language the game declares; if not, 2226 keeps it
