@@ -89,7 +89,7 @@ None.
 
 - **`Passes`**, in `shuyi_ui::screen`:
   - `pub enum Passes { Nothing, Undeclared, Everything }`. It follows
-    2013's ADR on `#[non_exhaustive]` (2013 is in `blocked_by`).
+    ADR-0037 on `#[non_exhaustive]`.
   - `Screen::passes(&self) -> Passes`, defaulted to `Passes::Nothing`:
     the screen is modal, as every screen is today.
   - `Undeclared`: the screen takes the actions it declares
@@ -207,7 +207,7 @@ None.
     games through `of` and `declared`, so it gets `#[non_exhaustive]`
     too, with a new `ScreenActions::undeclared(screen)` for the struct
     literal in `crates/cli/src/contract/fake.rs`, which can't compile
-    outside `shuyi-ui` then. If 2013's ADR puts either type in another
+    outside `shuyi-ui` then. If ADR-0037 puts either type in another
     kind, do what the ADR says for that kind.
 - **Either order with 2316** (the debug pause): if 2316 is done, add a
   Harness test that its pause stops an `Everything` overlay's timer and

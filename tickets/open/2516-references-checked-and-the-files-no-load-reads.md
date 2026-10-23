@@ -233,8 +233,7 @@ None.
 - **Either order with 2517:** the unread files stay in `files` and do
   not go in `CheckOutput::warnings`: they are a report about one run,
   not a problem of a file.
-- **Either order with 2013:** if 2013 is done, the new public types
-  follow its ADR.
+- **Public types (ADR-0037):** the new public types follow it.
 - **Docs:**
   - `docs/formats.md` gets a section "References": `Ref<K>`, what is
     checked, ids as paths, loads through `Formats` for a file and a
@@ -276,7 +275,7 @@ writing `assets`. Say so in the PR.
    `crates/cli/src/contract/check.rs`, `contract/bake.rs`
    (`check_baked`), `game.rs`, `contract/fake.rs`, and 2511's
    `BasicTools` and `BasicGame`. Check whether 2220, 2228, 2229, 2501,
-   2509, 2515 and 2013 are in `tickets/done/`.
+   2509 and 2515 are in `tickets/done/`.
 2. Write the ADR.
 3. Add `refs` with `Ref<K>`, `Reference` and `collecting`, then the
    marking, the dropping and the line search in `decode_with`.

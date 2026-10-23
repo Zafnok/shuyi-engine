@@ -247,16 +247,15 @@ None.
   the game.
 - **Problem codes (2509):** the unknown kind takes `SH0001`
   (`wrong-arguments`), as `import --kind` with no such kind does.
-- **Either order with 2013:** if 2013 is done, the new public types
-  (`KindFormats`, `FormatInfo`, the op's input and output) follow its
-  ADR.
+- **Public types (ADR-0037):** the new public types (`KindFormats`,
+  `FormatInfo`, the op's input and output) follow it.
 - `docs/formats.md`: a section "A format's schema", on `TextSchema`, the
   examples and `shuyi kinds`.
 
 **The public API.** The rest is new methods, new types and a new
 feature. `Op` gains a variant and `Op::ALL` a length. If 2010's check
-reports that as a break (it won't if 2013 made `Op`
-`#[non_exhaustive]`), the PR has its `Breaking:` line, saying the game
+reports that as a break (it does: `Op` is still exhaustive), the PR has
+its `Breaking:` line, saying the game
 builds unchanged at its next pin bump.
 
 **Size.** If the PR passes about 600 changed lines (the ADR, the docs,
@@ -282,7 +281,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
    `crates/assets/src/ron.rs`, `crates/cli/src/contract/import.rs`,
    `contract.rs` and `contract/cli.rs`, and the standard RON formats'
    parsers named above. Read 2907's ADR if it is done, and check which
-   of 2116, 2020, 2230, 2516, 1133, 1134, 2509 and 2013 are done.
+   of 2116, 2020, 2230, 2516, 1133, 1134 and 2509 are done.
 2. Write the ADR.
 3. Add `Formats::kinds()` with its tests. Do the 2116 and 2020 parts if
    they are done.
@@ -296,7 +295,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
 7. Describe Hello, Grid's `English`; update `docs/formats.md`,
    `docs/contract.md`, the usage text and 2507's line.
 8. Do the either-order parts whose tickets are done (2230, 2516, 1134,
-   1133, 2509, 2013), or add the 1134 line to its scope.
+   1133, 2509), or add the 1134 line to its scope.
 9. Run the gates.
 
 ## Acceptance criteria

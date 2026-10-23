@@ -46,8 +46,10 @@ pub mod codes {
     pub const OUT_OF_RANGE: Code = Code("SH2010");
 }
 
-/// One problem found while loading or validating an asset.
+/// One problem found while loading or validating an asset. Build it with
+/// [`ContentError::new`] and its methods (ADR-0037).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub struct ContentError {
     /// Human-facing file path, e.g. `base/data/colors.ron`.
     pub file: String,

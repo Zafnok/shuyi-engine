@@ -105,8 +105,8 @@ None.
 **In:**
 - **`Projection::Hex(HexProjection)`** in
   `crates/ui/src/grid/layout.rs`:
-  - `Projection` becomes `#[non_exhaustive]` if it isn't yet (2013's
-    ADR: a set that will grow; 1126 adds two more variants).
+  - `Projection` becomes `#[non_exhaustive]` if it isn't yet (ADR-0037:
+    a set that will grow; 1126 adds two more variants).
     `HexProjection { layout: HexLayout, step: i32 }` is a plain value
     under that ADR: public fields, exhaustive, deriving `Debug`,
     `Clone`, `Copy`, `PartialEq` and `Eq`;

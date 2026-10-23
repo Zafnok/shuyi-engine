@@ -169,10 +169,9 @@ None.
   fixture). Its `determinism` job builds them through the self
   dev-dependency above. If not, 2116 adds the rows. Until then the
   three-format test, with its value written out, is the fixture.
-- **Either order with 2013:** both formats keep their fields private
-  behind constructors, as `Ron` does, so a new field breaks no game.
-  If 2013 is done, check them against its ADR. If not, there is nothing
-  more to do here.
+- **Public types (ADR-0037):** both formats keep their fields private
+  behind constructors, as `Ron` does (the ADR's kind 8), so a new field
+  breaks no game.
 - **Docs:** `docs/formats.md`'s table of formats a game registers gets a
   row for each, and a section "Tables in JSON and CSV" with one table
   written all three ways and the CSV rules above.

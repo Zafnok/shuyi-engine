@@ -212,12 +212,10 @@ None.
   `kind_with_text::<AnimationSet>`, summed up with the file's `count`
   helper as `3 clips: splash, waves, wind`, with `--print` writing its
   RON through `Encode`.
-- **Public types.** **Either order with 2013:** if 2013 is done, the
-  new types follow its ADR, and the Scope's choices are written in the
-  PR (whether `AnimationClip` and `AnimationSet` are
-  `#[non_exhaustive]`, with `AnimationClip::new` as their constructor).
-  If not, they are plain public types like the crate's other kinds, and
-  2013 covers them.
+- **Public types (ADR-0037):** the new types follow it, and the
+  Scope's choices are written in the PR (whether `AnimationClip` and
+  `AnimationSet` are `#[non_exhaustive]`, with `AnimationClip::new` as
+  their constructor).
 - **Docs** (`docs/formats.md`):
   - a row of *The built-in formats* table: `animation set`,
     `anim::AnimationSet`, `anim::AnimationSetRon`, `animation-set`,

@@ -99,8 +99,9 @@ impl LogCategory {
     }
 }
 
-/// One line of the log.
+/// One line of the log. Build it with [`LogLine::new`] (ADR-0037).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct LogLine {
     /// The frame it was given in (frames count from 1; 0 is before the
     /// first).
@@ -111,6 +112,23 @@ pub struct LogLine {
     pub category: LogCategory,
     /// What it says, in English.
     pub text: String,
+}
+
+impl LogLine {
+    /// A line given in `frame`.
+    pub fn new(
+        frame: u32,
+        level: LogLevel,
+        category: LogCategory,
+        text: impl Into<String>,
+    ) -> Self {
+        Self {
+            frame,
+            level,
+            category,
+            text: text.into(),
+        }
+    }
 }
 
 /// How many lines a log keeps: older ones are dropped and counted.

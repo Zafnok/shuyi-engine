@@ -120,11 +120,10 @@ None.
     scale + margin`, `height` likewise, `icon: None`. The margin is there
     because a framebuffer can come out a pixel smaller than asked, which
     would drop the console a whole scale;
-  - `Window::with_icon`: if 2013 is done it exists already (`const`,
-    taking `Option<Icon>`, the field's own type, as 2013's ADR asks); if
-    not, add `Window::with_icon(self, icon: Option<Icon>) -> Window`,
-    also `const`. `Window::console` builds on `Window::new` if 2013 is
-    done;
+  - `Window` is `#[non_exhaustive]` with `Window::new` and
+    `Window::with_icon` (`const`, taking `Option<Icon>`, the field's own
+    type), as ADR-0037 asks. This ticket adds only `Window::console`,
+    built on `Window::new`, and keeps `with_icon`;
   - the grid template and hello-grid use it, and `shuyi_app::run_game`
     (2511) builds its window with it (its `basic_window`, in
     `crates/app/src/lib.rs`), since the blank template has no `WINDOW`:
@@ -226,31 +225,24 @@ None.
   are already in the tree through `shuyi-ui`, under MIT OR Apache-2.0, so
   `deny.toml` doesn't change and `cargo deny` sees no new crate.
 - **For the game:** `window_conf` takes the storage name, a one-line
-  change in its `main.rs`. If 2013 is done, the game builds `Window`
-  with `Window::new`, which compiles unchanged; if not, `Window` keeps
-  its fields, so its literal compiles. Either way it may move to
+  change in its `main.rs`. The game builds `Window` with
+  `Window::new`, which compiles unchanged, and it may move to
   `Window::console`. The game's PR that moves the pin follows this one,
   and the PR description says so. If 2010 is done, the PR carries the
   `Breaking:` line its job asks for.
 - **Either order:**
   - with 2321 (`Window::vsync`): if 2321 is done, `Window::console` sets
-    `vsync` to 2321's default (through `Window::new` if 2013 is done);
-    if not, 2321 adds the field to `Window::console`;
-  - with 2013: if it is done, `Window` is `#[non_exhaustive]` with
-    `Window::new` and `with_icon`: add only `Window::console`, a
-    `const fn` built on `Window::new`, and step 5 moves the grid
-    template and hello-grid from `Window::new` to `Window::console`. If
-    not, 2013 makes `Window` non-exhaustive and keeps `console` and
-    `with_icon` as this ticket made them;
+    `vsync` to 2321's default through `Window::new`; if not, 2321 sets it
+    in `Window::new`, which `Window::console` builds on;
   - 2511 (`run_game`) is done: the blank template has no `WINDOW` or
     `window_conf`, and `run_game`'s window function (`basic_window`)
     uses `Window::console` and the new `window_conf` as above;
   - with 3048 (the game's identity): if it is done, the grid template
     and hello-grid write
     `Window::console(APP.name, CONSOLE, 2, 16).with_icon(APP.window_icon)`
-    and call `window_conf(&WINDOW, APP.storage)`. This compiles whether
-    or not 2013 is done, since `with_icon` takes `Option<Icon>` either
-    way. If not, 3048 makes that change (its scope says so);
+    and call `window_conf(&WINDOW, APP.storage)`; `with_icon` takes
+    `Option<Icon>`, so `APP.window_icon` passes straight in. If not,
+    3048 makes that change (its scope says so);
   - with 3041 (log sinks): if it is done, the warning `run` logs is
     `log::warn!(target: "platform", …)`; if not, macroquad's `warn!`,
     which 3041 moves. `run` logs it, not `window_conf`, because 3041's
@@ -313,14 +305,14 @@ None.
    `WINDOW_VERSION`, `MIN_WINDOW`, `SAVE_AFTER`), `conf_from`, the
    memory that decides when to write, the place on leaving fullscreen,
    `wanted_fullscreen` and `IdleCursor`, all pure, with their tests.
-3. Add `Window::console` (and `with_icon` if 2013 isn't done), change
-   `window_conf`, and add the `Opened` static it fills.
+3. Add `Window::console`, change `window_conf`, and add the `Opened`
+   static it fills.
 4. Wire `Macroquad` and `run`: `run` takes `Opened` and logs its
    warning; the starting mode; game frames only for `fullscreen`; the
    first-frame `set_fullscreen(true)` (Windows only); leaving fullscreen
    on Windows; `after_frame`; and the write at quit in `run`.
-5. Move the grid template, hello-grid and `run_game` to
-   `Window::console` and the new
+5. Move the grid template, hello-grid and `run_game` from
+   `Window::new` to `Window::console` and the new
    `window_conf`. `cargo fmt --all` doesn't reach `templates/`, so format
    their files by hand (CI's template job checks them).
 6. Write the docs. Run hello-grid on Windows and check: resize, quit,

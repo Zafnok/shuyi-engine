@@ -15,8 +15,10 @@ use crate::widgets::menu::MenuView;
 /// Cells between the log's key hint and the key that goes on.
 const LOG_HINT_GAP: i32 = 3;
 
-/// Where narration (lines nobody says) sits in a text box.
+/// Where narration (lines nobody says) sits in a text box. More ways may
+/// come (ADR-0037).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NarrationAlign {
     /// Across the middle of the box; a lone line in the middle row too.
     #[default]
@@ -25,8 +27,23 @@ pub enum NarrationAlign {
     Left,
 }
 
-/// Where a text box goes on the console.
+/// Where a text box goes on the console. Build it with [`BoxPlace::new`]:
+/// a struct literal doesn't compile outside this crate, so a new field
+/// never breaks a game (ADR-0037).
+///
+/// ```compile_fail
+/// use shuyi_ui::dialogue::text_box::glyph::{BoxPlace, NarrationAlign};
+/// use shuyi_ui::frame::glyph_buffer::Rect;
+///
+/// const PLACE: BoxPlace = BoxPlace {
+///     frame: Rect::new(0, 18, 48, 6),
+///     text_x: 2,
+///     text_y: 19,
+///     narration: NarrationAlign::Centred,
+/// };
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct BoxPlace {
     /// The box, border included, when it holds one page.
     pub frame: Rect,
@@ -36,6 +53,28 @@ pub struct BoxPlace {
     pub text_y: i32,
     /// Where narration sits: [`NarrationAlign::Centred`] or from `text_x`.
     pub narration: NarrationAlign,
+}
+
+impl BoxPlace {
+    /// A box at `frame` whose text starts at column `text_x` on row
+    /// `text_y`, with narration [`Centred`](NarrationAlign::Centred)
+    /// ([`with_narration`](Self::with_narration) changes it).
+    #[must_use]
+    pub const fn new(frame: Rect, text_x: i32, text_y: i32) -> Self {
+        Self {
+            frame,
+            text_x,
+            text_y,
+            narration: NarrationAlign::Centred,
+        }
+    }
+
+    /// The place with narration set as `narration` says: usable in a
+    /// `const` item.
+    #[must_use]
+    pub const fn with_narration(self, narration: NarrationAlign) -> Self {
+        Self { narration, ..self }
+    }
 }
 
 /// The box `text` is painted in at `place`, and its first text row. While

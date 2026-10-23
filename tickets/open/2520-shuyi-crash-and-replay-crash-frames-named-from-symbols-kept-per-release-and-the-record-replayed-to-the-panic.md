@@ -224,10 +224,9 @@ None.
     carry a `Breaking:` line for each public struct that gained a field
     (`ReplayInput`, `ReplayStep`, `ReplayOutput`, and `CrashReport`
     unless it is `#[non_exhaustive]`). If not, the PR body says the same;
-  - with 2013 (`#[non_exhaustive]` and constructors): if it is done, the
-    new public types (`CodeFrame`, `CrashInput`, `CrashOutput`,
-    `NamedFrame`, `PanicAt`, `CrashReplay`) follow its ADR. If not, 2013
-    covers them.
+  - the new public types (`CodeFrame`, `CrashInput`, `CrashOutput`,
+    `NamedFrame`, `PanicAt`, `CrashReplay`) follow ADR-0037
+    (`#[non_exhaustive]` and constructors).
 - **Docs:** `docs/contract.md`'s table gains `crash` and `replay
   --crash`. `docs/crash-reports.md` (3046) gains: reading a report with
   `shuyi crash`, keeping and passing the debug file, and reproducing

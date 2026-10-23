@@ -298,8 +298,8 @@ than one PR. The last paragraph of **In** says how to split.
   what the engine has when it is written.
 - **What changes for the game:** the API grows, and nothing is renamed.
   Code that builds `CinematicDef`, `ShotDef`, `CinematicFile` or
-  `TimedShot` as a struct literal must add the new fields; if 2013's
-  rule for public types is done, follow it. The PR says which call
+  `TimedShot` as a struct literal must add the new fields; follow
+  ADR-0037's rule for public types. The PR says which call
   sites change, and the game's PR that moves its pin follows it.
 - **The split.** Do first the part that holds what the game asked for,
   if this ticket was unparked for a game's request; otherwise part 1.
@@ -347,7 +347,7 @@ than one PR. The last paragraph of **In** says how to split.
 1. Read ADR-0004 §3, ADR-0007, ADR-0019, ADR-0023 §5, 2109's ADR and
    `shuyi_core::ease`, 2339's `shuyi_ui::frame::transition`, both
    `cinematic` modules and their tests, and the pack's pinned-form test.
-   Check whether 1134, 2013, 2104, 2105, 2115 and 2365 are done. Read
+   Check whether 1134, 2104, 2105, 2115 and 2365 are done. Read
    the game's cinematic shot code (its repository is public; game#1153's
    row names `ui/cinematic*`) and say in the PR, in the engine's words,
    which kinds of shot code the part being done could replace.

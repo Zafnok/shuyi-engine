@@ -239,8 +239,7 @@ Visions of Shuyi.
   private; `OptionRow::mute_in_background`; `Background::with_frame_cap`;
   `Pacing::background`). A struct literal of `Pacing`, if 2321 left it
   open to one, needs the new field. The game's PR that moves the pin
-  follows this one. If 2013 is done, the new public items follow its
-  rule.
+  follows this one. The new public items follow ADR-0037.
 - **Size.** If the PR passes about 600 changed lines (snapshots and
   fixtures aside), the player's Mute in background (the field, the row,
   the toy and the `()` form) goes to a follow-up ticket written with the

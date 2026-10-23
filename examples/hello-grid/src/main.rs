@@ -12,12 +12,7 @@ use shuyi_platform::{Card, Look, Setup, Start};
 use shuyi_ui::Game;
 
 /// The window: the console at twice its size, and a small margin.
-const WINDOW: Window = Window {
-    title: "Hello, Grid",
-    width: 48 * 8 * 2 + 16,
-    height: 24 * 16 * 2 + 16,
-    icon: None,
-};
+const WINDOW: Window = Window::new("Hello, Grid", 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
 
 /// Where the settings and key bindings are kept: never change it, or every
 /// player's are lost.
@@ -25,15 +20,13 @@ const STORAGE_NAME: &str = "shuyi-hello-grid";
 
 /// What the macroquad backend needs to know about the game.
 fn config() -> AppConfig {
-    AppConfig {
-        window: WINDOW,
-        storage_name: STORAGE_NAME,
-        files: hello_grid::file,
-        font_png: FONT_PNG,
-        sounds: sound::files(),
-        voices: None,
-        text_input: None,
-    }
+    AppConfig::new(
+        WINDOW,
+        STORAGE_NAME,
+        hello_grid::file,
+        FONT_PNG,
+        sound::files(),
+    )
 }
 
 /// What the game's frames are painted with.

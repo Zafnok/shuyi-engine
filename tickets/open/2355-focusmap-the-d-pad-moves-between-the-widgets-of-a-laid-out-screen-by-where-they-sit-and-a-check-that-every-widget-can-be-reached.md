@@ -177,9 +177,9 @@ None.
 7. **An ADR** (`write-adr` skill): focus between widgets comes from the
    layout; the widget first, then a neighbour set by hand, the way back,
    the geometry and wrap; kept directions; the reachability check. It
-   names 2330 as the `.ui.ron` side and 2405 as the pointer's. If 2013
-   is done, the new public types follow its ADR; if not, they have
-   private fields and constructors, as `ListCursor` has.
+   names 2330 as the `.ui.ron` side and 2405 as the pointer's. The new
+   public types follow ADR-0037, with private fields and constructors
+   where they keep an invariant, as `ListCursor` has.
 8. If the PR would pass about 600 changed lines (fixtures and snapshots
    not counted), part 4, and part 6 if 2405 is done, go to a follow-up
    ticket (`write-ticket`, blocked by 2355). The Harness test then reads
@@ -221,7 +221,7 @@ moves its pin follows it. The rest is additive.
    `Layout`, its rectangle type), `widgets/menu.rs`, `menu/view.rs` and
    `menu/glyph.rs`, `screen.rs`, `game.rs`,
    `crates/platform/src/harness.rs` and `crates/ui/tests/it/main.rs`.
-   Check whether 2354, 2405, 2334, 2010 and 2013 are done.
+   Check whether 2354, 2405, 2334 and 2010 are done.
 2. Write `FocusNode`, `FocusMap` and `FocusError` in
    `crates/ui/src/focus.rs`, declare the module in `lib.rs`, with unit
    and property tests.

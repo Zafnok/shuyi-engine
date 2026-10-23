@@ -189,8 +189,7 @@ None.
   `frame_png`'s re-export. The sheet and the encoders stay in
   `shuyi-cli` either way: they need `png` and `gif`, and the labels are
   the tool's.
-- **Either order with 2013:** if 2013 is done, `Capture` and `Output`
-  follow its rules for public types. If not, 2013 covers them.
+- **Public types (ADR-0037):** `Capture` and `Output` follow it.
 
 **Out (do not do):**
 - capturing a range of a recorded session: 2518 adds session records
@@ -215,8 +214,8 @@ None.
    `codec.rs`, `toy.rs`, `lib.rs`, `crates/cli/tests/it/toy.rs`,
    `examples/hello-grid/src/tools.rs` and
    `examples/hello-grid/tests/it/snapshot.rs`. Read how 1133's session
-   paints its `frame_png`, and 2315's `--debug`, 2332's `raster` and
-   2013's ADR if they are done.
+   paints its `frame_png`, and 2315's `--debug` and 2332's `raster` if
+   they are done, and ADR-0037.
 2. Add `Script::then_frames`, with a test that it runs exactly `n` more
    frames (`Harness::frame_count`).
 3. Add `Capture`, `Output`, `Options::capture` and `GameTools::frames`

@@ -171,12 +171,30 @@ fn a_waiting_page_names_the_key_the_log_and_blinks() {
     assert!(row(&buf, 15).ends_with("  f    │"), "{}", row(&buf, 15));
 }
 
+/// [`PLACE`] with narration from the left, built in a `const` item as
+/// games build theirs.
+const LEFT: BoxPlace =
+    BoxPlace::new(Rect::new(0, 10, 40, 7), 3, 12).with_narration(NarrationAlign::Left);
+
+#[test]
+fn a_new_place_is_the_literal_with_narration_centred() {
+    assert_eq!(BoxPlace::new(Rect::new(0, 10, 40, 7), 3, 12), PLACE);
+    assert_eq!(
+        BoxPlace::new(Rect::new(0, 13, 40, 7), 2, 15),
+        crate::toy::TALK_BOX
+    );
+    assert_eq!(
+        LEFT,
+        BoxPlace {
+            narration: NarrationAlign::Left,
+            ..PLACE
+        }
+    );
+}
+
 #[test]
 fn left_narration_starts_at_text_x_and_a_lone_line_sits_on_the_first_row() {
-    let left = BoxPlace {
-        narration: NarrationAlign::Left,
-        ..PLACE
-    };
+    let left = LEFT;
     let paint = |lines: &[&str]| {
         let mut view = text(lines);
         view.narration = true;

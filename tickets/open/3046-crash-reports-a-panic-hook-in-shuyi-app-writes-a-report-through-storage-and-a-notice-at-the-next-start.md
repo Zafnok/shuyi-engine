@@ -75,8 +75,8 @@ What Shuyi has today (read 2026-10-21):
   - 2511 (MVP) moves the blank template onto `shuyi_app::run_game`,
     which builds the `AppConfig` from a `BasicGame`. Its Out leaves the
     crash hook in `run_game` to this ticket;
-  - 2013 (MVP) makes `AppConfig` `#[non_exhaustive]` with
-    `AppConfig::new`; 2015 replaced CI's `platform-deps` job with
+  - 2013 made `AppConfig` `#[non_exhaustive]` with `AppConfig::new`
+    (ADR-0037); 2015 replaced CI's `platform-deps` job with
     `cargo xtask check-layers` over `tools/layers.ron`;
   - 3041 writes that log to a file in shipped builds, and sets a panic
     hook that writes the panic's line into it;
@@ -169,13 +169,12 @@ anywhere is 3047's question for Nick.
     on the web, where `localStorage` holds about 5 MB for the whole
     site. `CrashReports::off()` has `keep: 0` and installs nothing.
     `Default` is `CrashReports::new("")`;
-  - `AppConfig` gains `crash: CrashReports`. If 2013 is done,
-    `AppConfig` is `#[non_exhaustive]` with `AppConfig::new`. `crash`
-    is a public field that `AppConfig::new` sets to
+  - `AppConfig` gains `crash: CrashReports`. `AppConfig` is
+    `#[non_exhaustive]` with `AppConfig::new` (ADR-0037). `crash` is a
+    public field that `AppConfig::new` sets to
     `CrashReports::default()`, and a game changes it by assigning the
-    field (2013's ADR gives `with_*` setters only to types games build
-    in `const` items), so the change is additive. If not, it is a new
-    field, and the PR says the API breaks;
+    field (ADR-0037 gives `with_*` setters only to types games build in
+    `const` items), so the change is additive;
   - `crash::install(reports, storage: impl Fn() -> Box<dyn Storage> +
     Send + Sync + 'static)`, which `run` calls before its first frame
     with `|| storage::platform(storage_name)` (making a storage reads
@@ -305,12 +304,11 @@ anywhere is 3047's question for Nick.
   to a follow-up ticket (the `write-ticket` skill, After MVP,
   `blocked_by: ["3046"]`), written in this PR from this ticket's
   bullets. hello-grid keeps its part here.
-- **For the game:** `AppConfig` gains `crash` (additive if 2013 is
-  done, a break if not), and `Start` gains the `crash_record` field and
-  builder. A new public field breaks a game that builds `Start` by a
-  struct literal, so the PR's `Breaking:` line names it unless `Start`
-  is `#[non_exhaustive]` by then. Say so in the PR; the game's PR that
-  moves the pin follows.
+- **For the game:** `AppConfig` gains `crash` (additive), and `Start`
+  gains the `crash_record` field and builder. A new public field breaks
+  a game that builds `Start` by a struct literal, so the PR's
+  `Breaking:` line names it unless `Start` is `#[non_exhaustive]` by
+  then. Say so in the PR; the game's PR that moves the pin follows.
 
 **Out (do not do):**
 - Stack overflows, aborts, running out of memory and faults in native
@@ -336,8 +334,8 @@ anywhere is 3047's question for Nick.
    `crates/app/src/storage/`, `Setup`, `Start` and `App::load` in
    `crates/platform/src/app.rs`, 3040's log, 2511's `BasicGame` and
    `run_game`, and the stage screens and `tools.rs` of hello-grid and the
-   grid template. Check whether 2013, 2015, 2018, 2111, 2512, 3041 and
-   3048 are done.
+   grid template. Check whether 2015, 2018, 2111, 2512, 3041 and 3048
+   are done.
 2. Write `shuyi_platform::crash`: the report, its keys, `parse`,
    `to_text` and `keep_newest`, with their tests. Add `serde`, `ron`
    and `proptest`, and `tools/layers.ron`'s line.

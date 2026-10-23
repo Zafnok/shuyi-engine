@@ -289,10 +289,9 @@ and the plural table are technical.
     changes only a message's literal text and keeps its syntax (a
     plural's `other` and its braces stay as written). If not, 2353 does
     that through `walk` or `forms`.
-  - **2013** (types that can grow): if it is done, `Arg`, `Piece`,
-    `Category`, `Kind`, `MessageError` and the new `LangStatus` field
-    follow its ADR on `#[non_exhaustive]` and constructors. If not,
-    2013 covers them.
+  - **Public types (ADR-0037):** `Arg`, `Piece`, `Category`, `Kind`,
+    `MessageError` and the new `LangStatus` field follow it
+    (`#[non_exhaustive]` and constructors).
 - **For the game:** breaking. `Label::Key`'s args,
   `Label::with_arg`, `MenuItem::with_arg`, `text::fill`,
   `text::fill_values`, `Ctx::text_with` and `Ctx::text_with_keys` take

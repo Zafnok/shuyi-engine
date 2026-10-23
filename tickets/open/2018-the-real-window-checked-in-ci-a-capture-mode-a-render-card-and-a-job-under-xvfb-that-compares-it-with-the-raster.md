@@ -278,8 +278,7 @@ None.
     Whichever lands second reuses the first's code instead of writing
     it again: one helper in `crates/app/src/readback.rs`, and
     `capture::Plan::frames` or `shuyi_platform::link`'s step frames;
-  - with 2013: if it is done, the new public types follow its rules; if
-    not, 2013 covers them;
+  - the new public types follow ADR-0037;
   - 1120, 2703, 2323, 2301 and 2222 say in their own clauses how their
     scenes join the card or a plan.
 
@@ -301,8 +300,8 @@ None.
 1. Read 2332's `raster` module; `crates/app/src/lib.rs`, `backend.rs`
    and `render.rs`; `crates/platform/src/app.rs`, `harness.rs` and
    `headless.rs`; `frame_png.rs`'s `Step`; ADR-0011 §5, ADR-0024 and
-   `docs/platform-backends.md`. Check which of 2013, 2222, 2301, 2333,
-   2335, 2336, 2337, 2513, 2521, 3042, 3044 and 3046 are done.
+   `docs/platform-backends.md`. Check which of 2222, 2301, 2333, 2335,
+   2336, 2337, 2513, 2521, 3042, 3044 and 3046 are done.
 2. Write the ADR.
 3. Write `shuyi_platform::capture` and its tests, and add the `no-std`
    job's line.

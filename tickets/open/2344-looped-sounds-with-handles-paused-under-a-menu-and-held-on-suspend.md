@@ -295,8 +295,8 @@ None.
 - **What changes for the game:** `AudioRequest` and `SoundRequest` gain
   variants (an exhaustive match breaks), `SoundCue` gains a field,
   `Audio` gains two methods, and packs are rebaked for the new version.
-  If 2013 is done, the new public types follow its rule. The PR says
-  so, and the game's PR that moves the pin follows it.
+  The new public types follow ADR-0037. The PR says so, and the game's
+  PR that moves the pin follows it.
 
 **Size.** If the PR passes about 600 changed lines (snapshots not
 counted), the pauses go to a follow-up ticket (`write-ticket`), After
@@ -329,7 +329,7 @@ points the tickets that name 2344 for them (2316, 2408, 3029, 3031,
    `app.rs`, `headless.rs` and `harness.rs`; `crates/app/src/audio.rs`,
    `audio/native_music.rs`, `audio/voice.rs` and `backend.rs`; ADR-0024;
    and quad-snd 0.2.8's `Sound::play`, `Playback` and `web_snd.rs`.
-   Check whether 2316, 2342, 2345, 2408, 3029 and 2013 are done (the
+   Check whether 2316, 2342, 2345, 2408 and 3029 are done (the
    either-order clauses).
 2. `SoundCue::looped`, the RON field, the literals, the toy's `hum`
    cue, `docs/formats.md`, the pack version and its snapshot.

@@ -208,9 +208,9 @@ A frame number here counts `App::frame` calls from 1, as 2518's
     from: its card, look, system hook, 2518's `made` and `state_hash`,
     and the rerun;
   - 2518 adds `made` and `state_hash` to `Start` first. Give `rerun` the
-    same treatment under 2013's ADR (MVP): if `Start` is
-    `#[non_exhaustive]` or has private fields by then, the field is
-    additive. If not, it breaks a struct literal or an exhaustive
+    same treatment under ADR-0037 (2518 moves `Start` under it): if
+    `Start` is `#[non_exhaustive]` or has private fields by then, the
+    field is additive. If not, it breaks a struct literal or an exhaustive
     pattern of `Start` in a game. Nothing in this repository writes one
     outside `App::new`. The PR says so for the game's pin bump
     (`AGENTS.md`, *Working with the game repository*), with 2010's
@@ -332,9 +332,10 @@ A frame number here counts `App::frame` calls from 1, as 2518's
 - **For the game:** `Start` gains a field and two constructors
   (above). `UiAction` gains a variant: a game that matches it
   exhaustively (hello-grid's `stage.rs` shows one) adds an arm, unless
-  2013 or 2316 made `UiAction` `#[non_exhaustive]`. `DebugView`, `Game`
-  and `Session` gain items; `RunInput` gains a field (a new contract
-  version). Say so in the PR; the game's PR that moves the pin follows.
+  2316 made `UiAction` `#[non_exhaustive]` (2013 left it exhaustive).
+  `DebugView`, `Game` and `Session` gain items; `RunInput` gains a
+  field (a new contract version). Say so in the PR; the game's PR that
+  moves the pin follows.
 
 **Out (do not do):**
 - snapshots of `App`'s state, and keyframes (a ticket only if the

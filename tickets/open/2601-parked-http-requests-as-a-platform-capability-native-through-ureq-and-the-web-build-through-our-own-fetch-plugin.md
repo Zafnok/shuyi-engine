@@ -171,9 +171,8 @@ from the two sections after **Out**.
       id;
   - `Ctx` gains `pub http: HttpQueue`, absent until the platform says
     otherwise;
-  - the new enums and structs that may grow are `#[non_exhaustive]`.
-    **Either order with 2013:** if it is done, follow its rules for
-    public types; if not, 2013 covers these with the rest.
+  - the new enums and structs that may grow are `#[non_exhaustive]`,
+    and every new public type follows ADR-0037.
 - **`shuyi_platform::http`** (`crates/platform/src/http.rs`),
   re-exporting the types above:
   - `trait Http { fn send(&mut self, id: RequestId, request:
@@ -416,8 +415,7 @@ Its acceptance criteria:
 ## Implementation steps
 
 1. Read ADR-0006, ADR-0024, `system_keyboard.rs`, `App`'s `run` and
-   `step`, and `headless.rs`. Check whether 2013 and 3053 are
-   done.
+   `step`, and `headless.rs`. Check whether 3053 is done.
 2. Unless `tickets/open` already holds them, write the two follow-up
    tickets with the `write-ticket` skill, from the two sections above:
    each with the context it needs from this ticket, its scope, steps,

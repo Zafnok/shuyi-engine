@@ -233,11 +233,11 @@ None.
 - **Either order with 2802** (the book): if 2802 is done, its chapter
   "The frame and skins" (`site/content/learn/book/`) gets a short
   section with a tinted sprite and an additive one. If not, nothing.
-- **Either order with 2013** (`#[non_exhaustive]`, constructors and
-  builders): if 2013 is done, `Blend` (a set that may grow) is
-  `#[non_exhaustive]`, and `Paint`, `Sprite` and `Overlay` move under
-  its ADR here or in its follow-up, as the ADR says. If not, 2013's
-  sweep covers them.
+- **Public types (ADR-0037):** `Blend` (a set that may grow) is
+  `#[non_exhaustive]`. `Paint`, `Sprite` and `Overlay` aren't under the
+  ADR yet, and neither its table nor 2024 moves them, so they move
+  under it in this PR, which adds to them, as its *When* says. Then a
+  game builds `Sprite` and `Overlay` with `new`, not with `..`.
 - **For the game:** its frames don't change. `Overlay` and `Sprite`
   gain fields that `new` sets; the game builds them with `new` or with
   `..` (its `crates/ui/src/map_view/sprite.rs`, checked 2026-10-20). A

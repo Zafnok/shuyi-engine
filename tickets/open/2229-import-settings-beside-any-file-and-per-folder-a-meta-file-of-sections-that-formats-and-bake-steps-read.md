@@ -245,12 +245,11 @@ None.
   no format claims `meta`. The language pack bullet's "Any other file
   in its directory is an error" leaves settings files out.
 - **For the game:** additive, except the new `RegisterError` variants:
-  a `match` on `RegisterError` with no wildcard arm stops compiling,
-  unless 2013 has made `RegisterError` `#[non_exhaustive]` first. The
-  PR says which, and the game's PR that moves the pin follows it.
-- **Either order with 2013.** If 2013's ADR on `#[non_exhaustive]` is
-  in, `RegisterError` and the new types follow it; if not, 2013's sweep
-  covers them.
+  a `match` on `RegisterError` with no wildcard arm stops compiling.
+  The PR says so, and the game's PR that moves the pin follows it.
+- **Public types (ADR-0037):** the new types follow it. `RegisterError`
+  is still exhaustive, and this PR adds to it, so it becomes
+  `#[non_exhaustive]` here, as the ADR's *When* says.
 - **Either order with 2220.** If 2220 is done, add a test that a `Hot`
   value of the toy kind reloads when its `.meta` changes. If not,
   nothing here: the reads go through the bundle, which 2220 tracks.

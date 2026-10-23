@@ -335,7 +335,7 @@ MVP, not parked.
     its serde derives (they are on the enum) and a pointer session plays
     back with the same hash per frame (a test). If not, 2518 records
     them as it records any `RawInputEvent`.
-12. If 2013 is done, the new public types follow its ADR.
+12. The new public types follow ADR-0037.
 13. No new dependency.
 
 **For the game:** `RawInputEvent` gains variants, which breaks a
@@ -399,8 +399,8 @@ follows it. The rest is additive.
    `crates/app/src/backend.rs`, `keys.rs` and `render.rs`,
    `crates/platform/src/platform.rs`, `harness.rs` and `headless.rs`,
    and Hello, Grid's `screens.rs`, `screens/stage.rs`, `skin.rs` and
-   `tests/it/main.rs`. Check whether 2333, 2355, 3042, 2518, 2010 and
-   2013 are done. If the follow-up for the other widgets doesn't exist,
+   `tests/it/main.rs`. Check whether 2333, 2355, 3042, 2518 and
+   2010 are done. If the follow-up for the other widgets doesn't exist,
    write it now (Out).
 2. Write the hit areas and the stack's rule, with their tests.
 3. Add the events, `Pointer`, `PointerInput`, `FrameInput::pointer` and

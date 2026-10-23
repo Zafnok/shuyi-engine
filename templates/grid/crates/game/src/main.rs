@@ -13,12 +13,7 @@ use shuyi_platform::{Card, Look, Setup, Start};
 use shuyi_ui::Game;
 
 /// The window: the console at twice its size, and a small margin.
-const WINDOW: Window = Window {
-    title: "{{name}}",
-    width: 48 * 8 * 2 + 16,
-    height: 24 * 16 * 2 + 16,
-    icon: None,
-};
+const WINDOW: Window = Window::new("{{name}}", 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
 
 /// Where the settings and key bindings are kept: never change it, or every
 /// player's are lost.
@@ -41,21 +36,14 @@ fn left_out(_: &str) -> bool {
 
 /// What the macroquad backend needs to know about the game.
 fn config() -> AppConfig {
-    AppConfig {
-        window: WINDOW,
-        storage_name: STORAGE_NAME,
-        files: game::file,
-        font_png: FONT_PNG,
-        sounds: Files {
-            sound: &no_sound,
-            sound_shown: &shown,
-            sound_left_out: &left_out,
-            music_dir: "music",
-            music: None,
-        },
-        voices: None,
-        text_input: None,
-    }
+    let sounds = Files {
+        sound: &no_sound,
+        sound_shown: &shown,
+        sound_left_out: &left_out,
+        music_dir: "music",
+        music: None,
+    };
+    AppConfig::new(WINDOW, STORAGE_NAME, game::file, FONT_PNG, sounds)
 }
 
 /// What the game's frames are painted with.

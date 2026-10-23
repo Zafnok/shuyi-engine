@@ -185,15 +185,13 @@ None.
     volumes move opposite ways);
   - if not, change `shuyi-app`'s player; 3029 moves it with the rest
     (3029 gets an edit for this).
-- **Either order with 2013** (public types that can grow, MVP):
-  - if 2013 is done, the types this PR adds or adds to follow its ADR,
-    as that ADR's *When* says: `MusicSwitch` is `#[non_exhaustive]`
-    with the three constructors (so 2365 can add a field without a
-    break); `AudioManifest`, and the `PlayMusic` and `Start` variants,
-    move under the ADR's kinds if they aren't already, with a
-    constructor (such as `MusicCommand::start(cue, gain)`) for any
-    variant made non-exhaustive that another crate builds;
-  - if not, 2013's sweep covers them.
+- **Public types (ADR-0037):** the types this PR adds or adds to
+  follow it, as its *When* says: `MusicSwitch` is `#[non_exhaustive]`
+  with the three constructors (so 2365 can add a field without a
+  break); `AudioManifest`, and the `PlayMusic` and `Start` variants,
+  move under the ADR's kinds if they aren't already, with a constructor
+  (such as `MusicCommand::start(cue, gain)`) for any variant made
+  non-exhaustive that another crate builds.
 - **For the game:** the API breaks. `AudioRequest::PlayMusic` and
   `MusicCommand::Start` gain a field, and `AudioManifest` two public
   fields, so code that builds or matches them without `..` changes. The
@@ -228,8 +226,8 @@ After MVP, with their acceptance criteria, and the PR says so.
    `crates/ui/src/game.rs` (`with_stack`, `collect_audio`,
    `set_music_playing`, `is_known`), `crates/app/src/audio.rs`
    (`Audio::music`, `poll`, `music_playing` and their tests) and
-   `crates/platform/src/headless.rs` (`Speaker`). Check whether 3029,
-   2013 and 2010 are done.
+   `crates/platform/src/headless.rs` (`Speaker`). Check whether 3029
+   and 2010 are done.
 2. `MusicSwitch`, the two manifest fields (`RawFile` and
    `AudioManifest`), `music_switch()`, their tests, and the pack
    version.

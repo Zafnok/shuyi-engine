@@ -140,7 +140,7 @@ picks, and each becomes a ticket of its own when a game ships there.
     lives in `shuyi_ui::store_services`, a new
     `crates/ui/src/store_services.rs` beside `storage.rs`. It is not
     called `Services`, which would read as 1148's `shuyi-services` server
-    crate. It is `#[non_exhaustive]` (with 2013's rule, if 2013 is done),
+    crate. It is `#[non_exhaustive]` (ADR-0037),
     and `achievements: Option<Box<dyn Achievements>>` is its only member
     for now.
     - `Platform::store_services()` (`crates/platform/src/platform.rs:189`)

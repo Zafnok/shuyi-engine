@@ -246,10 +246,9 @@ None.
     `Camera::listener` for its world camera: the centre of the view in
     whole world pixels and half its width at the camera's zoom. If not,
     1120 adds it.
-- **Public types follow 2013's ADR** (2013 is MVP, so it is done before
-  this is unparked): `SoundAt`, `Listener` and `Mix` are plain values
-  with public fields, `Falloff` is data read from a file, and the new
-  `AudioRequest` variant follows its rule for enums.
+- **Public types follow ADR-0037:** `SoundAt`, `Listener` and `Mix`
+  are plain values with public fields, `Falloff` is data read from a
+  file, and the new `AudioRequest` variant follows its rule for enums.
 - **The contract:** `run`'s `Sound` (`crates/cli/src/contract/session.rs`)
   gains `volume` and `pan`, read from the `PlaySound`, and loses `Eq`
   with them. Raise `VERSION` (`crates/cli/src/contract.rs`) to the next

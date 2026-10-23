@@ -175,7 +175,7 @@ None.
     integers (`1.0 KB` is 1,024 bytes and `1.0 MB` is 1,048,576, as the
     profiles' comments count them).
 
-  If 2013 is done, these follow its rule for public types
+  These follow ADR-0037's rules for public types
   (`#[non_exhaustive]` and constructors).
 - **From the backend to the view:**
   - `Platform::memory(&mut self) -> Option<MemoryReading>` in
