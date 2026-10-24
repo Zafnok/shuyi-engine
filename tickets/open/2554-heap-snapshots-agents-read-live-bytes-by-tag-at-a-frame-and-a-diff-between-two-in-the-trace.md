@@ -119,13 +119,25 @@ None.
   names, `other` and `overflow`, that a tag is where a block was
   allocated or last grown, and how to find what grows (two snapshots
   and a diff, from `run` or MCP).
+- **The skill pack:** 2553's `shuyi-perf` skill gains a section, "What
+  holds the heap, and what grew": when to use it (the heap grows as the
+  game plays, a stage or a target runs out of memory); reading
+  `heap_tags` and `heap_growth` from `run --perf`; taking a snapshot
+  and a diff in an MCP session (`perf` with `snapshot` and
+  `diff_from`), with the wrong-arguments code its error gives; what a
+  tag's class says (a phase, a span, an asset kind, `other`); and
+  marking the suspect code with a span to give its bytes a tag of their
+  own. Its description names the heap too, and its `metadata.version`
+  is raised. Its worked example checks that `heap_tags` and
+  `heap_growth` are there, and that a `diff_from` that isn't kept
+  answers its code.
 - **Either order with 2555:** if 2555 is done, the link's `Perf`
   request gains `snapshot: bool`: the backend takes it after the frame
   (as the link's screenshot is taken after `present`) and answers it
-  with the records; `shuyi attach` gains `--perf-snapshot`; and MCP's
-  `perf` takes snapshots and diffs over the link, the session keeping
-  them on the `shuyi` side. If not, 2555 adds them (its own clause says
-  so).
+  with the records; `shuyi attach` gains `--perf-snapshot`, which
+  `shuyi-perf`'s section on a running build names; and MCP's `perf`
+  takes snapshots and diffs over the link, the session keeping them on
+  the `shuyi` side. If not, 2555 adds them (its own clause says so).
 
 **Out (do not do):**
 - the tags themselves (3065), and the heap counts per frame (3064);
@@ -146,8 +158,8 @@ None.
    `Harness::heap_snapshot`, `shuyi_platform::heap`, and the fake's
    snapshots.
 4. Add the snapshots to `run --perf`, the MCP tool and the trace file.
-5. Regenerate the schemas, raise the version, write the docs, run the
-   gates.
+5. Regenerate the schemas, raise the version, write the docs and the
+   skill's section, run the gates.
 
 ## Acceptance criteria
 
@@ -169,6 +181,9 @@ None.
       on frames 1, 601 and 1201 and two diffs (a test over the writer).
 - [ ] The schemas are regenerated and `versions.json` has the new
       version.
+- [ ] `shuyi-perf` has its heap section, `cargo shuyi check-skills
+      skills` passes, and `cargo xtask skill-examples shuyi-perf` runs
+      its example green.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

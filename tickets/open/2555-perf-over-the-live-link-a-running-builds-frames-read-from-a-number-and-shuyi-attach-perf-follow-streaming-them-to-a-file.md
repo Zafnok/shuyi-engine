@@ -91,10 +91,23 @@ None.
 - **Docs** (the `document` skill): `docs/contract.md`'s *Attaching to a
   running build* (2521's section) and *Perf traces* (2553's): reading a
   running build's trace over the link, and following it into a file.
+- **The skill pack:** 2553's `shuyi-perf` skill gains a section, "A
+  running build": when to read the window's build rather than a
+  headless `run` (a stutter only the real renderer shows, a person
+  playing while the agent reads); starting it with the link (`--features
+  link`, `SHUYI_LINK=0`, the token from its log); `shuyi attach
+  --perf-follow perf.jsonl --for 30` in the background, then reading the
+  file as it grows; and the limit on frames dropped between reads. The
+  skill's line on `SHUYI_PERF` stays, for a build no agent attaches to.
+  Its `metadata.version` is raised. Its second worked example,
+  `example-follow.ron`, needs a window, so it is marked manual
+  (`manual: Some("needs a window")`), listed and not run, as 2521's
+  `example-attach.ron` in `shuyi-test` is.
 - **Either order with 2554:** if 2554 is done, `Request::Perf` gains
   `snapshot: bool`: the backend takes a snapshot after the frame, as it
   takes the screenshot after `present`, and answers it with the records;
-  `shuyi attach` gains `--perf-snapshot`; and MCP's `perf` takes
+  `shuyi attach` gains `--perf-snapshot`, which the skill's section
+  names; and MCP's `perf` takes
   snapshots and diffs over the link, the session keeping them on the
   `shuyi` side. If not, 2554 adds them (its own clause says so).
 
@@ -119,8 +132,8 @@ None.
    against the test host.
 4. Answer MCP's `perf` over the link, with a step in 1133's scripted
    client test that attaches.
-5. Regenerate the schemas, raise the version, write the docs, run the
-   gates. Follow Hello, Grid for 10 seconds on your desktop with
+5. Regenerate the schemas, raise the version, write the docs and the
+   skill's section, run the gates. Follow Hello, Grid for 10 seconds on your desktop with
    `SHUYI_LINK=0` and put three of the file's lines in the PR.
 
 ## Acceptance criteria
@@ -139,6 +152,9 @@ None.
       and `link::VERSION` is raised.
 - [ ] Hello, Grid followed by hand on a desktop wrote a file while it
       ran (three lines in the PR).
+- [ ] `shuyi-perf` has its section on a running build, `cargo shuyi
+      check-skills skills` passes, and `cargo xtask skill-examples`
+      lists `example-follow.ron` as manual.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

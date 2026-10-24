@@ -168,13 +168,40 @@ None.
     `perf` with the last `next`), and `SHUYI_PERF` for a running build
     (`tail -f` or reading the file as it grows);
   - `crates/app/src/lib.rs`'s module docs: `SHUYI_PERF`.
+- **The skill pack** (ADR-0043): a new skill, `skills/shuyi-perf/`,
+  "Find what makes a game slow", in the open format the other skills
+  use (`metadata.version: "1.0"`). Its description says when to use it
+  (a frame too slow, a stage that stutters, a bot's turn that takes too
+  long) and when not (a wrong result, which is `shuyi-debug-replay`; a
+  test, which is `shuyi-test`). Its steps:
+  - `cargo shuyi run --perf --perf-out perf.jsonl` on the stage, and
+    reading the summary: the frame's p99 and worst, the phase that
+    takes it (update, draw, paint, present), and the slowest spans;
+  - marking the suspect code with `ctx.span("name", |ctx| …)` and
+    running again to compare. Times are this machine's: compare two
+    runs on it, never numbers across machines;
+  - an MCP session read as a stream: `step`, then `perf` with the last
+    `next`;
+  - a running desktop debug build: `SHUYI_PERF=perf.jsonl`, and reading
+    the file as it grows.
+
+  Its worked example (`example.ron`) runs on a `grid` game: `run
+  --perf --perf-out` checks that the summary's fields are there (never
+  their values, which are the machine's) and that the file was written;
+  an `Edit` step wraps the stage's update in a span; a second run finds
+  that span among the summary's spans. `skills/README.md` lists it under
+  *Testing and tuning*, and `shuyi-test`'s *When not to* points to it
+  for speed. Update the snapshots that list the pack's skills (`new`'s
+  answer and the plans' tests).
 
 **Out (do not do):**
 - frame times, spans and the records themselves (3063);
 - the heap counter and the heap fields of the summary (3064, which
   comes after this ticket), memory tags (3065), and heap snapshots and
-  diffs in the trace (2554);
-- the trace over the live link, and `shuyi attach` following it (2555);
+  diffs in the trace (2554). 3064 and 2554 add the heap to
+  `shuyi-perf`;
+- the trace over the live link, and `shuyi attach` following it (2555,
+  which adds its section to `shuyi-perf`);
 - the web build's trace (no file there: 2522's link, after the MVP);
 - Chrome trace-event JSON for Perfetto (2325's "Save profile", parked);
   a converter of a JSON-lines file to it is a follow-up if a developer
@@ -193,7 +220,9 @@ None.
    and `perf`, and their tests over a fake clock.
 4. Add `run --perf` and `--perf-out`, the limits and the text.
 5. Add the MCP `perf` tool and its client test.
-6. Regenerate the schemas, raise the version, write the docs.
+6. Regenerate the schemas, raise the version, write the docs and the
+   `shuyi-perf` skill, and run its worked example (`cargo xtask
+   skill-examples shuyi-perf`).
 7. Add the trace file to `shuyi-app`; run Hello, Grid with
    `SHUYI_PERF=perf.jsonl` on your desktop and put two of its lines in
    the PR.
@@ -223,6 +252,10 @@ None.
       by hand writes a line per frame (two lines in the PR).
 - [ ] `docs/contract.md` has *Perf traces*, and its MCP table lists
       `perf`.
+- [ ] `cargo shuyi check-skills skills --tickets tickets/open` passes
+      with `shuyi-perf`, `cargo xtask skill-examples shuyi-perf` runs
+      its worked example green, and a game made with `shuyi new` gets
+      the skill in `.claude/skills/`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

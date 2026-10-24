@@ -163,6 +163,11 @@ None.
   record's `heap`, and the summary's); the crate's README-like module
   docs; and `docs/adr/0009-…` or 3063's ADR, whichever names the
   default crates, gets the seventh.
+- **The skill pack:** 2553's `shuyi-perf` skill learns the heap. Its
+  summary step reads the heap peak and the allocations per frame, it
+  says how a game with its own `#[global_allocator]` opts out, and its
+  `metadata.version` is raised. Its worked example checks that the
+  summary's `heap` is there (never its values).
 - The new public types follow ADR-0039.
 
 **Out (do not do):**
@@ -215,6 +220,8 @@ None.
       release; the release build has no `#[global_allocator]`.
 - [ ] The schemas are regenerated and `versions.json` has the new
       version.
+- [ ] `shuyi-perf` teaches the heap, and `cargo xtask skill-examples
+      shuyi-perf` runs its example green.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
