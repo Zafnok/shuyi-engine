@@ -79,6 +79,11 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Past `n` more bytes. Every move forward goes through here.
+    fn advance(&mut self, n: usize) {
+        self.at += n;
+    }
+
     fn peek(&self) -> Option<u8> {
         self.bytes.get(self.at).copied()
     }
@@ -103,27 +108,27 @@ impl<'a> Parser<'a> {
     fn trivia(&mut self) -> Result<(), String> {
         loop {
             match (self.peek(), self.peek_at(1)) {
-                (Some(b), _) if b.is_ascii_whitespace() => self.at += 1,
+                (Some(b), _) if b.is_ascii_whitespace() => self.advance(1),
                 (Some(b'/'), Some(b'/')) => {
                     while self.peek().is_some_and(|b| b != b'\n') {
-                        self.at += 1;
+                        self.advance(1);
                     }
                 }
                 (Some(b'/'), Some(b'*')) => {
-                    self.at += 2;
+                    self.advance(2);
                     let mut depth = 1;
                     while depth > 0 {
                         match (self.peek(), self.peek_at(1)) {
                             (None, _) => return self.fail("a comment never closed"),
                             (Some(b'*'), Some(b'/')) => {
                                 depth -= 1;
-                                self.at += 2;
+                                self.advance(2);
                             }
                             (Some(b'/'), Some(b'*')) => {
                                 depth += 1;
-                                self.at += 2;
+                                self.advance(2);
                             }
-                            _ => self.at += 1,
+                            _ => self.advance(1),
                         }
                     }
                 }
@@ -134,36 +139,36 @@ impl<'a> Parser<'a> {
 
     /// Past a `"…"` string, at its opening quote.
     fn string(&mut self) -> Result<(), String> {
-        self.at += 1;
+        self.advance(1);
         loop {
             match self.peek() {
                 None => return self.fail("a string never closed"),
-                Some(b'\\') => self.at += 2,
+                Some(b'\\') => self.advance(2),
                 Some(b'"') => {
-                    self.at += 1;
+                    self.advance(1);
                     return Ok(());
                 }
-                Some(_) => self.at += 1,
+                Some(_) => self.advance(1),
             }
         }
     }
 
     /// Past a raw string, `r#"…"#`, at its `r`.
     fn raw_string(&mut self) -> Result<(), String> {
-        self.at += 1;
+        self.advance(1);
         let mut hashes = 0;
         while self.peek() == Some(b'#') {
             hashes += 1;
-            self.at += 1;
+            self.advance(1);
         }
         if self.peek() != Some(b'"') {
             return self.fail("a raw string with no quote");
         }
-        self.at += 1;
+        self.advance(1);
         let end = format!("\"{}", "#".repeat(hashes));
         match self.text[self.at..].find(&end) {
             Some(found) => {
-                self.at += found + end.len();
+                self.advance(found + end.len());
                 Ok(())
             }
             None => self.fail("a raw string never closed"),
@@ -172,17 +177,17 @@ impl<'a> Parser<'a> {
 
     /// Past a `'…'` character, at its opening quote.
     fn char_literal(&mut self) -> Result<(), String> {
-        self.at += 1;
+        self.advance(1);
         if self.peek() == Some(b'\\') {
-            self.at += 2;
+            self.advance(2);
         }
         while self.peek().is_some_and(|b| b != b'\'') {
-            self.at += 1;
+            self.advance(1);
         }
         if self.peek().is_none() {
             return self.fail("a character never closed");
         }
-        self.at += 1;
+        self.advance(1);
         Ok(())
     }
 
@@ -193,7 +198,7 @@ impl<'a> Parser<'a> {
             if b.is_ascii_whitespace() || b",:()[]{}\"'".contains(&b) || comment {
                 break;
             }
-            self.at += 1;
+            self.advance(1);
         }
     }
 
@@ -219,7 +224,7 @@ impl<'a> Parser<'a> {
                 Ok(self.scalar(start))
             }
             (Some(b'b'), Some(b'"')) => {
-                self.at += 1;
+                self.advance(1);
                 self.string()?;
                 Ok(self.scalar(start))
             }
@@ -261,12 +266,12 @@ impl<'a> Parser<'a> {
             .peek()
             .is_some_and(|b| b.is_ascii_alphanumeric() || b == b'_')
         {
-            self.at += 1;
+            self.advance(1);
         }
         let end = self.at;
         self.trivia()?;
         if self.peek() == Some(b':') {
-            self.at += 1;
+            self.advance(1);
             Ok(Some(end))
         } else {
             self.at = start;
@@ -282,7 +287,7 @@ impl<'a> Parser<'a> {
         start: usize,
     ) -> Result<Node, String> {
         let open = self.at;
-        self.at += 1;
+        self.advance(1);
         let close_byte = delim.close();
         let mut items = Vec::new();
         let mut trailing_comma = false;
@@ -302,7 +307,7 @@ impl<'a> Parser<'a> {
                     if self.peek() != Some(b':') {
                         return self.fail("a map entry with no `:`");
                     }
-                    self.at += 1;
+                    self.advance(1);
                     Some((key.start, key.end))
                 }
                 Delim::Paren => self.field_name()?.map(|end| (item_start, end)),
@@ -319,7 +324,7 @@ impl<'a> Parser<'a> {
             self.trivia()?;
             match self.peek() {
                 Some(b',') => {
-                    self.at += 1;
+                    self.advance(1);
                     trailing_comma = true;
                 }
                 Some(b) if b == close_byte => break,
@@ -329,7 +334,7 @@ impl<'a> Parser<'a> {
             }
         }
         let close = self.at;
-        self.at += 1;
+        self.advance(1);
         Ok(Node {
             start,
             end: self.at,
@@ -351,7 +356,7 @@ fn parse(text: &str) -> Result<Node, String> {
     parser.trivia()?;
     while text[parser.at..].starts_with("#!") {
         match text[parser.at..].find(']') {
-            Some(end) => parser.at += end + 1,
+            Some(end) => parser.advance(end + 1),
             None => return parser.fail("an attribute never closed"),
         }
         parser.trivia()?;
@@ -366,47 +371,40 @@ fn parse(text: &str) -> Result<Node, String> {
 
 /// `text` with no spaces or comments outside its strings, to compare.
 fn normalized(text: &str) -> String {
-    let bytes = text.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        match (bytes[i], bytes.get(i + 1)) {
-            (b'"', _) => {
-                out.push(b'"');
-                i += 1;
-                while i < bytes.len() && bytes[i] != b'"' {
-                    if bytes[i] == b'\\' && i + 1 < bytes.len() {
-                        out.push(bytes[i]);
-                        i += 1;
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => {
+                out.push(c);
+                while let Some(c) = chars.next() {
+                    out.push(c);
+                    if c == '"' {
+                        break;
                     }
-                    out.push(bytes[i]);
-                    i += 1;
-                }
-                if i < bytes.len() {
-                    out.push(b'"');
-                    i += 1;
-                }
-            }
-            (b'/', Some(b'/')) => {
-                while i < bytes.len() && bytes[i] != b'\n' {
-                    i += 1;
+                    if c == '\\'
+                        && let Some(escaped) = chars.next()
+                    {
+                        out.push(escaped);
+                    }
                 }
             }
-            (b'/', Some(b'*')) => {
-                i += 2;
-                while i + 1 < bytes.len() && !(bytes[i] == b'*' && bytes[i + 1] == b'/') {
-                    i += 1;
+            '/' if chars.peek() == Some(&'/') => while chars.next_if(|c| *c != '\n').is_some() {},
+            '/' if chars.peek() == Some(&'*') => {
+                chars.next();
+                let mut last = ' ';
+                for c in chars.by_ref() {
+                    if last == '*' && c == '/' {
+                        break;
+                    }
+                    last = c;
                 }
-                i += 2;
             }
-            (b, _) if b.is_ascii_whitespace() => i += 1,
-            (b, _) => {
-                out.push(b);
-                i += 1;
-            }
+            c if c.is_ascii_whitespace() => {}
+            c => out.push(c),
         }
     }
-    String::from_utf8_lossy(&out).into_owned()
+    out
 }
 
 /// A value's text on one line, cut short, for an error.

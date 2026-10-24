@@ -277,6 +277,16 @@ fn a_template_loads_from_a_folder() {
 }
 
 #[test]
+fn a_stage_id_is_lowercase_words_joined_by_dashes() {
+    for good in ["top-down-grid", "side-view", "a", "grid2"] {
+        assert!(is_stage_id(good), "{good}");
+    }
+    for bad in ["1abc", "Top", "top--down", "top-", "-top", "top_down", ""] {
+        assert!(!is_stage_id(bad), "{bad}");
+    }
+}
+
+#[test]
 fn when_holds_and_says_why_in_words() {
     let picked = answers(&[("look", &["a"]), ("one", &["x"])]);
     let a = When::Picked("look".into(), "a".into());
@@ -460,6 +470,13 @@ fn cargo_tomls_merge_key_by_key_with_their_comments() {
         compose::merge_toml("a = [1, 2]\n[t]\nk = 1\n", "a = [2, 3]\n[t]\nj = 2\n").unwrap();
     assert_eq!(lists, "a = [1, 2, 3]\n[t]\nk = 1\nj = 2\n");
     assert!(compose::merge_toml("a = 1\n", "a = \"1\"\n").is_err());
+    // Arrays of tables gain the tables they lack, once.
+    let bins = compose::merge_toml(
+        "[[bin]]\nname = \"a\"\n",
+        "[[bin]]\nname = \"a\"\n\n[[bin]]\nname = \"b\"\n",
+    )
+    .unwrap();
+    assert_eq!(bins, "[[bin]]\nname = \"a\"\n\n[[bin]]\nname = \"b\"\n");
     assert!(compose::merge_toml("a = [\n", "").is_err());
 }
 

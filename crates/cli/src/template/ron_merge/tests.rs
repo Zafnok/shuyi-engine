@@ -84,12 +84,56 @@ fn text_that_isnt_ron_fails_saying_where() {
         assert!(message.starts_with("not RON: "), "{bad:?}: {message}");
     }
     assert!(merge("()", "(").unwrap_err().1.contains("at 1:2"));
+    assert_eq!(
+        merge("()", "(\n  a 1)").unwrap_err().1,
+        "not RON: expected `,` or `)` at 2:5"
+    );
 }
 
 #[test]
 fn an_attribute_before_the_value_is_skipped() {
     let merged = merge("#![enable(implicit_some)]\n(a: 1)", "(b: 2)").unwrap();
     assert_eq!(merged, "#![enable(implicit_some)]\n(a: 1, b: 2)");
+}
+
+#[test]
+fn normalized_text_drops_spaces_and_comments_but_not_strings() {
+    assert_eq!(
+        normalized("( a , \"x y\\\" z\" // c\n /* b * c */ d )"),
+        "(a,\"x y\\\" z\"d)"
+    );
+    assert_eq!(normalized("/* a * b */x"), "x");
+    assert_eq!(normalized("/**/x"), "x");
+    // A string or an escape the text ends in.
+    assert_eq!(normalized("\"a b"), "\"a b");
+    assert_eq!(normalized("\"a\\"), "\"a\\");
+    assert_eq!(normalized("x //"), "x");
+    assert_eq!(normalized("x /* never closed"), "x");
+    assert_eq!(normalized("a/b"), "a/b");
+    assert_eq!(normalized("\"a\" b"), "\"a\"b");
+    assert_eq!(normalized("/*/ x */y"), "y");
+    assert_eq!(normalized("// a\nb"), "b");
+}
+
+#[test]
+fn a_value_shown_in_an_error_is_cut_after_sixty_characters() {
+    let sixty = "a".repeat(60);
+    assert_eq!(shown(&sixty), sixty);
+    let cut = shown(&"b".repeat(61));
+    assert_eq!(cut, format!("{}...", "b".repeat(57)));
+    assert_eq!(shown("a\n   b"), "a b");
+}
+
+#[test]
+fn characters_byte_strings_slashes_and_underscored_fields_are_values() {
+    assert_eq!(
+        merge("(c: '\\'', s: b\"x\", p: a/b)", "(d: 1)").unwrap(),
+        "(c: '\\'', s: b\"x\", p: a/b, d: 1)"
+    );
+    let (at, _) = merge("(_a: 1)", "(_a: 2)").unwrap_err();
+    assert_eq!(at, "_a");
+    let (_, message) = merge("(a: ,)", "()").unwrap_err();
+    assert!(message.contains("`,` where a value should be"), "{message}");
 }
 
 #[test]
