@@ -48,7 +48,10 @@ phase 3 below): 2010–2017, 2509, 2511, 2513, 2808, 3039 and 3040.
 On 2026-10-21 he asked for the docs to start early, so that our own
 sessions search less: the docs map (2810) comes first, and the MCP
 server (1133), the skill pack (1134), the book (2802) and the guides
-(2004) write into it. These tickets, in order:
+(2004) write into it. On 2026-10-24 he put perf traces agents can read
+in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
+(2521) with them, so an agent reads a running build's trace too
+([`decisions.md`](decisions.md)). These tickets, in order:
 
 | Ticket | What |
 | ------ | ---- |
@@ -80,6 +83,13 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 | 2545 | A running MCP server never blocks the next build: it moves its own program aside on Windows, and a cold build has time to finish |
 | 2546 | The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server |
 | 1134 | The engine's skill pack (Agent Skills) |
+| 3063 | Frame times and spans as data: the platform's clock, spans a game marks, and `App`'s record of each frame, in debug builds |
+| 2553 | Perf traces agents read: `shuyi run --perf`, an MCP `perf` tool read from a number, and a running build's trace file, as JSON lines |
+| 3064 | The heap counter: a counting allocator in every debug build of a game and its tool program, and heap counts in each frame's record |
+| 3065 | Memory tags: live bytes by the frame's phase, the game's spans and each asset kind's decode |
+| 2554 | Heap snapshots agents read: live bytes by tag at a frame, and a diff between two, in the trace |
+| 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
+| 2555 | Perf over the live link: a running build's frames read from a number, and `shuyi attach --perf-follow` streaming them to a file |
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
@@ -239,8 +249,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2520 | `shuyi crash` and `replay --crash`, with the debug file kept for each release |
 | 2356 | Debug commands, a console to type them, and a command step in the contract and MCP |
 | 2357 | Rewind: seek a session to any frame by replaying it headless |
-| 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
-| 2522 | The live link for the web build and for a Steam Deck on the LAN |
+| 2522 | The live link for the web build and for a Steam Deck on the LAN (2521, the link itself, moved into the MVP on 2026-10-24) |
 | 2510 | Compiler messages on the traits a game implements |
 | 2024 | The other config and views a game builds moved onto constructors (ADR-0039): `shuyi-ui`, `shuyi-platform`, `shuyi-assets`, `shuyi-core` |
 | 2025 | The contract's inputs and the game tools' types moved onto constructors (ADR-0039) |
@@ -635,7 +644,8 @@ same day; Visions of Shuyi never uses Spine). The order, when unparked:
   after 2209) need nothing parked; the colour-vision check (2324) after
   3006; screen reader output (3035) after 2322 and the winit backend
   that 3034 plans.
-- **The debug view:** the frame profiler (2325) after 2315 and 2316.
+- **The debug view:** the frame profiler (2325) after 2315, 2316 and
+  3063.
 - **2D effects:** screen effects (2326) on the wgpu renderer that 3034
   plans, then a game's own shaders (2327) and 2D lights (2328, also
   after 1120).
@@ -665,7 +675,7 @@ comparison*, has the rest). The order, when unparked:
 - **Localization:** translator exchange files (2227) after 2302; the
   engine's screens machine-translated (2352) after 2351 and 2350; research on
   right-to-left and shaped scripts (2908) after 2301.
-- **The debug view:** memory (2368) after 2315, 2316 and 3008.
+- **The debug view:** memory (2368) after 2315, 2316 and 3064.
 - **Store services and the network:** leaderboards (3054) after 3036;
   presence (3055) after 3036 and 3037; HTTP requests (2601) with their
   first user; crash reports sent (3047) after 3046 and 2601; several

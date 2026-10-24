@@ -2,7 +2,7 @@
 id: "2521"
 title: "The live link: an ADR, a debug-only listener in shuyi-app, and shuyi attach and MCP reading a running windowed build"
 type: feature
-milestone: After MVP
+milestone: MVP
 model: opus-5.5
 effort: high
 status: todo
@@ -77,6 +77,11 @@ Why it matters:
 - **The end goal** (2026-10-19): an agent that makes a game "with a
   web ver" should watch the build it made run. The web build and a
   Steam Deck on the LAN are 2522.
+- **Perf traces** (Nick, 2026-10-24, [`docs/decisions.md`](../../docs/decisions.md)):
+  "easily agent-readable / streamable perf traces when building in
+  debug -- both timings and heap snapshots". He put them in the MVP,
+  and moved this ticket into the MVP with them, so an agent reads a
+  running build's frame times and heap over the link (2555).
 
 This ticket builds the link on one transport, TCP on loopback, and the
 two things that read it: `shuyi attach` and 1133's MCP session.
@@ -343,11 +348,14 @@ None.
   - the new public types follow ADR-0039.
 - **Size.** If the PR passes about 600 changed lines (fixtures,
   snapshots and the generated schemas not counted), the MCP part goes
-  to a follow-up ticket (`write-ticket`), After MVP, blocked by 2521,
-  and the PR says so.
+  to a follow-up ticket (`write-ticket`), in the MVP, blocked by 2521,
+  and the PR says so. That ticket also takes 2555's part that answers
+  MCP's `perf` tool over the link (2555 says so).
 
 **Out (do not do):**
 - the web build, and a device on the LAN (2522);
+- frame times and heap readings over the link: 2555 adds a `Perf`
+  request, in the MVP;
 - the game's own scene (`Scene::data`), events and sounds over the
   link. The headless `run` and `scene` have them. 2506 decides how the
   editor's tree (2507) gets `data` over the link; write a ticket sooner
