@@ -225,7 +225,12 @@ None.
     `importers()` is the default today. It becomes
     `Importers::standard()` with `KeymapRon::<A>` registered and the
     `KeymapDef<A>` kind added (the format `BasicData::formats()` already
-    registers);
+    registers). **Either order with 2558:** if 2558 is done,
+    `BasicTools::importers()` hands the game's own `add` function the
+    standard importers: register the keymap kind in them before `add`
+    runs, so a game's own kinds sit on top of it. If not, nothing to do
+    (2558 builds its `add` on top of the keymap kind, by its own
+    clause);
   - each template's `AGENTS.md` gets a row for `cargo shuyi upgrade` in
     its table of tools;
   - templates are outside `cargo fmt --all`: format them as CI's

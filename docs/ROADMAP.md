@@ -535,6 +535,22 @@ The parked ones are under *Parked* below.
 | 3060 | A debug build's crash report names the session it was recording |
 | 3062 | The Fullscreen setting follows the browser's and macOS's own fullscreen controls |
 
+### Follow-ups the skill pack found
+
+On 2026-10-24 the skill pack's worked examples (1134), each run on a game
+fresh from `shuyi new`, found these gaps between what the engine does and
+what its tools and short path promise.
+
+| Ticket | What |
+| ------ | ---- |
+| 2556 | `frame-png` takes `--script`, as `run` and `scene` do |
+| 2557 | `playtest`'s report prints a measure named `turns` once |
+| 2558 | `BasicTools` takes a short-path game's own formats, so `import` reads its own kinds |
+| 2237 | Problem codes on `.dlg` and cinematic errors, and a line on a cinematic's time and shot errors |
+| 2773 | The grid template's map errors keep their line, column and code in `check` |
+| 2383 | A ready-made talk screen: a `.dlg` scene over the screen below, in the engine's text box, with replies |
+| 2384 | Music on the short path: `audio.ron`'s music cues played, the music clock running, and a stage's own part checked against them (after 2225) |
+
 ## Parked
 
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets

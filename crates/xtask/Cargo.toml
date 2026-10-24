@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-description = "Shuyi Engine's repository tooling (`cargo xtask`): the ticket lint, the link check, the docs map check, the `no_std` path check, the layers check, the modules check, the pins check, the pinned Rust check and the public API check; never shipped"
+description = "Shuyi Engine's repository tooling (`cargo xtask`): the ticket lint, the link check, the docs map check, the `no_std` path check, the layers check, the modules check, the pins check, the pinned Rust check, the public API check and the skill pack's worked examples; never shipped"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -107,11 +107,11 @@ None.
   `tickets/open` for `` `bots` `` and `GameTools::bots`, and read each
   hit). So does any skill under `skills/` that names it, which
   `check-skills` reports.
-- **Either order with 1134:** if 1134 is done, the shipped skills
-  (`skills/`) that name the `bots` operation say `playtest` instead,
-  and a worked example that runs `bots` runs `playtest`, so
-  `check-skills` passes. If not, nothing to do (1134 writes the skills
-  from the contract as it is then).
+- **From 1134 (done):** the shipped skills (`skills/`) that name the
+  `bots` operation say `playtest` instead, and a worked example
+  (`skills/*/example.ron`) that runs `bots` runs `playtest`, so
+  `check-skills` passes and CI's `skills` job runs them green. Grep
+  `skills/` for `bots`.
 - **Either order with 2524:** if 2524 is done, its eval asks `bots`
   in files outside `tickets/open`: move its `Replay` check
   (`crates/xtask/src/eval/grade.rs` and its test of the answer paths)
@@ -157,8 +157,8 @@ its answer and its tests unchanged.
    tool's tests), then regenerate the schemas and raise the version.
 5. The docs (`docs/contract.md`, `README.md`, the templates'
    `AGENTS.md`, the errors' pages), then the `document` skill.
-6. Rewrite the open tickets that name the `bots` operation, and, if
-   1134 is done, the skills.
+6. Rewrite the open tickets that name the `bots` operation, and the
+   skills.
 
 ## Acceptance criteria
 

@@ -86,15 +86,16 @@ None.
   room. If 2122 is done, keep that patrol and its snapshot as they are
   when the room goes in (a follower meets no wall); if not, nothing to
   do (2122 puts its patrol in the room).
-- **Either order with 1134:** its `shuyi-stage-field` skill (a tick
-  stage: movers, collision, camera) has no worked example until 1119,
-  1120 and this ticket are done, and this ticket lands last of the
-  three. If 1134 is done, write that skill's worked example (a script
-  of contract operations that CI runs on a fresh `shuyi new` game, as
-  it runs the pack's others), check the skill's text against the kit
-  and the top-down controller as built, and remove its `waits_for` and
-  the note that it waits. If not, nothing to do (1134 writes the skill
-  whole).
+- **From 1134 (done):** its `shuyi-stage-field` skill
+  (`skills/shuyi-stage-field/SKILL.md`: a tick stage, movers,
+  collision, camera) has no worked example until 1119, 1120 and this
+  ticket are done, and this ticket lands last of the three. Write that
+  skill's worked example, `skills/shuyi-stage-field/example.ron` (a
+  script of contract operations that CI's `skills` job runs on a fresh
+  `shuyi new` game, as it runs the pack's others), check the skill's
+  text against the kit and the top-down controller as built, and
+  remove its `waits_for` and the note that it waits. `check-skills`
+  passes.
 - **Either order with 2728** (investigation hotspots, parked): if 2728
   is done, nothing to do: world hotspots on this ticket's `Trigger`s
   are a parked follow-up blocked by this ticket, which 2728's

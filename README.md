@@ -115,9 +115,8 @@ and a game that needs more than that doesn't export there
 | `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, their JSON answers and schemas |
 | `docs/platform-backends.md` | How to write a platform backend: the `Platform` trait, what each method must do, the headless backend as a reference, and why console backends stay private |
 | `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen, on the short path: `BasicGame`, `run_game` and `BasicTools`) |
+| `skills/` | The skill pack: Agent Skills for making games on the engine, each with a worked example CI runs on a new game. `shuyi new` copies them into every game, and `.claude-plugin/` makes them a Claude Code plugin ([`skills/README.md`](skills/README.md)) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
-
-The engine's own shippable skills arrive later (`skills/`, ticket 1134).
 
 ## The crates
 
@@ -133,7 +132,7 @@ crate never depends on a game.
 | `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics and the grid map. |
 | `shuyi-platform` | `crates/platform` | The platform boundary: the `Platform` trait every backend implements, `App`, which runs one frame of a game for the backend's loop (the loading card, fixed steps, suspend and resume), the headless backend and the test Harness; a game on the short path (`BasicGame`) and the `prelude` it names. No devices ([`docs/platform-backends.md`](docs/platform-backends.md)). |
 | `shuyi-app` | `crates/app` | The macroquad backend, for desktop and the web: the window, blitting, input devices, the audio player and storage, and the loop that drives `App`; `run_game` runs a game on the short path from a plain `main`. |
-| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
 | `shuyi` | `crates/shuyi` | The front door a game depends on: the crates above under short names (`shuyi::core` to `shuyi::app`), the `prelude` with `run_game`, and one cargo feature per module, all off by default, with `enabled_modules`, the modules turned on, for the game to install. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for

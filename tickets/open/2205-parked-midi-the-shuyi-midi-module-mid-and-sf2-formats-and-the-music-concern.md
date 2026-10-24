@@ -39,8 +39,13 @@ None.
     game);
   - the README in its fixed order;
   - the `midi` feature of the `shuyi` crate (2003) and the catalog row;
-  - the `shuyi-midi` skill if the skill pack (1134) is done; if not, add
-    it to 1134's list in this PR;
+  - the `shuyi-midi` skill. **From 1134 (done):**
+    `skills/shuyi-midi/SKILL.md` in the pack's form, with a worked
+    example, `example.ron`, that runs on a fresh game after `shuyi add
+    midi` and that CI's `skills` job runs; or, if nothing of the module
+    runs yet, a `waits_for` naming the ticket that writes the example,
+    which this PR then tells (it names this skill and drops its id). It
+    is a module's skill: `shuyi add midi` copies it into a game;
   - its `needs` (ADR-0012 §1), if 3017 is done: `ram_bytes` for the
     largest fixture bank plus the synth, provisional until 2206 measures
     it. If 3017 isn't done, 3017 gives it a `needs` key with the other

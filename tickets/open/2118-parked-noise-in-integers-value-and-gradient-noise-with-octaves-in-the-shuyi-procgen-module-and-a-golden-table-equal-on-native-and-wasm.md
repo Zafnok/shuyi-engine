@@ -122,9 +122,13 @@ None.
       view (`shuyi_core::sight`, 2120), worlds without a grid.
 
     2735 writes the rest;
-  - the `shuyi-procgen` skill: if the skill pack (1134) is done, a short
-    skill that says what exists and that 2119 and 2735 are to come. If
-    not, add `shuyi-procgen` to 1134's list in this PR.
+  - the `shuyi-procgen` skill. **From 1134 (done):** a short skill,
+    `skills/shuyi-procgen/SKILL.md`, in the pack's form, that says what
+    exists and that level generators and an example are to come. It
+    has no worked example yet, so its `metadata` has `waits_for:
+    "2735"`: 2735 gives it its worked example and drops its id, and
+    2119 lists its generators in it. It is a module's skill: `shuyi add
+    procgen` copies it into a game.
 - **`shuyi_procgen::noise`**, integers only:
   - `pub const ONE: i32 = 1 << 16`. Noise values are in `-ONE..=ONE`,
     with 16 fraction bits;
@@ -287,7 +291,7 @@ None.
    --bless`, and add `-p shuyi-procgen` to the `determinism` job.
 6. Add the crate to the `no-std` job (build and tests) and to
    `no_std.rs`'s list. Write the ADR and its row in
-   `docs/adr/README.md`. Write the skill, or the entry in 1134's list.
+   `docs/adr/README.md`. Write the skill.
 7. Run the gates.
 
 **Size:** about 600 to 650 changed lines without the golden table. If

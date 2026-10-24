@@ -1,0 +1,38 @@
+// The worked example of shuyi-gates, a script of contract commands run on
+// a game made with `shuyi new <dir> --template grid`: `lint` passes, a
+// hash map in the rules fails it with SH2103, a BTreeMap fixes it, then
+// every gate of the game's AGENTS.md passes.
+Example(
+    template: "grid",
+    steps: [
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        // A HashMap in the rules: its order changes from run to run.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "impl Sides for Stage {",
+            replace: "/// How many tiles the table holds.\npub fn tiles(table: &std::collections::HashMap<u8, u8>) -> usize {\n    table.len()\n}\n\nimpl Sides for Stage {",
+        ),
+        // `lint` fails, and its finding names the code, file and line.
+        Shuyi(args: ["lint"], ok: false, expect: [
+            Is("/result/findings/0/code", "SH2103"),
+            Is("/result/findings/0/file", "crates/rules/src/lib.rs"),
+            Has("/result/findings/0/line"),
+        ]),
+        // What SH2103 means, and how to fix it.
+        Shuyi(args: ["explain", "SH2103"], expect: [Is("/result/entries/0/name", "rules-fence")]),
+        // The fix is in the code: a BTreeMap, whose order never changes.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "std::collections::HashMap<u8, u8>",
+            replace: "std::collections::BTreeMap<u8, u8>",
+        ),
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        // Every gate, in the order the game's AGENTS.md lists them.
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Cargo(args: ["test", "--workspace"]),
+        Shuyi(args: ["check"]),
+        Shuyi(args: ["check", "--target", "all"]),
+        Cargo(args: ["shuyi", "check-keys"]),
+    ],
+)

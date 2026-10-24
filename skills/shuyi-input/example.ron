@@ -1,0 +1,41 @@
+// The worked example of shuyi-input, a script of contract commands run on
+// a game made with `shuyi new <dir> --template grid`. The stage reacts to
+// actions: the keymap file decides the keys, and changing it changes
+// nothing in the code. Scripts press keys by the Harness's names.
+Example(
+    template: "grid",
+    steps: [
+        // Right (one of the keys the keymap binds to the Right action)
+        // steps the piece from (1, 6) to (2, 6).
+        Shuyi(args: ["run", "--script", "Enter Right", "--frames", "1"], expect: [
+            Is("/result/top_screen", "stage"),
+            Is("/result/scene/data/hero/x", "2"),
+            Is("/result/scene/data/hero/y", "6"),
+            // The help line names the player's keys: the arrows, Backspace.
+            Holds("/result/frame", "arrows step · Backspace back"),
+        ]),
+        // The player's keys are data: bind Right to `l` and Cancel to `q`.
+        Edit(file: "crates/game/files/keymap.ron", find: "\"Right\": [\"Right\", \"d\"],", replace: "\"Right\": [\"l\"],"),
+        Edit(file: "crates/game/files/keymap.ron", find: "\"Cancel\": [\"Backspace\", \"x\"],", replace: "\"Cancel\": [\"q\"],"),
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // With no change to the code, `l` steps the piece and Right doesn't.
+        Shuyi(args: ["run", "--script", "Enter l", "--frames", "1"], expect: [Is("/result/scene/data/hero/x", "2")]),
+        Shuyi(args: ["run", "--script", "Enter Right", "--frames", "1"], expect: [Is("/result/scene/data/hero/x", "1")]),
+        // The same text names the new key, and `q` goes back to the title.
+        Shuyi(args: ["run", "--script", "Enter", "--frames", "1"], expect: [Holds("/result/frame", "q back")]),
+        Shuyi(args: ["run", "--script", "Enter q", "--frames", "1"], expect: [Is("/result/top_screen", "title")]),
+        // A key named in the player's text is a bug: `lint` names its file.
+        Edit(file: "crates/game/files/en.ron", find: "\"{Cursor} step · {Cancel} back\"", replace: "\"{Cursor} step · press Esc to go back\""),
+        Shuyi(args: ["lint"], ok: false, expect: [
+            Is("/result/findings/0/code", "SH2101"),
+            Is("/result/findings/0/file", "crates/game/files/en.ron"),
+        ]),
+        Cargo(args: ["shuyi", "check-keys"], ok: false),
+        // The placeholder names whatever key the player has for Cancel.
+        Edit(file: "crates/game/files/en.ron", find: "\"{Cursor} step · press Esc to go back\"", replace: "\"{Cursor} step · {Cancel} back\""),
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        Cargo(args: ["shuyi", "check-keys"]),
+        // Every screen's required actions still fit every target.
+        Shuyi(args: ["check", "--target", "all"]),
+    ],
+)

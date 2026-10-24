@@ -50,6 +50,7 @@ fn catalog() -> Catalog {
                 ..ModuleInfo::default()
             },
         }],
+        skills: crate::skills::Pack::default(),
     }
 }
 

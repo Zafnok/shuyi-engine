@@ -165,9 +165,9 @@ None.
   levels winnable, and the step's page in `site/content/learn/tutorial/`
   shows the call. If 2803 isn't done, its step 9 already says to use
   `solve` when it exists.
-- **Either order with 1134:** if `skills/shuyi-test/SKILL.md` exists,
-  add a short section: proving a level winnable with `solve` in a game's
-  `check`. If not, 1134 writes that section.
+- **From 1134 (done):** add a short section to
+  `skills/shuyi-test/SKILL.md`: proving a level winnable with `solve` in
+  a game's `check`; `check-skills` passes.
 - **Either order with 2802:** if `site/content/learn/book/` exists,
   chapter 8 (Testing) gets a short section on `solve`, its code a
   snippet in `site/snippets/` that CI builds and tests. If not, 2802
@@ -218,7 +218,8 @@ None.
 
 Size: if the diff runs well past 600 changed lines, keep the solver
 and the template's proof here, and move the either-order parts that
-apply (with 2803, 1134 and 2802) to a follow-up ticket written in
+apply (with 2803 and 2802, and the skill's section from 1134) to a
+follow-up ticket written in
 this PR (the `write-ticket` skill, blocked by this one). A part
 applies only when its ticket is done, and a done ticket's clause
 can't carry it any more. A part whose ticket is still open needs

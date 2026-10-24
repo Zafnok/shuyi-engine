@@ -10,6 +10,9 @@ name: Changes
 #   - `templates/**`: `shuyi new` copies them, and the `templates` job
 #     builds a game from each;
 #   - `examples/**`: their tests read their own files;
+#   - `skills/**`: the skill pack, which `shuyi new` embeds and copies into
+#     a game, a test checks (`check-skills`), and the `skills` job runs
+#     the worked example of every skill;
 #   - `docs/contract.md` and the root `README.md`: `crates/cli/tests/it/docs.rs`
 #     checks them against `Op::ALL` and `contract::VERSION`;
 #   - `docs/modules.md` and `docs/modules.ron`: the catalog, which `cargo
@@ -69,7 +72,7 @@ jobs:
               crates/*|Cargo.toml|Cargo.lock|rust-toolchain.toml) crates=true ;;
             esac
             case "$path" in
-              crates/*|templates/*|examples/*|docs/contract.md|docs/modules.md|docs/modules.ron|README.md) echo "code: $path"; code=true ;;
+              crates/*|templates/*|examples/*|skills/*|docs/contract.md|docs/modules.md|docs/modules.ron|README.md) echo "code: $path"; code=true ;;
               *.md|docs/*|tickets/*|.claude/*) echo "docs: $path" ;;
               *) echo "code: $path"; code=true ;;
             esac

@@ -258,9 +258,12 @@ asked in 2005's sign-off.
     9. Report: the two versions, the Rust before and after, each entry
        done, each entry left with its call sites and why, and the
        gates' results. A `maybe_done` entry with no call site is done.
-  - Its worked example, in the form 1134 set: a fresh game from `shuyi
-    new grid`, in which `migrations --from 0.1.0 --json` answers `ok`
-    (a fresh game uses no old name).
+  - Its worked example, `skills/shuyi-upgrade/example.ron`, in the form
+    1134 set (the steps of `crates/xtask/src/script.rs`, which CI's
+    `skills` job runs with `cargo xtask skill-examples`): a fresh game
+    from `shuyi new grid`, in which `migrations --from 0.1.0 --json`
+    answers `ok` (a fresh game uses no old name). It is no module's
+    skill, so `shuyi new` copies it into every new game.
   - **Either order with 2517:** if 2517 is done, step 7 is in; if not,
     leave step 7 out, and 2517 adds it when it lands. `check-skills` (1134) fails a skill that names an op the
     contract doesn't have.

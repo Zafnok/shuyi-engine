@@ -84,11 +84,13 @@ None.
     one;
   - the README's first two sections in ADR-0009 §4's order. 2754
     finishes it;
-  - the `shuyi-crawl` skill: if 1134 is done, a short skill saying
-    what this ticket built and what 2742–2755 add. It has no worked
-    example yet, so its `waits_for` lists 2754 (which adds the worked
-    example), 2753 and 2755 (each adds its section and drops its id).
-    If not, add `shuyi-crawl` to 1134's list, with that `waits_for`.
+  - the `shuyi-crawl` skill. **From 1134 (done):** a short skill,
+    `skills/shuyi-crawl/SKILL.md`, in the pack's form, saying what this
+    ticket built and what the rest of the module adds. It has no worked
+    example yet, so its `metadata` has `waits_for: "2753 2754 2755"`:
+    2754 adds the worked example, and 2753 and 2755 each add their
+    section; each drops its id. It is a module's skill: `shuyi add
+    crawl` copies it into a game.
 - **The marker** `FirstPersonGrid` in `shuyi_crawl::perspective`,
   implementing `shuyi_core::perspective::Perspective` (ADR-0009 §3).
   **Either order with 1120:** if 1120 is done, implement its trait; if

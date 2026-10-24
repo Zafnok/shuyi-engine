@@ -177,6 +177,12 @@ than one PR. The last paragraph of **In** says how to split.
     keys not in increasing time; a key not before the end;
   - an `ease` other than `Linear` on a `Name` key;
   - a `Number` or `Point` outside what thousandths in an `i32` hold.
+
+  **Either order with 2237:** if 2237 is done, each problem above carries
+  a code from 2237's table (`SH2008` for a track the game didn't
+  declare, `SH2010` for the rest), and `check_in` puts it on its track's
+  line. If not, nothing to do (2237 gives these problems their codes, by
+  its own clause).
 - **Sampling** (`shuyi_ui::cinematic`), pure in time:
   - `CinematicPlayer::tracked(&self, t_ms: u64) -> Tracked<'_>`: the
     tracks' values at `t_ms`, wrapped at the length as `Timeline` wraps.
@@ -294,10 +300,12 @@ than one PR. The last paragraph of **In** says how to split.
   and markers is its `cinematic::At`, read and checked as
   `TimedShot::at` is, so they take beats too. If not, 2365 does it, as
   its scope says.
-- **Either order with 1134:** if the skill pack is done, its
-  `shuyi-cinematic` skill (ADR-0005 §3) gets a recipe for what this PR
-  adds, with its contract example. If not, nothing here; 1134 teaches
-  what the engine has when it is written.
+- **From 1134 (done):** its `shuyi-cinematic` skill
+  (`skills/shuyi-cinematic/SKILL.md`) gets a recipe for what this PR
+  adds: keyed tracks, sound cues, markers and shot enters (`check_with`,
+  `Tracked`, `play_cues`, `markers_crossed`), with them in its worked
+  example (`skills/shuyi-cinematic/example.ron`, which CI's `skills`
+  job runs); `check-skills` passes.
 - **What changes for the game:** the API grows, and nothing is renamed.
   Code that builds `CinematicDef`, `ShotDef`, `CinematicFile` or
   `TimedShot` as a struct literal must add the new fields; follow
@@ -352,7 +360,7 @@ than one PR. The last paragraph of **In** says how to split.
 1. Read ADR-0004 §3, ADR-0007, ADR-0019, ADR-0023 §5, 2109's ADR and
    `shuyi_core::ease`, 2339's `shuyi_ui::frame::transition`, both
    `cinematic` modules and their tests, and the pack's pinned-form test.
-   Check whether 1134, 2104, 2105, 2115 and 2365 are done. Read
+   Check whether 2104, 2105, 2115 and 2365 are done. Read
    the game's cinematic shot code (its repository is public; game#1153's
    row names `ui/cinematic*`) and say in the PR, in the engine's words,
    which kinds of shot code the part being done could replace.
@@ -369,7 +377,7 @@ than one PR. The last paragraph of **In** says how to split.
    fixtures and the pack version.
 8. Part 2: `play_cues`, `markers_crossed`, `marker_ms`, `enter_look` and
    the enter in `draw`; finish the toy; the docs.
-9. The skill recipe, if 1134 is done.
+9. The skill recipe and its worked example.
 10. Run the gates.
 
 ## Acceptance criteria

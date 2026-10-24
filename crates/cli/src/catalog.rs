@@ -7,8 +7,8 @@
 //! - [`ModuleInfo`]: what a module's crate says it answers, its
 //!   `[package.metadata.shuyi]`, read with its crate into a
 //!   [`ModuleCrate`];
-//! - [`Catalog`]: the two read from an engine checkout, and
-//!   [`engine_root`], which finds the checkout a game builds with;
+//! - [`Catalog`]: the two read from an engine checkout, with its skill
+//!   pack, and [`engine_root`], which finds the checkout a game builds with;
 //! - a game's `Cargo.toml`: the `shuyi` features it has on
 //!   ([`features_on`]), and one more turned on ([`turn_on`]);
 //! - a module's package folder: the first paragraph of its README
@@ -24,6 +24,8 @@ use std::process::Command;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use toml_edit::{Array, DocumentMut, InlineTable, Item, TableLike, Value};
+
+use crate::skills::{self, Pack};
 
 /// The concerns, from the engine's root.
 pub const CONCERNS: &str = "docs/modules.ron";
@@ -239,8 +241,8 @@ pub fn module_of(feature: &str) -> String {
     format!("{PREFIX}{feature}")
 }
 
-/// What the tools know of an engine checkout: its concerns and the
-/// modules it builds.
+/// What the tools know of an engine checkout: its concerns, the modules
+/// it builds and its skill pack.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Catalog {
     /// The checkout's folder (the one holding `crates/`).
@@ -250,6 +252,8 @@ pub struct Catalog {
     /// Its modules: every crate under `crates/` with
     /// `[package.metadata.shuyi]`, by name.
     pub modules: Vec<ModuleCrate>,
+    /// Its skill pack, `skills/` (empty in a checkout without one).
+    pub skills: Pack,
 }
 
 impl Catalog {
@@ -275,18 +279,21 @@ impl Catalog {
             root: root.to_path_buf(),
             concerns,
             modules,
+            skills: Pack::read(&root.join(skills::PACK))?,
         })
     }
 
     /// The catalog of the engine this `shuyi` was built from, as it embeds
-    /// it, for a game made with no checkout: its concerns, and its modules
-    /// by the `shuyi` crate's features, one a module, with no metadata.
+    /// it, for a game made with no checkout: its concerns, its modules by
+    /// the `shuyi` crate's features, one a module, with no metadata, and its
+    /// skill pack.
     pub fn embedded() -> Result<Self, String> {
         let concerns = Concerns::parse(include_str!("../../../docs/modules.ron"))?;
         Ok(Self {
             root: PathBuf::new(),
             concerns,
             modules: modules_of_features(include_str!("../../shuyi/Cargo.toml"))?,
+            skills: Pack::embedded(),
         })
     }
 
@@ -295,6 +302,16 @@ impl Catalog {
         self.modules
             .iter()
             .find(|m| m.name == name || feature_of(&m.name) == name)
+    }
+
+    /// Whether `name` is a module's crate: one the engine builds, or one a
+    /// concern names as an answer's (`shuyi-net`), built or not. A
+    /// module's skill is named after its crate, and a game gets it with
+    /// `shuyi add`, not `shuyi new`.
+    pub fn is_module(&self, name: &str) -> bool {
+        name != "default"
+            && (self.modules.iter().any(|m| m.name == name)
+                || self.concerns.answered_by(name).next().is_some())
     }
 }
 

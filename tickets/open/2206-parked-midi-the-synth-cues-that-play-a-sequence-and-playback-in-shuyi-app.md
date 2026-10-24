@@ -65,10 +65,12 @@ whether it is what you meant by MIDI sound.
   writes one, provisional until this ticket measures it), replace it
   with the measured number and drop "provisional". If they hold none,
   nothing to do: the README's cost section has the number.
-- **The `shuyi-midi` skill:** if `skills/shuyi-midi/` exists (2205
-  writes it when the skill pack is there), add playback to it: sequence
-  cues, their tempo and mute commands, and `shuyi-app`'s `midi`
-  feature. If not, nothing to do: the skill pack writes it whole.
+- **The `shuyi-midi` skill** (`skills/shuyi-midi/SKILL.md`, which 2205
+  writes in the skill pack's form): add playback to it: sequence cues,
+  their tempo and mute commands, and `shuyi-app`'s `midi` feature. If
+  its `waits_for` names this ticket, drop the id, and give the skill
+  its worked example (`example.ron`, which CI's `skills` job runs) if
+  that empties it. `check-skills` passes.
 - **A template part** (**from 2501, done**): `music-midi` in
   `templates/shuyi-default/template.ron`, when `music` has `midi`
   picked, adds a short CC0 `.mid` of our own, a cue for it, and the bank

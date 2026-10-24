@@ -23,6 +23,7 @@ cargo shuyi                  # the engine's tools on it (AGENTS.md)
 | `crates/game/tests/` | The game played through the engine's Harness, and through its tools |
 | `shuyi.ron` | The project file of the engine's tools |
 | `AGENTS.md` | How to work on the game, for people and agents |
+| `.claude/skills/` | The engine's skills for coding agents: how to do each kind of task on the game |
 
 It is on the engine's short path; `AGENTS.md` says how it grows past it.
 

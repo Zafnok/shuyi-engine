@@ -285,11 +285,11 @@ for Nick (parked 3047 asks it for crash reports).
   new `docs/sessions.md` with its row in the docs map
   (`docs/README.md`), and 2802 folds that page into the chapter (its
   clause says so). A line in `docs/platform-backends.md`'s *Session
-  records* (2518) says what `shuyi-app` writes. **Either order with
-  1134:** if 1134 is done, its `shuyi-debug-replay` skill gains a
-  section: reproduce a bug from a session record with `run --session`,
-  read `first_difference`, then fix and keep the file. If not, nothing
-  to do (1134 writes it, its own clause says so).
+  records* (2518) says what `shuyi-app` writes. **From 1134 (done):**
+  its `shuyi-debug-replay` skill (`skills/shuyi-debug-replay/SKILL.md`)
+  gains a section: reproduce a bug from a session record with `run
+  --session`, read `first_difference`, then fix and keep the file as a
+  golden session; `check-skills` passes.
 - **For the game:** its debug builds start writing sessions to
   `<data dir>/sessions/`; `GameTools` gains a defaulted method; `Ctx`
   gains a field; `run::run` and `run::scene` take the project's root;
@@ -352,8 +352,7 @@ for Nick (parked 3047 asks it for crash reports).
    the debug menu entry, `App::take_session_save` and Hello, Grid's
    debug menu; then `download.js`, `sessions/web.rs` and the shell's
    tests. If not, write the follow-up ticket.
-7. Write the docs (and the skill section if 1134 is done), and run the
-   gates. Check by hand: quit Hello, Grid's debug build on the desktop,
+7. Write the docs and the skill section, and run the gates. Check by hand: quit Hello, Grid's debug build on the desktop,
    and play the newest file with `shuyi run --session`. If step 6 kept
    them, also save one from the debug menu on the desktop, and in the
    web build (`cargo shuyi web`, a debug build). Say so in the

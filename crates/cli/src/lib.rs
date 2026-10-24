@@ -2,16 +2,17 @@
 //! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
 //! `import`, `bake`, `doctor`, `explain`, each with `--json`; [`contract`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
-//! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
-//! `private-assets`, each a module of library functions with a thin
-//! wrapper here; the engine's modules as `modules` and `add` read them
+//! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
+//! `web` and `private-assets`, each a module of library functions with a
+//! thin wrapper here; the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
-//! ([`template`]); and the pool of threads the slow ones play on
-//! ([`pool`]).
+//! ([`template`]); the engine's skill pack, which `new` copies into a game
+//! and `check-skills` checks ([`skills`]); and the pool of threads the slow
+//! ones play on ([`pool`]).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
-//! `doctor`, `explain` and `schema` need none. The commands that run the game itself
+//! `doctor`, `explain`, `schema` and `check-skills` need none. The commands that run the game itself
 //! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
 //! `game`) for them. A game on the short path gives [`BasicTools`]
@@ -35,6 +36,7 @@ pub mod mcp;
 pub mod pool;
 pub mod private_assets;
 pub mod project;
+pub mod skills;
 pub mod template;
 pub mod test_card;
 #[cfg(feature = "toy")]
@@ -56,6 +58,25 @@ pub use game::{
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
+
+/// The commands of `shuyi` that aren't operations of the contract
+/// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
+/// and the MCP session's tools, the commands a skill may name
+/// ([`skills::check`]).
+pub const COMMANDS: [&str; 12] = [
+    "schema",
+    "mcp",
+    "mcp-host",
+    "check-keys",
+    "check-text",
+    "check-skills",
+    "lang-status",
+    "font-atlas",
+    "glyph-tiles",
+    "frame-png",
+    "web",
+    "private-assets",
+];
 
 /// The usage text, with `command` as the tool's name.
 pub fn usage(command: &str) -> String {
@@ -97,6 +118,10 @@ commands:
   check-keys                         fail on keys hard-coded in game code or text
   check-text                         count screen text still written as literals,
                                      and fail on a screen that reads a data name itself
+  check-skills [<dir>] [--tickets <dir>]
+                                     check a skill pack (skills/ or .claude/skills/): each
+                                     skill's frontmatter, the commands and files it names,
+                                     its length, its worked example and its problem codes
   lang-status <code> [--only ui|data|dialogue] [--file <dlg>]
                                      list a language pack's missing, stale and orphaned text
   font-atlas <font.bdf>... <out-dir> build the font atlas from BDF fonts
@@ -107,7 +132,7 @@ commands:
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, explain, schema and mcp need none). An error has a problem
+{file} (new, doctor, explain, schema, check-skills and mcp need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix
 ({command} doctor, {file}) before running it again.",
@@ -131,6 +156,9 @@ pub fn main_with(args: impl Iterator<Item = String>, game: Option<&dyn GameTools
             .map_or("shuyi", |project| project.config.command());
         if let Some(code) = contract::cli::without_project(name, rest, &here, command) {
             return code;
+        }
+        if name == "check-skills" {
+            return check_skills(&here, rest, command);
         }
         if name == "import" && project.is_err() {
             let (json, rest) = contract::cli::split_json(rest);
@@ -168,6 +196,10 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
     };
     if let Some(code) = contract::cli::without_project(name, args, &project.root, command) {
         return code;
+    }
+    if name == "check-skills" {
+        let here = std::env::current_dir().unwrap_or_else(|_| project.root.clone());
+        return check_skills(&here, args, command);
     }
     if name == "mcp-host" {
         return match game {
@@ -308,6 +340,74 @@ fn check_text(project: &Project, args: &[String]) -> Outcome {
             }
         },
     )
+}
+
+/// `check-skills [<dir>] [--tickets <dir>]`, from the folder `cwd`: every
+/// problem of the skill pack in `<dir>` (`skills`, or else
+/// `.claude/skills`), with its file and line, the ids its skills wait for
+/// checked against the tickets in `--tickets`' folder when given. The exit
+/// code is 0 when there is none, 1 when there are, 2 for wrong arguments.
+fn check_skills(cwd: &Path, args: &[String], command: &str) -> u8 {
+    let wrong = |e: &str| {
+        eprintln!("check-skills: {e}");
+        eprintln!("usage: {command} check-skills [<dir>] [--tickets <dir>]");
+        2
+    };
+    let mut dir = None;
+    let mut tickets = None;
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--tickets" => match rest.next() {
+                Some(value) => tickets = Some(cwd.join(value)),
+                None => return wrong("--tickets needs a folder"),
+            },
+            flag if flag.starts_with("--") => return wrong(&format!("unknown option {flag}")),
+            _ if dir.is_none() => dir = Some(arg.clone()),
+            _ => return wrong("one folder, not two"),
+        }
+    }
+    let dir = dir.unwrap_or_else(|| {
+        if cwd.join(skills::PACK).is_dir() {
+            skills::PACK.to_owned()
+        } else {
+            catalog::SKILLS.to_owned()
+        }
+    });
+    let folder = cwd.join(&dir);
+    if !folder.is_dir() {
+        return wrong(&format!("no folder {dir} here"));
+    }
+    let against = match skills::Against::this_shuyi(tickets.as_deref()) {
+        Ok(against) => against,
+        Err(e) => return wrong(&e),
+    };
+    let pack = match skills::Pack::read(&folder) {
+        Ok(pack) => pack,
+        Err(e) => {
+            eprintln!("check-skills: {e}");
+            return 1;
+        }
+    };
+    let problems = skills::check(&pack, &against);
+    let dir = dir.replace('\\', "/");
+    let dir = dir.trim_end_matches('/');
+    for problem in &problems {
+        eprintln!("{dir}/{problem}");
+    }
+    if against.open_tickets.is_none() {
+        println!(
+            "check-skills: the ids in `waits_for` weren't checked: --tickets names the open \
+             tickets"
+        );
+    }
+    if problems.is_empty() {
+        println!("check-skills: {} skill(s) in {dir}: OK", pack.skills.len());
+        0
+    } else {
+        eprintln!("check-skills: {} problem(s) in {dir}", problems.len());
+        1
+    }
 }
 
 /// Prints what a language pack lacks. Missing and stale keys are not a

@@ -1,0 +1,15 @@
+// Every third-party work the game uses but its music and sound effects
+// (its audio manifest credits those): each with its title, its author as
+// they want to be credited, the page it came from and its license.
+(
+    credits: [
+        (
+            id: "terminus",
+            group: Fonts,
+            title: "Terminus Font 4.49.1",
+            author: "Dimitar Zhekov",
+            source: "https://terminus-font.sourceforge.net/",
+            license: "OFL-1.1",
+        ),
+    ],
+)

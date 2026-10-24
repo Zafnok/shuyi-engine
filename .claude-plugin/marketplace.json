@@ -1,0 +1,21 @@
+{
+  "name": "shuyi-engine",
+  "owner": {
+    "name": "Zafnok",
+    "url": "https://github.com/Zafnok"
+  },
+  "description": "Shuyi Engine's skill pack: Agent Skills for making 2D games on Shuyi Engine, each with a worked example its CI runs.",
+  "plugins": [
+    {
+      "name": "shuyi",
+      "source": "./skills",
+      "description": "Agent Skills for making games on Shuyi Engine: start a game, its screens, input and stages, dialogue and cinematics, tests, replays, bots and balance, and shipping it.",
+      "license": "MIT OR Apache-2.0",
+      "homepage": "https://github.com/Zafnok/shuyi-engine",
+      "repository": "https://github.com/Zafnok/shuyi-engine",
+      "keywords": ["game-engine", "rust", "2d", "gamedev", "agent-skills"],
+      "category": "development",
+      "skills": "./"
+    }
+  ]
+}

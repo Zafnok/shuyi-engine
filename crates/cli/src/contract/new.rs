@@ -153,6 +153,8 @@ pub struct NewOutput {
     pub targets: Vec<String>,
     /// Its stages, in order.
     pub stages: Vec<String>,
+    /// The engine's skills it holds in `.claude/skills/`, by name.
+    pub skills: Vec<String>,
 }
 
 /// The crate name for game name `name`: lowercase ASCII letters and
@@ -368,6 +370,7 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
         modules: plan.modules,
         targets: plan.targets,
         stages: plan.stages,
+        skills: plan.skills,
     };
     Ok((output, limits))
 }
@@ -439,6 +442,9 @@ pub fn text(output: &NewOutput) -> String {
     // Writing to a `String` can't fail.
     if !output.modules.is_empty() {
         let _ = writeln!(out, "modules on: {}", output.modules.join(", "));
+    }
+    if !output.skills.is_empty() {
+        let _ = writeln!(out, "skills: {}", output.skills.join(", "));
     }
     if !output.overwritten.is_empty() {
         let _ = writeln!(out, "written over: {}", output.overwritten.join(", "));

@@ -109,10 +109,11 @@ None.
       `shuyi mcp install`, and its session tools (`start`, `step`,
       `scene`, `frame_png`, `events`, `reset`, `stop`), from
       `docs/contract.md`'s *The MCP server* and ADR-0031.
-      **Either order with 1134:** if 1134 is done, the chapter teaches
-      its skill pack (the plugin, and the skills `shuyi new` copies
-      into a game); if not, a line saying it is coming, and 1134 writes
-      that part (its step 3). The problem codes
+      **From 1134 (done):** the chapter teaches its skill pack: the
+      Claude Code plugin (`.claude-plugin/marketplace.json`, whose
+      plugin is `skills/`), the common skill installers, and the skills
+      `shuyi new` copies into a game's `.claude/skills/` (`shuyi add`
+      copies a module's). The problem codes
       and `shuyi explain` (2509): a page per code under
       `/learn/errors/`, written from `crates/cli/errors/*.md` into
       `site/content/learn/errors/` before `zola build` (so 2808's

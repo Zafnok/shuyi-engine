@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-cli"
-description = "Shuyi Engine's tools: the tool contract (new, check, run, scene, replay, bots, import, doctor, with JSON), and frame-png, font-atlas, check-keys, check-text, lang-status, web and private-assets, run on a project its shuyi.ron describes"
+description = "Shuyi Engine's tools: the tool contract (new, check, run, scene, replay, bots, import, doctor, with JSON), and frame-png, font-atlas, check-keys, check-text, check-skills, lang-status, web and private-assets, run on a project its shuyi.ron describes"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -43,7 +43,7 @@ png = "0.18"
 serde_json = "1"
 schemars = { version = "1", default-features = false, features = ["derive", "std"] }
 # `new`'s template (`templates/shuyi-default` at the repository's root),
-# embedded.
+# and the skill pack it copies into a game (`skills/`), embedded.
 include_dir.workspace = true
 # `add`: a game's `Cargo.toml` edited keeping its layout, and the
 # modules' metadata (`[package.metadata.shuyi]`) read from theirs.
@@ -51,6 +51,8 @@ toml_edit = { version = "0.25", default-features = false, features = ["parse", "
 # A template's `engine` (`>=0.1, <0.2`), matched against this engine's
 # version.
 semver = { version = "1", default-features = false, features = ["std", "serde"] }
+# A skill's frontmatter (`SKILL.md`'s YAML), for `check-skills`.
+serde_norway = "0.9"
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.

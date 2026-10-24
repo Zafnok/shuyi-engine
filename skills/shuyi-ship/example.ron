@@ -1,0 +1,66 @@
+// The worked example of shuyi-ship, a script of contract commands run on
+// a game made with `shuyi new <dir> --template grid` (named after the
+// skill: its crate is `shuyi-ship`): a target added and its controls made
+// to fit, the web build, and the credits.
+Example(
+    template: "grid",
+    steps: [
+        // The targets `shuyi.ron` lists fit as the game is.
+        Shuyi(args: ["check", "--target", "all"], expect: [
+            Is("/result/targets/0/target", "desktop"),
+            Is("/result/targets/1/target", "web"),
+        ]),
+        // The Steam Deck has no keyboard: added to the targets, it fails
+        // until the keymap gives it buttons.
+        Edit(
+            file: "shuyi.ron",
+            find: "        \"web\": (frame: (384, 384), scale: integer, text_px: 16),\n",
+            replace: "        \"web\": (frame: (384, 384), scale: integer, text_px: 16),\n        \"steam-deck\": (frame: (384, 384), scale: integer, text_px: 16),\n",
+        ),
+        Shuyi(args: ["check", "--target", "all"], ok: false, expect: [
+            Is("/result/targets/1/target", "steam-deck"),
+            Is("/result/targets/1/problems/0/check", "controls"),
+            Holds("/result/targets/1/problems/0/setting", "steam-deck"),
+        ]),
+        Edit(
+            file: "crates/game/files/keymap.ron",
+            find: "    targets: {},",
+            replace: "    targets: {\n        \"steam-deck\": {\n            \"Up\": [\"DpadUp\", \"LeftStickUp\"],\n            \"Down\": [\"DpadDown\", \"LeftStickDown\"],\n            \"Left\": [\"DpadLeft\", \"LeftStickLeft\"],\n            \"Right\": [\"DpadRight\", \"LeftStickRight\"],\n            \"Confirm\": [\"South\"],\n            \"Cancel\": [\"East\"],\n        },\n    },",
+        ),
+        Shuyi(args: ["check", "--target", "all"], expect: [
+            Is("/result/targets/1/target", "steam-deck"),
+            Is("/result/targets/1/problems", "[]"),
+        ]),
+        // The web build: a `web` entry, a build script for the link
+        // argument, and the web target in the toolchain file.
+        Edit(
+            file: "shuyi.ron",
+            find: "    // `cargo shuyi check-keys`: no key named in the game's code or text.\n",
+            replace: "    // `cargo shuyi web --release`: the web build, in `dist/web/`.\n    web: (\n        package: \"shuyi-ship\",\n        bin: \"shuyi-ship\",\n        title: \"shuyi-ship\",\n        dist: \"dist/web\",\n    ),\n\n    // `cargo shuyi check-keys`: no key named in the game's code or text.\n",
+        ),
+        Write(to: "crates/game/build.rs", from: "example/build.rs"),
+        Edit(
+            file: "rust-toolchain.toml",
+            find: "components = [\"rustfmt\", \"clippy\"]\n",
+            replace: "components = [\"rustfmt\", \"clippy\"]\ntargets = [\"wasm32-unknown-unknown\"]\n",
+        ),
+        Cargo(args: ["shuyi", "web", "--release"]),
+        Holds(file: "dist/web/index.html", text: "shuyi-ship.wasm"),
+        Holds(file: "dist/web/shuyi-ship.wasm"),
+        // The credits: the one third-party work a new game ships, its
+        // font, read back through the format registry.
+        Write(to: "crates/game/files/credits.ron", from: "example/credits.ron"),
+        Shuyi(args: ["import", "crates/game/files/credits.ron"], expect: [
+            Is("/result/read_as/0/kind", "credits"),
+            Is("/result/errors", "[]"),
+        ]),
+        // A game with no pack: `bake` isn't offered.
+        Shuyi(args: ["bake"], ok: false, expect: [Is("/code", "SH3001")]),
+        // The gates still pass, the build script's included.
+        Shuyi(args: ["check"]),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        Cargo(args: ["shuyi", "check-keys"]),
+    ],
+)

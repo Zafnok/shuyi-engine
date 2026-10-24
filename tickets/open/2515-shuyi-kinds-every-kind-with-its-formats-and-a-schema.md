@@ -53,7 +53,8 @@ What Shuyi has today:
 
 What is planned: 2506 and 2507 (parked) already take a settings file's
 shape from `shuyi kinds`, and 2507 is blocked by this ticket. 1133
-makes each contract operation an MCP tool. 1134 writes the skills.
+makes each contract operation an MCP tool. 1134 wrote the skills
+(`skills/`).
 2907 researches one description of a game's types for scripts,
 scenes, schemas and agents.
 2230 adds JSON and CSV tables; 2516 adds typed references between
@@ -241,10 +242,11 @@ None.
 - **Either order with 2516:** if 2516 is done, `Ref<K>` implements
   `JsonSchema` behind the `schema` feature: a string whose description
   names kind `K`. If not, the ADR notes `Ref<K>` for 2516, which adds it.
-- **Either order with 1134:** if 1134 is done, add a line to the skills
-  that write data files (`shuyi-new-game`, `shuyi-import-art`,
-  `shuyi-ship`): read the file's shape with `shuyi kinds <kind> --json`
-  before writing it. If not, add that line to 1134's scope in this PR.
+- **From 1134 (done):** add a line to the skills that write data files
+  (`skills/shuyi-new-game/SKILL.md`, `skills/shuyi-import-art/SKILL.md`
+  and `skills/shuyi-ship/SKILL.md`): read the file's shape with `shuyi
+  kinds <kind> --json` before writing it. `check-skills` fails a skill
+  that names a command `shuyi` lacks, so the line lands with `kinds`.
 - **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program). `kinds` runs the game's importers, so it runs
   the game.
 - **Problem codes (2509):** the unknown kind takes `SH0001`
@@ -283,7 +285,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
    `crates/assets/src/ron.rs`, `crates/cli/src/contract/import.rs`,
    `contract.rs` and `contract/cli.rs`, and the standard RON formats'
    parsers named above. Read 2907's ADR if it is done, and check which
-   of 2116, 2020, 2230, 2516 and 1134 are done.
+   of 2116, 2020, 2230 and 2516 are done.
 2. Write the ADR.
 3. Add `Formats::kinds()` with its tests. Do the 2116 and 2020 parts if
    they are done.
@@ -297,8 +299,8 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
    for an unknown kind, the schemas and the version line.
 7. Describe Hello, Grid's `English`; update `docs/formats.md`,
    `docs/contract.md`, the usage text and 2507's line.
-8. Do the either-order parts whose tickets are done (2230, 2516,
-   1134), or add the 1134 line to its scope.
+8. Do the either-order parts whose tickets are done (2230, 2516), and
+   add the `shuyi kinds` line to the three skills (from 1134).
 9. Run the gates.
 
 ## Acceptance criteria

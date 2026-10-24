@@ -129,8 +129,10 @@ he likes. His comments become tickets.
   of one to a full party; how to swap the lines skin for pictures.
 - **The READMEs** of both crates, finished in ADR-0009 §4's order, with
   the WASM size each adds, measured on the example.
-- **The skills** `shuyi-crawl` and `shuyi-rpg`, finished with a worked
-  example each (if 1134 is done; else on 1134's list).
+- **The skills** `shuyi-crawl` and `shuyi-rpg` (`skills/`, which 2741
+  and 2745 write; from 1134, done), finished with a worked example each
+  (`example.ron`, which CI's `skills` job runs), and 2754 dropped from
+  their `waits_for`.
 - **The catalog**: both rows, both `kind` answers and the
   `first-person grid` answer of the Perspective concern ready.
 

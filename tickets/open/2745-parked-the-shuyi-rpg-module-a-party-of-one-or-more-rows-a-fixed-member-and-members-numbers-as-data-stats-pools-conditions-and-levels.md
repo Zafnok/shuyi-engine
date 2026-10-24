@@ -55,8 +55,11 @@ None.
   `rpg` feature of `shuyi`; the catalog row in `docs/modules.md` set
   to building, keeping the tickets it lists;
   the `party-rpg` answer in `docs/modules.ron` (2003 wrote it parked)
-  set to building; the README's first two sections; the `shuyi-rpg` skill or
-  its line in 1134's list.
+  set to building; the README's first two sections; the `shuyi-rpg`
+  skill (**from 1134, done**): `skills/shuyi-rpg/SKILL.md` in the pack's
+  form, saying what this ticket built. It has no worked example yet, so
+  its `metadata` has `waits_for: "2754"`: 2754 gives it its worked
+  example and drops its id.
   2003's catalog has no building status (`shuyi_cli::catalog::Status`
   is ready, planned or parked): if it still has none, add
   `Status::Building`, named `building`, with its doc, the `status` line

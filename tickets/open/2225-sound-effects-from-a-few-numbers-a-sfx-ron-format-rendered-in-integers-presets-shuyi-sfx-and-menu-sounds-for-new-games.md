@@ -296,10 +296,11 @@ parked.
   - **2512.** If it is done, the minimal template's code count doesn't
     move: its sounds are data, and their code is in the engine. If not,
     nothing to do.
-  - **1134.** If it is done, its `shuyi-new-game` skill gets a short
-    section on sound effects (a cue names a `.sfx.ron`, `shuyi sfx
-    <preset> --out` writes one, which fields to change). If not, 1134
-    writes it.
+  - **From 1134 (done):** its `shuyi-new-game` skill
+    (`skills/shuyi-new-game/SKILL.md`) gets a short section on sound
+    effects: a cue names a `.sfx.ron` file, `shuyi sfx <preset> --out
+    <file>` writes one, `--wav` renders it to listen to, and which
+    fields to change. `check-skills` passes.
   - **2803.** If it is done, its step `08-polish` plays `.sfx.ron`
     sounds made with `shuyi sfx`, and its page says how. If not, 2803
     uses them.
@@ -407,9 +408,10 @@ counted) after step 6, ship steps 1 to 6 with step 9, and write steps 7
 and 8 as one follow-up ticket (the `write-ticket` skill, After MVP),
 blocked by this one. It carries their criteria below.
 It also takes the `shuyi sfx` parts of the *Either order* items: step
-9 then settles 1134's skill section and 2803's `08-polish` without the
-command (a game copies a template's `.sfx.ron` and edits it), and
-points their `shuyi sfx` lines at the follow-up's number.
+9 then writes the skill's section (from 1134) and settles 2803's
+`08-polish` without the command (a game copies a template's `.sfx.ron`
+and edits it), and points their `shuyi sfx` lines at the follow-up's
+number, which adds them.
 
 ## Acceptance criteria
 

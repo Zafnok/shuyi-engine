@@ -77,8 +77,12 @@ None.
     wrote the `kind` concern (`alternatives: false`); 2502 adds its
     `pick` and question. Don't change `check-modules`; 2003 owns its
     rules;
-  - **the skill** `shuyi-rts`, if the skill pack (1134) is done; if not,
-    add it to 1134's list in this PR;
+  - **the skill** `shuyi-rts`. **From 1134 (done):** a short skill,
+    `skills/shuyi-rts/SKILL.md`, in the pack's form, that says what
+    this ticket built. It has no worked example yet, so its `metadata`
+    has `waits_for: "2719"`: 2719 gives it its worked example and drops
+    its id. It is a module's skill: `shuyi add rts` copies it into a
+    game;
   - **`needs`** (ADR-0012 §1): if 3017 is done, a provisional `needs`
     key with a comment that 2718 measures it. If not, 3017 gives it one
     with the other modules;
@@ -193,8 +197,8 @@ None.
    and the error fixtures.
 4. Write `RtsCommand`, `Order`, `OrderQueue` and validation.
 5. Write `RtsSim`, `RtsSettings`, `Buckets`, the text dump and the hash.
-6. Add the skill (or 1134's list entry), the `needs` key (or nothing),
-   and the wizard flag check.
+6. Add the skill, the `needs` key (or nothing), and the wizard flag
+   check.
 
 ## Acceptance criteria
 

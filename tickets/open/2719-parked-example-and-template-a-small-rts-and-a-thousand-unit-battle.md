@@ -93,11 +93,17 @@ None.
   `docs/modules.ron` and `shuyi-rts`'s row in `docs/modules.md` to
   `ready`, now that the example passes CI (2707 moves them off
   `parked` and leaves `ready` to this ticket, ADR-0009 §4).
-- **The `shuyi-rts` skill, either order with 1134:** if 1134 is done,
-  the skill (2707 or 1134 wrote it) points at the example and the
-  guide. If not, add to the `shuyi-rts` entry 2707 put in 1134's list,
-  in this PR: its worked example reads `examples/rts`, and it links
-  `docs/guides/rts.md`.
+- **The `shuyi-rts` skill. From 1134 (done):** the skill,
+  `skills/shuyi-rts/SKILL.md` (2707 wrote it), points at the example
+  and the guide. Drop 2719 from its `waits_for` (2707 put it there) and
+  give it its worked example, `skills/shuyi-rts/example.ron`, which CI's
+  `skills` job runs: on a game made with this ticket's template part,
+  or in `examples/rts` (the runner, `crates/xtask/src/skills.rs`, makes
+  a fresh `shuyi new` game for each example: give `Example` a field
+  naming an example of the engine's to run in, if no other skill's
+  example has added one). It names `docs/guides/rts.md` in words: the
+  guides are the engine's docs, which a game reaches through its
+  `AGENTS.md`, and `check-skills` fails a link that leaves the pack.
 
 **Out (do not do):**
 - an isometric example (2769, after 1126);
@@ -116,8 +122,7 @@ None.
 4. Write the stress stage.
 5. Write the Harness test, the replay test and the snapshots.
 6. Write the template part and its CI job.
-7. Write the guide, finish the README and update the skill (or its
-   entry in 1134's list).
+7. Write the guide, finish the README and update the skill.
 
 ## Acceptance criteria
 

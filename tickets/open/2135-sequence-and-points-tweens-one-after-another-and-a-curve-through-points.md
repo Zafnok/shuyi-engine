@@ -200,13 +200,14 @@ None.
   `[(0, 0), (300, 1200), (1000, 1000)]`. The crate docs
   (`crates/core/src/lib.rs`) name sequences of tweens and curves
   through points beside ease curves and tweens.
-- **Either order with 1134 and 2802:** if 1134 is done, its
-  `shuyi-animate` skill's section on ease curves and tweens names
-  `Sequence` and `Points`, with the title that drops in. If 2802 is
-  done, the book's section on ease curves and tweens shows them, with
-  a snippet in `site/snippets/`. If either isn't done, nothing to do
-  for it: it names them when it is written (its clause on 2135 says
-  so).
+- **From 1134 (done):** its `shuyi-animate` skill's section on ease
+  curves and tweens (`skills/shuyi-animate/SKILL.md`, which 2109
+  writes) names `Sequence` and `Points`, with the title that drops in;
+  `check-skills` passes.
+- **Either order with 2802:** if 2802 is done, the book's section on
+  ease curves and tweens shows them, with a snippet in
+  `site/snippets/`. If not, nothing to do: it names them when it is
+  written (its clause on 2135 says so).
 - **What changes for the game:** nothing. The API grows (CI's `api`
   job lists the additions), and no `Ease` or `Tween` value changes.
   The PR says so.
@@ -259,8 +260,8 @@ None.
 6. Write `crates/core/src/ease/sequence/tests.rs`.
 7. Write the module docs' two sections, the two doctests and the crate
    docs' words.
-8. By whether 1134 and 2802 are done, write the skill's or the book's
-   lines (the clause above).
+8. Write the skill's lines, and, if 2802 is done, the book's (the
+   clauses above).
 9. Run the gates, the `no_std` build included. Expect about 600
    changed lines.
 
@@ -303,9 +304,8 @@ None.
 - [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf`, and
       `cargo clippy -p shuyi-core --lib -- -D clippy::float_arithmetic`
       passes.
-- [ ] The two doctests pass. If 1134 is done, its `shuyi-animate`
-      skill names `Sequence` and `Points`; if 2802 is done, so does
-      the book.
+- [ ] The two doctests pass. The `shuyi-animate` skill names
+      `Sequence` and `Points`; if 2802 is done, so does the book.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

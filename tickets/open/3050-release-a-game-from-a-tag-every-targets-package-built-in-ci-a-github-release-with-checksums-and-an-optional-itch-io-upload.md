@@ -58,8 +58,9 @@ What Shuyi has today:
   commit SHA. 2513 replaces the system-library line with
   `scripts/setup-linux.sh` in the engine and the templates, and runs
   the `templates` job in a bare `ubuntu:24.04` container with no `git`.
-- **Skills.** ADR-0005 §3 lists a `shuyi-ship` skill ("Builds,
-  licenses, credits, store pages") for 1134.
+- **Skills.** 1134 (done) wrote the `shuyi-ship` skill
+  (`skills/shuyi-ship/SKILL.md`: builds, licenses, credits, store
+  pages).
 - **Debug files.** 2520's Out leaves keeping a release's debug file to
   3004 and to this ticket.
 
@@ -315,9 +316,11 @@ if 2005 has moved it.
     README's and `AGENTS.md`'s "Releasing" sections say signing is
     opt-in and link its `docs/signing.md`. If not, 3051 adds both, as
     its scope says.
-  - **1134** (the skill pack). If it is done, `shuyi-ship` teaches the
-    release: `export --plan`, the tag, the dry run and itch.io. If not,
-    1134 adds it (its scope says so).
+  - **From 1134 (done)** (the skill pack): `shuyi-ship`
+    (`skills/shuyi-ship/SKILL.md`) teaches the release: `cargo shuyi
+    export --plan`, `git tag -a vX.Y.Z -m <notes>`, the dry run from
+    the Actions tab, and turning on itch.io with the `ITCH_GAME`
+    variable and the `BUTLER_API_KEY` secret; `check-skills` passes.
   - **2802** (the book). If it is done, chapter 9 ("Targets and
     export") gets a "Releasing" section with the README's text. If not,
     2802 adds it (its scope says so).

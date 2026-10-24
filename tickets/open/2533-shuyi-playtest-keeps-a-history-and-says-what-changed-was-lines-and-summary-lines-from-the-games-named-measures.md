@@ -66,11 +66,10 @@ None.
   the project root), `--no-history`, and `--brief` (leave out the
   table's one line per try; the summary stays).
 - `docs/contract.md`; the usage text.
-- **Either order with 1134:** if 1134 is done, the `shuyi-balance-bots`
-  skill shows `shuyi playtest`'s history: a plan's `summary` items, the
-  `was …` and `previous` lines, `--history`, `--no-history` and
-  `--brief`. If not, nothing to do (1134 shows them, its clause says
-  so).
+- **From 1134 (done):** the `shuyi-balance-bots` skill
+  (`skills/shuyi-balance-bots/SKILL.md`) shows `shuyi playtest`'s
+  history: a plan's `summary` items, the `was …` and `previous` lines,
+  `--history`, `--no-history` and `--brief`; `check-skills` passes.
 
 **Out (do not do):**
 - Charts, HTML or a dashboard.
@@ -127,8 +126,7 @@ None.
 6. **hello-grid**: its plan gets a summary (`Sum` of `won`, `Median` of
    `turns`); its playtest test runs twice in a temporary history folder
    and checks the second run's `was` line.
-7. **The skill**: if 1134 is done, the `shuyi-balance-bots` lines
-   (Scope).
+7. **The skill**: the `shuyi-balance-bots` lines (Scope).
 
 ## Acceptance criteria
 

@@ -89,12 +89,10 @@ None.
   has a playtest plan.
 - A section in the docs page about CI for games (or `docs/contract.md`'s
   `playtest` section): what the inputs mean, why skipping is by `if:`.
-- **Either order with 1134** (the skill pack): if 1134 is done, the
-  `shuyi-balance-bots` skill (`skills/shuyi-balance-bots/SKILL.md`)
-  gets a few lines on calling this workflow: its inputs, `levers`, and
-  the concurrency that never cancels a push, with `check-skills`
-  passing. If not, nothing to do (1134 shows the workflow when it
-  lands).
+- **From 1134 (done)** (the skill pack): the `shuyi-balance-bots` skill
+  (`skills/shuyi-balance-bots/SKILL.md`) gets a few lines on calling
+  this workflow: its inputs, `levers`, and the concurrency that never
+  cancels a push, with `check-skills` passing.
 - **Either order with 2755 (parked):** if 2755 is done, also call the
   workflow on `examples/crawler`, with paths covering the example and
   the crates it is made of (`shuyi-crawl`, `shuyi-rpg`); if not,

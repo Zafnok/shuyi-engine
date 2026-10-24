@@ -206,13 +206,12 @@ None.
   plays the contract's `Script`, so a script's `command` steps reach it
   with no change; add one to the scripted client test
   (`crates/cli/tests/it/mcp.rs`).
-- **The skills, in either order with 1134:**
-  - if 1134's `shuyi-debug-replay` and `shuyi-test` skills exist, add a
-    short section: reach a bug's state with a command the game declares
-    (`--command`) rather than a long key script, and keep the command a
-    debug-only variant of the game's own enum, never in
-    `legal_commands`;
-  - if they don't exist yet, 1134 covers it (edit requested there).
+- **The skills. From 1134 (done):** add a short section to
+  `skills/shuyi-debug-replay/SKILL.md` and `skills/shuyi-test/SKILL.md`:
+  reach a bug's state with a command the game declares (`--command`)
+  rather than a long key script, and keep the command a debug-only
+  variant of the game's own enum, never in `legal_commands`.
+  `check-skills` passes.
 - **The log (3040, done):** `Game::command` also logs each line and its
   result with `Ctx::log` (level `Info`, category `Game`: the commands
   are the game's).
@@ -312,8 +311,8 @@ None.
    `contract/session.rs` and `contract/fake.rs`. Then read Hello,
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
-   ADR-0022 §3, and the `input-actions` skill. Check which of 1134,
-   2518, 2521 and 2907 are done.
+   ADR-0022 §3, and the `shuyi-input` skill. Check which of 2518, 2521
+   and 2907 are done.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,

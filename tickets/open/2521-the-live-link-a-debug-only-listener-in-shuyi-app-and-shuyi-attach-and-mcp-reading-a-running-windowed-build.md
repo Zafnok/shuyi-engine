@@ -322,9 +322,15 @@ None.
     `poll_input` a frame, so the link's input is in a session record
     either way. If 2518 is done, a test shows it; if not, 2518 writes
     that test (its own clause says so);
-  - with 1134 (the skills): if it is done, the `shuyi-test` skill gets
-    a section on attaching to a running build. If not, 1134 covers it
-    (its own clause says so);
+  - **from 1134 (done)** (the skills): the `shuyi-test` skill
+    (`skills/shuyi-test/SKILL.md`) gets a section on attaching to a
+    running build: when to use it rather than the headless `run`, the
+    `link` feature, `SHUYI_LINK`, the token, and `--screenshot`. Its
+    worked example needs a window, so CI can't run it: it is marked
+    manual (`manual: Some("needs a window")`). The runner
+    (`crates/xtask/src/skills.rs`) reads one `example.ron` per skill,
+    and `shuyi-test` already has one, so add a second file to what it
+    reads (`example-attach.ron`), listed and not run;
   - with 2509 (done, problem codes, ADR-0028): the three errors above
     are `Answer::failed` with codes. "No build listening" is a setup
     code (`SH1nnn`, exit 3: start the build, then retry); the wrong

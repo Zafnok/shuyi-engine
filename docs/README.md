@@ -21,6 +21,7 @@ repository has no row here.
 | What the engine is, its crates, and where to start | [`README.md`](../README.md) | adds a crate, or changes what one is for |
 | How to contribute | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | changes who may contribute or how |
 | An example game | [`examples/`](../examples/), each example's `README.md` | changes what an example does or how to run it |
+| How an agent makes a game on the engine, task by task | [`skills/`](../skills/), the skill pack: each skill's `SKILL.md`, its worked example `example.ron` (CI runs it on a new game), and the pack's [`README.md`](../skills/README.md); the plugin is `.claude-plugin/marketplace.json` ([ADR-0043](adr/0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md)) | changes what a skill teaches (an operation, a field, a problem code, a template, a format, a rule a game keeps), or adds a skill |
 | Every third-party file | [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md) | adds or removes a non-crate asset |
 
 ## Engine developers (Claude, and anyone working on the engine)
@@ -62,8 +63,8 @@ A ticket from `1119`–`1150` reads the row of its area.
 | `21xx` | Core and simulation | [ADR-0002](adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md), [ADR-0003](adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md), [ADR-0004](adr/0004-assets-standard-files-in-the-engines-own-data-out-and-a-deterministic-movement-kit.md), [ADR-0027](adr/0027-bots-that-plan-see-a-determinized-copy-integer-rollouts-shared-seeds-and-work-units.md) |
 | `22xx` | Assets and formats | [`formats.md`](formats.md), [ADR-0007](adr/0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md), [ADR-0019](adr/0019-the-format-registry-kinds-are-types-a-format-reads-one-file.md), [ADR-0023](adr/0023-the-pack-one-indexed-file-of-baked-assets-proven-equal-to-its-sources.md) |
 | `23xx` | Frame, screens and skins | the MCP session tools (`.mcp.json`: `start`, `step`, `scene`, `frame_png` on `examples/hello-grid`) to see a change, [ADR-0002](adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md) §4, [ADR-0018](adr/0018-screen-results-a-screen-pops-with-a-value-and-hears-when-it-is-covered.md), [ADR-0020](adr/0020-menu-items-carry-a-value-and-views-hold-labels-the-skin-translates.md), [ADR-0026](adr/0026-one-bit-by-role-a-pattern-map-beside-the-palette-colours-find-their-roles-and-the-renderer-takes-its-shades.md) |
-| `24xx` | Input | the `input-actions` skill, [ADR-0025](adr/0025-controls-fit-screens-declare-actions-targets-have-button-tables-and-the-harness-holds-back-the-rest.md) |
-| `25xx` | Tools and AI support | [`contract.md`](contract.md), [`crates/cli/errors/`](../crates/cli/errors/), [ADR-0005](adr/0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md), [ADR-0022](adr/0022-the-tool-contract-answers-with-limits-schemas-by-version-and-a-session-over-the-harness.md), [ADR-0028](adr/0028-problem-codes-a-stable-code-by-class-a-help-line-a-page-and-exit-code-3-for-the-setup.md) |
+| `24xx` | Input | the `shuyi-input` skill ([`skills/shuyi-input/`](../skills/shuyi-input/SKILL.md)) and the `input-actions` skill, [ADR-0025](adr/0025-controls-fit-screens-declare-actions-targets-have-button-tables-and-the-harness-holds-back-the-rest.md) |
+| `25xx` | Tools and AI support | [`contract.md`](contract.md), [`crates/cli/errors/`](../crates/cli/errors/), [`skills/`](../skills/), [ADR-0005](adr/0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md), [ADR-0022](adr/0022-the-tool-contract-answers-with-limits-schemas-by-version-and-a-session-over-the-harness.md), [ADR-0028](adr/0028-problem-codes-a-stable-code-by-class-a-help-line-a-page-and-exit-code-3-for-the-setup.md) |
 | `26xx` | Networking | [ADR-0006](adr/0006-networking-in-layers-transports-sessions-sync-models-services.md) |
 | `27xx` | Game styles and examples | the MCP session tools (`.mcp.json`: `start`, `step`, `scene`, `frame_png`) to play what changed, [`templates/`](../templates/), [`examples/`](../examples/), [ADR-0003](adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md), [ADR-0009](adr/0009-modules-a-small-default-engine-and-opt-in-crates.md), [ADR-0013](adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md) |
 | `28xx` | Docs and community | this file, the `document` skill, [ADR-0005](adr/0005-ai-native-tooling-one-contract-three-surfaces-and-visual-scripting-as-a-view-over-text.md) §4 |
@@ -86,8 +87,8 @@ A ticket from `1119`–`1150` reads the row of its area.
 4. **The reader decides the place.** Nothing technical goes in Nick's
    files. Nothing of this repository's process (tickets, Nick, the
    game's pin) goes in what people making games read: rustdoc, the
-   templates, `contract.md`, the error pages and, later, the book and
-   the skill pack.
+   templates, `contract.md`, the error pages, the skill pack and,
+   later, the book.
 5. **A new home gets a row.** A change that makes a new home for docs (a
    new file under `docs/`, a new folder of pages) adds its row here in
    the same PR.
@@ -99,11 +100,14 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The layer, skin and key rules | [`AGENTS.md`](../AGENTS.md), rules 5, 8 and 9 | `templates/shuyi-default/base/AGENTS.md`, *The layers* | nothing yet |
 | The contract's operations | [`contract.md`](contract.md), *The operations* | [`README.md`](../README.md), the `shuyi-cli` row | `crates/cli/tests/it/docs.rs` |
 | The local gates | the `run-gates` skill | `.github/workflows/ci.yml` | nothing yet |
+| The input rules every game keeps | the `shuyi-input` skill ([`skills/shuyi-input/`](../skills/shuyi-input/SKILL.md)), the source | the `input-actions` skill, which keeps only the engine's own and links it | nothing yet |
+| The gates every game runs | the `shuyi-gates` skill ([`skills/shuyi-gates/`](../skills/shuyi-gates/SKILL.md)), the source | the `run-gates` skill, which keeps only the engine's own and links it; and `templates/shuyi-default/base/AGENTS.md`, *The gates* | nothing yet |
 | The actions' pins and the shared crates' requirements | `.github/workflows/`, and the root's `[workspace.dependencies]` in `Cargo.toml` | `templates/shuyi-default/base/.github/workflows/`, and every `Cargo.toml` of the template's parts (`templates/shuyi-default/**/Cargo.toml`) | `cargo xtask check-pins` ([ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)) |
 | What a module answers | its crate's `[package.metadata.shuyi]` | its row in [`modules.md`](modules.md), and its answers in [`modules.ron`](modules.ron) | `cargo xtask check-modules` |
 | The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the book (2802), the
-engine's skill pack, `skills/` (1134, which adds the `input-actions` and
-`shuyi-input` pair and the `run-gates` and `shuyi-gates` pair), the
 guides, `docs/guides/` (2004), and `llms.txt` and the site (2801, 2808).
+A skill of the pack that teaches what one of this repository's skills
+teaches is the source for what holds in every game; ours keeps only what
+holds here and links it, and the pair gets a row above.

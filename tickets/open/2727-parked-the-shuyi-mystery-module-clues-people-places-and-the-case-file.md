@@ -75,8 +75,12 @@ None.
     it* in `docs/modules.md` and the `modules` schema. `Status` is a
     public enum: write a `Breaking:` line if CI's `api` job reports
     one;
-  - the `shuyi-mystery` skill if the skill pack (1134) is done. If not,
-    add `shuyi-mystery` to 1134's list in this PR;
+  - the `shuyi-mystery` skill. **From 1134 (done):** a short skill,
+    `skills/shuyi-mystery/SKILL.md`, in the pack's form, saying what
+    this ticket built. It has no worked example yet, so its `metadata`
+    has `waits_for: "2732"`: 2732 gives it its worked example and drops
+    its id. It is a module's skill: `shuyi add mystery` copies it into a
+    game;
   - its `needs` (ADR-0012 §1) if 3017 is done: what `shuyi-vn` needs,
     plus nothing more. If 3017 isn't done, 3017 gives it a `needs` key
     with the other modules.

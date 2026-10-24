@@ -215,11 +215,11 @@ None. Meeting these licenses' notice duties isn't a product choice.
   fails until it does. 3033 (parked) also removes `quad-storage.js` and
   `sapp_jsutils.js`: if 3033 is done, list only the vendored files
   `SHELL` still holds; if not, 3033 drops their rows.
-- **1134** (the skill pack): if it is done, its `shuyi-ship` skill
-  says that `shuyi web` writes `NOTICES.txt` beside the page, what it
-  lists, and that a game names its own license texts in the `notices`
-  part of `shuyi.ron`. If not, nothing to do (1134 teaches it, as its
-  scope says).
+- **From 1134 (done)** (the skill pack): its `shuyi-ship` skill
+  (`skills/shuyi-ship/SKILL.md`) says that `shuyi web` writes
+  `NOTICES.txt` beside the page, what it lists, and that a game names
+  its own license texts in the `notices` part of `shuyi.ron`;
+  `check-skills` passes.
 - **From 2501 (done):** the templates' `notices` part goes in the
   `base` part's `shuyi.ron` in `templates/shuyi-default/`, not in the
   two folders above (which are gone).

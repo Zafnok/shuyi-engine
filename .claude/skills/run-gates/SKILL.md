@@ -1,11 +1,19 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules and the no-std build; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build and the skill pack's worked examples; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
 
 These mirror CI. Run them fast to slow, and stop at the first failure.
+
+What holds for every game on the engine is the shipped skill
+[`shuyi-gates`](../../../skills/shuyi-gates/SKILL.md): the gates a game
+runs, what each finding of `lint` and the rules crate's fence means,
+snapshots, a CI failure this machine doesn't reproduce, and why a gate is
+never weakened to pass it. This skill holds only what is this
+repository's: the engine's own crates and CI's jobs, the game at the next
+pin, and Nick's machine.
 
 ## Environment facts
 
@@ -24,6 +32,13 @@ cargo test --workspace --locked --no-fail-fast   # without --no-fail-fast cargo 
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
 cargo machete
+```
+
+`cargo test` also checks the skill pack (`crates/cli/tests/it/skills.rs`).
+To see its problems alone:
+
+```bash
+cargo shuyi check-skills skills --tickets tickets/open
 ```
 
 The web build of the examples, from each example's folder (CI's `wasm`
@@ -117,6 +132,21 @@ Two more steps of the job run only in CI: that the rules crate's fence
 holds, and that `shuyi lint` finds what breaks the game's code (both on the
 `grid` game, with code written to break them).
 
+## The skill pack's worked examples (CI's `skills` job)
+
+Each skill in `skills/` has a worked example, `example.ron`, that runs on
+a game fresh from `shuyi new` (ADR-0043). CI runs them all, in three
+shards. Locally, run the examples of the skills a change touches, or of
+every skill when a change touches the contract, a problem code or a
+template:
+
+```bash
+cargo xtask skill-examples shuyi-gates shuyi-test   # or no names for every one
+```
+
+The games are made in `target/skill-examples/<skill>`, and build in this
+repository's target folder.
+
 ## The repository's own checks (CI's `tickets` job)
 
 They run on every PR, docs-only ones too:
@@ -143,7 +173,7 @@ whose text never names it back: write the other side there (the
 `write-ticket` skill, *Check the dependency chain*).
 
 Later tickets add their checks here, for example `check-keys` and
-`check-text` on the engine's own code (2006) and `check-skills`.
+`check-text` on the engine's own code (2006).
 
 ## The public API (CI's `api` job)
 
@@ -187,14 +217,14 @@ explaining why the code is untestable, never to pass the gate.
 
 ## Snapshots (insta)
 
-- A failing snapshot test writes `*.snap.new`. **Read the new snapshot**
-  and decide whether the change is intended.
-- If it is, run `cargo insta accept`. If not, fix the code. Never accept
-  blindly; `cargo insta review` is interactive and won't work here.
+The rule is `shuyi-gates`': read the new snapshot and decide whether the
+change is meant. Here a failing snapshot test writes `*.snap.new`, and
+`cargo insta accept` takes it once you have; `cargo insta review` is
+interactive and won't work here.
 
 ## When CI fails but local passes
 
-Most likely an OS difference (path separators, line endings), MSVC vs
-GNU, or a tool version. Reproduce with the exact command from the
-failing job's log. A red `main` may be `main`'s own break: check the
-latest `main` run before blaming your branch.
+`shuyi-gates` has the general case. Here, also: CI's Windows runners
+build with MSVC and Nick's machine with GNU, and a red `main` may be
+`main`'s own break: check the latest `main` run before blaming your
+branch.

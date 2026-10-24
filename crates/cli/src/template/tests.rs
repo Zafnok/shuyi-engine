@@ -118,6 +118,7 @@ fn catalog() -> Catalog {
             dir: PathBuf::from("engine/crates/alpha"),
             info: ModuleInfo::default(),
         }],
+        skills: crate::skills::Pack::default(),
     }
 }
 
@@ -593,6 +594,75 @@ fn a_parts_modules_are_turned_on_through_adds_code() {
     );
 }
 
+#[test]
+fn every_game_gets_the_packs_skills_but_the_modules() {
+    use crate::skills::{Pack, Skill};
+    let skill = |name: &str| Skill {
+        name: name.to_owned(),
+        files: BTreeMap::from([
+            ("SKILL.md".to_owned(), format!("{name}\n").into_bytes()),
+            ("references/more.md".to_owned(), b"more\n".to_vec()),
+        ]),
+    };
+    let mut catalog = catalog();
+    // `shuyi-alpha` is built and `shuyi-gamma` planned: both are modules.
+    catalog.skills = Pack {
+        skills: ["shuyi-alpha", "shuyi-gamma", "shuyi-gates", "shuyi-own"]
+            .map(skill)
+            .to_vec(),
+        not_skills: Vec::new(),
+    };
+    let template = with_files(&[("base/.claude/skills/shuyi-own/SKILL.md", "the game's own\n")]);
+    let plan = compose(&template, &Answers::default(), &catalog, &filled()).unwrap();
+    assert_eq!(plan.skills, ["shuyi-gates"]);
+    assert_eq!(
+        text_of(&plan, ".claude/skills/shuyi-gates/references/more.md"),
+        "more\n"
+    );
+    assert_eq!(
+        text_of(&plan, ".claude/skills/shuyi-own/SKILL.md"),
+        "the game's own\n"
+    );
+    for module in ["shuyi-alpha", "shuyi-gamma"] {
+        assert!(
+            !plan
+                .paths()
+                .iter()
+                .any(|p| p.starts_with(&format!(".claude/skills/{module}/"))),
+            "{module}: {:?}",
+            plan.paths()
+        );
+    }
+}
+
+#[test]
+fn the_engine_templates_games_get_the_embedded_pack() {
+    let catalog = Catalog::embedded().unwrap();
+    for name in ["blank", "grid"] {
+        let plan = built_in_plan(name);
+        let expected: Vec<&str> = catalog
+            .skills
+            .skills
+            .iter()
+            .map(|s| s.name.as_str())
+            .filter(|s| !catalog.is_module(s))
+            .collect();
+        assert_eq!(plan.skills, expected, "{name}");
+        for skill in &catalog.skills.skills {
+            for (path, bytes) in &skill.files {
+                let at = PathBuf::from(format!(".claude/skills/{}/{path}", skill.name));
+                let copied = plan.files.get(&at);
+                assert_eq!(
+                    copied,
+                    (!catalog.is_module(&skill.name)).then_some(bytes),
+                    "{name}: {}",
+                    at.display()
+                );
+            }
+        }
+    }
+}
+
 /// The fixture with a stage on `pa` (and on `pb` if `two`), and `extra`
 /// files.
 fn staged(two: bool, extra: &[(&str, &str)]) -> Template {
@@ -793,7 +863,8 @@ fn the_engine_templates_plans_are_golden() {
     let mut text = String::from(
         "# The engine's own template's plans for Moon Garden on the engine's main: each\n\
          # file's FNV-1a hash and path. Written by `SHUYI_BLESS=1 cargo test -p shuyi-cli\n\
-         # --lib template`, after a change to templates/shuyi-default.\n",
+         # --lib template`, after a change to templates/shuyi-default. The skill pack's\n\
+         # files in .claude/skills/ are left out: a test checks they are the pack's.\n",
     );
     for name in ["blank", "grid"] {
         let plan = built_in_plan(name);
@@ -802,7 +873,9 @@ fn the_engine_templates_plans_are_golden() {
         let _ = write!(text, "\n[{name}] {}\n", plan.parts.join(", "));
         for (path, bytes) in &plan.files {
             let shown = path.to_string_lossy().replace('\\', "/");
-            let _ = writeln!(text, "{:016x} {shown}", fnv(bytes));
+            if !shown.starts_with(".claude/skills/") {
+                let _ = writeln!(text, "{:016x} {shown}", fnv(bytes));
+            }
         }
     }
     let file = Path::new(env!("CARGO_MANIFEST_DIR")).join(GOLDEN);
@@ -859,7 +932,12 @@ fn the_engine_template_has_blank_and_grid_and_a_stage_for_grid() {
         let config = crate::project::Config::parse(&text_of(plan, "shuyi.ron")).unwrap();
         let ids: Vec<&str> = config.targets.keys().map(String::as_str).collect();
         assert_eq!(ids, ["desktop", "web"]);
-        for (path, bytes) in &plan.files {
+        // The skills are copied as they are, with no placeholder filled.
+        let filled = plan
+            .files
+            .iter()
+            .filter(|(path, _)| !path.starts_with(".claude/skills"));
+        for (path, bytes) in filled {
             if let Ok(text) = std::str::from_utf8(bytes) {
                 let left = text.replace("${{", "");
                 assert!(!left.contains("{{"), "{}", path.display());

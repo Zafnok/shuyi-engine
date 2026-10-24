@@ -58,8 +58,11 @@ None.
   answer: rigid-body physics; alternatives: the default movers and
   `shuyi-procanim`), the README in its fixed order, the `physics`
   feature of the `shuyi` crate (2003), the catalog row, and the
-  `shuyi-physics` skill if the skill pack (1134) is done; if not, add
-  it to 1134's list in this PR.
+  `shuyi-physics` skill (**from 1134, done**): `skills/shuyi-physics/`
+  in the pack's form, with a worked example, `example.ron`, that `shuyi
+  add physics` and a few lines make run on a fresh game, which CI's
+  `skills` job runs. It is a module's skill: `shuyi add physics` copies
+  it into a game.
 - **From 2003 (done):** a game steps the `PhysicsWorld` from its own
   `TickSim::step`, a library call (ADR-0040 §1), and a hook never
   changes a stage's state (§3). So this module needs no `Module` and no

@@ -189,9 +189,11 @@ None.
     (already in its tree through `shuyi-ui`), with
     `default-features = false` as `shuyi-ui` has it, so it stays
     `no_std`, and its line in `tools/layers.ron`;
-  - with 1134: if its `shuyi-stage-grid` skill is done, add a short
-    section naming these helpers and streams; if not, 1134 does it (its
-    scope says so);
+  - **from 1134 (done):** its `shuyi-stage-grid` skill
+    (`skills/shuyi-stage-grid/SKILL.md`) gains a short section naming
+    these helpers (`range`, `chance`, `pick`, `shuffle`,
+    `pick_weighted`, `Bag`) and one stream per purpose
+    (`SimRng::stream`, `fork`); `check-skills` passes;
   - with 2802: if the book is done, its chapter 6 (rules as commands,
     determinism and the hash) gains a section on luck with a snippet;
     if not, add a line to chapter 6 in 2802's scope naming that section;

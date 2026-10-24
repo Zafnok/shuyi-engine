@@ -122,11 +122,12 @@ None.
   it sits beside `shuyi-vn` alone); `docs/modules.md` and
   `docs/modules.ron` mark `mystery` ready; the engine README lists
   detective games as supported, linking this example.
-- **The skill** `shuyi-mystery`: if 1134 is done, finish it with a
-  worked example modelled on this example, in which `shuyi add mystery`
-  and a case of one room and two clues run on a fresh game; it passes
-  `check-skills`. If 1134 isn't done, add that worked example to the
-  `shuyi-mystery` entry in 1134's list (2727 put it there) in this PR.
+- **The skill** `shuyi-mystery` (`skills/shuyi-mystery/SKILL.md`, which
+  2727 writes). **From 1134 (done):** finish it with a worked example,
+  `skills/shuyi-mystery/example.ron`, modelled on this example, in which
+  `shuyi add mystery` and a case of one room and two clues run on a
+  fresh game, and drop 2732 from its `waits_for` (2727 put it there).
+  It passes `check-skills`, and CI's `skills` job runs the example.
 
 **Out (do not do):**
 - new engine features; a gap found here gets a ticket (`write-ticket`,
