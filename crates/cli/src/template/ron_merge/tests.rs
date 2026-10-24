@@ -60,6 +60,14 @@ fn a_value_that_differs_fails_with_its_path() {
 }
 
 #[test]
+fn a_multiline_item_takes_the_new_indent_and_keeps_lines_less_indented() {
+    assert_eq!(
+        reindent("a: [\n        1,\n  2,\n\n    ]", "    ", "  "),
+        "a: [\n      1,\n  2,\n\n  ]"
+    );
+}
+
+#[test]
 fn strings_and_comments_with_brackets_in_them_are_read_whole() {
     let base = "(\n    // a ) comment ] with { brackets\n    s: \"a ) string, \\\" with: (\",\n    /* a\n    /* nested */ block */\n    r: r##\"raw \"# here\"##,\n    c: ')',\n)";
     let other = "(t: Some(\"x\"), s: \"a ) string, \\\" with: (\")";

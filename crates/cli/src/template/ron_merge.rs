@@ -449,11 +449,8 @@ fn reindent(item: &str, from: &str, to: &str) -> String {
 /// line comes before them.
 fn leading<'t>(text: &'t str, item: &Item) -> (bool, Vec<&'t str>) {
     let mut lines: Vec<&str> = text[item.lead..item.start].split('\n').collect();
-    if lines.len() < 2 {
-        return (false, Vec::new());
-    }
     // The end of the line before (after its comma), and the start of the
-    // item's own line.
+    // item's own line: on one line, the item has nothing above it.
     lines.remove(0);
     lines.pop();
     let blank = lines.first().is_some_and(|line| line.trim().is_empty());

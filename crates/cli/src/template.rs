@@ -297,7 +297,9 @@ pub(crate) fn folder_of(files: &Path) -> Result<String, String> {
     let escapes = trimmed
         .split('/')
         .any(|segment| segment == ".." || segment == "." || segment.is_empty());
-    if files.is_absolute() || text.starts_with('/') || trimmed.is_empty() || escapes {
+    // An empty path is one empty segment, and an absolute one starts with
+    // `/` here (a Windows drive's `C:` matches no file of the template).
+    if text.starts_with('/') || escapes {
         return Err(format!(
             "`{text}` is no folder inside the template: give a path from its folder, with no \
              `.` or `..`"

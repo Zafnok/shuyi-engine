@@ -406,3 +406,18 @@ fn a_feature_is_its_modules_name_without_the_prefix() {
     assert_eq!(module_of("physics"), "shuyi-physics");
     assert_eq!(Status::Parked.name(), "parked");
 }
+
+#[test]
+fn the_embedded_catalog_has_a_module_for_each_feature_of_shuyi_but_default() {
+    let manifest =
+        "[package]\nname = \"shuyi\"\n\n[features]\ndefault = []\nphysics = []\naudio-midi = []\n";
+    let modules = modules_of_features(manifest).unwrap();
+    let names: Vec<&str> = modules.iter().map(|m| m.name.as_str()).collect();
+    assert_eq!(names, ["shuyi-audio-midi", "shuyi-physics"]);
+    assert_eq!(modules[1].dir, PathBuf::from("crates").join("physics"));
+    let none = modules_of_features("[package]\nname = \"shuyi\"\n").unwrap();
+    assert!(none.is_empty(), "{none:?}");
+    assert!(modules_of_features("[features").is_err());
+    let embedded = Catalog::embedded().unwrap();
+    assert_eq!(embedded.concerns, Catalog::read(&repo()).unwrap().concerns);
+}

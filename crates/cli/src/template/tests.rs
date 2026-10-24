@@ -277,6 +277,18 @@ fn a_template_loads_from_a_folder() {
 }
 
 #[test]
+fn a_parts_folder_is_a_relative_path_inside_the_template() {
+    assert_eq!(
+        folder_of(Path::new("stages/grid/")).unwrap(),
+        "stages/grid/"
+    );
+    assert_eq!(folder_of(Path::new("base")).unwrap(), "base/");
+    for bad in ["/pa", "", "/", "a/../b", "./a", "a//b"] {
+        assert!(folder_of(Path::new(bad)).is_err(), "{bad}");
+    }
+}
+
+#[test]
 fn a_stage_id_is_lowercase_words_joined_by_dashes() {
     for good in ["top-down-grid", "side-view", "a", "grid2"] {
         assert!(is_stage_id(good), "{good}");
@@ -470,6 +482,14 @@ fn cargo_tomls_merge_key_by_key_with_their_comments() {
         compose::merge_toml("a = [1, 2]\n[t]\nk = 1\n", "a = [2, 3]\n[t]\nj = 2\n").unwrap();
     assert_eq!(lists, "a = [1, 2, 3]\n[t]\nk = 1\nj = 2\n");
     assert!(compose::merge_toml("a = 1\n", "a = \"1\"\n").is_err());
+    // A table never merges into a value, nor a value into a table.
+    assert!(compose::merge_toml("a = 1\n", "[a]\nb = 2\n").is_err());
+    assert!(compose::merge_toml("[a]\nb = 2\n", "a = 1\n").is_err());
+    // An inline table merges into a table key by key.
+    let inline = compose::merge_toml("[a]\nb = 2\n", "a = { c = 3 }\n").unwrap();
+    let read: toml_edit::DocumentMut = inline.parse().unwrap();
+    assert_eq!(read["a"]["b"].as_integer(), Some(2), "{inline}");
+    assert_eq!(read["a"]["c"].as_integer(), Some(3), "{inline}");
     // Arrays of tables gain the tables they lack, once.
     let bins = compose::merge_toml(
         "[[bin]]\nname = \"a\"\n",
