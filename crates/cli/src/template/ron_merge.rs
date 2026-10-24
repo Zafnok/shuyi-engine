@@ -104,60 +104,81 @@ impl<'a> Parser<'a> {
         Err(format!("{} at {}", message, self.here()))
     }
 
+    /// The passes a loop over the text may take: one more than its bytes.
+    /// Each pass of every loop here moves forward, so none needs more, and
+    /// none can run on forever.
+    fn steps(&self) -> std::ops::RangeInclusive<usize> {
+        0..=self.bytes.len()
+    }
+
     /// Past spaces and comments.
     fn trivia(&mut self) -> Result<(), String> {
-        loop {
+        for _ in self.steps() {
             match (self.peek(), self.peek_at(1)) {
                 (Some(b), _) if b.is_ascii_whitespace() => self.advance(1),
                 (Some(b'/'), Some(b'/')) => {
-                    while self.peek().is_some_and(|b| b != b'\n') {
+                    for _ in self.steps() {
+                        if self.peek().is_none_or(|b| b == b'\n') {
+                            break;
+                        }
                         self.advance(1);
                     }
                 }
-                (Some(b'/'), Some(b'*')) => {
-                    self.advance(2);
-                    let mut depth = 1;
-                    while depth > 0 {
-                        match (self.peek(), self.peek_at(1)) {
-                            (None, _) => return self.fail("a comment never closed"),
-                            (Some(b'*'), Some(b'/')) => {
-                                depth -= 1;
-                                self.advance(2);
-                            }
-                            (Some(b'/'), Some(b'*')) => {
-                                depth += 1;
-                                self.advance(2);
-                            }
-                            _ => self.advance(1),
-                        }
-                    }
-                }
+                (Some(b'/'), Some(b'*')) => self.block_comment()?,
                 _ => return Ok(()),
             }
         }
+        Ok(())
+    }
+
+    /// Past a `/* … */` comment, at its `/*`, and the comments nested in
+    /// it.
+    fn block_comment(&mut self) -> Result<(), String> {
+        self.advance(2);
+        let mut depth = 1;
+        for _ in self.steps() {
+            match (self.peek(), self.peek_at(1)) {
+                (Some(b'*'), Some(b'/')) => {
+                    depth -= 1;
+                    self.advance(2);
+                    if depth == 0 {
+                        return Ok(());
+                    }
+                }
+                (Some(b'/'), Some(b'*')) => {
+                    depth += 1;
+                    self.advance(2);
+                }
+                _ => self.advance(1),
+            }
+        }
+        self.fail("a comment never closed")
     }
 
     /// Past a `"…"` string, at its opening quote.
     fn string(&mut self) -> Result<(), String> {
         self.advance(1);
-        loop {
+        for _ in self.steps() {
             match self.peek() {
-                None => return self.fail("a string never closed"),
                 Some(b'\\') => self.advance(2),
                 Some(b'"') => {
                     self.advance(1);
                     return Ok(());
                 }
-                Some(_) => self.advance(1),
+                _ => self.advance(1),
             }
         }
+        self.fail("a string never closed")
     }
 
     /// Past a raw string, `r#"…"#`, at its `r`.
     fn raw_string(&mut self) -> Result<(), String> {
         self.advance(1);
         let mut hashes = 0;
-        while self.peek() == Some(b'#') {
+        for _ in self.steps() {
+            if self.peek() != Some(b'#') {
+                break;
+            }
             hashes += 1;
             self.advance(1);
         }
@@ -181,7 +202,10 @@ impl<'a> Parser<'a> {
         if self.peek() == Some(b'\\') {
             self.advance(2);
         }
-        while self.peek().is_some_and(|b| b != b'\'') {
+        for _ in self.steps() {
+            if self.peek().is_none_or(|b| b == b'\'') {
+                break;
+            }
             self.advance(1);
         }
         if self.peek().is_none() {
@@ -193,7 +217,10 @@ impl<'a> Parser<'a> {
 
     /// Past a word or a number: a value that isn't in brackets or quotes.
     fn atom(&mut self) {
-        while let Some(b) = self.peek() {
+        for _ in self.steps() {
+            let Some(b) = self.peek() else {
+                break;
+            };
             let comment = b == b'/' && matches!(self.peek_at(1), Some(b'/' | b'*'));
             if b.is_ascii_whitespace() || b",:()[]{}\"'".contains(&b) || comment {
                 break;
@@ -262,10 +289,13 @@ impl<'a> Parser<'a> {
         {
             return Ok(None);
         }
-        while self
-            .peek()
-            .is_some_and(|b| b.is_ascii_alphanumeric() || b == b'_')
-        {
+        for _ in self.steps() {
+            if !self
+                .peek()
+                .is_some_and(|b| b.is_ascii_alphanumeric() || b == b'_')
+            {
+                break;
+            }
             self.advance(1);
         }
         let end = self.at;
@@ -291,12 +321,16 @@ impl<'a> Parser<'a> {
         let close_byte = delim.close();
         let mut items = Vec::new();
         let mut trailing_comma = false;
-        loop {
+        let mut closed = false;
+        for _ in self.steps() {
             let lead = self.at;
             self.trivia()?;
             match self.peek() {
                 None => return self.fail("a bracket never closed"),
-                Some(b) if b == close_byte => break,
+                Some(b) if b == close_byte => {
+                    closed = true;
+                    break;
+                }
                 Some(_) => {}
             }
             let item_start = self.at;
@@ -327,11 +361,17 @@ impl<'a> Parser<'a> {
                     self.advance(1);
                     trailing_comma = true;
                 }
-                Some(b) if b == close_byte => break,
+                Some(b) if b == close_byte => {
+                    closed = true;
+                    break;
+                }
                 _ => {
                     return self.fail(&format!("expected `,` or `{}`", char::from(close_byte)));
                 }
             }
+        }
+        if !closed {
+            return self.fail("a bracket never closed");
         }
         let close = self.at;
         self.advance(1);
@@ -354,7 +394,10 @@ impl<'a> Parser<'a> {
 fn parse(text: &str) -> Result<Node, String> {
     let mut parser = Parser::new(text);
     parser.trivia()?;
-    while text[parser.at..].starts_with("#!") {
+    for _ in parser.steps() {
+        if !text[parser.at..].starts_with("#!") {
+            break;
+        }
         match text[parser.at..].find(']') {
             Some(end) => parser.advance(end + 1),
             None => return parser.fail("an attribute never closed"),
