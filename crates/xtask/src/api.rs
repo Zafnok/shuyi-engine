@@ -18,8 +18,9 @@ use std::process::Command;
 
 use crate::tickets::{breaking_lines, ticket_id_from_branch};
 
-/// The crates a game made with `shuyi new` depends on: their public API is
-/// what a game builds on. Not `xtask` (never shipped) and not the examples.
+/// The crates a game made with `shuyi new` depends on, and those its
+/// front door re-exports: their public API is what a game builds on. Not
+/// `xtask` (never shipped) and not the examples.
 pub const API_CRATES: &[&str] = &[
     "shuyi-core",
     "shuyi-assets",
@@ -27,6 +28,7 @@ pub const API_CRATES: &[&str] = &[
     "shuyi-platform",
     "shuyi-app",
     "shuyi-cli",
+    "shuyi",
 ];
 
 /// The `cargo-semver-checks` this check runs, the one CI installs. It reads

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AddInput",
+  "description": "What `add` turns on.",
+  "type": "object",
+  "properties": {
+    "module": {
+      "description": "The module, by its crate's name with or without `shuyi-`\n(`physics` or `shuyi-physics`).",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "module"
+  ]
+}

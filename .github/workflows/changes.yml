@@ -11,7 +11,9 @@ name: Changes
 #     builds a game from each;
 #   - `examples/**`: their tests read their own files;
 #   - `docs/contract.md` and the root `README.md`: `crates/cli/tests/it/docs.rs`
-#     checks them against `Op::ALL` and `contract::VERSION`.
+#     checks them against `Op::ALL` and `contract::VERSION`;
+#   - `docs/modules.md` and `docs/modules.ron`: the catalog, which `cargo
+#     xtask check-modules` (the `modules` job) and the tests read.
 # The rest is docs-only: other `*.md`, `docs/**`, `tickets/**`, `.claude/**`.
 # Any other event (push, schedule, workflow_dispatch) always counts as code.
 #
@@ -67,7 +69,7 @@ jobs:
               crates/*|Cargo.toml|Cargo.lock|rust-toolchain.toml) crates=true ;;
             esac
             case "$path" in
-              crates/*|templates/*|examples/*|docs/contract.md|README.md) echo "code: $path"; code=true ;;
+              crates/*|templates/*|examples/*|docs/contract.md|docs/modules.md|docs/modules.ron|README.md) echo "code: $path"; code=true ;;
               *.md|docs/*|tickets/*|.claude/*) echo "docs: $path" ;;
               *) echo "code: $path"; code=true ;;
             esac

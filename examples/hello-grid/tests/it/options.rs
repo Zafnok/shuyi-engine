@@ -5,10 +5,10 @@
 use hello_grid::screens::StageScreen;
 use hello_grid::tools::Start;
 use hello_grid::{Hello, MapLook};
-use shuyi_platform::harness::Harness;
-use shuyi_ui::screens::options::{LeaveChoice, OptionsScreen};
-use shuyi_ui::settings::{SETTINGS_KEY, TextSpeed};
-use shuyi_ui::storage::Storage;
+use shuyi::platform::harness::Harness;
+use shuyi::ui::screens::options::{LeaveChoice, OptionsScreen};
+use shuyi::ui::settings::{SETTINGS_KEY, TextSpeed};
+use shuyi::ui::storage::Storage;
 
 use crate::title;
 

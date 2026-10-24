@@ -15,6 +15,7 @@ repository has no row here.
 | A problem code and its fix | [`crates/cli/errors/`](../crates/cli/errors/), one `SHnnnn.md` each, read by `shuyi explain` ([ADR-0028](adr/0028-problem-codes-a-stable-code-by-class-a-help-line-a-page-and-exit-code-3-for-the-setup.md)) | adds or changes an error the contract gives |
 | The engine's file formats and the registry | [`formats.md`](formats.md) | adds or changes a format, an asset kind or the registry |
 | What a platform backend must do | [`platform-backends.md`](platform-backends.md) | changes the platform boundary or adds a backend |
+| The modules, by concern: what each answers and serves, its status and tickets | [`modules.md`](modules.md), the catalog; [`modules.ron`](modules.ron), the concerns and their answers as data, which `shuyi modules` reads ([ADR-0009](adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)) | adds a module, a format plugin, a backend, a concern or an answer, or changes one's status |
 | What a new game starts with: its rules (`AGENTS.md`) and its README | [`templates/`](../templates/), one folder per template | changes a template, or a rule a game on the engine keeps |
 | What the engine is, its crates, and where to start | [`README.md`](../README.md) | adds a crate, or changes what one is for |
 | How to contribute | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | changes who may contribute or how |
@@ -98,6 +99,7 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The contract's operations | [`contract.md`](contract.md), *The operations* | [`README.md`](../README.md), the `shuyi-cli` row | `crates/cli/tests/it/docs.rs` |
 | The local gates | the `run-gates` skill | `.github/workflows/ci.yml` | nothing yet |
 | The actions' pins and the shared crates' requirements | `.github/workflows/`, and the root's `[workspace.dependencies]` in `Cargo.toml` | `templates/*/.github/workflows/`, and each template's `Cargo.toml` | `cargo xtask check-pins` ([ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)) |
+| What a module answers | its crate's `[package.metadata.shuyi]` | its row in [`modules.md`](modules.md), and its answers in [`modules.ron`](modules.ron) | `cargo xtask check-modules` |
 | The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the book (2802), the

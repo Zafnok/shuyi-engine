@@ -4,8 +4,8 @@
 
 use std::borrow::Cow;
 
-use shuyi_assets::audio::{AudioManifest, Bytes, CreditRef, Files, SAMPLE_RATE, SoundCue};
-use shuyi_ui::audio::AudioConfig;
+use shuyi::assets::audio::{AudioManifest, Bytes, CreditRef, Files, SAMPLE_RATE, SoundCue};
+use shuyi::ui::audio::AudioConfig;
 
 /// Each sound file: its name, pitch in hertz and length in milliseconds.
 pub const BLIPS: [(&str, f32, u32); 4] = [
@@ -115,7 +115,7 @@ mod tests {
             for name in &sound.files {
                 let bytes = file(name).unwrap_or_else(|| panic!("no {name}"));
                 assert_eq!(
-                    shuyi_assets::audio::format_problem(name, &bytes),
+                    shuyi::assets::audio::format_problem(name, &bytes),
                     None,
                     "{name}"
                 );

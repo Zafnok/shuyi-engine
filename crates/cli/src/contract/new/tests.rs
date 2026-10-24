@@ -57,10 +57,10 @@ fn every_template_fills_every_placeholder() {
             let expected = match &engine {
                 Engine::Main => format!("{{ git = \"{ENGINE_GIT}\", branch = \"main\" }}"),
                 Engine::Rev { rev } => format!("{{ git = \"{ENGINE_GIT}\", rev = \"{rev}\" }}"),
-                Engine::Path { .. } => "{ path = '/e/crates/ui' }".to_owned(),
+                Engine::Path { .. } => "{ path = '/e/crates/shuyi' }".to_owned(),
             };
             assert!(
-                manifest.contains(&format!("shuyi-ui = {expected}")),
+                manifest.contains(&format!("shuyi = {expected}")),
                 "{manifest}"
             );
         }
@@ -174,7 +174,7 @@ fn the_engine_is_a_commit_or_a_checkout() {
     );
     assert!(answer.ok, "{answer:?}");
     let manifest = fs::read_to_string(dir.join("g/Cargo.toml")).unwrap();
-    assert!(manifest.contains("/crates/ui' }"), "{manifest}");
+    assert!(manifest.contains("/crates/shuyi' }"), "{manifest}");
     assert!(!manifest.contains('\\'), "{manifest}");
     assert!(answer.limits[0].contains("engine checkout"));
     let rev = input(Engine::Rev {

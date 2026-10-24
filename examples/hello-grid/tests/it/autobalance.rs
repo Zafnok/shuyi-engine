@@ -11,12 +11,12 @@ use hello_grid::rules::{Stage, Tuning};
 use hello_grid::tools::{
     BALANCE_FILE, ENTRANTS, HelloTools, autobalance_plan, balance, knobs, playtest_checks,
 };
+use shuyi::core::bots::balance::Change;
+use shuyi::core::bots::playtest::{Entrant, Tries};
+use shuyi::core::{BalanceSettings, Stop};
 use shuyi_cli::contract::autobalance::{AutobalanceInput, AutobalanceOutput, autobalance};
 use shuyi_cli::frame_png::{Script, Shot};
 use shuyi_cli::{AutobalancePlan, GameArg, GameLang, GameOption, GameTools};
-use shuyi_core::bots::balance::Change;
-use shuyi_core::bots::playtest::{Entrant, Tries};
-use shuyi_core::{BalanceSettings, Stop};
 
 /// Seeds 0 to 49 decide, quick runs of 10, at most 40 runs: the search of
 /// `balance.rs`.
@@ -85,7 +85,7 @@ fn the_tool_contract_finds_what_the_core_finds_on_one_thread() {
     let settings = BalanceSettings::new(Tries::new(50, 0, 200), 10, 40);
     assert_eq!(output.settings, settings);
     let core =
-        shuyi_core::autobalance(&stage, &[&trip, &head_start], &entrants, &checks, &settings)
+        shuyi::core::autobalance(&stage, &[&trip, &head_start], &entrants, &checks, &settings)
             .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(output.changes, core.changes);
     assert_eq!((output.before, output.after), (core.before, core.after));

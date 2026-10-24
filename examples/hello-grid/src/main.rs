@@ -7,9 +7,9 @@
 
 use hello_grid::{FONT_PNG, Hello, sound};
 use macroquad::window::Conf;
-use shuyi_app::{AppConfig, Window};
-use shuyi_platform::{Card, Look, Setup, Start};
-use shuyi_ui::Game;
+use shuyi::app::{AppConfig, Window};
+use shuyi::platform::{Card, Look, Setup, Start};
+use shuyi::ui::Game;
 
 /// The window: the console at twice its size, and a small margin.
 const WINDOW: Window = Window::new("Hello, Grid", 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
@@ -44,11 +44,11 @@ fn start(setup: Setup) -> Game<Hello> {
 }
 
 fn window_conf() -> Conf {
-    shuyi_app::window_conf(&WINDOW)
+    shuyi::app::window_conf(&WINDOW)
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
     let start = Start::new(Card::text(WINDOW.title), look, |setup| Ok(start(setup)));
-    shuyi_app::run(config(), start).await;
+    shuyi::app::run(config(), start).await;
 }

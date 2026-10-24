@@ -68,11 +68,10 @@ None.
   - **the `rts` feature** of the `shuyi` crate;
   - **`docs/modules.ron` and the catalog:** set the `rts` answer and
     the `shuyi-rts` row from parked to building (as 2701 does); 2719
-    sets both to ready when the example passes CI (ADR-0009 §4). If 2003 somehow lacks the
-    `kind` concern, add it as ADR-0015 §1 writes it (`pick: Many`,
-    question "What kind of game is it?", `alternatives: false`, answers
-    `tactics`, `rts`, `visual-novel`, `mystery`). Don't change
-    `check-modules`; 2003 owns its rules;
+    sets both to ready when the example passes CI (ADR-0009 §4). 2003
+    wrote the `kind` concern (`alternatives: false`); 2502 adds its
+    `pick` and question. Don't change `check-modules`; 2003 owns its
+    rules;
   - **the skill** `shuyi-rts`, if the skill pack (1134) is done; if not,
     add it to 1134's list in this PR;
   - **`needs`** (ADR-0012 §1): if 3017 is done, a provisional `needs`

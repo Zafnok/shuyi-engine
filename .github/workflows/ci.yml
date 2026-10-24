@@ -182,7 +182,9 @@ jobs:
               tiles.len()
           }
           RUST
-          echo 'shuyi-ui.workspace = true' >> crates/rules/Cargo.toml
+          # By path: the game's workspace names the engine as `shuyi` (and
+          # the crates its rules may use), not `shuyi-ui`.
+          echo "shuyi-ui = { path = '$GITHUB_WORKSPACE/crates/ui' }" >> crates/rules/Cargo.toml
           cat >> crates/game/src/stage.rs <<'RUST'
 
           /// Names a key and writes a screen's text.
@@ -247,7 +249,9 @@ jobs:
             fi
           done
           cp "$RUNNER_TEMP/lib.rs" "$lib"
-          echo 'shuyi-ui.workspace = true' >> crates/rules/Cargo.toml
+          # By path: the game's workspace names the engine as `shuyi` (and
+          # the crates its rules may use), not `shuyi-ui`.
+          echo "shuyi-ui = { path = '$GITHUB_WORKSPACE/crates/ui' }" >> crates/rules/Cargo.toml
           if cargo test -p demo-rules --test layers > layers.txt 2>&1; then
             echo "::error::the layers test passed on rules that depend on shuyi-ui"
             exit 1
@@ -302,6 +306,37 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: cargo xtask check-layers
+
+  # The modules (ticket 2003, ADR-0009 §2 and §6): each against the
+  # catalog (docs/modules.md, docs/modules.ron), then the `shuyi` crate
+  # built as the default engine, with each module's feature alone, and
+  # with every one, whose modules install side by side (its tests). It
+  # doesn't try every combination.
+  modules:
+    name: modules
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Install macroquad system libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - run: cargo xtask check-modules
+      - name: The default engine, each module alone, and every module together
+        run: |
+          cargo build -p shuyi --locked
+          features=$(cargo metadata --format-version 1 --no-deps --locked \
+            | jq -r '.packages[] | select(.name == "shuyi") | .features | keys[]')
+          for feature in $features; do
+            echo "::group::shuyi with $feature"
+            cargo build -p shuyi --features "$feature" --locked
+            echo "::endgroup::"
+          done
+          cargo test -p shuyi --all-features --locked
 
   # The public API of the crates a game uses (ticket 2010, ADR-0038): what
   # merging adds to each crate's listing (cargo-public-api) and its breaks
@@ -467,7 +502,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, api, deny, zizmor, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, modules, api, deny, zizmor, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

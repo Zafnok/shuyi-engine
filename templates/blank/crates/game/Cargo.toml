@@ -25,14 +25,13 @@ workspace = true
 [features]
 # `tools`: the engine's tools for the game (`shuyi_cli::BasicTools`) and
 # its Harness, for its tool program and its tests.
-tools = ["dep:shuyi-cli", "shuyi-platform/harness"]
+tools = ["dep:shuyi-cli"]
 
 [dependencies]
-# What the game names (`shuyi_platform::prelude`), how it starts and the
-# Harness.
-shuyi-platform.workspace = true
-# The window, input devices, audio and storage: the macroquad backend.
-shuyi-app.workspace = true
+# The engine: what the game names (`shuyi::prelude`), how it starts, the
+# macroquad backend (the window, input devices, audio and storage) and the
+# modules it turns on.
+shuyi.workspace = true
 shuyi-cli = { workspace = true, optional = true }
 # The files under `files/`, embedded.
 include_dir.workspace = true

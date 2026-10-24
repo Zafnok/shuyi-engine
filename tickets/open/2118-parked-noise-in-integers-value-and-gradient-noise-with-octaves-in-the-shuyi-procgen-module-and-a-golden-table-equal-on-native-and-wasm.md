@@ -100,15 +100,14 @@ None.
   - metadata: concern `kind`, answer `roguelike`; `serves` the top-down
     grid perspective; `alternatives` empty (the `kind` concern is
     `alternatives: false`); `works_with` empty for now;
-  - **the `kind` concern** in `docs/modules.ron`: 2003 writes it
-    without roguelikes. Add the answer `roguelike`, status building,
-    naming this module and tickets 2118–2120 and 2735. If a ticket in
-    between added it as parked, set it to building. If 2003's statuses
+  - **the `kind` concern** in `docs/modules.ron`: 2003 wrote its
+    `roguelike` answer, by `shuyi-procgen`, parked. Set it to building,
+    naming tickets 2118–2120 and 2735. If 2003's statuses
     are only planned, parked and ready, add building (2701 and 2721 use
     it too);
   - the `procgen` feature of the `shuyi` crate;
-  - a row in `docs/modules.md` (2003's first rows don't include this
-    module): `shuyi-procgen`, building, tickets 2118, 2119 and 2735.
+  - its row in `docs/modules.md` (2003 wrote it parked): `shuyi-procgen`,
+    building, tickets 2118, 2119 and 2735.
     2735 sets the row and the answer to ready when its example passes
     CI;
   - the README's first two sections, in ADR-0009 §4's order:

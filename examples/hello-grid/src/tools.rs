@@ -18,12 +18,22 @@ use std::ops::RangeInclusive;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use shuyi_assets::ContentError;
-use shuyi_assets::bundle::Bundle;
-use shuyi_assets::grid_map::{GridMap, MapText};
-use shuyi_assets::keymap::{KeymapDef, KeymapRon};
-use shuyi_assets::onebit::PatternMapDef;
-use shuyi_assets::palette::PaletteDef;
+use shuyi::assets::ContentError;
+use shuyi::assets::bundle::Bundle;
+use shuyi::assets::grid_map::{GridMap, MapText};
+use shuyi::assets::keymap::{KeymapDef, KeymapRon};
+use shuyi::assets::onebit::PatternMapDef;
+use shuyi::assets::palette::PaletteDef;
+use shuyi::core::bots::playtest::{
+    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
+};
+use shuyi::core::{
+    Bot, Determinize, Knob, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
+};
+use shuyi::platform::harness::Harness;
+use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
+use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
+use shuyi::ui::{Game, GameData, GameHooks};
 use shuyi_cli::contract::autobalance::AutobalanceInput;
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
@@ -36,16 +46,6 @@ use shuyi_cli::{
     AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
     Tunable,
 };
-use shuyi_core::bots::playtest::{
-    self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
-};
-use shuyi_core::{
-    Bot, Determinize, Knob, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
-};
-use shuyi_platform::harness::Harness;
-use shuyi_ui::frame::onebit::{Font, PatternMap, to_one_bit};
-use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
-use shuyi_ui::{Game, GameData, GameHooks};
 
 use crate::map::Terrain;
 use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Tuning, Walk};

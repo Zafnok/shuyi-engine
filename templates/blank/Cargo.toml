@@ -12,10 +12,9 @@ publish = false
 [workspace.dependencies]
 # The engine's crates. Until its first release on crates.io a game
 # depends on the engine's repository at a commit (its README).
-shuyi-assets = "{{engine.assets}}"
-shuyi-ui = "{{engine.ui}}"
-shuyi-platform = "{{engine.platform}}"
-shuyi-app = "{{engine.app}}"
+# `shuyi` is the engine by its front door: `shuyi add <module>` turns on
+# a module's feature here.
+shuyi = "{{engine.shuyi}}"
 shuyi-cli = "{{engine.cli}}"
 # The game's files, embedded.
 include_dir = "0.7"

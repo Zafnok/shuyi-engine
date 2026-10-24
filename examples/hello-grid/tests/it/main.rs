@@ -26,8 +26,8 @@ use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::screens::StageScreen;
 use hello_grid::tools::Start;
-use shuyi_core::{Pos, TurnRules, flow_field};
-use shuyi_platform::harness::Harness;
+use shuyi::core::{Pos, TurnRules, flow_field};
+use shuyi::platform::harness::Harness;
 
 /// The game at its title, its first stage seeded with `seed`.
 pub fn title(seed: u64) -> Harness<Hello> {

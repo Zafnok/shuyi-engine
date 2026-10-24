@@ -4,7 +4,7 @@
 //! It builds a [`TitleView`] (plain data) and paints it with glyphs:
 //! tests of what it shows read the view.
 
-use shuyi_platform::prelude::*;
+use shuyi::prelude::*;
 
 use crate::Data;
 

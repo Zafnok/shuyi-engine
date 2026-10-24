@@ -12,13 +12,13 @@
 
 use std::any::Any;
 
-use shuyi_core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
-use shuyi_ui::audio::MenuSound;
-use shuyi_ui::frame::glyph_buffer::{GlyphBuffer, Rect};
-use shuyi_ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
-use shuyi_ui::{FrameInput, Screen, ScreenResult, Transition};
+use shuyi::core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
+use shuyi::ui::audio::MenuSound;
+use shuyi::ui::frame::glyph_buffer::{GlyphBuffer, Rect};
+use shuyi::ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
+use shuyi::ui::{FrameInput, Screen, ScreenResult, Transition};
 
-use shuyi_assets::keymap::{ActionSet, UiAction};
+use shuyi::assets::keymap::{ActionSet, UiAction};
 
 use super::{End, HelloCtx, Leave, Talk};
 use crate::map::{self, GLYPHS, Letters, MOVE, Piece, Terrain, Tiles};
@@ -247,7 +247,7 @@ impl StageScreen {
     /// work on `paint`.
     fn with_skin<R>(
         ctx: &HelloCtx,
-        paint: impl FnOnce(&dyn GridSkin<Piece>, &dyn shuyi_ui::grid::UnitPainter<Piece>) -> R,
+        paint: impl FnOnce(&dyn GridSkin<Piece>, &dyn shuyi::ui::grid::UnitPainter<Piece>) -> R,
     ) -> R {
         match ctx.settings().game.look {
             MapLook::Glyphs => paint(
@@ -322,7 +322,7 @@ impl Screen<Hello> for StageScreen {
     }
 
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
-        let looks = shuyi_ui::grid::Looks::new(&ctx.palette, &Terrain, &ctx.game.lights);
+        let looks = shuyi::ui::grid::Looks::new(&ctx.palette, &Terrain, &ctx.game.lights);
         Self::with_skin(ctx, |skin, painter| {
             let scene = self.scene(skin.view_tiles(AREA));
             skin::paint_stage(&ctx.palette, &self.view(ctx), buf);

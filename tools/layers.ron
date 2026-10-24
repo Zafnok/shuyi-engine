@@ -30,7 +30,8 @@
         "lewton",
         "hound",
     ],
-    // One entry per engine crate (a workspace member named `shuyi-*`):
+    // One entry per engine crate (a workspace member named `shuyi` or
+    // `shuyi-*`), modules among them (ADR-0009 §4):
     // - `engine`: the engine crates it may depend on (normal and build
     //   dependencies; dev-dependencies are free), down ADR-0002 §1's table;
     //   what it may use, not what it must;
@@ -108,6 +109,14 @@
             engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform"],
             outside: Any,
             devices: false,
+            floats: true,
+        ),
+        "shuyi": (
+            // The front door (ADR-0009 §6): the default engine's crates,
+            // the backend among them, and each module behind its feature.
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-app"],
+            outside: Only([]),
+            devices: true,
             floats: true,
         ),
     },

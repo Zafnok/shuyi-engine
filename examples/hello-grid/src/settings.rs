@@ -2,7 +2,7 @@
 //! volumes) and the game's own, the map's look; saved as one RON record.
 
 use serde::{Deserialize, Serialize};
-use shuyi_ui::settings::{GameSettings, Settings, TextSpeed};
+use shuyi::ui::settings::{GameSettings, Settings, TextSpeed};
 
 /// How the stage is drawn: which of the engine's skins.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -53,8 +53,8 @@ None.
   `draw` feature (2747, 2749, 2752 fill it); metadata `kind`/`party-rpg`,
   `serves` every perspective; its `tools/layers.ron` line (pure); the
   `rpg` feature of `shuyi`; the catalog row (building, 2745–2752);
-  the `party-rpg` answer in `docs/modules.ron` (add it, parked, if 2003
-  didn't); the README's first two sections; the `shuyi-rpg` skill or
+  the `party-rpg` answer in `docs/modules.ron` (2003 wrote it parked)
+  set to building; the README's first two sections; the `shuyi-rpg` skill or
   its line in 1134's list.
 - **`sheet.ron`**, asset kind `SheetDef`, format `sheet-ron`:
   - `stats`: names, each with a least and most value;

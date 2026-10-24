@@ -188,6 +188,16 @@
           "const": "lint"
         },
         {
+          "description": "The catalog of modules, and the game's.",
+          "type": "string",
+          "const": "modules"
+        },
+        {
+          "description": "A module turned on.",
+          "type": "string",
+          "const": "add"
+        },
+        {
           "description": "A key script played headless.",
           "type": "string",
           "const": "run"

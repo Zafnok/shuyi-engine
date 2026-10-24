@@ -2,12 +2,12 @@
 //! with glyphs in the palette's colors. The map itself is painted by the
 //! engine's skins ([`crate::map`]); this paints the lines round it.
 
-use shuyi_ui::dialogue::TextView;
-use shuyi_ui::dialogue::text_box::{self, glyph::BoxPlace};
-use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
-use shuyi_ui::frame::{EngineColor, Palette, Rgb};
-use shuyi_ui::widgets::menu::{self, MenuView};
-use shuyi_ui::{Ctx, GameData};
+use shuyi::ui::dialogue::TextView;
+use shuyi::ui::dialogue::text_box::{self, glyph::BoxPlace};
+use shuyi::ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
+use shuyi::ui::frame::{EngineColor, Palette, Rgb};
+use shuyi::ui::widgets::menu::{self, MenuView};
+use shuyi::ui::{Ctx, GameData};
 
 /// What the title shows.
 #[derive(Debug, Clone, PartialEq, Eq)]

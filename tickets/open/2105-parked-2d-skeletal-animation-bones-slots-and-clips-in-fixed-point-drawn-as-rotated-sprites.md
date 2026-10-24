@@ -50,10 +50,11 @@ None.
 **In:**
 - **A module crate `shuyi-bones`** in `crates/bones` (ADR-0009 §4:
   a crate of its own, `no_std` with `alloc`).
-  - **Either order with 2003:** if 2003 is done, register it in
-    `docs/modules.ron` under the "Bodies and motion" concern, as an
-    answer named "drawn bones" beside "movers and drawn clips". If not,
-    add a line to 2003's scope listing it.
+  - **The catalog** (2003, ADR-0041): register it in
+    `docs/modules.ron` under the `bodies` concern ("Bodies and motion"),
+    as an answer named "drawn bones" beside "movers and drawn clips",
+    `by: "shuyi-bones"`, with its row in `docs/modules.md` and its
+    `[package.metadata.shuyi]`.
   - **An ADR** (the `write-adr` skill): bones in `Fx`, no scale or
     shear, our RON as the source of truth, a pose as a pure function of
     the clip and the time.

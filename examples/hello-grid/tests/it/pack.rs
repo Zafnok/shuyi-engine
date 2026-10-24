@@ -6,7 +6,7 @@ use std::fs;
 
 use hello_grid::tools::HelloTools;
 use hello_grid::{Hello, PACK_STAMP};
-use shuyi_assets::pack::{Pack, PackError};
+use shuyi::assets::pack::{Pack, PackError};
 use shuyi_cli::contract::bake::{BakeInput, bake};
 use shuyi_cli::contract::check::{CheckInput, check};
 use shuyi_cli::project::Config;

@@ -10,7 +10,7 @@
 //! | ----------- | ------- |
 //! | `{{name}}` | the game's name, as given (`Moon Garden`) |
 //! | `{{crate}}` | its crate's name (`moon-garden`) |
-//! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`core`, `assets`, `ui`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
+//! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
 //!
 //! The game's Rust code names its own crates `game` and `rules` (their
 //! `[lib] name`), so its Rust holds a placeholder only in a string: the
@@ -37,8 +37,8 @@ static TEMPLATES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../templat
 pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
 
 /// The engine's crates a template may depend on, by their folder under
-/// `crates/`.
-pub const ENGINE_CRATES: [&str; 6] = ["core", "assets", "ui", "platform", "app", "cli"];
+/// `crates/`: `shuyi`, the front door, and the default engine's.
+pub const ENGINE_CRATES: [&str; 7] = ["shuyi", "core", "assets", "ui", "platform", "app", "cli"];
 
 /// A template of the engine's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

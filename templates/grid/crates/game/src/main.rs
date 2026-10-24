@@ -7,10 +7,10 @@
 
 use game::{Data, FONT_PNG};
 use macroquad::window::Conf;
-use shuyi_app::{AppConfig, Window};
-use shuyi_assets::audio::{Bytes, Files};
-use shuyi_platform::{Card, Look, Setup, Start};
-use shuyi_ui::Game;
+use shuyi::app::{AppConfig, Window};
+use shuyi::assets::audio::{Bytes, Files};
+use shuyi::platform::{Card, Look, Setup, Start};
+use shuyi::ui::Game;
 
 /// The game's name, on its window.
 const NAME: &str = "{{name}}";
@@ -48,21 +48,21 @@ fn look(data: &Data) -> Look<'_> {
     Look::new(&data.font, &data.images)
 }
 
-/// The game on the platform's `setup`, on its stage. The stages' luck is
-/// seeded from the clock (the platform's music seed), so each launch plays
-/// differently.
-fn start(setup: Setup) -> Game<Data> {
+/// The game on the platform's `setup`, on its stage, or the module that
+/// can't be installed. The stages' luck is seeded from the clock (the
+/// platform's music seed), so each launch plays differently.
+fn start(setup: Setup) -> Result<Game<Data>, String> {
     let mut ctx = setup.ctx(game::ctx(0));
     ctx.game.seed = ctx.music_seed;
-    game::game(ctx)
+    game::game(ctx).map_err(|e| e.to_string())
 }
 
 fn window_conf() -> Conf {
-    shuyi_app::window_conf(&WINDOW)
+    shuyi::app::window_conf(&WINDOW)
 }
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let start = Start::new(Card::text(WINDOW.title), look, |setup| Ok(start(setup)));
-    shuyi_app::run(config(), start).await;
+    let start = Start::new(Card::text(WINDOW.title), look, start);
+    shuyi::app::run(config(), start).await;
 }

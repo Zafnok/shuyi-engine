@@ -2,8 +2,8 @@
 //! its binary, its tools and its tests. It holds what the engine can't
 //! read from the game's files: its name, its storage's name, its files,
 //! its first screen and, if it has them, its console, its own part and
-//! every screen it can show. From it come its data
-//! ([`BasicGame::data`]), its context ([`BasicGame::ctx`]), its
+//! every screen it can show, and the modules it installs. From it come
+//! its data ([`BasicGame::data`]), its context ([`BasicGame::ctx`]), its
 //! [`Game`] and how a backend starts it ([`BasicGame::start`]).
 
 use crate::alloc_prelude::*;
@@ -15,6 +15,7 @@ use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::ActionSet;
 use shuyi_ui::basic::{BasicData, Own};
 use shuyi_ui::frame::ConsoleSpec;
+use shuyi_ui::module::{Module, ModuleError};
 use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
 
 use crate::app::{Card, Start};
@@ -26,6 +27,10 @@ pub type First<A, T> = fn(&mut Ctx<BasicData<A, T>>) -> Box<dyn Screen<BasicData
 /// Every screen a game on the short path can show, overlays on their own,
 /// for the check that its controls fit each target.
 pub type Screens<A, T> = fn(&mut Ctx<BasicData<A, T>>) -> Vec<Box<dyn Screen<BasicData<A, T>>>>;
+
+/// The modules a game on the short path installs, made each time its
+/// [`Game`] is: `shuyi::enabled_modules`, for those its features turn on.
+pub type Modules<A, T> = fn() -> Vec<Box<dyn Module<BasicData<A, T>>>>;
 
 /// The console of a game that doesn't say: 48 × 24 cells of 8 × 16 pixels.
 pub const BASIC_CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
@@ -40,6 +45,7 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     first: First<A, T>,
     console: ConsoleSpec,
     screens: Option<Screens<A, T>>,
+    modules: Option<Modules<A, T>>,
 }
 
 /// What a game on the short path is painted with: its font and pictures.
@@ -83,6 +89,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
             first,
             console: BASIC_CONSOLE,
             screens: None,
+            modules: None,
         }
     }
 
@@ -98,6 +105,14 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     #[must_use]
     pub fn screens(mut self, screens: Screens<A, T>) -> Self {
         self.screens = Some(screens);
+        self
+    }
+
+    /// The same game, with the modules `modules` makes installed in its
+    /// [`Game`] (none until said).
+    #[must_use]
+    pub fn modules(mut self, modules: Modules<A, T>) -> Self {
+        self.modules = Some(modules);
         self
     }
 
@@ -141,10 +156,18 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         Ok(ctx)
     }
 
-    /// The game on `ctx`, at its first screen.
-    pub fn game(&self, mut ctx: Ctx<BasicData<A, T>>) -> Game<BasicData<A, T>> {
+    /// The game on `ctx`, at its first screen, with its
+    /// [`modules`](Self::modules) installed; or why one could not be.
+    pub fn game(
+        &self,
+        mut ctx: Ctx<BasicData<A, T>>,
+    ) -> Result<Game<BasicData<A, T>>, ModuleError> {
         let first = (self.first)(&mut ctx);
-        Game::new(ctx, first, GameHooks::default())
+        let game = Game::new(ctx, first, GameHooks::default());
+        match self.modules {
+            Some(modules) => game.with_modules(modules()),
+            None => Ok(game),
+        }
     }
 
     /// Every screen it can show ([`screens`](Self::screens)), made on
@@ -160,12 +183,13 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     }
 
     /// How a backend starts it: a card with its name, then its context on
-    /// the platform and its first screen. A file that doesn't load is
-    /// the load's error, which the platform shows in place of the game.
+    /// the platform and its first screen. A file that doesn't load, or a
+    /// module that can't be installed, is the load's error, which the
+    /// platform shows in place of the game.
     pub fn start(self) -> Start<BasicData<A, T>> {
         Start::new(Card::text(self.name), look::<A, T>, move |setup| {
             let ctx = self.ctx()?;
-            Ok(self.game(setup.ctx(ctx)))
+            self.game(setup.ctx(ctx)).map_err(|e| e.to_string())
         })
     }
 
@@ -173,13 +197,17 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     ///
     /// # Panics
     ///
-    /// If its files don't load: the panic gives every problem.
+    /// If its files don't load, or a module can't be installed: the panic
+    /// gives every problem.
     #[cfg(any(test, feature = "harness"))]
     pub fn harness(&self) -> crate::harness::Harness<BasicData<A, T>> {
         let ctx = self
             .ctx()
             .unwrap_or_else(|errors| panic!("the game's files:\n{errors}"));
-        crate::harness::Harness::new(self.game(ctx))
+        let game = self
+            .game(ctx)
+            .unwrap_or_else(|e| panic!("the game's modules: {e}"));
+        crate::harness::Harness::new(game)
     }
 }
 

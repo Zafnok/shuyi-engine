@@ -1,4 +1,4 @@
-//! The engine's bots playing the stage's rules (`shuyi_core::bots`): a
+//! The engine's bots playing the stage's rules (`shuyi::core::bots`): a
 //! random bot for your piece against the foe's own mind, and against
 //! another random bot, and a rollout bot that plans on copies of the
 //! stage against the foe. Every command a bot chooses is one the rules
@@ -6,7 +6,7 @@
 
 use hello_grid::Hello;
 use hello_grid::rules::{Chase, Outcome, Side, Stage, hero_order, playout, score};
-use shuyi_core::{
+use shuyi::core::{
     Bot, Determinize, Horizon, RandomBot, Report, Rollout, RolloutSettings, Sides, TurnRules, play,
 };
 

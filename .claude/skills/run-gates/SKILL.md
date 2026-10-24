@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers and the no-std build; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules and the no-std build; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -48,6 +48,20 @@ outside crate of a pure crate adds its line there in the same PR.
 
 ```bash
 cargo xtask check-layers
+```
+
+The modules (CI's `modules` job, ADR-0009): no default crate depends on
+one; each has a README, its `[package.metadata.shuyi]` and a row in
+`docs/modules.md`; its answers are in `docs/modules.ron`; alternatives
+name each other; and each feature of the `shuyi` crate names a row. Then
+the `shuyi` crate as the default engine, with each module's feature
+alone (`cargo build -p shuyi --features <feature>`, for each), and with
+every one:
+
+```bash
+cargo xtask check-modules
+cargo build -p shuyi --locked
+cargo test -p shuyi --all-features --locked
 ```
 
 The crates a Playdate game builds without `std` (CI's `no-std` job,
@@ -132,7 +146,7 @@ Later tickets add their checks here, for example `check-keys` and
 
 Not a local gate: it needs a nightly and two tools. CI runs it on every
 PR that changes a crate (ADR-0038): it shows what merging adds to the
-public API of the six crates a game uses, and fails a break that the
+public API of the seven crates a game uses, and fails a break that the
 branch's ticket has no `Breaking:` line for (the `work-ticket` skill,
 §5). Before pushing a change you think breaks, run it from the
 repository root:

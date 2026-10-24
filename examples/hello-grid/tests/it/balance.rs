@@ -1,4 +1,4 @@
-//! An autobalance search over the stage (`shuyi_core::autobalance`): the
+//! An autobalance search over the stage (`shuyi::core::autobalance`): the
 //! knobs of `tools::knobs` turn a stage whose foe never trips until the
 //! walker sees it stumble as often as the band below wants. The heroes of
 //! `tools::ENTRANTS` and the checks of `playtest.ron` stay as they are.
@@ -9,9 +9,9 @@ use std::ops::RangeInclusive;
 use hello_grid::Hello;
 use hello_grid::rules::{Stage, Tuning};
 use hello_grid::tools::{ENTRANTS, knobs, playtest_checks};
-use shuyi_core::bots::balance::Change;
-use shuyi_core::bots::playtest::{Band, Check, Condition, Entrant, Found, PlaytestReport, Tries};
-use shuyi_core::{BalanceSettings, Balanced, Knob, Stop, autobalance};
+use shuyi::core::bots::balance::Change;
+use shuyi::core::bots::playtest::{Band, Check, Condition, Entrant, Found, PlaytestReport, Tries};
+use shuyi::core::{BalanceSettings, Balanced, Knob, Stop, autobalance};
 
 /// Seeds 0 to 49 decide, quick runs of 10, at most 40 runs.
 const SETTINGS: BalanceSettings = BalanceSettings::new(Tries::new(50, 0, 200), 10, 40);

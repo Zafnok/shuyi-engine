@@ -10,16 +10,16 @@
 //! [`Chase`] is the foe's mind: a [`Bot`] that steps towards your piece.
 //! The stage screen asks it for the foe's commands, and the bot test lets
 //! it play against a random bot and against a rollout bot
-//! (`shuyi_core::Rollout`). That one plans on copies of the stage from
+//! (`shuyi::core::Rollout`). That one plans on copies of the stage from
 //! [`Determinize`], ordered by [`hero_order`], played on by [`playout`]
 //! ([`Walk`] and [`Chase`]) and judged by [`score`].
 
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
-use shuyi_assets::grid_map::{self, GridMap, MapFeature, MapFormat};
-use shuyi_core::{Bot, Determinize, Dir, Grid, Pos, Reach, Sides, SimRng, TerrainId, TurnRules};
-use shuyi_core::{flow_field, reachable};
+use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat};
+use shuyi::core::{Bot, Determinize, Dir, Grid, Pos, Reach, Sides, SimRng, TerrainId, TurnRules};
+use shuyi::core::{flow_field, reachable};
 
 /// Floor: anyone walks it.
 pub const FLOOR: TerrainId = TerrainId(0);
@@ -179,7 +179,7 @@ pub enum Outcome {
 
 /// A stage being played: the map, the two pieces, whose move it is, the
 /// turn, the luck to come, its [`Tuning`] and, once it is over, how it
-/// ended. It serializes for its state hash (`shuyi_core::state_hash`),
+/// ended. It serializes for its state hash (`shuyi::core::state_hash`),
 /// which a replay compares step by step; the tuning only when it isn't the
 /// default, so a stage of [`Stage::new`] hashes as it always has.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

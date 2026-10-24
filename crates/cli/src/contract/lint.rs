@@ -46,6 +46,7 @@ pub const FENCE_LINTS: [&str; 3] = [
 /// the grid template's `crates/rules/tests/layers.rs` lists them (a test
 /// keeps the two the same). A trailing `*` is a prefix.
 pub const NEVER: &[&str] = &[
+    "shuyi",
     "shuyi-ui",
     "shuyi-platform",
     "shuyi-app",
