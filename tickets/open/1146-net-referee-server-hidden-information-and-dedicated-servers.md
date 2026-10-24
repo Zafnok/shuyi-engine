@@ -48,6 +48,10 @@ None.
   Tests show a client never receives hidden cells and that a forged
   command is refused.
 - A Docker image and docs.
+- **Either order with 2907:** if 2907 is done, `PlayerView` follows its
+  ADR's rule for state and view (its point 4), which may change what
+  `View` is. If not, nothing to do: 2907's ADR says how its rule fits
+  `PlayerView` as written here.
 
 **Out (do not do):**
 - accounts and ratings (1148);

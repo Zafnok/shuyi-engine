@@ -52,8 +52,10 @@ completed:
   `App::frame` (`crates/platform/src/app.rs:372`), so the pacer goes in
   the macroquad backend (`crates/app`) and the report goes through
   `App`. 3013 measures frame times and battery on the Steam Deck; a cap
-  is what makes its battery numbers good. 2314 (enum option rows):
-  either order; if it's done, build the row with it.
+  is what makes its battery numbers good. 2314's enum option rows don't
+  fit the Frame rate row: its choices are the game's
+  (`FRAME_CAP_CHOICES`), and `Fps(n)` puts a number in its text. So the
+  row is written by hand.
 
 ## Nick input
 
@@ -164,14 +166,44 @@ wording reads right.
   toy's file does, and `shuyi_app::run_game`'s window
   (`basic_window` in `crates/app/src/lib.rs`) sets `vsync` to the
   default the templates get.
+- **The other settings files** save `frame_cap` the same way, so the
+  player's pick is kept: the grid template's `File`
+  (`templates/grid/crates/game/src/settings.rs`; templates are outside
+  `cargo fmt --all`, CI's templates job checks them) and hello-grid's
+  (`examples/hello-grid/src/settings.rs`).
+- **Either order with 2110:** if it is done, each versioned settings
+  form that gains `frame_cap` (the engine's `()` form and the grid
+  template's `File`) raises its `VERSION`, reads the old version by
+  `Self::deserialize` in `Migrate::upgrade`, and adds a `v<N>_*.ron`
+  fixture beside the old ones, as 2110's guard asks. If not, 2110's
+  version 1 has it (its clause says so).
+- **Either order with 2333 (scale modes):** 2333 adds
+  `GameSettings::DEFAULT_SCALE`, `Settings::scale` and
+  `OptionRow::scale()` in this ticket's shape. If 2333 is done, put
+  `DEFAULT_FRAME_CAP` and `FRAME_CAP_CHOICES` beside `DEFAULT_SCALE`,
+  and `frame_cap` beside `scale` in the toy's and the `()` saved
+  forms; if not, nothing to do (2333 follows this shape).
+- **Either order with 3044 (the window as it was left):** if 3044 is
+  done, `window_conf` builds its `Conf` in 3044's pure `conf_from`, so
+  set `platform.swap_interval` there; `Window::console` and
+  `basic_window` build on `Window::new`, so they get `vsync`'s default
+  from it. If not, nothing more to do (3044 keeps `swap_interval` in
+  `conf_from`, its clause says so).
+- **Either order with 3010 (the Playdate):** a backend that never
+  reports `Pacing` leaves every request `Pending`. If 3010 is done, its
+  loop reports a `Pacing` through `App` each frame, as `shuyi-app`
+  does, with the rate it runs at (the profile's 30) as the applied cap
+  and the latest `frame_cap_serial`, so a request there is `Applied`;
+  if not, 3010 does it (its clause says so).
 - **Docs:** the `Window::vsync` and `FrameCap` docs say the default and
   why, and that for VRR a cap a few frames under the display's refresh
   (141 on a 144 Hz display) keeps the display in its variable range.
   They also say that a tick stage (1119) steps 60 times a second, so
   above 60 each step shows for whole frames. That is even at 120 and
-  240, but 2 and 3 frames in turn at 144 and 165, until its world
-  layers smooth between steps (2361, parked). A cap that is a multiple
-  of 60 avoids it.
+  240, but 2 and 3 frames in turn at 144 and 165. A cap that is a
+  multiple of 60 avoids it. **Either order with 2361 (parked):** if
+  2361 is done, they also say that a world layer with its `Smoothing`
+  on doesn't judder; if not, 2361 adds that line (its clause says so).
 - **An ADR** (`write-adr` skill) for the request-and-report shape: a
   setting the platform must apply, confirmed through a serial in a
   report before the frame. Later settings of the same kind (vsync at
@@ -186,7 +218,8 @@ wording reads right.
 - Lowering the rate when the window is unfocused or minimized: 3043,
   which waits for this one.
 - Fixed simulation steps (1119).
-- The Playdate or other backends (they set their own rates; 3010).
+- The Playdate or other backends (they set their own rates; 3010),
+  beyond the report in the 3010 part above.
 - Any game's screens. The game picks up the row and its settings field
   at its next pin bump.
 
@@ -213,7 +246,7 @@ choice isn't kept. The game's PR that moves its pin follows this one.
    `next_frame`, the web skip (keeping the skipped frames' input), and
    `Pacing` through `App` to `Game::set_pacing`.
 6. The short path's two parts (2511), and the either-order parts whose
-   partner is done (2314, 2351, 2518).
+   partner is done (2110, 2351, 2518).
 7. The ADR. Measure CPU with hello-grid at 60 and Unlimited on a desktop
    and put the numbers in the completion notes.
 

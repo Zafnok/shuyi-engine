@@ -269,6 +269,10 @@ choices.
 - **Docs:** `docs/contract.md`'s `check --target` row and its *The
   templates* section.
 - **Either order:**
+  - **3004** (export): if it is done, its `export-report.json`'s
+    `version` (the function 3004 reads it with) is `app.version` when
+    the part sets one, else the package's version, as before. If not,
+    3004 reads it (its scope says so).
   - **3044** (the window): if it is done, the grid template's and
     hello-grid's `WINDOW` is `Window::console(APP.name, CONSOLE, 2,
     16).with_icon(APP.window_icon)`, and they call
@@ -295,6 +299,13 @@ choices.
     name (default `com.example.<crate>`, checked by this ticket's rule),
     with an `--id` flag, and this ticket adds that. If not, 2502 does
     (an edit request there).
+  - **3050** (releases from a tag): if it is done, `export --plan`'s
+    `version`, which its tag check compares with the tag, is
+    `app.version` when the part sets one (a test). Each template's
+    `README.md` and `AGENTS.md` "Releasing" sections (the `base`
+    part's, `templates/shuyi-default/base`, since 2501) then say to set the version there when
+    the part has one, else in `[workspace.package]` in `Cargo.toml`.
+    If not, nothing to do (3050 does both, its scope says so).
 - **For the game:** Visions of Shuyi has no `app` part, so `check
   --target` adds only a `limits` line. `shuyi_app::Icon` becomes a
   re-export of the same struct. The game doesn't use `BasicGame`. Its
@@ -317,8 +328,6 @@ choices.
 - writing the identity into packages (the exe's icon and version
   resource, Info.plist and `.icns`, a `.desktop` file and its icons, web
   icons) and the web page's title from `app.name`: 3049;
-- the export report's version from `app.version`: 3004 (an edit request
-  there);
 - Playdate's `pdxinfo`, launcher icon and card: 3010 (an edit request
   there);
 - platform facts at run time (the target, quitting, full screen, the
@@ -336,7 +345,7 @@ choices.
    `contract/new.rs`; `crates/app/src/lib.rs` (`Window`, `Icon`,
    `run_game`) and `crates/platform/src/basic.rs`; 2013's ADR; and the
    templates' and hello-grid's `lib.rs`, `main.rs` and `shuyi.ron`.
-   Check whether 3044, 3046, 2111, 2501 and 2502 are done.
+   Check whether 3004, 3044, 3046, 2111, 2501, 2502 and 3050 are done.
 2. Add `AppPart` to `Config`, mark `Config` `#[non_exhaustive]`, and
    write the parse tests.
 3. Write `app_info.rs`: the rules, `downscale`, the generator and

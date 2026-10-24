@@ -35,7 +35,7 @@ export there. [ADR-0012](../../docs/adr/0012-gba-and-ds-targets-capabilities-ind
 
 This is the same rule as the controls check (3002): what doesn't fit
 doesn't ship. The GBA and DS tickets (3019–3026) and the 3D tickets
-(3103, 3107) all read these capabilities, so this comes first.
+(3104, 3107) all read these capabilities, so this comes first.
 
 ## Nick input
 
@@ -65,17 +65,19 @@ None.
     `Mixed`), and `features`: the set of `AudioFeature`s the target's
     backend plays beyond cues and music, which are `Pause`, `Rate`,
     `Pan` and `LoopRegion`. They are named after the provided methods of
-    3029's shared backend trait (`pause` and `resume`, `set_rate`, and
-    the pan and the loop region that 2363 and 2902's follow-up add to
-    it). A backend ticket that implements one adds it to its profile.
+    3029's shared backend trait: `pause` and `resume`, which 3029 adds,
+    and the rate, the pan and the loop region that later tickets add to
+    it (3029 leaves the rate to 3030's mixer; the pan is 2363's and the
+    loop region 2902's follow-up's, all parked). A backend ticket that
+    implements one adds it to its profile.
 - **The voice limit.** The cue rules' voice limit is the smaller of the
-  audio manifest's `max_voices` (2345's part two adds it) and the
-  target's `channels`, a `None` on either side being no limit. `shuyi
+  audio manifest's `max_voices` (2378 adds it) and the target's
+  `channels`, a `None` on either side being no limit. `shuyi
   check --target` warns when a game's `max_voices` is over its target's
   `channels`: a warning in the target's report, which doesn't fail.
-  **Either order with 2345:** if its part two is done, `App` caps
-  `max_voices` with `channels` here; if not, it reads `channels` when it
-  lands.
+  **Either order with 2378:** if 2378 is done, `App` caps `max_voices`
+  with `channels` here; if not, nothing to do (2378 reads `channels`
+  when it lands).
 - **`display.color` moves to `capabilities.colour`.** The profile format
   has no version field (read 2026-10-20). `display.color` is still read
   for one more minor release (2005's rule), so a game's own profile
@@ -109,12 +111,21 @@ None.
   nothing to need it (ADR-0008 §1), so it says `touch: false` with a
   comment saying why.
 
+  The `switch` row's `memory` and `audio` are 3014's to fill.
+  **Either order with 3014:** if 3014 is done, fill them from its
+  public note `docs/targets/switch.md` (no limit where it gives none);
+  if not, write no limits (`None`, `Streamed`, no features) with a
+  comment naming 3014, which fills them (its scope says so).
+
   Each profile's audio `features` comes from what its backend plays on
   the day. For quad-snd 0.2.8 (desktop, web, Steam Deck) it is `[]`:
   quad-snd can't pause (2344 mutes instead), change the rate, pan or
   loop a region. A ticket that gives that backend a feature (2902's
-  chosen stack, say) adds it. The Playdate's comes from 3029. The
-  GBA's and the DS's are provisional, from 3027 and 3024.
+  chosen stack, say) adds it. **Either order with 3029:** if 3029 is
+  done, the Playdate's lists the provided methods its backend
+  implements (`Pause` if the SDK can pause, say); if not, it is `[]`,
+  and 3029 adds them. The GBA's and the DS's are provisional, from
+  3027 and 3024.
 - **Three new profiles, `status: planned`**, from ADR-0012 §2 and §3, so
   that the bake (3019), the CI builds (3020) and the two-screen work
   (3023) have a real profile to read. The backend tickets (3021, 3024)
@@ -142,8 +153,10 @@ None.
     gets the field);
   - the game manifest, for the whole game and per stage
     (`stages.<id>.needs`), for example `sprites = { at_once = 200 }`;
-  - a skin's settings file, with an `optional` list for effects it can
-    do without (3107's diorama skin uses it).
+  - a skin's settings file, through the skin's format, which gives its
+    `Needs` (the fixture skin here writes the table with its `optional`
+    list; 3107's diorama skin builds it from its effects, each with
+    `optional: bool`).
 
   Its fields: `colour` (`Any`, `Indexed { min_colours }` or `Rgba8`),
   `blend` (the `Blend` modes a skin uses, each optional or required),
@@ -157,6 +170,25 @@ None.
   fails when a module crate has no `needs` key at all, so "runs
   everywhere" is said on purpose, never by forgetting. The catalog
   `docs/modules.md` shows each module's needs.
+  - **Either order with 2205** (parked: the `shuyi-midi` module): if
+    2205 is done, give `shuyi-midi` its `needs` here with the other
+    modules: `ram_bytes` for its largest fixture bank plus the synth,
+    provisional; if not, nothing to do (2205 writes its own `needs`).
+  - **Either order with 2707:** if 2707 is done, `shuyi-rts` has no
+    `needs` key yet: step 4 gives it a provisional one with the other
+    module crates, with a comment that it is provisional until measured;
+    if not, nothing to do (2707 writes its own provisional key).
+  - **Either order with 2721** (`shuyi-vn`, parked): if 2721 is done,
+    `shuyi-vn` is one of the module crates above: give it an empty
+    `needs` table, with a comment that 2726 checks it against the
+    example; if not, nothing to do (2721 adds it).
+  - **Either order with 2726** (parked, the visual novel example): if
+    2726 is done, check `shuyi-vn`'s `needs` against what
+    `examples/visual-novel` uses, and correct them. If not, nothing to
+    do (2726 checks them).
+  - **Either order with 2727** (parked, `shuyi-mystery`): if 2727 is
+    done, give `shuyi-mystery` its `needs` key: what `shuyi-vn` needs,
+    plus nothing more. If not, nothing to do (2727 writes its own).
 - **The check**, a pure function `capabilities_fit(profile: &TargetProfile,
   needs: &[(NeedSource, Needs)]) -> FitReport`, wired into `shuyi check
   --target <id>` (an operation of the tool contract, 1129):
@@ -176,14 +208,17 @@ None.
     lacks fails, and an optional one goes in `left_out`;
   - an audio feature that is not in the target's `features` fails,
     unless it is optional, in which case it goes in `left_out`. Example:
-    a game that changes a sound's rate (3029's `set_rate`) on a target
-    whose backend has no `Rate`.
+    a game that changes a sound's rate on a target whose backend has no
+    `Rate`.
 - **The error text** names the source, the need and what the target
   has, for example: "module shuyi-3d needs three_d: software; target
   gba has three_d: none", and "stage battle needs 200 sprites at once;
   target gba has 128".
 - **`shuyi export <id>` refuses** a game with any problem, through the
-  check it already runs (3004). The export report lists `left_out`.
+  check it already runs (3004). **Either order with 3004:** if 3004 is
+  done, add `left_out` to its `export-report.json`, beside the check's
+  warnings; if not, nothing to do (3004's export refuses through the
+  check, and 3004 adds `left_out` when it lands).
 
 **Out (do not do):**
 - the screen-count and layout check (3023);
@@ -199,13 +234,57 @@ None.
 **Either order with 2504** (the new-game wizard's targets, ADR-0013 §5):
 if 2504 is done, wire `capabilities_fit` into the wizard's composer as
 2504 describes, replacing its `limits` entry ("modules not checked
-against targets"), and add the `gba`, `nds` and `dsi` profiles to its
-targets question as planned. If not, 2504 calls it when it lands.
+against targets"), add each module's `needs` and each target's
+capabilities to `shuyi new --questions --json` and its schema, and add
+the `gba`, `nds` and `dsi` profiles to its targets question as planned,
+with their tickets (3021 for `gba`, 3024 for `nds` and `dsi`). If not,
+2504 calls it and adds them to the JSON when it lands.
 
 **Either order with 2337** (tint and blend modes): if 2337 is done,
 `blend` and the skin's `blend` need are in this PR as above. If not,
 leave both out and add a line to 2337 saying it adds them, with the
 rule in *The check*.
+
+**Either order with 2326** (screen effects on the wgpu renderer,
+parked): if 2326 is done, `Capabilities` gains `shaders: bool` (true
+on the profiles whose backend runs the wgpu renderer, false on
+`playdate`, `gba`, `nds` and `dsi`), and `Needs` gains `screen_passes`,
+the passes of a skin's `effects.ron` (2326's `EffectChain`), each
+required unless marked `optional`. On a target without `shaders`, a
+required pass fails the check and an optional one goes in `left_out`,
+with a test for each. If not, nothing to do here (2326 adds them).
+
+**Either order with 2327** (a game's own shaders and materials,
+parked): if 2327 is done, `Capabilities` gains `shaders: bool` (false
+on `playdate`, `gba`, `nds` and `dsi`, true on the others) and a skin's
+`Needs` gains `materials`, required or optional. A required one fails
+on a target without shaders; an optional one goes in `left_out`, and
+its sprites are drawn without it, or as its `fallback` sprite. If not,
+nothing to do (2327 adds both when it lands, with the rule in
+*The check*).
+
+**Either order with 2328** (2D lights, parked): if 2328 is done, add
+a `lights` need, always optional, and the `shaders: bool` capability
+it is checked against (false on `playdate`, `gba`, `nds` and `dsi`)
+if this PR has none yet. 2328's lit layers have that need, so
+`left_out` lists them where they are drawn unlit. If not, nothing to
+do (2328 adds them when it lands).
+
+**Either order with 2718** (the RTS budgets): if 2718 is done, give
+`shuyi-rts` its `needs`: `ram_bytes` from `rts-battle-1k`'s peak heap
+(in the crate's README, and here if 2718 wrote it), rounded up and
+marked provisional. If `Needs` can't say "too slow for this target",
+say so in that README and write a ticket for a CPU need. If not,
+nothing to do (2718 sets them).
+
+**Either order with 2909, 2910 and 2911** (research on video, voice
+chat, and ray- and path-traced light and sound): each one names a
+capability some targets lack (video playback, a microphone,
+`ray_tracing`). If one is done, it wrote its capability into this
+ticket: add it to `Capabilities`, `Needs` and *The check* as its ADR
+says. If not, nothing to do here: when it lands, it writes the
+capability its ADR calls for into this ticket, or into a parked build
+ticket if this one is done.
 
 ## Implementation steps
 
@@ -241,8 +320,8 @@ rule in *The check*.
 - [ ] On `nds`, a skin with `bloom` optional and `fog` required passes,
       and `bloom` is listed in `left_out`. With `bloom` required, it
       fails.
-- [ ] `shuyi export gba` refuses the first fixture, and prints the
-      check's errors.
+- [ ] If 3004 is done, `shuyi export gba` refuses the first fixture,
+      and prints the check's errors.
 - [ ] `cargo xtask check-modules` fails on a fixture module with no
       `needs` key.
 - [ ] The JSON output matches its schema (1129's schema test).

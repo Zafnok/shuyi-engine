@@ -63,6 +63,11 @@ None.
   research).
 - Any game's fonts, packs or text.
 - Changing any narrow glyph, or the glyphs of a single wide set.
+- The engine's own screens in Japanese or Chinese. **Either order
+  with 2352** (parked: the engine's screens in other languages,
+  machine-translated): if 2352 is done, nothing to do (an engine pack
+  in such a language is a ticket of its own, if Nick asks); if not,
+  nothing to do (Nick may then pick one for 2352, as its clause says).
 
 **For the game:** an atlas with one unnamed set (2301's) keeps working,
 or the game's PR that moves its pin regenerates it (say which). That

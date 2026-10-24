@@ -100,7 +100,8 @@ None.
   first);
 - keeping a Bézier `curve` as a curve: 2105's keys take an `Ease`, which
   has no curve through points. Keys that take the `Points` curve of
-  2109's follow-up are a follow-up of 2105 first;
+  2135 are a follow-up of 2105 first, so a Bézier stays `Linear` here
+  whether or not 2135 is done;
 - the binary DragonBones format (`.dbbin`).
 
 ## Implementation steps

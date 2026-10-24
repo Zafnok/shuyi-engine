@@ -115,7 +115,10 @@ None. This is technical.
       the contract's `scene` answer, `Screen::debug_draw` and
       `Screen::debug_readout` name no store and stay that way. Saves by
       id, entity inspection and the editor's tree (2507) read the same:
-      a stage's dump and hash.
+      a stage's dump and hash. **Either order with 2507:** if 2507 is
+      done, its tree reads the dump already, so the ADR says so; if
+      not, nothing to do (2507's tree follows this rule, as its own
+      clause says).
     - **Scenes for the arena.** With the line counts of both ways:
       whether 2221's scene file and its id remapping are written over a
       small trait that 1119's `Arena<T>` can implement later, or stay
@@ -136,7 +139,9 @@ None. This is technical.
     in `research/ecs/`, a crate listed under `exclude` in the root
     `Cargo.toml` (as 2705 plans for its own), so no candidate enters the
     workspace's `Cargo.lock`. It stays until 2705 is done, so 2705 can
-    reuse it;
+    reuse it, and 2705's last commit deletes it and its `exclude` line
+    (if 2705 is already done, this PR's last commit deletes it, and
+    `docs/research/ecs.md` links the commit before);
   - changes to 2107, 2108, 2221 and 1119 (parked: its text only) to
     match the choice. If the ADR words the kit rule differently from
     the one line each kit ticket carries (1122, 1123, 2231, 2103, 2106,

@@ -70,6 +70,11 @@ None.
     writing the unit's own row;
   - an explicit order from its player always comes first; reactions only
     fill in when the order allows it (an idle unit, a guard, a hold).
+  - **Either order with 2717** (threads): if 2717 is done, write the
+    reactions pass as a function over a chunk of rows, as 2717 did for
+    2712's target pick, run it in chunks under the `parallel` feature,
+    and check 2717's with-and-without hash test passes on 2714's
+    fixtures; if not, nothing to do (2717 splits it).
 - **Driving computer players:**
   - `trait CommandSource<S: CommandSim>` in `shuyi_core::tick`: `fn
     commands(&mut self, sim: &S, now: u64, out: &mut Vec<Timed<S::Command>>)`;
@@ -108,8 +113,10 @@ None.
 - the commander, influence maps, utility scores, build orders, the
   economy and difficulty (2715);
 - a game's own AI layers (2715 adds the hooks);
-- the drawing of squads (2716);
-- threads (2717).
+- drawing squads: they are a computer player's own state, never shown
+  in a player's scene (a debug view is a later ticket if a game needs
+  it);
+- threads beyond the reactions pass above (2717).
 
 ## Implementation steps
 

@@ -78,11 +78,17 @@ None.
   - **conservation**: a node's loss always equals what workers carry
     plus what was deposited. A property test checks it every step.
 - **Construction** (`Build`):
-  - `can_place(kind, cell, player, &sim) -> Result<(), PlacementError>`,
-    a pure function: every footprint cell is inside the map, not a wall
-    for the kind's movement class, not marked by a building, and holds
-    no unit (2708's rectangle query). 2734 uses the same function for
-    the placement ghost, so the two never disagree.
+  - `can_place(kind, cell, player, &impl PlaceQuery) -> Result<(),
+    PlacementError>`, a pure function: every footprint cell is inside
+    the map, not a wall for the kind's movement class, not marked by a
+    building, and holds no unit (2708's rectangle query). `PlaceQuery`
+    is a small trait with just what it reads (the cells, the walls of a
+    movement class, the building marks and `units_in_rect`); `RtsSim`
+    implements it over every unit. 2734 implements it for `TeamView`
+    and calls the same function for the placement ghost, so the ghost
+    and the simulation agree on all the team can see. Over a hidden
+    enemy unit the ghost is valid and the simulation still refuses with
+    `PlacementBlocked`.
   - When the builder arrives next to the footprint, placement is checked
     again, the cost is taken from `Stock` (or `NotEnough { resource }` is
     emitted and the order dropped), and the building spawns *under
@@ -122,6 +128,13 @@ None.
 - **The fixtures**: three kinds of our own in `crates/rts/fixtures/`: a
   worker, a drop-off building that produces workers, and a resource
   node.
+- **Either order with 2713** (vision): the AI and the view read only
+  `TeamView` (2713's boundary test), so it must give the team's own
+  economy. If 2713 is done, add it: `stock(player)` and
+  `supply(player)` (used, cap) for the team's players, each own
+  building's production queue and rally point, and in `SeenUnit`
+  whether an own worker is idle; 2715 and 2734 read it there. If not,
+  nothing to do (2713 adds it when it lands).
 
 **Out (do not do):**
 - the player's side: the placement ghost, the production panel, the

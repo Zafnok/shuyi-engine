@@ -64,8 +64,29 @@ The session gives the exact steps then.
 - filling in the `switch` profile (inputs: Joy-Con pairs, a single
   sideways Joy-Con, the Pro Controller; the reserved buttons) with only
   what may be said in public;
-- the backend tickets, in the private repository;
-- a public note in `docs/targets/switch.md` with only public facts.
+- **Either order with 3017** (target capabilities): if 3017 is done,
+  also fill the `switch` profile's `capabilities.memory` and
+  `capabilities.audio`, which 3017 left to this ticket, with only what
+  may be said in public; if not, give the switch's RAM and audio
+  channels in `docs/targets/switch.md` where they are public, and 3017
+  fills them from there;
+- the backend tickets, in the private repository. **Either order with
+  2408** (parked, rumble): if 2408 is done, they include the pads'
+  rumble through its `Platform::motors`, and the Switch's HD haptics,
+  which 2408's Out leaves here; if not, the ticket for both is written
+  blocked by 2408, and 2408 itself adds nothing for the Switch;
+- the license notices a build owes (`NOTICES.txt`, 3039): how a Switch
+  build shows them, with no folder a player can browse. If that needs a
+  screen in the game, write the ticket for the engine screen of credits
+  and notices that 2223 leaves out until a console asks (from 3039's
+  `notices` works and `credits::merge`);
+- a public note in `docs/targets/switch.md` with only public facts;
+- public engine tickets for what a console needs that may be said in
+  public, unless an open ticket already has one. The first is pausing
+  a one-player game when its pad is removed, which 2406 leaves to the
+  consoles. If 2406 is done, that ticket builds on its pad removals
+  (`PadRemoved`, `seat_events`); if not, it is blocked by 2406 and
+  parked like it.
 
 **Out (do not do):**
 - **anything under the agreement in this repository**: no SDK names
@@ -78,7 +99,8 @@ The session gives the exact steps then.
 2. Re-check the public facts above.
 3. After Nick's setup, run the spike in a private repository, and
    record in public only "works" or "doesn't", with no details.
-4. Write the private backend tickets, and the public profile changes.
+4. Write the private backend tickets, the public profile changes, and
+   the public engine tickets under **In** (2406's pause first).
 
 ## Acceptance criteria
 

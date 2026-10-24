@@ -199,6 +199,15 @@ None.
     tests. 2116's `determinism` job runs `shuyi-core`'s tests on
     wasm32, so they are checked on x64, ARM64 and wasm32 whichever
     ticket lands first;
+  - with 2108: if 2108 is done, give each system that draws its own
+    stream, `SimRng::fork(<system name>)` on the world's `SimRng` in
+    schedule order before the systems run, in both of `shuyi-ecs`'s
+    schedules (serial and parallel), and add two such systems to 2108's
+    property test; if not, nothing to do (2108 forks them, its scope
+    says so);
+  - with 2739 (parked, the snake example): if 2739 is done, its food
+    placement moves onto `pick` with the same draw, like the callers
+    above; if not, nothing to do (2739 uses `pick`, as its scope says);
   - `Bag` follows ADR-0039's rules for public types.
 
 **Out (do not do):**
@@ -208,7 +217,8 @@ None.
 - float weights, float ranges, and distributions such as a bell curve
   (ADR-0002 §2: no floats in a simulation);
 - noise (2118, parked);
-- streams for the systems of a parallel schedule (2108 forks them);
+- streams for the systems of a parallel schedule (2108 forks them),
+  unless 2108 is done (the clause with 2108 above);
 - the `rand` crate, or any new dependency;
 - `VariantRng` (`crates/app/src/audio.rs`, which 2345 moves) and
   `shuyi-platform`'s `mix`: they never touch a simulation, so leave

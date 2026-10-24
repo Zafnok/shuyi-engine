@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["1120", "1124", "2231"]
+blocked_by: ["1120", "1124", "2231", "2335"]
 nick_input: none
 completed:
 ---
@@ -126,6 +126,12 @@ None.
   `z`: it has no `y`. Its world layer's camera, zoom and parallax place
   it, through the one function that places sprite items.
   `GlyphBuffer::fade` lowers its `brightness`, as it does a sprite's.
+- **Smoothed layers, either order with 2361:** if 2361 is done, the
+  cells of a tile-layer item on a layer whose `Smoothing` isn't `Off`
+  are placed in window pixels by 2361's `WorldLayer::window_px`, in
+  both painters, as that layer's sprite items are, so the tiles don't
+  step by whole world pixels under a smooth camera; if not, nothing to
+  do (2361 does it).
 - **Parallax as the map says.** `tiles::world_layers(layers:
   Vec<MapTiles>, camera: &Camera, clock_ms: u64)` (1120's `Camera`,
   with its perspective parameter if 1120 gave it one) puts
@@ -170,10 +176,9 @@ None.
   - **Either order with 2332:** if 2332 is done, in
     `shuyi_ui::frame::raster`; if not, in `Painter` in
     `crates/cli/src/frame_png.rs`, and 2332 moves it with the rest.
-  - **Either order with 2335:** if 2335 is done, `blit`'s y flip is
-    2335's, and only the diagonal flip is new; if not, add the y and
-    diagonal flips to `blit` for tiles, and 2335 lets sprites use the y
-    flip.
+  - **The y flip is 2335's** (it comes before 1120 and is in
+    `blocked_by`): `blit` already flips top to bottom, so only the
+    diagonal flip is new.
 - **`shuyi-app` draws it** in `crates/app/src/render.rs`: one
   `draw_texture_ex` per non-empty cell of `visible`, with `source`,
   `dest_size`, `flip_x` and `flip_y`, and a diagonal flip as a quarter
@@ -182,8 +187,8 @@ None.
 - **Either order with 2018:** if 2018 is done, a small tile-layer item
   goes on its render card (`raster::card`), as 2018 asks of every new
   frame item, and its job compares the window with the raster; if not,
-  compare a captured frame by hand, as 1120 does, and note it in the
-  PR.
+  compare a captured frame by hand, as 1120 does, note it in the PR,
+  and 2018 puts a tile-layer item on its card (its clause says so).
 - **A test scene**, built in code in the raster's tests
   (`crates/cli/src/frame_png/tests.rs`, or beside the raster if 2332 is
   done), so it is no asset and needs no credit: a `TileMap` value of
@@ -199,8 +204,8 @@ None.
   PR adds that line to 2318's Scope.
 - **A bench scenario, either order with 3008:** if 3008 is done, add a
   `.bench.ron` scenario that scrolls the camera across the test map, so
-  its numbers say whether chunk caching is needed; if not, add nothing
-  here.
+  its numbers say whether chunk caching is needed; if not, 3008 adds it
+  (its clause says so).
 - **A short ADR** (the `write-adr` skill) extending ADR-0003 §5: a world
   layer holds tile-layer items, one per map layer, culled before any
   painter reads them, and each backend draws them its own way (ADR-0012
@@ -220,9 +225,12 @@ None.
   paints a grid map once): a follow-up, only if 3008's numbers show
   that culling alone misses the web or Playdate budget;
 - isometric, staggered and hexagonal maps: isometric tile layers need
-  1126's projection, so 1126 draws them over this item (if 1126 isn't
-  done, the PR adds that line to 1126's Scope); hex grids are parked
-  (2121, 2740);
+  1126's projection, and 1126 lands after this ticket (it is blocked
+  by 1125, and 1125 by this one). 1126's Out leaves them to a
+  follow-up ticket it writes when it lands, so add nothing to 1126. A
+  hexagonal map is refused here, and neither 2121 nor 2740 draws its
+  tile layers (2740's Out says so): a follow-up when a hex game asks,
+  over this ticket's tile-layer item and 2740's `HexProjection`;
 - the one-bit renderer and the Playdate: 1120 draws world layers in
   `frame-png` and `shuyi-app` only, not in `frame::onebit`
   (`crates/ui/src/frame/onebit.rs`). No ticket brings world layers
@@ -231,8 +239,8 @@ None.
   items to them (or the follow-up they write if they land first);
 - autotiling at run time, editing maps (Tiled and LDtk are the editors,
   ADR-0004), typed map objects (2232), 3D terrain from a map (3107);
-- interpolation between steps (2361); collision from tile layers
-  (1122's `TileCollision`).
+- interpolation between steps (2361), beyond the smoothed layers' part
+  above; collision from tile layers (1122's `TileCollision`).
 
 ## Implementation steps
 
@@ -253,8 +261,8 @@ None.
    test scene with the raster.
 6. Add the test scene, its text snapshot and its pictures, and the
    2018, 2318 and 3008 parts as their clauses say.
-7. Write the ADR, add the lines to 1126 and 2318 if their clauses ask
-   for them, and run the gates.
+7. Write the ADR, add the line to 2318 if its clause asks for it, and
+   run the gates.
 
 ## Acceptance criteria
 

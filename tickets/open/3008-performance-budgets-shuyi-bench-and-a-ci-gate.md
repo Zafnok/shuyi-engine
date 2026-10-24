@@ -51,20 +51,32 @@ None.
   - a full menu;
   - a bot's turn with the most units on the map;
   - a dialogue with a portrait.
+
+  **Either order with 2360:** if 2360 is done, add a scenario that
+  scrolls the camera across a map drawn with its tile-layer items, so
+  the numbers say whether culling alone keeps tile layers in the web
+  and Playdate budgets (2360 leaves chunk caching to them); if not,
+  nothing to do (2360 adds it).
 - **`shuyi bench [--target <id>] [--scenario <name>]`.** It plays each
   scenario through the headless backend (3003), including the conversion
-  the target needs (the 1-bit frame on `playdate` once 3006 lands), and
-  reports per scenario:
+  the target needs. **From 3006 (done):** on a `color: OneBit` target
+  (`playdate`) that is `to_one_bit` (`shuyi_ui::frame::onebit`,
+  ADR-0026), with the game's pattern map, one-bit font and one-bit
+  pictures, which the game hands over as it does for `frame-png
+  --target` (`GameTools::frame_one_bit`). It reports per scenario:
   - **instructions per frame** (the most, p99 and the mean), counted
     with Cachegrind (valgrind) on Linux. Use a crate under ADR-0002 §8
     (for example `iai-callgrind`; check its current name, version and
     license) or a small wrapper around `valgrind --tool=cachegrind`;
   - **peak heap**, from the counting allocator below;
-  - **package size**, from `shuyi export` (3004) when it exists (for
-    `web`, the size of the zip 3004 writes, with `index.html` at its
-    root), or the asset bytes otherwise. A package over budget names its
-    largest files and the files no load read, from `shuyi check`'s files
-    report (2516) when it is done.
+  - **package size**. **Either order with 3004:** if 3004 is done, it
+    comes from `shuyi export`'s `export-report.json` (for `web`, the
+    size of the zip 3004 writes, with `index.html` at its root); if not,
+    it is the asset bytes, and 3004 switches it to the export's sizes
+    (its clause says so). **Either order with 2516:** if 2516 is done, a
+    package over budget names its largest files and the files no load
+    read, from `shuyi check`'s files report. If not, 2516 adds that (its
+    own clause says so).
 - **The counting allocator**, written as a reusable type (for example
   `CountingAlloc<A: GlobalAlloc>` around any inner allocator:
   `std::alloc::System` here, the Playdate SDK's allocator in 3010). It
@@ -93,9 +105,25 @@ None.
     this ticket needs, instead of writing a second. If not, 2906 uses
     this one (its clause says so).
 - **Budgets from the profile.** Each number is compared with the
-  `budgets` of every `supported` target (or just `--target`). A scenario
-  over budget fails, naming the scenario, the frame, the target and both
-  numbers.
+  `budgets` of every `supported` target among those the game lists (or
+  just `--target`). A scenario over budget fails, naming the scenario,
+  the frame, the target and both numbers.
+  - **From 3001 (done):** a game lists the targets it ships on in its
+    `shuyi.ron` `targets` table, and `check --target all` checks those.
+    The bench reads the same list: Hello, Grid lists `desktop`, `web`
+    and `steam-deck`, so it isn't gated against the Playdate, whose
+    screen it doesn't fit. ADR-0008 §6's "every `supported` profile"
+    predates that table; say so in the PR. The acceptance criteria's
+    fixtures pass `--target`.
+  - **From 3001 (done):** `targets/desktop.ron` and `targets/web.ron`
+    call their `frame_instructions` "Provisional: 3008's benchmarks
+    calibrate it", and web's `package_bytes` "the download, measured by
+    3008". No device ticket covers either target, and ADR-0008 §6
+    changes a budget only in a PR with a device measurement. Record the
+    examples' numbers beside those budgets in `docs/targets/desktop.md`
+    and `web.md`, leave the budgets as they are, and rewrite the three
+    comments so they no longer name this ticket (provisional, with the
+    bench's numbers in `docs/targets/<id>.md`).
 - **`bench-report.json`**, plus a Markdown table for PR comments.
 - **CI.** `shuyi bench` on the examples on every PR, on Linux. Post the
   table as a job summary. Fail on any over-budget scenario.
@@ -111,6 +139,11 @@ None.
 - measuring on devices (3011, 3013);
 - the game's scenarios (a game ticket; write it and link it);
 - profiling tools and flame graphs (a later ticket if wanted);
+- 2705's research benchmarks (parked; its crate is outside the
+  workspace). **Either order with 2705:** if 2705 is done, nothing to
+  do (it counted instructions its own way and deleted its crate); if
+  not, nothing to do (2705 writes its workload as a `.bench.ron`
+  scenario when it runs, or counts another way if one can't drive it).
 - allocations per frame, the `frame_cycles` budget and the emulator
   runner for the GBA and the DS (the parked 3020, ADR-0012 §7). Keep the
   counting allocator able to report per frame. 2368 (parked) shows it in

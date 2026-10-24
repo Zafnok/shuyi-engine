@@ -227,7 +227,7 @@ in the PR that unparks it, before any code.
    record his answers in `docs/decisions.md`. If they differ from the
    recommendations, rewrite **Scope** to match before writing code.
 2. Check that 3046, 2601 and 2601's two backend tickets are in
-   `tickets/done/`, and whether 2015 and 2351 are. Read 3046's
+   `tickets/done/`, and whether 2351 is. Read 3046's
    `crates/platform/src/crash.rs`, `Setup::last_crash` and
    `Start::crash_record`; 2601's `crates/ui/src/http.rs` and the HTTP
    part of `step` in `crates/platform/src/app.rs`; `TextSpeed` in

@@ -28,9 +28,10 @@ and only through it.
 
 It builds on 2707's units and kinds (`sight`) and 2708's grid.
 
-**Either order with 2712** (combat): if 2712 is done, replace its
-`Visibility` stand-in (sight radius) with the team's grid. If not, 2712
-uses the grid when it lands.
+**Either order with 2712** (combat): if 2712 is done, implement its
+`SightCheck` trait for the team's `VisionGrid`, and the target pick
+asks the grid instead of the sight radius. If not, 2712 uses the grid
+when it lands. The name `Visibility` stays this ticket's per-cell enum.
 
 ## Nick input
 
@@ -70,6 +71,12 @@ None.
     health share for a visible enemy; `None` for an enemy that isn't
     visible;
   - nothing in it hands out `&UnitTable` or `&RtsSim`.
+  - **Either order with 2733** (economy): if 2733 is done, it also
+    gives the team's own economy, which 2715 and 2734 read:
+    `stock(player)` and `supply(player)` (used, cap) for the team's
+    players, each own building's production queue and rally point, and
+    in `SeenUnit` whether an own worker is idle. If not, nothing to do
+    (2733 adds it).
 - **A boundary test:** a test reads the source files under
   `crates/rts/src/ai/` and `crates/rts/src/view/` and fails if one names
   `UnitTable`, `RtsSim::units` or `ProjectileTable`. The AI and the view
@@ -84,6 +91,8 @@ None.
   (2120, parked with roguelikes); fog of war that uses it is a later
   ticket if a game needs it;
 - the drawing of fog and the minimap (2716);
+- what the view needs beyond these queries (facing, own units' queued
+  orders, projectiles): 2716 adds it to `TeamView`;
 - the AI that reads `TeamView` (2714, 2715);
 - threads (2717).
 
@@ -93,7 +102,7 @@ None.
 2. Write `VisionGrid`, stencils and stamping in buckets, with the stamp
    column in `UnitTable`.
 3. Write `TeamView` and its queries over 2708's grid.
-4. Replace 2712's stand-in, if 2712 is done.
+4. Implement 2712's `SightCheck` for the grid, if 2712 is done.
 5. Add the boundary test and the dump.
 
 ## Acceptance criteria

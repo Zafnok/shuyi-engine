@@ -6,7 +6,7 @@
 d4b465b5e5a1bbb5 .cargo/config.toml
 77e6c483d7cfef2b .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-057e1e363fd1e49c AGENTS.md
+f2d8e9bd153da850 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 1faca0ef26c21820 Cargo.toml
 9d61c9a3ce3215e0 README.md
@@ -32,7 +32,7 @@ c7bc56040688f5d6 rust-toolchain.toml
 d4b465b5e5a1bbb5 .cargo/config.toml
 77e6c483d7cfef2b .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-057e1e363fd1e49c AGENTS.md
+f2d8e9bd153da850 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 2ff505f6c4bc665c Cargo.toml
 9d61c9a3ce3215e0 README.md

@@ -39,7 +39,8 @@ None.
   of plain text with short examples:
   1. **Quick start:** install Rust (with the GNU toolchain note for
      Windows from `AGENTS.md`, *Environment*), `cargo install --locked
-     shuyi-cli` (or from git until 2005), `shuyi new blank` and what
+     --git https://github.com/Zafnok/shuyi-engine shuyi-cli` (crates.io
+     has only placeholders before 2005), `shuyi new blank` and what
      each of its files is on the short path (2511: `BasicGame`,
      `run_game`, `BasicTools`), `shuyi run`, `shuyi web`. On Linux,
      `bash scripts/setup-linux.sh` in the new game's folder before
@@ -58,28 +59,64 @@ None.
   3. **Actions, never keys:** `ActionSet`, keymaps, rebinding, how text
      names a key (the `input-actions` skill, for people).
   4. **The frame and skins:** views as plain data, glyph and sprite
-     skins, why tests read the scene (`AGENTS.md` rule 9).
+     skins, why tests read the scene (`AGENTS.md` rule 9), and, if 2109
+     is done, ease curves and tweens drawn from the time alone
+     (`shuyi_core::ease`, a snippet in `site/snippets/`; if not, 2109
+     adds that section, as its clause says), with `Sequence` and
+     `Points` if 2135 is done (if not, 2135 adds them, as its clause
+     says). If 2362 is done, the camera file (`camera.ron`); if not,
+     2362 adds that section, as its clause says.
+     If 2329 is done, a section on laying widgets out with
+     `shuyi_ui::layout`; if not, 2329 adds it, as its clause says.
+     If 2334 is done, a short section on text runs
+     (`GlyphBuffer::add_text`, `TextStyle`, fonts by id); if not, 2334
+     adds that section, as its clause says.
+     If 2336 is done, a short section on drawn shapes (lines, circles
+     and polygons); if 2337 is done, one with a tinted sprite and an
+     additive one (if not, each adds its section, as its clause says).
   5. **Assets and formats:** kinds, formats, the registry, bundles and
-     layers, packs (ADR-0007, ADR-0019, ADR-0023).
+     layers, packs (ADR-0007, ADR-0019, ADR-0023), and, if 2220 is done,
+     hot reload (`Hot<T>`, `shuyi run --watch`; if not, 2220 adds that
+     section, as its clause says). If 2232 is done, a link to its
+     section "Levels from Tiled and LDtk" of `docs/formats.md` (if
+     not, 2232 adds that link, as its clause says).
   6. **Rules as commands:** turn games, `shuyi_core::turn`, history and
-     undo, determinism and the hash.
-  7. **Saves and settings:** `Storage`, profiles, settings.
+     undo, determinism and the hash, and, if 2115 is done, time in steps
+     or turns (`shuyi_core::timer`; if not, 2115 adds that section).
+  7. **Saves and settings:** `Storage`, profiles, settings, and, if
+     2110 is done, save versions: `VERSION`, the `Migrate` steps and
+     the `v<N>_*.ron` fixtures `check_saved_forms` checks, written from
+     2110's ADR (if not, 2110 adds that section, as its clause says).
+     If 2221 is done, scenes: a world saved to a `*.scene.ron` file,
+     loaded back with its ids for a save, and instanced with new ids
+     (if not, 2221 adds that section, as its clause says).
   8. **Testing:** the harness, replays, bots, snapshot tests of frames
      (`frame-png`), and, if 2112 is done, proving a level winnable with
      `solve` (a snippet in `site/snippets/`; if not, 2112 adds that
-     section).
+     section). **Either order with 2519:** if it is done, the chapter
+     covers session records from its `docs/sessions.md` (where debug
+     builds keep them, saving one from the debug menu, playing one
+     with `shuyi run --session`, a golden session); that page and its
+     row in `docs/README.md` go, and links to it point at the chapter.
+     If not, nothing to do (2519 writes that section of the chapter).
   9. **Targets and export:** target profiles, `shuyi check --target`,
      the web build, and, if 3050 is done, releasing from a tag (the
      template README's "Releasing" section; if not, 3050 adds that
-     section).
+     section), and, if 3051 is done, a short "Signing" section that
+     links `docs/signing.md` (if not, 3051 adds it).
   10. **Tools for agents:** the tool contract (`docs/contract.md`),
-      and the MCP server and skill pack once 1133 and 1134 are done
-      (until then, a line saying they are coming). The problem codes
+      and the MCP server (1133, done): `shuyi mcp`, set up with
+      `shuyi mcp install`, and its session tools (`start`, `step`,
+      `scene`, `frame_png`, `events`, `reset`, `stop`), from
+      `docs/contract.md`'s *The MCP server* and ADR-0031.
+      **Either order with 1134:** if 1134 is done, the chapter teaches
+      its skill pack (the plugin, and the skills `shuyi new` copies
+      into a game); if not, a line saying it is coming, and 1134 writes
+      that part (its step 3). The problem codes
       and `shuyi explain` (2509): a page per code under
       `/learn/errors/`, written from `crates/cli/errors/*.md` into
       `site/content/learn/errors/` before `zola build` (so 2808's
-      twins cover them), and this chapter links the list; if
-      2509 isn't done, a line saying they are coming.
+      twins cover them), and this chapter links the list.
   11. **Coming from another engine:** a table that maps words from
       Godot, Unity, Bevy, GameMaker and PICO-8 to Shuyi's, each row
       linked to the chapter that explains it. For example: a Godot
@@ -87,8 +124,9 @@ None.
       screen stack; a node, a GameObject, a Bevy entity or a GameMaker
       instance is a plain struct the game owns, in a screen or in the
       state its `TurnRules` changes (the arena of ADR-0003 §4 comes
-      with the parked tick path), or an entity of `shuyi-ecs` once 2107
-      is done; an input map or input actions are an `ActionSet` and the
+      with the parked tick path), or an entity of `shuyi-ecs` if 2108
+      is done (if not, 2108 adds it with its chapter "An optional
+      ECS"); an input map or input actions are an `ActionSet` and the
       player's keymap; `_process`, `Update()`, a Bevy system or a Step
       event is `Screen::update`, with state changed through commands
       (`TurnRules`); resources and imports are kinds and formats
@@ -102,8 +140,12 @@ None.
   the rest of the workspace, so a breaking change breaks the book's
   build.
 - **The API docs:** `cargo doc --no-deps --workspace` in `pages.yml`,
-  copied to `/api/`. Learn links each crate's page. Once crates are on
-  crates.io (2005), docs.rs links are added beside them.
+  copied to `/api/`. Learn links each crate's page (docs.rs links come
+  with 2005, under Out).
+- **Learn and the home page (2801):** 2801's Learn page names the
+  book and the API docs without links, and its "Get started" button
+  goes to Learn. Link the book and `/api/` from the Learn page, and
+  point the button at the quick start.
 - **Keeping it current:**
   - the book's chapters get their row in the docs map,
     `docs/README.md` (2810), under *People making games*: its home is
@@ -123,6 +165,23 @@ None.
   change them to the book's chapters, and the `//~` texts of its
   fixtures (`crates/xtask/compile-messages/`) with them. If 2510 isn't
   done, nothing here (2510 links the chapters itself).
+- **Fast compiles (2009):** if 2009 is done, move its "Fast compiles"
+  section from `README.md` into a page of the book (the numbers, the
+  setup and the nightly-only options), link it from the quick start,
+  and leave a link in the README in its place. If not, nothing here
+  (2009 writes the page in the book).
+- **Either order with 2108:** if 2108 is done, add a twelfth chapter,
+  "An optional ECS", after chapter 11 and before 2004's guides:
+  `shuyi-ecs`, `EcsRules`, the parallel schedule and `ecs-garden`, with
+  its snippets; if not, nothing to do (2108 writes it).
+- **Either order with 2338:** if 2338 is done, chapter 4 gets a short
+  section on nine-slice and tiled pictures and picture frames; if not,
+  nothing to do (2338 adds it).
+- **Either order with 2528:** if 2528 is done, where the book tells
+  the reader to try the web build (the quick start's `shuyi web` and
+  chapter 9), it builds, serves and opens it in one step with `cargo
+  shuyi web --serve --open`. If not, nothing to do (2528 changes those
+  lines when it lands, as its clause says).
 
 **Out (do not do):**
 - the tutorial (2803);
@@ -130,13 +189,16 @@ None.
 - `llms.txt`, `llms-full.txt` and a Markdown twin of each Learn page
   (2808). Any shortcode in Learn other than `snippet` will need an
   expansion in 2808's `cargo xtask llms`;
+- the quick start's crates.io install and Learn's docs.rs links: 2005
+  makes both when it publishes, after this ticket (2005 is blocked by
+  2808, which is blocked by this);
 - chapters for modules that don't exist yet (each module's ticket adds
   its own).
 
 ## Implementation steps
 
 1. Read the README, the ADRs named above, and `docs/contract.md`.
-   Check which of 2351, 2509, 2510 and 3050 are done.
+   Check which of 2009, 2109, 2334, 2351, 2510 and 3050 are done.
 2. Write the snippets crate and the shortcode, with one chapter's
    snippets.
 3. Write the chapters, each with its snippets.

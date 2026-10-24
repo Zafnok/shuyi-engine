@@ -46,16 +46,21 @@ None.
     dependencies' (`rayon-core`, `crossbeam-*`, `either`).
   - `cargo deny check` passes with the feature on.
   - Record the version and the check in the README's cost section.
-- **The feature** `parallel` of `shuyi-rts` (and `rts-parallel` of the
-  `shuyi` crate, if 2003's naming allows a second feature per module;
-  otherwise the game turns it on through `shuyi-rts` directly, and the
-  README says how).
+- **The feature** `parallel` of `shuyi-rts`. **From 2003 (done):** the
+  `shuyi` crate gets no second feature for it: `cargo xtask
+  check-modules` wants each of its features to name a catalog row
+  (`rts` is `shuyi-rts`), and there is no `shuyi-rts-parallel`. A game
+  turns it on through `shuyi-rts` directly (`shuyi-rts = { …,
+  features = ["parallel"] }` beside `shuyi`'s `rts`), and the README
+  says how.
   - `compile_error!` when it is on for `wasm32` or a `no_std` build.
 - **Parallel passes**, over fixed-size chunks of rows (a setting, default
   256), writing each chunk's slice of the next columns:
   - movement and steering (2711), including each push round;
   - the target pick and the damage pass (2712);
-  - unit reactions (2714), if 2714 is done.
+  - unit reactions (2714). **Either order with 2714:** if 2714 is
+    done, split its pass too; if not, nothing to do (2714 splits it
+    when it lands).
   Passes that write shared grids stay on one thread: the spatial grid
   rebuild (2708), vision stamping (2713) and flow field building (2710).
 - **Events and hits** gathered per chunk and joined in chunk order, so
@@ -69,9 +74,11 @@ None.
     `cargo tree`;
   - a build with `parallel` for `wasm32-unknown-unknown` fails with the
     `compile_error!` message;
-  - if 3004 is done, `shuyi export` refuses `parallel` for any target
-    other than `desktop` and `steam-deck`. If not, add that rule to
-    3004's scope in this PR.
+  - **Either order with 3004:** if 3004 is done, `shuyi export`
+    refuses `parallel` for a target whose profile isn't `desktop` or
+    `steam-deck` (so `windows`, `linux`, `linux-arm64`, `macos` and
+    3012's `steam-deck` allow it; `web`, `playdate` and the rest
+    refuse). If not, nothing to do (3004's clause on 2717 adds it).
 - **A speed report** (not a gate): the step time of a battle fixture of
   2 × 2 500 units (made here, from 2712's fixture kinds, no AI) with and
   without the feature on the CI runner, in the README. Wall time is fine
@@ -104,8 +111,8 @@ None.
 - [ ] `cargo tree` of the web build has no `rayon` (CI check).
 - [ ] A `wasm32` build with `parallel` fails with the documented message
       (CI check).
-- [ ] `shuyi export` refuses `parallel` on targets other than `desktop`
-      and `steam-deck`, or 3004 has the rule in its scope.
+- [ ] If 3004 is done, `shuyi export` refuses `parallel` on a target
+      whose profile isn't `desktop` or `steam-deck` (test).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

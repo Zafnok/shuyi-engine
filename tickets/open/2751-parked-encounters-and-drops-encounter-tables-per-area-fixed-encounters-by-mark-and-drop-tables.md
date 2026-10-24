@@ -52,6 +52,10 @@ None.
     kind id, count range, `known: bool`), money as a range, or the
     game's own drop by name (`Custom(name)`, which the game turns into
     whatever it likes: a chest, a key, a story flag);
+  - **Either order with 2758:** if 2758 is done, a drop entry may also
+    be `Rolled { level, rarity_table }`, which `roll_drops` rolls
+    through 2758's `roll_item`; if not, nothing to do (2758 adds that
+    entry kind when it lands);
   - fuzz-style test and golden row.
 - **`Encounters`** in `shuyi_rpg::encounter`:
   - `after_step(defs, area, rng) -> Option<BattleSetup>` rolls the
@@ -59,15 +63,16 @@ None.
   - `at_mark(defs, mark, done) -> Option<BattleSetup>` for fixed
     encounters, with the done-set the game keeps and saves;
   - `BattleSetup` builds a 2748 `BattleState`.
-- **Drops**: on `Won`, `roll_drops(defs, groups, rng) -> Drops { money,
-  items, custom: Vec<String> }`, one roll per fallen enemy's table.
+- **Drops**: on `Won`, `roll_drops(defs, table_ids, rng) -> Drops {
+  money, items, custom: Vec<String> }`, one roll per id in `Won`'s
+  `drops` (2748: the fallen enemies' drop table ids); the game calls it.
 - Neither the chance nor the table knows party size; tests run with a
   party of one and of six anyway.
 
 **Out (do not do):**
 - trapped chests and any other way of handing out a drop: the game's
   (the crawler template's chest, 2754);
-- loot rolled with affixes (ADR-0034, 2758);
+- affix tables and rolling an item's affixes (ADR-0034, 2758);
 - encounters that walk on the map (a game's things, 2742's things list).
 
 ## Implementation steps

@@ -5,8 +5,8 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
-blocked_by: []
+status: blocked
+blocked_by: ["3053"]
 nick_input: none
 completed:
 ---
@@ -68,7 +68,9 @@ None.
   frame (`frame/onebit.rs`, 400 × 240 pixels; the cells that fit at the
   one-bit font the frame draws with), using the widgets in `ONE_BIT`.
 - The target profile (3001) names a default painter set (`glyph` or
-  `onebit`) that the screens use when the game gives none.
+  `onebit`) that the screens use when the game gives none. It reaches
+  a running game through 3053's facts: `PlatformFacts::from_profile`
+  copies it, and the screens read it from `ctx.platform`.
 - Snapshots of every one-bit painter, as cells and as a one-bit frame
   (`frame/onebit.rs` `to_one_bit`).
 - `docs/`: where screens and widgets are documented, a line on the one-bit

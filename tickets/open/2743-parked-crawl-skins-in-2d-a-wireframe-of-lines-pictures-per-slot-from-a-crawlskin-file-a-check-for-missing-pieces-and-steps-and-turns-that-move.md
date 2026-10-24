@@ -32,6 +32,16 @@ It builds on 2742 (the view), 2336 (line shapes in the frame) and 2109
 when the player's reduced-motion setting is on. If not, 2340 adds that
 here when it lands.
 
+**Either order with 2744:** if 2744 is done, `draw` already pulls in
+`shuyi-ui` with its `tools/layers.ron` line (keep both), and 2744's
+travel sends its next command when a step's motion ends, not each
+frame (a test: travel over three cells plays three whole steps). If
+not, nothing to do (2744 paces travel by the motion).
+
+**Either order with 2753:** if 2753 is done, `motion_ms` is already in
+`crawl.ron`: use it, don't add a second. If not, add it as below, and
+2753's camera glide reads it.
+
 **Who uses it** (ADR-0033 §17's bar for engine work): crawler RPGs and labyrinth puzzle games on every 2D target, from the Playdate in one bit (lines) to a painted desktop game (pictures).
 
 ## Nick input
@@ -62,18 +72,22 @@ None.
   - a table from `(depth, side, face, look)` to a picture id and a
     pixel offset, where `face` is `front`, `left`, `right`, `floor`,
     `ceiling`, `door-front`, `door-left`, `door-right`;
-  - `mirror: true` lets a left piece serve as the right one flipped
-    (2335 has flip; if it doesn't yet, flip with the sprite item's
-    existing flip x);
+  - `mirror: true` lets a left piece serve as the right one, drawn
+    with the sprite item's `flip_x`;
   - a background picture drawn first, and things as pictures per depth
     (smaller when farther, from the skin's per-depth scale list or one
     picture per depth);
   - the same fuzz-style test and golden row as the other formats.
+- **The compass**: while the view's `compass` is set (2742), both
+  skins draw the facing's letter (N, E, S or W) in a corner of the
+  viewport, by palette role.
 - **The check**: `CrawlSkin::missing(shape, looks) -> Vec<Piece>`
   lists every piece a view of that shape could ask for that the skin
-  has no picture for. `shuyi check` runs it when the game has a crawl
-  skin (if `shuyi check`'s plugin hook for kinds exists; if not, a
-  test helper the example calls, and say so in the Completion notes).
+  has no picture for, and a helper turns them into `ContentError`s
+  naming the skin's file. A game's `GameTools::check` calls the
+  helper, so `shuyi check` reports a missing piece; 2754's example
+  does. `shuyi check` has no hook for modules' checks, and this ticket
+  adds none.
 - **Steps and turns that move**: a `CrawlMotion` the stage starts from
   the events of a command (`Moved` forward or back, `Turned` left or
   right):
@@ -84,8 +98,9 @@ None.
   - a tween from 2109, drawn from the time alone; the rules have
     already moved, so a command sent during the motion finishes it at
     once and starts the next;
-  - a `Bump` flash for a refused step (a short shake if 2340's shake is
-    in), from the refusal, not from an event.
+  - a `Bump` flash for a refused step, from the refusal, not from an
+    event. If 2340 is done, the bump also asks for a short `Ctx::shake`;
+    if not, 2340 adds that shake when it lands.
 - **Snapshots**: `frame-png` pictures of both skins at three places of
   a test map, and the frame's text snapshot.
 

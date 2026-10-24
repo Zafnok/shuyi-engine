@@ -47,8 +47,10 @@ None.
 
 **In:**
 - **`examples/rts`**, a top-down free game:
-  - a small map made in Tiled or LDtk if 1124 is done (through 2709's
-    `from_layer`), or in code if not;
+  - a small map made in Tiled or LDtk, read through 2709's
+    `TerrainGrid::from_layer`, if 1124 is done and `from_layer` exists
+    (whether it does depends on which of 1124 and 2709 landed first);
+    in code if not;
   - two bases, one per side, and one resource;
   - kinds, all our own and named plainly: a worker, a melee unit, a
     ranged unit, a base and one production building, as `*.unit.ron`;
@@ -85,14 +87,23 @@ None.
   from `docs/guides/README.md`.
 - **The module's README, finished:** every section in ADR-0009 §4's
   order, the directions it claims (top-down free; isometric stays
-  planned until an isometric example passes), and links to the example
-  and the guide.
-- **The `shuyi-rts` skill** (2707 or 1134) points at the example and
-  the guide.
+  planned, and 2769 claims it with an isometric stage), and links to
+  the example and the guide.
+- **The catalog:** set the `rts` answer under `kind` in
+  `docs/modules.ron` and `shuyi-rts`'s row in `docs/modules.md` to
+  `ready`, now that the example passes CI (2707 moves them off
+  `parked` and leaves `ready` to this ticket, ADR-0009 §4).
+- **The `shuyi-rts` skill, either order with 1134:** if 1134 is done,
+  the skill (2707 or 1134 wrote it) points at the example and the
+  guide. If not, add to the `shuyi-rts` entry 2707 put in 1134's list,
+  in this PR: its worked example reads `examples/rts`, and it links
+  `docs/guides/rts.md`.
 
 **Out (do not do):**
-- an isometric example (a later ticket, after 1126);
-- multiplayer in the example (2720);
+- an isometric example (2769, after 1126);
+- multiplayer in the example (not planned: 2720 builds lockstep for
+  command sims and tests it in one process over the in-memory network;
+  playing over a real network also needs 1141 and 1145);
 - more kinds, maps or factions than listed;
 - anything from Visions of Shuyi, and anything copied from existing
   strategy games.
@@ -105,7 +116,8 @@ None.
 4. Write the stress stage.
 5. Write the Harness test, the replay test and the snapshots.
 6. Write the template part and its CI job.
-7. Write the guide, finish the README and update the skill.
+7. Write the guide, finish the README and update the skill (or its
+   entry in 1134's list).
 
 ## Acceptance criteria
 
@@ -120,6 +132,9 @@ None.
       as CC0-1.0, made by us.
 - [ ] `cargo xtask check-keys` (or its successor) passes on the example.
 - [ ] The README has every section and claims only top-down free.
+- [ ] The `rts` answer in `docs/modules.ron` and `shuyi-rts`'s row in
+      `docs/modules.md` are `ready`, and `cargo xtask check-modules`
+      passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -144,6 +144,9 @@ None.
     the schemas and `crates/cli/schemas/versions.json` are regenerated
     (ADR-0022 §5);
   - the refusal gets its own problem code and help (2509's table).
+  - **Either order with 2520:** if it is done, a test shows
+    `replay --crash` refusing a crash report whose record is stamped
+    with other content. If not, nothing to do (2520 adds the test).
 - **The grid template and hello-grid stamp their records:**
   - each crate's `lib.rs` gets `pub fn made() -> Made`:
     `Made::new(stamp, bundle.fingerprint())` over the bundle of its
@@ -161,9 +164,11 @@ None.
     record without one still reads), written by `bots`. Their tools'
     `made()` is `Some(crate::made())`, and `replay` passes the record's
     stamp on;
-  - **Either order with 3046:** if it is done, the `crash_record` hooks
-    in their `main.rs` stamp the record they write with the same
-    `made()`. If not, 3046 adds it.
+  - **Either order with 3046:** if it is done, the `crash_record`
+    functions beside `StageRecord` in the stage screens' modules
+    (hello-grid's `src/screens/stage.rs`, the template's
+    `crates/game/src/stage.rs`) stamp the record they write with the
+    same `made()`. If not, 3046 adds it.
 - **Either order with 2116:** if it is done, the fixed bundle's
   fingerprint is a row `fingerprint` of
   `crates/assets/tests/golden/formats.ron` (through
@@ -174,6 +179,11 @@ None.
   checked-in record (`examples/hello-grid/tests/records/`) stays
   unstamped, so a content change shows as its rows moving. If 2116 is
   not done, it adds the rows.
+- **Either order with 2533:** if 2533 is done, each record of the
+  `shuyi playtest` history (`target/playtest-history/*.jsonl`) gains
+  `made: Option<Made>` (`#[serde(default)]`, so older lines still
+  read), from this build's `GameTools::made()`. If not, nothing to do
+  (2533 adds it).
 - **Either order with the parked records:** if 1119, 2706, 1140 or 2720
   is done when this lands, its record or handshake (`TickRecord`,
   `CommandRecord`, the lockstep handshakes) takes a `Made` here. If not,
@@ -207,6 +217,11 @@ None.
 - Session records (2518): they carry a `Made`, added in their ticket. A
   crash replay (2520, `replay --crash`) goes through `replay`'s path, so
   this ticket's refusal covers it.
+- Leaderboard submissions (3054, parked): a `Submission`'s `record` is
+  the game's own record text, so it carries whatever stamp the game's
+  record carries. **Either order with 3054:** if 3054 is done, nothing
+  to do here; if not, nothing to do either: 3054 passes the record on
+  as it gets it.
 - Playing a record across versions; reading older saves (2110).
 - `History` (`crates/core/src/history.rs`) stays as it is: it lives in
   memory too, and a record or a save holds a `Made` beside it.

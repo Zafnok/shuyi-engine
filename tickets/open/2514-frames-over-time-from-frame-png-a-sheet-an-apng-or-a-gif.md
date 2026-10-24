@@ -45,8 +45,12 @@ Shuyi has, today:
   (`Encoder::set_animated`, `Writer::set_frame_delay`). No GIF crate is
   in `Cargo.lock`.
 - `contract::session::Session` (`crates/cli/src/contract/session.rs`)
-  plays a script and idles frames (`Session::idle`). 1133 plans the MCP
-  session tool `frame_png` over it, which returns one image per call.
+  plays a script and idles frames (`Session::idle`). 1133's MCP
+  session tool `frame_png` (`crates/cli/src/mcp/host.rs`) paints
+  `Session::picture` once per call. Its input (`FramePngInput`, only
+  `scale`) and its answer (`FramePngOutput`), in
+  `crates/cli/src/mcp.rs`, are checked in as
+  `crates/cli/schemas/session.frame_png.*.json`.
 - Picture snapshots: `examples/hello-grid/tests/it/snapshot.rs` checks
   painted frames as PNG bytes (`insta::assert_binary_snapshot!`). CI's
   `test` job runs them on Windows, Linux and macOS, so the painter's
@@ -84,8 +88,9 @@ None.
 - **`Script::then_frames(n) -> Script`** (`crates/cli/src/frame_png.rs`):
   a copy with `n` more `Step::Wait(FRAME_DT)` steps. Each such wait
   runs exactly one frame (`Harness::advance` subtracts `FRAME_DT` from
-  `FRAME_DT` and stops at zero). `Step`, `Script` and the contract's
-  schemas don't change, so the contract's `VERSION` doesn't move.
+  `FRAME_DT` and stops at zero). `Step`, `Script` and the one-off
+  operations' schemas don't change. Only the MCP tool `frame_png`'s
+  schemas do (below).
 - **`Capture { every: u32, count: u32 }`** in `frame_png.rs`: `count`
   frames, `every` frames apart, the first right after the script.
 - **`GameTools::frames(options, script, scale, capture) -> Result<Vec<Shot>, String>`**,
@@ -160,14 +165,21 @@ None.
   (`Shot::warning`, bought art) prints once if any frame has one.
 - **`lib.rs`'s command list** says `frame-png` also writes a sheet, an
   APNG or a GIF.
-- **The MCP session tool `frame_png`** (1133, which this ticket waits
-  for) takes optional `every` (seconds), `count` and `columns`. With
-  `count` above 1 it paints the session's frame as 1133 does, then
-  `count − 1` times runs `every` frames with `Session::idle` and paints
-  again. It returns the sheet as one image and the cells' times and
-  screens as text. The session stays where the last capture left it,
-  and the tool's description says so. APNG and GIF stay on the CLI: an
-  agent reads the sheet, and a person wants the file.
+- **The MCP session tool `frame_png`** (1133, done) takes optional
+  `every` (seconds), `count` and `columns`, new fields of
+  `FramePngInput`. With `count` above 1 it paints the session's frame
+  as 1133 does, then `count − 1` times runs `every` frames with
+  `Session::idle` and paints again. It returns the sheet as one image,
+  and `FramePngOutput` gains the cells' times and screens. The session
+  stays where the last capture left it, and the tool's description
+  says so. APNG and GIF stay on the CLI: an agent reads the sheet, and
+  a person wants the file. The tool's schemas change with it:
+  regenerate `session.frame_png.input.json` and `.output.json`
+  (`cargo shuyi schema --out crates/cli/schemas`), raise
+  `contract::VERSION` by one, add its line to
+  `crates/cli/schemas/versions.json`, and update the `frame_png` row of
+  `docs/contract.md`'s session table. The new fields are an API
+  change: say so in the PR.
   **Either order with 2521** (the live link): if 2521 is done, a
   session attached over a link refuses `every` and `count` ("one
   picture at a time over the link"), with a test. If not, 2521 refuses
@@ -175,7 +187,9 @@ None.
 - **The order of the work:** the flags and `frames`, the sheet, the
   APNG, the MCP tool, then the GIF. If the PR would pass about 600
   changed lines (not counting snapshots), leave the GIF out: `--gif` is
-  not added, and a ticket for it is written (`write-ticket`).
+  not added, and a ticket for it is written (`write-ticket`). That
+  ticket carries `shuyi-ship`'s line on `--gif` (the skill pack
+  below), and the skill lines this PR writes name only `--apng`.
 - **The skill pack. Either order with 1134:** if 1134 is done,
   `shuyi-test`, `shuyi-animate` and `shuyi-cinematic` say to check
   motion with a sheet, and `shuyi-ship` says how to make an APNG or a
@@ -189,23 +203,45 @@ None.
   `frame_png`'s re-export. The sheet and the encoders stay in
   `shuyi-cli` either way: they need `png` and `gif`, and the labels are
   the tool's.
+- **Either order with 2357** (rewind): 2357 adds `frame-png --session
+  <file> --until <frame>`. If 2357 is done, `--every` and `--count`
+  also work with `--session <file> --until N`: capture i is frame
+  N + i × every of the record, played on with the record's own input
+  (a capture past the record's end is an error that gives its length),
+  painted the way 2357 paints one (`GameTools::frame_from_session` if
+  it added it). With steps after `--until`, the captures come after
+  them, as without `--session`. A test on hello-grid's golden session:
+  with `--count 4`, the sheet's first cell equals the one frame
+  `--until` alone writes. If not, nothing to do (2357 does it; its own
+  clause says so).
 - **Public types (ADR-0039):** `Capture` and `Output` follow it.
+- **Either order with 2738 and 2739** (the bricks and snake examples,
+  both parked): if one of them is done, add to its README an animated
+  picture of its first seconds, made with `frame-png --apng`, as its
+  README bullet asks. If not, nothing to do (each adds its own picture
+  when this ticket is done).
 
 **Out (do not do):**
-- capturing a range of a recorded session: 2518 adds session records
-  and 2519 records real builds; captures from them are a follow-up
-  after both, as 2519's Out says;
+- recording sessions (2518, 2519): captures of a range of a record
+  come with 2357's `frame-png --session` (the clause above);
 - a screenshot of a running build: 2521's `shuyi attach --screenshot`
   serves a developer, and a screenshot the player takes has no ticket
   yet (it would build on 2332's raster);
 - sound in a capture, MP4 or WebM, and recording a windowed build in
   real time;
 - a new `Step`, a new contract operation, or any change to the
-  contract's schemas;
+  one-off operations' schemas (only the MCP tool `frame_png`'s
+  change);
 - APNG or GIF as asset formats the engine loads. They are files a tool
   writes, so ADR-0007's registry doesn't apply;
 - scales below 1 (shrinking frames);
-- previews on the website's Examples cards (2801): a follow-up;
+- previews on the website's Examples cards: 2811, after this
+  and 2801;
+- an animated picture of the parked match-3's chain (2736).
+  **Either order with 2736:** if 2736 is done, nothing to do here: the
+  ticket it wrote for the finished match-3 makes the picture with these
+  flags. If not, nothing to do either: 2736 makes it if this ticket is
+  done by then;
 - 3007's and 3019's contact sheets of baked images.
 
 ## Implementation steps
@@ -231,7 +267,10 @@ None.
    `lib.rs`'s command list and `frame_png.rs`'s module docs.
 8. Add hello-grid's walk sheet snapshot.
 9. Add `every`, `count` and `columns` to the MCP session tool
-   `frame_png`, and a step to 1133's scripted client test.
+   `frame_png`, and a step to 1133's scripted client test
+   (`crates/cli/tests/it/mcp.rs`). Regenerate its schemas, raise
+   `VERSION`, add the `versions.json` line, and update its row in
+   `docs/contract.md`.
 10. Add the `gif` dependency and write `encode_gif` with its exact
     palette, unless the PR is already about 600 lines (then write its
     ticket). Run `cargo deny check`.
@@ -268,6 +307,8 @@ None.
       `every × (count − 1)` over `MAX_FRAMES`, a sheet over 16 384 px.
 - [ ] The MCP `frame_png` with `every` and `count` returns a sheet and
       the cells' times, in 1133's scripted client test.
+- [ ] `session.frame_png.input.json` and `.output.json`, `VERSION` and
+      `versions.json` agree (the schema test passes).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

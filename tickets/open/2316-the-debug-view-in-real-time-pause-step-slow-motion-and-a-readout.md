@@ -103,6 +103,11 @@ None.
   While paused, a line `paused` (or `paused, step N` after N steps)
   comes first. Write a readout for the toy's grid game (turn, side,
   cursor).
+  **Either order with 2104** (animation state machines, parked): if
+  2104 is done, add the helper it left out: a function beside its
+  runner that a screen's `debug_readout` calls to show an `AnimState`
+  as `state name, clip, frame`, with a unit test. If not, nothing to
+  do (2104 writes it).
 - **A tick game.** If 1119 (tick simulation) is done, a step is one
   fixed simulation step, and the readout names the step number. If
   1119 isn't done, 1119 adds that, and this ticket steps frames.
@@ -116,6 +121,11 @@ None.
   included. The readout gains a line `speed 0.50x` (from `GameSpeed`'s
   `Display`) after `paused` when the speed isn't normal. If 2123 isn't
   done, 2123 does all four.
+  **Either order with 2361** (smoothed world layers, parked): if 2361
+  is done, a Harness test on its smoothed scene shows that 30 paused
+  frames of 1/144 s with `BetweenSteps::Clock` give the same snapshot,
+  and so do the frames between two slow-motion updates. If not, nothing
+  to do (2361 tests it under this ticket's pause).
 - **Over the live link** (2521): a client pauses and steps a running
   build by sending the game's actions for `DebugPause` and `DebugStep`
   as `act` steps. No operation of its own is needed. **Either order
@@ -141,7 +151,7 @@ None.
 ## Implementation steps
 
 1. Read 2315's ADR and code, `game.rs`, the `input-actions` skill, and
-   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2367 and
+   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2361, 2367 and
    2521 are done (the either-order clauses).
 2. Add the two `UiAction`s, and map them in the sample keymap and the
    toy.

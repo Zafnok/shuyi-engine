@@ -71,8 +71,9 @@ Related: 3012 (the Deck: integer with letterbox), 2323 (parked: whole
 glyph scales, and a new buffer for a new console size), 1121 (parked)
 and 2405 (the pointer, which needs this placement's inverse), 3044
 (window sizes), 2321 (a game's default on `GameSettings` and a player
-setting: the shape used here). It waits for 2511 (MVP), whose
-`BasicTools` and `()` settings it extends.
+setting: the shape used here). **From 2511 (done):** this extends
+`shuyi_cli::BasicTools` (`crates/cli/src/basic.rs`) and the `()`
+settings (`impl GameSettings for ()` in `crates/ui/src/settings.rs`).
 
 ## Nick input
 
@@ -258,14 +259,19 @@ game's choice, through its `engine-change` skill.
 
 **Out (do not do):**
 - an aspect policy that grows the console by whole cells when the
-  window's shape changes (Godot's `expand`). It needs 2323's new
-  buffer for a new console size, so it is a follow-up after 2323
-  (parked), noted in 2323's Out;
+  window's shape changes (Godot's `expand`): 2376 (parked). It
+  needs 2323's new buffer for a new console size and this ticket's
+  `place`, so it comes after both;
 - `frame-png` and 2332's raster: they stay at whole scales;
-- world layers drawn into the bars (1120), and screen effects (2326);
+- world layers drawn into the bars: 1120's layers (parked) stay inside
+  the frame, and drawing them past it is a ticket when a game asks;
+- screen effects (2326);
 - window sizes in whole multiples, and a remembered window size (3044);
 - a different default per target: the running game doesn't know its
-  target yet (3053);
+  target yet (3053 adds that). Neither ticket does it: it is a
+  follow-up of its own, blocked by this one and 3053, written when a
+  game needs a different default on one target (3053's Out says the
+  same);
 - stretching to fill with uneven pixels;
 - other backends: `shuyi-playdate` (3010) shows its display 1:1;
 - the game's options screen and saved form (the game's own ticket, if

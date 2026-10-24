@@ -78,6 +78,11 @@ minutes each, and say whether they feel smooth.
   polygons.
 - **Both screens.** A scenario with a 3D view on each surface (3025's
   capture), checking each holds 30 fps.
+- **Music.** **Either order with 3061:** if 3061 is done, its music
+  scenario (a song and four sound effects) is one of the bench
+  scenarios: run it with the others, so the song's cue is in the
+  numbers; if not, the report says music isn't measured, and 3061
+  writes the ticket that measures it on the device.
 - **The report** in `docs/targets/nds.md`, per scenario and per console
   (DS or DS Lite, and DSi in DS mode and in DSi mode if measured):
   - frame cycles: p50, p99 and the worst, on the device and in the
@@ -92,8 +97,9 @@ minutes each, and say whether they feel smooth.
   - `frame_cycles` from the worst ratio, with 20 % headroom;
   - `max_triangles` in `three_d`, if the sweep shows 2 048 doesn't hold
     60 fps with the engine's own work;
-  - `think_units_per_frame` (3009) the same way, if 3009 has landed; if
-    not, 3009 sets it from these numbers;
+  - **Either order with 3009:** if 3009 is done,
+    `think_units_per_frame` the same way; if not, 3009 sets it from
+    these numbers;
   - the `dsi` profile's budgets from the DSi-mode run, if there is one;
   - `status` becomes `supported` once every scenario holds its frame
     rate on a DS or DS Lite.

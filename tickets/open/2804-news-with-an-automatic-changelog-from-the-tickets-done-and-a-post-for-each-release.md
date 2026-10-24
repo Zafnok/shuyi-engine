@@ -90,21 +90,28 @@ None.
   are never committed (`.gitignore`). News lists them with the
   hand-written posts (2805), newest first; the Changelog page is linked
   from News and the footer.
+- **Either order with 2805:** News's list, its tag pages and its feeds
+  are 2805's. Each generated post has a one-line `description` and
+  `tags = ["release"]` under `[taxonomies]`, and no author. If 2805 is
+  done, its templates show these posts (with no author line); add the
+  Changelog link only. If not, write a plain News list (date, title
+  and description, newest first) and declare the `tags` taxonomy, with
+  a feed, in `site/config.toml`; 2805 extends that list.
 - **A release post can have an introduction:** if
   `site/content/news/intro/vX.Y.Z.md` exists, its text goes above the
   generated notes. Nick or Claude writes it when they want one; with
   none, the post is the notes alone.
 - **The `work-ticket` skill:** its completion notes step says to add a
   `Breaking:` line for each API change the game must follow, and under
-  it a `migration` block (`tickets/README.md`, *Breaking changes*). The
-  step also says: when CI's `game` workflow (2014) ran on the PR, write
-  one `Breaking:` line per engine item its report lists as `new`. If
-  2014 is done first, it has already pointed the PR's game line at the
-  report, and this ticket adds the `Breaking:` lines beside it.
+  it a `migration` block (`tickets/README.md`, *Breaking changes*).
   **With 2010** (done): the step is already there (`work-ticket` §5
   step 2; 2010 added it with CI's `api` job, which fails a breaking PR
-  without the line), so keep one step and add the `migration` block and
-  the `game` report's `new` items to it.
+  without the line), so keep one step and add the `migration` block to
+  it.
+  **Either order with 2014:** if 2014 is done, the step already says
+  each engine item CI's `game` report lists as `new` has a `Breaking:`
+  line; add the `migration` block beside that sentence. If not, nothing
+  to do for the report: 2014 adds that sentence to the same step.
 - **2005** (the first release) writes `CHANGELOG.md` with this tool in
   its release workflow, and uses its notes as the GitHub release's body.
 

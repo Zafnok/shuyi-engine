@@ -66,13 +66,19 @@ None.
   the project root), `--no-history`, and `--brief` (leave out the
   table's one line per try; the summary stays).
 - `docs/contract.md`; the usage text.
+- **Either order with 1134:** if 1134 is done, the `shuyi-balance-bots`
+  skill shows `shuyi playtest`'s history: a plan's `summary` items, the
+  `was …` and `previous` lines, `--history`, `--no-history` and
+  `--brief`. If not, nothing to do (1134 shows them, its clause says
+  so).
 
 **Out (do not do):**
 - Charts, HTML or a dashboard.
 - Comparing two arbitrary runs (only the last one before this).
 - A stamp of the engine version and the content's fingerprint (2111).
   **Either order with 2111:** if 2111 is done, the record carries its
-  stamp too; if not, only the date and the commit.
+  stamp too (`made`, from `GameTools::made()`); if not, only the date
+  and the commit, and 2111 adds the stamp (its clause says so).
 - The game's use of it (game#1180).
 
 ## Implementation steps
@@ -121,6 +127,8 @@ None.
 6. **hello-grid**: its plan gets a summary (`Sum` of `won`, `Median` of
    `turns`); its playtest test runs twice in a temporary history folder
    and checks the second run's `was` line.
+7. **The skill**: if 1134 is done, the `shuyi-balance-bots` lines
+   (Scope).
 
 ## Acceptance criteria
 

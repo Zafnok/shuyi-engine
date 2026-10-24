@@ -55,7 +55,8 @@ None.
   settings form this changes, the engine's `()` settings and the grid
   template's, raises its `VERSION`, reads the old version by
   `Self::deserialize` in `Migrate::upgrade`, and adds a `v<N>_*.ron`
-  fixture, written by this build, beside the old ones):
+  fixture, written by this build, beside the old ones; if not, 2110's
+  version 1 holds them):
   - `toggled`: the names of the actions the player set to toggle (by
     name, as the saved bindings are);
   - `repeat`: `None` (the game's), or a `RepeatDef` from three presets
@@ -71,6 +72,11 @@ None.
     and `Suspend`, forgets latches too, so nothing stays stuck;
   - `InputState::set_player_input(&PlayerInput)` applies the three
     settings; `Game` calls it when they change.
+  - **either order with 2406 (parked):** if 2406 is done, `Game` calls
+    `set_player_input` on every seat's `InputState`, when a seat fills
+    and when the settings change: every seat plays with the current
+    profile's settings, as it plays with its bindings. If not, nothing
+    to do (2406 does it).
 - **Option rows:** `OptionRow::toggle(action)`, a row per `can_toggle`
   action ("Fast-forward: Hold / Toggle"); `OptionRow::repeat_speed()`;
   `OptionRow::chord_time()`. A game adds them to its options list.
@@ -88,9 +94,10 @@ None.
 - help text that says "press" instead of "hold" for a toggled action (a
   follow-up with 2006's `check-text`, if a game names holding in its
   text);
-- the motion, shake and flashing settings (2340). Both tickets add to
-  `Settings` and every repository game's saved form; whichever lands
-  second follows the first's shape.
+- the motion, shake and flashing settings (2340), and sound captions
+  (2366, parked). Each of them adds to `Settings` and every repository
+  game's saved form, as this one does; whichever lands later follows
+  the shape of the ones before it.
 
 ## Implementation steps
 

@@ -97,6 +97,30 @@ missing id means a session starts work it can't finish.
     NNNN is done, …; if not, …". The PR that closes NNNN settles it
     (the `work-ticket` skill, §5);
   - *not this ticket's job*: it goes under **Out**.
+
+  "Waits for NNNN", "until NNNN" and "once NNNN lands" are one of the
+  first two: write a clause with both branches, or a blocker. Never
+  leave them as prose.
+- **Write every handoff on both sides, in the same PR.** When this
+  ticket leaves a piece of work to another open ticket, that ticket must
+  name this one and say what it does if this one lands first. A piece is
+  left by the *if not* branch of a clause ("if not, NNNN adds it"), by a
+  part that waits for NNNN, or by an **Out** line saying NNNN does it.
+  Write the other side in the same words: "**Either order with MMMM:**
+  if MMMM is done, add …; if not, nothing to do (MMMM does it)". When
+  nothing is left either way, it still says so ("if not, nothing to
+  do").
+
+  Here is why. A handoff written on one side only is lost when that side
+  lands first. Its PR moves it to `done/`, and the other ticket's PR
+  greps `tickets/open` (`work-ticket` §5), so it never finds it. 1134
+  once left its `shuyi-net` skill's worked example to 1140 and 1145, and
+  neither of them said so.
+
+  `cargo xtask ticket-lint` fails a clause in an open ticket whose other
+  open ticket never names it back (2027). It can't read an **Out** line,
+  so check those yourself: open the ticket and find the piece in its
+  scope.
 - **Look the other way too.** Search `tickets/open/` for tickets this one
   unblocks or makes wrong, and update them in the same PR.
 - **Game tickets** go in `blocked_by` as `"game#NNNN"`. If the engine

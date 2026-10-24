@@ -69,11 +69,26 @@ None.
    - WebTransport (91.6% of browsers);
    - moving the web build to `wasm-bindgen`, which game ADR-0034 would need
      amended, and the pad plugin re-done.
+
+   **Either order with 2910:** voice chat in the browser needs the same
+   path. If 2910 is done, the ADR weighs each option for a voice stream
+   too, as the line 2910 added here says. If not, nothing to do: 2910
+   builds on this ticket's ADR.
 4. Write an ADR with the three choices and why. The ADR also says how a
    rollback session treats 2123's game speed (`Ctx::game_speed`), done
    or not: ignored while the session drives the steps, or one speed
-   every peer agrees on as a session setting. Write the implementation
+   every peer agrees on as a session setting. It also says how the
+   drawn view takes a correction: the corrected items `snap`, or the
+   correction is eased over a few frames. **Either order with 2361:**
+   2361 leaves that to this ticket, beyond its `snap`. If 2361 is done,
+   build on its `StepViews` and `snap`. If not, the rollback
+   implementation ticket names 2361 and what it needs from it, and
+   2361's Out line points at that ticket. Write the implementation
    tickets.
+   Each implementation ticket also says what it adds to the `shuyi-net`
+   skill (1134's `skills/shuyi-net`; ADR-0005 §3 gives it lockstep,
+   rollback and sessions): the rollback ticket adds its rollback
+   section, written on both sides as the `write-ticket` skill asks.
 
 **Out (do not do):**
 - committing spike code;

@@ -15,8 +15,13 @@ these are the ones a game on it keeps.
   no randomness but a seeded `SimRng` kept in the state. The state
   changes only through commands (`shuyi::core::TurnRules`). The same seed
   and the same commands always give the same game. A game made with
-  `shuyi new --template grid` has one. A folder with an `AGENTS.md` of
-  its own (`crates/rules/AGENTS.md`) has more rules for its files.
+  `shuyi new --template grid` has one, and its grid stage's rules crate
+  comes with its fence: `crates/rules/clippy.toml` and
+  `crates/rules/tests/layers.rs` turn these rules into errors, each
+  saying what to use instead (`cargo shuyi lint` reports them). Fix a
+  failure in the code, never by loosening `clippy.toml` or the test. A
+  folder with an `AGENTS.md` of its own (`crates/rules/AGENTS.md`) has
+  more rules for its files.
 - `crates/game` is everything else: the game's data (`files/`, embedded),
   its screens, its look, its tools. Only the engine's `shuyi-app`
   touches the window, the files, the audio device and the clock.

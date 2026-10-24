@@ -38,25 +38,38 @@ None.
 
 **In:**
 - **`shuyi_core::fx` additions** (ADR-0010 §1):
-  - `Fx::sqrt` (the floor of the exact root, through `i64`). If the
-    parked 3101 has landed, `Fx` is `Fixed<8>` and these functions are
-    written once for `Fixed<F>`;
+  - `Fx::sqrt` (the floor of the exact root, through `i64`).
+    **Either order with 3101:** if 3101 is done, `Fx` is `Fixed<8>`
+    and 3101 wrote `Fixed::sqrt` and `Angle::atan2` (`fx::int`): use
+    them, and build the rest below on them. If not, write them here,
+    and 3101 makes `sqrt`, `atan2` and `acos` generic, keeping their
+    results;
   - `FxVec2::length`, `length_squared` and `normalize` (zero stays
     zero);
   - `Angle::atan2(y, x)` and `Angle::acos(Fx)`, to 2335's 256-step
     `Angle` (`shuyi_core::angle`) and its sine table.
-  - **Either order with 2106 and 2122:** if this ticket isn't done
-    first, each of them adds what it needs of these (2106: `Fx::sqrt`;
-    2122: `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`, to 2335's
-    `Angle`) as specified here. Use what exists, add the rest, and keep
-    one golden table of their results, as step 1 says.
+  - **Either order with 2106, 2122 and 2711:** if this ticket isn't
+    done first, each of them adds what it needs of these (2106:
+    `Fx::sqrt`; 2122: `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`,
+    to 2335's `Angle`; 2711: `Fx::sqrt`, `FxVec2::length`,
+    `length_squared` and `normalize`) as specified here. Use what
+    exists, add the rest, and keep one golden table of their results,
+    as step 1 says.
 - **The crate** `crates/procanim` (`shuyi-procanim`), following
   ADR-0009 §4:
   - a `view` feature, empty here, filled by 2703;
   - the metadata from ADR-0010 §1 (concern: bodies and motion; answer:
     procedural animation; alternatives; serves);
   - the `procanim` feature in the `shuyi` crate;
-  - a row in `docs/modules.md` (status: building);
+  - **From 2003 (done):** the `shuyi-procanim` row in `docs/modules.md`
+    and the `procedural` answer in `docs/modules.ron` exist, parked:
+    set both to building. 2003's catalog has no building status
+    (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
+    still has none, add `Status::Building`, named `building`, with its
+    doc, the `status` line of `docs/modules.ron`'s header, *How to read
+    it* in `docs/modules.md` and the `modules` schema. `Status` is a
+    public enum: write a `Breaking:` line if CI's `api` job reports
+    one;
   - the README's first two sections (what it is for, what it is not
     for). 2704 finishes the rest.
 - **`Body`** (ADR-0010 §2):
@@ -68,7 +81,11 @@ None.
     `iterations` times in the order added, then collide each point as a
     circle;
   - `hash()` over every point's bits;
-  - a text dump, one line per point.
+  - a text dump, one line per point;
+  - a seed (`u64`), given when a body is made from its `BodyDef`, so
+    two creatures of one file move a little differently (ADR-0010 §4).
+    Nothing here reads it; 2702's gait seeds its RNG with it and the
+    step.
 - **`BodyDef` in RON**: points by name, rules naming points, damping,
   gravity and iterations.
   - It is checked with file and line: unknown point names, lengths ≤ 0,
@@ -97,7 +114,7 @@ None.
    (x64, ARM64) and `determinism` job (wasm32). Add the crate's `-p` to
    that job if the functions live outside `shuyi-core`.
 2. Create the crate, its metadata, its feature in `shuyi`, the README's
-   start, and the catalog row.
+   start, and the catalog's building status.
 3. Write `Body` and `step`, with unit tests on hand-made bodies: a
    pendulum, a rope, and a box of four points with diagonals.
 4. Write `BodyDef`, its format plugin, and error fixtures.

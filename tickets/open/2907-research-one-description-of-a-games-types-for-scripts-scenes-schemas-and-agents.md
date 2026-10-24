@@ -64,8 +64,9 @@ tools read that one description:
   register its read-only view types";
 - 2221 (scenes): a `SceneRegistry` the game fills with
   `register::<T>("Pos")`, for the ECS only, over 2107's `World::dump()`;
-- 2507 (parked): the inspector's schema is left to 2506: "a derive,
-  `serde-reflection`, or the format's own `Format`";
+- 2507 (parked): its inspector takes a file's shape from `shuyi kinds`
+  (2515), and a field's path and an enum's variants from this ticket's
+  ADR;
 - 1135 (parked): a node library with no source of types;
 - 2515: `schemars` on the type a format reads, for a file's shape;
 - 2356: its own `ArgKind` for a console's arguments;
@@ -189,10 +190,14 @@ None. This is technical.
      dumps stay hand-written forms for snapshots and people, beside the
      derived data, or come from the description.
   7. **Each consumer**, a line each: 2101, 2221, 2107, 2113, 2506 and
-     2507, 1135, 2515, 2524, 2356's `ArgKind`, 1133's `scene` tool, and
-     2316's readout (which stays free text for people). For a consumer
-     that is already done, its line says whether it moves onto the
-     description; a build ticket does the move.
+     2507, 1135, 2515, 2524, 2356's `ArgKind`, 1133's `scene` tool,
+     2232's `map-types` (parked: a game's map object types written to
+     Tiled and checked against LDtk), and 2316's readout (which stays
+     free text for people). For a consumer that is already done, its
+     line says whether it moves onto the description. When one should
+     move, this PR writes its build ticket (the `write-ticket` skill,
+     After MVP), unless the follow-up carries the move, and the line
+     names it.
   8. **The contract's part:** whether `Scene.data` comes from the
      stage's state by default, so the `json!` closures and the "no
      scene" default go for a game that derives; and whether one value
@@ -206,13 +211,24 @@ None. This is technical.
   templates, and path reads in the contract. It keeps the keys 2524's
   tasks read in `scene.data` (`turn` and the others), or changes those
   tasks in the same PR. 1133 is done: the follow-up adds the path read
-  to its `scene` tools (the one-off and the session's).
+  to MCP's session `scene` tool. MCP lists no one-off `scene` (its
+  `run` answers a one-off run's scene, `crates/cli/src/mcp.rs`), so a
+  one-off read reaches MCP through `run`, or as a tool of its own if
+  the ADR makes it an operation.
+- **The build tickets the ADR calls for**, in the same PR (the
+  `write-ticket` skill, After MVP, not parked): a derive of our own, if
+  point 1 picks one, in the follow-up's `blocked_by`; and the move onto
+  the description of each done consumer that point 7 moves, unless the
+  follow-up carries it (as it carries 1133's path read).
 - **Tickets this changes**, in the same PR: 2101, 2221, 2506, 2507 and
   1135 name the ADR by number and its choice in their scope (where they
-  say "2907's ADR", put the number). 2107, 2356, 2515, 2524, 2904 and
-  the kits with a planned text dump (1119, 2701, 2721, 2727) too, if
-  they are still open and the ADR changes them. If one needs no change,
-  the completion notes say why.
+  say "2907's ADR", put the number). 2107, 2113, 2356, 2515, 2524,
+  2904 and the kits with a planned text dump (1119, 2701, 2721, 2727)
+  too, if they are still open and the ADR changes them. If one needs no
+  change, the completion notes say why.
+  1146 (parked) names the ADR too: its `PlayerView` bullet follows the
+  ADR's rule for state and view, and its clause on this ticket is
+  settled.
 - **Either order with 2904:** `bevy_ecs` 0.20 turns on `bevy_reflect`
   among its default features. The arena stays the default (ADR-0003
   §4) and an ECS is opt-in (2107), so the description can't be one only
@@ -225,6 +241,17 @@ None. This is technical.
   it, extend it to a game's state and view types, and state any
   difference. If not, this ADR decides, and 2515 follows it (its own
   clause says so).
+- **Either order with 2107:** if 2107 is done, the ADR's line for it
+  says whether `World::dump` and `World::load` move onto the
+  description, and if they do, write the build ticket that moves them
+  beside the follow-up ticket; if not, name the ADR and its choice in
+  2107's dump bullet (the tickets above).
+- **Either order with 2232** (parked): it reads map objects into a
+  game's own types, and `shuyi map-types` writes those types to Tiled
+  and checks them against LDtk from a `schemars` schema. If 2232 is
+  done, point 7's line for it says whether `map-types` moves onto the
+  description, and a build ticket does the move. If not, nothing to do
+  (2232 follows this ADR, as its clause says).
 - Point 4 starts from 2125's `Determinize`.
 - `docs/adr/README.md`: the new ADR's row, and "extended by ADR-NNNN" on
   the rows of ADR-0005, ADR-0009 and ADR-0022.
@@ -259,7 +286,8 @@ hands the game.
    every command.
 4. Switch back to the ticket's branch. Write the numbers in the
    research note, then the ADR and its rows in `docs/adr/README.md`.
-5. Write the follow-up ticket, and edit the tickets above.
+5. Write the follow-up ticket and the build tickets, and edit the
+   tickets above.
 6. Run the gates.
 
 ## Acceptance criteria
@@ -272,10 +300,14 @@ hands the game.
       with their numbers, and `docs/adr/README.md` lists it and marks
       ADR-0005, ADR-0009 and ADR-0022 as extended by it.
 - [ ] 2101, 2221, 2506, 2507 and 1135 name the ADR by number in their
-      scope; 2107, 2356, 2515, 2524 and 2904 do too, or the completion
-      notes say why not.
+      scope; 2107, 2113, 2356, 2515, 2524 and 2904 do too, or the
+      completion notes say why not.
 - [ ] The follow-up ticket is in `tickets/open/`, After MVP, with no
       parked ticket in its `blocked_by`.
+- [ ] A derive of our own, if the ADR picks one, has a ticket in
+      `tickets/open/`. So does each done consumer that point 7 moves
+      onto the description, named on its line, unless its move is in
+      the follow-up's scope.
 - [ ] `Cargo.lock` is unchanged (the spike isn't committed).
 - [ ] All gates in the `run-gates` skill pass.
 

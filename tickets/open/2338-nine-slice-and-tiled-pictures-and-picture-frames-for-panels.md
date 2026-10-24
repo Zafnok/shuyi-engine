@@ -102,7 +102,7 @@ None.
 **In:**
 - **`shuyi_assets::nine_slice`** (`crates/assets/src/nine_slice.rs`,
   `pub mod` in `lib.rs`), `no_std`, plain types beside
-  `image::Picture`, so the format of step 8 can read into them:
+  `image::Picture`, so 2235's format can read into them:
   - `EdgeFill { Stretch, Tile }` and `CentreFill { Stretch, Tile,
     Empty }`;
   - `NineSlice { picture: Picture, left: u32, top: u32, right: u32,
@@ -207,6 +207,12 @@ None.
     lands first;
   - the menu's note rule (`widgets/menu/glyph.rs`) leaves out its `├`
     and `┤` joins when its look has a frame; the rule's `─` stays.
+  - **Either order with 2334:** if 2334 is done, its menu's text look
+    (`widgets::menu::text::paint`) draws the game's panel frame
+    (`ctx.panel_frame(BoxStyle::Single)`), when it has one, over its
+    `Panel` rectangle with `GlyphBuffer::nine_slice`, in its
+    `style.layer`, before the items, with a look test; if not, 2334
+    does it.
 - With no frame, every screen draws as today, and every existing
   snapshot is unchanged.
 - **Public types (ADR-0039):** `NineSlice`, `EdgeFill` and `CentreFill`
@@ -223,7 +229,7 @@ None.
   - 2722 (parked): its text box, name box and choices wear the game's
     `"panel"` and `"focus"` frames through these painters;
   - 1123 (parked): its Aseprite reader also reads slice centres into
-    the kind of the step 8 follow-up, as a second format (rule 10);
+    2235's kind, as a second format (rule 10);
   - 2330, if it is not done: a node may name its frame (a
     `GameData::nine_slice` name), and with none its boxes wear
     `"panel"` and `"focus"`.
@@ -239,23 +245,23 @@ None.
   it.
 - **Docs:** module docs for `frame::slice` with a doc test of each
   helper; `GameData::nine_slice`'s doc names the two names; a short
-  section in the book's chapter on the frame, if 2802 has written it.
+  section in the book's chapter on the frame if 2802 is done (if not,
+  2802 writes it when it lands, its scope says so).
 
 **Out (do not do):**
 - a fill field on `Sprite`, a new kind of `Item`, or any change to
   `shuyi-app`, the `frame-png` painter or the one-bit renderer;
   drawing tiles with a GPU wrap mode (a backend may do that later as an
   optimisation, tested equal to the sprites);
-- a file format for nine-slices, and the pack's form of it: the
-  follow-up ticket this PR writes (step 8). Until then a game builds
-  its `NineSlice`s in `GameData::nine_slice`;
+- a file format for nine-slices, and the pack's form of it (2235).
+  Until then a game builds its `NineSlice`s in `GameData::nine_slice`;
 - slice borders read from Aseprite (1123) or from 2229's import
-  settings; image paths checked by `shuyi check` (2516);
+  settings (2229 plans no section for them: a follow-up if a game
+  asks); image paths checked by `shuyi check` (2235);
 - a frame name per node in 2330's `.ui.ron`: 2330's boxes draw through
   these painters, so they wear the game's `"panel"` and `"focus"`
   frames with no field. A name per node is 2330's if it is not done
-  when this lands (its line above), and the step 8 follow-up's if it
-  is;
+  when this lands (its line above), and 2235's if it is;
 - a picture inside engine panels (it needs highlight bars that are
   items, not cell backgrounds);
 - mirrored or hidden slices, random tiles, rotation (2335), SVG;
@@ -267,8 +273,8 @@ None.
 - a font's own frame glyphs as a third `BoxStyle`;
 - the debug view's boxes (`crates/ui/src/debug/glyph.rs`), which stay
   plain glyphs;
-- panels placed in pixels (2334), which call `nine_slice` with their own
-  rect;
+- other panels placed in pixels, which call `nine_slice` with their own
+  rect (2334's menu text look is its clause above);
 - the parallax backdrop on world layers (1127, with `tiled_sprites`) and
   the visual novel's boxes (2722);
 - frames in the templates and the examples.
@@ -288,20 +294,9 @@ None.
    `frames`, and move the painters listed above.
 6. Write the look tests and the `frame-png` test.
 7. Write the ADR, the docs and the lines in other tickets.
-8. Write the follow-up ticket (the `write-ticket` skill; After MVP, not
-   parked): nine-slices in a data file. A `NineSliceDefs` kind of named
-   entries (an image's bundle path, an optional rect, borders, `edges`,
-   `centre` and `zoom`); its `NineSliceRon` format (id `nine-slices`,
-   extension `ron`, `TEXT_MAX_BYTES`) in `Formats::register_standard`,
-   refusing a `zoom` of 0 and borders past the rect; a `resolve`
-   against the `ImageTable` after loading (ADR-0019 §5) that gives
-   `NineSlice`s; errors naming the file and the entry; the kind in
-   `the_binary_form_of_every_engine_kind_is_pinned_by_the_pack_version`
-   (`crates/assets/src/pack/tests.rs`), with `VERSION`
-   (`crates/assets/src/pack.rs`) the next number; its row in
-   `docs/formats.md`; Aseprite's slice centres as a second format of
-   the kind once 1123 is done (`AGENTS.md` rule 10); and the `.ui.ron`
-   frame name if 2330 is done.
+8. If `shuyi_assets::nine_slice`'s types came out other than this
+   ticket says, update 2235 (nine-slices in a data file), which reads
+   into them.
 9. Run the gates. If the PR still grows well past about 600 changed
    lines (fixtures and snapshots aside), leave the moves of the
    `draw_box` callers (text box, question, name boxes, profiles) out,
@@ -353,8 +348,8 @@ None.
       2332:** if 2332 is done, the test uses `shuyi_ui::frame::raster`;
       if not, it goes in `crates/cli/src/frame_png/tests.rs` and 2332
       moves it.
-- [ ] The follow-up ticket of step 8 is in `tickets/open/`, and 1127,
-      2722 and 1123 have their lines (2330 too, if it is not done).
+- [ ] 1127, 2722 and 1123 have their lines (2330 too, if it is not
+      done), and 2235 matches the types written here.
 - [ ] `shuyi-assets` and `shuyi-ui` still build for
       `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.

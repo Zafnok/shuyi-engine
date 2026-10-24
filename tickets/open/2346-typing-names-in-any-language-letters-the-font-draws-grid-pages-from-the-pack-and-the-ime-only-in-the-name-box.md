@@ -252,10 +252,9 @@ as `Rows` once 2301 is done.
 - The clipboard and paste: a name box doesn't need them. Chat (1149,
   parked) and the editor (2507, parked) will, when they start.
 - The profiles screen asking the system keyboard (`Ctx::system_keyboard`)
-  when there is one, and checking its answer with the same rules: a
-  follow-up ticket. If none exists when this ticket starts, write it
-  with the `write-ticket` skill (After MVP, not parked, blocked by
-  2346).
+  when there is one, and checking its answer with the same rules: 2380
+  (blocked by this one). It checks a whole name with the rule for one
+  typed character, so keep that rule in one place (`NameRules`).
 - A keyboard drawn by the engine (3012's Out: Steam's keyboard on the
   Deck).
 - A page action or shoulder buttons for the grid: pages turn through
@@ -269,8 +268,9 @@ as `Rows` once 2301 is done.
   (`GridPage::rows` of `LangInfo::name_grid`) to its scan as
   `TextPart::NameGrid`; if not, 2350 adds them. Until then a cell the
   font lacks is left out at run time (In, 3).
-- The mouse and touch on the letter grid: 2405's follow-up for the
-  engine's other widgets.
+- The mouse and touch on the letter grid: 2409, 2405's follow-up for
+  the engine's other widgets. If 2409 is done first, the new pages'
+  cells and the Page cell take the pointer as the other cells do.
 
 ## Implementation steps
 

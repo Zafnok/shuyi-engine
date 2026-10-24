@@ -226,10 +226,13 @@ None.
   already. If 2518 isn't done, 2518 does it (its own clause says so).
 - **The live link, in either order with 2521:** if 2521 is done, add
   `Request::Command { line }` to its link, which runs `Game::command`
-  and answers its reply. If not, 2521 adds it (its own clause says so).
+  (through `App::command` if 2518 is done, so the line is recorded;
+  if not, 2518 moves it there) and answers its reply. If not, 2521
+  adds it (its own clause says so).
 - **Types, in either order with 2907:** if 2907's ADR is done and
   names a description that `ArgKind` should use, follow it. If not,
-  2907's ADR covers `ArgKind` among its consumers.
+  2907's ADR covers `ArgKind` among its consumers, and its PR writes
+  the ticket that moves it if it should.
 - **For the game:** additive. `Screen` gains defaulted methods, and
   with the console `Ctx` gains a field (it has private fields, so no
   game builds it field by field). A game that matches `frame_png::Step` or
@@ -288,9 +291,12 @@ None.
   chosen with Confirm) on pad-only targets, and the system's own
   keyboard (`Ctx::system_keyboard`, done 3003) for the console on a
   Steam Deck. Write a ticket when a debug build there needs it.
-- The log's recent lines (3040) in the console. It shows commands and
-  replies only.
-- Keeping the game running under the console (2367, parked).
+- The log's recent lines in the console, and a way for a screen to
+  read App's lines: 2375, after this ticket (from 3040, done). This
+  ticket's console shows commands and replies only.
+- Keeping the game running under the console: 2367 (parked) lets the
+  console pass time to the screen below (its clause says so). If 2367
+  is done first, do it here as its clause describes.
 - A command in the grid template. 2511 reshapes the templates, and 2512
   budgets their lines. Hello, Grid shows the pattern.
 - Several commands on one line, tab completion, recalling past lines,
@@ -306,8 +312,8 @@ None.
    `contract/session.rs` and `contract/fake.rs`. Then read Hello,
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
-   ADR-0022 §3, and the `input-actions` skill. Check which of 1133,
-   1134, 2518, 2521 and 2907 are done.
+   ADR-0022 §3, and the `input-actions` skill. Check which of 1134,
+   2518, 2521 and 2907 are done.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,
@@ -319,8 +325,9 @@ None.
    `versions.json` line, and update `docs/contract.md`.
 7. Change the `TurnRules` contract line. Add Hello, Grid's `Place` and
    the stage's `place` command, with the tests below.
-8. Do the either-order items whose other ticket is done (MCP, skills,
-   log, session records, live link, types).
+8. Add the MCP `command` tool and the log line. Do the either-order
+   items whose other ticket is done (skills, session records, live
+   link, types).
 9. Count the diff, fixtures, snapshots and the regenerated schemas
    aside.
    - Under about 400 changed lines: add the console (`Ctx::debug_console`,
@@ -333,7 +340,9 @@ None.
    - Otherwise write the console's follow-up ticket (the `write-ticket`
      skill, the next free 23xx number, After MVP, `blocked_by:
      ["2356"]`) with the console's part of this Scope and its tests, and
-     land the rest.
+     land the rest. Point 2367's clause on the console at that ticket,
+     and add it to the `blocked_by` of 2375, which shows the log in
+     the console.
 10. Run the gates.
 
 ## Acceptance criteria

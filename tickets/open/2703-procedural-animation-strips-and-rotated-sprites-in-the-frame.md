@@ -66,7 +66,10 @@ None.
    2018's render card.
 3. Write `BodyView`, `DrawDef` and the default skin.
 4. Draw 2702's test creature at three steps.
-5. Do the 1-bit fill, or write its follow-up ticket.
+5. Do the 1-bit fill: strips in their role's pattern through 3006's
+   `PatternMap` shades, in the fast one-bit renderer and its reference
+   (`shuyi_ui::frame::onebit`), with strips added to their
+   fast-equals-reference proptests.
 
 ## Acceptance criteria
 

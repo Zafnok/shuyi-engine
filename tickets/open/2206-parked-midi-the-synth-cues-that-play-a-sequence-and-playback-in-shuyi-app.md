@@ -28,8 +28,8 @@ completed:
   `start_sound` and `stop_sound`);
 - `shuyi-app` feeding the synth's samples to the audio device.
 
-The Playdate plays MIDI with its SDK's own synth; that belongs to the
-Playdate backend (3010), not here.
+The Playdate plays MIDI with its SDK's own synth; that is 3057
+(parked), after this ticket and the Playdate's audio (3029), not here.
 
 ## Nick input
 
@@ -60,17 +60,29 @@ whether it is what you meant by MIDI sound.
 - **Budgets:** measure the synth's cost with `shuyi bench` (3008) if it
   is done, and record it in the README's cost section. If 3008 isn't
   done, measure with a plain timing test and say so.
-- **A template part** (2501's format, `docs/templates.md`): `music-midi`
-  in `templates/shuyi-default`, when `music` has `midi` picked, adds a
-  short CC0 `.mid` of our own, a cue for it, and the bank line in
-  `shuyi.ron` the README describes (a `shuyi.ron` piece, which `shuyi
-  new` merges).
+  Measure the memory of the largest fixture bank plus the synth too.
+  If `crates/midi`'s `needs` hold a provisional `ram_bytes` (2205
+  writes one, provisional until this ticket measures it), replace it
+  with the measured number and drop "provisional". If they hold none,
+  nothing to do: the README's cost section has the number.
+- **The `shuyi-midi` skill:** if `skills/shuyi-midi/` exists (2205
+  writes it when the skill pack is there), add playback to it: sequence
+  cues, their tempo and mute commands, and `shuyi-app`'s `midi`
+  feature. If not, nothing to do: the skill pack writes it whole.
+- **A template part** (**from 2501, done**): `music-midi` in
+  `templates/shuyi-default/template.ron`, when `music` has `midi`
+  picked, adds a short CC0 `.mid` of our own, a cue for it, and the bank
+  line in `shuyi.ron` the README describes, as a `shuyi.ron` piece that
+  `shuyi new` merges into the base's (`docs/templates.md`). Until the
+  wizard asks the catalog's concerns (2502), `music` is a question of
+  the template's own there, as `perspective` is.
 - **An example**, `examples/midi-music/`: a screen that plays a sequence
   and lets the player change its tempo and mute a track through actions
   (never keys: the `input-actions` skill). It has a Harness test, a
   replay test, and a `frame-png` picture (ADR-0009 §4).
-- **The guides:** if 2004 is done, each direction guide's "modules" list
-  gains MIDI as an option for music.
+- **The guides.** **Either order with 2004:** if 2004 is done, each
+  direction guide's "modules" list gains MIDI as an option for music;
+  if not, nothing to do (2004 adds it when it writes the guides).
 
 **Either order:**
 - **2343** (ducking): if it is done, a rule that lowers `music` lowers a
@@ -78,7 +90,8 @@ whether it is what you meant by MIDI sound.
   if not, nothing here, since 2343 multiplies into those same gains.
 
 **Out (do not do):**
-- the Playdate's MIDI (3010 decides it when it is worked);
+- the Playdate's MIDI through its SDK's synth (3057, parked, which
+  this ticket unblocks);
 - MIDI devices in or out;
 - effects beyond what `rustysynth` gives (reverb, chorus);
 - a music editor.

@@ -196,7 +196,7 @@ None.
     `cargo shuyi check-keys` report nothing;
   - if 2527 is done, `shuyi soak` over 20 seeds passes.
 - **CI and Pages,** either order with the other examples (2736, 2737,
-  2738, 2739):
+  2738, 2739 and 2740):
   - if the `wasm` job of `.github/workflows/ci.yml` and
     `.github/workflows/pages.yml` still name each example by hand
     (today `examples/hello-grid` alone), change both to a loop over
@@ -246,8 +246,9 @@ None.
   task to 2524's scope in this PR.
 
 **Out (do not do):**
-- saving a run halfway, daily seeds (they need the date from the
-  platform), and a seed the player types: follow-ups if a game asks;
+- saving a run halfway: 2768's run save (parked), removed when the run
+  ends; daily seeds (they need the date from the platform) and a seed
+  the player types: follow-ups if a game asks;
 - a high-score table of runs (3054, parked);
 - more floors, foes or things than listed, an inventory, classes, shops;
 - a sprite skin: the glyph skin only;
@@ -260,7 +261,9 @@ None.
 - If the PR passes about 600 changed lines without fixtures and
   snapshots, move the template part and the eval task to one follow-up
   ticket, parked with this one and blocked by it (the `write-ticket`
-  skill). Their acceptance line moves with them. Say so in the PR.
+  skill). Their acceptance line moves with them. Add the follow-up to
+  the `blocked_by` of 2768, which grows the `kind-roguelike` part. Say
+  so in the PR.
 
 ## Implementation steps
 

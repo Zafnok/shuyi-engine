@@ -77,6 +77,12 @@ None.
 - **The economy:** idle workers go to the nearest seen resource; workers
   are produced up to a target per resource node; army units are
   produced to the plan; a rally point is set at the base.
+- **Its own economy, through `TeamView` only** (2713's rule for
+  `ai/`): the considerations, build-order conditions and the economy
+  read the player's own stock, supply (used, cap) and buildings'
+  production queues (2733) from its `TeamView`, never from `RtsSim`.
+  If `TeamView` doesn't offer them when this ticket starts, add them to
+  it here, for its own player only, never another's.
 - **Scouting:** a cheap unit is sent to the unseen or oldest-explored
   cell with the highest value guess, every N steps.
 - **`*.commander.ron`:** name, the goals' considerations and weights,

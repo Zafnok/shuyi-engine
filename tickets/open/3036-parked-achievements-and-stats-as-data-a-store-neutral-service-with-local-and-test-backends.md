@@ -107,9 +107,11 @@ picks, and each becomes a ticket of its own when a game ships there.
     or 1144, whichever is done first. `shuyi-net` and a game's own Steam
     code take its handle and never start Steam;
   - the services, by name: achievements and stats (this ticket; Steam's
-    in 3037), leaderboards (3054; 1148's server is another backend),
-    presence (3055), and invites into a Steam lobby (1144). Cloud saves
-    are not a member: they are `Storage` (3037's `SteamStorage`).
+    in 3037), leaderboards (3054; 1148's server is another backend) and
+    presence (3055). Invites into a Steam lobby are not a member: they
+    are `shuyi-net` session events (1144) that take the `steam` module's
+    handle. Nor are cloud saves: they are `Storage` (3037's
+    `SteamStorage`).
     Identity and sign-in, entitlements and DLC, and workshop items are
     named only, each a ticket when a game ships on a store that needs it;
   - stores: ADR-0006 §5 allows no proprietary SDK except Steam's. Any
@@ -172,8 +174,9 @@ picks, and each becomes a ticket of its own when a game ships there.
   service's notice (3054's "new best") reuses it.
 - **An achievements screen**, an engine screen like options and
   profiles: the list, unlocked or not, progress, and hidden ones as
-  "hidden" until unlocked. It describes itself for screen readers if
-  2322 is done.
+  "hidden" until unlocked. **Either order with 2322:** if 2322 is done,
+  it describes itself for screen readers (`Screen::describe`); if not,
+  2322 describes it.
 - **The toy game** has two achievements, one with progress, and its
   tests unlock both.
 
@@ -217,7 +220,8 @@ picks, and each becomes a ticket of its own when a game ships there.
    screen, with snapshot tests. If the PR would pass about 600 changed
    lines (fixtures and snapshots aside), keep everything else here and
    move the notice and the screen to a new parked ticket (`write-ticket`
-   skill) blocked by this one and by 2367.
+   skill) blocked by this one and by 2367, and add that ticket to
+   3054's `blocked_by` (its "new best" reuses the notice).
 7. Add the toy game's achievements.
 8. Run the gates.
 

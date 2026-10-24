@@ -61,8 +61,9 @@ What Shuyi has today:
 - [ADR-0004](../../docs/adr/0004-assets-standard-files-in-the-engines-own-data-out-and-a-deterministic-movement-kit.md)
   §6 promised that positional sound, "pan and volume from the distance
   to the camera", is added to the cue request when a tick example needs
-  it. No ticket carries it. 3030 lists "panning by position" under Out,
-  to be written as a ticket when a game asks.
+  it. No other ticket carries it: 3030's mixer gives each voice a left
+  and a right volume (`Params::balance`) and leaves panning by position
+  to this ticket.
 
 Planned around it:
 
@@ -76,8 +77,8 @@ Planned around it:
   hands out;
 - 2218 (After MVP): writers of the engine's text formats, the audio
   manifest's among them;
-- 2010 (done) and 2013 (MVP): a `Breaking:` line on a PR that breaks
-  the API, and the rules for public types that can grow;
+- 2010 and 2013 (both done): a `Breaking:` line on a PR that breaks
+  the API, and ADR-0039's rules for public types that can grow;
 - 3029 (After MVP): the player's rules shared by every backend, and the
   Playdate's audio, whose SDK sample player has a left and a right
   volume;
@@ -166,11 +167,12 @@ None.
     away. The check matches what is allowed and reports the rest with
     `_`, so it compiles whether or not `Ease` and `Family` are
     `#[non_exhaustive]`;
-  - the `SoundCue` literals outside the check
-    (`crates/app/src/audio.rs` tests, `crates/assets/src/credits.rs`
-    tests, `crates/ui/src/toy.rs`, `examples/hello-grid/src/sound.rs`)
-    get `falloff: None`. If 2345 is done, they are built with its
-    `SoundCue::new`, which leaves `falloff` at `None`;
+  - **From 2024 (done):** callers outside `crates/assets` build a
+    `SoundCue` with `SoundCue::new` (a `const fn`; the type is
+    `#[non_exhaustive]`): `new` sets `falloff: None` and stays `const`.
+    The other literals outside `Check::sound` are tests in
+    `crates/assets` (the test of `new` in `audio.rs`, and
+    `credits.rs`): they get `falloff: None`;
   - the manifest's binary form changes, so `pack::VERSION`
     (`crates/assets/src/pack.rs`) becomes the next number and the
     pinned snapshot in `crates/assets/src/pack/tests.rs` is accepted
@@ -232,7 +234,22 @@ None.
   - the `Macroquad` device can't pan (quad-snd has no pan);
   - if 3029 is done, its Playdate backend can pan: it sets the sample
     player's left and right volumes from `pan_gains`, tested with
-    3029's fake SDK.
+    3029's fake SDK;
+  - **either order with 3027 (parked, GBA audio):** if 3027 is done,
+    its GBA backend can pan too: each mixer voice's pan comes from
+    `pan_gains`, tested with 3027's host mixer. If not, 3027 fills in
+    the pan when it lands, as its own clause says;
+  - **either order with 3031 (parked, in-house sound):** if 3031 is
+    done, its `in-house-sound` backend can pan too: it starts each
+    voice with 3030's `Params::balance` set from `pan_gains` divided by
+    16 (1/65536 to 1/4096), with a test on 3031's null output that a
+    full-right pan sounds only on the right. If not, 3031 does it, as
+    its own clause says;
+  - **either order with 3017 (parked, target capabilities):** if 3017
+    is done, add `Pan` to the audio `features` of each profile whose
+    backend now pans (`targets/playdate.ron` if 3029 is done,
+    `targets/gba.ron` if 3027 is done). If not, nothing to do: 3017
+    fills each profile's `features` from what its backend plays.
 - **Listeners:**
   - `grid::Camera::listener(&self, view: (i32, i32), units_per_tile:
     i32) -> Listener` (`crates/ui/src/grid/camera.rs`): `at` is the
@@ -290,11 +307,11 @@ None.
 - stereo on quad-snd, or replacing it (2902, 3030–3032). The mixer's
   per-voice left and right volumes are 3030's;
 - music and voices by position: they stay centred;
-- showing where a sound came from, in captions (whichever of 2366 and
-  this ticket lands second writes that ticket) or in the debug view
-  (2315's channels);
+- showing where a sound came from, in captions (2381, blocked
+  by 2366 and this ticket) or in the debug view (2315's channels);
 - volumes by group (2342): a positional gain only multiplies with them;
-- the cue rules themselves (2345): copy caps, gaps and priority.
+- the cue rules themselves: gaps (2345), copy caps and priority
+  (2378).
 
 ## Implementation steps
 
@@ -302,11 +319,11 @@ None.
    in `crates/ui/src/game.rs`, `crates/assets/src/audio.rs`,
    `crates/assets/src/pack/tests.rs`, `crates/platform/src/audio.rs`,
    the player (`crates/app/src/audio.rs`, or where 3029 moved it),
-   `crates/ui/tests/it/audio.rs` and 2109's `shuyi_core::ease`. If they
-   are done, read 2013's ADR, 2345's `Cues`, 2218's `AudioManifestRon`
-   writer and 1120's `Camera`.
-2. Add `Falloff` to the manifest with its checks and tests. Update the
-   `SoundCue` literals, `docs/formats.md`, the pack tests' cue,
+   `crates/ui/tests/it/audio.rs`, 2109's `shuyi_core::ease` and
+   ADR-0039 (2013's). If they are done, read 2345's `Cues`, 2218's
+   `AudioManifestRon` writer and 1120's `Camera`.
+2. Add `Falloff` to the manifest with its checks and tests. Update
+   `SoundCue::new` and literals, `docs/formats.md`, the pack tests' cue,
    `pack::VERSION` and its snapshot, and 2218's writer if 2218 is done.
 3. Write `spatial.rs`: the types, `spatial_mix`, `pan_gains` and
    `SoundAt::tile`, with the unit, property and exhaustive tests.
@@ -316,7 +333,9 @@ None.
    Harness test.
 5. Add `pan` to `SoundRequest::Sound`, and to 2345's `Cues` if it is
    done. Then add it to the player's backend with `can_pan` and the
-   warning, and to the Playdate backend if 3029 is done.
+   warning, to the Playdate backend if 3029 is done, to the GBA's if
+   3027 is done and to the in-house one if 3031 is done, and `Pan` to
+   their profiles if 3017 is done.
 6. Add the grid listener, and 1120's if 1120 is done.
 7. Add `volume` and `pan` to the contract's `Sound`, raise `VERSION`,
    regenerate the schemas and update `docs/contract.md`.
@@ -365,6 +384,9 @@ None.
       `SoundRequest::Sound`, and a sound past `silent` starts no gap.
 - [ ] If 3029 is done: the Playdate backend's fake SDK gets the left and
       right volumes `pan_gains` gives.
+- [ ] If 3027 or 3031 is done: its backend gets the balance
+      `pan_gains` gives, and a full-right pan sounds only on the right.
+      If 3017 is done: each profile whose backend pans lists `Pan`.
 - [ ] `shuyi-ui` and `shuyi-assets` still build for
       `thumbv7em-none-eabihf`.
 - [ ] All gates in the `run-gates` skill pass.

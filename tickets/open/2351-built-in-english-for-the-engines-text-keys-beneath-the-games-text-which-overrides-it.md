@@ -58,7 +58,7 @@ Shuyi today (checked 2026-10-21):
 - Each engine ticket that adds a row puts its English in two files
   (2321, 2333). The tickets that add engine keys have an either-order
   clause with this ticket: 2340, 2342, 2346, 2349 and 3043, and the
-  parked 2366, 2408 and 3054. So do 2226, 2353 and 2511.
+  parked 2366, 2404, 2408 and 3054. So do 2226, 2353 and 2511.
 
 Why it matters:
 
@@ -166,12 +166,22 @@ None.
   - **2348** (plurals in text): if it is done,
     `profile.message.too_many` uses its plural form; if not, 2348
     changes it with the rest.
-  - **2321, 2333, 2340, 2342, 2346, 2349 and 3043** (each adds engine
-    keys): any done first put its English in the toy's `en.ron`, and
-    some in hello-grid's too. This PR moves those keys into the
-    engine's file with the rest, and hello-grid drops the ones whose
-    words equal the engine's. Any done after puts its English straight
-    in the engine's file.
+  - **3047** (parked, crash reports; adds four engine keys:
+    `options.row.crash_reports`, `options.value.ask`,
+    `options.value.always`, `options.value.never`): if it is done, they
+    are in the toy's `en.ron`, and this PR moves them into the engine's
+    file with the rest. If not, nothing to do (3047 puts them straight
+    in the engine's file).
+  - **2321, 2333, 2340, 2342, 2346, 2349 and 3043, and the parked
+    2323** (each adds engine keys): any done first put its English in
+    the toy's `en.ron`, and some in hello-grid's too. This PR moves
+    those keys into the engine's file with the rest, and hello-grid
+    drops the ones whose words equal the engine's. Any done after puts
+    its English straight in the engine's file.
+  - **2404** (parked: hold or toggle, and the input timings set by the
+    player) adds engine keys too: if it is done first, its rows' keys
+    are in the toy's `en.ron`, and this PR moves them with the rest; if
+    not, nothing to do (2404 puts them straight in the engine's file).
   - **2353** (a pseudo-language): if it is done, a test builds a `Lang`
     with `with_engine_english` and then `with_pseudo`, and the pseudo
     pack has an entry for an engine-only key; `with_pseudo`'s doc says
@@ -191,6 +201,10 @@ None.
     `Part::Engine`.
   - **2802** (the book): if it is done, chapter 2 gets a paragraph on
     the engine's words and on overriding one; if not, 2802 writes it.
+  - **2227** (parked, PO files): if it is done, `write_po` writes a
+    key whose English is the engine's (`Lang::is_engine`) with
+    `#: engine` in place of the game's `ui.ron`; if not, nothing to do
+    (2227's clause does it).
 
 **Out (do not do):**
 - The engine's words in other languages (2352, parked).

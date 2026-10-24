@@ -68,6 +68,13 @@ and says whether it is easy enough.
   - one Atom feed for all of News, and one per tag.
   - drafts build with `zola serve` and never on Pages (`zola build`
     leaves them out).
+- **Either order with 2804:** 2804's generated posts (a release, or a
+  month before the first tag) have a `description` and the `release`
+  tag, and no `extra.author`, so the list and the post page show no
+  author for a post without one. If 2804 is done, extend the plain
+  News list it wrote and keep the `tags` taxonomy it declared. If not,
+  declare `tags` (with a feed per tag) here, and 2804's PR makes its
+  posts fit this list.
 - **`site/content/news/_template.md`**, the file to copy, with each
   field explained in a comment.
 - **A "How to post" page** for Nick (`site/README.md` and a page under

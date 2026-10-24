@@ -42,14 +42,15 @@ What Shuyi has today:
   builds Hello, Grid for the web as a PR artifact, and `pages.yml`
   publishes it. Nothing else is published.
 - **Exporters.** 3004 builds `shuyi export <target>` for `windows`,
-  `linux`, `macos` and `web`. It exports the examples as 7-day PR
-  artifacts, and builds Linux and macOS in CI only. Its Out list has
-  signing and store uploads.
+  `linux`, `linux-arm64` (on GitHub's `ubuntu-24.04-arm` runner),
+  `macos` and `web`. It exports the examples as 7-day PR artifacts,
+  and builds Linux and macOS in CI only. Its Out list has signing and
+  store uploads.
 - **More packages.** 3012 adds a `steam-deck` package built in the
   Steam Linux Runtime container. 3010 adds a Playdate `.pdx`, built in
   CI only if the SDK's license allows.
 - **CI per target.** 2504 gives a game made by the wizard a CI job per
-  picked target, on PRs. It waits for 2502.
+  picked target, on PRs. It is blocked by 2502, the wizard.
 - **Releases.** 2005 publishes the engine's crates to crates.io from a
   `vX.Y.Z` tag.
 - **Workflow checks (MVP).** 2011 runs zizmor over the root and both
@@ -98,16 +99,20 @@ if 2005 has moved it.
   `crates/cli/src/project.rs`) and answers an `ExportPlan`:
   - `version`: the version the packages carry, the one 3004's
     `export-report.json` writes (if 3048 is done, that is `shuyi.ron`'s
-    app version);
+    `app.version` when the part sets one; if not, 3048 makes it so);
   - `prerelease`: whether the version has a pre-release part
     (`1.2.0-beta.1`);
   - `exports`: one `PlannedExport { exporter, profile, host, container,
     ci, why }` per exporter of each target. Targets come in the map's
     order (sorted by id), and a profile's exporters in the order they
     are registered. The `desktop` profile (`targets/desktop.ron`) gives
-    `windows`, `linux` and `macos`, and `web` gives `web`;
-  - `host` is `linux`, `windows` or `macos`, the system the exporter
-    builds on in CI. `container` is an image to build in, or none. `ci`
+    `windows`, `linux`, `linux-arm64` and `macos`, and `web` gives
+    `web`. If 3004's step 8 moved `linux-arm64` to a follow-up ticket
+    that isn't done, that ticket fills its `host()`, `container()` and
+    `ci()` when it lands;
+  - `host` is `linux`, `linux-arm64`, `windows` or `macos`, the runner
+    the exporter builds on in CI. `linux-arm64` builds on Arm, as
+    3004's CI does. `container` is an image to build in, or none. `ci`
     is `build` or `check-only`, and `why` says why for `check-only`;
   - a target with no registered exporter (a `Planned` profile such as
     `switch`, or `steam-deck` before 3012) is a `limits` entry that
@@ -118,18 +123,19 @@ if 2005 has moved it.
 
   The `Exporter` trait (3004) gains `host()`, `container()` and `ci()`,
   and every registered exporter fills them. The plan needs the profile
-  each exporter checks (3004's edit: `windows`, `linux` and `macos`
-  check `desktop`). If 3004's trait has no method that says so, add
-  `profile()` beside the three.
+  each exporter checks (3004's edit: `windows`, `linux`, `linux-arm64`
+  and `macos` check `desktop`). If 3004's trait has no method that says
+  so, add `profile()` beside the three.
 - **The per-target job.** Each template gets
   `.github/workflows/export.yml`, a reusable workflow
   (`on: workflow_call`, as the engine's `changes.yml` is). Its inputs
   are `target`, `host`, `container` and `dir` (default `.`):
   - it runs on the runner for `host` (`ubuntu-latest`,
-    `windows-latest`, `macos-latest`), in `container` when it isn't
-    empty, with the setup 3004's CI job uses for that exporter: on
-    Linux `bash scripts/setup-linux.sh` (2513), and on Windows the
-    MSYS2 mingw-w64 linker the template's `.cargo/config.toml` names;
+    `ubuntu-24.04-arm`, `windows-latest`, `macos-latest`), in
+    `container` when it isn't empty, with the setup 3004's CI job uses
+    for that exporter: on Linux `bash scripts/setup-linux.sh` (2513),
+    and on Windows the MSYS2 mingw-w64 linker the template's
+    `.cargo/config.toml` names;
   - it runs `cargo fetch --locked`, then `cargo shuyi export <target>
     --release` in `dir`;
   - a package that is a folder is made into one file on its own runner
@@ -148,9 +154,13 @@ if 2005 has moved it.
      (its `on:` gains `workflow_call:`);
   2. `plan`: on Linux after the same setup as `ci.yml`, `cargo shuyi
      export --plan --tag "$TAG" --json` (no `--tag` on a dry run). The
-     `build` entries, read with `jq`, are the job's `matrix` output. The
-     job fails with a plain message when there are none. The
-     `check-only` entries and the limits go in the step summary;
+     `build` entries, read with `jq`, are the job's `matrix` output. In
+     a private repository `jq` also drops `linux-arm64`, since 3004's
+     `ubuntu-24.04-arm` runner is free for public repositories (check
+     on the day whether a private one gets it free too, and keep the
+     entry if so). The job fails with a plain message when no entry is
+     left. The `check-only` entries, a dropped entry and the limits go
+     in the step summary;
   3. `export`: the matrix (`fromJSON` of that output) over
      `export.yml`, after `gates` and `plan`;
   4. `release`, on tags only. It needs no checkout: `gh` works on
@@ -237,11 +247,14 @@ if 2005 has moved it.
     project only in a folder with both `.git` and `.github/workflows`,
     and it reads `./.github/workflows/…` calls from that project. The
     job's container has no `git` (2513), so it installs it
-    (`apt-get install -y --no-install-recommends git`) and runs `git
-    init -q` in the made game first.
-  - zizmor needs nothing new: 2011's job already reads `templates/blank`
-    and `templates/grid`, and the root's `.github/workflows/`. Fix what
-    it reports on the new files.
+    (`apt-get install -y --no-install-recommends git`; none is needed
+    if `git` is a row of 2513's table by then, since the script installs
+    it) and runs `git init -q` in the made game first.
+  - zizmor needs nothing new: 2011's job reads `.`, and zizmor takes in
+    every `.github/workflows` folder under it, the root's and the
+    templates' wherever they live. Don't add the templates as inputs
+    (2011 found that reports each finding twice). Fix what it reports
+    on the new files.
   - It runs `cargo shuyi export --plan --tag v0.1.0 --json`, which must
     pass (the templates' version is 0.1.0), and `--tag v9.9.9`, which
     must fail.
@@ -255,9 +268,10 @@ if 2005 has moved it.
     every engine PR runs the file a game's release runs.
 - **Docs:**
   - each template's `README.md` gets a "Releasing" section:
-    - set the version (`[workspace.package]` in `Cargo.toml`, or the
-      `app` part of `shuyi.ron` if 3048 is done), commit, run `git tag
-      -a vX.Y.Z -m "<notes>"`, and push the tag;
+    - set the version (`[workspace.package]` in `Cargo.toml`, or
+      `app.version` in `shuyi.ron` when the game sets it, if 3048 is
+      done; if not, 3048 adds that when it lands), commit, run
+      `git tag -a vX.Y.Z -m "<notes>"`, and push the tag;
     - a dry run from the Actions tab;
     - the itch.io variable and secret, and that the web channel is set
       to "playable in the browser" once, on the itch.io page;
@@ -297,8 +311,10 @@ if 2005 has moved it.
 
     If not, each fills them (their scopes say so).
   - **3051** (parked: signing). If it is done, its opt-in signing step
-    (`SHUYI_SIGN`, its signing page) goes into `release.yml`. If not,
-    3051 adds it, as its scope says.
+    (`SHUYI_SIGN`) goes into `release.yml` and `export.yml`, and the
+    README's and `AGENTS.md`'s "Releasing" sections say signing is
+    opt-in and link its `docs/signing.md`. If not, 3051 adds both, as
+    its scope says.
   - **1134** (the skill pack). If it is done, `shuyi-ship` teaches the
     release: `export --plan`, the tag, the dry run and itch.io. If not,
     1134 adds it (its scope says so).
@@ -362,8 +378,9 @@ ticket (the `write-ticket` skill) and say so in the completion notes.
 ## Acceptance criteria
 
 - [ ] `cargo shuyi export --plan --json` on a game whose `shuyi.ron`
-      lists `desktop` and `web` lists `windows`, `linux`, `macos` and
-      `web`, in that order, each with its host and `ci`.
+      lists `desktop` and `web` lists `windows`, `linux`, `linux-arm64`
+      (once registered) and `macos`, in the order they are registered,
+      then `web`, each with its host and `ci`.
 - [ ] `--tag v0.1.0` passes on a game at version 0.1.0. `--tag v0.1.1`
       and `--tag 0.1.0` fail, each naming the tag and the version.
 - [ ] A target with no exporter is a `limits` entry naming the target,

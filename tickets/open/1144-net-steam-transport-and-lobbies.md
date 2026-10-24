@@ -68,8 +68,12 @@ for the manual test (the invite and the join from the friends list).
     `shuyi-app`, the platform backend (`AGENTS.md` rule 5), and handed
     in as the launch join token (1145).
 
-  **Either order with 1145:** if 1145 isn't done, map them onto the
-  interim session API's join by id, and 1145 moves them to `JoinToken`.
+  **Either order with 1145:** if 1145 is done, use its `JoinToken`,
+  `JoinRequested`, launch join token and lobby screen as above. If not,
+  map the joins onto the relay's interim session API's join by id, and
+  the toy lockstep game's screen opens the invite dialog on an action
+  of its own; 1145 then moves the joins onto its API and the dialog
+  onto its lobby screen (1145's clause on this ticket says so).
 - **The Steam client. Either order with 3037:** if 3037 is done, its
   `steam` module in `shuyi-app` starts Steam and pumps its callbacks,
   and this ticket takes the handle it gives. If not, write that module
@@ -89,6 +93,14 @@ for the manual test (the invite and the join from the friends list).
 - Check the GNU link, unless 3037 did. If it fails, the `steam` feature
   builds on the CI MSVC runners only. Document this in `AGENTS.md`'s
   *Environment*, and never require MSVC locally.
+- **Either order with 1148:** if 1148 is done and its completion notes
+  say its accounts are device ids only, add the Steam auth ticket: the
+  client asks for it through the handle, and `shuyi-services` checks it
+  with Steam. If not, nothing to do (1148 does it).
+- **Either order with 1149:** if 1149 is done and its completion notes
+  say its chat filter is `rustrict` alone, use Steam's text filter
+  instead when the `steam` feature is on and Steam runs, asked through
+  the handle. If not, nothing to do (1149 does it).
 - A manual test: two machines on two accounts play the toy lockstep game
   through a lobby.
 

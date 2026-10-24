@@ -229,11 +229,11 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   String>` (`crates/cli/src/game.rs`, after `bots`), defaulting to
   `unsupported("soak", "soak")`. `Fake` (`contract/fake.rs`) gets a
   `soak` field.
-- `Op::Soak` (`soak`): in `Op::ALL` (`crates/cli/src/contract.rs:80`),
+- `Op::Soak` (`soak`): in `Op::ALL` (`crates/cli/src/contract.rs`),
   `Op::name`, `schemas()` (`soak.input.json`, `soak.output.json`),
   `cli::runs_the_game` and `cli::with_game` (`contract/cli.rs`, and the
   list of ops in its test of `runs_the_game`), the usage in
-  `crates/cli/src/lib.rs` (beside `bots`, line 55), and
+  `crates/cli/src/lib.rs` (beside `bots`), and
   `docs/contract.md`'s two tables. `contract::VERSION` goes up by one,
   with its line in `crates/cli/schemas/versions.json`.
 - The other places that list the ops gain `soak`: the table in
@@ -291,6 +291,12 @@ section (soak in CI; a shrunk record turned into a regression test with
 when a save or a replay misbehaves, since `replay` can't see state the
 serde form leaves out. If 1134 isn't done, 1134 adds them when it lands.
 
+**Either order with 2755 (parked):** if 2755 is done, soak its crawler
+example (`examples/crawler`) as its Scope says: the example's tools
+implement `soak` over `soak::play` with the explorer bot (random bots
+never map a floor), and CI soaks it for 1000 runs. If not, nothing to
+do: 2755 adds the example's soak when it lands.
+
 **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program). `soak` runs the game.
 
 **Problem codes (2509):** `soak`'s refused arguments take `SH0001`,
@@ -298,18 +304,20 @@ the game's errors `SH3001` or `SH3002` through the same helpers as
 `bots`, and a record `--save` can't write `SH3004`. A failure the soak
 finds is a verdict (`ok: false`), not an error, and gets no code.
 
-**The public API.** `Op` gains a variant, and `Op::ALL`'s type changes
-from `[Op; 9]` to `[Op; 10]`. If 2010's job reports a break (a new
-variant is one unless `Op` is `#[non_exhaustive]`), the PR has its
-`Breaking:` line. A new `GameTools` method with a default breaks no
+**The public API.** `Op` gains a variant, and `Op::ALL` grows by one
+(`[Op; 15]` today, `crates/cli/src/contract.rs`; count again when this
+lands, since other ops may land first and 2544 removes `bots`). `Op` is
+exhaustive, so CI's `api` job (2010) reports a break, as it did for
+2003's `Modules` and `Add`: the PR has its `Breaking:` line. A new
+`GameTools` method with a default breaks no
 game's tools. Follow ADR-0039 for every new public type: `SoakInput` as an
 input with a `Default`, `Check` and `Verdict` as enums that may grow,
 and `Checks`, `Failure` and `Shrunk`.
 
 **Out (do not do):**
-- tick sims: 1119 (parked) gets an Out line for the same check over a
-  `TickSim`, written as a follow-up when it lands;
-- command sims: 2706 (parked) gets the same line;
+- tick sims: 1119 (parked) has an Out line for the same check over a
+  `TickSim`, which 2549 (parked) does;
+- command sims (2706): the same check over a `CommandSim` is 2772's;
 - desyncs between several peers (1140, 2529);
 - the same records on several platforms (2116);
 - fuzzing the formats and the pack (2020);
@@ -332,7 +340,7 @@ and `Checks`, `Failure` and `Shrunk`.
 
 1. Read `turn.rs`, `bots.rs`, `history.rs` and `hash.rs` in the core,
    and `replay.rs` and `bots.rs` in `crates/cli/src/contract/`, for the
-   house style. If 2112 is done, read `search.rs` too.
+   house style, and `crates/core/src/search.rs` if it exists.
 2. Write `soak.rs`: `Codec`, `Checks`, `Check`, `Failure`, `Verdict`,
    `Shrunk`, and one private `Run` holding A, B, the hashes so far and
    the previous legal list, with `step(command)` and `finish()`. Then
@@ -362,10 +370,12 @@ That is near one PR's 600 lines, so measure after step 3: if the core
 and its tests already pass about 350 lines, the whole won't fit. Then
 stop there and keep the core here (the acceptance criteria on fixture
 games, shrinking and `no_std`). Write a follow-up ticket in this PR for
-steps 4 to 6, with the other acceptance criteria and the either-order
-parts with 1133, 1134 and 2509. In the same PR, point the tickets that
-name 2527 for the op at the follow-up: 2509's either-order clause,
-1134's, and the `shuyi soak` lines of 2735, 2736 and 2737.
+steps 4 to 6, with the other acceptance criteria, the **MCP** and
+**Problem codes** paragraphs above (1133 and 2509 are done, so they are
+plain scope there), and the either-order parts with 1134, 2544 and
+2755. In the same PR, point the tickets that name 2527 for the op at
+the follow-up: 1134's soak clause, 2544's lines on the soak, and the
+`shuyi soak` lines of 2735, 2736, 2737 and 2755.
 
 ## Acceptance criteria
 

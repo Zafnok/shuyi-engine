@@ -65,7 +65,7 @@ from 1121 …); the real-time half stays parked". This ticket is that
 half. Related: 2333 (scale modes: the placement whose inverse maps the
 mouse), 2355 (focus between widgets), 2354 (a grid cursor), 3042 (held
 input let go on focus loss), 2518 (session records), 2407 (parked:
-on-screen controls and gestures on phones' browsers, blocked by this),
+on-screen controls and swipes on phones' browsers, blocked by this),
 3053 (platform facts at run time), 3044 (the system cursor).
 
 **Why it matters.**
@@ -191,6 +191,11 @@ MVP, not parked.
      the hits before it draws the top screen. So only the screen that
      gets the input has hit areas, and a click outside an overlay never
      reaches the screen below it, even when both menus have key 0.
+   - **Either order with 2367 (parked):** if 2367 is done, the hits
+     kept are those of the top running screen that takes input: a
+     `Passes::Everything` screen records none, so a click on a menu
+     under a notice still chooses its row (a unit test). If not,
+     nothing to do (2367 does it).
    - The painter records the hits, not the view. A swapped skin records
      its own geometry, and the views stay plain data with no geometry
      (rule 9). One list serves every reader: the pointer here, and
@@ -269,6 +274,12 @@ MVP, not parked.
      moved. A screen with a `Focus` gives each menu its own key
      (`Menu::keyed`) and calls `Focus::point` before its widgets take
      the pointer. If not, 2355 does it.
+   - **Either order with 2334:** if 2334 is done, its menu's text look
+     (`menu::text::paint`) records the same hits as the glyph look: its
+     box as `Hit::AREA`, then each shown item's row (its pixel
+     rectangle) as the item's index, under the view's `widget` key, with
+     a test that `hit_at` on a row's pixel gives its item. No engine
+     screen draws that look, so no screen changes. If not, 2334 does it.
 7. **Grid maps: the tile under the pointer**
    (`crates/ui/src/grid/layout.rs` and `skin.rs`):
    - `Projection::tile_at(self, corner, tile, px) -> (i32, i32)`, the
@@ -346,10 +357,7 @@ follows it. The rest is additive.
 
 **Out (do not do):**
 - The pointer on the engine's other widgets and screens, and wheel
-  scrolling. This is a follow-up ticket, After MVP like this one; if
-  none exists when this ticket starts, write it first with the
-  `write-ticket` skill (a 24xx id, blocked by 2405), and split it if it
-  passes one PR. It covers:
+  scrolling: 2409 (After MVP, blocked by this one). It covers:
   - `Ask` (`crates/ui/src/widgets/ask.rs`), the options rows, the key
     bindings table and `NameEntry` (2354's grid cursor for the last
     two, if it is done);
@@ -363,16 +371,19 @@ follows it. The rest is additive.
   - `ListCursor::scroll_by(rows, rows_shown, enabled) -> bool` and the
     wheel scrolling a list or a menu: the window moves under
     `Scroll::KeepInView` and the focus follows into it, and under
-    `Scroll::Centred` the focus steps. The options and profiles lists
-    are what scroll today; no engine menu calls `Menu::showing`.
+    `Scroll::Centred` the focus steps. No engine list scrolls today:
+    the options and profiles panels grow to fit their rows, and no
+    engine menu calls `Menu::showing`.
 
   Their painters record hits as item 4 says. This ticket reads the
   wheel into `PointerInput::wheel` so `RawInputEvent` breaks once.
 - Mouse buttons other than the primary, the pointer as a game action,
   stick axes, and the pointer in world pixels in `TickInput`: 1121
   (parked).
-- Gestures (swipe, pinch, long press), several touches at once,
-  on-screen controls and a web-touch target: 2407 (parked).
+- Swipes, several touches at once, on-screen controls and a web-touch
+  target: 2407 (parked). Pinch, long press and other gestures: no
+  ticket plans them (1121 and 2407 leave them out too); write one when
+  a game asks.
 - Drag and drop, and dragging a scroll bar.
 - Moving the focus between widgets: 2355 (either order above).
 - Laying widgets out: 2329. A painter records hits in whatever
@@ -388,6 +399,20 @@ follows it. The rest is additive.
   when an agent needs them.
 - The toy's grid screen (`crates/ui/src/toy/grid.rs`): Hello, Grid
   shows the grid part.
+- **Either order with 2736** (parked, the match-3 example): if 2736 is
+  done, nothing to do: the board is its part 2's, which takes the
+  pointer if this ticket is done first and goes without it if not (no
+  action needs the mouse). If not, nothing to do.
+- **Either order with 2740** (parked, hex grids drawn): if 2740 is
+  done, `Grid::tile_at_px` exists for square and hex maps: item 7 uses
+  it instead of writing it, and gives `Projection::tile_at` the hex
+  case from 2740's picking. If not, nothing to do (2740 gives the
+  picking its hex case).
+- **Either order with 2759** (parked, the inventory grid of shapes): if
+  2759 is done, 2409 covers its grid widget too (2409's clause with
+  2759 says how): a click picks an item up and a click drops it, no
+  drag, through the hit areas its painter records. If not, nothing to
+  do (2759 takes the pointer).
 
 ## Implementation steps
 
@@ -399,9 +424,8 @@ follows it. The rest is additive.
    `crates/app/src/backend.rs`, `keys.rs` and `render.rs`,
    `crates/platform/src/platform.rs`, `harness.rs` and `headless.rs`,
    and Hello, Grid's `screens.rs`, `screens/stage.rs`, `skin.rs` and
-   `tests/it/main.rs`. Check whether 2333, 2355, 3042 and 2518 are
-   done. If the follow-up for the other widgets doesn't exist,
-   write it now (Out).
+   `tests/it/main.rs`. Check whether 2333, 2334, 2355, 3042 and 2518
+   are done.
 2. Write the hit areas and the stack's rule, with their tests.
 3. Add the events, `Pointer`, `PointerInput`, `FrameInput::pointer` and
    the wiring in `Game::step`, with their tests.
@@ -422,7 +446,7 @@ follows it. The rest is additive.
    backend doc.
 9. If the PR would pass about 600 changed lines (fixtures and snapshots
    not counted), Hello, Grid's stage (item 7's stage bullets and their
-   tests) goes to the follow-up, the kit's `tile_at` and its property
+   tests) goes to 2409, the kit's `tile_at` and its property
    test stay, and the PR says so. Run the gates.
 
 ## Acceptance criteria
@@ -457,8 +481,6 @@ follows it. The rest is additive.
 - [ ] The ADR, ADR-0003's note, the skill's rule 8 and
       `docs/platform-backends.md` are written, and the PR names its API
       changes for the game.
-- [ ] The follow-up ticket for the other widgets and wheel scrolling
-      exists in `tickets/open/`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

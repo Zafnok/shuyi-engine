@@ -204,6 +204,11 @@ online)?
     (`Ctx::pad_bindings`), one setup for every pad;
   - a seat holding a half uses `Ctx::keymap_for(half)`;
   - `sync_keymap` refreshes every seat's keymap when `Ctx`'s change.
+  - **either order with 2404 (parked):** if 2404 is done, every seat's
+    `InputState` gets the current profile's `PlayerInput` (toggled
+    actions, repeat and chord window) through `set_player_input`, when
+    the seat fills and when the settings change, as `sync_keymap` does
+    for keymaps. If not, nothing to do (2404 does it).
   Rebinding on the key bindings screen changes them for every seat that
   uses them. `Ctx::device` stays the device pressed last in any seat,
   for shared help text. `Game::input()` stays seat 0's `InputState`, and
@@ -344,7 +349,8 @@ online)?
 - our own pad code and its stable ids (2402, parked): gilrs and the
   browser give stable ids today;
 - a second physical screen (3023): a surface is not a seat;
-- hold or toggle and timings per player (2404);
+- each seat's own hold or toggle and timings: every seat plays with
+  the current profile's (2404, the clause above), as with its bindings;
 - more than 4 seats;
 - turn-based hotseat: it works with `Shared` today.
 

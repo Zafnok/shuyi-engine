@@ -171,10 +171,14 @@ anywhere is 3047's question for Nick.
     `Default` is `CrashReports::new("")`;
   - `AppConfig` gains `crash: CrashReports`. `AppConfig` is
     `#[non_exhaustive]` with `AppConfig::new` (ADR-0039). `crash` is a
-    public field that `AppConfig::new` sets to
-    `CrashReports::default()`, and a game changes it by assigning the
-    field (ADR-0039 gives `with_*` setters only to types games build in
-    `const` items), so the change is additive;
+    public field that `AppConfig::new` sets to `CrashReports::new("")`,
+    and a game changes it by assigning the field (ADR-0039 gives
+    `with_*` setters only to types games build in `const` items), so
+    the change is additive. `AppConfig::new` is a `const fn` (2013) and
+    stays one: dropping `const` is a break the `api` job reports. So
+    `CrashReports::new` and `CrashReports::off` are `const fn` too
+    (`cfg!(target_arch = "wasm32")` picks 1 or 5), and `AppConfig::new`
+    can't call `CrashReports::default()`, a trait method;
   - `crash::install(reports, storage: impl Fn() -> Box<dyn Storage> +
     Send + Sync + 'static)`, which `run` calls before its first frame
     with `|| storage::platform(storage_name)` (making a storage reads
@@ -288,11 +292,18 @@ anywhere is 3047's question for Nick.
     `Setup::last_crash`; how to write `crash_record`; and that a record
     should not hold what a player typed (a name) until Nick answers
     3047. If 3041 is done, it also says that the log files sit beside
-    the reports (`storage::log_dir`), and that a player sends both;
+    the reports (`storage::log_dir`), and that a player sends both; if
+    not, 3041 adds that paragraph (its scope says so);
   - `docs/platform-backends.md`: a *Panics* section that links
     `docs/crash-reports.md`, and a line in the *Checklist for a new
     backend*: "A panic writes a `CrashReport` through the backend's
     storage, or the backend's docs say why it can't."
+  - **Either order with 3012** (the Steam Deck): if 3012 is done,
+    `docs/targets/steam-deck.md` also says that crash reports
+    (`crash-<when>.ron`) land in the data folder it names, and
+    `docs/crash-reports.md` links to that page for the Deck; if not,
+    nothing to do (3012 adds that line and the link, its scope says
+    so).
 - **Either order with 2018:** if it is done, its `render` job also runs
   hello-grid once under `xvfb-run` with `SHUYI_PANIC_AT_FRAME=3` and
   `XDG_DATA_HOME` in a temporary folder, and checks that one
@@ -319,9 +330,8 @@ anywhere is 3047's question for Nick.
 - A notice screen made by the engine: each game words its own.
 - A session record (2518, 2519) in the report: only debug builds record
   sessions, and a session can't be cut to its last minutes (2519's
-  *What "a ring" means here*). Whichever of this ticket and 2519 lands
-  second writes a ticket (the `write-ticket` skill) for a debug build's
-  report that names the session it was recording.
+  *What "a ring" means here*). A debug build's report that names the
+  session it was recording is 3060 (blocked by this ticket and 2519).
 - Reports from the Playdate backend's panic handler (3010) and from the
   GBA and DS backends (parked). The checklist line above says what each
   backend writes.
@@ -334,7 +344,7 @@ anywhere is 3047's question for Nick.
    `crates/app/src/storage/`, `Setup`, `Start` and `App::load` in
    `crates/platform/src/app.rs`, 3040's log, 2511's `BasicGame` and
    `run_game`, and the stage screens and `tools.rs` of hello-grid and the
-   grid template. Check whether 2015, 2018, 2111, 2512, 3041 and 3048
+   grid template. Check whether 2018, 2111, 2512, 3012, 3041 and 3048
    are done.
 2. Write `shuyi_platform::crash`: the report, its keys, `parse`,
    `to_text` and `keep_newest`, with their tests. Add `serde`, `ron`
@@ -394,7 +404,8 @@ anywhere is 3047's question for Nick.
 - Property (`shuyi-platform`, `proptest`): `parse` never panics on any
   text; a report written and read back is equal.
 - Unit (`shuyi-app`): `run_game`'s config sets `crash` from the
-  `BasicGame`'s version.
+  `BasicGame`'s version; `AppConfig::new` is still a `const fn` (a
+  `const fn` in the test calls it).
 - Integration (`shuyi-app`, `crates/app/tests/crash_hook.rs`, one
   `#[test]`, since a hook is global to its process): the hook over a
   shared test storage, two panics in one millisecond, the cap, `quiet`,

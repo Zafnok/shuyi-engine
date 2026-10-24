@@ -252,7 +252,8 @@ None.
   `#[non_exhaustive]` here, as the ADR's *When* says.
 - **Either order with 2220.** If 2220 is done, add a test that a `Hot`
   value of the toy kind reloads when its `.meta` changes. If not,
-  nothing here: the reads go through the bundle, which 2220 tracks.
+  nothing here: the reads go through the bundle, which 2220 tracks,
+  and 2220 adds that test (its clause says so).
 - **Either order with 2516.** If 2516 is done, follow the rule its ADR
   records for its files report: a `<file>.meta` counts as read when its
   file was read, and a `_folder.meta` when any file in its folder or
@@ -278,7 +279,8 @@ After MVP, and the PR says so. `Bake::bake` keeps its check here.
 - Any engine section: each step's ticket registers its own (3007, 3019,
   3025, 2328).
 - `shuyi import` showing the settings a file is read with; sections
-  and their schemas in `shuyi kinds` (2515); settings files in the
+  and their schemas in `shuyi kinds` (2515 leaves them out too: a
+  follow-up when a game asks); settings files in the
   unused-files report past the 2516 clause above (2516's).
 - The templates offering `GameTools::bake`, so `shuyi check` covers
   their settings files: a follow-up when a template bakes.

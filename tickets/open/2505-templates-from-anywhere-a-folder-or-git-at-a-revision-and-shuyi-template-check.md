@@ -33,7 +33,11 @@ None.
 **In:**
 - **`--template <source>`** takes:
   - a short name of the built-in template's answer sets (`grid`,
-    `blank`), as today;
+    `blank`), as today. **From 2501 (done):** short names are data,
+    the `short_names` field of `template.ron` (ADR-0042 §3), so a
+    template from anywhere names its own sets the same way, and
+    `Template::load(dir)` reads a folder (`Template::read` the files of
+    a git checkout);
   - a path to a folder holding `template.ron`;
   - `git+<url>@<rev>`, where `<rev>` is a commit hash or a tag. A
     missing `@<rev>` is an error that says why it is required (the same
@@ -46,7 +50,11 @@ None.
   and 2513 is done, add `git` as a row of its table (`git` for apt, dnf
   and pacman, found by `git --version`) and to every
   `scripts/setup-linux.sh`, so the container's doctor passes. If 2513
-  isn't done, it adds the row (its own clause says so).
+  isn't done, it adds the row (its own clause says so). Either way,
+  2513's workflow test, which fails an `apt-get install` line naming a
+  package of the table, still lets a line before `actions/checkout`
+  install `git` (the script isn't checked out yet), and a line that
+  installs `git` after the script goes, since the script installs it.
 - **Nothing runs.** The loader reads `template.ron` and files, and
   nothing else. A template folder holding `build.rs`, scripts or
   binaries is fine: they are copied as files and run only when the
@@ -79,14 +87,23 @@ None.
   and one `stage-top-down-grid` part, copied from the built-in one, with
   `id`, `name` and `license` set from flags or questions. `shuyi template
   check` passes on it.
+- **Either order with 2552** (`shuyi module new`, the other two-word
+  command): if 2552 is done, name `template new` and `template check`
+  as it named `module new`: the `Op`s, the schema files, the MCP tools,
+  and how `cli.rs` reads a two-word command. If not, this ticket sets
+  the form, and 2552 follows it: `Op::TemplateNew` named
+  `template_new`, its schemas `template_new.input.json` and
+  `template_new.output.json`, its MCP tool `template_new`, and the
+  same for `template check`.
 - **The built-in template passes `shuyi template check --build`** in the
   engine's CI.
 - **`docs/templates.md`** (2501) gets "Writing your own template" and
   "Sharing it": a git repository, the command with `@<rev>`, and what the
   wizard shows users before it writes.
-- **The skill pack:** if 1134 is done, the `shuyi-new-game` skill learns
-  `--template` sources and that it must show the user the source and
-  license before passing `--yes`. If not, add that to 1134's scope.
+- **The skill pack. Either order with 1134:** if 1134 is done, the
+  `shuyi-new-game` skill learns `--template` sources and that it must
+  show the user the source and license before passing `--yes`. If not,
+  nothing to do (1134 writes it, its own clause says so).
 
 **Out (do not do):**
 - a template registry or a search command (ADR-0013 §7);

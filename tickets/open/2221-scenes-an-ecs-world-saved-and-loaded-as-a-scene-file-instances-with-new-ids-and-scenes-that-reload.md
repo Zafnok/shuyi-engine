@@ -76,10 +76,16 @@ None.
   scene doesn't name (a component added at run time stays).
 - **Packs:** the pack format (ADR-0023) bakes scenes, and the equality
   test covers a scene fixture.
-- The book (2802, if done): a chapter on scenes and saves.
+- **Either order with 2802 (the book):** if 2802 is done, its chapter
+  7 (saves and settings) gets a section on scenes: a world saved to a
+  `*.scene.ron` file, loaded back with its ids for a save, and
+  instanced with new ids, with its snippets in `site/snippets/`; if
+  not, 2802 writes that section (its chapter 7 says so).
 
 **Out (do not do):**
-- an editor for scenes (2507, parked);
+- an editor for scenes: the editor research (2506, parked) decides
+  whether one of its panels edits `*.scene.ron` files, and writes its
+  ticket;
 - scenes for the arena of plain structs. That is a follow-up after 1119
   (parked until Visions of Shuyi launches), and only if 2904's ADR calls
   for it. It reads this same file through this same remap. Until then

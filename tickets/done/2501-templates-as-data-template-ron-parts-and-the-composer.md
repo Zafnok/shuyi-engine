@@ -84,8 +84,16 @@ None.
   would overwrite first.
 - **`shuyi new`**, extended:
   - `--answers <file.ron>` and `--set <question>=<answer[,answer]>`;
-  - `--template grid` and `--template blank` stay, as short names for
-    answer sets of the built-in template;
+  - `--template grid` and `--template blank`, short names for answer
+    sets of the built-in template. **From 1129 (done):** `new` takes
+    its template as the first of two positional arguments today
+    (`shuyi new grid <dir>`, `NewInput { template, dir, .. }`), and
+    refuses any other `--` flag. Add `--template <name>` beside a lone
+    `<dir>` (`shuyi new demo --template grid`), and keep `shuyi new
+    <template> <dir>` working. `NewInput`'s schema changes, so bump
+    `contract::VERSION`, with a `Breaking:` line if a field goes.
+    `docs/contract.md` (*The templates*), the README and the MCP `new`
+    tool show the new form in the same PR;
   - the result (ADR-0005) lists the files made, the modules turned on,
     and `limits` (for example "no part for answer X; nothing added").
 - **The built-in template**, `templates/shuyi-default/`, replaces 1129's
@@ -95,12 +103,15 @@ None.
     `shuyi.ron`, `AGENTS.md`, the flow screen and CI with the gates. It
     also carries what these tickets add to 1129's two folders, for each
     one that is done. One that isn't done puts its files in `base`
-    itself, as 2225, 2223, 3048 and 3050 say in their *Either order*
-    clauses (3039 is in the MVP, so it is due first):
+    itself, as 2225, 2223, 2513, 3039, 3048 and 3050 say in their
+    *Either order* clauses:
     - 2225's menu sounds: in `crates/game/files/`, `audio.ron` and
       `sfx/move.sfx.ron`, `sfx/select.sfx.ron`, `sfx/cancel.sfx.ron` and
-      `sfx/cursor.sfx.ron`, with the `sfx` feature on `shuyi-assets` in
-      `crates/game/Cargo.toml` and the sound test in `tests/it/main.rs`.
+      `sfx/cursor.sfx.ron`, with `shuyi-assets` back in the root
+      `Cargo.toml`'s `[workspace.dependencies]` (2003 took it out of the
+      blank template and left `shuyi`, `shuyi-cli` and `include_dir`
+      there), its `sfx` feature on in `crates/game/Cargo.toml`, and the
+      sound test in `tests/it/main.rs`.
       On the short path `BasicData::load` and `run_game` play them, so
       the grid template's `sound_files()` hook goes with its long form;
     - the credits file `crates/game/files/credits.ron` (2223) and
@@ -116,6 +127,16 @@ None.
       `crates/game/src/app_info.rs` (3048), with `{{crate}}` renamed
       `{{crate_name}}` in both, and a test that a composed game passes
       `cargo shuyi app-info --check`;
+    - 2115's bullet under *The layers* in each template's `AGENTS.md`
+      (time a rule in turns or steps with `shuyi_core::timer`, never
+      with `dt`), in the base part's `AGENTS.md` if 2115 is done. If
+      not, nothing to do: 2115 writes it in `base` (its clause says
+      so);
+    - 2513's `scripts/setup-linux.sh` and
+      `.devcontainer/devcontainer.json` (`{{name}}` in the latter). Its
+      tests that keep each copy equal to the engine's read the base
+      part's copies, and CI's `templates` job runs the composed game's
+      script;
   - part `stage-top-down-grid`, when perspective is `top-down-grid`:
     1129's grid screen as a stage, on the short path. Its map, lights
     and seed are `BasicData`'s own part (`BasicGame::with_own`), with
@@ -125,10 +146,34 @@ None.
     `BasicTools` for the rest. The PR gives the composed grid game's
     code count before and after, from `cargo xtask template-lines`
     (2512), or by 2511's counting rule if 2512 isn't done;
+  - **From 2015 (done):** the grid template's rules crate has a fence,
+    and it moves with the part that holds `crates/rules`
+    (`stage-top-down-grid`): `crates/rules/clippy.toml`, the float ban
+    in `crates/rules/src/lib.rs` and `crates/rules/tests/layers.rs`.
+    The rules crate's dependencies (`shuyi-core`, `shuyi-assets`,
+    `serde`), which blank's root `Cargo.toml` lacks, come with the part:
+    the merged `Cargo.toml` takes a part's `[workspace.dependencies]`,
+    or the rules crate names them itself. Grid's `AGENTS.md` sentences
+    on clippy and the layers test (*The layers*) must not be lost when
+    `base` writes `AGENTS.md` (two parts can't write one file): base's
+    *The layers* says that the grid stage's rules crate comes with
+    `crates/rules/clippy.toml` and `crates/rules/tests/layers.rs`, which
+    turn these rules into errors, and that a failure is fixed in the
+    code, never by loosening them. The paths that name
+    `templates/grid/crates/rules/tests/layers.rs` move in the same PR:
+    `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices`
+    (`crates/xtask`), `lint`'s tests in `crates/cli` (2534), the comment
+    on `devices` in `tools/layers.ron` and the device crates' row in
+    `docs/README.md`. CI's steps "The rules crate's fence holds" and
+    "shuyi lint finds what breaks the game's code" keep running on the
+    composed grid game;
   - `blank` is `base` alone;
-  - if the parked 3108 or 3109 have landed with template folders
-    (`first-person`, `third-person`, `top-down-3d`, `hd-2d`), turn each
-    into a part the same way, and keep its name as a short name.
+  - **either order with 3108 and 3109** (parked): if either is done
+    first, it wrote template folders (`first-person`, `third-person`,
+    `top-down-3d`, `hd-2d`). Turn each into a part the same way, keep
+    its name as a short name, and keep 3108's direction menu working
+    over the short names. If not, nothing to do: each writes its
+    templates as parts when it lands (their clauses say so).
 - **Embedded:** the built-in template is embedded in the `shuyi` binary
   (`include_dir`, believed MIT OR Apache-2.0: check its `Cargo.toml`
   and `cargo deny` on the day; or a build step that writes it as
@@ -149,13 +194,46 @@ None.
     drops the grid template's own `with_pseudo` line, since
     `BasicData::load` adds the pack, and keeps its walk test. If not,
     2353 adds the line to `BasicData::load` only (its clause says so).
+  - **1134** (the skill pack): if 1134 is done, the skills `shuyi new`
+    copies into a new game join `compose`'s plan, read from the engine's
+    `skills/` as `new` reads them (not a second copy in the template),
+    so every composed game has them and `new`'s answer lists them. If
+    not, 1134 adds them to the plan (its clause says so).
+  - **2110** (save migrations): if it is done, `base`'s `AGENTS.md`
+    keeps the blank template's "Saves" section, and the grid template's
+    settings fixtures (`crates/game/tests/saves/settings/`), its saves
+    test and its "Saves" text go with its settings file, since the stage
+    takes the `()` settings, which the engine versions and checks. Where
+    the kept text points at the grid template's test, it names
+    `check_saved_forms` instead. If not, 2110 writes the "Saves" section
+    in `base` only (its clause says so).
+  - **2374** (an eight-way choice in the grid template): if it is done,
+    carry the choice it added to `templates/grid` into the grid part. If
+    not, 2374 adds it to the grid part (its clause says so).
+  - **2206** (parked: MIDI playback): if it is done, it has added its
+    `music-midi` part (a `.mid`, a cue and the bank line, when `music`
+    has `midi` picked) to the built-in template's list above; build it
+    with the other parts. If not, nothing to do (2206 writes the part).
+  - **2517** (format upgrades): if 2517 is done, carry its template
+    changes. The grid part's `GameTools` registers `KeymapRon::<Action>`
+    in `importers()` with the `KeymapDef<Action>` kind, beside the map
+    importer, and the base part's `AGENTS.md` keeps the row for
+    `cargo shuyi upgrade` in its table of tools. If not, nothing to do:
+    2517 puts them in the parts (its clause says so).
+  - **2808** (`{{engine.docs}}`): if 2808 is done, the base part's
+    `AGENTS.md` keeps the placeholder, and `compose` fills it from the
+    game's `Engine` as `new`'s `files()` did, with its test. If not,
+    nothing to do: 2808 adds it to the base part and to `compose` (its
+    clause says so).
 
 **Out (do not do):**
 - asking questions, and the catalog's questions (2502);
 - more than one perspective, and moves between stages (2503);
 - targets checks and per-target CI (2504);
 - templates from a path or git, `shuyi template check` and `new` (2505);
-- any hook or script in a template (ADR-0013 §7: never).
+- any hook or script that runs when a game is made (ADR-0013 §7:
+  never). A script the developer runs later, like 2513's
+  `scripts/setup-linux.sh`, is a file like any other.
 
 ## Implementation steps
 
@@ -175,6 +253,11 @@ None.
    the root's. Move the `rust-toolchain` update's `directories` to the
    parts' `rust-toolchain.toml` folders too: 2012's `cargo xtask
    check-toolchain` (rule 5) fails until they name them.
+   No gate checks the paths that name the old folders by a glob, and a
+   search for `templates/grid` misses them: point the
+   `dependency-upkeep` skill's step 3 (`templates/*/Cargo.toml`) and
+   the docs map's pair rows (`docs/README.md`: `templates/*/AGENTS.md`,
+   `templates/*/.github/workflows/`) at the parts' folders.
 5. Point CI's `templates` job (it makes a game from `grid` and from
    `blank` and runs its gates) at the new template.
 6. Write `docs/templates.md` and link it from the README. Settle the
@@ -182,18 +265,23 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new demo --template grid` makes a game that builds and
+- [x] `shuyi new demo --template grid` makes a game that builds and
       passes its tests in CI, as 1129's did.
-- [ ] `shuyi new demo --answers fixtures/answers.ron` makes the same
+- [x] `shuyi new grid <dir>` and `shuyi new blank <dir>` still work,
+      as CI's `templates` job runs them.
+- [x] A game composed with `--template grid` has
+      `crates/rules/clippy.toml`, the float ban and `tests/layers.rs`,
+      its `AGENTS.md` names them, and CI's fence step passes on it.
+- [x] `shuyi new demo --answers fixtures/answers.ron` makes the same
       bytes as the equivalent `--set` flags (a test compares the plans).
-- [ ] Composing the same answers twice gives the same bytes (golden
+- [x] Composing the same answers twice gives the same bytes (golden
       test on the plan's file list and hashes).
-- [ ] Each `Template::load` and `ComposeError` case has a fixture and a
+- [x] Each `Template::load` and `ComposeError` case has a fixture and a
       message naming the file, field or parts.
-- [ ] Two parts writing one unmerged file fail with both parts named.
-- [ ] `shuyi new --json` output matches its schema (1129's schema test).
-- [ ] `docs/templates.md` exists and is linked from the README.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Two parts writing one unmerged file fail with both parts named.
+- [x] `shuyi new --json` output matches its schema (1129's schema test).
+- [x] `docs/templates.md` exists and is linked from the README.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -280,10 +368,28 @@ unchanged, 202); the blank game 75 before, 115 after (the generated
   `Cargo.toml` is a piece of the workspace, not one) and says so; it
   exits 0, and the made games' own clippy covers them.
 
-**Either order:** 2512, 2516, 2353, 2225, 2223, 3048, 3050, 3039 and
-2808 aren't done, so their clauses here fell to them; this PR rewrote
-their clauses (and 2110, 2115, 2117, 2206, 2342, 2513, 2517, 3108,
-2809) for the template as it now is. 3108 and 3109 haven't landed.
+**Either order:** 2512, 2516, 2353, 2225, 2223, 2513, 2115, 3039,
+3048, 3050, 2808, 1134, 2110, 2374, 2206 and 2517 aren't done, so their
+pieces fell to them. 3108 and 3109 haven't landed. Each now says what it
+does as "**From 2501 (done):**" (work-ticket §5, steps 5 and 6), with
+2117, 2342, 2809 and the parked 2551 and 2771 settled too.
+
+**Handed over** (step 6): the template's own `perspective` question and
+the one-stage limit to 2502; the generated `src/stages.rs`, its names
+and lifting the one-stage limit to 2503; `short_names` and
+`Template::read` to 2505; the one-stage limit to 2771; the tool
+program's layers to 2551.
+
+**From 2027 (#99, landed first):** its scope for this ticket is done
+here: `--template` beside the older `new <template> <dir>` (CI's
+long-name step uses the older form); `docs/contract.md`, the README and
+the MCP `new` tool's description show the new form; the grid stage's
+fence moved with `stage-top-down-grid`, and the base part's `AGENTS.md`
+names `crates/rules/clippy.toml` and `crates/rules/tests/layers.rs` (a
+test checks a composed grid game has both, the float ban and those
+names); the paths of the device crates' copy (`tools/layers.ron`, the
+xtask and `lint` tests, the docs map) and the globs the docs map and
+the `dependency-upkeep` skill used now name the parts.
 
 **Docs:** `docs/templates.md` (new), `docs/contract.md`, the README, the
 docs map's rows, the crate doc, the base part's `AGENTS.md` and

@@ -28,9 +28,10 @@ targets they want to support".
 - a target with its own duties brings a part (the Playdate's 1-bit
   patterns and controls check).
 
-2502 asks the targets question with `desktop` and `web` only until 3001
-exists. This ticket widens it to every target profile and adds the
-checks.
+**From 3001 (done):** 2502 asks the targets question from the profiles
+in `targets/`, each answer with its status, and refuses a planned one.
+This ticket gives a planned profile its ticket, fills the manifest, and
+adds the checks, the per-target CI and the target parts.
 
 **Either order with 3017** (parked): if 3017 is done, call its
 `capabilities_fit` as below. If not, skip that check, add a `limits`
@@ -46,18 +47,27 @@ None.
 ## Scope
 
 **In:**
-- **The targets question** lists every profile (3001) with its status.
-  `planned` profiles (`switch`, `android`, `ios`, and `gba`, `nds` and
-  `dsi` once 3017 adds them) are shown with their ticket and can't be
-  picked (ADR-0013 §6).
+- **A planned target's ticket.** 2502's targets question shows a
+  `planned` profile with its ticket and refuses it by flag (ADR-0013
+  §6), but `Status::Planned` holds no ticket (3001). It gains the
+  tickets that add the target, as `Planned(tickets: ["3014"])`: 3014
+  for `switch`, 3015 for `android` and `ios`, and the `gba`, `nds` and
+  `dsi` profiles' too if 3017 is done (if not, 3017 writes them, its
+  clause says so). A bare `Planned` still reads, so a game's own
+  profile keeps loading.
 - **The check**, in the composer, if 3017 is done: for each picked
   target, `capabilities_fit(profile, needs)` over the picked modules'
   `needs` (and the template parts' stage needs, if a part declares any).
   Any problem is `ComposeError::DoesNotFit { target, problems }`, which
   prints 3017's own error text. It runs before anything is written.
   `left_out` entries are printed as warnings.
-- **The manifest:** for each picked target, a `targets` entry with the
-  profile's default frame size and scale (3001).
+- **The manifest:** for each picked target, a `targets` entry `(frame:
+  (w, h), scale: integer | fit, text_px)`. **From 3001 (done):** a
+  profile has no default frame or scale (`display.sizes` is empty for
+  `desktop` and `web`), so the entry takes the template's frame and
+  font cell, as the templates' `desktop` and `web` entries do (384 ×
+  384, `integer`, 16). That frame is taller than the Playdate's 240 px,
+  so `target-playdate` brings its own entry (below).
 - **The new game's CI** (`.github/workflows/ci.yml` in the base part)
   gets a matrix over the picked targets (through 3050's `export.yml`
   and plan if 3050 is done), each running `shuyi check --target <id>`
@@ -82,29 +92,50 @@ None.
   line keeps it for a developer who turns it on. If 3050 isn't done,
   3050's scope says it does this when it lands.
 - **Target parts** in the built-in template:
-  - `target-playdate`, when `playdate` is picked: a palette pattern
-    map with the template's roles (3006), and its check in CI (3002);
+  - **From 3002 and 3038 (done):** the templates' tools offer their
+    controls (`GameTools::controls`), and their keymaps have an empty
+    `targets: {}`. `playdate` and `steam-deck` have no keyboard, so
+    `check --target` fails a game that lists one without a table of
+    buttons for it, and so does the template's
+    `every_screen_declares_its_actions_and_they_fit_every_target`
+    test. Each part below adds its target's table to the keymap's
+    `targets`: `"playdate"` on the d-pad, A (`East`) and B (`West`),
+    and `"steam-deck"` on the pad, with every screen's actions on it;
+  - `target-playdate`, when `playdate` is picked: its `shuyi.ron`
+    entry, with a frame that fits 400 × 240 (or `scale: fit` and a
+    `text_px` that passes), its keymap table, and a pattern map with
+    the template's roles, `files/palette@onebit.ron`. **From 3006
+    (done):** `check --target` checks the map only through
+    `GameTools::one_bit`, which neither template's tools offer yet
+    (grid's `Tools`, `BasicTools`), so the check only says the one-bit
+    patterns aren't checked. The part's tools offer the map, and
+    `frame_one_bit` for `frame-png --target playdate`, as
+    `examples/hello-grid/src/tools.rs` does (`BasicTools` could offer
+    the map when the game's files hold one);
   - `target-steam-deck`, when `steam-deck` is picked: if 3012 is done,
     its export in the matrix; if not, 3012 adds it (its scope says so).
 - **The JSON** of `--questions` (2502) gives each module's `needs` and
   each target's capabilities, if 3017 is done, so an agent can explain a
-  refusal before it happens.
+  refusal before it happens. If not, 3017 adds them (its clause says
+  so).
 
 **Out (do not do):**
 - new exporters or backends (3004, 3010, 3012);
-- choosing frame sizes for the developer beyond the profile's default;
+- choosing frame sizes for the developer beyond the template's frame
+  and the Playdate part's entry;
 - parked targets (3014–3016, 3021, 3024) beyond showing them as planned;
 - the capabilities types and the check themselves (3017).
 
 ## Implementation steps
 
-1. Widen the targets question to the profiles.
+1. Give a planned profile its tickets (`Status::Planned`).
 2. Add the check to the composer, before writing, or the `limits` entry
    if 3017 isn't done.
 3. Write the manifest entries and the CI matrix in the base part (the
    calls to 3050's `export.yml`, from its plan, if 3050 is done).
-4. Write the Playdate and Steam Deck parts, with what 3002, 3006 and
-   3012 give if they are done.
+4. Write the Playdate part (its `shuyi.ron` entry, keymap table and
+   pattern map, and tools that offer the map) and the Steam Deck part
+   (its keymap table, and its export if 3012 is done).
 
 ## Acceptance criteria
 
@@ -123,12 +154,17 @@ None.
       status and ticket 3014.
 - [ ] The new game made with `desktop,web` passes `shuyi check --target
       all` in CI.
+- [ ] The game made with `--targets desktop,web,playdate,steam-deck`
+      passes `shuyi check --target all`, with no controls problem and
+      no limit saying the controls or the one-bit patterns aren't
+      checked.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: the needs × target check (or its `limits` entry); manifest
-  entries from profiles.
+  entries from the template and the target parts; a planned profile's
+  tickets, and a bare `Planned` still read.
 - Integration: the three-target game above; the refusal; the CI job
   builds the `desktop,web` game and runs its checks.
 

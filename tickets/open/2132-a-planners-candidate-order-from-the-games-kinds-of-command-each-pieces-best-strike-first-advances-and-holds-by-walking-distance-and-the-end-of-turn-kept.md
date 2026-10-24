@@ -81,6 +81,10 @@ None.
   then the example).
 - Module docs; ADR-0029 (the turn planner) gains a section on candidate
   orders, or a short new ADR if that reads better.
+- **Either order with 1134:** if 1134 is done, add a short section on
+  the candidate order to `skills/shuyi-balance-bots/SKILL.md`
+  (`ranked_order`, and `TacticsOrder` with its eight steps and the
+  game's `OrderHooks`); if not, nothing to do (1134 shows it).
 
 **Out (do not do):**
 - What a strike, a heal or a pick is: the game's classifier.

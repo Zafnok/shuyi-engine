@@ -42,19 +42,16 @@ Shuyi today (`crates/ui/src/frame/glyph_buffer.rs`):
   (`crates/ui/src/frame/snapshot.rs`, line 146), with ` flip` for
   `flip_x`.
 
-Rotation is planned only inside parked work:
-
-- 2703 (parked with procedural animation, which Nick called "a very
-  late addition") holds "an angle on sprite items, 0–255", on 1120's
-  world layers, and ADR-0010 §5 puts it there;
-- 1120's Out line says "rotation (2703 adds it, if procedural animation
-  is unparked)";
-- 2105 (skeletal animation) is blocked by 2703 for rotated sprites
-  only, and 3021 and ADR-0012 send "rotated items (2703)" to the GBA's
-  affine sprites;
-- 1119 (parked real time) plans "a 256-step sine/cosine table" in
-  `shuyi_core::fx`, and 2103, 2104, 2105, 2216, 2217, 2701 and 3101
-  cite 1119's `Angle` or its table.
+Rotation was planned only inside parked work: 2703 (parked with
+procedural animation, which Nick called "a very late addition") held
+"an angle on sprite items, 0–255", on 1120's world layers, as ADR-0010
+§5 does, and 1119 (parked real time) planned "a 256-step sine/cosine
+table" in `shuyi_core::fx`. The tickets now point here instead: 1119,
+1120, 2103, 2104, 2105, 2216, 2217, 2701, 2703, 3021 and 3101 name
+2335's `Angle` or its rotated sprites. Three places still don't:
+ADR-0010 §5, ADR-0012's "rotated ones (2703)" for the GBA's affine
+sprites, and `docs/ROADMAP.md`'s "skeletal animation (2105) after
+2703".
 
 `docs/decisions.md`, 2026-10-20: Nick put the features most 2D games
 expect after the MVP, not parked. Some of them "take the turn-game half
@@ -116,6 +113,12 @@ and follow the MVP.
     make `ease` use `Angle`'s. If not, both stay, and the Completion
     notes say why. If 2109 isn't done, it decides whether to use this
     table.
+  - **Either order with 1119 (parked):** if 1119 is done, it wrote this
+    module's `Angle` type and its table as this list says. Keep them and
+    their tests, check them against this list, and add only what is
+    missing, such as `rotate` and the `shuyi_core::Angle` re-export. If
+    not, write the module here, and 1119 takes `Fx`'s sine and cosine
+    from it.
 - **The sprite** (`crates/ui/src/frame/glyph_buffer.rs`):
   - three fields on `Sprite`:
     - `angle: Angle`, `Angle::ZERO` by default;
@@ -178,8 +181,9 @@ and follow the MVP.
   - **The 1-bit renderers** (`onebit.rs` and `onebit/reference.rs`):
     `flip_y` mirrors the row as `flip_x` mirrors the column. At another
     angle, each console pixel goes through `dest_pixel` and the flips,
-    then through `Image::sample` as today (a 1-bit picture may be baked
-    at another size, 3007). At angle 0 the fast renderer keeps today's
+    then through `Image::sample` as today (a 1-bit picture may be
+    bigger than its source image: `shuyi_assets::bitmap` enlarges it
+    before dithering). At angle 0 the fast renderer keeps today's
     loop, for the device's speed (game ticket 1055).
   - **`shuyi-app`** (`crates/app/src/render.rs`): `flip_y` goes to
     `DrawTextureParams::flip_y`. A sprite at another angle is drawn from
@@ -192,6 +196,14 @@ and follow the MVP.
       The cache is cleared when it passes 1 024 textures;
     - the part of it under `clip` is drawn at `clip`'s place, tinted for
       brightness and opacity as today.
+  - **Either order with 2337** (tint and blend modes): if 2337 is
+    done, turned sprites take `Paint::Tinted` and `blend` too:
+    `frame-png`'s per-pixel fill goes through `Blend::mix` as `blit`
+    does; the 1-bit path draws `Tinted` as `Image`, `Add` as its white
+    pixels only and `Multiply` as its black pixels only; `shuyi-app`
+    makes its texture without the tint (a `Tinted` paint stays out of
+    the cache key and is the draw colour) and draws it with the blend's
+    material. If not, nothing to do (2337 does it).
 - **An ADR** (the `write-adr` skill), the next free number:
   - rotation and flips are part of the core frame for every game, not
     of procedural animation;
@@ -205,37 +217,24 @@ and follow the MVP.
     half of its coverage rule (2703 keeps strips, on this rule). Change
     only ADR-0010's `Status:` line and its row in `docs/adr/README.md`;
   - ADR-0012's "rotated ones (2703)" now means this ticket's sprites.
-- **The tickets that send rotation or the sine table elsewhere** (the
-  `write-ticket` skill, "look the other way"), each only if it still
-  says so:
-  - 1120's Out line: rotation is 2335's, and world-layer sprites keep
-    its angle, pivot and `flip_y`;
-  - 2703: its sprite angle and the rotated-sprite half of its coverage
-    rule are 2335's; it keeps strips, and `"2335"` joins its
-    `blocked_by`;
-  - 2105: `"2703"` becomes `"2335"` in its `blocked_by` and its Parked
-    note, and its text's rotation and "1119's angle and sine table"
-    point to 2335;
-  - 3021: "Rotated items (2703)" becomes 2335;
-  - 1119's "a 256-step sine/cosine table": `Fx`'s sine and cosine come
-    from `shuyi_core::Angle`;
-  - "1119's `Angle`" (or its table) in 2103, 2104, 2216, 2217, 2701
-    and 3101 becomes `shuyi_core::Angle` (2335);
+- **What still sends rotation elsewhere** (the `write-ticket` skill,
+  "look the other way"): the tickets already point here (see Context).
+  Left to do:
   - `docs/ROADMAP.md`: "skeletal animation (2105) after 2703" becomes
-    "after 2335".
+    "after 2335";
+  - search `tickets/open/` once more for a sprite angle sent to 2703 or
+    a sine table sent to 1119, and point any new one here.
 - **What changes for the game:** `Sprite` gains three fields. Only code
   that builds a `Sprite` with a struct literal and no `..` breaks. Say
   so in the PR; the game's PR that moves the pin follows it. No game
-  snapshot changes. If 2014 is done, its job shows what the game makes
-  of this PR.
+  snapshot changes. Where CI's `game` workflow (2014) ran on the PR,
+  its summary shows what the game makes of it.
 - **Public types (ADR-0039):** the new public types follow it
   (`#[non_exhaustive]`, constructors).
 - **Either order with 2018:** if 2018 is done, add this ticket's test
   scene to its comparison of the window with the raster. If not,
   compare a captured window frame with `frame-png` by hand, note it in
   the PR, and 2018 adds the scene.
-- **Either order with 2360** (parked): if it is done, `blit` already
-  flips tiles top to bottom; sprites use that flip.
 
 **Out (do not do):**
 - drawn shapes, and rotated rectangles as polygons (2336);
@@ -243,12 +242,16 @@ and follow the MVP.
 - smooth or filtered rotation, and RotSprite-style upscaling;
 - world layers and cameras (1120 carries rotated sprites onto them);
 - the GBA's affine sprites and their 32 matrices (3021), and the DS's
-  (3024);
+  (3024). **Either order with 3021 and 3024** (both parked): if one
+  is done first, it wrote a follow-up ticket blocked by this one for
+  its affine sprites, which this PR unblocks: nothing to do. If not,
+  nothing to do (each maps rotated sprites itself);
 - `Fx`, `FxVec2` and their trigonometry (1119), and `atan2` and `acos`
   (2701);
 - strips (2703);
-- an example game that turns sprites (2738's shmup, parked until after
-  the launch).
+- an example game that turns sprites: 2738's shmup (parked until after
+  the launch) turns its foes if this ticket is done, and keeps one
+  picture if not. Nothing to do here either way.
 
 ## Implementation steps
 
@@ -284,7 +287,8 @@ and follow the MVP.
    - In `shuyi-ui`, commit the scene's `insta` snapshot.
    - Add angles, pivots and `flip_y` to the 1-bit `Thing` generator
      (`onebit/speed_tests.rs`).
-9. Update the tickets listed in the scope, and `docs/ROADMAP.md`.
+9. Update `docs/ROADMAP.md`, and any ticket the search in the scope
+   finds.
 10. Run the gates, including the `no_std` builds of `shuyi-core` and
     `shuyi-ui`.
 

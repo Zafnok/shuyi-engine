@@ -70,10 +70,10 @@ What Shuyi has (read on 2026-10-21):
   engine's text formats (the rule below), and leaves finding and
   rewriting old names to this ticket. 2804 lists `Breaking:` lines first in the changelog. 3017 (parked)
   moves `display.color` to `capabilities.colour` and reads older files
-  "with a migration", and 3006 turns old palettes into roles "with a
-  migration", each on its own. 2110 reads old saves through typed
-  steps, and leaves rewriting a game's files to this ticket. 2501 gives
-  `template.ron` its own `format_version`.
+  "with a migration", on its own. 3006 (done) found nothing to migrate:
+  palettes already named colours by role. 2110 reads old saves through
+  typed steps, and leaves rewriting a game's files to this ticket. 2501
+  gives `template.ron` its own `format_version`.
 
 Why it matters:
 
@@ -305,6 +305,15 @@ None.
   game's own profiles; if not, 3017 lists its change when it lands.
   3006 (done) changed no palette form (palettes already named colours
   by role), so `PaletteRon` has no changes to list.
+- **Either order with 2236** (frozen copies of the formats' fixtures
+  from each release): if 2236 is done, add a line to its two tests'
+  failure messages (`crates/assets/src/format/frozen_tests.rs` and the
+  project file's test in `crates/cli/src/project.rs`) and to its
+  *Frozen copies* section in `docs/formats.md`: list a rename as a
+  `Change` (in the format's `changes()`, or in `project::CHANGES` for
+  `shuyi.ron`), so `shuyi check` warns on it and `shuyi upgrade`
+  rewrites it, and link *Changing a format*; if not, nothing to do
+  (2236 adds both when it lands).
 - **Size:** if the PR passes about 600 changed lines (the schemas,
   fixtures and snapshots not counted), the warnings in `shuyi check`
   (`CheckOutput::warnings`, the root on `check::check`, the 2516
@@ -313,8 +322,10 @@ None.
   old name.
 - **For the game:** nothing changes in its files. The library API does
   change: a new `Op` variant, a new field of `CheckOutput`, and
-  `check::check` takes the root. Say so in a `Breaking:` line (2804);
-  the game's PR that moves the pin follows.
+  `check::check` takes the root. Say so in a `Breaking:` line (2010's
+  form, `work-ticket` §5), with a `migration` block under it if the
+  skill asks for one by then (2804 adds that); the game's PR that moves
+  the pin follows.
 
 **Out (do not do):**
 - Deleting a removed field by itself: in this first cut a removal is a
@@ -333,7 +344,7 @@ None.
   done, and other kinds there: a game lists the kinds of its own types
   (its map, its language pack) in its own `importers()`.
 - Frozen copies of every format's fixtures from each release, tested to
-  still read: a separate gate, not this ticket.
+  still read: a separate gate (2236), not this ticket.
 - Writing assets with 2218's `Encode`: the upgrade never re-serializes.
 
 ## Implementation steps

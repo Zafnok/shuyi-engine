@@ -29,6 +29,11 @@ and weighted picks on the RNG), the name entry widget and the profiles
 screen (2310, done), the list cursor (2307, done) and menu items with
 values (2308, done).
 
+**Either order with 2746:** if 2746 is done, an option's starting
+items are 2746 kind ids, resolved when the def is built, and
+`outcome()` holds the made items. If not, options have no starting
+items and `outcome()` is the sheet and its tags, and 2746 adds both.
+
 **Who uses it** (ADR-0033 §17's bar for engine work): crawlers (Wizardry's bonus points), tabletop-style RPGs, roguelikes that make a hero before a run, and tactics games that recruit by making units.
 
 **Either order with 2110:** if 2110 is done, the roster's saved form has a version and a migration through it; if not, a version number only, and 2110 adds the migration.
@@ -76,6 +81,9 @@ None.
 - **The roster screen** (behind `draw`): the roster on one side, the
   party on the other, join and leave, the fixed member marked. With
   `max: 1` it shows the one place.
+- **Either order with 2752:** if 2752 is done, let its place list
+  open the roster screen as one of a game's places; if not, nothing
+  to do (2752 does it).
 
 **Out (do not do):**
 - portraits and their pickers (the game's pictures through its skin;

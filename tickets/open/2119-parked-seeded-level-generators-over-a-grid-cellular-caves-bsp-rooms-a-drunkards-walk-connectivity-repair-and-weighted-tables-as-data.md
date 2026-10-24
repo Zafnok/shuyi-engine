@@ -265,8 +265,9 @@ None.
     `Grid::map`;
   - the README's "what it is for" section (2118 wrote it) names them;
   - if the `shuyi-procgen` skill exists (2118 writes it when 1134 is
-    done), it lists them. If not, nothing: 1134's list already names the
-    skill.
+    done), it lists them. If not, nothing to do: 1134's list names the
+    skill (2118 adds it), and 1134 names them when it writes the skill
+    (its scope says so).
 
 **Out (do not do):**
 - wave function collapse: a ticket when a game asks;
@@ -333,8 +334,9 @@ that name 2119 for it, and say so in the completion notes.
 - [ ] `WeightedTable` refuses each of its three bad inputs, from code
       and from RON, and for every draw in `0..total` its `pick` gives
       what 2114's `pick_weighted` gives (a `ScriptedRng` per draw).
-- [ ] `grep -rnE "f32|f64" crates/procgen/src` finds nothing (2015's
-      float ban covers it if it is done), and `cargo build -p
+- [ ] `grep -rnE "f32|f64" crates/procgen/src` finds nothing (the
+      float ban 2118 puts in `crates/procgen/src/lib.rs` covers it, and
+      `cargo xtask check-layers` keeps it there), and `cargo build -p
       shuyi-procgen --no-default-features --target
       thumbv7em-none-eabihf` passes.
 - [ ] All gates in the `run-gates` skill pass.

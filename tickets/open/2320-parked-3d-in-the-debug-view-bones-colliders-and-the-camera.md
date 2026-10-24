@@ -62,14 +62,18 @@ None.
   - `collision3`: `World3`'s colliders (`Solid`), moving shapes
     (`Bounds`), and the character mover's last hits as crosses
     (`Note`), depth-tested;
-  - `camera3`: in a second view only (the editor's, 2507), another
-    camera's frustum as lines (`Note`).
+  - `camera3`: another camera's frustum as lines (`Note`), for a
+    second view of the same stage, never that camera's own.
+    **Either order with 2506:** 2506 plans the editor's views. If 2506
+    is done, add a line to its ticket for the editor's 3D view saying
+    that view turns `camera3` on, or write that ticket, parked, if
+    there is none. If not, nothing to do (2506 plans it).
 - Call them from the third-person example (3108) if it is done. If it
   isn't, 3108 calls them when it lands.
 
 **Out (do not do):**
 - HD-2D's diorama skin (3107): its stage is 2D, so 2315–2318's
-  channels already cover it;
+  channels cover it, and 3107 places their gizmos through its camera;
 - the DS's hardware 3D (3025);
 - a free-fly debug camera (3106 leaves it to a later ticket);
 - editing anything in 3D.
@@ -90,14 +94,16 @@ None.
 - [ ] A capsule behind a wall is hidden when depth-tested and shown
       when `on_top`.
 - [ ] The simulation hash is the same with every 3D channel on and off.
-- [ ] `frame-png --debug bones,collision3` on the example is reviewed,
-      and its snapshot is committed.
+- [ ] If 3108 is done, `frame-png --debug bones,collision3` on its
+      third-person example is reviewed, and its snapshot is committed.
+      If not, 3108 does it.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: the projection of each `Gizmo3` kind for a fixed camera; the
-  ring count of spheres and capsules.
+  ring count of spheres and capsules; one camera's `camera3` frustum,
+  seen from a second camera.
 - Snapshot / integration: the arm fixture with `bones`; a room with a
   capsule mover with `collision3`.
 

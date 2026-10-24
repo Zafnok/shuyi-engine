@@ -36,7 +36,7 @@ plugins with golden rows (ADR-0007, 2116), module duties (ADR-0009 §4,
 2003), the layers file (ADR-0032).
 
 Items are 2746, making characters and the roster 2747, battles 2748,
-the battle screen 2749, abilities 2750, encounters and chests 2751, the
+the battle screen 2749, abilities 2750, encounters and drops 2751, the
 hub 2752.
 
 **Who uses it** (ADR-0033 §17's bar for engine work): dungeon crawlers, top-down party RPGs (early Dragon Quest and Final Fantasy), roguelikes with one hero, tactics games with a roster, and action RPGs' heroes (ADR-0034).
@@ -52,14 +52,23 @@ None.
   duties: depends on `shuyi-core` and `shuyi-assets` only; an empty
   `draw` feature (2747, 2749, 2752 fill it); metadata `kind`/`party-rpg`,
   `serves` every perspective; its `tools/layers.ron` line (pure); the
-  `rpg` feature of `shuyi`; the catalog row (building, 2745–2752);
+  `rpg` feature of `shuyi`; the catalog row in `docs/modules.md` set
+  to building, keeping the tickets it lists;
   the `party-rpg` answer in `docs/modules.ron` (2003 wrote it parked)
   set to building; the README's first two sections; the `shuyi-rpg` skill or
   its line in 1134's list.
+  2003's catalog has no building status (`shuyi_cli::catalog::Status`
+  is ready, planned or parked): if it still has none, add
+  `Status::Building`, named `building`, with its doc, the `status` line
+  of `docs/modules.ron`'s header, *How to read it* in `docs/modules.md`
+  and the `modules` schema, and a `Breaking:` line if CI's `api` job
+  reports one.
 - **`sheet.ron`**, asset kind `SheetDef`, format `sheet-ron`:
   - `stats`: names, each with a least and most value;
   - `pools`: names with a current and a most (the game's hit points,
-    its magic points, its money if the party carries it per member);
+    its magic points, its money if the party carries it per member),
+    and `refill_at_rest: bool` (default false), which 2750's `rest`
+    reads;
   - `conditions`: names, each with flags `cannot_act`,
     `cannot_be_targeted`, `counts_as_down`, and how it ends: `after_rounds`,
     `at_rest`, `when_hit`, `never` (until cured), and which conditions
@@ -97,7 +106,7 @@ None.
 
 **Out (do not do):**
 - items (2746), making characters and the roster (2747), battles (2748),
-  abilities (2750), encounters and chests (2751), the hub (2752);
+  abilities (2750), encounters and drops (2751), the hub (2752);
 - any stat, pool or condition named by the engine, and any formula;
 - drawing a party panel (2749).
 

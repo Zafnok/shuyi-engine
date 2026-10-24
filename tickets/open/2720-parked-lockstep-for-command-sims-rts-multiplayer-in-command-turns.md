@@ -54,7 +54,11 @@ None.
 - **`shuyi_net::lockstep::CommandLockstep<S: CommandSim>`**:
   - settings: `steps_per_turn` (default 4) and `delay_turns` (default 2);
   - 1140's handshake (the peers' `Made` stamps from 2111, and the
-    seed), plus the two settings, which must match;
+    seed), plus the two settings, which must match. **Either order
+    with 2111:** if 2111 is done, the handshake carries each peer's
+    `Made`; if not, 1140's handshake as it is (the engine version and
+    a content hash the game supplies), and 2111 moves it to `Made`
+    (its clause on the parked records);
   - **sending:** a command issued during turn `t` is scheduled for the
     first step of turn `t + delay_turns`. Each peer sends one
     `TurnPacket { turn, player, commands, hash }` per turn on the
@@ -76,8 +80,8 @@ None.
   steps, a peer's `Ctx::game_speed` (2123) only makes it wait: the gate
   sets the pace. **Either order with 2123:** if it is done, add a test
   that a peer at `GameSpeed::DOUBLE` ends with the same hash list as one
-  at `NORMAL`, at the slower peer's pace; if not, 2123's ADR says the
-  speed is local, and nothing more is needed here.
+  at `NORMAL`, at the slower peer's pace; if not, nothing to do here
+  (2123 adds the test).
 - **Tests over `MemoryNetwork`** (1140), with seeded loss, delay,
   reordering and duplicates on the unreliable channel, and delay on the
   reliable one:

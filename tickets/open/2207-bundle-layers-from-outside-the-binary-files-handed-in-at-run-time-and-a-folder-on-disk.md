@@ -34,7 +34,8 @@ completed:
   is `&'static str`. This ticket adds a layer of files handed in at run
   time (owned paths and bytes, kept for the life of the program so every
   read stays `&'static`), and `shuyi-app` reading a folder on disk into
-  one. Hot reload stays 1124's: it watches these layers.
+  one. Hot reload is 2220's, which waits for this ticket: it watches
+  these layers and swaps a changed file's bytes in (`Bundle::replace`).
 - **Outside tactics:** mods for a farming game; a platformer's
   player-made levels loaded from a folder; a debug build that reads its
   art from disk so an artist sees a change without a rebuild.
@@ -77,8 +78,10 @@ None.
 - Zip files.
 - Files fetched over the network as a layer: 2601 (parked) gives HTTP
   requests; a layer of fetched files is a later ticket, and Nick's call.
-- Watching folders and reloading: 1124, which waits for this ticket
-  and builds hot reload on these layers.
+- Watching folders and reloading: 2220, which waits for this ticket
+  and replaces a disk layer's files (`Bundle::replace`). 1124's maps
+  reload through 2220 as formats and need nothing here, whichever
+  lands first.
 - Fuzzing the formats a layer's files reach: 2020. It should be done
   before game#1014 ships mods to players, but this ticket doesn't wait
   for it.

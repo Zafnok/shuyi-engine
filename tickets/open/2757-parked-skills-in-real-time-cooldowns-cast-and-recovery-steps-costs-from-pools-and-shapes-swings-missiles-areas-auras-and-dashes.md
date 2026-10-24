@@ -39,7 +39,8 @@ None.
 **In:**
 - **Real-time fields** in `abilities.ron` (2750's format, read only
   when `shuyi-action` is used): `cooldown`, `cast`, `recovery` (steps),
-  `charges` (several uses before cooling), and a `shape`:
+  `charges` (several uses before cooling: a count per skill, not 2750's
+  charges per tier), and a `shape`:
   - `Swing { arc: Angle, reach: Fx }`: a hitbox for the strike's
     steps, in front of the user;
   - `Missile { speed, range, pierce, radius }`: a projectile body (a

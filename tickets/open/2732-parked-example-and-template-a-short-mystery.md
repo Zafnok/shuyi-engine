@@ -84,6 +84,12 @@ None.
     statement with the meter;
   - `shuyi check` on the example passes, with the fair-play check and
     no warnings. CI runs it;
+  - the fair-play check's state count on the example goes in the
+    Completion notes, beside the counts 2731 wrote for its fixtures.
+    If it passes `fair.max_states`, split the case as the module's
+    README says. If it comes near it, write a ticket (parked like this
+    one) for the reduction 2731 describes: examines applied together
+    as one edge, with its property test;
   - `shuyi check --target playdate` and `--target steam-deck` pass on
     the example (3002).
 - **The web build** of the example builds in CI, like the other
@@ -115,8 +121,12 @@ None.
   (the smallest working code, taken from this example's tests, and how
   it sits beside `shuyi-vn` alone); `docs/modules.md` and
   `docs/modules.ron` mark `mystery` ready; the engine README lists
-  detective games as supported, linking this example; the
-  `shuyi-mystery` skill's worked example uses it if 1134 is done.
+  detective games as supported, linking this example.
+- **The skill** `shuyi-mystery`: if 1134 is done, finish it with a
+  worked example modelled on this example, in which `shuyi add mystery`
+  and a case of one room and two clues run on a fresh game; it passes
+  `check-skills`. If 1134 isn't done, add that worked example to the
+  `shuyi-mystery` entry in 1134's list (2727 put it there) in this PR.
 
 **Out (do not do):**
 - new engine features; a gap found here gets a ticket (`write-ticket`,

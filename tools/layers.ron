@@ -11,7 +11,8 @@
     // The crates only a platform backend may reach (ADR-0008 §2): windows,
     // input devices and audio. A trailing `*` is a prefix (`quad-*` is
     // `quad-snd`, not `quadtree`). A new game's rules crate keeps a copy, in
-    // templates/grid/crates/rules/tests/layers.rs (a test checks).
+    // templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs
+    // (a test checks).
     devices: [
         "macroquad",
         "miniquad",

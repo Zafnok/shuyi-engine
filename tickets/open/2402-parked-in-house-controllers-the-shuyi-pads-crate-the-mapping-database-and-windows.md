@@ -91,15 +91,16 @@ Say if any button does the wrong thing or a pad isn't seen.
   XInput holds a level until told otherwise, so the source lets go
   itself when `for_ms` runs out. Other pads get no rumble on Windows
   unless the documents show a cheap path (re-check on the day). If 2408
-  isn't done, nothing here.
+  isn't done, nothing to do (2408 adds it, by its own clause).
 
 **Out (do not do):**
 - Linux and macOS (2403), and removing gilrs (2403).
 - Lights, motion sensors, touchpads, batteries: write a ticket when a
   game asks.
 - Analog input as actions (1121, parked): this crate already reports sticks
-  and triggers as values. Either order works with 1121: if 1121 is done
-  first, keep its `RawInputEvent`s unchanged.
+  and triggers as values. **Either order with 1121:** if 1121 is done,
+  the `in-house-pads` source gives the same axis `RawInputEvent`s as the
+  gilrs source; if not, nothing to do (1121 reads the axes from both).
 - Steam Input.
 
 ## Implementation steps

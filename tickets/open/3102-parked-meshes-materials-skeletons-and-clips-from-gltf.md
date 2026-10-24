@@ -71,8 +71,9 @@ None.
     and a `hash()` over every value's bits.
 - **Sub-asset paths**: one glTF file holds many assets, named
   `house.glb#mesh/Roof`, `#material/Tiles`, `#skeleton/<skin name>`
-  and `#clip/<animation name>`. If 2201's `AssetPath` has no fragment,
-  add one.
+  and `#clip/<animation name>`. **From 2201 (done):** its `AssetPath`
+  (`crates/assets/src/format.rs`) holds a path and the name errors
+  show it by, with no fragment: add one.
 - **Format `gltf`** (extensions `gltf` and `glb`, sniffing the `glTF`
   magic of `.glb`) through `gltf` with `default-features = false` and
   only the features we need (no `import`, so it never reads files or
@@ -126,7 +127,7 @@ None.
 
 1. Write the kinds, their dumps and hashes, and `fx12_from_f32_bits`
    with a test over every `f32` exponent and random mantissas.
-2. Add sub-asset paths, if 2201 lacks them.
+2. Add sub-asset paths: a fragment on `AssetPath`.
 3. Write the `gltf` format, with the fixtures and error fixtures.
 4. Write the `obj` format behind its feature, with the cube fixture.
 5. Add the fuzz-style tests and the determinism fixtures.

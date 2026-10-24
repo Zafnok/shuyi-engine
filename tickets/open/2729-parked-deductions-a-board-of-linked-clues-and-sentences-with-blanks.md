@@ -6,7 +6,7 @@ milestone: "Engine: detective games"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2727"]
+blocked_by: ["2727", "2405"]
 nick_input: none
 completed:
 ---

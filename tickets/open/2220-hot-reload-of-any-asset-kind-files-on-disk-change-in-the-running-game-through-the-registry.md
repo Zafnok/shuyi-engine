@@ -96,10 +96,16 @@ None.
   side), so a game's module keeps the `Hot` values it refreshes as its
   own state, not in `ctx.game`. A screen can rebuild its view after it,
   and `run --json` lists the hook.
+- **Either order with 3104 (the GPU 3D painter, parked):** if 3104 is
+  done, `shuyi-app-3d` uploads its meshes and textures once only; add
+  the upload again on reload, from `Module::reloaded`, for the meshes
+  and textures read from a changed file. If not, nothing to do (3104
+  does it).
 - **Errors show, never crash:** a `Failed` reload's errors (file, line
-  and message, as every loader gives them) go to the debug view's text
-  (2315 if done; else a line at the top of the frame drawn by
-  `shuyi-app`'s debug overlay) until the next good reload.
+  and message, as every loader gives them) show as a line at the top of
+  the frame, drawn by `shuyi-app`'s debug overlay, until the next good
+  reload. They show with every debug view channel off, so they are not
+  gizmos.
 - **Determinism:** a reload is not an input, and the files' new bytes
   are in no record. **Either order with 2518 (session records):** if
   2518 is done, `App` records the first frame whose
@@ -109,9 +115,27 @@ None.
   so).
 - **`shuyi run --watch`** (`crates/cli`): runs the game with its
   `assets/` as a disk layer over the embedded files, and debug tools on.
-- **1124** changes: its hot reload part is this ticket's; its maps are
-  formats, so they reload with no extra code.
-- The book's chapter on assets (2802, if done) gets a section.
+- **Either order with 2506 (the editor research, parked):** if 2506 is
+  done, read its ADR's live edits (its point 4) and say in the
+  completion notes whether what reloads here matches it; if not,
+  nothing to do (2506's spike uses this reload, its clause says so).
+- **Either order with 1124:** if 1124 is done, a harness test shows a
+  changed `.tmx`, and a changed TSX tileset it reads, reloading through
+  `Hot<TileMap>` (the headless backend's script); if not, nothing to do
+  (1124's maps are formats, so they reload with no extra code, and 1124
+  adds that test when it lands).
+- **Either order with 2318:** if 2318 is done, add to its `layout`
+  channel a `Note` label "reloaded <file>", shown for two seconds of
+  frames when a `Hot<TileMap>` reloads; if not, nothing to do (2318
+  adds it).
+- **Either order with 2229 (import settings):** if 2229 is done, add a
+  test that a `Hot` value of the txtimg toy kind reloads when its
+  `<file>.meta` changes, and when the `_folder.meta` it reads changes.
+  If not, nothing to do (2229 adds that test, its clause says so).
+- **Either order with 2802 (the book):** if 2802 is done, its chapter
+  on assets gets a section on hot reload (`Hot<T>` and
+  `shuyi run --watch`); if not, nothing to do (2802 writes it, its
+  clause says so).
 
 **Out (do not do):**
 - reloading code (2905);
@@ -123,20 +147,25 @@ None.
 
 1. Read 2207's layers, 2358's ADR and `crates/ui/src/module.rs`,
    `bundle.rs`, `format.rs`, and the `Platform` trait. Check whether
-   2228, 2516 and 2518 are in `tickets/done/`.
+   2228, 2516, 2518, 1124 and 2318 are in `tickets/done/`.
 2. Add `changed_files` to the trait and both backends, with the poller in
    `shuyi-app`.
 3. Add `Bundle::replace` and `Hot<T>` with its read tracking on
    `bundle::recording` (added here if 2516 isn't done).
 4. Add `Hook::Reloaded`, `Module::reloaded` and `Game::reloaded`, the
    error display, and `reloaded_at` on 2518's record, if 2518 is done.
-5. Add `shuyi run --watch`, change 1124, and run the gates.
+5. Add `shuyi run --watch`, the map reload test if 1124 is done and
+   2318's note if 2318 is done, and run the gates.
 
 ## Acceptance criteria
 
 - [ ] With the headless backend's script, a changed palette file is seen
       by the game on the next frame (a harness test).
 - [ ] A changed image that a sprite sheet reads reloads the sheet.
+- [ ] If 1124 is done, a changed map and a changed TSX tileset it reads
+      reload through `Hot<TileMap>` (a harness test).
+- [ ] If 2318 is done, a reloaded map shows its note in the `layout`
+      channel (a test).
 - [ ] A broken file keeps the old value, and its error names the file
       and line (a test).
 - [ ] A shipped build (debug tools off) never polls (a test with a
@@ -149,7 +178,9 @@ None.
 
 - Unit: `Hot::refresh` for each outcome; read tracking across two files;
   the poller with a fake clock and file times; if 2228 is done, read
-  tracking records a path read through `Bundle::versions`.
+  tracking records a path read through `Bundle::versions`. If not,
+  nothing to do: 2228 moves the recording into its helper and tests it
+  (its clause says so).
 - Integration: the harness test through the headless backend's script.
 
 ## Completion notes

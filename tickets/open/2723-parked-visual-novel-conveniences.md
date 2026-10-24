@@ -104,6 +104,11 @@ None.
     choice picks it as Confirm does, and a disabled choice is not
     picked. On a frame the pointer moved over a choice, that choice is
     selected, by 2405's menu rules.
+- **Either order with 2727** (the mystery module): if 2727 is done,
+  let a stage built on `VnStage` add its own rows to the quick menu,
+  and give 2727's `MysteryStage` a row for its `CaseFile` action, so a
+  target with only the required actions bound reaches the case file; if
+  not, nothing to do (2727 adds the row).
 
 **Out (do not do):**
 - saves, the gallery, endings in the profile and the route chart

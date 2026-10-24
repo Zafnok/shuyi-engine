@@ -23,13 +23,17 @@ restores, a healer cures, a smith uncurses or identifies. A shop and a
 **paid service** are engine (§17's bar: crawlers, top-down RPGs,
 roguelikes' shops, action RPGs' vendors). **Which places a town has,
 what they are called and what each offers is the game's**: Wizardry's
-tavern, inn, shop and temple are the crawler template's `hub.ron`
+tavern, inn, shop and temple are the crawler template's `places.ron`
 (2754), not engine types.
 
 It builds on 2746 (items, prices, inventories), 2750 (`rest` refills
 charges), 2745 (pools, levels, conditions) and the engine's menus
 (2307–2309, done). Forming the party is 2747's roster screen, which a
 game lists among its places.
+
+**Either order with 2747:** if 2747 is done, a place in the list may
+open its roster screen. If not, places open a shop or pop with their
+name, and 2747 adds the roster to what a place may open.
 
 **Who uses it** (ADR-0033 §17's bar for engine work): every RPG with a vendor or a healer: crawlers, top-down RPGs, roguelikes' shops, action RPGs' vendors (ADR-0034).
 

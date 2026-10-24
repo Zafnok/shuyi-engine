@@ -161,6 +161,12 @@ None.
    and `Game::widget_focus()` ask the top screen; `Harness::widget_focus()
    -> Option<NodeKey>` and `Harness::unreachable_widgets() ->
    Vec<NodeKey>` (`crates/platform/src/harness.rs`) read it.
+   **Either order with 2322 (parked):** if 2322 is done, its
+   accessibility tree reads `Screen::widget_focus`: on a screen with a
+   `Focus`, the tree's `focus` is the focused item inside the widget
+   `Focus::at()` names, and a menu with `MenuView::active` false has
+   none, with a test; if not, nothing to do (2322 does it, its clause
+   says so).
 5. **`UiAction::dir`.** **Either order with 2354:** whichever lands
    first adds `UiAction::dir(self) -> Option<Dir>` to
    `crates/assets/src/keymap/action_set.rs`, and the other uses it.
@@ -185,6 +191,9 @@ None.
    ticket (`write-ticket`, blocked by 2355). The Harness test then reads
    its test screen through `Harness::screen` (the screen opts in with
    `Screen::as_any`), and the PR says so.
+   The same PR adds the follow-up's id to the `blocked_by` of each
+   open ticket that uses `Screen::widget_focus` (2330 implements it;
+   2322 reads it), and names the follow-up where they mention it.
 
 **For the game:** `MenuView` gains a field, so code that builds one with
 a struct literal adds `active: true` (`MenuView::new` sets it). The PR
@@ -203,8 +212,8 @@ moves its pin follows it. The rest is additive.
 - The pointer events, hit areas and `Menu::point` themselves (2405).
 - Moves inside a grid widget (2354's `GridCursor`): a grid at its edge
   without wrap leaves the direction unused, as a menu at its end does.
-- The accessibility tree's focus (2322, parked): it reads
-  `Screen::widget_focus` when it starts.
+- The accessibility tree (2322, parked), beyond the either-order part
+  in item 4.
 - Shoulder buttons that jump between tabs or groups, and focus across
   screens: no `UiAction` for them (the `input-actions` skill); a
   follow-up if a game asks.

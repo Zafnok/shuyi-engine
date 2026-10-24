@@ -6,7 +6,7 @@ milestone: "Engine: hex grids"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2121", "2511"]
+blocked_by: ["2121", "2511", "3039"]
 nick_input: none
 completed:
 ---
@@ -144,8 +144,8 @@ None.
     which its `tile_at` calls with the origin `(0, 0)` as `place` calls
     `place_at`, give `Grid::tile_at_px` the hex case, and test the
     pointer on a hex map. If not, add `Grid::tile_at_px` with 2405's
-    name and signature for both projections, and add to 2405's scope in
-    this PR: "`Grid::tile_at_px` exists (2740); use it";
+    name and signature for both projections; 2405 then uses it (its
+    clause with 2740 says so);
   - **either order with 1126:** if 1126 is done, `Projection` lives in
     `shuyi_ui::world`: add `Hex` there, with tile to world, world to
     tile (the picking above) and a depth key: the row for pointy top;
@@ -188,12 +188,12 @@ None.
     `Grid::bounds`. If not, move `threat.rs`'s private `line` into a
     `pub(crate)` helper both files use, and grow each of its runs by
     `LINE_HALF` pixels on both sides, across the run. **Either order
-    with 2117's follow-up** (a diagonal step in the path arrow, written
-    when 2117 is done): if it is done, draw the steps between rows with
-    its line; if not, say in that ticket that this line exists. The
-    arrowhead keeps its four shapes: on a last step between rows it
-    points down or up, so its `match` tests `dy` first (no change on a
-    square map, where one of the two is always 0);
+    with 2374** (a diagonal step in the path arrow): if 2374 is done,
+    draw the steps between rows with its line; if not, nothing to do
+    (2374 draws its diagonal step with this line). The arrowhead keeps
+    its four shapes: on a last step between rows it points down or up,
+    so its `match` tests `dy` first (no change on a square map, where
+    one of the two is always 0);
   - every square-map snapshot stays as it is.
 - **The cursor and steering need no change** (2121's ADR). A test
   steers a path across rows on a hex map with the four directional
@@ -201,9 +201,8 @@ None.
   `PathOptions::default().with_topology(Topology::Hex(layout))`.
 - **The perspective marker.** **Either order with 1120:** if 1120 is
   done, add `HexGrid` to `shuyi_core::perspective` (ADR-0009 §3), with
-  `Projection::Hex` as its projection in `shuyi-ui`. If not, add to
-  1120's scope in this PR: "add the `HexGrid` marker for the hex
-  projection of 2740".
+  `Projection::Hex` as its projection in `shuyi-ui`. If not, nothing
+  here: 1120 adds it (its clause says so).
 - **`examples/hello-hex`**, a turn game written the short way 2511's
   minimal template writes a game (its prelude and `run_game`), on the
   `shuyi` crate alone, drawn
@@ -227,24 +226,30 @@ None.
     its font's license (3039); the font atlas copied from
     `examples/hello-grid/files/font` with its license file; a short
     `README.md` like Hello, Grid's;
-  - CI's `wasm` job gets its two steps (`cargo shuyi check --target
-    all` and `cargo shuyi web --release`, from its folder), the
-    `run-gates` skill names it beside Hello, Grid, and Pages publishes
-    it beside Hello, Grid with a link, as Hello, Grid is linked (2801's
-    Examples page if 2801 is done, the index in `pages.yml` if not);
+  - **CI and Pages.** Either order with 2735, 2736, 2737, 2738 and
+    2739 (the other examples): if the `wasm` job of
+    `.github/workflows/ci.yml` and `pages.yml` already loop over every
+    `examples/*/shuyi.ron` that has a `web` section, hello-hex is
+    picked up with no workflow change. If not, CI's `wasm` job gets its
+    two steps (`cargo shuyi check --target all` and `cargo shuyi web
+    --release`, from its folder), the `run-gates` skill names it beside
+    Hello, Grid, and Pages publishes it beside Hello, Grid with a link,
+    as Hello, Grid is linked (2801's Examples page if 2801 is done, the
+    index in `pages.yml` if not);
   - nothing from an existing hex game, and nothing from Visions of
     Shuyi (`AGENTS.md` rule 4);
   - tests: a Harness playthrough to the goal through actions only
     (`Harness::act`); a bot that plays 20 seeds with no rules error;
-    replay determinism (the same hash list twice; if 2116 is done, add
-    a golden table as its docs say a new example does); `frame-png`
-    pictures of the start and of a path across rows, as binary
-    snapshots like `examples/hello-grid/tests/it/snapshot.rs`;
+    replay determinism (the same hash list twice; **either order with
+    2116:** if 2116 is done, add a golden table as its docs say a new
+    example does; if not, nothing to do); `frame-png` pictures of the
+    start and of a path across rows, as binary snapshots like
+    `examples/hello-grid/tests/it/snapshot.rs`;
     `cargo shuyi check`, `cargo shuyi check --target all` and
     `cargo shuyi check-keys` pass from its folder.
 - **The guide and the catalog:**
   - `docs/guides/hex-grid.md`, in ADR-0009 §5's order: what starts it
-    (this example, until a template part exists); the kits it uses (the
+    (this example; 2771 adds a template part); the kits it uses (the
     grid kit with `Topology::Hex`, the glyph skin with `with_hex_rows`);
     what looks related but isn't for it (isometric, 1126; square maps
     drawn in bricks); the example to read first. **Either order with
@@ -271,12 +276,15 @@ None.
 - hex autotiling and corner layers (`corners.rs` stays square), and
   isometric hex;
 - an arrowhead at an angle;
-- a template part and a wizard answer (2501, 2502): a follow-up;
-- Tiled and LDtk hex maps (1124) and a tile-layer painter for hex (see
-  2360's *Out*);
+- a template part (2771, parked, blocked by this ticket); the wizard
+  offers the `hex-grid` answer from the catalog with no change (2502);
+- Tiled hex maps (1124 keeps their stagger axis and index; LDtk has
+  no hex maps) and a tile-layer painter for hex: 2360 refuses a map
+  that isn't orthogonal, and neither 2360 nor this ticket draws hex
+  tile layers. A follow-up when a hex game asks, over 2360's
+  tile-layer item and this ticket's `HexProjection`;
 - the maths, the searches and the ADR (2121);
-- eight-way steering and diagonal steps on square maps (2117's
-  follow-up).
+- eight-way steering and diagonal steps on square maps (2374).
 
 ## Implementation steps
 
@@ -291,8 +299,7 @@ None.
    `draw_tiles` onto `tile_to_cell`, and lay the tiles, the cursor and
    the path on hex maps, with snapshots. Check every square snapshot is
    unchanged.
-4. Do the either-order items (2405, 1126, 1120, 2336, 2117's
-   follow-up).
+4. Do the either-order items (2405, 1126, 1120, 2336, 2374).
 5. Write `examples/hello-hex` with its tests and pictures, and add it
    to CI's `wasm` job, the `run-gates` skill and Pages.
 6. Write the guide, do the 2003 and 2004 items, and run the gates.

@@ -72,10 +72,10 @@ None.
   reported beside it.
 - **Peak heap** for each scenario, including the flow field cache at its
   limit (ADR-0015, *Consequences*).
-- **Scene building:** if 2716 is done, the battle scenarios also build
-  the scene for a camera over the fight each step, and the report says
-  so. If not, they step the simulation only, and add to 2716's scope in
-  this PR: "add the scene to 2718's battle scenarios".
+- **Scene building, either order with 2716:** if 2716 is done, the
+  battle scenarios also build the scene for a camera over the fight
+  each step, and the report says so. If not, they step the simulation
+  only, and 2716 adds the scene when it lands (its scope says so).
 - **Tuning, not cheating:** if a gated scenario is over budget, make the
   module cheaper (bucket counts, `flow_cells_per_step`, the code). Never
   raise the budget (`AGENTS.md` rule 6). If it can't be met in one PR's
@@ -97,7 +97,8 @@ None.
 **Out (do not do):**
 - the parallel feature and its speed-ups (2717; scenarios run on one
   thread);
-- the example's own scenarios (2719 may add one);
+- the example's own scenarios (not planned: this bench stage measures
+  the module without 2719's example);
 - raising any budget.
 
 ## Implementation steps

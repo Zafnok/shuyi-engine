@@ -67,7 +67,12 @@ None.
     (ADR-0015, *Consequences*). 2719 finishes the README;
   - **the `rts` feature** of the `shuyi` crate;
   - **`docs/modules.ron` and the catalog:** set the `rts` answer and
-    the `shuyi-rts` row from parked to building (as 2701 does); 2719
+    the `shuyi-rts` row from parked to building. 2003's catalog has
+    no building status (`shuyi_cli::catalog::Status` is ready, planned
+    or parked): if it still has none, add `Status::Building`, named
+    `building`, with its doc, `docs/modules.ron`'s header, *How to read
+    it* in `docs/modules.md` and the `modules` schema, and a
+    `Breaking:` line if CI's `api` job reports one. 2719
     sets both to ready when the example passes CI (ADR-0009 §4). 2003
     wrote the `kind` concern (`alternatives: false`); 2502 adds its
     `pick` and question. Don't change `check-modules`; 2003 owns its
@@ -88,10 +93,11 @@ None.
     id to a row. A removed id's generation goes up, so a stale id never
     finds a row. Free slots are reused last-freed first.
   - `UnitTable`: one `Vec` per column, all the same length, dense:
-    `id`, `pos: FxVec2`, `vel: FxVec2`, `facing` (1119's 256-step
-    angle), `kind: KindIndex`, `owner: PlayerId`, `health: i32`,
-    `orders: OrderQueue`, `flags: UnitFlags` (hand-written bit flags; no
-    new dependency).
+    `id`, `pos: FxVec2`, `vel: FxVec2`, `facing: Angle` (2335's
+    256-step `shuyi_core::angle::Angle`, which 1119 writes if 2335
+    isn't done first), `kind: KindIndex`, `owner: PlayerId`,
+    `health: i32`, `orders: OrderQueue`, `flags: UnitFlags`
+    (hand-written bit flags; no new dependency).
   - **Read the last state, write the next:** `pos` and `vel` have a
     second buffer (`pos_next`, `vel_next`). A pass reads the last
     buffers and writes only its own row in the next ones. `swap()` at
@@ -110,11 +116,12 @@ None.
 - **Kinds as data:** `UnitKind` from `*.unit.ron`:
   - `name`, `speed` (`Fx` per step), `radius`, `health`, `armour`,
     `weapons` (range, cooldown in steps, damage, an optional
-    projectile; 2712 uses them), `sight`, `cost` (a list of resource
-    name and amount), `build_time` in steps, `movement` (a movement
-    class name; 2709 resolves it), `footprint` (cells, for buildings,
-    whose speed is 0), `produces` and `builds` (kind names), `gathers`
-    (bool);
+    `projectile { speed, homing }`; 2712 uses them and adds `hits`,
+    `area` and the kind's `acquire_range`), `sight`, `cost` (a list of
+    resource name and amount), `build_time` in steps, `movement` (a
+    movement class name; 2709 resolves it), `footprint` (cells, for
+    buildings, whose speed is 0), `produces` and `builds` (kind names),
+    `gathers` (bool);
   - `format_version: 1`, `deny_unknown_fields`; later tickets add
     fields with `#[serde(default)]`;
   - `UnitKinds`: every loaded kind, indexed in name order, so a

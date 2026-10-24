@@ -63,18 +63,21 @@ that macOS was tested only in CI.
   `EVIOCRMFF`. A pad needs its device opened read-write for this. Opened
   read-only, it gets no rumble and one log line. So removing gilrs keeps
   rumble on Linux and the Steam Deck. macOS stays without rumble, as
-  with gilrs. If 2408 isn't done, nothing here.
+  with gilrs. If 2408 isn't done, nothing here: 2408 adds the Linux
+  rumble to `shuyi-pads` when it lands (its clause on in-house pads).
 - **The switch**: `in-house-pads` becomes the only path:
   - remove `gilrs` from `crates/app/Cargo.toml`;
   - delete the gilrs source in `crates/app/src/pads/native.rs`;
   - remove the feature flag.
 - **Check**: `cargo tree --workspace` shows none of `gilrs`, `gilrs-core`
   or `vec_map`.
-- **libudev**: with gilrs gone, if nothing else needs libudev
-  (`cargo tree -i libudev-sys` is empty), remove the `lib-udev` row from
-  doctor's Linux table (`crates/cli/src/contract/doctor/linux.rs`, 2513)
-  and libudev's package from the `APT`, `DNF` and `PACMAN` lines of
-  every `scripts/setup-linux.sh`.
+- **libudev, either order with 2513:** with gilrs gone, if nothing else
+  needs libudev (`cargo tree -i libudev-sys` is empty) and 2513 is
+  done, remove the `lib-udev` row from doctor's Linux table
+  (`crates/cli/src/contract/doctor/linux.rs`) and libudev's package
+  from the `APT`, `DNF` and `PACMAN` lines of every
+  `scripts/setup-linux.sh`. If 2513 isn't done, nothing here: it leaves
+  libudev out when it lands (its clause).
 - **For the game:** `shuyi-app`'s API is unchanged, so the game's next pin
   bump needs no code change. Say so in the PR.
 

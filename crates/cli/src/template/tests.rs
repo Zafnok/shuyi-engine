@@ -834,11 +834,24 @@ fn the_engine_template_has_blank_and_grid_and_a_stage_for_grid() {
     assert_eq!(grid.targets, ["desktop", "web"]);
     for path in [
         "crates/rules/src/lib.rs",
+        "crates/rules/clippy.toml",
+        "crates/rules/tests/layers.rs",
         "crates/game/src/stages/top_down_grid.rs",
         "crates/game/files/stage.map",
     ] {
         assert!(grid.files.contains_key(Path::new(path)), "{path}");
         assert!(!blank.files.contains_key(Path::new(path)), "{path}");
+    }
+    // The rules crate's fence came with the grid stage, and the game's
+    // rules say so.
+    let rules = text_of(&grid, "crates/rules/src/lib.rs");
+    assert!(
+        rules.contains("deny(clippy::float_arithmetic)"),
+        "the float ban"
+    );
+    let agents = text_of(&grid, "AGENTS.md");
+    for named in ["crates/rules/clippy.toml", "crates/rules/tests/layers.rs"] {
+        assert!(agents.contains(named), "AGENTS.md doesn't name {named}");
     }
     let config = crate::project::Config::parse(&text_of(&grid, "shuyi.ron")).unwrap();
     assert_eq!(config.rules.as_deref(), Some("moon-garden-rules"));

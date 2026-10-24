@@ -57,16 +57,16 @@ None.
     resampler's step, so pitch is cheap here (2345 left pitch to this
     mixer). `balance` is the per-voice balance below, and `region` the
     loop region of `stream`. A pitch range in the audio manifest's cue
-    rules (2345) is a follow-up ticket, once the desktop and the web play
+    rules (2345) is 2379's (parked), once the desktop and the web play
     through this mixer (3031, 3032);
   - this list holds every need that 2902's needs list marks required, so
     the mixer is no smaller than the trait 3029 shares: `rate` (pitch,
     2345), `pause` and `resume` (2344), a stream's loop region (intro
     then loop), two streams at once for a crossfade (2341), and a voice
-    limit that never steals a voice (2345). It also holds the balance
-    2902 notes for positioned sound (2363). If 2902's report marks
-    another need required, it joins this list; a need it marks optional
-    (effects, seeking a stream to any time) stays out;
+    limit that never steals a voice (2345's rule, 2378's limit). It also
+    holds the balance 2902 notes for positioned sound (2363). If 2902's
+    report marks another need required, it joins this list; a need it
+    marks optional (effects, seeking a stream to any time) stays out;
   - `stream(source, Params) -> Result<VoiceId, Full>`, where `source` is
     anything that implements `Source` (`fn fill(&mut self, out: &mut
     [i16]) -> usize`, `fn rewind(&mut self)`), so a `vorbis::Decoder`
@@ -85,8 +85,9 @@ None.
   - a maximum number of voices, set at creation, so it never allocates in
     `render`. `play` or `stream` with every voice busy returns `Full` and
     never stops a voice on its own. Which sound loses is 2345's rule,
-    decided in `App` before the mixer, and the player keeps the
-    manifest's `max_voices` at or under this maximum.
+    applied in `App` before the mixer (2378), and the in-house backend
+    (3031) gives the mixer at least as many voices as the cue rules let
+    sound.
 - **Integers only.** Volumes are `u16` in units of 1/4096, the sum is in
   `i32`, and the result is clamped to `i16`. No floats, so the mixer gives
   the same samples on every target.
@@ -108,9 +109,10 @@ None.
   `unsafe`: `shuyi-sound` forbids it (ADR-0021 §6). Sounds are handed
   over as shared `Pcm`s ahead of time and named in commands by a
   `SoundId` (the mixer's own, not 2344's handle to a playing sound), so
-  a command is plain `Copy` data. If a safe queue can't be
-  made real-time safe, move the queue to `shuyi-sound-out`'s `sys`
-  module and say why in the completion notes.
+  a command is plain `Copy` data. If a safe queue can't be made
+  real-time safe, leave the queue out and say why in the completion
+  notes: `shuyi-sound-out` doesn't exist yet, and 3031, which makes it,
+  writes the queue in its `sys` module.
 
 **Out (do not do):**
 - System output (3031, 3032).
@@ -118,12 +120,16 @@ None.
   ticket when a game asks. Panning by position is 2363's (parked); this
   mixer only gives each voice the left and right volumes above.
 - The audio player's rules (cue volumes, variants, the music clock) and
-  the cue rules (2345: copy caps, minimum gaps, priority, the voice
-  limit): they stay where 3029 and 2345 put them, on top of this. So do
-  the sound groups (2342) and ducking (2343): a voice's `volume` is its
-  cue's volume times its group's gain (2342's `Gain`, already in this
-  mixer's 1/4096), worked out before the mixer. The mixer never sees the
-  group tree, and a change of a group's gain reaches it as `set_volume`.
+  the cue rules (2345: variants and minimum gaps; 2378: copy caps,
+  priority, the voice limit): they stay where 3029, 2345 and 2378 put
+  them, on top of this. So do the sound groups (2342) and ducking
+  (2343): a voice's `volume` is its cue's volume times its group's gain
+  (2342's `Gain`, already in this mixer's 1/4096), worked out before
+  the mixer. The mixer never sees the group tree, and a change of a
+  group's gain reaches it as `set_volume`.
+- Sounds and music that follow a tick game's speed (2123's
+  `GameSpeed`): a ticket when a game asks, whichever of 2123 and this
+  lands first. `rate` and `pause` above are what it would use.
 
 ## Implementation steps
 

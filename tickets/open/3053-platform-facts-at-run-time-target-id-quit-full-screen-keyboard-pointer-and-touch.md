@@ -204,9 +204,12 @@ None.
     `ctx.platform.can_quit()`. Screens read the facts; the rules crate
     never does."
 - **The facts never reach the rules.** They live in `shuyi-ui`, which
-  `shuyi-core` and a game's rules crate don't depend on (2015's layer
-  check holds that, if it is done). A Hello, Grid test plays the same
-  keys as `desktop` and as `web` and gets the same stage state hash
+  `shuyi-core` and a game's rules crate don't depend on. **From 2015
+  (done):** `cargo xtask check-layers` holds that for `shuyi-core`
+  (`tools/layers.ron`), and the grid template's
+  `crates/rules/tests/layers.rs` fails a rules crate that reaches
+  `shuyi-ui`. A Hello, Grid test plays the same keys as `desktop` and
+  as `web` and gets the same stage state hash
   (`shuyi_core::state_hash`).
 - **An ADR** (the next free number in `docs/adr/`, listed in
   `docs/adr/README.md`), extending ADR-0008 §1 and ADR-0024 §2, §3 and
@@ -240,6 +243,11 @@ None.
   - **2803** (the tutorial): if it is done, its steps under
     `site/tutorial/` get the grid template's change above. If not, 2803
     starts from the changed template.
+  - **3007** (per-target asset layers): if it is done, a running
+    game's load also picks the `assets@<target>/` layer by
+    `setup.platform.target`, so a run that isn't from a target's baked
+    pack still uses its layer (3007 picked it when baking only). If
+    not, nothing to do (3007 picks it at load, its clause says so).
   - **2005** (the first release): if it is done and has moved or copied
     `targets/` into a crate's package, embed the profiles from there.
     If not, embed them from `targets/`, and 2005 moves them for both
@@ -273,13 +281,23 @@ None.
   fact, never on a family, and the id says the rest.
 - per-target settings files: 3007's `assets@<target>/` layers carry
   per-target data.
-- reading `pointer` and `touch` (2405; 1121 and 2407, parked).
+- reading `pointer` and `touch`: 2407 (parked) shows its on-screen
+  controls from `touch` (its either-order clauses with this ticket).
+  No ticket reads `pointer` yet: 2405 works the same with or without
+  one, since a backend without a pointer sends no pointer events, and
+  1121 (parked) checks pointers only in `shuyi check --target`.
 - the game's identity at run time: 3048's `AppInfo`. These are the
   platform's facts, not the game's.
-- other facts later tickets add: reduced motion read at start (2340's
-  follow-up), the system's languages (2349), whether HTTP is present
+- other facts later tickets add: reduced motion read at start
+  (2377), the system's languages (2349), whether HTTP is present
   (2601, parked), and a phone's browser as `web-touch` (2407, parked).
-- a default scale mode per target (2333 left it for after this ticket).
+- a default scale mode per target: neither this ticket nor 2333 does
+  it. It is a follow-up of its own, blocked by both, written when a
+  game needs a different default on one target (2333's Out says the
+  same).
+- a default painter set per target (`glyph` or `onebit`): 2371, which
+  waits for this ticket and adds it to the profile and to
+  `PlatformFacts`.
 - the Steam Deck's and the Playdate's facts in their backends, and
   starting `ctx.device` on their pad: 3012 and 3010, which wait for
   this ticket.

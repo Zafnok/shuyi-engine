@@ -59,6 +59,7 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 | 2017 | The backlog and the docs kept true as tickets land: a lint warning on clauses about done tickets, `contract.md` tested |
 | 2022 | The Markdown a test reads counts as code in CI, and `run-gates` runs the templates job |
 | 2023 | The ticket lint reads every way a ticket waits on another, and the docs too; a done ticket has no unchecked box |
+| 2027 | No handoff on one side only: the backlog audited, the rule in `write-ticket` and `work-ticket`, and a ticket-lint error on a one-way clause |
 | 2011 | Dependabot for the crates and the pinned actions, a weekly security workflow, a Dependabot PR as its own ticket |
 | 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
@@ -497,6 +498,34 @@ The tickets, in order:
 dearer as code piles up. The game's own Playdate port is still its
 ticket 1025, parked until after launch.
 
+### Follow-ups the backlog audit wrote
+
+On 2026-10-23 Nick asked for the backlog to be checked for work left
+between tickets (2027). These are follow-ups that tickets promised
+without writing them. Each one comes after the ticket that promised it.
+The parked ones are under *Parked* below.
+
+| Ticket | What |
+| ------ | ---- |
+| 2028 | Each release after the first checked against the last version on crates.io (after 2005) |
+| 2029 | Capture plans that play a session record: the real window checked against the raster on a recorded session's frames |
+| 2135 | `Sequence` and `Points` in `shuyi_core::ease` (after 2109) |
+| 2136 | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
+| 2234 | JPEG, WebP, QOI and JPEG XL pictures drawn, and FLAC and MP3 sounds played (after 2203) |
+| 2235 | Nine-slice frames in a data file, baked in the pack and read by `BasicData` (after 2338) |
+| 2236 | Frozen format fixtures: each release's copy read while the version rule covers it |
+| 2374 | Eight-way on square maps: the path arrow, steering and an eight-way choice in the grid template (after 2117) |
+| 2375 | The log on screen in debug builds: a `log` channel and the console's newest lines (after 2315 and 2356) |
+| 2377 | The system's reduced-motion preference as the default of the player's motion setting |
+| 2378 | Cue rules, part two: file lengths, copy caps, priority and a voice limit (after 2345) |
+| 2380 | The profiles screen asks the system keyboard for a name (after 2346) |
+| 2409 | Mouse and touch on the engine's other widgets and screens, and wheel scrolling (after 2405) |
+| 2552 | `shuyi module new`: an outside module's crate, metadata, README and skill (after 2526) |
+| 2811 | Animated previews on the website's Examples cards (after 2514 and 2801) |
+| 3059 | A one-language build: `shuyi bake --lang` and `shuyi export --lang` (game#1049) |
+| 3060 | A debug build's crash report names the session it was recording |
+| 3062 | The Fullscreen setting follows the browser's and macOS's own fullscreen controls |
+
 ## Parked
 
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
@@ -716,3 +745,4 @@ Visions of Shuyi launches. The order inside each, when unparked:
 | 2741–2755 | Dungeon crawlers, two modules (ADR-0033): `shuyi-crawl` (a labyrinth of cells and walls, moving as turn rules, the view as plain data, lines, pictures and 3D skins, the automap and travel, an explorer bot) and `shuyi-rpg` (a party of one or more, sheets as data, items, making characters and the roster, front-view battles, abilities, encounters and drops, shops and services), and a demo with an opening, a town and two floors | Nick asks, after the game launches (2026-10-22: "if we can have tickets to add support for this type of game too"); 2753 also waits for 3D |
 | 2756–2764 | Action RPGs (ADR-0034): `shuyi-action` (hits and hurts, skills with cooldowns, spawners and aggro, moving to a pointed place, the HUD), loot rolled from affix tables and an inventory grid in `shuyi-rpg`, waypoints, and a demo | the same, after the real-time work (2026-10-22: "I also want support for roguelikes, and Diablo-likes") |
 | 2765–2768 | Roguelike gaps: turn order by speed, a message log, progress kept between runs, and the genre's habits in its template | the same; 2765 and 2766 sooner if the game asks |
+| 2134, 2373, 2376, 2379, 2381, 2382, 2549–2551, 2769–2772, 3057, 3058, 3061, 3112 | Follow-ups of parked work that the backlog audit wrote (2027): states over bone clips, rigid bodies in the debug view, a console that grows by whole cells, cue pitch, a side on sound captions, GPU frame times, soaks of tick and command sims, a relay or referee in `shuyi peers`, an online template part, an isometric RTS, command records in `shuyi replay`, a hex template part, MIDI on the Playdate, a screen reader on the web, DS music, and 3D views between steps | the parked tickets each one follows are unparked |

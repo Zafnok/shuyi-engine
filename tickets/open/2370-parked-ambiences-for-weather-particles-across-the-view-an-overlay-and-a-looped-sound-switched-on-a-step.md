@@ -123,8 +123,8 @@ None.
   that the rules of weather are the game's.
 
 **Either order with 2369:** if 2369 is done, the weather section of the
-guide shows an ambience over a light cycle. If not, 2369's ticket gains
-a line asking its guide section to show the two together.
+guide shows an ambience over a light cycle. If not, nothing to do
+(2369's guide section shows the two together, by its own clause).
 
 **Out (do not do):**
 - any rule of weather: what it changes, when it changes, its chances

@@ -200,6 +200,13 @@ account, its identity check and a certificate profile).
     are `std` only), in `shuyi-cli` only. A game's shipped binary never
     links `shuyi-cli` (the templates take it only under the `tools`
     feature).
+- **Either order with 3015** (mobile): if 3015's `ios` exporter is
+  done, it already wrote a temporary keychain step and a `Redactor`:
+  use them here (moved into `crates/cli/src/sign.rs` and
+  `crates/cli/src/sign/macos.rs` if they live elsewhere), adding the
+  desktop's secrets to the `Redactor`, instead of writing new ones; if
+  not, write them here, and the `ios` exporter reuses them (its scope
+  says so).
 - **One seam for the tools.** The signers run every outside tool
   through a trait, `ToolRunner { fn run(&self, program: &str, args:
   &[String], env: &[(String, String)]) -> io::Result<ToolOutput>; }`,
@@ -322,8 +329,9 @@ account, its identity check and a certificate profile).
   `cargo shuyi schema --out crates/cli/schemas`, `versions.json` gets
   the new line, and `docs/contract.md`'s `export` and `doctor` rows name
   `--sign` and `--signing`.
-- **A page for a game's owner:** `docs/signing.md` (3050 links it). It
-  says:
+- **A page for a game's owner:** `docs/signing.md`. The templates'
+  "Releasing" sections link it (the part on 3050 below says who adds
+  the link). It says:
   - what each option costs, checked that day;
   - the steps to get each credential;
   - the variables' table;
@@ -331,8 +339,9 @@ account, its identity check and a certificate profile).
     from forks get no secrets);
   - what players see with and without signing.
 
-  If 2802 is done, the book's chapter 9 ("Targets and export") gets a
-  short "Signing" section that links it.
+  **Either order with 2802:** if 2802 is done, the book's chapter 9
+  ("Targets and export") gets a short "Signing" section that links
+  it; if not, 2802 writes that section (its chapter 9 says so).
 - **Either order with 3050:**
   - If 3050 is done, each template's `release.yml` passes `export.yml`
     an input `sign`, true only on a tag push when the repository
@@ -343,9 +352,14 @@ account, its identity check and a certificate profile).
     `--sign` when `sign` is true. The engine's own
     `.github/workflows/export.yml` stays a byte-equal copy. The
     workflow names Actions secrets with the variables' own names, and
-    `docs/signing.md` says so.
-  - If not, `docs/signing.md` carries the step and 3050 takes it in
-    (its scope says so).
+    `docs/signing.md` says so. Each template's `README.md` and
+    `AGENTS.md` "Releasing" sections say signing is opt-in through
+    `SHUYI_SIGN` and link the engine's `docs/signing.md`, and their
+    macOS line says the `.app` has no Developer ID signature unless it
+    is on.
+  - If not, `docs/signing.md` carries the step, and 3050 takes it in
+    and links the page from the "Releasing" sections (its scope says
+    so).
 - **A real run without an account, if it works:** an integration test,
   `crates/cli/tests/sign_macos.rs`, marked `#[ignore]`, and a
   `sign-macos` job in `.github/workflows/ci.yml` on `macos-latest` that
@@ -429,7 +443,8 @@ account, its identity check and a certificate profile).
 9. Write `crates/cli/tests/sign_macos.rs` and the `sign-macos` job. Keep
    them if `codesign` accepts the self-signed identity.
 10. Write `docs/signing.md`, the book's section if 2802 is done, and
-    the workflow changes if 3050 is done.
+    the workflow changes and the templates' "Releasing" link if 3050
+    is done.
 11. Run the gates.
 
 ## Acceptance criteria

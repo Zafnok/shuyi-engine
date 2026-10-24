@@ -35,15 +35,21 @@ and its sine table, in units of 1/65 536 like this ticket's), 1120 (the
 `Perspective` trait) and 2003 (the `shuyi` crate, module metadata, the
 catalog and `cargo xtask check-modules`).
 
-Two open tickets touch the same ground. Either order works with each:
+Two tickets touch the same ground. 3005 is done, and either order
+works with 2701:
 
 - **2701** adds `Fx::sqrt`, `Angle::atan2` and `Angle::acos`. If 2701
   has landed, make those functions generic over `F` here, keeping their
   results for `Fx` (2701's tests must pass unchanged). If it hasn't,
   write them generic here, and 2701 uses them instead of adding its own.
-- **3005** makes `shuyi-core` `no_std`. If 3005 has landed, add
-  `shuyi-3d --no-default-features` to its CI gate. If not, write the
-  crate `no_std`-clean anyway (below), and 3005 adds it to the gate.
+- **From 3005 (done):** `shuyi-core`, `shuyi-ui` and `shuyi-platform`
+  build without `std`. CI's `no-std` job builds them with
+  `--no-default-features --target thumbv7em-none-eabihf`, runs `cargo
+  xtask check-no-std` over them (`CRATES` in
+  `crates/xtask/src/no_std.rs`) and runs their tests without `std`. The
+  `run-gates` skill's no-std section runs the same lines. Add `-p
+  shuyi-3d` to the target build there and in the skill, and `crates/3d`
+  to `CRATES`; write the crate `no_std`-clean (below).
 
 ## Nick input
 
@@ -95,6 +101,13 @@ None.
   - the `3d` feature in the `shuyi` crate;
   - its row in `docs/modules.md` (2003 lists it as parked) set to
     building;
+  - **the building status:** 2003's catalog has none
+    (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
+    still has none, add `Status::Building`, named `building`, with its
+    doc, the `status` line of `docs/modules.ron`'s header, *How to read
+    it* in `docs/modules.md` and the `modules` schema. `Status` is a
+    public enum: write a `Breaking:` line if CI's `api` job reports
+    one;
   - `crates/3d/README.md` in ADR-0009 §4's order: sections 1, 2 and 5
     in full, section 4 with a doc-tested snippet of the space types,
     and section 3 (cost) saying it is measured in 3108.

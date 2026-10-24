@@ -67,6 +67,10 @@ feels smooth.
 - **Frame times.** Log them with MangoHud (MIT; built into SteamOS's
   performance overlay), by launching with `MANGOHUD_CONFIG` set to log
   frame times to a CSV. Run every bench scenario (3008) five times.
+- **Either order with 2718** (the RTS budgets): if 2718 is done, its
+  four `rts-*` scenarios are among the bench scenarios run here, and
+  the report gives `rts-battle-5k`'s p99 against its goal of 16.7 ms.
+  If not, nothing to do (2718 runs them on the Deck when it lands).
 - **Power.** Read the battery draw from the performance overlay (level
   4) or MangoHud's battery field, on an idle battle map, for five
   minutes, with the screen at 50 % brightness and Wi-Fi on. Record the
@@ -77,8 +81,20 @@ feels smooth.
   - the power draw;
   - start-up;
   - the model and the SteamOS version.
-- **Calibration.** Set the profile's budgets from the measurements, and
-  set `status: supported` if all budgets hold.
+- **Calibration.** Set the profile's budgets from the measurements.
+  **From 3001 (done):** `targets/steam-deck.ron` is already `status:
+  Supported`. 3001 set every profile but `switch`, `android` and `ios`
+  so, before any device run; ADR-0008 §1 calls a target supported once
+  its example runs on the device, which this ticket makes true. Keep it
+  `Supported`. A budget that doesn't hold (a frame time, the start-up
+  or the idle draw) gets its follow-up ticket, as the idle-draw bullet
+  below says, not a demotion, which would drop the Deck from 3008's
+  gate.
+  **Either order with 3009** (bots think in slices): if 3009 is done,
+  its search scenario is one of the bench scenarios, and
+  `budgets.think_units_per_frame` is set from it the way 3011 sets
+  `playdate`'s, against 16.7 ms; if not, nothing to do (3009 sets it
+  from this report).
 - **If the idle draw is over 8 W.** Write a ticket. The likely fix is to
   present only when the frame changed, or to cap the frame rate on idle
   screens. 3043's background frame cap covers only a window without

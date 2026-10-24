@@ -55,8 +55,8 @@ None.
     resolves (2338), drawn in place of the `"panel"` or `"focus"` frame
     (`Ctx::panel_frame`) the widget wears with no `frame`. It names a
     picture, so it is not text and not a text key. **Either order with
-    2338:** if 2338 isn't done, leave the field out, and the follow-up
-    ticket of 2338's step 8 (nine-slices in a data file) adds it;
+    2338:** if 2338 isn't done, leave the field out, and 2235
+    (nine-slices in a data file, after 2338) adds it;
   - **Either order with 2334:** if 2334 is done, `Text` takes an
     optional `font` (an id in `GameData::fonts`) and is drawn as 2334's
     `TextLabel` in a layout in pixels; if not, 2334 adds the field;
@@ -77,7 +77,8 @@ None.
     (`DocScreen::set_arg(id, name, value)`, on the node with that
     `id`), never from the file. The values are typed as `Label`'s args
     are: 2348's `Arg` (`impl ToArg`) if 2348 is done, else text (an
-    `impl Display`, as `Label::with_arg` takes it today);
+    `impl Display`, as `Label::with_arg` takes it today), and 2348
+    retypes `set_arg` when it lands (its clause says so);
     - a `.ui.ron` may name the engine's own keys. **Either order with
       2351:** if 2351 is done, they resolve through the engine's
       English (`Lang::with_engine_english`), so the moved engine screen
@@ -87,8 +88,13 @@ None.
       `crates/ui/lang/en/ui.ron` keeps them; if not, 2351 does it;
   - **never a key:** a widget acts on the game's actions, and help text
     names keys through the keymap (`AGENTS.md` rule 8). The format has
-    no field that names a key, and `shuyi check-keys` (2006) covers
-    `.ui.ron` files;
+    no field that names a key, and `shuyi check-keys` already reads a
+    `.ui.ron` in a game's asset folders as it reads any `.ron`
+    (`crates/cli/src/check_keys.rs`); a test here shows it;
+    - **Either order with 2006:** if 2006 is done, add the folder of
+      the moved engine screen's `.ui.ron` to the root `shuyi.ron`'s
+      `check_keys` `assets`, unless a folder there covers it already;
+      if not, nothing to do (2006 lists it when it writes that file);
   - errors name the file, the node path (`root.children[1]`) and the
     problem.
 - **`DocScreen<G>`**, a screen built from a `UiDoc`: it lays out with
@@ -117,12 +123,13 @@ None.
 
 1. Write the `UiDoc` types and format, with errors.
 2. Write `DocScreen` over 2329's layout and 2355's `Focus`.
-3. Add reload, the reachability check in `shuyi check`, and
-   `check-keys` support if 2006 is done (else a line in 2006).
+3. Add reload, the reachability check in `shuyi check`, and a
+   `check-keys` test over a `.ui.ron` in a game's asset folder.
 4. Move that screen over.
 5. Do the either-order parts whose tickets are done: 2334's `font`,
    2338's `frame`, 2347's styled text, 2348's typed values for
-   `set_arg`, and 2351's test over the engine's `.ui.ron` keys.
+   `set_arg`, 2351's test over the engine's `.ui.ron` keys, and the
+   moved screen's folder in 2006's root `shuyi.ron`.
 6. Run the gates.
 
 ## Acceptance criteria

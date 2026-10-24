@@ -277,6 +277,21 @@ if he wants rumble in the game.
     - No new dependency: gilrs (MIT OR Apache-2.0, allowed by
       `deny.toml`) is already in `crates/app/Cargo.toml`, and
       `gilrs::ff` needs no feature.
+  - **Our own pads, either order with 2402 and 2403 (parked):** if
+    2402 is done, the `in-house-pads` source also implements
+    `set_motors` and `stop_motors`, through a new
+    `shuyi_pads::Pads::set_motors(id, strong: u16, weak: u16)` (0 and
+    0 to stop), written from the documents as 2402's rumble clause
+    says (ADR-0021 §2): XInput's `XInputSetState` for Xbox-style pads
+    on Windows, let go by the source when `for_ms` runs out. The gilrs
+    part above stays while 2403 isn't done. If 2403 is done too, gilrs
+    is gone, so skip the gilrs part above: `Source::set_motors` and
+    `stop_motors` go through `shuyi-pads`, the only native source, and
+    Linux rumbles as 2403's rumble clause says, in place of
+    `gilrs::ff`: an `FF_RUMBLE` effect uploaded with `EVIOCSFF`, played
+    with an `EV_FF` event and removed with `EVIOCRMFF`, on a device
+    opened read-write; none on macOS. If neither is done, nothing
+    more: each adds its part when it lands, by its own clause.
   - **The web** (`crates/cli/web/gamepad.js`, `crates/app/src/pads/web.rs`):
     - `shuyi_pad_rumble(index, strong, weak, ms)` calls
       `vibrationActuator.playEffect("dual-rumble", { duration: ms,
@@ -332,7 +347,8 @@ if he wants rumble in the game.
 - phone vibration: native phones are 3015's (parked). A phone's
   browser (`navigator.vibrate`, one motor) goes in the tickets 2407
   (parked) writes, which can play these cues through `Motors`;
-- the DS Rumble Pak (3024, parked);
+- the DS Rumble Pak: 3024 (parked) leaves it out too, and a ticket
+  when a DS game asks implements `Platform::motors` in `shuyi-nds`;
 - Steam Input's own haptics (Steam only; game#0903 weighs Steam Input);
 - rumble that fades with distance from a listener: 2363's positional
   sound (parked) has the listener; a follow-up if a game asks;
@@ -343,8 +359,10 @@ if he wants rumble in the game.
   engine's own menus and widgets;
 - checking with `shuyi check` the cue names screens use in their code
   (the debug-build panic and the Harness tests catch them);
-- our own pad code (2402, 2403, parked): it implements `Motors` when it
-  replaces gilrs.
+- rumble on our own pad code when this ticket lands first (2402, 2403,
+  parked): each adds it to its source when it lands, by its rumble
+  clause. If they are done first, the clause under the backends does it
+  here.
 
 ## Implementation steps
 
@@ -418,6 +436,8 @@ if he wants rumble in the game.
 - [ ] A pad on Windows or Linux rumbles for a cue (by hand, noted in the
       completion notes), or step 8 moved the backends to a ticket of
       their own, named in the completion notes.
+- [ ] If 2402 is done: an Xbox pad rumbles for a cue with
+      `in-house-pads` on (by hand, noted in the completion notes).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

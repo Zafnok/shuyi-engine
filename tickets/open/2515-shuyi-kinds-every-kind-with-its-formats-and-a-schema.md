@@ -51,10 +51,11 @@ What Shuyi has today:
 - `schemars` 1 (MIT) is already a dependency of `shuyi-cli`
   (`crates/cli/Cargo.toml` line 44), for the contract's schemas.
 
-What is planned: 2507 (parked) leaves its inspector's schema to 2506
-(parked), which decides nothing about it yet. 1133 makes each contract
-operation an MCP tool. 1134 writes the skills. 2907 researches one
-description of a game's types for scripts, scenes, schemas and agents.
+What is planned: 2506 and 2507 (parked) already take a settings file's
+shape from `shuyi kinds`, and 2507 is blocked by this ticket. 1133
+makes each contract operation an MCP tool. 1134 writes the skills.
+2907 researches one description of a game's types for scripts,
+scenes, schemas and agents.
 2230 adds JSON and CSV tables; 2516 adds typed references between
 assets. 2116 and 2020 walk the format registry too, and 2509 gives the
 contract's errors codes.
@@ -226,10 +227,11 @@ None.
   it as `english` too, after `palette`; the import test in
   `examples/hello-grid/tests/it/contract.rs` checks `read_as[0]`, so
   check it still passes.
-- **2507's text** (parked; only its text changes): its line "The schema
-  comes from **[2506]**: a derive, `serde-reflection`, or the format's
-  own `Format`" names this ADR and `shuyi kinds` instead. If 2907 is done
-  and changed that line already, check it agrees with this ADR.
+- **2507's text** (parked; only its text changes): its schema line
+  already takes a file's shape from `shuyi kinds` ("2515 and its ADR:
+  `schemars` behind `shuyi-assets`' `schema` feature"). Put this ADR's
+  number in it, and check the line agrees with this ADR (2907 may have
+  changed it).
 - **Either order with 2230:** if 2230 is done, `Json<T>` implements
   `TextSchema` for `T: JsonSchema` (exact for a JSON file), and
   `Csv<T, R>` for `R: JsonSchema` (the schema of one row; the
@@ -281,7 +283,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
    `crates/assets/src/ron.rs`, `crates/cli/src/contract/import.rs`,
    `contract.rs` and `contract/cli.rs`, and the standard RON formats'
    parsers named above. Read 2907's ADR if it is done, and check which
-   of 2116, 2020, 2230, 2516, 1133, 1134 and 2509 are done.
+   of 2116, 2020, 2230, 2516 and 1134 are done.
 2. Write the ADR.
 3. Add `Formats::kinds()` with its tests. Do the 2116 and 2020 parts if
    they are done.
@@ -291,11 +293,12 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
 5. Add `Importers::described`, describe the standard formats, and add
    the target profile kind to `Importers::standard()`.
 6. Add the `kinds` op, its wiring in `contract/cli.rs` and `lib.rs`,
-   the schemas and the version line.
+   its arms in `mcp::host::one_off` and `mcp::description`, `SH0001`
+   for an unknown kind, the schemas and the version line.
 7. Describe Hello, Grid's `English`; update `docs/formats.md`,
    `docs/contract.md`, the usage text and 2507's line.
-8. Do the either-order parts whose tickets are done (2230, 2516, 1134,
-   1133, 2509), or add the 1134 line to its scope.
+8. Do the either-order parts whose tickets are done (2230, 2516,
+   1134), or add the 1134 line to its scope.
 9. Run the gates.
 
 ## Acceptance criteria
@@ -317,7 +320,7 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
       kinds, with the limit `import` gives.
 - [ ] The contract's schema test passes with `VERSION` raised and
       `kinds.input.json` and `kinds.output.json` checked in.
-- [ ] 2507's schema line names this ADR and `shuyi kinds`.
+- [ ] 2507's schema line names this ADR by number and `shuyi kinds`.
 - [ ] `shuyi-assets` still builds for `thumbv7em-none-eabihf` without
       default features (the `schema` feature is off there).
 - [ ] `cargo deny check` passes.

@@ -94,8 +94,9 @@ None.
       foothold are in the snapshot.
 - [ ] The simulation hash and the `Rig` hash are the same with the
       channels on and off.
-- [ ] `frame-png --debug skeleton,footholds` on the example is reviewed,
-      and its snapshot is committed.
+- [ ] If 2704 is done, `frame-png --debug skeleton,footholds` on the
+      cave example is reviewed, and its snapshot is committed. If not,
+      2704 does it.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -132,10 +132,11 @@ engine gives the pieces and a default, and the game chooses.
     from the system, and still shows only with debug tools
     (`effective_lang`).
   - **Either order with 2353** (the pseudo-language): if it is done,
-    its `PSEUDO` pack is never picked from the system and
-    `languages_offered` leaves it out, as a game leaves out a test
-    pack; tools still pick it with `Harness::set_lang`. If not, 2353
-    does that.
+    its `PSEUDO` pack is never picked from the system, and
+    `languages_offered` offers it only with debug tools, as it does the
+    debug language (the toy's row then shows `[Pseudo]` after `Debug`);
+    tools still pick it with `Harness::set_lang`. If not, 2353 does
+    that.
 - **The system's languages.**
   - `Platform::languages(&self) -> Vec<String>`: the system's preferred
     languages, most preferred first, as the system writes them. A
@@ -172,6 +173,23 @@ engine gives the pieces and a default, and the game chooses.
       `index_html_loads_gamepad_js_between_the_bundle_and_the_game`
       check it.
     - `crates/cli/web/README.md` says what the file is.
+    - **Either order with 3039** (the web build's notices): if it is
+      done, `languages.js` gets a row in its table of `SHELL`'s files,
+      as the engine's own beside `gamepad.js` (its test fails until it
+      does); if not, 3039 lists it.
+    - **Either order with 3052** (the web shell's progress and errors):
+      if it is done, `SHELL` holds its `shell.js` and the page ends
+      with `if (shuyiShell.start(…)) load("%WASM%");`. `languages.js`
+      still loads between the bundle and that line, and this ticket
+      sets `SHELL`'s length. If not, nothing to do (3052 keeps
+      `languages.js` when it changes the page).
+    - **Either order with 2377** (the system's reduced motion): if it
+      is done, `SHELL` holds its `motion.js`, which `index.html` loads
+      after `gamepad.js`. `languages.js` loads beside it, this ticket
+      sets `SHELL`'s length, and the comment on `unsafe_code` in
+      `crates/app/Cargo.toml` names 2377's files and this ticket's. If
+      not, nothing to do (2377 loads `motion.js` beside `languages.js`;
+      its clause says so).
   - **The headless backend:** `HeadlessPlatform::with_languages(self,
     languages: &[&str]) -> Self`, as the system writes them; none by
     default.
@@ -191,6 +209,10 @@ engine gives the pieces and a default, and the game chooses.
     a choice whose values show as written, not looked up as text keys
     (ADR-0020: a label that is text, not a key). It steps, previews and
     is put back like `Choice`: share that code.
+    **From 2024 (done):** `RowValue` and each of its struct-like
+    variants are `#[non_exhaustive]` (ADR-0039), so `Names` is too, and
+    games build it with `RowValue::names(values, get, set)`, a
+    `const fn` beside `RowValue::choice`.
   - `Ctx::languages_offered(&self) -> Vec<(LangCode, String)>`: the
     source, then every pack in tag order, each with its own name
     (`SourceLang::name`, `LangInfo::name`). The debug language only
@@ -201,7 +223,7 @@ engine gives the pieces and a default, and the game chooses.
     `Settings::language` through `preview_settings`. Every screen
     changes at once, and Discard puts the language back.
   - A game that labels a machine translation (`LangInfo::made_by`)
-    builds its own `RowValue::Names` row on `languages_offered`.
+    builds its own row with `RowValue::names` on `languages_offered`.
   - The toy's `option_rows` gets the row after Key bindings, so the rows
     above keep their places, and `toy/en.ron` its key.
   - **Either order with 2351** (the engine's own English): if it is
@@ -254,27 +276,30 @@ engine gives the pieces and a default, and the game chooses.
   (`crates/app/src/lib.rs`) stays set at build time. The game's voices
   are in one language, and whether they follow translated text is its
   own question (game 0043). Parked 2725 plans voices per language for
-  visual novels.
+  visual novels, from `VoiceFiles`' folder per language along the
+  language's chain, not from a pack's `files/` (`localized_path`).
 - Steam's game language: 3037 (parked), which builds on
   `Platform::languages`.
 - Reading again the data a game read at start when the language
   changes: the game does that itself if it must.
-- Making a one-language build's layer (a `--lang` flag on `shuyi bake`,
-  or a choice in the `shuyi export` of 3004 and 3010), and a
-  command-line language switch: each a ticket of its own when a game
-  asks (game#1049 will, for the Playdate).
+- Making a one-language build's layer: 3059 (`shuyi bake --lang` and
+  `shuyi export --lang`, for game#1049's Playdate builds). It keeps the
+  packs on the language's chain, with their `files/`, and records the
+  language in the pack for `FirstLanguage::Fixed`.
+- A command-line language switch: a ticket of its own when a game asks.
 - The engine's screens in other languages (2352, parked).
 - Drawing a language's own name in a script the font lacks (`日本語`
   on the row): 2303's wide glyph sets.
 - Choice rows built from an enum setting: 2314.
 - The pseudo-language itself: 2353.
 
-**For the game:** additive but for one point. `RowValue` gains a
-variant, which breaks a game that matches on it with no `_` arm: say so
-in the PR, with 2010's `Breaking:` line. A game's saved settings should
-write the new field. The game's PR that moves the pin follows this
-one. It builds game#0825 on `Settings::language` (an `Option`, not
-the `LangCode` with a version bump that 0825 planned) and
+**For the game:** additive. `RowValue` gains a variant, which breaks no
+game: it is `#[non_exhaustive]` since 2024, so a game's `match` on it
+already has a `_` arm. If CI's `api` job finds a break all the same, the
+completion notes carry its `Breaking:` line (ADR-0038). A game's saved
+settings should write the new field. The game's PR that moves the pin
+follows this one. It builds game#0825 on `Settings::language` (an
+`Option`, not the `LangCode` with a version bump that 0825 planned) and
 `OptionRow::language`, and game#0831 on `Ctx::localized`.
 
 ## Implementation steps
@@ -292,9 +317,9 @@ the `LangCode` with a version bump that 0825 planned) and
 3. Make `Ctx` set the language in use, with `set_system_languages`.
 4. Add `Platform::languages`, `Setup::languages` and the headless
    backend's, then `shuyi-app` on native and on the web.
-5. Add `RowValue::Names`, `languages_offered`, `OptionRow::language`
-   and the toy's row. Update the toy's Harness tests that count rows,
-   if any moved.
+5. Add `RowValue::Names` and `RowValue::names`, `languages_offered`,
+   `OptionRow::language` and the toy's row. Update the toy's Harness
+   tests that count rows, if any moved.
 6. Accept `files/` in both readers; add `localized_path` and
    `Ctx::localized`.
 7. Write the docs. Run the gates, the web build included.

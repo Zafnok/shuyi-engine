@@ -89,7 +89,7 @@ None.
   | `GameData` | `crates/ui/src/ctx.rs:65` | its four types (`Action`, `Colors`, `Voice`, `Settings`) and its data methods; the templates' `Data` is one |
   | `ActionSet` | `crates/assets/src/keymap/action_set.rs:36` | an enum of the game's actions, deriving `Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug` |
   | `ColorSet` | `crates/ui/src/frame/color.rs:158` | most games use the engine's `EngineColor` |
-  | `ClipVariant` | `crates/assets/src/voice.rs:25` | a game with no voices uses one variant, as the templates' `OnlyClip` |
+  | `ClipVariant` | `crates/assets/src/voice.rs:25` | a game with no voices uses `()`, as `BasicData` does (ADR-0036) |
   | `GameSettings` | `crates/ui/src/settings.rs:70` | the game's own settings and their saved form |
   | `GameTools` | `crates/cli/src/game.rs:78` | only `frame_options`, `frame` and `lang` are required |
   | `TurnRules` | `crates/core/src/turn.rs:27` | the four types and `check`, `apply`, `legal_commands`, `outcome` |
@@ -141,8 +141,10 @@ None.
   - the xtask writes a package in `target/compile-messages/`: a
     `Cargo.toml` with an empty `[workspace]` of its own, so the
     repository's workspace doesn't claim it, `edition = "2024"`, path
-    dependencies on `crates/core`, `crates/assets`, `crates/ui` and
-    `crates/cli`, and `serde` with `derive` for the fixtures that need
+    dependencies on `crates/core`, `crates/assets`, `crates/ui`,
+    `crates/platform`, `crates/cli` and `crates/shuyi` (the blank
+    template's `use shuyi::prelude::*` and `BasicGame`), and `serde`
+    with `derive` for the fixtures that need
     it. It copies the workspace's `Cargo.lock` into it, so the
     dependencies resolve to the versions the workspace pins, and each
     fixture to `src/bin/<name>.rs`;

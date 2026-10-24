@@ -27,6 +27,22 @@ use the same parts, and ADR-0034's loot adds rolled modifiers to an item
 It builds on 2745 (`Sheet`, tags, `PartyConfig`'s inventory setting).
 The engine names no item, slot or tag (`AGENTS.md` rule 4).
 
+**Either order with 2747:** if 2747 is done, give `make.ron`'s
+options their starting items (kind ids from here, resolved when the
+def is built) and put the made items in `MakeRules::outcome()`; if
+not, nothing to do (2747 does it).
+
+**Either order with 2748:** if 2748 is done, wire its `Item { item,
+target }` command (refused with `BattleError::NoItems` until now) to
+this ticket's inventories and `Use`, pass the member's `Equipment` to
+`PartyMath::reach`, and make `ItemMath` a supertrait of `PartyMath`;
+if not, nothing to do (2748 does these when it lands).
+
+**Either order with 2750:** if 2750 is done, a kind's ability name
+resolves to 2750's `AbilityId` when the def is built, and `Use` casts
+it through 2750's `cast`; if not, `Use` returns an event with the
+ability's name, and 2750 wires it.
+
 **Who uses it** (ADR-0033 §17's bar for engine work): every RPG with gear: crawlers, top-down RPGs, roguelikes (unknown potions and scrolls), action RPGs (ADR-0034, which adds rolled modifiers), survival games' inventories.
 
 ## Nick input
@@ -61,13 +77,13 @@ None.
   equipped cursed item can't be taken off until `uncurse` (a temple in
   2752, an ability in 2750). Putting on a cursed item makes it known.
 - **Commands** as a `TurnRules` piece a game's rules call:
-  `Equip`, `Unequip`, `Use` (returns an event the game turns into the
-  ability; 2750 resolves it), `Give(from, to)`, `Drop`, `Identify`
-  (made known; who may and at what chance is the game's, through a
-  small trait of this ticket, `ItemMath::identify_chance`, defaulting
-  to always; 2748's `PartyMath` takes it as a supertrait if 2748 lands
-  second, or 2748 adds that bound when it lands), `Split(count)`. Each refusal is an error that changes
-  nothing.
+  `Equip`, `Unequip`, `Use` (returns an event with the kind's ability,
+  or casts it through 2750's `cast`, as the clause with 2750 says),
+  `Give(from, to)`, `Drop`, `Identify` (made known; who may and at what
+  chance is the game's, through a small trait of this ticket,
+  `ItemMath::identify_chance`, defaulting to always, which 2748's
+  `PartyMath` takes as a supertrait), `Split(count)`. Each refusal is
+  an error that changes nothing.
 - **Names shown**: `item.name_key(defs) -> TextKey`, the unknown name
   until known.
 - With a party of one and a shared inventory, everything works (tests).

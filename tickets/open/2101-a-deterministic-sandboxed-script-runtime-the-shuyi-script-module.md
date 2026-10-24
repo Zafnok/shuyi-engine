@@ -101,8 +101,10 @@ None (technical).
 - Joining the frame loop. The runtime is a library the game's rules call
   and installs no `Module`, because 2358's ADR keeps a library call the
   default. A debug menu entry for scripts is a module's
-  `Install::debug_entry` (2372), and a contract op through the follow-up for
-  module contract ops, when someone asks for one.
+  `Install::debug_entry` (2372). A contract op or a `shuyi check` item
+  for scripts needs ops and check items from modules in `GameTools`,
+  which no ticket has yet: 2358's Out leaves them to a follow-up,
+  written with the `write-ticket` skill when a module first needs one.
 
 **For the game:** additive (a new module). The game's PR that uses it
 (game#1017) moves its pin after this one.

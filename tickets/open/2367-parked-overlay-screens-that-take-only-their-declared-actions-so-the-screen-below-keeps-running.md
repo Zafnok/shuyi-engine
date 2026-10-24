@@ -142,6 +142,14 @@ None.
     first-key and debug screens), still applies a transition as if the
     top screen returned it. `ScreenStack::apply` and
     `ScreenStack::push` keep their meaning.
+- **From 2358 and 2372 (done; ADR-0040, *Consequences*):** a screen a
+  module pushes over a running game on its own is this ticket's. A
+  module's hooks get `&mut Ctx<G>` and return no `Transition`
+  (`crates/ui/src/module.rs`), so add a request on `Ctx` (for example
+  `Ctx::push_over(Box<dyn Screen<G>>)`). `Game::step` pushes each one on
+  top of the stack after the stack's update, in the order asked, and it
+  first runs in the next frame, as any push does. 3036's unlock notice
+  may use the same request.
 - **`covered` and `uncovered` follow running.** After each transition,
   in the walk or in `apply_in`, the stack compares the running screens
   before and after:
@@ -221,6 +229,25 @@ None.
   `covered` and `uncovered`, and stop a screen's handles when it leaves
   at its place in the walk, as `apply_in` does. If 2344 isn't done,
   edit 2344 in this PR to key its owners by the serial number.
+- **Either order with 2322** (the accessibility tree): if 2322 is done,
+  the tree's focus is in the top-most running screen that takes
+  actions, so a `Passes::Everything` notice never holds it, and the
+  screens a pass-through overlay lets run are in the tree under it,
+  with a test; if not, nothing to do (2322 does it).
+- **Either order with 2356** (debug commands and their console): if
+  2356 is done, its console (`ConsoleScreen`, named `debug_console`)
+  lets the game below keep running. Its `passes` is `Undeclared` and
+  its `actions` becomes `None`, so it keeps every action while it types
+  and only time goes down. Typed text isn't split, so the screen below
+  sees it too; a stage reads none. A Harness test opens the console
+  over a screen that counts `ticks()`, and the count still rises. If
+  not, nothing to do (2356 does it when it lands, as its Out says).
+- **Either order with 2405** (hit areas): if 2405 is done,
+  `ScreenStack::draw` keeps the hits of the top running screen that
+  takes input, not of the top screen: a `Passes::Everything` screen
+  records none, and `FrameInput::split` keeps the pointer in both
+  halves. A test: a click on a menu's row under a notice chooses that
+  row. If not, nothing to do (2405 does it, by its own clause).
 - **An ADR** (the `write-adr` skill). It amends ADR-0018 (`covered`
   follows running), ADR-0024 §4 (the steps reach every running screen)
   and ADR-0025 §3 to §5 (an overlay's declaration routes its input, the
@@ -272,8 +299,8 @@ None.
 - 1149's chat panel: 1149 picks `Undeclared` if this is done (an edit to
   1149 says so);
 - per-player input contexts and seats (2406, parked);
-- which screen a pointer click lands on (1121, parked, and 2405 for
-  menus): pointer input goes where it goes today;
+- which screen a pointer click lands on, beyond the hit areas above
+  (1121, parked): pointer input goes where it goes today;
 - splitting keys, buttons and typed text between screens;
 - a screen that passes and answers (pops with a value): a follow-up if a
   game needs one;
@@ -282,8 +309,6 @@ None.
   errors are drawn outside the stack, not as screens. 2316's readout
   stays the top screen's;
 - a module's drawing over the frame: 2358's `Module::draw_over`;
-- the accessibility tree under a pass-through overlay: 2322 (an edit to
-  2322 says where the focus goes);
 - a notice layer drawn by `Game`: weighed in the ADR, not built.
 
 ## Implementation steps
@@ -346,6 +371,9 @@ step 8 (the controls check of overlays: `passes` and `over`,
       the walk is not updated in that frame, and one uncovered during
       the walk first updates in the next.
 - [ ] `PopWith` from a passing screen panics in a debug build.
+- [ ] A module's `before_update` pushes a `Passes::Everything` notice
+      through `Ctx`; it shows from the next frame, and the screen below
+      keeps running and getting the player's actions.
 - [ ] `controls_fit` reports `Taken` and the shared input across an
       overlay and the screen below; `over` narrows the pairs; an
       `Everything` screen is neither checked nor warned about.

@@ -243,6 +243,11 @@ measurements where they matter, and a recommendation. The ADR decides.
      direction and mirrored layout; reordering per line; Arabic joining;
      breaking text without spaces; a right-to-left pseudo-language for
      2353's walk; Arabic's plural rules as a row of 2348's table;
+     the engine's own screens in Hebrew and Arabic, machine-translated
+     as 2352 does, which leaves them to this research: if 2352 is done,
+     a pack per language on its `engine_packs()`; if not, the same
+     ticket, with 2352 in its `blocked_by`. Either way it is blocked by
+     the tickets that draw the script;
    - the line about what text the cells draw in `docs/formats.md` (which
      2301 writes) updated to match the ADR.
 

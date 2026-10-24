@@ -35,11 +35,12 @@ What Shuyi has (read on 2026-10-21):
   `publisher`, and `icon`, one square PNG of 512 px or more), with a
   version parser and `app_info::downscale(w, h, rgba, size)` in
   `crates/cli/src/app_info.rs`.
-- 3004 adds `shuyi export` and four exporters: `windows` (a zip built for
-  `x86_64-pc-windows-gnu`), `linux` (a `tar.gz`), `macos` (an unsigned
-  `.app`, built in CI on macOS runners) and `web` (the web build's
-  folder). Its scope says nothing of an icon or version in the exe, a
-  bundle id or Info.plist, a `.desktop` file or a favicon.
+- 3004 adds `shuyi export` and five exporters: `windows` (a zip built
+  for `x86_64-pc-windows-gnu`), `linux` and `linux-arm64` (a `tar.gz`
+  each), `macos` (a universal `.app` with a minimal Info.plist and an
+  ad-hoc signature, built in CI on macOS runners) and `web` (the web
+  build's folder). Its scope says nothing of an icon or version in the
+  exe, a bundle id, a `.desktop` file or a favicon.
 - The web shell (`crates/cli/web/index.html`) has a `<title>%TITLE%</title>`
   and no icon. `package` in `crates/cli/src/web.rs` fills it from
   `web.title` (`Web::title`, a `String` that is empty when unset), the
@@ -144,13 +145,14 @@ None.
     `ic07` 128, `ic08` 256, `ic13` 256, `ic09` 512, `ic14` 512, `ic10`
     1024). A source under 1024 px leaves out `ic10`, and the report
     warns;
-  - both are written before any signature 3004 puts on the `.app` (an
-    ad-hoc one, if 3051's edit to 3004 is in), since the signature
+  - both are written before 3004's ad-hoc signature (`codesign --force
+    --sign -`, nested code first, then the bundle), since the signature
     covers them;
   - the `.app` folder is named after the name, with `/` and `:`
     replaced by `-`.
-- **`linux`:**
-  - in the `tar.gz`: `share/applications/<id>.desktop` (`[Desktop
+- **`linux` and `linux-arm64`** (if 3004's step 8 moved `linux-arm64`
+  to a follow-up ticket that isn't done, that ticket adds these):
+  - in each `tar.gz`: `share/applications/<id>.desktop` (`[Desktop
     Entry]`, `Type=Application`, `Name`, `Exec` the binary's name,
     `Icon` the id, `Categories=Game;`, `Terminal=false`), and
     `share/icons/hicolor/<n>x<n>/apps/<id>.png` for 16, 32, 48, 64, 128,

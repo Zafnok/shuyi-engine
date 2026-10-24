@@ -82,16 +82,17 @@ for Nick (parked 3047 asks it for crash reports).
     `main.rs` with `look` and the card's title (a `TITLE` const the
     window uses too). `lib.rs` names nothing of `shuyi-app`, so 2116's
     build without the window still works. It sets 2518's builders:
-    - `Start::made`: `Made::new("hello-grid", content)` (2111), the
-      content being `Bundle::new(vec![hello_grid::layer()])
-      .fingerprint()`;
+    - `Start::made`: `hello_grid::made()` (2111's stamp: `PACK_STAMP`
+      and the fingerprint of `Bundle::new(vec![layer()])`), so a
+      session record and a `StageRecord` of one build carry one stamp;
     - `Start::state_hash`: the stage's rules state through
       `shuyi_core::state_hash`, found with `Game::screen`
       (`crates/ui/src/game.rs:426`); `None` on other screens.
 
     `main.rs` calls it.
   - The grid template does the same in its `lib.rs`, `main.rs` and
-    `tools.rs`, formatted as CI's `templates` job checks them
+    `tools.rs`, its `Start::made` being its own `made()` (2111),
+    formatted as CI's `templates` job checks them
     (`templates/` is outside the workspace's `cargo fmt`).
   - `BasicGame::start()` (2511) sets `Start::made` from its files'
     fingerprint, with its name as the game's word. So a game on the
@@ -135,12 +136,21 @@ for Nick (parked 3047 asks it for crash reports).
   - The contract's `VERSION` (`crates/cli/src/contract.rs:52`) goes up,
     the schemas and `crates/cli/schemas/versions.json` are regenerated
     (ADR-0022 §5, `docs/contract.md`'s *The schemas*), and
-    `docs/contract.md` gets the flags. A differing frame and a refused
-    stamp get problem codes and help (2509's table).
+    `docs/contract.md` gets the flags. A refused stamp answers the code
+    2111 gives `replay`'s refused stamp, so one `Mismatch` has one code
+    (2111 is done first: it blocks 2518, which blocks this ticket). A
+    differing frame is a verdict: `ok: false`, no code, exit 1, as
+    `replay`'s differing runs are (`docs/contract.md`, *Problem
+    codes*).
 - **MCP:** 1133's `start` takes `session` and `any_stamp` as `run`
   does, and `step`, `scene` and `frame_png` go on from the frame it
-  stopped on. Its scripted client test gains a start from Hello, Grid's
-  golden session.
+  stopped on. `Server::start` (`crates/cli/src/mcp/server.rs`) sends
+  the host only `start` today: it forwards the new fields too, and the
+  host's `Live` (`crates/cli/src/mcp/host.rs`) keeps them beside
+  `start`, so `reset` starts the same record again, not a fresh game
+  (2357's `seek` starts a session again the same way). Its scripted
+  client test gains a start from Hello, Grid's golden session, and a
+  `reset` of it that ends on the same frame.
 - **A golden session for Hello, Grid only:**
   - In `shuyi_platform::harness` (with `std`):
     - `check_session(start, text: &str) -> Result<Played, String>`
@@ -204,8 +214,12 @@ for Nick (parked 3047 asks it for crash reports).
     replaces its file;
   - after each write, all but the newest `KEEP_SESSIONS` (10), by the
     start time in their names, are deleted;
-  - a line names the file, with macroquad's `info!`, as the backend's
-    own lines stay until 3041 (3040 says so).
+  - a line names the file, at `info`. **Either order with 3041:** if
+    it is done, this line and the `warn` with no data folder are
+    `log::info!` and `log::warn!` with `target: "storage"` (3040's
+    category), as its sink and its filter expect; if not, macroquad's
+    `info!` and `warn!`, as the backend's other lines are, and 3041
+    moves them to the `log` crate (its scope names this ticket).
 - **"Save session" on the debug menu:**
   - `Ctx::session_recording: bool`, which `App` sets while it records
     and while it hashes frames for a playback (2518's
@@ -253,20 +267,29 @@ for Nick (parked 3047 asks it for crash reports).
     for it: the functions it provides are those the app declares, and
     its version matches. If 3039 is done, `download.js` goes in its
     notices table as the engine's own, beside `gamepad.js`;
+  - **Either order with 3052:** both change `index.html` and `SHELL`.
+    If 3052 is done, `download.js` loads between the bundle and the
+    page's last call, `if (shuyiShell.start(…)) load("%WASM%");`, and
+    `shell.js` stays first; if not, nothing to do (3052 keeps
+    `download.js` when it changes the page). Whichever lands second
+    sets `SHELL`'s length;
   - the web saves only when the debug menu asks (it never quits, and a
     download per hidden tab would be noise).
 
 **In, both parts:**
 
-- **Docs:** the book's testing chapter (2802, if done; else a new
-  `docs/sessions.md` with a row in `README.md`'s table of docs): where
-  debug builds keep their sessions, how to save one from the debug menu,
-  how to play one with `shuyi run --session`, and how to keep and bless
-  a golden session. A line in `docs/platform-backends.md`'s *Session
-  records* (2518) says what `shuyi-app` writes. If 1134 is done, its
-  `shuyi-debug-replay` skill gains a section: reproduce a bug from a
-  session record with `run --session`, read `first_difference`, then
-  fix and keep the file.
+- **Docs:** where debug builds keep their sessions, how to save one
+  from the debug menu, how to play one with `shuyi run --session`, and
+  how to keep and bless a golden session. **Either order with 2802:**
+  if it is done, this goes in the book's testing chapter; if not, in a
+  new `docs/sessions.md` with its row in the docs map
+  (`docs/README.md`), and 2802 folds that page into the chapter (its
+  clause says so). A line in `docs/platform-backends.md`'s *Session
+  records* (2518) says what `shuyi-app` writes. **Either order with
+  1134:** if 1134 is done, its `shuyi-debug-replay` skill gains a
+  section: reproduce a bug from a session record with `run --session`,
+  read `first_difference`, then fix and keep the file. If not, nothing
+  to do (1134 writes it, its own clause says so).
 - **For the game:** its debug builds start writing sessions to
   `<data dir>/sessions/`; `GameTools` gains a defaulted method; `Ctx`
   gains a field; `run::run` and `run::scene` take the project's root;
@@ -284,19 +307,21 @@ for Nick (parked 3047 asks it for crash reports).
   lines, the debug menu entry, Hello, Grid's debug menu and the web
   download go to a follow-up ticket (the `write-ticket` skill, After
   MVP, blocked by this one) with their acceptance lines, and the
-  completion notes name it.
+  completion notes name it. The lines of 3039, 3043 and 3052 that name
+  this ticket's `download.js` then name the follow-up.
 
 **Out (do not do):**
 - Recording in shipped builds or by players, and sending a record as a
   bug report: Nick's decision on privacy (parked 3047).
 - A crash report naming the session a debug build was recording:
-  whichever of this ticket and 3046 lands second writes that ticket
-  (the `write-ticket` skill). Rewind (2357) and the live link to a
-  running build (2521, 2522) are their own.
+  3060 (blocked by this ticket and 3046). Rewind (2357) and the live
+  link to a running build (2521, 2522) are their own.
 - Stopping a session at a chosen frame (`--until`), `frame-png
   --session`, MCP's `seek`, and going back in a running game: rewind,
   2357, which builds on this ticket.
-- Captures of a range of a session: 2514's follow-up.
+- Captures of a range of a session (`--every` and `--count` with
+  `frame-png --session`): whichever of 2514 and 2357 lands second adds
+  them (their clauses say so).
 - Writing records on the Playdate, GBA or a console: their backends'
   follow-ups, if a playtest there needs one.
 - A switch to turn recording off in a debug build: write a ticket if a
@@ -354,7 +379,8 @@ for Nick (parked 3047 asks it for crash reports).
 - [ ] The contract's schemas and version line are regenerated, and the
       schema test passes.
 - [ ] MCP's scripted client starts Hello, Grid from the golden session
-      and reads the scene.
+      and reads the scene, and `reset` starts it from the record again
+      (the same frame and scene).
 - [ ] Hello, Grid's golden session test passes. `bless_session` on the
       golden text keeps every input and gives this build's stamp and
       hashes (a test on the text, with no file); bless runs through

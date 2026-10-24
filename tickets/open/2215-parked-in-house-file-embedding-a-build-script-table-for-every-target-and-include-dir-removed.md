@@ -55,7 +55,7 @@ None.
   - prints `cargo::rerun-if-changed` for the folder and every file and
     sub-folder, so adding, changing or removing a file rebuilds;
   - `.skip(pattern)` for files to leave out, which also lists them for
-    `Layer::left_out`;
+    `Layer::leaving_out`;
   - an error (the build fails with the path) for non-UTF-8 paths, and for
     two paths that differ only by case, since they collide on Windows and
     macOS;
@@ -65,6 +65,19 @@ None.
   `include_dir` dependency from `crates/assets/Cargo.toml` and the
   workspace. `Files::Table` and `Layer::table` stay as they are.
 - **`examples/hello-grid`** moves to `shuyi-embed`.
+- **Every other `include_dir!`** moves to `shuyi-embed` too, so the
+  `cargo tree` line below can pass. Done tickets added these after
+  this ticket was written:
+  - the templates under `templates/` (1129; 2511's `blank` hands
+    `Layer::dir` to `BasicGame::new`): each game crate gets a
+    `build.rs` and `Layer::table`, `include_dir` leaves the template's
+    `[workspace.dependencies]` for `shuyi-embed` as a build dependency
+    (`cargo xtask check-pins` compares them with the root's), and CI's
+    `templates` job still passes;
+  - `shuyi-cli`'s embedded `templates/` and `targets/` folders
+    (`crates/cli/src/contract/new.rs` and `target.rs`, from 1129 and
+    3001): a `build.rs` in `shuyi-cli` writes them as tables, which
+    `new` and `check --target` read.
 - **Docs**: the bundle's docs and any guide that shows `include_dir!`
   show `shuyi-embed` instead.
 - **For the game:** this breaks the game's API use: `Layer::dir` is gone.
@@ -83,8 +96,8 @@ None.
 2. Tests: the builder on a temporary folder writes the table you expect;
    the generated file compiles (an integration test crate with a
    `build.rs` that uses it).
-3. Move `hello-grid`, then remove `Files::Dir`, `Layer::dir` and
-   `include_dir`.
+3. Move `hello-grid`, the templates and `shuyi-cli`'s embedded folders,
+   then remove `Files::Dir`, `Layer::dir` and `include_dir`.
 4. Build the game against this working copy (`run-gates`, *The game at the
    next pin*) with its own change applied in its checkout, so the game's
    PR is known to work.
@@ -94,6 +107,9 @@ None.
 
 - [ ] `hello-grid` builds and runs natively and on the web with its files
       from `shuyi-embed`.
+- [ ] A game from each template builds with its files from
+      `shuyi-embed` (CI's `templates` job), and `shuyi new` and
+      `shuyi check --target` still work from the binary alone.
 - [ ] Changing, adding or removing a file under `files/` rebuilds the
       table on the next `cargo build`.
 - [ ] Two files differing only by case fail the build with both paths.

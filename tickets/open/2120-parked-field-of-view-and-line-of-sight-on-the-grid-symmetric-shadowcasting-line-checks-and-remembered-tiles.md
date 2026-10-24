@@ -155,7 +155,7 @@ None.
 - heights, light levels and tiles seen in part;
 - drawing. Hiding unseen tiles and dimming remembered ones is the
   game's scene: 2735 shows it with blank tiles and `MapScene::tint`. A
-  debug view channel (2315) is a follow-up;
+  debug view channel (2315) is a follow-up if a developer asks;
 - fog of war per team (2713), 2D lights (2328, which leaves its own
   shadows and occluders to a follow-up), ray casts in free movement
   (2124) and in 3D (3105), and per-player views on a server (1146);

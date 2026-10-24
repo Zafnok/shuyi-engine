@@ -195,7 +195,7 @@ None.
     paths, turns");
   - the docs of `MapScene::path` (`crates/ui/src/grid/scene.rs`) and
     `path_overlays` say they draw four-way steps. Docs only; drawing a
-    diagonal is the follow-up under *Out*.
+    diagonal is 2374's, under *Out*.
 - **Public types (ADR-0039):** `Topology`, `Diagonals`, `Corners`,
   `PathOptions` and `TilePath` are `#[non_exhaustive]` (fields stay
   public to read), with the constructors, constants, `Default` and
@@ -207,6 +207,13 @@ None.
 - **Either order with 2004** (guides): if 2004 is done, add a paragraph
   to `docs/guides/top-down-grid.md`: four-way by default, eight-way with
   `Topology::Square8`, and `find_path`. If not, 2004 writes it.
+- **Either order with 2709** (parked, RTS paths): if 2709 is done, make
+  `shuyi_rts::paths` take its eight directions, step costs, corner rule
+  and octile heuristic from `shuyi_core` (`Dir8`,
+  `Topology::Square8(Diagonals::OCTILE)`, `Topology::steps`,
+  `step_weight` and `Topology::distance`), delete its own copies, and
+  keep its tests passing unchanged. If not, nothing to do (2709 takes
+  them from `shuyi_core`).
 - **What changes for the game:** nothing. New items only. Say so in
   the PR.
 
@@ -214,11 +221,7 @@ None.
 - drawing a diagonal step in the path arrow, steering the cursor in
   eight directions (a diagonal must be an action, and a Playdate's
   d-pad has four: the `input-actions` skill), and an eight-way choice
-  in the template's grid stage
-  (`templates/shuyi-default/stages/top-down-grid`) or the wizard
-  (2502–2505). The session that
-  completes this ticket writes one follow-up ticket for them (the
-  `write-ticket` skill), in the 23xx block;
+  in the grid template: 2374 does them, blocked by this ticket;
 - jump-point search, inexact (weighted) heuristics, Euclidean distance,
   a cap on the tiles searched, and cached paths: each one when a
   measurement on a real map asks for it;

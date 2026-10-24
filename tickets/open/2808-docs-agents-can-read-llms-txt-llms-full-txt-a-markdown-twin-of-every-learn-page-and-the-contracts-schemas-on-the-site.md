@@ -43,13 +43,13 @@ What Shuyi has, and plans:
   `/api/`. 2803 adds the tutorial in `site/content/learn/tutorial/`.
   None of them writes anything for agents.
 - The contract's JSON schemas are in `crates/cli/schemas/`:
-  `versions.json` lists versions 1 to 4, and `contract::VERSION` is 4
-  (`crates/cli/src/contract.rs` line 52). `shuyi schema` prints them,
-  but only for someone who has installed the CLI. The site won't carry
-  them.
-- The template's `AGENTS.md` (`templates/shuyi-default/base/AGENTS.md`
-  line 7, one file for every game since 2501) links the engine's
-  `AGENTS.md` at `blob/main`, even for a game that `shuyi new --engine-rev` pins to a
+  `versions.json` lists every contract version, and `contract::VERSION`
+  is the last one (16 on 2026-10-24, in `crates/cli/src/contract.rs`).
+  `shuyi schema` prints them, but only for someone who has installed
+  the CLI. The site won't carry them.
+- The templates' `AGENTS.md` (`templates/blank/AGENTS.md` line 9,
+  `templates/grid/AGENTS.md` line 8) link the engine's `AGENTS.md` at
+  `blob/main`, even for a game that `shuyi new --engine-rev` pins to a
   commit (`Engine::Rev` in `crates/cli/src/contract/new.rs`).
 - 1134 will ship skills that `shuyi new` copies into each game, so they
   will match the installed version. They don't help an agent that
@@ -191,8 +191,9 @@ None.
 - **The docs map** (`docs/README.md`, 2810, done before 2802): a row
   for `llms.txt`, its twins and `site/llms-header.md` under *People
   making games*. They are generated from Learn, so the row says to
-  change Learn and never a twin (the map's rule 2). Another row for
-  `site/README.md` under *Engine developers*.
+  change Learn and never a twin (the map's rule 2). 2801 gave
+  `site/README.md` its row under *Engine developers*; add the llms
+  tool to what that row says it holds.
 - **`pages.yml`:** one `BASE_URL` value goes to `zola build --base-url`
   and to `cargo xtask llms --base-url`. The tool runs after `zola build`
   and 2802's `cargo doc` copy, before the upload, with `--commit ${{
@@ -207,13 +208,11 @@ None.
   pages hold Zola's `@/` links and links broken on purpose (both in
   `SKIPPED_PATHS`, `crates/xtask/src/links.rs`).
 - **New games point their agent at the engine they build with:**
-  - in the `base` part's `AGENTS.md`, the sentence linking the engine's
+  - in both templates' `AGENTS.md`, the sentence linking the engine's
     `AGENTS.md` at `blob/main` becomes a short list filled from one new
     placeholder, `{{engine.docs}}`;
-  - the composer fills it (`shuyi_cli::template::fill`, from a new
-    field of `template::Fill` that `fill_for` in
-    `crates/cli/src/contract/new.rs` sets beside the
-    `{{engine.<crate>}}` ones), from the game's `Engine`:
+  - `files()` in `crates/cli/src/contract/new.rs` fills it as one more
+    pair beside the `{{engine.<crate>}}` ones, from the game's `Engine`:
     - `Main`: `AGENTS.md` at `blob/main`, and the site's `llms.txt` and
       `llms-full.txt`, from a new `ENGINE_SITE` constant
       (`https://zafnok.github.io/shuyi-engine`) beside `ENGINE_GIT`. The
@@ -226,13 +225,20 @@ None.
   - the module's table of placeholders gains the row. Games on a
     released version come with 2005, which fills the same placeholder
     with that version's `/v<x.y>/llms-full.txt`.
-- **The template after 2511 and 2501 (done):** the sentence that links
-  the engine's `AGENTS.md` is in `templates/shuyi-default/base/AGENTS.md`'s
-  second paragraph; change it there, and `docs/templates.md`'s table
-  of placeholders gains the row.
+- **From 2511 and 2501 (done):** the built-in template
+  (`templates/shuyi-default/`) has replaced the two folders: change the
+  sentence in its `base` part's `AGENTS.md` (its second paragraph), and
+  fill `{{engine.docs}}` where the composer fills the
+  `{{engine.<crate>}}` ones (`shuyi_cli::template::fill`, from a new
+  field of `template::Fill` that `contract::new::fill_for` sets), with
+  the test for each `Engine` variant there and its row in
+  `docs/templates.md`'s table of placeholders.
 - **Either order with 2803 and 2004:** 2803's pages are in
   `site/content/learn/tutorial/`, so they get twins and an H2 with no
-  change here. 2004's guides (`docs/guides/`) and 2509's error pages
+  change here, unless 2803 adds an argument or a shortcode for its
+  step folders or its diffs: if 2803 is done, read what it added and
+  expand it too; if not, 2803 adds that expansion in its PR. 2004's
+  guides (`docs/guides/`) and 2509's error pages
   (`crates/cli/errors/`, already written) reach Learn through 2802. If they land in
   `site/content/learn/` as Markdown files before `zola build`, they get
   twins too, as long as `ci.yml` makes the same copy before its `cargo
@@ -287,7 +293,7 @@ None.
    image. Snapshot its outputs.
 5. Change the site's templates, `site/README.md`,
    `site/llms-header.md`, `pages.yml`, `ci.yml` and `links.rs`.
-6. Change `new.rs`, the composer and the `base` part's `AGENTS.md`.
+6. Change `new.rs` and the two templates' `AGENTS.md`.
 7. Run the gates. After the merge, fetch `/llms.txt`, one twin and
    `/llms-full.txt` from the live site, and say so in the completion
    notes.

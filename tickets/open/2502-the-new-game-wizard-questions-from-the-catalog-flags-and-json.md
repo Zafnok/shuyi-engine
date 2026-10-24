@@ -29,8 +29,23 @@ targets.
 
 The template format and the composer are 2501. This ticket asks the
 questions and hands the answers to the composer. It allows several
-perspectives to be picked, but until 2503 lands it composes one stage
-per perspective with no move between them, and says so in `limits`.
+perspectives to be picked, but until 2503 lands a game has one stage.
+
+**From 2501 (done):**
+- `templates/shuyi-default/template.ron` asks `perspective` as a
+  question of its own, with the one ready answer, `top-down-grid`, so
+  that `--set perspective=top-down-grid` and the short name `grid` work.
+  This ticket asks perspective from the catalog instead, and takes the
+  question out of `template.ron`; the short names and the parts'
+  `Picked("perspective", …)` keep their ids.
+- The composer refuses a second part with a stage
+  (`ComposeError::Stage`, "a game has one stage for now"): with two
+  perspectives that each add a stage picked before 2503, the wizard
+  says so before it composes, and `limits` names 2503's moves as not
+  there yet.
+- `compose(&Template, &Answers, &Catalog, &Fill)`: the answers go in as
+  `template::Answers`; `contract::new::answers_of` joins a short name,
+  `--answers` and `--set`, and this ticket's flags join there.
 
 ## Nick input
 
@@ -43,17 +58,33 @@ asked is missing.
 **In:**
 - **The catalog gains two fields per concern** in `docs/modules.ron`
   (ADR-0013 §1): `pick: One | Many` and `question: "…"`. Concerns
-  today: perspective (`Many`), bodies and motion (`Many`), online play
-  (`One`). Music comes with 2205. Update 2003's `check-modules` to
-  require both fields.
+  today (2003 wrote six): time, perspective (`Many`), bodies and
+  motion (`Many`), online play (`One`), world drawing (`Many`: a 3D
+  stage and a 2D one draw differently) and kind of game (`Many`, "What
+  kind of game is it?", ADR-0015 §1). **Either order with 2205**
+  (parked: the music concern): if 2205 is done, give music `pick: Many`
+  and the question "What plays the music?"; if not, nothing to do (2205
+  gives them when it lands). Add both fields to
+  `shuyi_cli::catalog::Concern`, which denies unknown fields, and to
+  the xtask's `Concern` (`crates/xtask/src/modules.rs`), and make
+  2003's `check-modules` require both fields on every concern but
+  `time` (below). `Concern` is in `shuyi modules`'s answer: regenerate
+  its schema and raise `contract::VERSION`. It is a public struct with
+  public fields, so write the `Breaking:` line CI's `api` job asks for.
+- **Time is not asked** (ADR-0013 §1): it follows from the
+  perspectives, so the `time` concern gets neither field and the wizard
+  has no `--time` flag. A template asks its own `time` question when a
+  game needs both, as 2739's `stage-arcade-grid` part does. Its answers
+  are the template's (`turns`, `ticks`), not the catalog's.
 - **Perspectives are catalog answers.** Make sure every answer of the
   perspective concern in `docs/modules.ron` (2003 put them there) has a
   status and its tickets: `top-down-grid` ready; `top-down`,
   `isometric` and `side-view` from 1122, 1126 and 1127; `first-person`,
-  `third-person` and `top-down-3d` from 3108 and 3109 (ADR-0011 §2). The
-  *World drawing* concern (HD-2D) becomes a question like any other,
-  asked only when one of its answers other than the default is ready or
-  planned.
+  `third-person` and `top-down-3d` from 3101 (ADR-0011 §2), where
+  2003 put them; add 3108 to the first two and 3109 to the third,
+  since they set them ready. The *World drawing* concern (HD-2D)
+  becomes a question like any other, asked only when one of its
+  answers other than the default is ready or planned.
 - **The direction menu.** If the parked 3108 has already added a
   direction menu to `shuyi new`, replace it with the wizard: its
   directions are now perspective answers (ADR-0013 §1). Keep its tests'
@@ -65,13 +96,17 @@ asked is missing.
   2. the perspectives (`Many`);
   3. one question per catalog concern, in the catalog's order, skipping
      a concern none of whose answers applies to the perspectives picked
-     (bodies and motion isn't asked for grid-only games, ADR-0013 §1);
+     (bodies and motion isn't asked for grid-only games, ADR-0013 §1),
+     and never `time`;
   4. the template's own questions;
   5. the targets (`Many`), from the target profiles (3001).
 
   Each answer carries its status (`Ready`, `Planned { ticket }`,
-  `Parked { ticket }`) and a one-line description from the module's
-  metadata (2003).
+  `Parked { ticket }`) and a one-line description. 2003's module
+  metadata (`ModuleInfo`) has none, and an answer by `default` or by a
+  module not built yet has no crate to read one from: take it from
+  `docs/modules.ron` (the answer's `name`, or a new field beside
+  `pick` and `question`).
 - **Interactive prompts** in a terminal: single and multi-select lists,
   with planned answers shown greyed with their ticket and not
   selectable. Use `inquire` or `dialoguer`. Check the license from its
@@ -82,7 +117,7 @@ asked is missing.
   terminal's, not the game's, so rule 8 doesn't apply to them. The help
   line under each prompt still names them.
 - **Flags** for every question: `--id` (if 3048 is done, see below),
-  `--perspective`, `--bodies`, `--music` (once 2205 adds it), `--kind`
+  `--perspective`, `--bodies`, `--music` (if 2205 is done), `--kind`
   (from 2003's *Kind of game* concern, ADR-0015 §1), `--online`,
   `--targets`, and `--set` (2501) for template questions. A planned
   answer given by flag fails with its status and ticket. `--no-input`,
@@ -100,17 +135,51 @@ asked is missing.
 - **Each picked answer that is a module** turns it on through the
   template's parts or, if no part names it, through `shuyi add`'s code
   directly (ADR-0013: every catalog answer works with no part).
-- **The skill pack:** if 1134 is done, update the `shuyi-new-game`
-  skill to call `--questions --json`, ask its user, and pass the
-  answers as flags. If not, add that to 1134's scope in this PR.
+- **The skill pack. Either order with 1134:** if 1134 is done, update
+  the `shuyi-new-game` skill to call `--questions --json`, ask its
+  user, and pass the answers as flags. If not, nothing to do (1134
+  writes it, its own clause says so).
 - **Docs:** `docs/templates.md` (2501) gets a section on the wizard and
   its flags. If 2004 is done, each direction guide names the answers
   that start it.
+- **Either order with 2206** (parked: MIDI playback and its
+  `music-midi` part): if 2206 is done, a test makes `shuyi new demo
+  --no-input --music midi` and checks that the game builds and plays the
+  template's sequence; if not, nothing to do (2206 adds that test).
+- **The RTS answer, either order with 2707:** if 2707 is done, list
+  `--kind rts` among the flags in `docs/templates.md`. If not, nothing
+  to do: 2707 checks the list when it lands (its clause says so).
+- **The RTS part, either order with 2719:** if 2719 is done, a test
+  checks that `--kind rts` makes the game its `kind-rts` part makes. If
+  not, nothing to do: 2719 checks `--kind rts` when it lands (its
+  clause says so).
+- **Either order with 2726, 2732, 2735 and 2754** (parked: the
+  `kind-visual-novel`, `kind-mystery`, `kind-roguelike` and
+  `kind-dungeon-crawler` template parts): if one is done, its part is
+  made with `--set kind=<answer>`. Check that `--kind <answer>` makes
+  the same game, and change that command to `--kind` where its guide
+  and CI name it. If not, nothing to do: each uses `--kind` when it
+  lands (its scope says so).
+- **Either order with 2739** (parked: the `stage-arcade-grid` part): if
+  2739 is done, the built-in template already asks `time` among its own
+  questions (step 4 above), so the prompts and `--questions --json`
+  show it; check that they do. If not, nothing to do: 2739 adds the
+  question to the template, and its scope says the prompts show it.
+- **Either order with 2771** (parked: the `stage-hex-grid` part): if
+  2771 is done, `--template hex` and `--set perspective=hex-grid` make
+  the game its part makes. Check that `--perspective hex-grid
+  --no-input` makes the same plan (a test), and name that command
+  beside `--template hex` in `docs/guides/hex-grid.md`'s *what starts
+  it*. If not, nothing to do: 2771 names the command and adds the test
+  when it lands (its clause says so).
 
 **Out (do not do):**
 - moves between stages (2503); until then, several perspectives give
   separate stages and a `limits` entry;
 - checking targets against modules, per-target CI (2504);
+- a planned target's ticket: a profile's `Status::Planned` holds none
+  (3001), so a planned target shows its status alone; 2504 adds the
+  tickets to the profile format;
 - templates from outside the engine (2505);
 - a graphical wizard (the CLI and JSON are enough for now).
 
@@ -122,7 +191,7 @@ asked is missing.
 3. Write the prompts, the flags, `--no-input` and `--questions --json`.
    Check whether 3048 is done; if so, add the id question and `--id`.
 4. Print the equivalent command and write `created_with`.
-5. Update the skill (or 1134's scope) and the docs.
+5. Update the skill if 1134 is done, and the docs.
 
 ## Acceptance criteria
 
@@ -130,8 +199,8 @@ asked is missing.
       demo --template grid`.
 - [ ] `shuyi new demo --questions --json` lists every catalog concern
       with each answer's status, and matches its schema.
-- [ ] A parked answer by flag (for example `--bodies procanim`) fails,
-      naming its status and ticket 2701.
+- [ ] A parked answer by flag (for example `--bodies procedural`)
+      fails, naming its status and ticket 2701.
 - [ ] Answering the prompts, then running the printed command with
       `--no-input` into another folder, gives the same bytes (an
       integration test drives the prompts through the library's test
@@ -142,15 +211,16 @@ asked is missing.
       writes that id into `shuyi.ron`'s `app.id` and `app_info.rs`, and
       the game passes `app-info --check`. A bad id by flag fails with
       3048's error.
-- [ ] `check-modules` fails on a concern without `pick` or `question`.
+- [ ] `check-modules` fails on a concern other than `time` without
+      `pick` or `question`.
 - [ ] Nick's sign-off is recorded in the Completion notes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: `wizard::questions` over fixture catalogs (a concern skipped for
-  grid-only, planned answers marked, template questions placed last
-  before targets); flag parsing to `Answers`.
+  grid-only, `time` never asked, planned answers marked, template
+  questions placed last before targets); flag parsing to `Answers`.
 - Integration: `--questions --json` against its schema; `--no-input`;
   the printed command reproduces the game; the every-ready-answer game
   builds (CI).

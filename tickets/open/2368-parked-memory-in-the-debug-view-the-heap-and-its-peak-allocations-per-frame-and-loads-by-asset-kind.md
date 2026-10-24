@@ -260,11 +260,13 @@ None.
 - frame times and spans (2325);
 - a screen that lists every kind and scrolls: a follow-up if five rows
   are not enough;
-- what the game's load kept, as a number of its own: a follow-up;
+- what the game's load kept, as a number of its own: a follow-up if a
+  developer asks;
 - resident bytes per asset or per kind. A game keeps what it loads in
-  its own data, so nothing knows what is still in memory. That waits for
-  an asset store owned by the engine, if 2906's ADR decides one (a
-  follow-up then);
+  its own data, so nothing knows what is still in memory. That needs an
+  asset store owned by the engine, if 2906's ADR decides one; the
+  store's build ticket then shows them in the `memory` channel (2906's
+  clause says so);
 - the bytes each kind's decode allocated (the counter's change around
   each decode): a follow-up if bytes read are not enough;
 - a budget line in `shuyi-app`. It reads no profile at run time, and a
@@ -278,7 +280,7 @@ None.
 - memory in CI (3008, and 3020 for allocations per frame) and on GBA and
   DS devices (3022, 3026). No second CI ticket;
 - the reading in the contract's answers or over the live link (2521):
-  a follow-up;
+  a follow-up if an agent or a developer asks for it;
 - new actions or keys. The debug menu is the only way in.
 
 ## Implementation steps

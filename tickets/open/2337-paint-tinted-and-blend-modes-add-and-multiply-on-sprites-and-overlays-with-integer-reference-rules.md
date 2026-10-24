@@ -200,10 +200,12 @@ None.
   dependency chain*):
   - 2103 (parked): its look keys may carry a `Paint::Tinted` and a
     `Blend` (additive sparks);
-  - 2327 (parked): per-sprite tint and blend exist (2337), so its
-    materials are for what they can't do; a material replaces a
-    sprite's tint and blend; `palette_swap` stays the tool for team
-    colours on full-colour art;
+  - 2327 (parked): it already says that tint and blend exist per
+    sprite, so its materials are for what they can't do; that a sprite
+    with a material keeps its `blend` as the pipeline's blend state and
+    takes its `Paint::Tinted` colour as an input; and that
+    `palette_swap` stays the tool for team colours. Check that those
+    lines still match what this PR builds;
   - 3034 (parked): the renderer it plans draws `Paint::Tinted`, `blend`
     and an overlay's opacity to `frame::blend`'s rules;
   - 3017 (parked): per-sprite tint and blend are optional capabilities
@@ -222,8 +224,9 @@ None.
 - **Either order with 2335** (turned sprites): if 2335 is done, its
   turned-sprite paths (`frame-png`'s per-pixel fill, the one-bit
   `dest_pixel` path, `shuyi-app`'s texture made on the CPU) take
-  `Tinted` and `blend` too. If not, add a line to 2335 saying its turned
-  sprites take them.
+  `Tinted` and `blend` too; `shuyi-app` leaves a `Tinted` paint out of
+  that texture and its cache key and draws it as the draw colour. If
+  not, nothing to do (2335 does it; its clause with 2337 says how).
 - **Either order with 2339** (the veil): if 2339 is done, its veil's
   `Image::blend` call takes `Blend::Alpha`. If not, 2339 says so
   already.
@@ -257,7 +260,8 @@ None.
 - palette swap and team colours on full-colour art (2327): a multiply
   tint over full-colour art looks muddy;
 - screen passes and bloom (2326); full-screen flashes and fades (2340
-  and 2339, on the frame's veil); lights and emissive maps (2328);
+  and 2339, on the frame's veil); lights (2328); emissive maps (a
+  follow-up if a game asks, as 2328's **Out** says);
 - building the wgpu renderer (3034) or target capabilities (3017): this
   PR only adds a line to each;
 - freeing or bounding `render.rs`'s recoloured-texture cache for

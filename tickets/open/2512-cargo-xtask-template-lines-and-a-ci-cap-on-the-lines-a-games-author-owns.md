@@ -168,18 +168,34 @@ choice, and it only goes down.
 - **From 2015:** the xtask already has the three crates, and
   `tools/line-budget.ron` follows the comment style of
   `tools/layers.ron`.
+- **From 2511 (done):** ADR-0036 §9 leaves a derive for `ActionSet` to
+  these counts. The PR description gives the code lines of each game's
+  own `ActionSet` enum (`action.rs` in the grid template and in Hello,
+  Grid; the blank template uses `UiAction`). If games pay for their own
+  enum, write the derive's ticket (the `write-ticket` skill); if not,
+  the completion notes say so.
 - **Either order:**
   - **2009** (compile times): both add a budget under `tools/`.
     Nothing else is shared.
-  - **2501** (templates as parts, done): `templates/blank` and
-    `templates/grid` are gone. The counter counts each built-in short
-    name (`blank`, `grid`) from `compose`'s plan
-    (`shuyi_cli::template::compose`, with the placeholders filled as
-    `shuyi new` fills them: `shuyi_cli::contract::new::fill_for`).
-    `compose` is pure, so no folder is written. The xtask then depends
-    on `shuyi-cli` (a path dependency, which links no device crate), and
-    the cap names the short name. 2501's PR counted the grid game by
-    2511's rule: 674 lines before, 521 after.
+  - **From 2501 (done):** `templates/blank` and `templates/grid` are
+    gone. The counter counts each built-in short name (`blank`, `grid`)
+    from `compose`'s plan (`shuyi_cli::template::compose`, with the
+    placeholders filled as `shuyi new` fills them:
+    `shuyi_cli::contract::new::fill_for`). `compose` is pure, so no
+    folder is written. The xtask then depends on `shuyi-cli` (a path
+    dependency, which links no device crate), and the cap names the
+    short name. 2501's PR counted by 2511's rule: the grid game 674
+    lines before, 521 after; the blank game 75 before, 115 after (the
+    generated `src/stages.rs` and the title's line for a stage).
+  - **The parked examples, either order with 2735, 2736, 2737, 2738
+    and 2739:** each one's README gives the lines of its own code. If
+    one is done, its folder is already in the table (every folder
+    under `examples/` is counted): replace the count its README made
+    by hand with this command's, and say so. If not, nothing to do:
+    its README quotes this command (its clause says so). For 2738
+    (the parked brick-breaker), the line to change is where its README
+    counted `examples/bricks` by hand and said how: it becomes this
+    command's code count.
 
 **Out (do not do):**
 
@@ -199,8 +215,8 @@ choice, and it only goes down.
 
 1. Read `crates/xtask/src/main.rs`, `no_std.rs` (`code_of`,
    `rust_files`), `crates/xtask/Cargo.toml`, the `tickets` job in
-   `ci.yml`, and the three folders. Check which of 2009 and 2501
-   are done (*Either order*).
+   `ci.yml`, and the three folders. Check whether 2009 is done
+   (*Either order*).
 2. Write the `.rs` scanner in `template_lines.rs`, then the line rule
    and the `#[cfg(test)]` items on it, with fixtures as strings.
 3. Write the line rule for the other extensions, the kinds, and the

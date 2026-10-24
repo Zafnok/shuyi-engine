@@ -148,7 +148,8 @@ None.
   - **Both are `Bot`s and `Think`s.** `Minimax::new(eval, settings,
     seed)` and `Mcts::new(eval, settings, seed)` implement `Bot<R>` for
     `R: Determinize` with `R::Command: Clone + PartialEq` and
-    `E: Evaluate<R>`. `think(&mut self, rules: &R)` returns a search
+    `E: Evaluate<R>`. `search(&mut self, rules: &R)`, named as
+    `Rollout::search` and `TurnPlan::search` are, returns a search
     value (`MinimaxSearch` or `MctsSearch`) that implements 3009's
     `Think` with `Decision = R::Command`, and `choose` steps it with
     `u32::MAX`. The search keeps its stack and tree in the value, not on
@@ -157,6 +158,12 @@ None.
   - Re-exports in `crates/core/src/lib.rs`: `Minimax`,
     `MinimaxSettings`, `MinimaxSearch`, `Mcts`, `MctsSettings` and
     `MctsSearch`, and the crate docs' line on `search` names the bots.
+  - **Either order with 2133:** `MinimaxSettings` and `MctsSettings`
+    are `#[serde(deny_unknown_fields)]` and derive
+    `schemars::JsonSchema` behind the `schema` feature, as `Targets`
+    does. If 2133 is done, its ADR says every settings type does this;
+    if not, nothing more to do (2133 gives `RolloutSettings` and
+    `PlanSettings` the same, and its ADR then covers all four).
 - **An ADR** (the next free number in `docs/adr/`, with the `write-adr`
   skill), extending 2125's (copies from `Determinize`, integers, work
   units): the UCB in integers; slice independence through 3009's
@@ -175,6 +182,17 @@ None.
     `RandomBot`, so records and snapshots don't change.
 - **Either order with 1134:** if `skills/shuyi-balance-bots/SKILL.md`
   exists, add a short section on the search bots and `Determinize`.
+- **Either order with 2737:** if 2737 is done, `examples/card-battle`
+  gets what its *Search bots* part says. Its `Run` implements
+  `Determinize`: the draw pile sorted by card id, then `shuffle`d on a
+  new `SimRng::stream(seed, "deck")`, and new "foes" and "rewards"
+  streams. Its `Evaluate` scores the hero's health minus the foes',
+  1000 for a run won and -1000 for one lost. Two tests: an `Mcts` hero
+  wins at least as many of seeds 0 to 19 against `Intents` as a
+  `RandomBot` hero does (both counts and the `MctsSettings` in the
+  Completion notes), and two states that differ only in the draw
+  pile's order get the same first command from the same `Mcts`. If
+  not, nothing to do (2737 does it).
 - **The float ban:** `search` passes 2015's float ban in `shuyi-core`
   (`deny(clippy::float_arithmetic)` outside tests).
 
@@ -191,13 +209,15 @@ None.
 - learned agents;
 - the soak bot (2527), which plays random commands on purpose;
 - one description of a game's types and how a view differs from the
-  state (2907). How `Determinize` fits it is 2125's ADR's job;
+  state (2907). Its ADR's point 4 says how `Determinize` fits it,
+  starting from ADR-0027 §8 (2125's): a view is what `determinize`
+  keeps;
 - the game's own enemy AI, and moving it onto these bots (game
   tickets);
 - a new example game. The gallery of small games (2736, 2737) is parked
-  until after the launch; when 2737 is unparked, it implements
-  `Determinize` (the draw pile's order redrawn) and tests an `Mcts`
-  hero with it; its foes keep following the intents they show;
+  until after the launch. What 2737's card battle adds for these bots
+  is the clause with 2737 above; its foes keep following the intents
+  they show;
 - threads (3009's Out holds).
 
 ## Implementation steps
@@ -225,8 +245,9 @@ None.
 
 Size: if the diff runs well past 600 changed lines (fixture games
 aside), move `Mcts` and its tests to a follow-up ticket, and keep
-`Minimax` and hello-grid's part here. 2737's
-clause with 2113 then names that ticket for its `Mcts` hero.
+`Minimax` and hello-grid's part here. The card battle's part goes
+with `Mcts`: if 2737 is done, into that ticket; if not, 2737's clause
+with 2113 then names that ticket for its `Mcts` hero.
 
 ## Acceptance criteria
 
