@@ -64,9 +64,10 @@ records. A browser may also round the times it gives.
 The rules this keeps (`AGENTS.md`):
 
 - **The core stays pure** (rule 5). The renderer, a backend crate,
-  measures. The time reaches the debug view as plain data in 2325's
-  `FrameTimes` and never reaches an update. A replay has the same hash
-  with GPU times on and off.
+  measures. The time reaches the debug view as plain data in
+  `FrameTimes` (3063's, in `shuyi_ui::perf`, which 2325 draws) and
+  never reaches an update. A replay has the same hash with GPU times on
+  and off.
 - **Graphics are a skin** (rule 9). The ticks are the debug view's
   gizmos on 2325's channel; tests of what the channel shows read the
   gizmo list.
@@ -80,9 +81,9 @@ None.
 ## Scope
 
 **In:**
-- **`GpuTime`**, in `shuyi_ui::debug::profile` beside 2325's
-  `FrameTimes`. A `#[non_exhaustive]` enum (ADR-0039 §6), since a
-  backend may later give more:
+- **`GpuTime`**, in `shuyi_ui::perf` beside `FrameTimes` (3063). A
+  `#[non_exhaustive]` enum (ADR-0039 §6), since a backend may later
+  give more:
   - `NoTimer`: the backend has no GPU timer (a backend without the
     wgpu renderer, the headless one without its fake, a build without
     debug tools);
@@ -95,9 +96,12 @@ None.
     `frames_ago` frames before this one, in whole microseconds. GPU
     results come back late, so `frames_ago` is usually 1 to 3.
 - **`FrameTimes::gpu: GpuTime`**: `NoTimer` from `FrameTimes::new`,
-  assigned by the backend (ADR-0039 §3). 2325 makes `FrameTimes`
+  assigned by the backend (ADR-0039 §3). 3063 makes `FrameTimes`
   `#[non_exhaustive]`, so the field is additive. If it isn't, the
   field is a break: write a `Breaking:` line in the completion notes.
+  `FrameTimes` is in the trace agents read (2553), so the field joins
+  its JSON lines and its schema: regenerate the schemas and raise the
+  contract's version.
 - **The ring** (2325's, in `DebugView`):
   - each frame's slot gains `gpu_us: Option<u32>`;
   - a `Measured` writes its `us` into the slot `frames_ago` frames back
@@ -130,7 +134,7 @@ None.
   875}}`. Perfetto and `chrome://tracing` draw counters as a graph.
   The GPU's clock is not the CPU's: the length is measured, and the
   place is its frame's start. The writer's doc comment says so.
-- **The fake** (2325's fake clock, used by `frame-png --debug
+- **The fake** (3063's fake clock, used by 2325's `frame-png --debug
   profile`): it gains GPU times. On frames 0 and 1 it gives `Pending`;
   on frame *n* after that, `Measured { frames_ago: 2, us: 1_500 + 250
   × (n mod 8) }`. A second form, for tests, gives `Unsupported { api:

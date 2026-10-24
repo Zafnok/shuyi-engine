@@ -6,7 +6,7 @@ milestone: "Engine: debug view"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["2315", "2316", "3008"]
+blocked_by: ["2315", "2316", "3064"]
 nick_input: none
 completed:
 ---
@@ -82,23 +82,32 @@ a developer where memory goes while the game runs:
 - 2315 and 2316: the debug view's gizmos, channels, `frame-png --debug`,
   pause and step, and the readout.
 - 2325 (parked, this ticket's sibling): a frame profiler with a bar
-  graph of the last 120 frames. Its Out lists "memory profiling"; this
-  is that ticket.
-- 3008: a counting allocator for `shuyi bench`, gating peak heap in CI
-  against each target's `peak_heap_bytes`. It keeps the allocator "able
-  to report per frame". This ticket asked 3008 to write it as a
-  reusable type in a crate that allows `unsafe` in one module, so 2368,
-  3020 and 3010 share it.
+  graph of the last 120 frames, drawing 3063's records. Its Out lists
+  memory; this is that ticket.
+- **The perf traces, in the MVP.** Nick, 2026-10-24: "we should also
+  have easily agent-readable / streamable perf traces when building in
+  debug -- both timings and heap snapshots". 3063 keeps a `FrameRecord`
+  per frame in `App`. 3064 counts the heap: `shuyi-alloc-count`'s
+  `CountingAlloc`, the global allocator of every debug build of a game
+  on `shuyi-app`, with its calls per frame, `HeapCounts`,
+  `MemoryReading`, `bytes_text`, `Platform::memory`, the heap counts in
+  each record, and `HeadlessPlatform::with_fake_memory`. 3065 tags the
+  bytes by the frame's phase, the game's spans and each asset kind, with
+  `watch_decodes`. 2553, 2554 and 2555 hand all of it to agents. What
+  this ticket had planned for the counter and the reading moved there;
+  this ticket draws them, and adds a budget and loads by kind.
+- 3008: `shuyi bench`, gating peak heap in CI against each target's
+  `peak_heap_bytes`, with 3064's counter.
 - 3020 (parked): allocations per frame for the GBA and DS budgets,
-  through 3008's allocator.
+  through 3064's call count.
 - 3010 and 3011: the Playdate backend, whose global allocator goes
-  through the SDK's `realloc`, and its bench build that logs peak heap
-  on the device.
+  through the SDK's `realloc` (3064 counts it, by 3010's clause), and
+  its bench build that logs peak heap on the device.
 - 2906: research on what stays resident; it may decide an asset store.
 
-So CI and the device bench builds measure peak heap. Nothing shows the
-heap, the allocations per frame or what the assets cost to a developer
-playing the game.
+So CI and the device bench builds measure peak heap, and agents read
+the heap through the trace. Nothing shows the heap, the allocations per
+frame or what the assets cost to a developer playing the game.
 
 **Why it matters:**
 
@@ -116,15 +125,14 @@ playing the game.
 
 The rules it keeps (`AGENTS.md`):
 
-- **The core stays pure** (rule 5). Only backends count. The numbers
-  reach the debug view as plain data, as 2325's frame times do, and
-  never reach an update. A replay has the same hash with the counter on
-  and off.
+- **The core stays pure** (rule 5). Only backends count (3064). The
+  numbers reach the debug view as plain data, as 3063's frame times do,
+  and never reach an update. A replay has the same hash with the
+  counter on and off.
 - **Graphics are a skin** (rule 9). The channel is a list of 2315's
   gizmos; tests of what it shows read that list.
-- **Debug tools only.** A game turns the counter on for its debug runs
-  with a feature. A shipped build has no counting allocator and reads
-  nothing.
+- **Debug tools only.** 3064's counter runs in debug builds. A shipped
+  build has no counting allocator and reads nothing.
 
 ## Nick input
 
@@ -133,84 +141,54 @@ None.
 ## Scope
 
 **In:**
-- **The counter in `shuyi-app`**, behind a new feature `debug-memory`,
-  off by default. It turns on `shuyi-ui/debug-tools` and the crate that
-  holds 3008's counting allocator:
-  - a `#[global_allocator]` static of 3008's counting allocator around
-    `std::alloc::System`, under `#[cfg(feature = "debug-memory")]`, in
-    a new module `crates/app/src/memory.rs`. It needs no `unsafe`; the
-    `unsafe impl` stays in 3008's crate. If 3008 left the allocator
-    inside the bench binary, first move it to a crate of its own whose
-    lints are the workspace's except `unsafe_code = "deny"`, with one
-    `#[allow(unsafe_code)]` module and a test like `shuyi-app`'s
-    `the_lints_are_the_workspace_lints_except_unsafe_code`;
-  - **allocations per frame:** if 3008's allocator counts calls to
-    `alloc` and `realloc` (3020 asks for it), use that; if not, add the
-    call counter to it here, read and reset in one step, and 3020 uses
-    it;
-  - `memory::reading() -> Option<MemoryReading>`: the counter's numbers
-    and the tally below with the feature, `None` without it. `Macroquad`
-    implements `Platform::memory` by calling it, with `budget: None`,
-    since it reads no profile at run time;
-  - say in `shuyi-app`'s crate docs how a game turns it on: `cargo run
-    --features shuyi-app/debug-memory` on native, and on the web a
-    feature of the game's own, listed in `shuyi.ron`'s `web.features`,
-    built with `cargo shuyi web --<feature>`. Say that a game with its
-    own `#[global_allocator]` can't turn it on (two don't link).
-- **The reading, as plain data,** in a new module
-  `shuyi_ui::debug::memory` (`no_std` with `alloc`, like the rest of
-  `shuyi-ui`):
-  - `HeapCounts { live_bytes: u64, peak_bytes: u64, allocs: u32 }`,
-    where `allocs` is the calls since the last reading;
+- **From 3064** (a blocker): the counter and its calls per frame,
+  `HeapCounts`, `MemoryReading`, `bytes_text`, `Platform::memory`, the
+  heap counts in each of `App`'s records, and
+  `HeadlessPlatform::with_fake_memory` and `memory_calls`. This ticket
+  adds, in a new module `shuyi_ui::debug::memory` (`no_std` with
+  `alloc`, like the rest of `shuyi-ui`):
   - `HeapBudget { target: &'static str, bytes: u64 }`;
   - `KindLoads { kind: &'static str, loads: u32, failed: u32,
     bytes_read: u64 }`, and `LoadTally`, its rows keyed by the kind's
     name in a `BTreeMap`, with `add(kind, bytes, ok)` and `rows()`
     sorted by bytes read (most first), then by name;
-  - `MemoryReading { heap: HeapCounts, budget: Option<HeapBudget>,
-    loads: Option<LoadTally> }`. `loads` comes only when the tally
-    changed since the last reading;
-  - `bytes_text(u64) -> String`: under 1,024 bytes as `1023 B`, then
-    `KB`, `MB` and `GB` with one decimal, rounded down, worked out in
-    integers (`1.0 KB` is 1,024 bytes and `1.0 MB` is 1,048,576, as the
-    profiles' comments count them).
+  - on `MemoryReading`, `budget: Option<HeapBudget>` and `loads:
+    Option<LoadTally>`, additive since 3064 made it non-exhaustive.
+    `loads` comes only when the tally changed since the last reading.
 
   These follow ADR-0039's rules for public types
   (`#[non_exhaustive]` and constructors).
 - **From the backend to the view:**
-  - `Platform::memory(&mut self) -> Option<MemoryReading>` in
-    `crates/platform/src/platform.rs`, defaulted to `None`, so no
-    backend breaks;
-  - `App` asks for it once a frame in `step`
-    (`crates/platform/src/app.rs`), only while the game's
-    `Ctx::debug_tools` is on, and hands it
-    to a new `Game::set_memory(Option<MemoryReading>)` beside
-    `set_music_playing` and `set_ticks` in `crates/ui/src/game.rs`;
-  - `Game::set_memory` keeps the last 120 heap counts in a ring and the
-    last tally, in `Ctx::debug_view` (2315), never saved with it;
-  - `HeadlessPlatform::with_fake_memory(self) -> Self`
-    (`crates/platform/src/headless.rs`), a builder like `with_display`,
-    gives a reading that moves by fixed amounts: on frame *n*, live
-    bytes 1,048,576 + 16,384 × (*n* mod 30), the peak the most of those
-    so far, allocations *n* mod 7, a budget of 2,097,152 bytes named
-    `fake`, and in the first reading only a tally of `image` (3 loads,
-    0 failed, 49,152 bytes) and `palette` (2 loads, 1 failed, 2,048
-    bytes). `HeadlessPlatform` also counts its `memory` calls
-    (`memory_calls()`), for the tests.
+  - `App` hands the reading it takes each frame (3064) to a new
+    `Game::set_memory(Option<MemoryReading>)` beside `set_ticks` in
+    `crates/ui/src/game.rs`, only while the game's `Ctx::debug_tools`
+    is on. The heap counts come with each record, through
+    `Game::set_perf` (the clause with 2325, below);
+  - the game keeps the last 120 heap counts in a ring and the last
+    tally, in `Ctx::debug_view` (2315), never saved with it;
+  - the fake (`with_fake_memory`, 3064) also gives a budget of
+    2,097,152 bytes named `fake`, and in the first reading only a tally
+    of `image` (3 loads, 0 failed, 49,152 bytes) and `palette` (2 loads,
+    1 failed, 2,048 bytes).
 - **Loads by kind, through the registry:**
-  - `shuyi_assets::format::watch_decodes(watcher: DecodeWatcher) ->
+  - **Either order with 3065:** if 3065 is done, hang the tally on its
+    `watch_decodes`' `after`, whose `Decoded` has the kind, the path,
+    the bytes and the result: the one watcher `shuyi-app` sets does both
+    3065's tags and the tally. If not, write `watch_decodes` here, and
+    3065 adds a `before` and its token (its own clause says so):
+    `shuyi_assets::format::watch_decodes(watcher: DecodeWatcher) ->
     Result<(), DecodeWatcher>`, set once, in a `OnceBox` like
-    `bundle::watch`;
-  - `DecodeWatcher = fn(&Decoded<'_>)`, with
+    `bundle::watch`; `DecodeWatcher = fn(&Decoded<'_>)`, with
     `Decoded<'a> { kind: &'static str, path: &'a str, bytes: usize, ok:
     bool }`, where `kind` is `K::NAME` and `path` is `file.path()`;
-  - `Formats::decode` calls it once per call, after it decides, when one
+    `Formats::decode` calls it once per call, after it decides, when one
     is set. Nothing else in `shuyi-assets` changes, and `Formats` stays
     `Send + Sync`;
-  - `shuyi-app`, with `debug-memory`, sets a watcher when it starts
-    (before the game's load) that adds each decode to a `static`
-    `std::sync::Mutex<LoadTally>` and marks it changed;
-    `memory::reading()` hands the tally when it changed.
+  - `shuyi-app` sets the watcher when it starts (before the game's
+    load), in debug builds: it adds each decode to a `static`
+    `std::sync::Mutex<LoadTally>` and marks it changed, and
+    `Macroquad::memory` hands the tally when it changed, with
+    `budget: None`, since it reads no profile at run time.
 - **The `memory` channel** (2315's channels). `Game::frame` offers it
   once a reading has come, and draws it after the screens' gizmos,
   since it belongs to no screen. In the bottom-left corner:
@@ -231,11 +209,12 @@ None.
     read`, and a row `2 more kinds` when there are more;
   - every gizmo that would leave the buffer's `pixel_bounds` is left
     out;
-  - **either order with 2325:** if 2325 is done, use its ring type and
-    its bar drawing, and sit above its graph when both channels are on.
-    If not, write the ring here (`debug::memory::Ring<T>`, its length
-    set when it is made, 120 here), and 2325 uses it for its 240
-    frames.
+  - **either order with 2325:** if 2325 is done, use its ring type, its
+    bar drawing and its `Game::set_perf`, and sit above its graph when
+    both channels are on. If not, write the ring here
+    (`debug::memory::Ring<T>`, its length set when it is made, 120
+    here) and `Game::set_perf(&FrameRecord)`, which `App` calls with
+    each record it makes, and 2325 uses them for its 240 frames.
 - **The readout** (2316): when the `readout` channel is on too, the
   heap label's text is also a readout line, after `paused` and 2325's
   frame line when those are there, and before the top screen's own
@@ -246,72 +225,61 @@ None.
   through `Harness::on`: in Hello, Grid's `tools.rs` and the toy's
   (`crates/cli/src/toy.rs`). The snapshot is then the same on every run.
 - **Either order with 3010:** if `shuyi-playdate` is done, its debug
-  build wraps its SDK allocator in 3008's counting allocator,
-  implements `Platform::memory`, and gives the `playdate` profile's
-  `peak_heap_bytes` as its budget, taken the way 3010 takes the
-  profile's refresh rate. If it isn't done, 3010 does it, by its own
-  either-order clause.
-- **The gates:** `cargo test -p shuyi-app --features debug-memory
-  --locked` and `cargo clippy -p shuyi-app --features debug-memory
-  --all-targets --locked -- -D warnings` join the `run-gates` skill
-  and CI's test job, since `--workspace` builds without the feature.
+  build's reading (3064 counts its allocator, by 3010's clause with
+  3064) gives the `playdate` profile's `peak_heap_bytes` as its budget,
+  taken the way 3010 takes the profile's refresh rate. If it isn't
+  done, 3010 does it, by its own either-order clause.
 
 **Out (do not do):**
-- frame times and spans (2325);
+- frame times and spans (3063), and their channel (2325);
+- the counter, the heap counts per frame and the fake (3064), and
+  memory tags (3065);
+- the heap in the trace agents read, with snapshots and diffs: 2553,
+  2554 and 2555, in the MVP;
 - a screen that lists every kind and scrolls: a follow-up if five rows
   are not enough;
-- what the game's load kept, as a number of its own: a follow-up if a
+- what the game's load kept, or the live bytes of each kind, as lines
+  of the channel. 3065's `load` and asset tags count them and 2554's
+  snapshots show them to agents; a line here is a follow-up if a
   developer asks;
-- resident bytes per asset or per kind. A game keeps what it loads in
-  its own data, so nothing knows what is still in memory. That needs an
-  asset store owned by the engine, if 2906's ADR decides one; the
-  store's build ticket then shows them in the `memory` channel (2906's
-  clause says so);
-- the bytes each kind's decode allocated (the counter's change around
-  each decode): a follow-up if bytes read are not enough;
+- resident bytes per asset. A game keeps what it loads in its own data,
+  so nothing knows which asset is still in memory. That needs an asset
+  store owned by the engine, if 2906's ADR decides one; the store's
+  build ticket then shows them in the `memory` channel (2906's clause
+  says so);
 - a budget line in `shuyi-app`. It reads no profile at run time, and a
   64-bit desktop heap is only a proxy for a Playdate's; `shuyi bench`
   (3008) gates the proxies. A follow-up after 3053 if a developer asks;
 - loads by kind on the Playdate backend (no `std`, so no `Mutex`). They
   are the same as on desktop, apart from per-target layers (3007);
-- call stacks per allocation, snapshots, leak diffs, and Tracy's memory
-  view;
+- call stacks per allocation and Tracy's memory view (3063's ADR);
 - GPU and texture memory (after 3034; 2906 measures textures);
 - memory in CI (3008, and 3020 for allocations per frame) and on GBA and
   DS devices (3022, 3026). No second CI ticket;
-- the reading in the contract's answers or over the live link (2521):
-  a follow-up if an agent or a developer asks for it;
 - new actions or keys. The debug menu is the only way in.
 
 ## Implementation steps
 
-1. Read 2315's and 2316's ADR and code, 2325 if it is done, 3008's
-   counting allocator, `crates/assets/src/format.rs` and `bundle.rs`
-   (`watch`), `crates/platform/src/platform.rs`, `app.rs`, `harness.rs`
+1. Read 2315's and 2316's ADR and code, 2325 if it is done, 3063's ADR
+   and `shuyi_ui::perf`, 3064's counter and `Platform::memory`, 3065's
+   `watch_decodes` if it is done, `crates/assets/src/format.rs` and
+   `bundle.rs` (`watch`), `crates/platform/src/app.rs`, `harness.rs`
    and `headless.rs`, `crates/app/src/lib.rs` and `backend.rs`, and
    `examples/hello-grid/src/tools.rs`.
-2. If 3008's allocator is not yet a reusable type with a call counter,
-   make it one (the first bullet of Scope).
-3. Add `DecodeWatcher`, `Decoded`, `watch_decodes` and the call in
-   `Formats::decode`, with their tests.
-4. Add `shuyi_ui::debug::memory`: the types, `bytes_text`, the ring
-   and the tally, with unit tests.
-5. Add `Platform::memory`, `Game::set_memory`, the call in `step`
-   (`app.rs`), and `with_fake_memory` and `memory_calls` on
-   `HeadlessPlatform`.
-6. Add the `memory` channel's gizmos and the readout line, with the
+2. Add `shuyi_ui::debug::memory`: the budget, the tally, the reading's
+   two fields, and the ring, with unit tests.
+3. Add or extend `watch_decodes` (the clause with 3065), and the tally's
+   watcher in `shuyi-app`.
+4. Add `Game::set_memory`, `Game::set_perf` if 2325 hasn't, and the
+   fake's budget and tally.
+5. Add the `memory` channel's gizmos and the readout line, with the
    property test.
-7. Add `debug-memory` to `shuyi-app`: `src/memory.rs` with the global
-   allocator, the watcher and `reading`, `Macroquad`'s
-   `Platform::memory`, and the crate docs.
-8. Start the Harness on the fake for `frame-png --debug memory` in
+6. Start the Harness on the fake for `frame-png --debug memory` in
    Hello, Grid's and the toy's tools. Run it on Hello, Grid, review the
    PNG and commit the snapshot.
-9. Add the feature's test and clippy lines to the `run-gates` skill and
-   CI.
-10. Run the gates.
+7. Run the gates.
 
-Size: expect about 600 changed lines. If the diff runs well past that,
+Size: expect about 450 changed lines. If the diff runs well past that,
 loads by kind (step 3, the tally and the kind rows) go to a follow-up
 ticket written in this PR.
 
@@ -324,39 +292,27 @@ ticket written in this PR.
 - [ ] A Harness replay of the toy's grid game has the same state hash
       with the fake counter and the `memory` channel on as with both
       off.
-- [ ] With `debug-memory`, a test holds a `Vec` of 1 MB: the reading's
-      `live_bytes` and `peak_bytes` are both at least 1 MB, `peak_bytes`
-      (read after `live_bytes`) is at least `live_bytes`, and `allocs`
-      is at least 1.
-- [ ] Without `debug-memory`, `shuyi-app`'s `memory::reading()` is
-      `None` (a test with the feature off), and its `#[global_allocator]`
-      is under `#[cfg(feature = "debug-memory")]`.
-- [ ] With `Ctx::debug_tools` off, `App` never calls
-      `Platform::memory` (`HeadlessPlatform::memory_calls` stays 0).
-- [ ] A test in `crates/assets` loads a bundle of two kinds, one file
-      of them broken, and the watcher hears each decode with its kind,
-      bytes and result. A test in `shuyi-app` gives its watcher those
-      decodes and gets one `LoadTally` row per kind.
+- [ ] Without debug tools, the channel is never offered and
+      `Game::set_memory` is never called.
+- [ ] A test gives the tally's watcher the decodes of two kinds, one of
+      them failed, and gets one `LoadTally` row per kind with its loads,
+      failures and bytes read.
 - [ ] `Formats` is still `Send + Sync` (a compile-time test).
 - [ ] No `memory` gizmo lies outside the buffer's `pixel_bounds` (the
       property test below).
-- [ ] The `run-gates` skill and CI run `shuyi-app`'s tests and clippy
-      with `debug-memory`.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: the ring wrapping; the heap and allocation scales; `bytes_text`
-  (`0 B`, `1023 B`, `1.0 KB`, `3.2 MB`, `1.0 GB`); the budget line left
-  out at twice the peak or more; the tally's rows and their order; five
-  kind rows and `N more kinds`; the heap line's place in the readout
-  after `paused`; `watch_decodes` hearing a good and a failed decode;
-  the fake's readings on frames 0, 1, 29 and 30.
+- Unit: the ring wrapping; the heap and allocation scales; the budget
+  line left out at twice the peak or more; the tally's rows and their
+  order; five kind rows and `N more kinds`; the heap line's place in the
+  readout after `paused`; the fake's budget and its tally in the first
+  reading only.
 - Property: no `memory` gizmo lies outside the buffer's `pixel_bounds`,
   for any readings and any console size.
 - Snapshot / integration: the `memory` channel with the fake counter on
-  Hello, Grid; the replay-hash test; `shuyi-app`'s reading with the
-  feature on and off.
+  Hello, Grid; the replay-hash test.
 
 ## Completion notes
 

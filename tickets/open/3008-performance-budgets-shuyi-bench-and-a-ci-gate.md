@@ -82,9 +82,18 @@ None.
   `std::alloc::System` here, the Playdate SDK's allocator in 3010). It
   has a safe read of the live bytes and the peak, and a reset of the
   peak.
-  - In this ticket only the bench binary installs it as
-    `#[global_allocator]`. 2368 (parked) installs it in `shuyi-app`'s
-    debug builds, and 3020 (parked) counts calls with it.
+  - **Either order with 3064:** if 3064 is done, this allocator is its
+    crate, `shuyi-alloc-count` (a default crate, with `take_allocs`).
+    Its `global` feature is the `#[global_allocator]` of every debug
+    build that links `shuyi-app` or `shuyi-cli`, and a second static in
+    such a build would not link. So the bench reads that one in a debug
+    build, and declares a `CountingAlloc::new` of its own only in a
+    build where the global one is compiled out (a release build, or
+    `--cfg shuyi_no_heap_count`); record which in the PR. If not, write
+    the crate here as this bullet says, and 3064 adds its call count,
+    its `global` static and its place among the default crates (its
+    own clause says so).
+  - 3020 (parked) counts calls with it.
   - `GlobalAlloc` is an unsafe trait and the workspace's lints forbid
     `unsafe_code`, so it goes in a crate whose lints are the workspace's
     except `unsafe_code = "deny"`, with one `#[allow(unsafe_code)]`
@@ -146,7 +155,8 @@ None.
   scenario when it runs, or counts another way if one can't drive it).
 - allocations per frame, the `frame_cycles` budget and the emulator
   runner for the GBA and the DS (the parked 3020, ADR-0012 §7). Keep the
-  counting allocator able to report per frame. 2368 (parked) shows it in
+  counting allocator able to report per frame: 3064 reads it each frame
+  for the perf traces, and 2368 (parked) shows it in
   the debug view.
 
 ## Implementation steps

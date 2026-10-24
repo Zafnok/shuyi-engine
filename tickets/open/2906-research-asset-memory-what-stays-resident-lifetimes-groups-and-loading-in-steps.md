@@ -139,9 +139,15 @@ None. This is technical.
     `#[global_allocator]`. A static of a type that implements
     `GlobalAlloc` needs no `unsafe` of its own, but the type does
     (`unsafe impl`), and the workspace's lints forbid `unsafe_code` in
-    `examples/` (ADR-0002 §9). **Either order with 3008:** if 3008 is
-    done, use its counting allocator. If not, write it where 3008's
-    Scope says it goes, so 3008 takes it over:
+    `examples/` (ADR-0002 §9). **Either order with 3008 and 3064:** if
+    either is done, use its counting allocator (`shuyi-alloc-count`).
+    3064's `global` static is the `#[global_allocator]` of every debug
+    build that links `shuyi-app`, as this program does through `shuyi`,
+    and a second static would not link there: read that one
+    (`global::reading()`, and 3065's tags if it is done) in a debug
+    build, and declare a static of the program's own only where it is
+    compiled out (a release build). If neither is done, write it where
+    3008's Scope says it goes, so 3008 and 3064 take it over:
     - a reusable `CountingAlloc<A: GlobalAlloc>` around an inner
       allocator (`std::alloc::System` here), with a safe read of the
       live bytes and the peak, and a reset of the peak;
@@ -338,8 +344,8 @@ None. This is technical.
    `crates/platform/src/app.rs`, `crates/app/src/render.rs` and
    `audio.rs`, `examples/hello-grid/tests/it/pack.rs`, and tickets
    2207, 2220, 2222, 2228, 3008, 3009, 3010, 3011 and 3029.
-2. If 3008 isn't done, write the counting allocator's crate and its
-   tests, as *Scope* says.
+2. If neither 3008 nor 3064 is done, write the counting allocator's
+   crate and its tests, as *Scope* says.
 3. Write the measuring program and its tests, and add its `[[example]]`
    to `examples/hello-grid/Cargo.toml`.
 4. Check out Visions of Shuyi's public repository outside this one, and
@@ -374,8 +380,9 @@ None. This is technical.
       number.
 - [ ] 2207, 2220, 2222, 2228, 3008, 3010 and 3011 match the ADR, or
       the completion notes say why one needs no change.
-- [ ] The program uses 3008's counting allocator, or one in a crate of
-      its own that the ADR names as an exception to ADR-0002 §9; no
+- [ ] The program uses 3008's or 3064's counting allocator, or one in
+      a crate of its own that the ADR names as an exception to ADR-0002
+      §9; no
       `unsafe` is in `examples/`.
 - [ ] No file of the game is committed.
 - [ ] All gates in the `run-gates` skill pass.

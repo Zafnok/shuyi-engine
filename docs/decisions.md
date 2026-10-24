@@ -1066,3 +1066,40 @@ While the tickets were being written, he added:
 - All of it is parked until after Visions of Shuyi launches, like the
   other kinds of game. The 3D labyrinth skin (2753) also waits for the
   3D work.
+
+## 2026-10-24: perf traces agents can read, in the MVP, with the live link
+
+Source: Nick, in a Claude Code session on 2026-10-24, while the skill
+pack (1134) was being worked:
+
+> "we should also have easily agent-readable / streamable perf traces
+> when building in debug -- both timings and heap snapshots"
+
+The frame profiler (2325) and memory in the debug view (2368) draw such
+numbers on screen, and both are parked. 2368 left "the reading in the
+contract's answers or over the live link" to a follow-up "if an agent
+or a developer asks for it". The follow-up is six tickets: frame times
+and spans as data, the trace through `run`, MCP and a running build's
+file, a heap counter, memory tags, heap snapshots in the trace, and the
+trace over the live link. None of them needs the debug view.
+
+Asked when those tickets happen, he chose **"In the MVP"**. The
+recommendation was after the MVP, not parked. Asked where the part over
+the live link goes, since the live link (2521) came after the MVP, he
+chose **"Move 2521 into the MVP"**. The recommendation was a trace file
+in the MVP and the link part later.
+
+**Rules:**
+
+- **Perf traces are in the MVP:** frame times and spans (3063), the
+  trace through `shuyi run`, MCP and a running build's file (2553), the
+  heap counter (3064), memory tags (3065), heap snapshots and diffs in
+  the trace (2554), and the trace over the live link (2555).
+  [`ROADMAP.md`](ROADMAP.md), phase 2, has their order.
+- **The live link (2521) is in the MVP.** The link for the web build and
+  a Steam Deck on the LAN (2522) stays after the MVP.
+- **Only debug builds measure,** and a new game's debug builds count
+  the heap with no setting to turn on, so the traces are there when an
+  agent asks.
+- **The on-screen views stay parked.** 2325 and 2368 draw what these
+  tickets measure, and wait for Nick as before.
