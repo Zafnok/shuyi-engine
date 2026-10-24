@@ -97,4 +97,8 @@ exclude_re = [
     # `BasicTools` has no frame options (`&[]`): the mutant that returns an
     # empty leaked `Vec` is the same function.
     '<impl GameTools for BasicTools<A, T>>::frame_options -> .* with Vec::leak\(Vec::new\(\)\)',
+    # The `shuyi` crate has no module yet, so `enabled_modules` is
+    # `Vec::new()`: its `vec![]` mutant is the same function. The first
+    # module's feature removes this line.
+    'replace enabled_modules -> Vec<Box<dyn Module<G>>> with vec!\[\]',
 ]

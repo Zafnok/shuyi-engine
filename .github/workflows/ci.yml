@@ -188,7 +188,7 @@ jobs:
           cat >> crates/game/src/stage.rs <<'RUST'
 
           /// Names a key and writes a screen's text.
-          pub fn breaks_the_screens(buf: &mut GlyphBuffer, fg: shuyi_ui::frame::Rgb) {
+          pub fn breaks_the_screens(buf: &mut GlyphBuffer, fg: shuyi::ui::frame::Rgb) {
               buf.print(0, 0, "Press Space to go", fg, fg);
           }
           RUST

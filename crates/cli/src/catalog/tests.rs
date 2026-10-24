@@ -231,6 +231,58 @@ fn a_version_a_table_and_plain_dependencies_take_a_feature_too() {
 }
 
 #[test]
+fn a_shuyi_crate_not_named_by_path_is_where_cargo_resolved_it() {
+    // A game whose `shuyi` comes from the workspace's own member: cargo
+    // resolves it with no network, as it would a git checkout.
+    let dir = folder("resolved");
+    write(
+        &dir,
+        &[
+            (
+                "Cargo.toml",
+                "[workspace]\nmembers = [\"engine/crates/shuyi\", \"game\"]\nresolver = \"3\"\n",
+            ),
+            (
+                "engine/crates/shuyi/Cargo.toml",
+                "[package]\nname = \"shuyi\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+            ),
+            ("engine/crates/shuyi/src/lib.rs", ""),
+            (
+                "game/Cargo.toml",
+                "[package]\nname = \"game\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n\
+                 [dependencies]\nshuyi = { version = \"0.1\", path = \"../engine/crates/shuyi\" }\n",
+            ),
+            ("game/src/lib.rs", ""),
+        ],
+    );
+    let found = resolved_shuyi(&dir.join("game")).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        fs::canonicalize(found).unwrap(),
+        fs::canonicalize(dir.join("engine/crates/shuyi")).unwrap()
+    );
+    // A folder cargo can't read, and a workspace with no `shuyi`.
+    let empty = folder("unresolved");
+    let error = resolved_shuyi(&empty).unwrap_err();
+    assert!(error.starts_with("cargo metadata failed: "), "{error}");
+    write(
+        &empty,
+        &[
+            (
+                "Cargo.toml",
+                "[package]\nname = \"other\"\nversion = \"0.1.0\"\nedition = \"2024\"\n",
+            ),
+            ("src/lib.rs", ""),
+        ],
+    );
+    assert_eq!(
+        resolved_shuyi(&empty),
+        Err("cargo metadata names no `shuyi` package for the game".to_owned())
+    );
+    fs::remove_dir_all(&dir).unwrap();
+    fs::remove_dir_all(&empty).unwrap();
+}
+
+#[test]
 fn the_engine_of_a_game_on_a_checkout_is_the_folder_above_the_shuyi_crate() {
     let dir = folder("engine");
     write(&dir, &[("Cargo.toml", GAME)]);
