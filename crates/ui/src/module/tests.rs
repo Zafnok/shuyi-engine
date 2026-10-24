@@ -2,6 +2,7 @@
 //! mistakes.
 
 use super::*;
+use crate::screen::Transition;
 use crate::toy::{Toy, ctx, game};
 
 /// How many frames a module counted.
@@ -37,6 +38,26 @@ impl Module<Toy> for Other {
     }
 }
 
+/// A module with two tools on the debug menu, the second named from the
+/// context.
+struct Tools;
+
+impl Module<Toy> for Tools {
+    fn name(&self) -> &'static str {
+        "tools"
+    }
+
+    fn install(&mut self, install: &mut Install<'_, Toy>) {
+        install.debug_entry(|| DebugEntry::new("Reload", |_| Transition::None));
+        install.debug_entry(|| {
+            DebugEntry::named(
+                |ctx| format!("Tools {}", ctx.debug_tools),
+                |_| Transition::None,
+            )
+        });
+    }
+}
+
 /// A module that declares nothing.
 struct Quiet;
 
@@ -60,6 +81,25 @@ fn install_records_the_hooks_and_states_a_module_declares() {
     assert_eq!(game.ctx().module_state::<Frames>(), Some(&Frames(0)));
     let shown = format!("{:?}", game.ctx());
     assert!(shown.contains(type_name::<Frames>()), "{shown}");
+}
+
+#[test]
+fn debug_entries_are_recorded_by_label_in_the_order_declared() {
+    let game = game()
+        .with_module(Quiet)
+        .unwrap()
+        .with_module(Tools)
+        .unwrap();
+    let mut tools = InstalledModule::new("tools");
+    tools.debug_entries = vec!["Reload".into(), "Tools true".into()];
+    assert_eq!(game.modules(), [InstalledModule::new("quiet"), tools]);
+    let made: Vec<String> = game
+        .ctx()
+        .modules
+        .debug_entries()
+        .map(|e| e.label(game.ctx()))
+        .collect();
+    assert_eq!(made, ["Reload", "Tools true"]);
 }
 
 #[test]

@@ -1,17 +1,19 @@
 //! Modules joining the toy game (ADR-0040): their hooks run in install
 //! order, before the screens' update and over their drawing, only when
-//! declared; screens read their state by type; and a module that only
-//! draws changes nothing that happens.
+//! declared; screens read their state by type; their debug entries come
+//! last on the debug menu; and a module that only draws changes nothing
+//! that happens.
 
 use std::cell::{Cell as Shared, RefCell};
 use std::rc::Rc;
 
 use insta::assert_snapshot;
 use shuyi_platform::harness::{FRAME_DT, Harness};
+use shuyi_ui::debug::{DebugEntry, DebugMenuScreen};
 use shuyi_ui::frame::{Cell, EngineColor, GlyphBuffer, Layer, Overlay, Rect};
 use shuyi_ui::module::{Hook, Install, Module};
-use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
-use shuyi_ui::{FrameInput, Game, GameHooks, Screen, Transition};
+use shuyi_ui::toy::{self, Action, Gallery, Toy, ToyCtx};
+use shuyi_ui::{FrameInput, Game, GameHooks, Screen, ScreenHook, Transition};
 
 /// Who ran, in order: module A's state on the context.
 #[derive(Debug, Default)]
@@ -260,4 +262,42 @@ fn a_module_that_only_draws_changes_nothing_that_happens() {
     let painted = play(Harness::new(toy::game().with_module(A).unwrap()));
     assert!(plain.2.is_some() && !plain.1.is_empty(), "{plain:?}");
     assert_eq!(painted, plain);
+}
+
+/// A module with one tool on the debug menu.
+struct Bodies;
+
+impl Module<Toy> for Bodies {
+    fn name(&self) -> &'static str {
+        "bodies"
+    }
+
+    fn install(&mut self, install: &mut Install<'_, Toy>) {
+        install.debug_entry(|| DebugEntry::new("Show bodies", |_| Transition::None));
+    }
+}
+
+#[test]
+fn a_modules_debug_entry_shows_last_on_the_debug_menu() {
+    let hooks = GameHooks {
+        debug: Some(ScreenHook {
+            name: DebugMenuScreen::<Toy>::NAME,
+            open: |ctx| {
+                let gallery = DebugEntry::new("Gallery", |_| Transition::Push(Box::new(Gallery)));
+                Box::new(DebugMenuScreen::new(ctx, vec![gallery]))
+            },
+        }),
+        debug_screens: &[DebugMenuScreen::<Toy>::NAME],
+        ..GameHooks::default()
+    };
+    let game = Game::new(toy::ctx(), Box::new(Ordered), hooks);
+    let mut h = Harness::new(game.with_module(Bodies).unwrap());
+    h.keys("F2");
+    assert_eq!(h.top_screen(), "debug_menu");
+    // The menu is drawn one tool a row, in its order.
+    let shown = h.snapshot();
+    let row = |label: &str| shown.lines().position(|l| l.contains(label));
+    let (gallery, bodies) = (row("Gallery"), row("Show bodies"));
+    assert!(gallery.is_some() && bodies > gallery, "{shown}");
+    assert_eq!(h.game().modules()[0].debug_entries, ["Show bodies"]);
 }

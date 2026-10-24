@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2358"]
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2372 — A module's debug menu entries
@@ -83,16 +83,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `Install::debug_entry` records the entry's label in
+- [x] `Install::debug_entry` records the entry's label in
       `Game::modules()`, in the order declared.
-- [ ] `DebugMenuScreen::new` lists a module's entries after the game's;
+- [x] `DebugMenuScreen::new` lists a module's entries after the game's;
       choosing one runs it; with no module its menu is as before.
-- [ ] A toy game with a module that declares an entry, its Debug key
+- [x] A toy game with a module that declares an entry, its Debug key
       pressed in the Harness, shows the entry last on the menu.
-- [ ] `run --json` lists each module's debug entries; the schema test
+- [x] `run --json` lists each module's debug entries; the schema test
       passes at the new version.
-- [ ] `examples/hello-grid` and the templates build with no change.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `examples/hello-grid` and the templates build with no change.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -104,4 +104,24 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `Install::debug_entry(make: fn() -> DebugEntry<G>)` records the
+  entry's label (read at install from the `Ctx` it holds) in
+  `InstalledModule::debug_entries` and keeps `make` on the context:
+  `module::States` became `States<G>`, with the makers beside the
+  states, in install order. Its `Debug` still lists only the states.
+- `DebugMenuScreen::new(ctx, entries)` appends the modules' entries,
+  made from the makers on `ctx`, after the game's. Its signature is
+  unchanged; with no module the menu is as before.
+- `ModuleEntry::debug_entries` in the contract; `contract::VERSION` is
+  15, schemas regenerated, `versions.json` and `docs/contract.md`
+  updated (the example answer and `run`'s row).
+- Deviation: the Harness test reads the menu from the frame's snapshot
+  (the Gallery row above the module's), not through `Harness::screen`,
+  since `DebugMenuScreen` doesn't opt in to being found by type; the
+  menu's labels and running an entry are checked in the unit test.
+- Docs: the rustdoc of `module`, `Install::debug_entry`,
+  `DebugMenuScreen` and `ModuleEntry`, and the contract page; ADR-0040
+  already describes the entries (§4).
+- Settled ticket 2101's clause that named this ticket.
+- No break: `InstalledModule` and `ModuleEntry` are `#[non_exhaustive]`,
+  `module::States` is crate-private.

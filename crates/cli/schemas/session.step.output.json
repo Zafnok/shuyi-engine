@@ -255,6 +255,13 @@
       "description": "A module installed in the game, with what it declared (ADR-0040).",
       "type": "object",
       "properties": {
+        "debug_entries": {
+          "description": "Its entries' names on the debug menu, as they read at install, in\nthe order declared; the menu lists them after the game's.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "hooks": {
           "description": "The hooks the game calls on it, in the frame loop: `before_update`\n(before the screens' update), `draw_over` (over their drawing).",
           "type": "array",
@@ -278,7 +285,8 @@
       "required": [
         "name",
         "hooks",
-        "states"
+        "states",
+        "debug_entries"
       ]
     },
     "Op": {

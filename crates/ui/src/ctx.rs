@@ -328,8 +328,8 @@ pub struct Ctx<G: GameData> {
     pub lang: LangCode,
     /// English, for [`effective_lang`](Self::effective_lang).
     english: LangCode,
-    /// The installed modules' states.
-    pub(crate) modules: module::States,
+    /// The installed modules' states and debug menu entries.
+    pub(crate) modules: module::States<G>,
 }
 
 impl<G: GameData> Ctx<G> {

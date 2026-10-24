@@ -103,6 +103,9 @@ mod toy {
         fn install(&mut self, install: &mut shuyi_ui::module::Install<'_, toy::Toy>) {
             install.hook(shuyi_ui::module::Hook::DrawOver);
             install.state(1_u8);
+            install.debug_entry(|| {
+                shuyi_ui::debug::DebugEntry::new("Shade more", |_| shuyi_ui::Transition::None)
+            });
         }
     }
 
@@ -115,6 +118,7 @@ mod toy {
             name: "shade".into(),
             hooks: vec!["draw_over".into()],
             states: vec!["u8".into()],
+            debug_entries: vec!["Shade more".into()],
         };
         assert_eq!(s.modules(), [expected]);
         assert_eq!(Bare.modules(), []);
