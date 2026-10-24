@@ -145,6 +145,33 @@ same report on every machine and every thread count.
   plan. A weight that names no feature of the game is an
   `UnknownFeature` error.
 
+## Threat areas: bots that read the danger zone
+
+A bot that plays like a person sees what a player sees: which tiles each
+foe can strike next turn, and the forecasts. All in `shuyi_core::threat`:
+
+- **Areas.** `strike_area(&stops, &ranges)` is the tiles a piece strikes
+  from the tiles it can stop on (most often its `reachable(..).tiles()`
+  less the tiles others hold), with `ranges` its inclusive Manhattan
+  `(min, max)` pairs; it threatens its stops too. A piece that never
+  moves uses `strike_area_from(w, h, at, &ranges)`.
+- **Threats.** `Threats::new(vec![Threat::new(id, area), ..])`:
+  `safe(tile)` is whether no foe reaches it, `reaches(tile)` names the
+  foes that do, `zone()` is the whole danger zone.
+- **Danger.** `threats.danger(tile, |id| forecast)` adds up the game's
+  `Strike::new(expected, all_hit, struck_back)` for every foe that
+  reaches the tile (expected values in hundredths: hit chance in percent
+  times damage; `None` for a foe that wouldn't strike). Every threat
+  counts: never guess which foe the other side picks. Caps (at most the
+  target's health) are the game's, on the `Danger` it gets back.
+- **Goals.** `GoalDistance::new(w, h, goals)` and `distance(kind, from,
+  cost)` give the walk from a tile to the nearest goal for each movement
+  kind, built once per kind (so `cost` must not change for a kind). A
+  goal's tile is free to enter, as a foe to reach stands on it.
+
+Feed these to a persona's feature counts (`Weighted`): tiles left in
+danger, expected damage taken, steps to the goal.
+
 ## When it fails
 
 Branch on the answer's `code`, never its message:

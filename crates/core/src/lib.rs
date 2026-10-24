@@ -1,5 +1,6 @@
 //! Shuyi Engine's core: the seeded RNG, the simulation traits and the
-//! tactics kit (a square grid, paths over it, turns and their history,
+//! tactics kit (a square grid, paths over it, the tiles each piece can
+//! strike and the danger at a tile ([`threat`]), turns and their history,
 //! and bots that play a game to its end, among them a rollout bot that
 //! plans on copies of the game: [`Determinize`], [`Evaluate`], [`Order`],
 //! [`Unordered`], [`Playout`], [`Rollout`], [`RolloutSettings`],
@@ -32,6 +33,7 @@ pub mod path;
 pub mod rng;
 pub mod save;
 pub mod text;
+pub mod threat;
 pub mod turn;
 
 pub use bots::{
@@ -47,4 +49,7 @@ pub use path::{Reach, flow_field, reachable};
 pub use rng::{RandomSource, ScriptedRng, SimRng};
 pub use save::{SaveFormat, SaveHeader};
 pub use text::{Part, split_tokens};
+pub use threat::{
+    Danger, GoalDistance, Ranges, Strike, Threat, Threats, strike_area, strike_area_from,
+};
 pub use turn::TurnRules;
