@@ -374,6 +374,7 @@ fn run_lists_the_games_modules_with_their_hooks() {
     let mut clock = InstalledModule::new("clock");
     clock.hooks = vec![Hook::BeforeUpdate, Hook::DrawOver];
     clock.states = vec!["clock::Ticks"];
+    clock.debug_entries = vec!["Reset clock".into()];
     let mut session = FakeSession::on("stage", "map");
     session.modules = vec![ModuleEntry::from(&clock)];
     let game = Fake {
@@ -388,6 +389,7 @@ fn run_lists_the_games_modules_with_their_hooks() {
             "name": "clock",
             "hooks": ["before_update", "draw_over"],
             "states": ["clock::Ticks"],
+            "debug_entries": ["Reset clock"],
         }])
     );
     let said = text(&out);

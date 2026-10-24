@@ -137,6 +137,54 @@ fn the_menu_runs_its_tools_and_reads_their_names_again() {
     );
 }
 
+/// How many times the [`Tally`] module's tool ran.
+#[derive(Debug, Default)]
+struct Ran(u32);
+
+/// A module whose debug tool counts its runs in its state.
+struct Tally;
+
+impl crate::module::Module<Toy> for Tally {
+    fn name(&self) -> &'static str {
+        "tally"
+    }
+
+    fn install(&mut self, install: &mut crate::module::Install<'_, Toy>) {
+        install.state(Ran::default());
+        install.debug_entry(|| {
+            DebugEntry::new("Tally", |ctx| {
+                if let Some(ran) = ctx.module_state_mut::<Ran>() {
+                    ran.0 += 1;
+                }
+                Transition::None
+            })
+        });
+    }
+}
+
+#[test]
+fn the_modules_tools_come_after_the_games_and_run_when_chosen() {
+    use Action::{Confirm, CursorDown};
+    let labels = |c: &ToyCtx, m: &DebugMenuScreen<Toy>| {
+        let items = m.menu().items();
+        items.iter().map(|i| c.label(&i.label)).collect::<Vec<_>>()
+    };
+    let runs = Rc::new(Shared::new(0));
+    let plain = ctx();
+    assert_eq!(
+        labels(&plain, &menu(&plain, &runs)),
+        ["Gallery", "Count: 0"]
+    );
+    let game = crate::toy::game().with_module(Tally).unwrap();
+    let mut c = game.into_ctx();
+    let mut m = menu(&c, &runs);
+    assert_eq!(labels(&c, &m), ["Gallery", "Count: 0", "Tally"]);
+    let chosen = m.update(&mut c, &frame(&[CursorDown, CursorDown, Confirm]));
+    assert!(matches!(chosen, Transition::None));
+    assert_eq!(c.module_state::<Ran>().map(|r| r.0), Some(1));
+    assert_eq!(runs.get(), 0);
+}
+
 #[test]
 fn the_view_is_the_title_the_tools_and_the_help() {
     let c = ctx();

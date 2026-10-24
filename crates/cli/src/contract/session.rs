@@ -154,6 +154,9 @@ pub struct ModuleEntry {
     pub hooks: Vec<String>,
     /// The types of the state it put on the context.
     pub states: Vec<String>,
+    /// Its entries' names on the debug menu, as they read at install, in
+    /// the order declared; the menu lists them after the game's.
+    pub debug_entries: Vec<String>,
 }
 
 impl From<&InstalledModule> for ModuleEntry {
@@ -162,6 +165,7 @@ impl From<&InstalledModule> for ModuleEntry {
             name: module.name.to_owned(),
             hooks: module.hooks.iter().map(|h| h.name().to_owned()).collect(),
             states: module.states.iter().map(|&s| s.to_owned()).collect(),
+            debug_entries: module.debug_entries.clone(),
         }
     }
 }

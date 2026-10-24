@@ -5,8 +5,9 @@
 //! installs a `Module` only for what must happen on every frame whatever
 //! screen is on top, or be reached by screens it didn't make. Everything
 //! it does is declared in [`Module::install`]: the [`Hook`]s the game
-//! calls and its state on the [`Ctx`] (found by type,
-//! [`Ctx::module_state`]). The game lists each module with what it
+//! calls, its state on the [`Ctx`] (found by type,
+//! [`Ctx::module_state`]) and its entries on the debug menu
+//! ([`Install::debug_entry`]). The game lists each module with what it
 //! declared ([`Game::modules`](crate::Game::modules)).
 //!
 //! A hook changes the module's own state and the context's UI side (a
@@ -19,6 +20,7 @@ use core::any::{Any, TypeId, type_name};
 use core::fmt;
 
 use crate::ctx::{Ctx, GameData};
+use crate::debug::DebugEntry;
 use crate::frame::glyph_buffer::GlyphBuffer;
 
 /// A piece that joins a running game: the game installs it with
@@ -71,6 +73,9 @@ pub struct InstalledModule {
     pub hooks: Vec<Hook>,
     /// The types it put on the context, by [`type_name`].
     pub states: Vec<&'static str>,
+    /// Its entries' names on the debug menu, as they read at install, in
+    /// the order declared.
+    pub debug_entries: Vec<String>,
 }
 
 impl InstalledModule {
@@ -80,6 +85,7 @@ impl InstalledModule {
             name,
             hooks: Vec::new(),
             states: Vec::new(),
+            debug_entries: Vec::new(),
         }
     }
 }
@@ -157,6 +163,14 @@ impl<'a, G: GameData> Install<'a, G> {
         }
     }
 
+    /// Adds an entry to the debug menu, after the game's and the entries
+    /// of the modules installed before it: `make` makes it each time the
+    /// menu opens ([`DebugMenuScreen::new`](crate::debug::DebugMenuScreen::new)).
+    pub fn debug_entry(&mut self, make: fn() -> DebugEntry<G>) {
+        self.installed.debug_entries.push(make().label(self.ctx));
+        self.ctx.modules.makers.push(make);
+    }
+
     /// What it declared, or its first mistake.
     pub(crate) fn finish(self) -> Result<InstalledModule, ModuleError> {
         match self.error {
@@ -183,14 +197,23 @@ struct State {
     value: Box<dyn Any>,
 }
 
-/// The modules' part of the [`Ctx`]: their states, one per type, in
-/// install order.
-#[derive(Default)]
-pub(crate) struct States {
+/// The modules' part of the [`Ctx`]: their states, one per type, and
+/// the makers of their debug menu entries, in install order.
+pub(crate) struct States<G: GameData> {
     states: Vec<State>,
+    makers: Vec<fn() -> DebugEntry<G>>,
 }
 
-impl fmt::Debug for States {
+impl<G: GameData> Default for States<G> {
+    fn default() -> Self {
+        Self {
+            states: Vec::new(),
+            makers: Vec::new(),
+        }
+    }
+}
+
+impl<G: GameData> fmt::Debug for States<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
             .entries(self.states.iter().map(|s| s.type_name))
@@ -198,7 +221,7 @@ impl fmt::Debug for States {
     }
 }
 
-impl States {
+impl<G: GameData> States<G> {
     /// Puts `module`'s `value` here, or names the module whose value of
     /// its type is here already.
     fn put<T: Any>(&mut self, module: &'static str, value: T) -> Result<(), &'static str> {
@@ -227,6 +250,11 @@ impl States {
     pub(crate) fn get_mut<T: Any>(&mut self) -> Option<&mut T> {
         let state = self.states.iter_mut().find(|s| s.id == TypeId::of::<T>())?;
         state.value.downcast_mut()
+    }
+
+    /// The modules' debug menu entries, made now, in install order.
+    pub(crate) fn debug_entries(&self) -> impl Iterator<Item = DebugEntry<G>> + '_ {
+        self.makers.iter().map(|make| make())
     }
 }
 

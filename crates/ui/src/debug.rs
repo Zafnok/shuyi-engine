@@ -1,5 +1,6 @@
 //! The developer's debug screens: a menu of the game's tools
-//! ([`DebugMenuScreen`], with the game's [`DebugEntry`]s), the glyph
+//! ([`DebugMenuScreen`], with the game's and its modules'
+//! [`DebugEntry`]s), the glyph
 //! sampler that shows every glyph of the font and every color of the
 //! palette ([`GlyphSamplerScreen`]), the scene camera over a picture of
 //! the game's ([`SceneCameraScreen`]), and the hint that names the Debug
@@ -105,8 +106,9 @@ pub struct DebugMenuView {
     pub help: String,
 }
 
-/// The debug menu the Debug key opens: the game's tools, in its order;
-/// Cancel closes it. A tool that opens nothing leaves the menu on it, its
+/// The debug menu the Debug key opens: the game's tools, in its order,
+/// then each installed module's ([`Install::debug_entry`](crate::module::Install::debug_entry)),
+/// in install order; Cancel closes it. A tool that opens nothing leaves the menu on it, its
 /// names read again.
 pub struct DebugMenuScreen<G: GameData> {
     /// Each item stands for its entry's index in `entries`.
@@ -127,8 +129,10 @@ impl<G: GameData> DebugMenuScreen<G> {
     /// Name reported by [`Screen::name`].
     pub const NAME: &'static str = "debug_menu";
 
-    /// The menu of `entries`, its first tool focused.
-    pub fn new(ctx: &Ctx<G>, entries: Vec<DebugEntry<G>>) -> Self {
+    /// The menu of the game's `entries`, then the entries of the modules
+    /// installed on `ctx`, made now, its first tool focused.
+    pub fn new(ctx: &Ctx<G>, mut entries: Vec<DebugEntry<G>>) -> Self {
+        entries.extend(ctx.modules.debug_entries());
         let menu = Self::menu_of(ctx, &entries);
         Self { menu, entries }
     }
