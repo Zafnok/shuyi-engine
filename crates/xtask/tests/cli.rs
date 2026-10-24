@@ -219,6 +219,24 @@ fn api_refuses_an_unknown_option() {
 }
 
 #[test]
+fn skill_examples_refuses_an_unknown_option_and_names_a_skill_it_lacks() {
+    let (ok, err) = xtask(&["skill-examples", "--keep"]);
+    assert!(!ok);
+    assert!(
+        err.starts_with("skill-examples: unknown option --keep"),
+        "{err}"
+    );
+    // A name no skill has makes no game, and fails.
+    let (ok, err) = xtask(&["skill-examples", "shuyi-nope"]);
+    assert!(!ok, "{err}");
+    assert!(
+        err.contains("error: shuyi-nope: no skill of skills/ with a worked example (example.ron)"),
+        "{err}"
+    );
+    assert!(err.contains("skill-examples: 1 error(s)"), "{err}");
+}
+
+#[test]
 fn api_without_its_tools_prints_their_install_lines() {
     // No `cargo`, `rustup` or `git` on an empty PATH: the command stops at
     // its tools, on any machine.

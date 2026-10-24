@@ -185,6 +185,10 @@ fn what_is_and_has_and_holds_compare() {
     assert_eq!(held("/result/files", "shuyi.ron"), Ok(()));
     assert_eq!(held("/result/text", "long"), Ok(()));
     assert_eq!(
+        held("/result/text", "short"),
+        Err(r#"/result/text doesn't hold short: it is "a long line""#.to_owned())
+    );
+    assert_eq!(
         held("/result/files", "README.md"),
         Err(r#"/result/files doesn't hold README.md: it is ["AGENTS.md","shuyi.ron"]"#.to_owned())
     );
@@ -456,4 +460,21 @@ fn steps_read_from_ron_with_their_defaults() {
         }
     );
     assert!(ron::from_str::<Vec<Step>>("[Cargo(args: [], nope: 1)]").is_err());
+}
+
+#[test]
+fn the_real_runner_runs_a_command_in_its_folder() {
+    let dir = temp("system");
+    let ran = System::default()
+        .run(&dir, "cargo", &["--version".to_owned()])
+        .unwrap();
+    assert_eq!(ran.code, Some(0), "{ran:?}");
+    assert!(ran.stdout.starts_with("cargo "), "{ran:?}");
+    let missing = System::default().run(&dir, "no-such-program-for-xtask", &[]);
+    assert!(
+        missing
+            .unwrap_err()
+            .starts_with("`no-such-program-for-xtask` did not run")
+    );
+    let _ = fs::remove_dir_all(&dir);
 }

@@ -131,5 +131,10 @@ fn check_skills_names_each_problem_and_needs_no_project() {
         (code, err.lines().next()),
         (Some(2), Some("check-skills: unknown option --fast"))
     );
+    let (code, _, err) = check_skills(&dir, &["skills", "open"]);
+    assert_eq!(
+        (code, err.lines().next()),
+        (Some(2), Some("check-skills: one folder, not two"))
+    );
     fs::remove_dir_all(&dir).unwrap();
 }

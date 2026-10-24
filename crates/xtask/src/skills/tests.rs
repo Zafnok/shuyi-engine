@@ -62,6 +62,10 @@ fn options_name_skills_and_a_shard() {
         })
     );
     assert_eq!(Options::parse(&[]), Ok(Options::default()));
+    assert_eq!(
+        Options::parse(&args("--shard 3/3")).map(|o| o.shard),
+        Ok(Some((3, 3)))
+    );
     for wrong in ["0/3", "4/3", "2", "a/b"] {
         assert_eq!(
             Options::parse(&args(&format!("--shard {wrong}"))),

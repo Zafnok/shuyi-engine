@@ -306,3 +306,107 @@ fn a_code_span_that_wraps_is_still_code_and_a_lone_backtick_ends_with_its_paragr
         ]
     );
 }
+
+#[test]
+fn a_command_ends_at_its_punctuation_and_a_code_stands_on_its_own() {
+    let body = "Run `cargo shuyi lint;` and `shuyi frame_png,` then `shuyi run.`\n\
+                SH9999 starts a line; ASH9998 and SH99971 are no codes.\n";
+    assert_eq!(
+        found(&pack(vec![good("shuyi-test", body)]), None),
+        ["shuyi-test/SKILL.md:10: SH9999 is no problem code: `shuyi explain` lists them"]
+    );
+}
+
+#[test]
+fn a_retired_code_is_named_and_a_live_one_is_not() {
+    let live = codes::entry("SH2103").copied().unwrap();
+    let retired = codes::Entry {
+        retired: true,
+        ..live
+    };
+    assert_eq!(code_problem("SH2103", Some(&live)), None);
+    assert_eq!(
+        code_problem("SH2103", Some(&retired)).as_deref(),
+        Some("SH2103 is retired: no error gives it any more")
+    );
+    assert_eq!(
+        code_problem("SH9999", None).as_deref(),
+        Some("SH9999 is no problem code: `shuyi explain` lists them")
+    );
+}
+
+#[test]
+fn each_length_at_its_limit_passes_and_one_more_fails() {
+    let name = format!("shuyi-{}", "a".repeat(MAX_NAME - 6));
+    let description = format!("{GOOD} {}", "x".repeat(MAX_DESCRIPTION - GOOD.len() - 1));
+    // Eight lines of frontmatter and a blank one, then the body.
+    let body = "line\n".repeat(MAX_LINES - 8);
+    let md = skill_md(&name, &description, "  version: \"1.0\"\n", &body);
+    assert_eq!(md.lines().count(), MAX_LINES);
+    let at_limit = skill(&name, &[(FILE, &md), (EXAMPLE, "")]);
+    assert_eq!(found(&pack(vec![at_limit]), None), Vec::<String>::new());
+    let longer = format!("{name}a");
+    let md = skill_md(
+        &longer,
+        &format!("{description}x"),
+        "  version: \"1.0\"\n",
+        &format!("{body}line\n"),
+    );
+    let problems = found(
+        &pack(vec![skill(&longer, &[(FILE, &md), (EXAMPLE, "")])]),
+        None,
+    );
+    assert_eq!(problems.len(), 3, "{problems:?}");
+    assert!(
+        problems[0].ends_with("name: longer than 64 characters"),
+        "{problems:?}"
+    );
+    assert!(
+        problems[1].ends_with("description: 1025 characters, over 1024"),
+        "{problems:?}"
+    );
+    assert!(
+        problems[2].contains(": 501 lines, over 500"),
+        "{problems:?}"
+    );
+    let compatibility = |length: usize| {
+        let md = format!(
+            "---\nname: shuyi-c\ndescription: {GOOD}\ncompatibility: {}\nmetadata:\n  version: \"1\"\n---\n",
+            "c".repeat(length)
+        );
+        found(
+            &pack(vec![skill("shuyi-c", &[(FILE, &md), (EXAMPLE, "")])]),
+            None,
+        )
+    };
+    assert_eq!(compatibility(1), Vec::<String>::new());
+    assert_eq!(compatibility(MAX_COMPATIBILITY), Vec::<String>::new());
+    assert_eq!(
+        compatibility(MAX_COMPATIBILITY + 1),
+        ["shuyi-c/SKILL.md:1: compatibility: longer than 500 characters"]
+    );
+}
+
+#[test]
+fn a_pack_is_in_name_order_and_reads_a_skills_frontmatter() {
+    let mut pack = Pack::default();
+    for name in ["shuyi-b", "notes-z", "shuyi-a", "notes-a"] {
+        let mut files = BTreeMap::new();
+        if name.starts_with("shuyi") {
+            files.insert(
+                FILE.to_owned(),
+                skill_md(name, GOOD, "  version: \"1\"\n", "").into_bytes(),
+            );
+        }
+        pack.add(name.to_owned(), files);
+    }
+    pack.sort();
+    let names: Vec<&str> = pack.skills.iter().map(|s| s.name.as_str()).collect();
+    assert_eq!(names, ["shuyi-a", "shuyi-b"]);
+    assert_eq!(pack.not_skills, ["notes-a", "notes-z"]);
+    assert_eq!(pack.skills[0].frontmatter().unwrap().name, "shuyi-a");
+    assert_eq!(
+        skill("shuyi-x", &[]).frontmatter(),
+        Err("no SKILL.md".to_owned())
+    );
+}

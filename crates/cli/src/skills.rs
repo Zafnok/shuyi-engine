@@ -409,16 +409,7 @@ fn check_skill(pack: &Pack, skill: &Skill, against: &Against, problems: &mut Vec
         let text = text.replace("\r\n", "\n");
         let file = format!("{}/{path}", skill.name);
         for (line, code) in codes_in(&text) {
-            let message = match codes::entry(&code) {
-                None => Some(format!(
-                    "{code} is no problem code: `shuyi explain` lists them"
-                )),
-                Some(entry) if entry.retired => {
-                    Some(format!("{code} is retired: no error gives it any more"))
-                }
-                Some(_) => None,
-            };
-            if let Some(message) = message {
+            if let Some(message) = code_problem(&code, codes::entry(&code)) {
                 problems.push(problem(&file, Some(line), message));
             }
         }
@@ -442,6 +433,20 @@ fn check_skill(pack: &Pack, skill: &Skill, against: &Against, problems: &mut Vec
                 problems.push(problem(&file, Some(line), message));
             }
         }
+    }
+}
+
+/// What is wrong with a skill naming problem code `code`, whose row in the
+/// table is `entry`: none, or a retired one.
+fn code_problem(code: &str, entry: Option<&codes::Entry>) -> Option<String> {
+    match entry {
+        None => Some(format!(
+            "{code} is no problem code: `shuyi explain` lists them"
+        )),
+        Some(entry) if entry.retired => {
+            Some(format!("{code} is retired: no error gives it any more"))
+        }
+        Some(_) => None,
     }
 }
 
