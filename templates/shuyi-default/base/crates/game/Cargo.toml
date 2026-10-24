@@ -1,0 +1,41 @@
+[package]
+name = "{{crate_name}}"
+description = "{{name}}: a game on Shuyi Engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lib]
+# The game's code calls it `game` whatever the game is called.
+name = "game"
+
+[[bin]]
+name = "{{crate_name}}"
+path = "src/main.rs"
+
+[[example]]
+# The game's tool program: `cargo shuyi <command>` runs it (shuyi.ron).
+name = "tools"
+required-features = ["tools"]
+
+[lints]
+workspace = true
+
+[features]
+# `tools`: the engine's tools for the game (`shuyi_cli::BasicTools`) and
+# its Harness, for its tool program and its tests.
+tools = ["dep:shuyi-cli"]
+
+[dependencies]
+# The engine: what the game names (`shuyi::prelude`), how it starts, the
+# macroquad backend (the window, input devices, audio and storage) and the
+# modules it turns on.
+shuyi.workspace = true
+shuyi-cli = { workspace = true, optional = true }
+# The files under `files/`, embedded.
+include_dir.workspace = true
+
+[dev-dependencies]
+# The Harness and the tools, for the tests in tests/.
+"{{crate_name}}" = { path = ".", features = ["tools"] }

@@ -8,7 +8,7 @@ updates:
   # templates' rust-toolchain.toml; the bump-rust skill finishes it.
   # `cargo xtask check-toolchain` fails when a template's folder is left out.
   - package-ecosystem: rust-toolchain
-    directories: ["/", "/templates/blank", "/templates/grid"]
+    directories: ["/", "/templates/shuyi-default/base"]
     schedule:
       interval: weekly
     # A quick point release comes out first.
@@ -18,7 +18,7 @@ updates:
       rust-toolchain:
         group-by: dependency-name
 
-  # The workspace (`crates/*`, `examples/*`). The templates' manifests hold
+  # The workspace (`crates/*`, `examples/*`). The template's manifests hold
   # `{{...}}` placeholders; `cargo xtask check-pins` keeps their
   # requirements equal to the root's.
   - package-ecosystem: cargo
@@ -49,8 +49,7 @@ updates:
   - package-ecosystem: github-actions
     directories:
       - "/"
-      - "/templates/blank/.github/workflows"
-      - "/templates/grid/.github/workflows"
+      - "/templates/shuyi-default/base/.github/workflows"
     schedule:
       interval: weekly
     cooldown:

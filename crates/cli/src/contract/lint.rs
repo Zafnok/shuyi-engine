@@ -43,8 +43,8 @@ pub const FENCE_LINTS: [&str; 3] = [
 ];
 
 /// The crates the rules never depend on, even through another crate, as
-/// the grid template's `crates/rules/tests/layers.rs` lists them (a test
-/// keeps the two the same). A trailing `*` is a prefix.
+/// the template's grid stage's `crates/rules/tests/layers.rs` lists them
+/// (a test keeps the two the same). A trailing `*` is a prefix.
 pub const NEVER: &[&str] = &[
     "shuyi",
     "shuyi-ui",

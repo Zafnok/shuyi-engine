@@ -287,10 +287,10 @@ choices.
     is `format!("{} {}", APP.id, APP.version)` (`Made::new` takes
     `impl Into<String>`), not the crate's name and version. If not,
     2111 does so (an edit request there).
-  - **2501** (templates as data): if it is done, the `app` part and
-    `app_info.rs` go into its built-in template's `base` part, with its
-    placeholders (`{{crate_name}}`). If not, 2501 carries them over (an
-    edit request there).
+  - **2501** (templates as data, done): the `app` part and
+    `app_info.rs` go into the built-in template's `base` part, with its
+    placeholders (`{{crate_name}}`), and a test that a composed game
+    passes `cargo shuyi app-info --check`.
   - **2502** (the wizard): if it is done, it asks for the id after the
     name (default `com.example.<crate>`, checked by this ticket's rule),
     with an `--id` flag, and this ticket adds that. If not, 2502 does

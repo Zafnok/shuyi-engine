@@ -14,11 +14,13 @@ extend-exclude = [
     # The Terminus font of Hello, Grid and the atlas made from it.
     "examples/hello-grid/files-src/*.bdf",
     "examples/hello-grid/files/font/atlas.ron",
-    "templates/*/crates/game/files/font/atlas.ron",
+    "templates/shuyi-default/base/crates/game/files/font/atlas.ron",
     # Vendored JavaScript (THIRD_PARTY_ASSETS.md), never edited by hand.
     "crates/cli/web/mq_js_bundle.js",
     "crates/cli/web/quad-storage.js",
     "crates/cli/web/sapp_jsutils.js",
+    # The engine's template's plans: hashes, written by a test.
+    "crates/cli/src/template/plans.golden",
     # proptest's saved failing cases.
     "proptest-regressions/",
 ]

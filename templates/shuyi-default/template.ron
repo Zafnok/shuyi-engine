@@ -1,0 +1,47 @@
+// Shuyi Engine's own template: what `shuyi new` makes a game from. Each
+// part is a folder of files, written when its `when` holds; the format is
+// in the engine's docs/templates.md.
+Template(
+    id: "shuyi-default",
+    name: "Shuyi Engine's own template",
+    version: "1.0.0",
+    engine: ">=0.1, <0.2",
+    license: "MIT OR Apache-2.0",
+    format_version: 1,
+    questions: [
+        Question(
+            id: "perspective",
+            text: "Which perspectives?",
+            pick: Many,
+            answers: [
+                Answer(id: "top-down-grid", text: "a top-down grid, turn by turn"),
+            ],
+            default: [],
+        ),
+    ],
+    // `shuyi new <dir> --template <name>`.
+    short_names: {
+        // One screen, ready for the rest.
+        "blank": {},
+        // A turn-based grid stage, with its rules, a bot and records.
+        "grid": { "perspective": ["top-down-grid"] },
+    },
+    parts: [
+        // Every game: the title, the short path, the project file, the
+        // rules for agents and CI with the gates.
+        Part(
+            id: "base",
+            when: Always,
+            files: "base",
+            targets: ["desktop", "web"],
+        ),
+        // A top-down grid stage, with a rules crate over `TurnRules`.
+        Part(
+            id: "stage-top-down-grid",
+            when: Picked("perspective", "top-down-grid"),
+            files: "stages/top-down-grid",
+            stage: Some("top-down-grid"),
+            requires: ["base"],
+        ),
+    ],
+)

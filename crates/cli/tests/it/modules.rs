@@ -9,7 +9,7 @@ use std::process::Command;
 
 use shuyi_cli::contract::add::{AddInput, AddOutput, BESIDE, add};
 use shuyi_cli::contract::modules::{ModulesInput, ModulesOutput, modules};
-use shuyi_cli::contract::new::{Engine, NewInput, Template, new};
+use shuyi_cli::contract::new::{Engine, NewInput, new};
 use shuyi_cli::contract::{Answer, Op, op_schemas};
 use shuyi_cli::project::Project;
 
@@ -85,13 +85,14 @@ fn engine(dir: &Path) {
 
 /// A game made by `new` from `template` in `root/game`, on the engine at
 /// `engine`.
-fn game(root: &Path, template: Template, engine: &Path) -> Project {
-    let mut input = NewInput::new(template, "game");
+fn game(root: &Path, template: &str, engine: &Path) -> Project {
+    let mut input = NewInput::new("game").template(template);
     input.engine = Engine::Path {
         path: engine.to_string_lossy().into_owned(),
     };
     let made = new(root, &input);
     assert!(made.ok, "{made:?}");
+    as_its_schema_says(Op::New, "NewOutput", &made);
     Project::load(&root.join("game")).unwrap_or_else(|e| panic!("{e:?}"))
 }
 
@@ -149,7 +150,7 @@ fn add_turns_a_module_on_once_and_modules_lists_it() {
     let root = scratch("modules-add");
     let checkout = root.join("engine");
     engine(&checkout);
-    let project = game(&root, Template::Blank, &checkout);
+    let project = game(&root, "blank", &checkout);
     let game = project.root.clone();
     fs::create_dir_all(game.join(".claude/skills")).unwrap();
 
@@ -213,7 +214,7 @@ fn add_of_a_module_whose_alternative_is_on_warns_and_links_the_readme() {
     let root = scratch("modules-alternative");
     let checkout = root.join("engine");
     engine(&checkout);
-    let project = game(&root, Template::Grid, &checkout);
+    let project = game(&root, "grid", &checkout);
     assert!(added(&project, "alpha").changed);
 
     let answer = add(&project, &AddInput::new("beta"));
@@ -255,7 +256,7 @@ fn a_game_that_never_installs_modules_is_given_the_line() {
     let root = scratch("modules-install");
     let checkout = root.join("engine");
     engine(&checkout);
-    let project = game(&root, Template::Blank, &checkout);
+    let project = game(&root, "blank", &checkout);
     let lib = project.root.join("crates/game/src/lib.rs");
     let text = fs::read_to_string(&lib).unwrap();
     assert!(text.contains(".modules(shuyi::enabled_modules)"), "{text}");
@@ -275,7 +276,7 @@ fn an_unknown_name_lists_the_known_ones_and_a_planned_one_says_so() {
     let root = scratch("modules-unknown");
     let checkout = root.join("engine");
     engine(&checkout);
-    let project = game(&root, Template::Blank, &checkout);
+    let project = game(&root, "blank", &checkout);
     let before = fs::read_to_string(project.root.join("Cargo.toml")).unwrap();
     for (name, error) in [
         (
@@ -303,7 +304,7 @@ fn an_unknown_name_lists_the_known_ones_and_a_planned_one_says_so() {
 fn on_this_repository_the_catalog_is_its_own_and_no_module_is_built_yet() {
     let root = scratch("modules-repository");
     let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let project = game(&root, Template::Grid, &repo);
+    let project = game(&root, "grid", &repo);
     let catalog = modules_of(&project);
     let concerns: Vec<&str> = catalog.concerns.iter().map(|c| c.id.as_str()).collect();
     assert_eq!(
@@ -334,7 +335,7 @@ fn the_binary_answers_modules_and_add_with_their_exit_codes() {
     let root = scratch("modules-binary");
     let checkout = root.join("engine");
     engine(&checkout);
-    let project = game(&root, Template::Blank, &checkout);
+    let project = game(&root, "blank", &checkout);
     let shuyi = |args: &[&str]| {
         Command::new(env!("CARGO_BIN_EXE_shuyi"))
             .args(args)

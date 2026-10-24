@@ -7,7 +7,7 @@
 //!
 //! | Op | Does | Module |
 //! | -- | ---- | ------ |
-//! | `new <template> <dir>` | a new game from `templates/grid` or `templates/blank` | [`new`] |
+//! | `new <dir>` | a new game from the engine's template, `templates/shuyi-default`, its parts picked by the answers (`--template grid`, `--answers`, `--set`) | [`new`] |
 //! | `check [--baked]` | every error of every validator of the game's content; with `--baked`, every way its pack differs from its sources | [`check`] |
 //! | `check --target <id>` | whether the game's frame, text and controls fit a target | [`check`], [`target`] |
 //! | `lint` | the game's code: `check-keys`, `check-text` and the rules crate's fence, each finding with file and line | [`lint`] |
@@ -70,7 +70,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 16;
+pub const VERSION: u32 = 17;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

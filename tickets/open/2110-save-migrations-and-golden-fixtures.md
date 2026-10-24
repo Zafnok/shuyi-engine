@@ -204,11 +204,9 @@ players keep after a patch.
     The blank template's says the engine checks its settings, and that a
     saved form of the game's own gets a `VERSION`, fixtures and a test
     like the grid template's.
-  - **Either order with 2501:** if the templates are made of parts, the
-    change goes in the part that holds the grid template's settings
-    file. If 2501 moved the grid stage onto the `()` settings, no
-    template has a settings file left, and the engine's settings above
-    cover it.
+  - **The template (2501, done):** the grid stage of
+    `templates/shuyi-default` is on the `()` settings, so no part has a
+    settings file left, and the engine's settings above cover it.
 - **An ADR** (the next free number in `docs/adr/`): saved forms read
   their older versions through typed steps, opt-in per format; the
   fixture guard; records refused whole are kept aside. It replaces game

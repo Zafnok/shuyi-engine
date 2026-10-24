@@ -169,7 +169,8 @@ not this ticket's.
   - the `grid` and `blank` templates, each with the targets in its
     `shuyi.ron`. Their `link` and `source` are
     `https://github.com/Zafnok/shuyi-engine/tree/main/templates`, which
-    still holds them after 2501 makes them parts of one template;
+    holds them as short names of one template made of parts
+    (`templates/shuyi-default`, 2501);
   - the `shuyi` command line (`crate = "shuyi-cli"`);
   - the MCP server, `shuyi mcp` (1133);
   - the skill pack (1134).

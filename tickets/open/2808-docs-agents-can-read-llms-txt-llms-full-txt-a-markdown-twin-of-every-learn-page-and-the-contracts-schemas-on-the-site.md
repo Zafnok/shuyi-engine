@@ -47,9 +47,9 @@ What Shuyi has, and plans:
   (`crates/cli/src/contract.rs` line 52). `shuyi schema` prints them,
   but only for someone who has installed the CLI. The site won't carry
   them.
-- The templates' `AGENTS.md` (`templates/blank/AGENTS.md` line 9,
-  `templates/grid/AGENTS.md` line 8) link the engine's `AGENTS.md` at
-  `blob/main`, even for a game that `shuyi new --engine-rev` pins to a
+- The template's `AGENTS.md` (`templates/shuyi-default/base/AGENTS.md`
+  line 7, one file for every game since 2501) links the engine's
+  `AGENTS.md` at `blob/main`, even for a game that `shuyi new --engine-rev` pins to a
   commit (`Engine::Rev` in `crates/cli/src/contract/new.rs`).
 - 1134 will ship skills that `shuyi new` copies into each game, so they
   will match the installed version. They don't help an agent that
@@ -207,11 +207,13 @@ None.
   pages hold Zola's `@/` links and links broken on purpose (both in
   `SKIPPED_PATHS`, `crates/xtask/src/links.rs`).
 - **New games point their agent at the engine they build with:**
-  - in both templates' `AGENTS.md`, the sentence linking the engine's
+  - in the `base` part's `AGENTS.md`, the sentence linking the engine's
     `AGENTS.md` at `blob/main` becomes a short list filled from one new
     placeholder, `{{engine.docs}}`;
-  - `files()` in `crates/cli/src/contract/new.rs` fills it as one more
-    pair beside the `{{engine.<crate>}}` ones, from the game's `Engine`:
+  - the composer fills it (`shuyi_cli::template::fill`, from a new
+    field of `template::Fill` that `fill_for` in
+    `crates/cli/src/contract/new.rs` sets beside the
+    `{{engine.<crate>}}` ones), from the game's `Engine`:
     - `Main`: `AGENTS.md` at `blob/main`, and the site's `llms.txt` and
       `llms-full.txt`, from a new `ENGINE_SITE` constant
       (`https://zafnok.github.io/shuyi-engine`) beside `ENGINE_GIT`. The
@@ -224,9 +226,10 @@ None.
   - the module's table of placeholders gains the row. Games on a
     released version come with 2005, which fills the same placeholder
     with that version's `/v<x.y>/llms-full.txt`.
-- **The blank template after 2511 (done):** the sentence that links the
-  engine's `AGENTS.md` is still in `templates/blank/AGENTS.md`'s second
-  paragraph; change it there.
+- **The template after 2511 and 2501 (done):** the sentence that links
+  the engine's `AGENTS.md` is in `templates/shuyi-default/base/AGENTS.md`'s
+  second paragraph; change it there, and `docs/templates.md`'s table
+  of placeholders gains the row.
 - **Either order with 2803 and 2004:** 2803's pages are in
   `site/content/learn/tutorial/`, so they get twins and an H2 with no
   change here. 2004's guides (`docs/guides/`) and 2509's error pages
@@ -250,8 +253,6 @@ None.
   Unity, Bevy, GameMaker and PICO-8 to Shuyi's (2802 gains it);
 - sending 1134's skills to these docs: they go through the game's
   `AGENTS.md`, and 1134 says so;
-- carrying `{{engine.docs}}` into the composed templates of 2501 (after
-  the MVP), which replaces these two template folders;
 - a Markdown summary of the API from rustdoc JSON or
   `cargo-public-api`: rustdoc's JSON needs a nightly, so it waits until
   after the MVP, and only if agents are seen reading `/api/` badly;
@@ -286,7 +287,7 @@ None.
    image. Snapshot its outputs.
 5. Change the site's templates, `site/README.md`,
    `site/llms-header.md`, `pages.yml`, `ci.yml` and `links.rs`.
-6. Change `new.rs` and the two templates' `AGENTS.md`.
+6. Change `new.rs`, the composer and the `base` part's `AGENTS.md`.
 7. Run the gates. After the merge, fetch `/llms.txt`, one twin and
    `/llms-full.txt` from the live site, and say so in the completion
    notes.

@@ -12,7 +12,7 @@ use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::check::{CheckInput, check};
 use shuyi_cli::contract::doctor::{DoctorInput, ThisMachine, doctor};
 use shuyi_cli::contract::import::{ImportInput, import};
-use shuyi_cli::contract::new::{Engine, NewInput, Template, new};
+use shuyi_cli::contract::new::{Engine, NewInput, new};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
 use shuyi_cli::contract::run::{RunInput, keys, run, scene};
 use shuyi_cli::contract::session::Event;
@@ -292,20 +292,20 @@ fn doctor_finds_the_rust_this_test_was_built_with() {
 }
 
 #[test]
-fn new_makes_a_game_from_each_template() {
+fn new_makes_a_game_from_each_short_name() {
     let dir = scratch("new");
-    for template in Template::ALL {
-        let mut input = NewInput::new(template, template.name());
-        input.name = Some(format!("Demo {}", template.name()));
+    for template in ["grid", "blank"] {
+        let mut input = NewInput::new(template).template(template);
+        input.name = Some(format!("Demo {template}"));
         input.engine = Engine::Path {
             path: root().join("../..").to_string_lossy().into_owned(),
         };
         let answer = new(&dir, &input);
         assert!(answer.ok, "{answer:?}");
-        let made = dir.join(template.name());
+        let made = dir.join(template);
         let manifest = fs::read_to_string(made.join("crates/game/Cargo.toml")).unwrap();
         assert!(
-            manifest.contains(&format!("name = \"demo-{}\"", template.name())),
+            manifest.contains(&format!("name = \"demo-{template}\"")),
             "{manifest}"
         );
         assert!(made.join("AGENTS.md").is_file());

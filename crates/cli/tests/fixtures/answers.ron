@@ -1,0 +1,5 @@
+// The answers of `shuyi new --template grid`, as an answers file: a test
+// checks that `--answers` with it makes what `--set` makes.
+{
+    "perspective": ["top-down-grid"],
+}

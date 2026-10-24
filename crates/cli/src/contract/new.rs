@@ -1,37 +1,45 @@
-//! `new <template> <dir>`: a new game in `dir`, from one of the engine's
-//! two templates, `templates/grid` (a turn-based grid stage) and
-//! `templates/blank` (one screen). Each is a plain folder, embedded in the
-//! `shuyi` binary, so `new` needs no checkout of the engine. Ticket 2501
-//! turns them into templates made of parts (ADR-0013).
+//! `new <dir>`: a new game in `dir`, from the engine's template,
+//! `templates/shuyi-default`, made of parts (ADR-0013 §3,
+//! [`crate::template`]). It is embedded in the `shuyi` binary, so `new`
+//! needs no checkout of the engine.
 //!
-//! A template's text files may hold these placeholders, and no others:
+//! The answers pick the parts: a short name of the template's
+//! (`--template grid`, `--template blank`), then an answers file
+//! (`--answers answers.ron`), then `--set <question>=<answer[,answer]>`,
+//! each in place of the one before for the questions it answers. A
+//! question none answers takes its default. The template's composer
+//! ([`template::compose`]) makes the files with no I/O, and
+//! [`template::apply`] writes them.
+//!
+//! A template's text files may hold these placeholders, and no others
+//! (`docs/templates.md`):
 //!
 //! | Placeholder | Becomes |
 //! | ----------- | ------- |
 //! | `{{name}}` | the game's name, as given (`Moon Garden`) |
-//! | `{{crate}}` | its crate's name (`moon-garden`) |
+//! | `{{crate_name}}` | its crate's name (`moon-garden`) |
 //! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
+//! | `{{answer.<question>}}` | that question's answers, joined by `,` |
 //!
-//! The game's Rust code names its own crates `game` and `rules` (their
-//! `[lib] name`), so its Rust holds a placeholder only in a string: the
-//! game's name and its storage's name, each the whole of its own `const`
-//! (`blank`'s `lib.rs`, `grid`'s `main.rs`), so rustfmt lays the code out
-//! the same whatever the names' length. No other `{{` may be in a
-//! template's text.
+//! A GitHub Actions expression, `${{ … }}`, is left as it is. The game's
+//! Rust code names its own crates `game` and `rules` (their `[lib]
+//! name`), so its Rust holds a placeholder only in a string: the game's
+//! name and its storage's name, each the whole of its own `const`
+//! (`lib.rs`), so rustfmt lays the code out the same whatever the names'
+//! length.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use include_dir::{Dir, DirEntry, include_dir};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::codes::{self, Code};
 use super::{Answer, Op};
-
-/// The engine's templates, embedded.
-static TEMPLATES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../../templates");
+use crate::catalog::Catalog;
+use crate::template::{self, Answers, ComposeError, Fill, Plan, Template};
 
 /// The engine's repository, which a new game depends on by git.
 pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
@@ -39,41 +47,6 @@ pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
 /// The engine's crates a template may depend on, by their folder under
 /// `crates/`: `shuyi`, the front door, and the default engine's.
 pub const ENGINE_CRATES: [&str; 7] = ["shuyi", "core", "assets", "ui", "platform", "app", "cli"];
-
-/// A template of the engine's.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "kebab-case")]
-pub enum Template {
-    /// A turn-based grid stage: a rules crate over `TurnRules` and a game
-    /// crate with one stage screen, a bot, records, and every tool of the
-    /// contract wired.
-    Grid,
-    /// One screen and nothing else.
-    Blank,
-}
-
-impl Template {
-    /// Every template.
-    pub const ALL: [Template; 2] = [Template::Grid, Template::Blank];
-
-    /// Its name, and its folder's under `templates/`.
-    pub fn name(self) -> &'static str {
-        match self {
-            Template::Grid => "grid",
-            Template::Blank => "blank",
-        }
-    }
-
-    /// The template named `name`.
-    pub fn named(name: &str) -> Option<Template> {
-        Template::ALL.into_iter().find(|t| t.name() == name)
-    }
-
-    /// Its embedded folder.
-    fn dir(self) -> Option<&'static Dir<'static>> {
-        TEMPLATES.get_dir(self.name())
-    }
-}
 
 /// Where the new game gets the engine from.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -99,33 +72,56 @@ pub enum Engine {
 /// What `new` makes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-// An input: built with `NewInput::new` (a template and a folder have no
-// default) and its fields assigned, it may grow (ADR-0039).
+// An input: built with `NewInput::new` (a folder has no default) and its
+// fields assigned, it may grow (ADR-0039).
 #[non_exhaustive]
 pub struct NewInput {
-    /// The template.
-    pub template: Template,
     /// The new game's folder, from the working folder: made if missing,
-    /// and refused unless empty.
+    /// and refused unless empty (or `force`).
     pub dir: String,
+    /// A short name of the template's for a set of answers (`grid`,
+    /// `blank`); none for none.
+    #[serde(default)]
+    pub template: Option<String>,
+    /// An answers file (`answers.ron`), from the working folder: its
+    /// answers in place of the short name's.
+    #[serde(default)]
+    pub answers: Option<String>,
+    /// Answers by question, in place of the short name's and the file's
+    /// (`--set perspective=top-down-grid`).
+    #[serde(default)]
+    pub set: Answers,
     /// The game's name; the folder's name if none.
     #[serde(default)]
     pub name: Option<String>,
     /// Where it gets the engine from.
     #[serde(default)]
     pub engine: Engine,
+    /// Write into a folder that isn't empty, over the files there.
+    #[serde(default)]
+    pub force: bool,
 }
 
 impl NewInput {
-    /// A game from `template` in the folder `dir`, named for its folder,
-    /// on the engine's `main` ([`Engine::Main`]).
-    pub fn new(template: Template, dir: impl Into<String>) -> Self {
+    /// A game in the folder `dir`, named for its folder, from the
+    /// template's defaults, on the engine's `main` ([`Engine::Main`]).
+    pub fn new(dir: impl Into<String>) -> Self {
         Self {
-            template,
             dir: dir.into(),
+            template: None,
+            answers: None,
+            set: Answers::default(),
             name: None,
             engine: Engine::Main,
+            force: false,
         }
+    }
+
+    /// The same, from the template's short name `name` (`grid`).
+    #[must_use]
+    pub fn template(mut self, name: impl Into<String>) -> Self {
+        self.template = Some(name.into());
+        self
     }
 }
 
@@ -139,8 +135,24 @@ pub struct NewOutput {
     pub name: String,
     /// Its crate's name.
     pub crate_name: String,
+    /// The template's id (`shuyi-default`).
+    pub template: String,
+    /// The answers it was made for, each question left out at its
+    /// default.
+    pub answers: Answers,
+    /// The template's parts it was made of, in order.
+    pub parts: Vec<String>,
     /// The files made, from its folder, `/`-separated, in order.
     pub files: Vec<String>,
+    /// The files that were there already and were written over (with
+    /// `force`).
+    pub overwritten: Vec<String>,
+    /// The engine's modules turned on, by crate.
+    pub modules: Vec<String>,
+    /// The targets it ships on.
+    pub targets: Vec<String>,
+    /// Its stages, in order.
+    pub stages: Vec<String>,
 }
 
 /// The crate name for game name `name`: lowercase ASCII letters and
@@ -208,127 +220,69 @@ fn engine_root(cwd: &Path, path: &str) -> Result<String, String> {
     Ok(root)
 }
 
-/// `text` with the placeholders replaced, or the first one unknown (in
-/// file `file`, at its line).
-fn fill(
-    file: &str,
-    text: &str,
-    name: &str,
-    krate: &str,
-    deps: &[(String, String)],
-) -> Result<String, String> {
-    let mut out = text.replace("{{name}}", name).replace("{{crate}}", krate);
-    for (placeholder, dependency) in deps {
-        out = out.replace(placeholder, dependency);
+/// What fills the placeholders of a game named `name`, of crate `krate`,
+/// on `engine` (at `root` if a checkout).
+pub fn fill_for(name: &str, krate: &str, engine: &Engine, root: Option<&str>) -> Fill {
+    Fill {
+        name: name.to_owned(),
+        crate_name: krate.to_owned(),
+        engine: ENGINE_CRATES
+            .iter()
+            .map(|krate| ((*krate).to_owned(), dependency(engine, root, krate)))
+            .collect(),
     }
-    if let Some(at) = out.find("{{") {
-        let line = out[..at].lines().count().max(1);
-        let rest = &out[at..];
-        let shown = rest.find("}}").map_or(rest, |end| &rest[..end + 2]);
-        return Err(format!(
-            "the template's {file}:{line} has an unknown placeholder {shown}"
-        ));
-    }
-    Ok(out)
 }
 
-/// Every file of `dir`, at any depth.
-fn files_of(dir: &'static Dir<'static>) -> Vec<&'static include_dir::File<'static>> {
-    let mut out = Vec::new();
-    let mut pending = vec![dir];
-    while let Some(dir) = pending.pop() {
-        for entry in dir.entries() {
-            match entry {
-                DirEntry::Dir(d) => pending.push(d),
-                DirEntry::File(f) => out.push(f),
-            }
-        }
-    }
-    out
+/// The template's short names, joined by commas.
+fn short_names(template: &Template) -> String {
+    let names: Vec<&str> = template.short_names.keys().map(String::as_str).collect();
+    names.join(", ")
 }
 
-/// The files of `template` filled for game `name` with crate `krate`
-/// and `engine` (at `root` if a checkout): each path from the game's
-/// folder (`/`-separated) and its bytes, in order.
-pub fn files(
-    template: Template,
-    name: &str,
-    krate: &str,
-    engine: &Engine,
-    root: Option<&str>,
-) -> Result<Vec<(String, Vec<u8>)>, String> {
-    let dir = template
-        .dir()
-        .ok_or_else(|| format!("the template {} is missing", template.name()))?;
-    let deps: Vec<(String, String)> = ENGINE_CRATES
-        .iter()
-        .map(|krate| {
-            (
-                format!("\"{{{{engine.{krate}}}}}\""),
-                dependency(engine, root, krate),
+/// The answers `input` gives, from the working folder `cwd`: its short
+/// name's, then its file's, then its `set`, each in place of the one
+/// before for the questions it answers.
+pub fn answers_of(cwd: &Path, template: &Template, input: &NewInput) -> Result<Answers, String> {
+    let mut answers = Answers::default();
+    if let Some(name) = &input.template {
+        let named = template.short_name(name).ok_or_else(|| {
+            format!(
+                "no template {name}: the templates are {}",
+                short_names(template)
             )
-        })
-        .collect();
-    let mut out = Vec::new();
-    for file in files_of(dir) {
-        let path = file
-            .path()
-            .strip_prefix(template.name())
-            .unwrap_or(file.path())
-            .to_string_lossy()
-            .replace('\\', "/");
-        let bytes = match std::str::from_utf8(file.contents()) {
-            Ok(text) => fill(&path, text, name, krate, &deps)?.into_bytes(),
-            Err(_) => file.contents().to_vec(),
-        };
-        out.push((path, bytes));
+        })?;
+        answers = answers.and(named);
     }
-    out.sort();
-    Ok(out)
-}
-
-/// Whether `dir` is missing or empty.
-fn is_empty_dir(dir: &Path) -> bool {
-    fs::read_dir(dir).map_or(true, |mut entries| entries.next().is_none())
-}
-
-/// Writes `files` into `dir`.
-fn write(dir: &Path, files: &[(String, Vec<u8>)]) -> Result<(), String> {
-    for (path, bytes) in files {
-        let to: PathBuf = dir.join(path);
-        if let Some(parent) = to.parent() {
-            fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
-        }
-        fs::write(&to, bytes).map_err(|e| format!("{}: {e}", to.display()))?;
+    if let Some(file) = &input.answers {
+        let text = fs::read_to_string(cwd.join(file)).map_err(|e| format!("{file}: {e}"))?;
+        answers = answers.and(&Answers::parse(file, &text)?);
     }
-    Ok(())
+    Ok(answers.and(&input.set))
 }
 
-/// `new`: the game `input` asks for, made under `cwd`.
-pub fn new(cwd: &Path, input: &NewInput) -> Answer<NewOutput> {
-    match make(cwd, input) {
-        Ok((output, limits)) => Answer::new(Op::New, true, output, limits),
-        Err((code, e)) => Answer::failed(Op::New, code, e),
+/// The problem code of a template that makes no game: the answers'
+/// fault ([`codes::WRONG_ARGUMENTS`]) or the template's
+/// ([`codes::FILE`]).
+fn code_of(error: &ComposeError) -> Code {
+    match error {
+        ComposeError::Answer { .. }
+        | ComposeError::Requires { .. }
+        | ComposeError::Conflict { .. }
+        | ComposeError::Module { .. } => codes::WRONG_ARGUMENTS,
+        _ => codes::FILE,
     }
 }
 
-/// The game `input` asks for, made under `cwd`, with its limits; or the
-/// problem code and why not: an input refused
-/// ([`codes::WRONG_ARGUMENTS`]), or files that can't be filled or
-/// written ([`codes::FILE`]).
-fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code, String)> {
+/// The game `template` makes for `input` (named `name`, of crate
+/// `krate`) under `cwd`, with no file written: its plan, and its limits.
+pub fn plan(
+    cwd: &Path,
+    template: &Template,
+    input: &NewInput,
+    name: &str,
+    krate: &str,
+) -> Result<(Plan, Vec<String>), (Code, String)> {
     let refused = |e| (codes::WRONG_ARGUMENTS, e);
-    let dir = cwd.join(&input.dir);
-    let folder = std::path::absolute(&dir)
-        .ok()
-        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
-        .unwrap_or_default();
-    let name = input.name.clone().unwrap_or(folder);
-    check_name(&name).map_err(refused)?;
-    let krate = crate_name(&name).map_err(refused)?;
-    if !is_empty_dir(&dir) {
-        return Err(refused(format!("{} is not empty", input.dir)));
-    }
     let mut limits = Vec::new();
     let root = match &input.engine {
         Engine::Main => {
@@ -354,15 +308,50 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
             Some(root)
         }
     };
-    let files = files(
-        input.template,
-        &name,
-        &krate,
-        &input.engine,
-        root.as_deref(),
-    )
-    .map_err(|e| (codes::FILE, e))?;
-    write(&dir, &files).map_err(|e| (codes::FILE, e))?;
+    let catalog = match &root {
+        Some(root) => Catalog::read(Path::new(root)),
+        None => Catalog::embedded(),
+    }
+    .map_err(|e| (codes::ENGINE_DEPENDENCY, e))?;
+    let answers = answers_of(cwd, template, input).map_err(refused)?;
+    let fill = fill_for(name, krate, &input.engine, root.as_deref());
+    let plan = template::compose(template, &answers, &catalog, &fill)
+        .map_err(|e| (code_of(&e), e.to_string()))?;
+    limits.extend(plan.limits.iter().cloned());
+    Ok((plan, limits))
+}
+
+/// `new`: the game `input` asks for, made under `cwd`.
+pub fn new(cwd: &Path, input: &NewInput) -> Answer<NewOutput> {
+    match make(cwd, input) {
+        Ok((output, limits)) => Answer::new(Op::New, true, output, limits),
+        Err((code, e)) => Answer::failed(Op::New, code, e),
+    }
+}
+
+/// The game `input` asks for, made under `cwd`, with its limits; or the
+/// problem code and why not: an input refused
+/// ([`codes::WRONG_ARGUMENTS`]), or a template or files that can't be
+/// read, composed or written ([`codes::FILE`]).
+fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code, String)> {
+    let refused = |e| (codes::WRONG_ARGUMENTS, e);
+    let dir = cwd.join(&input.dir);
+    let folder = std::path::absolute(&dir)
+        .ok()
+        .and_then(|d| d.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .unwrap_or_default();
+    let name = input.name.clone().unwrap_or(folder);
+    check_name(&name).map_err(refused)?;
+    let krate = crate_name(&name).map_err(refused)?;
+    let template = template::built_in().map_err(|e| (codes::FILE, e.to_string()))?;
+    let (plan, mut limits) = plan(cwd, &template, input, &name, &krate)?;
+    let applied = template::apply(&plan, &dir, input.force).map_err(|e| {
+        if e.starts_with("is not empty") {
+            refused(format!("{} {e}", input.dir))
+        } else {
+            (codes::FILE, e)
+        }
+    })?;
     limits.push(format!(
         "the game was made, not built: run `cargo test` in {}",
         input.dir
@@ -371,28 +360,37 @@ fn make(cwd: &Path, input: &NewInput) -> Result<(NewOutput, Vec<String>), (Code,
         dir: input.dir.clone(),
         name,
         crate_name: krate,
-        files: files.into_iter().map(|(path, _)| path).collect(),
+        template: template.id.clone(),
+        answers: plan.answers,
+        parts: plan.parts,
+        files: applied.written,
+        overwritten: applied.overwritten,
+        modules: plan.modules,
+        targets: plan.targets,
+        stages: plan.stages,
     };
     Ok((output, limits))
 }
 
 /// `new`'s usage.
 pub fn usage(command: &str) -> String {
-    let names: Vec<&str> = Template::ALL.iter().map(|t| t.name()).collect();
+    let names = template::built_in().map_or_else(|_| String::new(), |t| short_names(&t));
     format!(
-        "usage: {command} new <template> <dir> [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--json]\n\n\
-         Makes a new game in <dir> (missing or empty) from a template: {}.\n\
-         The game depends on the engine's repository at main, at --engine-rev's\n\
-         commit, or on the checkout at --engine-path.",
-        names.join(", ")
+        "usage: {command} new <dir> [--template NAME] [--answers FILE] [--set QUESTION=ANSWER[,ANSWER]]...\n\
+         \x20          [--name NAME] [--engine-rev COMMIT | --engine-path DIR] [--force] [--json]\n\n\
+         Makes a new game in <dir> (missing or empty, or any with --force) from the engine's\n\
+         template, its parts picked by the answers: --template's short name ({names}),\n\
+         then --answers' file, then each --set. The game depends on the engine's repository\n\
+         at main, at --engine-rev's commit, or on the checkout at --engine-path."
     )
 }
 
-/// Reads `new`'s arguments (not `--json`).
+/// Reads `new`'s arguments (not `--json`). `new <template> <dir>`, the
+/// older form, is `new <dir> --template <template>`.
 pub fn parse_args(args: &[String]) -> Result<NewInput, String> {
     let mut positional = Vec::new();
-    let mut name = None;
-    let mut engine = Engine::Main;
+    let mut input = NewInput::new("");
+    let mut set = BTreeMap::new();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         let mut value = || {
@@ -401,42 +399,51 @@ pub fn parse_args(args: &[String]) -> Result<NewInput, String> {
                 .cloned()
         };
         match arg.as_str() {
-            "--name" => name = Some(value()?),
-            "--engine-rev" => engine = Engine::Rev { rev: value()? },
-            "--engine-path" => engine = Engine::Path { path: value()? },
+            "--template" => input.template = Some(value()?),
+            "--answers" => input.answers = Some(value()?),
+            "--set" => {
+                let (question, answers) = Answers::parse_set(&value()?)?;
+                set.insert(question, answers);
+            }
+            "--name" => input.name = Some(value()?),
+            "--engine-rev" => input.engine = Engine::Rev { rev: value()? },
+            "--engine-path" => input.engine = Engine::Path { path: value()? },
+            "--force" => input.force = true,
             flag if flag.starts_with("--") => return Err(format!("unknown option: {flag}")),
             _ => positional.push(arg.clone()),
         }
     }
-    let [template, dir] = positional.as_slice() else {
-        return Err("a <template> and a <dir>, nothing else".to_owned());
-    };
-    let template = Template::named(template).ok_or_else(|| {
-        let names: Vec<&str> = Template::ALL.iter().map(|t| t.name()).collect();
-        format!(
-            "no template {template}: the templates are {}",
-            names.join(", ")
-        )
-    })?;
-    Ok(NewInput {
-        template,
-        dir: dir.clone(),
-        name,
-        engine,
-    })
+    input.set = Answers(set);
+    match positional.as_slice() {
+        [dir] => input.dir.clone_from(dir),
+        [template, dir] if input.template.is_none() => {
+            input.template = Some(template.clone());
+            input.dir.clone_from(dir);
+        }
+        _ => return Err("a <dir>, nothing else".to_owned()),
+    }
+    Ok(input)
 }
 
 /// What `new` made, for people.
 pub fn text(output: &NewOutput) -> String {
     let mut out = format!(
-        "new: {} ({}) in {}, {} file(s)\n",
+        "new: {} ({}) in {}, {} file(s), from {}: {}\n",
         output.name,
         output.crate_name,
         output.dir,
-        output.files.len()
+        output.files.len(),
+        output.template,
+        output.parts.join(", ")
     );
+    // Writing to a `String` can't fail.
+    if !output.modules.is_empty() {
+        let _ = writeln!(out, "modules on: {}", output.modules.join(", "));
+    }
+    if !output.overwritten.is_empty() {
+        let _ = writeln!(out, "written over: {}", output.overwritten.join(", "));
+    }
     for file in &output.files {
-        // Writing to a `String` can't fail.
         let _ = writeln!(out, "  {file}");
     }
     out

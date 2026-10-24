@@ -36,8 +36,12 @@ and write the two templates as parts of the built-in template
 `templates/shuyi-default`, each turning on the `3d` feature), set their
 answers in `docs/modules.ron` to ready, and the CI job makes the games
 with `shuyi new --no-input --perspective first-person` (and
-`third-person`). If 2502 isn't done, write the menu and the template
-folders as below, and 2501 and 2502 fold them in.
+`third-person`). If 2502 isn't done, write the menu, and the two
+templates as those parts all the same (2501 is done), with the
+`perspective` answers in the template's own question
+(`templates/shuyi-default/template.ron`) and the short names
+`first-person` and `third-person`; 2502 folds the menu into the
+wizard.
 
 It builds on 3104 (the GPU painter, so the example runs in a window and
 the browser), 3106 (the cameras, and through it 3105's mover), 1129

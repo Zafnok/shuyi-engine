@@ -4,8 +4,16 @@
   "description": "What `new` makes.",
   "type": "object",
   "properties": {
+    "answers": {
+      "description": "An answers file (`answers.ron`), from the working folder: its\nanswers in place of the short name's.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "dir": {
-      "description": "The new game's folder, from the working folder: made if missing,\nand refused unless empty.",
+      "description": "The new game's folder, from the working folder: made if missing,\nand refused unless empty (or `force`).",
       "type": "string"
     },
     "engine": {
@@ -15,6 +23,11 @@
         "from": "main"
       }
     },
+    "force": {
+      "description": "Write into a folder that isn't empty, over the files there.",
+      "type": "boolean",
+      "default": false
+    },
     "name": {
       "description": "The game's name; the folder's name if none.",
       "type": [
@@ -23,17 +36,35 @@
       ],
       "default": null
     },
+    "set": {
+      "description": "Answers by question, in place of the short name's and the file's\n(`--set perspective=top-down-grid`).",
+      "$ref": "#/$defs/Answers",
+      "default": {}
+    },
     "template": {
-      "description": "The template.",
-      "$ref": "#/$defs/Template"
+      "description": "A short name of the template's for a set of answers (`grid`,\n`blank`); none for none.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
     }
   },
   "additionalProperties": false,
   "required": [
-    "template",
     "dir"
   ],
   "$defs": {
+    "Answers": {
+      "description": "The answers a game picked: by question id, the ids of its answers, as\n`answers.ron` holds them (`{ \"perspective\": [\"top-down-grid\"] }`).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
     "Engine": {
       "description": "Where the new game gets the engine from.",
       "oneOf": [
@@ -88,21 +119,6 @@
             "from",
             "path"
           ]
-        }
-      ]
-    },
-    "Template": {
-      "description": "A template of the engine's.",
-      "oneOf": [
-        {
-          "description": "A turn-based grid stage: a rules crate over `TurnRules` and a game\ncrate with one stage screen, a bot, records, and every tool of the\ncontract wired.",
-          "type": "string",
-          "const": "grid"
-        },
-        {
-          "description": "One screen and nothing else.",
-          "type": "string",
-          "const": "blank"
         }
       ]
     }

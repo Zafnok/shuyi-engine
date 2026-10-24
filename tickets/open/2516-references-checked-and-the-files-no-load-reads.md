@@ -158,15 +158,10 @@ None.
     load the data: a game
     whose files are broken still gets its errors.
   - `Fake` (`crates/cli/src/contract/fake.rs`) writes it, for the tests.
-  - The grid template's tools (`templates/grid/crates/game/src/tools.rs`)
-    don't write it in this ticket. Its `Data::load` reads its files
-    without a bundle and its tables with `parse_ron`, so every file
-    would show as unread and no reference would have a file. Its
-    `check` gets the limit that names `GameTools::assets`.
-    **Either order with 2501:** if 2501 is done and the grid template
-    loads through `BasicData`, its tools write `assets` as `BasicTools`
-    does. If not, 2501 writes it when it moves the template onto
-    `BasicData`.
+  - The template's grid stage tools
+    (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`)
+    write `assets` as `BasicTools` does: 2501 moved the grid game's load
+    onto `BasicData`, and its `Tools` calls `BasicTools` for the rest.
 - **`shuyi check`** (`check::check`):
   - Only `game.check()` runs inside `refs::collecting` and
     `bundle::recording`. With `--baked`, `bake::check_baked` runs after,
