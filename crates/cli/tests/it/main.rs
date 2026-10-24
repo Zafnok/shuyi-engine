@@ -9,6 +9,7 @@ mod docs;
 mod mcp;
 mod modules;
 mod schemas;
+mod skills;
 mod targets;
 mod toy;
 

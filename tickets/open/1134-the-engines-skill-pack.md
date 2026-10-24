@@ -5,7 +5,7 @@ type: feature
 milestone: "Engine: public"
 model: opus-5.5
 effort: xhigh
-status: todo
+status: in-progress
 blocked_by: ["1129", "2015", "2509", "2511", "2810"]
 nick_input: none
 completed:

@@ -1,6 +1,7 @@
 # The engine's own template's plans for Moon Garden on the engine's main: each
 # file's FNV-1a hash and path. Written by `SHUYI_BLESS=1 cargo test -p shuyi-cli
-# --lib template`, after a change to templates/shuyi-default.
+# --lib template`, after a change to templates/shuyi-default. The skill pack's
+# files in .claude/skills/ are left out: a test checks they are the pack's.
 
 [blank] base
 d4b465b5e5a1bbb5 .cargo/config.toml

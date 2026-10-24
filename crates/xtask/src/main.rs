@@ -9,6 +9,7 @@
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]`
+//! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 
 mod api;
 mod docs;
@@ -17,6 +18,8 @@ mod links;
 mod modules;
 mod no_std;
 mod pins;
+mod script;
+mod skills;
 mod tickets;
 mod toolchain;
 
@@ -60,7 +63,12 @@ usage:
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
       and the breaks (cargo-semver-checks), appending the Markdown to <file>.
       With --pr-branch, a break needs a `Breaking:` line in the branch's
-      ticket (ADR-0038).";
+      ticket (ADR-0038).
+  cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
+      Run the worked example of each skill of the skill pack (skills/, ADR-0043)
+      on a fresh `shuyi new` game in target/skill-examples/, or of the skills
+      named, or of every <n>th from the <i>th: a verdict per step. The games
+      build in this repository's target folder unless CARGO_TARGET_DIR is set.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -79,6 +87,7 @@ fn main() -> ExitCode {
             report("check-toolchain", &toolchain::run(&root), &[])
         }
         Some("api") => api(&root, &args[1..]),
+        Some("skill-examples") => skill_examples(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -131,6 +140,30 @@ fn api(root: &Path, args: &[String]) -> ExitCode {
         &mut std::io::stdout().lock(),
     ));
     report("api", &errors, &outcome.warnings)
+}
+
+fn skill_examples(root: &Path, args: &[String]) -> ExitCode {
+    let options = match skills::Options::parse(args) {
+        Ok(options) => options,
+        Err(e) => {
+            eprintln!(
+                "skill-examples: {e}
+
+{USAGE}"
+            );
+            return ExitCode::FAILURE;
+        }
+    };
+    // Games share this repository's target folder unless cargo is told
+    // otherwise, so the engine builds once for all of them.
+    let runner = script::System {
+        target_dir: std::env::var_os("CARGO_TARGET_DIR")
+            .is_none()
+            .then(|| root.join("target")),
+    };
+    let outcome = skills::run(root, &skills::games_dir(root), &options, &runner);
+    eprint!("{}", outcome.report);
+    report("skill-examples", &outcome.errors, &[])
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

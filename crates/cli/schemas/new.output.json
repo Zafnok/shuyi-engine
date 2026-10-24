@@ -124,6 +124,13 @@
             "type": "string"
           }
         },
+        "skills": {
+          "description": "The engine's skills it holds in `.claude/skills/`, by name.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "stages": {
           "description": "Its stages, in order.",
           "type": "array",
@@ -155,7 +162,8 @@
         "overwritten",
         "modules",
         "targets",
-        "stages"
+        "stages",
+        "skills"
       ]
     },
     "Op": {

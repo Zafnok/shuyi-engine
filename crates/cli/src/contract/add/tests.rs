@@ -30,6 +30,7 @@ fn catalog(dir: &Path) -> Catalog {
             dir: dir.to_path_buf(),
             info: ModuleInfo::default(),
         }],
+        skills: crate::skills::Pack::default(),
     }
 }
 

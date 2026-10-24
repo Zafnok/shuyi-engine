@@ -372,11 +372,13 @@ fn what_new_made_reads_for_people() {
         modules: vec!["shuyi-physics".into()],
         targets: vec!["desktop".into()],
         stages: Vec::new(),
+        skills: vec!["shuyi-gates".into(), "shuyi-test".into()],
     };
     assert_eq!(
         text(&out),
         "new: Game (game) in g, 2 file(s), from shuyi-default: base, stage\n\
-         modules on: shuyi-physics\nwritten over: README.md\n  Cargo.toml\n  README.md\n"
+         modules on: shuyi-physics\nskills: shuyi-gates, shuyi-test\nwritten over: README.md\n  \
+         Cargo.toml\n  README.md\n"
     );
 }
 
