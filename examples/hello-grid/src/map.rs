@@ -5,13 +5,13 @@
 //! `files/tiles.png`, which `cargo shuyi glyph-tiles` draws from the same
 //! glyphs and colors, `shuyi.ron` says which).
 
-use shuyi_assets::image::{ImageId, ImageRect};
-use shuyi_assets::tileset::{Look as TileLook, TerrainTiles};
-use shuyi_core::{Pos, TerrainId};
-use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
-use shuyi_ui::frame::{EngineColor, Palette};
-use shuyi_ui::grid::glyph;
-use shuyi_ui::grid::{
+use shuyi::assets::image::{ImageId, ImageRect};
+use shuyi::assets::tileset::{Look as TileLook, TerrainTiles};
+use shuyi::core::{Pos, TerrainId};
+use shuyi::ui::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
+use shuyi::ui::frame::{EngineColor, Palette};
+use shuyi::ui::grid::glyph;
+use shuyi::ui::grid::{
     GlyphSkin, Grid, MapColors, MapScene, MapUnit, RangeName, SpriteSkin, TerrainGlyphs, Terrains,
     UnitPainter, WalkSpeeds,
 };
@@ -231,8 +231,8 @@ mod tests {
                 h: 24
             }
         );
-        let table = shuyi_assets::image::ImageTable::new(
-            [(TILES_PNG, shuyi_assets::image::ImageInfo::new(192, 24))].into(),
+        let table = shuyi::assets::image::ImageTable::new(
+            [(TILES_PNG, shuyi::assets::image::ImageInfo::new(192, 24))].into(),
         );
         let tiles = terrain_tiles(table.id(TILES_PNG).unwrap());
         assert_eq!(tiles.look.tiles.len(), 3);

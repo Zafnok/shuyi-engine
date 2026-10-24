@@ -97,10 +97,8 @@ None.
     `fn main() { shuyi_app::run_game(card_battle::game()); }`;
   - `examples/tools.rs`, the tool program behind a `tools` feature, as
     hello-grid's `Cargo.toml` declares it;
-  - imports from `shuyi::prelude` and a `Cargo.toml` naming `shuyi`
-    alone if 2003 is done; from `shuyi_platform::prelude`, with the
-    engine's crates as `examples/hello-grid/Cargo.toml` names them, if
-    not.
+  - imports from `shuyi::prelude`, and a `Cargo.toml` naming the
+    engine as `shuyi` alone, as `examples/hello-grid/Cargo.toml` does.
 - **The data**, the game's own part `Tables` (2511's `own`), read by
   `Tables::load(&Bundle)`:
   - two kinds, `Cards` (`files/cards.ron`) and `Foes`

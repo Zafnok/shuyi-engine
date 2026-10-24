@@ -15,20 +15,21 @@ use std::collections::BTreeMap;
 
 use include_dir::{Dir, include_dir};
 use rules::Feature;
-use shuyi_assets::ContentError;
-use shuyi_assets::audio::AudioManifest;
-use shuyi_assets::font::FontAtlasDef;
-use shuyi_assets::grid_map::GridMap;
-use shuyi_assets::image::ImageTable;
-use shuyi_assets::keymap::{KeymapDef, Layout};
-use shuyi_assets::lang::Lang;
-use shuyi_assets::lighting::Lighting;
-use shuyi_assets::palette::PaletteDef;
-use shuyi_assets::parse_ron;
-use shuyi_assets::voice::ClipVariant;
-use shuyi_core::TerrainId;
-use shuyi_ui::frame::{ConsoleSpec, EngineColor};
-use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
+use shuyi::assets::ContentError;
+use shuyi::assets::audio::AudioManifest;
+use shuyi::assets::font::FontAtlasDef;
+use shuyi::assets::grid_map::GridMap;
+use shuyi::assets::image::ImageTable;
+use shuyi::assets::keymap::{KeymapDef, Layout};
+use shuyi::assets::lang::Lang;
+use shuyi::assets::lighting::Lighting;
+use shuyi::assets::palette::PaletteDef;
+use shuyi::assets::parse_ron;
+use shuyi::assets::voice::ClipVariant;
+use shuyi::core::TerrainId;
+use shuyi::ui::frame::{ConsoleSpec, EngineColor};
+use shuyi::ui::module::ModuleError;
+use shuyi::ui::{Ctx, Game, GameData, GameHooks, Screen};
 
 pub use action::Action;
 pub use settings::Prefs;
@@ -195,10 +196,11 @@ pub fn ctx(seed: u64) -> Ctx<Data> {
     ctx
 }
 
-/// The game on `ctx`, on its stage.
-pub fn game(mut ctx: Ctx<Data>) -> Game<Data> {
+/// The game on `ctx`, on its stage, with the engine's modules its
+/// features turn on (`Cargo.toml`) installed; or the one that can't be.
+pub fn game(mut ctx: Ctx<Data>) -> Result<Game<Data>, ModuleError> {
     let stage = stage::StageScreen::new(&mut ctx);
-    Game::new(ctx, Box::new(stage), GameHooks::default())
+    Game::new(ctx, Box::new(stage), GameHooks::default()).with_modules(shuyi::enabled_modules())
 }
 
 /// Every screen the game can show, overlays on their own, for the check

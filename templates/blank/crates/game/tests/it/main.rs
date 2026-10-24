@@ -14,7 +14,7 @@ use shuyi_cli::project::Project;
 use shuyi_cli::{BasicTools, GameTools};
 
 /// The game's tools, as its tool program has them.
-fn tools() -> BasicTools<shuyi_platform::prelude::UiAction> {
+fn tools() -> BasicTools<shuyi::prelude::UiAction> {
     BasicTools::new(game::game())
 }
 

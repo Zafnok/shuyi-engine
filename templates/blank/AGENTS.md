@@ -14,7 +14,7 @@ these are the ones a game on it keeps.
 - Keep the game's rules in a crate of their own (`crates/rules`, beside
   `crates/game`), pure and deterministic: no I/O, no clock, no floats,
   no randomness but a seeded `SimRng` kept in the state. The state
-  changes only through commands (`shuyi_core::TurnRules`). The same seed
+  changes only through commands (`shuyi::core::TurnRules`). The same seed
   and the same commands always give the same game. `shuyi new grid`
   shows one.
 - `crates/game` is everything else: the game's data (`files/`, embedded),
@@ -46,6 +46,8 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi run --script "Enter" --frames 30` | the screens, what happened and the sounds |
 | `cargo shuyi frame-png title.png` | a picture of a frame, with no window |
 | `cargo shuyi import crates/game/files/palette.ron` | what a file reads as, or its errors |
+| `cargo shuyi modules` | the engine's modules by concern (perspective, bodies and motion, online play, kind of game), each with its status, and the ones this game has on |
+| `cargo shuyi add <module>` | turns a module on (its feature of `shuyi` in `Cargo.toml`), says what it is for, and warns of an alternative already on; the game already installs every module it turns on (`shuyi::enabled_modules`) |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
 | `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine, and follows it: a worktree's calls go to a server built from that worktree, and a server whose engine moved under it hands its calls to a fresh one |
@@ -59,9 +61,10 @@ how).
 The game is on the engine's short path: `crates/game/src/lib.rs` names
 its files, its data type (`BasicData<UiAction>`: the text, the keys, the
 palette and the font from `files/`) and its first screen in a
-`BasicGame`; `src/main.rs` runs it with `shuyi_app::run_game`;
-`examples/tools.rs` gives its tools with `BasicTools`. A screen names
-what it needs from `shuyi_platform::prelude`.
+`BasicGame`, which installs the engine's modules its `Cargo.toml` turns
+on (`shuyi::enabled_modules`); `src/main.rs` runs it with the prelude's
+`run_game`; `examples/tools.rs` gives its tools with `BasicTools`. A
+screen names what it needs from `shuyi::prelude`.
 
 ## When the game outgrows the short path
 
@@ -78,7 +81,7 @@ Grow it by adding a part, not by rewriting the start:
   one.
 - **The long form:** its own `GameData` (sounds, voices, themes,
   settings of its own, `GameHooks`), and macroquad's entry point calling
-  `shuyi_app::run` with its `AppConfig`.
+  `shuyi::app::run` with its `AppConfig`.
 
 ## The gates
 

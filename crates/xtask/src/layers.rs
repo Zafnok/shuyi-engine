@@ -4,7 +4,8 @@
 //!
 //! It fails on:
 //!
-//! 1. an engine crate (a workspace member named `shuyi-*`) with no entry, or
+//! 1. an engine crate (a workspace member named `shuyi` or `shuyi-*`) with
+//!    no entry, or
 //!    an entry or an `engine` name that is no engine crate;
 //! 2. a normal or build dependency on an engine crate not on the crate's
 //!    `engine` list (dev-dependencies are free: `shuyi-ui`'s tests use
@@ -98,6 +99,12 @@ pub struct Member {
     pub dir: PathBuf,
     /// Its declared dependencies, on every target.
     pub deps: Vec<Declared>,
+    /// Its cargo features, by name (`check-modules` reads the `shuyi`
+    /// crate's).
+    pub features: BTreeSet<String>,
+    /// Its `[package.metadata.shuyi]`, if it has one (a module's metadata,
+    /// ADR-0009 §4).
+    pub shuyi: Option<serde_json::Value>,
 }
 
 /// What `cargo metadata` says, as the check reads it.
@@ -134,7 +141,7 @@ pub fn parse_layers(text: &str) -> Result<Layers, String> {
 
 /// `cargo metadata`'s JSON for the repository, with every feature on, run
 /// by the `cargo` this runs under.
-fn metadata(repo_root: &Path) -> Result<String, String> {
+pub fn metadata(repo_root: &Path) -> Result<String, String> {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
     let output = Command::new(cargo)
         .args([
@@ -170,6 +177,10 @@ struct Package {
     name: String,
     manifest_path: PathBuf,
     dependencies: Vec<Dependency>,
+    #[serde(default)]
+    features: BTreeMap<String, serde_json::Value>,
+    #[serde(default)]
+    metadata: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -238,9 +249,17 @@ pub fn parse_graph(json: &str) -> Result<Graph, String> {
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or_default();
-        graph
-            .members
-            .insert(package.name.clone(), Member { dir, deps });
+        let member = Member {
+            dir,
+            deps,
+            features: package.features.keys().cloned().collect(),
+            shuyi: package
+                .metadata
+                .as_ref()
+                .and_then(|metadata| metadata.get("shuyi"))
+                .cloned(),
+        };
+        graph.members.insert(package.name.clone(), member);
     }
 
     let resolve = metadata
@@ -278,9 +297,10 @@ fn kind(kind: Option<&str>) -> Result<Kind, String> {
     }
 }
 
-/// Whether `name` is an engine crate's name.
-fn is_engine(name: &str) -> bool {
-    name.starts_with("shuyi-")
+/// Whether `name` is an engine crate's name: the front door, `shuyi`, or
+/// `shuyi-*`.
+pub fn is_engine(name: &str) -> bool {
+    name == "shuyi" || name.starts_with("shuyi-")
 }
 
 /// Whether `name` is one of `devices` (a trailing `*` is a prefix).
@@ -474,7 +494,6 @@ mod tests {
 
     fn member(deps: &[(&str, Kind)]) -> Member {
         Member {
-            dir: PathBuf::new(),
             deps: deps
                 .iter()
                 .map(|&(name, kind)| Declared {
@@ -482,6 +501,7 @@ mod tests {
                     kind,
                 })
                 .collect(),
+            ..Member::default()
         }
     }
 

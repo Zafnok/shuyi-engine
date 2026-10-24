@@ -48,7 +48,7 @@ fn each_tool_says_what_it_does_in_its_own_words() {
 }
 
 #[test]
-fn the_tools_that_run_the_game_take_a_project() {
+fn the_tools_that_run_the_game_or_read_its_files_take_a_project() {
     let takes: Vec<&str> = Op::ALL
         .into_iter()
         .filter(|op| takes_project(*op, false))
@@ -59,6 +59,8 @@ fn the_tools_that_run_the_game_take_a_project() {
         [
             "check",
             "lint",
+            "modules",
+            "add",
             "run",
             "scene",
             "replay",

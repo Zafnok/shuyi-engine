@@ -6,10 +6,10 @@
 //! to fix before running it again (`SH1nnn`: no project, a project file
 //! that lacks what it needs, the toolchain).
 //!
-//! `new`, `doctor`, `explain` and `schema` need no project. `lint` runs on
-//! the project, not its game. The others run on the project's game, in its
-//! tool program; `import` without one reads only the engine's standard
-//! kinds.
+//! `new`, `doctor`, `explain` and `schema` need no project. `lint`,
+//! `modules` and `add` run on the project, not its game. The others run on
+//! the project's game, in its tool program; `import` without one reads
+//! only the engine's standard kinds.
 
 use std::fs;
 use std::path::Path;
@@ -18,8 +18,8 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, autobalance, bake, bots, check, doctor, explain, import, lint, new, playtest,
-    replay, run, schemas,
+    Answer, Op, add, autobalance, bake, bots, check, doctor, explain, import, lint, modules, new,
+    playtest, replay, run, schemas,
 };
 use crate::game::GameTools;
 use crate::project::Project;
@@ -224,6 +224,24 @@ pub fn lint(project: &Project, args: &[String], cargo: &dyn lint::Cargo) -> u8 {
     }
     let input = lint::LintInput::default();
     print(json, &lint::lint(cargo, project, &input), lint::text)
+}
+
+/// `modules` or `add` (`name`) with `args` on `project`: on its files,
+/// not its game.
+pub fn modules_or_add(project: &Project, name: &str, args: &[String]) -> u8 {
+    let (json, args) = split_json(args);
+    let command = project.config.command();
+    if name == "modules" {
+        if !args.is_empty() {
+            return wrong(json, Op::Modules, "no arguments", &modules::usage(command));
+        }
+        let input = modules::ModulesInput::default();
+        return print(json, &modules::modules(project, &input), modules::text);
+    }
+    match add::parse_args(&args) {
+        Ok(input) => print(json, &add::add(project, &input), add::text),
+        Err(e) => wrong(json, Op::Add, &e, &add::usage(command)),
+    }
 }
 
 /// Whether `name` is an op that runs on the project's game.
@@ -592,7 +610,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 40);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 44);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

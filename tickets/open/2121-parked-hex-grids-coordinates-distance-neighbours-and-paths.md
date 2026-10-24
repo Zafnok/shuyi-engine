@@ -107,11 +107,10 @@ launch, on 2026-10-20.
     kit is amended by it, as the line already notes ADR-0011. The
     `write-adr` skill never rewrites an accepted ADR's decision, so §6
     itself stays as it is.
-- **The catalog. Either order with 2003:** if 2003 is done, add the
-  `hex grid` answer to the Perspective concern in `docs/modules.ron`,
-  parked, naming 2121 and 2740 (2740 sets it to ready). If not, add to
-  2003's scope in this PR: "the Perspective answer `hex grid` of
-  ADR-NNNN, parked (2121, 2740)".
+- **The catalog:** 2003 put the `hex-grid` answer ("hex grid") in the
+  Perspective concern of `docs/modules.ron`, by the default engine,
+  parked, naming 2121 and 2740. It stays parked here; 2740 sets it to
+  ready.
 - **`shuyi_core::hex`** (`crates/core/src/hex.rs`), `no_std`, integers
   only:
   - `Hex { q: i32, r: i32 }`, axial, with `Pos`'s derives, `Hex::new`,

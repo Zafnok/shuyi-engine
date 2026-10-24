@@ -133,17 +133,24 @@ crate never depends on a game.
 | `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics and the grid map. |
 | `shuyi-platform` | `crates/platform` | The platform boundary: the `Platform` trait every backend implements, `App`, which runs one frame of a game for the backend's loop (the loading card, fixed steps, suspend and resume), the headless backend and the test Harness; a game on the short path (`BasicGame`) and the `prelude` it names. No devices ([`docs/platform-backends.md`](docs/platform-backends.md)). |
 | `shuyi-app` | `crates/app` | The macroquad backend, for desktop and the web: the window, blitting, input devices, the audio player and storage, and the loop that drives `App`; `run_game` runs a game on the short path from a plain `main`. |
-| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+| `shuyi-cli` | `crates/cli` | Tools, binary `shuyi` (`cargo shuyi <command>`): the tool contract (`new`, `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`, `bake`, `doctor`, `explain`, each with `--json`), the same contract as an MCP server with a session (`mcp`, `mcp install`), and `frame-png`, `font-atlas`, `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and `private-assets`, on the project a `shuyi.ron` describes. |
+| `shuyi` | `crates/shuyi` | The front door a game depends on: the crates above under short names (`shuyi::core` to `shuyi::app`), the `prelude` with `run_game`, and one cargo feature per module, all off by default, with `enabled_modules`, the modules turned on, for the game to install. |
 
 `shuyi-core`, `shuyi-assets` and `shuyi-ui` also build without `std` (for
 the Playdate): turn off their default `std` feature.
 
-A game depends on them by git revision until the first release:
+A game depends on `shuyi`, by git revision until the first release:
 
 ```toml
 [dependencies]
-shuyi-ui = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<commit>" }
+shuyi = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<commit>" }
 ```
+
+Everything else is a module, turned on as a feature of `shuyi`: the
+catalog, [`docs/modules.md`](docs/modules.md), lists them by concern
+(perspective, bodies and motion, online play, kind of game), each with
+its status. `cargo shuyi modules` lists the same catalog for a game, and
+`cargo shuyi add <module>` turns one on.
 
 ## Starting a game, and the tools on it
 

@@ -294,8 +294,8 @@ parked.
     uses them.
   - **3029.** If it is done, its Playdate export renders a `.sfx.ron`
     with `sfx::render` before the ADPCM step. If not, 3029 does it.
-  - **2003.** If it is done, the catalog gets a row for the `sfx`
-    feature, a format plugin. If not, 2003 lists it.
+  - **2003.** `docs/modules.md` lists the `sfx` feature with the
+    format plugins, as planned: set its row to ready.
   - **MCP.** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
   - **2116.** If it is done, the presets' WAV hashes are rows of
     `crates/assets/tests/golden/sfx.ron` (through

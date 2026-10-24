@@ -8,7 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use hello_grid::tools::{HelloTools, one_bit_skin};
-use shuyi_assets::onebit::Pattern;
+use shuyi::assets::onebit::Pattern;
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::target::{Level, engine_profiles, one_bit};
 use shuyi_cli::frame_png::{self, Script};

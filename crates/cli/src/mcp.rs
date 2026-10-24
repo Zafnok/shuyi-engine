@@ -194,6 +194,18 @@ fn description(op: Op, session: bool) -> &'static str {
         (Op::Lint, _) => {
             "Check the game's code: keys named in code or text (check-keys), screen text              written as literals (check-text), and the rules crate's fence (clippy's bans on hash              maps, floats, clocks, files and outside luck; no screen or device crate under it).              Each finding with its file, line and code."
         }
+        (Op::Modules, _) => {
+            "The engine's catalog of modules by concern (perspective, bodies and motion, online \
+             play, ...): each answer, who gives it (the default engine or a module) and its \
+             status, the modules the game's engine builds with what they answer and serve, and \
+             the ones the game has on."
+        }
+        (Op::Add, _) => {
+            "Turn a module of the game's engine on (`module`: `physics` or `shuyi-physics`): its \
+             feature of `shuyi` in the game's Cargo.toml (it changes the project; a second call \
+             changes nothing), its skill copied into the game's skills, what it is for, an \
+             alternative already on, and any line the game's code still needs."
+        }
         (Op::Run, _) => {
             "Start the game headless as its start options say, play a script of keys, pad \
              buttons and waits, run idle frames: the screens, the scene, the frame as text, what \
@@ -266,9 +278,11 @@ fn description(op: Op, session: bool) -> &'static str {
 }
 
 /// Whether the tool of `op` takes `project`: the operations that run the
-/// game, and `lint`.
+/// game, and `lint`, `modules` and `add`.
 pub fn takes_project(op: Op, session: bool) -> bool {
-    !session && (crate::contract::cli::runs_the_game(op.name()) || op == Op::Lint)
+    !session
+        && (crate::contract::cli::runs_the_game(op.name())
+            || matches!(op, Op::Lint | Op::Modules | Op::Add))
 }
 
 /// The schema of `project`, which every tool that runs the game takes.

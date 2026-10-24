@@ -1,0 +1,99 @@
+// The concerns a game answers, and their answers (ADR-0009 §2): a
+// direction is one answer per concern, chosen per stage. The catalog,
+// `docs/modules.md`, groups its rows by these concerns; `shuyi modules`
+// lists them with the modules a game has on; `cargo xtask check-modules`
+// fails on a module whose `concern` or `answer` isn't here.
+//
+// A concern:
+// - `id`: what a module's metadata names (`concern = "bodies"`);
+// - `name`: how the catalog says it;
+// - `alternatives`: `true` when its answers never drive the same thing in
+//   one stage, so two modules answering it name each other in their
+//   `alternatives`; `false` when its answers can share a stage;
+// - `answers`, each with:
+//   - `id`: what a module's metadata names (`answer = "rigid-body"`);
+//   - `name`: how the catalog says it;
+//   - `by`: who answers it, `default` (a kit of the default engine) or a
+//     module's crate (`shuyi-physics`);
+//   - `status`: `ready`, `planned` or `parked` (docs/ROADMAP.md);
+//   - `tickets`: the tickets that build it.
+//
+// A ticket that adds a concern or an answer adds it here (ADR-0009 §2),
+// and one that finishes an answer sets it `ready`.
+(
+    concerns: [
+        (
+            id: "time",
+            name: "Time",
+            alternatives: true,
+            answers: [
+                (id: "turns", name: "turns", by: "default", status: ready, tickets: []),
+                (id: "fixed-ticks", name: "fixed ticks", by: "default", status: parked, tickets: ["1119"]),
+            ],
+        ),
+        (
+            id: "perspective",
+            name: "Perspective",
+            alternatives: true,
+            answers: [
+                (id: "top-down-grid", name: "top-down grid", by: "default", status: ready, tickets: []),
+                (id: "top-down", name: "top-down free", by: "default", status: parked, tickets: ["1120", "1122"]),
+                (id: "isometric", name: "isometric", by: "default", status: parked, tickets: ["1126"]),
+                (id: "side-view", name: "side view", by: "default", status: parked, tickets: ["1127"]),
+                (id: "hex-grid", name: "hex grid", by: "default", status: parked, tickets: ["2121", "2740"]),
+                (id: "first-person-grid", name: "first-person grid", by: "shuyi-crawl", status: parked, tickets: ["2741"]),
+                (id: "first-person", name: "first person", by: "shuyi-3d", status: parked, tickets: ["3101"]),
+                (id: "third-person", name: "third person", by: "shuyi-3d", status: parked, tickets: ["3101"]),
+                (id: "top-down-3d", name: "top-down 3D", by: "shuyi-3d", status: parked, tickets: ["3101"]),
+            ],
+        ),
+        (
+            id: "bodies",
+            name: "Bodies and motion",
+            alternatives: true,
+            answers: [
+                (id: "movers", name: "movers and drawn clips", by: "default", status: parked, tickets: ["1122", "2231"]),
+                (id: "rigid-body", name: "rigid-body physics", by: "shuyi-physics", status: parked, tickets: ["1128"]),
+                (id: "procedural", name: "procedural animation", by: "shuyi-procanim", status: parked, tickets: ["2701", "2702", "2703", "2704"]),
+            ],
+        ),
+        (
+            id: "online",
+            name: "Online play",
+            alternatives: true,
+            answers: [
+                (id: "none", name: "none", by: "default", status: ready, tickets: []),
+                (id: "lockstep", name: "lockstep", by: "shuyi-net", status: parked, tickets: ["1140", "1141"]),
+                (id: "rollback", name: "rollback", by: "shuyi-net", status: parked, tickets: ["1140"]),
+                (id: "referee", name: "a referee server", by: "shuyi-net", status: parked, tickets: ["1140"]),
+            ],
+        ),
+        (
+            id: "world-drawing",
+            name: "World drawing",
+            alternatives: true,
+            answers: [
+                (id: "flat", name: "flat 2D", by: "default", status: ready, tickets: []),
+                (id: "diorama", name: "diorama (HD-2D)", by: "shuyi-diorama", status: parked, tickets: ["3107"]),
+                (id: "full-3d", name: "full 3D", by: "shuyi-3d", status: parked, tickets: ["3101", "3104"]),
+            ],
+        ),
+        (
+            id: "kind",
+            name: "Kind of game",
+            // A strategy game can tell its story as a visual novel
+            // (ADR-0015 §1).
+            alternatives: false,
+            answers: [
+                (id: "tactics", name: "tactics", by: "default", status: ready, tickets: []),
+                (id: "rts", name: "real-time strategy", by: "shuyi-rts", status: parked, tickets: ["2707"]),
+                (id: "visual-novel", name: "visual novel", by: "shuyi-vn", status: parked, tickets: ["2721"]),
+                (id: "mystery", name: "mystery", by: "shuyi-mystery", status: parked, tickets: ["2727"]),
+                (id: "roguelike", name: "roguelike", by: "shuyi-procgen", status: parked, tickets: ["2118", "2119", "2735"]),
+                (id: "dungeon-crawler", name: "dungeon crawler", by: "shuyi-crawl", status: parked, tickets: ["2741"]),
+                (id: "party-rpg", name: "party RPG", by: "shuyi-rpg", status: parked, tickets: ["2745"]),
+                (id: "action-rpg", name: "action RPG", by: "shuyi-action", status: parked, tickets: ["2756"]),
+            ],
+        ),
+    ],
+)

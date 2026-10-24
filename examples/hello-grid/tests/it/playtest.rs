@@ -1,4 +1,4 @@
-//! A playtest of the stage (`shuyi_core::bots::playtest`): the random
+//! A playtest of the stage (`shuyi::core::bots::playtest`): the random
 //! hero and the walker each play seeds 0 to 49, judged by
 //! `playtest.ron`, by the core's runner and by the tool contract's
 //! `playtest` on threads.
@@ -7,16 +7,16 @@ use hello_grid::Hello;
 use hello_grid::rules::Stage;
 use hello_grid::rules::{Command, Error, Side};
 use hello_grid::tools::{ENTRANTS, HelloTools, playtest_checks, playtest_error, playtest_run};
+use shuyi::core::bots::playtest::{
+    Check, Found, MedianVerdict, PlaytestError, PlaytestReport, RateVerdict, Tries, UnknownEntrant,
+    judge, play_tries,
+};
+use shuyi::core::{PlayError, Pos};
 use shuyi_cli::GameArg;
 use shuyi_cli::contract::Answer;
 use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::playtest::{PlaytestInput, PlaytestOutput, playtest};
 use shuyi_cli::serde_json;
-use shuyi_core::bots::playtest::{
-    Check, Found, MedianVerdict, PlaytestError, PlaytestReport, RateVerdict, Tries, UnknownEntrant,
-    judge, play_tries,
-};
-use shuyi_core::{PlayError, Pos};
 
 const FIFTY: Tries = Tries::new(50, 0, 200);
 

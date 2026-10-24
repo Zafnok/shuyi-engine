@@ -7,6 +7,7 @@
 mod binary;
 mod docs;
 mod mcp;
+mod modules;
 mod schemas;
 mod targets;
 mod toy;

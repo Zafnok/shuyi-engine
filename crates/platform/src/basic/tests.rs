@@ -78,6 +78,27 @@ impl Screen<Data> for Other {
     fn draw(&self, _: &Ctx<Data>, _: &mut GlyphBuffer) {}
 }
 
+/// A module that puts a number on the context.
+struct Marker;
+
+impl Module<Data> for Marker {
+    fn name(&self) -> &'static str {
+        "marker"
+    }
+
+    fn install(&mut self, install: &mut shuyi_ui::module::Install<'_, Data>) {
+        install.state(7_u8);
+    }
+}
+
+fn one_marker() -> Vec<Box<dyn Module<Data>>> {
+    vec![Box::new(Marker)]
+}
+
+fn two_markers() -> Vec<Box<dyn Module<Data>>> {
+    vec![Box::new(Marker), Box::new(Marker)]
+}
+
 fn demo(files: &'static [(&'static str, &'static [u8])]) -> BasicGame<UiAction> {
     BasicGame::new("Demo", "demo", Layer::table("files", files), |_| {
         Box::new(Hello)
@@ -93,7 +114,9 @@ fn it_starts_on_its_first_screen_in_the_keymaps_first_layout() {
     let ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(ctx.layout(), Some(Layout::named("Arrows")));
     assert_eq!(ctx.console, BASIC_CONSOLE);
-    assert_eq!(game.game(ctx).screens(), ["hello"]);
+    let started = game.game(ctx).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(started.screens(), ["hello"]);
+    assert_eq!(started.modules(), &[]);
     let small = ConsoleSpec::text(20, 10);
     assert_eq!(game.console(small).ctx().map(|c| c.console), Ok(small));
 }
@@ -108,6 +131,31 @@ fn every_screen_is_the_first_alone_until_said() {
     assert_eq!(names(game.every_screen(&mut ctx)), ["hello"]);
     let game = game.screens(|_| vec![Box::new(Hello), Box::new(Other)]);
     assert_eq!(names(game.every_screen(&mut ctx)), ["hello", "other"]);
+}
+
+#[test]
+fn its_modules_are_installed_in_its_game_and_its_harness() {
+    let game = demo(GOOD).modules(one_marker);
+    let ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
+    let started = game.game(ctx).unwrap_or_else(|e| panic!("{e}"));
+    let names: Vec<&str> = started.modules().iter().map(|m| m.name).collect();
+    assert_eq!(names, ["marker"]);
+    assert_eq!(started.ctx().module_state::<u8>(), Some(&7));
+    assert_eq!(game.harness().ctx().module_state::<u8>(), Some(&7));
+}
+
+#[test]
+fn a_module_that_cant_be_installed_is_the_games_error_and_the_loads() {
+    let game = demo(GOOD).modules(two_markers);
+    let ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
+    let error = game.game(ctx).err();
+    assert_eq!(error, Some(ModuleError::SameName { name: "marker" }));
+    let mut app = App::new(game.start());
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    assert!(app.game().is_none());
+    assert_eq!(app.errors(), Some("the module marker is installed twice"));
 }
 
 #[test]

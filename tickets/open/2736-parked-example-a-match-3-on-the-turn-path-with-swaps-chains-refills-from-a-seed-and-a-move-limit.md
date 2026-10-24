@@ -102,9 +102,9 @@ each part is one PR.
 **In (part 1, this PR):**
 - **`examples/match-three`** (package `match-three`), a library crate
   and workspace member (`members = ["crates/*", "examples/*"]`). It
-  depends on `shuyi-core`, `shuyi-assets`, `serde` and `include_dir`
-  as `examples/hello-grid/Cargo.toml` names them (on the `shuyi` crate
-  alone if 2003 is done), with `proptest` as a dev-dependency.
+  depends on the `shuyi` crate alone for the engine, and on `serde`
+  and `include_dir`, as `examples/hello-grid/Cargo.toml` names them,
+  with `proptest` as a dev-dependency.
 - **Levels as data:** `files/levels.ron`, embedded as hello-grid embeds
   its files (`FILES`, `include_dir!`, and `layer()` as
   `Layer::dir("files", &FILES)`).

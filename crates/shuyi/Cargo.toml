@@ -1,0 +1,29 @@
+[package]
+name = "shuyi"
+description = "Shuyi Engine's front door: the default engine's crates under short names, the prelude a game names, and one cargo feature per module, each off by default"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+# One feature per module, off by default, named for its crate without
+# `shuyi-` (`physics` for `shuyi-physics`), and a row in docs/modules.md.
+# None yet: a module's ticket adds its feature, its optional dependency
+# and its line in `enabled_modules` (ADR-0009 §6). `cargo xtask
+# check-modules` fails on a feature with no catalog row.
+
+[dependencies]
+shuyi-core = { path = "../core" }
+shuyi-assets = { path = "../assets" }
+shuyi-ui = { path = "../ui" }
+shuyi-platform = { path = "../platform" }
+shuyi-app = { path = "../app" }
+
+[dev-dependencies]
+# The toy game, to install every module on.
+shuyi-ui = { path = "../ui", features = ["toy"] }

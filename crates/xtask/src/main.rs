@@ -5,6 +5,7 @@
 //! - `cargo xtask check-docs`
 //! - `cargo xtask check-no-std`
 //! - `cargo xtask check-layers`
+//! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]`
@@ -13,6 +14,7 @@ mod api;
 mod docs;
 mod layers;
 mod links;
+mod modules;
 mod no_std;
 mod pins;
 mod tickets;
@@ -40,6 +42,11 @@ usage:
       Check the crates' layers against tools/layers.ron (ADR-0032): which
       engine crate depends on which, the outside crates of the pure ones,
       no device crate below them and the float ban in the simulations.
+  cargo xtask check-modules
+      Check the modules against docs/modules.md and docs/modules.ron (ADR-0009):
+      no default crate depends on one, each has a README, its metadata and a
+      row, answers the concerns list, alternatives name each other, and each
+      feature of the shuyi crate names a row.
   cargo xtask check-pins
       Check that every workflow's actions are pinned by commit SHA, one SHA per
       action, every template's workflows in .github/dependabot.yml, and the
@@ -64,6 +71,9 @@ fn main() -> ExitCode {
         Some("check-docs") if args.len() == 1 => report("check-docs", &docs::run(&root), &[]),
         Some("check-no-std") if args.len() == 1 => report("check-no-std", &no_std::run(&root), &[]),
         Some("check-layers") if args.len() == 1 => report("check-layers", &layers::run(&root), &[]),
+        Some("check-modules") if args.len() == 1 => {
+            report("check-modules", &modules::run(&root), &[])
+        }
         Some("check-pins") if args.len() == 1 => report("check-pins", &pins::run(&root), &[]),
         Some("check-toolchain") if args.len() == 1 => {
             report("check-toolchain", &toolchain::run(&root), &[])

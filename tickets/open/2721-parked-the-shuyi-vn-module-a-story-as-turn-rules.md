@@ -63,13 +63,9 @@ None.
     perspective (it draws in screen space, over any stage or alone);
     `alternatives` empty (the concern is `alternatives: false`);
     `works_with` empty for now;
-  - **the `kind` concern.** 2003 adds it to `docs/modules.ron`. Set the
-    `visual-novel` answer's status from parked to building, naming this
-    module. If the concern is missing (2003 changed after this ticket
-    was written), add it as ADR-0015 §1 says: `pick: Many`, question
-    "What kind of game is it?", `alternatives: false`, answers
-    `tactics` (ready), `rts` (parked, 2705–2720 and 2733–2734), `visual-novel` (this
-    module) and `mystery` (parked, 2727–2732);
+  - **the `kind` concern.** 2003 added it to `docs/modules.ron`
+    (`alternatives: false`). Set the `visual-novel` answer's status
+    from parked to building, naming this module;
   - the `vn` feature of the `shuyi` crate;
   - the catalog row in `docs/modules.md` (2003 wrote it as parked): set
     its status to building, with tickets 2721–2726. 2726 sets the row

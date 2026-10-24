@@ -51,6 +51,8 @@ same command again; 1, it ran and found something wrong.
 | `cargo shuyi replay record.ron` | a hash of the state at every step of a record |
 | `cargo shuyi frame-png stage.png --script "Right"` | a picture of a frame, with no window |
 | `cargo shuyi import crates/game/files/stage.map` | what a file reads as, or its errors |
+| `cargo shuyi modules` | the engine's modules by concern (perspective, bodies and motion, online play, kind of game), each with its status, and the ones this game has on |
+| `cargo shuyi add <module>` | turns a module on (its feature of `shuyi` in `Cargo.toml`), says what it is for, and warns of an alternative already on; the game already installs every module it turns on (`shuyi::enabled_modules`) |
 | `cargo shuyi doctor` | what your toolchain lacks and how to install it |
 | `cargo shuyi explain SH2003` | what an error's code means and how to fix it; `explain` alone lists every code |
 | `cargo shuyi mcp install` | registers the engine's MCP server with your coding agents (Claude Code's `.mcp.json` and others it finds): each command is a tool, and `start`, `step`, `scene` and `frame_png` play the game and look at it. The entry builds the server from the game's engine, and follows it: a worktree's calls go to a server built from that worktree, and a server whose engine moved under it hands its calls to a fresh one |

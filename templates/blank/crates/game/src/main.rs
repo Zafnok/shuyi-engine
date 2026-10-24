@@ -4,6 +4,8 @@
 // A release build on Windows is a GUI program: no console window.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+use shuyi::prelude::run_game;
+
 fn main() {
-    shuyi_app::run_game(game::game());
+    run_game(game::game());
 }

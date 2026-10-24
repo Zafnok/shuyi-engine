@@ -287,10 +287,11 @@ scope:
     `devices: false` (`shuyi-platform` among them) reaches a network
     crate; any outside crate added to a pure crate joins that crate's
     `outside` list.
-- **Either order with 2003:** if it is done, the `shuyi` crate gains an
-  `http` feature that turns on `shuyi-app/http`, and the catalog
-  (`docs/modules.md`) lists it with the platform backends; if not, a
-  game turns on `shuyi-app/http` itself, and 2003 adds the feature.
+- **The `shuyi` crate** (2003) gains an `http` feature that turns on
+  `shuyi-app/http`, and the catalog (`docs/modules.md`) lists it with
+  the platform backends. `cargo xtask check-modules` reads a feature
+  `http` as the row named `shuyi-http`, so the row is named so, or the
+  check learns a backend's feature in this PR.
 - **Notices:** nothing to add. 3039 (web builds) and 3004 (packages)
   list the crates a build compiles in from `cargo metadata` with the
   game's features, ring's and rustls's license files included.

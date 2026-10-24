@@ -3,7 +3,7 @@
 //! [`Prefs`] and in [`File`].
 
 use serde::{Deserialize, Serialize};
-use shuyi_ui::settings::{GameSettings, Settings, TextSpeed};
+use shuyi::ui::settings::{GameSettings, Settings, TextSpeed};
 
 /// The game's own settings: none yet.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

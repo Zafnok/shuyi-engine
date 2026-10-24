@@ -10,15 +10,15 @@
 use std::any::Any;
 
 use rules::{Command, Event, Outcome, Stage, TERRAIN_NAMES};
-use shuyi_assets::keymap::{ActionSet, UiAction};
-use shuyi_core::{Dir, Pos, Sides, TerrainId, TurnRules};
-use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
-use shuyi_ui::frame::{EngineColor, Palette};
-use shuyi_ui::grid::{
+use shuyi::assets::keymap::{ActionSet, UiAction};
+use shuyi::core::{Dir, Pos, Sides, TerrainId, TurnRules};
+use shuyi::ui::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
+use shuyi::ui::frame::{EngineColor, Palette};
+use shuyi::ui::grid::{
     Camera, GlyphSkin, Grid, GridSkin, Looks, MapColors, MapScene, MapUnit, TerrainGlyphs,
     Terrains, UnitPainter, WalkSpeeds, glyph,
 };
-use shuyi_ui::{Ctx, FrameInput, Screen, Transition};
+use shuyi::ui::{Ctx, FrameInput, Screen, Transition};
 
 use crate::{Action, Data};
 

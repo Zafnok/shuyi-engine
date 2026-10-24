@@ -206,7 +206,7 @@ None.
   projection of 2740".
 - **`examples/hello-hex`**, a turn game written the short way 2511's
   minimal template writes a game (its prelude and `run_game`), on the
-  `shuyi` crate if 2003 is done and on the default crates if not, drawn
+  `shuyi` crate alone, drawn
   by the glyph skin `with_hex_rows(Some(Offset::Odd))`:
   - a 9 × 7 map in `files/stage.map`. The format doesn't change: its
     rows are the offset rows of a pointy-top, odd-r layout, which the
@@ -252,9 +252,8 @@ None.
     passes. If not, write the file, and change 2004's scope in this PR
     so it lists `hex-grid.md` as written by 2740, not as a planned
     page;
-  - **either order with 2003:** if 2003 is done, set the `hex grid`
-    answer in `docs/modules.ron` to ready. If not, change 2003's scope
-    in this PR so it adds `hex grid` as ready, not parked.
+  - **the catalog:** set the `hex-grid` answer in `docs/modules.ron`
+    to ready (2003 wrote it parked).
 - **What changes for the game:** `Projection` gains a variant and may
   become `#[non_exhaustive]`, so an exhaustive `match` on it breaks;
   `GlyphSkin` gains a field and may become `#[non_exhaustive]`, so a

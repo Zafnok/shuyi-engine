@@ -1,4 +1,4 @@
-// The default keys and buttons (`shuyi_assets::keymap`). Screens
+// The default keys and buttons (`shuyi::assets::keymap`). Screens
 // only see the action names on the left; the player rebinds each from the
 // options (Key bindings), keeping up to 3 chords per action. Esc always
 // cancels and Delete empties a key slot, so neither may appear here.

@@ -11,8 +11,12 @@ use std::collections::BTreeMap;
 
 use rules::{Command, Feature, Outcome, Player, Stage};
 use serde::{Deserialize, Serialize};
-use shuyi_assets::ContentError;
-use shuyi_assets::grid_map::{GridMap, MapText};
+use shuyi::assets::ContentError;
+use shuyi::assets::grid_map::{GridMap, MapText};
+use shuyi::core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
+use shuyi::platform::harness::Harness;
+use shuyi::ui::GameData;
+use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
@@ -20,10 +24,6 @@ use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{Image, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{GameArg, GameLang, GameOption, GameTools};
-use shuyi_core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
-use shuyi_platform::harness::Harness;
-use shuyi_ui::GameData;
-use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 
 use crate::stage::{StageScreen, Terrain};
 use crate::{Action, Data, FONT_PNG};
@@ -50,8 +50,13 @@ pub fn seed_of(options: &[GameArg]) -> Result<u64, String> {
 }
 
 /// The game in the Harness, its first stage seeded `seed`.
+///
+/// # Panics
+///
+/// If a module can't be installed.
 pub fn harness(seed: u64) -> Harness<Data> {
-    Harness::new(crate::game(crate::ctx(seed)))
+    let game = crate::game(crate::ctx(seed)).unwrap_or_else(|e| panic!("{e}"));
+    Harness::new(game)
 }
 
 /// The frame `h` shows, each console pixel `scale` × `scale` pixels.

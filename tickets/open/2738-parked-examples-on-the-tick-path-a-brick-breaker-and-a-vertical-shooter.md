@@ -95,7 +95,7 @@ None. When it unparks is his call (above).
 **In:**
 - **`examples/bricks`, a workspace member** in 2739's form, written on
   2511's short path (its prelude and `run_game`), on the `shuyi` crate
-  alone if 2003 is done:
+  alone:
   - **the rules** (`src/rules.rs`, pure: no I/O, no clock, no float):
     `Bricks`, a `TickSim`:
     - the field is a `.map` (`files/field.map`, read with

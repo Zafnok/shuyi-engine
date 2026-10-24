@@ -39,10 +39,11 @@ impl<A: ActionSet, T: Debug + 'static> BasicTools<A, T> {
         Self { game }
     }
 
-    /// The game in the Harness, at its first screen, or its files'
-    /// problems, one per line.
+    /// The game in the Harness, at its first screen; or its files'
+    /// problems, one per line, or the module that can't be installed.
     pub fn harness(&self) -> Result<Harness<BasicData<A, T>>, String> {
-        Ok(Harness::new(self.game.game(self.game.ctx()?)))
+        let game = self.game.game(self.game.ctx()?);
+        Ok(Harness::new(game.map_err(|e| e.to_string())?))
     }
 
     /// The frame `h` shows, each console pixel `scale` × `scale` pixels,

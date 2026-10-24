@@ -5,11 +5,12 @@ use std::collections::BTreeSet;
 use std::process::Command;
 
 /// The crates the rules never depend on, even through another crate: the
-/// engine's screens, its backend and its tools, the device crates, and
-/// luck that isn't the `SimRng` kept in the state. A trailing `*` is a
-/// prefix. The device crates, from `macroquad` to `hound`, are a copy of
-/// `devices` in the engine's `tools/layers.ron`.
+/// engine's front door, its screens, its backend and its tools, the device
+/// crates, and luck that isn't the `SimRng` kept in the state. A trailing
+/// `*` is a prefix. The device crates, from `macroquad` to `hound`, are a
+/// copy of `devices` in the engine's `tools/layers.ron`.
 const NEVER: &[&str] = &[
+    "shuyi",
     "shuyi-ui",
     "shuyi-platform",
     "shuyi-app",

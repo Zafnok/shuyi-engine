@@ -30,6 +30,9 @@ use super::Problem;
 pub const WRONG_ARGUMENTS: Code = Code("SH0001");
 /// `no-session`: an MCP session tool was called with no game started.
 pub const NO_SESSION: Code = Code("SH0002");
+/// `unknown-module`: `add` was given a name that is no module the game's
+/// engine builds.
+pub const UNKNOWN_MODULE: Code = Code("SH0003");
 /// `no-project`: no `shuyi.ron` here or above.
 pub const NO_PROJECT: Code = Code("SH1001");
 /// `project-file`: `shuyi.ron` doesn't read, or lacks what the command
@@ -37,6 +40,9 @@ pub const NO_PROJECT: Code = Code("SH1001");
 pub const PROJECT_FILE: Code = Code("SH1002");
 /// `toolchain`: a piece of the toolchain is missing or doesn't start.
 pub const TOOLCHAIN: Code = Code("SH1003");
+/// `engine-dependency`: the game's `Cargo.toml` has no `shuyi`
+/// dependency, or the engine checkout it names can't be read.
+pub const ENGINE_DEPENDENCY: Code = Code("SH1004");
 /// `hard-coded-key`: the game's code or text names a key (`lint`'s
 /// `check-keys`).
 pub const HARD_CODED_KEY: Code = Code("SH2101");
@@ -170,6 +176,15 @@ pub static TABLE: &[Entry] = &[
         "call `start` first (with the game's folder as `project`), then the session's other tools"
     ),
     row!(
+        UNKNOWN_MODULE,
+        "unknown-module",
+        Usage,
+        "SH0003",
+        "No module of that name is built in the game's engine",
+        "pass one of the names the message lists (`shuyi modules` lists them); a module the \
+         catalog plans isn't built yet"
+    ),
+    row!(
         NO_PROJECT,
         "no-project",
         Setup,
@@ -194,6 +209,15 @@ pub static TABLE: &[Entry] = &[
         "A piece of the toolchain is missing",
         "run `shuyi doctor` and fix each failed check as its help says, then run the same \
          command again"
+    ),
+    row!(
+        ENGINE_DEPENDENCY,
+        "engine-dependency",
+        Setup,
+        "SH1004",
+        "The game doesn't depend on the engine through the shuyi crate",
+        "depend on the engine's `shuyi` crate in the game's Cargo.toml, as `shuyi new` writes \
+         it, and check that the engine it names is there; then run the same command again"
     ),
     row!(
         content::PARSE,

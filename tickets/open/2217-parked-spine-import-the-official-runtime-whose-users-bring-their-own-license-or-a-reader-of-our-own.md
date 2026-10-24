@@ -88,7 +88,7 @@ Record the answer in `docs/decisions.md`. If it is A:
     copyright notice (Exhibit A requires it), and say the engine's MIT
     OR Apache-2.0 does not cover the runtime;
   - it is opt-in only: never a default feature, and in the `shuyi`
-    crate (2003) only behind its own feature, if 2003 is done;
+    crate (2003) only behind its own feature;
   - `deny.toml` allows the Spine license **for this crate only** (a
     `cargo deny` exception with a comment pointing to
     `docs/decisions.md`).

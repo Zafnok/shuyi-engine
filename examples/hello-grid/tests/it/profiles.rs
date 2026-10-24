@@ -2,10 +2,10 @@
 //! by typing its name is the one in use, with options of its own.
 
 use hello_grid::Hello;
-use shuyi_platform::harness::Harness;
-use shuyi_ui::profiles::ProfileId;
-use shuyi_ui::screens::profiles::{ProfilesScreen, RowKind};
-use shuyi_ui::settings::TextSpeed;
+use shuyi::platform::harness::Harness;
+use shuyi::ui::profiles::ProfileId;
+use shuyi::ui::screens::profiles::{ProfilesScreen, RowKind};
+use shuyi::ui::settings::TextSpeed;
 
 use crate::title;
 

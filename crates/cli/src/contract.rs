@@ -11,6 +11,8 @@
 //! | `check [--baked]` | every error of every validator of the game's content; with `--baked`, every way its pack differs from its sources | [`check`] |
 //! | `check --target <id>` | whether the game's frame, text and controls fit a target | [`check`], [`target`] |
 //! | `lint` | the game's code: `check-keys`, `check-text` and the rules crate's fence, each finding with file and line | [`lint`] |
+//! | `modules` | the catalog by concern, the modules the game's engine builds, and the ones the game has on | [`modules`] |
+//! | `add <module>` | a module turned on: its feature of `shuyi` in `Cargo.toml`, its skill copied, what it is for, an alternative already on | [`add`] |
 //! | `run` | plays a key script headless: the top screen, the scene, events, sounds | [`run`] |
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
@@ -36,6 +38,7 @@
 //! ([`schemas`]) and checked in under `crates/cli/schemas/`. A test fails
 //! when they change and [`VERSION`] doesn't.
 
+pub mod add;
 pub mod autobalance;
 pub mod bake;
 pub mod bots;
@@ -48,6 +51,7 @@ pub mod explain;
 pub(crate) mod fake;
 pub mod import;
 pub mod lint;
+pub mod modules;
 pub mod new;
 pub mod playtest;
 pub mod replay;
@@ -66,7 +70,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 15;
+pub const VERSION: u32 = 16;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -78,6 +82,10 @@ pub enum Op {
     Check,
     /// What is wrong with the shape of the game's code.
     Lint,
+    /// The catalog of modules, and the game's.
+    Modules,
+    /// A module turned on.
+    Add,
     /// A key script played headless.
     Run,
     /// The scene on screen.
@@ -115,10 +123,12 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 13] = [
+    pub const ALL: [Op; 15] = [
         Op::New,
         Op::Check,
         Op::Lint,
+        Op::Modules,
+        Op::Add,
         Op::Run,
         Op::Scene,
         Op::Replay,
@@ -149,6 +159,8 @@ impl Op {
             Op::New => "new",
             Op::Check => "check",
             Op::Lint => "lint",
+            Op::Modules => "modules",
+            Op::Add => "add",
             Op::Run => "run",
             Op::Scene => "scene",
             Op::Replay => "replay",
@@ -399,6 +411,8 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::New, _) => pair::<new::NewInput, new::NewOutput>(name),
         (Op::Check, _) => pair::<check::CheckInput, check::CheckOutput>(name),
         (Op::Lint, _) => pair::<lint::LintInput, lint::LintOutput>(name),
+        (Op::Modules, _) => pair::<modules::ModulesInput, modules::ModulesOutput>(name),
+        (Op::Add, _) => pair::<add::AddInput, add::AddOutput>(name),
         (Op::Run, _) => pair::<run::RunInput, run::RunOutput>(name),
         (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(name),
         (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(name),

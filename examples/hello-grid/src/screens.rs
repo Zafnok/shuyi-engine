@@ -9,15 +9,15 @@ pub mod stage;
 
 use std::any::Any;
 
-use shuyi_assets::dialogue::{Present, Side as Speaker};
-use shuyi_ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
-use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::input::ui_actions;
-use shuyi_ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
-use shuyi_ui::screens::options::{self, OptionRow, OptionsScreen, RowAction, RowValue};
-use shuyi_ui::screens::profiles::ProfilesScreen;
-use shuyi_ui::widgets::{Menu, MenuEvent, MenuItem};
-use shuyi_ui::{Ctx, FrameInput, Screen, Transition};
+use shuyi::assets::dialogue::{Present, Side as Speaker};
+use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
+use shuyi::ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi::ui::input::ui_actions;
+use shuyi::ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
+use shuyi::ui::screens::options::{self, OptionRow, OptionsScreen, RowAction, RowValue};
+use shuyi::ui::screens::profiles::ProfilesScreen;
+use shuyi::ui::widgets::{Menu, MenuEvent, MenuItem};
+use shuyi::ui::{Ctx, FrameInput, Screen, Transition};
 
 pub use stage::StageScreen;
 

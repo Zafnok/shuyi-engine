@@ -7,7 +7,7 @@
 pub mod title;
 
 use include_dir::{Dir, include_dir};
-use shuyi_platform::prelude::*;
+use shuyi::prelude::*;
 
 /// The game's files, embedded.
 static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
@@ -24,11 +24,13 @@ const NAME: &str = "{{name}}";
 const STORAGE_NAME: &str = "{{crate}}";
 
 /// The game: its name, where the player's settings and keys are kept, its
-/// files and its first screen.
+/// files, its first screen, and the engine's modules its features turn on
+/// (`Cargo.toml`).
 pub fn game() -> BasicGame<UiAction> {
     BasicGame::new(NAME, STORAGE_NAME, Layer::dir("files", &FILES), |_| {
         Box::new(title::Title)
     })
+    .modules(shuyi::enabled_modules)
 }
 
 #[cfg(test)]

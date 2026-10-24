@@ -58,6 +58,7 @@ pub mod prelude {
     pub use shuyi_assets::{Bundle, ContentError, Layer};
     pub use shuyi_ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
     pub use shuyi_ui::frame::{ConsoleSpec, EngineColor, Rgb};
+    pub use shuyi_ui::module::{Hook, Install, Module};
     pub use shuyi_ui::screens::print_centred;
     pub use shuyi_ui::{
         BasicData, Ctx, FrameInput, Game, GameData, GameHooks, Screen, ScreenResult, Transition,

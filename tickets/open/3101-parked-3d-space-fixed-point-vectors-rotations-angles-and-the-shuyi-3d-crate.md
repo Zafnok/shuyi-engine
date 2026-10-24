@@ -87,10 +87,9 @@ None.
   - metadata under `[package.metadata.shuyi]`: concern *Perspective*,
     answers first person, third person and top-down 3D; concern *World
     drawing*, answer full 3D, alternative `shuyi-diorama`; `serves`:
-    `first-person`, `third-person`, `top-down-3d`. If 2003's
-    `ModuleInfo` takes only one `concern` and one `answer`, let it take
-    a list of `[concern, answer]` pairs too (the single form stays
-    valid), with a fixture for `check-modules`. If 3017 has landed,
+    `first-person`, `third-person`, `top-down-3d`. 2003's `ModuleInfo`
+    takes them as `answers`, a list of `{ concern, answer }` pairs
+    (ADR-0041 §2). If 3017 has landed,
     add `needs` with `three_d: software`; if not, 3017 adds it to
     every module that exists then;
   - the `3d` feature in the `shuyi` crate;

@@ -76,8 +76,7 @@ None.
 - **The `kind` concern** (ADR-0015 §1, ADR-0016 §1). 2003 adds it to
   `docs/modules.ron` with `mystery` as a parked answer, and 2721 checks
   it is there. Set the `mystery` answer to building, naming this module
-  and tickets 2727–2732. If the concern is somehow missing, add it as
-  2721's ticket describes.
+  and tickets 2727–2732.
 - **Three asset kinds and their formats** (ADR-0007), registered by the
   module's `register(&mut Formats)`:
   - `Clue` from `*.clue.ron` (format id `clue-ron`): `id`, `name` and

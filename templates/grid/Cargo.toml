@@ -12,11 +12,12 @@ publish = false
 [workspace.dependencies]
 # The engine's crates. Until its first release on crates.io a game
 # depends on the engine's repository at a commit (its README).
+# `shuyi` is the engine by its front door, for the game crate:
+# `shuyi add <module>` turns on a module's feature here. The rules crate
+# depends on `shuyi-core` and `shuyi-assets` alone, which keeps it pure.
+shuyi = "{{engine.shuyi}}"
 shuyi-core = "{{engine.core}}"
 shuyi-assets = "{{engine.assets}}"
-shuyi-ui = "{{engine.ui}}"
-shuyi-platform = "{{engine.platform}}"
-shuyi-app = "{{engine.app}}"
 shuyi-cli = "{{engine.cli}}"
 # The window and the entry point, as the engine has them.
 macroquad = { version = "0.4", features = ["audio"] }

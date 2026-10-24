@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["game#1131", "1129", "2015", "2358", "2511"]
 nick_input: none
-completed:
+completed: 2026-10-23
 ---
 
 # 2003 — Modules: the catalog, the `shuyi` crate, `shuyi add`
@@ -189,18 +189,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `hello-grid` builds and passes its tests depending on `shuyi`
+- [x] `hello-grid` builds and passes its tests depending on `shuyi`
       alone.
-- [ ] A game from each template installs `shuyi::enabled_modules` once,
+- [x] A game from each template installs `shuyi::enabled_modules` once,
       and passes CI's templates job.
-- [ ] `cargo xtask check-modules` passes on the repository, and fails
+- [x] `cargo xtask check-modules` passes on the repository, and fails
       on each fixture with a message naming the crate and the rule.
-- [ ] `shuyi add` on a fresh game edits `Cargo.toml` once, and a second
+- [x] `shuyi add` on a fresh game edits `Cargo.toml` once, and a second
       run reports that nothing changed.
-- [ ] `shuyi add` of a module whose alternative is on prints the
+- [x] `shuyi add` of a module whose alternative is on prints the
       warning and the link.
-- [ ] `shuyi modules --json` matches its schema (1129's schema test).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `shuyi modules --json` matches its schema (1129's schema test).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -209,3 +209,69 @@ None.
   `shuyi new`.
 
 ## Completion notes
+
+Done as scoped, with [ADR-0041](../../docs/adr/0041-the-module-catalog-concerns-as-data-metadata-answers-as-pairs-and-modules-and-add-reading-the-engine-the-game-builds-with.md)
+for the choices the scope left open.
+
+- **`crates/shuyi`**: the default engine's crates as `shuyi::core` to
+  `shuyi::app`, `shuyi::prelude` (`shuyi-platform`'s prelude and
+  `run_game`), and `enabled_modules`, empty, with no feature. A test
+  installs every module on the toy game with no `ModuleError`; CI's
+  `modules` job runs it with every feature. It has its `tools/layers.ron`
+  entry, and `check-layers` now counts `shuyi` as an engine crate. It
+  joins the API gate's crates (`API_CRATES`).
+- **`BasicGame::modules`**, and `Module`, `Hook` and `Install` in
+  `shuyi_platform::prelude`. `BasicGame::game` returns
+  `Result<Game, ModuleError>`, and `start` makes the error the load's.
+- **Templates** depend on `shuyi` (`{{engine.shuyi}}`, a new
+  `ENGINE_CRATES` entry) and install `shuyi::enabled_modules` once:
+  `grid` in `Game::with_modules` (its `game()` returns a `Result`),
+  `blank` in `BasicGame::modules`. `blank` imports `shuyi::prelude::*`
+  and runs the prelude's `run_game`. `grid`'s rules crate keeps
+  `shuyi-core` and `shuyi-assets` alone, and `shuyi` joins the crates it
+  may never reach (`lint::NEVER` and the template's `layers.rs`).
+- **`hello-grid`** depends on `shuyi` alone for the engine. Deviation:
+  it keeps `shuyi-cli`, optional, for its `tools` feature (the tools
+  aren't a crate `shuyi` re-exports, and a `tools` feature would be a
+  feature with no catalog row), and `macroquad`, whose
+  `#[macroquad::main]` must name its crate.
+- **The catalog**: `docs/modules.ron` (six concerns, every answer with
+  `by`, `status` and `tickets`), `docs/modules.md` (a section per
+  concern, the format plugins and the backends, all rows of the scope),
+  read by `shuyi_cli::catalog` (`Concerns`, `ModuleInfo`, `Catalog`,
+  the `Cargo.toml` edit, the README paragraph, the skill copy).
+  Metadata is `answers = [{ concern, answer }]`, `serves`, and optional
+  `alternatives`, `works_with` and `formats` (the function a game's
+  `formats()` calls, for 2358's point 5).
+- **`cargo xtask check-modules`** on `layers.rs`'s graph (which gains
+  members' features and `metadata.shuyi`), with a fixture workspace per
+  failure, run through `cargo metadata`. Beyond the scope's rules it
+  fails on a module whose `serves` is empty (ADR-0009 §7) and on an
+  unknown metadata key. CI's `modules` job runs it and builds `shuyi`
+  as the default engine, with each feature alone, and with all;
+  `changes.yml` counts the two catalog files as code.
+- **`modules` and `add`** in the contract (version 16), on the CLI and
+  as MCP tools taking `project`, with the problem codes `SH0003`
+  (`unknown-module`) and `SH1004` (`engine-dependency`). They read the
+  engine the game builds with (a path, or where `cargo metadata`
+  resolved `shuyi`), not a copy in the binary. A module's skill is its
+  package's `skill/` or the skill pack's `skills/<name>` beside it,
+  copied to `.claude/skills/` when the game keeps that folder. The
+  README's section on using both is `## Beside its alternatives`.
+- Settled the clauses that waited on 2003 in 2105, 2118, 2121, 2217,
+  2225, 2601, 2707, 2721, 2727, 2736, 2737, 2738, 2740, 2745 and 3101.
+  2601's `http` feature will need a row named `shuyi-http`, or a change
+  to the check's rule 5; its ticket says so.
+- Docs: `docs/contract.md` (the two rows, the templates), `README.md`
+  (the `shuyi` row, the catalog), the docs map (the catalog and its
+  pair), the templates' `AGENTS.md`, the `run-gates` skill.
+- Not checked through the MCP session tools: nothing a player sees
+  changed.
+
+Breaking: shuyi-platform: `BasicGame::game`: returns `Result<Game, ModuleError>`; a game that calls it handles the error (`?`, or `map_err(|e| e.to_string())` in a `Start`).
+Breaking: shuyi-cli: `contract::Op`: gains `Modules` and `Add`; an exhaustive `match` on it adds their arms.
+Breaking: shuyi-cli: `contract::new::ENGINE_CRATES`: is a `[&str; 7]` with `shuyi` first; code naming its type changes it.
+
+The game uses neither `BasicGame` nor `contract::Op`, so its next pin
+bump needs no change for these. No game PR or ticket moves the pin to
+this change yet: the game's next pin bump picks it up.
