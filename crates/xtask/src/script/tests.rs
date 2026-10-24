@@ -282,6 +282,7 @@ fn files_are_written_edited_and_read_inside_the_game() {
     fs::create_dir_all(files.join("example")).unwrap();
     fs::write(files.join("example/about.rs"), "//! About.\n").unwrap();
     fs::write(game.join("lib.rs"), "pub mod title;\n").unwrap();
+    fs::write(game.join("title.png"), [0x89, 0x50, 0xff, 0xfe]).unwrap();
     let fake = Fake::new(|_| ran(0, ""));
     let steps = [
         Step::Write {
@@ -323,12 +324,22 @@ fn files_are_written_edited_and_read_inside_the_game() {
             file: "missing.rs".to_owned(),
             text: String::new(),
         },
+        Step::Holds {
+            file: "title.png".to_owned(),
+            text: String::new(),
+        },
     ];
     let verdicts = run(&steps, &files, &game, &fake);
     let passed: Vec<bool> = verdicts.iter().map(|v| v.passed).collect();
     assert_eq!(
         passed,
-        [true, true, true, true, false, false, false, false, false]
+        [
+            true, true, true, true, false, false, false, false, false, true
+        ]
+    );
+    assert_eq!(
+        verdicts[8].detail.as_deref(),
+        Some("missing.rs: no such file")
     );
     assert_eq!(
         fs::read_to_string(game.join("crates/game/src/about.rs")).unwrap(),

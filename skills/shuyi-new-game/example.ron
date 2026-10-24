@@ -1,0 +1,33 @@
+// The worked example of shuyi-new-game, a script of contract commands:
+// the runner makes a game with `shuyi new <dir> --template blank`, then
+// runs each step in its folder. `Shuyi` is `cargo shuyi <args> --json`,
+// whose answer must be `ok` (unless `ok: false`) and hold each `expect`.
+Example(
+    template: "blank",
+    steps: [
+        // The short path: the game says what the engine can't read from
+        // its files, and runs with one call.
+        Holds(file: "crates/game/src/lib.rs", text: "BasicGame::with_own("),
+        Holds(file: "crates/game/src/lib.rs", text: "pub type Data = BasicData<UiAction, stages::Own>;"),
+        Holds(file: "crates/game/src/main.rs", text: "run_game(game::game());"),
+        // Its rules, and the engine's skills, came with it.
+        Holds(file: "AGENTS.md", text: "## The gates"),
+        Holds(file: ".claude/skills/shuyi-gates/SKILL.md", text: "name: shuyi-gates"),
+        // Every error in its files: none.
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // It opens on its title, and Cancel (Backspace, the template's
+        // key for it) leaves.
+        Shuyi(args: ["run", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+            Holds("/result/frame", "made with Shuyi Engine"),
+        ]),
+        Shuyi(args: ["run", "--script", "Backspace", "--frames", "2"], expect: [Is("/result/quit", "1")]),
+        // A picture of the title, with no window.
+        Cargo(args: ["shuyi", "frame-png", "title.png"]),
+        Holds(file: "title.png"),
+        // The engine's modules by concern: none is on yet.
+        Shuyi(args: ["modules"], expect: [Is("/result/on", "[]"), Has("/result/concerns/0/answers")]),
+        // A problem code's page, for the code an answer gives.
+        Shuyi(args: ["explain", "SH1003"], expect: [Is("/result/entries/0/name", "toolchain")]),
+    ],
+)

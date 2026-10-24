@@ -504,53 +504,62 @@ fn frontmatter_problems(folder: &str, frontmatter: &Frontmatter) -> Vec<String> 
     problems
 }
 
-/// The code in `text`, by line (from 1): a fenced block's lines whole, and
-/// the inline spans between backticks of the others.
-fn code_of(text: &str) -> Vec<(usize, String)> {
+/// The code and the prose of `text`, each piece with the line it starts on
+/// (from 1). A fenced block's lines are code, and so is an inline span
+/// between backticks, which may wrap onto the next lines of its paragraph;
+/// the rest of each line is prose.
+fn split_code(text: &str) -> (Vec<(usize, String)>, Vec<(usize, String)>) {
     let mut code = Vec::new();
+    let mut prose = Vec::new();
     let mut fenced = false;
+    let mut span: Option<(usize, String)> = None;
     for (i, line) in text.lines().enumerate() {
         let trimmed = line.trim_start();
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            fenced = !fenced;
+        let fence = trimmed.starts_with("```") || trimmed.starts_with("~~~");
+        if fence || trimmed.is_empty() {
+            // A span still open at a paragraph's end was a lone backtick.
+            span = None;
+            fenced ^= fence;
             continue;
         }
         if fenced {
             code.push((i + 1, line.to_owned()));
-        } else {
-            for (n, span) in line.split('`').enumerate() {
-                if n % 2 == 1 {
-                    code.push((i + 1, span.to_owned()));
+            continue;
+        }
+        let mut outside = String::new();
+        for (n, part) in line.split('`').enumerate() {
+            if n > 0 {
+                span = match span.take() {
+                    Some(closed) => {
+                        code.push(closed);
+                        None
+                    }
+                    None => Some((i + 1, String::new())),
+                };
+            }
+            match &mut span {
+                Some((_, text)) => {
+                    if !text.is_empty() {
+                        text.push(' ');
+                    }
+                    text.push_str(part);
+                }
+                None => {
+                    outside.push_str(part);
+                    outside.push(' ');
                 }
             }
         }
+        prose.push((i + 1, outside));
     }
-    code
-}
-
-/// The prose of `text`, by line (from 1): what isn't code.
-fn prose_of(text: &str) -> Vec<(usize, String)> {
-    let mut prose = Vec::new();
-    let mut fenced = false;
-    for (i, line) in text.lines().enumerate() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            fenced = !fenced;
-            continue;
-        }
-        if !fenced {
-            let outside: Vec<&str> = line.split('`').step_by(2).collect();
-            prose.push((i + 1, outside.join(" ")));
-        }
-    }
-    prose
+    (code, prose)
 }
 
 /// Each `shuyi <command>` in the code of `text`, with its line: the word
 /// after a `shuyi` that starts the code or follows a space.
 fn commands_in(text: &str) -> Vec<(usize, String)> {
     let mut found = Vec::new();
-    for (line, code) in code_of(text) {
+    for (line, code) in split_code(text).0 {
         let words: Vec<&str> = code.split_whitespace().collect();
         for pair in words.windows(2) {
             let (word, next) = (pair[0], pair[1]);
@@ -594,7 +603,7 @@ fn codes_in(text: &str) -> Vec<(usize, String)> {
 /// line, and every URL of the engine's repository anywhere in it.
 fn links_in(text: &str) -> Vec<(usize, String)> {
     let mut found = Vec::new();
-    for (line, prose) in prose_of(text) {
+    for (line, prose) in split_code(text).1 {
         let mut rest = prose.as_str();
         while let Some(at) = rest.find("](") {
             let after = &rest[at + 2..];

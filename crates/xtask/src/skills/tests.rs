@@ -114,7 +114,7 @@ fn each_example_runs_on_a_new_game_made_from_this_checkout() {
     assert_eq!(calls.len(), 2, "{calls:?}");
     assert_eq!(calls[0].0, root);
     let new = format!(
-        "run -q -p shuyi-cli --locked -- new {} --template grid --name Demo --engine-path {} --json",
+        "run -q -p shuyi-cli --locked -- new {} --template grid --name shuyi-gates --engine-path {} --json",
         game.display(),
         root.display()
     );

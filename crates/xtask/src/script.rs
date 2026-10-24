@@ -293,6 +293,14 @@ fn run_step(step: &Step, files: &Path, game: &Path, runner: &dyn Runner) -> Resu
         }
         Step::Holds { file, text } => {
             let path = inside(game, file)?;
+            if text.is_empty() {
+                // Any file, text or not.
+                return if path.is_file() {
+                    Ok(())
+                } else {
+                    Err(format!("{file}: no such file"))
+                };
+            }
             let held = fs::read_to_string(&path).map_err(|e| format!("{file}: {e}"))?;
             if held.contains(text.as_str()) {
                 Ok(())

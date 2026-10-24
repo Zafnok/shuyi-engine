@@ -7,9 +7,11 @@
 //! template its game is made from, and the steps of a script
 //! ([`crate::script`]), whose `Write` steps take files from the skill's
 //! folder. Each game is made in `target/skill-examples/<skill>`, named
-//! [`GAME_NAME`] (its crates are `demo` and `demo-rules`), on this checkout
-//! of the engine, and builds in this repository's target folder unless
-//! `CARGO_TARGET_DIR` names another. An example marked `manual` (it needs a
+//! after its skill (`shuyi-gates`' crates are `shuyi-gates` and
+//! `shuyi-gates-rules`), on this checkout of the engine, and builds in this
+//! repository's target folder unless `CARGO_TARGET_DIR` names another. Two
+//! games never share a crate's name: in one target folder, cargo could take
+//! one's build for the other's. An example marked `manual` (it needs a
 //! window) is listed and not run.
 
 use std::fmt::Write as _;
@@ -27,8 +29,6 @@ pub const SKILLS: &str = "skills";
 pub const EXAMPLE: &str = "example.ron";
 /// Where the games are made, from the repository's root.
 const GAMES: &str = "target/skill-examples";
-/// The name each example's game is made with.
-pub const GAME_NAME: &str = "Demo";
 
 /// A skill's worked example.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -158,7 +158,7 @@ pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) ->
             example.template,
             game.display()
         );
-        if let Err(e) = make_game(root, &game, &example.template, runner) {
+        if let Err(e) = make_game(root, &game, &example.template, name, runner) {
             let _ = writeln!(report, "  the game wasn't made: {e}");
             errors.push(format!("{name}: the game wasn't made: {e}"));
             continue;
@@ -182,9 +182,15 @@ pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) ->
     Outcome { errors, report }
 }
 
-/// Makes a game in `game` from `template` with the engine checkout at
-/// `root` (`shuyi new`), over any game made there before.
-fn make_game(root: &Path, game: &Path, template: &str, runner: &dyn Runner) -> Result<(), String> {
+/// Makes a game named `name` in `game` from `template` with the engine
+/// checkout at `root` (`shuyi new`), over any game made there before.
+fn make_game(
+    root: &Path,
+    game: &Path,
+    template: &str,
+    name: &str,
+    runner: &dyn Runner,
+) -> Result<(), String> {
     if game.exists() {
         fs::remove_dir_all(game).map_err(|e| format!("{}: {e}", game.display()))?;
     }
@@ -201,7 +207,7 @@ fn make_game(root: &Path, game: &Path, template: &str, runner: &dyn Runner) -> R
         "--template",
         template,
         "--name",
-        GAME_NAME,
+        name,
         "--engine-path",
         &path(root),
         "--json",
