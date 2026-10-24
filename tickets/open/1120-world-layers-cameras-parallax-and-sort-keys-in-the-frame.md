@@ -140,11 +140,11 @@ None. Our game's frames don't change.
   seats, each with the stage's layers in its own viewport from
   `split_viewports` and a camera following that seat, redone when one
   joins or leaves. If not, 2406 adds that scene.
-- **Either order with 1134:** if 1134 is done, its `shuyi-stage-field`
-  skill lists this ticket in `waits_for`: drop 1120 from it, and teach
-  world layers in the skill (the camera with its follow, dead zone and
-  shake, parallax, sort keys and viewports). If not, nothing to do
-  (1134 writes them into the skill).
+- **From 1134 (done):** its `shuyi-stage-field` skill
+  (`skills/shuyi-stage-field/SKILL.md`) lists this ticket in
+  `waits_for`: drop 1120 from it, and teach world layers in the skill
+  (the camera with its follow, dead zone and shake, parallax, sort keys
+  and viewports). `check-skills` passes.
 - **Either order with 2103:** if 2103 is done, add its sprite skin,
   `particles::sprite`: each particle of a `ParticlesView` drawn as a
   frame of its clip on a world layer, with its look's tint and blend.
@@ -213,8 +213,8 @@ None. Our game's frames don't change.
    more: split side by side by `split_viewports(frame, 2)`, its layers
    repeated per viewport, each camera following a different sprite; and
    with a small inset viewport over the full-frame layers.
-5. The either-order parts for 1134, 2103, 2337, 2339, 2340, 2363 and
-   2406.
+5. The `shuyi-stage-field` skill's part (from 1134), and the
+   either-order parts for 2103, 2337, 2339, 2340, 2363 and 2406.
 
 ## Acceptance criteria
 

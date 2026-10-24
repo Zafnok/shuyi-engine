@@ -102,10 +102,13 @@ None.
   strategy or tactics game telling its story through it). Include how a
   gamepad, the Steam Deck and the Playdate reach each action, by action
   name only.
-- **The skill** `shuyi-vn` in the skill pack: if 1134 is done, finish
-  it, with a worked example that `shuyi add vn`, a character file and a
-  scene make run; it passes `check-skills`. If 1134 isn't done, add the
-  worked example to 1134's list in this PR.
+- **The skill** `shuyi-vn` in the skill pack
+  (`skills/shuyi-vn/SKILL.md`, which 2721 writes). **From 1134
+  (done):** finish it, with a worked example,
+  `skills/shuyi-vn/example.ron`, that `shuyi add vn`, a character file
+  and a scene make run on a fresh game, and drop 2726 from its
+  `waits_for` (2721 put it there). It passes `check-skills`, and CI's
+  `skills` job runs the example.
 - **`needs`** (ADR-0012 §1), if 3017 is done: check the module's needs
   against what the example uses, and correct them.
 - **The catalog**: set `shuyi-vn`'s row in `docs/modules.md` and the

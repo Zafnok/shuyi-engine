@@ -1,0 +1,3 @@
+// A record of the grid template's stage: its seed and its commands. Your
+// piece starts on (1, 6) and steps right twice.
+(seed: 0, commands: [Step(Right), Step(Right)])

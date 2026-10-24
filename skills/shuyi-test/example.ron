@@ -1,0 +1,48 @@
+// The worked example of shuyi-test, a script of contract commands run on
+// a game made with `shuyi new <dir> --template grid` (its crates are
+// `shuyi-test` and `shuyi-test-rules`): tests of the rules, a property
+// test, tests through the Harness, a text snapshot of the look, a picture
+// of a frame, and `run` agreeing with the tests' state.
+Example(
+    template: "grid",
+    steps: [
+        // The rules alone: commands in, state and events out, and a
+        // property over any seed and any steps (proptest, for tests only).
+        Edit(
+            file: "crates/rules/Cargo.toml",
+            find: "serde.workspace = true",
+            replace: "serde.workspace = true\n\n[dev-dependencies]\n# Property tests: many inputs, one rule.\nproptest = \"1\"",
+        ),
+        Write(to: "crates/rules/tests/rules.rs", from: "example/rules.rs"),
+        Cargo(args: ["test", "-p", "shuyi-test-rules", "--test", "rules"]),
+        // The game through the Harness: keys or actions in, the state read.
+        Write(to: "crates/game/tests/walk.rs", from: "example/walk.rs"),
+        Cargo(args: ["test", "-p", "shuyi-test", "--test", "walk"]),
+        // The look as text, kept in the repository: written once on
+        // purpose, then compared.
+        Write(to: "crates/game/tests/look.rs", from: "example/look.rs"),
+        Cargo(args: ["test", "-p", "shuyi-test", "--test", "look"], ok: false),
+        Cargo(args: ["test", "-p", "shuyi-test", "--test", "look", "--config", "env.SNAPSHOTS=\"write\""]),
+        Holds(file: "crates/game/tests/snapshots/stage.txt", text: "Turn 2"),
+        Cargo(args: ["test", "-p", "shuyi-test", "--test", "look"]),
+        // New words change the look, which its snapshot catches, and not
+        // what happened, which the state says.
+        Edit(file: "crates/game/files/en.ron", find: "\"Turn {turn}\"", replace: "\"Round {turn}\""),
+        Cargo(args: ["test", "-p", "shuyi-test", "--test", "look"], ok: false),
+        Cargo(args: ["test", "-p", "shuyi-test", "--test", "walk"]),
+        Edit(file: "crates/game/files/en.ron", find: "\"Round {turn}\"", replace: "\"Turn {turn}\""),
+        // A picture of a frame, with no window, to look at.
+        Cargo(args: ["shuyi", "frame-png", "stage.png", "--keys", "Enter Right"]),
+        Holds(file: "stage.png"),
+        // The contract plays the same script and sees what the test saw.
+        Shuyi(args: ["run", "--script", "Enter Right", "--frames", "1"], expect: [
+            Is("/result/top_screen", "stage"),
+            Is("/result/scene/data/hero/x", "2"),
+            Is("/result/scene/data/turn", "2"),
+            Is("/result/scene/data/commands", "1"),
+        ]),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+    ],
+)

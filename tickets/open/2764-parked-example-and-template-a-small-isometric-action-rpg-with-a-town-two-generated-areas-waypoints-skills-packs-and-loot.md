@@ -78,7 +78,10 @@ comments become tickets.
   template part, the modules, what looks related but isn't for it (the
   crawler's turn-based battles, 2748; RTS units, 2707), the example.
 - **READMEs** of `shuyi-action` finished (with its measured WASM size),
-  the skill, the catalog row and the `action-rpg` answer ready.
+  the skill (`skills/shuyi-action/SKILL.md`, which 2756 writes: its
+  worked example, `example.ron`, which CI's `skills` job runs, and 2764
+  dropped from its `waits_for`), the catalog row and the `action-rpg`
+  answer ready.
 
 **Out (do not do):**
 - online co-op (ADR-0034, *Consequences*);

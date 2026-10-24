@@ -49,8 +49,10 @@ What Shuyi has and plans (read 2026-10-21):
   files), `ubuntu-latest` and `macos-latest`.
 - **Nothing keeps a build's debug info.** 3004 packages builds
   stripped.
-- **1134** plans a `shuyi-debug-replay` skill (ADR-0005 §3: "Reproduce
-  a bug from a record"), but nothing makes a record from a crash.
+- **1134** (done) wrote a `shuyi-debug-replay` skill
+  (`skills/shuyi-debug-replay/SKILL.md`: reproduce a bug from a
+  record), whose crash path says it is still to come: nothing makes a
+  record from a crash.
 - **The crates for it** (read in the local registry on 2026-10-21):
   - `backtrace` 0.3.76 (MIT OR Apache-2.0) gives each frame's address
     (`BacktraceFrame::ip`) and, on Windows x64, its module's base
@@ -246,15 +248,14 @@ None.
   --crash`. `docs/crash-reports.md` (3046) gains: reading a report with
   `shuyi crash`, keeping and passing the debug file, and reproducing
   with `replay --crash`.
-- **The skill pack. Either order with 1134:** if 1134 is done, write
-  its `shuyi-debug-replay` skill's crash path, in place of the note
-  that it is still to come: `shuyi crash <report> --symbols <file>`
-  reads the report, `shuyi replay --crash <report>` reproduces it
-  (`ok: false` while it panics), and the skill loops fix, then replay,
-  until `ok: true`; `check-skills` passes. If not, nothing to do (1134
-  writes it, its own clause says so). If **Size** moves `--symbols` to
-  the follow-up, the skill leaves `--symbols` out and the follow-up
-  adds it.
+- **The skill pack. From 1134 (done):** write its `shuyi-debug-replay`
+  skill's crash path (`skills/shuyi-debug-replay/SKILL.md`), in place
+  of the note that it is still to come: `shuyi crash <report> --symbols
+  <file>` reads the report, `shuyi replay --crash <report>` reproduces
+  it (`ok: false` while it panics), and the skill loops fix, then
+  replay, until `ok: true`; `check-skills` passes. If **Size** moves
+  `--symbols` to the follow-up, the skill leaves `--symbols` out and
+  the follow-up adds it.
 - **For the game:** its tools call `turns`, whose signature doesn't
   change. Code that builds `ReplayStep` or `ReplayInput` by hand gains
   a field. Say so in the PR; the game's PR that moves the pin follows.
@@ -278,7 +279,7 @@ None.
   MSVC is out until one asks.
 - Frames on macOS and on the web.
 - A session record (2518, 2519) in a report, and its replay: 3060.
-- The rest of the `shuyi-debug-replay` skill: 1134.
+- The rest of the `shuyi-debug-replay` skill: 1134 wrote it.
 - A symbol server, or uploading debug files anywhere. 3047 (parked)
   sends reports, never debug files.
 - Panics outside the rules (screens, skins, the platform): a rules

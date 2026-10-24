@@ -75,15 +75,18 @@ None. Our game's lobby look comes later with 0053.
   feature turns on `shuyi-net/tools`, and a CI test runs `cargo shuyi
   peers 2 --net seed=1,loss=10,delay=2` on it. If 2529 isn't done, 2529
   does that.
-- **Either order with 1134:** if 1134 is done, drop 1145 from the
-  `waits_for` of `skills/shuyi-net/SKILL.md` (`check-skills` fails on
-  an id no longer in `tickets/open/`), and teach sessions and lobbies
-  there: `SessionBackend`, `JoinToken`, `--join`, the lobby screen and
+- **From 1134 (done):** drop 1145 from the `waits_for` of
+  `skills/shuyi-net/SKILL.md` (`check-skills` fails on an id no longer
+  in `tickets/open/`), and teach sessions and lobbies there:
+  `SessionBackend`, `JoinToken`, `--join`, the lobby screen and
   `hello-grid`'s online mode. If 2529 is done too, `waits_for` is then
-  empty: drop it, and write the skill's worked example as 1134's scope
-  says (two `hello-grid` peers through `peers`, with a seeded loss).
-  If 2529 isn't done, 2529 writes the example. If 1134 isn't done,
-  nothing to do (1134 writes the skill from what exists).
+  empty: drop it, and write the skill's worked example,
+  `skills/shuyi-net/example.ron` (two `hello-grid` peers through
+  `peers`, with a seeded loss, which CI's `skills` job runs). The
+  runner, `crates/xtask/src/skills.rs`, makes a fresh `shuyi new` game
+  for each example, and this one runs on `hello-grid`: give `Example`
+  a field naming an example of the engine's to run in, in the same PR.
+  If 2529 isn't done, 2529 writes the example.
 - **Either order with 3055:** if 3055 is done, the lobby screen sets the
   presence group (the session's id and its player count) and the join
   token's text (`Ctx::set_presence_group`, `Ctx::set_presence_join`)
@@ -119,7 +122,8 @@ None. Our game's lobby look comes later with 0053.
    its `?join=` reader handing its token to that field.
 4. Add the example's online mode, with an integration test that runs two
    Harness games and a relay in one process.
-5. Do 1134's, 1144's, 2529's and 3055's parts if they are done.
+5. Do the `shuyi-net` skill's part (from 1134), and 1144's, 2529's and
+   3055's parts if they are done.
 
 ## Acceptance criteria
 

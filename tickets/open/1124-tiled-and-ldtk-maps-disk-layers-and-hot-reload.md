@@ -158,15 +158,14 @@ None.
   kind if it is one), summed up in a line, with `--print` writing the
   map's text dump, as 2231 does for `AnimationSet`. That file's module
   doc says `import` needs no change for these importers: correct it.
-- **The skill pack. Either order with 1134:** if 1134 is done, drop
-  1124 from the `waits_for` of `skills/shuyi-import-art/SKILL.md` (if
-  the LDtk importer moved to a follow-up, that ticket's id takes its
-  place), and make the skill's part on Tiled and LDtk say what this
-  ticket built: the map formats and `shuyi import <map> --print`. If
-  that leaves `waits_for` empty, drop it and write the skill's worked
-  example, which CI runs on a fresh `shuyi new` game (`check-skills`
-  asks for one). If 1134 isn't done, nothing to do: 1134 writes the
-  skill with this ticket done.
+- **The skill pack. From 1134 (done):** drop 1124 from the
+  `waits_for` of `skills/shuyi-import-art/SKILL.md` (if the LDtk
+  importer moved to a follow-up, that ticket's id takes its place), and
+  make the skill's part on Tiled and LDtk say what this ticket built:
+  the map formats and `shuyi import <map> --print`. If that leaves
+  `waits_for` empty, drop it and write the skill's worked example,
+  `skills/shuyi-import-art/example.ron`, which CI's `skills` job runs
+  on a fresh `shuyi new` game (`check-skills` asks for one).
 - **Either order with 2719:** if 2719 is done, its RTS example's map
   is made in code and stays so: nothing to do. If not, nothing to do
   either: 2719 draws that map in Tiled or LDtk.
@@ -209,8 +208,7 @@ None.
    function, the rooms or `TerrainGrid::from_layer`.
 6. If 2220 is done, add the map reload test through its headless
    script.
-7. If 1134 is done, update the `shuyi-import-art` skill as the clause
-   with 1134 says.
+7. Update the `shuyi-import-art` skill as *The skill pack* says.
 
 ## Acceptance criteria
 
@@ -240,9 +238,9 @@ None.
       `--print` prints its text dump with no limit saying the kind has
       no writer.
 - [ ] If 2220 is done, a changed map and a changed tileset reload.
-- [ ] If 1134 is done, `shuyi-import-art`'s `waits_for` no longer
-      lists 1124, and the skill has its worked example once that list
-      is empty.
+- [ ] `shuyi-import-art`'s `waits_for` no longer lists 1124, the skill
+      has its worked example once that list is empty, and
+      `check-skills` passes.
 - [ ] `cargo deny check` passes, and the WASM build passes with both
       importers.
 - [ ] All gates in the `run-gates` skill pass.

@@ -247,11 +247,13 @@ None.
     through the curve before `Light::mix`, with a test and the
     format's row in `docs/formats.md` updated. If not, nothing to do
     (2369 adds `ease` when it is built, as its clause says);
-  - **either order with 1134 and 2802:** if 1134 is done, its
-    `shuyi-animate` skill (ADR-0005 §3) gets a section on ease curves
-    and tweens. If 2802 is done, the book gets a section where its
-    chapters cover drawing over time, as 2802 asks of every public
-    feature. If either isn't done, it covers `ease` when it is written.
+  - **from 1134 (done):** its `shuyi-animate` skill
+    (`skills/shuyi-animate/SKILL.md`) gets a section on ease curves and
+    tweens (`shuyi_core::ease`: `Ease`, `Tween`, `Lerp`,
+    `finished_between`); `check-skills` passes;
+  - **either order with 2802:** if 2802 is done, the book gets a section
+    where its chapters cover drawing over time, as 2802 asks of every
+    public feature. If not, it covers `ease` when it is written.
 - **Two follow-up tickets**, written before this one is worked (After
   MVP), each blocked by it:
   - **2135:** `Sequence` and `Points` in `shuyi_core::ease`, the tweens

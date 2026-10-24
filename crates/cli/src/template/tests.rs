@@ -932,7 +932,12 @@ fn the_engine_template_has_blank_and_grid_and_a_stage_for_grid() {
         let config = crate::project::Config::parse(&text_of(plan, "shuyi.ron")).unwrap();
         let ids: Vec<&str> = config.targets.keys().map(String::as_str).collect();
         assert_eq!(ids, ["desktop", "web"]);
-        for (path, bytes) in &plan.files {
+        // The skills are copied as they are, with no placeholder filled.
+        let filled = plan
+            .files
+            .iter()
+            .filter(|(path, _)| !path.starts_with(".claude/skills"));
+        for (path, bytes) in filled {
             if let Ok(text) = std::str::from_utf8(bytes) {
                 let left = text.replace("${{", "");
                 assert!(!left.contains("{{"), "{}", path.display());

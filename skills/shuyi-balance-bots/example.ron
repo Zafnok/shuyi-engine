@@ -1,0 +1,91 @@
+// The worked example of shuyi-balance-bots, a script of contract
+// commands run on a game made with `shuyi new <dir> --template grid`: the
+// engine's random bot plays it with `bots`; `playtest` isn't offered until
+// the stage's tools give a plan; then two named bots, a random one and a
+// rollout bot, play it 20 times each, judged by the bands of a data file.
+Example(
+    template: "grid",
+    steps: [
+        // A plain bot run: 5 games, how each ended, and a record of each.
+        Shuyi(args: ["bots", "5"], expect: [
+            Is("/result/games", "5"),
+            Has("/result/outcomes"),
+            Has("/result/plays/4/record"),
+        ]),
+        // A new game's tools give no playtest plan yet.
+        Shuyi(args: ["playtest"], ok: false, expect: [Is("/code", "SH3001")]),
+        // The rules make a copy of the stage as your piece knows it: the
+        // luck to come redrawn, which a bot that plans plays on.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "use shuyi_core::{Dir, Grid, Pos, Sides, SimRng, TerrainId, TurnRules};",
+            replace: "use shuyi_core::{Determinize, Dir, Grid, Pos, Sides, SimRng, TerrainId, TurnRules};",
+        ),
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "impl Sides for Stage {",
+            replace: "impl Determinize for Stage {\n    /// The stage with the wanderer's luck to come drawn from `seed`: your\n    /// piece can't know it. Nothing else is hidden.\n    fn determinize(&self, _: Player, seed: u64) -> Self {\n        Self {\n            rng: SimRng::new(seed),\n            ..self.clone()\n        }\n    }\n}\n\nimpl Sides for Stage {",
+        ),
+        // The entrants, how a try is measured and the plan, beside the
+        // stage's tools, and the checks as data.
+        Write(to: "crates/game/src/stages/top_down_grid/bots.rs", from: "example/bots.rs"),
+        Write(to: "crates/game/playtest.ron", from: "example/playtest.ron"),
+        Edit(
+            file: "crates/game/src/stages/top_down_grid.rs",
+            find: "#[cfg(feature = \"tools\")]\nmod tools;",
+            replace: "#[cfg(feature = \"tools\")]\nmod bots;\n#[cfg(feature = \"tools\")]\nmod tools;",
+        ),
+        Edit(
+            file: "crates/game/src/stages/top_down_grid/tools.rs",
+            find: "    fn importers(&self) -> Importers {",
+            replace: "    /// `playtest`: the stage's two bots, judged by `playtest.ron`.\n    fn playtest_plan(\n        &self,\n        _: Option<&str>,\n        _: &shuyi_cli::contract::playtest::PlaytestInput,\n    ) -> Result<shuyi_cli::PlaytestPlan, String> {\n        super::bots::plan(&self.map()?)\n    }\n\n    fn importers(&self) -> Importers {",
+        ),
+        // Tool code isn't a screen's: check-text skips it.
+        Edit(
+            file: "shuyi.ron",
+            find: "            \"crates/game/src/stages/top_down_grid/tools.rs\",",
+            replace: "            \"crates/game/src/stages/top_down_grid/tools.rs\",\n            \"crates/game/src/stages/top_down_grid/bots.rs\",",
+        ),
+        // Each entrant plays 20 tries from seeds 0 to 19, every core at
+        // once, and each check gives its verdict.
+        Shuyi(args: ["playtest", "--tries", "20"], expect: [
+            // One answer per stage: this game has one.
+            Is("/result/0/entrants/0/name", "random"),
+            Is("/result/0/entrants/1/name", "rollout"),
+            Has("/result/0/entrants/1/seconds_per_try"),
+            Is("/result/0/report/entrants/1/tries/19/seed", "19"),
+            // Each band's verdict, in the checks' order: both rates are in
+            // their bands, and the rollout bot wins in fewer turns.
+            Is("/result/0/report/checks/0/found/Rate/verdict", "Within"),
+            Is("/result/0/report/checks/1/found/Rate/verdict", "Within"),
+            Is("/result/0/report/checks/2/found/Median/verdict", "Pass"),
+            Is("/result/0/report/blocked", "false"),
+        ]),
+        // One entrant alone, and the report kept in a file: a check that
+        // names an entrant who doesn't play is left out.
+        Shuyi(args: ["playtest", "--entrant", "rollout", "--tries", "10", "--report", "playtest.json"], expect: [
+            Is("/result/0/entrants/0/name", "rollout"),
+            Is("/result/0/report/checks/0/check/Rate/entrant", "rollout"),
+        ]),
+        Holds(file: "playtest.json", text: "\"op\": \"playtest\""),
+        // A band the bot misses is a verdict (too hard); only a rate under
+        // its floor fails the run.
+        Edit(
+            file: "crates/game/playtest.ron",
+            find: "        band: (min: 0, max: 20),",
+            replace: "        band: (min: 30, max: 60),\n        floor: Some(25),",
+        ),
+        Shuyi(args: ["playtest", "--entrant", "random", "--tries", "20"], ok: false, expect: [
+            Is("/result/0/report/checks/0/found/Rate/verdict", "Below"),
+            Is("/result/0/report/blocked", "true"),
+        ]),
+        Edit(
+            file: "crates/game/playtest.ron",
+            find: "        band: (min: 30, max: 60),\n        floor: Some(25),",
+            replace: "        band: (min: 0, max: 20),",
+        ),
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+    ],
+)

@@ -51,8 +51,8 @@ What Shuyi has, and plans:
   `templates/grid/AGENTS.md` line 8) link the engine's `AGENTS.md` at
   `blob/main`, even for a game that `shuyi new --engine-rev` pins to a
   commit (`Engine::Rev` in `crates/cli/src/contract/new.rs`).
-- 1134 will ship skills that `shuyi new` copies into each game, so they
-  will match the installed version. They don't help an agent that
+- 1134 (done) ships skills that `shuyi new` copies into each game, so
+  they match the installed version. They don't help an agent that
   hasn't installed anything yet.
 
 Why it matters:
@@ -248,8 +248,8 @@ None.
   changed lines, the `{{engine.docs}}` part (`new.rs` and the templates'
   `AGENTS.md`) becomes a follow-up ticket in this milestone, blocked by
   this one (the `write-ticket` skill). The PR says so, and points the
-  mentions of that part in 1134, 2005 (which then waits for it too),
-  2501 and 2807 at the new ticket.
+  mentions of that part in 2005 (which then waits for it too), 2501
+  and 2807 at the new ticket.
 
 **Out (do not do):**
 - the frozen copy's upload and download (2005: its release workflow

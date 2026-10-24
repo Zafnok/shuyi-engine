@@ -186,13 +186,12 @@ invariants. It passes.
 doc example on a tiny sim. The crate docs' line on `soak`
 (`crates/core/src/lib.rs`) names tick sims too.
 
-**Either order with 1134:** if 1134 is done, the soak section of
-`skills/shuyi-test/SKILL.md` gains a short paragraph: a tick game soaks
-its `TickSim` in its own tests with `soak::tick::play` and
-`RandomInputs` over its actions, and keeps a shrunk `TickRecord` as a
-regression test that calls `soak::tick::inputs`. `cargo xtask
-check-skills` still passes. If not, nothing to do: 1134 adds the
-paragraph when it lands.
+**From 1134 (done):** the soak section of `skills/shuyi-test/SKILL.md`
+(2527 writes it) gains a short paragraph: a tick game soaks its
+`TickSim` in its own tests with `soak::tick::play` and `RandomInputs`
+over its actions, and keeps a shrunk `TickRecord` as a regression test
+that calls `soak::tick::inputs`. `check-skills` (the test in
+`crates/cli/tests/it/skills.rs`) still passes.
 
 **The public API.** `soak::tick` and its items are new, so they are
 additive, and so is `Check::Record`. A `Breaking:` line is needed only
@@ -232,8 +231,8 @@ for `Check::ALL`, as above.
    `finish()`. Then `play`, `inputs`, `record` and `shrink` over it.
 5. Write the fixture sims and the tests below. The tests' codec is RON
    (the core's dev-dependency).
-6. Soak 1119's example sim, write the docs, do the 1134 part if it
-   applies, and run the gates.
+6. Soak 1119's example sim, write the docs and the `shuyi-test`
+   paragraph, and run the gates.
 
 Size: about 250 lines in the core and 300 in tests. The fixture sims
 count in the tests.
@@ -262,8 +261,8 @@ count in the tests.
       single step can go), and with `runs` 0 a failure comes back whole
       with `complete: false`. 2527's shrink tests still pass.
 - [ ] 1119's example sim passes 50 seeds of 600 steps.
-- [ ] If 1134 is done, `skills/shuyi-test/SKILL.md` shows the tick soak,
-      and `cargo xtask check-skills` passes.
+- [ ] `skills/shuyi-test/SKILL.md` shows the tick soak, and
+      `check-skills` passes.
 - [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf`, and its
       tests pass without `std` (CI's `no-std` job). `soak::tick` has no
       float (`deny(clippy::float_arithmetic)` in `lib.rs` passes).

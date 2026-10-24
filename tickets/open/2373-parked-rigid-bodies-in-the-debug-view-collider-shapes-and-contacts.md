@@ -105,8 +105,9 @@ None.
 - **Docs:** the `shuyi-physics` README gains a short section, "In the
   debug view": the feature, the two helpers, a `Screen::debug_draw`
   that calls them, and what each role means. Its "what it costs" part
-  says the `view` feature adds `shuyi-ui`. If the engine's skill pack
-  has a `shuyi-physics` skill, it gains one line on the helpers.
+  says the `view` feature adds `shuyi-ui`. The `shuyi-physics` skill
+  (`skills/shuyi-physics/SKILL.md`, which 1128 writes) gains one line
+  on the helpers.
 
 **Out (do not do):**
 - joints: 1128 builds only the joints its test scene needs;
@@ -135,7 +136,7 @@ None.
    screen that holds 1128's test scene, steps it, and calls both
    helpers from its `debug_draw`. The Harness drives it
    (`shuyi-platform`'s `harness` feature, a dev-dependency).
-6. Write the README section, and the skill line if the skill exists.
+6. Write the README section, and the skill line.
 7. Run the gates, `cargo xtask check-layers` and `cargo xtask
    check-modules` among them.
 

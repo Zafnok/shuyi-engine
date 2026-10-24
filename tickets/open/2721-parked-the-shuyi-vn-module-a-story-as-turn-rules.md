@@ -87,9 +87,13 @@ None.
     one. 2118 adds it the same way if it lands first;
   - the README's first two sections in ADR-0009 §4's order (what it is
     for, what it is not for). 2726 finishes the rest;
-  - the `shuyi-vn` skill: if the skill pack (1134) is done, add a short
-    skill that says what this ticket built and that 2722–2726 are to
-    come. If not, add `shuyi-vn` to 1134's list in this PR;
+  - the `shuyi-vn` skill. **From 1134 (done):** a short skill,
+    `skills/shuyi-vn/SKILL.md`, in the pack's form, that says what this
+    ticket built and that the rest of the module is to come. It has no
+    worked example yet, so its `metadata` has `waits_for: "2726"`:
+    2726 gives it its worked example and drops its id. It is a module's
+    skill: `shuyi add vn` copies it into a game, and `shuyi new`
+    doesn't;
   - `needs` (ADR-0012 §1), if 3017 is done: an empty table, with a
     comment that 2726 checks it against the example. If 3017 isn't done,
     3017 gives it a `needs` key with the other modules.
@@ -226,7 +230,7 @@ None.
 6. Write `history::back`.
 7. If 2202 is done, add the Yarn and Ink forms, their fixtures, and the
    rows in `docs/formats/dialogue.md`.
-8. Add the skill (or 1134's list entry).
+8. Add the skill.
 
 ## Acceptance criteria
 

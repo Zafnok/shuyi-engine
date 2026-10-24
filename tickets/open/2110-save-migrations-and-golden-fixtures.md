@@ -231,10 +231,11 @@ players keep after a patch.
 - **Either order with 2802:** if the book is written, its chapter "Saves
   and settings" gets a section on versions, the steps and the fixtures.
   If not, 2802 writes it from the ADR.
-- **Either order with 1134:** if the skill pack is done, its
-  `shuyi-test` skill gets a paragraph on saved forms (`VERSION`, the
-  steps, the fixtures and what the guard's failure asks); if not, 1134
-  writes it.
+- **From 1134 (done):** its `shuyi-test` skill
+  (`skills/shuyi-test/SKILL.md`) gets a paragraph on saved forms (a save
+  format's `VERSION`, its `Migrate` steps, the `v<N>_*.ron` fixtures
+  `check_saved_forms` checks, and what the guard's failure asks);
+  `check-skills` passes.
 - **2111** leaves `SaveHeader` as it is (its Out): a game reads its own
   save's `made` with the rest. So `UNVERSIONED` is the only change to
   `SaveHeader`'s visitor, in either order.

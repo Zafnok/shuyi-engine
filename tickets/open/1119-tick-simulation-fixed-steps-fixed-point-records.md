@@ -161,17 +161,17 @@ None (technical). Scheduling: see above.
   `DebugCall`), so a `TickRecord` holds them and `replay` reproduces
   them. Repeat 2356's replay-hash test on the example sim. If 2356 isn't
   done, nothing is added here, and 2356 adds it (its Out says so).
-- **The skill pack (1134).** **Either order with 1134:** if 1134 is
-  done, `skills/shuyi-stage-field/SKILL.md` lists 1119 in its
-  `waits_for`, and `check-skills` fails once this ticket is in
-  `done/`: drop 1119 from that list, and teach this ticket's work in
-  the skill (fixed steps, `Fx`, `TickSim`, records and `replay`, and
-  `TickDriver` with its latch). If that empties the list, write the
-  skill's worked example as 1134 says. Step 5's rule then goes in
+- **The skill pack. From 1134 (done):**
+  `skills/shuyi-stage-field/SKILL.md` lists 1119 in its `waits_for`,
+  and `check-skills` fails once this ticket is in `done/`: drop 1119
+  from that list, and teach this ticket's work in the skill (fixed
+  steps, `Fx`, `TickSim`, records and `replay`, and `TickDriver` with
+  its latch). If that empties the list, write the skill's worked
+  example, `skills/shuyi-stage-field/example.ron`, which CI's `skills`
+  job runs on a fresh `shuyi new` game. Step 5's rule goes in
   `skills/shuyi-input/SKILL.md`, not in `input-actions`, which keeps
   only what holds in this repository (1134, *One source for what is
-  true of every game*). If not, nothing to do: 1134 writes the skill
-  with this ticket's work and leaves 1119 out of `waits_for`.
+  true of every game*).
 - **From 2003 (done):** the `fixed-ticks` answer of the time concern in
   `docs/modules.ron` is parked and names this ticket alone. Set it to
   ready.
@@ -271,8 +271,8 @@ None (technical). Scheduling: see above.
 - [ ] A press latched on a frame with no step, just before the stage is
       covered by another screen, doesn't reach a step after the stage is
       uncovered.
-- [ ] The `input-actions` skill states the rule (`shuyi-input` if 1134
-      is done).
+- [ ] The `shuyi-input` skill states the rule, and `check-skills`
+      passes.
 - [ ] Run the example sim for 10 steps, rewind it to its state at step
       5, and run it to step 10 again. The events of steps 6 to 10 are
       handed on once: the Harness's `audio_log` shows each cue once.

@@ -100,14 +100,13 @@ None.
     rounded to pixels, and the format's doc comment updated.
 - **An example:** the tick example from 1119 (the dot) leaves a trail of
   sparks while it moves. A test pins the snapshot at three steps.
-- **Either order with 1134** (the skill pack): if 1134 is done, its
-  `shuyi-animate` skill's note that particles are to come becomes a
-  section on emitters (`EmitterDef` and its `.ron` file, `Emitter`,
-  `particles_at`, the skins, and that a game keeps its `Emitter`s in
-  whichever store it uses), its worked example gains a step with an
-  emitter, and 2103 leaves the skill's `waits_for` if it is there. If
-  not, nothing to do: 1134 writes the section from this ticket's API
-  (its scope says so).
+- **From 1134 (done)** (the skill pack): its `shuyi-animate` skill's
+  (`skills/shuyi-animate/SKILL.md`) note that particles are to come
+  becomes a section on emitters (`EmitterDef` and its `.ron` file,
+  `Emitter`, `particles_at`, the skins, and that a game keeps its
+  `Emitter`s in whichever store it uses), its worked example, if it has
+  one (2231 writes it), gains a step with an emitter, and 2103 leaves
+  the skill's `waits_for`. `check-skills` passes.
 
 **Out (do not do):**
 - particles colliding with tiles or boxes (that needs state per
@@ -135,8 +134,8 @@ None.
 4. Write `EmitterRon` and register it; add fixtures (ours, CC0).
 5. Write the view, the glyph skin and, if 1120 is done, the sprite skin
    with its tints and blends (2337).
-6. Add the example's trail and its snapshots, and, if 1134 is done,
-   the `shuyi-animate` skill's section on particles (Scope).
+6. Add the example's trail and its snapshots, and the `shuyi-animate`
+   skill's section on particles (Scope).
 7. Run the gates.
 
 ## Acceptance criteria

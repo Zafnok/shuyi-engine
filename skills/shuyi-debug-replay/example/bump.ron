@@ -1,0 +1,3 @@
+// The same seed, and a second step up into the wall above (2, 6): the rules
+// refuse it, so the state stays as it was after step 1.
+(seed: 0, commands: [Step(Right), Step(Up)])

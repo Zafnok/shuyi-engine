@@ -305,10 +305,10 @@ crate" paragraph to the README's *The name* section.
   - 2809, which waits for this ticket, adds the line `shuyi add
     <crate>@<version>` and a link to `docs/writing-a-module.md` to its
     Assets page's Modules group.
-- **The skill pack:** the skill that runs `shuyi add` (1134's; if none
-  does, `shuyi-new-game`) learns the outside sources. It must show the
-  user the source, license and skill before passing `--yes` or
-  `--with-skill`.
+- **The skill pack:** the skill that runs `shuyi add`,
+  `skills/shuyi-new-game/SKILL.md` (1134, done), learns the outside
+  sources. It must show the user the source, license and skill before
+  passing `--yes` or `--with-skill`. `check-skills` passes.
 
 **Out (do not do):**
 - `shuyi module new`, a scaffold for a module like `shuyi template new`

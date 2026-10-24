@@ -230,14 +230,15 @@ None.
   in `docs/modules.ron` (2003 wrote it parked) is 1122's movers and
   these clips. If 1122 is done, set it to ready; if not, nothing to do
   (1122 sets it).
-- **Either order with 1134:** if 1134 is done, its `shuyi-animate`
-  skill (`skills/shuyi-animate/SKILL.md`) teaches clips: a set file
-  beside its picture, `AnimationSet::clip` and `frame_at`. It drops
-  `2231` from its `waits_for` (`check-skills` fails on an id not in
-  `tickets/open/`) and gains its worked example, a script of contract
-  operations CI runs on a fresh `shuyi new` game as 1134's others
-  are. Its section on particles stays as it is. If not, nothing to do
-  (1134 writes the skill with its example).
+- **From 1134 (done):** its `shuyi-animate` skill
+  (`skills/shuyi-animate/SKILL.md`) teaches clips: a set file beside
+  its picture, `AnimationSet::clip` and `frame_at`, in place of its
+  note that clips are to come. It drops `2231` from its `waits_for`
+  (`check-skills` fails on an id not in `tickets/open/`) and gains its
+  worked example, `skills/shuyi-animate/example.ron`, a script of
+  contract operations that CI's `skills` job runs on a fresh `shuyi
+  new` game as it runs the pack's others. Its section on particles
+  stays as it is.
 - **For the game:** no API break. Everything is new except two derives
   on `ImageRect` and a function made `pub(crate)`, and
   `Formats::standard()` gains a format of a new kind, which clashes
@@ -255,7 +256,7 @@ None.
   skeletal animation (2105);
 - packing pictures into atlas pages (2222);
 - the rest of the `shuyi-animate` skill: it is 1134's, and this
-  ticket adds only its clips, if 1134 is done (**In**);
+  ticket adds only its clips and its worked example (**In**);
 - a shorthand for frames laid out in a grid of cells (a follow-up if
   files get long);
 - a picture outside the set's folder (`..`): a follow-up if games need

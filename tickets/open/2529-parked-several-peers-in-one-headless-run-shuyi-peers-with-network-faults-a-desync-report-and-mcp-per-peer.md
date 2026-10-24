@@ -53,8 +53,9 @@ What is planned:
   Harness games play a match against each other in CI."
 - 1133: an MCP server over stdio whose session keeps "one headless
   game running".
-- 1134: the `shuyi-net` skill waits for 1140, this ticket and 1145:
-  before this ticket, it has nothing an agent can run.
+- 1134 (done): the `shuyi-net` skill, `skills/shuyi-net/SKILL.md`,
+  waits for 1140, this ticket and 1145 (its `waits_for`): before this
+  ticket, it has nothing an agent can run.
 
 So once networking lands, an agent asked for an online turn game cannot
 play both sides, add loss, or see a desync without writing Rust.
@@ -241,16 +242,18 @@ None.
   on `shuyi-net/tools`, and a CI test runs `cargo shuyi peers 2 --net
   seed=1,loss=10,delay=2` on it. If 1145 isn't done, 1145 does that
   (edit requested there).
-- **The `shuyi-net` skill, either order with 1134:** if 1134 is done,
-  drop 2529 from the `waits_for` of `skills/shuyi-net/SKILL.md`
-  (`check-skills` fails on an id no longer in `tickets/open/`), and add
-  a section on `peers` (`--net`, `--peer`, the desync answer, and the
-  MCP tools if step 9 keeps them) and `MemoryPeers`. If 1145 is done
-  too, `waits_for` is then empty: drop it, and write the skill's worked
-  example as 1134's scope says (two `hello-grid` peers through `peers`,
-  with a seeded loss, which CI runs). If 1145 isn't done, 1145 writes
-  it. If 1134 isn't done, nothing to do (1134 writes the skill from
-  what exists).
+- **The `shuyi-net` skill. From 1134 (done):** drop 2529 from the
+  `waits_for` of `skills/shuyi-net/SKILL.md` (`check-skills` fails on
+  an id no longer in `tickets/open/`), and add a section on `peers`
+  (`--net`, `--peer`, the desync answer, and the MCP tools if step 9
+  keeps them) and `MemoryPeers`. If 1145 is done too, `waits_for` is
+  then empty: drop it, and write the skill's worked example,
+  `skills/shuyi-net/example.ron` (two `hello-grid` peers through
+  `peers`, with a seeded loss, which CI's `skills` job runs). The
+  runner, `crates/xtask/src/skills.rs`, makes a fresh `shuyi new` game
+  for each example, and this one runs on `hello-grid`: give `Example`
+  a field naming an example of the engine's to run in, in the same PR.
+  If 1145 isn't done, 1145 writes it.
 - **Docs:**
   - `docs/contract.md`: the `peers` row in *The operations*, the
     `peers` row in *What a game gives*, and a short *Peers* section
@@ -321,7 +324,7 @@ None.
 6. Add `shuyi-net`'s `tools` feature, `MemoryPeers` and its line in
    `tools/layers.ron`, with the integration test below.
 7. Do `hello-grid`'s part if 1145 is done, and the `shuyi-net` skill's
-   part if 1134 is done.
+   part.
 8. Write the docs.
 9. Measure the diff, fixtures and snapshots aside. Under 600 changed
    lines: add `peers`, `net`, `peer` and `reset` to the MCP session and

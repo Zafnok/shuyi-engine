@@ -90,16 +90,15 @@ None.
   under 300 KB to the WASM build (ADR-0004 §2). Write down the number
   either way.
 - Fixtures: a small sheet made for the tests (CC0, ours).
-- **The skill pack. Either order with 1134:** if 1134 is done, its
-  `shuyi-import-art` skill teaches this ticket's import ahead of it and
-  lists 1123 in its `waits_for`, which `check-skills` fails on once
-  this ticket is in `tickets/done/`. Drop 1123 from it, and make the
-  skill's Aseprite and TexturePacker part match what was built. If that
-  empties `waits_for` (1124 landed first), give the skill its worked
-  example, importing a sheet with the contract's `import`, which CI
-  runs as it runs the others; otherwise 1124's PR writes it, as the
-  last of the two. If 1134 isn't done, nothing to do: 1134 writes the
-  skill.
+- **The skill pack. From 1134 (done):** its `shuyi-import-art` skill
+  (`skills/shuyi-import-art/SKILL.md`) says this ticket's import is to
+  come and lists 1123 in its `waits_for`, which `check-skills` fails on
+  once this ticket is in `tickets/done/`. Drop 1123 from it, and teach
+  the Aseprite and TexturePacker import as built. If that empties
+  `waits_for` (1124 landed first), give the skill its worked example,
+  `skills/shuyi-import-art/example.ron`, importing a sheet with the
+  contract's `import`, which CI's `skills` job runs as it runs the
+  others; otherwise 1124's PR writes it, as the last of the two.
 
 **Out (do not do):** the clip types, `frame_at` and the `AnimationSet`
 RON format (2231); animated tiles and unit clips in the grid kit (2359);
@@ -127,8 +126,8 @@ and a tick game keeps `(clip, start_step)` in whichever store it uses.
       Aseprite fixture reads into it, with its rect and borders checked
       by hand.
 - [ ] The `asefile` size result is recorded in the Completion notes.
-- [ ] If 1134 is done, `shuyi-import-art`'s `waits_for` no longer
-      holds 1123, and `check-skills` passes.
+- [ ] `shuyi-import-art`'s `waits_for` no longer holds 1123, and
+      `check-skills` passes.
 - [ ] `cargo deny check` passes.
 - [ ] All gates in the `run-gates` skill pass.
 

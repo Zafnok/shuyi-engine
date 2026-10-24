@@ -1,0 +1,14 @@
+# The talk the title starts, in the engine's `.dlg` format: one scene,
+# its speaker placed with `@left`, a line of narration, and a choice whose
+# replies each have their reaction.
+@scene intro
+@caption The north gate, at dusk
+@left guide calm
+guide: The road north is open again.
+> Rain begins to fall.
+@choice
+* earnest: Then we go now.
+  guide: Good. Keep close.
+* wry: Then we get wet.
+@endchoice
+@end

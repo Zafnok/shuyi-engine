@@ -243,10 +243,10 @@ ships (rule 7, `deny.toml`) don't change.
   merges into the base's (ADR-0042).
 - **2505** (`shuyi template check`): if it is done, it runs the credits
   pass on each game it makes. If not, 2505 adds it (its scope says so).
-- **1134** (the skill pack): if it is done, `shuyi-ship` teaches the
-  credits file, the `credits` part and the pass, and that an agent never
-  widens a game's `licenses` to make a check pass. If not, 1134 adds it
-  (its scope says so).
+- **From 1134 (done)** (the skill pack): `shuyi-ship`
+  (`skills/shuyi-ship/SKILL.md`) teaches the credits file, the
+  `credits` part and the pass, and that an agent never widens a game's
+  `licenses` to make a check pass; `check-skills` passes.
 - **2352** (parked: engine screens machine-translated): if it is done,
   the credits section of `NOTICES.txt` says which languages' engine
   screens a game shows machine-translated. If not, 2352 adds that, as

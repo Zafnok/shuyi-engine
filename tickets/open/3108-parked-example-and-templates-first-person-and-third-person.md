@@ -48,9 +48,9 @@ It builds on 3104 (the GPU painter, so the example runs in a window and
 the browser), 3106 (the cameras, and through it 3105's mover), 1129
 (`shuyi new` and `templates/`) and 2004 (the guides and their check).
 
-The skill pack (1134) is MVP work and should be done by then. If it is,
-write the `shuyi-3d` skill here. If it isn't, write a ticket for the
-skill and link it in the Completion notes.
+**From 1134 (done):** write the `shuyi-3d` skill here,
+`skills/shuyi-3d/` in the skill pack's form, with a worked example CI's
+`skills` job runs on a fresh game after `shuyi add 3d`.
 
 ## Nick input
 

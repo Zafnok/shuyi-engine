@@ -1,0 +1,44 @@
+// The worked example of shuyi-debug-replay, a script of contract commands
+// run on a game made with `shuyi new <dir> --template grid`: a bot's record
+// replayed, two records parted by their hashes, a missing record's code,
+// and a refused step kept as a test of the rules.
+Example(
+    template: "grid",
+    steps: [
+        // The bots' plays carry their records: keep the first.
+        Shuyi(
+            args: ["bots", "2"],
+            expect: [Is("/result/games", "2"), Has("/result/plays/0/record")],
+            save: Some(("/result/plays/0/record", "records/bot.ron")),
+        ),
+        // One record, run twice: the same hashes, so no difference.
+        Shuyi(args: ["replay", "records/bot.ron"], expect: [
+            Is("/result/first_difference", "null"),
+            Has("/result/runs/0/steps/0/hash"),
+            Has("/result/runs/0/outcome"),
+        ]),
+        // Two records of one seed: the second steps into a wall.
+        Write(to: "records/walk.ron", from: "example/walk.ron"),
+        Write(to: "records/bump.ron", from: "example/bump.ron"),
+        // They part at step 2, where the rules refused the step up.
+        Shuyi(args: ["replay", "records/walk.ron", "records/bump.ron"], ok: false, expect: [
+            Is("/result/first_difference/step", "2"),
+            Is("/result/runs/1/steps/2/command", "Step(Up)"),
+            Is("/result/runs/1/steps/2/refused", "your piece can't step Up"),
+            Is("/result/runs/1/steps/2/events", "[]"),
+        ]),
+        // Alone, the refused record still plays the same twice, and its
+        // limits count the refusal.
+        Shuyi(args: ["replay", "records/bump.ron"], expect: [
+            Is("/limits/1", "the rules refused 1 command(s) of records/bump.ron: the record doesn't play as it was made"),
+        ]),
+        // A record that isn't there: branch on the code.
+        Shuyi(args: ["replay", "records/nope.ron"], ok: false, expect: [Is("/code", "SH3004")]),
+        // The record kept as a test of the rules: its seed and commands, and
+        // what must hold of them.
+        Write(to: "crates/rules/tests/record.rs", from: "example/record.rs"),
+        Cargo(args: ["test", "-p", "shuyi-debug-replay-rules", "--test", "record"]),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "-p", "shuyi-debug-replay-rules", "--all-targets", "--", "-D", "warnings"]),
+    ],
+)

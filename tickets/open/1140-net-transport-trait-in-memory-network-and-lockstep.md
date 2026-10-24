@@ -100,14 +100,14 @@ None (technical). Scheduling: see above.
   lockstep turn, whether the peers' hashes agree, and a desync banner
   (a `Note` label). **Either order with 2315:** if 2315 is done, add
   the channel here; if not, write a parked follow-up ticket for it.
-- **Either order with 1134:** if 1134 is done, drop 1140 from the
-  `waits_for` of `skills/shuyi-net/SKILL.md` (`check-skills` fails on
-  an id no longer in `tickets/open/`), and make the skill teach what
-  this ticket built: `Transport`, `MemoryNetwork` and its faults,
-  `LockstepSession` (the handshake, desync, reconnect) and
-  commit-reveal, linking `docs/net.md`. Its worked example is not this
-  ticket's: the later of 2529 and 1145 writes it. If not, nothing to
-  do (1134 writes the skill from what exists).
+- **From 1134 (done):** drop 1140 from the `waits_for` of
+  `skills/shuyi-net/SKILL.md` (`check-skills` fails on an id no longer
+  in `tickets/open/`), and make the skill teach what this ticket built:
+  `Transport`, `MemoryNetwork` and its faults, `LockstepSession` (the
+  handshake, desync, reconnect) and commit-reveal, naming `docs/net.md`
+  in words (a game reaches the engine's docs through its `AGENTS.md`,
+  and `check-skills` fails a link that leaves the pack). Its worked
+  example is not this ticket's: the later of 2529 and 1145 writes it.
 - **Either order with 2116:** if 2116 is done, `-p shuyi-net` joins
   the wasm32 `cargo test` of CI's `determinism` job, as `shuyi-script`
   does (2101), so the lockstep and message tests also run on wasm32,
@@ -148,7 +148,7 @@ None (technical). Scheduling: see above.
    follow-up ticket.
 6. Add a docs page in `docs/net.md`. Lockstep between peers is
    for friends (ADR-0006 §4).
-7. If 1134 is done, update `skills/shuyi-net` (Scope).
+7. Update `skills/shuyi-net` (Scope).
 
 ## Acceptance criteria
 

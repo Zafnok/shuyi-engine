@@ -163,15 +163,14 @@ privacy question for Nick (parked 3047 asks it for crash reports).
     field.
 
   If not, nothing to do (2520 adds them, its clause says so).
-- **Either order with 1134** (the skill pack): if 1134 is done, its
-  `shuyi-debug-replay` skill gains a paragraph. A debug build's crash
-  report names its session in `session`, a file in
+- **From 1134 (done)** (the skill pack): its `shuyi-debug-replay`
+  skill (`skills/shuyi-debug-replay/SKILL.md`) gains a paragraph. A
+  debug build's crash report names its session in `session`, a file in
   `<data dir>/sessions/`. `shuyi run --session <file>` plays the whole
   game to the frame before the panic, screens and skins included,
   where a rules replay (`shuyi replay`) runs only the rules. MCP's
   `start` from the session lets the agent `step` on from there.
-  `check-skills` passes. If not, nothing to do (1134 writes it, its
-  clause says so).
+  `check-skills` passes.
 - **Docs** (the `document` skill):
   - `docs/crash-reports.md` (3046) gains a section, *A debug build's
     session*. A debug build's report names its session in `session`.
@@ -232,7 +231,7 @@ privacy question for Nick (parked 3047 asks it for crash reports).
    2519's `crates/app/src/sessions.rs`, its writer and ring, and its
    write at quit in `run`. Read 2518's `App::record`,
    `App::take_session`, and where `App` pushes each `FrameRecord`.
-   Check whether 1134 and 2520 are done.
+   Check whether 2520 is done.
 2. Add `CrashReport::session`, with its unit tests, and add the field
    to 3046's property test's strategy.
 3. Write `cut_at_panic` and `write_at_panic`, with their tests (below).
@@ -242,7 +241,8 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 4. Write `crash::add_session`, and extend 3046's
    `crates/app/tests/crash_hook.rs`.
 5. Add the step to `run`'s catch path.
-6. Do the parts for 2520 and 1134 that apply.
+6. Do 2520's part if it applies, and the `shuyi-debug-replay`
+   paragraph (from 1134).
 7. On the machine at hand, run hello-grid's debug build with
    `SHUYI_PANIC_AT_FRAME=30` (3046). Check that the report names a
    file in `<data dir>/sessions/`. Copy it into `examples/hello-grid/`
@@ -277,8 +277,8 @@ privacy question for Nick (parked 3047 asks it for crash reports).
       --crash` on a report with a session and no record names the
       session in its reason; the schemas, `VERSION` and
       `versions.json` agree (the schema test passes).
-- [ ] With 1134's part done here: the `shuyi-debug-replay` skill has
-      the paragraph, and `check-skills` passes.
+- [ ] The `shuyi-debug-replay` skill has the paragraph, and
+      `check-skills` passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

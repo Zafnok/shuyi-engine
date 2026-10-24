@@ -79,9 +79,10 @@ What is planned:
   game time.
 - 2364 (parked): `crossed`, the marks between two times, which goes in
   this ticket's `shuyi_core::timer`.
-- 1134 (Engine: public): the skill pack, with a `shuyi-stage-grid` and
-  a `shuyi-stage-field` skill (ADR-0005 §3). Its scope already says
-  those two skills time rules with this ticket's timers, never `dt`.
+- 1134 (done): the skill pack, `skills/`, with a `shuyi-stage-grid`
+  skill and a `shuyi-stage-field` skill that waits for the tick
+  simulation. Both say that rules count turns or steps and never read
+  `dt`; this ticket names its timers there.
 
 **Why it matters.** Visions of Shuyi is turn-based and counts its own
 turns in its rules. Nothing in it changes. For other games, the end
@@ -224,11 +225,13 @@ None.
   `input.ticks()`. Never time a rule with `input.dt()`, which is for
   what only looks." The bullet goes in the `base` part's `AGENTS.md`
   (`templates/shuyi-default/base`, 2501).
-- **Either order with 1134** (the skill pack): if 1134 is done, its
-  `shuyi-stage-grid` and `shuyi-stage-field` skills (ADR-0005 §3) say
-  the same as the templates' bullet. If not, nothing to do: 1134's
-  scope already says those two skills time rules with
-  `shuyi_core::timer` (2115), never with `dt`.
+- **From 1134 (done)** (the skill pack): its `shuyi-stage-grid` and
+  `shuyi-stage-field` skills (`skills/shuyi-stage-grid/SKILL.md`,
+  `skills/shuyi-stage-field/SKILL.md`) say the same as the templates'
+  bullet, in place of their line that rules count turns or steps and
+  never read `dt`: `shuyi_core::timer`'s `Countdown` and `Every`,
+  advanced by one each turn or once per step of `FrameInput::ticks()`.
+  `check-skills` passes.
 - **Either order with 2802** (the book): if 2802 is done, chapter 6,
   *Rules as commands*, gets a short section on time in rules. If not,
   this PR adds "time in steps or turns (`shuyi_core::timer`, 2115)" to
@@ -284,9 +287,9 @@ None.
    `crates/core/src/timer/tests.rs`.
 5. Write the frame-rate test in `crates/platform/src/app/tests.rs`,
    beside `a_second_of_frames_steps_sixty_times_and_a_late_one_four`.
-6. Write the rustdoc sentences and the templates' bullet. Then, by
-   whether each is done, the skill pack's lines (if 1134 is done),
-   and the book's section or 2802's scope line.
+6. Write the rustdoc sentences, the templates' bullet and the two
+   stage skills' lines. Then, by whether 2802 is done, the book's
+   section or 2802's scope line.
 7. Run the gates, the `no_std` build and `cargo xtask check-no-std`
    included.
 
@@ -322,8 +325,9 @@ None.
 - [ ] The doctest passes, and the rustdoc of `dt()` and `ticks()`, the
       module docs and every template's `AGENTS.md` say how to time a
       rule.
-- [ ] 1134's two stage skills, or its scope, and 2802's chapter 6, or
-      its scope, name `shuyi_core::timer`.
+- [ ] The `shuyi-stage-grid` and `shuyi-stage-field` skills, and
+      2802's chapter 6 or its scope, name `shuyi_core::timer`, and
+      `check-skills` passes.
 - [ ] `shuyi-core`, `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf`, and `cargo xtask check-no-std` passes.
 - [ ] All gates in the `run-gates` skill pass.

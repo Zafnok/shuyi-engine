@@ -94,7 +94,10 @@ None.
   it works without `std`). If the file doesn't parse it panics with the
   file's errors, through `unwrap_or_else(|e| panic!(..))` as `Toy::new`
   does (the workspace lints warn on `unwrap` and `expect`). A test keeps
-  it parsing.
+  it parsing. **Either order with 2383:** if 2383 is done, its talk
+  screen's `talk.next` is one of the keys the engine's code names: give
+  it its English here with the others. If not, nothing to do (2383 adds
+  it here once this is done, by its own clause).
 - **Beneath the game's English, in `shuyi_assets::lang`:**
   - `merged_english(engine: &BTreeMap<String, String>, game:
     BTreeMap<String, String>) -> BTreeMap<String, String>`: every key

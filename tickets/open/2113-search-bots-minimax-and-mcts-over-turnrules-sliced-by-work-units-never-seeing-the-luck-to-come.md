@@ -180,8 +180,9 @@ None.
     says `tests/it/bots.rs` plays a minimax hero against the foe;
   - the stage screen's foe stays `Chase`, and `bots`' hero stays
     `RandomBot`, so records and snapshots don't change.
-- **Either order with 1134:** if `skills/shuyi-balance-bots/SKILL.md`
-  exists, add a short section on the search bots and `Determinize`.
+- **From 1134 (done):** add a short section on the search bots
+  (minimax and MCTS) and `Determinize` to
+  `skills/shuyi-balance-bots/SKILL.md`; `check-skills` passes.
 - **Either order with 2737:** if 2737 is done, `examples/card-battle`
   gets what its *Search bots* part says. Its `Run` implements
   `Determinize`: the draw pile sorted by card id, then `shuffle`d on a

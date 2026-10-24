@@ -119,9 +119,10 @@ None.
 - **`crates/diorama/README.md`** finished in ADR-0009 §4's order, with
   the WASM size it adds to town-and-battle, measured against the flat
   skin.
-- **The skill** `shuyi-diorama` in the skill pack (1134), with a worked
-  example that `shuyi add diorama` and a skin file make run. If 1134
-  isn't done, write a ticket for the skill instead.
+- **The skill** `shuyi-diorama` in the skill pack (1134, done):
+  `skills/shuyi-diorama/` in the pack's form, with a worked example,
+  `example.ron`, that `shuyi add diorama` and a skin file make run on a
+  fresh game. CI's `skills` job runs it, and `check-skills` passes.
 - **The catalog**: `shuyi-3d` claims top-down 3D as ready, and
   `shuyi-diorama`'s row is set to ready.
 - **Either order with 3025 (parked, DS hardware 3D):** if 3025 is

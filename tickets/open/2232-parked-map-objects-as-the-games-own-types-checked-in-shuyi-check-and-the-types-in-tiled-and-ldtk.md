@@ -325,9 +325,9 @@ None.
   the export and say so in this ticket's ADR. If not, use `schemars`,
   and 2907's ADR says whether `map-types` moves onto its choice (its
   clause on this ticket).
-- **Either order with 1134:** if 1134 is done, the skill that makes a
-  new game (`shuyi-new-game`) says to run `map-types` after changing the
-  things enum. If not, 1134 does.
+- **From 1134 (done):** the skill that makes a new game
+  (`skills/shuyi-new-game/SKILL.md`) says to run `map-types` after
+  changing the things enum; `check-skills` passes.
 - New public types follow 2013's ADR (in the MVP): `MapTypesInput` is
   an input with a `Default`, and `EditorType` may grow, so it is
   `#[non_exhaustive]`.
@@ -338,9 +338,9 @@ None.
   their docs, acceptance criteria and tests, go to a follow-up ticket
   (the `write-ticket` skill), parked like this one with `blocked_by:
   ["2232"]`, written in this PR from this ticket's bullets. This PR
-  then keeps the reading and the check, and the lines of 1127, 2507
-  and 1134 that name `map-types` point at the follow-up, which also
-  takes the `shuyi-new-game` line from this ticket.
+  then keeps the reading and the check, and the lines of 1127 and 2507
+  that name `map-types` point at the follow-up, which also takes the
+  `shuyi-new-game` line from this ticket.
   The follow-up names 1127 back: if 1127 is done first, its platformer
   has Tiled types written by hand or no LDtk check, so the follow-up
   writes those types with `shuyi map-types --tiled`, or adds CI's
@@ -395,7 +395,7 @@ game's next pin bump needs no change. If `Op` is already
 5. Write the docs for the reading and the check (*Checks after
    loading*, and the new section without `map-types`). Count the lines
    as *Size* says. If they are over, write the follow-up ticket, point
-   1127, 2507 and 1134 at it, and go to step 9.
+   1127 and 2507 at it, and go to step 9.
 6. Add the `schema` features and the three `JsonSchema` impls.
 7. Write `map_types`: the conversion, the Tiled merge, the LDtk check,
    the operation and its wiring (`Op` made `#[non_exhaustive]` if it
@@ -425,8 +425,8 @@ game's next pin bump needs no change. If `Op` is already
 - [ ] `cargo deny check` passes, with no new dependency.
 - [ ] Either `map-types` is in this PR and the next five criteria hold,
       or the follow-up ticket is in `tickets/open/`, parked, with
-      `blocked_by: ["2232"]` and those five criteria, and 1127, 2507
-      and 1134 name it.
+      `blocked_by: ["2232"]` and those five criteria, and 1127 and 2507
+      name it.
 - [ ] `map-types --tiled` writes the test type's classes and enums into
       a copy of the fixture's project (snapshot), keeping its other
       entries and keys. `--check` then passes, and on the old copy it

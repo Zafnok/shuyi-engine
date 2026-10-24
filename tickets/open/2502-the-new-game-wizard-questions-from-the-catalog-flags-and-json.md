@@ -135,10 +135,10 @@ asked is missing.
 - **Each picked answer that is a module** turns it on through the
   template's parts or, if no part names it, through `shuyi add`'s code
   directly (ADR-0013: every catalog answer works with no part).
-- **The skill pack. Either order with 1134:** if 1134 is done, update
-  the `shuyi-new-game` skill to call `--questions --json`, ask its
-  user, and pass the answers as flags. If not, nothing to do (1134
-  writes it, its own clause says so).
+- **The skill pack. From 1134 (done):** update the `shuyi-new-game`
+  skill (`skills/shuyi-new-game/SKILL.md`) to call `shuyi new <dir>
+  --questions --json`, ask its user, and pass the answers as flags;
+  `check-skills` passes.
 - **Docs:** `docs/templates.md` (2501) gets a section on the wizard and
   its flags. If 2004 is done, each direction guide names the answers
   that start it.
@@ -191,7 +191,7 @@ asked is missing.
 3. Write the prompts, the flags, `--no-input` and `--questions --json`.
    Check whether 3048 is done; if so, add the id question and `--id`.
 4. Print the equivalent command and write `created_with`.
-5. Update the skill if 1134 is done, and the docs.
+5. Update the skill and the docs.
 
 ## Acceptance criteria
 

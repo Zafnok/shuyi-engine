@@ -1,33 +1,22 @@
 ---
 name: input-actions
-description: Rules for anything that reads input or names a key or button to a player — engine and game code react to actions, never keys; every binding is the player's. Use when adding or changing input handling, an ActionSet, UiActions, keymap files, rebinding, controllers, pointer or analog input, help text or any text that names a key.
+description: The engine's own side of input — which engine crates may know keys and buttons, adding a UiAction, the generic input types, and the engine's examples and tests. The rules every game keeps (actions, never keys; the keymap; help text from it; controllers; targets' buttons) are the shipped skill shuyi-input. Use when changing the engine's input handling, an ActionSet, UiActions, keymap files, rebinding, controllers, pointer or analog input, help text or any text that names a key.
 ---
 
-# Input: actions, never keys
+# Input in the engine
 
-Players rebind every key and button. A key written into engine or game
-code, or into text a player reads, is a bug: it stops working or lies
-after a rebind, and different layouts already use different keys. These
-rules come from the game this engine came from (game ADR-0015,
-ADR-0031, ADR-0034, ADR-0053). The game's ticket 1106 made them generic:
-
-- **`ActionSet`** is the trait a game implements for its own actions:
-  `ALL`, `name`, `from_name`, `is_repeatable`, `is_required`,
-  `is_rebindable`, `fixed_keys`, and `ui()`.
-- **`UiAction`** is the engine's own small set that widgets react to: Up,
-  Down, Left, Right, Confirm, Cancel, Debug. A game maps its actions onto
-  them through `ActionSet::ui`.
-- **Generic types**: `Keymap<A>`, `InputState<A>`, `FrameInput<A>`,
-  `PlayerKeys<A>`, `HelpKeys<A>`.
-- **Layouts are data.** Named layouts live in the keymap file, never in an
-  enum. So do each target's own buttons (`targets: {"playdate": ...}`),
-  which a target without a keyboard needs (ADR-0025).
-- **Screens declare their actions** (`Screen::actions`): every action
-  the screen reacts to, through `ui()` or not. An engine screen or widget
-  declares the game's actions for its `UiAction`s (`ui_actions`, a
-  widget's `ACTIONS`). `cargo shuyi check --target` checks that each
-  screen's required actions bind to distinct buttons of the target, and
-  in the Harness a screen gets only the actions it declares.
+Every input rule that holds in every game is the shipped skill
+[`shuyi-input`](../../../skills/shuyi-input/SKILL.md): react to actions,
+never keys; name keys through the player's keymap; expect any key or
+none; the defaults are the game's, in its keymap file; fixed keys are
+data; held and repeated input comes from the input state; controllers
+are keys too, named by position; screens declare their actions, and
+`cargo shuyi check --target` checks they fit; a target without a
+keyboard has its buttons in the keymap file. Read it first: the engine's
+own screens, widgets and examples keep those rules too. This skill holds
+only what is the engine's own. The rules come from the game this engine
+came from (game ADR-0015, ADR-0031, ADR-0034, ADR-0053), made generic by
+its ticket 1106.
 
 ## Only these places know about keys and buttons
 
@@ -39,48 +28,31 @@ ADR-0031, ADR-0034, ADR-0053). The game's ticket 1106 made them generic:
 - The rebinding screen, which captures keys through the helpers it is
   given.
 
-Everywhere else, code reacts to `FrameInput` actions (`is_pressed`,
+Everywhere else, engine code reacts to `FrameInput` actions (`is_pressed`,
 `is_held`) and nothing else. `cargo shuyi check-keys` enforces this in a
 game's code; it doesn't scan the engine's own code yet (ticket 2006).
 
-## Rules
+## The engine's own rules
 
-1. **React to actions, not keys.** Need a new kind of input? The *game*
-   adds an action to its `ActionSet`; the engine adds a `UiAction` only
-   if every game's widgets need it, and with an ADR.
-2. **Name keys in text through the keymap.** Help bars use `HelpKeys`
-   (`key_name`, `help_line`), which name the key or button for the device
-   pressed last. Data text uses `{ActionName}` placeholders. Never write
-   "F", "[Space]", "Esc", "arrows" or "WASD" into player text.
-3. **Expect any key, or none.** An optional action may have no key; text
-   shows the language's "not mapped" word. Two actions may share a key in
-   one layout.
-4. **Defaults belong to the game.** An engine example's defaults live in
-   its own keymap file. The engine never picks a game's keys.
-5. **Fixed keys are data.** A key that can't be rebound (the game's
-   Escape-is-Cancel) is the `ActionSet`'s `fixed_keys`, never a match in
-   engine code.
-6. **Held and repeated input** comes from `InputState` (repeat timings in
-   the keymap file). Don't time presses in a screen.
-7. **Controllers are keys too.** Every rule applies to buttons. Code and
-   data name buttons by position (`South`, not "A"). Only the pad layer
-   holds button names per controller kind.
-8. **Pointer and analog input** (parked ticket 1121) become rebindable
+1. **A new `UiAction` only if every game's widgets need it**, and with an
+   ADR. A game that needs more input adds an action to its own
+   `ActionSet`.
+2. **An engine example's defaults live in its own keymap file.** The
+   engine never picks a game's keys.
+3. **The input types are generic over a game's actions**: `Keymap<A>`,
+   `InputState<A>`, `FrameInput<A>`, `PlayerKeys<A>`, `HelpKeys<A>`.
+4. **Pointer and analog input** (parked ticket 1121) become rebindable
    actions and axes, quantized to integers for deterministic records.
 
 ## Tests
 
-- Unit tests of screens feed `FrameInput`s of actions.
-- Harness scripts may press default keys of the example or toy game.
-- A test about rebinding rebinds in the test and presses the new key.
+`shuyi-input`'s tests section holds for the engine's tests too. Harness
+scripts in the engine may press the default keys of the example or toy
+game.
 
 ## Checklist before pushing input work
 
-- [ ] No key or button types outside the allowed places.
-- [ ] No key names in player text or data; helpers and placeholders are
-      used.
-- [ ] Works with a rebound key and with no key for optional actions.
-- [ ] A new or changed screen declares its actions (`Screen::actions`),
-      and `cargo shuyi check --target all` passes.
-- [ ] Text that names a key reads right on a controller.
-- [ ] `check-keys` passes, once it exists here.
+- [ ] No key or button types outside the places above.
+- [ ] `shuyi-input`'s checklist, for each engine screen, widget and
+      example the change touches.
+- [ ] `check-keys` passes on the engine's own code, once it scans it.
