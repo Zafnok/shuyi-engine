@@ -61,6 +61,17 @@ same command again; 1, it ran and found something wrong.
 `GameTools` gives them (a game made with `shuyi new --template grid`
 has one).
 
+## The skills
+
+`.claude/skills/` holds the engine's skills, a folder each: how to do a
+kind of task on this game (start, test, add a screen or a stage, replay
+a bug, balance it, ship it), what to run, and what each problem code
+means. Before a task, read the skill it needs (`SKILL.md`); its worked
+example (`example.ron`) is the same steps as commands, which the engine's
+CI runs on a new game. `cargo shuyi add <module>` adds a module's skill
+when it turns the module on. `cargo shuyi check-skills .claude/skills`
+checks a skill the game writes for itself.
+
 ## The short path
 
 The game is on the engine's short path: `crates/game/src/lib.rs` names

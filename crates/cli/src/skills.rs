@@ -504,11 +504,13 @@ fn frontmatter_problems(folder: &str, frontmatter: &Frontmatter) -> Vec<String> 
     problems
 }
 
-/// The code and the prose of `text`, each piece with the line it starts on
-/// (from 1). A fenced block's lines are code, and so is an inline span
-/// between backticks, which may wrap onto the next lines of its paragraph;
-/// the rest of each line is prose.
-fn split_code(text: &str) -> (Vec<(usize, String)>, Vec<(usize, String)>) {
+/// Pieces of a text, each with the line it starts on (from 1).
+type Pieces = Vec<(usize, String)>;
+
+/// The code and the prose of `text`. A fenced block's lines are code, and
+/// so is an inline span between backticks, which may wrap onto the next
+/// lines of its paragraph; the rest of each line is prose.
+fn split_code(text: &str) -> (Pieces, Pieces) {
     let mut code = Vec::new();
     let mut prose = Vec::new();
     let mut fenced = false;
@@ -537,17 +539,14 @@ fn split_code(text: &str) -> (Vec<(usize, String)>, Vec<(usize, String)>) {
                     None => Some((i + 1, String::new())),
                 };
             }
-            match &mut span {
-                Some((_, text)) => {
-                    if !text.is_empty() {
-                        text.push(' ');
-                    }
-                    text.push_str(part);
+            if let Some((_, text)) = &mut span {
+                if !text.is_empty() {
+                    text.push(' ');
                 }
-                None => {
-                    outside.push_str(part);
-                    outside.push(' ');
-                }
+                text.push_str(part);
+            } else {
+                outside.push_str(part);
+                outside.push(' ');
             }
         }
         prose.push((i + 1, outside));

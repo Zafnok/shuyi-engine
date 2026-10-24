@@ -292,3 +292,17 @@ fn a_pack_reads_its_folders_and_leaves_files_beside_them() {
     assert_eq!(Pack::read(&dir.join("nope")), Ok(Pack::default()));
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn a_code_span_that_wraps_is_still_code_and_a_lone_backtick_ends_with_its_paragraph() {
+    let body = "Run `cargo shuyi\nsoak --json` here, then a lone ` backtick.\n\n\
+                Prose again: shuyi soak, and [a link](gone.md).\n";
+    let problems = found(&pack(vec![good("shuyi-test", body)]), None);
+    assert_eq!(
+        problems,
+        [
+            "shuyi-test/SKILL.md:9: `shuyi soak`: no such command (`shuyi` alone lists them)",
+            "shuyi-test/SKILL.md:12: gone.md: no such file in the skill pack",
+        ]
+    );
+}
