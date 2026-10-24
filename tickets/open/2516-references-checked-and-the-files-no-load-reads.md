@@ -49,6 +49,13 @@ What Shuyi has today:
 - Sizes: 2204's `shuyi bake` prints a pack's total size, 3004 writes
   sizes to `export-report.json`, and 3008 gates a package's size. None
   lists the files a game never reads, or the biggest ones.
+- 2511 (done) added the short path: `shuyi_cli::BasicTools`
+  (`crates/cli/src/basic.rs`), `BasicData` with `formats()`
+  (`crates/ui/src/basic.rs`) and `BasicGame::bundle`
+  (`crates/platform/src/basic.rs`). The blank template's tool program
+  is `examples/tools.rs`, on `BasicTools`.
+- 2509 (done) gave the contract's problems stable codes and help
+  (`crates/cli/errors/`).
 
 Hello, Grid shows the second gap: it ships `font/Terminus-LICENSE.txt`
 and `font/atlas_1bit.bin` (`examples/hello-grid/files/font/`), and
@@ -56,13 +63,11 @@ and `font/atlas_1bit.bin` (`examples/hello-grid/files/font/`), and
 
 What is planned:
 
-- 2511 (MVP) adds `shuyi_cli::BasicTools` and `BasicData`, and removes
-  the blank template's `tools.rs`; this ticket waits for it;
 - 2220's `Hot<T>` records the files each decode read;
 - 2228's `Bundle::versions` reads every layer's copy of a file through a
   helper shared with `Bundle::bytes`;
 - 2229 adds `.meta` settings files beside files;
-- 2509 gives problems stable codes; 2515 lists each format's schema;
+- 2515 lists each format's schema;
   2517 adds `CheckOutput::warnings`; 2230 adds JSON and CSV tables;
 - 3004 and 3008 measure packages.
 
@@ -225,14 +230,33 @@ None.
   as read when its file was read, and a `_folder.meta` when any file in
   its folder or below was read. If not, the ADR states that rule, and
   2229 follows it.
-- **Problem codes (2509):** the dangling-reference error and the
-  unread-file warning get codes and help.
+- **Problem codes (2509, done; ADR-0028):** the dangling-reference
+  error is a `Problem` with a content code of its own: a new row
+  (`dangling-reference`, the next free `SH20nn`) in
+  `crates/cli/src/contract/codes.rs`'s `TABLE`, its constant in
+  `shuyi_assets::error::codes` and its page in `crates/cli/errors/`
+  (`docs/contract.md`, *Problem codes*). The files report (`files`) is
+  not a problem and gets no code.
 - **Either order with 2515:** if 2515 is done, `Ref<K>` implements
   `JsonSchema` behind its `schema` feature: a string whose description
   names kind `K`. If not, 2515 adds that impl with the feature.
 - **Either order with 2517:** the unread files stay in `files` and do
   not go in `CheckOutput::warnings`: they are a report about one run,
   not a problem of a file.
+- **Either order with 2235** (nine-slices in a data file): if 2235
+  is done, its entries' image paths are plain bundle paths: make them
+  `Ref<ImageInfo>` (the `image` kind), so `check` gives a missing
+  image its file and line. If not, nothing to do (2235 writes them
+  as `Ref`s).
+- **Either order with 3004:** if 3004 is done, `shuyi export` writes
+  the files report's `unread` and `largest` into `export-report.json`,
+  taken from a plain `shuyi check` run (`check --target`, which export
+  runs first, makes no files report), with a test. If not, nothing to
+  do (3004's clause says so).
+- **Either order with 3008:** if 3008 is done, a package over budget in
+  `shuyi bench` names the files report's `largest` and `unread` files,
+  taken from `check`'s answer, not counted again. If not, nothing to do
+  (3008 does it, its own clause says so).
 - **Public types (ADR-0039):** the new public types follow it.
 - **Docs:**
   - `docs/formats.md` gets a section "References": `Ref<K>`, what is
@@ -262,8 +286,11 @@ writing `assets`. Say so in the PR.
 - map objects read into a `Ref<K>` (parked 2232 marks its map's file
   when it lands);
 - JSON and CSV tables (2230) and schemas of formats (2515);
-- removing unread files from a package or a pack (3004, 2204);
-- a report per target (3007's layers);
+- removing unread files from a package or a pack: the report never
+  removes anything (the ADR above), and no ticket plans it (3004 and
+  2204 don't); a ticket if a game asks;
+- a report per target, over 3007's `assets@<target>/` layers: a
+  follow-up if a game asks;
 - ids that survive a rename;
 - the inspector (2507).
 
@@ -274,8 +301,8 @@ writing `assets`. Say so in the PR.
    `Formats::decode`, `Formats::load`), `ron.rs`, `error.rs`,
    `crates/cli/src/contract/check.rs`, `contract/bake.rs`
    (`check_baked`), `game.rs`, `contract/fake.rs`, and 2511's
-   `BasicTools` and `BasicGame`. Check whether 2220, 2228, 2229, 2501,
-   2509 and 2515 are in `tickets/done/`.
+   `BasicTools` and `BasicGame`. Check whether 2220, 2228, 2229, 2501
+   and 2515 are in `tickets/done/`.
 2. Write the ADR.
 3. Add `refs` with `Ref<K>`, `Reference` and `collecting`, then the
    marking, the dropping and the line search in `decode_with`.

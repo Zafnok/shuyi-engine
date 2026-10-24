@@ -1,6 +1,6 @@
 ---
 id: "2901"
-title: "Research: better game images with machine learning (learned compression, upscaling) and JPEG XL, as a separate repository with a loader plugin"
+title: "Research: better game images with machine learning (learned compression, upscaling), as a separate repository with a loader plugin, measured against JPEG XL"
 type: research
 milestone: After MVP
 model: opus-5.5
@@ -37,7 +37,12 @@ Starting points to check on the day, from memory and not verified:
   each image, and its decoders are small enough to run in a game.
   Standards work on learned image coding also exists.
 - **JPEG XL.** It is often far smaller than PNG for the same pixels,
-  lossless included. A pure-Rust decoder exists.
+  lossless included. A pure-Rust decoder exists. Decoding it is
+  2203's, in the engine behind a feature, so here it is the baseline,
+  and the separate repository holds only what 2203 doesn't ship
+  (encoding JPEG XL at bake, say). **Either order with 2203:** if 2203
+  is done, measure its JPEG XL `Format`; if not, measure the decoder
+  2203 names, and 2203 still adds it to the engine.
 - **GPU texture compression and "supercompressed" textures.** These
   reduce memory, not only file size.
 - **Upscaling.** Neural upscalers for painted art. For pixel art, the

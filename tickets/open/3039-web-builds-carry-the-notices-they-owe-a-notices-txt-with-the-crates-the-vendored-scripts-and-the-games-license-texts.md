@@ -203,10 +203,35 @@ None. Meeting these licenses' notice duties isn't a product choice.
   `index.html`. Whichever lands second keeps the `rel="license"` link
   and the scripts' headers. If 3052 lands first, `shell.js` goes in the
   table as the engine's own; if second, 3052 adds it.
+- **2601** (HTTP requests, parked): its web backend, a follow-up
+  ticket 2601 writes, adds `http.js` to `SHELL`. If that ticket is done
+  first, `http.js` goes in the table as the engine's own here; if not,
+  it adds its row, and the test above fails until it does.
 - **Other tickets that add a file to `SHELL`** (3043's `lifecycle.js`,
-  2519's `download.js` and others): if one is done first, its file goes
-  in the table as the engine's own here. If this ticket is done first,
-  that ticket adds its row, and the test above fails until it does.
+  2519's `download.js`, 2349's `languages.js`, 2377's `motion.js`,
+  2522's `net.js`, 3033's `storage.js` and others): if one is done
+  first, its file goes in the table as the engine's own here. If this
+  ticket is done first, that ticket adds its row, and the test above
+  fails until it does. 3033 (parked) also removes `quad-storage.js` and
+  `sapp_jsutils.js`: if 3033 is done, list only the vendored files
+  `SHELL` still holds; if not, 3033 drops their rows.
+- **1134** (the skill pack): if it is done, its `shuyi-ship` skill
+  says that `shuyi web` writes `NOTICES.txt` beside the page, what it
+  lists, and that a game names its own license texts in the `notices`
+  part of `shuyi.ron`. If not, nothing to do (1134 teaches it, as its
+  scope says).
+- **2501** (templates as data): if 2501 is done, the templates'
+  `notices` part goes in the `base` part's `shuyi.ron` in
+  `templates/shuyi-default/`, not in the two folders above. If not,
+  2501 carries it over (its scope says so).
+- **2739** (parked, the snake example): if 2739 is done, its
+  `examples/snake/shuyi.ron` gets the `notices` part with its Terminus
+  text, as Hello, Grid's does, and Pages links its `NOTICES.txt` beside
+  it. If not, nothing to do (2739 does it).
+- **3058** (parked, screen reader output on the web): its plugin
+  `access.js`, if it writes one, joins `SHELL`. If 3058 is done first,
+  `access.js` goes in the table as the engine's own here; if not, 3058
+  adds its row, and the test above fails until it does.
 
 **Out (do not do):**
 - packages other than the web build, and the SDL_GameControllerDB that

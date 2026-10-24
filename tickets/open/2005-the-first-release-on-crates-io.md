@@ -27,21 +27,22 @@ A crate name on crates.io is first come, first served, and `shuyi-*` are
 the names Nick chose (`docs/decisions.md`, *The name*).
 
 Nick, 2026-10-20 (`docs/decisions.md`, *a second comparison*): the first
-release waits for the protections a release needs. So this ticket waits
-for 2010 (API breaks named on every PR), 2011 (Dependabot, and no
-publishing token in CI), 2012 (the pinned Rust), 2013 (public types that
-can grow), 2014 (the game built against each change), 2016 (governance
-and the repository's settings), 2509 (problem codes), 2513 (zero setup
-on Linux) and 2808 (docs agents can read).
+release waits for the protections a release needs. Its `blocked_by`
+holds the tickets that add them: 2010 (API breaks named on every PR),
+2011 (Dependabot, and no publishing token in CI), 2012 (the pinned
+Rust), 2013 (public types that can grow), 2014 (the game built against
+each change), 2016 (governance and the repository's settings), 2509
+(problem codes), 2513 (zero setup on Linux) and 2808 (docs agents can
+read).
 
 ## Nick input
 
 **Sign-off:** before `cargo publish` runs, Nick says go. Publishing can't
 be undone (a version can be yanked, never deleted), and it is the
-engine's first public release. Nick's contribution policy (the game's
-0059, *Still open* in `docs/decisions.md`) should be settled first,
-because `CONTRIBUTING.md` says it is decided "before the engine's first
-public release".
+engine's first public release. Nick's contribution policy is settled
+first: 1132, in this ticket's `blocked_by`, asks him (the game's 0059,
+*Still open* in `docs/decisions.md`). `CONTRIBUTING.md` says it is
+decided "before the engine's first public release".
 
 The sign-off also:
 - asks how often the engine releases: on a fixed rhythm (Bevy ships
@@ -66,7 +67,7 @@ The sign-off also:
   `categories`, `readme`, `documentation`, and the two license files in
   each crate's package (`cargo package --list` shows them).
 - **A version policy as an ADR:** semver, 0.x while the API moves, and
-  one version for all `shuyi-*` crates. It says:
+  one version for `shuyi` and all `shuyi-*` crates. It says:
   - **What a breaking change needs:** a `Breaking:` line and a
     `migration` block under it in the ticket's completion notes (2804),
     a version bump after the first release (`work-ticket` §3), and a
@@ -152,6 +153,9 @@ The sign-off also:
     update's `directories` there and `cargo xtask check-pins`' reading
     of the templates' `Cargo.toml` files (both from 2011). 2011's
     `check-pins` fails until the Dependabot entry follows.
+    The `dependency-upkeep` skill's step 3 (`templates/*/Cargo.toml`)
+    and the docs map's pair rows (`docs/README.md`) name the new
+    folders too; no gate checks them.
   - `targets/` at the root is outside the crates that embed it too:
     `shuyi-cli` (`TARGETS`, `crates/cli/src/contract/target.rs:33`, with
     `include_dir`) and, once 3053 lands, `shuyi-app`
@@ -163,6 +167,26 @@ The sign-off also:
   - `crates/cli/errors/` (2509's pages, embedded with `include_str!`)
     is inside the crate already: check that `cargo package --list` for
     `shuyi-cli` names it.
+  - `skills/` at the root (1134), which `shuyi new` copies into new
+    games, is outside `shuyi-cli`'s folder too. Copy it into the
+    package rather than move it (the plugin's marketplace entry and
+    the skill installers read it at the root), and check `cargo
+    package --list` names one skill's `SKILL.md`.
+  - **From 2003 (done):** `shuyi modules` and `shuyi add` read the
+    catalog of the engine the game builds with. `catalog::engine_root`
+    takes the folder two above the `shuyi` package the game resolves,
+    and `Catalog::read` reads `docs/modules.ron` and `crates/*` there
+    (ADR-0041 §4). That works for a path or a git checkout, not for a
+    crates.io package, whose folder holds that crate alone. Once new
+    games take the released version, both would fail on every new
+    game, and CI wouldn't see it (its tests use path engines). So in
+    this PR: ship `docs/modules.ron` in a published package (`shuyi`,
+    the front door, fits); find the modules, with their README and
+    skill, from what cargo resolved for the game rather than under
+    `crates/`, including the ones the game hasn't turned on; record it
+    in an ADR that amends ADR-0041 §4; and test both operations on a
+    game whose `shuyi` comes from a registry (a local one in a
+    temporary folder), not a checkout.
 - New games then depend on the released version, not the repository's
   `main`. `Engine`'s `#[default]` (`crates/cli/src/contract/new.rs:79`,
   `Main` today) becomes the released version, and `main` stays only
@@ -174,25 +198,26 @@ The sign-off also:
   `vX.Y.Z`, a check that the tag is `v` and the workspace's `version`,
   the gates, then `cargo publish` of each crate in dependency order
   (`shuyi-core`, `shuyi-assets`, `shuyi-ui`, `shuyi-platform`,
-  `shuyi-app`, `shuyi-cli`; `xtask` is never published). No crates.io
-  token is stored anywhere (2011's ADR). The publish job runs in a
-  `release` environment with `permissions: id-token: write`. It gets a
-  short-lived token through crates.io trusted publishing
+  `shuyi-app`, `shuyi`, `shuyi-cli`; `xtask` is never published). No
+  crates.io token is stored anywhere (2011's ADR). The publish job runs
+  in a `release` environment with `permissions: id-token: write`. It
+  gets a short-lived token through crates.io trusted publishing
   (`rust-lang/crates-io-auth-action`, pinned by SHA). crates.io lets a
-  crate trust a workflow only once the crate exists. The six crates
+  crate trust a workflow only once the crate exists. The seven crates
   exist since the 0.0.0 placeholders (below), so the first real version
   goes out through the workflow too, with no publish by hand. Check
   this against crates.io's docs on the day. No job of the tag's run
   reads the Actions cache.
 - **Owners and the credential** (`docs/continuity.md`, 2016): if Nick
   chose a backup with crates.io rights in 2016 (option A), after the
-  release, Nick invites them to every `shuyi-*` crate (`cargo owner
-  --add <login> <crate>`, with a token that has the `change-owners`
-  scope, or the crate's settings page), and they accept on crates.io.
-  `docs/continuity.md`'s crates.io row names the owners, the trusted
-  publisher, and the placeholders' token (`docs/decisions.md`,
-  2026-10-21): its scope, its crates and that it was revoked, never its
-  value.
+  release, Nick invites them to `shuyi` and every `shuyi-*` crate
+  (`cargo owner --add <login> <crate>`, with a token that has the
+  `change-owners` scope, or the crate's settings page), and they accept
+  on crates.io. `docs/continuity.md`'s crates.io row names the owners,
+  the trusted publisher, and the placeholders' two tokens
+  (`docs/decisions.md`, 2026-10-21 for the six, 2026-10-22 for
+  `shuyi`): each one's scope, its crates and that it was revoked, never
+  its value.
 - **Docs at the release's version** (2808): the release workflow runs
   `cargo xtask llms --full-only --out <dir>` at the tag and attaches
   `llms-full.txt` to the GitHub release. `pages.yml` downloads, for each
@@ -201,6 +226,10 @@ The sign-off also:
   github.token }}`) into `public/v<x.y>/` before `cargo xtask llms`
   runs, and `cargo xtask llms` lists it under *Released versions*. A
   release without the file is skipped with a notice.
+- **The book after the release (2802, done before this, since 2808
+  is blocked by it):** the quick start's install line becomes `cargo
+  install --locked shuyi-cli` from crates.io (the `--git` form goes),
+  and Learn adds each crate's docs.rs link beside its `/api/` link.
 - **Either order with 3050** (release a game from a tag): if 3050 is
   done, the tag workflow also exports Hello, Grid through the engine's
   `.github/workflows/export.yml` (3050) for each `build` entry of
@@ -208,13 +237,32 @@ The sign-off also:
   already checked the tag). It attaches the packages, a `SHA256SUMS`
   and attestations (`actions/attest`; the repository is public) to the
   engine's GitHub Release. If not, 3050 adds this job when it lands.
+- **Either order with 2544** (`bots` folded into `playtest`, which
+  removes the `bots` operation and `GameTools::bots`): if 2544 is done,
+  nothing to do: its break came before the first release. If not,
+  nothing to do here: 2544 takes the version bump the policy asks for.
+- **Either order with 2906** (research on asset memory): if 2906 is
+  done, nothing to do: a build ticket of its ADR that changes the
+  `&'static` reads (`Bundle`, `DecodeCx`, `ImageId`) carries its own
+  `Breaking:` line. If not, nothing to do either: 2906 counts a change
+  of lifetimes after this release as a 0.x break, as this policy says.
 - The names are held already: on 2026-10-21 Nick had the six crates
-  published as empty 0.0.0 placeholders, owned by `Zafnok`
-  (`docs/decisions.md`). The first release is the next version of each
-  and replaces the placeholder's README and description. Nick wants no
-  real version until the engine is stable, so the placeholders don't
-  hurry this ticket; only a threat to the names would, and he is asked
-  first (`docs/decisions.md`, 2026-10-21).
+  published as empty 0.0.0 placeholders, and `shuyi` on 2026-10-22,
+  all owned by `Zafnok` (`docs/decisions.md`). The first release is the
+  next version of each and replaces the placeholder's README and
+  description. Nick wants no real version until the engine is stable,
+  so the placeholders don't hurry this ticket; only a threat to the
+  names would, and he is asked first (`docs/decisions.md`, 2026-10-21).
+- **From 2003 (done): the front door `shuyi`** (`crates/shuyi`), the
+  crate every new game names first (`ENGINE_CRATES`, `{{engine.shuyi}}`
+  in the templates). It is released here with the six: its crates.io
+  metadata like theirs, the one version, Nick's trusted-publisher and
+  owner clicks, and a place in the publish order after `shuyi-app`
+  (it re-exports `shuyi-core` to `shuyi-app`). `docs/decisions.md`
+  (2026-10-22) had 2003 publish its first real version, when 2003 was
+  to land after this release; it landed first, with no publishing set
+  up, so this ticket does it, through trusted publishing as that entry
+  asks. The sign-off says so to Nick.
 - In the game repository: a ticket that moves the game from the git
   revision to the released versions (`shuyi-engine.rev` and `cargo xtask
   engine-pin` retire, or stay for the local checkout only).
@@ -236,8 +284,8 @@ The sign-off also:
 - `shuyi upgrade` and the warnings in `shuyi check` that rest on the
   formats' rule (2517, after this release).
 - Checking a release against the last version on crates.io (`cargo
-  semver-checks --baseline-version`). The first release has nothing to
-  compare with, so this ticket writes that follow-up; 2010 checks each
+  semver-checks --baseline-version`): 2028 does it for each later
+  release, since this one has nothing to compare with. 2010 checks each
   PR against its base.
 
 ## Implementation steps
@@ -248,9 +296,7 @@ The sign-off also:
    `cargo publish --dry-run`.
 4. Run `cargo xtask repo-settings` (2016); every check must be `ok`.
 5. Ask Nick for the sign-off, then tag and publish.
-6. Write the game's ticket for moving to versions, and the follow-up
-   ticket for checking each later release against the last published
-   version.
+6. Write the game's ticket for moving to versions.
 
 If the PR grows well past 600 changed lines (the moved templates
 aside), move the `game` workflow's change to a follow-up ticket that
@@ -258,8 +304,8 @@ the game's ticket for the move waits for.
 
 ## Acceptance criteria
 
-- [ ] Every `shuyi-*` crate is on crates.io at the first version, with its
-      README, licenses and docs.
+- [ ] `shuyi` and every `shuyi-*` crate are on crates.io at the first
+      version, with their README, licenses and docs.
 - [ ] A tag publishes a release through CI.
 - [ ] The game's follow-up ticket exists.
 - [ ] `docs/continuity.md`'s crates.io row lists the owners and the
@@ -275,6 +321,8 @@ the game's ticket for the move waits for.
 - Unit, `crates/xtask/src/game.rs` (2014): a made-up lock with a
   crates.io `shuyi-*` source gives `[patch.crates-io]`; an unused patch
   is a break; the pin lag is read from the tag `v<version>`.
+- Integration (2003's operations): `shuyi modules` and `shuyi add` on
+  a game whose `shuyi` comes from a registry, not a checkout.
 
 ## Completion notes
 

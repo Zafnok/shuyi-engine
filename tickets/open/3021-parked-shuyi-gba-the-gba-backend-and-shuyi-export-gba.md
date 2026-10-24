@@ -60,8 +60,14 @@ None. Selling is 3018's question.
   `R1`, `Start`, `Select`; no pointer, touch or keyboard. It stays
   `planned` until 3022.
 - **The crate `shuyi-gba`** (`crates/gba`), `#![no_std]` with `alloc`,
-  implementing `Platform` (3003), with a catalog row (2003) and a
-  README:
+  implementing `Platform` (3003), with a README and its catalog row
+  (2003 wrote it, parked):
+  - **`check-modules`.** **Either order with 3010:** if 3010 is done,
+    the check already takes a crate whose row is in `docs/modules.md`'s
+    *Platform backends* table as a backend (its README and row, no
+    `[package.metadata.shuyi]`): give this crate no metadata. If not,
+    teach the check that here (unless 3024 did), with a fixture, as
+    3010 says;
   - **glyph cells** go to one tile background (BG0), from the font tile
     set baked by 3019. 240 × 160 is 30 × 20 cells of 8 × 8. Each cell's
     foreground and background roles pick a palette bank. More role pairs
@@ -75,11 +81,21 @@ None. Selling is 3018's question.
     flip, which the hardware lacks, becomes a transposed copy of the
     tile made at bake time and counted in its group's tiles (3019); an
     animated tile rewrites its entries when its frame changes. Sprite
-    items in world layers stay hardware sprites. If 2360 isn't done,
-    leave tile layers out and write a follow-up ticket blocked by 2360;
+    items in world layers stay hardware sprites. **Either order with
+    1120:** if 1120 is done, map its world layers as above; if not,
+    2360 isn't done either (it is blocked by 1120), so leave world
+    layers and tile layers out, draw the cells and the sprite items, and
+    write one follow-up ticket blocked by 1120 and 2360 that maps both,
+    with the viewport check below and the scroll-register test. If 1120
+    is done and 2360 isn't, leave tile layers out and write a follow-up
+    ticket blocked by 2360;
   - **sprite items** go to hardware sprites (OAM), from the baked
     images, through a shadow OAM copied by DMA in the vertical blank.
-    Rotated sprites (2335) use the affine sprites and their 32 matrices;
+    **Either order with 2335:** if 2335 is done, rotated sprites use
+    the affine sprites and their 32 matrices. If not, sprites have no
+    angle yet: leave the affine sprites out, and write a follow-up
+    ticket blocked by 2335 for them and their limit of 32 (or add the
+    GBA to the one 3024 wrote);
   - **a frame that doesn't fit** the hardware: more tile-layer items
     than backgrounds, a world layer whose viewport (1120) isn't the
     whole screen, more sprites than 128 or than the per-line limit
@@ -171,7 +187,7 @@ None. Selling is 3018's question.
 5. Write the exporter, and add the CI build and export.
 6. Export `hello-grid`, run the replay in the emulator, and fix what's
    found.
-7. Write the docs. Add the catalog row.
+7. Write the docs. Update the catalog row.
 
 ## Acceptance criteria
 
@@ -180,7 +196,7 @@ None. Selling is 3018's question.
 - [ ] The ROM's replay hash in the emulator equals the desktop run's (CI).
 - [ ] Host tests with the fake hardware:
   - [ ] a camera moving 3 px writes 3 to the scroll register, and touches
-        no tile;
+        no tile (if 1120 isn't done, the world-layer follow-up has it);
   - [ ] 130 sprite items show 128, and `PresentStats` counts 2 dropped;
   - [ ] the storage passes `shuyi_ui::storage::power_cut_suite` (3045)
         over the fake save memory, with a cut at any byte or sector

@@ -41,9 +41,9 @@ What Shuyi has today:
   uses. It is `f32` and in `shuyi-ui`, so a simulation can't use it
   (`AGENTS.md` rule 5: no floats), and `shuyi-core` can't reach it.
 - **A pointer that promises more.** ADR-0004 §3 says "Easing curves
-  come from the cinematic module". 1123 and 2104 leave tweens on sprites
-  out because "the cinematic easing covers them". It is one curve, so
-  it doesn't.
+  come from the cinematic module", which has one curve. 1123 and 2104
+  once left tweens on sprites out because "the cinematic easing covers
+  them"; their Out lines now point at this ticket's `Tween`.
 - **Motions written by hand,** with time in `f32` seconds in some and
   whole milliseconds in others:
   - `Rgb::lerp(self, other, t: f32)` (`crates/ui/src/frame/color.rs:37`);
@@ -108,7 +108,7 @@ None.
      sit inside other RON files (a cinematic, 2330's `.ui.ron`, a game's
      data). No asset kind and no extension, so ADR-0007 and ADR-0019 are
      untouched;
-  6. a sequence of tweens (the follow-up below) orders the steps of one
+  6. a sequence of tweens (2135's `Sequence`) orders the steps of one
      value; `cinematic::Timeline` orders the shots of a cinematic. A
      shot may hold tweens for what moves inside it. Neither replaces the
      other;
@@ -232,54 +232,43 @@ None.
   tests, so nothing the game draws changes. Its doc comment points at
   `Ease::Smooth`.
 - **Tickets this one changes**, in the same PR:
-  - 1123's and 2104's Out lines ("tweens on sprites (the cinematic
-    easing covers them)") point at 2109's `Tween` instead;
   - **either order with 1119** (parked; `Fx` and `FxVec2` in
     `shuyi_core::fx`): if 1119 is done, add `Lerp` for `Fx` and `FxVec2`
-    here, rounding as `Fx` does. If not, add a line to 1119's Scope:
-    "`Lerp` (2109) for `Fx` and `FxVec2`";
+    here, rounding as `Fx` does. If not, nothing to do: 1119's Scope
+    implements them when it lands (its clause on 2109);
   - **either order with 2115:** if 2115 is done, the module docs of
     `shuyi_core::timer` (`crates/core/src/timer.rs`) gain a line that
     points at `shuyi_core::ease`: a timer says when, a tween says how
     far. If not, 2115 writes it (its scope says so). Either way the
     line sits in `timer`'s docs, as 2115's clause has it;
+  - **either order with 2369** (parked; a light cycle of named lights
+    in `shuyi-assets`): if 2369 is done, its cycle file's stops gain
+    `ease: Ease` (default `Linear`): the blend's `permille` goes
+    through the curve before `Light::mix`, with a test and the
+    format's row in `docs/formats.md` updated. If not, nothing to do
+    (2369 adds `ease` when it is built, as its clause says);
   - **either order with 1134 and 2802:** if 1134 is done, its
     `shuyi-animate` skill (ADR-0005 §3) gets a section on ease curves
     and tweens. If 2802 is done, the book gets a section where its
     chapters cover drawing over time, as 2802 asks of every public
     feature. If either isn't done, it covers `ease` when it is written.
-- **Two follow-up tickets**, written in this PR (the `write-ticket`
-  skill, After MVP):
-  - **`Sequence` and `Points`** (block 21xx):
-    - `shuyi_core::ease::Sequence<T, E = Ease>`, serde: the tweens of
-      one value, one after another. `Sequence::new(start)`, then
-      `.then(to, duration, ease)` (from where the step before ended),
-      `.wait(duration)` (a hold) and `.repeat(Repeat)`. `value_at(t)`,
-      `length()` (one pass, the sum of its steps), `done_at()` and
-      `finished_between(from, to)`, meaning what `Tween`'s mean, and
-      `step_at(t) -> Option<(usize, u32)>`. Values that move together
-      are several tweens started together: no parallel step. It stays
-      under `shuyi_core::ease`, not at the root, because the parked
-      MIDI module plans `shuyi_midi::sequence::Sequence` (2205);
-    - `shuyi_core::ease::Points`, a curve through points for a game's
-      own shape (GameMaker's Animation Curves, Unity's `AnimationCurve`,
-      with straight segments): `(x, y)` pairs in thousandths, as
-      `crates/assets/src/lighting.rs` counts fractions; `x` rising
-      strictly from 0 to 1000, `y` from -1000 to 2000;
-      `Points::new(Vec<(u16, i32)>) -> Result<Points, PointsError>`,
-      serde through it (`try_from`) so a bad list fails at load and
-      says which rule it breaks; `Default` is the straight line; it
-      implements `Easing`, so `Tween<T, Points>` works.
-  - **The motions written by hand moved onto `ease`** (`Rgb::lerp`, the
-    cursor's pulse, walk frames, music fades, `type_on`, `Pan`), each
-    kept to today's numbers, so no `frame-png` or scene snapshot moves
-    and the game sees no change.
+- **Two follow-up tickets**, written before this one is worked (After
+  MVP), each blocked by it:
+  - **2135:** `Sequence` and `Points` in `shuyi_core::ease`, the tweens
+    of one value one after another and a curve through points for a
+    game's own shape;
+  - **2136:** the motions written by hand moved onto `ease` (the grid
+    cursor's pulse, music fades, `Pan`, and 2339's
+    `transition::progress` if 2339 landed first), each kept to today's
+    numbers, so no `frame-png` or scene snapshot moves and the game
+    sees no change. It says why `Rgb::lerp`, `type_on` and the idle and
+    walk frames stay as they are.
 - **What changes for the game:** nothing. The API grows, and
   `ease_in_out` and `Rgb::lerp` stay as they are. The PR says so.
 
 **Out (do not do):**
-- `Sequence` and `Points`, and moving the motions written by hand onto
-  `ease`: the two follow-ups above;
+- `Sequence` and `Points` (2135), and moving the motions written by
+  hand onto `ease` (2136): the two follow-ups above;
 - CSS `cubic-bezier` curves, steps that jump at the start, and Godot's
   `TRANS_SPRING` (a follow-up each, if a game asks);
 - timers, countdowns and cooldowns in steps or turns (2115). A generic
@@ -298,9 +287,9 @@ None.
 ## Implementation steps
 
 1. Read ADR-0004 §3, ADR-0024 §3, `crates/core/src/lib.rs`,
-   `crates/ui/src/cinematic.rs`, `crates/ui/src/frame/color.rs`, 2013's
-   ADR if it exists, and easings.net's formulas. Note the date you read
-   them.
+   `crates/ui/src/cinematic.rs`, `crates/ui/src/frame/color.rs`,
+   ADR-0039 (2013's: public types that can grow), and easings.net's
+   formulas. Note the date you read them.
 2. Write the ADR, ADR-0004's `Status:` line and the two index rows.
 3. Write `ONE`, `Family`, `Ease` and `Easing`: the `In` curves first,
    then `Out` as their mirror, then `InOut` and `OutIn`, then `Steps`.
@@ -311,10 +300,11 @@ None.
    round trips.
 6. Write `shuyi_ui::ease::ease_f32` and `Lerp` for `Rgb`.
 7. Write the name table and the doctest, and the crate docs' line.
-8. Make the ticket edits above and write the two follow-up tickets.
+8. Make the ticket edits above.
 9. Run the gates, the `no_std` build included. Expect about 600
    changed lines, not counting `tables.rs`, the snapshot and the ticket
-   files. `Sequence` and `Points` are split out to keep it there.
+   files. `Sequence` and `Points` are split out (2135) to keep it
+   there.
 
 ## Acceptance criteria
 
@@ -353,9 +343,8 @@ None.
       scene snapshot in the repository changes.
 - [ ] The ADR is written, ADR-0004's `Status:` line is updated, and
       `docs/adr/README.md` has the new row and ADR-0004's changed one.
-- [ ] 1123's and 2104's Out lines point at 2109's `Tween`; 1119's
-      Scope has the `Lerp` line, or `Fx` and `FxVec2` implement `Lerp`.
-- [ ] The two follow-up tickets are in `tickets/open/`.
+- [ ] If 1119 is done, `Fx` and `FxVec2` implement `Lerp`, and `mix`
+      hits both ends exactly.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

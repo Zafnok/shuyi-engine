@@ -6,7 +6,7 @@ milestone: "Engine: editor"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2506", "1124", "2515", "2907", "2521"]
+blocked_by: ["2506", "2220", "2515", "2907", "2521"]
 nick_input: sign-off
 completed:
 ---
@@ -59,9 +59,13 @@ comments on how it feels and looks.
 - **The live view:**
   - the running game's frames;
   - a list of the channels the game offers, each with a checkbox;
-  - pause, step and slow motion.
+  - pause, step and slow motion;
+  - going back, as 2506's live view lists it.
 
-  All of these go through the contract operations 2506 adds.
+  Pause, step and going back are actions sent as `act` steps over the
+  live link (2521): 2316's `DebugPause` and `DebugStep`, and the
+  `DebugBack` 2506 names. The rest go through the contract operations
+  2506 adds.
   Gizmos come from the game as data and are drawn by the editor's own
   painter, so the editor's look doesn't need the game's skin.
 - **The tree:** the screen stack, top first, with each screen's
@@ -71,10 +75,14 @@ comments on how it feels and looks.
   a game builds with `Headless::with_scene`). That holds whatever store
   the stage keeps them in: a plain struct behind `TurnRules`, 1119's
   `Arena<T>` or `shuyi-ecs`'s `World` (2107). The tree reads the dump,
-  never a store, as 2904's ADR says. The live link doesn't carry
-  `data` (2521's Out), so 2506 adds it. Under a stage that has them,
-  its world layers (1120). Choosing a node turns on the matching
-  channel and, if the node has a file, opens it in the inspector.
+  never a store. **Either order with 2904:** if 2904 is done, its
+  ADR's part on what the tools read says the same, so cite it; if
+  not, nothing changes here (2904's ADR writes the rule down, as its
+  own clause says). The live link doesn't carry `data` (2521's Out),
+  so 2506 adds it. **Either order with 1120:** if 1120 is done, under
+  a stage that has them, its world layers; if not, nothing here (1120
+  adds them). Choosing a node turns on the matching channel and, if
+  the node has a file, opens it in the inspector.
 - **The inspector** over settings as data (ADR-0009 §4):
   - it opens a module's RON settings file;
   - it shows fields by the file's schema, with a text box per number
@@ -84,7 +92,7 @@ comments on how it feels and looks.
     window 2506 picks says how elsewhere; typing follows 2346's name
     box);
   - it writes the file back, keeping comments and field order;
-  - the game reloads it by 1124's hot reload;
+  - the game reloads it by 2220's hot reload (`Hot<T>`);
   - a load error from the reload shows next to the field.
 
   The schema of each file comes from the format that reads it, as
@@ -93,7 +101,11 @@ comments on how it feels and looks.
   variants for the drop-downs come from 2907's ADR (one description of
   a game's types). 2506 adds only what the inspector needs beyond them.
 - **Undo and redo** within a session, per **[2506]**.
-- A **README** section and a skill entry (1134) on `shuyi edit`.
+- A **README** section on `shuyi edit`.
+- **The skill pack. Either order with 1134:** if 1134 is done, its
+  `shuyi-test` skill gets a section on `shuyi edit`, beside attaching
+  to a running build (2521). If not, nothing to do (1134 writes it, its
+  own clause says so).
 
 **Out (do not do):**
 - the graph panel (2508);
@@ -105,15 +117,15 @@ comments on how it feels and looks.
 
 ## Implementation steps
 
-1. Read the ADRs of 2506, 2515, 2907, 2904 (what the tools read) and
-   2521; the code of 2521, 2315 and 2316; 1129's contract and 1124's
-   hot reload.
+1. Read the ADRs of 2506, 2515, 2907, 2904 (what the tools read, if
+   2904 is done) and 2521; the code of 2521, 2315 and 2316; 1129's
+   contract and 2220's hot reload.
 2. Add the contract operations 2506 named, with their JSON and CLI
    forms and their tests.
 3. Build the shell in **[2506]**, with `shuyi edit` starting the game
    and connecting.
 4. Build the live view, then the tree, then the inspector.
-5. Write the README section and the skill entry.
+5. Write the README section, and the skill section if 1134 is done.
 6. Run the gates.
 
 ## Acceptance criteria

@@ -59,7 +59,8 @@ None.
   and `src/stack.rs` (read them at the game's `main`; they are tested
   on the host with a painted buffer).
 - The size from the game's config; the high-water mark in the
-  backend's API and in the on-device report (3011).
+  backend's API (`stack_high_water()`). 3011 waits for this ticket,
+  and its on-device report logs the mark.
 - `docs/targets/playdate.md`: why, the size the game measured, and how
   to pick one.
 

@@ -29,10 +29,11 @@ scripts/setup-linux.sh`. 1133's scope said the dev containers should
 register the server once both exist, and 2513's **Out** leaves it to
 1133. 1133 landed first, so this ticket does it once 2513 is done.
 
-A container has no installed `shuyi` (2513 leaves `cargo install` to
-2005), so it runs the CLI as 2513 runs `doctor`: `cargo run -q -p
-shuyi-cli --` in the engine, `cargo shuyi` in a template (the alias runs
-the game's own tool program, which serves `mcp` too).
+A container has no installed `shuyi`, before or after the first
+release (2005), so it runs the CLI as 2513 runs `doctor`:
+`cargo run -q -p shuyi-cli --` in the engine, `cargo shuyi` in a
+template (the alias runs the game's own tool program, which serves
+`mcp` too).
 
 Since 2535, `mcp install` ends by running the entry it wrote with
 `--ready`, which builds the server and the game's tool program. So the
@@ -61,7 +62,8 @@ None.
   container registers the server.
 
 **Out (do not do):**
-- installing `shuyi` in the container (2005);
+- installing `shuyi` in the container: it runs from source, as
+  Context says, and the first release (2005) changes nothing there;
 - a network transport for the server (1133: stdio only);
 - changing `mcp install` itself. If it can't work in a container (it
   asks on a terminal the container has none of: `--yes` doesn't ask),
@@ -89,10 +91,16 @@ None.
 
 ## Tests required
 
-- Unit: if 2513 added a test that reads the `devcontainer.json` files
-  (that each parses as JSON, names the setup script), extend it: each
-  `postCreateCommand` ends with `mcp install --yes` and its `--command`
-  as **In** says.
+- Unit: 2513's test in `crates/cli/src/contract/new/tests.rs` reads
+  every `devcontainer.json` and checks that its `image` and
+  `postCreateCommand` equal the engine's. The commands now differ on
+  purpose, so change that check: the `image` still equals the engine's;
+  every `postCreateCommand` equals the engine's up to the command that
+  runs `mcp install` (the setup script, then `. "$HOME/.cargo/env"`);
+  the engine's then ends with `mcp install --yes --command "cargo run
+  -q -p shuyi-cli --"`, and each template's with `cargo shuyi mcp
+  install --yes`. If 2513's test checks something else, change it to
+  check the same.
 
 ## Completion notes
 

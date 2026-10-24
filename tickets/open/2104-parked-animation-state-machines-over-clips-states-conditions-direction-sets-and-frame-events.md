@@ -36,6 +36,12 @@ The rule from [ADR-0004](../../docs/adr/0004-assets-standard-files-in-the-engine
 A tick simulation (1119) stores a small `AnimState` per thing, so
 replays are exact.
 
+No code here uses 1119: `AnimState` and `step` take a plain step
+number, which a game counts from `FrameInput::ticks()`, and the toy
+needs no tick simulation. 1119 stays in `blocked_by` only because the
+Parked note names it: whoever unparks this ticket before 1119 is done
+drops it from both.
+
 ## Nick input
 
 None.
@@ -74,6 +80,10 @@ None.
     `crossed`; if not, write `crossed` in `shuyi_core::timer` with the
     rule and tests in 2364's Scope (creating the module if 2115 hasn't),
     and 2364 uses it.
+    **Either order with 2105:** if 2105 is done and 2364 isn't, 2105
+    wrote `crossed` in `shuyi_core::timer`: use it, and don't write it
+    again. If not, nothing more to do (2105 uses the `crossed` this
+    ticket writes).
   - checks, with file and line: an unknown clip, parameter or state;
     `ended` on a looping clip (an error); a state nothing reaches (a
     warning); a parameter of the wrong type in a condition.
@@ -91,25 +101,31 @@ None.
   `splash`, `waves` and `wind`) with idle, walk in four directions, and
   a one-shot action that returns to idle when it ends.
 - **The debug readout:** if 2316 is done, a helper that a screen's
-  readout calls to show `state name, clip, frame`. If not, skip it and
-  say so in the Completion notes.
+  readout calls to show `state name, clip, frame`. If not, skip it:
+  2316 adds it when it is worked (its scope says so).
+- **The graph panel:** **either order with 2508** (parked): if 2508 is
+  done, its panel also shows `*.anim_graph.ron`, read only: states as
+  boxes and transitions as wires, each with its conditions. If not,
+  nothing here; 2508 does it when it is worked (its scope says so).
 
 **Out (do not do):**
-- mixing two poses or cross-fading (bones, 2105);
+- mixing two poses or cross-fading (bones, 2105), and driving 2105's
+  bone clips by this graph's states with a cross-fade on a transition
+  (2134, parked);
 - layers (upper and lower body on separate graphs): a follow-up if a
   game needs one;
 - tweens on sprites (`shuyi_core::ease::Tween`, 2109);
-- showing the graph as boxes and wires (the graph panel, 2508, can add
-  `*.anim_graph.ron` later).
+- editing the graph as boxes and wires: the graph panel part above only
+  shows it (a follow-up if a game asks).
 
 ## Implementation steps
 
 1. Read ADR-0004 §3, 2231's `anim` module, 2335's `Angle` and 2364's
-   rule for marks between two times. Check whether 2364 and 2115 are
-   done.
+   rule for marks between two times. Check whether 2364, 2105 and 2115
+   are done.
 2. Write the types and the checks, with fixtures.
-3. Write `step` and `frame`, with unit and property tests. If 2364
-   isn't done, write `crossed` first, with its tests.
+3. Write `step` and `frame`, with unit and property tests. If neither
+   2364 nor 2105 is done, write `crossed` first, with its tests.
 4. Add the test graph and its snapshot tests.
 5. Run the gates.
 

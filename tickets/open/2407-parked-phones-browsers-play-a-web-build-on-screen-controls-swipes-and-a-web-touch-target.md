@@ -114,6 +114,12 @@ This is too big for one PR. It asks Nick, then splits, as 3015 does.
 - On no: the plan below copied into 3015 as its touch-controls part.
 - Either way: every open ticket and `docs/ROADMAP.md` line that sends
   work to 2407 points at the ticket that now holds it.
+- **Either order with 3015:** if 3015 is done and its split wrote a
+  touch-controls ticket from items 1 and 2 below (3015's Scope says
+  when), that ticket holds them. On yes, write only the third ticket,
+  blocked by that one in place of the first. On no, nothing is left to
+  copy, and this ticket closes. If not, the steps below stand as
+  written.
 
 **Rules the split tickets keep** (from the 2026-10-20 review):
 
@@ -246,8 +252,8 @@ grows past that, its painter goes in a ticket of its own.
    `ask-nick` skill.
 2. Record his answer in a new entry of `docs/decisions.md`.
 3. On yes:
-   1. Read 2405 as it landed. Check whether 2528, 2408, 3004, 3052 and
-      3053 are done.
+   1. Read 2405 as it landed. Check whether 2528, 2408, 3004, 3052,
+      3053 and 3015 are done (3015's clause above).
    2. Write the three tickets with the `write-ticket` skill: the next
       free ids in 24xx (two) and 30xx (one), milestone `After MVP`,
       `status: todo`. The first is blocked by 2405; the second and the
@@ -273,7 +279,8 @@ grows past that, its painter goes in a ticket of its own.
 ## Acceptance criteria
 
 - [ ] Nick's decision is in a new entry of `docs/decisions.md`.
-- [ ] On yes, the three tickets exist as `After MVP` with
+- [ ] On yes, the three tickets (the third alone, if 3015's clause
+      says so) exist as `After MVP` with
       `status: todo`, with `blocked_by` and either-order clauses that
       name 2405, 2528, 3004, 3052 and 3053 as they stand, and none
       waits on a parked ticket. 3015 and 1121 name them. On no, 3015's scope holds the

@@ -121,7 +121,8 @@ None.
     font (an id in `GameData::fonts`), the text box, name box and
     choices are drawn as text runs (2334's `TextLabel`) in pixel
     rectangles, not in cells, and the reveal still wraps once, on the
-    full text; with no font, or if 2334 isn't done, cells as above;
+    full text; with no font, cells as above; if 2334 isn't done, cells
+    as above, and 2334 adds the font and the runs when it lands;
   - transitions as the scene says. `shake` and `flash` are not painted
     by the skin: `VnStage` asks the frame for them through 2340's
     `Ctx::shake` and `Ctx::flash` when `on_events` starts them, so they

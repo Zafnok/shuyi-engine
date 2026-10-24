@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1119", "2207", "2231"]
+blocked_by: ["1119", "2231"]
 nick_input: none
 completed:
 ---
@@ -107,43 +107,93 @@ None.
     converted to it;
   - each tileset's image, tile size, columns, margin and spacing;
   - the map's orientation (orthogonal, isometric, staggered or
-    hexagonal; LDtk is always orthogonal).
+    hexagonal; LDtk is always orthogonal), and for a staggered or
+    hexagonal map Tiled's stagger axis (`x` or `y`) and stagger index
+    (`odd` or `even`), and for a hexagonal one its hex side length.
+    2121 and 2740 leave Tiled hex maps here: these give 2121's
+    `HexLayout` (*Hex maps* below). A small hexagonal fixture made in
+    Tiled shows them in the dump.
 - **Tile animations.** Tiled's per-tile `<animation>` in a TSX tileset
   (`<frame tileid duration>`) is kept, one `AnimationClip<u16>` of tile
   ids (2231) per animated tile, in the tileset the map reads; the
   importer never drops it (2360 draws it). A frame's `duration` is its
   `ms`, and a frame's tile id past 65,535 is an error naming the tileset
   and the tile. LDtk has no tile animations; `docs/formats.md` says so.
+- **Tile properties.** Each tileset keeps its tiles' custom properties
+  with their editor types, as an object's are kept (Tiled's per-tile
+  properties; LDtk's per-tile custom data, a `string`), and the text
+  dump prints them. 2709 reads an integer terrain class from one.
+- **Terrain for RTS paths. Either order with 2709:** if 2709 is done,
+  add `TerrainGrid::from_layer(&map, layer, property)` to
+  `shuyi_rts::paths`, which reads a tile layer whose tiles carry an
+  integer custom property (for example `terrain`) into a `TerrainGrid`,
+  tested on a fixture map made in Tiled. If 2709 isn't done, nothing to
+  do: 2709 adds it.
 - **Rooms for the camera. Either order with 2362:** if 2362 is done,
   add `Rooms::from_map(&TileMap, layer: &str)`, one room per box in that
   object layer, and `Rooms::from_world(&MapWorld)`, one room per level
   rectangle (an LDtk file's levels, or a Tiled `.world`'s maps). If 2362
   isn't done, 2362 adds both. If `MapWorld` went to a follow-up,
   `from_world` goes with it.
-- `TileCollision` from a named layer (1122).
-- Disk layers are 2207's: `shuyi-app` reads a folder into a layer
-  (only `shuyi-app` touches files, game ADR-0004).
+- **Hex maps. Either order with 2121:** if 2121 is done, add one
+  function beside `TileMap` that gives a hexagonal map's
+  `shuyi_core::hex::HexLayout`: the stagger axis gives its orientation
+  (`y` is `Pointy`, `x` is `Flat`) and the stagger index its offset
+  (`odd` is `Odd`, `even` is `Even`); any other map gives `None`. Test
+  it on a hexagonal fixture made in Tiled. If 2121 isn't done, 2121
+  adds it.
+- **Either order with 1122:** if 1122 is done, add a function beside
+  `TileMap` that builds 1122's `TileCollision` from a named tile layer
+  and a rule per tile id, tested on the Tiled fixture. If 1122 isn't
+  done, 1122 adds it.
 - Hot reload is 2220's. **Either order:** if 2220 is done, a test
   shows a changed `.tmx` reloading through `Hot<TileMap>`, including a
   change to a TSX tileset it reads; if not, 2220's own tests cover maps
   once this lands, and this ticket adds nothing for reload.
 - `shuyi-cli import <map> --print` prints the map as our text.
+  **From 1129 (done):** `import` tries only the kinds that
+  `Importers::standard()` lists (`crates/cli/src/contract/import.rs`),
+  so registering the formats isn't enough. Add
+  `kind_with_text::<TileMap>` there (and `MapWorld`, and the tileset
+  kind if it is one), summed up in a line, with `--print` writing the
+  map's text dump, as 2231 does for `AnimationSet`. That file's module
+  doc says `import` needs no change for these importers: correct it.
+- **The skill pack. Either order with 1134:** if 1134 is done, drop
+  1124 from the `waits_for` of `skills/shuyi-import-art/SKILL.md` (if
+  the LDtk importer moved to a follow-up, that ticket's id takes its
+  place), and make the skill's part on Tiled and LDtk say what this
+  ticket built: the map formats and `shuyi import <map> --print`. If
+  that leaves `waits_for` empty, drop it and write the skill's worked
+  example, which CI runs on a fresh `shuyi new` game (`check-skills`
+  asks for one). If 1134 isn't done, nothing to do: 1134 writes the
+  skill with this ticket done.
+- **Either order with 2719:** if 2719 is done, its RTS example's map
+  is made in code and stays so: nothing to do. If not, nothing to do
+  either: 2719 draws that map in Tiled or LDtk.
 - **Size.** If the PR passes about 600 changed lines (not counting
-  fixtures, snapshots and the vendored LDtk types), the parts for 2122
-  and 2362 are left to those tickets (their clauses then add them), then
-  `MapWorld` moves out as *Levels and worlds* says, then the LDtk
-  importer goes to a follow-up ticket, parked like this one, with its
-  acceptance lines. A part moves whole: nothing the importers keep is
-  cut to fit.
+  fixtures, snapshots and the vendored LDtk types), the parts for 2122,
+  2362 and 2709 are left to those tickets (their clauses then add
+  them), then `MapWorld` moves out as *Levels and worlds* says, then the
+  LDtk importer goes to a follow-up ticket, parked like this one, with
+  its acceptance lines. A part moves whole: nothing the importers keep
+  is cut to fit. The PR that moves `MapWorld` or the LDtk importer out
+  adds its follow-up to the `blocked_by` of each open ticket that needs
+  that part (2232, 2318 and 2360 read LDtk maps; 2318 reads `MapWorld`).
 
 **Out (do not do):**
+- disk layers (2207: `shuyi-app` reads a folder into a layer; only
+  `shuyi-app` touches files, game ADR-0004);
 - mods' folder and load order (1014); the web build's disk layers (none
   on the web);
 - drawing the map: 2360;
+- streaming a world's levels around the camera (loading and freeing a
+  `MapWorld`'s levels as it moves): every level loads whole here.
+  2906's ADR notes it; a ticket, parked like this one, when a game
+  asks;
 - typed map objects, the game's types written to the editors, and
   checking objects against them (2232);
-- the `Curve` type and its follower (2122), and the camera's rooms and
-  their rule (2362).
+- the `Curve` type and its follower (2122), the camera's rooms and
+  their rule (2362), and RTS terrain and paths (2709).
 
 ## Implementation steps
 
@@ -155,9 +205,12 @@ None.
    *Levels and worlds* says.
 4. Change ADR-0004 §2's row for object layers, and say in
    `docs/formats.md` that LDtk has no tile animations.
-5. If 2122 or 2362 is done, add the curve function or the rooms.
+5. If 2121, 2122, 2362 or 2709 is done, add the hex layout, the curve
+   function, the rooms or `TerrainGrid::from_layer`.
 6. If 2220 is done, add the map reload test through its headless
    script.
+7. If 1134 is done, update the `shuyi-import-art` skill as the clause
+   with 1134 says.
 
 ## Acceptance criteria
 
@@ -171,13 +224,25 @@ None.
 - [ ] Both fixtures keep a polyline and a polygon with their points, and
       ADR-0004 §2's row says so. If 2122 is done, the Tiled fixture's
       turn into `Curve`s.
+- [ ] A staggered or hexagonal Tiled fixture's dump shows its stagger
+      axis and index. If 2121 is done, a hexagonal one gives its
+      `HexLayout`.
 - [ ] A fraction at a tie rounds toward negative infinity, and a value
       outside `Fx` is an error naming the file, the layer and the
       object.
 - [ ] If 2362 is done, `Rooms::from_map` and `Rooms::from_world` read
       the fixtures.
+- [ ] The Tiled fixture's tileset has a tile with an `int` property,
+      which the dump shows. If 2709 is done, `TerrainGrid::from_layer`
+      reads a layer of that fixture into the expected terrain grid.
 - [ ] A broken fixture names the file and the place in it.
+- [ ] `shuyi-cli import` reads the Tiled fixture as a `TileMap`, and
+      `--print` prints its text dump with no limit saying the kind has
+      no writer.
 - [ ] If 2220 is done, a changed map and a changed tileset reload.
+- [ ] If 1134 is done, `shuyi-import-art`'s `waits_for` no longer
+      lists 1124, and the skill has its worked example once that list
+      is empty.
 - [ ] `cargo deny check` passes, and the WASM build passes with both
       importers.
 - [ ] All gates in the `run-gates` skill pass.

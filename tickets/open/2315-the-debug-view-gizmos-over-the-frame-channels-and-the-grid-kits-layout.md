@@ -42,6 +42,11 @@ Later channels add themselves:
 - skeletons of procedural bodies: 2319;
 - online play: a `net` channel that 1140 brings (round trip, loss,
   bytes per channel, the lockstep turn, hash agreement);
+- curves: a `curve` channel that 2122 (parked) brings.
+  **Either order with 2122:** if 2122 is done, nothing to do (it wrote
+  a follow-up ticket for its helper); if not, nothing to do (2122 adds
+  the helper when it lands);
+- the log's newest lines: 2375 (the follow-up 3040 promised);
 - 3D: 2320.
 
 Pausing and stepping one frame are 2316. The editor (2506–2508) shows
@@ -105,6 +110,9 @@ None.
 - **The menu:** a "Debug view" entry on `DebugMenuScreen`. It opens a
   small screen listing every offered channel with on or off, toggled
   with Confirm. It uses the menu widget and the `ListCursor` from 2307.
+  **Either order with 2519:** if 2519 is done, the entry goes beside
+  its "Save session" entry, the engine's two together; if not, nothing
+  to do (2519 puts its entry beside this one).
 - **Painting:** `Game::frame` asks the stack for gizmos after it draws,
   when debug tools are on and any channel is on. It hands them to
   `debug::glyph::paint_gizmos`, which adds them to the `GlyphBuffer`
@@ -141,15 +149,22 @@ None.
   - the map's bounds, where they are on screen (`Bounds`);
   - the cursor's cell (`Note`);
   - each unit's cell, with its index as a label (`Note`);
-  - and, if 2304 has landed, the edges where the map goes on past the
-    view (`Note`). If 2304 hasn't landed, 2304 adds that line to the
-    helper.
+  - **From 2304 (done):** the edges where the map goes on past the
+    view (`Note`), read from `MapScene::more`: `MapEdges`'s `left()`,
+    `right()`, `up()` and `down()`.
 - **`frame-png --debug <channel>[,<channel>…]`** draws the named
   channels. An agent then sees what a person sees with the view on.
   `all` turns every channel on.
 - **Either order with 2514:** if 2514 is done, `--debug` draws the
   channels on every frame that `--every` and `--count` capture (a test
   with a two-frame sheet); if not, 2514 does that.
+- **Either order with 2105 (parked):** if 2105 is done, add the
+  helper it left here: `shuyi_bones::debug::bone_gizmos`, behind that
+  crate's `view` feature, pushing each bone of 2105's `world(&Rig,
+  &Pose)` as a `Line` (`GizmoRole::Bone`) from its position along its
+  length, on a `bones` channel, placed by the same origin and facing
+  as `RigView::from`, with a unit test of its gizmo list. If not,
+  nothing to do (2105 adds it).
 - The toy game (`toy::grid`) calls the helper, and its tests in
   `tests/it/grid.rs` use it.
 
@@ -160,6 +175,9 @@ None.
   polygons): 2336. Only the width-1 line and circle-outline rules may
   land here (the renderers above);
 - collision, world layers, skeletons and 3D (2317–2320);
+- the `nav` channel of paths for free movement (2106): 2106 adds it,
+  or, if 2106 lands first, the follow-up ticket it writes for it,
+  blocked by this one;
 - gizmos in world coordinates. There are no world layers until 1120,
   and 2318 adds the camera transform;
 - an inspector or anything that edits state (the editor, 2506–2508).
@@ -209,6 +227,8 @@ None.
 - Unit: `Gizmos::push` keeps order, and skips a channel that is off.
   Each gizmo's snapshot line. Bresenham lines in all eight octants and
   the midpoint circle, if this ticket writes them in `frame::shape`.
+- Unit: `layout_gizmos` gives edge gizmos only for the sides
+  `MapScene::more` sets, and none for a map that fits the view.
 - Property: `layout_gizmos` never yields a gizmo outside the buffer's
   `pixel_bounds`, for any map size, view and camera.
 - Snapshot / integration:

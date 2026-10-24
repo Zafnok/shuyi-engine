@@ -45,6 +45,12 @@ None.
   the settings.
 - Hello, Grid gives its `LAYOUT` that way and drops its workaround in
   `Title::update`.
+- **From 2511 (done):** a game on the short path has no `GameData` of
+  its own: `BasicData` (`crates/ui/src/basic.rs`) is the engine's, so
+  the game can't add the method. `BasicData` implements it as its
+  keymap file's first layout (`keymap_def().first_layout()`), the one
+  `BasicGame::ctx` (`crates/platform/src/basic.rs`) sets at start. If
+  `Ctx::new` reads the default too, that `use_layout` call goes.
 
 **Out (do not do):**
 - What a profile holds or how it is saved (`crates/ui/src/profiles.rs`).
@@ -70,6 +76,9 @@ None.
 - [ ] With a default layout, switching to and adding a profile with none
       keeps every action mapped (a toy-game unit test in
       `crates/ui/src/ctx/tests.rs`).
+- [ ] A game on the short path keeps every action mapped after adding
+      and switching to a profile with no layout (a test on
+      `BasicData`).
 - [ ] Without one, nothing changes (the existing first-launch and
       picker tests pass unchanged).
 - [ ] Hello, Grid has no `use_layout` call in `Title::update`, and
@@ -78,7 +87,8 @@ None.
 
 ## Tests required
 
-- Unit: a switch to a new profile with and without a default layout.
+- Unit: a switch to a new profile with and without a default layout,
+  and on `BasicData`.
 - Integration: Hello, Grid's `tests/it/profiles.rs`.
 
 ## Completion notes

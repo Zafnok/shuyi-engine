@@ -6,7 +6,7 @@ milestone: "Engine: 2D effects"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2326", "2337"]
+blocked_by: ["2220", "2326", "2337"]
 nick_input: none
 completed:
 ---
@@ -67,13 +67,22 @@ None.
   sprite or the frame without it and writes so in the snapshot
   (`material water (not drawn on cpu)`). With `--gpu`, where an adapter
   exists, it renders through the wgpu renderer.
-- **Hot reload:** a changed `.wgsl` file reloads, as other assets do
-  (ADR-0004 §1), and a broken one keeps the last good one with the
-  error shown.
+- **Hot reload:** a changed `.wgsl` file reloads through 2220's `Hot`
+  values, as other assets do (ADR-0004 §1), and the renderer rebuilds
+  the pipeline of each pass or material that uses it. A broken one
+  keeps the last good one, with the error shown as 2220 shows it.
 - **Targets without shaders:** materials are skipped, and a material
-  may name a `fallback` sprite. If 3017 is done, a skin that needs a
-  material on such a target fails its check.
+  may name a `fallback` sprite. **Either order with 3017:** if 3017 is
+  done, give its `Capabilities` a `shaders: bool` if it has none yet
+  (false on `playdate`, `gba`, `nds` and `dsi`), and a skin's `Needs` a
+  `materials` need, so a skin that needs a material on such a target
+  fails its check and an optional one goes in `left_out`; if not,
+  nothing to do (3017 adds them).
 - **The toy game** gets one pass (a wave) and one material (an outline).
+- **Either order with 2331** (the render graph): if 2331 is done, a
+  `Custom` pass runs as a node of its `RenderGraph`, as 2326's passes
+  do, and the frame's node draws sprites with their materials; if not,
+  nothing to do (2331 moves them into nodes).
 
 **Out (do not do):**
 - compute shaders;

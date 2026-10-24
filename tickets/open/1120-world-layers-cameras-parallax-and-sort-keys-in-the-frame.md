@@ -85,7 +85,11 @@ None. Our game's frames don't change.
     drawn by the same pixel rules as on the console. **Either order
     with 2337:** if 2337 is done, they carry its `blend` and draw
     `Paint::Tinted` as `Sprite` does, through the same code in every
-    painter; if not, 2337 adds them;
+    painter; if not, 2337 adds them. **Either order with 2334:** if
+    2334 is done, a world layer also takes text runs, such as names
+    over things: a run's sprites placed in world pixels and sorted as
+    one item, with its one snapshot line in the layer's list; if not,
+    2334 adds them (its clause says so);
   - a `viewport: Option<PxRect>` in console pixels (`PxRect` is the
     alias in `crates/ui/src/frame/glyph_buffer.rs`, re-exported from
     `shuyi_ui::frame`). `None` is the whole frame. The layer's items are
@@ -115,6 +119,9 @@ None. Our game's frames don't change.
   the workspace forbids), and `Painter::draw_backdrop` in
   `crates/cli/src/frame_png.rs` through a picture the size of the
   window. Viewports clip the same way.
+- **Either order with 2507:** if 2507 is done, the editor's tree lists
+  a stage's world layers under the stage; if not, nothing here (2507
+  lists them).
 - Whole-frame effects (fades, game ADR-0060's brightness) include world
   layers, in every viewport. So do 2339's transition looks (when
   `compose` takes cells from one frame, it takes the world-layer items
@@ -133,6 +140,15 @@ None. Our game's frames don't change.
   seats, each with the stage's layers in its own viewport from
   `split_viewports` and a camera following that seat, redone when one
   joins or leaves. If not, 2406 adds that scene.
+- **Either order with 1134:** if 1134 is done, its `shuyi-stage-field`
+  skill lists this ticket in `waits_for`: drop 1120 from it, and teach
+  world layers in the skill (the camera with its follow, dead zone and
+  shake, parallax, sort keys and viewports). If not, nothing to do
+  (1134 writes them into the skill).
+- **Either order with 2103:** if 2103 is done, add its sprite skin,
+  `particles::sprite`: each particle of a `ParticlesView` drawn as a
+  frame of its clip on a world layer, with its look's tint and blend.
+  If not, nothing to do (2103 adds it).
 - Perspective markers (ADR-0009 §3):
   - `shuyi_core::perspective` has the trait `Perspective` and the
     markers `TopDownGrid` and `TopDown`;
@@ -141,12 +157,19 @@ None. Our game's frames don't change.
   - keep the 2D projection off `Perspective` itself (a trait of its
     own for 2D markers), because the parked 3D markers (3101) have no
     2D projection;
-  - 1126 and 1127 add `Isometric` and `SideView`.
+  - 1126 and 1127 add `Isometric` and `SideView`;
+  - **Either order with 2740:** if 2740 is done, add its `HexGrid`
+    marker, with `Projection::Hex` as its projection; if not, nothing
+    here (2740 adds it);
+  - **Either order with 2741:** if 2741 is done, the trait is already
+    in `shuyi_core::perspective`, with no 2D projection on it and
+    `FirstPersonGrid` in `shuyi-crawl`: add the two markers and the 2D
+    trait to it; if not, write the trait here, and 2741 implements it.
 
 **Out (do not do):**
 - a light blended over the time of day on world layers: 2369 gives the
-  grid scene `look.blend`, and a world layer takes the same field in
-  the ticket that first needs it;
+  grid scene `look.light_blend`, and a world layer takes the same
+  field in the ticket that first needs it;
 - isometric projection (1126);
 - drawing between the last two steps (2361);
 - look-ahead, rooms that hold the camera, blends between camera goals,
@@ -161,13 +184,18 @@ None. Our game's frames don't change.
 - a HUD per viewport as a system of its own: a game draws cells or
   items into the viewport's rectangle with what the frame already has;
 - Voronoi or other splits that move with the players;
-- drawing a layer into a texture of its own and running shaders on it
-  (the wgpu work: 2326's render targets, 2327's shaders);
+- drawing a layer into a texture of its own and running shaders on it:
+  no ticket plans it (2326's passes and 2327's shaders work on the
+  whole frame or on one sprite); a ticket when a game asks;
 - a minimap through a second camera: 2716 draws its minimap from coarse
   grids;
 - more than one screen: a surface (3023) is a physical screen, and a
   viewport is a rectangle inside one surface. Neither builds a second
   layout system for the other;
+- world layers on the GBA's hardware backgrounds (3021). **Either order
+  with 3021:** if 3021 is done, the follow-up ticket it wrote (blocked
+  by this one) maps them; if not, 3021 does. Nothing to do here either
+  way;
 - grid games: the grid kit already paints a `MapScene` into any
   `area: Rect`.
 
@@ -185,7 +213,8 @@ None. Our game's frames don't change.
    more: split side by side by `split_viewports(frame, 2)`, its layers
    repeated per viewport, each camera following a different sprite; and
    with a small inset viewport over the full-frame layers.
-5. The either-order parts for 2337, 2339, 2340, 2363 and 2406.
+5. The either-order parts for 1134, 2103, 2337, 2339, 2340, 2363 and
+   2406.
 
 ## Acceptance criteria
 

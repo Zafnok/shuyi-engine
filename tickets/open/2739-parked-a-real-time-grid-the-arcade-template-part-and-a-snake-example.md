@@ -139,9 +139,9 @@ None. When it unparks is his call (above).
     already added a tick replay, use it;
   - `docs/contract.md`'s `replay` row (*What a game gives*) names
     `replay::ticks` for a tick game beside `replay::turns`.
-- **`examples/snake`**, a workspace member written on the short path
-  2511 gives (`shuyi_platform::prelude` and `shuyi_app::run_game`), drawn
-  on the glyph console:
+- **`examples/snake`**, a workspace member written on 2511's short path
+  (`shuyi::prelude`, with its `run_game`), on the `shuyi` crate alone
+  for the engine, as hello-grid is, drawn on the glyph console:
   - **the rules** (`src/rules.rs`, pure: no I/O, no clock, no float):
     `Snake`, a `TickSim`:
     - the board is a `.map` (`files/board.map`, read with
@@ -176,7 +176,7 @@ None. When it unparks is his call (above).
     body and the food. A suspended game gets 0 ticks, so the snake
     waits. If 3042 is done, the example's `GameSettings::BACKGROUND` is
     `Background::KEEP_RUNNING.paused()`, and its system hook pushes the
-    pause menu on `FocusLost`.
+    pause menu on `FocusLost`; if not, 3042 does it.
   - **the actions:** `Up`, `Down`, `Left`, `Right`, `Confirm` and
     `Cancel`, the grid template's six
     (`templates/grid/crates/game/src/action.rs`). `files/keymap.ron` has
@@ -187,23 +187,36 @@ None. When it unparks is his call (above).
   - **a frame the Playdate fits:** `ConsoleSpec::text(50, 15)`, 400 ×
     240 at scale 1, holding the board and a score line. `shuyi.ron`
     lists `desktop`, `web`, `steam-deck` and `playdate`. The palette's
-    roles stay apart in 1-bit (3006's check).
+    roles stay apart in 1-bit: `files/palette@onebit.ron` gives each
+    role its patterns (ADR-0026), and the tools' `one_bit` returns the
+    palette and that map, as hello-grid's `src/tools.rs` does. Without
+    it, `check --target playdate` says the patterns weren't checked.
   - **the tools** (`src/tools.rs`): a `GameTools` of its own that calls
     2511's `BasicTools` for what it doesn't change, and adds `check`,
     `session` (a scene with the body, the food, the score, the step and
     the outcome), `replay` through `ticks` above, and `controls`.
     `bots` stays unsupported (Out).
   - **sound:** if 2225 is done, an eat and a death sound from its
-    presets. If not, none, and the README says so.
+    presets. If not, none, the README says so, and 2225's PR adds them.
   - the font atlas copied from `examples/hello-grid/files/font`
     (Terminus, OFL-1.1, with its license file), and the copy added to
     `THIRD_PARTY_ASSETS.md` (to the row that lists the templates'
     copies, or a row of its own).
+    **Either order with 3039:** if 3039 is done, `shuyi.ron` has the
+    `notices` part naming `files/font/Terminus-LICENSE.txt`, as
+    hello-grid's has, and Pages links the example's `NOTICES.txt`; if
+    not, 3039 adds both.
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted and said how if not). If
-    2514 is done, an animated picture of its first seconds made with
-    `frame-png`.
+    template-lines` if 2512 is done; counted and said how if not).
+    **Either order with 2514:** if 2514 is done, an animated picture of
+    its first seconds made with `frame-png`; if not, 2514 adds it (its
+    clause says so). **Either order with 2811:** if 2811 is done, that
+    picture is the example's preview: `preview.png` in its folder, made
+    by a `preview` part in its `shuyi.ron` (`cargo shuyi frame-png
+    --preview`), checked by a test in `tests/it/` as hello-grid's is,
+    and shown on its card on the Examples page. If not, nothing to do
+    (2811 makes the picture its preview).
 - **Tests of the example** (`tests/it/`):
   - a Harness playthrough of seed 1 through actions only
     (`Harness::act` and `Harness::wait`): from the title, steer to the
@@ -215,8 +228,16 @@ None. When it unparks is his call (above).
   - replay: the playthrough's `TickRecord`, written to a scratch folder,
     goes through the contract's `replay` with the example's tools, as
     hello-grid's `tests/it/contract.rs` does. It lists step 0 and one
-    step per tick, and the two runs have no difference. If 2116 is done,
-    add the record to its fixtures;
+    step per tick, and the two runs have no difference. 2116 is done
+    before this ticket (1119 needs it first), so the record is also
+    checked in with a golden table of the example's own, in the form
+    2116 gives Hello, Grid's: the record in
+    `examples/snake/tests/records/seed-1.ron`, the table
+    `tests/golden/snake.ron` (`step NNN` rows and `outcome`) checked by
+    `tests/golden.rs`, the window behind a default `window` feature, and
+    a `cargo test --target wasm32-wasip1 -p snake --no-default-features
+    --test golden` step in CI's `determinism` job, as 2116's line in the
+    `run-gates` skill says a new example does;
   - a property test (`proptest`, a workspace dependency): random inputs
     for 3 000 steps never panic, the body never overlaps itself while
     alive, and its length never passes the board's free tiles;
@@ -224,7 +245,7 @@ None. When it unparks is his call (above).
   - `cargo shuyi check`, `check --target all` and `check-keys` pass in
     the example's folder.
 - **CI and Pages,** either order with the other examples (2735, 2736,
-  2737 and 2738; 2738 comes after this one):
+  2737, 2738 and 2740; 2738 comes after this one):
   - if the `wasm` job of `.github/workflows/ci.yml` and
     `.github/workflows/pages.yml` already loop over every
     `examples/*/shuyi.ron` that has a `web` section, snake is picked up
@@ -238,11 +259,12 @@ None. When it unparks is his call (above).
     web-build step loops the same way;
   - if 2801 is done, the site serves examples at `/examples/<name>/`:
     snake plays at `/examples/snake/` and gets its card in the Examples
-    section;
+    section; if not, 2801 moves it there and gives it its card;
   - if 2019 is done, its headless browser job opens it too. If 3004 is
     done, `shuyi export web` builds it. If 3010 is done, `shuyi export
     playdate` builds it, and the PR says whether it runs in the Playdate
-    Simulator (if the SDK is installed where the PR is made).
+    Simulator (if the SDK is installed where the PR is made); if not,
+    3010 does it.
 - **The template part `stage-arcade-grid`** in `templates/shuyi-default/`
   (2501):
   - the built-in template gets its own question `time` ("On a grid:
@@ -257,7 +279,7 @@ None. When it unparks is his call (above).
     reading the two parts side by side sees what changes between turns
     and ticks. It is not snake, so the eval's snake task (below) stays a
     task. If 3042 is done, its `GameSettings::BACKGROUND` is
-    `Background::KEEP_RUNNING.paused()`, as 3042's Out asks;
+    `Background::KEEP_RUNNING.paused()`; if not, 3042 does it;
   - `--template arcade` is a short name for those answers, as `grid`
     and `blank` are, and `--set time=ticks` picks it. If 2502 is done,
     its prompts show the question;
@@ -288,7 +310,7 @@ None. When it unparks is his call (above).
     (Out), so the grader gets no record. This ticket's replay test
     covers the example;
   - if 3010 is done, add `playdate` to its targets and drop its
-    `unmeasured` Playdate entry;
+    `unmeasured` Playdate entry; if not, 3010 does it;
   - the `eval` job's `cargo xtask eval-reference --all` grades it, and
     `cargo xtask eval-reference snake` passes.
 
@@ -319,6 +341,9 @@ None. When it unparks is his call (above).
   `write-ticket` skill), and say so in the PR. The same PR changes
   1134's, 2004's and 3042's mentions of 2739 for those pieces to the
   new ticket's id.
+  The eval's snake task then keeps the `template` 2524 gave it (or
+  `blank`, if this ticket writes the file), and the follow-up sets it
+  to `arcade`.
 
 ## Implementation steps
 
@@ -326,8 +351,8 @@ None. When it unparks is his call (above).
    `tick` module and driver, 2115's `Every`, 2511's short path, 2501's
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order
-   tickets are done: 2004, 2019, 2114, 2116, 2225, 2502, 2512, 2514,
-   2524, 2801, 3004, 3006, 3010, 3042, and 1134.
+   tickets are done: 2004, 2019, 2114, 2225, 2502, 2512, 2514,
+   2524, 2801, 3004, 3010, 3039, 3042, and 1134.
 2. Write the ADR, ADR-0013's `Status:` line and both index rows.
 3. Write `contract::replay::ticks` and its tests, and the
    `docs/contract.md` row.
@@ -346,6 +371,8 @@ None. When it unparks is his call (above).
 - [ ] The contract's `replay` on the playthrough's record lists step 0
       and one step per tick, and finds no difference between its two
       runs.
+- [ ] The snake's golden table passes natively and on wasm32 in CI's
+      `determinism` job.
 - [ ] The Harness playthrough eats the first food, grows, dies on a wall
       and starts again, through actions only.
 - [ ] With no input, the snake moves the same number of tiles in a
@@ -377,6 +404,7 @@ None. When it unparks is his call (above).
 - Integration: the playthrough; the contract's `replay` on its record;
   30 and 60 frames a second, for the example and the template part's
   game; `check --target all`.
+- Golden: the playthrough's record, natively and on wasm32 (2116).
 - Snapshot: the two `frame-png` pictures.
 
 ## Completion notes

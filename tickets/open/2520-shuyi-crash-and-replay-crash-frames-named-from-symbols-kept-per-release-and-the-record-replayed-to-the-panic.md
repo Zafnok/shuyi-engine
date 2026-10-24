@@ -206,16 +206,23 @@ None.
   - the stamp: `replay --crash` goes through the same path as `replay`
     (`GameTools::replay`, then the stamp check), so 2111's refusal of a
     record made with other content covers it whichever lands first. If
-    2111 is done, a test shows it.
+    2111 is done, a test shows it; if not, 2111 adds that test (its
+    clause says so).
 - **The contract's version:** the `crash` schemas
   (`crash.input.json`, `crash.output.json`) and the `replay` ones
   regenerated, `VERSION` raised by one, and the line
   `crates/cli/schemas/versions.json` asks for (the four steps in
   `docs/contract.md`).
 - **Either order:**
-  - with 2509 (problem codes): if it is done, each refusal here gets a
-    problem code and its help. If not, 2509 gives them codes (its
-    either-order list names 2520);
+  - with 2509 (done, problem codes, ADR-0028): each refusal here is
+    `Answer::failed(op, code, error)`. `--crash` with a second record
+    is `SH0001` (`wrong-arguments`), and a report that can't be read
+    `SH3004` (`file`), as `replay`'s records are. A report that doesn't
+    parse, or has no record, gets the code of its class that fits, or
+    a new row in `crates/cli/src/contract/codes.rs`'s `TABLE` with its
+    page in `crates/cli/errors/` (the gate in `codes/tests.rs` checks
+    both). A panic the replay finds, with `--crash` or not, is a
+    verdict: `ok: false` and no code, as `replay`'s differing runs are;
   - the MCP server (1133, done) makes a tool of each operation in
     `Op::ALL`: give `crash` its arms in `mcp::host::one_off` and
     `mcp::description`, and `replay`'s `crash` flag comes with its
@@ -227,10 +234,27 @@ None.
   - the new public types (`CodeFrame`, `CrashInput`, `CrashOutput`,
     `NamedFrame`, `PanicAt`, `CrashReplay`) follow ADR-0039
     (`#[non_exhaustive]` and constructors).
+  - with 3060 (a debug build's crash report names the session it was
+    recording): if 3060 is done, `CrashOutput` also carries the
+    report's `session` (`Option<String>`, a file name), and
+    `crash::text` shows it. When a report names a session, the refusal
+    of a report with no record and the rules-only line in `limits` add
+    "its session plays the whole game: `shuyi run --session <file>`".
+    `docs/crash-reports.md`'s paragraph on `shuyi crash` names the
+    field. If not, nothing to do (3060 adds them, its clause says so).
 - **Docs:** `docs/contract.md`'s table gains `crash` and `replay
   --crash`. `docs/crash-reports.md` (3046) gains: reading a report with
   `shuyi crash`, keeping and passing the debug file, and reproducing
   with `replay --crash`.
+- **The skill pack. Either order with 1134:** if 1134 is done, write
+  its `shuyi-debug-replay` skill's crash path, in place of the note
+  that it is still to come: `shuyi crash <report> --symbols <file>`
+  reads the report, `shuyi replay --crash <report>` reproduces it
+  (`ok: false` while it panics), and the skill loops fix, then replay,
+  until `ok: true`; `check-skills` passes. If not, nothing to do (1134
+  writes it, its own clause says so). If **Size** moves `--symbols` to
+  the follow-up, the skill leaves `--symbols` out and the follow-up
+  adds it.
 - **For the game:** its tools call `turns`, whose signature doesn't
   change. Code that builds `ReplayStep` or `ReplayInput` by hand gains
   a field. Say so in the PR; the game's PR that moves the pin follows.
@@ -253,9 +277,8 @@ None.
 - Windows PDB files: the GNU toolchain writes DWARF. A game built with
   MSVC is out until one asks.
 - Frames on macOS and on the web.
-- A session record (2518, 2519) in a report, and its replay: the
-  follow-up ticket 3046's Out names.
-- The `shuyi-debug-replay` skill: 1134.
+- A session record (2518, 2519) in a report, and its replay: 3060.
+- The rest of the `shuyi-debug-replay` skill: 1134.
 - A symbol server, or uploading debug files anywhere. 3047 (parked)
   sends reports, never debug files.
 - Panics outside the rules (screens, skins, the platform): a rules

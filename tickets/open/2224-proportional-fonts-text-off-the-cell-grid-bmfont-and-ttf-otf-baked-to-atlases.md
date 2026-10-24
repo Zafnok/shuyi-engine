@@ -254,7 +254,8 @@ None.
     the ranges, the characters the game's text uses and the required
     set, never a combining mark): `font-atlas` passes the `AtlasChars`
     it builds, and `text-font` passes `AtlasChars::default()` and adds
-    `--glyphs`; if not, as above.
+    `--glyphs`; if not, as above, and 2350 hands `read_any` its
+    `AtlasChars` when it lands (its scope says so).
   - **cells:** `read_font(path)` stays as it is, BDF only, because
     Hello, Grid's test (`examples/hello-grid/tests/it/files.rs`) calls
     it, and the game may. A new `font_atlas::read_any(path, outline:
@@ -311,6 +312,12 @@ None.
     (`png_header`);
   - `text-font`'s reference outputs for the fixture TTF at `--px 8`,
     committed in `crates/cli/src/text_font/`.
+- **Either order with 2020:** if 2020 is done, put the fixture pages'
+  PNG headers in `fuzz::fixtures()`'s static table, where 2020 moved
+  `builtin_tests.rs`'s `fixtures()`; add `Packed<ProportionalFont>` to
+  `fuzz::registry()`; and add `proportional-font` and `bmfont` to
+  `fuzz::formats`' walk inside `fixtures()`, each at its fixture's path
+  (2020's skills' lines). If not, nothing to do: 2020 adds them.
 
 **Out (do not do):**
 
@@ -327,9 +334,9 @@ None.
 - the Playdate's own `.fnt` text format, which shares the extension (a
   follow-up if a Playdate game asks; `BmFont`'s sniff tells them apart);
 - kerning from a TTF, hinting, SDF and MSDF;
-- fuzzing the two formats with `cargo-fuzz` in CI (2020 covers every
-  registered format); this ticket adds the property tests every built-in
-  format has;
+- a fuzz target of its own: 2020's harness walks every registered
+  format, and the clause with 2020 above says who adds these two; this
+  ticket adds the property tests every built-in format has;
 - shipping any font: a game picks and licenses its own.
 
 ## Implementation steps

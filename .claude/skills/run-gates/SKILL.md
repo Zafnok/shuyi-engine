@@ -135,9 +135,12 @@ repository's tickets with `gh api`, or against a local checkout with
 `--game-repo <path>`. With neither it warns and skips them; CI has no
 access to the game repository, so check them locally when you add one.
 It also warns on a clause in an open ticket that waits on a done one
-("if NNNN is done", "either order with NNNN"); the PR closing a ticket
-settles the clauses that name it (the `work-ticket` skill, §5). On CI the
-warnings show on the PR.
+("if NNNN is done", "either order with NNNN", "waits for NNNN"); the PR
+closing a ticket settles the clauses that name it (the `work-ticket`
+skill, §5). On CI the warnings show on the PR. It fails a clause in an
+open ticket that names another open ticket, not in its `blocked_by`,
+whose text never names it back: write the other side there (the
+`write-ticket` skill, *Check the dependency chain*).
 
 Later tickets add their checks here, for example `check-keys` and
 `check-text` on the engine's own code (2006) and `check-skills`.

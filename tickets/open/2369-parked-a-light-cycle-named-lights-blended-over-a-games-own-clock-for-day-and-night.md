@@ -91,18 +91,21 @@ None.
     are (`Lighting::names`). Every problem is reported, as
     `lighting::from_source` does;
   - the file's size cap is `TEXT_MAX_BYTES`, like the lights file.
-- **`LightCycle::at(&self, now: u64, length: u64) -> Blend`**, the
+- **`LightCycle::at(&self, now: u64, length: u64) -> LightBlend`**, the
   point of the cycle `now` is in, for a cycle `length` long (steps or
   turns, the game says which; a `length` of 0 counts as 1), in exact
   integer maths (`now % length`, scaled to millionths of the cycle so a
   long day still moves smoothly):
   ```rust
-  pub struct Blend { pub from: String, pub to: String, pub permille: u16 }
+  pub struct LightBlend { pub from: String, pub to: String, pub permille: u16 }
   ```
-  `Blend` is plain data, serde, `Eq`. A `Blend` whose two lights are the
-  same (between `noon` at 300 and `noon` at 700) has `permille: 0`.
+  `LightBlend` is plain data, serde, `Eq`. A `LightBlend` whose two
+  lights are the same (between `noon` at 300 and `noon` at 700) has
+  `permille: 0`. It isn't called `Blend`: that name is 2337's
+  `shuyi_ui::frame::Blend`, the blend mode a sprite or an overlay
+  carries.
 - **The grid scene carries a blend.** `look.light` stays the map's
-  light. A new `look.blend: Option<Blend>` in
+  light. A new `look.light_blend: Option<LightBlend>` in
   `crates/ui/src/grid/scene.rs`, set by the screen from
   `LightCycle::at`, wins over it when it is `Some`. The scene text
   prints `light dusk>night 400` for a blend (and nothing when there is
@@ -113,17 +116,21 @@ None.
 - **Docs**: the format's row in `docs/formats.md`, and a short "a day
   and a night" section in the guide the docs map names for skins (the
   `document` skill says where).
+  - **Either order with 2370:** if 2370 is done, the "a day and a
+    night" section shows an ambience over the light cycle. If not,
+    nothing to do (2370's "weather" section shows the two together).
 
 **Either order with 2109:** if 2109 is done, a stop may name the
-`Ease` its blend into the next stop uses (`ease: InOutSine`, default
+`Ease` its blend into the next stop uses (`ease: InOut(Sine)`, default
 `Linear`), applied to `permille` before `Light::mix`. If not, every
-blend is straight, and a line under 2109's **In** says the cycle file
-gains `ease` when 2109 lands.
+blend is straight, and 2109 adds `ease` to the stops when it lands
+(its clause on 2369 says so).
 
-**Either order with 2328:** if 2328 is done, the blended light is also
-its ambient light, so point lights show at night. If not, 2328's ticket
-gains a line saying its ambient light is the cycle's blend when there
-is one.
+**Either order with 2328:** if 2328 is done, a lit world layer (1120,
+2328) takes `look.light_blend` too, and when it is `Some` the mixed
+light (`Light::mix`) is the layer's ambient in place of its `ambient`,
+so point lights show at night. If not, nothing to do (2328 adds it, its
+clause says so).
 
 **Out (do not do):**
 - the game's clock and what time of day means to its rules (the game's;
@@ -131,24 +138,25 @@ is one.
 - a sky, a sun or a moon that moves, stars, shadows that turn with the
   sun: art the game draws, or 2328's lights;
 - weather (2370 brings its look together);
-- blends on frames other than the grid scene's ground. A world layer of
-  free-moving games (1120) takes the same `look.blend` in the ticket
-  that first needs it, as 1120's **Out** says;
+- blends on frames other than the grid scene's ground, but for a lit
+  world layer's ambient (the clause with 2328 above). Any other world
+  layer of free-moving games (1120) takes the same `look.light_blend`
+  in the ticket that first needs it, as 1120's **Out** says;
 - floats anywhere in the cycle: `Light::apply` keeps its floats for the
   pixel sum only, as today.
 
 ## Implementation steps
 
 1. Add `Light::mix` and its unit tests.
-2. Write `crates/assets/src/light_cycle.rs`: `LightCycle`, `Blend`,
-   `from_source(file, source, &Lighting)`, `LightCycle::at`, and
-   `LightCycleRon` registered in `crates/assets/src/format.rs` beside
-   `LightingRon`. Follow how `voice::from_source` checks one file
-   against another.
+2. Write `crates/assets/src/light_cycle.rs`: `LightCycle`,
+   `LightBlend`, `from_source(file, source, &Lighting)`,
+   `LightCycle::at`, and `LightCycleRon` registered in
+   `crates/assets/src/format.rs` beside `LightingRon`. Follow how
+   `voice::from_source` checks one file against another.
 3. Add the format to the pack's kinds (`crates/assets/src/pack`) and
    update the pack's snapshot test if its kinds list is snapshotted.
-4. Add `look.blend` to the grid scene, its scene text, and the ground
-   painter's use of it.
+4. Add `look.light_blend` to the grid scene, its scene text, and the
+   ground painter's use of it.
 5. Add the determinism fixture for the new format (ADR-0007 §5, as the
    other text formats have in `crates/assets/src/format/builtin_tests.rs`).
 6. Write the docs, then run the gates.
@@ -163,8 +171,8 @@ is one.
       errors name each problem.
 - [ ] `LightCycle::at` gives the stop's own light at each stop's `at`,
       blends across the wrap from the last stop to the first, and gives
-      the same `Blend` for `now` and `now + length`.
-- [ ] A grid scene with `look.blend: Some(..)` paints its ground
+      the same `LightBlend` for `now` and `now + length`.
+- [ ] A grid scene with `look.light_blend: Some(..)` paints its ground
       `Paint::Shaded` with the mixed light, and its scene text says
       `light dusk>night 400`. With `None`, every existing scene and
       snapshot is unchanged.

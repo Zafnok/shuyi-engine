@@ -34,14 +34,17 @@ and Unreal 5.8, and the small-game tools beside them.
 
 **What Shuyi has today.**
 
-- **New games are silent.** `templates/blank/crates/game/src/main.rs`
-  and `templates/grid/crates/game/src/main.rs` hand the platform a
-  `no_sound` reader (line 28), and their `lib.rs` load
-  `AudioManifest::default()` (blank line 103, grid line 121). Yet the
-  engine's menus and cursors play four cues: `ui_move`, `ui_select`,
-  `ui_cancel` and `ui_cursor` (`AudioConfig::DEFAULT`,
-  `crates/ui/src/audio.rs` line 69, the default of
-  `GameData::audio_config` in `crates/ui/src/ctx.rs` line 98).
+- **New games are silent.** The blank template's `main.rs` calls
+  `shuyi::prelude::run_game`, whose `basic_config` hands the platform
+  a `no_sound` reader (`crates/app/src/lib.rs` line 326), and
+  `BasicData` loads `AudioManifest::default()`
+  (`crates/ui/src/basic.rs` line 118). The grid template keeps its own
+  `no_sound` in `main.rs` (line 26) and `AudioManifest::default()` in
+  `lib.rs` (line 126). Yet the engine's menus and cursors play four
+  cues: `ui_move`, `ui_select`, `ui_cancel` and `ui_cursor`
+  (`AudioConfig::DEFAULT`, `crates/ui/src/audio.rs` line 69, the
+  default of `GameData::audio_config` in `crates/ui/src/ctx.rs` line
+  98).
 - **The one game that has them writes them by hand.**
   `examples/hello-grid/src/sound.rs` builds a WAV header and sine blips
   in `f32`, with four `#[allow]` casts (lines 74 to 82). An agent making
@@ -56,15 +59,15 @@ and Unreal 5.8, and the small-game tools beside them.
   `format_problem` (line 218) picks the check by the extension.
   `AudioManifestRon` reads a manifest's sound files raw from the bundle
   beside it and checks them with `format_problem`.
+- **From 2511 (done):** the blank template is on the short path:
+  `BasicData` loads its files and `run_game` runs it, with an empty
+  manifest and silent sound functions. It left the sounds to this
+  ticket.
 - **Planned:**
-  - 2511 (MVP) puts the blank template on the short path: `BasicData`
-    loads its files and `shuyi_app::run_game` runs it, with an empty
-    manifest and silent sound functions. It leaves the sounds to this
-    ticket.
   - MIDI and a synth (2205, 2206, parked: music, floats, a sound bank
-    the game brings); more decoders (2203, no encoding); a decoded
-    `Pcm` kind in the parked in-house sound (2210). Nothing makes sound
-    effects from data.
+    the game brings); more decoders (2203, no encoding); decoded
+    `Pcm` samples, and maybe a kind of them, in the parked in-house
+    sound (2210). Nothing makes sound effects from data.
 
 **Why it matters.**
 
@@ -217,18 +220,27 @@ parked.
     installed bundle through `audio::playable`, in place of 2511's
     silent ones. So every game on the short path gets its sounds from
     its files, with no code of its own: 2512's cap allows no new code
-    lines in the minimal template. Its `crates/game/Cargo.toml` turns
-    the feature on: `shuyi-assets = { workspace = true, features =
-    ["sfx"] }`. If nothing in the crate names `shuyi_assets`, list it
-    under `[package.metadata.cargo-machete] ignored` with a comment
-    that it is there for the feature.
+    lines in the minimal template. **From 2003 (done):** the blank
+    template's root `[workspace.dependencies]` has only `shuyi`,
+    `shuyi-cli` and `include_dir`, and its game crate depends on
+    `shuyi` alone. So put `shuyi-assets = "{{engine.assets}}"` back
+    there, as the grid template has it, and turn the feature on in
+    `crates/game/Cargo.toml`: `shuyi-assets = { workspace = true,
+    features = ["sfx"] }`. If nothing in the crate names
+    `shuyi_assets`, list it under `[package.metadata.cargo-machete]
+    ignored` with a comment that it is there for the feature. Don't
+    give `shuyi` an `sfx` feature instead: `cargo xtask check-modules`
+    reads each of its features as a module and fails without a
+    `shuyi-sfx` row in `docs/modules.md`.
   - **`templates/grid`, on the long form until 2501 moves it.**
     `lib.rs` gets `pub fn sound_files() -> Files<'static>`, whose
     `sound` reads `files/` through `audio::playable`; `Data::load` reads
     `audio.ron` with `audio::from_source` and that `Files`, so `cargo
     shuyi check` covers the sounds. In `main.rs`, `sounds:
     game::sound_files()`, and `no_sound`, `shown` and `left_out` go.
-    Its `crates/game/Cargo.toml` turns `sfx` on, as above.
+    Its `crates/game/Cargo.toml` turns `sfx` on, as above; grid's root
+    `[workspace.dependencies]` still has `shuyi-assets`, for its rules
+    crate.
   - A test in each template's `tests/it/main.rs`: every cue of
     `AudioConfig::DEFAULT` is in the game's manifest, and
     `format_problem` accepts what `audio::playable` gives for each of
@@ -296,6 +308,15 @@ parked.
     with `sfx::render` before the ADPCM step. If not, 3029 does it.
   - **2003.** `docs/modules.md` lists the `sfx` feature with the
     format plugins, as planned: set its row to ready.
+  - **2234** (JPEG, WebP, QOI and JPEG XL drawn, FLAC and MP3
+    played). If it is done, `Check::sound` already takes `.flac` and
+    `.mp3`: add `.sfx.ron` beside them, with one message that lists
+    all five names ("must be .ogg, .wav, .flac, .mp3 or .sfx.ron");
+    put the `.sfx.ron` branch of `format_problem` beside its `.flac`
+    and `.mp3` ones; and make `sfx::to_wav` call its
+    `audio::pcm16_wav` with one channel, so the crate has one WAV
+    writer. If not, nothing to do (2234 adds `.flac` and `.mp3`
+    beside `.sfx.ron`, and makes `sfx::to_wav` call its writer).
   - **MCP.** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
   - **2116.** If it is done, the presets' WAV hashes are rows of
     `crates/assets/tests/golden/sfx.ron` (through
@@ -303,10 +324,36 @@ parked.
     CI's `determinism` job checks them on wasm32, since `sfx` is in the
     features of `shuyi-assets`' self dev-dependency (above). If not,
     2116 does it.
-  - **2345.** If it is done, `SfxRon` fills the `Sound` kind's
-    `length_ms` with the sound's length, and `sound_length_ms` gives a
-    `.sfx.ron`'s length whether its bytes are its text or the rendered
-    WAV. If not, 2345 does it.
+  - **2378** (cue rules, part two, which adds the `Sound` kind's
+    `length_ms` and `sound_length_ms`). If it is done, `SfxRon` fills
+    `length_ms` with the sound's length (`n × 1000 / SAMPLE_RATE`), and
+    `sound_length_ms` gives a `.sfx.ron`'s length whether its bytes are
+    its text or the rendered WAV. If not, nothing to do (2378 does it).
+  - **2020.** If it is done, add `sfx` to the `fuzz` feature's list in
+    `crates/assets/Cargo.toml` (its skills' line), and have
+    `fuzz::formats`' path function give the two `sfx` formats
+    `a.sfx.ron` in its walk of every format alone, since `SfxRon`
+    refuses any other name. If not, 2020 does both.
+  - **2736, 2737 and 2738** (the parked gallery examples). Each gives
+    its example sounds from the presets if this is done; if not, the
+    example ships silent, its README says so, and the sounds are left
+    to this PR. If none has landed, nothing to do. If one has, this PR
+    gives its example the sounds and drops that README line:
+    - the match-3 (`examples/match-three`, 2736's part 2 ticket) and the
+      card battle (`examples/card-battle`, 2737): the four menu cues as
+      the blank template has them, `files/sfx/*.sfx.ron` and
+      `files/audio.ron`, with the `sfx` feature on. Both are on the
+      short path, so no code changes. If 2736 is done and its part 2
+      ticket is still open, that ticket's *Sounds* item becomes these
+      files;
+    - the brick-breaker (`examples/bricks`, 2738): a bounce, a break and
+      a lost-life sound from the presets, played on its `Bounced`,
+      `Broke` and `LifeLost` events.
+  - **2739** (parked: the snake example). If it is done,
+    `examples/snake` gets an eat and a death sound from the presets,
+    played on its `Ate` and `Died` events, and its README drops the
+    line that says it has none. If not, nothing to do: 2739 uses the
+    presets.
 
 **Out (do not do):**
 
@@ -320,12 +367,14 @@ parked.
   raw, like a WAV), rendering it to a WAV inside the pack, and an
   `SfxDef` fixture in the pack's tests and pinned binary form
   (`crates/assets/src/pack/tests.rs`), so `pack::VERSION` stays;
-- a decoded-samples kind (`Pcm`, 2210, parked); when it lands, a
-  `.sfx.ron` can read into it too;
-- cue rules (variants without repeats, random volume, caps): 2345;
-- fuzz targets for the two formats (2020 covers every registered
-  format);
-- the GBA's tone channels (3027, parked);
+- a decoded-samples kind (`Pcm`): 2210 (parked) decides whether to add
+  one, and if it does, adds a `.sfx.ron` format of it too;
+- cue rules: variants without repeats and random volume (2345), copy
+  caps, priority and a voice limit (2378);
+- a fuzz target of its own for the two formats: 2020's harness walks
+  every registered format (the *Either order* item above);
+- the GBA's tone channels: 3027 (parked) leaves them out too, until a
+  game wants them;
 - code or parameter names copied from sfxr or any other synth.
 
 ## Implementation steps
@@ -358,6 +407,10 @@ If the diff is well past 600 lines (presets, fixtures and schemas not
 counted) after step 6, ship steps 1 to 6 with step 9, and write steps 7
 and 8 as one follow-up ticket (the `write-ticket` skill, After MVP),
 blocked by this one. It carries their criteria below.
+It also takes the `shuyi sfx` parts of the *Either order* items: step
+9 then settles 1134's skill section and 2803's `08-polish` without the
+command (a game copies a template's `.sfx.ron` and edits it), and
+points their `shuyi sfx` lines at the follow-up's number.
 
 ## Acceptance criteria
 
@@ -386,7 +439,8 @@ blocked by this one. It carries their criteria below.
       `SfxDef`; `shuyi sfx nope` answers an error that lists the
       presets.
 - [ ] If steps 7 and 8 were split off, their follow-up ticket is in
-      `tickets/open/`, blocked by 2225, with the two criteria above.
+      `tickets/open/`, blocked by 2225, with the two criteria above,
+      and the *Either order* items' `shuyi sfx` lines name it.
 - [ ] Each *Either order* item is settled: done here, or added to the
       open ticket's file.
 - [ ] All gates in the `run-gates` skill pass.

@@ -73,6 +73,10 @@ None.
   and `#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]`, as
   `Targets` has. `Horizon` (inside `RolloutSettings`) gets the same
   `cfg_attr`, and `Persona` too.
+- **Either order with 2113:** if 2113 is done, its `MinimaxSettings`
+  and `MctsSettings` already have both attributes (2113 adds them):
+  check, and add any that is missing; if not, nothing to do (2113 adds
+  them when it lands).
 - `RolloutSettings`' doc comment: "data, so a bot's settings can be a
   file". `PlanSettings`' keeps "a persona's".
 - `Band::distance(self, successes: u32, count: u32) -> u64`: how far
@@ -90,6 +94,11 @@ None.
   stage's. `Entrant::bots`' doc comment says the `seed` is the try's,
   the same `start` gets, and that a bot seeded from it uses
   `bot_seed(seed)`. Hello, Grid's `random` hero uses it.
+- **Either order with 2544:** the grid template's random bot is seeded
+  with `bot_seed(seed)` too (`templates/grid/crates/game/src/tools.rs`),
+  so a new game's bot doesn't read its stage's luck. If 2544 is done,
+  that is the bot of its `playtest` entrant; if not, it is `bot_play`'s
+  `RandomBot::new(seed)`, and 2544 keeps it when it moves the bot.
 - `lib.rs`: re-export `Persona`, `Weighted`, `Weights` and
   `UnknownFeature` beside the balance items. The playtest items stay
   under `bots::playtest` (`run` and `judge` are too plain for the
@@ -148,6 +157,8 @@ None.
 - [ ] `UnknownEntrant: core::error::Error`.
 - [ ] Hello, Grid's `random` hero is seeded with `bot_seed`, and its
       `playtest.ron` comment gives the counts on seeds 0–49.
+- [ ] The grid template's random bot is seeded with `bot_seed`, and
+      its record test still replays each record.
 - [ ] The new ADR exists, and ADR-0027's status names it.
 - [ ] All gates in the `run-gates` skill pass.
 

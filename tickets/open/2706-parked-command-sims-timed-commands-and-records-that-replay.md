@@ -85,9 +85,11 @@ None.
 - **In `shuyi_ui::tick`**, beside 1119's `TickDriver`:
   - `CommandDriver<S: CommandSim>`: steps the sim `FrameInput::ticks()`
     times, as `TickDriver` does. The accumulator is `App`'s `TickClock`
-    (ADR-0024 §4), so it gets the same cap and, once 2123 is done, the
-    game speed. Share the stepping code with `TickDriver`; don't copy
-    it.
+    (ADR-0024 §4), so it gets the same cap and 2123's game speed with
+    nothing more. Share the stepping code with `TickDriver`; don't copy
+    it. **Either order with 2123:** if 2123 is done, add a Harness test
+    that at `GameSpeed::HALF` `Beacons` runs half its steps; if not,
+    nothing to do (2123 adds it).
   - `issue(player, command)` schedules a local command for `now + delay`
     steps. `delay` is a setting, `1` by default (the next step); 2720
     sets lockstep's.
@@ -106,13 +108,12 @@ None.
 - lockstep over command turns (2720);
 - the RTS module, its commands and its units (2707);
 - computer players issuing commands (2714, 2715);
-- a `replay` operation for command records in the tool contract. If
-  1129 has a `replay` operation when this lands, write a follow-up
-  ticket for it;
+- a `replay` operation for command records in the tool contract
+  (2770, parked). The contract's `replay` (1129, done) re-runs turn
+  records only, through `replay::turns`;
 - a soak of command sims: `shuyi_core::soak` (2527) checks `TurnRules`
-  games only. When this lands, write a follow-up ticket for the same
-  reload-per-step check over a `CommandSim`, as for the contract's
-  `replay` above;
+  games only. The same reload-per-step check over a `CommandSim` is
+  2772's (parked, blocked by this one and 2527);
 - a generic queue of delayed events: 2115 left `Delayed<E>` out of
   `shuyi_core::timer`. If a ticket adds one before this starts,
   `CommandQueue` builds on it rather than beside it.
@@ -142,6 +143,8 @@ None.
 - [ ] A record round-trips through RON unchanged.
 - [ ] A snapshot of `Beacons`' record dump after 120 Harness steps
       passes.
+- [ ] If 2123 is done: at `GameSpeed::HALF`, `Beacons` runs half its
+      steps (Harness).
 - [ ] `shuyi-core` still builds with no floats in `tick` (2015's
       `#![cfg_attr(not(test), deny(clippy::float_arithmetic))]` in
       `crates/core/src/lib.rs` passes), and for

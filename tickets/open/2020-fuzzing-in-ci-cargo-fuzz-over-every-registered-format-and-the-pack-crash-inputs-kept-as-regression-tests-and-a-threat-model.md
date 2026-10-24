@@ -123,12 +123,15 @@ it is technical.
       terrain)`, `CinematicRon<Shot>`, `LangPackRon::new(<the limits>,
       &NoTokens)` and `ron::Ron<Table>`. `Dlg<NoDirective>` is standard
       already; a game's directive type stays with the property test;
-    - `pack::Packed<K>` for every engine kind ADR-0023 §6 lists
+    - `pack::Packed<K>` for every engine kind the pack bakes (each kind
+      of `every_kind()` in `crates/assets/src/pack/tests.rs`, with this
+      module's sample types): today the kinds ADR-0023 §6 lists
       (`ImageInfo`, `Image`, `Sound`, `MusicTrack`, `AudioManifest`,
       `CreditsFile`, `FontAtlasDef`, `PaletteDef`, `Lighting`, `Names`,
       `DialogueFile<NoDirective>`, `GridMap<u8, NoFeature>`,
       `KeymapDef<sample::Action>`, `CinematicFile<Shot>`, `LangPack`,
-      `TargetProfile`) and for `Table`.
+      `TargetProfile`), the one-bit `PatternMapDef`, which that list
+      lacks, and `Table`.
   - **The walk over the registry:** the private `Kind` trait in
     `crates/assets/src/format.rs` gets a method, under
     `cfg(feature = "fuzz")`, that runs each of its kind's formats on the
@@ -147,12 +150,12 @@ it is technical.
     two walks:
     - every format alone (`DecodeCx::new()`, at
       `a.<its first extension>`, or `a` when it claims none);
-    - then, inside `fixtures()` (`DecodeCx::in_bundle`), the three
-      formats that read other files a file names, each at the path
-      where it finds them: `font-atlas` at `fonts/atlas.ron`,
-      `audio-manifest` at `audio/audio.ron`, `lang-pack` at
-      `lang/xx/lang.ron`. The path function skips every other format
-      in this walk.
+    - then, inside `fixtures()` (`DecodeCx::in_bundle`), the formats
+      that read other files a file names, each at the path where it
+      finds them. Today there are three: `font-atlas` at
+      `fonts/atlas.ron`, `audio-manifest` at `audio/audio.ron`,
+      `lang-pack` at `lang/xx/lang.ron`. The path function skips every
+      other format in this walk.
     - Every input goes through every format; there is no selector byte.
       That is slower per input, but a seed is a plain file, and a kept
       input still reaches the same format after another is registered
@@ -315,7 +318,11 @@ it is technical.
   - a format of a game's types gets a line in `fuzz::registry()` with a
     sample type;
   - an engine format behind a cargo feature adds that feature to
-    `fuzz`'s list in `crates/assets/Cargo.toml`.
+    `fuzz`'s list in `crates/assets/Cargo.toml`;
+  - a format that reads other files a file names joins the walk inside
+    `fixtures()`, and those files join `fixtures()`;
+  - an engine kind the pack bakes (a line of `every_kind()` in
+    `pack/tests.rs`) adds its `Packed<K>` to `fuzz::registry()`.
 - **An ADR** (the `write-adr` skill, the next free number) that extends
   ADR-0007 §5:
   - registered formats and the pack are fuzzed in CI, and the property
@@ -338,6 +345,20 @@ it is technical.
     the comment in `fuzz.yml`;
   - with 2203: formats it has already added behind features join
     `fuzz`'s list; formats it adds later follow the skills' line;
+  - with 2116: if it is done, its `golden_tests.rs` also takes
+    `fixtures()` from `crate::fuzz::fixtures()` when the one in
+    `builtin_tests.rs` is removed; if not, nothing to do (2116 then
+    uses `crate::fuzz::fixtures()`);
+  - with 2224: if it is done, `Packed<ProportionalFont>` is in the
+    registry (it is in `every_kind()`), the fixture font's page headers
+    are in `fixtures()` (they move with the rest of `builtin_tests.rs`'s
+    `fixtures()`), and `proportional-font` and `bmfont` join the walk
+    inside `fixtures()`, each at its fixture's path, so that walk and
+    its unit test have five formats; if not, 2224 adds them;
+  - with 2225: if it is done, add `sfx` to `fuzz`'s list, and have the
+    path function give the two `sfx` formats `a.sfx.ron` in the walk of
+    every format alone, since `SfxRon` refuses any other name; if not,
+    2225 adds both;
   - with 2230: if it is done, register `Json<Table>` and a `Csv<T, R>`
     of a small kind and row type of `fuzz.rs`'s own in
     `fuzz::registry()`, and add the `json` and `csv` features to
@@ -345,7 +366,13 @@ it is technical.
   - with 2515: both add a method to the private `Kind` trait. If 2515
     is done, add this ticket's method beside its `Formats::kinds()`,
     and the registry's coverage test may read the kind names and
-    format ids from it; if not, 2515 adds its method beside this one.
+    format ids from it; if not, 2515 adds its method beside this one;
+  - with 2909 (parked research): if it is done, nothing to do: its
+    report says how a video format joins this harness, and the ticket
+    that builds one follows it; if not, nothing to do (2909 says how);
+  - with 3054 (parked): if it is done, its `LeaderboardsRon` joins the
+    registry as the skills' line says (a format in `Formats::standard()`
+    is there already); if not, nothing to do (3054 adds it that way).
 
 **Out (do not do):**
 
@@ -415,8 +442,8 @@ regression folder here.
       reverted.
 - [ ] The fuzz registry holds every format of `Formats::standard()`
       (with `png`), the game-registered formats listed above, and
-      `Packed<K>` for each kind of ADR-0023 §6 and `Table` (unit test
-      comparing kind names and format ids).
+      `Packed<K>` for each kind `pack/tests.rs`'s `every_kind()` bakes
+      (unit test comparing kind names and format ids).
 - [ ] A toy format that panics on some bytes, and a toy whose second
       decode differs from its first, each make the formats driver panic
       (unit tests with `catch_unwind`, on a registry they build).

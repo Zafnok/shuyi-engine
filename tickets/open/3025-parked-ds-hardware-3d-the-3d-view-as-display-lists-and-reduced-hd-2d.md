@@ -109,18 +109,21 @@ None.
     (3017);
   - picking stays 2D (ADR-0011 §7), so cursors and grid targeting work
     with touch on the lower surface.
-- **A 3D example on the DS.** If 3108's example exists, it gets an `nds`
-  layout and exports. If not, a test scene in `crates/nds/tests/`: a
-  few meshes, billboards, a light and fog. In the emulator 3018 chose:
+- **A 3D example on the DS. Either order with 3108:** if 3108 is done,
+  its `courtyard` gets an `nds` layout and exports. If not, a test scene
+  in `crates/nds/tests/`: a few meshes, billboards, a light and fog, and
+  3108 exports `courtyard` for `nds` when it lands. In the emulator 3018
+  chose:
   - a replay fixture ends with the same state hash as on desktop;
   - the 3D view's snapshot text (ADR-0011 §5) equals the desktop's;
   - the emulator's screenshot is compared by eye in the PR with the
     software rasterizer's `frame-png` (3103), as ADR-0011 §5 says for
     pictures of a look.
-- **A diorama on the DS.** The engine's HD-2D example (3108 or 3109,
-  whichever holds it), if it exists, or a small diorama fixture
-  otherwise, exports with the effects the DS lacks marked optional, and
-  runs in the emulator.
+- **A diorama on the DS. Either order with 3109:** if 3109 is done, its
+  HD-2D example (town-and-battle under the diorama skin) exports with
+  the effects the DS lacks marked optional, and runs in the emulator.
+  If not, a small diorama fixture does, and 3109 brings town-and-battle
+  to the DS when it lands.
 - **Bench scenarios** (3008): the 3D example's heaviest view, and the
   diorama, run in the emulator runner (3020) against the `nds` budgets.
 

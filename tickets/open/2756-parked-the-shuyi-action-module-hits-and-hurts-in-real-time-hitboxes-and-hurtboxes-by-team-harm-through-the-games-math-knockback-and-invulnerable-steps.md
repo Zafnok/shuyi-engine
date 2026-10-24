@@ -33,8 +33,8 @@ and movers), 2124 (overlap queries and layer filters), 2745 (`Sheet`
 and pools, so harm lands on a pool the game named) and 2003 (module
 duties).
 
-**Either order with 2123:** if 2123 is done, a hit may ask for hit-stop
-through it (`ActionMath::hit_stop`). If not, 2123 wires it.
+A hit may ask for hit-stop (2123's `Freeze`): see *Hit-stop from a
+hit* in the scope.
 
 ## Nick input
 
@@ -51,10 +51,18 @@ None.
   (building, 2756, 2757, 2760–2762, 2764); the `action-rpg` answer of
   `kind` in `docs/modules.ron`; the README's first two sections; the
   skill or its line in 1134's list.
-- **`Hurtbox`** and **`Hitbox`** in `shuyi_action::hit`: boxes (or
-  circles, if 2124 has them) relative to a body, with a `TeamId`, a
-  layer mask (2124's filters), and for a hitbox a `strike: StrikeId`
-  (one swing or missile) so a target is hit once per strike.
+  2003's catalog has no building status (`shuyi_cli::catalog::Status`
+  is ready, planned or parked): if it still has none, add
+  `Status::Building`, named `building`, with its doc, the `status` line
+  of `docs/modules.ron`'s header, *How to read it* in `docs/modules.md`
+  and the `modules` schema, and a `Breaking:` line if CI's `api` job
+  reports one.
+- **`Hurtbox`** and **`Hitbox`** in `shuyi_action::hit`: boxes relative
+  to a body, with a `TeamId`, a layer mask (2124's filters), and for a
+  hitbox a `strike: StrikeId` (one swing or missile) so a target is hit
+  once per strike. A hitbox may also be a circle, asked with 2124's
+  `overlap_circle` if 2124 shipped it. A hurtbox is always a box,
+  since 2124's circles are shapes to ask with, never bodies.
 - **`Hits`**: `step(world, bodies, &mut log) -> Vec<Hit>` finds every
   hitbox–hurtbox overlap of different teams, in body-id order, skipping
   targets this strike already hit and targets still invulnerable.
@@ -63,6 +71,11 @@ None.
   `avoid_chance(...) -> u8`, `knockback(...) -> FxVec2`,
   `invulnerable_steps(...) -> u16`, with defaults for tests that name no
   stat (as 2748's do).
+- **Hit-stop from a hit. Either order with 2123:** if 2123 is done, add
+  `ActionMath::hit_stop(attacker, target, strike) -> u16` (default 0).
+  Each `Hit` carries it, and a sim that keeps 2123's `Freeze` holds it
+  for that many steps (a hold during a hold keeps the longer one), with
+  a test; if not, nothing to do (2123 adds it).
 - **Results as events**: `ActionEvent::{Hit, Avoided, Fell, Knocked}`,
   harm applied to the target's `Sheet` pool, knockback handed to the
   mover (1122) as an impulse it resolves against walls.
@@ -89,6 +102,8 @@ None.
 - [ ] Bodies of the same team never hit each other.
 - [ ] A target is not hit during its invulnerable steps.
 - [ ] Knockback never moves a body into a wall (1122 resolves it).
+- [ ] If 2123 is done: a hit whose `hit_stop` is 6 holds a test sim's
+      `Freeze` for 6 steps.
 - [ ] The replay test gives the same hash list twice, and on wasm32.
 - [ ] All gates in the `run-gates` skill pass.
 

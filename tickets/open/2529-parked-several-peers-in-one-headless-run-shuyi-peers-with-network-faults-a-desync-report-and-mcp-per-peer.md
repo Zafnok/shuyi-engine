@@ -241,6 +241,16 @@ None.
   on `shuyi-net/tools`, and a CI test runs `cargo shuyi peers 2 --net
   seed=1,loss=10,delay=2` on it. If 1145 isn't done, 1145 does that
   (edit requested there).
+- **The `shuyi-net` skill, either order with 1134:** if 1134 is done,
+  drop 2529 from the `waits_for` of `skills/shuyi-net/SKILL.md`
+  (`check-skills` fails on an id no longer in `tickets/open/`), and add
+  a section on `peers` (`--net`, `--peer`, the desync answer, and the
+  MCP tools if step 9 keeps them) and `MemoryPeers`. If 1145 is done
+  too, `waits_for` is then empty: drop it, and write the skill's worked
+  example as 1134's scope says (two `hello-grid` peers through `peers`,
+  with a seeded loss, which CI runs). If 1145 isn't done, 1145 writes
+  it. If 1134 isn't done, nothing to do (1134 writes the skill from
+  what exists).
 - **Docs:**
   - `docs/contract.md`: the `peers` row in *The operations*, the
     `peers` row in *What a game gives*, and a short *Peers* section
@@ -268,10 +278,12 @@ None.
 
 **Out (do not do):**
 - Real sockets, the relay, the LAN, Steam and lobbies (1141–1145). A
-  relay or a referee inside the run (1141, 1146) is a follow-up once
-  they exist.
-- Tick games: rollback (1147) and command turns (2720). `peers` drives
-  turn games' lockstep only.
+  relay or a referee inside the run (1141, 1146) is 2550's, after
+  this ticket.
+- Tick games: rollback (1147) and command turns (2720) build their own
+  sessions, and neither ticket adds them to `peers`. `peers` drives
+  turn games' lockstep only; a tick game in `peers` is a follow-up if
+  a game asks.
 - The `net` channel drawn in the debug view (round trip, loss, bytes
   per channel, the lockstep turn, hash agreement). It comes with the
   networking module, over 2315 (edit requested in 1140 and 2315).
@@ -280,9 +292,11 @@ None.
   editor's (2506) and `shuyi attach`'s (2521).
 - More than 8 peers, and load tests: scale is 1150's research.
 - Recording each peer's session (2518) or rewinding it (2357): a
-  follow-up once both exist.
-- A template part with online play: a follow-up after 1145. A fresh
-  `shuyi new` game offers no peers.
+  follow-up. Step 10 writes it with the `write-ticket` skill, parked
+  like this one, blocked by this ticket and by whichever of 2518 and
+  2357 is still open, and the completion notes name it.
+- A template part with online play: 2551, after 1145. Until then a
+  fresh `shuyi new` game offers no peers.
 - Local multiplayer on one machine: input seats (2406, parked).
 
 ## Implementation steps
@@ -306,14 +320,17 @@ None.
    `versions.json`.
 6. Add `shuyi-net`'s `tools` feature, `MemoryPeers` and its line in
    `tools/layers.ron`, with the integration test below.
-7. Do `hello-grid`'s part if 1145 is done.
+7. Do `hello-grid`'s part if 1145 is done, and the `shuyi-net` skill's
+   part if 1134 is done.
 8. Write the docs.
 9. Measure the diff, fixtures and snapshots aside. Under 600 changed
    lines: add `peers`, `net`, `peer` and `reset` to the MCP session and
    the `net` tool, with its scripted client test, and their lines in
    `docs/contract.md`'s *Peers* section. Otherwise write the follow-up
    ticket (*Size and the split*) and name it in the completion notes.
-10. Run the gates.
+10. Write the follow-up for recording and rewinding each peer's
+    session (*Out*), and name it in the completion notes.
+11. Run the gates.
 
 ## Acceptance criteria
 

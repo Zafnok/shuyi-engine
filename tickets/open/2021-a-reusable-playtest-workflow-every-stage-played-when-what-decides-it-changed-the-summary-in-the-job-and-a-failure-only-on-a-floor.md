@@ -43,8 +43,16 @@ A request from the game.
    (default `cargo shuyi playtest --every-stage --brief`), and the
    timeout; it plays when a changed file is a lever (by the paths, or by
    a script the game owns), writes each stage's text into the job
-   summary, and fails exactly when the command exits non-zero (1:
-   blocked; anything else: the playtest itself broke, reported as such).
+   summary, and fails exactly when the command exits non-zero, saying
+   whether a stage was blocked or the playtest itself broke.
+   **From 2532 (done):** the exit status can't tell those apart. A
+   blocked stage is `ok: false` with no `code` and exits 1. An error
+   the playtest hits (SH3001 no plan, SH3002 the game's error, SH3004 a
+   file not written, SH3005 the tool program stopped) has a `code` and
+   exits 1 too. Usage exits 2 and setup 3 (ADR-0028). `--report <file>`
+   writes the JSON answer, error or not; there is no file when the
+   arguments were wrong, the file couldn't be written or the tool
+   program stopped.
 
    **Changed files on a push too** (added 2026-10-22, from the game's
    retro of its last 50 PRs): the game's workflow already compares a
@@ -81,6 +89,16 @@ None.
   has a playtest plan.
 - A section in the docs page about CI for games (or `docs/contract.md`'s
   `playtest` section): what the inputs mean, why skipping is by `if:`.
+- **Either order with 1134** (the skill pack): if 1134 is done, the
+  `shuyi-balance-bots` skill (`skills/shuyi-balance-bots/SKILL.md`)
+  gets a few lines on calling this workflow: its inputs, `levers`, and
+  the concurrency that never cancels a push, with `check-skills`
+  passing. If not, nothing to do (1134 shows the workflow when it
+  lands).
+- **Either order with 2755 (parked):** if 2755 is done, also call the
+  workflow on `examples/crawler`, with paths covering the example and
+  the crates it is made of (`shuyi-crawl`, `shuyi-rpg`); if not,
+  nothing to do here (2755 adds that caller when it lands).
 
 **Out (do not do):**
 - Playtest on a schedule, or on more runners than one.
@@ -115,8 +133,12 @@ None.
    `rustup show`, the rust cache, the packages, `cargo build --release
    --locked` of the game's tool program, the command with `tee`, the
    text into `$GITHUB_STEP_SUMMARY` in a fenced block per stage, and the
-   command's exit status as the step's (with `::error::` naming a
-   blocked stage when the status is 1).
+   command's exit status as the step's. The step adds `--report
+   "$RUNNER_TEMP/playtest.json"` to the command, and on a non-zero
+   status reads that file with `jq`: no `code` gives an `::error::`
+   naming each stage whose `report.blocked` is true; a `code`, or no
+   file, gives an `::error::` saying the playtest broke, with the code
+   and the error.
 5. **Caller in this repository's CI**: a job calling it with
    `working-directory: examples/hello-grid` and paths covering
    `crates/core/src/bots/`, `crates/cli/`, `examples/hello-grid/`.
@@ -137,6 +159,9 @@ None.
 - [ ] With a deliberately raised floor in a test branch (not merged),
       the job fails with an `::error::` naming the stage; with the floor
       restored it passes.
+- [ ] In a test branch (not merged) whose playtest fails with a code
+      (a plan that errors: SH3002), the job fails with an `::error::`
+      saying the playtest broke, and names no blocked stage.
 - [ ] `zizmor` and `actionlint` (whichever this repository's CI runs)
       pass on the new files.
 - [ ] `shuyi new grid <dir>` makes a game whose `playtest.yml`

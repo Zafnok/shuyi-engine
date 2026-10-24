@@ -133,10 +133,18 @@ None.
   private walk (`Files::get`). If 2207 is done first, this ticket adds
   a unit test that a run-time layer laid over an embedded one gives its
   copy first; if not, 2207's tests add that test.
-- **Either order with 2516.** If 2516's `bundle::recording` is in,
-  `versions` records its path when found, as `bytes` does, through the
-  shared helper. If not, 2516 adds its recording in that helper, so
-  `versions` is recorded too.
+- **Either order with 2516 and 2220.** `bundle::recording` is added by
+  2516, or by 2220 when 2516 isn't done (their clauses say so). If
+  either is done, `versions` records its path when found, as `bytes`
+  does, through the shared helper, and a unit test checks that a path
+  read through `versions` is in the recording. If not, nothing to do:
+  the one that adds it records in that helper, so `versions` is
+  recorded too, and 2220 tests it (its clause says so).
+- **Either order with 2906.** If 2906 is done, `LayerCopy`'s `layer`
+  and `bytes` take the lifetimes its ADR decides for the bundle's
+  reads (2906 updates this ticket to say which). If not, they are
+  `&'static` like every read today, and 2906's ADR says what changes
+  for `versions`, a build ticket if anything does.
 - **Public types (ADR-0039):** `LayerCopy` follows it.
 
 **Out (do not do):**
@@ -167,14 +175,14 @@ None.
 1. Read ADR-0004 §1, ADR-0019 §5, `crates/assets/src/bundle.rs`
    (`find`, `Bundle::read`, `Bundle::bytes`, `test_part`, `watch`) with
    its tests, and `Formats::find`, `Formats::load` and `Formats::read`
-   in `crates/assets/src/format.rs`. Check whether 2207 and 2516 are in
-   `tickets/done/`.
+   in `crates/assets/src/format.rs`. Check whether 2207, 2220 and 2516
+   are in `tickets/done/`.
 2. In `bundle.rs`, beside `find`, add a private `copies(layers, path)`
    iterator over `(&Layer, &'static [u8])` for each layer that has the
    path, in order. Make `find` its first item.
 3. Move what `Bundle::bytes` tells of a read (the watcher call, and
-   2516's recording if it is done) into a private helper that takes
-   `(path, found)`, and call it from `bytes`.
+   the `bundle::recording` call if 2516 or 2220 added it) into a
+   private helper that takes `(path, found)`, and call it from `bytes`.
 4. Add `LayerCopy` and `Bundle::versions` on `copies(self.read(),
    path)`, calling the helper once. Rebuild `test_part` on `copies`.
 5. In `format.rs`, add `Formats::load_versions`, decoding each copy as
@@ -204,6 +212,8 @@ None.
       `crates/assets/src/pack/tests.rs`).
 - [ ] If 2207 is done: a run-time layer's copy comes before an embedded
       layer's copy of the same path (unit test).
+- [ ] If 2516 or 2220 is done: a path read through `versions` is in
+      `bundle::recording`'s set (unit test).
 - [ ] `shuyi-assets` builds without `std`
       (`cargo build -p shuyi-assets --no-default-features --target
       thumbv7em-none-eabihf --locked`).

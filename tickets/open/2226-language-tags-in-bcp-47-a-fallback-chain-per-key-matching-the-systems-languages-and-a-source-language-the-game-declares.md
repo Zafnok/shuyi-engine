@@ -33,8 +33,8 @@ and Unreal 5.8.
 **Shuyi today** (`crates/assets/src/lang.rs` and its submodules):
 
 - `LangCode::new` takes 2 to 8 lowercase letters only (`MAX_CODE_CHARS`).
-  So `pt-BR`, `es-419` and `zh-Hans` can't name a pack, and ticket 2303
-  names a Chinese set `zhhans`.
+  So `pt-BR`, `es-419` and `zh-Hans` can't name a pack, and 2303, whose
+  Simplified Chinese set is `zh-Hans`, is blocked by this ticket.
 - English is the source, fixed in code:
   - `ENGLISH = "en"` and `LangCode::english()`;
   - the `en/ui.ron` path in `from_files` and in `LangPackRon::decode`
@@ -188,8 +188,11 @@ None.
   caller then uses the source).
 - **Either order:**
   - **2348** (plurals in text): if it is done, its plural table is
-    looked up by `LangCode::language()` here (`pt-BR` uses `pt`'s); if
-    not, 2348 does that.
+    looked up by `LangCode::language()` here (`pt-BR` uses `pt`'s), and
+    `Lang::text_in` and `Lang::data_text_in`, which `text` and
+    `data_text` are built on, walk the chain and give the code of the
+    language whose entry they return (the source's when they fall
+    back); if not, 2348 does that.
   - **2351** (the engine's own English): if it is done, its English
     stays beneath the source's screen text whatever language the source
     is; if not, 2351 builds on the `SourceLang` this ticket adds.
@@ -206,6 +209,12 @@ None.
     take part in the chain as its clause says (a `pt-BR` game pack falls
     back to the engine's `pt` pack before the source); if not, 2352
     does that.
+  - **2227** (parked: PO files): if it is done, `write_po`'s `msgid`
+    is `Lang::source_text`, its `#:` names `<source tag>/ui.ron`, its
+    `Language:` is the tag with `_` for `-` as gettext writes it
+    (`pt_BR`), and `lang-export` and `lang-import` read tags with
+    `LangCode::parse`, so a PO saved with `Language: pt_BR` matches the
+    folder `pt-BR`; if not, nothing to do (2227's clause does it).
 - **Docs:** the language pack bullet in `docs/formats.md`, and the
   module docs of `lang.rs`: the tag subset, the chain and the source.
   The module docs say why the engine parses the subset itself rather
@@ -223,7 +232,7 @@ None.
   game writes first in such a language.
 - Plural and select rules, numbers by language (2348).
 - Right-to-left and shaped scripts (2908, parked).
-- Translator exchange files (2227, parked).
+- Translator exchange files (2227, parked), beyond its item above.
 
 **For the game:** additive for a game whose packs are named with
 lowercase letters and whose source is English, since those names are

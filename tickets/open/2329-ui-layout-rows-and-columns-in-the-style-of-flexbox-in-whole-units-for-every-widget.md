@@ -67,7 +67,13 @@ None.
   also pass its walk in the pseudo-language (no cut text), so a layout
   leaves room for translated text. If not, 2353's walk covers them when
   it lands.
-- The book's chapter on the frame (2802, if done) gets a section.
+- **Either order with 2762** (the action HUD, parked): if 2762 is
+  done, give its `PoolGauge` and `SkillBar` a `Measure`, so a game
+  lays the HUD out in rows and columns. If not, nothing to do (2762
+  does it, its clause says so).
+- **Either order with 2802:** if 2802 is done, its chapter on the frame
+  gets a section on `shuyi_ui::layout`, its code in `site/snippets/`;
+  if not, 2802 writes that section (its chapter 4 says so).
 
 **Out (do not do):**
 - UI declared in a data file (2330);

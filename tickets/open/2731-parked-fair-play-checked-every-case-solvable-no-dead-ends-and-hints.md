@@ -94,11 +94,14 @@ None.
     story sets. The worst case is many clues that can be found in any
     order: the example's size (about 8 clues, 3 people, 2 deductions)
     is at most 2^13 = 8 192 fact sets per position. Write the measured
-    state count of each fixture and of the example in the Completion
-    notes. The README says how to split a case that reaches the limit,
+    state count of each fixture, and of a case of the example's size
+    built by the test (8 clues found in any order, 3 people, 2
+    deductions), in the Completion notes. The example itself is 2732's,
+    which writes its own count. The README says how to split a case
+    that reaches the limit,
     for example into chapters whose clues are all found before the next
     chapter starts.
-  - If the example (2732) comes near the limit, add one reduction:
+  - If that case comes near the limit, add one reduction:
     examines whose `when` has only positive conditions, whose node has
     no choice, and that can't make `exit` hold are applied together in
     file order as one edge, when no `NotFound` or `NotMade` condition

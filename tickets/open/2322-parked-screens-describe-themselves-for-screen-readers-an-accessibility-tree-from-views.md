@@ -70,10 +70,20 @@ None.
   - the profiles, key bindings and layout picker screens, and the
     debug menu;
   - the text box (dialogue) as `Text` with the page shown;
-  - on a screen whose widgets share the focus through 2355's `Focus`
-    (`Screen::widget_focus`), the tree's `focus` is the focused item
-    inside the widget `Focus::at()` names; a menu with
-    `MenuView::active` false has no focused item.
+  - **Either order with 3036 (parked):** if 3036 is done, its
+    achievements screen too: a `List` of `ListItem`s, unlocked or not,
+    progress as the value, a hidden one named as hidden; if not, nothing
+    to do (3036 describes it when it lands);
+  - **Either order with 3054 (parked):** if 3054 is done, its high-score
+    screen too: a `List` named by the board, a `ListItem` per entry with
+    its rank, name and score; if not, nothing to do (3054 describes it
+    when it lands);
+  - **Either order with 2355** (focus between widgets): if 2355 is
+    done, on a screen whose widgets share the focus through its
+    `Focus` (`Screen::widget_focus`), the tree's `focus` is the focused
+    item inside the widget `Focus::at()` names, and a menu with
+    `MenuView::active` false has no focused item; if not, nothing to do
+    here (2355 does it, its clause says so).
 
   Text that a view holds as `StyledText` (2347: help lines, a question's
   keys, the text box's wait corner) gives its `plain()` as the node's
@@ -96,7 +106,7 @@ None.
   that takes actions, so a `Passes::Everything` notice never holds it,
   and the screens a pass-through overlay lets run are in the tree under
   it; if 2367 isn't done, every overlay is modal and the focus is in the
-  top screen.
+  top screen, and 2367 adds the pass-through case (its clause says so).
 - **Seeing it:** `frame-png --access <file>` writes the tree as indented
   text, one node a line (`menu "Options"`, `  slider "Music volume" 7/10
   focused`), and `shuyi scene --access` (1129) prints it too.
@@ -110,12 +120,12 @@ None.
 - talking to the operating system (3035);
 - speech of our own: speech is the screen reader's job;
 - the game's own screens (the game's tickets);
-- the web (3035 writes a follow-up for it).
+- the web (3058, after 3035).
 
 ## Implementation steps
 
 1. Read ADR-0020, the menu, question, options, name entry and profiles
-   modules, `Game::frame`, and 2355's `focus` module.
+   modules, `Game::frame`, and 2355's `focus` module if it is done.
 2. Write the `access` types and the text printer.
 3. Add `Screen::describe`, and implement it on each engine screen and
    widget, with a snapshot test each.

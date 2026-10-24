@@ -54,7 +54,18 @@ None.
   camera's position and zoom, the same way the frame places that
   layer's sprites, and drops what falls outside the viewport. It uses
   the one function the frame uses, so the two can never disagree.
-  2317's `to_px` becomes a call to it.
+  That function is public too, as `world_to_px(&Camera, &WorldLayer,
+  point)`: a world point to a console pixel. 2317's `to_px` becomes a
+  call to it, since 2317's helpers map points before they push.
+  **Either order with 1126:** if 1126 is done, `push_world` on an
+  `Isometric` layer maps the gizmo through 1126's
+  `Projection::Isometric`, with a test that it lands where the frame
+  draws a sprite at the same tile; if not, nothing to do (1126 adds
+  its projection to `push_world`).
+  **Either order with 2122:** if 2122 is done and its
+  `shuyi_ui::debug::curve::gizmos` takes an offset from the caller,
+  make it push through `push_world` too; if not, nothing to do (2122
+  pushes through `push_world`).
 - **The `layout` channel**, helpers in `shuyi_ui::debug::layout`:
   - the camera's dead zone (`Note`), and its bounds where they are in
     view (`Bounds`);
@@ -77,16 +88,25 @@ None.
   its sort key as a small label at its foot (`z,y,order`), and a
   `Cross` at the point its `y` is measured from. It is separate from
   `layout` because it is noisy.
-- **Hot reload, if it is on (1124):** when a level is reloaded, the
-  `layout` channel shows a `Note` label "reloaded <file>" for two
-  seconds of frames.
+- **Hot reload. Either order with 2220:** if 2220 is done, when a
+  `Hot<TileMap>` reloads, the `layout` channel shows a `Note` label
+  "reloaded <file>" for two seconds of frames; if not, 2220 adds it to
+  this channel when it lands.
+- **Either order with 2361:** 2361 draws a smoothed world layer
+  between the last two steps, through a blended camera. If 2361 is
+  done, a gizmo on a smoothed layer goes through the layer as drawn
+  (2361's `StepViews::drawn`): say so in `push_world`'s doc, and test
+  that a gizmo at a tile's world point lands where the frame draws
+  that tile. If not, nothing to do (2361 does it).
 - Call the helpers from the walkable town (1125) if it is done. If it
-  isn't, call them from 1120's example, and 1125 calls them when it
-  lands.
+  isn't, call them from a test scene of this ticket's own: 1120's world
+  layers and camera over one of 1124's fixture levels, with its
+  objects. 1125 calls them when it lands. "The example" below means
+  the town, or that test scene.
 
 **Out (do not do):**
-- isometric layouts (1126 adds its own projection to `push_world` if
-  this ticket is done first; if not, this ticket supports it);
+- isometric layouts beyond `push_world`, whose clause with 1126 is in
+  Scope;
 - editing levels (Tiled and LDtk are the editors, ADR-0004; the
   editor's choice is 2506's);
 - 3D (2320).
@@ -98,8 +118,9 @@ None.
 2. Add `push_world` with tests that it matches where the frame draws a
    sprite at the same world point.
 3. Write `debug/layout.rs` and the two channels.
-4. Change 2317's `to_px` to use `push_world`, if 2317 is done.
-5. Do the either-order parts for 2362 and 2360.
+4. Change 2317's `to_px` to call `world_to_px`, if 2317 is done.
+5. Do the either-order parts for 1125, 1126, 2220, 2360, 2361 and
+   2362.
 6. Run the gates.
 
 ## Acceptance criteria
@@ -112,6 +133,8 @@ None.
       each room and the look-ahead point.
 - [ ] If 2360 is done, with `layout` on, the example's snapshot lists
       each tile layer's map bounds and `visible` rectangle.
+- [ ] If 2220 is done, a reloaded map shows its "reloaded <file>" note
+      in the `layout` channel.
 - [ ] With `sort` on, every world sprite has a sort-key label.
 - [ ] The replay hash is the same with the channels on and off.
 - [ ] All gates in the `run-gates` skill pass.

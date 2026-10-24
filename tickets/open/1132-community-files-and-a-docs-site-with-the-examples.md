@@ -15,9 +15,11 @@ completed:
 
 ## Context
 
-0059's fourth question decided who may send code to the engine. The
-recommendation was issues only at first, then pull requests under a
-Developer Certificate of Origin.
+0059's fourth question, who may send code to the engine, is still open
+(`docs/decisions.md`, *Still open*). The recommendation is issues only
+until the first public release, then pull requests under a Developer
+Certificate of Origin. This ticket asks Nick, unless the game's 0059
+has settled it by then.
 
 The research (the game repository's [feasibility report](https://github.com/Zafnok/visions-of-shuyi/blob/main/docs/engine/feasibility.md)) found two things:
 
@@ -48,16 +50,21 @@ engine opens at its first public release. The choices:
 - a Discord server (a time commitment: someone must answer, and the
   server belongs to Nick's account).
 
-Recommended: GitHub Discussions. Record it in `docs/decisions.md`. The
-contribution policy itself still comes from 0059.
+Recommended: GitHub Discussions. Record it in `docs/decisions.md`.
+
+**Decision**, in the same `ask-nick` session, unless the game's 0059
+has settled it by then: who may send code to the engine. Recommended:
+issues only until the first public release, then pull requests under a
+Developer Certificate of Origin. Record it in `docs/decisions.md` and
+take it out of *Still open*.
 
 ## Scope
 
 **In (in the engine repository):**
-- `CONTRIBUTING.md` holds the policy from 0059: what is accepted, the
-  DCO sign-off if chosen, and that the gates are the review. It covers
-  how AI-assisted work is judged and that issues come first for large
-  changes.
+- `CONTRIBUTING.md` holds Nick's contribution policy (above): what is
+  accepted, the DCO sign-off if chosen, and that the gates are the
+  review. It covers how AI-assisted work is judged and that issues come
+  first for large changes.
 - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and issue and PR
   templates.
 - `SECURITY.md`, with:
@@ -80,7 +87,13 @@ contribution policy itself still comes from 0059.
   `SECURITY.md`.
 - The channel Nick picks, linked from `CONTRIBUTING.md` and, if 2801 is
   done, from its Community page.
-- `AGENTS.md` at the repository root.
+- `AGENTS.md` is at the root already (2001). It gets a line pointing
+  outside contributors, and their agents, to `CONTRIBUTING.md`.
+- **Either order with 2352** (parked: the engine's screens
+  machine-translated): if 2352 is done, `CONTRIBUTING.md` says whether
+  people may review and correct the engine's machine-translated
+  language packs, from Nick's answer in `docs/decisions.md`; if not,
+  nothing to do (2352 asks Nick and adds that line).
 
 **Out (do not do):**
 - a forum or Discord, unless Nick picks one in the decision above.
@@ -93,14 +106,17 @@ contribution policy itself still comes from 0059.
 
 ## Implementation steps
 
-1. Ask Nick which community channel (`ask-nick`) and record his answer
-   in `docs/decisions.md`.
+1. Ask Nick which community channel and, unless the game's 0059 has
+   settled it, the contribution policy (`ask-nick`), and record his
+   answers in `docs/decisions.md`.
 2. Write the files.
 3. If 2801 is done, link them and the channel from its Community page.
 
 ## Acceptance criteria
 
 - [ ] `docs/decisions.md` has Nick's answer on the community channel.
+- [ ] `docs/decisions.md` has Nick's contribution policy, and *Still
+      open* no longer lists it.
 - [ ] `SECURITY.md` has the supported versions, the private channel and
       the response time from 2016, and the link to *Untrusted files* if
       2020 is done.

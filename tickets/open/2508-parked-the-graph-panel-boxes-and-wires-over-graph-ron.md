@@ -40,8 +40,9 @@ fired. That is a debug channel (2315), so the in-game view and
 `frame-png` can show it too.
 
 This ticket was written before 1135 and 2506. Their decisions are
-marked **[1135]** and **[2506]**, and whoever finishes the later of the
-two rewrites this ticket.
+marked **[1135]** and **[2506]**. Each of them rewrites the parts
+marked with its id when it lands, and the later one checks the whole
+ticket against both ADRs.
 
 ## Nick input
 
@@ -67,13 +68,19 @@ it, and comments on how it feels.
   bytes.
 - **Compiling:** on save, the panel runs 1135's compiler through the
   tool contract. Each error is shown on the node it names. A graph
-  that compiles is hot reloaded into the running game (1124).
+  that compiles is hot reloaded into the running game (2220's
+  `Hot<T>` and `Module::reloaded`).
 - **Running:** a channel `graph` (2315) for each loaded graph. The
   running game reports, through a contract operation, the active
   state and the last nodes that fired. The panel lights them up, and
   in the game the channel draws them as a readout (2316).
 - **An example:** the door and switch state machine in the platformer
   example (1127), saved as a `*.graph.ron` with its test.
+- **Either order with 2104** (animation state machines, parked): if
+  2104 is done, the panel also shows its `*.anim_graph.ron`, read
+  only: states as boxes and transitions as wires, each with its
+  conditions. If not, nothing here; 2104 does it when it is worked
+  (its scope says so).
 
 **Out (do not do):**
 - a graph runtime. Graphs compile to what exists (ADR-0005 §5);

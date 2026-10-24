@@ -36,11 +36,15 @@ completed:
   into Japanese: the same text box, the same labels on fixed-width
   buttons.
 
-Where wrapping happens in the engine today: `shuyi_ui::widgets::
-word_wrap` (`crates/ui/src/widgets/wrap.rs`), used by the dialogue text
-box's paging (`crates/ui/src/dialogue/text_box.rs`, so a page is
-`box_lines` lines of `word_wrap`). Length checks on pack text use
-`shuyi_assets::lang::text_width` (dialogue limits, tips, names).
+Where wrapping happens in the engine today: `shuyi_assets::text::
+word_wrap` (`crates/assets/src/text.rs`; 2209 moved it there, and
+`shuyi_ui::widgets::word_wrap` re-exports it). It has two callers: the
+dialogue text box's paging (`crates/ui/src/dialogue/text_box.rs`, so a
+page is `box_lines` lines of `word_wrap`), and the dialogue check's
+`lines_at_longest` (`crates/assets/src/dialogue/check.rs`), which
+`check_scene` uses to report a line longer than the box. Length checks
+on pack text use `shuyi_assets::lang::text_width` (dialogue limits,
+tips, names).
 
 ## Nick input
 
@@ -52,6 +56,13 @@ None.
 - The breaking rules in `word_wrap`, measuring in cells.
 - The dialogue text box's paging gets them through `word_wrap` (a page
   is still `box_lines` lines).
+- **From 2209 (done):** `word_wrap` has a second caller, the dialogue
+  check's `lines_at_longest`, which gets the new rules through it, so
+  the check and the box keep agreeing. It writes each token as that
+  many `W`s: under the new rules that is a Latin run kept whole, the
+  worst case (a typed Latin name of that length), so keep it. If
+  `word_wrap` takes 2301's width table, pass it on. A unit test:
+  `lines_at_longest` on a Japanese line with a name token.
 - An optional width per screen-text key in the source language's
   `ui.ron` (e.g. `max_cells`), parsed and checked in `shuyi_assets::lang`.
 - Beside it, an optional `note` per key: what a translator should know
@@ -67,6 +78,12 @@ None.
   (`shuyi_assets::message::Message::forms`) and reports the widest form;
   if not, measure the raw text as planned (no text has branches yet),
   and 2348 makes the list measure forms.
+- **Either order with 2352** (parked: the engine's screens in other
+  languages): if 2352 is done, give the engine's English keys
+  (`crates/ui/lang/en/ui.ron`) a `max_cells` where their place on the
+  engine's screens has a fixed width, and make 2352's upkeep test fail
+  on an engine pack entry wider than its key's `max_cells`; if not,
+  nothing to do (2352 does it, as its clause says).
 
 **Out (do not do):**
 - Chinese punctuation, its wide quotes, and rules that depend on the
@@ -96,9 +113,11 @@ None.
    for example, `fill` joins the words of a multi-word key name with a
    no-break space (U+00A0) that `word_wrap` never breaks at and the
    renderers draw as a space. Say what you chose in the completion notes.
-   If 2348 is done, `fill` formats messages through
-   `shuyi_assets::message`; join a key name's words where it writes the
-   key's name. **Either order with 2347:** if 2347 is done, `fill` is
+   **Either order with 2348:** if 2348 is done, `fill` formats messages
+   through `shuyi_assets::message`; join a key name's words where it
+   writes a `Piece::Arg` by `lookup`. If not, join them in today's
+   `fill`, and 2348 keeps the join (its clause says so).
+   **Either order with 2347:** if 2347 is done, `fill` is
    `fill_styled(…).plain()` (`crates/ui/src/text.rs`): make the join in
    the shared code, so the key's `Key` span holds the joined name; if
    not, 2347 builds `fill_styled` on whatever `fill` does then.

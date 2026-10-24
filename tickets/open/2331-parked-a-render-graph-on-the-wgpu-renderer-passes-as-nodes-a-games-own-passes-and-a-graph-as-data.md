@@ -29,6 +29,10 @@ effects on it, 2327 a game's own WGSL passes, and 2328 2D lights. Each
 is a pass. This ticket makes the passes a graph, so they compose
 without each knowing the others.
 
+When 3034 writes the renderer's ticket, it adds that ticket's id to
+this one's `blocked_by`, as it does for 2326: the graph is built in
+the renderer's crate, so the research alone is not enough.
+
 ## Nick input
 
 None.
@@ -53,7 +57,9 @@ None.
   three still open when this lands adds its pass as a node.
 - **A graph as data:** `render.ron` lists the nodes a game turns on and
   their settings, so a skin's look (ADR-0002, graphics are a skin) is a
-  file, reloadable with 2220.
+  file, reloadable with 2220. For 2326's screen effects, `render.ron`
+  turns each pass's node on or off; the passes' numbers stay in 2326's
+  `effects.ron`, and their amounts in the frame's `effects`.
 - **A game's own node:** a Rust type implementing the node trait,
   added to the graph by name.
 

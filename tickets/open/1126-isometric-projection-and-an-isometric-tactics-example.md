@@ -45,6 +45,10 @@ None.
   too. If not, add to 2405's scope in this PR: "`tile_at` picks
   through every variant of `shuyi_ui::world::Projection` (1126), and
   the round-trip property test runs on the isometric skin too".
+  **Either order with 1127:** if 1127 is done, its `SideView` marker
+  already has a `SideView { tile }` projection: move it into this
+  `Projection` beside `TopDown`, with its tests. If not, add
+  `SideView { tile }` here, and 1127's marker uses it.
 - An isometric grid skin: per-tile pictures, units y-sorted by depth,
   and a cursor drawn as a diamond.
 - Free placement on an isometric map for tick stages, so a mover in
@@ -57,20 +61,28 @@ None.
 - Guides (ADR-0009 §5): write `docs/guides/isometric.md` in full. If 2004
   isn't done, create the file and 2004 adds it to its list.
 - The new-game wizard (ADR-0013 §3–§4): set the `isometric` answer in
-  `docs/modules.ron` to ready, if 2502 has added it. If 2503 is done,
+  `docs/modules.ron` (2003 put it there, parked) to ready, as
+  `top-down-grid` is: `status: ready`, `tickets: []`. If 2503 is done,
   add the part `stage-isometric` to the built-in template: a small
   isometric grid stage and its test. If 2503 isn't done, 2503 adds it.
 - **The debug view (2318).** If 2318 is done, add the isometric
   projection to its `Gizmos::push_world`, with its test. If it isn't,
   2318 supports isometric layers itself.
+- **Moving to a pointed place. Either order with 2761:** if 2761 is
+  done, `PointMove` (`shuyi_action::point_move`) turns the pointer
+  into tile space through this projection's world to tile on an
+  isometric stage, before it picks the pointed place and the body
+  there, with a Harness test that clicks a tile and walks to it. If
+  not, nothing to do: 2761 picks through this projection.
 
 **Out (do not do):**
 - isometric autotiling;
 - isometric tile layers from Tiled maps through 2360's tile-layer item
   (tiles placed by `Projection::Isometric`, drawn back to front, culled
   through world to tile of the view's corners): a follow-up ticket,
-  written when this lands (step 4), blocked by 2360 if 2360 isn't done
-  then. 2360 draws orthogonal maps only and refuses an isometric one;
+  written when this lands (step 4). 2360 is done by then (it blocks
+  1125, which blocks this ticket), draws orthogonal maps only and
+  refuses an isometric one;
 - real elevation rules;
 - hex grids (2121, 2740, parked until after the launch): a hex map is
   another topology, not a projection of the square grid (2121's ADR

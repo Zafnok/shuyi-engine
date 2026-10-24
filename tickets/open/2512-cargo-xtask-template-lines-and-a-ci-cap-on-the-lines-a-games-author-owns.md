@@ -168,6 +168,12 @@ choice, and it only goes down.
 - **From 2015:** the xtask already has the three crates, and
   `tools/line-budget.ron` follows the comment style of
   `tools/layers.ron`.
+- **From 2511 (done):** ADR-0036 §9 leaves a derive for `ActionSet` to
+  these counts. The PR description gives the code lines of each game's
+  own `ActionSet` enum (`action.rs` in the grid template and in Hello,
+  Grid; the blank template uses `UiAction`). If games pay for their own
+  enum, write the derive's ticket (the `write-ticket` skill); if not,
+  the completion notes say so.
 - **Either order:**
   - **2009** (compile times): both add a budget under `tools/`.
     Nothing else is shared.
@@ -179,6 +185,15 @@ choice, and it only goes down.
     path dependency, which links no device crate), and the cap names
     the short name. If 2501 is not done, the counter counts the folders,
     and 2501 moves it onto the plans (its clause says so).
+  - **The parked examples, either order with 2735, 2736, 2737, 2738
+    and 2739:** each one's README gives the lines of its own code. If
+    one is done, its folder is already in the table (every folder
+    under `examples/` is counted): replace the count its README made
+    by hand with this command's, and say so. If not, nothing to do:
+    its README quotes this command (its clause says so). For 2738
+    (the parked brick-breaker), the line to change is where its README
+    counted `examples/bricks` by hand and said how: it becomes this
+    command's code count.
 
 **Out (do not do):**
 

@@ -66,7 +66,13 @@ None. Selling is 3018's question.
   `planned` until 3026.
 - **The crate `shuyi-nds`** (`crates/nds`), `#![no_std]` with `alloc`,
   for `armv5te-none-eabi`, implementing `Platform` (3003), with a
-  catalog row (2003) and a README:
+  README and its catalog row (2003 wrote it, parked):
+  - **`check-modules`.** **Either order with 3010:** if 3010 is done,
+    the check already takes a crate whose row is in `docs/modules.md`'s
+    *Platform backends* table as a backend (its README and row, no
+    `[package.metadata.shuyi]`): give this crate no metadata. If not,
+    teach the check that here (unless 3021 did), with a fixture, as
+    3010 says;
   - **bindings**: `crates/nds/src/sys.rs`, hand-written `extern "C"`
     declarations for the `libnds` functions and registers the backend
     calls, and nothing else. Each one names the `libnds` header it comes
@@ -90,7 +96,11 @@ None. Selling is 3018's question.
     its code where the hardware is the same, through a small crate both
     use, and reuse its `capabilities.tile_layers` (3 per engine here);
     if not, write the shared part and the field here, and 3021 reuses
-    them. Record which in the PR;
+    them. Record which in the PR. **Either order with 2335:** if 2335
+    is done, rotated sprites are affine sprites. If not, sprites have
+    no angle yet: leave the affine sprites out, and write a follow-up
+    ticket blocked by 2335 for them (or add the DS to the one 3021
+    wrote);
   - **touch**: `libnds`'s touch reading becomes pointer events (2405's
     `PointerMoved`, `PointerDown`, `PointerUp` and `PointerLeft`) on the
     lower surface, in that surface's coordinates (3023);
@@ -106,9 +116,15 @@ None. Selling is 3018's question.
     temporary file, the last good copy kept as `.bak`, then the rename);
   - **audio**: sound effects only, baked to the formats the stock ARM7
     core's sound channels play, through `libnds`'s sound calls. Music is
-    a follow-up ticket written when this lands (it may reuse 3027's
-    format and mixer, or BlocksDS's own sound library if 3018 found its
-    license permissive);
+    3061 (it may reuse 3027's format and mixer, or BlocksDS's own sound
+    library if 3018 found its license permissive). **Either order with
+    3029:** if 3029 is done, implement its shared backend trait under
+    its player, so that cue volumes, variants and fades are not written
+    again. Fill in the provided methods the sound channels can play,
+    leave the rest at their defaults, and list them in
+    `targets/nds.ron`'s audio `features` (3017). If not, write 3003's
+    `Audio` trait directly, and 3029 moves the DS onto its shared
+    trait;
   - **memory**: the heap through the allocator 3018 chose, guarded by
     turning interrupts off (no atomics).
 - **The DSi.** The `dsi` profile exports the same ROM, built to run in
@@ -150,8 +166,10 @@ None. Selling is 3018's question.
   and BlocksDS are the developer's installed ones;
 - **changing the ARM7 core**, or writing our own;
 - 3D and HD-2D (3025);
-- music (the follow-up above);
+- music (3061);
 - wireless play, the microphone, and DSi-only features;
+- the Rumble Pak in the GBA slot: a ticket when a DS game asks, which
+  implements 2408's `Platform::motors` (parked, rumble) in `shuyi-nds`;
 - saves on retail-style cartridge memory;
 - measuring on a device (3026).
 
@@ -167,8 +185,8 @@ None. Selling is 3018's question.
 5. Write the exporter. Add the CI build and export.
 6. Export `hello-grid`, run the replay in the emulator, and fix what's
    found.
-7. Write the docs, the catalog row and the music follow-up ticket (and
-   the world-layer one, if 2360 wasn't done).
+7. Write the docs and the catalog row (and the world-layer follow-up
+   ticket, if 2360 wasn't done).
 
 ## Acceptance criteria
 

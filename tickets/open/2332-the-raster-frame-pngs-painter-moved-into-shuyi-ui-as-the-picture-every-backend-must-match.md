@@ -156,10 +156,22 @@ None.
     encoders stay in `shuyi-cli` either way; if it is done first, they
     take `raster::Image` through `frame_png`'s re-export;
   - with the tickets that add drawing to the `Painter` (2301, 2315,
-    2335, 2336, 2337, 2338, 2339 and 2340, and parked 2360 and 2361):
-    if one is done first, its drawing code and its painter tests in
-    `frame_png.rs` move here with the rest, unchanged. 2301, 2315,
-    2335 to 2340, 2360 and 2361 have the matching clause.
+    2335, 2336, 2337, 2338, 2339 and 2340, and parked 1120, 2360 and
+    2361): if one is done first, its drawing code and its painter tests
+    in `frame_png.rs` move here with the rest, unchanged. 2301, 2315,
+    2335 to 2340, 1120, 2360 and 2361 have the matching clause.
+  - with 2222 (sprite atlases), which draws atlas pages and inserted
+    sprites in the `Painter` if it is done first: that drawing and its
+    painter tests move here with the rest, unchanged. If 2222 added
+    inputs to `Painter::new` (its atlas pages), `raster::Painter::new`
+    takes them too, and the wrapper keeps the signature 2222 left. If
+    2222 isn't done, nothing here: it draws in the raster (its clause
+    says so).
+  - with 2334 (text runs): a run is ordinary sprites, so no drawing
+    code changes for it. If 2334 is done first, its `frame-png`
+    reference pictures of runs stay in `shuyi-cli`'s tests and pass
+    unchanged through the wrapper; if not, nothing to do (2334 puts
+    them in the raster's tests).
 
 **Out (do not do):**
 - comparing `shuyi-app` (2018) or the web build (2019) with the raster;
@@ -248,8 +260,8 @@ None.
     points. Its pictures are made in code: the 24 × 16 atlas of
     `frame_png/tests.rs`'s `tiny_atlas` as an `Image` with its
     `FontAtlasDef`, and the test card from `test_card::pixels()`. The
-    sprite's `ImageId` comes from an `ImageTable` literal, as
-    `frame_png/tests.rs` builds one;
+    sprite's `ImageId` comes from `ImageTable::new` (ADR-0039, 2024),
+    as `frame_png/tests.rs` builds one;
   - the moved `empty_pictures_and_pixels_off_the_picture_are_harmless`
     and the test card's own tests.
 - Property: `compare(a, b)` and `compare(b, a)` give the same `over`,

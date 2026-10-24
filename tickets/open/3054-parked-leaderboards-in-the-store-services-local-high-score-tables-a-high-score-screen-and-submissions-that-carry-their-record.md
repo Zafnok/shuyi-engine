@@ -114,7 +114,9 @@ None.
     as `palette::theme_problems` is a check of its own. The toy's tests
     call it, and a game calls it from its `GameTools::check`;
   - a property test that random bytes never panic it. If 2020 is done,
-    add the format to its fuzz targets.
+    the format joins its fuzz registry by its skills' line (a format in
+    `Formats::standard()` is there already); if not, nothing to do
+    (2020 walks every registered format).
 - **The service**, in `shuyi_ui::leaderboards`
   (`crates/ui/src/leaderboards.rs`). It builds without `std` (3005):
   `use crate::prelude::*` and `alloc`, as `storage.rs` does. Its types
@@ -175,7 +177,7 @@ None.
       `Profiles::add`);
     - the file implements `SaveFormat` (`"Leaderboard"`, 1;
       `crates/core/src/save.rs`), and 2110's `Migrate` with a golden
-      fixture if 2110 is done;
+      fixture if 2110 is done (if not, 2110 adds them when it lands);
     - an unreadable file answers `Failed` and is never written over;
     - records are not kept.
   - `MemoryLeaderboards`, for tests, the Harness, replays, bots and
@@ -189,10 +191,9 @@ None.
     `Ctx::new`, swapped with `Ctx::with_leaderboards`;
   - `Ctx::submit_score(board, score)` and `Ctx::submit_score_with(board,
     score, record)`. An unknown board id fails a `debug_assert!` in debug
-    builds and is a warning in release (`Ctx`'s warnings,
-    `Ctx::take_warnings`, or 3040's `shuyi_ui::log` if it is done). A
-    submission is an output, like a sound cue: the rules never read a
-    board;
+    builds and is a `Warn` line in release (`Ctx::log`, category `Game`,
+    3040), as 3036 treats an unknown achievement id. A submission is an
+    output, like a sound cue: the rules never read a board;
   - `Ctx::request_scores(board, range)`;
   - `Game::step` (`crates/ui/src/game.rs:293`) polls the service before
     the screens update, and the frame's answers are in
@@ -233,7 +234,8 @@ None.
     order with 2351:** if 2351 is done, their English goes in
     `crates/ui/lang/en/ui.ron`; if not, in the toy's
     `crates/ui/src/toy/en.ron`, and 2351 moves them with the rest;
-  - it describes itself for screen readers if 2322 is done.
+  - **Either order with 2322:** if 2322 is done, it describes itself
+    for screen readers (`Screen::describe`); if not, 2322 describes it.
 - **"New best":** on `Submitted { new_best: true }`, `Game` shows 3036's
   unlock notice with `high_scores.new_best` and the board's name. The
   game turns it on with a switch of its own (`Ctx::new_best_notice`, a

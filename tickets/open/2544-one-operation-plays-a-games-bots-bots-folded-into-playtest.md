@@ -78,8 +78,14 @@ None.
   `playtest` if it is still needed), `GameTools::bots`,
   `crates/cli/schemas/bots.*.json`, the `bots` subcommand and its usage
   text, its MCP tool (from `Op::ALL`), and its rows in `docs/contract.md`
-  and the root `README.md`. A breaking change, fine before the first
-  crates.io release (2005); the game implements neither hook.
+  and the root `README.md`. A breaking change: the completion notes
+  carry a `Breaking:` line for `shuyi-cli` (`GameTools::bots` and the
+  `bots` operation go; a game gives its bot as a playtest plan with
+  one entrant and no checks). The game implements neither hook.
+- **Either order with 2005** (the first crates.io release): if 2005 is
+  done, the break also takes what its version policy asks of a break
+  after the release (a version bump and a `CHANGELOG.md` line,
+  `work-ticket` §3); if not, the `Breaking:` line is enough.
 - **The grid template plays its bot through `playtest`**
   (`templates/grid/crates/game/src/tools.rs`): one entrant, its stage's
   plan, no checks. Its test
@@ -88,22 +94,46 @@ None.
   each record to the outcome the bots saw. Its `AGENTS.md` table row
   and `.cargo/config.toml` comment say `cargo shuyi playtest --tries 20`.
   The blank template's test that `bots` is unsupported tests `playtest`.
+  **Either order with 2133:** if 2133 is done, the entrant's bot keeps
+  `RandomBot::new(bot_seed(seed))`, as `bot_play` has it; if not,
+  nothing to do (2133 seeds it with `bot_seed`).
 - **Hello, Grid** drops its `bots` and `bot_play`, and its
   `StageMeasure` is the one count of the foe's trips.
 - **The problem codes' pages** that name `bots` or `GameTools::bots`
   (`crates/cli/errors/SH3001.md` at least: grep `crates/cli/errors`).
 - **Open tickets that name the `bots` operation** (not the
-  `shuyi_core::bots` module) say `playtest` instead: at least 1134, 2111,
-  2112, 2113, 2132, 2356, 2501, 2511, 2518, 2524 and 2527 (grep
+  `shuyi_core::bots` module) say `playtest` instead: at least 2111,
+  2112, 2113, 2356, 2501, 2518, 2524 and 2527 (grep
   `tickets/open` for `` `bots` `` and `GameTools::bots`, and read each
-  hit).
+  hit). So does any skill under `skills/` that names it, which
+  `check-skills` reports.
+- **Either order with 1134:** if 1134 is done, the shipped skills
+  (`skills/`) that name the `bots` operation say `playtest` instead,
+  and a worked example that runs `bots` runs `playtest`, so
+  `check-skills` passes. If not, nothing to do (1134 writes the skills
+  from the contract as it is then).
+- **Either order with 2524:** if 2524 is done, its eval asks `bots`
+  in files outside `tickets/open`: move its `Replay` check
+  (`crates/xtask/src/eval/grade.rs` and its test of the answer paths)
+  onto `playtest --tries 1 --json` and its first try's `record`, the
+  references' bots onto a plan as the grid template's bot, and the
+  prompts in `evals/tasks/*.ron` and `evals/README.md` onto
+  `cargo shuyi playtest`. If not, rewrite 2524's text with the
+  others above.
 - The contract's version, its schemas and `versions.json`, as
   `docs/contract.md`'s *The schemas* says.
+- **Either order with 2527:** if 2527 is done, `soak` follows
+  `playtest` in this PR: the `games` of `SoakInput` and `SoakOutput`
+  becomes `tries`, its defaults and limits are `PlaytestInput`'s, its
+  command line takes `--tries N` with `parse_args` and `usage` off
+  `bots::parse_args` and `bots::usage`, and its schemas, its rows in
+  `docs/contract.md` and the `cargo shuyi soak` lines in CI and the
+  READMEs change with it; if not, nothing to do (2527 reads `bots` as
+  `playtest` when it lands).
 
 **Out (do not do):**
 - `shuyi_core::play` and `shuyi_core::bots::playtest`'s judging: only the
   CLI's answer grows;
-- 2527's soak, which reads its input from what is here when it lands;
 - the game's use of `playtest` (game#1180).
 
 **`shuyi autobalance` (2541, done)** plays its tries through the same
@@ -127,7 +157,8 @@ its answer and its tests unchanged.
    tool's tests), then regenerate the schemas and raise the version.
 5. The docs (`docs/contract.md`, `README.md`, the templates'
    `AGENTS.md`, the errors' pages), then the `document` skill.
-6. Rewrite the open tickets that name the `bots` operation.
+6. Rewrite the open tickets that name the `bots` operation, and, if
+   1134 is done, the skills.
 
 ## Acceptance criteria
 

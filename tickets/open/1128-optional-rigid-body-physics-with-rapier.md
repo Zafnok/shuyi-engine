@@ -58,11 +58,24 @@ None.
   answer: rigid-body physics; alternatives: the default movers and
   `shuyi-procanim`), the README in its fixed order, the `physics`
   feature of the `shuyi` crate (2003), the catalog row, and the
-  `shuyi-physics` skill once the skill pack (1134) exists.
+  `shuyi-physics` skill if the skill pack (1134) is done; if not, add
+  it to 1134's list in this PR.
+- **From 2003 (done):** a game steps the `PhysicsWorld` from its own
+  `TickSim::step`, a library call (ADR-0040 §1), and a hook never
+  changes a stage's state (§3). So this module needs no `Module` and no
+  line in `shuyi::enabled_modules`; its README's "how to start" shows
+  the call. If it adds a format, set `formats` in its
+  `[package.metadata.shuyi]` to the function a game's `formats()`
+  calls, so `shuyi add` prints that line (ADR-0041 §6).
+- **Either order with 2704:** if 2704 is done, add a few rigid crates
+  to `examples/cave-crawl` beside its creatures (ADR-0010 §1), update
+  its pictures and hashes, and drop the README line saying this ticket
+  adds them. If not, nothing to do: 2704 adds them.
 
 **Out (do not do):**
 - making physics the default;
-- joints beyond what the test scene needs.
+- joints beyond what the test scene needs;
+- drawing its colliders in the debug view: 2373 (parked).
 
 ## Implementation steps
 

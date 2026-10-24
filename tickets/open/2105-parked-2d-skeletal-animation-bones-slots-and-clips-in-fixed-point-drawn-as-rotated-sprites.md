@@ -76,6 +76,11 @@ None.
     `shuyi_core::ease::Ease` (2109): `Linear`, `Steps(1)` for a stepped
     key, or any other curve, so this module has no curve type of its
     own.
+  - `Encode` for `RigRon`, so `import --print` writes a rig imported
+    by 2216 (or 2217's path B) as this RON: `ron`'s `to_string_pretty`
+    with a `PrettyConfig` whose `new_line` is `"\n"`, as
+    `crates/cli/src/font_atlas.rs` writes an atlas. A rig encoded and
+    read back is equal (ADR-0007 §4).
 - **The maths**, pure:
   - `pose_at(&Rig, clip, elapsed_ms) -> Pose`: local transforms per
     bone, and the attachment per slot;
@@ -88,6 +93,10 @@ None.
     `shuyi_core::timer::crossed` (2364): an event at `t` fires when
     `from_ms < t <= to_ms`, nothing fires on a backward jump, and a
     range longer than one loop fires each event once.
+    - **Either order with 2104:** if 2104 is done and 2364 isn't, 2104
+      wrote `crossed` in `shuyi_core::timer`: build `events_between` on
+      it, and don't write it again. If not, nothing more to do (2104
+      uses the `crossed` this ticket writes).
     - **Either order with 2364:** if 2364 is done, build
       `events_between` on `crossed`. If not, write `crossed` in
       `shuyi_core::timer` with the rule in 2364's Scope (and its either
@@ -98,7 +107,8 @@ None.
   order; `facing` flips the rig left and right.
 - **The debug view:** if 2315 is done, a helper
   `shuyi_bones::debug::bone_gizmos` drawing each bone as a `Bone` line
-  from its position along its length. If not, leave it and note it.
+  from its position along its length, on a `bones` channel. If not,
+  leave it: 2315 adds it when it lands (its scope says so).
 - **Fixtures:** a three-bone arm and a small walk clip (ours, CC0).
 
 **Out (do not do):**
@@ -108,15 +118,16 @@ None.
 - DragonBones import (2216);
 - Spine import (2217);
 - a state machine that picks the clip (2104 picks clips; mixing two of
-  this module's clips by its states is a follow-up once both are done).
+  this module's clips by its states is 2134, parked, blocked by both).
 
 ## Implementation steps
 
 1. Read ADR-0010 §7, 2335's rotated sprites and `shuyi_core::angle`,
    2222's `Atlas` and 1123's importers, 2109's `shuyi_core::ease`, and 1119's `Fx`. Check
-   whether 2364 is done (`crossed`).
+   whether 2364 or 2104 is done (`crossed`).
 2. Write the ADR.
-3. Write the rig types, `RigRon` and its checks, with fixtures.
+3. Write the rig types, `RigRon`, its checks and its `Encode`, with
+   fixtures.
 4. Write `pose_at`, `mix`, `world` and `events_between`, with property
    tests.
 5. Write the view and the default skin; add snapshot tests.
@@ -133,6 +144,8 @@ None.
       with `frame-png`.
 - [ ] Bad fixtures give errors with file and line; random bytes never
       panic `RigRon`.
+- [ ] A rig encoded by `RigRon` reads back equal, for each fixture and
+      for random valid rigs.
 - [ ] `cargo deny check` passes, and the new crate is in CI's `no_std`
       job.
 - [ ] All gates in the `run-gates` skill pass.
@@ -143,7 +156,8 @@ None.
   attachment; a skin swap; events at the edges of a range, across a
   loop and after a backward jump.
 - Property: pure and periodic `pose_at`; `mix` bounds; a parent listed
-  after its child is always an error.
+  after its child is always an error; a random valid rig encoded and
+  read back is equal.
 - Snapshot / integration: the arm's sprites at three times, and one
   mixed pose.
 

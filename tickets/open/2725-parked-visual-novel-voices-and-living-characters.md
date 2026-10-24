@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2722", "2231", "2342", "2226", "2344"]
+blocked_by: ["2722", "2723", "2231", "2342", "2226", "2344"]
 nick_input: none
 completed:
 ---
@@ -61,12 +61,21 @@ None.
 
 **In:**
 - **A voice per line id** in `shuyi_vn::voice`:
-  - a shown line's voice is found by its line id, per language, by the
-    convention game ADR-0045 sets. If it sets none, use
-    `voices/<language>/<line id>` with any audio extension the formats
-    know, falling back along the language's chain (2226's
-    `Lang::chain`: `pt-BR`, then `pt`, then the game's source
-    language);
+  - a shown line's voice is found by its line id, per language, where
+    the engine finds voice clips today (game ADR-0046): the folder
+    `VoiceFiles` names (`voice/<language>/`, shipped beside the game),
+    whose manifest (`shuyi_assets::voice::VoiceManifest`, read with
+    `read_voice_manifest`) lists each clip by line id. The language is
+    the one in use at run time, not `VoiceFiles::lang` fixed at build
+    time, falling back along its chain (2226's `Lang::chain`: `pt-BR`,
+    then `pt`, then the game's source language). The clips stay in
+    that folder beside the game, not in a pack's `files/` (2349's
+    `localized_path`);
+  - **Either order with 2349:** if it is done, the language in use is
+    the player's pick (`Settings::language`, through `Ctx::lang`), so
+    a voice follows the options row; if not, it is `Ctx::lang` as the
+    game sets it, and 2349 has nothing to do here (its Out leaves
+    voices per language to this ticket);
   - the `voice <line id>` direction (2721) overrides it, to reuse
     another line's voice;
   - a line with no voice is fine and plays silent;
@@ -76,11 +85,13 @@ None.
   format `voice-ron` (`*.voice.ron`):
   - `source_hash` (of the audio file's bytes), `duration_ms`, `step_ms`
     (default 50), and `levels`: one integer from 0 to 3 per step;
-  - written by a tool, `shuyi bake` (or `shuyi voice-envelope <file>`
-    if bake isn't there yet), never computed at run time. The tool
-    decodes the audio, takes the loudness of each step, and quantizes it
-    against the file's own peak. Floats are allowed in the tool only;
-    the result is integers checked into the game;
+  - written by a tool, `shuyi voice-envelope <file>` in `shuyi-cli`,
+    never computed at run time. The tool decodes the audio, takes the
+    loudness of each step, and quantizes it against the file's own
+    peak. Floats are allowed in the tool only; the result is integers
+    checked into the game. **From 2204 (done):** `shuyi bake` packs a
+    game's sources as they are, so a `*.voice.ron` goes into the pack
+    like any other source, and bake computes nothing from the audio;
   - decoding audio in the tool: use the decoder `shuyi-assets` already
     has for WAV and OGG if it gives samples. If not, add to `shuyi-cli`
     only `hound` (WAV, believed Apache-2.0) and `lewton` (OGG Vorbis,
@@ -97,10 +108,13 @@ None.
     `stop_sound`, never a second kind of handle. Its volume is its
     group's gain (below), which `shuyi-app` turns into its own volume.
     Add another handle only if a voice clip needs one these don't give.
-    If 3029 is done, add whatever is missing to its shared backend
-    trait, not to `shuyi-app` alone;
+    **Either order with 3029:** if 3029 is done, add whatever is missing
+    to its shared backend trait, not to `shuyi-app` alone; if not, add
+    it to `shuyi-app`'s player, and 3029 moves it with the rest;
   - the story's screen plays the voice when a line is shown, and stops
-    it on `Advance`, on skip, on going back, and on load;
+    it on `Advance`, on skip and on going back;
+  - **Either order with 2724:** if 2724 is done, loading a save stops
+    the voice too; if not, nothing to do (2724 stops it when it lands);
   - **volume**: the voice volume is the `voice` sound group's (2342),
     not a `VnSettings` field. A volume per voiced character is a group
     under `voice`, declared in the audio manifest. 2342 plays every
@@ -108,6 +122,11 @@ None.
     `AudioRequest::PlayVoice` and `SoundRequest::Voice`, and the player
     plays it at that group's gain (`Gains::group`). The quick menu gets
     a row for `voice` and one for each character's group.
+  - **Either order with 2343** (ducking under a voice): if 2343 is
+    done, the `sounding` it hands `DuckState::update` also needs the
+    gain of the playing clip's own group above 0, not only `voice`'s,
+    so a character turned down to 0 lowers nothing, with a test; if
+    not, nothing to do (2343 does it).
 - **Auto waits for the voice**: 2723's auto sends `Advance` only after
   the reveal, the pause, and the voice's `duration_ms`. With no
   envelope, it doesn't wait for the voice, and the README says to bake
@@ -136,6 +155,11 @@ None.
   its audio (stale) are warnings with file and line. If 2724 is done,
   add these rules to `shuyi_vn::check`. If not, add them to 2724's
   scope in this PR.
+- **Either order with 2730** (testimony, in the mystery module): if
+  2730 is done, its `TestimonyScreen` plays the shown statement's voice
+  by its line id, moves the witness's mouth, and stops the voice when
+  the statement changes, on press and on present, as the story's screen
+  does (fake audio test); if not, nothing to do (2730 does it).
 
 **Out (do not do):**
 - lip sync from phonemes, and any analysis at run time;
@@ -163,8 +187,8 @@ None.
 
 - [ ] A shown line with a voice plays it once, in its speaker's group;
       a line without one plays nothing (fake audio test).
-- [ ] `Advance`, skip, going back and loading each stop the voice
-      playing (fake audio test).
+- [ ] `Advance`, skip and going back each stop the voice playing, and
+      so does loading a save if 2724 is done (fake audio test).
 - [ ] The fixture voice's envelope is the same file on every run, and
       `voice-ron` passes its fuzz-style test and determinism fixture.
 - [ ] With the fixture envelope, the mouth frame at each step matches a

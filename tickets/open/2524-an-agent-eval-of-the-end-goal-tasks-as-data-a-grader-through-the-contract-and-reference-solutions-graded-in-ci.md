@@ -70,8 +70,9 @@ What the engine has (checked 2026-10-21):
   game in CI. 1133 tests MCP with a scripted client. 2009 measures
   compile times, and 3008 run-time budgets.
 - **Games to measure with.** 2803's finished tutorial
-  (`site/tutorial/10-ship`) is a box-pushing puzzle made from the grid
-  template. Tic-tac-toe exists only as a test toy
+  (`site/tutorial/10-ship`) is a box-pushing puzzle made from the
+  `blank` template, like every step of it, keeping the grid template's
+  action names. Tic-tac-toe exists only as a test toy
   (`crates/core/src/bots/tests.rs`).
 
 This ticket is the half that costs nothing to run: tasks as data, a
@@ -104,8 +105,9 @@ None. Spending money on agent runs is 2525's question.
     `Chord` and of `ButtonChord` gives the names `Harness::keys` and
     `Harness::pad` take. A name the game has no key or button for
     panics there with the message below, as the Harness does on a key
-    name it doesn't know; `run` and `scene` refuse it first, so only
-    `frame-png`, which has no session to ask, can reach that panic.
+    name it doesn't know; `run`, `scene` and MCP's `step` refuse it
+    first, so only `frame-png`, which has no session to ask, can reach
+    that panic.
   - `Session::actions(&self) -> Vec<String>`
     (`crates/cli/src/contract/session.rs`): the game's actions that have
     a key or a button, in `ActionSet::ALL` order. It is a default method
@@ -132,7 +134,13 @@ None. Spending money on agent runs is 2525's question.
     `match` on `Step` needs an arm for it (a `Breaking:` line, 2010,
     if `Step` isn't `#[non_exhaustive]` by then).
   - **MCP** (1133, done): its `step` tool plays the contract's
-    `Script`, so it gets `act` with it.
+    `Script`, so it gets `act` with it. But the host's `step`
+    (`crates/cli/src/mcp/host.rs`) calls `Session::play` itself, not
+    through `played`, so the action check goes in one function both
+    call. An MCP `step` naming an action the game lacks is then refused
+    with `SH0001` and the list, and the session keeps running; without
+    it the panic ends the game's tool program and the session
+    (`SH3005`).
   - **Either order with 2521:** if 2521 is done, `attach` reads
     `--act` itself and looks actions up with
     `shuyi_platform::link::press_for`: move that `--act` into
@@ -175,8 +183,12 @@ None. Spending money on agent runs is 2525's question.
     id in `targets`;
   - `Web`: `cargo shuyi web --release` exits 0, and the folder that
     `shuyi.ron`'s `web.dist` names holds `index.html` and one `.wasm`.
-    **Either order with 3004:** if 3004 is done, `cargo shuyi export
-    web` and its folder instead;
+    **Either order with 3004:** if 3004 is done, `Web` runs `cargo
+    shuyi export web` and reads its folder instead, and the turn-based
+    tasks gain an `Export` check for `linux` (the package exists), run
+    in the sniper container as CI's `linux` export is, since outside it
+    3004's audit refuses a newer glibc; if not, nothing to do (3004's
+    PR does both);
   - `Responds { steps }`: `run --json` with the steps answers `ok`, and
     its `frame` or its `scene` differs from a `run --frames <n> --json`
     with no input, where `n` is the first answer's `frames`. A panic in
@@ -185,7 +197,12 @@ None. Spending money on agent runs is 2525's question.
     writes it to a file in a temporary folder of its own and runs
     `replay <that file's absolute path> --json`, which passes when the
     record run twice gives equal hashes (ADR-0022). `replay` joins the
-    path to the project's root, so an absolute path is read as it is;
+    path to the project's root, so an absolute path is read as it is.
+    **Either order with 2544:** if 2544 is done, `bots` is folded into
+    `playtest`: run `playtest --tries 1 --json`, read its first try's
+    `record`, and read the `bots` operation in this ticket (the
+    prompt's too) as `playtest`; if not, use `bots` as written, and
+    2544 moves the eval onto `playtest` when it lands;
   - `Scene { steps, has }`: `scene --json` after the steps has a scene,
     and each `(pointer, equals)` in `has` holds in `result.scene.data`:
     a value exists at that JSON pointer, and equals `equals` when one is
@@ -269,8 +286,24 @@ None. Spending money on agent runs is 2525's question.
     `waits_for` when real time is unparked. **Either order with 2739:**
     if 2739 is done first, it has already written a snake task; keep
     it, and add only the platformer's.
+    **Either order with 1127:** if 1127 is done, `platformer.ron` gets
+    `reference: Project("examples/platformer")` and no `waits_for`, the
+    example's scene data answers its `Scene` checks (the level and the
+    coins its prompt names; add them to the example if it lacks them),
+    and `cargo xtask eval-reference platformer` passes. If not, nothing
+    to do (1127 does it).
+  - **Either order with 2735, 2736, 2737 and 2738** (parked: the
+    roguelike, the match-3, the card battle and the brick-breaker): if
+    one is done, it added its task here: write that task file too,
+    with its example as its `Project` reference. If not, nothing to
+    do: each one writes its own task when it lands.
   - Every task has `unmeasured: [(what: "a Playdate build", waits_for:
-    "3010")]`.
+    "3010")]`. **Either order with 3010:** if 3010 is done, the
+    turn-based tasks whose references pass `cargo shuyi check --target
+    playdate` list `playdate` in their `targets` instead and have no
+    Playdate entry; a reference that doesn't pass keeps the entry, and
+    gets a ticket for what stops it; if not, nothing to do (3010's PR
+    adds `playdate` and drops the entry).
 - **The tic-tac-toe prompt**, as a draft. The session may change the
   words, never the facts the checks read:
 
@@ -324,12 +357,13 @@ None. Spending money on agent runs is 2525's question.
 - running an agent, a schedule, tokens, cost and minutes, a results page
   (2525);
 - references for snake and the platformer: `examples/snake` (2739) and
-  `examples/platformer` (1127) become them when those tickets land;
+  `examples/platformer` (1127) become them when those tickets land
+  (if 1127 is done first, the platformer's is set here, as above);
 - a shortcut for `Gates` on a reference inside the engine's own
   workspace (the first is 2739's or 1127's): there they run over the
   whole workspace;
 - the Playdate build (3010) and `shuyi export` checks (3004), beyond the
-  either-order clause above;
+  either-order clauses with them above;
 - the lines a template hands its author (2512);
 - grading by a model (fun, looks): every verdict comes from the
   contract or cargo;
@@ -374,10 +408,14 @@ None. Spending money on agent runs is 2525's question.
       action names (a test over the fake session), and
       `cargo shuyi run --act Right --act Confirm --json` plays on a game
       from `shuyi new grid` (the `eval` job's `Responds` check).
+- [ ] MCP's `step` with an `act` step naming `Jump` is refused with
+      `SH0001` and the game's action names, and the session keeps
+      running (a test in `crates/cli/src/mcp/host/tests.rs`).
 - [ ] The contract's version is raised and the schemas regenerated (the
       schemas' test passes).
 - [ ] `cargo xtask eval-reference --all` passes on tic-tac-toe and
-      box-pushing in CI, and lists snake and the platformer as waiting.
+      box-pushing in CI, and on snake or the platformer if 2739 or 1127
+      is done; it lists the rest as waiting.
 - [ ] `--template-only` on tic-tac-toe fails every `Scene` check and
       passes `Check`.
 - [ ] The result file has every field above, and the PR description
@@ -398,7 +436,7 @@ None. Spending money on agent runs is 2525's question.
   `crates/cli/schemas/`.
 - Unit (`shuyi-cli`): `Step::Act` with a key, with only a button, and
   with an unknown name; `Session::actions` on `Headless` and its
-  default; `run` and `scene` refusing an unknown action;
+  default; `run`, `scene` and MCP's `step` refusing an unknown action;
   `Script::parse_step`, `run::parse_args` and `frame_png::parse_args`
   with `--act`; the `Display` of `Chord` and `ButtonChord` read back by
   `Chord::parse` and `ButtonChord::parse`.

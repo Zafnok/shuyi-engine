@@ -229,6 +229,15 @@ Visions of Shuyi.
 - **Either order with 3033** (parked): if its `storage.js` is done,
   the lifecycle plugin sits beside it and nothing else changes; its
   writes are synchronous too.
+- **Either order with 2408** (parked, rumble): if 2408 is done, its
+  rule stops the motors on the `Suspend` a hidden tab now sends, and
+  this ticket adds nothing for it; if not, nothing to do (2408 needs
+  nothing more from this ticket).
+- **Either order with 2601's web backend** (parked; the second
+  follow-up ticket 2601 writes): if it is done, the `Cargo.toml`
+  comment names its `http/web.rs` block too, and `lib.rs`'s docs its
+  `http.js`; if not, nothing to do (that ticket names
+  `lifecycle/web.rs` and `lifecycle.js`).
 - **`docs/platform-backends.md`:** the `Suspend` and `Resume` rows say
   the web build sends them for a hidden and a shown tab and a page
   being left, inside the browser's event.

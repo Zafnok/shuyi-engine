@@ -310,8 +310,9 @@ None.
 - **Docs:** *Checks after loading* in `docs/formats.md` gets
   `things::read` and `check_under`. A new section of `docs/formats.md`,
   "Levels from Tiled and LDtk", shows a `Thing` enum, the loader, the
-  line in `check`, and `map-types`. If 2802 is done, the book's chapter
-  on assets links to it.
+  line in `check`, and `map-types`. **Either order with 2802:** if 2802
+  is done, the book's chapter on assets links to that section; if not,
+  nothing to do (2802's chapter 5 links it, as its clause says).
 - **Problem codes:** the new errors and problems get codes from 2509's
   table.
 - **Either order with 2516:** if 2516 is done, `read` marks the map's
@@ -321,7 +322,9 @@ None.
   (`write-ticket`): 2516's Out leaves it to this ticket.
 - **Either order with 2907:** if 2907 is done and its ADR picked
   another description of a game's types than `schemars`, follow it for
-  the export and say so in this ticket's ADR.
+  the export and say so in this ticket's ADR. If not, use `schemars`,
+  and 2907's ADR says whether `map-types` moves onto its choice (its
+  clause on this ticket).
 - **Either order with 1134:** if 1134 is done, the skill that makes a
   new game (`shuyi-new-game`) says to run `map-types` after changing the
   things enum. If not, 1134 does.
@@ -335,8 +338,14 @@ None.
   their docs, acceptance criteria and tests, go to a follow-up ticket
   (the `write-ticket` skill), parked like this one with `blocked_by:
   ["2232"]`, written in this PR from this ticket's bullets. This PR
-  then keeps the reading and the check, and the lines of 1127 and 2507
-  that name `map-types` point at the follow-up.
+  then keeps the reading and the check, and the lines of 1127, 2507
+  and 1134 that name `map-types` point at the follow-up, which also
+  takes the `shuyi-new-game` line from this ticket.
+  The follow-up names 1127 back: if 1127 is done first, its platformer
+  has Tiled types written by hand or no LDtk check, so the follow-up
+  writes those types with `shuyi map-types --tiled`, or adds CI's
+  `shuyi map-types --ldtk` on its LDtk levels; if not, nothing to do
+  (1127 does it).
 
 API: a new module, two new features, a new `GameTools` method with a
 default (2013's rule for traits), and a new operation. `Op` gains a
@@ -349,9 +358,11 @@ game's next pin bump needs no change. If `Op` is already
 **Out (do not do):**
 - what 1124 keeps of an object, and worlds of several levels (1124,
   with this sweep's edit). If 1124 landed keeping a place or a fraction
-  in another form, convert it here with 1124's rule (read from the
-  number's text, never through a float, to the nearest 1/256, a tie
-  toward negative infinity) and say so in the completion notes;
+  in another form, convert it here with 1124's rule, as its importer
+  does (the reader's float, its exact value rounded with integer
+  operations on its bits, never float arithmetic, to the nearest
+  1/256, a tie toward negative infinity) and say so in the completion
+  notes;
 - spawning things into an ECS world through 2221's `SceneRegistry` and
   `MapEntities`: a follow-up when a game on the ECS asks. Things stay
   plain values here, so turn games with plain structs use them too;
@@ -360,8 +371,9 @@ game's next pin bump needs no change. If `Op` is already
   extensions, and exporting autotile rules;
 - typed custom data on tiles (2709 reads one integer tile property; a
   follow-up if a game asks);
-- polylines and polygons as curves (2122) and as obstacles for paths
-  (2106);
+- polylines and polygons as curves (2122). Polygons as obstacles for
+  paths aren't 2106's either: a follow-up after 2106 and 1124 if a
+  game asks;
 - Tiled's colour and file pickers for members (they are exported as
   strings);
 - drawing things (2318 outlines objects; 2360 draws tile layers).
@@ -383,7 +395,7 @@ game's next pin bump needs no change. If `Op` is already
 5. Write the docs for the reading and the check (*Checks after
    loading*, and the new section without `map-types`). Count the lines
    as *Size* says. If they are over, write the follow-up ticket, point
-   1127 and 2507 at it, and go to step 9.
+   1127, 2507 and 1134 at it, and go to step 9.
 6. Add the `schema` features and the three `JsonSchema` impls.
 7. Write `map_types`: the conversion, the Tiled merge, the LDtk check,
    the operation and its wiring (`Op` made `#[non_exhaustive]` if it
@@ -413,8 +425,8 @@ game's next pin bump needs no change. If `Op` is already
 - [ ] `cargo deny check` passes, with no new dependency.
 - [ ] Either `map-types` is in this PR and the next five criteria hold,
       or the follow-up ticket is in `tickets/open/`, parked, with
-      `blocked_by: ["2232"]` and those five criteria, and 1127 and 2507
-      name it.
+      `blocked_by: ["2232"]` and those five criteria, and 1127, 2507
+      and 1134 name it.
 - [ ] `map-types --tiled` writes the test type's classes and enums into
       a copy of the fixture's project (snapshot), keeping its other
       entries and keys. `--check` then passes, and on the old copy it

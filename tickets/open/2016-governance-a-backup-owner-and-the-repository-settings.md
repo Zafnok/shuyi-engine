@@ -66,6 +66,13 @@ What Shuyi has today:
     skill calls it a gate. The game's ruleset requires both checks;
   - SonarCloud's scan is not a gate: its findings come back as `sonar`
     issues (ADR-0017).
+- **From 2011 (done):** `.github/dependabot.yml` (version updates for
+  the crates and the pinned actions), `security.yml`'s weekly advisory
+  check, zizmor as a job under `ci-result`, `codeql.yml` with a
+  `codeql-result` that stays optional, and `scorecard.yml`. ADR-0037
+  rules out a publishing token in CI (2005 builds trusted publishing)
+  and keeps Dependabot security updates off. 2011's Out puts Dependabot
+  alerts on this ticket's checklist.
 
 What is planned:
 
@@ -73,11 +80,6 @@ What is planned:
   trusted publishing. The six crates exist already as 0.0.0
   placeholders, owned by `Zafnok` (`docs/decisions.md`, 2026-10-21).
 - 2806 adds GitHub Sponsors and Ko-fi. 2807 (parked) adds a domain.
-- 2011 adds Dependabot's version updates, a weekly advisory check,
-  zizmor as a job under `ci-result`, and CodeQL with a `codeql-result`
-  that stays optional. Its ADR rules out a publishing token in CI (2005
-  builds trusted publishing) and keeps Dependabot security updates off.
-  Its Out puts Dependabot alerts on this ticket's checklist.
 
 Why it matters:
 
@@ -146,8 +148,8 @@ account.
      approvals" at 0 (nobody else reviews; the gates are the review);
    - turn on "Require status checks to pass", pick "Add checks", and
      add each of `ci-result` and `mutants (diff)`, picking the one from
-     GitHub Actions. Leave "Require branches to be up to date before
-     merging" off;
+     GitHub Actions. Turn on "Require branches to be up to date before
+     merging" too (*Scope*, *From 2026*);
    - under "Bypass list", remove every entry, your own account included.
      In an emergency you can still edit the ruleset yourself;
    - pick "Save changes".
@@ -247,7 +249,8 @@ Then tell the session "done". It checks the result, read-only, with
     admin's sign-in). It exits 1 unless every check is `ok`.
   - `REQUIRED_CHECKS`, a constant: `ci-result` and `mutants (diff)`.
     `NOT_REQUIRED`, a constant of check names that stay optional, each
-    with a comment saying why (empty today). A unit test reads every
+    with a comment saying why (today `codeql.yml`'s `codeql-result`,
+    below). A unit test reads every
     `.github/workflows/*.yml` with `serde_norway` (already a dependency
     of xtask) and fails when a job whose key ends in `-result` has a
     check name (its `name:`, or the key) in neither list. Its message
@@ -258,7 +261,8 @@ Then tell the session "done". It checks the result, read-only, with
     1. **`main` is protected:** `repos/{repo}/rules/branches/main` (the
        rules in force on `main`) holds `deletion`, `non_fast_forward`,
        `pull_request`, and `required_status_checks` whose contexts
-       include every name in `REQUIRED_CHECKS`;
+       include every name in `REQUIRED_CHECKS` and whose
+       `strict_required_status_checks_policy` is true (*From 2026*);
     2. **nobody bypasses it:** each ruleset behind those rules (its
        `ruleset_id`, read at `repos/{repo}/rulesets/{id}`) has an empty
        `bypass_actors`;
@@ -275,9 +279,8 @@ Then tell the session "done". It checks the result, read-only, with
        are both `enabled`;
     6. **Dependabot security updates:** in the same answer,
        `security_and_analysis.dependabot_security_updates.status` is
-       not `enabled` once `.github/dependabot.yml` exists in the
-       checkout: 2011's ADR keeps them off, and the `off` line names it.
-       Before that, the line is `ok` either way;
+       not `enabled`: ADR-0037 (2011's) keeps them off, and the `off`
+       line names it;
     7. **every Actions secret has a row:** each name that
        `repos/{repo}/actions/secrets` lists (names only; the API never
        gives values) appears in backticks in `docs/continuity.md`.
@@ -285,8 +288,7 @@ Then tell the session "done". It checks the result, read-only, with
     `crates/xtask/src/tickets.rs`: one small function runs `gh`
     (`gh_get`, excluded in `.cargo/mutants.toml` with a comment, as
     `list_on_github` is), and pure functions judge its answers, tested
-    without `gh`. Check 6 takes whether the file exists as an argument,
-    so its test needs no file.
+    without `gh`.
   - It reads the JSON as `serde_json::Value`: add `serde_json = "1"` to
     `crates/xtask/Cargo.toml`. It is MIT OR Apache-2.0, which
     `deny.toml` allows, and already in `Cargo.lock` (1.0.154, through
@@ -309,6 +311,16 @@ Then tell the session "done". It checks the result, read-only, with
   `codeql-result`, with a comment naming ADR-0037 (CodeQL is not a
   required check; the zizmor job is under `ci-result`). 2005 runs
   `cargo xtask repo-settings` before the release.
+- **From 2026 (done):** #83 and #84, each green on its own base,
+  merged 23 seconds apart and broke `clippy` on `main`. Required checks
+  alone don't stop that, and 2026 left the setting to this ticket. So
+  the ruleset also requires an up-to-date branch (*Nick input*, setup
+  step 1; check 1): a pull request runs its checks again on today's
+  `main` before it merges. A merge queue would wait less, but needs an
+  organization (Out). `docs/continuity.md`'s settings section says
+  why, and the `bump-rust` skill's step 7 says the ruleset now requires
+  it, in place of "main's ruleset doesn't require an up-to-date
+  branch".
 
 **Out (do not do):**
 - changing any setting, ruleset, secret, collaborator or account, from
@@ -318,11 +330,11 @@ Then tell the session "done". It checks the result, read-only, with
 - `.github/dependabot.yml`, the weekly security workflow, CodeQL and
   Scorecard (2011), and crates.io trusted publishing (2011's ADR sets
   the rule, 2005 builds it). This ticket only lists 2011's
-  `codeql-result`, as the either order above says;
-- adding crates.io owners and making the release token (2005 does, and
-  fills in this ticket's crates.io row);
-- the contribution policy and how maintainers are added (the game's
-  ticket 0059; still open);
+  `codeql-result`, as *With 2011 (done)* above says;
+- adding crates.io owners and the trusted publisher, with no release
+  token (2005 does, and fills in this ticket's crates.io row);
+- the contribution policy (1132 asks Nick) and how maintainers are
+  added (the game's ticket 0059; still open);
 - moving the repository to a GitHub organization (it would change the
   repository name chosen on 2026-10-14, and needs its own decision);
   crates.io team owners (they need an organization); a foundation; a
@@ -353,8 +365,8 @@ Then tell the session "done". It checks the result, read-only, with
    bullet, the skill's line and the README rows.
 5. Run `cargo xtask repo-settings`. Expected before the setup: checks 1
    to 4 `off`; checks 5, 6 and 7 `ok`.
-6. Give Nick the setup steps (*Nick input*) that fit his answers and
-   2011's state, and wait for "done".
+6. Give Nick the setup steps (*Nick input*) that fit his answers, and
+   wait for "done".
 7. Run `cargo xtask repo-settings` again: every check `ok`. Put its
    output and the date in `docs/continuity.md`, and save the answers as
    `after/` fixtures.
@@ -372,7 +384,7 @@ Then tell the session "done". It checks the result, read-only, with
 - [ ] `docs/continuity.md` has a row for each account in *Scope*, the
       settings section with the setup steps, and no secret value and no
       `@` (so no email address).
-- [ ] On the `before/` fixtures the checks give 1 to 4 `off` and 5 and
+- [ ] On the `before/` fixtures the checks give 1 to 4 `off` and 5 to
       7 `ok`; on the `after/` fixtures all seven give `ok`.
 - [ ] `cargo xtask repo-settings` exits 0 on the day the pull request
       opens. Its output and the date are in `docs/continuity.md`.
@@ -397,6 +409,8 @@ Then tell the session "done". It checks the result, read-only, with
     missing check;
   - a `required_status_checks` rule with `ci-result` but not
     `mutants (diff)` still fails check 1;
+  - a `required_status_checks` rule with both checks but
+    `strict_required_status_checks_policy` false fails check 1;
   - a ruleset with a bypass actor fails check 2 and names its
     `bypass_mode` (`always` or `pull_request`);
   - `{"enabled":false}` fails check 3 and `{"enabled":true}` passes;
@@ -404,8 +418,7 @@ Then tell the session "done". It checks the result, read-only, with
     (HTTP 404)` is `off`; another 404, or a 403, is `can't read`;
   - a repository answer with no `security_and_analysis` is `can't read`
     for checks 5 and 6;
-  - check 6: `enabled` is `ok` without `.github/dependabot.yml` and
-    `off` with it; `disabled` is `ok` with it;
+  - check 6: `enabled` is `off` and names ADR-0037; `disabled` is `ok`;
   - check 7: a secret name missing from the continuity text fails and
     names it; a name in backticks passes;
   - the workflow test over the real `.github/workflows/`, and a small

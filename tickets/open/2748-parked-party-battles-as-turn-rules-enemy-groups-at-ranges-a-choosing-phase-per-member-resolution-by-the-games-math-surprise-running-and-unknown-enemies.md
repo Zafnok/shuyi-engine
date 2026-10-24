@@ -33,8 +33,11 @@ It builds on 2745 (`Party`, `Sheet`, conditions, rows) and 2114
 (ranges and weighted picks).
 
 **Either order with 2746:** if 2746 is done, `Item` actions use its
-inventories and `Use` command here. If not, the `Item` action is
-declared and refused with `BattleError::NoItems`, and 2746 wires it.
+inventories and `Use` command here, `reach` gets the member's
+`Equipment`, and `PartyMath` takes 2746's `ItemMath` as a supertrait.
+If not, the `Item` action is declared and refused with
+`BattleError::NoItems`, `reach` takes no equipment, and 2746 wires
+the action and `Equipment` and adds the supertrait.
 
 **Who uses it** (ADR-0033 §17's bar for engine work): dungeon crawlers and front-view party RPGs (early Dragon Quest, Etrian Odyssey); a party of one makes it a one-hero front-view RPG.
 
@@ -81,6 +84,8 @@ None.
   - events (`BattleEvent`): `Acted`, `Missed`, `Harmed { pool, amount }`,
     `Condition { added | ended }`, `Fell`, `GroupGone`, `Identified`,
     `Ran`, `RunFailed`, `Surprised`, `Won { xp, drops }`, `Lost`;
+    `drops` holds the fallen enemies' drop table ids, and 2751's
+    `roll_drops` rolls them;
   - outcome: `Won`, `Ran`, `Lost` (2745's `beaten()`);
   - conditions tick at the end of each round (`after_rounds`).
 - **`battle.ron`**, format `battle-ron`: groups at most (default 4),
@@ -94,7 +99,8 @@ None.
 
 **Out (do not do):**
 - the battle screen and its log (2749);
-- abilities (2750), encounter tables and chests (2751);
+- abilities (2750), encounter tables and drops (2751);
+- chests: the game's own code (the crawler example's, 2754);
 - any formula beyond the trait's placeholder defaults;
 - real-time battles (ADR-0034).
 

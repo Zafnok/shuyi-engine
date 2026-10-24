@@ -117,7 +117,8 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
   crate's declared one), Windows with the GNU toolchain, and what they
   add to a build; against our own rays over the tile map (2D) or 3105's
   ray casts (3D). **Either order with 2902:** if it is done, fit the
-  mixer it chose; if not, say what traced sound needs from it.
+  mixer it chose; if not, say what traced sound needs from it and add
+  that to 2902's needs list as a noted need.
   **Either order with 2363:** if it is done, extend its falloff; if
   not, add a line to its ticket.
 - **The layers** (`AGENTS.md` rules 5 and 9, ADR-0002): traced light
@@ -145,9 +146,9 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
   - the build tickets (the `write-ticket` skill), each one PR, each
     `Parked:` with this one's note and milestone "Engine: ray tracing",
     listed in `docs/ROADMAP.md`'s *Parked* section;
-  - the edits the decision needs in 3017's, 3034's, 3104's, 2328's and
-    2363's tickets. A ticket already in `tickets/done/` is never edited;
-    the change becomes a new parked build ticket instead.
+  - the edits the decision needs in 3017's, 3034's, 3104's, 2328's,
+    2363's and 2902's tickets. A ticket already in `tickets/done/` is
+    never edited; the change becomes a new parked build ticket instead.
 - **Size:** if the PR passes about 600 changed lines with the report and
   the ADR, the build tickets and the edits become a follow-up ticket
   blocked by this one; the PR says so.
@@ -177,7 +178,7 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
 4. Build the 2D tracing prototype and measure it.
 5. Write the capability, the fallback rule, the layers and the module
    shape, then the recommendation.
-6. Write the ADR, the parked build tickets, the edits to the five
+6. Write the ADR, the parked build tickets, the edits to the six
    tickets, and the roadmap lines.
 7. Run the gates.
 

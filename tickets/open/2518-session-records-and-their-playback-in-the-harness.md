@@ -66,8 +66,9 @@ What Shuyi has (read on 2026-10-20, checked again on 2026-10-21):
   "Reproduce a bug from a record".
 - Later tickets build on this one: 2519 (records from real builds),
   2357 (rewind) and 2905 (the code reload research). 2220, 2321, 2356,
-  2405 and 3053 add their values to the record in either order. 2018,
-  2514 and 3046 leave work with records to follow-ups.
+  2405 and 3053 add their values to the record in either order. 2029
+  plays a record in 2018's capture mode. 2514 and 3046 leave work with
+  records to follow-ups.
 
 Why it matters:
 
@@ -130,7 +131,8 @@ privacy question for Nick, which parked 3047 asks for crash reports).
   Apache-2.0, allowed by `deny.toml`), and both join
   `shuyi-platform`'s `outside` list in `tools/layers.ron`, with a
   comment (session records), in the same PR. It also gains `shuyi-core`
-  (for `state_hash` and 2111's `Made`). All three come without default
+  (for `state_hash` and 2111's `Made`), an edge `tools/layers.ron`
+  already allows (ADR-0032). All three come without default
   features; its `std` feature turns on theirs. No new crate enters the
   tree.
 - **`shuyi_platform::session`** (new, `no_std` + `alloc`):
@@ -290,6 +292,13 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     the line on the next `FrameRecord` (`commands: Vec<String>`);
     playback runs it before that frame. If not, 2356 adds it (its own
     clause says so);
+  - with 2521 (the live link): if it is done, a test sends a key over
+    its link while recording and finds it in the record's input (2521
+    leaves that test here). If 2356 is done too, the link's
+    `Request::Command`, which ran through `App::game_mut`, goes through
+    `App::command` instead, so a command sent over the link is on the
+    record (a test). If 2521 isn't done, nothing to do (2521 does both,
+    its own clause says so);
   - the new public types follow ADR-0039, and `Start`, which gains two
     fields here, moves under it in this PR (its rule for an existing
     type).
@@ -301,8 +310,8 @@ privacy question for Nick, which parked 3047 asks for crash reports).
   `Harness::new` and `on`); and the rule for later work: **a new value
   that reaches the game from the platform gets a field in the record
   and its playback in the same PR**. It extends ADR-0024
-  (`shuyi-platform` now depends on `shuyi-core`) and builds on ADR-0022
-  §4's state hash.
+  (`shuyi-platform` now depends on `shuyi-core`, the edge ADR-0032
+  allows) and builds on ADR-0022 §4's state hash.
 - **Docs:** `docs/platform-backends.md` gets a section *Session
   records*: the rule above, and that a backend hands the game nothing
   around the trait (`App::game_mut`) while recording, except through
@@ -327,9 +336,9 @@ privacy question for Nick, which parked 3047 asks for crash reports).
   save one, `shuyi run --session`, MCP, and golden session files: 2519.
 - Recording in shipped builds, or by players; sending a record anywhere
   (privacy: Nick's decision, as parked 3047 asks for crash reports).
-- A crash report that carries or names a session record: the follow-up
-  3046's Out asks for. Replaying a crash's rules record (2520), rewind
-  (2357), the live link (2521).
+- A crash report that carries or names a session record: 3060.
+  Replaying a crash's rules record (2520), rewind (2357), the live link
+  (2521).
 - A hash of the presented picture as a look check: rule 9; `frame-png`
   snapshots test looks. A follow-up if a game wants one.
 - A compact binary form of the record: RON only. Write a ticket if real
@@ -367,7 +376,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
    `play_to` and `play_all`, sharing the per-frame bookkeeping of
    `Harness::frame` (the audio log, the screen log, the quit frame).
 7. Add the either-order parts whose partner is done (2220, 2321, 2356,
-   3053, 2015).
+   3053, 2521).
 8. Write the property, divergence and boundary tests on the toy game
    (`shuyi_ui::toy`). Tests that need a store, a system keyboard or a
    clock that goes back record on `App` and a `HeadlessPlatform` built

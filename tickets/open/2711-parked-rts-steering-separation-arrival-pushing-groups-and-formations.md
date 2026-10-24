@@ -38,11 +38,13 @@ None.
 
 **In:**
 - **`Fx` roots:** steering needs `FxVec2::length` and `normalize`.
-  Either order with 2701: if 2701 is done, use its `Fx::sqrt`,
-  `FxVec2::length`, `length_squared` and `normalize`. If not, add them
-  here exactly as 2701's scope describes (floor of the exact root
-  through `i64`; zero stays zero), with its property test, and note in
-  2701 that they exist.
+  **Either order with 2701:** if 2701 is done, use its `Fx::sqrt`,
+  `FxVec2::length`, `length_squared` and `normalize`. If not, use the
+  ones already in `shuyi_core::fx` (2106 and 2122 may have added
+  `Fx::sqrt` and `FxVec2::length`), add the rest here exactly as
+  2701's scope describes (floor of the exact root through `i64`; zero
+  stays zero), with its property test, and note in 2701 that they
+  exist.
 - **Settings per kind**, a `steer` block in `*.unit.ron` with defaults:
   `separation_radius`, `separation_weight`, `flow_weight`,
   `arrival_radius`, `push_iterations` (the last one in `RtsSettings`).
@@ -70,13 +72,17 @@ None.
   - a group ends when every member has stopped or taken another order.
 - **Formations:**
   - `*.formation.ron`: a name and slots, each an offset from the leader
-    in `Fx`, turned with the leader's facing through 1119's sine table;
+    in `Fx`, turned with the leader's facing through `Fx`'s sine and
+    cosine (1119's, from 2335's `shuyi_core::angle` table);
   - members take slots in a fixed order: by kind index, then by
     `UnitId`;
   - `Move` and `AttackMove` gain `formation: Option<String>`, with a
     serde default, so old records still load;
   - the format (ADR-0007): `formation`, extension `.formation.ron`, with
-    a fuzz-style test and a determinism fixture.
+    a fuzz-style test and a determinism fixture (each fixture's decoded
+    hash as a row of `shuyi-rts`'s golden table, 2116's
+    `shuyi_assets::golden`, which 2707 runs on wasm32 in CI's
+    `determinism` job).
 - **Pushing** (ADR-0015 §6), after moving, for `push_iterations` rounds
   (default 2):
   - each unit sums the overlaps with its neighbours at the new positions
@@ -127,8 +133,10 @@ None.
       another's row.
 - [ ] Two replays of a fixture give the same hash list; old records with
       no `formation` field load.
-- [ ] The formation fixtures decode to their checked-in hash on native
-      and web; arbitrary bytes never panic.
+- [ ] Each formation fixture decodes to its row in `shuyi-rts`'s golden
+      table (2116's `shuyi_assets::golden`), checked on x64, ARM64 and
+      wasm32 by CI's `test` and `determinism` jobs; arbitrary bytes
+      never panic.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

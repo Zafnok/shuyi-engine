@@ -37,7 +37,10 @@ None.
   - JPEG (for example `zune-jpeg`);
   - WebP (for example `image-webp`);
   - QOI;
-  - JPEG XL decoding (for example `jxl-oxide`).
+  - JPEG XL decoding (for example `jxl-oxide`), in the engine, not in
+    2901's separate repository. **Either order with 2901:** if 2901 is
+    done, read its report's JPEG XL numbers when you pick the crate; if
+    not, nothing to do (2901 measures this decoder as its baseline).
 
   Use the named crates only if their licenses pass ADR-0002 §8 and they
   build for `wasm32-unknown-unknown` without `wasm-bindgen`. Pick another
@@ -46,6 +49,13 @@ None.
   - FLAC (for example `claxon`);
   - MP3 (a pure-Rust decoder under an allowed license; leave it out with
     a note if none qualifies).
+- **From 2201 (done):** an image is two kinds (ADR-0019 §6). Each
+  image codec is a `Format` of `image::Image` (its RGBA pixels) and has
+  a size-only twin of `image::ImageInfo`, as `Png` has `PngInfo`, so
+  the image table (`ImageTable::load_with`) sizes the file. An audio
+  codec is a `Format` of `audio::Sound` (the header), and of
+  `audio::MusicTrack` for music, as `OggVorbis` and `OggVorbisTrack`
+  are.
 - **Each format has:**
   - a feature;
   - fixtures (our own files, CC0);
@@ -58,13 +68,19 @@ None.
     (x64, ARM64) and `determinism` job (wasm32) build and check it.
     **Either order with 2116:** if it isn't done, pin the hashes in a
     plain test, and 2116 moves them into its table;
-  - a fuzz-style test.
+  - a fuzz-style test. **Either order with 2020:** if 2020 is done,
+    the format's feature also joins the `fuzz` feature's list in
+    `crates/assets/Cargo.toml`, so its fuzz registry runs it; if not,
+    nothing to do (2020 adds the features this ticket has added).
 - **A size table.** `docs/formats.md` gets the WASM size each feature
   adds.
 
 **Out (do not do):** encoding (only decoders); the optimized pack (2204);
 anything learned or neural (2901); pinning decoded audio samples (a
-sound's asset is its header, as in 2116's Out).
+sound's asset is its header, as in 2116's Out); drawing and playing
+these formats (2234, blocked by this one): `shuyi-app` and `frame-png`
+decode only PNG pixels, and macroquad plays only WAV and OGG.
+`docs/formats.md` says so beside the size table.
 
 ## Implementation steps
 

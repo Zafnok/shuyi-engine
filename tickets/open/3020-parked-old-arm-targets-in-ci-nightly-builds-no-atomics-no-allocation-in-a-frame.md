@@ -6,7 +6,7 @@ milestone: "Parked: export targets"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["3018", "3005", "3008", "2012"]
+blocked_by: ["3018", "3005", "3008", "2012", "3017"]
 nick_input: none
 completed:
 ---
@@ -80,8 +80,9 @@ None.
   "first frame" is. If 2368 is done, that call counter is already in
   3008's allocator (2368 shows allocations per frame in the debug
   view); use it. If not, add it here, and 2368 uses it.
-- **Two budget fields** in the profile format (a version bump with
-  defaults, so other profiles are unchanged):
+- **Two budget fields** in the profile format, each an `Option` that
+  defaults to `None`, so other profiles are unchanged. The format has
+  no version field to bump (3017):
   - `budgets.frame_cycles: Option<u64>`;
   - `budgets.steady_frame_allocs: Option<u32>`.
 

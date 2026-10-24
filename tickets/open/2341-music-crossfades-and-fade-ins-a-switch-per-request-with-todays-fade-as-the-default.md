@@ -185,6 +185,12 @@ None.
     volumes move opposite ways);
   - if not, change `shuyi-app`'s player; 3029 moves it with the rest
     (3029 gets an edit for this).
+- **Either order with 2136** (today's motions moved onto 2109's
+  `shuyi_core::ease`): if 2136 is done, today's fade-out gain is a
+  `Tween` read at the fade's time in whole milliseconds: write the
+  fade-ins, the overlap's fades and a fade from the gain a track had
+  reached the same way; if not, nothing to do (2136 moves this
+  ticket's fades onto `Tween`, as its clause on 2341 says).
 - **Public types (ADR-0039):** the types this PR adds or adds to
   follow it, as its *When* says: `MusicSwitch` is `#[non_exhaustive]`
   with the three constructors (so 2365 can add a field without a
@@ -215,8 +221,9 @@ After MVP, with their acceptance criteria, and the PR says so.
 - a fade length per `stop_music` (it uses the default's `out_ms`);
 - sound groups and volumes (2342), ducking music under voices (2343),
   pausing audio on suspend or under a pause menu (2344);
-- starting a track part-way in, and stems that play in sync (they need
-  a mixer: after 2902);
+- starting a track part-way in, and stems that play in sync: they need
+  a mixer. 2902 weighs them as noted needs, and a ticket follows when
+  a game asks;
 - any game's music list.
 
 ## Implementation steps

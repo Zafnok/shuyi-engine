@@ -67,13 +67,14 @@ None.
   Windows reads the toy game's options menu, its values, and an
   announcement. Do it if a Windows machine is at hand; say in the
   Completion notes whether it was done.
-- **A follow-up ticket for the web** (`write-ticket`): our own JS plugin,
-  as 1142 does for WebSockets (the web build has no `wasm-bindgen`, game
-  ADR-0034), mirroring the tree into hidden DOM elements with ARIA roles
-  and a live region.
+- **The web** is 3058 (parked, blocked by this ticket): the tree
+  mirrored into ARIA elements in the page and announcements in live
+  regions. It reuses the request mapping above, so keep the part of
+  that mapping that doesn't touch AccessKit beside the tree in
+  `shuyi-ui`, not in the winit backend's crate.
 
 **Out (do not do):**
-- the web (the follow-up above);
+- the web (3058);
 - the Playdate, the Steam Deck's own reader settings, consoles;
 - the tree itself (2322);
 - speech of our own.
@@ -86,8 +87,7 @@ None.
 3. Write the role table and the update path, with tests.
 4. Write the request handling, with tests.
 5. Add the `accesskit_consumer` test and the guide's manual check.
-6. Write the web follow-up ticket.
-7. Run the gates.
+6. Run the gates.
 
 ## Acceptance criteria
 
@@ -100,7 +100,6 @@ None.
       `UiAction::Confirm`.
 - [ ] With no screen reader running, no tree is built (a test with a
       counting builder).
-- [ ] The web follow-up ticket exists.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

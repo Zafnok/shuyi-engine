@@ -6,7 +6,7 @@ milestone: "Engine: dungeon crawlers"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["2743", "2744", "2749", "2750", "2751", "2752", "2501", "2511", "2004"]
+blocked_by: ["2743", "2744", "2747", "2749", "2750", "2751", "2752", "2501", "2511", "2004"]
 nick_input: sign-off
 completed:
 ---
@@ -72,12 +72,21 @@ he likes. His comments become tickets.
   - **battles** (2748, 2749) from encounter tables per area (2751), with
     a few enemy kinds, a chest after a win, abilities (2750) including
     one light ability for the labyrinth;
+  - **a camp menu**, built from the engine's menus and opened in the
+    labyrinth or the town: it casts abilities that work there through
+    2750's `CastOutside`, and passes the `ExplorerEffect` it returns
+    (the light) to the `Explorer`;
   - **the game's rules** as one `TurnRules` holding exploring, battles,
     chests and the hub as modes (ADR-0033 §9), so a run is one seed and
     one list of commands;
   - **looks**: the lines skin (2743) by default, a pictures skin made
     for the example as an option in settings, the corner map and the
     map screen with travel (2744);
+  - **Either order with 2753:** if 2753 is done, a 3D look as a third
+    option in settings: a `crawl3d.ron` with meshes made for the
+    example, its `frame-png` picture, and the guide's paragraph on
+    swapping to it; if not, nothing to do here (2753 adds them when it
+    lands);
   - its formulas: a small `PartyMath` of its own, with the numbers in
     its data files;
   - **a party of one by default** (`party.ron` `max: 1`), and a setting
@@ -92,6 +101,9 @@ he likes. His comments become tickets.
     hash list;
   - `frame-png` pictures of the opening, the labyrinth in both skins,
     the map, a battle, the town.
+  - `shuyi check` on the example passes: its `GameTools::check` calls
+    2743's check helper (`CrawlSkin::missing`) on the pictures skin,
+    and a test with one picture taken out finds that piece.
 - **The web build** and its place on the Pages index (as 2735 says for
   examples: the loop over `examples/*/shuyi.ron`), and on the website's
   Examples page if 2801 is done.
@@ -114,16 +126,16 @@ he likes. His comments become tickets.
   `shuyi-rpg`) and the kits; what looks related but isn't for it (3D
   free movement, 3106; top-down field of view, 2120; the roguelike
   generators, 2119); which example to read first; how to go from a party
-  of one to a full party; how to swap the lines skin for pictures or 3D.
+  of one to a full party; how to swap the lines skin for pictures.
 - **The READMEs** of both crates, finished in ADR-0009 §4's order, with
   the WASM size each adds, measured on the example.
 - **The skills** `shuyi-crawl` and `shuyi-rpg`, finished with a worked
   example each (if 1134 is done; else on 1134's list).
-- **The catalog**: both rows and both `kind` answers ready.
+- **The catalog**: both rows, both `kind` answers and the
+  `first-person grid` answer of the Perspective concern ready.
 
 **Out (do not do):**
-- the 3D skin in the example (2753 adds it as a third look, when 3D is
-  unparked);
+- the 3D skin itself (2753; the example's 3D look is under *looks*);
 - the explorer bot and the playtest (2755);
 - music beyond the engine's existing cues; voice;
 - a video opening (2909).
@@ -132,7 +144,8 @@ he likes. His comments become tickets.
 
 1. The data: maps, defs, tables, hub, make.
 2. The game's rules and `PartyMath`.
-3. The stages: opening, making, town, labyrinth, battle, chest, map.
+3. The stages: opening, making, town, labyrinth, camp, battle, chest,
+   map.
 4. The skins and the example's pictures.
 5. Tests at both party sizes, the web build.
 6. The template part, its CI job, the guide, the READMEs, the skills,

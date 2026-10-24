@@ -30,8 +30,7 @@ camera sees and what the player selected:
   (§2). It turns pointer gestures (1121) and actions into commands; it
   never changes the simulation;
 - **the minimap** is drawn from coarse grids, not from every unit;
-- **health bars, rally points and queued orders** are drawn for the
-  selection only.
+- **health bars and queued orders** are drawn for the selection only.
 
 All of it sits behind the crate's `view` feature, which depends on
 `shuyi-ui`. The simulation parts don't.
@@ -61,23 +60,28 @@ None.
     fog cells, on a world layer, sorted by y with 1120's sort keys;
   - plain data only; the skin (`RtsSkin`) maps kinds and states to
     sprites and owner colours to palette roles;
-  - bars, rally points and queued order markers for selected units
-    only.
+  - **all of it read through `TeamView`** (2713's boundary test covers
+    `view/`). This ticket adds what the scene needs to `TeamView`, in
+    `shuyi_rts::vision`: `facing` in `SeenUnit`; the points of own
+    units' queued orders; and `projectiles_in_rect(rect, out)`, 2712's
+    projectiles in visible cells, in row order;
+  - bars and queued order markers for selected units only.
 - **Selection, `shuyi_rts::view::select`:**
   - `Selection` (own units only, in `UnitId` order, capped by a setting);
-  - a box from a pointer drag, through `in_rect` on 2708's grid in world
-    coordinates (the camera turns screen into world);
+  - a box from a pointer drag, through `TeamView::units_in_rect` in
+    world coordinates, kept to own units (the camera turns screen into
+    world). 2708's `in_rect` gives rows, which `view/` can't turn into
+    units without the `UnitTable`;
   - a click picks the nearest own unit under the pointer within its
-    radius;
+    radius, through `TeamView::units_within`;
   - `SelectAllOfKindOnScreen` selects own units of the clicked kind in
     the camera's rectangle;
   - control groups: save, recall and add, held in the player's view
     state; recalling drops dead units;
   - **the context order:** on open ground `Move`, on an enemy `Attack`,
-    on a resource with workers selected `Gather`, in attack-move mode
-    `AttackMove`, in patrol mode `Patrol`. `AddToQueue` held sets
-    `queued: true`. The command goes to the local player's
-    `CommandDriver::issue` (2706).
+    in attack-move mode `AttackMove`, in patrol mode `Patrol`.
+    `AddToQueue` held sets `queued: true`. The command goes to the
+    local player's `CommandDriver::issue` (2706).
 - **The minimap, `shuyi_rts::view::minimap`:**
   - a small layer, one pixel per coarse cell, from the team's vision
     grid (2713) and a coarse owner grid: per cell, the owner with the
@@ -86,13 +90,22 @@ None.
   - the camera's rectangle drawn on it; a pointer press on it moves the
     camera.
 - **A text form of the scene** for tests: one line per item.
+- **Either order with 2718** (budgets): if 2718 is done, add the scene
+  to its battle scenarios: each step builds the scene for a camera over
+  the fight, the report says so, and the gated scenarios still pass
+  (2718's tuning rule). If not, nothing to do (2718 builds the scene
+  when it lands).
 
 **Out (do not do):**
 - art and the example's keymap (2719);
-- a production panel and building placement (2734);
+- a production panel, building placement, rally point markers and the
+  `Gather` context order on a resource node (2734, after 2733 makes
+  resources and rally points);
 - sound;
 - isometric drawing of the scene beyond what 1120's projection already
-  gives (1126 owns the isometric projection);
+  gives: 1126 owns the isometric projection, and 2769 draws the scene,
+  the picks and the minimap through it, with an isometric stage of
+  2719's example;
 - a minimap drawn through a second world layer with its own camera and
   viewport (1120 allows one): this minimap is drawn from coarse grids,
   which costs less and shows only what the team has seen.

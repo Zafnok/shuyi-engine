@@ -29,15 +29,22 @@ ADR-0011 §2 also says `shuyi new` with no template asks which
 direction, as a menu, and the same choice is a flag. Agents and scripts
 never meet a prompt (ADR-0005).
 
-**Either order with the wizard** (2501, 2502, [ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)): if 2502 is
-done, the menu is the wizard's perspective question. Then write no menu,
-and write the two templates as parts of the built-in template
-(`stage-first-person`, `stage-third-person` in
-`templates/shuyi-default`, each turning on the `3d` feature), set their
-answers in `docs/modules.ron` to ready, and the CI job makes the games
-with `shuyi new --no-input --perspective first-person` (and
-`third-person`). If 2502 isn't done, write the menu and the template
-folders as below, and 2501 and 2502 fold them in.
+**Either order with 2501 and 2502** (the wizard,
+[ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)):
+- if 2501 is done, write the two templates as parts of the built-in
+  template, not as folders: `stage-first-person` and
+  `stage-third-person` in `templates/shuyi-default`, each turning on
+  the `3d` feature, with the short names `first-person` and
+  `third-person`;
+- if 2502 is done too, the menu is the wizard's perspective question:
+  write no menu, and the CI job makes the games with `shuyi new
+  --no-input --perspective first-person` (and `third-person`). If 2502
+  isn't done, write the menu over the short names, and 2502 replaces it
+  (its clause says so);
+- if 2501 isn't done, write the menu and the template folders as below,
+  and 2501 turns the folders into parts (its clause says so).
+
+Either way, set the two answers in `docs/modules.ron` to ready.
 
 It builds on 3104 (the GPU painter, so the example runs in a window and
 the browser), 3106 (the cameras, and through it 3105's mover), 1129
@@ -94,6 +101,9 @@ None.
     the list of templates in the error (ADR-0005);
   - no new dependency for the menu. If another ticket has added the menu
     already, only add the two directions to it.
+  - **Either order with 3109:** if 3109 is done, the menu also lists
+    its `top-down-3d` and `hd-2d` templates, and the menu's tests cover
+    them; if not, nothing to do (3109 adds them to this menu).
 - **Guides** (ADR-0009 §5, 2004's form): `docs/guides/first-person.md`
   and `docs/guides/third-person.md`, each saying which template starts
   it, which kits and modules it uses, which look related but aren't for
@@ -105,11 +115,18 @@ None.
 - **The catalog**: `shuyi-3d`'s row claims first person and third
   person as ready.
 - **The debug view (2320).** If 2320 is done, the third-person example
-  calls its `bones` and `collision3` helpers. If it isn't, 2320 does
-  this.
+  calls its `bones` and `collision3` helpers, and `frame-png --debug
+  bones,collision3` on it is reviewed and its snapshot committed. If it
+  isn't, 2320 does this.
+- **Either order with 3025 (parked, DS hardware 3D):** if 3025 is
+  done, give `courtyard` an `nds` keymap layout and export it for `nds`,
+  with 3025's emulator checks (the replay hash and the 3D view's
+  snapshot text equal the desktop's); 3025's test scene may then go. If
+  not, nothing to do (3025 does it).
 
 **Out (do not do):**
-- top-down 3D and HD-2D (3109);
+- top-down 3D and HD-2D (3109), but the menu lists 3109's templates
+  if 3109 is done first (above);
 - gameplay beyond walking and the gate;
 - sound;
 - a move guide between first and third person (write one if Nick asks

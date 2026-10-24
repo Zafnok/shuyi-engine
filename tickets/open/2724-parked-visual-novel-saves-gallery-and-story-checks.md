@@ -78,7 +78,10 @@ None.
     notice the save screen shows. A save never fails to load because a
     line's text changed;
   - a save of another story, or a newer version, is a clear error
-    (`SaveError::Newer`, naming both versions).
+    (`SaveError::Newer`, naming both versions);
+  - **Either order with 2725:** if 2725 is done, loading a save stops
+    the voice playing (2725's fake audio test); if not, nothing to do
+    (2725 does it).
 - **Going back across a load**: `history::back` (2721) replays from the
   nearest snapshot instead of from the start when there is one.
 - **The save and load screens**, glyph cells and sprite items:
@@ -133,6 +136,12 @@ None.
   name; an unreached one shows a placeholder from the language pack.
   "Reached" comes from 2723's `ReadLines`: a node is reached when any of
   its lines was read.
+- **Either order with 2727** (the mystery module): if 2727 is done,
+  make `VnSave` generic over the command type, each command keeping its
+  `at_line` id, so a case saves its `MysteryCommand`s unchanged; if
+  not, nothing to do (2727 does it). 2727's reference check is never
+  this ticket's: 2727 calls it from `shuyi check` if this ticket is
+  done, and 2731 wires it if not.
 
 **Out (do not do):**
 - cloud saves and syncing (a platform backend's work);
@@ -173,6 +182,8 @@ in the Completion notes.
       variables.
 - [ ] After removing a line, restore stops at the last matching
       command and returns a notice; it never panics or fails.
+- [ ] If 2725 is done, loading a save stops the voice playing (fake
+      audio test).
 - [ ] Restoring from a snapshot and replaying from the start give the
       same hash.
 - [ ] `vn-save` passes its fuzz-style test, and its fixture's decode

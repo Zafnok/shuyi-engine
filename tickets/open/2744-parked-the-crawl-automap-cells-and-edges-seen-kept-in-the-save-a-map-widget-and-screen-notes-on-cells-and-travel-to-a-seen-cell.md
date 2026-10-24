@@ -29,7 +29,21 @@ edges.
 
 **Who uses it** (ADR-0033 §17's bar for engine work): crawler RPGs and labyrinth puzzle games; travel and `frontier` also serve the explorer bot (2755). A game that hides the map (Wizardry's spell) simply doesn't open the screen.
 
-**Either order with 2354:** if 2354 is done, the map screen's cursor is its grid cursor; if not, a cursor of its own on the floor grid, and 2354 moves it over when it lands.
+**The map screen's cursor** walks the floor grid as the tactics map's
+cursor walks its map: the grid kit's `shuyi_ui::grid::Cursor` (one cell
+a step, never off the map), or one of its own if that one doesn't fit.
+
+**Either order with 2743:** if 2743 is done, the widget and the map
+screen go behind its `draw` feature, which already pulls in
+`shuyi-ui`, and travel sends its next command when a step's motion
+ends (each frame when `motion_ms` is 0). If not, make `draw` pull in
+`shuyi-ui` here, with its line in `tools/layers.ron`, and send one
+command a frame; 2743 makes travel wait for its motion when it lands.
+
+**Either order with 2336:** if 2336 is done, `MapWidget` draws walls,
+doors, one-way arrows and the explorer's arrow with its line shapes; if
+not, with glyph cells and Overlay rectangles, and nothing is left for
+2336.
 
 ## Nick input
 
@@ -58,18 +72,19 @@ None.
   Option<Vec<CrawlCommand>>`: a path over seen cells and seen, passable
   edges, as the turns and forward steps that walk it.
 - **Travel**: `Travel` in `shuyi_crawl::travel` holds a route and gives
-  the next command; the stage sends one command a frame (or a step's
-  motion, with 2743), and drops the route when an event other than
-  `Moved`/`Turned` comes back (a spinner, an encounter, a message), or
-  when a command is refused. Travel is never a command of its own, so a
-  record of a run stays plain steps.
+  the next command; the stage sends one command a frame, or one per
+  step's motion (the clause on 2743 says which), and drops the route
+  when an event other than `Moved`/`Turned` comes back (a spinner, an
+  encounter, a message), or when a command is refused. Travel is never
+  a command of its own, so a record of a run stays plain steps.
 - **The widget** (behind `draw`): `MapWidget` paints a floor's seen
-  cells and edges into a rectangle as glyph cells or line shapes
-  (2336), at a scale of whole pixels per cell: walls, doors, one-way
-  arrows, specials met (stairs, a teleporter's mark), notes' marks, the
+  cells and edges into a rectangle as glyph cells and Overlay
+  rectangles (a grid map's walls run straight across or down), at a
+  scale of whole pixels per cell: walls, doors, one-way arrows,
+  specials met (stairs, a teleporter's mark), notes' marks, the
   explorer's arrow; unseen cells blank. Colours by palette role.
-- **The map screen**: a screen with a cursor on the map (2354's grid
-  cursor if done, else a cursor of its own on the floor grid), the
+- **The map screen**: a screen with a cursor on the map (the grid
+  kit's map cursor, or one of its own, on the floor grid), the
   floor list, the note under the cursor, actions to add a note and to
   travel to the cursor. Actions only (`input-actions` skill). It pops
   with `Travel` or nothing (ADR-0018).
@@ -86,7 +101,10 @@ None.
 - what opens the map (a spell, an item, always): the game's;
 - map pictures beyond lines and glyphs;
 - field of view for top-down games (2120);
-- the explorer bot (2755).
+- the explorer bot (2755);
+- 2354's `GridCursor` for the map's cursor: it moves over a
+  widget's rows, and a map cursor walks a map (2354's Out says so of
+  the tactics map's).
 
 ## Implementation steps
 

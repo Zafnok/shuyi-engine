@@ -44,6 +44,12 @@ for him, not a sign-off.
   - a walking, animated player (1123) with analog movement (1121) and
     collision (1122), followed by a camera (1120) with damped follow (a
     follow fraction under `(1, 1)`);
+  - **Either order with 2362:** if 2362 is done, the camera reads a
+    `camera.ron` (2362's `CameraDef`) with look-ahead along the
+    player's velocity, and rooms from a `rooms` object layer of the
+    town map (`Rooms::from_map`) with a slide between them. If not,
+    1120's damped follow alone, and nothing later: 2362 leaves the
+    town's camera as it is;
   - two NPCs with `.dlg` lines;
   - touching an enemy pushes a grid battle stage built from the 12×10
     tiles around the touch point, with the tactics kit (1114–1116);

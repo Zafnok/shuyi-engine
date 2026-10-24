@@ -157,7 +157,11 @@ None.
     its offset, numbered after this buffer's runs, and marked `cut` if
     the copy clipped any of their sprites;
   - `TextRun` and `TextRunId` are re-exported from `frame`
-    (`crates/ui/src/frame.rs`).
+    (`crates/ui/src/frame.rs`);
+  - **Either order with 1120:** if 1120 is done, a run can also go in
+    a world layer, such as names over things: its sprites placed in
+    world pixels and sorted as one item, and its one snapshot line in
+    the layer's list; if not, nothing here (1120 adds it).
 - **The snapshot** (`crates/ui/src/frame/snapshot.rs`): a run prints one
   line in the overlays section, where its first remaining sprite is,
   and its sprites print nothing on their own:
@@ -178,8 +182,16 @@ None.
   sprites as they draw any sprite. The tests below show it for the two
   that run headless. **Either order with 2018:** if 2018 is done, a run
   with an outline and a shadow joins its render card
-  (`shuyi_ui::frame::raster::card`); if not, nothing more here: a run
-  is sprites in `Paint::Solid`, which the card already shows.
+  (`shuyi_ui::frame::raster::card`); if not, nothing more here (2018
+  puts one on its card, its clause says so). Until then the card
+  already shows a run's pixels: they are sprites in `Paint::Solid`.
+- **The player's text size. Either order with 2323 (parked):** if
+  2323 is done, a run keeps its position, and its glyphs, advances,
+  line height, and outline and shadow offsets grow by the player's
+  `glyph_scale` (2323's `TextSize`), so text placed in pixels grows
+  with the cells; 2323's `harness::check_text_sizes` covers runs too
+  (`TextRun::cut`), with a unit test of a run's advances and line
+  height at each scale. If not, nothing to do (2323's clause does it).
 - **Pixel-placed UI:**
   - `widgets::TextLabel { label: Label, style: TextStyle }`
     (`crates/ui/src/widgets/text_label.rs`), with `paint(&self, ctx,
@@ -219,18 +231,36 @@ None.
     paints a `MenuView` with `active: false` with no `Focus` bar and no
     note, as the glyph look does, and `size` doesn't change with it; if
     not, 2355 does it when it adds `active`.
+  - **Either order with 2405:** if 2405 is done, `menu::text::paint`
+    records hits as `menu::glyph::paint` does: its box as `Hit::AREA`,
+    then each shown item's row (its pixel rectangle) as the item's
+    index, under the view's `widget` key, with a test that `hit_at` on
+    a row's pixel gives its item; if not, 2405 does it.
   - **Either order with 2338:** if 2338 is done and the game has a
     panel frame (`Ctx::panel_frame(BoxStyle::Single)`), the text look
     draws it over its `Panel` rectangle with `GlyphBuffer::nine_slice`,
-    in `style.layer`, before the items. If not, it is a plain rectangle,
-    and this PR writes a follow-up ticket (the `write-ticket` skill) for
-    the frame, since 2338's Out leaves panels placed in pixels to their
-    callers.
+    in `style.layer`, before the items. If not, it is a plain
+    rectangle, and 2338 adds the frame when it lands (its clause says
+    so).
   - **Either order with 2330:** if 2330 is done, its `Text` node takes an
     optional `font` (an id in `GameData::fonts`) and is drawn as a
     `TextLabel`; if not, 2330 adds the field.
+  - **Either order with 2722 (parked):** if 2722 is done, its `vn.ron`
+    `layout` takes an optional `font` (an id in `GameData::fonts`), and
+    `VnSkin` draws the text box, name box and choices as `TextLabel`s in
+    pixel rectangles when it names one, the reveal still wrapped once,
+    on the full text, as 2722 describes; if not, nothing to do (2722
+    does it).
   - **Either order with 2802:** if 2802 is done, the book's chapter on
-    the frame gets a short section on text runs; if not, nothing here.
+    the frame gets a short section on text runs; if not, nothing to do
+    (2802 writes it, as its chapter 4 says).
+  - **Either order with 2353:** if 2353 is done, its walk
+    (`shuyi_platform::harness::walk`) also reads the buffer's runs
+    (`texts()`), leaving out a run inside a stop's `skip`: a run with
+    `cut` set is a `Cut`, and two or more letters of its text outside a
+    bracket pair are a `NotFromKey`, each at the cell under the run's
+    top-left with the run's text as `row`, with a test screen that
+    draws a cut run; if not, 2353 does it.
 - **Test fonts, our own:** a small `ProportionalFont` built in the tests
   (in code, with a kerning pair, a glyph with an offset and a `?`), its
   page in an `ImageTable` from a PNG made in code, and the tiny cell
@@ -239,24 +269,20 @@ None.
 
 **Size.** If the PR passes about 600 changed lines (snapshots and
 reference PNG files not counted), `menu::text` (the menu's text look, with
-its 2355 and 2338 clauses) goes to a follow-up ticket
-(`write-ticket`), After MVP, and the PR points 2355's clause at it.
+its 2355, 2338 and 2405 clauses) goes to a follow-up ticket
+(`write-ticket`), After MVP, and the PR points the clauses of those
+three tickets at it.
 
 **Out (do not do):**
 
-- text in a world layer that moves with a camera, such as names over
-  things (1120's layers, parked);
-- rotated or scaled runs: 2335 rotates single sprites, and 2323
-  (parked) scales the cell text;
-- styled spans inside a run: 2347 styles cell text, and its Out leaves
-  runs to a follow-up;
+- rotated runs, or runs drawn at a scale the caller picks: 2335
+  rotates single sprites, and 2323 (parked) scales runs only by the
+  player's text size (above);
+- styled spans inside a run: 2347 styles cell text only, and its Out
+  leaves runs out too; a ticket of its own when a game asks;
 - Japanese and Chinese breaking rules for runs (2302's rules are for
   cells; a run breaks at spaces and cuts long words); shaping,
   right-to-left text (2908, parked) and emoji;
-- the pointer on the menu's text look: 2405 makes the glyph look's rows
-  hits, and the text look's are a follow-up;
-- reading runs in 2353's walk for cut text (its Out makes that a
-  follow-up once this is done);
 - changing the look of any engine screen, or the game's;
 - the one-bit copies of a font's pages for the Playdate: 3007 bakes
   every image, and a page's sidecar can pick `dither: threshold(N)`. On
@@ -281,16 +307,16 @@ its 2355 and 2338 clauses) goes to a follow-up ticket
 6. Add the snapshot line and its module docs.
 7. Add `TextLabel` and `menu::text`, with snapshots. Then the
    either-order parts whose tickets are done: 2329's `Measure`, 2330's
-   `font`, 2355's inactive look, 2338's frame, 2018's card and 2802's
-   section.
+   `font`, 2355's inactive look, 2338's frame, 2405's hits, 2353's
+   walk, 2018's card, 2722's VN font, 2802's section and 2323's text
+   size.
 8. Add `insta.workspace = true` to `shuyi-cli`'s `[dev-dependencies]`
    (Apache-2.0, already a workspace dependency, allowed by
    `deny.toml`). Write the `frame-png` references as PNG snapshots of
    `insta::assert_binary_snapshot!`, as
    `examples/hello-grid/tests/it/snapshot.rs` does (in the raster's
    tests instead if 2332 is done), and the one-bit test.
-9. Write the follow-up ticket of the 2338 clause if 2338 isn't done.
-10. Run the gates.
+9. Run the gates.
 
 ## Acceptance criteria
 

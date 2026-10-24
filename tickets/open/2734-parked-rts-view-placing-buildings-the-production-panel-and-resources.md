@@ -37,9 +37,12 @@ None.
   - a ghost of the footprint follows the pointer (1121), snapped to
     cells. With no pointer, the ghost starts by the selected workers
     and moves a cell at a time by the movement actions;
-  - the ghost is marked valid or invalid by 2733's `can_place`, read
-    through the local team's `TeamView` (2713), so the player isn't told
-    about hidden enemy units;
+  - the ghost is marked valid or invalid by 2733's `can_place`, called
+    with the local team's `TeamView` (2713) as its `PlaceQuery`. This
+    ticket implements 2733's trait for `TeamView`, in `vision` beside
+    it (2713's boundary test keeps `view/` off the unit table), with
+    hidden enemy units, buildings among them, left out, so the player
+    isn't told about them;
   - confirming sends `Build { units, kind, at, queued }`; the "add to
     queue" action keeps placement open for another;
   - cancelling leaves placement and sends nothing.
@@ -56,11 +59,16 @@ None.
     `Focus`, over the screen's layout (2329).
 - **Setting a rally point**: an action, then a place, a resource node or
   a unit, sends `Rally`.
+- **Gathering by the context order** (2716): `Order` on a resource node
+  with workers selected sends `Gather { units, resource, queued }` for
+  the selected units that gather.
 - **The resource bar**: the local player's `Stock` and supply (used /
-  cap), from the simulation's state, as glyph cells.
+  cap), as glyph cells. Like the rest of the view, it reads them from
+  the local team's `TeamView` (2713's boundary test covers `view/`),
+  which also gives the queues, rally points and idle workers.
 - **Idle workers**: a count in the resource bar, and an action that
-  selects the next idle worker (from `WorkerIdle` events and the
-  `work` column) and moves the camera to it.
+  selects the next idle worker (from `TeamView`) and moves the camera
+  to it.
 - **Help text** names actions through the player's keymap, never a key
   (`AGENTS.md` rule 8, the `input-actions` skill).
 - **The scene** gains the ghost, the panel, the bar and rally markers
@@ -75,7 +83,7 @@ None.
 ## Implementation steps
 
 1. Add placement mode to the view's player state, with the ghost in the
-   scene and `can_place` through `TeamView`.
+   scene, and `can_place` on `TeamView` through its `PlaceQuery`.
 2. Add the production panel and the resource bar as glyph widgets, with
    the panel's moves on `GridCursor` and `Focus`.
 3. Add rally and idle-worker actions to the view's `ActionSet` entries.
@@ -97,7 +105,8 @@ None.
 
 ## Tests required
 
-- Unit: ghost snapping; panel entry states from stock and supply.
+- Unit: ghost snapping; panel entry states from stock and supply; the
+  `Gather` context order.
 - Snapshot: the scene's text form with the ghost, the panel and the
   bar; one skin look test of the panel's cells.
 - Integration: a Harness session that builds a drop-off, queues two

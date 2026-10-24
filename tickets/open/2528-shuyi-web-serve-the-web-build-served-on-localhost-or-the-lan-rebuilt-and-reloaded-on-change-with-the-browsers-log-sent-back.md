@@ -257,7 +257,8 @@ None.
   - **with 2802 and 2803** (in the MVP's list in `docs/ROADMAP.md`, so
     most likely done): where the book and the tutorial's `10-ship` step
     tell the reader to serve the folder, they name `cargo shuyi web
-    --serve --open`. If not, they are written with it.
+    --serve --open`. If not, they are written with it (their own
+    clauses say so).
 - **Docs:**
   - `README.md:181` ("serve that folder over HTTP"): build, serve and
     open in one step with `cargo shuyi web --serve --open`;
@@ -274,6 +275,8 @@ None.
 - **Size.** If the PR passes about 600 changed lines (fixtures and
   snapshots not counted), `--lan` and `--open` go to a follow-up ticket
   (`write-ticket`), After MVP, blocked by this one, and the PR says so.
+  The PR then points the lines that need `--lan` at that follow-up:
+  2407's QR code (its third ticket's blocker) and 2522's Out.
   If it is still over, the either-order items with 2522 and 3004 go to
   that follow-up too, and its text takes over this ticket's side of
   their clauses.

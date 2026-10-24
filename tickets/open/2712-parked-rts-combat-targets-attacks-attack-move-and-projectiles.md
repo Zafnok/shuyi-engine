@@ -38,7 +38,8 @@ order, and 2717 can split it.
 **Either order with 2713** (vision): "can see" means the team's
 visibility grid. If 2713 is done, the target pick asks it. If not, a
 unit can see what is inside its own `sight` radius, behind a
-`Visibility` trait, and 2713 swaps in the team's grid.
+`SightCheck` trait, and 2713 swaps in the team's grid. The name
+isn't `Visibility`, which 2713 gives to its per-cell enum.
 
 ## Nick input
 
@@ -49,10 +50,12 @@ None.
 **In:**
 - **Columns** added to `UnitTable`: `target: Option<UnitId>` and
   `cooldown: u16` (steps left).
-- **`Weapon`** in `*.unit.ron` (2707 decodes the fields; this ticket
-  uses them): `range`, `cooldown`, `damage`, `hits` (ground, air or
-  both), optional `projectile { speed, homing }` and optional `area`
-  (a radius).
+- **`Weapon`** in `*.unit.ron`: 2707 decodes `range`, `cooldown`,
+  `damage` and the optional `projectile { speed, homing }`. This ticket
+  adds the fields only it uses, each with `#[serde(default)]` (2707's
+  format has `deny_unknown_fields`): `hits` (ground, air or both;
+  default both) and an optional `area` (a radius) on `Weapon`, and the
+  kind's `acquire_range` (default its `sight`).
 - **Targets, `shuyi_rts::combat`:**
   - in its bucket (`RtsSettings::target_buckets`, default 8), a unit
     with a weapon and no `Attack` order picks the nearest enemy it can
@@ -99,7 +102,7 @@ None.
 
 ## Implementation steps
 
-1. Add the columns, the `Weapon` use, the `Visibility` trait (or 2713's
+1. Add the columns, the `Weapon` use, the `SightCheck` trait (or 2713's
    grid) and `TargetRule`.
 2. Write the target pick in buckets.
 3. Write attacks, the hit buffer and the damage pass.

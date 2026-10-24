@@ -43,6 +43,11 @@ What it builds on:
 writer here, and its round-trip test (read, write, read gives the same
 map and the same text). If not, 2218 adds it with the other writers.
 
+**Either order with 2750:** if 2750 is done, an ability reaches the
+explorer as its `AbilityEvent::ExplorerEffect { name, steps }`, which
+the game adds to `effects`: name `light`, `float` and `compass` as its
+docs do. If not, nothing to do (2750 uses the names given here).
+
 The view is 2742, the 2D skins 2743, the automap 2744, the 3D skin 2753,
 the example 2754, the explorer bot 2755. The party, battles and items
 are `shuyi-rpg` (2745–2752).
@@ -70,18 +75,27 @@ None.
   - in `docs/modules.ron`: the `dungeon-crawler` answer of `kind` and
     the `first-person grid` answer of the Perspective concern, from
     parked to building;
+  - **the building status:** 2003's catalog has none
+    (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
+    still has none, add `Status::Building`, named `building`, with its
+    doc, the `status` line of `docs/modules.ron`'s header, *How to read
+    it* in `docs/modules.md` and the `modules` schema. `Status` is a
+    public enum: write a `Breaking:` line if CI's `api` job reports
+    one;
   - the README's first two sections in ADR-0009 §4's order. 2754
     finishes it;
   - the `shuyi-crawl` skill: if 1134 is done, a short skill saying
-    what this ticket built and what 2742–2755 add. If not, add
-    `shuyi-crawl` to 1134's list;
-  - if 2004's guide check is in place, a planned page
-    `docs/guides/dungeon-crawler.md` naming 2742–2755. 2754 writes it.
+    what this ticket built and what 2742–2755 add. It has no worked
+    example yet, so its `waits_for` lists 2754 (which adds the worked
+    example), 2753 and 2755 (each adds its section and drops its id).
+    If not, add `shuyi-crawl` to 1134's list, with that `waits_for`.
 - **The marker** `FirstPersonGrid` in `shuyi_crawl::perspective`,
-  implementing `shuyi_core::perspective::Perspective` (ADR-0009 §3). If
-  the trait doesn't exist yet (1120 is parked), add the trait with this
-  one marker in `shuyi_core::perspective`, as ADR-0009 §3 describes it,
-  and say so in the Completion notes.
+  implementing `shuyi_core::perspective::Perspective` (ADR-0009 §3).
+  **Either order with 1120:** if 1120 is done, implement its trait; if
+  not, add the trait with this one marker in `shuyi_core::perspective`,
+  as ADR-0009 §3 describes it but with no 2D projection on it (1120
+  keeps that in a trait of its own), and say so in the Completion
+  notes.
 - **The map** in `shuyi_crawl::map`:
   - `Facing`: the four ways, with `left()`, `right()`, `back()`, and
     `to_dir()`/`from_dir()` to the grid kit's `Dir` (north is `Dir::Up`);

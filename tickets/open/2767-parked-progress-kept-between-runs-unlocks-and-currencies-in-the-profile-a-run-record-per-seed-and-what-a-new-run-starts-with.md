@@ -64,8 +64,9 @@ None.
 
 **Out (do not do):**
 - what any unlock does: the game's;
-- a shop between runs (2752's shop works with a currency pool if the
-  game wants);
+- a shop between runs: the game's own menu over `spend` and `unlock`
+  (2752's shop spends a pool in a party's sheets, not `Meta`'s
+  currencies);
 - online leaderboards (3054).
 
 ## Implementation steps

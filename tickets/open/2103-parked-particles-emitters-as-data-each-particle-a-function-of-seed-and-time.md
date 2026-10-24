@@ -91,8 +91,8 @@ None.
     as a character in the cell it is in, on the `Over` layer;
   - a sprite skin, `particles::sprite`, that draws each one as a frame
     of a clip (2231), on a world layer. **Either order with 1120:** if
-    1120 is done, add it here; if not, add a line to 1120's scope
-    asking for it, and leave the sprite skin to 1120.
+    1120 is done, add it here; if not, leave the sprite skin to 1120
+    (its own clause adds it).
   - the sprite skin's looks may carry a `Paint::Tinted` colour and a
     `Blend` (2337), so sparks can be additive (`Blend::Add`) and smoke
     can darken (`Blend::Multiply`);
@@ -100,6 +100,14 @@ None.
     rounded to pixels, and the format's doc comment updated.
 - **An example:** the tick example from 1119 (the dot) leaves a trail of
   sparks while it moves. A test pins the snapshot at three steps.
+- **Either order with 1134** (the skill pack): if 1134 is done, its
+  `shuyi-animate` skill's note that particles are to come becomes a
+  section on emitters (`EmitterDef` and its `.ron` file, `Emitter`,
+  `particles_at`, the skins, and that a game keeps its `Emitter`s in
+  whichever store it uses), its worked example gains a step with an
+  emitter, and 2103 leaves the skill's `waits_for` if it is there. If
+  not, nothing to do: 1134 writes the section from this ticket's API
+  (its scope says so).
 
 **Out (do not do):**
 - particles colliding with tiles or boxes (that needs state per
@@ -127,9 +135,8 @@ None.
 4. Write `EmitterRon` and register it; add fixtures (ours, CC0).
 5. Write the view, the glyph skin and, if 1120 is done, the sprite skin
    with its tints and blends (2337).
-6. Add the example's trail, its snapshots, and the skill table's line
-   in `docs/` if the `shuyi-animate` skill exists (1134); otherwise
-   1134 covers it from ADR-0005.
+6. Add the example's trail and its snapshots, and, if 1134 is done,
+   the `shuyi-animate` skill's section on particles (Scope).
 7. Run the gates.
 
 ## Acceptance criteria

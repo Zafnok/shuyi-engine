@@ -58,7 +58,8 @@ None.
     2124 is done, add it here; if not, 2124 adds it.
 
   `to_px` maps world pixels to console pixels:
-  - if 2318 has landed, use its camera transform;
+  - if 2318 has landed, a call to its `world_to_px`, the function
+    behind `push_world`;
   - before that, the identity, plus an offset the caller gives.
 - **The broad phase**, as a channel of its own, `collision_grid`: the
   cells of the uniform grid in the view (`Bounds`), each cell with its
@@ -73,11 +74,15 @@ None.
   example.
 - Fixed-point to pixels: positions are `Fx`. Round to the nearest
   console pixel in one function (`debug::collide::px`), with a test,
-  so every helper agrees.
+  so every helper agrees. `px` and the `collision` channel are
+  public: 2373 (parked) uses both from `shuyi-physics`.
+- **Either order with 2106:** if 2106 is done, its `nav` helper
+  (`shuyi_ui::debug::nav::gizmos`, if it is written yet) takes the
+  caller's offset; round its points through `px` too. If not, nothing
+  to do (2106 uses `to_px` and `px` from here).
 
 **Out (do not do):**
-- rigid-body shapes from 1128 (its own small ticket if 1128 is
-  unparked);
+- rigid-body shapes from 1128: 2373 (parked) draws them;
 - 3D collision (2320);
 - editing boxes or tiles (the editor, 2506–2508).
 

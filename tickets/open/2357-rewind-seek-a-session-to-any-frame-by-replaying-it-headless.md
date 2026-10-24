@@ -74,10 +74,11 @@ What Shuyi has today (checked 2026-10-21):
 - **MCP can only start over.** 1133 (MVP) gives the session tools
   `start`, `step`, `scene`, `frame_png`, `events`, `reset` and `stop`.
   An agent goes back by `reset` and stepping again by hand.
-- **The plans leave it out.** 2316 pauses and steps forward; its Out
-  section leaves "stepping backward or rewinding" to the turn history
-  and the editor. The editor research (2506, parked) lists the contract
-  operations `watch`, `pause`, `step` and `channels`, and no way back.
+- **The plans leave it to this ticket.** 2316 pauses and steps
+  forward, and its Out leaves stepping backward and rewinding here. The
+  editor research (2506, parked) sends pause and step as 2316's actions
+  and plans going back on this ticket's `--until`, `seek` and
+  `DebugBack` (its clause says so).
 
 What is planned under it:
 
@@ -167,8 +168,25 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   Result<Shot, String>` (default: `unsupported("frame-png --session",
   "frame_from_session")`), implemented beside 2519's `session_from` by
   hello-grid's tools, the grid template's and 2511's `BasicTools`.
-- **MCP `seek { frame }`** in 1133's session. The server starts the
-  session again as `start` did, plays it to `frame`, and answers as
+- **Either order with 2514** (frames over time): if 2514 is done,
+  `frame-png --session <file> --until N` also takes its `--every` and
+  `--count`, with its output flags: capture i is frame N + i × every of
+  the record, played on with the record's own input (a capture past
+  the record's end is an error that gives its length), painted as
+  above, and the output is 2514's sheet, APNG or GIF. With steps after
+  `--until`, the captures come after them, as 2514's do. A test on
+  hello-grid's golden session: with `--count 4`, the sheet's first
+  cell equals the one frame `--until` alone writes. If not, 2514 adds
+  it (its clause says so).
+- **MCP `seek { frame }`** in 1133's session. **From 1133 (done):**
+  the server runs no game. It forwards each session tool to the host
+  (`mcp::host::Host`, in the game's tool program), which keeps the
+  game in `Live`, and its `start` launches that program with cargo, so
+  starting again rebuilds the game. So `seek` is an `Op` in
+  `Op::SESSION` (its arms in `Host::call` and `mcp::description`, its
+  schemas `session.seek.*.json`), the server forwards it as it does
+  `step`, and the host starts the game again as `reset` does (from
+  `Live::start`, no rebuild), plays it to `frame`, and answers as
   `step` does:
   - for a session started from a record, it replays that record
     (2518's `Harness::from_session`, then `Harness::play_to`). A frame
@@ -177,11 +195,12 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   - for a session started from options, which runs on `Harness::new`
     and `App::frame_after` and is never recorded (2518 records only
     `App::frame` drivers), it replays the steps the session ran, which
-    the server keeps in order (each `step`'s script or idle frames).
+    the host keeps in order in `Live` (each `step`'s script and idle
+    frames).
     `frame` must be a frame where an earlier `start` or `step` answer
     ended; another frame is an error that lists those frames;
   - the next `step` plays on from there. The steps after `frame` are
-    dropped from what the server keeps: a branch. A frame past the last
+    dropped from what the host keeps: a branch. A frame past the last
     one run is an error.
 - The schemas regenerated, `contract::VERSION` raised
   (`crates/cli/src/contract.rs:52`), `crates/cli/schemas/versions.json`
@@ -346,14 +365,18 @@ A frame number here counts `App::frame` calls from 1, as 2518's
 - writing a branch's saves to the device;
 - a history of gizmos to scrub through: the target frame's gizmos are
   built again, which is enough;
-- captures of a range of a recorded session (`--every` and `--count`
-  with `--session`): 2514's follow-up, as 2514 and 2519 say;
-- the editor's timeline (2506, 2507);
+- captures of a record's own frames in MCP's `frame_png`: after `seek`,
+  2514's `every` and `count` idle on the branch;
+- the editor's timeline over `seek`: 2506's research decides whether
+  the live view has one (its panels say so);
 - seeking a running windowed build over 2521's link;
-- debug commands that go back (2356's registry may add `back` and
-  `goto` later). Commands 2356 records replay with the frames through
-  2518's playback, with nothing to do here;
-- networked sessions (2529, 1147);
+- debug commands that go back (`back` and `goto` on 2356's commands):
+  not planned, a ticket when someone needs them. Commands 2356 records
+  replay with the frames through 2518's playback, with nothing to do
+  here;
+- networked sessions: recording and rewinding each peer's session in
+  2529's `peers` is a follow-up that 2529 writes (its *Out*), and tick
+  games' rollback (1147) goes back its own way;
 - recording in builds without debug tools (2519 decides that).
 
 ## Implementation steps

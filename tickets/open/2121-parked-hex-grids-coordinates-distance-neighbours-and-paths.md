@@ -181,6 +181,14 @@ launch, on 2026-10-20.
   ARM64. **Either order with 2116:** if 2116 is done, its `determinism`
   job also runs them on wasm32 with the rest of `shuyi-core`'s tests.
   If not, the native runs alone.
+- **Tiled hex maps. Either order with 1124:** 1124 keeps a Tiled map's
+  stagger axis and stagger index. If 1124 is done, add one function
+  beside its `TileMap` (`shuyi_assets::tilemap`) that gives a
+  hexagonal map's `HexLayout`: the stagger axis gives its orientation
+  (`y` is `Pointy`, `x` is `Flat`) and the stagger index its offset
+  (`odd` is `Odd`, `even` is `Even`); any other map gives `None`. Test
+  it on a hexagonal map made in Tiled. If not, nothing to do: 1124
+  adds it.
 - **What changes for the game:** nothing. New items, and a variant on
   2117's `#[non_exhaustive]` `Topology`. Say so in the PR.
 
@@ -192,7 +200,8 @@ launch, on 2026-10-20.
   coordinates as a type: each a follow-up when a hex game asks;
 - maps of other shapes than the rectangle of offset rows (a hexagon or
   a rhombus): a game leaves tiles out with its cost function;
-- the `.map` format naming a layout, and Tiled or LDtk hex maps (1124);
+- the `.map` format naming a layout, and importing Tiled hex maps
+  (1124; LDtk has no hex maps);
 - hex autotiling and isometric hex;
 - a hex module crate: this is part of the default kit, as above.
 
@@ -203,15 +212,17 @@ launch, on 2026-10-20.
    (`crates/core/src/path/topology.rs`), the module docs of `path.rs`,
    `crates/core/src/path/tests.rs` (its random cost maps and
    brute-force references), and 2013's ADR.
-2. Write the ADR (with its row in `docs/adr/README.md`), note it on
-   ADR-0003's `Status:` line, and do the 2003 item.
+2. Write the ADR (with its row in `docs/adr/README.md`), and note it on
+   ADR-0003's `Status:` line. The catalog's `hex-grid` answer is
+   already there (2003) and stays parked.
 3. Write `Hex`, `HexDir`, `ring` and `within`, with tests.
 4. Write `HexLayout`, its conversions and neighbours, and
    `Grid::neighbors6`, with property tests in all four layouts.
 5. Add `Topology::Hex`, and run the property tests of
    `crates/core/src/path/tests.rs` over it in all four layouts, with a
    brute force over `HexLayout::neighbors`.
-6. Write the docs and the doc test, and run the gates.
+6. Write the docs and the doc test, add the Tiled hex function if 1124
+   is done, and run the gates.
 
 **Size:** close to 600 changed lines. If the diff runs long,
 `Topology::Hex` (step 5, its search tests and the doc test's path)
@@ -223,7 +234,7 @@ completion notes.
 
 - [ ] The ADR is in the PR with its row in `docs/adr/README.md`,
       ADR-0003's `Status:` line points at it, and the `hex grid` answer
-      is in `docs/modules.ron` as parked (or in 2003's scope).
+      stays in `docs/modules.ron` as parked, naming 2121 and 2740.
 - [ ] `to_pos(to_hex(p)) == p` and `to_hex(to_pos(h)) == h` for every
       position within `±(1 << 29)`, negative ones included, in all four
       layouts; at the extremes of `i32` nothing panics (property tests).

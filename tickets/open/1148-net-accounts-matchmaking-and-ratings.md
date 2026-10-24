@@ -57,7 +57,13 @@ our game without 0053.
     feature is on. The client asks for the ticket through the one Steam
     client (the `steam` module in `shuyi-app`, 3037 or 1144) and never
     starts Steam itself. No passwords. A display name with the word
-    filter (1149's `rustrict`).
+    filter, `rustrict` (MIT/Apache), which this ticket adds and 1149's
+    chat reuses.
+    **Either order with 1144 and 3037:** if either is done, the client
+    asks its `steam` module's handle for the auth ticket, and
+    `shuyi-services` checks it with Steam. If neither is, accounts are
+    device ids only, the completion notes say so, and 1144 adds the
+    Steam auth ticket (its clause on this ticket).
   - **Matchmaking queue.** Rating ranges that widen while waiting.
     Matches are handed to a referee.
   - **Ratings.** Glicko-2 via `skillratings` for one-against-one, and
@@ -68,6 +74,12 @@ our game without 0053.
     it carries (`Submission::record`) re-simulates, like 1146's result
     record, to the score it claims. On the client, `shuyi-net` gets a
     backend implementing 3054's `Leaderboards` over this server.
+    **Either order with 1119:** a turn game's record re-simulates with
+    `History`. If 1119 is done, a tick game's record (its `TickRecord`,
+    through 1119's `replay`) re-simulates too, and the tests refuse a
+    forged tick score. If not, a tick game's score doesn't count yet,
+    and this PR writes a parked follow-up ticket (the `write-ticket`
+    skill), blocked by 1119, that adds the tick check to this server.
 - A client API in `shuyi-net` for queueing, cancelling, getting matched,
   and reading a rating. It may reach the services over HTTP through
   2601's capability (`Ctx::http`), which works on native and in the web

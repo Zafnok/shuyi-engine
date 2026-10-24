@@ -30,17 +30,18 @@ can send:
   a custom layer for a file
   (`docs.rs/bevy/latest/bevy/log/struct.LogPlugin.html`).
 
-What Shuyi has, once 3040 is done (line numbers as of 2026-10-20):
+What Shuyi has with 3040 done (ADR-0030), lines as of 2026-10-24:
 
 - **Lines with a level and a category.** `App` keeps the engine's lines
   and hands the new ones to the backend (`App::take_new_log`, 3040), and
-  `shuyi-app` prints them with macroquad's macros, as it prints its own
-  (`crates/app/src/lib.rs:157`, `backend.rs:47, 194`,
-  `render.rs:86, 266, 295`, `pads/native.rs:43`,
-  `storage/mod.rs:31, 58-59`). Under those macros, miniquad 0.4.11 (with
-  its `log-impl` feature, which macroquad 0.4.16 always turns on) writes
-  with `eprintln!` on the desktop and with `console.debug`, `info`,
-  `warn` and `error` on the web (miniquad's `src/log.rs`).
+  `shuyi-app` prints them with macroquad's macros (`print_line`,
+  `crates/app/src/lib.rs:355-370`), as it prints its own (`lib.rs:262`,
+  `backend.rs:47, 147, 192`, `render.rs:87, 268, 297`,
+  `pads/native.rs:43`, `storage/mod.rs:31, 59, 62`). Under those
+  macros, miniquad 0.4.11 (with its `log-impl` feature, which macroquad
+  0.4.16 always turns on) writes with `eprintln!` on the desktop and
+  with `console.debug`, `info`, `warn` and `error` on the web
+  (miniquad's `src/log.rs`).
 - **No console in a release build on Windows.**
   `examples/hello-grid/src/main.rs:6`,
   `templates/blank/crates/game/src/main.rs:6` and
@@ -62,8 +63,8 @@ What Shuyi has, once 3040 is done (line numbers as of 2026-10-20):
 Why it matters. Visions of Shuyi is getting ready for Steam
 (game#0903) as a Windows release build. The first player whose game
 misbehaves has nothing to send, and its developer nothing to read. The
-same holds for every game exported by 3004, so this lands before or
-with 3004.
+same holds for every game exported by 3004, so it comes before 3004 in
+`docs/ROADMAP.md`'s order.
 
 ## Nick input
 
@@ -94,18 +95,19 @@ None.
     (about 20 in 0.4.11, such as `src/graphics/gl.rs:1732`), which no
     logger sees: they stay on stderr, and the docs say so.
   - **Every line `shuyi-app` writes** uses `log::…!(target: "<name>",
-    …)` with 3040's `LogCategory` names: `lib.rs:157` and
-    `backend.rs:47` (`audio`); `backend.rs:194` and `render.rs:86, 266,
-    295` (`assets`); `pads/native.rs:43` (`input`);
-    `storage/mod.rs:31, 58-59` (`storage`); the broken renderer's line
-    3040 moved to `backend.rs:149` (`platform`). Also every other
+    …)` with 3040's `LogCategory` names: `lib.rs:262` and
+    `backend.rs:47` (`audio`); `backend.rs:192` and `render.rs:87, 268,
+    297` (`assets`); `pads/native.rs:43` (`input`);
+    `storage/mod.rs:31, 59, 62` (`storage`); the broken renderer's line
+    3040 moved to `backend.rs:147` (`platform`). Also every other
     macroquad log call in `crates/app/src` when this ticket is worked
     (`rg 'warn!|error!|info!|debug!' crates/app/src`): 2019, 2519, 2521,
-    3042, 3044 and 3045 may have added some. They name the `log` crate,
-    not macroquad's prelude, so they outlive macroquad (3034).
-  - **App's lines:** the loop hands each line of `app.take_new_log()` to
-    `log` with its category's name as the target and its level mapped
-    (`LogLevel::Error` to `log::Level::Error`, and so on to `Debug`).
+    2522, 3042, 3044 and 3045 may have added some. They name the `log`
+    crate, not macroquad's prelude, so they outlive macroquad (3034).
+  - **App's lines:** `print_line` (`lib.rs:355-370`) hands each line of
+    `app.take_new_log()` to `log` with its category's name as the target
+    and its level mapped (`LogLevel::Error` to `log::Level::Error`, and
+    so on to `Debug`), in place of macroquad's macros.
 - **The sink**, a public module `shuyi_app::log_sink`
   (`crates/app/src/log_sink.rs`):
   - `install(storage_name: &str, dir: Option<PathBuf>, filter:
@@ -149,7 +151,7 @@ None.
 - **On the desktop** (not `wasm32`):
   - **The file**, `<data dir>/logs/latest.log`. The data dir is
     `data_dir(AppConfig::storage_name)` (`crates/app/src/storage/native.rs:47`,
-    `crates/app/src/lib.rs:96`). `FileStorage::list` names only `.ron`
+    `crates/app/src/lib.rs:176`). `FileStorage::list` names only `.ron`
     files at the top of that folder, so `logs/` never shows up as a save.
     A public `shuyi_app::storage::log_dir(name) -> Option<PathBuf>`
     (`data_dir(name)` joined with `logs`) names the folder, for `run`,
@@ -210,10 +212,12 @@ None.
     miniquad's, so its `console.log` line still follows ours.
   - **Either order with 3046** (crash reports): if it is done, add the
     log line to its hook, feed its log ring (`crash::note_log`) from the
-    sink in place of `run`'s lines, and have its hook read
-    `set_frame`'s counter in place of its own; if not, this ticket sets
-    the hook, and 3046 adds its report to it and does the rest. One
-    hook, chained, either way.
+    sink in place of `run`'s lines, have its hook read `set_frame`'s
+    counter in place of its own, and add to its `docs/crash-reports.md`
+    that the log files sit beside the reports (`storage::log_dir`) and
+    that a player sends both; if not, this ticket sets the hook, and
+    3046 adds its report to it, writes that paragraph and does the
+    rest. One hook, chained, either way.
 - **Docs:** a *Logs* section in `docs/platform-backends.md`: what `App`
   hands over, how `shuyi-app` sinks it, where the file is on Windows,
   macOS and Linux, `SHUYI_LOG`'s syntax, that miniquad's own messages
@@ -221,6 +225,10 @@ None.
   device's own log, and that a log holds file paths, which may hold the
   player's account name, so a game asks before it sends one anywhere
   (sending is parked 3047).
+  **Either order with 3012** (the Steam Deck): if 3012 is done,
+  `docs/targets/steam-deck.md` also says that the log files land in
+  the `logs` folder (`storage::log_dir`) of the data folder it names;
+  if not, nothing to do (3012 adds that line, its scope says so).
 - **Size:** if the PR passes about 600 changed lines, `SHUYI_LOG` and
   `LogFilter::parse`, with their tests and criteria, go to a follow-up
   ticket (the `write-ticket` skill, After MVP, blocked by this one), and
@@ -243,7 +251,8 @@ None.
 1. Read 3040's ADR and `shuyi_ui::log`; `crates/app/src/lib.rs`,
    `backend.rs` and `storage/`; macroquad 0.4.16's `src/lib.rs:139-146`
    (its `logging` module) and `src/prelude.rs`; miniquad 0.4.11's
-   `src/log.rs` and `src/native/wasm.rs:60`. Check whether 3046 is done.
+   `src/log.rs` and `src/native/wasm.rs:60`. Check whether 3012 and
+   3046 are done.
 2. `LogFilter::parse`, the other-target levels and `allows_target` in
    `shuyi-ui`, with their unit tests.
 3. `log_sink.rs`: the line, the filter check, the rotation, the cap, the

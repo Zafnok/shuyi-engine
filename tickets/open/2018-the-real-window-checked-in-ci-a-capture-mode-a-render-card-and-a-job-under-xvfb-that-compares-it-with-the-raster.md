@@ -33,10 +33,9 @@ Shuyi today:
 - The raster (`shuyi_ui::frame::raster`, 2332) is what `frame-png`,
   the tool contract and MCP (1133) show. `frame_png.rs` calls
   `frame-png` "never a gate".
-- Tickets promised the same pixels and planned to check by hand: 1120
-  ("compare a captured frame in a manual check, noted in the PR"), 2703
-  and 2323, all three parked. 2335, 2336 and 2337 ask this ticket to
-  compare their scenes.
+- Tickets promise the same pixels. 2703 and 2323 (parked) are blocked
+  by this one. 1120 (parked), 2222, 2301, 2335, 2336 and 2337 ask this
+  ticket to compare their scenes if they land first.
 
 A renderer bug, a macroquad upgrade or a driver change can make the
 window differ from the raster while every gate stays green. Agents
@@ -191,8 +190,12 @@ None.
     arm, so a new variant doesn't compile until the card shows it;
   - if 2335, 2336 or 2337 is done, its items and paints are on the
     card; if 2301 is done, a line of wide and narrow glyphs is; if 2222
-    is done, an atlas sprite and an inserted one are. Their own clauses
-    say the same.
+    is done, an atlas sprite and an inserted one are; if 1120 is done,
+    its test scene's world layers are (two parallax layers of y-sorted
+    sprites, and an inset viewport); if 2334 is done, a text run with
+    an outline and a shadow is; if 2360 is done, a small tile-layer
+    item is. If one isn't done, it adds its own when it lands. Their
+    own clauses say the same.
 - **`crates/app/examples/render_card.rs`** (`required-features =
   ["capture"]`): opens a window three times the card's size, so
   `layout` gives scale 3 (an odd scale). It draws the card with
@@ -250,9 +253,6 @@ None.
     capture`);
   - the `run-gates` skill says `render` runs in CI only (it needs Xvfb)
     and how to run it on Linux, and gets the `no-std` job's new line.
-- **A follow-up ticket** (the `write-ticket` skill): plans that play a
-  session record (2518) in place of steps, blocked by 2518 unless it is
-  done.
 - **Either order:**
   - with 2333 (scale modes): if 2333 is done, the plans run at a whole
     scale (`ScaleMode::Integer`), and one more capture uses `Fit`: it
@@ -279,8 +279,9 @@ None.
     it again: one helper in `crates/app/src/readback.rs`, and
     `capture::Plan::frames` or `shuyi_platform::link`'s step frames;
   - the new public types follow ADR-0039;
-  - 1120, 2703, 2323, 2301 and 2222 say in their own clauses how their
-    scenes join the card or a plan.
+  - 2703 and 2323 (blocked by this one) say in their own clauses how
+    their scenes join the card or a plan; 1120, 2301 and 2222 are in
+    the card's list above.
 
 **Out (do not do):**
 - the web build (2019);
@@ -293,15 +294,16 @@ None.
   plans;
 - `frame-png`'s `Step` and `Script`: they stay as they are;
 - reading a running game's window on request (2521, the live link);
-- plans that play a session record (the follow-up ticket above).
+- plans that play a session record (2029, which waits for this ticket,
+  2518 and 2519).
 
 ## Implementation steps
 
 1. Read 2332's `raster` module; `crates/app/src/lib.rs`, `backend.rs`
    and `render.rs`; `crates/platform/src/app.rs`, `harness.rs` and
    `headless.rs`; `frame_png.rs`'s `Step`; ADR-0011 §5, ADR-0024 and
-   `docs/platform-backends.md`. Check which of 2222, 2301, 2333, 2335,
-   2336, 2337, 2513, 2521, 3042, 3044 and 3046 are done.
+   `docs/platform-backends.md`. Check which of 1120, 2222, 2301, 2333,
+   2335, 2336, 2337, 2513, 2521, 3042, 3044 and 3046 are done.
 2. Write the ADR.
 3. Write `shuyi_platform::capture` and its tests, and add the `no-std`
    job's line.
@@ -317,8 +319,7 @@ None.
    numbers in the ADR.
 8. Show the one-pixel break with a temporary commit, then revert it.
 9. Re-run `render` three times and decide on `ci-result`.
-10. Write the follow-up ticket for session records.
-11. Update the docs and run the gates.
+10. Update the docs and run the gates.
 
 Size: if the diff runs well past 600 changed lines, move the render
 card (`raster::card`, its variant test and
@@ -354,8 +355,6 @@ say that the clauses naming 2018's render card mean that ticket.
 - [ ] If 2521 is done, the window is read through one helper both use
       (`crates/app/src/readback.rs`). If 3046 is done, the job's crash
       step passes.
-- [ ] The follow-up ticket for plans that play a session record is in
-      `tickets/open/`.
 - [ ] The ADR records the tolerance and the measured numbers; `render`
       is in `ci-result`, or the PR says why not.
 - [ ] All gates in the `run-gates` skill pass.

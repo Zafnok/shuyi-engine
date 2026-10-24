@@ -180,6 +180,12 @@ None.
     `check_text_sizes` and this walk share `Stop` and the cut finding,
     and the walk runs at every offered size; if not, 2323 builds its
     check on this walk.
+  - **Either order with 2334:** if 2334 is done, the walk also reads
+    the buffer's text runs (`GlyphBuffer::texts()`), leaving out a run
+    inside `skip`: a run with `cut` set is a `Cut`, and two or more
+    letters of its text outside a bracket pair are a `NotFromKey`, each
+    at the cell under the run's top-left with the run's text as `row`.
+    A test screen draws a cut run. If not, 2334 does it.
 - **Who runs it:**
   - the toy (`crates/ui/src/toy.rs`): `Toy::new` always adds the pack
     (it is a test game). It has no font, so its `can_draw` accepts every
@@ -230,8 +236,8 @@ None.
   load-time box check for dialogue (2209): this walk is their runtime
   half, not a replacement.
 - Reading 2329's `Layout::overflows()`: the walk reads what was drawn.
-- Text drawn off the cell grid (sprites, 2334's text runs): a follow-up
-  once 2334 is done.
+- Text in pictures (sprites), which the walk can't read. 2334's text
+  runs are read (its clause above).
 - Markup inside text files: 2347 keeps its styles out of them (its
   Out), and the ticket that adds markup adds it to what `pseudo_text`
   copies as it is.
@@ -255,7 +261,7 @@ None.
    (`LineEntry`, `LineText`), `lang/source.rs` (`SourceText`),
    `tip::placeholders`, `Ctx::effective_lang` and the Harness
    (`crates/platform/src/harness.rs`). Check the *Either order* tickets
-   (2226, 2301, 2323, 2348, 2349, 2351, 2501) for which are done.
+   (2226, 2301, 2323, 2334, 2348, 2349, 2351, 2501) for which are done.
 2. Write `pseudo_text` with its accent table and its tests, then
    `Lang::with_pseudo` and `LangPack::texts`.
 3. Gate `PSEUDO` in `Ctx::effective_lang`, with a test beside the debug

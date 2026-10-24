@@ -46,10 +46,9 @@ None.
   - **either order with 1124** (Tiled and LDtk maps): if 1124 is done,
     also `TerrainGrid::from_layer(&map, layer, property)`, which reads a
     tile layer whose tiles carry an integer custom property (for
-    example `terrain`), with a fixture map. If 1124 isn't done, code
-    only, and add to 1124's scope in this PR: "keep custom tile
-    properties readable; the RTS module reads a terrain class from one
-    (2709)".
+    example `terrain`; 1124's tilesets keep their tiles' properties),
+    with a fixture map. If 1124 isn't done, code only: 1124 adds
+    `from_layer` (its own clause says so).
 - **Movement classes:**
   - `MovementClass` from `*.movement.ron`: a name, a cost per terrain
     class (`Cost(1..=254)` or `Wall`), and `blocked_by_buildings`
@@ -74,7 +73,8 @@ None.
   `Topology::Square8(Diagonals::OCTILE)`, `Topology::steps` and
   `step_weight`), and use `Topology::distance` as `route`'s octile
   heuristic, rather than writing them again in `shuyi_rts::paths`. If
-  not, write them here.
+  not, write them here, and 2117 moves them onto `shuyi_core` when it
+  lands (its clause says so).
 - **Sectors and portals:**
   - sectors of 16 × 16 cells by default (a setting);
   - along each border between two sectors, each longest run of cells
@@ -117,7 +117,7 @@ None.
 2. Write the sector cut, the portal finder and the inside joins.
 3. Write `route` with A* and its tie-breaks.
 4. Write `cells_changed` and the comparison with a full rebuild.
-5. Write `from_layer` if 1124 is done, or the note in 1124.
+5. Write `from_layer` if 1124 is done.
 6. Write the cell-grid BFS reference in the tests.
 
 ## Acceptance criteria
@@ -134,8 +134,7 @@ None.
       (2116's `shuyi_assets::golden`), checked on x64, ARM64 and wasm32
       by CI's `test` and `determinism` jobs; bad fixtures name the file;
       arbitrary bytes never panic.
-- [ ] `TerrainGrid::from_layer` reads the fixture map (only if 1124 is
-      done), or 1124's scope has the note.
+- [ ] If 1124 is done, `TerrainGrid::from_layer` reads the fixture map.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

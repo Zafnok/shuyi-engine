@@ -66,13 +66,14 @@ comments become tickets.
   waypoint with a scripted input record; a replay determinism test;
   `frame-png` pictures of town, an area mid-fight, the inventory.
 - **The web build** and its place on the Pages index (the loop over
-  `examples/*/shuyi.ron`), and the website's Examples page if 2801 is
-  done.
+  `examples/*/shuyi.ron`). **Either order with 2801:** if 2801 is
+  done, the example gets its card on the website's Examples page; if
+  not, nothing more (2801 gives every example in `examples/` a card).
 - **The template part** `kind-action-rpg`, `when: Picked(kind,
   action-rpg)`: turns on `action` and `rpg`, adds one area with one
-  pack, one skill, a little loot, and copies the habits above as code
-  and data the game owns or deletes. CI's `templates` job makes and
-  tests it.
+  pack, one skill, a little loot with a default `filter.ron` (2758's
+  format), and copies the habits above as code and data the game owns
+  or deletes. CI's `templates` job makes and tests it.
 - **The guide** `docs/guides/action-rpg.md` in 2004's order: the
   template part, the modules, what looks related but isn't for it (the
   crawler's turn-based battles, 2748; RTS units, 2707), the example.

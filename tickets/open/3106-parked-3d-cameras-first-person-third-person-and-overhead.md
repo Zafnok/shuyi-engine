@@ -70,6 +70,17 @@ None.
     `shuyi-ui::input` here, quantized to `i16` per step in `TickInput`,
     with pointer lock in `shuyi-app` (macroquad's cursor grab, on
     desktop and the web);
+    **Either order with 3034:** if 3034 is done, lock the pointer the
+    way its ADR says a game asks for the grab (macroquad's
+    `set_cursor_grab` until the winit backend replaces macroquad); if
+    not, use macroquad's cursor grab, and 3034 plans keeping it.
+  - **Either order with 3044** (the idle cursor): a locked pointer is
+    never shown. If 3044 is done, give its `IdleCursor`
+    (`crates/app/src/window.rs`) a `locked: bool`, set while the lock
+    holds, that hides the cursor and wins over mouse motion and 1121's
+    `keep_shown`, with a unit test; if not, hide the cursor while the
+    lock holds (`show_mouse(false)`), and 3044 adds `locked` (its scope
+    says so).
   - sensitivity and invert-y are the player's settings in their keymap
     file, never constants in a game.
 - **`FirstPersonLook: CameraRig<FirstPerson>`**: yaw and pitch as
@@ -93,7 +104,7 @@ None.
 - camera shake and cinematic paths in 3D;
 - head bob and weapon sway (a game's job);
 - drawing the camera between two steps on displays faster than 60 Hz
-  (2361 does it for 2D world layers; a follow-up for 3D);
+  (2361 does it for 2D world layers; 3112 for 3D views);
 - the examples and templates (3108, 3109).
 
 ## Implementation steps

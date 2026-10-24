@@ -90,14 +90,20 @@ None.
   3. it collects the assets, packed if the game asks for it (2204,
      optional);
   4. it writes the package and a `export-report.json` (target, version,
-     sizes, the check's warnings, `signing`, and, when 2516 is done, its
-     files report's unread and largest files, taken from `shuyi check`,
-     not computed again here). `signing` is `"none"` for `windows`,
-     `linux`, `linux-arm64` and `web`, and `"ad-hoc"` for `macos`; 3051
-     adds the paid kinds. The `version` is `shuyi.ron`'s `app.version`
-     if 3048 is done and the part sets one; otherwise it is the built
+     sizes, the check's warnings and `signing`). `signing` is `"none"`
+     for `windows`, `linux`, `linux-arm64` and `web`, and `"ad-hoc"` for
+     `macos`; 3051 adds the paid kinds. The `version` is the built
      package's version, read with `cargo metadata --no-deps
-     --format-version 1`.
+     --format-version 1`. **Either order with 3048:** if 3048 is done,
+     it is `shuyi.ron`'s `app.version` when the part sets one, else the
+     package's version; if not, 3048 makes the report read it (its scope
+     says so). **Either order with 2516:** if 2516 is done, the report
+     also holds its files report's `unread` and `largest`, taken from a
+     plain `shuyi check` run (`check --target` makes no files report),
+     not computed again here; if not, 2516 adds them (its clause says
+     so). **Either order with 3017:** if 3017 is done, the report also
+     lists the check's `left_out` (the optional parts the target can't
+     run); if not, nothing to do (3017 adds it).
 - **Symbols kept per release** (for 2520): with `--release`, the
   `windows` and `linux` exporters (and `linux-arm64`) build with
   `CARGO_PROFILE_RELEASE_STRIP=false` and
@@ -140,7 +146,11 @@ None.
     written. Apple silicon runs only signed code, and a bundle that
     isn't signed as a whole can be reported to a player as damaged
     instead of offering Open Anyway. A Developer ID signature and
-    notarization are parked 3051.
+    notarization are parked 3051. The bundle holds a minimal
+    `Contents/Info.plist` (`CFBundleExecutable`, `CFBundlePackageType`
+    `APPL`), written before the signature, since `codesign` and Finder
+    find the executable through it. 3049 replaces it with one from the
+    game's identity.
   - **`web`.** It reuses the existing web build (`cargo shuyi web`),
     and the output folder holds `index.html`, the wasm, the JS plugins
     and the `NOTICES.txt` that `shuyi web` writes (3039). It also writes
@@ -148,8 +158,26 @@ None.
     itch.io and other portals take
     (<https://itch.io/docs/creators/html5>). `export-report.json` gives
     the zip's size, which 3008 compares with the web profile's
-    `package_bytes`. 3052's README section "Putting a web build online"
-    points at this zip.
+    `package_bytes`. **Either order with 3052:** if 3052 is done, its
+    README section "Putting a web build online"
+    (`crates/cli/web/README.md`) names this zip in its itch.io point;
+    if not, 3052 names it (its clause says so).
+    It needs the game's `web` part, as `cargo shuyi web` does, and
+    refuses a game without one with that command's error. The
+    templates have no `web` part or web `build.rs` yet (2524's Out
+    leaves them to a ticket of its own), so CI exports the examples,
+    and a game made by `shuyi new` exports for `web` once it adds them.
+  - **Either order with 2407 (parked):** one `web` package also serves
+    the `web-touch` target 2407 plans for phones' browsers. If 2407 is
+    done and `targets/web-touch.ron` exists, `shuyi export web` also
+    runs the `web-touch` check when the game's `shuyi.ron` lists that
+    target. If not, nothing to do: the ticket that adds `web-touch`
+    makes `shuyi export web` run it.
+- **The bench's package size.** **Either order with 3008:** if 3008 is
+  done, `shuyi bench` takes each package's size from
+  `export-report.json` (for `web`, the zip's) in place of the asset
+  bytes it measures until then, with a test; if not, nothing to do
+  (3008 reads the report).
 - **`--run`.** `shuyi export <target> --run` runs the package after
   writing it. The `Exporter` trait also has `run(&RunCx) -> Result<(),
   ExportError>`, whose default answers "no run step for <target> yet"
@@ -171,8 +199,13 @@ None.
   drops or rewords it for signed packages.
 - **License notices.** Every package carries `NOTICES.txt`, written by
   3039's `notices` module (`crates/cli/src/notices.rs`): the crates for
-  the package's triple, the game's `notices.texts`, and the game's
-  credits once 2223 lands. No separate tool.
+  the package's triple and the game's works (its `notices.texts`), from
+  one function every exporter calls. No separate tool.
+  - **Either order with 2223:** if 2223 is done, the game's works also
+    hold its credits (2223's `credits::works(project)`), and the
+    fixture game of the `web` and `linux` export tests has a `credits`
+    part, whose section "Works the game credits" its `NOTICES.txt`
+    shows; if not, nothing to do here (2223 adds both).
   - Native packages also need the engine's files that reach a game and
     aren't crates. Today that is the SDL_GameControllerDB that `gilrs`
     compiles in (Zlib, `crates/app/SDL_GameControllerDB-LICENSE.txt`),
@@ -186,6 +219,12 @@ None.
   named `link` (2521's debug-only listener), whatever the game's
   `web.features` list. A unit test checks the cargo arguments of every
   exporter.
+- **Either order with 2717** (RTS passes on rayon threads): if 2717 is
+  done, `export` refuses a game that turns on `shuyi-rts`'s `parallel`
+  feature for a target whose profile isn't `desktop` or `steam-deck`
+  (of this ticket's targets, only `web`), and names the feature; a unit
+  test checks it. If not, nothing to do (2717 adds the rule when it
+  lands).
 - **Nothing of the build machine in a package.** One function remaps
   the build's paths. Every `--release` build the exporters make goes
   through it, and so does `shuyi web --release` (`web::run`,
@@ -223,6 +262,9 @@ None.
     libraries, `libgcc_s.so.1`, `libasound.so.2` and `libudev.so.1`. The
     version needs (`SectionTable::gnu_verneed`) ask for no `GLIBC_`
     version above the list's floor.
+    **Either order with 3032:** if 3032 is done, leave out
+    `libasound.so.2`, since ALSA is then opened with `dlopen`; if not,
+    nothing to do (3032 removes it).
   - `macos`: each slice of the universal binary (`MachOFatFile`) loads
     only from `/System/Library/` and `/usr/lib/`, and both slices are
     there.
@@ -246,7 +288,10 @@ None.
     package. It is marked untested until someone runs it, with how to
     report;
   - how to make the Linux packages by hand in the container with
-    `docker` or `podman`.
+    `docker` or `podman`;
+  - where a package's log file is on each system (3041's
+    `shuyi_app::storage::log_dir`), so a developer can tell a player
+    what to send.
 
   These packages all run the `desktop` profile.
 - **An ADR** (the `write-adr` skill, the next free number) extending
@@ -267,13 +312,24 @@ None.
   export steps per exporter (runner, toolchain setup) as one job over a
   matrix, so 3050 can move them into a reusable
   `.github/workflows/export.yml`.
+- **Either order with 2739** (snake, parked): if 2739 is done,
+  `examples/snake` is one of the examples CI exports, with nothing of
+  its own; if not, nothing to do (2739 has `shuyi export web` build it
+  when it lands).
 - **The agent eval.** If 2524 is done, its `Web` check
   (`crates/xtask/src/eval/grade.rs`) runs `shuyi export web` and reads
   that folder, and the turn-based tasks in `evals/tasks/` gain an
   `Export` check for `linux` (the package exists), run in the sniper
   container as CI's `linux` export is, since outside it the audit
-  refuses a newer glibc. If 2524 isn't done, 2524's either-order clause
-  moves `Web` to `export`.
+  refuses a newer glibc. If 2524 isn't done, nothing to do: 2524's
+  either-order clause moves `Web` to `export` and adds the `linux`
+  `Export` check.
+- **Either order with 1134:** if 1134 is done, its `shuyi-ship` skill
+  gains a section on `shuyi export <target>`: the targets, `--release`
+  and the `.debug` file beside the package, `--run`,
+  `export-report.json`, the `NOTICES.txt` in every package and the
+  player note. If not, nothing to do (1134 teaches what exists when it
+  is written, as its scope says).
 
 **Out (do not do):**
 - a Developer ID signature, notarization and signing Windows exes:
@@ -287,14 +343,14 @@ None.
   what they serve, and a pre-compressed file needs server headers;
 - the web page's loading screen, errors and hosting notes (3052);
 - the game's identity in the packages (the exe's icon and version
-  resource, Info.plist and `.icns`, a `.desktop` file and its icons, web
-  icons, the page's title from the name): 3049, which follows this
-  ticket;
+  resource, an Info.plist with the game's id, name and version, and
+  `.icns`, a `.desktop` file and its icons, web icons, the page's title
+  from the name): 3049, which follows this ticket;
 - the Steam Deck (3012), Playdate (3010) and mobile (3015) exporters;
-- the log file of a shipped build (3041). Land 3041 before or with this
-  ticket: a Windows release build has no console
-  (`windows_subsystem = "windows"`), so the file is the only record a
-  player can send;
+- the log file of a shipped build (3041), which comes before this ticket
+  in `docs/ROADMAP.md`'s order (step 2): a Windows release build has no
+  console (`windows_subsystem = "windows"`), so the file is the only
+  record a player can send;
 - a macOS `.dSYM` and Windows PDB files (the GNU toolchain writes
   DWARF): follow-ups when a game ships there;
 - Windows on Arm as its own build (`aarch64-pc-windows-gnullvm`). It
@@ -328,6 +384,9 @@ None.
    (with the container and the universal app). File step 4 and
    `linux-arm64` as one follow-up ticket with the `write-ticket` skill,
    After MVP, blocked by 3004, and say so in the completion notes.
+   That ticket names 3049 and 3050: if they are done, it gives
+   `linux-arm64` 3049's identity files and 3050's `host()`,
+   `container()` and `ci()`; if not, they do (their scopes say so).
 
 ## Acceptance criteria
 

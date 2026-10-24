@@ -6,7 +6,7 @@ milestone: "Engine: editor"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1129", "2316", "2521"]
+blocked_by: ["1129", "2316", "2521", "2907"]
 nick_input: sign-off
 completed:
 ---
@@ -93,19 +93,24 @@ Nick comments on the scope and the look, not on the code.
      which already carries a running build's status, frame text,
      window picture, input (actions by name) and log. Decide only the
      operations the editor adds to the link and the contract, such as
-     `watch` (a stream of frames and gizmos) and `channels`. Pause and
-     step are 2316's `DebugPause` and `DebugStep` actions, sent as
+     `watch` (a stream of frames and gizmos), `channels`, and the
+     stage's dump: the `data` of the contract's `scene` answer, which
+     the link doesn't carry (2521's Out) and 2507's tree lists. Pause
+     and step are 2316's `DebugPause` and `DebugStep` actions, sent as
      `act` steps. What is added goes into both the link and the
      contract, so the CLI and MCP get it too.
 
-     Going back is already in the contract: `--until` on `run`,
-     `scene` and `frame-png`, and MCP's `seek` (2357). In a running
-     build, 2357's `DebugBack` action goes back, sent as an `act` step
-     like pause and step. The editor uses them rather than a way of its
-     own.
+     **Either order with 2357:** if 2357 is done, going back is in the
+     contract: `--until` on `run`, `scene` and `frame-png`, and MCP's
+     `seek`. In a running build, its `DebugBack` action goes back, sent
+     as an `act` step like pause and step. The editor uses them rather
+     than a way of its own. If not, the ADR plans on them as 2357's
+     scope has them, and 2357 adds nothing for the editor.
   3. **Its panels on day one**, each with what it edits:
      - the live view, with the channels, pause, step, slow motion and
-       going back (2357);
+       going back (2357), and whether it has a timeline that scrubs a
+       recorded session through 2357's `seek` (2357 leaves the timeline
+       to this ticket);
      - the screen stack, and the stage's tree (layers, units, bodies);
      - the inspector over a module's settings files (their shapes come
        from `shuyi kinds`, 2515; this ADR doesn't pick another schema
@@ -121,10 +126,24 @@ Nick comments on the scope and the look, not on the code.
 - **A throwaway spike** (not committed). The chosen shell shows the
   toy's grid game running with the `grid` channel on, and edits one
   setting in a RON file that the game reloads.
+- **Either order with 2220 (hot reload):** if 2220 is done, the spike's
+  game reloads the file through it (`shuyi run --watch`); if not, the
+  spike restarts the game to show the change. Either way, point 4 of
+  the ADR (live edits) starts from what 2220 reloads.
 - **The tickets.** Rewrite 2507 (the shell) and 2508 (the graph panel)
   to the ADR, splitting them where one is over a PR's worth. Write
   tickets for any other day-one panels. Update 1135's editor point if
   1135 is still open.
+  **A 3D view. Either order with 2320:** the tickets include one for
+  a 3D view in the editor, parked while 3D is: a camera of its own
+  over a game's 3D stage, where 2320's `camera3` draws the game
+  camera's frustum. If 2320 is done, that ticket turns `camera3` on;
+  if not, 2320 adds that to it when it lands.
+- **Either order with 2221 (scenes):** if 2221 is done, the ADR's
+  panels say whether one edits its `*.scene.ron` files on day one (a
+  panel of their own, or the levels panel) or they stay text, and a
+  panel that edits them gets its ticket with the others; if not, the
+  same, from 2221's ticket. 2221's Out leaves scene editing here.
 
 **Out (do not do):**
 - building the editor;

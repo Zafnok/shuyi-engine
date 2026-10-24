@@ -29,8 +29,9 @@ What Shuyi has today (checked 2026-10-20):
 - `screen::Transition` (`crates/ui/src/screen.rs`) is `None`, `Push`,
   `Pop`, `PopWith`, `Replace` or `Quit`. `ScreenStack::apply_in`
   changes the stack at once, and `Game::redraw`
-  (`crates/ui/src/game.rs:418`) clears the buffer and draws the new
-  stack. Every change of screen is a cut.
+  (`crates/ui/src/game.rs:473`) clears the buffer, draws the new
+  stack, then lets each module that draws over the screens draw (2358,
+  done). Every change of screen is a cut.
 - `GlyphBuffer::fade` (`crates/ui/src/frame/glyph_buffer.rs:720-748`)
   darkens a whole frame toward black, items and backdrop included. The
   cinematic player uses it for one brightness. Nothing fades toward
@@ -105,8 +106,10 @@ None. Which look the game uses stays Nick's choice in game#0813.
     or the time is up. **Either order with 2109:** if 2109's
     `shuyi_core::ease` is done, use `Ease::Smooth` through its
     `Easing::ease` (1/65536 in and out, scaled from and to
-    thousandths); if not, this private formula, and 2109 or a later
-    move onto `Ease::Smooth` is tested within one thousandth of it.
+    thousandths); if not, this private formula, and 2136 moves it
+    onto `Ease::Smooth`, tested within one thousandth of it (its
+    clause on 2339 says so). 2136 is blocked by 2109, so if 2136
+    lands first, use `Ease::Smooth` as above.
   - `compose(look, from: &GlyphBuffer, to: &mut GlyphBuffer, permille:
     u16)`, pure: `to` holds the new frame and becomes what shows at that
     progress. Two buffers of different `spec`s compose as a cut.
@@ -190,10 +193,19 @@ None. Which look the game uses stays Nick's choice in game#0813.
     last frame and the next: a screen that changes all it shows (a map
     giving way to a battle on the same screen).
 - **`Game` plays it** (`crates/ui/src/game.rs`):
-  - In `redraw`, a look asked for keeps the frame shown last (`buffer`,
-    cloned before the clear) as the outgoing frame, and starts at
-    `ctx.clock_s`. Each redraw draws the stack, then `compose`s at the
-    look's `progress`. When it ends the outgoing frame is dropped.
+  - In `redraw`, a look asked for keeps the screens' last drawing as
+    the outgoing frame, and starts at `ctx.clock_s`. Each redraw draws
+    the stack, then `compose`s at the look's `progress`. When it ends
+    the outgoing frame is dropped.
+  - **From 2358 (done, ADR-0040):** `redraw` draws the stack, then each
+    module that declared `Hook::DrawOver` draws over it (`draw_over`,
+    "over the screens, after them"). `compose` runs right after
+    `self.stack.draw`, before the modules' loop, so a module draws over
+    a look as it draws over any screen. The outgoing frame is the
+    stack's drawing without the modules': with no module that draws,
+    `buffer` cloned before the clear; with one, a copy of the buffer
+    `Game` takes after `self.stack.draw` each frame. So no module's
+    drawing is composed, nor shown twice.
   - **Logic switches at once.** The stack changed when the screen asked,
     and the new top screen updates from the next frame. **While a look
     plays, nothing is pressed:** the screens get frames with time and
@@ -245,8 +257,10 @@ None. Which look the game uses stays Nick's choice in game#0813.
 **Size.** If the PR passes about 600 changed lines (snapshots not
 counted), `Wipe`, `Dissolve` and `copy_from` (with their tests and the
 lobby's dissolve) go to a follow-up ticket (`write-ticket`), After MVP,
-and the PR adds it to 2340's `blocked_by`. This PR ships `Cut` and
-`Fade` on the veil.
+and the PR adds it to the `blocked_by` of 2340 and of 2364 (parked,
+whose shots enter with a `Dissolve`), and names it beside 2339 in
+1120's either-order clause on transition looks. This PR ships `Cut`
+and `Fade` on the veil.
 
 **Out (do not do):**
 - an iris (a circle that opens or closes): a follow-up if a game asks;
@@ -270,8 +284,9 @@ and the PR adds it to 2340's `blocked_by`. This PR ships `Cut` and
 ## Implementation steps
 
 1. Read ADR-0002 §4, ADR-0003 §1, game#0813, `glyph_buffer.rs`
-   (`blit` and `cut_items`), `game.rs` (`step`, `act`, `redraw`),
-   `onebit.rs` and the two painters; 2109, 2332, 2337 and 2511 if done.
+   (`blit` and `cut_items`), `game.rs` (`step`, `act`, `redraw` with
+   its modules' loop), `onebit.rs`, the two painters and `BasicTools`
+   (`crates/cli/src/basic.rs`, from 2511); 2109, 2332 and 2337 if done.
 2. Write the ADR.
 3. In `glyph_buffer.rs`, add `Veil`, `copy_from` and the note; in
    `snapshot.rs`, the two lines and the module doc. Unit tests beside
@@ -342,7 +357,9 @@ and the PR adds it to 2340's `blocked_by`. This PR ships `Cut` and
   the veil and the note removed by a full fill and by `Game::redraw`
   with a see-through blank cell; the two snapshot lines; `Game::act`
   and the Debug hook during a look; the look replaced mid-way; the
-  toy's `shows` with and without a look playing.
+  toy's `shows` with and without a look playing; a module that draws
+  over (2358) keeps its cells and items whole at every progress of a
+  `Fade` and a `Dissolve`, and the outgoing frame holds none of them.
 - Property: the two composite properties above; `compose` is pure (the
   same inputs give equal buffers).
 - Snapshot / integration: the Harness test, which checks that presses

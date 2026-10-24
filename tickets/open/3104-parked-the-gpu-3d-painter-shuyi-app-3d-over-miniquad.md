@@ -74,8 +74,11 @@ None.
   over and under it as in `frame-png`.
 - **The GPU painter**, registered for the `shuyi-3d` module layer
   (3103's `ModulePainter`, in its GPU form through the hook):
-  - meshes and textures uploaded once per asset, and again on hot
-    reload (2220's module hook, `Module::reloaded`);
+  - meshes and textures uploaded once per asset.
+    **Either order with 2220:** if 2220 is done, upload them again
+    when its module hook, `Module::reloaded`, names a file they were
+    read from; if not, upload once, and 2220 adds the upload on
+    reload (its clause says so);
   - `Fx12` turned into `f32` here, after the scene is built (ADR-0011
     §3);
   - textures: `FilterMode::Nearest` when the material's `pixel` flag is
@@ -84,13 +87,19 @@ None.
     back to front by their centres;
   - **skinning**: each clip sampled on the CPU in `f32` at the pose's
     time, up to 64 joint matrices a draw as uniforms, skinned in the
-    vertex shader;
+    vertex shader. A skin with more joints (3102 reads up to 256) is
+    drawn in its bind pose, as 3103 draws every skin, and counted and
+    listed in `shuyi run`'s `limits` (never silently). If games' rigs
+    need more, a follow-up keeps the matrices in a texture;
   - **lights**: ambient, one directional, and up to 8 point lights a
     view. More are dropped, counted, and listed in `shuyi run`'s
     `limits` (never silently);
   - **one shadow map** for the directional light that has `shadows`
     set: 2048² on desktop, 1024² on the web, with 2 × 2 filtering.
-    Billboards may cast shadows (3107 uses that);
+    3103's `Billboard` gains `casts_shadow: bool` (off by default,
+    printed on its snapshot line only when on), and only billboards
+    with it on draw into the shadow map (3107's `shadow: Cast` sets
+    it; `Blob` leaves it off);
   - **fog** in the main shader.
 - **The named effects** of ADR-0011 §7, as a chain of passes over the
   offscreen colour and depth, in a fixed order:
@@ -166,13 +175,13 @@ None.
 - [ ] The `web` profile's `three_d` matches what ran on WebGL 2. If it
       drops an effect, `shuyi check --target web` fails on a fixture
       skin that needs that effect.
-- [ ] Too many point lights are counted in `limits`, never dropped
-      silently (a test).
+- [ ] Too many point lights, and a skin of more than 64 joints, are
+      counted in `limits`, never dropped silently (tests).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: `Fx12` to `f32`; clip sampling; the light limit.
+- Unit: `Fx12` to `f32`; clip sampling; the light and joint limits.
 - Integration: the look test in 2018's `render` job, under llvmpipe.
 - Manual: each effect on desktop and on WebGL 2, noted in the PR.
 

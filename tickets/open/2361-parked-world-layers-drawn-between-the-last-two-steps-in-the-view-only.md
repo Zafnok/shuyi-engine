@@ -188,8 +188,10 @@ None. The sentence this supersedes is Claude's own technical choice
     placed by the same function as sprite items, so it moves with the
     blended camera. Its `visible` rectangle (from `now`'s camera, with
     its tile of margin) covers the blend while the camera moves less
-    than a tile a step. If 2360 is done, the cadence test below includes
-    a tile layer. If not, 2360 needs nothing from this ticket.
+    than a tile a step. If 2360 is done, both painters place a smoothed
+    layer's tile cells with `window_px` (below), as they place its
+    sprite items, and the cadence test below includes a tile layer. If
+    not, 2360 places them so (its Scope says so).
   - `shuyi_ui::tick::StepViews<P>`: keeps the world layers
     (`Vec<WorldLayer<P>>`) a stage built after each of the last two
     steps. `push(layers)` after each step, `set_overstep(..)` in the
@@ -245,6 +247,18 @@ None. The sentence this supersedes is Claude's own technical choice
   where the player saw things. If 1121 is done, make it so and test a
   click on a smoothed layer. If not, add a line to 1121's Scope in this
   PR saying so.
+- **Debug gizmos. Either order with 2318:** 2318's
+  `Gizmos::push_world` places a gizmo given in world pixels through a
+  world layer and its camera. On a smoothed layer it must get the layer
+  as drawn (`StepViews::drawn`), so a gizmo on a tile or a level object
+  lands where the player sees it. If 2318 is done, say so in
+  `push_world`'s doc and test it on the smoothed scene. If not, nothing
+  to do (2318 does it).
+- **The frame cap's docs. Either order with 2321:** 2321's `FrameCap`
+  and `Window::vsync` docs say that a tick stage judders at 144 and
+  165 Hz. If 2321 is done, add there that a world layer with
+  `Smoothing` on doesn't judder. If not, nothing to do (2321 writes
+  that line, its clause says so).
 - **No API break for the game.** `Platform` gains a method with a
   default body. `FrameInput`, `Game`, `HeadlessPlatform` and `Harness`
   gain methods. `frame_png::Step` gains a variant; no game in
@@ -254,7 +268,8 @@ None. The sentence this supersedes is Claude's own technical choice
 - **Size.** If the PR passes about 600 changed lines (not counting
   snapshots and schema files), item keys and the items' blend (step 6)
   go to a follow-up ticket, parked like this one and written in this PR.
-  This PR then keeps the camera's blend.
+  This PR then keeps the camera's blend, and puts the follow-up in
+  3112's `blocked_by`, since 3112 keys 3D draws with `ItemKey`.
 
 **Out (do not do):**
 
@@ -267,10 +282,11 @@ None. The sentence this supersedes is Claude's own technical choice
 - camera feel: look-ahead, rooms that confine it, blends between cameras
   (2362);
 - game speed and hit-stop (2123), beyond the either-order part above;
-- debug gizmos over world layers (2317, 2318) that follow blended
-  sprites: a follow-up; until then a developer turns smoothing off to
-  line them up;
-- 3D views and cameras (3103, 3106): a follow-up if 3D is unparked;
+- gizmos made from the newest state, such as a mover's box over a
+  smoothed sprite: they show the newest step, up to one step ahead of
+  the sprite, and a developer turns smoothing off to line them up;
+- 3D views and cameras (3103, 3106): 3112 draws them between the
+  last two steps, parked with 3D;
 - smoothing rollback corrections in networked play (1147), beyond
   `snap`;
 - a lower step rate (ADR-0015's buckets stay);
@@ -299,8 +315,8 @@ None. The sentence this supersedes is Claude's own technical choice
    `TickDriver`; the camera follows it with no dead zone and no clamp,
    at zoom 1; the stage pushes its layers into `StepViews` after each
    step. If 1120's scene doesn't step, give it a sim of that one sprite.
-9. The either-order parts for 2362, 2360, 1121 and 1133, and the tests
-   below.
+9. The either-order parts for 2362, 2360, 1121, 1133 and 2318, and
+   the tests below.
 10. Run the gates.
 
 ## Acceptance criteria

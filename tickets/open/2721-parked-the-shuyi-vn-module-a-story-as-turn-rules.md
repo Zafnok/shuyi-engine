@@ -28,10 +28,16 @@ What it builds on:
   §2): `check`, `apply`, `legal_commands`, `outcome`. A run is its seed
   plus its commands.
 - **The dialogue the engine already has**: `.dlg` scenes (game
-  ADR-0011, game ADR-0055) loaded as the `DialogueScene` asset kind,
-  with speakers, choices, `@if`, variables, line ids (game ADR-0045) and
-  commands that the runner passes through. Find the runner with
-  `grep -rn "DialogueScene" crates/`.
+  ADR-0011, game ADR-0055) with speakers, choices, `@if`, variables,
+  line ids (game ADR-0045) and the game's own `@` lines (its
+  `Directive` type `D`). **From 2201 (done):** ADR-0007's
+  `DialogueScene` kind is `shuyi_assets::dialogue::DialogueFile<D>`, a
+  file's scenes, read by the format `Dlg<D>` (`docs/formats.md`, "The
+  kinds of ADR-0007 §1"). The runner is `DialoguePlayer` in
+  `shuyi_ui::dialogue` (`crates/ui/src/dialogue/player.rs`). It is
+  pure, but it lives in `shuyi-ui`, which this crate uses only behind
+  `view`; how `VnRules` drives it headless (moving it down a layer,
+  with an ADR, say) is this ticket's to decide.
 - **Formats are plugins** ([ADR-0007](../../docs/adr/0007-formats-are-plugins-standard-files-always-optimized-ones-optional.md)
   §2, §5): every new file kind is a `Format`, never panics, and is
   deterministic. Its determinism fixture is a row in its crate's golden
@@ -70,6 +76,15 @@ None.
   - the catalog row in `docs/modules.md` (2003 wrote it as parked): set
     its status to building, with tickets 2721–2726. 2726 sets the row
     and the answer to ready, when the example passes CI;
+  - **the `building` status.** 2003 (done) gave the catalog three
+    statuses: ready, planned and parked. If `shuyi_cli::catalog::Status`
+    (`crates/cli/src/catalog.rs`) has no `Building` yet, add it, named
+    `building`, with its doc, to the enum,
+    `crates/cli/schemas/modules.output.json`, the `status` line of
+    `docs/modules.ron`'s header and the *Status* line of *How to read
+    it* in `docs/modules.md`. It is a new variant of an exhaustive
+    public enum, so write a `Breaking:` line if CI's `api` job reports
+    one. 2118 adds it the same way if it lands first;
   - the README's first two sections in ADR-0009 §4's order (what it is
     for, what it is not for). 2726 finishes the rest;
   - the `shuyi-vn` skill: if the skill pack (1134) is done, add a short
@@ -77,10 +92,7 @@ None.
     come. If not, add `shuyi-vn` to 1134's list in this PR;
   - `needs` (ADR-0012 §1), if 3017 is done: an empty table, with a
     comment that 2726 checks it against the example. If 3017 isn't done,
-    3017 gives it a `needs` key with the other modules;
-  - if 2004's guide check is in place, a planned page
-    `docs/guides/visual-novel.md` naming 2722–2726. 2726 writes it in
-    full.
+    3017 gives it a `needs` key with the other modules.
 - **`VnState`** in `shuyi_vn::state` (ADR-0016 §2):
   - where the story is: the scene and the line, named by **line id**
     (game ADR-0045), never by an index into the file;
@@ -146,10 +158,9 @@ None.
     commands, follow 2202's rule for telling a command tag from another
     Ink tag (such as a metadata tag), and add the stage-direction rows
     to `docs/formats/dialogue.md`, with one fixture per format;
-  - **if 2202 isn't done**: `.dlg` only. 2202 already passes unknown
-    commands through and names 2721 as the owner of these rows; whoever
-    lands second does the Yarn and Ink part. Say which in the
-    Completion notes.
+  - **if 2202 isn't done**: `.dlg` only. 2202 then adds the Yarn and
+    Ink forms, their rows and their fixtures when it lands (its Scope
+    In, item 5). Say which in the Completion notes.
 - **Characters are data**: `*.character.ron`, asset kind
   `CharacterDef`, format `character-ron` (ADR-0007):
   - `id`, `name` (a text key), `colour` (a colour role of the skin);
@@ -207,15 +218,15 @@ None.
 3. Write `Direction` and its parser over a command's words, with one
    unit test per command and per error.
 4. Write `Story::build`: read every scene's commands into directions,
-   with errors carrying the file and line from the `DialogueScene`.
+   with errors carrying the file and line from each scene's
+   `ParsedScene` (in the `DialogueFile`).
 5. Write `VnState`, `VnCommand`, `VnEvent` and `VnRules`, driving the
    engine's dialogue runner (don't write a second one), and apply each
    direction to the stage.
 6. Write `history::back`.
 7. If 2202 is done, add the Yarn and Ink forms, their fixtures, and the
    rows in `docs/formats/dialogue.md`.
-8. Add the skill (or 1134's list entry) and, if 2004's check is there,
-   the planned guide page.
+8. Add the skill (or 1134's list entry).
 
 ## Acceptance criteria
 

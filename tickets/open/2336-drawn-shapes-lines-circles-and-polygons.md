@@ -206,15 +206,13 @@ not parked.
     `Pen::Ink(ink_of(color))`, as they fill a rectangle. An invert
     colour draws black: `Ink::Invert`'s doc says only a rectangle
     flips.
-- **Either order with 2315:** if 2315 is done, take its one-pixel line
-  and circle code into `frame::shape` as the width-1 rules above, and
-  make `Item::Gizmo` draw through them in every renderer, with 2315's
-  snapshots and pictures unchanged. If 2315's circle differs from the
-  midpoint circle above, keep 2315's and write that in the module's
-  doc. If 2315 isn't done, write the rules here, and add a line to
-  2315's Scope: its gizmos' lines and circles draw through
-  `frame::shape`'s width-1 rules in every renderer, not with
-  macroquad's lines.
+- **Either order with 2315:** if 2315 is done, `frame::shape` already
+  holds the width-1 line and circle-outline rules (2315 wrote them as
+  this scope says, for its gizmos). Build the rest of the module around
+  them, and add what this scope asks that they lack (such as starting
+  a long line's walk inside `clip`), with 2315's snapshots and pictures
+  unchanged. If not, write the rules here; 2315's gizmos then draw
+  through them (its clause on this ticket says so).
 - **1-bit (3006 is done, ADR-0026):** a shape's colour goes through the
   one-bit renderer's `Shades` (the game's inks, or a `PatternMap`) as a
   rectangle's does, in `shuyi_ui::frame::onebit`'s fast renderer and its
@@ -227,10 +225,27 @@ not parked.
   when it is written.
 - **Public types (ADR-0039):** `Shape`, `ShapeKind` and `Fill` follow
   it (`#[non_exhaustive]` where they may grow, constructors).
+- **Either order with 2122:** if 2122 is done, the module docs of
+  `shuyi_core::curve` say a skin draws a curve as lines over
+  `pieces()`: name `Shape::line` there. If not, nothing to do (2122
+  names it).
 - **Either order with 2802:** if 2802 is done, chapter 4 of the book
   (the frame and skins) gets a short section on shapes, its code in
   `site/snippets/` as 2802 says. If not, 2802 writes the chapter from
   the code.
+- **Either order with 2738** (parked): if 2738 is done,
+  `examples/bricks` draws its ball as a square `Overlay`: make it a
+  filled circle, and redo its `frame-png` pictures. If not, nothing to
+  do (2738 draws a filled circle).
+- **Either order with 2740** (parked): if 2740 is done, its hex path
+  arrow (`crates/ui/src/grid/path.rs`) draws the steps between rows
+  with a line helper shared with `threat.rs`: draw them with
+  `Shape::line(from, to, LINE_W, color, Layer::Under)` through
+  `GlyphBuffer::add_shape`, clipped to `Grid::bounds`, and review its
+  hex snapshots. If not, nothing to do (2740 draws them so).
+- **Either order with 2744:** if 2744 is done, nothing to do (its
+  automap may move onto these shapes later); if not, nothing to do
+  (2744 draws its automap with these shapes when they exist).
 - **What changes for the game:** `Item` gains a variant, so an
   exhaustive `match` on `Item` breaks. The game has a few, in its map
   drawing and its tests, so its PR that moves the pin adds the arm. Say
@@ -281,13 +296,17 @@ not parked.
    tests if 2332 is done), check the `Painter`'s pixels against
    `for_each_run`. Add shapes to the 1-bit `Thing` generator
    (`onebit/speed_tests.rs`).
-7. Settle the either-order clauses above (2315's line, 2018's card,
-   2802's chapter).
+7. Settle the either-order clauses above (2315's rules, 2018's card,
+   2802's chapter, 2738's ball and 2740's path arrow).
 8. Run the gates, including the `no_std` build of `shuyi-ui`. If the PR
    grows well past about 600 changed lines (fixtures and snapshots
    aside), leave polygons out (`ShapeKind::Polygon`, `Shape::polygon`,
    their snapshot line and tests), finish the rest, and write a ticket
-   for polygons (the `write-ticket` skill), blocked by this one.
+   for polygons (the `write-ticket` skill), blocked by this one. In the
+   same PR, add it to the `blocked_by` of the tickets that build on the
+   polygon rule (2703's strips, 2217's textured triangles and 2743's
+   outlined quads), and point the polygons in 2335's, 2315's and
+   2740's Out lines at it.
 
 ## Acceptance criteria
 
@@ -322,7 +341,7 @@ not parked.
 - [ ] Every existing snapshot and `frame-png` test passes unchanged.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] If step 8 splits polygons off, their criteria move to the new
-      ticket.
+      ticket, and 2703, 2217 and 2743 are blocked by it.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

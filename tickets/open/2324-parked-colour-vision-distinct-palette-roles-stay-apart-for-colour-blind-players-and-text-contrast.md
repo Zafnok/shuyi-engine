@@ -25,12 +25,20 @@ on the options screen. What's missing is a way for the developer to know
 a theme works.
 
 [ADR-0008](../../docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)
-§4 already has the idea: skins name colours by role, and the palette
-file lists groups of roles that must stay distinct (`team.player`,
-`team.enemy`, `team.ally`). 3006 checks those groups on 1-bit. This
-ticket checks the same groups as players with colour vision deficiency
-see them, so a game knows that red and green sides look the same to
-about one man in twelve.
+§4 already has the idea: skins name colours by role, and groups of
+roles must stay distinct (`team.player`, `team.enemy`, `team.ally`).
+This ticket checks those groups as players with colour vision
+deficiency see them, so a game knows that red and green sides look the
+same to about one man in twelve.
+
+**From 3006 (done, ADR-0026):** the groups don't live in the palette
+file. A palette (`PaletteDef`) is only names and colours. The
+`distinct` groups and the `text` roles are in the one-bit pattern map,
+`palette@onebit.ron` beside the palette (`PatternMapDef`), which only
+a game with a one-bit target writes. 3006's check,
+`shuyi_assets::onebit::check(palette, map)`, runs in `shuyi check
+--target <id>` on each `color: OneBit` target, through the game's
+optional `GameTools::one_bit`. The game's tools offer no themes yet.
 
 It is a tool (`shuyi-cli`), not the simulation, so it may use floats.
 
@@ -48,8 +56,18 @@ None.
     from the paper, with a citation in the docs;
   - distance in OKLab (Björn Ottosson, 2020, from the published
     formulas).
-- **The check**, next to 3006's distinct check (in `shuyi check`, or
-  where 3006 put it):
+- **The check**, in `shuyi check` for every game, not per target
+  (palettes and themes don't change with the target), beside 3006's
+  `shuyi_assets::onebit::check` in the code:
+  - **where the groups live**, decided here in an ADR that amends
+    ADR-0026: either `distinct` moves to a file every game has, and
+    both checks read it there (the palette file, past names and
+    colours, with a new format version; or a new file beside it), or
+    this check reads the pattern map's groups. Either way a game with
+    no groups gets a line in the check's limits, never a silent pass;
+  - the default palette and every theme reach the CLI through a new
+    optional `GameTools` method, as `GameTools::one_bit` gives 3006's
+    check its palette and map;
   - for the default palette and every theme, for each vision, every
     pair of roles in a `distinct` group is at least a set distance apart
     after simulation. The worker picks the distance on the fixtures,
@@ -57,11 +75,12 @@ None.
   - a vision that **no** theme passes is an error; a theme that fails a
     vision another theme passes is a note ("theme `deutan` covers
     deuteranopia"). So a game can ship one theme per vision;
-  - **text contrast:** the palette file may list pairs, `contrast:
-    [(text, panel), …]`. Each pair must reach a contrast ratio of 4.5:1
-    (WCAG 2.x relative luminance). Below is a warning. When a palette
-    names `key` (2347), the pair `(key, key_bg)` is checked by default,
-    or `(key, panel)` when the palette has no `key_bg`.
+  - **text contrast:** the file that holds the groups may list pairs,
+    `contrast: [(text, panel), …]`. Each pair must reach a contrast
+    ratio of 4.5:1 (WCAG 2.x relative luminance). Below is a warning.
+    When a palette names `key` (2347), the pair `(key, key_bg)` is
+    checked by default, or `(key, panel)` when the palette has no
+    `key_bg`.
 - **`frame-png --vision <protan|deutan|tritan|achromat>`** writes the
   frame as that vision sees it, after painting, so a person or an agent
   can look.
@@ -78,7 +97,9 @@ None.
 
 ## Implementation steps
 
-1. Read ADR-0008 §4 and 3006's palette roles and distinct groups.
+1. Read ADR-0008 §4, ADR-0026 and `shuyi_assets::onebit` (the pattern
+   map's groups and `check`), then write the ADR on where the groups
+   live.
 2. Write `simulate` and the OKLab distance, with tests against values
    worked by hand from the papers.
 3. Write the check and the contrast rule, with the fixtures.
@@ -91,6 +112,8 @@ None.
 - [ ] The failing fixture fails for deuteranopia, naming the group, the
       two roles and the distance; with the fixing theme it passes, with
       a note.
+- [ ] A game with no `distinct` groups gets a line in the check's
+      limits, not a pass.
 - [ ] A contrast pair below 4.5:1 warns, naming both roles and the
       ratio.
 - [ ] `frame-png --vision deutan` on the toy game is committed and

@@ -63,6 +63,11 @@ None.
     Progress<C> { Working, Chosen(C) }`, which the rollout bot and the
     turn planner step with. `think::Progress` replaces it: one type, not
     two of the same name.
+  - **Either order with 2906** (asset memory research): if 2906 is
+    done, read its ADR's point 4. If a load steps with `Think` or
+    `Progress`, keep both fit for it (a unit could be a file decoded)
+    and add what the ADR asks of them. If not, nothing to do: 2906
+    counts units as this ticket plans.
 - **The engine's search implements `Think`.** 2112's
   `shuyi_core::search::Solver` already runs in `step(units)` slices,
   with its state in the value: add `impl Think for Solver`, where a unit
@@ -72,15 +77,29 @@ None.
   and MCTS bots implement `Think` when they land (2113 waits for this
   ticket). The game's own enemy AI implements it in the game, in the PR
   that moves the pin. 2125's bot is done: add `impl Think for
-  Rollout` (`step(units)` is its `advance(units)`) and a slicing test on
-  its fixtures. 2128's planner is done too: the same for `TurnPlan`
-  (`step(units)` is `PlanSearch::advance(units)`,
-  `crates/core/src/bots/plan.rs`), with a slicing test on its fixtures.
+  RolloutSearch<'_, R, O, P, E>` (`Decision = R::Command`; `step(units)`
+  is its `advance(units)`) and a slicing test on its fixtures. `Rollout`
+  itself has no `advance`: `Rollout::search(&rules)` starts a decision,
+  and the search borrows its bot, so a decision sliced over frames keeps
+  the bot and the search together (ADR-0027 §7 and Consequences).
+  2128's planner is done too: the same for `PlanSearch<'_, R, O, E>`,
+  started by `TurnPlan::search(&rules)` in
+  `crates/core/src/bots/plan.rs`, with a slicing test on its fixtures.
 - **A frame-time budget in `App`.** `shuyi-platform`'s `App` gives a
   thinking bot `units_per_frame` from the target profile (a new
   `budgets.think_units_per_frame`; calibrated by 3011 and 3013). The
   screen keeps animating meanwhile: the cursor blinks, and a "thinking"
-  sign appears after 0.5 s.
+  sign appears after 0.5 s. **Either order with 3013** (the Steam Deck
+  measured): if 3013 is done, set `steam-deck`'s value from its report
+  in `docs/targets/steam-deck.md`, the bench scenarios' frame times on
+  the Deck against their x86 instruction counts (3008), applied to
+  16.7 ms as 3011 does for `playdate`; if not, 3013 sets it.
+  **Either order with 3022 and 3026 (parked):** if one is done, set
+  `think_units_per_frame` in its profiles (3022's `gba`; 3026's `nds`,
+  and `dsi` if measured) as it set `frame_cycles`: the search scenario
+  below, counted in the emulator, scaled by the worst device ratio in
+  its report (`docs/targets/gba.md`, `docs/targets/nds.md`), with 20 %
+  headroom; if not, nothing to do (each sets it from its own numbers).
 - **Headless and replays.** The Harness runs bots to completion in one
   call (`step(u32::MAX)`), so tests stay fast and records don't change.
 - **A bench scenario** (3008): a search with the most units (2112's

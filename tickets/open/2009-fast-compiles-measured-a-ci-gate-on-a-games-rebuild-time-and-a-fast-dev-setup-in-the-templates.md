@@ -44,7 +44,7 @@ None.
     rebuild in seconds;
   - the same for `cargo check`, which is what an editor runs;
   - it counts the crates in a new game's dependency tree (`cargo
-    metadata` on a project from `shuyi new --template blank`);
+    metadata` on a project from `shuyi new blank <dir>`);
   - prints a table, or JSON with `--json`.
 - **Faster, on stable:**
   1. **A fast linker** where the platform has one: `rust-lld` or
@@ -78,10 +78,15 @@ None.
     without the budget changing in the same PR (so a new dependency is
     a visible choice).
   The job writes the table into the run's step summary.
-- **The book** (2802, if done; else a section in `README.md`): a page
-  "Fast compiles" with the numbers and the setup, and the nightly-only
-  options (Cranelift, `-Zshare-generics`) named as things a developer
-  may try themselves.
+- **Either order with 2907:** if 2907 is done, nothing to do (its
+  research note timed each candidate's rebuild with
+  `cargo build --timings`); if not, nothing to do (2907 times them
+  with `cargo xtask compile-times`).
+- **The book** (2802, if done; else a section in `README.md`, which
+  2802 moves into the book, as its clause says): a page "Fast compiles"
+  with the numbers and the setup, and the nightly-only options
+  (Cranelift, `-Zshare-generics`) named as things a developer may try
+  themselves.
 
 **Out (do not do):**
 - moving the repository to nightly;

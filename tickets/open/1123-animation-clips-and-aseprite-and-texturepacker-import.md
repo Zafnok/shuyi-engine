@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["1119", "2231"]
+blocked_by: ["2231"]
 nick_input: none
 completed:
 ---
@@ -60,15 +60,14 @@ None.
   - Aseprite JSON (`json-array` and `json-hash`, `frameTags` with
     direction and repeat, per-frame `duration`);
     - `meta.slices`: a slice with a `center` (Aseprite's 9-patch)
-      becomes an entry of the nine-slice kind (`NineSliceDefs`, the
-      follow-up ticket that 2338's step 8 writes), named as the slice.
-      Its rect is the slice's bounds placed in the sheet by its frame,
-      and its borders are the centre's distance from the bounds' edges.
-      So frame borders come from a standard file too (`AGENTS.md` rule
-      10). **Either order with that ticket:** if it is done, read the
-      slices here; if not, or 2338 hasn't written it yet, leave this
-      out: 2338's step 8 has that ticket read Aseprite's slice centres
-      once this one is done;
+      becomes an entry of the nine-slice kind (`NineSliceDefs`, 2235,
+      on 2338's `NineSlice`), named as the slice. Its rect is the
+      slice's bounds placed in the sheet by its frame, and its borders
+      are the centre's distance from the bounds' edges. So frame
+      borders come from a standard file too (`AGENTS.md` rule 10).
+      **Either order with 2235:** if 2235 is done, read the slices
+      here; if not, leave this out (2235 reads Aseprite's slice
+      centres when it lands after this one);
   - TexturePacker JSON (hash and array).
 
   Both read `.json`, and two formats of one kind can't claim one
@@ -81,10 +80,26 @@ None.
   `Atlas` kind, and two formats of one kind can't claim one extension
   (ADR-0019 §2): tell them apart as ADR-0019 allows (by file name, as
   `atlas.ron` is, or by sniffing), and say how in the completion notes.
+- **From 1129 (done):** `shuyi import` tries only the kinds
+  `Importers::standard()` lists (`crates/cli/src/contract/import.rs`),
+  so add `kind_with_text::<Atlas>` there, summed up with the file's
+  `count` helper (`1 page, 12 entries`), with `--print` writing the
+  RON sidecar above through its `Encode`. Fix that file's module doc,
+  which says `import` needs no change for the Aseprite importer.
 - Measure `asefile` behind an `aseprite` feature. Keep it only if it adds
   under 300 KB to the WASM build (ADR-0004 §2). Write down the number
   either way.
 - Fixtures: a small sheet made for the tests (CC0, ours).
+- **The skill pack. Either order with 1134:** if 1134 is done, its
+  `shuyi-import-art` skill teaches this ticket's import ahead of it and
+  lists 1123 in its `waits_for`, which `check-skills` fails on once
+  this ticket is in `tickets/done/`. Drop 1123 from it, and make the
+  skill's Aseprite and TexturePacker part match what was built. If that
+  empties `waits_for` (1124 landed first), give the skill its worked
+  example, importing a sheet with the contract's `import`, which CI
+  runs as it runs the others; otherwise 1124's PR writes it, as the
+  last of the two. If 1134 isn't done, nothing to do: 1134 writes the
+  skill.
 
 **Out (do not do):** the clip types, `frame_at` and the `AnimationSet`
 RON format (2231); animated tiles and unit clips in the grid kit (2359);
@@ -106,10 +121,14 @@ and a tick game keeps `(clip, start_step)` in whichever store it uses.
 
 - [ ] Both importers read their fixtures, and the bad fixtures give errors
       naming the JSON path.
+- [ ] `shuyi import` reads the Aseprite fixture as an `Atlas`, and
+      `--print` writes RON that decodes to the same atlas.
 - [ ] If the nine-slice kind is done, a slice with a centre in the
       Aseprite fixture reads into it, with its rect and borders checked
       by hand.
 - [ ] The `asefile` size result is recorded in the Completion notes.
+- [ ] If 1134 is done, `shuyi-import-art`'s `waits_for` no longer
+      holds 1123, and `check-skills` passes.
 - [ ] `cargo deny check` passes.
 - [ ] All gates in the `run-gates` skill pass.
 

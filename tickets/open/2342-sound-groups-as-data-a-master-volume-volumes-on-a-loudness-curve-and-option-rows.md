@@ -238,6 +238,15 @@ moves to the MVP.
 - **3029** (the player's rules shared by every backend): if it is done,
   apply the gains in the shared player, where it put the rules; if not,
   in `shuyi-app`'s player, and 3029 carries them along.
+- **3027** (GBA audio, parked): if it is done and `shuyi-gba`'s `Audio`
+  still reads the frame's `sound_volume` and `music_volume` itself (3029
+  hasn't moved it under the shared player), move it onto `gains` here,
+  as `shuyi-app`'s player; if not, nothing to do (3027 reads the gains).
+- **3061** (DS music, parked): if it is done and `shuyi-nds`'s `Audio`
+  still reads the frame's `music_volume` itself for its songs (3029
+  hasn't moved it under the shared player), move it onto `gains` here,
+  with its sound effects if they read the volumes too, as `shuyi-app`'s
+  player; if not, nothing to do (3061 reads the gains).
 - **3042** (focus and the game's background policy): if it is done, its
   mute while unfocused moves onto `Gains` here, with every group's gain
   at 0 in the frames it mutes (`Gains::muted`); if not, 3042 mutes on
@@ -252,6 +261,12 @@ moves to the MVP.
 - **2351** (built-in English for the engine's text keys): if it is done,
   the three new row keys get their English there; if not, in
   `crates/ui/src/toy/en.ron` and `examples/hello-grid/files/en.ron`.
+- **2408** (parked, rumble): if it is done, `Settings::vibration`
+  stays a field of its own and never a group in `Volumes`, its row
+  stays a `RowValue::Volume` over it, `FrameOutput::vibration` stays
+  beside `gains`, and each saved form changed here keeps saving
+  `vibration`. If not, nothing to do (2408 follows this ticket's
+  shape, its clause says so).
 - **2218** (writers of the engine's text formats): if it is done, its
   `AudioManifestRon` writer writes `groups` and the cues' `group`, and
   its round-trip test covers a manifest with them; if not, 2218 writes
@@ -259,8 +274,17 @@ moves to the MVP.
 - **2344** (looped sounds with handles): if it is done, a looped sound
   follows its group's gain while it plays, as a track does; if not,
   2344 does that.
-- **2501** (templates made of parts): if it is done, the grid
-  template's settings change goes in the part that holds that file.
+- **2345** (cue rules): if it is done, `SoundCue::new` leaves `group`
+  at `None`, and the player plays a sound at `percent(cue_volume)`
+  (the volume 2345's `Cues` picked, carried by `SoundRequest::Sound`)
+  times the request's volume times `gains.sound(cue)`, in place of the
+  cue's volume. If not, nothing to do (2345 does it, its clause says
+  so). The second to land rebases and bumps `pack::VERSION` again.
+- **2501** (templates made of parts): if it is done, the grid stage
+  saves the engine's `()` settings and has no saved form of its own,
+  so there are three saved forms here, and 2110's clause above
+  versions only the `()` form. If not, change
+  `templates/grid/crates/game/src/settings.rs` as above.
 
 **For the game:** the API breaks. The game's PR that moves its pin
 follows this one. It:
@@ -300,8 +324,9 @@ After MVP, and this PR keeps only the five built-in groups.
 - positional sound (2363, parked);
 - integers for the request's volume, the cue's volume and the fade gain
   (they stay `f32` and `u8`, as today);
-- the Playdate and GBA backends (3029; 3027, parked), which apply the
-  gains when they are written.
+- the Playdate and GBA backends themselves (3029; 3027, parked): one
+  written after this applies the gains, and one written before is
+  covered under *Either order* (3029's shared player, 3027).
 
 ## Implementation steps
 
@@ -310,8 +335,8 @@ After MVP, and this PR keeps only the five built-in groups.
    `crates/ui/src/screens/options.rs`,
    `crates/platform/src/{audio,app,headless,harness}.rs` and
    `crates/app/src/{audio,backend}.rs`. Check which of 3029, 3042,
-   2110, 2351, 2218, 2344 and 2501 are done. List every use of the old
-   names outside `tickets/`:
+   2110, 2351, 2218, 2344, 2345, 2408 and 2501 are done. List every
+   use of the old names outside `tickets/`:
    `grep -rn "music_volume\|sound_volume\|voice_volume\|voice_gain\|music_factor\|sound_factor\|DEFAULT_VOLUME\|MAX_VOICE_VOLUME" crates examples templates docs`.
 2. Write the ADR.
 3. Groups in the manifest, their checks, and the pack version, with
@@ -321,7 +346,7 @@ After MVP, and this PR keeps only the five built-in groups.
 6. `AudioFrame`, `App`, the headless speaker, the Harness and
    `shuyi-app`'s player.
 7. The option rows, and the existing options tests that expect 80.
-8. The four saved forms and their old-save tests. The templates are
+8. The saved forms and their old-save tests. The templates are
    outside the workspace's `cargo fmt --all`: format and test them as
    CI's template job does.
 9. The docs; run the gates.

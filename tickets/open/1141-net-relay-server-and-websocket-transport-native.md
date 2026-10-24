@@ -56,7 +56,11 @@ online (0053). This ticket only gives a Docker image and instructions.
 **Out (do not do):**
 - the web client (1142);
 - accounts (1148);
-- running a public instance.
+- running a public instance;
+- voice chat (2910 researches it, and whether the relay's WebSocket
+  is good enough for it). **Either order with 2910:** if 2910 is done,
+  read its ADR and do any line it added to this scope for voice; if
+  not, nothing to do (2910 builds on the relay and `WsTransport`).
 
 ## Implementation steps
 

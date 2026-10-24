@@ -134,11 +134,11 @@ a Spine viewer tool; Visions of Shuyi (it never turns the module on).
     and animations: bone `rotate` and `translate`, slot `attachment`,
     `events`; seconds to ms;
   - curves: `stepped` as `Steps(1)` and linear as `Linear` (2105's keys
-    take a `shuyi_core::ease::Ease`, 2109), and Bézier as a
-    `shuyi_core::ease::Points` curve (the follow-up 2109 writes) sampled
-    at 17 evenly spaced x and rounded to thousandths once, at load. If
-    no ticket has added `Points` by then, a Bézier is `Linear` with a
-    warning naming the JSON path;
+    take a `shuyi_core::ease::Ease`, 2109), and a Bézier as `Linear`
+    with a warning naming the JSON path, as 2216 does. `Ease` has no
+    curve through points: keys that take the `Points` curve of 2135
+    are a follow-up of 2105 first, so a Bézier stays `Linear` whether
+    or not 2135 is done;
   - floats rounded to `Fx` once, at load, by one tested function;
   - everything 2105 doesn't support (scale, shear, meshes, clipping,
     constraints, physics, deform) is an error naming the JSON path.
@@ -190,8 +190,8 @@ physics (follow-ups of 2105 first).
   test); a build of the engine without the feature contains no Spine
   code (`cargo tree`).
 - Path B: degrees to `Angle`; seconds to ms; float to `Fx` rounding;
-  `stepped` to `Steps(1)`, linear to `Linear`, and a Bézier to its 17
-  points; random bytes; round trip.
+  `stepped` to `Steps(1)`, linear to `Linear`, and a Bézier to
+  `Linear` with its warning; random bytes; round trip.
 
 ## Completion notes
 

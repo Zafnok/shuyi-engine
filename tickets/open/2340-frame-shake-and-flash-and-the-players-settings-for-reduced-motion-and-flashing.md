@@ -43,10 +43,13 @@ What Shuyi has today (checked 2026-10-21):
   leave off. It isn't the player's. Game ADR-0059 expected "a later
   reduce motion option" to set it, but the platform writes that field
   and tests rely on it being off.
-- Planned and parked: 2326's `Settings::flashing` and its `Flash` pass
-  wait for the wgpu renderer (3034); 1120's camera shake waits for 1119;
-  2722 has a visual novel's own shake and flash; 2362 scales 1120's
-  shake by "the player's settings from 2340"; 2359 holds a map's clock
+- Planned and parked: 2326's GPU screen passes, which drop a pass
+  marked `flashing` when this ticket's `Settings::flashing` is off,
+  wait for the wgpu renderer (3034); 1120's camera shake needs 1119;
+  2722 asks for a visual novel's shake and flash through `Ctx::shake`
+  and `Ctx::flash`; 1120's camera shake is scaled by the player's
+  `shake_strength` (1120's either-order clause with 2340 says who ties
+  them), and 2362 leaves that shake to 1120; 2359 holds a map's clock
   while idle motion is off.
 
 Why it matters:
@@ -91,7 +94,7 @@ None.
   - `OptionRow::motion()`, a `RowValue::Choice` over `Motion::ALL`, as
     `OptionRow::text_speed` is. **Either order with 2314:** if done,
     built with `OptionRow::choice`, and `Motion` implements
-    `ChoiceSetting`;
+    `ChoiceSetting`; if not, built by hand, and 2314 moves it;
   - `OptionRow::shake_strength()`, a `RowValue::Volume` slider, 0 to
     100;
   - `OptionRow::flashing()`, a `RowValue::Toggle`.
@@ -194,6 +197,15 @@ None.
   changed (the toy field's `Field::update` and the doc of
   `MapScene::clock_ms`) from `ctx.idle_motion` onto
   `Ctx::shows_idle_motion()`; if not, 2359 uses it.
+- **Either order with 2749 (parked):** if 2749 is done, its
+  `BattleStage` asks for a `Ctx::shake` and a `Ctx::flash` on a hit
+  cue, with a Harness test (idle motion on) that reads the `shake` and
+  `veil` lines; if not, nothing to do (2749 does it, its clause says
+  so).
+- **Either order with 2753 (parked):** if 2753 is done, its camera's
+  steps and turns are instant (as at `motion_ms` 0) while `motion` is
+  `Reduced`, with a test that steps the clock; if not, nothing to do
+  (2753 does it, its clause says so).
 - **Either order with 2110:** if done, each saved form here that has a
   `VERSION` (the engine's `()` settings, the grid template's) raises it,
   keeps its old fixtures, adds `v<N+1>_*.ron` written by this build,
@@ -208,6 +220,14 @@ None.
 - **Either order with 2408 (parked):** it adds `Settings::vibration`
   and its row, and saves it in the same forms. Whichever lands second
   follows the first's shape.
+- **Either order with 2738 (parked):** if 2738 is done, a lost life in
+  `examples/bricks` (its `LifeLost` event) asks for a short
+  `Ctx::shake`; if not, nothing to do (2738 does it).
+- **Either order with 2743 (parked):** if 2743 is done, its
+  `CrawlMotion` plays a step or turn at once (as at `motion_ms` 0)
+  while the player's `motion` is `Reduced`, and its `Bump` on a
+  refused step asks for a short `Ctx::shake`; if not, nothing to do
+  (2743 does both).
 - **Public types (ADR-0039):** the new public types follow it (`Shake`
   and `Flash` as config with `new` and `with_` methods, `Motion` as a
   setting's choices).
@@ -218,15 +238,15 @@ None.
   defaults. Say so in the PR.
 
 **Out (do not do):**
-- a world-layer camera's shake (1120, 2362), and shaking the world but
+- a world-layer camera's shake (1120), and shaking the world but
   not the UI;
 - a sprite's own hit flash or shake (`Paint::Solid` today, 2337's
   `Paint::Tinted`, 2104's frame events);
 - GPU screen passes (2326, parked). When it is unparked it reads this
   ticket's `Settings::flashing` and adds only its own `screen_effects`;
 - reading the system's reduced-motion preference at first start
-  (`prefers-reduced-motion` on the web, the desktop's own setting): a
-  follow-up through 3053's platform facts;
+  (`prefers-reduced-motion` on the web, the desktop's own setting):
+  2377, through 3053's platform facts;
 - rumble (2408);
 - captions (2366);
 - checking a game's own painted frames for flashes (an analysis like
@@ -236,9 +256,10 @@ None.
 
 ## Implementation steps
 
-1. Read 2339's ADR and code, `settings.rs`, `options.rs`, `toy.rs`,
-   `ctx.rs`, `game.rs`, `onebit.rs` and the two painters; 2110,
-   2314, 2332, 2351, 2359 and 2511 if done.
+1. Read 2339's ADR and code, `settings.rs` (with 2511's
+   `impl GameSettings for ()`), `options.rs`, `toy.rs`, `ctx.rs`,
+   `game.rs`, `onebit.rs` and the two painters; 2110, 2314, 2332, 2351
+   and 2359 if done.
 2. Add `Motion`, `shake_strength` and `flashing` to `Settings`, the
    saved forms, the three rows, their text, the toy's rows and
    `Ctx::shows_idle_motion`, with tests.
@@ -248,8 +269,9 @@ None.
 5. Add `Ctx::shake` and `Ctx::flash`, and play them in `Game`: the
    veil, the invert ink on one-bit, the two photosensitivity rules, the
    idle-motion rule, `Motion::Reduced` and `shake_strength`.
-6. Add the line to 2339's ADR: the shake is a whole-frame field like the
-   veil, look only, drawn by every painter.
+6. Check that 2339's ADR names the shake as a whole-frame field like
+   the veil, look only, drawn by every painter (2339 writes it so); add
+   the line only if it doesn't.
 7. Add the picture snapshots, and run the gates.
 
 This ticket is near the size limit. If the diff passes about 600

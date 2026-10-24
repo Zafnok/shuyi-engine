@@ -34,15 +34,28 @@ change, not a stage move, and its guide says so.
 It builds on 3106 (the overhead camera, and through it 3105's mover),
 3107 (the diorama skin, and through it 3104's painter), 1125 (the
 town-and-battle example), 1129 (`shuyi new` and `templates/`) and 2004
-(the guides). 3108 adds the direction menu to `shuyi new`. Either order
-works: if 3108 has landed, add the two templates to its menu; if not,
-3108 lists them when it lands.
+(the guides).
 
-If the wizard (2502, [ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)) is done, there is no menu: write
-`stage-top-down-3d` as a part of the built-in template, and HD-2D as a
-part that applies when the *World drawing* answer `diorama` is picked
-over a grid, top-down or isometric stage. Set both answers in
-`docs/modules.ron` to ready.
+**Either order with 3108:** 3108 adds the direction menu to `shuyi
+new`. If 3108 is done, add the two templates to its menu and to its
+tests; if not, nothing to do (3108 lists them when it lands).
+
+**Either order with 2501 and 2502** (the wizard,
+[ADR-0013](../../docs/adr/0013-starting-a-game-a-wizard-over-the-catalog-and-templates-made-of-parts.md)):
+- if 2501 is done, write the two templates as parts of the built-in
+  template (`templates/shuyi-default`), not as folders:
+  `stage-top-down-3d`, turning on the `3d` feature, and HD-2D as a part
+  that applies when the *World drawing* answer `diorama` is picked over
+  a grid, top-down or isometric stage. Keep `top-down-3d` and `hd-2d`
+  as short names;
+- if 2502 is done too, there is no menu: the wizard's perspective and
+  *World drawing* questions offer them. If 2502 isn't done, the menu
+  lists the short names (the paragraph above), and 2502 replaces it
+  (its clause says so);
+- if 2501 isn't done, write the template folders as below, and 2501
+  turns them into parts (its clause says so).
+
+Either way, set both answers in `docs/modules.ron` to ready.
 
 Copy nothing from Square Enix's games (`docs/decisions.md`,
 2026-10-17): no names, art or assets.
@@ -113,6 +126,12 @@ None.
   isn't done, write a ticket for the skill instead.
 - **The catalog**: `shuyi-3d` claims top-down 3D as ready, and
   `shuyi-diorama`'s row is set to ready.
+- **Either order with 3025 (parked, DS hardware 3D):** if 3025 is
+  done, mark the effects the `nds` profile lacks `optional` in
+  town-and-battle's diorama skin (`depth_of_field` and `bloom` among
+  them), so it passes `shuyi check --target nds`, then export it for
+  `nds` and run it in 3025's emulator job; 3025's diorama fixture may
+  then go. If not, nothing to do (3025 does it).
 
 **Out (do not do):**
 - any change to the town-and-battle example's rules or its tests,

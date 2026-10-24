@@ -102,9 +102,14 @@ None.
     `alternatives: false`); `works_with` empty for now;
   - **the `kind` concern** in `docs/modules.ron`: 2003 wrote its
     `roguelike` answer, by `shuyi-procgen`, parked. Set it to building,
-    naming tickets 2118–2120 and 2735. If 2003's statuses
-    are only planned, parked and ready, add building (2701 and 2721 use
-    it too);
+    naming tickets 2118–2120 and 2735. 2003 left the statuses at
+    `ready`, `planned` and `parked` (`Status` in
+    `crates/cli/src/catalog.rs`, the header of `docs/modules.ron`, the
+    *Status* line of `docs/modules.md`). If no ticket has added
+    `building` yet (2701 and 2721 use it too), add it in all three.
+    `Status` is in `shuyi modules`'s answer, so regenerate its schema
+    and raise `contract::VERSION`. It is an exhaustive public enum, so
+    write the `Breaking:` line CI's `api` job asks for;
   - the `procgen` feature of the `shuyi` crate;
   - its row in `docs/modules.md` (2003 wrote it parked): `shuyi-procgen`,
     building, tickets 2118, 2119 and 2735.
@@ -119,10 +124,7 @@ None.
     2735 writes the rest;
   - the `shuyi-procgen` skill: if the skill pack (1134) is done, a short
     skill that says what exists and that 2119 and 2735 are to come. If
-    not, add `shuyi-procgen` to 1134's list in this PR;
-  - if 2004's guide check is in place, a planned page
-    `docs/guides/roguelike.md` naming 2119, 2120 and 2735. If not,
-    nothing: 2735 writes the guide after 2004.
+    not, add `shuyi-procgen` to 1134's list in this PR.
 - **`shuyi_procgen::noise`**, integers only:
   - `pub const ONE: i32 = 1 << 16`. Noise values are in `-ONE..=ONE`,
     with 16 fraction bits;
@@ -256,8 +258,8 @@ None.
   `NoiseKind` each, when a game asks;
 - 3D noise. A game that wants noise over time passes the time as `y`;
 - `Fx` inputs or outputs. `Fx` (1119) has 8 fraction bits, so `n >> 8`
-  converts. If 1119 is done, add a one-line `to_fx` with a test; if not,
-  nothing;
+  converts. **Either order with 1119:** if 1119 is done, add a one-line
+  `to_fx` with a test; if not, nothing to do (1119 adds it);
 - level generators and weighted tables (2119);
 - field of view (2120);
 - the example, the template, the guide and the rest of the README
@@ -275,7 +277,8 @@ None.
 2. Create `crates/procgen`: its `Cargo.toml` with the dependencies,
    features and metadata above, `src/lib.rs` with the float ban, and
    the README's first two sections. Add the `procgen` feature of
-   `shuyi`, the catalog row, the `docs/modules.ron` answer and the
+   `shuyi`, the catalog row, the `docs/modules.ron` answer (and the
+   `building` status, if no ticket has added it), and the
    `tools/layers.ron` entry.
 3. Add `Grid::map` to `shuyi-core`, with a test.
 4. Write `lattice`, `value`, `gradient`, `NoiseKind`, `Noise` and
@@ -284,8 +287,7 @@ None.
    --bless`, and add `-p shuyi-procgen` to the `determinism` job.
 6. Add the crate to the `no-std` job (build and tests) and to
    `no_std.rs`'s list. Write the ADR and its row in
-   `docs/adr/README.md`. Write the skill, or the entry in 1134's list,
-   and the planned guide page if 2004's check is in place.
+   `docs/adr/README.md`. Write the skill, or the entry in 1134's list.
 7. Run the gates.
 
 **Size:** about 600 to 650 changed lines without the golden table. If

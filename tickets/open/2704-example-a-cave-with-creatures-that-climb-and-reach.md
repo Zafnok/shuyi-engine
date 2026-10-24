@@ -48,7 +48,8 @@ they move become tuning in the creature files, or follow-up tickets.
   - **a hanger**: a creature pinned to the ceiling. Its tentacles reach
     for the crawler when it comes near, and hang when it leaves;
   - **a few rigid crates** if 1128 is done, to show alternatives side by
-    side (ADR-0010 §1). Otherwise, skip them and say so in the README;
+    side (ADR-0010 §1). If not, skip them, and say in the README that
+    1128 adds them;
   - art made for the example (CC0, ours). Anything not ours goes in
     `THIRD_PARTY_ASSETS.md`.
 - **Tests**:
@@ -75,7 +76,15 @@ they move become tuning in the creature files, or follow-up tickets.
   module as an answer for bodies and motion.
 - **The catalog**: set the row to ready.
 - **The debug view (2319).** If 2319 is done, the cave example calls
-  its `skeleton` and `footholds` helpers. If it isn't, 2319 does this.
+  its `skeleton` and `footholds` helpers, and `frame-png --debug
+  skeleton,footholds` on the cave is reviewed and its snapshot
+  committed. If it isn't, 2319 does this.
+- **Bodies against boxes (from 2701).** 2701's bodies collide with
+  tiles only, and leave boxes here. If the cave needs a body to meet
+  boxes (the crawler on a crate), add `Body::step`'s optional
+  collision with the boxes of 1122's broad phase (ADR-0010 §2), with a
+  property test like 2701's tile one. If not, the README says bodies
+  collide with tiles only.
 
 **Out (do not do):**
 - gameplay beyond following the lure;

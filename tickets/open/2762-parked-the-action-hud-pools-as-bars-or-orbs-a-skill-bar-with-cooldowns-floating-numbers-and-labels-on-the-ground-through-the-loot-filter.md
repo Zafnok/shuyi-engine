@@ -31,9 +31,10 @@ It builds on 2757 (`SkillState`: cooldowns, charges, refusals), 2758
 (the loot filter and item names), 2311's meter (done) and the frame's
 sprite and text items.
 
-**Either order with 2329:** if 2329 is done, the HUD's pieces are laid
-out by its rows and columns. If not, each piece takes a rectangle from
-the game.
+**Either order with 2329:** if 2329 is done, `PoolGauge` and `SkillBar`
+implement its `Measure` and the HUD's pieces are laid out by its rows
+and columns. If not, each piece takes a rectangle from the game, and
+2329 gives the two their `Measure` when it lands.
 
 ## Nick input
 

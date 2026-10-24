@@ -78,14 +78,16 @@ whether it feels smooth.
   - start-up to the title screen;
   - the ROM's size;
   - the console model, the flash cart and its firmware version.
-- **Audio.** If 3027 has landed, the scenarios run with music on, so
-  the mixer's cost is in the numbers. If not, the report says audio
-  isn't measured, and 3027's completion re-runs the music scenario.
+- **Audio.** **Either order with 3027:** if 3027 is done, the scenarios
+  run with music on, so the mixer's cost is in the numbers; if not, the
+  report says audio isn't measured, and 3027 re-runs the music scenario
+  on the device when it lands.
 - **Calibration:**
   - `frame_cycles` becomes the emulator count that matches a full frame
     on the device, by the worst ratio, with 20 % headroom;
-  - `think_units_per_frame` (3009) is set the same way, if 3009 has
-    landed; if not, 3009 sets it from these numbers;
+  - **Either order with 3009:** if 3009 is done,
+    `think_units_per_frame` is set the same way; if not, 3009 sets it
+    from these numbers;
   - `status` becomes `supported` once every scenario holds its frame
     rate.
 

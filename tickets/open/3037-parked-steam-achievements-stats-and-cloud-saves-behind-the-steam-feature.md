@@ -109,7 +109,12 @@ Steam Cloud works two ways (Steamworks documentation, *Steam Cloud*):
     `SystemEvent::FocusLost` when the overlay opens and `FocusGained`
     when it closes, sent from `Macroquad::system_events`
     (`crates/app/src/backend.rs:272`). The game's hook hears it like any
-    focus change, and 3042, if done, lets go of held input;
+    focus change. **Either order with 3042:** if 3042 is done, the
+    overlay's open and close feed its `Focus` tracker
+    (`crates/app/src/focus.rs`), so held input is let go, pads are
+    ignored while the overlay is open, and no focus event comes twice;
+    if not, send the two events straight, and 3042 feeds them to its
+    tracker (its clause says so);
   - one handle for everything else: this ticket's backends, `shuyi-net`'s
     Steam transport and lobbies (1144), presence (3055), and the game's
     own Steam code (its on-screen keyboard, and its Workshop in the
@@ -183,6 +188,10 @@ Steam Cloud works two ways (Steamworks documentation, *Steam Cloud*):
 - the partner account, the store page and the game's own achievements
   (the game's 0903);
 - lobbies (1144), and our own server's leaderboards (1148);
+- the Steam auth ticket for 1148's accounts and Steam's text filter
+  for 1149's chat. Each asks this ticket's handle if it comes after
+  this ticket; one that comes first leaves its Steam part to 1144.
+  Nothing to do here either way;
 - other stores (GOG Galaxy, Epic, consoles): each a ticket of its own
   under 3036's `StoreServices`, when a game ships there and Nick has
   said yes to its SDK (ADR-0006 §5 allows Steam's alone; 3036's *Nick

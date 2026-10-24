@@ -149,6 +149,12 @@ choice, made in its own repository.
   - **Either order with 3044** (the cursor): if it is done, its
     `IdleCursor` shows the cursor on `FocusLost`, so it is never hidden
     over another program; if not, 3044 does that (its scope says so).
+  - **Either order with 3037** (parked, Steam): if 3037 is done, feed
+    its Steam overlay's open and close to the `Focus` tracker, so the
+    pad filter ignores pads while the overlay is open and no focus
+    event comes twice; if not, nothing to do: 3037 feeds the tracker
+    (its clause says so). Either way `App` forgets held input on the
+    overlay's `FocusLost`, as on any other.
 - **Pads are ignored while unfocused.** `PadInput::poll`
   (`crates/app/src/pads.rs:37`) takes whether the window has focus (the
   `Focus` tracker's state, set in `system_events` earlier in the same
@@ -225,6 +231,20 @@ choice, made in its own repository.
 - **Either order with 2018:** if it is done, a capture run reads no
   focus events (the tracker is skipped, as the keyboard is); if not,
   2018 keeps the capture mode so (its own clause says it).
+- **Either order with 2408** (parked, rumble): if 2408 is done, its
+  rule already stops the motors on the `FocusLost` this sends, and
+  drops cues until `FocusGained`, whatever the `Background` policy; if
+  not, nothing to do (2408 needs nothing more from this ticket).
+- **Either order with 2738** (the brick-breaker, parked): if 2738 is
+  done, `examples/bricks`' system hook pushes its pause menu on
+  `FocusLost`, with a Harness test in its `tests/it/`; if not, nothing
+  to do (2738 does it when it is written).
+- **Either order with 2739** (parked, the real-time grid): if 2739 is
+  done, `examples/snake` and the `stage-arcade-grid` part of
+  `templates/shuyi-default/` set `GameSettings::BACKGROUND` to
+  `Background::KEEP_RUNNING.paused()`, and the snake's system hook
+  pushes its pause menu on `FocusLost`; if not, nothing to do (2739
+  does it when it is written).
 - **An ADR** (the `write-adr` skill, the next free number), extending
   ADR-0024 §5:
   - `FocusLost` and `FocusGained` mean the window lost or got the
@@ -255,7 +275,9 @@ choice, made in its own repository.
   policy (`Background`, `GameSettings::BACKGROUND`, the pause and the
   mute, with their tests) goes to a follow-up ticket (the
   `write-ticket` skill, After MVP, blocked by this one), and 3043, which
-  builds on `Background`, then waits for that ticket too.
+  builds on `Background`, then waits for that ticket too. The same PR
+  changes 2342's, 2408's and 2739's mentions of 3042 for the background
+  policy and the mute to the new ticket's id.
 
 **Out (do not do):**
 - the web build's hidden tab and closing page (`Suspend`, `Resume` and
@@ -277,9 +299,8 @@ choice, made in its own repository.
   does;
 - a pause menu that opens on focus loss: a game's hook can push one;
   the engine adds none;
-- a background policy for the templates and examples: they keep the
-  default. A real-time template (2739, parked) turns `pause` on when it
-  is written.
+- a background policy for the other templates and examples: they keep
+  the default (the real-time grid's is the clause on 2739 above).
 
 ## Implementation steps
 
@@ -289,7 +310,7 @@ choice, made in its own repository.
    `input/pad.rs` (`Pads::update`), `game.rs` and `settings.rs`;
    ADR-0024 §5 and `docs/platform-backends.md`; macroquad 0.4.16's
    `src/lib.rs:826-861` and `src/input.rs:231-252`. Check whether 2018,
-   2342, 2405, 3041 and 3044 are done.
+   2342, 2405, 3037, 3041 and 3044 are done.
 2. `InputState::forget_held`, `set_keymap` on top of it, and
    `Game::forget_held_input`, with unit tests. If 2405 is done, the
    pointer part too.

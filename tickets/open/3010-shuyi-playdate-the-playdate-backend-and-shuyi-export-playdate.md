@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: xhigh
 status: todo
-blocked_by: ["3002", "3003", "3004", "3005", "3006", "2204", "3045", "3040", "3048", "3053"]
+blocked_by: ["3002", "3003", "3004", "3005", "3006", "2204", "3007", "3045", "3040", "3048", "3053"]
 nick_input: setup
 completed:
 ---
@@ -24,7 +24,8 @@ ticket depends on the earlier ones:
 
 - the crates are `no_std` (3005);
 - `App::frame` drives the game (3003);
-- the frame becomes 1-bit (3006);
+- `to_one_bit` makes the 1-bit frame (3006); how it reaches the backend
+  is this ticket's (*The display*, below);
 - the assets come as a baked pack (2204, 3007);
 - the controls check guards the inputs (3002);
 - saves survive a power cut, and a suite says what that means (3045);
@@ -50,7 +51,13 @@ working code for most of this ticket. Read it before step 1.
   shim if they are still unusable.
 - **The buttons.** The game reports the SDK's A as `South` and B as
   `East` (`src/pads.rs`), where this ticket says `East` and `West`.
-  Pick one rule and write it in the docs.
+  Pick one rule and write it in the docs. **From 3002 (done):** `East`
+  and `West` are already engine data: `targets/playdate.ron`'s buttons
+  and A+B chord (3001), hello-grid's `targets."playdate"` table and
+  3002's tests. Keeping them changes none of that, and the game moves
+  its own table off `South` (3002's notes). `South` and `East` change
+  all of them in this PR. Either way, a fake-SDK test checks that A and
+  B report the buttons the profile lists.
 - **Storage, memory and the panic handler** are in the game's
   `src/storage.rs` (a `no_std` copy of `shuyi-app`'s native storage),
   `src/pd/allocator.rs` and `src/pd/panic.rs`.
@@ -91,6 +98,12 @@ Nothing here costs money. A device is needed only for 3011.
     each update calls `App::frame` with
     `getCurrentTimeMilliseconds()`. Use `display->setRefreshRate` from
     the profile (30).
+    **Either order with 2321 (the frame cap):** if 2321 is done, the
+    loop reports a `Pacing` through `App` each frame, as `shuyi-app`
+    does, with the rate it runs at (the profile's 30) as the applied
+    cap and the latest `frame_cap_serial`, so a game's
+    `request_frame_cap` is `Applied`; if not, nothing to do (2321 does
+    it, its clause says so).
   - **Input.** `getButtonState` for the d-pad and A and B (`East` and
     `West`). The A+B chord comes from the engine's chord handling. The
     crank: `getCrankChange` becomes `CrankForward` and `CrankBack` once
@@ -99,13 +112,34 @@ Nothing here costs money. A device is needed only for 3011.
     boundary, and never travels further. `isCrankDocked` is reported, and
     when a required action is on the crank and the crank is docked, the
     engine shows a "use the crank" hint.
-  - **The system menu.** Optional actions bound to `SystemMenu(n)`
-    (3002) become `addMenuItem` entries. Their choices reach the game as
-    `SystemMenu(n)` button presses through `poll_input`, never through
-    `App::game_mut` (`Game::act`), so they stay in a session record
+    **Either order with 1121 (parked):** if 1121 is done, the crank's
+    change in a frame is also the one-axis `Crank` input the profile
+    lists, in the same integer 1/256 turns, which 1121's `Axis` actions
+    bind like a stick's, with a fake-SDK test; if not, nothing to do
+    (1121 does it).
+  - **The system menu.** Optional actions bound to `Button::SystemMenu0`
+    to `SystemMenu7` (3002; `Button::system_menu(n)` gives slot n)
+    become `addMenuItem` entries, slot n as item n, up to the profile's
+    `system_menu_slots`. A choice reaches the game as a press of that
+    button (pressed and let go) through `poll_input`, never through
+    `App::game_mut` (`Game::act`), so it stays in a session record
     (2518).
   - **The display.** `present` writes the `OneBitFrame` (3006) into
     `getFrame()`, and marks only `changed_rows` with `markUpdatedRows`.
+    **From 3003 and 3006 (done):** the boundary has no 1-bit frame yet.
+    `Show::Game` carries the colour `GlyphBuffer` and `Look { font,
+    images }`. `to_one_bit` (`shuyi_ui::frame::onebit`, ADR-0026) also
+    needs a `PatternMap` (`PatternMap::new` over the palette and the
+    game's `palette@onebit.ron`), a one-bit `Font` (the atlas and its
+    one-bit bits) and one-bit pictures (`Images`). This ticket decides
+    how they reach the backend: for example `Look` gains an optional
+    one-bit part that the game's load fills from its pack, or `App`
+    makes the `OneBitFrame` when `DisplayInfo::color` is `OneBit`. It
+    records the choice in an ADR (the `write-adr` skill), writes a
+    `Breaking:` line if the public API changes, and fixes the words
+    that still say 3006 does it: the docs of `Show::Game` and
+    `DisplayInfo::color` (`crates/platform/src/platform.rs`) and
+    "1-bit frames, ticket 3006" in `docs/platform-backends.md`.
   - **Storage.** Save slots and settings through the SDK's file API, in
     the game's data folder, written in the order `FileStorage` uses
     after 3045: the temporary file written and flushed, the last good
@@ -132,11 +166,27 @@ Nothing here costs money. A device is needed only for 3011.
     system menu), not windowed, `Keyboard::Absent`, no pointer. A
     game's Quit item then hides itself with `ctx.platform.can_quit()`,
     and the options screen has no Fullscreen row.
+    The game starts with `ctx.device` set to
+    `Device::Pad(PadKind::Playdate)` (3053's Out leaves this here), so
+    help text names A and B from the first frame, before any press; a
+    host test with the fake SDK reads the first frame's help.
   - **The system's language.** Either order with 2349: if 2349 is done,
     `facts()` also fills `PlatformFacts::languages` (where 2349 and 3053
     put the system's languages, whichever lands second) from the SDK's
     `system->getLanguage()` (English gives `en`, Japanese `ja`,
     anything else none); if not, 2349 does it.
+- **The catalog and `check-modules`.** **From 2003 (done):** the check
+  counts every crate under `crates/` other than the default six,
+  `shuyi` and `xtask` as a module, and fails on one with no
+  `[package.metadata.shuyi]`; `shuyi modules` and `shuyi add` offer
+  every crate that has it. A backend answers no concern and is no
+  feature of `shuyi`, so give `shuyi-playdate` no metadata, and teach
+  the check a backend: a crate whose row is in `docs/modules.md`'s
+  *Platform backends* table needs its README and that row, not
+  metadata, with a fixture. Set that row (2003 wrote it `planned`) to
+  `ready`. **Either order with 3021 and 3024 (both parked):** if
+  either is done, it already taught the check this; keep it. If not,
+  nothing more to do: their rows are in the same table.
 - **Assets.** The game's baked pack for `playdate` (3007) is placed in
   the `.pdx`, and is read through the SDK's file API. Check what the SDK's
   `pdc` does with files it doesn't know, and record it. **Either order
@@ -147,7 +197,11 @@ Nothing here costs money. A device is needed only for 3011.
 - **`shuyi export playdate`** (an `Exporter`, 3004):
   1. it runs `check --target playdate`;
   2. it builds for `thumbv7em-none-eabihf` (with `cargo-playdate`, or
-     the steps it does, written out; check its license);
+     the steps it does, written out; check its license), through 3004's
+     path remapping. As 3004's ADR says of every package, the exporter
+     then runs 3004's path search over the ELF, and its library audit
+     against a `playdate` list in `crates/cli/export/libraries.ron`
+     (expected empty: a `no_std` game links everything statically);
   3. it writes `pdxinfo` from `shuyi.ron`'s `app` part (3048): `name`,
      `author` (the publisher), `bundleID` (the id), `version`,
      `buildNumber` (the build) and `imagePath`. The launcher's icon and
@@ -172,6 +226,19 @@ Nothing here costs money. A device is needed only for 3011.
   `check-only`, with the SDK's license as `why`, or `build` on the host
   CI can use if the license lets CI download the SDK. If not, 3050
   fills them.
+
+  **Either order with 3059** (one-language builds): if 3059 is done,
+  `shuyi export playdate` takes its `--lang <tag>`. It bakes the
+  `playdate` pack for that language, as `bake --target playdate` with
+  `--lang` does, and names the `.pdx` per language as 3059's exports
+  do. `pdxinfo` is per language too: `bundleID` is the id with the tag
+  after a dot, in lower case (`com.example.game.ja`), and `name` is the
+  name with the tag in brackets (`Game (ja)`). Check the SDK's docs for
+  the characters a bundle id may hold, and record it. Builds for two
+  languages then sit side by side on one device, each with its saves
+  in its own data folder. A unit test reads the `pdxinfo` of a
+  `--lang ja` export, and `docs/targets/playdate.md` says how to make
+  one build per language. If not, nothing to do (3059 does it).
 - **A Simulator build**, if it builds on Windows with the GNU toolchain.
   If it needs MSVC, it is built only in CI, or skipped and recorded (never
   require MSVC locally, `AGENTS.md`).
@@ -182,29 +249,46 @@ Nothing here costs money. A device is needed only for 3011.
   Simulator's console output if the SDK gives it to a calling program;
   record whether it does on Windows. Without a Simulator build it says
   why. Running on the device is 3011's.
-- **One example on the Playdate.** The smallest example (the game's
-  1118 example game) gets a `playdate` layout, a pattern map and a frame
-  that fits, and it exports. **Either order with 2371:** if 2371 is
+- **One example on the Playdate.** The smallest example, `hello-grid`
+  (the game's 1118 example game), already has its `targets."playdate"`
+  button table in `files/keymap.ron` (3002) and its pattern map,
+  `files/palette@onebit.ron` (3006). It gets a frame that fits
+  400 × 240 (its frame is 384 × 384 today) and a `playdate` entry in
+  `shuyi.ron`'s `targets`, the README's note on why the Playdate isn't
+  listed goes, and it exports. **Either order with 2371:** if 2371 is
   done, the example's Options screen uses its one-bit painters (the
   one-bit look of the engine's screens and widgets); if not, 2371 adds
-  that.
+  that. **Either order with 2736 (parked):** if the match-3 it plans
+  (`examples/match-three`, built by its part 2 ticket) is done,
+  `shuyi export playdate` builds it too and its size is in the report;
+  if not, nothing to do (its part 2 builds it with this exporter).
 - **Docs.** `docs/targets/playdate.md` gets how to build, sideload
   (Panic's help page *Sideloading*) and what is known not to work yet.
 - **The agent eval.** If 2524 is done: add `playdate` to the `targets`
   of the turn-based tasks in `evals/tasks/` and drop their `unmeasured`
   Playdate entry, if their references pass `cargo shuyi check --target
   playdate`. If a reference doesn't, keep the entry and write a ticket
-  for what stops it. The end goal names a Playdate build.
+  for what stops it. If 2524 isn't done, nothing to do: 2524's
+  either-order clause does it. The end goal names a Playdate build.
+- **Either order with 2739** (parked, the snake example): if 2739 is
+  done, `shuyi export playdate` also builds `examples/snake`, whose
+  frame fits the screen and whose `shuyi.ron` lists `playdate`, and the
+  PR says whether it runs in the Simulator; and `evals/tasks/snake.ron`
+  gets `playdate` in its `targets` and loses its `unmeasured` Playdate
+  entry, if its reference passes `cargo shuyi check --target playdate`.
+  If not, nothing to do (2739 does both).
 
 **Out (do not do):**
 - **Audio**: 3029 (written early by the game's friction sweep, game#1153,
   because the game's front end has working code to lift).
 - **The game's own stack**: 3028.
-- the crank as an analog axis (it waits for parked 1121);
-- MIDI sequences through the SDK's own synth (ADR-0014 §3). They wait
-  for parked 2205 and 2206; once those are done, write the follow-up
-  ticket;
+- the crank as an analog axis while parked 1121 is open (see its clause
+  under **Input**);
+- MIDI sequences through the SDK's own synth (ADR-0014 §3): 3057
+  (parked), after 2206 and 3029;
 - the accelerometer;
+- HTTP through the SDK's networking: a parked follow-up that 2601
+  (parked) writes when it is unparked, blocked by this ticket;
 - measuring on the device (3011);
 - writing session records on the device: `App` records on any backend
   (2518), but only `shuyi-app` writes them (2519). Write a follow-up if
@@ -226,9 +310,13 @@ Nothing here costs money. A device is needed only for 3011.
 
 - [ ] `shuyi export playdate` on the example produces a `.pdx`, and its
       size is in the report.
+- [ ] The `.pdx`'s ELF passes 3004's path search (none of the build
+      machine's paths) and its library audit against `playdate`'s list.
 - [ ] Host tests with the fake SDK:
   - [ ] a crank turn of 90° gives two `CrankForward`s;
   - [ ] only changed rows are marked;
+  - [ ] the first frame's help names the Playdate's buttons
+        (`ctx.device` starts on `Device::Pad(PadKind::Playdate)`);
   - [ ] the storage passes `shuyi_ui::storage::power_cut_suite` (3045)
         over the fake SDK's files.
 - [ ] The example opens and plays in the Playdate Simulator, if it

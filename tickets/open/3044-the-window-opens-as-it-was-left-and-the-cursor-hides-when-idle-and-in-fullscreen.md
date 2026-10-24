@@ -201,8 +201,11 @@ None.
   - it hides after 2 s with neither (`CURSOR_IDLE`, *tunable*);
   - it hides at once when the window enters fullscreen, and on the
     first frame of a fullscreen start;
-  - `keep_shown: bool` keeps it shown. It is `false` everywhere in this
-    ticket; 1121 sets it (its scope says so);
+  - `keep_shown: bool` keeps it shown.
+    **Either order with 1121 (parked):** if 1121 is done, `shuyi-app`
+    sets it while the top screen declares an action bound to a mouse
+    button, with a test; if not, it is `false` everywhere here, and 1121
+    sets it (its scope says so);
   - `show_mouse` is called only when the answer changes;
   - reading the mouse here is not input: nothing reaches `poll_input` or
     the game, and no action is read (`AGENTS.md` rule 8).
@@ -232,8 +235,11 @@ None.
   2010's job asks for.
 - **Either order:**
   - with 2321 (`Window::vsync`): if 2321 is done, `Window::console` sets
-    `vsync` to 2321's default through `Window::new`; if not, 2321 sets it
-    in `Window::new`, which `Window::console` builds on;
+    `vsync` to 2321's default through `Window::new`, and `conf_from`
+    sets `platform.swap_interval` from it, as 2321's `window_conf` does;
+    if not, 2321 sets it in `Window::new`, which `Window::console`
+    builds on, and sets `swap_interval` in `conf_from` (its clause says
+    so);
   - 2511 (`run_game`) is done: the blank template has no `WINDOW` or
     `window_conf`, and `run_game`'s window function (`basic_window`)
     uses `Window::console` and the new `window_conf` as above;
@@ -248,8 +254,10 @@ None.
     which 3041 moves. `run` logs it, not `window_conf`, because 3041's
     sink is installed by `run`, after `window_conf` has run;
   - with 3012 (the Steam Deck): if it is done, its fullscreen default
-    is what `conf_from` gives with no record, and a record's mode wins
-    after. If not, 3012 sets its default through `conf_from` (its
+    is what `conf_from` gives with no record, and a record's mode never
+    takes the Deck out of fullscreen, since its platform facts say not
+    windowed. `present` keeps 3012's rule too: full screen whatever the
+    frame says. If not, 3012 sets its default through `conf_from` (its
     scope says so);
   - with 2018 (the capture mode): if it is done, `window_conf` reads no
     record when `SHUYI_CAPTURE` is set (with the `capture` feature), and
@@ -258,12 +266,27 @@ None.
   - with 3042 (focus): if it is done, `IdleCursor` shows the cursor on
     `FocusLost`, so it is never hidden over another program; if not,
     3042 adds that (its scope says so);
+  - with 3106 (3D cameras, parked): a locked pointer is never shown.
+    If 3106 is done, `IdleCursor` takes a `locked: bool`, set while
+    3106's pointer lock holds, that hides the cursor and wins over
+    mouse motion and `keep_shown`, with a unit test; if not, 3106 adds
+    it (its scope says so);
   - with 2333 (scale modes): both touch `backend.rs`; whichever is
-    second rebases.
+    second rebases;
+  - with 3062 (the Fullscreen setting follows the system's own
+    control): if 3062 is done, `Macroquad`'s flag is its
+    `FullscreenWatch`. Start it with `FullscreenWatch::new` and the
+    mode in `Opened`. Every `set_fullscreen` call, the first-frame one
+    on Windows too, goes with an `ask` of the same mode; `present`
+    asks for what `wanted_fullscreen` gives; the record and
+    `IdleCursor` read `mode()`. So a mode changed with macOS's own
+    control is recorded, and hides or shows the cursor, like any other
+    switch. If not, nothing to do here (3062 does it, its clause says
+    so).
 - **Size:** if the PR passes about 600 changed lines, the cursor
   (`IdleCursor`, its wiring and its docs) goes to a follow-up ticket
   (the `write-ticket` skill, After MVP, blocked by this one), and the
-  `IdleCursor` clauses in 1121 and 3042 then name that ticket.
+  `IdleCursor` clauses in 1121, 3042 and 3106 then name that ticket.
 
 **Out (do not do):**
 - an options row for the window's size (1×, 2×, …): the largest
@@ -280,8 +303,9 @@ None.
   off screen (3034);
 - leaving fullscreen on Linux (miniquad's X11 TODO; 3034);
 - exclusive fullscreen and display modes (3034);
-- custom cursor images, confining the cursor, and pointer lock (3106,
-  parked, for 3D cameras);
+- custom cursor images and confining the cursor (the winit backend,
+  3034, whose scope lists them); pointer lock (3106, parked, for 3D
+  cameras), apart from its clause under *Either order*;
 - pointer input for menus and grid maps (2405) and for games (1121).
   2405 needs nothing from here: moving the mouse or clicking shows the
   cursor;

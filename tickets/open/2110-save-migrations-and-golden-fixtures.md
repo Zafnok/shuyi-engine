@@ -49,8 +49,12 @@ What Shuyi has (read on 2026-10-20):
   as `impl GameSettings for ()`, still with no version.
 - One golden file: `crates/ui/src/input/bindings/saved_before_1106.ron`,
   which must load and save back byte for byte.
-- Plans: 1121 and 3017 (parked) and 3006 each plan "a migration" of
-  their own. 2724 (parked) makes visual novel saves survive patches, for
+- Plans: 1121 (parked) gives the saved key bindings a new version:
+  a step on the chain here, or by hand in `PlayerKeys::from_ron` if
+  this isn't done (and this ticket moves it). 3017 (parked) keeps a
+  profile's old `display.color` read by 2005's rule, with no version
+  or `Migrate` (its Out). 3006 (done) found no palette form to
+  migrate. 2724 (parked) makes visual novel saves survive patches, for
   its own format only. Nothing gives the engine one way to do it.
 
 Why it matters:
@@ -155,6 +159,11 @@ players keep after a patch.
     their warnings stay. A new `PlayerKeys::read(text, def) ->
     Result<(Self, Vec<String>), String>`, which `from_ron` wraps, tells a
     whole refusal (`Err`) from a repair.
+  - **Either order with 1121:** if 1121 is done, saved bindings are at
+    its new `PLAYER_KEYS_VERSION`, and `from_ron` reads the older ones
+    by hand: `PlayerKeysFile` takes that version, `Migrate` gets the
+    step to it too, and the keybindings folder below gets a fixture of
+    it; if not, nothing to do (1121 adds its step through `Migrate`).
   - `ProfilesFile` implements `SaveFormat` (`"Profiles"`, 1) and
     `Migrate`; `Profiles::from_ron` reads through `read_save`, and its
     error names both versions. (`profiles::migrate`, which moves keys
@@ -162,10 +171,12 @@ players keep after a patch.
   - **The engine's settings** (`impl GameSettings for ()` in
     `crates/ui/src/settings.rs`, from 2511): its saved form gets
     `version: u32` and implements `SaveFormat` (`"Settings"`, 1,
-    `UNVERSIONED` 0) and `Migrate` (`OLDEST` 0: version 0 is 2511's
-    form, frozen in a `v0` module and converted). So a record a game
-    wrote before this ticket still reads, and 2511's test of the blank
-    template's record still passes.
+    `UNVERSIONED` 0) and `Migrate` (`OLDEST` 0: version 0 is the form
+    as it stands when this ticket starts, frozen in a `v0` module and
+    converted: 2511's fields and every field a settings ticket below
+    added before this one, since a field `v0` lacks is dropped on
+    upgrade). So a record a game wrote before this ticket still reads,
+    and 2511's test of the blank template's record still passes.
   - **A record refused whole is kept aside.** When the settings, the key
     bindings or the profile list can't be read (unreadable, newer, or
     older than the oldest), `Ctx::load_settings`, `Ctx::load_player_keys`
@@ -181,7 +192,7 @@ players keep after a patch.
     `crates/ui/src/input/bindings/saved_before_1106.ron`, with its
     round-trip test pointed there; a v2 with buttons),
     `crates/ui/tests/saves/profiles/` (`v1_two_profiles.ron`) and
-    `crates/ui/tests/saves/settings/` (`v0_changed.ron`, as 2511's form
+    `crates/ui/tests/saves/settings/` (`v0_changed.ron`, as `v0`
     writes it, with every field changed and a layout picked;
     `v1_changed.ron`, the same settings; `v1_default.ron`). The unit
     tests of the modules that own the file types run `check_saved_forms`
@@ -204,11 +215,15 @@ players keep after a patch.
     The blank template's says the engine checks its settings, and that a
     saved form of the game's own gets a `VERSION`, fixtures and a test
     like the grid template's.
-  - **Either order with 2501:** if the templates are made of parts, the
-    change goes in the part that holds the grid template's settings
-    file. If 2501 moved the grid stage onto the `()` settings, no
-    template has a settings file left, and the engine's settings above
-    cover it.
+  - **Either order with 2501:** if it is done, the templates are parts
+    and the grid stage takes the `()` settings, so no template has a
+    settings file left: the engine's settings above cover it, and only
+    the base part's `AGENTS.md` gets a "Saves" section, the blank
+    template's, which names `check_saved_forms` instead of the grid
+    template's test. If not, change both template folders as above;
+    2501 then keeps the blank template's section in its base part and
+    drops the grid template's settings fixtures, test and "Saves" text
+    with its settings file (its clause says so).
 - **An ADR** (the next free number in `docs/adr/`): saved forms read
   their older versions through typed steps, opt-in per format; the
   fixture guard; records refused whole are kept aside. It replaces game
@@ -224,10 +239,25 @@ players keep after a patch.
 - **2111** leaves `SaveHeader` as it is (its Out): a game reads its own
   save's `made` with the rest. So `UNVERSIONED` is the only change to
   `SaveHeader`'s visitor, in either order.
-- **Either order with the settings fields of 2333, 2340, 2342, 2349 and
-  3043:** one that lands first is in version 1 of each form here. One
-  that lands after raises the `VERSION` of each versioned form it
-  changes and adds a fixture; the guard's failure says how.
+- **Either order with the settings fields of 2321, 2333, 2340, 2342,
+  2349 and 3043, and of the parked 2323, 2404 and 2408:** one that
+  lands first is in version 1 of each form here, and in the `()`
+  form's version 0. One that lands after raises the `VERSION` of each
+  versioned form it changes and adds a fixture; the guard's failure
+  says how.
+- **Either order with 2747 and 2767** (both parked): if one is done,
+  its saved form (2747's roster in `shuyi_rpg::roster`, 2767's `Meta`
+  in `shuyi_core::meta`) joins the engine's own records here: it
+  implements `SaveFormat` and `Migrate` (with one version, `OLDEST`
+  stays the default), is read through `read_save`, and gets a
+  `v1_*.ron` fixture and a `check_saved_forms` test in the crate that
+  reads its text. If not, nothing to do: each uses them when it lands,
+  as its own clause says.
+- **Either order with 3054** (parked, leaderboards): if 3054 is done,
+  its leaderboard file (`"Leaderboard"`, 1) implements `Migrate` here,
+  with fixtures in `crates/ui/tests/saves/leaderboard/` and the guard
+  run over them, like the records above; if not, nothing to do (3054
+  does it when it lands).
 - **For the game:** nothing breaks. `SaveFormat` gains a const with a
   default, so a game's impl compiles unchanged; `shuyi_core::save` and
   `shuyi_assets::ron` gain items; `PlayerKeys::from_ron` and
@@ -238,9 +268,10 @@ players keep after a patch.
 - Packs: ADR-0023 §5 keeps them refused; bake again.
 - Visions of Shuyi's own saves: the game adopts this in its own ticket,
   after Nick's answer.
-- Asset files in older forms: 3017's target profiles may read an old
-  form through `Migrate` (3006 changed no palette form); rewriting a
-  game's files to the current form is 2517.
+- Asset files in older forms: 3017 keeps reading a profile's old
+  `display.color` by 2005's rule, with no `Migrate` (its Out), and 3006
+  changed no palette form; rewriting a game's files to the current form
+  is 2517.
 - A serde-traced shape hash (`serde-reflection`, `schemars`): the
   fixtures catch changes to the shapes they hold, with no dependency.
   ADR-0023's Alternatives keep it as an idea if fixtures prove too easy
