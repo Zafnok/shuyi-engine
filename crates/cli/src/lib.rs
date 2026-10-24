@@ -5,7 +5,8 @@
 //! `glyph-tiles`, `check-keys`, `check-text`, `lang-status`, `web` and
 //! `private-assets`, each a module of library functions with a thin
 //! wrapper here; the engine's modules as `modules` and `add` read them
-//! ([`catalog`]); and the pool of threads the slow ones play on
+//! ([`catalog`]); templates made of parts, which `new` composes
+//! ([`template`]); and the pool of threads the slow ones play on
 //! ([`pool`]).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
@@ -34,6 +35,7 @@ pub mod mcp;
 pub mod pool;
 pub mod private_assets;
 pub mod project;
+pub mod template;
 pub mod test_card;
 #[cfg(feature = "toy")]
 pub mod toy;
@@ -62,7 +64,8 @@ pub fn usage(command: &str) -> String {
 usage: {command} <command>
 
 the tool contract (each also with --json; a wrong argument prints its usage):
-  new <template> <dir>               make a new game from a template: grid, blank
+  new <dir> [--template NAME]        make a new game from the engine's template: grid, blank;
+                                     --answers FILE, --set QUESTION=ANSWER pick its parts
   check [--baked]                    every error of the game's content, with file and line;
                                      --baked: and every way its pack differs from its sources
   check --target <id | all>          whether the frame, its text and the controls fit a target

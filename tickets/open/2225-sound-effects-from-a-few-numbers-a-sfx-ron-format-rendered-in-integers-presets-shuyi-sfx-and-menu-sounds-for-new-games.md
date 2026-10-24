@@ -213,7 +213,8 @@ parked.
     `AudioConfig::DEFAULT`, each one file, `credit: Own`.
 
   How each template plays them:
-  - **`templates/blank`, on 2511's short path.** `BasicData::load`
+  - **The `base` part (`templates/shuyi-default/base`, 2501), on
+    2511's short path.** `BasicData::load`
     (`crates/ui/src/basic.rs`) reads `audio.ron` through the registry
     when the bundle has it, and the empty manifest otherwise.
     `run_game`'s sound `Files` (`crates/app/src/lib.rs`) read the
@@ -224,7 +225,9 @@ parked.
     template's root `[workspace.dependencies]` has only `shuyi`,
     `shuyi-cli` and `include_dir`, and its game crate depends on
     `shuyi` alone. So put `shuyi-assets = "{{engine.assets}}"` back
-    there, as the grid template has it, and turn the feature on in
+    in the base part's root `Cargo.toml`, as the grid part's piece has
+    it (`shuyi new` merges the two, and the same value twice is
+    fine), and turn the feature on in
     `crates/game/Cargo.toml`: `shuyi-assets = { workspace = true,
     features = ["sfx"] }`. If nothing in the crate names
     `shuyi_assets`, list it under `[package.metadata.cargo-machete]
@@ -232,16 +235,12 @@ parked.
     give `shuyi` an `sfx` feature instead: `cargo xtask check-modules`
     reads each of its features as a module and fails without a
     `shuyi-sfx` row in `docs/modules.md`.
-  - **`templates/grid`, on the long form until 2501 moves it.**
-    `lib.rs` gets `pub fn sound_files() -> Files<'static>`, whose
-    `sound` reads `files/` through `audio::playable`; `Data::load` reads
-    `audio.ron` with `audio::from_source` and that `Files`, so `cargo
-    shuyi check` covers the sounds. In `main.rs`, `sounds:
-    game::sound_files()`, and `no_sound`, `shown` and `left_out` go.
-    Its `crates/game/Cargo.toml` turns `sfx` on, as above; grid's root
-    `[workspace.dependencies]` still has `shuyi-assets`, for its rules
-    crate.
-  - A test in each template's `tests/it/main.rs`: every cue of
+  - **The grid stage** (`templates/shuyi-default/stages/top-down-grid`,
+    **from 2501, done**): it is on the short path, so `BasicData::load`
+    and `run_game` play its sounds as the base's, and it needs no code
+    of its own for them.
+  - A test in the base part's `crates/game/tests/it/main.rs`, which
+    every composed game runs: every cue of
     `AudioConfig::DEFAULT` is in the game's manifest, and
     `format_problem` accepts what `audio::playable` gives for each of
     its files.
@@ -291,9 +290,9 @@ parked.
   its part to that ticket's file.
   - **The templates.** 2511 (MVP, done first) makes the blank template
     the minimal one: its sounds go through `BasicData` and `run_game`,
-    as above. If 2501 has landed, the sound files and `audio.ron` go in
-    the built-in template's `base` part, and its grid part, then on the
-    short path too, needs nothing more. If not, 2501 carries them over.
+    as above. **From 2501 (done):** the sound files and `audio.ron` go
+    in the built-in template's `base` part, and its grid part, on the
+    short path too, needs nothing more.
   - **2512.** If it is done, the minimal template's code count doesn't
     move: its sounds are data, and their code is in the engine. If not,
     nothing to do.

@@ -280,11 +280,12 @@ moves to the MVP.
   times the request's volume times `gains.sound(cue)`, in place of the
   cue's volume. If not, nothing to do (2345 does it, its clause says
   so). The second to land rebases and bumps `pack::VERSION` again.
-- **2501** (templates made of parts): if it is done, the grid stage
-  saves the engine's `()` settings and has no saved form of its own,
-  so there are three saved forms here, and 2110's clause above
-  versions only the `()` form. If not, change
-  `templates/grid/crates/game/src/settings.rs` as above.
+- **From 2501 (done):** the grid stage (`stage-top-down-grid` in
+  `templates/shuyi-default`) saves the engine's `()` settings and has
+  no saved form of its own, so there are three saved forms here, and
+  2110's clause above versions only the `()` form. The change to
+  `templates/grid/crates/game/src/settings.rs` above has no file left
+  to change.
 
 **For the game:** the API breaks. The game's PR that moves its pin
 follows this one. It:

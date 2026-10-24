@@ -170,13 +170,14 @@ None.
     modules there), and the flow offers them through the `UiAction`s
     before its first stage when there is one.
   - **The tool program.** `crates/game/examples/tools.rs` runs the
-    picked parts' tools. (1) If 2501 builds it from the parts in a way
-    that takes one more layer (as it joins the grid part's `GameTools`
-    to the base part's), the part's layer is `WithPeers::new(tools,
-    online::peers)`. (2) If one part writes it as a fixed file,
-    generate it as `src/stages.rs` is: a part may declare `tools:
-    Some("<path>")`, a function that takes the tools before it and
-    returns them wrapped, applied in the parts' order.
+    picked parts' tools. **From 2501 (done):** the base part writes it
+    as a fixed file that calls `game::stages::tools()`, which the
+    composer generates in `src/stages.rs` (a stage's `Tools` over
+    `BasicTools`, or `BasicTools` alone). So the part's layer joins
+    there: a part may declare `tools: Some("<path>")`, a function that
+    takes the tools before it and returns them wrapped (here
+    `WithPeers::new(tools, online::peers)`), and `stages_rs` applies
+    them in the parts' order.
   - **The text.** The lobby's keys are 1145's. The part's own keys
     (its entry's name, whose turn it is, waiting for the other player,
     the outcome lines) join the game's English as the grid part's own

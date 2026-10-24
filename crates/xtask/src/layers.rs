@@ -952,7 +952,7 @@ mod tests {
     fn a_new_games_rules_test_keeps_a_copy_of_the_devices() {
         let root = crate::repo_root();
         let layers = parse_layers(&fs::read_to_string(root.join(LAYERS)).unwrap()).unwrap();
-        let copy = "templates/grid/crates/rules/tests/layers.rs";
+        let copy = "templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs";
         let text = fs::read_to_string(root.join(copy)).unwrap();
         for device in &layers.devices {
             assert!(

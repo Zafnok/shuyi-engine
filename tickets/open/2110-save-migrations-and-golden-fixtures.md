@@ -215,15 +215,14 @@ players keep after a patch.
     The blank template's says the engine checks its settings, and that a
     saved form of the game's own gets a `VERSION`, fixtures and a test
     like the grid template's.
-  - **Either order with 2501:** if it is done, the templates are parts
-    and the grid stage takes the `()` settings, so no template has a
-    settings file left: the engine's settings above cover it, and only
-    the base part's `AGENTS.md` gets a "Saves" section, the blank
-    template's, which names `check_saved_forms` instead of the grid
-    template's test. If not, change both template folders as above;
-    2501 then keeps the blank template's section in its base part and
-    drops the grid template's settings fixtures, test and "Saves" text
-    with its settings file (its clause says so).
+  - **From 2501 (done):** the templates are parts of
+    `templates/shuyi-default`, and the grid stage
+    (`stage-top-down-grid`) takes the `()` settings, so no part has a
+    settings file: the grid template bullet above has nothing to
+    change, and the engine's settings above cover it. Only the base
+    part's `AGENTS.md` (`templates/shuyi-default/base/AGENTS.md`) gets a
+    "Saves" section, the blank template's, which names
+    `check_saved_forms` instead of the grid template's test.
 - **An ADR** (the next free number in `docs/adr/`): saved forms read
   their older versions through typed steps, opt-in per format; the
   fixture guard; records refused whole are kept aside. It replaces game
@@ -304,7 +303,7 @@ players keep after a patch.
    the same toys.
 4. Move `PlayerKeysFile`, `ProfilesFile` and the `()` settings onto it;
    add the keep-aside; add the fixtures.
-5. Change the grid template's settings and both templates' `AGENTS.md`.
+5. Write the "Saves" section in the base part's `AGENTS.md`.
    Templates are outside `cargo fmt --all`: format them as CI's
    templates job checks them.
 6. Write the ADR, settle the *Either order* clauses, and run the gates.

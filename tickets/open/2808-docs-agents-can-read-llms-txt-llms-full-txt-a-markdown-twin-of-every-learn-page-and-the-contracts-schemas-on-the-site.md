@@ -225,16 +225,14 @@ None.
   - the module's table of placeholders gains the row. Games on a
     released version come with 2005, which fills the same placeholder
     with that version's `/v<x.y>/llms-full.txt`.
-- **The blank template after 2511 (done):** the sentence that links the
-  engine's `AGENTS.md` is still in `templates/blank/AGENTS.md`'s second
-  paragraph; change it there.
-- **Either order with 2501:** if 2501 is done, its built-in template
+- **From 2511 and 2501 (done):** the built-in template
   (`templates/shuyi-default/`) has replaced the two folders: change the
-  sentence in its `base` part's `AGENTS.md`, and fill `{{engine.docs}}`
-  where its `compose` fills the `{{engine.<crate>}}` ones, with the test
-  for each `Engine` variant there. If not, change the two folders and
-  `new.rs` as above; 2501 carries the placeholder over (its scope says
-  so).
+  sentence in its `base` part's `AGENTS.md` (its second paragraph), and
+  fill `{{engine.docs}}` where the composer fills the
+  `{{engine.<crate>}}` ones (`shuyi_cli::template::fill`, from a new
+  field of `template::Fill` that `contract::new::fill_for` sets), with
+  the test for each `Engine` variant there and its row in
+  `docs/templates.md`'s table of placeholders.
 - **Either order with 2803 and 2004:** 2803's pages are in
   `site/content/learn/tutorial/`, so they get twins and an H2 with no
   change here, unless 2803 adds an argument or a shortcode for its
@@ -261,8 +259,6 @@ None.
   Unity, Bevy, GameMaker and PICO-8 to Shuyi's (2802 gains it);
 - sending 1134's skills to these docs: they go through the game's
   `AGENTS.md`, and 1134 says so;
-- `{{engine.docs}}` in 2501's composed template while 2501 isn't done:
-  2501 carries it over (the clause above);
 - a Markdown summary of the API from rustdoc JSON or
   `cargo-public-api`: rustdoc's JSON needs a nightly, so it waits until
   after the MVP, and only if agents are seen reading `/api/` badly;

@@ -278,12 +278,50 @@ impl Catalog {
         })
     }
 
+    /// The catalog of the engine this `shuyi` was built from, as it embeds
+    /// it, for a game made with no checkout: its concerns, and its modules
+    /// by the `shuyi` crate's features, one a module, with no metadata.
+    pub fn embedded() -> Result<Self, String> {
+        let concerns = Concerns::parse(include_str!("../../../docs/modules.ron"))?;
+        Ok(Self {
+            root: PathBuf::new(),
+            concerns,
+            modules: modules_of_features(include_str!("../../shuyi/Cargo.toml"))?,
+        })
+    }
+
     /// The module named `name`, with or without `shuyi-`.
     pub fn module(&self, name: &str) -> Option<&ModuleCrate> {
         self.modules
             .iter()
             .find(|m| m.name == name || feature_of(&m.name) == name)
     }
+}
+
+/// The modules the `shuyi` crate's `Cargo.toml` (`manifest`) has a
+/// feature for, one a feature but `default`, by name, with no metadata.
+pub fn modules_of_features(manifest: &str) -> Result<Vec<ModuleCrate>, String> {
+    let doc: DocumentMut = manifest
+        .parse()
+        .map_err(|e| format!("crates/shuyi/Cargo.toml: {e}"))?;
+    let mut modules: Vec<ModuleCrate> = doc
+        .get("features")
+        .and_then(Item::as_table_like)
+        .map(|features| {
+            features
+                .iter()
+                .map(|(feature, _)| feature)
+                .filter(|feature| *feature != "default")
+                .map(|feature| ModuleCrate {
+                    name: module_of(feature),
+                    dir: PathBuf::from("crates").join(feature),
+                    info: ModuleInfo::default(),
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    modules.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(modules)
 }
 
 /// The entry of the `shuyi` crate in a `Cargo.toml`: under

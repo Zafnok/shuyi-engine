@@ -154,12 +154,15 @@ its status. `cargo shuyi modules` lists the same catalog for a game, and
 
 ## Starting a game, and the tools on it
 
-`shuyi new` makes a game that builds and passes its own gates as it is:
-`grid` (a turn-based grid stage, with its rules in a crate of their own,
-a bot and records) or `blank` (one screen). From this repository:
+`shuyi new` makes a game that builds and passes its own gates as it is,
+from the engine's template, made of parts that its answers pick
+([`docs/templates.md`](docs/templates.md)): `--template grid` (a title
+and a turn-based grid stage, with its rules in a crate of their own, a
+bot and records) or `--template blank` (one screen). From this
+repository:
 
 ```
-cargo shuyi new grid ../moon-garden --engine-rev <commit>
+cargo shuyi new ../moon-garden --template grid --engine-rev <commit>
 ```
 
 In the new game's folder, `cargo shuyi` runs the engine's tools on it.

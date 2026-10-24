@@ -183,8 +183,11 @@ pub fn tool(name: &str) -> Option<(Op, bool)> {
 fn description(op: Op, session: bool) -> &'static str {
     match (op, session) {
         (Op::New, _) => {
-            "Make a new game in `dir` (from the server's working folder) from a template: `grid` \
-             (a turn-based grid stage with a bot and records) or `blank` (one screen)."
+            "Make a new game in `dir` (from the server's working folder) from the engine's \
+             template, its parts picked by the answers: `template`, a short name (`grid`, a \
+             title and a turn-based grid stage with a bot and records; `blank`, one screen), \
+             then `answers` (an answers file) and `set` (answers by question). `force` writes \
+             into a folder that isn't empty."
         }
         (Op::Check, _) => {
             "Load the game's content through every validator: each error with its file, line and \

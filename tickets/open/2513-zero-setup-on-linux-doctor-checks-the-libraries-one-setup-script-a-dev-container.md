@@ -271,13 +271,11 @@ None.
     `pkg-config` and the system libraries the backend links and opens".
   - `doctor.rs`'s module doc names the Linux checks.
 - **Either order with other tickets:**
-  - **2501** (templates made of parts): if done, the script and the
-    dev container go in its `base` part; if not, in each template's
-    folder, and 2501 moves them into `base` (its `base` bullet says
-    so).
-  - **Any new template:** the copy tests below run over
-    `Template::ALL`, so whichever lands second adds the two files to
-    it. 2511 adds no template: it makes `blank` the minimal one.
+  - **From 2501 (done):** the script and the dev container go in the
+    `base` part of `templates/shuyi-default` (where `templates/blank`
+    and `templates/grid` are named above), and the copy tests below run
+    over the built-in template's short names, each composed
+    (`shuyi_cli::template::built_in()`, `compose`).
   - **2505** (doctor reports `git`): its check and these are
     independent, but CI's bare container has no `git`. If 2505's check
     fails doctor when `git` is missing, `git` becomes a row of the
@@ -411,8 +409,8 @@ what they say of 2513's dev container at it.
   gets the Linux programs in its fake;
   `without_rust_every_check_says_how_to_install_it` reads the new limit;
   `this_machine_runs_programs_and_finds_files` also reads `Cargo.toml`.
-- In `crates/cli/src/contract/new/tests.rs`, through `files()` for every
-  `Template::ALL` and the engine's root (`CARGO_MANIFEST_DIR/../..`, as
+- In `crates/cli/src/contract/new/tests.rs`, through `plan()` for each
+  of the built-in template's short names and the engine's root (`CARGO_MANIFEST_DIR/../..`, as
   that file's test at line 166 does):
   - every copy of the script is the engine's, byte for byte, with no
     `\r`, and its three lists equal the table;

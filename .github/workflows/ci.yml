@@ -118,9 +118,10 @@ jobs:
           name: hello-grid-web
           path: examples/hello-grid/dist/web
 
-  # `shuyi new` (ticket 1129): a game made from each template, on this
-  # checkout of the engine, passes the gates its own CI runs. It builds in
-  # this repository's target folder, which rust-cache keeps.
+  # `shuyi new` (tickets 1129 and 2501): a game made with each short name
+  # of the engine's template (templates/shuyi-default), on this checkout of
+  # the engine, passes the gates its own CI runs. It builds in this
+  # repository's target folder, which rust-cache keeps.
   templates:
     name: templates (${{ matrix.template }})
     needs: changes
@@ -144,7 +145,7 @@ jobs:
       - name: Install macroquad system libraries
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
       - name: Make a game with shuyi new
-        run: cargo run -q -p shuyi-cli --locked -- new "$TEMPLATE" "$RUNNER_TEMP/demo" --engine-path "$GITHUB_WORKSPACE"
+        run: cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE"
       - name: Run its gates
         working-directory: ${{ runner.temp }}/demo
         run: |
@@ -156,7 +157,8 @@ jobs:
           cargo shuyi check-keys
           cargo shuyi lint
       # Ticket 2548: a long name lays out the same, so the game's own fmt
-      # gate passes whatever it is called.
+      # gate passes whatever it is called. It uses the older form, `new
+      # <template> <dir>`, which keeps working (ticket 2501).
       - name: A game with a long name passes cargo fmt
         run: |
           cargo run -q -p shuyi-cli --locked -- new "$TEMPLATE" "$RUNNER_TEMP/long" \
@@ -185,7 +187,7 @@ jobs:
           # By path: the game's workspace names the engine as `shuyi` (and
           # the crates its rules may use), not `shuyi-ui`.
           echo "shuyi-ui = { path = '$GITHUB_WORKSPACE/crates/ui' }" >> crates/rules/Cargo.toml
-          cat >> crates/game/src/stage.rs <<'RUST'
+          cat >> crates/game/src/stages/top_down_grid.rs <<'RUST'
 
           /// Names a key and writes a screen's text.
           pub fn breaks_the_screens(buf: &mut GlyphBuffer, fg: shuyi::ui::frame::Rgb) {
@@ -199,7 +201,7 @@ jobs:
           fi
           found=$(jq -r '.result.findings[] | "\(.code) \(.file):\(.line)"' lint.json)
           echo "$found"
-          for expected in 'SH2101 crates/game/src/stage.rs' 'SH2102 crates/game/src/stage.rs' \
+          for expected in 'SH2101 crates/game/src/stages/top_down_grid.rs'             'SH2102 crates/game/src/stages/top_down_grid.rs' \
             'SH2104 crates/rules/Cargo.toml:null'; do
             if ! grep -qF "$expected" <<< "$found"; then
               echo "::error::shuyi lint did not find: $expected"

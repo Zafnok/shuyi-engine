@@ -69,10 +69,13 @@ whether it is what you meant by MIDI sound.
   writes it when the skill pack is there), add playback to it: sequence
   cues, their tempo and mute commands, and `shuyi-app`'s `midi`
   feature. If not, nothing to do: the skill pack writes it whole.
-- **A wizard part,** if 2501 is done: `music-midi`, when `music` has
-  `midi` picked, adds a short CC0 `.mid` of our own, a cue for it, and
-  the bank line in `shuyi.ron` the README describes. If 2501 isn't done,
-  add this part to 2501's built-in template list in this PR.
+- **A template part** (**from 2501, done**): `music-midi` in
+  `templates/shuyi-default/template.ron`, when `music` has `midi`
+  picked, adds a short CC0 `.mid` of our own, a cue for it, and the bank
+  line in `shuyi.ron` the README describes, as a `shuyi.ron` piece that
+  `shuyi new` merges into the base's (`docs/templates.md`). Until the
+  wizard asks the catalog's concerns (2502), `music` is a question of
+  the template's own there, as `perspective` is.
 - **An example**, `examples/midi-music/`: a screen that plays a sequence
   and lets the player change its tempo and mute a track through actions
   (never keys: the `input-actions` skill). It has a Harness test, a

@@ -29,8 +29,23 @@ targets.
 
 The template format and the composer are 2501. This ticket asks the
 questions and hands the answers to the composer. It allows several
-perspectives to be picked, but until 2503 lands it composes one stage
-per perspective with no move between them, and says so in `limits`.
+perspectives to be picked, but until 2503 lands a game has one stage.
+
+**From 2501 (done):**
+- `templates/shuyi-default/template.ron` asks `perspective` as a
+  question of its own, with the one ready answer, `top-down-grid`, so
+  that `--set perspective=top-down-grid` and the short name `grid` work.
+  This ticket asks perspective from the catalog instead, and takes the
+  question out of `template.ron`; the short names and the parts'
+  `Picked("perspective", …)` keep their ids.
+- The composer refuses a second part with a stage
+  (`ComposeError::Stage`, "a game has one stage for now"): with two
+  perspectives that each add a stage picked before 2503, the wizard
+  says so before it composes, and `limits` names 2503's moves as not
+  there yet.
+- `compose(&Template, &Answers, &Catalog, &Fill)`: the answers go in as
+  `template::Answers`; `contract::new::answers_of` joins a short name,
+  `--answers` and `--set`, and this ticket's flags join there.
 
 ## Nick input
 

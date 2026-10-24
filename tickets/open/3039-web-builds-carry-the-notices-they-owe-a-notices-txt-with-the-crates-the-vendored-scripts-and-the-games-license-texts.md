@@ -220,10 +220,9 @@ None. Meeting these licenses' notice duties isn't a product choice.
   lists, and that a game names its own license texts in the `notices`
   part of `shuyi.ron`. If not, nothing to do (1134 teaches it, as its
   scope says).
-- **2501** (templates as data): if 2501 is done, the templates'
-  `notices` part goes in the `base` part's `shuyi.ron` in
-  `templates/shuyi-default/`, not in the two folders above. If not,
-  2501 carries it over (its scope says so).
+- **From 2501 (done):** the templates' `notices` part goes in the
+  `base` part's `shuyi.ron` in `templates/shuyi-default/`, not in the
+  two folders above (which are gone).
 - **2739** (parked, the snake example): if 2739 is done, its
   `examples/snake/shuyi.ron` gets the `notices` part with its Terminus
   text, as Hello, Grid's does, and Pages links its `NOTICES.txt` beside

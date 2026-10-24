@@ -66,10 +66,24 @@
     "limits"
   ],
   "$defs": {
+    "Answers": {
+      "description": "The answers a game picked: by question id, the ids of its answers, as\n`answers.ron` holds them (`{ \"perspective\": [\"top-down-grid\"] }`).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
     "NewOutput": {
       "description": "What `new` made.",
       "type": "object",
       "properties": {
+        "answers": {
+          "description": "The answers it was made for, each question left out at its\ndefault.",
+          "$ref": "#/$defs/Answers"
+        },
         "crate_name": {
           "description": "Its crate's name.",
           "type": "string"
@@ -85,8 +99,47 @@
             "type": "string"
           }
         },
+        "modules": {
+          "description": "The engine's modules turned on, by crate.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "name": {
           "description": "The game's name.",
+          "type": "string"
+        },
+        "overwritten": {
+          "description": "The files that were there already and were written over (with\n`force`).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parts": {
+          "description": "The template's parts it was made of, in order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "stages": {
+          "description": "Its stages, in order.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targets": {
+          "description": "The targets it ships on.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "template": {
+          "description": "The template's id (`shuyi-default`).",
           "type": "string"
         }
       },
@@ -95,7 +148,14 @@
         "dir",
         "name",
         "crate_name",
-        "files"
+        "template",
+        "answers",
+        "parts",
+        "files",
+        "overwritten",
+        "modules",
+        "targets",
+        "stages"
       ]
     },
     "Op": {

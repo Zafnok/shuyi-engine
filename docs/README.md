@@ -16,7 +16,8 @@ repository has no row here.
 | The engine's file formats and the registry | [`formats.md`](formats.md) | adds or changes a format, an asset kind or the registry |
 | What a platform backend must do | [`platform-backends.md`](platform-backends.md) | changes the platform boundary or adds a backend |
 | The modules, by concern: what each answers and serves, its status and tickets | [`modules.md`](modules.md), the catalog; [`modules.ron`](modules.ron), the concerns and their answers as data, which `shuyi modules` reads ([ADR-0009](adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)) | adds a module, a format plugin, a backend, a concern or an answer, or changes one's status |
-| What a new game starts with: its rules (`AGENTS.md`) and its README | [`templates/`](../templates/), one folder per template | changes a template, or a rule a game on the engine keeps |
+| What a new game starts with: its rules (`AGENTS.md`) and its README | [`templates/`](../templates/): the engine's template, `templates/shuyi-default`, its files by part | changes a template, or a rule a game on the engine keeps |
+| The template format: `template.ron`, parts, `When`, placeholders, merged files | [`templates.md`](templates.md) | changes the template format, the composer, or the engine's template's parts |
 | What the engine is, its crates, and where to start | [`README.md`](../README.md) | adds a crate, or changes what one is for |
 | How to contribute | [`CONTRIBUTING.md`](../CONTRIBUTING.md) | changes who may contribute or how |
 | An example game | [`examples/`](../examples/), each example's `README.md` | changes what an example does or how to run it |
@@ -95,12 +96,12 @@ A ticket from `1119`–`1150` reads the row of its area.
 
 | The fact | One home | The other | Checked by |
 | -------- | -------- | --------- | ---------- |
-| The layer, skin and key rules | [`AGENTS.md`](../AGENTS.md), rules 5, 8 and 9 | `templates/*/AGENTS.md`, *The layers* | nothing yet |
+| The layer, skin and key rules | [`AGENTS.md`](../AGENTS.md), rules 5, 8 and 9 | `templates/shuyi-default/base/AGENTS.md`, *The layers* | nothing yet |
 | The contract's operations | [`contract.md`](contract.md), *The operations* | [`README.md`](../README.md), the `shuyi-cli` row | `crates/cli/tests/it/docs.rs` |
 | The local gates | the `run-gates` skill | `.github/workflows/ci.yml` | nothing yet |
-| The actions' pins and the shared crates' requirements | `.github/workflows/`, and the root's `[workspace.dependencies]` in `Cargo.toml` | `templates/*/.github/workflows/`, and each template's `Cargo.toml` | `cargo xtask check-pins` ([ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)) |
+| The actions' pins and the shared crates' requirements | `.github/workflows/`, and the root's `[workspace.dependencies]` in `Cargo.toml` | `templates/shuyi-default/base/.github/workflows/`, and every `Cargo.toml` of the template's parts (`templates/shuyi-default/**/Cargo.toml`) | `cargo xtask check-pins` ([ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)) |
 | What a module answers | its crate's `[package.metadata.shuyi]` | its row in [`modules.md`](modules.md), and its answers in [`modules.ron`](modules.ron) | `cargo xtask check-modules` |
-| The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
+| The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the book (2802), the
 engine's skill pack, `skills/` (1134, which adds the `input-actions` and

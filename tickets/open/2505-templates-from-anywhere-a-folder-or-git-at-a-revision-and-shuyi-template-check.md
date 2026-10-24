@@ -33,7 +33,11 @@ None.
 **In:**
 - **`--template <source>`** takes:
   - a short name of the built-in template's answer sets (`grid`,
-    `blank`), as today;
+    `blank`), as today. **From 2501 (done):** short names are data,
+    the `short_names` field of `template.ron` (ADR-0042 §3), so a
+    template from anywhere names its own sets the same way, and
+    `Template::load(dir)` reads a folder (`Template::read` the files of
+    a git checkout);
   - a path to a folder holding `template.ron`;
   - `git+<url>@<rev>`, where `<rev>` is a commit hash or a tag. A
     missing `@<rev>` is an error that says why it is required (the same

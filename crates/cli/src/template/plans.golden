@@ -1,0 +1,64 @@
+# The engine's own template's plans for Moon Garden on the engine's main: each
+# file's FNV-1a hash and path. Written by `SHUYI_BLESS=1 cargo test -p shuyi-cli
+# --lib template`, after a change to templates/shuyi-default.
+
+[blank] base
+d4b465b5e5a1bbb5 .cargo/config.toml
+77e6c483d7cfef2b .github/workflows/ci.yml
+7798fc67608aa8a1 .gitignore
+f2d8e9bd153da850 AGENTS.md
+affd7179f0813dc2 CLAUDE.md
+1faca0ef26c21820 Cargo.toml
+9d61c9a3ce3215e0 README.md
+b7bf83dcce2fb717 clippy.toml
+09db4a69a779ffd4 crates/game/Cargo.toml
+d9d0d34f89554d0a crates/game/examples/tools.rs
+8a1505756a23ce0b crates/game/files/en.ron
+24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
+bb6026e333cd9cbd crates/game/files/font/atlas.png
+6a670fd99c7bd549 crates/game/files/font/atlas.ron
+ba791d69f803381d crates/game/files/keymap.ron
+1bd1ef013635e3cd crates/game/files/palette.ron
+73d45cb7282ba485 crates/game/src/lib.rs
+c2a32153feca5b36 crates/game/src/main.rs
+ffa20be348ab831e crates/game/src/stages.rs
+e48dd42a787497ae crates/game/src/title.rs
+10139ba4e01f1301 crates/game/tests/it/main.rs
+c7bc56040688f5d6 rust-toolchain.toml
+2ed9545729103b37 rustfmt.toml
+9f15438b10079730 shuyi.ron
+
+[grid] base, stage-top-down-grid
+d4b465b5e5a1bbb5 .cargo/config.toml
+77e6c483d7cfef2b .github/workflows/ci.yml
+7798fc67608aa8a1 .gitignore
+f2d8e9bd153da850 AGENTS.md
+affd7179f0813dc2 CLAUDE.md
+2ff505f6c4bc665c Cargo.toml
+9d61c9a3ce3215e0 README.md
+b7bf83dcce2fb717 clippy.toml
+208c79b57ce4a2a2 crates/game/Cargo.toml
+d9d0d34f89554d0a crates/game/examples/tools.rs
+ac3f7f6edb84c1ec crates/game/files/en.ron
+24271ac8f6172047 crates/game/files/font/Terminus-LICENSE.txt
+bb6026e333cd9cbd crates/game/files/font/atlas.png
+6a670fd99c7bd549 crates/game/files/font/atlas.ron
+ba791d69f803381d crates/game/files/keymap.ron
+929c655ac697dad3 crates/game/files/palette.ron
+6ce7f8b2d89d719d crates/game/files/stage.map
+73d45cb7282ba485 crates/game/src/lib.rs
+c2a32153feca5b36 crates/game/src/main.rs
+c13676d94d4e52dd crates/game/src/stages/top_down_grid/tools.rs
+db5e2588379a32b0 crates/game/src/stages/top_down_grid.rs
+4840525a6e19d42d crates/game/src/stages.rs
+e48dd42a787497ae crates/game/src/title.rs
+10139ba4e01f1301 crates/game/tests/it/main.rs
+65740d191bb5ac66 crates/game/tests/stage.rs
+dd2774be3effd43f crates/rules/AGENTS.md
+7d39342f9c953a2a crates/rules/Cargo.toml
+a9360fff8f48cb78 crates/rules/clippy.toml
+695b36d052586fb8 crates/rules/src/lib.rs
+61400620a286df3d crates/rules/tests/layers.rs
+c7bc56040688f5d6 rust-toolchain.toml
+2ed9545729103b37 rustfmt.toml
+55f23aaf1fd8567f shuyi.ron

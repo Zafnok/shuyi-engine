@@ -98,7 +98,7 @@ with its `std::` path, or in a module whose file starts with
 own gates. From the repository root, for `grid` and then `blank`:
 
 ```bash
-cargo run -q -p shuyi-cli --locked -- new grid ../demo-grid --engine-path "$PWD"
+cargo run -q -p shuyi-cli --locked -- new ../demo-grid --template grid --engine-path "$PWD"
 cd ../demo-grid
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings

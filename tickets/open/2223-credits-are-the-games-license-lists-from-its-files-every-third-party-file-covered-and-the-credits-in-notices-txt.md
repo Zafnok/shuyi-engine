@@ -236,9 +236,11 @@ ships (rule 7, `deny.toml`) don't change.
   `CreditsRon` and `AudioManifestRon` write `licenses` and `files`, and
   their round trips cover them. If not, 2218 writes the files as they
   are then.
-- **2501** (templates as data): if it is done, the credits file and the
+- **2501** (templates as data, done): the credits file and the
   `credits` part go in the `base` part of `templates/shuyi-default/`.
-  If not, 2501 carries them over (its scope says so).
+  The grid stage part's `stage.map` joins the `credits` part's `own`
+  list through that part's own `shuyi.ron` piece, which `shuyi new`
+  merges into the base's (ADR-0042).
 - **2505** (`shuyi template check`): if it is done, it runs the credits
   pass on each game it makes. If not, 2505 adds it (its scope says so).
 - **1134** (the skill pack): if it is done, `shuyi-ship` teaches the

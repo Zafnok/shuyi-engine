@@ -308,11 +308,11 @@ None.
 - Packaging:
   - a Claude Code plugin (a marketplace entry in the engine repository);
   - the layout the common skill installers read;
-  - `shuyi new` copies the skills into new projects. **Either order
-    with 2501:** if 2501 is done, they join `compose`'s plan, read from
-    `skills/` (not a second copy in the template), so `new`'s answer
-    lists them; if not, `new` copies them, and 2501 moves that into the
-    plan.
+  - `shuyi new` copies the skills into new projects. **From 2501
+    (done):** they join `compose`'s plan (`shuyi_cli::template::compose`,
+    called by `contract::new::plan`), read from the engine's `skills/`
+    (not a second copy in the template), so every composed game has
+    them and `new`'s answer lists them.
   - **From 2003 (done):** `shuyi add <module>` copies a module's skill
     into the game's `.claude/skills/<crate name>`, from the package's
     own `skill/` or else the pack's `skills/<crate name>`

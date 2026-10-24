@@ -42,12 +42,18 @@ png = "0.18"
 # The contract's answers as JSON (`--json`), and their JSON schemas.
 serde_json = "1"
 schemars = { version = "1", default-features = false, features = ["derive", "std"] }
-# `new`'s templates (`templates/` at the repository's root), embedded.
+# `new`'s template (`templates/shuyi-default` at the repository's root),
+# embedded.
 include_dir.workspace = true
 # `add`: a game's `Cargo.toml` edited keeping its layout, and the
 # modules' metadata (`[package.metadata.shuyi]`) read from theirs.
 toml_edit = { version = "0.25", default-features = false, features = ["parse", "display", "serde"] }
+# A template's `engine` (`>=0.1, <0.2`), matched against this engine's
+# version.
+semver = { version = "1", default-features = false, features = ["std", "serde"] }
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.
 shuyi-cli = { path = ".", features = ["toy"] }
+# The template loader and the composer, fed any input.
+proptest.workspace = true

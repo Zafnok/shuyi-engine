@@ -52,9 +52,10 @@ the default.
 
 2740 (parked) draws hex maps. Its path-arrow bullet draws a step
 between two hex rows as a line between the tiles' middles, the line
-this ticket draws a diagonal step with. 2501 turns `templates/grid`
-into parts of `templates/shuyi-default`. Both name this ticket, and the
-clauses below say what to do whichever lands first.
+this ticket draws a diagonal step with. 2501 (done) turned
+`templates/grid` into the part `stage-top-down-grid` of
+`templates/shuyi-default`; the clauses below say what that means
+here.
 
 Why it matters:
 
@@ -164,10 +165,10 @@ None.
     line of the 48-cell console with the default keys;
   - the template's `README.md` and `AGENTS.md`: a line each on the
     choice and the file that holds it;
-  - **Either order with 2501:** if 2501 is done, add the choice to the
-    grid part of `templates/shuyi-default` as an answer it reads; if
-    not, add it to `templates/grid`, and 2501 carries it over (its
-    clause says so). As an answer: a question of the template's own,
+  - **From 2501 (done):** add the choice to the grid part of
+    `templates/shuyi-default` as an answer it reads, where `templates/grid`
+    is named above (its files are under
+    `templates/shuyi-default/stages/top-down-grid`). As an answer: a question of the template's own,
     `moves`, with the answers `four` (the default) and `eight`, and two
     parts, each picked by one answer and the grid stage's part, that
     write `crates/rules/src/moves.rs`. The CI step below then makes its

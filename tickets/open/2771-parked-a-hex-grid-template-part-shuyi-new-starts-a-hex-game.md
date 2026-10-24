@@ -73,10 +73,12 @@ None.
   - `stage: "hex"`, its screen being `HexScreen` (below);
   - no modules (hex maps are in the default kits, 2121's ADR) and no
     targets of its own (base's).
-- **How it adds to base's files.** 2501 decides how a stage part adds
-  to files the `base` part writes: the game crate's `Cargo.toml`, its
-  `lib.rs` through the generated `src/stages.rs`, the language file
-  and `shuyi.ron`. The hex part does each the way the grid part does,
+- **How it adds to base's files.** 2501 (done) decided how a stage part
+  adds to files the `base` part writes (ADR-0042): the game crate's
+  `Cargo.toml`, its `lib.rs` through the generated `src/stages.rs`, the
+  language file and `shuyi.ron`, each a piece the composer merges.
+  Until 2503, the composer refuses two stages in one game, so the hex
+  part composes beside `stage-top-down-grid` only once 2503 is done. The hex part does each the way the grid part does,
   under names of its own, and writes only paths no other part writes.
   So it composes alone, and beside `stage-top-down-grid` with no
   `ComposeError::SameFile` (2501's `--set` takes several answers, and

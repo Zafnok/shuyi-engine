@@ -87,8 +87,9 @@ The engine's own examples are never pushed to itch.io.
 
 ## Scope
 
-Paths here are today's. If 2005 or 2501 has moved the templates, each
-`templates/<name>/` path means their new place.
+Each `templates/<name>/` path here means the `base` part of the
+engine's template, `templates/shuyi-default/base` (2501), or its place
+if 2005 has moved it.
 
 **In:**
 - **The export plan: one target list.** `shuyi export --plan [--tag
@@ -284,11 +285,12 @@ Paths here are today's. If 2005 or 2501 has moved the templates, each
   - `docs/contract.md` gets `export --plan`, and its section "The
     templates" names `release.yml` and `export.yml`.
 - **Either order:**
-  - **2501** (templates as data). If it is done, the two workflows, the
+  - **2501** (templates as data, done): the two workflows, the
     `ci.yml` changes and the docs go in the `base` part of
-    `templates/shuyi-default/`, and its composer lets `${{` through as
-    `fill` does here. If not, 2501 carries them over (its scope says
-    so).
+    `templates/shuyi-default/`, whose composer already lets `${{`
+    through (`shuyi_cli::template::fill`). The test that keeps the
+    engine's own `export.yml` equal to the template's reads the base
+    part's copy.
   - **2504** (CI per target). If it is done, its per-target PR job
     becomes calls to `export.yml` with the matrix from `export --plan`,
     so a game names its targets once, in `shuyi.ron`. If not, 2504 does
