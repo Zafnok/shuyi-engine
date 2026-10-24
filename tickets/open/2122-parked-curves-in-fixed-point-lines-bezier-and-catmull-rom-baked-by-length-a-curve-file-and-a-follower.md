@@ -48,9 +48,8 @@ What is planned:
 
 - 2106 (parked): `nav::Path { points: Vec<(Fx, Fx)> }` and
   `Path::follow`, a line of corners that steers a mover round walls;
-- 1124 (parked): a map's object layers keep "named boxes and points
-  with properties" only, so a polyline drawn in Tiled or LDtk is
-  dropped;
+- 1124 (parked): a map's object layers keep polylines and polygons,
+  each as its points in `Fx` pixels, beside boxes and points;
 - 2707 (parked): the real-time strategy `Patrol`, which swaps between
   two ends;
 - 2701 (parked) plans `Fx::sqrt`, `FxVec2::length` and `Angle::atan2`.
@@ -236,9 +235,10 @@ None.
     module docs (`crates/assets/src/lib.rs`) name the module;
   - a game whose `GameTools::check` loads its curves gets their errors
     in `shuyi check --json` with nothing more.
-  - **Either order with 2116:** if 2116 is done, add the row `curve:
-    curve` to `crates/assets/tests/golden/formats.ron`, as its guard
-    asks of a new standard format. If not, 2116 adds it.
+  - **The golden row:** 2116 is done before this ticket starts (1119
+    is blocked by it), so add the row `curve: curve` to
+    `crates/assets/tests/golden/formats.ron`, as its guard asks of a
+    new standard format.
   - **Either order with 2515:** if 2515 is done, `CurveFile` derives
     `JsonSchema` behind the `schema` feature, `CurveRon` implements
     `TextSchema` with an example in `crates/assets/kinds/curve.ron`, and
@@ -260,17 +260,12 @@ None.
   `Path::follow` reads its corners from it. If 2106 is done, write a
   follow-up ticket (the `write-ticket` skill, parked with real time)
   that makes that change with 2106's tests unchanged.
-- **Either order with 1124:** 1124's object layers keep boxes and
-  points only today.
-  - If 1124 isn't done, change its text in this PR: its object layers
-    keep "named boxes, points, polylines and polygons with properties",
-    and it adds one function beside its `TileMap` that turns a polyline
-    object into `Curve::lines(points, false)` and a polygon into
-    `Curve::lines(points, true)`, tested on a fixture made in Tiled.
-  - If 1124 is done and its objects keep polylines and polygons, add
-    that function here, with that fixture.
-  - If 1124 is done and they don't, write a follow-up ticket (parked
-    with real time) that keeps them and adds the function.
+- **Either order with 1124:** 1124's object layers keep polylines and
+  polygons. If 1124 is done, add one function beside its `TileMap`
+  that turns a polyline object into `Curve::lines(points, false)` and a
+  polygon into `Curve::lines(points, true)`, tested on its fixture made
+  in Tiled. If not, nothing to do: 1124 adds it (its clause with this
+  ticket says so).
 - **The debug view, if 2315 is done:**
   `shuyi_ui::debug::curve::gizmos(&Curve, Option<&CurveFollower>,
   to_px, &mut Gizmos)` pushes, on a channel `curve`:
@@ -306,7 +301,10 @@ with real time) and say so in the Completion notes.
 **Out (do not do):**
 - a speed per point (GameMaker's model). A game changes `speed` when it
   hears `Passed(i)`. Add it when an example needs it;
-- quadratic pieces, B-splines, and curves in 3D (3101);
+- moving 2738's shooter onto `Curve`s when the shooter lands first:
+  its foes keep their straight paths, and nothing is left here;
+- quadratic pieces and B-splines; curves in 3D (no 3D ticket has them:
+  a follow-up on 3101's `FxVec3` if a 3D game asks);
 - moving platforms that carry what stands on them (a moving solid that
   pushes and carries 1122's movers). Neither 1122 nor 1127 has it; it
   is a ticket of its own, parked with 1127, when a level needs one;
@@ -337,11 +335,11 @@ with real time) and say so in the Completion notes.
 4. Write `CurveFollower` and its events.
 5. Write `CurveFile` and `CurveRon`, register it, and add the error
    fixtures, the random-bytes test, the pack pin, the importer's
-   summary and the rows in `docs/formats.md`. Do the 2116 and 2515
-   parts if they are done.
+   summary and the rows in `docs/formats.md`. Add 2116's golden row,
+   and do the 2515 part if it is done.
 6. Add the example, the debug helper if 2315 is done, and the 1124
-   function if 1124 keeps polylines.
-7. Change 2106's, 1124's, 2701's and 2515's texts, or write the
+   function if 1124 is done.
+7. Change 2106's, 2701's and 2515's texts, or write the
    follow-up tickets, as the either-order clauses above say.
 8. Run the gates, including the `no_std` builds.
 
@@ -373,8 +371,10 @@ with real time) and say so in the Completion notes.
 - [ ] Random bytes, and the fixtures with a few characters changed,
       never make `CurveRon` panic.
 - [ ] A checked-in table of `sample` results on three fixture curves is
-      equal on native and `wasm32` (through 2116's golden tables if
-      2116 is done, otherwise as 1119 does for `Fx`).
+      equal on native and `wasm32`: a golden table through 2116's
+      `shuyi_assets::golden` (under `crates/core/tests/golden/`, as
+      1119's `fx.ron` is), checked by CI's `test` and `determinism`
+      jobs.
 - [ ] `shuyi import` of a curve fixture answers its summary.
 - [ ] The pack's pinned binary form lists `CurveFile`, and
       `pack::VERSION` is unchanged.
@@ -382,8 +382,8 @@ with real time) and say so in the Completion notes.
       `thumbv7em-none-eabihf`.
 - [ ] The example's replay hash is the same on every run, and its
       patrol snapshot is committed.
-- [ ] 2106's and 1124's texts, or the follow-up tickets, say what the
-      either-order clauses ask.
+- [ ] 2106's text, or its follow-up ticket, says what the either-order
+      clause asks.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -46,7 +46,7 @@ completed:
     - once 2345 (After MVP) is done, the cue rules (which file, the
       volume picked and minimum gaps) run in `shuyi-platform`'s `App`
       before the device, and `SoundRequest::Sound` carries `variant`
-      and `cue_volume`. Its part two (a ticket 2345 writes) adds copy
+      and `cue_volume`. Its part two, 2378 (After MVP), adds copy
       caps, priority and the voice limit there, with `copy` on
       `SoundRequest::Sound` and `SoundRequest::StopCopy { copy }`,
       which stops one copy. What moves here is then the rest: playing a
@@ -70,9 +70,9 @@ completed:
   to share that trait across desktop, the web and the Playdate, and
   later the GBA (3027) and the DS (3024). That makes it the cheap moment
   to decide how the trait grows without breaking a backend: a real
-  pause for 2344 now, and later a pan (2363, parked), a loop region for
-  intro-then-loop music (the ticket 2902 writes, parked) and a rate for
-  pitch (3030, parked).
+  pause for 2344 and a playback rate for pitch now, and later a pan
+  (2363, parked) and a loop region for intro-then-loop music (the
+  ticket 2902 writes, parked).
 
 ## Nick input
 
@@ -97,10 +97,14 @@ None.
 - **Either order with 2345** (cue rules): if 2345 is done, the Playdate
   backend plays the file and the volume each `SoundRequest::Sound` names
   (`variant` and `cue_volume`). If not, move the player as it is, its
-  variant pick included, and 2345 changes the moved player. The same
-  goes for its part two (the ticket 2345 writes): if it is done, the
-  Playdate backend keeps each copy's sample player and stops one copy
-  on `SoundRequest::StopCopy`; if not, that ticket adds it here.
+  variant pick included, and 2345 changes the moved player.
+- **Either order with 2378** (cue rules, part two): if 2378 is done,
+  the shared player keeps each copy's playback by its `CopyId`, and the
+  Playdate backend keeps each copy's sample player until
+  `SoundRequest::StopCopy` names it or its length has passed, and stops
+  that copy alone (a test against the fake SDK: of two copies of one
+  sound, one stops and the other plays on). If not, nothing to do
+  (2378 adds it here).
 - The conversion in the exporter, from the game's `playdate_audio.rs`;
   check the license of anything it uses (`cargo deny`).
 - **`.sfx.ron` sounds (2225):** the exporter renders one with
@@ -116,7 +120,10 @@ None.
   A feature that some backends lack is a provided method. Its default
   does nothing and returns `Err(Unsupported)`. The first is a pause:
   `pause(sound)` and `resume(sound)`, where a playing sound stops, then
-  later goes on from where it was.
+  later goes on from where it was. The second is a playback rate:
+  `set_rate(sound, rate)`, 16.16 fixed point (1.0 plays the sound as
+  recorded), from the sound's next `play`. Nothing here calls it: cue
+  pitch, which does, is 2379's (parked).
   - The player calls such methods through one helper. The first
     `Unsupported` of each feature becomes one warning through
     `take_warnings`, for example "this backend can't pause sounds: they
@@ -124,11 +131,17 @@ None.
   - After the warning, the player carries on with the feature's
     fallback. For a pause it is 2344's rule: the sound is muted
     (volume 0) and runs on silently, and `resume` gives it its volume
-    back.
+    back. For a rate, the sound plays at 1.0.
   - The macroquad backend keeps the defaults, because quad-snd 0.2.8
-    has no pause. The Playdate backend implements them over the SDK's
-    sample and file players if the SDK has them (check its sound docs
-    on the day). 2344 connects them to requests.
+    has no pause and no rate. The Playdate backend implements them over
+    the SDK's sample and file players if the SDK has them (check its
+    sound docs on the day). 2344 connects the pause to requests.
+  - **Either order with 3017** (parked, target capabilities): if 3017
+    is done, list the provided methods the Playdate backend implements
+    (`Pause` if it pauses with the SDK, `Rate` if it sets the rate with
+    the SDK, `Pan` if 2363 is done) in `targets/playdate.ron`'s
+    `capabilities.audio.features`; if not, nothing to do (3017 reads
+    them from this backend when it lands).
 - **Either order with 2344** (looped sounds with handles,
   `pause_sounds`, `Audio::suspend` and `resume`): if 2344 is done, its
   handled sounds (`SoundRequest::Start`, `Stop`, `Volume`,
@@ -154,6 +167,30 @@ None.
   `shuyi_ui::audio::spatial::pan_gains`, with a test against the fake
   SDK. If 2363 isn't done, 2363 adds the pan to the shared trait by the
   rule the ADR below sets.
+- **Either order with 2725** (parked, voices): if 2725 is done, the
+  voice's group on `AudioRequest::PlayVoice` and `SoundRequest::Voice`
+  moves with the rest, and the shared player plays the voice at that
+  group's gain (`Gains::group`) rather than `gains.voice()`; whatever
+  else 2725 added to `shuyi-app`'s player for voices moves too. If
+  not, nothing to do: 2725 adds what a voice needs to the shared trait.
+- **Either order with 3027 (parked, GBA audio):** if 3027 is done,
+  move `shuyi-gba`'s `Audio` onto the shared backend trait under the
+  player. Its mixer gives the required methods and the provided ones it
+  can play, its own cue volumes, fades and music clock go, and 3027's
+  host tests pass unchanged. If not, nothing to do (3027 implements the
+  shared trait).
+- **Either order with 3024 (parked, the DS backend):** if 3024 is done,
+  move `shuyi-nds`'s sound effects onto the shared backend trait the
+  same way: its `libnds` sound calls give the required methods, its own
+  cue volumes go, and 3024's host tests pass unchanged. If not, nothing
+  to do (3024 implements the shared trait).
+- **Either order with 3061 (parked, DS music):** if 3061 is done, move
+  `shuyi-nds`'s songs onto the shared backend trait with its sound
+  effects: its song player gives `load_music`, `poll_music`, `play`,
+  `set_volume` and `stop` for a track, and the provided methods it can
+  play; its own fades and music clock go, and 3061's host tests pass
+  unchanged. If not, nothing to do (3061 plays its songs through the
+  shared trait).
 - **An ADR for the shared trait** (the `write-adr` skill), because the
   trait becomes public here. It records the required methods, the
   provided ones with their defaults and fallbacks, the one warning per
@@ -162,13 +199,15 @@ None.
   ADR-0004 §6 and ADR-0024 §2.
 
 **Out (do not do):**
-- MIDI through the SDK's synth (2205, 2206, parked).
+- MIDI through the SDK's synth: 3057 (parked), after 2206 and this
+  ticket.
 - Any game's sound list.
 - A stereo pan of this ticket's own. It is added as another provided
   method when a tick example needs it (ADR-0004 §6; 2363, parked).
-- Pitch: the SDK's sample player can change its rate, but cue pitch
-  waits until the desktop and the web can play it too (3030, parked);
-  don't add it for the Playdate alone.
+- Cue pitch (a pitch range in the cue rules, picked for each play):
+  2379 (parked), once the desktop and the web play through 3030's
+  mixer. This ticket adds only `set_rate` above; don't pick pitches
+  for the Playdate alone.
 - Groups and ducking (2342, 2343: the player's rules over
   `set_volume`); this ticket only carries their gains across, as above.
   Effects, buses and seeking: write a ticket when a game asks.
@@ -181,8 +220,8 @@ may need an import path changed in that PR.
 
 1. Read `shuyi-app`'s audio module and its tests; read the game's
    Playdate audio and conversion. Check whether 2225, 2341, 2342, 2343,
-   2344, 2345 (and its part two) and 2363 are done (the either-order
-   clauses).
+   2344, 2345, 2378, 2363, 2725, 3024, 3027 and 3061 are done (the
+   either-order clauses).
 2. Move the rules behind the backend trait; desktop tests unchanged.
 3. Add the provided methods and the warning helper, and write the ADR.
 4. The Playdate backend's audio with a fake SDK.
@@ -209,6 +248,9 @@ may need an import path changed in that PR.
       pausing the sample and file players and `resume` starting them
       again where they were, and a handle's sample player stopping
       alone.
+- [ ] If 2378 is done: with the fake SDK, of two copies of one sound,
+      the one `SoundRequest::StopCopy` names stops and the other plays
+      on.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

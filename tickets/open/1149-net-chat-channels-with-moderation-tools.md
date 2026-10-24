@@ -41,8 +41,14 @@ None to build it. Turning chat on in our game comes with 0053.
   (peers) or the services (accounts).
   - Messages have a size limit and a rate limit.
   - History is kept only as long as the game configures.
-- **Word filter:** `rustrict` (MIT/Apache) by default. On Steam, Steam's
+- **Word filter:** `rustrict` (MIT/Apache) by default, which 1148
+  already added for display names: reuse it. On Steam, Steam's
   text filter, which follows each player's own settings.
+  **Either order with 1144 and 3037:** if either is done, with the
+  `steam` feature on and Steam running, the filter is Steam's, asked
+  through its `steam` module's handle. If neither is, `rustrict` alone,
+  the completion notes say so, and 1144 adds Steam's filter (its clause
+  on this ticket).
 - **Block and mute** on the client, with block saved per account.
 - **Report:** a message plus context goes to a moderation queue in
   `shuyi-services`. A small moderation command lets someone list, act on
@@ -71,6 +77,10 @@ None to build it. Turning chat on in our game comes with 0053.
   typed in chat doesn't also fire the match's action on that key: the
   chat screen then declares nothing (`None` takes every action, and only
   time goes down), or the match screen stops reading its actions.
+- **Either order with 2910** (voice chat research): if 2910 is done,
+  the "what running chat means" page (step 4) takes the voice section
+  of `docs/research/2910-voice-chat.md`, or links it; if not, nothing
+  to do (2910 links this page when it lands).
 - Tests:
   - filtering;
   - limits;

@@ -6,7 +6,7 @@ milestone: "Engine: debug view"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["2315", "2316"]
+blocked_by: ["2315", "2316", "2321"]
 nick_input: none
 completed:
 ---
@@ -45,7 +45,9 @@ None.
 - **`shuyi_ui::debug::profile`:**
   - `FrameTimes { update_us, draw_us, paint_us, present_us, frame_us }`,
     which the platform hands to `Game::frame` as an `Option` (the
-    headless backend hands `None`, or a fake for tests);
+    headless backend hands `None`, or a fake for tests). It is a view
+    the backend fills in, so it is `#[non_exhaustive]` with a `new`
+    (ADR-0039 §3): 2382 (parked) adds a GPU time to it;
   - a ring of the last 240 frames in `DebugView` (2315), with p50, p99
     and the worst frame over it;
   - **spans:** `Ctx::span(name: &'static str) -> Span`, a guard that
@@ -79,8 +81,8 @@ None.
   tools only.
 
 **Out (do not do):**
-- GPU times (they need timestamp queries on the wgpu renderer; a
-  follow-up after 3034);
+- GPU times (they need timestamp queries on the wgpu renderer): 2382
+  (parked) adds them once 3034's renderer exists;
 - memory: 2368 (parked), which shares this ticket's ring and bars
   (either order);
 - Tracy or the `tracing` crate (a follow-up if a developer asks);

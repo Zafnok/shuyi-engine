@@ -86,10 +86,12 @@ Why it matters:
    screen's English also updates each language, by machine, in the same
    PR. Each language adds a little to every such PR.
 
-Whether people may later review and correct these packs (their
-`made_by` would then name them) belongs to the contribution policy
-(1132). Record the answer with the `ask-nick` skill in
-`docs/decisions.md`.
+4. May people later review and correct these packs (their `made_by`
+   would then name them)? That is part of the contribution policy, so
+   the answer also goes in `CONTRIBUTING.md` (1132's file; see the
+   either-order list below).
+
+Record the answers with the `ask-nick` skill in `docs/decisions.md`.
 
 ## Scope
 
@@ -184,11 +186,16 @@ Whether people may later review and correct these packs (their
     reads it); if not, 2223 adds that, as its clause says.
   - **2348** (plurals): if it is done, `profile.message.too_many` is a
     plural message in each engine pack, with the categories of the
-    pack's language; if not, the upkeep test makes 2348's PR update
-    the packs when it changes that key's English.
-  - **2302** (`max_cells`): if it is done, the upkeep test also fails
-    on an engine pack entry wider than its key's `max_cells` in the
-    engine's English; if not, the snapshots are the check.
+    pack's language; if not, 2348 makes it one in each engine pack, as
+    its clause says (the upkeep test holds its PR to that).
+  - **2302** (`max_cells`): if it is done, give the engine's English
+    keys a `max_cells` where their place on the engine's screens has a
+    fixed width, and the upkeep test also fails on an engine pack entry
+    wider than its key's `max_cells`; if not, the snapshots are the
+    check, and 2302 adds both (its clause says so).
+  - **1132** (community files): if it is done, add Nick's answer to
+    question 4 to its `CONTRIBUTING.md`; if not, 1132 writes it there
+    from `docs/decisions.md`, as its clause says.
 
 About 550 changed lines, the packs and the snapshots aside.
 
@@ -196,10 +203,17 @@ About 550 changed lines, the packs and the snapshots aside.
 - Translating a game's own text.
 - A language picker or the player's saved language (2349).
 - Languages that need tags with a region or script (2226) or wide
-  glyphs (2301, 2303) until those are done; right-to-left and shaped
-  scripts (2908).
-- Translation by people, or community packs (1132, Nick's call).
-- Translator exchange files for the engine's packs (2227, parked).
+  glyphs (2301, 2303). **Either order with 2226, 2301 and 2303:** if
+  they are done, Nick may pick such a language (question 2); if not,
+  it is left out, and nothing is left to them (an engine pack in it
+  later is a ticket of its own, if Nick asks). Right-to-left and
+  shaped scripts (2908).
+- Translation by people, or community packs: question 4 asks Nick
+  only whether people may correct these packs; more is a ticket of
+  its own.
+- Translator exchange files for the engine's packs: 2227 (parked)
+  exports a game's packs only, and says so. A ticket of its own if a
+  person checks the engine's packs in a translation tool.
 - Translation at run time, an online service or a paid API: the packs
   are made once in a session and checked in.
 - A walk over every screen for cut text: 2353's pseudo-language walk,

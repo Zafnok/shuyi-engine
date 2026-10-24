@@ -6,7 +6,7 @@ milestone: "Engine: action RPGs"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2756", "2748", "2106", "2114"]
+blocked_by: ["2756", "2757", "2748", "2106", "2114"]
 nick_input: none
 completed:
 ---
@@ -27,7 +27,8 @@ is, when it wakes and when it gives up is shared bookkeeping.
 **Who uses it** (ADR-0033 §17's bar for engine work): action RPGs,
 MMOs, survival games, open-world action games, top-down shooters.
 
-It builds on 2756 (bodies, teams, `ActionMath`), 2106 (routes over the
+It builds on 2756 (bodies, teams, `ActionMath`), 2757 (`SkillState`
+and its `Use` command, for the default mind), 2106 (routes over the
 navigation mesh), 2114 (weighted picks, named streams).
 
 **Either order with 2758:** if 2758 is done, a pack's leader rolls

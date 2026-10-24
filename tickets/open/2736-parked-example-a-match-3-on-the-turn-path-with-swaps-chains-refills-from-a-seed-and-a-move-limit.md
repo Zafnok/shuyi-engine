@@ -55,16 +55,20 @@ What Shuyi has today:
   or black by its brightness, so a tint alone may not show;
 - the `wasm` job of `.github/workflows/ci.yml` and
   `.github/workflows/pages.yml` name `examples/hello-grid` by hand, so
-  each new example needs steps there.
+  each new example needs steps there;
+- the short path a small game is written on (2511, ADR-0036):
+  `BasicGame::with_own`, whose `Own<T>` reader is
+  `fn(&Bundle) -> Result<T, Vec<ContentError>>`, with `.console` and
+  `.screens` (`crates/platform/src/basic.rs`); `BasicData` and
+  `BASIC_GLYPHS` (`crates/ui/src/basic.rs`); `BasicTools`
+  (`crates/cli/src/basic.rs`); and `shuyi::prelude` with `run_game`.
+  `UiAction` is an `ActionSet` of hello-grid's six actions. `run_game`
+  plays no sounds; 2225 gives the short path its sounds.
 
 What is planned:
 
 - 2114 (After MVP): named streams (`SimRng::stream`), and `index`,
   `pick` and `shuffle` on `RandomSource`;
-- 2511 (MVP): the short path a small game is written on (`BasicGame`,
-  `BasicData`, `BasicTools`, a prelude and `run_game`), with `UiAction`
-  as an `ActionSet` of hello-grid's six actions. Its `run_game` plays no
-  sounds until 2225 gives the short path its sounds;
 - 2803: the tutorial's box-pushing puzzle, the other puzzle on a grid;
 - 2735, 2737 and 2738 (parked): the roguelike and the rest of the
   gallery; 2739 (parked): snake;
@@ -163,8 +167,8 @@ each part is one PR.
     gems, ties to the first in `legal_commands`.
 - **The two follow-up tickets** below, written with the `write-ticket`
   skill. Each keeps the milestone this ticket has once unparked and
-  `status: todo`. Part 2 is blocked by this ticket and 2511; part 3 by
-  part 2. Each says what changed since this ticket was written (which
+  `status: todo`. Part 2 is blocked by this ticket; part 3 by part 2.
+  Each says what changed since this ticket was written (which
   either-order tickets are done).
 
 **Part 2 (a follow-up ticket): the match-3 played.**
@@ -208,7 +212,9 @@ each part is one PR.
   `font_atlas.required_glyphs`, `Terminus-LICENSE.txt` beside it, and a
   row in `THIRD_PARTY_ASSETS.md`.
 - **Sounds:** if 2225 is done, `files/audio.ron` with its menu presets.
-  If not, the example is silent, as 2511's `run_game` is.
+  If not, the example is silent, as 2511's `run_game` is, its README
+  says so, and 2225's PR adds the sounds (its item on the gallery
+  examples says so).
 - **The targets:** `ConsoleSpec::text(50, 15)` is the Playdate's
   400 × 240, and a 10-wide level (20 columns) fits beside the panel.
   `shuyi.ron` lists `desktop`, `web`, `steam-deck` and `playdate`, each
@@ -235,12 +241,16 @@ each part is one PR.
   start, with a gem picked, and at a level's end
   (`insta::assert_binary_snapshot!`, as hello-grid's
   `tests/it/snapshot.rs`); `cargo shuyi check`, `check --target all`
-  and `check-keys`. If 2116 is done, a golden table of one record. If
+  and `check-keys`. **Either order with 2116:** if 2116 is done, a
+  golden table of one record, as Hello, Grid's (`tests/golden.rs`, the
+  window behind a default `window` feature, its own wasm32 step in the
+  `determinism` job); if not, nothing (2116 adds none to an example
+  that lands first). If
   2527 is done, `shuyi soak` over 20 seeds.
 - **CI and Pages,** either order with the other examples (2735, 2737,
-  2738, 2739): if the `wasm` job of `.github/workflows/ci.yml` and
-  `.github/workflows/pages.yml` still name each example by hand (today
-  `examples/hello-grid` alone), change both to a loop over every
+  2738, 2739 and 2740): if the `wasm` job of `.github/workflows/ci.yml`
+  and `.github/workflows/pages.yml` still name each example by hand
+  (today `examples/hello-grid` alone), change both to a loop over every
   `examples/*/shuyi.ron` that has a `web` section:
   `cargo shuyi check --target all` and `cargo shuyi web --release` in
   each folder, an uploaded artifact per example, and in `pages.yml`
@@ -281,7 +291,7 @@ each part is one PR.
 - special gems (line clears, bombs), blockers, goals other than points,
   and timed modes: follow-ups if a game asks;
 - smooth falls on a sprite skin (2109's tweens), and shake or flash on a
-  long chain (2340): follow-ups;
+  long chain (2340): follow-ups if a game asks;
 - saves and a level select: the levels play in order, and nothing is
   kept;
 - search bots (2113): `Greedy` is enough for an example;

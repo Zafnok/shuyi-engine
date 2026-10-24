@@ -59,7 +59,12 @@ None.
   party of one and a party of six, run in CI as the other examples'
   playtests are (2021's workflow, if done).
 - **A soak** (2527, if done): `shuyi soak` over the example with the
-  explorer bot finds no panic and no hash mismatch in 1000 runs.
+  explorer bot finds no panic and no hash mismatch in 1000 runs. The
+  example's tools implement `soak` over `shuyi_core::soak::play`, which
+  takes any bot (2527's `soak::turns` plays random bots).
+- **The `shuyi-crawl` skill**, if it exists: a section on the explorer
+  bot and the example's playtest, and 2755 dropped from its `waits_for`
+  (2741 put it there).
 
 **Out (do not do):**
 - tuning the example's numbers beyond making its bands pass;

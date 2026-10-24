@@ -161,13 +161,24 @@ the graded references of 2524.
        setup script put them, so the toolchain is still found, and
        `CARGO_TARGET_DIR` is unset, so the game builds as a user's first
        build does. From the checkout, `cargo shuyi new <template>
-       <run>/game --engine-rev <GITHUB_SHA>`, so the game depends on the
-       engine as a user's does; then a copy of `game` as the base for
-       the line count;
-    2. writes the MCP server's entry (1133) for Claude Code to a file,
-       the one `shuyi mcp install --dry-run` prints, and passes it with
-       `--mcp-config`, so nothing asks; the skills are the ones
-       `shuyi new` copied into the project (1134);
+       <run>/game --name <name> --engine-rev <GITHUB_SHA>`, with the
+       task's `template` and `name` (2524), so the game depends on the
+       engine as a user's does and is named as its reference is; then a
+       copy of `game` as the base for the line count;
+    2. writes the MCP server's entry (1133) for Claude Code to a file
+       and passes it with `--mcp-config`, so nothing asks. The entry
+       comes from `mcp install --dry-run`, run in `game` with the
+       checkout's `shuyi-cli` (`cargo shuyi` there would build the
+       game's tools before the agent starts). That output isn't one
+       JSON file: a line `mcp install: would write <file> (<agent>):`
+       comes before each file, and Claude Code gets two, `.mcp.json`
+       and `.claude/settings.json` (2545). Only the `.mcp.json` part
+       goes in the file; the settings' `env.MCP_TIMEOUT` (5 minutes,
+       `install::MCP_TIMEOUT`) goes in the agent's environment, so the
+       server's cold first build isn't cut off at Claude Code's 30 s
+       default. A test checks that the file parses as JSON and names
+       the server. The skills are the ones `shuyi new` copied into the
+       project (1134);
     3. writes a `cargo` wrapper into the run's `bin/` (from a string in
        `run.rs`, mode 755) and puts that folder first on `PATH`: a `sh`
        script that runs the real `cargo` (its path found before `PATH`

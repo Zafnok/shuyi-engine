@@ -6,7 +6,7 @@ milestone: "Parked: 3D"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3104", "1123", "1124", "3017"]
+blocked_by: ["3104", "1123", "1124", "3017", "2220", "2405"]
 nick_input: none
 completed:
 ---
@@ -32,8 +32,9 @@ crate, its fixtures or its docs.
 It builds on 3104 (the GPU painter, its shadow map and effects; through
 it 3103's 3D view and rasterizer), 1123 (animation clips, so characters
 are billboards of their clips), 1124 (`TileMap` from Tiled and LDtk,
-its layers and objects, and hot reload) and 3017 (target capabilities,
-and `shuyi check --target` failing on a need the target lacks).
+its layers and objects), 2220 (hot reload, through which 1124's maps
+reload as `Hot<TileMap>`) and 3017 (target capabilities, and
+`shuyi check --target` failing on a need the target lacks).
 
 ## Nick input
 
@@ -50,6 +51,13 @@ None.
     alternatives `shuyi-3d`; `serves`: `top-down-grid`,
     `top-down-free`, `isometric`; `needs` (3017): `three_d: hardware`;
   - the `diorama` feature in `shuyi`; the catalog row set to building;
+  - **the building status:** 2003's catalog has none
+    (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
+    still has none, add `Status::Building`, named `building`, with its
+    doc, the `status` line of `docs/modules.ron`'s header, *How to read
+    it* in `docs/modules.md` and the `modules` schema. `Status` is a
+    public enum: write a `Breaking:` line if CI's `api` job reports
+    one;
   - the README's first two sections (what it is for, what it is not
     for: a 3D game's rules, which are `shuyi-3d`'s). 3109 finishes the
     rest.
@@ -67,8 +75,9 @@ None.
   - `layers`: which world layers of the scene are `Actors`
     (billboards) and which object layer gives `Props`;
   - `props`: per object kind, a mesh (3102) or a billboard;
-  - `shadow`: `Blob` (a dark quad on the ground) or `Cast` (the
-    billboard casts into the shadow map);
+  - `shadow`: `Blob` (a dark quad on the ground, with the billboard's
+    `casts_shadow` off) or `Cast` (`casts_shadow` on, so the billboard
+    casts into 3104's shadow map);
   - `camera`: `tilt: Angle16`, `distance`, `fov_y`, and how the 2D
     zoom maps to distance;
   - `lights`;
@@ -76,8 +85,9 @@ None.
     `fog`, `light_shafts`, `vignette`, `colour_grade`), its settings,
     and `optional: bool`.
 - **Terrain**: built from the map and the heights when the stage
-  starts and again on hot reload, as one `Mesh` per chunk of 16 × 16
-  tiles, with the tile images as textures and `pixel` on.
+  starts, and again when the map, its tilesets or the skin file reload
+  (2220's `Hot`), as one `Mesh` per chunk of 16 × 16 tiles, with the
+  tile images as textures and `pixel` on.
 - **`DioramaSkin::build(scene, map, frame)`**: reads the 2D world scene
   (1120) and adds one `View3d` (3103) in place of the 2D world layers:
   - terrain draws;
@@ -98,9 +108,19 @@ None.
   that the input layer uses for the pointer under this skin: a ray from
   the 3D camera through the pointer, walked over the tile grid in
   integers (a grid walk against block heights), gives the world pixel
-  of the tile hit. `TickInput` stores that world position as before
-  (1121), so a record replays without the skin. If 1121 has no such
-  hook, add it in `shuyi-ui::input` here.
+  of the tile hit. **Either order with 1121:** if 1121 is done, hook
+  `WorldPick` into its world-pointer mapping here, so `TickInput`
+  stores the picked world position and a record replays without the
+  skin; if not, define the `WorldPick` hook in `shuyi-ui::input` here,
+  and 1121's mapping asks it when a skin sets one.
+- **The debug view's gizmos.** They are 2D, in console pixels, placed
+  where the flat 2D camera draws a world point, so over the diorama
+  they would miss what they mark. `build` places each world gizmo
+  again: its points are taken back through the 2D camera to world
+  points, lifted to the terrain's height, and projected by the
+  diorama camera. They stay 2D gizmos, drawn on top.
+  **Either order with 2320:** if 2320 is done, nothing changes here
+  (its `Gizmo3`s are for 3D stages); if not, nothing to do.
 - **Effects and targets.** The skin file gives 3017's `Needs`:
   `three_d: Hardware`, the effects not marked `optional` as required
   effects, and the others in its optional list. So `shuyi check
@@ -111,6 +131,12 @@ None.
   the tests (ours, CC0) with three heights, a slope and a cliff, two
   characters walking a scripted path, a flat 2D skin, and a diorama
   skin file.
+- **Picking on a grid stage.** A grid stage (the grid kit's, as in
+  the `grid` template) finds the tile under the pointer through 2405's
+  `GridSkin::tile_at` and `tile_px`, which assume flat tiles. The
+  diorama's skin for a grid stage overrides both with the same grid
+  walk as `WorldPick`, so a click on a raised tile picks that tile and
+  not the one the flat map has under the pointer.
 
 **Out (do not do):**
 - any change to the 2D kits' rules;
@@ -126,7 +152,8 @@ None.
    catalog row.
 2. Write the skin file format, with good and bad fixtures.
 3. Build the terrain from the fixture map, and check its snapshot text.
-4. Write `build`: props, characters, camera, lights, effects.
+4. Write `build`: props, characters, camera, lights, effects, and the
+   debug view's gizmos placed again.
 5. Write the `WorldPick` hook and the grid walk, with tests.
 6. Report needs to `shuyi check --target`, with fixture targets.
 7. Write the acceptance test of flat against diorama.
@@ -141,6 +168,8 @@ None.
       hash.
 - [ ] Picking the pointer at the centre of each visible top face gives
       that tile, at every height (unit test over the fixture).
+- [ ] On a grid stage, `tile_at` at the centre of a raised tile's top
+      face gives that tile (unit test over the fixture).
 - [ ] A fixture skin with `depth_of_field` required fails
       `shuyi check --target` on a fixture target without it, and with
       `optional: true` passes and lists it.
@@ -150,7 +179,8 @@ None.
 
 ## Tests required
 
-- Unit: the skin file; terrain pieces; picking; needs.
+- Unit: the skin file; terrain pieces; picking; needs; a world gizmo
+  at a character's foot, placed again on its billboard's foot.
 - Integration: flat against diorama on the same replay.
 - Golden and fixture: the view snapshot and the picture hash.
 

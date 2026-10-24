@@ -121,6 +121,18 @@ the PR.
 
    `cargo xtask ticket-lint` then prints no warning naming NNNN. In a
    parked ticket only the clause changes.
+6. **Hand over what this ticket leaves.** Look at each piece this
+   ticket leaves to another open ticket:
+   - the *if not* branch of a clause, which you took;
+   - a part that waits for it;
+   - an **Out** line naming it;
+   - a deviation in your notes.
+
+   Open that ticket and check that it names this one and says it does
+   the piece. If it doesn't, write it there now, as what holds:
+   "**From NNNN (done):** …". After the move to `done/`, no later grep
+   finds this ticket, so this is the last moment the handoff can be
+   written (the `write-ticket` skill, *Check the dependency chain*).
 
 ## 6. Commit and PR
 

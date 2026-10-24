@@ -68,7 +68,8 @@ None.
 - using the grid for steering (2711), targets and area damage (2712),
   vision (2713) or selection (2716);
 - quadtrees, bounding-volume trees, or a grid per team (ADR-0015 §4);
-- parallel rebuilds (2717).
+- parallel rebuilds: 2717 keeps the rebuild on one thread, and a
+  parallel one is a later ticket if 2718 shows it matters.
 
 ## Implementation steps
 

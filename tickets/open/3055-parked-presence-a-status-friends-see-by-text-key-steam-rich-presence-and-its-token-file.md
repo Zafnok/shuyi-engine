@@ -229,10 +229,9 @@ with a fake):
     no Steam language is left out with a warning (Steam shows those
     players English). The test pack (`lang_status::TEST_PACK`) is left
     out without one;
-  - **either order with 2226:** if 2226 is done, the packs' codes are
-    BCP 47 tags, the tagged rows match, and the source block is
-    `Lang::source_lang().code`'s; if not, only the rows with no region
-    match and the source is English;
+  - the packs' codes are BCP 47 tags (2226 is done first: it blocks
+    2349, which blocks 3037), so the tagged rows match, and the source
+    block is `Lang::source_lang().code`'s;
   - it fails, listing each problem with its key, on: two keys with one
     token; a key with a character outside lowercase letters, digits,
     `_`, `.` and `-`; a placeholder outside lowercase letters, digits

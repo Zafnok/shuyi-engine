@@ -40,12 +40,12 @@ Shuyi today:
   and the time since it started, as the cinematics already are (game
   ADR-0060, `crates/assets/src/cinematic.rs`).
 - Nothing implements it: no crate names `AnimationClip`, `AnimationSet`
-  or `frame_at`. 1123 plans the types, `frame_at`, a RON form and the
-  Aseprite and TexturePacker importers, and is blocked by 1119 (the tick
+  or `frame_at`. 1123 planned the types, `frame_at`, a RON form and the
+  Aseprite and TexturePacker importers, blocked by 1119 (the tick
   simulation). But `frame_at(clip, elapsed_ms)` needs no `Fx` and no
   step. A tick game only adds storing `(clip, start_step)` per thing,
-  and that stays with 1119. The block came from parking 1119–1125
-  together, not from the code.
+  in whichever store it uses (the last **Out** line below). The block
+  came from parking 1119–1125 together, not from the code.
 - The only animation is hard-coded: `crates/ui/src/grid/walk.rs` has
   `IDLE_FRAMES`, `WALK_FRAMES`, `IDLE_STEP_MS` and `WALK_FRAME_S` for
   one sheet layout (three frames a row, a row per `Facing`).
@@ -226,6 +226,18 @@ None.
   - the table *The kinds of ADR-0007 §1*: `AnimationSet` is
     `anim::AnimationSet` (2231), `Atlas` is 2222's, and the importers
     are 1123's.
+- **Either order with 1122:** the `movers` answer of the bodies concern
+  in `docs/modules.ron` (2003 wrote it parked) is 1122's movers and
+  these clips. If 1122 is done, set it to ready; if not, nothing to do
+  (1122 sets it).
+- **Either order with 1134:** if 1134 is done, its `shuyi-animate`
+  skill (`skills/shuyi-animate/SKILL.md`) teaches clips: a set file
+  beside its picture, `AnimationSet::clip` and `frame_at`. It drops
+  `2231` from its `waits_for` (`check-skills` fails on an id not in
+  `tickets/open/`) and gains its worked example, a script of contract
+  operations CI runs on a fresh `shuyi new` game as 1134's others
+  are. Its section on particles stays as it is. If not, nothing to do
+  (1134 writes the skill with its example).
 - **For the game:** no API break. Everything is new except two derives
   on `ImageRect` and a function made `pub(crate)`, and
   `Formats::standard()` gains a format of a new kind, which clashes
@@ -237,11 +249,13 @@ None.
 - which clip plays when, direction sets and frame events (2104);
 - animated tiles and unit frames in the grid kit (2359), and the
   tile-layer painter with Tiled's tile animations (2360, 1124);
-- storing `(clip, start_step)` in a tick simulation (1119);
+- storing `(clip, start_step)` in a tick simulation: the game does, in
+  whichever store it uses (the last line below);
 - particles (2103); tweens and easing (the cinematics today, 2109);
   skeletal animation (2105);
 - packing pictures into atlas pages (2222);
-- the `shuyi-animate` skill of the skill pack (1134);
+- the rest of the `shuyi-animate` skill: it is 1134's, and this
+  ticket adds only its clips, if 1134 is done (**In**);
 - a shorthand for frames laid out in a grid of cells (a follow-up if
   files get long);
 - a picture outside the set's folder (`..`): a follow-up if games need

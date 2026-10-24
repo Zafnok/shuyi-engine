@@ -33,10 +33,13 @@ What Shuyi has today (checked 2026-10-21):
   (`crates/assets/src/audio.rs:324`) with `parse_ron`, and its raw
   entries (`RawSound`, `RawMusic`) deny unknown fields. `Check::sound`
   and `Check::music` (`:430`, `:461`) build the cues.
-- The cues are built as struct literals in `crates/app/src/audio.rs`,
+- `MusicCue`s are built as struct literals in `crates/app/src/audio.rs`,
   `crates/assets/src/credits.rs`, `crates/assets/src/cinematic/tests.rs`,
-  `crates/ui/src/audio.rs` (tests), `crates/ui/src/toy.rs` and
-  `examples/hello-grid/src/sound.rs`.
+  `crates/ui/src/audio.rs` (tests) and `crates/ui/src/toy.rs`.
+  **From 2024 (done):** `SoundCue` is `#[non_exhaustive]`, and every
+  caller outside `crates/assets` builds it with `SoundCue::new`; the
+  only `SoundCue` literals left are `Check::sound`'s and the tests' in
+  `crates/assets/src/audio.rs` and `crates/assets/src/credits.rs`.
 - Screens ask for sounds through `AudioQueue` (`crates/ui/src/audio.rs`).
   `Game::collect_audio` (`crates/ui/src/game.rs:281`) takes the requests
   each frame and runs `MusicState`, which turns them into
@@ -237,24 +240,34 @@ None.
     does it.
   - **2340, and 2404 (parked):** each adds settings to `Settings` and
     the saved forms. Whichever lands second follows the first's shape.
-  - **2345:** its cue rules run in `App`, after `Game::collect_audio`,
-    so a play it drops (a gap, a cap) still shows its caption: the
-    thing happened. If it is done, `SoundCue::new` sets `caption: None`.
-  - **2342, 2344 and 2345** each add a field to `SoundCue`. The later
-    to land rebases onto the other's `SoundCue` and bumps
-    `pack::VERSION` again.
+  - **2345 and 2378:** their cue rules run in `App`, after
+    `Game::collect_audio`, so a play they drop (a gap, a cap, every
+    voice busy) still shows its caption: the thing happened. Done or
+    not, nothing more to do here.
+  - **2342, 2344 and 2345** each add a field to `SoundCue`, and 2342
+    and 2365 each add one to `MusicCue`. The later to land rebases onto
+    the other's cue and bumps `pack::VERSION` again.
+  - **2344:** if 2344 is done, `feed` treats a `StartSound` of a
+    captioned cue as a `PlaySound`: its line is added once when it
+    starts, never again per loop, with a test. If not, 2344 does it
+    (its clause says so).
   - **Public types (ADR-0039):** `SoundCue` is under it (2024), and its
     `new` leaves `caption` at `None`. `MusicCue` moves under it in this
-    PR, as its *When* rule says of a type that next gains a field:
-    `#[non_exhaustive]`, with a `new` that leaves `caption` at `None`.
+    PR if it isn't already, as its *When* rule says of a type that next
+    gains a field: `#[non_exhaustive]`, with a `new` that leaves
+    `caption` at `None`. **Either order with 2365 (parked, beats):** if
+    2365 is done, it moved `MusicCue` already, so only add `caption` to
+    its `new`; if not, 2365 adds its `tempo` to the `new` written here.
   - **2218:** if it is done, its `AudioManifestRon` writer writes
     `caption` only when it is `Some`, in the implicit-`Some` form, and
     its round trip covers a captioned cue. If not, 2218 does it.
 - **What changes for the game:**
-  - `SoundCue` and `MusicCue` gain a public field. A code search of the
-    game's repository on 2026-10-20 found `SoundCue {` struct literals
-    in its code, so those move to `SoundCue::new` (ADR-0039).
-    The PR says so in a `Breaking:` line (2010).
+  - `SoundCue` and `MusicCue` gain a public field. `SoundCue`'s breaks
+    no game: it is `#[non_exhaustive]` since 2024, and the game moves
+    its `SoundCue {` literals to `SoundCue::new` when its pin passes
+    2024. `MusicCue` becoming `#[non_exhaustive]` here breaks a game
+    that builds it by literal: the PR says so in a `Breaking:` line
+    (2010).
   - `Settings` gains a field (additive); `GameData` gains a defaulted
     method (additive); old manifests read as before. The game's
     `GameSettings` saves the field if it wants the setting kept.
@@ -266,8 +279,8 @@ None.
 - speech: voice lines are already text in the text box, and the visual
   novel backlog is 2723; speaker labels;
 - which way a sound came from (an arrow or a side): it needs positional
-  sound (2363, parked). Whichever of 2363 and this ticket lands second
-  writes it as a ticket of its own (the `write-ticket` skill);
+  sound (2363, parked), so 2381 does it, blocked by 2363 and
+  this ticket;
 - audio description, a mono downmix, and visual cues other than text
   (a flash on a sound is 2340's and the game's);
 - a new event stream for captions in `shuyi run` or the Harness: they

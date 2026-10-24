@@ -36,12 +36,12 @@ one of the protections Nick put in the MVP, before the first release
 **What Shuyi has today** (checked 2026-10-20):
 
 - `shuyi doctor` (`crates/cli/src/contract/doctor.rs`, ticket 1129):
-  `checks()` (lines 115–182) looks at `rustc`, `cargo`, rustup's
+  `checks()` (lines 118–184) looks at `rustc`, `cargo`, rustup's
   targets, MSYS2's GCC on the Windows GNU host and the wasm target,
-  through the `Probe` trait (lines 56–63: `output` and `exists`). On
+  through the `Probe` trait (lines 57–64: `output` and `exists`). On
   Linux it checks nothing more, and says so: `doctor()` pushes the limit
   "the system libraries macroquad links on Linux (ALSA, X11, GL) are
-  not checked" (lines 192–194).
+  not checked" (lines 194–196).
 - What a Linux build needs, read from the crates in `Cargo.lock`:
   - a C linker, `cc`: rustc links every binary and build script with
     it, so in a container without it nothing builds, `shuyi` included;
@@ -147,21 +147,21 @@ None.
     run, not per row), or else as a file in `/usr/lib/x86_64-linux-gnu`,
     `/usr/lib/aarch64-linux-gnu`, `/usr/lib64` or `/usr/lib` through
     `Probe::exists`; `found` is where;
-  - a failed row's `fix` is one install command for this distro:
+  - a failed row's `help` is one install command for this distro:
     `sudo apt-get install -y <apt>`, `sudo dnf install -y <dnf>` or
     `sudo pacman -S --needed <pacman>`, without `sudo` when `id -u`
     prints `0`, followed by "; in a game made with `shuyi new`, `bash
     scripts/setup-linux.sh` installs them all". The distro comes from
     `ID` and `ID_LIKE` in `/etc/os-release` (quoted or not): `debian`
     or `ubuntu` means apt, `fedora`, `rhel` or `centos` dnf, `arch`
-    pacman. Anything else, or no file: the fix names all three
+    pacman. Anything else, or no file: the help names all three
     packages, one per manager.
   - `Probe` gains `fn read(&self, path: &Path) -> Option<String>`
     (`ThisMachine`: `fs::read_to_string(path).ok()`). This changes
     `shuyi-cli`'s public API (a new required method of a public trait);
     nothing outside its tests implements `Probe`, so a game builds
     unchanged. The PR description says so.
-  - The limit at lines 192–194 goes. When the host is unknown (no
+  - The limit at lines 194–196 goes. When the host is unknown (no
     `rustc`), the existing limit becomes "without rustc the host is
     unknown: MSYS2 and the Linux libraries were not checked".
   - **Doctor stays read-only.** It never runs a package manager or
@@ -273,7 +273,8 @@ None.
 - **Either order with other tickets:**
   - **2501** (templates made of parts): if done, the script and the
     dev container go in its `base` part; if not, in each template's
-    folder.
+    folder, and 2501 moves them into `base` (its `base` bullet says
+    so).
   - **Any new template:** the copy tests below run over
     `Template::ALL`, so whichever lands second adds the two files to
     it. 2511 adds no template: it makes `blank` the minimal one.
@@ -282,11 +283,15 @@ None.
     fails doctor when `git` is missing, `git` becomes a row of the
     table (`git` for apt, dnf and pacman, found by `git --version`), so
     the script installs it and the container's doctor passes. Whichever
-    lands second adds the row.
-  - **2509** (problem codes): if it is done, `Check`'s `fix` is called
-    `help` and `doctor::text` prints `help:`, so this ticket's rows and
-    tests say `help` where Scope says `fix`. If not, 2509 renames them
-    with the rest.
+    lands second adds the row. With `git` a row, the workflow test
+    below still lets a line before `actions/checkout` install `git`
+    (the script isn't checked out yet, and 2525's `run` job needs a
+    repository), and a line that installs `git` after the script goes,
+    since the script installs it.
+  - **2509** (done: problem codes, ADR-0028): a check's field is
+    `help`, not `fix`, and `doctor::text` prints it as `help:`, so the
+    Linux rows' install commands are their `help`. A `doctor` with a
+    failed check answers `SH1003` and exits 3, the Linux rows included.
   - **2010** (done: the `api` job, which installs the libraries with
     the `clippy` job's apt line) or any job added first with an apt
     line: this ticket turns that line into the script too; the workflow
@@ -296,6 +301,11 @@ None.
     unchanged.
   - **2012** (the pinned Rust): the script and the dev container name
     no Rust version, so `check-toolchain` needs nothing new.
+  - **2403** (parked: in-house pads, gilrs removed): if it is done and
+    `cargo tree -i libudev-sys` is empty, leave the `lib-udev` row out
+    of the table and libudev's package out of the script's three
+    lines. If not, the row stays, and 2403 drops it when it lands (its
+    clause).
 
 **Out (do not do):**
 - `doctor --fix`, or doctor running `sudo` or a package manager: the
@@ -304,14 +314,16 @@ None.
   ticket);
 - the book's quick start (2802 adds the Linux line and the Codespaces
   link);
-- installing the engine's `shuyi` binary in the container (`cargo
-  install`, after 2005);
+- installing the engine's `shuyi` binary in the container: it runs
+  from source (`cargo run -q -p shuyi-cli --` in the engine, `cargo
+  shuyi` in a game, built from the game's own engine version), and the
+  release (2005) changes nothing there;
 - an in-browser compiler or a hosted playground, a prebuilt image on a
   registry, and anything that costs Nick money;
 - the Playdate SDK in the container (its license doesn't allow
   redistributing it);
 - macOS's command line tools in doctor, and package managers beyond
-  apt, dnf and pacman (the fix names the libraries for those);
+  apt, dnf and pacman (the help names the libraries for those);
 - per-agent setup files (`.claude/settings.json` hooks, Codex's
   environment settings, `.github/workflows/copilot-setup-steps.yml`):
   the templates' `AGENTS.md` says what to run, and each agent's own
@@ -329,7 +341,10 @@ None.
 
 If the PR grows well past 600 changed lines, not counting the byte-equal
 copies, move the dev container and the Codespaces link to a follow-up
-ticket (the `write-ticket` skill) and keep the rest.
+ticket (the `write-ticket` skill) and keep the rest. In the same PR, add
+that ticket to the `blocked_by` of 2531 (which edits the dev
+containers) and 2802 (whose quick start links the Codespace), and point
+what they say of 2513's dev container at it.
 
 ## Implementation steps
 
@@ -339,7 +354,7 @@ ticket (the `write-ticket` skill) and keep the rest.
 2. Check each package name in the table against the distributions'
    package searches.
 3. Write `doctor/linux.rs`: the table, the distro from os-release, the
-   soname search, the fix line and the checks, with their tests. Add
+   soname search, the help line and the checks, with their tests. Add
    `Probe::read` and wire the checks into `checks()`; change the limit.
 4. Write `scripts/setup-linux.sh` and copy it into each template. Run it
    twice in an `ubuntu:24.04` container if Docker is at hand, and on
@@ -353,8 +368,8 @@ ticket (the `write-ticket` skill) and keep the rest.
 ## Acceptance criteria
 
 - [ ] On a Linux host, `shuyi doctor` lists every check of the table
-      in order, and each failed one has a fix for the distro's package
-      manager, without `sudo` as root (unit tests on fakes).
+      in order, and each failed one has a `help` for the distro's
+      package manager, without `sudo` as root (unit tests on fakes).
 - [ ] The "are not checked" limit is gone, and with no `rustc` the limit
       says the Linux libraries were not checked.
 - [ ] `scripts/setup-linux.sh` exists in the engine and in every
@@ -382,15 +397,16 @@ ticket (the `write-ticket` skill) and keep the rest.
   `linux.rs`'s tests can use it):
   - an Ubuntu host with everything: every row passes, in order, with
     versions and paths in `found`;
-  - each row missing on Ubuntu: its fix is exactly `sudo apt-get install
-    -y <apt>` and the script hint; with `id -u` printing `0`, no `sudo`;
+  - each row missing on Ubuntu: its `help` is exactly `sudo apt-get
+    install -y <apt>` and the script hint; with `id -u` printing `0`, no
+    `sudo`;
   - Fedora (`ID=fedora`), Arch (`ID=arch`), a derivative (`ID=pop`,
     `ID_LIKE="ubuntu debian"`), an unknown distro and no os-release
     file: dnf, pacman, apt, and all three;
   - a soname found through `ldconfig -p`, and without `ldconfig` in
     `/usr/lib64`;
   - Windows, macOS and an unknown host: no Linux checks;
-  - `text()` prints a failed Linux check's fix line.
+  - `text()` prints a failed Linux check's `help:` line.
 - The existing doctor tests updated: `a_complete_linux_toolchain_passes`
   gets the Linux programs in its fake;
   `without_rust_every_check_says_how_to_install_it` reads the new limit;
@@ -408,7 +424,7 @@ ticket (the `write-ticket` skill) and keep the rest.
 - CI: the `templates` job in the bare container is the integration
   test of the script, the dev container's setup and doctor together.
 - Mutation testing runs on the diff in CI: the exact-string asserts on
-  the fix lines are what kill its mutants.
+  the help lines are what kill its mutants.
 
 ## Completion notes
 

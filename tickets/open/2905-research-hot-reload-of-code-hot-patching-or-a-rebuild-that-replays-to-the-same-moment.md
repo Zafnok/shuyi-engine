@@ -52,9 +52,12 @@ None. This is technical.
      hash, then the swap with the clock restarted, sound restarted and
      held input forgotten. If 2357 is done, the prototype reuses them.
      If not, the ADR says to reuse them rather than build a second
-     replay. Measure: time from save to the same frame, with 2009's
-     setup; what happens when the new code makes the record diverge
-     (`Playback` stops at the first frame whose hash differs: say so).
+     replay. Measure: time from save to the same frame; what happens
+     when the new code makes the record diverge (`Playback` stops at
+     the first frame whose hash differs: say so). **Either order with
+     2009:** if 2009 is done, measure with its setup (the fast linker,
+     the `dynamic` feature and the profile settings it keeps); if not,
+     with today's, and the note says which (nothing for 2009 to do).
   2. **Hot patching with `subsecond`:** license (check on the day),
      what it needs (its CLI, a nightly or stable toolchain), whether it
      works on Windows with the GNU toolchain (`AGENTS.md`,
@@ -62,11 +65,24 @@ None. This is technical.
   3. **A dylib of the game's rules** reloaded at run time (as
      `hot-lib-reloader` does): what state survives, and whether the
      GNU toolchain links it.
-  4. **Scripts** (2101): rules in the script runtime reload as assets
-     with 2220 and need no rebuild at all. Note where this already
-     covers the need.
+  4. **Scripts** (2101): rules in the script runtime could reload as
+     assets with 2220 and need no rebuild at all. No ticket makes that
+     work yet: 2101's `compile(name, source)` reads a script once, at
+     load, and defines no asset kind, and 2220's `Hot<T: AssetKind>`
+     reloads only values decoded through the registry. Say what it
+     needs (a script `AssetKind` and `Format` in `shuyi-script`, say)
+     and where it would cover the need; if the ADR keeps this way,
+     write that ticket.
 - For each: what the developer does, the time to see a change, what
   breaks it, the platforms, and the cost in our code.
+- **Either order with 2528:** `shuyi web --serve` rebuilds the web
+  build on a change and reloads the page, and the game starts over
+  (2528's Out leaves keeping its state to this ticket). Say whether
+  option 1 works there: the page keeps no record between loads
+  (2519's web records are a download), so what would hold the inputs
+  across the reload, and the time to the same frame. If 2528 is done,
+  prototype it on `--serve`. If not, answer it from 2528's text, and
+  the ticket this research writes for the web is blocked by 2528.
 - **Writes:** an ADR with the choice (more than one may be kept: replay
   as the default, patching as an option), `docs/research/code-reload.md`
   with the numbers, and the tickets that build it.

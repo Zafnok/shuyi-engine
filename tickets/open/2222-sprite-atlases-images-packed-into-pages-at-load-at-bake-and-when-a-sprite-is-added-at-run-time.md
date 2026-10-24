@@ -54,10 +54,23 @@ None.
 - **At load:** an `atlas.ron` in a folder (`AtlasSpec { from: "sprites/",
   page_size, padding }`) is a format that packs every image in the
   folder through the registry (`load_each`, 2219, needed first).
+- **Either order with 1123** (parked): if 1123 is done, `Atlas` is in
+  `shuyi_assets::atlas` already, with the optional fields a trimmed
+  frame needs and a RON sidecar format of its table. Add
+  `AtlasBuilder`, the packer and `insert` to that type, keeping its
+  fields, and tell `atlas.ron` apart from that sidecar as 1123's
+  completion notes say (two formats of one kind can't claim one
+  extension, ADR-0019 §2). If not, write `Atlas` here, and 1123 adds
+  its fields and its sidecar (its Scope says so).
 - **At bake:** `shuyi bake` (2204) stores packed pages, and the pack's
   equality test covers an atlas fixture.
 - **In `shuyi-app`:** the sprite skin draws a sprite from its atlas page
   and rectangle; a page that changed is uploaded again before the frame.
+  **Either order with 2234** (pictures in 2203's formats): if 2234 is
+  done, `crates/app/src/render.rs` has `upload_rgba(width, height,
+  rgba)`, which uploads pixels as a texture with the nearest filter:
+  upload a page with it. If not, write it there and upload pages with
+  it, and 2234 uploads its pictures with it.
 - **In the raster** (`shuyi_ui::frame::raster` if 2332 is done; else
   `frame-png`'s `Painter`, and 2332 moves it): atlas pages and inserted
   sprites are drawn as the window draws them, so `frame-png` keeps
@@ -65,6 +78,11 @@ None.
   add an atlas sprite and an inserted one to its render card; if not,
   2018's card includes them.
 - Fixtures: images of our own, made for the tests.
+- **Docs** (`docs/formats.md`): a row of *The built-in formats* table
+  for `atlas.ron`. In *The kinds of ADR-0007 §1*, split the row that
+  gives `Atlas` and `AnimationSet` to 1123: `Atlas` is `atlas::Atlas`
+  (2222), with Aseprite and TexturePacker as its formats in 1123, and
+  `AnimationSet` is 2231's, whose Docs item names its type.
 
 **Out (do not do):**
 - rotation or trimming of sprites in the packer;

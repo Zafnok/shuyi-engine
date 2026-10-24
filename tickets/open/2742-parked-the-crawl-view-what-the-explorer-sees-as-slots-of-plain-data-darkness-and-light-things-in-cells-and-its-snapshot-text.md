@@ -38,8 +38,9 @@ None.
   needed):
   - `ViewShape { depth: u8, width: u8 }`: how many cells ahead (default
     3) and to each side (default 1). It comes from a game setting in
-    `crawl.ron` (below), raised by the `light` effect by its amount and
-    capped at a `max_depth` (default 6);
+    `crawl.ron` (below). While the explorer has the `light` effect
+    (2741 keeps only the steps it lasts), the depth grows by the
+    setting's `light` (default 3), capped at a `max_depth` (default 6);
   - `CrawlView::build(map, explorer, shape, things) -> CrawlView`;
   - `Slot { depth: u8, side: i8, cell: Pos, floor_look, ceiling_look,
     front: SeenEdge, left: SeenEdge, right: SeenEdge, things:
@@ -50,6 +51,9 @@ None.
     closed side is a wall, from its open side a door;
   - slots in a fixed order (by depth, far to near, then left to right),
     the order a painter draws them in.
+  - `compass: Option<Facing>`: the explorer's facing while it has the
+    `compass` effect (2741), else `None`. The skins show it (2743,
+    2753).
 - **Visibility**, written once and tested hard:
   - a slot is visible when a walk from the eye's cell reaches it
     through open edges and opened doors, staying inside the cone (each
@@ -64,13 +68,15 @@ None.
   Each lands on its visible slot, and a thing on a hidden cell isn't in
   the view.
 - **Settings**: `crawl.ron`, asset kind `CrawlConfig`, format
-  `crawl-config-ron`: `view` (depth, width, max depth), with the same
-  fuzz-style test and a golden row. 2743 and 2744 add their own fields.
+  `crawl-config-ron`: `view` (depth, width, light, max depth), with
+  the same fuzz-style test and a golden row. 2743 and 2744 add their
+  own fields.
 - **The snapshot**: `CrawlView`'s `Display`, one line per slot, such as
   `d2 s-1 (4,7) floor 0 ceil 0 front wall 1 left none right door 2
   open things [3]`, and a `view_dump` helper that tests compare against a
   text file (the engine's snapshot helpers, wherever 1110's Harness
   keeps them).
+  While the compass is set, a first line says it (`compass north`).
 
 **Out (do not do):**
 - drawing (2743, 2753);

@@ -72,18 +72,21 @@ What Shuyi has today (checked 2026-10-20):
 Planned around it:
 
 - 3029 moves the player's rules to a place every backend shares and
-  adds the Playdate's audio. It is a move: its tests stay unchanged, and
-  it adds no loops, handles or pause.
+  adds the Playdate's audio. It is a move: its tests stay unchanged,
+  and it adds no loops or handles. It does add provided `pause(sound)`
+  and `resume(sound)` methods to the shared backend trait, whose
+  fallback, for a backend that can't pause, is this ticket's mute.
 - 2316 (the debug pause) holds handled sounds through this ticket's
   `pause_sounds` (its either-order clause), and leaves the music, the
   voice and one-shot cues already playing out.
-- 2345 (cue rules) needs one copy of a sound stopped alone, and either
-  it or this ticket moves sound effects onto a quad-snd context of
-  `shuyi-app`'s own.
+- 2378 (cue rules, part two, after 2345) needs one copy of a sound
+  stopped alone, and either it or this ticket moves sound effects onto
+  a quad-snd context of `shuyi-app`'s own.
 - 2341 (music crossfades), 2342 (sound groups and volumes), 2343
   (ducking), 3042 (focus events) and 3043 (the web build's hidden tab
-  sends `Suspend`) are After MVP. 2363 (positional sound) is parked and
-  waits for these handles to move a looped sound with a thing.
+  sends `Suspend`) are After MVP. 2363 (positional sound) is parked. A
+  looped sound that moves with a thing needs these handles: a follow-up
+  after this ticket, written when a game asks (2363's Out).
 - Parked: 3030 plans `VoiceId`, `looped`, `fade_to` and `stop` in the
   in-house mixer, and 3031 `Output::suspend`. They replace quad-snd
   under this API, not the API. 2725 (visual novel voices) and 2206
@@ -134,14 +137,17 @@ None.
     (`crates/assets/src/pack.rs:62`) goes up by one, and the snapshot
     in `crates/assets/src/pack/tests.rs` is accepted.
   - `Check::sound` (`crates/assets/src/audio.rs`, where a `RawSound`
-    becomes a `SoundCue`) copies it. The other `SoundCue` literals get
-    `looped: false`: the tests in `crates/app/src/audio.rs` and
-    `crates/assets/src/credits.rs`, `crates/ui/src/toy.rs` and
-    `examples/hello-grid/src/sound.rs`.
+    becomes a `SoundCue`) copies it. **From 2024 (done):** `SoundCue`
+    is `#[non_exhaustive]` and built with its `const fn new`
+    (ADR-0039), which starts `looped` at `false`, so its callers (the
+    tests in `crates/app/src/audio.rs`, `crates/ui/src/toy.rs`,
+    `examples/hello-grid/src/sound.rs`) don't change. The one literal
+    left outside `Check::sound`, in `crates/assets/src/credits.rs`'
+    tests, gets `looped: false`.
   - The toy's manifest (`crates/ui/src/toy.rs`) gains a looped cue,
     `hum` (the `click.wav` file, `looped: true`), for the tests below.
   - **Either order with 2345 and 2342**, which also add fields to
-    `SoundCue` (2345 adds `SoundCue::new`, 2342 a `group`): the later
+    `SoundCue` (2345 adds `rules`, 2342 a `group`): the later
     ticket rebases onto the earlier one's struct, and bumps the pack
     version again.
 - **Handles in `shuyi_ui::audio`:**
@@ -171,6 +177,10 @@ None.
   - In debug builds, `PlaySound` of a looped cue panics in
     `collect_audio`, as an unknown cue does: a loop with no handle could
     never stop. A release build plays it once.
+  - **Either order with 2366** (parked, sound captions): if 2366 is
+    done, `SoundCaptions::feed` treats a `StartSound` of a captioned cue
+    as a `PlaySound`: its line is added once when it starts, never again
+    per loop, with a test. If not, nothing to do (2366 does it).
 - **A sound belongs to the screen that started it:**
   - `ScreenStack` tells the queue the depth of the screen it is about to
     run (before `update`, `covered` and `uncovered`), with a
@@ -261,7 +271,7 @@ None.
     `load_sound` waits for `Sound::is_loaded`, as macroquad's
     `load_sound_from_bytes` does. Music and voices stay as they are.
   - `Backend::play` returns `Self::Playing`, a handle for that one
-    playback (the name 2345 uses), and `Backend` gains
+    playback (the name 2378 uses), and `Backend` gains
     `set_playing_volume(&playing, volume)` and `stop_playing(playing)`.
     For a music clip the handle stops the clip, as `stop` does today.
   - The player keeps `SoundId` to `Playing`. The player's sound volume
@@ -277,15 +287,20 @@ None.
     `crates/app/src/backend.rs` (the `Audio` this backend gives `App`)
     implements `suspend` and `resume` through the player, and does
     nothing before the game has loaded.
-  - **Either order with 2345:** whichever lands first moves sound
-    effects onto the own context and adds the per-playback handle; the
-    second uses it.
+  - **Either order with 2378** (cue rules, part two): if 2378 is done,
+    sound effects are on the own context already, and `Backend::play`
+    returns `Self::Playing` with `stop_playing`: use them, and add
+    `set_playing_volume`. If not, add them here, and 2378 uses them.
   - The tests' `Fake` backend records a playback's start, volume and
     stop.
 - **Either order with 3029:** if 3029 is done, the player's rules live
-  where it moved them: add the handles, pauses and suspend there, and
-  give the Playdate backend a sample player per handle, paused with the
-  SDK rather than muted. If 3029 isn't done, 3029 carries them across.
+  where it moved them: add the handles, pauses and suspend there. Its
+  provided `pause` and `resume` then take the handle (`Self::Playing`),
+  and `PauseSounds`, `ResumeSounds`, `suspend` and `resume` call them
+  through its warning helper, with the mute above as their fallback
+  (the macroquad backend keeps the defaults). Give the Playdate backend
+  a sample player per handle, paused with the SDK rather than muted. If
+  3029 isn't done, 3029 carries them across.
 - **An ADR** (the `write-adr` skill, the next free number): sounds by a
   handle the queue gives, owned by the screen that started them;
   `pause_sounds`; `Audio::suspend` and `resume`; and the mute rule for
@@ -311,7 +326,7 @@ points the tickets that name 2344 for them (2316, 2408, 3029, 3031,
   follow-up adds a flag to `pause_sounds` if a game asks;
 - seeking, a sound's position, and saving which sounds were playing;
 - sound groups, a master volume and volumes per group (2342), ducking
-  (2343), cue rules such as copy caps and priority (2345), music
+  (2343), cue rules such as copy caps and priority (2345, 2378), music
   crossfades (2341), and intro-then-loop (the ticket 2902 writes);
 - positional sound (2363, parked; ADR-0004 §6);
 - sending `Suspend` from a hidden browser tab (3043) and focus events
@@ -329,10 +344,11 @@ points the tickets that name 2344 for them (2316, 2408, 3029, 3031,
    `app.rs`, `headless.rs` and `harness.rs`; `crates/app/src/audio.rs`,
    `audio/native_music.rs`, `audio/voice.rs` and `backend.rs`; ADR-0024;
    and quad-snd 0.2.8's `Sound::play`, `Playback` and `web_snd.rs`.
-   Check whether 2316, 2342, 2345, 2408 and 3029 are done (the
+   Check whether 2316, 2342, 2345, 2378, 2408 and 3029 are done (the
    either-order clauses).
-2. `SoundCue::looped`, the RON field, the literals, the toy's `hum`
-   cue, `docs/formats.md`, the pack version and its snapshot.
+2. `SoundCue::looped`, the RON field, `SoundCue::new` and the two
+   literals, the toy's `hum` cue, `docs/formats.md`, the pack version
+   and its snapshot.
 3. `SoundId`, the new requests and the queue: start, stop with a fade,
    volume, pause and resume by owner, `advance`. Unit tests.
 4. The stack's owners and releases (the `Replace` too), `advance` in

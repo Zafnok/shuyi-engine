@@ -203,13 +203,40 @@ None.
     `check.py` gains `link <dir>`. It starts `shuyi attach --serve`,
     opens hello-grid's link build with the hash it prints, runs `shuyi
     attach … --act Confirm --json`, and checks that the screens changed.
-    `web-render` runs it. If not, 2522 adds the mode;
+    `web-render` runs it, and 2522's wasm32 clippy step in the `wasm`
+    job (`--features link --lib`) becomes the one above with
+    `--features capture,link`, so one step lints both. If not, 2522
+    adds the mode and puts `link` in that step's `--features`;
   - with 2333 (scale modes): if it is done, the hello-grid capture plan
     adds the `Fit` capture 2018's clause describes, read from 2333's
     render target in WebGL; if not, 2333 adds it;
-  - with 2335, 2336, 2337 and 2338: the web shows 2018's render card,
-    so their items and paints are compared on the web once they are on
-    the card. Nothing more here.
+  - with 2801 and 2803 (the website's examples and the tutorial's
+    steps): if one is done, the web builds it added to `pages.yml` get
+    the `check.py boot` run above; if not, it adds that run itself when
+    it lands (its clause says so);
+  - with 2739 (parked: snake, a web example): if it is done, its build
+    is one of those `pages.yml` publishes, and gets the `check.py boot`
+    run above; if not, 2739 adds that run when it lands (its clause
+    says so);
+  - with 2906 (research: asset memory): if it is done, nothing to do;
+    if not, nothing to do either (2906 may drive its web runs with this
+    ticket's headless Chromium);
+  - with 2335, 2336 and 2337: the web shows 2018's render card, so
+    their items and paints are compared on the web once they are on the
+    card. Nothing more here. 2338 adds no item or paint: its pictures
+    are plain sprites, which the card already shows.
+  - with 2735, 2736, 2737 and 2738 (the examples, parked): if one is
+    done, `check.py boot` opens its web build with the others above. If
+    not, it opens its own when it lands (its clause says so): with no
+    change if the job loops over the examples' folders, or added to the
+    job's list by its PR if the job names the builds by hand;
+  - with 2601 (HTTP requests, parked) and its web backend (`http.js`,
+    the follow-up ticket 2601's step 2 writes; that PR puts its id
+    here): if that backend is done, write a follow-up ticket
+    (`write-ticket`) for a `check.py` mode doing its browser check (a
+    fetch from the local server, a 404, `TooLarge`, and a refused
+    origin). If not, the backend's PR writes that follow-up, as its Out
+    line says.
 - **Size.** If the PR passes about 600 changed lines (fixtures,
   snapshots and `requirements.txt` aside), the either-order modes
   (`lifecycle`, `link`, the shell's states) go to a follow-up ticket

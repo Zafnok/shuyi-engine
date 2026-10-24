@@ -55,7 +55,12 @@ None.
     that opts in (`#[derive(Component, Hash)]`);
   - a text dump (`World::dump()`, RON) of every serializable component
     by entity, and `World::load` from it, for tests, agents and saves
-    (scenes use it, 2221);
+    (scenes use it, 2221). **Either order with 2907:** if 2907 is done,
+    components are named and read back from text as its ADR says, with
+    no registry of the module's own; if not, as 2904's ADR says, with a
+    name per component that never comes from `core::any::type_name`,
+    and 2907's ADR says whether the dump moves onto its description
+    (2907 writes the ticket that moves it);
   - no floats in the module's own code (`AGENTS.md` rule 5); a game's
     components may hold `Fx` (1119) or integers. Hold it as 2015 holds
     `shuyi-core`: put
@@ -66,16 +71,37 @@ None.
   outside crates, `devices: false`, and `floats: false` for
   `shuyi-ecs`. `cargo xtask check-layers` fails on a `shuyi-*` crate
   with no entry.
-- **Module metadata** (2003): concern "simulation", one line on what it
-  is for ("many things with mixed parts, as in Bevy"), and what it
-  conflicts with: nothing.
+- **Module metadata, as 2003 built it** (ADR-0041 §2), which `cargo
+  xtask check-modules` checks:
+  - `[package.metadata.shuyi]` in `crates/ecs/Cargo.toml`: `answers =
+    [{ concern = "state", answer = "ecs" }]`, a `serves` that isn't
+    empty (the directions it is built for, say turn and tick games),
+    and no `alternatives` (no other module answers its concern). There
+    is no key for conflicts: the check fails on a key it doesn't know;
+  - the concern in `docs/modules.ron`, which has no "simulation": a new
+    one, for example `state`, *Game state*, with `plain` (plain
+    structs, by `default`, `ready`) and `ecs` (by `shuyi-ecs`,
+    `planned`, tickets 2107 and 2108), or the name 2904's ADR gives it.
+    2108 sets `ecs` to `ready` when its example passes CI;
+  - its section and row in `docs/modules.md` ("many things with mixed
+    parts, as in Bevy"), and the README in ADR-0009 §4's order;
+  - the `ecs` feature of the `shuyi` crate, as the comment in
+    `crates/shuyi/Cargo.toml` says a module's ticket adds it;
+  - a derive crate goes in `crates/ecs/macros/`: the check counts every
+    member directly under `crates/` as a module, which would need all
+    of the above.
 
 **Out (do not do):**
 - running a schedule inside a game's stage, the parallel scheduler and
   the example (2108);
 - scenes (2221);
 - relations, observers, events beyond `Commands` (follow-ups if a game
-  needs them).
+  needs them);
+- measuring the module at the scale of an RTS army (2705, parked).
+  **Either order with 2705:** if 2705 is done, read its report,
+  `docs/research/units-at-scale.md`, beside 2904's numbers, and
+  nothing else to do; if not, nothing to do (2705 measures this
+  module's `World` as a contender when it runs).
 
 ## Implementation steps
 
@@ -99,6 +125,8 @@ None.
 - [ ] A cycle in `.after`/`.before` is an error naming both systems.
 - [ ] The crate builds for `thumbv7em-none-eabihf`.
 - [ ] `cargo xtask check-layers` passes with the new crates' entries.
+- [ ] `cargo xtask check-modules` passes with `shuyi-ecs`'s metadata,
+      its concern and answer, its catalog row and the `ecs` feature.
 - [ ] All gates in the `run-gates` skill pass, mutation testing in CI
       included.
 

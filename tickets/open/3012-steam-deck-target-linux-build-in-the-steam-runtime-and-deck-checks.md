@@ -76,7 +76,12 @@ None. Running it on a real Deck is 3013.
     virtual Xbox pad Steam Input gives by default) is reported as
     `PadKind::SteamDeck`, so the help text names the Deck's buttons
     through `HelpKeys` (the `input-actions` skill);
-  - the Steam and Quick Access buttons are never read.
+  - the Steam and Quick Access buttons are never read;
+  - the context starts with `ctx.device` on
+    `Device::Pad(PadKind::SteamDeck)` in the Deck's build, not on the
+    keyboard it doesn't have, so the first screen's help names the
+    Deck's buttons before the player presses one (3053's Out leaves
+    this here).
 - **Resume after sleep.** The Deck freezes a sleeping process without a
   signal. When the macroquad backend sees more than 1 s between two
   frames, it sends `Resume` (3003), so the game never runs a burst of
@@ -99,13 +104,17 @@ None. Running it on a real Deck is 3013.
     options (`SHUYI_LINK_LAN=<port> SHUYI_LINK_TOKEN=<token> %command%`)
     and link the steps in `docs/contract.md`'s "Attaching to a running
     build". If not, 2522 adds that section here;
-  - where crash reports land. If 3046 is done, the page says where
-    crash reports (`crash-<when>.ron`) and, if 3041 is done, the log
-    files land on the Deck: the folder `shuyi_app::storage::data_dir`
-    gives inside the Steam Linux Runtime (check whether it sets
-    `XDG_DATA_HOME`), and how a player finds it in desktop mode. If
-    not, 3046 adds those lines here, and its `docs/crash-reports.md`
-    links to this page for the Deck.
+  - where the game's data folder is on the Deck, which holds its
+    saves and settings: the folder `shuyi_app::storage::data_dir` gives
+    inside the Steam Linux Runtime (check whether it sets
+    `XDG_DATA_HOME`), and how a player finds it in desktop mode.
+    **Either order with 3046:** if 3046 is done, the page says that
+    crash reports (`crash-<when>.ron`) land there, and
+    `docs/crash-reports.md` links to this page for the Deck; if not,
+    3046 adds that line and the link (its scope says so).
+    **Either order with 3041:** if 3041 is done, the page says that
+    the log files land in its `logs` folder (`storage::log_dir`); if
+    not, 3041 adds that line (its scope says so).
 
 **Out (do not do):**
 - Steamworks, Steam Input action sets (the game's 0903);
@@ -120,7 +129,11 @@ None. Running it on a real Deck is 3013.
   `export --plan` lists it and a tag's release builds it in the
   container through `export.yml`; if not, 3050 fills them;
 - an engine-drawn keyboard (the game already has a letter grid; Nick
-  chose Steam's keyboard for the Steam build, game 0903).
+  chose Steam's keyboard for the Steam build, game 0903);
+- the engine's profiles screen asking the system keyboard for a name
+  when a controller opens its name box: 2380. It tests on the headless
+  backend's keyboard, so it needs nothing from this ticket, nor this
+  ticket from it.
 
 ## Implementation steps
 
@@ -151,6 +164,9 @@ None. Running it on a real Deck is 3013.
       keyboard for a required action, and passes the examples.
 - [ ] The help text on a fixture with `PadKind::SteamDeck` names the
       Deck's buttons (snapshot).
+- [ ] In the Deck's build, the first screen's help names the Deck's
+      buttons before any input (`ctx.device` starts on
+      `PadKind::SteamDeck`; a test).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

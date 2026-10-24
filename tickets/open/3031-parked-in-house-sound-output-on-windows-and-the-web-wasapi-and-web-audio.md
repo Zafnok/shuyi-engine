@@ -73,6 +73,36 @@ sounds wrong, cuts out, or starts late.
   `in-house-sound`, off by default. Sound effects decode with
   `decode_all`, and music streams with `vorbis::Decoder`, so music no
   longer needs the worker thread of `native_music.rs` on this path.
+  It fills in the provided methods of 3029's trait that the mixer
+  plays: `pause` and `resume` over the mixer's, and `set_rate` as
+  `Params::rate` at the sound's next `play`.
+- **Either order with 2234 (FLAC and MP3 played):** if 2234 is done,
+  sound effects already reach this backend as WAV (`Audio::load` runs
+  `audio::decode_to_wav`), and this backend's `load_music` runs a FLAC
+  or MP3 track through `audio::decode_to_wav` too and plays the WAV
+  whole, not streamed, on Windows and on the web alike (its web path
+  doesn't use the browser's decoder). If not, nothing to do (2234
+  does it on this path).
+- **Voices.** The backend makes the `Mixer` with at least as many
+  voices as the cue rules let sound at once (the audio manifest's
+  `max_voices`, which 2378 adds; 32 when there is none), so the mixer
+  never refuses a play that 2345's rule let through. If `play` still
+  returns `Full`, the sound is skipped with one
+  `log::warn!(target: "audio", …)` line. **Either order with 2378:**
+  if 2378 is done, read `max_voices` here; if not, make 32 voices, and
+  2378 sizes the mixer from `max_voices` when it lands.
+- **The command queue.** If 3030's completion notes say its queue
+  couldn't be made real-time safe without `unsafe`, write it here, in
+  `src/sys.rs` (ADR-0021 §6), between the backend and `render`;
+  otherwise use 3030's.
+- **Either order with 2363 (parked, positional sound):** if 2363 is
+  done, the in-house backend pans: it says it can (`can_pan`, or the
+  provided method 3029's ADR set for the pan) and implements the pan
+  2363 put in the trait as 3030's `Params::balance`, set from 2363's
+  `pan_gains(pan)` divided by 16 (1/65536 to 1/4096), with a test on
+  the null output that a sound panned all the way right sounds only on
+  the right. If not, nothing to do: 2363 adds it here when it lands, as
+  its own clause says.
 - **Latency.** Measure the time from a `play` to the sound reaching the
   device's buffer, and record it in the completion notes. Aim for under
   30 ms on Windows.

@@ -216,9 +216,13 @@ None.
    `cargo shuyi check` in `<dir>`), as CI's `templates` job does.
 6. Do the either-order parts that apply, and run the gates.
 
-Size: if the diff runs well past 600 changed lines, leave the
-either-order parts with 2803, 1134 and 2802 to those tickets' own
-clauses, and keep the solver and the template's proof here.
+Size: if the diff runs well past 600 changed lines, keep the solver
+and the template's proof here, and move the either-order parts that
+apply (with 2803, 1134 and 2802) to a follow-up ticket written in
+this PR (the `write-ticket` skill, blocked by this one). A part
+applies only when its ticket is done, and a done ticket's clause
+can't carry it any more. A part whose ticket is still open needs
+nothing: that ticket's own clause does it.
 
 ## Acceptance criteria
 

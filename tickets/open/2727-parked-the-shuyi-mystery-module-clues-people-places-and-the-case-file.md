@@ -68,15 +68,22 @@ None.
     on `vn`;
   - a row in `docs/modules.md` (2003 wrote it as parked): set its status to
     building, with tickets 2727–2732. 2732 sets it to ready;
+  - **the building status:** 2003's catalog has none
+    (`shuyi_cli::catalog::Status` is ready, planned or parked). If it
+    still has none, add `Status::Building`, named `building`, with its
+    doc, the `status` line of `docs/modules.ron`'s header, *How to read
+    it* in `docs/modules.md` and the `modules` schema. `Status` is a
+    public enum: write a `Breaking:` line if CI's `api` job reports
+    one;
   - the `shuyi-mystery` skill if the skill pack (1134) is done. If not,
     add `shuyi-mystery` to 1134's list in this PR;
   - its `needs` (ADR-0012 §1) if 3017 is done: what `shuyi-vn` needs,
     plus nothing more. If 3017 isn't done, 3017 gives it a `needs` key
     with the other modules.
-- **The `kind` concern** (ADR-0015 §1, ADR-0016 §1). 2003 adds it to
-  `docs/modules.ron` with `mystery` as a parked answer, and 2721 checks
-  it is there. Set the `mystery` answer to building, naming this module
-  and tickets 2727–2732.
+- **The `kind` concern** (ADR-0015 §1, ADR-0016 §1). 2003 added it to
+  `docs/modules.ron`, with `mystery` as a parked answer by
+  `shuyi-mystery`. Set that answer's status to building, with tickets
+  2727–2732.
 - **Three asset kinds and their formats** (ADR-0007), registered by the
   module's `register(&mut Formats)`:
   - `Clue` from `*.clue.ron` (format id `clue-ron`): `id`, `name` and
@@ -127,8 +134,8 @@ None.
     2721's `history::back`, over `MysteryCommand`s.
   - **Saves**: a case saves as its `MysteryCommand`s. If 2724 is done,
     make `VnSave` generic over the command type (each command keeps its
-    `at_line` id), so a case uses it unchanged. If 2724 isn't done, add
-    that to 2724's scope in this PR.
+    `at_line` id), so a case uses it unchanged. If 2724 isn't done,
+    2724 does it when it lands (its scope says so).
   - `Event`s: `ClueFound`, `ClueUpdated`, `PersonMet`, `PersonUpdated`,
     plus the story's own.
 - **Dialogue commands** read by `MysteryRules` (ADR-0016 §6), in every
@@ -172,7 +179,7 @@ None.
   `MysteryActions: ActionSet`, the way 2723 maps `VnAction`. If 2723 is
   done, the case file is also a row of its quick menu, so a target with
   few inputs reaches it with only the required actions bound. If 2723
-  isn't done, add that row to 2723's scope in this PR.
+  isn't done, 2723 adds that row when it lands (its scope says so).
 - **The case file screen** (ADR-0016 §6), behind the `view` feature:
   - `CaseFileScene`, plain data: the tab (clues, people, places), the
     rows (id, name key, stage), the selected row, and its detail
@@ -228,8 +235,8 @@ screen and `MysteryStage` into a parked ticket of their own
 4. Write `MysteryRules`: the command enum, the mode stack, `@clue` and
    `@person` through `VnRules::with_commands`, and the `stops` flag and
    the call stack in `shuyi-vn` if 2721 lacks them.
-5. Write `history::back`, and the save change (in 2724's code, or in
-   2724's ticket).
+5. Write `history::back`, and the save change in 2724's code if 2724
+   is done.
 6. Write `check::references` and its fixtures.
 7. Write `MysteryStage`, `MysteryAction`, and `CaseFileScene`,
    `CaseFileScreen` and `CaseFileSkin` behind `view`.

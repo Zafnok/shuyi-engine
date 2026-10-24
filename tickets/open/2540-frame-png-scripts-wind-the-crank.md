@@ -48,6 +48,16 @@ None.
   parsed by `Script::parse_step` (an error for a value that isn't a
   number), played by `Script::play` with the Harness's `crank`, in order
   with `--keys`, `--pad` and `--wait`; in `frame-png --help`.
+- `Step::check` refuses a crank that isn't finite (`--crank NaN`), as
+  it refuses such a wait. `contract/fake.rs`'s `FakeSession` counts one
+  frame for a `Crank` step, as `Harness::crank` runs.
+- `Step` is a set that will grow, so it becomes `#[non_exhaustive]`
+  here if it isn't yet (ADR-0039 §6, and its *When*: the PR that next
+  adds to an existing type).
+- `Step` is in the `run`, `scene` and `session.step` input schemas:
+  regenerate the schemas, raise `contract::VERSION` by one, and add its
+  line to `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
+  schemas*).
 - Tests: parsing, the error, and a step played in order.
 
 **Out (do not do):**
@@ -56,14 +66,19 @@ None.
   1182, blocked by this).
 - Docking or undocking the crank, or its absolute angle.
 
-No API breaks: a new step and a new `Step` variant (a game matching on
-`Step` exhaustively would need a new arm; the game doesn't).
+**For the game:** an API break in `shuyi-cli`, which CI's `api` job
+reports: a variant added to `frame_png::Step`, and `#[non_exhaustive]`
+on it. The completion notes carry its `Breaking:` line (ADR-0038 §6).
+A game that matches `Step` exhaustively adds a `_` arm; the game
+doesn't match on it. The game's PR that moves the pin follows this one.
 
 ## Implementation steps
 
 1. Add `Step::Crank(f32)` and its parsing in `crates/cli/src/frame_png.rs`.
 2. Play it with the Harness's `crank` in `Script::play`.
 3. The help text's steps list, and tests.
+4. `#[non_exhaustive]` on `Step`; regenerate the schemas and raise the
+   contract's version.
 
 ## Acceptance criteria
 

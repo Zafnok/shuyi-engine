@@ -53,9 +53,13 @@ splits it.
   plan. Either order: if 2407's split tickets are done, this ticket
   turns on their on-screen profile field in `android.ron` and `ios.ron`
   and adds the examples' `android` and `ios` tables. If 3015 is
-  unparked first, its touch-controls ticket follows 2407's plan, and
-  2407 closes into it. This ticket keeps the player moving and resizing
-  the controls, saved with the settings.
+  unparked first, its touch-controls ticket takes 2407's items 1 and 2
+  (the controls as data, and swipes) with 2407's rules, and the split's
+  PR points the lines that send those to 2407 at it. 2407 stays parked
+  with its question to Nick and its item 3, the `web-touch` target,
+  which is for browsers only (2407's clause with 3015 says the rest).
+  This ticket keeps the player moving and resizing the controls, saved
+  with the settings.
 - **Direct touch.** Tapping a tile or a menu row, through 2405's
   pointer (a tap is its primary press); 2407's on-screen controls for
   everything else.
@@ -63,8 +67,17 @@ splits it.
   inside them.
 - **The lifecycle.** Going to the background sends `Suspend` (3003). The
   game saves, and resumes where it was.
+- **Vibration.** Native phones' vibration is this ticket's (2408's
+  Out). **Either order with 2408** (parked, rumble): if 2408 is done,
+  the phone backends give `Platform::motors`, the phone's one vibrator
+  playing the stronger of the two levels, in the lifecycle and safe
+  areas ticket; if not, the split writes it as a parked ticket of its
+  own, blocked by 2408.
 - **Exporters.** `android` (an AAB or APK; macroquad's own Android tool,
   license checked) and `ios` (an Xcode project built in CI on macOS).
+  Both are `Exporter`s (3004), and each package passes 3004's path
+  search and library audit, as its ADR says, against a list for its
+  target in `crates/cli/export/libraries.ron`.
   Signing uses secrets Nick sets up, read from environment variables
   with fixed names, as 3051 does for the desktop. If 3051 is done, the
   `ios` exporter reuses its temporary keychain step and its `Redactor`.
@@ -73,6 +86,19 @@ splits it.
   part (3048). Android's application id allows no `-`, which 3048's id
   allows, so the Android exporter maps it to `_` and `check --target
   android` warns that it did.
+- **License notices.** A phone app's files are no folder a player can
+  browse, so `NOTICES.txt` (3039, 3004) doesn't reach the player. Say
+  how each store build shows the notices. If that needs a screen in the
+  game, write the ticket for the engine screen of credits and notices
+  that 2223 leaves out until a phone or console asks (from 3039's
+  `notices` works and `credits::merge`).
+- **Platform facts.** **Either order with 3053:** if 3053 is done, the
+  `android` and `ios` exporters set `SHUYI_TARGET` (`android`, `ios`)
+  in their builds, and `shuyi-app` embeds `targets/android.ron` and
+  `targets/ios.ron` beside the profiles it already embeds, so a phone
+  runs with its own facts (`quit: System`, touch), not the desktop's
+  (3053's Out leaves this here); if not, the split's exporter tickets
+  are blocked by 3053.
 - **On a device:** the bench scenarios on a four-year-old mid-range
   phone, against the budgets.
 
@@ -84,9 +110,10 @@ splits it.
 
 1. Wait for Nick to unpark it and decide.
 2. Split it into tickets: touch controls (what 2407's split hasn't
-   done: the player moving and resizing them, and the `android` and
-   `ios` profiles), lifecycle and safe areas, the Android exporter, the
-   iOS exporter, and measuring on a device.
+   done: the player moving and resizing them, the `android` and `ios`
+   profiles, and 2407's items 1 and 2 while 2407 is open), lifecycle
+   and safe areas (with vibration, as its bullet says), the Android
+   exporter, the iOS exporter, and measuring on a device.
 3. Work them in that order.
 
 ## Acceptance criteria

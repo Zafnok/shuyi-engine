@@ -25,8 +25,14 @@ coming from other engines use two common formats:
 
 Our `.dlg` (game ADR-0011, game ADR-0055) stays the engine's own source
 format. ADR-0007 says a second format plugs in as a `Format` for the
-`DialogueScene` kind. The work is mapping each format's features onto our
-scene model, or saying clearly what isn't supported.
+`DialogueScene` kind. **From 2201 (done):** that kind is
+`shuyi_assets::dialogue::DialogueFile<D>`, the scenes of one file
+(`docs/formats.md`, "The kinds of ADR-0007 §1"). Its format `Dlg<D>` is
+generic over the game's own directives `D`. A format reads one file
+(ADR-0019 §5), and `dialogue::scripts_from_parsed` checks the scenes
+against the game's rules after loading. The work is mapping each
+format's features onto our scene model, or saying clearly what isn't
+supported.
 
 ## Nick input
 
@@ -40,7 +46,8 @@ None.
    - lines with speakers;
    - choices;
    - variables and conditions;
-   - commands (our `@music`, portraits);
+   - commands (our `@music`, portraits). For Ink, write the rule that
+     tells a tag that is a command from any other tag (metadata, say);
    - line ids for voice and translation (game ADR-0045, game ADR-0046);
    - plural, ordinal and select markup (Yarn's `[plural]`, `[ordinal]`
      and `[select]`). 2348 gives screen and data text these choices as
@@ -56,21 +63,37 @@ None.
      license, builds for the web build, and is maintained.
 
    Check its license from its repository, not from memory.
-2. **The Yarn Spinner format** (`.yarn`): a `Format` for `DialogueScene`.
+2. **The Yarn Spinner format** (`.yarn`): a `Format` of
+   `DialogueFile<D>`, generic over `D` as `Dlg<D>` is.
    It ships with fixtures from Yarn Spinner's own sample scripts, if their
    license allows copying them, or with our own fixtures otherwise.
-3. **The Ink format**, by the route chosen in step 1.
+3. **The Ink format**, by the route chosen in step 1: a `Format` of
+   `DialogueFile<D>` too. `shuyi_assets::ink` is taken (the one-bit
+   inks), so it goes under `dialogue` (`dialogue::ink`, say).
 4. **The text tools work on imported scenes:** line ids,
    `shuyi check`, and the language status.
+5. **Either order with 2721** (the visual novel's stage directions,
+   parked): if 2721 is done, its directions work in both formats.
+   `<<show …>>` in Yarn and `# show …` as an Ink tag reach the scene as
+   commands, by the Ink rule of item 1. Add their rows to
+   `docs/formats/dialogue.md` with one fixture per format, and check
+   that one scene of 2721's fixture story, in Yarn and in Ink, gives
+   the same `VnState` hashes as in `.dlg`. If not, nothing to do: 2721
+   adds them when it lands.
+6. **Either order with 2726** (parked: the visual novel example): if
+   2726 is done, its story is in `.dlg` only. Write one of its scenes
+   in Yarn Spinner and one in Ink, so each format's stage directions
+   run in CI, and drop the line in its README that says `.dlg` only.
+   If not, nothing to do (2726 does it).
 
 **Out (do not do):**
 - an editor;
 - converting the game's `.dlg` files;
 - Twine or Twee (write a ticket if the research finds demand);
 - the visual novel's stage directions (`show`, `hide`, `bg`, and the
-  rest of ADR-0016 §2). They are parked with 2721, which adds their rows
-  to `docs/formats/dialogue.md`. Here, a command the runner doesn't know
-  passes through to the game as today.
+  rest of ADR-0016 §2), unless 2721 is done (In, item 5). Otherwise a
+  command reaches the game as a `.dlg` `@` line does today, through its
+  directives `D`.
 
 ## Implementation steps
 
@@ -87,6 +110,8 @@ None.
       for each license.
 - [ ] A `.yarn` and an Ink scene play in a Harness test of the toy game,
       with choices.
+- [ ] If 2721 is done, its stage directions play in Yarn and Ink, with
+      the same `VnState` hashes as in `.dlg`.
 - [ ] Each refused feature gives a clear error with the file and line.
 - [ ] `cargo deny check` passes.
 - [ ] All gates in the `run-gates` skill pass.

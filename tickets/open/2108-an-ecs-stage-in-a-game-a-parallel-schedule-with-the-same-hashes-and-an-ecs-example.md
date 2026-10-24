@@ -36,8 +36,9 @@ None.
   diff, whichever 2107's dump makes cheaper (measure).
 - **Tick games:** **either order with 1119** (parked). If 1119 is done,
   an `EcsTickSim` that runs a schedule per step with the step's inputs
-  as a resource. If not, leave a section in the module's docs and a
-  line in 1119's ticket naming this adapter as its follow-up.
+  as a resource. If not, write a parked follow-up ticket for this
+  adapter (the `write-ticket` skill), blocked by 1119, and name it in a
+  section of the module's docs.
 - **Views:** a system can build the frame's plain-data view from
   queries; the skin paints it as any other (`AGENTS.md` rule 9).
 - **A parallel schedule:** a `parallel` feature, native only, that runs
@@ -52,14 +53,24 @@ None.
   run, in both the serial and the parallel schedule. They then share no
   `SimRng` and may run together, and the property test includes two
   such systems. If 2114 is not done, they share the `SimRng` resource,
-  and its conflicting access runs them one by one; add a line to 2114's
-  scope naming these forks as its follow-up.
+  and its conflicting access runs them one by one; 2114 adds the forks
+  (its scope says so).
 - **An example, `examples/ecs-garden/`:** a turn game on a grid where
   each turn plants grow, spread and are eaten, with a few hundred
   entities and five systems. It has a harness test, a replay test,
-  and the web build, and is on the website's Examples page (2801) if
-  2801 is done.
-- The book's chapter "An optional ECS" (2802, if done).
+  and the web build. **Either order with 2801:** if 2801 is done,
+  `pages.yml` builds it for the web and it gets its card on the
+  website's Examples page; if not, nothing to do (2801 adds its card).
+- **Either order with 2802:** if 2802 is done, add the book's chapter
+  "An optional ECS" after its chapter 11 (`shuyi-ecs`, `EcsRules`, the
+  parallel schedule and `ecs-garden`), its code from `site/snippets/`,
+  and add an entity of `shuyi-ecs` to the row of its chapter 11 table
+  (*Coming from another engine*) that maps a node, a GameObject and a
+  Bevy entity, linked to the new chapter; if not, nothing to do (2802
+  writes both).
+- **The catalog:** with the example passing CI, set `shuyi-ecs`'s
+  answer in `docs/modules.ron` and its row in `docs/modules.md` to
+  `ready` (2107 adds both as `planned`).
 
 **Out (do not do):**
 - moving the kit or any existing example to the ECS;

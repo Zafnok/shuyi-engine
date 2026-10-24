@@ -109,8 +109,9 @@ Two things the comparison found are left out, on purpose:
 - **Markup in text files** (`[warning]…[/]` in a language's `ui.ron`
   or in `.dlg`). The engine prints `Ctx::text(key)` raw in about 40
   places, so markup needs a pass over all of them, an ADR on its syntax
-  and its escape for `[`, and a check that packs keep English's roles.
-  That is a ticket of its own, for when a game asks.
+  and its escape for `[`, a check that packs keep English's roles, and
+  2353's `pseudo_text` copying the markup as it is (2353's Out). That
+  is a ticket of its own, for when a game asks.
 - **Pauses and speed changes inside a dialogue line.** No game asks for
   them, and the parked visual novel tickets own text reveal (2722,
   2723).
@@ -266,6 +267,13 @@ game's palette names `key`.
 - **Either order with 2330:** if 2330 is done, its `Text` node paints
   with `Ctx::label_styled` and `print_styled` in this PR; if not, 2330
   does it.
+- **Either order with 2766** (parked, the message log): if 2766 is
+  done, its `MessageLog` lines hold a `StyledText` in place of one role
+  each (a line's role becomes the role of its one span), its widget
+  wraps a line over its spans, each span keeping its role, and the
+  widget and the history screen paint with `print_styled`; if not,
+  nothing to do (2766 builds its lines on `StyledText`, as its clause
+  says).
 - **1-bit (3006 is done, ADR-0026):** `key` and `key_bg` are palette
   roles, so `hello-grid`'s pattern map (`palette@onebit.ron`) gives them
   patterns, lists them among its `text` roles, and puts `key` in a
@@ -281,11 +289,14 @@ game's palette names `key`.
 
 - markup in text files (`[role]…[/]` in `ui.ron`, packs or `.dlg`),
   and Yarn markup (2202): a ticket of its own, with its ADR, when a game
-  asks;
+  asks. That ticket also makes 2353's `pseudo_text` copy the markup as
+  it is;
 - pauses and speed changes inside a dialogue line. The text box's pages
   stay `String` (`TextView::lines`);
 - wrapping a `StyledText` (a text box or a tip that wraps): a follow-up
-  with 2302's rules, when a box needs it;
+  with 2302's rules, when a box needs it. The message log's lines are
+  the exception: whichever of this ticket and 2766 lands second wraps
+  them (the 2766 clause under In);
 - styled spans inside 2334's proportional runs, which draw one colour
   each;
 - bold, italic, inline icons or pictures of buttons, motion per glyph,

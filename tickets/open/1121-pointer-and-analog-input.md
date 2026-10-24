@@ -38,6 +38,11 @@ None. Our game doesn't use these unless a later ticket says so.
   the mouse buttons other than the primary into `RawInputEvent`s; the
   mouse's place, its primary button, the wheel and touches already
   arrive through 2405's events.
+- **Either order with 2402:** if 2402 is done, its `in-house-pads`
+  source fills `PadState`s too, from `StandardPad`'s `i16` sticks:
+  take the axes from the `PadState`s, not from gilrs alone, so both
+  native sources give the same `RawInputEvent`s; if not, nothing to do
+  (2402 keeps these events unchanged).
 - `shuyi-ui::input` gets four things:
   - `Axis` actions (two-axis and one-axis) bound to sticks or to keys
     (keys give full deflection);
@@ -51,17 +56,26 @@ None. Our game doesn't use these unless a later ticket says so.
     camera, so a click lands where the player saw it). Over no such
     viewport there is no world position. **Either order with 2361:** if
     2361 is done, test a click on a smoothed layer here; if not, 2361
-    does;
+    does. **Either order with 3023 (parked):** if 3023 is done, the
+    pointer is mapped only through the world layers of the surface it
+    is over, in that surface's pixels (over no surface, no world
+    position), with a test per layout; if not, nothing to do (3023 does
+    it). **Either order with 3107:** if 3107 is done, the world-pointer
+    mapping asks the skin's `WorldPick` hook when one is set, with a
+    unit test that uses a stub hook; if not, nothing to do (3107 hooks
+    it in);
   - mouse buttons as bindable inputs, so a game binds them to its
     actions (an ADR choice: new `Key`s or a pointer table in the keymap
     file), and `shuyi check --target` treats them as absent on a target
     without a pointer. The primary button comes from 2405's
     `PointerDown` and `PointerUp`, the others from the reader above.
-- **The OS cursor follows the pointer bindings:** while the top screen
+- **The OS cursor follows the pointer bindings.**
+  **Either order with 3044:** if 3044 is done, while the top screen
   declares an action bound to a mouse button, `shuyi-app` sets
   `keep_shown` on 3044's `IdleCursor` (`crates/app/src/window.rs`), so
-  the cursor stays shown; otherwise 3044's rule hides it after 2 s still
-  and in fullscreen.
+  the cursor stays shown, and otherwise 3044's rule hides it after 2 s
+  still and in fullscreen; if not, nothing to do (nothing hides the
+  cursor yet, and 3044 sets `keep_shown` from these bindings).
 - `TickInput` carries axes as `i16`, and the pointer in world pixels
   with the index of the layer it was mapped through (or none), so
   records replay exactly (1119). Each step takes the latest values:
@@ -77,12 +91,28 @@ None. Our game doesn't use these unless a later ticket says so.
 - The Harness scripts stick positions (2405 already scripts pointer
   moves and clicks).
 - The rebinding screen (1112) lists axes.
+- **Either order with 2367:** if 2367 is done, mouse buttons bound to
+  actions are split between the running screens like any other action
+  (its `FrameInput::split`), so an `Undeclared` overlay that declares
+  one takes that click and the tick stage below doesn't see it; the
+  pointer's place reaches every running screen, as keys do. A Harness
+  test shows the click taken. If not, nothing to do: 2367's Out leaves
+  pointer input as it is, and its split takes these actions like any
+  other.
+- **The crank as an axis.** **From 3002 (done):** `CrankForward` and
+  `CrankBack` are `Button`s, a press and a release per detent
+  (`RawInputEvent::from_crank`), and they stay; the analog crank is
+  this ticket's. The crank's change in a frame also becomes the
+  one-axis `Crank` input `targets/playdate.ron` lists, in integer 1/256
+  turns, which `Axis` actions bind like a stick's.
+  **Either order with 3010:** if 3010 is done, `shuyi-playdate` reports
+  it from `getCrankChange`, with a fake-SDK test; if not, 3010 does it.
 
 **Out (do not do):** pinch and other two-finger gestures; swipes and
 on-screen touch controls (2407, parked); the pointer in menus and on
 grid maps (2405); more than one screen. Devices per player, and which
 player a viewport belongs to, are 2406's. The parked 3023 (ADR-0012 §5)
-later adds a surface id to 2405's pointer events, in that surface's
+adds a surface id to 2405's pointer events, in that surface's
 coordinates. Pointer mapping is one chain: window to console pixels
 (2405) on a surface (3023), to a world layer's viewport (here).
 

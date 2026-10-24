@@ -68,6 +68,12 @@ None.
   `sapp_jsutils.js` and its license file, if nothing else loads them
   (search `index.html` and macroquad's bundle first, and keep them if
   something does, saying so in the completion notes).
+- **Either order with 3039** (the web build's notices): if 3039 is
+  done, `storage.js` gets a row in `web.rs`'s shell table as the
+  engine's own, and the rows of the vendored files removed above go
+  too, with the `include_str!` of their license files and their lines
+  in `THIRD_PARTY_ASSETS.md`; if not, nothing to do (3039 lists what
+  `SHELL` holds then).
 - **Saves keep their keys**, so a player's saves from before still load.
 
 **Out (do not do):**

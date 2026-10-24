@@ -18,9 +18,10 @@ completed:
 2017 made the ticket lint warn on a clause in an open ticket that waits
 on a done one, and made the `work-ticket` skill's §5 settle such clauses
 in the PR that closes a ticket. The lint
-(`crates/xtask/src/tickets.rs`, `find_clauses`) knows four forms:
-"either order with NNNN", "if NNNN is/are done", "when NNNN is done" and
-"NNNN, if done". It matches across line breaks and Markdown emphasis.
+(`crates/xtask/src/tickets.rs`, `find_clauses`) knows five forms:
+"either order with NNNN", "if NNNN is/are done", "when NNNN is done",
+"NNNN, if done" and "waits for NNNN" (2027). It matches across line
+breaks and Markdown emphasis.
 
 A retro of PRs #38–#68 (2026-10-22) found clauses about done tickets that
 these forms miss, so they were never settled:
@@ -67,6 +68,12 @@ None.
   The doc comment of `find_clauses` lists every form. Forms that a
   sentence about the past uses ("once 3040 is done" in a *What Shuyi has*
   paragraph) still warn: the fix is to write it as what holds now.
+- **The new forms count for 2027's error too.** 2027's `check_mirrors`
+  fails a clause in an open ticket whose other open ticket never names
+  it back, and it reads every form `find_clauses` knows. So a clause the
+  new forms find between two open tickets must be written on both sides:
+  where the lint fails, write the other side in the ticket the clause
+  names (`write-ticket`, *Check the dependency chain*), as for the rest.
 - **The lint reads the docs too.** The same forms, plus `ticket <id>
   adds` inside a table cell, in every `*.md` under `docs/` except
   `docs/adr/` (ADRs are records of their time) and `docs/ROADMAP.md`

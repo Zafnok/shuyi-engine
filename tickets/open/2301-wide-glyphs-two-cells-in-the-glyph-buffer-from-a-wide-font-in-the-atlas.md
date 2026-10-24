@@ -73,6 +73,12 @@ None.
   and punctuation whose width depends on the language (2303).
 - Any font a game ships; the game picks and licenses its own.
 - Changing any narrow glyph or the narrow atlas cells.
+- The engine's own screens in a language with wide glyphs.
+  **Either order with 2352** (parked: the engine's screens in other
+  languages, machine-translated): if 2352 is done, nothing to do (an
+  engine pack in such a language is a ticket of its own, if Nick
+  asks); if not, nothing to do (Nick may then pick one for 2352, as
+  its clause says).
 - Combining marks (a decomposed `é`, Thai and Devanagari vowel signs),
   right-to-left text and shaped scripts: 2908 (parked research), which
   may change what a cell holds.

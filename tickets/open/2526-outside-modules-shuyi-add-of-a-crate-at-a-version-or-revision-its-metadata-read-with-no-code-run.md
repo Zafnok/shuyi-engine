@@ -39,7 +39,8 @@ come from people outside the engine's team:
   (`docs/modules.ron`, `docs/modules.md`), `cargo xtask check-modules`
   over `crates/`, and the contract operations `shuyi modules` and
   `shuyi add`. `shuyi add` only flips a feature of `shuyi`, copies the
-  module's skill (kept in the engine's skill pack, 1134) and prints the
+  module's skill (its package's `skill/`, else the skill pack's
+  `skills/<name>` beside it, ADR-0041 §5) and prints the
   README's first paragraph. It knows nothing outside this repository.
   The `shuyi` crate's features turn on only the engine's own modules.
 - §4 already lets heavy or experimental work live in a repository of
@@ -58,8 +59,9 @@ come from people outside the engine's team:
   both exist when this ticket starts.
 - The code today:
   - `crates/cli/src/contract/new.rs`: `ENGINE_GIT`, `ENGINE_CRATES`
-    (`core`, `assets`, `ui`, `platform`, `app`, `cli`), and the
-    `--engine-rev` check (7 to 40 hex digits);
+    (`shuyi`, then `core`, `assets`, `ui`, `platform`, `app`, `cli`,
+    by folder under `crates/`), and the `--engine-rev` check (7 to 40
+    hex digits);
   - a game from `shuyi new` is a virtual workspace (`members =
     ["crates/*"]`) with the engine in `[workspace.dependencies]`
     (`templates/grid/Cargo.toml`);
@@ -67,9 +69,12 @@ come from people outside the engine's team:
     `crates/cli/src/web.rs` (`target_dir`) run cargo through the `CARGO`
     variable, or `cargo`. `target_dir` finds the workspace with `cargo
     locate-project --workspace`;
-  - nothing in `shuyi-cli` reads `cargo metadata` yet. 2015's reader is
-    in the xtask, which is never published. If 2003 added one to
-    `shuyi-cli`, reuse it;
+  - **From 2003 (done):** `shuyi_cli::catalog` runs `cargo metadata
+    --format-version 1` through the `CARGO` variable and reads its
+    JSON with serde (`resolved_shuyi`, private, behind `engine_root`).
+    Make that runner one shared helper, and use it for steps 1 and 3
+    of the probe. 2015's reader is in the xtask, which is never
+    published;
   - `crates/cli/src/contract.rs`: `Answer::new` gives a `result`, and
     `Answer::failed` gives an `error` with no `result` (an operation that
     couldn't run);
@@ -130,9 +135,13 @@ crate" paragraph to the README's *The name* section.
     second field: `shuyi add` checks that the game and the module
     resolve to one copy of each engine crate;
   - it should ship what §4 asks for: a README in §4's order, an example,
-    and a skill, at `skills/<crate name>/SKILL.md` inside its package
-    (in its `include` list). The engine's CI doesn't check it.
-    `shuyi add` says in `limits` what is missing;
+    and a skill, at `skill/SKILL.md` inside its package (in its
+    `include` list), where the engine's own modules keep theirs
+    (ADR-0041 §5). For an outside crate `shuyi add` reads only that
+    folder, never `catalog::skill_of`'s fallback two folders up, which
+    would be outside the package (in cargo's cache, or above a
+    `--path` folder). The engine's CI doesn't check it. `shuyi add`
+    says in `limits` what is missing;
   - the naming rule Nick picks. A module's skill is named after its
     crate. `shuyi add` never copies a skill whose name is one of the
     engine's own skills (1134's `skills/`), whatever the naming rule;
@@ -167,8 +176,12 @@ crate" paragraph to the README's *The name* section.
   - `shuyi add <crate> --path <dir>`: a folder, for a module's author
     trying it in a game, and for the tests;
   - `--package <member>` picks the workspace member to change, as
-    `cargo add -p` does. The default is the member 2003's `shuyi add`
-    changes;
+    `cargo add -p` does. 2003's `shuyi add` changes no member: it edits
+    the root `Cargo.toml`'s `shuyi` entry (under
+    `[workspace.dependencies]`, else `[dependencies]`). So the default
+    is the one member that depends on `shuyi` (`crates/game` in a game
+    from `shuyi new`). With several, or none, `shuyi add` refuses and
+    names them, asking for `--package`;
   - a bare name with no version or flag is 2003's catalog path,
     unchanged. If it isn't in the catalog, the error adds: "for an
     outside crate, name its version: `shuyi add <crate>@<version>`". A
@@ -178,7 +191,8 @@ crate" paragraph to the README's *The name* section.
   or beside 2003's `add`):
   1. `cargo metadata --format-version 1 --no-deps` on the game gives the
      member's dependencies on the engine: `shuyi`, the `shuyi-<folder>`
-     crates of `ENGINE_CRATES`, and the catalog's module crates.
+     crates of `ENGINE_CRATES`' other six entries, and the catalog's
+     module crates.
   2. A **probe** package is written in a temporary folder. It holds:
      - an empty `[workspace]`;
      - those dependencies exactly as reported (source, version
@@ -298,8 +312,7 @@ crate" paragraph to the README's *The name* section.
 
 **Out (do not do):**
 - `shuyi module new`, a scaffold for a module like `shuyi template new`
-  (2505). A follow-up ticket, written when the first module is started
-  here or outside;
+  (2505): 2552, which waits for this ticket;
 - the website's directory of modules (2809), a snapshot of it in
   `shuyi modules`, or any search;
 - `shuyi remove` (as in 2003);
@@ -307,7 +320,10 @@ crate" paragraph to the README's *The name* section.
 - code that installs an outside module in the game: its code joins a
   running game through 2358's `Module`, which the game installs itself
   (`shuyi::enabled_modules`, 2003, lists only the engine's modules);
-- outside modules as wizard answers or template parts (2501, 2502);
+- outside modules as wizard answers or in template parts: 2502's
+  questions and 2501's parts take only the catalog's modules
+  (ADR-0013 §1), and neither adds them; a follow-up ticket when a
+  template asks for one;
 - checking the licenses of a module's dependencies (the game's own
   `cargo deny`);
 - a `deny.toml` for new games.

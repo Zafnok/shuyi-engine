@@ -144,7 +144,11 @@ None.
       2231), particles (2103), tweens in a simulation (2109), timers in
       steps (2115) and the camera stepped once per step (1120, 2362)
       follow the speed. They stop at speed 0, and they hold during
-      hit-stop when keyed on `Freeze::world_step`;
+      hit-stop when keyed on `Freeze::world_step`. The camera is view
+      state, stepped on every step, frozen ones too: through a hit-stop
+      it settles on a target that doesn't move and 1120's shake keeps
+      dying down. A stage that wants it held too skips its step while
+      the sim's `Freeze` is frozen;
     - *real time* is `FrameInput::dt`, `Ctx::clock_s`, `HurryClock`
       (2312) and `Ctx::music_clock`. Menus, the text box, a stage's
       HUD, screen transitions (2339), frame shake and flash (2340) and
@@ -246,8 +250,20 @@ None.
   without the latch, stop: write a ticket for it (`write-ticket` skill),
   add it to `blocked_by`, and say so in the Completion notes.
 - **Command sims.** 2706's `CommandDriver` reads `FrameInput::ticks()`
-  as `TickDriver` does, so it gets the speed with nothing more. If 2706
-  is done, add one test that `HALF` runs half its steps.
+  as `TickDriver` does, so it gets the speed with nothing more.
+  **Either order with 2706:** if 2706 is done, add one test that `HALF`
+  runs half its steps; if not, nothing to do (2706 adds it).
+- **Lockstep.** 2720's `CommandLockstep` gate sets the pace of a
+  networked command sim, and a peer's speed only makes it wait.
+  **Either order with 2720:** if 2720 is done, add its test over
+  `MemoryNetwork`: a peer at `DOUBLE` and one at `NORMAL` end with the
+  same hash list, at the `NORMAL` peer's pace; if not, nothing to do
+  (2720 adds it).
+- **Hit-stop from a hit. Either order with 2756:** if 2756 is done, add
+  `ActionMath::hit_stop(attacker, target, strike) -> u16` (default 0)
+  to `shuyi-action`. Each `Hit` carries it, and a sim that keeps a
+  `Freeze` holds it for that many steps (a hold during a hold keeps the
+  longer one), with a test. If not, nothing to do (2756 adds it).
 - **Debug pause and slow motion. Either order with 2316.** 2316's slow
   motion updates the stack on one frame in `slow`, and each update
   takes only its own frame's ticks. Under a game speed that alone
@@ -292,19 +308,20 @@ None.
 - the input latch (1119's, *Input reaches the steps*): this ticket only
   tests it under speed;
 - slowing, pitching or pausing sounds and music with the speed: a
-  playback rate is the parked mixer's (3030), and sounds paused under a
-  pause menu are 2344's;
+  ticket when a game asks, on the playback rate the parked mixer (3030)
+  brings. Sounds paused under a pause menu are 2344's;
 - scaling `FrameInput::dt` for turn games: a turn stage that wants a
   battle-speed setting multiplies its own `dt`, as `HurryClock` (2312)
   does;
 - a player option row for game speed (a game builds one with 2314's
   option rows);
-- what a local speed does in a networked session (1147, 2720), and a
-  speed every peer shares;
+- what a local speed does in a networked session (1147, 2720), beyond
+  the test for 2720 above, and a speed every peer shares;
 - frame shake and flash during a hit-stop (2340);
 - overlay screens that let the screen below keep running (2367);
 - the camera's own behaviour (1120, 2362): it is stepped once per
-  simulation step, so it follows the speed already;
+  simulation step, so it follows the speed already, and the ADR above
+  says what it does in a hit-stop;
 - drawing between steps (2361), beyond the either-order part above.
 
 ## Implementation steps
@@ -313,7 +330,7 @@ None.
    `Clock` and `step` in `crates/platform/src/app.rs`, `set_ticks` and
    `frame` in `crates/ui/src/game.rs`, 1119's `shuyi_core::tick`,
    `shuyi_ui::tick`, its latch, `harness.steps` and its example sim, and
-   2316, 2361 and 2706 if they are done.
+   2316, 2361, 2706, 2720 and 2756 if they are done.
 2. Write the ADR, the status lines of ADR-0003 and ADR-0024, and their
    rows in `docs/adr/README.md`.
 3. Add `GameSpeed` with its unit tests.
@@ -327,11 +344,11 @@ None.
 6. Add `Harness::game_speed` and make `harness.steps(n)` count steps.
 7. Add `Freeze` with its unit tests, and use it in 1119's example sim.
 8. Write the property tests and the Harness tests below.
-9. Do the either-order parts for 2316, 2361 and 2706. If the PR passes
-   about 600 changed lines (snapshots aside), move the 2316 part to a
-   follow-up ticket (`write-ticket` skill), parked like this one and
-   blocked by it, and say so in the Completion notes. The 2361 part
-   stays, since it keeps 2361's overstep right.
+9. Do the either-order parts for 2316, 2361, 2706, 2720 and 2756. If
+   the PR passes about 600 changed lines (snapshots aside), move the
+   2316 part to a follow-up ticket (`write-ticket` skill), parked like
+   this one and blocked by it, and say so in the Completion notes. The
+   2361 part stays, since it keeps 2361's overstep right.
 10. Run the gates.
 
 ## Acceptance criteria

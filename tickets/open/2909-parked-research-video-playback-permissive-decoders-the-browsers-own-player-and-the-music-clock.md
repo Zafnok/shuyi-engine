@@ -196,7 +196,9 @@ skill), not a choice made here.
     never slowed);
   - the video's sound: decoded with it and handed to the backend's
     audio, or a separate music cue. **Either order with 2902:** if it is
-    done, use the sound library it chose; if not, quad-snd as today;
+    done, use the sound library it chose; if not, quad-snd as today, and
+    each build ticket that plays the video's sound names 2902, whose
+    needs list has a line for it and whose PR updates those tickets;
   - ending or skipping a video reaches the rules as a command (turn
     games) or an input (tick games). Skipping is an action the screen
     declares (`Screen::actions` in `crates/ui/src/screen.rs`, 3002),
@@ -222,7 +224,8 @@ skill), not a choice made here.
     under ADR-0007 §4's rule for lossy formats;
   - ADR-0007 §5 for a decoder: its size limits, its fuzz target
     (2020 fuzzes every registered format; either order: if 2020 is
-    done, say how a video format joins it), and determinism. A video's
+    done, say how a video format joins it; if not, say how it would
+    join the harness 2020's ticket plans), and determinism. A video's
     pixels reach only the screen, never the simulation, and the
     browser's own player can't promise the same pixels on every
     browser: say what that means for content hashes and look tests.

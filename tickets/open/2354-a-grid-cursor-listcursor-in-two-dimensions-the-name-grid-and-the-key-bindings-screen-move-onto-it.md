@@ -154,8 +154,9 @@ ADR-0039: `GridCursor` has private fields and constructors, as
 - Moves between widgets (2355). A grid at its edge without wrap leaves
   the direction unused, and 2355 hands it to the next widget.
 - The mouse and touch on a grid cursor's cells (`NameEntry`, the key
-  bindings table): 2405's follow-up for the engine's other widgets,
-  through 2405's hit areas.
+  bindings table): 2409, 2405's follow-up for the engine's other
+  widgets, through 2405's hit areas. If 2409 is done first, this
+  ticket keeps their pointer working on the grid cursor.
 - A window that scrolls columns sideways: the window is over rows.
 - A page action or shoulder buttons: `UiAction` has none (the
   `input-actions` skill).

@@ -117,6 +117,16 @@ None.
     before `load(...)`, as it loads `gamepad.js`.
     `crates/cli/web/README.md` gets a section on it, like
     `gamepad.js`'s.
+  - **Either order with 3052** (the web shell): if it is done,
+    `index.html` loads `net.js` between the bundle and its last line,
+    `if (shuyiShell.start(…)) load("%WASM%");`, so the order test
+    holds as written, and the later of the two sets `SHELL`'s length.
+    If not, nothing to do: 3052 keeps `net.js` where this ticket put
+    it (its clause says so).
+  - **Either order with 3039** (the notices): if it is done, `net.js`
+    goes in its table of the shell's files as the engine's own, beside
+    `gamepad.js` (its test fails until it does). If not, 3039 lists it
+    (its clause says so).
   - **`crates/app/src/web_socket.rs`** (wasm32 only): the `extern "C"`
     declarations, the second file with `#[allow(unsafe_code)]` after
     `pads/web.rs`. The functions that take a pointer are `unsafe fn`,
@@ -124,8 +134,9 @@ None.
     comment. A safe `WebSocket` (`open`, `state`, `send(&str)`,
     `recv() -> Option<String>`, `close`) sits over them, and 1142
     extends it. The comments that call `pads/web.rs` the only such file
-    (in `crates/app/Cargo.toml` and at the top of `pads/web.rs`) are
-    updated.
+    (in `crates/app/Cargo.toml` and at the top of `pads/web.rs`) name
+    every plugin `extern` block instead, with 3043's, 2519's and
+    2601's where those landed first.
   - **The link on wasm32** (`crates/app/src/link.rs`): with the `link`
     feature and debug tools, when `run` starts it reads the page's
     hash. If the hash holds `link=<host:port>&token=<token>`, it opens
@@ -213,6 +224,22 @@ None.
   - with 2528 (`shuyi web --serve`): if it is done, `shuyi web --serve
     --link` also starts the bridge and opens the page with its hash.
     If not, 2528 adds that (its clause says so);
+  - with 1142 (parked): if 1142 is done, `net.js` and `web_socket.rs`
+    exist already, with binary messages and the page's query string.
+    Add only what this list has and they lack (the hash functions,
+    `SHELL`, `index.html`'s order, the tests), keep their binary
+    messages, and write no second plugin. If not, write them here, and
+    1142 extends them (its own clause says so);
+  - with 2601 (parked, HTTP requests): its web backend's `http.js`
+    follows `net.js`'s queue and its limit on queued bytes, or the
+    `net.js` list above if `net.js` isn't written yet. So if 2601 is
+    done, nothing to do; if not, nothing to do (2601's clause says so);
+  - with 3041 (log sinks): if it is done, the lines this ticket adds
+    to `crates/app/src/link.rs` (the LAN's port, token and warning,
+    and why the page opens no link) are `log::` calls with the target
+    `"platform"`, as 3041's rule says, so its default filter keeps
+    them. If not, macroquad's macros, and 3041 moves them with the
+    backend's other lines (its scope names this ticket);
   - with 3012: as in *The Deck's steps* above.
 - **Size.** If the PR passes about 600 changed lines (fixtures and
   snapshots aside), the LAN setting and the Deck's steps go to a
@@ -233,7 +260,8 @@ None.
 - finding builds on the LAN by themselves (mDNS, broadcast). 1143
   (parked) finds games to play, not builds;
 - binary messages and `WsTransport` (1141 and 1142, parked);
-- a `web` part in the templates (3004's exporters);
+- a `web` part in the templates: no ticket has it yet, and 2524's Out
+  leaves it to a ticket of its own if the eval's numbers say so;
 - the Playdate (2521's ADR notes it);
 - phones' browsers (2407, parked).
 

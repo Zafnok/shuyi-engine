@@ -8,9 +8,12 @@
 //!
 //! It also warns, never fails, on a clause in an open ticket that waits on a
 //! ticket already done ("if NNNN is done", ticket 2017): the PR that closed
-//! it should have settled the clause (the `work-ticket` skill, §5).
+//! it should have settled the clause (the `work-ticket` skill, §5). And it
+//! fails a clause that names an open ticket which never names it back (ticket
+//! 2027): if the clause's ticket lands first, nothing tells the other one
+//! what was left to it.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -79,6 +82,8 @@ struct Ticket {
     errors: Vec<String>,
     /// The clauses that wait on other tickets, read from open tickets only.
     clauses: Vec<Clause>,
+    /// The ticket ids its body names (`named_ids`).
+    names: HashSet<String>,
 }
 
 /// A clause in a ticket's body that waits on other tickets, such as "if
@@ -162,6 +167,7 @@ pub fn run(repo_root: &Path, pr_branch: Option<&str>, game: &GameSource) -> Repo
         report.errors.extend(check_pr_branch(&tickets, branch));
     }
 
+    report.errors.extend(check_mirrors(&tickets));
     report.warnings.extend(check_clauses(&tickets));
     report
 }
@@ -194,11 +200,7 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
     let mut fields = TicketFields::default();
     // A checkout with CRLF line endings reads the same as one with LF.
     let content = content.replace("\r\n", "\n");
-    // Done tickets are history: their clauses are never read.
-    let clauses = match (folder, extract_frontmatter(&content)) {
-        (Folder::Open, Some((_, body))) => find_clauses(body, first_line_of(&content, body)),
-        _ => Vec::new(),
-    };
+    let (clauses, names) = read_body(folder, &content);
 
     match extract_frontmatter(&content) {
         None => errors.push("missing or malformed frontmatter (no `---` delimiters)".to_string()),
@@ -213,6 +215,7 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
                         fields,
                         errors,
                         clauses,
+                        names,
                     };
                 };
 
@@ -293,7 +296,21 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
         fields,
         errors,
         clauses,
+        names,
     }
+}
+
+/// What later checks read from a ticket's body: its clauses, and the ids it
+/// names. Done tickets are history: their clauses are never read.
+fn read_body(folder: Folder, content: &str) -> (Vec<Clause>, HashSet<String>) {
+    let Some((_, body)) = extract_frontmatter(content) else {
+        return (Vec::new(), HashSet::new());
+    };
+    let clauses = match folder {
+        Folder::Open => find_clauses(body, first_line_of(content, body)),
+        Folder::Done => Vec::new(),
+    };
+    (clauses, named_ids(body))
 }
 
 /// The line, counted from 1, on which `body` (a suffix of `content`) starts.
@@ -410,6 +427,7 @@ fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
         "either" if reads(words, start, &["either", "order", "works", "with"]) => {
             ids_at(words, start + 4)
         }
+        "waits" | "wait" if reads(words, start + 1, &["for"]) => ids_at(words, start + 2),
         "if" | "when" => {
             let (ids, end) = ids_at(words, start + 1);
             let verbs: &[&str] = if word == "if" {
@@ -431,7 +449,8 @@ fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
 /// 1. `either order with <ids>` (and `either order works with <ids>`);
 /// 2. `if <ids> is done` (and `are done`);
 /// 3. `when <ids> is done`;
-/// 4. `<id>, if done`, as in "the book (NNNN, if done)".
+/// 4. `<id>, if done`, as in "the book (NNNN, if done)";
+/// 5. `waits for <ids>` (and `wait for <ids>`).
 ///
 /// `<ids>` is one four-digit id, or several joined by `,`, `and` or `or`.
 /// Fenced code blocks are skipped. `first_line` is the body's first line in
@@ -466,6 +485,73 @@ fn check_clauses(tickets: &[Ticket]) -> Vec<String> {
         }
     }
     warnings
+}
+
+/// The ticket ids `body` names: each run of exactly four ASCII digits that
+/// isn't part of a longer word and doesn't follow `#` or `-` (`game#1131`,
+/// `ADR-0005`). "1134's" names 1134.
+fn named_ids(body: &str) -> HashSet<String> {
+    let bytes = body.as_bytes();
+    let joined = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_';
+    let mut ids = HashSet::new();
+    let mut i = 0;
+    while i < bytes.len() {
+        if !bytes[i].is_ascii_digit() {
+            i += 1;
+            continue;
+        }
+        let start = i;
+        while bytes.get(i).is_some_and(u8::is_ascii_digit) {
+            i += 1;
+        }
+        let before = start.checked_sub(1).map(|j| &bytes[j]);
+        if i - start == 4
+            && !before.is_some_and(|b| joined(b) || matches!(b, b'#' | b'-'))
+            && !bytes.get(i).is_some_and(joined)
+        {
+            ids.insert(body[start..i].to_string());
+        }
+    }
+    ids
+}
+
+/// One error per file, line and id for each clause of an open ticket that
+/// names another open ticket, not in its `blocked_by`, whose body never names
+/// it back. If the clause's ticket lands first it moves to `done/`, where the
+/// other's closing PR never looks (`work-ticket` §5), so whatever it left to
+/// the other is lost unless the other says so.
+fn check_mirrors(tickets: &[Ticket]) -> Vec<String> {
+    let open: HashMap<&str, &Ticket> = tickets
+        .iter()
+        .filter(|t| t.folder == Folder::Open)
+        .filter_map(|t| Some((t.fields.id.as_deref()?, t)))
+        .collect();
+    let mut seen = HashSet::new();
+    let mut errors = Vec::new();
+    for ticket in tickets.iter().filter(|t| t.folder == Folder::Open) {
+        let Some(id) = ticket.fields.id.as_deref() else {
+            continue;
+        };
+        let blockers = ticket.fields.blocked_by.as_deref().unwrap_or_default();
+        for clause in &ticket.clauses {
+            for other in &clause.ids {
+                let Some(back) = open.get(other.as_str()) else {
+                    continue;
+                };
+                if other == id || blockers.contains(other) || back.names.contains(id) {
+                    continue;
+                }
+                if seen.insert((&ticket.display_path, clause.line, other)) {
+                    errors.push(format!(
+                        "{}:{}: \"{}\": {other} never names {id}, so write the other side \
+                         there (write-ticket, Check the dependency chain)",
+                        ticket.display_path, clause.line, clause.text
+                    ));
+                }
+            }
+        }
+    }
+    errors
 }
 
 /// A `Parked:` ticket has `status: blocked` and a `> **Parked**` note as the
@@ -764,6 +850,7 @@ mod tests {
             },
             errors: Vec::new(),
             clauses: Vec::new(),
+            names: HashSet::new(),
         }
     }
 
@@ -1295,6 +1382,8 @@ README.md
             ("When 2204 is done, use it.", "when 2204 is done"),
             ("the book (2204, if done).", "2204, if done"),
             ("The book (2204, IF DONE).", "2204, if done"),
+            ("Its example waits for 2204.", "waits for 2204"),
+            ("They Wait For 2204: x", "wait for 2204"),
         ] {
             let found = find_clauses(body, 1);
             assert_eq!(found.len(), 1, "{body}: {found:?}");
@@ -1376,9 +1465,23 @@ README.md
             "abcd, if done",
             "then 2204 is done",
             "2204",
+            "waits for the 2204",
+            "waiting for 2204",
+            "waits 2204",
+            "wait on 2204",
+            "waits for 22044",
+            "waits for",
         ] {
             assert!(find_clauses(body, 1).is_empty(), "{body}");
         }
+    }
+
+    #[test]
+    fn reads_ids_after_waits_for_as_after_either_order() {
+        assert_eq!(
+            clause_ids("waits for 1140, 2529 and 1145: x"),
+            vec![ids(&["1140", "2529", "1145"])]
+        );
     }
 
     #[test]
@@ -1496,6 +1599,145 @@ README.md
                  clause (work-ticket §5)"
             ]
         );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    // -- clauses written on both sides --
+
+    #[test]
+    fn named_ids_are_words_of_four_digits() {
+        let body = "Builds on 1134's skills, 2204, (2205) and 2206-2207; 2208–2209.\n\
+                    Not ADR-0005, game#1131, SH0001, v2210, 22111, 2212s or 2213_x.";
+        let expected: HashSet<String> = ["1134", "2204", "2205", "2206", "2208", "2209"]
+            .map(str::to_string)
+            .into();
+        assert_eq!(named_ids(body), expected);
+        assert_eq!(named_ids("2204"), ["2204".to_string()].into());
+        assert!(named_ids("").is_empty());
+    }
+
+    fn naming(id: &str, folder: Folder, blocked_by: &[&str], body: &str) -> Ticket {
+        Ticket {
+            clauses: if folder == Folder::Open {
+                find_clauses(body, 1)
+            } else {
+                Vec::new()
+            },
+            names: named_ids(body),
+            ..ticket(id, folder, "todo", blocked_by)
+        }
+    }
+
+    #[test]
+    fn fails_a_clause_the_other_open_ticket_never_names_back() {
+        let tickets = vec![
+            naming(
+                "2100",
+                Folder::Open,
+                &[],
+                "x\nIts example waits for 2101 and 2102.",
+            ),
+            naming("2101", Folder::Open, &[], "Particles."),
+            naming(
+                "2102",
+                Folder::Open,
+                &[],
+                "Either order with 2100: if 2100 is done, x.",
+            ),
+        ];
+        assert_eq!(
+            check_mirrors(&tickets),
+            vec![
+                "tickets/open/2100-x.md:2: \"waits for 2101 and 2102\": 2101 never names \
+                 2100, so write the other side there (write-ticket, Check the dependency chain)"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_mirrored_clause_passes() {
+        let tickets = vec![
+            naming(
+                "2100",
+                Folder::Open,
+                &[],
+                "Either order with 2101: if not, 2101 adds x.",
+            ),
+            naming(
+                "2101",
+                Folder::Open,
+                &[],
+                "If 2100's skill exists, add x to it.",
+            ),
+        ];
+        let errors = check_mirrors(&tickets);
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
+    #[test]
+    fn a_clause_on_a_blocker_a_done_ticket_or_itself_needs_no_other_side() {
+        let tickets = vec![
+            naming("2001", Folder::Done, &[], "Done."),
+            naming("2101", Folder::Open, &[], "Particles."),
+            naming(
+                "2100",
+                Folder::Open,
+                &["2101"],
+                "if 2101 is done, x; either order with 2001; if 2100 is done, y",
+            ),
+        ];
+        let errors = check_mirrors(&tickets);
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
+    #[test]
+    fn a_done_tickets_clauses_are_not_read() {
+        let mut done = naming("2100", Folder::Done, &[], "");
+        done.clauses = find_clauses("either order with 2101", 1);
+        let tickets = vec![done, naming("2101", Folder::Open, &[], "Particles.")];
+        let errors = check_mirrors(&tickets);
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
+    #[test]
+    fn fails_once_per_file_line_and_id() {
+        let tickets = vec![
+            naming("2100", Folder::Open, &[], "if 2101 is done (2101, if done)"),
+            naming("2101", Folder::Open, &[], "Particles."),
+        ];
+        assert_eq!(check_mirrors(&tickets).len(), 1);
+    }
+
+    #[test]
+    fn run_fails_on_a_one_way_clause() {
+        let root = make_temp_tickets_dir("run-one-way");
+        let open = |id: &str, body: &str| {
+            VALID_FRONTMATTER
+                .replace("2106", id)
+                .replace("\"2102\", \"game#1131\"", "")
+                .replace("# body", body)
+        };
+        fs::write(
+            root.join("tickets/open/2106-x.md"),
+            open("2106", "Either order with 2107: if not, 2107 adds x."),
+        )
+        .unwrap();
+        fs::write(root.join("tickets/open/2107-x.md"), open("2107", "y")).unwrap();
+        let report = run(&root, None, &GameSource::Checkout(&root));
+        assert_eq!(report.errors.len(), 1, "{:?}", report.errors);
+        assert!(
+            report.errors[0].starts_with("tickets/open/2106-x.md:14: \"either order with 2107\""),
+            "{:?}",
+            report.errors
+        );
+
+        fs::write(
+            root.join("tickets/open/2107-x.md"),
+            open("2107", "Either order with 2106: if 2106 is done, add x."),
+        )
+        .unwrap();
+        let report = run(&root, None, &GameSource::Checkout(&root));
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
         let _ = fs::remove_dir_all(&root);
     }
 

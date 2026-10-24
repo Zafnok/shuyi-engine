@@ -80,8 +80,8 @@ What is planned:
 - 2364 (parked): `crossed`, the marks between two times, which goes in
   this ticket's `shuyi_core::timer`.
 - 1134 (Engine: public): the skill pack, with a `shuyi-stage-grid` and
-  a `shuyi-stage-field` skill (ADR-0005 §3). Its scope doesn't say yet
-  how a rule is timed.
+  a `shuyi-stage-field` skill (ADR-0005 §3). Its scope already says
+  those two skills time rules with this ticket's timers, never `dt`.
 
 **Why it matters.** Visions of Shuyi is turn-based and counts its own
 turns in its rules. Nothing in it changes. For other games, the end
@@ -205,11 +205,13 @@ None.
     0..ticks` around `Every::advance(1)`, with `ticks` a plain `u32`
     standing in for `input.ticks()` (the doctest can't reach
     `shuyi-ui`, which depends on `shuyi-core`).
-  - **Either order with 2364 (parked):** if 2364 is done,
-    `crates/core/src/timer.rs` and its `timer/tests.rs` already hold
-    its `crossed`: add to both files, keep `crossed`, and the module
-    docs name it too. If not, write both files new; 2364 adds
-    `crossed` to them.
+  - **Either order with 2364, 2104 and 2105 (all parked):** whichever
+    of them is worked first writes `crossed` in this module (2104's
+    and 2105's scopes write it when 2364 isn't done). If one of them
+    is done, `crates/core/src/timer.rs` and its `timer/tests.rs`
+    already hold `crossed`: add to both files, keep `crossed`, and the
+    module docs name it too. If none is done, write both files new;
+    the first of them to be worked adds `crossed` to them.
 - **The rustdoc of `FrameInput::dt()` and `FrameInput::ticks()`**
   (`crates/ui/src/input/frame.rs`): one sentence each. `dt` is for what
   only looks; rules count `ticks()` or turns, with
@@ -225,13 +227,18 @@ None.
   not, it goes in each template's file.
 - **Either order with 1134** (the skill pack): if 1134 is done, its
   `shuyi-stage-grid` and `shuyi-stage-field` skills (ADR-0005 §3) say
-  the same as the templates' bullet. If not, this PR adds a line to
-  1134's scope: those two skills say to time rules with
+  the same as the templates' bullet. If not, nothing to do: 1134's
+  scope already says those two skills time rules with
   `shuyi_core::timer` (2115), never with `dt`.
 - **Either order with 2802** (the book): if 2802 is done, chapter 6,
   *Rules as commands*, gets a short section on time in rules. If not,
   this PR adds "time in steps or turns (`shuyi_core::timer`, 2115)" to
   chapter 6's line in 2802's scope.
+- **Either order with 2004** (the guides): if 2004 is done,
+  `docs/guides/top-down-grid.md`'s *In real time* section names
+  `shuyi_core::timer`'s `Countdown` and `Every` where it says a turn
+  game times its rules in turns. If not, nothing to do (2004 names
+  them).
 - **What changes for the game:** nothing. The API grows, and
   `shuyi_platform::tick::STEPS_PER_SECOND` keeps its path and value.
   The PR says so.
@@ -253,6 +260,10 @@ None.
 - `TickSim`, `TickDriver` and records (1119); game speed and hit-stop
   (2123); tweens (2109);
 - the real-time grid template and its snake example (2739, parked);
+- the card-battle example (2737, parked), which counts weak turns with
+  `Countdown` if this is done. **Either order with 2737:** if 2737 is
+  done, its `u8` weak turns stay: nothing to do. If not, nothing to do
+  (2737 uses `Countdown`, as its scope says);
 - 2712's RTS cooldown, which stays a `u16` column for a thousand units;
 - the platformer controller's coyote time and jump buffer (1127,
   parked), which may count with `Countdown` when it is worked;
@@ -263,10 +274,10 @@ None.
 1. Read ADR-0003 §2 and §3, ADR-0024 §4,
    `crates/platform/src/tick.rs`, `crates/ui/src/input/frame.rs` and
    the module docs of `crates/core/src/hash.rs`.
-2. Write `crates/core/src/timer.rs` (or add to it, if 2364 made it):
-   `STEPS_PER_SECOND`, `steps_from_ms`, `Countdown`, `Every`, the
-   module docs and the doctest. Add `pub mod timer;` (if it isn't
-   there) and the re-exports to `crates/core/src/lib.rs`.
+2. Write `crates/core/src/timer.rs` (or add to it, if 2364, 2104 or
+   2105 made it): `STEPS_PER_SECOND`, `steps_from_ms`, `Countdown`,
+   `Every`, the module docs and the doctest. Add `pub mod timer;` (if
+   it isn't there) and the re-exports to `crates/core/src/lib.rs`.
 3. Add the `shuyi-core` dependency to `crates/platform/Cargo.toml`, and
    swap the constant in `crates/platform/src/tick.rs` for the
    re-export. Its tests pass unchanged.
@@ -275,7 +286,7 @@ None.
 5. Write the frame-rate test in `crates/platform/src/app/tests.rs`,
    beside `a_second_of_frames_steps_sixty_times_and_a_late_one_four`.
 6. Write the rustdoc sentences and the templates' bullet. Then, by
-   whether each is done, the skill pack's lines or 1134's scope line,
+   whether each is done, the skill pack's lines (if 1134 is done),
    and the book's section or 2802's scope line.
 7. Run the gates, the `no_std` build and `cargo xtask check-no-std`
    included.

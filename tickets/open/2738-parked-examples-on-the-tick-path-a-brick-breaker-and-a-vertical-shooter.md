@@ -131,12 +131,16 @@ None. When it unparks is his call (above).
     stage steps the rules once for each of `input.ticks()` through
     1119's driver, and keeps the run's `TickRecord`. A suspended game
     gets 0 ticks, so the ball waits. If 3042 is done, losing focus opens
-    the pause menu.
+    the pause menu (its system hook on `FocusLost`); if not, 3042 adds
+    that.
   - **the drawing:** `Overlay`s on the glyph console. The bricks take a
     palette role per row (`files/palette.ron`), then the paddle and the
-    ball. The score and the lives are text. If 2336 is done, the ball is
-    a filled circle. If 2340 is done, a lost life shakes the frame
-    through `Ctx::shake`, so the player's reduced-motion setting holds.
+    ball. The score and the lives are text. **Either order with 2336:**
+    if 2336 is done, the ball is a filled circle; if not, it is a
+    square `Overlay`, and 2336 makes it a circle. If 2340 is done, a
+    lost life shakes the frame through `Ctx::shake`, so the player's
+    reduced-motion setting holds; if not, 2340 adds that shake when it
+    lands.
   - **the actions:** `UiAction`'s six, with the default layouts and a
     `steam-deck` and a `playdate` table in `files/keymap.ron`. Nothing
     names a key (the `input-actions` skill). `shuyi.ron` has a
@@ -151,15 +155,23 @@ None. When it unparks is his call (above).
     `bricks_left`, `step` and `outcome`) and `replay` through
     `contract::replay::ticks`. `bots` stays unsupported (Out).
   - **sound:** if 2225 is done, a bounce, a break and a lost-life sound
-    from its presets. If not, none, and the README says so.
+    from its presets. If not, none, the README says so, and 2225's PR
+    adds them (its item on the gallery examples says so).
   - the font atlas copied from `examples/hello-grid/files/font`
     (Terminus, OFL-1.1, with its license file), and a row for the copy
     in `THIRD_PARTY_ASSETS.md`.
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
-    template-lines` if 2512 is done; counted, and said how, if not). If
-    2514 is done, an animated picture of its first seconds made with
-    `frame-png`. The engine's `README.md` names it beside hello-grid.
+    template-lines` if 2512 is done; counted, and said how, if not).
+    **Either order with 2514:** if 2514 is done, an animated picture of
+    its first seconds made with `frame-png`; if not, 2514 adds it (its
+    clause says so). **Either order with 2811:** if 2811 is done, that
+    picture is the example's preview: `preview.png` in its folder, made
+    by a `preview` part in its `shuyi.ron` (`cargo shuyi frame-png
+    --preview`), checked by a test in `tests/it/` as hello-grid's is,
+    and shown on its card on the Examples page. If not, nothing to do
+    (2811 makes the picture its preview). The engine's `README.md`
+    names it beside hello-grid.
 - **Tests of the example** (`tests/it/`):
   - a Harness playthrough through actions only (`Harness::act`, with
     `Harness::wait` between). From the title: start, launch, and the
@@ -174,14 +186,22 @@ None. When it unparks is his call (above).
     30 frames a second as at 60 (`Harness::frame` with a `dt` of 1/30
     and of 1/60, holding what the keymap binds to `Right`);
   - replay: the playthrough's `TickRecord` gives the same hash list
-    twice. If 2116 is done, add the record to its fixtures, beside
-    hello-grid's (`examples/hello-grid/tests/records/`);
+    twice. 2116 is done before this ticket (1119 needs it first), so
+    the record is also checked in with a golden table of the example's
+    own, in the form 2116 gives Hello, Grid's: the record in
+    `examples/bricks/tests/records/playthrough.ron`, the table
+    `tests/golden/bricks.ron` (`step NNN` rows and `outcome`) checked by
+    `tests/golden.rs`, the window behind a default `window` feature, and
+    a `cargo test --target wasm32-wasip1 -p bricks --no-default-features
+    --test golden` step in CI's `determinism` job, as 2116's line in the
+    `run-gates` skill says a new example does. Not in hello-grid's
+    `tests/records/`: its `golden.rs` replays a `StageRecord`;
   - a property test: random inputs for 5 000 steps never panic, and the
     ball is never inside a brick, a wall or the paddle;
   - `frame-png` pictures: the field at its start and mid-play;
   - `cargo shuyi check`, `check --target all` and `check-keys` pass.
-- **CI and Pages,** either order with 2735, 2736 and 2737 (2739 lands
-  first, and may already have made the loop):
+- **CI and Pages,** either order with 2735, 2736, 2737 and 2740 (2739
+  lands first, and may already have made the loop):
   - if the `wasm` job of `.github/workflows/ci.yml` and
     `.github/workflows/pages.yml` loop over every `examples/*/shuyi.ron`
     that has a `web` section, the bricks are picked up with no workflow
@@ -193,7 +213,8 @@ None. When it unparks is his call (above).
     `dist/web` copied to a folder named after the example, with a line
     on the index page from its `web.title`. The `run-gates` skill's
     web-build step loops the same way;
-  - if 2801 is done, the example gets its card in the Examples section.
+  - if 2801 is done, the example gets its card in the Examples section;
+    if not, 2801 gives it one and moves it under `/examples/`.
     If 2019 is done, its headless browser job opens it.
 - **The eval:** if 2524 is done, add `evals/tasks/bricks.ron`: template
   `blank`, targets `desktop` and `web`, reference
@@ -208,7 +229,7 @@ None. When it unparks is his call (above).
   bricks' form, with the scope below and what the bricks taught. It has
   this ticket's milestone and `blocked_by: ["2738"]`, and is parked only
   if Nick unparked the bricks alone. In the same PR, the mentions of
-  2738's shooter in 2122 and 2335, and the line on the gallery in
+  2738's shooter in 2122, 2124 and 2335, and the line on the gallery in
   `docs/ROADMAP.md`, name the new ticket. Its scope:
   - the ship moves with 1122's top-down controller, its numbers in
     `files/ship.ron`, clamped to the field. `Confirm` held fires a shot
@@ -222,7 +243,8 @@ None. When it unparks is his call (above).
     `a + (b - a) * t / steps` in `Fx`. The foe kinds are in the same
     file: health, points, and how often it fires (0 = never). Foes'
     shots fly straight down. If 2122 is done, a path is a `Curve` and
-    foes fly it with `CurveFollower`;
+    foes fly it with `CurveFollower`. If not, foes fly straight lines
+    between the points, and 2122 leaves them so;
   - hits are overlaps of `Aabb`s through 1122's broad phase, or 2124's
     `overlap_rect` if 2124 is done. A hit ship loses a life and can't
     be hit for the next 120 steps. Three lives. `Won` when the last wave
@@ -230,8 +252,10 @@ None. When it unparks is his call (above).
   - drawn with `Sprite`s from a tileset made by `cargo shuyi
     glyph-tiles` (the ship, two foe kinds, the shots), a hit flash with
     `Paint::Solid`, and stars placed from the step number, in the view
-    only. If 2335 is done, foes turn to face where they fly, to the
-    nearest of 8 directions from the signs and sizes of their speed.
+    only. **Either order with 2335:** if 2335 is done, foes turn to
+    face where they fly, to the nearest of 8 directions from the signs
+    and sizes of their speed; if not, they keep one picture, and 2335
+    adds nothing here (its Out says so).
     The tileset's glyphs are Terminus's, so its row in
     `THIRD_PARTY_ASSETS.md` names `files/tiles.png` too, as
     hello-grid's does;
@@ -285,7 +309,7 @@ None. When it unparks is his call (above).
    pictures.
 6. Write the CI and Pages loop if 2739 didn't, the README, the engine's
    README line and the eval task.
-7. Write the shooter's ticket, and update 2122, 2335 and
+7. Write the shooter's ticket, and update 2122, 2124, 2335 and
    `docs/ROADMAP.md` to name it. Run the gates.
 
 ## Acceptance criteria
@@ -296,6 +320,8 @@ None. When it unparks is his call (above).
       30 and at 60 frames a second.
 - [ ] The playthrough's record replays to the same hash list twice, and
       `cargo shuyi replay` on it lists one step per tick.
+- [ ] The bricks' golden table passes natively and on wasm32 in CI's
+      `determinism` job.
 - [ ] The property test passes.
 - [ ] `cargo shuyi check`, `check --target all` (`desktop`, `web`,
       `steam-deck` and `playdate`) and `check-keys` pass on the example,
@@ -305,8 +331,8 @@ None. When it unparks is his call (above).
       README names it.
 - [ ] The eval has a bricks task with the example as its reference, or
       2524's scope has it.
-- [ ] The shooter's ticket is in `tickets/open/`, and 2122, 2335 and
-      `docs/ROADMAP.md` name it.
+- [ ] The shooter's ticket is in `tickets/open/`, and 2122, 2124,
+      2335 and `docs/ROADMAP.md` name it.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -319,6 +345,7 @@ None. When it unparks is his call (above).
 - Property: random inputs for 5 000 steps, as above.
 - Integration: the playthrough; 30 and 60 frames a second; replay;
   `check --target all`.
+- Golden: the playthrough's record, natively and on wasm32 (2116).
 - Snapshot: the `frame-png` pictures.
 
 ## Completion notes

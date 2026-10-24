@@ -74,15 +74,15 @@ None.
     targets return `ExplorerEffect`;
   - a zone the game marks as stopping abilities (2741's `Zone`) is the
     game's check: `PartyMath::ability_blocked(place)`.
-- **Rest**: `rest(defs, party)` refills charges (and the pools the game
-  says rest refills, from `sheet.ron`'s flag on a pool), for the inn
-  (2752).
+- **Rest**: `rest(defs, party)` refills charges (and the pools whose
+  `refill_at_rest` is true in 2745's `sheet.ron`), for the inn (2752).
 - A party of one with abilities passes the same tests.
 
 **Out (do not do):**
 - what any ability does: the game's;
-- the menus to cast outside battle (the hub, 2752, and the example's
-  camp menu, 2754);
+- the menus to cast outside battle: the game's own screens, built from
+  the engine's menus (the example's camp menu, 2754; a game's place
+  list, 2752, can pop to one by name);
 - skills with cooldowns in real time (ADR-0034, 2757).
 
 ## Implementation steps

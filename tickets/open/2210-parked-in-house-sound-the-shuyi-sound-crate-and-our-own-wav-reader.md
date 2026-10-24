@@ -63,9 +63,17 @@ None.
 - **`shuyi_sound::wav::header(&[u8])`**: rate, channels, frames and
   format without decoding, for a format's "size from the header" path
   (ADR-0019).
-- **The format in `shuyi-assets`**: if a sound kind exists by then,
-  register a `wav` `Format` for it that calls `shuyi_sound`. If none
-  exists, add the `Pcm` kind and the `wav` format, sniffed by `RIFF....WAVE`.
+- **The format in `shuyi-assets`**: the `Sound` kind exists, a file's
+  header read by the `Wav` and `OggVorbis` formats
+  (`crates/assets/src/audio/formats.rs`). Make `Wav` read its header
+  through `shuyi_sound::wav::header`, sniffed by `RIFF....WAVE`. Whether
+  a decoded `Pcm` kind is added beside it is this ticket's call: today
+  formats read headers, and the platform decodes as it plays.
+- **Either order with 2225** (`.sfx.ron` sound effects): if 2225 is
+  done and this ticket adds a `Pcm` kind, add a `.sfx.ron` format of
+  it too, from `sfx::render`'s samples; if not, and this ticket adds
+  one, write that step into 2225's scope. With no `Pcm` kind, nothing
+  to do: 2225 plays a `.sfx.ron` as a WAV.
 
 **Out (do not do):**
 - Ogg and Vorbis (2211–2214), mixing (3030), playing (3031, 3032).

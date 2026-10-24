@@ -59,19 +59,32 @@ None.
   the light into bands for a pixel-art look.
 - **`frame-png`:** a CPU reference of the same lighting, in integers.
   2326's GPU-against-CPU test covers lights too.
-- **Targets without shaders:** lit layers are drawn unlit. If 3017 is
-  done, `lights` is a need a target can lack (optional).
+- **Targets without shaders:** lit layers are drawn unlit.
+  **Either order with 3017:** if 3017 is done, add a `lights` need,
+  always optional, and the `shaders: bool` capability it is checked
+  against (false on `playdate`, `gba`, `nds` and `dsi`) if 3017 has
+  none, so `left_out` lists lit layers drawn unlit; if not, nothing to
+  do (3017 adds them, its scope says so).
 - **The example:** 1119's tick example's room at night, with a torch
   the dot carries.
+- **Either order with 2331** (the render graph): if 2331 is done, the
+  lighting is a node of its `RenderGraph`, with the lit layers and
+  normal maps as its named inputs, turned on in `render.ron`; if not,
+  nothing to do (2331 moves it into a node).
+- **Either order with 2369** (the light cycle, parked): if 2369 is
+  done, a lit world layer takes 2369's `look.blend` too, and when it
+  is `Some` the mixed light (`Light::mix`) is the layer's ambient in
+  place of `ambient`, so point lights show at night; if not, nothing
+  to do (2369 adds it, its clause says so).
 
 **Out (do not do):**
 - shadows and occluders (a follow-up if a game asks; traced 2D light
   with soft shadows and bounces: 2911 researches it);
-- blending the ambient light over a day (2369's light cycle; either
-  order with 2369 says how the two meet);
+- the light cycle that blends lights over a day (2369; the clause
+  with 2369 above says how its blend becomes the ambient);
 - lights that change the simulation;
 - 3D lights (3103, 3104);
-- emissive maps (a follow-up).
+- emissive maps (a follow-up if a game asks).
 
 ## Implementation steps
 

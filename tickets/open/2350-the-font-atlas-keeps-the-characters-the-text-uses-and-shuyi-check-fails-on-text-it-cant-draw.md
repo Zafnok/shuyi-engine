@@ -69,8 +69,9 @@ uses; none asks the developer to list them.
   building its own; 2303 builds on 2301.
 - 2346: typing names in any language, which refuses at run time a
   letter the font lacks. Either order with this ticket (In, 1).
-- 2224: TTF and OTF fonts cut to cells. Its either-order clause: if this
-  ticket is done, it keeps the characters `AtlasChars::wants`.
+- 2224: TTF and OTF fonts cut to cells. Either order with this ticket
+  (In, 4): whichever lands second makes `font-atlas` cut a TTF or OTF
+  to the characters `AtlasChars::wants`.
 
 **Why it matters.**
 - **The game first.** The game's Japanese and Chinese (2301, 2303) need
@@ -116,6 +117,9 @@ None.
      2346 adds them.
    - 2351 merges the engine's English into the `Lang`'s English, so the
      scan lists it whichever lands first.
+   - 2348's messages are scanned as written: a message's text holds
+     every character of every form, and its syntax is ASCII, so
+     nothing changes whichever lands first.
 2. **The check:** `shuyi_assets::font::undrawn(atlas: &FontAtlasDef,
    lang: &Lang) -> Vec<ContentError>`, a check across assets after
    loading (ADR-0019 §5):
@@ -173,6 +177,15 @@ None.
      `check` (6) is the gate, and 2301's wide font may draw them.
    - An atlas whose text uses nothing outside the ranges and the
      required set is byte for byte what it is today.
+   - **Either order with 2224:** if 2224 is done, `run` reads every
+     font through its `read_any`, which cuts a TTF or OTF with
+     `rasterize` to `ATLAS_RANGES` alone. Hand `read_any` the
+     `AtlasChars` and pass its `wants` to `rasterize`, so a character
+     the text uses is cut too; keep 2224's `outline` parameter of
+     `run` beside `chars`; and test it on a fixture TTF with a glyph
+     outside the ranges (`Ж`, say). `text-font` needs nothing:
+     `AtlasChars::default()` is the ranges it uses. If not, nothing to
+     do here (2224's clause does it).
 5. **`font-atlas` runs with the game's text** (`crates/cli/src/lib.rs`):
    - when `shuyi.ron` names a tool program (`game`), `font-atlas` runs in
      it, as `lang-status` does, and reads the text through
@@ -268,8 +281,9 @@ moves its pin follows it.
   2301 and 2303, which build on this scan and this check.
 - Line breaking and text too long for its place (2302).
 - Typing names: `NameRules`, the name grid's pages and the IME (2346).
-- TTF and OTF fonts, and proportional text (2224, 2334). 2224 picks its
-  characters with `AtlasChars` (its either-order clause).
+- TTF and OTF fonts, and proportional text (2224, 2334). Which
+  characters `font-atlas` cuts from a TTF or OTF is settled in either
+  order (In, 4, and 2224's either-order clause).
 - Adding Latin Extended or Cyrillic blocks to `ATLAS_RANGES`: every
   game's atlas, the game's included, would change at its next
   regeneration. A game gets those letters by using them.

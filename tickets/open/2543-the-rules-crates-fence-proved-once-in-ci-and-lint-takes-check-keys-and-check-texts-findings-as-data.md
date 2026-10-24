@@ -74,6 +74,10 @@ None.
   (`check-keys` stays for `blank`, which has no `lint` step). The
   `check-keys` command itself stays, and `AGENTS.md`'s table may still
   name it.
+- **From 2022 (done):** the `run-gates` skill's section *A new game
+  from each template* copies the templates job's gates in one block
+  for `grid` and `blank`. Change it as `ci.yml` changes: `grid` runs
+  `lint` and no `check-keys`, and `blank` keeps `check-keys`.
 - **Findings as data:** `check_keys::run` and `check_text::run_names`
   return a list of `Hit { file, line: Option<usize>, message }` (or reuse
   `check_text::Hit` if it fits), and their commands print them as today,
@@ -92,8 +96,6 @@ None.
 - `lint` failing (exit 3) when `shuyi.ron` lacks a part: it records a
   limit and runs what the project has, by design;
 - `check-keys` and `check-text` on the engine's own code (2006).
-- Remove `check-keys` from the grid template's gates in `run-gates`'
-  templates section too (2022 added it).
 
 ## Implementation steps
 
@@ -114,6 +116,8 @@ None.
       checks the four messages.
 - [ ] The grid template's `ci.yml` and `AGENTS.md` run `lint` and no
       `check-keys`.
+- [ ] The `run-gates` skill's templates section runs no `check-keys`
+      for `grid` and still runs it for `blank`.
 - [ ] `reported` (or its successor) no longer parses `check-keys`' or
       `check-text`'s findings.
 - [ ] `lint` on a game with fewer literals than its cap has the

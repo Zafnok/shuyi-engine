@@ -43,15 +43,19 @@ What Shuyi has today:
 - a game's own data kinds through `shuyi_assets::ron::Ron<T>`, as
   hello-grid reads `en.ron` (`formats` in
   `examples/hello-grid/src/lib.rs`), and their errors through
-  `GameTools::check` (`crates/cli/src/game.rs`).
+  `GameTools::check` (`crates/cli/src/game.rs`);
+- the short path a small game is written on (2511, ADR-0036):
+  `BasicGame::with_own` for a game with data of its own, read by an
+  `Own<T>`, with `.console`, `.screens` and the default
+  `BASIC_CONSOLE` (48 × 24) (`crates/platform/src/basic.rs`);
+  `BasicData` and `BASIC_GLYPHS` (`crates/ui/src/basic.rs`);
+  `BasicTools`, with `harness` and `picture` for a game's own
+  `GameTools` (`crates/cli/src/basic.rs`); and `shuyi::prelude` with
+  `run_game`. `UiAction`'s six actions are an `ActionSet`. It plays no
+  sounds (2511's Out).
 
 What is planned:
 
-- 2511 (MVP): the short path a small game is written on:
-  `BasicGame::with_own` for a game with data of its own, `BasicData`,
-  `shuyi_platform::prelude`, `shuyi_app::run_game` and
-  `shuyi_cli::BasicTools`, with `UiAction`'s six actions as an
-  `ActionSet`;
 - 2114 (After MVP): `SimRng::stream`, and `shuffle`, `pick` and
   `pick_weighted` on `RandomSource`. Its docs deal a shuffled deck;
 - 2113 (After MVP): `Minimax` and `Mcts` bots over `TurnRules`, which
@@ -223,15 +227,16 @@ None.
   and the README says why the Playdate is left out, as hello-grid's
   does.
 - **The font:** the screens draw only glyphs of 2511's `BASIC_GLYPHS`
-  (today the templates' `REQUIRED_GLYPHS`), so `files/font` is a copy
+  (`crates/ui/src/basic.rs`), so `files/font` is a copy
   of `templates/blank/crates/game/files/font`: Hello, Grid's atlas and
   the Terminus license (OFL-1.1). The templates' Terminus row in
   `THIRD_PARTY_ASSETS.md` gains its path.
 - **Sounds:** if 2225 is done, the engine's four menu cues come from
   `files/sfx/*.sfx.ron` and `files/audio.ron`, which the short path
   reads with no code, as 2225 gives the blank template. If not, the
-  example is silent, as the short path is (2511's Out), and its README
-  says so.
+  example is silent, as the short path is (2511's Out), its README
+  says so, and 2225's PR adds the sounds (its item on the gallery
+  examples says so).
 - **`shuyi.ron`** in hello-grid's form: `game`, `targets`, `web`, and a
   `check_keys` section as the blank template's (`src`, `files`, with
   `files/keymap.ron` as `not_text`), so `cargo shuyi check-keys` runs in
@@ -265,8 +270,8 @@ None.
   - two states that differ only in the draw pile's order get the same
     first command from the same `Mcts`.
 
-  If 2113 isn't done, nothing; 2113's Out already says what this
-  example adds when both exist.
+  If 2113 isn't done, nothing here: 2113's clause with 2737 adds all
+  of this when it lands.
 - **Golden table, either order with 2116:** if it is done, the example
   gets a golden table as Hello, Grid's
   (`tests/golden/card-battle.ron`, a record
@@ -281,7 +286,7 @@ None.
   health in range), and `cargo shuyi soak 20` passes in the example's
   folder. If not, nothing.
 - **CI and Pages,** either order with the other examples (2735, 2736,
-  2738, 2739):
+  2738, 2739 and 2740):
   - if the `wasm` job of `.github/workflows/ci.yml` and
     `.github/workflows/pages.yml` still name each example by hand
     (today `examples/hello-grid` alone), change both to a loop over

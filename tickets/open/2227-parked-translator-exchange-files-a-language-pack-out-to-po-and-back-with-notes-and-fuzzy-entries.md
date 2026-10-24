@@ -187,10 +187,12 @@ CSV is needed too (see *Out*).
   declares): `msgid` is the source language's text
   (`Lang::source_text`), `#:` names `<source tag>/ui.ron`, `Language:`
   is the pack's tag with `_` for `-` as gettext writes it (`pt_BR`), and
-  both commands read a tag with `LangCode::parse`. If not, nothing here.
+  both commands read a tag with `LangCode::parse`. If not, nothing
+  here: 2226 does it (its clause says so).
 - **If 2351 is done** (the engine's own English): a screen-text key
   whose English is the engine's (`Lang::is_engine`) goes out as a `ui`
-  entry with `#: engine`. If not, nothing here.
+  entry with `#: engine`. If not, nothing here (2351 does it, as its
+  clause says).
 - **Docs:**
   - a section "Translating with PO" in `docs/formats.md`: what goes
     out, what fuzzy and obsolete mean, why the RON pack stays the
@@ -224,6 +226,11 @@ calls changes, so the next pin bump needs no change in the game.
 - A generated pseudo-language (2353).
 - Hosting, syncing with Weblate or Crowdin, Google Sheets, machine
   translation (the engine's own screens: 2352).
+- PO for the engine's own packs (2352's `crates/ui/lang/<code>/`): a
+  ticket of its own if a person checks them in a translation tool. A
+  game's export writes a key its pack lacks with `msgstr ""`, even
+  where an engine pack covers it: a follow-up if translators should
+  see the engine's words.
 - Changing what `lang-status` reports.
 
 ## Implementation steps

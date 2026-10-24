@@ -41,11 +41,12 @@ reimplement").
 [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
 sets the rules: wgpu for graphics and winit for the window and its input
 (§1); what we write on top is written from specifications and
-documentation (§2), in crates of their own (§4). 3003
-(the platform boundary) must be done first: the replacement implements
-`Platform`. 2018 and 2019 (the desktop window and the web build
-compared with the raster in CI) must be done too: they are the net the
-switch is checked against.
+documentation (§2), in crates of their own (§4). **From 3003 (done,
+ADR-0024):** the replacement implements `Platform`
+(`crates/platform/src/platform.rs`) and is driven by `App::frame`.
+2018 and 2019 (the desktop window and the web build compared with the
+raster in CI) must be done first: they are the net the switch is
+checked against.
 
 This is research: it writes the plan, an ADR and the tickets. It builds
 nothing that ships.
@@ -78,14 +79,33 @@ when (dropping a platform for a while, say), it asks Nick with the
   - the build size: wgpu's added size, natively and in the `.wasm`, against
     today's macroquad build;
   - the 3D plans (ADR-0011, the GPU painter in 3104) and whether the
-    renderer must leave room for them now;
+    renderer must leave room for them now. **Either order with 3104:**
+    if 3104 is done, the plan has a ticket that moves `shuyi-app-3d`
+    (the `GpuPainter` hook in `shuyi-app`, its passes and its look test
+    in 2018's `render` job) off miniquad, before the one that removes
+    macroquad; if not, the ADR says how 3104 is written over the new
+    layer, as 3104 asks;
+  - room for traced light (2911, parked research): wgpu's ray-query
+    feature and compute passes. **Either order with 2911:** if it is
+    done, its ADR and the line it added to this ticket say what traced
+    light needs from the renderer; leave room for it. If not, record
+    wgpu's ray-query status per backend in the report and the ADR, for
+    2911 to build on;
   - room for the 2D effects that wait on this renderer: a chain of
     screen passes (2326), a game's own WGSL passes and sprite materials
-    (2327), and 2D lights with normal maps (2328). When this research
-    writes the renderer's ticket, add its id to the `blocked_by` of
-    2326, and the winit backend's ticket to the `blocked_by` of 3035
+    (2327), 2D lights with normal maps (2328), and the render graph
+    that composes them as passes (2331). When this research writes the
+    renderer's ticket, add its id to the `blocked_by` of 2326 and 2331,
+    and the winit backend's ticket to the `blocked_by` of 3035
     (screen reader output through AccessKit, which joins a winit
     window).
+  - GPU frame times for 2325's profiler (2382): what the renderer's ADR
+    must leave room for, and whether wgpu's timestamp queries give them
+    on each backend (a row per backend in the report, which 2382's
+    table in `docs/platform-backends.md` starts from). When this
+    research writes the renderer's ticket, add its id to the
+    `blocked_by` of 2382 too, and the id of the ticket whose backend
+    first runs the renderer in a window, if that is another one.
   - what the frame already asks of every renderer (2337):
     `Paint::Tinted` as the draw colour with no copy of the image,
     overlay opacity, and `Blend::Add` and `Blend::Multiply` as blend
@@ -101,6 +121,13 @@ when (dropping a platform for a while, say), it asks Nick with the
 - **The window and input over winit.** Decide, and record in the ADR:
   - the run loop: how winit's event loop drives `App::frame` (3003) on
     desktop and the web;
+  - **From 2511 (done):** the short path's entry,
+    `shuyi_app::run_game(game)` (ADR-0036 §7, also
+    `shuyi::prelude::run_game`), calls macroquad's `#[doc(hidden)]`
+    `Window::from_config`, and a long-form game's `main` is
+    `#[macroquad::main]`. The plan gives the new backend a `run_game`
+    of the same signature, so a short-path game changes nothing at the
+    switch, and says how a long-form game's entry moves;
   - keyboard and mouse to the engine's `RawInputEvent`s
     (`crates/app/src/keys.rs` today);
   - text input: the IME as winit gives it (its composing text with a
@@ -108,7 +135,11 @@ when (dropping a platform for a while, say), it asks Nick with the
     drawing the composing text underlined, and the IME turned on and
     placed from `Frame::typing` and the buffer's text caret (2346) on
     Windows, macOS, Linux and the web (miniquad 0.4.11 does it on
-    Windows only);
+    Windows only). 1149's chat box is built on the name box's typing
+    and takes its composing text from these tickets (**either order
+    with 1149:** if 1149 is done, the ticket that draws the composing
+    text draws it in the chat box too; if not, that ticket draws it in
+    every text box built on the name box's typing, as 1149's will be);
   - the system keyboard (3003's `TextInput`);
   - high-DPI, full screen and the Steam Deck's screen;
   - suspend and resume (3003's `SystemEvent`), and focus and visibility
@@ -120,12 +151,18 @@ when (dropping a platform for a while, say), it asks Nick with the
     monitor's work area; putting a saved window place back only on a
     connected monitor (3044 keeps the size and mode across launches,
     not the place); a minimum window size; the maximized state;
-    choosing a monitor; exclusive fullscreen; custom cursor images and
-    confining the cursor (3106 locks it for 3D); and leaving fullscreen
-    on Linux (miniquad's X11 code has a TODO saying it can't go back to
-    windowed). The winit backend keeps 3044's window record and cursor
-    rule (`docs/platform-backends.md`, *The window and the cursor
-    (desktop)*);
+    choosing a monitor; exclusive fullscreen; custom cursor images
+    (miniquad 0.4.11 has only the system's cursors); and leaving
+    fullscreen on Linux (miniquad's X11 code has a TODO saying it can't
+    go back to windowed). The winit backend keeps 3044's window record
+    and cursor rule (`docs/platform-backends.md`, *The window and the
+    cursor (desktop)*);
+  - the cursor grab, which miniquad 0.4.11 already has
+    (`set_cursor_grab`: the cursor held inside the window on desktop,
+    pointer lock on the web), kept through winit's own grab.
+    **Either order with 3106:** if 3106 is done, its pointer lock in
+    `shuyi-app` moves to the winit backend with its tests green; if
+    not, the ADR says how a game asks for the grab, and 3106 uses that;
   - which winit version to pin, and how the engine moves to the next
     one.
 - **The web build moves to `wasm-bindgen`.** wgpu reaches the browser
@@ -148,6 +185,20 @@ when (dropping a platform for a while, say), it asks Nick with the
     `index.html` starts it before `load(...)`; the plan says how the
     new loader's start goes through it, and that its `data-shuyi` state
     keeps working;
+  - **Either order with 2909** (video playback research): if 2909 is
+    done, its report plans the video on the macroquad path (the
+    browser's `<video>` through a miniquad JS plugin of ours) and names
+    what changes under this plan: move that plugin over with the ones
+    above, and plan the video through `web-sys` and wgpu's textures. If
+    not, nothing to do here: 2909 covers the video on this plan's web
+    build itself.
+  - **Either order with 2601's web backend** (parked; a follow-up
+    ticket 2601 writes): if it is done, its `http.js` (and
+    `crates/app/src/http/web.rs`) is one more plugin to move, and the
+    plan says whether it becomes a crate of its own (2601 leaves that
+    to the tickets this writes); if not, nothing to plan for it: the
+    ticket that switches the web build moves every plugin
+    `crates/cli/web` holds by then;
   - the log sinks (3041) keep working without macroquad: the browser
     console sink reaches `console.error` to `console.debug` through
     miniquad's macros today, and moves to `web-sys`'s `console` or a
@@ -163,6 +214,11 @@ when (dropping a platform for a while, say), it asks Nick with the
   (`crates/cli/src/contract/doctor/linux.rs`) and
   `scripts/setup-linux.sh` (2513) to match, in the PR that removes
   macroquad.
+  **Either order with 3004:** if 3004 is done, that PR also checks
+  `crates/cli/export/libraries.ron` (3004's library audit) for every
+  target against what winit and wgpu load, and updates it; if not, the
+  ticket that removes macroquad says the same in a clause with 3004,
+  and 3004 names it back.
 - **Android and iOS later** (ADR-0008): what the design must not rule out.
 - **The order of the build**, so the game keeps working at every step:
   for example, a new backend crate beside `shuyi-app` behind a feature,
@@ -195,7 +251,8 @@ when (dropping a platform for a while, say), it asks Nick with the
    and note which of these tickets are done: 2018's and 2019's capture
    mode and jobs, 2337's blend rules, 2346's IME calls, 3041's sinks,
    3042's ADR, 3043's `lifecycle.js`, 3044's window record and cursor
-   rule, 3052's `shell.js`, 2513's Linux table, and 2908's ADR.
+   rule, 3052's `shell.js`, 2513's Linux table, 2908's ADR, 3104's
+   `shuyi-app-3d` and 3106's pointer lock.
 3. Read wgpu's and winit's documentation and examples, and the WGSL
    specification, and list what was used in the report.
 4. Prototype only what the decision needs, in a throwaway branch or
@@ -215,7 +272,8 @@ when (dropping a platform for a while, say), it asks Nick with the
       `blocked_by` chain, and passes the ticket lint.
 - [ ] The tickets say how each piece keeps 2018's `render` and 2019's
       `web-render` jobs green, and the one that removes macroquad
-      changes doctor's Linux table and `scripts/setup-linux.sh`.
+      changes doctor's Linux table, `scripts/setup-linux.sh` and 3004's
+      `libraries.ron` (by a clause with 3004 if 3004 is still open).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

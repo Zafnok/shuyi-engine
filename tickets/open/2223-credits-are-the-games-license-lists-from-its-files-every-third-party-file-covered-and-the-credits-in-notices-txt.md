@@ -226,10 +226,12 @@ ships (rule 7, `deny.toml`) don't change.
   (rule 7) don't change.
 
 **Either order:**
-- **3004** (`shuyi export`): its packages get the credits through
-  3039's module whichever lands first. If 3004 is done, add a test that
-  a `web` export of a fixture game with a `credits` part has the
-  section.
+- **3004** (`shuyi export`): if 3004 is done, its exporters hand
+  3039's `notices` module the game's works from one function: add
+  `works(project)` there, so every package gets the credits, and give
+  the fixture game of 3004's `web` and `linux` export tests a `credits`
+  part whose section their `NOTICES.txt` then shows. If not, 3004 adds
+  both (its scope says so).
 - **2218** (writers of the text formats): if it is done, the writers of
   `CreditsRon` and `AudioManifestRon` write `licenses` and `files`, and
   their round trips cover them. If not, 2218 writes the files as they

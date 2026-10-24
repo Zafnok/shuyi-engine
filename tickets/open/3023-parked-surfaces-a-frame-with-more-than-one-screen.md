@@ -81,10 +81,11 @@ None.
   - a game with `surfaces_visible_at_once: 2` fails on a profile whose
     only layout is `OneAtATime`. A layout that can't show both is hidden
     from the player for that game;
-  - under `OneAtATime`, `SwitchSurface` is a required action on every
-    screen with more than one surface, so 3002's controls check counts
-    it (if 3002 has landed; if not, 3002 picks it up from the screen's
-    declared actions).
+  - under `OneAtATime`, every screen with more than one surface
+    declares `SwitchSurface` in `Screen::actions` (3002, ADR-0025).
+    `UiAction::is_required` holds for it, as for every `UiAction` but
+    `Debug`, so `controls_fit` (`crates/ui/src/input/fit.rs`) counts it
+    on every target.
 - **Pointers per surface** (2405): a pointer event carries the
   `SurfaceId` it is over and coordinates in that surface's pixels. On
   desktop with `Stacked`, a click on the lower half reaches the second
@@ -95,6 +96,11 @@ None.
   (2405's `GlyphBuffer::hits`), and a pointer's `over` and `clicked`
   are looked up in the hits of the surface it is over. A touch-only
   need (3017's `touch`) is met only by a surface marked `touch`.
+  **Either order with 1121 (parked):** if 1121 is done, its pointer in
+  world pixels looks only among the world layers of the surface the
+  pointer is over, in that surface's pixels (over no surface, no world
+  position): change it here, with a test per layout; if not, nothing
+  to do (1121 does it).
 - **`Platform::display`** (3003) reports the device's screens. `App`
   maps surfaces to screens, or to one screen through the layout.
   `shuyi-app` and the headless backend draw every layout.
@@ -111,7 +117,8 @@ None.
 - more than two surfaces in the layouts (the types allow it; write a
   ticket when a target needs it);
 - a 3D view on each surface (3025);
-- gestures (2407).
+- swipes (2407, parked); pinch, long press and other gestures: no
+  ticket plans them.
 
 ## Implementation steps
 

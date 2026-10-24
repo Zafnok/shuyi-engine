@@ -43,10 +43,10 @@ What Shuyi has, and plans:
   `/api/`. 2803 adds the tutorial in `site/content/learn/tutorial/`.
   None of them writes anything for agents.
 - The contract's JSON schemas are in `crates/cli/schemas/`:
-  `versions.json` lists versions 1 to 4, and `contract::VERSION` is 4
-  (`crates/cli/src/contract.rs` line 52). `shuyi schema` prints them,
-  but only for someone who has installed the CLI. The site won't carry
-  them.
+  `versions.json` lists every contract version, and `contract::VERSION`
+  is the last one (16 on 2026-10-24, in `crates/cli/src/contract.rs`).
+  `shuyi schema` prints them, but only for someone who has installed
+  the CLI. The site won't carry them.
 - The templates' `AGENTS.md` (`templates/blank/AGENTS.md` line 9,
   `templates/grid/AGENTS.md` line 8) link the engine's `AGENTS.md` at
   `blob/main`, even for a game that `shuyi new --engine-rev` pins to a
@@ -191,8 +191,9 @@ None.
 - **The docs map** (`docs/README.md`, 2810, done before 2802): a row
   for `llms.txt`, its twins and `site/llms-header.md` under *People
   making games*. They are generated from Learn, so the row says to
-  change Learn and never a twin (the map's rule 2). Another row for
-  `site/README.md` under *Engine developers*.
+  change Learn and never a twin (the map's rule 2). 2801 gave
+  `site/README.md` its row under *Engine developers*; add the llms
+  tool to what that row says it holds.
 - **`pages.yml`:** one `BASE_URL` value goes to `zola build --base-url`
   and to `cargo xtask llms --base-url`. The tool runs after `zola build`
   and 2802's `cargo doc` copy, before the upload, with `--commit ${{
@@ -227,9 +228,19 @@ None.
 - **The blank template after 2511 (done):** the sentence that links the
   engine's `AGENTS.md` is still in `templates/blank/AGENTS.md`'s second
   paragraph; change it there.
+- **Either order with 2501:** if 2501 is done, its built-in template
+  (`templates/shuyi-default/`) has replaced the two folders: change the
+  sentence in its `base` part's `AGENTS.md`, and fill `{{engine.docs}}`
+  where its `compose` fills the `{{engine.<crate>}}` ones, with the test
+  for each `Engine` variant there. If not, change the two folders and
+  `new.rs` as above; 2501 carries the placeholder over (its scope says
+  so).
 - **Either order with 2803 and 2004:** 2803's pages are in
   `site/content/learn/tutorial/`, so they get twins and an H2 with no
-  change here. 2004's guides (`docs/guides/`) and 2509's error pages
+  change here, unless 2803 adds an argument or a shortcode for its
+  step folders or its diffs: if 2803 is done, read what it added and
+  expand it too; if not, 2803 adds that expansion in its PR. 2004's
+  guides (`docs/guides/`) and 2509's error pages
   (`crates/cli/errors/`, already written) reach Learn through 2802. If they land in
   `site/content/learn/` as Markdown files before `zola build`, they get
   twins too, as long as `ci.yml` makes the same copy before its `cargo
@@ -250,8 +261,8 @@ None.
   Unity, Bevy, GameMaker and PICO-8 to Shuyi's (2802 gains it);
 - sending 1134's skills to these docs: they go through the game's
   `AGENTS.md`, and 1134 says so;
-- carrying `{{engine.docs}}` into the composed templates of 2501 (after
-  the MVP), which replaces these two template folders;
+- `{{engine.docs}}` in 2501's composed template while 2501 isn't done:
+  2501 carries it over (the clause above);
 - a Markdown summary of the API from rustdoc JSON or
   `cargo-public-api`: rustdoc's JSON needs a nightly, so it waits until
   after the MVP, and only if agents are seen reading `/api/` badly;

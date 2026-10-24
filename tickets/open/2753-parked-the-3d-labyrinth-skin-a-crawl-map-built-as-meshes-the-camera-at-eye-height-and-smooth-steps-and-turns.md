@@ -30,6 +30,11 @@ materials), 3103 (the 3D view and the software rasterizer for
 **Either order with 2340:** if 2340 is done, reduced motion makes
 steps and turns instant. If not, 2340 wires it when it lands.
 
+**Either order with 2743:** if 2743 is done, the glide reads its
+`motion_ms` in `crawl.ron`. If not, add `motion_ms` to `crawl.ron`
+here (default 150; 0 is instant), and 2743's 2D motion reads the same
+setting when it lands.
+
 **Who uses it** (ADR-0033 §17's bar for engine work): crawler RPGs and labyrinth puzzle games that want Daphne's look; the same map and view as the 2D skins.
 
 ## Nick input
@@ -63,13 +68,24 @@ None.
   darkness of `Dark` cells as no light at all.
 - **Things**: monster groups, chests and people as billboards or meshes
   at their cells.
+- **The compass**: while the view's `compass` is set (2742), the
+  facing's letter in a corner of the 3D view, as 2743's skins draw it.
 - **Pictures**: `frame-png` through the software rasterizer at three
   places and mid-glide, and the 3D view's snapshot text.
+- **The example's 3D look. Either order with 2754:** if 2754 is done,
+  add a 3D look to `examples/crawler` as a third option in its
+  settings: a `crawl3d.ron` with meshes and materials made for it
+  (ours, CC0, or recorded in `THIRD_PARTY_ASSETS.md`), its `frame-png`
+  picture, and a paragraph on swapping to it in
+  `docs/guides/dungeon-crawler.md`. If not, nothing to do here (2754
+  adds them when it lands).
+- **The `shuyi-crawl` skill**, if it exists: a section on the 3D skin,
+  and 2753 dropped from its `waits_for` (2741 put it there).
 
 **Out (do not do):**
 - free looking around (that is ADR-0011's `FirstPerson`, 3106);
 - battle drawing in 3D (2749 draws over whatever is below);
-- making the example's art (2754 records what it uses);
+- the example's other art and looks (2754 records what it uses);
 - the editor of 3D labyrinths (the map stays a `crawl-ron` text).
 
 ## Implementation steps

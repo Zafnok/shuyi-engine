@@ -61,7 +61,7 @@ same asset on every platform. What checks it today (read on
   checks it.
 - **No shared job.** Many tickets plan their own check "on native and
   web (or the CI equivalent)": 1119 (`Fx`, under `wasm32-wasip1`),
-  1128, 2701, 2705, 3101, 2203, 2205, 2707, 2709, 2721, 2727, 3006,
+  1128, 2701, 2705, 3101, 2203, 2205, 2707, 2709, 2721, 2727,
   3007, 3019 and 3030. The comparison asks each to use this ticket's
   job instead. Others already point here: 2111, 2114, 2117, 2118, 2119,
   2120, 2121, 2122, 2124, 2225, 2362 and 2735 to 2740. No ticket owns
@@ -161,6 +161,10 @@ is 2110's and 2111's.
     there takes one its own module's tests build: `bitmap.rs`'s
     `sample` and `target.rs`'s `profile`, both private today, made
     `pub(crate)` with their `tests` modules (as `dialogue.rs` does).
+    **Either order with 2020:** if 2020 is done, `fixtures()` is
+    `crate::fuzz::fixtures()`, which replaced `builtin_tests.rs`'s; if
+    not, use `builtin_tests.rs`'s, and 2020 points this module at its
+    own when it removes that one.
     - One row per format, named `<kind>: <format id>` (`AssetKind::NAME`
       and `Format::id`, as in `"image: png"` and `"image pixels: png"`):
       the `state_hash` of what the format decodes from its input. Every
@@ -208,7 +212,11 @@ is 2110's and 2111's.
       this checks in CI what ADR-0023 states.
   - The pins that exist (`hash/tests.rs`, `rng.rs`, the path tests, the
     pack's snapshot) stay as they are: the job below runs them on
-    wasm32.
+    wasm32. **From 3006 (done):** its one-bit fixture's bits are pinned
+    (`the_fixture_converts_to_the_same_bits_everywhere` in
+    `crates/ui/src/frame/onebit/roles/tests.rs`), but ran natively only,
+    as its notes say. `shuyi-ui` is in the job's wasm32 run, so the pin
+    is checked there with no change.
   - Each test that checks a table has `golden` in its name, so `cargo
     test -- golden` runs them all.
 
@@ -392,6 +400,10 @@ is 2110's and 2111's.
     of what each decodes from a small fixture). They are not in
     `Formats::standard()`, so the guard doesn't ask for them. If not,
     2230 adds them.
+  - **2408:** if it is done, `RumbleRon` is a format of
+    `Formats::standard()`, so it gets a row `rumble cues: rumble` in
+    `formats.ron`, the `state_hash` of what it decodes from 2408's
+    fixture. If not, 2408 adds it.
   - **2101:** if it is done, `-p shuyi-script` joins the job's wasm32
     run, and `crates/script/tests/golden/scripts.ron` holds what a few
     fixture scripts return on fixed views. If not, 2101 does it.
@@ -399,6 +411,14 @@ is 2110's and 2111's.
     Grid's `tests/golden.rs`, with `golden` in its name, so the job
     plays it on wasm32 and `cargo xtask golden --bless` blesses it. If
     not, 2519 puts it there.
+  - **1140** (parked: lockstep, the `shuyi-net` crate): if it is done,
+    `-p shuyi-net` joins the job's wasm32 run. If not, 1140 adds it
+    (its clause with 2116 says so).
+  - **2736 and 2737:** if either is done, nothing to do: an example
+    that lands first keeps no golden table, and the module docs say how
+    one adds it. If not, each gives its example a golden table of one
+    record, as Hello, Grid's, with its own step in this job (2736 in
+    its part 2 ticket).
 
 **Out (do not do):**
 

@@ -60,6 +60,10 @@ None.
   - Check each crate's license from its `Cargo.toml` and repository on
     the day (both are believed MIT OR Apache-2.0) and run `cargo deny
     check licenses` on the bench crate. Record the versions.
+  - **Either order with 2107:** if 2107 is done, `shuyi-ecs`'s `World`
+    is a fifth contender, E (the report says which crate it wraps, if
+    any), and if an ECS wins, the new ADR says which one 2707 builds
+    on; if not, the four above.
 - **The workload**, the same for all four, in `Fx` only (no floats):
   - a 256 × 256 tile map, units placed by the core's seeded random
     numbers, half on each of two teams;
@@ -120,14 +124,18 @@ None.
   - **ADR-0015 §3 holds:** the report says so, and 2707 starts as
     written;
   - **an ECS wins on every rule:** write a new ADR (`write-adr` skill)
-    that supersedes ADR-0015 §3, and update 2707's scope in this PR.
+    that supersedes ADR-0015 §3, and in this PR update 2707's scope and
+    the open RTS tickets written on its rows and columns (2708, 2711,
+    2712, 2713 and 2717 among them).
 - **Where the prototype code lives:** in a throwaway crate,
   `research/units-at-scale/`, listed under `exclude` in the root
-  `Cargo.toml`, so `hecs` and `bevy_ecs` never enter the workspace's
-  `Cargo.lock`. The last commit of the PR deletes the crate. The report
-  links to the PR's commit before the deletion (GitHub keeps a PR's
-  commits). 2707 writes `UnitTable` from scratch, with the report's
-  lessons.
+  `Cargo.toml`, so this PR adds no `hecs` or `bevy_ecs` to the
+  workspace's `Cargo.lock`. The last commit of the PR deletes the
+  crate. The report links to the PR's commit before the deletion
+  (GitHub keeps a PR's commits). 2707 writes `UnitTable` from scratch,
+  with the report's lessons. If 2904 left its harness in
+  `research/ecs/` for this ticket (it keeps it until this one is done),
+  the same last commit deletes it too, with its `exclude` line.
 
 **Out (do not do):**
 - the real `UnitTable` (2707) and the real spatial grid (2708);
@@ -146,9 +154,10 @@ None.
    compare different work.
 3. Run the measures, natively and for the web.
 4. Write `docs/research/units-at-scale.md`.
-5. Write the superseding ADR and update 2707, only if the verdict says
-   so.
-6. Delete the crate in the last commit.
+5. Write the superseding ADR and update 2707 and the RTS tickets built
+   on its rows and columns, only if the verdict says so.
+6. Delete the crate in the last commit, and 2904's `research/ecs/` with
+   its `exclude` line if it is there.
 
 ## Acceptance criteria
 
@@ -163,9 +172,12 @@ None.
 - [ ] The licenses of `hecs` and `bevy_ecs` are recorded with their
       source and date.
 - [ ] The verdict is written. If it goes against ADR-0015 §3, the new
-      ADR exists and 2707 is updated.
-- [ ] The workspace `Cargo.lock` has no `hecs` or `bevy_ecs`, and
-      `research/units-at-scale/` is gone at the end of the PR.
+      ADR exists, and 2707 and the RTS tickets built on its rows and
+      columns are updated.
+- [ ] This PR adds no `hecs` or `bevy_ecs` to the workspace
+      `Cargo.lock`. At the end of the PR, `research/units-at-scale/`
+      is gone, and so is 2904's `research/ecs/` with its `exclude`
+      line, if it was there.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

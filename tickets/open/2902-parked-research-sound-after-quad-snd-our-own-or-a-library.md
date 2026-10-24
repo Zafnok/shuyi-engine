@@ -61,13 +61,14 @@ calls: how much is ours, how long it takes, and what it costs the game.
   - required, from 3029's provided methods and the tickets that call
     them: pausing and resuming a playing sound (3029's `pause` and
     `resume`, for 2344; quad-snd can only mute); a playback rate for
-    pitch (3029's `set_rate`, which no backend plays today; 3030's
+    pitch (a provided `set_rate` on 3029's trait, by its rule for a
+    feature some backends lack; no backend plays one today, and 3030's
     resampler plans one); handles that set the volume of one playing
     copy of a sound or stop it alone, while other copies play on (2344's
-    fades, 2345's copy caps, 2725's voices); and a voice limit whose one
-    rule for which sound loses is 2345's, decided in `App`, so a stack
-    that drops or steals voices on its own must let that be turned off
-    (2345);
+    fades, 2378's copy caps, 2725's voices); and a voice limit (2378)
+    whose one rule for which sound loses is 2345's, applied in `App`, so
+    a stack that drops or steals voices on its own must let that be
+    turned off (2345, 2378);
   - required for music: looping a region of a streamed track (an intro
     played once, then a region looped with no gap: the ticket under
     **Outputs**), and two streams sounding at once with opposite fades
@@ -82,6 +83,30 @@ calls: how much is ours, how long it takes, and what it costs the game.
     leave seeking out. The loop region above jumps back to the region's
     start, by seeking or by decoding from the top again, so say whether
     each decoder can seek.
+  - noted, not required, for music in time (2341 and 2365 leave them
+    to a mixer, after this ticket): starting a streamed track part-way
+    in, stems (several streams started together that stay in sync),
+    scheduling a sound to the sample, and the output's delay, for
+    calibrating it. Say which candidate plays each; each is a ticket
+    when a game asks.
+  - noted, and required if 2909 is done and its ADR hands a video's
+    sound to the backend's audio: a sound stream decoded with a video,
+    kept in time with its picture. **Either order with 2909:** if 2909
+    is done, judge each candidate on it, and its parked build tickets
+    that play that sound over quad-snd are among the tickets updated
+    (**Outputs**). If not, nothing to do: 2909 uses the sound library
+    chosen here.
+  - noted, and required if 2910 is done and Nick chose voice chat:
+    microphone capture beside the output. **Either order with 2910:**
+    if 2910 is done, it wrote here what capture needs: judge each
+    candidate on it, and its parked build tickets are among the tickets
+    updated (**Outputs**). If not, nothing to do: 2910 follows the
+    sound path chosen here.
+  - noted, for traced sound (2911, parked: occlusion through walls and
+    reverb shaped by the room). **Either order with 2911:** if 2911 is
+    done, judge each candidate on the needs its report gives traced
+    sound (the line it adds to this list); if not, nothing to do (2911
+    fits the mixer chosen here).
 
   Judge every candidate, in each layer, on every need, so that the stack
   chosen plays at least what 3029's trait carries.
@@ -104,8 +129,8 @@ calls: how much is ours, how long it takes, and what it costs the game.
   - a ticket for intro-then-loop regions on the chosen sound path (the
     `write-ticket` skill; 2341 and 2365 leave it here): `loop_start_ms`
     and `loop_end_ms` on `MusicCue`, checked against `length_ms`;
-    `MusicClock` wrapping into the region (and 2365's beat clock with
-    it, if 2365 is done); the loop points read from the Ogg file's
+    `MusicClock` wrapping into the region, with 2365's beat clock as
+    the sub-bullet below says; the loop points read from the Ogg file's
     `LOOPSTART` and `LOOPLENGTH` comments (2212 keeps the comments; with
     a library decoder, its comment reader), with the manifest able to
     override them (ADR-0007); a provided method on 3029's shared backend
@@ -113,9 +138,18 @@ calls: how much is ours, how long it takes, and what it costs the game.
     that can only loop the whole file. It says how the Playdate file
     player's loop range (3029) and a GBA tracker song's restart point
     (3027) map onto the same fields;
+    - **Either order with 2365:** if 2365 is done, the ticket also
+      wraps 2365's `beats_since` and `bars_since` into the region. If
+      not, it leaves them to 2365 ("nothing to do (2365 does it)") and
+      puts its own id in 2365's clause on loop regions;
   - the tickets updated: kept as they are, rewritten for the chosen
     library, or closed (moved to `tickets/done/` with a completion note
     saying why they were dropped).
+  - **Either order with 3017:** if 3017 is done, each ticket written or
+    rewritten here that gives a backend an audio feature (`Pause`,
+    `Rate`, `Pan`, `LoopRegion`) says it adds the feature to the
+    profiles of that backend (`capabilities.audio.features`); if not,
+    nothing to do (3017 reads each backend's features on the day).
 
 **Out (do not do):**
 - Building the replacement.
@@ -124,8 +158,8 @@ calls: how much is ours, how long it takes, and what it costs the game.
 
 ## Implementation steps
 
-1. List the needs (scope, first bullet) from the code, 3029's trait and
-   2341 to 2345.
+1. List the needs (scope, first bullet) from the code, 3029's trait,
+   2341 to 2345, and 2378.
 2. Survey the candidates and fill a table in the report.
 3. Measure the shortlist.
 4. Ask Nick, with a recommendation, and record his answer.

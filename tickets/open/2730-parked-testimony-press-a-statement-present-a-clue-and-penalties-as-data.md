@@ -48,8 +48,8 @@ None.
   - `id`, `witness` (a person id, 2727), optional `title` (a text key);
   - `statements`, in order, each with:
     - `id` and `line`: the statement's text, by text key and line id,
-      so translation and voices work on it as on any line. Voices are
-      2725's job; this ticket only keeps the line id;
+      so translation and voices work on it as on any line. The
+      testimony screen (below) plays its voice;
     - `press`: an optional dialogue node, run when the statement is
       pressed;
     - `contradicted_by`: the clues that contradict it (empty for most
@@ -109,7 +109,13 @@ None.
     screen declares its actions (3002), and fits the `playdate` fixture
     layout;
   - the skin draws the meter and the statement number as glyph cells,
-    over the visual novel skin's text box.
+    over the visual novel skin's text box;
+  - **Either order with 2725** (voices): if 2725 is done,
+    `TestimonyScreen` plays the shown statement's voice by its line id
+    (2725's lookup, in its speaker's group), moves the witness's mouth,
+    and stops the voice on `NextStatement`, `PreviousStatement`, `Press`
+    and `Present`, as the story's screen does (fake audio test); if
+    not, nothing to do (2725 does it).
 
 **Out (do not do):**
 - deductions (2729), except wiring its `penalty` when 2729 is done;
@@ -143,6 +149,8 @@ None.
 - [ ] Each `on_empty` outcome does what this ticket says, with a fixture
       each, and a testimony's `on_empty` overrides the case's.
 - [ ] Presenting a clue not found is refused and changes nothing.
+- [ ] If 2725 is done, a statement's voice plays when it is shown and
+      stops when the statement changes (fake audio test).
 - [ ] Replaying a testimony's commands, wrong ones included, gives the
       same hash at every step.
 - [ ] Each bad fixture gives an error naming its file and line.

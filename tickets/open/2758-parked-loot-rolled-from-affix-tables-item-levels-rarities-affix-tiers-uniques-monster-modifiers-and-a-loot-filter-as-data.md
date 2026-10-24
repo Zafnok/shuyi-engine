@@ -33,7 +33,7 @@ It builds on 2746 (`Item` with its `rolled` list, item kinds and tags)
 and 2114 (weighted picks, named streams).
 
 **Either order with 2751:** if 2751 is done, a drop table entry may be
-`Rolled { level, rarity table }` and `roll_drops` rolls it here. If
+`Rolled { level, rarity_table }` and `roll_drops` rolls it here. If
 not, 2751 adds that entry kind.
 
 ## Nick input
@@ -67,10 +67,16 @@ None.
   2348 needs no change here.
 - **Monster modifiers**: `roll_modifiers(defs, table, level, rng) ->
   Vec<(ModId, i32)>` from the same affix tables, for 2760's packs.
+  **Either order with 2760:** if 2760 is done, wire its leaders:
+  `spawn_area` rolls each pack leader's modifiers through
+  `roll_modifiers` from the leader's modifier table in `spawns.ron`,
+  with a golden test; if not, nothing to do (2760 calls
+  `roll_modifiers` itself).
 - **A loot filter** as data: `filter.ron`, the player's: rules in order
   (match by rarity, kind tags, affix present, level) to `show`, `hide`
   or `style` (a colour role, a sound cue); `filter(item) -> Shown`.
-  Kept per profile; a default filter in the template.
+  Kept per profile. A game ships its default filter as data; 2764
+  puts one in the `kind-action-rpg` template part.
 - Determinism: a golden table of 1000 items rolled from a fixed seed,
   equal on native and wasm32.
 

@@ -282,24 +282,34 @@ None. This is technical.
   - In `docs/ROADMAP.md`, a build ticket the game doesn't need goes
     after the game's work (`docs/decisions.md`, 2026-10-20: built for
     one game first).
-- **Tickets this changes:** update 2207, 2220, 2222, 3008, 3010 and
-  3011 to match the ADR, or say in the completion notes why one needs no
-  change. 3008 gets a bench scenario over the load if the load's peak
-  matters; 3011 reports the peak heap during the load as well as in
-  play. **Either order with each of them:** if one is done, measure what
-  it built where it applies (the layers 2207 and 2220 keep), and the
-  change the ADR asks of it is a build ticket.
+  - **Either order with 2368 (parked):** if the ADR decides an asset
+    store the engine owns, the store's build ticket also shows resident
+    bytes per asset kind in the debug view, which 2368's Out leaves to
+    that store. If 2368 is done, the build ticket adds them to 2368's
+    `memory` channel. If not, it says so in an either-order clause with
+    2368, and 2368's Out line names it. With no store, nothing to do.
+- **Tickets this changes:** update 2207, 2220, 2222, 2228, 3008,
+  3010 and 3011 to match the ADR, or say in the completion notes why
+  one needs no change. 3008 gets a bench scenario over the load if the
+  load's peak matters; 3011 reports the peak heap during the load as
+  well as in play. **Either order with each of them:** if one is done,
+  measure what it built where it applies (the layers 2207 and 2220
+  keep), and the change the ADR asks of it is a build ticket.
 - **Either order with 2005:** the first release may publish today's
   `&'static` API. Its policy is 0.x while the API moves, so a change of
   lifetimes after it is a break that 2010's `Breaking:` line names.
   Neither ticket waits for the other.
+- **Either order with 2909** (parked, video playback): if 2909 is done,
+  weigh what a video streamed from the pack needs (the note 2909 left
+  here, from its ADR) in points 1 and 2 of the ADR above; if not,
+  nothing to do (2909 uses this ADR's terms).
 - `docs/adr/README.md`: the new ADR's row, and "extended by ADR-NNNN" on
   the rows of ADR-0008, ADR-0023 and ADR-0024.
 - **Size:** if the diff passes about 600 changed lines when step 8
-  starts, the ADR, the build tickets and the six tickets' updates (steps
-  8 and 9) become a follow-up research ticket in this milestone, blocked
-  by this one, which starts from `docs/research/asset-memory.md`; the
-  PR says so.
+  starts, the ADR, the build tickets and the seven tickets' updates
+  (steps 8 and 9) become a follow-up research ticket in this milestone,
+  blocked by this one, which starts from
+  `docs/research/asset-memory.md`; the PR says so.
 
 **Out (do not do):**
 - building any of it (the build tickets do);
@@ -308,8 +318,9 @@ None. This is technical.
   (`crates/app/src/audio.rs`), 3029 streams music on the Playdate, and
   2902 (parked) studies sound. Sounds are measured, not decided;
 - ROM targets: 3021 (parked) reads its pack in place;
-- streaming a world or its levels around a camera: parked with 1120 and
-  1124 (real time). A note in the ADR only;
+- streaming a world or its levels around a camera: real-time work,
+  parked. 1124 loads a world's levels whole and leaves streaming to a
+  ticket written when a game asks. A note in the ADR only;
 - GPU texture compression (2901), content downloaded after install (DLC,
   a CDN), and encrypted or signed packs (ADR-0023, *Alternatives*);
 - the web page's download progress bar (3052);
@@ -326,7 +337,7 @@ None. This is technical.
    `bundle.rs`, `pack.rs`, `format.rs`, `image.rs`,
    `crates/platform/src/app.rs`, `crates/app/src/render.rs` and
    `audio.rs`, `examples/hello-grid/tests/it/pack.rs`, and tickets
-   2207, 2220, 2222, 3008, 3009, 3010, 3011 and 3029.
+   2207, 2220, 2222, 2228, 3008, 3009, 3010, 3011 and 3029.
 2. If 3008 isn't done, write the counting allocator's crate and its
    tests, as *Scope* says.
 3. Write the measuring program and its tests, and add its `[[example]]`
@@ -340,7 +351,7 @@ None. This is technical.
 7. Write `docs/research/asset-memory.md`.
 8. Write the ADR and update `docs/adr/README.md`.
 9. Write the build tickets the triggers call for, update 2207, 2220,
-   2222, 3008, 3010 and 3011, and add the build tickets to
+   2222, 2228, 3008, 3010 and 3011, and add the build tickets to
    `docs/ROADMAP.md`.
 10. Run the gates.
 
@@ -361,8 +372,8 @@ None. This is technical.
 - [ ] Each trigger the numbers cross has a build ticket in
       `tickets/open/`; each one not crossed is in the ADR with its
       number.
-- [ ] 2207, 2220, 2222, 3008, 3010 and 3011 match the ADR, or the
-      completion notes say why one needs no change.
+- [ ] 2207, 2220, 2222, 2228, 3008, 3010 and 3011 match the ADR, or
+      the completion notes say why one needs no change.
 - [ ] The program uses 3008's counting allocator, or one in a crate of
       its own that the ADR names as an exception to ADR-0002 §9; no
       `unsafe` is in `examples/`.

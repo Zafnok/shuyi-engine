@@ -247,10 +247,12 @@ None.
     - **any static server, and GitHub Pages:** serve the folder as it
       is; the type the host sends `.wasm` with no longer matters;
     - **itch.io:** upload a zip of the folder with `index.html` at its
-      root (3004's web zip, once it is done), marked to be played in
-      the browser; the embed's size; its fullscreen button option,
-      which fullscreens itch's own frame; and whatever its page says on
-      the day about file names and limits, with its link;
+      root, marked to be played in the browser; the embed's size; its
+      fullscreen button option, which fullscreens itch's own frame; and
+      whatever its page says on the day about file names and limits,
+      with its link. **Either order with 3004:** if 3004 is done, name
+      the zip that `shuyi export web` writes; if not, say to zip the
+      folder by hand, and 3004 names its zip here (its clause says so);
     - **a frame on another site:** `<iframe src="…/index.html"
       allow="autoplay; fullscreen; gamepad">`, why each is there (sound
       without a second click where the browser allows it, the
@@ -293,11 +295,11 @@ None.
   whichever lands later keeps the others' parts. If 3039 is done,
   `shell.js` goes in its notices table as the engine's own; if not,
   3039 lists it (its clause says so).
-- **Either order with 3043, 2522, 2519 and 2349:** they add
-  `lifecycle.js`, `net.js`, `download.js` and `languages.js` to `SHELL`
-  and load them between the bundle and `load(...)`. `load("%WASM%")`
-  stays in the page, so their tests hold either way; whichever lands
-  later sets `SHELL`'s length.
+- **Either order with 3043, 2522, 2519, 2349 and 2377:** they add
+  `lifecycle.js`, `net.js`, `download.js`, `languages.js` and
+  `motion.js` to `SHELL` and load them between the bundle and
+  `load(...)`. `load("%WASM%")` stays in the page, so their tests hold
+  either way; whichever lands later sets `SHELL`'s length.
 - **Either order with 2528:** if it is done, its
   `crates/cli/web/dev.js` gains a `MutationObserver` on `<html>`'s
   `data-shuyi`. It sends each state through its queue as `{ source:
@@ -308,6 +310,14 @@ None.
   a line `page: running` or `page: error <code>`. The `file` message
   names `shuyi web --serve`, as the table says. If not, 2528 does both
   (its clause says so).
+- **Either order with 3062** (the Fullscreen setting follows the
+  browser): if 3062 is done, the by-hand check of leaving fullscreen
+  checks that the setting turns off and the next toggle enters
+  fullscreen at once, and the notes' fullscreen point says that
+  leaving fullscreen with the browser's own control turns the setting
+  off. If not, write what the setting showed into the line in 3062's
+  *Context* kept for it, and 3062 adds that sentence (its clause says
+  so).
 - **For the game:** its web build gets `shell.js` from `cargo shuyi
   web` at its next pin bump. No API changes.
 
@@ -316,8 +326,8 @@ None.
   already call the Fullscreen API, and itch.io's frame has its own;
 - the Fullscreen setting following the browser when the player leaves
   fullscreen with the browser's own key: it needs `shuyi-app` code that
-  reads the browser's state. Write that ticket with the `write-ticket`
-  skill (After MVP, `30xx`), with what the check above saw;
+  reads the browser's state, which 3062 adds (the clause with it says
+  what the check above does);
 - the zip with `index.html` at its root (3004, an edit request there),
   and uploading it to itch.io or any portal (3050);
 - pre-compressed `.br` and `.gz` copies: hosts compress what they serve,
@@ -329,7 +339,9 @@ None.
   defaults; a follow-up if a game asks;
 - retrying a failed download by itself (the Reload button does it);
 - counting the music and voice files, which the game fetches later;
-- portal SDKs, ads, threaded wasm and WebGPU (3034);
+- portal SDKs and ads: each needs a JS plugin of our own, so a ticket
+  only if Nick names one; threaded wasm: no game asks for it; WebGPU:
+  3034 plans it, with WebGL 2 as the fallback;
 - the panel's words in other languages: the game's text isn't loaded
   yet;
 - phones' browsers (2407, parked);
@@ -349,8 +361,8 @@ None.
 5. Write the README's two sections.
 6. If 2528 is done, add the `state` line to `dev.js` and its server,
    with its tests. If 3039 is done, add `shell.js` to its notices table.
-7. Run the browser checks (2019's `check.py`, or by hand), and write
-   the follow-up ticket on leaving fullscreen.
+7. Run the browser checks (2019's `check.py`, or by hand). For leaving
+   fullscreen, do what the clause with 3062 says.
 8. Run the gates, the web build included.
 
 ## Acceptance criteria
@@ -375,8 +387,9 @@ None.
       the Fullscreen setting fills the screen.
 - [ ] The README has both sections, and its table lists exactly the
       codes `shell.js` uses (test).
-- [ ] The follow-up ticket on leaving fullscreen exists, or the
-      Completion notes say why none is needed.
+- [ ] Leaving fullscreen with the browser's own key: with 3062 done,
+      the setting turns off and the next toggle enters fullscreen at
+      once; if not, what the setting showed is in 3062's *Context*.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

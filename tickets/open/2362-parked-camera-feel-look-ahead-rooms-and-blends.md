@@ -192,8 +192,14 @@ None.
   look-ahead point as a `Cross` with the role `Note`, and during a blend
   its goal as a `Cross` with the role `Note` (2315's gizmos). If 2318
   isn't done, 2318 draws them.
+- **The diorama. Either order with 3107:** 3107's camera reads the 2D
+  camera's position and zoom, so it gets look-ahead, rooms and blends
+  with no code of its own (its clause says so). If 3107 is done, its
+  fixture stage's snapshots pass without edits, as 1120's do; if not,
+  nothing to do.
 - **The book. Either order with 2802:** if 2802 is done, its chapter on
-  the frame gets a section on the camera file. If not, nothing here.
+  the frame gets a section on the camera file. If not, 2802 writes that
+  section (its clause says so).
 - **What changes for a game:** additive. 1120's follow call takes a
   point as before, and `CameraDef` is a new kind. The PR says so.
 
@@ -213,9 +219,10 @@ None.
 - drawing the camera between two steps (2361), beyond `snap` above;
 - what the camera steps on under game speed and hit-stop (2123). This
   ticket steps it once per simulation step, as 1120 does;
-- the platformer example's camera (1127) and the walkable town's
-  (1125): each uses look-ahead and rooms if this ticket is done first,
-  and is left as it is if not;
+- the platformer example's camera (1127, which waits for this ticket
+  and uses its look-ahead and rooms);
+- the walkable town's camera (1125): it uses look-ahead and rooms if
+  this ticket is done first, and is left as it is if not;
 - 3D cameras (3106);
 - the grid kit's tile camera, which stays as it is.
 
@@ -245,7 +252,7 @@ None.
    step.
 6. Write the dump, the property tests, the golden table and the
    snapshots.
-7. Do the either-order parts for 1124, 2361, 2318 and 2802.
+7. Do the either-order parts for 1124, 2361, 2318, 2802 and 3107.
 8. Run the gates. If the PR passes about 600 changed lines, not
    counting fixtures and snapshots, move goals and blends (step 5) and
    their acceptance lines to a follow-up ticket (the `write-ticket`

@@ -49,6 +49,46 @@ None.
   it and the "no writer" limit goes away for them.
 - The output is the engine's RON as a person writes it: one entry a line,
   sorted keys, a trailing comma (RON's `PrettyConfig`).
+- **Either order with 2231:** if 2231 is done, its `AnimationSetRon`
+  (animation clips) already has an `Encode`. Give it the `PrettyConfig`
+  these use, through the shared helper if this ticket makes one, and
+  keep its round trip. If not, nothing to do (2231 writes its own the
+  way these are written).
+- **Either order with 2345:** if 2345 is done, the `AudioManifestRon`
+  writer writes a cue's rules flat on its sound entry, as 2345's RON
+  has them (`pick`, `volume_min` written bare, `min_gap_ms`), each only
+  when it isn't the default, and the round trip covers a cue with
+  rules. If not, nothing to do (2345 adds them to this writer).
+- **Either order with 2378:** if 2378 is done, the `AudioManifestRon`
+  writer also writes a cue's `max_copies` (bare), `when_full` and
+  `priority`, and the manifest's `max_voices` (bare), each only when it
+  isn't the default, and never a cue's `lengths_ms` (measured, never
+  written); the round trip covers a cue and a manifest with them. If
+  not, nothing to do (2378 adds them to this writer).
+- **Either order with 2363:** if 2363 is done, the `AudioManifestRon`
+  writer writes a cue's `falloff` when it has one (its `curve` by its
+  `Ease` name) and leaves it out when it is `None`, and the round trip
+  covers a cue with a falloff. If not, nothing to do (2363 adds it to
+  this writer).
+- **Either order with 2365:** if 2365 is done, the `AudioManifestRon`
+  writer writes a music cue's `tempo` when it has one, in the file's
+  form (`bpm` as a number, so `bpm_milli` 92 500 is `bpm: 92.5`), and
+  the round trip covers a cue with a tempo. If not, nothing to do
+  (2365 adds it to this writer).
+- **Either order with 2366 (parked):** if 2366 is done,
+  `AudioManifestRon`'s writer writes a cue's `caption` only when it is
+  `Some`, in the implicit-`Some` form (`caption: "cc.door_opens"`), and
+  the round trip covers a captioned cue; if not, nothing to do (2366
+  extends the writer, its clause says so).
+- **Either order with 2379 (parked):** if 2379 is done, the
+  `AudioManifestRon` writer writes a cue's `pitch_min` and `pitch_max`,
+  each only when it isn't 100, and the round trip covers a cue with a
+  pitch range; if not, nothing to do (2379 adds them to this writer,
+  its clause says so).
+- **Either order with 2741 (parked):** if 2741 is done, add `Encode`
+  for its `crawl-ron` format (`CrawlMap`, in `shuyi-crawl`), with its
+  round-trip test (read, write, read gives the same map and the same
+  text); if not, nothing to do (2741 writes it, its clause says so).
 
 **Out (do not do):**
 - Writers for `.dlg`, `.map`, keymaps and cinematics (their files hold

@@ -46,10 +46,12 @@ None.
     it. If 3017 isn't done, 3017 gives it a `needs` key with the other
     modules.
 - **The music concern** in `docs/modules.ron`: answers `recorded`
-  (default, ready) and `midi` (this module), `pick: Many`, question
-  "What plays the music?". If 2502 is done, the wizard asks it with no
-  change to the wizard; add `--music` to its flags list in
-  `docs/templates.md`.
+  (default, ready) and `midi` (this module), `alternatives: false`.
+  **Either order with 2502:** if 2502 is done, give it `pick: Many` and
+  the question "What plays the music?", so the wizard asks it with no
+  change to the wizard, and add `--music` to its flags list in
+  `docs/templates.md`; if not, give it only the fields the catalog has
+  today, and 2502 adds `pick` and `question` (its clause says so).
 - **`Sequence`** in `shuyi_midi::sequence`: tracks of events (note on and
   off with key and velocity, program change, control change, tempo) at
   integer ticks, the ticks per quarter note, the tempo map, and the

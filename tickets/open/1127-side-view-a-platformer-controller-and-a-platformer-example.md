@@ -65,10 +65,15 @@ None.
 - The `SideView` perspective marker (ADR-0009 §3). The platformer
   controller works with `SideView` only, and a `compile_fail` doc test
   shows that it can't be used in a `TopDown` stage.
+  **Either order with 1126:** if 1126 is done, the marker's projection
+  is its `shuyi_ui::world::Projection::SideView { tile }` (ADR-0003 §6).
+  If not, add `SideView { tile }` (`x·w, y·h`, depth by layer order)
+  beside `TopDown` in the projection 1120's markers read, with its
+  tests, and 1126 moves it into `shuyi_ui::world::Projection`.
 - Guides (ADR-0009 §5): write `docs/guides/side-view.md` in full. If
   2004 isn't done, create the file and 2004 adds it to its list.
 - The new-game wizard (ADR-0013 §3–§4): set the `side-view` answer in
-  `docs/modules.ron` to ready, if 2502 has added it. If 2503 is done,
+  `docs/modules.ron` to ready (2003 wrote it parked). If 2503 is done,
   add the part `stage-side-view` to the built-in template: a room with
   the platformer controller, generic over `SideView`, and its test. If
   2503 isn't done, 2503 adds it.
@@ -97,7 +102,8 @@ None.
   `reference: Project("examples/platformer")`, empty its `waits_for`,
   make the example's scene data answer its `Scene` checks (the level
   and the coins its prompt names), and `cargo xtask eval-reference
-  platformer` passes in CI. If 2524 isn't done, nothing here.
+  platformer` passes in CI. If 2524 isn't done, nothing here: 2524
+  gives the task this reference (its scope says so).
 
 **Out (do not do):**
 - slopes, unless the example needs them;

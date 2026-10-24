@@ -67,10 +67,39 @@ None.
   - a mover never stops at a box or tile whose layers it doesn't meet,
     and a trigger never reports one.
 - The new-game wizard (ADR-0013 §3–§4). Set the `top-down` answer of
-  the perspective concern in `docs/modules.ron` to ready, if 2502 has
-  added it. If 2503 is done, add the part `stage-top-down` to the
-  built-in template: a stage with the top-down controller, generic over
-  `TopDown`, and its test. If 2503 isn't done, 2503 adds it.
+  the perspective concern in `docs/modules.ron` (2003 wrote it parked,
+  with 1120 and 1122) to ready, with no tickets. If 2503 is done, add
+  the part `stage-top-down` to the built-in template: a stage with the
+  top-down controller, generic over `TopDown`, and its test. If 2503
+  isn't done, 2503 adds it.
+- **Either order with 1124:** if 1124 is done, add a function beside
+  its `TileMap` (in `shuyi-assets`, which reaches `shuyi_core`; the core
+  can't reach it) that builds a `TileCollision` from a named tile layer
+  and a rule per tile id, tested on 1124's Tiled fixture. If 1124 isn't
+  done, 1124 adds it.
+- **Either order with 2231:** the `movers` answer of the bodies concern
+  in `docs/modules.ron` (2003 wrote it parked) is this kit's movers and
+  2231's clips. If 2231 is done, set it to ready; if not, nothing to do
+  (2231 sets it).
+- **Either order with 2122:** 2122 adds a second dot to 1119's tick
+  example, patrolling a curve, beside the dot that walks this kit's
+  room. If 2122 is done, keep that patrol and its snapshot as they are
+  when the room goes in (a follower meets no wall); if not, nothing to
+  do (2122 puts its patrol in the room).
+- **Either order with 1134:** its `shuyi-stage-field` skill (a tick
+  stage: movers, collision, camera) has no worked example until 1119,
+  1120 and this ticket are done, and this ticket lands last of the
+  three. If 1134 is done, write that skill's worked example (a script
+  of contract operations that CI runs on a fresh `shuyi new` game, as
+  it runs the pack's others), check the skill's text against the kit
+  and the top-down controller as built, and remove its `waits_for` and
+  the note that it waits. If not, nothing to do (1134 writes the skill
+  whole).
+- **Either order with 2728** (investigation hotspots, parked): if 2728
+  is done, nothing to do: world hotspots on this ticket's `Trigger`s
+  are a parked follow-up blocked by this ticket, which 2728's
+  Completion notes name; if not, nothing to do (2728 builds them on
+  this ticket's `Trigger`s).
 
 **Out (do not do):** slopes; the platformer controller (1127); rigid
 bodies (1128); queries that move nothing: segment casts, point and

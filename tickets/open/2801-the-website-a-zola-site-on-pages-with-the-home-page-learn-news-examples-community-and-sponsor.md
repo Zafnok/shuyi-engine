@@ -65,8 +65,9 @@ and says whether the home page says what the engine is.
     he hasn't picked one.
 - **The sections**, each a page or a Zola section:
   - **Home:** what Shuyi is in two lines (from `README.md`), a "Get
-    started" button to 2802's quick start, and a feature grid in the
-    style of bevy.org. Each feature card has a title, two lines, a
+    started" button to the Learn page (2802 points it at its quick
+    start), and a feature grid in the style of bevy.org. Each feature
+    card has a title, two lines, a
     **status** (Ready, In progress or Planned), and a link to its docs
     page or ticket. The cards come from `site/data/features.toml`,
     whose first rows are the table in `docs/ROADMAP.md`, *Bevy's
@@ -75,14 +76,39 @@ and says whether the home page says what the engine is.
     data. It also has a strip for the latest two News posts and a
     Sponsor strip (2806 fills it; until then a link to the Sponsor
     page).
-  - **Learn:** a landing page linking the book (2802), the tutorial
-    (2803) and the API docs (2802).
+  - **Learn:** a landing page for the book (2802), the tutorial (2803)
+    and the API docs (2802). None of them exists yet (2802 and 2803
+    are blocked by this one), so it names them without links, with a
+    line saying they are coming, and 2802 and 2803 each add their own
+    links here when they land.
   - **News:** a Zola section with an Atom feed. 2804 and 2805 fill it;
     this ticket ships it with one post, "The website is up", in
     `draft = true`, for Nick to publish or delete.
   - **Examples:** one card per example, each playing in the browser at
     `/examples/<name>/`. Hello, Grid moves there from `/hello-grid/`.
     The old path redirects (a Zola `aliases` page).
+    - **Either order with 2108:** if 2108 is done,
+      `examples/ecs-garden/` gets its card, and `pages.yml` builds it
+      beside Hello, Grid; if not, nothing to do (2108 adds its card).
+    - **Either order with 2735, 2736 and 2737:** if one of them is done
+      (for 2736, its part 2, the match-3 played), its example gets a
+      card here as Hello, Grid does, and `pages.yml` keeps the loop
+      over every example, if that ticket made it; if not, nothing to
+      do (each adds its own card).
+    - **Either order with 2738 and 2739** (the brick-breaker and snake,
+      parked): if one is done, its example gets its card too, and its
+      old path (`/bricks/`, `/snake/`) redirects there as `/hello-grid/`
+      does; if not, nothing to do (each adds its own card when it
+      lands).
+    - **Either order with 2740:** if 2740 is done, Hello, Hex is in
+      `pages.yml`'s index too: give it a card and move it the same way.
+      If not, nothing to do (2740 adds its card).
+    - **Either order with 2754:** if 2754 is done, its crawler example
+      gets a card here like every other; if not, nothing to do (2754
+      adds its card when it lands).
+    - **Either order with 2764:** if 2764 is done, its
+      `examples/action-rpg` gets a card like every other example; if
+      not, nothing to do (2764 adds its card).
   - **Community:** GitHub issues, `CONTRIBUTING.md`, the code of
     conduct, the security policy (from 1132; if 1132 isn't done, link
     the repository and add the rest in 1132), and `GOVERNANCE.md` (from
@@ -106,6 +132,19 @@ and says whether the home page says what the engine is.
 - **Locally:** `site/README.md` says how to preview: `winget install -e
   --id getzola.zola`, then `zola serve` in `site/`. Nothing in the
   engine's build needs Zola.
+- **Either order with 2019** (the web build checked in CI): if 2019 is
+  done, each example's web build `pages.yml` makes gets a run of
+  `check.py boot` in its `web-render` job: add one for any that lacks
+  it. If not, nothing to do (2019 boots every build `pages.yml`
+  publishes when it is worked).
+- **From 2810 (done):** the docs map (`docs/README.md`) gets the
+  site's rows when it lands, and `cargo xtask check-docs` fails on any
+  Markdown file no row covers. Add a row for `site/content/` under
+  *People making games* (the site's pages, updated by a change that
+  adds or changes a section or a page; the book gets its own row in
+  2802), and one for `site/README.md` under *Engine developers* (how
+  to preview and build the site). Take the site out of the map's
+  closing line on coming homes, which keeps `llms.txt` (2808).
 
 **Out (do not do):**
 - the book's chapters, the tutorial, the changelog, blog tooling, sponsor
@@ -122,11 +161,9 @@ and says whether the home page says what the engine is.
   few dozen pages);
 - comments, analytics or anything that sets a cookie;
 - animated previews on the Examples cards: 2514 makes an APNG or a GIF
-  of a game's frames; putting them on the cards is a follow-up after
-  both;
-- an automatic check that each example's web build loads in a browser
-  (2019, after the MVP, adds every build `pages.yml` publishes to its
-  `web-render` job);
+  of a game's frames, and 2811 puts them on the cards, after both;
+- an automatic check that each example's web build loads in a browser,
+  beyond the clause with 2019 above;
 - playing the examples on a phone, which has no keyboard (2407,
   parked);
 - Hello, Grid's Quit, which freezes its web build: 3053 hides it where
@@ -162,6 +199,8 @@ and says whether the home page says what the engine is.
 - [ ] At 375 px wide, no page scrolls sideways.
 - [ ] Zola's pinned version and checksum are in the workflow, and its
       license is recorded in the ADR.
+- [ ] `docs/README.md` has the site's two rows, and `cargo xtask
+      check-docs` passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

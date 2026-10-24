@@ -64,9 +64,10 @@ None.
   `Self::deserialize` in `Migrate::upgrade`, and adds a `v<N>_*.ron`
   fixture beside the old ones, which must still read (its saves test
   fails otherwise); if not, 2110's version 1 has it. A row
-  `OptionRow::text_size()` for the options screen. **Either order with
-  2314:** if 2314 is done, make it an enum option row; if not, a
-  stepped row like `text_speed`, and 2314 converts it. **Either order
+  `OptionRow::text_size()` for the options screen: a choice row over
+  the game's list, written by hand like `text_speed`. 2314's enum option
+  rows don't fit it: its values are an index into a list the game gives
+  at run time, not an enum's `ALL`. **Either order
   with 2351:** if it is done, the row's own text keys get their English
   in the engine's `crates/ui/lang/en/ui.ron`; if not, in the toy's
   `en.ron`, and 2351 moves them. The labels of the sizes the game
@@ -83,11 +84,12 @@ None.
   glyphs, advances, line height, and outline and shadow offsets grow by
   `glyph_scale`, so text placed in pixels grows with the cells. The
   check covers runs too (`TextRun::cut`). If 2334 isn't done, nothing
-  here.
+  here: 2334 does it when it lands (its clause says so).
 - **The check:** a harness helper, `harness::check_text_sizes(&mut
   Harness, screens)`, draws each named screen at every offered size and
   reports text cut off or drawn past the buffer, with 2209's
-  fits-its-box check, naming the screen, the size and the text key.
+  fits-its-box check (`shuyi_assets::dialogue::lines_at_longest`),
+  naming the screen, the size and the text key.
   **Either order with 2353:** if 2353 is done, build `check_text_sizes`
   on its walk (`shuyi_platform::harness::walk`: its `Stop` list and its
   cut finding) and run it at every offered size. If not, write the
@@ -108,14 +110,14 @@ None.
   as a text run (2224, 2334);
 - a console that grows by whole cells when the window's shape changes
   (an aspect policy like Godot's `expand`, found by the 2026-10-20
-  comparison): a follow-up ticket once this one is done, reusing its
-  new buffer for a new console size and 2333's `place`.
+  comparison): 2376 (parked), after this ticket and 2333, reusing
+  this ticket's new buffer for a new console size and 2333's `place`.
 
 ## Implementation steps
 
 1. Read `ConsoleSpec`, `GlyphBuffer::new`, `GameData`, `Settings` and the
    options rows, 2209's check, and 2018's render card and plans. Check
-   which of 2110, 2314, 2334, 2351, 2353 and 3001 are done.
+   which of 2110, 2334, 2351, 2353 and 3001 are done.
 2. Add `TextSize`, the default, the setting and its saved form.
 3. Rebuild the buffer on a change; scale glyphs in `shuyi-app` and the
    raster, and text runs if 2334 is done. Add the capture at the second

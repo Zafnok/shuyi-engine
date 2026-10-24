@@ -100,6 +100,19 @@ None (technical). Scheduling: see above.
   lockstep turn, whether the peers' hashes agree, and a desync banner
   (a `Note` label). **Either order with 2315:** if 2315 is done, add
   the channel here; if not, write a parked follow-up ticket for it.
+- **Either order with 1134:** if 1134 is done, drop 1140 from the
+  `waits_for` of `skills/shuyi-net/SKILL.md` (`check-skills` fails on
+  an id no longer in `tickets/open/`), and make the skill teach what
+  this ticket built: `Transport`, `MemoryNetwork` and its faults,
+  `LockstepSession` (the handshake, desync, reconnect) and
+  commit-reveal, linking `docs/net.md`. Its worked example is not this
+  ticket's: the later of 2529 and 1145 writes it. If not, nothing to
+  do (1134 writes the skill from what exists).
+- **Either order with 2116:** if 2116 is done, `-p shuyi-net` joins
+  the wasm32 `cargo test` of CI's `determinism` job, as `shuyi-script`
+  does (2101), so the lockstep and message tests also run on wasm32,
+  where a browser peer (1142) runs. If not, nothing to do (2116 adds
+  the crate, as its clause says).
 
 **Out (do not do):**
 - real sockets (1141, 1143); servers (1141);
@@ -111,10 +124,15 @@ None (technical). Scheduling: see above.
 - the tool contract driving several peers (`shuyi peers`, MCP tools per
   peer): 2529, over this ticket's `MemoryNetwork` and
   `LockstepSession`;
-- checking that machines of different kinds (x64, ARM64, wasm32) give
-  the same hashes: 2116 does it for the engine's crates, in CI's `test`
-  job (x64, ARM64) and its `determinism` job (wasm32). A lockstep test
-  here runs both peers in one process.
+- building the check that machines of different kinds (x64, ARM64,
+  wasm32) give the same hashes: 2116 builds it, in CI's `test` job
+  (x64, ARM64) and its `determinism` job (wasm32), and `shuyi-net`
+  joins it by the clause with 2116 above. A lockstep test here runs
+  both peers in one process;
+- voice chat (2910 researches it). **Either order with 2910:** if 2910
+  is done, read its ADR and do any line it added to this scope for
+  voice over the `Unreliable` channel; if not, nothing to do (2910
+  builds on this ticket's `Transport`).
 
 ## Implementation steps
 
@@ -130,6 +148,7 @@ None (technical). Scheduling: see above.
    follow-up ticket.
 6. Add a docs page in `docs/net.md`. Lockstep between peers is
    for friends (ADR-0006 §4).
+7. If 1134 is done, update `skills/shuyi-net` (Scope).
 
 ## Acceptance criteria
 

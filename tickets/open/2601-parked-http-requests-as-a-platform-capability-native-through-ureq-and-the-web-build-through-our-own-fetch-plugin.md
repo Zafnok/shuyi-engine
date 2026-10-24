@@ -39,8 +39,8 @@ What Shuyi has today (checked 2026-10-20 and 2026-10-21):
   relay, UDP on a LAN, Steam, later WebRTC or WebTransport) and services
   on our own server. A request to someone else's web API is neither.
   1141 (a native WebSocket) and 1142 (`net.js`, a WebSocket in the
-  browser) carry bytes between peers and wait for 1140. 1148's client
-  API names no transport.
+  browser) carry bytes between peers behind 1140's `Transport` trait.
+  1148's client API names no transport.
 - **The web build can't use an HTTP crate.** macroquad's loader doesn't
   use `wasm-bindgen` (game ADR-0034), so `reqwest`, `ehttp` and `gloo`
   don't run there. On native a game could call `ureq` itself; on the web
@@ -233,7 +233,9 @@ from the two sections after **Out**.
   WebTransport (1147);
 - a web portal's JavaScript SDK: its own plugin, not HTTP;
 - the Playdate: its SDK has networking since OS 2.7 (from memory; check
-  it then). A follow-up after 3010.
+  it then). Step 2 writes that follow-up too: a parked ticket, with
+  `blocked_by: ["2601", "3010"]`, that gives `shuyi-playdate` an `Http`
+  through the SDK, under this ticket's ADR.
 
 ### Follow-up 1: the native backend
 
@@ -380,22 +382,25 @@ the same note and milestone, and `blocked_by` this ticket and follow-up
 - **`unsafe` named where it is:** `crates/app/Cargo.toml`'s comment on
   `unsafe_code` calls `src/pads/web.rs` "the only
   `#[allow(unsafe_code)]`". It names every plugin `extern` block
-  instead: `pads/web.rs`, `http/web.rs`, and `lifecycle/web.rs` if 3043
-  is done. Whichever of this ticket and 3043 lands second makes that
-  comment and `lib.rs`'s docs name all three.
-- **Either order with 1142:** if it is done, `http.js` follows
-  `net.js`'s queue and its limit on queued bytes; if not, 1142 follows
-  this.
+  instead: `pads/web.rs`, `http/web.rs`, `lifecycle/web.rs` if 3043
+  is done, and each of 2522's `web_socket.rs` and 2519's
+  `sessions/web.rs` that is done by then. Whichever of these tickets
+  lands last makes that comment and `lib.rs`'s docs name them all.
+- **Either order with 2522:** if 2522 is done, `http.js` follows
+  `net.js`'s queue and its limit on queued bytes; if not, it follows
+  the queue and the limit that 2522's `net.js` bullet describes, and
+  nothing is asked of 2522. 2522 writes `net.js` (64 MiB of queued
+  messages at most); 1142 only adds binary messages to it.
 - **Either order with 3039:** if it is done, `http.js` joins its table
   of the web shell's scripts as the engine's own, as `gamepad.js` is;
   if not, 3039 lists it with the rest.
 - **Out:** moving the web backend to a crate if 3034 (parked) moves the
   web build to `wasm-bindgen` (3034's tickets decide); automating the
   browser check (a follow-up for 2019's checker, written in that PR if
-  2019 is done).
+  2019 is done; if not, 2019's PR writes it, as its clause says).
 
 Its steps: read `pads/web.rs`, `gamepad.js`, `crates/cli/src/web.rs`
-and its tests, and check whether 1142, 3039 and 3043 are done; write
+and its tests, and check whether 2522, 3039 and 3043 are done; write
 `http.js` and `http/web.rs`; wire `SHELL` and `index.html`; write the
 `shuyi-cli` tests and the README section; run the browser check and the
 gates, the web build included.
@@ -422,6 +427,10 @@ Its acceptance criteria:
    each with the context it needs from this ticket, its scope, steps,
    acceptance criteria, tests and a Completion notes placeholder. In
    this ticket, replace each section with one line naming its ticket.
+   Write the Playdate's follow-up (**Out**) the same way, its scope
+   from the SDK's networking docs then. Other open tickets that name
+   this ticket for a follow-up's piece (3010, 3034, 3039, 3043) then
+   name that follow-up's id instead.
 3. Write the ADR and its row in `docs/adr/README.md`.
 4. `shuyi_ui::http` and its unit and property tests; `Ctx::http`.
 5. `shuyi_platform::http`, `Platform::http`, the wiring in `App`,
@@ -432,8 +441,9 @@ Its acceptance criteria:
 ## Acceptance criteria
 
 - [ ] The ADR is in `docs/adr/` and listed in `docs/adr/README.md`.
-- [ ] The two follow-up tickets are in `tickets/open/`, parked, with the
-      `blocked_by` lists above, and the Completion notes name them.
+- [ ] The three follow-up tickets (the two backends and the Playdate's)
+      are in `tickets/open/`, parked, with the `blocked_by` lists above,
+      and the Completion notes name them.
 - [ ] `shuyi_ui::http` tests: the URL rule (an `https://` URL, loopback
       `http://` with a port, `http://example.com` refused, a user and
       password refused, a 2049-byte URL refused); the header rule

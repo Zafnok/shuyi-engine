@@ -46,11 +46,25 @@ None.
 **In:**
 - The trait and the builder, documented.
 - `text_speed` (and any other engine row of the same shape) uses it.
+- **Either order with 2333:** if 2333 is done, its `OptionRow::scale`
+  (over `ScaleMode::ALL` and `ScaleMode::key`) moves onto
+  `OptionRow::choice` like `text_speed`, its tests unchanged; if not,
+  nothing to do (2333 builds the row with `OptionRow::choice`).
+- **Either order with 2340:** if 2340 is done, its `OptionRow::motion`
+  moves onto `OptionRow::choice` too, and `Motion` implements
+  `ChoiceSetting`; if not, nothing to do (2340 builds it on `choice`).
+- **Either order with 2404 (parked):** if 2404 is done, move its
+  `OptionRow::repeat_speed` and `OptionRow::chord_time` onto
+  `OptionRow::choice`, and `OptionRow::toggle(action)` too if it has
+  their shape; if not, nothing to do (2404 builds them on it).
 
 **Out (do not do):**
 - Closures in `RowValue` (a bigger change; the trait covers the case
   found).
 - Any game's rows.
+- The frame cap row (2321) and the text size row (2323): their values
+  come from the game, not from a type's `ALL`, so they stay written by
+  hand.
 
 **For the game:** additive. The game's PR that moves its pin follows
 this one (game#1168).

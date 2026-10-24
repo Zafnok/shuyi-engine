@@ -249,10 +249,12 @@ than one PR. The last paragraph of **In** says how to split.
     its `crates/core/src/timer.rs`. If not, create that module with
     `crossed` alone (tests in `crates/core/src/timer/tests.rs`), and
     2115 adds to it.
-  - **Either order with 2104 and 2105:** if either is done and wrote a
-    helper of its own for events between two times, move it onto
-    `crossed`, or make it follow this rule, with its tests. If not,
-    they use `crossed` when they are worked.
+  - **Either order with 2104 and 2105:** if either is done, it wrote
+    `crossed` in `shuyi_core::timer` by this rule (their scopes write
+    it when 2364 isn't done): use it, add the edge tests listed under
+    **Tests required** that it lacks, and write neither `crossed` nor
+    the module again. If neither is done, write it here, and they use
+    it when they are worked.
 - **Playing** (`shuyi_ui::cinematic`), pure in time:
   - `CinematicPlayer::of` also keeps the def's cues, markers and
     enters.
@@ -310,9 +312,10 @@ than one PR. The last paragraph of **In** says how to split.
   with that part's scope, criteria and tests from here. It is
   `status: todo` if Nick unparked this ticket whole, and parked with
   this ticket's note if he unparked it for one part. In the same PR,
-  make the tickets that name 2364 for that part (2339, 2365 and 2366
-  for cues, markers and enters; 2109, 2122 and 2362 for tracks) name
-  the new ticket.
+  make the tickets that name 2364 for that part name the new ticket:
+  2104, 2105, 2115, 2339, 2366 and 2722 for cues, markers, enters and
+  `crossed`; 2109, 2122 and 2362 for tracks; 2365 for both (keys are
+  part 1, cues and markers part 2).
 
 **Out (do not do):**
 - actors the engine moves by itself, and tracks bound to a game's fields
@@ -321,8 +324,9 @@ than one PR. The last paragraph of **In** says how to split.
   asks: a file track keyed at the shot's times does the same);
 - typed `Color` and `Glyph` kinds checked against the palette or a font
   (a follow-up if a game asks; a `Name` carries either today);
-- `Wipe` as a shot's enter (a follow-up: the file would need an edge),
-  and slides and crossfades of two frames (2339 leaves them out);
+- `Wipe` as a shot's enter (a follow-up if a game asks: the file would
+  need an edge), and slides and crossfades of two frames (2339 leaves
+  them out);
 - camera rigs and camera moves (1120, 2362);
 - paths in space (2122): a `Point` track moves in a straight line
   between keys, eased in time;
@@ -339,8 +343,9 @@ than one PR. The last paragraph of **In** says how to split.
   a writer of the cinematic format (2218 leaves it out);
 - nested timelines, and blending one cinematic into another;
 - hot reload (2220 reloads any kind already);
-- moving `Pan` onto tracks or onto 2109's ease (a follow-up, tested
-  equal).
+- moving `Pan` onto 2109's ease (2136 does, tested equal; this ticket
+  leaves `Pan` as it finds it, whichever lands first), and onto tracks
+  (a follow-up if a game asks).
 
 ## Implementation steps
 
@@ -358,7 +363,8 @@ than one PR. The last paragraph of **In** says how to split.
 4. Part 1: `Tracked`, `CinematicPlayer::tracked`,
    `ShotPainter::frame_tracked`, and the toy's tracks. Then the docs.
 5. Count the lines and split if needed ("The split", above).
-6. Part 2: `shuyi_core::timer::crossed`, with unit and property tests.
+6. Part 2: `shuyi_core::timer::crossed`, with unit and property tests
+   (if 2104 or 2105 wrote it, only the tests it lacks).
 7. Part 2: `cues`, `markers` and `enter` in the file, with their checks,
    fixtures and the pack version.
 8. Part 2: `play_cues`, `markers_crossed`, `marker_ms`, `enter_look` and

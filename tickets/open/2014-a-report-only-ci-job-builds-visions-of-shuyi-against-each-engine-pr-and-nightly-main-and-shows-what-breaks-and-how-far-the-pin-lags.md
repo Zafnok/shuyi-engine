@@ -37,8 +37,8 @@ Shuyi today:
 - [`AGENTS.md`](../../AGENTS.md), *Working with the game repository*:
   a change here "must not break the game at its next pin bump". Only a
   manual step checks it: the `run-gates` skill's *The game at the next
-  pin* (`.claude/skills/run-gates/SKILL.md`, lines 97–103) builds the
-  game with `cargo xtask engine` in the game's own checkout.
+  pin* (`.claude/skills/run-gates/SKILL.md`) builds the game with
+  `cargo xtask engine` in the game's own checkout.
 - `.github/workflows/ci.yml` builds only games made fresh from the
   templates (its `templates` job). Nothing builds the game.
 - The game (`github.com/Zafnok/visions-of-shuyi`) is public (`gh api
@@ -62,8 +62,8 @@ Shuyi today:
 - The ticket lint already checks `game#NNNN` ids in CI: the `tickets`
   job passes `GH_TOKEN`, the game is public, and the latest run on
   `main` (39519457844) printed `ticket-lint: ok` with no "not checked"
-  warning. Only the text is stale: `run-gates` lines 89–92 say "CI has
-  no access to the game repository".
+  warning. Only the text is stale: `run-gates`' ticket-lint paragraph
+  says "CI has no access to the game repository".
 
 Planned or done, and not this: the `Breaking:` lines (2010, 2804) and
 2005's version policy are written by hand, and 2010 (done, ADR-0038)
@@ -241,12 +241,13 @@ None. It is a CI choice, and the game repository is already public.
     builds the game on each PR that touches the code and nightly on
     `main`, so read its summary first. The local `cargo xtask engine`
     stays, for fixing the game alongside an engine change.
-  - `run-gates` skill, the ticket lint's paragraph (today lines 89–92,
-    ending "CI has no access to the game repository"): the game is
-    public, so CI's ticket lint checks `game#` ids too. Locally it
-    needs `gh` or `--game-repo`.
+  - `run-gates` skill, the ticket lint's paragraph (the one saying "CI
+    has no access to the game repository"): the game is public, so CI's
+    ticket lint checks `game#` ids too. Locally it needs `gh` or
+    `--game-repo`.
   - `.github/workflows/ci.yml`, the `tickets` job's comment on
-    `GH_TOKEN` (lines 279–280): the same.
+    `GH_TOKEN` ("Without access to the game repository the lint
+    warns and skips those ids"): the same.
   - `work-ticket` skill, §6, the bullet "If the game must change too":
     when the `game` job ran, the PR body names the engine items its
     report lists as `new`, or says the game builds, and links the run.
@@ -254,13 +255,21 @@ None. It is a CI choice, and the game repository is already public.
   - `AGENTS.md`, *Working with the game repository*, after "must not
     break the game at its next pin bump": one sentence saying CI's
     `game` workflow shows what breaks.
+  - `bump-rust` skill, step 5 (written by 2012, done), "Once a job
+    builds the game against engine PRs (ticket 2014), …": CI's `game`
+    workflow shows the game failing on its older Rust on the bump's PR,
+    and after the merge the nightly keeps the `game-break` issue open
+    until the game's pin bump moves its Rust. Both are expected, and
+    the game ticket the step writes fixes them.
 
 **Either order:**
 
 - **With 2010 (done) and 2804** (the `Breaking:` lines). `work-ticket`
-  §5 step 2 already asks for `Breaking:` lines (2010): that step also
-  says each item the `game` report lists as `new` has one. If 2804 is
-  done, its `migration` block is in the same step; keep one step. 2010's
+  §5 step 2 already asks for `Breaking:` lines (2010): this ticket adds
+  to that step that each item the `game` report lists as `new` has one,
+  whichever lands first (2804 leaves that sentence here). If 2804 is
+  done, its `migration` block is in the same step; keep one step. If
+  not, nothing more to do: 2804 adds its block to that step. 2010's
   rewording of the `AGENTS.md` bullet and its pointer in `run-gates`'
   *The game at the next pin* stay; this ticket's sentences go beside
   them.
@@ -292,7 +301,8 @@ game's next pin bump can read the nightly summary for what to follow.
 - The Linux setup script and its package list: 2513.
 - The game's move to crates.io versions (2005). This ticket reads only
   the git source. Once the game takes the engine from crates.io,
-  `game-patch` needs a `[patch.crates-io]`: a ticket of its own then.
+  `game-patch` needs a `[patch.crates-io]`: 2005 adds it, with the rest
+  of this workflow's change for the move.
 - Other games than Visions of Shuyi: a ticket of its own, once other
   public games depend on the engine.
 - Editing done ticket 2002's notes: done tickets are history.
@@ -346,8 +356,8 @@ the job summary here.
 - [ ] The issue body names no file or message of the game, and neither
       the issue body nor the summary has an `@` outside code (unit
       tests).
-- [ ] The `run-gates` and `work-ticket` skills, `ci.yml`'s `tickets`
-      comment and `AGENTS.md` say what Scope lists.
+- [ ] The `run-gates`, `work-ticket` and `bump-rust` skills, `ci.yml`'s
+      `tickets` comment and `AGENTS.md` say what Scope lists.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

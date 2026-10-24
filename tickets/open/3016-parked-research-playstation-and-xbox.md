@@ -43,9 +43,18 @@ to either program, given its costs and duties.
   - what it costs (kits, fees, a company);
   - the toolchain (C/C++ only, or whether Rust is known to have shipped);
   - certification in broad terms;
+  - how a build shows its third-party license notices with no folder a
+    player can browse (2223 leaves an engine screen of credits and
+    notices out until a console needs one);
   - porting partners as an alternative.
 - **A recommendation** for each console: apply, use a partner, or skip.
 - **The `ask-nick` question.**
+- **Public engine tickets, for a yes:** what these consoles need that
+  may be said in public, unless an open ticket already has one. The
+  first is pausing a one-player game when its pad is removed, which
+  2406 leaves to the consoles. If 2406 is done, that ticket builds on
+  its pad removals (`PadRemoved`, `seat_events`); if not, it is blocked
+  by 2406 and parked like it.
 
 **Out (do not do):** applying, signing, or anything under an agreement.
 

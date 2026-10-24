@@ -68,7 +68,10 @@ None.
   work unit = one cell expanded. Each step `RtsSim` gives it
   `RtsSettings::flow_cells_per_step` units (default 4 096; 2718 tunes
   it). When a field is done, it goes in the cache and the next request
-  starts in the same step with the units left.
+  starts in the same step with the units left. 3009's `Progress::Done`
+  carries no count, so the builder counts the cells it expanded in the
+  step (a `used()` on the builder), and `RtsSim` gives the next request
+  `flow_cells_per_step` minus that.
 - **The cache, `FlowCache`:**
   - limits in fields and in cells (both settings);
   - least recently used out first. "Used" is the step a unit last read

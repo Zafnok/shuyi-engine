@@ -91,13 +91,15 @@ None.
   - `TileMotion::insert(&mut self, still: ImageRect, clip:
     AnimationClip, phase: TilePhase)`; a later insert for the same
     rectangle wins;
-  - `TileMotion::from_set(set: &AnimationSet, image: ImageId, phase:
-    TilePhase) -> Result<Self, String>`: each clip of the set moves the
-    picture that is its first frame as written. It refuses, naming
-    them, a set whose `image` isn't `image.path()` (its frames would be
-    rectangles of another picture), a clip with no frame (the format
-    refuses one, but a set built in code may have it) and two clips
-    with the same first frame;
+  - `TileMotion::from_set(set: &AnimationSet, dir: &str, image:
+    ImageId, phase: TilePhase) -> Result<Self, String>`: each clip of
+    the set moves the picture that is its first frame as written.
+    `dir` is the set file's folder (`AssetPath::dir`, `"anim"` for
+    `anim/water.ron`): a set names its picture from its own folder
+    (2231). It refuses, naming them, a set whose `set.image_path(dir)`
+    isn't `image.path()` (its frames would be rectangles of another
+    picture), a clip with no frame (the format refuses one, but a set
+    built in code may have it) and two clips with the same first frame;
   - `TileMotion::picture(&self, still: ImageRect, at: Pos, clock_ms:
     u64) -> ImageRect`: `still` when it has no clip; otherwise
     `frame_at(clip, t)`, where `t` is `clock_ms` for `Together`, and
@@ -226,8 +228,11 @@ None.
       test. Panning the view (another `scene.origin`) keeps each map
       tile's frame.
 - [ ] The tint wash over a moving tile has the `src` of the frame shown.
-- [ ] `TileMotion::from_set` refuses a set of another image, a clip
-      with no frame, and two clips with one first frame, naming them.
+- [ ] `TileMotion::from_set` takes a set read from `anim/water.ron`
+      whose `image` is `water.png`, with `dir` `"anim"` and the
+      `ImageId` of `anim/water.png`. It refuses a set of another image,
+      a clip with no frame, and two clips with one first frame, naming
+      them.
 - [ ] `UnitClips::default()` gives exactly what `idle_frame` and `gait`
       give, for clocks from 0 to 10 000 ms and for random paths,
       distances and paces (property test).

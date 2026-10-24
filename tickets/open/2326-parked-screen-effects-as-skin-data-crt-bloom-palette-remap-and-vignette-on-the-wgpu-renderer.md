@@ -55,9 +55,11 @@ None.
   - `Remap { to: palette id }`: every colour of the game's palette
     becomes the same role's colour in another palette (day to night);
   - `Vignette { strength: u8 }`;
-  - `optional`: a target that can't run it drops it (3017's
-    capabilities: either order; if 3017 is done, register `effects` as
-    a need, `optional` or required);
+  - `optional`: a target that can't run it drops it.
+    **Either order with 3017:** if 3017 is done, add its `shaders`
+    capability and the `screen_passes` need as 3017 describes them for
+    this ticket (a pass is required unless marked `optional`); if not,
+    nothing to do here (3017 adds them);
   - `flashing`: dropped when the player turns flashing off (below).
 - **The frame** carries the chain: `GlyphBuffer` gains `effects:
   Option<EffectsRef { chain id, amounts }>`, where `amounts` lets the
@@ -67,6 +69,11 @@ None.
   each, ping-ponging two render targets. Passes that look at pixels
   (bloom, remap, vignette) run at the frame's logical size;
   `Crt` runs at the window's size, last.
+- **Either order with 2331** (the render graph, parked): if 2331 is
+  done, each pass of the chain is a node of its `RenderGraph`, which
+  `render.ron` turns on or off, while `effects.ron` keeps the passes'
+  numbers and the frame's `effects` their amounts; if not, nothing to
+  do here (2331 moves the chain's passes into nodes when it lands).
 - **The raster** (`shuyi_ui::frame::raster`, 2332) runs a CPU reference
   of each pass, in integers where the pass allows, so `frame-png` shows
   an agent the effect without a GPU, and the window is compared with it.

@@ -60,8 +60,10 @@ None.
     back to the first;
   - two parts declaring the same pair is `ComposeError::SameMove`.
 - **The new game's README** lists the stages and each move, and says
-  for each door "this move has no guide yet" with a link to
-  `docs/guides/` (2004).
+  for each door "this move has no guide yet" with a link.
+  **Either order with 2004:** if 2004 is done, the link goes to
+  `docs/guides/README.md`; if not, to ADR-0009 §5, and 2004 points it
+  at `docs/guides/README.md`.
 - **The new game's test**, `tests/moves.rs`, generated: a Harness test
   that starts the game, crosses every move in order with the actions the
   move needs (for a door, `travel`), and checks the top screen after
@@ -73,6 +75,11 @@ None.
 - **CI:** for the built-in template, make and build a game for every
   pair of ready perspectives. With one ready perspective, this job
   makes the fixture games instead, so it runs from day one.
+- **Either order with 2771** (parked: the `stage-hex-grid` part): if
+  2771 is done, `hex-grid` is a ready perspective with a part, so the
+  job above makes and builds its pairs: check that they pass through
+  the door. If not, nothing to do: 2771 checks its pairs when it lands
+  (its clause says so).
 
 **Out (do not do):**
 - writing any perspective's stage part (each perspective ticket does:

@@ -275,20 +275,42 @@ and the plural table are technical.
     key's name in any branch is still a `Key` span, and its `args` take
     `&dyn ToArg`. If not, 2347 builds `fill_styled` on `walk`.
   - **2302:** if it is done, its `max_cells` overflow list measures each
-    form (`Message::forms`) and reports the widest; do that here. If
-    not, 2302 does it.
+    form (`Message::forms`) and reports the widest; do that here. 2302
+    also made `fill` join a multi-word key name's words with a no-break
+    space: keep that join where `fill` writes a `Piece::Arg` by
+    `lookup`, so 2302's test passes unchanged. If not, 2302 does both
+    (its step 3 joins the words where `fill` writes a key's name).
   - **3053:** if it is done, fill `target` from `ctx.platform.target`,
     beside `device`. If not, `target` stays reserved, and 3053 fills
     it.
   - **2226:** if it is done, look the plural table up by
-    `LangCode::language()` (`pt-BR` uses `pt`), and `Lang::text_in`
-    gives the code of whichever language in the fallback chain gave the
-    text. If not, look it up by `LangCode` as it is, and 2226 moves the
-    lookup to the subtag.
+    `LangCode::language()` (`pt-BR` uses `pt`), and `Lang::text_in` and
+    `Lang::data_text_in` give the code of whichever language in the
+    fallback chain gave the text (the source's when they fall back). If
+    not, look it up by `LangCode` as it is, and 2226 moves the lookup
+    to the subtag and makes `text_in` and `data_text_in` give the
+    chain's language (its clause says so).
   - **2353** (a pseudo-language): if it is done, its `pseudo_text`
     changes only a message's literal text and keeps its syntax (a
     plural's `other` and its braces stay as written). If not, 2353 does
     that through `walk` or `forms`.
+  - **2330** (UI declared in a file): if it is done,
+    `DocScreen::set_arg(id, name, value)` takes `value: impl ToArg` and
+    keeps an `Arg`, as `Label::with_arg` does, so a plural in a
+    `.ui.ron` text picks its form; *For the game* lists it too. If not,
+    nothing to do (2330 types it with `ToArg`).
+  - **2352** (the engine's screens in other languages, parked): if it
+    is done, `profile.message.too_many` becomes a plural message in
+    each engine pack (`crates/ui/lang/<code>/ui.ron`) too, written by
+    machine with the categories of the pack's language and still
+    `made_by: Machine`, so 2352's upkeep test passes. If not, nothing
+    to do: 2352 writes its packs from the plural English.
+  - **2758** (loot names, parked): if it is done, its item name
+    pattern is a language pack text like any other, so it may choose
+    words once this lands. A call of `fill` or `Ctx::text_with` in its
+    code takes the new arguments as every caller's does; nothing else
+    changes. If not, nothing to do (2758 uses the selection rules, as
+    its clause says).
   - **Public types (ADR-0039):** `Arg`, `Piece`, `Category`, `Kind`,
     `MessageError` and the new `LangStatus` field follow it
     (`#[non_exhaustive]` and constructors).
@@ -322,7 +344,9 @@ and the plural table are technical.
   with them.
 - Translator exchange files (2227, parked): a message goes out to PO as
   it is written, its branches inside the string.
-- The atlas check (2350): it walks `Message::forms` when it comes.
+- The atlas check (2350): it scans a message's text as written. That
+  text holds every character of every form, and its syntax is ASCII,
+  which `ATLAS_RANGES` keeps, so neither ticket changes for the other.
 - A value for `target` before 3053; reading the device anywhere but
   the `Ctx::device` field.
 - Moving the templates' or the game's English onto

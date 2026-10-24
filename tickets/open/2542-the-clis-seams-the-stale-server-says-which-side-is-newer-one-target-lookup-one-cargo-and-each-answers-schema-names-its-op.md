@@ -32,7 +32,9 @@ repeated or misread another's:
    ADR-0031's Consequences name), the sentence is wrong. `--ready` and a
    reconnect still fix the first case, because the project's entry
    builds from its own pin, but not the second. Its test covers only
-   `VERSION + 1` (`mcp/server/tests.rs`).
+   `VERSION + 1` (`mcp/server/tests.rs`). Since 2546 a fresh server of
+   the checkout answers first, and the limit is written only where
+   Scope item 1 says.
 2. **A run of spaces inside two strings that agents read.** A line
    continuation was lost in SH3005's help line (`contract/codes.rs`,
    1133) and in `lint`'s MCP tool description (`mcp.rs`, 2534), so each
@@ -46,9 +48,11 @@ repeated or misread another's:
    --target` (`contract/check.rs`) fails with `codes::TARGET` (SH3003).
    `bake` (`contract/bake.rs`, `unknown_target`) writes the message a
    third time. The same mistake gets different exit codes.
-4. **`CARGO` found six times.** `std::env::var("CARGO")` or
+4. **`CARGO` found eight times.** `std::env::var("CARGO")` or
    `var_os("CARGO")` with a `"cargo"` fallback is in `game.rs`,
-   `web.rs` (twice), `mcp.rs`, `mcp/child.rs` and `contract/lint.rs`.
+   `web.rs` (twice), `mcp.rs`, `mcp/child.rs` and `contract/lint.rs`,
+   and since the retro in `mcp/forward.rs` (2546) and `catalog.rs`
+   (2003).
 5. **Every output schema lists every op.** `Answer<T>.op` is an `Op`
    (`contract.rs`), so each `*.output.json` holds the whole `Op` enum, and
    each new op rewrites all 19 output schemas (2126, 1133 and 2534 each
@@ -63,16 +67,24 @@ None.
 ## Scope
 
 **In:**
-1. **`stale` names which side is newer.** When the game's engine is
-   newer: today's sentence. When the server is newer: "the game's engine
-   speaks contract X and this server Y: the server is newer than the
-   game's engine; if the MCP entry runs a `shuyi` installed for every
-   project, register the project's own (`<command> mcp install`), else
-   run "<command> mcp --ready" and reconnect it". `docs/contract.md`,
-   *The MCP server*, says both in one sentence each.
-   Since 2546, `stale`'s limit is written only when the server's fresh
-   restart (a forwarded server of its own workspace) fails to start:
-   change the message there and leave the restart alone.
+1. **`stale` names which side is newer, and what fixes it where the
+   limit is written now.** When the server is newer, it also says "if
+   the MCP entry runs a `shuyi` installed for every project, register
+   the project's own (`<command> mcp install`)". Change the messages
+   and leave the restart alone. `docs/contract.md`'s *A stale server
+   restarts* says each case in one sentence, and doesn't bring back the
+   "run `--ready`, then reconnect" advice 2546 took out of it. Since
+   2546 the limit is written in two kinds of place:
+   - beside "a fresh server of this checkout didn't start: …", when a
+     forwarding server's restart (a forwarded server of its own
+     workspace) fails. Its next call tries the restart again, so the
+     fix is what stopped the fresh server, not `--ready` and a
+     reconnect;
+   - where no restart runs: in a forwarded server
+     (`SHUYI_MCP_FORWARDED` set), whose answer the session's server
+     passes on as it is, or for a folder with no server of its own to
+     start. There a reconnect (in Claude Code: /mcp) starts a fresh
+     server.
 2. **The two strings** are one sentence each with single spaces, and a
    test over every row of the codes table (help line and page title) and
    every MCP tool description fails on two spaces in a row or a line
@@ -85,8 +97,8 @@ None.
    code's class's exit code (`codes::exit_code`) and prints the code, as
    the contract's commands do.
 4. **One `cargo`:** `crate::cargo() -> std::ffi::OsString` (the `CARGO`
-   that cargo sets when it runs us, else `cargo`), used by the six
-   places.
+   that cargo sets when it runs us, else `cargo`), used by every place
+   `grep -rn '"CARGO"' crates/cli/src` finds (eight today).
 5. **Each answer's schema names its op:** `contract::pair` (or
    `op_schemas`) writes the output schema's `op` property as a `const` of
    that op's name, as it serializes, instead of a `$ref` to `Op`. No
@@ -116,7 +128,7 @@ None.
 4. `target::profile` and its three callers; test `frame-png --target
    moon` through the binary (`tests/it/binary.rs`) for the code and the
    exit code.
-5. `cargo()` and its six callers.
+5. `cargo()` and its callers (eight today).
 6. The `op` const in the output schemas; a test that no
    `*.output.json` contains another op's name as an `op` value; then
    regenerate, raise the version and add the line.

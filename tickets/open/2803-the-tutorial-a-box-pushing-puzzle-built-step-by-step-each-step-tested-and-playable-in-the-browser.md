@@ -63,10 +63,23 @@ None.
      all five levels winnable. If not, the step plays a line kept in its
      files, and 2112's PR switches it to `solve`;
   10. `10-ship`: `shuyi check --target`, `shuyi web`, and putting it
-      on Pages.
+      on Pages. Either order with 2528: if it is done, the page tries
+      the build first with `cargo shuyi web --serve --open`, which
+      builds, serves and opens it in one step. If not, nothing to do
+      (2528 changes the page when it lands, as its clause says).
 - **A page per step** in `site/content/learn/tutorial/`: what to do,
   and the diff from the step before shown as code that comes from the
   step's files (2802's snippet shortcode, pointed at the step's folder).
+- **The Learn landing page** (2801, done before this one): 2801 ships
+  it before the tutorial exists, naming the tutorial without a link and
+  saying it is coming. Link that name to step 01's page, the
+  tutorial's first.
+- **Either order with 2808:** if 2808 is done, the pages get their
+  Markdown twins with no change, but an argument or a shortcode added
+  here for the step folders or the diffs needs its expansion in `cargo
+  xtask llms` (`crates/xtask/src/llms.rs`) in this PR, or its run in
+  `ci.yml` fails; if not, nothing to do (2808 expands the shortcodes
+  as this ticket leaves them).
 - **CI:** each step is built and tested (`cargo test` in each folder),
   in a matrix job of `ci.yml`. The steps aren't workspace members, so
   each has its own `Cargo.lock`; the job runs `cargo update -p
@@ -89,13 +102,20 @@ None.
   and any Quit in step 06's menu) only where `ctx.platform.can_quit()`,
   as the templates do then. No step played in the browser then freezes
   when the player leaves. If not, 3053 changes the steps when it lands.
+- **Either order with 2019** (the web build checked in CI): if 2019 is
+  done, add a run of `check.py boot` on each step's web build to its
+  `web-render` job, as it runs for the examples. If not, nothing to do
+  (2019 boots every build `pages.yml` publishes when it is worked).
 
 **Out (do not do):**
-- a second tutorial (a tick game waits for 1119; the first tick example
-  is snake, 2739, parked);
-- an automatic browser check of each step's web build (2019, after the
-  MVP, adds the steps to its `web-render` job); here each step is played
-  by hand;
+- a second tutorial, for a tick game: tick games are 1119's (parked),
+  and the first tick example is snake (2739, parked);
+- an automatic browser check of each step's web build beyond the
+  clause with 2019 above; here each step is also played by hand;
+- hot reload of code: 2905's research tries its options on step 10's
+  game. **Either order with 2905:** if 2905 is done, nothing to do (it
+  tried them on Hello and Grid); if not, nothing to do (2905 uses the
+  finished steps);
 - video.
 
 ## Implementation steps

@@ -172,6 +172,11 @@ Nick wants it before the MVP, this ticket moves to the MVP with 2342.
 - **2218** (writers of the engine's text formats): if it is done, its
   `AudioManifestRon` writer writes `ducks` and its round-trip test
   covers a rule; if not, nothing here.
+- **2725** (parked: a sound group per voiced character, under
+  `voice`): if it is done, `sounding` also needs the gain of the group
+  the playing clip was asked in above 0, not only `voice`'s, so a
+  character turned down to 0 lowers nothing, with a test; if not,
+  nothing here (2725 does it).
 
 **For the game:** additive. A manifest without `ducks` sounds as
 before. A backend of the game's own that implements `Audio` keeps
@@ -192,7 +197,9 @@ and the game's PR that moves its pin follows this one.
   curves, if a game asks);
 - snapshots: several groups' volumes changed together by name;
 - a player setting that turns ducking off;
-- a rule per voice clip or per speaker (2725, parked);
+- a rule per voice clip or per speaker: a ticket when a game asks.
+  2725 (parked) gives each voiced character a group under `voice`, and
+  a rule with `when: "voice"` ducks for every one of them;
 - the groups themselves, the curve and the option rows (2342).
 
 ## Implementation steps

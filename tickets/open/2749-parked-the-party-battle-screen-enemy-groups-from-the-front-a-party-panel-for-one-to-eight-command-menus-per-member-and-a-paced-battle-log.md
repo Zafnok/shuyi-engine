@@ -81,7 +81,8 @@ None.
 **Out (do not do):**
 - what any command does (2748, 2750);
 - enemy animation beyond the cue (a game's skin may animate);
-- the hub and the chest screen (2752, 2751).
+- the hub (2752) and the chest screen (the game's own code: the crawler
+  example's, 2754).
 
 ## Implementation steps
 

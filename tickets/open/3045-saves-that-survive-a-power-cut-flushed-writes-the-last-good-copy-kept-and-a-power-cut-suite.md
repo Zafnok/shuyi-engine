@@ -193,6 +193,10 @@ None.
   save deleted on one machine would come back from its backup on
   another, since `read` falls back to a good backup when the main file
   is missing.
+- **Either order with 2767:** if 2767 is done, nothing to do: its
+  `Meta` is saved through `Storage`, so the new `write` flushes it like
+  any other key; if not, nothing to do either (2767 saves through the
+  same `Storage`).
 - **Size:** if the PR passes about 600 changed lines, the fake disk and
   `FileStorage`'s power-cut runs (steps 5 and 6, and their criteria) go
   to a follow-up ticket (the `write-ticket` skill, After MVP, blocked by

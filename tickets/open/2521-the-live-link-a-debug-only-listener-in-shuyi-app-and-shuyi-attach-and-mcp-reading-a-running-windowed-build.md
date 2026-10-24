@@ -46,12 +46,16 @@ What Shuyi has today:
   the storage folders (`crates/app/src/storage/native.rs`), `MUSIC_DIR`
   and `VOICE_CLIP` (`crates/app/src/audio/native_music.rs`). Nothing in
   the workspace uses `std::net`.
-- The only log a running build has today is `App::take_warnings`
-  (`crates/platform/src/app.rs`), which `run` prints with macroquad's
-  `warn!`. 3040 (MVP), which this ticket waits for, replaces it: App
-  keeps the last 500 lines in a `LogRing`, each with a level, a
-  category, a frame and a sequence number (`App::log`), and counts
-  frames (`App::frame_number`).
+- **From 3040 (done; ADR-0030):** a running build's log is App's
+  `LogRing` (`shuyi_ui::log`), read with `App::log`: the last 500 lines
+  (`LOG_LINES`), each a `LogLine` with a frame, a level, a category and
+  its text. A line holds no number: the ring numbers the lines pushed
+  from 0, `LogRing::since(s)` gives the kept lines numbered `s` or more,
+  and `next_seq()` is the number the next line gets, so the kept line
+  at index `i` is numbered `next_seq() - kept + i`. `dropped()` counts
+  every line ever dropped, those Ctx dropped before they got a number
+  included. `run` prints `App::take_new_log` with macroquad's macro
+  for each line's level, and `App::frame_number` counts frames.
 - 2506 (parked editor research) weighs a native game over a local
   socket, and 2507 (parked) connects the editor to the game by what
   2506 picks. Both take this link as their transport.
@@ -180,10 +184,16 @@ None.
       answers now due;
     - `Frame` answers `game.buffer().to_snapshot(&game.ctx().palette)`,
       as `Harness::snapshot` does;
-    - `Log { since }` answers the lines of `App::log` (3040's
-      `LogRing`) whose sequence number is above `since`, each with its
-      sequence number, frame, level, category and text, and the count
-      the ring dropped. The server keeps no log of its own;
+    - `Log { since }` answers `App::log().since(since)`: the kept lines
+      numbered `since` or more (0, the default, is every kept line),
+      each with its number (derived as above, or by a `LogRing` helper
+      that yields each kept line with its number), frame, level,
+      category and text. It also answers `next`, the ring's
+      `next_seq()`, which the next request passes as `since`, and how
+      many lines numbered `since` or more the ring no longer keeps
+      (`(next_seq - kept).saturating_sub(since)`, not `dropped()`,
+      which counts every line ever dropped). The server keeps no log
+      of its own;
     - a small base64 (RFC 4648) to carry the picture in a JSON line.
 - **The listener in `shuyi-app`** (`crates/app/src/link.rs`), behind a
   new `link` feature (`shuyi-platform/link`, and optional `image` and
@@ -241,11 +251,12 @@ None.
   - `AttachInput` and `AttachOutput` derive `JsonSchema`.
     `AttachOutput`: `link`, `game`, `frames`, `phase`, `top_screen`,
     `screens`, `suspended`, `focused`, `quit`, `frame`, `screenshot`
-    (path, width, height) and `log`: each line as 3040's `LogEntry`
-    plus its `seq` (the ring's sequence number), so the next
-    `--log-since` starts after the last one read. When the ring dropped
-    lines after `--log-since`, a limit says how many, as 3040's does
-    for `run`.
+    (path, width, height), `log`: each line as 3040's `LogEntry` plus
+    its `seq` (its number in the ring), and `log_next`: the ring's
+    `next_seq()`, which the next `--log-since` passes to read on from
+    there (`--log-since` defaults to 0, every kept line). When lines
+    numbered `--log-since` or more were dropped before this read, a
+    limit says how many, as 3040's does for `run`.
     `attach.input.json` and `attach.output.json` are checked in under
     `crates/cli/schemas/`; raise `contract::VERSION` by one and add its
     line to `versions.json`.
@@ -299,18 +310,30 @@ None.
   - with 2356 (debug commands): if it is done, `Request::Command {
     line }` runs `Game::command` through `App::command` if 2518 is
     done (so it is recorded), or else `App::game_mut` (so `handle`
-    takes `&mut App<G>`), and answers its reply. If not, 2356 adds it
-    (its own clause says so);
+    takes `&mut App<G>`; 2518 moves it onto `App::command` when it
+    lands, its own clause says so), and answers its reply. If not, 2356
+    adds it (its own clause says so);
   - with 2518 (session records): App records the input of its one
     `poll_input` a frame, so the link's input is in a session record
-    either way. If 2518 is done, a test shows it; if not, nothing here;
+    either way. If 2518 is done, a test shows it; if not, 2518 writes
+    that test (its own clause says so);
   - with 1134 (the skills): if it is done, the `shuyi-test` skill gets
     a section on attaching to a running build. If not, 1134 covers it
     (its own clause says so);
-  - with 2509 (problem codes): if it is done, the three errors above
-    get codes, and "no build listening" is a setup code with exit code
-    3 (fix the setup, then retry: start the build). If not, 2509 covers
-    them;
+  - with 2509 (done, problem codes, ADR-0028): the three errors above
+    are `Answer::failed` with codes. "No build listening" is a setup
+    code (`SH1nnn`, exit 3: start the build, then retry); the wrong
+    token and the link version that isn't this `shuyi`'s get the code
+    of their class. A new code is a row in
+    `crates/cli/src/contract/codes.rs`'s `TABLE` with its page in
+    `crates/cli/errors/` (the gate in `codes/tests.rs` checks both);
+  - with 3041 (log sinks): if it is done, the listener's two lines are
+    `log::` calls with the target `"platform"`, as 3041's rule says:
+    `log::info!` for the port and the token, and `log::warn!` for why
+    it doesn't listen. Its default filter keeps them; a macroquad
+    `info!` would carry the module's path as its target and be
+    dropped. If not, macroquad's `info!` and `warn!`, and 3041 moves
+    them with the backend's other lines (its scope names this ticket);
   - the new public types follow ADR-0039.
 - **Size.** If the PR passes about 600 changed lines (fixtures,
   snapshots and the generated schemas not counted), the MCP part goes
@@ -320,8 +343,9 @@ None.
 **Out (do not do):**
 - the web build, and a device on the LAN (2522);
 - the game's own scene (`Scene::data`), events and sounds over the
-  link. The headless `run` and `scene` have them; write a ticket when
-  an agent needs them from a running build;
+  link. The headless `run` and `scene` have them. 2506 decides how the
+  editor's tree (2507) gets `data` over the link; write a ticket sooner
+  when an agent needs them from a running build;
 - changing state, settings or files over the link (2356's debug
   commands aside), and loading assets (hot reload is 2220);
 - a listener in a build without debug tools, or in an export (3004);
@@ -384,6 +408,9 @@ None.
       calls it, and so does `Script::play` if 2524 is done.
 - [ ] `attach.input.json` and `attach.output.json` are checked in, and
       `versions.json` has the new version.
+- [ ] `attach` with no build listening answers its setup code and exits
+      3; a wrong token and a link version that isn't this `shuyi`'s
+      answer their own codes (tests against a test host).
 - [ ] 1133's scripted client test attaches to a test host, steps it and
       reads its frame, or the follow-up ticket is written under the
       size rule.
@@ -396,8 +423,9 @@ None.
   buttons, neither, an unknown name); `attach`'s argument parsing,
   `--act` and `--wait` in frames included; base64 against RFC 4648's
   test vectors; the token rules (length, hex, `SHUYI_LINK_TOKEN`); the
-  hello rules; `Log` with `since` over 3040's ring, dropped lines
-  included.
+  hello rules; `Log` with `since` over 3040's ring (0 gives every kept
+  line with its number; the answer's `next` gives none until a line is
+  pushed), dropped lines included.
 - Property: for random scripts of keys, buttons and waits on the toy
   game, the server's play and the Harness's end with the same screens
   and the same frame text (the Harness waiting in whole frames of

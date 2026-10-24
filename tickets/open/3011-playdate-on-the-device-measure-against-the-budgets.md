@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["3007", "3008", "3009", "3010"]
+blocked_by: ["3007", "3008", "3009", "3010", "3028"]
 nick_input: setup
 completed:
 ---
@@ -67,6 +67,9 @@ check on the numbers.
   - frame time p50, p99 and the worst frame;
   - dropped frames (frames over 33.3 ms);
   - peak heap;
+  - the stack's high-water mark (3028's `stack_high_water()`), which
+    also shows that the load ran on the heap stack (the device check
+    3028's acceptance criteria leave here);
   - start-up to the title screen;
   - the `.pdx` size;
   - the hardware revision and the SDK version.
@@ -75,7 +78,13 @@ check on the numbers.
     instructions) applied to 33.3 ms, with 20 % headroom, taking the
     scenario with the worst ratio;
   - `think_units_per_frame` (3009) is set the same way;
-  - `status` becomes `supported` once every scenario holds 30 fps.
+  - **From 3001 (done):** `targets/playdate.ron` is already `status:
+    Supported`. 3001 set every profile but `switch`, `android` and
+    `ios` so, before any device run; ADR-0008 §1 calls a target
+    supported once its example runs on the device, which this ticket
+    makes true. Keep it `Supported`. A scenario that misses 30 fps gets
+    its follow-up ticket (below), not a demotion, which would drop the
+    Playdate from 3008's gate.
 
   The PR carries the measurements that justify every number it changes.
 - **The report a shipped game keeps** (from the game's friction sweep,
@@ -113,8 +122,8 @@ check on the numbers.
       hardware revision and the SDK version.
 - [ ] The `playdate` profile's budgets are set from the measurements, and
       the PR shows the arithmetic.
-- [ ] `status: supported` only if every scenario holds 30 fps.
-      Otherwise, follow-up tickets exist for each miss.
+- [ ] `targets/playdate.ron` stays `status: Supported`, and a
+      follow-up ticket exists for each scenario that misses 30 fps.
 - [ ] Nick's sign-off is recorded in the completion notes.
 - [ ] All gates in the `run-gates` skill pass.
 

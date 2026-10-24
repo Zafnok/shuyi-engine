@@ -65,6 +65,9 @@ None (technical). Scheduling: see above.
     `shuyi_core::ease::Lerp` for `Fx` and `FxVec2` here, rounding as
     `Fx` does, with a test that `mix` hits both ends exactly; if not,
     2109 adds them.
+  - **Either order with 2118:** if 2118 is done, add a one-line
+    `shuyi_procgen::noise::to_fx`, a noise value as an `Fx` (`n >> 8`),
+    with a test; if not, nothing to do (2118 adds it).
 - `shuyi_core::arena`: `Arena<T>` with generational `Id<T>`, insert,
   remove, get, iteration in id order, serde, and a text dump.
 - `shuyi_core::tick`: `trait TickSim { type Event; fn step(&mut self,
@@ -158,14 +161,34 @@ None (technical). Scheduling: see above.
   `DebugCall`), so a `TickRecord` holds them and `replay` reproduces
   them. Repeat 2356's replay-hash test on the example sim. If 2356 isn't
   done, nothing is added here, and 2356 adds it (its Out says so).
+- **The skill pack (1134).** **Either order with 1134:** if 1134 is
+  done, `skills/shuyi-stage-field/SKILL.md` lists 1119 in its
+  `waits_for`, and `check-skills` fails once this ticket is in
+  `done/`: drop 1119 from that list, and teach this ticket's work in
+  the skill (fixed steps, `Fx`, `TickSim`, records and `replay`, and
+  `TickDriver` with its latch). If that empties the list, write the
+  skill's worked example as 1134 says. Step 5's rule then goes in
+  `skills/shuyi-input/SKILL.md`, not in `input-actions`, which keeps
+  only what holds in this repository (1134, *One source for what is
+  true of every game*). If not, nothing to do: 1134 writes the skill
+  with this ticket's work and leaves 1119 out of `waits_for`.
+- **From 2003 (done):** the `fixed-ticks` answer of the time concern in
+  `docs/modules.ron` is parked and names this ticket alone. Set it to
+  ready.
 
 **Out (do not do):**
 - collision (1122);
 - world layers (1120);
 - overlays that let a stage keep running, such as a notice or a toast
-  (2367, parked). A pause menu pushed over a stage stays modal, the
-  default, and stops it;
+  (2367, parked; its note says it is unparked together with this
+  ticket's first tick stage). A pause menu pushed over a stage stays
+  modal, the default, and stops it;
 - networking;
+- checking a tick game's submitted score on 1148's server (its
+  `TickRecord` re-simulated). **Either order with 1148:** if 1148 is
+  done, its PR wrote a parked follow-up ticket for that check, blocked
+  by this one, and this PR adds nothing for it; if not, nothing to do
+  (1148 checks a `TickRecord` itself);
 - thousands of units (the parked 2705 measures an arena against columns
   and an ECS for the real-time strategy module, ADR-0015 §3);
 - jump buffering and coyote time (1127);
@@ -187,9 +210,9 @@ None (technical). Scheduling: see above.
   (`shuyi_cli::contract::replay::ticks`, 2739);
 - a soak of tick sims: `shuyi_core::soak` (2527) reloads a turn game's
   state at every step, compares it with a copy never reloaded and
-  checks the game's invariants. When this ticket is done, write a
-  parked follow-up ticket that does the same for a `TickSim` and its
-  records (a snapshot round trip per step).
+  checks the game's invariants. 2549 (parked, blocked by this ticket
+  and 2527) does the same for a `TickSim` and its records (a snapshot
+  round trip per step).
 
 ## Implementation steps
 
@@ -215,11 +238,10 @@ None (technical). Scheduling: see above.
 4. Decide, and write in the Completion notes, whether any example needs
    an ECS (ADR-0003 §4). Default: no. A game that wants one has the
    opt-in `shuyi-ecs` module (2107). Its tick adapter, `EcsTickSim`, is
-   2108's either-order clause. If 2108 is done, it left a line here
-   naming the adapter as this ticket's follow-up: write that follow-up
-   ticket (the `write-ticket` skill), blocked by this one, rather than
-   adding the adapter to this PR. If 2108 isn't done, 2108 writes the
-   adapter itself.
+   2108's either-order clause. If 2108 is done, its PR wrote a parked
+   follow-up ticket for the adapter, blocked by this one, and this PR
+   adds nothing for it. If 2108 isn't done, 2108 writes the adapter
+   itself.
 5. Add a rule to the `input-actions` skill
    (`.claude/skills/input-actions/SKILL.md`, *Rules*): "**Presses reach
    fixed steps once.** A tick stage reads input from `TickInput`, never
@@ -249,7 +271,8 @@ None (technical). Scheduling: see above.
 - [ ] A press latched on a frame with no step, just before the stage is
       covered by another screen, doesn't reach a step after the stage is
       uncovered.
-- [ ] The `input-actions` skill states the rule.
+- [ ] The `input-actions` skill states the rule (`shuyi-input` if 1134
+      is done).
 - [ ] Run the example sim for 10 steps, rewind it to its state at step
       5, and run it to step 10 again. The events of steps 6 to 10 are
       handed on once: the Harness's `audio_log` shows each cue once.

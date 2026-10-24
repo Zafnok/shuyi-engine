@@ -91,14 +91,16 @@ None.
 - **The debug view:** if 2315 is done, a `nav` channel helper,
   `shuyi_ui::debug::nav::gizmos(&NavMesh, Option<&Path>, to_px,
   &mut Gizmos)`: rectangles (`Bounds`), portals and the path (`Path`).
-  If 2317 is done, use its `to_px`; otherwise take the caller's offset,
-  as 2317 does.
+  If 2317 is done, use its `to_px` and `debug::collide::px`; if not,
+  take the caller's offset, as 2317 does, and 2317 moves the helper
+  onto `px`. If 2315 isn't done, write a follow-up ticket for the
+  helper, blocked by 2315.
 - **The example:** in 1119's tick example (the dot's room), a second
   dot follows the first round a wall.
 
 **Out (do not do):**
-- polygon obstacles from Tiled or LDtk object layers (a follow-up after
-  1124);
+- polygon obstacles from Tiled or LDtk object layers: a follow-up
+  after 1124 if a game asks (the mesh here is tile rectangles only);
 - movers avoiding each other (steering; for armies, 2711);
 - following a curve by distance, with loops and ping-pong (2122's
   `CurveFollower`);
@@ -117,7 +119,8 @@ None.
 2. Write the rectangle merge and portals, with tests on hand-drawn maps.
 3. Write `route` with clearance and the funnel.
 4. Write `Path::follow`.
-5. Add the debug helper if 2315 is done, and the example.
+5. Add the debug helper if 2315 is done, or write its follow-up ticket
+   if not, and add the example.
 6. Run the gates.
 
 ## Acceptance criteria

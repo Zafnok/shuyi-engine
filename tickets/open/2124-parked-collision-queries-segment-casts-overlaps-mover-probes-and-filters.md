@@ -245,7 +245,9 @@ None.
   under the pointer on a turn game's grid map (2405);
 - `CollisionLayers` and box ids themselves (1122);
 - an example of its own: the doc tests and the fixture table show it,
-  and 1127's platformer uses it.
+  and 1127's platformer uses it. 2738's shooter (a ticket 2738 writes)
+  finds its hits with `overlap_rect` if this ticket is done, and with
+  1122's broad phase if not: nothing to do here either way.
 
 ## Implementation steps
 
