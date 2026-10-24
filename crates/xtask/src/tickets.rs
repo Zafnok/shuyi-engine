@@ -490,29 +490,19 @@ fn check_clauses(tickets: &[Ticket]) -> Vec<String> {
 /// The ticket ids `body` names: each run of exactly four ASCII digits that
 /// isn't part of a longer word and doesn't follow `#` or `-` (`game#1131`,
 /// `ADR-0005`). "1134's" names 1134.
+///
+/// `body` is cut into words of letters, digits, `_`, `#` and `-`; a word
+/// names an id when it starts with exactly four digits and no letter, digit
+/// or `_` follows them ("2206-2207" names 2206 only).
 fn named_ids(body: &str) -> HashSet<String> {
-    let bytes = body.as_bytes();
-    let joined = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_';
-    let mut ids = HashSet::new();
-    let mut i = 0;
-    while i < bytes.len() {
-        if !bytes[i].is_ascii_digit() {
-            i += 1;
-            continue;
-        }
-        let start = i;
-        while bytes.get(i).is_some_and(u8::is_ascii_digit) {
-            i += 1;
-        }
-        let before = start.checked_sub(1).map(|j| &bytes[j]);
-        if i - start == 4
-            && !before.is_some_and(|b| joined(b) || matches!(b, b'#' | b'-'))
-            && !bytes.get(i).is_some_and(joined)
-        {
-            ids.insert(body[start..i].to_string());
-        }
-    }
-    ids
+    let joined = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    body.split(|c: char| !(joined(c) || matches!(c, '#' | '-')))
+        .filter_map(|word| {
+            let rest = word.trim_start_matches(|c: char| c.is_ascii_digit());
+            let named = word.len() - rest.len() == 4 && !rest.starts_with(joined);
+            named.then(|| word[..4].to_string())
+        })
+        .collect()
 }
 
 /// One error per file, line and id for each clause of an open ticket that
