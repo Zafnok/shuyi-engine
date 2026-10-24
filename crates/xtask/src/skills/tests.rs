@@ -220,3 +220,11 @@ fn only_the_named_skills_and_the_shard_run() {
     );
     let _ = fs::remove_dir_all(&root);
 }
+
+#[test]
+fn the_games_are_made_under_the_target_folder() {
+    assert_eq!(
+        games_dir(Path::new("engine")),
+        Path::new("engine").join("target/skill-examples")
+    );
+}
