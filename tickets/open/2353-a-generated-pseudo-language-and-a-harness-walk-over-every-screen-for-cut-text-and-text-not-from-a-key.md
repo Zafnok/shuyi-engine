@@ -195,15 +195,14 @@ None.
     `examples/hello-grid/tests/it/pseudo.rs` walks `title`, `talk`,
     `stage` (its map in `skip`), `leave` and `end`, and the engine's
     `options` and `profiles` from the title;
-  - the templates: the same line in the grid template's `Data::load`
-    and in `BasicData::load` (`crates/ui/src/basic.rs`, 2511), so every
-    game on the short path has the check, and a test in each template's
-    `crates/game/tests/it/main.rs` that walks its screens. A game made
-    with `shuyi new` has the check from its first commit.
-    **Either order with 2501:** if it is done and the grid template
-    loads through `BasicData`, the line in `BasicData::load` covers it;
-    if not, the grid template keeps its own line, and 2501 drops it when
-    it moves the template.
+  - the templates: the line in `BasicData::load`
+    (`crates/ui/src/basic.rs`, 2511), so every game on the short path
+    has the check, the template's grid stage too (2501 moved it onto
+    `BasicData`), and a test in the `base` part's
+    `crates/game/tests/it/main.rs` (`templates/shuyi-default/base`) that
+    walks its screens, and one in the grid stage's
+    `crates/game/tests/stage.rs` that walks its stage. A game made with
+    `shuyi new` has the check from its first commit.
   - Fix what the walk finds in the engine's own screens
     (`crates/ui/src/screens/`, `crates/ui/src/widgets/`) and the toy's
     (its lobby's items are literals today, `Lobby::ITEMS`) when the fix

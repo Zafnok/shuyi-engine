@@ -220,9 +220,8 @@ None.
   a rule in turns or steps with `shuyi_core::timer` (`Countdown`,
   `Every`): advance it by one each turn in `apply`, or once per step of
   `input.ticks()`. Never time a rule with `input.dt()`, which is for
-  what only looks." **Either order with 2501:** if 2501 is done, the
-  bullet goes in the template part that writes `AGENTS.md` (`base`). If
-  not, it goes in each template's file.
+  what only looks." The bullet goes in the `base` part's `AGENTS.md`
+  (`templates/shuyi-default/base`, 2501).
 - **Either order with 1134** (the skill pack): if 1134 is done, its
   `shuyi-stage-grid` and `shuyi-stage-field` skills (ADR-0005 §3) say
   the same as the templates' bullet. If not, this PR adds a line to

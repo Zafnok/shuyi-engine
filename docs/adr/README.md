@@ -54,5 +54,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0039](0039-public-types-that-can-grow-non-exhaustive-config-and-views-with-constructors-plain-values-left-open.md) | Public types that can grow: non-exhaustive config and views with constructors, plain values left open | Accepted |
 | [0040](0040-modules-join-a-running-game-a-library-first-a-module-trait-with-declared-hooks-and-state-by-type-on-the-context.md) | Modules join a running game: a library first, a `Module` trait with declared hooks, and state by type on the context | Accepted; extends ADR-0009 §6 and §8 and ADR-0024 §2 and §5 |
 | [0041](0041-the-module-catalog-concerns-as-data-metadata-answers-as-pairs-and-modules-and-add-reading-the-engine-the-game-builds-with.md) | The module catalog: concerns as data, metadata answers as pairs, and `modules` and `add` reading the engine the game builds with | Accepted; extends ADR-0009 §2, §4 and §6 and ADR-0040 §5 |
+| [0042](0042-the-template-format-merged-ron-and-cargo-files-a-generated-list-of-stages-and-short-names.md) | The template format: merged RON and Cargo files, a generated list of stages, and short names | Accepted; extends ADR-0013 §3 and ADR-0036 |
 
 Template: [`0000-template.md`](0000-template.md).

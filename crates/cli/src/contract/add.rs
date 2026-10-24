@@ -98,7 +98,7 @@ pub fn add_in(game: &Path, catalog: &Catalog, input: &AddInput) -> Answer<AddOut
 
 /// Why `name` is no module of `catalog`: one it plans, or the names there
 /// are.
-fn unknown(catalog: &Catalog, name: &str) -> String {
+pub(crate) fn unknown(catalog: &Catalog, name: &str) -> String {
     let module = if name.starts_with("shuyi-") {
         name.to_owned()
     } else {

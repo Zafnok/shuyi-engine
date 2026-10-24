@@ -11,13 +11,16 @@ use crate::app::App;
 use crate::headless::{HeadlessPlatform, Presented};
 use crate::platform::Millis;
 
-const EN: &[u8] = include_bytes!("../../../../templates/blank/crates/game/files/en.ron");
-const KEYMAP: &[u8] = include_bytes!("../../../../templates/blank/crates/game/files/keymap.ron");
-const PALETTE: &[u8] = include_bytes!("../../../../templates/blank/crates/game/files/palette.ron");
+const EN: &[u8] =
+    include_bytes!("../../../../templates/shuyi-default/base/crates/game/files/en.ron");
+const KEYMAP: &[u8] =
+    include_bytes!("../../../../templates/shuyi-default/base/crates/game/files/keymap.ron");
+const PALETTE: &[u8] =
+    include_bytes!("../../../../templates/shuyi-default/base/crates/game/files/palette.ron");
 const ATLAS_RON: &[u8] =
-    include_bytes!("../../../../templates/blank/crates/game/files/font/atlas.ron");
+    include_bytes!("../../../../templates/shuyi-default/base/crates/game/files/font/atlas.ron");
 const ATLAS_PNG: &[u8] =
-    include_bytes!("../../../../templates/blank/crates/game/files/font/atlas.png");
+    include_bytes!("../../../../templates/shuyi-default/base/crates/game/files/font/atlas.png");
 
 /// The blank template's files.
 static GOOD: &[(&str, &[u8])] = &[

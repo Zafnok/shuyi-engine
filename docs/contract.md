@@ -13,7 +13,7 @@ is another way to reach them.
 
 | Op | Does | Needs |
 | -- | ---- | ----- |
-| `new <template> <dir>` | A new game in `dir` from `templates/grid` or `templates/blank` | nothing |
+| `new <dir>` | A new game in `dir` from the engine's template ([`templates.md`](templates.md)), its parts picked by the answers: `--template grid` or `--template blank` (a short name), `--answers <file.ron>`, `--set <question>=<answer[,answer]>`; it lists the files made, the parts, the modules turned on and the stages, and `--force` writes into a folder that isn't empty, listing what it wrote over | nothing |
 | `check [--baked]` | Loads the game's content through every validator: every error, with file, line and message. With `--baked`, bakes the game's pack too, and every asset read from it must equal the one read from its source | the game |
 | `check --target <id \| all>` | Whether the game's frame at its scale fits a target's display inside its safe area, and its smallest text is as tall as the target asks (ADR-0008 §1): each problem with its target, its setting in `shuyi.ron`'s `targets` and the numbers; with the game's tools, that each screen's required actions fit the target's inputs (ADR-0025), and on a one-bit target that every palette role has patterns and the roles of a `distinct` group stay apart (ADR-0026, each problem with its `roles`); a warning doesn't fail it | the project file; the game for the controls and the patterns |
 | `lint` | Everything wrong with the shape of the game's code, each finding with its file, line, problem code and what to do: `check-keys`' findings (`SH2101`), `check-text`'s (`SH2102`: every literal when there are more than `check_text.max_literals`, and every data name a screen reads), and the rules crate's fence ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) §4) on the package `shuyi.ron`'s `rules` names: `cargo clippy` read for `disallowed_types`, `disallowed_methods` and `float_arithmetic`, with clippy's reason (`SH2103`, with the column), and `cargo tree` for a screen, device or tool crate or outside luck under it (`SH2104`, with the `cargo tree -i` that shows the way in). A part `shuyi.ron` lacks is a limit | the project file and cargo |
@@ -48,7 +48,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 16,
+  "contract": 17,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -285,37 +285,45 @@ no scene) and `controls` (its keymap and every screen it can show). A
 game that adds a scene, a record, bots, importers or a bake writes its
 own `GameTools` and calls `BasicTools`' methods for the rest.
 
-Hello, Grid's `src/tools.rs` writes every one. The grid template's
-`crates/game/src/tools.rs` writes every one but `bake`, which a new game
+Hello, Grid's `src/tools.rs` writes every one. A game made with `shuyi
+new --template grid` writes every one but `bake`, which a new game
 leaves out until it chooses a pack, and `autobalance_plan`, which needs
-knobs of its own stage.
+knobs of its own stage: its stage's `Tools`
+(`crates/game/src/stages/top_down_grid/tools.rs`) adds a scene, records,
+bots and the map's importer, and calls `BasicTools` for the rest.
 
 A state hash is `shuyi_core::state_hash`, over any `Serialize` state: the
 same on every platform and every run, if the state's maps are ordered.
 
 ## The templates
 
-`shuyi new grid <dir>` and `shuyi new blank <dir>` write a game that
-builds and passes its own gates as it is:
+`shuyi new <dir>` makes a game from the engine's template,
+`templates/shuyi-default`, made of parts that the answers pick
+([`templates.md`](templates.md), ADR-0013 §3). It builds and passes its
+own gates as it is. Two short names stand for sets of answers:
 
-- `grid`: a rules crate over `TurnRules` (walk to the goal while a
-  wanderer takes a random step after each of yours), a game crate with
-  one stage screen painted by the engine's glyph skin, a bot, records,
-  and every operation of the contract wired;
-- `blank`: one screen with the game's name, on the short path: its
-  `lib.rs` names its files, its data type (`BasicData<UiAction>`) and its
-  first screen in a `BasicGame`; its `main` is one call (the prelude's
-  `run_game`); its tool program is `BasicTools`.
+- `--template blank` (or no answers): the `base` part alone. One screen,
+  the title, with the game's name, on the short path: its `lib.rs` names
+  its files, its data type (`BasicData<UiAction, stages::Own>`), its
+  title and its screens in a `BasicGame`; its `main` is one call (the
+  prelude's `run_game`); its tool program gives `game::stages::tools()`,
+  the engine's `BasicTools`;
+- `--template grid` (`--set perspective=top-down-grid`): `base` and the
+  part `stage-top-down-grid`. The title's Confirm starts a top-down grid
+  stage: a rules crate over `TurnRules` (walk to the goal while a
+  wanderer takes a random step after each of yours), the stage painted
+  by the engine's glyph skin, its map, lights and seed as `BasicData`'s
+  own part, and a `GameTools` of its own with a bot, records and every
+  operation of the contract wired.
 
 Each has its crates, `shuyi.ron`, `AGENTS.md` (and `CLAUDE.md`), CI with
-the gates (`fmt`, `clippy`, the tests, `check`, `check-keys`; `grid`'s
-also `lint`), and the
-`cargo shuyi` alias. The game crate depends on the engine through the
-`shuyi` crate, its front door, with no module on: the templates' own
-directions need none. Each installs `shuyi::enabled_modules` once (`grid`
-in its `Game::with_modules`, `blank` in its `BasicGame::modules`), so
-`add` needs no change to the game's code. `grid`'s rules crate depends on
-`shuyi-core` and `shuyi-assets` alone, which keeps it pure. The game
+the gates (`fmt`, `clippy`, the tests, `check`, `check --target all`,
+`check-keys` and `lint`), and the `cargo shuyi` alias. The game crate
+depends on the engine through the `shuyi` crate, its front door, with no
+module on: the template's own parts need none. It installs
+`shuyi::enabled_modules` once, in its `BasicGame::modules`, so `add`
+needs no change to the game's code. The grid stage's rules crate depends
+on `shuyi-core` and `shuyi-assets` alone, which keeps it pure. The game
 depends on the engine's repository at `main`, at `--engine-rev
 <commit>`, or on the checkout at `--engine-path <dir>`. CI makes a game
-from each template on every pull request and runs its gates.
+with each short name on every pull request and runs its gates.

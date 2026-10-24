@@ -1,0 +1,16 @@
+// The grid stage's colors by name: `shuyi new` merges them into the
+// base's.
+{
+    // The map's.
+    "floor_fg": "#4a4a56",
+    "floor_bg": "#20202a",
+    "wall_fg": "#8c8ca0",
+    "wall_bg": "#3c3c4e",
+    "goal_fg": "#ffd75a",
+    "goal_bg": "#3e3418",
+    "hero": "#5ac8ff",
+    "wanderer": "#ff9a5a",
+    "path": "#f0f0a0",
+    "cursor": "#ffffff",
+    "threat": "#ff5a5a",
+}

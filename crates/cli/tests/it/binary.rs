@@ -270,16 +270,15 @@ fn new_doctor_explain_and_schema_need_no_project() {
     assert!(dir.join("g/crates/game/Cargo.toml").is_file());
     let output = shuyi(&dir, &["new", "blank", "g"]);
     assert_eq!(output.status.code(), Some(2));
-    assert!(stderr(&output).starts_with("new: error[SH0001]: g is not empty\n"));
+    assert!(
+        stderr(&output).starts_with("new: error[SH0001]: g is not empty (it would write over ")
+    );
     let output = shuyi(&dir, &["new", "--json"]);
     assert_eq!(output.status.code(), Some(2));
-    assert_eq!(
-        json(&output)["error"],
-        "a <template> and a <dir>, nothing else"
-    );
-    let output = shuyi(&dir, &["new", "grid"]);
+    assert_eq!(json(&output)["error"], "a <dir>, nothing else");
+    let output = shuyi(&dir, &["new", "a", "b", "c"]);
     assert_eq!(output.status.code(), Some(2));
-    assert!(stderr(&output).contains("usage: shuyi new <template> <dir>"));
+    assert!(stderr(&output).contains("usage: shuyi new <dir> [--template NAME]"));
 
     let output = shuyi(&dir, &["doctor", "--json"]);
     let answer = json(&output);

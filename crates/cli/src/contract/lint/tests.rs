@@ -203,7 +203,9 @@ fn cargo_tree_is_read_for_the_crates_the_rules_never_reach() {
 
 #[test]
 fn the_crates_never_under_the_rules_are_the_templates() {
-    let test = include_str!("../../../../../templates/grid/crates/rules/tests/layers.rs");
+    let test = include_str!(
+        "../../../../../templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs"
+    );
     let listed = test
         .split_once("const NEVER: &[&str] = &[")
         .and_then(|(_, rest)| rest.split_once("];"))

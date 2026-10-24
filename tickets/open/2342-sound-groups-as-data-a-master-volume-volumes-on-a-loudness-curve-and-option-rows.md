@@ -259,8 +259,9 @@ moves to the MVP.
 - **2344** (looped sounds with handles): if it is done, a looped sound
   follows its group's gain while it plays, as a track does; if not,
   2344 does that.
-- **2501** (templates made of parts): if it is done, the grid
-  template's settings change goes in the part that holds that file.
+- **2501** (templates made of parts, done): no part of
+  `templates/shuyi-default` has a settings file: the grid stage is on
+  the `()` settings, so the engine's settings cover it.
 
 **For the game:** the API breaks. The game's PR that moves its pin
 follows this one. It:

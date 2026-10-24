@@ -294,9 +294,8 @@ None.
   `skills/shuyi-upgrade/SKILL.md`, after the game builds on the new
   engine: run `cargo shuyi upgrade`, then `cargo shuyi check`. If 2523
   isn't done, it writes that step itself (its step 7).
-- **Either order with 2501:** if 2501 is done, the templates' changes
-  go where its parts in `templates/shuyi-default` now hold those files.
-  If not, 2501 moves them with the rest.
+- **The templates (2501, done):** the templates' changes go where the
+  parts of `templates/shuyi-default` hold those files.
 - **Public types (ADR-0039):** `UpgradeInput` (an input, its kind 4)
   and the new public types follow it.
 - **MCP:** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).

@@ -271,12 +271,10 @@ None.
     `pkg-config` and the system libraries the backend links and opens".
   - `doctor.rs`'s module doc names the Linux checks.
 - **Either order with other tickets:**
-  - **2501** (templates made of parts): if done, the script and the
-    dev container go in its `base` part; if not, in each template's
-    folder.
-  - **Any new template:** the copy tests below run over
-    `Template::ALL`, so whichever lands second adds the two files to
-    it. 2511 adds no template: it makes `blank` the minimal one.
+  - **2501** (templates made of parts, done): the script and the dev
+    container go in the `base` part of `templates/shuyi-default`, and
+    the copy tests below run over the built-in template's short names
+    (`shuyi_cli::template::built_in()`'s `short_names`, composed).
   - **2505** (doctor reports `git`): its check and these are
     independent, but CI's bare container has no `git`. If 2505's check
     fails doctor when `git` is missing, `git` becomes a row of the

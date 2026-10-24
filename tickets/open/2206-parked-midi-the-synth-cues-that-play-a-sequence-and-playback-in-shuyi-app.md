@@ -60,10 +60,11 @@ whether it is what you meant by MIDI sound.
 - **Budgets:** measure the synth's cost with `shuyi bench` (3008) if it
   is done, and record it in the README's cost section. If 3008 isn't
   done, measure with a plain timing test and say so.
-- **A wizard part,** if 2501 is done: `music-midi`, when `music` has
-  `midi` picked, adds a short CC0 `.mid` of our own, a cue for it, and
-  the bank line in `shuyi.ron` the README describes. If 2501 isn't done,
-  add this part to 2501's built-in template list in this PR.
+- **A template part** (2501's format, `docs/templates.md`): `music-midi`
+  in `templates/shuyi-default`, when `music` has `midi` picked, adds a
+  short CC0 `.mid` of our own, a cue for it, and the bank line in
+  `shuyi.ron` the README describes (a `shuyi.ron` piece, which `shuyi
+  new` merges).
 - **An example**, `examples/midi-music/`: a screen that plays a sequence
   and lets the player change its tempo and mute a track through actions
   (never keys: the `input-actions` skill). It has a Harness test, a

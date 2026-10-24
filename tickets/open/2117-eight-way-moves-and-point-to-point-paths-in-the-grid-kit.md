@@ -214,7 +214,9 @@ None.
 - drawing a diagonal step in the path arrow, steering the cursor in
   eight directions (a diagonal must be an action, and a Playdate's
   d-pad has four: the `input-actions` skill), and an eight-way choice
-  in `templates/grid` or the wizard (2501–2505). The session that
+  in the template's grid stage
+  (`templates/shuyi-default/stages/top-down-grid`) or the wizard
+  (2502–2505). The session that
   completes this ticket writes one follow-up ticket for them (the
   `write-ticket` skill), in the 23xx block;
 - jump-point search, inexact (weighted) heuristics, Euclidean distance,

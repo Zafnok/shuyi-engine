@@ -171,14 +171,15 @@ choice, and it only goes down.
 - **Either order:**
   - **2009** (compile times): both add a budget under `tools/`.
     Nothing else is shared.
-  - **2501** (templates as parts): if it is done, `templates/blank` and
-    `templates/grid` are gone. The counter then counts each built-in
-    short name (`blank`, `grid`) from `compose`'s plan, with the files'
-    placeholders filled as `shuyi new` fills them. `compose` is pure, so
-    no folder is written. The xtask then depends on `shuyi-cli` (a
-    path dependency, which links no device crate), and the cap names
-    the short name. If 2501 is not done, the counter counts the folders,
-    and 2501 moves it onto the plans (its clause says so).
+  - **2501** (templates as parts, done): `templates/blank` and
+    `templates/grid` are gone. The counter counts each built-in short
+    name (`blank`, `grid`) from `compose`'s plan
+    (`shuyi_cli::template::compose`, with the placeholders filled as
+    `shuyi new` fills them: `shuyi_cli::contract::new::fill_for`).
+    `compose` is pure, so no folder is written. The xtask then depends
+    on `shuyi-cli` (a path dependency, which links no device crate), and
+    the cap names the short name. 2501's PR counted the grid game by
+    2511's rule: 674 lines before, 521 after.
 
 **Out (do not do):**
 

@@ -1,0 +1,10 @@
+# The grid stage's part of the game's workspace: `shuyi new` merges it
+# into the base's Cargo.toml.
+[workspace.dependencies]
+# The rules crate depends on `shuyi-core` and `shuyi-assets` alone, which
+# keeps it pure.
+shuyi-core = "{{engine.core}}"
+shuyi-assets = "{{engine.assets}}"
+# The stage's records, and the rules' commands in them.
+serde = { version = "1", features = ["derive"] }
+ron = "0.12"
