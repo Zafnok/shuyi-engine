@@ -324,12 +324,11 @@ None.
   refuses a newer glibc. If 2524 isn't done, nothing to do: 2524's
   either-order clause moves `Web` to `export` and adds the `linux`
   `Export` check.
-- **Either order with 1134:** if 1134 is done, its `shuyi-ship` skill
-  gains a section on `shuyi export <target>`: the targets, `--release`
-  and the `.debug` file beside the package, `--run`,
-  `export-report.json`, the `NOTICES.txt` in every package and the
-  player note. If not, nothing to do (1134 teaches what exists when it
-  is written, as its scope says).
+- **From 1134 (done):** its `shuyi-ship` skill
+  (`skills/shuyi-ship/SKILL.md`) gains a section on `shuyi export
+  <target>`: the targets, `--release` and the `.debug` file beside the
+  package, `--run`, `export-report.json`, the `NOTICES.txt` in every
+  package and the player note; `check-skills` passes.
 
 **Out (do not do):**
 - a Developer ID signature, notarization and signing Windows exes:

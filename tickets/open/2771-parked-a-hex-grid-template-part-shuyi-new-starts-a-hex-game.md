@@ -100,7 +100,11 @@ None.
   adds `rules`. Its `src/lib.rs` is Hello, Hex's rules, copied, with
   the names the grid part's rules use where they mean the same
   (`Stage`, `Command`, `Outcome`, `parse_map`), so the two read side by
-  side, and nothing named after the example:
+  side, and nothing named after the example. **Either order with
+  2773:** if 2773 is done, the hex part's `parse_map` returns the
+  `Vec<ContentError>` the grid part's does, and its stage's `own` names
+  the file as the registry does, with the codes 2773 gives; if not,
+  nothing to do (2773 changes the grid part only):
   - the map parsed from text with `shuyi_assets::grid_map` (no I/O):
     open ground, water that costs 2 to enter, walls and a goal tile,
     with the piece's start and the two foes;

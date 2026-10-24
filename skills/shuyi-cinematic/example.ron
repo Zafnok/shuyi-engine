@@ -1,0 +1,77 @@
+// The worked example of shuyi-cinematic, a script of contract commands run
+// on a game made with `shuyi new <dir> --template blank`: a cinematic of
+// the game's own shots, read and checked with its files, played over the
+// title and looked at by its time, then broken three ways and fixed.
+Example(
+    template: "blank",
+    steps: [
+        // The game's own shot kinds are serde types.
+        Edit(
+            file: "Cargo.toml",
+            find: "include_dir = \"0.7\"\n",
+            replace: "include_dir = \"0.7\"\n# The game's own data types, read from its files.\nserde = { version = \"1\", features = [\"derive\"] }\n",
+        ),
+        Edit(
+            file: "crates/game/Cargo.toml",
+            find: "include_dir.workspace = true\n",
+            replace: "include_dir.workspace = true\n# The cinematic's shots, read from its file.\nserde.workspace = true\n",
+        ),
+        // The cinematic, and the stage that reads and plays it.
+        Write(to: "crates/game/files/intro.ron", from: "example/intro.ron"),
+        Write(to: "crates/game/src/stages.rs", from: "example/stages.rs"),
+        Write(to: "crates/game/src/stages/intro.rs", from: "example/intro.rs"),
+        // The shots' text, by key.
+        Edit(
+            file: "crates/game/files/en.ron",
+            find: "    \"title.help\": \"{Cancel} leave\",\n",
+            replace: "    \"title.help\": \"{Cancel} leave\",\n\n    // The intro's lines.\n    \"intro.dawn\": \"Dawn, over the north road.\",\n    \"intro.gate\": \"The gate stands open.\",\n",
+        ),
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // Confirm starts it: the first shot.
+        Shuyi(args: ["run", "--script", "Enter", "--frames", "1"], expect: [
+            Is("/result/top_screen", "intro"),
+            Holds("/result/frame", "Dawn, over the north road."),
+        ]),
+        // Five seconds in, the second shot has typed two thirds of its line.
+        Shuyi(args: ["run", "--script", "Enter", "--wait", "5", "--frames", "1"], expect: [
+            Is("/result/top_screen", "intro"),
+            Holds("/result/frame", "The gate st"),
+        ]),
+        // After its six seconds it closes, and so does Confirm before then.
+        Shuyi(args: ["run", "--script", "Enter", "--wait", "6.5", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+        ]),
+        Shuyi(args: ["run", "--script", "Enter Enter", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+        ]),
+        // A picture of the moment four seconds in, with no window.
+        Cargo(args: ["shuyi", "frame-png", "gate.png", "--keys", "Enter", "--wait", "4"]),
+        Holds(file: "gate.png"),
+        // The format's checks: the first shot must start at 0.
+        Edit(file: "crates/game/files/intro.ron", find: "(at: 0.0, shot: Line", replace: "(at: 0.5, shot: Line"),
+        Shuyi(args: ["check"], ok: false, expect: [
+            Is("/result/errors/0/file", "files/intro.ron"),
+            Holds("/result/errors/0/message", "shot 1: the first shot must be at 0.0, not 0.5"),
+        ]),
+        Edit(file: "crates/game/files/intro.ron", find: "(at: 0.5, shot: Line", replace: "(at: 0.0, shot: Line"),
+        // The game's own check of its shots: a key its English lacks.
+        Edit(file: "crates/game/files/intro.ron", find: "Typed(\"intro.gate\")", replace: "Typed(\"intro.gates\")"),
+        Shuyi(args: ["check"], ok: false, expect: [
+            Holds("/result/errors/0/message", "shot 2: no text \"intro.gates\" in en.ron"),
+        ]),
+        Edit(file: "crates/game/files/intro.ron", find: "Typed(\"intro.gates\")", replace: "Typed(\"intro.gate\")"),
+        // A syntax error names its line and its code.
+        Edit(file: "crates/game/files/intro.ron", find: "    length: Seconds(6.0),\n", replace: "    length: Seconds(6.0)\n"),
+        Shuyi(args: ["check"], ok: false, expect: [
+            Is("/result/errors/0/code", "SH2001"),
+            Is("/result/errors/0/line", "8"),
+        ]),
+        Edit(file: "crates/game/files/intro.ron", find: "    length: Seconds(6.0)\n", replace: "    length: Seconds(6.0),\n"),
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // The game's gates still pass, its tests among them.
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Cargo(args: ["test", "--workspace"]),
+        Cargo(args: ["shuyi", "check-keys"]),
+    ],
+)

@@ -1,0 +1,87 @@
+// The worked example of shuyi-stage-grid, a script of contract commands run
+// on a game made with `shuyi new <dir> --template grid`: the map read and
+// broken two ways, then a new rule in the rules crate (your piece never
+// steps straight back), with its test, seen through the tools.
+Example(
+    template: "grid",
+    steps: [
+        // The map reads as the engine's `.map` format.
+        Shuyi(args: ["import", "crates/game/files/stage.map"], expect: [
+            Is("/result/read_as/0/kind", "map"),
+            Is("/result/read_as/0/summary", "map: 12 tiles by 8, 2 piece(s)"),
+        ]),
+        // A character the legend lacks: `import` names its line, column and
+        // code, and `check` fails on the file.
+        Edit(file: "crates/game/files/stage.map", find: "#.###.####.#", replace: "#.###X####.#"),
+        Shuyi(args: ["import", "crates/game/files/stage.map"], ok: false, expect: [
+            Is("/result/errors/0/code", "SH2008"),
+            Is("/result/errors/0/line", "12"),
+            Is("/result/errors/0/column", "6"),
+        ]),
+        Shuyi(args: ["check"], ok: false, expect: [Is("/result/errors/0/file", "stage.map")]),
+        Edit(file: "crates/game/files/stage.map", find: "#.###X####.#", replace: "#.###.####.#"),
+        // A second goal: the map reads, but the rules make no stage of it.
+        Edit(file: "crates/game/files/stage.map", find: "#...####...#", replace: "#...####..>#"),
+        Shuyi(args: ["check"], ok: false, expect: [Holds("/result/errors/0/message", "2 goal tiles, not one")]),
+        Edit(file: "crates/game/files/stage.map", find: "#...####..>#", replace: "#...####...#"),
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // A new rule, in the rules crate alone: your piece never steps
+        // straight back to the tile it came from. The refusal is an error
+        // of the rules, with its words.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "    /// A wall, or the map's edge, is that way.\n    Blocked(Dir),\n",
+            replace: "    /// A wall, or the map's edge, is that way.\n    Blocked(Dir),\n    /// Your piece came from that way, and never steps straight back.\n    Back(Dir),\n",
+        ),
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "            Self::Blocked(dir) => write!(f, \"your piece can't step {dir:?}\"),\n",
+            replace: "            Self::Blocked(dir) => write!(f, \"your piece can't step {dir:?}\"),\n            Self::Back(dir) => write!(f, \"your piece can't step back {dir:?}\"),\n",
+        ),
+        // The state keeps the tile it came from: part of the state, so part
+        // of its hash.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "    outcome: Option<Outcome>,\n}",
+            replace: "    outcome: Option<Outcome>,\n    came_from: Option<Pos>,\n}",
+        ),
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "            outcome: None,\n",
+            replace: "            outcome: None,\n            came_from: None,\n",
+        ),
+        // `check` refuses the step back; `apply` refuses what `check` does,
+        // and `legal_commands` lists only what `check` takes.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "        if self.open(self.hero.step(dir)) {\n            Ok(())\n        } else {\n            Err(Error::Blocked(dir))\n        }\n",
+            replace: "        let to = self.hero.step(dir);\n        if self.came_from == Some(to) {\n            Err(Error::Back(dir))\n        } else if self.open(to) {\n            Ok(())\n        } else {\n            Err(Error::Blocked(dir))\n        }\n",
+        ),
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "        self.hero = to;\n",
+            replace: "        self.hero = to;\n        self.came_from = Some(from);\n",
+        ),
+        // Its unit test, beside the template's.
+        Edit(
+            file: "crates/rules/src/lib.rs",
+            find: "    #[test]\n    fn meeting_the_wanderer_loses() {",
+            replace: "    #[test]\n    fn your_piece_never_steps_straight_back() {\n        let mut s = stage(OPEN, 3).unwrap();\n        s.apply(&Command::Step(Dir::Right)).unwrap();\n        assert_eq!(\n            s.check(&Command::Step(Dir::Left)),\n            Err(Error::Back(Dir::Left))\n        );\n        assert!(!s.legal_commands().contains(&Command::Step(Dir::Left)));\n        assert_eq!(\n            Error::Back(Dir::Left).to_string(),\n            \"your piece can't step back Left\"\n        );\n    }\n\n    #[test]\n    fn meeting_the_wanderer_loses() {",
+        ),
+        Cargo(args: ["test", "-p", "shuyi-stage-grid-rules"]),
+        // The stage plays it: Right moves your piece, Left back is refused,
+        // so the piece stays on x 2 after one command, on turn 2.
+        Shuyi(args: ["scene", "--script", "Enter Right Left"], expect: [
+            Is("/result/scene/data/hero/x", "2"),
+            Is("/result/scene/data/commands", "1"),
+            Is("/result/scene/data/turn", "2"),
+        ]),
+        // The bots pick from `legal_commands`, so they still play.
+        Shuyi(args: ["bots", "5"], expect: [Is("/result/games", "5")]),
+        // The rules stay pure, and every gate passes.
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Cargo(args: ["test", "--workspace"]),
+    ],
+)

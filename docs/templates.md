@@ -30,8 +30,9 @@ the questions it answers:
 A question none of them answers takes its default. `new` refuses a
 folder that isn't empty; `--force` writes into it, and its answer lists
 the files it wrote over. Its answer (`--json`, the `new` schema) lists
-the files made, the parts, the modules turned on, the stages, and in its
-`limits` what the template didn't do (an answer no part serves).
+the files made, the parts, the modules turned on, the stages, the skills
+(below), and in its `limits` what the template didn't do (an answer no
+part serves).
 
 An answers file maps each question to the ids of its answers:
 
@@ -206,6 +207,18 @@ gives:
 `stages::tools` and `stages::names`. With no stage, they are `()`, none,
 and `BasicTools`. A game has one stage for now; a second part with a
 stage fails.
+
+## The skills
+
+Every game gets the engine's skill pack (`skills/`,
+[ADR-0043](adr/0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md))
+in `.claude/skills/<name>/`, whatever its template: the composer adds
+them after the parts' files, from the engine the game builds with (the
+checkout at `--engine-path`, or the pack the `shuyi` binary embeds). It
+leaves out a module's skill (one named after a module's crate, built or
+not: `shuyi add` copies it when the game turns the module on) and a skill
+whose folder a part already writes. `new`'s answer lists them in
+`skills`.
 
 ## The engine's template
 

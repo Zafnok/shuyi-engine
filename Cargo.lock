@@ -1140,6 +1140,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
+ "serde_norway",
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-core",

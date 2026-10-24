@@ -77,10 +77,10 @@ None.
   `Threats::safe`.
 - Tests; module docs; the kit's docs page if there is one (the
   `docs/README.md` map says where the grid kit is documented).
-- **Either order with 1134:** if 1134 is done, add a short section on
-  threat areas to `skills/shuyi-balance-bots/SKILL.md` (`strike_area`,
-  `Threats` with `safe`, `zone` and `danger`, and `GoalDistance`); if
-  not, nothing to do (1134 shows them).
+- **From 1134 (done):** add a short section on threat areas to
+  `skills/shuyi-balance-bots/SKILL.md` (`strike_area`, `Threats` with
+  `safe`, `zone` and `danger`, and `GoalDistance`); `check-skills`
+  passes.
 
 **Out (do not do):**
 - Line of sight, eight-way moves (2117, 2120): ranges are Manhattan.

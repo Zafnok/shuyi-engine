@@ -1,0 +1,74 @@
+// The worked example of shuyi-screen, a script of contract commands run on
+// a game made with `shuyi new <dir> --template blank`: a second screen,
+// about.rs, with its view and its skin, its text by key, on the list of
+// every screen; the title pushes it, Cancel pops it, and its test reads
+// the view. Scripts press keys by the Harness's names.
+Example(
+    template: "blank",
+    steps: [
+        // The screen: its view (plain data), its skin, its actions.
+        Write(to: "crates/game/src/about.rs", from: "example/about.rs"),
+        Edit(file: "crates/game/src/lib.rs", find: "pub mod stages;\npub mod title;", replace: "pub mod about;\npub mod stages;\npub mod title;"),
+        // Every screen the game can show, for `check --target`.
+        Edit(
+            file: "crates/game/src/lib.rs",
+            find: "    let mut screens: Vec<Box<dyn Screen<Data>>> = vec![Box::new(title::Title)];",
+            replace: "    let mut screens: Vec<Box<dyn Screen<Data>>> =\n        vec![Box::new(title::Title), Box::new(about::About)];",
+        ),
+        // The title's Confirm opens it while the game has no stage.
+        Edit(
+            file: "crates/game/src/title.rs",
+            find: "Confirm starts the first stage, if the game\n//! has one ([`crate::stages`]);",
+            replace: "Confirm starts the first stage, or the about\n//! screen while the game has none ([`crate::stages`]);",
+        ),
+        Edit(file: "crates/game/src/title.rs", find: "use crate::{Data, stages};", replace: "use crate::about::About;\nuse crate::{Data, stages};"),
+        Edit(
+            file: "crates/game/src/title.rs",
+            find: "    /// Confirm, if there is a stage to start, and Cancel to leave.\n    fn actions(&self) -> Option<Vec<UiAction>> {\n        let mut actions = vec![UiAction::Cancel];\n        if !stages::names().is_empty() {\n            actions.insert(0, UiAction::Confirm);\n        }\n        Some(actions)\n    }",
+            replace: "    /// Confirm, to start the first stage or open the about screen, and\n    /// Cancel to leave.\n    fn actions(&self) -> Option<Vec<UiAction>> {\n        Some(vec![UiAction::Confirm, UiAction::Cancel])\n    }",
+        ),
+        Edit(
+            file: "crates/game/src/title.rs",
+            find: "        if input.actions.contains(&UiAction::Confirm)\n            && let Some(stage) = stages::first(ctx)\n        {\n            return Transition::Push(stage);\n        }",
+            replace: "        if input.actions.contains(&UiAction::Confirm) {\n            let next = stages::first(ctx).unwrap_or_else(|| Box::new(About));\n            return Transition::Push(next);\n        }",
+        ),
+        // Its text, by key, in the game's English; `{Cancel}` names the
+        // player's own key.
+        Edit(
+            file: "crates/game/files/en.ron",
+            find: "    \"title.help\": \"{Cancel} leave\",",
+            replace: "    \"title.help\": \"{Confirm} about · {Cancel} leave\",\n\n    // The about screen.\n    \"about.heading\": \"About\",\n    \"about.line\": \"A game made with Shuyi Engine.\",\n    \"about.help\": \"{Cancel} back\",",
+        ),
+        // `check-text` holds every screen's text to the language file.
+        Edit(
+            file: "shuyi.ron",
+            find: "    // `cargo shuyi check-keys`: no key named in the game's code or text.",
+            replace: "    // `cargo shuyi check-text`: no screen text written in the code, asked\n    // for by key from files/en.ron instead.\n    check_text: (\n        dir: \"crates/game/src\",\n        max_literals: 0,\n        skip: [\"crates/game/src/main.rs\"],\n        hint: \"put the text in files/en.ron and ask for it by key with ctx.text\",\n        name_hint: \"show a name through the game's language file, not its data's English\",\n    ),\n\n    // `cargo shuyi check-keys`: no key named in the game's code or text.",
+        ),
+        // The behaviour changed, so its test does; the new screen gets one.
+        Edit(file: "crates/game/tests/it/main.rs", find: "None => assert_eq!(h.screens(), [\"title\"]),", replace: "None => assert_eq!(h.screens(), [\"title\", \"about\"]),"),
+        Write(to: "crates/game/tests/about.rs", from: "example/about_test.rs"),
+        // Confirm pushes it over the title, with its text on the frame.
+        Shuyi(args: ["run", "--script", "Enter", "--frames", "1"], expect: [
+            Is("/result/top_screen", "about"),
+            Is("/result/screens", "[\"title\", \"about\"]"),
+            Holds("/result/frame", "A game made with Shuyi Engine."),
+            Holds("/result/frame", "Backspace back"),
+        ]),
+        // Cancel pops it: the title is on top again.
+        Shuyi(args: ["run", "--script", "Enter Backspace", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+            Holds("/result/frame", "Enter about · Backspace leave"),
+        ]),
+        Cargo(args: ["shuyi", "frame-png", "about.png", "--keys", "Enter"]),
+        Holds(file: "about.png"),
+        // Its declared actions fit every target, its text is the language
+        // file's, and every gate passes.
+        Shuyi(args: ["check", "--target", "all"]),
+        Cargo(args: ["shuyi", "check-text"]),
+        Shuyi(args: ["lint"], expect: [Is("/result/findings", "[]")]),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Cargo(args: ["test", "--workspace"]),
+    ],
+)

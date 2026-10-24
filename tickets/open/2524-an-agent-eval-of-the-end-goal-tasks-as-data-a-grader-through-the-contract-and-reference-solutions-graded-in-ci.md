@@ -65,9 +65,10 @@ What the engine has (checked 2026-10-21):
   `rust-toolchain.toml` lists no `wasm32-unknown-unknown` target. So a
   web build costs an agent lines today, and the eval will put a number
   on it.
-- **Tests of the tools, not of an agent.** 1134 runs each skill's worked
-  example, a script of contract operations, against a fresh `shuyi new`
-  game in CI. 1133 tests MCP with a scripted client. 2009 measures
+- **Tests of the tools, not of an agent.** 1134 (done) runs each
+  skill's worked example, a script of contract operations
+  (`crates/xtask/src/script.rs`), against a fresh `shuyi new` game in
+  CI (`cargo xtask skill-examples`, the `skills` job). 1133 tests MCP with a scripted client. 2009 measures
   compile times, and 3008 run-time budgets.
 - **Games to measure with.** 2803's finished tutorial
   (`site/tutorial/10-ship`) is a box-pushing puzzle made from the
@@ -214,8 +215,9 @@ None. Spending money on agent runs is 2525's question.
   reference's files, types or screens, so any agent's game can pass.
 - **The grader:** `cargo xtask eval-grade <task.ron> <project> [--base
   <dir>] [--out <file>]` (`crates/xtask/src/eval/grade.rs`):
-  - runs every check through 1134's worked-example runner
-    (Implementation steps, 1), and goes on after a failure;
+  - runs every check through 1134's worked-example runner,
+    `script::run` in `crates/xtask/src/script.rs` (Implementation
+    steps, 1), and goes on after a failure;
   - records for each check its kind and place in the task (`Scene 2`),
     whether it passed, the seconds it took, and a detail: the answer's
     `error`, the last 20 lines of a failed command's output, or what was
@@ -376,14 +378,17 @@ None. Spending money on agent runs is 2525's question.
 
 ## Implementation steps
 
-1. Read 1134's completion notes and its worked-example runner. An eval
-   check is what a worked example is: a contract command, and what its
-   answer must say. Run the checks through that runner. Add to it what
-   the eval needs and it lacks (a time per step, going on after a
-   failure, comparing two answers for `Responds`), so there is one
-   runner, not two. If the runner isn't a function `crates/xtask` can
-   call (steps written in a workflow, say), move it into
-   `crates/xtask/src/` first and point 1134's CI at it.
+1. Read 1134's completion notes and its worked-example runner,
+   `crates/xtask/src/script.rs`. An eval check is what a worked example
+   is: a contract command, and what its answer must say. Run the checks
+   through that runner (`script::run`: the steps in, a `Verdict` per
+   step out). It already gives each step's time, goes on after a
+   failure, checks the answer at JSON pointers (`Expect::Is`, `Has`
+   and `Holds`; `Is` compares a string without its quotes, as `has`
+   does) and writes a value of an answer to a file (`save`, for
+   `Replay`'s record). Add to it what the eval needs and it lacks
+   (comparing two answers for `Responds`), so there is one runner, not
+   two.
 2. Add `Step::Act`, `Session::actions` and `--act`, with their tests.
    Change the contract as `docs/contract.md` says, and update its table
    and the templates' `AGENTS.md` tables.

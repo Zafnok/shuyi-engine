@@ -1,0 +1,75 @@
+// The worked example of shuyi-dialogue, a script of contract commands run
+// on a game made with `shuyi new <dir> --template blank`: a `.dlg` scene
+// read through the format registry, checked against the game's rules,
+// played in the engine's text box, broken twice and fixed.
+Example(
+    template: "blank",
+    steps: [
+        // The scene, and the stage that reads and plays it: on the short
+        // path the game's own part of its data is a stage's `Own`.
+        Write(to: "crates/game/files/talk.dlg", from: "example/talk.dlg"),
+        Write(to: "crates/game/src/stages.rs", from: "example/stages.rs"),
+        Write(to: "crates/game/src/stages/talk.rs", from: "example/talk.rs"),
+        // The text the screen asks for by key: what goes on, who speaks.
+        Edit(
+            file: "crates/game/files/en.ron",
+            find: "    \"title.help\": \"{Cancel} leave\",\n",
+            replace: "    \"title.help\": \"{Cancel} leave\",\n\n    // The talk: how to read on, and who speaks.\n    \"talk.next\": \"{Confirm} next\",\n    \"character.guide\": \"Guide\",\n",
+        ),
+        // The engine's `.dlg` format reads the file.
+        Shuyi(args: ["import", "crates/game/files/talk.dlg"], expect: [
+            Is("/result/read_as/0/kind", "dialogue"),
+        ]),
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // Confirm starts the talk; Confirm again shows the whole page.
+        Shuyi(args: ["run", "--script", "Enter Enter", "--frames", "1"], expect: [
+            Is("/result/top_screen", "talk"),
+            Holds("/result/frame", "Guide"),
+            Holds("/result/frame", "The road north is open again."),
+        ]),
+        // Read on to the narration, then to the choice: both replies are up.
+        Shuyi(args: ["run", "--script", "Enter Enter Enter Enter Enter", "--frames", "1"], expect: [
+            Holds("/result/frame", "Then we go now."),
+            Holds("/result/frame", "Then we get wet."),
+        ]),
+        // The first reply has a reaction.
+        Shuyi(args: ["run", "--script", "Enter Enter Enter Enter Enter Enter Enter", "--frames", "1"], expect: [
+            Holds("/result/frame", "Good. Keep close."),
+        ]),
+        // The second has none: the scene ends, and the title is back.
+        Shuyi(args: ["run", "--script", "Enter Enter Enter Enter Enter Down Enter", "--frames", "1"], expect: [
+            Is("/result/top_screen", "title"),
+        ]),
+        // A choice left open is the format's error: `import` names the line.
+        Edit(file: "crates/game/files/talk.dlg", find: "@endchoice\n", replace: ""),
+        Shuyi(args: ["import", "crates/game/files/talk.dlg"], ok: false, expect: [
+            Holds("/result/errors/0/message", "@choice has no @endchoice"),
+            Is("/result/errors/0/line", "9"),
+        ]),
+        Shuyi(args: ["check"], ok: false, expect: [Holds("/result/errors/0/message", "@choice has no @endchoice")]),
+        Edit(file: "crates/game/files/talk.dlg", find: "* wry: Then we get wet.\n", replace: "* wry: Then we get wet.\n@endchoice\n"),
+        // A line too long for the box is the game's rules' error: the
+        // format reads it, and `check` names its line.
+        Edit(
+            file: "crates/game/files/talk.dlg",
+            find: "  guide: Good. Keep close.",
+            replace: "  guide: Good. Keep close, keep low, keep quiet, and keep walking until the road turns east past the old mill by the river, where we rest.",
+        ),
+        Shuyi(args: ["import", "crates/game/files/talk.dlg"]),
+        Shuyi(args: ["check"], ok: false, expect: [
+            Holds("/result/errors/0/message", "the limit is 126"),
+            Is("/result/errors/0/line", "11"),
+        ]),
+        Edit(
+            file: "crates/game/files/talk.dlg",
+            find: ", keep low, keep quiet, and keep walking until the road turns east past the old mill by the river, where we rest.",
+            replace: ".",
+        ),
+        Shuyi(args: ["check"], expect: [Is("/result/errors", "[]")]),
+        // The game's gates still pass, its tests among them.
+        Cargo(args: ["fmt", "--all", "--check"]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        Cargo(args: ["test", "--workspace"]),
+        Cargo(args: ["shuyi", "check-keys"]),
+    ],
+)

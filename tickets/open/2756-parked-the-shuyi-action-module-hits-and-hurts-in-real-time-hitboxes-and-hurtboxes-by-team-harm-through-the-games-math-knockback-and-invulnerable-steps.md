@@ -50,7 +50,10 @@ None.
   (pure, no floats); the `action` feature of `shuyi`; the catalog row
   (building, 2756, 2757, 2760–2762, 2764); the `action-rpg` answer of
   `kind` in `docs/modules.ron`; the README's first two sections; the
-  skill or its line in 1134's list.
+  skill (**from 1134, done**): `skills/shuyi-action/SKILL.md` in the
+  pack's form, saying what this ticket built. It has no worked example
+  yet, so its `metadata` has `waits_for: "2764"`: 2764 gives it its
+  worked example and drops its id.
   2003's catalog has no building status (`shuyi_cli::catalog::Status`
   is ready, planned or parked): if it still has none, add
   `Status::Building`, named `building`, with its doc, the `status` line

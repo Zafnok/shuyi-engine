@@ -217,12 +217,11 @@ None.
   --via relay --net seed=1,loss=10,delay=2`, which must answer `ok`. If
   not, nothing to do here (2550 adds it to this part when it lands; its
   clause says so).
-- **The `shuyi-net` skill, either order with 1134:** if 1134 is done,
+- **The `shuyi-net` skill. From 1134 (done):**
   `skills/shuyi-net/SKILL.md` says how a new game starts with online
   play (`shuyi new <dir> --online lockstep`) and what the part gives,
   and shows `cargo shuyi peers` on such a game. Its worked example
-  stays on `hello-grid`. If not, nothing to do (1134 writes the skill
-  from what exists).
+  stays on `hello-grid`, and `check-skills` passes.
 - **Docs** (the `document` skill): `docs/templates.md` (the part, its
   `when`, what it gives, and any merge added here); `docs/net.md`
   (starting a new game with online play); `docs/contract.md`'s *Peers*
@@ -266,7 +265,7 @@ None.
    its tests; 2529's `contract/peers.rs`, `MemoryPeers` and
    `hello-grid`'s `peers` in `src/tools.rs` and `Cargo.toml`;
    `docs/templates.md`, `docs/net.md`, `docs/net-relay.md`, ADR-0006,
-   ADR-0009 §4 and ADR-0013. Check whether 2550 and 1134 are done.
+   ADR-0009 §4 and ADR-0013. Check whether 2550 is done.
 2. Write `WithPeers` and its unit tests.
 3. Settle the game's `tools` feature: (1), or (2) with its ADR.
 4. Write the part: `online.rs` (`Match`, the lobby, `start`),
@@ -277,7 +276,7 @@ None.
    fixtures. Measure the diff here (*Size*).
 6. Set the catalog's `lockstep` answer.
 7. Add the CI leg.
-8. Do 2550's part if it is done, and the skill's if 1134 is done.
+8. Do 2550's part if it is done, and the skill's.
 9. Write the docs.
 10. Run the gates.
 

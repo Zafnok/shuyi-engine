@@ -70,8 +70,11 @@ they move become tuning in the creature files, or follow-up tickets.
   - how to start, with good starting values for iterations and gait
     numbers;
   - how it sits beside drawn clips and `shuyi-physics`.
-- **The skill** `shuyi-procanim` in the skill pack (1134), with a worked
-  example that `shuyi add procanim` and a creature file make run.
+- **The skill** `shuyi-procanim` in the skill pack (1134, done):
+  `skills/shuyi-procanim/` in the pack's form, with a worked example,
+  `example.ron`, that `shuyi add procanim` and a creature file make run
+  on a fresh game. CI's `skills` job runs it, and `check-skills`
+  passes.
 - **The guides** (2004): `side-view.md` and `top-down-free.md` list the
   module as an answer for bodies and motion.
 - **The catalog**: set the row to ready.

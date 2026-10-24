@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: public"
 model: opus-5.5
 effort: xhigh
-status: todo
+status: done
 blocked_by: ["1129", "2015", "2509", "2511", "2810"]
 nick_input: none
-completed:
+completed: 2026-10-24
 ---
 
 # 1134 — The engine's skill pack
@@ -358,15 +358,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `check-skills` passes on every skill.
-- [ ] CI runs every worked example green, except one marked manual.
+- [x] `check-skills` passes on every skill.
+- [x] CI runs every worked example green, except one marked manual.
       Only the skills that wait for parked tickets have none.
-- [ ] Installing the plugin in Claude Code lists the skills (manual
+- [x] Installing the plugin in Claude Code lists the skills (manual
       check noted in the PR).
-- [ ] `input-actions` and `run-gates` hold only what is this
+- [x] `input-actions` and `run-gates` hold only what is this
       repository's and link `shuyi-input` and `shuyi-gates`, and
       `docs/README.md` lists both pairs.
-- [ ] All gates pass.
+- [x] All gates pass.
 
 ## Tests required
 
@@ -374,3 +374,113 @@ None.
 - Integration: worked examples in CI.
 
 ## Completion notes
+
+Done in one PR: the 15 skills, `check-skills`, the runner, the
+packaging and the docs, so no skill was split into a follow-up ticket.
+ADR-0043 records the choices.
+
+- **The pack**, `skills/`, with `skills/README.md` for people. Each skill
+  is `SKILL.md`, whose frontmatter has the open format's keys only:
+  `version` and `waits_for` are strings under `metadata`, since uploads
+  to claude.ai and the Skills API refuse other keys. Each also has
+  `example.ron`, and `example/` for the files the example writes. Eleven
+  have worked examples that run on a fresh game:
+  - `blank` games: `shuyi-new-game`, `shuyi-screen`, `shuyi-dialogue`,
+    `shuyi-cinematic`;
+  - `grid` games: `shuyi-gates`, `shuyi-input`, `shuyi-stage-grid`,
+    `shuyi-test`, `shuyi-debug-replay`, `shuyi-balance-bots`,
+    `shuyi-ship`.
+
+  Four wait, with no example:
+  - `shuyi-stage-field` (`1119 1120 1122`);
+  - `shuyi-import-art` (`1123 1124`);
+  - `shuyi-animate` (`2231 2103`, its particles section saying they are
+    to come);
+  - `shuyi-net` (`1140 2529 1145`, no rollback).
+
+  The skills name no ticket, owner or pin: a waiting skill says in its
+  body what isn't built, and keeps the ids in its frontmatter. Of the
+  either-order clauses, no ticket they wait on was done, so each skill
+  teaches what exists, and the other tickets now write their parts
+  (below). `shuyi-balance-bots` shows `bots` beside `playtest`, and how to
+  write an `autobalance_plan` (`references/autobalance.md`). Its example
+  leaves `autobalance` out.
+- **The runner** is `crates/xtask/src/script.rs`. `script::run` takes
+  `Shuyi`, `Cargo`, `Write`, `Edit` and `Holds` steps, with `Is`, `Has`
+  and `Holds` expectations at JSON pointers and `save`, and gives a
+  `Verdict` per step with its time. It goes on after a failure, and its
+  tests fake the `Runner`. `cargo xtask skill-examples [<skill>...]
+  [--shard <i>/<n>]` (`crates/xtask/src/skills.rs`) makes each game with
+  `shuyi new` on this checkout in `target/skill-examples/<skill>`. CI's
+  `skills` job runs the examples in three shards.
+- **`check-skills`** is a command of `shuyi`, not a contract operation:
+  `shuyi check-skills [<dir>] [--tickets <dir>]`, `shuyi_cli::skills`. It
+  checks the ticket's six things, plus links that leave the pack and
+  pages on the engine's `main`.
+  - `shuyi_cli::COMMANDS` lists the commands that aren't operations, and
+    a test holds it against the usage.
+  - `crates/cli/tests/it/skills.rs` runs the check on `skills/` against
+    `tickets/open/` in the `test` job, on every OS. Another test there
+    holds the binary's embedded pack equal to the checkout.
+  - A game can run it on its own `.claude/skills/`.
+- **`shuyi new`** copies the pack from the catalog (`Catalog::skills`:
+  the checkout's at `--engine-path`, else the embedded pack) into
+  `.claude/skills/`, in `template::compose`.
+  - It leaves out modules' skills (`Catalog::is_module`, built or named
+    by a concern: `shuyi-net`) and a skill whose folder a part writes.
+  - `Plan::skills` and `new`'s answer `skills` list what it copied;
+    contract 18.
+  - The plans' golden file leaves the skills' files out, and a test
+    holds them equal to the pack's.
+  - A skill that waits is copied too, so an agent asked for a platformer
+    learns that tick stages aren't built yet.
+  - The template's `AGENTS.md` and README now say what
+    `.claude/skills/` holds.
+- **The plugin** is `.claude-plugin/marketplace.json`. Its one plugin,
+  `shuyi`, has `source: "./skills"` and `skills: "./"`. The repository's
+  root wasn't usable as the source: it would also install the root's
+  `.mcp.json`, the engine's own server, which runs only here. The entry
+  carries no `version`, so installs follow the commits.
+  `claude plugin validate .` passes. In a throwaway `CLAUDE_CONFIG_DIR`,
+  `claude plugin marketplace add` and `claude plugin install
+  shuyi@shuyi-engine` succeed, and `claude plugin details shuyi` lists
+  the skills, with no MCP server.
+- **One source:** `shuyi-input` now holds every input rule a game keeps.
+  `input-actions` keeps the engine's own (the places that know keys, a
+  new `UiAction`, the generic types, pointer input) and links it.
+  `shuyi-gates` holds the gates a game runs, lint's findings, the
+  fence's errors, snapshots, and a CI failure this machine doesn't
+  reproduce. `run-gates` keeps the engine's own and links it, and gained
+  the `skills` job and the local `check-skills`. The docs map has the
+  `skills/` row, both pairs, and `skills/` in the 25xx block (and
+  `shuyi-input` in the 24xx block).
+- **Deviation:** each example's game is named after its skill (crates
+  `shuyi-gates` and `shuyi-gates-rules`), not a shared `demo`. With the
+  same crate names in one shared target folder, cargo once took one
+  game's build of `demo-rules` for another's, and `lint` passed with a
+  `HashMap` in the rules.
+- **Other tickets.** Every open ticket's clause that waited on 1134 is
+  rewritten as "From 1134 (done)": 72 tickets. The module skills that
+  were to join this ticket's list are now written by their own tickets,
+  with both sides of each handoff. Where a later worked example must run
+  in an engine example rather than a new game (`shuyi-net` on
+  `hello-grid`, `shuyi-rts` in `examples/rts`), that ticket adds the
+  runner field it needs (2529, 1145, 2719). 2521's manual attach example
+  is a second file the runner lists. 2524's step 1 says what the runner
+  already does.
+- **Follow-ups** for the gaps the worked examples found: 2556 (`frame-png`
+  takes `--script`), 2557 (`playtest` prints a `turns` measure once),
+  2558 (`BasicTools` takes a short-path game's own formats), 2237
+  (problem codes on `.dlg` and cinematic errors), 2773 (the grid
+  template's map errors keep their line and code in `check`), 2383 (a
+  ready-made dialogue screen) and 2384 (music and sounds on the short
+  path). They are in `ROADMAP.md`'s phase 3.
+- **Not done here:** 2802 isn't done, so the book's chapter 10 stays as
+  it is. No example is manual, since 2521 isn't done.
+- **For Nick:** an agent can install the skills in Claude Code with
+  `/plugin marketplace add Zafnok/shuyi-engine`, then `/plugin install
+  shuyi@shuyi-engine`. Every new game gets them on its own.
+
+Breaking: shuyi-cli: catalog::Catalog: a new field, `skills` (the engine's skill pack); code that builds a `Catalog` field by field adds `skills: shuyi_cli::skills::Pack::default()`, or reads one with `Catalog::read` or `Catalog::embedded`.
+Breaking: shuyi-cli: template::Plan: a new field, `skills` (the skills the plan copies); code that builds a `Plan` adds it.
+Breaking: shuyi-cli: contract::new::NewOutput: a new field, `skills`, in contract 18; code that builds one adds it, and a reader of `new`'s answer may read it.

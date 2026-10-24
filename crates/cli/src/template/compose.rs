@@ -11,7 +11,10 @@
 //! `shuyi` crate's features in the root `Cargo.toml`, through `shuyi
 //! add`'s code ([`catalog::turn_on`]). When the template has a part with a
 //! stage, `shuyi new` writes the flow's list of stages,
-//! [`GENERATED_STAGES`] ([`stages_rs`]).
+//! [`GENERATED_STAGES`] ([`stages_rs`]). Every game gets the engine's skill
+//! pack (the catalog's [`Catalog::skills`]) in `.claude/skills/`, all but
+//! the modules' skills, which `shuyi add` copies when a game turns its
+//! module on.
 
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
@@ -61,6 +64,9 @@ pub struct Plan {
     pub targets: Vec<String>,
     /// The stages, in order.
     pub stages: Vec<String>,
+    /// The engine's skills it holds in `.claude/skills/`, by name: every
+    /// skill of its pack but the modules'.
+    pub skills: Vec<String>,
     /// The answers it was made for, each question the answers left out at
     /// its default.
     pub answers: Answers,
@@ -642,6 +648,7 @@ pub fn compose(
         let bytes = merged(&path, writers)?;
         files.insert(PathBuf::from(path), bytes);
     }
+    let skills = with_skills(catalog, &mut files);
 
     let mut modules = Vec::new();
     let mut features = Vec::new();
@@ -701,9 +708,29 @@ pub fn compose(
         modules,
         targets,
         stages,
+        skills,
         answers,
         limits,
     })
+}
+
+/// The skills of `catalog`'s pack added to `files` under `.claude/skills/`,
+/// each with every file of its folder, and their names: all but a module's
+/// skill, and a skill whose folder a part already writes.
+fn with_skills(catalog: &Catalog, files: &mut BTreeMap<PathBuf, Vec<u8>>) -> Vec<String> {
+    let mut added = Vec::new();
+    for skill in &catalog.skills.skills {
+        let folder = format!("{}/{}/", catalog::SKILLS, skill.name);
+        let written = files.keys().any(|p| shown(p).starts_with(&folder));
+        if catalog.is_module(&skill.name) || written {
+            continue;
+        }
+        for (path, bytes) in &skill.files {
+            files.insert(PathBuf::from(format!("{folder}{path}")), bytes.clone());
+        }
+        added.push(skill.name.clone());
+    }
+    added
 }
 
 /// What [`apply`] wrote.

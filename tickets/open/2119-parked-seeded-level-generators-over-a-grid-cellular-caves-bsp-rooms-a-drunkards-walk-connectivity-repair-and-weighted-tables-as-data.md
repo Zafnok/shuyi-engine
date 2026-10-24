@@ -56,8 +56,7 @@ What Shuyi has today:
 Planned:
 
 - 2118 adds `shuyi-procgen`, noise, `Grid::map`, the `shuyi-procgen`
-  skill (or its line in 1134's list), and the ADR on what a seed
-  promises;
+  skill (`skills/shuyi-procgen/`), and the ADR on what a seed promises;
 - 2114 adds RNG helpers on `RandomSource` (ranges, picks, shuffles,
   bags, and `weighted_index` over `&[u32]` and `pick_weighted` over
   `(u32, T)`), and named streams and forks of `SimRng`. Weighted tables
@@ -264,10 +263,9 @@ None.
     from a seed, repaired and mapped to a game's terrain with
     `Grid::map`;
   - the README's "what it is for" section (2118 wrote it) names them;
-  - if the `shuyi-procgen` skill exists (2118 writes it when 1134 is
-    done), it lists them. If not, nothing to do: 1134's list names the
-    skill (2118 adds it), and 1134 names them when it writes the skill
-    (its scope says so).
+  - **from 1134 (done):** the `shuyi-procgen` skill
+    (`skills/shuyi-procgen/SKILL.md`, which 2118 writes) lists them,
+    and `check-skills` passes.
 
 **Out (do not do):**
 - wave function collapse: a ticket when a game asks;

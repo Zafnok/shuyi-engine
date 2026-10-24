@@ -102,10 +102,9 @@ comments on how it feels and looks.
   a game's types). 2506 adds only what the inspector needs beyond them.
 - **Undo and redo** within a session, per **[2506]**.
 - A **README** section on `shuyi edit`.
-- **The skill pack. Either order with 1134:** if 1134 is done, its
-  `shuyi-test` skill gets a section on `shuyi edit`, beside attaching
-  to a running build (2521). If not, nothing to do (1134 writes it, its
-  own clause says so).
+- **The skill pack. From 1134 (done):** its `shuyi-test` skill
+  (`skills/shuyi-test/SKILL.md`) gets a section on `shuyi edit`, beside
+  attaching to a running build (2521); `check-skills` passes.
 
 **Out (do not do):**
 - the graph panel (2508);
@@ -125,7 +124,7 @@ comments on how it feels and looks.
 3. Build the shell in **[2506]**, with `shuyi edit` starting the game
    and connecting.
 4. Build the live view, then the tree, then the inspector.
-5. Write the README section, and the skill section if 1134 is done.
+5. Write the README section, and the skill section.
 6. Run the gates.
 
 ## Acceptance criteria

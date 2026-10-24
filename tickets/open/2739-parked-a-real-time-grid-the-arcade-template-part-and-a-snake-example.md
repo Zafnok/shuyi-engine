@@ -297,9 +297,10 @@ None. When it unparks is his call (above).
 - **The skill** `shuyi-stage-arcade`, in ADR-0005 §2's form: a grid
   stage that steps in real time, with a worked example of contract
   operations that makes a game with `--template arcade`, runs it, and
-  replays a record. 1134 leaves this skill to this ticket. If 1134 is
-  done, it passes `check-skills` and CI runs its worked example. If not,
-  write it in the same form, and 1134's checks cover it when they land.
+  replays a record. 1134 leaves this skill to this ticket. **From 1134
+  (done):** it goes in `skills/shuyi-stage-arcade/`, passes
+  `check-skills`, and CI's `skills` job runs its worked example
+  (`example.ron`, with `template: "arcade"`).
 - **The eval:** 2524 writes `evals/tasks/snake.ron` with
   `waits_for: ["2739"]` and no reference. If 2524 is done:
   - set its `reference` to `Project("examples/snake")`, its `template`
@@ -339,8 +340,8 @@ None. When it unparks is his call (above).
   snapshots, move the template part, its CI entry, the guide section and
   the skill to a follow-up ticket, parked with this one (the
   `write-ticket` skill), and say so in the PR. The same PR changes
-  1134's, 2004's and 3042's mentions of 2739 for those pieces to the
-  new ticket's id.
+  2004's and 3042's mentions of 2739 for those pieces to the new
+  ticket's id.
   The eval's snake task then keeps the `template` 2524 gave it (or
   `blank`, if this ticket writes the file), and the follow-up sets it
   to `arcade`.
@@ -352,7 +353,7 @@ None. When it unparks is his call (above).
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order
    tickets are done: 2004, 2019, 2114, 2225, 2502, 2512, 2514,
-   2524, 2801, 3004, 3010, 3039, 3042, and 1134.
+   2524, 2801, 3004, 3010, 3039 and 3042.
 2. Write the ADR, ADR-0013's `Status:` line and both index rows.
 3. Write `contract::replay::ticks` and its tests, and the
    `docs/contract.md` row.
@@ -388,9 +389,9 @@ None. When it unparks is his call (above).
       frames a second.
 - [ ] The example's README states its own lines, and the engine's README
       claims the style.
-- [ ] The skill is in `skills/shuyi-stage-arcade/` (passing
-      `check-skills` if 1134 is done), and the eval's snake task has
-      `examples/snake` as its reference.
+- [ ] The skill is in `skills/shuyi-stage-arcade/`, passing
+      `check-skills`, CI's `skills` job runs its worked example, and
+      the eval's snake task has `examples/snake` as its reference.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

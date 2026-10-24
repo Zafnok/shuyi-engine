@@ -106,10 +106,11 @@ say whether a new developer would know where to start.
   check it passes within its budget, and add the expansion of any
   shortcode they use to `llms.rs`; if not, nothing more to do (2808
   twins every page under `site/content/learn/`).
-- **Either order with 1134** (the skill pack): if 1134 is done, the
-  `shuyi-new-game` skill (`skills/shuyi-new-game/SKILL.md`) sends an
-  agent to the direction guide before it chooses a template; if not,
-  nothing to do (1134 writes that line when it lands).
+- **From 1134 (done)** (the skill pack): the `shuyi-new-game` skill
+  (`skills/shuyi-new-game/SKILL.md`) sends an agent to the direction
+  guide before it chooses a template. It names the guide in words: the
+  guides are the engine's docs, which a game reaches through its
+  `AGENTS.md`, and `check-skills` fails a link that leaves the pack.
 - **The docs map** (`docs/README.md`, 2810): a row for `docs/guides/`
   under *People making games*, updated by "a change that adds a
   module, a direction or a move", and a line in *What each task reads*
@@ -140,7 +141,7 @@ to do (2503 links the guides).
 2. Write the planned pages.
 3. Add the checks to `check-modules`, with fixtures.
 4. Publish them on the docs site, and point the `shuyi-new-game` skill
-   at them if 1134 is done (the skill pack's clause above).
+   at them (the skill pack's clause above).
 5. Add a line to `tickets/TEMPLATE.md`'s acceptance criteria: "Guides
    in `docs/guides/` updated, if this adds a direction, a module or a
    move (ADR-0009 §5)."

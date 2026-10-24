@@ -1,0 +1,12 @@
+// The game's opening, in the engine's cinematic format: each shot starts
+// `at` seconds in and lasts until the next one, the last until the end.
+// It is six seconds long. A shot is one of the game's own kinds: a line of
+// its text, by key, shown whole or typed out over the shot.
+(
+    id: "intro",
+    length: Seconds(6.0),
+    shots: [
+        (at: 0.0, shot: Line("intro.dawn")),
+        (at: 3.0, shot: Typed("intro.gate")),
+    ],
+)

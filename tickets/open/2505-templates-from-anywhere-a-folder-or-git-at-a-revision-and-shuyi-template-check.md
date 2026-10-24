@@ -100,10 +100,11 @@ None.
 - **`docs/templates.md`** (2501) gets "Writing your own template" and
   "Sharing it": a git repository, the command with `@<rev>`, and what the
   wizard shows users before it writes.
-- **The skill pack. Either order with 1134:** if 1134 is done, the
-  `shuyi-new-game` skill learns `--template` sources and that it must
-  show the user the source and license before passing `--yes`. If not,
-  nothing to do (1134 writes it, its own clause says so).
+- **The skill pack. From 1134 (done):** the `shuyi-new-game` skill
+  (`skills/shuyi-new-game/SKILL.md`) learns `--template` sources (a
+  folder, or `git+<url>@<rev>`) and that it must show the user a
+  template's source and license before passing `--yes`;
+  `check-skills` passes.
 
 **Out (do not do):**
 - a template registry or a search command (ADR-0013 §7);

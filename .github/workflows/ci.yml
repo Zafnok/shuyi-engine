@@ -264,6 +264,38 @@ jobs:
             exit 1
           fi
 
+  # The skill pack (ticket 1134, ADR-0043): each skill's worked example, a
+  # script of contract commands, run on a game fresh from `shuyi new` on
+  # this checkout (`cargo xtask skill-examples`), in shards. The games
+  # build in this repository's target folder, which rust-cache keeps.
+  # `check-skills` runs in the `test` job (crates/cli/tests/it/skills.rs).
+  skills:
+    name: skills (${{ matrix.shard }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1/3", "2/3", "3/3"]
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      # `shuyi-ship`'s example builds its game for the web.
+      - run: rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: skills-${{ strategy.job-index }}
+      - name: Install macroquad system libraries
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Run the worked examples
+        run: cargo xtask skill-examples --shard "$SHARD"
+
   # The crates a Playdate game builds without `std` (ADR-0008 §5, ticket
   # 3005): built for a target that has no `std` at all, their tests run
   # without `std` on the host, and no `std::` path outside
@@ -504,7 +536,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, no-std, layers, modules, api, deny, zizmor, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, skills, no-std, layers, modules, api, deny, zizmor, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

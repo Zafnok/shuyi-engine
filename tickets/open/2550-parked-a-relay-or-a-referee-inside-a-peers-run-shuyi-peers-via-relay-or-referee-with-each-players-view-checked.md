@@ -189,12 +189,11 @@ None.
   and the `net` tool's answer adds the hub's stats. If that follow-up
   ticket is still open, add those three lines to its scope in this PR
   instead, naming 2550.
-- **The `shuyi-net` skill, either order with 1134:** if 1134 is done,
-  add `--via relay` (and `--via referee`, if step 7 adds it) to the
-  `peers` section of `skills/shuyi-net/SKILL.md` (2529 wrote it): what
-  each checks, the hub in the answer, and `through_relay` (and
-  `under_referee`) for a game's tools. If not, nothing to do (1134
-  writes the skill from what exists).
+- **The `shuyi-net` skill. From 1134 (done):** add `--via relay` (and
+  `--via referee`, if step 7 adds it) to the `peers` section of
+  `skills/shuyi-net/SKILL.md` (2529 wrote it): what each checks, the hub
+  in the answer, and `through_relay` (and `under_referee`) for a game's
+  tools. `check-skills` passes.
 - **Docs** (the `document` skill): `docs/contract.md`'s *Peers*
   section (`via`, the hub, what is compared under a referee, the
   limits) and its MCP lines if the session took `via`; `docs/net.md`
@@ -266,7 +265,7 @@ None.
    in the completion notes.
 8. Regenerate the schemas, raise `contract::VERSION`, and add its line
    to `versions.json`.
-9. Write the docs, and the `shuyi-net` skill's part if 1134 is done.
+9. Write the docs, and the `shuyi-net` skill's part.
 10. Run the gates.
 
 ## Acceptance criteria

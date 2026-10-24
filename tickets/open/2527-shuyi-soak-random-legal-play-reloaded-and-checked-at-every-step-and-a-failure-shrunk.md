@@ -284,12 +284,12 @@ least 1), and `HelloTools::soak` is wired the same way
 soaks 20 seeds through `soak::soak`, as its other tests call `bots` and
 `replay`.
 
-**Either order with 1134:** if `skills/shuyi-test/SKILL.md` and
-`skills/shuyi-debug-replay/SKILL.md` exist, `shuyi-test` gets a short
-section (soak in CI; a shrunk record turned into a regression test with
-`soak::commands`), and `shuyi-debug-replay` says to run `soak` first
-when a save or a replay misbehaves, since `replay` can't see state the
-serde form leaves out. If 1134 isn't done, 1134 adds them when it lands.
+**From 1134 (done):** `skills/shuyi-test/SKILL.md` gets a short section
+(soak in CI; a shrunk record turned into a regression test with
+`soak::commands`), and `skills/shuyi-debug-replay/SKILL.md` says to run
+`soak` first when a save or a replay misbehaves, since `replay` can't
+see state the serde form leaves out. `check-skills` fails a skill that
+names a command `shuyi` lacks, so these lines land with `soak`.
 
 **Either order with 2755 (parked):** if 2755 is done, soak its crawler
 example (`examples/crawler`) as its Scope says: the example's tools
@@ -372,9 +372,9 @@ stop there and keep the core here (the acceptance criteria on fixture
 games, shrinking and `no_std`). Write a follow-up ticket in this PR for
 steps 4 to 6, with the other acceptance criteria, the **MCP** and
 **Problem codes** paragraphs above (1133 and 2509 are done, so they are
-plain scope there), and the either-order parts with 1134, 2544 and
-2755. In the same PR, point the tickets that name 2527 for the op at
-the follow-up: 1134's soak clause, 2544's lines on the soak, and the
+plain scope there), the skills' part (from 1134), and the either-order
+parts with 2544 and 2755. In the same PR, point the tickets that name
+2527 for the op at the follow-up: 2544's lines on the soak, and the
 `shuyi soak` lines of 2735, 2736, 2737 and 2755.
 
 ## Acceptance criteria

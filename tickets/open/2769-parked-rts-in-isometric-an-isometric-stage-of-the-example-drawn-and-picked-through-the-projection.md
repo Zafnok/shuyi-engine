@@ -123,11 +123,11 @@ None.
     to read first;
   - `docs/guides/isometric.md` lists `examples/rts`'s `isometric`
     stage beside the isometric tactics example.
-- **The `shuyi-rts` skill. Either order with 1134:** if 1134 is done,
-  the skill says the module serves isometric, names the `isometric`
-  stage of `examples/rts`, and says that only the stage's marker
-  changes. If not, add the same to the `shuyi-rts` entry in 1134's list
-  (2707 put it there, 2719 added the example), in this PR.
+- **The `shuyi-rts` skill. From 1134 (done):** the skill
+  (`skills/shuyi-rts/SKILL.md`, which 2707 writes and 2719 gives its
+  worked example) says the module serves isometric, names the
+  `isometric` stage of `examples/rts`, and says that only the stage's
+  marker changes; `check-skills` passes.
 - **Public API:** `Projection::world_to_map` (if added) and the
   perspective parameter on the view's types. A new public type follows
   ADR-0039: `#[non_exhaustive]` with a constructor if it may grow. The
@@ -168,8 +168,7 @@ None.
    `THIRD_PARTY_ASSETS.md`.
 5. Write the Harness test, the replay test, the property tests and the
    snapshots.
-6. Update the README, the two guides and the skill (or its entry in
-   1134's list).
+6. Update the README, the two guides and the skill.
 
 ## Acceptance criteria
 

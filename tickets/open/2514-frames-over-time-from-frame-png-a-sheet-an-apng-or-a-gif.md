@@ -190,11 +190,13 @@ None.
   not added, and a ticket for it is written (`write-ticket`). That
   ticket carries `shuyi-ship`'s line on `--gif` (the skill pack
   below), and the skill lines this PR writes name only `--apng`.
-- **The skill pack. Either order with 1134:** if 1134 is done,
-  `shuyi-test`, `shuyi-animate` and `shuyi-cinematic` say to check
-  motion with a sheet, and `shuyi-ship` says how to make an APNG or a
-  GIF for a README or a store page. If 1134 isn't done, 1134 writes
-  those lines.
+- **The skill pack. From 1134 (done):** `skills/shuyi-test/SKILL.md`,
+  `skills/shuyi-animate/SKILL.md` and `skills/shuyi-cinematic/SKILL.md`
+  say to check motion with a sheet (`frame-png --every <seconds>
+  --count <n>`, or the MCP `frame_png` with `every` and `count`), and
+  `skills/shuyi-ship/SKILL.md` says how to make an APNG (`--apng`), and
+  a GIF (`--gif`) if this PR adds it, for a README or a store page.
+  `check-skills` passes.
 - **Either order with 2315:** if 2315 is done, `--debug` draws its
   channels on every captured frame (a test with a two-frame sheet). If
   not, 2315 does that.
@@ -274,7 +276,7 @@ None.
 10. Add the `gif` dependency and write `encode_gif` with its exact
     palette, unless the PR is already about 600 lines (then write its
     ticket). Run `cargo deny check`.
-11. Update the skills if 1134 is done.
+11. Update the skills.
 12. Run the gates.
 
 ## Acceptance criteria

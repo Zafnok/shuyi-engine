@@ -235,10 +235,12 @@ None.
     from a seed, mapped to terrain, with the hero's view;
   - how it sits beside the other `kind` answers (a tactics game with a
     generated map, say).
-- **The skill** `shuyi-procgen`: if 1134 is done, finish it with a worked
-  example that `shuyi add procgen` and a few lines make run; it passes
-  `check-skills`. If not, add the worked example to 1134's list in this
-  PR.
+- **The skill** `shuyi-procgen` (`skills/shuyi-procgen/SKILL.md`, which
+  2118 writes). **From 1134 (done):** finish it with a worked example,
+  `skills/shuyi-procgen/example.ron`, in which `shuyi add procgen` and a
+  few lines run on a fresh `shuyi new` game, and drop 2735 from its
+  `waits_for` (2118 put it there). It passes `check-skills`, and CI's
+  `skills` job runs the example.
 - **The catalog:** set `shuyi-procgen`'s row in `docs/modules.md` and the
   `roguelike` answer in `docs/modules.ron` to ready.
 - **The eval:** if 2524 is done, add a roguelike task whose reference
@@ -272,7 +274,7 @@ None.
    README, and the APIs of 2119 (`carve`, `regions`, `WeightedTable`),
    2120 (`shuyi_core::sight`), 2114 (`SimRng::stream`, `mix_at`,
    `chance`) and 2116 (hello-grid's golden table). Check which of 2117,
-   2502, 2512, 2524, 2527, 2801, 2019, 1134 and the other examples
+   2502, 2512, 2524, 2527, 2801, 2019 and the other examples
    (2736–2739) are done.
 2. Make `examples/roguelike`: its `Cargo.toml` on `shuyi` with
    `procgen`, `files/tables.ron`, and `src/floor.rs` with
