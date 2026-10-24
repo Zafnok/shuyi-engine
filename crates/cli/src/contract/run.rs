@@ -1,8 +1,8 @@
 //! `run` and `scene`: the game started headless as the game's options
 //! say, a script of keys, controller buttons and waits played, and some
 //! frames more. `run` answers with the top screen, the frame as text, the
-//! scene, what happened, the sounds asked for and the game's log; `scene`
-//! with the scene and the log.
+//! scene, what happened, the sounds asked for, the game's log and its
+//! modules; `scene` with the scene and the log.
 
 use std::fmt::Write as _;
 
@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_ui::log::LOG_LINES;
 
-use super::session::{Event, LogEntry, Scene, Session, Sound};
+use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
 use crate::game::{GameArg, GameOption, GameTools, code_of};
@@ -37,6 +37,8 @@ pub struct RunInput {
 /// What `run` saw.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An answer, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct RunOutput {
     /// The frames run in all.
     pub frames: u32,
@@ -56,6 +58,9 @@ pub struct RunOutput {
     pub sounds: Vec<Sound>,
     /// The game's log, oldest first: its last lines.
     pub log: Vec<LogEntry>,
+    /// The modules installed in the game, in install order, with the
+    /// hooks the game calls on each.
+    pub modules: Vec<ModuleEntry>,
 }
 
 /// What `scene` saw.
@@ -169,6 +174,7 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
         events: session.events(),
         sounds: session.sounds(),
         log: session.log(),
+        modules: session.modules(),
     };
     (output, limits)
 }
@@ -344,6 +350,14 @@ pub fn text(output: &RunOutput) -> String {
         }
     }
     log_text(&mut out, &output.log);
+    if !output.modules.is_empty() {
+        let modules: Vec<String> = output
+            .modules
+            .iter()
+            .map(|m| format!("{} ({})", m.name, m.hooks.join(", ")))
+            .collect();
+        let _ = writeln!(out, "modules: {}", modules.join(", "));
+    }
     if !output.sounds.is_empty() {
         let sounds: Vec<String> = output
             .sounds

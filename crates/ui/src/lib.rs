@@ -14,6 +14,8 @@
 //!   ([`game`]: [`Game`]), with the player's [`settings`] and
 //!   [`profiles`], [`storage`], [`audio`] requests and the music, and
 //!   [`text`] placeholders;
+//! - a [`module`] from outside the default engine joining a running
+//!   [`Game`]: its hooks and its state on the [`Ctx`];
 //! - a `toy` game to try things on (the `toy` feature); the test Harness
 //!   that drives a game without a window is `shuyi_platform::harness`;
 //! - the [`system_keyboard`] a text box may ask the platform for;
@@ -64,6 +66,7 @@ pub mod grid;
 pub mod hurry;
 pub mod input;
 pub mod log;
+pub mod module;
 pub mod profiles;
 pub mod screen;
 pub mod screens;

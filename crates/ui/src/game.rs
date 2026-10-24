@@ -5,7 +5,8 @@
 //!
 //! The game gives the screen it starts on and its [`GameHooks`]: the
 //! screen the first key opens while no layout is chosen (a layout picker),
-//! and the debug menu.
+//! and the debug menu. Modules from outside the default engine join it
+//! with [`Game::with_module`] ([`crate::module`]).
 
 use crate::prelude::*;
 use core::any::Any;
@@ -21,6 +22,7 @@ use crate::input::crank::Crank;
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
+use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
 
 /// A keyboard or controller event as the platform reports it.
@@ -170,6 +172,9 @@ pub struct Game<G: GameData> {
     /// The fixed simulation steps due in the next frame
     /// ([`set_ticks`](Self::set_ticks)).
     ticks: u32,
+    /// The installed modules, and what each declared, in install order.
+    modules: Vec<Box<dyn Module<G>>>,
+    installed: Vec<InstalledModule>,
 }
 
 impl<G: GameData> Game<G> {
@@ -196,9 +201,53 @@ impl<G: GameData> Game<G> {
             audio_out: Vec::new(),
             music_out: Vec::new(),
             ticks: 0,
+            modules: Vec::new(),
+            installed: Vec::new(),
         };
         game.redraw();
         game
+    }
+
+    /// The same game with `module` installed after those it has: its
+    /// [`install`](Module::install) runs, and the frame is drawn again
+    /// with what it draws. Refused for a name already installed or a state
+    /// another module put on the context.
+    pub fn with_module(self, module: impl Module<G>) -> Result<Self, ModuleError> {
+        self.with_modules([Box::new(module) as Box<dyn Module<G>>])
+    }
+
+    /// The same game with `modules` installed in order, as
+    /// [`with_module`](Self::with_module) installs one.
+    pub fn with_modules(
+        mut self,
+        modules: impl IntoIterator<Item = Box<dyn Module<G>>>,
+    ) -> Result<Self, ModuleError> {
+        for module in modules {
+            self.install(module)?;
+        }
+        self.redraw();
+        Ok(self)
+    }
+
+    fn install(&mut self, mut module: Box<dyn Module<G>>) -> Result<(), ModuleError> {
+        let name = module.name();
+        debug_assert!(
+            module::is_snake_case(name),
+            "a module's name is snake_case ASCII: {name:?}"
+        );
+        if self.installed.iter().any(|m| m.name == name) {
+            return Err(ModuleError::SameName { name });
+        }
+        let mut install = Install::new(&mut self.ctx, name);
+        module.install(&mut install);
+        self.installed.push(install.finish()?);
+        self.modules.push(module);
+        Ok(())
+    }
+
+    /// The installed modules, in install order, with what each declared.
+    pub fn modules(&self) -> &[InstalledModule] {
+        &self.installed
     }
 
     /// Turns the debug tools (the Debug action) on or off
@@ -343,6 +392,11 @@ impl<G: GameData> Game<G> {
         self.ctx.device = self.input.device();
         let actions = self.input.update(dt);
         let held = self.held();
+        for (module, installed) in self.modules.iter_mut().zip(&self.installed) {
+            if installed.hooks.contains(&Hook::BeforeUpdate) {
+                module.before_update(&mut self.ctx, dt);
+            }
+        }
         let debug = self.hooks.debug.filter(|_| {
             self.ctx.debug_tools
                 && actions.iter().any(|a| a.ui() == Some(UiAction::Debug))
@@ -413,12 +467,18 @@ impl<G: GameData> Game<G> {
         }
     }
 
-    /// Clears the buffer and draws the stack into it: after a change made
-    /// from outside the frame loop (a test changing the context).
+    /// Clears the buffer and draws the stack into it, then the modules
+    /// over it: after a change made from outside the frame loop (a test
+    /// changing the context).
     pub fn redraw(&mut self) {
         let blank = self.ctx.game.blank_cell(&self.ctx.palette);
         self.buffer.fill_rect(self.buffer.bounds(), blank);
         self.stack.draw(&self.ctx, &mut self.buffer);
+        for (module, installed) in self.modules.iter().zip(&self.installed) {
+            if installed.hooks.contains(&Hook::DrawOver) {
+                module.draw_over(&self.ctx, &mut self.buffer);
+            }
+        }
     }
 
     /// The top-most screen of type `T` on the stack, if it opts in

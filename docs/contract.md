@@ -17,7 +17,7 @@ is another way to reach them.
 | `check [--baked]` | Loads the game's content through every validator: every error, with file, line and message. With `--baked`, bakes the game's pack too, and every asset read from it must equal the one read from its source | the game |
 | `check --target <id \| all>` | Whether the game's frame at its scale fits a target's display inside its safe area, and its smallest text is as tall as the target asks (ADR-0008 §1): each problem with its target, its setting in `shuyi.ron`'s `targets` and the numbers; with the game's tools, that each screen's required actions fit the target's inputs (ADR-0025), and on a one-bit target that every palette role has patterns and the roles of a `distinct` group stay apart (ADR-0026, each problem with its `roles`); a warning doesn't fail it | the project file; the game for the controls and the patterns |
 | `lint` | Everything wrong with the shape of the game's code, each finding with its file, line, problem code and what to do: `check-keys`' findings (`SH2101`), `check-text`'s (`SH2102`: every literal when there are more than `check_text.max_literals`, and every data name a screen reads), and the rules crate's fence ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) §4) on the package `shuyi.ron`'s `rules` names: `cargo clippy` read for `disallowed_types`, `disallowed_methods` and `float_arithmetic`, with clippy's reason (`SH2103`, with the column), and `cargo tree` for a screen, device or tool crate or outside luck under it (`SH2104`, with the `cargo tree -i` that shows the way in). A part `shuyi.ron` lacks is a limit | the project file and cargo |
-| `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log) | the game |
+| `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`) and its state's types | the game |
 | `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
@@ -46,7 +46,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 13,
+  "contract": 14,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },

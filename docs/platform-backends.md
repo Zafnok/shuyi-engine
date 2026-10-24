@@ -35,6 +35,12 @@ do. The decisions behind it are
   console's agreement, depends on the engine's crates like any game, and
   is never merged here, not even behind a feature. The engine's part is
   to keep `Platform` small, stable and documented.
+- **`Platform` stays small** (ADR-0040 §7). A backend implements the
+  seven methods below. Every method added to `Platform` later has a
+  default, and a device service a backend may lack returns an `Option`,
+  as `text_input` does, so a backend written today (a private console's)
+  keeps building. `crates/platform/tests/it/bare.rs` implements only the
+  seven and fails to compile if one without a default is added.
 - **Licenses.** A public backend's dependencies follow ADR-0002 §8, like
   the rest of the engine.
 - **Small devices are `no_std`.** `shuyi-platform`, `shuyi-ui`,

@@ -251,6 +251,36 @@
         "text"
       ]
     },
+    "ModuleEntry": {
+      "description": "A module installed in the game, with what it declared (ADR-0040).",
+      "type": "object",
+      "properties": {
+        "hooks": {
+          "description": "The hooks the game calls on it, in the frame loop: `before_update`\n(before the screens' update), `draw_over` (over their drawing).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "name": {
+          "description": "Its name.",
+          "type": "string"
+        },
+        "states": {
+          "description": "The types of the state it put on the context.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "hooks",
+        "states"
+      ]
+    },
     "Op": {
       "description": "An operation of the contract.",
       "oneOf": [
@@ -379,6 +409,13 @@
             "$ref": "#/$defs/LogEntry"
           }
         },
+        "modules": {
+          "description": "The modules installed in the game, in install order, with the\nhooks the game calls on each.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModuleEntry"
+          }
+        },
         "quit": {
           "description": "The frame the game asked to quit in, if it did.",
           "type": [
@@ -426,7 +463,8 @@
         "frame",
         "events",
         "sounds",
-        "log"
+        "log",
+        "modules"
       ]
     },
     "Scene": {

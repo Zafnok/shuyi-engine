@@ -7,9 +7,13 @@
 //! the engine reads from the game's data ([`GameData`]).
 //!
 //! A plain struct: no service locator, no globals. A game names its own
-//! with an alias (`type Ctx = shuyi_ui::Ctx<MyGame>`).
+//! with an alias (`type Ctx = shuyi_ui::Ctx<MyGame>`). The engine's
+//! services are fields; a module's state is found by its type
+//! ([`Ctx::module_state`]), put there by its
+//! [`install`](crate::module::Module::install) and listed.
 
 use crate::prelude::*;
+use core::any::Any;
 use core::fmt::{Debug, Display};
 
 use shuyi_assets::audio::AudioManifest;
@@ -28,6 +32,7 @@ use crate::input::help_keys::HelpKeys;
 use crate::input::keymap::Keymap;
 use crate::input::state::Device;
 use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
+use crate::module;
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -323,6 +328,8 @@ pub struct Ctx<G: GameData> {
     pub lang: LangCode,
     /// English, for [`effective_lang`](Self::effective_lang).
     english: LangCode,
+    /// The installed modules' states.
+    pub(crate) modules: module::States,
 }
 
 impl<G: GameData> Ctx<G> {
@@ -365,7 +372,20 @@ impl<G: GameData> Ctx<G> {
             system_keyboard: SystemKeyboard::default(),
             lang: LangCode::english(),
             english: LangCode::english(),
+            modules: module::States::default(),
         })
+    }
+
+    /// The state of type `T` a module put here
+    /// ([`Install::state`](module::Install::state)), or `None` if no
+    /// installed module did.
+    pub fn module_state<T: Any>(&self) -> Option<&T> {
+        self.modules.get()
+    }
+
+    /// [`module_state`](Self::module_state), mutable.
+    pub fn module_state_mut<T: Any>(&mut self) -> Option<&mut T> {
+        self.modules.get_mut()
     }
 
     /// The screen text for `key` in the player's language, placeholders

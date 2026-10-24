@@ -885,3 +885,21 @@ fn take_warnings_takes_every_line_and_gives_the_warnings_and_errors() {
     assert_eq!(c.take_warnings(), ["warn", "error"]);
     assert_eq!(c.take_log(), (Vec::new(), 0));
 }
+
+#[test]
+fn a_modules_state_is_found_by_its_type_and_none_is_there_otherwise() {
+    let mut c = ctx();
+    assert_eq!(c.module_state::<u32>(), None);
+    let mut install = module::Install::new(&mut c, "counter");
+    install.state(3_u32);
+    install.state("label");
+    assert!(install.finish().is_ok());
+    assert_eq!(c.module_state::<u32>(), Some(&3));
+    assert_eq!(c.module_state::<&str>(), Some(&"label"));
+    assert_eq!(c.module_state::<u64>(), None);
+    if let Some(n) = c.module_state_mut::<u32>() {
+        *n += 1;
+    }
+    assert_eq!(c.module_state::<u32>(), Some(&4));
+    assert_eq!(c.module_state_mut::<u64>(), None);
+}

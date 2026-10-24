@@ -273,6 +273,7 @@ fn what_run_and_scene_saw_reads_for_people() {
         events: Vec::new(),
         sounds: Vec::new(),
         log: Vec::new(),
+        modules: Vec::new(),
     };
     assert_eq!(
         text(&bare),
@@ -364,4 +365,37 @@ fn the_text_shows_the_logs_warnings_and_errors() {
         )),
         "{said}"
     );
+}
+
+#[test]
+fn run_lists_the_games_modules_with_their_hooks() {
+    use shuyi_ui::module::{Hook, InstalledModule};
+
+    let mut clock = InstalledModule::new("clock");
+    clock.hooks = vec![Hook::BeforeUpdate, Hook::DrawOver];
+    clock.states = vec!["clock::Ticks"];
+    let mut session = FakeSession::on("stage", "map");
+    session.modules = vec![ModuleEntry::from(&clock)];
+    let game = Fake {
+        session: Ok(session),
+        ..Fake::default()
+    };
+    let out = run(&game, &RunInput::default()).result.unwrap();
+    let json = serde_json::to_value(&out).unwrap();
+    assert_eq!(
+        json["modules"],
+        serde_json::json!([{
+            "name": "clock",
+            "hooks": ["before_update", "draw_over"],
+            "states": ["clock::Ticks"],
+        }])
+    );
+    let said = text(&out);
+    assert!(
+        said.contains("modules: clock (before_update, draw_over)\n"),
+        "{said}"
+    );
+    let none = run(&Fake::default(), &RunInput::default()).result.unwrap();
+    assert!(none.modules.is_empty(), "{:?}", none.modules);
+    assert!(!text(&none).contains("modules:"));
 }

@@ -23,7 +23,7 @@ use super::autobalance::AutobalanceInput;
 use super::bots::{BotsInput, BotsOutput, tally};
 use super::playtest::{DEFAULT_TRIES, PlaytestInput};
 use super::replay::{Record, ReplayRun, ReplayStep};
-use super::session::{Event, LogEntry, Scene, Session, Sound};
+use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
 use crate::game::{
     AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
@@ -46,6 +46,8 @@ pub struct FakeSession {
     pub log: Vec<LogEntry>,
     /// How many lines the log dropped.
     pub log_dropped: u32,
+    /// The modules installed.
+    pub modules: Vec<ModuleEntry>,
 }
 
 impl FakeSession {
@@ -63,6 +65,7 @@ impl FakeSession {
             }),
             log: Vec::new(),
             log_dropped: 0,
+            modules: Vec::new(),
         }
     }
 }
@@ -124,6 +127,10 @@ impl Session for FakeSession {
 
     fn log_dropped(&self) -> u32 {
         self.log_dropped
+    }
+
+    fn modules(&self) -> Vec<ModuleEntry> {
+        self.modules.clone()
     }
 
     /// A picture one pixel high, a pixel wide per frame run, each

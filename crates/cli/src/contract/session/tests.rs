@@ -92,6 +92,34 @@ mod toy {
         Headless::new(Harness::new(toy::game()))
     }
 
+    /// A module that draws over the toy's screens.
+    struct Shade;
+
+    impl shuyi_ui::module::Module<toy::Toy> for Shade {
+        fn name(&self) -> &'static str {
+            "shade"
+        }
+
+        fn install(&mut self, install: &mut shuyi_ui::module::Install<'_, toy::Toy>) {
+            install.hook(shuyi_ui::module::Hook::DrawOver);
+            install.state(1_u8);
+        }
+    }
+
+    #[test]
+    fn a_session_lists_its_games_modules() {
+        assert_eq!(session().modules(), []);
+        let game = toy::game().with_module(Shade).unwrap();
+        let s = Headless::new(Harness::new(game));
+        let expected = ModuleEntry {
+            name: "shade".into(),
+            hooks: vec!["draw_over".into()],
+            states: vec!["u8".into()],
+        };
+        assert_eq!(s.modules(), [expected]);
+        assert_eq!(Bare.modules(), []);
+    }
+
     #[test]
     fn a_session_plays_scripts_and_idles() {
         let mut s = session();

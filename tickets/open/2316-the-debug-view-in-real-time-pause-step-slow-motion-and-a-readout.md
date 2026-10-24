@@ -88,11 +88,11 @@ None.
   hold while the game is paused. A step doesn't release them. If 2344
   isn't done, 2344 adds this wiring.
 
-  **Modules (2358):** if 2358 is done, `Game` runs the modules'
-  `before_update` hooks as it runs the stack's update. None run while
-  paused. One runs with `dt` = 1/60 s per step, and one on a single
+  **Modules (2358, ADR-0040):** `Game::step` runs the modules'
+  `before_update` hooks just before the stack's update, and pausing
+  holds them as it holds that update. None run while paused. One runs with `dt` = 1/60 s per step, and one on a single
   frame of `slow` in slow motion. Their `draw_over` still draws every
-  frame. If 2358 isn't done, 2358 does it.
+  frame.
 - **The "Debug view" screen (2315)** gains a row for slow motion
   (1×, ½×, ¼×, ⅛×, from `slow`) and shows whether the game is paused.
 - **The readout:** `Screen::debug_readout(&self, ctx: &Ctx<G>) ->
@@ -141,7 +141,7 @@ None.
 ## Implementation steps
 
 1. Read 2315's ADR and code, `game.rs`, the `input-actions` skill, and
-   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2358, 2367 and
+   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2367 and
    2521 are done (the either-order clauses).
 2. Add the two `UiAction`s, and map them in the sample keymap and the
    toy.
@@ -170,7 +170,7 @@ None.
 - [ ] Harness: with `slow` = 4, 40 frames run 10 updates.
 - [ ] Harness: with `slow` = 4, a Confirm tapped on a frame that runs no
       update reaches the next update, once.
-- [ ] Harness (if 2358 is done): while paused, a module's
+- [ ] Harness: while paused, a module's
       `before_update` doesn't run, and a step runs it once.
 - [ ] The readout's lines are in the snapshot, after `paused`, when the
       `readout` channel is on.
