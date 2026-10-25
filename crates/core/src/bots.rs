@@ -2,7 +2,8 @@
 //! loop that lets them play a game to its end, a seeded random bot, two
 //! bots that plan on copies of the game (over [`determinize`]): one that
 //! weighs its next command alone ([`rollout`]) and one that plans its
-//! side's whole turn, several commands deep ([`plan`]), a playtest
+//! side's whole turn, several commands deep ([`plan`]), the order of
+//! the few commands such a bot tries first ([`order`]), a playtest
 //! runner that lets several bots play a stage many times and checks how
 //! often each succeeds ([`playtest`]), and an autobalance search that
 //! changes the stage, never the bots, until each succeeds about as often
@@ -22,6 +23,7 @@ use crate::turn::TurnRules;
 
 pub mod balance;
 pub mod determinize;
+pub mod order;
 pub mod plan;
 pub mod playtest;
 pub mod rollout;
@@ -29,6 +31,7 @@ pub mod weigh;
 
 pub use balance::{BalanceSettings, Balanced, Knob, Stop, autobalance, autobalance_by};
 pub use determinize::{Determinize, Evaluate};
+pub use order::{Ranked, ranked_order};
 pub use plan::{PlanSearch, PlanSettings, TurnPlan};
 pub use rollout::{Horizon, Order, Playout, Rollout, RolloutSearch, RolloutSettings, Unordered};
 pub use weigh::{Persona, UnknownFeature, Weighted, Weights};
@@ -270,6 +273,6 @@ impl<R: TurnRules> Bot<R> for RandomBot {
 }
 
 #[cfg(test)]
-mod fixtures;
+pub(crate) mod fixtures;
 #[cfg(test)]
 mod tests;

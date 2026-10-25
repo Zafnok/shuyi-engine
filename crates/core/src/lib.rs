@@ -6,7 +6,9 @@
 //! [`Unordered`], [`Playout`], [`Rollout`], [`RolloutSettings`],
 //! [`RolloutSearch`] and [`Horizon`], a turn planner that plans its
 //! side's whole turn on them: [`TurnPlan`], [`PlanSettings`] and
-//! [`PlanSearch`], a playtest runner that checks how often each of
+//! [`PlanSearch`], the few candidates such a bot tries first, in ranked
+//! groups ([`ranked_order`], [`Ranked`]) and for grid games
+//! ([`TacticsOrder`], [`OrderHooks`]), a playtest runner that checks how often each of
 //! several bots succeeds, [`bots::playtest`], and an autobalance search
 //! whose [`Knob`]s change a stage until each lands in its band:
 //! [`autobalance`], [`autobalance_by`], [`BalanceSettings`], [`Balanced`]
@@ -38,8 +40,9 @@ pub mod turn;
 
 pub use bots::{
     BalanceSettings, Balanced, Bot, Determinize, Evaluate, Horizon, Knob, Order, PlanSearch,
-    PlanSettings, PlayError, Playout, RandomBot, Report, Rollout, RolloutSearch, RolloutSettings,
-    Sides, Stop, TurnPlan, Unordered, autobalance, autobalance_by, play, play_observed,
+    PlanSettings, PlayError, Playout, RandomBot, Ranked, Report, Rollout, RolloutSearch,
+    RolloutSettings, Sides, Stop, TurnPlan, Unordered, autobalance, autobalance_by, play,
+    play_observed, ranked_order,
 };
 pub use character::CharacterId;
 pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};
@@ -50,6 +53,7 @@ pub use rng::{RandomSource, ScriptedRng, SimRng};
 pub use save::{SaveFormat, SaveHeader};
 pub use text::{Part, split_tokens};
 pub use threat::{
-    Danger, GoalDistance, Ranges, Strike, Threat, Threats, strike_area, strike_area_from,
+    Danger, GoalDistance, OrderHooks, Ranges, Strike, TacticsOrder, Threat, Threats, strike_area,
+    strike_area_from,
 };
 pub use turn::TurnRules;

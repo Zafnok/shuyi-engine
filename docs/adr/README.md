@@ -56,5 +56,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0041](0041-the-module-catalog-concerns-as-data-metadata-answers-as-pairs-and-modules-and-add-reading-the-engine-the-game-builds-with.md) | The module catalog: concerns as data, metadata answers as pairs, and `modules` and `add` reading the engine the game builds with | Accepted; extends ADR-0009 §2, §4 and §6 and ADR-0040 §5 |
 | [0042](0042-the-template-format-merged-ron-and-cargo-files-a-generated-list-of-stages-and-short-names.md) | The template format: merged RON and Cargo files, a generated list of stages, and short names | Accepted; extends ADR-0013 §3 and ADR-0036 |
 | [0043](0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md) | The skill pack: skills at the root, worked examples run by the xtask, `check-skills` in the CLI, and the pack's folder as the plugin | Accepted; extends ADR-0005 §2 and §3, ADR-0041 §5 and ADR-0042 |
+| [0044](0044-a-planners-candidate-order-ranked-groups-in-the-core-and-the-tactics-order-in-the-kit.md) | A planner's candidate order: ranked groups in the core, and the tactics order in the kit | Accepted; extends ADR-0029 and ADR-0027 |
 
 Template: [`0000-template.md`](0000-template.md).
