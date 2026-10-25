@@ -185,7 +185,8 @@ jobs:
           COMMAND: ${{ inputs.command }}
           ALLOW_NO_PLAN: ${{ inputs.allow-no-plan }}
         run: |
-          set -uo pipefail
+          # Not `-e` (the step's default): the playtest's status is read, not fatal.
+          set +e -uo pipefail
           report="$RUNNER_TEMP/playtest.json"
           text="$RUNNER_TEMP/playtest.txt"
           rm -f "$report"
