@@ -381,3 +381,4 @@ on `shuyi-core` and `shuyi-assets` alone, which keeps it pure. The game
 depends on the engine's repository at `main`, at `--engine-rev
 <commit>`, or on the checkout at `--engine-path <dir>`. CI makes a game
 with each short name on every pull request and runs its gates.
+

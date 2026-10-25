@@ -100,3 +100,4 @@ made from it) is under the SIL Open Font License 1.1:
 `files/font/Terminus-LICENSE.txt`. Everything else here is the engine's
 own: the tileset is the font's glyphs on the palette's colors, and the
 sounds are sine blips the game makes when it starts.
+
