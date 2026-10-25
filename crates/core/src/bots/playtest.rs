@@ -754,12 +754,18 @@ impl PlaytestReport {
             (check, found) => (format!("{check:?}"), format!("{found:?}")),
         }
     }
-}
 
-/// The table: how many tries from which seeds, a line per check, then
-/// every try of every entrant.
-impl fmt::Display for PlaytestReport {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// The table without its line per try: how many tries from which
+    /// seeds, and a line per check.
+    pub fn brief(&self) -> String {
+        let mut out = String::new();
+        // Writing to a `String` can't fail.
+        let _ = self.write_table(&mut out, false);
+        out
+    }
+
+    /// The table into `f`, with every try's line if `tries`.
+    fn write_table(&self, f: &mut impl fmt::Write, tries: bool) -> fmt::Result {
         let first = self.entrants.first().map_or(&[][..], |e| &e.tries);
         match (first.first(), first.last()) {
             (Some(a), Some(b)) => {
@@ -791,6 +797,9 @@ impl fmt::Display for PlaytestReport {
             let pad = left - what.chars().count() + 4;
             writeln!(f, "{what}{:pad$}{how}", "")?;
         }
+        if !tries {
+            return Ok(());
+        }
         if self.entrants.iter().any(|e| !e.tries.is_empty()) {
             writeln!(f)?;
         }
@@ -811,6 +820,14 @@ impl fmt::Display for PlaytestReport {
             }
         }
         Ok(())
+    }
+}
+
+/// The table: how many tries from which seeds, a line per check, then
+/// every try of every entrant.
+impl fmt::Display for PlaytestReport {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.write_table(f, true)
     }
 }
 

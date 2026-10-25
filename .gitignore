@@ -1,4 +1,6 @@
 /target/
+# An example's own (its playtest history, `target/playtest-history/`).
+/examples/*/target/
 **/*.rs.bk
 *.snap.new
 *.pending-snap

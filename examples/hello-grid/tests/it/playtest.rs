@@ -15,7 +15,7 @@ use shuyi::core::{PlayError, Pos};
 use shuyi_cli::GameArg;
 use shuyi_cli::contract::Answer;
 use shuyi_cli::contract::bots::{BotsInput, bots};
-use shuyi_cli::contract::playtest::{PlaytestInput, PlaytestOutput, playtest};
+use shuyi_cli::contract::playtest::{self, PlaytestInput, PlaytestOutput, playtest};
 use shuyi_cli::serde_json;
 
 const FIFTY: Tries = Tries::new(50, 0, 200);
@@ -155,31 +155,75 @@ fn an_entrant_asked_for_plays_alone_with_its_own_checks() {
     );
 }
 
+/// The command `playtest` with `more` arguments, its history in `dir`'s
+/// `history`: the answer it wrote to `dir`'s `out.json`.
+fn command(dir: &std::path::Path, more: &[&str]) -> PlaytestOutput {
+    let file = dir.join("out.json");
+    let history = dir.join("history");
+    let path = |p: &std::path::Path| p.to_string_lossy().into_owned();
+    let mut args: Vec<String> = ["playtest", "--tries", "50", "--threads", "3", "--brief"]
+        .iter()
+        .chain(more)
+        .map(|a| (*a).to_owned())
+        .collect();
+    args.extend([
+        "--history".to_owned(),
+        path(&history),
+        "--report".to_owned(),
+        path(&file),
+    ]);
+    let code = shuyi_cli::main_with(args.into_iter(), Some(&HelloTools));
+    assert_eq!(code, 0);
+    let text = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{e}"));
+    let answer: Answer<Vec<PlaytestOutput>> =
+        serde_json::from_str(&text).unwrap_or_else(|e| panic!("{e}"));
+    assert!(answer.ok, "{:?}", answer.error);
+    let mut outputs = answer.result.unwrap_or_else(|| panic!("no result"));
+    outputs.remove(0)
+}
+
 #[test]
-fn the_command_writes_the_json_answer_to_its_report_file() {
+fn the_command_keeps_a_history_and_the_second_run_says_what_the_first_was() {
     let dir = std::env::temp_dir().join(format!("hello-grid-playtest-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    let file = dir.join("out.json");
-    let args = [
-        "playtest",
-        "--tries",
-        "50",
-        "--threads",
-        "3",
-        "--report",
-        file.to_str().unwrap(),
-    ];
-    let code = shuyi_cli::main_with(args.iter().map(|a| (*a).to_owned()), Some(&HelloTools));
-    assert_eq!(code, 0);
-    let text = std::fs::read_to_string(&file).unwrap();
-    let answer: Answer<Vec<PlaytestOutput>> = serde_json::from_str(&text).unwrap();
-    assert!(answer.ok);
-    let output = &answer.result.unwrap()[0];
-    assert_eq!(output.report, fifty());
-    // Each entrant's speed is in the answer.
-    assert_eq!(output.entrants.len(), 2);
-    assert!(output.entrants.iter().all(|p| p.seconds_per_try > 0.0));
+    let first = command(&dir, &[]);
+    assert_eq!(first.report, fifty());
+    // Each entrant's speed and summary are in the answer.
+    assert_eq!(first.entrants.len(), 2);
+    assert!(first.entrants.iter().all(|p| p.seconds_per_try > 0.0));
+    assert_eq!(first.entrants[0].summary[0], "won 5/50");
+    assert_eq!(first.entrants[1].summary[0], "won 50/50");
+    assert!(first.entrants[1].summary[1].starts_with("turns median "));
+    assert_eq!(first.previous, None);
+    assert!(first.entrants.iter().all(|p| p.was.is_none()));
+
+    let second = command(&dir, &[]);
+    let previous = second
+        .previous
+        .clone()
+        .unwrap_or_else(|| panic!("no previous"));
+    assert!(previous.date.ends_with(" UTC"), "{}", previous.date);
+    let was: Vec<Option<&str>> = second.entrants.iter().map(|p| p.was.as_deref()).collect();
+    assert_eq!(was, [Some("was 5/50 succeed"), Some("was 50/50 succeed")]);
+    let text = playtest::text(std::slice::from_ref(&second));
+    assert!(text.contains("random · won 5/50 · turns median "), "{text}");
+    assert!(text.contains(" s per try · was 5/50 succeed\n"), "{text}");
+    assert!(
+        text.ends_with(&format!(
+            "previous {} · commit {}\n",
+            previous.date, previous.commit
+        )),
+        "{text}"
+    );
+    let kept = dir.join("history").join("stage-random+walk.jsonl");
+    assert_eq!(std::fs::read_to_string(&kept).unwrap().lines().count(), 2);
+
+    // Other entrants keep another file, and have nothing to compare with.
+    let walk = command(&dir, &["--entrant", "walk"]);
+    assert_eq!(walk.previous, None);
+    assert_eq!(walk.entrants[0].was, None);
+    assert!(dir.join("history").join("stage-walk.jsonl").is_file());
     std::fs::remove_dir_all(&dir).unwrap();
 }
 

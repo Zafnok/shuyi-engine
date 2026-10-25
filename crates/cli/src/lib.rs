@@ -100,7 +100,7 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   bots <games>                       the game's bots play: outcomes and measures
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the
-                                     game's bands
+                                     game's bands, and what they were the last run
   autobalance [--stage ID] [--budget N] [--time SECONDS] [--apply]
                                      change the stage until each named bot is in its band:
                                      the changes, before and after; --apply writes it

@@ -21,7 +21,7 @@ use shuyi_core::bots::playtest::{Band, Check, Condition, Tried, Tries, Want};
 
 use super::autobalance::AutobalanceInput;
 use super::bots::{BotsInput, BotsOutput, tally};
-use super::playtest::{DEFAULT_TRIES, PlaytestInput};
+use super::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use crate::frame_png::{Image, Script, Shot, Step};
@@ -210,7 +210,8 @@ impl Default for Fake {
 /// turns be lower than `walk`'s. Each try ends `outcome` (unfinished if
 /// `None`), `walk`'s at the turn limit and `run`'s a turn sooner, won
 /// unless its stage's name starts with `hard`; the try of seed `fail`
-/// fails, and each takes `sleep`.
+/// fails, and each takes `sleep`. `walk`'s summary is the sum of `won`
+/// and the median of `turns`; `run` has none.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FakePlaytest {
     /// Its stages.
@@ -411,6 +412,7 @@ impl GameTools for Fake {
                     measures: [("won".to_owned(), won), ("turns".to_owned(), turns.into())].into(),
                 })
             }),
+            summary: vec![vec![Summary::sum("won"), Summary::median("turns")]],
         })
     }
 
