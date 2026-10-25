@@ -231,9 +231,16 @@ fn the_games_are_made_under_the_target_folder() {
 
 #[test]
 fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
-    let root = checkout("second", &[("shuyi-test", Some(RUNS)), ("shuyi-other", Some(RUNS))]);
+    let root = checkout(
+        "second",
+        &[("shuyi-test", Some(RUNS)), ("shuyi-other", Some(RUNS))],
+    );
     let manual = r#"Example(template: "grid", manual: Some("needs a window"), steps: [])"#;
-    fs::write(root.join(SKILLS).join("shuyi-test/example-attach.ron"), manual).unwrap();
+    fs::write(
+        root.join(SKILLS).join("shuyi-test/example-attach.ron"),
+        manual,
+    )
+    .unwrap();
     let (found, errors) = examples(&root);
     assert_eq!(errors, Vec::<String>::new());
     let names: Vec<&str> = found.iter().map(|(name, _, _)| name.as_str()).collect();
@@ -247,7 +254,11 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
     let fake = Fake::default();
     let outcome = run(&root, &root.join("games"), &only, &fake);
     assert_eq!(outcome.errors, Vec::<String>::new());
-    assert!(outcome.report.contains("shuyi-test: 3 step(s)"), "{}", outcome.report);
+    assert!(
+        outcome.report.contains("shuyi-test: 3 step(s)"),
+        "{}",
+        outcome.report
+    );
     assert!(
         outcome
             .report
@@ -255,6 +266,10 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
         "{}",
         outcome.report
     );
-    assert!(!outcome.report.contains("shuyi-other"), "{}", outcome.report);
+    assert!(
+        !outcome.report.contains("shuyi-other"),
+        "{}",
+        outcome.report
+    );
     let _ = fs::remove_dir_all(&root);
 }

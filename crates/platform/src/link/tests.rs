@@ -189,17 +189,12 @@ fn requests_and_answers_are_one_json_object_a_line() {
 
 #[test]
 fn base64_is_rfc_4648s() {
-    // RFC 4648 §10's test vectors.
-    let vectors = [
-        ("", ""),
-        ("f", "Zg=="),
-        ("fo", "Zm8="),
-        ("foo", "Zm9v"),
-        ("foob", "Zm9vYg=="),
-        ("fooba", "Zm9vYmE="),
-        ("foobar", "Zm9vYmFy"),
+    // RFC 4648 §10's test vectors: "foobar"'s first 0 to 6 letters.
+    let encoded = [
+        "", "Zg==", "Zm8=", "Zm9v", "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy",
     ];
-    for (plain, encoded) in vectors {
+    for (n, encoded) in encoded.into_iter().enumerate() {
+        let plain = &"foobar"[..n];
         assert_eq!(base64::encode(plain.as_bytes()), encoded);
         assert_eq!(base64::decode(encoded).unwrap(), plain.as_bytes());
     }
@@ -417,7 +412,7 @@ fn plays_as_the_harness(steps: &[Step]) {
 }
 
 #[test]
-fn a_play_of_keys_buttons_and_waits_ends_as_the_harnesss() {
+fn a_play_of_keys_buttons_and_waits_ends_as_the_harness_does() {
     plays_as_the_harness(&[keys("f"), Step::Wait(3), keys("Down f")]);
     plays_as_the_harness(&[pad("South"), Step::Wait(2), pad("DpadDown East")]);
     plays_as_the_harness(&[keys("f Down"), pad("South"), Step::Wait(5), keys("d")]);
@@ -530,23 +525,17 @@ fn a_request_after_a_play_waits_for_its_answer() {
     assert_eq!(status.frames, 2);
     assert_eq!(status.screens, b.game().screens());
     assert!(matches!(b.answer(), Answer::Frame { limit: None, .. }));
-    // A play of nothing is answered at once.
-    let Handled::Answer(line) = b.send(&Request::Play { steps: vec![] }.to_line()) else {
-        panic!("not answered");
-    };
-    assert!(matches!(
-        Answer::from_line(&line),
-        Ok(Answer::Played(Played { frames: 0, .. }))
-    ));
-    // One of no frames is answered after the next.
-    let none = Request::Play {
-        steps: vec![Step::Wait(0)],
-    };
-    assert_eq!(b.send(&none.to_line()), Handled::Later);
-    assert!(matches!(
-        b.answer(),
-        Answer::Played(Played { frames: 0, .. })
-    ));
+    // A play of nothing, or of waits of no frame, is answered at once.
+    for steps in [vec![], vec![Step::Wait(0), Step::Wait(0)]] {
+        let Handled::Answer(line) = b.send(&Request::Play { steps }.to_line()) else {
+            panic!("not answered");
+        };
+        assert!(matches!(
+            Answer::from_line(&line),
+            Ok(Answer::Played(Played { frames: 0, .. }))
+        ));
+    }
+    assert_eq!(b.app.frame_number(), 2);
 }
 
 #[test]

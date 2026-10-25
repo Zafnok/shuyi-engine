@@ -253,7 +253,7 @@ fn a_frame_never_waits_on_the_socket() {
     let (_reader, mut stream) = connect(host.port());
     quick(&mut host);
     assert!(host.listener.client.is_some());
-    stream.write_all(b"{\"op\":\"hel").unwrap();
+    stream.write_all(b"{\"op\":\"stat").unwrap();
     quick(&mut host);
     assert!(host.listener.client.is_some());
 }

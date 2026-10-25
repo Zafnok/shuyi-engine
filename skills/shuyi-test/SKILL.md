@@ -122,7 +122,8 @@ colours or the frame's text.
 
    The game crate's `link` feature turns the live link on, in a debug
    build only; `SHUYI_LINK` is the port (`0` takes a free one). Its log
-   says `shuyi link: listening on 127.0.0.1:<port>, token <token>`. Then:
+   gives the address and the token, in a line ending `listening on
+   127.0.0.1:<port>, token <token>`. Then:
 
    ```bash
    cargo shuyi attach 127.0.0.1:<port> --token <token> --act Confirm --screenshot shot.png

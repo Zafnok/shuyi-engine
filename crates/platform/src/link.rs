@@ -505,7 +505,8 @@ impl Server {
                         return Handled::Answer(Answer::error(format!("step {}: {e}", i + 1)));
                     }
                 }
-                if steps.is_empty() {
+                // A play of no frames (nothing, or waits of none) is done.
+                if steps.iter().all(|step| *step == Step::Wait(0)) {
                     Answer::Played(Played {
                         frames: 0,
                         waited_loading: false,

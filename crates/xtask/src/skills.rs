@@ -161,7 +161,10 @@ pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) ->
                 .any(|only| only == name || dir.file_name().is_some_and(|d| d == only.as_str()))
     };
     for name in &options.only {
-        if !found.iter().any(|(n, dir, _)| n == name || dir.ends_with(name)) {
+        if !found
+            .iter()
+            .any(|(n, dir, _)| n == name || dir.ends_with(name))
+        {
             errors.push(format!(
                 "{name}: no skill of {SKILLS}/ with a worked example ({EXAMPLE})"
             ));

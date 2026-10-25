@@ -18,8 +18,8 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint, modules, new,
-    playtest, replay, run, schemas,
+    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint,
+    modules, new, playtest, replay, run, schemas,
 };
 use crate::game::GameTools;
 use crate::project::Project;

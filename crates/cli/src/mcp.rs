@@ -179,6 +179,14 @@ pub fn tool(name: &str) -> Option<(Op, bool)> {
         .map(|op| (op, false))
 }
 
+/// What `attach`'s tool does.
+const ATTACH: &str = "Reach a game's debug build already running in its window, over the live link \
+     (`address` and `token`: its log line `shuyi link: listening on ..., token ...`; the \
+     build runs with its `link` feature and SHUYI_LINK set). Play `steps` as a player's \
+     input (keys, pad buttons, an action by name with `act`, waits in its frames), let \
+     `frames` pass, then read its screens, frame as text, log from `log_since`, and, \
+     with `screenshot` (a PNG's path), the window's picture.";
+
 /// What the tool of `op` does, for its description.
 fn description(op: Op, session: bool) -> &'static str {
     match (op, session) {
@@ -257,14 +265,7 @@ fn description(op: Op, session: bool) -> &'static str {
             "Every problem code, or one code's page (`SH2003` or `missing-file`): what it means \
              and how to fix it. Every failed answer has a `code`."
         }
-        (Op::Attach, _) => {
-            "Reach a game's debug build already running in its window, over the live link \
-             (`address` and `token`: its log line `shuyi link: listening on ..., token ...`; the \
-             build runs with its `link` feature and SHUYI_LINK set). Play `steps` as a player's \
-             input (keys, pad buttons, an action by name with `act`, waits in its frames), let \
-             `frames` pass, then read its screens, frame as text, log from `log_since`, and, \
-             with `screenshot` (a PNG's path), the window's picture."
-        }
+        (Op::Attach, _) => ATTACH,
         (Op::Start, _) => {
             "Build the game's tool program and start its game headless in the session, as its \
              start options say (the answer lists them); a game already running is stopped. \

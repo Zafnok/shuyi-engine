@@ -201,9 +201,10 @@ impl AttachStep {
 /// `seconds` in frames at [`FRAMES_PER_SECOND`], to the nearest.
 pub fn frames_of(seconds: f32) -> u32 {
     let frames = (seconds.max(0.0) * FRAMES_PER_SECOND).round();
-    // Checked by `Script::parse_step` to be at most `MAX_WAIT` seconds.
+    // Not negative, and `as` saturates past `u32::MAX`; `Script::parse_step`
+    // checks a wait is at most `MAX_WAIT` seconds anyway.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let frames = frames.min(u32::MAX as f32) as u32;
+    let frames = frames as u32;
     frames
 }
 
@@ -260,7 +261,7 @@ pub fn parse_args(args: &[String]) -> Result<AttachInput, String> {
                     .map_err(|_| format!("--log-since: a whole number, not {text}"))?;
             }
             flag if flag.starts_with("--") => return Err(format!("unknown option: {flag}")),
-            address if input.address.is_empty() => input.address = address.to_owned(),
+            address if input.address.is_empty() => address.clone_into(&mut input.address),
             other => return Err(format!("one address, not also {other}")),
         }
     }
@@ -282,7 +283,10 @@ fn parse_step(
     if flag == "--act" {
         return Some(value().and_then(|name| {
             let step = AttachStep::Act(name);
-            step.to_link().check().map(|()| step).map_err(|e| format!("--{e}"))
+            step.to_link()
+                .check()
+                .map(|()| step)
+                .map_err(|e| format!("--{e}"))
         }));
     }
     if !matches!(flag, "--keys" | "--script" | "--pad" | "--wait") {
@@ -326,9 +330,7 @@ impl Connection {
             match TcpStream::connect_timeout(&socket, CONNECT) {
                 Ok(stream) => {
                     let _ = stream.set_nodelay(true);
-                    let writer = stream
-                        .try_clone()
-                        .map_err(|e| no_build(e.to_string()))?;
+                    let writer = stream.try_clone().map_err(|e| no_build(e.to_string()))?;
                     return Ok(Self {
                         reader: BufReader::new(stream),
                         writer,
@@ -358,7 +360,10 @@ impl Connection {
         match self.reader.read_line(&mut answer) {
             Ok(0) => Ok(None),
             Ok(_) => Line::from_line(&answer).map(Some).map_err(|e| {
-                lost(format!("the build at {} answered what this shuyi can't read: {e}", self.address))
+                lost(format!(
+                    "the build at {} answered what this shuyi can't read: {e}",
+                    self.address
+                ))
             }),
             Err(e) if closed(e.kind()) => Ok(None),
             Err(e) if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) => {
@@ -495,7 +500,10 @@ fn hello(link: &mut Connection, token: &str) -> Result<String, Failed> {
                 link.address
             ),
         )),
-        Some(Line::Hello { link: version, game }) if version == link::VERSION => Ok(game),
+        Some(Line::Hello {
+            link: version,
+            game,
+        }) if version == link::VERSION => Ok(game),
         Some(Line::Hello { link: version, .. }) => Err((
             codes::LINK_VERSION,
             format!(
@@ -506,7 +514,10 @@ fn hello(link: &mut Connection, token: &str) -> Result<String, Failed> {
         )),
         Some(Line::Busy) => Err((
             codes::LINK_LOST,
-            format!("another client is attached to the build at {}", link.address),
+            format!(
+                "another client is attached to the build at {}",
+                link.address
+            ),
         )),
         Some(other) => Err(unexpected("its hello", &other)),
     }

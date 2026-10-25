@@ -69,7 +69,10 @@ impl Host {
     fn let_go(&self) {
         let until = std::time::Instant::now() + Duration::from_secs(10);
         while self.attached.load(Ordering::Relaxed) {
-            assert!(std::time::Instant::now() < until, "the client stayed attached");
+            assert!(
+                std::time::Instant::now() < until,
+                "the client stayed attached"
+            );
             thread::sleep(Duration::from_millis(1));
         }
     }
@@ -129,9 +132,11 @@ fn serve(socket: &TcpListener, stop: &AtomicBool, attached: &AtomicBool) {
             while let Some(end) = read.iter().position(|&b| b == b'\n') {
                 let line: Vec<u8> = read.drain(..=end).collect();
                 match server.handle(String::from_utf8_lossy(&line).trim_end(), &app) {
-                    Handled::Answer(answer) => out.push_str(&format!("{answer}\n")),
+                    Handled::Answer(answer) => push_line(&mut out, &answer),
                     Handled::Close(last) => {
-                        out.push_str(&last.map(|l| format!("{l}\n")).unwrap_or_default());
+                        if let Some(last) = last {
+                            push_line(&mut out, &last);
+                        }
                         close = true;
                         break;
                     }
@@ -144,10 +149,10 @@ fn serve(socket: &TcpListener, stop: &AtomicBool, attached: &AtomicBool) {
         let _ = app.frame_after(&mut platform, 1.0 / 60.0);
         if let Some((stream, server, _)) = &mut client {
             for answer in server.after_frame(&app) {
-                out.push_str(&format!("{answer}\n"));
+                push_line(&mut out, &answer);
             }
             if server.wants_screenshot() {
-                out.push_str(&format!("{}\n", server.screenshot(b"\x89PNG", 2, 1)));
+                push_line(&mut out, &server.screenshot(b"\x89PNG", 2, 1));
             }
             if stream.write_all(out.as_bytes()).is_err() || close {
                 client = None;
@@ -158,9 +163,18 @@ fn serve(socket: &TcpListener, stop: &AtomicBool, attached: &AtomicBool) {
     }
 }
 
+/// `line` and a line break, added to `out`.
+fn push_line(out: &mut String, line: &str) {
+    out.push_str(line);
+    out.push('\n');
+}
+
 /// Whether a read failed only because nothing came in time.
 fn waiting(kind: ErrorKind) -> bool {
-    matches!(kind, ErrorKind::WouldBlock | ErrorKind::TimedOut | ErrorKind::Interrupted)
+    matches!(
+        kind,
+        ErrorKind::WouldBlock | ErrorKind::TimedOut | ErrorKind::Interrupted
+    )
 }
 
 /// A host that answers any hello with another link version.
@@ -181,11 +195,12 @@ fn other_version() -> (String, JoinHandle<()>) {
 }
 
 fn input(address: &str, steps: Vec<AttachStep>) -> AttachInput {
-    let mut input = AttachInput::default();
-    input.address = address.to_owned();
-    input.token = TOKEN.to_owned();
-    input.steps = steps;
-    input
+    AttachInput {
+        address: address.to_owned(),
+        token: TOKEN.to_owned(),
+        steps,
+        ..AttachInput::default()
+    }
 }
 
 #[test]
@@ -222,7 +237,11 @@ fn its_arguments_are_an_address_a_token_steps_and_what_to_read() {
         ]
     );
     assert_eq!(
-        (parsed.frames, parsed.screenshot.as_deref(), parsed.log_since),
+        (
+            parsed.frames,
+            parsed.screenshot.as_deref(),
+            parsed.log_since
+        ),
         (3, Some("shot.png"), 12)
     );
     assert_eq!(
@@ -242,14 +261,35 @@ fn its_arguments_are_an_address_a_token_steps_and_what_to_read() {
         (vec!["--token", TOKEN], "address is missing"),
         (vec!["127.0.0.1:1"], "--token is missing"),
         (vec!["a:1", "b:2", "--token", "t"], "one address"),
-        (vec!["a:1", "--token", "t", "--nope"], "unknown option: --nope"),
-        (vec!["a:1", "--token", "t", "--keys", "Nope"], "--keys: unknown key"),
-        (vec!["a:1", "--token", "t", "--wait", "x"], "--wait: not a number"),
-        (vec!["a:1", "--token", "t", "--wait", "99"], "--wait: 99 is not"),
-        (vec!["a:1", "--token", "t", "--act", " "], "--act: no action named"),
+        (
+            vec!["a:1", "--token", "t", "--nope"],
+            "unknown option: --nope",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--keys", "Nope"],
+            "--keys: unknown key",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--wait", "x"],
+            "--wait: not a number",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--wait", "99"],
+            "--wait: 99 is not",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--act", " "],
+            "--act: no action named",
+        ),
         (vec!["a:1", "--token", "t", "--act"], "--act needs a value"),
-        (vec!["a:1", "--token", "t", "--frames", "-1"], "--frames: a whole number"),
-        (vec!["a:1", "--token", "t", "--log-since", "x"], "--log-since: a whole"),
+        (
+            vec!["a:1", "--token", "t", "--frames", "-1"],
+            "--frames: a whole number",
+        ),
+        (
+            vec!["a:1", "--token", "t", "--log-since", "x"],
+            "--log-since: a whole",
+        ),
     ] {
         let error = parse_args(&args(&bad)).unwrap_err();
         assert!(error.contains(said), "{bad:?}: {error}");
@@ -277,11 +317,20 @@ fn it_plays_the_steps_in_the_running_build_and_reads_what_it_shows() {
     let output = answer.result.unwrap();
     assert_eq!((output.link, output.game.as_str()), (link::VERSION, "Toy"));
     assert_eq!(output.screens, ["home", "menu"]);
-    assert_eq!((output.top_screen.as_str(), output.phase.as_str()), ("menu", "running"));
+    assert_eq!(
+        (output.top_screen.as_str(), output.phase.as_str()),
+        ("menu", "running")
+    );
     assert!(output.focused && !output.suspended && !output.quit);
     assert!(output.frame.contains("--- "), "{}", output.frame);
-    let shot = output.screenshot.clone().unwrap_or_else(|| panic!("{output:?}"));
-    assert_eq!((shot.path.as_str(), shot.width, shot.height), ("shot.png", 2, 1));
+    let shot = output
+        .screenshot
+        .clone()
+        .unwrap_or_else(|| panic!("{output:?}"));
+    assert_eq!(
+        (shot.path.as_str(), shot.width, shot.height),
+        ("shot.png", 2, 1)
+    );
     assert_eq!(fs::read(dir.join("shot.png")).unwrap(), b"\x89PNG");
     assert!(
         answer.limits.iter().any(|l| l.contains("own frames")),
@@ -306,13 +355,26 @@ fn it_plays_the_steps_in_the_running_build_and_reads_what_it_shows() {
 fn an_action_is_pressed_by_its_key_and_one_it_cant_press_is_named() {
     let host = Host::start();
     let dir = scratch("act");
-    let answer = attach(&input(&host.address(), vec![AttachStep::Act("Confirm".into())]), &dir);
+    let answer = attach(
+        &input(&host.address(), vec![AttachStep::Act("Confirm".into())]),
+        &dir,
+    );
     assert_eq!(answer.result.unwrap().screens, ["home", "menu"]);
     host.let_go();
-    let answer = attach(&input(&host.address(), vec![AttachStep::Act("Menu".into())]), &dir);
-    assert_eq!(answer.code.as_deref(), Some(codes::WRONG_ARGUMENTS.0), "{answer:?}");
+    let answer = attach(
+        &input(&host.address(), vec![AttachStep::Act("Menu".into())]),
+        &dir,
+    );
+    assert_eq!(
+        answer.code.as_deref(),
+        Some(codes::WRONG_ARGUMENTS.0),
+        "{answer:?}"
+    );
     let error = answer.error.unwrap();
-    assert!(error.contains("Menu") && error.contains("neither"), "{error}");
+    assert!(
+        error.contains("Menu") && error.contains("neither"),
+        "{error}"
+    );
 }
 
 #[test]
@@ -342,7 +404,10 @@ fn a_wrong_token_and_another_link_version_have_their_codes() {
     assert_eq!(answer.code.as_deref(), Some(codes::LINK_VERSION.0));
     assert_eq!(answer.exit_code(), 3);
     let error = answer.error.unwrap();
-    assert!(error.contains(&format!("version {}", link::VERSION + 1)), "{error}");
+    assert!(
+        error.contains(&format!("version {}", link::VERSION + 1)),
+        "{error}"
+    );
 }
 
 #[test]

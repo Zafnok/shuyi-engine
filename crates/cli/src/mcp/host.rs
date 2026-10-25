@@ -25,8 +25,8 @@ use crate::contract::import::Importers;
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::Session;
 use crate::contract::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint, modules, new,
-    playtest, replay,
+    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint,
+    modules, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
 use crate::game::{GameArg, GameTools, code_of};
