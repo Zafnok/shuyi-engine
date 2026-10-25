@@ -76,10 +76,8 @@ None.
   by git revision says that consumers can read the label.
 
 **Out (do not do):**
-- A push to other repositories (`repository_dispatch`): it needs a
-  token in this repository's secrets that can write to the other
-  repository, and ADR-0037 (engine 2011) keeps tokens out of CI where
-  it can. Consumers poll the public labels instead.
+- Telling other repositories that `main` moved: that is 2031. The
+  label is what they read once they hear.
 - Changing what counts as breaking (ADR-0038 §4).
 - Labelling PRs from forks: the `pull_request` event gives them a
   read-only token. The step skips with a notice and no failure. A fork
