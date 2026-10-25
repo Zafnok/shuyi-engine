@@ -9,7 +9,7 @@
         entrant: "random",
         success: [(measure: "won", min: Some(1))],
         band: (min: 5, max: 20),
-        floor: Some(1),
+        floor: Some(50),
     ),
     // A plain walk to the goal nearly always outruns the foe.
     Rate(
