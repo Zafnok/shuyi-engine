@@ -53,8 +53,9 @@ What the engine has (checked 2026-10-21):
   agent's game bound. `ActionSet::from_name`
   (`crates/assets/src/keymap/action_set.rs`) and `Keymap::primary` and
   `Keymap::primary_button` (`crates/ui/src/input/keymap.rs`) can find
-  them, but no step uses them. 2521 plans an `act` step for its live
-  link only.
+  them, but no step of the contract's scripts uses them. 2521 (done)
+  gave the live link an `act` step: `shuyi_platform::link::Step::Act`,
+  looked up by `link::press_for`, and `shuyi attach --act`.
 - **The grid template** (`templates/grid`): a turn game whose tools
   (`crates/game/src/tools.rs`) give a session with a scene, `replay`,
   `bots` and the controls. Its actions are `Up`, `Down`, `Left`,
@@ -142,13 +143,14 @@ None. Spending money on agent runs is 2525's question.
     with `SH0001` and the list, and the session keeps running; without
     it the panic ends the game's tool program and the session
     (`SH3005`).
-  - **Either order with 2521:** if 2521 is done, `attach` reads
-    `--act` itself and looks actions up with
-    `shuyi_platform::link::press_for`: move that `--act` into
-    `Script::parse_step` and play `Step::Act` with `press_for`, so there
-    is one parser and one lookup (2521's clause says so). If not, 2521
-    reads `--act` through this ticket's `Script::parse_step`, and moves
-    the lookup by name into `press_for`.
+  - **From 2521 (done):** `attach` reads `--act` itself
+    (`contract::attach::parse_step`, beside `Script::parse_step`, into
+    its own `AttachStep::Act`) and the link looks actions up with
+    `shuyi_platform::link::press_for`. Move that `--act` into
+    `Script::parse_step`, play `Step::Act` with `press_for` (the
+    Harness's keymap, `game.input().keymap()`), and let `attach` take
+    the contract's `Step` instead of its `AttachStep`, so there is one
+    parser and one lookup.
 - **Tasks as data:** `evals/tasks/<id>.ron`, read by
   `crates/xtask/src/eval/task.rs` with `serde` and `ron`
   (`deny_unknown_fields`). These are the repository's tooling files, not
@@ -352,8 +354,8 @@ None. Spending money on agent runs is 2525's question.
   the references, the schemas and the fixtures aside), the actions by
   name (`Step::Act`, `Session::actions`, `--act` and the contract
   change) go to a ticket of their own (`write-ticket`), After MVP,
-  landed first as its own PR; this ticket then waits for it, and
-  2521's either-order clause names it. The PR says so.
+  landed first as its own PR; this ticket then waits for it. The PR
+  says so.
 
 **Out (do not do):**
 - running an agent, a schedule, tokens, cost and minutes, a results page

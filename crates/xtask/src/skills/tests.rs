@@ -228,3 +228,33 @@ fn the_games_are_made_under_the_target_folder() {
         Path::new("engine").join("target/skill-examples")
     );
 }
+
+#[test]
+fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
+    let root = checkout("second", &[("shuyi-test", Some(RUNS)), ("shuyi-other", Some(RUNS))]);
+    let manual = r#"Example(template: "grid", manual: Some("needs a window"), steps: [])"#;
+    fs::write(root.join(SKILLS).join("shuyi-test/example-attach.ron"), manual).unwrap();
+    let (found, errors) = examples(&root);
+    assert_eq!(errors, Vec::<String>::new());
+    let names: Vec<&str> = found.iter().map(|(name, _, _)| name.as_str()).collect();
+    assert_eq!(names, ["shuyi-other", "shuyi-test", "shuyi-test-attach"]);
+    assert!(found[2].1.ends_with("shuyi-test"));
+    assert_eq!(found[2].2.manual.as_deref(), Some("needs a window"));
+    let only = Options {
+        only: vec!["shuyi-test".to_owned()],
+        shard: None,
+    };
+    let fake = Fake::default();
+    let outcome = run(&root, &root.join("games"), &only, &fake);
+    assert_eq!(outcome.errors, Vec::<String>::new());
+    assert!(outcome.report.contains("shuyi-test: 3 step(s)"), "{}", outcome.report);
+    assert!(
+        outcome
+            .report
+            .contains("shuyi-test-attach: manual, not run: needs a window"),
+        "{}",
+        outcome.report
+    );
+    assert!(!outcome.report.contains("shuyi-other"), "{}", outcome.report);
+    let _ = fs::remove_dir_all(&root);
+}

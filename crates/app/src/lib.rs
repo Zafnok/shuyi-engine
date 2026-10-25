@@ -37,6 +37,14 @@
 //! }
 //! ```
 //!
+//! With the `link` feature, a debug build listens for the live link
+//! (ADR-0047), so `shuyi attach` reaches the game running in its window:
+//! run it with `SHUYI_LINK=0` (a free port; or a port of your choosing),
+//! and its log says `shuyi link: listening on 127.0.0.1:<port>, token
+//! <token>`. `SHUYI_LINK_TOKEN` sets the token instead of a random one. A
+//! release build, or one without the feature, never listens; on the web
+//! the feature does nothing yet.
+//!
 //! On the web the game's binary must link with `--allow-undefined`: the
 //! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only

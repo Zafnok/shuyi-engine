@@ -272,12 +272,15 @@ None.
     checks that one `crash-*.ron` appeared under it with 3046's fixed
     message and `frame: 3`, and that the exit code is 101; if not, 3046
     adds that step (its own clause says so);
-  - with 2521 (the live link): both read the window with
-    `get_screen_data()`, flip its rows and encode PNG with `image`, and
-    both turn key, button and wait steps into frames of raw input.
-    Whichever lands second reuses the first's code instead of writing
-    it again: one helper in `crates/app/src/readback.rs`, and
-    `capture::Plan::frames` or `shuyi_platform::link`'s step frames;
+  - **from 2521 (done)** (the live link): `crates/app/src/readback.rs`
+    reads the window (`window_png`: `get_screen_data()`, its rows turned
+    upright and made opaque by `upright`, PNG by `png` with `image`).
+    The capture mode reuses that helper instead of writing it again, and
+    builds its frames of raw input the way `shuyi_platform::link` plays
+    key, button and wait steps (its private `plan`, `press_keys` and
+    `press_pad`): move them where both use one copy (the module is
+    behind its `link` feature today; `readback` behind `shuyi-app`'s
+    `link`, so give it a cfg that both features turn on);
   - the new public types follow ADR-0039;
   - 2703 and 2323 (blocked by this one) say in their own clauses how
     their scenes join the card or a plan; 1120, 2301 and 2222 are in
@@ -303,7 +306,7 @@ None.
    and `render.rs`; `crates/platform/src/app.rs`, `harness.rs` and
    `headless.rs`; `frame_png.rs`'s `Step`; ADR-0011 §5, ADR-0024 and
    `docs/platform-backends.md`. Check which of 1120, 2222, 2301, 2333,
-   2335, 2336, 2337, 2513, 2521, 3042, 3044 and 3046 are done.
+   2335, 2336, 2337, 2513, 3042, 3044 and 3046 are done.
 2. Write the ADR.
 3. Write `shuyi_platform::capture` and its tests, and add the `no-std`
    job's line.
@@ -352,7 +355,7 @@ say that the clauses naming 2018's render card mean that ticket.
       `no-std` job.
 - [ ] The card holds every `Item`, `Paint` and `Layer` variant: the
       match with no `_` arm compiles, and a test counts them.
-- [ ] If 2521 is done, the window is read through one helper both use
+- [ ] The window is read through one helper the link uses too
       (`crates/app/src/readback.rs`). If 3046 is done, the job's crash
       step passes.
 - [ ] The ADR records the tolerance and the measured numbers; `render`

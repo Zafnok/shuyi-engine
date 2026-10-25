@@ -3,7 +3,9 @@
 //! fresh `shuyi new` game (ticket 1134, ADR-0043). If an example fails, its
 //! skill is wrong.
 //!
-//! A skill's example is `skills/<skill>/example.ron`, an [`Example`]: the
+//! A skill's example is `skills/<skill>/example.ron`, an [`Example`], and a
+//! skill may have more, `example-<what>.ron`, each named
+//! `<skill>-<what>` here (`shuyi-test-attach`): the
 //! template its game is made from, and the steps of a script
 //! ([`crate::script`]), whose `Write` steps take files from the skill's
 //! folder. Each game is made in `target/skill-examples/<skill>`, named
@@ -87,8 +89,29 @@ fn shard_of(value: &str) -> Result<(usize, usize), String> {
     Ok((i, n))
 }
 
-/// The skills of the pack at `root` with a worked example, by name, with
-/// their folder; or the errors of reading them.
+/// A skill's worked examples' files in its folder `dir`, with each
+/// example's name: `example.ron` the skill's (`skill`), then each
+/// `example-<what>.ron` as `<skill>-<what>`, in name order.
+fn example_files(dir: &Path, skill: &str) -> Vec<(String, String)> {
+    let mut files: Vec<(String, String)> = fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter_map(|entry| {
+            let file = entry.file_name().to_string_lossy().into_owned();
+            let what = file.strip_prefix("example-")?.strip_suffix(".ron")?;
+            Some((format!("{skill}-{what}"), file))
+        })
+        .collect();
+    files.sort();
+    if dir.join(EXAMPLE).is_file() {
+        files.insert(0, (skill.to_owned(), EXAMPLE.to_owned()));
+    }
+    files
+}
+
+/// The worked examples of the pack at `root`, by name, with their skill's
+/// folder; or the errors of reading them.
 pub fn examples(root: &Path) -> (Vec<(String, PathBuf, Example)>, Vec<String>) {
     let mut found = Vec::new();
     let mut errors = Vec::new();
@@ -99,18 +122,16 @@ pub fn examples(root: &Path) -> (Vec<(String, PathBuf, Example)>, Vec<String>) {
     };
     for entry in entries.flatten() {
         let dir = entry.path();
-        let file = dir.join(EXAMPLE);
-        if !file.is_file() {
-            continue;
-        }
-        let name = entry.file_name().to_string_lossy().into_owned();
-        let shown = format!("{SKILLS}/{name}/{EXAMPLE}");
-        match fs::read_to_string(&file) {
-            Ok(text) => match ron::from_str::<Example>(&text) {
-                Ok(example) => found.push((name, dir, example)),
+        let skill = entry.file_name().to_string_lossy().into_owned();
+        for (name, file) in example_files(&dir, &skill) {
+            let shown = format!("{SKILLS}/{skill}/{file}");
+            match fs::read_to_string(dir.join(&file)) {
+                Ok(text) => match ron::from_str::<Example>(&text) {
+                    Ok(example) => found.push((name, dir.clone(), example)),
+                    Err(e) => errors.push(format!("{shown}: {e}")),
+                },
                 Err(e) => errors.push(format!("{shown}: {e}")),
-            },
-            Err(e) => errors.push(format!("{shown}: {e}")),
+            }
         }
     }
     found.sort_by(|a, b| a.0.cmp(&b.0));
@@ -131,8 +152,16 @@ pub struct Outcome {
 pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
     let (found, mut errors) = examples(root);
     let mut report = String::new();
+    // A skill's name picks all of its examples.
+    let picks = |name: &str, dir: &Path| {
+        options.only.is_empty()
+            || options
+                .only
+                .iter()
+                .any(|only| only == name || dir.file_name().is_some_and(|d| d == only.as_str()))
+    };
     for name in &options.only {
-        if !found.iter().any(|(n, _, _)| n == name) {
+        if !found.iter().any(|(n, dir, _)| n == name || dir.ends_with(name)) {
             errors.push(format!(
                 "{name}: no skill of {SKILLS}/ with a worked example ({EXAMPLE})"
             ));
@@ -140,7 +169,7 @@ pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) ->
     }
     let picked = found
         .iter()
-        .filter(|(name, _, _)| options.only.is_empty() || options.only.contains(name))
+        .filter(|(name, dir, _)| picks(name, dir))
         .enumerate()
         .filter(|(i, _)| options.shard.is_none_or(|(at, of)| i % of == at - 1))
         .map(|(_, found)| found);

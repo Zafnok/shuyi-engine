@@ -28,6 +28,21 @@ debug tools and the `link` feature, and `shuyi attach` and MCP read it.
 Its ADR names the two transports this ticket adds. Two builds the game
 ships can't be reached yet:
 
+**From 2521 (done):** its ADR is
+[ADR-0047](../../docs/adr/0047-the-live-link-json-lines-over-loopback-tcp-to-a-running-debug-build-read-only-but-a-players-input.md).
+`Server::handle` returns `Handled::Close(Option<String>)`: a line to
+send before closing (the build's hello, for a client of another link
+version), so a bridge closes a client the same way. The listener's token
+rules are `crates/app/src/link.rs`'s `token`, `hex` and `random_bits`;
+the picture is `crates/app/src/readback.rs`'s `window_png`. The
+listener and `readback` are compiled only with
+`all(feature = "link", not(target_arch = "wasm32"))`, and `getrandom` and
+`image` are native-only dependencies, so `link` builds on wasm32 and does
+nothing there. A second client is told `Answer::Busy`, half-closed and
+read until it hangs up; a client that hangs up just before a new one
+connects makes way (`hung_up`). MCP's session over the link is 2560.
+
+
 - **The web build.** A page can't listen on a socket. It can only dial
   out, with a WebSocket. The web build has no `wasm-bindgen` (game
   ADR-0034), so it needs a miniquad JS plugin of our own, as
