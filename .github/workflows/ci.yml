@@ -12,7 +12,7 @@ jobs:
     uses: ./.github/workflows/playtest.yml
     with:
       working-directory: examples/hello-grid
-      levers: echo play=false
+      levers: echo play=true
       paths: |
         !*.md
         crates/core/src/bots/*
