@@ -57,6 +57,8 @@ same report on every machine and every thread count.
      never time.
    - `TurnPlan` (with `PlanSettings`) plans a side's whole turn of
      several commands the same way.
+   - Either one's `Order` decides what it tries at all: see *Candidate
+     orders* below.
 
 4. **Write the checks as data**, a file of `Check`s the tools read
    (keep it outside `files/`: it is the tools' data, not the game's):
@@ -171,6 +173,34 @@ foe can strike next turn, and the forecasts. All in `shuyi_core::threat`:
 
 Feed these to a persona's feature counts (`Weighted`): tiles left in
 danger, expected damage taken, steps to the goal.
+
+## Candidate orders: what a planner tries first
+
+`TurnPlan` and `Rollout` try only the first `candidates` commands of
+their `Order`. The legal order cut at ten holds one piece's attack in
+every flavour and nothing else, and the bot stalls. Give it a ranked
+order instead (ADR-0044):
+
+- **Any game:** `ranked_order(items, last, cap)` from
+  `Ranked::new(command, group, value, key)`: groups ascending, the best
+  `value` first, one per `key` first (all firsts, then all seconds), and
+  `last` (the end of the turn) always within `cap`. A deck-builder's:
+  damage plays in group 0 keyed by target, draws in group 1, the end
+  last.
+- **Grid games:** `TacticsOrder::new(hooks, cap)` with the game's
+  `OrderHooks`: `prepare` builds the state's `Threats` and
+  `GoalDistance`, `classify` tags each command (`Kind::Strike`,
+  `Extra`, `Step`, `End`, `Drop`, `Other`), `pick` is the game's AI's
+  own command, and `at`, `distance`, `safe` answer from them. Its eight
+  steps: each piece's best strike on each target, the pick, the extras,
+  each piece's advance (its step nearest the goals by walking, if
+  nearer than where it stands), each piece's hold (its safe step
+  nearest the goals, if not its advance), the other ways of striking,
+  the rest, and the end.
+
+Give the order the planner's own `candidates` as its `cap`, or the end
+can fall past the planner's cut. What a strike or a heal is and what it
+is worth stay the game's, in `classify`.
 
 ## When it fails
 

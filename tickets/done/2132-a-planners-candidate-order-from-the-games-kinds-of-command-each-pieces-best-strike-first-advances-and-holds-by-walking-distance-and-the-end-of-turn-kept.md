@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2131"]
 nick_input: none
-completed:
+completed: 2026-10-24
 ---
 
 # 2132 — A planner's candidate order
@@ -165,21 +165,21 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `ranked_order` with keys `a a b` in one group gives `a b a`; with
+- [x] `ranked_order` with keys `a a b` in one group gives `a b a`; with
       cap 2 and a `last`, the second is the `last`.
-- [ ] On the toy grid game, a `TacticsOrder` capped at 4 lists both
+- [x] On the toy grid game, a `TacticsOrder` capped at 4 lists both
       pieces' best strikes before either piece's second way, then an
       advance, then the end of the turn.
-- [ ] A piece's hold is a tile `Threats::safe` says is safe, nearest the
+- [x] A piece's hold is a tile `Threats::safe` says is safe, nearest the
       goal by walking (around the wall), and is left out when it equals
       the advance.
-- [ ] A piece with no step nearer the goal than where it stands has no
+- [x] A piece with no step nearer the goal than where it stands has no
       advance.
-- [ ] `End` is in the order for every cap from 1 to the number of
+- [x] `End` is in the order for every cap from 1 to the number of
       commands.
-- [ ] hello-grid plays with it and its tests pass, or the Completion
+- [x] hello-grid plays with it and its tests pass, or the Completion
       notes say why its stage has nothing to order.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -192,5 +192,56 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **Core layer.** `shuyi_core::bots::order` (`crates/core/src/bots/order.rs`):
+  `Ranked<C, K>` (with `Ranked::new`) and `ranked_order(items, last, cap)`,
+  re-exported from `bots` and the crate root. Tests in
+  `crates/core/src/bots/order/tests.rs`: the criteria, the rounds, groups
+  and values, keys per group, the cap and the last, a property test
+  against an independent ranking, and the counters fixture (its order
+  keeps the end within the cap, and the turn planner finds the combo
+  through a capped ranked order).
+- **Tactics layer.** `shuyi_core::threat::{Kind, OrderHooks, TacticsOrder}`
+  (`crates/core/src/threat/order.rs`); `TacticsOrder` and `OrderHooks`
+  are also at the crate root (`Kind` only under `threat`: too generic a
+  name for the root). Module docs carry the eight steps and why.
+- **Toy grid game.** `Skirmish` and `SkirmishHooks` in
+  `crates/core/src/bots/fixtures.rs`: a 7 × 5 grid, a wall down the
+  middle, a goal, two pieces a side with a sword (range 1, struck back)
+  and a bow (range 2), heals, a guard (`Other`) and a taunt (`Drop`).
+  Tests in `crates/core/src/threat/order/tests.rs`: every criterion, the
+  game's pick (after the first strikes, once; ignored when it is the
+  end, a drop, already listed or not given), heals once from the
+  healer's own tile, others in the legal order, a second `End` left
+  out, the turn planner striking first through the order, the order
+  pinned on one stage (integers and `Vec`s only, so the same on native
+  and wasm32), and a property test (only given commands, none twice,
+  never a drop, the end last and within the cap, the capped order the
+  uncapped one's start).
+- **hello-grid** is left as it is: its stage has one piece a side, no
+  strikes, and the hero walks to a goal, so there is nothing to order.
+  The skirmish fixture is the example.
+- **Docs.** [ADR-0044](../../docs/adr/0044-a-planners-candidate-order-ranked-groups-in-the-core-and-the-tactics-order-in-the-kit.md)
+  (a short new ADR, since ADR-0029 is accepted and isn't rewritten);
+  `skills/shuyi-balance-bots/SKILL.md` gets *Candidate orders: what a
+  planner tries first* (the handoff from 1134), and
+  `skills/shuyi-stage-grid/SKILL.md` a `TacticsOrder` row.
+- **Deviations.**
+  - The strike dedupe is per `(piece, target, way)`, not `(piece, way)`:
+    the game's `once_per_action` keys on the whole action, target
+    included, and a piece's sword on two targets is two ways to keep.
+  - `Kind::Extra` is `{ group, value: (i64, i64), once }`: the pair
+    value is the game's heal rank (missing health, then from its own
+    tile), and `once` (a piece, its target, its way) lists each heal
+    once, as the game's `once_per_action` does; a group and a value
+    alone can't.
+  - `ranked_order` and `TacticsOrder` always return at most `cap`
+    commands (the game's order only cut when it had an end).
+  - `TacticsOrder` lists its own steps and shares only the cap and the
+    kept end with `ranked_order` (`keep_last`): its step 6 is best first
+    across keys, not in rounds (ADR-0044, *Alternatives considered*).
+  - Per ADR-0039: `Kind` and `TacticsOrder` are `#[non_exhaustive]`
+    (`TacticsOrder::new(hooks, cap)`); `Ranked` and `Kind`'s variants are
+    plain values.
+- No follow-up tickets.
+- The game's PR that moves the pin onto this is game#1180's.
+- No break: everything is new.

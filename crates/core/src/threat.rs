@@ -6,6 +6,10 @@
 //! ([`GoalDistance`]). It is the danger zone a player reads: a bot that
 //! plays like a person keeps out of it, a roguelike draws a monster's
 //! reach as an overlay, a tower-defense game shows a tower's coverage.
+//! On them, [`TacticsOrder`] lists the few commands a planning bot tries
+//! first: every piece's best strike, then each piece's step towards the
+//! goals and its step to safety, and the end of the turn always kept
+//! ([`OrderHooks`], [`Kind`]).
 //!
 //! # Rules
 //!
@@ -61,6 +65,10 @@ use alloc::vec::Vec;
 
 use crate::grid::{Grid, Pos, TileSet};
 use crate::path::flow_field;
+
+mod order;
+
+pub use order::{Kind, OrderHooks, TacticsOrder};
 
 /// A piece's strike ranges: inclusive pairs of Manhattan distances
 /// `(min, max)`. A pair with `min > max` is empty.

@@ -115,6 +115,7 @@ All in `shuyi_core` (`shuyi::core` from the game crate):
 | `strike_area(stops, ranges)`, `strike_area_from(w, h, at, ranges)` | the tiles a piece can strike from where it can stop, or from where it stands; `ranges` are inclusive Manhattan `(min, max)` pairs |
 | `Threats<P>` | each piece's `Threat` (its id, its area): `reaches(tile)`, `safe(tile)`, `zone()`, and `danger(tile, forecast)` |
 | `GoalDistance<K>` | how far a piece walks from a tile to the nearest goal, one `flow_field` per movement kind, a goal's tile free to enter |
+| `TacticsOrder<H>` | a planning bot's candidate order: each piece's best strike, its step towards the goals, its step to safety, and the end of the turn kept within the cap, from the game's `OrderHooks` (the `shuyi-balance-bots` skill) |
 | `History<R>` | the first state and every command since: `push`, `state_at(n)`, `replay`, `rewind_to(n)` |
 
 A cost function answers what entering a tile costs, or `None` when it
