@@ -72,6 +72,15 @@ None.
 ## Scope
 
 **In:**
+- **From 3063 (done):** `Spread` and `spread` move here, by 3063's size
+  rule (its diff passed 600 lines). In `shuyi_ui::perf`: `Spread { p50,
+  p99, worst, mean }` (`u32` microseconds), a plain value left open
+  (ADR-0039 §1), with serde's `Serialize` and `Deserialize` and
+  `deny_unknown_fields`; and `spread(values: impl IntoIterator<Item =
+  u32>) -> Option<Spread>`: nearest-rank percentiles (the value at rank
+  ⌈p × n / 100⌉ of the sorted values), the mean rounded down, all in
+  integers; `None` for no values. Unit tests on known lists: one value,
+  two, a hundred, all equal.
 - **`PerfLine`**, in `shuyi_ui::perf`: one line of a trace, a serde
   enum tagged by `kind` (`#[serde(tag = "kind", rename_all =
   "kebab-case")]`), `#[non_exhaustive]`, with one variant here,
@@ -260,7 +269,7 @@ None.
 
 ## Tests required
 
-- Unit: `summary` (spreads, the five spans, ties by name); `PerfRead`'s
+- Unit: `spread` (one value, two, a hundred, all equal); `summary` (spreads, the five spans, ties by name); `PerfRead`'s
   `next` and `dropped` past a full ring; `perf_out`'s path from the
   project's folder; the text line's milliseconds; the trace writer.
 - Integration: `run --perf --perf-out` on Hello, Grid (lines parse; the

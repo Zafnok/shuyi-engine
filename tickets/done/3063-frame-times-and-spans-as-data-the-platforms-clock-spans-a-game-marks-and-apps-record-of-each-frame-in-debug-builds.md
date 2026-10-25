@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 3063 — Frame times and spans as data
@@ -277,24 +277,24 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With the fake clock, the toy game (`shuyi_ui::toy`) on the Harness
+- [x] With the fake clock, the toy game (`shuyi_ui::toy`) on the Harness
       gives the same records on every run: the first three, with a span
       a test screen marks inside another, are a committed snapshot.
-- [ ] The toy plays the same random script with the fake clock on and
+- [x] The toy plays the same random script with the fake clock on and
       off and ends with the same screens and the same frame text.
-- [ ] With `Ctx::debug_tools` off, `App` keeps no record and never reads
+- [x] With `Ctx::debug_tools` off, `App` keeps no record and never reads
       the clock (`FakeClock::reads()` stays 0).
-- [ ] `Ctx::span` with no clock calls its closure once and records
+- [x] `Ctx::span` with no clock calls its closure once and records
       nothing; nested spans have depths 0 and 1, the inner one first; a
       65th span in a frame is counted in `spans_dropped`.
-- [ ] `spread` gives the right p50, p99, worst and mean on known lists
+- [ ] (moved to 2553, by the size rule) `spread` gives the right p50, p99, worst and mean on known lists
       (one value, two, a hundred, all equal).
-- [ ] `PerfRing`'s `since`, `next_seq` and `dropped` behave as
+- [x] `PerfRing`'s `since`, `next_seq` and `dropped` behave as
       `LogRing`'s do (the same cases as `LogRing`'s tests).
-- [ ] `Macroquad::clock` builds on native and in the web build (the
+- [x] `Macroquad::clock` builds on native and in the web build (the
       examples' web build gate).
-- [ ] The ADR is written and listed in `docs/adr/README.md`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and listed in `docs/adr/README.md`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -309,5 +309,47 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **ADR-0046** decides for all six perf tickets, as the ticket's nine
+  points say.
+- **`shuyi_ui::perf`**: `PerfClock` (`Real`, `Fake`) and `FakeClock`,
+  `FrameTimes`, `SpanEvent`, `FrameRecord`, `PERF_FRAMES`, `MAX_SPANS`
+  and `PerfRing`, with serde and `deny_unknown_fields` on the records.
+  `PerfRing::since` shares `LogRing`'s arithmetic (`log::skip_before`).
+- **The context** keeps a private `PerfState`; `Ctx::span`,
+  `set_perf_clock`, `perf_clock` (to read a fake's reads),
+  `perf_now`, `begin_perf_frame` and `end_perf_frame` (which hands back a
+  `FrameRecord` of frame 0 with the update and draw times and the spans,
+  for `App` to finish). `Game::frame` now calls `redraw` itself, after
+  `step`, so the drawing is timed apart from the update.
+- **`Platform::clock`** (defaulted), `App::perf`, `take_new_perf` and
+  `load_us`; `HeadlessPlatform::with_clock` and `set_clock`;
+  `Harness::perf` and `Harness::set_clock` (it returns `&mut Self`, as
+  the Harness's other setters do); `Macroquad::clock` from `get_time`.
+- **Docs:** `docs/platform-backends.md` (`clock`, the frame's order, the
+  headless backend's clock) and the module docs of `shuyi_ui::perf`.
+  The skill pack teaches spans with 2553's `shuyi-perf` skill, once an
+  agent can read them.
+
+**Deviations:**
+- **`Spread` and `spread` moved to 2553** by the ticket's size rule: the
+  diff is about 1,300 lines. 2553 now holds their scope and tests
+  ("From 3063 (done)"), and 2325 is blocked by 2553 too, since it draws
+  `spread`'s numbers.
+- **App always moves the clock into the running game's context** and
+  checks `Ctx::debug_tools` on each frame, rather than moving it only
+  when `debug_tools` is on: a game that turns its debug tools on later is
+  measured from then, and with them off the clock is still never read
+  (the test checks the context's fake: 0 reads). A clock the context
+  already has (a test's) is kept.
+- **The frame that resumes is not measured:** `App` reads a frame's
+  start before the system's events, and that frame starts suspended. The
+  next frame is, with `present_us` 0, so the time away is no wait.
+- **The frame a game quits in** stepped the game and has a record; the
+  frames after it have none.
+- 3010 had the Playdate's clock in an either-order clause: it now says
+  it implements `Platform::clock` itself.
+
+No break: every addition is a new item, a trait method with a default,
+or a private field.
+
+Nick input: none.

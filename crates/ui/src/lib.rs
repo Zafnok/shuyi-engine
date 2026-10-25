@@ -21,6 +21,8 @@
 //! - the [`system_keyboard`] a text box may ask the platform for;
 //! - the engine's [`log`]: lines with a level, a category and a frame,
 //!   given through [`Ctx::log`];
+//! - [`perf`]: frame times and the spans a game marks
+//!   ([`Ctx::span`]), as data, in debug builds;
 //! - the float methods `core` lacks, for the `no_std` build ([`float`]).
 //!
 //! - [`widgets`] screens are built from (that module lists them);
@@ -67,6 +69,7 @@ pub mod hurry;
 pub mod input;
 pub mod log;
 pub mod module;
+pub mod perf;
 pub mod profiles;
 pub mod screen;
 pub mod screens;

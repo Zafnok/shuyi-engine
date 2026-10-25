@@ -12,6 +12,7 @@ pub use shuyi_assets::target::Color;
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::perf::PerfClock;
 use shuyi_ui::storage::Storage;
 
 use crate::app::Card;
@@ -186,7 +187,8 @@ pub enum SystemEvent {
 
 /// What a backend gives the engine: a display to [`present`] frames on,
 /// the player's input, the system's events, storage, a sound device and,
-/// if the device has one, its own keyboard for text.
+/// if the device has one, its own keyboard for text and, in debug builds,
+/// a clock to measure frames with.
 ///
 /// The backend owns the loop (macroquad's, the Playdate SDK's update
 /// callback, a console's main loop) and calls [`App::frame`] once per
@@ -226,6 +228,14 @@ pub trait Platform {
     /// one), if the device has one; `None` where the player types on keys,
     /// which come through [`poll_input`](Self::poll_input).
     fn text_input(&mut self) -> Option<&mut dyn TextInput>;
+
+    /// A clock in whole microseconds, to measure frames with in debug
+    /// builds (ADR-0046): `App` takes it once, on its first frame, and only
+    /// with [`DEBUG_TOOLS`](shuyi_ui::DEBUG_TOOLS) on. `None` (the
+    /// default) for a backend without one: nothing is measured.
+    fn clock(&self) -> Option<PerfClock> {
+        None
+    }
 }
 
 #[cfg(test)]

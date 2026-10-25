@@ -58,5 +58,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0043](0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md) | The skill pack: skills at the root, worked examples run by the xtask, `check-skills` in the CLI, and the pack's folder as the plugin | Accepted; extends ADR-0005 §2 and §3, ADR-0041 §5 and ADR-0042 |
 | [0044](0044-a-planners-candidate-order-ranked-groups-in-the-core-and-the-tactics-order-in-the-kit.md) | A planner's candidate order: ranked groups in the core, and the tactics order in the kit | Accepted; extends ADR-0029 and ADR-0027 |
 | [0045](0045-a-push-to-main-starts-dependents-watchers-workflow-dispatch-with-an-actions-only-token-kept-in-an-environment-for-main.md) | A push to main starts dependents' watchers: `workflow_dispatch` with an Actions-only token, kept in an environment for `main` | Accepted; extends ADR-0038 |
+| [0046](0046-perf-traces-measured-by-the-backend-kept-by-app-beside-the-log-and-read-by-agents-as-json-lines.md) | Perf traces: measured by the backend, kept by App beside the log, and read by agents as JSON lines | Accepted; extends ADR-0002, ADR-0009 §4, ADR-0024, ADR-0030 and ADR-0039 |
 
 Template: [`0000-template.md`](0000-template.md).

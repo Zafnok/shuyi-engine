@@ -15,6 +15,11 @@
 //! lines the game logged ([`Ctx::log`]), stamps them with the frame's
 //! number and keeps the last [`LOG_LINES`] for tests, tools and the
 //! backend's sinks ([`App::take_new_log`]).
+//!
+//! In debug builds `App` also measures each frame (ADR-0046) with the
+//! platform's clock ([`Platform::clock`]), and keeps the last
+//! [`PERF_FRAMES`] records beside the log ([`App::perf`],
+//! [`App::take_new_perf`]).
 
 use crate::alloc_prelude::*;
 use alloc::format;
@@ -24,6 +29,7 @@ use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRing};
+use shuyi_ui::perf::{FrameRecord, PERF_FRAMES, PerfClock, PerfRing};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, Keyboard, RawInputEvent};
@@ -292,6 +298,56 @@ impl Clock {
     }
 }
 
+/// What `App` measures in debug builds (ADR-0046): the platform's clock
+/// until the game's context takes it, the load's time, this frame's
+/// times, and the last frames' records.
+struct Perf {
+    /// Whether the platform's clock was asked for (on the first frame).
+    asked: bool,
+    /// The platform's clock, until the game runs and its context takes it.
+    clock: Option<PerfClock>,
+    /// How long the game's load took.
+    load_us: Option<u32>,
+    /// This frame's start, while it is measured.
+    start: Option<u64>,
+    /// This frame's `present` call, once it is measured.
+    paint_us: Option<u32>,
+    /// The end of the last frame measured; `None` after a frame that
+    /// wasn't, so the time away isn't counted as a wait.
+    last_end: Option<u64>,
+    records: PerfRing,
+    /// The sequence number of the first record [`App::take_new_perf`]
+    /// hasn't given.
+    read: u64,
+}
+
+impl Perf {
+    fn new() -> Self {
+        Self {
+            asked: false,
+            clock: None,
+            load_us: None,
+            start: None,
+            paint_us: None,
+            last_end: None,
+            records: PerfRing::new(PERF_FRAMES),
+            read: 0,
+        }
+    }
+
+    /// The time on `game`'s clock, in a measured frame only.
+    fn now<G: GameData>(&self, game: &mut Game<G>) -> Option<u64> {
+        self.start?;
+        game.ctx_mut().perf_now()
+    }
+}
+
+/// The microseconds from `from` to `to`: none if `to` is earlier, and at
+/// most `u32::MAX`.
+fn micros(from: u64, to: u64) -> u32 {
+    u32::try_from(to.saturating_sub(from)).unwrap_or(u32::MAX)
+}
+
 /// The lists one frame fills, kept to save allocating them each frame.
 struct Lists<V> {
     input: Vec<RawInputEvent>,
@@ -322,6 +378,7 @@ pub struct App<G: GameData> {
     ///
     /// [`take_new_log`]: Self::take_new_log
     log_read: u64,
+    perf: Perf,
 }
 
 impl<G: GameData> App<G> {
@@ -377,6 +434,7 @@ impl<G: GameData> App<G> {
             log: LogRing::new(LOG_LINES),
             log_filter: LogFilter::default(),
             log_read: 0,
+            perf: Perf::new(),
         }
     }
 
@@ -408,17 +466,93 @@ impl<G: GameData> App<G> {
         self.end(platform, elapsed)
     }
 
-    /// A frame's start: its number, and the system's events.
+    /// A frame's start: its number, its time if it is measured, and the
+    /// system's events.
     fn begin(&mut self, platform: &mut impl Platform) {
         self.frames = self.frames.saturating_add(1);
+        self.take_clock(platform);
+        self.begin_perf();
         self.system_events(platform);
     }
 
-    /// The rest of a frame, then the lines the game logged in it.
+    /// The rest of a frame, then the lines the game logged in it and its
+    /// record.
     fn end(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
         let outcome = self.run(platform, elapsed);
         self.take_game_log();
+        self.end_perf();
         outcome
+    }
+
+    /// Takes the platform's clock on the first frame, in a build with
+    /// debug tools, and hands it to a game already running.
+    fn take_clock(&mut self, platform: &impl Platform) {
+        if core::mem::replace(&mut self.perf.asked, true) {
+            return;
+        }
+        if shuyi_ui::DEBUG_TOOLS {
+            self.perf.clock = platform.clock();
+        }
+        self.give_clock();
+    }
+
+    /// Moves the clock `App` holds into the running game's context, unless
+    /// that has one already (a test's).
+    fn give_clock(&mut self) {
+        let Phase::Running(game) = &mut self.phase else {
+            return;
+        };
+        let ctx = game.ctx_mut();
+        if let Some(clock) = self.perf.clock.take()
+            && ctx.perf_clock().is_none()
+        {
+            ctx.set_perf_clock(Some(clock));
+        }
+    }
+
+    /// Starts measuring this frame: one of the running game's, not
+    /// suspended or quit, with debug tools on and a clock in its context.
+    fn begin_perf(&mut self) {
+        self.perf.start = None;
+        self.perf.paint_us = None;
+        if self.suspended || self.quit {
+            return;
+        }
+        if let Phase::Running(game) = &mut self.phase
+            && game.ctx().debug_tools
+        {
+            self.perf.start = game.ctx_mut().begin_perf_frame();
+        }
+    }
+
+    /// Ends this frame's measuring: its record, if it stepped the game and
+    /// presented it.
+    fn end_perf(&mut self) {
+        let Some(start) = self.perf.start.take() else {
+            self.perf.last_end = None;
+            return;
+        };
+        let Phase::Running(game) = &mut self.phase else {
+            return;
+        };
+        let ctx = game.ctx_mut();
+        let end = ctx.perf_now();
+        let measured = ctx.end_perf_frame();
+        let (Some(end), Some(mut record), Some(paint_us)) =
+            (end, measured, self.perf.paint_us.take())
+        else {
+            // Suspended or quit in this frame: no record, and the time
+            // away is no wait.
+            self.perf.last_end = None;
+            return;
+        };
+        let present_us = self.perf.last_end.map_or(0, |last| micros(last, start));
+        record.frame = self.frames;
+        record.times.paint_us = paint_us;
+        record.times.present_us = present_us;
+        record.times.frame_us = present_us.saturating_add(micros(start, end));
+        self.perf.last_end = Some(end);
+        self.perf.records.push(record);
     }
 
     /// Takes the lines the game has logged, stamped with this frame, and
@@ -504,7 +638,10 @@ impl<G: GameData> App<G> {
                     platform.audio().stop_all();
                     self.quit = true;
                 }
+                let painting = self.perf.now(game);
                 present_game(platform, game, self.look);
+                let painted = self.perf.now(game);
+                self.perf.paint_us = painting.zip(painted).map(|(from, to)| micros(from, to));
             }
             Phase::Running(game) => {
                 // The game has quit: its last frame, in silence.
@@ -538,10 +675,15 @@ impl<G: GameData> App<G> {
             key_prompt: KeyPrompt::Waiting,
         };
         drain(platform, &mut self.lists.input);
-        match load(setup) {
+        let loading = self.perf.clock.as_mut().map(PerfClock::read);
+        let loaded = load(setup);
+        let done = self.perf.clock.as_mut().map(PerfClock::read);
+        self.perf.load_us = loading.zip(done).map(|(from, to)| micros(from, to));
+        match loaded {
             Ok(game) => {
                 present_game(platform, &game, self.look);
                 self.phase = Phase::Running(Box::new(game));
+                self.give_clock();
             }
             Err(errors) => {
                 let (level, category) = (LogLevel::Error, LogCategory::Platform);
@@ -633,6 +775,29 @@ impl<G: GameData> App<G> {
         let lines = self.log.since(self.log_read).cloned().collect();
         self.log_read = self.log.next_seq();
         lines
+    }
+
+    /// The last [`PERF_FRAMES`] frames' records, oldest first, and how many
+    /// were dropped (ADR-0046). A frame is measured in a build with debug
+    /// tools, on a platform with a clock ([`Platform::clock`]), while the
+    /// game's [`Ctx::debug_tools`] is on; a loading, suspended, failed or
+    /// quit frame makes no record.
+    pub fn perf(&self) -> &PerfRing {
+        &self.perf.records
+    }
+
+    /// The records since the last call, oldest first, for the backend's
+    /// sinks: each record is given once.
+    pub fn take_new_perf(&mut self) -> Vec<FrameRecord> {
+        let records = self.perf.records.since(self.perf.read).cloned().collect();
+        self.perf.read = self.perf.records.next_seq();
+        records
+    }
+
+    /// How long the game's load took, in microseconds, if it was timed: in
+    /// a build with debug tools, on a platform with a clock.
+    pub fn load_us(&self) -> Option<u32> {
+        self.perf.load_us
     }
 
     /// The audio the screens asked for in the last frame, in order, as they

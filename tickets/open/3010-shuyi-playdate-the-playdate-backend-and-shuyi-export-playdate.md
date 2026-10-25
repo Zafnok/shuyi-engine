@@ -151,11 +151,10 @@ Nothing here costs money. A device is needed only for 3011.
     it (its own clause says so). **Either order with 2368 (parked):**
     if 2368 is done, that reading also gives the `playdate` profile's
     `peak_heap_bytes` as its budget, as 2368 says; if not, 2368 does it.
-  - **The clock, for the perf traces.** **Either order with 3063:** if
-    3063 is done, the debug build implements `Platform::clock` with the
-    SDK's high-resolution timer (check its name and unit in the SDK's
-    docs, and never reset it in the frame loop); if not, 3063 does it
-    (its own clause says so).
+  - **The clock, for the perf traces** (3063, ADR-0046): the debug
+    build implements `Platform::clock` with the SDK's high-resolution
+    timer, as `PerfClock::Real` of whole microseconds (check its name
+    and unit in the SDK's docs, and never reset it in the frame loop).
   - **Logs.** After each frame, the lines of `App::take_new_log()`
     (3040) go to the SDK's `system->logToConsole`, one per line, as
     `f<frame> <level> <category>: <text>`. The panic handler (the
