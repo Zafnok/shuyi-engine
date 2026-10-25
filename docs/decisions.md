@@ -1103,3 +1103,30 @@ in the MVP and the link part later.
   agent asks.
 - **The on-screen views stay parked.** 2325 and 2368 draw what these
   tickets measure, and wait for Nick as before.
+
+## 2026-10-24: local split screen for two to four players, parked
+
+Source: Nick, in a Claude Code session on 2026-10-24:
+
+> "add parked tickets for adding local split screen multiplayer, both
+> vertical and horizontal, and lets say even 3 or 4 player split
+> screen. These will be parked since they're not needed for Visions of
+> Shuyi"
+
+Seats (2406) and a viewport per world layer with one fixed split per
+player count (1120) were planned already. What no ticket had: a choice
+of layout (two side by side or stacked, the three-player shapes, four
+as a square or strips), a view per seat with its camera, the spare
+quarter with three players, a check that views fit a small screen, a
+listener per view, an example and a template part.
+
+**Rules:**
+
+- **Split screen is parked** with the rest of the real-time work, until
+  Nick unparks it: 2385 (the layouts and the player's pick), 2386 (a view
+  per seat and the check per target), 2387 (a listener per view), 2774
+  (the example) and 2775 (the template part).
+- **Up to four players**, the same cap as 2406's seats.
+- **Both directions for two players**: side by side (a vertical
+  divider) and stacked (a horizontal one). The game says which it
+  allows, and the player picks among them in the options.

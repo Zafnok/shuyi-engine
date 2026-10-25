@@ -297,8 +297,8 @@ None.
 - a looped sound that moves with a thing (a waterfall, an engine's hum):
   it needs 2344's handles. A follow-up ticket after 2344, written when a
   game asks;
-- several listeners at once (split screen: 1120's views, 2406's seats):
-  one listener a frame here;
+- several listeners at once (split screen: 2387, a listener per view
+  of 2386's): one listener a frame here;
 - Doppler, HRTF, occlusion, reverb zones and filters by distance
   (occlusion and reverb traced through the level: 2911 researches them;
   proximity voice over this falloff: 2910);

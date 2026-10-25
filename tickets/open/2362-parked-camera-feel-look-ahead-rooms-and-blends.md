@@ -210,7 +210,7 @@ None.
   option rows (2340's);
 - a spring that overshoots (one damping model is enough in 2D),
   non-whole zoom, and rotation;
-- split screen and several views (2406, through 1120's views). Each
+- split screen and several views (2386, through 1120's views). Each
   view has its own `Camera`, so it gets all of this with nothing more
   here;
 - rails and paths the camera rides (2122's `Curve` and its follower);

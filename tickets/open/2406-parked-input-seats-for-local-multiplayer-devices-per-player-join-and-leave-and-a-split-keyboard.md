@@ -342,8 +342,9 @@ online)?
 - a profile per seat (each seat's own saved keys and settings): every
   seat plays with the current profile's bindings; a follow-up if a game
   asks;
-- drawing split screen (1120's viewports) and camera feel per view
-  (2362);
+- drawing split screen (1120's viewports, 2385's layouts, and 2386's
+  view per seat, which reads this ticket's seats and `seat_events`),
+  and camera feel per view (2362);
 - online play (1140–1147): Remote Play Together needs nothing beyond
   this;
 - our own pad code and its stable ids (2402, parked): gilrs and the

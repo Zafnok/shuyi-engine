@@ -77,6 +77,11 @@ None.
   add the part `stage-side-view` to the built-in template: a room with
   the platformer controller, generic over `SideView`, and its test. If
   2503 isn't done, 2503 adds it.
+- **Either order with 2775 (parked):** if 2775 is done, the `when` of
+  its `local-players-split` and `local-players-shared` parts also holds
+  on a `stage-side-view` stage, and a test makes a two-player side-view
+  game and runs its two-pad Harness test. If not, nothing to do (2775
+  does it).
 - Tests:
   - controller unit tests, including coyote time and the jump buffer at
     their exact step limits;

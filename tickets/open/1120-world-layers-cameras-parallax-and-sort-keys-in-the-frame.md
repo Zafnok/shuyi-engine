@@ -179,8 +179,11 @@ None. Our game's frames don't change.
   ticket's own. The shake dies down by 2340's trauma rule, not a curve;
 - tile layers from Tiled and LDtk maps (2360 adds them as one item per
   map layer, never one sprite item per tile);
-- which player, seat or device a viewport belongs to, and split screen
-  for each player count (2406);
+- which player, seat or device a viewport belongs to (2406), the
+  layouts for each player count beyond `split_viewports`' one shape
+  each, side by side or stacked, and the player's pick (2385, which
+  keeps `split_viewports` as it is), and a view per seat with its own
+  camera (2386);
 - a HUD per viewport as a system of its own: a game draws cells or
   items into the viewport's rectangle with what the frame already has;
 - Voronoi or other splits that move with the players;
