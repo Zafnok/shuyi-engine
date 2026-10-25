@@ -149,6 +149,24 @@ fn a_hold_is_the_safe_tile_nearest_the_goal_by_walking_round_the_wall() {
 }
 
 #[test]
+fn the_rest_leaves_out_the_advances_and_the_holds() {
+    let stage = skirmish((2, 2), (5, 4), (0, 0), (6, 2));
+    let (steps, legal, _) = steps_of(&stage);
+    let rest = at(&legal, &steps.rest);
+    assert!(!steps.advances.is_empty() && !steps.holds.is_empty());
+    for listed in at(&legal, &steps.advances)
+        .into_iter()
+        .chain(at(&legal, &steps.holds))
+    {
+        assert!(!rest.contains(&listed), "{listed:?}");
+    }
+    // Every other step and the guards are there, in the legal order.
+    assert!(rest.contains(&wait(A, (2, 2))));
+    assert!(rest.contains(&Skirm::Guard(A)));
+    assert!(steps.rest.is_sorted());
+}
+
+#[test]
 fn a_hold_that_is_the_advance_is_left_out() {
     // X now threatens the bottom-left: A's advance is its safe step
     // nearest the goal.
