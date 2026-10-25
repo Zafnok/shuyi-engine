@@ -398,6 +398,8 @@ jobs:
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.crates == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.verdict.outputs.label }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -422,7 +424,52 @@ jobs:
           # Warnings are the clippy and test jobs' gate: a lint only the
           # nightly has must not fail this job as a build error.
           RUSTFLAGS: ""
-        run: cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --summary "$GITHUB_STEP_SUMMARY"
+        run: cargo xtask api --base HEAD^1 --pr-branch "$HEAD_REF" --summary "$GITHUB_STEP_SUMMARY" --verdict "$RUNNER_TEMP/api-verdict"
+      - name: Hand the verdict to api-label
+        id: verdict
+        run: echo "label=$(cat "$RUNNER_TEMP/api-verdict")" >> "$GITHUB_OUTPUT"
+
+  # The api job's verdict as one label on the PR, `api: none`, `api: added`
+  # or `api: breaking` (ticket 2030, ADR-0038's *The verdict as a label*):
+  # other repositories can't read a job summary, but anyone reads a public
+  # PR's labels. The game's watcher (game#1190) reads it to move its pin.
+  # A PR that changes nothing under crates/ is `api: none`; a failed api
+  # job sets no label. A job of its own, so the token that writes labels
+  # never meets the PR's code: no checkout, no build. A fork's PR gets a
+  # read-only token, so it is left unlabelled and readers fall back to
+  # their own test.
+  api-label:
+    name: api-label
+    needs: [changes, api]
+    if: >-
+      always() && github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && needs.changes.result == 'success'
+      && (needs.changes.outputs.crates != 'true' || needs.api.result == 'success')
+    runs-on: ubuntu-latest
+    # Only this job writes to the PR, and only its labels.
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Label the PR with its verdict
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          CRATES: ${{ needs.changes.outputs.crates }}
+          VERDICT: ${{ needs.api.outputs.label }}
+        run: |
+          if [ "$CRATES" != "true" ]; then VERDICT=none; fi
+          case "$VERDICT" in
+            none|added|breaking) ;;
+            *) echo "::error::No verdict from the api job: '$VERDICT'."; exit 1 ;;
+          esac
+          # The PR's labels with every `api:` one replaced by the verdict's.
+          labels=()
+          while IFS= read -r label; do
+            labels+=(-f "labels[]=$label")
+          done < <(gh api "repos/$GH_REPO/issues/$PR/labels" --paginate --jq '.[].name | select(startswith("api: ") | not)')
+          gh api -X PUT "repos/$GH_REPO/issues/$PR/labels" "${labels[@]}" -f "labels[]=api: $VERDICT" --jq '[.[].name] | join(", ")'
 
   # Licenses, advisories, bans and sources (deny.toml).
   deny:
@@ -551,7 +598,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, no-std, layers, modules, api, deny, zizmor, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, no-std, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

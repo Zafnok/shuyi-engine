@@ -5,7 +5,9 @@
 //! (the working tree) and of the base (a `git worktree` at the base
 //! revision) with `cargo-public-api`, diffs the two lists, and runs
 //! `cargo-semver-checks` against the base. With `--pr-branch`, a semver
-//! finding needs a `Breaking:` line in the branch's ticket.
+//! finding needs a `Breaking:` line in the branch's ticket. With
+//! `--verdict`, it writes what the change did in one word (ticket 2030), for
+//! CI's `api:` label on the PR.
 //!
 //! Every `git`, `cargo` and `rustup` call goes through [`Runner`], which the
 //! tests fake.
@@ -95,6 +97,8 @@ pub struct Options {
     pub pr_branch: Option<String>,
     /// `--summary <file>`: append the summary's Markdown to this file.
     pub summary: Option<PathBuf>,
+    /// `--verdict <file>`: write the [`Label`]'s word to this file.
+    pub verdict: Option<PathBuf>,
 }
 
 impl Options {
@@ -107,6 +111,7 @@ impl Options {
                 ("--base", Some(value)) => options.base = Some(value.clone()),
                 ("--pr-branch", Some(value)) => options.pr_branch = Some(value.clone()),
                 ("--summary", Some(value)) => options.summary = Some(PathBuf::from(value)),
+                ("--verdict", Some(value)) => options.verdict = Some(PathBuf::from(value)),
                 _ => return None,
             }
         }
@@ -177,11 +182,52 @@ pub enum Verdict {
     Fail(String),
 }
 
+/// What a change did to the public API, as the PR's `api:` label says it
+/// to readers outside CI (ticket 2030, ADR-0038's *The verdict as a
+/// label*).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Label {
+    /// No crate's listing changed.
+    None,
+    /// A listing changed, and no semver finding.
+    Added,
+    /// A semver finding on some crate.
+    Breaking,
+}
+
+impl Label {
+    /// The word `--verdict` writes, and the label's after `api: `.
+    pub fn word(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Added => "added",
+            Self::Breaking => "breaking",
+        }
+    }
+}
+
+/// The label for `crates`, by ADR-0038's rule: a semver finding on any
+/// crate breaks, a listing diff without one adds, and nothing is none.
+pub fn verdict(crates: &[CrateApi]) -> Label {
+    if crates.iter().any(|c| !c.findings.is_empty()) {
+        Label::Breaking
+    } else if crates
+        .iter()
+        .any(|c| !c.removed.is_empty() || !c.added.is_empty())
+    {
+        Label::Added
+    } else {
+        Label::None
+    }
+}
+
 /// What `cargo xtask api` found: the summary (empty when it couldn't
-/// compare), the errors that fail it and the warnings that don't.
+/// compare), the label (none when it couldn't compare), the errors that
+/// fail it and the warnings that don't.
 #[derive(Debug, Default)]
 pub struct Outcome {
     pub summary: String,
+    pub label: Option<Label>,
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
 }
@@ -218,6 +264,7 @@ pub fn run(root: &Path, options: &Options, runner: &dyn Runner) -> Outcome {
     };
     Outcome {
         summary: summary(&base, &crates, &warnings, verdict.as_ref()),
+        label: Some(self::verdict(&crates)),
         errors,
         warnings,
     }
@@ -686,6 +733,16 @@ pub fn write_summary(
         .and_then(|mut file| {
             std::io::Write::write_all(&mut file, format!("{summary}\n").as_bytes())
         })
+        .err()
+        .map(|e| format!("{}: {e}", path.display()))
+}
+
+/// Writes `label`'s word to `file` (CI's `api:` label reads it). No label
+/// (the comparison failed) writes nothing. The error says the file couldn't
+/// be written.
+pub fn write_verdict(label: Option<Label>, file: Option<&Path>) -> Option<String> {
+    let (label, path) = (label?, file?);
+    fs::write(path, label.word())
         .err()
         .map(|e| format!("{}: {e}", path.display()))
 }

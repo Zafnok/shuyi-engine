@@ -182,6 +182,8 @@ fn options_read_each_flag() {
         "t2010-api",
         "--summary",
         "out.md",
+        "--verdict",
+        "verdict.txt",
     ]);
     assert_eq!(
         Options::parse(&args),
@@ -189,6 +191,7 @@ fn options_read_each_flag() {
             base: Some("HEAD^1".to_string()),
             pr_branch: Some("t2010-api".to_string()),
             summary: Some(PathBuf::from("out.md")),
+            verdict: Some(PathBuf::from("verdict.txt")),
         })
     );
     assert_eq!(Options::parse(&[]), Some(Options::default()));
@@ -688,6 +691,92 @@ fn the_nightly_is_known_by_its_name_on_any_host() {
     assert!(!is_the_nightly(""));
 }
 
+// -- the verdict --
+
+#[test]
+fn no_diff_and_no_finding_is_none() {
+    let listing = lines(&["pub fn a()"]);
+    let crates = [
+        CrateApi::new("shuyi-core", Some(&listing), &listing, Vec::new()),
+        CrateApi::new("shuyi-ui", Some(&[]), &[], Vec::new()),
+    ];
+    assert_eq!(verdict(&crates), Label::None);
+    assert_eq!(verdict(&[]), Label::None);
+}
+
+#[test]
+fn a_diff_and_no_finding_is_added() {
+    let listing = lines(&["pub fn a()"]);
+    let added = CrateApi::new(
+        "shuyi-ui",
+        Some(&listing),
+        &lines(&["pub fn a()", "pub fn b()"]),
+        Vec::new(),
+    );
+    let same = CrateApi::new("shuyi-core", Some(&listing), &listing, Vec::new());
+    assert_eq!(verdict(&[same, added]), Label::Added);
+    // A lost line semver doesn't call breaking is still a listing diff.
+    let lost = CrateApi::new("shuyi-ui", Some(&listing), &[], Vec::new());
+    assert_eq!(verdict(&[lost]), Label::Added);
+    let new = CrateApi::new(
+        "shuyi-net",
+        None,
+        &lines(&["pub mod shuyi_net"]),
+        Vec::new(),
+    );
+    assert_eq!(verdict(&[new]), Label::Added);
+}
+
+#[test]
+fn any_finding_is_breaking() {
+    assert_eq!(verdict(&breaking_core()), Label::Breaking);
+    // A finding breaks even where the listing didn't change.
+    let listing = lines(&["pub trait A"]);
+    let finding_only = CrateApi::new(
+        "shuyi-core",
+        Some(&listing),
+        &listing,
+        vec![finding("trait_method_added", &["A::b"])],
+    );
+    assert_eq!(verdict(&[finding_only]), Label::Breaking);
+}
+
+#[test]
+fn each_label_has_its_word() {
+    assert_eq!(
+        [Label::None, Label::Added, Label::Breaking].map(Label::word),
+        ["none", "added", "breaking"]
+    );
+}
+
+#[test]
+fn a_verdict_is_written_to_its_file() {
+    let root = temp_root("verdict");
+    let file = root.join("verdict");
+    fs::write(&file, "old").unwrap();
+    assert_eq!(write_verdict(Some(Label::Added), Some(&file)), None);
+    assert_eq!(fs::read_to_string(&file).unwrap(), "added");
+    assert_eq!(write_verdict(Some(Label::Added), None), None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn no_verdict_writes_no_file() {
+    let root = temp_root("no-verdict");
+    let file = root.join("verdict");
+    assert_eq!(write_verdict(None, Some(&file)), None);
+    assert!(!file.exists());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_verdict_file_that_cannot_be_written_is_an_error() {
+    let root = temp_root("bad-verdict");
+    let error = write_verdict(Some(Label::None), Some(&root)).unwrap();
+    assert!(error.starts_with(&root.display().to_string()), "{error}");
+    let _ = fs::remove_dir_all(&root);
+}
+
 // -- a whole run, on fakes --
 
 /// The base has every crate but `shuyi-cli`; `shuyi-core` lost
@@ -745,6 +834,7 @@ fn a_run_compares_every_crate_and_removes_the_base() {
         outcome.summary
     );
     assert!(outcome.summary.contains("the rule was not checked"));
+    assert_eq!(outcome.label, Some(Label::Breaking));
 
     let ran = fake.ran();
     assert!(ran.contains(&"head: git worktree add --detach target/api-base abc123".to_string()));
@@ -844,6 +934,7 @@ fn a_lost_line_without_a_finding_is_a_warning() {
             .summary
             .contains("> **Warning:** shuyi-ui: 1 removed line(s)")
     );
+    assert_eq!(outcome.label, Some(Label::Added));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -901,6 +992,8 @@ fn a_semver_build_error_fails_the_run_and_still_removes_the_base() {
     assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
     assert!(outcome.errors[0].contains("without naming a break"));
     assert_eq!(outcome.summary, "");
+    // A failed run has no verdict, so `--verdict` writes no file.
+    assert_eq!(outcome.label, None);
     assert_eq!(
         fake.ran().last().map(String::as_str),
         Some("head: git worktree prune")
