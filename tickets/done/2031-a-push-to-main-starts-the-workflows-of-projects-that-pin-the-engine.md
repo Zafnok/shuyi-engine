@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: setup
-completed:
+completed: 2026-10-25
 ---
 
 # 2031 — A push to main starts the workflows of projects that pin the engine
@@ -140,5 +140,25 @@ is ready. It never sees or handles the token itself.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `.github/workflows/notify-dependents.yml`: on a push to `main` (and by
+  hand), in the `dependents` environment, `permissions: {}`. For each
+  line of `DEPENDENT_WORKFLOWS` it runs `gh workflow run` with
+  `engine_sha`; blank and `#` lines are skipped, a malformed line is a
+  warning. No token or an empty list: a notice and a success. A failed
+  dispatch: a warning with GitHub's message. Clean under zizmor 1.31.1.
+- The `dependents` environment exists, with deployment branches limited
+  to `main` (a custom policy, one branch rule). `DEPENDENT_WORKFLOWS` is
+  `Zafnok/visions-of-shuyi engine-watch.yml`. Both set with `gh`.
+- [ADR-0045](../../docs/adr/0045-a-push-to-main-starts-dependents-watchers-workflow-dispatch-with-an-actions-only-token-kept-in-an-environment-for-main.md),
+  in the index. The README's section on depending by git revision says
+  how a project gets on the list.
+- No Rust changed, so no `Breaking:` line; no game pin move follows from
+  this ticket itself.
+- **game#1190 is not done** (the game has no `engine-watch.yml` yet), so
+  per the Either-order clause the first dispatch after Nick's setup shows
+  the 404 warning, and game#1190's acceptance checks the first dispatch
+  that reaches it. The runs that show the no-token notice and, after the
+  setup, the 404 warning are the first runs of the workflow on `main`
+  after this PR merges, which a later session links in the PR.
+- **Nick:** the token setup in *Nick input* above is still to do. The
+  environment it goes in is already there.

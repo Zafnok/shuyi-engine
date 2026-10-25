@@ -1,0 +1,55 @@
+name: Notify dependents
+
+# When `main` moves, start the watcher workflow of each project that pins
+# the engine by git revision (ticket 2031, ADR-0045), so it can decide
+# whether to move its pin. A file of its own, so ci.yml's
+# `cancel-in-progress` on `main` never drops a notice.
+#
+# The list is the repository variable DEPENDENT_WORKFLOWS, one
+# `owner/repo workflow-file` per line. The token is DEPENDENTS_DISPATCH_TOKEN,
+# a fine-grained token with only Actions: write on those repositories, a
+# secret of the `dependents` environment, which only `main` may deploy to.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  notify:
+    name: notify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: dependents
+    permissions: {}
+    steps:
+      # Everything goes in through env, never into the script itself. A
+      # dependent's problem is a warning, never a red `main`.
+      - name: Start each dependent's watcher
+        env:
+          GH_TOKEN: ${{ secrets.DEPENDENTS_DISPATCH_TOKEN }}
+          DEPENDENTS: ${{ vars.DEPENDENT_WORKFLOWS }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::notice::No DEPENDENTS_DISPATCH_TOKEN in the dependents environment; nobody is notified."
+            exit 0
+          fi
+          if [ -z "$(printf '%s' "$DEPENDENTS" | tr -d '[:space:]')" ]; then
+            echo "::notice::DEPENDENT_WORKFLOWS is empty; nobody is notified."
+            exit 0
+          fi
+          printf '%s\n' "$DEPENDENTS" | while read -r repo file rest; do
+            case "$repo" in '' | '#'*) continue ;; esac
+            if [ -z "$file" ] || [ -n "$rest" ]; then
+              echo "::warning::DEPENDENT_WORKFLOWS line not \`owner/repo workflow-file\`: $repo $file $rest"
+              continue
+            fi
+            if out=$(gh workflow run "$file" --repo "$repo" --ref main -f engine_sha="$SHA" 2>&1); then
+              echo "Started $file in $repo with engine_sha=$SHA"
+            else
+              echo "::warning::Could not start $file in $repo: $(printf '%s' "$out" | tr '\n' ' ')"
+            fi
+          done
