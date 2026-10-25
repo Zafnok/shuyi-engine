@@ -144,27 +144,27 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An engine PR that changes `crates/core/src/bots/` runs the
+- [x] An engine PR that changes `crates/core/src/bots/` runs the
       hello-grid playtest through the reusable workflow and shows its
       report in the job summary.
-- [ ] A PR changing only `*.md` files reports the playtest job as
+- [x] A PR changing only `*.md` files reports the playtest job as
       skipped (not missing).
-- [ ] With `levers` set to a script that answers `play=false`, a PR
+- [x] With `levers` set to a script that answers `play=false`, a PR
       changing `crates/core/` skips; answering `play=true`, it plays.
-- [ ] On a push, `detect` judges `before..HEAD` (a test branch push that
+- [x] On a push, `detect` judges `before..HEAD` (a test branch push that
       changes only `*.md` skips), and the docs show callers the
       concurrency that never cancels a push.
-- [ ] With a deliberately raised floor in a test branch (not merged),
+- [x] With a deliberately raised floor in a test branch (not merged),
       the job fails with an `::error::` naming the stage; with the floor
       restored it passes.
-- [ ] In a test branch (not merged) whose playtest fails with a code
+- [x] In a test branch (not merged) whose playtest fails with a code
       (a plan that errors: SH3002), the job fails with an `::error::`
       saying the playtest broke, and names no blocked stage.
-- [ ] `zizmor` and `actionlint` (whichever this repository's CI runs)
+- [x] `zizmor` and `actionlint` (whichever this repository's CI runs)
       pass on the new files.
-- [ ] `shuyi new grid <dir>` makes a game whose `playtest.yml`
+- [x] `shuyi new grid <dir>` makes a game whose `playtest.yml`
       calls the reusable workflow at a pinned commit.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -222,6 +222,26 @@ None.
 - This repository's `ci.yml` keeps its own concurrency (cancelling a
   push's run by the next), as every other job there; the playtest's
   never-cancel concurrency is for games' callers, documented.
+
+**Tested** on test branches, draft pull requests against this ticket's
+branch, closed unmerged (Zafnok/shuyi-engine#107 to #110 and a pushed
+branch), each with a CI of only the hello-grid caller:
+
+- floor raised to 50%: failed, `::error::` "the stage (files/stage.map):
+  random under the floor";
+- `playtest.ron` that doesn't parse: failed, `::error::` "the playtest
+  itself broke (exit 1), SH3002: …", no stage named;
+- only `*.md` changed: `playtest` skipped;
+- `levers: echo play=false` with `crates/core/` changed: skipped; then
+  `play=true`: played and passed;
+- pushes: a new branch played; then a push of only a `README.md`
+  change, judged by `before..HEAD`, skipped.
+
+The first run of the floor test found the step stopping at the failed
+pipeline (Actions runs `bash -e`), before its `::error::` lines; the step
+now runs `set +e`. The job summaries were written without error, but
+GitHub shows them only to a signed-in viewer, so the text in them was
+read in the logs, not on the summary page.
 
 The game moves onto this in game#1180 (no PR yet).
 
