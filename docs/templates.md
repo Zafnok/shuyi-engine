@@ -154,6 +154,7 @@ other `{{`:
 | `{{name}}` | The game's name, as given (`Moon Garden`) |
 | `{{crate_name}}` | Its crate's name (`moon-garden`) |
 | `"{{engine.<crate>}}"` | With its quotes: the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`), a TOML inline table: the engine's repository at `main` or a commit, or a checkout |
+| `{{engine_ref}}` | The engine's commit the game builds with, as a workflow's `uses: Zafnok/shuyi-engine/…@` names it: the 40-digit `--engine-rev`, else `main` |
 | `{{answer.<question>}}` | That question's answers, joined by `,` |
 
 A GitHub Actions expression, `${{ … }}`, is left as it is. An unknown

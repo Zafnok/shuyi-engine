@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2532", "2533"]
 nick_input: none
-completed:
+completed: 2026-10-24
 ---
 
 # 2021 — A reusable playtest workflow
@@ -174,5 +174,55 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `.github/workflows/playtest.yml`, reusable (`on: workflow_call`):
+  `detect` judges a pull request's merge commit (`HEAD^1..HEAD`) or a
+  push's `before..HEAD` (a new branch or a force push plays; any other
+  event plays), by `paths` (shell patterns one a line, the first match
+  decides, `!pattern` doesn't play) or by `levers` (the caller's
+  command, `play=true`/`play=false`). `playtest` is skipped by `if:`.
+  It runs the command with `--report "$RUNNER_TEMP/playtest.json"`,
+  writes a fenced block per stage into the job summary (split at the
+  report's titles), and on a non-zero exit reads the report with `jq`:
+  no `code` gives an `::error::` per blocked stage naming the entrants
+  under their floor; a `code`, or no report, gives an `::error::` that
+  the playtest itself broke, with the code and the error. zizmor clean.
+- `ci.yml` calls it on `examples/hello-grid` (job `playtest`, in
+  `ci-result`'s needs), with paths `crates/core/src/bots/*`,
+  `crates/cli/*`, `examples/hello-grid/*` and the workflow itself.
+- The grid template's stage part writes `.github/workflows/playtest.yml`,
+  a caller of a few lines with the concurrency that never cancels a push.
+  Its pin is a new placeholder, `{{engine_ref}}`: a 40-digit
+  `--engine-rev`, else `main` (GitHub takes no short SHA in a `uses:`;
+  a short `--engine-rev` gets a limit saying so). `templates/blank` gets
+  none: its `BasicTools` has no playtest plan. `check-pins` skips the
+  engine's own call at `@{{engine_ref}}` in a template, and a workflow
+  folder with no SHA pin needs no Dependabot entry; zizmor's
+  `unpinned-uses` on that line is ignored in the new `.github/zizmor.yml`,
+  with why.
+- Docs: `docs/contract.md` *The playtest in CI* (inputs, why skipping is
+  by `if:`, the caller's concurrency); `docs/templates.md` (the
+  placeholder); the docs map's pins row; the `shuyi-balance-bots` skill.
+
+**Deviations:**
+
+- **`allow-no-plan`**, an input the ticket doesn't list: the grid
+  template's game has no playtest plan (`playtest` answers `SH3001`
+  until the game writes one, as the `shuyi-balance-bots` worked example
+  starts from), so its caller would have failed every pull request of a
+  new game. With `allow-no-plan: true` (the template's caller) an
+  `SH3001` is a notice and passes; the caller's comment says to drop it
+  once the plan exists.
+- **`build`** replaces step 4's fixed `cargo build --release --locked`:
+  the default command builds the game's tool program itself, through the
+  `cargo shuyi` alias (dev profile, dependencies optimized), so a release
+  build would be a second build nobody runs. A game whose command runs a
+  release binary (the game's `target/release/xtask`) passes `build`.
+- **2755 (parked)** isn't done, so no crawler caller; its ticket now says
+  how to add one (**From 2021 (done)**).
+- This repository's `ci.yml` keeps its own concurrency (cancelling a
+  push's run by the next), as every other job there; the playtest's
+  never-cancel concurrency is for games' callers, documented.
+
+The game moves onto this in game#1180 (no PR yet).
+
+Breaking: shuyi-cli: template::Fill: a new field `engine_ref`, and `Fill` is `#[non_exhaustive]`: build it with `Fill::default()` and assign the fields. The game builds none.

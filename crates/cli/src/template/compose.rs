@@ -39,6 +39,9 @@ const COMPOSER: &str = "shuyi new";
 
 /// What fills a template's placeholders, but the answers.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+// It grew a field (ticket 2021) and may again: built with `default()` and
+// its fields assigned (ADR-0039).
+#[non_exhaustive]
 pub struct Fill {
     /// `{{name}}`: the game's name, as given (`Moon Garden`).
     pub name: String,
@@ -47,6 +50,9 @@ pub struct Fill {
     /// `"{{engine.<crate>}}"`: by an engine crate's folder under
     /// `crates/` (`core`), the dependency on it, a TOML inline table.
     pub engine: BTreeMap<String, String>,
+    /// `{{engine_ref}}`: the engine's commit the game builds with, as a
+    /// workflow's `uses: …@` names it (40 hex digits), or `main`.
+    pub engine_ref: String,
 }
 
 /// What a template makes for a set of answers: the new game's files and
@@ -232,8 +238,8 @@ impl fmt::Display for ComposeError {
 impl std::error::Error for ComposeError {}
 
 /// `text`, the file `file`, with its placeholders filled: `{{name}}`,
-/// `{{crate_name}}`, `"{{engine.<crate>}}"` (with its quotes) and
-/// `{{answer.<question>}}` (the question's answers in `answers`, joined
+/// `{{crate_name}}`, `"{{engine.<crate>}}"` (with its quotes),
+/// `{{engine_ref}}` and `{{answer.<question>}}` (the question's answers in `answers`, joined
 /// by `,`). A GitHub Actions expression, `${{ … }}`, passes through as it
 /// is. Any other `{{` is [`ComposeError::Placeholder`].
 pub fn fill(
@@ -277,6 +283,7 @@ pub fn fill(
         let value = match inner {
             "name" => with.name.clone(),
             "crate_name" => with.crate_name.clone(),
+            "engine_ref" => with.engine_ref.clone(),
             _ => match inner
                 .strip_prefix("answer.")
                 .and_then(|question| answers.0.get(question))

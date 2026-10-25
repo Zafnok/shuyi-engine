@@ -264,6 +264,21 @@ jobs:
             exit 1
           fi
 
+  # Hello, Grid's bots through the reusable playtest workflow (ticket 2021):
+  # the test of playtest.yml itself. It plays when the bots, the tools or
+  # the example change; its report is in the job's summary.
+  playtest:
+    name: playtest
+    uses: ./.github/workflows/playtest.yml
+    with:
+      working-directory: examples/hello-grid
+      paths: |
+        !*.md
+        crates/core/src/bots/*
+        crates/cli/*
+        examples/hello-grid/*
+        .github/workflows/playtest.yml
+
   # The skill pack (ticket 1134, ADR-0043): each skill's worked example, a
   # script of contract commands, run on a game fresh from `shuyi new` on
   # this checkout (`cargo xtask skill-examples`), in shards. The games
@@ -536,7 +551,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, skills, no-std, layers, modules, api, deny, zizmor, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, no-std, layers, modules, api, deny, zizmor, machete, coverage, tickets]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

@@ -72,6 +72,41 @@ fn every_short_name_fills_every_placeholder_on_every_engine() {
 }
 
 #[test]
+fn the_grid_game_calls_the_engines_playtest_workflow_at_its_engine_commit() {
+    let template = built_in();
+    let cwd = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let full = "0123456789abcdef0123456789abcdef01234567";
+    let call = "uses: Zafnok/shuyi-engine/.github/workflows/playtest.yml@";
+    let pinned = |rev: &str| Engine::Rev {
+        rev: rev.to_owned(),
+    };
+    for (engine, at, limited) in [
+        (pinned(full), full, false),
+        (pinned("abc1234"), "main", true),
+        (Engine::Main, "main", false),
+    ] {
+        let mut input = NewInput::new("g").template("grid");
+        input.engine = engine;
+        let (plan, limits) = plan(cwd, &template, &input, "Moon", "moon").unwrap();
+        let workflow = String::from_utf8_lossy(&plan.files[Path::new(PLAYTEST_WORKFLOW)]);
+        assert!(workflow.contains(&format!("{call}{at} ")), "{workflow}");
+        assert!(workflow.contains("cancel-in-progress: ${{ github.event_name != 'push' }}"));
+        let says = limits.iter().any(|l| l.contains("40 digits"));
+        assert_eq!(says, limited, "{limits:?}");
+    }
+    // The blank game has no stage to play.
+    let (plan, _) = plan(
+        cwd,
+        &template,
+        &NewInput::new("g").template("blank"),
+        "Moon",
+        "moon",
+    )
+    .unwrap();
+    assert!(!plan.files.contains_key(Path::new(PLAYTEST_WORKFLOW)));
+}
+
+#[test]
 fn every_short_names_game_ships_on_the_desktop_and_the_web_and_fits_them() {
     let template = built_in();
     for short in ["grid", "blank"] {

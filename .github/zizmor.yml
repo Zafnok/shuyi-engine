@@ -1,0 +1,8 @@
+# Findings wrong for this repository (AGENTS.md rule 6), each with why.
+rules:
+  unpinned-uses:
+    ignore:
+      # The grid template's call of the engine's playtest workflow (ticket
+      # 2021) is at `@{{engine_ref}}`, a placeholder: `shuyi new` puts the
+      # game's engine commit there (or `main` when the game follows main).
+      - playtest.yml:35

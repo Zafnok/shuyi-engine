@@ -295,6 +295,55 @@ bots and the map's importer, and calls `BasicTools` for the rest.
 A state hash is `shuyi_core::state_hash`, over any `Serialize` state: the
 same on every platform and every run, if the state's maps are ordered.
 
+## The playtest in CI
+
+A game's CI plays its bots with the engine's reusable workflow,
+`.github/workflows/playtest.yml` (ticket 2021). On every pull request
+or push that changes one of the game's levers it runs `cargo shuyi
+playtest --every-stage --brief`, puts each stage's report in the job's
+summary, a fenced block a stage, and fails only when the command does:
+an `::error::` names each stage blocked (a bot under its floor), or
+says the playtest itself broke, with its code and error (`SH3001`,
+`SH3002`, `SH3004`, `SH3005`) or that no report was written. A missed
+band is reported, never a failure. A game calls it from a workflow of
+its own (the grid template's game has one):
+
+```yaml
+concurrency:
+  group: playtest-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+jobs:
+  playtest:
+    uses: Zafnok/shuyi-engine/.github/workflows/playtest.yml@<engine commit> # the engine's commit
+    with:
+      levers: bash .github/playtest-levers.sh
+```
+
+| Input | Default | Means |
+| ----- | ------- | ----- |
+| `paths` | every file but `*.md`, `docs/*`, `tickets/*` | The changed files that make a play: shell patterns, one a line, from the repository's root. The first that matches a file decides: `pattern` plays, `!pattern` doesn't; a file none matches doesn't |
+| `levers` | none | A command in the game's repository, run from its root, that reads the changed paths on stdin, one a line, and prints `play=true` or `play=false`. When given, `paths` is not used: for rules shell patterns can't say (tests never play, wherever they are) |
+| `working-directory` | `.` | The game's folder, with its `shuyi.ron` |
+| `system-packages` | the macroquad libraries the templates' CI installs | The apt packages the game builds with, space-separated |
+| `build` | none | A command run before the playtest, to build what it runs (a release build of the tool program) |
+| `command` | `cargo shuyi playtest --every-stage --brief` | The playtest; the workflow adds `--report <file>` and reads the file to say why it failed |
+| `allow-no-plan` | `false` | Pass, with a notice, while the game gives no playtest plan (`SH3001`). The grid template's game sets it, since it has no plan until it writes one (the `shuyi-balance-bots` skill); drop it then, so a plan that stops working fails |
+| `timeout-minutes` | 120 | The playtest job's timeout |
+
+The changed files are a pull request's (its merge commit against the
+base) or a push's (`before..HEAD`, every commit pushed). A push with no
+earlier commit to compare with (a new branch, a force push) plays, and
+so does any other event (`workflow_dispatch`). The workflow always runs
+and reports: `detect` decides, and the `playtest` job is skipped by its
+`if:`, never by a workflow's `paths` filter, so a check that branch
+protection requires reports on every pull request (game ADR-0014, as
+the engine's own `changes.yml`). `concurrency` is the caller's: the one
+above cancels a pull request's earlier runs, and never a push's, whose
+levers would otherwise go unplayed when the next push lands. The
+history `playtest` keeps is per checkout: CI starts each run without
+one.
+
 ## The templates
 
 `shuyi new <dir>` makes a game from the engine's template,
@@ -319,7 +368,11 @@ own gates as it is. Two short names stand for sets of answers:
 Each has its crates, `shuyi.ron`, `AGENTS.md` (and `CLAUDE.md`), the
 engine's skill pack in `.claude/skills/` (all but the modules' skills,
 which `add` copies), CI with the gates (`fmt`, `clippy`, the tests, `check`, `check --target all`,
-`check-keys` and `lint`), and the `cargo shuyi` alias. The game crate
+`check-keys` and `lint`), and the `cargo shuyi` alias. The grid game also
+has `.github/workflows/playtest.yml`, which calls the engine's playtest
+workflow ([The playtest in CI](#the-playtest-in-ci)) at the engine's
+commit it builds with: a 40-digit `--engine-rev`, else `main`. It has
+no playtest plan yet, so it passes `allow-no-plan` until it writes one. The game crate
 depends on the engine through the `shuyi` crate, its front door, with no
 module on: the template's own parts need none. It installs
 `shuyi::enabled_modules` once, in its `BasicGame::modules`, so `add`

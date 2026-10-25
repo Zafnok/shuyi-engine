@@ -19,6 +19,7 @@
 //! | `{{name}}` | the game's name, as given (`Moon Garden`) |
 //! | `{{crate_name}}` | its crate's name (`moon-garden`) |
 //! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
+//! | `{{engine_ref}}` | the engine's commit as a workflow's `uses: …@` names it: a 40-digit `--engine-rev`, else `main` |
 //! | `{{answer.<question>}}` | that question's answers, joined by `,` |
 //!
 //! A GitHub Actions expression, `${{ … }}`, is left as it is. The game's
@@ -43,6 +44,10 @@ use crate::template::{self, Answers, ComposeError, Fill, Plan, Template};
 
 /// The engine's repository, which a new game depends on by git.
 pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
+
+/// The game's workflow that calls the engine's reusable playtest
+/// workflow, at `{{engine_ref}}` (the grid stage's part writes it).
+const PLAYTEST_WORKFLOW: &str = ".github/workflows/playtest.yml";
 
 /// The engine's crates a template may depend on, by their folder under
 /// `crates/`: `shuyi`, the front door, and the default engine's.
@@ -206,6 +211,15 @@ fn dependency(engine: &Engine, root: Option<&str>, krate: &str) -> String {
     }
 }
 
+/// The commit a workflow's `uses: …@` can name for `engine`: a full
+/// 40-digit rev (GitHub takes no shorter one there).
+fn engine_ref(engine: &Engine) -> Option<&str> {
+    match engine {
+        Engine::Rev { rev } if rev.len() == 40 => Some(rev),
+        _ => None,
+    }
+}
+
 /// The engine checkout at `path` (from `cwd`), as an absolute path with
 /// `/`, or why it is none.
 fn engine_root(cwd: &Path, path: &str) -> Result<String, String> {
@@ -232,6 +246,7 @@ pub fn fill_for(name: &str, krate: &str, engine: &Engine, root: Option<&str>) ->
             .iter()
             .map(|krate| ((*krate).to_owned(), dependency(engine, root, krate)))
             .collect(),
+        engine_ref: engine_ref(engine).unwrap_or("main").to_owned(),
     }
 }
 
@@ -320,6 +335,15 @@ pub fn plan(
     let plan = template::compose(template, &answers, &catalog, &fill)
         .map_err(|e| (code_of(&e), e.to_string()))?;
     limits.extend(plan.limits.iter().cloned());
+    if matches!(input.engine, Engine::Rev { .. })
+        && engine_ref(&input.engine).is_none()
+        && plan.files.contains_key(Path::new(PLAYTEST_WORKFLOW))
+    {
+        limits.push(format!(
+            "{PLAYTEST_WORKFLOW} calls the engine's playtest workflow at main: a workflow names \
+             a commit by its 40 digits, so pass the whole commit to --engine-rev to pin it too"
+        ));
+    }
     Ok((plan, limits))
 }
 

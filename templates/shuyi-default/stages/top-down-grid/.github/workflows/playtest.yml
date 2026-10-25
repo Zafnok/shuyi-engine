@@ -1,0 +1,37 @@
+name: Playtest
+
+# The game's bots play every stage (`cargo shuyi playtest --every-stage`)
+# when a file that decides how the game plays changed: by default every
+# file but `*.md`, `docs/` and `tickets/`. The report is in the job's
+# summary; the job fails only when a bot falls under its floor
+# (playtest.ron) or the playtest breaks. The engine's reusable workflow
+# does it; its inputs are in the engine's docs/contract.md (`playtest`).
+#
+# Until the game gives a playtest plan (its tools' `playtest_plan` and a
+# playtest.ron: the shuyi-balance-bots skill), the job says so and passes;
+# then drop `allow-no-plan`, so a plan that stops working fails.
+#
+# The pin is the engine's commit the game builds with: move it with the
+# engine's `rev` in Cargo.toml.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A pull request's runs cancel each other; a push's never is, or its
+# changes go unplayed.
+concurrency:
+  group: playtest-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+jobs:
+  playtest:
+    name: playtest
+    uses: Zafnok/shuyi-engine/.github/workflows/playtest.yml@{{engine_ref}} # the engine's commit
+    with:
+      allow-no-plan: true

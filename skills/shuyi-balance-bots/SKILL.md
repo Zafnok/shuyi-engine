@@ -123,6 +123,21 @@ same report on every machine and every thread count.
    the report's `previous`. Change a stage, run again, and read the
    `was`. `--brief` leaves out the line per try.
 
+   In CI, the engine's reusable workflow plays every stage when a lever
+   changed (`uses: Zafnok/shuyi-engine/.github/workflows/playtest.yml@<commit>`;
+   a `grid` game has it in `.github/workflows/playtest.yml`). Its inputs:
+   `paths` (patterns that play, `!pattern` that don't), or `levers`, a
+   script of the game's that reads the changed paths and prints
+   `play=true` or `play=false`; `working-directory`, `system-packages`,
+   `build`, `command`, `allow-no-plan` and `timeout-minutes`. It fails
+   only on a floor or a broken playtest. A new `grid` game passes
+   `allow-no-plan: true`, since it has no plan: drop it once the plan is
+   written. Give the caller the `concurrency` that never
+   cancels a push (`group: playtest-${{ github.event_name == 'push' &&
+   github.sha || github.ref }}`, `cancel-in-progress: ${{
+   github.event_name != 'push' }}`), or a push's lever goes unplayed.
+   The engine's `docs/contract.md`, *The playtest in CI*, has the rest.
+
 7. **Tune the stage, never the bots.** `cargo shuyi autobalance` changes
    the stage with the game's knobs until every rate is in its band, then
    says the smallest change it found in the knobs' own words, why it
