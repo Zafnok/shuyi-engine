@@ -41,7 +41,10 @@ cargo xtask skill-examples
 command it names exists, that every file it links is in the pack, its
 length, its worked example (or what it waits for), and that every
 problem code it names is in `shuyi explain`'s table. A game checks its
-own skills the same way: `cargo shuyi check-skills .claude/skills`.
+skills the same way: `cargo shuyi check-skills .claude/skills`. Only a
+skill of this pack needs a worked example. A game's own skill (one this
+pack doesn't name) teaches the game's own workflow, so nothing of it
+runs on a new game, and every other check still holds for it.
 `skill-examples` runs each worked example on a new game.
 
 ## The skills

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 2559 — check-skills checks a project's own skills without asking for a worked example
@@ -77,12 +77,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi check-skills` on a folder of the pack's skills plus a
+- [x] `shuyi check-skills` on a folder of the pack's skills plus a
       project's own skill with no `example.ron` reports nothing for the
       project's skill.
-- [ ] A pack skill with no `example.ron` and no `waits_for` still fails.
-- [ ] `shuyi check-skills skills` still passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A pack skill with no `example.ron` and no `waits_for` still fails.
+- [x] `shuyi check-skills skills` still passes.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -90,5 +90,20 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `check` asks for a worked example only from a skill whose name the
+  embedded pack has (the names gathered once, in `check`); `check_skill`
+  takes that as a flag. The message now says "a skill of the engine's
+  pack that waits for nothing has one". A project's own skill keeps every
+  other rule, and its `waits_for` is still checked against the open
+  tickets.
+- No new field of `Against`: the names come from `Pack::embedded()`
+  inside `check`, so its signature and `Against` are unchanged.
+- Docs: `check`'s rule 5 and `skills/README.md` *Checking them*.
+  `shuyi-gates` doesn't name `check-skills`, so it is unchanged.
+- Tests: `only_a_skill_of_the_engines_pack_needs_a_worked_example`
+  (a pack skill without an example fails; `level-design` without one
+  passes, still fails on a missing `Not …`, and its `waits_for` is still
+  checked). Checked by hand too: the pack's 15 skills plus a
+  `level-design` skill with no `example.ron` pass `shuyi check-skills`.
+- The game's PR that moves the pin is game#1194.
+- No break.

@@ -228,12 +228,58 @@ fn a_skill_that_waits_names_open_tickets_and_one_that_doesnt_has_an_example() {
         [
             "shuyi-net/SKILL.md:1: waits_for: 2529 is no open ticket: if it is done, take its id \
              out, and write the skill's worked example once nothing is left",
-            "shuyi-test/SKILL.md: no worked example (example.ron): a skill that waits for nothing \
-             has one",
+            "shuyi-test/SKILL.md: no worked example (example.ron): a skill of the engine's pack \
+             that waits for nothing has one",
         ]
     );
     // Without the tickets, only the example is checked.
     assert_eq!(found(&pack, None).len(), 1);
+}
+
+#[test]
+fn only_a_skill_of_the_engines_pack_needs_a_worked_example() {
+    let md = |name: &str, description: &str| {
+        skill_md(name, description, "  version: \"1.0\"\n", "# Skill\n")
+    };
+    let gates = md("shuyi-gates", GOOD);
+    assert_eq!(
+        found(&pack(vec![skill("shuyi-gates", &[(FILE, &gates)])]), None),
+        [
+            "shuyi-gates/SKILL.md: no worked example (example.ron): a skill of the engine's pack \
+             that waits for nothing has one"
+        ]
+    );
+    // A project's own skill needs none, and keeps every other rule.
+    let own = md("level-design", GOOD);
+    assert_eq!(
+        found(&pack(vec![skill("level-design", &[(FILE, &own)])]), None),
+        Vec::<String>::new()
+    );
+    let own = md("level-design", "Lay out a level. Use when making one.");
+    assert_eq!(
+        found(&pack(vec![skill("level-design", &[(FILE, &own)])]), None),
+        [
+            "level-design/SKILL.md:1: description: say when not to use it, in a sentence \
+             starting `Not …`"
+        ]
+    );
+    // What it waits for is still checked against the open tickets.
+    let waits = skill_md(
+        "level-design",
+        GOOD,
+        "  version: \"1.0\"\n  waits_for: \"2529\"\n",
+        "",
+    );
+    assert_eq!(
+        found(
+            &pack(vec![skill("level-design", &[(FILE, &waits)])]),
+            Some(&[])
+        ),
+        [
+            "level-design/SKILL.md:1: waits_for: 2529 is no open ticket: if it is done, take its \
+             id out, and write the skill's worked example once nothing is left"
+        ]
+    );
 }
 
 #[test]
