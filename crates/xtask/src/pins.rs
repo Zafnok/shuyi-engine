@@ -6,11 +6,14 @@
 //! 1. a `uses:` in a workflow file (a `*.yml` or `*.yaml` in any
 //!    `.github/workflows` folder) that isn't `owner/repo[/path]@` a 40-hex
 //!    commit SHA followed by a `# v…` comment; a local `./…` one is
-//!    skipped;
+//!    skipped, and so is a template's call of the engine's own workflow
+//!    at `@{{engine_ref}}`, which `shuyi new` fills with the game's
+//!    engine commit;
 //! 2. one action (`owner/repo`, whatever path follows) at more than one SHA
 //!    anywhere in the repository;
-//! 3. a `.github/workflows` folder other than the root's missing from the
-//!    `github-actions` update's `directories` in `.github/dependabot.yml`;
+//! 3. a `.github/workflows` folder other than the root's, with a pinned
+//!    `uses:`, missing from the `github-actions` update's `directories` in
+//!    `.github/dependabot.yml`;
 //! 4. a crate that the root's `[workspace.dependencies]` and a template's
 //!    both name, with a different version requirement in each. `shuyi-*`
 //!    entries (placeholders) are skipped; an entry must keep to one line.
@@ -55,7 +58,12 @@ pub fn run(root: &Path) -> Vec<String> {
     }
     errors.extend(check_workflows(&texts));
 
-    let folders = workflow_folders(texts.iter().map(|(display, _)| display.as_str()));
+    let folders = workflow_folders(
+        texts
+            .iter()
+            .filter(|(_, text)| has_pin(text))
+            .map(|(display, _)| display.as_str()),
+    );
     if !folders.is_empty() {
         match fs::read_to_string(root.join(DEPENDABOT)) {
             Ok(text) => errors.extend(check_dependabot(&text, &folders)),
@@ -132,6 +140,21 @@ fn uses_lines(text: &str) -> Vec<(usize, &str)> {
         .collect()
 }
 
+/// Whether a workflow holds a `uses:` pinned by a SHA, which Dependabot
+/// moves.
+fn has_pin(text: &str) -> bool {
+    uses_lines(text)
+        .into_iter()
+        .any(|(_, value)| matches!(parse_uses(value), Ok(Some(_))))
+}
+
+/// The engine's own reusable workflows, as a template calls them: `shuyi
+/// new` fills the ref.
+const ENGINE_CALL: &str = "Zafnok/shuyi-engine/.github/workflows/";
+
+/// A template's ref for the engine's commit (`{{engine_ref}}`).
+const ENGINE_REF: &str = "@{{engine_ref}}";
+
 /// A pinned `uses:` value: its action (`owner/repo`) and its SHA.
 #[derive(Debug, PartialEq, Eq)]
 struct Pin<'a> {
@@ -139,15 +162,17 @@ struct Pin<'a> {
     sha: &'a str,
 }
 
-/// Reads one `uses:` value (`None` for a local `./…` workflow), or says
-/// why it isn't pinned.
+/// Reads one `uses:` value (`None` for a local `./…` workflow, or the
+/// engine's own at `{{engine_ref}}`), or says why it isn't pinned.
 fn parse_uses(value: &str) -> Result<Option<Pin<'_>>, String> {
     let (reference, comment) = match value.split_once('#') {
         Some((reference, comment)) => (reference.trim(), Some(comment.trim())),
         None => (value.trim(), None),
     };
     let reference = reference.trim_matches(|c| c == '"' || c == '\'');
-    if reference.starts_with("./") {
+    if reference.starts_with("./")
+        || (reference.starts_with(ENGINE_CALL) && reference.ends_with(ENGINE_REF))
+    {
         return Ok(None);
     }
     let Some((path, sha)) = reference.split_once('@') else {
@@ -399,6 +424,16 @@ mod tests {
     #[test]
     fn a_local_workflow_is_skipped() {
         assert_eq!(parse_uses("./.github/workflows/changes.yml"), Ok(None));
+    }
+
+    #[test]
+    fn the_engines_workflow_at_the_templates_ref_is_skipped_and_moves_no_pin() {
+        let call = "Zafnok/shuyi-engine/.github/workflows/playtest.yml@{{engine_ref}} # the engine";
+        assert_eq!(parse_uses(call), Ok(None));
+        assert!(!has_pin(&format!("    uses: {call}\n")));
+        assert!(has_pin(&format!("  - uses: actions/checkout@{SHA} # v7\n")));
+        // Any other action at the placeholder is not pinned.
+        assert!(parse_uses("actions/checkout@{{engine_ref}} # v7").is_err());
     }
 
     #[test]

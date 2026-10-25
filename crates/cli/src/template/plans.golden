@@ -32,6 +32,7 @@ c7bc56040688f5d6 rust-toolchain.toml
 [grid] base, stage-top-down-grid
 d4b465b5e5a1bbb5 .cargo/config.toml
 77e6c483d7cfef2b .github/workflows/ci.yml
+4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
 43d8193034223812 AGENTS.md
 affd7179f0813dc2 CLAUDE.md

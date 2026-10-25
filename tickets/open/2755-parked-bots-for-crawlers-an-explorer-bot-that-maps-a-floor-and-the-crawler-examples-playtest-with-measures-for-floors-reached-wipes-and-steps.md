@@ -33,7 +33,9 @@ whose run is one `TurnRules`).
 
 **Who uses it** (ADR-0033 §17's bar for engine work): every game of 2741's map: crawler RPGs' playtests and autobalance, labyrinth puzzles (proving every room reachable), and auto-explore as a player's feature.
 
-**Either order with 2021 and 2527:** if 2021 is done, the example's playtest runs in its workflow, and if 2527 is done, the soak runs; if not, each of them adds the example when it lands.
+**From 2021 (done):** the example's playtest runs in CI through the reusable workflow `.github/workflows/playtest.yml`: a job in `ci.yml` beside hello-grid's `playtest` job, with `working-directory: examples/crawler` and `paths` covering the example and the crates it is made of (`shuyi-crawl`, `shuyi-rpg`).
+
+**Either order with 2527:** if 2527 is done, the soak runs; if not, 2527 adds the example when it lands.
 
 ## Nick input
 
@@ -57,7 +59,7 @@ None.
 - **The example's playtest** (2754's game): a `playtest.ron` with
   measures `floor_reached`, `wiped`, `steps`, `battles`, and bands for a
   party of one and a party of six, run in CI as the other examples'
-  playtests are (2021's workflow, if done).
+  playtests are (2021's workflow, a caller job in `ci.yml`).
 - **A soak** (2527, if done): `shuyi soak` over the example with the
   explorer bot finds no panic and no hash mismatch in 1000 runs. The
   example's tools implement `soak` over `shuyi_core::soak::play`, which

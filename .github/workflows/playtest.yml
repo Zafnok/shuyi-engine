@@ -1,0 +1,267 @@
+name: Playtest
+
+# Reusable (ticket 2021): a game's bots play every stage (`cargo shuyi
+# playtest --every-stage`) when a changed file is one of its levers, the
+# report goes in the job's summary, and the job fails only when a bot falls
+# under its floor or the playtest itself breaks; a missed band is only
+# reported. A game calls it from a workflow of a few lines (the grid
+# template's `.github/workflows/playtest.yml`); docs/contract.md's
+# `playtest` section says what the inputs mean.
+#
+# The workflow always runs and reports: `detect` decides, and `playtest` is
+# skipped by `if:`, never by a `paths` filter (a skipped job still reports
+# a status; game ADR-0014, as changes.yml). Changed files are those of a
+# pull request (`HEAD^1..HEAD`, its merge commit) or of a push
+# (`before..HEAD`); a push with no earlier commit to compare with (a new
+# branch, a force push) and any other event (`workflow_dispatch`) play.
+#
+# `concurrency` belongs to the caller: a push's run must never be cancelled
+# by the next push, or its levers go unplayed. Callers set
+#
+#   concurrency:
+#     group: playtest-${{ github.event_name == 'push' && github.sha || github.ref }}
+#     cancel-in-progress: ${{ github.event_name != 'push' }}
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: >-
+          The paths that make a play, shell patterns one a line, from the
+          repository's root. The first that matches a changed file decides:
+          a pattern plays, a `!pattern` doesn't; a file none matches doesn't.
+          Not used when `levers` is given.
+        type: string
+        default: |
+          !*.md
+          !docs/*
+          !tickets/*
+          *
+      levers:
+        description: >-
+          A command in the caller's repository, run from its root, that
+          reads the changed paths on stdin, one a line, and prints
+          `play=true` or `play=false` (as its last such line). When given,
+          `paths` is not used.
+        type: string
+        default: ""
+      working-directory:
+        description: The game's folder (the one with its shuyi.ron), from the repository's root.
+        type: string
+        default: .
+      system-packages:
+        description: The apt packages the game builds with, space-separated; none if empty.
+        type: string
+        default: libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      build:
+        description: >-
+          A command run in the game's folder before the playtest, to build
+          what it runs (a release build of the tool program, say); none if
+          empty.
+        type: string
+        default: ""
+      command:
+        description: >-
+          The playtest, run in the game's folder; the workflow adds
+          `--report <file>` to it.
+        type: string
+        default: cargo shuyi playtest --every-stage --brief
+      allow-no-plan:
+        description: >-
+          Pass, with a notice, while the game gives no playtest plan
+          (`SH3001`): for a game fresh from the grid template, which has
+          none until it writes one.
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: The playtest job's timeout.
+        type: number
+        default: 120
+    outputs:
+      play:
+        description: "'true' when a changed file is a lever (or the event always plays)"
+        value: ${{ jobs.detect.outputs.play }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  detect:
+    name: detect
+    runs-on: ubuntu-latest
+    outputs:
+      play: ${{ steps.classify.outputs.play }}
+    steps:
+      # Enough history for the diff: on pull_request HEAD is the merge
+      # commit and HEAD^1 the base tip; on push, every commit pushed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Classify changed files
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          PATTERNS: ${{ inputs.paths }}
+          LEVERS: ${{ inputs.levers }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request) range="HEAD^1 HEAD" ;;
+            push)
+              # A new branch or a force push whose old tip is gone: play.
+              if [ -z "${BEFORE//0/}" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+                echo "No earlier commit to compare with: play."
+                echo "play=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              range="$BEFORE HEAD" ;;
+            *)
+              echo "Event $EVENT_NAME: always play."
+              echo "play=true" >> "$GITHUB_OUTPUT"
+              exit 0 ;;
+          esac
+          # shellcheck disable=SC2086 # the range is two words on purpose
+          git diff --name-only --no-renames $range > "$RUNNER_TEMP/changed.txt"
+          if [ -n "$LEVERS" ]; then
+            echo "The levers: $LEVERS"
+            eval "$LEVERS" < "$RUNNER_TEMP/changed.txt" | tee "$RUNNER_TEMP/levers.txt"
+            answer=$(grep '^play=' "$RUNNER_TEMP/levers.txt" | tail -n 1 || true)
+            case "$answer" in
+              play=true|play=false) echo "$answer" >> "$GITHUB_OUTPUT" ;;
+              *)
+                echo "::error::the levers command printed no play=true or play=false"
+                exit 1 ;;
+            esac
+            exit 0
+          fi
+          play=false
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            while IFS= read -r pattern; do
+              [ -z "$pattern" ] && continue
+              # shellcheck disable=SC2254 # the pattern is a pattern
+              case "$pattern" in
+                !*) case "$path" in ${pattern#!}) echo "skips: $path"; break ;; esac ;;
+                *) case "$path" in $pattern) echo "plays: $path"; play=true; break ;; esac ;;
+              esac
+            done <<< "$PATTERNS"
+          done < "$RUNNER_TEMP/changed.txt"
+          echo "play=$play" | tee -a "$GITHUB_OUTPUT"
+
+  playtest:
+    name: playtest
+    needs: detect
+    if: needs.detect.outputs.play == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Install system packages
+        if: inputs.system-packages != ''
+        env:
+          PACKAGES: ${{ inputs.system-packages }}
+        run: |
+          # shellcheck disable=SC2086 # one word a package
+          sudo apt-get update && sudo apt-get install -y $PACKAGES
+      - name: Build
+        if: inputs.build != ''
+        env:
+          BUILD: ${{ inputs.build }}
+        run: eval "$BUILD"
+      - name: Play every stage
+        env:
+          COMMAND: ${{ inputs.command }}
+          ALLOW_NO_PLAN: ${{ inputs.allow-no-plan }}
+        run: |
+          # Not `-e` (the step's default): the playtest's status is read, not fatal.
+          set +e -uo pipefail
+          report="$RUNNER_TEMP/playtest.json"
+          text="$RUNNER_TEMP/playtest.txt"
+          rm -f "$report"
+          eval "$COMMAND"' --report "$report"' | tee "$text"
+          status=${PIPESTATUS[0]}
+
+          # The summary: a fenced block a stage, each starting at its title
+          # (the report's, in order); one block if the stages have none.
+          titles="$RUNNER_TEMP/titles.txt"
+          : > "$titles"
+          if [ -s "$report" ]; then
+            jq -r 'if (.result | type) == "array" then .result[].title else empty end' "$report" > "$titles" || : > "$titles"
+          fi
+          {
+            echo "## Playtest"
+            echo
+            if [ -s "$titles" ] && ! grep -qx '' "$titles"; then
+              awk -v fence='```' '
+                NR == FNR { titles[++n] = $0; next }
+                at < n && $0 == titles[at + 1] {
+                  if (at > 0) print fence "\n"
+                  at++
+                  blanks = 0
+                  print "### " $0 "\n\n" fence
+                  next
+                }
+                # Blank lines inside a block only, not at its ends.
+                at > 0 && $0 == "" { blanks++; next }
+                at > 0 {
+                  if (started[at]) for (; blanks > 0; blanks--) print ""
+                  blanks = 0
+                  started[at] = 1
+                  print
+                }
+                END { if (at > 0) print fence }
+              ' "$titles" "$text"
+            else
+              echo '```'
+              cat "$text"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$status" -ne 0 ] && [ "$ALLOW_NO_PLAN" = true ] && [ -s "$report" ]             && jq -e '.code == "SH3001"' "$report" > /dev/null; then
+            echo "::notice title=Playtest::the game gives no playtest plan yet, so nothing was played (the shuyi-balance-bots skill writes one)"
+            echo "**No playtest plan yet**: nothing was played." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [ "$status" -ne 0 ]; then
+            # Annotations are one line; `%` and newlines are escaped.
+            one_line='gsub("%"; "%25") | gsub("\r"; "%0D") | gsub("\n"; "%0A")'
+            if [ -s "$report" ] && jq -e '.ok == false and .code == null' "$report" > /dev/null; then
+              # A stage blocked: a bot under its floor.
+              blocked=$(jq -r '.result[] | select(.report.blocked)
+                | (.stage // .title) + ": "
+                  + ([.report.checks[] | select(.found.Rate.blocked == true) | .check.Rate.entrant] | join(", "))
+                  + " under the floor" | '"$one_line" "$report")
+              if [ -z "$blocked" ]; then
+                echo "::error title=Playtest::the playtest failed (exit $status), but names no blocked stage"
+              fi
+              while IFS= read -r line; do
+                [ -n "$line" ] && echo "::error title=Playtest blocked::$line"
+              done <<< "$blocked"
+              echo "**Blocked**: a bot fell under its floor." >> "$GITHUB_STEP_SUMMARY"
+            else
+              # The playtest itself broke: an error with a code, or no
+              # report (wrong arguments, a report not written, the tool
+              # program stopped).
+              if [ -s "$report" ]; then
+                why=$(jq -r '"\(.code // "no code"): \(.error // "no error given")" | '"$one_line" "$report")
+              else
+                why="no report written: see the log"
+              fi
+              echo "::error title=Playtest broke::the playtest itself broke (exit $status), $why"
+              echo "**The playtest broke** (exit $status): no stage was judged." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          exit "$status"
