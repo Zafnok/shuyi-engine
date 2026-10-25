@@ -23,6 +23,7 @@
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
 //! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
+//! | `attach <host:port>` | a running debug build over the live link: steps played as a player's input, then its screens, frame, log and window's picture | [`attach`] |
 //!
 //! Every answer is an [`Answer`]: the contract's [`VERSION`], the
 //! operation, whether it passed, its result or the error that stopped it,
@@ -39,6 +40,7 @@
 //! when they change and [`VERSION`] doesn't.
 
 pub mod add;
+pub mod attach;
 pub mod autobalance;
 pub mod bake;
 pub mod bots;
@@ -70,7 +72,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 19;
+pub const VERSION: u32 = 20;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -106,6 +108,8 @@ pub enum Op {
     Doctor,
     /// A problem code's page.
     Explain,
+    /// A running build reached over the live link.
+    Attach,
     /// The MCP session's game started headless.
     Start,
     /// The MCP session's game played on: a script, then idle frames.
@@ -123,7 +127,7 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 15] = [
+    pub const ALL: [Op; 16] = [
         Op::New,
         Op::Check,
         Op::Lint,
@@ -139,6 +143,7 @@ impl Op {
         Op::Bake,
         Op::Doctor,
         Op::Explain,
+        Op::Attach,
     ];
 
     /// The MCP server's session tools ([`crate::mcp`]), in the order it
@@ -171,6 +176,7 @@ impl Op {
             Op::Bake => "bake",
             Op::Doctor => "doctor",
             Op::Explain => "explain",
+            Op::Attach => "attach",
             Op::Start => "start",
             Op::Step => "step",
             Op::FramePng => "frame_png",
@@ -426,6 +432,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(name),
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(name),
         (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(name),
+        (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(name),
         (Op::Start, _) => pair::<StartInput, StartOutput>(name),
         (Op::Step, _) => pair::<StepInput, run::RunOutput>(name),
         (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(name),

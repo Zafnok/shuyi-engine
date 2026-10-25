@@ -33,6 +33,9 @@ pub const NO_SESSION: Code = Code("SH0002");
 /// `unknown-module`: `add` was given a name that is no module the game's
 /// engine builds.
 pub const UNKNOWN_MODULE: Code = Code("SH0003");
+/// `link-token`: `attach` gave a token the build doesn't have, and it
+/// closed the link.
+pub const LINK_TOKEN: Code = Code("SH0004");
 /// `no-project`: no `shuyi.ron` here or above.
 pub const NO_PROJECT: Code = Code("SH1001");
 /// `project-file`: `shuyi.ron` doesn't read, or lacks what the command
@@ -43,6 +46,11 @@ pub const TOOLCHAIN: Code = Code("SH1003");
 /// `engine-dependency`: the game's `Cargo.toml` has no `shuyi`
 /// dependency, or the engine checkout it names can't be read.
 pub const ENGINE_DEPENDENCY: Code = Code("SH1004");
+/// `no-build`: `attach` found no build listening at the address.
+pub const NO_BUILD: Code = Code("SH1005");
+/// `link-version`: the build speaks another link version than this
+/// `shuyi`.
+pub const LINK_VERSION: Code = Code("SH1006");
 /// `hard-coded-key`: the game's code or text names a key (`lint`'s
 /// `check-keys`).
 pub const HARD_CODED_KEY: Code = Code("SH2101");
@@ -66,6 +74,9 @@ pub const FILE: Code = Code("SH3004");
 /// `game-program`: the game's tool program didn't build, or stopped
 /// before it answered.
 pub const GAME_PROGRAM: Code = Code("SH3005");
+/// `link-lost`: the build's link is held by another client, closed, or
+/// answered what `attach` can't read.
+pub const LINK_LOST: Code = Code("SH3006");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -185,6 +196,15 @@ pub static TABLE: &[Entry] = &[
          catalog plans isn't built yet"
     ),
     row!(
+        LINK_TOKEN,
+        "link-token",
+        Usage,
+        "SH0004",
+        "The build closed the link at its hello: the token is wrong",
+        "pass the token of the build's log line `shuyi link: listening on <address>, token \
+         <token>` as --token (it changes each start, unless SHUYI_LINK_TOKEN sets it)"
+    ),
+    row!(
         NO_PROJECT,
         "no-project",
         Setup,
@@ -218,6 +238,24 @@ pub static TABLE: &[Entry] = &[
         "The game doesn't depend on the engine through the shuyi crate",
         "depend on the engine's `shuyi` crate in the game's Cargo.toml, as `shuyi new` writes \
          it, and check that the engine it names is there; then run the same command again"
+    ),
+    row!(
+        NO_BUILD,
+        "no-build",
+        Setup,
+        "SH1005",
+        "No build is listening at the address",
+        "start the game's debug build with its `link` feature and SHUYI_LINK set (`SHUYI_LINK=0 \
+         cargo run --features link`), then attach to the address its log line gives"
+    ),
+    row!(
+        LINK_VERSION,
+        "link-version",
+        Setup,
+        "SH1006",
+        "The build speaks another link version than this shuyi",
+        "attach with the shuyi of the engine the build was made with (the game's own `cargo \
+         shuyi`), or build the game again on this engine, then attach again"
     ),
     row!(
         content::PARSE,
@@ -374,6 +412,15 @@ pub static TABLE: &[Entry] = &[
         "fix what its output in the message says (a compile error, a panic) in the game's tool \
          program, or in the project's own MCP server when the message names that, then call the \
          tool again; the session, if one ran, has ended: `start` it again"
+    ),
+    row!(
+        LINK_LOST,
+        "link-lost",
+        Operation,
+        "SH3006",
+        "The build's link is busy, closed, or answered what shuyi can't read",
+        "detach the other client attached to the build, or start the build again, then attach \
+         again"
     ),
 ];
 

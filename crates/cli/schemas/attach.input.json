@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AttachInput",
+  "description": "What `attach` reaches and plays.",
+  "type": "object",
+  "properties": {
+    "address": {
+      "description": "The build's address, `host:port` (`127.0.0.1:7357`).",
+      "type": "string",
+      "default": ""
+    },
+    "frames": {
+      "description": "Frames to let pass after the steps, with no input.",
+      "type": "integer",
+      "format": "uint32",
+      "default": 0,
+      "minimum": 0
+    },
+    "log_since": {
+      "description": "The first log line to answer, by its number: 0 for every line kept,\nthe last answer's `log_next` for the lines since.",
+      "type": "integer",
+      "format": "uint64",
+      "default": 0,
+      "minimum": 0
+    },
+    "screenshot": {
+      "description": "Where to write the window's picture, a PNG file (from the working\nfolder), if wanted.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "steps": {
+      "description": "The steps to play, in order.",
+      "type": "array",
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AttachStep"
+      }
+    },
+    "token": {
+      "description": "The token the build logged when it started listening.",
+      "type": "string",
+      "default": ""
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "AttachStep": {
+      "description": "One step played over the link.",
+      "oneOf": [
+        {
+          "description": "Each key chord pressed and let go in turn (`\"Enter Up\"`).",
+          "type": "object",
+          "properties": {
+            "keys": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "keys"
+          ]
+        },
+        {
+          "description": "Each controller button pressed and let go in turn (`\"South\"`,\n`\"East+DpadDown\"`: those together).",
+          "type": "object",
+          "properties": {
+            "pad": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "pad"
+          ]
+        },
+        {
+          "description": "That many seconds, played as the build's frames at 60 a second.",
+          "type": "object",
+          "properties": {
+            "wait": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "wait"
+          ]
+        },
+        {
+          "description": "The game's action of that name (`Confirm`), pressed by the\nplayer's primary key for it, or its primary button if it has no\nkey.",
+          "type": "object",
+          "properties": {
+            "act": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "act"
+          ]
+        }
+      ]
+    }
+  }
+}

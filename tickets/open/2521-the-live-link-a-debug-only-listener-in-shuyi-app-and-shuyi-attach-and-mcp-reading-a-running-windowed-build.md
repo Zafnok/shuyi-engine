@@ -5,7 +5,7 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["1133", "3040"]
 nick_input: none
 completed:

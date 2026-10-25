@@ -25,6 +25,10 @@ required-features = ["tools"]
 # `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
 # for its tool program and its tests.
 tools = ["dep:shuyi-cli"]
+# `link`: the live link, so `cargo shuyi attach` reaches the game running
+# in its window: `SHUYI_LINK=0 cargo run -p hello-grid --features link`,
+# in a debug build. Off by default.
+link = ["shuyi-app/link"]
 
 [dependencies]
 # The engine, by its front door: its crates as `shuyi::core`, `shuyi::ui`
@@ -32,12 +36,19 @@ tools = ["dep:shuyi-cli"]
 shuyi = { path = "../../crates/shuyi" }
 # The engine's tools, which turn on the Harness.
 shuyi-cli = { path = "../../crates/cli", optional = true }
+# The macroquad backend, already under `shuyi`, named for its `link`
+# feature.
+shuyi-app = { path = "../../crates/app", optional = true }
 # The entry point: `#[macroquad::main]` has to be in the binary.
 macroquad.workspace = true
 serde = { workspace = true, features = ["std"] }
 ron = { workspace = true, features = ["std"] }
 # The files under `files/`, embedded.
 include_dir.workspace = true
+
+[package.metadata.cargo-machete]
+# Named for its feature (`link`), not its code.
+ignored = ["shuyi-app"]
 
 [dev-dependencies]
 # The Harness and the tools for the tests in tests/.

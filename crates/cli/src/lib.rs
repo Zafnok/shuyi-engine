@@ -1,6 +1,6 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
 //! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
-//! `import`, `bake`, `doctor`, `explain`, each with `--json`; [`contract`]), the contract as
+//! `import`, `bake`, `doctor`, `explain`, `attach`, each with `--json`; [`contract`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
 //! `web` and `private-assets`, each a module of library functions with a
@@ -12,7 +12,7 @@
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
 //! ([`project`]), which says what each command scans and builds; `new`,
-//! `doctor`, `explain`, `schema` and `check-skills` need none. The commands that run the game itself
+//! `doctor`, `explain`, `attach`, `schema` and `check-skills` need none. The commands that run the game itself
 //! get what they need from it ([`GameTools`]) in a program of its own that
 //! calls [`main_with`], and `shuyi` runs that program (`shuyi.ron`'s
 //! `game`) for them. A game on the short path gives [`BasicTools`]
@@ -109,6 +109,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
                                      bake the game's sources into one pack: sizes and times
   doctor                             check the toolchain and say how to fix it
   explain [<code>]                   every problem code (SH2003), or one code's page
+  attach <host:port> --token <t> [steps] [--screenshot <file.png>]
+                                     a running debug build over the live link: play steps
+                                     as a player, then its screens, frame, log and picture
   schema [<name> | --out <dir>]      the contract's JSON schemas
   mcp                                serve the contract over MCP (stdio), with a session
   mcp --ready                        build the server and the game's tool program, then exit
@@ -132,7 +135,7 @@ commands:
   mcp-host                           the game's side of `mcp`: JSON lines on stdin and stdout
 
 It runs on the project in the first folder from here up that holds a
-{file} (new, doctor, explain, schema, check-skills and mcp need none). An error has a problem
+{file} (new, doctor, explain, attach, schema, check-skills and mcp need none). An error has a problem
 code: `{command} explain <code>` says what it means. The exit code is 0
 when it passed, 1 when not, 2 for a wrong command, and 3 for a setup to fix
 ({command} doctor, {file}) before running it again.",

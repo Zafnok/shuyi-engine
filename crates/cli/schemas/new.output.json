@@ -245,6 +245,11 @@
           "const": "explain"
         },
         {
+          "description": "A running build reached over the live link.",
+          "type": "string",
+          "const": "attach"
+        },
+        {
           "description": "The MCP session's game started headless.",
           "type": "string",
           "const": "start"

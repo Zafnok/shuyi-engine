@@ -29,12 +29,15 @@ is another way to reach them.
 | `bake [--target <id>] [--out <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors | the game |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker on the Windows GNU toolchain, and the web target, and says how to fix each | nothing |
 | `explain [<code>]` | Every problem code, or one code's page: what it means and how to fix it ([below](#problem-codes)) | nothing |
+| `attach <host:port> --token <t> [steps] [--frames N] [--screenshot <file.png>] [--log-since N]` | Reaches a debug build already running in its window ([below](#attaching-to-a-running-build)): plays the steps as a player's input, lets N frames pass, then answers with its frames, phase, screens, top screen, whether it is suspended, focused or quit, its frame as text, its [log](#the-log) lines numbered N or more, each with its `seq`, and `log_next`, the next `--log-since`; `--screenshot` writes the window's picture | a running build |
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
 A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
 released in turn), `--pad "South"` (controller buttons, by position) or
 `--wait 0.5` (seconds). Key and button names are the Harness's test-script
-names. The game's own start options (`frame-png --help` lists them, such
+names. `attach` also takes `--act <Action>`: the game's action by name,
+pressed by the player's primary key for it, or its primary button when it
+has no key. The game's own start options (`frame-png --help` lists them, such
 as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots`,
 `playtest` and `autobalance` too.
 
@@ -48,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 19,
+  "contract": 20,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -101,6 +104,38 @@ manifest it refused, a game's own lines), oldest first. Each line is:
 The log keeps the last 500 lines. When it dropped older ones, `limits`
 says how many. For people, `shuyi run` and `shuyi scene` print the
 warnings and errors.
+
+## Attaching to a running build
+
+`run` and `scene` start the game headless. `attach` reaches a build
+that is already running in its real window: the renderer players see,
+its keys pressed the way a player presses them, and its log. It is for
+checking what only the window shows; the headless operations stay the
+way to test a change.
+
+- **The build.** A debug build (or one with the `debug-tools` feature)
+  of a game whose backend has its `link` feature on, started with
+  `SHUYI_LINK=<port>` (`0` takes a free port): `SHUYI_LINK=0 cargo run
+  --features link` for a game made by `shuyi new`. A release build, an
+  export, or a build without the feature never listens.
+- **The token.** It listens on `127.0.0.1` only, and logs one line:
+  `shuyi link: listening on 127.0.0.1:<port>, token <token>`. The
+  token is 128 random bits, new each start, unless `SHUYI_LINK_TOKEN`
+  sets it (16 characters or more). A connection that doesn't start with
+  the right token is closed (`SH0004`), so a web page can't use it.
+- **One client at a time.** A second one is told the link is busy
+  (`SH3006`).
+- **What it reads:** the screens, the frame as text, the window's
+  picture, and the log by number (`--log-since` the last `log_next`
+  reads on from there). Waits are counted in the build's own frames, at
+  60 a second; the steps wait while the build loads or is suspended,
+  and `limits` says so.
+- **What it never does:** change the game any way but a player's input
+  (no settings, no files, no commands), or start, stop or reset it.
+  Nothing is built or run: start the build yourself, then attach.
+
+`attach` with no build listening answers `SH1005` (exit code 3), and a
+build of another engine `SH1006`.
 
 ## Problem codes
 

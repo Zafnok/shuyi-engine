@@ -26,6 +26,10 @@ workspace = true
 # `tools`: the engine's tools for the game (`shuyi_cli::BasicTools`) and
 # its Harness, for its tool program and its tests.
 tools = ["dep:shuyi-cli"]
+# `link`: the live link, so `cargo shuyi attach` reaches the game running
+# in its window: `SHUYI_LINK=0 cargo run --features link`, in a debug
+# build. Off by default.
+link = ["shuyi-app/link"]
 
 [dependencies]
 # The engine: what the game names (`shuyi::prelude`), how it starts, the
@@ -33,8 +37,14 @@ tools = ["dep:shuyi-cli"]
 # modules it turns on.
 shuyi.workspace = true
 shuyi-cli = { workspace = true, optional = true }
+# The macroquad backend, named for its `link` feature.
+shuyi-app = { workspace = true, optional = true }
 # The files under `files/`, embedded.
 include_dir.workspace = true
+
+[package.metadata.cargo-machete]
+# Named for its feature (`link`), not its code.
+ignored = ["shuyi-app"]
 
 [dev-dependencies]
 # The Harness and the tools, for the tests in tests/.

@@ -22,14 +22,23 @@ std = ["shuyi-assets/std", "shuyi-ui/std"]
 # `harness`: the headless test driver for a game's integration tests
 # (game ADR-0017).
 harness = []
+# `link`: the live link's wire and its server (ADR-0047), which a backend's
+# listener runs in a debug build. It reads and writes JSON lines, so it
+# needs `std`.
+link = ["std", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 # The font atlas, the image table and the voice clips' file names.
 shuyi-assets = { path = "../assets", default-features = false }
 # The game's frame loop (`Game`), its context and storage.
 shuyi-ui = { path = "../ui", default-features = false }
+# The live link's requests and answers as JSON lines (the `link` feature).
+serde = { workspace = true, optional = true }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 # The Harness and the toy game for the tests.
-shuyi-platform = { path = ".", default-features = false, features = ["harness"] }
+shuyi-platform = { path = ".", default-features = false, features = ["harness", "link"] }
 shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }
+# The link's server and the Harness playing random scripts alike.
+proptest.workspace = true

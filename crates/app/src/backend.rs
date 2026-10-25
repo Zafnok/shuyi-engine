@@ -78,6 +78,9 @@ pub(crate) struct Macroquad {
     text_input: Option<Box<dyn TextInput>>,
     /// Whether [`start`](Self::start) has run.
     started: bool,
+    /// The live link's input for the next frame, after the devices'.
+    #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+    link_input: Vec<RawInputEvent>,
 }
 
 impl Macroquad {
@@ -100,7 +103,16 @@ impl Macroquad {
             sound: Sound::default(),
             text_input: config.text_input.take(),
             started: false,
+            #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+            link_input: Vec::new(),
         }
+    }
+
+    /// Where the live link puts its input for the next frame: `poll_input`
+    /// adds it after the keyboard's and the pads'.
+    #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+    pub(crate) fn link_input(&mut self) -> &mut Vec<RawInputEvent> {
+        &mut self.link_input
     }
 
     /// Whether the game has loaded and [`start`](Self::start) has run.
@@ -267,6 +279,8 @@ impl Platform for Macroquad {
         if let Some(pads) = &mut self.pads {
             out.extend(pads.poll());
         }
+        #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+        out.append(&mut self.link_input);
     }
 
     fn system_events(&mut self, out: &mut Vec<SystemEvent>) {

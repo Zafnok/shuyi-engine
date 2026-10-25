@@ -15,7 +15,9 @@
 //!   game names;
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
-//!   feature).
+//!   feature);
+//! - the live `link`'s wire and server (the `link` feature), which a
+//!   backend's listener runs so a tool reaches a running debug build.
 //!
 //! The backends: `shuyi-app` (macroquad: desktop, the web, the Steam Deck),
 //! later `shuyi-playdate`, and private crates for closed consoles.
@@ -39,6 +41,8 @@ pub mod basic;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
+#[cfg(feature = "link")]
+pub mod link;
 pub mod platform;
 pub mod text_input;
 pub mod tick;

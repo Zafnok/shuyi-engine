@@ -33,8 +33,8 @@ shuyi-core = { path = "../core", features = ["schema"] }
 shuyi-assets = { path = "../assets" }
 # The frame `frame-png` paints.
 shuyi-ui = { path = "../ui" }
-# The Harness that plays a game's script.
-shuyi-platform = { path = "../platform", features = ["harness"] }
+# The Harness that plays a game's script, and the live link `attach` speaks.
+shuyi-platform = { path = "../platform", features = ["harness", "link"] }
 serde = { workspace = true, features = ["std"] }
 # The project file, `shuyi.ron`, and the font atlas's `atlas.ron`.
 ron = { workspace = true, features = ["std"] }

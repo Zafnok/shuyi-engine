@@ -54,7 +54,11 @@
 mod audio;
 mod backend;
 pub mod keys;
+#[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+mod link;
 pub mod pads;
+#[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+mod readback;
 pub mod render;
 pub mod storage;
 
@@ -266,9 +270,19 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     let mut platform = Macroquad::new(&mut config);
     let mut app = App::new(start);
+    #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+    let mut link = link::start(config.window.title);
     loop {
         let now = Millis::from_secs_f64(miniquad::date::now());
+        #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+        if let Some(link) = &mut link {
+            link.before_frame(&app, platform.link_input());
+        }
         let outcome = app.frame(&mut platform, now);
+        #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+        if let Some(link) = &mut link {
+            answer_link(link, &app);
+        }
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
             print_line(&line);
@@ -285,6 +299,19 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
             break;
         }
         next_frame().await;
+    }
+}
+
+/// Sends the link's answers due after `app`'s frame, and the window's
+/// picture if its client asked: read now, drawn and not yet shown.
+#[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>) {
+    link.after_frame(app);
+    if link.wants_screenshot() {
+        match readback::window_png() {
+            Ok((png, width, height)) => link.screenshot(&png, width, height),
+            Err(e) => link.no_screenshot(e),
+        }
     }
 }
 
@@ -497,6 +524,34 @@ mod tests {
         assert!(config.voices.is_none() && config.text_input.is_none());
         // Nothing is installed in the tests: no file is found.
         assert_eq!((config.files)("font/atlas.png"), None);
+    }
+
+    /// Without the `link` feature the backend never reads `SHUYI_LINK`:
+    /// only the link's module names it, and it is compiled with the
+    /// feature alone.
+    #[test]
+    fn only_the_link_feature_reads_shuyi_link() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut files = vec![src.clone()];
+        let mut naming = Vec::new();
+        while let Some(path) = files.pop() {
+            if path.is_dir() {
+                files.extend(std::fs::read_dir(&path).unwrap().map(|e| e.unwrap().path()));
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                if text.contains("SHUYI_LINK") {
+                    naming.push(path.strip_prefix(&src).unwrap().to_owned());
+                }
+            }
+        }
+        naming.sort();
+        let link = std::path::PathBuf::from("link.rs");
+        let lib = std::path::PathBuf::from("lib.rs");
+        assert_eq!(naming, [lib, link]);
+        let here = include_str!("lib.rs");
+        let gate = "#[cfg(all(feature = \"link\", not(target_arch = \"wasm32\")))]
+mod link;";
+        assert!(here.contains(gate));
     }
 
     /// The lines of `manifest`'s `[header]` table, without comments and
