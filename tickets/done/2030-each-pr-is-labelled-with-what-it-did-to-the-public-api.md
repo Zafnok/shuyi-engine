@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 2030 — Each PR is labelled with what it did to the public API
@@ -108,17 +108,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `verdict` unit tests: no listing diff and no finding is `none`; a
+- [x] `verdict` unit tests: no listing diff and no finding is `none`; a
       listing diff and no finding is `added`; any semver finding is
       `breaking`; a failed run writes no verdict file.
-- [ ] On this ticket's own PR, the `api` job (or `api-none`) sets
+- [x] On this ticket's own PR, the `api` job (or `api-none`) sets
       exactly one `api:` label, and the label on the PR matches the
       job's summary.
-- [ ] `gh pr view <N> --json labels` shows the label after merge without
+- [x] `gh pr view <N> --json labels` shows the label after merge without
       a token, because the repository is public. Write the command in
       the Completion notes.
-- [ ] `zizmor` passes on `ci.yml` (`security.yml`).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `zizmor` passes on `ci.yml` (`security.yml`).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -127,5 +127,42 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `cargo xtask api --verdict <file>` writes `none`, `added` or
+  `breaking`: `verdict(&[CrateApi]) -> Label` in
+  `crates/xtask/src/api.rs`, carried as `Outcome::label` (none when the
+  comparison failed, so no file), written by `write_verdict`. Unit tests
+  in `api/tests.rs` cover each word, a lost line and a new crate being
+  `added`, a finding without a listing diff being `breaking`, and a
+  failed run having no label.
+- CI: the `api` job passes `--verdict "$RUNNER_TEMP/api-verdict"` and
+  hands the word on as a job output. A new job, `api-label`, sets the
+  label: `none` when `changes` says no crate changed, else the `api`
+  job's word, and only when `api` succeeded. It replaces every `api:`
+  label on the PR and keeps the others (`gh api` on the issue's labels,
+  `PUT`). It runs only for a PR from this repository, and is in
+  `ci-result`'s `needs`.
+- The three labels exist in the repository, each describing itself and
+  naming ADR-0038.
+- ADR-0038 gains *The verdict as a label*; the README's section on
+  depending by git revision says the label is there and how to read it.
+- Read a merged PR's label without a token:
+  `gh pr view <N> --json labels -R Zafnok/shuyi-engine`.
+
+**Deviations.**
+- Steps 2 and 3 asked for the label step inside the `api` job, with
+  `pull-requests: write` there, plus an `api-none` job. Instead one
+  `api-label` job does both cases, so the token that can write never sits
+  in a job that builds the PR's code (the `api` job runs build scripts
+  from the PR); the `api` job keeps the workflow's read-only token.
+- The type is `Label`, not `Verdict`: `Verdict` already names the rule's
+  pass or fail in `api.rs`. The function is `verdict` as asked.
+- The step uses the REST issues API, not `gh pr edit`, which also reads
+  the PR's project cards through GraphQL and can fail under a token that
+  has only `pull-requests: write`.
+
+**Game:** the watcher of game#1190 reads the label; that ticket needs no
+change for it (it prefers the label and falls back to its `pub`-line
+test). There is no pin move for this change: it touches `xtask`, CI and
+docs only.
+
+No break.

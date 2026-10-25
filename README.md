@@ -145,6 +145,13 @@ A game depends on `shuyi`, by git revision until the first release:
 shuyi = { git = "https://github.com/Zafnok/shuyi-engine", rev = "<commit>" }
 ```
 
+Each merged PR says what it did to the public API in one label, `api:
+none`, `api: added` or `api: breaking`, which anyone can read without a
+token (`gh pr view <N> --json labels -R Zafnok/shuyi-engine`). A game
+pinned by revision moves its pin when a PR past it isn't `api: none`,
+and reads the ticket's `Breaking:` lines when it is `api: breaking`
+([ADR-0038](docs/adr/0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md)).
+
 Everything else is a module, turned on as a feature of `shuyi`: the
 catalog, [`docs/modules.md`](docs/modules.md), lists them by concern
 (perspective, bodies and motion, online play, kind of game), each with

@@ -6,7 +6,7 @@
   ADR), 2013 (`#[non_exhaustive]` and constructors), 2804 (the changelog
   that lists the `Breaking:` lines), 2116 (a moved golden value), 2012
   (moving the pinned toolchain), 2011 (Dependabot), 2014 (the game built
-  against each PR)
+  against each PR), 2030 (the verdict as a PR label)
 
 ## Context
 
@@ -137,6 +137,29 @@ every PR, so version numbers can't say what kind of change a PR is.
    `#[non_exhaustive]`, constructors and `with_` setters are 2013's ADR.
    What broke in the game is 2014's job, which builds it against each
    PR.
+
+## The verdict as a label (ticket 2030)
+
+Added after acceptance; the decision above is unchanged.
+
+- `cargo xtask api --verdict <file>` writes one word to `<file>`:
+  `breaking` when any crate has a semver finding (§4), `added` when a
+  listing changed without one (lost lines included), and `none`
+  otherwise. `verdict` and `Label` in `api.rs` compute it. A run that
+  can't compare writes nothing.
+- CI's `api-label` job puts it on the PR as one label, `api: none`,
+  `api: added` or `api: breaking`, and removes the other two. A PR the
+  `api` job skips (no change under `crates/` and the rest of §8's paths)
+  is `api: none`. A failed `api` job sets no label. The job has no
+  checkout and no build, so the `pull-requests: write` token never meets
+  the PR's code. A fork's PR has a read-only token and stays unlabelled.
+- **Why a label:** a job summary can't be read through GitHub's API from
+  another repository, and a public PR's labels can, without a token
+  (`gh pr view <N> --json labels -R Zafnok/shuyi-engine`). It is for
+  readers outside CI: a game that depends on the engine by git revision
+  and wants to know which merged PRs changed what it can call. The game's
+  watcher (game#1190) reads it to decide when to move its pin, and falls
+  back to its own test on a PR without one.
 
 ## Consequences
 

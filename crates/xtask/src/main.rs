@@ -8,7 +8,7 @@
 //! - `cargo xtask check-modules`
 //! - `cargo xtask check-pins`
 //! - `cargo xtask check-toolchain`
-//! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]`
+//! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 
 mod api;
@@ -58,12 +58,13 @@ usage:
       Check that the pinned Rust is the same everywhere (the bump-rust skill):
       the root's exact channel, the templates' channels, every workspace's
       rust-version, the members' inherited one and Dependabot's folders.
-  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>]
+  cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]
       Show the public API change of the crates a game uses, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
       and the breaks (cargo-semver-checks), appending the Markdown to <file>.
       With --pr-branch, a break needs a `Breaking:` line in the branch's
-      ticket (ADR-0038).
+      ticket (ADR-0038). With --verdict, write `none`, `added` or `breaking`
+      to <file>, for the PR's `api:` label.
   cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
@@ -138,6 +139,10 @@ fn api(root: &Path, args: &[String]) -> ExitCode {
         &outcome.summary,
         options.summary.as_deref(),
         &mut std::io::stdout().lock(),
+    ));
+    errors.extend(api::write_verdict(
+        outcome.label,
+        options.verdict.as_deref(),
     ));
     report("api", &errors, &outcome.warnings)
 }
