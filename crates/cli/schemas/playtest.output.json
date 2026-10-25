@@ -471,7 +471,7 @@
       ]
     },
     "Played": {
-      "description": "How one entrant's tries went, besides the report: its label and its\nspeed.",
+      "description": "How one entrant's tries went, besides the report: its label, its\nspeed, its summary and the last run's headline.",
       "type": "object",
       "properties": {
         "label": {
@@ -489,6 +489,22 @@
           "description": "The wall time of a try, on average, in seconds: the one number\nthat changes with the machine and the thread count.",
           "type": "number",
           "format": "double"
+        },
+        "summary": {
+          "description": "The plan's summary items over its tries, in order: `won 83/100`.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "was": {
+          "description": "Its headline number in the last run, if it played there:\n`was 47/100 succeed` from its first rate check, else its first\nsummary item, `was won 63/100`.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         }
       },
       "additionalProperties": false,
@@ -507,6 +523,18 @@
           "items": {
             "$ref": "#/$defs/Played"
           }
+        },
+        "previous": {
+          "description": "The last run of the same stage, entrants and game options, if the\nhistory has one.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Previous"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "report": {
           "description": "The tries and the checks' verdicts.",
@@ -559,6 +587,25 @@
         "entrants",
         "checks",
         "blocked"
+      ]
+    },
+    "Previous": {
+      "description": "The last run before this one, from the history.",
+      "type": "object",
+      "properties": {
+        "commit": {
+          "description": "The short hash of the commit the project was on, or `unknown`.",
+          "type": "string"
+        },
+        "date": {
+          "description": "When it ran: `2026-10-22 14:05 UTC`.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "date",
+        "commit"
       ]
     },
     "RateVerdict": {

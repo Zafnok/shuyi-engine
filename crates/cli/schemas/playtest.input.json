@@ -17,6 +17,19 @@
       "type": "boolean",
       "default": false
     },
+    "history": {
+      "description": "The folder the history is kept in, from the project's\n([`DEFAULT_HISTORY`] if left out); only [`kept`] keeps one.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "no_history": {
+      "description": "Keep no history, and compare with none.",
+      "type": "boolean",
+      "default": false
+    },
     "seed": {
       "description": "The first try's seed; each next try takes the next.",
       "type": [

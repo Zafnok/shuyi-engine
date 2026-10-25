@@ -28,7 +28,7 @@ use crate::contract::autobalance::AutobalanceInput;
 use crate::contract::bots::{BotsInput, BotsOutput};
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
-use crate::contract::playtest::{DEFAULT_TRIES, PlaytestInput};
+use crate::contract::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
 use crate::contract::replay::{Record, ReplayRun};
 use crate::contract::session::Session;
 use crate::frame_png::{Script, Shot};
@@ -186,12 +186,17 @@ pub struct PlaytestPlan {
     /// order; most simply [`play_tries`](shuyi_core::bots::playtest::play_tries)
     /// over the one seed.
     pub play: PlayTry,
+    /// Each entrant's summary items, in [`entrants`](Self::entrants)
+    /// order, printed on its line: `won 83/100 · turns median 12`. An
+    /// entrant past the end, or with none, has no summary.
+    pub summary: Vec<Vec<Summary>>,
 }
 
 impl PlaytestPlan {
     /// The plan titled `title`: `entrants` judged by `checks`, a try played
-    /// by `play`. It has no [`groups`](Self::groups), and every entrant
-    /// plays unless `--entrant` says ([`default_entrants`](Self::default_entrants)
+    /// by `play`. It has no [`groups`](Self::groups) and no
+    /// [`summary`](Self::summary), and every entrant plays unless
+    /// `--entrant` says ([`default_entrants`](Self::default_entrants)
     /// empty).
     pub fn new(
         title: impl Into<String>,
@@ -206,6 +211,7 @@ impl PlaytestPlan {
             default_entrants: Vec::new(),
             checks,
             play,
+            summary: Vec::new(),
         }
     }
 }

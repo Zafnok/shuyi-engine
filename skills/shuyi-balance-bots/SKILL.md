@@ -86,7 +86,14 @@ same report on every machine and every thread count.
    turns)`. `groups` names sets of entrants, and `default_entrants` the
    ones that play when none is asked for. A game with several stages
    lists their ids in `playtest_stages`, and changes the defaults (100
-   tries from seed 0, to turn 200) in `playtest_defaults`.
+   tries from seed 0, to turn 200) in `playtest_defaults`. Its `summary`
+   gives each entrant (in `entrants` order) the numbers a designer reads
+   first, over its measures, as `playtest::Summary` items that may live
+   in a data file: `Sum(measure: "won")` prints `won 83/100`,
+   `Spread(measure: "deaths", up_to: 3)` `deaths per try 0: 30  1: 21
+   2: 25  3+: 24`, `Most(prefix: "fell ", skip_suffix: Some(" turn"))`
+   `most: scout 41×`, and `Median` and `Max` `items median 1`. Each takes
+   a `label`; a missing measure counts as 0.
 
 6. **Run it:**
 
@@ -104,7 +111,17 @@ same report on every machine and every thread count.
    entrant's tries with their measures, each check with what it found
    (`found.Rate.verdict` is `Within`, `Below` or `Above`), `blocked`,
    and each entrant's seconds per try, the one number that changes with
-   the machine.
+   the machine, and its `summary` lines.
+
+   Every run is kept in a history, one JSON line per run in
+   `target/playtest-history/<stage>-<entrants>[-<options>].jsonl`
+   (`--history <dir>` keeps it elsewhere, `--no-history` keeps none).
+   The next run of the same stage, entrants and options says what each
+   entrant was then, after its line (`· was 47/100 succeed`, from its
+   first rate check, else its first summary item), and ends with
+   `previous <date> · commit <hash>`; in JSON, each entrant's `was` and
+   the report's `previous`. Change a stage, run again, and read the
+   `was`. `--brief` leaves out the line per try.
 
 7. **Tune the stage, never the bots.** `cargo shuyi autobalance` changes
    the stage with the game's knobs until every rate is in its band, then
@@ -213,6 +230,8 @@ Branch on the answer's `code`, never its message:
   build. The answer's `error` says which.
 - `SH0001`: a wrong option, or a `--stage` or `--entrant` the game
   doesn't have: the answer's error says which.
+- `SH3004`: `playtest`'s history can't be written: the error names the
+  file. The reports are in the answer still.
 - `SH3005`: the game's tool program didn't build.
 
 A `playtest` that ran and is `ok: false` has a rate under its floor

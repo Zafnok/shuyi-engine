@@ -37,7 +37,7 @@ use shuyi::ui::{Game, GameData, GameHooks};
 use shuyi_cli::contract::autobalance::AutobalanceInput;
 use shuyi_cli::contract::bots::{BotsInput, BotsOutput, Play, UNFINISHED, tally};
 use shuyi_cli::contract::import::Importers;
-use shuyi_cli::contract::playtest::PlaytestInput;
+use shuyi_cli::contract::playtest::{PlaytestInput, Summary};
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
@@ -474,11 +474,12 @@ pub fn playtest_checks() -> Result<Vec<Check>, String> {
 
 /// The playtest's plan: [`ENTRANTS`] on the one stage, each try played
 /// by [`play_tries`] from its seed alone, and those of
-/// [`playtest_checks`] whose entrants all play.
+/// [`playtest_checks`] whose entrants all play. Each hero's line sums
+/// its wins and gives its median turns.
 pub fn playtest_plan() -> Result<PlaytestPlan, String> {
     let stage = Stage::new(&loaded()?.stage_map, 0)?;
     let checks = playtest_checks()?;
-    Ok(PlaytestPlan::new(
+    let mut plan = PlaytestPlan::new(
         "the stage (files/stage.map)",
         ENTRANTS.iter().map(|e| (e.name.to_owned(), None)).collect(),
         Box::new(move |names| {
@@ -493,7 +494,10 @@ pub fn playtest_plan() -> Result<PlaytestPlan, String> {
                 .map_err(|e| e.to_string())?;
             tries.pop().ok_or_else(|| "no try".to_owned())
         }),
-    ))
+    );
+    let summary = vec![Summary::sum("won"), Summary::median("turns")];
+    plan.summary = vec![summary; ENTRANTS.len()];
+    Ok(plan)
 }
 
 /// [`ENTRANTS`] play the stage as `tries` says, judged by

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["2532"]
 nick_input: none
-completed:
+completed: 2026-10-24
 ---
 
 # 2533 — The playtest history and its summary lines
@@ -130,19 +130,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Each `Summary` kind prints as in its doc comment on a fixture of
+- [x] Each `Summary` kind prints as in its doc comment on a fixture of
       four tries (unit tests with the exact strings).
-- [ ] `Most` with prefix `"fell "` and `skip_suffix: Some(" turn")`
+- [x] `Most` with prefix `"fell "` and `skip_suffix: Some(" turn")`
       ignores `fell scout turn` and breaks ties by name.
-- [ ] A second run with the same stage, entrants and options shows
+- [x] A second run with the same stage, entrants and options shows
       `was` numbers and the first run's date and commit; a run with
       other entrants writes another file and shows none.
-- [ ] `--no-history` writes nothing; a history folder that can't be
+- [x] `--no-history` writes nothing; a history folder that can't be
       written is an error naming the path.
-- [ ] `--brief` has no per-try rows and everything else.
-- [ ] The UTC stamp is right on 2000-02-29, 2026-12-31 23:59 and
+- [x] `--brief` has no per-try rows and everything else.
+- [x] The UTC stamp is right on 2000-02-29, 2026-12-31 23:59 and
       1970-01-01 00:00 (the game's tests).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -151,5 +151,62 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+What was done:
+
+- `contract::playtest::Summary` (`playtest/summary.rs`): `Sum`, `Spread`,
+  `Most`, `Median`, `Max` over the named measures, serde (a game may keep
+  them in a RON file), each with its text as its doc comment shows,
+  built with `Summary::sum` … `max`, `with_label`, `with_skip_suffix`
+  (ADR-0039 kind 6). `PlaytestPlan::summary: Vec<Vec<Summary>>`, per
+  entrant in `entrants` order, empty from `PlaytestPlan::new`.
+- Each entrant's line: name, label, the summary items, the time per try
+  and `was …`, ` · ` between them, wrapped past 100 characters onto lines
+  indented under the first item. `Played` gains `summary` (the items'
+  text) and `was`; `PlaytestOutput` gains `previous: Option<Previous>`
+  (`date`, `commit`). Contract version 19.
+- The history (`playtest/history.rs`): one JSON line per run and stage,
+  `{date, commit, title, stage, entrants, options, output}`, in
+  `<stage>-<entrants joined by +>[-<options>].jsonl` under
+  `target/playtest-history/` (or `--history`), the commit from
+  `git rev-parse --short HEAD` or `unknown`, the date by the game's
+  `utc_stamp` and its tests (plus 2026-12-31 23:59). The last line that
+  parses is read before the new one is written.
+- `playtest::kept(game, root, input)` plays and keeps the history; the
+  CLI and the MCP `playtest` tool call it. `playtest::playtest` keeps
+  none, as before. `PlaytestInput` gains `history` and `no_history`;
+  `PlaytestArgs` gains `brief`. A history that can't be written fails
+  the answer with `SH3004`, naming the file, with the reports still in
+  it.
+- `--brief` prints `playtest::brief`: the core's new
+  `PlaytestReport::brief()`, the table without its line per try, and
+  everything else.
+- Hello, Grid's plan sums `won` and gives the median of `turns` for
+  each hero; its test runs `playtest` twice through `main_with` in a
+  temporary history and reads the second run's `was` (`was 5/50
+  succeed`, `was 50/50 succeed`) and `previous`, then a run of `walk`
+  alone keeps another file and shows none.
+- Docs: `docs/contract.md`, the usage text, `SH3004`'s page and the
+  `shuyi-balance-bots` skill (the summary items, the history, `was` and
+  `previous`, `--history`, `--no-history`, `--brief`, `SH3004`).
+
+Deviations:
+
+- History lives in `kept`, not in `playtest`, so the existing
+  `playtest(game, input)` stays pure (no file, no clock) and the MCP
+  tool keeps a history as the command does.
+- The file name cleans the stage's and the entrants' names too, not only
+  the options (a name with `/` would name another folder). An option is
+  written without its dashes (`mode=casual`, `hard`).
+- `was` reads the last run's own summary text (its first item), not
+  the current item recomputed over its tries: what was printed then.
+- `.gitignore` ignores `/examples/*/target/`, where an example's history
+  goes by default.
+
+Follow-ups: none new. 2111's clause now says it adds `made` to the
+history's record; 2544's spread clause says what 2533's items give.
+
+The game moves onto this in game#1180 (its PR will move the pin);
+the engine's PR merges first.
+
+Breaking: shuyi-cli: contract::playtest::Played, PlaytestOutput: new fields `summary`, `was` and `previous`, and now `#[non_exhaustive]`: build neither by literal (the engine does)
+Breaking: shuyi-cli: contract::playtest::PlaytestArgs: new field `brief`, and now `#[non_exhaustive]`: read it from `parse_args`, don't build it by literal

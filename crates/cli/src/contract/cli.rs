@@ -315,12 +315,16 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         },
         "playtest" => match playtest::parse_args(&args, options) {
             Ok(parsed) => {
-                let answer = playtest::playtest(game, &parsed.input);
+                let answer = playtest::kept(game, &project.root, &parsed.input);
                 let answer = match &parsed.report {
                     Some(file) => also_written(answer, &project.root.join(file), file),
                     None => answer,
                 };
-                print(json, &answer, |outputs| playtest::text(outputs))
+                if parsed.brief {
+                    print(json, &answer, |outputs| playtest::brief(outputs))
+                } else {
+                    print(json, &answer, |outputs| playtest::text(outputs))
+                }
             }
             Err(e) => wrong(json, Op::Playtest, &e, &playtest::usage(command, options)),
         },
@@ -456,6 +460,14 @@ mod tests {
             serde_json::from_str(&written).unwrap();
         assert!(written.ok);
         assert_eq!(written.result.unwrap()[0].report.entrants[0].tries.len(), 3);
+        // Each run was kept in the project's history; a brief one isn't.
+        let kept = dir.join("target/playtest-history/stage-walk+run.jsonl");
+        assert_eq!(fs::read_to_string(&kept).unwrap().lines().count(), 2);
+        assert_eq!(
+            code(&["playtest", "--tries", "3", "--brief", "--no-history"]),
+            0
+        );
+        assert_eq!(fs::read_to_string(&kept).unwrap().lines().count(), 2);
         assert_eq!(
             code(&["playtest", "--report", "no/such/r.json", "--json"]),
             1

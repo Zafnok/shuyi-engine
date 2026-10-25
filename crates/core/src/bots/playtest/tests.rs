@@ -463,6 +463,12 @@ fn the_report_reads_as_a_table() {
          try 2 · hardcore · 0 · turns 1 · won 0\n\
          try 3 · hardcore · 0 · turns 1 · won 0\n"
     );
+    // Brief, the table stops before the tries.
+    let table = report.to_string();
+    let brief = report.brief();
+    assert!(brief.ends_with("lower ✓\n"), "{brief}");
+    assert_eq!(table[..brief.len()], brief);
+    assert!(!brief.contains("try "));
     let unknown = judge(
         vec![("a".to_string(), Vec::new())],
         &[

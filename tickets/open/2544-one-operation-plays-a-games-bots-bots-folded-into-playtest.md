@@ -67,9 +67,10 @@ None.
   record format, for `replay`. A game whose plan gives no record leaves
   it out, as `bots` does today. The answer counts the outcomes per
   entrant, and has the spread of turns and of each measure per entrant
-  (`bots::Spread`'s `min`, `max`, `total`, `mean`), unless 2533's summary
-  lines already give it: then reuse those and say so in the completion
-  notes.
+  (`bots::Spread`'s `min`, `max`, `total`, `mean`). 2533's summary items
+  (`playtest::Summary`: `Sum`, `Spread`, `Most`, `Median`, `Max`) don't
+  give it: they are the few numbers a game chooses per entrant, with no
+  `min`, `mean` or outcome counts, so this answer adds those beside them.
 - **A plan with no checks is a plain bot run.** With no checks the
   answer judges nothing and `ok` is true when every try played; with one
   entrant it is what `bots` was. The text output for that case is one
@@ -149,8 +150,8 @@ its answer and its tests unchanged.
    `contract/bots.rs`, the grid template's `tools.rs` and tests, and
    Hello, Grid's `tools.rs`.
 2. Add `commands` and `record` to a try in the playtest answer and the
-   plan's play of one try. Add the outcome counts and the spreads (or
-   reuse 2533's summary).
+   plan's play of one try. Add the outcome counts and the spreads, next
+   to the plan's `summary` items (2533).
 3. Move the grid template and Hello, Grid onto it, test first: the grid
    template's records still replay.
 4. Remove `bots` (the op, the hook, the subcommand, the schemas, the MCP

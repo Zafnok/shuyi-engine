@@ -7,21 +7,34 @@
 //! every core ([`crate::pool`]), times them, and judges them once in seed
 //! order, so the report never depends on the thread count. The answer
 //! passes unless a rate fell under its floor.
+//!
+//! Each entrant's line carries the plan's summary items ([`Summary`]),
+//! and [`kept`] keeps every run in a history and says what the last run
+//! of the same stage, entrants and options found.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_core::bots::playtest::{Check, PlaytestReport, Tried, Tries, judge};
+use shuyi_core::bots::playtest::{Check, Found, PlaytestReport, Tried, Tries, judge};
 
 use super::bots::{MAX_GAMES, game_arg, options_text};
 use super::codes::Code;
 use super::{Answer, Op, codes};
 use crate::game::{GameArg, GameOption, GameTools, PlaytestChecks, PlaytestPlan, code_of};
 use crate::pool;
+
+mod history;
+mod summary;
+
+pub use summary::Summary;
+
+/// Where the history is kept when the input doesn't say, from the
+/// project's folder.
+pub const DEFAULT_HISTORY: &str = "target/playtest-history";
 
 /// The tries when neither the input nor the game says: 100 from seed 0,
 /// each stopped at turn 200.
@@ -54,6 +67,11 @@ pub struct PlaytestInput {
     pub threads: Option<u32>,
     /// The game's own options, in the order given.
     pub start: Vec<GameArg>,
+    /// The folder the history is kept in, from the project's
+    /// ([`DEFAULT_HISTORY`] if left out); only [`kept`] keeps one.
+    pub history: Option<String>,
+    /// Keep no history, and compare with none.
+    pub no_history: bool,
 }
 
 impl PlaytestInput {
@@ -67,10 +85,11 @@ impl PlaytestInput {
     }
 }
 
-/// How one entrant's tries went, besides the report: its label and its
-/// speed.
+/// How one entrant's tries went, besides the report: its label, its
+/// speed, its summary and the last run's headline.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct Played {
     /// Its name.
     pub name: String,
@@ -79,11 +98,31 @@ pub struct Played {
     /// The wall time of a try, on average, in seconds: the one number
     /// that changes with the machine and the thread count.
     pub seconds_per_try: f64,
+    /// The plan's summary items over its tries, in order: `won 83/100`.
+    #[serde(default)]
+    pub summary: Vec<String>,
+    /// Its headline number in the last run, if it played there:
+    /// `was 47/100 succeed` from its first rate check, else its first
+    /// summary item, `was won 63/100`.
+    #[serde(default)]
+    pub was: Option<String>,
+}
+
+/// The last run before this one, from the history.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Previous {
+    /// When it ran: `2026-10-22 14:05 UTC`.
+    pub date: String,
+    /// The short hash of the commit the project was on, or `unknown`.
+    pub commit: String,
 }
 
 /// What `playtest` found on one stage.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[non_exhaustive]
 pub struct PlaytestOutput {
     /// The stage, if the game names its stages.
     pub stage: Option<String>,
@@ -93,10 +132,15 @@ pub struct PlaytestOutput {
     pub report: PlaytestReport,
     /// Every entrant that played, in report order.
     pub entrants: Vec<Played>,
+    /// The last run of the same stage, entrants and game options, if the
+    /// history has one.
+    #[serde(default)]
+    pub previous: Option<Previous>,
 }
 
 /// `playtest`: `input`'s tries of `game`'s plan, played on threads and
-/// judged; a report a stage, one unless `every_stage`.
+/// judged; a report a stage, one unless `every_stage`. It keeps no
+/// history: [`kept`] does.
 pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<PlaytestOutput>> {
     let failed = |code: Code, error: String| Answer::failed(Op::Playtest, code, error);
     let tries = input.tries(&game.playtest_defaults());
@@ -137,10 +181,11 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<Playt
             Ok(chosen) => chosen,
             Err((code, e)) => return failed(code, e),
         };
-        let output = match play(&plan, &chosen, &tries, threads) {
+        let mut output = match play(&plan, &chosen, &tries, threads) {
             Ok(report) => report,
             Err(e) => return failed(codes::GAME_ERROR, e),
         };
+        summarize(&plan, &mut output);
         let unfinished = output
             .report
             .entrants
@@ -160,10 +205,120 @@ pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<Playt
             title: plan.title,
             report: output.report,
             entrants: output.entrants,
+            previous: None,
         });
     }
     let ok = outputs.iter().all(|o| !o.report.blocked);
     Answer::new(Op::Playtest, ok, outputs, limits)
+}
+
+/// Each entrant's summary items of `plan` over its tries.
+fn summarize(plan: &PlaytestPlan, stage: &mut StagePlayed) {
+    for (played, tries) in stage.entrants.iter_mut().zip(&stage.report.entrants) {
+        let at = plan.entrants.iter().position(|(n, _)| *n == played.name);
+        let items = at.and_then(|at| plan.summary.get(at));
+        played.summary = items
+            .into_iter()
+            .flatten()
+            .map(|item| item.text(&tries.tries))
+            .collect();
+    }
+}
+
+/// [`playtest`], each stage's run kept in the history under `root`
+/// (unless `no_history`) and compared with the last one kept there: each
+/// entrant's [`was`](Played::was) and the stage's
+/// [`previous`](PlaytestOutput::previous). A history that can't be
+/// written fails the answer, naming the file.
+pub fn kept(
+    game: &dyn GameTools,
+    root: &Path,
+    input: &PlaytestInput,
+) -> Answer<Vec<PlaytestOutput>> {
+    let mut answer = playtest(game, input);
+    if input.no_history {
+        return answer;
+    }
+    let Some(outputs) = answer.result.as_mut() else {
+        return answer;
+    };
+    let dir = root.join(input.history.as_deref().unwrap_or(DEFAULT_HISTORY));
+    let date = history::utc_stamp(history::now());
+    let commit = history::git_commit(root);
+    let options: Vec<String> = input.start.iter().map(history::option).collect();
+    let mut unwritten = None;
+    for output in outputs.iter_mut() {
+        let names: Vec<String> = output.entrants.iter().map(|p| p.name.clone()).collect();
+        let file = dir.join(history::file_name(
+            output.stage.as_deref(),
+            &names,
+            &options,
+        ));
+        if let Some(last) = history::last(&file) {
+            compare(output, &last);
+        }
+        let record = history::Record {
+            date: date.clone(),
+            commit: commit.clone(),
+            title: output.title.clone(),
+            stage: output.stage.clone(),
+            entrants: names,
+            options: options.clone(),
+            output: output.clone(),
+        };
+        if let Err(e) = history::append(&file, &record) {
+            unwritten.get_or_insert(format!("history {}: {e}", file.display()));
+        }
+    }
+    if let Some(error) = unwritten {
+        answer.ok = false;
+        answer.error = Some(error);
+        answer = answer.with_code(codes::FILE);
+    }
+    answer
+}
+
+/// `output` against the `last` run kept: its date and commit, and each
+/// entrant's headline there.
+fn compare(output: &mut PlaytestOutput, last: &history::Record) {
+    output.previous = Some(Previous {
+        date: last.date.clone(),
+        commit: last.commit.clone(),
+    });
+    let was: Vec<Option<String>> = output
+        .entrants
+        .iter()
+        .map(|p| was(output, &last.output, &p.name))
+        .collect();
+    for (played, was) in output.entrants.iter_mut().zip(was) {
+        played.was = was;
+    }
+}
+
+/// `name`'s headline in `previous`, if it played there: its first rate
+/// check's successes if it has a rate check `now`, else its first summary
+/// item.
+fn was(now: &PlaytestOutput, previous: &PlaytestOutput, name: &str) -> Option<String> {
+    let played = previous.entrants.iter().find(|p| p.name == name)?;
+    let rate = |output: &PlaytestOutput| {
+        output
+            .report
+            .checks
+            .iter()
+            .find_map(|j| match (&j.check, &j.found) {
+                (
+                    Check::Rate { entrant, .. },
+                    Found::Rate {
+                        successes, count, ..
+                    },
+                ) if entrant == name => Some((*successes, *count)),
+                _ => None,
+            })
+    };
+    if rate(now).is_some() {
+        return rate(previous).map(|(s, n)| format!("was {s}/{n} succeed"));
+    }
+    played.summary.first().map(|item| format!("was {item}"))
 }
 
 /// Whether `tries` can be played: 1 to [`MAX_GAMES`] of them, each seed
@@ -341,13 +496,15 @@ pub(crate) fn played(
             name: entrants[e].0.clone(),
             label: entrants[e].1.clone(),
             seconds_per_try: took.as_secs_f64() / f64::from(tries.count),
+            summary: Vec::new(),
+            was: None,
         })
         .collect();
     Ok(StagePlayed { report, entrants })
 }
 
 /// `playtest`'s own options, for its usage.
-const OWN: [GameOption; 8] = [
+const OWN: [GameOption; 11] = [
     GameOption {
         flag: "--stage",
         value: Some("ID"),
@@ -388,17 +545,35 @@ const OWN: [GameOption; 8] = [
         value: Some("FILE"),
         help: "also write the JSON answer to FILE",
     },
+    GameOption {
+        flag: "--history",
+        value: Some("DIR"),
+        help: "keep the history in DIR (target/playtest-history)",
+    },
+    GameOption {
+        flag: "--no-history",
+        value: None,
+        help: "keep no history, and compare with none",
+    },
+    GameOption {
+        flag: "--brief",
+        value: None,
+        help: "leave out the line per try",
+    },
 ];
 
 /// `playtest`'s usage, with the game's start `options`.
 pub fn usage(command: &str, options: &[GameOption]) -> String {
     let mut out = format!(
         "usage: {command} playtest [--stage ID | --every-stage] [--entrant NAME]... [--tries N]\n\
-         \x20      [--seed N] [--turns N] [--threads N] [--report FILE] [options] [--json]\n\n\
+         \x20      [--seed N] [--turns N] [--threads N] [--report FILE]\n\
+         \x20      [--history DIR | --no-history] [--brief] [options] [--json]\n\n\
          Each of the game's bots (its entrants) plays --tries tries, seeded N, N + 1, …,\n\
          each stopped at turn --turns, and the game's checks judge them. A number not\n\
          given is the game's: {} tries from seed {} to turn {} unless it says. It fails\n\
-         only when a bot succeeds less often than a check's floor.\n\n",
+         only when a bot succeeds less often than a check's floor. Each run is kept in\n\
+         the history, a file per stage, entrants and options, and each bot's line says\n\
+         what the last run there found (was …).\n\n",
         DEFAULT_TRIES.count, DEFAULT_TRIES.seed, DEFAULT_TRIES.turns
     );
     out.push_str(&options_text(&OWN));
@@ -406,14 +581,17 @@ pub fn usage(command: &str, options: &[GameOption]) -> String {
     out
 }
 
-/// What `playtest`'s arguments ask for: the input, and the file to write
-/// the JSON answer to, if any.
+/// What `playtest`'s arguments ask for: the input, the file to write the
+/// JSON answer to, if any, and whether the text is brief.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct PlaytestArgs {
     /// The input.
     pub input: PlaytestInput,
     /// `--report`'s file, from the project's folder.
     pub report: Option<PathBuf>,
+    /// `--brief`: the text without the line per try ([`brief`]).
+    pub brief: bool,
 }
 
 /// Reads `playtest`'s arguments (not `--json`).
@@ -441,6 +619,9 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<PlaytestArg
             "--turns" => input.turns = Some(small(number(&value()?)?)?),
             "--threads" => input.threads = Some(small(number(&value()?)?)?),
             "--report" => out.report = Some(PathBuf::from(value()?)),
+            "--history" => input.history = Some(value()?),
+            "--no-history" => input.no_history = true,
+            "--brief" => out.brief = true,
             flag if flag.starts_with("--") => input.start.push(game_arg(flag, options, value)?),
             extra => return Err(format!("no <games> here, only flags: {extra}")),
         }
@@ -457,9 +638,24 @@ pub(crate) fn seconds(s: f64) -> String {
     }
 }
 
+/// The width an entrant's line wraps past.
+const LINE: usize = 100;
+
 /// What `playtest` found, for people: for each stage, the plan's title,
-/// the report's table, then a line per entrant with its label and speed.
+/// the report's table, then a line per entrant with its label, its
+/// summary, its speed and what it was in the last run, and that run's
+/// date and commit.
 pub fn text(outputs: &[PlaytestOutput]) -> String {
+    render(outputs, false)
+}
+
+/// [`text`] without the table's line per try (`--brief`).
+pub fn brief(outputs: &[PlaytestOutput]) -> String {
+    render(outputs, true)
+}
+
+/// [`text`], or [`brief`] if `brief`.
+fn render(outputs: &[PlaytestOutput], brief: bool) -> String {
     let stages: Vec<String> = outputs
         .iter()
         .map(|output| {
@@ -468,7 +664,11 @@ pub fn text(outputs: &[PlaytestOutput]) -> String {
                 // Writing to a `String` can't fail.
                 let _ = writeln!(out, "{}\n", output.title);
             }
-            out.push_str(&output.report.to_string());
+            if brief {
+                out.push_str(&output.report.brief());
+            } else {
+                out.push_str(&output.report.to_string());
+            }
             out.push('\n');
             let width = output
                 .entrants
@@ -477,16 +677,55 @@ pub fn text(outputs: &[PlaytestOutput]) -> String {
                 .max()
                 .unwrap_or(0);
             for played in &output.entrants {
-                let _ = write!(out, "{:<width$} · ", played.name);
-                if let Some(label) = &played.label {
-                    let _ = write!(out, "{label} · ");
-                }
-                let _ = writeln!(out, "{} s per try", seconds(played.seconds_per_try));
+                out.push_str(&entrant_line(played, width));
+            }
+            if let Some(previous) = &output.previous {
+                let _ = writeln!(
+                    out,
+                    "previous {} · commit {}",
+                    previous.date, previous.commit
+                );
             }
             out
         })
         .collect();
     stages.join("\n")
+}
+
+/// `played`'s line, its name padded to `width`: its label, its summary
+/// items, its speed and what it was, ` · ` between them, wrapped past
+/// [`LINE`] characters onto lines indented under its first item.
+fn entrant_line(played: &Played, width: usize) -> String {
+    let mut head = format!("{:<width$} · ", played.name);
+    if let Some(label) = &played.label {
+        let _ = write!(head, "{label} · ");
+    }
+    let speed = format!("{} s per try", seconds(played.seconds_per_try));
+    let items = played
+        .summary
+        .iter()
+        .cloned()
+        .chain([speed])
+        .chain(played.was.clone());
+    let indent = " ".repeat(head.chars().count());
+    let mut out = String::new();
+    let mut line = head;
+    let mut first = true;
+    for item in items {
+        if first {
+            line.push_str(&item);
+            first = false;
+        } else if line.chars().count() + 3 + item.chars().count() > LINE {
+            out.push_str(&line);
+            out.push('\n');
+            line = format!("{indent}{item}");
+        } else {
+            let _ = write!(line, " · {item}");
+        }
+    }
+    out.push_str(&line);
+    out.push('\n');
+    out
 }
 
 #[cfg(test)]

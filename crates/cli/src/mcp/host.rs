@@ -185,7 +185,7 @@ pub fn one_off(
         }
         Op::Bots => needs(&|game, _| answered(op, input.clone(), |i| bots::bots(game, &i))),
         Op::Playtest => {
-            needs(&|game, _| answered(op, input.clone(), |i| playtest::playtest(game, &i)))
+            needs(&|game, p| answered(op, input.clone(), |i| playtest::kept(game, &p.root, &i)))
         }
         Op::Autobalance => {
             needs(&|game, _| answered(op, input.clone(), |i| autobalance::autobalance(game, &i)))

@@ -179,11 +179,12 @@ None.
   checked-in record (`examples/hello-grid/tests/records/`) stays
   unstamped, so a content change shows as its rows moving. If 2116 is
   not done, it adds the rows.
-- **Either order with 2533:** if 2533 is done, each record of the
-  `shuyi playtest` history (`target/playtest-history/*.jsonl`) gains
+- **From 2533 (done):** each record of the `shuyi playtest` history
+  (`target/playtest-history/*.jsonl`, `history::Record` in
+  `crates/cli/src/contract/playtest/history.rs`) gains
   `made: Option<Made>` (`#[serde(default)]`, so older lines still
-  read), from this build's `GameTools::made()`. If not, nothing to do
-  (2533 adds it).
+  read), from this build's `GameTools::made()`, set in
+  `playtest::kept`.
 - **Either order with the parked records:** if 1119, 2706, 1140 or 2720
   is done when this lands, its record or handshake (`TickRecord`,
   `CommandRecord`, the lockstep handshakes) takes a `Made` here. If not,
