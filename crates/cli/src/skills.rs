@@ -331,7 +331,10 @@ impl Against {
 ///    format's lengths ([`MAX_NAME`], [`MAX_DESCRIPTION`],
 ///    [`MAX_COMPATIBILITY`], [`MAX_LINES`]);
 /// 5. every id in its `waits_for` is an open ticket (when they are
-///    known), and a skill that waits for nothing has a worked example;
+///    known), and a skill of the engine's pack ([`Pack::embedded`], by
+///    name) that waits for nothing has a worked example. A project's own
+///    skill, one the embedded pack doesn't have, needs none: it teaches
+///    the project's own workflow, with nothing for a new game to run;
 /// 6. every problem code (`SH2003`) in its files is a row of the table
 ///    (`shuyi explain`) that isn't retired.
 ///
@@ -346,14 +349,27 @@ pub fn check(pack: &Pack, against: &Against) -> Vec<Problem> {
             message: format!("a folder of the pack with no {FILE}: every skill has one"),
         })
         .collect();
+    let engines: BTreeSet<String> = Pack::embedded()
+        .skills
+        .into_iter()
+        .map(|skill| skill.name)
+        .collect();
     for skill in &pack.skills {
-        check_skill(pack, skill, against, &mut problems);
+        let engines = engines.contains(&skill.name);
+        check_skill(pack, skill, engines, against, &mut problems);
     }
     problems
 }
 
-/// The problems of one skill of `pack`, into `problems`.
-fn check_skill(pack: &Pack, skill: &Skill, against: &Against, problems: &mut Vec<Problem>) {
+/// The problems of one skill of `pack`, into `problems`; `engines` when
+/// it is a skill of the engine's pack, which has a worked example.
+fn check_skill(
+    pack: &Pack,
+    skill: &Skill,
+    engines: bool,
+    against: &Against,
+    problems: &mut Vec<Problem>,
+) {
     let main = format!("{}/{FILE}", skill.name);
     let problem = |file: &str, line: Option<usize>, message: String| Problem {
         file: file.to_owned(),
@@ -380,12 +396,13 @@ fn check_skill(pack: &Pack, skill: &Skill, against: &Against, problems: &mut Vec
                     ));
                 }
             }
-            if waits.is_empty() && !skill.has_example() {
+            if engines && waits.is_empty() && !skill.has_example() {
                 problems.push(problem(
                     &main,
                     None,
                     format!(
-                        "no worked example ({EXAMPLE}): a skill that waits for nothing has one"
+                        "no worked example ({EXAMPLE}): a skill of the engine's pack that waits \
+                         for nothing has one"
                     ),
                 ));
             }
