@@ -6,7 +6,7 @@ milestone: "Engine: debug view"
 model: sonnet-5
 effort: high
 status: blocked
-blocked_by: ["2315", "2316", "2321", "3063"]
+blocked_by: ["2315", "2316", "2321", "3063", "2553"]
 nick_input: none
 completed:
 ---
@@ -48,8 +48,9 @@ None.
 
 **In:**
 - **From 3063** (a blocker): `shuyi_ui::perf`'s `FrameTimes`,
-  `SpanEvent`, `FrameRecord`, `PerfClock` and its fake, and `spread`
-  (p50, p99, the worst and the mean); spans (`Ctx::span`); the
+  `SpanEvent`, `FrameRecord`, `PerfClock` and its fake; `spread` (p50,
+  p99, the worst and the mean), which 2553 writes (it moved there from
+  3063); spans (`Ctx::span`); the
   platform's clock; and the records `App` makes each frame
   (`App::perf`). This ticket draws them, in
   `shuyi_ui::debug::profile`:

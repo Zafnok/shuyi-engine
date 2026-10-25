@@ -1,0 +1,81 @@
+---
+source: crates/ui/tests/it/perf.rs
+expression: text
+---
+[
+    (
+        frame: 1,
+        times: (
+            update_us: 2500,
+            draw_us: 100,
+            paint_us: 300,
+            present_us: 0,
+            frame_us: 3700,
+        ),
+        spans: [
+            (
+                name: "path",
+                start_us: 900,
+                us: 500,
+                depth: 1,
+            ),
+            (
+                name: "plan",
+                start_us: 500,
+                us: 1500,
+                depth: 0,
+            ),
+        ],
+        spans_dropped: 0,
+    ),
+    (
+        frame: 2,
+        times: (
+            update_us: 1700,
+            draw_us: 500,
+            paint_us: 700,
+            present_us: 500,
+            frame_us: 4700,
+        ),
+        spans: [
+            (
+                name: "path",
+                start_us: 1400,
+                us: 200,
+                depth: 1,
+            ),
+            (
+                name: "plan",
+                start_us: 1300,
+                us: 600,
+                depth: 0,
+            ),
+        ],
+        spans_dropped: 0,
+    ),
+    (
+        frame: 3,
+        times: (
+            update_us: 2300,
+            draw_us: 200,
+            paint_us: 400,
+            present_us: 200,
+            frame_us: 4200,
+        ),
+        spans: [
+            (
+                name: "path",
+                start_us: 1200,
+                us: 600,
+                depth: 1,
+            ),
+            (
+                name: "plan",
+                start_us: 700,
+                us: 1800,
+                depth: 0,
+            ),
+        ],
+        spans_dropped: 0,
+    ),
+]

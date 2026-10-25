@@ -1,7 +1,8 @@
 //! [`Macroquad`]: the [`Platform`] over macroquad, gilrs and quad-snd
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
 //! controllers, the window's own shortcut and close button, the OS's data
-//! folder or the browser's `localStorage`, and the sound player.
+//! folder or the browser's `localStorage`, the sound player, and the
+//! clock frames are measured with in debug builds.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
 //! which loads in a frame of [`App`](shuyi_platform::App)'s: the renderer
@@ -15,6 +16,7 @@ use shuyi_platform::{
 };
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::perf::PerfClock;
 use shuyi_ui::{Game, GameData, RawInputEvent};
 
 use crate::audio::{self, Audio, device};
@@ -293,4 +295,16 @@ impl Platform for Macroquad {
             .as_deref_mut()
             .map(|t| t as &mut dyn TextInput)
     }
+
+    fn clock(&self) -> Option<PerfClock> {
+        Some(PerfClock::Real(now_us))
+    }
+}
+
+/// Microseconds since the start, from macroquad's clock (seconds as an
+/// `f64`, on native and the web): `App` measures frames with it in debug
+/// builds (ADR-0046).
+fn now_us() -> u64 {
+    let since = core::time::Duration::try_from_secs_f64(get_time());
+    since.map_or(0, |d| u64::try_from(d.as_micros()).unwrap_or(u64::MAX))
 }

@@ -1,5 +1,5 @@
-//! [`HeadlessPlatform`]: a backend with no window, no clock and no sound
-//! card. It plays scripted input and system events, records the frames
+//! [`HeadlessPlatform`]: a backend with no window, no clock (unless a test
+//! hands it one) and no sound card. It plays scripted input and system events, records the frames
 //! presented to it, keeps its storage in memory, and stands in for the
 //! music player ([`Speaker`]), so a screen that keeps time with the music
 //! is tested too.
@@ -16,6 +16,7 @@ use shuyi_ui::RawInputEvent;
 use shuyi_ui::audio::MusicCommand;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::perf::PerfClock;
 use shuyi_ui::storage::{MemoryStorage, Storage};
 
 use crate::app::Card;
@@ -240,6 +241,8 @@ pub struct HeadlessPlatform {
     storage: Option<Box<dyn Storage>>,
     speaker: Speaker,
     keyboard: Option<ScriptedKeyboard>,
+    /// The clock it gives to measure frames with, if a test set one.
+    clock: Option<PerfClock>,
     /// How many frames were presented.
     presented: u32,
     /// The last of them.
@@ -266,6 +269,7 @@ impl HeadlessPlatform {
             storage: None,
             speaker: Speaker::default(),
             keyboard: None,
+            clock: None,
             presented: 0,
             last: None,
         }
@@ -290,6 +294,21 @@ impl HeadlessPlatform {
     pub fn with_keyboard(mut self, keyboard: ScriptedKeyboard) -> Self {
         self.keyboard = Some(keyboard);
         self
+    }
+
+    /// The same backend giving `clock` to measure frames with
+    /// ([`Platform::clock`]): a fake one ([`PerfClock::fake`]) makes a
+    /// test's records the same on every run.
+    #[must_use]
+    pub fn with_clock(mut self, clock: PerfClock) -> Self {
+        self.clock = Some(clock);
+        self
+    }
+
+    /// Gives `clock` to measure frames with from now on, or none. `App`
+    /// asks for it on its first frame only.
+    pub fn set_clock(&mut self, clock: Option<PerfClock>) {
+        self.clock = clock;
     }
 
     /// Queues `events` as the input of one poll, after those already
@@ -361,6 +380,10 @@ impl Platform for HeadlessPlatform {
 
     fn text_input(&mut self) -> Option<&mut dyn TextInput> {
         self.keyboard.as_mut().map(|k| k as &mut dyn TextInput)
+    }
+
+    fn clock(&self) -> Option<PerfClock> {
+        self.clock
     }
 }
 

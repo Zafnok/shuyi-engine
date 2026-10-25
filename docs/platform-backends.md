@@ -21,7 +21,9 @@ do. The decisions behind it are
 - **The backend owns the loop.** macroquad's async loop, the Playdate
   SDK's update callback, a console's main loop: whichever it is, it calls
   [`App::frame`](../crates/platform/src/app.rs) once per frame with the
-  time on its clock. The engine never loops and never reads a clock.
+  time on its clock. The engine never loops and has no clock of its
+  own: in debug builds `App` measures frames with the one the backend
+  hands it (`clock`, below).
 - **Only a backend touches a device** (`AGENTS.md` rule 5): windows,
   files, audio devices, controllers, the clock. `shuyi-platform` itself
   touches none, and `cargo xtask check-layers` (CI's `layers` job) keeps
@@ -36,7 +38,8 @@ do. The decisions behind it are
   is never merged here, not even behind a feature. The engine's part is
   to keep `Platform` small, stable and documented.
 - **`Platform` stays small** (ADR-0040 §7). A backend implements the
-  seven methods below. Every method added to `Platform` later has a
+  seven methods below, and may give the eighth, `clock`, which has a
+  default. Every method added to `Platform` later has a
   default, and a device service a backend may lack returns an `Option`,
   as `text_input` does, so a backend written today (a private console's)
   keeps building. `crates/platform/tests/it/bare.rs` implements only the
@@ -87,7 +90,9 @@ instead. A backend uses one or the other.
 
 `App` calls the platform in this order:
 
-1. `system_events`: a `Resume` restarts the clock before it is read;
+1. `system_events`: a `Resume` restarts the clock before it is read
+   (in a frame it measures, `App` first reads the time on `clock`'s
+   clock: the frame's start);
 2. the clock: the time since the last frame, and the fixed steps due
    (60 a second, at most 4 a frame);
 3. while suspended, `poll_input` (dropped) and nothing else: no update,
@@ -101,7 +106,8 @@ instead. A backend uses one or the other.
 8. `audio().play(&frame, now)` with that frame's audio, every frame;
 9. `text_input().open(&ask)` if a screen asked for the system keyboard;
 10. `audio().stop_all()` if the game quit in that update;
-11. `present(&frame)`.
+11. `present(&frame)` (timed, in a frame `App` measures, and the
+    frame's end read after it).
 
 The game's first frames are different: frame 1 presents the loading card;
 frame 2 calls `display` and `storage` for the game's `Setup`, runs the
@@ -217,12 +223,29 @@ through `poll_input`. `open(&ask)` shows it with the ask's prompt, text
 and length, or is `false` if it can't now; `poll()` gives the answer
 (`Typed(text)` or `Cancelled`) once the player closes it.
 
+### `clock(&self) -> Option<PerfClock>` (has a default)
+
+A clock to measure frames with, in debug builds
+([ADR-0046](adr/0046-perf-traces-measured-by-the-backend-kept-by-app-beside-the-log-and-read-by-agents-as-json-lines.md)):
+`PerfClock::Real(now_us)`, where `now_us` gives whole microseconds from
+any fixed start and never goes back (`shuyi-app`'s reads macroquad's
+`get_time`). `App` asks for it once, on its first frame, and only in a
+build with debug tools (`shuyi_ui::DEBUG_TOOLS`): it times the game's
+load, moves the clock into the game's context, and keeps a
+`shuyi_ui::perf::FrameRecord` of each frame while the game's
+`debug_tools` is on (`app.perf()`, `app.take_new_perf()`). A release
+build never reads it. A backend without a clock leaves the default,
+`None`, and nothing is measured. Never reset the device's timer in the
+loop: a record's times are differences of its reads.
+
 ## The headless backend, as a reference
 
 `shuyi_platform::headless::HeadlessPlatform` is the smallest complete
 backend: it plays input and system events queued by a test, keeps the
 last frame presented, hands over a memory storage, and stands in for the
-music player (`Speaker`). The test Harness (`shuyi_platform::harness`, the
+music player (`Speaker`). A test hands it a clock
+(`with_clock(PerfClock::fake())`, `set_clock`), whose fake reads give
+the same records on every run. The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a
 new backend's translation the same way: a fake of the device's SDK on

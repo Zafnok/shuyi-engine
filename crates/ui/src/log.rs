@@ -196,11 +196,7 @@ impl LogRing {
     /// first: those after the last a reader took, if it kept
     /// [`next_seq`](Self::next_seq) then.
     pub fn since(&self, seq: u64) -> vec_deque::Iter<'_, LogLine> {
-        let kept = u64::try_from(self.lines.len()).unwrap_or(u64::MAX);
-        let skip = seq.saturating_sub(self.next.saturating_sub(kept));
-        let skip = usize::try_from(skip)
-            .unwrap_or(usize::MAX)
-            .min(self.lines.len());
+        let skip = skip_before(seq, self.next, self.lines.len());
         self.lines.range(skip..)
     }
 
@@ -210,6 +206,14 @@ impl LogRing {
         let lines = self.lines.drain(..).collect();
         (lines, core::mem::take(&mut self.dropped))
     }
+}
+
+/// How many of a ring's `kept` items, the newest numbered `next - 1`, are
+/// numbered below `seq`.
+pub(crate) fn skip_before(seq: u64, next: u64, kept: usize) -> usize {
+    let kept_u64 = u64::try_from(kept).unwrap_or(u64::MAX);
+    let skip = seq.saturating_sub(next.saturating_sub(kept_u64));
+    usize::try_from(skip).unwrap_or(usize::MAX).min(kept)
 }
 
 /// Which lines a log keeps: a level for every category, and a level per

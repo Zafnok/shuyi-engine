@@ -33,6 +33,7 @@ use crate::input::keymap::Keymap;
 use crate::input::state::Device;
 use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
+use crate::perf::{FrameRecord, PerfClock, PerfState};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -243,6 +244,8 @@ pub struct Ctx<G: GameData> {
     player_keys: PlayerKeys<G::Action>,
     /// The lines logged and not yet taken ([`log`](Self::log)).
     log_lines: LogRing,
+    /// The clock and what this frame measured ([`span`](Self::span)).
+    perf: PerfState,
     /// Where saves and settings persist: a
     /// [`MemoryStorage`](crate::storage::MemoryStorage) until the platform
     /// swaps in its own with [`with_storage`](Self::with_storage).
@@ -353,6 +356,7 @@ impl<G: GameData> Ctx<G> {
             layout: None,
             player_keys: PlayerKeys::default(),
             log_lines: LogRing::new(LOG_LINES),
+            perf: PerfState::default(),
             storage: ProfileStore::default(),
             profiles,
             stored_settings: settings.clone(),
@@ -656,6 +660,71 @@ impl<G: GameData> Ctx<G> {
     /// before they were taken: for the platform's `App`.
     pub fn take_log(&mut self) -> (Vec<LogLine>, u32) {
         self.log_lines.take()
+    }
+
+    /// Runs `f` as a span called `name` and gives back what it returns. In
+    /// a frame the platform measures (debug builds, with
+    /// [`debug_tools`](Self::debug_tools) on), the span's start, length and
+    /// depth go into the frame's record ([`crate::perf`]); past
+    /// [`MAX_SPANS`](crate::perf::MAX_SPANS) in a frame it is only
+    /// counted. With no clock, or outside a measured frame, it calls `f`
+    /// and reads nothing. Nothing reads a span's time to decide anything.
+    pub fn span<R>(&mut self, name: &'static str, f: impl FnOnce(&mut Self) -> R) -> R {
+        let Some(open) = self.perf.open_span() else {
+            return f(self);
+        };
+        let result = f(self);
+        self.perf.close_span(name, open);
+        result
+    }
+
+    /// Hands the context a clock to measure frames with, or takes it away
+    /// (`None`): for the platform's `App`, which moves the backend's clock
+    /// here when the game runs, and for tests.
+    pub fn set_perf_clock(&mut self, clock: Option<PerfClock>) {
+        self.perf.set_clock(clock);
+    }
+
+    /// The clock frames are measured with, if the context has one: for the
+    /// platform's `App` and tests (a fake clock's reads).
+    pub fn perf_clock(&self) -> Option<PerfClock> {
+        self.perf.clock()
+    }
+
+    /// Reads the clock, if the context has one, in microseconds: for the
+    /// platform's `App`, which times its own parts of a frame with it, and
+    /// for tests.
+    pub fn perf_now(&mut self) -> Option<u64> {
+        self.perf.now()
+    }
+
+    /// Starts measuring a frame, if the context has a clock: reads the
+    /// frame's start (and gives it) and forgets the last frame's spans.
+    /// For the platform's `App`, at the start of a frame it measures.
+    pub fn begin_perf_frame(&mut self) -> Option<u64> {
+        self.perf.begin_frame()
+    }
+
+    /// Ends the frame being measured, reading nothing: its update's and
+    /// drawing's times and its spans, in a record of frame 0 that `App`
+    /// finishes. `None` if no frame was being measured.
+    pub fn end_perf_frame(&mut self) -> Option<FrameRecord> {
+        self.perf.end_frame()
+    }
+
+    /// Reads the clock in a measured frame only, for `Game::frame`.
+    pub(crate) fn perf_now_in_frame(&mut self) -> Option<u64> {
+        self.perf.now_in_frame()
+    }
+
+    /// Keeps the frame's update and drawing times, for `Game::frame`.
+    pub(crate) fn set_perf_frame_times(
+        &mut self,
+        start: Option<u64>,
+        drawing: Option<u64>,
+        drawn: Option<u64>,
+    ) {
+        self.perf.set_frame_times(start, drawing, drawn);
     }
 
     /// Takes every line waiting, and returns the text of the warnings and

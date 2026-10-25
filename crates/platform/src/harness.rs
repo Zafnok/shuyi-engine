@@ -31,6 +31,7 @@ use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
+use shuyi_ui::perf::{PerfClock, PerfRing};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
@@ -506,6 +507,23 @@ impl<G: GameData> Harness<G> {
     /// it was given in.
     pub fn log(&self) -> &LogRing {
         self.app.log()
+    }
+
+    /// The frames' records, kept by its [`App`] (ADR-0046): one for each
+    /// frame measured, with a clock set ([`set_clock`](Self::set_clock))
+    /// and debug tools on.
+    pub fn perf(&self) -> &PerfRing {
+        self.app.perf()
+    }
+
+    /// Measures frames with `clock` from the next frame, or stops (`None`):
+    /// the headless backend's clock, and the game's context's, since the
+    /// game runs. A fake clock ([`PerfClock::fake`]) gives the same records
+    /// on every run.
+    pub fn set_clock(&mut self, clock: Option<PerfClock>) -> &mut Self {
+        self.platform.set_clock(clock);
+        self.ctx_mut().set_perf_clock(clock);
+        self
     }
 
     /// The headless backend it runs on: the frames presented, the audio

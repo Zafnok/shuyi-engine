@@ -9,6 +9,7 @@ mod grid;
 mod key_bindings;
 mod layout_picker;
 mod modules;
+mod perf;
 mod scene_camera;
 mod screens;
 mod scripts;

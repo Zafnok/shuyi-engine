@@ -1,6 +1,7 @@
 //! `App::frame` on the headless backend: a frame's order (input, actions,
 //! the update and its steps, the audio, the frame presented), the loading
-//! card, suspend and resume, quitting, and the system keyboard.
+//! card, suspend and resume, quitting, the system keyboard, and the
+//! frames' records.
 
 use alloc::collections::BTreeMap;
 use alloc::format;
@@ -10,6 +11,7 @@ use core::cell::RefCell;
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer};
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
+use shuyi_ui::perf::{FrameRecord, PerfClock};
 use shuyi_ui::screen::{FrameInput, Screen, Transition};
 use shuyi_ui::storage::MemoryStorage;
 use shuyi_ui::system_keyboard::TextAsk;
@@ -799,4 +801,139 @@ fn a_seed_from_the_clock_differs_launch_to_launch() {
     assert_eq!(mix(0), 0xE220_A839_7B1D_CDAF);
     assert_eq!(mix(1), 0x910A_2DEC_8902_5CC1);
     assert_ne!(mix(1_700_000_000_000), mix(1_700_000_000_001));
+}
+
+/// The headless backend with a fake clock.
+fn clocked() -> HeadlessPlatform {
+    HeadlessPlatform::new().with_clock(PerfClock::fake())
+}
+
+/// A record's times: update, draw, paint, present and the whole frame.
+fn times(record: &FrameRecord) -> (u32, u32, u32, u32, u32) {
+    let t = record.times;
+    (t.update_us, t.draw_us, t.paint_us, t.present_us, t.frame_us)
+}
+
+/// The fake clock's reads, from the game's context.
+fn clock_reads(app: &App<Toy>) -> u64 {
+    match running(app).ctx().perf_clock() {
+        Some(PerfClock::Fake(fake)) => fake.reads(),
+        _ => panic!("no fake clock in the context"),
+    }
+}
+
+#[test]
+fn a_measured_frame_is_a_record_of_its_parts() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = clocked();
+    for n in 0..3 {
+        let _ = app.frame(&mut p, Millis(16 * n));
+    }
+    let records: Vec<_> = app.perf().records().collect();
+    let numbers: Vec<_> = records.iter().map(|r| r.frame).collect();
+    assert_eq!(numbers, [1, 2, 3]);
+    // Frame 1 reads 100 (its start), 300 (the update), 600 (the drawing),
+    // 1000 (drawn), 1500 and 2100 (the paint) and 2800 (its end).
+    assert_eq!(times(records[0]), (300, 400, 600, 0, 2700));
+    // Frame 2 starts at 2900, 100 after frame 1 ended.
+    assert_eq!(times(records[1]).3, 100);
+    for record in records {
+        let (update, draw, paint, present, frame) = times(record);
+        assert!(update + draw + paint + present <= frame, "{record:?}");
+    }
+}
+
+#[test]
+fn the_load_is_timed_and_the_clock_goes_on_in_the_games_context() {
+    let (game, _) = steps_game();
+    let game = RefCell::new(Some(game));
+    let start = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        move |_| game.borrow_mut().take().ok_or_else(|| "twice".to_owned()),
+    );
+    let mut app = App::new(start);
+    let mut p = clocked();
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(app.load_us(), None, "the card's frame");
+    let _ = app.frame(&mut p, Millis(16));
+    // Read at 100 before the load and 300 after it.
+    assert_eq!(app.load_us(), Some(200));
+    assert_eq!(app.perf().records().len(), 0, "loading frames make none");
+    assert_eq!(
+        clock_reads(&app),
+        2,
+        "the context has the clock that timed it"
+    );
+    let _ = app.frame(&mut p, Millis(32));
+    let frames: Vec<_> = app.perf().records().map(|r| r.frame).collect();
+    assert_eq!(frames, [3]);
+}
+
+#[test]
+fn a_suspended_frame_makes_no_record_and_its_time_is_no_wait() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = clocked();
+    let _ = app.frame(&mut p, Millis(0));
+    p.push_system(SystemEvent::Suspend);
+    let _ = app.frame(&mut p, Millis(16));
+    let _ = app.frame(&mut p, Millis(32));
+    // The frame that resumes started suspended: it isn't measured either.
+    p.push_system(SystemEvent::Resume);
+    let _ = app.frame(&mut p, Millis(48));
+    let _ = app.frame(&mut p, Millis(64));
+    let records: Vec<_> = app.perf().records().collect();
+    let frames: Vec<_> = records.iter().map(|r| r.frame).collect();
+    assert_eq!(frames, [1, 5]);
+    assert_eq!(records[1].times.present_us, 0);
+}
+
+#[test]
+fn the_frames_after_a_quit_make_no_record() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = clocked();
+    p.push_input(&press(Key::Escape));
+    assert_eq!(app.frame(&mut p, Millis(0)), FrameOutcome::Quit);
+    let _ = app.frame(&mut p, Millis(16));
+    let frames: Vec<_> = app.perf().records().map(|r| r.frame).collect();
+    assert_eq!(frames, [1], "the frame that quit stepped the game");
+}
+
+#[test]
+fn with_debug_tools_off_nothing_is_measured_and_the_clock_is_never_read() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game.with_debug_screens(false));
+    let mut p = clocked();
+    for n in 0..3 {
+        let _ = app.frame(&mut p, Millis(16 * n));
+    }
+    assert_eq!(app.perf().records().len(), 0);
+    assert_eq!(clock_reads(&app), 0);
+}
+
+#[test]
+fn without_a_clock_nothing_is_measured() {
+    let mut app = App::running(toy::game());
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(app.perf().records().len(), 0);
+    assert!(running(&app).ctx().perf_clock().is_none());
+}
+
+#[test]
+fn take_new_perf_gives_each_record_once_in_order() {
+    let mut app = App::running(toy::game());
+    let mut p = clocked();
+    let mut taken = Vec::new();
+    for n in 0..3 {
+        let _ = app.frame(&mut p, Millis(16 * n));
+        let _ = app.frame(&mut p, Millis(16 * n + 8));
+        taken.extend(app.take_new_perf().into_iter().map(|r| r.frame));
+    }
+    assert_eq!(taken, [1, 2, 3, 4, 5, 6]);
+    let found = app.take_new_perf();
+    assert!(found.is_empty(), "{found:?}");
 }

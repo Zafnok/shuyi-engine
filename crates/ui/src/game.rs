@@ -300,7 +300,9 @@ impl<G: GameData> Game<G> {
 
     /// Runs one frame: applies `events` (in order), advances input by `dt`
     /// seconds, updates the top screen with the resulting actions, collects
-    /// its audio requests and redraws. After a quit, frames do nothing.
+    /// its audio requests and redraws. After a quit, frames do nothing. In
+    /// a frame the platform measures ([`Ctx::begin_perf_frame`]) it times
+    /// the update and the drawing ([`crate::perf`]).
     pub fn frame(&mut self, events: &[RawInputEvent], dt: f32) -> FrameOutput<'_, G::Voice> {
         self.audio_out.clear();
         self.music_out.clear();
@@ -309,7 +311,14 @@ impl<G: GameData> Game<G> {
         let dt = frame_seconds(dt);
         let ticks = core::mem::take(&mut self.ticks);
         if !self.quit {
+            // The update's and the drawing's times, in a frame the
+            // platform measures (crate::perf).
+            let start = self.ctx.perf_now_in_frame();
             self.step(events, dt, ticks);
+            let drawing = self.ctx.perf_now_in_frame();
+            self.redraw();
+            let drawn = self.ctx.perf_now_in_frame();
+            self.ctx.set_perf_frame_times(start, drawing, drawn);
             self.collect_audio(dt);
         }
         FrameOutput {
@@ -423,7 +432,6 @@ impl<G: GameData> Game<G> {
             self.quit = self.stack.update(&mut self.ctx, &input);
             self.sync_keymap();
         }
-        self.redraw();
     }
 
     /// Hands the top screen `action` alone, in an update of its own with no
