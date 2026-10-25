@@ -1,6 +1,6 @@
 //! The headless backend: its stand-in for the music player, the frames it
-//! keeps, its scripted input, storage and keyboard. Games run on it are
-//! tested in `tests/it/`.
+//! keeps, its scripted input, storage, keyboard and clock. Games run on it
+//! are tested in `tests/it/`.
 
 use shuyi_ui::frame::glyph_buffer::Cell;
 use shuyi_ui::input::{Chord, Key};
@@ -246,4 +246,19 @@ fn the_scripted_keyboard_answers_each_opening_in_turn() {
     let asks = p.keyboard().map(ScriptedKeyboard::asks);
     assert_eq!(asks, Some(&[ask(""), ask("Ada")][..]));
     assert!(HeadlessPlatform::new().text_input().is_none());
+}
+
+#[test]
+fn it_gives_the_clock_a_test_sets_and_none_by_default() {
+    let mut p = HeadlessPlatform::new();
+    assert!(p.clock().is_none());
+    p.set_clock(Some(PerfClock::Real(|| 7)));
+    let read = p.clock().map(|mut clock| clock.read());
+    assert_eq!(read, Some(7));
+    p.set_clock(None);
+    assert!(p.clock().is_none());
+    let mut fake = HeadlessPlatform::new().with_clock(PerfClock::fake());
+    assert_eq!(fake.clock().map(|mut clock| clock.read()), Some(100));
+    fake.set_clock(None);
+    assert!(fake.clock().is_none());
 }
