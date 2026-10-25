@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-24
 ---
 
 # 2131 — Threat areas, danger and walking distance to goals
@@ -133,20 +133,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `strike_area` of a single stop with ranges `[(1, 1)]` is the stop
+- [x] `strike_area` of a single stop with ranges `[(1, 1)]` is the stop
       and its four neighbours; with `[(2, 2)]` the stop and the ring of
       8 at distance 2; clipped at a grid corner.
-- [ ] `strike_area` equals the brute force ("every tile whose Manhattan
+- [x] `strike_area` equals the brute force ("every tile whose Manhattan
       distance to some stop is in some range, plus the stops") on random
       grids, stops and ranges (property test).
-- [ ] `Threats::safe` is false exactly on `zone()`'s tiles.
-- [ ] `danger` at a tile two threats reach, with a forecast closure that
+- [x] `Threats::safe` is false exactly on `zone()`'s tiles.
+- [x] `danger` at a tile two threats reach, with a forecast closure that
       returns `None` for one of them, adds only the other.
-- [ ] `GoalDistance` gives 0 on a goal, the walking distance around a
+- [x] `GoalDistance` gives 0 on a goal, the walking distance around a
       wall (not the Manhattan one), `None` behind an uncrossable river,
       and builds one field per kind (a counting cost closure is called
       only on the first `distance` of each kind).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -157,5 +157,33 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `shuyi_core::threat` (`crates/core/src/threat.rs`), re-exported at the
+  crate root beside `path`: `Ranges`, `strike_area`, `strike_area_from`,
+  `Threat<P>`, `Threats<P>` (`reaches`, `safe`, `zone`, `danger`),
+  `Strike`, `Danger` and `GoalDistance<K>`. Module docs carry the 5 × 5
+  picture (as a doctest) and the "every threat counts" rule.
+- Tests in `crates/core/src/threat/tests.rs`: every criterion, and two
+  property tests (`strike_area` against the brute force, with empty and
+  `u32::MAX` ranges; `safe` against `zone`).
+- Docs: the grid kit's table in `skills/shuyi-stage-grid/SKILL.md` gets
+  three rows, and `skills/shuyi-balance-bots/SKILL.md` a section, *Threat
+  areas: bots that read the danger zone* (the handoff from 1134).
+- **Deviations.**
+  - The area is walked as the diamond row by row (each row's two bands
+    of `|dx|`, clipped with `min`/`max`), not ring by ring: the same
+    tiles, but exact bounds, so a range of `u32::MAX` costs only the
+    grid, and no clip leaves a mutant that a wider bound can't be told
+    from. The cost in the docs: stops × (rows × ranges + the tiles in
+    range).
+  - Per ADR-0039, `Strike` and `Danger` are `#[non_exhaustive]` (a game
+    builds a `Strike` with `Strike::new`), `Threat` is a plain value with
+    public fields and `new`, and `Threats` keeps its list private
+    (`new`, `push`, `as_slice`, `len`, `is_empty`, `FromIterator`) in
+    place of a public tuple field.
+  - `Threats::zone` is on the first threat's grid (an empty `0 × 0` set
+    with no threats). `danger`'s sums saturate.
+  - `strike_area_from` with `at` outside the grid strikes nothing, as a
+    `reachable` start outside the grid reaches nothing.
+- No follow-up tickets. 2132 builds on this, as it says.
+- The game's PR that moves the pin onto this is game#1180's.
+- No break: everything is new.
