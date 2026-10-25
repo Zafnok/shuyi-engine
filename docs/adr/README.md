@@ -57,5 +57,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0042](0042-the-template-format-merged-ron-and-cargo-files-a-generated-list-of-stages-and-short-names.md) | The template format: merged RON and Cargo files, a generated list of stages, and short names | Accepted; extends ADR-0013 §3 and ADR-0036 |
 | [0043](0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md) | The skill pack: skills at the root, worked examples run by the xtask, `check-skills` in the CLI, and the pack's folder as the plugin | Accepted; extends ADR-0005 §2 and §3, ADR-0041 §5 and ADR-0042 |
 | [0044](0044-a-planners-candidate-order-ranked-groups-in-the-core-and-the-tactics-order-in-the-kit.md) | A planner's candidate order: ranked groups in the core, and the tactics order in the kit | Accepted; extends ADR-0029 and ADR-0027 |
+| [0045](0045-a-push-to-main-starts-dependents-watchers-workflow-dispatch-with-an-actions-only-token-kept-in-an-environment-for-main.md) | A push to main starts dependents' watchers: `workflow_dispatch` with an Actions-only token, kept in an environment for `main` | Accepted; extends ADR-0038 |
 
 Template: [`0000-template.md`](0000-template.md).

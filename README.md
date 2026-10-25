@@ -152,6 +152,16 @@ pinned by revision moves its pin when a PR past it isn't `api: none`,
 and reads the ticket's `Breaking:` lines when it is `api: breaking`
 ([ADR-0038](docs/adr/0038-the-public-api-gate-a-listing-diff-and-semver-checks-on-every-pr-and-a-breaking-line-for-each-break.md)).
 
+A project need not poll for that: a push to `main` starts the workflows
+listed in the repository variable `DEPENDENT_WORKFLOWS`, one `owner/repo
+workflow-file` per line, with the new commit as the input `engine_sha`
+([ADR-0045](docs/adr/0045-a-push-to-main-starts-dependents-watchers-workflow-dispatch-with-an-actions-only-token-kept-in-an-environment-for-main.md)).
+To be on the list, give your workflow a `workflow_dispatch` trigger with
+an `engine_sha` input, and open an issue here naming the repository and
+the file. The dispatch token needs Actions: write on your repository, so
+until it has that, poll on a schedule (keep a slow one anyway, as a
+backstop).
+
 Everything else is a module, turned on as a feature of `shuyi`: the
 catalog, [`docs/modules.md`](docs/modules.md), lists them by concern
 (perspective, bodies and motion, online play, kind of game), each with
