@@ -4,7 +4,9 @@
 // them, and its trace file there with the heap's snapshot and diff lines
 // (never their values, which are the machine's), then the
 // stage's update marked as a span, and a second run that finds it among
-// the summary's spans.
+// the summary's spans. Last, the MCP session takes a heap snapshot, steps,
+// takes another with a diff from the first, and a diff from a frame it
+// doesn't keep answers its code.
 Example(
     template: "grid",
     steps: [
@@ -48,5 +50,17 @@ Example(
             Has("/result/perf/spans/0/worst_us"),
         ]),
         Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+        // A session's heap snapshots and their diff, over MCP.
+        Mcp(calls: [
+            (tool: "start", input: {"project": "."}),
+            (tool: "perf", input: {"snapshot": true}, expect: [Is("/result/snapshot/frame", "0")]),
+            (tool: "step", input: {"frames": 30}),
+            (tool: "perf", input: {"snapshot": true, "diff_from": 0}, expect: [
+                Is("/result/diff/from", "0"),
+                Has("/result/diff/tags"),
+            ]),
+            (tool: "perf", input: {"diff_from": 7}, ok: false, expect: [Is("/code", "SH0001")]),
+            (tool: "stop"),
+        ]),
     ],
 )

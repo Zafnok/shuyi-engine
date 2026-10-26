@@ -6,8 +6,9 @@ open [Agent Skills](https://agentskills.io) format. Each skill is a folder:
 - `SKILL.md`: when to use it and when not to, the steps, the engine's
   tools it calls (`cargo shuyi <command>`, or the MCP server's tools),
   and what to do on each problem code an answer gives;
-- `example.ron`: its worked example, a script of the tools' commands that
-  CI runs on a game fresh from `shuyi new`. If the example fails, the
+- `example.ron`: its worked example, a script of the tools' commands
+  (`cargo shuyi` commands, and the MCP server's session tools in an
+  `Mcp` step) that CI runs on a game fresh from `shuyi new`. If the example fails, the
   skill is wrong. A skill that teaches what the engine doesn't have yet
   says so, and has none;
 - sometimes `example/` (the files its example writes into the game) and

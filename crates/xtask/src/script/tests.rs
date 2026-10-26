@@ -34,6 +34,20 @@ impl<F: Fn(&str) -> Ran> Runner for Fake<F> {
             .push((dir.to_path_buf(), program.to_owned(), joined.clone()));
         Ok((self.answer)(&joined))
     }
+
+    fn run_with_input(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[String],
+        input: &str,
+    ) -> Result<Ran, String> {
+        let joined = format!("{} < {input}", args.join(" "));
+        self.calls
+            .borrow_mut()
+            .push((dir.to_path_buf(), program.to_owned(), joined.clone()));
+        Ok((self.answer)(&joined))
+    }
 }
 
 /// What a command that printed `stdout` and exited with `code` did.
@@ -477,4 +491,246 @@ fn the_real_runner_runs_a_command_in_its_folder() {
             .starts_with("`no-such-program-for-xtask` did not run")
     );
     let _ = fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_real_runner_writes_a_commands_input() {
+    let dir = temp("system-input");
+    let args = ["hash-object".to_owned(), "--stdin".to_owned()];
+    let ran = System::default()
+        .run_with_input(&dir, "git", &args, "hello\n")
+        .unwrap();
+    assert_eq!(ran.code, Some(0), "{ran:?}");
+    assert_eq!(
+        ran.stdout.trim(),
+        "ce013625030ba8dba906f756967f9e9ca394464a"
+    );
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// A call of tool `tool` with `input`, whose answer must be `ok`.
+fn call(tool: &str, input: Value, ok: bool, expect: Vec<Expect>) -> McpCall {
+    McpCall {
+        tool: tool.to_owned(),
+        input,
+        ok,
+        expect,
+    }
+}
+
+/// The server's response to call `id`: a tool result whose
+/// `structuredContent` is `answer`.
+fn reply(id: u64, answer: &Value) -> String {
+    let is_error = answer["ok"] == false;
+    json!({ "jsonrpc": "2.0", "id": id,
+        "result": { "content": [], "structuredContent": answer, "isError": is_error } })
+    .to_string()
+}
+
+/// A server's lines: `initialize`'s answer, then a reply per call.
+fn server_lines(replies: &[String]) -> String {
+    let mut lines =
+        vec![r#"{"jsonrpc":"2.0","id":0,"result":{"serverInfo":{"name":"shuyi"}}}"#.to_owned()];
+    lines.extend(replies.iter().cloned());
+    lines.join("\n") + "\n"
+}
+
+fn perf_calls() -> Vec<McpCall> {
+    vec![
+        call("start", json!({ "project": "." }), true, Vec::new()),
+        call(
+            "perf",
+            json!({ "diff_from": 7 }),
+            false,
+            vec![Expect::Is("/code".to_owned(), "SH0001".to_owned())],
+        ),
+    ]
+}
+
+#[test]
+fn an_mcp_step_starts_the_server_once_and_calls_its_tools_in_order() {
+    let game = temp("mcp");
+    let lines = server_lines(&[
+        reply(1, &json!({ "ok": true, "result": { "game": "Grid" } })),
+        reply(
+            2,
+            &json!({ "ok": false, "code": "SH0001", "error": "not kept" }),
+        ),
+    ]);
+    let fake = Fake::new(move |_| ran(0, &lines));
+    let step = Step::Mcp {
+        calls: perf_calls(),
+    };
+    assert_eq!(what(&step), "cargo shuyi mcp: start, perf (fails)");
+    let verdicts = run(&[step], &game, &game, &fake);
+    assert!(verdicts[0].passed, "{verdicts:?}");
+    let calls = fake.calls.borrow();
+    assert_eq!(calls.len(), 1);
+    let (dir, program, args) = &calls[0];
+    assert_eq!((dir, program.as_str()), (&game, "cargo"));
+    let (args, input) = args.split_once(" < ").unwrap();
+    assert_eq!(args, "shuyi mcp");
+    let messages: Vec<Value> = input
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let methods: Vec<&str> = messages
+        .iter()
+        .filter_map(|m| m["method"].as_str())
+        .collect();
+    assert_eq!(
+        methods,
+        [
+            "initialize",
+            "notifications/initialized",
+            "tools/call",
+            "tools/call"
+        ]
+    );
+    assert_eq!(messages[2]["id"], 1);
+    assert_eq!(messages[2]["params"]["name"], "start");
+    assert_eq!(
+        messages[2]["params"]["arguments"],
+        json!({ "project": "." })
+    );
+    assert_eq!(
+        messages[3]["params"]["arguments"],
+        json!({ "diff_from": 7 })
+    );
+    drop(calls);
+    let _ = fs::remove_dir_all(&game);
+}
+
+#[test]
+fn a_call_that_fails_its_ok_is_named_with_its_error_and_code() {
+    let game = temp("mcp-ok");
+    let lines = server_lines(&[
+        reply(
+            1,
+            &json!({ "ok": false, "code": "SH0004", "error": "no game here" }),
+        ),
+        reply(2, &json!({ "ok": true, "result": {} })),
+    ]);
+    let fake = Fake::new(move |_| ran(0, &lines));
+    let verdicts = run(
+        &[Step::Mcp {
+            calls: perf_calls(),
+        }],
+        &game,
+        &game,
+        &fake,
+    );
+    assert!(!verdicts[0].passed);
+    assert_eq!(
+        verdicts[0].detail.as_deref(),
+        Some(
+            "call 1 (start): its isError is true, not false; error: no game here; code: SH0004\n\
+             call 2 (perf): its isError is false, not true"
+        )
+    );
+    let _ = fs::remove_dir_all(&game);
+}
+
+#[test]
+fn a_call_that_fails_an_expect_is_named_with_what_didnt_hold() {
+    let game = temp("mcp-expect");
+    let lines = server_lines(&[
+        reply(1, &json!({ "ok": true, "result": {} })),
+        reply(2, &json!({ "ok": false, "code": "SH0002" })),
+    ]);
+    let fake = Fake::new(move |_| ran(0, &lines));
+    let verdicts = run(
+        &[Step::Mcp {
+            calls: perf_calls(),
+        }],
+        &game,
+        &game,
+        &fake,
+    );
+    assert_eq!(
+        verdicts[0].detail.as_deref(),
+        Some("call 2 (perf): /code is \"SH0002\", not SH0001")
+    );
+    let _ = fs::remove_dir_all(&game);
+}
+
+#[test]
+fn a_call_the_server_never_answered_fails_with_its_output() {
+    let game = temp("mcp-ended");
+    let fake = Fake::new(|_| Ran {
+        code: Some(101),
+        stdout: server_lines(&[]),
+        stderr: "error: could not compile `game`\n".to_owned(),
+    });
+    let verdicts = run(
+        &[Step::Mcp {
+            calls: perf_calls(),
+        }],
+        &game,
+        &game,
+        &fake,
+    );
+    let detail = verdicts[0].detail.clone().unwrap();
+    assert!(
+        detail.starts_with("call 1 (start): no answer; the server exited with 101\n"),
+        "{detail}"
+    );
+    assert!(detail.contains("could not compile"), "{detail}");
+    assert!(!detail.contains("call 2"), "{detail}");
+    let _ = fs::remove_dir_all(&game);
+}
+
+#[test]
+fn an_mcp_step_reads_from_ron_with_its_defaults() {
+    let steps: Vec<Step> = ron::from_str(
+        r#"[Mcp(calls: [
+            (tool: "start", input: {"project": ".", "frames": 30, "snapshot": true}),
+            (tool: "perf", input: {"diff_from": 7}, ok: false, expect: [Is("/code", "SH0001")]),
+            (tool: "stop"),
+        ])]"#,
+    )
+    .unwrap();
+    assert_eq!(
+        steps,
+        [Step::Mcp {
+            calls: vec![
+                call(
+                    "start",
+                    json!({ "project": ".", "frames": 30, "snapshot": true }),
+                    true,
+                    Vec::new()
+                ),
+                perf_calls().pop().unwrap(),
+                call("stop", json!({}), true, Vec::new()),
+            ]
+        }]
+    );
+    assert!(ron::from_str::<Vec<Step>>(r#"[Mcp(calls: [(tool: "stop", nope: 1)])]"#).is_err());
+}
+
+/// A runner that only runs commands: no input of theirs.
+struct NoInput;
+
+impl Runner for NoInput {
+    fn run(&self, _: &Path, _: &str, _: &[String]) -> Result<Ran, String> {
+        Ok(ran(0, TITLE))
+    }
+}
+
+#[test]
+fn a_runner_that_cant_write_input_fails_an_mcp_step() {
+    let game = temp("mcp-no-input");
+    let verdicts = run(
+        &[Step::Mcp {
+            calls: perf_calls(),
+        }],
+        &game,
+        &game,
+        &NoInput,
+    );
+    assert_eq!(
+        verdicts[0].detail.as_deref(),
+        Some("this runner can't write to `cargo`'s input")
+    );
+    let _ = fs::remove_dir_all(&game);
 }
