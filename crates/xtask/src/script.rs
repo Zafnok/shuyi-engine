@@ -13,20 +13,26 @@
 //!   says;
 //! - [`Step::Write`] and [`Step::Edit`]: a file of the game written from the
 //!   script's own files, or one piece of its text replaced;
-//! - [`Step::Holds`]: a file of the game holds a piece of text.
+//! - [`Step::Holds`]: a file of the game holds a piece of text;
+//! - [`Step::Mcp`]: `cargo shuyi mcp` started once, and its session tools
+//!   (`start`, `step`, `perf`, …) called in order, each [`McpCall`]'s
+//!   `isError` against its `ok` and its `structuredContent` read with the
+//!   same [`Expect`]s (ticket 2563).
 //!
 //! [`run`] goes on after a failed step, so the verdicts say everything that
 //! failed, and reads the answers as [`serde_json::Value`]: the xtask doesn't
 //! depend on `shuyi-cli`.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
+use std::io::Write as _;
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 /// The last lines of a failed command's output a verdict keeps.
 const TAIL: usize = 20;
@@ -90,11 +96,41 @@ pub enum Step {
         #[serde(default)]
         text: String,
     },
+    /// `cargo shuyi mcp` started once in the game's folder: `initialize`,
+    /// then a `tools/call` per call, in order, and its input closed. Each
+    /// call's `isError` must agree with its `ok`, and each of its `expect`
+    /// must hold of its `structuredContent` (the contract answer).
+    Mcp {
+        /// The tools called, in order.
+        calls: Vec<McpCall>,
+    },
+}
+
+/// One tool called in a [`Step::Mcp`].
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct McpCall {
+    /// The tool's name (`start`, `perf`).
+    pub tool: String,
+    /// Its arguments, a map (`{"frames": 30}`); none by default.
+    #[serde(default = "no_input")]
+    pub input: Value,
+    /// The verdict its answer must give.
+    #[serde(default = "yes")]
+    pub ok: bool,
+    /// What must hold of its `structuredContent`.
+    #[serde(default)]
+    pub expect: Vec<Expect>,
 }
 
 /// The default of a step's `ok`: it passes.
 fn yes() -> bool {
     true
+}
+
+/// The default of a call's `input`: no arguments.
+fn no_input() -> Value {
+    json!({})
 }
 
 /// What must hold of a contract answer, each at a JSON pointer
@@ -143,6 +179,19 @@ pub trait Runner {
     /// Runs `program` with `args` in `dir`. An error says it could not
     /// start.
     fn run(&self, dir: &Path, program: &str, args: &[String]) -> Result<Ran, String>;
+
+    /// Runs `program` with `args` in `dir`, `input` written to its stdin,
+    /// which then closes. A runner that can't says so.
+    fn run_with_input(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[String],
+        input: &str,
+    ) -> Result<Ran, String> {
+        let _ = (dir, args, input);
+        Err(format!("this runner can't write to `{program}`'s input"))
+    }
 }
 
 /// The real commands, with `CARGO_TARGET_DIR` set to `target_dir` when
@@ -163,11 +212,54 @@ impl Runner for System {
         let output = command
             .output()
             .map_err(|e| format!("`{program}` did not run ({e})"))?;
-        Ok(Ran {
-            code: output.status.code(),
-            stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        })
+        Ok(ran_of(&output))
+    }
+
+    fn run_with_input(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[String],
+        input: &str,
+    ) -> Result<Ran, String> {
+        let mut command = Command::new(program);
+        command
+            .args(args)
+            .current_dir(dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        if let Some(target_dir) = &self.target_dir {
+            command.env("CARGO_TARGET_DIR", target_dir);
+        }
+        let mut child = command
+            .spawn()
+            .map_err(|e| format!("`{program}` did not run ({e})"))?;
+        // Written from a thread while the output is read, so no pipe fills;
+        // a program that ends early leaves the rest unread, and its output
+        // says why.
+        let writer = child.stdin.take().map(|mut stdin| {
+            let input = input.to_owned();
+            std::thread::spawn(move || {
+                let _ = stdin.write_all(input.as_bytes());
+            })
+        });
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("`{program}` did not end ({e})"))?;
+        if let Some(writer) = writer {
+            let _ = writer.join();
+        }
+        Ok(ran_of(&output))
+    }
+}
+
+/// What a command whose output is `output` did.
+fn ran_of(output: &std::process::Output) -> Ran {
+    Ran {
+        code: output.status.code(),
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
     }
 }
 
@@ -207,6 +299,16 @@ pub fn what(step: &Step) -> String {
         Step::Edit { file, .. } => format!("edit {file}"),
         Step::Holds { file, text } if text.is_empty() => format!("{file} exists"),
         Step::Holds { file, .. } => format!("{file} holds its text"),
+        Step::Mcp { calls } => {
+            let tools: Vec<String> = calls
+                .iter()
+                .map(|c| {
+                    let fails = if c.ok { "" } else { " (fails)" };
+                    format!("{}{fails}", c.tool)
+                })
+                .collect();
+            format!("cargo shuyi mcp: {}", tools.join(", "))
+        }
     }
 }
 
@@ -308,6 +410,100 @@ fn run_step(step: &Step, files: &Path, game: &Path, runner: &dyn Runner) -> Resu
                 Err(format!("{file} doesn't hold {text:?}"))
             }
         }
+        Step::Mcp { calls } => {
+            let args = ["shuyi".to_owned(), "mcp".to_owned()];
+            let ran = runner.run_with_input(game, "cargo", &args, &mcp_input(calls))?;
+            mcp_verdict(calls, &ran)
+        }
+    }
+}
+
+/// The JSON-RPC lines a [`Step::Mcp`] writes: `initialize` (id 0), its
+/// `notifications/initialized`, and a `tools/call` per call, the `n`th
+/// with id `n` (from 1).
+pub fn mcp_input(calls: &[McpCall]) -> String {
+    let initialize = json!({ "jsonrpc": "2.0", "id": 0, "method": "initialize",
+        "params": { "protocolVersion": "2025-06-18", "capabilities": {},
+            "clientInfo": { "name": "cargo xtask skill-examples", "version": "1" } } });
+    let mut lines = vec![
+        initialize.to_string(),
+        json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }).to_string(),
+    ];
+    lines.extend(calls.iter().zip(1u64..).map(|(call, id)| {
+        json!({ "jsonrpc": "2.0", "id": id, "method": "tools/call",
+            "params": { "name": call.tool, "arguments": call.input } })
+        .to_string()
+    }));
+    let mut input = lines.join("\n");
+    input.push('\n');
+    input
+}
+
+/// Nothing if every call's answer in what the server `ran` wrote holds,
+/// or what didn't: a line per call that failed, named by its place and
+/// tool.
+fn mcp_verdict(calls: &[McpCall], ran: &Ran) -> Result<(), String> {
+    let responses: BTreeMap<u64, Value> = ran
+        .stdout
+        .lines()
+        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+        .filter_map(|message| Some((message.get("id")?.as_u64()?, message)))
+        .collect();
+    let mut failed = Vec::new();
+    for (call, id) in calls.iter().zip(1u64..) {
+        let Some(response) = responses.get(&id) else {
+            // The server ended: no later call has an answer either.
+            failed.push(format!(
+                "call {id} ({}): no answer; the server exited with {}\n{}",
+                call.tool,
+                exit_shown(ran.code),
+                tail(ran)
+            ));
+            break;
+        };
+        if let Err(why) = call_holds(call, response) {
+            failed.push(format!("call {id} ({}): {why}", call.tool));
+        }
+    }
+    if failed.is_empty() {
+        Ok(())
+    } else {
+        Err(failed.join("\n"))
+    }
+}
+
+/// Nothing if `call`'s `ok` and `expect` hold of its JSON-RPC `response`,
+/// or what doesn't.
+fn call_holds(call: &McpCall, response: &Value) -> Result<(), String> {
+    if let Some(error) = response.get("error") {
+        return Err(format!("a JSON-RPC error: {error}"));
+    }
+    let result = &response["result"];
+    let answer = &result["structuredContent"];
+    let is_error = result["isError"].as_bool();
+    if is_error != Some(!call.ok) {
+        let mut why = format!(
+            "its isError is {}, not {}",
+            is_error.map_or_else(|| "missing".to_owned(), |e| e.to_string()),
+            !call.ok
+        );
+        for field in ["error", "code", "help"] {
+            if let Some(Value::String(text)) = answer.get(field) {
+                // Writing to a `String` can't fail.
+                let _ = write!(why, "; {field}: {text}");
+            }
+        }
+        return Err(why);
+    }
+    let failed: Vec<String> = call
+        .expect
+        .iter()
+        .filter_map(|e| holds(answer, e).err())
+        .collect();
+    if failed.is_empty() {
+        Ok(())
+    } else {
+        Err(failed.join("; "))
     }
 }
 
