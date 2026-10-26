@@ -91,7 +91,7 @@ the target needs no linker for the target: only the build scripts and
 proc macros are linked, for the host, by MSYS2's `gcc` as usual.
 
 ```bash
-cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --target thumbv7em-none-eabihf --locked
+cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
 cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
 RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast

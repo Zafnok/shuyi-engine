@@ -53,6 +53,19 @@
 //! A build without debug tools logs why and writes nothing; a file that
 //! can't be written is one warning, and the game goes on.
 //!
+//! Every debug build counts the heap: this crate turns on
+//! `shuyi_alloc_count`'s `global` feature, whose `#[global_allocator]`
+//! counts the bytes the whole program asks for, every thread's, and each
+//! frame's record gets the live bytes, their peak and that frame's
+//! allocations (`shuyi_ui::perf::FrameRecord::heap`). A release build has
+//! no counter. A game with a `#[global_allocator]` of its own (a binary
+//! has one) opts out in its `.cargo/config.toml`:
+//!
+//! ```toml
+//! [build]
+//! rustflags = ["--cfg", "shuyi_no_heap_count"]
+//! ```
+//!
 //! On the web the game's binary must link with `--allow-undefined`: the
 //! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only

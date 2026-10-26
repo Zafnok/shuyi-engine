@@ -38,8 +38,8 @@ do. The decisions behind it are
   is never merged here, not even behind a feature. The engine's part is
   to keep `Platform` small, stable and documented.
 - **`Platform` stays small** (ADR-0040 §7). A backend implements the
-  seven methods below, and may give the eighth, `clock`, which has a
-  default. Every method added to `Platform` later has a
+  seven methods below, and may give the eighth and ninth, `clock` and
+  `memory`, which have defaults. Every method added to `Platform` later has a
   default, and a device service a backend may lack returns an `Option`,
   as `text_input` does, so a backend written today (a private console's)
   keeps building. `crates/platform/tests/it/bare.rs` implements only the
@@ -238,6 +238,21 @@ build never reads it. A backend without a clock leaves the default,
 `None`, and nothing is measured. Never reset the device's timer in the
 loop: a record's times are differences of its reads.
 
+### `memory(&mut self) -> Option<MemoryReading>` (has a default)
+
+The device's memory now, in debug builds (ADR-0046):
+`MemoryReading::new(HeapCounts::new(live_bytes, peak_bytes, allocs))`,
+the heap's live bytes, their peak, and the allocations and reallocations
+since the last call, in bytes asked for (never the allocator's own
+overhead). `App` asks once a frame, at the end of a frame it keeps a
+record of (so only with a clock, and only while `debug_tools` is on),
+and puts the heap's counts in the record's `heap`. Count with
+`shuyi_alloc_count::CountingAlloc` around the device's allocator, in a
+debug build only: `shuyi-app` reads the global counter of
+`shuyi_alloc_count`'s `global` feature (`global::reading()`), which
+counts the whole process, every thread's allocations. A backend that
+doesn't count leaves the default, `None`, and the records have no heap.
+
 ## The live link (optional)
 
 A backend may offer the live link
@@ -275,7 +290,9 @@ backend: it plays input and system events queued by a test, keeps the
 last frame presented, hands over a memory storage, and stands in for the
 music player (`Speaker`). A test hands it a clock
 (`with_clock(PerfClock::fake())`, `set_clock`), whose fake reads give
-the same records on every run. The test Harness (`shuyi_platform::harness`, the
+the same records on every run, and a heap: a fake one that moves by
+fixed amounts with the frames presented (`with_fake_memory`), or a real
+counter's reading (`set_memory`); `memory_calls` counts `App`'s asks. The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a
 new backend's translation the same way: a fake of the device's SDK on

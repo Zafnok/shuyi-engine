@@ -2,8 +2,8 @@
 source: crates/cli/tests/it/toy.rs
 expression: trace
 ---
-{"kind":"frame","frame":1,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":0,"frame_us":2700},"spans":[],"spans_dropped":0}
-{"kind":"frame","frame":2,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
-{"kind":"frame","frame":3,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
-{"kind":"frame","frame":4,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
-{"kind":"frame","frame":5,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
+{"kind":"frame","frame":1,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":0,"frame_us":2700},"spans":[],"spans_dropped":0,"heap":{"live_bytes":1064960,"peak_bytes":1064960,"allocs":1}}
+{"kind":"frame","frame":2,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0,"heap":{"live_bytes":1081344,"peak_bytes":1081344,"allocs":2}}
+{"kind":"frame","frame":3,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0,"heap":{"live_bytes":1097728,"peak_bytes":1097728,"allocs":3}}
+{"kind":"frame","frame":4,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0,"heap":{"live_bytes":1114112,"peak_bytes":1114112,"allocs":4}}
+{"kind":"frame","frame":5,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0,"heap":{"live_bytes":1130496,"peak_bytes":1130496,"allocs":5}}

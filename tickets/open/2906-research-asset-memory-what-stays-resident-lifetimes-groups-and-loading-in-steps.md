@@ -83,8 +83,9 @@ is that ticket.
 - 2207 lays run-time layers that are "leaked once", and 2220 leaks old
   bytes on reload in debug builds. Both are bounded, and both keep the
   `&'static` rule.
-- 3008 adds a counting allocator and gates peak heap against each
-  target's `peak_heap_bytes`; 3011 measures peak heap on a Playdate.
+- 3064 counts the heap (`shuyi-alloc-count`, in every debug build); 3008
+  gates peak heap against each target's `peak_heap_bytes`; 3011
+  measures peak heap on a Playdate.
 - 3010 reads the Playdate's pack through the SDK's file API, so the
   whole pack and its unpacked files sit in the heap. If this ticket is
   done first, 3010 reads it as this ticket's ADR says.
@@ -139,29 +140,14 @@ None. This is technical.
     `#[global_allocator]`. A static of a type that implements
     `GlobalAlloc` needs no `unsafe` of its own, but the type does
     (`unsafe impl`), and the workspace's lints forbid `unsafe_code` in
-    `examples/` (ADR-0002 §9). **Either order with 3008 and 3064:** if
-    either is done, use its counting allocator (`shuyi-alloc-count`).
-    3064's `global` static is the `#[global_allocator]` of every debug
-    build that links `shuyi-app`, as this program does through `shuyi`,
-    and a second static would not link there: read that one
-    (`global::reading()`, and 3065's tags if it is done) in a debug
+    `examples/` (ADR-0002 §9). **From 3064 (done):** use its counting
+    allocator, `CountingAlloc` in `shuyi-alloc-count` (ADR-0046 §9 names
+    the crate). Its `global` static is the `#[global_allocator]` of
+    every debug build that links `shuyi-app`, as this program does
+    through `shuyi`, and a second static would not link there: read that
+    one (`global::reading()`, and 3065's tags if it is done) in a debug
     build, and declare a static of the program's own only where it is
-    compiled out (a release build). If neither is done, write it where
-    3008's Scope says it goes, so 3008 and 3064 take it over:
-    - a reusable `CountingAlloc<A: GlobalAlloc>` around an inner
-      allocator (`std::alloc::System` here), with a safe read of the
-      live bytes and the peak, and a reset of the peak;
-    - in a small crate of its own (for example `crates/alloc-count`,
-      package `shuyi-alloc-count`), never in `shuyi-core`, `shuyi-ui`
-      or `shuyi-platform`. Its lints are the workspace's except
-      `unsafe_code = "deny"`, with one `#[allow(unsafe_code)]` module, a
-      `// SAFETY:` comment on every `unsafe` block, and a test like
-      `shuyi-app`'s `the_lints_are_the_workspace_lints_except_unsafe_code`
-      (ADR-0021 §6 is the pattern). It gets an entry in
-      `tools/layers.ron` (no engine crates, `outside: Only([])`,
-      `devices: false`);
-    - the ADR below names that crate as one more place ADR-0002 §9
-      allows `unsafe`, as ADR-0021 §6 did for the platform crates;
+    compiled out (a release build; `global::COUNTING` says which);
   - the packs: Hello, Grid's baked in memory as
     `examples/hello-grid/tests/it/pack.rs` bakes it (`HelloTools.bake`),
     the others read from a file or written in memory (below). Each is
@@ -344,9 +330,7 @@ None. This is technical.
    `crates/platform/src/app.rs`, `crates/app/src/render.rs` and
    `audio.rs`, `examples/hello-grid/tests/it/pack.rs`, and tickets
    2207, 2220, 2222, 2228, 3008, 3009, 3010, 3011 and 3029.
-2. If neither 3008 nor 3064 is done, write the counting allocator's
-   crate and its tests, as *Scope* says.
-3. Write the measuring program and its tests, and add its `[[example]]`
+2. Write the measuring program and its tests, and add its `[[example]]`
    to `examples/hello-grid/Cargo.toml`.
 4. Check out Visions of Shuyi's public repository outside this one, and
    record its commit.
@@ -380,10 +364,8 @@ None. This is technical.
       number.
 - [ ] 2207, 2220, 2222, 2228, 3008, 3010 and 3011 match the ADR, or
       the completion notes say why one needs no change.
-- [ ] The program uses 3008's or 3064's counting allocator, or one in
-      a crate of its own that the ADR names as an exception to ADR-0002
-      §9; no
-      `unsafe` is in `examples/`.
+- [ ] The program uses 3064's counting allocator
+      (`shuyi-alloc-count`); no `unsafe` is in `examples/`.
 - [ ] No file of the game is committed.
 - [ ] All gates in the `run-gates` skill pass.
 

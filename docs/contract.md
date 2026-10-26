@@ -51,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 22,
+  "contract": 23,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -107,16 +107,16 @@ warnings and errors.
 
 ## Perf traces
 
-A debug build measures each frame: how long its parts took, and the
-spans the game marked around its own code with `ctx.span("ai", |ctx|
-…)`. The last 600 frames are kept. Agents read them three ways, as JSON
+A debug build measures each frame: how long its parts took, the spans
+the game marked around its own code with `ctx.span("ai", |ctx| …)`, and
+the heap. The last 600 frames are kept. Agents read them three ways, as JSON
 lines: `run --perf`, MCP's `perf`, and a running build's trace file.
 
 Each line of a trace is one object, tagged by `kind`. Today every line
 is a frame:
 
 ```json
-{"kind":"frame","frame":12,"times":{"update_us":310,"draw_us":420,"paint_us":610,"present_us":15800,"frame_us":17200},"spans":[{"name":"ai","start_us":40,"us":250,"depth":0}],"spans_dropped":0}
+{"kind":"frame","frame":12,"times":{"update_us":310,"draw_us":420,"paint_us":610,"present_us":15800,"frame_us":17200},"spans":[{"name":"ai","start_us":40,"us":250,"depth":0}],"spans_dropped":0,"heap":{"live_bytes":4194304,"peak_bytes":4521984,"allocs":12}}
 ```
 
 - `frame` is the frame's number: frames count from 1.
@@ -130,6 +130,25 @@ is a frame:
   the order they ended (an inner one before its outer one): `name`,
   `start_us` from the frame's start, `us` long, and `depth`, how many
   spans it was inside. A frame keeps 64; `spans_dropped` counts the rest.
+- `heap` is the heap at the frame's end, in bytes the program asked for
+  (never the allocator's own overhead): `live_bytes` allocated and not
+  yet freed, `peak_bytes` the most at once since the program started,
+  and `allocs` the allocations and reallocations in this frame. It is
+  left out where the heap isn't counted.
+
+**The heap is counted in every debug build** of a game and of its tool
+program, by a counting allocator the engine turns on, and in no release
+build. It counts the whole program, every thread's allocations; the
+limits say so when the tool program ran another thread beside the game.
+A release tool program, or a game that opted out, has no `heap`, and
+the limits say "the heap isn't counted". A game with a
+`#[global_allocator]` of its own opts out (a program has one) in its
+`.cargo/config.toml`:
+
+```toml
+[build]
+rustflags = ["--cfg", "shuyi_no_heap_count"]
+```
 
 **Times are this machine's**, and from an unoptimized build unless it
 says otherwise: compare two runs on the same machine, never numbers
@@ -141,11 +160,13 @@ plays the same with perf on and off.
 `dropped` (older frames no longer kept), a spread each (`p50`, `p99`,
 `worst` and `mean`, in microseconds) for `frame`, `update`, `draw`,
 `paint` and `present`, and the five `spans` with the most time (`name`,
-`count`, `total_us`, `mean_us`, `worst_us`). With `--perf-out
-perf.jsonl` it writes every kept frame as a line, oldest first, and
-`file` is the file's absolute path. For people it prints one line:
-`perf: 600 frames, frame p50 1.2 ms p99 3.4 ms worst 8.0 ms; span ai
-0.8 ms mean`.
+`count`, `total_us`, `mean_us`, `worst_us`), and `heap`, where it was
+counted: `peak_bytes` (the most over the kept frames), `live_bytes` (at
+the last frame's end) and `allocs`, a spread of the allocations per
+frame. With `--perf-out perf.jsonl` it writes every kept frame as a
+line, oldest first, and `file` is the file's absolute path. For people
+it prints one line: `perf: 600 frames, frame p50 1.2 ms p99 3.4 ms worst
+8.0 ms; span ai 0.8 ms mean; heap peak 4.1 MB`.
 
 **A session, as a stream.** MCP's `start` measures every session. After
 each `step`, `perf` with the last answer's `next` as `since` answers the

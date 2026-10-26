@@ -5,13 +5,20 @@
 //! `run --perf` answers a [`PerfSummary`], and with `--perf-out` writes
 //! every kept frame as a line; the MCP server's `perf` tool answers the
 //! records since a number.
+//!
+//! In a debug build of a game's tool program each record has the heap's
+//! counts too (`FrameRecord::heap`), from the program's own heap counter
+//! (`shuyi_alloc_count::global`), and the summary sums them up
+//! ([`HeapSummary`]). The counter counts the whole program: every thread's
+//! allocations.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_ui::perf::{FrameRecord, PERF_FRAMES, PerfLine, PerfRing, Spread, spread};
+use shuyi_ui::perf::{FrameRecord, PERF_FRAMES, PerfLine, PerfRing, Spread, bytes_text, spread};
 
 /// How many of the spans with the most time a [`PerfSummary`] names.
 pub const TOP_SPANS: usize = 5;
@@ -22,6 +29,30 @@ pub const TIMES: &str = "times are this machine's, from an unoptimized build unl
 
 /// The limit of a read whose `since` is past its `next`.
 pub const RESET: &str = "the session was reset or started again: read from 0";
+
+/// The limit of records measured with no heap counts.
+pub const HEAP_UNCOUNTED: &str =
+    "the heap isn't counted: the game's tool program is a release build, or opted out";
+
+/// The limit of heap counts from this program's own counter while it ran
+/// another thread beside the game's.
+pub const HEAP_THREADS: &str = "the heap counts the whole tool program: another thread ran beside \
+                                the game, and its allocations count too";
+
+/// Whether this program started a thread of its own beside the game's
+/// (the MCP server's reader): the heap counter counts its allocations too.
+static OTHER_THREADS: AtomicBool = AtomicBool::new(false);
+
+/// Notes that this program runs a thread beside the game's, from now on.
+pub fn note_other_thread() {
+    OTHER_THREADS.store(true, Ordering::Relaxed);
+}
+
+/// Whether this program ran a thread beside the game's
+/// ([`note_other_thread`]).
+pub fn other_threads() -> bool {
+    OTHER_THREADS.load(Ordering::Relaxed)
+}
 
 /// The records a session kept from a number on: a read of its stream.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -99,6 +130,20 @@ pub struct SpanSummary {
     pub worst_us: u32,
 }
 
+/// How the heap's counts add up over a trace's records, in bytes asked for.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct HeapSummary {
+    /// The most bytes live at once, the most of the records' peaks.
+    pub peak_bytes: u64,
+    /// The bytes live at the last record's end.
+    pub live_bytes: u64,
+    /// How the allocations per frame spread.
+    pub allocs: Spread,
+}
+
 /// What a trace's records add up to.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -122,6 +167,9 @@ pub struct PerfSummary {
     /// The spans with the most time in all, most first (ties by name), at
     /// most five.
     pub spans: Vec<SpanSummary>,
+    /// The heap's counts over the records that have them; null where none
+    /// has (a release build of the tool program, or one opted out).
+    pub heap: Option<HeapSummary>,
     /// The trace file written, its absolute path, with `--perf-out`.
     pub file: Option<String>,
 }
@@ -159,8 +207,36 @@ pub fn summary(records: &[FrameRecord]) -> Option<PerfSummary> {
         paint: of(|r| r.times.paint_us)?,
         present: of(|r| r.times.present_us)?,
         spans,
+        heap: heap_summary(records),
         file: None,
     })
+}
+
+/// How the heap's counts add up over the records that have them, or
+/// `None` for none.
+pub fn heap_summary(records: &[FrameRecord]) -> Option<HeapSummary> {
+    let heaps: Vec<_> = records.iter().filter_map(|r| r.heap).collect();
+    let last = heaps.last()?;
+    Some(HeapSummary {
+        peak_bytes: heaps.iter().map(|h| h.peak_bytes).max().unwrap_or(0),
+        live_bytes: last.live_bytes,
+        allocs: spread(heaps.iter().map(|h| h.allocs))?,
+    })
+}
+
+/// The limits of `records`' heap counts: none counted, or counted by this
+/// program's own counter (`process`) while another thread ran
+/// (`other_threads`).
+pub fn heap_limits(records: &[FrameRecord], process: bool, other_threads: bool) -> Vec<String> {
+    if records.is_empty() {
+        Vec::new()
+    } else if records.iter().all(|r| r.heap.is_none()) {
+        vec![HEAP_UNCOUNTED.to_owned()]
+    } else if process && other_threads {
+        vec![HEAP_THREADS.to_owned()]
+    } else {
+        Vec::new()
+    }
 }
 
 /// `records` as a trace: a [`PerfLine::Frame`] each, as JSON, a line each,
@@ -200,7 +276,8 @@ pub fn millis(us: u32) -> String {
 }
 
 /// `summary`'s line for people: `perf: 600 frames, frame p50 1.2 ms p99
-/// 3.4 ms worst 8.0 ms; span ai 0.8 ms mean`, then the trace file's.
+/// 3.4 ms worst 8.0 ms; span ai 0.8 ms mean; heap peak 4.1 MB`, then the
+/// trace file's.
 pub fn text(summary: &PerfSummary) -> String {
     let frame = &summary.frame;
     let mut out = format!(
@@ -212,6 +289,9 @@ pub fn text(summary: &PerfSummary) -> String {
     );
     if let Some(span) = summary.spans.first() {
         let _ = write!(out, "; span {} {} ms mean", span.name, millis(span.mean_us));
+    }
+    if let Some(heap) = &summary.heap {
+        let _ = write!(out, "; heap peak {}", bytes_text(heap.peak_bytes));
     }
     out.push('\n');
     if let Some(file) = &summary.file {

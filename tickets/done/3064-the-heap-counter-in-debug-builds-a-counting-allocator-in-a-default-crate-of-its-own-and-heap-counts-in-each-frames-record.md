@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["3063", "2553"]
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 3064 — The heap counter in debug builds
@@ -202,27 +202,27 @@ None.
 
 ## Acceptance criteria
 
-- [ ] An instance called directly counts a 1 MB block: `live_bytes` and
+- [x] An instance called directly counts a 1 MB block: `live_bytes` and
       `peak_bytes` at least 1 MB while it lives, `live_bytes` back after
       it is freed, `peak_bytes` kept until `reset_peak`, and
       `take_allocs` at least 1, then 0.
-- [ ] In a debug test binary that links the crate with `global`,
+- [x] In a debug test binary that links the crate with `global`,
       `global::reading()` is `Some`; the crate's docs and a test with
       the `--cfg` (or a `cfg` test of the condition) show the opt-out.
-- [ ] With the fake memory, the toy's records carry the fake's heap
+- [x] With the fake memory, the toy's records carry the fake's heap
       counts (a committed snapshot), and `memory_calls()` stays 0 with
       `Ctx::debug_tools` off.
-- [ ] `cargo shuyi run --perf` on Hello, Grid answers a summary whose
+- [x] `cargo shuyi run --perf` on Hello, Grid answers a summary whose
       heap peak is above 0, and its text line ends with the peak.
-- [ ] `cargo xtask check-modules` and `check-layers` pass with the
+- [x] `cargo xtask check-modules` and `check-layers` pass with the
       seventh default crate.
-- [ ] `shuyi-app` and a game made from the template build in debug and
+- [x] `shuyi-app` and a game made from the template build in debug and
       release; the release build has no `#[global_allocator]`.
-- [ ] The schemas are regenerated and `versions.json` has the new
+- [x] The schemas are regenerated and `versions.json` has the new
       version.
-- [ ] `shuyi-perf` teaches the heap, and `cargo xtask skill-examples
+- [x] `shuyi-perf` teaches the heap, and `cargo xtask skill-examples
       shuyi-perf` runs its example green.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -238,5 +238,89 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.** Neither 3008 nor 2906 had written the crate, so it is written
+here, and their clauses now say they use it.
+
+- **`shuyi-alloc-count`** (`crates/alloc-count`): `CountingAlloc<A>`
+  with `const fn new`, `live_bytes`, `peak_bytes`, `reset_peak`,
+  `take_allocs` and `counts() -> Counts` (`#[non_exhaustive]`, with
+  `Counts::new`). It counts each `Layout`'s size. Its words are
+  `AtomicUsize` under `cfg(target_has_atomic = "ptr")`, and plain cells
+  otherwise; the cells have a test against the atomics, and the crate
+  builds and passes clippy for `thumbv6m-none-eabi`, a target without
+  CAS. It is `no_std` without `std`. With `global` it has the
+  `#[global_allocator]` (`CountingAlloc<System>`, under
+  `all(debug_assertions, not(shuyi_no_heap_count))`), `global::reading()`
+  and `global::COUNTING`. The build script declares the cfg. Its lints
+  are the workspace's except `unsafe_code = "deny"`, with one
+  `#[allow(unsafe_code)]` module (`counter`), `// SAFETY:` on every
+  `unsafe` block, and two tests: the lints, and that only `counter`
+  allows `unsafe`. It is the seventh default crate (`DEFAULT_CRATES` in
+  `xtask` and in `shuyi_cli::catalog`, `tools/layers.ron`, CI's no-std
+  build, `docs/modules.md`, `README.md`). ADR-0046 §9 already names it,
+  so no ADR changed.
+- **`shuyi_ui::perf`:** `HeapCounts`, `MemoryReading`,
+  `FrameRecord::heap` (left out of the JSON when `None`, so old traces
+  read and old lines stay the same) and `bytes_text`.
+- **`Platform::memory`**, defaulted to `None`. `App::end_perf` asks for
+  it only once it has a record to keep.
+- **The headless backend:** `with_fake_memory`, `set_memory`,
+  `has_memory` (added: `Headless::set_perf` needs to know whether the
+  platform has memory of its own without calling `memory`, which counts
+  a call) and `memory_calls`. `Harness::set_memory`.
+- **`shuyi-app`:** `Macroquad::memory` reads `global::reading()`. Its
+  crate docs say every debug build counts, and how to opt out.
+- **`shuyi-cli`:** the toy's session has the fake memory, so its
+  snapshots carry exact heap counts. `Headless::set_perf(true)` gives
+  the Harness `global::reading()` when the build counts and the platform
+  has no memory of its own, and `false` takes it back. `PerfSummary`
+  has `heap: Option<HeapSummary>`, the text line ends `; heap peak 4.1
+  MB`, and the contract is version 23.
+- **Limits:** "the heap isn't counted: the game's tool program is a
+  release build, or opted out" when records were measured and none has
+  heap counts, in `run` and MCP's `perf`.
+- **Docs:** `docs/platform-backends.md` (`memory`, the headless
+  backend's fake), `docs/contract.md` (*Perf traces*: each record's
+  `heap`, the summary's, the opt-out), the crate's module docs and
+  `shuyi-app`'s, and the `shuyi-perf` skill (1.1: the heap summary, the
+  opt-out, two new failures; its example checks that `heap` is there).
+
+**Deviations:**
+
+- **"When more than one thread ran."** A program can't count its
+  threads without the platform's own APIs, and a counter that tracks
+  which thread allocated would need thread-locals inside the allocator,
+  which can allocate themselves. So the limit is given when the tool
+  program started a thread of its own beside the game:
+  `contract::perf::note_other_thread()`, called by the MCP server before
+  it starts its reader thread. Only sessions on the program's own
+  counter get it (`Session::counts_process_heap`, defaulted to `false`),
+  never a fake's. `shuyi run` from the command line runs on one thread
+  and never shows it.
+- **The front door** doesn't re-export the new crate: nothing checks
+  that it names every default crate, and a game never names the counter
+  directly. **The `api` job's `API_CRATES`** don't include it either:
+  ADR-0038 lists the crates a game depends on and those the front door
+  re-exports, and this is neither.
+- **No `--cfg` test run in CI.** The opt-out is shown by a `cfg` test
+  of the condition (`global::COUNTING` and `reading()` agree with
+  `cfg!(all(debug_assertions, not(shuyi_no_heap_count)))`). It was also
+  run here with `RUSTFLAGS="--cfg shuyi_no_heap_count"` (12 tests, the
+  global one compiled out), and with `--release` (`reading()` is
+  `None`).
+
+**Follow-up:** 2561. `cargo test -p shuyi-cli --test it` flakes on
+Windows when its tests run in parallel: a test's `shuyi mcp` moves the
+`shuyi` program aside (2545), and for a moment the path is empty, so a
+`binary::` test that spawns it fails. That was there before this ticket.
+All 40 tests pass on one thread.
+
+**For Nick:** every debug build of a game now counts its heap, and
+agents see the peak and the allocations per frame next to the frame
+times. A game that brings its own memory allocator adds one line to its
+build settings to turn this off. Visions of Shuyi's only allocator is in
+its Playdate crate, which doesn't use the windowed backend, so the game
+keeps building at its next pin.
+
+Breaking: shuyi-cli: catalog::DEFAULT_CRATES: an array of 7 now, with `shuyi-alloc-count`: code that names its type `[&str; 6]` changes the length; the contract's version is 23 (`heap` in each record and in the summary). The game names neither.
+Breaking: shuyi-app: a debug build now has a `#[global_allocator]` (`shuyi_alloc_count::global`): a game binary with an allocator of its own fails to link until its `.cargo/config.toml` sets `rustflags = ["--cfg", "shuyi_no_heap_count"]`. The game's only allocator is in its Playdate crate, which doesn't link `shuyi-app`.

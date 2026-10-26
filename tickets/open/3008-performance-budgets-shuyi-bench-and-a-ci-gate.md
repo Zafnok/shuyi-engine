@@ -77,42 +77,25 @@ None.
     package over budget names its largest files and the files no load
     read, from `shuyi check`'s files report. If not, 2516 adds that (its
     own clause says so).
-- **The counting allocator**, written as a reusable type (for example
-  `CountingAlloc<A: GlobalAlloc>` around any inner allocator:
-  `std::alloc::System` here, the Playdate SDK's allocator in 3010). It
-  has a safe read of the live bytes and the peak, and a reset of the
-  peak.
-  - **Either order with 3064:** if 3064 is done, this allocator is its
-    crate, `shuyi-alloc-count` (a default crate, with `take_allocs`).
-    Its `global` feature is the `#[global_allocator]` of every debug
-    build that links `shuyi-app` or `shuyi-cli`, and a second static in
-    such a build would not link. So the bench reads that one in a debug
-    build, and declares a `CountingAlloc::new` of its own only in a
-    build where the global one is compiled out (a release build, or
-    `--cfg shuyi_no_heap_count`); record which in the PR. If not, write
-    the crate here as this bullet says, and 3064 adds its call count,
-    its `global` static and its place among the default crates (its
-    own clause says so).
-  - 3020 (parked) counts calls with it.
-  - `GlobalAlloc` is an unsafe trait and the workspace's lints forbid
-    `unsafe_code`, so it goes in a crate whose lints are the workspace's
-    except `unsafe_code = "deny"`, with one `#[allow(unsafe_code)]`
-    module, a `// SAFETY:` comment on every `unsafe` block, and a test
-    like `shuyi-app`'s
-    `the_lints_are_the_workspace_lints_except_unsafe_code`. A small
-    crate of its own is one way; record the choice in the PR. A new
-    crate that allows `unsafe` extends ADR-0002 §9, so name it in an ADR
-    (the `write-adr` skill) as ADR-0021 §6 did for the platform crates.
-    It never goes in `shuyi-core`, `shuyi-ui` or `shuyi-platform`.
-  - It uses atomic read-modify-write only under
-    `cfg(target_has_atomic = "ptr")`, with a single-threaded fallback,
-    so 3020's targets can build it.
-  - **Either order with 2906:** if 2906 is done, its measuring program
-    (`examples/hello-grid/examples/asset_memory.rs`) already uses a
-    counting allocator, written in a crate of its own as this bullet
-    says, and 2906's ADR names that crate. Use it, and add to it what
-    this ticket needs, instead of writing a second. If not, 2906 uses
-    this one (its clause says so).
+- **The counting allocator** is 3064's: `CountingAlloc<A: GlobalAlloc>`
+  in `shuyi-alloc-count` (`crates/alloc-count`, a default crate), around
+  any inner allocator (`std::alloc::System` here, the Playdate SDK's in
+  3010), with `live_bytes`, `peak_bytes`, `reset_peak`, `take_allocs`
+  and `counts`, atomic where the target has atomics and a
+  single-threaded fallback where it hasn't.
+  - **From 3064 (done):** its `global` feature is the
+    `#[global_allocator]` of every debug build that links `shuyi-app` or
+    `shuyi-cli`, and a second static in such a build would not link. So
+    the bench reads that one in a debug build
+    (`shuyi_alloc_count::global::reading()`), and declares a
+    `CountingAlloc::new` of its own only in a build where the global one
+    is compiled out (a release build, or `--cfg shuyi_no_heap_count`;
+    `global::COUNTING` says which); record which in the PR. ADR-0046 §9
+    names the crate as one more place ADR-0002 §9 allows `unsafe`.
+  - 3020 (parked) counts calls with it (`take_allocs`).
+  - 2906's measuring program (`examples/hello-grid/examples/asset_memory.rs`)
+    reads the same crate; add to it what this ticket needs, never a
+    second counter.
 - **Budgets from the profile.** Each number is compared with the
   `budgets` of every `supported` target among those the game lists (or
   just `--target`). A scenario over budget fails, naming the scenario,

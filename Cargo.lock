@@ -1126,6 +1126,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "shuyi-alloc-count"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+ "shuyi-alloc-count",
+]
+
+[[package]]
 name = "shuyi-app"
 version = "0.1.0"
 dependencies = [
@@ -1138,6 +1146,7 @@ dependencies = [
  "quad-storage",
  "serde",
  "serde_json",
+ "shuyi-alloc-count",
  "shuyi-app",
  "shuyi-assets",
  "shuyi-platform",
@@ -1178,6 +1187,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_norway",
+ "shuyi-alloc-count",
  "shuyi-assets",
  "shuyi-cli",
  "shuyi-core",

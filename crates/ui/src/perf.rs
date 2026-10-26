@@ -23,6 +23,13 @@
 //! frame's record. A time never reaches an update: nothing reads a record
 //! to decide anything, so a run plays the same with the clock on and off.
 //!
+//! The heap is counted too, where the backend counts it (a debug build of
+//! `shuyi-app` or of a game's tool program): each record's
+//! [`heap`](FrameRecord::heap) holds the live bytes, their peak and the
+//! allocations in that frame ([`HeapCounts`]), as the backend's
+//! [`MemoryReading`] gave them at the frame's end. The counter counts the
+//! whole process, every thread's allocations.
+//!
 //! [`Ctx::debug_tools`]: crate::Ctx::debug_tools
 //! [`Ctx::span`]: crate::Ctx::span
 
@@ -165,6 +172,66 @@ impl SpanEvent {
     }
 }
 
+/// The heap's counts at a frame's end, in bytes asked for (never the
+/// allocator's own overhead). Build it with [`HeapCounts::new`]
+/// (ADR-0039).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct HeapCounts {
+    /// The bytes allocated and not yet freed.
+    pub live_bytes: u64,
+    /// The most bytes live at once since the program started.
+    pub peak_bytes: u64,
+    /// The calls that allocated or reallocated since the last reading: one
+    /// reading a frame, so the frame's.
+    pub allocs: u32,
+}
+
+impl HeapCounts {
+    /// `live_bytes` live, `peak_bytes` at the most, and `allocs` calls
+    /// since the last reading.
+    pub const fn new(live_bytes: u64, peak_bytes: u64, allocs: u32) -> Self {
+        Self {
+            live_bytes,
+            peak_bytes,
+            allocs,
+        }
+    }
+}
+
+/// What a backend reads of the device's memory at a frame's end
+/// (`shuyi_platform::Platform::memory`). Build it with
+/// [`MemoryReading::new`] (ADR-0039).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct MemoryReading {
+    /// The heap's counts.
+    pub heap: HeapCounts,
+}
+
+impl MemoryReading {
+    /// A reading of the heap's counts `heap`.
+    pub const fn new(heap: HeapCounts) -> Self {
+        Self { heap }
+    }
+}
+
+/// `bytes` for people: under 1,024 as `1023 B`, then in `KB`, `MB` and
+/// `GB` with one decimal, rounded down (`1.0 KB` is 1,024 bytes, `1.0 MB`
+/// 1,048,576), in integers.
+pub fn bytes_text(bytes: u64) -> String {
+    const UNITS: [(u64, &str); 3] = [(1 << 30, "GB"), (1 << 20, "MB"), (1 << 10, "KB")];
+    let Some(&(unit, name)) = UNITS.iter().find(|&&(unit, _)| bytes >= unit) else {
+        return format!("{bytes} B");
+    };
+    let tenths = u128::from(bytes) * 10 / u128::from(unit);
+    format!("{}.{} {name}", tenths / 10, tenths % 10)
+}
+
 /// What one frame measured. Build it with [`FrameRecord::new`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -180,6 +247,11 @@ pub struct FrameRecord {
     pub spans: Vec<SpanEvent>,
     /// The spans past [`MAX_SPANS`], counted and not kept.
     pub spans_dropped: u32,
+    /// The heap's counts at the frame's end, where the backend counts it
+    /// (a debug build of `shuyi-app` or a tool program); `None` where it
+    /// doesn't, and left out of the JSON then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub heap: Option<HeapCounts>,
 }
 
 impl FrameRecord {
@@ -190,6 +262,7 @@ impl FrameRecord {
             times: FrameTimes::new(),
             spans: Vec::new(),
             spans_dropped: 0,
+            heap: None,
         }
     }
 }

@@ -4,7 +4,7 @@
 //! metadata --all-features` ([`crate::layers`]).
 //!
 //! A **module** is a workspace member under `crates/` other than the
-//! default engine's six crates, the front door (`shuyi`) and this tool
+//! default engine's seven crates, the front door (`shuyi`) and this tool
 //! (`xtask`). It fails on:
 //!
 //! 1. a default crate that depends on a module, by any kind of
@@ -40,13 +40,15 @@ pub const CATALOG: &str = "docs/modules.md";
 const ADR: &str = "ADR-0009";
 
 /// The default engine's crates: no module, and none depends on one.
-pub const DEFAULT_CRATES: [&str; 6] = [
+pub const DEFAULT_CRATES: [&str; 7] = [
     "shuyi-core",
     "shuyi-assets",
     "shuyi-ui",
     "shuyi-platform",
     "shuyi-app",
     "shuyi-cli",
+    // The heap counter, under both backends (ADR-0046 §9).
+    "shuyi-alloc-count",
 ];
 
 /// The members under `crates/` that are neither default crates nor

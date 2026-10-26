@@ -214,6 +214,11 @@ fn perf_of(session: &dyn Session) -> (Option<PerfSummary>, Vec<FrameRecord>, Vec
     if read.dropped > 0 {
         limits.push(perf::dropped_limit(read.dropped));
     }
+    limits.extend(perf::heap_limits(
+        &read.records,
+        session.counts_process_heap(),
+        perf::other_threads(),
+    ));
     let summary = perf::summary(&read.records).map(|mut summary| {
         summary.dropped = read.dropped;
         summary

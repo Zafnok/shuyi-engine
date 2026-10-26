@@ -74,14 +74,14 @@ None.
   build is the real enforcement. A type that needs shared ownership uses
   `Rc`.
 - **Allocations per frame.** The counting allocator
-  (`shuyi-alloc-count`, 3008's and 3064's) also counts calls to `alloc`
-  and `realloc` per frame. `shuyi bench` reports `allocs_per_frame`
+  (`shuyi-alloc-count`, 3064's) also counts calls to `alloc`,
+  `alloc_zeroed` and `realloc`. `shuyi bench` reports `allocs_per_frame`
   (the most, after the first frame of each stage). `App` (3003) marks
   the frame a stage starts, so the bench knows where "first frame" is.
-  **Either order with 3064:** if 3064 is done, that call counter is
-  already in the crate (`take_allocs`, read once a frame for the perf
-  traces); use it. If not, add it here, and 3064 uses it (its own
-  clause says so).
+  **From 3064 (done):** that call counter is in the crate
+  (`take_allocs`, read once a frame for the perf traces, with a
+  single-threaded fallback where a target has no atomics, built on
+  `thumbv6m-none-eabi`); use it.
 - **Two budget fields** in the profile format, each an `Option` that
   defaults to `None`, so other profiles are unchanged. The format has
   no version field to bump (3017):
@@ -142,7 +142,7 @@ None.
    change in the PR.
 2. Add the `disallowed-types` entries, and replace any `Arc` in those
    crates with `Rc` or a design without shared ownership.
-3. Add the allocation counting (or use 3064's, if it is done) and the
+3. Use 3064's allocation counting (`take_allocs`) and add the
    stage-start marker. Add the two budget fields and their values in
    the two profiles.
 4. Write the bench ROMs and the emulator runner. Run each scenario three

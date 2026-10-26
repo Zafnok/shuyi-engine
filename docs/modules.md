@@ -1,7 +1,8 @@
 # The modules
 
 The default engine is small: `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
-`shuyi-platform`, `shuyi-app` and `shuyi-cli`. Everything else is a
+`shuyi-platform`, `shuyi-app`, `shuyi-cli` and `shuyi-alloc-count`, the
+heap counter under both backends. Everything else is a
 module, a crate a game turns on only when it needs it
 ([ADR-0009](adr/0009-modules-a-small-default-engine-and-opt-in-crates.md)).
 

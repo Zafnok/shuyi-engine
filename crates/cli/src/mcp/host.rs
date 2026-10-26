@@ -371,6 +371,11 @@ fn perf_read(game: &dyn Session, input: &PerfInput) -> Answer<PerfOutput> {
     if read.dropped > 0 {
         limits.push(perf::dropped_limit(read.dropped));
     }
+    limits.extend(perf::heap_limits(
+        &read.records,
+        game.counts_process_heap(),
+        perf::other_threads(),
+    ));
     let output = PerfOutput {
         summary: perf::summary(&read.records),
         records: read.records,

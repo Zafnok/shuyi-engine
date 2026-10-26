@@ -2,6 +2,7 @@
 
 use super::*;
 use crate::contract::fake::{Fake, FakeSession, OPTIONS};
+use shuyi_ui::perf::HeapCounts;
 
 fn args(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| (*s).to_owned()).collect()
@@ -446,6 +447,28 @@ fn measured(frames: u32) -> Fake {
 }
 
 #[test]
+fn run_with_perf_sums_up_the_heap_where_it_was_counted() {
+    let mut game = measured(2);
+    if let Ok(session) = &mut game.session {
+        for (n, record) in (1..).zip(&mut session.perf) {
+            record.heap = Some(HeapCounts::new(1000 * n, 3_500_000, 4));
+        }
+    }
+    let input = RunInput {
+        perf: true,
+        ..RunInput::default()
+    };
+    let answer = run(&game, &input);
+    let output = answer.result.unwrap();
+    let heap = output.perf.as_ref().unwrap().heap.as_ref().unwrap();
+    assert_eq!((heap.peak_bytes, heap.live_bytes), (3_500_000, 2000));
+    // A fake's counts: no limit of the heap.
+    assert_eq!(answer.limits, [perf::TIMES]);
+    let text = text(&output);
+    assert!(text.contains("worst 1.2 ms; heap peak 3.3 MB\n"), "{text}");
+}
+
+#[test]
 fn run_with_perf_answers_the_summary_of_what_the_session_kept() {
     let input = RunInput {
         perf: true,
@@ -455,7 +478,8 @@ fn run_with_perf_answers_the_summary_of_what_the_session_kept() {
     let output = answer.result.unwrap();
     let summary = output.perf.as_ref().unwrap();
     assert_eq!((summary.frames, summary.frame.p50), (3, 1200));
-    assert_eq!(answer.limits, [perf::TIMES]);
+    assert_eq!(summary.heap, None);
+    assert_eq!(answer.limits, [perf::TIMES, perf::HEAP_UNCOUNTED]);
     assert!(
         text(&output).contains("perf: 3 frames, frame p50 1.2 ms p99 1.2 ms worst 1.2 ms\n"),
         "{}",

@@ -2,7 +2,8 @@
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
 //! controllers, the window's own shortcut and close button, the OS's data
 //! folder or the browser's `localStorage`, the sound player, and the
-//! clock frames are measured with in debug builds.
+//! clock frames are measured with and the heap counter they read in debug
+//! builds.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
 //! which loads in a frame of [`App`](shuyi_platform::App)'s: the renderer
@@ -16,7 +17,7 @@ use shuyi_platform::{
 };
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::PerfClock;
+use shuyi_ui::perf::{HeapCounts, MemoryReading, PerfClock};
 use shuyi_ui::{Game, GameData, RawInputEvent};
 
 use crate::audio::{self, Audio, device};
@@ -312,6 +313,15 @@ impl Platform for Macroquad {
 
     fn clock(&self) -> Option<PerfClock> {
         Some(PerfClock::Real(now_us))
+    }
+
+    /// The global heap counter's reading (`shuyi_alloc_count::global`):
+    /// `None` in a release build, or one built with `--cfg
+    /// shuyi_no_heap_count`.
+    fn memory(&mut self) -> Option<MemoryReading> {
+        let counts = shuyi_alloc_count::global::reading()?;
+        let heap = HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs);
+        Some(MemoryReading::new(heap))
     }
 }
 

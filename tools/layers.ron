@@ -105,9 +105,17 @@
             devices: false,
             floats: true,
         ),
+        "shuyi-alloc-count": (
+            // The heap counter (ADR-0046 §9): a global allocator around
+            // another, below both backends, which share its one static.
+            engine: [],
+            outside: Only([]),
+            devices: false,
+            floats: false,
+        ),
         "shuyi-app": (
             // The macroquad backend: the one crate that reaches devices.
-            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform"],
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-alloc-count"],
             outside: Any,
             devices: true,
             floats: true,
@@ -115,7 +123,7 @@
         "shuyi-cli": (
             // The tools run headless, in CI and for agents (ADR-0005 §1):
             // never `shuyi-app`, and no device.
-            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform"],
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-alloc-count"],
             outside: Any,
             devices: false,
             floats: true,

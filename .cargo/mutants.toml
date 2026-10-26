@@ -101,4 +101,9 @@ exclude_re = [
     # `Vec::new()`: its `vec![]` mutant is the same function. The first
     # module's feature removes this line.
     'replace enabled_modules -> Vec<Box<dyn Module<G>>> with vec!\[\]',
+    # The heap counter's `uncounted` is compiled only where the global
+    # counter isn't (a release build, or `--cfg shuyi_no_heap_count`), and
+    # mutants test a debug build: no test there compiles it (and nothing
+    # calls it). Its twin, `counted`, is caught.
+    'replace uncounted -> Counts',
 ]
