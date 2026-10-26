@@ -707,3 +707,30 @@ fn an_mcp_step_reads_from_ron_with_its_defaults() {
     );
     assert!(ron::from_str::<Vec<Step>>(r#"[Mcp(calls: [(tool: "stop", nope: 1)])]"#).is_err());
 }
+
+/// A runner that only runs commands: no input of theirs.
+struct NoInput;
+
+impl Runner for NoInput {
+    fn run(&self, _: &Path, _: &str, _: &[String]) -> Result<Ran, String> {
+        Ok(ran(0, TITLE))
+    }
+}
+
+#[test]
+fn a_runner_that_cant_write_input_fails_an_mcp_step() {
+    let game = temp("mcp-no-input");
+    let verdicts = run(
+        &[Step::Mcp {
+            calls: perf_calls(),
+        }],
+        &game,
+        &game,
+        &NoInput,
+    );
+    assert_eq!(
+        verdicts[0].detail.as_deref(),
+        Some("this runner can't write to `cargo`'s input")
+    );
+    let _ = fs::remove_dir_all(&game);
+}
