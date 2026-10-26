@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2561 — Moving a running server's program aside never leaves its path empty
@@ -81,13 +81,13 @@ None.
 
 ## Acceptance criteria
 
-- [ ] At no moment during `put_aside` is there no file at `from` (the
+- [x] At no moment during `put_aside` is there no file at `from` (the
       unit test).
-- [ ] Ten parallel runs of `cargo test -p shuyi-cli --test it` on
+- [x] Ten parallel runs of `cargo test -p shuyi-cli --test it` on
       Windows pass.
-- [ ] `aside.rs`'s tests still pass, and a running server still lets
+- [x] `aside.rs`'s tests still pass, and a running server still lets
       `cargo build` replace its program.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -97,5 +97,28 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `put_aside` now hard-links the running file to its name in
+  `.shuyi-running/`, then renames the copy over `from`, instead of
+  renaming `from` away and the copy in after it. Option 1 of *Scope*
+  works: on Windows the rename replaces a running program's name while
+  its other name keeps the file, so there is never a moment without a
+  program at `from`. The modified-time copy is kept. `aside.rs`'s module
+  docs and `put_aside`'s say why the order is what it is.
+- Tests in `crates/cli/src/mcp/aside/tests.rs`:
+  `a_program_is_at_its_path_at_every_moment_of_a_move` (a second thread
+  watches `from` through 200 moves; with the old order it saw the path
+  missing 2773 times, with the new one never), and, on Windows,
+  `a_running_program_is_put_aside_and_its_path_left_replaceable` (a
+  running copy of the system's `PING.EXE` is put aside, then its path
+  overwritten as a build would).
+- Reproduced before the fix by the unit test, not by the integration
+  tests (they flaked in 3064's session). After it, ten runs of
+  `cargo test -p shuyi-cli --test it` on its default threads passed,
+  40 of 40 each. The `mcp::` `isError` didn't come back in them, so it
+  was taken for the same gap (the server's `run` spawns the same
+  program); no ticket written.
+- `binary::a_running_server_moves_its_program_aside_so_a_build_can_write_a_fresh_one`
+  still passes: a running server still lets a build replace its program.
+- No docs beyond the module docs: nothing a game or the docs map
+  describes changed.
+- No break.

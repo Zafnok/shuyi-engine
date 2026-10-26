@@ -157,6 +157,55 @@ fn sweep_deletes_what_it_can_and_skips_what_it_cannot() {
 }
 
 #[test]
+fn a_program_is_at_its_path_at_every_moment_of_a_move() {
+    let dir = scratch("never-missing");
+    let from = dir.join("shuyi.exe");
+    fs::write(&from, b"program").unwrap();
+    let done = std::sync::atomic::AtomicBool::new(false);
+    let missing = std::thread::scope(|scope| {
+        let watcher = scope.spawn(|| {
+            let mut missing = 0_u32;
+            while !done.load(std::sync::atomic::Ordering::Relaxed) {
+                missing += u32::from(!from.exists());
+            }
+            missing
+        });
+        for n in 0..200 {
+            put_aside(&from, &dir.join(format!("aside-{n}.exe"))).unwrap();
+        }
+        done.store(true, std::sync::atomic::Ordering::Relaxed);
+        watcher.join().unwrap()
+    });
+    assert_eq!(missing, 0);
+    assert_eq!(fs::read(&from).unwrap(), b"program");
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
+#[cfg(windows)]
+#[test]
+fn a_running_program_is_put_aside_and_its_path_left_replaceable() {
+    let dir = scratch("running");
+    let from = dir.join("ping.exe");
+    let system = std::env::var_os("SystemRoot").unwrap();
+    fs::copy(Path::new(&system).join("System32/PING.EXE"), &from).unwrap();
+    let mut running = std::process::Command::new(&from)
+        .args(["-n", "60", "127.0.0.1"])
+        .stdout(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let to = dir.join("ping-aside.exe");
+    let put = put_aside(&from, &to);
+    // What the build does next: write a new program at the old path.
+    let rewritten = fs::write(&from, b"fresh");
+    running.kill().unwrap();
+    running.wait().unwrap();
+    put.unwrap();
+    rewritten.unwrap();
+    assert!(to.exists());
+    fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
+#[test]
 fn two_moves_with_the_same_pid_dont_collide() {
     let dir = scratch("same-pid");
     let (exe, _) = built(&dir);
