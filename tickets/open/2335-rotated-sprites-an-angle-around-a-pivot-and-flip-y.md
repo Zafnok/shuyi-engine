@@ -227,8 +227,7 @@ and follow the MVP.
 - **What changes for the game:** `Sprite` gains three fields. Only code
   that builds a `Sprite` with a struct literal and no `..` breaks. Say
   so in the PR; the game's PR that moves the pin follows it. No game
-  snapshot changes. Where CI's `game` workflow (2014) ran on the PR,
-  its summary shows what the game makes of it.
+  snapshot changes.
 - **Public types (ADR-0039):** the new public types follow it
   (`#[non_exhaustive]`, constructors).
 - **Either order with 2018:** if 2018 is done, add this ticket's test

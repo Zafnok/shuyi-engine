@@ -44,7 +44,10 @@ Nick's Chapter 1 playtest (game ticket 0804):
 The engine does everything the game needs today, from this repository,
 and agents can drive it. On 2026-10-20 Nick added protections for the
 code to the MVP, before the first release (the second comparison, in
-phase 3 below): 2010–2017, 2509, 2511, 2513, 2808, 3039 and 3040.
+phase 3 below): 2010–2013, 2015–2017, 2509, 2511, 2513, 2808, 3039
+and 3040. On 2026-10-26 he dropped 2014 (the game built against each
+engine PR): the game's pin moves find its breaks
+([`decisions.md`](decisions.md)).
 On 2026-10-21 he asked for the docs to start early, so that our own
 sessions search less: the docs map (2810) comes first, and the MCP
 server (1133), the skill pack (1134), the book (2802) and the guides
@@ -67,7 +70,6 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
 | 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
-| 2014 | Visions of Shuyi built against each engine PR and nightly `main`, report-only |
 | 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |

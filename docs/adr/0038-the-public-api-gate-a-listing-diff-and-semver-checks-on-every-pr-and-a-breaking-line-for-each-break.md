@@ -6,7 +6,7 @@
   ADR), 2013 (`#[non_exhaustive]` and constructors), 2804 (the changelog
   that lists the `Breaking:` lines), 2116 (a moved golden value), 2012
   (moving the pinned toolchain), 2011 (Dependabot), 2014 (the game built
-  against each PR), 2030 (the verdict as a PR label)
+  against each PR; dropped 2026-10-26), 2030 (the verdict as a PR label)
 
 ## Context
 
@@ -135,8 +135,9 @@ every PR, so version numbers can't say what kind of change a PR is.
 9. **What it leaves to others.** Version numbers and `CHANGELOG.md` are
    2005's version policy, which cites this ADR instead of restating it.
    `#[non_exhaustive]`, constructors and `with_` setters are 2013's ADR.
-   What broke in the game is 2014's job, which builds it against each
-   PR.
+   What broke in the game is found by the game's pin moves (2014, a
+   build of the game against each PR, was dropped on 2026-10-26:
+   `docs/decisions.md`).
 
 ## The verdict as a label (ticket 2030)
 

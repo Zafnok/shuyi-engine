@@ -334,8 +334,7 @@ None.
 - what the parked backend work changes (3032 loads ALSA at run time,
   2403 drops libudev, 3034 replaces the window and GL): each changes
   the table and the script when it lands;
-- building Visions of Shuyi against the engine (2014), and the agent
-  eval's runner (2525).
+- the agent eval's runner (2525).
 
 If the PR grows well past 600 changed lines, not counting the byte-equal
 copies, move the dev container and the Codespaces link to a follow-up

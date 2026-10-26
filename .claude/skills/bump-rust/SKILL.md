@@ -73,9 +73,7 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
    Rust X.Y at its next pin bump." Write the game ticket that moves the
    game's `rust-toolchain.toml` (and its `rust-version`) in that pin bump,
    as the `work-ticket` skill's §6 says for any change the game must
-   follow. Once a job builds the game against engine PRs (ticket 2014), it
-   shows the game failing on its older Rust on this PR: that is expected,
-   and the game ticket fixes it.
+   follow.
 6. **One PR per folder?** If Dependabot opened one PR per folder rather
    than one grouped PR, finish the root's (move the templates' channels
    there too) and close the others with a comment naming it.
