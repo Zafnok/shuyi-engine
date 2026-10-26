@@ -3,7 +3,7 @@ name: shuyi-perf
 description: Find what makes a game on Shuyi Engine slow or heavy, from the times of its frames and of the spans it marks around its own code, and from the heap, its counts and its snapshots by memory tag (what holds it and what grew), read as JSON lines from a headless run, an MCP session or a running debug build. Use when a frame takes too long, a stage stutters, a bot's turn takes too long, the heap grows as the game plays, or a stage or a target runs out of memory. Not for a wrong result (shuyi-debug-replay), for writing a test (shuyi-test), or for how often bots win (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Find what makes a game slow
@@ -83,7 +83,9 @@ changes what the game does, so a run plays the same with them on.
    `reset` the numbers start again: the limit says to read from 0.
 
 4. **A running build, in its window.** The real renderer's times come
-   from a desktop debug build:
+   from a desktop debug build: attach to it and follow its frames
+   (*A running build*, below). A build no agent attaches to writes its
+   own trace when started with a file named:
 
    ```bash
    SHUYI_PERF=perf.jsonl cargo run
@@ -103,6 +105,57 @@ A line reads:
 `depth` is how many spans it was inside. A frame keeps 64 spans and
 counts the rest in `spans_dropped`. `heap` is left out where the heap
 isn't counted.
+
+## A running build
+
+Read the build running in its window, not a headless `run`, when the
+window is the point: a stutter only the real renderer shows (`paint`
+and `present` are the window's), or a person playing while you read.
+
+1. **Start it with the live link**, in its own terminal:
+
+   ```bash
+   SHUYI_LINK=0 cargo run --features link
+   ```
+
+   A debug build listens on a free port, and its log's line ending
+   `listening on 127.0.0.1:<port>, token <token>` gives the address and
+   the token every `attach` below takes.
+
+2. **Follow its frames into a file**, in the background:
+
+   ```bash
+   cargo shuyi attach 127.0.0.1:<port> --token <token> --perf-follow perf.jsonl --for 30 --json
+   ```
+
+   Every 100 ms it reads the frames run since its last read and appends
+   each as a `frame` line, so the file grows as the build runs. It
+   prints nothing until it ends, after `--for` seconds (10 if not said,
+   at most 3,600) or when the build quits. Meanwhile read `perf.jsonl`
+   again from the last line you read, while the slow part is played. Its
+   answer is `perf_summary` over every frame it wrote (`file` the file's
+   path) and `follow`: `lines`, `dropped`, and `closed` if the build
+   quit.
+
+3. **Or read once:** `--perf-since 0` answers the frames the build keeps
+   (`perf`), their `perf_summary`, and `perf_next`, the `--perf-since`
+   of the next read. With MCP, `start` with `link` attaches the session,
+   and `perf` answers as it does on a headless session.
+
+4. **What holds its heap:** add `--perf-snapshot`. With `--perf-follow`
+   it takes a snapshot as the following starts and one as it ends; the
+   file ends with the two and their `diff`, and the summary has
+   `heap_tags` and `heap_growth` (*What holds the heap*, below).
+
+A build faster than the reads, more than 600 frames between two, loses
+the frames between: the limit says "N frame(s) were dropped between
+reads", and `follow.dropped` counts them. Compare the frames you have,
+or follow a build that runs at its own frame rate.
+
+[`example-follow.ron`](example-follow.ron) reads and follows a new
+`grid` game this way. It needs the game running in its window, so CI
+can't run it (it is marked manual): start the game with the link as its
+first comment says, then run it.
 
 ## What holds the heap, and what grew
 
@@ -192,9 +245,13 @@ Its frames then have no `heap`, and the times are still measured.
   stream.
 - **`SH3004`:** the trace file can't be written: its folder is a file,
   or not yours. A relative path is from the project's folder.
-- **`SH3001` from `perf`** on a session attached to a running build:
-  the link doesn't carry the frames' records. Run the build with
-  `SHUYI_PERF` and read its file.
+- **`SH1006` from `attach`:** the build speaks another link version: it
+  was built with another engine. Attach with the `shuyi` of the build's
+  own engine.
+- **`SH3006` from `attach`** while following: another client is
+  attached (one at a time), or the link was lost. A build that quits
+  ends the following early instead, with `follow.closed` and the limit
+  "it quit", and the file keeps what was written.
 - **`SHUYI_PERF` writes nothing:** the build has no debug tools; its
   log says so. A file it can't create or write is one warning in the
   log, and the game goes on.

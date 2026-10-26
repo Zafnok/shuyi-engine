@@ -42,6 +42,14 @@ nothing there. A second client is told `Answer::Busy`, half-closed and
 read until it hangs up; a client that hangs up just before a new one
 connects makes way (`hung_up`). MCP's session over the link is 2560.
 
+**From 2555 (done):** `link::VERSION` is 2. `Request::Perf { since,
+max, snapshot }` reads `App::perf()` by number and answers
+`Answer::Perf(PerfAnswer)`. With `snapshot`, `Server::handle` returns
+`Handled::Snapshot`, and after the frame the backend checks
+`Server::wants_snapshot` and sends `Server::snapshot(&app,
+app.heap_snapshot(&mut platform))`, as `shuyi-app`'s `answer_link` does
+beside the screenshot; the web backend and the bridge do the same.
+
 
 - **The web build.** A page can't listen on a socket. It can only dial
   out, with a WebSocket. The web build has no `wasm-bindgen` (game
@@ -172,7 +180,7 @@ None.
       The server then waits for a new hello, as the native listener
       does when its client closes.
 
-    A native build never sees either, so `link::VERSION` stays 1.
+    A native build never sees either, so `link::VERSION` stays 2.
   - **The screenshot** reads the canvas as 2521's native screenshot
     reads the window (`get_screen_data()`, rows flipped, PNG). If that
     gives an error or a picture of zeros in WebGL (2019's finding, if

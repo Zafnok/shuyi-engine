@@ -9,6 +9,17 @@
       "type": "string",
       "default": ""
     },
+    "follow_for": {
+      "description": "How many seconds to follow, 1 to 3,600: 10 if not said.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "maximum": 3600,
+      "minimum": 1
+    },
     "frames": {
       "description": "Frames to let pass after the steps, with no input.",
       "type": "integer",
@@ -22,6 +33,29 @@
       "format": "uint64",
       "default": 0,
       "minimum": 0
+    },
+    "perf_follow": {
+      "description": "A file to follow the build's frames into (from the working folder):\neach new frame's record written as a line as the build runs, for\n`follow_for` seconds or until the build quits.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "perf_since": {
+      "description": "The first frame's record to answer, by its number, if wanted: 0\nfor every record kept, the last answer's `perf_next` for the\nrecords since. With `perf_follow`, where the following starts.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "default": null,
+      "minimum": 0
+    },
+    "perf_snapshot": {
+      "description": "Take a heap snapshot with the records: with `perf_since`, one now;\nwith `perf_follow`, one as the following starts and one as it ends,\nand the diff between them.",
+      "type": "boolean",
+      "default": false
     },
     "screenshot": {
       "description": "Where to write the window's picture, a PNG file (from the working\nfolder), if wanted.",

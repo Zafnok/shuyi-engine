@@ -1,0 +1,43 @@
+// The second worked example of shuyi-perf: the frames of the game running
+// in its window, read over the live link and followed into a file. It
+// needs a window, so CI lists it and doesn't run it. On a game made with
+// `shuyi new <dir> --template grid`, built by its first step, start the
+// game in another terminal first:
+//
+//     SHUYI_LINK=7357 SHUYI_LINK_TOKEN=shuyi-perf-follow-token cargo run --features link
+//
+// (a port and a token of your choosing, so the steps can name them; with
+// SHUYI_LINK=0 and no token, the game's log line gives both).
+Example(
+    template: "grid",
+    manual: Some("needs a window: the game runs with its link while the steps attach"),
+    steps: [
+        Cargo(args: ["build", "--features", "link"]),
+        // Every frame the build keeps, and their summary.
+        Shuyi(
+            args: ["attach", "127.0.0.1:7357", "--token", "shuyi-perf-follow-token", "--perf-since", "0"],
+            expect: [
+                Has("/result/perf/0/times/frame_us"),
+                Has("/result/perf_next"),
+                Has("/result/perf_summary/frame/p99"),
+                Has("/result/perf_summary/heap/peak_bytes"),
+                Holds("/limits", "times are this machine's, from an unoptimized build unless it says otherwise: compare runs on the same machine"),
+            ],
+        ),
+        // Follow it for three seconds, with a heap snapshot as it starts
+        // and as it ends.
+        Shuyi(
+            args: ["attach", "127.0.0.1:7357", "--token", "shuyi-perf-follow-token", "--perf-follow", "perf.jsonl", "--for", "3", "--perf-snapshot"],
+            expect: [
+                Is("/result/follow/closed", "false"),
+                Has("/result/follow/lines"),
+                Has("/result/perf_summary/frames"),
+                Has("/result/perf_summary/file"),
+                Has("/result/perf_summary/heap_growth/live_bytes"),
+            ],
+        ),
+        Holds(file: "perf.jsonl", text: "{\"kind\":\"frame\",\"frame\":"),
+        Holds(file: "perf.jsonl", text: "{\"kind\":\"snapshot\",\"frame\":"),
+        Holds(file: "perf.jsonl", text: "{\"kind\":\"diff\",\"from\":"),
+    ],
+)

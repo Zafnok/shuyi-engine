@@ -6,7 +6,8 @@
 //! trace. The session's game runs in Hello, Grid's tool program, which
 //! `start` builds with cargo.
 //! Then the session attaches to a running build over the live link (the
-//! toy behind a test host), steps it and reads its frame and picture.
+//! toy behind a test host), steps it and reads its frame, picture and
+//! frames' records.
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -365,7 +366,8 @@ fn take_heap_snapshots_and_a_diff(client: &mut Client) {
 }
 
 /// The session attached to a running build over the live link (the toy
-/// behind a test host): stepped, its frame and its picture read.
+/// behind a test host): stepped, its frame, its picture and its frames' records
+/// read.
 fn attach_to_a_running_build(client: &mut Client) {
     let host = LinkHost::start();
     let attached = client.call(
@@ -387,6 +389,14 @@ fn attach_to_a_running_build(client: &mut Client) {
     assert_eq!(frame["content"][1]["type"], "image");
     let png = frame["content"][1]["data"].as_str().unwrap_or_default();
     assert_eq!(unbase64(png), b"\x89PNG");
+    // The build's frames' records, read over the link with a snapshot.
+    let perf = client.call("perf", &json!({ "since": 0, "snapshot": true }));
+    assert_eq!(perf["isError"], false, "{perf}");
+    let result = &perf["structuredContent"]["result"];
+    let records = result["records"].as_array().map_or(0, Vec::len);
+    assert!(records > 0, "{perf}");
+    assert_eq!(result["summary"]["frames"], records, "{perf}");
+    assert_eq!(kept(&perf).len(), 1, "{perf}");
     let ended = client.call("stop", &json!({}));
     assert_eq!(ended["isError"], false, "{ended}");
     host.let_go();

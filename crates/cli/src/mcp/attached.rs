@@ -7,17 +7,21 @@
 //!
 //! The link carries no scene, events or sounds: `scene` answers the
 //! frame's text in their place, and the answers say so in their limits.
+//! `perf` reads the build's frames' records over the link and answers as
+//! a headless session's does, the heap snapshots it takes kept here.
 
 use serde_json::Value;
 use shuyi_platform::link::Phase;
+use shuyi_ui::perf::HeapSnapshot;
 
-use super::host::{failed, read, to_json};
+use super::host::{PerfTaken, failed, perf_answer, read, to_json};
 use super::{
-    EventsOutput, FramePngInput, FramePngOutput, NoInput, StartLink, StartOutput, StepInput,
-    StopOutput,
+    EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartLink,
+    StartOutput, StepInput, StopOutput,
 };
 use crate::contract::attach::{self, AttachInput, AttachStep, Connection, Failed, Seen};
 use crate::contract::codes;
+use crate::contract::perf::PerfRead;
 use crate::contract::run::{RunOutput, SceneOutput};
 use crate::contract::session::{LogEntry, Scene};
 use crate::contract::{Answer, Op};
@@ -35,6 +39,8 @@ pub struct Attached {
     token: String,
     /// Whether the session has ended: stopped, or the link lost.
     ended: bool,
+    /// The heap snapshots `perf` took of the build, by frame.
+    snapshots: Vec<HeapSnapshot>,
 }
 
 impl Attached {
@@ -79,6 +85,7 @@ impl Attached {
             address: asked.address,
             token: asked.token,
             ended: false,
+            snapshots: Vec::new(),
         };
         (
             Some(session),
@@ -115,12 +122,10 @@ impl Attached {
                 let limits = vec![NO_EVENTS.to_owned()];
                 Ok((to_json(&Answer::new(op, true, output, limits)), None))
             }),
-            Op::Perf => Err((
-                codes::NOT_OFFERED,
-                "the live link doesn't carry a running build's frames' records: run it with \
-                 SHUYI_PERF=<file> and read that file as it grows"
-                    .to_owned(),
-            )),
+            Op::Perf => read(input)
+                .map_err(wrong)
+                .and_then(|input| self.perf(&input))
+                .map(|answer| (to_json(&answer), None)),
             Op::Reset => Err(wrong(
                 "the link never changes a running build: stop, then start with `project` to run \
                  the game headless"
@@ -210,6 +215,32 @@ impl Attached {
         };
         let ok = output.scene.is_some();
         Ok(to_json(&Answer::new(Op::Scene, ok, output, limits)))
+    }
+
+    /// `perf`: the build's frames' records over the link, answered as a
+    /// headless session's; the heap snapshots are kept here.
+    fn perf(&mut self, input: &PerfInput) -> Result<Answer<PerfOutput>, Failed> {
+        let (link, address) = (&mut self.link, &self.address);
+        perf_answer(input, &mut self.snapshots, |snapshot| {
+            let Some(answer) = attach::perf_read(link, input.since, input.max, snapshot)? else {
+                let error = format!("the build at {address} closed the link");
+                return Err((codes::LINK_LOST, error));
+            };
+            let read = PerfRead {
+                records: answer.records,
+                next: answer.next,
+                dropped: answer.dropped,
+                measured: answer.measured,
+            };
+            Ok(PerfTaken {
+                read,
+                snapshot: answer.snapshot,
+                frames: answer.frames,
+                // The build counts its own heap, and nothing of this
+                // program's.
+                process_heap: false,
+            })
+        })
     }
 
     /// `frame_png`: the window's picture, at the window's size.

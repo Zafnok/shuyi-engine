@@ -29,7 +29,7 @@ is another way to reach them.
 | `bake [--target <id>] [--out <file>]` | Bakes the game's sources into one pack ([`formats.md`](formats.md#the-pack)): what went in, the sizes, how long baking and loading took; refuses sources with errors | the game |
 | `doctor` | Checks Rust, Cargo, rustup's targets, MSYS2's linker on the Windows GNU toolchain, and the web target, and says how to fix each | nothing |
 | `explain [<code>]` | Every problem code, or one code's page: what it means and how to fix it ([below](#problem-codes)) | nothing |
-| `attach <host:port> --token <t> [steps] [--frames N] [--screenshot <file.png>] [--log-since N]` | Reaches a debug build already running in its window ([below](#attaching-to-a-running-build)): plays the steps as a player's input, lets N frames pass, then answers with its frames, phase, screens, top screen, whether it is suspended, focused or quit, its frame as text, its [log](#the-log) lines numbered N or more, each with its `seq`, and `log_next`, the next `--log-since`; `--screenshot` writes the window's picture | a running build |
+| `attach <host:port> --token <t> [steps] [--frames N] [--screenshot <file.png>] [--log-since N] [--perf-since N] [--perf-follow <file.jsonl> [--for S]] [--perf-snapshot]` | Reaches a debug build already running in its window ([below](#attaching-to-a-running-build)): plays the steps as a player's input, lets N frames pass, then answers with its frames, phase, screens, top screen, whether it is suspended, focused or quit, its frame as text, its [log](#the-log) lines numbered N or more, each with its `seq`, and `log_next`, the next `--log-since`; `--screenshot` writes the window's picture; `--perf-since` adds its frames' records numbered N or more, `perf`, with `perf_next` and `perf_summary`; `--perf-follow` writes each new frame's record to the file as the build runs, for S seconds (10), and answers their summary ([Perf traces](#perf-traces)) | a running build |
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
 A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
@@ -51,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 24,
+  "contract": 25,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -109,8 +109,10 @@ warnings and errors.
 
 A debug build measures each frame: how long its parts took, the spans
 the game marked around its own code with `ctx.span("ai", |ctx| …)`, and
-the heap. The last 600 frames are kept. Agents read them three ways, as JSON
-lines: `run --perf`, MCP's `perf`, and a running build's trace file.
+the heap. The last 600 frames are kept. Agents read them four ways, as JSON
+lines: `run --perf`, MCP's `perf`, a running build's frames over the
+live link (`attach`, and MCP's session attached to it), and a running
+build's trace file.
 
 Each line of a trace is one object, tagged by `kind`: a `frame`, a heap
 `snapshot` or a `diff` ([What holds the heap](#what-holds-the-heap)).
@@ -175,8 +177,38 @@ frames since the last read. After `reset` or a new `start` the numbers
 start again: a `since` past the session's last frame answers no records,
 `next` 0 and the limit "read from 0".
 
-**A running build** (desktop, debug) writes its own trace while it runs
-when `SHUYI_PERF` names a file: `SHUYI_PERF=perf.jsonl cargo run`. It
+**A running build, over the link.** A build listening for `attach`
+([Attaching to a running build](#attaching-to-a-running-build)) answers
+its frames' records by number too:
+
+- `attach … --perf-since 0` adds `perf`, the kept records (at most
+  600), `perf_next`, the `--perf-since` of the next read, and
+  `perf_summary`, their summary as `run --perf` answers it; when older
+  frames were no longer kept, the limits say how many.
+- `attach … --perf-follow perf.jsonl --for 30` follows the build
+  instead: every 100 ms it reads the frames since its last read (from
+  `--perf-since`, or else from the build's next frame) and appends each
+  to the file, written afresh, as a `frame` line, flushed after each
+  read. It stops after `--for` seconds (10 by default, 1 to 3,600) or
+  when the build quits, and only then answers: `perf_summary` over every
+  frame written (its `file` the file's absolute path), and `follow`,
+  with `file`, `lines`, `dropped` and `closed` (the build quit). Run it
+  in the background and read the file as it grows. A build that runs
+  more than 600 frames between two reads loses the frames between, and
+  the limits say "N frame(s) were dropped between reads". A relative
+  path is from the folder `shuyi` runs in.
+- `--perf-snapshot` takes a heap snapshot after the frame with the
+  records: with `--perf-since`, `perf_snapshot`; with `--perf-follow`,
+  one as it starts and one as it ends, written as the file's last three
+  lines (the two `snapshot`s and their `diff`), and the summary's
+  `heap_tags` and `heap_growth`.
+
+MCP's session attached to a build answers `perf` as a headless session
+does, over the link; it keeps the snapshots it takes, for `diff_from`.
+
+**A running build's own file.** A running build (desktop, debug) writes
+its own trace while it runs, with no client attached, when `SHUYI_PERF`
+names a file: `SHUYI_PERF=perf.jsonl cargo run`. It
 logs the file's name, and after each frame appends that frame's line
 and flushes, so `tail -f perf.jsonl`, or reading the file again from
 the last line read, follows it. It also writes a heap snapshot on its
@@ -269,8 +301,10 @@ way to test a change.
 - **One client at a time.** A second one is told the link is busy
   (`SH3006`).
 - **What it reads:** the screens, the frame as text, the window's
-  picture, and the log by number (`--log-since` the last `log_next`
-  reads on from there). Waits are counted in the build's own frames, at
+  picture, the log by number (`--log-since` the last `log_next` reads
+  on from there), and the frames' records by number, read once or
+  followed into a file as the build runs ([Perf
+  traces](#perf-traces)). Waits are counted in the build's own frames, at
   60 a second; the steps wait while the build loads or is suspended,
   and `limits` says so.
 - **What it never does:** change the game any way but a player's input
@@ -389,7 +423,7 @@ build and another link version answer `attach`'s codes (`SH0004`,
 | `scene` | the frame's text in place of a scene (`kind` `frame`), and the log |
 | `frame_png` | the window's picture, at the window's size; `scale` is refused |
 | `events` | none: the limit says so |
-| `perf` | refused (`SH3001`): run the build with `SHUYI_PERF` and read its file |
+| `perf` | the build's frames' records, as a headless session answers them: the same input and answer; the heap snapshots it takes are kept by the session, for `diff_from` |
 | `reset` | refused (`SH0001`): the link never changes a running build |
 | `stop` | detaches, and leaves the build running |
 

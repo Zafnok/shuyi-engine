@@ -20,6 +20,7 @@ use std::net::{Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
 
 use shuyi_platform::App;
 use shuyi_platform::link::{Answer, Handled, MAX_LINE, MAX_UNSENT, Server};
+use shuyi_ui::perf::HeapSnapshot;
 use shuyi_ui::{GameData, RawInputEvent};
 
 /// The variable that turns the link on: the port to listen on.
@@ -249,6 +250,23 @@ impl Listener {
     pub(crate) fn screenshot(&mut self, png: &[u8], width: u32, height: u32) {
         if let Some(client) = &mut self.client {
             let line = client.server.screenshot(png, width, height);
+            client.send(&line);
+        }
+        self.flush();
+    }
+
+    /// Whether the client waits for a heap snapshot after this frame.
+    pub(crate) fn wants_snapshot(&self) -> bool {
+        self.client
+            .as_ref()
+            .is_some_and(|client| client.server.wants_snapshot())
+    }
+
+    /// Answers the frames' records asked for with `snapshot`, taken after
+    /// `app`'s frame.
+    pub(crate) fn snapshot<G: GameData>(&mut self, app: &App<G>, snapshot: Option<HeapSnapshot>) {
+        if let Some(client) = &mut self.client {
+            let line = client.server.snapshot(app, snapshot);
             client.send(&line);
         }
         self.flush();

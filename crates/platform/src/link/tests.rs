@@ -1,12 +1,14 @@
 //! The link's server on the toy game, on the headless backend: the wire's
 //! lines, the hello, each step's frames, `press_for`, a play matching the
-//! Harness's, the log by number, the picture, and the waits.
+//! Harness's, the log by number, the frames' records by number with a heap
+//! snapshot, the picture, and the waits.
 
 use alloc::collections::BTreeMap;
 
 use proptest::prelude::*;
 use shuyi_ui::input::{Key, RepeatDef};
 use shuyi_ui::log::{LogCategory, LogLevel, LogLine};
+use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy::{self, Toy};
 use shuyi_ui::{Game, GameData};
 
@@ -134,6 +136,11 @@ fn requests_and_answers_are_one_json_object_a_line() {
             ],
         },
         Request::Log { since: 7 },
+        Request::Perf {
+            since: 9,
+            max: 30,
+            snapshot: true,
+        },
     ];
     for request in requests {
         let line = request.to_line();
@@ -150,6 +157,15 @@ fn requests_and_answers_are_one_json_object_a_line() {
     let read = |line: &str| serde_json::from_str::<Request>(line);
     assert_eq!(read(r#"{"op":"log"}"#).unwrap(), Request::Log { since: 0 });
     assert_eq!(read(r#"{"op":"status"}"#).unwrap(), Request::Status);
+    assert_eq!(
+        read(r#"{"op":"perf"}"#).unwrap(),
+        Request::Perf {
+            since: 0,
+            max: PERF_MAX,
+            snapshot: false
+        }
+    );
+    assert!(read(r#"{"op":"perf","since":-1}"#).is_err());
     assert!(read(r#"{"op":"hello","token":"t","link":1,"more":2}"#).is_err());
     assert!(read(r#"{"op":"reset"}"#).is_err());
 
@@ -175,6 +191,14 @@ fn requests_and_answers_are_one_json_object_a_line() {
             waited_suspended: false,
         }),
         Answer::Log(log(&LogRing::new(2), 0)),
+        Answer::Perf(PerfAnswer {
+            records: vec![FrameRecord::new(3)],
+            next: 3,
+            dropped: 2,
+            measured: true,
+            frames: 3,
+            snapshot: Some(HeapSnapshot::new(4096, 8192, Vec::new())),
+        }),
         Answer::Error { error: "no".into() },
         Answer::Busy,
     ];
@@ -762,4 +786,138 @@ fn a_play_whose_steps_press_nothing_takes_no_frame() {
         panic!("not played");
     };
     assert_eq!(played.frames, 0);
+}
+
+/// The toy's build measuring its frames with a fake clock and reading a
+/// fake heap, as `shuyi-app`'s debug build measures with its own.
+fn clocked_build() -> Build<Toy> {
+    let mut b = toy_build();
+    b.platform = HeadlessPlatform::new()
+        .with_clock(PerfClock::fake())
+        .with_fake_memory();
+    b
+}
+
+/// The answer to a perf request sent now, with no snapshot.
+fn perf_now<G: GameData>(b: &mut Build<G>, since: u64, max: u32) -> PerfAnswer {
+    let request = Request::Perf {
+        since,
+        max,
+        snapshot: false,
+    };
+    let Handled::Answer(line) = b.send(&request.to_line()) else {
+        panic!("not answered at once");
+    };
+    b.sent.clear();
+    match Answer::from_line(&line) {
+        Ok(Answer::Perf(answer)) => answer,
+        other => panic!("{other:?}"),
+    }
+}
+
+/// The frames of `answer`'s records.
+fn frames_of(answer: &PerfAnswer) -> Vec<u32> {
+    answer.records.iter().map(|r| r.frame).collect()
+}
+
+#[test]
+fn perf_from_0_answers_every_kept_record_and_from_next_none_until_a_frame_runs() {
+    let mut b = clocked_build();
+    let none = perf_now(&mut b, 0, PERF_MAX);
+    assert_eq!(
+        (none.records.len(), none.next, none.measured),
+        (0, 0, false)
+    );
+    for _ in 0..3 {
+        b.frame();
+    }
+    let all = perf_now(&mut b, 0, PERF_MAX);
+    assert_eq!(frames_of(&all), [1, 2, 3]);
+    assert_eq!((all.next, all.dropped, all.frames), (3, 0, 3));
+    assert!(all.measured && all.snapshot.is_none());
+    assert_eq!(
+        all.records,
+        b.app.perf().records().cloned().collect::<Vec<_>>()
+    );
+    // The records carry the heap's counts, as the ring has them.
+    assert!(all.records.iter().all(|r| r.heap.is_some()));
+    let since = perf_now(&mut b, all.next, PERF_MAX);
+    assert_eq!((since.records.len(), since.next), (0, 3));
+    b.frame();
+    let one = perf_now(&mut b, all.next, PERF_MAX);
+    assert_eq!((frames_of(&one), one.next), (vec![4], 4));
+}
+
+#[test]
+fn perf_answers_at_most_max_and_nothing_past_next() {
+    let mut b = clocked_build();
+    for _ in 0..5 {
+        b.frame();
+    }
+    let two = perf_now(&mut b, 1, 2);
+    assert_eq!((frames_of(&two), two.next), (vec![2, 3], 3));
+    let past = perf_now(&mut b, 9, PERF_MAX);
+    assert_eq!((past.records.len(), past.next, past.dropped), (0, 0, 0));
+    for max in [0, 601] {
+        let request = Request::Perf {
+            since: 0,
+            max,
+            snapshot: false,
+        };
+        let Handled::Answer(line) = b.send(&request.to_line()) else {
+            panic!("not answered at once");
+        };
+        let Ok(Answer::Error { error }) = Answer::from_line(&line) else {
+            panic!("{line}");
+        };
+        assert!(error.contains("max: 1 to 600"), "{error}");
+    }
+    // A build that measures nothing answers none, measured or not.
+    let mut b = toy_build();
+    b.frame();
+    let unmeasured = perf_now(&mut b, 0, PERF_MAX);
+    assert_eq!((unmeasured.measured, unmeasured.frames), (false, 1));
+}
+
+#[test]
+fn perf_past_a_full_ring_counts_the_dropped_records() {
+    let mut b = clocked_build();
+    let over = PERF_FRAMES + 5;
+    for _ in 0..over {
+        b.frame();
+    }
+    let read = perf_now(&mut b, 0, 600);
+    assert_eq!(read.records.len(), PERF_FRAMES);
+    assert_eq!(
+        (read.records[0].frame, read.dropped, read.next),
+        (6, 5, 605)
+    );
+    let late = perf_now(&mut b, 3, 600);
+    assert_eq!(late.dropped, 2);
+}
+
+#[test]
+fn a_perf_snapshot_is_answered_after_the_frame_and_requests_behind_it_wait() {
+    let mut b = clocked_build();
+    b.frame();
+    let asked = Request::Perf {
+        since: 0,
+        max: PERF_MAX,
+        snapshot: true,
+    };
+    assert_eq!(b.send(&asked.to_line()), Handled::Snapshot);
+    assert_eq!(b.send(&Request::Status.to_line()), Handled::Later);
+    b.frame();
+    assert!(b.sent.is_empty() && b.server.wants_snapshot());
+    let snapshot = b.app.heap_snapshot(&mut b.platform);
+    assert!(snapshot.is_some());
+    let line = b.server.snapshot(&b.app, snapshot.clone());
+    assert!(!b.server.wants_snapshot());
+    let Ok(Answer::Perf(answer)) = Answer::from_line(&line) else {
+        panic!("{line}");
+    };
+    assert_eq!((frames_of(&answer), answer.frames), (vec![1, 2], 2));
+    assert_eq!(answer.snapshot, snapshot);
+    assert_eq!(answer.snapshot.map(|s| s.frame), Some(2));
+    assert!(matches!(b.answer(), Answer::Status(_)));
 }

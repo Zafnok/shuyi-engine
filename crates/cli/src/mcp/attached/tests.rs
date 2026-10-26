@@ -128,12 +128,6 @@ fn each_session_tool_reads_or_plays_the_running_build() {
     assert!(error.contains("never changes a running build"), "{error}");
     assert!(server.has_game(), "a refused reset keeps the session");
 
-    let (perf, _) = called(&mut server, "perf", &json!({}));
-    assert_eq!(perf["code"], "SH3001");
-    let error = perf["error"].as_str().unwrap();
-    assert!(error.contains("SHUYI_PERF=<file>"), "{error}");
-    assert!(server.has_game(), "a refused perf keeps the session");
-
     // Stop detaches and leaves the build running; a second start attaches
     // again.
     let (detached, _) = called(&mut server, "stop", &json!({}));
@@ -203,5 +197,98 @@ fn a_start_ends_the_session_before_and_a_lost_link_ends_this_one() {
     assert!(!server.has_game());
     let (after, _) = called(&mut server, "step", &json!({}));
     assert_eq!(after["code"], "SH0002");
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+/// The names of `answer`'s result's fields, sorted.
+fn fields(answer: &Value) -> Vec<String> {
+    let result = answer["result"].as_object();
+    let mut names: Vec<String> = result.into_iter().flat_map(|r| r.keys().cloned()).collect();
+    names.sort();
+    names
+}
+
+/// The frames `perf`'s answer lists as kept.
+fn kept(answer: &Value) -> Vec<u64> {
+    let kept = answer["result"]["kept"].as_array();
+    kept.into_iter()
+        .flatten()
+        .filter_map(Value::as_u64)
+        .collect()
+}
+
+/// `perf` called on `server`'s session as an agent reads a trace: every
+/// record, a snapshot, frames stepped, a second snapshot with the diff
+/// from the first, a diff from a frame not kept, and a `max` too large.
+fn perf_reads(server: &mut Server<'_>) -> Vec<Value> {
+    let mut answers = Vec::new();
+    let mut perf = |server: &mut Server<'_>, arguments: Value| {
+        let (answer, _) = called(server, "perf", &arguments);
+        answers.push(answer.clone());
+        answer
+    };
+    called(server, "step", &json!({ "frames": 10 }));
+    let all = perf(server, json!({ "since": 0 }));
+    let next = all["result"]["next"].as_u64().unwrap();
+    let first = perf(server, json!({ "since": next, "snapshot": true }));
+    let from = first["result"]["snapshot"]["frame"].as_u64().unwrap();
+    called(server, "step", &json!({ "frames": 5 }));
+    perf(
+        server,
+        json!({ "since": next, "snapshot": true, "diff_from": from }),
+    );
+    perf(server, json!({ "diff_from": 99_999 }));
+    perf(server, json!({ "max": 601 }));
+    answers
+}
+
+#[test]
+fn perf_on_an_attached_session_answers_as_on_a_headless_one() {
+    let host = LinkHost::start();
+    let dir = scratch("perf");
+    let toy = crate::toy::ToyTools;
+    let mut headless = Server::new(dir.clone(), Box::new(InProcess::new(&toy)));
+    let (started, _) = called(&mut headless, "start", &json!({}));
+    assert_eq!(started["ok"], true, "{started}");
+    let game = Fake::default();
+    let mut attached = Server::new(dir.clone(), Box::new(InProcess::new(&game)));
+    let (started, _) = called(&mut attached, "start", &link(&host.address(), TOKEN));
+    assert_eq!(started["ok"], true, "{started}");
+
+    let alike = perf_reads(&mut headless);
+    let read = perf_reads(&mut attached);
+    for (headless, attached) in alike.iter().zip(&read) {
+        assert_eq!(attached["ok"], headless["ok"], "{attached}\n{headless}");
+        assert_eq!(attached["code"], headless["code"], "{attached}");
+        assert_eq!(fields(attached), fields(headless), "{attached}");
+        assert_eq!(attached["limits"], headless["limits"], "{attached}");
+    }
+    let [all, first, second, not_kept, too_many] = read.as_slice() else {
+        panic!("{read:?}");
+    };
+    // Every record kept, one per frame, with its heap counts.
+    let frames: Vec<u64> = all["result"]["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|r| r["frame"].as_u64())
+        .collect();
+    assert!(frames.len() >= 10, "{all}");
+    assert!(frames.windows(2).all(|w| w[1] == w[0] + 1), "{frames:?}");
+    assert!(all["result"]["records"][0]["heap"].is_object(), "{all}");
+    assert_eq!(all["result"]["summary"]["frames"], frames.len());
+    // The snapshots are kept on this side, by frame.
+    let from = first["result"]["snapshot"]["frame"].as_u64().unwrap();
+    let to = second["result"]["snapshot"]["frame"].as_u64().unwrap();
+    assert_eq!((kept(first), kept(second)), (vec![from], vec![from, to]));
+    let diff = &second["result"]["diff"];
+    assert_eq!(
+        (diff["from"].as_u64(), diff["to"].as_u64()),
+        (Some(from), Some(to))
+    );
+    let error = not_kept["error"].as_str().unwrap();
+    assert!(error.contains(&format!("kept: {from}, {to}")), "{error}");
+    assert_eq!(too_many["code"], "SH0001");
+    assert!(attached.has_game(), "a refused perf keeps the session");
     fs::remove_dir_all(&dir).unwrap();
 }

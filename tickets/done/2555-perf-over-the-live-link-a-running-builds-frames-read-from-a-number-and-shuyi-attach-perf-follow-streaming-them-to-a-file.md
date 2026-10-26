@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["2521", "2553"]
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2555 — Perf over the live link
@@ -187,5 +187,73 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- **The link** (`shuyi_platform::link`): `Request::Perf { since, max,
+  snapshot }` (`max` 120 by default, 1 to 600, else an error answer),
+  answered by `Answer::Perf(PerfAnswer)`: `records` (3063's
+  `FrameRecord`s as they are, 3064's heap counts in them), `next`,
+  `dropped` and `measured`, counted as `PerfRead::of` counts them, and
+  `frames` (`App::frame_number`, for the "nothing measured" limit).
+  With `snapshot`, `handle` returns `Handled::Snapshot`; after the frame
+  the backend sees `Server::wants_snapshot` and sends
+  `Server::snapshot(&app, app.heap_snapshot(&mut platform))`, as it
+  sends the screenshot; requests behind it wait. `link::VERSION` is 2.
+  `shuyi-app`'s `answer_link` takes the snapshot; the test host
+  (`shuyi_cli::toy::link::LinkHost`) runs with a fake clock and a fake
+  heap, and `LinkHost::running(frames)` runs many frames per tick.
+- **`shuyi attach`:** `--perf-since N` adds `perf`, `perf_next`,
+  `perf_summary` and the dropped limit; `--perf-follow <file> [--for S]`
+  follows every 100 ms (again at once after a full read of 600), writes
+  each record as a `PerfLine::Frame` line flushed per read, stops after
+  `--for` seconds or when the build closes the link, and answers
+  `perf_summary` (with `file` and `dropped`) and `follow` (`file`,
+  `lines`, `dropped`, `closed`), with the limit "N frame(s) were dropped
+  between reads". `--perf-snapshot` takes a snapshot with the read, or,
+  following, one at the start and one at the end, written as the file's
+  last three lines (two `snapshot`s and their `diff`), with the
+  summary's `heap_tags` and `heap_growth`. The loop is
+  `attach::follow`, over a read function and a `Clock`, so its stop
+  rules are tested with a fake connection and clock. Contract version
+  25; `attach.input.json` and `attach.output.json` regenerated.
+- **MCP:** the attached session answers `perf` through
+  `Request::Perf`. The headless session's read is now
+  `mcp::host::perf_answer`, shared by both: one input check, `kept`
+  snapshots (the attached session keeps its own), `diff_from`, and the
+  same limits. A test runs the same `perf` calls on a headless toy
+  session and an attached one and compares the answers' fields and
+  limits; the scripted client's attach step reads `perf` with a
+  snapshot.
+- **Docs:** `docs/contract.md` (`attach`'s row, *Perf traces*,
+  *Attaching to a running build*, the link session's `perf` row),
+  `docs/platform-backends.md` (the backend's snapshot), the MCP `attach`
+  tool's text, and the `shuyi-perf` skill's *A running build* (version
+  1.3) with its manual `example-follow.ron`.
+
+**Deviations.**
+
+- `--perf-follow` writes its file afresh (truncates it) rather than
+  appending to an old one, so one file is one trace.
+- Without `--perf-since`, the follow finds the build's next number with
+  one read from 0 (at most 600 records, not written): a `since` past the
+  ring's next answers `next` 0, as `PerfRead` does, so no read gives it
+  directly.
+- `--perf-snapshot` alone is refused: it goes with `--perf-since` or
+  `--perf-follow`. `--for` without `--perf-follow` is refused too.
+- `PerfAnswer` adds `measured` and `frames` beside the records, so the
+  attached session's `perf` gives the headless one's limits.
+
+**Follow-ups.** None. 2522 got a **From 2555 (done)** note: the version
+is 2, and its web backend and bridge answer `Handled::Snapshot`.
+
+No ADR: this is the `perf` request ADR-0047 §9 planned.
+
+**By hand.** Hello, Grid built with `--features link`, run in its window
+with `SHUYI_LINK=7357`, followed with `shuyi attach … --perf-follow
+perf.jsonl --for 10 --perf-snapshot`: 2,406 lines, 2,403 frames one
+after another (1779 to 4181, none dropped, about 240 a second), then
+the two snapshots and their diff.
+
+No break of the Rust API (`cargo xtask api`: no semver finding). The
+link's wire is version 2: a `shuyi` and a build of engines on either
+side of this change refuse each other with `SH1006`, as 2521 made them.

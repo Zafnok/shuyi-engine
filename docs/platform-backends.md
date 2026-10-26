@@ -295,7 +295,8 @@ A backend may offer the live link
 ([ADR-0047](adr/0047-the-live-link-json-lines-over-loopback-tcp-to-a-running-debug-build-read-only-but-a-players-input.md)),
 so `shuyi attach` reaches a debug build running on it. The wire and its
 server are `shuyi_platform::link` (the `link` feature); the backend
-carries the lines and takes the picture. `shuyi-app`'s listener
+carries the lines and takes the picture and the heap snapshot.
+`shuyi-app`'s listener
 (`crates/app/src/link.rs`, its own `link` feature) is the one to read.
 
 - **Only behind a cargo feature, and only with debug tools**
@@ -314,7 +315,10 @@ carries the lines and takes the picture. `shuyi-app`'s listener
 - **After `App::frame`:** send what `Server::after_frame` gives. If
   `Server::wants_screenshot`, read the frame just presented, before the
   device shows the next, and send `Server::screenshot(png, width,
-  height)`: the window's pixels, upright, as a PNG.
+  height)`: the window's pixels, upright, as a PNG. If
+  `Server::wants_snapshot`, take a heap snapshot now with
+  `App::heap_snapshot(&mut platform)` and send `Server::snapshot(&app,
+  snapshot)`: the frames' records a `perf` request asked for, with it.
 - On `Handled::Close`, send its line if it has one, then close and read
   nothing more. Drop a client that leaves more than `link::MAX_UNSENT`
   bytes unread, or sends a line longer than `link::MAX_LINE`.
