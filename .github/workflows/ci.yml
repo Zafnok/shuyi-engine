@@ -327,7 +327,7 @@ jobs:
       - run: rustup show
       - run: rustup target add thumbv7em-none-eabihf
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --target thumbv7em-none-eabihf --locked
+      - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo xtask check-no-std
       # The same tests as with `std`, the headless backend's included. The

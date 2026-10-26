@@ -11,7 +11,7 @@ use core::cell::RefCell;
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer};
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
-use shuyi_ui::perf::{FrameRecord, PerfClock};
+use shuyi_ui::perf::{FrameRecord, HeapCounts, PerfClock};
 use shuyi_ui::screen::{FrameInput, Screen, Transition};
 use shuyi_ui::storage::MemoryStorage;
 use shuyi_ui::system_keyboard::TextAsk;
@@ -912,6 +912,50 @@ fn with_debug_tools_off_nothing_is_measured_and_the_clock_is_never_read() {
     }
     assert_eq!(app.perf().records().len(), 0);
     assert_eq!(clock_reads(&app), 0);
+}
+
+#[test]
+fn a_record_has_the_memory_read_at_its_frames_end() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = clocked().with_fake_memory();
+    for n in 0..2 {
+        let _ = app.frame(&mut p, Millis(16 * n));
+    }
+    let heaps: Vec<_> = app.perf().records().map(|r| r.heap).collect();
+    // Read after each frame's present: one frame presented, then two.
+    assert_eq!(
+        heaps,
+        [
+            Some(HeapCounts::new(1_064_960, 1_064_960, 1)),
+            Some(HeapCounts::new(1_081_344, 1_081_344, 2)),
+        ]
+    );
+    assert_eq!(p.memory_calls(), 2);
+}
+
+#[test]
+fn the_memory_is_read_only_in_a_frame_with_a_record() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game.with_debug_screens(false));
+    let mut p = clocked().with_fake_memory();
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(p.memory_calls(), 0, "debug tools off");
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let _ = app.frame(&mut p, Millis(16));
+    p.push_system(SystemEvent::Suspend);
+    let _ = app.frame(&mut p, Millis(32));
+    assert_eq!(p.memory_calls(), 1, "the suspended frame makes no record");
+}
+
+#[test]
+fn a_platform_without_memory_leaves_the_records_heap_empty() {
+    let mut app = App::running(toy::game());
+    let mut p = clocked();
+    let _ = app.frame(&mut p, Millis(0));
+    let heaps: Vec<_> = app.perf().records().map(|r| r.heap).collect();
+    assert_eq!(heaps, [None]);
 }
 
 #[test]

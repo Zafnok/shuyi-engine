@@ -296,19 +296,52 @@ mod perf {
         assert_eq!(session.perf(0, 600).next, 3);
     }
 
+    /// The test binary is a debug build with `shuyi-alloc-count`'s
+    /// `global`: it counts its own heap. Other test threads allocate too,
+    /// so only that a heap was read, never its values.
     #[test]
-    fn set_perf_keeps_a_clock_the_platform_already_has() {
-        let fake = HeadlessPlatform::new().with_clock(PerfClock::fake());
-        let mut session = toy_on(fake);
+    fn set_perf_reads_this_programs_heap_and_stops_reading_it() {
+        let mut session = toy_on(HeadlessPlatform::new());
         session.set_perf(true);
+        assert_eq!(
+            session.counts_process_heap(),
+            shuyi_alloc_count::global::COUNTING
+        );
+        session.idle(2);
+        let records = session.perf(0, 600).records;
+        let heaps: Vec<_> = records.iter().map(|r| r.heap).collect();
+        if shuyi_alloc_count::global::COUNTING {
+            assert!(heaps.iter().all(|h| h.is_some_and(|h| h.peak_bytes > 0)));
+        } else {
+            assert_eq!(heaps, [None, None]);
+        }
+        session.set_perf(false);
+        assert!(!session.counts_process_heap());
+        assert!(!session.harness().platform().has_memory());
+    }
+
+    /// The headless backend with a fake clock and a fake heap.
+    fn fakes() -> HeadlessPlatform {
+        HeadlessPlatform::new()
+            .with_clock(PerfClock::fake())
+            .with_fake_memory()
+    }
+
+    #[test]
+    fn set_perf_keeps_a_clock_and_a_heap_the_platform_already_has() {
+        let mut session = toy_on(fakes());
+        session.set_perf(true);
+        assert!(!session.counts_process_heap());
         session.idle(2);
         let twice = |session: &Headless<_>| session.perf(0, 600).records;
         let first = twice(&session);
-        let mut again = toy_on(HeadlessPlatform::new().with_clock(PerfClock::fake()));
+        let mut again = toy_on(fakes());
         again.set_perf(true);
         again.idle(2);
         assert_eq!(first, twice(&again));
         assert_eq!(first[0].times.update_us, 300);
+        let heap = first[0].heap.unwrap();
+        assert_eq!((heap.live_bytes, heap.allocs), (1_064_960, 1));
         // Its clock stays: `false` takes away only a clock it gave.
         session.set_perf(false);
         session.idle(1);

@@ -1,19 +1,20 @@
 ---
 name: shuyi-perf
-description: Find what makes a game on Shuyi Engine slow, from the times of its frames and of the spans it marks around its own code, read as JSON lines from a headless run, an MCP session or a running debug build. Use when a frame takes too long, a stage stutters, or a bot's turn takes too long. Not for a wrong result (shuyi-debug-replay), for writing a test (shuyi-test), or for how often bots win (shuyi-balance-bots).
+description: Find what makes a game on Shuyi Engine slow or heavy, from the times of its frames and of the spans it marks around its own code and the heap's counts, read as JSON lines from a headless run, an MCP session or a running debug build. Use when a frame takes too long, a stage stutters, a bot's turn takes too long, or the heap grows. Not for a wrong result (shuyi-debug-replay), for writing a test (shuyi-test), or for how often bots win (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Find what makes a game slow
 
 A debug build of a game measures each of its frames: how long the
 update, the drawing, painting into the window and the wait for the next
-frame took, in whole microseconds, and how long each span the game
-marked around its own code took. It keeps the last 600 frames. You read
-them as data: a summary in `run`'s answer, and every frame as a JSON
-line.
+frame took, in whole microseconds, how long each span the game marked
+around its own code took, and the heap at the frame's end: the bytes
+live, their peak, and the allocations in the frame. It keeps the last
+600 frames. You read them as data: a summary in `run`'s answer, and
+every frame as a JSON line.
 
 Times are this machine's, and from an unoptimized build: compare two
 runs on the same machine, never numbers across machines. A time never
@@ -24,6 +25,7 @@ changes what the game does, so a run plays the same with them on.
 - A frame takes too long: the game drops below its frame rate.
 - A stage stutters: most frames are fast, a few are slow.
 - A bot's turn, a path search or a stage's load takes too long.
+- The heap grows from frame to frame, or a frame allocates too much.
 
 ## When not to
 
@@ -51,6 +53,15 @@ changes what the game does, so a run plays the same with them on.
    high one is a frame that was early). `spans` names the five spans
    with the most time. `perf.jsonl` has every frame as a line, oldest
    first; `file` is its path.
+
+   `heap` is the heap's summary, in bytes the program asked for:
+   `peak_bytes`, the most live at once, and `live_bytes` at the last
+   frame's end; `allocs` spreads the allocations per frame. A
+   `live_bytes` that climbs from line to line in `perf.jsonl` is memory
+   kept and never freed; a high `allocs` `p50` is a frame that
+   allocates every time (a list built each frame: keep it and clear it
+   instead). The text line ends `heap peak 4.1 MB`. The heap counter
+   counts the whole tool program, every thread's allocations.
 
 2. **Mark the suspect code** with a span, around a part of an update:
 
@@ -86,17 +97,39 @@ changes what the game does, so a run plays the same with them on.
 A line reads:
 
 ```json
-{"kind":"frame","frame":12,"times":{"update_us":310,"draw_us":420,"paint_us":610,"present_us":15800,"frame_us":17200},"spans":[{"name":"ai","start_us":40,"us":250,"depth":0}],"spans_dropped":0}
+{"kind":"frame","frame":12,"times":{"update_us":310,"draw_us":420,"paint_us":610,"present_us":15800,"frame_us":17200},"spans":[{"name":"ai","start_us":40,"us":250,"depth":0}],"spans_dropped":0,"heap":{"live_bytes":4194304,"peak_bytes":4521984,"allocs":12}}
 ```
 
 `depth` is how many spans it was inside. A frame keeps 64 spans and
-counts the rest in `spans_dropped`.
+counts the rest in `spans_dropped`. `heap` is left out where the heap
+isn't counted.
+
+## A game with its own allocator
+
+Every debug build counts the heap with a global allocator the engine
+turns on, and a program has one global allocator. A game with a
+`#[global_allocator]` of its own fails to link until it opts out, in
+its `.cargo/config.toml`:
+
+```toml
+[build]
+rustflags = ["--cfg", "shuyi_no_heap_count"]
+```
+
+Its frames then have no `heap`, and the times are still measured.
 
 ## When it fails
 
 - **`perf` is `null`, with the limit "nothing was measured":** the
   game's tool program was built without debug tools (a release build).
   Run it as `cargo shuyi run` builds it, in debug.
+- **`heap` is `null`, with the limit "the heap isn't counted":** the
+  tool program is a release build, or the game opted out
+  (`shuyi_no_heap_count`, above).
+- **The limit "the heap counts the whole tool program":** another
+  thread ran beside the game (the MCP server reads its messages on
+  one), and its allocations count too. Compare the heap over many
+  frames, not one frame's `allocs`.
 - **"the trace keeps the last 600 frames"**: the run was longer, and its
   first frames are gone. Run fewer frames, or read a session as a
   stream.

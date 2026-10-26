@@ -550,6 +550,9 @@ pub fn serve(
     mut output: impl Write,
 ) -> std::io::Result<()> {
     let (sent, lines) = channel();
+    // It reads on a thread of its own, whose allocations the heap counter
+    // counts with the game's.
+    crate::contract::perf::note_other_thread();
     std::thread::spawn(move || {
         for line in input.lines() {
             if sent.send(line).is_err() {

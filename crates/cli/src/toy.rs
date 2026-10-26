@@ -4,8 +4,9 @@
 //!
 //! The toy has no font, so its pictures draw every letter as a box, and
 //! its images (sizes only) as the missing colour. Its session (`run`)
-//! measures every frame with a fake clock ([`PerfClock::fake`]), so its
-//! perf records are the same on every run.
+//! measures every frame with a fake clock ([`PerfClock::fake`]) and reads a
+//! fake heap ([`HeadlessPlatform::with_fake_memory`]), so its perf records
+//! are the same on every run.
 //!
 //! [`link`] runs the toy behind the live link's server, a test host for
 //! what attaches to a running build.
@@ -66,11 +67,13 @@ impl GameTools for ToyTools {
         })
     }
 
-    /// The toy on a headless platform with a fake clock.
+    /// The toy on a headless platform with a fake clock and a fake heap.
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
         let lobby = options.iter().any(|option| option.flag == "--lobby");
         let game = if lobby { toy::lobby() } else { toy::game() };
-        let platform = HeadlessPlatform::new().with_clock(PerfClock::fake());
+        let platform = HeadlessPlatform::new()
+            .with_clock(PerfClock::fake())
+            .with_fake_memory();
         Ok(Box::new(Headless::new(Harness::on(game, platform))))
     }
 

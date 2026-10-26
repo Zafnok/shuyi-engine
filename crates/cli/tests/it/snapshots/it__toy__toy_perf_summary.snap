@@ -36,5 +36,15 @@ expression: "serde_json::to_string_pretty(&summary).unwrap()"
     "mean": 80
   },
   "spans": [],
+  "heap": {
+    "peak_bytes": 1130496,
+    "live_bytes": 1130496,
+    "allocs": {
+      "p50": 3,
+      "p99": 5,
+      "worst": 5,
+      "mean": 3
+    }
+  },
   "file": null
 }

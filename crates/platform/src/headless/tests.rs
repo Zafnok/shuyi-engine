@@ -262,3 +262,36 @@ fn it_gives_the_clock_a_test_sets_and_none_by_default() {
     fake.set_clock(None);
     assert!(fake.clock().is_none());
 }
+
+#[test]
+fn the_fake_memory_moves_by_fixed_amounts_with_the_frames_presented() {
+    let at = |n: u32| {
+        let heap = fake_heap(n);
+        (heap.live_bytes, heap.peak_bytes, heap.allocs)
+    };
+    assert_eq!(at(0), (1_048_576, 1_048_576, 0));
+    assert_eq!(at(1), (1_064_960, 1_064_960, 1));
+    assert_eq!(at(29), (1_523_712, 1_523_712, 1));
+    assert_eq!(at(30), (1_048_576, 1_523_712, 2));
+}
+
+#[test]
+fn the_platform_reads_its_memory_and_counts_the_calls() {
+    let mut platform = HeadlessPlatform::new();
+    assert!(!platform.has_memory());
+    assert_eq!(platform.memory(), None);
+    let mut platform = platform.with_fake_memory();
+    assert!(platform.has_memory());
+    let card = Card::text("Loading");
+    platform.present(&Frame::new(Show::Card(&card)));
+    assert_eq!(platform.memory(), Some(MemoryReading::new(fake_heap(1))));
+    platform.set_memory(Some(|| HeapCounts::new(7, 8, 9)));
+    assert_eq!(
+        platform.memory().map(|m| m.heap),
+        Some(HeapCounts::new(7, 8, 9))
+    );
+    platform.set_memory(None);
+    assert!(!platform.has_memory());
+    assert_eq!(platform.memory(), None);
+    assert_eq!(platform.memory_calls(), 4);
+}

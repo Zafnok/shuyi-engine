@@ -480,7 +480,7 @@ impl<G: GameData> App<G> {
     fn end(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
         let outcome = self.run(platform, elapsed);
         self.take_game_log();
-        self.end_perf();
+        self.end_perf(platform);
         outcome
     }
 
@@ -526,8 +526,8 @@ impl<G: GameData> App<G> {
     }
 
     /// Ends this frame's measuring: its record, if it stepped the game and
-    /// presented it.
-    fn end_perf(&mut self) {
+    /// presented it, with the platform's memory read at its end.
+    fn end_perf(&mut self, platform: &mut impl Platform) {
         let Some(start) = self.perf.start.take() else {
             self.perf.last_end = None;
             return;
@@ -551,6 +551,7 @@ impl<G: GameData> App<G> {
         record.times.paint_us = paint_us;
         record.times.present_us = present_us;
         record.times.frame_us = present_us.saturating_add(micros(start, end));
+        record.heap = platform.memory().map(|memory| memory.heap);
         self.perf.last_end = Some(end);
         self.perf.records.push(record);
     }

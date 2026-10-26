@@ -31,7 +31,7 @@ use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
-use shuyi_ui::perf::{PerfClock, PerfRing};
+use shuyi_ui::perf::{HeapCounts, PerfClock, PerfRing};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
@@ -523,6 +523,16 @@ impl<G: GameData> Harness<G> {
     pub fn set_clock(&mut self, clock: Option<PerfClock>) -> &mut Self {
         self.platform.set_clock(clock);
         self.ctx_mut().set_perf_clock(clock);
+        self
+    }
+
+    /// Reads the heap with `memory` (a real counter's reading) at the end
+    /// of each frame measured from now on, or reads none (`None`): each
+    /// record's [`heap`](shuyi_ui::perf::FrameRecord::heap). A fake memory
+    /// that moves by fixed amounts is the platform's
+    /// ([`HeadlessPlatform::with_fake_memory`], with [`Harness::on`]).
+    pub fn set_memory(&mut self, memory: Option<fn() -> HeapCounts>) -> &mut Self {
+        self.platform.set_memory(memory);
         self
     }
 

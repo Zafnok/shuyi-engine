@@ -220,6 +220,34 @@
         }
       ]
     },
+    "HeapSummary": {
+      "description": "How the heap's counts add up over a trace's records, in bytes asked for.",
+      "type": "object",
+      "properties": {
+        "allocs": {
+          "description": "How the allocations per frame spread.",
+          "$ref": "#/$defs/Spread"
+        },
+        "live_bytes": {
+          "description": "The bytes live at the last record's end.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "peak_bytes": {
+          "description": "The most bytes live at once, the most of the records' peaks.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "peak_bytes",
+        "live_bytes",
+        "allocs"
+      ]
+    },
     "LogEntry": {
       "description": "A line of the game's log.",
       "type": "object",
@@ -439,6 +467,17 @@
           "type": "integer",
           "format": "uint32",
           "minimum": 0
+        },
+        "heap": {
+          "description": "The heap's counts over the records that have them; null where none\nhas (a release build of the tool program, or one opted out).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeapSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "paint": {
           "description": "How painting into the window spread (`paint_us`).",

@@ -241,3 +241,41 @@ fn spread_of_equal_values_is_that_value_everywhere() {
     };
     assert_eq!(spread([400; 9]), Some(same));
 }
+
+#[test]
+fn bytes_read_in_the_largest_unit_with_a_tenth_rounded_down() {
+    let texts: Vec<String> = [
+        0,
+        1023,
+        1024,
+        1024 * 1024 - 1,
+        3_355_444,
+        1 << 30,
+        5 << 40,
+        u64::MAX,
+    ]
+    .into_iter()
+    .map(bytes_text)
+    .collect();
+    assert_eq!(
+        texts,
+        [
+            "0 B",
+            "1023 B",
+            "1.0 KB",
+            "1023.9 KB",
+            "3.2 MB",
+            "1.0 GB",
+            "5120.0 GB",
+            "17179869183.9 GB",
+        ]
+    );
+}
+
+#[test]
+fn a_new_record_has_no_heap_counts_and_a_reading_holds_its_own() {
+    assert_eq!(FrameRecord::new(3).heap, None);
+    let heap = HeapCounts::new(1, 2, 3);
+    assert_eq!((heap.live_bytes, heap.peak_bytes, heap.allocs), (1, 2, 3));
+    assert_eq!(MemoryReading::new(heap).heap, heap);
+}

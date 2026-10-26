@@ -119,6 +119,37 @@ fn run_says_what_it_could_not_see() {
     );
 }
 
+/// `run --perf` in this debug test build reads its own heap counter (the
+/// engine's backends turn it on): the summary has the heap, and the text's
+/// line ends with its peak. Other test threads allocate too, so never its
+/// values.
+#[test]
+fn run_with_perf_counts_the_heap_of_a_debug_build() {
+    let mut input = RunInput::default();
+    input.script = keys("Enter");
+    input.frames = 30;
+    input.perf = true;
+    let answer = run(&HelloTools, &input);
+    assert!(answer.ok, "{answer:?}");
+    let summary = answer.result.unwrap().perf.unwrap();
+    let heap = summary
+        .heap
+        .as_ref()
+        .expect("a debug build counts the heap");
+    assert!(heap.peak_bytes > 0, "{heap:?}");
+    let peak = shuyi::ui::perf::bytes_text(heap.peak_bytes);
+    let text = contract::perf::text(&summary);
+    assert!(
+        text.lines()
+            .next()
+            .unwrap()
+            .ends_with(&format!("heap peak {peak}")),
+        "{text}"
+    );
+    let uncounted = contract::perf::HEAP_UNCOUNTED.to_owned();
+    assert!(!answer.limits.contains(&uncounted), "{:?}", answer.limits);
+}
+
 #[test]
 fn scene_dumps_the_stage_and_its_state() {
     let mut input = RunInput::default();

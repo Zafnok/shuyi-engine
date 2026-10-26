@@ -44,6 +44,9 @@ shuyi-assets = { path = "../assets" }
 shuyi-ui = { path = "../ui" }
 # The platform boundary this crate implements, and the `App` it drives.
 shuyi-platform = { path = "../platform" }
+# The heap counter of every debug build (ADR-0046 §9): its `global` feature
+# is the one `#[global_allocator]`, shared with `shuyi-cli`'s.
+shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
 macroquad.workspace = true
 
 # Storage on the web (ticket 0207): `localStorage`. Native resolves its

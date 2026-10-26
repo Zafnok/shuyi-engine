@@ -11,7 +11,9 @@
 //!
 //! With perf on ([`Session::set_perf`]), a [`Headless`] measures each
 //! frame with this machine's clock and keeps its record, read with
-//! [`Session::perf`] (ADR-0046).
+//! [`Session::perf`] (ADR-0046). In a debug build of the tool program
+//! each record has the heap's counts too, from the program's own heap
+//! counter (`shuyi_alloc_count::global`), which counts the whole program.
 
 use std::sync::OnceLock;
 use std::time::Instant;
@@ -24,7 +26,7 @@ use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
 use shuyi_ui::module::InstalledModule;
-use shuyi_ui::perf::PerfClock;
+use shuyi_ui::perf::{HeapCounts, PerfClock};
 
 use super::perf::PerfRead;
 use crate::frame_png::{Image, Script};
@@ -232,6 +234,13 @@ pub trait Session {
         let _ = on;
     }
 
+    /// Whether its records' heap counts are this tool program's own heap
+    /// counter's, which counts the whole program (every thread's
+    /// allocations), not a fake's. By default not.
+    fn counts_process_heap(&self) -> bool {
+        false
+    }
+
     /// The frames' records kept, numbered `since` or more, the first `max`
     /// of them ([`PerfRead`]). By default nothing, measured.
     fn perf(&self, since: u64, max: u32) -> PerfRead {
@@ -268,6 +277,9 @@ pub struct Headless<G: GameData> {
     picture: Option<PictureOf<G>>,
     /// Whether [`Session::set_perf`] gave the Harness its clock.
     perf_clock: bool,
+    /// Whether [`Session::set_perf`] gave the Harness this program's heap
+    /// counter.
+    perf_memory: bool,
 }
 
 /// The microseconds since this machine's clock was first read here: the
@@ -276,6 +288,14 @@ fn now_us() -> u64 {
     static START: OnceLock<Instant> = OnceLock::new();
     let start = START.get_or_init(Instant::now);
     u64::try_from(start.elapsed().as_micros()).unwrap_or(u64::MAX)
+}
+
+/// This program's heap counter's reading: the real memory a [`Headless`]
+/// reads, handed over only in a build that counts (zeros otherwise).
+fn process_heap() -> HeapCounts {
+    shuyi_alloc_count::global::reading().map_or_else(HeapCounts::default, |counts| {
+        HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs)
+    })
 }
 
 impl<G: GameData> Headless<G> {
@@ -292,6 +312,7 @@ impl<G: GameData> Headless<G> {
             events: Box::new(|_| Vec::new()),
             picture: None,
             perf_clock: false,
+            perf_memory: false,
         }
     }
 
@@ -461,17 +482,34 @@ impl<G: GameData> Session for Headless<G> {
         modules.iter().map(ModuleEntry::from).collect()
     }
 
-    /// Gives the Harness this machine's clock, unless its platform has one
-    /// already (a test's fake, kept so its records stay the same); `false`
-    /// takes away the clock it gave.
+    /// Gives the Harness this machine's clock, and in a build that counts
+    /// the heap this program's heap counter, each unless its platform has
+    /// one already (a test's fake, kept so its records stay the same);
+    /// `false` takes away what it gave.
     fn set_perf(&mut self, on: bool) {
-        if on && !self.perf_clock && self.harness.platform().clock().is_none() {
-            self.harness.set_clock(Some(PerfClock::Real(now_us)));
-            self.perf_clock = true;
-        } else if !on && self.perf_clock {
-            self.harness.set_clock(None);
-            self.perf_clock = false;
+        let platform = self.harness.platform();
+        let (clock, memory) = (platform.clock().is_none(), !platform.has_memory());
+        if on {
+            if !self.perf_clock && clock {
+                self.harness.set_clock(Some(PerfClock::Real(now_us)));
+                self.perf_clock = true;
+            }
+            if !self.perf_memory && memory && shuyi_alloc_count::global::COUNTING {
+                self.harness.set_memory(Some(process_heap));
+                self.perf_memory = true;
+            }
+            return;
         }
+        if core::mem::take(&mut self.perf_clock) {
+            self.harness.set_clock(None);
+        }
+        if core::mem::take(&mut self.perf_memory) {
+            self.harness.set_memory(None);
+        }
+    }
+
+    fn counts_process_heap(&self) -> bool {
+        self.perf_memory
     }
 
     fn perf(&self, since: u64, max: u32) -> PerfRead {

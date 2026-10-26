@@ -37,13 +37,14 @@ pub const SKILLS: &str = ".claude/skills";
 const PREFIX: &str = "shuyi-";
 
 /// The crates of the default engine, which are no modules.
-pub const DEFAULT_CRATES: [&str; 6] = [
+pub const DEFAULT_CRATES: [&str; 7] = [
     "shuyi-core",
     "shuyi-assets",
     "shuyi-ui",
     "shuyi-platform",
     "shuyi-app",
     "shuyi-cli",
+    "shuyi-alloc-count",
 ];
 
 /// The concerns a game answers, `docs/modules.ron`.

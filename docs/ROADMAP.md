@@ -82,6 +82,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2542 | The CLI's seams: the stale-server limit says which side is newer, one target lookup, one `cargo`, each answer's schema names its op |
 | 2545 | A running MCP server never blocks the next build: it moves its own program aside on Windows, and a cold build has time to finish |
 | 2546 | The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server |
+| 2561 | Moving a running server's program aside never leaves its path empty, so the CLI's tests don't flake in parallel |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 3063 | Frame times and spans as data: the platform's clock, spans a game marks, and `App`'s record of each frame, in debug builds |
 | 2553 | Perf traces agents read: `shuyi run --perf`, an MCP `perf` tool read from a number, and a running build's trace file, as JSON lines |

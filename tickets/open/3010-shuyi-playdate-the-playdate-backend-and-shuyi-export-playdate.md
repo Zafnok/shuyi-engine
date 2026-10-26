@@ -145,10 +145,11 @@ Nothing here costs money. A device is needed only for 3011.
     after 3045: the temporary file written and flushed, the last good
     copy kept as `.bak`, then the rename.
   - **Memory.** The global allocator goes through the SDK's `realloc`.
-    **Either order with 3064:** if 3064 is done, the debug build wraps
-    this allocator in its `CountingAlloc` (`shuyi-alloc-count`, without
-    `std`) and implements `Platform::memory` from it; if not, 3064 does
-    it (its own clause says so). **Either order with 2368 (parked):**
+    **From 3064 (done):** the debug build wraps this allocator in
+    `CountingAlloc` (`shuyi-alloc-count`, without `std`, its default
+    features off) and implements `Platform::memory` from it
+    (`docs/platform-backends.md` says how), so each record has the
+    heap's counts. **Either order with 2368 (parked):**
     if 2368 is done, that reading also gives the `playdate` profile's
     `peak_heap_bytes` as its budget, as 2368 says; if not, 2368 does it.
   - **The clock, for the perf traces** (3063, ADR-0046): the debug

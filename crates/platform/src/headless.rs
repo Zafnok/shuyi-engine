@@ -1,5 +1,5 @@
-//! [`HeadlessPlatform`]: a backend with no window, no clock (unless a test
-//! hands it one) and no sound card. It plays scripted input and system events, records the frames
+//! [`HeadlessPlatform`]: a backend with no window, no clock and no heap
+//! counter (unless a test hands it one) and no sound card. It plays scripted input and system events, records the frames
 //! presented to it, keeps its storage in memory, and stands in for the
 //! music player ([`Speaker`]), so a screen that keeps time with the music
 //! is tested too.
@@ -16,7 +16,7 @@ use shuyi_ui::RawInputEvent;
 use shuyi_ui::audio::MusicCommand;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::PerfClock;
+use shuyi_ui::perf::{HeapCounts, MemoryReading, PerfClock};
 use shuyi_ui::storage::{MemoryStorage, Storage};
 
 use crate::app::Card;
@@ -229,6 +229,28 @@ impl TextInput for ScriptedKeyboard {
     }
 }
 
+/// Where a [`HeadlessPlatform`]'s memory readings come from.
+#[derive(Debug, Clone, Copy)]
+enum Memory {
+    /// It reads none.
+    None,
+    /// Fixed amounts by the frames presented
+    /// ([`HeadlessPlatform::with_fake_memory`]).
+    Fake,
+    /// A real counter's reading.
+    Real(fn() -> HeapCounts),
+}
+
+/// The fake memory's reading after `n` frames presented: live bytes
+/// 1,048,576 + 16,384 × (*n* mod 30), the peak the most of those so far,
+/// and *n* mod 7 allocations.
+fn fake_heap(n: u32) -> HeapCounts {
+    const BASE: u64 = 1 << 20;
+    const STEP: u64 = 16 * 1024;
+    let wide = u64::from(n);
+    HeapCounts::new(BASE + STEP * (wide % 30), BASE + STEP * wide.min(29), n % 7)
+}
+
 /// A backend with no devices, for tests and tools.
 #[derive(Debug)]
 pub struct HeadlessPlatform {
@@ -243,6 +265,10 @@ pub struct HeadlessPlatform {
     keyboard: Option<ScriptedKeyboard>,
     /// The clock it gives to measure frames with, if a test set one.
     clock: Option<PerfClock>,
+    /// Where its memory readings come from.
+    memory: Memory,
+    /// How many times `App` asked for the memory.
+    memory_calls: u32,
     /// How many frames were presented.
     presented: u32,
     /// The last of them.
@@ -270,6 +296,8 @@ impl HeadlessPlatform {
             speaker: Speaker::default(),
             keyboard: None,
             clock: None,
+            memory: Memory::None,
+            memory_calls: 0,
             presented: 0,
             last: None,
         }
@@ -309,6 +337,33 @@ impl HeadlessPlatform {
     /// asks for it on its first frame only.
     pub fn set_clock(&mut self, clock: Option<PerfClock>) {
         self.clock = clock;
+    }
+
+    /// The same backend reading a fake heap ([`Platform::memory`]) that
+    /// moves by fixed amounts, so a test's records are the same on every
+    /// run: with *n* the frames it has presented, live bytes 1,048,576 +
+    /// 16,384 × (*n* mod 30), the peak the most of those so far, and *n*
+    /// mod 7 allocations.
+    #[must_use]
+    pub fn with_fake_memory(mut self) -> Self {
+        self.memory = Memory::Fake;
+        self
+    }
+
+    /// Reads the heap with `memory` from now on (a real counter's
+    /// reading), or reads none; the fake memory is dropped either way.
+    pub fn set_memory(&mut self, memory: Option<fn() -> HeapCounts>) {
+        self.memory = memory.map_or(Memory::None, Memory::Real);
+    }
+
+    /// Whether it reads the heap: a fake, or a counter set.
+    pub fn has_memory(&self) -> bool {
+        !matches!(self.memory, Memory::None)
+    }
+
+    /// How many times `App` asked for the memory ([`Platform::memory`]).
+    pub fn memory_calls(&self) -> u32 {
+        self.memory_calls
     }
 
     /// Queues `events` as the input of one poll, after those already
@@ -384,6 +439,16 @@ impl Platform for HeadlessPlatform {
 
     fn clock(&self) -> Option<PerfClock> {
         self.clock
+    }
+
+    fn memory(&mut self) -> Option<MemoryReading> {
+        self.memory_calls = self.memory_calls.saturating_add(1);
+        let heap = match self.memory {
+            Memory::None => return None,
+            Memory::Fake => fake_heap(self.presented),
+            Memory::Real(read) => read(),
+        };
+        Some(MemoryReading::new(heap))
     }
 }
 

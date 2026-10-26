@@ -12,7 +12,7 @@ pub use shuyi_assets::target::Color;
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::PerfClock;
+use shuyi_ui::perf::{MemoryReading, PerfClock};
 use shuyi_ui::storage::Storage;
 
 use crate::app::Card;
@@ -234,6 +234,16 @@ pub trait Platform {
     /// with [`DEBUG_TOOLS`](shuyi_ui::DEBUG_TOOLS) on. `None` (the
     /// default) for a backend without one: nothing is measured.
     fn clock(&self) -> Option<PerfClock> {
+        None
+    }
+
+    /// The device's memory now, in debug builds (ADR-0046): the heap's
+    /// live bytes, their peak and the allocations since the last call.
+    /// `App` asks once a frame, at the end of a frame it keeps a record of
+    /// (debug tools on, with a clock), and puts the heap's counts in the
+    /// record. `None` (the default) for a backend that doesn't count:
+    /// records have no heap counts.
+    fn memory(&mut self) -> Option<MemoryReading> {
         None
     }
 }
