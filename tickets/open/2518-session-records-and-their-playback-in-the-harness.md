@@ -292,13 +292,13 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     the line on the next `FrameRecord` (`commands: Vec<String>`);
     playback runs it before that frame. If not, 2356 adds it (its own
     clause says so);
-  - with 2521 (the live link): if it is done, a test sends a key over
-    its link while recording and finds it in the record's input (2521
-    leaves that test here). If 2356 is done too, the link's
-    `Request::Command`, which ran through `App::game_mut`, goes through
-    `App::command` instead, so a command sent over the link is on the
-    record (a test). If 2521 isn't done, nothing to do (2521 does both,
-    its own clause says so);
+  - **from 2521 (done)** (the live link, ADR-0047): a test sends a key
+    over its link (`shuyi_platform::link::Server`, its input added after
+    the devices' in `poll_input`, as `crates/platform/src/link/tests.rs`
+    drives it) while recording, and finds it in the record's input. If
+    2356 is done too, the link's `Request::Command`, which ran through
+    `App::game_mut`, goes through `App::command` instead, so a command
+    sent over the link is on the record (a test);
   - the new public types follow ADR-0039, and `Start`, which gains two
     fields here, moves under it in this PR (its rule for an existing
     type).
@@ -376,7 +376,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
    `play_to` and `play_all`, sharing the per-frame bookkeeping of
    `Harness::frame` (the audio log, the screen log, the quit frame).
 7. Add the either-order parts whose partner is done (2220, 2321, 2356,
-   3053, 2521).
+   3053), and the link's test (2521, done).
 8. Write the property, divergence and boundary tests on the toy game
    (`shuyi_ui::toy`). Tests that need a store, a system keyboard or a
    clock that goes back record on `App` and a `HeadlessPlatform` built

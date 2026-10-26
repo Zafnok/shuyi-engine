@@ -77,12 +77,12 @@ None.
     in the background and reads the file;
   - `attach.input.json` and `attach.output.json` regenerated, and the
     contract's version raised by one with its line in `versions.json`.
-- **MCP:** a session attached over the link (2521's `start` with
-  `link`) answers 2553's `perf` tool through `Request::Perf`, with the
-  same input and answer as a headless session. If 2521's PR moved MCP's
-  link to a follow-up ticket under its size rule, that ticket took this
-  bullet into its scope: while it is open, leave this bullet and its
-  criterion to it; once it is done, do this bullet here.
+- **MCP:** a session attached over the link (`start` with `link`,
+  which 2521's size rule moved to 2560) answers 2553's `perf` tool
+  through `Request::Perf`, with the same input and answer as a headless
+  session. **Either order with 2560:** if 2560 is done, add it here,
+  with its criterion; if not, 2560 adds it (its own clause says so),
+  and this bullet and its criterion are left to it.
 - **Tests,** as 2521's are: the server over the toy game on the
   headless backend with 3063's fake clock (`Perf` from 0 gives every
   kept record; `next` gives none until a frame runs; `dropped` past a

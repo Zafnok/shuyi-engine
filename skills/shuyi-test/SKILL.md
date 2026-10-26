@@ -3,7 +3,7 @@ name: shuyi-test
 description: Test a Shuyi Engine game at every layer, with unit and property tests of its rules, its screens played through the engine's headless Harness, the tool contract in tests, text snapshots of a look, and pictures of frames to review. Use when adding or changing rules, a screen or a stage, when a change needs a test that proves it, or when you want to see a frame without a window. Not for running the checks before a commit (shuyi-gates), for a bug only a record reproduces (shuyi-debug-replay), or for measuring how hard a stage is (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Test a game
@@ -112,7 +112,31 @@ colours or the frame's text.
    `cargo shuyi run --script "Enter Right" --frames 30` gives the same
    answer once, for a script.
 
-8. **Run them:** `cargo test --workspace`, or one file with `cargo test
+8. **A running build, in its window.** The headless runs above test a
+   change. To look at what only the window shows (the real renderer, its
+   size, a stutter), attach to a debug build that is running:
+
+   ```bash
+   SHUYI_LINK=0 cargo run --features link
+   ```
+
+   The game crate's `link` feature turns the live link on, in a debug
+   build only; `SHUYI_LINK` is the port (`0` takes a free one). Its log
+   gives the address and the token, in a line ending `listening on
+   127.0.0.1:<port>, token <token>`. Then:
+
+   ```bash
+   cargo shuyi attach 127.0.0.1:<port> --token <token> --act Confirm --screenshot shot.png
+   ```
+
+   plays the steps as a player's input (`--keys`, `--pad`, `--wait`, and
+   `--act` presses an action by its key), then answers with the screens,
+   the frame as text and the log (`--log-since` the last `log_next`
+   reads on), and writes the window's picture to `shot.png`. Waits count
+   the build's own frames. It changes nothing else in the build; start
+   the build again after changing the code.
+
+9. **Run them:** `cargo test --workspace`, or one file with `cargo test
    -p <crate> --test <name>`. A game's CI runs every test on every pull
    request.
 
@@ -129,6 +153,8 @@ A test panics with its message. The contract's commands answer with a
   replay for a game with no rules).
 - `SH3005`: the game's tool program didn't build: the answer ends with
   the compiler's output.
+- `SH1005`: `attach` found no build listening: start it with the link
+  first. `SH0004`: the token isn't the build's latest.
 
 A `run` that is `ok` but whose `limits` say "no scene" ran on a screen
 that shows none: open the stage first (`--script "Enter"`).
@@ -144,3 +170,7 @@ stage. The snapshot fails until it is written on purpose, then passes,
 then fails when the stage's words change while the Harness test still
 passes. A `frame-png` picture of the stage follows, then a `run` whose
 scene agrees with the tests' state, and `fmt`, clippy and `lint`.
+
+[`example-attach.ron`](example-attach.ron) attaches to the game running
+in its window, so CI can't run it (it is marked manual): start the game
+with the link as its first comment says, then run it.

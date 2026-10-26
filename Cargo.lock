@@ -360,6 +360,7 @@ dependencies = [
  "ron",
  "serde",
  "shuyi",
+ "shuyi-app",
  "shuyi-cli",
 ]
 
@@ -1097,12 +1098,15 @@ dependencies = [
 name = "shuyi-app"
 version = "0.1.0"
 dependencies = [
+ "getrandom 0.4.3",
  "gilrs",
+ "image",
  "macroquad",
  "proptest",
  "quad-snd",
  "quad-storage",
  "serde",
+ "shuyi-app",
  "shuyi-assets",
  "shuyi-platform",
  "shuyi-ui",
@@ -1163,6 +1167,9 @@ dependencies = [
 name = "shuyi-platform"
 version = "0.1.0"
 dependencies = [
+ "proptest",
+ "serde",
+ "serde_json",
  "shuyi-assets",
  "shuyi-platform",
  "shuyi-ui",

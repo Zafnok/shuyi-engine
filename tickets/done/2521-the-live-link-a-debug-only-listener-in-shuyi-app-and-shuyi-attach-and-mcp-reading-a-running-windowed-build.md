@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["1133", "3040"]
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 2521 — The live link to a running build
@@ -397,38 +397,38 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On a desktop, after `SHUYI_LINK=0 cargo run -p hello-grid
+- [x] On a desktop, after `SHUYI_LINK=0 cargo run -p hello-grid
       --features link`, `cargo shuyi attach 127.0.0.1:<port> --token
       <t> --act Confirm --screenshot shot.png` answers with the screen
       after the title and writes the window's picture. The picture is
       in the PR.
-- [ ] Over the server, on the toy game, a `Play` of keys, buttons and
+- [x] Over the server, on the toy game, a `Play` of keys, buttons and
       waits gives the same screens and the same frame text as the
       Harness playing the same script.
-- [ ] A connection whose first line isn't a hello with the right token
+- [x] A connection whose first line isn't a hello with the right token
       is closed, and nothing after that line is read: tests with a
       wrong token, an HTTP request line, and a line over 64 KiB.
-- [ ] A second client while one is attached gets a `busy` answer and
+- [x] A second client while one is attached gets a `busy` answer and
       is closed.
-- [ ] A frame never waits on the socket: with no client, and with a
+- [x] A frame never waits on the socket: with no client, and with a
       client that sends nothing, a poll returns at once (a test).
-- [ ] Without the `link` feature `shuyi-app` never reads `SHUYI_LINK`.
+- [x] Without the `link` feature `shuyi-app` never reads `SHUYI_LINK`.
       With it but without debug tools, it doesn't listen (a test of the
       decision as a pure function).
-- [ ] `act` with an action that has a key, one with only a button, one
+- [x] `act` with an action that has a key, one with only a button, one
       with neither and a name the game doesn't have (the last two an
       error naming the action) all behave as said.
-- [ ] `press_for` is the only lookup of an action by name: the server
+- [x] `press_for` is the only lookup of an action by name: the server
       calls it, and so does `Script::play` if 2524 is done.
-- [ ] `attach.input.json` and `attach.output.json` are checked in, and
+- [x] `attach.input.json` and `attach.output.json` are checked in, and
       `versions.json` has the new version.
-- [ ] `attach` with no build listening answers its setup code and exits
+- [x] `attach` with no build listening answers its setup code and exits
       3; a wrong token and a link version that isn't this `shuyi`'s
       answer their own codes (tests against a test host).
-- [ ] 1133's scripted client test attaches to a test host, steps it and
+- [x] 1133's scripted client test attaches to a test host, steps it and
       reads its frame, or the follow-up ticket is written under the
       size rule.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -452,4 +452,63 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-10-25.
+
+- **ADR-0047** records the link: JSON lines over loopback TCP, debug
+  builds with the backend's `link` feature and `SHUYI_LINK`, a token,
+  reads and a player's input only.
+- **`shuyi_platform::link`** (`crates/platform/src/link.rs`, the `link`
+  feature; `serde` and `serde_json` added to its line in
+  `tools/layers.ron`): `VERSION`, `Request`, `Answer`, `Step`, `Press`,
+  `press_for`, `Status`, `Server`, `base64`. Tested on the toy game on
+  the headless backend, with a property test against the Harness.
+- **The listener** (`crates/app/src/link.rs`, `shuyi-app`'s `link`
+  feature, native only) and `crates/app/src/readback.rs` (the window as
+  a PNG). Socket tests over loopback on the toy game, no window.
+- **`shuyi attach`** (`crates/cli/src/contract/attach.rs`), its schemas,
+  `contract::VERSION` 20, and four codes: `SH0004` (`link-token`,
+  usage), `SH1005` (`no-build`, setup), `SH1006` (`link-version`,
+  setup) and `SH3006` (`link-lost`, operation: busy, closed or
+  unreadable). It is also an MCP one-off tool, as every operation is.
+- **Manual check:** `SHUYI_LINK=0` hello-grid with `--features link` in
+  its window; `shuyi attach … --act Confirm --screenshot shot.png`
+  answered `title > stage > talk` and wrote the window's picture (in the
+  PR). The wrong token, an unknown action, no build and a wait were
+  tried on it too.
+- **Size rule:** the PR passes 600 lines, so MCP's session over the link
+  is **2560** (MVP, blocked by 2521), which also takes 2555's MCP
+  `perf` bullet (2555's clause now names it) and 2514's refusal of
+  `every` and `count` over a link.
+
+Deviations:
+
+- `Handled::Close` carries `Option<String>`: the line to send before
+  closing (the build's hello for a client of another link version, so
+  `attach` can say which version the build speaks).
+- `Status` has `errors` (the failed load's text), `Answer::Frame` a
+  `limit`, and `Played` says whether the steps waited for the load or a
+  suspend.
+- A play whose steps are all waits of no frame is answered at once.
+- `AttachInput` has its own `AttachStep` (keys, pad, wait in seconds,
+  act), since 2524 isn't done; 2524 now replaces it with the contract's
+  `Step` and moves `--act` into `Script::parse_step`.
+- hello-grid and the template's game crate (both short names, `grid`
+  and `blank`, are `templates/shuyi-default`) name `shuyi-app` as an
+  optional dependency for its feature (`link = ["shuyi-app/link"]`),
+  ignored by `cargo machete`; the template's workspace gains
+  `shuyi-app = "{{engine.app}}"`.
+- A second client is half-closed and read until it hangs up, and a
+  client that hung up an instant before a new one connects makes way:
+  closing at once reset connections before they read `busy`. `attach`
+  shuts its socket down when done, since on Windows a child process
+  started meanwhile can inherit the handle and keep it open.
+- `mcp::base64` now calls `link::base64::encode`.
+- 3041 isn't done, so the listener's two lines are macroquad's `info!`
+  and `warn!` (3041's scope names this ticket).
+
+Either-order clauses settled: 2018 reuses `readback`; 2316 adds the
+pause-and-step test over the server; 2356 adds `Request::Command`; 2518
+writes the record test; 2524 moves `--act`; 2514 and 2555 hand their
+link parts to 2560; 2522 got a "From 2521 (done)" note.
+
+Breaking: shuyi-cli: contract::Op: a new variant `Attach`, and `Op::ALL` has 16 operations: a match on every `Op` adds an arm; the contract's version is 20. The game matches none.

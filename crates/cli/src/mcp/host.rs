@@ -25,8 +25,8 @@ use crate::contract::import::Importers;
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::Session;
 use crate::contract::{
-    Answer, Op, add, autobalance, bake, bots, check, doctor, explain, import, lint, modules, new,
-    playtest, replay,
+    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint,
+    modules, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
 use crate::game::{GameArg, GameTools, code_of};
@@ -131,6 +131,7 @@ pub fn one_off(
         Op::New => answered(op, input, |i| new::new(cwd, &i)),
         Op::Doctor => answered(op, input, |i| doctor::doctor(&doctor::ThisMachine, &i)),
         Op::Explain => answered(op, input, |i| explain::explain(&i)),
+        Op::Attach => answered(op, input, |i| attach::attach(&i, cwd)),
         Op::Check => {
             let input: check::CheckInput = match read(input) {
                 Ok(input) => input,

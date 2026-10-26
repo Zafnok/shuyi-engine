@@ -1,0 +1,34 @@
+// The second worked example of shuyi-test: `attach` to the game running in
+// its window, over the live link. It needs a window, so CI lists it and
+// doesn't run it. On a game made with `shuyi new <dir> --template grid`,
+// built by its first step, start the game in another terminal first:
+//
+//     SHUYI_LINK=7357 SHUYI_LINK_TOKEN=shuyi-test-attach-token cargo run --features link
+//
+// (a port and a token of your choosing, so the steps can name them; with
+// SHUYI_LINK=0 and no token, the game's log line gives both).
+Example(
+    template: "grid",
+    manual: Some("needs a window: the game runs with its link while the steps attach"),
+    steps: [
+        Cargo(args: ["build", "--features", "link"]),
+        // The title, as the window shows it, and its picture.
+        Shuyi(
+            args: ["attach", "127.0.0.1:7357", "--token", "shuyi-test-attach-token", "--screenshot", "title.png"],
+            expect: [Is("/result/top_screen", "title"), Is("/result/phase", "running")],
+        ),
+        Holds(file: "title.png"),
+        // Confirm, pressed by its key as a player would, opens the stage.
+        Shuyi(
+            args: ["attach", "127.0.0.1:7357", "--token", "shuyi-test-attach-token", "--act", "Confirm", "--wait", "0.5", "--screenshot", "stage.png"],
+            expect: [Is("/result/top_screen", "stage")],
+        ),
+        Holds(file: "stage.png"),
+        // A wrong token is refused, with its code.
+        Shuyi(
+            args: ["attach", "127.0.0.1:7357", "--token", "not-the-builds-token"],
+            ok: false,
+            expect: [Is("/code", "SH0004")],
+        ),
+    ],
+)

@@ -238,6 +238,36 @@ build never reads it. A backend without a clock leaves the default,
 `None`, and nothing is measured. Never reset the device's timer in the
 loop: a record's times are differences of its reads.
 
+## The live link (optional)
+
+A backend may offer the live link
+([ADR-0047](adr/0047-the-live-link-json-lines-over-loopback-tcp-to-a-running-debug-build-read-only-but-a-players-input.md)),
+so `shuyi attach` reaches a debug build running on it. The wire and its
+server are `shuyi_platform::link` (the `link` feature); the backend
+carries the lines and takes the picture. `shuyi-app`'s listener
+(`crates/app/src/link.rs`, its own `link` feature) is the one to read.
+
+- **Only behind a cargo feature, and only with debug tools**
+  (`shuyi_ui::DEBUG_TOOLS`) and the variable `SHUYI_LINK` set; otherwise
+  log why and don't listen. Bind `127.0.0.1`, make a token (128 random
+  bits, or `SHUYI_LINK_TOKEN`), and log `shuyi link: listening on
+  <address>, token <token>`.
+- **One `link::Server` per connection**, one connection at a time; tell
+  a second one `Answer::Busy`, half-close it, and read it until it hangs
+  up.
+- **Before `App::frame`:** read what has come (non-blocking, never
+  waiting), hand each line to `Server::handle` and send what it answers
+  now, then put what `Server::input` gives in a list your `poll_input`
+  adds **after the devices' own events**, so it goes where a player's
+  input goes.
+- **After `App::frame`:** send what `Server::after_frame` gives. If
+  `Server::wants_screenshot`, read the frame just presented, before the
+  device shows the next, and send `Server::screenshot(png, width,
+  height)`: the window's pixels, upright, as a PNG.
+- On `Handled::Close`, send its line if it has one, then close and read
+  nothing more. Drop a client that leaves more than `link::MAX_UNSENT`
+  bytes unread, or sends a line longer than `link::MAX_LINE`.
+
 ## The headless backend, as a reference
 
 `shuyi_platform::headless::HeadlessPlatform` is the smallest complete

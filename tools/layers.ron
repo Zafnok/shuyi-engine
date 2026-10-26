@@ -93,7 +93,12 @@
         "shuyi-platform": (
             // `shuyi-core` is below it too (ADR-0032 amends ADR-0024 §1).
             engine: ["shuyi-core", "shuyi-assets", "shuyi-ui"],
-            outside: Only([]),
+            outside: Only([
+                // The live link's requests and answers, JSON lines (its
+                // optional `link` feature, ADR-0047).
+                "serde",
+                "serde_json",
+            ]),
             devices: false,
             floats: true,
         ),

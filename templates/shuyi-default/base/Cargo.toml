@@ -16,6 +16,9 @@ publish = false
 # a module's feature here.
 shuyi = "{{engine.shuyi}}"
 shuyi-cli = "{{engine.cli}}"
+# The macroquad backend, already under `shuyi`, named for its `link`
+# feature (the game crate's).
+shuyi-app = "{{engine.app}}"
 # The game's files, embedded.
 include_dir = "0.7"
 

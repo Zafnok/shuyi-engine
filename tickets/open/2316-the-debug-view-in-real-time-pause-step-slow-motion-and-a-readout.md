@@ -126,13 +126,14 @@ None.
   frames of 1/144 s with `BetweenSteps::Clock` give the same snapshot,
   and so do the frames between two slow-motion updates. If not, nothing
   to do (2361 tests it under this ticket's pause).
-- **Over the live link** (2521): a client pauses and steps a running
-  build by sending the game's actions for `DebugPause` and `DebugStep`
-  as `act` steps. No operation of its own is needed. **Either order
-  with 2521:** if 2521 is done, add a test that plays the toy grid game
-  over `shuyi_platform::link::Server`, pauses and steps it that way,
-  unpauses, and ends with the same screens and frame text as a run of
-  the same updates with no pause. If not, 2521 adds that test.
+- **Over the live link** (**from 2521 (done)**, ADR-0047): a client
+  pauses and steps a running build by sending the game's actions for
+  `DebugPause` and `DebugStep` as `act` steps. No operation of its own
+  is needed. Add a test that plays the toy grid game over
+  `shuyi_platform::link::Server` (as `crates/platform/src/link/tests.rs`
+  drives it: `Server::input`, `App::frame_after`, `Server::after_frame`),
+  pauses and steps it that way, unpauses, and ends with the same screens
+  and frame text as a run of the same updates with no pause.
 
 **Out (do not do):**
 - stepping backward or rewinding: 2357 goes back by replaying the
@@ -151,8 +152,8 @@ None.
 ## Implementation steps
 
 1. Read 2315's ADR and code, `game.rs`, the `input-actions` skill, and
-   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2361, 2367 and
-   2521 are done (the either-order clauses).
+   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2361 and 2367
+   are done (the either-order clauses).
 2. Add the two `UiAction`s, and map them in the sample keymap and the
    toy.
 3. Add pause, step and slow motion to `Game::frame`, with Harness tests:

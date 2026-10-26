@@ -32,6 +32,13 @@ dbg_macro = "warn"
 todo = "warn"
 print_stdout = "warn"
 
+[features]
+# `link`: the live link's listener (ADR-0047), so `shuyi attach` reaches the
+# running game: with debug tools compiled in and `SHUYI_LINK=<port>` set,
+# the game listens on 127.0.0.1. On the web it builds and does nothing
+# (ticket 2522). Off by default; `shuyi export` never turns it on.
+link = ["shuyi-platform/link", "dep:image", "dep:getrandom"]
+
 [dependencies]
 shuyi-assets = { path = "../assets" }
 shuyi-ui = { path = "../ui" }
@@ -49,13 +56,22 @@ quad-snd = "0.2.8"
 # Controllers on Windows, Linux and macOS (ticket 0219, game ADR-0034). The web
 # build reads the browser's Gamepad API through `crates/cli/web/gamepad.js` instead.
 gilrs = "0.11.2"
+# The link's picture of the window as a PNG: the version macroquad already
+# uses, PNG only (the `link` feature).
+image = { version = "0.24", default-features = false, features = ["png"], optional = true }
+# The link's token: 128 bits from the system (the `link` feature; on the
+# web it would need `wasm-bindgen`).
+getrandom = { version = "0.4", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 quad-storage = "0.1"
 
 [dev-dependencies]
-# Turns on `storage::conformance_suite` in tests.
-shuyi-ui = { path = "../ui", features = ["storage-conformance"] }
+# The link's listener, for clippy and the tests.
+shuyi-app = { path = ".", features = ["link"] }
+# Turns on `storage::conformance_suite` in tests, and the toy game the
+# link's tests attach to.
+shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
 # A voice variant for the voice player's tests.
 serde.workspace = true
 tempfile = "3"
