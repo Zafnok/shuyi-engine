@@ -742,12 +742,20 @@ and the check per target (2386) after 2385 and 2406; a listener per
 view (2387) after 2363 and 2386; then the example (2774), then the
 template part (2775).
 
+On 2026-10-26 Nick asked for an A/B against Bevy: the same agent making
+a maze chase in each engine, scored on one-shot passes, friction,
+deterministic checks and lines, with both games on Pages
+([`decisions.md`](decisions.md)). It runs in real time, so he parked
+it. The order, when unparked: the maze chase example and its eval task
+(2776) after 2739 and 2524, then the A/B (2562) after 2776 and 2525.
+
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle. Waits until Visions of Shuyi launches (2026-10-20) | the game's 0060 says the army walks around freely, or the game asks for a piece |
 | 1126–1128 | Isometric, side view (platformer), optional physics. Wait until Visions of Shuyi launches (2026-10-20) | — |
 | 2231, 2359–2363, 2122–2124, 2232, 2406, 2739 | Real time from the second comparison: clips for any game, animated tiles, the tile-layer painter, drawing between steps, camera feel, positional sound, curves, game speed and hit-stop, collision queries, map objects as the game's types, local multiplayer seats, and the arcade template with snake | the game asks for the piece (each ticket's Parked note says how) |
 | 2385–2387, 2774–2775 | Local split screen for two to four players: layouts side by side or stacked and the three- and four-player shapes with the player's pick, a view per seat with its camera, HUD rectangle and spare quarter, a check that views fit the target, a listener per view, an example and a template part | Nick asks (2026-10-24: "These will be parked since they're not needed for Visions of Shuyi") |
+| 2776, 2562 | An A/B against Bevy: a maze chase example on the tick path with its eval task, then the same agent making it in each engine, scored on one-shot passes, friction, deterministic checks and lines, both games on Pages | Nick asks (2026-10-26: "Ticket it, parked") |
 | 2364–2368, 2408, 2227, 2352, 2908 | Cinematic tracks, a beat clock, captions for sounds, overlay screens that let the screen below run, memory in the debug view, rumble, translator files, machine-translated engine screens, and research on right-to-left scripts | Nick asks |
 | 3047, 3054–3055, 2601, 2529 | Crash reports sent, leaderboards, presence, HTTP requests, several peers in one headless run | Nick asks; 2529 with networking |
 | 2407, 3051 | Phones' browsers as a way to play a web build; paid code signing | Nick decides (each ticket asks) |
