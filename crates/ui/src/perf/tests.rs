@@ -279,3 +279,27 @@ fn a_new_record_has_no_heap_counts_and_a_reading_holds_its_own() {
     assert_eq!((heap.live_bytes, heap.peak_bytes, heap.allocs), (1, 2, 3));
     assert_eq!(MemoryReading::new(heap).heap, heap);
 }
+
+#[test]
+fn a_tag_class_is_its_number_and_back() {
+    let classes = [
+        TagClass::Other,
+        TagClass::Phase,
+        TagClass::Span,
+        TagClass::Asset,
+    ];
+    for (n, class) in (0u8..).zip(classes) {
+        assert_eq!(class as u8, n);
+        assert_eq!(TagClass::from_u8(n), Some(class));
+    }
+    assert_eq!(TagClass::from_u8(4), None);
+    assert_eq!(TagClass::from_u8(u8::MAX), None);
+}
+
+#[test]
+fn a_tag_class_writes_as_a_word() {
+    let text = ron::to_string(&vec![TagClass::Phase, TagClass::Asset]).expect("classes write");
+    assert_eq!(text, "[phase,asset]");
+    let back: Vec<TagClass> = ron::from_str(&text).expect("and read back");
+    assert_eq!(back, [TagClass::Phase, TagClass::Asset]);
+}

@@ -981,3 +981,66 @@ fn take_new_perf_gives_each_record_once_in_order() {
     let found = app.take_new_perf();
     assert!(found.is_empty(), "{found:?}");
 }
+
+/// Fake memory tags that note the names entered, on this thread.
+#[cfg(feature = "std")]
+mod fake_tags;
+
+#[cfg(feature = "std")]
+#[test]
+fn the_load_is_tagged_and_the_tags_go_on_in_the_games_context() {
+    let (game, _) = steps_game();
+    let game = RefCell::new(Some(game));
+    let start = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        move |_| game.borrow_mut().take().ok_or_else(|| "twice".to_owned()),
+    );
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new().with_scopes(fake_tags::scopes());
+    let _ = fake_tags::take();
+    let _ = app.frame(&mut p, Millis(0));
+    // The card's frame: no record, though `perf` is entered to look.
+    assert_eq!(fake_tags::take(), (vec!["app", "perf"], true));
+    let _ = app.frame(&mut p, Millis(16));
+    assert_eq!(fake_tags::take(), (vec!["app", "load", "perf"], true));
+    assert!(running(&app).ctx().memory_scopes().is_some());
+    let _ = app.frame(&mut p, Millis(32));
+    let entered = vec!["app", "update", "draw", "paint", "perf"];
+    assert_eq!(fake_tags::take(), (entered, true));
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn a_platform_without_scopes_tags_nothing() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = clocked();
+    let _ = fake_tags::take();
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(fake_tags::take(), (vec![], true));
+    assert!(running(&app).ctx().memory_scopes().is_none());
+}
+
+/// Scopes that panic if used.
+#[cfg(feature = "std")]
+fn never_scopes() -> MemoryScopes {
+    MemoryScopes::new(
+        |_, _| panic!("the platform's tags were used"),
+        |_| panic!("the platform's tags were used"),
+        |_| panic!("the platform's tags were used"),
+    )
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn a_context_keeps_its_own_tags_over_the_platforms() {
+    let (mut game, _) = steps_game();
+    game.ctx_mut().set_memory_scopes(Some(fake_tags::scopes()));
+    let mut app = App::running(game);
+    let mut p = HeadlessPlatform::new().with_scopes(never_scopes());
+    let _ = fake_tags::take();
+    let _ = app.frame(&mut p, Millis(0));
+    let entered = vec!["app", "update", "draw", "paint", "perf"];
+    assert_eq!(fake_tags::take(), (entered, true));
+}

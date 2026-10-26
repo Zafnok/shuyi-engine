@@ -33,7 +33,7 @@ use crate::input::keymap::Keymap;
 use crate::input::state::Device;
 use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
-use crate::perf::{FrameRecord, PerfClock, PerfState};
+use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -669,13 +669,48 @@ impl<G: GameData> Ctx<G> {
     /// [`MAX_SPANS`](crate::perf::MAX_SPANS) in a frame it is only
     /// counted. With no clock, or outside a measured frame, it calls `f`
     /// and reads nothing. Nothing reads a span's time to decide anything.
+    ///
+    /// With memory scopes ([`set_memory_scopes`](Self::set_memory_scopes))
+    /// what `f` allocates counts under a tag named `name`
+    /// ([`TagClass::Span`]).
     pub fn span<R>(&mut self, name: &'static str, f: impl FnOnce(&mut Self) -> R) -> R {
-        let Some(open) = self.perf.open_span() else {
-            return f(self);
+        let tagged = self.enter_tag(TagClass::Span, name);
+        let result = match self.perf.open_span() {
+            Some(open) => {
+                let result = f(self);
+                self.perf.close_span(name, open);
+                result
+            }
+            None => f(self),
         };
-        let result = f(self);
-        self.perf.close_span(name, open);
+        crate::perf::leave_tag(tagged);
         result
+    }
+
+    /// Hands the context the backend's memory tags, or takes them away
+    /// (`None`): for the platform's `App`, which moves them here when the
+    /// game runs, and for tests. With them the frame's `update` and `draw`
+    /// and each span count what they allocate under a tag of their own
+    /// ([`crate::perf::MemoryScopes`]).
+    pub fn set_memory_scopes(&mut self, scopes: Option<MemoryScopes>) {
+        self.perf.scopes = scopes;
+    }
+
+    /// The memory tags, if the context has them.
+    pub fn memory_scopes(&self) -> Option<MemoryScopes> {
+        self.perf.scopes
+    }
+
+    /// Enters the tag of `class`'s `name`, with memory scopes: the tag
+    /// before and the scopes, for [`crate::perf::leave_tag`], which
+    /// leaves it even if the scopes were taken away since.
+    pub(crate) fn enter_tag(
+        &self,
+        class: TagClass,
+        name: &'static str,
+    ) -> Option<(MemoryScopes, u16)> {
+        let scopes = self.perf.scopes?;
+        Some((scopes, scopes.enter(class, name)))
     }
 
     /// Hands the context a clock to measure frames with, or takes it away

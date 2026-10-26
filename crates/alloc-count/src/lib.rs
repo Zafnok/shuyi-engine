@@ -30,18 +30,39 @@
 //!
 //! Without `std` the crate is `no_std`: a console's backend wraps the
 //! SDK's own allocator in a [`CountingAlloc`].
+//!
+//! **Memory tags** (ADR-0046 §6) say what the bytes are for. A
+//! [`CountingAlloc::with_tags`] also counts each block under the tag
+//! current on its thread when it was allocated: the frame's phase
+//! (`update`, `draw`, …), the game's span, or the asset kind being
+//! decoded, the innermost one entered winning ([`tags`]). Its
+//! [`rows`](CountingAlloc::rows) give each tag's live bytes and blocks,
+//! the bytes ever allocated under it and its peak ([`TagCounts`]). Tags
+//! come from a process-wide table of 256: tag 0 is `other`, what is
+//! allocated outside any tag, and tag 255 `overflow`, which every name
+//! past the 254th shares ([`tags::overflowed`] counts them). A `realloc`
+//! moves its block to the current tag, so a list that grows in `update`
+//! counts in `update`.
+//!
+//! **The cost:** each block carries its tag in a header in front of it,
+//! of its alignment or 8 bytes if that is more ([`Tagged`]), and each call
+//! counts twice. The `global` counter has tags, in debug builds only; a
+//! [`CountingAlloc::new`] has none, and no header.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 // Counts are whole bytes (ADR-0032).
 #![deny(clippy::float_arithmetic)]
 
-// The `GlobalAlloc` impl and the counts' cells: this crate's only `unsafe`.
+extern crate alloc;
+
+// The `GlobalAlloc` impls, the tags' table and the counts' cells: this
+// crate's only `unsafe`.
 #[allow(unsafe_code)]
 mod counter;
 #[cfg(feature = "global")]
 pub mod global;
 
-pub use counter::CountingAlloc;
+pub use counter::{CountingAlloc, Tagged, Untagged, tags};
 
 /// What a [`CountingAlloc`] counted, read at once
 /// ([`CountingAlloc::counts`]). Build it with [`Counts::new`] (ADR-0039).
@@ -65,6 +86,45 @@ impl Counts {
             live_bytes,
             peak_bytes,
             allocs,
+        }
+    }
+}
+
+/// One memory tag's counts in a [`CountingAlloc::with_tags`]
+/// ([`CountingAlloc::rows`]), in bytes asked for. Build it with
+/// [`TagCounts::new`] (ADR-0039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct TagCounts {
+    /// The tag ([`tags::tag`]).
+    pub tag: u16,
+    /// Its name's class, as [`tags::tag`] was given it;
+    /// [`tags::OTHER_CLASS`] for `other` and `overflow`.
+    pub class: u8,
+    /// Its name: `other` for tag 0, `overflow` for tag 255.
+    pub name: &'static str,
+    /// The bytes live under it.
+    pub live_bytes: u64,
+    /// The blocks live under it.
+    pub live_blocks: u32,
+    /// The bytes ever allocated under it: a `realloc` adds its new size
+    /// (a machine word: on a 32-bit target it wraps past 4 GiB).
+    pub allocated_bytes: u64,
+    /// The most bytes live under it at once.
+    pub peak_bytes: u64,
+}
+
+impl TagCounts {
+    /// Tag `tag`, named `name` of `class`, with nothing counted.
+    pub const fn new(tag: u16, class: u8, name: &'static str) -> Self {
+        Self {
+            tag,
+            class,
+            name,
+            live_bytes: 0,
+            live_blocks: 0,
+            allocated_bytes: 0,
+            peak_bytes: 0,
         }
     }
 }

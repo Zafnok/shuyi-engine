@@ -1,9 +1,15 @@
-//! [`CountingAlloc`] and the words it counts in: this crate's only
-//! `unsafe` (ADR-0046 §9), each block with the reason it holds.
+//! [`CountingAlloc`], its memory tags and the words it counts in: this
+//! crate's only `unsafe` (ADR-0046 §9), each block with the reason it
+//! holds.
 
 use core::alloc::{GlobalAlloc, Layout};
 
 use crate::Counts;
+
+mod tagged;
+pub mod tags;
+
+pub use tagged::Tagged;
 
 /// A global allocator around `inner` that counts what is asked of it: the
 /// bytes live, their peak, and the calls to `alloc`, `alloc_zeroed` and
@@ -24,28 +30,43 @@ use crate::Counts;
 /// assert_eq!(HEAP.live_bytes(), 0);
 /// ```
 ///
+/// [`CountingAlloc::new`] counts the whole; [`CountingAlloc::with_tags`]
+/// also counts by memory tag ([`tags`]), with a header in front of each
+/// block ([`Tagged`]).
+///
 /// On a target with atomics each count is one atomic read-modify-write, so
 /// any thread may allocate; on one without (an old ARM console) the
 /// counts are plain cells, and the target has one thread.
 #[derive(Debug)]
-pub struct CountingAlloc<A> {
+pub struct CountingAlloc<A, T = Untagged> {
     inner: A,
     live: Word,
     peak: Word,
     allocs: Word,
+    tags: T,
 }
 
+/// What a [`CountingAlloc::new`] counts by tag: nothing, and no header in
+/// front of a block.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Untagged;
+
 impl<A> CountingAlloc<A> {
-    /// A counter around `inner`, nothing counted yet.
+    /// A counter around `inner`, nothing counted yet. It counts the whole,
+    /// with no header in front of a block: for a bench, and a console that
+    /// counts its heap without tags.
     pub const fn new(inner: A) -> Self {
         Self {
             inner,
             live: Word::new(),
             peak: Word::new(),
             allocs: Word::new(),
+            tags: Untagged,
         }
     }
+}
 
+impl<A, T> CountingAlloc<A, T> {
     /// The bytes allocated and not yet freed.
     pub fn live_bytes(&self) -> usize {
         self.live.get()
@@ -57,7 +78,8 @@ impl<A> CountingAlloc<A> {
         self.peak.get()
     }
 
-    /// Starts the peak again from the bytes live now.
+    /// Starts the peak again from the bytes live now. A tag's peak
+    /// ([`TagCounts::peak_bytes`](crate::TagCounts::peak_bytes)) stays.
     pub fn reset_peak(&self) {
         self.peak.set(self.live.get());
     }
@@ -93,6 +115,16 @@ impl<A> CountingAlloc<A> {
         let live = self.live.add(size);
         self.peak.max(live);
     }
+
+    /// A block of `old` bytes now `new` bytes: the live bytes moved by the
+    /// difference.
+    fn resized(&self, old: usize, new: usize) {
+        if new >= old {
+            self.grew(new - old);
+        } else {
+            self.live.sub(old - new);
+        }
+    }
 }
 
 // SAFETY: every method hands its call to `inner` unchanged, under the
@@ -127,12 +159,7 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for CountingAlloc<A> {
         let moved = unsafe { self.inner.realloc(ptr, layout, new_size) };
         self.allocs.add(1);
         if !moved.is_null() {
-            let old = layout.size();
-            if new_size >= old {
-                self.grew(new_size - old);
-            } else {
-                self.live.sub(old - new_size);
-            }
+            self.resized(layout.size(), new_size);
         }
         moved
     }

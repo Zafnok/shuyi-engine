@@ -171,19 +171,15 @@ None.
     of `image` (3 loads, 0 failed, 49,152 bytes) and `palette` (2 loads,
     1 failed, 2,048 bytes).
 - **Loads by kind, through the registry:**
-  - **Either order with 3065:** if 3065 is done, hang the tally on its
-    `watch_decodes`' `after`, whose `Decoded` has the kind, the path,
-    the bytes and the result: the one watcher `shuyi-app` sets does both
-    3065's tags and the tally. If not, write `watch_decodes` here, and
-    3065 adds a `before` and its token (its own clause says so):
-    `shuyi_assets::format::watch_decodes(watcher: DecodeWatcher) ->
-    Result<(), DecodeWatcher>`, set once, in a `OnceBox` like
-    `bundle::watch`; `DecodeWatcher = fn(&Decoded<'_>)`, with
-    `Decoded<'a> { kind: &'static str, path: &'a str, bytes: usize, ok:
-    bool }`, where `kind` is `K::NAME` and `path` is `file.path()`;
-    `Formats::decode` calls it once per call, after it decides, when one
-    is set. Nothing else in `shuyi-assets` changes, and `Formats` stays
-    `Send + Sync`;
+  - **From 3065 (done):** hang the tally on `watch_decodes`' `after`
+    (`shuyi_assets::format::{watch_decodes, DecodeWatch, Decoded}`),
+    whose `Decoded` has the kind, the path, the bytes and the result. The
+    watch is set once a process, and `shuyi-app` sets it when it starts,
+    in a build that counts the heap (`tag_decodes` in
+    `crates/app/src/backend.rs`): add the tally to that watch's
+    `decode_after`, so the one watch does both 3065's tags and the
+    tally, and set it in every debug build. Nothing in `shuyi-assets`
+    changes;
   - `shuyi-app` sets the watcher when it starts (before the game's
     load), in debug builds: it adds each decode to a `static`
     `std::sync::Mutex<LoadTally>` and marks it changed, and
@@ -268,7 +264,7 @@ None.
    `examples/hello-grid/src/tools.rs`.
 2. Add `shuyi_ui::debug::memory`: the budget, the tally, the reading's
    two fields, and the ring, with unit tests.
-3. Add or extend `watch_decodes` (the clause with 3065), and the tally's
+3. Hang the tally on `watch_decodes` (the clause from 3065), and the tally's
    watcher in `shuyi-app`.
 4. Add `Game::set_memory`, `Game::set_perf` if 2325 hasn't, and the
    fake's budget and tally.

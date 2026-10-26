@@ -2,8 +2,8 @@
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
 //! controllers, the window's own shortcut and close button, the OS's data
 //! folder or the browser's `localStorage`, the sound player, and the
-//! clock frames are measured with and the heap counter they read in debug
-//! builds.
+//! clock frames are measured with, and the heap counter they read and its
+//! memory tags, in debug builds.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
 //! which loads in a frame of [`App`](shuyi_platform::App)'s: the renderer
@@ -11,13 +11,15 @@
 //! the pads once the game has loaded ([`Macroquad::start`]).
 
 use macroquad::prelude::*;
+use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
+use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
 use shuyi_platform::{
     AudioFrame, DisplayInfo, Frame, Look, Millis, Platform, Show, Storage, SystemEvent, TextInput,
 };
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::{HeapCounts, MemoryReading, PerfClock};
+use shuyi_ui::perf::{HeapCounts, MemoryReading, MemoryScopes, PerfClock, TagClass};
 use shuyi_ui::{Game, GameData, RawInputEvent};
 
 use crate::audio::{self, Audio, device};
@@ -319,10 +321,40 @@ impl Platform for Macroquad {
     /// `None` in a release build, or one built with `--cfg
     /// shuyi_no_heap_count`.
     fn memory(&mut self) -> Option<MemoryReading> {
-        let counts = shuyi_alloc_count::global::reading()?;
+        let counts = global::reading()?;
         let heap = HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs);
         Some(MemoryReading::new(heap))
     }
+
+    /// The global heap counter's tags, in a build that counts the heap.
+    fn memory_scopes(&self) -> Option<MemoryScopes> {
+        memory_scopes()
+    }
+}
+
+/// The global heap counter's memory tags (`shuyi_alloc_count::tags`), in
+/// a build that counts the heap (ADR-0046 §6).
+pub(crate) fn memory_scopes() -> Option<MemoryScopes> {
+    global::COUNTING.then(|| MemoryScopes::new(tags::tag, tags::enter, tags::leave))
+}
+
+/// In a build that counts the heap, tags what each asset decode allocates
+/// with its kind ([`TagClass::Asset`]): called when the backend starts,
+/// before the game's load. Another watch set first stays.
+pub(crate) fn tag_decodes() {
+    if global::COUNTING {
+        let _ = watch_decodes(DecodeWatch::new(decode_before, decode_after));
+    }
+}
+
+/// Enters the tag of the asset kind `kind`: the token is the tag before.
+fn decode_before(kind: &'static str) -> u32 {
+    u32::from(tags::enter(tags::tag(TagClass::Asset as u8, kind)))
+}
+
+/// Leaves the tag [`decode_before`] entered.
+fn decode_after(token: u32, _: &Decoded<'_>) {
+    tags::leave(u16::try_from(token).unwrap_or(tags::OTHER));
 }
 
 /// Microseconds since the start, from macroquad's clock (seconds as an
@@ -331,4 +363,48 @@ impl Platform for Macroquad {
 fn now_us() -> u64 {
     let since = core::time::Duration::try_from_secs_f64(get_time());
     since.map_or(0, |d| u64::try_from(d.as_micros()).unwrap_or(u64::MAX))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_build_that_counts_the_heap_has_memory_tags() {
+        assert_eq!(memory_scopes().is_some(), global::COUNTING);
+    }
+
+    /// What a decode allocates counts under its kind's tag, in a build
+    /// that counts: a kind of this test's own, so no other thread adds to
+    /// it.
+    #[test]
+    fn a_decode_counts_under_its_kind() {
+        let Some(_) = memory_scopes() else {
+            return;
+        };
+        let start = tags::current();
+        let token = decode_before("backend-test kind");
+        let block = vec![1u8; 4096];
+        decode_after(token, &Decoded::new("backend-test kind", "a.png", 9, true));
+        assert_eq!(tags::current(), start);
+        let rows = global::rows().unwrap_or_default();
+        let row = rows.iter().find(|r| r.name == "backend-test kind").unwrap();
+        assert_eq!(row.class, TagClass::Asset as u8);
+        assert_eq!(row.live_bytes, 4096);
+        drop(block);
+    }
+
+    #[test]
+    fn the_decode_watch_is_set_once_where_the_heap_is_counted() {
+        tag_decodes();
+        tag_decodes();
+        let other = DecodeWatch::new(|_| 0, |_, _| {});
+        assert_eq!(watch_decodes(other).is_err(), global::COUNTING);
+    }
+
+    #[test]
+    fn other_is_the_counters_class_for_other_and_overflow() {
+        assert_eq!(TagClass::Other as u8, tags::OTHER_CLASS);
+        assert_eq!(TagClass::from_u8(tags::OTHER_CLASS), Some(TagClass::Other));
+    }
 }

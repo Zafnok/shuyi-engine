@@ -30,6 +30,12 @@
 //! [`MemoryReading`] gave them at the frame's end. The counter counts the
 //! whole process, every thread's allocations.
 //!
+//! Where the backend's counter has memory tags ([`MemoryScopes`]), it
+//! also counts what each part of a frame allocates under a tag of its own
+//! ([`TagClass`]): the frame's phases, each span a game marks, and each
+//! asset kind the backend sees decoded. Entering a tag changes nothing a
+//! game reads.
+//!
 //! [`Ctx::debug_tools`]: crate::Ctx::debug_tools
 //! [`Ctx::span`]: crate::Ctx::span
 
@@ -220,6 +226,97 @@ impl MemoryReading {
     }
 }
 
+/// What a memory tag names (ADR-0046 §6): the heap counter counts each
+/// block under the innermost tag entered when it was allocated. Its number
+/// is the class a backend's counter keeps with each name
+/// ([`MemoryScopes::tag`]); `Other` is 0, the class of the counter's own
+/// `other` and `overflow`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(rename_all = "kebab-case")]
+#[repr(u8)]
+#[non_exhaustive]
+pub enum TagClass {
+    /// A phase of the frame: `load`, `update`, `draw`, `paint`, `perf`,
+    /// and `app` for the rest of `App`'s frame.
+    Phase = 1,
+    /// A span the game marked ([`Ctx::span`](crate::Ctx::span)).
+    Span = 2,
+    /// An asset kind being decoded: `image`, `palette`, …
+    Asset = 3,
+    /// None of those: `other`, what is allocated outside any tag, and
+    /// `overflow`, the names past the counter's table.
+    Other = 0,
+}
+
+impl TagClass {
+    /// The class numbered `n`, if there is one.
+    pub const fn from_u8(n: u8) -> Option<Self> {
+        match n {
+            0 => Some(Self::Other),
+            1 => Some(Self::Phase),
+            2 => Some(Self::Span),
+            3 => Some(Self::Asset),
+            _ => None,
+        }
+    }
+}
+
+/// How a backend lets the engine tag what it allocates (ADR-0046 §6):
+/// three plain functions over its heap counter's tags
+/// (`shuyi_platform::Platform::memory_scopes`), so neither this crate nor
+/// the platform depends on the counter. Build it with
+/// [`MemoryScopes::new`] (ADR-0039).
+///
+/// With scopes in its context ([`Ctx::set_memory_scopes`]), the game's
+/// frame enters `update` and `draw`, each [`Ctx::span`] its own name, and
+/// the platform's `App` its own phases. Entering a tag changes nothing a
+/// game reads.
+///
+/// [`Ctx::set_memory_scopes`]: crate::Ctx::set_memory_scopes
+/// [`Ctx::span`]: crate::Ctx::span
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct MemoryScopes {
+    /// The tag of a name of a class ([`TagClass`] as a number), the same
+    /// each time it is asked for.
+    pub tag: fn(u8, &'static str) -> u16,
+    /// Makes a tag the current one, and gives back the one before.
+    pub enter: fn(u16) -> u16,
+    /// Puts back the tag `enter` gave.
+    pub leave: fn(u16),
+}
+
+impl MemoryScopes {
+    /// Scopes that find a tag with `tag`, and `enter` and `leave` it.
+    pub const fn new(
+        tag: fn(u8, &'static str) -> u16,
+        enter: fn(u16) -> u16,
+        leave: fn(u16),
+    ) -> Self {
+        Self { tag, enter, leave }
+    }
+
+    /// Enters the tag of `class`'s `name`, and gives back the tag before,
+    /// for [`leave`](Self::leave).
+    pub fn enter(&self, class: TagClass, name: &'static str) -> u16 {
+        (self.enter)((self.tag)(class as u8, name))
+    }
+
+    /// Puts back `before`, the tag [`enter`](Self::enter) gave.
+    pub fn leave(&self, before: u16) {
+        (self.leave)(before);
+    }
+}
+
+/// Leaves a tag [`Ctx`](crate::Ctx) entered: the tag before it, with the
+/// scopes that entered it.
+pub(crate) fn leave_tag(entered: Option<(MemoryScopes, u16)>) {
+    if let Some((scopes, before)) = entered {
+        scopes.leave(before);
+    }
+}
+
 /// `bytes` for people: under 1,024 as `1023 B`, then in `KB`, `MB` and
 /// `GB` with one decimal, rounded down (`1.0 KB` is 1,024 bytes, `1.0 MB`
 /// 1,048,576), in integers.
@@ -390,6 +487,8 @@ pub(crate) fn micros(from: u64, to: u64) -> u32 {
 #[derive(Debug, Default)]
 pub(crate) struct PerfState {
     clock: Option<PerfClock>,
+    /// The backend's memory tags, if it gave them.
+    pub(crate) scopes: Option<MemoryScopes>,
     /// The frame's start, while one is measured.
     start: Option<u64>,
     /// How many spans are open.

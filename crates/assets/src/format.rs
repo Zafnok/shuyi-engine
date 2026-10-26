@@ -26,11 +26,19 @@
 //!   through [`DecodeCx`]. A check against another kind of asset (a scene
 //!   against the game's characters, a cinematic against its music) runs
 //!   after, on the assets loaded.
+//!
+//! A front end may watch every decode the registry makes
+//! ([`watch_decodes`]): its kind, its file, its size and whether it read,
+//! told before and after each, on the thread that decodes. A debug build
+//! tags what each decode allocates with its kind this way, so the heap
+//! counter says what the game holds of each kind of asset.
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
 use core::any::Any;
 use core::fmt;
+
+use once_cell::race::OnceBox;
 
 use crate::bundle::Bundle;
 use crate::error::{ContentError, codes};
@@ -322,6 +330,71 @@ pub fn decode_with<F: Format + ?Sized>(
     format.decode(file, bytes, cx)
 }
 
+/// One decode the registry made ([`Formats::decode`]), as a
+/// [`DecodeWatch`] is told it. Build it with [`Decoded::new`] (ADR-0039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Decoded<'a> {
+    /// The kind decoded: its [`AssetKind::NAME`], `"image"`, `"palette"`.
+    pub kind: &'static str,
+    /// The file's path in its bundle ([`AssetPath::path`]).
+    pub path: &'a str,
+    /// The file's size, in bytes.
+    pub bytes: usize,
+    /// Whether a format read it.
+    pub ok: bool,
+}
+
+impl<'a> Decoded<'a> {
+    /// A decode of `kind` from `path`, `bytes` long, that read (`ok`) or
+    /// didn't.
+    pub const fn new(kind: &'static str, path: &'a str, bytes: usize, ok: bool) -> Self {
+        Self {
+            kind,
+            path,
+            bytes,
+            ok,
+        }
+    }
+}
+
+/// What is told of every decode the registry makes, once set
+/// ([`watch_decodes`]): two plain functions, called on the thread that
+/// decodes. Build it with [`DecodeWatch::new`] (ADR-0039).
+#[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
+pub struct DecodeWatch {
+    /// Told the kind as a decode starts; what it gives back, a token, goes
+    /// to `after`.
+    pub before: fn(kind: &'static str) -> u32,
+    /// Told the decode once it is decided, with `before`'s token.
+    pub after: fn(token: u32, decoded: &Decoded<'_>),
+}
+
+impl DecodeWatch {
+    /// A watch that calls `before` as each decode starts and `after` once
+    /// it is decided.
+    pub const fn new(
+        before: fn(kind: &'static str) -> u32,
+        after: fn(token: u32, decoded: &Decoded<'_>),
+    ) -> Self {
+        Self { before, after }
+    }
+}
+
+/// The watch of every decode, once one is set.
+static DECODE_WATCH: OnceBox<DecodeWatch> = OnceBox::new();
+
+/// Tells `watch` of every decode any registry makes from now on
+/// ([`Formats::decode`], so [`Formats::load`] and the rest): `before` as
+/// it starts, with its kind, and `after` once it is decided, with
+/// `before`'s token, the file and whether it read. For a front end that
+/// tags, logs or tallies what it loads. Set once: a second call gives its
+/// watch back and changes nothing.
+pub fn watch_decodes(watch: DecodeWatch) -> Result<(), DecodeWatch> {
+    DECODE_WATCH.set(Box::new(watch)).map_err(|watch| *watch)
+}
+
 /// Why a format could not be registered.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RegisterError {
@@ -600,8 +673,26 @@ impl Formats {
     /// The asset of kind `K` in `bytes`, the contents of `file`, by the
     /// lookup rule: the formats that sniff `bytes` in order, then the one
     /// that claims `file`'s extension. The first that decodes it gives the
-    /// asset; when none does, the errors are the first one's.
+    /// asset; when none does, the errors are the first one's. A
+    /// [`watch_decodes`] watch is told before and after.
     pub fn decode<K: AssetKind>(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        cx: &DecodeCx<'_>,
+    ) -> Result<K, Vec<ContentError>> {
+        let Some(watch) = DECODE_WATCH.get() else {
+            return self.decode_unwatched(file, bytes, cx);
+        };
+        let token = (watch.before)(K::NAME);
+        let decoded = self.decode_unwatched(file, bytes, cx);
+        let told = Decoded::new(K::NAME, file.path(), bytes.len(), decoded.is_ok());
+        (watch.after)(token, &told);
+        decoded
+    }
+
+    /// [`decode`](Self::decode), with no watch told.
+    fn decode_unwatched<K: AssetKind>(
         &self,
         file: &AssetPath,
         bytes: &[u8],
