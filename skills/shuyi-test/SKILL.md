@@ -3,7 +3,7 @@ name: shuyi-test
 description: Test a Shuyi Engine game at every layer, with unit and property tests of its rules, its screens played through the engine's headless Harness, the tool contract in tests, text snapshots of a look, and pictures of frames to review. Use when adding or changing rules, a screen or a stage, when a change needs a test that proves it, or when you want to see a frame without a window. Not for running the checks before a commit (shuyi-gates), for a bug only a record reproduces (shuyi-debug-replay), or for measuring how hard a stage is (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Test a game
@@ -135,6 +135,13 @@ colours or the frame's text.
    reads on), and writes the window's picture to `shot.png`. Waits count
    the build's own frames. It changes nothing else in the build; start
    the build again after changing the code.
+
+   With MCP, attach the session instead and keep the link between calls:
+   `start` with `link` (`{ "address": "127.0.0.1:<port>", "token":
+   "<token>" }`), then `step`, `frame_png` (the window's picture) and
+   `scene` (the frame as text) as on a headless game. The link has no
+   scene, events or sounds, `reset` is refused, and `stop` leaves the
+   build running.
 
 9. **Run them:** `cargo test --workspace`, or one file with `cargo test
    -p <crate> --test <name>`. A game's CI runs every test on every pull

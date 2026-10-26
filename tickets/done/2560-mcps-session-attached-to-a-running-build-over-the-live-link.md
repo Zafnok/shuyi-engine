@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2521"]
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 2560 — MCP's session over the live link
@@ -112,16 +112,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `start` with `link` on a test host answers the build's game, and
+- [x] `start` with `link` on a test host answers the build's game, and
       `step` with keys moves its screens as `attach` does.
-- [ ] `frame_png` answers the host's picture; `scene` and `events` answer
+- [x] `frame_png` answers the host's picture; `scene` and `events` answer
       with their limits; `reset` is refused; `stop` leaves the host
       running and a second `start` with `link` attaches again.
-- [ ] A wrong token, no build and another link version answer `attach`'s
+- [x] A wrong token, no build and another link version answer `attach`'s
       codes.
-- [ ] 1133's scripted client test attaches to a test host, steps it and
+- [x] 1133's scripted client test attaches to a test host, steps it and
       reads its frame.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -131,4 +131,48 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Done.** `start` takes `link` (`StartLink`: `address`, `token`) and
+  attaches the session to a running build instead of building the game:
+  `crates/cli/src/mcp/attached.rs` holds the attached session beside the
+  hosted one in `mcp::server::Server` (its own field, `attached`). `start`
+  with `link` is answered by the server itself, never forwarded to a
+  project's own server: the link doesn't depend on a project. It says
+  hello as `attach` does and answers `StartOutput` with the build's
+  `game` (a new field; empty when headless), `project` empty and no
+  options. A game already running is stopped first, and a later `start`
+  of either kind leaves an attached build running and says so.
+- **The tools over the link**, as the scope says: `step` (the script and
+  idle frames played as `attach`'s steps, answered as `run` from
+  `Status`, `Frame` and `Log`, with `attach`'s limits plus "no scene over
+  the link" and "no events over the link"); `frame_png` (the window's
+  picture, `scale` refused); `scene` (the frame's text as a `Scene` of
+  kind `frame`); `events` (none, with the limit); `reset` (refused,
+  `SH0001`); `stop` (detaches, the build runs on). A lost link answers
+  `SH3006` and ends the session. `start` options with `link` are refused
+  (`SH0001`): the build runs with its own.
+- **Reuse:** `attach`'s `Connection`, `hello`, `status`, `played` (its
+  steps and reads, split out of its old `seen`), `picture` and
+  `limits_of` are `pub(crate)`; `attach` and the session speak the link
+  one way. `AttachStep::of` turns `run`'s script steps into the link's.
+- **The test host** moved from `attach/tests.rs` to
+  `shuyi_cli::toy::link` (`LinkHost`, `TOKEN`, `GAME`, `other_version`;
+  behind the `toy` feature), so `attach`'s tests, the session's
+  (`mcp/attached/tests.rs`) and 1133's scripted client
+  (`tests/it/mcp.rs`, which now attaches to it after its headless
+  session) share it.
+- **2514 and 2555** were both open: 2514 refuses `every` and `count`
+  over a link, and 2555 adds `perf` to the attached session; their
+  clauses now say where (`mcp/attached.rs`).
+- **Schemas:** `session.start.input.json`, `session.start.output.json`
+  and `session.reset.output.json` regenerated; the contract's version is
+  21. **Docs:** `docs/contract.md` (*The MCP server*'s table over the
+  link, *Attaching to a running build*'s pointer), the `shuyi-test`
+  skill's running-build step (version 1.2), the server's instructions
+  and the `start` tool's description, and the pages of `SH0004`,
+  `SH1005`, `SH1006` and `SH3006`.
+- The MCP session tools were checked against the toy behind the test
+  host (unit and scripted-client tests), not against a windowed build:
+  `shuyi-app`'s listener is 2521's and unchanged.
+
+Breaking: shuyi-cli: mcp::StartInput: `#[non_exhaustive]` with a new field `link`, and the contract's version is 21: build it with `StartInput::default()` and assign its fields. The game builds none.
+Breaking: shuyi-cli: mcp::StartOutput: `#[non_exhaustive]` with a new field `game`: read it field by field. The game builds none.

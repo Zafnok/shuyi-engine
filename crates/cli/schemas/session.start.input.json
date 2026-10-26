@@ -4,8 +4,20 @@
   "description": "What `start` starts.",
   "type": "object",
   "properties": {
+    "link": {
+      "description": "A debug build already running in its window, to attach the session\nto over the live link instead of starting the game headless.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/StartLink"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "project": {
-      "description": "The game's folder (the one holding its `shuyi.ron`, or one below\nit), from the session's folder; the session folder's own project\nif none.",
+      "description": "The game's folder (the one holding its `shuyi.ron`, or one below\nit), from the session's folder; the session folder's own project\nif none. Not needed with `link`.",
       "type": [
         "string",
         "null"
@@ -13,7 +25,7 @@
       "default": null
     },
     "start": {
-      "description": "The game's own start options (`start`'s answer lists them), in the\norder given.",
+      "description": "The game's own start options (`start`'s answer lists them), in the\norder given. None with `link`: the build runs with its own.",
       "type": "array",
       "default": [],
       "items": {
@@ -44,6 +56,23 @@
       "required": [
         "flag"
       ]
+    },
+    "StartLink": {
+      "description": "The running build `start` attaches to: its log line `shuyi link:\nlistening on <address>, token <token>` gives both.",
+      "type": "object",
+      "properties": {
+        "address": {
+          "description": "The build's address, `host:port` (`127.0.0.1:7357`).",
+          "type": "string",
+          "default": ""
+        },
+        "token": {
+          "description": "The token the build logged when it started listening.",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

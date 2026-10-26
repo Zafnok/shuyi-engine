@@ -19,6 +19,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
 
+use super::attached::Attached;
 use super::forward::{Forward, Forwarding, path_of_uri};
 use super::host::{Reply, Request, failed, no_session, one_off};
 use super::{StartInput, takes_project, tool, tools};
@@ -34,7 +35,8 @@ pub const PROTOCOL_VERSIONS: [&str; 4] = ["2025-06-18", "2025-11-25", "2025-03-2
 const INSTRUCTIONS: &str = "Shuyi Engine's tool contract on a game. Each operation is a tool; \
     the tools that run the game take `project`, the game's folder. To play a game and look at \
     it: `start` (with `project`), then `step`, `scene`, `frame_png` and `events`, `reset` to \
-    start over, `stop` at the end; call `start` again after changing the game's code. A failed \
+    start over, `stop` at the end; call `start` again after changing the game's code. `start` \
+    with `link` attaches the session to a debug build running in its window instead. A failed \
     answer is an error result with a `code` (`SH0001`): branch on it, and `explain` says what \
     it means.";
 
@@ -61,6 +63,9 @@ pub struct Server<'a> {
     launch: Box<dyn Launch<'a> + 'a>,
     /// The session's game: the host it runs in.
     game: Option<Box<dyn Link + 'a>>,
+    /// The session's build, when it is attached to one over the live link
+    /// instead.
+    attached: Option<Attached>,
     /// The session's project's `command`, for what its answers say to
     /// run.
     command: String,
@@ -138,6 +143,7 @@ impl<'a> Server<'a> {
             cwd,
             launch,
             game: None,
+            attached: None,
             command: "shuyi".to_owned(),
             forwarding: None,
             roots: false,
@@ -162,7 +168,7 @@ impl<'a> Server<'a> {
 
     /// Whether a game is running in the session.
     pub fn has_game(&self) -> bool {
-        self.game.is_some() || self.session_at.is_some()
+        self.game.is_some() || self.attached.is_some() || self.session_at.is_some()
     }
 
     /// The session's folder: the client's first root, or the working
@@ -359,6 +365,13 @@ impl<'a> Server<'a> {
             let (answer, png) = self.call(op, session, arguments);
             return response(id, &tool_result(&answer, png));
         }
+        if op == Op::Start && !arguments["link"].is_null() {
+            // Attached here, whatever the folder's workspace: the link is
+            // the same wire in every engine of its version.
+            self.end_session_elsewhere(None);
+            let (answer, png) = self.call(op, session, arguments);
+            return response(id, &tool_result(&answer, png));
+        }
         let (arguments, root) = self.absolute(op, session, arguments);
         if let Some(workspace) = self.forward_to(&root) {
             return self.forwarded_tool(&workspace, id, op, &arguments);
@@ -443,6 +456,9 @@ impl<'a> Server<'a> {
             && let Some(server) = self.forwarded.get_mut(&workspace)
         {
             let _ = server.request("tools/call", &json!({ "name": "stop", "arguments": {} }));
+        }
+        if at.is_some() {
+            self.attached = None;
         }
         if at.is_some()
             && let Some(mut game) = self.game.take()
@@ -575,6 +591,21 @@ impl<'a> Server<'a> {
                 None => "the game that was running was stopped".to_owned(),
             });
         }
+        if self.attached.take().is_some() {
+            limits.push("the build that was attached was left running".to_owned());
+        }
+        if let Some(to) = &input.link {
+            if !input.start.is_empty() {
+                let error = "start: a build attached over the link runs with its own options";
+                return failed(op, codes::WRONG_ARGUMENTS, error);
+            }
+            let (attached, mut answer) = Attached::start(to);
+            self.attached = attached;
+            if let Some(list) = answer["limits"].as_array_mut() {
+                list.extend(limits.into_iter().map(Value::String));
+            }
+            return answer;
+        }
         let project = match self.project(input.project.as_deref()) {
             Ok(project) => project,
             Err((code, e)) => return failed(op, code, e),
@@ -610,6 +641,13 @@ impl<'a> Server<'a> {
 
     /// Session tool `op` with `arguments`, on the session's game.
     fn in_session(&mut self, op: Op, arguments: Value) -> (Value, Option<String>) {
+        if let Some(attached) = self.attached.as_mut() {
+            let answered = attached.call(op, arguments);
+            if attached.ended() {
+                self.attached = None;
+            }
+            return answered;
+        }
         let Some(game) = self.game.as_mut() else {
             return (no_session(op), None);
         };

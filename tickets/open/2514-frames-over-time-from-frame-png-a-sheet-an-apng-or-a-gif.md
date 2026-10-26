@@ -180,10 +180,10 @@ None.
   `crates/cli/schemas/versions.json`, and update the `frame_png` row of
   `docs/contract.md`'s session table. The new fields are an API
   change: say so in the PR.
-  **Either order with 2560** (MCP's session over the live link): if
-  2560 is done, a session attached over a link refuses `every` and
-  `count` ("one picture at a time over the link"), with a test. If not,
-  2560 refuses them (its own clause says so).
+  **From 2560 (done):** MCP's session over the live link answers
+  `frame_png` in `crates/cli/src/mcp/attached.rs`; a session attached
+  over a link refuses `every` and `count` there ("one picture at a time
+  over the link"), with a test in `mcp/attached/tests.rs`.
 - **The order of the work:** the flags and `frames`, the sheet, the
   APNG, the MCP tool, then the GIF. If the PR would pass about 600
   changed lines (not counting snapshots), leave the GIF out: `--gif` is

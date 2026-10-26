@@ -187,6 +187,15 @@ impl AttachInput {
 }
 
 impl AttachStep {
+    /// `run`'s script step `step`, played over the link.
+    pub(crate) fn of(step: &Step) -> Self {
+        match step {
+            Step::Keys(script) => AttachStep::Keys(script.clone()),
+            Step::Pad(script) => AttachStep::Pad(script.clone()),
+            Step::Wait(seconds) => AttachStep::Wait(*seconds),
+        }
+    }
+
     /// The step as the link plays it: a wait in the build's frames.
     fn to_link(&self) -> link::Step {
         match self {
@@ -297,18 +306,15 @@ fn parse_step(
         Err(e) => return Some(Err(e)),
     };
     let step = Script::parse_step(flag, &text)?;
-    Some(step.map(|step| match step {
-        Step::Keys(script) => AttachStep::Keys(script),
-        Step::Pad(script) => AttachStep::Pad(script),
-        Step::Wait(seconds) => AttachStep::Wait(seconds),
-    }))
+    Some(step.map(|step| AttachStep::of(&step)))
 }
 
 /// Why `attach` stopped: its code and what to say.
-type Failed = (Code, String);
+pub(crate) type Failed = (Code, String);
 
-/// The link to a build: its lines both ways.
-struct Connection {
+/// The link to a build: its lines both ways. `attach` and MCP's session
+/// (`crate::mcp::attached`) speak the link through it.
+pub(crate) struct Connection {
     reader: BufReader<TcpStream>,
     writer: TcpStream,
     address: String,
@@ -316,7 +322,7 @@ struct Connection {
 
 impl Connection {
     /// Connects to the build at `address`.
-    fn open(address: &str) -> Result<Self, Failed> {
+    pub(crate) fn open(address: &str) -> Result<Self, Failed> {
         let no_build = |why: String| {
             let error = format!("no build is listening at {address}: {why}");
             (codes::NO_BUILD, error)
@@ -378,7 +384,7 @@ impl Connection {
     }
 
     /// [`ask`](Self::ask), the build closing the link being an error.
-    fn answer(&mut self, request: &Request, wait: Duration) -> Result<Line, Failed> {
+    pub(crate) fn answer(&mut self, request: &Request, wait: Duration) -> Result<Line, Failed> {
         self.ask(request, wait)?.ok_or_else(|| {
             let error = format!("the build at {} closed the link", self.address);
             (codes::LINK_LOST, error)
@@ -413,13 +419,17 @@ fn unexpected(asked: &str, line: &Line) -> Failed {
 }
 
 /// What `attach` read, before it is an output.
-struct Seen {
-    game: String,
-    played: Option<Played>,
-    status: Status,
-    frame: String,
-    log: LogAnswer,
-    screenshot: Option<(AttachScreenshot, Option<String>)>,
+pub(crate) struct Seen {
+    /// The play's answer, if steps were played.
+    pub(crate) played: Option<Played>,
+    /// Where the build is, after them.
+    pub(crate) status: Status,
+    /// Its frame as text.
+    pub(crate) frame: String,
+    /// Its log from the input's `log_since`.
+    pub(crate) log: LogAnswer,
+    /// The picture written, and what it doesn't show.
+    pub(crate) screenshot: Option<(AttachScreenshot, Option<String>)>,
 }
 
 /// `attach`: reaches the build `input` names, plays its steps and reads
@@ -428,26 +438,37 @@ pub fn attach(input: &AttachInput, cwd: &Path) -> Answer<AttachOutput> {
     if let Err(e) = input.check() {
         return Answer::failed(Op::Attach, codes::WRONG_ARGUMENTS, e);
     }
-    match seen(input, cwd) {
-        Ok(seen) => {
+    let seen = |link: &mut Connection| {
+        let game = hello(link, &input.token)?;
+        let mut seen = played(link, input)?;
+        if let Some(path) = &input.screenshot {
+            seen.screenshot = Some(screenshot(link, path, cwd)?);
+        }
+        Ok((game, seen))
+    };
+    match Connection::open(&input.address).and_then(|mut link| seen(&mut link)) {
+        Ok((game, seen)) => {
             let limits = limits_of(input, &seen);
-            Answer::new(Op::Attach, true, output(seen), limits)
+            Answer::new(Op::Attach, true, output(game, seen), limits)
         }
         Err((code, error)) => Answer::failed(Op::Attach, code, error),
     }
 }
 
-/// Talks to the build: the hello, the steps, then the reads.
-fn seen(input: &AttachInput, cwd: &Path) -> Result<Seen, Failed> {
-    let mut link = Connection::open(&input.address)?;
-    let game = hello(&mut link, &input.token)?;
-    let status = |link: &mut Connection| match link.answer(&Request::Status, ANSWER)? {
+/// The build's status over `link`.
+pub(crate) fn status(link: &mut Connection) -> Result<Status, Failed> {
+    match link.answer(&Request::Status, ANSWER)? {
         Line::Status(status) => Ok(status),
         other => Err(unexpected("its status", &other)),
-    };
+    }
+}
+
+/// Plays `input`'s steps over `link`, the hello said, then reads the
+/// build's status, frame and log; no picture.
+pub(crate) fn played(link: &mut Connection, input: &AttachInput) -> Result<Seen, Failed> {
     let steps = input.link_steps();
     let mut played = None;
-    if !steps.is_empty() && status(&mut link)?.phase != Phase::Failed {
+    if !steps.is_empty() && status(link)?.phase != Phase::Failed {
         let frames: u32 = steps
             .iter()
             .map(|s| match s {
@@ -462,7 +483,7 @@ fn seen(input: &AttachInput, cwd: &Path) -> Result<Seen, Failed> {
             other => return Err(unexpected("the steps", &other)),
         }
     }
-    let status = status(&mut link)?;
+    let status = status(link)?;
     let frame = match link.answer(&Request::Frame, ANSWER)? {
         Line::Frame { frame, .. } => frame,
         other => return Err(unexpected("its frame", &other)),
@@ -472,22 +493,17 @@ fn seen(input: &AttachInput, cwd: &Path) -> Result<Seen, Failed> {
         Line::Log(log) => log,
         other => return Err(unexpected("its log", &other)),
     };
-    let screenshot = match &input.screenshot {
-        Some(path) => Some(screenshot(&mut link, path, cwd)?),
-        None => None,
-    };
     Ok(Seen {
-        game,
         played,
         status,
         frame,
         log,
-        screenshot,
+        screenshot: None,
     })
 }
 
 /// Says hello with `token`: the build's game, or why it won't talk.
-fn hello(link: &mut Connection, token: &str) -> Result<String, Failed> {
+pub(crate) fn hello(link: &mut Connection, token: &str) -> Result<String, Failed> {
     let hello = Request::Hello {
         token: token.to_owned(),
         link: link::VERSION,
@@ -523,6 +539,14 @@ fn hello(link: &mut Connection, token: &str) -> Result<String, Failed> {
     }
 }
 
+/// The window's picture over `link`.
+pub(crate) fn picture(link: &mut Connection) -> Result<link::Screenshot, Failed> {
+    match link.answer(&Request::Screenshot, ANSWER)? {
+        Line::Screenshot(shot) => Ok(shot),
+        other => Err(unexpected("its picture", &other)),
+    }
+}
+
 /// Asks for the window's picture and writes it to `path` (from `cwd`):
 /// what was written, and what the picture doesn't show.
 fn screenshot(
@@ -530,10 +554,7 @@ fn screenshot(
     path: &str,
     cwd: &Path,
 ) -> Result<(AttachScreenshot, Option<String>), Failed> {
-    let shot = match link.answer(&Request::Screenshot, ANSWER)? {
-        Line::Screenshot(shot) => shot,
-        other => return Err(unexpected("its picture", &other)),
-    };
+    let shot = picture(link)?;
     let png = link::base64::decode(&shot.png).map_err(|e| (codes::LINK_LOST, e))?;
     fs::write(cwd.join(path), png)
         .map_err(|e| (codes::FILE, format!("--screenshot {path}: {e}")))?;
@@ -546,7 +567,7 @@ fn screenshot(
 }
 
 /// What `seen` couldn't show, `input` having asked for it.
-fn limits_of(input: &AttachInput, seen: &Seen) -> Vec<String> {
+pub(crate) fn limits_of(input: &AttachInput, seen: &Seen) -> Vec<String> {
     let mut limits = Vec::new();
     let mut add = |limit: String| {
         if !limits.contains(&limit) {
@@ -585,8 +606,8 @@ fn limits_of(input: &AttachInput, seen: &Seen) -> Vec<String> {
     limits
 }
 
-/// What `seen` shows, as `attach` answers it.
-fn output(seen: Seen) -> AttachOutput {
+/// What `seen` shows of the build of `game`, as `attach` answers it.
+fn output(game: String, seen: Seen) -> AttachOutput {
     let status = seen.status;
     let phase = match status.phase {
         Phase::Loading => "loading",
@@ -595,7 +616,7 @@ fn output(seen: Seen) -> AttachOutput {
     };
     AttachOutput {
         link: link::VERSION,
-        game: seen.game,
+        game,
         frames: status.frames,
         phase: phase.to_owned(),
         top_screen: status.top_screen,
