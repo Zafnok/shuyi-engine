@@ -48,6 +48,10 @@ impl Host {
         if self.listener.wants_screenshot() {
             self.listener.screenshot(b"png", 2, 1);
         }
+        if self.listener.wants_snapshot() {
+            let snapshot = self.app.heap_snapshot(&mut self.platform);
+            self.listener.snapshot(&self.app, snapshot);
+        }
     }
 
     /// Runs frames until `client` has finished (at most ten seconds), and
@@ -118,7 +122,13 @@ fn a_client_says_hello_plays_and_reads_over_a_real_socket() {
         send(&mut stream, &Request::Frame);
         send(&mut stream, &Request::Screenshot);
         send(&mut stream, &Request::Log { since: 0 });
-        let answers: Vec<Answer> = (0..5).map(|_| answer(&mut reader)).collect();
+        let perf = Request::Perf {
+            since: 0,
+            max: 600,
+            snapshot: true,
+        };
+        send(&mut stream, &perf);
+        let answers: Vec<Answer> = (0..6).map(|_| answer(&mut reader)).collect();
         let _ = stream.shutdown(Shutdown::Both);
         (hello, answers)
     });
@@ -131,7 +141,7 @@ fn a_client_says_hello_plays_and_reads_over_a_real_socket() {
             game
         }
     );
-    let [played, status, frame, shot, log] = answers.as_slice() else {
+    let [played, status, frame, shot, log, perf] = answers.as_slice() else {
         panic!("{answers:?}");
     };
     assert!(
@@ -152,6 +162,11 @@ fn a_client_says_hello_plays_and_reads_over_a_real_socket() {
     );
     assert!(matches!(shot, Answer::Screenshot(s) if s.png == "cG5n" && s.width == 2));
     assert!(matches!(log, Answer::Log(_)), "{log:?}");
+    // The headless backend measures no frame and takes no snapshot.
+    assert!(
+        matches!(perf, Answer::Perf(p) if p.frames > 0 && !p.measured && p.snapshot.is_none()),
+        "{perf:?}"
+    );
     // The client hung up: the link is free for the next.
     let until = Instant::now() + Duration::from_secs(10);
     while host.listener.client.is_some() {

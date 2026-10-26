@@ -2,6 +2,10 @@
 //! the link's server on a loopback port, in a thread, as a backend's
 //! listener runs it. `attach`'s tests, MCP's session tests and the
 //! scripted MCP client attach to it.
+//!
+//! It measures its frames with a fake clock and reads a fake heap, as the
+//! toy's headless session does, so a perf read over the link has records,
+//! heap counts and snapshots.
 
 use std::io::{BufRead, BufReader, ErrorKind, Read, Write};
 use std::net::{Ipv4Addr, Shutdown, TcpListener, TcpStream};
@@ -13,6 +17,7 @@ use std::time::{Duration, Instant};
 use shuyi_platform::App;
 use shuyi_platform::headless::HeadlessPlatform;
 use shuyi_platform::link::{self, Answer, Handled, Server};
+use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy;
 
 /// The host's token.
@@ -38,6 +43,13 @@ type Client = (TcpStream, Server, Vec<u8>);
 impl LinkHost {
     /// The host, listening on a free loopback port.
     pub fn start() -> Self {
+        Self::running(1)
+    }
+
+    /// The host running `frames` frames at a time, about every
+    /// millisecond: with more than a perf read's 600, a reader that reads
+    /// between them misses some.
+    pub fn running(frames: u32) -> Self {
         let socket = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
             .unwrap_or_else(|e| panic!("bind a loopback port: {e}"));
         let port = socket
@@ -50,7 +62,7 @@ impl LinkHost {
         let stop = Arc::new(AtomicBool::new(false));
         let attached = Arc::new(AtomicBool::new(false));
         let (stopping, attaching) = (Arc::clone(&stop), Arc::clone(&attached));
-        let thread = thread::spawn(move || serve(&socket, &stopping, &attaching));
+        let thread = thread::spawn(move || serve(&socket, frames, &stopping, &attaching));
         Self {
             port,
             stop,
@@ -94,10 +106,12 @@ impl Drop for LinkHost {
     }
 }
 
-/// The host's loop, until `stop`.
-fn serve(socket: &TcpListener, stop: &AtomicBool, attached: &AtomicBool) {
+/// The host's loop, until `stop`: `frames` frames at a time.
+fn serve(socket: &TcpListener, frames: u32, stop: &AtomicBool, attached: &AtomicBool) {
     let mut app = App::running(toy::game());
-    let mut platform = HeadlessPlatform::new();
+    let mut platform = HeadlessPlatform::new()
+        .with_clock(PerfClock::fake())
+        .with_fake_memory();
     let mut client: Option<Client> = None;
     let mut refused = Vec::new();
     while !stop.load(Ordering::Relaxed) {
@@ -106,7 +120,6 @@ fn serve(socket: &TcpListener, stop: &AtomicBool, attached: &AtomicBool) {
         }
         let mut out = String::new();
         let mut close = false;
-        let mut input = Vec::new();
         if let Some((stream, server, read)) = &mut client {
             let mut chunk = [0; 4096];
             match stream.read(&mut chunk) {
@@ -128,20 +141,31 @@ fn serve(socket: &TcpListener, stop: &AtomicBool, attached: &AtomicBool) {
                     _ => {}
                 }
             }
-            server.input(&app, &mut input);
         }
-        platform.push_input(&input);
-        let _ = app.frame_after(&mut platform, 1.0 / 60.0);
-        if let Some((stream, server, _)) = &mut client {
-            for answer in server.after_frame(&app) {
-                push_line(&mut out, &answer);
+        for _ in 0..frames {
+            let mut input = Vec::new();
+            if let Some((_, server, _)) = &mut client {
+                server.input(&app, &mut input);
             }
-            if server.wants_screenshot() {
-                push_line(&mut out, &server.screenshot(b"\x89PNG", 2, 1));
+            platform.push_input(&input);
+            let _ = app.frame_after(&mut platform, 1.0 / 60.0);
+            if let Some((_, server, _)) = &mut client {
+                for answer in server.after_frame(&app) {
+                    push_line(&mut out, &answer);
+                }
+                if server.wants_screenshot() {
+                    push_line(&mut out, &server.screenshot(b"\x89PNG", 2, 1));
+                }
+                if server.wants_snapshot() {
+                    let snapshot = app.heap_snapshot(&mut platform);
+                    push_line(&mut out, &server.snapshot(&app, snapshot));
+                }
             }
-            if stream.write_all(out.as_bytes()).is_err() || close {
-                client = None;
-            }
+        }
+        if let Some((stream, _, _)) = &mut client
+            && (stream.write_all(out.as_bytes()).is_err() || close)
+        {
+            client = None;
         }
         attached.store(client.is_some(), Ordering::Relaxed);
         thread::sleep(Duration::from_millis(1));

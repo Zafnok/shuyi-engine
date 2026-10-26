@@ -8,7 +8,8 @@
 //! This module touches no device. A backend carries the lines (TCP on
 //! loopback in `shuyi-app`) and the [`Server`] turns each into its answer
 //! over the [`App`] it runs: it reads the screens, the frame as text, the
-//! window's picture (taken by the backend) and the log, and its only input
+//! window's picture (taken by the backend), the log, and the frames'
+//! records with a heap snapshot (taken by the backend), and its only input
 //! is raw device events the backend adds after the devices' own in
 //! [`Platform::poll_input`](crate::Platform::poll_input), so they go where a
 //! player's go. It changes nothing any other way.
@@ -25,13 +26,14 @@ use alloc::{format, vec};
 use serde::{Deserialize, Serialize};
 use shuyi_ui::input::{ActionSet, Button, ButtonChord, Chord, Keymap, PadKind};
 use shuyi_ui::log::LogRing;
+use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES, PerfRing};
 use shuyi_ui::{GameData, RawInputEvent};
 
 use crate::app::App;
 
 /// The link's version: a client and a build speak the same, or the build
 /// closes the link after its hello.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// The longest request line, in bytes: a longer one closes the link.
 pub const MAX_LINE: usize = 64 * 1024;
@@ -43,6 +45,9 @@ pub const MAX_UNSENT: usize = 64 * 1024 * 1024;
 /// The most frames one [`Step::Wait`] may hold: about 28 minutes at 60 a
 /// second.
 pub const MAX_WAIT: u32 = 100_000;
+
+/// How many records a [`Request::Perf`] answers when it doesn't say.
+pub const PERF_MAX: u32 = 120;
 
 /// A line a client sends, tagged by `op`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +81,27 @@ pub enum Request {
         #[serde(default)]
         since: u64,
     },
+    /// The frames' records numbered `since` or more ([`App::perf`]), the
+    /// first `max` of them, and a heap snapshot after this frame if asked.
+    Perf {
+        /// The first record's number: 0, the default, for every kept
+        /// record; the last answer's `next` for the records since.
+        #[serde(default)]
+        since: u64,
+        /// The most records to answer, 1 to [`PERF_FRAMES`];
+        /// [`PERF_MAX`] by default.
+        #[serde(default = "perf_max")]
+        max: u32,
+        /// Whether the backend takes a heap snapshot after this frame
+        /// ([`App::heap_snapshot`]) and answers it with the records.
+        #[serde(default)]
+        snapshot: bool,
+    },
+}
+
+/// [`Request::Perf`]'s `max` when it doesn't say.
+fn perf_max() -> u32 {
+    PERF_MAX
 }
 
 impl Request {
@@ -302,6 +328,29 @@ pub struct LogAnswer {
     pub dropped: u64,
 }
 
+/// The frames' records a [`Request::Perf`] asked for, counted as the
+/// contract's `PerfRead` counts them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct PerfAnswer {
+    /// The kept records numbered `since` or more, oldest first, the first
+    /// `max` of them.
+    pub records: Vec<FrameRecord>,
+    /// The number to read from next time: the one after the last record
+    /// answered; 0 for a `since` past the ring's next number.
+    pub next: u64,
+    /// How many records numbered `since` or more the ring no longer keeps.
+    pub dropped: u64,
+    /// Whether any frame was measured.
+    pub measured: bool,
+    /// The frames run: [`App::frame_number`].
+    pub frames: u32,
+    /// The heap snapshot taken after the frame, if one was asked for and
+    /// the build takes one (a debug build that counts the heap by tag).
+    pub snapshot: Option<HeapSnapshot>,
+}
+
 /// A line the build sends, tagged by `answer`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "answer", rename_all = "snake_case", deny_unknown_fields)]
@@ -331,6 +380,8 @@ pub enum Answer {
     Played(Played),
     /// [`Request::Log`]'s.
     Log(LogAnswer),
+    /// [`Request::Perf`]'s.
+    Perf(PerfAnswer),
     /// A request that couldn't be answered: why.
     Error {
         /// What was wrong.
@@ -372,6 +423,9 @@ pub enum Handled {
     /// The backend answers it after this frame is shown, with
     /// [`Server::screenshot`].
     Screenshot,
+    /// The backend answers it after this frame, with a heap snapshot
+    /// ([`App::heap_snapshot`]) given to [`Server::snapshot`].
+    Snapshot,
     /// Close the connection, after sending this line if there is one,
     /// and read nothing more: the first line wasn't a hello with the
     /// token, a line was longer than [`MAX_LINE`], or the client speaks
@@ -408,6 +462,12 @@ enum Busy {
     Screenshot {
         limit: Option<String>,
     },
+    /// A heap snapshot the backend takes after this frame, answered with
+    /// the records this asks for.
+    Snapshot {
+        since: u64,
+        max: u32,
+    },
 }
 
 /// The build's end of the link, for one client: it turns the client's
@@ -418,9 +478,11 @@ enum Busy {
 /// Each frame the backend calls [`handle`](Self::handle) for each line
 /// read and sends the answers; [`input`](Self::input) before
 /// [`App::frame`], adding what it gives after the devices' input; then
-/// [`after_frame`](Self::after_frame), sending what it gives; and, if
+/// [`after_frame`](Self::after_frame), sending what it gives; if
 /// [`wants_screenshot`](Self::wants_screenshot), reads the window and
-/// sends [`screenshot`](Self::screenshot)'s line.
+/// sends [`screenshot`](Self::screenshot)'s line; and if
+/// [`wants_snapshot`](Self::wants_snapshot), takes a heap snapshot and
+/// sends [`snapshot`](Self::snapshot)'s.
 #[derive(Debug)]
 pub struct Server {
     token: String,
@@ -493,6 +555,21 @@ impl Server {
             Request::Status => Answer::Status(Status::of(app)).to_line(),
             Request::Frame => frame(app).to_line(),
             Request::Log { since } => Answer::Log(log(app.log(), since)).to_line(),
+            Request::Perf {
+                since,
+                max,
+                snapshot,
+            } => {
+                let most = u32::try_from(PERF_FRAMES).unwrap_or(u32::MAX);
+                if !(1..=most).contains(&max) {
+                    return Handled::Answer(Answer::error(format!("max: 1 to {most}, not {max}")));
+                }
+                if snapshot {
+                    self.busy = Busy::Snapshot { since, max };
+                    return Handled::Snapshot;
+                }
+                Answer::Perf(perf(app, since, max, None)).to_line()
+            }
             Request::Screenshot => {
                 self.busy = Busy::Screenshot {
                     limit: shot_limit(app),
@@ -608,14 +685,14 @@ impl Server {
                 self.end_play(answer.to_line());
             }
             Busy::Screenshot { limit } => *limit = shot_limit(app),
-            Busy::Idle | Busy::Play(_) => {}
+            Busy::Idle | Busy::Play(_) | Busy::Snapshot { .. } => {}
         }
         while matches!(self.busy, Busy::Idle)
             && let Some(line) = self.waiting.pop_front()
         {
             match self.request(&line, app) {
                 Handled::Answer(answer) => self.due.push(answer),
-                Handled::Later | Handled::Screenshot | Handled::Close(_) => {}
+                Handled::Later | Handled::Screenshot | Handled::Snapshot | Handled::Close(_) => {}
             }
         }
         core::mem::take(&mut self.due)
@@ -645,6 +722,32 @@ impl Server {
             limit,
         })
         .to_line()
+    }
+
+    /// Whether the backend should take a heap snapshot after this frame
+    /// and answer with [`snapshot`](Self::snapshot).
+    pub fn wants_snapshot(&self) -> bool {
+        matches!(self.busy, Busy::Snapshot { .. })
+    }
+
+    /// The answer to a [`Request::Perf`] that asked for a snapshot:
+    /// `app`'s records it asked for, and `snapshot`, the backend's
+    /// ([`App::heap_snapshot`]; `None` where it takes none). Requests
+    /// behind it are answered from the next
+    /// [`after_frame`](Self::after_frame).
+    pub fn snapshot<G: GameData>(
+        &mut self,
+        app: &App<G>,
+        snapshot: Option<HeapSnapshot>,
+    ) -> String {
+        let (since, max) = match core::mem::replace(&mut self.busy, Busy::Idle) {
+            Busy::Snapshot { since, max } => (since, max),
+            other => {
+                self.busy = other;
+                (app.perf().next_seq(), PERF_MAX)
+            }
+        };
+        Answer::Perf(perf(app, since, max, snapshot)).to_line()
     }
 }
 
@@ -697,6 +800,46 @@ fn log(ring: &LogRing, since: u64) -> LogAnswer {
         next,
         dropped: first.saturating_sub(since),
     }
+}
+
+/// `app`'s records numbered `since` or more, the first `max`, with
+/// `snapshot`.
+fn perf<G: GameData>(
+    app: &App<G>,
+    since: u64,
+    max: u32,
+    snapshot: Option<HeapSnapshot>,
+) -> PerfAnswer {
+    let mut answer = perf_read(app.perf(), since, max);
+    answer.frames = app.frame_number();
+    answer.snapshot = snapshot;
+    answer
+}
+
+/// The first `max` records of `ring` numbered `since` or more, as the
+/// contract's `PerfRead::of` reads them: a `since` past the ring's next
+/// number (a build started again) reads nothing, with `next` 0. No frames
+/// and no snapshot.
+fn perf_read(ring: &PerfRing, since: u64, max: u32) -> PerfAnswer {
+    let next_seq = ring.next_seq();
+    let kept = u64::try_from(ring.records().len()).unwrap_or(u64::MAX);
+    let first = next_seq.saturating_sub(kept);
+    let mut answer = PerfAnswer {
+        records: Vec::new(),
+        next: 0,
+        dropped: 0,
+        measured: next_seq > 0,
+        frames: 0,
+        snapshot: None,
+    };
+    if since > next_seq {
+        return answer;
+    }
+    let max = usize::try_from(max).unwrap_or(usize::MAX);
+    answer.records = ring.since(since).take(max).cloned().collect();
+    answer.next = since.max(first) + u64::try_from(answer.records.len()).unwrap_or(u64::MAX);
+    answer.dropped = first.saturating_sub(since);
+    answer
 }
 
 /// The frames `steps` give with `keymap`, waits of no frame left out; an

@@ -291,7 +291,9 @@ const ATTACH: &str = "Reach a game's debug build already running in its window, 
      build runs with its `link` feature and SHUYI_LINK set). Play `steps` as a player's \
      input (keys, pad buttons, an action by name with `act`, waits in its frames), let \
      `frames` pass, then read its screens, frame as text, log from `log_since`, and, \
-     with `screenshot` (a PNG's path), the window's picture.";
+     with `screenshot` (a PNG's path), the window's picture; with `perf_since`, its \
+     frames' records and their summary; with `perf_follow` (a file), each new frame's \
+     record written to the file for `follow_for` seconds, then their summary.";
 
 /// What `start`'s tool does.
 const START: &str = "Build the game's tool program and start its game headless in the session, as \

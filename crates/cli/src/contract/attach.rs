@@ -11,6 +11,12 @@
 //! the window's picture, written to a file. It changes nothing else in
 //! the build. The wire's types are `shuyi_platform::link`'s, the build's
 //! own.
+//!
+//! With `perf_since` it reads the frames' records too, summed up as `run
+//! --perf` sums them; with `perf_follow` it follows them instead, every
+//! 100 ms for `follow_for` seconds, writing each new record to a file as
+//! a perf trace's line as the build runs, so an agent reads the file as
+//! it grows.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -21,10 +27,14 @@ use std::time::Duration;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_platform::link::{self, Answer as Line, LogAnswer, Phase, Played, Request, Status};
+use shuyi_platform::link::{
+    self, Answer as Line, LogAnswer, PerfAnswer, Phase, Played, Request, Status,
+};
 use shuyi_ui::log::LOG_LINES;
+use shuyi_ui::perf::{FrameRecord, HeapSnapshot};
 
 use super::codes::{self, Code};
+use super::perf::{self, PerfSummary};
 use super::run::MAX_IDLE_FRAMES;
 use super::{Answer, Op};
 use crate::frame_png::{Script, Step};
@@ -77,6 +87,48 @@ pub struct AttachInput {
     /// The first log line to answer, by its number: 0 for every line kept,
     /// the last answer's `log_next` for the lines since.
     pub log_since: u64,
+    /// The first frame's record to answer, by its number, if wanted: 0
+    /// for every record kept, the last answer's `perf_next` for the
+    /// records since. With `perf_follow`, where the following starts.
+    pub perf_since: Option<u64>,
+    /// A file to follow the build's frames into (from the working folder):
+    /// each new frame's record written as a line as the build runs, for
+    /// `follow_for` seconds or until the build quits.
+    pub perf_follow: Option<String>,
+    /// How many seconds to follow, 1 to 3,600: 10 if not said.
+    #[schemars(range(min = 1, max = 3600))]
+    pub follow_for: Option<u32>,
+    /// Take a heap snapshot with the records: with `perf_since`, one now;
+    /// with `perf_follow`, one as the following starts and one as it ends,
+    /// and the diff between them.
+    pub perf_snapshot: bool,
+}
+
+/// How many seconds `perf_follow` follows when not said.
+pub const FOLLOW_FOR: u32 = 10;
+
+/// The most seconds `perf_follow` follows.
+pub const MAX_FOLLOW_FOR: u32 = 3_600;
+
+/// How often `perf_follow` reads the build's records.
+pub const FOLLOW_EVERY: Duration = Duration::from_millis(100);
+
+/// What `perf_follow` wrote.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct AttachFollow {
+    /// The file, its absolute path.
+    pub file: String,
+    /// The lines written: a frame's record each, and with
+    /// `perf_snapshot` the two snapshots and their diff.
+    pub lines: u32,
+    /// The frames the build ran that no read caught: it ran more than
+    /// 600 between two reads.
+    pub dropped: u64,
+    /// Whether the build closed the link before the time was up: it quit.
+    pub closed: bool,
 }
 
 /// The window's picture, as written.
@@ -147,6 +199,22 @@ pub struct AttachOutput {
     pub log: Vec<AttachLogEntry>,
     /// The number the build's next log line gets: the next `log_since`.
     pub log_next: u64,
+    /// The frames' records numbered `perf_since` or more, oldest first, at
+    /// most 600; empty without `perf_since`, and with `perf_follow` (they
+    /// are in its file).
+    pub perf: Vec<FrameRecord>,
+    /// The number to read the records from next time: the next
+    /// `perf_since`. Null without `perf_since` or `perf_follow`.
+    pub perf_next: Option<u64>,
+    /// What the records add up to: those answered, or with `perf_follow`
+    /// every one written. Null with none.
+    pub perf_summary: Option<PerfSummary>,
+    /// The heap snapshot taken with the records, with `perf_snapshot`
+    /// (with `perf_follow`, the one as it ended): null where the build
+    /// doesn't count the heap by tag.
+    pub perf_snapshot: Option<HeapSnapshot>,
+    /// What `perf_follow` wrote.
+    pub follow: Option<AttachFollow>,
 }
 
 impl AttachInput {
@@ -167,6 +235,22 @@ impl AttachInput {
         }
         for step in self.link_steps() {
             step.check()?;
+        }
+        if let Some(seconds) = self.follow_for {
+            if self.perf_follow.is_none() {
+                return Err("follow_for: only with perf_follow".to_owned());
+            }
+            if !(1..=MAX_FOLLOW_FOR).contains(&seconds) {
+                return Err(format!(
+                    "follow_for: 1 to {MAX_FOLLOW_FOR} seconds, not {seconds}"
+                ));
+            }
+        }
+        if self.perf_follow.as_deref().is_some_and(str::is_empty) {
+            return Err("perf_follow: the file is missing".to_owned());
+        }
+        if self.perf_snapshot && self.perf_since.is_none() && self.perf_follow.is_none() {
+            return Err("perf_snapshot: only with perf_since or perf_follow".to_owned());
         }
         Ok(())
     }
@@ -221,7 +305,8 @@ pub fn frames_of(seconds: f32) -> u32 {
 pub fn usage(command: &str) -> String {
     format!(
         "usage: {command} attach <host:port> --token <token> [steps] [--frames N] \
-         [--screenshot <file.png>] [--log-since N] [--json]\n\n\
+         [--screenshot <file.png>] [--log-since N] [--perf-since N] \
+         [--perf-follow <file.jsonl> [--for S]] [--perf-snapshot] [--json]\n\n\
          a running debug build of a game with its `link` feature, started with SHUYI_LINK=<port>\n\
          (0 takes a free one); its log line `shuyi link: listening on <address>, token <token>`\n\
          gives both.\n\n\
@@ -232,7 +317,12 @@ pub fn usage(command: &str) -> String {
          --wait 0.5           let that many seconds pass, in the build's frames (60 a second)\n\n\
          --frames N           then let N frames pass\n  \
          --screenshot <file>  write the window's picture there, as a PNG\n  \
-         --log-since N        the log's lines from number N (the last answer's log_next)\n"
+         --log-since N        the log's lines from number N (the last answer's log_next)\n  \
+         --perf-since N       the frames' records from number N (the last answer's perf_next)\n  \
+         --perf-follow <file> then write each new frame's record to the file as a JSON line\n                       \
+         as the build runs, printing nothing until it ends\n  \
+         --for S              follow for S seconds, 1 to 3600 (10), or until the build quits\n  \
+         --perf-snapshot      a heap snapshot with the records (following: at its start and end)\n"
     )
 }
 
@@ -269,6 +359,26 @@ pub fn parse_args(args: &[String]) -> Result<AttachInput, String> {
                     .parse()
                     .map_err(|_| format!("--log-since: a whole number, not {text}"))?;
             }
+            "--perf-since" => {
+                let text = value()?;
+                input.perf_since = Some(
+                    text.parse()
+                        .map_err(|_| format!("--perf-since: a whole number, not {text}"))?,
+                );
+            }
+            "--perf-follow" => input.perf_follow = Some(value()?),
+            "--for" => {
+                let text = value()?;
+                input.follow_for = Some(
+                    text.parse()
+                        .ok()
+                        .filter(|n| (1..=MAX_FOLLOW_FOR).contains(n))
+                        .ok_or_else(|| {
+                            format!("--for: whole seconds, 1 to {MAX_FOLLOW_FOR}, not {text}")
+                        })?,
+                );
+            }
+            "--perf-snapshot" => input.perf_snapshot = true,
             flag if flag.starts_with("--") => return Err(format!("unknown option: {flag}")),
             address if input.address.is_empty() => address.clone_into(&mut input.address),
             other => return Err(format!("one address, not also {other}")),
@@ -279,6 +389,12 @@ pub fn parse_args(args: &[String]) -> Result<AttachInput, String> {
     }
     if input.token.is_empty() {
         return Err("--token is missing: the build's log line gives it".to_owned());
+    }
+    if input.follow_for.is_some() && input.perf_follow.is_none() {
+        return Err("--for: only with --perf-follow".to_owned());
+    }
+    if input.perf_snapshot && input.perf_since.is_none() && input.perf_follow.is_none() {
+        return Err("--perf-snapshot: only with --perf-since or --perf-follow".to_owned());
     }
     Ok(input)
 }
@@ -430,6 +546,268 @@ pub(crate) struct Seen {
     pub(crate) log: LogAnswer,
     /// The picture written, and what it doesn't show.
     pub(crate) screenshot: Option<(AttachScreenshot, Option<String>)>,
+    /// The frames' records read, or followed into a file.
+    pub(crate) perf: Option<PerfSeen>,
+}
+
+/// The frames' records `attach` read, or followed into a file.
+pub(crate) struct PerfSeen {
+    /// The records answered; none when followed.
+    records: Vec<FrameRecord>,
+    /// The number to read from next time.
+    next: u64,
+    /// What the records read or written add up to.
+    summary: Option<PerfSummary>,
+    /// The heap snapshot taken last, if one was.
+    snapshot: Option<HeapSnapshot>,
+    /// What the following wrote.
+    follow: Option<AttachFollow>,
+    /// What the records don't show.
+    limits: Vec<String>,
+}
+
+/// The most records one read over the link answers.
+const READ_MAX: u32 = 600;
+
+/// The build's frames' records numbered `since` or more over `link`, the
+/// first `max`, with a heap snapshot after this frame if `snapshot`;
+/// `None` if the build closed the link.
+pub(crate) fn perf_read(
+    link: &mut Connection,
+    since: u64,
+    max: u32,
+    snapshot: bool,
+) -> Result<Option<PerfAnswer>, Failed> {
+    let request = Request::Perf {
+        since,
+        max,
+        snapshot,
+    };
+    match link.ask(&request, ANSWER)? {
+        None => Ok(None),
+        Some(Line::Perf(answer)) => Ok(Some(answer)),
+        Some(other) => Err(unexpected("its frames' records", &other)),
+    }
+}
+
+/// The limits of every perf answer of the link: what the times are,
+/// nothing measured after `frames` frames, and the heap's counts.
+pub(crate) fn perf_limits(records: &[FrameRecord], measured: bool, frames: u32) -> Vec<String> {
+    let mut limits = vec![perf::TIMES.to_owned()];
+    if !measured {
+        limits.push(perf::unmeasured_limit(frames));
+    }
+    // The build counts its own heap, and nothing of this program's.
+    limits.extend(perf::heap_limits(records, false, false));
+    limits
+}
+
+/// The records `input` asks for from `since`, read once over `link`.
+fn perf_once(link: &mut Connection, input: &AttachInput, since: u64) -> Result<PerfSeen, Failed> {
+    let Some(answer) = perf_read(link, since, READ_MAX, input.perf_snapshot)? else {
+        let error = format!("the build at {} closed the link", link.address);
+        return Err((codes::LINK_LOST, error));
+    };
+    let mut limits = perf_limits(&answer.records, answer.measured, answer.frames);
+    if since > answer.next {
+        limits.push(perf::RESET.to_owned());
+    }
+    if answer.dropped > 0 {
+        limits.push(perf::dropped_limit(answer.dropped));
+    }
+    if input.perf_snapshot && answer.snapshot.is_none() {
+        limits.push(perf::HEAP_UNTAGGED.to_owned());
+    }
+    let summary = perf::summary(&answer.records).map(|mut summary| {
+        summary.dropped = answer.dropped;
+        summary
+    });
+    Ok(PerfSeen {
+        records: answer.records,
+        next: answer.next,
+        summary,
+        snapshot: answer.snapshot,
+        follow: None,
+        limits,
+    })
+}
+
+/// A clock a follow reads and waits on.
+pub(crate) trait Clock {
+    /// The time since some moment.
+    fn now(&mut self) -> Duration;
+    /// Waits `time`.
+    fn sleep(&mut self, time: Duration);
+}
+
+/// The wall's clock.
+struct Wall(std::time::Instant);
+
+impl Clock for Wall {
+    fn now(&mut self) -> Duration {
+        self.0.elapsed()
+    }
+
+    fn sleep(&mut self, time: Duration) {
+        std::thread::sleep(time);
+    }
+}
+
+/// What a follow read and wrote.
+#[derive(Debug, Default)]
+pub(crate) struct Followed {
+    /// Every record written, oldest first.
+    pub(crate) records: Vec<FrameRecord>,
+    /// The number to read from next.
+    pub(crate) next: u64,
+    /// The lines written.
+    pub(crate) lines: u32,
+    /// The records no read caught.
+    pub(crate) dropped: u64,
+    /// Whether the build closed the link before the time was up.
+    pub(crate) closed: bool,
+    /// Whether any frame was measured.
+    pub(crate) measured: bool,
+    /// The frames the build had run at the last read.
+    pub(crate) frames: u32,
+    /// The heap snapshots as the following started and as it ended.
+    pub(crate) snapshots: (Option<HeapSnapshot>, Option<HeapSnapshot>),
+}
+
+/// Follows a build's frames from `since` for `seconds` on `clock`: reads
+/// them with `read` (the records from a number, with a heap snapshot if
+/// asked; `None` once the build closed the link) every
+/// [`FOLLOW_EVERY`], at once again after a full read, and once more when
+/// the time is up; and writes each record to `out` as a
+/// [`PerfLine::Frame`](shuyi_ui::perf::PerfLine) line, flushed after each
+/// read. With `snapshot`, the first read and the last take a heap snapshot,
+/// and the two and their diff end the lines.
+pub(crate) fn follow(
+    read: &mut impl FnMut(u64, bool) -> Result<Option<PerfAnswer>, Failed>,
+    since: u64,
+    seconds: u32,
+    snapshot: bool,
+    out: &mut impl Write,
+    clock: &mut impl Clock,
+) -> Result<Followed, Failed> {
+    let written = |e: std::io::Error| (codes::FILE, format!("--perf-follow: {e}"));
+    let end = clock.now() + Duration::from_secs(u64::from(seconds));
+    let mut followed = Followed {
+        next: since,
+        ..Followed::default()
+    };
+    let mut first = true;
+    loop {
+        let at = clock.now();
+        let last = at >= end;
+        let snap = snapshot && (first || last);
+        let Some(answer) = read(followed.next, snap)? else {
+            followed.closed = true;
+            break;
+        };
+        if snap && first {
+            followed.snapshots.0.clone_from(&answer.snapshot);
+        } else if snap {
+            followed.snapshots.1.clone_from(&answer.snapshot);
+        }
+        out.write_all(perf::lines(&answer.records).as_bytes())
+            .and_then(|()| out.flush())
+            .map_err(written)?;
+        let full = answer.records.len() >= usize::try_from(READ_MAX).unwrap_or(usize::MAX);
+        followed.lines = followed
+            .lines
+            .saturating_add(u32::try_from(answer.records.len()).unwrap_or(u32::MAX));
+        followed.dropped += answer.dropped;
+        followed.measured |= answer.measured;
+        followed.frames = answer.frames;
+        followed.next = answer.next;
+        followed.records.extend(answer.records);
+        first = false;
+        if last {
+            break;
+        }
+        if !full {
+            let now = clock.now();
+            let due = FOLLOW_EVERY.saturating_sub(now.saturating_sub(at));
+            clock.sleep(due.min(end.saturating_sub(now)));
+        }
+    }
+    if let (Some(first), Some(last)) = &followed.snapshots {
+        out.write_all(perf::heap_lines(first, last).as_bytes())
+            .and_then(|()| out.flush())
+            .map_err(written)?;
+        followed.lines = followed.lines.saturating_add(3);
+    }
+    Ok(followed)
+}
+
+/// Follows the build's frames over `link` into `input`'s file (from
+/// `cwd`), from `since` or else from the build's next record.
+fn perf_follow(
+    link: &mut Connection,
+    input: &AttachInput,
+    path: &str,
+    cwd: &Path,
+) -> Result<PerfSeen, Failed> {
+    let since = match input.perf_since {
+        Some(since) => since,
+        None => perf_read(link, 0, READ_MAX, false)?.map_or(0, |answer| answer.next),
+    };
+    let file = cwd.join(path);
+    let mut out =
+        fs::File::create(&file).map_err(|e| (codes::FILE, format!("--perf-follow {path}: {e}")))?;
+    let seconds = input.follow_for.unwrap_or(FOLLOW_FOR);
+    let mut read = |since, snapshot| perf_read(link, since, READ_MAX, snapshot);
+    let mut clock = Wall(std::time::Instant::now());
+    let followed = follow(
+        &mut read,
+        since,
+        seconds,
+        input.perf_snapshot,
+        &mut out,
+        &mut clock,
+    )?;
+    Ok(followed_seen(followed, input, &file.display().to_string()))
+}
+
+/// What `followed` shows, written to `file`, as `attach` answers it.
+pub(crate) fn followed_seen(followed: Followed, input: &AttachInput, file: &str) -> PerfSeen {
+    let mut limits = perf_limits(&followed.records, followed.measured, followed.frames);
+    if followed.dropped > 0 {
+        limits.push(format!(
+            "{} frame(s) were dropped between reads: the build ran more than {READ_MAX} frames \
+             between two",
+            followed.dropped
+        ));
+    }
+    if followed.closed {
+        limits.push("the build closed the link before the time was up: it quit".to_owned());
+    }
+    let (first, last) = followed.snapshots;
+    if input.perf_snapshot && !followed.closed && (first.is_none() || last.is_none()) {
+        limits.push(perf::HEAP_UNTAGGED.to_owned());
+    }
+    let summary = perf::summary(&followed.records).map(|mut summary| {
+        summary.dropped = followed.dropped;
+        summary.file = Some(file.to_owned());
+        if let (Some(first), Some(last)) = (&first, &last) {
+            perf::add_heap(&mut summary, first, last);
+        }
+        summary
+    });
+    PerfSeen {
+        records: Vec::new(),
+        next: followed.next,
+        summary,
+        snapshot: last,
+        follow: Some(AttachFollow {
+            file: file.to_owned(),
+            lines: followed.lines,
+            dropped: followed.dropped,
+            closed: followed.closed,
+        }),
+        limits,
+    }
 }
 
 /// `attach`: reaches the build `input` names, plays its steps and reads
@@ -443,6 +821,11 @@ pub fn attach(input: &AttachInput, cwd: &Path) -> Answer<AttachOutput> {
         let mut seen = played(link, input)?;
         if let Some(path) = &input.screenshot {
             seen.screenshot = Some(screenshot(link, path, cwd)?);
+        }
+        if let Some(path) = &input.perf_follow {
+            seen.perf = Some(perf_follow(link, input, path, cwd)?);
+        } else if let Some(since) = input.perf_since {
+            seen.perf = Some(perf_once(link, input, since)?);
         }
         Ok((game, seen))
     };
@@ -499,6 +882,7 @@ pub(crate) fn played(link: &mut Connection, input: &AttachInput) -> Result<Seen,
         frame,
         log,
         screenshot: None,
+        perf: None,
     })
 }
 
@@ -603,6 +987,11 @@ pub(crate) fn limits_of(input: &AttachInput, seen: &Seen) -> Vec<String> {
             seen.log.dropped, input.log_since
         ));
     }
+    if let Some(perf) = &seen.perf {
+        for limit in &perf.limits {
+            add(limit.clone());
+        }
+    }
     limits
 }
 
@@ -614,7 +1003,7 @@ fn output(game: String, seen: Seen) -> AttachOutput {
         Phase::Failed => "failed",
         _ => "running",
     };
-    AttachOutput {
+    let mut output = AttachOutput {
         link: link::VERSION,
         game,
         frames: status.frames,
@@ -639,7 +1028,19 @@ fn output(game: String, seen: Seen) -> AttachOutput {
             })
             .collect(),
         log_next: seen.log.next,
+        perf_next: seen.perf.as_ref().map(|perf| perf.next),
+        perf: Vec::new(),
+        perf_summary: None,
+        perf_snapshot: None,
+        follow: None,
+    };
+    if let Some(perf) = seen.perf {
+        output.perf = perf.records;
+        output.perf_summary = perf.summary;
+        output.perf_snapshot = perf.snapshot;
+        output.follow = perf.follow;
     }
+    output
 }
 
 /// What `attach` saw, for people.
@@ -688,6 +1089,24 @@ pub fn text(output: &AttachOutput) -> String {
         }
     }
     let _ = writeln!(out, "log: next line {}", output.log_next);
+    if let Some(follow) = &output.follow {
+        let _ = writeln!(
+            out,
+            "followed: {} line(s){}",
+            follow.lines,
+            if follow.closed {
+                ", until the build quit"
+            } else {
+                ""
+            }
+        );
+    }
+    if let Some(summary) = &output.perf_summary {
+        out.push_str(&perf::text(summary));
+    }
+    if let Some(next) = output.perf_next {
+        let _ = writeln!(out, "perf: next record {next}");
+    }
     let glyphs = output
         .frame
         .split_once("--- ")

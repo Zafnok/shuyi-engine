@@ -21,9 +21,10 @@ use super::{
     StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
 };
 use crate::codec::encode_png;
+use crate::contract::attach::Failed;
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
-use crate::contract::perf;
+use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, measured_start};
 use crate::contract::{
@@ -397,33 +398,62 @@ fn kept_of(kept: &[HeapSnapshot], frame: u32) -> Result<HeapSnapshot, String> {
 /// `perf`: the session's frames' records as `input` asks, with their
 /// summary, and a heap snapshot and a diff if it asks for them.
 fn perf_read(live: &mut Live, input: &PerfInput) -> Answer<PerfOutput> {
-    if let Err(e) = input.check() {
-        return Answer::failed(Op::Perf, codes::WRONG_ARGUMENTS, e);
-    }
-    let from = match input.diff_from.map(|frame| kept_of(&live.snapshots, frame)) {
-        Some(Err(error)) => return Answer::failed(Op::Perf, codes::WRONG_ARGUMENTS, error),
-        Some(Ok(from)) => Some(from),
-        None => None,
-    };
-    let snapshot = if input.snapshot {
-        live.game.heap_snapshot()
-    } else {
-        None
-    };
+    let game = &mut live.game;
+    let taken = perf_answer(input, &mut live.snapshots, |snapshot| {
+        let snapshot = if snapshot { game.heap_snapshot() } else { None };
+        Ok(PerfTaken {
+            read: game.perf(input.since, input.max),
+            snapshot,
+            frames: game.frame_count(),
+            process_heap: game.counts_process_heap(),
+        })
+    });
+    taken.unwrap_or_else(|(code, error)| Answer::failed(Op::Perf, code, error))
+}
+
+/// What a session's game gave `perf`: its records, the heap snapshot it
+/// took if asked, the frames it ran, and whether its heap counts are this
+/// program's own ([`Session::counts_process_heap`]).
+pub(crate) struct PerfTaken {
+    pub(crate) read: PerfRead,
+    pub(crate) snapshot: Option<HeapSnapshot>,
+    pub(crate) frames: u32,
+    pub(crate) process_heap: bool,
+}
+
+/// `perf`'s answer to `input`: what `take` gives (asked for a heap
+/// snapshot or not), with the records' summary and the diff from a
+/// snapshot in `kept`, which keeps the one taken. A headless session's
+/// game and one attached over the live link answer alike through it.
+pub(crate) fn perf_answer(
+    input: &PerfInput,
+    kept: &mut Vec<HeapSnapshot>,
+    take: impl FnOnce(bool) -> Result<PerfTaken, Failed>,
+) -> Result<Answer<PerfOutput>, Failed> {
+    input.check().map_err(|e| (codes::WRONG_ARGUMENTS, e))?;
+    let from = input
+        .diff_from
+        .map(|frame| kept_of(kept, frame))
+        .transpose()
+        .map_err(|e| (codes::WRONG_ARGUMENTS, e))?;
+    let PerfTaken {
+        read,
+        snapshot,
+        frames: ran,
+        process_heap,
+    } = take(input.snapshot)?;
     if let Some(snapshot) = &snapshot {
-        keep(&mut live.snapshots, snapshot.clone());
+        keep(kept, snapshot.clone());
     }
     let to = if input.snapshot {
         snapshot.as_ref()
     } else {
-        live.snapshots.last()
+        kept.last()
     };
     let diff = from.zip(to).map(|(from, to)| from.diff(to));
-    let game = &*live.game;
-    let read = game.perf(input.since, input.max);
     let mut limits = vec![perf::TIMES.to_owned()];
     if !read.measured {
-        limits.push(perf::unmeasured_limit(game.frame_count()));
+        limits.push(perf::unmeasured_limit(ran));
     }
     if input.since > read.next {
         limits.push(perf::RESET.to_owned());
@@ -433,7 +463,7 @@ fn perf_read(live: &mut Live, input: &PerfInput) -> Answer<PerfOutput> {
     }
     limits.extend(perf::heap_limits(
         &read.records,
-        game.counts_process_heap(),
+        process_heap,
         perf::other_threads(),
     ));
     if input.snapshot && snapshot.is_none() {
@@ -446,9 +476,9 @@ fn perf_read(live: &mut Live, input: &PerfInput) -> Answer<PerfOutput> {
         dropped: read.dropped,
         snapshot,
         diff,
-        kept: frames(&live.snapshots),
+        kept: frames(kept),
     };
-    Answer::new(Op::Perf, true, output, limits)
+    Ok(Answer::new(Op::Perf, true, output, limits))
 }
 
 /// `frame_png`: `game`'s frame painted as `input` says.

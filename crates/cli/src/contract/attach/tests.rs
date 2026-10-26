@@ -5,6 +5,8 @@
 use std::net::{Ipv4Addr, TcpListener};
 use std::path::PathBuf;
 
+use shuyi_ui::perf::PerfLine;
+
 use super::*;
 use crate::toy::link::{LinkHost as Host, TOKEN, other_version};
 
@@ -263,4 +265,322 @@ fn a_wrong_input_is_refused_before_connecting() {
     let mut asked = input("127.0.0.1:1", vec![AttachStep::Wait(-1.0)]);
     asked.frames = MAX_IDLE_FRAMES + 1;
     assert_eq!(attach(&asked, &scratch("refused")).exit_code(), 2);
+}
+
+#[test]
+fn its_perf_arguments_read_follow_and_snapshot() {
+    let parsed = parse_args(&args(&[
+        "h:1",
+        "--token",
+        "t",
+        "--perf-since",
+        "40",
+        "--perf-follow",
+        "perf.jsonl",
+        "--for",
+        "30",
+        "--perf-snapshot",
+    ]))
+    .unwrap();
+    assert_eq!(
+        (
+            parsed.perf_since,
+            parsed.perf_follow.as_deref(),
+            parsed.follow_for,
+            parsed.perf_snapshot
+        ),
+        (Some(40), Some("perf.jsonl"), Some(30), true)
+    );
+    for (bad, said) in [
+        (vec!["--perf-since", "x"], "--perf-since: a whole number"),
+        (
+            vec!["--perf-follow", "f", "--for", "0"],
+            "--for: whole seconds, 1 to 3600",
+        ),
+        (
+            vec!["--perf-follow", "f", "--for", "3601"],
+            "--for: whole seconds",
+        ),
+        (vec!["--for", "3"], "--for: only with --perf-follow"),
+        (vec!["--perf-snapshot"], "--perf-snapshot: only with"),
+    ] {
+        let mut all = vec!["h:1", "--token", "t"];
+        all.extend(bad.iter().copied());
+        let error = parse_args(&args(&all)).unwrap_err();
+        assert!(error.contains(said), "{bad:?}: {error}");
+    }
+    let mut asked = input("h:1", Vec::new());
+    asked.follow_for = Some(5);
+    assert!(asked.check().unwrap_err().contains("only with perf_follow"));
+    asked.perf_follow = Some(String::new());
+    assert!(asked.check().unwrap_err().contains("file is missing"));
+    asked.perf_follow = Some("f".to_owned());
+    asked.follow_for = Some(0);
+    assert!(asked.check().unwrap_err().contains("1 to 3600"));
+}
+
+/// The perf trace's lines in `text`, each read as a `PerfLine`.
+fn trace(text: &str) -> Vec<PerfLine> {
+    text.lines()
+        .map(|line| serde_json::from_str(line).unwrap_or_else(|e| panic!("{line}: {e}")))
+        .collect()
+}
+
+/// The frames of the `frame` lines of `lines`.
+fn frames(lines: &[PerfLine]) -> Vec<u32> {
+    lines
+        .iter()
+        .filter_map(|line| match line {
+            PerfLine::Frame(record) => Some(record.frame),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Whether `frames` count up by one, with none missed.
+fn one_each(frames: &[u32]) -> bool {
+    frames.windows(2).all(|w| w[1] == w[0] + 1)
+}
+
+#[test]
+fn perf_since_reads_the_builds_records_and_their_summary() {
+    let host = Host::start();
+    let dir = scratch("perf-since");
+    let mut asked = input(&host.address(), Vec::new());
+    asked.perf_since = Some(0);
+    let answer = attach(&asked, &dir);
+    let output = answer.result.clone().unwrap();
+    assert!(!output.perf.is_empty(), "{output:?}");
+    let records: Vec<u32> = output.perf.iter().map(|r| r.frame).collect();
+    assert!(one_each(&records), "{records:?}");
+    assert!(output.perf.iter().all(|r| r.heap.is_some()));
+    let summary = output.perf_summary.clone().unwrap();
+    assert_eq!(usize::try_from(summary.frames).unwrap(), output.perf.len());
+    assert!(
+        answer.limits.contains(&perf::TIMES.to_owned()),
+        "{answer:?}"
+    );
+    assert_eq!(
+        (output.perf_snapshot.clone(), output.follow.clone()),
+        (None, None)
+    );
+    let next = output.perf_next.unwrap();
+    assert!(text(&output).contains(&format!("perf: next record {next}")));
+
+    // From `perf_next`, the frames run since, with a snapshot after them.
+    host.let_go();
+    asked.perf_since = Some(next);
+    asked.perf_snapshot = true;
+    let output = attach(&asked, &dir).result.unwrap();
+    let first = output.perf.first().map(|r| r.frame);
+    assert_eq!(first, records.last().map(|f| f + 1), "{output:?}");
+    let snapshot = output.perf_snapshot.unwrap();
+    assert_eq!(Some(snapshot.frame), output.perf.last().map(|r| r.frame));
+}
+
+#[test]
+fn perf_follow_writes_a_line_for_each_frame_the_build_ran_and_sums_them_up() {
+    let host = Host::start();
+    let dir = scratch("perf-follow");
+    let mut asked = input(&host.address(), Vec::new());
+    asked.perf_follow = Some("perf.jsonl".to_owned());
+    asked.follow_for = Some(1);
+    asked.perf_snapshot = true;
+    let answer = attach(&asked, &dir);
+    let output = answer
+        .result
+        .clone()
+        .unwrap_or_else(|| panic!("{answer:?}"));
+    let lines = trace(&fs::read_to_string(dir.join("perf.jsonl")).unwrap());
+    let follow = output.follow.clone().unwrap();
+    assert_eq!(usize::try_from(follow.lines).unwrap(), lines.len());
+    assert!(!follow.closed && follow.dropped == 0, "{follow:?}");
+    assert!(follow.file.ends_with("perf.jsonl") && Path::new(&follow.file).is_absolute());
+    // A frame line each, one per frame, then the two snapshots and the
+    // diff.
+    let frame_lines = frames(&lines);
+    assert!(frame_lines.len() > 10, "{frame_lines:?}");
+    assert!(one_each(&frame_lines), "{frame_lines:?}");
+    let [
+        ..,
+        PerfLine::Snapshot(first),
+        PerfLine::Snapshot(last),
+        PerfLine::Diff(diff),
+    ] = lines.as_slice()
+    else {
+        panic!("{:?}", &lines[lines.len() - 3..]);
+    };
+    assert_eq!(*diff, first.diff(last));
+    assert_eq!(output.perf_snapshot.as_ref(), Some(last));
+    let summary = output.perf_summary.clone().unwrap();
+    assert_eq!(usize::try_from(summary.frames).unwrap(), frame_lines.len());
+    assert_eq!(summary.file.as_deref(), Some(follow.file.as_str()));
+    assert!(summary.heap_growth.is_some());
+    assert_eq!(output.perf, []);
+    assert_eq!(
+        output.perf_next,
+        frame_lines.last().map(|frame| u64::from(*frame))
+    );
+    let said = text(&output);
+    assert!(
+        said.contains("followed: ") && said.contains("trace: "),
+        "{said}"
+    );
+}
+
+#[test]
+fn a_build_faster_than_the_reads_has_its_dropped_frames_counted() {
+    // More than 600 frames between two reads.
+    let host = Host::running(1_000);
+    let dir = scratch("perf-dropped");
+    let mut asked = input(&host.address(), Vec::new());
+    asked.perf_follow = Some("perf.jsonl".to_owned());
+    asked.follow_for = Some(1);
+    let answer = attach(&asked, &dir);
+    let output = answer.result.clone().unwrap();
+    let follow = output.follow.unwrap();
+    assert!(follow.dropped > 0, "{follow:?}");
+    let said = format!("{} frame(s) were dropped between reads", follow.dropped);
+    assert!(
+        answer.limits.iter().any(|l| l.starts_with(&said)),
+        "{:?}",
+        answer.limits
+    );
+    assert_eq!(output.perf_summary.unwrap().dropped, follow.dropped);
+}
+
+/// A clock that moves only when slept on.
+#[derive(Default)]
+struct FakeClock {
+    now: Duration,
+    slept: Vec<Duration>,
+}
+
+impl Clock for FakeClock {
+    fn now(&mut self) -> Duration {
+        self.now
+    }
+
+    fn sleep(&mut self, time: Duration) {
+        self.now += time;
+        self.slept.push(time);
+    }
+}
+
+/// A read's answer: the records of `frames` (numbered one less), and
+/// `dropped` and `snapshot`.
+fn perf_answer(
+    frames: std::ops::Range<u32>,
+    dropped: u64,
+    snapshot: Option<&HeapSnapshot>,
+) -> PerfAnswer {
+    let records: Vec<FrameRecord> = frames.clone().map(FrameRecord::new).collect();
+    serde_json::from_value(serde_json::json!({
+        "records": records, "next": frames.end - 1, "dropped": dropped,
+        "measured": true, "frames": frames.end - 1, "snapshot": snapshot,
+    }))
+    .unwrap()
+}
+
+#[test]
+fn a_follow_reads_every_100_ms_until_its_time_is_up_and_once_more_then() {
+    let mut clock = FakeClock::default();
+    let mut asked = Vec::new();
+    // Each read finds six frames more.
+    let mut read = |since: u64, snapshot: bool| {
+        asked.push((since, snapshot));
+        let from = u32::try_from(since).unwrap() + 1;
+        Ok(Some(perf_answer(from..from + 6, 0, None)))
+    };
+    let mut out = Vec::new();
+    let followed = follow(&mut read, 0, 1, false, &mut out, &mut clock).unwrap();
+    // At 0, 100, …, 1,000 ms.
+    assert_eq!(asked.len(), 11);
+    assert!(asked.iter().all(|(_, snapshot)| !snapshot));
+    assert_eq!(clock.slept, vec![FOLLOW_EVERY; 10]);
+    assert_eq!(
+        (followed.lines, followed.next, followed.closed),
+        (66, 66, false)
+    );
+    let frames = frames(&trace(std::str::from_utf8(&out).unwrap()));
+    assert_eq!(frames, (1..=66).collect::<Vec<_>>());
+}
+
+#[test]
+fn a_follow_stops_when_the_build_closes_the_link() {
+    let mut clock = FakeClock::default();
+    let mut reads = 0;
+    let mut read = |since: u64, _| {
+        reads += 1;
+        let from = u32::try_from(since).unwrap() + 1;
+        Ok((reads < 3).then(|| perf_answer(from..from + 2, 0, None)))
+    };
+    let mut out = Vec::new();
+    let followed = follow(&mut read, 0, 10, true, &mut out, &mut clock).unwrap();
+    assert!(followed.closed);
+    assert_eq!((reads, followed.lines), (3, 4));
+    // No last snapshot: the build had gone.
+    assert_eq!(followed.snapshots.1, None);
+    let asked = AttachInput {
+        perf_snapshot: true,
+        ..AttachInput::default()
+    };
+    let seen = followed_seen(followed, &asked, "f.jsonl");
+    assert!(seen.limits.iter().any(|l| l.contains("it quit")));
+    assert!(!seen.limits.contains(&perf::HEAP_UNTAGGED.to_owned()));
+}
+
+#[test]
+fn a_full_read_is_read_again_at_once_and_snapshots_end_the_trace() {
+    let mut clock = FakeClock::default();
+    let mut asked = Vec::new();
+    let snapshot = |frame| {
+        let mut snapshot = HeapSnapshot::new(1024 * u64::from(frame), 0, Vec::new());
+        snapshot.frame = frame;
+        snapshot
+    };
+    let mut read = |since: u64, snap: bool| {
+        asked.push((since, snap));
+        let from = u32::try_from(since).unwrap() + 1;
+        // The first read is full: 600 records, and 50 dropped before them.
+        let (to, dropped) = if since == 0 {
+            (from + 600, 50)
+        } else {
+            (from + 1, 0)
+        };
+        let taken = snap.then(|| snapshot(to - 1));
+        Ok(Some(perf_answer(from..to, dropped, taken.as_ref())))
+    };
+    let mut out = Vec::new();
+    let followed = follow(&mut read, 0, 1, true, &mut out, &mut clock).unwrap();
+    // Read again at once after the full read: no sleep before the second.
+    assert_eq!(asked[1], (600, false));
+    assert_eq!(clock.slept.len(), asked.len() - 2);
+    assert_eq!((asked[0].1, asked.last().unwrap().1), (true, true));
+    assert!(asked[1..asked.len() - 1].iter().all(|(_, snap)| !snap));
+    assert_eq!(followed.dropped, 50);
+    let lines = trace(std::str::from_utf8(&out).unwrap());
+    let [
+        ..,
+        PerfLine::Snapshot(first),
+        PerfLine::Snapshot(last),
+        PerfLine::Diff(diff),
+    ] = lines.as_slice()
+    else {
+        panic!("no snapshots at the end");
+    };
+    assert_eq!((first.frame, diff.from, diff.to), (600, 600, last.frame));
+    assert_eq!(usize::try_from(followed.lines).unwrap(), lines.len());
+    let seen = followed_seen(followed, &AttachInput::default(), "f.jsonl");
+    assert!(
+        seen.limits
+            .iter()
+            .any(|l| l.starts_with("50 frame(s) were dropped"))
+    );
+    let summary = seen.summary.unwrap();
+    assert_eq!(
+        (summary.dropped, summary.file.as_deref()),
+        (50, Some("f.jsonl"))
+    );
+    assert!(summary.heap_growth.is_some());
 }

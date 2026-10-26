@@ -318,7 +318,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         let outcome = app.frame(&mut platform, now);
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         if let Some(link) = &mut link {
-            answer_link(link, &app);
+            answer_link(link, &app, &mut platform);
         }
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
@@ -347,15 +347,20 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
 }
 
 /// Sends the link's answers due after `app`'s frame, and the window's
-/// picture if its client asked: read now, drawn and not yet shown.
+/// picture if its client asked: read now, drawn and not yet shown; or a
+/// heap snapshot with the frames' records, taken now.
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
-fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>) {
+fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &mut Macroquad) {
     link.after_frame(app);
     if link.wants_screenshot() {
         match readback::window_png() {
             Ok((png, width, height)) => link.screenshot(&png, width, height),
             Err(e) => link.no_screenshot(e),
         }
+    }
+    if link.wants_snapshot() {
+        let snapshot = app.heap_snapshot(platform);
+        link.snapshot(app, snapshot);
     }
 }
 

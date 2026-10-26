@@ -66,6 +66,39 @@
     "limits"
   ],
   "$defs": {
+    "AttachFollow": {
+      "description": "What `perf_follow` wrote.",
+      "type": "object",
+      "properties": {
+        "closed": {
+          "description": "Whether the build closed the link before the time was up: it quit.",
+          "type": "boolean"
+        },
+        "dropped": {
+          "description": "The frames the build ran that no read caught: it ran more than\n600 between two reads.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "file": {
+          "description": "The file, its absolute path.",
+          "type": "string"
+        },
+        "lines": {
+          "description": "The lines written: a frame's record each, and with\n`perf_snapshot` the two snapshots and their diff.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "lines",
+        "dropped",
+        "closed"
+      ]
+    },
     "AttachLogEntry": {
       "description": "One line of the build's log, with its number.",
       "type": "object",
@@ -112,6 +145,17 @@
           "description": "Whether its window has the player's attention.",
           "type": "boolean"
         },
+        "follow": {
+          "description": "What `perf_follow` wrote.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttachFollow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "frame": {
           "description": "The frame, in the snapshot text format; empty while the game\nisn't running.",
           "type": "string"
@@ -144,6 +188,44 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0
+        },
+        "perf": {
+          "description": "The frames' records numbered `perf_since` or more, oldest first, at\nmost 600; empty without `perf_since`, and with `perf_follow` (they\nare in its file).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FrameRecord"
+          }
+        },
+        "perf_next": {
+          "description": "The number to read the records from next time: the next\n`perf_since`. Null without `perf_since` or `perf_follow`.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0
+        },
+        "perf_snapshot": {
+          "description": "The heap snapshot taken with the records, with `perf_snapshot`\n(with `perf_follow`, the one as it ended): null where the build\ndoesn't count the heap by tag.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeapSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "perf_summary": {
+          "description": "What the records add up to: those answered, or with `perf_follow`\nevery one written. Null with none.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PerfSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "phase": {
           "description": "Where the game is: `loading` (its card shows), `running` or\n`failed` (its load failed; the errors show).",
@@ -193,7 +275,8 @@
         "quit",
         "frame",
         "log",
-        "log_next"
+        "log_next",
+        "perf"
       ]
     },
     "AttachScreenshot": {
@@ -222,6 +305,237 @@
         "path",
         "width",
         "height"
+      ]
+    },
+    "FrameRecord": {
+      "description": "What one frame measured. Build it with [`FrameRecord::new`] (ADR-0039).",
+      "type": "object",
+      "properties": {
+        "frame": {
+          "description": "The frame (`App::frame_number`: frames count from 1).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "heap": {
+          "description": "The heap's counts at the frame's end, where the backend counts it\n(a debug build of `shuyi-app` or a tool program); `None` where it\ndoesn't, and left out of the JSON then.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeapCounts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "spans": {
+          "description": "The spans that ended in it, in the order they ended (an inner one\nbefore its outer one), at most [`MAX_SPANS`].",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SpanEvent"
+          }
+        },
+        "spans_dropped": {
+          "description": "The spans past [`MAX_SPANS`], counted and not kept.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "times": {
+          "description": "How long its parts took.",
+          "$ref": "#/$defs/FrameTimes"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "times",
+        "spans",
+        "spans_dropped"
+      ]
+    },
+    "FrameTimes": {
+      "description": "How long the parts of one frame took, in whole microseconds. Build it\nwith [`FrameTimes::new`] (ADR-0039); a backend may add a part.",
+      "type": "object",
+      "properties": {
+        "draw_us": {
+          "description": "The drawing: the screens and the modules drawing the frame\n([`Game::redraw`](crate::Game::redraw)).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "frame_us": {
+          "description": "[`present_us`](Self::present_us) plus this frame from its start to\nits end: never less than the four above together. The rest is\n`App`'s own (the system's events, the audio, the record).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "paint_us": {
+          "description": "The platform's `present`: in `shuyi-app`, painting the frame into\nthe window.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "present_us": {
+          "description": "From the end of the last frame to the start of this one, outside\n`App`: the backend's buffer swap and its wait for vsync or the frame\ncap. 0 on the first frame measured.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "update_us": {
+          "description": "`Game::frame` from its start to the drawing: the input, the\nmodules' `before_update` and the screens' update.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "update_us",
+        "draw_us",
+        "paint_us",
+        "present_us",
+        "frame_us"
+      ]
+    },
+    "HeapCounts": {
+      "description": "The heap's counts at a frame's end, in bytes asked for (never the\nallocator's own overhead). Build it with [`HeapCounts::new`]\n(ADR-0039).",
+      "type": "object",
+      "properties": {
+        "allocs": {
+          "description": "The calls that allocated or reallocated since the last reading: one\nreading a frame, so the frame's.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "live_bytes": {
+          "description": "The bytes allocated and not yet freed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "peak_bytes": {
+          "description": "The most bytes live at once since the program started.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "live_bytes",
+        "peak_bytes",
+        "allocs"
+      ]
+    },
+    "HeapDiff": {
+      "description": "What grew and shrank in the heap between two snapshots\n([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::new`]\n(ADR-0039).",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "The earlier snapshot's frame.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "live_bytes": {
+          "description": "How many more bytes are live: less than 0 for fewer.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "tags": {
+          "description": "The tags whose live bytes or blocks changed: the largest change in\nbytes first (more or fewer), then by class, then by name.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TagDelta"
+          }
+        },
+        "to": {
+          "description": "The later snapshot's frame.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "live_bytes",
+        "tags"
+      ]
+    },
+    "HeapSnapshot": {
+      "description": "What holds the heap at a frame (ADR-0046 §6): its live bytes, and each\nmemory tag's counts. Build it with [`HeapSnapshot::new`] (ADR-0039),\nwhich puts the rows in order; compare two with [`diff`](Self::diff).",
+      "type": "object",
+      "properties": {
+        "frame": {
+          "description": "The frame it was taken after (frames count from 1; 0 is before the\nfirst).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "live_bytes": {
+          "description": "The bytes allocated and not yet freed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "overflowed": {
+          "description": "How many names had no tag of their own, past the counter's table,\nand count under `overflow`.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "peak_bytes": {
+          "description": "The most bytes live at once since the program started.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "tags": {
+          "description": "Each tag with bytes live or ever allocated under it: the most live\nbytes first, then by class, then by name.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TagRow"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "live_bytes",
+        "peak_bytes",
+        "tags",
+        "overflowed"
+      ]
+    },
+    "HeapSummary": {
+      "description": "How the heap's counts add up over a trace's records, in bytes asked for.",
+      "type": "object",
+      "properties": {
+        "allocs": {
+          "description": "How the allocations per frame spread.",
+          "$ref": "#/$defs/Spread"
+        },
+        "live_bytes": {
+          "description": "The bytes live at the last record's end.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "peak_bytes": {
+          "description": "The most bytes live at once, the most of the records' peaks.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "peak_bytes",
+        "live_bytes",
+        "allocs"
       ]
     },
     "Op": {
@@ -342,6 +656,317 @@
           "type": "string",
           "const": "stop"
         }
+      ]
+    },
+    "PerfSummary": {
+      "description": "What a trace's records add up to.",
+      "type": "object",
+      "properties": {
+        "draw": {
+          "description": "How the drawing's spread (`draw_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "dropped": {
+          "description": "How many earlier frames' records were no longer kept.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "file": {
+          "description": "The trace file written, its absolute path, with `--perf-out`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frame": {
+          "description": "How the whole frame's time spread (`frame_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "frames": {
+          "description": "The records summed up: the frames kept.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "heap": {
+          "description": "The heap's counts over the records that have them; null where none\nhas (a release build of the tool program, or one opted out).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeapSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "heap_growth": {
+          "description": "What grew and shrank from the snapshot before the run to the one\nafter: the diff, with its first ten rows, the largest change first.\nNull without snapshots.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeapDiff"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "heap_tags": {
+          "description": "What held the heap after the last frame: the snapshot's first ten\nrows by tag, the most live bytes first. Empty without a snapshot.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TagRow"
+          }
+        },
+        "paint": {
+          "description": "How painting into the window spread (`paint_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "present": {
+          "description": "How the backend's swap and wait spread (`present_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "spans": {
+          "description": "The spans with the most time in all, most first (ties by name), at\nmost five.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SpanSummary"
+          }
+        },
+        "update": {
+          "description": "How the update's spread (`update_us`).",
+          "$ref": "#/$defs/Spread"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "dropped",
+        "frame",
+        "update",
+        "draw",
+        "paint",
+        "present",
+        "spans",
+        "heap_tags"
+      ]
+    },
+    "SpanEvent": {
+      "description": "A span a game marked ([`Ctx::span`](crate::Ctx::span)), as it ended.",
+      "type": "object",
+      "properties": {
+        "depth": {
+          "description": "How many spans it was inside: 0 for one inside no other.",
+          "type": "integer",
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0
+        },
+        "name": {
+          "description": "What the game called it.",
+          "type": "string"
+        },
+        "start_us": {
+          "description": "When it started, in microseconds from the frame's start.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "us": {
+          "description": "How long it took, in microseconds.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "start_us",
+        "us",
+        "depth"
+      ]
+    },
+    "SpanSummary": {
+      "description": "A span's name and how its time adds up over the records.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "description": "How many times it ended.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "mean_us": {
+          "description": "Its mean time, in microseconds, rounded down.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "name": {
+          "description": "What the game called it (`ctx.span(\"ai\", …)`).",
+          "type": "string"
+        },
+        "total_us": {
+          "description": "Its time in all, in microseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "worst_us": {
+          "description": "Its longest time, in microseconds.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "count",
+        "total_us",
+        "mean_us",
+        "worst_us"
+      ]
+    },
+    "Spread": {
+      "description": "How a set of times spread, in whole microseconds: the median, the 99th\npercentile (nearest rank), the worst and the mean rounded down.",
+      "type": "object",
+      "properties": {
+        "mean": {
+          "description": "The mean, rounded down.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "p50": {
+          "description": "The median: half the times are this or less.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "p99": {
+          "description": "99 in a hundred times are this or less.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "worst": {
+          "description": "The longest.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "p50",
+        "p99",
+        "worst",
+        "mean"
+      ]
+    },
+    "TagClass": {
+      "description": "What a memory tag names (ADR-0046 §6): the heap counter counts each\nblock under the innermost tag entered when it was allocated. Its number\nis the class a backend's counter keeps with each name\n([`MemoryScopes::tag`]); `Other` is 0, the class of the counter's own\n`other` and `overflow`.",
+      "oneOf": [
+        {
+          "description": "A phase of the frame: `load`, `update`, `draw`, `paint`, `perf`,\nand `app` for the rest of `App`'s frame.",
+          "type": "string",
+          "const": "phase"
+        },
+        {
+          "description": "A span the game marked ([`Ctx::span`](crate::Ctx::span)).",
+          "type": "string",
+          "const": "span"
+        },
+        {
+          "description": "An asset kind being decoded: `image`, `palette`, …",
+          "type": "string",
+          "const": "asset"
+        },
+        {
+          "description": "None of those: `other`, what is allocated outside any tag, and\n`overflow`, the names past the counter's table.",
+          "type": "string",
+          "const": "other"
+        }
+      ]
+    },
+    "TagDelta": {
+      "description": "How one memory tag changed between two snapshots. Build it with\n[`TagDelta::new`] (ADR-0039).",
+      "type": "object",
+      "properties": {
+        "class": {
+          "description": "What the tag names.",
+          "$ref": "#/$defs/TagClass"
+        },
+        "live_blocks": {
+          "description": "How many more blocks are live under it: less than 0 for fewer.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "live_bytes": {
+          "description": "How many more bytes are live under it: less than 0 for fewer.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "description": "Its name.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "name",
+        "live_bytes",
+        "live_blocks"
+      ]
+    },
+    "TagRow": {
+      "description": "One memory tag's counts in a [`HeapSnapshot`], in bytes asked for.\nBuild it with [`TagRow::new`] (ADR-0039).",
+      "type": "object",
+      "properties": {
+        "allocated_bytes": {
+          "description": "The bytes ever allocated under it: a block grown adds its new size.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "class": {
+          "description": "What the tag names: a phase, a span, an asset kind, or `other`.",
+          "$ref": "#/$defs/TagClass"
+        },
+        "live_blocks": {
+          "description": "The blocks live under it.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "live_bytes": {
+          "description": "The bytes live under it: allocated, or last grown, under it and not\nyet freed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "name": {
+          "description": "Its name: `update`, the span's (`ai`), the asset kind's (`image`),\n`other` or `overflow`.",
+          "type": "string"
+        },
+        "peak_bytes": {
+          "description": "The most bytes live under it at once.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "name",
+        "live_bytes",
+        "live_blocks",
+        "allocated_bytes",
+        "peak_bytes"
       ]
     }
   }
