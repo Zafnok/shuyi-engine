@@ -213,7 +213,12 @@ mod tagged {
             }
         };
         tags::leave(before);
-        assert!(!block.is_null());
+        // `System` refuses a small block only out of memory. An `if`, not an
+        // `assert!`: CodeQL, which reads the code unbuilt, then sees that
+        // the block given is never null.
+        if block.is_null() {
+            unreachable!("the heap gave no block");
+        }
         block
     }
 
@@ -232,7 +237,10 @@ mod tagged {
         // above zero and small.
         let moved = unsafe { heap.realloc(block, layout, new_size) };
         tags::leave(before);
-        assert!(!moved.is_null());
+        // An `if`, as `alloc_in`'s.
+        if moved.is_null() {
+            unreachable!("the heap moved no block");
+        }
         moved
     }
 
@@ -260,7 +268,6 @@ mod tagged {
             let align = 1usize << shift;
             assert_eq!(header_bytes(align), align.max(8));
             let block = alloc_in(&heap, 7, 3, align, false);
-            assert!(!block.is_null());
             assert_eq!(block.addr() % align, 0, "align {align}");
             // SAFETY: `block` is a block of `heap`'s, not null, and the two
             // bytes before it are its header's last.
@@ -294,13 +301,11 @@ mod tagged {
     fn a_realloc_moves_the_bytes_to_the_current_tag() {
         let heap = Heap::with_tags(System);
         let block = alloc_in(&heap, 1, 100, 32, false);
-        assert!(!block.is_null());
         // SAFETY: the block has 100 bytes.
         unsafe { block.write_bytes(0xA5, 100) };
         let block = realloc_in(&heap, 2, block, (100, 32), 400);
         assert_eq!(live(&heap, 1), (0, 0));
         assert_eq!(live(&heap, 2), (400, 1));
-        assert!(!block.is_null());
         // SAFETY: the block has 400 bytes, the first 100 kept.
         let kept = unsafe { core::slice::from_raw_parts(block, 100) };
         assert!(kept.iter().all(|&b| b == 0xA5));
