@@ -55,5 +55,7 @@ fn a_backend_of_the_seven_methods_runs_a_frame() {
     // The defaults: no clock, so nothing measured, and no memory read.
     assert!(bare.clock().is_none());
     assert_eq!(bare.memory(), None);
+    assert_eq!(bare.heap_snapshot(), None);
+    assert_eq!(app.heap_snapshot(&mut bare), None);
     assert_eq!(app.perf().records().len(), 0);
 }

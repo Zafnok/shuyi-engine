@@ -456,3 +456,103 @@ fn perf_on_a_session_that_measures_nothing_says_so() {
     let limits = read["limits"].to_string();
     assert!(limits.contains("without debug tools"), "{limits}");
 }
+
+/// The snapshots' frames `kept` lists in `perf`'s answer.
+fn kept(answer: &Value) -> Vec<u64> {
+    let kept = answer["result"]["kept"].as_array().unwrap();
+    kept.iter().filter_map(Value::as_u64).collect()
+}
+
+/// The toy's session keeps the fake memory's snapshots: `update` grows
+/// 16 KB a frame, up to 29 frames.
+#[cfg(feature = "toy")]
+#[test]
+fn perf_takes_heap_snapshots_and_answers_a_diff_from_a_kept_one() {
+    let game = crate::toy::ToyTools;
+    let mut host = Host::new(&game, project(PathBuf::from(".")));
+    assert_eq!(ask(&mut host, Op::Start, json!({}))["ok"], true);
+    let none = ask(&mut host, Op::Perf, json!({ "diff_from": 0 }));
+    assert_eq!(none["code"], "SH0001", "{none}");
+    assert!(
+        none["error"].as_str().unwrap().contains("kept: none"),
+        "{none}"
+    );
+    let first = ask(&mut host, Op::Perf, json!({ "snapshot": true }));
+    assert_eq!(first["result"]["snapshot"]["frame"], 0, "{first}");
+    assert_eq!(first["result"]["snapshot"]["live_bytes"], 1_048_576);
+    assert!(first["result"]["diff"].is_null());
+    assert_eq!(kept(&first), [0]);
+    ask(&mut host, Op::Step, json!({ "frames": 10 }));
+    let then = ask(
+        &mut host,
+        Op::Perf,
+        json!({ "snapshot": true, "diff_from": 0 }),
+    );
+    let diff = &then["result"]["diff"];
+    assert_eq!(
+        (diff["from"].as_u64(), diff["to"].as_u64()),
+        (Some(0), Some(10))
+    );
+    assert_eq!(diff["live_bytes"], 163_840);
+    assert_eq!(diff["tags"][0]["name"], "update");
+    assert_eq!(diff["tags"][0]["live_blocks"], 10);
+    assert_eq!(kept(&then), [0, 10]);
+    // Without `snapshot`, the diff is to the newest kept.
+    ask(&mut host, Op::Step, json!({ "frames": 5 }));
+    let newest = ask(&mut host, Op::Perf, json!({ "diff_from": 0 }));
+    assert_eq!(newest["result"]["diff"]["to"], 10, "{newest}");
+    assert!(newest["result"]["snapshot"].is_null());
+    let wrong = ask(
+        &mut host,
+        Op::Perf,
+        json!({ "snapshot": true, "diff_from": 7 }),
+    );
+    assert_eq!(wrong["code"], "SH0001");
+    let error = wrong["error"].as_str().unwrap();
+    assert!(
+        error.contains("frame 7") && error.contains("kept: 0, 10"),
+        "{error}"
+    );
+    assert_eq!(
+        kept(&ask(&mut host, Op::Perf, json!({}))),
+        [0, 10],
+        "nothing taken"
+    );
+    // A reset starts with none kept.
+    ask(&mut host, Op::Reset, json!({}));
+    assert_eq!(
+        kept(&ask(&mut host, Op::Perf, json!({}))),
+        Vec::<u64>::new()
+    );
+}
+
+#[test]
+fn the_session_keeps_its_last_eight_snapshots_by_frame() {
+    let snapshot = |frame| {
+        let mut snapshot = HeapSnapshot::default();
+        snapshot.frame = frame;
+        snapshot
+    };
+    let mut snapshots = Vec::new();
+    for frame in [5, 1, 3, 9, 2, 7, 8, 6, 4, 3] {
+        keep(&mut snapshots, snapshot(frame));
+    }
+    assert_eq!(frames(&snapshots), [2, 3, 4, 5, 6, 7, 8, 9]);
+    let mut taken_again = snapshot(9);
+    taken_again.live_bytes = 1;
+    keep(&mut snapshots, taken_again);
+    assert_eq!(snapshots.len(), 8);
+    assert_eq!(snapshots[7].live_bytes, 1);
+}
+
+#[test]
+fn a_snapshot_where_the_heap_isnt_counted_by_tag_says_so() {
+    let game = Fake::default();
+    let mut host = Host::new(&game, project(PathBuf::from(".")));
+    ask(&mut host, Op::Start, json!({}));
+    let read = ask(&mut host, Op::Perf, json!({ "snapshot": true }));
+    assert_eq!(read["ok"], true, "{read}");
+    assert!(read["result"]["snapshot"].is_null());
+    let limits = read["limits"].to_string();
+    assert!(limits.contains("by memory tag"), "{limits}");
+}

@@ -4,7 +4,10 @@
 //! scene, what happened, the sounds asked for, the game's log and its
 //! modules; `scene` with the scene and the log. With `--perf`, `run` also
 //! measures each frame and answers a summary of the times, and with
-//! `--perf-out` writes every kept frame as a JSON line ([`super::perf`]).
+//! `--perf-out` writes every kept frame as a JSON line ([`super::perf`]);
+//! where the heap is counted by memory tag, it takes a heap snapshot
+//! before the script and one after the last frame, and answers what held
+//! the heap and what grew.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -13,10 +16,10 @@ use std::path::{Path, PathBuf};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_ui::log::LOG_LINES;
-use shuyi_ui::perf::{FrameRecord, PERF_FRAMES};
+use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES};
 
 use super::perf::{self, PerfSummary};
-use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
+use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound, measured_start};
 use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
 use crate::game::{GameArg, GameOption, GameTools, code_of};
@@ -111,25 +114,31 @@ impl RunInput {
     }
 }
 
+/// A session played, and measured, the heap snapshot taken once it
+/// started.
+type Played = (Box<dyn Session>, Option<HeapSnapshot>);
+
 /// A session of `game` started and played as `input` says, or the answer
-/// of `op` that says why not.
-fn played<T>(
-    op: Op,
-    game: &dyn GameTools,
-    input: &RunInput,
-) -> Result<Box<dyn Session>, Answer<T>> {
+/// of `op` that says why not; measured, also the heap snapshot taken once
+/// it started, before the script.
+fn played<T>(op: Op, game: &dyn GameTools, input: &RunInput) -> Result<Played, Answer<T>> {
     input
         .check()
         .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
-    let mut session = game
-        .session(&input.start)
-        .map_err(|e| Answer::failed(op, code_of(&e), e))?;
+    let started = if input.measures() {
+        measured_start(|| game.session(&input.start))
+    } else {
+        game.session(&input.start)
+    };
+    let mut session = started.map_err(|e| Answer::failed(op, code_of(&e), e))?;
+    let mut first = None;
     if input.measures() {
         session.set_perf(true);
+        first = session.heap_snapshot();
     }
     session.play(&input.script);
     session.idle(input.frames);
-    Ok(session)
+    Ok((session, first))
 }
 
 /// What a run of `frames` frames couldn't show: the frames after the game
@@ -202,9 +211,16 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
     (output, limits)
 }
 
-/// The summary of every record `session` kept, the records themselves,
-/// for the trace file, and the limits of both.
-fn perf_of(session: &dyn Session) -> (Option<PerfSummary>, Vec<FrameRecord>, Vec<String>) {
+/// The heap snapshots before a run and after it.
+type Snapshots = (HeapSnapshot, HeapSnapshot);
+
+/// The summary of every record `session` kept, with the heap snapshots
+/// `heap` before and after its run, the records themselves, for the trace
+/// file, and the limits of both.
+fn perf_of(
+    session: &dyn Session,
+    heap: Option<&Snapshots>,
+) -> (Option<PerfSummary>, Vec<FrameRecord>, Vec<String>) {
     let read = session.perf(0, u32::try_from(PERF_FRAMES).unwrap_or(u32::MAX));
     let mut limits = vec![perf::TIMES.to_owned()];
     if !read.measured {
@@ -219,8 +235,14 @@ fn perf_of(session: &dyn Session) -> (Option<PerfSummary>, Vec<FrameRecord>, Vec
         session.counts_process_heap(),
         perf::other_threads(),
     ));
+    if heap.is_none() && read.records.iter().any(|r| r.heap.is_some()) {
+        limits.push(perf::HEAP_UNTAGGED.to_owned());
+    }
     let summary = perf::summary(&read.records).map(|mut summary| {
         summary.dropped = read.dropped;
+        if let Some((first, last)) = heap {
+            perf::add_heap(&mut summary, first, last);
+        }
         summary
     });
     (summary, read.records, limits)
@@ -233,12 +255,21 @@ pub fn perf_out_path(root: &Path, path: &str) -> PathBuf {
     std::path::absolute(&path).unwrap_or(path)
 }
 
-/// `records` written to `path` as a trace, its folders made.
-fn write_trace(path: &Path, records: &[FrameRecord]) -> std::io::Result<()> {
+/// `records` written to `path` as a trace, then the heap snapshots `heap`
+/// and their diff, its folders made.
+fn write_trace(
+    path: &Path,
+    records: &[FrameRecord],
+    heap: Option<&Snapshots>,
+) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
-    fs::write(path, perf::lines(records))
+    let mut trace = perf::lines(records);
+    if let Some((first, last)) = heap {
+        trace.push_str(&perf::heap_lines(first, last));
+    }
+    fs::write(path, trace)
 }
 
 /// The scene `session` shows, as `scene` answers it, with its limits.
@@ -264,17 +295,19 @@ pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
 /// `run`: plays `input` in `game`; a trace file (`perf_out`) is written
 /// from the project's folder `root`, as the CLI and the MCP server run it.
 pub fn run_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<RunOutput> {
-    let session = match played(Op::Run, game, input) {
-        Ok(session) => session,
+    let (mut session, first) = match played(Op::Run, game, input) {
+        Ok(played) => played,
         Err(answer) => return answer,
     };
+    // After the last frame, before the answer is read.
+    let heap = first.zip(session.heap_snapshot());
     let (mut output, mut limits) = run_output(&*session);
     if input.measures() {
-        let (mut summary, records, perf_limits) = perf_of(&*session);
+        let (mut summary, records, perf_limits) = perf_of(&*session, heap.as_ref());
         limits.extend(perf_limits);
         if let (Some(file), Some(summary)) = (&input.perf_out, &mut summary) {
             let path = perf_out_path(root, file);
-            if let Err(e) = write_trace(&path, &records) {
+            if let Err(e) = write_trace(&path, &records, heap.as_ref()) {
                 return Answer::failed(Op::Run, codes::FILE, format!("--perf-out {file}: {e}"));
             }
             summary.file = Some(path.display().to_string());
@@ -288,7 +321,7 @@ pub fn run_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<Run
 /// passes if there is one.
 pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
     match played(Op::Scene, game, input) {
-        Ok(session) => {
+        Ok((session, _)) => {
             let (output, limits) = scene_output(&*session);
             Answer::new(Op::Scene, output.scene.is_some(), output, limits)
         }

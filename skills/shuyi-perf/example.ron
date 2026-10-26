@@ -1,7 +1,8 @@
 // The worked example of shuyi-perf, a script of contract commands run on
 // a game made with `shuyi new <dir> --template grid`: a run of the stage
-// measured, its summary's fields, the heap's among them, and its trace
-// file there (never their values, which are the machine's), then the
+// measured, its summary's fields, the heap's and its snapshots' among
+// them, and its trace file there with the heap's snapshot and diff lines
+// (never their values, which are the machine's), then the
 // stage's update marked as a span, and a second run that finds it among
 // the summary's spans.
 Example(
@@ -21,11 +22,18 @@ Example(
             Has("/result/perf/heap/peak_bytes"),
             Has("/result/perf/heap/live_bytes"),
             Has("/result/perf/heap/allocs/p50"),
+            Has("/result/perf/heap_tags/0/class"),
+            Has("/result/perf/heap_tags/0/live_bytes"),
+            Is("/result/perf/heap_growth/from", "0"),
+            Has("/result/perf/heap_growth/live_bytes"),
+            Has("/result/perf/heap_growth/tags"),
             Has("/result/perf/file"),
             Holds("/limits", "times are this machine's, from an unoptimized build unless it says otherwise: compare runs on the same machine"),
         ]),
         Holds(file: "perf.jsonl", text: "{\"kind\":\"frame\",\"frame\":1,"),
         Holds(file: "perf.jsonl", text: ",\"heap\":{\"live_bytes\":"),
+        Holds(file: "perf.jsonl", text: "{\"kind\":\"snapshot\",\"frame\":0,"),
+        Holds(file: "perf.jsonl", text: "{\"kind\":\"diff\",\"from\":0,"),
         // Mark the stage's update as a span.
         Edit(
             file: "crates/game/src/stages/top_down_grid.rs",

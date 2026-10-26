@@ -4,6 +4,16 @@
   "description": "Which of the session's frames' records `perf` reads.",
   "type": "object",
   "properties": {
+    "diff_from": {
+      "description": "The frame of a kept snapshot: answer the diff from it to the\nsnapshot taken now, or, without `snapshot`, to the newest kept.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "default": null,
+      "minimum": 0
+    },
     "max": {
       "description": "The most records to answer, 1 to 600.",
       "type": "integer",
@@ -18,6 +28,11 @@
       "format": "uint64",
       "default": 0,
       "minimum": 0
+    },
+    "snapshot": {
+      "description": "Take a heap snapshot now: what holds the heap by memory tag. The\nsession keeps its last 8, by frame.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

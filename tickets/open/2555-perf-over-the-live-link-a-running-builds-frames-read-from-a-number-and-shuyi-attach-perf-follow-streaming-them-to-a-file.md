@@ -114,13 +114,21 @@ None.
   `example-follow.ron`, needs a window, so it is marked manual
   (`manual: Some("needs a window")`), listed and not run, as 2521's
   `example-attach.ron` in `shuyi-test` is.
-- **Either order with 2554:** if 2554 is done, `Request::Perf` gains
-  `snapshot: bool`: the backend takes a snapshot after the frame, as it
-  takes the screenshot after `present`, and answers it with the records;
-  `shuyi attach` gains `--perf-snapshot`, which the skill's section
-  names; and MCP's `perf` takes
-  snapshots and diffs over the link, the session keeping them on the
-  `shuyi` side. If not, 2554 adds them (its own clause says so).
+- **From 2554 (done):** heap snapshots and diffs exist
+  (`shuyi_ui::perf::HeapSnapshot`, `HeapSnapshot::diff`, `HeapDiff`,
+  `PerfLine::Snapshot` and `PerfLine::Diff`), and a backend takes one
+  with `App::heap_snapshot(&mut platform)` (`shuyi-app`'s `Macroquad`
+  gives `Platform::heap_snapshot` from the global counter, through
+  `shuyi_platform::heap::snapshot`). This ticket adds them to the link:
+  `Request::Perf` gains `snapshot: bool`: the backend takes a snapshot
+  after the frame, as it takes the screenshot after `present`, and
+  answers it with the records; `shuyi attach` gains `--perf-snapshot`,
+  which the skill's section names; and MCP's `perf` on an attached
+  session takes `snapshot` and `diff_from` as the headless session's
+  does (`crates/cli/src/mcp/host.rs`: `perf_read`, `keep`, the last
+  `KEPT_SNAPSHOTS` by frame, `kept`, and `SH0001` with the kept frames
+  for a frame not kept), the session keeping them on the `shuyi` side
+  (`mcp/attached.rs`).
 
 **Out (do not do):**
 - the records, the trace's lines and the summary (3063, 2553), and the

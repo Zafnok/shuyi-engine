@@ -10,7 +10,10 @@
 //! counts too (`FrameRecord::heap`), from the program's own heap counter
 //! (`shuyi_alloc_count::global`), and the summary sums them up
 //! ([`HeapSummary`]). The counter counts the whole program: every thread's
-//! allocations.
+//! allocations. Where it counts by memory tag, `run --perf` takes a heap
+//! snapshot before its script and one after its last frame, and the
+//! summary has what held the heap and what grew ([`add_heap`]); the trace
+//! file ends with the two snapshots and their diff ([`heap_lines`]).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -18,10 +21,20 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_ui::perf::{FrameRecord, PERF_FRAMES, PerfLine, PerfRing, Spread, bytes_text, spread};
+use shuyi_ui::perf::{
+    FrameRecord, HeapDiff, HeapSnapshot, PERF_FRAMES, PerfLine, PerfRing, Spread, TagDelta, TagRow,
+    bytes_text, spread,
+};
 
 /// How many of the spans with the most time a [`PerfSummary`] names.
 pub const TOP_SPANS: usize = 5;
+
+/// How many of a snapshot's rows, and of a diff's, a [`PerfSummary`]
+/// keeps.
+pub const HEAP_ROWS: usize = 10;
+
+/// How many of a diff's changes the line for people names.
+pub const TEXT_CHANGES: usize = 3;
 
 /// The limit every answer with perf has: what its times are.
 pub const TIMES: &str = "times are this machine's, from an unoptimized build unless it says \
@@ -33,6 +46,11 @@ pub const RESET: &str = "the session was reset or started again: read from 0";
 /// The limit of records measured with no heap counts.
 pub const HEAP_UNCOUNTED: &str =
     "the heap isn't counted: the game's tool program is a release build, or opted out";
+
+/// The limit of heap counts with no snapshot by tag: the heap was counted,
+/// but not by memory tag.
+pub const HEAP_UNTAGGED: &str =
+    "the heap isn't counted by memory tag, so no heap snapshot was taken";
 
 /// The limit of heap counts from this program's own counter while it ran
 /// another thread beside the game's.
@@ -170,6 +188,13 @@ pub struct PerfSummary {
     /// The heap's counts over the records that have them; null where none
     /// has (a release build of the tool program, or one opted out).
     pub heap: Option<HeapSummary>,
+    /// What held the heap after the last frame: the snapshot's first ten
+    /// rows by tag, the most live bytes first. Empty without a snapshot.
+    pub heap_tags: Vec<TagRow>,
+    /// What grew and shrank from the snapshot before the run to the one
+    /// after: the diff, with its first ten rows, the largest change first.
+    /// Null without snapshots.
+    pub heap_growth: Option<HeapDiff>,
     /// The trace file written, its absolute path, with `--perf-out`.
     pub file: Option<String>,
 }
@@ -208,8 +233,20 @@ pub fn summary(records: &[FrameRecord]) -> Option<PerfSummary> {
         present: of(|r| r.times.present_us)?,
         spans,
         heap: heap_summary(records),
+        heap_tags: Vec::new(),
+        heap_growth: None,
         file: None,
     })
+}
+
+/// Adds the heap snapshots `first` (before a run) and `last` (after it)
+/// to `summary`: `last`'s first [`HEAP_ROWS`] rows, and the diff from
+/// `first` to `last` with its first [`HEAP_ROWS`].
+pub fn add_heap(summary: &mut PerfSummary, first: &HeapSnapshot, last: &HeapSnapshot) {
+    summary.heap_tags = last.tags.iter().take(HEAP_ROWS).cloned().collect();
+    let mut growth = first.diff(last);
+    growth.tags.truncate(HEAP_ROWS);
+    summary.heap_growth = Some(growth);
 }
 
 /// How the heap's counts add up over the records that have them, or
@@ -252,6 +289,23 @@ pub fn lines<'a>(records: impl IntoIterator<Item = &'a FrameRecord>) -> String {
     out
 }
 
+/// The heap snapshots `first` and `last` as a trace's last lines: a
+/// [`PerfLine::Snapshot`] each, then the [`PerfLine::Diff`] between them.
+pub fn heap_lines(first: &HeapSnapshot, last: &HeapSnapshot) -> String {
+    let lines = [
+        PerfLine::Snapshot(first.clone()),
+        PerfLine::Snapshot(last.clone()),
+        PerfLine::Diff(first.diff(last)),
+    ];
+    let mut out = String::new();
+    for line in lines {
+        // Numbers and names: serializing can't fail.
+        out.push_str(&serde_json::to_string(&line).unwrap_or_default());
+        out.push('\n');
+    }
+    out
+}
+
 /// The limit of a trace that dropped `dropped` earlier frames.
 pub fn dropped_limit(dropped: u64) -> String {
     format!(
@@ -275,9 +329,47 @@ pub fn millis(us: u32) -> String {
     format!("{}.{}", tenths / 10, tenths % 10)
 }
 
+/// `bytes` with its sign: `+96.0 KB`, `-512 B`.
+fn signed_bytes(bytes: i64) -> String {
+    let sign = if bytes < 0 { '-' } else { '+' };
+    format!("{sign}{}", bytes_text(bytes.unsigned_abs()))
+}
+
+/// The change `delta` for people: its name and its bytes, signed.
+fn delta_text(delta: &TagDelta) -> String {
+    format!("{} {}", delta.name, signed_bytes(delta.live_bytes))
+}
+
+/// `diff`'s line for people: `heap grew 120.0 KB from frame 0 to 600:
+/// update +96.0 KB, image +24.0 KB, ai +4.0 KB`, its [`TEXT_CHANGES`]
+/// largest changes; `heap shrank …` for fewer bytes, `heap held its size
+/// …` for as many; `None` when nothing changed.
+pub fn heap_text(diff: &HeapDiff) -> Option<String> {
+    if diff.live_bytes == 0 && diff.tags.is_empty() {
+        return None;
+    }
+    let size = bytes_text(diff.live_bytes.unsigned_abs());
+    let mut out = match diff.live_bytes.signum() {
+        1 => format!("heap grew {size}"),
+        -1 => format!("heap shrank {size}"),
+        _ => "heap held its size".to_owned(),
+    };
+    let _ = write!(out, " from frame {} to {}", diff.from, diff.to);
+    let changes: Vec<String> = diff
+        .tags
+        .iter()
+        .take(TEXT_CHANGES)
+        .map(delta_text)
+        .collect();
+    if !changes.is_empty() {
+        let _ = write!(out, ": {}", changes.join(", "));
+    }
+    Some(out)
+}
+
 /// `summary`'s line for people: `perf: 600 frames, frame p50 1.2 ms p99
-/// 3.4 ms worst 8.0 ms; span ai 0.8 ms mean; heap peak 4.1 MB`, then the
-/// trace file's.
+/// 3.4 ms worst 8.0 ms; span ai 0.8 ms mean; heap peak 4.1 MB`, then what
+/// grew in the heap ([`heap_text`]) and the trace file's.
 pub fn text(summary: &PerfSummary) -> String {
     let frame = &summary.frame;
     let mut out = format!(
@@ -294,6 +386,10 @@ pub fn text(summary: &PerfSummary) -> String {
         let _ = write!(out, "; heap peak {}", bytes_text(heap.peak_bytes));
     }
     out.push('\n');
+    if let Some(line) = summary.heap_growth.as_ref().and_then(heap_text) {
+        out.push_str(&line);
+        out.push('\n');
+    }
     if let Some(file) = &summary.file {
         let _ = writeln!(out, "trace: {file}");
     }

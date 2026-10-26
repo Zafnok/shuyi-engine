@@ -42,8 +42,10 @@ link = ["shuyi-platform/link", "dep:image", "dep:getrandom"]
 [dependencies]
 shuyi-assets = { path = "../assets" }
 shuyi-ui = { path = "../ui" }
-# The platform boundary this crate implements, and the `App` it drives.
-shuyi-platform = { path = "../platform" }
+# The platform boundary this crate implements, and the `App` it drives;
+# `heap` for its heap snapshots, the counter's rows as `heap::snapshot`
+# reads them.
+shuyi-platform = { path = "../platform", features = ["heap"] }
 # The heap counter of every debug build (ADR-0046 §9): its `global` feature
 # is the one `#[global_allocator]`, shared with `shuyi-cli`'s.
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }

@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["2553", "3065"]
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2554 — Heap snapshots agents read
@@ -186,28 +186,28 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With the fake memory, `run --perf --perf-out` on a game whose
+- [x] With the fake memory, `run --perf --perf-out` on a game whose
       Harness starts on `with_fake_memory()` ends its file with two
       snapshot lines and a diff, and the file and the summary are
       committed snapshots.
-- [ ] `diff` on known snapshots: a tag only in the later one, a tag
+- [x] `diff` on known snapshots: a tag only in the later one, a tag
       only in the earlier one, a tag unchanged (left out), and the
       order by the size of the change.
-- [ ] MCP's scripted client takes a snapshot, steps 30 frames, takes
+- [x] MCP's scripted client takes a snapshot, steps 30 frames, takes
       another with `diff_from` the first, and reads a diff; a
       `diff_from` that isn't kept answers wrong arguments with the kept
       frames.
-- [ ] `cargo shuyi run --perf` on Hello, Grid with the real counter
+- [x] `cargo shuyi run --perf` on Hello, Grid with the real counter
       answers `heap_tags` with `load` or an asset kind among the first
       rows.
-- [ ] `shuyi-app`'s trace writer, given 1,201 frames, writes snapshots
+- [x] `shuyi-app`'s trace writer, given 1,201 frames, writes snapshots
       on frames 1, 601 and 1201 and two diffs (a test over the writer).
-- [ ] The schemas are regenerated and `versions.json` has the new
+- [x] The schemas are regenerated and `versions.json` has the new
       version.
-- [ ] `shuyi-perf` has its heap section, `cargo shuyi check-skills
+- [x] `shuyi-perf` has its heap section, `cargo shuyi check-skills
       skills` passes, and `cargo xtask skill-examples shuyi-perf` runs
       its example green.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -219,5 +219,81 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi_ui::perf`: `TagRow`, `HeapSnapshot` (`new` puts the rows in
+  order: live bytes, most first, then class number, then name),
+  `TagDelta`, `HeapDiff` and `HeapSnapshot::diff`; `PerfLine` gains
+  `Snapshot` and `Diff`. All serde, `JsonSchema` under `schema`,
+  `#[non_exhaustive]` with constructors.
+- `shuyi-platform`: `Platform::heap_snapshot` (defaulted to `None`),
+  `App::heap_snapshot` (stamps `frame_number`; `None` without
+  `DEBUG_TOOLS`, or while the running game's `debug_tools` is off),
+  `Harness::heap_snapshot` and `set_heap_snapshots`,
+  `HeadlessPlatform::set_heap_snapshots`, and the fake memory's
+  snapshots (the ticket's four rows; `update` is left out before the
+  first frame, as a counter leaves out a tag with nothing ever
+  allocated). The new `heap` feature has `heap::snapshot`, with an
+  optional dependency on `shuyi-alloc-count` without `global`, and its
+  edge in `tools/layers.ron`.
+- `shuyi-app`: `Macroquad::heap_snapshot` from the global counter. The
+  trace file (`SHUYI_PERF`) writes a snapshot on its first frame that
+  gives one, then every 600 frames, each after the first followed by
+  its diff (`perf_file::Snapshots`).
+- `shuyi-cli`: `Session::heap_snapshot` (defaulted to `None`;
+  `Headless` over the Harness, with this program's counter handed over
+  by `set_perf`). `run --perf` takes a snapshot after `set_perf`, before
+  the script, and one after the last frame. `PerfSummary` gains
+  `heap_tags` and `heap_growth`, `--perf-out` ends with the two
+  snapshots and their diff (`perf::heap_lines`), and the text has the
+  `heap grew …` line (`perf::heap_text`). MCP's `perf` takes `snapshot`
+  and `diff_from`, and answers `snapshot`, `diff` and `kept`; the host's
+  session keeps the last 8 by frame. Contract 24, schemas regenerated.
+- Docs: `docs/contract.md` (*What holds the heap*, under *Perf
+  traces*, and the `perf` tool's row), `docs/platform-backends.md`
+  (`heap_snapshot`), the crates' rustdoc, and `shuyi-perf`'s section
+  "What holds the heap, and what grew" (version 1.2) with its worked
+  example.
+- Checked by hand: `cargo shuyi run --frames 120 --perf` on Hello, Grid
+  with the real counter answers `heap_tags` with `load` first and the
+  asset kinds (`english`, `font atlas`, `keymap`, …) after it, and
+  `heap grew 28.0 KB from frame 0 to 120: paint +13.5 KB, perf +11.0
+  KB, other +3.5 KB`.
+
+**Deviations.**
+
+- `heap::snapshot` takes three arguments, `snapshot(counts, &rows,
+  overflowed)`: the overflowed count comes from `tags::overflowed()`,
+  global state, so the caller reads it and the conversion stays pure
+  and testable.
+- `PerfSummary::heap_growth` is `Option<HeapDiff>`, the whole diff with
+  its first 10 rows, not only the rows: the text line needs its frames
+  and its total, and an agent reads them too.
+- A tool program's session start now runs under the `load` phase
+  (`session::measured_start`, used by `run --perf` and MCP's `start`),
+  and sets the decode watch before the game loads. Without it the
+  game's load in a headless session ran before any tag, so `heap_tags`
+  showed it all as `other`, and the acceptance criterion on Hello, Grid
+  could not hold.
+- A new limit, `perf::HEAP_UNTAGGED` ("the heap isn't counted by memory
+  tag, so no heap snapshot was taken"), when the heap is counted without
+  tags, or when `perf` with `snapshot` gets none. Where the heap isn't
+  counted at all, 3064's `HEAP_UNCOUNTED` says why, as the ticket asks.
+- The worked example of `shuyi-perf` checks `heap_tags`, `heap_growth`
+  and the trace's snapshot and diff lines, but not "a `diff_from` that
+  isn't kept answers its code": a worked example has no step that calls
+  an MCP session tool. Follow-up **2563** adds that step and the check.
+  The behaviour is tested in `crates/cli/tests/it/mcp.rs` and
+  `crates/cli/src/mcp/host/tests.rs`.
+- The text line's example in the docs reads `124.0 KB`: the ticket's
+  "120.0 KB" didn't add up to its own three changes.
+
+**Follow-ups.** 2563 (an `Mcp` step for worked examples). 2555's clause
+on this ticket is rewritten as what now holds: it adds snapshots to the
+live link.
+
+No break: every type that grew is `#[non_exhaustive]` (`PerfLine`,
+`PerfSummary`, `PerfInput`, `PerfOutput`), and the trait methods
+(`Platform::heap_snapshot`, `Session::heap_snapshot`) have defaults.
+
+Nick input: none.

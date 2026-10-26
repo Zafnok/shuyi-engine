@@ -18,7 +18,7 @@ workspace = true
 default = ["std"]
 # Without it the crate is `no_std` + `alloc`, for the Playdate (ADR-0008 §5;
 # CI's `no-std` job builds it so, ticket 3005).
-std = ["shuyi-assets/std", "shuyi-ui/std"]
+std = ["shuyi-assets/std", "shuyi-ui/std", "shuyi-alloc-count?/std"]
 # `harness`: the headless test driver for a game's integration tests
 # (game ADR-0017).
 harness = []
@@ -26,6 +26,10 @@ harness = []
 # listener runs in a debug build. It reads and writes JSON lines, so it
 # needs `std`.
 link = ["std", "dep:serde", "dep:serde_json"]
+# `heap`: `heap::snapshot`, the one conversion of the heap counter's rows
+# into a `HeapSnapshot`, which `shuyi-app` and `shuyi-cli` share. It needs
+# the counter's types, not its global static (`global`).
+heap = ["dep:shuyi-alloc-count"]
 
 [dependencies]
 # The font atlas, the image table and the voice clips' file names.
@@ -35,10 +39,13 @@ shuyi-ui = { path = "../ui", default-features = false }
 # The live link's requests and answers as JSON lines (the `link` feature).
 serde = { workspace = true, optional = true }
 serde_json = { version = "1", optional = true }
+# The heap counter's counts and rows (the `heap` feature), never its
+# global static.
+shuyi-alloc-count = { path = "../alloc-count", default-features = false, optional = true }
 
 [dev-dependencies]
 # The Harness and the toy game for the tests.
-shuyi-platform = { path = ".", default-features = false, features = ["harness", "link"] }
+shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap"] }
 shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }
 # The link's server and the Harness playing random scripts alike.
 proptest.workspace = true

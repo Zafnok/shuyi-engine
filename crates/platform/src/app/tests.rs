@@ -950,6 +950,32 @@ fn the_memory_is_read_only_in_a_frame_with_a_record() {
 }
 
 #[test]
+fn a_heap_snapshot_is_the_platforms_stamped_with_the_frame() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = HeadlessPlatform::new().with_fake_memory();
+    let first = app.heap_snapshot(&mut p).expect("a fake memory's snapshot");
+    assert_eq!((first.frame, first.live_bytes), (0, 1_048_576));
+    for n in 0..3 {
+        let _ = app.frame(&mut p, Millis(16 * n));
+    }
+    let later = app.heap_snapshot(&mut p).expect("and another");
+    assert_eq!((later.frame, later.live_bytes), (3, 1_097_728));
+    let diff = first.diff(&later);
+    assert_eq!((diff.from, diff.to, diff.live_bytes), (0, 3, 49_152));
+    assert_eq!(&*diff.tags[0].name, "update");
+    assert_eq!(app.heap_snapshot(&mut HeadlessPlatform::new()), None);
+}
+
+#[test]
+fn with_debug_tools_off_no_heap_snapshot_is_taken() {
+    let (game, _) = steps_game();
+    let app = App::running(game.with_debug_screens(false));
+    let mut p = HeadlessPlatform::new().with_fake_memory();
+    assert_eq!(app.heap_snapshot(&mut p), None);
+}
+
+#[test]
 fn a_platform_without_memory_leaves_the_records_heap_empty() {
     let mut app = App::running(toy::game());
     let mut p = clocked();

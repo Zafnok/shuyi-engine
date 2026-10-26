@@ -1,7 +1,7 @@
 //! Reads of a ring, the summary's spreads and spans, the trace's lines and
 //! the text's milliseconds.
 
-use shuyi_ui::perf::{HeapCounts, SpanEvent};
+use shuyi_ui::perf::{HeapCounts, SpanEvent, TagClass};
 
 use super::*;
 
@@ -264,4 +264,113 @@ fn the_limits_say_why_nothing_was_measured_and_what_was_dropped() {
     );
     assert_eq!(unmeasured_limit(0), "nothing was measured: no frame ran");
     assert!(unmeasured_limit(3).contains("without debug tools"));
+}
+
+/// A diff from frame 0 to 600 of `live_bytes` in all, with `changes`
+/// (name, bytes) in order.
+fn diff(live_bytes: i64, changes: &[(&'static str, i64)]) -> HeapDiff {
+    let mut diff = HeapDiff::new(0, 600);
+    diff.live_bytes = live_bytes;
+    diff.tags = changes
+        .iter()
+        .map(|&(name, bytes)| TagDelta::new(TagClass::Span, name, bytes, 1))
+        .collect();
+    diff
+}
+
+#[test]
+fn the_heaps_line_names_what_grew_most_or_shrank() {
+    let grew = diff(
+        122_880,
+        &[
+            ("update", 98_304),
+            ("image", 24_576),
+            ("ai", 4096),
+            ("other", -4096),
+        ],
+    );
+    assert_eq!(
+        heap_text(&grew).unwrap(),
+        "heap grew 120.0 KB from frame 0 to 600: update +96.0 KB, image +24.0 KB, ai +4.0 KB"
+    );
+    let shrank = diff(-2048, &[("load", -2048)]);
+    assert_eq!(
+        heap_text(&shrank).unwrap(),
+        "heap shrank 2.0 KB from frame 0 to 600: load -2.0 KB"
+    );
+    let moved = diff(0, &[("update", 512), ("draw", -512)]);
+    assert_eq!(
+        heap_text(&moved).unwrap(),
+        "heap held its size from frame 0 to 600: update +512 B, draw -512 B"
+    );
+    assert_eq!(heap_text(&diff(0, &[])), None);
+    assert_eq!(
+        heap_text(&diff(10, &[])).unwrap(),
+        "heap grew 10 B from frame 0 to 600"
+    );
+}
+
+#[test]
+fn the_heaps_line_follows_the_perf_line() {
+    let mut summary = summary(&[record(1, 1200, &[])]).unwrap();
+    summary.heap_growth = Some(diff(1024, &[("ai", 1024)]));
+    summary.file = Some("/game/perf.jsonl".to_owned());
+    assert_eq!(
+        text(&summary),
+        "perf: 1 frames, frame p50 1.2 ms p99 1.2 ms worst 1.2 ms\nheap grew 1.0 KB from frame 0 \
+         to 600: ai +1.0 KB\ntrace: /game/perf.jsonl\n"
+    );
+}
+
+#[test]
+fn the_summary_keeps_ten_rows_of_the_last_snapshot_and_of_the_diff() {
+    let rows = |frame: u32, bytes: u64| {
+        let rows: Vec<TagRow> = (0..12u64)
+            .map(|n| TagRow::new(TagClass::Span, format!("span {n:02}"), bytes * (n + 1), 1))
+            .collect();
+        let mut snapshot = HeapSnapshot::new(0, 0, rows);
+        snapshot.frame = frame;
+        snapshot
+    };
+    let (first, last) = (rows(1, 10), rows(30, 20));
+    let mut summary = summary(&[record(1, 1200, &[])]).unwrap();
+    assert_eq!(summary.heap_tags, Vec::<TagRow>::new());
+    assert_eq!(summary.heap_growth, None);
+    add_heap(&mut summary, &first, &last);
+    assert_eq!(summary.heap_tags.len(), HEAP_ROWS);
+    assert_eq!(summary.heap_tags[0].name, "span 11");
+    assert_eq!(summary.heap_tags[0].live_bytes, 240);
+    let growth = summary.heap_growth.unwrap();
+    assert_eq!(
+        (growth.from, growth.to, growth.tags.len()),
+        (1, 30, HEAP_ROWS)
+    );
+    assert_eq!(growth.tags[0].name, "span 11");
+    assert_eq!(growth.tags[0].live_bytes, 120);
+}
+
+#[test]
+fn the_heaps_lines_are_the_two_snapshots_then_their_diff() {
+    let mut first = HeapSnapshot::new(10, 10, vec![TagRow::new(TagClass::Phase, "load", 10, 1)]);
+    first.frame = 0;
+    let mut last = HeapSnapshot::new(30, 30, vec![TagRow::new(TagClass::Phase, "load", 30, 2)]);
+    last.frame = 5;
+    let text = heap_lines(&first, &last);
+    assert!(text.ends_with('\n'));
+    let lines: Vec<PerfLine> = text
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            PerfLine::Snapshot(first.clone()),
+            PerfLine::Snapshot(last.clone()),
+            PerfLine::Diff(first.diff(&last)),
+        ]
+    );
+    assert!(
+        text.starts_with("{\"kind\":\"snapshot\",\"frame\":0,"),
+        "{text}"
+    );
 }

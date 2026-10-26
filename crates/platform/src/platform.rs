@@ -12,7 +12,7 @@ pub use shuyi_assets::target::Color;
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::{MemoryReading, MemoryScopes, PerfClock};
+use shuyi_ui::perf::{HeapSnapshot, MemoryReading, MemoryScopes, PerfClock};
 use shuyi_ui::storage::Storage;
 
 use crate::app::Card;
@@ -257,6 +257,16 @@ pub trait Platform {
     /// asset decode when it starts, before the game's load
     /// (`shuyi_assets::format::watch_decodes`).
     fn memory_scopes(&self) -> Option<MemoryScopes> {
+        None
+    }
+
+    /// What holds the heap now, by memory tag, in debug builds (ADR-0046
+    /// §6): its live bytes and each tag's counts, its `frame` left 0 for
+    /// [`App::heap_snapshot`](crate::App::heap_snapshot) to stamp. Taking
+    /// one allocates the rows, so it is asked for now and then (a tool, a
+    /// trace every 600 frames), never every frame. `None` (the default)
+    /// for a backend whose counter has no tags.
+    fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         None
     }
 }

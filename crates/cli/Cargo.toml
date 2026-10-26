@@ -34,8 +34,9 @@ shuyi-assets = { path = "../assets" }
 # The frame `frame-png` paints, and the perf records `run --perf` reads
 # (with their schemas).
 shuyi-ui = { path = "../ui", features = ["schema"] }
-# The Harness that plays a game's script, and the live link `attach` speaks.
-shuyi-platform = { path = "../platform", features = ["harness", "link"] }
+# The Harness that plays a game's script, and the live link `attach` speaks;
+# `heap` for the sessions' heap snapshots (`heap::snapshot`).
+shuyi-platform = { path = "../platform", features = ["harness", "link", "heap"] }
 # The heap counter of the tool program's debug build (ADR-0046 §9), which
 # `run --perf` and MCP's sessions read: its `global` feature is the one
 # `#[global_allocator]`, shared with `shuyi-app`'s.

@@ -51,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 23,
+  "contract": 24,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -112,8 +112,9 @@ the game marked around its own code with `ctx.span("ai", |ctx| …)`, and
 the heap. The last 600 frames are kept. Agents read them three ways, as JSON
 lines: `run --perf`, MCP's `perf`, and a running build's trace file.
 
-Each line of a trace is one object, tagged by `kind`. Today every line
-is a frame:
+Each line of a trace is one object, tagged by `kind`: a `frame`, a heap
+`snapshot` or a `diff` ([What holds the heap](#what-holds-the-heap)).
+Most lines are frames:
 
 ```json
 {"kind":"frame","frame":12,"times":{"update_us":310,"draw_us":420,"paint_us":610,"present_us":15800,"frame_us":17200},"spans":[{"name":"ai","start_us":40,"us":250,"depth":0}],"spans_dropped":0,"heap":{"live_bytes":4194304,"peak_bytes":4521984,"allocs":12}}
@@ -178,8 +179,74 @@ start again: a `since` past the session's last frame answers no records,
 when `SHUYI_PERF` names a file: `SHUYI_PERF=perf.jsonl cargo run`. It
 logs the file's name, and after each frame appends that frame's line
 and flushes, so `tail -f perf.jsonl`, or reading the file again from
-the last line read, follows it. A build without debug tools logs why and
-writes nothing.
+the last line read, follows it. It also writes a heap snapshot on its
+first frame and every 600 frames after, each after the first followed
+by its diff from the one before, so the file shows what grows as a
+person plays. A build without debug tools logs why and writes nothing.
+
+### What holds the heap
+
+Where the heap is counted, it is counted by **memory tag** too: each
+block of memory counts under the tag current when it was allocated, or
+last grown (a list that grows in `update` counts in `update`). A tag has
+a class and a name:
+
+- `phase`, a part of the frame: `load` (the game's load; in a tool
+  program, the session's start), `update`, `draw`, `paint` (painting
+  the frame), `perf` (the frame's record), and `app` for the rest of
+  the engine's frame;
+- `span`, a span the game marked: `ctx.span("ai", …)` counts what the
+  closure allocates under `ai`;
+- `asset`, an asset kind being decoded: `image`, `palette`, …;
+- `other`: `other`, what is allocated outside any tag (before the
+  game starts, or by another thread), and `overflow`, which every name
+  past the first 254 shares.
+
+A **snapshot** is what holds the heap at a frame:
+
+```json
+{"kind":"snapshot","frame":600,"live_bytes":1146880,"peak_bytes":1523712,"tags":[{"class":"phase","name":"load","live_bytes":524288,"live_blocks":40,"allocated_bytes":524288,"peak_bytes":524288},{"class":"phase","name":"update","live_bytes":98304,"live_blocks":6,"allocated_bytes":475136,"peak_bytes":475136}],"overflowed":0}
+```
+
+- `frame` is the frame it was taken after (0 is before the first);
+  `live_bytes` and `peak_bytes` are the whole heap's.
+- `tags` has a row for each tag with bytes live or ever allocated
+  under it, the most live bytes first (then by class, then by name):
+  `live_bytes` and `live_blocks` live now, `allocated_bytes` ever
+  allocated under it (a block grown adds its new size), and
+  `peak_bytes` the most live at once.
+- `overflowed` counts the names that shared `overflow`.
+
+A **diff** is what grew and shrank between two snapshots:
+
+```json
+{"kind":"diff","from":1,"to":600,"live_bytes":126976,"tags":[{"class":"phase","name":"update","live_bytes":98304,"live_blocks":6},{"class":"asset","name":"image","live_bytes":24576,"live_blocks":3},{"class":"span","name":"ai","live_bytes":4096,"live_blocks":1}]}
+```
+
+It has the tags whose live bytes or blocks changed (a tag missing from
+one snapshot counts as 0 there), the largest change first, less than 0
+for fewer.
+
+**To find what grows,** take two snapshots and read their diff:
+
+- `run --perf` takes one once the game has started, before the steps,
+  and one after the last frame. Its `perf` adds `heap_tags`, the last
+  snapshot's first 10 rows, and `heap_growth`, the diff with its first
+  10 rows; `--perf-out` ends the file with the two `snapshot` lines and
+  their `diff`. For people it prints a line: `heap grew 124.0 KB from
+  frame 0 to 600: update +96.0 KB, image +24.0 KB, ai +4.0 KB`.
+- In an MCP session, `perf` with `snapshot` takes one now; the session
+  keeps the last 8, by frame, and every answer lists their frames in
+  `kept`. `perf` with `diff_from` (a kept frame) answers the `diff`
+  from it to the snapshot taken now, or to the newest kept without
+  `snapshot`. A frame that isn't kept is wrong arguments (`SH0001`), and
+  the error lists the kept frames.
+- In a test, the Harness takes them: `h.heap_snapshot()` twice, and
+  `first.diff(&later)`.
+
+A tag says where the bytes were allocated, not who holds them. To give
+suspect code's bytes a tag of their own, mark it with a span. Where the
+heap isn't counted there is no snapshot, and the limits say why.
 
 ## Attaching to a running build
 
@@ -302,7 +369,7 @@ A **session** keeps one game running headless between calls:
 | `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
 | `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
 | `events` | nothing | what happened since the start, and the sounds |
-| `perf` | `since` (0), `max` (120, 1 to 600) | the frames' records numbered `since` or more, at most `max`: `records`, `next` (the `since` of the next read), `dropped`, and the `summary` of the records answered ([Perf traces](#perf-traces)) |
+| `perf` | `since` (0), `max` (120, 1 to 600), `snapshot` (false), `diff_from` | the frames' records numbered `since` or more, at most `max`: `records`, `next` (the `since` of the next read), `dropped`, and the `summary` of the records answered; with `snapshot`, a heap snapshot taken now, `snapshot`; with `diff_from`, a kept snapshot's frame, the `diff` from it; and `kept`, the frames of the snapshots the session keeps ([Perf traces](#perf-traces)) |
 | `reset` | nothing | the game started again as `start` started it |
 | `stop` | nothing | the game stopped |
 

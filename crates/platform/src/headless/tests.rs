@@ -308,3 +308,67 @@ fn the_memory_tags_are_a_tests_until_it_takes_them_away() {
     let given = HeadlessPlatform::new().with_scopes(scopes);
     assert!(given.memory_scopes().is_some());
 }
+
+/// The fake snapshot's rows after `n` frames: each name with its live
+/// bytes, blocks and peak, in the snapshot's order.
+fn fake_rows(n: u32) -> Vec<(&'static str, u64, u32, u64)> {
+    let snapshot = fake_snapshot(n);
+    let names = ["image", "load", "update", "other"];
+    snapshot
+        .tags
+        .iter()
+        .map(|r| {
+            assert_eq!(r.allocated_bytes, r.peak_bytes, "{r:?}");
+            let name = names.into_iter().find(|&name| name == r.name).unwrap();
+            (name, r.live_bytes, r.live_blocks, r.peak_bytes)
+        })
+        .collect()
+}
+
+#[test]
+fn the_fake_snapshots_rows_add_up_to_the_live_bytes_of_the_fake_memory() {
+    assert_eq!(
+        fake_rows(0),
+        [
+            ("load", 524_288, 40, 524_288),
+            ("other", 475_136, 12, 475_136),
+            ("image", 49_152, 3, 49_152),
+        ]
+    );
+    assert_eq!(fake_rows(1)[3], ("update", 16_384, 1, 16_384));
+    assert_eq!(fake_rows(29)[2], ("update", 475_136, 29, 475_136));
+    assert_eq!(fake_rows(30)[3], ("update", 0, 0, 475_136));
+    for n in [0, 1, 29, 30, 31, 600] {
+        let (snapshot, heap) = (fake_snapshot(n), fake_heap(n));
+        let sum: u64 = snapshot.tags.iter().map(|r| r.live_bytes).sum();
+        assert_eq!(sum, heap.live_bytes, "frame {n}");
+        assert_eq!(snapshot.live_bytes, heap.live_bytes);
+        assert_eq!(snapshot.peak_bytes, heap.peak_bytes);
+        assert_eq!((snapshot.frame, snapshot.overflowed), (0, 0));
+    }
+    let classes: Vec<TagClass> = fake_snapshot(1).tags.iter().map(|r| r.class).collect();
+    assert_eq!(
+        classes,
+        [
+            TagClass::Phase,
+            TagClass::Other,
+            TagClass::Asset,
+            TagClass::Phase
+        ]
+    );
+}
+
+#[test]
+fn the_platform_takes_a_snapshot_from_its_fake_or_a_counter_set() {
+    let mut platform = HeadlessPlatform::new();
+    assert_eq!(platform.heap_snapshot(), None);
+    platform.set_heap_snapshots(Some(|| HeapSnapshot::new(5, 6, Vec::new())));
+    assert_eq!(platform.heap_snapshot().map(|s| s.live_bytes), Some(5));
+    let mut fake = platform.with_fake_memory();
+    let card = Card::text("Loading");
+    fake.present(&Frame::new(Show::Card(&card)));
+    assert_eq!(fake.heap_snapshot(), Some(fake_snapshot(1)));
+    fake.set_heap_snapshots(None);
+    fake.set_memory(None);
+    assert_eq!(fake.heap_snapshot(), None);
+}

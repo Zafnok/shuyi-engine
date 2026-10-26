@@ -24,6 +24,9 @@ extend-exclude = [
     "crates/cli/web/sapp_jsutils.js",
     # The engine's template's plans: hashes, written by a test.
     "crates/cli/src/template/plans.golden",
+    # The contract's schemas by version: hashes, as `cargo shuyi schema`
+    # prints them.
+    "crates/cli/schemas/versions.json",
     # proptest's saved failing cases.
     "proptest-regressions/",
 ]

@@ -17,7 +17,9 @@
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature);
 //! - the live `link`'s wire and server (the `link` feature), which a
-//!   backend's listener runs so a tool reaches a running debug build.
+//!   backend's listener runs so a tool reaches a running debug build;
+//! - `heap::snapshot` (the `heap` feature): the heap counter's rows as a
+//!   heap snapshot, for a backend that counts the heap.
 //!
 //! The backends: `shuyi-app` (macroquad: desktop, the web, the Steam Deck),
 //! later `shuyi-playdate`, and private crates for closed consoles.
@@ -41,6 +43,8 @@ pub mod basic;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
+#[cfg(feature = "heap")]
+pub mod heap;
 #[cfg(feature = "link")]
 pub mod link;
 pub mod platform;

@@ -94,8 +94,10 @@
             floats: true,
         ),
         "shuyi-platform": (
-            // `shuyi-core` is below it too (ADR-0032 amends ADR-0024 §1).
-            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui"],
+            // `shuyi-core` is below it too (ADR-0032 amends ADR-0024 §1);
+            // `shuyi-alloc-count` for the counter's rows as a heap snapshot
+            // (its optional `heap` feature, without the global static).
+            engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-alloc-count"],
             outside: Only([
                 // The live link's requests and answers, JSON lines (its
                 // optional `link` feature, ADR-0047).

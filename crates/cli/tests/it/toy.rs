@@ -105,7 +105,8 @@ fn run_with_perf_on_the_toys_fake_clock_answers_the_same_summary_and_trace() {
     let dir = scratch("toy-perf");
     let answer = run_with_perf(&dir, 5, Some("traces/perf.jsonl"));
     assert!(answer.ok, "{answer:?}");
-    let mut summary = answer.result.unwrap().perf.unwrap();
+    let output = answer.result.clone().unwrap();
+    let mut summary = output.perf.clone().unwrap();
     let file = summary.file.take().unwrap();
     let written = std::path::absolute(dir.join("traces/perf.jsonl")).unwrap();
     assert_eq!(Path::new(&file), written);
@@ -113,16 +114,40 @@ fn run_with_perf_on_the_toys_fake_clock_answers_the_same_summary_and_trace() {
         "toy_perf_summary",
         serde_json::to_string_pretty(&summary).unwrap()
     );
+    // The fake memory's snapshots: before the script (frame 0) and after
+    // the last frame, `update` grown by 16 KB a frame.
+    let growth = summary.heap_growth.as_ref().unwrap();
+    assert_eq!((growth.from, growth.to, growth.live_bytes), (0, 5, 81_920));
+    assert_eq!(summary.heap_tags.len(), 4);
     let trace = fs::read_to_string(&file).unwrap();
-    let frames: Vec<u32> = trace
+    let kinds: Vec<String> = trace
         .lines()
         .map(|line| match serde_json::from_str(line).unwrap() {
-            PerfLine::Frame(record) => record.frame,
+            PerfLine::Frame(record) => format!("frame {}", record.frame),
+            PerfLine::Snapshot(snapshot) => format!("snapshot {}", snapshot.frame),
+            PerfLine::Diff(diff) => format!("diff {} {}", diff.from, diff.to),
             other => panic!("{other:?}"),
         })
         .collect();
-    assert_eq!(frames, [1, 2, 3, 4, 5]);
+    assert_eq!(
+        kinds,
+        [
+            "frame 1",
+            "frame 2",
+            "frame 3",
+            "frame 4",
+            "frame 5",
+            "snapshot 0",
+            "snapshot 5",
+            "diff 0 5"
+        ]
+    );
     insta::assert_snapshot!("toy_perf_trace", trace);
+    let text = run_op::text(&output);
+    assert!(
+        text.contains("heap grew 80.0 KB from frame 0 to 5: update +80.0 KB\n"),
+        "{text}"
+    );
     assert!(answer.limits.contains(&perf::TIMES.to_owned()));
     fs::remove_dir_all(&dir).unwrap();
 }

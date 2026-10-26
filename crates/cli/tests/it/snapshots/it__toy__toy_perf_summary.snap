@@ -46,5 +46,52 @@ expression: "serde_json::to_string_pretty(&summary).unwrap()"
       "mean": 3
     }
   },
+  "heap_tags": [
+    {
+      "class": "phase",
+      "name": "load",
+      "live_bytes": 524288,
+      "live_blocks": 40,
+      "allocated_bytes": 524288,
+      "peak_bytes": 524288
+    },
+    {
+      "class": "other",
+      "name": "other",
+      "live_bytes": 475136,
+      "live_blocks": 12,
+      "allocated_bytes": 475136,
+      "peak_bytes": 475136
+    },
+    {
+      "class": "phase",
+      "name": "update",
+      "live_bytes": 81920,
+      "live_blocks": 5,
+      "allocated_bytes": 81920,
+      "peak_bytes": 81920
+    },
+    {
+      "class": "asset",
+      "name": "image",
+      "live_bytes": 49152,
+      "live_blocks": 3,
+      "allocated_bytes": 49152,
+      "peak_bytes": 49152
+    }
+  ],
+  "heap_growth": {
+    "from": 0,
+    "to": 5,
+    "live_bytes": 81920,
+    "tags": [
+      {
+        "class": "phase",
+        "name": "update",
+        "live_bytes": 81920,
+        "live_blocks": 5
+      }
+    ]
+  },
   "file": null
 }

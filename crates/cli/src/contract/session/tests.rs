@@ -370,4 +370,50 @@ mod perf {
         session.idle(1);
         assert_eq!(session.perf(0, 600).next, 3);
     }
+
+    #[test]
+    fn a_session_on_a_fake_heap_takes_the_fakes_snapshots_at_its_frames() {
+        let mut session = toy_on(fakes());
+        let first = session.heap_snapshot().unwrap();
+        assert_eq!(
+            (first.frame, first.live_bytes, first.tags.len()),
+            (0, 1_048_576, 3)
+        );
+        session.idle(5);
+        let later = session.heap_snapshot().unwrap();
+        assert_eq!((later.frame, later.live_bytes), (5, 1_130_496));
+        let diff = first.diff(&later);
+        assert_eq!(diff.live_bytes, 81_920);
+        assert_eq!(&*diff.tags[0].name, "update");
+    }
+
+    /// Other test threads allocate too: only that a snapshot was taken,
+    /// and what holds whatever they do.
+    #[test]
+    fn set_perf_takes_this_programs_snapshots_and_stops() {
+        let mut session = toy_on(HeadlessPlatform::new());
+        assert_eq!(session.heap_snapshot(), None);
+        session.set_perf(true);
+        let snapshot = session.heap_snapshot();
+        assert_eq!(snapshot.is_some(), shuyi_alloc_count::global::COUNTING);
+        if let Some(snapshot) = snapshot {
+            assert!(snapshot.live_bytes > 0, "{snapshot:?}");
+            assert!(!snapshot.tags.is_empty(), "{snapshot:?}");
+        }
+        session.set_perf(false);
+        assert_eq!(session.heap_snapshot(), None);
+    }
+
+    /// What a measured start allocates and keeps counts under `load`: a
+    /// block the start keeps, in a build that counts.
+    #[test]
+    fn a_measured_start_tags_what_it_allocates_load() {
+        let kept = measured_start(|| vec![7u8; 1 << 16]);
+        let Some(rows) = shuyi_alloc_count::global::rows() else {
+            return;
+        };
+        let load = rows.iter().find(|r| r.name == "load" && r.class == 1);
+        assert!(load.is_some_and(|r| r.live_bytes >= 1 << 16), "{rows:?}");
+        drop(kept);
+    }
 }
