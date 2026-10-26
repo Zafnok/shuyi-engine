@@ -213,13 +213,14 @@ mod tagged {
             }
         };
         tags::leave(before);
-        // `System` refuses a small block only out of memory. An `if`, not an
-        // `assert!`: CodeQL, which reads the code unbuilt, then sees that
-        // the block given is never null.
-        if block.is_null() {
-            unreachable!("the heap gave no block");
+        // `System` refuses a small block only out of memory. The block is
+        // returned where `is_null()` is false: CodeQL, which reads the code
+        // unbuilt (macros unexpanded), sees it checked there, and not after
+        // an `assert!`.
+        if !block.is_null() {
+            return block;
         }
-        block
+        unreachable!("the heap gave no block")
     }
 
     /// `block` (`size` bytes aligned to `align`) moved to `new_size` under
@@ -237,11 +238,11 @@ mod tagged {
         // above zero and small.
         let moved = unsafe { heap.realloc(block, layout, new_size) };
         tags::leave(before);
-        // An `if`, as `alloc_in`'s.
-        if moved.is_null() {
-            unreachable!("the heap moved no block");
+        // Returned where it isn't null, as `alloc_in`'s.
+        if !moved.is_null() {
+            return moved;
         }
-        moved
+        unreachable!("the heap moved no block")
     }
 
     fn free_in(heap: &Heap, block: *mut u8, size: usize, align: usize) {
