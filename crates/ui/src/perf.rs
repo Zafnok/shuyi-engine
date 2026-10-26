@@ -567,7 +567,8 @@ impl HeapSnapshot {
 /// `to` less `from`, at most [`i64`]'s range.
 fn change(from: u64, to: u64) -> i64 {
     let change = i128::from(to) - i128::from(from);
-    i64::try_from(change).unwrap_or(if change < 0 { i64::MIN } else { i64::MAX })
+    let fits = change.clamp(i128::from(i64::MIN), i128::from(i64::MAX));
+    i64::try_from(fits).unwrap_or_default()
 }
 
 /// How one memory tag changed between two snapshots. Build it with

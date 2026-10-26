@@ -8,11 +8,12 @@ mod bare;
 
 use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::{FRAME_DT, Harness};
-use shuyi_platform::headless::Presented;
+use shuyi_platform::headless::{HeadlessPlatform, Presented};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::input::{PadKind, state::Device};
 use shuyi_ui::log::{LogCategory, LogLevel};
+use shuyi_ui::perf::HeapSnapshot;
 use shuyi_ui::profiles::ProfileId;
 use shuyi_ui::screen::{FrameInput, Screen, ScreenStack, Transition};
 use shuyi_ui::settings::{MAX_VOLUME, SETTINGS_KEY};
@@ -237,4 +238,25 @@ fn a_line_logged_between_frames_carries_the_next() {
         .map(|l| (l.frame, l.text.as_str()))
         .collect();
     assert_eq!(said, [(4, "hello")]);
+}
+
+#[test]
+fn the_harness_takes_its_platforms_heap_snapshots_at_its_frames() {
+    let mut h = Harness::new(toy::game());
+    assert_eq!(h.heap_snapshot(), None, "no fake memory, no counter");
+    h.set_heap_snapshots(Some(|| HeapSnapshot::new(7, 9, Vec::new())));
+    h.frame(&[], FRAME_DT);
+    let set = h.heap_snapshot().expect("the counter's snapshot");
+    assert_eq!((set.frame, set.live_bytes, set.peak_bytes), (1, 7, 9));
+    let platform = HeadlessPlatform::new().with_fake_memory();
+    let mut fake = Harness::on(toy::game(), platform);
+    let first = fake.heap_snapshot().expect("the fake memory's snapshot");
+    for _ in 0..2 {
+        fake.frame(&[], FRAME_DT);
+    }
+    let later = fake.heap_snapshot().expect("and another");
+    assert_eq!((first.frame, later.frame), (0, 2));
+    assert_eq!(first.diff(&later).live_bytes, 32_768);
+    h.set_heap_snapshots(None);
+    assert_eq!(h.heap_snapshot(), None);
 }
