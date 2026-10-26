@@ -340,7 +340,7 @@ Then tell the session "done". It checks the result, read-only, with
   crates.io team owners (they need an organization); a foundation; a
   trademark (2026-10-14: the name is not registered);
 - making SonarCloud a required check (its findings are `sonar` issues,
-  ADR-0017), or 2014's report-only `game` job;
+  ADR-0017);
 - applying for the OpenSSF badge (a later choice).
 
 ## Implementation steps

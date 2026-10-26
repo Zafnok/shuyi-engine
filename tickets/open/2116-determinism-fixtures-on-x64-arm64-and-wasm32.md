@@ -445,7 +445,6 @@ is 2110's and 2111's.
 - Doctests on wasm32.
 - Fuzzing the formats and the pack (2020), and random legal play
   checked at every step (2527).
-- Building Visions of Shuyi against each engine PR (2014).
 - The `Breaking:` rule for public API changes, and the `api` job
   (2010); this ticket shares its `breaking_lines` (below).
 

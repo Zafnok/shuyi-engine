@@ -1174,3 +1174,35 @@ Then, on what the A/B is for:
 - **It is a maze chase, not Pac-Man.** Pac-Man is Bandai Namco's
   trademark, so the A/B uses no name, character, maze layout, sound or
   art from it. Nick may veto this rule.
+
+## 2026-10-26: no build of Visions of Shuyi here; the game's pin moves find its breaks
+
+Source: Nick, in a session of the game's repository, asked whether 2014
+(a CI job building the game against each engine PR and nightly `main`)
+was still needed now that the game moves its pin by a watcher:
+
+> "the pin system seems better, than having to run whole CI for game as
+> well as engine which is what 2014 seems to suggest... should we not
+> just axe 2014? [...] I think it's wholly unnecessary"
+
+On 2026-10-20 (*a second comparison*, above) he put "a build of Visions
+of Shuyi against the engine's `main`" among the MVP's protections, and
+2014 was that build. Since then the game's watcher on this repository's
+`main` (game ADR-0096) files an `engine-pin` issue within minutes of a
+public API change and within 48 hours of any other change, and each pin
+move builds the game and runs all its tests. A break shows within two
+days, a few PRs at a time, not weeks later mixed with every change since
+(2014's reason). 2010's `api` job names each API change on the PR
+itself. Of the game's first five pin moves, three engine PRs needed a
+change in the game, each made in the pin move's own PR.
+
+**Rules:**
+
+- **2014 is dropped:** its file is deleted, and its number isn't reused.
+  This repository's CI builds no copy of the game.
+- **The game finds its own breaks** at its pin moves (the game's
+  `engine-pin` skill). An engine PR that knows it breaks the game says
+  so in its `Breaking:` line (2010), as before.
+- **The first release (2005) no longer waits for 2014.** When the game
+  moves from the git revision to released versions, the game's ticket
+  for the move keeps its pin moves working on versions.

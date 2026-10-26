@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804", "2010", "2011", "2012", "2013", "2014", "2016", "2509", "2513", "2808"]
+blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804", "2010", "2011", "2012", "2013", "2016", "2509", "2513", "2808"]
 nick_input: sign-off
 completed:
 ---
@@ -30,8 +30,7 @@ Nick, 2026-10-20 (`docs/decisions.md`, *a second comparison*): the first
 release waits for the protections a release needs. Its `blocked_by`
 holds the tickets that add them: 2010 (API breaks named on every PR),
 2011 (Dependabot, and no publishing token in CI), 2012 (the pinned
-Rust), 2013 (public types that can grow), 2014 (the game built against
-each change), 2016 (governance and the repository's settings), 2509
+Rust), 2013 (public types that can grow), 2016 (governance and the repository's settings), 2509
 (problem codes), 2513 (zero setup on Linux) and 2808 (docs agents can
 read).
 
@@ -266,17 +265,10 @@ The sign-off also:
 - In the game repository: a ticket that moves the game from the git
   revision to the released versions (`shuyi-engine.rev` and `cargo xtask
   engine-pin` retire, or stay for the local checkout only).
-- **CI's `game` workflow (2014) after the move:** the game's
-  `Cargo.lock` will name crates.io, not the git URL. 2014's Out line
-  leaves this to a later ticket: this one.
-  - Make `cargo xtask game-patch` write `[patch.crates-io]` for a
-    crates.io `shuyi-*` source, beside the git one.
-  - Make `cargo xtask game-report` treat cargo's warning that a patch
-    "was not used in the crate graph" as a break: the game's version
-    requirement no longer matches the engine's version.
-  - Make it take the pin lag from the tag `v<version>`.
-  - The game's ticket for the move asks its session to check that the
-    first nightly `game` run after the move still builds the game.
+  That ticket also keeps the game's pin moves working on versions
+  (its watcher on the engine's `main`, game ADR-0096), since they are
+  how the game finds what an engine change breaks (2014, a build of the
+  game here, was dropped on 2026-10-26: `docs/decisions.md`).
 
 **Out (do not do):**
 - The MVP tickets themselves.
@@ -299,8 +291,8 @@ The sign-off also:
 6. Write the game's ticket for moving to versions.
 
 If the PR grows well past 600 changed lines (the moved templates
-aside), move the `game` workflow's change to a follow-up ticket that
-the game's ticket for the move waits for.
+aside), move the release workflow to a follow-up ticket that the
+game's ticket for the move waits for.
 
 ## Acceptance criteria
 
@@ -318,9 +310,6 @@ the game's ticket for the move waits for.
 ## Tests required
 
 - `cargo package` and `cargo publish --dry-run` for each crate, in CI.
-- Unit, `crates/xtask/src/game.rs` (2014): a made-up lock with a
-  crates.io `shuyi-*` source gives `[patch.crates-io]`; an unused patch
-  is a break; the pin lag is read from the tag `v<version>`.
 - Integration (2003's operations): `shuyi modules` and `shuyi add` on
   a game whose `shuyi` comes from a registry, not a checkout.
 

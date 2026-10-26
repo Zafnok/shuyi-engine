@@ -108,10 +108,6 @@ None.
   step 2; 2010 added it with CI's `api` job, which fails a breaking PR
   without the line), so keep one step and add the `migration` block to
   it.
-  **Either order with 2014:** if 2014 is done, the step already says
-  each engine item CI's `game` report lists as `new` has a `Breaking:`
-  line; add the `migration` block beside that sentence. If not, nothing
-  to do for the report: 2014 adds that sentence to the same step.
 - **2005** (the first release) writes `CHANGELOG.md` with this tool in
   its release workflow, and uses its notes as the GitHub release's body.
 
@@ -120,8 +116,7 @@ None.
 - posting anywhere but the site (social media, Discord);
 - weekly digests (a follow-up if Nick wants one);
 - CI's check that a breaking PR has a `Breaking:` line (2010), the
-  check that each line has a `migration` block (2523), and building the
-  game against a PR (2014);
+  check that each line has a `migration` block (2523);
 - the machine-readable copy of the blocks shipped in `shuyi-cli`, and
   the `shuyi migrations` op and `shuyi-upgrade` skill that read it
   (2523).
