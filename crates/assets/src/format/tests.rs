@@ -777,3 +777,97 @@ fn a_text_format_refuses_bytes_that_arent_utf8() {
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].to_string(), "base/a.ron: file is not valid UTF-8");
 }
+
+/// What the test's decode watch heard, on one thread.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Heard {
+    /// `before`, with the kind, and the token it gave.
+    Before(&'static str, u32),
+    /// `after`, with the token and the decode.
+    After(u32, &'static str, String, usize, bool),
+}
+
+std::thread_local! {
+    /// What this thread's decodes told the watch, inside [`heard`].
+    static HEARD: std::cell::RefCell<Option<Vec<Heard>>> =
+        const { std::cell::RefCell::new(None) };
+}
+
+/// The test's `before`: a token that counts the decodes on this thread.
+fn heard_before(kind: &'static str) -> u32 {
+    HEARD.with_borrow_mut(|heard| {
+        let Some(heard) = heard else {
+            return 0;
+        };
+        let token = u32::try_from(heard.len()).unwrap() + 100;
+        heard.push(Heard::Before(kind, token));
+        token
+    })
+}
+
+/// The test's `after`.
+fn heard_after(token: u32, decoded: &Decoded<'_>) {
+    HEARD.with_borrow_mut(|heard| {
+        if let Some(heard) = heard {
+            let path = decoded.path.to_owned();
+            heard.push(Heard::After(
+                token,
+                decoded.kind,
+                path,
+                decoded.bytes,
+                decoded.ok,
+            ));
+        }
+    });
+}
+
+/// What this thread's decodes in `f` told the watch.
+fn heard(f: impl FnOnce()) -> Vec<Heard> {
+    HEARD.set(Some(Vec::new()));
+    f();
+    HEARD.take().unwrap_or_default()
+}
+
+/// The only test that sets the decode watch: it is process-wide.
+#[test]
+fn the_decode_watch_hears_each_decode_before_and_after() {
+    // A table's files are sorted by path.
+    static FILES: &[(&str, &[u8])] = &[
+        ("numbers/n.up", b"12"),
+        ("words/a.low", b"hi"),
+        ("words/broken.low", b"no-lower"),
+    ];
+    assert!(watch_decodes(DecodeWatch::new(heard_before, heard_after)).is_ok());
+    let refused = DecodeWatch::new(|_| 0, |_, _| {});
+    assert!(watch_decodes(refused).is_err());
+    let mut formats = words();
+    assert_eq!(formats.register(Digits), Ok(()));
+    let bundle = Bundle::new(vec![Layer::table("base", FILES)]);
+    let seen = heard(|| {
+        assert!(formats.load::<Word>(&bundle, "words/a").is_ok());
+        assert!(formats.load::<Word>(&bundle, "words/broken").is_err());
+        assert_eq!(formats.load::<Number>(&bundle, "numbers/n"), Ok(Number(12)));
+        // Not found: nothing decoded, nothing heard.
+        assert!(formats.load::<Word>(&bundle, "words/none").is_err());
+    });
+    let after =
+        |token, kind, path: &str, bytes, ok| Heard::After(token, kind, path.to_owned(), bytes, ok);
+    assert_eq!(
+        seen,
+        [
+            Heard::Before("word", 100),
+            after(100, "word", "words/a.low", 2, true),
+            Heard::Before("word", 102),
+            after(102, "word", "words/broken.low", 8, false),
+            Heard::Before("number", 104),
+            after(104, "number", "numbers/n.up", 2, true),
+        ]
+    );
+}
+
+#[test]
+fn a_registry_is_send_and_sync() {
+    fn shared<T: Send + Sync>() {}
+    shared::<Formats>();
+    shared::<DecodeWatch>();
+}

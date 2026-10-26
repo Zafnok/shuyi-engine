@@ -31,7 +31,7 @@ use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
-use shuyi_ui::perf::{HeapCounts, PerfClock, PerfRing};
+use shuyi_ui::perf::{HeapCounts, MemoryScopes, PerfClock, PerfRing};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
@@ -523,6 +523,15 @@ impl<G: GameData> Harness<G> {
     pub fn set_clock(&mut self, clock: Option<PerfClock>) -> &mut Self {
         self.platform.set_clock(clock);
         self.ctx_mut().set_perf_clock(clock);
+        self
+    }
+
+    /// Tags what the game allocates with `scopes` from the next frame, or
+    /// stops (`None`): the headless backend's memory tags, and the game's
+    /// context's, since the game runs ([`MemoryScopes`]).
+    pub fn set_scopes(&mut self, scopes: Option<MemoryScopes>) -> &mut Self {
+        self.platform.set_scopes(scopes);
+        self.ctx_mut().set_memory_scopes(scopes);
         self
     }
 

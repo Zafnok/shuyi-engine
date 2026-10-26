@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-alloc-count"
-description = "Shuyi Engine's heap counter: CountingAlloc, a global allocator around another that counts live bytes, their peak and the calls, and the one counting allocator every debug build of a game on shuyi-app and of its tool program runs on"
+description = "Shuyi Engine's heap counter: CountingAlloc, a global allocator around another that counts live bytes, their peak and the calls, in total and by memory tag, and the one counting allocator every debug build of a game on shuyi-app and of its tool program runs on"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

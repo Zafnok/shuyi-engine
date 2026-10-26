@@ -1,5 +1,6 @@
-//! [`HeadlessPlatform`]: a backend with no window, no clock and no heap
-//! counter (unless a test hands it one) and no sound card. It plays scripted input and system events, records the frames
+//! [`HeadlessPlatform`]: a backend with no window, no clock, no heap
+//! counter and no memory tags (unless a test hands it them) and no sound
+//! card. It plays scripted input and system events, records the frames
 //! presented to it, keeps its storage in memory, and stands in for the
 //! music player ([`Speaker`]), so a screen that keeps time with the music
 //! is tested too.
@@ -16,7 +17,7 @@ use shuyi_ui::RawInputEvent;
 use shuyi_ui::audio::MusicCommand;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::{HeapCounts, MemoryReading, PerfClock};
+use shuyi_ui::perf::{HeapCounts, MemoryReading, MemoryScopes, PerfClock};
 use shuyi_ui::storage::{MemoryStorage, Storage};
 
 use crate::app::Card;
@@ -269,6 +270,8 @@ pub struct HeadlessPlatform {
     memory: Memory,
     /// How many times `App` asked for the memory.
     memory_calls: u32,
+    /// The memory tags it gives, if a test set them.
+    scopes: Option<MemoryScopes>,
     /// How many frames were presented.
     presented: u32,
     /// The last of them.
@@ -298,6 +301,7 @@ impl HeadlessPlatform {
             clock: None,
             memory: Memory::None,
             memory_calls: 0,
+            scopes: None,
             presented: 0,
             last: None,
         }
@@ -364,6 +368,21 @@ impl HeadlessPlatform {
     /// How many times `App` asked for the memory ([`Platform::memory`]).
     pub fn memory_calls(&self) -> u32 {
         self.memory_calls
+    }
+
+    /// The same backend giving `scopes` as its memory tags
+    /// ([`Platform::memory_scopes`]): a test's fake ones, which note what
+    /// is entered.
+    #[must_use]
+    pub fn with_scopes(mut self, scopes: MemoryScopes) -> Self {
+        self.scopes = Some(scopes);
+        self
+    }
+
+    /// Gives `scopes` as its memory tags from now on, or none. `App` asks
+    /// for them on its first frame only.
+    pub fn set_scopes(&mut self, scopes: Option<MemoryScopes>) {
+        self.scopes = scopes;
     }
 
     /// Queues `events` as the input of one poll, after those already
@@ -439,6 +458,10 @@ impl Platform for HeadlessPlatform {
 
     fn clock(&self) -> Option<PerfClock> {
         self.clock
+    }
+
+    fn memory_scopes(&self) -> Option<MemoryScopes> {
+        self.scopes
     }
 
     fn memory(&mut self) -> Option<MemoryReading> {

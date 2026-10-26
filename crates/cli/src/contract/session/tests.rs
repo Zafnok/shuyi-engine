@@ -320,6 +320,29 @@ mod perf {
         assert!(!session.harness().platform().has_memory());
     }
 
+    /// In a build that counts the heap, the game's context gets this
+    /// program's memory tags, and loses them with perf off.
+    #[test]
+    fn set_perf_tags_with_this_programs_memory_tags_and_stops() {
+        let mut session = toy_on(HeadlessPlatform::new());
+        session.set_perf(true);
+        let tagged = || session.harness().ctx().memory_scopes().is_some();
+        assert_eq!(tagged(), shuyi_alloc_count::global::COUNTING);
+        session.idle(1);
+        session.set_perf(false);
+        assert!(session.harness().ctx().memory_scopes().is_none());
+        assert!(session.harness().platform().memory_scopes().is_none());
+    }
+
+    #[test]
+    fn set_perf_keeps_the_memory_tags_the_platform_already_has() {
+        let scopes = MemoryScopes::new(|_, _| 1, |_| 0, |_| {});
+        let mut session = toy_on(HeadlessPlatform::new().with_scopes(scopes));
+        session.set_perf(true);
+        session.set_perf(false);
+        assert!(session.harness().platform().memory_scopes().is_some());
+    }
+
     /// The headless backend with a fake clock and a fake heap.
     fn fakes() -> HeadlessPlatform {
         HeadlessPlatform::new()

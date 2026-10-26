@@ -8,6 +8,7 @@ mod controller;
 mod grid;
 mod key_bindings;
 mod layout_picker;
+mod memory_tags;
 mod modules;
 mod perf;
 mod scene_camera;

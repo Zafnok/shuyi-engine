@@ -12,7 +12,7 @@ pub use shuyi_assets::target::Color;
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::{MemoryReading, PerfClock};
+use shuyi_ui::perf::{MemoryReading, MemoryScopes, PerfClock};
 use shuyi_ui::storage::Storage;
 
 use crate::app::Card;
@@ -244,6 +244,19 @@ pub trait Platform {
     /// record. `None` (the default) for a backend that doesn't count:
     /// records have no heap counts.
     fn memory(&mut self) -> Option<MemoryReading> {
+        None
+    }
+
+    /// The memory tags of the backend's heap counter, in debug builds
+    /// (ADR-0046 §6): plain functions over its tags, so what the game
+    /// allocates counts by the frame's phase and the game's spans. `App`
+    /// takes them with the clock ([`clock`](Self::clock)), once, with
+    /// [`DEBUG_TOOLS`](shuyi_ui::DEBUG_TOOLS) on, and moves them into the
+    /// game's context when it runs. `None` (the default) for a backend
+    /// whose counter has no tags. A backend with them also tags each
+    /// asset decode when it starts, before the game's load
+    /// (`shuyi_assets::format::watch_decodes`).
+    fn memory_scopes(&self) -> Option<MemoryScopes> {
         None
     }
 }

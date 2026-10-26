@@ -23,6 +23,7 @@ use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
 use crate::module::{self, Hook, Install, InstalledModule, Module, ModuleError};
+use crate::perf::{self, TagClass};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
 
 /// A keyboard or controller event as the platform reports it.
@@ -302,7 +303,9 @@ impl<G: GameData> Game<G> {
     /// seconds, updates the top screen with the resulting actions, collects
     /// its audio requests and redraws. After a quit, frames do nothing. In
     /// a frame the platform measures ([`Ctx::begin_perf_frame`]) it times
-    /// the update and the drawing ([`crate::perf`]).
+    /// the update and the drawing, and with memory scopes
+    /// ([`Ctx::set_memory_scopes`]) it tags what each allocates `update`
+    /// and `draw` ([`crate::perf`]).
     pub fn frame(&mut self, events: &[RawInputEvent], dt: f32) -> FrameOutput<'_, G::Voice> {
         self.audio_out.clear();
         self.music_out.clear();
@@ -312,12 +315,17 @@ impl<G: GameData> Game<G> {
         let ticks = core::mem::take(&mut self.ticks);
         if !self.quit {
             // The update's and the drawing's times, in a frame the
-            // platform measures (crate::perf).
+            // platform measures, and with memory scopes their tags
+            // (crate::perf).
+            let tagged = self.ctx.enter_tag(TagClass::Phase, "update");
             let start = self.ctx.perf_now_in_frame();
             self.step(events, dt, ticks);
             let drawing = self.ctx.perf_now_in_frame();
+            perf::leave_tag(tagged);
+            let tagged = self.ctx.enter_tag(TagClass::Phase, "draw");
             self.redraw();
             let drawn = self.ctx.perf_now_in_frame();
+            perf::leave_tag(tagged);
             self.ctx.set_perf_frame_times(start, drawing, drawn);
             self.collect_audio(dt);
         }

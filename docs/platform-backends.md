@@ -253,6 +253,28 @@ debug build only: `shuyi-app` reads the global counter of
 counts the whole process, every thread's allocations. A backend that
 doesn't count leaves the default, `None`, and the records have no heap.
 
+### `memory_scopes(&self) -> Option<MemoryScopes>` (has a default)
+
+The heap counter's memory tags, in debug builds (ADR-0046 §6), so the
+heap is counted by what it is for: `MemoryScopes::new(tag, enter,
+leave)`, three plain functions over the counter's tags. `App` asks for
+them with the clock, once, on its first frame and only with debug tools
+on, and moves them into the game's context when it runs. Then the game's
+frame tags what it allocates `update` and `draw`, each span its own
+name, and `App` tags `load`, `paint`, `perf` and `app`. A counter with
+tags is `shuyi_alloc_count::CountingAlloc::with_tags` (a header in front
+of each block), and its functions are `shuyi_alloc_count::tags`'s `tag`,
+`enter` and `leave`: `shuyi-app` gives them when `global::COUNTING`. A
+backend whose counter has no tags leaves the default, `None`.
+
+A backend with tags also tags each asset decode with its kind, so the
+bytes a game keeps of each kind of asset count under it. When it starts,
+before the game's load, it sets the registry's one decode watch,
+`shuyi_assets::format::watch_decodes(DecodeWatch::new(before, after))`:
+`before(kind)` enters the tag of the kind (`TagClass::Asset`) and gives
+back the tag before as its token, and `after(token, decoded)` leaves it.
+`crates/app/src/backend.rs` has the two functions to copy.
+
 ## The live link (optional)
 
 A backend may offer the live link
@@ -292,7 +314,9 @@ music player (`Speaker`). A test hands it a clock
 (`with_clock(PerfClock::fake())`, `set_clock`), whose fake reads give
 the same records on every run, and a heap: a fake one that moves by
 fixed amounts with the frames presented (`with_fake_memory`), or a real
-counter's reading (`set_memory`); `memory_calls` counts `App`'s asks. The test Harness (`shuyi_platform::harness`, the
+counter's reading (`set_memory`); `memory_calls` counts `App`'s asks. It
+gives memory tags only when a test hands it some (`with_scopes`,
+`set_scopes`): fakes that note what is entered. The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a
 new backend's translation the same way: a fake of the device's SDK on

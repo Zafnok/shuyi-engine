@@ -19,7 +19,11 @@
 //! In debug builds `App` also measures each frame (ADR-0046) with the
 //! platform's clock ([`Platform::clock`]), and keeps the last
 //! [`PERF_FRAMES`] records beside the log ([`App::perf`],
-//! [`App::take_new_perf`]).
+//! [`App::take_new_perf`]). With the platform's memory tags
+//! ([`Platform::memory_scopes`]) it tags what each part of a frame
+//! allocates: `load` (the game's load), `paint` (presenting the game's
+//! frame), `perf` (its record), and `app` for the rest; the game's own
+//! frame tags `update`, `draw` and its spans.
 
 use crate::alloc_prelude::*;
 use alloc::format;
@@ -29,7 +33,7 @@ use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRing};
-use shuyi_ui::perf::{FrameRecord, PERF_FRAMES, PerfClock, PerfRing};
+use shuyi_ui::perf::{FrameRecord, MemoryScopes, PERF_FRAMES, PerfClock, PerfRing, TagClass};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, Keyboard, RawInputEvent};
@@ -306,6 +310,11 @@ struct Perf {
     asked: bool,
     /// The platform's clock, until the game runs and its context takes it.
     clock: Option<PerfClock>,
+    /// The platform's memory tags, until the game runs and its context
+    /// takes them.
+    scopes: Option<MemoryScopes>,
+    /// The `app` tag this frame entered, and the scopes it entered with.
+    app_tag: Entered,
     /// How long the game's load took.
     load_us: Option<u32>,
     /// This frame's start, while it is measured.
@@ -326,6 +335,8 @@ impl Perf {
         Self {
             asked: false,
             clock: None,
+            scopes: None,
+            app_tag: None,
             load_us: None,
             start: None,
             paint_us: None,
@@ -339,6 +350,21 @@ impl Perf {
     fn now<G: GameData>(&self, game: &mut Game<G>) -> Option<u64> {
         self.start?;
         game.ctx_mut().perf_now()
+    }
+}
+
+/// A phase tag entered, and the scopes that entered it, to leave it with.
+type Entered = Option<(MemoryScopes, u16)>;
+
+/// Enters the phase tag `name`, with `scopes`.
+fn enter(scopes: Option<MemoryScopes>, name: &'static str) -> Entered {
+    scopes.map(|scopes| (scopes, scopes.enter(TagClass::Phase, name)))
+}
+
+/// Leaves the tag [`enter`] entered.
+fn leave(entered: Entered) {
+    if let Some((scopes, before)) = entered {
+        scopes.leave(before);
     }
 }
 
@@ -471,6 +497,7 @@ impl<G: GameData> App<G> {
     fn begin(&mut self, platform: &mut impl Platform) {
         self.frames = self.frames.saturating_add(1);
         self.take_clock(platform);
+        self.perf.app_tag = enter(self.memory_scopes(), "app");
         self.begin_perf();
         self.system_events(platform);
     }
@@ -480,24 +507,28 @@ impl<G: GameData> App<G> {
     fn end(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
         let outcome = self.run(platform, elapsed);
         self.take_game_log();
+        let tagged = enter(self.memory_scopes(), "perf");
         self.end_perf(platform);
+        leave(tagged);
+        leave(self.perf.app_tag.take());
         outcome
     }
 
-    /// Takes the platform's clock on the first frame, in a build with
-    /// debug tools, and hands it to a game already running.
+    /// Takes the platform's clock and memory tags on the first frame, in a
+    /// build with debug tools, and hands them to a game already running.
     fn take_clock(&mut self, platform: &impl Platform) {
         if core::mem::replace(&mut self.perf.asked, true) {
             return;
         }
         if shuyi_ui::DEBUG_TOOLS {
             self.perf.clock = platform.clock();
+            self.perf.scopes = platform.memory_scopes();
         }
         self.give_clock();
     }
 
-    /// Moves the clock `App` holds into the running game's context, unless
-    /// that has one already (a test's).
+    /// Moves the clock and memory tags `App` holds into the running game's
+    /// context, each unless that has its own already (a test's).
     fn give_clock(&mut self) {
         let Phase::Running(game) = &mut self.phase else {
             return;
@@ -507,6 +538,20 @@ impl<G: GameData> App<G> {
             && ctx.perf_clock().is_none()
         {
             ctx.set_perf_clock(Some(clock));
+        }
+        if let Some(scopes) = self.perf.scopes.take()
+            && ctx.memory_scopes().is_none()
+        {
+            ctx.set_memory_scopes(Some(scopes));
+        }
+    }
+
+    /// The memory tags: the running game's context's, or `App`'s own
+    /// before it runs.
+    fn memory_scopes(&self) -> Option<MemoryScopes> {
+        match &self.phase {
+            Phase::Running(game) => game.ctx().memory_scopes(),
+            Phase::Loading { .. } | Phase::Failed(_) => self.perf.scopes,
         }
     }
 
@@ -640,14 +685,14 @@ impl<G: GameData> App<G> {
                     self.quit = true;
                 }
                 let painting = self.perf.now(game);
-                present_game(platform, game, self.look);
+                present_tagged(platform, game, self.look);
                 let painted = self.perf.now(game);
                 self.perf.paint_us = painting.zip(painted).map(|(from, to)| micros(from, to));
             }
             Phase::Running(game) => {
                 // The game has quit: its last frame, in silence.
                 drain(platform, &mut self.lists.input);
-                present_game(platform, game, self.look);
+                present_tagged(platform, game, self.look);
             }
             Phase::Failed(errors) => {
                 platform.present(&Frame::new(Show::Errors(errors)));
@@ -676,9 +721,11 @@ impl<G: GameData> App<G> {
             key_prompt: KeyPrompt::Waiting,
         };
         drain(platform, &mut self.lists.input);
+        let tagged = enter(self.perf.scopes, "load");
         let loading = self.perf.clock.as_mut().map(PerfClock::read);
         let loaded = load(setup);
         let done = self.perf.clock.as_mut().map(PerfClock::read);
+        leave(tagged);
         self.perf.load_us = loading.zip(done).map(|(from, to)| micros(from, to));
         match loaded {
             Ok(game) => {
@@ -883,6 +930,17 @@ fn present_game<G: GameData>(
     let mut frame = Frame::new(show);
     frame.fullscreen = ctx.settings().fullscreen;
     platform.present(&frame);
+}
+
+/// [`present_game`], under the `paint` tag with the game's memory tags.
+fn present_tagged<G: GameData>(
+    platform: &mut impl Platform,
+    game: &Game<G>,
+    look: Option<LookOf<G>>,
+) {
+    let tagged = enter(game.ctx().memory_scopes(), "paint");
+    present_game(platform, game, look);
+    leave(tagged);
 }
 
 /// `x` mixed (`SplitMix64`'s finalizer), so two launches a millisecond

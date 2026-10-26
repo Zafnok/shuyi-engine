@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["3064"]
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 3065 — Memory tags
@@ -171,23 +171,23 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On an instance with tags, blocks of random sizes and alignments
+- [x] On an instance with tags, blocks of random sizes and alignments
       (1 to 4,096, alignments 1 to 64) keep their bytes through
       `realloc` and free cleanly, and every tag's live bytes equal a
       model's (the property test below).
-- [ ] A `Vec` made under one tag and grown under another counts under
+- [x] A `Vec` made under one tag and grown under another counts under
       the second.
-- [ ] The 255th distinct name counts under `overflow`, and the overflow
+- [x] The 255th distinct name counts under `overflow`, and the overflow
       count says 1.
-- [ ] A test loads a bundle of two kinds through the registry with a
+- [x] A test loads a bundle of two kinds through the registry with a
       watcher set: `before` and `after` are heard once per decode, with
       the kind, path, bytes and result, the broken file's `ok` false.
-- [ ] `Formats` is still `Send + Sync` (a compile-time test).
-- [ ] With scopes on the toy (fake scopes that record what was entered),
+- [x] `Formats` is still `Send + Sync` (a compile-time test).
+- [x] With scopes on the toy (fake scopes that record what was entered),
       a frame enters `app`, `update`, `draw`, `paint` and `perf`, and a
       test screen's span enters its name inside `update`; with scopes
       off, nothing is entered; the screens and frame text are the same.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -203,5 +203,67 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.**
+
+- `shuyi-alloc-count`: `CountingAlloc::with_tags(inner)` counts by
+  memory tag as well as in total. Each block carries its tag (a `u16`)
+  in the last two bytes of a header of `max(align, 8)` bytes in front
+  of it; the counts stay the bytes asked for. The type gained a
+  defaulted second parameter, `CountingAlloc<A, T = Untagged>`, so
+  `CountingAlloc::new` has no header and no table (8 KiB of counters a
+  Playdate or a GBA would carry for nothing), and `with_tags` is a
+  `CountingAlloc<A, Tagged>`. `rows()` gives `TagCounts` (tag, class,
+  name, live bytes and blocks, bytes ever allocated, peak). The new
+  `tags` module has the process's names table (`tag`, `overflowed`,
+  `OTHER`, `OVERFLOW`, `OTHER_CLASS`) and the current tag per thread
+  (`current`, `enter`, `leave`). The `global` static is now
+  `with_tags`, and `global::rows()` reads it.
+- `shuyi_ui::perf`: `TagClass` (`Other` is 0, then `Phase`, `Span`,
+  `Asset`) and `MemoryScopes`. `Ctx::set_memory_scopes` and
+  `memory_scopes`; `Ctx::span` enters its name's tag; `Game::frame`
+  enters `update` and `draw`.
+- `shuyi-platform`: `Platform::memory_scopes` (defaulted to `None`).
+  `App` takes the scopes with the clock and moves them into the context.
+  It enters `app` for the whole frame, `load` around the game's load,
+  `paint` around `present_game`, and `perf` around its record (every
+  frame, even one with no record). `HeadlessPlatform::with_scopes` and
+  `set_scopes`, and `Harness::set_scopes`.
+- `shuyi-assets`: `format::watch_decodes(DecodeWatch)`, with `Decoded`.
+  `Formats::decode` calls `before` and `after` around each decode.
+- The backends: `shuyi-app` gives the global counter's scopes and sets
+  the decode watch in `run`, before the load. `shuyi-cli`'s `Headless`
+  gives the scopes and sets the watch with perf on. Both do this only
+  when `global::COUNTING` is true; neither uses `reading()`, which would
+  take the frame's allocation count.
+- Docs: the crate docs, `docs/platform-backends.md`
+  (`memory_scopes`, the decode watch, the headless fakes),
+  `docs/formats.md` (*Watched*), and the `README.md` row.
+
+**Deviations.**
+
+- The names table is behind `std::sync::Mutex` with `std`, not a spin
+  lock. It is still never taken inside the allocator, and the `Mutex`
+  never allocates. A hand-written spin lock could not be tested
+  single-threaded, so mutation testing could not check it. Without
+  `std` the target has one thread, as the ticket's current tag already
+  assumes.
+- Names compare by class and text, not by text alone, so a span named
+  `draw` is a tag apart from the phase `draw`.
+- The overflow count counts each name once. The table remembers up to
+  256 overflowing names, then stops counting. A count of calls would
+  grow every frame a span past the 254th ran.
+- `realloc` adds its new size to the current tag's bytes ever
+  allocated, as a move.
+- A tag number past 255 that no `tag()` gave counts under `overflow`.
+
+**Follow-ups.** None new. 2554 takes the snapshots, from `global::rows()`;
+its context now has a *From 3065 (done)* note on the rows' shape. 2368's
+clause now says to hang its tally on the decode watch that `shuyi-app`
+already sets.
+
+No break: every change adds to the API (a defaulted type parameter, a
+defaulted trait method, new types and methods).
+
+**For Nick.** Debug builds now count the heap by what it is for: the
+frame's phase, the game's spans, and each kind of asset loaded. The next
+ticket (2554) shows these counts to agents.

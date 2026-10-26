@@ -57,8 +57,10 @@
 //! `shuyi_alloc_count`'s `global` feature, whose `#[global_allocator]`
 //! counts the bytes the whole program asks for, every thread's, and each
 //! frame's record gets the live bytes, their peak and that frame's
-//! allocations (`shuyi_ui::perf::FrameRecord::heap`). A release build has
-//! no counter. A game with a `#[global_allocator]` of its own (a binary
+//! allocations (`shuyi_ui::perf::FrameRecord::heap`). Its counts are
+//! also kept by memory tag: the frame's phases (`load`, `update`, `draw`,
+//! `paint`, `perf` and `app`), the game's spans, and each asset kind's
+//! decode (`shuyi_alloc_count::tags`). A release build has no counter. A game with a `#[global_allocator]` of its own (a binary
 //! has one) opts out in its `.cargo/config.toml`:
 //!
 //! ```toml
@@ -299,6 +301,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         }
     }
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
+    // What each decode allocates counts under its kind, from the load on.
+    backend::tag_decodes();
     let mut platform = Macroquad::new(&mut config);
     let mut app = App::new(start);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]

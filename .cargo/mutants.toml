@@ -106,4 +106,12 @@ exclude_re = [
     # mutants test a debug build: no test there compiles it (and nothing
     # calls it). Its twin, `counted`, is caught.
     'replace uncounted -> Counts',
+    # The same for its rows: `uncounted_rows` is compiled only where the
+    # global counter isn't. Its twin, `counted_rows`, is caught.
+    'replace uncounted_rows -> Vec<TagCounts>',
+    # The tags' table has two `with_names`, by build: with `std` (behind a
+    # `Mutex`), whose only mutant (`Default::default()` for any `R`)
+    # doesn't build, and without `std`, which mutants (a `std` build) never
+    # compile.
+    'tags\.rs:\d+:\d+: replace with_names -> R',
 ]

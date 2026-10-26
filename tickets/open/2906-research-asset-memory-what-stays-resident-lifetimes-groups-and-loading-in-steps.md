@@ -145,7 +145,7 @@ None. This is technical.
     the crate). Its `global` static is the `#[global_allocator]` of
     every debug build that links `shuyi-app`, as this program does
     through `shuyi`, and a second static would not link there: read that
-    one (`global::reading()`, and 3065's tags if it is done) in a debug
+    one (`global::reading()`, and 3065's tags, `global::rows()`) in a debug
     build, and declare a static of the program's own only where it is
     compiled out (a release build; `global::COUNTING` says which);
   - the packs: Hello, Grid's baked in memory as

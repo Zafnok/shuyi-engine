@@ -13,20 +13,24 @@
 //! frame with this machine's clock and keeps its record, read with
 //! [`Session::perf`] (ADR-0046). In a debug build of the tool program
 //! each record has the heap's counts too, from the program's own heap
-//! counter (`shuyi_alloc_count::global`), which counts the whole program.
+//! counter (`shuyi_alloc_count::global`), which counts the whole program,
+//! and the game's frames, spans and asset decodes are tagged in it
+//! (`shuyi_alloc_count::tags`).
 
 use std::sync::OnceLock;
 use std::time::Instant;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use shuyi_alloc_count::{global, tags};
+use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
 use shuyi_ui::module::InstalledModule;
-use shuyi_ui::perf::{HeapCounts, PerfClock};
+use shuyi_ui::perf::{HeapCounts, MemoryScopes, PerfClock, TagClass};
 
 use super::perf::PerfRead;
 use crate::frame_png::{Image, Script};
@@ -280,6 +284,9 @@ pub struct Headless<G: GameData> {
     /// Whether [`Session::set_perf`] gave the Harness this program's heap
     /// counter.
     perf_memory: bool,
+    /// Whether [`Session::set_perf`] gave the Harness this program's memory
+    /// tags.
+    perf_scopes: bool,
 }
 
 /// The microseconds since this machine's clock was first read here: the
@@ -293,9 +300,34 @@ fn now_us() -> u64 {
 /// This program's heap counter's reading: the real memory a [`Headless`]
 /// reads, handed over only in a build that counts (zeros otherwise).
 fn process_heap() -> HeapCounts {
-    shuyi_alloc_count::global::reading().map_or_else(HeapCounts::default, |counts| {
+    global::reading().map_or_else(HeapCounts::default, |counts| {
         HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs)
     })
+}
+
+/// This program's heap counter's memory tags (`shuyi_alloc_count::tags`),
+/// in a build that counts the heap (ADR-0046 §6).
+fn memory_scopes() -> Option<MemoryScopes> {
+    global::COUNTING.then(|| MemoryScopes::new(tags::tag, tags::enter, tags::leave))
+}
+
+/// In a build that counts the heap, tags what each asset decode allocates
+/// with its kind ([`TagClass::Asset`]). Set once for the program: another
+/// watch set first stays.
+fn tag_decodes() {
+    if global::COUNTING {
+        let _ = watch_decodes(DecodeWatch::new(decode_before, decode_after));
+    }
+}
+
+/// Enters the tag of the asset kind `kind`: the token is the tag before.
+fn decode_before(kind: &'static str) -> u32 {
+    u32::from(tags::enter(tags::tag(TagClass::Asset as u8, kind)))
+}
+
+/// Leaves the tag [`decode_before`] entered.
+fn decode_after(token: u32, _: &Decoded<'_>) {
+    tags::leave(u16::try_from(token).unwrap_or(tags::OTHER));
 }
 
 impl<G: GameData> Headless<G> {
@@ -313,6 +345,7 @@ impl<G: GameData> Headless<G> {
             picture: None,
             perf_clock: false,
             perf_memory: false,
+            perf_scopes: false,
         }
     }
 
@@ -483,20 +516,30 @@ impl<G: GameData> Session for Headless<G> {
     }
 
     /// Gives the Harness this machine's clock, and in a build that counts
-    /// the heap this program's heap counter, each unless its platform has
-    /// one already (a test's fake, kept so its records stay the same);
-    /// `false` takes away what it gave.
+    /// the heap this program's heap counter and its memory tags (and tags
+    /// the asset decodes), each unless its platform has one already (a
+    /// test's fake, kept so its records stay the same); `false` takes away
+    /// what it gave.
     fn set_perf(&mut self, on: bool) {
         let platform = self.harness.platform();
         let (clock, memory) = (platform.clock().is_none(), !platform.has_memory());
+        let scopes = platform.memory_scopes().is_none();
         if on {
             if !self.perf_clock && clock {
                 self.harness.set_clock(Some(PerfClock::Real(now_us)));
                 self.perf_clock = true;
             }
-            if !self.perf_memory && memory && shuyi_alloc_count::global::COUNTING {
+            if !self.perf_memory && memory && global::COUNTING {
                 self.harness.set_memory(Some(process_heap));
                 self.perf_memory = true;
+            }
+            if !self.perf_scopes
+                && scopes
+                && let Some(scopes) = memory_scopes()
+            {
+                self.harness.set_scopes(Some(scopes));
+                tag_decodes();
+                self.perf_scopes = true;
             }
             return;
         }
@@ -505,6 +548,9 @@ impl<G: GameData> Session for Headless<G> {
         }
         if core::mem::take(&mut self.perf_memory) {
             self.harness.set_memory(None);
+        }
+        if core::mem::take(&mut self.perf_scopes) {
+            self.harness.set_scopes(None);
         }
     }
 

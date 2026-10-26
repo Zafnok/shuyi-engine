@@ -38,6 +38,18 @@ He put them in the MVP. What the tickets before this one give:
   tags are the frame's phases (`load`, `update`, `draw`, `paint`, `app`,
   `perf`), the game's spans, and each asset kind's decode; `other` is
   outside any.
+- **From 3065 (done):** a row is `shuyi_alloc_count::TagCounts { tag,
+  class: u8, name: &'static str, live_bytes, live_blocks: u32,
+  allocated_bytes, peak_bytes }`, from `CountingAlloc::rows`, and for
+  the global static from `global::rows()` (`None` in a build that
+  doesn't count); `tags::overflowed()` is the snapshot's `overflowed`.
+  A class is a number that `TagClass::from_u8` reads (`Other` is 0,
+  `tags::OTHER_CLASS`, the class of `other` and `overflow`). Names
+  compare by class and text, so a span named `draw` is a tag apart
+  from the phase. A `realloc` adds its new size to the current tag's
+  bytes ever allocated. `App` enters `perf` every frame, around its
+  record; tests hand fake scopes to `HeadlessPlatform::with_scopes` or
+  `Harness::set_scopes`.
 
 This ticket turns the tags into snapshots and diffs, and puts them in
 the trace, so an agent sees what holds the heap and what grew: "update

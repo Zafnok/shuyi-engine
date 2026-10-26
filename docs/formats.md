@@ -59,6 +59,11 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
 - **Never a panic.** Bytes may come from mods or downloads. Every
   built-in format has a property test that random bytes, and its own
   fixtures with a few characters changed, never make it panic.
+- **Watched.** A front end may set one watch of every decode for the
+  process, `format::watch_decodes`: told the kind before each decode,
+  and its file, size and result after. A debug build of `shuyi-app` tags
+  what each decode allocates with its kind this way, in the heap
+  counter.
 
 ## The built-in formats
 
