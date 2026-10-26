@@ -1130,3 +1130,47 @@ listener per view, an example and a template part.
 - **Both directions for two players**: side by side (a vertical
   divider) and stacked (a horizontal one). The game says which it
   allows, and the player picks among them in the options.
+
+## 2026-10-26: an A/B against Bevy, on a maze chase, parked with real time
+
+Source: Nick, in a Claude Code session on 2026-10-26:
+
+> "can we do an A/B test how easy it is, how many LOC it takes, to make
+> a Pac-Man clone in say Bevy vs Shuyi Engine? We can host an example on
+> our github pages and in our samples or wherever we're committing
+> these"
+
+A maze chase runs in real time, and the real-time work (1119, 2739) is
+parked until Visions of Shuyi launches (2026-10-20, above). Built today,
+the Shuyi side would fake real time, the pattern 2739 says no agent
+should write. Asked how to go, with four options (a turn game compared
+now; unpark real time for it; the maze chase as-is today; a parked
+ticket), none marked as recommended, he chose **"Ticket it, parked"**.
+
+Then, on what the A/B is for:
+
+> "our goal should be 1) agent can one shot games easier with 2) less
+> friction and 3) more deterministic handling (i.e. we have skills and
+> MCP) and 4) approx equal LOC (this matters less since it's agent first
+> engine but would be a less subjective benchmark)"
+
+**Rules:**
+
+- **The A/B is parked** with the real-time work, until Nick unparks it:
+  2776 (the maze chase, Shuyi's reference) and 2562 (the A/B itself).
+  Unparking 1119 and 2739 doesn't unpark these; Nick says.
+- **What it measures, in this order:** whether an agent makes the game in
+  one shot, the friction on the way (failed builds, retries, minutes,
+  tokens), how deterministically it checks its work (replays, the
+  contract and MCP, against looking at the screen), and the lines it
+  writes. Lines count least, but they are the measure least open to
+  argument, so they are always reported.
+- **The same task on both sides:** the same agent, model, prompt (only
+  the engine's name changes), time box and budget, run several times
+  each.
+- **Its games and its numbers go on the engine's GitHub Pages**, and the
+  games' code is committed in this repository. The agents' transcripts
+  are not published unless Nick says.
+- **It is a maze chase, not Pac-Man.** Pac-Man is Bandai Namco's
+  trademark, so the A/B uses no name, character, maze layout, sound or
+  art from it. Nick may veto this rule.
