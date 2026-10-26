@@ -1,0 +1,39 @@
+// The worked example of shuyi-perf, a script of contract commands run on
+// a game made with `shuyi new <dir> --template grid`: a run of the stage
+// measured, its summary's fields and its trace file there (never their
+// values, which are the machine's), then the stage's update marked as a
+// span, and a second run that finds it among the summary's spans.
+Example(
+    template: "grid",
+    steps: [
+        // Measure the stage: a summary, and every kept frame as a line.
+        Shuyi(args: ["run", "--script", "Enter", "--frames", "30", "--perf", "--perf-out", "perf.jsonl"], expect: [
+            Is("/result/top_screen", "stage"),
+            Has("/result/perf/frames"),
+            Has("/result/perf/frame/p99"),
+            Has("/result/perf/frame/worst"),
+            Has("/result/perf/update/p50"),
+            Has("/result/perf/draw/p50"),
+            Has("/result/perf/paint/p50"),
+            Has("/result/perf/present/p50"),
+            Is("/result/perf/spans", "[]"),
+            Has("/result/perf/file"),
+            Holds("/limits", "times are this machine's, from an unoptimized build unless it says otherwise: compare runs on the same machine"),
+        ]),
+        Holds(file: "perf.jsonl", text: "{\"kind\":\"frame\",\"frame\":1,"),
+        // Mark the stage's update as a span.
+        Edit(
+            file: "crates/game/src/stages/top_down_grid.rs",
+            find: "    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {\n        for &action in &input.actions {\n            let over = self.stage.outcome().is_some();\n            match action {\n                UiAction::Up => self.send(Command::Step(Dir::Up)),\n                UiAction::Down => self.send(Command::Step(Dir::Down)),\n                UiAction::Left => self.send(Command::Step(Dir::Left)),\n                UiAction::Right => self.send(Command::Step(Dir::Right)),\n                UiAction::Confirm if over => {\n                    return Transition::Replace(Box::new(StageScreen::new(ctx)));\n                }\n                UiAction::Cancel => return Transition::Pop,\n                _ => {}\n            }\n        }\n        Transition::None\n    }",
+            replace: "    fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {\n        ctx.span(\"stage\", |ctx| {\n            for &action in &input.actions {\n                let over = self.stage.outcome().is_some();\n                match action {\n                    UiAction::Up => self.send(Command::Step(Dir::Up)),\n                    UiAction::Down => self.send(Command::Step(Dir::Down)),\n                    UiAction::Left => self.send(Command::Step(Dir::Left)),\n                    UiAction::Right => self.send(Command::Step(Dir::Right)),\n                    UiAction::Confirm if over => {\n                        return Transition::Replace(Box::new(StageScreen::new(ctx)));\n                    }\n                    UiAction::Cancel => return Transition::Pop,\n                    _ => {}\n                }\n            }\n            Transition::None\n        })\n    }",
+        ),
+        Cargo(args: ["fmt", "--all", "--check"]),
+        // Run again: the span is among the summary's.
+        Shuyi(args: ["run", "--script", "Enter", "--frames", "30", "--perf"], expect: [
+            Is("/result/perf/spans/0/name", "stage"),
+            Has("/result/perf/spans/0/mean_us"),
+            Has("/result/perf/spans/0/worst_us"),
+        ]),
+        Cargo(args: ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]),
+    ],
+)

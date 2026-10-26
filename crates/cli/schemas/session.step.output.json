@@ -393,6 +393,11 @@
           "const": "events"
         },
         {
+          "description": "The MCP session's frames' records since a number.",
+          "type": "string",
+          "const": "perf"
+        },
+        {
           "description": "The MCP session's game started again.",
           "type": "string",
           "const": "reset"
@@ -402,6 +407,69 @@
           "type": "string",
           "const": "stop"
         }
+      ]
+    },
+    "PerfSummary": {
+      "description": "What a trace's records add up to.",
+      "type": "object",
+      "properties": {
+        "draw": {
+          "description": "How the drawing's spread (`draw_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "dropped": {
+          "description": "How many earlier frames' records were no longer kept.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "file": {
+          "description": "The trace file written, its absolute path, with `--perf-out`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "frame": {
+          "description": "How the whole frame's time spread (`frame_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "frames": {
+          "description": "The records summed up: the frames kept.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "paint": {
+          "description": "How painting into the window spread (`paint_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "present": {
+          "description": "How the backend's swap and wait spread (`present_us`).",
+          "$ref": "#/$defs/Spread"
+        },
+        "spans": {
+          "description": "The spans with the most time in all, most first (ties by name), at\nmost five.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SpanSummary"
+          }
+        },
+        "update": {
+          "description": "How the update's spread (`update_us`).",
+          "$ref": "#/$defs/Spread"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frames",
+        "dropped",
+        "frame",
+        "update",
+        "draw",
+        "paint",
+        "present",
+        "spans"
       ]
     },
     "RunOutput": {
@@ -438,6 +506,17 @@
           "items": {
             "$ref": "#/$defs/ModuleEntry"
           }
+        },
+        "perf": {
+          "description": "The frames' times, with `perf`: none without it, or when nothing\nwas measured.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PerfSummary"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "quit": {
           "description": "The frame the game asked to quit in, if it did.",
@@ -537,6 +616,85 @@
       "required": [
         "frame",
         "cue"
+      ]
+    },
+    "SpanSummary": {
+      "description": "A span's name and how its time adds up over the records.",
+      "type": "object",
+      "properties": {
+        "count": {
+          "description": "How many times it ended.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "mean_us": {
+          "description": "Its mean time, in microseconds, rounded down.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "name": {
+          "description": "What the game called it (`ctx.span(\"ai\", …)`).",
+          "type": "string"
+        },
+        "total_us": {
+          "description": "Its time in all, in microseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "worst_us": {
+          "description": "Its longest time, in microseconds.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "count",
+        "total_us",
+        "mean_us",
+        "worst_us"
+      ]
+    },
+    "Spread": {
+      "description": "How a set of times spread, in whole microseconds: the median, the 99th\npercentile (nearest rank), the worst and the mean rounded down.",
+      "type": "object",
+      "properties": {
+        "mean": {
+          "description": "The mean, rounded down.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "p50": {
+          "description": "The median: half the times are this or less.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "p99": {
+          "description": "99 in a hundred times are this or less.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "worst": {
+          "description": "The longest.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "p50",
+        "p99",
+        "worst",
+        "mean"
       ]
     }
   }

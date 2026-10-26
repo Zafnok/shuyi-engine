@@ -11,6 +11,19 @@
       "default": 0,
       "minimum": 0
     },
+    "perf": {
+      "description": "Measure each frame, and answer a summary of the times (`run` only).",
+      "type": "boolean",
+      "default": false
+    },
+    "perf_out": {
+      "description": "Also write every kept frame's record there, a JSON line each; a\nrelative path is from the project's folder. It implies `perf`.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "script": {
       "description": "The steps to play.",
       "$ref": "#/$defs/Script",

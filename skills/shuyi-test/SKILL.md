@@ -3,7 +3,7 @@ name: shuyi-test
 description: Test a Shuyi Engine game at every layer, with unit and property tests of its rules, its screens played through the engine's headless Harness, the tool contract in tests, text snapshots of a look, and pictures of frames to review. Use when adding or changing rules, a screen or a stage, when a change needs a test that proves it, or when you want to see a frame without a window. Not for running the checks before a commit (shuyi-gates), for a bug only a record reproduces (shuyi-debug-replay), or for measuring how hard a stage is (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Test a game
@@ -28,6 +28,7 @@ can look at.
 - The checks to run before a commit: `shuyi-gates`.
 - A bug a record reproduces, or two runs that differ:
   `shuyi-debug-replay`.
+- A frame that is too slow, or a stage that stutters: `shuyi-perf`.
 - How often bots win a stage: `shuyi-balance-bots`.
 
 ## Which test for what
@@ -107,8 +108,8 @@ colours or the frame's text.
 7. **Play it live, headless.** The engine's MCP server keeps one game
    running between calls: `start` (with the game's options), `step` (a
    script, then idle frames), `scene` (the scene and the log),
-   `frame_png` (a picture of the frame now), `events`, `reset` and
-   `stop`. Call `start` again after changing the game's code.
+   `frame_png` (a picture of the frame now), `events`, `perf` (the
+   frames' times, `shuyi-perf`), `reset` and `stop`. Call `start` again after changing the game's code.
    `cargo shuyi run --script "Enter Right" --frames 30` gives the same
    answer once, for a script.
 

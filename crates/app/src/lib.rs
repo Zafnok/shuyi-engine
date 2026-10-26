@@ -45,6 +45,14 @@
 //! release build, or one without the feature, never listens; on the web
 //! the feature does nothing yet.
 //!
+//! A desktop debug build writes its frames' times as it runs when
+//! `SHUYI_PERF` names a file (`SHUYI_PERF=perf.jsonl cargo run`): its log
+//! names the file, and after each frame it writes that frame's record as a
+//! JSON line (`shuyi_ui::perf::PerfLine`) and flushes, so `tail -f`, or
+//! reading the file again from the last line read, follows it (ADR-0046).
+//! A build without debug tools logs why and writes nothing; a file that
+//! can't be written is one warning, and the game goes on.
+//!
 //! On the web the game's binary must link with `--allow-undefined`: the
 //! JS plugins' functions (`crates/cli/web/gamepad.js`'s, `quad-storage`'s) are
 //! imports the page provides, not link errors. A link argument only
@@ -65,6 +73,8 @@ pub mod keys;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
 pub mod pads;
+#[cfg(not(target_arch = "wasm32"))]
+mod perf_file;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod readback;
 pub mod render;
@@ -280,6 +290,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let mut app = App::new(start);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
     let mut link = link::start(config.window.title);
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut perf_file = perf_file::start();
     loop {
         let now = Millis::from_secs_f64(miniquad::date::now());
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
@@ -294,6 +306,10 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         // E.g. saved key bindings that had to be repaired (game ADR-0031).
         for line in app.take_new_log() {
             print_line(&line);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(file) = perf_file.take() {
+            perf_file = file.write(&app.take_new_perf());
         }
         if !platform.started()
             && let Some(game) = app.game()

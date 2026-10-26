@@ -287,7 +287,9 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
         "run" | "scene" => {
             let op = if name == "run" { Op::Run } else { Op::Scene };
             match run::parse_args(&args, options) {
-                Ok(input) if op == Op::Run => print(json, &run::run(game, &input), run::text),
+                Ok(input) if op == Op::Run => {
+                    print(json, &run::run_at(game, &project.root, &input), run::text)
+                }
                 Ok(input) => print(json, &run::scene(game, &input), run::scene_output_text),
                 Err(e) => wrong(json, op, &e, &run::usage(command, op, options)),
             }
@@ -626,7 +628,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 46);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 48);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

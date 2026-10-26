@@ -86,6 +86,9 @@
                 "ron",
                 // Float maths without `std`, for drawing.
                 "libm",
+                // The JSON schemas of the perf records, for the tool
+                // contract (its optional `schema` feature).
+                "schemars",
             ]),
             devices: false,
             floats: true,

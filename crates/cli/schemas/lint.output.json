@@ -273,6 +273,11 @@
           "const": "events"
         },
         {
+          "description": "The MCP session's frames' records since a number.",
+          "type": "string",
+          "const": "perf"
+        },
+        {
           "description": "The MCP session's game started again.",
           "type": "string",
           "const": "reset"

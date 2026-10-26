@@ -85,6 +85,17 @@ None.
     `Other`/`other` 475,136 in 12. Their sum is the fake's live bytes on
     the same frame. Each row's peak is the most of its live bytes so
     far, and its bytes ever allocated equal its peak.
+- **From 2553 (done):** the pieces this ticket grows are
+  `crates/cli/src/contract/perf.rs` (`PerfSummary`, `summary`, `lines`,
+  the limits), `contract/run.rs`'s `perf_of` and `run_at` (the trace
+  file's writing; `run` is `run_at` from the working folder),
+  `crates/cli/src/mcp.rs`'s `PerfInput` and `PerfOutput` with the host's
+  `perf_read` (`mcp/host.rs`), and `crates/app/src/perf_file.rs`
+  (`write_lines`, `PerfFile::write`, called after each frame in
+  `shuyi_app::run`). `PerfLine` has one variant, `Frame`; the toy's
+  session (`shuyi_cli::toy::ToyTools::session`) runs on
+  `PerfClock::fake()`, and its summary and trace are snapshots in
+  `crates/cli/tests/it/snapshots/`.
 - **`run --perf`** (2553):
   - the session (`Session::heap_snapshot(&mut self) ->
     Option<HeapSnapshot>`, by default `None`; `Headless` over the

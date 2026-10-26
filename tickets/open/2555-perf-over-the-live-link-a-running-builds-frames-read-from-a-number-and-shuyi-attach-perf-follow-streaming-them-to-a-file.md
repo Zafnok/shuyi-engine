@@ -84,7 +84,16 @@ None.
   `crates/cli/src/mcp/attached.rs` (its `call`, beside `step` and
   `frame_png`); add `perf` there, with its criterion and a test in
   `mcp/attached/tests.rs` on the test host
-  (`shuyi_cli::toy::link::LinkHost`).
+  (`shuyi_cli::toy::link::LinkHost`). **From 2553 (done):** the attached
+  session's `Op::Perf` arm answers `SH3001` today ("the live link doesn't
+  carry a running build's frames' records: run it with SHUYI_PERF=<file>
+  …", checked in `mcp/attached/tests.rs`); replace it with the read, and
+  change what says it is refused: `docs/contract.md`'s table of the
+  session over the link (its `perf` row) and the `shuyi-perf` skill's
+  *When it fails* (its `SH3001` item). A headless session's read is
+  `PerfRead::of` over a `PerfRing` and the host's `perf_read`
+  (`crates/cli/src/mcp/host.rs`), with `contract::perf`'s limits
+  (`TIMES`, `RESET`, `dropped_limit`, `unmeasured_limit`).
 - **Tests,** as 2521's are: the server over the toy game on the
   headless backend with 3063's fake clock (`Perf` from 0 gives every
   kept record; `next` gives none until a frame runs; `dropped` past a

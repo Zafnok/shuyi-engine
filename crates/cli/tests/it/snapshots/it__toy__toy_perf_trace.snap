@@ -1,0 +1,9 @@
+---
+source: crates/cli/tests/it/toy.rs
+expression: trace
+---
+{"kind":"frame","frame":1,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":0,"frame_us":2700},"spans":[],"spans_dropped":0}
+{"kind":"frame","frame":2,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
+{"kind":"frame","frame":3,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
+{"kind":"frame","frame":4,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}
+{"kind":"frame","frame":5,"times":{"update_us":300,"draw_us":400,"paint_us":600,"present_us":100,"frame_us":2800},"spans":[],"spans_dropped":0}

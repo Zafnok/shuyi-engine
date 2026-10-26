@@ -31,8 +31,9 @@ toy = ["shuyi-ui/toy"]
 shuyi-core = { path = "../core", features = ["schema"] }
 # Fonts, images, palettes, languages and credits.
 shuyi-assets = { path = "../assets" }
-# The frame `frame-png` paints.
-shuyi-ui = { path = "../ui" }
+# The frame `frame-png` paints, and the perf records `run --perf` reads
+# (with their schemas).
+shuyi-ui = { path = "../ui", features = ["schema"] }
 # The Harness that plays a game's script, and the live link `attach` speaks.
 shuyi-platform = { path = "../platform", features = ["harness", "link"] }
 serde = { workspace = true, features = ["std"] }
@@ -59,3 +60,5 @@ serde_norway = "0.9"
 shuyi-cli = { path = ".", features = ["toy"] }
 # The template loader and the composer, fed any input.
 proptest.workspace = true
+# The toy's perf summary and trace, as committed snapshots.
+insta.workspace = true

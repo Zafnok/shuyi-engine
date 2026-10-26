@@ -257,3 +257,61 @@ fn a_new_scene_has_no_data() {
     };
     assert_eq!(Scene::new("stage", "grid map", "@ (1,1)"), literal);
 }
+
+#[test]
+fn a_session_that_doesnt_measure_reads_nothing_measured() {
+    let mut bare = Bare;
+    bare.set_perf(true);
+    let read = bare.perf(7, 10);
+    assert!(read.records.is_empty() && !read.measured);
+    assert_eq!(read.next, 7);
+}
+
+/// Perf on the toy: this machine's clock, or the platform's own.
+#[cfg(feature = "toy")]
+mod perf {
+    use shuyi_platform::headless::HeadlessPlatform;
+    use shuyi_ui::toy::{self, Toy};
+
+    use super::*;
+
+    /// The toy, headless, on `platform`.
+    fn toy_on(platform: HeadlessPlatform) -> Headless<Toy> {
+        Headless::new(Harness::on(toy::game(), platform))
+    }
+
+    #[test]
+    fn set_perf_measures_with_this_machines_clock_and_stops_measuring() {
+        let mut session = toy_on(HeadlessPlatform::new());
+        session.idle(2);
+        assert!(!session.perf(0, 600).measured);
+        session.set_perf(true);
+        session.idle(3);
+        let read = session.perf(0, 600);
+        assert!(read.measured);
+        assert_eq!(read.records.len(), 3);
+        assert_eq!(read.records[0].frame, 3);
+        session.set_perf(false);
+        session.idle(2);
+        assert_eq!(session.perf(0, 600).next, 3);
+    }
+
+    #[test]
+    fn set_perf_keeps_a_clock_the_platform_already_has() {
+        let fake = HeadlessPlatform::new().with_clock(PerfClock::fake());
+        let mut session = toy_on(fake);
+        session.set_perf(true);
+        session.idle(2);
+        let twice = |session: &Headless<_>| session.perf(0, 600).records;
+        let first = twice(&session);
+        let mut again = toy_on(HeadlessPlatform::new().with_clock(PerfClock::fake()));
+        again.set_perf(true);
+        again.idle(2);
+        assert_eq!(first, twice(&again));
+        assert_eq!(first[0].times.update_us, 300);
+        // Its clock stays: `false` takes away only a clock it gave.
+        session.set_perf(false);
+        session.idle(1);
+        assert_eq!(session.perf(0, 600).next, 3);
+    }
+}

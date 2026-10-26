@@ -1,0 +1,40 @@
+---
+source: crates/cli/tests/it/toy.rs
+expression: "serde_json::to_string_pretty(&summary).unwrap()"
+---
+{
+  "frames": 5,
+  "dropped": 0,
+  "frame": {
+    "p50": 2800,
+    "p99": 2800,
+    "worst": 2800,
+    "mean": 2780
+  },
+  "update": {
+    "p50": 300,
+    "p99": 300,
+    "worst": 300,
+    "mean": 300
+  },
+  "draw": {
+    "p50": 400,
+    "p99": 400,
+    "worst": 400,
+    "mean": 400
+  },
+  "paint": {
+    "p50": 600,
+    "p99": 600,
+    "worst": 600,
+    "mean": 600
+  },
+  "present": {
+    "p50": 100,
+    "p99": 100,
+    "worst": 100,
+    "mean": 80
+  },
+  "spans": [],
+  "file": null
+}

@@ -13,7 +13,7 @@
 //! | `lint` | the game's code: `check-keys`, `check-text` and the rules crate's fence, each finding with file and line | [`lint`] |
 //! | `modules` | the catalog by concern, the modules the game's engine builds, and the ones the game has on | [`modules`] |
 //! | `add <module>` | a module turned on: its feature of `shuyi` in `Cargo.toml`, its skill copied, what it is for, an alternative already on | [`add`] |
-//! | `run` | plays a key script headless: the top screen, the scene, events, sounds | [`run`] |
+//! | `run` | plays a key script headless: the top screen, the scene, events, sounds; with `--perf`, the frames' times | [`run`], [`perf`] |
 //! | `scene` | the scene or stage on screen after a script | [`run`] |
 //! | `replay <record>` | a state hash per step, and the first step where two runs differ | [`replay`] |
 //! | `bots <n>` | the engine's bots play n games: outcomes and measures | [`bots`] |
@@ -33,7 +33,7 @@
 //! failed, 2 wrong arguments, 3 fix the setup, then run it again.
 //!
 //! The MCP server's session tools (`start`, `step`, `scene`, `frame_png`,
-//! `events`, `reset`, `stop`; [`Op::SESSION`]) answer the same way.
+//! `events`, `perf`, `reset`, `stop`; [`Op::SESSION`]) answer the same way.
 //!
 //! The schemas of every input and answer are generated from these types
 //! ([`schemas`]) and checked in under `crates/cli/schemas/`. A test fails
@@ -55,6 +55,7 @@ pub mod import;
 pub mod lint;
 pub mod modules;
 pub mod new;
+pub mod perf;
 pub mod playtest;
 pub mod replay;
 pub mod run;
@@ -72,7 +73,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 21;
+pub const VERSION: u32 = 22;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -119,6 +120,8 @@ pub enum Op {
     FramePng,
     /// What happened in the MCP session's game.
     Events,
+    /// The MCP session's frames' records since a number.
+    Perf,
     /// The MCP session's game started again.
     Reset,
     /// The MCP session's game stopped.
@@ -148,12 +151,13 @@ impl Op {
 
     /// The MCP server's session tools ([`crate::mcp`]), in the order it
     /// lists them: `scene` is the session's, not the one-off operation.
-    pub const SESSION: [Op; 7] = [
+    pub const SESSION: [Op; 8] = [
         Op::Start,
         Op::Step,
         Op::Scene,
         Op::FramePng,
         Op::Events,
+        Op::Perf,
         Op::Reset,
         Op::Stop,
     ];
@@ -181,6 +185,7 @@ impl Op {
             Op::Step => "step",
             Op::FramePng => "frame_png",
             Op::Events => "events",
+            Op::Perf => "perf",
             Op::Reset => "reset",
             Op::Stop => "stop",
         }
@@ -404,8 +409,8 @@ fn pair<I: JsonSchema, O: JsonSchema>(name: &str) -> [SchemaFile; 2] {
 /// tool does (named `session.<op>`; [`Op::SESSION`]).
 pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
     use crate::mcp::{
-        EventsOutput, FramePngInput, FramePngOutput, NoInput, StartInput, StartOutput, StepInput,
-        StopOutput,
+        EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartInput,
+        StartOutput, StepInput, StopOutput,
     };
     let name = if session {
         format!("session.{}", op.name())
@@ -437,6 +442,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Step, _) => pair::<StepInput, run::RunOutput>(name),
         (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(name),
         (Op::Events, _) => pair::<NoInput, EventsOutput>(name),
+        (Op::Perf, _) => pair::<PerfInput, PerfOutput>(name),
         (Op::Reset, _) => pair::<NoInput, StartOutput>(name),
         (Op::Stop, _) => pair::<NoInput, StopOutput>(name),
     }

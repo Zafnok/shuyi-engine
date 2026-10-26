@@ -21,6 +21,7 @@ use shuyi_core::bots::playtest::{Band, Check, Condition, Tried, Tries, Want};
 
 use super::autobalance::AutobalanceInput;
 use super::bots::{BotsInput, BotsOutput, tally};
+use super::perf::PerfRead;
 use super::playtest::{DEFAULT_TRIES, PlaytestInput, Summary};
 use super::replay::{Record, ReplayRun, ReplayStep};
 use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
@@ -29,6 +30,7 @@ use crate::game::{
     AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
     Tunable,
 };
+use shuyi_ui::perf::{FrameRecord, PerfRing};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
 /// second of waiting) and shows what it was given.
@@ -48,6 +50,10 @@ pub struct FakeSession {
     pub log_dropped: u32,
     /// The modules installed.
     pub modules: Vec<ModuleEntry>,
+    /// The frames' records it measured, oldest first, numbered from 0.
+    pub perf: Vec<FrameRecord>,
+    /// Whether [`Session::set_perf`] turned perf on.
+    pub perf_on: bool,
 }
 
 impl FakeSession {
@@ -66,6 +72,8 @@ impl FakeSession {
             log: Vec::new(),
             log_dropped: 0,
             modules: Vec::new(),
+            perf: Vec::new(),
+            perf_on: false,
         }
     }
 }
@@ -131,6 +139,22 @@ impl Session for FakeSession {
 
     fn modules(&self) -> Vec<ModuleEntry> {
         self.modules.clone()
+    }
+
+    fn set_perf(&mut self, on: bool) {
+        self.perf_on = on;
+    }
+
+    /// Its records, read from a ring that keeps them all.
+    fn perf(&self, since: u64, max: u32) -> PerfRead {
+        if self.perf.is_empty() {
+            return PerfRead::none(since);
+        }
+        let mut ring = PerfRing::new(self.perf.len());
+        for record in &self.perf {
+            ring.push(record.clone());
+        }
+        PerfRead::of(&ring, since, max)
     }
 
     /// A picture one pixel high, a pixel wide per frame run, each

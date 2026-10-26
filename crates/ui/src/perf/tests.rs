@@ -189,3 +189,55 @@ proptest! {
         prop_assert_eq!(ring.dropped(), u64::from(pushed).saturating_sub(capacity));
     }
 }
+
+#[test]
+fn spread_of_no_values_is_none() {
+    assert_eq!(spread([]), None);
+}
+
+#[test]
+fn spread_of_one_value_is_that_value() {
+    let one = Spread {
+        p50: 7,
+        p99: 7,
+        worst: 7,
+        mean: 7,
+    };
+    assert_eq!(spread([7]), Some(one));
+}
+
+#[test]
+fn spread_of_two_values_takes_the_nearest_rank() {
+    // Rank ⌈50 × 2 / 100⌉ = 1 and ⌈99 × 2 / 100⌉ = 2; the mean 4.5 rounds down.
+    let two = Spread {
+        p50: 3,
+        p99: 6,
+        worst: 6,
+        mean: 4,
+    };
+    assert_eq!(spread([6, 3]), Some(two));
+}
+
+#[test]
+fn spread_of_a_hundred_values_ranks_them_sorted() {
+    // 1 to 100, shuffled: rank 50 is 50, rank 99 is 99, the mean 50.5.
+    let values = (1..=100u32).map(|v| (v * 37) % 100 + 1);
+    let hundred = Spread {
+        p50: 50,
+        p99: 99,
+        worst: 100,
+        mean: 50,
+    };
+    assert_eq!(spread(values), Some(hundred));
+}
+
+#[test]
+fn spread_of_equal_values_is_that_value_everywhere() {
+    let same = Spread {
+        p50: 400,
+        p99: 400,
+        worst: 400,
+        mean: 400,
+    };
+    assert_eq!(spread([400; 9]), Some(same));
+}

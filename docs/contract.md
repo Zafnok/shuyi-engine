@@ -19,7 +19,7 @@ is another way to reach them.
 | `lint` | Everything wrong with the shape of the game's code, each finding with its file, line, problem code and what to do: `check-keys`' findings (`SH2101`), `check-text`'s (`SH2102`: every literal when there are more than `check_text.max_literals`, and every data name a screen reads), and the rules crate's fence ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) §4) on the package `shuyi.ron`'s `rules` names: `cargo clippy` read for `disallowed_types`, `disallowed_methods` and `float_arithmetic`, with clippy's reason (`SH2103`, with the column), and `cargo tree` for a screen, device or tool crate or outside luck under it (`SH2104`, with the `cargo tree -i` that shows the way in). A part `shuyi.ron` lacks is a limit | the project file and cargo |
 | `modules` | The catalog of the engine the game builds with ([`modules.md`](modules.md)), by concern: each answer, who gives it (`default` or a module's crate), its status and its tickets; every module the engine builds, with its feature of `shuyi` and its metadata (what it answers, serves and sits beside); and the modules the game has on, from its `Cargo.toml` | the game's `Cargo.toml` and its engine |
 | `add <module>` | Turns a module of the engine on (`physics` or `shuyi-physics`): its feature of `shuyi` in the game's `Cargo.toml`, its layout kept; its skill copied into `.claude/skills/` if the game keeps one; its README's first paragraph. It warns of an alternative already on, with the README's section on using both; gives the line to add if the game's code never installs `shuyi::enabled_modules`, and the line for its `formats()` if the module adds formats. A second run changes nothing (`changed: false`); a name that isn't built fails with `SH0003` and the names that are | the game's `Cargo.toml` and its engine |
-| `run [steps] [--frames N]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`), its state's types and its debug menu entries | the game |
+| `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)) | the game |
 | `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
 | `replay <record> [<other>]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
@@ -51,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 21,
+  "contract": 22,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -104,6 +104,61 @@ manifest it refused, a game's own lines), oldest first. Each line is:
 The log keeps the last 500 lines. When it dropped older ones, `limits`
 says how many. For people, `shuyi run` and `shuyi scene` print the
 warnings and errors.
+
+## Perf traces
+
+A debug build measures each frame: how long its parts took, and the
+spans the game marked around its own code with `ctx.span("ai", |ctx|
+…)`. The last 600 frames are kept. Agents read them three ways, as JSON
+lines: `run --perf`, MCP's `perf`, and a running build's trace file.
+
+Each line of a trace is one object, tagged by `kind`. Today every line
+is a frame:
+
+```json
+{"kind":"frame","frame":12,"times":{"update_us":310,"draw_us":420,"paint_us":610,"present_us":15800,"frame_us":17200},"spans":[{"name":"ai","start_us":40,"us":250,"depth":0}],"spans_dropped":0}
+```
+
+- `frame` is the frame's number: frames count from 1.
+- `times` are whole microseconds: `update_us` the input, the modules'
+  `before_update` and the screens' update; `draw_us` the drawing;
+  `paint_us` painting the frame into the window; `present_us` the time
+  from the end of the last frame to the start of this one (the buffer
+  swap and the wait for vsync, 0 on the first frame measured);
+  `frame_us` all of it, never less than the four.
+- `spans` are the game's `ctx.span` calls that ended in the frame, in
+  the order they ended (an inner one before its outer one): `name`,
+  `start_us` from the frame's start, `us` long, and `depth`, how many
+  spans it was inside. A frame keeps 64; `spans_dropped` counts the rest.
+
+**Times are this machine's**, and from an unoptimized build unless it
+says otherwise: compare two runs on the same machine, never numbers
+across machines. A build without debug tools measures nothing, and the
+answer's `limits` say so. A time never changes what the game does: a run
+plays the same with perf on and off.
+
+**`run --perf`** answers `perf`, a summary of the kept frames: `frames`,
+`dropped` (older frames no longer kept), a spread each (`p50`, `p99`,
+`worst` and `mean`, in microseconds) for `frame`, `update`, `draw`,
+`paint` and `present`, and the five `spans` with the most time (`name`,
+`count`, `total_us`, `mean_us`, `worst_us`). With `--perf-out
+perf.jsonl` it writes every kept frame as a line, oldest first, and
+`file` is the file's absolute path. For people it prints one line:
+`perf: 600 frames, frame p50 1.2 ms p99 3.4 ms worst 8.0 ms; span ai
+0.8 ms mean`.
+
+**A session, as a stream.** MCP's `start` measures every session. After
+each `step`, `perf` with the last answer's `next` as `since` answers the
+frames since the last read. After `reset` or a new `start` the numbers
+start again: a `since` past the session's last frame answers no records,
+`next` 0 and the limit "read from 0".
+
+**A running build** (desktop, debug) writes its own trace while it runs
+when `SHUYI_PERF` names a file: `SHUYI_PERF=perf.jsonl cargo run`. It
+logs the file's name, and after each frame appends that frame's line
+and flushes, so `tail -f perf.jsonl`, or reading the file again from
+the last line read, follows it. A build without debug tools logs why and
+writes nothing.
 
 ## Attaching to a running build
 
@@ -226,6 +281,7 @@ A **session** keeps one game running headless between calls:
 | `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
 | `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |
 | `events` | nothing | what happened since the start, and the sounds |
+| `perf` | `since` (0), `max` (120, 1 to 600) | the frames' records numbered `since` or more, at most `max`: `records`, `next` (the `since` of the next read), `dropped`, and the `summary` of the records answered ([Perf traces](#perf-traces)) |
 | `reset` | nothing | the game started again as `start` started it |
 | `stop` | nothing | the game stopped |
 
@@ -245,6 +301,7 @@ build and another link version answer `attach`'s codes (`SH0004`,
 | `scene` | the frame's text in place of a scene (`kind` `frame`), and the log |
 | `frame_png` | the window's picture, at the window's size; `scale` is refused |
 | `events` | none: the limit says so |
+| `perf` | refused (`SH3001`): run the build with `SHUYI_PERF` and read its file |
 | `reset` | refused (`SH0001`): the link never changes a running build |
 | `stop` | detaches, and leaves the build running |
 

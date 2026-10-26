@@ -389,3 +389,70 @@ fn the_host_in_process_is_a_link() {
         .unwrap();
     assert_eq!(reply.answer.unwrap()["ok"], true);
 }
+
+/// The records' frames in `perf`'s answer.
+fn perf_frames(answer: &Value) -> Vec<u64> {
+    answer["result"]["records"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|r| r["frame"].as_u64())
+        .collect()
+}
+
+#[cfg(feature = "toy")]
+#[test]
+fn perf_reads_the_sessions_frames_as_a_stream() {
+    let game = crate::toy::ToyTools;
+    let mut host = Host::new(&game, project(PathBuf::from(".")));
+    assert_eq!(ask(&mut host, Op::Perf, json!({}))["code"], "SH0002");
+    assert_eq!(ask(&mut host, Op::Start, json!({}))["ok"], true);
+    ask(&mut host, Op::Step, json!({ "frames": 10 }));
+    let first = ask(&mut host, Op::Perf, json!({ "since": 0 }));
+    assert_eq!(first["ok"], true, "{first}");
+    assert_eq!(perf_frames(&first), (1..=10).collect::<Vec<_>>());
+    assert_eq!(first["result"]["next"], 10);
+    assert_eq!(first["result"]["dropped"], 0);
+    assert_eq!(first["result"]["summary"]["frames"], 10);
+    assert_eq!(first["limits"], json!([perf::TIMES]));
+    ask(&mut host, Op::Step, json!({ "frames": 5 }));
+    let then = ask(&mut host, Op::Perf, json!({ "since": 10 }));
+    assert_eq!(perf_frames(&then), (11..=15).collect::<Vec<_>>());
+    assert_eq!(then["result"]["next"], 15);
+    let some = ask(&mut host, Op::Perf, json!({ "since": 2, "max": 3 }));
+    assert_eq!(perf_frames(&some), [3, 4, 5]);
+    assert_eq!(some["result"]["next"], 5);
+    let none = ask(&mut host, Op::Perf, json!({ "since": 15 }));
+    assert_eq!(perf_frames(&none), Vec::<u64>::new());
+    assert!(none["result"]["summary"].is_null(), "{none}");
+    // After a reset the numbers start again.
+    ask(&mut host, Op::Reset, json!({}));
+    let reset = ask(&mut host, Op::Perf, json!({ "since": 15 }));
+    assert_eq!(reset["ok"], true);
+    assert_eq!(reset["result"]["next"], 0);
+    assert_eq!(
+        reset["limits"],
+        json!([
+            perf::TIMES,
+            "nothing was measured: no frame ran",
+            perf::RESET
+        ])
+    );
+    for max in [0, 601] {
+        let wrong = ask(&mut host, Op::Perf, json!({ "max": max }));
+        assert_eq!(wrong["code"], "SH0001", "{wrong}");
+    }
+}
+
+#[test]
+fn perf_on_a_session_that_measures_nothing_says_so() {
+    let game = Fake::default();
+    let mut host = Host::new(&game, project(PathBuf::from(".")));
+    ask(&mut host, Op::Start, json!({}));
+    ask(&mut host, Op::Step, json!({ "frames": 2 }));
+    let read = ask(&mut host, Op::Perf, json!({}));
+    assert_eq!(read["ok"], true);
+    assert_eq!(read["result"]["next"], 0);
+    let limits = read["limits"].to_string();
+    assert!(limits.contains("without debug tools"), "{limits}");
+}

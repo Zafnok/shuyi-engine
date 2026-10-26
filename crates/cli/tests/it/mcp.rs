@@ -1,8 +1,10 @@
 //! `shuyi mcp` driven over stdio by a scripted client, as an agent drives
 //! it, against Hello, Grid from the repository's root (as its `.mcp.json`
 //! runs it): start the game, step into the stage, read the scene, paint
-//! the frame, and one call that fails with its code. The session's game
-//! runs in Hello, Grid's tool program, which `start` builds with cargo.
+//! the frame, and one call that fails with its code; then reset, it reads
+//! the frames' times as a stream with `perf`, and `run --perf` writes a
+//! trace. The session's game runs in Hello, Grid's tool program, which
+//! `start` builds with cargo.
 //! Then the session attaches to a running build over the live link (the
 //! toy behind a test host), steps it and reads its frame and picture.
 
@@ -136,6 +138,7 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
         "scene",
         "frame_png",
         "events",
+        "perf",
         "reset",
         "stop",
         "bots",
@@ -215,8 +218,11 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
         events["structuredContent"]["result"]["frames"], 4,
         "{events}"
     );
+
+    read_perf_as_a_stream(&mut client);
+
     let ended = client.call("stop", &json!({}));
-    assert_eq!(ended["structuredContent"]["result"]["frames"], 4, "{ended}");
+    assert_eq!(ended["structuredContent"]["result"]["frames"], 0, "{ended}");
     let after = client.call("scene", &json!({}));
     assert_eq!(after["structuredContent"]["code"], "SH0002");
 
@@ -225,6 +231,65 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
     client.stdin = None;
     let status = client.server.wait().unwrap();
     assert!(status.success(), "{status}");
+}
+
+/// The records' frames in `perf`'s answer.
+fn perf_frames(answer: &Value) -> Vec<u64> {
+    answer["structuredContent"]["result"]["records"]
+        .as_array()
+        .unwrap_or_else(|| panic!("records: {answer}"))
+        .iter()
+        .filter_map(|r| r["frame"].as_u64())
+        .collect()
+}
+
+/// The session's game started again and read as a stream with `perf`,
+/// then `run --perf` with a trace file: the session is left just reset.
+fn read_perf_as_a_stream(client: &mut Client) {
+    let reset = client.call("reset", &json!({}));
+    assert_eq!(reset["isError"], false, "{reset}");
+    client.call("step", &json!({ "frames": 10 }));
+    let first = client.call("perf", &json!({ "since": 0 }));
+    assert_eq!(first["isError"], false, "{first}");
+    assert_eq!(perf_frames(&first), (1..=10).collect::<Vec<_>>());
+    let result = &first["structuredContent"]["result"];
+    assert_eq!(result["next"], 10, "{result}");
+    assert_eq!(result["summary"]["frames"], 10, "{result}");
+    assert!(result["records"][0]["times"]["frame_us"].is_u64());
+    client.call("step", &json!({ "frames": 5 }));
+    let then = client.call("perf", &json!({ "since": 10 }));
+    assert_eq!(perf_frames(&then), (11..=15).collect::<Vec<_>>());
+    client.call("reset", &json!({}));
+    let reset = client.call("perf", &json!({ "since": 15 }));
+    let limits = reset["structuredContent"]["limits"].to_string();
+    assert!(limits.contains("read from 0"), "{limits}");
+
+    // `run --perf --perf-out`: a summary, and a line per kept frame.
+    let dir = crate::scratch("mcp-perf");
+    let file = dir.join("perf.jsonl");
+    let ran = client.call(
+        "run",
+        &json!({ "project": "examples/hello-grid", "frames": 120,
+                "perf_out": file.display().to_string() }),
+    );
+    assert_eq!(ran["isError"], false, "{ran}");
+    let answer = &ran["structuredContent"];
+    let summary = &answer["result"]["perf"];
+    assert_eq!(summary["frames"], 120, "{summary}");
+    for part in ["frame", "update", "draw", "paint", "present"] {
+        assert!(summary[part]["p99"].is_u64(), "{part}: {summary}");
+    }
+    assert!(
+        answer["limits"].to_string().contains("this machine's"),
+        "{answer}"
+    );
+    let trace = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{e}"));
+    let lines: Vec<shuyi_ui::perf::PerfLine> = trace
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap_or_else(|e| panic!("{e}: {line}")))
+        .collect();
+    assert_eq!(lines.len(), 120);
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// The session attached to a running build over the live link (the toy

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PerfInput",
+  "description": "Which of the session's frames' records `perf` reads.",
+  "type": "object",
+  "properties": {
+    "max": {
+      "description": "The most records to answer, 1 to 600.",
+      "type": "integer",
+      "format": "uint32",
+      "default": 120,
+      "maximum": 600,
+      "minimum": 1
+    },
+    "since": {
+      "description": "The first record's number: 0, or the last answer's `next`.",
+      "type": "integer",
+      "format": "uint64",
+      "default": 0,
+      "minimum": 0
+    }
+  },
+  "additionalProperties": false
+}

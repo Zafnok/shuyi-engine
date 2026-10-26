@@ -274,6 +274,7 @@ fn what_run_and_scene_saw_reads_for_people() {
         sounds: Vec::new(),
         log: Vec::new(),
         modules: Vec::new(),
+        perf: None,
     };
     assert_eq!(
         text(&bare),
@@ -400,4 +401,86 @@ fn run_lists_the_games_modules_with_their_hooks() {
     let none = run(&Fake::default(), &RunInput::default()).result.unwrap();
     assert!(none.modules.is_empty(), "{:?}", none.modules);
     assert!(!text(&none).contains("modules:"));
+}
+
+#[test]
+fn perf_and_perf_out_are_read_and_perf_out_implies_perf() {
+    let input = parse_args(&args(&["--perf"]), &OPTIONS).unwrap();
+    assert!(input.perf && input.perf_out.is_none());
+    let input = parse_args(&args(&["--perf-out", "perf.jsonl"]), &OPTIONS).unwrap();
+    assert!(input.perf);
+    assert_eq!(input.perf_out.as_deref(), Some("perf.jsonl"));
+    assert!(input.measures());
+    assert!(!RunInput::default().measures());
+    let missing = parse_args(&args(&["--perf-out"]), &OPTIONS).unwrap_err();
+    assert_eq!(missing, "--perf-out needs a value");
+    assert!(usage("shuyi", Op::Run, &[]).contains("--perf-out <file>"));
+    assert!(!usage("shuyi", Op::Scene, &[]).contains("--perf"));
+}
+
+#[test]
+fn perf_outs_path_is_from_the_projects_folder() {
+    let root = std::env::temp_dir().join("game");
+    let path = perf_out_path(&root, "traces/perf.jsonl");
+    assert!(path.is_absolute());
+    assert_eq!(path, root.join("traces").join("perf.jsonl"));
+    let elsewhere = std::env::temp_dir().join("elsewhere.jsonl");
+    let text = elsewhere.display().to_string();
+    assert_eq!(perf_out_path(&root, &text), elsewhere);
+}
+
+/// A fake game whose session measured `frames` frames of 1.2 ms.
+fn measured(frames: u32) -> Fake {
+    let mut session = FakeSession::on("stage", "map");
+    session.perf = (1..=frames)
+        .map(|frame| {
+            let mut record = FrameRecord::new(frame);
+            record.times.frame_us = 1200;
+            record
+        })
+        .collect();
+    Fake {
+        session: Ok(session),
+        ..Fake::default()
+    }
+}
+
+#[test]
+fn run_with_perf_answers_the_summary_of_what_the_session_kept() {
+    let input = RunInput {
+        perf: true,
+        ..RunInput::default()
+    };
+    let answer = run(&measured(3), &input);
+    let output = answer.result.unwrap();
+    let summary = output.perf.as_ref().unwrap();
+    assert_eq!((summary.frames, summary.frame.p50), (3, 1200));
+    assert_eq!(answer.limits, [perf::TIMES]);
+    assert!(
+        text(&output).contains("perf: 3 frames, frame p50 1.2 ms p99 1.2 ms worst 1.2 ms\n"),
+        "{}",
+        text(&output)
+    );
+    // Without perf, none.
+    let plain = run(&measured(3), &RunInput::default());
+    assert_eq!(plain.result.unwrap().perf, None);
+    assert!(plain.limits.is_empty(), "{:?}", plain.limits);
+}
+
+#[test]
+fn run_with_perf_on_a_session_that_measured_nothing_says_why() {
+    let input = RunInput {
+        perf: true,
+        frames: 4,
+        ..RunInput::default()
+    };
+    let answer = run(&measured(0), &input);
+    assert_eq!(answer.result.unwrap().perf, None);
+    assert_eq!(
+        answer.limits,
+        [
+            perf::TIMES,
+            "nothing was measured: the game's tool program was built without debug tools"
+        ]
+    );
 }
