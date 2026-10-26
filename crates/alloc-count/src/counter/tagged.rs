@@ -199,6 +199,11 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for CountingAlloc<A, Tagged> {
     }
 
     unsafe fn dealloc(&self, block: *mut u8, layout: Layout) {
+        // Never a block of this allocator's (the caller's contract), and
+        // with no header in front of it to read.
+        if block.is_null() {
+            return;
+        }
         // A block allocated with `layout` had an outer layout.
         let Some((outer, header)) = outer(layout) else {
             return;
@@ -215,6 +220,10 @@ unsafe impl<A: GlobalAlloc> GlobalAlloc for CountingAlloc<A, Tagged> {
 
     unsafe fn realloc(&self, block: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
         self.allocs.add(1);
+        // As `dealloc`'s: no block, and no header to read.
+        if block.is_null() {
+            return ptr::null_mut();
+        }
         let Some((outer, header)) = outer(layout) else {
             return ptr::null_mut();
         };

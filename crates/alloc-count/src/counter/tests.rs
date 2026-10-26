@@ -260,8 +260,10 @@ mod tagged {
             let align = 1usize << shift;
             assert_eq!(header_bytes(align), align.max(8));
             let block = alloc_in(&heap, 7, 3, align, false);
+            assert!(!block.is_null());
             assert_eq!(block.addr() % align, 0, "align {align}");
-            // SAFETY: the two bytes before a block are its header's last.
+            // SAFETY: `block` is a block of `heap`'s, not null, and the two
+            // bytes before it are its header's last.
             let tag = unsafe { block.sub(2).cast::<u16>().read_unaligned() };
             assert_eq!(tag, 7);
             free_in(&heap, block, 3, align);
@@ -292,11 +294,13 @@ mod tagged {
     fn a_realloc_moves_the_bytes_to_the_current_tag() {
         let heap = Heap::with_tags(System);
         let block = alloc_in(&heap, 1, 100, 32, false);
+        assert!(!block.is_null());
         // SAFETY: the block has 100 bytes.
         unsafe { block.write_bytes(0xA5, 100) };
         let block = realloc_in(&heap, 2, block, (100, 32), 400);
         assert_eq!(live(&heap, 1), (0, 0));
         assert_eq!(live(&heap, 2), (400, 1));
+        assert!(!block.is_null());
         // SAFETY: the block has 400 bytes, the first 100 kept.
         let kept = unsafe { core::slice::from_raw_parts(block, 100) };
         assert!(kept.iter().all(|&b| b == 0xA5));
