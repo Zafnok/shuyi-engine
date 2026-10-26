@@ -11,12 +11,12 @@ const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx
 pub fn encode(bytes: &[u8]) -> String {
     let mut out = String::with_capacity(bytes.len().div_ceil(3) * 4);
     for chunk in bytes.chunks(3) {
-        let b = [
+        let n = u32::from_be_bytes([
+            0,
             chunk[0],
             chunk.get(1).copied().unwrap_or(0),
             chunk.get(2).copied().unwrap_or(0),
-        ];
-        let n = (u32::from(b[0]) << 16) | (u32::from(b[1]) << 8) | u32::from(b[2]);
+        ]);
         for i in 0..4 {
             if i <= chunk.len() {
                 out.push(char::from(ALPHABET[((n >> (18 - 6 * i)) & 63) as usize]));
@@ -62,7 +62,7 @@ pub fn decode(text: &str) -> Result<Vec<u8>, String> {
         for &c in &quad[..4 - pad] {
             let v = value(c)
                 .ok_or_else(|| format!("base64: {:?} is no base64 character", char::from(c)))?;
-            n = (n << 6) | v;
+            n = n * 64 + v;
         }
         n <<= 6 * pad;
         let [_, a, b, c] = n.to_be_bytes();

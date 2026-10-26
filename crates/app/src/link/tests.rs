@@ -210,13 +210,15 @@ fn a_client_of_another_link_version_hears_the_builds_and_is_closed() {
 fn a_second_client_while_one_is_attached_hears_busy_and_is_closed() {
     let mut host = Host::new();
     let port = host.port();
-    let (mut first, mut stream) = connect(port);
-    send(&mut stream, &hello());
-    let until = Instant::now() + Duration::from_secs(10);
-    while host.listener.client.is_none() {
-        assert!(Instant::now() < until);
-        host.frame();
-    }
+    // The first says hello and is answered, frames running meanwhile.
+    let first = thread::spawn(move || {
+        let (mut reader, mut stream) = connect(port);
+        send(&mut stream, &hello());
+        let hello = answer(&mut reader);
+        (reader, stream, hello)
+    });
+    let (mut reader, mut stream, said) = host.serve(first);
+    assert!(matches!(said, Answer::Hello { .. }), "{said:?}");
     let second = thread::spawn(move || {
         let (mut reader, mut stream) = connect(port);
         send(&mut stream, &hello());
@@ -226,11 +228,11 @@ fn a_second_client_while_one_is_attached_hears_busy_and_is_closed() {
     assert_eq!(busy, Answer::Busy);
     assert!(closed);
     // The first is still attached.
-    host.frame();
-    assert!(matches!(answer(&mut first), Answer::Hello { .. }));
-    send(&mut stream, &Request::Status);
-    host.frame();
-    assert!(matches!(answer(&mut first), Answer::Status(_)));
+    let status = thread::spawn(move || {
+        send(&mut stream, &Request::Status);
+        answer(&mut reader)
+    });
+    assert!(matches!(host.serve(status), Answer::Status(_)));
 }
 
 #[test]

@@ -271,5 +271,22 @@ fn a_skills_second_example_is_read_named_after_it_and_picked_with_it() {
         "{}",
         outcome.report
     );
+    // An example's own name picks it alone.
+    let alone = Options {
+        only: vec!["shuyi-test-attach".to_owned()],
+        shard: None,
+    };
+    let outcome = run(&root, &root.join("games"), &alone, &Fake::default());
+    assert_eq!(outcome.errors, Vec::<String>::new());
+    assert!(
+        outcome.report.contains("shuyi-test-attach: manual"),
+        "{}",
+        outcome.report
+    );
+    assert!(
+        !outcome.report.contains("shuyi-test: "),
+        "{}",
+        outcome.report
+    );
     let _ = fs::remove_dir_all(&root);
 }

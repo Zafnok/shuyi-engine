@@ -730,3 +730,36 @@ fn the_log_request_reads_the_apps_ring() {
     };
     assert_eq!(after.lines, []);
 }
+
+#[test]
+fn the_limits_are_the_adrs_and_hold_to_the_byte_and_the_frame() {
+    assert_eq!(MAX_LINE, 65_536);
+    assert_eq!(MAX_UNSENT, 67_108_864);
+    assert_eq!(MAX_WAIT, 100_000);
+    // A wait of the most frames is played; one more is refused.
+    assert_eq!(Step::Wait(MAX_WAIT).check(), Ok(()));
+    assert!(Step::Wait(MAX_WAIT + 1).check().is_err());
+    // A hello of exactly the longest line is heard; one byte more closes.
+    let app = App::running(toy::game());
+    let hello = hello(VERSION);
+    let padded = format!("{hello}{}", " ".repeat(MAX_LINE - hello.len()));
+    assert_eq!(padded.len(), MAX_LINE);
+    let mut server = Server::new(TOKEN.to_owned(), "Toy".to_owned());
+    assert!(matches!(server.handle(&padded, &app), Handled::Answer(_)));
+    let mut server = Server::new(TOKEN.to_owned(), "Toy".to_owned());
+    let over = format!("{padded} ");
+    assert_eq!(server.handle(&over, &app), Handled::Close(None));
+}
+
+#[test]
+fn a_play_whose_steps_press_nothing_takes_no_frame() {
+    let mut b = toy_build();
+    let blank = Request::Play {
+        steps: vec![keys(" "), pad("")],
+    };
+    assert_eq!(b.send(&blank.to_line()), Handled::Later);
+    let Answer::Played(played) = b.answer() else {
+        panic!("not played");
+    };
+    assert_eq!(played.frames, 0);
+}
