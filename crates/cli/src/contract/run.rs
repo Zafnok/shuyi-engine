@@ -2,14 +2,20 @@
 //! say, a script of keys, controller buttons and waits played, and some
 //! frames more. `run` answers with the top screen, the frame as text, the
 //! scene, what happened, the sounds asked for, the game's log and its
-//! modules; `scene` with the scene and the log.
+//! modules; `scene` with the scene and the log. With `--perf`, `run` also
+//! measures each frame and answers a summary of the times, and with
+//! `--perf-out` writes every kept frame as a JSON line ([`super::perf`]).
 
 use std::fmt::Write as _;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_ui::log::LOG_LINES;
+use shuyi_ui::perf::{FrameRecord, PERF_FRAMES};
 
+use super::perf::{self, PerfSummary};
 use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound};
 use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
@@ -32,6 +38,11 @@ pub struct RunInput {
     pub script: Script,
     /// Frames to run after the script with no input.
     pub frames: u32,
+    /// Measure each frame, and answer a summary of the times (`run` only).
+    pub perf: bool,
+    /// Also write every kept frame's record there, a JSON line each; a
+    /// relative path is from the project's folder. It implies `perf`.
+    pub perf_out: Option<String>,
 }
 
 /// What `run` saw.
@@ -61,6 +72,9 @@ pub struct RunOutput {
     /// The modules installed in the game, in install order, with the
     /// hooks the game calls on each.
     pub modules: Vec<ModuleEntry>,
+    /// The frames' times, with `perf`: none without it, or when nothing
+    /// was measured.
+    pub perf: Option<PerfSummary>,
 }
 
 /// What `scene` saw.
@@ -90,6 +104,11 @@ impl RunInput {
         }
         Ok(())
     }
+
+    /// Whether it measures the frames: `perf`, or `perf_out`.
+    pub fn measures(&self) -> bool {
+        self.perf || self.perf_out.is_some()
+    }
 }
 
 /// A session of `game` started and played as `input` says, or the answer
@@ -105,6 +124,9 @@ fn played<T>(
     let mut session = game
         .session(&input.start)
         .map_err(|e| Answer::failed(op, code_of(&e), e))?;
+    if input.measures() {
+        session.set_perf(true);
+    }
     session.play(&input.script);
     session.idle(input.frames);
     Ok(session)
@@ -175,8 +197,43 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
         sounds: session.sounds(),
         log: session.log(),
         modules: session.modules(),
+        perf: None,
     };
     (output, limits)
+}
+
+/// The summary of every record `session` kept, the records themselves,
+/// for the trace file, and the limits of both.
+fn perf_of(session: &dyn Session) -> (Option<PerfSummary>, Vec<FrameRecord>, Vec<String>) {
+    let read = session.perf(0, u32::try_from(PERF_FRAMES).unwrap_or(u32::MAX));
+    let mut limits = vec![perf::TIMES.to_owned()];
+    if !read.measured {
+        limits.push(perf::unmeasured_limit(session.frame_count()));
+        return (None, Vec::new(), limits);
+    }
+    if read.dropped > 0 {
+        limits.push(perf::dropped_limit(read.dropped));
+    }
+    let summary = perf::summary(&read.records).map(|mut summary| {
+        summary.dropped = read.dropped;
+        summary
+    });
+    (summary, read.records, limits)
+}
+
+/// Where `--perf-out <path>` writes: `path` from the project's folder
+/// `root`, as the operating system takes it.
+pub fn perf_out_path(root: &Path, path: &str) -> PathBuf {
+    let path = root.join(path);
+    std::path::absolute(&path).unwrap_or(path)
+}
+
+/// `records` written to `path` as a trace, its folders made.
+fn write_trace(path: &Path, records: &[FrameRecord]) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        fs::create_dir_all(dir)?;
+    }
+    fs::write(path, perf::lines(records))
 }
 
 /// The scene `session` shows, as `scene` answers it, with its limits.
@@ -193,15 +250,33 @@ pub fn scene_output(session: &dyn Session) -> (SceneOutput, Vec<String>) {
     (output, limits)
 }
 
-/// `run`: plays `input` in `game`.
+/// `run`: plays `input` in `game`; a trace file (`perf_out`) is written
+/// from the working folder ([`run_at`] says from where).
 pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
-    match played(Op::Run, game, input) {
-        Ok(session) => {
-            let (output, limits) = run_output(&*session);
-            Answer::new(Op::Run, true, output, limits)
+    run_at(game, Path::new("."), input)
+}
+
+/// `run`: plays `input` in `game`; a trace file (`perf_out`) is written
+/// from the project's folder `root`, as the CLI and the MCP server run it.
+pub fn run_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<RunOutput> {
+    let session = match played(Op::Run, game, input) {
+        Ok(session) => session,
+        Err(answer) => return answer,
+    };
+    let (mut output, mut limits) = run_output(&*session);
+    if input.measures() {
+        let (mut summary, records, perf_limits) = perf_of(&*session);
+        limits.extend(perf_limits);
+        if let (Some(file), Some(summary)) = (&input.perf_out, &mut summary) {
+            let path = perf_out_path(root, file);
+            if let Err(e) = write_trace(&path, &records) {
+                return Answer::failed(Op::Run, codes::FILE, format!("--perf-out {file}: {e}"));
+            }
+            summary.file = Some(path.display().to_string());
         }
-        Err(answer) => answer,
+        output.perf = summary;
     }
+    Answer::new(Op::Run, true, output, limits)
 }
 
 /// `scene`: plays `input` in `game`, and answers with the scene. It
@@ -228,6 +303,13 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
          --frames N           then run N frames (1/60 s each) with no input\n",
         op.name()
     );
+    if op == Op::Run {
+        out.push_str(
+            "\n--perf               measure each frame, and answer a summary of the times\n\
+             --perf-out <file>    also write each kept frame as a JSON line, from the\n                     \
+             project's folder (implies --perf)\n",
+        );
+    }
     if !options.is_empty() {
         out.push_str("\nthe game's options:\n");
         for option in options {
@@ -259,6 +341,15 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
             if let Some(step) = Script::parse_step(arg, &text) {
                 input.script.steps.push(step?);
             }
+            continue;
+        }
+        if arg == "--perf" {
+            input.perf = true;
+            continue;
+        }
+        if arg == "--perf-out" {
+            input.perf_out = Some(value()?);
+            input.perf = true;
             continue;
         }
         if arg == "--frames" {
@@ -365,6 +456,9 @@ pub fn text(output: &RunOutput) -> String {
             .map(|s| format!("{} (frame {})", s.cue, s.frame))
             .collect();
         let _ = writeln!(out, "sounds: {}", sounds.join(", "));
+    }
+    if let Some(summary) = &output.perf {
+        out.push_str(&perf::text(summary));
     }
     scene_text(&mut out, output.scene.as_ref());
     // The glyphs only: the colours, legend and items are in `--json`.

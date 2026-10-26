@@ -16,12 +16,13 @@ use serde_json::{Value, json};
 
 use super::server::{Launch, Link};
 use super::{
-    EventsOutput, FramePngInput, FramePngOutput, NoInput, StartInput, StartOption, StartOutput,
-    StepInput, StopOutput, base64,
+    EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartInput,
+    StartOption, StartOutput, StepInput, StopOutput, base64,
 };
 use crate::codec::encode_png;
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
+use crate::contract::perf;
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::Session;
 use crate::contract::{
@@ -179,7 +180,9 @@ pub fn one_off(
             Ok(p) => answered(op, input, |i| add::add(p, &i)),
             Err((code, error)) => failed(op, *code, error.clone()),
         },
-        Op::Run => needs(&|game, _| answered(op, input.clone(), |i| run::run(game, &i))),
+        Op::Run => {
+            needs(&|game, p| answered(op, input.clone(), |i| run::run_at(game, &p.root, &i)))
+        }
         Op::Scene => needs(&|game, _| answered(op, input.clone(), |i| run::scene(game, &i))),
         Op::Replay => {
             needs(&|game, p| answered(op, input.clone(), |i| replay::replay(game, &p.root, &i)))
@@ -192,11 +195,13 @@ pub fn one_off(
             needs(&|game, _| answered(op, input.clone(), |i| autobalance::autobalance(game, &i)))
         }
         Op::Bake => needs(&|game, p| answered(op, input.clone(), |i| bake::bake(game, p, &i))),
-        Op::Start | Op::Step | Op::FramePng | Op::Events | Op::Reset | Op::Stop => failed(
-            op,
-            codes::WRONG_ARGUMENTS,
-            format!("{} is a session tool, not an operation", op.name()),
-        ),
+        Op::Start | Op::Step | Op::FramePng | Op::Events | Op::Perf | Op::Reset | Op::Stop => {
+            failed(
+                op,
+                codes::WRONG_ARGUMENTS,
+                format!("{} is a session tool, not an operation", op.name()),
+            )
+        }
     }
 }
 
@@ -256,6 +261,9 @@ impl<'a> Host<'a> {
                     Answer::new(op, true, output, Vec::new())
                 })
             }),
+            Op::Perf => self.with_game(op, |game| {
+                answered(op, input, |i: PerfInput| perf_read(game, &i))
+            }),
             Op::FramePng => match self.live.as_ref() {
                 Some(live) => frame_png(&*live.game, input),
                 None => Reply::of(no_session(op)),
@@ -295,10 +303,12 @@ impl<'a> Host<'a> {
     /// The session's game started as `start` says, for `start` or `reset`
     /// (`op`).
     fn start(&mut self, op: Op, start: Vec<GameArg>) -> Answer<StartOutput> {
-        let game = match self.tools.session(&start) {
+        let mut game = match self.tools.session(&start) {
             Ok(game) => game,
             Err(e) => return Answer::failed(op, code_of(&e), e),
         };
+        // So `perf` always has records.
+        game.set_perf(true);
         let screens = game.screens();
         let output = StartOutput {
             project: self.project.root.display().to_string(),
@@ -331,9 +341,9 @@ pub fn no_session(op: Op) -> Value {
 /// `step`: `input` played on `game`, answered as `run` answers.
 fn step(game: &mut dyn Session, input: &StepInput) -> Answer<run::RunOutput> {
     let checked = RunInput {
-        start: Vec::new(),
         script: input.script.clone(),
         frames: input.frames,
+        ..RunInput::default()
     }
     .check();
     if let Err(e) = checked {
@@ -343,6 +353,31 @@ fn step(game: &mut dyn Session, input: &StepInput) -> Answer<run::RunOutput> {
     game.idle(input.frames);
     let (output, limits) = run::run_output(game);
     Answer::new(Op::Step, true, output, limits)
+}
+
+/// `perf`: `game`'s frames' records as `input` asks, with their summary.
+fn perf_read(game: &dyn Session, input: &PerfInput) -> Answer<PerfOutput> {
+    if let Err(e) = input.check() {
+        return Answer::failed(Op::Perf, codes::WRONG_ARGUMENTS, e);
+    }
+    let read = game.perf(input.since, input.max);
+    let mut limits = vec![perf::TIMES.to_owned()];
+    if !read.measured {
+        limits.push(perf::unmeasured_limit(game.frame_count()));
+    }
+    if input.since > read.next {
+        limits.push(perf::RESET.to_owned());
+    }
+    if read.dropped > 0 {
+        limits.push(perf::dropped_limit(read.dropped));
+    }
+    let output = PerfOutput {
+        summary: perf::summary(&read.records),
+        records: read.records,
+        next: read.next,
+        dropped: read.dropped,
+    };
+    Answer::new(Op::Perf, true, output, limits)
 }
 
 /// `frame_png`: `game`'s frame painted as `input` says.

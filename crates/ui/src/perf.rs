@@ -100,6 +100,7 @@ impl FakeClock {
 /// How long the parts of one frame took, in whole microseconds. Build it
 /// with [`FrameTimes::new`] (ADR-0039); a backend may add a part.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct FrameTimes {
@@ -137,6 +138,7 @@ impl FrameTimes {
 
 /// A span a game marked ([`Ctx::span`](crate::Ctx::span)), as it ended.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct SpanEvent {
@@ -165,6 +167,7 @@ impl SpanEvent {
 
 /// What one frame measured. Build it with [`FrameRecord::new`] (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct FrameRecord {
@@ -251,6 +254,55 @@ impl PerfRing {
         let skip = crate::log::skip_before(seq, self.next, self.records.len());
         self.records.range(skip..)
     }
+}
+
+/// One line of a perf trace, as agents read it (ADR-0046 §7): a JSON
+/// object tagged by `kind`, one a line (`serde_json::to_string(&line)` and
+/// a newline).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+#[non_exhaustive]
+pub enum PerfLine {
+    /// What one frame measured: `{"kind":"frame","frame":12,…}`.
+    Frame(FrameRecord),
+}
+
+/// How a set of times spread, in whole microseconds: the median, the 99th
+/// percentile (nearest rank), the worst and the mean rounded down.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+pub struct Spread {
+    /// The median: half the times are this or less.
+    pub p50: u32,
+    /// 99 in a hundred times are this or less.
+    pub p99: u32,
+    /// The longest.
+    pub worst: u32,
+    /// The mean, rounded down.
+    pub mean: u32,
+}
+
+/// How `values` spread, or `None` for no values. The percentiles are
+/// nearest-rank: the value at rank ⌈p × n / 100⌉ of the n values sorted,
+/// all in integers.
+pub fn spread(values: impl IntoIterator<Item = u32>) -> Option<Spread> {
+    let mut sorted: Vec<u32> = values.into_iter().collect();
+    if sorted.is_empty() {
+        return None;
+    }
+    sorted.sort_unstable();
+    let n = sorted.len();
+    let rank = |p: usize| (p * n).div_ceil(100).clamp(1, n) - 1;
+    let sum: u64 = sorted.iter().map(|&v| u64::from(v)).sum();
+    let count = u64::try_from(n).unwrap_or(u64::MAX);
+    Some(Spread {
+        p50: sorted[rank(50)],
+        p99: sorted[rank(99)],
+        worst: sorted[n - 1],
+        mean: u32::try_from(sum / count).unwrap_or(u32::MAX),
+    })
 }
 
 /// The microseconds from `from` to `to`: none if `to` is earlier, and at

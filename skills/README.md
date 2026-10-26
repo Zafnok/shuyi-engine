@@ -61,6 +61,7 @@ runs on a new game, and every other check still holds for it.
   [`shuyi-dialogue`](shuyi-dialogue/SKILL.md).
 - Testing and tuning: [`shuyi-test`](shuyi-test/SKILL.md),
   [`shuyi-debug-replay`](shuyi-debug-replay/SKILL.md),
+  [`shuyi-perf`](shuyi-perf/SKILL.md),
   [`shuyi-balance-bots`](shuyi-balance-bots/SKILL.md).
 - Shipping: [`shuyi-ship`](shuyi-ship/SKILL.md).
 - A module's: [`shuyi-net`](shuyi-net/SKILL.md), online play.

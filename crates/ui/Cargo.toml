@@ -29,6 +29,9 @@ onebit-reference = []
 # `toy`: a toy game of a few screens over the sample game's actions, for
 # this crate's integration tests.
 toy = ["shuyi-assets/sample-actions"]
+# JSON schemas of the perf records (`perf`), for the tool contract
+# (`shuyi-cli`).
+schema = ["dep:schemars"]
 
 [dependencies]
 # The tactics kit's grid: positions, directions, terrain ids and paths.
@@ -41,6 +44,7 @@ serde.workspace = true
 ron.workspace = true
 # Float maths without `std` (game ADR-0070 §3).
 libm.workspace = true
+schemars = { version = "1", optional = true, default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 # The toy game for the integration tests in tests/.

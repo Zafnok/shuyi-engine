@@ -8,15 +8,25 @@
 //! ([`Headless::with_events`]) and how its frame looks
 //! ([`Headless::with_picture`]). The modules its game installed are read
 //! from the game itself.
+//!
+//! With perf on ([`Session::set_perf`]), a [`Headless`] measures each
+//! frame with this machine's clock and keeps its record, read with
+//! [`Session::perf`] (ADR-0046).
+
+use std::sync::OnceLock;
+use std::time::Instant;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
 use shuyi_ui::module::InstalledModule;
+use shuyi_ui::perf::PerfClock;
 
+use super::perf::PerfRead;
 use crate::frame_png::{Image, Script};
 use crate::game::unsupported;
 
@@ -216,6 +226,19 @@ pub trait Session {
         Vec::new()
     }
 
+    /// Measures each frame from now on, or stops (`false`). By default a
+    /// session measures nothing.
+    fn set_perf(&mut self, on: bool) {
+        let _ = on;
+    }
+
+    /// The frames' records kept, numbered `since` or more, the first `max`
+    /// of them ([`PerfRead`]). By default nothing, measured.
+    fn perf(&self, since: u64, max: u32) -> PerfRead {
+        let _ = max;
+        PerfRead::none(since)
+    }
+
     /// The current frame as the game paints it, each console pixel
     /// `scale` × `scale` (the game's choice if `None`). By default the
     /// game offers none.
@@ -243,6 +266,16 @@ pub struct Headless<G: GameData> {
     scene: SceneOf<G>,
     events: EventsOf<G>,
     picture: Option<PictureOf<G>>,
+    /// Whether [`Session::set_perf`] gave the Harness its clock.
+    perf_clock: bool,
+}
+
+/// The microseconds since this machine's clock was first read here: the
+/// real clock a [`Headless`] measures with.
+fn now_us() -> u64 {
+    static START: OnceLock<Instant> = OnceLock::new();
+    let start = START.get_or_init(Instant::now);
+    u64::try_from(start.elapsed().as_micros()).unwrap_or(u64::MAX)
 }
 
 impl<G: GameData> Headless<G> {
@@ -258,6 +291,7 @@ impl<G: GameData> Headless<G> {
             }),
             events: Box::new(|_| Vec::new()),
             picture: None,
+            perf_clock: false,
         }
     }
 
@@ -425,6 +459,23 @@ impl<G: GameData> Session for Headless<G> {
     fn modules(&self) -> Vec<ModuleEntry> {
         let modules = self.harness.game().modules();
         modules.iter().map(ModuleEntry::from).collect()
+    }
+
+    /// Gives the Harness this machine's clock, unless its platform has one
+    /// already (a test's fake, kept so its records stay the same); `false`
+    /// takes away the clock it gave.
+    fn set_perf(&mut self, on: bool) {
+        if on && !self.perf_clock && self.harness.platform().clock().is_none() {
+            self.harness.set_clock(Some(PerfClock::Real(now_us)));
+            self.perf_clock = true;
+        } else if !on && self.perf_clock {
+            self.harness.set_clock(None);
+            self.perf_clock = false;
+        }
+    }
+
+    fn perf(&self, since: u64, max: u32) -> PerfRead {
+        PerfRead::of(self.harness.perf(), since, max)
     }
 
     fn picture(&self, scale: Option<u32>) -> Result<Image, String> {

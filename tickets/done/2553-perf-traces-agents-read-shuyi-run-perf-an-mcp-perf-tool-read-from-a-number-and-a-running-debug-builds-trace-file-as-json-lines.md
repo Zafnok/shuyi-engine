@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["3063"]
 nick_input: none
-completed:
+completed: 2026-10-25
 ---
 
 # 2553 — Perf traces agents read
@@ -239,33 +239,33 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi run --perf --perf-out perf.jsonl --frames 120` on
+- [x] `cargo shuyi run --perf --perf-out perf.jsonl --frames 120` on
       Hello, Grid answers a summary and writes one parseable line per
       kept frame (a test reads each as a `PerfLine`).
-- [ ] With a fake clock (the CLI's toy, `crates/cli/src/toy.rs`, its
+- [x] With a fake clock (the CLI's toy, `crates/cli/src/toy.rs`, its
       Harness started on `HeadlessPlatform::new().with_clock(
       PerfClock::fake())`), `run`'s summary and the file's lines are
       committed snapshots, the same on every run.
-- [ ] A plain `run` (no `--perf`) answers as before: `perf` is `null`
+- [x] A plain `run` (no `--perf`) answers as before: `perf` is `null`
       and no limit is added.
-- [ ] A run of 700 frames keeps 600 and says in a limit that 100 were
+- [x] A run of 700 frames keeps 600 and says in a limit that 100 were
       dropped.
-- [ ] MCP's scripted client starts a session, steps 10 frames, reads
+- [x] MCP's scripted client starts a session, steps 10 frames, reads
       `perf` from 0 (10 records, `next` 10), steps 5 more and reads from
       10 (5 records); a `since` past `next` after `reset` answers the
       limit.
-- [ ] `session.perf.*.json` and the regenerated `run` schemas are
+- [x] `session.perf.*.json` and the regenerated `run` schemas are
       checked in, and `versions.json` has the new version.
-- [ ] `shuyi-app`'s trace writer turns records into lines a test parses
+- [x] `shuyi-app`'s trace writer turns records into lines a test parses
       back to the same records; with `SHUYI_PERF` set, Hello, Grid run
       by hand writes a line per frame (two lines in the PR).
-- [ ] `docs/contract.md` has *Perf traces*, and its MCP table lists
+- [x] `docs/contract.md` has *Perf traces*, and its MCP table lists
       `perf`.
-- [ ] `cargo shuyi check-skills skills --tickets tickets/open` passes
+- [x] `cargo shuyi check-skills skills --tickets tickets/open` passes
       with `shuyi-perf`, `cargo xtask skill-examples shuyi-perf` runs
       its worked example green, and a game made with `shuyi new` gets
       the skill in `.claude/skills/`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -278,5 +278,63 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done.
+
+- **`shuyi_ui::perf`:** `Spread` and `spread` (nearest rank, integers),
+  `PerfLine` (`kind`-tagged, one variant `Frame`), and a `schema`
+  feature (optional `schemars`, its line in `tools/layers.ron`) deriving
+  `JsonSchema` on the perf types; `shuyi-cli` turns it on.
+- **`contract::perf`** (new): `PerfRead` (`PerfRead::of` over a ring,
+  `none`), `PerfSummary` and `SpanSummary`, `summary`, `lines`, the
+  limits (`TIMES`, `RESET`, `dropped_limit`, `unmeasured_limit`),
+  `millis` and `text`.
+- **The session:** `Session::set_perf` and `Session::perf` with default
+  bodies; `Headless` gives its Harness a real clock (a `OnceLock<Instant>`)
+  unless its platform has one, and `false` takes back only the clock it
+  gave. `FakeSession` keeps records. The CLI's toy now offers a session
+  (`ToyTools::session`), on `PerfClock::fake()`, so its summary and
+  trace are committed snapshots (`crates/cli/tests/it/snapshots/`).
+- **`run --perf` / `--perf-out`:** `RunInput::perf` and `perf_out`,
+  `RunOutput::perf`, the limits and the text line; a file that can't be
+  written fails with `SH3004` (`codes::FILE`, the code `attach
+  --screenshot` uses for a path). A run with no frame at all says
+  "nothing was measured: no frame ran" rather than blaming the build.
+- **MCP `perf`:** `Op::Perf` in `Op::SESSION`, `PerfInput` and
+  `PerfOutput` in `mcp.rs`, the host's `perf_read`; `start` (and `reset`)
+  turn perf on. After a reset, a `since` past the ring's next number
+  answers `next` 0, so an agent that passes `next` each time reads from
+  0 again. A session attached over the link refuses it with `SH3001`
+  (2555 reads it over the link; its ticket now says where).
+- **`shuyi-app`:** `perf_file.rs`, native only: `SHUYI_PERF` with debug
+  tools writes and flushes each frame's line after the frame; without
+  them it logs why; a file that can't be created or written is one
+  warning and the trace stops.
+- **Contract 22**, the schemas regenerated (every answer's `op` enum
+  gained `perf`), `docs/contract.md`'s *Perf traces*, the `run` row and
+  both MCP tables; `SH0002`'s page, the MCP server's instructions; the
+  `shuyi-perf` skill with its worked example (green), listed in
+  `skills/README.md`, and `shuyi-test` 1.3 points to it.
+
+Deviations:
+
+- `run`'s signature stays `run(game, input)` (a relative `--perf-out`
+  from the working folder), and a new `run_at(game, root, input)` writes
+  from the project's folder; the CLI and the MCP host call `run_at`.
+  Changing `run` broke the `grid` template's own tests, which call it.
+- `scene`'s input schema also shows `perf` and `perf_out`: `scene`
+  shares `RunInput`, and ignores them.
+- The MCP client test reads the stream after a `reset` of its session
+  rather than a second `start`, which would build the tool program again
+  while another test may hold it (seen once in a full workspace run).
+
+Hello, Grid run by hand with `SHUYI_PERF` (6 seconds, 1275 lines; the
+first two frames load and make no record):
+
+```text
+{"kind":"frame","frame":3,"times":{"update_us":58,"draw_us":202,"paint_us":294,"present_us":0,"frame_us":663},"spans":[],"spans_dropped":0}
+{"kind":"frame","frame":4,"times":{"update_us":25,"draw_us":184,"paint_us":357,"present_us":3565,"frame_us":4157},"spans":[],"spans_dropped":0}
+```
+
+No follow-up tickets: the handoffs are written into 2554 and 2555.
+
+Breaking: shuyi-cli: contract::Op: a new variant `Perf` (the variants after it renumbered), and `Op::SESSION` has 8 tools: a match on every `Op` adds an arm; the contract's version is 22. The game matches none.

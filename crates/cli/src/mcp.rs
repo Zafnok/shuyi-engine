@@ -20,6 +20,7 @@
 //! | `scene` | the scene on screen now | `scene`'s answer |
 //! | `frame_png` | a picture of the frame now, as an image | [`FramePngOutput`] and the PNG |
 //! | `events` | what happened since the start | [`EventsOutput`] |
+//! | `perf` | the frames' records since a number, and their summary | [`PerfOutput`] |
 //! | `reset` | the game started again as `start` started it | [`StartOutput`] |
 //! | `stop` | the game stopped | [`StopOutput`] |
 //!
@@ -54,11 +55,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
+use crate::contract::perf::PerfSummary;
 use crate::contract::session::{Event, Sound};
 use crate::contract::{Op, VERSION, op_schemas};
 use crate::frame_png::Script;
 use crate::game::{GameArg, GameOption};
 use crate::project::Project;
+use shuyi_ui::perf::{FrameRecord, PERF_FRAMES};
 
 /// A session tool's input that takes nothing.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -188,6 +191,60 @@ pub struct EventsOutput {
     pub sounds: Vec<Sound>,
 }
 
+/// How many records `perf` answers when its input doesn't say.
+pub const PERF_MAX: u32 = 120;
+
+/// Which of the session's frames' records `perf` reads.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
+pub struct PerfInput {
+    /// The first record's number: 0, or the last answer's `next`.
+    pub since: u64,
+    /// The most records to answer, 1 to 600.
+    #[schemars(range(min = 1, max = 600))]
+    pub max: u32,
+}
+
+impl Default for PerfInput {
+    fn default() -> Self {
+        Self {
+            since: 0,
+            max: PERF_MAX,
+        }
+    }
+}
+
+impl PerfInput {
+    /// Whether the session can answer it: `max` from 1 to 600.
+    pub fn check(&self) -> Result<(), String> {
+        let most = u32::try_from(PERF_FRAMES).unwrap_or(u32::MAX);
+        if (1..=most).contains(&self.max) {
+            Ok(())
+        } else {
+            Err(format!("max: 1 to {most}, not {}", self.max))
+        }
+    }
+}
+
+/// What `perf` read of the session's frames.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct PerfOutput {
+    /// The frames' records numbered `since` or more, oldest first.
+    pub records: Vec<FrameRecord>,
+    /// The number to pass as `since` next time.
+    pub next: u64,
+    /// How many records numbered `since` or more were no longer kept.
+    pub dropped: u64,
+    /// What the records answered add up to; none when there are none.
+    pub summary: Option<PerfSummary>,
+}
+
 /// What `stop` stopped.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
@@ -315,6 +372,11 @@ fn description(op: Op, session: bool) -> &'static str {
         (Op::Events, _) => {
             "What happened in the session since the start: screens opened and closed, music, \
              voices, the quit, the game's own events, and the sounds."
+        }
+        (Op::Perf, _) => {
+            "The session's frames' records (each frame's times in microseconds and the game's \
+             spans) numbered `since` or more, at most `max`, and their summary. Read it as a \
+             stream: `step`, then `perf` with the last answer's `next`."
         }
         (Op::Reset, _) => {
             "Start the session's game again as `start` started it, without building again."

@@ -1106,6 +1106,7 @@ dependencies = [
  "quad-snd",
  "quad-storage",
  "serde",
+ "serde_json",
  "shuyi-app",
  "shuyi-assets",
  "shuyi-platform",
@@ -1137,6 +1138,7 @@ name = "shuyi-cli"
 version = "0.1.0"
 dependencies = [
  "include_dir",
+ "insta",
  "png 0.18.1",
  "proptest",
  "ron",
@@ -1183,6 +1185,7 @@ dependencies = [
  "libm",
  "proptest",
  "ron",
+ "schemars",
  "serde",
  "shuyi-assets",
  "shuyi-core",

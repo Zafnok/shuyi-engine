@@ -128,6 +128,12 @@ fn each_session_tool_reads_or_plays_the_running_build() {
     assert!(error.contains("never changes a running build"), "{error}");
     assert!(server.has_game(), "a refused reset keeps the session");
 
+    let (perf, _) = called(&mut server, "perf", &json!({}));
+    assert_eq!(perf["code"], "SH3001");
+    let error = perf["error"].as_str().unwrap();
+    assert!(error.contains("SHUYI_PERF=<file>"), "{error}");
+    assert!(server.has_game(), "a refused perf keeps the session");
+
     // Stop detaches and leaves the build running; a second start attaches
     // again.
     let (detached, _) = called(&mut server, "stop", &json!({}));

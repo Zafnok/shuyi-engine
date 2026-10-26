@@ -34,8 +34,8 @@ pub const PROTOCOL_VERSIONS: [&str; 4] = ["2025-06-18", "2025-11-25", "2025-03-2
 /// What the server tells a client it is for.
 const INSTRUCTIONS: &str = "Shuyi Engine's tool contract on a game. Each operation is a tool; \
     the tools that run the game take `project`, the game's folder. To play a game and look at \
-    it: `start` (with `project`), then `step`, `scene`, `frame_png` and `events`, `reset` to \
-    start over, `stop` at the end; call `start` again after changing the game's code. `start` \
+    it: `start` (with `project`), then `step`, `scene`, `frame_png` and `events` (`perf` for \
+    the frames' times), `reset` to start over, `stop` at the end; call `start` again after changing the game's code. `start` \
     with `link` attaches the session to a debug build running in its window instead. A failed \
     answer is an error result with a `code` (`SH0001`): branch on it, and `explain` says what \
     it means.";

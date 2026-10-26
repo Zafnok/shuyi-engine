@@ -3,7 +3,9 @@
 //! (the toy's tool program, which `toy/shuyi.ron` names).
 //!
 //! The toy has no font, so its pictures draw every letter as a box, and
-//! its images (sizes only) as the missing colour.
+//! its images (sizes only) as the missing colour. Its session (`run`)
+//! measures every frame with a fake clock ([`PerfClock::fake`]), so its
+//! perf records are the same on every run.
 //!
 //! [`link`] runs the toy behind the live link's server, a test host for
 //! what attaches to a running build.
@@ -13,10 +15,13 @@ pub mod link;
 use std::collections::BTreeMap;
 
 use shuyi_platform::harness::Harness;
+use shuyi_platform::headless::HeadlessPlatform;
 use shuyi_ui::GameData;
+use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy::{self, Toy};
 
 use crate::codec::encode_png;
+use crate::contract::session::{Headless, Session};
 use crate::font_atlas::{BitmapFont, build_atlas};
 use crate::frame_png::{Painter, Script, Shot};
 use crate::game::{GameArg, GameLang, GameOption, GameTools};
@@ -59,6 +64,14 @@ impl GameTools for ToyTools {
             shows: h.top_screen().to_owned(),
             warning: None,
         })
+    }
+
+    /// The toy on a headless platform with a fake clock.
+    fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
+        let lobby = options.iter().any(|option| option.flag == "--lobby");
+        let game = if lobby { toy::lobby() } else { toy::game() };
+        let platform = HeadlessPlatform::new().with_clock(PerfClock::fake());
+        Ok(Box::new(Headless::new(Harness::on(game, platform))))
     }
 
     fn lang(&self) -> Result<GameLang, String> {

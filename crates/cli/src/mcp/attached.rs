@@ -115,6 +115,12 @@ impl Attached {
                 let limits = vec![NO_EVENTS.to_owned()];
                 Ok((to_json(&Answer::new(op, true, output, limits)), None))
             }),
+            Op::Perf => Err((
+                codes::NOT_OFFERED,
+                "the live link doesn't carry a running build's frames' records: run it with \
+                 SHUYI_PERF=<file> and read that file as it grows"
+                    .to_owned(),
+            )),
             Op::Reset => Err(wrong(
                 "the link never changes a running build: stop, then start with `project` to run \
                  the game headless"
@@ -180,6 +186,7 @@ impl Attached {
             sounds: Vec::new(),
             log: log.lines.into_iter().map(log_entry).collect(),
             modules: Vec::new(),
+            perf: None,
         };
         Ok((to_json(&Answer::new(Op::Step, true, output, limits)), None))
     }
