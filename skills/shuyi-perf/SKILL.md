@@ -1,9 +1,9 @@
 ---
 name: shuyi-perf
-description: Find what makes a game on Shuyi Engine slow or heavy, from the times of its frames and of the spans it marks around its own code and the heap's counts, read as JSON lines from a headless run, an MCP session or a running debug build. Use when a frame takes too long, a stage stutters, a bot's turn takes too long, or the heap grows. Not for a wrong result (shuyi-debug-replay), for writing a test (shuyi-test), or for how often bots win (shuyi-balance-bots).
+description: Find what makes a game on Shuyi Engine slow or heavy, from the times of its frames and of the spans it marks around its own code, and from the heap, its counts and its snapshots by memory tag (what holds it and what grew), read as JSON lines from a headless run, an MCP session or a running debug build. Use when a frame takes too long, a stage stutters, a bot's turn takes too long, the heap grows as the game plays, or a stage or a target runs out of memory. Not for a wrong result (shuyi-debug-replay), for writing a test (shuyi-test), or for how often bots win (shuyi-balance-bots).
 license: MIT OR Apache-2.0
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Find what makes a game slow
@@ -104,6 +104,59 @@ A line reads:
 counts the rest in `spans_dropped`. `heap` is left out where the heap
 isn't counted.
 
+## What holds the heap, and what grew
+
+Use it when the heap grows as the game plays (a `live_bytes` that climbs
+from frame to frame), or a stage or a target runs out of memory. The
+heap is counted by **memory tag**: each block under the tag current
+when it was allocated, or last grown. A tag's `class` says what it is:
+
+- `phase`: a part of the frame, `load` (the game's load), `update`,
+  `draw`, `paint`, `perf`, or `app` (the rest of the engine's frame);
+- `span`: a span you marked, by its name;
+- `asset`: an asset kind being decoded, `image`, `palette`, …;
+- `other`: `other`, allocated outside any tag, and `overflow`, the
+  names past the first 254.
+
+A tag says where the bytes were allocated, not who holds them now: a
+list built in `update` and kept counts in `update`.
+
+1. **From a run.** `run --perf` takes a heap snapshot once the game has
+   started, before the steps, and one after the last frame:
+
+   ```bash
+   cargo shuyi run --script "Enter" --frames 600 --perf --perf-out perf.jsonl --json
+   ```
+
+   `result.perf.heap_tags` is what holds the heap at the end: the first
+   10 tags, the most `live_bytes` first, each with its `class`, `name`,
+   `live_bytes`, `live_blocks`, `allocated_bytes` (ever) and
+   `peak_bytes`. `result.perf.heap_growth` is what changed between the
+   two: `from` and `to` (frames), `live_bytes` in all (less than 0 for
+   fewer), and the 10 largest changes in `tags`. The text line reads
+   `heap grew 124.0 KB from frame 0 to 600: update +96.0 KB, image
+   +24.0 KB, ai +4.0 KB`. `perf.jsonl` ends with the two `snapshot`
+   lines and their `diff`.
+
+2. **In an MCP session.** Call `perf` with `snapshot: true` to take one
+   now; the session keeps the last 8, and every answer lists their
+   frames in `kept`. Play on with `step`, then call `perf` with
+   `snapshot: true` and `diff_from` set to a kept frame: `diff` is what
+   changed from it to now (without `snapshot`, to the newest kept). A
+   `diff_from` that isn't kept is wrong arguments, `SH0001`, and the
+   error lists the kept frames.
+
+3. **Give the suspect code a tag of its own.** A tag that grows (most
+   often `update`) holds everything its part of the frame allocates.
+   Mark the suspect code with a span (*Steps*, 2): what the closure
+   allocates counts under the span's name, so the next diff says how
+   much of the growth is that code's. Narrow it as you would a slow
+   span.
+
+A running build's trace file (`SHUYI_PERF`) has a snapshot on its first
+frame and every 600 frames after, each followed by its diff from the
+one before: play, then read the `diff` lines.
+
 ## A game with its own allocator
 
 Every debug build counts the heap with a global allocator the engine
@@ -126,6 +179,10 @@ Its frames then have no `heap`, and the times are still measured.
 - **`heap` is `null`, with the limit "the heap isn't counted":** the
   tool program is a release build, or the game opted out
   (`shuyi_no_heap_count`, above).
+- **`heap_tags` empty and `heap_growth` `null`, with the limit "the
+  heap isn't counted by memory tag":** the heap was counted without
+  tags, so no snapshot was taken. A `perf` call with `snapshot` answers
+  `snapshot` `null` and the same limit.
 - **The limit "the heap counts the whole tool program":** another
   thread ran beside the game (the MCP server reads its messages on
   one), and its allocations count too. Compare the heap over many

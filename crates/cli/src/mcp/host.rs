@@ -13,18 +13,19 @@ use std::path::Path;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use shuyi_ui::perf::HeapSnapshot;
 
 use super::server::{Launch, Link};
 use super::{
-    EventsOutput, FramePngInput, FramePngOutput, NoInput, PerfInput, PerfOutput, StartInput,
-    StartOption, StartOutput, StepInput, StopOutput, base64,
+    EventsOutput, FramePngInput, FramePngOutput, KEPT_SNAPSHOTS, NoInput, PerfInput, PerfOutput,
+    StartInput, StartOption, StartOutput, StepInput, StopOutput, base64,
 };
 use crate::codec::encode_png;
 use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
 use crate::contract::perf;
 use crate::contract::run::{self, RunInput};
-use crate::contract::session::Session;
+use crate::contract::session::{Session, measured_start};
 use crate::contract::{
     Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint,
     modules, new, playtest, replay,
@@ -205,10 +206,12 @@ pub fn one_off(
     }
 }
 
-/// The session's game: the options it started with, and the game.
+/// The session's game: the options it started with, the game, and the
+/// heap snapshots `perf` took of it, by frame.
 struct Live {
     start: Vec<GameArg>,
     game: Box<dyn Session>,
+    snapshots: Vec<HeapSnapshot>,
 }
 
 /// The game's side of the server: the game's tools on its project, and
@@ -261,9 +264,10 @@ impl<'a> Host<'a> {
                     Answer::new(op, true, output, Vec::new())
                 })
             }),
-            Op::Perf => self.with_game(op, |game| {
-                answered(op, input, |i: PerfInput| perf_read(game, &i))
-            }),
+            Op::Perf => match self.live.as_mut() {
+                Some(live) => Reply::of(answered(op, input, |i: PerfInput| perf_read(live, &i))),
+                None => Reply::of(no_session(op)),
+            },
             Op::FramePng => match self.live.as_ref() {
                 Some(live) => frame_png(&*live.game, input),
                 None => Reply::of(no_session(op)),
@@ -303,7 +307,7 @@ impl<'a> Host<'a> {
     /// The session's game started as `start` says, for `start` or `reset`
     /// (`op`).
     fn start(&mut self, op: Op, start: Vec<GameArg>) -> Answer<StartOutput> {
-        let mut game = match self.tools.session(&start) {
+        let mut game = match measured_start(|| self.tools.session(&start)) {
             Ok(game) => game,
             Err(e) => return Answer::failed(op, code_of(&e), e),
         };
@@ -324,7 +328,11 @@ impl<'a> Host<'a> {
             top_screen: screens.last().cloned().unwrap_or_default(),
             screens,
         };
-        self.live = Some(Live { start, game });
+        self.live = Some(Live {
+            start,
+            game,
+            snapshots: Vec::new(),
+        });
         Answer::new(op, true, output, Vec::new())
     }
 }
@@ -355,11 +363,63 @@ fn step(game: &mut dyn Session, input: &StepInput) -> Answer<run::RunOutput> {
     Answer::new(Op::Step, true, output, limits)
 }
 
-/// `perf`: `game`'s frames' records as `input` asks, with their summary.
-fn perf_read(game: &dyn Session, input: &PerfInput) -> Answer<PerfOutput> {
+/// The frames of `snapshots`, as `perf` lists them.
+fn frames(snapshots: &[HeapSnapshot]) -> Vec<u32> {
+    snapshots.iter().map(|s| s.frame).collect()
+}
+
+/// Keeps `snapshot` in `kept`, by frame (in place of one of the same
+/// frame), and only the last [`KEPT_SNAPSHOTS`].
+fn keep(kept: &mut Vec<HeapSnapshot>, snapshot: HeapSnapshot) {
+    kept.retain(|s| s.frame != snapshot.frame);
+    let at = kept.partition_point(|s| s.frame < snapshot.frame);
+    kept.insert(at, snapshot);
+    let extra = kept.len().saturating_sub(KEPT_SNAPSHOTS);
+    kept.drain(..extra);
+}
+
+/// The kept snapshot of `frame`, or why there is none: the frames kept.
+fn kept_of(kept: &[HeapSnapshot], frame: u32) -> Result<HeapSnapshot, String> {
+    if let Some(snapshot) = kept.iter().find(|s| s.frame == frame) {
+        return Ok(snapshot.clone());
+    }
+    let frames: Vec<String> = frames(kept).iter().map(u32::to_string).collect();
+    let frames = if frames.is_empty() {
+        "none: take one with `snapshot`".to_owned()
+    } else {
+        frames.join(", ")
+    };
+    Err(format!(
+        "diff_from: no snapshot of frame {frame} is kept (kept: {frames})"
+    ))
+}
+
+/// `perf`: the session's frames' records as `input` asks, with their
+/// summary, and a heap snapshot and a diff if it asks for them.
+fn perf_read(live: &mut Live, input: &PerfInput) -> Answer<PerfOutput> {
     if let Err(e) = input.check() {
         return Answer::failed(Op::Perf, codes::WRONG_ARGUMENTS, e);
     }
+    let from = match input.diff_from.map(|frame| kept_of(&live.snapshots, frame)) {
+        Some(Err(error)) => return Answer::failed(Op::Perf, codes::WRONG_ARGUMENTS, error),
+        Some(Ok(from)) => Some(from),
+        None => None,
+    };
+    let snapshot = if input.snapshot {
+        live.game.heap_snapshot()
+    } else {
+        None
+    };
+    if let Some(snapshot) = &snapshot {
+        keep(&mut live.snapshots, snapshot.clone());
+    }
+    let to = if input.snapshot {
+        snapshot.as_ref()
+    } else {
+        live.snapshots.last()
+    };
+    let diff = from.zip(to).map(|(from, to)| from.diff(to));
+    let game = &*live.game;
     let read = game.perf(input.since, input.max);
     let mut limits = vec![perf::TIMES.to_owned()];
     if !read.measured {
@@ -376,11 +436,17 @@ fn perf_read(game: &dyn Session, input: &PerfInput) -> Answer<PerfOutput> {
         game.counts_process_heap(),
         perf::other_threads(),
     ));
+    if input.snapshot && snapshot.is_none() {
+        limits.push(perf::HEAP_UNTAGGED.to_owned());
+    }
     let output = PerfOutput {
         summary: perf::summary(&read.records),
         records: read.records,
         next: read.next,
         dropped: read.dropped,
+        snapshot,
+        diff,
+        kept: frames(&live.snapshots),
     };
     Answer::new(Op::Perf, true, output, limits)
 }

@@ -31,7 +31,7 @@ use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
-use shuyi_ui::perf::{HeapCounts, MemoryScopes, PerfClock, PerfRing};
+use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryScopes, PerfClock, PerfRing};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
@@ -543,6 +543,23 @@ impl<G: GameData> Harness<G> {
     pub fn set_memory(&mut self, memory: Option<fn() -> HeapCounts>) -> &mut Self {
         self.platform.set_memory(memory);
         self
+    }
+
+    /// Takes heap snapshots with `snapshot` (a real counter's) from now
+    /// on, or none (`None`). A fake memory takes its own
+    /// ([`HeadlessPlatform::with_fake_memory`]).
+    pub fn set_heap_snapshots(&mut self, snapshot: Option<fn() -> HeapSnapshot>) -> &mut Self {
+        self.platform.set_heap_snapshots(snapshot);
+        self
+    }
+
+    /// What holds the heap now, by memory tag, stamped with the frames run
+    /// ([`App::heap_snapshot`]): a fake memory's, or a counter's set with
+    /// [`set_heap_snapshots`](Self::set_heap_snapshots); `None` without
+    /// either, or with debug tools off. A test takes two and compares them
+    /// ([`HeapSnapshot::diff`]).
+    pub fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
+        self.app.heap_snapshot(&mut self.platform)
     }
 
     /// The headless backend it runs on: the frames presented, the audio

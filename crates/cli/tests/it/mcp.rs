@@ -15,6 +15,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use serde_json::{Value, json};
 use shuyi_cli::codec::decode_png;
 use shuyi_cli::toy::link::{LinkHost, TOKEN};
+use shuyi_ui::perf::PerfLine;
 
 /// The repository's root.
 fn root() -> PathBuf {
@@ -244,7 +245,8 @@ fn perf_frames(answer: &Value) -> Vec<u64> {
 }
 
 /// The session's game started again and read as a stream with `perf`,
-/// then `run --perf` with a trace file: the session is left just reset.
+/// then `run --perf` with a trace file, then heap snapshots and a diff:
+/// the session is left just reset.
 fn read_perf_as_a_stream(client: &mut Client) {
     let reset = client.call("reset", &json!({}));
     assert_eq!(reset["isError"], false, "{reset}");
@@ -284,12 +286,82 @@ fn read_perf_as_a_stream(client: &mut Client) {
         "{answer}"
     );
     let trace = std::fs::read_to_string(&file).unwrap_or_else(|e| panic!("{e}"));
-    let lines: Vec<shuyi_ui::perf::PerfLine> = trace
+    let lines: Vec<PerfLine> = trace
         .lines()
         .map(|line| serde_json::from_str(line).unwrap_or_else(|e| panic!("{e}: {line}")))
         .collect();
-    assert_eq!(lines.len(), 120);
+    let frames = lines
+        .iter()
+        .filter(|l| matches!(l, PerfLine::Frame(_)))
+        .count();
+    assert_eq!(frames, 120);
+    // The game's tool program is a debug build: it counts the heap by tag,
+    // and the trace ends with two snapshots and their diff.
+    assert_eq!(lines.len(), 123, "{trace}");
+    assert!(matches!(lines[120], PerfLine::Snapshot(_)), "{trace}");
+    assert!(matches!(lines[122], PerfLine::Diff(_)), "{trace}");
+    // What holds the heap: what the game's load decoded and keeps is near
+    // the top.
+    let tags = summary["heap_tags"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{summary}"));
+    let loaded = tags.iter().take(5).any(|row| {
+        let (class, name) = (&row["class"], &row["name"]);
+        class == "asset" || (class == "phase" && name == "load")
+    });
+    assert!(loaded, "{tags:?}");
+    assert_eq!(summary["heap_growth"]["to"], 120, "{summary}");
     let _ = std::fs::remove_dir_all(&dir);
+    take_heap_snapshots_and_a_diff(client);
+}
+
+/// The frames of the snapshots `perf`'s answer says the session keeps.
+fn kept(answer: &Value) -> Vec<u64> {
+    let kept = answer["structuredContent"]["result"]["kept"].as_array();
+    let kept = kept.unwrap_or_else(|| panic!("kept: {answer}"));
+    kept.iter().filter_map(Value::as_u64).collect()
+}
+
+/// A heap snapshot taken, 30 frames stepped, another taken with a diff
+/// from the first; a `diff_from` that isn't kept is wrong arguments. The
+/// session is just reset (frame 0), and is left reset.
+fn take_heap_snapshots_and_a_diff(client: &mut Client) {
+    let first = client.call("perf", &json!({ "snapshot": true }));
+    assert_eq!(first["isError"], false, "{first}");
+    let snapshot = &first["structuredContent"]["result"]["snapshot"];
+    assert_eq!(snapshot["frame"], 0, "{first}");
+    assert!(snapshot["live_bytes"].as_u64() > Some(0), "{snapshot}");
+    assert!(
+        snapshot["tags"]
+            .as_array()
+            .is_some_and(|tags| !tags.is_empty()),
+        "{snapshot}"
+    );
+    client.call("step", &json!({ "frames": 30 }));
+    let then = client.call(
+        "perf",
+        &json!({ "since": 30, "snapshot": true, "diff_from": 0 }),
+    );
+    assert_eq!(then["isError"], false, "{then}");
+    let diff = &then["structuredContent"]["result"]["diff"];
+    assert_eq!(
+        (&diff["from"], &diff["to"]),
+        (&json!(0), &json!(30)),
+        "{then}"
+    );
+    assert!(diff["live_bytes"].is_i64(), "{diff}");
+    assert_eq!(kept(&then), [0, 30]);
+    let wrong = client.call("perf", &json!({ "diff_from": 12 }));
+    assert_eq!(wrong["isError"], true, "{wrong}");
+    let answer = &wrong["structuredContent"];
+    assert_eq!(answer["code"], "SH0001", "{answer}");
+    assert!(
+        answer["error"]
+            .as_str()
+            .is_some_and(|e| e.contains("kept: 0, 30")),
+        "{answer}"
+    );
+    client.call("reset", &json!({}));
 }
 
 /// The session attached to a running build over the live link (the toy

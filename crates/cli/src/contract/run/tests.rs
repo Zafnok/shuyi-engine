@@ -2,7 +2,7 @@
 
 use super::*;
 use crate::contract::fake::{Fake, FakeSession, OPTIONS};
-use shuyi_ui::perf::HeapCounts;
+use shuyi_ui::perf::{HeapCounts, PerfLine, TagClass, TagRow};
 
 fn args(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| (*s).to_owned()).collect()
@@ -462,10 +462,86 @@ fn run_with_perf_sums_up_the_heap_where_it_was_counted() {
     let output = answer.result.unwrap();
     let heap = output.perf.as_ref().unwrap().heap.as_ref().unwrap();
     assert_eq!((heap.peak_bytes, heap.live_bytes), (3_500_000, 2000));
-    // A fake's counts: no limit of the heap.
-    assert_eq!(answer.limits, [perf::TIMES]);
+    // A fake's counts: no limit of the heap's counts, but none by tag.
+    assert_eq!(answer.limits, [perf::TIMES, perf::HEAP_UNTAGGED]);
     let text = text(&output);
     assert!(text.contains("worst 1.2 ms; heap peak 3.3 MB\n"), "{text}");
+}
+
+/// A snapshot of `frame` with `rows` (class, name, bytes, blocks), its
+/// live bytes their sum.
+fn snapshot(frame: u32, rows: &[(TagClass, &'static str, u64, u32)]) -> HeapSnapshot {
+    let rows: Vec<TagRow> = rows
+        .iter()
+        .map(|&(class, name, bytes, blocks)| TagRow::new(class, name, bytes, blocks))
+        .collect();
+    let live = rows.iter().map(|r| r.live_bytes).sum();
+    let mut snapshot = HeapSnapshot::new(live, live, rows);
+    snapshot.frame = frame;
+    snapshot
+}
+
+#[test]
+fn run_with_perf_answers_what_holds_the_heap_and_what_grew() {
+    let mut game = measured(2);
+    let first = snapshot(
+        0,
+        &[
+            (TagClass::Phase, "load", 500_000, 40),
+            (TagClass::Other, "other", 4096, 1),
+        ],
+    );
+    let last = snapshot(
+        600,
+        &[
+            (TagClass::Phase, "load", 500_000, 40),
+            (TagClass::Phase, "update", 98_304, 6),
+            (TagClass::Asset, "image", 24_576, 3),
+            (TagClass::Span, "ai", 4096, 1),
+            (TagClass::Other, "other", 4096, 1),
+        ],
+    );
+    if let Ok(session) = &mut game.session {
+        session.snapshots = vec![first.clone(), last.clone()];
+        for record in &mut session.perf {
+            record.heap = Some(HeapCounts::new(504_096, 631_072, 4));
+        }
+    }
+    let dir = std::env::temp_dir().join(format!("shuyi-run-heap-{}", std::process::id()));
+    let input = RunInput {
+        perf_out: Some("perf.jsonl".to_owned()),
+        ..RunInput::default()
+    };
+    let answer = run_at(&game, &dir, &input);
+    assert_eq!(answer.limits, [perf::TIMES], "{:?}", answer.limits);
+    let output = answer.result.unwrap();
+    let summary = output.perf.as_ref().unwrap();
+    let tags: Vec<&str> = summary.heap_tags.iter().map(|r| &*r.name).collect();
+    // `other` and `ai` tie: `other`'s class comes first.
+    assert_eq!(tags, ["load", "update", "image", "other", "ai"]);
+    assert_eq!(summary.heap_growth, Some(first.diff(&last)));
+    let text = text(&output);
+    assert!(
+        text.contains(
+            "heap grew 124.0 KB from frame 0 to 600: update +96.0 KB, image +24.0 KB, ai +4.0 KB\n"
+        ),
+        "{text}"
+    );
+    let trace = fs::read_to_string(dir.join("perf.jsonl")).unwrap();
+    let lines: Vec<PerfLine> = trace
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 5);
+    assert_eq!(
+        lines[2..],
+        [
+            PerfLine::Snapshot(first.clone()),
+            PerfLine::Snapshot(last.clone()),
+            PerfLine::Diff(first.diff(&last)),
+        ]
+    );
+    fs::remove_dir_all(&dir).unwrap();
 }
 
 #[test]

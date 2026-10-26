@@ -33,7 +33,9 @@ use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRing};
-use shuyi_ui::perf::{FrameRecord, MemoryScopes, PERF_FRAMES, PerfClock, PerfRing, TagClass};
+use shuyi_ui::perf::{
+    FrameRecord, HeapSnapshot, MemoryScopes, PERF_FRAMES, PerfClock, PerfRing, TagClass,
+};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
 use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, Keyboard, RawInputEvent};
@@ -846,6 +848,24 @@ impl<G: GameData> App<G> {
     /// a build with debug tools, on a platform with a clock.
     pub fn load_us(&self) -> Option<u32> {
         self.perf.load_us
+    }
+
+    /// What holds the heap now, by memory tag (ADR-0046 §6): `platform`'s
+    /// snapshot ([`Platform::heap_snapshot`]) stamped with
+    /// [`frame_number`](Self::frame_number). Only while debug tools are on:
+    /// in a build with them, and the running game's [`Ctx::debug_tools`]
+    /// on; `None` otherwise, or where the platform takes none.
+    pub fn heap_snapshot(&self, platform: &mut impl Platform) -> Option<HeapSnapshot> {
+        let on = match &self.phase {
+            Phase::Running(game) => game.ctx().debug_tools,
+            Phase::Loading { .. } | Phase::Failed(_) => true,
+        };
+        if !(shuyi_ui::DEBUG_TOOLS && on) {
+            return None;
+        }
+        let mut snapshot = platform.heap_snapshot()?;
+        snapshot.frame = self.frames;
+        Some(snapshot)
     }
 
     /// The audio the screens asked for in the last frame, in order, as they

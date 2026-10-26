@@ -220,6 +220,43 @@
         }
       ]
     },
+    "HeapDiff": {
+      "description": "What grew and shrank in the heap between two snapshots\n([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::new`]\n(ADR-0039).",
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "The earlier snapshot's frame.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "live_bytes": {
+          "description": "How many more bytes are live: less than 0 for fewer.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "tags": {
+          "description": "The tags whose live bytes or blocks changed: the largest change in\nbytes first (more or fewer), then by class, then by name.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TagDelta"
+          }
+        },
+        "to": {
+          "description": "The later snapshot's frame.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "live_bytes",
+        "tags"
+      ]
+    },
     "HeapSummary": {
       "description": "How the heap's counts add up over a trace's records, in bytes asked for.",
       "type": "object",
@@ -479,6 +516,24 @@
             }
           ]
         },
+        "heap_growth": {
+          "description": "What grew and shrank from the snapshot before the run to the one\nafter: the diff, with its first ten rows, the largest change first.\nNull without snapshots.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HeapDiff"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "heap_tags": {
+          "description": "What held the heap after the last frame: the snapshot's first ten\nrows by tag, the most live bytes first. Empty without a snapshot.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TagRow"
+          }
+        },
         "paint": {
           "description": "How painting into the window spread (`paint_us`).",
           "$ref": "#/$defs/Spread"
@@ -508,7 +563,8 @@
         "draw",
         "paint",
         "present",
-        "spans"
+        "spans",
+        "heap_tags"
       ]
     },
     "RunOutput": {
@@ -734,6 +790,109 @@
         "p99",
         "worst",
         "mean"
+      ]
+    },
+    "TagClass": {
+      "description": "What a memory tag names (ADR-0046 §6): the heap counter counts each\nblock under the innermost tag entered when it was allocated. Its number\nis the class a backend's counter keeps with each name\n([`MemoryScopes::tag`]); `Other` is 0, the class of the counter's own\n`other` and `overflow`.",
+      "oneOf": [
+        {
+          "description": "A phase of the frame: `load`, `update`, `draw`, `paint`, `perf`,\nand `app` for the rest of `App`'s frame.",
+          "type": "string",
+          "const": "phase"
+        },
+        {
+          "description": "A span the game marked ([`Ctx::span`](crate::Ctx::span)).",
+          "type": "string",
+          "const": "span"
+        },
+        {
+          "description": "An asset kind being decoded: `image`, `palette`, …",
+          "type": "string",
+          "const": "asset"
+        },
+        {
+          "description": "None of those: `other`, what is allocated outside any tag, and\n`overflow`, the names past the counter's table.",
+          "type": "string",
+          "const": "other"
+        }
+      ]
+    },
+    "TagDelta": {
+      "description": "How one memory tag changed between two snapshots. Build it with\n[`TagDelta::new`] (ADR-0039).",
+      "type": "object",
+      "properties": {
+        "class": {
+          "description": "What the tag names.",
+          "$ref": "#/$defs/TagClass"
+        },
+        "live_blocks": {
+          "description": "How many more blocks are live under it: less than 0 for fewer.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "live_bytes": {
+          "description": "How many more bytes are live under it: less than 0 for fewer.",
+          "type": "integer",
+          "format": "int64"
+        },
+        "name": {
+          "description": "Its name.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "name",
+        "live_bytes",
+        "live_blocks"
+      ]
+    },
+    "TagRow": {
+      "description": "One memory tag's counts in a [`HeapSnapshot`], in bytes asked for.\nBuild it with [`TagRow::new`] (ADR-0039).",
+      "type": "object",
+      "properties": {
+        "allocated_bytes": {
+          "description": "The bytes ever allocated under it: a block grown adds its new size.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "class": {
+          "description": "What the tag names: a phase, a span, an asset kind, or `other`.",
+          "$ref": "#/$defs/TagClass"
+        },
+        "live_blocks": {
+          "description": "The blocks live under it.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "live_bytes": {
+          "description": "The bytes live under it: allocated, or last grown, under it and not\nyet freed.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "name": {
+          "description": "Its name: `update`, the span's (`ai`), the asset kind's (`image`),\n`other` or `overflow`.",
+          "type": "string"
+        },
+        "peak_bytes": {
+          "description": "The most bytes live under it at once.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "class",
+        "name",
+        "live_bytes",
+        "live_blocks",
+        "allocated_bytes",
+        "peak_bytes"
       ]
     }
   }

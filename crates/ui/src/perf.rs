@@ -34,7 +34,9 @@
 //! also counts what each part of a frame allocates under a tag of its own
 //! ([`TagClass`]): the frame's phases, each span a game marks, and each
 //! asset kind the backend sees decoded. Entering a tag changes nothing a
-//! game reads.
+//! game reads. A [`HeapSnapshot`] is what holds the heap at a frame, by
+//! tag, and a [`HeapDiff`] what grew and shrank between two
+//! ([`HeapSnapshot::diff`]); both are lines of a trace ([`PerfLine`]).
 //!
 //! [`Ctx::debug_tools`]: crate::Ctx::debug_tools
 //! [`Ctx::span`]: crate::Ctx::span
@@ -426,6 +428,214 @@ impl PerfRing {
     }
 }
 
+/// One memory tag's counts in a [`HeapSnapshot`], in bytes asked for.
+/// Build it with [`TagRow::new`] (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct TagRow {
+    /// What the tag names: a phase, a span, an asset kind, or `other`.
+    pub class: TagClass,
+    /// Its name: `update`, the span's (`ai`), the asset kind's (`image`),
+    /// `other` or `overflow`.
+    pub name: Cow<'static, str>,
+    /// The bytes live under it: allocated, or last grown, under it and not
+    /// yet freed.
+    pub live_bytes: u64,
+    /// The blocks live under it.
+    pub live_blocks: u32,
+    /// The bytes ever allocated under it: a block grown adds its new size.
+    pub allocated_bytes: u64,
+    /// The most bytes live under it at once.
+    pub peak_bytes: u64,
+}
+
+impl TagRow {
+    /// `class`'s `name` with `live_bytes` live in `live_blocks` blocks, as
+    /// if just allocated: its bytes ever allocated and its peak are its
+    /// live bytes (assign them otherwise).
+    pub fn new(
+        class: TagClass,
+        name: impl Into<Cow<'static, str>>,
+        live_bytes: u64,
+        live_blocks: u32,
+    ) -> Self {
+        Self {
+            class,
+            name: name.into(),
+            live_bytes,
+            live_blocks,
+            allocated_bytes: live_bytes,
+            peak_bytes: live_bytes,
+        }
+    }
+}
+
+/// What holds the heap at a frame (ADR-0046 §6): its live bytes, and each
+/// memory tag's counts. Build it with [`HeapSnapshot::new`] (ADR-0039),
+/// which puts the rows in order; compare two with [`diff`](Self::diff).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct HeapSnapshot {
+    /// The frame it was taken after (frames count from 1; 0 is before the
+    /// first).
+    pub frame: u32,
+    /// The bytes allocated and not yet freed.
+    pub live_bytes: u64,
+    /// The most bytes live at once since the program started.
+    pub peak_bytes: u64,
+    /// Each tag with bytes live or ever allocated under it: the most live
+    /// bytes first, then by class, then by name.
+    pub tags: Vec<TagRow>,
+    /// How many names had no tag of their own, past the counter's table,
+    /// and count under `overflow`.
+    pub overflowed: u32,
+}
+
+impl HeapSnapshot {
+    /// A snapshot of frame 0 with `live_bytes` live, `peak_bytes` at the
+    /// most, and the rows `tags`, put in order: the most live bytes first,
+    /// then by class, then by name. None overflowed.
+    pub fn new(live_bytes: u64, peak_bytes: u64, mut tags: Vec<TagRow>) -> Self {
+        tags.sort_by(|a, b| {
+            b.live_bytes
+                .cmp(&a.live_bytes)
+                .then_with(|| (a.class as u8).cmp(&(b.class as u8)))
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        Self {
+            frame: 0,
+            live_bytes,
+            peak_bytes,
+            tags,
+            overflowed: 0,
+        }
+    }
+
+    /// What changed from this snapshot to `later`: the tags whose live
+    /// bytes or blocks changed, a tag missing from one counting as 0
+    /// there.
+    pub fn diff(&self, later: &HeapSnapshot) -> HeapDiff {
+        let mut tags: Vec<TagDelta> = Vec::new();
+        for row in &self.tags {
+            let after = later.row(row.class, &row.name);
+            let (bytes, blocks) = after.map_or((0, 0), |a| (a.live_bytes, a.live_blocks));
+            tags.push(TagDelta::new(
+                row.class,
+                row.name.clone(),
+                change(row.live_bytes, bytes),
+                i64::from(blocks) - i64::from(row.live_blocks),
+            ));
+        }
+        for row in &later.tags {
+            if self.row(row.class, &row.name).is_none() {
+                tags.push(TagDelta::new(
+                    row.class,
+                    row.name.clone(),
+                    change(0, row.live_bytes),
+                    i64::from(row.live_blocks),
+                ));
+            }
+        }
+        tags.retain(|t| t.live_bytes != 0 || t.live_blocks != 0);
+        tags.sort_by(|a, b| {
+            b.live_bytes
+                .unsigned_abs()
+                .cmp(&a.live_bytes.unsigned_abs())
+                .then_with(|| (a.class as u8).cmp(&(b.class as u8)))
+                .then_with(|| a.name.cmp(&b.name))
+        });
+        HeapDiff {
+            from: self.frame,
+            to: later.frame,
+            live_bytes: change(self.live_bytes, later.live_bytes),
+            tags,
+        }
+    }
+
+    /// The row of `class`'s `name`, if it has one.
+    fn row(&self, class: TagClass, name: &str) -> Option<&TagRow> {
+        self.tags
+            .iter()
+            .find(|r| r.class == class && r.name == name)
+    }
+}
+
+/// `to` less `from`, at most [`i64`]'s range.
+fn change(from: u64, to: u64) -> i64 {
+    let change = i128::from(to) - i128::from(from);
+    i64::try_from(change).unwrap_or(if change < 0 { i64::MIN } else { i64::MAX })
+}
+
+/// How one memory tag changed between two snapshots. Build it with
+/// [`TagDelta::new`] (ADR-0039).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct TagDelta {
+    /// What the tag names.
+    pub class: TagClass,
+    /// Its name.
+    pub name: Cow<'static, str>,
+    /// How many more bytes are live under it: less than 0 for fewer.
+    pub live_bytes: i64,
+    /// How many more blocks are live under it: less than 0 for fewer.
+    pub live_blocks: i64,
+}
+
+impl TagDelta {
+    /// `class`'s `name`, with `live_bytes` more bytes live in
+    /// `live_blocks` more blocks.
+    pub fn new(
+        class: TagClass,
+        name: impl Into<Cow<'static, str>>,
+        live_bytes: i64,
+        live_blocks: i64,
+    ) -> Self {
+        Self {
+            class,
+            name: name.into(),
+            live_bytes,
+            live_blocks,
+        }
+    }
+}
+
+/// What grew and shrank in the heap between two snapshots
+/// ([`HeapSnapshot::diff`]). Build an empty one with [`HeapDiff::new`]
+/// (ADR-0039).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct HeapDiff {
+    /// The earlier snapshot's frame.
+    pub from: u32,
+    /// The later snapshot's frame.
+    pub to: u32,
+    /// How many more bytes are live: less than 0 for fewer.
+    pub live_bytes: i64,
+    /// The tags whose live bytes or blocks changed: the largest change in
+    /// bytes first (more or fewer), then by class, then by name.
+    pub tags: Vec<TagDelta>,
+}
+
+impl HeapDiff {
+    /// Nothing changed from frame `from` to frame `to`.
+    pub fn new(from: u32, to: u32) -> Self {
+        Self {
+            from,
+            to,
+            live_bytes: 0,
+            tags: Vec::new(),
+        }
+    }
+}
+
 /// One line of a perf trace, as agents read it (ADR-0046 §7): a JSON
 /// object tagged by `kind`, one a line (`serde_json::to_string(&line)` and
 /// a newline).
@@ -436,6 +646,12 @@ impl PerfRing {
 pub enum PerfLine {
     /// What one frame measured: `{"kind":"frame","frame":12,…}`.
     Frame(FrameRecord),
+    /// What held the heap at a frame:
+    /// `{"kind":"snapshot","frame":600,"live_bytes":…,"tags":[…],…}`.
+    Snapshot(HeapSnapshot),
+    /// What changed between two snapshots:
+    /// `{"kind":"diff","from":1,"to":600,"live_bytes":98304,"tags":[…]}`.
+    Diff(HeapDiff),
 }
 
 /// How a set of times spread, in whole microseconds: the median, the 99th

@@ -89,6 +89,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 3064 | The heap counter: a counting allocator in every debug build of a game and its tool program, and heap counts in each frame's record |
 | 3065 | Memory tags: live bytes by the frame's phase, the game's spans and each asset kind's decode |
 | 2554 | Heap snapshots agents read: live bytes by tag at a frame, and a diff between two, in the trace |
+| 2563 | Worked examples call the MCP session tools: an `Mcp` step in the script runner, and `shuyi-perf`'s example takes a heap snapshot and a diff |
 | 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
 | 2560 | MCP's session attached to a running build over the live link |
 | 2555 | Perf over the live link: a running build's frames read from a number, and `shuyi attach --perf-follow` streaming them to a file |

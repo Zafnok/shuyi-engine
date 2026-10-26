@@ -15,7 +15,9 @@
 //! each record has the heap's counts too, from the program's own heap
 //! counter (`shuyi_alloc_count::global`), which counts the whole program,
 //! and the game's frames, spans and asset decodes are tagged in it
-//! (`shuyi_alloc_count::tags`).
+//! (`shuyi_alloc_count::tags`): [`Session::heap_snapshot`] takes what holds
+//! the heap by tag. Start a session with [`measured_start`] to tag its
+//! start, the game's load, `load`.
 
 use std::sync::OnceLock;
 use std::time::Instant;
@@ -26,11 +28,12 @@ use shuyi_alloc_count::{global, tags};
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
+use shuyi_platform::heap;
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
 use shuyi_ui::module::InstalledModule;
-use shuyi_ui::perf::{HeapCounts, MemoryScopes, PerfClock, TagClass};
+use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryScopes, PerfClock, TagClass};
 
 use super::perf::PerfRead;
 use crate::frame_png::{Image, Script};
@@ -252,6 +255,14 @@ pub trait Session {
         PerfRead::none(since)
     }
 
+    /// What holds the heap now, by memory tag, at the frames run: a fake
+    /// memory's, or with perf on ([`set_perf`](Self::set_perf)) this
+    /// program's heap counter's, in a build that counts it. By default
+    /// none.
+    fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
+        None
+    }
+
     /// The current frame as the game paints it, each console pixel
     /// `scale` × `scale` (the game's choice if `None`). By default the
     /// game offers none.
@@ -303,6 +314,33 @@ fn process_heap() -> HeapCounts {
     global::reading().map_or_else(HeapCounts::default, |counts| {
         HeapCounts::new(counts.live_bytes, counts.peak_bytes, counts.allocs)
     })
+}
+
+/// This program's heap counter's snapshot by tag: the real snapshots a
+/// [`Headless`] takes, handed over only in a build that counts (an empty
+/// one otherwise).
+fn process_snapshot() -> HeapSnapshot {
+    let (counts, rows) = (global::reading(), global::rows());
+    match (counts, rows) {
+        (Some(counts), Some(rows)) => heap::snapshot(counts, &rows, tags::overflowed()),
+        _ => HeapSnapshot::default(),
+    }
+}
+
+/// A session started by `start` with perf on: in a build that counts the
+/// heap, what the start allocates (the game's load) counts under the
+/// `load` phase, and each asset decode under its kind, as in a game's
+/// window. Use it where a session will be measured, so its snapshots say
+/// what the load holds.
+pub fn measured_start<T>(start: impl FnOnce() -> T) -> T {
+    let Some(scopes) = memory_scopes() else {
+        return start();
+    };
+    tag_decodes();
+    let before = scopes.enter(TagClass::Phase, "load");
+    let started = start();
+    scopes.leave(before);
+    started
 }
 
 /// This program's heap counter's memory tags (`shuyi_alloc_count::tags`),
@@ -531,6 +569,7 @@ impl<G: GameData> Session for Headless<G> {
             }
             if !self.perf_memory && memory && global::COUNTING {
                 self.harness.set_memory(Some(process_heap));
+                self.harness.set_heap_snapshots(Some(process_snapshot));
                 self.perf_memory = true;
             }
             if !self.perf_scopes
@@ -548,6 +587,7 @@ impl<G: GameData> Session for Headless<G> {
         }
         if core::mem::take(&mut self.perf_memory) {
             self.harness.set_memory(None);
+            self.harness.set_heap_snapshots(None);
         }
         if core::mem::take(&mut self.perf_scopes) {
             self.harness.set_scopes(None);
@@ -560,6 +600,10 @@ impl<G: GameData> Session for Headless<G> {
 
     fn perf(&self, since: u64, max: u32) -> PerfRead {
         PerfRead::of(self.harness.perf(), since, max)
+    }
+
+    fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
+        self.harness.heap_snapshot()
     }
 
     fn picture(&self, scale: Option<u32>) -> Result<Image, String> {

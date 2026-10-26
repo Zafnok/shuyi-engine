@@ -275,6 +275,20 @@ before the game's load, it sets the registry's one decode watch,
 back the tag before as its token, and `after(token, decoded)` leaves it.
 `crates/app/src/backend.rs` has the two functions to copy.
 
+### `heap_snapshot(&mut self) -> Option<HeapSnapshot>` (has a default)
+
+What holds the heap now, by memory tag, in debug builds (ADR-0046 §6):
+the heap's live bytes and peak, and each tag's row (its class and name,
+live bytes and blocks, bytes ever allocated, peak), its `frame` left 0.
+`App::heap_snapshot` stamps the frame, only while debug tools are on,
+and only when a tool or the trace file asks (every 600 frames), never
+every frame: taking one allocates the rows. A counter with tags reads
+its rows (`CountingAlloc::rows`) and hands them, with its counts and
+`tags::overflowed()`, to `shuyi_platform::heap::snapshot(counts, &rows,
+overflowed)` (the platform's `heap` feature), which `shuyi-app` and the
+tool program share. A backend whose counter has no tags leaves the
+default, `None`, and no snapshot is taken.
+
 ## The live link (optional)
 
 A backend may offer the live link

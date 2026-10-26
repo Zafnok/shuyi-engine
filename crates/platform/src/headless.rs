@@ -12,12 +12,15 @@
 
 use crate::alloc_prelude::*;
 use alloc::collections::VecDeque;
+use alloc::vec;
 
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::audio::MusicCommand;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::{HeapCounts, MemoryReading, MemoryScopes, PerfClock};
+use shuyi_ui::perf::{
+    HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass, TagRow,
+};
 use shuyi_ui::storage::{MemoryStorage, Storage};
 
 use crate::app::Card;
@@ -252,6 +255,41 @@ fn fake_heap(n: u32) -> HeapCounts {
     HeapCounts::new(BASE + STEP * (wide % 30), BASE + STEP * wide.min(29), n % 7)
 }
 
+/// The fake memory's snapshot after `n` frames presented, its rows adding
+/// up to [`fake_heap`]'s live bytes: `image` (an asset kind) 49,152 bytes
+/// in 3 blocks, `load` 524,288 in 40, `update` 16,384 × (*n* mod 30) in
+/// *n* mod 30, and `other` 475,136 in 12. Each row's peak is the most of
+/// its live bytes so far, and its bytes ever allocated its peak; a row
+/// with nothing ever allocated (`update` before the first frame) is left
+/// out, as a counter leaves it out.
+fn fake_snapshot(n: u32) -> HeapSnapshot {
+    const STEP: u64 = 16 * 1024;
+    let heap = fake_heap(n);
+    let row = |class, name: &'static str, live_bytes, live_blocks, peak_bytes| {
+        let mut row = TagRow::new(class, name, live_bytes, live_blocks);
+        row.allocated_bytes = peak_bytes;
+        row.peak_bytes = peak_bytes;
+        row
+    };
+    let fixed = |class, name, bytes, blocks| row(class, name, bytes, blocks, bytes);
+    let mut rows = vec![
+        fixed(TagClass::Asset, "image", 49_152, 3),
+        fixed(TagClass::Phase, "load", 524_288, 40),
+        fixed(TagClass::Other, "other", 475_136, 12),
+    ];
+    if n > 0 {
+        let (wide, peak) = (u64::from(n), STEP * u64::from(n.min(29)));
+        rows.push(row(
+            TagClass::Phase,
+            "update",
+            STEP * (wide % 30),
+            n % 30,
+            peak,
+        ));
+    }
+    HeapSnapshot::new(heap.live_bytes, heap.peak_bytes, rows)
+}
+
 /// A backend with no devices, for tests and tools.
 #[derive(Debug)]
 pub struct HeadlessPlatform {
@@ -272,6 +310,9 @@ pub struct HeadlessPlatform {
     memory_calls: u32,
     /// The memory tags it gives, if a test set them.
     scopes: Option<MemoryScopes>,
+    /// Where its heap snapshots come from beside the fake memory: a real
+    /// counter's.
+    snapshots: Option<fn() -> HeapSnapshot>,
     /// How many frames were presented.
     presented: u32,
     /// The last of them.
@@ -302,6 +343,7 @@ impl HeadlessPlatform {
             memory: Memory::None,
             memory_calls: 0,
             scopes: None,
+            snapshots: None,
             presented: 0,
             last: None,
         }
@@ -348,6 +390,13 @@ impl HeadlessPlatform {
     /// run: with *n* the frames it has presented, live bytes 1,048,576 +
     /// 16,384 × (*n* mod 30), the peak the most of those so far, and *n*
     /// mod 7 allocations.
+    ///
+    /// It takes fake heap snapshots too ([`Platform::heap_snapshot`]),
+    /// whose rows add up to those live bytes: `Asset`/`image` 49,152 bytes
+    /// in 3 blocks; `Phase`/`load` 524,288 in 40; `Phase`/`update` 16,384 ×
+    /// (*n* mod 30) in *n* mod 30, left out before the first frame; and
+    /// `Other`/`other` 475,136 in 12. Each row's peak is the most of its
+    /// live bytes so far, and its bytes ever allocated equal its peak.
     #[must_use]
     pub fn with_fake_memory(mut self) -> Self {
         self.memory = Memory::Fake;
@@ -358,6 +407,12 @@ impl HeadlessPlatform {
     /// reading), or reads none; the fake memory is dropped either way.
     pub fn set_memory(&mut self, memory: Option<fn() -> HeapCounts>) {
         self.memory = memory.map_or(Memory::None, Memory::Real);
+    }
+
+    /// Takes heap snapshots with `snapshot` from now on (a real counter's),
+    /// or takes none; the fake memory's snapshots come first.
+    pub fn set_heap_snapshots(&mut self, snapshot: Option<fn() -> HeapSnapshot>) {
+        self.snapshots = snapshot;
     }
 
     /// Whether it reads the heap: a fake, or a counter set.
@@ -472,6 +527,13 @@ impl Platform for HeadlessPlatform {
             Memory::Real(read) => read(),
         };
         Some(MemoryReading::new(heap))
+    }
+
+    fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
+        match self.memory {
+            Memory::Fake => Some(fake_snapshot(self.presented)),
+            Memory::None | Memory::Real(_) => self.snapshots.map(|snapshot| snapshot()),
+        }
     }
 }
 

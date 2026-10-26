@@ -20,7 +20,7 @@
 //! | `scene` | the scene on screen now | `scene`'s answer |
 //! | `frame_png` | a picture of the frame now, as an image | [`FramePngOutput`] and the PNG |
 //! | `events` | what happened since the start | [`EventsOutput`] |
-//! | `perf` | the frames' records since a number, and their summary | [`PerfOutput`] |
+//! | `perf` | the frames' records since a number, and their summary; a heap snapshot and a diff between two | [`PerfOutput`] |
 //! | `reset` | the game started again as `start` started it | [`StartOutput`] |
 //! | `stop` | the game stopped | [`StopOutput`] |
 //!
@@ -61,7 +61,7 @@ use crate::contract::{Op, VERSION, op_schemas};
 use crate::frame_png::Script;
 use crate::game::{GameArg, GameOption};
 use crate::project::Project;
-use shuyi_ui::perf::{FrameRecord, PERF_FRAMES};
+use shuyi_ui::perf::{FrameRecord, HeapDiff, HeapSnapshot, PERF_FRAMES};
 
 /// A session tool's input that takes nothing.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -194,6 +194,10 @@ pub struct EventsOutput {
 /// How many records `perf` answers when its input doesn't say.
 pub const PERF_MAX: u32 = 120;
 
+/// How many heap snapshots a session keeps for `perf`'s `diff_from`: the
+/// last, by frame.
+pub const KEPT_SNAPSHOTS: usize = 8;
+
 /// Which of the session's frames' records `perf` reads.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
@@ -206,6 +210,12 @@ pub struct PerfInput {
     /// The most records to answer, 1 to 600.
     #[schemars(range(min = 1, max = 600))]
     pub max: u32,
+    /// Take a heap snapshot now: what holds the heap by memory tag. The
+    /// session keeps its last 8, by frame.
+    pub snapshot: bool,
+    /// The frame of a kept snapshot: answer the diff from it to the
+    /// snapshot taken now, or, without `snapshot`, to the newest kept.
+    pub diff_from: Option<u32>,
 }
 
 impl Default for PerfInput {
@@ -213,6 +223,8 @@ impl Default for PerfInput {
         Self {
             since: 0,
             max: PERF_MAX,
+            snapshot: false,
+            diff_from: None,
         }
     }
 }
@@ -243,6 +255,14 @@ pub struct PerfOutput {
     pub dropped: u64,
     /// What the records answered add up to; none when there are none.
     pub summary: Option<PerfSummary>,
+    /// The heap snapshot taken now, with `snapshot`: null without it, or
+    /// where the heap isn't counted by tag.
+    pub snapshot: Option<HeapSnapshot>,
+    /// What changed from the snapshot of `diff_from`, with it.
+    pub diff: Option<HeapDiff>,
+    /// The frames of the snapshots the session keeps, oldest first: the
+    /// `diff_from` it takes.
+    pub kept: Vec<u32>,
 }
 
 /// What `stop` stopped.
@@ -374,9 +394,10 @@ fn description(op: Op, session: bool) -> &'static str {
              voices, the quit, the game's own events, and the sounds."
         }
         (Op::Perf, _) => {
-            "The session's frames' records (each frame's times in microseconds and the game's \
-             spans) numbered `since` or more, at most `max`, and their summary. Read it as a \
-             stream: `step`, then `perf` with the last answer's `next`."
+            "The session's frames' records (times in microseconds, the game's spans) numbered \
+             `since` or more, at most `max`, and their summary: a stream, `step` then `perf` with \
+             the last `next`. `snapshot` takes a heap snapshot (live bytes by memory tag; the \
+             last 8 are `kept`); `diff_from`, a kept one's frame, answers what grew since."
         }
         (Op::Reset, _) => {
             "Start the session's game again as `start` started it, without building again."

@@ -2,8 +2,8 @@
 //! (ADR-0008 §2): the window it presents frames in, the keyboard and the
 //! controllers, the window's own shortcut and close button, the OS's data
 //! folder or the browser's `localStorage`, the sound player, and the
-//! clock frames are measured with, and the heap counter they read and its
-//! memory tags, in debug builds.
+//! clock frames are measured with, and the heap counter they read, its
+//! memory tags and its snapshots, in debug builds.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
 //! which loads in a frame of [`App`](shuyi_platform::App)'s: the renderer
@@ -14,12 +14,13 @@ use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+use shuyi_platform::heap;
 use shuyi_platform::{
     AudioFrame, DisplayInfo, Frame, Look, Millis, Platform, Show, Storage, SystemEvent, TextInput,
 };
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
-use shuyi_ui::perf::{HeapCounts, MemoryReading, MemoryScopes, PerfClock, TagClass};
+use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
 use shuyi_ui::{Game, GameData, RawInputEvent};
 
 use crate::audio::{self, Audio, device};
@@ -330,6 +331,19 @@ impl Platform for Macroquad {
     fn memory_scopes(&self) -> Option<MemoryScopes> {
         memory_scopes()
     }
+
+    /// The global heap counter's rows by tag, in a build that counts the
+    /// heap.
+    fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
+        heap_snapshot()
+    }
+}
+
+/// The global heap counter's snapshot (`shuyi_platform::heap::snapshot`),
+/// in a build that counts the heap.
+pub(crate) fn heap_snapshot() -> Option<HeapSnapshot> {
+    let (counts, rows) = (global::reading()?, global::rows()?);
+    Some(heap::snapshot(counts, &rows, tags::overflowed()))
 }
 
 /// The global heap counter's memory tags (`shuyi_alloc_count::tags`), in
@@ -372,6 +386,22 @@ mod tests {
     #[test]
     fn a_build_that_counts_the_heap_has_memory_tags() {
         assert_eq!(memory_scopes().is_some(), global::COUNTING);
+    }
+
+    /// Other test threads allocate too: only what holds whatever they do.
+    #[test]
+    fn a_build_that_counts_the_heap_takes_snapshots_by_tag() {
+        let snapshot = heap_snapshot();
+        assert_eq!(snapshot.is_some(), global::COUNTING);
+        let Some(snapshot) = snapshot else {
+            return;
+        };
+        assert!(snapshot.live_bytes > 0, "{snapshot:?}");
+        assert!(
+            snapshot.tags.iter().any(|r| r.name == "other"),
+            "{snapshot:?}"
+        );
+        assert_eq!(snapshot.frame, 0);
     }
 
     /// What a decode allocates counts under its kind's tag, in a build

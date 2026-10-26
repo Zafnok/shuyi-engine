@@ -30,7 +30,7 @@ use crate::game::{
     AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
     Tunable,
 };
-use shuyi_ui::perf::{FrameRecord, PerfRing};
+use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PerfRing};
 
 /// A session that counts frames as the Harness does (two a key, sixty a
 /// second of waiting) and shows what it was given.
@@ -54,6 +54,9 @@ pub struct FakeSession {
     pub perf: Vec<FrameRecord>,
     /// Whether [`Session::set_perf`] turned perf on.
     pub perf_on: bool,
+    /// The heap snapshots it takes, in turn: each
+    /// [`Session::heap_snapshot`] takes the first left.
+    pub snapshots: Vec<HeapSnapshot>,
 }
 
 impl FakeSession {
@@ -74,6 +77,7 @@ impl FakeSession {
             modules: Vec::new(),
             perf: Vec::new(),
             perf_on: false,
+            snapshots: Vec::new(),
         }
     }
 }
@@ -155,6 +159,10 @@ impl Session for FakeSession {
             ring.push(record.clone());
         }
         PerfRead::of(&ring, since, max)
+    }
+
+    fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
+        (!self.snapshots.is_empty()).then(|| self.snapshots.remove(0))
     }
 
     /// A picture one pixel high, a pixel wide per frame run, each

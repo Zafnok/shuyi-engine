@@ -326,7 +326,10 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         }
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(file) = perf_file.take() {
-            perf_file = file.write(&app.take_new_perf());
+            let frame = app.frame_number();
+            perf_file = file.write(&app.take_new_perf(), frame, || {
+                app.heap_snapshot(&mut platform)
+            });
         }
         if !platform.started()
             && let Some(game) = app.game()
