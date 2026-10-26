@@ -35,16 +35,27 @@ static HEAP: CountingAlloc<System> = CountingAlloc::new(System);
 
 /// The heap's counts now, the calls since the last reading taken; `None`
 /// in a build that doesn't count ([`COUNTING`]).
-#[cfg(all(debug_assertions, not(shuyi_no_heap_count)))]
 pub fn reading() -> Option<Counts> {
-    Some(HEAP.counts())
+    COUNTING.then(read)
 }
 
-/// The heap's counts now, the calls since the last reading taken; `None`
-/// in a build that doesn't count ([`COUNTING`]).
+// What `reading` reads, by build: two names, so mutation testing (which
+// runs a debug build) can leave out the one it never compiles.
+#[cfg(all(debug_assertions, not(shuyi_no_heap_count)))]
+use counted as read;
 #[cfg(not(all(debug_assertions, not(shuyi_no_heap_count))))]
-pub fn reading() -> Option<Counts> {
-    None
+use uncounted as read;
+
+/// The global counter's counts.
+#[cfg(all(debug_assertions, not(shuyi_no_heap_count)))]
+fn counted() -> Counts {
+    HEAP.counts()
+}
+
+/// Never called: this build has no counter, so [`COUNTING`] is false.
+#[cfg(not(all(debug_assertions, not(shuyi_no_heap_count))))]
+fn uncounted() -> Counts {
+    Counts::default()
 }
 
 #[cfg(test)]

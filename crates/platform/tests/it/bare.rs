@@ -52,4 +52,8 @@ fn a_backend_of_the_seven_methods_runs_a_frame() {
     let mut app = App::running(toy::game());
     assert_eq!(app.frame(&mut bare, Millis(0)), FrameOutcome::Continue);
     assert_eq!(bare.presented, 1);
+    // The defaults: no clock, so nothing measured, and no memory read.
+    assert!(bare.clock().is_none());
+    assert_eq!(bare.memory(), None);
+    assert_eq!(app.perf().records().len(), 0);
 }
