@@ -391,6 +391,13 @@ mod tagged {
     }
 
     #[test]
+    fn a_tagged_counter_shows_its_tags_as_a_word() {
+        let heap = Heap::with_tags(System);
+        let shown = format!("{heap:?}");
+        assert!(shown.contains("tags: Tagged { .. }"), "{shown}");
+    }
+
+    #[test]
     fn rows_leave_out_the_tags_never_used() {
         let heap = Heap::with_tags(System);
         assert_eq!(heap.rows(), []);

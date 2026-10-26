@@ -295,3 +295,16 @@ fn the_platform_reads_its_memory_and_counts_the_calls() {
     assert_eq!(platform.memory(), None);
     assert_eq!(platform.memory_calls(), 4);
 }
+
+#[test]
+fn the_memory_tags_are_a_tests_until_it_takes_them_away() {
+    let scopes = MemoryScopes::new(|_, _| 1, |_| 0, |_| {});
+    let mut platform = HeadlessPlatform::new();
+    assert!(platform.memory_scopes().is_none(), "none of its own");
+    platform.set_scopes(Some(scopes));
+    assert!(platform.memory_scopes().is_some());
+    platform.set_scopes(None);
+    assert!(platform.memory_scopes().is_none());
+    let given = HeadlessPlatform::new().with_scopes(scopes);
+    assert!(given.memory_scopes().is_some());
+}
