@@ -80,9 +80,11 @@ None.
 - **MCP:** a session attached over the link (`start` with `link`,
   which 2521's size rule moved to 2560) answers 2553's `perf` tool
   through `Request::Perf`, with the same input and answer as a headless
-  session. **Either order with 2560:** if 2560 is done, add it here,
-  with its criterion; if not, 2560 adds it (its own clause says so),
-  and this bullet and its criterion are left to it.
+  session. **From 2560 (done):** the attached session is
+  `crates/cli/src/mcp/attached.rs` (its `call`, beside `step` and
+  `frame_png`); add `perf` there, with its criterion and a test in
+  `mcp/attached/tests.rs` on the test host
+  (`shuyi_cli::toy::link::LinkHost`).
 - **Tests,** as 2521's are: the server over the toy game on the
   headless backend with 3063's fake clock (`Perf` from 0 gives every
   kept record; `next` gives none until a frame runs; `dropped` past a

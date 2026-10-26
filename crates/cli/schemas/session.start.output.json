@@ -239,6 +239,10 @@
           "format": "uint32",
           "minimum": 0
         },
+        "game": {
+          "description": "The running build's game, its window's title, when attached over\nthe link; empty when started headless.",
+          "type": "string"
+        },
         "options": {
           "description": "The start options the game offers.",
           "type": "array",
@@ -247,7 +251,7 @@
           }
         },
         "project": {
-          "description": "The game's folder.",
+          "description": "The game's folder; empty when attached over the link.",
           "type": "string"
         },
         "screens": {
@@ -272,6 +276,7 @@
       "additionalProperties": false,
       "required": [
         "project",
+        "game",
         "start",
         "options",
         "frames",

@@ -23,6 +23,9 @@
 //! | `reset` | the game started again as `start` started it | [`StartOutput`] |
 //! | `stop` | the game stopped | [`StopOutput`] |
 //!
+//! `start` with `link` attaches the session to a debug build already
+//! running in its window instead, over the live link ([`attached`]).
+//!
 //! The one-off `scene` operation is the session's `scene` here: `run`
 //! answers with the scene of a one-off run.
 //!
@@ -34,6 +37,7 @@
 //! `code` and its `help`.
 
 pub mod aside;
+pub mod attached;
 pub mod child;
 pub mod forward;
 pub mod host;
@@ -64,14 +68,34 @@ pub struct NoInput {}
 /// What `start` starts.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
 pub struct StartInput {
     /// The game's folder (the one holding its `shuyi.ron`, or one below
     /// it), from the session's folder; the session folder's own project
-    /// if none.
+    /// if none. Not needed with `link`.
     pub project: Option<String>,
     /// The game's own start options (`start`'s answer lists them), in the
-    /// order given.
+    /// order given. None with `link`: the build runs with its own.
     pub start: Vec<GameArg>,
+    /// A debug build already running in its window, to attach the session
+    /// to over the live link instead of starting the game headless.
+    pub link: Option<StartLink>,
+}
+
+/// The running build `start` attaches to: its log line `shuyi link:
+/// listening on <address>, token <token>` gives both.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields, default)]
+// An input: built with `default()` and its fields assigned, it may grow
+// (ADR-0039).
+#[non_exhaustive]
+pub struct StartLink {
+    /// The build's address, `host:port` (`127.0.0.1:7357`).
+    pub address: String,
+    /// The token the build logged when it started listening.
+    pub token: String,
 }
 
 /// A start option the game offers.
@@ -99,9 +123,14 @@ impl From<&GameOption> for StartOption {
 /// What `start` and `reset` started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+// An answer, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
 pub struct StartOutput {
-    /// The game's folder.
+    /// The game's folder; empty when attached over the link.
     pub project: String,
+    /// The running build's game, its window's title, when attached over
+    /// the link; empty when started headless.
+    pub game: String,
     /// The start options it was started with.
     pub start: Vec<GameArg>,
     /// The start options the game offers.
@@ -187,6 +216,15 @@ const ATTACH: &str = "Reach a game's debug build already running in its window, 
      `frames` pass, then read its screens, frame as text, log from `log_since`, and, \
      with `screenshot` (a PNG's path), the window's picture.";
 
+/// What `start`'s tool does.
+const START: &str = "Build the game's tool program and start its game headless in the session, as \
+     its start options say (the answer lists them); a game already running is stopped. \
+     `project`: the game's folder. Call it again after changing the game's code. With `link` \
+     (`address` and `token`, from a debug build's log line `shuyi link: listening on ..., token \
+     ...`), attach the session to that build running in its window instead: the session tools \
+     play a player's input on it and read its frame, picture and log (no scene, events or \
+     sounds), `reset` is refused, and `stop` leaves it running.";
+
 /// What the tool of `op` does, for its description.
 fn description(op: Op, session: bool) -> &'static str {
     match (op, session) {
@@ -266,11 +304,7 @@ fn description(op: Op, session: bool) -> &'static str {
              and how to fix it. Every failed answer has a `code`."
         }
         (Op::Attach, _) => ATTACH,
-        (Op::Start, _) => {
-            "Build the game's tool program and start its game headless in the session, as its \
-             start options say (the answer lists them); a game already running is stopped. \
-             `project`: the game's folder. Call it again after changing the game's code."
-        }
+        (Op::Start, _) => START,
         (Op::Step, _) => {
             "Play on in the session: a script of keys, pad buttons and waits, then `frames` idle \
              frames. Answers as `run` does, for everything since the start."

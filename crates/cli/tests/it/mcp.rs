@@ -3,6 +3,8 @@
 //! runs it): start the game, step into the stage, read the scene, paint
 //! the frame, and one call that fails with its code. The session's game
 //! runs in Hello, Grid's tool program, which `start` builds with cargo.
+//! Then the session attaches to a running build over the live link (the
+//! toy behind a test host), steps it and reads its frame and picture.
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -10,6 +12,7 @@ use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
 use serde_json::{Value, json};
 use shuyi_cli::codec::decode_png;
+use shuyi_cli::toy::link::{LinkHost, TOKEN};
 
 /// The repository's root.
 fn root() -> PathBuf {
@@ -217,9 +220,39 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
     let after = client.call("scene", &json!({}));
     assert_eq!(after["structuredContent"]["code"], "SH0002");
 
+    attach_to_a_running_build(&mut client);
+
     client.stdin = None;
     let status = client.server.wait().unwrap();
     assert!(status.success(), "{status}");
+}
+
+/// The session attached to a running build over the live link (the toy
+/// behind a test host): stepped, its frame and its picture read.
+fn attach_to_a_running_build(client: &mut Client) {
+    let host = LinkHost::start();
+    let attached = client.call(
+        "start",
+        &json!({ "link": { "address": host.address(), "token": TOKEN } }),
+    );
+    assert_eq!(attached["isError"], false, "{attached}");
+    assert_eq!(attached["structuredContent"]["result"]["game"], "Toy");
+    let stepped = client.call(
+        "step",
+        &json!({ "script": { "steps": [{ "keys": "f" }] }, "frames": 1 }),
+    );
+    let result = &stepped["structuredContent"]["result"];
+    assert_eq!(result["screens"], json!(["home", "menu"]), "{stepped}");
+    let text = result["frame"].as_str().unwrap_or_default();
+    assert!(text.contains("--- "), "{stepped}");
+    let frame = client.call("frame_png", &json!({}));
+    assert_eq!(frame["isError"], false, "{frame}");
+    assert_eq!(frame["content"][1]["type"], "image");
+    let png = frame["content"][1]["data"].as_str().unwrap_or_default();
+    assert_eq!(unbase64(png), b"\x89PNG");
+    let ended = client.call("stop", &json!({}));
+    assert_eq!(ended["isError"], false, "{ended}");
+    host.let_go();
 }
 
 #[test]

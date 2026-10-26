@@ -4,6 +4,11 @@
 //!
 //! The toy has no font, so its pictures draw every letter as a box, and
 //! its images (sizes only) as the missing colour.
+//!
+//! [`link`] runs the toy behind the live link's server, a test host for
+//! what attaches to a running build.
+
+pub mod link;
 
 use std::collections::BTreeMap;
 

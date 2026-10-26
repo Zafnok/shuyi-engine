@@ -98,7 +98,7 @@ pub fn answered<I: DeserializeOwned, T: Serialize>(
 }
 
 /// `input` read as `I`, nothing given read as `{}`.
-fn read<I: DeserializeOwned>(input: Value) -> Result<I, String> {
+pub(super) fn read<I: DeserializeOwned>(input: Value) -> Result<I, String> {
     let input = if input.is_null() { json!({}) } else { input };
     serde_json::from_value(input).map_err(|e| format!("input: {e}"))
 }
@@ -302,6 +302,7 @@ impl<'a> Host<'a> {
         let screens = game.screens();
         let output = StartOutput {
             project: self.project.root.display().to_string(),
+            game: String::new(),
             start: start.clone(),
             options: self
                 .tools

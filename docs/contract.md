@@ -51,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 20,
+  "contract": 21,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -136,6 +136,9 @@ way to test a change.
 
 `attach` with no build listening answers `SH1005` (exit code 3), and a
 build of another engine `SH1006`.
+
+MCP's session attaches to a running build too, and keeps the link
+between calls: `start` with `link` ([The MCP server](#the-mcp-server)).
 
 ## Problem codes
 
@@ -225,6 +228,29 @@ A **session** keeps one game running headless between calls:
 | `events` | nothing | what happened since the start, and the sounds |
 | `reset` | nothing | the game started again as `start` started it |
 | `stop` | nothing | the game stopped |
+
+**A session over the link.** `start` with `link` (`{ "address":
+"127.0.0.1:7357", "token": "…" }`, from the build's log line) attaches
+the session to a build already running in its window, as `attach`
+reaches one, instead of building and starting the game headless.
+`project` isn't needed. It answers as `start` does, with the build's
+`game` (its window's title), no `project` and no options; a game
+already running in the session is stopped first. A wrong token, no
+build and another link version answer `attach`'s codes (`SH0004`,
+`SH1005`, `SH1006`). Then:
+
+| Tool | Over the link |
+| ---- | ------------- |
+| `step` | plays the script as a player's input (waits in the build's frames, at 60 a second), then `frames` as a wait; answers as `run` does from the build's screens, frame and log, with no scene, events or sounds |
+| `scene` | the frame's text in place of a scene (`kind` `frame`), and the log |
+| `frame_png` | the window's picture, at the window's size; `scale` is refused |
+| `events` | none: the limit says so |
+| `reset` | refused (`SH0001`): the link never changes a running build |
+| `stop` | detaches, and leaves the build running |
+
+The answers' `limits` say what the link doesn't carry (`no scene over
+the link`, `no events over the link`). A link that is lost answers
+`SH3006` and ends the session.
 
 Their schemas are `session.<tool>.input.json` and
 `session.<tool>.output.json`. The one-off `scene` is the session's here:
