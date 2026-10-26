@@ -11,6 +11,12 @@
 //! there to run (another session's `cargo run`, a test's
 //! `CARGO_BIN_EXE_shuyi`) and cargo sees it fresh.
 //!
+//! The program is never missing from its path, not even for a moment
+//! (ticket 2561): the running file is hard-linked into `.shuyi-running/`
+//! and the copy renamed over the old name, rather than the file renamed
+//! away and the copy renamed in after it. Windows lets a running
+//! program's name be replaced while another name keeps the file.
+//!
 //! Only a cargo build output has a twin: a `shuyi` installed with `cargo
 //! install` has none and is never moved.
 
@@ -71,6 +77,13 @@ pub fn sweep(dir: &Path) {
 /// Moves `from` to `to`, and a copy of it, with its modified time, to
 /// `from`: the copy is no running program's, so a build can replace it,
 /// and until one does the program is still where cargo left it.
+///
+/// The order keeps a program at `from` at every moment (ticket 2561):
+/// the copy is made first, the running file gains its second name `to`
+/// by a hard link, and the copy is renamed over `from`, which replaces
+/// that name in one step. Renaming `from` away first would leave nothing
+/// there until the copy came, and a program started then (another test,
+/// a person's `cargo shuyi`) would fail to find it.
 fn put_aside(from: &Path, to: &Path) -> Result<(), String> {
     let at = |path: &Path, e: std::io::Error| format!("{}: {e}", path.display());
     let copy = to.with_extension("copy");
@@ -83,7 +96,7 @@ fn put_aside(from: &Path, to: &Path) -> Result<(), String> {
         .open(&copy)
         .and_then(|file| file.set_modified(modified))
         .map_err(|e| at(&copy, e))?;
-    fs::rename(from, to).map_err(|e| at(from, e))?;
+    fs::hard_link(from, to).map_err(|e| at(to, e))?;
     fs::rename(&copy, from).map_err(|e| at(from, e))
 }
 
