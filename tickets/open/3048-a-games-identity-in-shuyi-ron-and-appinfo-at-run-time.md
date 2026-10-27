@@ -62,8 +62,8 @@ What Shuyi has (read on 2026-10-20):
   - 3010 step 3 writes `pdxinfo` "from the game manifest", which
     doesn't exist;
   - 3046's crash reports take the game's version;
-  - 2111 stamps the grid template's records with its crate's name and
-    version;
+  - 2111 (done) stamps the template's records with its crate's name and
+    version (`made()` in `base/crates/game/src/lib.rs`);
   - 3015 (parked) needs a bundle id for the stores.
 
 Two MVP tickets change these files first, and this one builds on both:
@@ -287,10 +287,11 @@ choices.
     3046's `BasicGame::version` builder goes, with its call in the
     blank template's `lib.rs`. If not, 3046 does it (its scope says
     so).
-  - **2111** (stamped records): if it is done, the grid template's stamp
-    is `format!("{} {}", APP.id, APP.version)` (`Made::new` takes
-    `impl Into<String>`), not the crate's name and version. If not,
-    2111 does so (an edit request there).
+  - **From 2111 (done):** the template's stamp, `made()` in
+    `base/crates/game/src/lib.rs`, becomes `format!("{} {}", APP.id,
+    APP.version)` (`Made::new` takes `impl Into<String>`), not the
+    crate's name and version (`concat!(env!("CARGO_PKG_NAME"), " ",
+    env!("CARGO_PKG_VERSION"))`). This ticket changes it.
   - **2501** (templates as data, done): the `app` part and
     `app_info.rs` go into the built-in template's `base` part, with its
     placeholders (`{{crate_name}}`), and a test that a composed game

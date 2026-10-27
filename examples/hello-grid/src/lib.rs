@@ -24,6 +24,7 @@ pub mod sound;
 pub mod tools;
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
@@ -42,7 +43,7 @@ use shuyi::assets::pack::{Bake, Pack};
 use shuyi::assets::palette::{PaletteDef, PaletteRon};
 use shuyi::assets::ron::Ron;
 use shuyi::assets::voice::ClipVariant;
-use shuyi::core::TerrainId;
+use shuyi::core::{Made, TerrainId};
 use shuyi::ui::frame::{ConsoleSpec, EngineColor};
 use shuyi::ui::grid::SpriteSkin;
 use shuyi::ui::{Ctx, Game, GameData, GameHooks};
@@ -96,6 +97,14 @@ pub fn formats() -> Formats {
 /// What a pack of the game says it was baked for: the game and its
 /// version, since its own kinds change only with it.
 pub const PACK_STAMP: &str = concat!("hello-grid ", env!("CARGO_PKG_VERSION"));
+
+/// What made this build, for its records: [`PACK_STAMP`] and the
+/// fingerprint of the files it ships, computed once.
+pub fn made() -> Made {
+    static MADE: OnceLock<Made> = OnceLock::new();
+    MADE.get_or_init(|| Made::new(PACK_STAMP, Bundle::new(vec![layer()]).fingerprint()))
+        .clone()
+}
 
 /// What `cargo shuyi bake` bakes of the game: every text file it loads.
 /// Its pictures stay as they are: the platform draws them, and the font

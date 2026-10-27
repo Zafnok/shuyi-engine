@@ -1,10 +1,11 @@
 //! `playtest`'s arguments, its choice of stages and entrants, the tries on
 //! threads, and its answer, on the fake game.
 
+use shuyi_core::ContentHash;
 use shuyi_core::bots::playtest::{Check, Found, Tried};
 
 use super::*;
-use crate::contract::fake::{Fake, FakePlaytest, fake_checks};
+use crate::contract::fake::{Fake, FakePlaytest, fake_checks, stamp};
 
 fn args(items: &[&str]) -> Vec<String> {
     items.iter().map(|s| (*s).into()).collect()
@@ -753,6 +754,30 @@ fn the_history_keeps_every_run_and_the_next_says_what_it_was() {
     assert_eq!(alone[0].previous, None);
     assert_eq!(alone[0].entrants[0].was, None);
     assert!(root.join("kept").join("stage-walk.jsonl").is_file());
+    std::fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn each_run_kept_carries_the_builds_stamp_and_older_lines_still_read() {
+    let root = scratch("stamped");
+    let made = stamp("0.1.0", "demo", ContentHash(3));
+    let mut game = fake(FakePlaytest::default());
+    game.made = Some(made.clone());
+    let both = input(2, |i| i.history = Some("kept".to_owned()));
+    assert!(kept(&game, &root, &both).ok);
+    let file = root.join("kept").join("stage-walk+run.jsonl");
+    let last = history::last(&file).unwrap();
+    assert_eq!(last.made, Some(made));
+    // A line with no stamp, as kept before stamps, still reads.
+    let mut line: serde_json::Value =
+        serde_json::from_str(std::fs::read_to_string(&file).unwrap().trim()).unwrap();
+    line.as_object_mut().unwrap().remove("made");
+    std::fs::write(&file, format!("{line}\n")).unwrap();
+    assert_eq!(history::last(&file).unwrap().made, None);
+    // A game that gives no stamp keeps none.
+    game.made = None;
+    assert!(kept(&game, &root, &both).ok);
+    assert_eq!(history::last(&file).unwrap().made, None);
     std::fs::remove_dir_all(&root).unwrap();
 }
 

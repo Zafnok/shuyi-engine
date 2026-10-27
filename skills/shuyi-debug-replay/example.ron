@@ -1,7 +1,8 @@
 // The worked example of shuyi-debug-replay, a script of contract commands
 // run on a game made with `shuyi new <dir> --template grid`: a bot's record
-// replayed, two records parted by their hashes, a missing record's code,
-// and a refused step kept as a test of the rules.
+// replayed, two records parted by their hashes, a record made with other
+// content refused, a missing record's code, and a refused step kept as a
+// test of the rules.
 Example(
     template: "grid",
     steps: [
@@ -11,11 +12,13 @@ Example(
             expect: [Is("/result/games", "2"), Has("/result/plays/0/record")],
             save: Some(("/result/plays/0/record", "records/bot.ron")),
         ),
-        // One record, run twice: the same hashes, so no difference.
+        // One record, run twice: the same hashes, so no difference. The
+        // bots stamped it with this build, so it runs with its stamp.
         Shuyi(args: ["replay", "records/bot.ron"], expect: [
             Is("/result/first_difference", "null"),
             Has("/result/runs/0/steps/0/hash"),
             Has("/result/runs/0/outcome"),
+            Has("/result/runs/0/made/content"),
         ]),
         // Two records of one seed: the second steps into a wall.
         Write(to: "records/walk.ron", from: "example/walk.ron"),
@@ -28,9 +31,20 @@ Example(
             Is("/result/runs/1/steps/2/events", "[]"),
         ]),
         // Alone, the refused record still plays the same twice, and its
-        // limits count the refusal.
+        // limits count the refusal, and say it has no stamp.
         Shuyi(args: ["replay", "records/bump.ron"], expect: [
-            Is("/limits/1", "the rules refused 1 command(s) of records/bump.ron: the record doesn't play as it was made"),
+            Holds("/limits", "the rules refused 1 command(s) of records/bump.ron: the record doesn't play as it was made"),
+            Holds("/limits/0", "records/bump.ron has no stamp"),
+        ]),
+        // A record stamped with other content is refused before anything
+        // is compared; `--any-stamp` runs it anyway, with a limit.
+        Write(to: "records/other.ron", from: "example/other.ron"),
+        Shuyi(args: ["replay", "records/other.ron"], ok: false, expect: [
+            Is("/code", "SH3007"),
+            Holds("/error", "records/other.ron was made with "),
+        ]),
+        Shuyi(args: ["replay", "records/other.ron", "--any-stamp"], expect: [
+            Holds("/limits/0", "a difference may come from that, not a desync"),
         ]),
         // A record that isn't there: branch on the code.
         Shuyi(args: ["replay", "records/nope.ron"], ok: false, expect: [Is("/code", "SH3004")]),

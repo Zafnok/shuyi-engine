@@ -4,6 +4,11 @@
   "description": "What `replay` re-runs.",
   "type": "object",
   "properties": {
+    "any_stamp": {
+      "description": "Run a record stamped by another build or with other content too\n(`--any-stamp`), which is otherwise refused; its runs may then\ndiffer for that reason alone.",
+      "type": "boolean",
+      "default": false
+    },
     "other": {
       "description": "A second record to run beside it; without one, the record is run\ntwice.",
       "type": [

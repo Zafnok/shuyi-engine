@@ -53,9 +53,7 @@ None.
     - `made` is 2111's stamp: the engine version, the game's stamp and
       the content fingerprint. `replay_commands` takes the build's
       `Made` too, and refuses a record whose `made` differs from it,
-      naming both (`Made::check`). **Either order with 2111:** if 2111
-      isn't done, leave `made` out; 2111 adds it when it lands after
-      this;
+      naming both (`Made::check`, done in 2111);
     - `steps` is the run's length, so steps after the last command
       replay too;
     - `commands` are kept ordered by step, then player, then the order

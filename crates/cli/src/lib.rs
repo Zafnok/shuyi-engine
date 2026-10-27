@@ -98,7 +98,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   add <module>                       turn a module on: its feature in Cargo.toml, its skill
   run [steps] [--frames N]          play a key script headless: screens, scene, events, sounds
   scene [steps]                      the scene on screen after a script
-  replay <record> [<other>]          a state hash per step; where two runs part
+  replay <record> [<other>] [--any-stamp]
+                                     a state hash per step; where two runs part; a
+                                     record made by another build: refused, or run
   bots <games>                       the game's bots play: outcomes and measures
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the

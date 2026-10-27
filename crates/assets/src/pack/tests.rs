@@ -144,7 +144,11 @@ fn every_fixture_kind_reads_the_same_from_the_pack_as_from_its_source() {
     let formats = pack_formats(&bake);
     let pack = Pack::open(&baked().bytes, STAMP).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(pack.info().target.as_deref(), Some("desk"));
+    // It stands for its sources: a bundle of it alone has their
+    // fingerprint.
+    assert_eq!(pack.info().content, sources().fingerprint());
     let pack = pack_bundle(pack);
+    assert_eq!(pack.fingerprint(), sources().fingerprint());
     assert_eq!(bake.check(&formats, sources(), &pack), []);
     assert_eq!(bake.load(&formats, sources()), []);
     assert_eq!(bake.load(&formats, &pack), []);
@@ -392,6 +396,7 @@ fn test_info() -> PackInfo {
     PackInfo {
         stamp: STAMP.to_owned(),
         target: None,
+        content: ContentHash(7),
     }
 }
 
@@ -407,7 +412,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 2: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 3: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();
@@ -645,8 +650,9 @@ proptest! {
         files in pack_files(),
         stamp in "[ -~]{0,20}",
         target in proptest::option::of("[a-z]{1,10}"),
+        content in proptest::num::u64::ANY,
     ) {
-        let info = PackInfo { stamp: stamp.clone(), target };
+        let info = PackInfo { stamp: stamp.clone(), target, content: ContentHash(content) };
         let bytes = raw_pack(&info, &files);
         let pack = Pack::open(&bytes, &stamp).unwrap();
         prop_assert_eq!(pack.info(), &info);

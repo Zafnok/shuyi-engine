@@ -19,6 +19,10 @@
 //! what it uses. [`Bundle::left_out`] lets a loader tell such a file from
 //! one that is missing.
 //!
+//! A bundle's [`fingerprint`](Bundle::fingerprint) stands for the content
+//! that ships, the same on every platform: what a record or a save is
+//! stamped with (`shuyi_core::made`).
+//!
 //! The game registers its bundle once ([`install`] or [`get_or_install`]),
 //! and its loaders read files as `&'static` data from it. A front end can
 //! [`watch`] every file read, to log or time what it loads; with `std`,
@@ -26,8 +30,12 @@
 //! build's bundle).
 use alloc::collections::BTreeMap;
 
+use shuyi_core::ContentHash;
+
 use crate::error::ContentError;
 use crate::prelude::*;
+
+mod fingerprint;
 
 #[cfg(feature = "std")]
 use include_dir::Dir;
@@ -193,6 +201,10 @@ pub struct Layer {
     pub test: bool,
     /// The paths (sorted) of the files this layer leaves out on purpose.
     pub left_out: &'static [&'static str],
+    /// The fingerprint of the content this layer stands for, if it holds
+    /// every file of a bundle (a pack's layer, [`Layer::standing_for`]):
+    /// [`Bundle::fingerprint`] then takes that, and not its files.
+    pub stands_for: Option<ContentHash>,
 }
 
 impl Layer {
@@ -267,6 +279,7 @@ impl Layer {
             private: false,
             test: false,
             left_out: &[],
+            stands_for: None,
         }
     }
 
@@ -292,6 +305,18 @@ impl Layer {
     pub const fn leaving_out(self, paths: &'static [&'static str]) -> Self {
         Self {
             left_out: paths,
+            ..self
+        }
+    }
+
+    /// This layer, standing for the bundle whose fingerprint is `content`
+    /// ([`Bundle::fingerprint`]): it holds every file of that bundle, as a
+    /// pack does of the bundle it was baked from, so a bundle with it has
+    /// that bundle's fingerprint.
+    #[must_use]
+    pub const fn standing_for(self, content: ContentHash) -> Self {
+        Self {
+            stands_for: Some(content),
             ..self
         }
     }
@@ -1321,6 +1346,8 @@ mod tests {
             let _ = bundle.display_path("top.txt");
             let _ = bundle.left_out("top.txt");
             let _ = bundle.has("top.txt");
+            // Nor does a fingerprint, though it takes every byte.
+            let _ = bundle.fingerprint();
         });
         assert_eq!(
             seen,

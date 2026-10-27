@@ -16,8 +16,8 @@ use shuyi_ui::input::KeymapDef;
 use shuyi_ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi_ui::toy::Action;
 
-use shuyi_core::Knob;
 use shuyi_core::bots::playtest::{Band, Check, Condition, Tried, Tries, Want};
+use shuyi_core::{ContentHash, Knob, Made};
 
 use super::autobalance::AutobalanceInput;
 use super::bots::{BotsInput, BotsOutput, tally};
@@ -178,6 +178,13 @@ impl Session for FakeSession {
     }
 }
 
+/// The stamp of engine `engine`, game `game` and content `content`.
+pub fn stamp(engine: &str, game: &str, content: ContentHash) -> Made {
+    let mut made = Made::new(game, content);
+    made.engine = engine.to_owned();
+    made
+}
+
 /// A game whose tools answer what the test sets.
 pub struct Fake {
     /// `check`'s answer.
@@ -186,6 +193,8 @@ pub struct Fake {
     pub session: Result<FakeSession, String>,
     /// `replay`: a run of the record's text, a hash a line.
     pub replay: Result<(), String>,
+    /// This build's stamp, or none.
+    pub made: Option<Made>,
     /// `bots`'s plays, or why there are none.
     pub bots: Result<BotsOutput, String>,
     /// Its playtest, or why its plan doesn't load.
@@ -223,6 +232,7 @@ impl Default for Fake {
             check: Ok(Vec::new()),
             session: Ok(FakeSession::on("stage", "map")),
             replay: Ok(()),
+            made: None,
             bots: Ok(tally(Vec::new())),
             playtest: Ok(FakePlaytest::default()),
             planned: Mutex::new(Vec::new()),
@@ -375,11 +385,22 @@ impl GameTools for Fake {
     }
 
     /// Each line of the record is a step's hash; a line `refused` is a
-    /// refused command.
+    /// refused command. A first line `made <engine> <game> <content>` is
+    /// its stamp ([`stamp`]).
     fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
         self.replay.clone()?;
+        let mut lines = record.text.lines().peekable();
+        let made = lines.next_if(|line| line.starts_with("made ")).map(|line| {
+            let parts: Vec<&str> = line.split(' ').collect();
+            let content = parts.get(3).and_then(|c| c.parse().ok());
+            stamp(
+                parts[1],
+                parts.get(2).unwrap_or(&""),
+                content.unwrap_or_default(),
+            )
+        });
         let steps = (0..)
-            .zip(record.text.lines())
+            .zip(lines)
             .map(|(step, line)| ReplayStep {
                 step,
                 command: (step > 0).then(|| format!("Step{step}")),
@@ -392,7 +413,12 @@ impl GameTools for Fake {
             record: record.file.clone(),
             steps,
             outcome: Some("Won".to_owned()),
+            made,
         })
+    }
+
+    fn made(&self) -> Option<Made> {
+        self.made.clone()
     }
 
     fn bots(&self, _: &BotsInput) -> Result<BotsOutput, String> {

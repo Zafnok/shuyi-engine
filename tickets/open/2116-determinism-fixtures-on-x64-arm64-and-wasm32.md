@@ -190,8 +190,8 @@ is 2110's and 2111's.
       `examples/hello-grid` with `cargo shuyi bots 1 --seed 11 --json`
       (the play's `record` field, pretty-printed). Its play must end:
       if seed 11's doesn't, take the next seed whose play does. It
-      holds no stamp (2111's `made`), so a content change shows as rows
-      moving. The test reads it with `include_str!`, like the tables,
+      holds no stamp: take out the `made` field `bots` writes (2111),
+      so a content change shows as rows moving, not as a refusal. The test reads it with `include_str!`, like the tables,
       and replays it with `HelloTools.replay` (`GameTools::replay`, the
       path `shuyi replay` takes, given a `Record { file, text }`). Rows:
       `step 000`, `step 001`, and so on (each step's state hash), and
@@ -381,10 +381,14 @@ is 2110's and 2111's.
     `determinism` job checks on wasm32.
 
 - **Either order with tickets that pin values:**
-  - **2111:** if it is done, the fixed bundle's fingerprint its test
-    pins becomes a row `fingerprint` of `formats.ron`, and Hello, Grid's
-    table gets `fingerprint files`, with the pack's fingerprint
-    `assert_eq!` to it. If not, 2111 adds them.
+  - **From 2111 (done):** the fixed bundle's fingerprint, pinned as a
+    constant by `a_fixed_bundle_has_a_pinned_fingerprint`
+    (`crates/assets/src/bundle/fingerprint.rs`), becomes a row
+    `fingerprint` of `formats.ron`, and Hello, Grid's table gets
+    `fingerprint files`, `hello_grid::made().content`, with its pack's
+    fingerprint `assert_eq!` to it (beside
+    `the_pack_has_the_fingerprint_of_the_files_it_was_baked_from` in
+    `tests/it/pack.rs`). This ticket adds both rows.
   - **2114:** its golden values stay as asserts in `rng.rs`'s tests,
     which this job runs on wasm32. Nothing to move.
   - **2225:** if it is done, its presets' hashes become rows of

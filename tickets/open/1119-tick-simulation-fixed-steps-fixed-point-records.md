@@ -86,10 +86,9 @@ None (technical). Scheduling: see above.
     leaves changes the entries from the next step, so a `TickRecord`
     replays it; if not, 2406 does. The core names no `shuyi-ui` type:
     the index is a plain number.
-  - **Records are stamped (2111).** `replay` takes the build's `Made`
-    and refuses a record whose `Made` differs from it, naming both
-    (`Made::check`). **Either order with 2111:** if 2111 isn't done,
-    leave `Made` out; 2111 adds it when it lands after this.
+  - **Records are stamped (2111, done).** `replay` takes the build's
+    `Made` (`shuyi_core::Made`) and refuses a record whose `Made`
+    differs from it, naming both (`Made::check`).
 - `shuyi_ui::tick::TickDriver` holds a screen's accumulator: at most 4
   steps a frame, then it slows down rather than spiral. The Harness can
   step exact counts (`harness.steps(n)`). *Since ticket 3003 the

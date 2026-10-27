@@ -63,5 +63,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0048](0048-the-website-zola-0-21-pinned-in-site-sections-of-our-own-templates-and-the-base-url-passed-by-the-build.md) | The website: Zola 0.21 pinned, in `site/`, sections of our own templates, and the base URL passed by the build | Accepted |
 | [0049](0049-fast-compiles-a-new-games-rebuild-timed-in-ci-against-a-budget-no-debug-info-in-dev-and-no-dynamic-engine.md) | Fast compiles: a new game's rebuild timed in CI against a budget, no debug info in `dev`, and no dynamic engine | Accepted |
 | [0050](0050-a-setting-the-platform-applies-a-request-with-a-serial-confirmed-by-a-report-before-the-frame.md) | A setting the platform applies: a request with a serial, confirmed by a report before the frame | Accepted; extends ADR-0024 and ADR-0039 §3 |
+| [0051](0051-stamped-records-the-engine-version-the-games-word-and-a-fingerprint-of-the-content-and-the-tools-refuse-a-mismatch.md) | Stamped records: the engine's version, the game's word and a fingerprint of the content, and the tools refuse a mismatch | Accepted; extends ADR-0006 §2, ADR-0007 §5 and ADR-0023 §1 |
 
 Template: [`0000-template.md`](0000-template.md).

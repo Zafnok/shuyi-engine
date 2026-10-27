@@ -43,6 +43,7 @@ pub mod cinematic;
 pub mod credits;
 pub mod dialogue;
 pub mod error;
+mod fnv;
 pub mod font;
 pub mod format;
 pub mod grid_map;

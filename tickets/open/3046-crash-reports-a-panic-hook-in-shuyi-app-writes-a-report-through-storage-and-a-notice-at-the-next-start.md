@@ -273,8 +273,9 @@ anywhere is 3047's question for Nick.
     (`seed: Option<u64>`, `None` from `StageScreen::of`, whose stage
     came from elsewhere), as the template's keeps `seed`. With no seed
     its record is `None`;
-  - if 2111 is done, the record carries `made` as `bots`' records do; if
-    not, 2111 adds it;
+  - **from 2111 (done):** the record carries `made: Some(crate::made())`
+    (the base part's `made()`, `base/crates/game/src/lib.rs`; hello-grid's
+    `hello_grid::made()`), as `bots`' records do;
   - the templates are outside `cargo fmt --all`: format them as CI's
     template job checks them.
 - **An ADR** (the next free number in `docs/adr/`, the `write-adr`

@@ -103,7 +103,7 @@ None.
 - **The problem codes' pages** that name `bots` or `GameTools::bots`
   (`crates/cli/errors/SH3001.md` at least: grep `crates/cli/errors`).
 - **Open tickets that name the `bots` operation** (not the
-  `shuyi_core::bots` module) say `playtest` instead: at least 2111,
+  `shuyi_core::bots` module) say `playtest` instead: at least
   2112, 2113, 2356, 2501, 2518, 2524 and 2527 (grep
   `tickets/open` for `` `bots` `` and `GameTools::bots`, and read each
   hit). So does any skill under `skills/` that names it, which

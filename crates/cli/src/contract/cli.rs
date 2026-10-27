@@ -248,6 +248,25 @@ pub fn modules_or_add(project: &Project, name: &str, args: &[String]) -> u8 {
     }
 }
 
+/// `replay`'s input from `args` (without `--json`): one or two records,
+/// and `--any-stamp` anywhere; `None` for anything else.
+fn replay_args(args: &[String]) -> Option<replay::ReplayInput> {
+    let any_stamp = args.iter().any(|a| a == "--any-stamp");
+    let records: Vec<&String> = args.iter().filter(|a| *a != "--any-stamp").collect();
+    let (record, other) = match records.as_slice() {
+        [record] => (record, None),
+        [record, other] => (record, Some((*other).clone())),
+        _ => return None,
+    };
+    if records.iter().any(|a| a.starts_with("--")) {
+        return None;
+    }
+    let mut input = replay::ReplayInput::new((*record).clone());
+    input.other = other;
+    input.any_stamp = any_stamp;
+    Some(input)
+}
+
 /// Whether `name` is an op that runs on the project's game.
 pub fn runs_the_game(name: &str) -> bool {
     matches!(
@@ -295,19 +314,10 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
             }
         }
         "replay" => {
-            let input = match args.as_slice() {
-                [record] => replay::ReplayInput {
-                    record: record.clone(),
-                    other: None,
-                },
-                [record, other] => replay::ReplayInput {
-                    record: record.clone(),
-                    other: Some(other.clone()),
-                },
-                _ => {
-                    let usage = format!("usage: {command} replay <record> [<other>] [--json]");
-                    return wrong(json, Op::Replay, "one or two records", &usage);
-                }
+            let Some(input) = replay_args(&args) else {
+                let usage =
+                    format!("usage: {command} replay <record> [<other>] [--any-stamp] [--json]");
+                return wrong(json, Op::Replay, "one or two records", &usage);
             };
             print(
                 json,
@@ -394,6 +404,27 @@ mod tests {
         Project {
             root,
             config: Config::default(),
+        }
+    }
+
+    #[test]
+    fn replay_takes_one_or_two_records_and_any_stamp_anywhere() {
+        let one = replay_args(&args(&["a.ron"])).unwrap();
+        assert_eq!(one, replay::ReplayInput::new("a.ron"));
+        let two = replay_args(&args(&["--any-stamp", "a.ron", "b.ron"])).unwrap();
+        assert_eq!(
+            (two.record.as_str(), two.other.as_deref(), two.any_stamp),
+            ("a.ron", Some("b.ron"), true)
+        );
+        let after = replay_args(&args(&["a.ron", "--any-stamp"])).unwrap();
+        assert!(after.any_stamp && after.other.is_none(), "{after:?}");
+        for wrong in [
+            &[][..],
+            &["--any-stamp"],
+            &["a", "b", "c"],
+            &["a.ron", "--bogus"],
+        ] {
+            assert_eq!(replay_args(&args(wrong)), None, "{wrong:?}");
         }
     }
 

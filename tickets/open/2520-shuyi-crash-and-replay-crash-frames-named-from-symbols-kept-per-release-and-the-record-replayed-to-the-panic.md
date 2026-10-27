@@ -207,9 +207,12 @@ None.
     a panic before a stage was open, or a game without `crash_record`;
   - the stamp: `replay --crash` goes through the same path as `replay`
     (`GameTools::replay`, then the stamp check), so 2111's refusal of a
-    record made with other content covers it whichever lands first. If
-    2111 is done, a test shows it; if not, 2111 adds that test (its
-    clause says so).
+    record made with other content (`SH3007`) covers it. **From 2111
+    (done):** a test here shows `replay --crash` refusing a crash
+    report whose record is stamped with other content (`made` with
+    another `content`), as hello-grid's
+    `a_record_made_with_other_content_is_refused_unless_any_stamp`
+    does for `replay`.
 - **The contract's version:** the `crash` schemas
   (`crash.input.json`, `crash.output.json`) and the `replay` ones
   regenerated, `VERSION` raised by one, and the line
