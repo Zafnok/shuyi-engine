@@ -98,12 +98,10 @@ impl FrameCap {
 
     /// The most frames a second it allows, held to [`MIN_FPS`] to
     /// [`MAX_FPS`]; `None` for no cap.
-    pub const fn limit(self) -> Option<u16> {
+    pub fn limit(self) -> Option<u16> {
         match self {
             Self::Off => None,
-            Self::Fps(n) if n < MIN_FPS => Some(MIN_FPS),
-            Self::Fps(n) if n > MAX_FPS => Some(MAX_FPS),
-            Self::Fps(n) => Some(n),
+            Self::Fps(n) => Some(n.clamp(MIN_FPS, MAX_FPS)),
         }
     }
 
@@ -225,6 +223,16 @@ mod tests {
         assert_eq!(FrameCap::Fps(60).limit(), Some(60));
         assert_eq!(FrameCap::Fps(0).limit(), Some(MIN_FPS));
         assert_eq!(FrameCap::Fps(5000).limit(), Some(MAX_FPS));
+    }
+
+    #[test]
+    fn a_cap_is_named_by_its_text_key() {
+        assert_eq!(FrameCap::Off.key(), "options.value.unlimited");
+        assert_eq!(FrameCap::Fps(60).key(), "options.value.fps");
+        assert_eq!(
+            (UNLIMITED_KEY, FPS_KEY),
+            (FrameCap::Off.key(), FrameCap::Fps(1).key())
+        );
     }
 
     #[test]
