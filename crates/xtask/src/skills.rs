@@ -216,7 +216,7 @@ pub fn run(root: &Path, games: &Path, options: &Options, runner: &dyn Runner) ->
 
 /// Makes a game named `name` in `game` from `template` with the engine
 /// checkout at `root` (`shuyi new`), over any game made there before.
-fn make_game(
+pub fn make_game(
     root: &Path,
     game: &Path,
     template: &str,

@@ -161,8 +161,10 @@ None. This is technical.
   - the bytes it adds to Hello, Grid's `.wasm` (`cargo shuyi web
     --release` in `examples/hello-grid`), with the description in the
     shipped build, and with it in the `tools` feature only;
-  - the rebuild after a one-line change in Hello, Grid: 2009's `cargo
-    xtask compile-times` if 2009 is done, else `cargo build --timings`;
+  - the rebuild after a one-line change in Hello, Grid, timed as `cargo
+    xtask compile-times` times a new game's (2009, done: cargo's
+    `Finished … in`, the median of three), with `cargo build --timings`
+    for where the time goes;
   - which of the eight needs it meets, and the code a game writes for
     each;
   - its license against `deny.toml`, and its default features (ADR-0004

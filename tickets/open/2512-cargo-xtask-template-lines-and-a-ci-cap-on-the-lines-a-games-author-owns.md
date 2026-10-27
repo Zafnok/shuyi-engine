@@ -36,11 +36,13 @@ stay small by rule.
   runs `ticket-lint` and `check-links` on every PR, docs-only ones too.
 - 2015 added `serde`, `serde_json` and `ron` to the xtask, and the
   first RON file under `tools/`, `tools/layers.ron`.
-- Planned, not done:
-  - 2009 (after the MVP) gates a game's rebuild time and its dependency
-    count against `tools/compile-budget.ron`. It doesn't count lines;
-  - 2524 (the agent eval) counts the lines an agent adds, with `git
-    diff`, not the lines a template hands its author.
+- **From 2009 (done):** `tools/compile-budget.ron` holds a new game's
+  rebuild time and its dependency count, which `cargo xtask
+  compile-times` (`crates/xtask/src/compile_times.rs`) checks in CI's
+  `compile-times` job. It doesn't count lines. This ticket's budget is a
+  second file beside it; nothing else is shared.
+- Planned, not done: 2524 (the agent eval) counts the lines an agent
+  adds, with `git diff`, not the lines a template hands its author.
 - The counts on 2026-10-20, made with a short script by the rule below
   (the tool may differ by a few lines):
 
@@ -175,8 +177,6 @@ choice, and it only goes down.
   enum, write the derive's ticket (the `write-ticket` skill); if not,
   the completion notes say so.
 - **Either order:**
-  - **2009** (compile times): both add a budget under `tools/`.
-    Nothing else is shared.
   - **From 2501 (done):** `templates/blank` and `templates/grid` are
     gone. The counter counts each built-in short name (`blank`, `grid`)
     from `compose`'s plan (`shuyi_cli::template::compose`, with the
@@ -215,8 +215,8 @@ choice, and it only goes down.
 
 1. Read `crates/xtask/src/main.rs`, `no_std.rs` (`code_of`,
    `rust_files`), `crates/xtask/Cargo.toml`, the `tickets` job in
-   `ci.yml`, and the three folders. Check whether 2009 is done
-   (*Either order*).
+   `ci.yml`, and the three folders, and `tools/compile-budget.ron` beside
+   the budget this ticket adds.
 2. Write the `.rs` scanner in `template_lines.rs`, then the line rule
    and the `#[cfg(test)]` items on it, with fixtures as strings.
 3. Write the line rule for the other extensions, the kinds, and the

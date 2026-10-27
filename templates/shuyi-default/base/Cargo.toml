@@ -44,10 +44,14 @@ lto = "thin"
 codegen-units = 1
 strip = true
 
-# Less debug info in dev and test builds; the engine and the other crates
-# are built optimized, so the game runs at speed in a debug build.
+# Quick rebuilds: no debug info in dev and test builds, which takes about
+# a third off each rebuild's link. A panic still names its file and line;
+# a backtrace names functions only. For lines in backtraces, or to step
+# through the game in a debugger, set `debug = "line-tables-only"` (or
+# `true`). The engine and the other crates are built optimized, so the
+# game runs at speed in a debug build.
 [profile.dev]
-debug = "line-tables-only"
+debug = false
 
 [profile.dev.package."*"]
 opt-level = 2

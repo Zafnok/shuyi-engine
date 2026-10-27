@@ -254,3 +254,19 @@ fn api_without_its_tools_prints_their_install_lines() {
     );
     assert!(err.contains("api: 3 error(s)"), "{err}");
 }
+
+#[test]
+fn compile_times_reads_its_budget_before_it_builds() {
+    let missing = std::env::temp_dir().join("xtask-cli-test-no-budget.ron");
+    let (ok, err) = xtask(&["compile-times", "--budget", &missing.to_string_lossy()]);
+    assert!(!ok);
+    assert!(err.contains("xtask-cli-test-no-budget.ron: "), "{err}");
+    assert!(err.contains("compile-times: 1 error(s)"), "{err}");
+}
+
+#[test]
+fn compile_times_rejects_an_unknown_option() {
+    let (ok, err) = xtask(&["compile-times", "--fast"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}
