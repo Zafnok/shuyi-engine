@@ -232,6 +232,7 @@ impl<G: GameData> Copy for Question<G> {}
 
 impl<G: GameData> fmt::Debug for Question<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // check-text: not player text, the type name for Debug
         f.debug_tuple("Question").field(&self.key).finish()
     }
 }
@@ -539,6 +540,7 @@ pub struct OptionsScreen<G: GameData> {
 
 impl<G: GameData> fmt::Debug for OptionsScreen<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // check-text: not player text, the type name for Debug
         f.debug_struct("OptionsScreen")
             .field("row", &self.row)
             .field("opened_unsaved", &self.opened_unsaved)

@@ -42,7 +42,7 @@ Shuyi today:
   (`crates/ui/src/ctx.rs`). The toy's is three uppercase lines
   (`DEBUG_LANG` and `DEBUG_UI` in `crates/ui/src/toy.rs`).
 - `check-text` is a line scanner over source (`crates/cli/src/check_text.rs`);
-  2006 (MVP) will run it on the engine's own code. It can't see text a
+  2006 (done) runs it on the engine's own code. It can't see text a
   screen builds at run time.
 - 2209 (done) checks at load that a dialogue line fits its box; 2302
   will add a `max_cells` per screen-text key and an overflow list in

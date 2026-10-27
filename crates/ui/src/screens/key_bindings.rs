@@ -261,6 +261,7 @@ pub struct KeyBindingsScreen<G: GameData> {
 
 impl<G: GameData> fmt::Debug for KeyBindingsScreen<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // check-text: not player text, the type name for Debug
         f.debug_struct("KeyBindingsScreen")
             .field("layout", &self.layout)
             .field("side", &self.side)

@@ -30,7 +30,9 @@ its ticket 1106.
 
 Everywhere else, engine code reacts to `FrameInput` actions (`is_pressed`,
 `is_held`) and nothing else. `cargo shuyi check-keys` enforces this in a
-game's code; it doesn't scan the engine's own code yet (ticket 2006).
+game's code, and `cargo run -q -p shuyi-cli -- lint` in the engine's own,
+as the root `shuyi.ron` sets it: a file that names keys by design is
+listed in its `key_files`, with the reason.
 
 ## The engine's own rules
 
@@ -55,4 +57,4 @@ game.
 - [ ] No key or button types outside the places above.
 - [ ] `shuyi-input`'s checklist, for each engine screen, widget and
       example the change touches.
-- [ ] `check-keys` passes on the engine's own code, once it scans it.
+- [ ] `cargo run -q -p shuyi-cli -- lint` passes on the engine's own code.

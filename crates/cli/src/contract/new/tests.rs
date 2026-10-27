@@ -491,13 +491,25 @@ fn every_dev_container_is_set_up_as_the_engines() {
     let engine =
         read(&fs::read(engine_checkout().join(".devcontainer/devcontainer.json")).unwrap());
     assert_eq!(engine["name"], "Shuyi Engine");
-    assert_eq!(engine["postCreateCommand"], "bash scripts/setup-linux.sh");
+    let setup = "bash scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && ";
+    let engine_command = engine["postCreateCommand"].as_str().unwrap();
+    assert_eq!(
+        engine_command,
+        format!(
+            "{setup}cargo run -q -p shuyi-cli -- mcp install --yes --command \"cargo run -q -p shuyi-cli --\""
+        )
+    );
     for (short, plan) in every_short_names_game() {
         let game = read(&plan.files[Path::new(".devcontainer/devcontainer.json")]);
         assert_eq!(game["name"], "Moon", "{short}");
-        for key in ["image", "postCreateCommand", "remoteEnv", "customizations"] {
+        for key in ["image", "remoteEnv", "customizations"] {
             assert_eq!(game[key], engine[key], "{short}: {key}");
         }
+        assert_eq!(
+            game["postCreateCommand"].as_str().unwrap(),
+            format!("{setup}cargo shuyi mcp install --yes"),
+            "{short}"
+        );
     }
 }
 
