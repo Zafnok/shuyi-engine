@@ -462,7 +462,18 @@ const AFTER_ONCE: &[&[&str]] = &[
 /// What can follow the ids after `until`.
 const AFTER_UNTIL: &[&[&str]] = &[&["exists"], &["exist"], &["lands"], &["is", "done"]];
 /// What can follow `if it`.
-const AFTER_IF_IT: &[&[&str]] = &[&["is", "done"], &["has", "landed"]];
+const AFTER_IF_IT: &[&[&str]] = &[&["is", "done"], &["is", "not", "done"], &["has", "landed"]];
+
+/// What can follow the ids after the clause's first word.
+fn after_forms(word: &str) -> Option<&'static [&'static [&'static str]]> {
+    match word {
+        "if" => Some(AFTER_IF),
+        "when" => Some(AFTER_WHEN),
+        "once" => Some(AFTER_ONCE),
+        "until" => Some(AFTER_UNTIL),
+        _ => None,
+    }
+}
 
 /// The length of the first of `forms` that `words` read from `at`.
 fn form_at(words: &[Word], at: usize, forms: &[&[&str]]) -> Option<usize> {
@@ -501,18 +512,12 @@ fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
             ids_at(words, start + 4)
         }
         "waits" | "wait" if reads(words, start + 1, &["for"]) => ids_at(words, start + 2),
-        "if" | "when" | "once" | "until" => {
-            let forms = match word {
-                "if" => AFTER_IF,
-                "when" => AFTER_WHEN,
-                "once" => AFTER_ONCE,
-                _ => AFTER_UNTIL,
-            };
+        _ => {
+            let forms = after_forms(word)?;
             let (ids, end) = ids_at(words, start + 1);
             let len = form_at(words, end, forms)?;
             (ids, end + len)
         }
-        _ => return None,
     };
     (!ids.is_empty()).then(|| clause(words, start, end, ids))
 }
@@ -1571,6 +1576,10 @@ README.md
             (
                 "Then 2204's float ban covers it if it is done.",
                 "2204's float ban covers it if it is done",
+            ),
+            (
+                "Then 2204 covers it, if it is not done.",
+                "2204 covers it, if it is not done",
             ),
             (
                 "Then 2204 covers it, if it has landed.",
