@@ -338,5 +338,10 @@ mod tests {
         let bad = ron::from_str::<ContentHash>("\"1a2b\"").unwrap_err();
         assert!(bad.to_string().contains("not a content hash"), "{bad}");
         assert!(ron::from_str::<ContentHash>("12").is_err());
+        // A value of another type says what a hash is.
+        let number: Result<ContentHash, serde::de::value::Error> =
+            ContentHash::deserialize(serde::de::IntoDeserializer::into_deserializer(12_u64));
+        let error = number.unwrap_err().to_string();
+        assert!(error.ends_with("expected sixteen hex digits"), "{error}");
     }
 }
