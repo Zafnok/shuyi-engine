@@ -392,7 +392,11 @@ The **session's folder** is the client's first root: a client that
 declares `roots` in `initialize` gets a `roots/list` request after
 `notifications/initialized` (Claude Code lists the session's working
 folder, a worktree's in a worktree session). Without roots it is the
-server's working folder.
+server's working folder. When the client sends
+`notifications/roots/list_changed` the server asks again and takes the
+new first root as the folder, following that folder's server's tools (or
+its own, back in its own workspace); a session game keeps running where
+it runs.
 
 A **session** keeps one game running headless between calls:
 

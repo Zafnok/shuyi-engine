@@ -200,9 +200,14 @@ impl<'a> Server<'a> {
         };
         let params = message.get("params").cloned().unwrap_or(Value::Null);
         // A notification (`notifications/initialized`, `…/cancelled`):
-        // nothing to answer, but the roots to ask for.
+        // nothing to answer, but the roots to ask for, again when they
+        // change.
         let Some(id) = message.get("id") else {
-            if method == "notifications/initialized" && self.roots {
+            let asks = matches!(
+                method,
+                "notifications/initialized" | "notifications/roots/list_changed"
+            );
+            if asks && self.roots {
                 let ask = json!({ "jsonrpc": "2.0", "id": ROOTS, "method": "roots/list" });
                 return vec![ask.to_string()];
             }
@@ -235,8 +240,17 @@ impl<'a> Server<'a> {
         self.folder = Some(folder);
         if let Some(workspace) = self.forward_to(&root) {
             self.follow = Some(workspace);
+            return self.poll();
         }
-        self.poll()
+        // The server's own workspace: its own list, again if the folder
+        // moved back from another one.
+        self.follow = None;
+        self.listing = None;
+        if self.tools == tools() {
+            return Vec::new();
+        }
+        self.tools = tools();
+        vec![json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed" }).to_string()]
     }
 
     /// The notification the client gets when the tools it should list
@@ -271,7 +285,15 @@ impl<'a> Server<'a> {
                     json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed" });
                 vec![changed.to_string()]
             }
-            _ => Vec::new(),
+            Some(_) => {
+                // The same list from another folder's server: its tools
+                // go there now.
+                if self.listing.is_some() {
+                    self.listing = Some(workspace);
+                }
+                Vec::new()
+            }
+            None => Vec::new(),
         }
     }
 
