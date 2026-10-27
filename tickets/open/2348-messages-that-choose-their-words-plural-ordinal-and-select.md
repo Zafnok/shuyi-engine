@@ -209,6 +209,11 @@ and the plural table are technical.
     written back as `{name}`. A text that doesn't parse is filled as
     today (simple placeholders only), so text from outside the language
     files never panics.
+  - **Either order with 2390:** if 2390 is done, `fill` already finds
+    simple placeholders with `shuyi_core::text::split_tokens`: build the
+    fallback for a text that doesn't parse on it, as it is; if not,
+    build that fallback on `split_tokens`, not on a loop of its own
+    (2390 moves `fill`'s other loop and `tip::placeholders`).
 - **`Ctx`** (`crates/ui/src/ctx.rs`):
   - `Ctx::text_with` and `Ctx::text_with_keys` take
     `&[(&str, &dyn ToArg)]`, so call sites that pass `&n` and `&"text"`
