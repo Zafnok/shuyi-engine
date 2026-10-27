@@ -82,6 +82,7 @@ pub struct LayoutPickerScreen<G: GameData> {
 
 impl<G: GameData> fmt::Debug for LayoutPickerScreen<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // check-text: not player text, the type name for Debug
         f.debug_struct("LayoutPickerScreen")
             .field("menu", &self.menu)
             .field("cancellable", &self.cancellable)

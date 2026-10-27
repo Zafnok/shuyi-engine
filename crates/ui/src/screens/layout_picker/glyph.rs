@@ -133,6 +133,7 @@ fn paint_panel<G: GameData>(
         (
             BoxStyle::Single,
             c(EngineColor::Border),
+            // check-text: not a data name (the view's own)
             layout.name.clone(),
             c(EngineColor::Text),
         )

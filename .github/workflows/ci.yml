@@ -72,6 +72,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: bash scripts/setup-linux.sh
       - run: cargo test --workspace --locked --no-fail-fast
+      # The engine's own code keeps the input and text rules (ticket 2006,
+      # the root `shuyi.ron`): `check-keys` and `check-text` in one answer.
+      - name: The engine names no key and writes no screen text as a literal
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo run -q -p shuyi-cli --locked -- lint
 
   docs:
     name: docs

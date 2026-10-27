@@ -195,10 +195,9 @@ None.
     integration test also collects those keys, so the engine's file
     keeps them. If not, 2330 extends this test when it moves the
     screen.
-  - **2006** (check-keys and check-text on the engine's code): if it is
-    done, the root `shuyi.ron`'s `check_keys.assets` gets
-    `crates/ui/lang`, and `check-keys` passes on it. If not, 2006's
-    "the engine's own screens' words" covers the file.
+  - **From 2006 (done):** the root `shuyi.ron`'s `check_keys.assets`
+    gets `crates/ui/lang`, and `cargo run -q -p shuyi-cli -- lint`
+    passes on it.
   - **2010** (done, public API diffs): the completion notes and the PR
     body have the `Breaking:` line its check asks for, for
     `Part::Engine`.
@@ -232,7 +231,7 @@ None.
 1. Read ADR-0020, `crates/assets/src/lang.rs`,
    `crates/assets/src/lang/formats.rs`, `crates/cli/src/lang_status.rs`,
    `crates/cli/src/lib.rs` (lines 60 to 70 and 239 to 260) and
-   `crates/ui/src/toy.rs` (lines 339 to 478). Check which of 2006,
+   `crates/ui/src/toy.rs` (lines 339 to 478). Check which of
    2226, 2321, 2330, 2333, 2340, 2342, 2346, 2348, 2349, 2353, 2511,
    2802 and 3043 are done.
 2. In `shuyi_assets::lang`, write `merged_english`,
