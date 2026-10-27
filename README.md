@@ -13,6 +13,11 @@ without guessing.
 > that hold the names until the first release, and its API still moves.
 > See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+[Open in GitHub Codespaces](https://codespaces.new/Zafnok/shuyi-engine?quickstart=1):
+a container with the C linker, the system libraries and the pinned Rust
+set up (`.devcontainer/`). Codespaces bills whoever opens it, from their
+own GitHub account's free hours or plan.
+
 ## What it is for
 
 1. **Make Visions of Shuyi easy to build.** The game is the engine's first
@@ -115,6 +120,7 @@ and a game that needs more than that doesn't export there
 | `docs/contract.md` | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor`, their JSON answers and schemas |
 | `docs/platform-backends.md` | How to write a platform backend: the `Platform` trait, what each method must do, the headless backend as a reference, and why console backends stay private |
 | `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen, on the short path: `BasicGame`, `run_game` and `BasicTools`) |
+| `scripts/setup-linux.sh`, `.devcontainer/` | Setting up Linux in one command (apt, dnf or pacman): the C linker, `pkg-config`, the libraries the backend links and opens, and the pinned Rust, as `shuyi doctor` checks them; the dev container (and Codespaces) runs it, and so does CI |
 | `skills/` | The skill pack: Agent Skills for making games on the engine, each with a worked example CI runs on a new game. `shuyi new` copies them into every game, and `.claude-plugin/` makes them a Claude Code plugin ([`skills/README.md`](skills/README.md)) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
@@ -175,8 +181,10 @@ its status. `cargo shuyi modules` lists the same catalog for a game, and
 from the engine's template, made of parts that its answers pick
 ([`docs/templates.md`](docs/templates.md)): `--template grid` (a title
 and a turn-based grid stage, with its rules in a crate of their own, a
-bot and records) or `--template blank` (one screen). From this
-repository:
+bot and records) or `--template blank` (one screen). On Linux, run
+`bash scripts/setup-linux.sh` first: it installs the C linker,
+`pkg-config`, the system libraries and the pinned Rust, and the new game
+has its own copy. From this repository:
 
 ```
 cargo shuyi new ../moon-garden --template grid --engine-rev <commit>

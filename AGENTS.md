@@ -121,6 +121,10 @@ Where each kind of fact is written, and what each task reads first, is in
   `C:\msys64\mingw64\bin`.
 - Use `cargo install --locked <tool>`; `cargo-binstall` doesn't build
   there.
+- On Linux, in a dev container or in a cloud agent's container, `bash
+  scripts/setup-linux.sh` installs the C linker, `pkg-config`, the
+  system libraries and the pinned Rust, and `shuyi doctor` checks the
+  same list.
 - Never run mutation testing on Nick's machine (CI runs it).
 - The pinned Rust (`rust-toolchain.toml`) moves with the `bump-rust` skill.
 - The web build uses macroquad's own loader, not `wasm-bindgen`

@@ -45,16 +45,17 @@ None.
     program into a temporary folder (`git clone --no-checkout`, then
     `git checkout <rev>`), and `shuyi doctor` (1129) reports whether
     `git` is found. No git library is added.
-- **Either order with 2513** (doctor's Linux table): CI's bare
-  `ubuntu:24.04` container has no `git`. If a missing `git` fails doctor
-  and 2513 is done, add `git` as a row of its table (`git` for apt, dnf
-  and pacman, found by `git --version`) and to every
-  `scripts/setup-linux.sh`, so the container's doctor passes. If 2513
-  isn't done, it adds the row (its own clause says so). Either way,
-  2513's workflow test, which fails an `apt-get install` line naming a
-  package of the table, still lets a line before `actions/checkout`
-  install `git` (the script isn't checked out yet), and a line that
-  installs `git` after the script goes, since the script installs it.
+- **From 2513 (done)** (doctor's Linux table): CI's bare
+  `ubuntu:24.04` container (the `templates` job) has no `git`. If a
+  missing `git` fails doctor, add `git` as a row of its table (`git` for
+  apt, dnf and pacman, found by `git --version`) and to every
+  `scripts/setup-linux.sh`, so the container's doctor passes. 2513's
+  workflow test (`no_workflow_installs_doctors_packages_by_hand` in
+  `crates/cli/src/contract/new/tests.rs`), which fails an `apt-get
+  install` line naming a package of the table, still lets a line before
+  `actions/checkout` install `git` (the script isn't checked out yet),
+  and a line that installs `git` after the script goes, since the
+  script installs it.
 - **Nothing runs.** The loader reads `template.ron` and files, and
   nothing else. A template folder holding `build.rs`, scripts or
   binaries is fine: they are copied as files and run only when the

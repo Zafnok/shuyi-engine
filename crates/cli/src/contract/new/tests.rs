@@ -431,3 +431,123 @@ fn a_new_input_names_the_game_for_its_folder_on_mains_engine() {
         Some("grid")
     );
 }
+
+/// The engine's checkout, this crate's grandparent.
+fn engine_checkout() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+/// The game each of the engine's template's short names makes, by its
+/// short name.
+fn every_short_names_game() -> Vec<(String, Plan)> {
+    let template = built_in();
+    template
+        .short_names
+        .keys()
+        .map(|short| {
+            let input = NewInput::new("g").template(short);
+            let (plan, _) = plan(&engine_checkout(), &template, &input, "Moon", "moon")
+                .unwrap_or_else(|(_, e)| panic!("{short}: {e}"));
+            (short.clone(), plan)
+        })
+        .collect()
+}
+
+/// The words of the script's `NAME="…"` line.
+fn script_list<'a>(script: &'a str, name: &str) -> Vec<&'a str> {
+    let line = script
+        .lines()
+        .find_map(|line| line.strip_prefix(&format!("{name}=\"")))
+        .unwrap_or_else(|| panic!("no {name}= line"));
+    line.strip_suffix('"').unwrap().split_whitespace().collect()
+}
+
+#[test]
+fn every_setup_script_is_the_engines_and_installs_doctors_table() {
+    use crate::contract::doctor::linux::ROWS;
+    let engine = fs::read(engine_checkout().join("scripts/setup-linux.sh")).unwrap();
+    assert!(!engine.contains(&b'\r'));
+    let script = String::from_utf8(engine.clone()).unwrap();
+    let column = |pick: fn(&crate::contract::doctor::linux::Row) -> &'static str| {
+        ROWS.iter().map(pick).collect::<Vec<_>>()
+    };
+    assert_eq!(script_list(&script, "APT"), column(|r| r.apt));
+    assert_eq!(script_list(&script, "DNF"), column(|r| r.dnf));
+    assert_eq!(script_list(&script, "PACMAN"), column(|r| r.pacman));
+    for (short, plan) in every_short_names_game() {
+        let copy = &plan.files[Path::new("scripts/setup-linux.sh")];
+        assert!(
+            copy == &engine,
+            "{short}: scripts/setup-linux.sh is not the engine's"
+        );
+    }
+}
+
+#[test]
+fn every_dev_container_is_set_up_as_the_engines() {
+    let read = |bytes: &[u8]| -> serde_json::Value {
+        serde_json::from_slice(bytes).unwrap_or_else(|e| panic!("{e}"))
+    };
+    let engine =
+        read(&fs::read(engine_checkout().join(".devcontainer/devcontainer.json")).unwrap());
+    assert_eq!(engine["name"], "Shuyi Engine");
+    assert_eq!(engine["postCreateCommand"], "bash scripts/setup-linux.sh");
+    for (short, plan) in every_short_names_game() {
+        let game = read(&plan.files[Path::new(".devcontainer/devcontainer.json")]);
+        assert_eq!(game["name"], "Moon", "{short}");
+        for key in ["image", "postCreateCommand", "remoteEnv", "customizations"] {
+            assert_eq!(game[key], engine[key], "{short}: {key}");
+        }
+    }
+}
+
+#[test]
+fn no_workflow_installs_doctors_packages_by_hand() {
+    use crate::contract::doctor::linux::ROWS;
+    let mut workflows = Vec::new();
+    for entry in fs::read_dir(engine_checkout().join(".github/workflows")).unwrap() {
+        let path = entry.unwrap().path();
+        let text = fs::read_to_string(&path).unwrap();
+        workflows.push((path.display().to_string(), text));
+    }
+    for (short, plan) in every_short_names_game() {
+        for (path, bytes) in &plan.files {
+            if path.starts_with(".github/workflows") {
+                let text = String::from_utf8(bytes.clone()).unwrap();
+                workflows.push((format!("{short}: {}", path.display()), text));
+            }
+        }
+    }
+    assert!(workflows.len() > 3, "{}", workflows.len());
+    let packages: Vec<&str> = ROWS.iter().flat_map(|r| [r.apt, r.dnf, r.pacman]).collect();
+    for (file, text) in &workflows {
+        for line in text.lines().filter(|l| l.contains("apt-get install")) {
+            let words = line.split(|c: char| c.is_whitespace() || c == '"' || c == '\'');
+            for word in words {
+                assert!(
+                    !packages.contains(&word),
+                    "{file} installs {word} by hand: call `bash scripts/setup-linux.sh`\n{line}"
+                );
+            }
+        }
+    }
+    // The playtest workflow's default packages, for a game with no script
+    // of its own, are the table's.
+    let (_, playtest) = workflows
+        .iter()
+        .find(|(file, _)| file.ends_with("playtest.yml") && !file.contains(": "))
+        .unwrap();
+    let default = playtest
+        .split("system-packages:")
+        .nth(1)
+        .and_then(|input| {
+            input
+                .lines()
+                .find_map(|l| l.trim().strip_prefix("default: "))
+        })
+        .unwrap();
+    let apt: Vec<&str> = ROWS.iter().map(|r| r.apt).collect();
+    for package in default.split_whitespace() {
+        assert!(apt.contains(&package), "playtest.yml's default: {package}");
+    }
+}

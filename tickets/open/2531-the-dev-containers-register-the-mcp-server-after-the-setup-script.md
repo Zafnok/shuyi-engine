@@ -29,6 +29,14 @@ scripts/setup-linux.sh`. 1133's scope said the dev containers should
 register the server once both exist, and 2513's **Out** leaves it to
 1133. 1133 landed first, so this ticket does it once 2513 is done.
 
+**From 2513 (done):** the files are `.devcontainer/devcontainer.json`
+and the template's `templates/shuyi-default/base/.devcontainer/devcontainer.json`
+(the template's `base` part, so every short name's game has it). The
+test is `every_dev_container_is_set_up_as_the_engines` in
+`crates/cli/src/contract/new/tests.rs`: it checks that `image`,
+`postCreateCommand`, `remoteEnv` and `customizations` equal the
+engine's, and the game's `name` is the game's.
+
 A container has no installed `shuyi`, before or after the first
 release (2005), so it runs the CLI as 2513 runs `doctor`:
 `cargo run -q -p shuyi-cli --` in the engine, `cargo shuyi` in a

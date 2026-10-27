@@ -218,7 +218,7 @@ None.
   changes`, on code changes only, with the other jobs' checkout
   (`persist-credentials: false`), `rustup show` and cache steps):
   - runs `bash scripts/setup-linux.sh` as the other Linux jobs do
-    (2513, if done; if not, the `apt-get` line they use), then installs
+    (from 2513), then installs
     `xvfb`, `libgl1-mesa-dri` and `mesa-utils` with `apt-get`; sets
     `LIBGL_ALWAYS_SOFTWARE=1`; prints `glxinfo -B` under `xvfb-run`, so
     the log names the renderer and Mesa's version;

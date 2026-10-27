@@ -5,12 +5,13 @@
 
 [blank] base
 d4b465b5e5a1bbb5 .cargo/config.toml
-77e6c483d7cfef2b .github/workflows/ci.yml
+99ec697aaea83620 .devcontainer/devcontainer.json
+3ff31f910a652891 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-43d8193034223812 AGENTS.md
+e7fbb64e3f13c800 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 38a9a3aa68f6c9ec Cargo.toml
-aa0fada1a2482ccb README.md
+c711d1bb70e03694 README.md
 b7bf83dcce2fb717 clippy.toml
 1c2cc3d4ec1d413c crates/game/Cargo.toml
 d9d0d34f89554d0a crates/game/examples/tools.rs
@@ -27,17 +28,19 @@ e48dd42a787497ae crates/game/src/title.rs
 10139ba4e01f1301 crates/game/tests/it/main.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
+41ed1249a956f9a5 scripts/setup-linux.sh
 9f15438b10079730 shuyi.ron
 
 [grid] base, stage-top-down-grid
 d4b465b5e5a1bbb5 .cargo/config.toml
-77e6c483d7cfef2b .github/workflows/ci.yml
+99ec697aaea83620 .devcontainer/devcontainer.json
+3ff31f910a652891 .github/workflows/ci.yml
 4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-43d8193034223812 AGENTS.md
+e7fbb64e3f13c800 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 ad920c3cef63d9b0 Cargo.toml
-aa0fada1a2482ccb README.md
+c711d1bb70e03694 README.md
 b7bf83dcce2fb717 clippy.toml
 c9188dd777846726 crates/game/Cargo.toml
 d9d0d34f89554d0a crates/game/examples/tools.rs
@@ -63,4 +66,5 @@ a9360fff8f48cb78 crates/rules/clippy.toml
 61400620a286df3d crates/rules/tests/layers.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
+41ed1249a956f9a5 scripts/setup-linux.sh
 55f23aaf1fd8567f shuyi.ron
