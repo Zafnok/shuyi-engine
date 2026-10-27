@@ -177,7 +177,7 @@ None.
   docs describe the line.
 - **Painters:** none change. `shuyi-app` (`crates/app/src/render.rs`),
   the `frame-png` `Painter` (`crates/cli/src/frame_png.rs`, or
-  `shuyi_ui::frame::raster` if 2332 is done) and the one-bit renderer
+  `shuyi_ui::frame::raster`) and the one-bit renderer
   (`crates/ui/src/frame/onebit.rs` and its `reference`) draw a run's
   sprites as they draw any sprite. The tests below show it for the two
   that run headless. **Either order with 2018:** if 2018 is done, a run
@@ -315,7 +315,7 @@ three tickets at it.
    `deny.toml`). Write the `frame-png` references as PNG snapshots of
    `insta::assert_binary_snapshot!`, as
    `examples/hello-grid/tests/it/snapshot.rs` does (in the raster's
-   tests instead if 2332 is done), and the one-bit test.
+   tests), and the one-bit test.
 9. Run the gates.
 
 ## Acceptance criteria

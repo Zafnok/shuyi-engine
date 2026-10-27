@@ -26,6 +26,11 @@ storage-conformance = []
 # equal (ticket 1055): for a bench build that times both on the device.
 # The tests have it anyway.
 onebit-reference = []
+# `frame::raster`, the software painter of a frame: the reference picture
+# every backend must match, and the comparison with it (ticket 2332). For
+# `shuyi-cli`'s `frame-png` and a game that paints a picture at run time.
+# The tests have it anyway.
+raster = []
 # `toy`: a toy game of a few screens over the sample game's actions, for
 # this crate's integration tests.
 toy = ["shuyi-assets/sample-actions"]

@@ -141,8 +141,7 @@ measurements where they matter, and a recommendation. The ADR decides.
    For each: what changes in `Cell`, `GlyphBuffer::print`, `text_width`,
    2301's continuation cell, the text form of snapshots, `shuyi-app`'s
    renderer, the one-bit renderer (`crates/ui/src/frame/onebit.rs`),
-   `frame-png`'s `Painter` (or `shuyi_ui::frame::raster` once 2332 is
-   done), 2350's atlas check, 2346's name rules, and the game's code at
+   `frame-png`'s `Painter` (now `shuyi_ui::frame::raster`, 2332), 2350's atlas check, 2346's name rules, and the game's code at
    its next pin. Prefer an option that adds to the API over one that
    breaks it.
 2. **Reordering** (UAX #9). Packs keep text in logical order. Decide

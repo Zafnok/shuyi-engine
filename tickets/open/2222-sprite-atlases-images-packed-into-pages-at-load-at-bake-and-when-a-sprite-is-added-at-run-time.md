@@ -71,8 +71,7 @@ None.
   rgba)`, which uploads pixels as a texture with the nearest filter:
   upload a page with it. If not, write it there and upload pages with
   it, and 2234 uploads its pictures with it.
-- **In the raster** (`shuyi_ui::frame::raster` if 2332 is done; else
-  `frame-png`'s `Painter`, and 2332 moves it): atlas pages and inserted
+- **In the raster** (`shuyi_ui::frame::raster`): atlas pages and inserted
   sprites are drawn as the window draws them, so `frame-png` keeps
   showing what players see. Either order with 2018: if 2018 is done,
   add an atlas sprite and an inserted one to its render card; if not,
@@ -92,8 +91,7 @@ None.
 
 1. Write the packer and its tests.
 2. Add `insert`, the spec format and the bake support.
-3. Draw from atlases in `shuyi-app` and in the raster (or `frame-png`'s
-   `Painter` if 2332 isn't done).
+3. Draw from atlases in `shuyi-app` and in the raster.
 4. Run the gates.
 
 ## Acceptance criteria

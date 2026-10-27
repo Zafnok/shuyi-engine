@@ -164,9 +164,7 @@ None.
     equal): drawn at a `Place` moved from `Place::ORIGIN` by whole
     pixels, the edge left bare in the white ground. `render_changed`
     redraws the whole screen when the shake changed;
-  - **Either order with 2332:** if `shuyi_ui::frame::raster` exists, the
-    move goes there too; if not, 2332 moves it with the rest of
-    `frame_png.rs`.
+  - The move goes in `shuyi_ui::frame::raster` (2332) too.
 - **Flash, on 2339's veil:** while a flash shows, `Game` sets the veil
   to its colour at `Flash::alpha`, in place of any veil 2339's `compose`
   set. A newer flash replaces the one showing.

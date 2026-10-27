@@ -173,9 +173,7 @@ None.
   animated tile, flipped, at its place times the zoom, by nearest
   sampling, with the item's opacity and brightness, as `blit` draws a
   sprite.
-  - **Either order with 2332:** if 2332 is done, in
-    `shuyi_ui::frame::raster`; if not, in `Painter` in
-    `crates/cli/src/frame_png.rs`, and 2332 moves it with the rest.
+  - This goes in `shuyi_ui::frame::raster` (2332).
   - **The y flip is 2335's** (it comes before 1120 and is in
     `blocked_by`): `blit` already flips top to bottom, so only the
     diagonal flip is new.
@@ -190,13 +188,11 @@ None.
   compare a captured frame by hand, as 1120 does, note it in the PR,
   and 2018 puts a tile-layer item on its card (its clause says so).
 - **A test scene**, built in code in the raster's tests
-  (`crates/cli/src/frame_png/tests.rs`, or beside the raster if 2332 is
-  done), so it is no asset and needs no credit: a `TileMap` value of
+  (beside the raster), so it is no asset and needs no credit: a `TileMap` value of
   256 by 256 cells of 16 by 16 pixels with two sheets, every flip
   combination, an animated tile, a layer at half opacity, a layer with
   an offset and a layer at parallax ½. The sheets are made in code from
-  the test card (`crates/cli/src/test_card.rs`, or `raster::test_card`
-  if 2332 is done): 16 by 16, with four coloured quadrants, so each of
+  the test card (`raster::test_card`): 16 by 16, with four coloured quadrants, so each of
   the eight flip combinations gives a different picture.
 - **The debug view, either order with 2318:** if 2318 is done, its
   `layout` channel (`shuyi_ui::debug::layout`) outlines each tile-layer
@@ -248,8 +244,7 @@ None.
    1124's `TileMap` (its flips, layer properties, tilesets and
    orientation; if they are missing, see Out); 2231's `AnimationClip`
    and `frame_at`; and `Painter` and `blit` (in
-   `shuyi_ui::frame::raster` if 2332 is done, otherwise in
-   `crates/cli/src/frame_png.rs`).
+   `shuyi_ui::frame::raster`).
 2. Write `frame/tiles.rs` and `pub mod tiles;` in
    `crates/ui/src/frame.rs`: the types, `MapTiles::from_map` and `all`,
    `world_layers` and `visible_tiles`, with unit and property tests.

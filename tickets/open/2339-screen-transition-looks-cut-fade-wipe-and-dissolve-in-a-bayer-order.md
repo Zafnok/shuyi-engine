@@ -172,9 +172,8 @@ None. Which look the game uses stays Nick's choice in game#0813.
     veil's colour (`ink_of`), so a fade dithers in the order sprites
     already fade in. `render_changed` redraws the whole screen when the
     veil changed.
-  - **Either order with 2332:** if `shuyi_ui::frame::raster` exists, the
-    veil goes there, as the reference the backends match; if not, here,
-    and 2332 moves it.
+  - The veil goes in `shuyi_ui::frame::raster` (2332), as the reference
+    the backends match.
 - **Asking for a look:** `Ctx::transition_look(&mut self, look)`, which
   keeps it in a new private field of `Ctx` until `Game` takes it. A
   screen asks in the update in which it returns its `Transition`, as it

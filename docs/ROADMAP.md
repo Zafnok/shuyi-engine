@@ -167,7 +167,6 @@ volume), and 2226 and 2349 (game#0825, the language option).
 
 | Ticket | What |
 | ------ | ---- |
-| 2332 | The raster: `frame-png`'s painter in `shuyi-ui`, the picture every backend must match |
 | 2018 | The real window checked in CI under Xvfb, against the raster |
 | 2019 | The web build checked in CI in headless Chromium, against the raster |
 | 2514 | Frames over time from `frame-png`: a sheet, an APNG or a GIF, and the same from MCP |
@@ -292,7 +291,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 The order, after the MVP, beside the Bevy tickets above (2220
 stays first):
 
-1. What lets the rest be checked: 2332, 2514, 2116, 2020, 2524, 2111
+1. What lets the rest be checked: 2514, 2116, 2020, 2524, 2111
    and 2518 (which waits for 2111).
 2. What keeps players' data safe, before the game ships on Steam
    (game#0903): 3045, 3042, 3043, 3041, 3046 and 2110.

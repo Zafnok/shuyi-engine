@@ -40,7 +40,6 @@ pub mod private_assets;
 pub mod project;
 pub mod skills;
 pub mod template;
-pub mod test_card;
 #[cfg(feature = "toy")]
 pub mod toy;
 pub mod web;
@@ -58,6 +57,9 @@ pub use game::{
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
+/// The test card, a generated test image for sprite items (it lives with
+/// the raster in `shuyi-ui`).
+pub use shuyi_ui::frame::raster::test_card;
 
 /// The commands of `shuyi` that aren't operations of the contract
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
