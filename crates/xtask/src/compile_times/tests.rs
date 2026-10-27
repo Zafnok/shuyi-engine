@@ -75,8 +75,9 @@ fn a_slow_rebuild_fails() {
     let verdict = check(&times(&[1.0, 4.0, 3.5], 120), &budget(3.0, 120), "b.ron");
     assert_eq!(verdict.errors.len(), 1, "{verdict:?}");
     assert!(
-        verdict.errors[0]
-            .starts_with("the median rebuild took 3.50 s on linux, over the 3.00 s of b.ron"),
+        verdict.errors[0].starts_with(
+            "the median rebuild took 3.50 seconds on linux, over the 3.00 seconds of b.ron"
+        ),
         "{verdict:?}"
     );
     // A budget of 0 s fails every run.

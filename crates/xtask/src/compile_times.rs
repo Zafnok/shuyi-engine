@@ -198,7 +198,7 @@ pub fn check(times: &Times, budget: &Budget, file: &str) -> Verdict {
     let mut verdict = Verdict::default();
     match budget.rebuild.get(&times.os) {
         Some(&most) if times.rebuild() > most => verdict.errors.push(format!(
-            "the median rebuild took {:.2} s on {}, over the {most:.2} s of {file}: \
+            "the median rebuild took {:.2} seconds on {}, over the {most:.2} seconds of {file}: \
              find what made it slower (`cargo build --timings`) before raising it",
             times.rebuild(),
             times.os
