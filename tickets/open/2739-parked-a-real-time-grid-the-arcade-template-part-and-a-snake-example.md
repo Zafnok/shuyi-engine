@@ -202,10 +202,9 @@ None. When it unparks is his call (above).
     (Terminus, OFL-1.1, with its license file), and the copy added to
     `THIRD_PARTY_ASSETS.md` (to the row that lists the templates'
     copies, or a row of its own).
-    **Either order with 3039:** if 3039 is done, `shuyi.ron` has the
-    `notices` part naming `files/font/Terminus-LICENSE.txt`, as
-    hello-grid's has, and Pages links the example's `NOTICES.txt`; if
-    not, 3039 adds both.
+    **From 3039 (done):** `shuyi.ron` has the `notices` part naming
+    `files/font/Terminus-LICENSE.txt`, as hello-grid's has, and Pages
+    links the example's `NOTICES.txt`.
   - **a README** in hello-grid's form: how to run it, its targets, and
     the lines of its own code without tests and data (`cargo xtask
     template-lines` if 2512 is done; counted and said how if not).
@@ -353,7 +352,7 @@ None. When it unparks is his call (above).
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order
    tickets are done: 2004, 2019, 2114, 2225, 2502, 2512, 2514,
-   2524, 2801, 3004, 3010, 3039 and 3042.
+   2524, 2801, 3004, 3010 and 3042.
 2. Write the ADR, ADR-0013's `Status:` line and both index rows.
 3. Write `contract::replay::ticks` and its tests, and the
    `docs/contract.md` row.

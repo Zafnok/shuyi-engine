@@ -23,4 +23,9 @@
         not_text: ["crates/game/files/keymap.ron"],
         hint: "react to an action (the keymap names the keys), or name a key through the player's keymap",
     ),
+
+    // The game's own license texts (its font's): each goes whole into the
+    // `NOTICES.txt` of every package the engine's tools make, beside the
+    // notices of the crates and files they put in.
+    notices: (texts: ["crates/game/files/font/Terminus-LICENSE.txt"]),
 )

@@ -50,4 +50,8 @@
         title: "Hello, Grid",
         dist: "dist/web",
     ),
+
+    // The game's own license texts: each goes whole into the
+    // `NOTICES.txt` that `cargo shuyi web` writes beside the page.
+    notices: (texts: ["files/font/Terminus-LICENSE.txt"]),
 )

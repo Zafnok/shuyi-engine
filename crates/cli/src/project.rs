@@ -1,7 +1,8 @@
 //! The project file, `shuyi.ron`, at a game's root: which paths each check
 //! scans, the game's tool program (for the commands that run the game),
-//! the font atlas's rules, the web build's package and the private
-//! repository's settings, and the targets the game ships on. A command
+//! the font atlas's rules, the web build's package, the game's own license
+//! texts and the private repository's settings, and the targets the game
+//! ships on. A command
 //! whose part is missing says so.
 //!
 //! Every path is relative to the project's root (the folder holding
@@ -94,6 +95,8 @@ pub struct Config {
     pub font_atlas: Option<FontAtlas>,
     /// `web`.
     pub web: Option<Web>,
+    /// The game's own license texts, which its packages carry.
+    pub notices: Option<Notices>,
     /// `glyph-tiles`.
     pub glyph_tiles: Option<GlyphTiles>,
     /// `private-assets`.
@@ -314,6 +317,17 @@ pub struct Web {
     pub dist: String,
 }
 
+/// The game's own license texts (its fonts', say): each file goes whole
+/// into the `NOTICES.txt` of every package `shuyi` makes
+/// ([`crate::notices`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct Notices {
+    /// The files, from the project's root.
+    pub texts: Vec<String>,
+}
+
 /// The private repository of files the game may not hand out (bought art):
 /// checked out into a git-ignored folder at a pinned commit.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
@@ -392,6 +406,21 @@ mod tests {
         assert_eq!(config.font_atlas.unwrap().required_glyphs, "?ab");
         assert!(Config::parse("(colour: 1)").is_err());
         assert!(Config::parse("(web: (name: \"x\"))").is_err());
+    }
+
+    #[test]
+    fn the_notices_part_lists_the_games_texts() {
+        let config =
+            Config::parse(r#"(notices: (texts: ["files/font/Terminus-LICENSE.txt"]))"#).unwrap();
+        assert_eq!(
+            config.notices.unwrap().texts,
+            ["files/font/Terminus-LICENSE.txt"]
+        );
+        assert_eq!(
+            Config::parse("(notices: ())").unwrap().notices,
+            Some(Notices::default())
+        );
+        assert!(Config::parse(r#"(notices: (files: ["a"]))"#).is_err());
     }
 
     #[test]

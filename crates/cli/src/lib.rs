@@ -7,7 +7,8 @@
 //! thin wrapper here; the engine's modules as `modules` and `add` read them
 //! ([`catalog`]); templates made of parts, which `new` composes
 //! ([`template`]); the engine's skill pack, which `new` copies into a game
-//! and `check-skills` checks ([`skills`]); and the pool of threads the slow
+//! and `check-skills` checks ([`skills`]); the notices a package carries
+//! ([`notices`]); and the pool of threads the slow
 //! ones play on ([`pool`]).
 //!
 //! They run on a project: the folder holding a `shuyi.ron`
@@ -33,6 +34,7 @@ pub mod game;
 pub mod glyph_tiles;
 pub mod lang_status;
 pub mod mcp;
+pub mod notices;
 pub mod pool;
 pub mod private_assets;
 pub mod project;
@@ -563,7 +565,12 @@ fn web(project: &Project, args: &[String]) -> Outcome {
             return Ok(2);
         }
     };
-    Ok(match web::run(rules, &project.root, &options) {
+    let game = match &project.config.notices {
+        Some(notices) => notices::game_texts(&project.root, notices),
+        None => Ok(Vec::new()),
+    };
+    let result = game.and_then(|game| web::run(rules, &project.root, &options, &game));
+    Ok(match result {
         Ok(summary) => {
             println!("{summary}");
             0

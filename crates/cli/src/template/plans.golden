@@ -29,7 +29,7 @@ e48dd42a787497ae crates/game/src/title.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-9f15438b10079730 shuyi.ron
+803d754198daed33 shuyi.ron
 
 [grid] base, stage-top-down-grid
 d4b465b5e5a1bbb5 .cargo/config.toml
@@ -67,4 +67,4 @@ a9360fff8f48cb78 crates/rules/clippy.toml
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-55f23aaf1fd8567f shuyi.ron
+78f2aa5298afa4fc shuyi.ron

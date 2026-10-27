@@ -146,10 +146,10 @@ None.
     holds as written, and the later of the two sets `SHELL`'s length.
     If not, nothing to do: 3052 keeps `net.js` where this ticket put
     it (its clause says so).
-  - **Either order with 3039** (the notices): if it is done, `net.js`
-    goes in its table of the shell's files as the engine's own, beside
-    `gamepad.js` (its test fails until it does). If not, 3039 lists it
-    (its clause says so).
+  - **From 3039 (done)** (the notices): `net.js` goes in
+    `SHELL_NOTICES` (`crates/cli/src/web.rs`), the table of the shell's
+    files, as the engine's own, beside `gamepad.js` (its test fails
+    until it does).
   - **`crates/app/src/web_socket.rs`** (wasm32 only): the `extern "C"`
     declarations, the second file with `#[allow(unsafe_code)]` after
     `pads/web.rs`. The functions that take a pointer are `unsafe fn`,

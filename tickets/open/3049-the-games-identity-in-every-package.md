@@ -196,13 +196,15 @@ None.
     shipped);
   - the web folder has both icons, and `index.html` links them.
 - **Either order:**
-  - **3052** (the web shell) and **3039** (its `rel="license"` link)
-    change the same `index.html`: whichever lands second keeps the
-    others' parts.
-  - **3039**'s `NOTICES.txt` heading takes the game's title from
-    `web.title`. 3039 is done first (3004 waits for it), so this ticket
-    makes the heading take the same title the page does (the
-    `web.title`, else `app.name`).
+  - **3052** (the web shell) changes the same `index.html`: whichever
+    lands second keeps the others' parts.
+  - **Either order with 3066:** if 3066 is done, keep its
+    `<link rel="license" href="NOTICES.txt">` in the `<head>`, after
+    the icons' links; if not, nothing to do (3066 adds it after them).
+  - **From 3039 (done):** `NOTICES.txt`'s heading takes the game's
+    title from `web.title` (`notices::write`'s `title`, from
+    `web::package`). This ticket makes the heading take the same title
+    the page does (the `web.title`, else `app.name`).
   - **3050** (releases from a tag): if it is done, its release packages
     come from these exporters, so they carry the identity with no change
     there. If not, nothing.

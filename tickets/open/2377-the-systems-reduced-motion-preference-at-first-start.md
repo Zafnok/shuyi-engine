@@ -176,10 +176,10 @@ None.
   `languages.js`, and the comment on `unsafe_code` names its files and
   this ticket's. If not, follow `gamepad.js` and `pads/web.rs`, and
   2349 adds `languages.js` beside `motion.js` (its clause says so).
-- **Either order with 3039** (the web build's notices): if it is done,
-  `motion.js` gets a row in its table of `SHELL`'s files, as the
-  engine's own beside `gamepad.js` (its test fails until it does); if
-  not, 3039 lists it (its clause says so).
+- **From 3039 (done)** (the web build's notices): `motion.js` gets a
+  row in `SHELL_NOTICES` (`crates/cli/src/web.rs`), the table of
+  `SHELL`'s files, as the engine's own beside `gamepad.js` (its test
+  fails until it does).
 - **Either order with 3052** (the web shell's progress and errors): if
   it is done, `SHELL` holds its `shell.js` and the page ends with
   `if (shuyiShell.start(…)) load("%WASM%");`, and `motion.js` loads
@@ -226,7 +226,7 @@ None.
    in `crates/ui/src/ctx.rs`, `OptionRow::restore_defaults`, and
    `crates/app/src/pads.rs`, `pads/web.rs` and
    `crates/cli/web/gamepad.js` with their tests in
-   `crates/cli/src/web.rs`. Check whether 2349, 3039 and 3052 are done,
+   `crates/cli/src/web.rs`. Check whether 2349 and 3052 are done,
    for their clauses.
 2. Add `PlatformFacts::reduced_motion`, `Ctx::default_motion` and
    `Ctx::default_settings`. Use them in `load_settings` and in Restore

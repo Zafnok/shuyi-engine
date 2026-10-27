@@ -74,8 +74,8 @@ What is planned:
   level, and a panic hook that logs the message.
 - 3004 (After MVP): `shuyi export web` packages the folder and runs
   nothing.
-- 3039 (MVP): `web::run` and `package` also write `NOTICES.txt` into
-  `web.dist`, and `package` takes the crates for it as an argument.
+- 3039 (done): `web::run` and `package` also write `NOTICES.txt` into
+  `web.dist`, and `package` takes every work for it as an argument.
 
 Why it matters:
 

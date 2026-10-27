@@ -30,6 +30,29 @@ itself, so a game needs no copy of its own.
 - `gamepad.js`: controllers, a miniquad JS plugin over the browser's
   Gamepad API. The engine's own code, not vendored. See below.
 
+## Notices
+
+Every build writes `NOTICES.txt` beside the page (`shuyi-cli`'s
+`notices` module). It lists:
+
+- the crates compiled in: the game's package's normal dependencies for
+  `wasm32-unknown-unknown`, all the way down (`cargo metadata`), with the
+  license files at the top of each crate's folder. The engine's crates
+  get the engine's `LICENSE-MIT` and `LICENSE-APACHE`. Another crate
+  with no file gets the standard text of each license it declares that
+  the tool can write (Apache-2.0, and MIT with its authors), and one
+  left with none is listed anyway, with a warning;
+- this folder's files, from `SHELL_NOTICES` in `web.rs`: each vendored
+  script with its work, version, source and license text (the
+  `*-LICENSE-MIT.txt` files here), and the engine's own files under the
+  engine's licenses. A file added to `SHELL` without its row there, or a
+  vendored one without its row in `THIRD_PARTY_ASSETS.md`, fails a test;
+- the game's own license texts, each file whole, as `shuyi.ron`'s
+  `notices` part names them (`notices: (texts: [...])`).
+
+Then every text once, headed by the works it covers. The same inputs
+give the same bytes.
+
 ## The link argument a game's binary needs
 
 These plugins' `extern "C"` functions are written in JS and loaded into the
@@ -130,6 +153,6 @@ shuyi web [--release] [--<feature>...]
 Builds the game's binary for `wasm32-unknown-unknown` (each `--<feature>`
 turns on a feature `web.features` lists) and packages it with the shell. With
 `--release` and `wasm-opt` on `PATH`, runs `wasm-opt -Oz` on the binary;
-otherwise skips that step silently. Prints the output folder and the wasm
-binary's size. Serve that folder over HTTP (any static file server; the
+otherwise skips that step silently. Writes `NOTICES.txt` beside the page.
+Prints the output folder and the wasm binary's size. Serve that folder over HTTP (any static file server; the
 WASM binary must not be opened as a `file://` URL).

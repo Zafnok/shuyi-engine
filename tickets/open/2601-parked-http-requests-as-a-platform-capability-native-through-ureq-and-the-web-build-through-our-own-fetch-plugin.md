@@ -391,16 +391,16 @@ the same note and milestone, and `blocked_by` this ticket and follow-up
   the queue and the limit that 2522's `net.js` bullet describes, and
   nothing is asked of 2522. 2522 writes `net.js` (64 MiB of queued
   messages at most); 1142 only adds binary messages to it.
-- **Either order with 3039:** if it is done, `http.js` joins its table
-  of the web shell's scripts as the engine's own, as `gamepad.js` is;
-  if not, 3039 lists it with the rest.
+- **From 3039 (done):** `http.js` joins `SHELL_NOTICES`
+  (`crates/cli/src/web.rs`), the table of the web shell's files, as the
+  engine's own, as `gamepad.js` is (its test fails until it does).
 - **Out:** moving the web backend to a crate if 3034 (parked) moves the
   web build to `wasm-bindgen` (3034's tickets decide); automating the
   browser check (a follow-up for 2019's checker, written in that PR if
   2019 is done; if not, 2019's PR writes it, as its clause says).
 
 Its steps: read `pads/web.rs`, `gamepad.js`, `crates/cli/src/web.rs`
-and its tests, and check whether 2522, 3039 and 3043 are done; write
+and its tests, and check whether 2522 and 3043 are done; write
 `http.js` and `http/web.rs`; wire `SHELL` and `index.html`; write the
 `shuyi-cli` tests and the README section; run the browser check and the
 gates, the web build included.
@@ -429,7 +429,7 @@ Its acceptance criteria:
    this ticket, replace each section with one line naming its ticket.
    Write the Playdate's follow-up (**Out**) the same way, its scope
    from the SDK's networking docs then. Other open tickets that name
-   this ticket for a follow-up's piece (3010, 3034, 3039, 3043) then
+   this ticket for a follow-up's piece (3010, 3034, 3043) then
    name that follow-up's id instead.
 3. Write the ADR and its row in `docs/adr/README.md`.
 4. `shuyi_ui::http` and its unit and property tests; `Ctx::http`.

@@ -218,9 +218,9 @@ Visions of Shuyi.
 - **Either order with 2110:** if it is done, the `()` settings' form
   raises its `VERSION` for the new field and adds a fixture, as its
   guard asks; if not, the field is in 2110's version 1.
-- **Either order with 3039:** if it is done, `lifecycle.js` goes in its
-  table of the shell's files as the engine's own, beside `gamepad.js`
-  (its test fails until it does); if not, 3039 lists it.
+- **From 3039 (done):** `lifecycle.js` goes in `SHELL_NOTICES`
+  (`crates/cli/src/web.rs`), the table of the shell's files, as the
+  engine's own, beside `gamepad.js` (its test fails until it does).
 - **Either order with 3052:** both change `index.html` and `SHELL`.
   Whichever lands second keeps the other's part; `load("%WASM%")` stays
   in the page, so both tickets' tests hold.
@@ -279,7 +279,7 @@ Visions of Shuyi.
    2511's `impl GameSettings for ()`, `gamepad.js`, `pads/web.rs`,
    `crates/cli/src/web.rs` and its tests, `index.html`, the web README,
    and `crates/app/src/lib.rs`'s `run`. Check whether 2019, 2110, 2351,
-   2519, 3033, 3039 and 3052 are done.
+   2519, 3033 and 3052 are done.
 2. Write `lifecycle.js`, `lifecycle.rs` and `lifecycle/web.rs`, wire
    `system_events`, and make `run` drain the queue before the web skip.
 3. The `shuyi-cli` changes and tests; `index.html`; the README.

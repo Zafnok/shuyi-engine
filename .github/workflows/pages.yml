@@ -1,7 +1,8 @@
 name: Pages
 
 # The examples, built for the web and published: Hello, Grid at
-# /hello-grid/, with a page at the root that links to each.
+# /hello-grid/, with a page at the root that links to each and to the
+# NOTICES.txt its build carries.
 
 on:
   push:
@@ -47,7 +48,7 @@ jobs:
           <body>
           <h1>Shuyi Engine examples</h1>
           <ul>
-          <li><a href="hello-grid/">Hello, Grid</a>: a small grid game made from the engine's crates alone</li>
+          <li><a href="hello-grid/">Hello, Grid</a>: a small grid game made from the engine's crates alone (<a href="hello-grid/NOTICES.txt">notices</a>)</li>
           </ul>
           <p><a href="https://github.com/Zafnok/shuyi-engine">The engine's repository</a></p>
           </body>

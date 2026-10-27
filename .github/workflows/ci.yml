@@ -113,6 +113,14 @@ jobs:
       - name: Build Hello, Grid for the web
         working-directory: examples/hello-grid
         run: cargo shuyi web --release
+      # The notices the build owes (ticket 3039): a crate, the font and a
+      # vendored script of the shell.
+      - name: The web build carries its notices
+        working-directory: examples/hello-grid/dist/web
+        run: |
+          for needle in "- macroquad " "Terminus" "- mq_js_bundle.js, from macroquad"; do
+            grep -qF -- "$needle" NOTICES.txt || { echo "NOTICES.txt lacks: $needle"; exit 1; }
+          done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: hello-grid-web

@@ -95,6 +95,20 @@ Ship only what `check --target` passes.
    smaller too. Serve the folder over HTTP to play it: a page opened as
    a file doesn't load the binary.
 
+   Beside the page it writes `NOTICES.txt`, which the build owes the
+   works in it: the crates compiled in, the page's scripts and the
+   game's own license texts, then each license text once. Publish it
+   with the page. The game names its own texts (its font's, any bought
+   art's) in `shuyi.ron`, each file put in whole; a missing one fails
+   the build:
+
+   ```ron
+   notices: (texts: ["crates/game/files/font/Terminus-LICENSE.txt"]),
+   ```
+
+   A crate whose license text can't be found is still listed, and the
+   build prints a warning naming it.
+
 4. **Another target.** Add it to `shuyi.ron`'s `targets`, with its frame
    in pixels, its scale (`integer` or `fit`) and the height of its
    smallest text. A target with no keyboard (the Steam Deck, the

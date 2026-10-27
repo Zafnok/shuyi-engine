@@ -45,7 +45,7 @@ The engine does everything the game needs today, from this repository,
 and agents can drive it. On 2026-10-20 Nick added protections for the
 code to the MVP, before the first release (the second comparison, in
 phase 3 below): 2010–2013, 2015–2017, 2509, 2511, 2513, 2808, 3039
-and 3040. On 2026-10-26 he dropped 2014 (the game built against each
+(with 3066, split from it) and 3040. On 2026-10-26 he dropped 2014 (the game built against each
 engine PR): the game's pin moves find its breaks
 ([`decisions.md`](decisions.md)).
 On 2026-10-21 he asked for the docs to start early, so that our own
@@ -97,6 +97,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2555 | Perf over the live link: a running build's frames read from a number, and `shuyi attach --perf-follow` streaming them to a file |
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
+| 3066 | The web build's vendored scripts point at their notices: a header line in `dist`, and a `rel="license"` link on the page |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
 | 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
