@@ -58,9 +58,10 @@ None.
 - **An example, `examples/ecs-garden/`:** a turn game on a grid where
   each turn plants grow, spread and are eaten, with a few hundred
   entities and five systems. It has a harness test, a replay test,
-  and the web build. **Either order with 2801:** if 2801 is done,
-  `pages.yml` builds it for the web and it gets its card on the
-  website's Examples page; if not, nothing to do (2801 adds its card).
+  and the web build. **From 2801 (done):** `pages.yml`
+  builds every example whose `shuyi.ron` has a `web` section, and fails
+  one with no card: add `site/content/examples/ecs-garden.md` (its
+  title and two lines as its `description`), as `hello-grid.md` is.
 - **Either order with 2802:** if 2802 is done, add the book's chapter
   "An optional ECS" after its chapter 11 (`shuyi-ecs`, `EcsRules`, the
   parallel schedule and `ecs-garden`), its code from `site/snippets/`,

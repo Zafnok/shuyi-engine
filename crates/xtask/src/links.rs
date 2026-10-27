@@ -73,8 +73,9 @@ pub(crate) fn markdown_files(
 }
 
 /// The relative links and images of a Markdown text, with the line each one
-/// starts on. Links in code are not links; web links, `mailto:` and links to
-/// an anchor in the same file are left out.
+/// starts on. Links in code are not links; web links, `mailto:`, links to
+/// an anchor in the same file and the website's links to its own pages
+/// (`@/…`, which `zola check` reads, ADR-0048) are left out.
 pub(crate) fn relative_links(text: &str) -> Vec<(usize, String)> {
     let mut links = Vec::new();
     for (event, range) in Parser::new(text).into_offset_iter() {
@@ -94,6 +95,7 @@ pub(crate) fn relative_links(text: &str) -> Vec<(usize, String)> {
 fn is_relative(dest: &str) -> bool {
     !(dest.is_empty()
         || dest.starts_with('#')
+        || dest.starts_with("@/")
         || dest.contains("://")
         || dest.starts_with("mailto:"))
 }
@@ -198,6 +200,13 @@ mod tests {
             "{:?}",
             relative_links(text)
         );
+    }
+
+    #[test]
+    fn leaves_zolas_internal_links_to_zola() {
+        let text =
+            "[News](@/news/_index.md) and [a post](@/news/post.md#top), but [this](at/x.md).\n";
+        assert_eq!(relative_links(text), vec![(1, "at/x.md".to_string())]);
     }
 
     #[test]

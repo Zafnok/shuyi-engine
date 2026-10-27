@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% import "macros.html" as macros %}
+
+{% block content %}
+<section class="hero">
+  <h1>Shuyi Engine</h1>
+  {{ section.content | safe }}
+  <p class="actions">
+    <a class="button" href="{{ get_url(path='@/learn.md') }}">Get started</a>
+    <a class="button secondary" href="{{ get_url(path='@/examples/_index.md') }}">Play the examples</a>
+  </p>
+</section>
+
+<section class="features" aria-labelledby="features-title">
+  <h2 id="features-title">Features</h2>
+  <p class="status-key">
+    <span class="status status-ready">Ready</span> works today ·
+    <span class="status status-in-progress">In progress</span> partly there ·
+    <span class="status status-planned">Planned</span> has a ticket
+  </p>
+  {%- set features = load_data(path="data/features.toml") %}
+  <ul class="cards">
+    {%- for feature in features.feature %}
+    <li class="card">
+      <h3>{{ feature.title }}</h3>
+      <p>{{ feature.text }}</p>
+      <p class="card-foot">
+        <span class="status status-{{ feature.status | lower | replace(from=' ', to='-') }}">{{ feature.status }}</span>
+        <a href="{% if feature.link is starting_with('@/') %}{{ get_url(path=feature.link) }}{% else %}{{ config.extra.repo | safe }}/blob/main/{{ feature.link | safe }}{% endif %}">{{ feature.link_text }}</a>
+      </p>
+    </li>
+    {%- endfor %}
+  </ul>
+</section>
+
+<section class="strip" aria-labelledby="news-title">
+  <h2 id="news-title">News</h2>
+  {%- set news = get_section(path="news/_index.md") %}
+  {%- if news.pages %}
+  {{ macros::post_list(pages=news.pages | slice(end=2)) }}
+  {%- else %}
+  <p>No posts yet.</p>
+  {%- endif %}
+  <p><a href="{{ news.permalink | safe }}">All news</a></p>
+</section>
+
+<section class="strip sponsor-strip" aria-labelledby="sponsor-title">
+  <h2 id="sponsor-title">Sponsor</h2>
+  <p>Shuyi Engine is free and open source. Ways to support its work are coming.</p>
+  <p><a href="{{ get_url(path='@/sponsor.md') }}">Sponsor the engine</a></p>
+</section>
+{% endblock content %}

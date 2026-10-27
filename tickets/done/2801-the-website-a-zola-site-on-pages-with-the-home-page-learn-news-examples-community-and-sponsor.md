@@ -5,10 +5,10 @@ type: infra
 milestone: "Engine: public"
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: sign-off
-completed:
+completed: 2026-10-26
 ---
 
 # 2801 — The website
@@ -187,21 +187,21 @@ and says whether the home page says what the engine is.
 
 - [ ] The live site has Home, Learn, News, Examples, Community and
       Sponsor, and its links work (`zola check` passes in CI).
-- [ ] Hello, Grid plays at `/examples/hello-grid/`, and `/hello-grid/`
+- [x] Hello, Grid plays at `/examples/hello-grid/`, and `/hello-grid/`
       redirects there.
-- [ ] Changing `base_url` alone moves every link (checked by building
+- [x] Changing `base_url` alone moves every link (checked by building
       with two base URLs and grepping the output for the other one).
-- [ ] The home page's feature grid has a card for every row of the
+- [x] The home page's feature grid has a card for every row of the
       roadmap's *Bevy's homepage* table, with a status.
-- [ ] No page loads anything from another host: no fonts, scripts or
+- [x] No page loads anything from another host: no fonts, scripts or
       images (checked by grepping `public/` for `http` in `src` and
       `href` of `link` and `script`).
-- [ ] At 375 px wide, no page scrolls sideways.
-- [ ] Zola's pinned version and checksum are in the workflow, and its
+- [x] At 375 px wide, no page scrolls sideways.
+- [x] Zola's pinned version and checksum are in the workflow, and its
       license is recorded in the ADR.
-- [ ] `docs/README.md` has the site's two rows, and `cargo xtask
+- [x] `docs/README.md` has the site's two rows, and `cargo xtask
       check-docs` passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -212,4 +212,49 @@ and says whether the home page says what the engine is.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **Zola is pinned at 0.21.0, not the newest.** The ticket's license check
+  on the day failed: Zola moved from MIT to **EUPL-1.2** in commit
+  `3c9131db` (2026-01-09), and every release from 0.22.0 on is EUPL, which
+  ADR-0002 §8 denies by name (the same reason mdBook lost). 0.21.0
+  (2025-07-14) is the last MIT release, and the site needs nothing newer.
+  ADR-0048 records the license, the pin, and Hugo (Apache-2.0) as the
+  fallback if 0.21 ever stops being enough. So `site/README.md` says
+  `winget install -e --id getzola.zola --version 0.21.0`, not the bare
+  command the ticket gave.
+- **The pin lives in one place,** the composite action
+  `.github/actions/setup-zola/action.yml` (the version and the release's
+  SHA-256 of the Linux archive), used by `ci.yml`'s new `site` job and by
+  `pages.yml`. It installs to `/usr/local/bin`, because zizmor flags a
+  write to `GITHUB_PATH`.
+- **The base URL** comes from the Pages API (`html_url`, with `pages:
+  read` on the build job), so a custom domain (2807) changes only what
+  GitHub answers. `site/check-build.sh` builds with two base URLs and
+  fails if either output names the other's or `config.toml`'s; it also
+  fails on any `src`, `link href` or CSS `url()` on another host.
+  `pages.yml` runs that host check again on the real output, with the
+  examples copied in.
+- **An example is a page,** `site/content/examples/<name>.md` (its card,
+  and `aliases` for an old path). `pages.yml` loops over every
+  `examples/*/shuyi.ron` with a `web` section, as the example tickets
+  expect, copies `dist/web` whole over the page's stub, and fails an
+  example with no card or no `NOTICES.txt`.
+- **Either-order clauses:** 2108, 2735–2740, 2754 and 2764 aren't done,
+  so Hello, Grid is the only card; 1132 and 2016 aren't done, so
+  Community links the repository, its issues, `CONTRIBUTING.md` (it
+  already exists) and News; 2019 isn't done. Each of those tickets now
+  says what it adds to the site.
+- **Not checked here:** the live site. The first Pages run on `main`
+  publishes it, and Nick's sign-off reads it on a desktop and a phone.
+  Locally: `zola check`, the build checks, every page at 375 px with no
+  sideways scroll in light and dark, and Hello, Grid playing at
+  `/examples/hello-grid/` under a sub-path after the `/hello-grid/`
+  redirect.
+- **For Nick:** the News post "The website is up" is `draft = true`;
+  publish it by deleting that line, or delete the file. The home page's
+  two lines come from `README.md`.
+- **Docs:** `docs/README.md` has the rows for `site/content/` (with
+  `features.toml`) and `site/README.md`, a Pairs row for the Bevy table
+  and its cards, and no longer lists the site as coming. `README.md`'s
+  map has a `site/` row, and Hello, Grid's web address is updated.
+- No break: no crate's public API changes (only `xtask`'s link check
+  skips Zola's `@/` links, with a test).

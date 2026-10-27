@@ -305,8 +305,8 @@ Then tell the session "done". It checks the result, read-only, with
 - **`README.md`**, *Map of the repository*: rows for `GOVERNANCE.md`
   and `docs/continuity.md`.
 - **`docs/decisions.md`:** Nick's two answers.
-- **Either order with 2801:** if 2801 is done, add `GOVERNANCE.md` to
-  its Community page; if not, 2801 links it.
+- **From 2801 (done):** add `GOVERNANCE.md` to the website's Community
+  page (`site/content/community.md`).
 - **With 2011 (done):** `NOT_REQUIRED` holds `codeql.yml`'s
   `codeql-result`, with a comment naming ADR-0037 (CodeQL is not a
   required check; the zizmor job is under `ci-result`). 2005 runs

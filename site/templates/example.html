@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{#- What `zola serve` shows at an example's path. On the live site
+    pages.yml copies the example's web build over this folder. -#}
+{% block content %}
+<article class="prose">
+  <h1>{{ page.title }}</h1>
+  <p>{{ page.description }}</p>
+  <p>The game itself isn't built here. The Pages build puts it at this
+    address. To play it locally, build it for the web:</p>
+  <pre><code>cd examples/{{ page.slug }}
+cargo shuyi web --release</code></pre>
+  <p>and open <code>examples/{{ page.slug }}/dist/web/index.html</code> through a local web server.</p>
+  <p><a href="{{ get_url(path='@/examples/_index.md') }}">All examples</a></p>
+</article>
+{% endblock content %}

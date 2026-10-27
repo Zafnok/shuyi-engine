@@ -298,7 +298,8 @@ None.
     web-build step loops the same way;
   - if an earlier example made the loop, this one needs no workflow
     change;
-  - if 2801 is done, the example gets its card in the Examples section.
+  - the example gets its card in the Examples section,
+    `site/content/examples/<name>.md` (2801, done).
     If 2019 is done, its `web-render` job runs `check.py boot` on this
     build too (add it if the job lists the builds by hand).
 - **A README** in hello-grid's form, with the lines of its own code

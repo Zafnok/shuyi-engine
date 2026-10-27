@@ -1,0 +1,25 @@
+# The website (ADR-0048), built by Zola 0.21.0.
+#
+# `base_url` is for `zola serve` only: the build passes `--base-url`
+# (pages.yml reads it from the Pages site), so every link moves with it.
+base_url = "http://127.0.0.1:1111"
+title = "Shuyi Engine"
+description = "An open-source 2D game engine in Rust, built so that you and your coding agent can make, run, see, test and replay a game without a window and without guessing."
+default_language = "en"
+
+compile_sass = false
+build_search_index = false
+# Only News has a feed (its `_index.md`).
+generate_feeds = false
+feed_filenames = ["atom.xml"]
+
+[markdown]
+highlight_code = false
+external_links_no_referrer = true
+
+[link_checker]
+# `zola check --skip-external-links` in CI: no network.
+internal_level = "error"
+
+[extra]
+repo = "https://github.com/Zafnok/shuyi-engine"

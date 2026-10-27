@@ -16,3 +16,6 @@ Thumbs.db
 lcov.info
 *.profraw
 *.profdata
+
+# The website, as `zola build` writes it (site/README.md).
+/site/public/

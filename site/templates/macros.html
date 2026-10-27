@@ -1,0 +1,15 @@
+{% macro nav_item(label, path, prefix, current) %}
+<li><a href="{{ get_url(path=path) }}"{% if current is starting_with(prefix) %} aria-current="page"{% endif %}>{{ label }}</a></li>
+{%- endmacro nav_item %}
+
+{% macro post_list(pages) %}
+<ul class="post-list">
+  {%- for post in pages %}
+  <li>
+    <a href="{{ post.permalink | safe }}">{{ post.title }}</a>
+    {%- if post.date %} <time datetime="{{ post.date }}">{{ post.date | date(format="%-d %B %Y") }}</time>{% endif %}
+    {%- if post.description %}<p>{{ post.description }}</p>{% endif %}
+  </li>
+  {%- endfor %}
+</ul>
+{%- endmacro post_list %}

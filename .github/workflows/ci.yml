@@ -618,13 +618,32 @@ jobs:
       - name: Check spelling
         run: typos
 
+  # The website (ticket 2801, ADR-0048): Zola's check of its internal links
+  # and anchors (`@/…`; no network), and site/check-build.sh: two base URLs
+  # give outputs that never name each other's, and no page loads anything
+  # from another host. Cheap, and Markdown is what it reads, so this always
+  # runs, like `tickets`. pages.yml builds and publishes the site on main.
+  site:
+    name: site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-zola
+      - name: Check the site's links
+        working-directory: site
+        run: zola check --skip-external-links
+      - name: Check the site's builds
+        run: bash site/check-build.sh
+
   # Single required check for this workflow. Matrix jobs skipped by `if:`
   # report one check with an unexpanded name, never the per-leg names, so
   # branch protection requires this job instead (game ADR-0014).
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, no-std, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, no-std, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

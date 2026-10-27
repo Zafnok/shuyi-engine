@@ -256,9 +256,10 @@ None. When it unparks is his call (above).
     each `dist/web` copied to a folder named after the example, with a
     line on the index page from its `web.title`. The `run-gates` skill's
     web-build step loops the same way;
-  - if 2801 is done, the site serves examples at `/examples/<name>/`:
-    snake plays at `/examples/snake/` and gets its card in the Examples
-    section; if not, 2801 moves it there and gives it its card;
+  - `pages.yml` already loops (2801, done): snake plays at
+    `/examples/snake/`, gets its card (`site/content/examples/snake.md`)
+    in the Examples section, and `/snake/` redirects there (`aliases` in
+    the card's front matter);
   - if 2019 is done, its headless browser job opens it too. If 3004 is
     done, `shuyi export web` builds it. If 3010 is done, `shuyi export
     playdate` builds it, and the PR says whether it runs in the Playdate
@@ -381,8 +382,8 @@ None. When it unparks is his call (above).
 - [ ] `cargo shuyi check`, `check --target all` (`desktop`, `web`,
       `steam-deck` and `playdate`) and `check-keys` pass on the example,
       and its `frame-png` pictures are checked in.
-- [ ] Pages publishes the web build at `/snake/`, or at
-      `/examples/snake/` if 2801 is done.
+- [ ] Pages publishes the web build at `/examples/snake/`, and `/snake/`
+      redirects there.
 - [ ] `shuyi new` with the `arcade` short name makes a game whose gates
       pass in the `templates` job, and its test passes at 30 and 60
       frames a second.

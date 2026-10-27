@@ -1,8 +1,9 @@
 name: Pages
 
-# The examples, built for the web and published: Hello, Grid at
-# /hello-grid/, with a page at the root that links to each and to the
-# NOTICES.txt its build carries.
+# The website (ticket 2801, ADR-0048): Zola builds `site/` at the Pages
+# URL, and each example under `examples/`, built for the web, plays at
+# /examples/<name>/ with the NOTICES.txt its build carries. /hello-grid/
+# redirects to /examples/hello-grid/.
 
 on:
   push:
@@ -24,39 +25,61 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # To read the site's address (`html_url`) from the Pages API.
+      pages: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Build Hello, Grid for the web
-        working-directory: examples/hello-grid
-        run: cargo shuyi web --release
-      - name: Put the examples together
+      - uses: ./.github/actions/setup-zola
+      # The base URL is what GitHub serves the site at, so a custom domain
+      # (2807) changes it without a change here.
+      - name: Read the site's address
+        id: address
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p dist/pages
-          cp -r examples/hello-grid/dist/web dist/pages/hello-grid
-          cat > dist/pages/index.html <<'EOF'
-          <!doctype html>
-          <html lang="en">
-          <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Shuyi Engine examples</title>
-          </head>
-          <body>
-          <h1>Shuyi Engine examples</h1>
-          <ul>
-          <li><a href="hello-grid/">Hello, Grid</a>: a small grid game made from the engine's crates alone (<a href="hello-grid/NOTICES.txt">notices</a>)</li>
-          </ul>
-          <p><a href="https://github.com/Zafnok/shuyi-engine">The engine's repository</a></p>
-          </body>
-          </html>
-          EOF
+          url="$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .html_url)"
+          case "$url" in */) ;; *) url="$url/" ;; esac
+          echo "base_url=$url" >> "$GITHUB_OUTPUT"
+          echo "The site's address: $url"
+      - name: Build the site
+        working-directory: site
+        env:
+          BASE_URL: ${{ steps.address.outputs.base_url }}
+        run: zola build --base-url "$BASE_URL"
+      # Every example whose shuyi.ron has a `web` section, each copied whole
+      # (its NOTICES.txt with it) over the stub Zola wrote at its path. An
+      # example with no page in site/content/examples/ has no card, and
+      # fails the build.
+      - name: Build the examples for the web and put them in the site
+        run: |
+          for ron in examples/*/shuyi.ron; do
+            grep -qE '^[[:space:]]*web:[[:space:]]*\(' "$ron" || continue
+            dir="$(dirname "$ron")"
+            name="$(basename "$dir")"
+            [ -f "site/content/examples/$name.md" ] || {
+              echo "::error::examples/$name has no card: add site/content/examples/$name.md"
+              exit 1
+            }
+            (cd "$dir" && cargo shuyi web --release)
+            dest="site/public/examples/$name"
+            rm -rf "$dest"
+            mkdir -p "$dest"
+            cp -r "$dir/dist/web/." "$dest/"
+            [ -f "$dest/NOTICES.txt" ] || { echo "::error::examples/$name's web build has no NOTICES.txt"; exit 1; }
+          done
+      - name: The site loads nothing from another host
+        env:
+          BASE_URL: ${{ steps.address.outputs.base_url }}
+        run: bash site/check-build.sh hosts site/public "$BASE_URL"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: dist/pages
+          path: site/public
 
   deploy:
     name: deploy

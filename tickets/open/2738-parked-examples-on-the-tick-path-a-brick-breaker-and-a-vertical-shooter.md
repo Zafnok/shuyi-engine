@@ -213,8 +213,9 @@ None. When it unparks is his call (above).
     `dist/web` copied to a folder named after the example, with a line
     on the index page from its `web.title`. The `run-gates` skill's
     web-build step loops the same way;
-  - if 2801 is done, the example gets its card in the Examples section;
-    if not, 2801 gives it one and moves it under `/examples/`.
+  - `pages.yml` already loops (2801, done): each example gets its card,
+    `site/content/examples/<name>.md`, plays at `/examples/<name>/`, and
+    `/bricks/` redirects there (`aliases` in the card's front matter).
     If 2019 is done, its headless browser job opens it.
 - **The eval:** if 2524 is done, add `evals/tasks/bricks.ron`: template
   `blank`, targets `desktop` and `web`, reference

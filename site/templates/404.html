@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="prose">
+  <h1>Not found</h1>
+  <p>No page lives at this address.</p>
+  <p><a href="{{ get_url(path='@/_index.md') }}">The home page</a> · <a href="{{ get_url(path='@/examples/_index.md') }}">The examples</a></p>
+</article>
+{% endblock content %}
