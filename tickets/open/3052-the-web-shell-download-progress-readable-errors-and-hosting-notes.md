@@ -79,8 +79,8 @@ What Shuyi has today (checked 2026-10-20):
   compares the frame with its own flag. So when the player leaves
   fullscreen with the browser's own key, the setting still says on.
 - **Hosting.** `.github/workflows/pages.yml` publishes Hello, Grid's
-  `dist/web` as it is; 2801 (MVP) moves it to the website's Examples
-  page. No doc says how to put a build on itch.io or in a frame on
+  `dist/web` as it is, at `/examples/hello-grid/` on the website
+  (2801). No doc says how to put a build on itch.io or in a frame on
   another site. In a frame, the Gamepad API needs `allow="gamepad"`
   (`crates/cli/web/README.md`, *The engine's own `gamepad.js`*), and
   `requestFullscreen` needs `allow="fullscreen"`.

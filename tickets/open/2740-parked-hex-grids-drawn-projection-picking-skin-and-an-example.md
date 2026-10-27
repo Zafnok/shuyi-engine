@@ -234,8 +234,8 @@ None.
     two steps (`cargo shuyi check --target all` and `cargo shuyi web
     --release`, from its folder), the `run-gates` skill names it beside
     Hello, Grid, and Pages publishes it beside Hello, Grid with a link,
-    as Hello, Grid is linked (2801's Examples page if 2801 is done, the
-    index in `pages.yml` if not);
+    as Hello, Grid is linked: its card on the website's Examples page,
+    `site/content/examples/hello-hex.md` (2801, done);
   - nothing from an existing hex game, and nothing from Visions of
     Shuyi (`AGENTS.md` rule 4);
   - tests: a Harness playthrough to the goal through actions only

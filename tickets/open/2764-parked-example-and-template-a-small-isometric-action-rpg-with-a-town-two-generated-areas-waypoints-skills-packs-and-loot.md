@@ -65,10 +65,10 @@ comments become tickets.
 - **Tests**: a Harness run from town through area 1 to area 2's
   waypoint with a scripted input record; a replay determinism test;
   `frame-png` pictures of town, an area mid-fight, the inventory.
-- **The web build** and its place on the Pages index (the loop over
-  `examples/*/shuyi.ron`). **Either order with 2801:** if 2801 is
-  done, the example gets its card on the website's Examples page; if
-  not, nothing more (2801 gives every example in `examples/` a card).
+- **The web build** and its card on the website's Examples page,
+  `site/content/examples/action-rpg.md`: `pages.yml` builds every
+  example whose `shuyi.ron` has a `web` section and fails one with no
+  card (2801, done).
 - **The template part** `kind-action-rpg`, `when: Picked(kind,
   action-rpg)`: turns on `action` and `rpg`, adds one area with one
   pack, one skill, a little loot with a default `filter.ron` (2758's

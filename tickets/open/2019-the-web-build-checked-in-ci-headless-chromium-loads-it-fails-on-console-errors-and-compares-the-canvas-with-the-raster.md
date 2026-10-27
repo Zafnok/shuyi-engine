@@ -210,10 +210,12 @@ None.
   - with 2333 (scale modes): if it is done, the hello-grid capture plan
     adds the `Fit` capture 2018's clause describes, read from 2333's
     render target in WebGL; if not, 2333 adds it;
-  - with 2801 and 2803 (the website's examples and the tutorial's
-    steps): if one is done, the web builds it added to `pages.yml` get
-    the `check.py boot` run above; if not, it adds that run itself when
-    it lands (its clause says so);
+  - with 2801 (done): `pages.yml` builds every example whose
+    `shuyi.ron` has a `web` section, today Hello, Grid alone, and each
+    gets the `check.py boot` run above;
+  - with 2803 (the tutorial's steps): if it is done, the web builds it
+    added to `pages.yml` get the `check.py boot` run above; if not, it
+    adds that run itself when it lands (its clause says so);
   - with 2739 (parked: snake, a web example): if it is done, its build
     is one of those `pages.yml` publishes, and gets the `check.py boot`
     run above; if not, 2739 adds that run when it lands (its clause

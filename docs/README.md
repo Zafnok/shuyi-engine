@@ -23,6 +23,7 @@ repository has no row here.
 | An example game | [`examples/`](../examples/), each example's `README.md` | changes what an example does or how to run it |
 | How an agent makes a game on the engine, task by task | [`skills/`](../skills/), the skill pack: each skill's `SKILL.md`, its worked example `example.ron` (CI runs it on a new game), and the pack's [`README.md`](../skills/README.md); the plugin is `.claude-plugin/marketplace.json` ([ADR-0043](adr/0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md)) | changes what a skill teaches (an operation, a field, a problem code, a template, a format, a rule a game keeps), or adds a skill |
 | Every third-party file | [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md) | adds or removes a non-crate asset |
+| The website's pages: the home page's text, Learn, News, the Examples cards, Community and Sponsor | [`site/content/`](../site/content/), and the home page's feature cards in [`site/data/features.toml`](../site/data/features.toml) ([ADR-0048](adr/0048-the-website-zola-0-21-pinned-in-site-sections-of-our-own-templates-and-the-base-url-passed-by-the-build.md)) | adds or changes a section or a page of the site, adds an example, or changes what a feature's status is |
 
 ## Engine developers (Claude, and anyone working on the engine)
 
@@ -37,6 +38,7 @@ repository has no row here.
 | Which engine crate may depend on which, the outside crates of the pure ones, and where devices and floats may be | [`tools/layers.ron`](../tools/layers.ron), checked by `cargo xtask check-layers` ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md)) | adds an engine crate, an edge between engine crates, or an outside crate of a pure crate |
 | The Sonar policy and its script | [`tools/sonar-triage/README.md`](../tools/sonar-triage/README.md) | changes how Sonar findings are triaged |
 | The MCP server sessions here use: `shuyi mcp`, run as `cargo run -q -p shuyi-cli -- mcp` | [`.mcp.json`](../.mcp.json) and [`.claude/settings.json`](../.claude/settings.json), what `cargo shuyi mcp install --dry-run --command "cargo run -q -p shuyi-cli --"` prints for Claude Code (a test checks) | changes how the server is run or registered |
+| How to preview and build the website, and its rules | [`site/README.md`](../site/README.md) | changes how the site is built, checked or published (`pages.yml`, the `site` job, the pinned Zola) |
 | The web shell a game's web build runs in | [`crates/cli/web/README.md`](../crates/cli/web/README.md) | changes the page, the loader or the files `shuyi web` writes |
 | Where each fact is written | this file | makes a new home for docs (rule 5) |
 
@@ -104,10 +106,11 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The gates every game runs | the `shuyi-gates` skill ([`skills/shuyi-gates/`](../skills/shuyi-gates/SKILL.md)), the source | the `run-gates` skill, which keeps only the engine's own and links it; and `templates/shuyi-default/base/AGENTS.md`, *The gates* | nothing yet |
 | The actions' pins and the shared crates' requirements | `.github/workflows/`, and the root's `[workspace.dependencies]` in `Cargo.toml` | `templates/shuyi-default/base/.github/workflows/` and `templates/shuyi-default/stages/top-down-grid/.github/workflows/` (its engine call at `@{{engine_ref}}` aside), and every `Cargo.toml` of the template's parts (`templates/shuyi-default/**/Cargo.toml`) | `cargo xtask check-pins` ([ADR-0037](adr/0037-dependency-upkeep-dependabot-a-weekly-advisory-check-workflow-audits-and-bot-work-as-its-own-ticket.md)) |
 | What a module answers | its crate's `[package.metadata.shuyi]` | its row in [`modules.md`](modules.md), and its answers in [`modules.ron`](modules.ron) | `cargo xtask check-modules` |
+| The features on Bevy's homepage | [`ROADMAP.md`](ROADMAP.md), *Bevy's homepage* | the first cards of [`site/data/features.toml`](../site/data/features.toml), one a row | nothing yet |
 | The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the book (2802), the
-guides, `docs/guides/` (2004), and `llms.txt` and the site (2801, 2808).
+guides, `docs/guides/` (2004), and `llms.txt` (2808).
 A skill of the pack that teaches what one of this repository's skills
 teaches is the source for what holds in every game; ours keeps only what
 holds here and links it, and the pair gets a row above.

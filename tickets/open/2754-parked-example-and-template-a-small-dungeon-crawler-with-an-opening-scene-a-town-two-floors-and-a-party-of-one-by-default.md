@@ -106,7 +106,7 @@ he likes. His comments become tickets.
     and a test with one picture taken out finds that piece.
 - **The web build** and its place on the Pages index (as 2735 says for
   examples: the loop over `examples/*/shuyi.ron`), and on the website's
-  Examples page if 2801 is done.
+  Examples page, `site/content/examples/<name>.md` (2801, done).
 - **The template part** (2501): in `templates/shuyi-default/`, a part
   `kind-dungeon-crawler`, `when: Picked(kind, dungeon-crawler)`:
   - it turns on `crawl` and `rpg`, and adds a stage with one small

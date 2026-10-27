@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="prose">
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+</article>
+<ul class="cards">
+  {%- for example in section.pages %}
+  <li class="card">
+    <h2><a href="{{ example.permalink | safe }}">{{ example.title }}</a></h2>
+    <p>{{ example.description }}</p>
+    <p class="card-foot">
+      <a class="button" href="{{ example.permalink | safe }}">Play</a>
+      <a href="{{ config.extra.repo | safe }}/tree/main/examples/{{ example.slug }}">Source</a>
+      <a href="{{ example.permalink | safe }}NOTICES.txt">Notices</a>
+    </p>
+  </li>
+  {%- endfor %}
+</ul>
+{% endblock content %}

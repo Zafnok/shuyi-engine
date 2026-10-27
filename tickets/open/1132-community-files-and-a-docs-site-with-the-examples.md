@@ -33,8 +33,10 @@ description, however they were written.
 
 This ticket used to hold the docs site too. Nick asked on 2026-10-20 for
 a website like Bevy's (`docs/decisions.md`), so the site is 2801–2806
-now, and this ticket keeps the community files. 2801 links them from its
-Community page.
+now, and this ticket keeps the community files. 2801 (done) gave the
+website a Community page, `site/content/community.md`, which links the
+repository, its issues and `CONTRIBUTING.md`; this ticket adds the rest
+there.
 
 2016 comes first: it turns on private vulnerability reporting, the
 channel `SECURITY.md` names, and records the response time Nick chose.
@@ -85,8 +87,8 @@ take it out of *Still open*.
 - `CONTRIBUTING.md` and `SECURITY.md` link `GOVERNANCE.md` (2016), and
   `GOVERNANCE.md`'s line on security reports gets a link to
   `SECURITY.md`.
-- The channel Nick picks, linked from `CONTRIBUTING.md` and, if 2801 is
-  done, from its Community page.
+- The channel Nick picks, linked from `CONTRIBUTING.md` and from the
+  website's Community page.
 - `AGENTS.md` is at the root already (2001). It gets a line pointing
   outside contributors, and their agents, to `CONTRIBUTING.md`.
 - **Either order with 2352** (parked: the engine's screens
@@ -110,7 +112,8 @@ take it out of *Still open*.
    settled it, the contribution policy (`ask-nick`), and record his
    answers in `docs/decisions.md`.
 2. Write the files.
-3. If 2801 is done, link them and the channel from its Community page.
+3. Link the code of conduct, the security policy and the channel from
+   the website's Community page (`site/content/community.md`).
 
 ## Acceptance criteria
 

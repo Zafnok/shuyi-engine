@@ -1,0 +1,49 @@
+{% import "macros.html" as macros %}<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{%- block meta %}
+{%- if page.title %}{% set page_title = page.title ~ " · " ~ config.title %}
+{%- elif section.title and section.path != "/" %}{% set page_title = section.title ~ " · " ~ config.title %}
+{%- else %}{% set page_title = config.title %}{% endif %}
+{%- if page.description %}{% set page_description = page.description %}
+{%- elif section.description %}{% set page_description = section.description %}
+{%- else %}{% set page_description = config.description %}{% endif %}
+<title>{{ page_title }}</title>
+<meta name="description" content="{{ page_description }}">
+{%- endblock meta %}
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="{{ get_url(path='style.css', cachebust=true) }}">
+<link rel="alternate" type="application/atom+xml" title="Shuyi Engine news" href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">
+</head>
+<body>
+<header class="site-header">
+  <nav class="nav wrap" aria-label="Site">
+    <a class="wordmark" href="{{ get_url(path='@/_index.md') }}">Shuyi Engine</a>
+    <ul class="nav-links">
+      {%- set current = current_path | default(value="/") %}
+      {{ macros::nav_item(label="Learn", path="@/learn.md", prefix="/learn/", current=current) }}
+      {{ macros::nav_item(label="News", path="@/news/_index.md", prefix="/news/", current=current) }}
+      {{ macros::nav_item(label="Examples", path="@/examples/_index.md", prefix="/examples/", current=current) }}
+      {{ macros::nav_item(label="Community", path="@/community.md", prefix="/community/", current=current) }}
+      {{ macros::nav_item(label="Sponsor", path="@/sponsor.md", prefix="/sponsor/", current=current) }}
+    </ul>
+  </nav>
+</header>
+<main class="wrap">
+{%- block content %}{% endblock content %}
+</main>
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <p>Shuyi Engine is free and open source, under
+      <a href="{{ config.extra.repo | safe }}/blob/main/LICENSE-MIT">MIT</a> or
+      <a href="{{ config.extra.repo | safe }}/blob/main/LICENSE-APACHE">Apache-2.0</a>, at your choice.</p>
+    <ul class="footer-links">
+      <li><a href="{{ config.extra.repo | safe }}">The repository</a></li>
+      <li><a href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">The news feed</a></li>
+    </ul>
+  </div>
+</footer>
+</body>
+</html>

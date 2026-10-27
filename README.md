@@ -122,6 +122,7 @@ and a game that needs more than that doesn't export there
 | `templates/` | The two games `shuyi new` makes: `grid` (a turn-based grid stage) and `blank` (one screen, on the short path: `BasicGame`, `run_game` and `BasicTools`) |
 | `scripts/setup-linux.sh`, `.devcontainer/` | Setting up Linux in one command (apt, dnf or pacman): the C linker, `pkg-config`, the libraries the backend links and opens, and the pinned Rust, as `shuyi doctor` checks them; the dev container (and Codespaces) runs it, and so does CI |
 | `skills/` | The skill pack: Agent Skills for making games on the engine, each with a worked example CI runs on a new game. `shuyi new` copies them into every game, and `.claude-plugin/` makes them a Claude Code plugin ([`skills/README.md`](skills/README.md)) |
+| `site/` | The website: a Zola project that `pages.yml` publishes on GitHub Pages, with the examples playing in the browser ([`site/README.md`](site/README.md)) |
 | `THIRD_PARTY_ASSETS.md` | Every file here that isn't the engine's own, with its license |
 
 ## The crates
@@ -223,7 +224,7 @@ cargo shuyi web --release
 ```
 
 CI builds it natively and for the web and runs its tests (`cargo test -p
-hello-grid`), and Pages publishes the web build at `/hello-grid/`.
+hello-grid`), and the website plays the web build at `/examples/hello-grid/`.
 
 What it shows, and the engine's part in each:
 

@@ -208,8 +208,8 @@ None.
     web-build step loops the same way;
   - if an earlier example made the loop, this one needs no workflow
     change;
-  - if 2801 is done, the example gets its card in the website's Examples
-    section. If 2019 is done, its headless browser job opens it too.
+  - the example gets its card in the website's Examples section,
+    `site/content/examples/<name>.md` (2801, done). If 2019 is done, its headless browser job opens it too.
 - **The template part** (2501): in `templates/shuyi-default/`, a part
   `kind-roguelike`, `when: Picked(kind, roguelike)`:
   - it turns on `procgen` and adds a stage with one generated floor, the

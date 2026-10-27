@@ -1,0 +1,123 @@
+# The home page's feature grid (ADR-0048), one `[[feature]]` per card.
+#
+# The first rows are the table in docs/ROADMAP.md, *Bevy's homepage*, in
+# its order: a change to that table changes these rows (the docs map's
+# Pairs). The rows after them are what the engine has that Bevy's
+# homepage doesn't name.
+#
+# - `status`: "Ready" (works today), "In progress" (partly there) or
+#   "Planned" (has a ticket).
+# - `link`: a page of this site (`@/…`) or a path in the repository,
+#   linked on GitHub.
+
+[[feature]]
+title = "Data driven"
+text = "An optional ECS: components as plain structs, systems as functions, queries and a parallel schedule that keeps replays the same. Plain structs stay the default."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Tickets 2904, 2107, 2108"
+
+[[feature]]
+title = "2D renderer"
+text = "Sprite sheets, texture atlases, cameras, rotated and tinted sprites, shapes, nine-slice pictures and materials, on a skin that never touches the rules."
+status = "In progress"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Tickets 2222, 2335–2338"
+
+[[feature]]
+title = "3D renderer"
+text = "Lights, shadows, meshes and glTF, in fixed-point space so 3D stays deterministic, and HD-2D as a skin over a 2D game."
+status = "Planned"
+link = "docs/adr/0011-3d-fixed-point-space-a-3d-view-in-the-frame-and-hd-2d-as-a-skin.md"
+link_text = "ADR-0011"
+
+[[feature]]
+title = "Render graph"
+text = "A renderer on wgpu, not tied to one graphics API, with a graph of passes a game can extend."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Tickets 3034, 2331"
+
+[[feature]]
+title = "Animation"
+text = "Clips from sprite sheets, state machines, 2D skeletons, and glTF animation with blending and morph targets."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Tickets 2104, 2105, 3110"
+
+[[feature]]
+title = "Cross platform"
+text = "The desktop and the web today, then the Steam Deck and the Playdate, each a platform backend. Mobile is planned."
+status = "In progress"
+link = "docs/platform-backends.md"
+link_text = "Platform backends"
+
+[[feature]]
+title = "UI"
+text = "Screens, menus and widgets that say what to show, with layout in the style of flexbox, declared in code or in a file."
+status = "In progress"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Tickets 2329, 2330, 2355"
+
+[[feature]]
+title = "Scenes"
+text = "Save and load whole worlds as text, keeping their ids, with instances and live reload."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Ticket 2221"
+
+[[feature]]
+title = "Sound"
+text = "Cues with variants, fades and streamed music today; crossfades, groups with ducking, and positional sound to come."
+status = "In progress"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Tickets 3029, 2341–2345"
+
+[[feature]]
+title = "Hot reload of assets"
+text = "Change a map, a sprite or a line of dialogue and see it in the running game, for every kind of asset."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Ticket 2220"
+
+[[feature]]
+title = "Hot reload of code"
+text = "Change a game's code while it runs. Research first, on what Rust allows."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Ticket 2905"
+
+[[feature]]
+title = "Fast compiles"
+text = "Compile times measured and gated in CI, and a fast setup in every new game's template."
+status = "Planned"
+link = "docs/ROADMAP.md#bevys-homepage"
+link_text = "Ticket 2009"
+
+[[feature]]
+title = "Free and open source"
+text = "MIT or Apache-2.0, at your choice, with only permissively licensed dependencies and assets."
+status = "Ready"
+link = "LICENSE-MIT"
+link_text = "The licenses"
+
+[[feature]]
+title = "Deterministic, with replays"
+text = "The same seed and the same inputs give the same game on every platform: replays, bug reports, bots and tests rest on it."
+status = "Ready"
+link = "docs/adr/0002-inherited-rules-layers-determinism-skins-actions-tests-licenses.md"
+link_text = "ADR-0002"
+
+[[feature]]
+title = "Made for coding agents"
+text = "One tool contract as a CLI, an MCP server and Agent Skills: an agent starts, plays, reads and pictures a game without a window."
+status = "Ready"
+link = "docs/contract.md"
+link_text = "The tool contract"
+
+[[feature]]
+title = "Targets as data"
+text = "Each export target says what its hardware can do, and a game that needs more doesn't export there."
+status = "Ready"
+link = "targets"
+link_text = "The targets"

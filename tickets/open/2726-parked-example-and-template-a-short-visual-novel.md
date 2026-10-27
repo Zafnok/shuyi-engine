@@ -113,8 +113,8 @@ None.
   against what the example uses, and correct them.
 - **The catalog**: set `shuyi-vn`'s row in `docs/modules.md` and the
   `visual-novel` answer in `docs/modules.ron` to ready.
-- **The website** (2801), if it is done: add the example to the
-  playable list.
+- **The website** (2801, done): the example's card,
+  `site/content/examples/<name>.md`, on the Examples page.
 
 **Out (do not do):**
 - a long story, more characters or more art than listed;
