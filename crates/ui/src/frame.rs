@@ -4,7 +4,9 @@
 //! ([`Rgb`], [`Palette`]); the text form snapshot tests read
 //! ([`snapshot`]); fitting the console to a window ([`console`]), a shot
 //! to a backdrop ([`cinema`]) and a picture to an area ([`portrait`]); and
-//! the one-bit renderer ([`onebit`]).
+//! the one-bit renderer ([`onebit`]); with the `raster` feature, the
+//! software painter whose picture every backend must match
+//! ([`raster`]).
 //!
 //! The drawing helpers skins share ([`draw`]): [`GlyphBuffer::panel`] (a
 //! box with a title in its border), [`GlyphBuffer::meter`] (a bar that
@@ -23,6 +25,8 @@ pub mod draw;
 pub mod glyph_buffer;
 pub mod onebit;
 pub mod portrait;
+#[cfg(any(test, feature = "raster"))]
+pub mod raster;
 pub mod snapshot;
 
 pub use color::{ColorSet, EngineColor, Palette, Rgb};

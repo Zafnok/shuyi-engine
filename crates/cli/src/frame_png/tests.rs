@@ -1,8 +1,10 @@
 use std::collections::BTreeMap;
 
+use shuyi_assets::font::FALLBACK_GLYPH;
 use shuyi_assets::image::ImageInfo;
 use shuyi_assets::lighting::Light;
-use shuyi_ui::frame::{Cell, Overlay, Rect};
+use shuyi_ui::frame::onebit;
+use shuyi_ui::frame::{Cell, Layer, Overlay, Paint, Rect, Sprite};
 
 use super::*;
 use crate::test_card;
@@ -476,32 +478,6 @@ fn the_summary_warns_about_bought_art() {
         summary("title → a.png", &frame, Some("bought art")),
         "frame-png: title → a.png (2×1)\nwarning: bought art"
     );
-}
-
-#[test]
-fn empty_pictures_and_pixels_off_the_picture_are_harmless() {
-    for (width, height) in [(0, 0), (0, 3), (3, 0)] {
-        let empty = Image {
-            width,
-            height,
-            rgba: Vec::new(),
-        };
-        assert_eq!(empty.texel(1, 1), [0; 4]);
-    }
-    let mut image = Image {
-        width: 2,
-        height: 2,
-        rgba: vec![7; 16],
-    };
-    for (x, y) in [(-1, 0), (0, -1), (2, 0), (0, 2)] {
-        image.blend(x, y, [1.0; 3], 1.0);
-    }
-    assert_eq!(image.rgba, vec![7; 16]);
-    // Texels clamp to the picture's edge.
-    image.blend(1, 1, [1.0; 3], 1.0);
-    assert_eq!(image.texel(5, 5), [255, 255, 255, 255]);
-    assert_eq!(image.texel(-5, -5), [7; 4]);
-    assert_eq!(image.pixel(2, 0), None);
 }
 
 #[test]

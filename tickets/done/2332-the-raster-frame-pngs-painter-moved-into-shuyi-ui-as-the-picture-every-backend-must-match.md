@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-27
 ---
 
 # 2332 — The raster: frame-png's Painter moved into shuyi-ui
@@ -219,23 +219,23 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo build -p shuyi-ui --no-default-features --features raster
+- [x] `cargo build -p shuyi-ui --no-default-features --features raster
       --target thumbv7em-none-eabihf --locked` passes, in CI's `no-std`
       job and in the `run-gates` skill.
-- [ ] `raster` is behind `#[cfg(any(test, feature = "raster"))]`,
+- [x] `raster` is behind `#[cfg(any(test, feature = "raster"))]`,
       `shuyi-ui`'s `default` features don't list it, and only
       `shuyi-cli`'s `[dependencies]` turn it on (not `shuyi-app`'s, not
       `shuyi-platform`'s).
-- [ ] No picture changes: hello-grid's
+- [x] No picture changes: hello-grid's
       `it__snapshot__stage_glyphs.snap.png` and
       `it__snapshot__stage_tiles.snap.png` pass with no
       `cargo insta accept`, and every `frame_png` test passes with its
       expected values unchanged.
-- [ ] `shuyi_cli::frame_png::{Painter, Image, one_bit_picture}` and
+- [x] `shuyi_cli::frame_png::{Painter, Image, one_bit_picture}` and
       `shuyi_cli::test_card` keep their paths, and `Painter::new` and
       `render` their signatures: `toy.rs`, hello-grid's `tools.rs` and
       both templates build unchanged (CI's `templates` job).
-- [ ] `compare` of a picture with itself gives `over == 0`,
+- [x] `compare` of a picture with itself gives `over == 0`,
       `worst == 0`, and passes. One pixel changed by `channel + 1` in
       one channel gives `over == 1`, `worst == channel + 1`, that pixel
       as `first` and in `MISSING_COLOR` in `diff`, fails at
@@ -243,13 +243,13 @@ None.
       `channel` gives `over == 0`. A change in alpha alone gives
       `over == 0`. Pictures of different sizes give
       `same_size == false` and never pass.
-- [ ] `Tolerance` reads `(channel: 4)` from RON with `pixels: 0`, and
+- [x] `Tolerance` reads `(channel: 4)` from RON with `pixels: 0`, and
       refuses an unknown key.
-- [ ] `cargo xtask check-no-std` passes with the new files.
-- [ ] The API change for the game (`Image::decode` →
+- [x] `cargo xtask check-no-std` passes with the new files.
+- [x] The API change for the game (`Image::decode` →
       `frame_png::decode_image`) is in a `Breaking:` line (2010) and
       in the PR body.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -274,4 +274,41 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `shuyi_ui::frame::raster` (`crates/ui/src/frame/raster.rs`, feature
+  `raster`, gated `#[cfg(any(test, feature = "raster"))]`) holds `Image`,
+  `Painter`, `blit`, `unit`, `MISSING_COLOR` (now public) and
+  `one_bit_picture`, with the drawing code unchanged; `test_card` moved
+  beside it. The images are a `BTreeMap<ImageId, Image>`; `Vec`, `vec!`
+  and, without `std`, `Float` come from the crate's prelude.
+  `raster::Painter::new(atlas, atlas_image, images, clear)` takes decoded
+  pictures.
+- `raster::compare`, `Tolerance` (`#[non_exhaustive]`, `Tolerance::new`
+  and `Default` of 2 and 0, read from RON with defaults and
+  `deny_unknown_fields`) and `Comparison` (`#[non_exhaustive]`, made by
+  `compare` alone), with `Comparison::passes`. Over pictures of different
+  sizes, `diff` is the size of the shared area.
+- `frame_png` keeps its API: `Painter` wraps `raster::Painter` (same
+  `new` and `render`, plus `raster()`), `Image` and `one_bit_picture`
+  are re-exports, and `decode_image` replaces `Image::decode`.
+  `shuyi_cli::test_card` is a re-export. Only `shuyi-cli` turns the
+  feature on.
+- The one test that reads private code moved to
+  `crates/ui/src/frame/raster/tests.rs`, with the new tests (a 2 × 1
+  buffer with a rectangle over the test card at scale 2, the missing
+  colour, `Image::filled`, every `compare` case, `Tolerance` from RON,
+  and two properties). Every other `frame_png` test passes unchanged,
+  and hello-grid's PNG snapshots pass without `cargo insta accept`.
+- CI's `no-std` job and the `run-gates` skill build `shuyi-ui` with
+  `raster` for `thumbv7em-none-eabihf`.
+- Docs: the raster's module docs, `frame_png.rs`'s, `frame.rs`'s list,
+  the README's hello-grid row (and its stale `shuyi_ui::harness`), and a
+  line in `docs/platform-backends.md`'s `present` on the picture a
+  backend must match.
+- `Painter` has private fields, so ADR-0039 §8 applies to it and it
+  needs no `#[non_exhaustive]`; `Image` stays a plain value (§1), so
+  `frame_png`'s tests and games may still build it by literal.
+- The open tickets' clauses that waited on 2332 now say what holds.
+- For the game: one call changes. Its PR that moves the pin follows
+  this one.
+
+Breaking: shuyi-cli: frame_png::Image::decode: call frame_png::decode_image(png) instead

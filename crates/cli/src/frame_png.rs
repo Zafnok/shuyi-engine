@@ -11,27 +11,24 @@
 //! shows ([`GameTools::frame_one_bit`]: the frame drawn in its roles'
 //! patterns, ADR-0008 §4).
 //!
-//! [`Painter`] is a software copy of `shuyi-app`'s renderer, pixel for
-//! pixel at whole scales: the clear colour, cell backgrounds, `Under`
-//! items in order, glyphs tinted with their fg, `Over` items in order;
-//! and before all that, a backdrop's scene in its window. Textures are
-//! sampled at the nearest pixel and blended over what is beneath with
-//! their alpha, as the GPU does.
+//! [`Painter`] decodes a game's font atlas and images from PNG and paints
+//! with the raster, `shuyi_ui::frame::raster`: the reference picture of a
+//! frame, which `shuyi-app` must match. Its module docs say what it draws.
 
-use std::collections::HashMap;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_assets::font::{AtlasRect, FALLBACK_GLYPH, FontAtlasDef};
-use shuyi_assets::image::{ImageId, ImageTable};
+use shuyi_assets::font::FontAtlasDef;
+use shuyi_assets::image::ImageTable;
 use shuyi_assets::target::{Color, TargetProfile};
 use shuyi_platform::harness::{FRAME_DT, Harness, MAX_FRAMES};
 use shuyi_ui::GameData;
-use shuyi_ui::frame::onebit::{self, Frame};
-use shuyi_ui::frame::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Rgb, Sprite};
+use shuyi_ui::frame::raster;
+pub use shuyi_ui::frame::raster::{Image, one_bit_picture};
+use shuyi_ui::frame::{GlyphBuffer, Rgb};
 use shuyi_ui::input::{Button, Chord};
 
 use crate::codec::{decode_png, encode_png};
@@ -39,10 +36,6 @@ use crate::game::{GameArg, GameOption, GameTools};
 
 /// Largest `--scale`.
 pub const MAX_SCALE: u32 = 8;
-
-/// The colour of what is missing, as in `shuyi-app` (macroquad's
-/// `MAGENTA`).
-const MISSING_COLOR: Rgb = Rgb::new(255, 0, 255);
 
 /// The usage text, with `command` as the tool's name and the game's own
 /// options and notes.
@@ -315,25 +308,6 @@ pub fn run(
     Ok(summary(&shown, &shot.image, shot.warning.as_deref()))
 }
 
-/// `frame` as a black and white picture, each pixel `scale` × `scale`.
-pub fn one_bit_picture(frame: &Frame, scale: u32) -> Image {
-    let (width, height) = (onebit::WIDTH.unsigned_abs(), onebit::HEIGHT.unsigned_abs());
-    let mut image = Image::filled(width * scale, height * scale, Rgb::new(0, 0, 0));
-    let s = i64::from(scale);
-    let at = |v: i64| i32::try_from(v / s).ok();
-    for y in 0..i64::from(image.height) {
-        for x in 0..i64::from(image.width) {
-            if at(x)
-                .zip(at(y))
-                .is_some_and(|(x, y)| onebit::is_white(frame, x, y))
-            {
-                image.blend(x, y, [1.0; 3], 1.0);
-            }
-        }
-    }
-    image
-}
-
 /// What `run` prints for frame `frame` of `shown` (screen → path), with
 /// the game's `warning` about it, if any.
 fn summary(shown: &str, frame: &Image, warning: Option<&str>) -> String {
@@ -345,114 +319,26 @@ fn summary(shown: &str, frame: &Image, warning: Option<&str>) -> String {
     out
 }
 
-/// An RGBA8 picture, row-major.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Image {
-    /// Width in pixels.
-    pub width: u32,
-    /// Height in pixels.
-    pub height: u32,
-    /// Four bytes per pixel.
-    pub rgba: Vec<u8>,
+/// Decodes PNG file `png`.
+pub fn decode_image(png: &[u8]) -> Result<Image, String> {
+    let (width, height, rgba) = decode_png(png)?;
+    Ok(Image {
+        width,
+        height,
+        rgba,
+    })
 }
 
-impl Image {
-    /// A `width` × `height` picture of `color`, solid.
-    fn filled(width: u32, height: u32, color: Rgb) -> Self {
-        let mut image = Self {
-            width,
-            height,
-            rgba: vec![0; width as usize * height as usize * 4],
-        };
-        image.fill((0, 0, i64::from(width), i64::from(height)), color);
-        image
-    }
-
-    /// Decodes PNG file `png`.
-    pub fn decode(png: &[u8]) -> Result<Self, String> {
-        let (width, height, rgba) = decode_png(png)?;
-        Ok(Self {
-            width,
-            height,
-            rgba,
-        })
-    }
-
-    /// The pixel at `(x, y)`, clamped to the picture (an empty picture is
-    /// transparent).
-    fn texel(&self, x: i64, y: i64) -> [u8; 4] {
-        if self.width == 0 || self.height == 0 {
-            return [0; 4];
-        }
-        let clamp =
-            |v: i64, size: u32| usize::try_from(v.clamp(0, i64::from(size) - 1)).unwrap_or(0);
-        let i = (clamp(y, self.height) * self.width as usize + clamp(x, self.width)) * 4;
-        [
-            self.rgba[i],
-            self.rgba[i + 1],
-            self.rgba[i + 2],
-            self.rgba[i + 3],
-        ]
-    }
-
-    /// The pixel at `(x, y)`, or `None` outside the picture.
-    pub fn pixel(&self, x: u32, y: u32) -> Option<[u8; 4]> {
-        (x < self.width && y < self.height).then(|| self.texel(i64::from(x), i64::from(y)))
-    }
-
-    /// Blends `color` with alpha `alpha` (0 to 1) over the pixel at
-    /// `(x, y)`, as the GPU does: in floats, rounded once. Off the picture
-    /// it does nothing.
-    fn blend(&mut self, x: i64, y: i64, color: [f32; 3], alpha: f32) {
-        let (Ok(x), Ok(y)) = (u32::try_from(x), u32::try_from(y)) else {
-            return;
-        };
-        if x >= self.width || y >= self.height {
-            return;
-        }
-        let i = (y as usize * self.width as usize + x as usize) * 4;
-        for (c, &src) in color.iter().enumerate() {
-            let dst = f32::from(self.rgba[i + c]) / 255.0;
-            let out = src * alpha + dst * (1.0 - alpha);
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 0..=255
-            let byte = (out * 255.0).round().clamp(0.0, 255.0) as u8;
-            self.rgba[i + c] = byte;
-        }
-        self.rgba[i + 3] = 255;
-    }
-
-    /// Fills `(x, y, w, h)` with `color`, solid.
-    fn fill(&mut self, (x, y, w, h): (i64, i64, i64, i64), color: Rgb) {
-        for py in y..y + h {
-            for px in x..x + w {
-                self.blend(px, py, unit(color), 1.0);
-            }
-        }
-    }
-}
-
-/// `c` as floats from 0 to 1.
-fn unit(c: Rgb) -> [f32; 3] {
-    [c.r, c.g, c.b].map(|v| f32::from(v) / 255.0)
-}
-
-/// The decoded font atlas and images, ready to render any number of
-/// frames (each image is decoded once).
-pub struct Painter {
-    atlas: FontAtlasDef,
-    atlas_image: Image,
-    /// Background drawn behind the console; cells with this bg skip their
-    /// fill, as in `app`.
-    clear: Rgb,
-    /// The images that decoded; the others draw as `MISSING_COLOR`.
-    images: HashMap<ImageId, Image>,
-}
+/// The raster's [`raster::Painter`], with its font atlas and images
+/// decoded from PNG files, ready to render any number of frames (each
+/// image is decoded once).
+pub struct Painter(raster::Painter);
 
 impl Painter {
     /// Decodes atlas image `atlas_png` and every image in `images`, whose
     /// files `read` returns (an image `read` lacks, or that doesn't decode,
-    /// draws as a `MISSING_COLOR` rectangle). `clear` is the console
-    /// background (the palette's `black`).
+    /// draws as a [`MISSING_COLOR`](raster::MISSING_COLOR) rectangle).
+    /// `clear` is the console background (the palette's `black`).
     pub fn new<'a>(
         atlas: FontAtlasDef,
         atlas_png: &[u8],
@@ -460,209 +346,28 @@ impl Painter {
         read: impl Fn(&str) -> Option<&'a [u8]>,
         clear: Rgb,
     ) -> Result<Self, String> {
-        let atlas_image = Image::decode(atlas_png).map_err(|e| format!("font atlas image: {e}"))?;
+        let atlas_image = decode_image(atlas_png).map_err(|e| format!("font atlas image: {e}"))?;
         let images = images
             .ids()
-            .filter_map(|id| Some((id, Image::decode(read(id.path())?).ok()?)))
+            .filter_map(|id| Some((id, decode_image(read(id.path())?).ok()?)))
             .collect();
-        Ok(Self {
+        Ok(Self(raster::Painter::new(
             atlas,
             atlas_image,
-            clear,
             images,
-        })
+            clear,
+        )))
     }
 
-    /// Draws `buf` with each console pixel `scale` × `scale` pixels big.
-    /// With a backdrop (game ADR-0048): the clear colour, the scene inside its
-    /// window, then the console over it, as in `app`.
+    /// Draws `buf` with each console pixel `scale` × `scale` pixels big
+    /// ([`raster::Painter::render`]).
     pub fn render(&self, buf: &GlyphBuffer, scale: u32) -> Image {
-        let s = i64::from(scale);
-        let spec = buf.spec();
-        let (cell_w, cell_h) = (i64::from(spec.cell_w) * s, i64::from(spec.cell_h) * s);
-        let width = u32::try_from(i64::from(buf.width()) * cell_w).unwrap_or(0);
-        let height = u32::try_from(i64::from(buf.height()) * cell_h).unwrap_or(0);
-        let mut out = Image::filled(width, height, self.clear);
-        if let Some(backdrop) = buf.backdrop() {
-            self.draw_backdrop(&mut out, backdrop, scale);
-        }
-        // Over a scene, a cell in the clear colour must hide it.
-        let all_fills = buf.backdrop().is_some();
-        self.draw_layers(&mut out, buf, (0, 0), s, all_fills);
-        out
+        self.0.render(buf, scale)
     }
 
-    /// Draws `backdrop`'s scene in its window of `out`: every scene pixel
-    /// `zoom × scale` pixels big, placed by [`Backdrop::scene_offset`].
-    /// The scene is drawn into a picture the size of the window, which
-    /// clips it, and that is copied in.
-    fn draw_backdrop(&self, out: &mut Image, backdrop: &Backdrop, scale: u32) {
-        let s = i64::from(scale);
-        let clip = backdrop.clip_px();
-        let size = |v: i32| u32::try_from(i64::from(v) * s).unwrap_or(0);
-        let mut window = Image::filled(size(clip.w), size(clip.h), self.clear);
-        let scene_px = i64::from(backdrop.zoom()) * s;
-        self.draw_layers(
-            &mut window,
-            backdrop.scene(),
-            backdrop.scene_offset(scale),
-            scene_px,
-            false,
-        );
-        let (left, top) = (i64::from(clip.x) * s, i64::from(clip.y) * s);
-        for y in 0..i64::from(window.height) {
-            for x in 0..i64::from(window.width) {
-                let [r, g, b, _] = window.texel(x, y);
-                out.blend(left + x, top + y, unit(Rgb::new(r, g, b)), 1.0);
-            }
-        }
-    }
-
-    /// Draws `buf`'s cells and items into `out` with its top-left corner
-    /// at `corner` and each of its pixels `px` × `px` big: cell
-    /// backgrounds (all of them if `all_fills`, else all but those in the
-    /// clear colour; never a see-through cell's), `Under` items, glyphs,
-    /// `Over` items.
-    fn draw_layers(
-        &self,
-        out: &mut Image,
-        buf: &GlyphBuffer,
-        corner: (i64, i64),
-        px: i64,
-        all_fills: bool,
-    ) {
-        let spec = buf.spec();
-        let (cell_w, cell_h) = (i64::from(spec.cell_w) * px, i64::from(spec.cell_h) * px);
-        let cells = || {
-            (0..i32::from(buf.height())).flat_map(move |y| {
-                (0..i32::from(buf.width())).filter_map(move |x| {
-                    let at = (
-                        corner.0 + i64::from(x) * cell_w,
-                        corner.1 + i64::from(y) * cell_h,
-                    );
-                    buf.get(x, y).map(|cell| (at, cell))
-                })
-            })
-        };
-        for ((x, y), cell) in cells() {
-            if !cell.see_through && (all_fills || cell.bg != self.clear) {
-                out.fill((x, y, cell_w, cell_h), cell.bg);
-            }
-        }
-        self.draw_items(out, buf, Layer::Under, corner, px);
-        for ((x, y), cell) in cells() {
-            if cell.glyph == ' ' {
-                continue;
-            }
-            let Some((rect, fg)) = self.atlas_cell(cell.glyph, cell.fg) else {
-                continue;
-            };
-            let fg = unit(fg);
-            #[allow(clippy::cast_precision_loss)] // atlas coordinates are small
-            let src = [rect.x, rect.y, rect.w, rect.h].map(|v| v as f32);
-            blit(
-                out,
-                &self.atlas_image,
-                src,
-                (x, y, cell_w, cell_h),
-                false,
-                Paint::Image,
-                [fg[0], fg[1], fg[2], 1.0],
-            );
-        }
-        self.draw_items(out, buf, Layer::Over, corner, px);
-    }
-
-    /// Draws `buf`'s items of `layer`, in order, from `corner`, each of
-    /// the buffer's pixels `scale` big.
-    fn draw_items(
-        &self,
-        out: &mut Image,
-        buf: &GlyphBuffer,
-        layer: Layer,
-        corner: (i64, i64),
-        scale: i64,
-    ) {
-        for item in buf.items().iter().filter(|item| item.layer() == layer) {
-            let to_px = |r: PxRect| {
-                (
-                    corner.0 + i64::from(r.x) * scale,
-                    corner.1 + i64::from(r.y) * scale,
-                    i64::from(r.w) * scale,
-                    i64::from(r.h) * scale,
-                )
-            };
-            match item {
-                Item::Rect(rect) => out.fill(to_px(rect.rect), rect.color),
-                Item::Sprite(sprite) => self.draw_sprite(out, sprite, to_px(sprite.clip)),
-            }
-        }
-    }
-
-    /// Draws the visible part of `sprite` into `dest`: the matching part
-    /// of its image, or a `MISSING_COLOR` rectangle.
-    fn draw_sprite(&self, out: &mut Image, sprite: &Sprite, dest: (i64, i64, i64, i64)) {
-        let Some(image) = self.images.get(&sprite.image) else {
-            out.fill(dest, MISSING_COLOR);
-            return;
-        };
-        let opacity = f32::from(sprite.opacity) / 255.0;
-        // Darker as the sprite's brightness has it (game ADR-0075).
-        let bright = f32::from(sprite.brightness) / 255.0;
-        let src = sprite.clipped_src();
-        blit(
-            out,
-            image,
-            src,
-            dest,
-            sprite.flip_x,
-            sprite.paint,
-            [bright, bright, bright, opacity],
-        );
-    }
-
-    /// Where to find `glyph` in the atlas and what colour to tint it:
-    /// `fg`, or the fallback glyph in `MISSING_COLOR`.
-    fn atlas_cell(&self, glyph: char, fg: Rgb) -> Option<(AtlasRect, Rgb)> {
-        if let Some(rect) = self.atlas.glyph_rect(glyph) {
-            return Some((rect, fg));
-        }
-        Some((self.atlas.glyph_rect(FALLBACK_GLYPH)?, MISSING_COLOR))
-    }
-}
-
-/// Stretches the `src` part of `image` (`[x, y, w, h]` in image pixels)
-/// over `dest` in `out`, mirrored if `flip_x`, each texel coloured as
-/// `paint`, multiplied by `tint` (RGBA, 0 to 1) and blended with the
-/// result's alpha. Each pixel takes the texel under its centre, as nearest
-/// sampling does.
-#[allow(clippy::cast_precision_loss)] // pixel counts are small
-fn blit(
-    out: &mut Image,
-    image: &Image,
-    src: [f32; 4],
-    (left, top, width, height): (i64, i64, i64, i64),
-    flip_x: bool,
-    paint: Paint,
-    tint: [f32; 4],
-) {
-    let [src_x, src_y, src_w, src_h] = src;
-    for dy in 0..height {
-        let tex_y = src_y + (dy as f32 + 0.5) / height as f32 * src_h;
-        for dx in 0..width {
-            let across = (dx as f32 + 0.5) / width as f32;
-            let tex_x = if flip_x {
-                src_x + src_w * (1.0 - across)
-            } else {
-                src_x + src_w * across
-            };
-            #[allow(clippy::cast_possible_truncation)] // floored image coordinates
-            let texel = image.texel(tex_x.floor() as i64, tex_y.floor() as i64);
-            let [red, green, blue] = unit(paint.apply(Rgb::new(texel[0], texel[1], texel[2])));
-            let color = [red * tint[0], green * tint[1], blue * tint[2]];
-            let alpha = f32::from(texel[3]) / 255.0;
-            out.blend(left + dx, top + dy, color, alpha * tint[3]);
-        }
+    /// The raster's painter this one decoded.
+    pub fn raster(&self) -> &raster::Painter {
+        &self.0
     }
 }
 

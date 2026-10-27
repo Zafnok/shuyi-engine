@@ -207,9 +207,8 @@ None. Our game's frames don't change.
 1. Add the types, the viewport and `split_viewports`, and their
    snapshot lines.
 2. Sort items once per frame.
-3. Draw them in `shuyi-app` and in the raster (`shuyi_ui::frame::raster`
-   if 2332 is done; if not, `frame-png`'s `Painter` in
-   `crates/cli/src/frame_png.rs`, and 2332 moves it), each layer
+3. Draw them in `shuyi-app` and in the raster (`shuyi_ui::frame::raster`),
+   each layer
    clipped to its viewport, with the same results.
 4. A test scene with two parallax layers and twenty sprites, y-sorted,
    with the camera following one of them. Then the same scene twice

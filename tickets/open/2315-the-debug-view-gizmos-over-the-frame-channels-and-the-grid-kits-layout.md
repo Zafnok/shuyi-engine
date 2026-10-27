@@ -131,10 +131,8 @@ None.
   `shuyi_ui::frame::shape`'s width-1 line and circle-outline rules. If
   not, write those two rules in `frame::shape` as 2336's scope says
   (Bresenham with the error term starting at `dx + dy`; the midpoint
-  circle from `1 - r`), and 2336 builds on them. **Either order with
-  2332:** if 2332 is done, `frame-png`'s painter is
-  `crates/ui/src/frame/raster.rs`; if not, `crates/cli/src/frame_png.rs`,
-  and 2332 moves it.
+  circle from `1 - r`), and 2336 builds on them. `frame-png`'s painter is
+  `crates/ui/src/frame/raster.rs` (2332).
 - **The snapshot** (`frame/snapshot.rs`): gizmos are listed in the
   overlays section, one line each, as
   `over  gizmo <channel> <role> rect x,y wxh` (and `line x,y x,y`,

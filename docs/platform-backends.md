@@ -177,7 +177,10 @@ next. `frame.show` is one of:
   `background` (also the letterbox's). `look` holds the game's font atlas
   and image table: make the backend's textures (or 1-bit glyphs) from
   them the first time and keep them. If they can't be made, show why
-  instead, as for `Errors`.
+  instead, as for `Errors`. The picture to match, pixel for pixel at
+  whole scales, is the raster's (`shuyi_ui::frame::raster::Painter`,
+  feature `raster`): compare a backend's pixels with it through
+  `raster::compare`, within a `Tolerance`.
 
 `frame.fullscreen` is the player's Fullscreen setting: a windowed backend
 switches when it changes; a device that is always full screen ignores it.

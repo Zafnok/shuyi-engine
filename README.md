@@ -285,7 +285,7 @@ What it shows, and the engine's part in each:
 | A 12 × 10 stage: walk your piece to the goal while a foe steps toward it | the `.map` format (`shuyi_assets::grid_map`); `shuyi_core`'s `TurnRules`, `Sides`, `reachable`, `flow_field`, `SimRng`; `shuyi_ui::grid`'s scene, cursor, path steering and walks |
 | Two looks of the map | the glyph skin and the sprite skin (`GridSkin`), with the game's `UnitPainter`s |
 | The foe's mind, and the bot test | `shuyi_core::bots`: `Bot`, `RandomBot`, `play` |
-| Its tests | the `Harness` (`shuyi_ui::harness`); `frame-png`'s `Painter`, as binary snapshots |
+| Its tests | the `Harness` (`shuyi_platform::harness`); the raster (`shuyi_ui::frame::raster`, through `frame-png`'s `Painter`), as binary snapshots |
 | Its tools | `shuyi.ron` with `font-atlas`, `glyph-tiles`, `frame-png`, `lang-status` and `web` |
 
 ## License
