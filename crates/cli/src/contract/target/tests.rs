@@ -375,3 +375,29 @@ fn a_games_profiles_add_to_the_engines_or_replace_one() {
     assert_eq!(profiles(&Config::default(), &dir).unwrap().len(), 7);
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn one_lookup_finds_a_profile_or_says_why_not() {
+    let root = std::env::temp_dir();
+    let config = Config::default();
+    assert_eq!(
+        profile(&config, &root, "playdate").unwrap().file,
+        "targets/playdate.ron"
+    );
+    let (code, why) = profile(&config, &root, "moon").unwrap_err();
+    assert_eq!(code, codes::TARGET);
+    assert!(
+        why.starts_with("no target profile \"moon\"; the profiles are "),
+        "{why}"
+    );
+    let missing = Config {
+        target_profiles: Some("no-such-folder".to_owned()),
+        ..Config::default()
+    };
+    let (code, why) = profile(&missing, &root, "playdate").unwrap_err();
+    assert_eq!(code, codes::TARGET);
+    assert!(
+        why.starts_with("the target profiles don't load: no-such-folder: "),
+        "{why}"
+    );
+}

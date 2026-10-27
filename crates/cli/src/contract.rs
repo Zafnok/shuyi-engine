@@ -73,7 +73,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 25;
+pub const VERSION: u32 = 26;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -397,11 +397,34 @@ fn file(name: String, schema: &Schema) -> SchemaFile {
 
 /// The schemas of an input `I` and an answer `Answer<O>`, named `name`
 /// (`run.input.json`, `run.output.json`).
-fn pair<I: JsonSchema, O: JsonSchema>(name: &str) -> [SchemaFile; 2] {
+fn pair<I: JsonSchema, O: JsonSchema>(op: Op, name: &str) -> [SchemaFile; 2] {
     [
         file(format!("{name}.input.json"), &schema_for!(I)),
-        file(format!("{name}.output.json"), &schema_for!(Answer<O>)),
+        file(
+            format!("{name}.output.json"),
+            &names_its_op(schema_for!(Answer<O>), op),
+        ),
     ]
+}
+
+/// `answer`, the schema of an `Answer`, with its `op` the one name of
+/// `op` (a `const`) instead of a reference to every [`Op`], so adding an
+/// operation changes no other operation's schema.
+fn names_its_op(mut answer: Schema, op: Op) -> Schema {
+    if let Some(defs) = answer.get_mut("$defs").and_then(|d| d.as_object_mut()) {
+        defs.remove("Op");
+        if defs.is_empty() {
+            answer.remove("$defs");
+        }
+    }
+    if let Some(property) = answer.get_mut("properties").and_then(|p| p.get_mut("op")) {
+        *property = serde_json::json!({
+            "description": "The operation.",
+            "type": "string",
+            "const": op.name(),
+        });
+    }
+    answer
 }
 
 /// The schemas of `op`'s input and answer: as the CLI and the MCP tool
@@ -419,32 +442,34 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
     };
     let name = name.as_str();
     match (op, session) {
-        (Op::New, _) => pair::<new::NewInput, new::NewOutput>(name),
-        (Op::Check, _) => pair::<check::CheckInput, check::CheckOutput>(name),
-        (Op::Lint, _) => pair::<lint::LintInput, lint::LintOutput>(name),
-        (Op::Modules, _) => pair::<modules::ModulesInput, modules::ModulesOutput>(name),
-        (Op::Add, _) => pair::<add::AddInput, add::AddOutput>(name),
-        (Op::Run, _) => pair::<run::RunInput, run::RunOutput>(name),
-        (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(name),
-        (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(name),
-        (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(name),
-        (Op::Bots, _) => pair::<bots::BotsInput, bots::BotsOutput>(name),
-        (Op::Playtest, _) => pair::<playtest::PlaytestInput, Vec<playtest::PlaytestOutput>>(name),
-        (Op::Autobalance, _) => {
-            pair::<autobalance::AutobalanceInput, autobalance::AutobalanceOutput>(name)
+        (Op::New, _) => pair::<new::NewInput, new::NewOutput>(op, name),
+        (Op::Check, _) => pair::<check::CheckInput, check::CheckOutput>(op, name),
+        (Op::Lint, _) => pair::<lint::LintInput, lint::LintOutput>(op, name),
+        (Op::Modules, _) => pair::<modules::ModulesInput, modules::ModulesOutput>(op, name),
+        (Op::Add, _) => pair::<add::AddInput, add::AddOutput>(op, name),
+        (Op::Run, _) => pair::<run::RunInput, run::RunOutput>(op, name),
+        (Op::Scene, false) => pair::<run::RunInput, run::SceneOutput>(op, name),
+        (Op::Scene, true) => pair::<NoInput, run::SceneOutput>(op, name),
+        (Op::Replay, _) => pair::<replay::ReplayInput, replay::ReplayOutput>(op, name),
+        (Op::Bots, _) => pair::<bots::BotsInput, bots::BotsOutput>(op, name),
+        (Op::Playtest, _) => {
+            pair::<playtest::PlaytestInput, Vec<playtest::PlaytestOutput>>(op, name)
         }
-        (Op::Import, _) => pair::<import::ImportInput, import::ImportOutput>(name),
-        (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(name),
-        (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(name),
-        (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(name),
-        (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(name),
-        (Op::Start, _) => pair::<StartInput, StartOutput>(name),
-        (Op::Step, _) => pair::<StepInput, run::RunOutput>(name),
-        (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(name),
-        (Op::Events, _) => pair::<NoInput, EventsOutput>(name),
-        (Op::Perf, _) => pair::<PerfInput, PerfOutput>(name),
-        (Op::Reset, _) => pair::<NoInput, StartOutput>(name),
-        (Op::Stop, _) => pair::<NoInput, StopOutput>(name),
+        (Op::Autobalance, _) => {
+            pair::<autobalance::AutobalanceInput, autobalance::AutobalanceOutput>(op, name)
+        }
+        (Op::Import, _) => pair::<import::ImportInput, import::ImportOutput>(op, name),
+        (Op::Bake, _) => pair::<bake::BakeInput, bake::BakeOutput>(op, name),
+        (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op, name),
+        (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(op, name),
+        (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(op, name),
+        (Op::Start, _) => pair::<StartInput, StartOutput>(op, name),
+        (Op::Step, _) => pair::<StepInput, run::RunOutput>(op, name),
+        (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(op, name),
+        (Op::Events, _) => pair::<NoInput, EventsOutput>(op, name),
+        (Op::Perf, _) => pair::<PerfInput, PerfOutput>(op, name),
+        (Op::Reset, _) => pair::<NoInput, StartOutput>(op, name),
+        (Op::Stop, _) => pair::<NoInput, StopOutput>(op, name),
     }
 }
 

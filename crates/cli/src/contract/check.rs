@@ -106,17 +106,6 @@ pub fn targets(
         Ok(settings) => settings,
         Err(e) => return Answer::failed(Op::Check, codes::TARGET, e),
     };
-    let profiles = match target::profiles(config, root) {
-        Ok(profiles) => profiles,
-        Err(errors) => {
-            let shown: Vec<String> = errors.iter().map(ToString::to_string).collect();
-            return Answer::failed(
-                Op::Check,
-                codes::TARGET,
-                format!("the target profiles don't load: {}", shown.join("; ")),
-            );
-        }
-    };
     let mut reports = Vec::new();
     let mut limits = Vec::new();
     let controls = match game.map(GameTools::controls) {
@@ -142,16 +131,9 @@ pub fn targets(
         }
     };
     for (id, setting) in settings {
-        let Some(profile) = profiles.get(id) else {
-            let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
-            return Answer::failed(
-                Op::Check,
-                codes::TARGET,
-                format!(
-                    "no target profile \"{id}\"; the profiles are {}",
-                    known.join(", ")
-                ),
-            );
+        let profile = match target::profile(config, root, id) {
+            Ok(profile) => profile,
+            Err((code, why)) => return Answer::failed(Op::Check, code, why),
         };
         if profile.profile.display.sizes.is_empty() {
             limits.push(format!(

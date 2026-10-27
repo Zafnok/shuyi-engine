@@ -122,3 +122,13 @@ fn mcp_with_a_word_it_doesnt_know_prints_its_usage() {
     assert_eq!(main(&["serve".to_owned()], Path::new(".")), 2);
     assert!(usage("shuyi").contains("mcp install [--dry-run]"));
 }
+
+#[test]
+fn no_tool_description_holds_a_run_of_spaces_or_a_line_break() {
+    for tool in tools() {
+        let name = tool["name"].as_str().unwrap();
+        let description = tool["description"].as_str().unwrap();
+        assert!(!description.contains("  "), "{name}: {description}");
+        assert!(!description.contains('\n'), "{name}: {description}");
+    }
+}

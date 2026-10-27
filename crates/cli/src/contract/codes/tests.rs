@@ -270,3 +270,24 @@ fn problems_are_followed_by_one_help_line_per_code() {
     );
     assert_eq!(help_lines(&problems[1..2]), "");
 }
+
+/// Whether `line` is one sentence run: no two spaces in a row and no
+/// line break (a lost `\` continuation leaves a run of spaces).
+fn is_plain(line: &str) -> bool {
+    !line.contains("  ") && !line.contains('\n')
+}
+
+#[test]
+fn no_help_line_or_page_title_holds_a_run_of_spaces() {
+    for entry in TABLE {
+        let title = entry.page.lines().next().unwrap_or_default();
+        assert!(
+            is_plain(entry.title),
+            "{}: title: {}",
+            entry.code,
+            entry.title
+        );
+        assert!(is_plain(entry.help), "{}: help: {}", entry.code, entry.help);
+        assert!(is_plain(title), "{}: page title: {title}", entry.code);
+    }
+}

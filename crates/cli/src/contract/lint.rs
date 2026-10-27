@@ -163,7 +163,7 @@ pub struct ThisMachine;
 
 impl Cargo for ThisMachine {
     fn run(&self, root: &Path, args: &[&str]) -> Result<Ran, String> {
-        let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+        let cargo = crate::cargo();
         let out = Command::new(&cargo)
             .args(args)
             .current_dir(root)

@@ -407,9 +407,21 @@ fn a_server_older_than_the_games_engine_says_so() {
         limit,
         format!(
             "the game's engine speaks contract {} and this server {VERSION}: the server was \
-             built before the engine changed; run \"cargo shuyi mcp --ready\", then reconnect \
-             it (in Claude Code: /mcp)",
+             built before the engine changed; reconnect it (in Claude Code: /mcp) to start a \
+             fresh one",
             VERSION + 1
+        )
+    );
+    // A newer server: a reconnect doesn't fix it.
+    let limit = stale(&json!({ "contract": VERSION - 1 }), VERSION, "cargo shuyi").unwrap();
+    assert_eq!(
+        limit,
+        format!(
+            "the game's engine speaks contract {} and this server {VERSION}: the server is \
+             newer than the game's engine (a checkout with an older pin?); if the MCP entry \
+             runs a `shuyi` installed for every project, register the project's own (`cargo \
+             shuyi mcp install`)",
+            VERSION - 1
         )
     );
     assert_eq!(
@@ -438,7 +450,7 @@ fn a_server_older_than_the_games_engine_says_so() {
             limits[0]
                 .as_str()
                 .unwrap()
-                .contains("run \"cargo shuyi mcp --ready\""),
+                .contains("reconnect it (in Claude Code: /mcp)"),
             "{name}: {result}"
         );
     }
@@ -942,7 +954,8 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
         .collect();
     assert_eq!(names, ["start", "step", "bots"]);
 
-    // If the fresh one doesn't start, the limit says what to do.
+    // If the fresh one doesn't start, the limit names both contracts and
+    // why, without the advice to reconnect.
     let workspaces = Workspaces::new(&[(&dir, "own")]);
     workspaces.fail.set(true);
     let mut server = Server::new(dir.clone(), Box::new(Speaks { contract: newer }))
@@ -953,12 +966,9 @@ fn a_stale_server_hands_its_own_workspace_to_a_fresh_one() {
         .unwrap()
         .clone();
     assert_eq!(limits.len(), 2, "{result}");
-    assert!(
-        limits[0]
-            .as_str()
-            .unwrap()
-            .contains("run \"cargo shuyi mcp --ready\"")
-    );
+    let diagnosis = limits[0].as_str().unwrap();
+    assert!(diagnosis.contains("the server was built before the engine changed"));
+    assert!(!diagnosis.contains("reconnect"), "{diagnosis}");
     assert!(
         limits[1]
             .as_str()

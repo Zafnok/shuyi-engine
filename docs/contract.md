@@ -51,7 +51,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 25,
+  "contract": 26,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
@@ -362,7 +362,9 @@ source uses.
 Each operation's input and answer has a JSON schema, generated from the
 types and checked in under
 [`crates/cli/schemas/`](../crates/cli/schemas/): `run.input.json`,
-`run.output.json` and so on. `shuyi schema run.output` prints one.
+`run.output.json` and so on. `shuyi schema run.output` prints one. Each output schema's `op` is a
+`const` of its own operation's name, so adding an operation changes no
+other operation's schema.
 
 They change only with the contract's version. A test fails when the
 checked-in schemas are not what the types generate, and when their
@@ -497,7 +499,13 @@ hands a tool it doesn't know itself to that server.
 contract than the server (the checkout moved under a running server), a
 call in the server's own workspace goes to a fresh forwarded server of
 that workspace, and so does every later one. Only if that one doesn't
-start does the answer get a limit naming both contracts.
+start does the answer get a limit naming both contracts and which side
+is newer, beside why that one didn't start. Where no restart runs (a
+forwarded server, or a folder with no server of its own to start), the
+limit says what fixes it: a reconnect (in Claude Code: /mcp) if the
+engine is newer; if the server is newer, registering the project's own
+`shuyi` (`<command> mcp install`), when the MCP entry runs one installed
+for every project.
 
 ## What a game gives
 

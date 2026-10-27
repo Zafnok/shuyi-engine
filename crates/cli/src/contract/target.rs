@@ -33,6 +33,7 @@ use shuyi_assets::target::{Size, TargetProfile, TargetRon};
 use shuyi_assets::{AssetPath, ContentError, DecodeCx, Format};
 use shuyi_ui::input::fit::{FitProblem, FitRule};
 
+use crate::contract::codes;
 use crate::game::OneBitSkin;
 use crate::project::{Config, FILE, Scale, TargetSetting};
 
@@ -231,6 +232,30 @@ pub fn profiles(
             Err(errors)
         }
     }
+}
+
+/// The profile (with its file) of target `id` (the engine's or the game's of `config`,
+/// from `root`), or the code and what is wrong: the profiles don't load,
+/// or none has that id. Both are [`codes::TARGET`].
+pub fn profile(config: &Config, root: &Path, id: &str) -> Result<Profile, (codes::Code, String)> {
+    let profiles = profiles(config, root).map_err(|errors| {
+        let shown: Vec<String> = errors.iter().map(ToString::to_string).collect();
+        (
+            codes::TARGET,
+            format!("the target profiles don't load: {}", shown.join("; ")),
+        )
+    })?;
+    if let Some(found) = profiles.get(id) {
+        return Ok(found.clone());
+    }
+    let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
+    Err((
+        codes::TARGET,
+        format!(
+            "no target profile \"{id}\"; the profiles are {}",
+            known.join(", ")
+        ),
+    ))
 }
 
 /// The scale a frame is shown at, as a fraction: `num / den`.

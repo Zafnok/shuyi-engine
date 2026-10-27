@@ -44,7 +44,8 @@
     },
     "op": {
       "description": "The operation.",
-      "$ref": "#/$defs/Op"
+      "type": "string",
+      "const": "bots"
     },
     "result": {
       "description": "What it found or made; absent when it could not run.",
@@ -117,126 +118,6 @@
         "outcomes",
         "measures",
         "plays"
-      ]
-    },
-    "Op": {
-      "description": "An operation of the contract.",
-      "oneOf": [
-        {
-          "description": "A new game from a template.",
-          "type": "string",
-          "const": "new"
-        },
-        {
-          "description": "Every error of the game's content.",
-          "type": "string",
-          "const": "check"
-        },
-        {
-          "description": "What is wrong with the shape of the game's code.",
-          "type": "string",
-          "const": "lint"
-        },
-        {
-          "description": "The catalog of modules, and the game's.",
-          "type": "string",
-          "const": "modules"
-        },
-        {
-          "description": "A module turned on.",
-          "type": "string",
-          "const": "add"
-        },
-        {
-          "description": "A key script played headless.",
-          "type": "string",
-          "const": "run"
-        },
-        {
-          "description": "The scene on screen.",
-          "type": "string",
-          "const": "scene"
-        },
-        {
-          "description": "A record replayed.",
-          "type": "string",
-          "const": "replay"
-        },
-        {
-          "description": "Bots playing the game.",
-          "type": "string",
-          "const": "bots"
-        },
-        {
-          "description": "Named bots' tries judged against the game's checks.",
-          "type": "string",
-          "const": "playtest"
-        },
-        {
-          "description": "A stage changed until the game's named bots land in their bands.",
-          "type": "string",
-          "const": "autobalance"
-        },
-        {
-          "description": "A file read through the format registry.",
-          "type": "string",
-          "const": "import"
-        },
-        {
-          "description": "The game's sources baked into a pack.",
-          "type": "string",
-          "const": "bake"
-        },
-        {
-          "description": "The toolchain checked.",
-          "type": "string",
-          "const": "doctor"
-        },
-        {
-          "description": "A problem code's page.",
-          "type": "string",
-          "const": "explain"
-        },
-        {
-          "description": "A running build reached over the live link.",
-          "type": "string",
-          "const": "attach"
-        },
-        {
-          "description": "The MCP session's game started headless.",
-          "type": "string",
-          "const": "start"
-        },
-        {
-          "description": "The MCP session's game played on: a script, then idle frames.",
-          "type": "string",
-          "const": "step"
-        },
-        {
-          "description": "A picture of the MCP session's frame.",
-          "type": "string",
-          "const": "frame_png"
-        },
-        {
-          "description": "What happened in the MCP session's game.",
-          "type": "string",
-          "const": "events"
-        },
-        {
-          "description": "The MCP session's frames' records since a number.",
-          "type": "string",
-          "const": "perf"
-        },
-        {
-          "description": "The MCP session's game started again.",
-          "type": "string",
-          "const": "reset"
-        },
-        {
-          "description": "The MCP session's game stopped.",
-          "type": "string",
-          "const": "stop"
-        }
       ]
     },
     "Play": {
