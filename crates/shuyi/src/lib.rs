@@ -16,10 +16,6 @@ pub use shuyi_core as core;
 pub use shuyi_platform as platform;
 pub use shuyi_ui as ui;
 
-// Named, so rustc links it and takes the crates above from it.
-#[cfg(feature = "dynamic")]
-use shuyi_dylib as _;
-
 use shuyi_ui::GameData;
 use shuyi_ui::module::Module;
 

@@ -75,7 +75,8 @@ fn a_slow_rebuild_fails() {
     let verdict = check(&times(&[1.0, 4.0, 3.5], 120), &budget(3.0, 120), "b.ron");
     assert_eq!(verdict.errors.len(), 1, "{verdict:?}");
     assert!(
-        verdict.errors[0].starts_with("the median rebuild took 3.50 s on linux, over the 3.00 s of b.ron"),
+        verdict.errors[0]
+            .starts_with("the median rebuild took 3.50 s on linux, over the 3.00 s of b.ron"),
         "{verdict:?}"
     );
     // A budget of 0 s fails every run.
@@ -114,7 +115,7 @@ fn an_os_without_a_budget_fails() {
 }
 
 #[test]
-fn the_repositorys_budget_reads() {
+fn the_budget_in_tools_reads() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let text = fs::read_to_string(root.join("tools/compile-budget.ron")).unwrap();
     let budget = parse_budget(&text).unwrap();
@@ -215,7 +216,10 @@ fn a_failed_build_says_why() {
         }
     }
     let error = cargo(&Fails, Path::new("g"), &["build"]).unwrap_err();
-    assert!(error.contains("`cargo build` in g failed:\nerror: build broke"), "{error}");
+    assert!(
+        error.contains("`cargo build` in g failed:\nerror: build broke"),
+        "{error}"
+    );
 }
 
 #[test]

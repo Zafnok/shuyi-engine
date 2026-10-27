@@ -40,7 +40,11 @@ const REBUILDS: usize = 3;
 const MAIN: &str = "crates/game/src/main.rs";
 /// The variables that would replace the game's own `rustflags`
 /// (`.cargo/config.toml`); a developer's shell rarely sets them, CI's does.
-const RUSTFLAGS: &[&str] = &["RUSTFLAGS", "CARGO_ENCODED_RUSTFLAGS", "CARGO_BUILD_RUSTFLAGS"];
+const RUSTFLAGS: &[&str] = &[
+    "RUSTFLAGS",
+    "CARGO_ENCODED_RUSTFLAGS",
+    "CARGO_BUILD_RUSTFLAGS",
+];
 
 /// `compile-times`' options.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -288,7 +292,12 @@ pub fn games_dir(root: &Path, dir: Option<&Path>) -> PathBuf {
 
 /// Measures, with the engine at `root`, games made in `games`: `maker` runs
 /// `shuyi new` in the checkout, `game` runs cargo in the games.
-pub fn run(root: &Path, games: &Path, maker: &dyn Runner, game: &dyn Runner) -> Result<Times, String> {
+pub fn run(
+    root: &Path,
+    games: &Path,
+    maker: &dyn Runner,
+    game: &dyn Runner,
+) -> Result<Times, String> {
     let timed = games.join("timed");
     let blank = games.join("blank");
     for (dir, template, name) in [(&timed, "grid", "timed"), (&blank, "blank", "blank")] {

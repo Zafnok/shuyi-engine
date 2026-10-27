@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2513"]
 nick_input: none
-completed:
+completed: 2026-10-27
 ---
 
 # 2009 — Fast compiles
@@ -107,16 +107,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask compile-times` prints the clean build, the rebuild,
+- [x] `cargo xtask compile-times` prints the clean build, the rebuild,
       the `check` rebuild and the dependency count.
-- [ ] The PR description has a table of each option's effect on the
+- [x] The PR description has a table of each option's effect on the
       rebuild, on both runners.
-- [ ] A game made with `shuyi new` gets the setup that helped, and
+- [x] A game made with `shuyi new` gets the setup that helped, and
       CI's bare-container `templates` job still passes with it.
-- [ ] CI fails when the rebuild passes the budget (shown by a PR-local
+- [x] CI fails when the rebuild passes the budget (shown by a PR-local
       test run with the budget set to 0 s) or when the dependency count
       grows.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -126,4 +126,49 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done, with what the measurements showed (ADR-0049 has the table):
+
+- `cargo xtask compile-times` (`crates/xtask/src/compile_times.rs`)
+  prints the clean build, the median rebuild and `check` rebuild after
+  a one-line change in `main.rs`, and a new `blank` game's dependency
+  count (144), as a table or JSON; `--budget`, `--summary` and `--dir`
+  serve CI. The xtask's `make_game` (`skills.rs`) is now `pub` for it.
+- CI's `compile-times` job runs it on `ubuntu-latest` and
+  `windows-latest` against `tools/compile-budget.ron`, with the table in
+  the step summary, and `ci-result` needs it.
+- The template's `[profile.dev]` has `debug = false`: about a third off
+  each rebuild on both runners. Nothing else helped, so nothing else
+  was kept.
+- The page is `README.md`'s *Fast compiles* (2802 moves it into the
+  book; its clause says so now). `docs/ROADMAP.md`'s row and the
+  website's card say done and Ready.
+
+Deviations:
+
+- The tool times a game made with `shuyi new grid` (with the engine's
+  `Cargo.lock`), not a copy of `examples/hello-grid`. Hello, Grid lives
+  in the engine's workspace, with the engine's profiles and
+  `.cargo/config.toml`: a copy would need its manifest rewritten into a
+  workspace that is no game's, and wouldn't measure the templates'
+  setup, which is what the gate protects.
+- **No `dynamic` feature and no `shuyi-dylib`.** It was built and
+  measured: it links on Windows GNU and MSVC (no export-limit failure)
+  but made no rebuild faster (Linux 1.15 s against 1.09–1.52, MSVC 2.84
+  against 2.61–3.25, Windows GNU 1.70 against 1.32). Step 3 keeps only
+  what helps.
+- **No linker line in the templates**, so nothing joins `doctor`'s
+  table or `setup-linux.sh`: Rust has linked with `rust-lld` on Linux
+  by default since 1.90 (ld.bfd: 1.80 s), `mold` was no faster (1.33
+  s); on Windows GNU `rust-lld` fails on `winapi`'s import libraries; on
+  MSVC it was no faster (2.75 s).
+- `opt-level = 1` for dependencies made no rebuild faster (only the
+  runner's speed moved it), so they stay at 2 and the frame rate stays
+  as it was. `split-debuginfo = "unpacked"` (1.58 s) and
+  `incremental = false` (1.33 s; 3.09 s on MSVC) were slower.
+- The root `Cargo.toml` keeps `debug = "line-tables-only"`: the
+  engine's test failures are read from CI's logs, where a backtrace's
+  lines are worth more than a second a rebuild (ADR-0049 §4).
+
+No break: the xtask isn't shipped, and the template change is a profile.
+No follow-up tickets. Nothing for Nick, beyond: a new game rebuilds in
+about a second on Linux and two on Windows, and CI keeps it so.

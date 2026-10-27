@@ -1,7 +1,19 @@
+// What a new game's compile may cost (ticket 2009, ADR-0049). CI's
+// `compile-times` job runs `cargo xtask compile-times --budget` on this
+// file (crates/xtask/src/compile_times.rs) and fails over it.
 Budget(
+    // The most the median rebuild of a new `grid` game may take after a
+    // one-line change in its `main.rs`, in seconds, on CI's runner of each
+    // OS (`std::env::consts::OS`): the slowest measured, plus 50 % for the
+    // runners' noise. Linux measured 0.72 to 1.04 s, Windows (MSVC) 1.79
+    // to 1.95 s. A slower rebuild is found and fixed, not budgeted.
     rebuild: {
-        "linux": 10.0,
-        "windows": 10.0,
+        "linux": 1.6,
+        "windows": 2.9,
     },
-    dependencies: 1000,
+    // The most crates a new `blank` game's dependency tree may hold, the
+    // engine's among them (`cargo metadata`, every platform's, with the
+    // engine's Cargo.lock). A change that adds one raises this number in
+    // the same PR, so each new dependency is a choice.
+    dependencies: 144,
 )

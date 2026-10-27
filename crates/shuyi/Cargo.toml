@@ -16,14 +16,8 @@ workspace = true
 # None yet: a module's ticket adds its feature, its optional dependency
 # and its line in `enabled_modules` (ADR-0009 §6). `cargo xtask
 # check-modules` fails on a feature with no catalog row.
-[features]
-# `dynamic`: the default engine linked as one dynamic library
-# (`shuyi-dylib`), so a rebuild links only the game. For development
-# builds: never in a release, nor on the web.
-dynamic = ["dep:shuyi-dylib"]
 
 [dependencies]
-shuyi-dylib = { path = "../dylib", optional = true }
 shuyi-core = { path = "../core" }
 shuyi-assets = { path = "../assets" }
 shuyi-ui = { path = "../ui" }

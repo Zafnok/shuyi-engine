@@ -208,8 +208,15 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
             .create(true)
             .append(true)
             .open(file)
-            .and_then(|mut f| f.write_all(format!("{table}
-").as_bytes()));
+            .and_then(|mut f| {
+                f.write_all(
+                    format!(
+                        "{table}
+"
+                    )
+                    .as_bytes(),
+                )
+            });
         if let Err(e) = written {
             verdict.errors.push(format!("{}: {e}", file.display()));
         }
@@ -220,8 +227,7 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
             .and_then(|text| compile_times::parse_budget(&text))
         {
             Ok(budget) => {
-                let found =
-                    compile_times::check(&times, &budget, &file.display().to_string());
+                let found = compile_times::check(&times, &budget, &file.display().to_string());
                 verdict.errors.extend(found.errors);
                 verdict.warnings.extend(found.warnings);
             }

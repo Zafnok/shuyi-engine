@@ -54,10 +54,11 @@ None. This is technical.
      If not, the ADR says to reuse them rather than build a second
      replay. Measure: time from save to the same frame; what happens
      when the new code makes the record diverge (`Playback` stops at
-     the first frame whose hash differs: say so). **Either order with
-     2009:** if 2009 is done, measure with its setup (the fast linker,
-     the `dynamic` feature and the profile settings it keeps); if not,
-     with today's, and the note says which (nothing for 2009 to do).
+     the first frame whose hash differs: say so). **From 2009
+     (done):** measure with the setup the template has from it (no
+     debug info in `dev`, Rust's own linker; no `dynamic` feature, which
+     made no rebuild faster, ADR-0049), and `cargo xtask compile-times`
+     for the rebuild it waits on.
   2. **Hot patching with `subsecond`:** license (check on the day),
      what it needs (its CLI, a nightly or stable toolchain), whether it
      works on Windows with the GNU toolchain (`AGENTS.md`,

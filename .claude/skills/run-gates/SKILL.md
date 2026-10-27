@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build and the skill pack's worked examples; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the skill pack's worked examples and a game's compile times; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -146,6 +146,25 @@ cargo xtask skill-examples shuyi-gates shuyi-test   # or no names for every one
 
 The games are made in `target/skill-examples/<skill>`, and build in this
 repository's target folder.
+
+## A game's compile times (CI's `compile-times` job)
+
+CI times a new `grid` game on Linux and Windows (ADR-0049): its clean
+build, its rebuild after a one-line change in `main.rs` and the same for
+`cargo check`, and counts a new `blank` game's crates. It fails when the
+median rebuild is over `tools/compile-budget.ron`'s number for the
+runner's OS, or the count is over its `dependencies`. A change that adds
+a crate to a new game raises that number in the same PR, so each new
+dependency is a choice. Locally, on a change to the templates' setup, the
+profiles or the engine's dependencies (the numbers are this machine's,
+not the budget's):
+
+```bash
+cargo xtask compile-times   # --json for JSON; the games are made in target/compile-times
+```
+
+A slow rebuild is never fixed by raising the budget: find what grew
+(`cargo build --timings` in `target/compile-times/timed`) first.
 
 ## The repository's own checks (CI's `tickets` job)
 

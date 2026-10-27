@@ -10,7 +10,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 7798fc67608aa8a1 .gitignore
 e7fbb64e3f13c800 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
-38a9a3aa68f6c9ec Cargo.toml
+a816b2d997ffa671 Cargo.toml
 c711d1bb70e03694 README.md
 b7bf83dcce2fb717 clippy.toml
 1c2cc3d4ec1d413c crates/game/Cargo.toml
@@ -39,7 +39,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 7798fc67608aa8a1 .gitignore
 e7fbb64e3f13c800 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
-ad920c3cef63d9b0 Cargo.toml
+e38c9bf7515affe5 Cargo.toml
 c711d1bb70e03694 README.md
 b7bf83dcce2fb717 clippy.toml
 c9188dd777846726 crates/game/Cargo.toml
