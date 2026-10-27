@@ -173,10 +173,10 @@ engine gives the pieces and a default, and the game chooses.
       `index_html_loads_gamepad_js_between_the_bundle_and_the_game`
       check it.
     - `crates/cli/web/README.md` says what the file is.
-    - **Either order with 3039** (the web build's notices): if it is
-      done, `languages.js` gets a row in its table of `SHELL`'s files,
-      as the engine's own beside `gamepad.js` (its test fails until it
-      does); if not, 3039 lists it.
+    - **From 3039 (done)** (the web build's notices): `languages.js`
+      gets a row in `SHELL_NOTICES` (`crates/cli/src/web.rs`), the
+      table of `SHELL`'s files, as the engine's own beside `gamepad.js`
+      (its test fails until it does).
     - **Either order with 3052** (the web shell's progress and errors):
       if it is done, `SHELL` holds its `shell.js` and the page ends
       with `if (shuyiShell.start(…)) load("%WASM%");`. `languages.js`

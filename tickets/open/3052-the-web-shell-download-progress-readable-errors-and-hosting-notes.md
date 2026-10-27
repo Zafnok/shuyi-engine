@@ -96,8 +96,9 @@ What is planned:
 - 2528 (After MVP) serves the web build with `shuyi web --serve` and
   sends the browser's log to the terminal through its `dev.js`. Its
   either-order clause with this ticket sends the page's state too.
-- 3039 (MVP) adds `NOTICES.txt` and a `rel="license"` link to the page,
-  and 3049 (After MVP) the game's icons and title.
+- 3039 (done) added `NOTICES.txt` beside the page, 3066 (MVP) adds a
+  `rel="license"` link to it, and 3049 (After MVP) the game's icons and
+  title.
 - 3043, 2522, 2519 and 2349 (After MVP) add `lifecycle.js`, `net.js`,
   `download.js` and `languages.js` to `SHELL`.
 - 3046 (After MVP) leaves "the web page showing an error over a stopped
@@ -291,10 +292,13 @@ None.
       the setting does nothing and no error panel shows;
     - leaving fullscreen with the browser's own key while the setting
       is on: what the setting shows after.
-- **Either order with 3039 and 3049:** all three change `index.html`;
-  whichever lands later keeps the others' parts. If 3039 is done,
-  `shell.js` goes in its notices table as the engine's own; if not,
-  3039 lists it (its clause says so).
+- **Either order with 3049:** both change `index.html`; whichever
+  lands later keeps the other's parts.
+- **Either order with 3066:** if 3066 is done, keep its
+  `<link rel="license" href="NOTICES.txt">` in the `<head>`; if not,
+  nothing to do (3066 adds it beside this ticket's parts).
+- **From 3039 (done):** `shell.js` goes in `SHELL_NOTICES` (`web.rs`'s
+  notices table) as the engine's own (its test fails until it does).
 - **Either order with 3043, 2522, 2519, 2349 and 2377:** they add
   `lifecycle.js`, `net.js`, `download.js`, `languages.js` and
   `motion.js` to `SHELL` and load them between the bundle and
@@ -351,7 +355,7 @@ None.
 
 1. Read `crates/cli/web/` (the page, the README, the bundle's `load`
    and `init_webgl`), and `crates/cli/src/web.rs` with its tests. Check
-   whether 2019, 2349, 2519, 2522, 2528, 3039, 3043 and 3049 are done,
+   whether 2019, 2349, 2519, 2522, 2528, 3043 and 3049 are done,
    and read `index.html` and `SHELL` as they left them.
 2. Write `shell.js`, then the panel's markup and CSS and the last call
    in `index.html`.
@@ -360,7 +364,8 @@ None.
 4. Write the Rust tests below.
 5. Write the README's two sections.
 6. If 2528 is done, add the `state` line to `dev.js` and its server,
-   with its tests. If 3039 is done, add `shell.js` to its notices table.
+   with its tests. Add `shell.js` to 3039's notices table
+   (`SHELL_NOTICES`).
 7. Run the browser checks (2019's `check.py`, or by hand). For leaving
    fullscreen, do what the clause with 3062 says.
 8. Run the gates, the web build included.

@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 3039 — Web builds carry their notices
@@ -268,25 +268,26 @@ None. Meeting these licenses' notice duties isn't a product choice.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi web --release` in `examples/hello-grid` writes
+- [x] `cargo shuyi web --release` in `examples/hello-grid` writes
       `dist/web/NOTICES.txt`. It lists `macroquad`, `shuyi-core`, the
       three vendored scripts and Terminus, with the MIT, Apache-2.0,
       Zlib and OFL-1.1 texts.
-- [ ] It doesn't list `insta` (a dev-dependency) or `autocfg` (only
+- [x] It doesn't list `insta` (a dev-dependency) or `autocfg` (only
       build scripts use it).
-- [ ] `quad-snd`, which has no license file and declares
+- [x] `quad-snd`, which has no license file and declares
       `MIT/Apache-2.0`, is listed with an MIT text naming its author and
       the Apache-2.0 text.
 - [ ] Each vendored script in `dist/web` starts with its `/*!` header.
+      **Moved to 3066** (the Size rule), with the `rel="license"` link.
       The committed copies under `crates/cli/web/` are unchanged.
-- [ ] Each text is printed once, and two runs on the same inputs give
+- [x] Each text is printed once, and two runs on the same inputs give
       the same bytes (test).
-- [ ] A `notices.texts` file that doesn't exist fails `web`, naming its
+- [x] A `notices.texts` file that doesn't exist fails `web`, naming its
       path.
-- [ ] A file added to `SHELL` without a row in the table fails a test.
-- [ ] The Pages index links `hello-grid/NOTICES.txt`, and the `wasm`
+- [x] A file added to `SHELL` without a row in the table fails a test.
+- [x] The Pages index links `hello-grid/NOTICES.txt`, and the `wasm`
       CI job checks the file.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -310,4 +311,57 @@ None. Meeting these licenses' notice duties isn't a product choice.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **`crates/cli/src/notices.rs`** (`pub mod notices`): `Work`, `Text`
+  and `Section` (`#[non_exhaustive]`, with `Work::new` and `Text::new`,
+  ADR-0039), `crates` (`cargo metadata` for the triple, normal edges
+  from the package, the game's own members left out, sorted by name and
+  version), each crate's texts (its license files by name and its
+  `license_file`; the engine's `LICENSE-MIT` and `LICENSE-APACHE` for
+  the engine's crates; else Apache-2.0 and MIT-with-its-authors written
+  from the declared license), `game_texts`, `engine_texts` and `write`
+  (by section, then each text once, `
+` and trailing blank lines made
+  alike). Tests on a hand-written `metadata.json` fixture, an insta
+  snapshot of the file, and the walk on Hello, Grid's real graph.
+- **`web.rs`:** `SHELL_NOTICES`, a row per file of `SHELL` (the three
+  vendored scripts with their work, version, source and committed MIT
+  text; `index.html` and `gamepad.js` as the engine's own), and
+  `shell_works`. `run` takes the project's works, gets the crates after
+  `cargo build`, warns once naming crates with no text, and `package`
+  writes `NOTICES.txt` from every work on every build. A test keeps
+  `SHELL` and the table equal, and the vendored rows equal to
+  `THIRD_PARTY_ASSETS.md`'s (version and license file included).
+- **`shuyi.ron`:** `Config.notices: Option<Notices>` (`Notices { texts }`,
+  `deny_unknown_fields`, `#[non_exhaustive]`). Hello, Grid names its
+  Terminus text; the template's `base/shuyi.ron` names
+  `crates/game/files/font/Terminus-LICENSE.txt` (`plans.golden`
+  re-blessed).
+- **CI and Pages:** the `wasm` job checks that `NOTICES.txt` names
+  `macroquad`, `Terminus` and `mq_js_bundle.js`; the Pages index links
+  `hello-grid/NOTICES.txt` (2801 isn't done).
+- **Docs:** `crates/cli/web/README.md` (a *Notices* section),
+  `THIRD_PARTY_ASSETS.md` (the line about a game's registry), and the
+  `shuyi-ship` skill's web step.
+- **Hello, Grid's real build:** 86 crates, 60 distinct texts, about
+  190 KB. Every crate had a text, so no warning was printed.
+
+**Deviations:**
+- **Split by the Size rule.** The diff, fixtures and snapshots aside,
+  came to about 1,100 lines (the module, its tests and the web tests
+  were bigger than the ticket guessed), so the vendored scripts' `/*!`
+  headers and the page's `rel="license"` link moved to **3066** (MVP,
+  blocked by this one), as the Size line says. Its acceptance line is
+  left unticked above. The clauses of 3049 and 3052 about that link now
+  name 3066.
+- A crate that declares MIT but names no author gets no written MIT
+  text (it has no holder to name), and so may end with none: it is
+  listed with "(no license text found)" and named in the warning.
+- A crate's source is its `repository`, else its crates.io page for a
+  crates.io crate, else empty.
+
+**Either-order tickets:** none of 2801, 3052, 2601, 3043, 2519, 2349,
+2377, 2522, 3033, 2739 or 3058 was done, so each kept its own row;
+their clauses now say "From 3039 (done)" and name `SHELL_NOTICES`.
+
+Breaking: shuyi-cli: web::run: takes a fourth argument, `game: &[notices::Work]`, the project's works for `NOTICES.txt` (pass `&[]` for none)
+Breaking: shuyi-cli: project::Config: gains `notices: Option<Notices>`; a literal adds `notices: None` or ends with `..Config::default()`

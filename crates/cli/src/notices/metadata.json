@@ -1,0 +1,143 @@
+{
+  "packages": [
+    {
+      "id": "path+file:///%ROOT%/game-web#0.1.0",
+      "name": "game-web",
+      "version": "0.1.0",
+      "license": "MIT OR Apache-2.0",
+      "license_file": null,
+      "repository": "https://github.com/Zafnok/shuyi-engine",
+      "source": null,
+      "authors": [],
+      "manifest_path": "%ROOT%/game-web/Cargo.toml"
+    },
+    {
+      "id": "path+file:///%ROOT%/the-rules#0.1.0",
+      "name": "the-rules",
+      "version": "0.1.0",
+      "license": null,
+      "license_file": null,
+      "repository": "https://example.com/the-game",
+      "source": null,
+      "authors": [],
+      "manifest_path": "%ROOT%/the-rules/Cargo.toml"
+    },
+    {
+      "id": "registry+https://github.com/rust-lang/crates.io-index#lib-a@1.2.0",
+      "name": "lib-a",
+      "version": "1.2.0",
+      "license": "MIT OR Apache-2.0",
+      "license_file": "docs/TERMS.txt",
+      "repository": "https://example.com/lib-a",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "authors": ["Al Able"],
+      "manifest_path": "%ROOT%/lib-a/Cargo.toml"
+    },
+    {
+      "id": "registry+https://github.com/rust-lang/crates.io-index#old-b@0.2.8",
+      "name": "old-b",
+      "version": "0.2.8",
+      "license": "MIT/Apache-2.0",
+      "license_file": null,
+      "repository": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "authors": ["Ann Author <ann@example.com>", "Bo Builder"],
+      "manifest_path": "%ROOT%/old-b/Cargo.toml"
+    },
+    {
+      "id": "registry+https://github.com/rust-lang/crates.io-index#odd-e@0.3.0",
+      "name": "odd-e",
+      "version": "0.3.0",
+      "license": "Zlib",
+      "license_file": null,
+      "repository": "https://example.com/odd-e",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "authors": ["Ed Odd"],
+      "manifest_path": "%ROOT%/odd-e/Cargo.toml"
+    },
+    {
+      "id": "registry+https://github.com/rust-lang/crates.io-index#dev-c@1.0.0",
+      "name": "dev-c",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "license_file": null,
+      "repository": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "authors": [],
+      "manifest_path": "%ROOT%/dev-c/Cargo.toml"
+    },
+    {
+      "id": "registry+https://github.com/rust-lang/crates.io-index#build-d@0.1.0",
+      "name": "build-d",
+      "version": "0.1.0",
+      "license": "Apache-2.0",
+      "license_file": null,
+      "repository": null,
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "authors": [],
+      "manifest_path": "%ROOT%/build-d/Cargo.toml"
+    }
+  ],
+  "workspace_members": [
+    "path+file:///%ROOT%/game-web#0.1.0",
+    "path+file:///%ROOT%/the-rules#0.1.0"
+  ],
+  "resolve": {
+    "nodes": [
+      {
+        "id": "path+file:///%ROOT%/game-web#0.1.0",
+        "deps": [
+          {
+            "name": "the_rules",
+            "pkg": "path+file:///%ROOT%/the-rules#0.1.0",
+            "dep_kinds": [{ "kind": null, "target": null }]
+          },
+          {
+            "name": "lib_a",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#lib-a@1.2.0",
+            "dep_kinds": [{ "kind": "dev", "target": null }, { "kind": null, "target": null }]
+          },
+          {
+            "name": "dev_c",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#dev-c@1.0.0",
+            "dep_kinds": [{ "kind": "dev", "target": null }]
+          }
+        ]
+      },
+      {
+        "id": "path+file:///%ROOT%/the-rules#0.1.0",
+        "deps": [
+          {
+            "name": "lib_a",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#lib-a@1.2.0",
+            "dep_kinds": [{ "kind": null, "target": null }]
+          },
+          {
+            "name": "old_b",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#old-b@0.2.8",
+            "dep_kinds": [{ "kind": null, "target": null }]
+          },
+          {
+            "name": "odd_e",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#odd-e@0.3.0",
+            "dep_kinds": [{ "kind": null, "target": null }]
+          }
+        ]
+      },
+      {
+        "id": "registry+https://github.com/rust-lang/crates.io-index#lib-a@1.2.0",
+        "deps": [
+          {
+            "name": "build_d",
+            "pkg": "registry+https://github.com/rust-lang/crates.io-index#build-d@0.1.0",
+            "dep_kinds": [{ "kind": "build", "target": null }]
+          }
+        ]
+      },
+      { "id": "registry+https://github.com/rust-lang/crates.io-index#old-b@0.2.8", "deps": [] },
+      { "id": "registry+https://github.com/rust-lang/crates.io-index#odd-e@0.3.0", "deps": [] },
+      { "id": "registry+https://github.com/rust-lang/crates.io-index#dev-c@1.0.0", "deps": [] },
+      { "id": "registry+https://github.com/rust-lang/crates.io-index#build-d@0.1.0", "deps": [] }
+    ]
+  }
+}

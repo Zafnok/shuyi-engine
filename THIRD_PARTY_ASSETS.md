@@ -6,8 +6,11 @@ checked by `cargo deny` (`deny.toml`). Only the permissive licenses of
 ADR-0002 §8 are allowed (`AGENTS.md`, rule 7), and each item's license
 text is committed next to it.
 
-A game made with the engine ships some of these too (the web shell's
-JavaScript, the controller database): its own registry lists them.
+A game made with the engine ships some of these too. `shuyi web` writes
+the web shell's JavaScript, with its license texts, into the
+`NOTICES.txt` beside the page, with the crates compiled in and the
+game's own texts (its `shuyi.ron`'s `notices`). The controller database,
+which only native builds compile in, is ticket 3004's.
 
 | Item | Source URL | Version | License | License file | Used for | Added by |
 | ---- | ---------- | ------- | ------- | ------------ | -------- | -------- |

@@ -122,8 +122,8 @@ and says whether the home page says what the engine is.
   - builds the examples (as now), then `zola build`, copies each
     example's `dist/web` into `public/examples/<name>/` whole, so each
     example's `NOTICES.txt` (3039) goes with it, and the Examples page
-    links each example's notices beside it (if 3039 isn't done, 3039
-    adds the link); then it uploads `public/`.
+    links each example's notices beside it, as today's index links
+    `hello-grid/NOTICES.txt`; then it uploads `public/`.
 - **CI** (`ci.yml`, on pull requests): `zola check` (internal links and
   anchors), and `cargo xtask check-links` over `site/content/`, which
   leaves Zola's internal links (`@/…`) to `zola check`: `is_relative` in

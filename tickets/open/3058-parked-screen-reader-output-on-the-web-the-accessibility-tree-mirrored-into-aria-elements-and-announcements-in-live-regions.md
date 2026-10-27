@@ -184,11 +184,10 @@ None.
   and `index.html` loads it after the bundle and before the game's
   `load(...)`, as it loads `gamepad.js`. `crates/cli/web/README.md`
   lists it under *Files*.
-- **Either order with 3039** (the web build's notices): if it is done,
-  `access.js` (when this ticket writes one) gets a row in its table of
-  `SHELL`'s files as the engine's own, beside `gamepad.js` (its test
-  fails until it does); if not, nothing to do (3039 lists it, its
-  clause says so).
+- **From 3039 (done)** (the web build's notices): `access.js` (when
+  this ticket writes one) gets a row in `SHELL_NOTICES`
+  (`crates/cli/src/web.rs`), the table of `SHELL`'s files, as the
+  engine's own, beside `gamepad.js` (its test fails until it does).
 - **Licenses:** no new crate, and `access.js` is all ours, so
   `THIRD_PARTY_ASSETS.md` doesn't change. If the work borrows from an
   upstream file after all, that file gets a license header and a line

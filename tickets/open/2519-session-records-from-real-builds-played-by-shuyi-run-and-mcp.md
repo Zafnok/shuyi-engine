@@ -265,8 +265,9 @@ for Nick (parked 3047 asks it for crash reports).
     before the game, and `crates/cli/web/README.md` gets a section. The
     tests that pin `gamepad.js` (`web.rs`, from line 783) get the same
     for it: the functions it provides are those the app declares, and
-    its version matches. If 3039 is done, `download.js` goes in its
-    notices table as the engine's own, beside `gamepad.js`;
+    its version matches. `download.js` goes in 3039's notices table
+    (`SHELL_NOTICES` in `web.rs`) as the engine's own, beside
+    `gamepad.js`;
   - **Either order with 3052:** both change `index.html` and `SHELL`.
     If 3052 is done, `download.js` loads between the bundle and the
     page's last call, `if (shuyiShell.start(…)) load("%WASM%");`, and
@@ -307,8 +308,9 @@ for Nick (parked 3047 asks it for crash reports).
   lines, the debug menu entry, Hello, Grid's debug menu and the web
   download go to a follow-up ticket (the `write-ticket` skill, After
   MVP, blocked by this one) with their acceptance lines, and the
-  completion notes name it. The lines of 3039, 3043 and 3052 that name
-  this ticket's `download.js` then name the follow-up.
+  completion notes name it. The lines of 3043 and 3052 that name this
+  ticket's `download.js`, and its row in `SHELL_NOTICES`, then go to the
+  follow-up.
 
 **Out (do not do):**
 - Recording in shipped builds or by players, and sending a record as a

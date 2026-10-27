@@ -12,12 +12,17 @@
 //! copied beside the page into a folder of the same name, which exists
 //! even when there are none; its voice clips (`web.voice`, `.ogg` and
 //! `.ron`) are copied the same way when there is such a folder.
+//!
+//! Every build also writes `NOTICES.txt` beside the page ([`notices`]):
+//! the crates compiled in, the shell's files (`SHELL_NOTICES`) and the
+//! game's own license texts.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::notices::{self, Section, Text, Work};
 use crate::project::Web;
 
 /// The shell's files: name and contents. `index.html` has `%TITLE%` and
@@ -29,6 +34,95 @@ const SHELL: [(&str, &str); 5] = [
     ("quad-storage.js", include_str!("../web/quad-storage.js")),
     ("gamepad.js", include_str!("../web/gamepad.js")),
 ];
+
+/// Where a file of [`SHELL`] comes from, for `NOTICES.txt`.
+enum Origin {
+    /// The engine's own code, under the engine's licenses.
+    Engine,
+    /// Vendored from another work, under MIT.
+    Vendored {
+        /// The work it comes from.
+        work: &'static str,
+        /// The work's version.
+        version: &'static str,
+        /// Where it comes from.
+        source: &'static str,
+        /// Its license text's file in `web/`, and the text.
+        text: (&'static str, &'static str),
+    },
+}
+
+/// Each file of [`SHELL`], by name, and where it comes from.
+const SHELL_NOTICES: [(&str, Origin); 5] = [
+    ("index.html", Origin::Engine),
+    (
+        "mq_js_bundle.js",
+        Origin::Vendored {
+            work: "macroquad",
+            version: "0.4.16",
+            source: "https://github.com/not-fl3/macroquad",
+            text: (
+                "mq_js_bundle-LICENSE-MIT.txt",
+                include_str!("../web/mq_js_bundle-LICENSE-MIT.txt"),
+            ),
+        },
+    ),
+    (
+        "sapp_jsutils.js",
+        Origin::Vendored {
+            work: "sapp-jsutils",
+            version: "0.1.7",
+            source: "https://github.com/not-fl3/sapp-jsutils",
+            text: (
+                "sapp_jsutils-LICENSE-MIT.txt",
+                include_str!("../web/sapp_jsutils-LICENSE-MIT.txt"),
+            ),
+        },
+    ),
+    (
+        "quad-storage.js",
+        Origin::Vendored {
+            work: "quad-storage",
+            version: "0.1.3",
+            source: "https://github.com/optozorax/quad-storage",
+            text: (
+                "quad-storage-LICENSE-MIT.txt",
+                include_str!("../web/quad-storage-LICENSE-MIT.txt"),
+            ),
+        },
+    ),
+    ("gamepad.js", Origin::Engine),
+];
+
+/// The shell's files as works of `NOTICES.txt`, in the shell's order.
+pub fn shell_works() -> Vec<Work> {
+    SHELL_NOTICES
+        .iter()
+        .map(|(file, origin)| match origin {
+            Origin::Engine => Work {
+                section: Section::Shell,
+                name: format!("{file}, from Shuyi Engine"),
+                version: env!("CARGO_PKG_VERSION").to_owned(),
+                license: env!("CARGO_PKG_LICENSE").to_owned(),
+                source: env!("CARGO_PKG_REPOSITORY").to_owned(),
+                texts: notices::engine_texts(),
+            },
+            Origin::Vendored {
+                work,
+                version,
+                source,
+                text,
+            } => Work {
+                section: Section::Shell,
+                name: format!("{file}, from {work}"),
+                version: (*version).to_owned(),
+                license: "MIT".to_owned(),
+                source: (*source).to_owned(),
+                texts: vec![Text::new(text.0, text.1)],
+            },
+        })
+        .collect()
+}
 
 /// The target the game is built for.
 const TARGET: &str = "wasm32-unknown-unknown";
@@ -142,8 +236,12 @@ fn target_dir_of(
         .map_or_else(|| root.join("target"), |dir| dir.join("target"))
 }
 
-/// Builds and packages the web build, returning a one-line summary on success.
-pub fn run(rules: &Web, root: &Path, options: &Options) -> Result<String, String> {
+/// Builds and packages the web build, returning a one-line summary on
+/// success. `game` is what the project adds to `NOTICES.txt` (its own
+/// license texts, [`notices::game_texts`]); the crates compiled in and the
+/// shell's files are found here. A crate with no license text found is
+/// named in a warning.
+pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result<String, String> {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
     let status = Command::new(cargo)
         .args(cargo_args(rules, options))
@@ -153,19 +251,43 @@ pub fn run(rules: &Web, root: &Path, options: &Options) -> Result<String, String
     if !status.success() {
         return Err(format!("cargo build exited with {status}"));
     }
-    package(&RealWasmOpt, rules, root, &target_dir(root), options)
+    let mut works = notices::crates(root, &rules.package, TARGET, &options.features)?;
+    let bare: Vec<&str> = works
+        .iter()
+        .filter(|work| work.texts.is_empty())
+        .map(|work| work.name.as_str())
+        .collect();
+    if !bare.is_empty() {
+        eprintln!(
+            "web: warning: no license text found for {}; {} lists them without one",
+            bare.join(", "),
+            notices::FILE
+        );
+    }
+    works.extend(shell_works());
+    works.extend(game.iter().cloned());
+    package(
+        &RealWasmOpt,
+        rules,
+        root,
+        &target_dir(root),
+        options,
+        &works,
+    )
 }
 
-/// Copies the wasm artifact and writes the web shell into the dist folder,
-/// optimizing the wasm binary with `opt` first if `options.release`. Split
-/// out from [`run`] so tests can exercise it (with a fake [`WasmOpt`])
-/// without needing a real `cargo build`.
+/// Copies the wasm artifact and writes the web shell and `NOTICES.txt`
+/// (with `works`) into the dist folder, optimizing the wasm binary with
+/// `opt` first if `options.release`. Split out from [`run`] so tests can
+/// exercise it (with a fake [`WasmOpt`]) without needing a real `cargo
+/// build`.
 fn package(
     opt: &impl WasmOpt,
     rules: &Web,
     root: &Path,
     target: &Path,
     options: &Options,
+    works: &[Work],
 ) -> Result<String, String> {
     let dist = root.join(&rules.dist);
     fs::create_dir_all(&dist).map_err(|e| format!("create {}: {e}", dist.display()))?;
@@ -186,6 +308,7 @@ fn package(
         let shell_dst = dist.join(name);
         fs::write(&shell_dst, text).map_err(|e| format!("write {}: {e}", shell_dst.display()))?;
     }
+    notices::write(&dist, &rules.title, works)?;
 
     if let Some(music) = &rules.music {
         copy_music(&root.join(music), &dist.join(music))?;
@@ -515,7 +638,7 @@ mod tests {
         let opt = FakeWasmOpt(|_: &Path, _: &Path| -> Result<bool, String> {
             panic!("wasm-opt should not run for a debug build")
         });
-        let summary = package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
+        let summary = package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
         assert!(summary.contains("10 bytes"), "{summary}");
         let dist = root.join("dist/web");
         assert_eq!(fs::read(dist.join("the-game.wasm")).unwrap(), b"wasm-bytes");
@@ -535,7 +658,80 @@ mod tests {
                 "{name}"
             );
         }
+        // No works given: the heading alone, and no text.
+        let notices = fs::read_to_string(dist.join("NOTICES.txt")).unwrap();
+        assert!(notices.starts_with("Notices for The Game\n"), "{notices}");
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn package_writes_the_works_into_notices_txt() {
+        let root = fixture("package-notices");
+        write_wasm(&root, &debug(), b"w");
+        let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
+        let mut font = Work::new(Section::Game, "files/font/OFL.txt");
+        font.texts = vec![Text::new("files/font/OFL.txt", "Open Font License\n")];
+        let mut works = shell_works();
+        works.push(font);
+        package(
+            &opt,
+            &rules(),
+            &root,
+            &root.join("target"),
+            &debug(),
+            &works,
+        )
+        .unwrap();
+        let notices = fs::read_to_string(root.join("dist/web/NOTICES.txt")).unwrap();
+        for needle in [
+            "- mq_js_bundle.js, from macroquad 0.4.16, MIT, https://github.com/not-fl3/macroquad\n",
+            "- index.html, from Shuyi Engine ",
+            "- files/font/OFL.txt\n",
+            "  mq_js_bundle.js, from macroquad 0.4.16 (mq_js_bundle-LICENSE-MIT.txt)\n",
+            "Open Font License\n",
+            "Copyright (c) 2026 Nick Wentz\n",
+            "Apache License",
+        ] {
+            assert!(notices.contains(needle), "{needle} in {notices}");
+        }
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn every_shell_file_has_its_notice_and_every_vendored_one_its_row_in_third_party_assets() {
+        let table: Vec<&str> = SHELL_NOTICES.iter().map(|(file, _)| *file).collect();
+        let shell: Vec<&str> = SHELL.iter().map(|(file, _)| *file).collect();
+        assert_eq!(
+            table, shell,
+            "a file of SHELL needs its row in SHELL_NOTICES"
+        );
+        let assets = include_str!("../../../THIRD_PARTY_ASSETS.md");
+        // The scripts it names, as `crates/cli/web/<file>.js`.
+        let mut listed: Vec<&str> = assets
+            .split("`crates/cli/web/")
+            .skip(1)
+            .filter_map(|rest| rest.split('`').next())
+            .filter(|file| Path::new(file).extension().is_some_and(|ext| ext == "js"))
+            .collect();
+        listed.sort_unstable();
+        listed.dedup();
+        let mut vendored: Vec<&str> = SHELL_NOTICES
+            .iter()
+            .filter(|(_, origin)| matches!(origin, Origin::Vendored { .. }))
+            .map(|(file, _)| *file)
+            .collect();
+        vendored.sort_unstable();
+        assert_eq!(listed, vendored);
+        for (file, origin) in &SHELL_NOTICES {
+            if let Origin::Vendored { version, text, .. } = origin {
+                let row = assets
+                    .lines()
+                    .find(|line| line.starts_with(&format!("| `crates/cli/web/{file}`")))
+                    .unwrap_or_else(|| panic!("{file} has a row in THIRD_PARTY_ASSETS.md"));
+                assert!(row.contains(&format!("| {version} ")), "{file}: {row}");
+                assert!(row.contains(text.0), "{file}: {row}");
+            }
+        }
     }
 
     #[test]
@@ -549,7 +745,7 @@ mod tests {
         };
         fs::create_dir_all(root.join("music")).unwrap();
         let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
-        package(&opt, &bare, &root, &root.join("target"), &debug()).unwrap();
+        package(&opt, &bare, &root, &root.join("target"), &debug(), &[]).unwrap();
         assert!(!root.join("dist/web/music").exists());
         assert!(!root.join("dist/web/voice").exists());
         fs::remove_dir_all(&root).unwrap();
@@ -561,7 +757,7 @@ mod tests {
         write_wasm(&root, &debug(), b"w");
         let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
         // No music folder: an empty one is still made.
-        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
         let music = root.join("dist/web/music");
         assert!(music.is_dir());
         assert_eq!(fs::read_dir(&music).unwrap().count(), 0);
@@ -570,7 +766,7 @@ mod tests {
         fs::write(root.join("music/README.md"), "doc").unwrap();
         fs::write(root.join("music/sub/x.ogg"), "nested").unwrap();
         fs::write(music.join("stale.ogg"), "old").unwrap();
-        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
         let mut names: Vec<_> = fs::read_dir(&music)
             .unwrap()
             .map(|e| e.unwrap().file_name().into_string().unwrap())
@@ -592,7 +788,7 @@ mod tests {
         // A stale copy from an earlier build goes when the source is gone.
         fs::create_dir_all(voice.join("en")).unwrap();
         fs::write(voice.join("en/stale.ogg"), "old").unwrap();
-        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
         assert!(!voice.exists());
         fs::create_dir_all(root.join("voice/en/scene")).unwrap();
         fs::write(root.join("voice/en/voice.ron"), "manifest").unwrap();
@@ -602,7 +798,7 @@ mod tests {
         fs::write(root.join("voice/en/scene/take.wav"), "source").unwrap();
         fs::write(root.join("voice/notes.md"), "doc").unwrap();
         fs::write(root.join("voice/ogg"), "no extension").unwrap();
-        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
         let read = |path: &str| fs::read_to_string(voice.join(path)).ok();
         assert_eq!(read("en/voice.ron").as_deref(), Some("manifest"));
         assert_eq!(read("en/cast.ron").as_deref(), Some("cast"));
@@ -614,7 +810,7 @@ mod tests {
         // A file named `voice` is not a voice folder.
         fs::remove_dir_all(root.join("voice")).unwrap();
         fs::write(root.join("voice"), "a file").unwrap();
-        package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
         assert!(!voice.exists());
         fs::remove_dir_all(&root).unwrap();
     }
@@ -646,7 +842,8 @@ mod tests {
             fs::write(output, b"opt").unwrap();
             Ok(true)
         });
-        let summary = package(&opt, &rules(), &root, &root.join("target"), &release()).unwrap();
+        let summary =
+            package(&opt, &rules(), &root, &root.join("target"), &release(), &[]).unwrap();
         assert!(summary.contains("3 bytes"), "{summary}");
         assert_eq!(
             fs::read(root.join("dist/web/the-game.wasm")).unwrap(),
@@ -664,7 +861,8 @@ mod tests {
             let root = fixture(&format!("package-release-{name}"));
             write_wasm(&root, &release(), b"unoptimized");
             let opt = FakeWasmOpt(|_: &Path, _: &Path| outcome.clone());
-            let summary = package(&opt, &rules(), &root, &root.join("target"), &release()).unwrap();
+            let summary =
+                package(&opt, &rules(), &root, &root.join("target"), &release(), &[]).unwrap();
             assert!(summary.contains("11 bytes"), "{summary}");
             assert_eq!(
                 fs::read(root.join("dist/web/the-game.wasm")).unwrap(),
@@ -678,7 +876,7 @@ mod tests {
     fn package_reports_a_missing_wasm_artifact() {
         let root = fixture("package-missing-wasm");
         let opt = FakeWasmOpt(|_: &Path, _: &Path| panic!("not reached"));
-        let err = package(&opt, &rules(), &root, &root.join("target"), &debug()).unwrap_err();
+        let err = package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap_err();
         assert!(err.contains("copy"), "{err}");
         fs::remove_dir_all(&root).unwrap();
     }
@@ -689,7 +887,7 @@ mod tests {
         // (no compilation), without needing a real broken build to test the
         // failure path.
         let root = fixture("run-no-manifest");
-        let err = run(&rules(), &root, &debug()).unwrap_err();
+        let err = run(&rules(), &root, &debug(), &[]).unwrap_err();
         assert!(err.contains("cargo build"), "{err}");
         fs::remove_dir_all(&root).unwrap();
     }
