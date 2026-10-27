@@ -68,6 +68,37 @@ fn under_the_budget_passes() {
         check(&times(&[1.0, 2.0, 1.5], 120), &budget(3.0, 120), "b.ron"),
         Verdict::default()
     );
+    // The budget is the most it may take: exactly that passes.
+    assert_eq!(
+        check(&times(&[3.0, 3.0, 3.0], 120), &budget(3.0, 120), "b.ron"),
+        Verdict::default()
+    );
+}
+
+#[test]
+fn the_games_are_made_under_target_unless_a_dir_is_given() {
+    let root = Path::new("engine");
+    assert_eq!(games_dir(root, None), root.join("target/compile-times"));
+    assert_eq!(
+        games_dir(root, Some(Path::new("elsewhere"))),
+        PathBuf::from("elsewhere")
+    );
+}
+
+#[test]
+fn a_game_runs_the_real_cargo() {
+    let game = Game {
+        target_dir: std::env::temp_dir().join("xtask-compile-times-target"),
+    };
+    let ran = game
+        .run(&std::env::temp_dir(), "cargo", &["--version".to_owned()])
+        .unwrap();
+    assert_eq!(ran.code, Some(0), "{ran:?}");
+    assert!(ran.stdout.starts_with("cargo "), "{ran:?}");
+    assert!(
+        game.run(&std::env::temp_dir(), "no-such-program-here", &[])
+            .is_err()
+    );
 }
 
 #[test]

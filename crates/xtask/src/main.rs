@@ -185,6 +185,17 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::FAILURE;
     };
+    // The budget is read first: a wrong one fails before minutes of builds.
+    let budget = match &options.budget {
+        Some(file) => match std::fs::read_to_string(file)
+            .map_err(|e| e.to_string())
+            .and_then(|text| compile_times::parse_budget(&text))
+        {
+            Ok(budget) => Some((file.display().to_string(), budget)),
+            Err(e) => return report("compile-times", &[format!("{}: {e}", file.display())], &[]),
+        },
+        None => None,
+    };
     let games = compile_times::games_dir(root, options.dir.as_deref());
     let maker = script::System { target_dir: None };
     let game = compile_times::Game {
@@ -208,31 +219,15 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
             .create(true)
             .append(true)
             .open(file)
-            .and_then(|mut f| {
-                f.write_all(
-                    format!(
-                        "{table}
-"
-                    )
-                    .as_bytes(),
-                )
-            });
+            .and_then(|mut f| f.write_all(format!("{table}\n").as_bytes()));
         if let Err(e) = written {
             verdict.errors.push(format!("{}: {e}", file.display()));
         }
     }
-    if let Some(file) = &options.budget {
-        match std::fs::read_to_string(file)
-            .map_err(|e| e.to_string())
-            .and_then(|text| compile_times::parse_budget(&text))
-        {
-            Ok(budget) => {
-                let found = compile_times::check(&times, &budget, &file.display().to_string());
-                verdict.errors.extend(found.errors);
-                verdict.warnings.extend(found.warnings);
-            }
-            Err(e) => verdict.errors.push(format!("{}: {e}", file.display())),
-        }
+    if let Some((file, budget)) = &budget {
+        let found = compile_times::check(&times, budget, file);
+        verdict.errors.extend(found.errors);
+        verdict.warnings.extend(found.warnings);
     }
     report("compile-times", &verdict.errors, &verdict.warnings)
 }
