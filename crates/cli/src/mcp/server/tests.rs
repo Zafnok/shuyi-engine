@@ -878,6 +878,52 @@ fn the_tool_list_follows_the_session_folders_server() {
 }
 
 #[test]
+fn the_server_reads_the_roots_again_when_they_change() {
+    let own = scratch("again-own", GAME);
+    let theirs = scratch("again-theirs", GAME);
+    let game = Fake::default();
+    let mut workspaces = Workspaces::new(&[(&own, "own"), (&theirs, "theirs")]);
+    let fly = json!({ "name": "fly", "description": "Fly.", "inputSchema": { "type": "object" } });
+    workspaces.tools.push(fly.clone());
+    let changed = json!({ "jsonrpc": "2.0", "method": "notifications/tools/list_changed" });
+    let ask = json!({ "jsonrpc": "2.0", "id": ROOTS, "method": "roots/list" });
+    let change = r#"{"jsonrpc":"2.0","method":"notifications/roots/list_changed"}"#;
+    // A client with no roots is not asked.
+    let mut bare = Server::new(own.clone(), Box::new(InProcess::new(&game)));
+    initialized(&mut bare, false);
+    assert_eq!(bare.handle(change), Vec::<String>::new());
+    let (mut server, written) = forwarding(&own, &own, &game, workspaces);
+    assert!(written.is_empty(), "{written:?}");
+    assert_eq!(messages(&server.handle(change)), std::slice::from_ref(&ask));
+    // Moved to another workspace: its list is followed, with the notice.
+    assert_eq!(rooted(&mut server, &theirs), std::slice::from_ref(&changed));
+    assert_eq!(server.folder(), theirs.as_path());
+    let list = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }),
+    );
+    assert_eq!(
+        list["result"]["tools"].as_array().unwrap().last(),
+        Some(&fly)
+    );
+    // A relative project is from the new root.
+    called(&mut server, "fly", &json!({ "project": "up" }));
+    let got = server.handle(change);
+    assert_eq!(messages(&got), [ask]);
+    // Back to the server's own workspace: its own list again.
+    assert_eq!(rooted(&mut server, &own), [changed]);
+    let list = handled(
+        &mut server,
+        &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }),
+    );
+    assert_eq!(list["result"]["tools"], json!(tools()));
+    // And once more it is the same list: nothing to say.
+    assert_eq!(rooted(&mut server, &own), Vec::<Value>::new());
+    fs::remove_dir_all(&own).unwrap();
+    fs::remove_dir_all(&theirs).unwrap();
+}
+
+#[test]
 fn a_forwarded_server_that_doesnt_build_is_an_error_result_with_its_output() {
     let own = scratch("fail-own", GAME);
     let theirs = scratch("fail-theirs", GAME);

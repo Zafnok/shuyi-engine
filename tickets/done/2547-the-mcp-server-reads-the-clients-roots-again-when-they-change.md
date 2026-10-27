@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2546"]
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2547 — The MCP server reads the client's roots again when they change
@@ -73,16 +73,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A client that declared roots and sends
+- [x] A client that declared roots and sends
       `notifications/roots/list_changed` gets a `roots/list` request;
       one that didn't declare roots gets nothing.
-- [ ] After the new answer, a relative `project` resolves against the
+- [x] After the new answer, a relative `project` resolves against the
       new first root.
-- [ ] Moving to a folder of another workspace whose server lists other
+- [x] Moving to a folder of another workspace whose server lists other
       tools sends `notifications/tools/list_changed`, then that list;
       moving back to the server's own workspace lists the server's own
       tools again, with the notification.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -91,5 +91,4 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as written. `notifications/roots/list_changed` from a client with roots sends `roots/list` again; `rooted` now returns to the server's own list (with `tools/list_changed`) when the new folder is in its own workspace. One addition: `poll` repoints `listing` when another workspace's server lists the same tools as the one followed, so unknown tools do not go to the folder left behind. No break, no follow-ups, nothing for Nick.
