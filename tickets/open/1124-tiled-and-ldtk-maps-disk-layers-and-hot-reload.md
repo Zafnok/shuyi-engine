@@ -31,8 +31,8 @@ importers produce one `TileMap` per file:
 What each object keeps is enough for 2232 to read it into a game's own
 types, and an LDtk file keeps all its levels (the 2026-10-20 edit).
 
-Folders on disk become bundle layers in 2207 (a game's mods first:
-game#1012 and game#1014). Hot reload of every asset kind is 2220's
+Folders on disk are bundle layers since 2207 (`shuyi_app::read_folder`;
+a game's mods first: game#1012 and game#1014). Hot reload of every asset kind is 2220's
 (after MVP, not parked); the maps here reload through it with no extra
 code, because they are formats.
 
@@ -180,7 +180,7 @@ None.
   that part (2232, 2318 and 2360 read LDtk maps; 2318 reads `MapWorld`).
 
 **Out (do not do):**
-- disk layers (2207: `shuyi-app` reads a folder into a layer; only
+- disk layers (done in 2207: `shuyi-app` reads a folder into a layer; only
   `shuyi-app` touches files, game ADR-0004);
 - mods' folder and load order (1014); the web build's disk layers (none
   on the web);

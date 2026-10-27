@@ -129,10 +129,10 @@ None.
   `"engine#2228"` to its `blocked_by`, uses `Formats::load_versions`
   (or `Bundle::versions`) in place of its own `all_versions`, walks the
   copies in reverse, and moves the pin after this one.
-- **Either order with 2207.** Run-time layers go through the same
-  private walk (`Files::get`). If 2207 is done first, this ticket adds
-  a unit test that a run-time layer laid over an embedded one gives its
-  copy first; if not, 2207's tests add that test.
+- **Run-time layers (2207, done).** `Files::Owned` (`Layer::owned`)
+  goes through the same private walk (`Files::get`). This ticket adds a
+  unit test that a run-time layer laid over an embedded one gives its
+  copy first.
 - **Either order with 2516 and 2220.** `bundle::recording` is added by
   2516, or by 2220 when 2516 isn't done (their clauses say so). If
   either is done, `versions` records its path when found, as `bytes`
@@ -175,7 +175,7 @@ None.
 1. Read ADR-0004 §1, ADR-0019 §5, `crates/assets/src/bundle.rs`
    (`find`, `Bundle::read`, `Bundle::bytes`, `test_part`, `watch`) with
    its tests, and `Formats::find`, `Formats::load` and `Formats::read`
-   in `crates/assets/src/format.rs`. Check whether 2207, 2220 and 2516
+   in `crates/assets/src/format.rs`. Check whether 2220 and 2516
    are in `tickets/done/`.
 2. In `bundle.rs`, beside `find`, add a private `copies(layers, path)`
    iterator over `(&Layer, &'static [u8])` for each layer that has the
@@ -210,7 +210,7 @@ None.
       pack's baked copy under it, each through the registry, and the
       baked copy equals the table read from its source (a test in
       `crates/assets/src/pack/tests.rs`).
-- [ ] If 2207 is done: a run-time layer's copy comes before an embedded
+- [ ] A run-time layer's copy (`Layer::owned`) comes before an embedded
       layer's copy of the same path (unit test).
 - [ ] If 2516 or 2220 is done: a path read through `versions` is in
       `bundle::recording`'s set (unit test).

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-27
 ---
 
 # 2207 — Bundle layers from outside the binary
@@ -101,21 +101,22 @@ game#1014) move its pin after this one.
 
 ## Acceptance criteria
 
-- [ ] A run-time layer's file replaces an embedded file at the same
+- [x] A run-time layer's file replaces an embedded file at the same
       path, and a file only there is added (unit tests on reads and
       listings).
-- [ ] Of two run-time layers, the first wins for a path both have
+- [x] Of two run-time layers, the first wins for a path both have
       (unit test).
-- [ ] `display_path` shows the layer's name and the path for a file read
+- [x] `display_path` shows the layer's name and the path for a file read
       from it (unit test).
-- [ ] Bad paths are refused with the layer's name and the path in the
+- [x] Bad paths are refused with the layer's name and the path in the
       message (unit tests).
-- [ ] If 2228 is done: `Bundle::versions` gives a run-time layer's copy
-      of a path before an embedded layer's copy of it (unit test).
-- [ ] `read_folder` reads a temporary folder into a layer, and refuses a
+- [x] ~~If 2228 is done: `Bundle::versions` gives a run-time layer's copy
+      of a path before an embedded layer's copy of it (unit test).~~
+      (not done: 2228 is open, so it adds the test; its clause says so)
+- [x] `read_folder` reads a temporary folder into a layer, and refuses a
       file over the limit (test).
-- [ ] The WASM build passes; nothing reads files on the web.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The WASM build passes; nothing reads files on the web.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -127,5 +128,49 @@ game#1014) move its pin after this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **`shuyi-assets`:** `Layer::owned(name: String, files: BTreeMap<String,
+  Vec<u8>>) -> Result<Layer, LayerError>` makes a layer of files handed in
+  at run time. The name, paths and bytes are leaked once, so every read
+  stays `&'static`. The new variant is `Files::Owned(&'static
+  OwnedFiles)`: `OwnedFiles` keeps its sorted table private, so 2220's
+  `Bundle::replace` can change how it holds its files without a break.
+  `Files::Table` and `Files::Owned` share the table lookup and listing
+  (`table_get`, `table_list`), so reads, listings, `display_path`,
+  `has`, `left_out`, `test_part` and the `private`, `test` and
+  `leaving_out` flags work on it unchanged. The existing constructors are
+  unchanged and still `const`.
+- **Path checks:** `LayerError { layer, path, problem: BadPath }` (both
+  `#[non_exhaustive]`, ADR-0039) refuses an empty path, an absolute one
+  (`/x`, or a drive like `C:/x`), a backslash, a `..` part, and also an
+  empty or `.` part (`a//b`, `./a`, `a/`), which no read names. The
+  message names the layer and the path.
+- **`shuyi-app`:** `read_folder(path: &Path, name: &str, max_file_bytes:
+  u64) -> Result<Layer, FolderError>`, native only. It reads at most one
+  byte past the limit, also when a file grows while it is read. A link to
+  a file is read and a link to a folder isn't followed (no loops).
+  `FolderError` is `#[non_exhaustive]`: `Read`, `TooBig`, `NotUtf8` (a
+  name no read can name) and `Layer`.
+- **`shuyi import`:** its folder bundle is one `Layer::owned` now, in
+  place of its own leaked table.
+- **Tests:** unit tests over embedded, table and run-time layers (reads,
+  listings, the first of two run-time layers wins, `display_path`, the
+  flags, a run-time layer answers as the same table does), the path
+  checks, and a property test: for any up to four table and run-time
+  layers, some marked test, a listing is sorted and once each, holds
+  every layer's files in the folder, and each read agrees with the first
+  layer that has the path. `read_folder` has tests on temporary folders:
+  a folder laid over a base layer, the limit, a missing folder, an empty
+  folder, and a backslash in a name (Unix only).
+- **Deviation:** 2228 isn't done, so `Bundle::versions`' test of a
+  run-time layer is 2228's. Its clause now says so.
+- **Handover:** 2220's context says what `Bundle::replace` builds on
+  ("From 2207 (done)"). 2228, 2215 and 1124's clauses that waited on this
+  ticket now say what holds.
+- **Docs:** rustdoc (the `bundle` module comment, `Layer::owned` with an
+  example, `read_folder`, `shuyi-app`'s crate doc) and one bullet in
+  `docs/formats.md`, *The parts*.
+- **For the game:** additive. The game's PRs for game#1012 and game#1014
+  move the pin after this one, and no PR exists yet. The engine's PR
+  merges first.
+
+Breaking: shuyi-assets: `bundle::Files`: it is `#[non_exhaustive]` now and has a new variant, `Owned`; a game that matches on `Files` adds a `_ =>` arm.

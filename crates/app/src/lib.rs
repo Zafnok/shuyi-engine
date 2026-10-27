@@ -5,6 +5,10 @@
 //! `shuyi_platform::App::frame` once per frame of macroquad's, on desktop,
 //! the web and the Steam Deck.
 //!
+//! On desktop, `read_folder` reads a folder on disk (a player's mod) into
+//! a bundle layer the game lays over its own files. The web has no
+//! folders, so it isn't there.
+//!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
 //!
@@ -84,6 +88,8 @@
 
 mod audio;
 mod backend;
+#[cfg(not(target_arch = "wasm32"))]
+mod folder;
 pub mod keys;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
@@ -108,6 +114,8 @@ use shuyi_ui::log::{LogLevel, LogLine};
 
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
+#[cfg(not(target_arch = "wasm32"))]
+pub use crate::folder::{FolderError, read_folder};
 use crate::pacing::{Pacer, WebFrame};
 
 /// The window a game opens. Build it with [`Window::new`]: a struct
