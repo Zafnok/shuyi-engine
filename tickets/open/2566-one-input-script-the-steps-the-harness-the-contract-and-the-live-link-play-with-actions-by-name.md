@@ -1,5 +1,5 @@
 ---
-id: "2564"
+id: "2566"
 title: "One input script: the steps the Harness, the contract and the live link play, in shuyi-platform, with actions by name"
 type: infra
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2564 — One input script: the steps the Harness, the contract and the live link play
+# 2566 — One input script: the steps the Harness, the contract and the live link play
 
 ## Context
 

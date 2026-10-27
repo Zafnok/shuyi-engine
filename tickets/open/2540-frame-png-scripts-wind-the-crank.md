@@ -59,12 +59,12 @@ None.
   line to `crates/cli/schemas/versions.json` (`docs/contract.md`, *The
   schemas*).
 - Tests: parsing, the error, and a step played in order.
-- **Either order with 2564:** if 2564 is done, the steps are
+- **Either order with 2566:** if 2566 is done, the steps are
   `shuyi_platform::script::Step` (`crates/platform/src/script.rs`,
   re-exported as `frame_png::Step`): add `Crank(f32)` there, played by
   `Script::play` with `Harness::crank`, read by `frame_png::parse_step`,
   and make the link's plan (`script::frames`) refuse it ("crank: not
-  over the live link yet"); if not, nothing to do (2564 moves it).
+  over the live link yet"); if not, nothing to do (2566 moves it).
 
 **Out (do not do):**
 - Anything in the game: its PR deletes its own `--crank` and

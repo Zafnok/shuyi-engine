@@ -29,9 +29,11 @@ Found by an analysis of the engine for areas that do the same job twice
     be RGBA. It isn't for grey pictures: in `png` 0.18 those
     transformations turn `Grayscale` and `GrayscaleAlpha` into
     `GrayscaleAlpha`, two bytes a pixel (`png::Reader::output_color_type`).
-    `frame-png` decodes every sprite's image with it (`Image::decode`,
-    `crates/cli/src/frame_png.rs`) and reads four bytes a pixel
-    (`Image::texel` indexes `rgba[i..i + 4]`), so a grey PNG in a game's
+    `frame-png` decodes every sprite's image with it
+    (`frame_png::decode_image`, `crates/cli/src/frame_png.rs`), and the
+    raster that paints it reads four bytes a pixel
+    (`shuyi_ui::frame::raster::Image::texel`, from 2332, indexes
+    `rgba[i..i + 4]`), so a grey PNG in a game's
     bundle is painted from the wrong bytes, and `frame-png` panics with
     an index out of bounds once a sprite reads a pixel in the picture's
     lower half. The tests only decode PNG files the tools wrote themselves,
@@ -52,8 +54,8 @@ None.
 **In:**
 - `shuyi-cli` depends on `shuyi-assets` with the `png` feature
   (`crates/cli/Cargo.toml`), and every caller of `codec::decode_png`
-  calls `png_pixels` instead: `frame_png::Image::decode`, and the tests
-  of `font_atlas`, `frame_png` and `glyph_tiles`. `decode_png` goes;
+  calls `png_pixels` instead: `frame_png::decode_image`, and the tests
+  of `font_atlas` and `frame_png`. `decode_png` goes;
   `encode_png` stays, and `codec.rs`'s docs say it only encodes.
 - `shuyi_assets::palette::grey(rgb: [u8; 3]) -> f32`: the Rec. 601
   grey, 0 to 255, documented once. `Light::apply`, the converter and
@@ -61,7 +63,8 @@ None.
   order of operations: check each test still passes unchanged).
 - **For the game:** `shuyi_cli::codec::decode_png` is public and goes,
   a `Breaking:` line (ADR-0038 §6). The game doesn't call it (it
-  calls `Painter` and `Image` through `frame_png`). `palette::grey` is
+  calls `Painter`, `Image` and `decode_image` through `frame_png`, which
+  keep their signatures). `palette::grey` is
   additive.
 
 **Out (do not do):**
@@ -81,7 +84,7 @@ None.
 
 1. Turn on `shuyi-assets/png` in `crates/cli/Cargo.toml`.
 2. Replace `decode_png` with `png_pixels` in `frame_png.rs` and the
-   three test modules; delete `decode_png` and its test, keep
+   two test modules; delete `decode_png` and its test, keep
    `encode_png`'s.
 3. Add `palette::grey` with its test; call it from `lighting.rs`,
    `bitmap/convert.rs` and `frame/color.rs`.

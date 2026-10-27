@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["1134", "2803", "2564"]
+blocked_by: ["1134", "2803", "2566"]
 nick_input: none
 completed:
 ---
@@ -55,7 +55,7 @@ What the engine has (checked 2026-10-21):
   `Keymap::primary_button` (`crates/ui/src/input/keymap.rs`) can find
   them, but no step of the contract's scripts uses them. 2521 (done)
   gave the live link an `act` step: `shuyi_platform::link::Step::Act`,
-  looked up by `link::press_for`, and `shuyi attach --act`. 2564 (which
+  looked up by `link::press_for`, and `shuyi attach --act`. 2566 (which
   blocks this ticket) makes one input script of the two, with `--act`
   for `run`, `scene` and `frame-png`.
 - **The grid template** (`templates/grid`): a turn game whose tools
@@ -96,7 +96,7 @@ None. Spending money on agent runs is 2525's question.
 
 **In:**
 - **Actions by name in the contract's scripts** (`AGENTS.md` rule 8):
-  2564 does it, and this ticket is blocked by it: one
+  2566 does it, and this ticket is blocked by it: one
   `shuyi_platform::script::Step` with `Act`, read from `--act` by
   `frame_png::parse_step` for `run`, `scene` and `frame-png`,
   `Session::actions` and the refusal of an action the game lacks, MCP's
@@ -301,7 +301,7 @@ None. Spending money on agent runs is 2525's question.
   - it uploads `eval-results/` as an artifact and writes a table (task,
     checks passed, lines added, seconds) into the step summary;
   - `ci-result` needs it.
-- **Size:** the actions by name went to 2564, which lands first. If the
+- **Size:** the actions by name went to 2566, which lands first. If the
   diff still passes about 600 changed lines (the task files, the
   references and the fixtures aside), split the CI job into a ticket of
   its own (`write-ticket`).
@@ -340,7 +340,7 @@ None. Spending money on agent runs is 2525's question.
    `Replay`'s record). Add to it what the eval needs and it lacks
    (comparing two answers for `Responds`), so there is one runner, not
    two.
-2. Check that 2564's `--act` covers what the tasks' checks pass (it
+2. Check that 2566's `--act` covers what the tasks' checks pass (it
    is done: this ticket is blocked by it).
 3. Write `task.rs` and the four task files.
 4. Write `grade.rs`, with the line count and the result file, and wire
@@ -358,7 +358,7 @@ None. Spending money on agent runs is 2525's question.
 
 - [ ] `cargo shuyi run --act Right --act Confirm --json` plays on a game
       from `shuyi new grid` (the `eval` job's `Responds` check; `--act`
-      is 2564's).
+      is 2566's).
 - [ ] `cargo xtask eval-reference --all` passes on tic-tac-toe and
       box-pushing in CI, and on snake or the platformer if 2739 or 1127
       is done; it lists the rest as waiting.

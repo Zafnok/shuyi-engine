@@ -178,13 +178,13 @@ None.
   - Regenerate the schemas, raise `contract::VERSION` by one, and add
     its line to `crates/cli/schemas/versions.json` (`docs/contract.md`,
     *The schemas*).
-  - **Either order with 2564:** if 2564 is done, the steps are
+  - **Either order with 2566:** if 2566 is done, the steps are
     `shuyi_platform::script::Step` (`crates/platform/src/script.rs`,
     re-exported as `frame_png::Step`): add `Command(String)` there,
     played by `Script::play` with `Harness::command`, read by
     `frame_png::parse_step`; the link's plan (`script::frames`) refuses
     it and names the link's own `command` request; if not, nothing to do
-    (2564 moves it).
+    (2566 moves it).
   - `docs/contract.md`: the step in *The operations*, the event, and a
     short *Debug commands* section with the rule and Hello, Grid's
     example.
