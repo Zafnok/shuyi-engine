@@ -74,7 +74,7 @@ fn a_setting_changed_on_the_options_screen_is_kept_on_leaving_and_saved() {
 #[test]
 fn a_volume_is_typed_in_and_a_discarded_change_is_put_back() {
     let mut h = lobby();
-    h.keys("f Down Down Down Down Down f");
+    h.keys("f Down Down Down Down Down Down f");
     assert!(options(&h).typing().is_some());
     h.type_text("37").keys("Enter");
     assert!(options(&h).typing().is_none());
@@ -88,7 +88,7 @@ fn a_volume_is_typed_in_and_a_discarded_change_is_put_back() {
 #[test]
 fn the_options_screen_switches_the_layout_through_the_picker() {
     let mut h = lobby();
-    h.keys("f Down Down Down Down Down Down");
+    h.keys("f Down Down Down Down Down Down Down");
     assert_eq!(options(&h).focus(h.ctx()), "options.row.layout");
     h.keys("f");
     assert_eq!(h.screens(), ["lobby", "options", "layout_picker"]);

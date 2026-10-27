@@ -51,11 +51,12 @@ pub const KEY_ROWS: [KeyRow<Action>; 6] = [
     ),
 ];
 
-/// The options: the engine's text speed and the game's map look (the two
-/// settings), the Key bindings screen, and Restore defaults.
+/// The options: the engine's text speed and frame rate and the game's map
+/// look (the settings), the Key bindings screen, and Restore defaults.
 pub fn option_rows(_: &HelloCtx) -> Vec<OptionRow<Hello>> {
     vec![
         OptionRow::text_speed(),
+        OptionRow::frame_cap(),
         OptionRow::new(
             "options.row.look",
             RowValue::choice(

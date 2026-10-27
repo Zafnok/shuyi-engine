@@ -86,6 +86,40 @@ A backend whose system says how long the last frame took, rather than
 what time it is, calls `App::frame_after(&mut platform, seconds)`
 instead. A backend uses one or the other.
 
+## The frame cap
+
+Every frame presented carries the player's frame cap and its serial
+(`frame.frame_cap`, a `shuyi_ui::frame_cap::FrameCap`, 60 frames a
+second unless the game or the player says; `frame.frame_cap_serial`).
+A backend whose loop runs as fast as it can paces it: after a frame,
+it waits until the next is due, and reports what it applied with
+`app.set_pacing(report)` before the next `App::frame`, which hands it to
+the game before the update
+([ADR-0050](adr/0050-a-setting-the-platform-applies-a-request-with-a-serial-confirmed-by-a-report-before-the-frame.md)).
+The report is a `shuyi_ui::frame_cap::Pacing`: `Pacing::new(cap,
+serial)` with the cap applied and the latest serial it was handed, then
+`vsync` and `fps` (the frames a second it measured) assigned. Until a
+report has that serial, the game's request for the cap is pending.
+
+`shuyi-app`'s pacer (`crates/app/src/pacing.rs`) is the one to read:
+
+- it keeps deadlines (the next frame is due a period after the last was
+  due, and after a late frame they start again from it, with no burst to
+  catch up);
+- it never waits on top of vsync: when the frames without its waits
+  already come a period apart (vsync, the display, a slow machine), it
+  waits nothing;
+- it sleeps until half a millisecond before the due time and yields
+  until it;
+- on the web, where a page can't sleep and the browser sets the rate, a
+  frame that comes too early calls `app.present_again(&mut platform)`
+  (the last frame shown again, nothing run) and keeps that frame's input
+  and system events for the next frame that runs, ahead of its own.
+
+A device that runs at a fixed rate (the Playdate's 30) reports that rate
+as the cap applied, with the latest serial, so a request there is
+confirmed. A backend that never reports leaves every request pending.
+
 ## What one frame does
 
 `App` calls the platform in this order:
@@ -147,6 +181,8 @@ next. `frame.show` is one of:
 
 `frame.fullscreen` is the player's Fullscreen setting: a windowed backend
 switches when it changes; a device that is always full screen ignores it.
+`frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
+backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a
 `_` arm, since later tickets add to them (1-bit frames, ticket 3006; more
 than one screen, 3023).
@@ -327,8 +363,9 @@ carries the lines and takes the picture and the heap snapshot.
 
 `shuyi_platform::headless::HeadlessPlatform` is the smallest complete
 backend: it plays input and system events queued by a test, keeps the
-last frame presented, hands over a memory storage, and stands in for the
-music player (`Speaker`). A test hands it a clock
+last frame presented and the frame cap it asked for (`frame_cap`; it
+doesn't pace, and reports nothing), hands over a memory storage, and
+stands in for the music player (`Speaker`). A test hands it a clock
 (`with_clock(PerfClock::fake())`, `set_clock`), whose fake reads give
 the same records on every run, and a heap: a fake one that moves by
 fixed amounts with the frames presented (`with_fake_memory`), or a real
@@ -345,6 +382,8 @@ one side, the engine's types on the other.
 - [ ] A crate of its own, depending on `shuyi-platform` (and `shuyi-ui`,
       `shuyi-assets`), with the device's SDK behind it.
 - [ ] Each method above, and the loop calling `App::frame`.
+- [ ] The frame cap applied and reported (`App::set_pacing`), or the
+      device's fixed rate reported as the cap applied.
 - [ ] Its storage passes the conformance suite.
 - [ ] Its input tests: the device's buttons to `RawInputEvent`s, releases
       before presses.

@@ -239,7 +239,14 @@ players keep after a patch.
 - **2111** leaves `SaveHeader` as it is (its Out): a game reads its own
   save's `made` with the rest. So `UNVERSIONED` is the only change to
   `SaveHeader`'s visitor, in either order.
-- **Either order with the settings fields of 2321, 2333, 2340, 2342,
+- **From 2321 (done):** the `()` form (`EngineOnly` in
+  `crates/ui/src/settings.rs`) and the toy's `File` save `frame_cap`
+  (a `shuyi_ui::frame_cap::FrameCap`, `Fps(60)` or `Off`), read with
+  `serde(default)`; so do hello-grid's `File`. It is in version 1 of
+  each form here, and in the `()` form's version 0. (The grid
+  template's `File` is gone: the templates take `()` for their
+  settings.)
+- **Either order with the settings fields of 2333, 2340, 2342,
   2349 and 3043, and of the parked 2323, 2404 and 2408:** one that
   lands first is in version 1 of each form here, and in the `()`
   form's version 0. One that lands after raises the `VERSION` of each

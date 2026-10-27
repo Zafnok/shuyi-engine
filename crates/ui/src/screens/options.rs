@@ -5,7 +5,8 @@
 //! several ([`RowValue::Choice`]), a volume ([`RowValue::Volume`]), or
 //! something Confirm does ([`RowValue::Action`]). The engine's own
 //! settings come as rows ready made ([`OptionRow::text_speed`],
-//! [`OptionRow::fullscreen`], the volumes, [`OptionRow::restore_defaults`]).
+//! [`OptionRow::fullscreen`], [`OptionRow::frame_cap`], the volumes,
+//! [`OptionRow::restore_defaults`]).
 //!
 //! A change shows at once but is saved only when the player keeps it:
 //! leaving with anything changed asks whether to keep it, throw it away or
@@ -39,7 +40,7 @@ use crate::ctx::{Ctx, GameData};
 use crate::frame::glyph_buffer::GlyphBuffer;
 use crate::input::fixed::{TextKey, text_key};
 use crate::screen::{FrameInput, Screen, Transition};
-use crate::settings::{MAX_VOLUME, TextSpeed};
+use crate::settings::{GameSettings, MAX_VOLUME, TextSpeed};
 use crate::widgets::{Ask, ListCursor};
 
 /// Text key ([`Ctx::text`]) of the screen title.
@@ -68,6 +69,8 @@ pub const HELP_QUESTION: &str = "options.help.question";
 pub const HELP_LEAVE: &str = "options.help.leave";
 /// Text key of the help line on a row that opens a screen.
 pub const HELP_OPEN: &str = "options.help.open";
+/// Text key of the Frame rate row's label ([`OptionRow::frame_cap`]).
+pub const FRAME_CAP_ROW: &str = "options.row.frame_cap";
 
 /// How far the cursor's left and right keys move a volume's slider.
 /// *Tunable.*
@@ -113,6 +116,9 @@ pub enum RowValue<G: GameData> {
         get: fn(&Ctx<G>) -> usize,
         /// Puts value `i` in; whether anything changed.
         set: fn(&mut Ctx<G>, usize) -> bool,
+        /// What the row shows, if not the text of its value's key: a value
+        /// with a number in it (the frame cap's "60 FPS").
+        shown: Option<fn(&Ctx<G>) -> String>,
     },
     /// A volume, 0 to [`MAX_VOLUME`]: the keys move its slider by
     /// [`VOLUME_STEP`], Confirm opens a box to type the number.
@@ -150,7 +156,29 @@ impl<G: GameData> RowValue<G> {
         get: fn(&Ctx<G>) -> usize,
         set: fn(&mut Ctx<G>, usize) -> bool,
     ) -> Self {
-        RowValue::Choice { values, get, set }
+        RowValue::Choice {
+            values,
+            get,
+            set,
+            shown: None,
+        }
+    }
+
+    /// A row of one of `values`, as [`choice`](Self::choice) is, that
+    /// shows what `shown` says rather than the text of its value's key: a
+    /// value with a number in it.
+    pub const fn choice_shown(
+        values: fn(&Ctx<G>) -> Vec<&'static str>,
+        get: fn(&Ctx<G>) -> usize,
+        set: fn(&mut Ctx<G>, usize) -> bool,
+        shown: fn(&Ctx<G>) -> String,
+    ) -> Self {
+        RowValue::Choice {
+            values,
+            get,
+            set,
+            shown: Some(shown),
+        }
     }
 
     /// A volume row: `get` reads the volume, `set` sets it.
@@ -247,17 +275,49 @@ impl<G: GameData> OptionRow<G> {
     pub fn text_speed() -> Self {
         Self::new(
             "options.row.text_speed",
-            RowValue::Choice {
-                values: |_| TextSpeed::ALL.map(TextSpeed::key).to_vec(),
-                get: |ctx| {
+            RowValue::choice(
+                |_| TextSpeed::ALL.map(TextSpeed::key).to_vec(),
+                |ctx| {
                     let speed = ctx.settings().text_speed;
                     TextSpeed::ALL.iter().position(|&s| s == speed).unwrap_or(0)
                 },
-                set: |ctx, i| {
+                |ctx, i| {
                     let speed = TextSpeed::ALL.get(i).copied();
                     ctx.preview_settings(|s| s.text_speed = speed.unwrap_or(s.text_speed))
                 },
-            },
+            ),
+        )
+    }
+
+    /// The most frames a second the platform shows (the frame cap, in the
+    /// settings), labelled Frame rate ([`FRAME_CAP_ROW`]): it steps through
+    /// the game's choices
+    /// ([`GameSettings::FRAME_CAP_CHOICES`]), each shown as "60 FPS"
+    /// ([`FPS_KEY`](crate::frame_cap::FPS_KEY)) or "Unlimited"
+    /// ([`UNLIMITED_KEY`](crate::frame_cap::UNLIMITED_KEY)). A cap that
+    /// isn't among them (set in code) shows as it is, and steps from the
+    /// first. The platform applies a change from the next frame, before
+    /// the player keeps it.
+    pub fn frame_cap() -> Self {
+        Self::new(
+            FRAME_CAP_ROW,
+            RowValue::choice_shown(
+                |_| {
+                    let choices = <G::Settings as GameSettings>::FRAME_CAP_CHOICES;
+                    choices.iter().map(|cap| cap.key()).collect()
+                },
+                |ctx| {
+                    let choices = <G::Settings as GameSettings>::FRAME_CAP_CHOICES;
+                    let cap = ctx.settings().frame_cap;
+                    choices.iter().position(|&c| c == cap).unwrap_or(0)
+                },
+                |ctx, i| {
+                    let choices = <G::Settings as GameSettings>::FRAME_CAP_CHOICES;
+                    let cap = choices.get(i).copied();
+                    ctx.preview_settings(|s| s.frame_cap = cap.unwrap_or(s.frame_cap))
+                },
+                |ctx| ctx.settings().frame_cap.name(ctx),
+            ),
         )
     }
 
@@ -600,6 +660,9 @@ impl<G: GameData> OptionsScreen<G> {
             RowValue::Toggle { get, .. } => {
                 words(ctx.text(ON_OFF[usize::from(get(ctx))]).to_owned())
             }
+            RowValue::Choice {
+                shown: Some(shown), ..
+            } => words(shown(ctx)),
             RowValue::Choice { values, get, .. } => {
                 let values = values(ctx);
                 match values.get(get(ctx)).or(values.first()) {
@@ -669,7 +732,9 @@ impl<G: GameData> OptionsScreen<G> {
                 let to = stepped(&[false, true], get(ctx), forward, wrap);
                 set(ctx, to)
             }
-            RowValue::Choice { values, get, set } => {
+            RowValue::Choice {
+                values, get, set, ..
+            } => {
                 let n = values(ctx).len();
                 let to = stepped_index(n, get(ctx), forward, wrap);
                 set(ctx, to)

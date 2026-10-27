@@ -62,5 +62,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0047](0047-the-live-link-json-lines-over-loopback-tcp-to-a-running-debug-build-read-only-but-a-players-input.md) | The live link: JSON lines over loopback TCP to a running debug build, read-only but a player's input | Accepted; extends ADR-0005 §2, ADR-0022 §3, ADR-0024, ADR-0028 and ADR-0030 |
 | [0048](0048-the-website-zola-0-21-pinned-in-site-sections-of-our-own-templates-and-the-base-url-passed-by-the-build.md) | The website: Zola 0.21 pinned, in `site/`, sections of our own templates, and the base URL passed by the build | Accepted |
 | [0049](0049-fast-compiles-a-new-games-rebuild-timed-in-ci-against-a-budget-no-debug-info-in-dev-and-no-dynamic-engine.md) | Fast compiles: a new game's rebuild timed in CI against a budget, no debug info in `dev`, and no dynamic engine | Accepted |
+| [0050](0050-a-setting-the-platform-applies-a-request-with-a-serial-confirmed-by-a-report-before-the-frame.md) | A setting the platform applies: a request with a serial, confirmed by a report before the frame | Accepted; extends ADR-0024 and ADR-0039 §3 |
 
 Template: [`0000-template.md`](0000-template.md).

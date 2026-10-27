@@ -254,11 +254,10 @@ None. The sentence this supersedes is Claude's own technical choice
   lands where the player sees it. If 2318 is done, say so in
   `push_world`'s doc and test it on the smoothed scene. If not, nothing
   to do (2318 does it).
-- **The frame cap's docs. Either order with 2321:** 2321's `FrameCap`
-  and `Window::vsync` docs say that a tick stage judders at 144 and
-  165 Hz. If 2321 is done, add there that a world layer with
-  `Smoothing` on doesn't judder. If not, nothing to do (2321 writes
-  that line, its clause says so).
+- **The frame cap's docs (2321, done):** the `shuyi_ui::frame_cap`
+  module doc (*With fixed steps*) and `shuyi_app::Window::vsync`'s say
+  that a tick stage judders at 144 and 165 Hz. Add to both that a world
+  layer with `Smoothing` on doesn't judder.
 - **No API break for the game.** `Platform` gains a method with a
   default body. `FrameInput`, `Game`, `HeadlessPlatform` and `Harness`
   gain methods. `frame_png::Step` gains a variant; no game in

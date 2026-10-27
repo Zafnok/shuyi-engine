@@ -1,6 +1,7 @@
 //! The player's settings: the engine's (how fast dialogue text is
 //! revealed, whether the game fills the screen, the color theme, the
-//! music and sound volumes and the layout picked) and the game's own
+//! music and sound volumes, the frame cap and the layout picked) and the
+//! game's own
 //! ([`Settings::game`], a [`GameSettings`]). [`Ctx`](crate::Ctx) loads
 //! them with its storage, from one record under [`SETTINGS_KEY`] in the
 //! profile in use, whose form the game decides
@@ -12,6 +13,8 @@ use crate::prelude::*;
 use core::fmt::Debug;
 
 use shuyi_assets::keymap::Layout;
+
+use crate::frame_cap::{self, FrameCap};
 
 /// [`Storage`](crate::storage::Storage) key under which the settings are
 /// saved ([`Settings::to_ron`]).
@@ -73,6 +76,17 @@ pub trait GameSettings: Debug + Clone + PartialEq + Eq + Default + 'static {
     /// game with one.
     type Theme: Debug + Copy + PartialEq + Eq + Default + 'static;
 
+    /// The frame cap a new player starts with
+    /// ([`Settings::frame_cap`]): 60 frames a second unless the game says
+    /// otherwise ([`FrameCap`] says why).
+    const DEFAULT_FRAME_CAP: FrameCap = FrameCap::DEFAULT;
+
+    /// The frame caps the options screen's Frame rate row steps through,
+    /// in order ([`OptionRow::frame_cap`](crate::screens::options::OptionRow::frame_cap)):
+    /// 30, 60, 120, 144, 165 and 240 frames a second, then none, unless the
+    /// game says otherwise ([`frame_cap::CHOICES`]).
+    const FRAME_CAP_CHOICES: &'static [FrameCap] = &frame_cap::CHOICES;
+
     /// The saved form of `settings` (RON).
     fn to_ron(settings: &Settings<Self>) -> String;
 
@@ -92,6 +106,7 @@ struct EngineOnly {
     fullscreen: bool,
     music_volume: u8,
     sound_volume: u8,
+    frame_cap: FrameCap,
     layout: Option<String>,
 }
 
@@ -108,6 +123,7 @@ impl EngineOnly {
             fullscreen: s.fullscreen,
             music_volume: s.music_volume,
             sound_volume: s.sound_volume,
+            frame_cap: s.frame_cap,
             layout: s.layout.map(|l| l.name().to_owned()),
         }
     }
@@ -129,6 +145,7 @@ impl GameSettings for () {
             fullscreen: file.fullscreen,
             music_volume: file.music_volume,
             sound_volume: file.sound_volume,
+            frame_cap: file.frame_cap,
             layout: file.layout.as_deref().and_then(Layout::from_name),
             ..Settings::default()
         })
@@ -149,6 +166,12 @@ pub struct Settings<S: GameSettings> {
     pub music_volume: u8,
     /// Sound volume, 0 (silent) to [`MAX_VOLUME`].
     pub sound_volume: u8,
+    /// The most frames a second the platform shows: the game's
+    /// [`GameSettings::DEFAULT_FRAME_CAP`] until the player picks another.
+    /// Every change of it takes the next serial, which the platform reports
+    /// once it has applied it; a game that wants to know when asks with
+    /// [`Ctx::request_frame_cap`](crate::Ctx::request_frame_cap).
+    pub frame_cap: FrameCap,
     /// The layout the player picked; `None` until they have. Changed only
     /// by [`Ctx::choose_layout`](crate::Ctx::choose_layout), which also
     /// switches the keys.
@@ -165,6 +188,7 @@ impl<S: GameSettings> Default for Settings<S> {
             theme: S::Theme::default(),
             music_volume: DEFAULT_VOLUME,
             sound_volume: DEFAULT_VOLUME,
+            frame_cap: S::DEFAULT_FRAME_CAP,
             layout: None,
             game: S::default(),
         }
@@ -246,6 +270,7 @@ mod tests {
         assert!(!s.fullscreen);
         assert_eq!(s.theme, Theme::default());
         assert_eq!((s.music_volume, s.sound_volume), (80, 80));
+        assert_eq!(s.frame_cap, FrameCap::Fps(60));
         assert_eq!(s.layout(), None);
         assert_eq!(s.game, Prefs::default());
     }
@@ -258,6 +283,7 @@ mod tests {
         s.theme = Theme::Night;
         s.music_volume = 3;
         s.sound_volume = 4;
+        s.frame_cap = FrameCap::Off;
         s.game.speed = 9;
         assert_eq!(s.layout(), Some(LEFT_HANDED));
         assert_eq!(s.restored(), Settings::default().with_layout(LEFT_HANDED));
@@ -290,6 +316,7 @@ mod tests {
         let mut s = super::Settings::<()>::default().with_layout(LEFT_HANDED);
         s.text_speed = TextSpeed::Instant;
         s.sound_volume = 12;
+        s.frame_cap = FrameCap::Fps(144);
         assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
         let s = super::Settings::<()>::default();
         assert_eq!(super::Settings::from_ron(&s.to_ron()), Ok(s));
@@ -316,6 +343,59 @@ mod tests {
         // A layout no keymap could name is dropped, not an error.
         let odd = super::Settings::<()>::from_ron("(layout: Some(\"two words\"))");
         assert_eq!(odd.map(|s| s.layout()), Ok(None));
+    }
+
+    /// A game with a default frame cap of its own.
+    #[derive(Debug, Clone, Default, PartialEq, Eq)]
+    struct Fast;
+
+    impl GameSettings for Fast {
+        type Theme = ();
+        const DEFAULT_FRAME_CAP: FrameCap = FrameCap::Fps(120);
+        const FRAME_CAP_CHOICES: &'static [FrameCap] = &[FrameCap::Fps(120), FrameCap::Off];
+
+        fn to_ron(_: &super::Settings<Self>) -> String {
+            String::new()
+        }
+
+        fn from_ron(_: &str) -> Result<super::Settings<Self>, String> {
+            Ok(super::Settings::default())
+        }
+    }
+
+    #[test]
+    fn the_frame_cap_is_the_games_default_until_the_player_picks() {
+        assert_eq!(
+            super::Settings::<()>::default().frame_cap,
+            FrameCap::Fps(60)
+        );
+        assert_eq!(<() as GameSettings>::FRAME_CAP_CHOICES, &frame_cap::CHOICES);
+        let mut s = super::Settings::<Fast>::default();
+        assert_eq!(s.frame_cap, FrameCap::Fps(120));
+        assert_eq!(Fast::FRAME_CAP_CHOICES.len(), 2);
+        s.frame_cap = FrameCap::Off;
+        assert_eq!(s.restored().frame_cap, FrameCap::Fps(120));
+    }
+
+    #[test]
+    fn a_toy_save_without_a_frame_cap_reads_the_default() {
+        let read = |text| Settings::from_ron(text).map(|s| s.frame_cap);
+        assert_eq!(read("Toy(speed: 1)"), Ok(FrameCap::Fps(60)));
+        assert_eq!(read("Toy(frame_cap: Off)"), Ok(FrameCap::Off));
+        let s = Settings {
+            frame_cap: FrameCap::Fps(240),
+            ..Settings::default()
+        };
+        assert!(s.to_ron().contains("frame_cap:Fps(240)"), "{}", s.to_ron());
+        assert_eq!(Settings::from_ron(&s.to_ron()), Ok(s));
+    }
+
+    #[test]
+    fn engine_settings_saved_without_a_frame_cap_read_the_default() {
+        let read = |text| super::Settings::<()>::from_ron(text).map(|s| s.frame_cap);
+        assert_eq!(read("(text_speed:Fast)"), Ok(FrameCap::Fps(60)));
+        assert_eq!(read("(frame_cap:Off)"), Ok(FrameCap::Off));
+        assert_eq!(read("(frame_cap:Fps(30))"), Ok(FrameCap::Fps(30)));
     }
 
     #[test]

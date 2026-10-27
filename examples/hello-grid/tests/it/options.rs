@@ -18,7 +18,7 @@ fn options(h: &Harness<Hello>) -> &OptionsScreen<Hello> {
 }
 
 #[test]
-fn the_options_have_the_two_settings_key_bindings_and_restore() {
+fn the_options_have_the_settings_key_bindings_and_restore() {
     let mut h = title(0);
     h.keys("Down Enter");
     assert_eq!(h.screens(), ["title", "options"]);
@@ -31,21 +31,36 @@ fn the_options_have_the_two_settings_key_bindings_and_restore() {
         keys,
         [
             "options.row.text_speed",
+            "options.row.frame_cap",
             "options.row.look",
             "options.row.key_bindings",
             "options.row.restore_defaults"
         ]
     );
     let snapshot = h.snapshot();
-    for label in ["Text speed", "Map look", "Glyphs", "Key bindings"] {
+    for label in ["Text speed", "Frame rate", "60 FPS", "Map look", "Glyphs"] {
         assert!(snapshot.contains(label), "{label}: {snapshot}");
     }
+    insta::assert_snapshot!("options", snapshot);
+}
+
+#[test]
+fn the_frame_rate_is_kept_on_leaving_and_saved() {
+    use shuyi::ui::frame_cap::FrameCap;
+    let mut h = title(0);
+    h.keys("Down Enter Down Left");
+    assert_eq!(h.ctx().settings().frame_cap, FrameCap::Fps(30));
+    assert!(h.snapshot().contains("30 FPS"), "{}", h.snapshot());
+    h.keys("Backspace Left Left Enter");
+    assert_eq!(h.screens(), ["title"]);
+    let saved = h.ctx().storage.read(SETTINGS_KEY).unwrap().unwrap();
+    assert!(saved.contains("frame_cap:Fps(30)"), "{saved}");
 }
 
 #[test]
 fn the_map_look_is_kept_on_leaving_saved_and_drawn_with() {
     let mut h = title(0);
-    h.keys("Down Enter Down Right");
+    h.keys("Down Enter Down Down Right");
     assert_eq!(h.ctx().settings().game.look, MapLook::Tiles);
     assert!(h.snapshot().contains("Tiles"));
     // Not saved yet: leaving asks; Keep keeps it.
@@ -80,7 +95,7 @@ fn the_text_speed_is_the_engines_own_row() {
 #[test]
 fn a_key_rebound_on_the_key_bindings_screen_works_once_it_is_left() {
     let mut h = title(0);
-    h.keys("Down Enter Down Down Enter");
+    h.keys("Down Enter Down Down Down Enter");
     assert_eq!(h.screens(), ["title", "options", "key_bindings"]);
     // Confirm's first key, the fifth row: capture, then `c`.
     h.keys("Down Down Down Down Enter c");

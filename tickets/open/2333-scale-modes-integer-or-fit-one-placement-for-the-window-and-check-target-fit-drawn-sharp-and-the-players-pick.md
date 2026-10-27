@@ -125,8 +125,10 @@ game's choice, through its `engine-change` skill.
 - **The game's default and the player's pick:**
   - `GameSettings::DEFAULT_SCALE: ScaleMode`, an associated const that
     defaults to `ScaleMode::Integer`, so existing games compile
-    unchanged. It has the shape of 2321's `DEFAULT_FRAME_CAP`; either
-    order with 2321;
+    unchanged. It has the shape of 2321's `DEFAULT_FRAME_CAP` (done):
+    put it beside `DEFAULT_FRAME_CAP` and `FRAME_CAP_CHOICES` in
+    `GameSettings`, and `scale` beside `frame_cap` in `Settings`, the
+    toy's `File` and the `()` form's `EngineOnly`;
   - `Settings::scale: ScaleMode`. `Settings::default()` takes the
     game's default, so "Restore defaults" (`Settings::restored`)
     returns to it;
@@ -295,7 +297,7 @@ types follow ADR-0039.
    `crates/cli/src/game.rs`, `crates/platform/src/app.rs` (`run`,
    `present_game`), `headless.rs` and `harness.rs`, and `settings.rs`,
    `toy.rs` and `screens/options.rs` in `shuyi-ui`. Check which of
-   2110, 2314, 2321, 2346, 2351, 2405 and 3012 are done.
+   2110, 2314, 2346, 2351, 2405 and 3012 are done.
 2. Write `ScaleMode`, move `Factor`, write `scale`, `place` and
    `MAX_DRAW_PX`, and put `layout` on `place`, with the tests below.
 3. Move `check --target` onto them. Its tests pass unchanged.

@@ -18,6 +18,7 @@ use shuyi_ui::RawInputEvent;
 use shuyi_ui::audio::MusicCommand;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{
     HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass, TagRow,
 };
@@ -317,6 +318,8 @@ pub struct HeadlessPlatform {
     presented: u32,
     /// The last of them.
     last: Option<Presented>,
+    /// The frame cap the last of them asked for, and its serial.
+    frame_cap: Option<(FrameCap, u32)>,
 }
 
 impl Default for HeadlessPlatform {
@@ -346,6 +349,7 @@ impl HeadlessPlatform {
             snapshots: None,
             presented: 0,
             last: None,
+            frame_cap: None,
         }
     }
 
@@ -461,6 +465,12 @@ impl HeadlessPlatform {
         self.last.as_ref()
     }
 
+    /// The frame cap the last frame presented asked for, and its serial:
+    /// the headless backend doesn't pace, and reports nothing.
+    pub fn frame_cap(&self) -> Option<(FrameCap, u32)> {
+        self.frame_cap
+    }
+
     /// The sound device.
     pub fn speaker(&self) -> &Speaker {
         &self.speaker
@@ -484,6 +494,7 @@ impl Platform for HeadlessPlatform {
 
     fn present(&mut self, frame: &Frame<'_>) {
         self.presented += 1;
+        self.frame_cap = Some((frame.frame_cap, frame.frame_cap_serial));
         Presented::keep(&mut self.last, frame);
     }
 

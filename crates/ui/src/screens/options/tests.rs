@@ -9,6 +9,7 @@ use super::*;
 use crate::frame::color::Rgb;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
+use crate::frame_cap::FrameCap;
 use crate::settings::{SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
 use crate::toy::{self, Action, LEFT_HANDED, Prefs, Theme, Toy, ToyCtx, ctx};
@@ -18,10 +19,11 @@ type OptionsScreen = super::OptionsScreen<Toy>;
 type FrameInput = crate::screen::FrameInput<Action>;
 
 /// The rows' keys, top to bottom (without the toy's level).
-const ROWS: [&str; 10] = [
+const ROWS: [&str; 11] = [
     "options.row.text_speed",
     "toy.speed",
     "options.row.fullscreen",
+    "options.row.frame_cap",
     "options.row.theme",
     "options.row.music_volume",
     "options.row.sound_volume",
@@ -324,6 +326,7 @@ fn rows_show_their_values() {
             "Normal*",
             "Calm*",
             "Off*",
+            "60 FPS*",
             "Day*",
             "<80/100>",
             "<80/100>",
@@ -336,6 +339,7 @@ fn rows_show_their_values() {
     c.change_settings(|s| {
         s.game.speed = 2;
         s.fullscreen = true;
+        s.frame_cap = FrameCap::Off;
         s.theme = Theme::Night;
         s.music_volume = 0;
         s.sound_volume = 100;
@@ -349,6 +353,7 @@ fn rows_show_their_values() {
             "Normal*",
             "Wild*",
             "On*",
+            "Unlimited*",
             "Night*",
             "<0/100>",
             "<100/100>",
@@ -365,16 +370,12 @@ fn rows_show_their_values() {
     // A choice with nothing to choose from shows nothing.
     let empty = OptionRow::<Toy>::new(
         "toy.speed",
-        RowValue::Choice {
-            values: |_| Vec::new(),
-            get: |_| 0,
-            set: |_, _| false,
-        },
+        RowValue::choice(|_| Vec::new(), |_| 0, |_, _| false),
     );
     assert_eq!(OptionsScreen::value(&c, &empty), ValueView::None);
     // Before a layout is chosen, the layout row shows nothing.
     let c = toy::first_launch();
-    assert_eq!(shown(&c)[6], "");
+    assert_eq!(shown(&c)[7], "");
 }
 
 /// The toy's level isn't a setting: it changes at once and, like any row,
@@ -623,6 +624,47 @@ fn restore_defaults_asks_first_and_keeps_the_layout() {
     assert_eq!(saved(&c), changed);
     assert_eq!(s.message(), Some(RESTORED_MESSAGE));
     assert_eq!(c.layout(), Some(LEFT_HANDED));
+}
+
+/// The Frame rate row steps through the game's caps, each a change of the
+/// cap with the next serial; Restore defaults puts the game's back.
+#[test]
+fn the_frame_rate_row_steps_through_the_games_caps() {
+    use Action::{CursorLeft, CursorRight};
+    let mut c = ctx();
+    let mut s = on("options.row.frame_cap");
+    let shown = |s: &OptionsScreen, c: &Ctx| focused_value(s, c).text().map(str::to_owned);
+    assert_eq!(shown(&s, &c).as_deref(), Some("60 FPS"));
+    assert_eq!(
+        s.view(&c).focused().map(|r| r.label.as_str()),
+        Some("Frame rate")
+    );
+    press(&mut s, &mut c, &[CursorRight]);
+    assert_eq!(c.settings().frame_cap, FrameCap::Fps(120));
+    assert_eq!(c.frame_cap_serial(), 1);
+    assert!(unsaved(&c));
+    press(&mut s, &mut c, &[CursorRight; 9]);
+    assert_eq!(c.settings().frame_cap, FrameCap::Off);
+    assert_eq!(shown(&s, &c).as_deref(), Some("Unlimited"));
+    // Five steps to the end, and none past it.
+    assert_eq!(c.frame_cap_serial(), 5);
+    press(&mut s, &mut c, &[CursorLeft; 9]);
+    assert_eq!(c.settings().frame_cap, FrameCap::Fps(30));
+    assert_eq!(shown(&s, &c).as_deref(), Some("30 FPS"));
+    // A cap not among the choices shows as it is, and steps from the first.
+    c.change_settings(|s| s.frame_cap = FrameCap::Fps(75))
+        .unwrap();
+    assert_eq!(shown(&s, &c).as_deref(), Some("75 FPS"));
+    press(&mut s, &mut c, &[CursorRight]);
+    assert_eq!(c.settings().frame_cap, FrameCap::Fps(60));
+    // Restore defaults puts the game's default back, a change of the cap.
+    c.change_settings(|s| s.frame_cap = FrameCap::Off).unwrap();
+    let serial = c.frame_cap_serial();
+    let mut s = on("options.row.restore_defaults");
+    press(&mut s, &mut c, &[Action::Confirm]);
+    press(&mut s, &mut c, &[Action::Confirm]);
+    assert_eq!(c.settings().frame_cap, FrameCap::Fps(60));
+    assert_eq!(c.frame_cap_serial(), serial + 1);
 }
 
 /// A storage that reads nothing and can't be written.

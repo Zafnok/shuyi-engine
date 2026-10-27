@@ -3,7 +3,9 @@
 //! controllers, the window's own shortcut and close button, the OS's data
 //! folder or the browser's `localStorage`, the sound player, and the
 //! clock frames are measured with, and the heap counter they read, its
-//! memory tags and its snapshots, in debug builds.
+//! memory tags and its snapshots, in debug builds. It keeps the frame cap
+//! the last frame asked for, for [`run`](crate::run)'s pacer, and the input
+//! of the web's skipped frames for the next that runs.
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
 //! which loads in a frame of [`App`](shuyi_platform::App)'s: the renderer
@@ -20,10 +22,12 @@ use shuyi_platform::{
 };
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
 use shuyi_ui::{Game, GameData, RawInputEvent};
 
 use crate::audio::{self, Audio, device};
+use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::render::{Renderer, color, upload};
 use crate::{AppConfig, keys, storage};
@@ -82,6 +86,11 @@ pub(crate) struct Macroquad {
     text_input: Option<Box<dyn TextInput>>,
     /// Whether [`start`](Self::start) has run.
     started: bool,
+    /// The frame cap the last frame presented asked for, and its serial.
+    frame_cap: (FrameCap, u32),
+    /// The input of frames that didn't run the game, for the next that
+    /// does ([`hold_input`](Self::hold_input)).
+    held: Held,
     /// The live link's input for the next frame, after the devices'.
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
     link_input: Vec<RawInputEvent>,
@@ -107,6 +116,8 @@ impl Macroquad {
             sound: Sound::default(),
             text_input: config.text_input.take(),
             started: false,
+            frame_cap: (FrameCap::DEFAULT, 0),
+            held: Held::default(),
             #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
             link_input: Vec::new(),
         }
@@ -122,6 +133,22 @@ impl Macroquad {
     /// Whether the game has loaded and [`start`](Self::start) has run.
     pub(crate) fn started(&self) -> bool {
         self.started
+    }
+
+    /// The frame cap the last frame presented asked for, and its serial.
+    pub(crate) fn frame_cap(&self) -> (FrameCap, u32) {
+        self.frame_cap
+    }
+
+    /// Reads the input and the system's events of a frame that doesn't run
+    /// the game (the web's, before the cap's due time) and keeps them, in
+    /// order, for the next frame that does: macroquad forgets a frame's key
+    /// presses and releases at its end.
+    pub(crate) fn hold_input(&mut self) {
+        let (mut input, mut system) = (Vec::new(), Vec::new());
+        self.poll_input(&mut input);
+        self.system_events(&mut system);
+        self.held.keep(input, system);
     }
 
     /// Readies what plays the loaded `game`: decodes its sounds (which takes
@@ -261,6 +288,7 @@ impl Platform for Macroquad {
     }
 
     fn present(&mut self, frame: &Frame<'_>) {
+        self.frame_cap = (frame.frame_cap, frame.frame_cap_serial);
         if frame.fullscreen != self.fullscreen {
             self.fullscreen = frame.fullscreen;
             set_fullscreen(self.fullscreen);
@@ -279,6 +307,7 @@ impl Platform for Macroquad {
     }
 
     fn poll_input(&mut self, out: &mut Vec<RawInputEvent>) {
+        self.held.take_input(out);
         out.extend(keys::poll());
         if let Some(pads) = &mut self.pads {
             out.extend(pads.poll());
@@ -288,6 +317,7 @@ impl Platform for Macroquad {
     }
 
     fn system_events(&mut self, out: &mut Vec<SystemEvent>) {
+        self.held.take_system(out);
         if keys::fullscreen_shortcut() {
             out.push(SystemEvent::ToggleFullscreen);
         }

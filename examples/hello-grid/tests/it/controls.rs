@@ -47,7 +47,7 @@ fn every_screen_a_tour_of_the_game_opens_is_one_the_check_knows() {
     let mut h = crate::title(1);
     // Options, then its Key bindings, and back; the profiles (the menu
     // keeps its focus); the stage, its scene skipped, and leaving it.
-    h.keys("Down Enter Down Down Enter Escape Escape");
+    h.keys("Down Enter Down Down Down Enter Escape Escape");
     h.keys("Down Enter Escape");
     h.keys("Up Up Enter Escape Escape");
     let opened: Vec<&str> = h.screen_log().iter().flat_map(|(_, s)| s.clone()).collect();

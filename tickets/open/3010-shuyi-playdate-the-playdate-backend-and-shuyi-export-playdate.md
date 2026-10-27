@@ -98,12 +98,13 @@ Nothing here costs money. A device is needed only for 3011.
     each update calls `App::frame` with
     `getCurrentTimeMilliseconds()`. Use `display->setRefreshRate` from
     the profile (30).
-    **Either order with 2321 (the frame cap):** if 2321 is done, the
-    loop reports a `Pacing` through `App` each frame, as `shuyi-app`
-    does, with the rate it runs at (the profile's 30) as the applied
-    cap and the latest `frame_cap_serial`, so a game's
-    `request_frame_cap` is `Applied`; if not, nothing to do (2321 does
-    it, its clause says so).
+    **From 2321 (the frame cap, done):** the loop reports a `Pacing`
+    each frame with `App::set_pacing`, as `shuyi-app` does: the rate it
+    runs at (the profile's 30) as the applied cap
+    (`Pacing::new(FrameCap::Fps(30), serial)`, `serial` the
+    `Frame::frame_cap_serial` of the last frame presented) and `fps`
+    measured, so a game's `request_frame_cap` is `Applied`
+    (`docs/platform-backends.md`, *The frame cap*).
   - **Input.** `getButtonState` for the d-pad and A and B (`East` and
     `West`). The A+B chord comes from the engine's chord handling. The
     crank: `getCrankChange` becomes `CrankForward` and `CrankBack` once

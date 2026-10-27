@@ -234,12 +234,10 @@ None.
   and the PR description says so. The PR carries any `Breaking:` line
   2010's job asks for.
 - **Either order:**
-  - with 2321 (`Window::vsync`): if 2321 is done, `Window::console` sets
-    `vsync` to 2321's default through `Window::new`, and `conf_from`
-    sets `platform.swap_interval` from it, as 2321's `window_conf` does;
-    if not, 2321 sets it in `Window::new`, which `Window::console`
-    builds on, and sets `swap_interval` in `conf_from` (its clause says
-    so);
+  - **from 2321 (`Window::vsync`, done):** `Window::new` sets `vsync`
+    to its default (`true`), so `Window::console` gets it by building
+    on `Window::new`; `conf_from` sets `platform.swap_interval` to
+    `Some(i32::from(window.vsync))`, as `window_conf` does now;
   - 2511 (`run_game`) is done: the blank template has no `WINDOW` or
     `window_conf`, and `run_game`'s window function (`basic_window`)
     uses `Window::console` and the new `window_conf` as above;

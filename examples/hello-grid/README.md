@@ -1,8 +1,9 @@
 # Hello, Grid
 
 Shuyi Engine's first example: a small grid game made from the engine's
-crates alone. A title menu; options with two settings (the text speed and
-the map's look: glyphs or tiles) and the Key bindings screen; the
+crates alone. A title menu; options with three settings (the text speed,
+the frame rate and the map's look: glyphs or tiles) and the Key bindings
+screen; the
 engine's player profiles screen; a short
 scene; a 12 × 10 stage where you walk your piece (`@`) to the goal (`[]`)
 up to four tiles a turn, while a foe (`&`) steps one tile toward you after

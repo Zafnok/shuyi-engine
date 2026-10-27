@@ -748,6 +748,92 @@ fn frames_carry_the_volumes_and_fullscreen() {
     assert!(!game.frame(&[], 0.0).fullscreen);
 }
 
+/// The frame cap goes out every frame with its serial; the platform's
+/// report comes back before the next, and confirms a request for a cap.
+#[test]
+fn a_request_for_a_frame_cap_is_confirmed_by_the_platforms_report() {
+    use crate::frame_cap::{CapStatus, FrameCap, Pacing};
+    let mut game = home(ctx());
+    let out = game.frame(&[], 0.0);
+    assert_eq!(
+        (out.frame_cap, out.frame_cap_serial),
+        (FrameCap::Fps(60), 0)
+    );
+    assert_eq!(game.ctx().pacing(), None);
+    // A request is pending until the platform reports its serial.
+    let request = game.ctx_mut().request_frame_cap(FrameCap::Off);
+    assert_eq!(request.serial(), 1);
+    assert_eq!(game.ctx().frame_cap_status(request), CapStatus::Pending);
+    let out = game.frame(&[], 0.0);
+    assert_eq!((out.frame_cap, out.frame_cap_serial), (FrameCap::Off, 1));
+    // A report of an older serial doesn't confirm it.
+    game.set_pacing(Pacing::new(FrameCap::Fps(60), 0));
+    assert_eq!(game.ctx().frame_cap_status(request), CapStatus::Pending);
+    let mut report = Pacing::new(FrameCap::Off, 1);
+    report.fps = 240;
+    game.set_pacing(report);
+    assert_eq!(
+        game.ctx().frame_cap_status(request),
+        CapStatus::Applied(report)
+    );
+    assert_eq!(game.ctx().pacing(), Some(report));
+    // The cap is saved like any setting.
+    let key = crate::settings::SETTINGS_KEY;
+    let saved = crate::storage::Storage::read(&game.ctx().storage, key);
+    let saved = saved.unwrap().unwrap();
+    assert!(saved.contains("frame_cap:Off"), "{saved}");
+    // A second request before the report replaces the first: the first is
+    // superseded, the second applied once its serial is reported.
+    let first = game.ctx_mut().request_frame_cap(FrameCap::Fps(30));
+    let second = game.ctx_mut().request_frame_cap(FrameCap::Fps(120));
+    assert_eq!(game.ctx().frame_cap_status(first), CapStatus::Superseded);
+    assert_eq!(game.ctx().frame_cap_status(second), CapStatus::Pending);
+    let out = game.frame(&[], 0.0);
+    assert_eq!(
+        (out.frame_cap, out.frame_cap_serial),
+        (FrameCap::Fps(120), 3)
+    );
+    let report = Pacing::new(FrameCap::Fps(120), 3);
+    game.set_pacing(report);
+    assert_eq!(game.ctx().frame_cap_status(first), CapStatus::Superseded);
+    assert_eq!(
+        game.ctx().frame_cap_status(second),
+        CapStatus::Applied(report)
+    );
+    assert_eq!(game.ctx().frame_cap_status(request), CapStatus::Superseded);
+    // Asking for the cap in force is confirmed all the same.
+    let again = game.ctx_mut().request_frame_cap(FrameCap::Fps(120));
+    assert_eq!(again.serial(), 4);
+    assert_eq!(game.ctx().frame_cap_status(again), CapStatus::Pending);
+    // Any change of the cap takes the next serial; others don't.
+    game.ctx_mut()
+        .change_settings(|s| s.music_volume = 1)
+        .unwrap();
+    assert_eq!(game.ctx().frame_cap_serial(), 4);
+    game.ctx_mut()
+        .change_settings(|s| s.frame_cap = FrameCap::Fps(60))
+        .unwrap();
+    assert_eq!(game.ctx().frame_cap_serial(), 5);
+    assert_eq!(game.ctx().frame_cap_status(again), CapStatus::Superseded);
+}
+
+/// A profile switched to with another frame cap is a change of the cap.
+#[test]
+fn a_profile_with_another_frame_cap_takes_the_next_serial() {
+    use crate::frame_cap::FrameCap;
+    let mut game = home(ctx());
+    let ctx = game.ctx_mut();
+    let other = ctx.add_profile("Other").unwrap();
+    let first = ctx.profiles().current();
+    ctx.switch_profile(other).unwrap();
+    assert_eq!(ctx.frame_cap_serial(), 0);
+    ctx.request_frame_cap(FrameCap::Fps(30));
+    assert_eq!(ctx.frame_cap_serial(), 1);
+    ctx.switch_profile(first).unwrap();
+    assert_eq!(ctx.settings().frame_cap, FrameCap::Fps(60));
+    assert_eq!(ctx.frame_cap_serial(), 2);
+}
+
 #[test]
 fn the_context_is_handed_back_with_its_storage() {
     let mut game = home(ctx());

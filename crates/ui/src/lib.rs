@@ -14,6 +14,9 @@
 //!   ([`game`]: [`Game`]), with the player's [`settings`] and
 //!   [`profiles`], [`storage`], [`audio`] requests and the music, and
 //!   [`text`] placeholders;
+//! - the [`frame_cap`]: the most frames a second the platform shows, the
+//!   game's default and the player's setting, asked for and confirmed by
+//!   the platform's report;
 //! - a [`module`] from outside the default engine joining a running
 //!   [`Game`]: its hooks and its state on the [`Ctx`];
 //! - a `toy` game to try things on (the `toy` feature); the test Harness
@@ -63,6 +66,7 @@ pub mod debug;
 pub mod dialogue;
 pub mod float;
 pub mod frame;
+pub mod frame_cap;
 pub mod game;
 pub mod grid;
 pub mod hurry;
