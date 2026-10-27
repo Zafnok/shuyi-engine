@@ -725,7 +725,7 @@ fn stale_diagnosis(answer: &Value, version: u32) -> Option<String> {
 
 /// The limit a host's `answer` gets, where no fresh server is started for
 /// it, when its engine speaks another contract than `version`, the
-/// server's ([`stale_diagnosis`]), and what fixes it: for an older
+/// server's (its two contracts and the newer side), and what fixes it: for an older
 /// server, a reconnect (in Claude Code: /mcp) starts a fresh one; for a
 /// newer one, a reconnect doesn't, and the project's own `shuyi` must be
 /// the MCP entry (`command mcp install`) if the entry runs one installed
