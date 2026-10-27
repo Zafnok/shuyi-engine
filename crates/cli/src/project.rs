@@ -223,8 +223,8 @@ pub struct CheckKeys {
     /// Files only compiled for tests (besides `tests.rs`, `*_tests.rs` and
     /// `tests/`).
     pub test_support: Vec<String>,
-    /// Files whose `// check-keys: keyboard picture` comments are
-    /// honoured.
+    /// Files where a comment marking a keyboard picture (the text of
+    /// `check_keys::MARKER`) is honoured.
     pub picture_files: Vec<String>,
     /// What every error says to do about it.
     pub hint: String,

@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2002"]
 nick_input: none
-completed:
+completed: 2026-10-27
 ---
 
 # 2006 — check-keys and check-text on the engine's own code
@@ -71,9 +71,9 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo run -q -p shuyi-cli -- lint` at the root has no finding,
+- [x] `cargo run -q -p shuyi-cli -- lint` at the root has no finding,
       and runs in CI and in `run-gates`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -81,5 +81,25 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Added the root `shuyi.ron`: `check_keys` over `crates` and `examples`,
+`check_text` over the engine's own screens (`crates/ui/src/screens`), and a
+step in CI's `test` job (Linux leg) running `cargo run -q -p shuyi-cli --
+lint`. `run-gates` and `input-actions` say so.
+
+- `key_files` holds, each with its reason in the file: the platform
+  readers (`keys.rs`, `pads/native.rs`), the Harness and the link's key
+  scripts, the keymap format with `action_set.rs` (the fixed `Cancel` key,
+  ADR-0036) and `sample.rs`, the input runtime, the toy game, the
+  hello-grid example's actions, and the tools that take or print key names
+  as text (`cli`, `xtask`). `picture_files` lists the two rebinding
+  pictures' files.
+- Fixed in code: five `Debug` type names and one view-owned `.name` got
+  the checks' own `// check-text: not ...` comments in the engine's
+  screens; a doc comment in `crates/cli/src/project.rs` no longer quotes
+  the marker text.
+- `check_text` scans the screens' folder only: its `dir` is one folder,
+  and the rest of `crates/ui/src` holds the toy game, log, snapshot and
+  fit messages that are not screens' text. `max_literals` stays 0.
+- 2330 and 2351 each got a "From 2006 (done)" line for their folders.
+
+No `Breaking:` change; no game change. Nick input: none.

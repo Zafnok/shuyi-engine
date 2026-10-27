@@ -95,7 +95,7 @@ None.
 - changing what the checks look for, or `lint`'s answer's shape;
 - `lint` failing (exit 3) when `shuyi.ron` lacks a part: it records a
   limit and runs what the project has, by design;
-- `check-keys` and `check-text` on the engine's own code (2006).
+- `check-keys` and `check-text` on the engine's own code (2006, done).
 
 ## Implementation steps
 

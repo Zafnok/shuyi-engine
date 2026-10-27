@@ -5,10 +5,10 @@
 
 [blank] base
 d4b465b5e5a1bbb5 .cargo/config.toml
-99ec697aaea83620 .devcontainer/devcontainer.json
+6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 3ff31f910a652891 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-e7fbb64e3f13c800 AGENTS.md
+349a0533ee8a2713 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 c711d1bb70e03694 README.md
@@ -33,11 +33,11 @@ c7bc56040688f5d6 rust-toolchain.toml
 
 [grid] base, stage-top-down-grid
 d4b465b5e5a1bbb5 .cargo/config.toml
-99ec697aaea83620 .devcontainer/devcontainer.json
+6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 3ff31f910a652891 .github/workflows/ci.yml
 4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-e7fbb64e3f13c800 AGENTS.md
+349a0533ee8a2713 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 e38c9bf7515affe5 Cargo.toml
 c711d1bb70e03694 README.md

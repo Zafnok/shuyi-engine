@@ -15,7 +15,9 @@ without guessing.
 
 [Open in GitHub Codespaces](https://codespaces.new/Zafnok/shuyi-engine?quickstart=1):
 a container with the C linker, the system libraries and the pinned Rust
-set up (`.devcontainer/`). Codespaces bills whoever opens it, from their
+set up (`.devcontainer/`), and the MCP server registered with your
+coding agents (its first creation also takes the server's first build).
+Codespaces bills whoever opens it, from their
 own GitHub account's free hours or plan.
 
 ## What it is for

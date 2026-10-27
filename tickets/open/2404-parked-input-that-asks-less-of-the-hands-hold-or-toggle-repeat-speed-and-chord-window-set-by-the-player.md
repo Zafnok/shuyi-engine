@@ -92,7 +92,7 @@ None.
 - one-switch and scanning input (a follow-up if a game asks);
 - alternatives to button mashing or quick-time events (game rules);
 - help text that says "press" instead of "hold" for a toggled action (a
-  follow-up with 2006's `check-text`, if a game names holding in its
+  follow-up with the engine's own `check-text` (2006, done), if a game names holding in its
   text);
 - the motion, shake and flashing settings (2340), and sound captions
   (2366, parked). Each of them adds to `Settings` and every repository
