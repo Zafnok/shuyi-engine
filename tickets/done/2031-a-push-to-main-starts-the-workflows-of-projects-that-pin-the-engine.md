@@ -120,18 +120,18 @@ is ready. It never sees or handles the token itself.
 
 ## Acceptance criteria
 
-- [ ] `notify-dependents.yml` exists and passes `zizmor`
+- [x] `notify-dependents.yml` exists and passes `zizmor`
       (`security.yml`); its job runs only on `main`, in the `dependents`
       environment.
-- [ ] Without the secret, a run ends green with a notice (shown in the
+- [x] Without the secret, a run ends green with a notice (shown in the
       run log, linked in the Completion notes).
-- [ ] With the secret: after a push to `main`, the game's
+- [x] ~~With the secret: after a push to `main`, the game's
       `engine-watch.yml` has a `workflow_dispatch` run whose
       `engine_sha` is that push's sha. If game#1190 isn't done yet, the
       run shows the 404 warning instead, and the Completion notes say
-      so.
-- [ ] The ADR is in `docs/adr/` and its index.
-- [ ] All gates in the `run-gates` skill pass.
+      so.~~ (not done: the dependents token is Nick's setup, still to do)
+- [x] The ADR is in `docs/adr/` and its index.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 

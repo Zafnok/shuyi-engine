@@ -258,7 +258,7 @@ None.
 
 1. Read 2315's and 2316's ADR and code, 2325 if it is done, 3063's ADR
    and `shuyi_ui::perf`, 3064's counter and `Platform::memory`, 3065's
-   `watch_decodes` if it is done, `crates/assets/src/format.rs` and
+   `shuyi_assets::format::watch_decodes`, `crates/assets/src/format.rs` and
    `bundle.rs` (`watch`), `crates/platform/src/app.rs`, `harness.rs`
    and `headless.rs`, `crates/app/src/lib.rs` and `backend.rs`, and
    `examples/hello-grid/src/tools.rs`.

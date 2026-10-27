@@ -287,8 +287,8 @@ None.
 - [x] `Ctx::span` with no clock calls its closure once and records
       nothing; nested spans have depths 0 and 1, the inner one first; a
       65th span in a frame is counted in `spans_dropped`.
-- [ ] (moved to 2553, by the size rule) `spread` gives the right p50, p99, worst and mean on known lists
-      (one value, two, a hundred, all equal).
+- [x] ~~(moved to 2553, by the size rule) `spread` gives the right p50, p99, worst and mean on known lists
+      (one value, two, a hundred, all equal).~~ (not done: moved to 2553 by the size rule)
 - [x] `PerfRing`'s `since`, `next_seq` and `dropped` behave as
       `LogRing`'s do (the same cases as `LogRing`'s tests).
 - [x] `Macroquad::clock` builds on native and in the web build (the

@@ -55,6 +55,8 @@ Why it matters:
   pictures, so the picture must be the one players see. This ticket is
   the first half of that; 2018 checks it.
 
+**From 2908 (open):** Parked research: when this lands, the raster painter is `shuyi_ui::frame::raster`, and 2908's note on `frame-png`'s `Painter` names it.
+
 ## Nick input
 
 None.

@@ -277,9 +277,9 @@ None. Meeting these licenses' notice duties isn't a product choice.
 - [x] `quad-snd`, which has no license file and declares
       `MIT/Apache-2.0`, is listed with an MIT text naming its author and
       the Apache-2.0 text.
-- [ ] Each vendored script in `dist/web` starts with its `/*!` header.
+- [x] ~~Each vendored script in `dist/web` starts with its `/*!` header.
       **Moved to 3066** (the Size rule), with the `rel="license"` link.
-      The committed copies under `crates/cli/web/` are unchanged.
+      The committed copies under `crates/cli/web/` are unchanged.~~ (not done: moved to 3066 by the Size rule)
 - [x] Each text is printed once, and two runs on the same inputs give
       the same bytes (test).
 - [x] A `notices.texts` file that doesn't exist fails `web`, naming its

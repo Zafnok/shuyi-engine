@@ -30,6 +30,8 @@ The engine provides the tool and the examples' scenarios. A game writes
 its own scenarios over its own content, so Visions of Shuyi gets numbers
 for its heaviest battle without any of it entering the engine.
 
+**From 2206 (open):** Parked: the MIDI synth's cost is measured with `shuyi bench` here when this ticket's bench exists first; otherwise 2206 uses a plain timing test and says so. Nothing in this ticket changes for it.
+
 ## Nick input
 
 None.

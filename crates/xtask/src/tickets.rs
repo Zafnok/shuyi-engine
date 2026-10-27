@@ -12,6 +12,10 @@
 //! fails a clause that names an open ticket which never names it back (ticket
 //! 2027): if the clause's ticket lands first, nothing tells the other one
 //! what was left to it.
+//!
+//! The warning reads the docs too (`docs/**/*.md`, but not `docs/adr/` or
+//! `docs/ROADMAP.md`), and a done ticket with an unticked acceptance box
+//! fails (ticket 2023).
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -168,7 +172,13 @@ pub fn run(repo_root: &Path, pr_branch: Option<&str>, game: &GameSource) -> Repo
     }
 
     report.errors.extend(check_mirrors(&tickets));
-    report.warnings.extend(check_clauses(&tickets));
+    match read_docs(repo_root) {
+        Ok(docs) => report.warnings.extend(check_clauses(&tickets, &docs)),
+        Err(e) => {
+            report.errors.push(format!("docs: {e}"));
+            report.warnings.extend(check_clauses(&tickets, &[]));
+        }
+    }
     report
 }
 
@@ -265,6 +275,7 @@ fn parse_ticket(display_path: String, folder: Folder, filename: &str, content: &
 
                 match folder {
                     Folder::Done => {
+                        errors.extend(check_done_boxes(body, first_line_of(&content, body)));
                         if fields.status.as_deref() != Some("done") {
                             errors.push(
                                 "tickets in `tickets/done/` must have `status: done`".to_string(),
@@ -325,6 +336,10 @@ fn first_line_of(content: &str, body: &str) -> usize {
 struct Word {
     text: String,
     comma: bool,
+    /// Whether a full stop, `!` or `?` ended the word: a sentence ends here.
+    stop: bool,
+    /// Whether the word is in a Markdown table row.
+    cell: bool,
     line: usize,
 }
 
@@ -349,11 +364,16 @@ fn words(body: &str, first_line: usize) -> Vec<Word> {
         if fenced {
             continue;
         }
+        let cell = line.trim_start().starts_with('|');
         for raw in line.split_whitespace() {
             let tail = &raw[raw.trim_end_matches(is_edge).len()..];
+            let bare = raw.trim_end_matches(['!', '?']);
             words.push(Word {
-                text: raw.trim_matches(is_edge).to_lowercase(),
+                // A typographic apostrophe reads as the plain one.
+                text: raw.trim_matches(is_edge).to_lowercase().replace('’', "'"),
                 comma: tail.contains(','),
+                stop: tail.contains('.') || bare.len() != raw.len(),
+                cell,
                 line: first_line + n,
             });
         }
@@ -415,6 +435,63 @@ fn clause(words: &[Word], start: usize, end: usize, ids: Vec<String>) -> Clause 
     }
 }
 
+/// What can follow the ids after `if`.
+const AFTER_IF: &[&[&str]] = &[
+    &["is", "done"],
+    &["are", "done"],
+    &["is", "not", "done"],
+    &["are", "not", "done"],
+    &["isn't", "done"],
+    &["aren't", "done"],
+    &["has", "landed"],
+    &["have", "landed"],
+    &["hasn't", "landed"],
+    &["haven't", "landed"],
+];
+/// What can follow the ids after `when`.
+const AFTER_WHEN: &[&[&str]] = &[&["is", "done"]];
+/// What can follow the ids after `once`.
+const AFTER_ONCE: &[&[&str]] = &[
+    &["lands"],
+    &["land"],
+    &["is", "done"],
+    &["are", "done"],
+    &["has", "landed"],
+    &["have", "landed"],
+];
+/// What can follow the ids after `until`.
+const AFTER_UNTIL: &[&[&str]] = &[&["exists"], &["exist"], &["lands"], &["is", "done"]];
+/// What can follow `if it`.
+const AFTER_IF_IT: &[&[&str]] = &[&["is", "done"], &["is", "not", "done"], &["has", "landed"]];
+
+/// What can follow the ids after the clause's first word.
+fn after_forms(word: &str) -> Option<&'static [&'static [&'static str]]> {
+    match word {
+        "if" => Some(AFTER_IF),
+        "when" => Some(AFTER_WHEN),
+        "once" => Some(AFTER_ONCE),
+        "until" => Some(AFTER_UNTIL),
+        _ => None,
+    }
+}
+
+/// The length of the first of `forms` that `words` read from `at`.
+fn form_at(words: &[Word], at: usize, forms: &[&[&str]]) -> Option<usize> {
+    forms
+        .iter()
+        .find(|form| reads(words, at, form))
+        .map(|form| form.len())
+}
+
+/// The id before `words[start]` that "`<id>'s …, if it is done`" is about:
+/// the nearest id in the same sentence, bare or with `'s`.
+fn owner_id(words: &[Word], start: usize) -> Option<usize> {
+    (0..start).rev().take_while(|&i| !words[i].stop).find(|&i| {
+        let text = words[i].text.as_str();
+        is_four_digits(text.strip_suffix("'s").unwrap_or(text))
+    })
+}
+
 /// The clause that starts at `words[start]`, if one does, in one of the
 /// forms `find_clauses` names.
 fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
@@ -422,23 +499,25 @@ fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
     if is_four_digits(word) && words[start].comma && reads(words, start + 1, &["if", "done"]) {
         return Some(clause(words, start, start + 3, vec![word.to_string()]));
     }
+    if word == "if" && reads(words, start + 1, &["it"]) {
+        let len = form_at(words, start + 2, AFTER_IF_IT)?;
+        let owner = owner_id(words, start)?;
+        let text = words[owner].text.as_str();
+        let id = text.strip_suffix("'s").unwrap_or(text).to_string();
+        return Some(clause(words, owner, start + 2 + len, vec![id]));
+    }
     let (ids, end) = match word {
         "either" if reads(words, start, &["either", "order", "with"]) => ids_at(words, start + 3),
         "either" if reads(words, start, &["either", "order", "works", "with"]) => {
             ids_at(words, start + 4)
         }
         "waits" | "wait" if reads(words, start + 1, &["for"]) => ids_at(words, start + 2),
-        "if" | "when" => {
+        _ => {
+            let forms = after_forms(word)?;
             let (ids, end) = ids_at(words, start + 1);
-            let verbs: &[&str] = if word == "if" {
-                &["is", "are"]
-            } else {
-                &["is"]
-            };
-            let done = verbs.iter().any(|v| reads(words, end, &[*v, "done"]));
-            (if done { ids } else { Vec::new() }, end + 2)
+            let len = form_at(words, end, forms)?;
+            (ids, end + len)
         }
-        _ => return None,
     };
     (!ids.is_empty()).then(|| clause(words, start, end, ids))
 }
@@ -447,10 +526,17 @@ fn clause_at(words: &[Word], start: usize) -> Option<Clause> {
 /// in any case, across line breaks and Markdown emphasis:
 ///
 /// 1. `either order with <ids>` (and `either order works with <ids>`);
-/// 2. `if <ids> is done` (and `are done`);
+/// 2. `if <ids>` then `is done` / `are done` / `is not done` / `are not done`
+///    / `isn't done` / `aren't done` / `has landed` / `have landed` /
+///    `hasn't landed` / `haven't landed`;
 /// 3. `when <ids> is done`;
 /// 4. `<id>, if done`, as in "the book (NNNN, if done)";
-/// 5. `waits for <ids>` (and `wait for <ids>`).
+/// 5. `waits for <ids>` (and `wait for <ids>`);
+/// 6. `once <ids>` then `lands` / `land` / `is done` / `are done` / `has
+///    landed` / `have landed`;
+/// 7. `until <ids>` then `exists` / `exist` / `lands` / `is done`;
+/// 8. `<id>'s …, if it is done` (or `if it has landed`): the id is the
+///    nearest one before `if it` in the same sentence.
 ///
 /// `<ids>` is one four-digit id, or several joined by `,`, `and` or `or`.
 /// Fenced code blocks are skipped. `first_line` is the body's first line in
@@ -462,29 +548,124 @@ fn find_clauses(body: &str, first_line: usize) -> Vec<Clause> {
         .collect()
 }
 
-/// One warning per file, line and id for each clause of an open ticket that
-/// waits on a ticket in `tickets/done/`.
-fn check_clauses(tickets: &[Ticket]) -> Vec<String> {
+/// The clauses of a doc: those of `find_clauses`, and `ticket <id> adds`
+/// inside a table cell, a promise that ticket's PR should have settled.
+fn find_doc_clauses(content: &str) -> Vec<Clause> {
+    let words = words(content, 1);
+    let mut found: Vec<Clause> = (0..words.len())
+        .filter_map(|start| clause_at(&words, start))
+        .collect();
+    for start in 0..words.len() {
+        let [ticket, id, adds] = [start, start + 1, start + 2].map(|i| words.get(i));
+        if let (Some(t), Some(i), Some(a)) = (ticket, id, adds)
+            && t.cell
+            && t.text == "ticket"
+            && is_four_digits(&i.text)
+            && a.text == "adds"
+        {
+            found.push(clause(&words, start, start + 3, vec![i.text.clone()]));
+        }
+    }
+    found.sort_by_key(|c| c.line);
+    found
+}
+
+/// A doc under `docs/` and the clauses in it.
+struct Doc {
+    /// Path relative to the repo root, for warnings.
+    display_path: String,
+    clauses: Vec<Clause>,
+}
+
+/// One warning per file, line and id for each clause of an open ticket or a
+/// doc that waits on a ticket in `tickets/done/`.
+fn check_clauses(tickets: &[Ticket], docs: &[Doc]) -> Vec<String> {
     let done: HashSet<&str> = tickets
         .iter()
         .filter(|t| t.folder == Folder::Done)
         .filter_map(|t| t.fields.id.as_deref())
         .collect();
+    let sources = tickets
+        .iter()
+        .map(|t| (&t.display_path, &t.clauses))
+        .chain(docs.iter().map(|d| (&d.display_path, &d.clauses)));
     let mut seen = HashSet::new();
     let mut warnings = Vec::new();
-    for ticket in tickets {
-        for clause in &ticket.clauses {
+    for (path, clauses) in sources {
+        for clause in clauses {
             for id in clause.ids.iter().filter(|id| done.contains(id.as_str())) {
-                if seen.insert((&ticket.display_path, clause.line, id)) {
+                if seen.insert((path, clause.line, id)) {
                     warnings.push(format!(
-                        "{}:{}: \"{}\": {id} is done, so settle the clause (work-ticket §5)",
-                        ticket.display_path, clause.line, clause.text
+                        "{path}:{}: \"{}\": {id} is done, so settle the clause (work-ticket §5)",
+                        clause.line, clause.text
                     ));
                 }
             }
         }
     }
     warnings
+}
+
+/// The `.md` files under `docs/`, below it too, except `docs/adr/` and
+/// `docs/ROADMAP.md`: ADRs are records of their time, the roadmap lists done
+/// tickets on purpose. Sorted by path; no `docs/` has none.
+fn read_docs(repo_root: &Path) -> std::io::Result<Vec<Doc>> {
+    fn walk(dir: &Path, out: &mut Vec<std::path::PathBuf>) -> std::io::Result<()> {
+        for entry in fs::read_dir(dir)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                if path.file_name().is_none_or(|n| n != "adr") {
+                    walk(&path, out)?;
+                }
+            } else if path.extension().is_some_and(|e| e == "md")
+                && path.file_name().is_none_or(|n| n != "ROADMAP.md")
+            {
+                out.push(path);
+            }
+        }
+        Ok(())
+    }
+    let docs_dir = repo_root.join("docs");
+    let mut paths = Vec::new();
+    if docs_dir.is_dir() {
+        walk(&docs_dir, &mut paths)?;
+    }
+    paths.sort();
+    paths
+        .into_iter()
+        .map(|path| {
+            let content = fs::read_to_string(&path)?.replace("\r\n", "\n");
+            let display_path = path
+                .strip_prefix(repo_root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .replace('\\', "/");
+            Ok(Doc {
+                display_path,
+                clauses: find_doc_clauses(&content),
+            })
+        })
+        .collect()
+}
+
+/// An error for each `- [ ]` line under `## Acceptance criteria` of a done
+/// ticket: tick it, or write `- [x] ~~…~~ (not done: why)`. `first_line` is
+/// the body's first line in the file.
+fn check_done_boxes(body: &str, first_line: usize) -> Vec<String> {
+    let mut in_criteria = false;
+    let mut errors = Vec::new();
+    for (n, line) in body.lines().enumerate() {
+        if let Some(heading) = line.strip_prefix("## ") {
+            in_criteria = heading.trim().eq_ignore_ascii_case("acceptance criteria");
+        } else if in_criteria && line.trim_start().starts_with("- [ ]") {
+            errors.push(format!(
+                "line {}: a done ticket has every acceptance box ticked; tick it, or write \
+                 `- [x] ~~…~~ (not done: why)`",
+                first_line + n
+            ));
+        }
+    }
+    errors
 }
 
 /// The ticket ids `body` names: each run of exactly four ASCII digits that
@@ -1374,6 +1555,36 @@ README.md
             ("The book (2204, IF DONE).", "2204, if done"),
             ("Its example waits for 2204.", "waits for 2204"),
             ("They Wait For 2204: x", "wait for 2204"),
+            ("If 2204 has landed, x.", "if 2204 has landed"),
+            ("If 2204 hasn't landed, x.", "if 2204 hasn't landed"),
+            ("If 2204 hasn’t landed, x.", "if 2204 hasn't landed"),
+            ("if 2204 haven't landed", "if 2204 haven't landed"),
+            ("if 2204 isn't done", "if 2204 isn't done"),
+            ("if 2204 is not done", "if 2204 is not done"),
+            ("if 2204 aren't done", "if 2204 aren't done"),
+            ("if 2204 are not done", "if 2204 are not done"),
+            ("Once 2204 lands, x.", "once 2204 lands"),
+            ("once 2204 land", "once 2204 land"),
+            ("once 2204 is done", "once 2204 is done"),
+            ("once 2204 are done", "once 2204 are done"),
+            ("once 2204 has landed", "once 2204 has landed"),
+            ("once 2204 have landed", "once 2204 have landed"),
+            ("until 2204 exists", "until 2204 exists"),
+            ("until 2204 exist", "until 2204 exist"),
+            ("until 2204 lands", "until 2204 lands"),
+            ("until 2204 is done", "until 2204 is done"),
+            (
+                "Then 2204's float ban covers it if it is done.",
+                "2204's float ban covers it if it is done",
+            ),
+            (
+                "Then 2204 covers it, if it is not done.",
+                "2204 covers it, if it is not done",
+            ),
+            (
+                "Then 2204 covers it, if it has landed.",
+                "2204 covers it, if it has landed",
+            ),
         ] {
             let found = find_clauses(body, 1);
             assert_eq!(found.len(), 1, "{body}: {found:?}");
@@ -1433,8 +1644,40 @@ README.md
     }
 
     #[test]
+    fn the_new_forms_read_several_ids() {
+        assert_eq!(
+            clause_ids("if 2204 and 2205 have landed"),
+            vec![ids(&["2204", "2205"])]
+        );
+        assert_eq!(
+            clause_ids("once 2204, 2205 are done"),
+            vec![ids(&["2204", "2205"])]
+        );
+    }
+
+    #[test]
+    fn the_nearest_id_before_if_it_is_the_one() {
+        let found = find_clauses("2001 is old. 2002's x and 2003's y, if it is done.", 1);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].ids, ids(&["2003"]));
+    }
+
+    #[test]
     fn needs_the_whole_form() {
         for body in [
+            "once upon a time",
+            "once 2204",
+            "once 2204 is ready",
+            "until 22044 exists",
+            "until 2204",
+            "until 2204 ends",
+            "if it is done",
+            "2204. If it is done",
+            "2204 is old. It is fine if it is done",
+            "2204's x, if it is ready",
+            "if 2204 has",
+            "if 2204 is not",
+            "when 2204 has landed",
             "if 2204 is",
             "if 2204 is ready",
             "if 2204 were done",
@@ -1532,7 +1775,7 @@ README.md
                 "x\nif 2001, 2002 and 2003 are done, y; 2003 is old. 2002, if done",
             ),
         ];
-        let warnings = check_clauses(&tickets);
+        let warnings = check_clauses(&tickets, &[]);
         assert_eq!(
             warnings,
             vec![
@@ -1555,7 +1798,7 @@ README.md
             ),
             with_clauses("2101", Folder::Open, "if 2001 is done"),
         ];
-        let warnings = check_clauses(&tickets);
+        let warnings = check_clauses(&tickets, &[]);
         assert_eq!(warnings.len(), 3, "{warnings:#?}");
         assert!(warnings[0].starts_with("tickets/open/2100-x.md:1: "));
         assert!(warnings[1].starts_with("tickets/open/2100-x.md:2: "));
@@ -1590,6 +1833,106 @@ README.md
             ]
         );
         let _ = fs::remove_dir_all(&root);
+    }
+
+    // -- the docs --
+
+    #[test]
+    fn a_doc_clause_and_a_table_promise_warn_when_done() {
+        let content = "x
+| a | nothing yet (ticket 2001 adds `docs.rs`) |
+ticket 2001 adds y
+                       Once 2002 lands, z.
+";
+        let found = find_doc_clauses(content);
+        let lines: Vec<_> = found.iter().map(|c| (c.line, c.ids.clone())).collect();
+        assert_eq!(lines, vec![(2, ids(&["2001"])), (4, ids(&["2002"]))]);
+        let docs = vec![Doc {
+            display_path: "docs/README.md".to_string(),
+            clauses: found,
+        }];
+        let tickets = vec![ticket("2001", Folder::Done, "done", &[])];
+        let warnings = check_clauses(&tickets, &docs);
+        assert_eq!(
+            warnings,
+            vec![
+                "docs/README.md:2: \"ticket 2001 adds\": 2001 is done, so settle the clause (work-ticket §5)"
+            ]
+        );
+    }
+
+    #[test]
+    fn run_reads_the_docs_except_adrs_and_the_roadmap() {
+        let root = make_temp_tickets_dir("run-docs");
+        fs::create_dir_all(root.join("docs/adr")).unwrap();
+        let done = VALID_FRONTMATTER
+            .replace("2106", "2102")
+            .replace("\"2102\", \"game#1131\"", "")
+            .replace("status: todo", "status: done")
+            .replace("completed:", "completed: 2026-10-21");
+        fs::write(root.join("tickets/done/2102-x.md"), done).unwrap();
+        let clause = "If 2102 has landed, x.
+";
+        fs::write(root.join("docs/README.md"), clause).unwrap();
+        fs::write(root.join("docs/adr/0001-x.md"), clause).unwrap();
+        fs::write(root.join("docs/ROADMAP.md"), clause).unwrap();
+        let report = run(&root, None, &GameSource::Checkout(&root));
+        assert!(report.errors.is_empty(), "{:?}", report.errors);
+        assert_eq!(
+            report.warnings,
+            vec![
+                "docs/README.md:1: \"if 2102 has landed\": 2102 is done, so settle the clause (work-ticket §5)"
+            ]
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    // -- a done ticket's boxes --
+
+    #[test]
+    fn a_done_ticket_has_every_box_ticked() {
+        let body = "
+## Acceptance criteria
+
+- [x] a
+- [x] ~~b~~ (not done: why)
+                    - [ ] c
+
+## Tests required
+
+- [ ] not criteria
+";
+        let errors = check_done_boxes(body, 12);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert!(errors[0].starts_with("line 17: "), "{errors:?}");
+        let ticked = check_done_boxes(
+            "## Acceptance criteria
+- [x] a
+",
+            1,
+        );
+        assert!(ticked.is_empty(), "{ticked:?}");
+    }
+
+    #[test]
+    fn parse_fails_a_done_ticket_with_an_unticked_box_only() {
+        let done = VALID_FRONTMATTER
+            .replace("status: todo", "status: done")
+            .replace("completed:", "completed: 2026-10-21");
+        let open_box = done.replace(
+            "# body",
+            "## Acceptance criteria
+
+- [ ] a",
+        );
+        let t = parse_ticket("p".to_string(), Folder::Done, "2106-x.md", &open_box);
+        assert_eq!(t.errors.len(), 1, "{:?}", t.errors);
+        let t = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &open_box);
+        assert!(
+            t.errors.iter().all(|e| !e.contains("acceptance")),
+            "{:?}",
+            t.errors
+        );
     }
 
     // -- clauses written on both sides --

@@ -29,6 +29,12 @@ Writers matter most once Tiled, LDtk and Aseprite are formats (tickets
 text, which a game then keeps. This ticket writes them for the engine's
 own text formats first, so the pattern and its tests are in place.
 
+**From 2223 (open):** `CreditsRon` and `AudioManifestRon` writers write `licenses` and `files` when they exist at that point, with round trips covering them; if this ticket lands after them, writing them is part of this one.
+
+**From 2342 (open):** Its `AudioManifestRon` writer writes `groups` and the cues' `group`, with a round-trip test over a manifest that has them; if this ticket lands after 2342, writing them is part of this one.
+
+**From 2343 (open):** Its `AudioManifestRon` writer writes `ducks`, with a round-trip test covering a rule; if this ticket lands after 2343, writing them is part of this one.
+
 ## Nick input
 
 None.

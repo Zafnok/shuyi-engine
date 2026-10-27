@@ -111,10 +111,10 @@ the PR.
 3. Set `status: done` and `completed: YYYY-MM-DD`.
 4. `git mv tickets/open/<file>.md tickets/done/<file>.md`
 5. **Settle what named this ticket.** Run `grep -rnw "<NNNN>"
-   tickets/open`, and for each hit:
-   - a clause that waits on it (*either order with NNNN*, *if NNNN is
-     done*, *NNNN, if done*): rewrite it as what now holds, and drop the
-     other branch;
+   tickets/open docs --exclude-dir=adr`, and for each hit:
+   - a clause that waits on it (the forms are in the doc comment of
+     `find_clauses`, `crates/xtask/src/tickets.rs`): rewrite it as what
+     now holds, and drop the other branch;
    - a promised follow-up: write it now (the `write-ticket` skill), and
      point the promise at its number;
    - a `blocked_by` entry: leave it, it is met.

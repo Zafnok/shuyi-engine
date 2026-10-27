@@ -34,6 +34,8 @@ This ticket builds the tree, headless and testable, in `shuyi-ui`. 3035
 sends it to the system's screen reader. The game's own screens (its map
 screen, its battle) are the game's work, through the same method.
 
+**From 2323 (open):** Parked: the guide `docs/accessibility.md` is created here when this ticket lands first, and 2323 adds its section on text sizes; if 2323 lands first it creates the guide.
+
 ## Nick input
 
 None.

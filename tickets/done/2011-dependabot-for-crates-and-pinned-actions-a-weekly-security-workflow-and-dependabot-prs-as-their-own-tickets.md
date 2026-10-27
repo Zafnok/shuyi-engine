@@ -417,34 +417,34 @@ job, `security.yml`, the ADR and the skill here.
 
 ## Acceptance criteria
 
-- [ ] `.github/dependabot.yml` has cargo at `/` and github-actions at
+- [x] `.github/dependabot.yml` has cargo at `/` and github-actions at
       `/` and both templates' workflow folders. Both run weekly with a
       7-day cooldown, `backend` comes before `cargo-minor-patch`, and
       the actions have one group.
-- [ ] `cargo xtask check-pins` passes on the repository and runs in
+- [x] `cargo xtask check-pins` passes on the repository and runs in
       CI's `tickets` job and in `run-gates`.
-- [ ] Each of its four failures is shown by a unit test that asserts
+- [x] Each of its four failures is shown by a unit test that asserts
       the message, with the file named (and the line, for rules 1, 2
       and 4): an unpinned `uses:`, two SHAs for one action, a template
       workflow folder missing from `dependabot.yml`, and a template's
       `ron` requirement that differs from the root's.
-- [ ] CI's `zizmor` job is in `ci-result`'s `needs` and passes at
+- [x] CI's `zizmor` job is in `ci-result`'s `needs` and passes at
       medium over the root and both templates. Every entry in
       `.github/zizmor.yml`, if there is one, has a reason and is named
       in the PR.
-- [ ] `security.yml` runs only on `schedule` and `workflow_dispatch`,
+- [x] `security.yml` runs only on `schedule` and `workflow_dispatch`,
       and the issue step was shown working (step 7): one issue opened,
       one comment on the second failure, and the temporary commit is
       gone.
-- [ ] CodeQL ran for `rust` and `actions` on the PR, `codeql-result` is
+- [x] CodeQL ran for `rust` and `actions` on the PR, `codeql-result` is
       green, and every finding is fixed or named in the PR with why it
       is wrong here.
-- [ ] The ADR and its row in `docs/adr/README.md` exist, `AGENTS.md`
+- [x] The ADR and its row in `docs/adr/README.md` exist, `AGENTS.md`
       rule 1 names both exceptions, and the `dependency-upkeep` skill
       exists.
-- [ ] Nothing under `templates/` gains a workflow or a Dependabot,
+- [x] Nothing under `templates/` gains a workflow or a Dependabot,
       CodeQL or Scorecard file.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 

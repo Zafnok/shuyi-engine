@@ -157,24 +157,24 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Over the server on the toy game, `Perf { since: 0 }` answers every
+- [x] Over the server on the toy game, `Perf { since: 0 }` answers every
       kept record, and `Perf { since: next }` answers none until a frame
       runs, then that frame.
-- [ ] `shuyi attach --perf-follow perf.jsonl --for 1` against the test
+- [x] `shuyi attach --perf-follow perf.jsonl --for 1` against the test
       host writes lines that parse as `PerfLine`s, one per frame the host
       ran, and answers their summary.
-- [ ] A test host that runs more than 600 frames between two reads makes
+- [x] A test host that runs more than 600 frames between two reads makes
       the answer's limit count the dropped frames.
-- [ ] MCP's `perf` on a session attached to the test host answers as it
+- [x] MCP's `perf` on a session attached to the test host answers as it
       does on a headless session.
-- [ ] The schemas are regenerated, `versions.json` has the new version,
+- [x] The schemas are regenerated, `versions.json` has the new version,
       and `link::VERSION` is raised.
-- [ ] Hello, Grid followed by hand on a desktop wrote a file while it
+- [x] Hello, Grid followed by hand on a desktop wrote a file while it
       ran (three lines in the PR).
-- [ ] `shuyi-perf` has its section on a running build, `cargo shuyi
+- [x] `shuyi-perf` has its section on a running build, `cargo shuyi
       check-skills skills` passes, and `cargo xtask skill-examples`
       lists `example-follow.ron` as manual.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 

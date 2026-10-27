@@ -27,7 +27,7 @@ with `--yes` ([ADR-0031](../../docs/adr/0031-the-mcp-server-hand-written-json-rp
 every template, whose `postCreateCommand` runs `bash
 scripts/setup-linux.sh`. 1133's scope said the dev containers should
 register the server once both exist, and 2513's **Out** leaves it to
-1133. 1133 landed first, so this ticket does it once 2513 is done.
+1133. 1133 landed first, and 2513 is done, so this ticket does it.
 
 **From 2513 (done):** the files are `.devcontainer/devcontainer.json`
 and the template's `templates/shuyi-default/base/.devcontainer/devcontainer.json`
