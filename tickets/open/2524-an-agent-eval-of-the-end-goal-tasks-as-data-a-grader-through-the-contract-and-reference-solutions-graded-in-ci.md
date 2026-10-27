@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["1134", "2803"]
+blocked_by: ["1134", "2803", "2566"]
 nick_input: none
 completed:
 ---
@@ -55,7 +55,9 @@ What the engine has (checked 2026-10-21):
   `Keymap::primary_button` (`crates/ui/src/input/keymap.rs`) can find
   them, but no step of the contract's scripts uses them. 2521 (done)
   gave the live link an `act` step: `shuyi_platform::link::Step::Act`,
-  looked up by `link::press_for`, and `shuyi attach --act`.
+  looked up by `link::press_for`, and `shuyi attach --act`. 2566 (which
+  blocks this ticket) makes one input script of the two, with `--act`
+  for `run`, `scene` and `frame-png`.
 - **The grid template** (`templates/grid`): a turn game whose tools
   (`crates/game/src/tools.rs`) give a session with a scene, `replay`,
   `bots` and the controls. Its actions are `Up`, `Down`, `Left`,
@@ -84,9 +86,7 @@ reference fails its PR, and each reference's lines over the template are
 the first numbers. 2525 runs a real agent on a schedule, which costs
 money and waits for Nick.
 
-Why it matters: the contract's runs and MCP sessions get `--act`, so
-Visions of Shuyi's and every other game's scripts press actions by name.
-And it is the only measure of the edge Nick chose for the engine.
+Why it matters: it is the only measure of the edge Nick chose for the engine.
 
 ## Nick input
 
@@ -96,61 +96,12 @@ None. Spending money on agent runs is 2525's question.
 
 **In:**
 - **Actions by name in the contract's scripts** (`AGENTS.md` rule 8):
-  - `Step::Act(String)` in `crates/cli/src/frame_png.rs`: an action by
-    its `ActionSet::name`. `Step::check` accepts any name that isn't
-    empty, since the game's actions are known only when it runs.
-    `Script::play` looks the name up with `ActionSet::from_name` over
-    the Harness's game (`G::Action`), and presses and releases its
-    primary key in the player's keymap (`Keymap::primary` on
-    `Harness::ctx().keymap`), or its primary button
-    (`Keymap::primary_button`) when it has no key. The `Display` of
-    `Chord` and of `ButtonChord` gives the names `Harness::keys` and
-    `Harness::pad` take. A name the game has no key or button for
-    panics there with the message below, as the Harness does on a key
-    name it doesn't know; `run`, `scene` and MCP's `step` refuse it
-    first, so only `frame-png`, which has no session to ask, can reach
-    that panic.
-  - `Session::actions(&self) -> Vec<String>`
-    (`crates/cli/src/contract/session.rs`): the game's actions that have
-    a key or a button, in `ActionSet::ALL` order. It is a default method
-    answering an empty list, so no `Session` a game wrote itself breaks.
-    `Headless` (from its Harness's keymap) and the test fake
-    (`crates/cli/src/contract/fake.rs`) implement it.
-  - `run` and `scene` refuse a script that names an action not in that
-    list, in `played` (`crates/cli/src/contract/run.rs`) after the
-    session starts and before it plays, and name the list: "act: no
-    action `Jump` with a key or a button; the game's are Up, Down, Left,
-    Right, Confirm, Cancel".
-  - `Script::parse_step` reads `--act <Action>`. `run::parse_args` and
-    `frame_png::parse_args` add `--act` to the step flags they match,
-    and `run::usage` and `frame-png`'s usage list it, so `run`, `scene`
-    and `frame-png` take it.
-  - Change the contract as `docs/contract.md` says (regenerate
-    `crates/cli/schemas/`, raise `contract::VERSION` by one, add the
-    line to `versions.json`), and add `--act` to `docs/contract.md`'s
-    table. The grid and blank templates' `AGENTS.md` tables show
-    `run`, `scene` and `frame-png` with `--act` and their own action
-    names in place of `--script` and key names.
-  - The PR says the contract changed, that `Session` gained a default
-    method, and that `Step` gained a variant: a game's exhaustive
-    `match` on `Step` needs an arm for it (a `Breaking:` line, 2010,
-    if `Step` isn't `#[non_exhaustive]` by then).
-  - **MCP** (1133, done): its `step` tool plays the contract's
-    `Script`, so it gets `act` with it. But the host's `step`
-    (`crates/cli/src/mcp/host.rs`) calls `Session::play` itself, not
-    through `played`, so the action check goes in one function both
-    call. An MCP `step` naming an action the game lacks is then refused
-    with `SH0001` and the list, and the session keeps running; without
-    it the panic ends the game's tool program and the session
-    (`SH3005`).
-  - **From 2521 (done):** `attach` reads `--act` itself
-    (`contract::attach::parse_step`, beside `Script::parse_step`, into
-    its own `AttachStep::Act`) and the link looks actions up with
-    `shuyi_platform::link::press_for`. Move that `--act` into
-    `Script::parse_step`, play `Step::Act` with `press_for` (the
-    Harness's keymap, `game.input().keymap()`), and let `attach` take
-    the contract's `Step` instead of its `AttachStep`, so there is one
-    parser and one lookup.
+  2566 does it, and this ticket is blocked by it: one
+  `shuyi_platform::script::Step` with `Act`, read from `--act` by
+  `frame_png::parse_step` for `run`, `scene` and `frame-png`,
+  `Session::actions` and the refusal of an action the game lacks, MCP's
+  `step` with it, and `attach` on the same `Step`. The grader passes its
+  checks' steps to the contract as `--act` and `--wait`.
 - **Tasks as data:** `evals/tasks/<id>.ron`, read by
   `crates/xtask/src/eval/task.rs` with `serde` and `ron`
   (`deny_unknown_fields`). These are the repository's tooling files, not
@@ -350,12 +301,10 @@ None. Spending money on agent runs is 2525's question.
   - it uploads `eval-results/` as an artifact and writes a table (task,
     checks passed, lines added, seconds) into the step summary;
   - `ci-result` needs it.
-- **Size:** if the diff passes about 600 changed lines (the task files,
-  the references, the schemas and the fixtures aside), the actions by
-  name (`Step::Act`, `Session::actions`, `--act` and the contract
-  change) go to a ticket of their own (`write-ticket`), After MVP,
-  landed first as its own PR; this ticket then waits for it. The PR
-  says so.
+- **Size:** the actions by name went to 2566, which lands first. If the
+  diff still passes about 600 changed lines (the task files, the
+  references and the fixtures aside), split the CI job into a ticket of
+  its own (`write-ticket`).
 
 **Out (do not do):**
 - running an agent, a schedule, tokens, cost and minutes, a results page
@@ -391,9 +340,8 @@ None. Spending money on agent runs is 2525's question.
    `Replay`'s record). Add to it what the eval needs and it lacks
    (comparing two answers for `Responds`), so there is one runner, not
    two.
-2. Add `Step::Act`, `Session::actions` and `--act`, with their tests.
-   Change the contract as `docs/contract.md` says, and update its table
-   and the templates' `AGENTS.md` tables.
+2. Check that 2566's `--act` covers what the tasks' checks pass (it
+   is done: this ticket is blocked by it).
 3. Write `task.rs` and the four task files.
 4. Write `grade.rs`, with the line count and the result file, and wire
    `eval-grade` and `eval-reference` into `crates/xtask/src/main.rs`,
@@ -408,18 +356,9 @@ None. Spending money on agent runs is 2525's question.
 
 ## Acceptance criteria
 
-- [ ] `Step::Act("Right")` played in a Harness gives the same frames as
-      `Step::Keys` of that action's primary key, and an action that has
-      only a button is pressed by that button (tests).
-- [ ] `run` and `scene` with `--act Jump` are refused with the game's
-      action names (a test over the fake session), and
-      `cargo shuyi run --act Right --act Confirm --json` plays on a game
-      from `shuyi new grid` (the `eval` job's `Responds` check).
-- [ ] MCP's `step` with an `act` step naming `Jump` is refused with
-      `SH0001` and the game's action names, and the session keeps
-      running (a test in `crates/cli/src/mcp/host/tests.rs`).
-- [ ] The contract's version is raised and the schemas regenerated (the
-      schemas' test passes).
+- [ ] `cargo shuyi run --act Right --act Confirm --json` plays on a game
+      from `shuyi new grid` (the `eval` job's `Responds` check; `--act`
+      is 2566's).
 - [ ] `cargo xtask eval-reference --all` passes on tic-tac-toe and
       box-pushing in CI, and on snake or the platformer if 2739 or 1127
       is done; it lists the rest as waiting.
@@ -441,12 +380,6 @@ None. Spending money on agent runs is 2525's question.
   the `--numstat` parsing and its exclusions; the waiting warning
   against a fake `tickets/done/`; the answer paths against
   `crates/cli/schemas/`.
-- Unit (`shuyi-cli`): `Step::Act` with a key, with only a button, and
-  with an unknown name; `Session::actions` on `Headless` and its
-  default; `run`, `scene` and MCP's `step` refusing an unknown action;
-  `Script::parse_step`, `run::parse_args` and `frame_png::parse_args`
-  with `--act`; the `Display` of `Chord` and `ButtonChord` read back by
-  `Chord::parse` and `ButtonChord::parse`.
 - Integration: the `eval` CI job, both ways (the references pass, the
   plain template fails).
 
