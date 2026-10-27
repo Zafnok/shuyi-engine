@@ -27,6 +27,12 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   (`images/card` is `images/card.png`, or `images/card.txtimg` once a
   format claims that). Two such files is an error. The code that asks
   never sees which format read the file.
+- **The bundle** is layers searched in order, so a file in an upper layer
+  replaces the one at its path below and a file only there is added
+  (`shuyi_assets::bundle`). A layer is embedded in the binary, or handed
+  in at run time (`Layer::owned`; `shuyi_app::read_folder` reads a folder
+  on disk into one, on desktop): a player's mod laid over the game's
+  files reaches the same loaders.
 - **A folder's assets** come all or nothing over a tree with
   `formats.load_under::<K>(&bundle, dir)`, or file by file in one folder
   with `formats.load_each::<K>(&bundle, dir)`, each with its asset or its

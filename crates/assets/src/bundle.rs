@@ -3,6 +3,11 @@
 //! that has it, so a layer laid over another replaces its files at the same
 //! paths and adds its own; a listing merges every layer's files.
 //!
+//! A layer may also come from outside the binary: [`Layer::owned`] takes
+//! files handed in at run time (a player's mod, a level they made), kept
+//! for the life of the program, so a game's loaders read them as they read
+//! its own. `shuyi-app`'s `read_folder` reads a folder on disk into one.
+//!
 //! Two flags shape a layer. A **private** layer holds files that may not be
 //! handed out (bought art): [`Bundle::is_private`] tells a tool which shown
 //! names come from one. A **test** layer holds the files of the tests and
@@ -30,6 +35,7 @@ use once_cell::race::OnceBox;
 
 /// Where a layer's files are.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum Files {
     /// A directory embedded by `include_dir!`.
     #[cfg(feature = "std")]
@@ -38,6 +44,18 @@ pub enum Files {
     /// layer's root, `/`-separated): what a build script writes where
     /// `include_dir` does not build (without `std`).
     Table(&'static [(&'static str, &'static [u8])]),
+    /// Files handed in at run time ([`Layer::owned`]): a player's mod, a
+    /// folder read from disk.
+    Owned(&'static OwnedFiles),
+}
+
+/// The files of a layer handed in at run time ([`Layer::owned`]), with
+/// checked paths, kept for the life of the program so every read of them
+/// is `&'static`.
+#[derive(Debug)]
+pub struct OwnedFiles {
+    /// `(path, contents)`, sorted by path.
+    table: &'static [(&'static str, &'static [u8])],
 }
 
 impl Files {
@@ -46,10 +64,8 @@ impl Files {
         match self {
             #[cfg(feature = "std")]
             Self::Dir(dir) => dir.get_file(path).map(include_dir::File::contents),
-            Self::Table(files) => {
-                let at = files.binary_search_by(|(p, _)| (*p).cmp(path)).ok()?;
-                Some(files[at].1)
-            }
+            Self::Table(files) => table_get(files, path),
+            Self::Owned(files) => table_get(files.table, path),
         }
     }
 
@@ -72,19 +88,95 @@ impl Files {
                     }
                 }
             }
-            Self::Table(files) => {
-                paths.extend(files.iter().map(|(path, _)| *path).filter(|path| {
-                    let rest = if dir.is_empty() {
-                        Some(*path)
-                    } else {
-                        path.strip_prefix(dir)
-                            .and_then(|rest| rest.strip_prefix('/'))
-                    };
-                    rest.is_some_and(|rest| deep || !rest.contains('/'))
-                }));
-            }
+            Self::Table(files) => table_list(files, dir, deep, paths),
+            Self::Owned(files) => table_list(files.table, dir, deep, paths),
         }
     }
+}
+
+/// The contents of the file at `path` in `files` (sorted by path).
+fn table_get(files: &'static [(&'static str, &'static [u8])], path: &str) -> Option<&'static [u8]> {
+    let at = files.binary_search_by(|(p, _)| (*p).cmp(path)).ok()?;
+    Some(files[at].1)
+}
+
+/// Adds the paths of the files of `files` inside `dir` to `paths`, as
+/// [`Files::list`] does.
+fn table_list(
+    files: &'static [(&'static str, &'static [u8])],
+    dir: &str,
+    deep: bool,
+    paths: &mut Vec<&'static str>,
+) {
+    paths.extend(files.iter().map(|(path, _)| *path).filter(|path| {
+        let rest = if dir.is_empty() {
+            Some(*path)
+        } else {
+            path.strip_prefix(dir)
+                .and_then(|rest| rest.strip_prefix('/'))
+        };
+        rest.is_some_and(|rest| deep || !rest.contains('/'))
+    }));
+}
+
+/// Why a path handed to [`Layer::owned`] was refused: a layer's paths are
+/// relative to its root and `/`-separated, as every read names them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
+pub enum BadPath {
+    /// The path is empty.
+    #[error("the path is empty")]
+    Empty,
+    /// The path starts at a root (`/data/x.ron`, `C:/data/x.ron`).
+    #[error("the path is absolute; it must be relative to the layer's root")]
+    Absolute,
+    /// The path has a backslash: paths are `/`-separated.
+    #[error("the path has a backslash; paths are `/`-separated")]
+    Backslash,
+    /// The path goes up a folder (`..`).
+    #[error("the path goes up a folder (`..`)")]
+    Parent,
+    /// The path has an empty or `.` part (`data//x.ron`, `./x.ron`,
+    /// `data/`), which no read names.
+    #[error("the path has an empty or `.` part")]
+    NotNormal,
+}
+
+/// A layer that could not be made ([`Layer::owned`]): one of its paths was
+/// refused.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("layer `{layer}`: `{path}`: {problem}")]
+#[non_exhaustive]
+pub struct LayerError {
+    /// The layer's name.
+    pub layer: String,
+    /// The path refused.
+    pub path: String,
+    /// What is wrong with it.
+    pub problem: BadPath,
+}
+
+/// What is wrong with `path` as a path of a layer's file, if anything.
+fn check_path(path: &str) -> Result<(), BadPath> {
+    if path.is_empty() {
+        return Err(BadPath::Empty);
+    }
+    if path.contains('\\') {
+        return Err(BadPath::Backslash);
+    }
+    let first = path.split('/').next().unwrap_or(path);
+    let drive = matches!(first.as_bytes(), [letter, b':'] if letter.is_ascii_alphabetic());
+    if path.starts_with('/') || drive {
+        return Err(BadPath::Absolute);
+    }
+    for part in path.split('/') {
+        match part {
+            ".." => return Err(BadPath::Parent),
+            "" | "." => return Err(BadPath::NotNormal),
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 /// One layer of the bundle.
@@ -116,6 +208,55 @@ impl Layer {
         files: &'static [(&'static str, &'static [u8])],
     ) -> Self {
         Self::of(name, Files::Table(files))
+    }
+
+    /// A layer of `files` handed in at run time (a mod, a folder read from
+    /// disk), each at its path (relative to the layer's root,
+    /// `/`-separated), shown as `name`. The name, paths and bytes are kept
+    /// for the life of the program (leaked once), so reads of them are
+    /// `&'static` like the embedded layers'. Make each layer once.
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use shuyi_assets::bundle::{Bundle, Layer};
+    ///
+    /// static BASE: &[(&str, &[u8])] = &[("data/a.ron", b"base a")];
+    /// let files = BTreeMap::from([("data/a.ron".to_owned(), b"mod a".to_vec())]);
+    /// let layer = Layer::owned("mods/more".to_owned(), files).unwrap();
+    /// let bundle = Bundle::new(vec![layer, Layer::table("base", BASE)]);
+    /// assert_eq!(bundle.file("data/a.ron"), Some("mod a"));
+    /// assert_eq!(bundle.display_path("data/a.ron"), "mods/more/data/a.ron");
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// A path that is empty, absolute, has a backslash, goes up a folder
+    /// (`..`) or has an empty or `.` part, naming the layer and the path.
+    /// Nothing is kept then.
+    pub fn owned(name: String, files: BTreeMap<String, Vec<u8>>) -> Result<Self, LayerError> {
+        for path in files.keys() {
+            check_path(path).map_err(|problem| LayerError {
+                layer: name.clone(),
+                path: path.clone(),
+                problem,
+            })?;
+        }
+        // A `BTreeMap` is sorted by path, as the table's search needs.
+        let table: Vec<(&'static str, &'static [u8])> = files
+            .into_iter()
+            .map(|(path, bytes)| {
+                let path: &'static str = Box::leak(path.into_boxed_str());
+                let bytes: &'static [u8] = Box::leak(bytes.into_boxed_slice());
+                (path, bytes)
+            })
+            .collect();
+        let files: &'static OwnedFiles = Box::leak(Box::new(OwnedFiles {
+            table: Box::leak(table.into_boxed_slice()),
+        }));
+        Ok(Self::of(
+            Box::leak(name.into_boxed_str()),
+            Files::Owned(files),
+        ))
     }
 
     /// A layer of `files`, shown as `name`.
@@ -853,6 +994,223 @@ mod tests {
         assert_eq!(laid.file("data/a.ron"), Some("table a"));
         assert_eq!(laid.display_path("data/a.ron"), "over/data/a.ron");
         assert_eq!(laid.files_in("data"), ["data/a.ron", "data/b.ron"]);
+    }
+
+    /// A layer of `files` handed in at run time, shown as `name`.
+    fn owned(name: &str, files: &[(&str, &str)]) -> Layer {
+        let files = files
+            .iter()
+            .map(|(path, text)| ((*path).to_owned(), text.as_bytes().to_vec()))
+            .collect();
+        Layer::owned(name.to_owned(), files).unwrap()
+    }
+
+    #[test]
+    fn a_run_time_file_replaces_an_embedded_one_and_a_new_one_is_added() {
+        let layer = owned(
+            "mods/more",
+            &[
+                ("data/a.ron", "mod a"),
+                ("data/c.ron", "mod c"),
+                ("x/y.txt", "mod y"),
+            ],
+        );
+        let over_table = Bundle::new(vec![layer, Layer::table("base", PUBLIC_TABLE)]);
+        for bundle in [&over_table, &Bundle::new(vec![layer, PUBLIC])] {
+            assert_eq!(bundle.file("data/a.ron"), Some("mod a"));
+            assert_eq!(bundle.file("data/c.ron"), Some("mod c"));
+            assert_eq!(bundle.file("data/b.ron"), Some("public b"));
+            assert_eq!(
+                bundle.files_in("data"),
+                ["data/a.ron", "data/b.ron", "data/c.ron"]
+            );
+            assert_eq!(bundle.files_in("x"), ["x/y.txt"]);
+            assert_eq!(
+                bundle.files_under(""),
+                [
+                    "data/a.ron",
+                    "data/b.ron",
+                    "data/c.ron",
+                    "deep/x/z.txt",
+                    "top.txt",
+                    "x/y.txt",
+                ]
+            );
+            assert!(bundle.has("x/y.txt"));
+        }
+        // Under the embedded layer, the embedded file is read.
+        let under = Bundle::new(vec![PUBLIC, layer]);
+        assert_eq!(under.file("data/a.ron"), Some("public a"));
+        assert_eq!(under.file("data/c.ron"), Some("mod c"));
+    }
+
+    #[test]
+    fn of_two_run_time_layers_the_first_wins() {
+        let first = owned("first", &[("a.txt", "first a"), ("b.txt", "first b")]);
+        let second = owned("second", &[("a.txt", "second a"), ("c.txt", "second c")]);
+        let bundle = Bundle::new(vec![first, second]);
+        assert_eq!(bundle.file("a.txt"), Some("first a"));
+        assert_eq!(bundle.file("c.txt"), Some("second c"));
+        assert_eq!(bundle.files_in(""), ["a.txt", "b.txt", "c.txt"]);
+        let swapped = Bundle::new(vec![second, first]);
+        assert_eq!(swapped.file("a.txt"), Some("second a"));
+    }
+
+    #[test]
+    fn a_run_time_file_is_shown_under_its_layers_name() {
+        let layer = owned("mods/more", &[("data/a.ron", "mod a")]);
+        let bundle = Bundle::new(vec![layer, PUBLIC]);
+        assert_eq!(bundle.display_path("data/a.ron"), "mods/more/data/a.ron");
+        assert_eq!(bundle.display_path("data/b.ron"), "base/data/b.ron");
+        // A missing file is shown under the first public layer: this one.
+        assert_eq!(bundle.display_path("nope"), "mods/more/nope");
+        assert_eq!(names(bundle.layers()), ["mods/more", "base"]);
+    }
+
+    #[test]
+    fn a_run_time_layer_takes_the_flags_of_any_layer() {
+        let bought = owned("bought", &[("data/a.ron", "bought a")]).private();
+        let tests = owned("tests", &[("data/t.ron", "test t"), ("data/a.ron", "t")]).test();
+        let bundle = Bundle::new(vec![tests, bought, PUBLIC]);
+        assert_eq!(names(bundle.layers()), ["bought", "base", "tests"]);
+        assert_eq!(bundle.file("data/a.ron"), Some("bought a"));
+        assert!(bundle.is_private(&bundle.display_path("data/a.ron")));
+        assert!(!bundle.is_private(&bundle.display_path("data/b.ron")));
+        assert_eq!(bundle.file("data/t.ron"), Some("test t"));
+        assert_eq!(story_only(|| bundle.file("data/t.ron")), None);
+        let trimmed = owned("base", &[("a.txt", "a")]).leaving_out(&["b.txt"]);
+        let bundle = Bundle::new(vec![trimmed]);
+        assert!(bundle.left_out("b.txt"));
+        assert!(!bundle.left_out("a.txt"));
+    }
+
+    /// A run-time layer answers every question as the table of the same
+    /// files does.
+    #[test]
+    fn a_run_time_layer_answers_as_the_same_table() {
+        let table = Bundle::new(vec![Layer::table("base", PUBLIC_TABLE)]);
+        let files: Vec<(&str, &str)> = PUBLIC_TABLE
+            .iter()
+            .map(|(path, bytes)| (*path, core::str::from_utf8(bytes).unwrap_or_default()))
+            .collect();
+        let run_time = Bundle::new(vec![owned("base", &files)]);
+        let all = table.files_under("");
+        assert_eq!(run_time.files_under(""), all);
+        for path in all.iter().copied().chain(["nope", "data/nope.ron", ""]) {
+            assert_eq!(run_time.bytes(path), table.bytes(path), "{path}");
+            assert_eq!(run_time.display_path(path), table.display_path(path));
+        }
+        for dir in ["", "data", "deep", "deep/x", "dat", "no_such_dir"] {
+            assert_eq!(run_time.files_in(dir), table.files_in(dir), "{dir}");
+            assert_eq!(run_time.files_under(dir), table.files_under(dir), "{dir}");
+        }
+        // No files at all: an empty layer.
+        let empty = Layer::owned("empty".to_owned(), BTreeMap::new()).unwrap();
+        let listed = Bundle::new(vec![empty]).files_under("");
+        assert!(listed.is_empty(), "{listed:?}");
+    }
+
+    #[test]
+    fn a_bad_path_is_refused_with_the_layers_name_and_the_path() {
+        let cases = [
+            ("", BadPath::Empty),
+            ("/data/a.ron", BadPath::Absolute),
+            ("C:/data/a.ron", BadPath::Absolute),
+            ("c:", BadPath::Absolute),
+            ("data\\a.ron", BadPath::Backslash),
+            ("..", BadPath::Parent),
+            ("../a.ron", BadPath::Parent),
+            ("data/../../a.ron", BadPath::Parent),
+            ("data//a.ron", BadPath::NotNormal),
+            ("./a.ron", BadPath::NotNormal),
+            ("data/./a.ron", BadPath::NotNormal),
+            ("data/", BadPath::NotNormal),
+        ];
+        for (path, problem) in cases {
+            let files = BTreeMap::from([
+                ("good.txt".to_owned(), Vec::new()),
+                (path.to_owned(), b"x".to_vec()),
+            ]);
+            let error = Layer::owned("mods/bad".to_owned(), files).unwrap_err();
+            let expected = LayerError {
+                layer: "mods/bad".to_owned(),
+                path: path.to_owned(),
+                problem,
+            };
+            assert_eq!(error, expected, "{path}");
+            let message = error.to_string();
+            assert!(
+                message.contains("mods/bad") && message.contains(&format!("`{path}`")),
+                "{message}"
+            );
+        }
+        // Names that only look like those are fine.
+        for path in [
+            "a..b", "..a/b", "data/a.", "ab:/c", "data/c:", "-/x", "a b.txt",
+        ] {
+            let files = BTreeMap::from([(path.to_owned(), Vec::new())]);
+            assert!(Layer::owned("ok".to_owned(), files).is_ok(), "{path}");
+        }
+    }
+
+    proptest::proptest! {
+        /// For any layers of any kind, a listing is sorted and once each,
+        /// holds every layer's files in the folder, and a read of each path
+        /// it lists agrees with it: the first layer that has the path.
+        #[test]
+        fn a_listing_is_sorted_once_each_and_reads_agree_with_it(
+            layers in proptest::collection::vec(
+                (
+                    proptest::collection::btree_map("[ab]{1,2}(/[ab]{1,2}){0,2}", "[xyz]{0,3}", 0..6),
+                    proptest::bool::ANY,
+                    proptest::bool::ANY,
+                ),
+                0..5,
+            ),
+            dir in "|[ab]{1,2}|[ab]{1,2}/[ab]{1,2}",
+            deep in proptest::bool::ANY,
+        ) {
+            let layers: Vec<Layer> = layers
+                .into_iter()
+                .enumerate()
+                .map(|(at, (files, run_time, test))| {
+                    let name = format!("layer{at}");
+                    let layer = if run_time {
+                        let files = files.into_iter().map(|(p, t)| (p, t.into_bytes())).collect();
+                        Layer::owned(name, files).unwrap()
+                    } else {
+                        let table: Vec<(&'static str, &'static [u8])> = files
+                            .into_iter()
+                            .map(|(p, t)| {
+                                let p: &'static str = Box::leak(p.into_boxed_str());
+                                let t: &'static [u8] = Box::leak(t.into_bytes().into_boxed_slice());
+                                (p, t)
+                            })
+                            .collect();
+                        Layer::table(Box::leak(name.into_boxed_str()), Box::leak(table.into_boxed_slice()))
+                    };
+                    if test { layer.test() } else { layer }
+                })
+                .collect();
+            let bundle = Bundle::new(layers);
+            let listed = if deep { bundle.files_under(&dir) } else { bundle.files_in(&dir) };
+            proptest::prop_assert!(listed.windows(2).all(|w| w[0] < w[1]), "{listed:?}");
+            for path in &listed {
+                let first = bundle.layers().iter().find_map(|l| Some((l.name, l.files.get(path)?)));
+                proptest::prop_assert!(first.is_some(), "{path}");
+                let (name, bytes) = first.unwrap_or_default();
+                proptest::prop_assert_eq!(bundle.bytes(path), Some(bytes));
+                proptest::prop_assert_eq!(bundle.display_path(path), format!("{name}/{path}"));
+            }
+            // Every layer's file in the folder is listed.
+            for layer in bundle.layers() {
+                let mut own = Vec::new();
+                layer.files.list(&dir, deep, &mut own);
+                for path in own {
+                    proptest::prop_assert!(listed.binary_search(&path).is_ok(), "{path}");
+                }
+            }
+        }
     }
 
     #[test]

@@ -34,8 +34,8 @@ ours: a build-script helper in a crate of its own
 include_dir's source (§2).
 
 Related: 2204 (the optimized pack) is a different way to ship files and
-doesn't change. 2207 adds layers from outside the binary, and either order
-works: 2207 doesn't touch how embedded layers are built.
+doesn't change. 2207 (done) added layers from outside the binary
+(`Files::Owned`); it doesn't touch how embedded layers are built.
 
 ## Nick input
 

@@ -10,6 +10,7 @@
 //! registry too, when tickets 1123 and 1124 add them; `import` needs no
 //! change for them.
 
+use std::collections::BTreeMap;
 use std::fmt::{Debug, Write as _};
 use std::fs;
 use std::path::Path;
@@ -255,10 +256,10 @@ impl Importers {
 /// A bundle of the files in `dir` and below it, for the files a file
 /// names (a font atlas's picture, a manifest's sounds), or why there is
 /// none: more than `max_files` files or `max_bytes` bytes. Its files are
-/// leaked: a tool reads them once per run. (Ticket 2207 brings folders on
-/// disk to the bundle itself.)
+/// one run-time layer ([`Layer::owned`]), kept for the program's life: a
+/// tool reads them once per run.
 fn folder_bundle(dir: &Path, max_files: usize, max_bytes: usize) -> Result<Bundle, String> {
-    let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+    let mut files: BTreeMap<String, Vec<u8>> = BTreeMap::new();
     let mut pending = vec![(dir.to_path_buf(), String::new())];
     let mut bytes = 0;
     while let Some((path, prefix)) = pending.pop() {
@@ -276,7 +277,7 @@ fn folder_bundle(dir: &Path, max_files: usize, max_bytes: usize) -> Result<Bundl
             } else if kind.is_file() {
                 let data = fs::read(entry.path()).map_err(|e| format!("{inner}: {e}"))?;
                 bytes += data.len();
-                files.push((inner, data));
+                files.insert(inner, data);
             }
             if files.len() > max_files || bytes > max_bytes {
                 return Err(format!(
@@ -285,17 +286,8 @@ fn folder_bundle(dir: &Path, max_files: usize, max_bytes: usize) -> Result<Bundl
             }
         }
     }
-    files.sort_by(|a, b| a.0.cmp(&b.0));
-    let table: Vec<(&'static str, &'static [u8])> = files
-        .into_iter()
-        .map(|(path, data)| {
-            let path: &'static str = Box::leak(path.into_boxed_str());
-            let data: &'static [u8] = Box::leak(data.into_boxed_slice());
-            (path, data)
-        })
-        .collect();
-    let table: &'static [(&'static str, &'static [u8])] = Box::leak(table.into_boxed_slice());
-    Ok(Bundle::new(vec![Layer::table("", table)]))
+    let layer = Layer::owned(String::new(), files).map_err(|e| e.to_string())?;
+    Ok(Bundle::new(vec![layer]))
 }
 
 /// `import`: `input`'s file, under `root`, read by `importers`.

@@ -33,8 +33,16 @@ What is there today:
   `bundle::watch` already tells a front end of every file read;
 - `shuyi_assets::format` has `AssetKind`, `Format`, `Formats` and
   `decode_with`;
-- 2207 adds layers of owned files handed in at run time, and
-  `shuyi-app` reading a folder on disk into one;
+- **From 2207 (done):** `Layer::owned(name, files)` makes a layer of
+  files handed in at run time, `Files::Owned(&'static OwnedFiles)`,
+  whose sorted table of leaked paths and bytes is private to
+  `bundle.rs`; `shuyi_app::read_folder(path, name, max_file_bytes)`
+  reads a folder on disk into one (native only). Nothing records which
+  folder a layer came from: `shuyi-app` keeps that beside the layers it
+  reads, to poll. `Bundle::replace` is this ticket's: it swaps a path's
+  bytes in an `OwnedFiles` (give it interior mutability, or a new table
+  per change, leaking the old), and an embedded layer's file stays
+  as it is;
 - 2228 (either order) adds `Bundle::versions` and
   `Formats::load_versions`: every layer's copy of a path, for loaders
   that merge layers (mods adding entries to a table). It tells of the
