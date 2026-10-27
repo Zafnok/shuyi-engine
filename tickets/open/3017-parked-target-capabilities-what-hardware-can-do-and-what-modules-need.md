@@ -37,6 +37,8 @@ This is the same rule as the controls check (3002): what doesn't fit
 doesn't ship. The GBA and DS tickets (3019–3026) and the 3D tickets
 (3104, 3107) all read these capabilities, so this comes first.
 
+**From 3101 (open):** Parked: 3101's `ModuleInfo` `needs` takes `three_d: software` here when this lands first; otherwise this ticket adds it to every module that exists then.
+
 ## Nick input
 
 None.

@@ -379,26 +379,26 @@ swap here.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask check-layers` passes on the repository, and CI's
+- [x] `cargo xtask check-layers` passes on the repository, and CI's
       `layers` job runs it. `platform-deps` is gone, and `ci-result`
       needs `layers`.
-- [ ] Each of the five rules fails on its fixture with a message naming
+- [x] Each of the five rules fails on its fixture with a message naming
       the crate, the dependency or file, and the rule; the device rule's
       message shows the chain.
-- [ ] A dev-dependency on any engine crate passes, and `quad-*` matches
+- [x] A dev-dependency on any engine crate passes, and `quad-*` matches
       `quad-snd` but not `quadtree` (fixtures).
-- [ ] `crates/core/src/lib.rs` denies `clippy::float_arithmetic` outside
+- [x] `crates/core/src/lib.rs` denies `clippy::float_arithmetic` outside
       tests, and `cargo clippy --workspace --all-targets --locked -- -D
       warnings` passes.
-- [ ] A game made with `shuyi new grid` passes its own gates (CI's
+- [x] A game made with `shuyi new grid` passes its own gates (CI's
       `templates` job).
-- [ ] The `templates` job's proof step finds the four clippy messages,
+- [x] The `templates` job's proof step finds the four clippy messages,
       and the layers test failing on `shuyi-ui`.
-- [ ] The `run-gates` skill runs `cargo xtask check-layers` and no longer
+- [x] The `run-gates` skill runs `cargo xtask check-layers` and no longer
       has the `cargo tree` grep.
-- [ ] The ADR is written and listed in `docs/adr/README.md`.
-- [ ] A ticket in `tickets/open` owns the contract's `lint` operation.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and listed in `docs/adr/README.md`.
+- [x] A ticket in `tickets/open` owns the contract's `lint` operation.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 

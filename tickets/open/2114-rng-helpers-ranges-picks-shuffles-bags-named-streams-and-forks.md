@@ -87,6 +87,8 @@ which picks through this ticket's `pick_weighted`; a table kind, nested
 tables, "nothing" and guaranteed entries are the game's, not this
 ticket's (`AGENTS.md` rule 4: when unsure, it is game).
 
+**From 2340 (open):** `audio::splitmix64` in `crates/ui/src/audio.rs` becomes a re-export of `shuyi_core::rng::mix64` here; 2340's shake offsets use that same function either way.
+
 ## Nick input
 
 None.

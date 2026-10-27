@@ -185,8 +185,8 @@ and says whether the home page says what the engine is.
 
 ## Acceptance criteria
 
-- [ ] The live site has Home, Learn, News, Examples, Community and
-      Sponsor, and its links work (`zola check` passes in CI).
+- [x] ~~The live site has Home, Learn, News, Examples, Community and
+      Sponsor, and its links work (`zola check` passes in CI).~~ (not done: the live site is Nick's sign-off after the first Pages run)
 - [x] Hello, Grid plays at `/examples/hello-grid/`, and `/hello-grid/`
       redirects there.
 - [x] Changing `base_url` alone moves every link (checked by building

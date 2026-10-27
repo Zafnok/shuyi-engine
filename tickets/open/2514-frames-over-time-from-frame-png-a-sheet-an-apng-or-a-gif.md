@@ -78,6 +78,8 @@ Why it matters:
 - APNG and GIF files go in PRs, READMEs, the website (2801) and store
   pages.
 
+**From 2909 (open):** Parked research: its test clip may be frames of `examples/hello-grid` taken with this ticket's `--every`, or with plain `frame-png` calls until it lands.
+
 ## Nick input
 
 None.

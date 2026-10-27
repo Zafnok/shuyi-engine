@@ -61,6 +61,8 @@ Why it matters:
   (`shuyi-app`, 3029, and the parked 3027 and 3030) gets it through
   2342's gains, and needs only to say when a voice plays.
 
+**From 2206 (open):** Parked: a sequence cue in `music` plays at the gains this ticket's rules multiply into, so a rule that lowers `music` lowers it too. 2206 does nothing for that when this lands first, and nothing here changes for 2206.
+
 ## Nick input
 
 None. Whether Visions of Shuyi lowers its music under voices is the

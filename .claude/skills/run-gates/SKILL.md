@@ -164,10 +164,14 @@ The ticket lint checks `game#NNNN` ids in `blocked_by` against the game
 repository's tickets with `gh api`, or against a local checkout with
 `--game-repo <path>`. With neither it warns and skips them; CI has no
 access to the game repository, so check them locally when you add one.
-It also warns on a clause in an open ticket that waits on a done one
-("if NNNN is done", "either order with NNNN", "waits for NNNN"); the PR
-closing a ticket settles the clauses that name it (the `work-ticket`
-skill, §5). On CI the warnings show on the PR. It fails a clause in an
+It also warns on a clause in an open ticket, or in a doc under `docs/`
+(not `docs/adr/` or `docs/ROADMAP.md`), that waits on a done one ("if
+NNNN is done", "once NNNN lands", "either order with NNNN", "waits for
+NNNN"; the forms are in `find_clauses`' doc comment); the PR closing a
+ticket settles the clauses that name it (the `work-ticket` skill, §5).
+On CI the warnings show on the PR. It fails a done ticket with a `- [ ]`
+box under *Acceptance criteria*: tick it, or write `- [x] ~~…~~ (not
+done: why)`. It fails a clause in an
 open ticket that names another open ticket, not in its `blocked_by`,
 whose text never names it back: write the other side there (the
 `write-ticket` skill, *Check the dependency chain*).

@@ -78,7 +78,7 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo xtask ticket-lint` passes on the repository, and its tests
+- [x] `cargo xtask ticket-lint` passes on the repository, and its tests
       cover each changed rule.
 - [x] `cargo xtask check-links` and `typos` pass.
 - [x] CI runs all three on a PR.

@@ -326,9 +326,9 @@ works for any crate either way.
 - [x] The toy game played by the same keys with a module that only
       draws has the same `screen_log`, `audio_log` and `quit_frame` in
       the Harness as without it.
-- [ ] `DebugMenuScreen::new` lists a module's entries after the game's;
+- [x] ~~`DebugMenuScreen::new` lists a module's entries after the game's;
       with no module its menu is as before. *(Moved to 2372 by the Size
-      clause.)*
+      clause.)*~~ (not done: moved to 2372 by the Size clause)
 - [x] `run --json` lists the modules with their hooks, states and debug
       entries; the schema test passes at the new version. *(The debug
       entries with 2372.)*

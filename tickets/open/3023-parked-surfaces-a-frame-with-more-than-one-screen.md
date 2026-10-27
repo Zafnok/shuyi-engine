@@ -41,6 +41,8 @@ pixels for tick stages).
 So a DS game also runs on desktop and the web, and a desktop game with
 a map and a status panel can put them on the DS's two screens.
 
+**From 3019 (open):** Parked: `frame-png --target nds` draws one image per surface until this ticket lands; after it, each surface is drawn.
+
 ## Nick input
 
 None.

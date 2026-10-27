@@ -78,6 +78,8 @@ use macroquad's `rotation`, which samples screen pixels in floats and
 would not match `frame-png` or the Playdate. A sprite at angle 0 keeps
 today's drawing in every renderer.
 
+**From 2707 (open):** Parked: `shuyi_core::angle::Angle` (256 steps) is the facing of a unit in 2707's `UnitTable`. If 2707 starts first, 1119 writes `Angle`; this ticket then uses it.
+
 ## Nick input
 
 None. Nick decided on 2026-10-20 that rotated sprites come out of 2703

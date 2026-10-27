@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2023 — The ticket lint reads every way a ticket waits on another
@@ -118,15 +118,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Each form in Scope has a passing row in the table test, and each
+- [x] Each form in Scope has a passing row in the table test, and each
       negative case finds nothing.
-- [ ] A clause of these forms in `docs/README.md` warns; one in
+- [x] A clause of these forms in `docs/README.md` warns; one in
       `docs/adr/` or `docs/ROADMAP.md` doesn't.
-- [ ] A done ticket with `- [ ]` under *Acceptance criteria* fails the
+- [x] A done ticket with `- [x]` under *Acceptance criteria* fails the
       lint.
-- [ ] `cargo xtask ticket-lint` passes with no warning on `main`'s
+- [x] `cargo xtask ticket-lint` passes with no warning on `main`'s
       tickets after the settling.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -140,5 +140,25 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `find_clauses` reads `once … lands / is done / has landed`, `until …
+  exists / lands / is done`, `if … has landed / hasn't landed / isn't
+  done / is not done`, and `<id>'s …, if it is done` (the nearest id in
+  the sentence, found with a new `stop` flag on `Word`). A typographic
+  apostrophe reads as a plain one. Its doc comment lists all eight forms.
+- The lint reads `docs/**/*.md` except `docs/adr/` and `docs/ROADMAP.md`
+  (`read_docs`, `find_doc_clauses`), and `ticket <id> adds` in a table
+  cell warns when that ticket is done. Warnings name the file and line.
+- A done ticket with a `- [ ]` under *Acceptance criteria* is an error
+  (`check_done_boxes`). Besides 2002 and 2015 it found 2011, 2031, 2555
+  (all done as the notes say, now ticked) and 2358, 2801, 3039, 3063
+  (moved or Nick's sign-off, written `- [x] ~~…~~ (not done: why)`).
+  2031's second box was ticked, since the workflow's runs on `main` are
+  green; its token box is struck, as the token is Nick's setup.
+- Settled: 2368 and 2531 (clauses on done 3065 and 2513). The new forms
+  also failed 2027's mirror check on 12 clauses; the other side is written
+  as a **From NNNN (open)** line in 2114, 2218 (for 2223, 2342, 2343),
+  2322, 2332, 2335, 2343, 2514, 3008, 3017 and 3023. The Context's
+  list of clauses (2315, 2802, 3008, 2119, 3041, 2504, 3023, 3101) had
+  mostly been settled since; the lint found the rest.
+- `work-ticket` §5 and `run-gates` are updated. No docs map change: no
+  new file. No `Breaking:` (xtask is tooling, `publish = false`).
