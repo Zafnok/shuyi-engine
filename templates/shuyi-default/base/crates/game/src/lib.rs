@@ -8,7 +8,10 @@
 pub mod stages;
 pub mod title;
 
+use std::sync::OnceLock;
+
 use include_dir::{Dir, include_dir};
+use shuyi::core::Made;
 use shuyi::prelude::*;
 
 /// The game's files, embedded.
@@ -42,6 +45,19 @@ pub fn game() -> BasicGame<UiAction, stages::Own> {
     .modules(shuyi::enabled_modules)
 }
 
+/// What made this build, for its records and saves: the game's name and
+/// version, and the fingerprint of the files it ships, computed once. A
+/// record or a save keeps it in a `made` field, checked on reading.
+pub fn made() -> Made {
+    static MADE: OnceLock<Made> = OnceLock::new();
+    MADE.get_or_init(|| {
+        // check-text: not player text, the build's name in its records
+        let build = concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION"));
+        Made::new(build, game().bundle().fingerprint())
+    })
+    .clone()
+}
+
 /// Every screen the game can show: the title and its stages'.
 fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
     let mut screens: Vec<Box<dyn Screen<Data>>> = vec![Box::new(title::Title)];
@@ -58,5 +74,13 @@ mod tests {
         let data = game().data().unwrap_or_else(|e| panic!("{e:?}"));
         assert!(data.images.images.is_empty(), "{:?}", data.images.images);
         assert!(game().ctx().is_ok());
+    }
+
+    #[test]
+    fn the_build_is_stamped_with_its_files() {
+        let made = made();
+        assert_eq!(made.content, game().bundle().fingerprint());
+        assert_eq!(made, Made::new(made.game.clone(), made.content));
+        assert!(made.game.ends_with(env!("CARGO_PKG_VERSION")), "{made:?}");
     }
 }

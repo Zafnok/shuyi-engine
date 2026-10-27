@@ -9,6 +9,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
+use shuyi_core::Made;
 
 use super::PlaytestOutput;
 use crate::game::GameArg;
@@ -28,6 +29,10 @@ pub(crate) struct Record {
     pub(crate) entrants: Vec<String>,
     /// The game's options, as `flag=value`.
     pub(crate) options: Vec<String>,
+    /// What made it: the build's stamp, if the game's tools give one
+    /// (`GameTools::made`). Lines kept before stamps have none.
+    #[serde(default)]
+    pub(crate) made: Option<Made>,
     /// What it found.
     pub(crate) output: PlaytestOutput,
 }

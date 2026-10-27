@@ -12,8 +12,9 @@
 //! several bots succeeds, [`bots::playtest`], and an autobalance search
 //! whose [`Knob`]s change a stage until each lands in its band:
 //! [`autobalance`], [`autobalance_by`], [`BalanceSettings`], [`Balanced`]
-//! and [`Stop`]), a hash of a state that replays compare, the version
-//! every [`save`] names, and what text and stories need below the assets:
+//! and [`Stop`]), a hash of a state that replays compare, the stamp of
+//! what made a record or a save ([`made`]), the version every [`save`]
+//! names, and what text and stories need below the assets:
 //! character ids and the `{token}` splitter.
 //!
 //! Pure and deterministic: no I/O, no clock, no platform. A game's rules
@@ -31,6 +32,7 @@ pub mod character;
 pub mod grid;
 pub mod hash;
 pub mod history;
+pub mod made;
 pub mod path;
 pub mod rng;
 pub mod save;
@@ -48,6 +50,7 @@ pub use character::CharacterId;
 pub use grid::{Dir, Grid, GridSizeError, Pos, TerrainId, TileSet};
 pub use hash::{HashError, StateHash, state_hash};
 pub use history::{History, NoSuchPoint, Replayed};
+pub use made::{ContentHash, Made};
 pub use path::{Reach, flow_field, reachable};
 pub use rng::{RandomSource, ScriptedRng, SimRng};
 pub use save::{SaveFormat, SaveHeader};

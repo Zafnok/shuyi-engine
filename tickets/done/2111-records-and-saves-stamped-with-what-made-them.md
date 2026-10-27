@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-27
 ---
 
 # 2111 — Records and saves stamped with what made them
@@ -259,30 +259,30 @@ the fingerprint of loose files and the contract here.
 
 ## Acceptance criteria
 
-- [ ] `shuyi-core` gains no dependency, and `shuyi-core` and
+- [x] `shuyi-core` gains no dependency, and `shuyi-core` and
       `shuyi-assets` still build for `thumbv7em-none-eabihf` (CI's
       no-std job).
-- [ ] Changing one byte, renaming one file or adding one file in a
+- [x] Changing one byte, renaming one file or adding one file in a
       shipped layer changes `Bundle::fingerprint`; changing a test layer
       doesn't, inside `story_only` or not.
-- [ ] A fixed bundle's fingerprint is a constant checked in by a test (a
+- [x] A fixed bundle's fingerprint is a constant checked in by a test (a
       golden row, if 2116 is done); the hash uses no integer whose size
       depends on the platform.
-- [ ] The pack's pinned checksum test passes unchanged.
-- [ ] Hello-grid's files, baked into a pack and loaded back as the only
+- [x] The pack's pinned checksum test passes unchanged.
+- [x] Hello-grid's files, baked into a pack and loaded back as the only
       layer, have the fingerprint of the loose files; a loose layer laid
       over that pack gives what it gives over the loose files.
-- [ ] `shuyi replay` on a hello-grid record stamped with other content
+- [x] `shuyi replay` on a hello-grid record stamped with other content
       fails, naming both stamps; with `any_stamp` (`--any-stamp` on the
       command line) it runs and says why in `limits`; an unstamped
       record runs as before, with its line in `limits`.
-- [ ] The grid template's `bots` records carry `made`, and its replay
+- [x] The grid template's `bots` records carry `made`, and its replay
       test passes in CI's template job.
-- [ ] The contract's schemas and version line are regenerated, and the
+- [x] The contract's schemas and version line are regenerated, and the
       schema test passes.
-- [ ] The ADR is written and listed in `docs/adr/README.md`;
+- [x] The ADR is written and listed in `docs/adr/README.md`;
       `docs/contract.md` and `docs/formats.md` say what changed.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -303,4 +303,79 @@ the fingerprint of loose files and the contract here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **`shuyi_core::made`** (`crates/core/src/made.rs`): `ENGINE_VERSION`,
+  `ContentHash` (sixteen lowercase hex digits both ways, `FromStr` with
+  `NotAHash`), `Made` (`#[non_exhaustive]`, `Made::new`, `Display`),
+  `Made::check` and `Mismatch` (each part that differs, as `Differs {
+  part, made, now }`, in the order engine, game, content). The game's
+  word is shown quoted in the text (`game "demo 1.0"`), since it holds
+  spaces. Re-exported beside `StateHash`.
+- **The fingerprint:** the pack checksum's step moved into
+  `shuyi_assets::fnv::Hasher` (`pub(crate)`); `checksum` gives what it
+  gave (its pinned test unchanged). `Bundle::fingerprint` lives in
+  `crates/assets/src/bundle/fingerprint.rs`, with its tests and the
+  property. The fixed bundle's value, `0x4a15_fc0e_d2ac_24d7`, was
+  checked against an independent Python implementation of the rule.
+  The watcher test now also shows a fingerprint tells it nothing.
+- **A pack stands for its sources:** `Layer::stands_for` and
+  `Layer::standing_for`, `PackInfo::content`, `Bake::bake` writing the
+  source bundle's fingerprint, `Pack::into_layer` marking its layer,
+  `pack::VERSION` 3, and the binary forms' snapshot accepted again.
+- **`shuyi replay`:** `GameTools::made` (default `None`),
+  `ReplayRun::made`, `ReplayInput::any_stamp` and `--any-stamp`
+  (anywhere among the arguments; another `--` argument is now a usage
+  error rather than a missing file), the refusal `SH3007`
+  (`other-stamp`, with its page), the limits for `--any-stamp`, an
+  unstamped record and a game with no stamp, and each record's stamp in
+  the text. A record run twice is checked once. Contract 27; schemas
+  and `versions.json` regenerated.
+- **`playtest`'s history:** each line carries `made` from
+  `GameTools::made` (`#[serde(default)]`).
+- **Hello, Grid and the template** stamp their `bots` records
+  (`StageRecord::made`, `#[serde(default)]`), give their `made()` from
+  their tools, and pass the record's stamp on in `replay`. `made()` is
+  computed once (`OnceLock`).
+- **Deviations:**
+  - The schema shows `Made` through `shuyi-core`'s existing optional
+    `schema` feature (`derive(JsonSchema)`, `ContentHash` as a string)
+    instead of a private `MadeShape`: `shuyi-core` already has
+    `schemars` behind that feature, which `shuyi-cli` turns on.
+  - The template moved since the ticket was written
+    (`templates/shuyi-default`, parts). `made()` went in the base part's
+    `crates/game/src/lib.rs`, over `BasicGame::bundle()`, so a `blank`
+    game has one for its saves too; the grid stage's tools use it. Its
+    replay test is `stages/top-down-grid/crates/game/tests/stage.rs`,
+    and a unit test in `lib.rs` checks the stamp.
+  - The size rule: the diff is about 1,200 lines outside schemas and
+    snapshots, most of it tests (`made.rs` alone is 340, two-thirds
+    tests). *A pack stands for its sources* is about 90 of them, so
+    moving it out would leave the PR far past 600 still, and would
+    leave Hello, Grid's pack and its loose files with different stamps
+    until the follow-up. It stayed.
+  - Records written by hand or before this ticket have no stamp and run
+    with a limit; the `shuyi-debug-replay` skill's worked example reads
+    the refusal's limit with `Holds` now that the stamp's limit comes
+    first, and gained a refused and an `--any-stamp` step
+    (`example/other.ron`).
+- **Either-order parts:** 2116, 2520, 3046 and 3048 are not done, so
+  each now says what it does with this (its *From 2111 (done)* line);
+  1119, 1140, 2706 and 2720 lost their *either order* clauses (`Made`
+  exists). 2029, 2544 and 3054 were updated to what holds.
+- **Docs:** ADR-0051; `docs/contract.md` (the `replay` row, a `made`
+  row in `GameTools`' table, contract 27); `docs/formats.md`'s *The
+  pack*; `crates/cli/errors/SH3007.md`; the `shuyi-debug-replay`
+  skill; rustdoc of every new item.
+- **For the game:** packs must be baked again (pack version 3).
+  `Layer` and `PackInfo` gain a field, `ReplayRun` a field, and
+  `GameTools` a defaulted method. A game that wants its records checked
+  gives `GameTools::made` and puts a `made: Option<Made>` in its
+  records. The game's PR that moves the pin follows.
+
+Breaking: shuyi-assets: `pack::VERSION`: 3, and `PackInfo` holds the sources' fingerprint; a game bakes its packs again (`shuyi bake`), and code building a `PackInfo` by literal adds `content`.
+Breaking: shuyi-assets: `bundle::Layer`: a new public field, `stands_for`; code building a `Layer` by literal adds `stands_for: None` (a game using `Layer::dir`, `Layer::table`, `Layer::owned` and the builders changes nothing).
+Breaking: shuyi-cli: `contract::replay::ReplayRun`: a new field, `made`, in contract 27; a game's `replay` that builds one by literal adds `made` (its record's stamp, or `None`); one built by `replay::turns` changes nothing.
+
+`ReplayInput::any_stamp` (a `#[non_exhaustive]` input) and
+`GameTools::made` (a defaulted method) break nothing.
+
+Nick input: none.

@@ -3,8 +3,9 @@
 //! (`BasicTools`: `frame-png`, `lang-status`, `check` and the controls
 //! `check --target` checks), with a `--seed` for the first stage, and the
 //! stage's own: `run` and `scene` with its map scene and state, `replay`
-//! (a [`StageRecord`]), `bots` (the engine's random bot) and `import` (the
-//! stage's `.map` besides the engine's kinds). `examples/tools.rs` is the
+//! (a [`StageRecord`], stamped with what made it: [`crate::made`]), `bots`
+//! (the engine's random bot) and `import` (the stage's `.map` besides the
+//! engine's kinds). `examples/tools.rs` is the
 //! tool program that runs them; the tests use them too.
 
 use std::collections::BTreeMap;
@@ -12,7 +13,7 @@ use std::collections::BTreeMap;
 use rules::{Command, Feature, Outcome, Player, Stage};
 use serde::{Deserialize, Serialize};
 use shuyi::assets::grid_map::{GridMap, MapText};
-use shuyi::core::{Bot, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
+use shuyi::core::{Bot, Made, Pos, RandomBot, Sides, TerrainId, TurnRules, play};
 use shuyi::platform::harness::Harness;
 use shuyi::prelude::*;
 use shuyi::ui::input::fit::Controls;
@@ -48,8 +49,9 @@ pub fn seed_of(options: &[GameArg]) -> Result<u64, String> {
     Ok(seed)
 }
 
-/// A record of a stage: its seed and the commands sent to its rules. The
-/// game's record format for `replay`; `bots` writes one of each play.
+/// A record of a stage: its seed and the commands sent to its rules, and
+/// what made it. The game's record format for `replay`; `bots` writes one
+/// of each play.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StageRecord {
@@ -57,6 +59,9 @@ pub struct StageRecord {
     pub seed: u64,
     /// The commands, in order.
     pub commands: Vec<Command>,
+    /// What made it ([`crate::made`]); a record without one still reads.
+    #[serde(default)]
+    pub made: Option<Made>,
 }
 
 /// The stage's scene in `h`: its map and the rules' state.
@@ -102,6 +107,7 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
     let record = StageRecord {
         seed,
         commands: report.commands.clone(),
+        made: Some(crate::made()),
     };
     let distance = Pos::manhattan(stage.hero(), stage.goal());
     let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
@@ -184,7 +190,14 @@ impl GameTools for Tools {
         let parsed: StageRecord =
             ron::from_str(&record.text).map_err(|e| format!("{}: {e}", record.file))?;
         let stage = Stage::new(&self.map()?, parsed.seed)?;
-        turns(&record.file, stage, &parsed.commands)
+        let mut run = turns(&record.file, stage, &parsed.commands)?;
+        run.made = parsed.made;
+        Ok(run)
+    }
+
+    /// [`crate::made`]: `replay` refuses a record another build made.
+    fn made(&self) -> Option<Made> {
+        Some(crate::made())
     }
 
     fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {

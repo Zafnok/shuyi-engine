@@ -123,8 +123,8 @@ None.
   follow ADR-0039 on `#[non_exhaustive]`:
   - `Submission { board: BoardId, score: i32, record: Option<String>,
     by: Player }`. `record` is the run's record as the game's
-    `GameTools::replay` reads it, stamped as 2111 stamps records if 2111
-    is done. `Player { profile: ProfileId, name: String }` is filled in
+    `GameTools::replay` reads it, stamped as 2111 stamps records (its
+    `made` field). `Player { profile: ProfileId, name: String }` is filled in
     by `Ctx`; a store backend uses the store's signed-in player instead;
   - `Range::Top { count: u16 }` and `Range::AroundMe { before: u16,
     after: u16 }`;

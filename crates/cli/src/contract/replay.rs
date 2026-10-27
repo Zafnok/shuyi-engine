@@ -7,6 +7,12 @@
 //! What a record is belongs to the game (for a turn game: its seed and
 //! its commands, ADR-0003 §2). [`turns`] re-runs one over any
 //! [`TurnRules`].
+//!
+//! A record stamped with what made it ([`ReplayRun::made`]) is checked
+//! against this build's stamp ([`GameTools::made`]) before anything is
+//! compared: one made by another engine, another build of the game or
+//! other content is refused, since its runs may differ with no desync,
+//! unless the input says [`any_stamp`](ReplayInput::any_stamp).
 
 use std::fmt::{Debug, Display, Write as _};
 use std::fs;
@@ -14,7 +20,7 @@ use std::path::Path;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use shuyi_core::{TurnRules, state_hash};
+use shuyi_core::{Made, TurnRules, state_hash};
 
 use super::codes::{self, Code};
 use super::{Answer, Op};
@@ -33,15 +39,21 @@ pub struct ReplayInput {
     /// twice.
     #[serde(default)]
     pub other: Option<String>,
+    /// Run a record stamped by another build or with other content too
+    /// (`--any-stamp`), which is otherwise refused; its runs may then
+    /// differ for that reason alone.
+    #[serde(default)]
+    pub any_stamp: bool,
 }
 
 impl ReplayInput {
     /// The record in the file `record`, run twice (no
-    /// [`other`](Self::other)).
+    /// [`other`](Self::other)), refused if stamped by another build.
     pub fn new(record: impl Into<String>) -> Self {
         Self {
             record: record.into(),
             other: None,
+            any_stamp: false,
         }
     }
 }
@@ -65,6 +77,10 @@ pub struct ReplayRun {
     pub steps: Vec<ReplayStep>,
     /// How the game ended, in the game's words, if it did.
     pub outcome: Option<String>,
+    /// What made the record, if it says: the game's `replay` passes on
+    /// its record's stamp ([`turns`] leaves it `None`).
+    #[serde(default)]
+    pub made: Option<Made>,
 }
 
 /// One step of a run: the state after a command.
@@ -145,6 +161,7 @@ where
         record: file.to_owned(),
         steps,
         outcome: state.outcome().map(|o| format!("{o:?}")),
+        made: None,
     })
 }
 
@@ -185,8 +202,17 @@ pub fn replay(game: &dyn GameTools, root: &Path, input: &ReplayInput) -> Answer<
         Ok(runs) => runs,
         Err((code, e)) => return Answer::failed(Op::Replay, code, e),
     };
+    // A record run twice is checked once.
+    let records = if input.other.is_some() {
+        &runs[..]
+    } else {
+        &runs[..1]
+    };
+    let mut limits = match stamps(game.made().as_ref(), records, input.any_stamp) {
+        Ok(limits) => limits,
+        Err(e) => return Answer::failed(Op::Replay, codes::OTHER_STAMP, e),
+    };
     let difference = first_difference(&runs[0], &runs[1]);
-    let mut limits = Vec::new();
     if input.other.is_none() {
         limits.push(
             "the record ran twice in one process: what differs from one machine or build to \
@@ -213,6 +239,39 @@ pub fn replay(game: &dyn GameTools, root: &Path, input: &ReplayInput) -> Answer<
     )
 }
 
+/// The limits the stamps of `runs` put on what they show, checked against
+/// this build's, `now`; the refusal of the first stamped by another build,
+/// unless `any_stamp`.
+fn stamps(now: Option<&Made>, runs: &[ReplayRun], any_stamp: bool) -> Result<Vec<String>, String> {
+    let Some(now) = now else {
+        return Ok(vec![
+            "the game's tools give no stamp of this build (GameTools::made), so no record was \
+             checked against it: a difference may come from another build or other content"
+                .to_owned(),
+        ]);
+    };
+    let mut limits = Vec::new();
+    for run in runs {
+        let record = &run.record;
+        match run.made.as_ref().map(|made| made.check(now)) {
+            None => limits.push(format!(
+                "{record} has no stamp: a difference may come from another build or other content"
+            )),
+            Some(Ok(())) => {}
+            Some(Err(mismatch)) if any_stamp => limits.push(format!(
+                "{record} was {mismatch}: a difference may come from that, not a desync"
+            )),
+            Some(Err(mismatch)) => {
+                return Err(format!(
+                    "{record} was {mismatch}: make it again with this build, or replay it with \
+                     --any-stamp"
+                ));
+            }
+        }
+    }
+    Ok(limits)
+}
+
 /// What `replay` found, for people.
 pub fn text(output: &ReplayOutput) -> String {
     let mut out = String::new();
@@ -226,6 +285,19 @@ pub fn text(output: &ReplayOutput) -> String {
         first.steps.len().saturating_sub(1),
         first.outcome.as_deref().unwrap_or("none")
     );
+    for (i, run) in output.runs.iter().enumerate() {
+        if i > 0 && run.record == first.record {
+            continue;
+        }
+        match &run.made {
+            Some(made) => {
+                let _ = writeln!(out, "  {} was made with {made}", run.record);
+            }
+            None => {
+                let _ = writeln!(out, "  {} has no stamp", run.record);
+            }
+        }
+    }
     for step in &first.steps {
         let command = step.command.as_deref().unwrap_or("start");
         let _ = write!(out, "  {:>4} {} {command}", step.step, step.hash);
@@ -263,7 +335,8 @@ mod tests {
     use shuyi_core::TurnRules;
 
     use super::*;
-    use crate::contract::fake::Fake;
+    use crate::contract::fake::{Fake, stamp};
+    use shuyi_core::ContentHash;
 
     /// A counter that ends at 3; an `Add` of more than 1 is refused.
     #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -344,6 +417,7 @@ mod tests {
                 })
                 .collect(),
             outcome: None,
+            made: None,
         }
     }
 
@@ -376,27 +450,29 @@ mod tests {
         fs::write(dir.join("a.ron"), "h0\nh1\nh2").unwrap();
         fs::write(dir.join("b.ron"), "h0\nhx").unwrap();
         fs::write(dir.join("c.ron"), "h0\nrefused").unwrap();
-        let input = |record: &str, other: Option<&str>| ReplayInput {
-            record: record.into(),
-            other: other.map(Into::into),
+        let input = |record: &str, other: Option<&str>| {
+            let mut input = ReplayInput::new(record);
+            input.other = other.map(Into::into);
+            input
         };
         let answer = replay(&Fake::default(), &dir, &input("a.ron", None));
         assert!(answer.ok, "{answer:?}");
         assert_eq!(answer.op, Op::Replay);
-        assert_eq!(answer.limits.len(), 1);
-        assert!(answer.limits[0].starts_with("the record ran twice in one process"));
+        assert_eq!(answer.limits.len(), 2);
+        assert!(answer.limits[0].starts_with("the game's tools give no stamp of this build"));
+        assert!(answer.limits[1].starts_with("the record ran twice in one process"));
         let out = answer.result.unwrap();
         assert_eq!(out.runs.len(), 2);
         assert_eq!(out.runs[0], out.runs[1]);
         let answer = replay(&Fake::default(), &dir, &input("a.ron", Some("b.ron")));
         assert!(!answer.ok);
-        assert!(answer.limits.is_empty(), "{:?}", answer.limits);
+        assert_eq!(answer.limits.len(), 1, "{:?}", answer.limits);
         let out = answer.result.unwrap();
         assert_eq!(out.runs[1].record, "b.ron");
         assert_eq!(out.first_difference.unwrap().step, 1);
         let refused = replay(&Fake::default(), &dir, &input("c.ron", Some("c.ron")));
         assert_eq!(
-            refused.limits,
+            refused.limits[1..],
             ["the rules refused 1 command(s) of c.ron: the record doesn't play as it was made"]
         );
         // What can't be read or run says why.
@@ -421,6 +497,82 @@ mod tests {
     }
 
     #[test]
+    fn a_record_stamped_by_another_build_is_refused_unless_any_stamp() {
+        let dir = scratch("stamps");
+        let now = stamp("0.2.0", "demo", ContentHash(2));
+        let game = Fake {
+            made: Some(now.clone()),
+            ..Fake::default()
+        };
+        fs::write(
+            dir.join("same.ron"),
+            "made 0.2.0 demo 0000000000000002\nh0\nh1",
+        )
+        .unwrap();
+        fs::write(
+            dir.join("other.ron"),
+            "made 0.2.0 demo 0000000000000001\nh0\nh1",
+        )
+        .unwrap();
+        fs::write(dir.join("none.ron"), "h0\nh1").unwrap();
+        // Stamped by this build: it runs, with its stamp, and nothing to say.
+        let same = replay(&game, &dir, &ReplayInput::new("same.ron"));
+        assert!(same.ok, "{same:?}");
+        assert_eq!(same.limits.len(), 1, "{:?}", same.limits);
+        let out = same.result.unwrap();
+        assert_eq!(out.runs[0].made.as_ref(), Some(&now));
+        assert_eq!(out.runs[0].steps.len(), 2);
+        // Other content: refused before anything is compared, naming the
+        // record and both stamps' contents.
+        let mut input = ReplayInput::new("same.ron");
+        input.other = Some("other.ron".into());
+        let other = replay(&game, &dir, &input);
+        assert!(!other.ok);
+        assert_eq!(other.code.as_deref(), Some("SH3007"));
+        assert_eq!(other.exit_code(), 1);
+        assert_eq!(
+            other.error.as_deref(),
+            Some(
+                "other.ron was made with content 0000000000000001; this build: content \
+                 0000000000000002: make it again with this build, or replay it with --any-stamp"
+            )
+        );
+        assert!(other.result.is_none());
+        // With `any_stamp`, it runs and says why a difference may show.
+        input.any_stamp = true;
+        let anyway = replay(&game, &dir, &input);
+        assert!(anyway.ok, "{anyway:?}");
+        assert_eq!(
+            anyway.limits,
+            [
+                "other.ron was made with content 0000000000000001; this build: content \
+              0000000000000002: a difference may come from that, not a desync"
+            ]
+        );
+        // A record with no stamp runs, and says so.
+        let none = replay(&game, &dir, &ReplayInput::new("none.ron"));
+        assert!(none.ok, "{none:?}");
+        assert_eq!(
+            none.limits[0],
+            "none.ron has no stamp: a difference may come from another build or other content"
+        );
+        // A game that gives no stamp checks none.
+        let unstamped = replay(&Fake::default(), &dir, &ReplayInput::new("other.ron"));
+        assert!(unstamped.ok, "{unstamped:?}");
+        let got = &unstamped.limits[0];
+        assert!(got.contains("GameTools::made"), "{got}");
+        // The stamp goes out as text, and reads back.
+        let json = serde_json::to_value(&out.runs[0]).unwrap();
+        assert_eq!(
+            json["made"],
+            serde_json::json!({"engine": "0.2.0", "game": "demo", "content": "0000000000000002"})
+        );
+        let back: ReplayRun = serde_json::from_value(json).unwrap();
+        assert_eq!(back, out.runs[0]);
+        fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn what_replay_found_reads_for_people() {
         let mut run = run_of(&["h0", "h1", "h2"]);
         run.outcome = Some("Won".into());
@@ -434,8 +586,23 @@ mod tests {
         };
         assert_eq!(
             text(&agreed),
-            "replay: r (2 step(s)), outcome Won\n     0 h0 start\n     1 h1 Move → Moved, \
-             Reached\n     2 h2 Stay (refused: over)\nthe two runs agree at every step\n"
+            "replay: r (2 step(s)), outcome Won\n  r has no stamp\n     0 h0 start\n     1 h1 \
+             Move → Moved, Reached\n     2 h2 Stay (refused: over)\nthe two runs agree at every \
+             step\n"
+        );
+        let mut stamped = run_of(&["h0"]);
+        stamped.made = Some(stamp("0.1.0", "demo", ContentHash(1)));
+        let mut other = run_of(&["h0"]);
+        other.record = "o".into();
+        let two = ReplayOutput {
+            runs: vec![stamped, other],
+            first_difference: None,
+        };
+        assert_eq!(
+            text(&two),
+            "replay: r (0 step(s)), outcome none\n  r was made with engine 0.1.0, game \"demo\", \
+             content 0000000000000001\n  o has no stamp\n     0 h0 start\nthe two runs agree at \
+             every step\n"
         );
         let parted = ReplayOutput {
             runs: vec![run_of(&["a"])],
@@ -446,8 +613,8 @@ mod tests {
         };
         assert_eq!(
             text(&parted),
-            "replay: r (0 step(s)), outcome none\n     0 a start\nthe runs differ first at \
-             step 1: b vs (none)\n"
+            "replay: r (0 step(s)), outcome none\n  r has no stamp\n     0 a start\nthe runs \
+             differ first at step 1: b vs (none)\n"
         );
         let none = ReplayOutput {
             runs: Vec::new(),
@@ -461,6 +628,7 @@ mod tests {
         let literal = ReplayInput {
             record: "a.ron".to_owned(),
             other: None,
+            any_stamp: false,
         };
         assert_eq!(ReplayInput::new("a.ron"), literal);
     }

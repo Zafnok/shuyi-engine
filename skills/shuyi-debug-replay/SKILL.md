@@ -42,7 +42,9 @@ hashes differ, and that step's command is where to look.
    ```
 
    Each of `result.plays` has its `seed`, `outcome` and `record`: write
-   the record of the play that went wrong to a file.
+   the record of the play that went wrong to a file. The bots stamp each
+   record with what made it (`made`: the engine's version, the game's
+   name and version, and a fingerprint of its files).
 
 2. **Replay it:**
 
@@ -75,7 +77,10 @@ hashes differ, and that step's command is where to look.
 5. **Fix the rules**, run the test, then replay the record again: it now
    plays as it should. A fix that changes the state changes its hashes,
    so records made before it part from the new runs at the step the fix
-   changed: that is expected, and `first_difference` shows where.
+   changed: that is expected, and `first_difference` shows where. A fix
+   in the game's files changes its fingerprint too, so `replay` refuses
+   the records made before it (`SH3007`, below) until you pass
+   `--any-stamp`.
 
 ## Records and hashes
 
@@ -94,6 +99,16 @@ hashes differ, and that step's command is where to look.
   a run doesn't control: a hash map's order, a float, the clock, luck
   that isn't the state's `SimRng`. The rules crate's fence (`cargo
   shuyi lint`, `shuyi-gates`) bans each of them; look there first.
+- **A record says what made it.** A record with a stamp
+  (`shuyi_core::Made`, a `made` field of the game's record, which its
+  `replay` passes on) made by another engine, another build of the game
+  or other files is refused before anything is compared: its runs could
+  differ for that alone, which isn't a desync. `--any-stamp` runs it
+  anyway, and the `limits` say a difference may come from the stamp. A
+  record with no stamp (one written by hand, or before stamps) runs, and
+  the `limits` say it has none. A game's tools give this build's stamp
+  in `GameTools::made`, most simply `Made::new(name and version,
+  bundle.fingerprint())`, as the `grid` template's `made()` does.
 - **What differs from one machine to another** needs a second record
   made on the other machine: one process can't see it, and the answer's
   `limits` say so.
@@ -109,6 +124,9 @@ Branch on the `code`, and read its page with `cargo shuyi explain
 <code>`:
 
 - No code, and `ok` false: the runs differ. Read `first_difference`.
+- `SH3007`: the record was made by another build or with other files;
+  the error names each part that differs. Make the record again, or
+  pass `--any-stamp` to see how it plays now.
 - `SH3004`: the record's file isn't there (its path is from the game's
   folder).
 - `SH3002`: the game's tools failed, most often on a record that
@@ -120,8 +138,10 @@ Branch on the `code`, and read its page with `cargo shuyi explain
 ## Worked example
 
 [`example.ron`](example.ron) runs on a new `grid` game: a bot's play is
-written to `records/bot.ron` and replays the same twice; two records of
-one seed, one of them stepping into a wall, part at step 2, where the
-rules refused the step; a record that isn't there fails with `SH3004`;
+written to `records/bot.ron` and replays the same twice, with its stamp;
+two records of one seed, one of them stepping into a wall, part at step
+2, where the rules refused the step; a record stamped with other content
+fails with `SH3007` and runs with `--any-stamp`; a record that isn't
+there fails with `SH3004`;
 and the refused step becomes a test in the rules crate, which passes
 with `fmt` and clippy.

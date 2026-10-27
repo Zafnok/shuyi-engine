@@ -246,6 +246,7 @@ pub fn kept(
     let date = history::utc_stamp(history::now());
     let commit = history::git_commit(root);
     let options: Vec<String> = input.start.iter().map(history::option).collect();
+    let made = game.made();
     let mut unwritten = None;
     for output in outputs.iter_mut() {
         let names: Vec<String> = output.entrants.iter().map(|p| p.name.clone()).collect();
@@ -264,6 +265,7 @@ pub fn kept(
             stage: output.stage.clone(),
             entrants: names,
             options: options.clone(),
+            made: made.clone(),
             output: output.clone(),
         };
         if let Err(e) = history::append(&file, &record) {

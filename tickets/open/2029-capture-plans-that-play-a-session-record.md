@@ -128,7 +128,7 @@ None.
   example `session::prepare<G: GameData>(start: Start<G>, record:
   &SessionRecord, stamps: Stamps) -> Result<(Start<G>, Vec<String>),
   SessionError>`. It runs 2111's `Made::check` between the record's
-  stamp and the start's (2111 is done before 2518), applies the
+  stamp and the start's (2111 is done), applies the
   record's voice manifest with `Start::before_load`, and gives the
   lines `Played::limits` would give (no stamp, a truncated record, an
   incomplete store).

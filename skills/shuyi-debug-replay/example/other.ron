@@ -1,0 +1,11 @@
+// A record made with other content: its stamp's fingerprint isn't this
+// build's files'. Your piece steps right once.
+(
+    seed: 0,
+    commands: [Step(Right)],
+    made: Some((
+        engine: "0.1.0",
+        game: "an older build",
+        content: "0000000000000000",
+    )),
+)

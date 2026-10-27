@@ -6,6 +6,7 @@ use std::fs;
 
 use hello_grid::tools::HelloTools;
 use hello_grid::{Hello, PACK_STAMP};
+use shuyi::assets::bundle::{Bundle, Layer};
 use shuyi::assets::pack::{Pack, PackError};
 use shuyi_cli::contract::bake::{BakeInput, bake};
 use shuyi_cli::contract::check::{CheckInput, check};
@@ -40,6 +41,24 @@ fn the_game_loads_from_its_pack_what_it_loads_from_its_files() {
     let found = kinds("tiles.png");
     assert!(found.is_empty(), "{found:?}");
     assert_eq!(pack.get("tiles.png"), hello_grid::file("tiles.png"));
+}
+
+/// A mod's files, laid over the game's.
+static MOD: &[(&str, &[u8])] = &[("stage.map", b"a mod's map"), ("new.txt", b"new")];
+
+#[test]
+fn the_pack_has_the_fingerprint_of_the_files_it_was_baked_from() {
+    let loose = Bundle::new(vec![hello_grid::layer()]);
+    let pack = Pack::open(baked(), PACK_STAMP).unwrap();
+    assert_eq!(pack.info().content, loose.fingerprint());
+    let layer = pack.into_layer("pack");
+    let packed = Bundle::new(vec![layer]);
+    assert_eq!(packed.fingerprint(), loose.fingerprint());
+    assert_eq!(hello_grid::made().content, packed.fingerprint());
+    // A loose layer over the pack counts as it does over the files.
+    let over = |under: Layer| Bundle::new(vec![Layer::table("mod", MOD), under]).fingerprint();
+    assert_eq!(over(layer), over(hello_grid::layer()));
+    assert_ne!(over(layer), loose.fingerprint());
 }
 
 #[test]

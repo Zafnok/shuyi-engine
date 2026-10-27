@@ -317,7 +317,9 @@ impl Bake {
 
     /// The pack of `bundle`, baked for `target`: each file this bake names
     /// holds its assets read with `formats`, and every other file its own
-    /// bytes. Refuses a source with errors: every one of them is returned.
+    /// bytes, and its index holds `bundle`'s fingerprint, which the pack
+    /// then stands for. Refuses a source with errors: every one of them is
+    /// returned.
     pub fn bake(
         &self,
         formats: &Formats,
@@ -357,6 +359,7 @@ impl Bake {
         let info = PackInfo {
             stamp: self.stamp.clone(),
             target: target.map(ToOwned::to_owned),
+            content: bundle.fingerprint(),
         };
         Ok(Baked {
             bytes: write(&info, &contents),

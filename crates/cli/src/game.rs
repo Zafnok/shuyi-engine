@@ -22,7 +22,7 @@ use shuyi_assets::palette::PaletteDef;
 use shuyi_ui::input::fit::Controls;
 
 use shuyi_core::bots::playtest::{Check, PlaytestReport, Tried, Tries};
-use shuyi_core::{BalanceSettings, Balanced, Knob, autobalance_by};
+use shuyi_core::{BalanceSettings, Balanced, Knob, Made, autobalance_by};
 
 use crate::contract::autobalance::AutobalanceInput;
 use crate::contract::bots::{BotsInput, BotsOutput};
@@ -460,6 +460,15 @@ pub trait GameTools {
         Err(unsupported("replay", "replay"))
     }
 
+    /// This build's stamp (`shuyi_core::made`): the game's word for its
+    /// build and the fingerprint of the bundle it ships, most simply
+    /// `Made::new(stamp, bundle.fingerprint())`. `replay` refuses a record
+    /// stamped otherwise, and `playtest` keeps it in its history. `None`,
+    /// the default: no record is checked.
+    fn made(&self) -> Option<Made> {
+        None
+    }
+
     /// `bots`: the games `input` asks for, played by the game's bots and
     /// summed up ([`tally`](crate::contract::bots::tally)).
     fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
@@ -669,6 +678,7 @@ mod tests {
         assert!(got.is_empty(), "{got:?}");
         assert_eq!(Plain.playtest_defaults(), DEFAULT_TRIES);
         assert_eq!(Plain.importers().kinds(), Importers::standard().kinds());
+        assert_eq!(Plain.made(), None);
         assert!(Plain.controls().is_none());
         assert!(Plain.one_bit("playdate").is_none());
         assert_eq!(

@@ -67,6 +67,10 @@
     "limits"
   ],
   "$defs": {
+    "ContentHash": {
+      "description": "A fingerprint of a game's content: the same bytes give the same one on\nevery platform. Shown, and written to a file, as sixteen lowercase hex\ndigits, as a `StateHash` is shown (a string, since\nJSON can't hold every `u64`).",
+      "type": "string"
+    },
     "Difference": {
       "description": "Where two runs part.",
       "type": "object",
@@ -92,6 +96,30 @@
       "required": [
         "step",
         "hashes"
+      ]
+    },
+    "Made": {
+      "description": "What made a record or a save: the engine, the game's build and the\ncontent it ran on, as the module docs say.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "description": "The fingerprint of the content it ran on.",
+          "$ref": "#/$defs/ContentHash"
+        },
+        "engine": {
+          "description": "The engine's version ([`ENGINE_VERSION`]).",
+          "type": "string"
+        },
+        "game": {
+          "description": "The game's word for its build (its name and version, say), as a\npack's stamp is.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "engine",
+        "game",
+        "content"
       ]
     },
     "ReplayOutput": {
@@ -126,6 +154,18 @@
       "description": "One run of a record.",
       "type": "object",
       "properties": {
+        "made": {
+          "description": "What made the record, if it says: the game's `replay` passes on\nits record's stamp ([`turns`] leaves it `None`).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Made"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "outcome": {
           "description": "How the game ended, in the game's words, if it did.",
           "type": [
