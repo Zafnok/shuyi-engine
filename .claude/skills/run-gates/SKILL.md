@@ -176,8 +176,20 @@ open ticket that names another open ticket, not in its `blocked_by`,
 whose text never names it back: write the other side there (the
 `write-ticket` skill, *Check the dependency chain*).
 
-Later tickets add their checks here, for example `check-keys` and
-`check-text` on the engine's own code (2006).
+## The engine's own input and text rules (CI's `test` job)
+
+`check-keys` and `check-text` over the engine's code, as the root
+`shuyi.ron` sets them (ticket 2006): no key named outside the key
+pipeline, no engine screen's text written as a literal. Each finding has
+a problem code, a file and a line. The `rules` limit in the answer is
+expected: the engine's own layers are `cargo xtask check-layers`'.
+
+```bash
+cargo run -q -p shuyi-cli -- lint
+```
+
+A new file that names keys by design goes in `key_files` with the reason
+beside it; never loosen the checks to pass.
 
 ## The public API (CI's `api` job)
 

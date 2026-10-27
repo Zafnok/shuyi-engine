@@ -91,10 +91,9 @@ None.
     no field that names a key, and `shuyi check-keys` already reads a
     `.ui.ron` in a game's asset folders as it reads any `.ron`
     (`crates/cli/src/check_keys.rs`); a test here shows it;
-    - **Either order with 2006:** if 2006 is done, add the folder of
-      the moved engine screen's `.ui.ron` to the root `shuyi.ron`'s
-      `check_keys` `assets`, unless a folder there covers it already;
-      if not, nothing to do (2006 lists it when it writes that file);
+    - **From 2006 (done):** add the folder of the moved engine
+      screen's `.ui.ron` to the root `shuyi.ron`'s `check_keys`
+      `assets`, unless a folder there covers it already;
   - errors name the file, the node path (`root.children[1]`) and the
     problem.
 - **`DocScreen<G>`**, a screen built from a `UiDoc`: it lays out with
@@ -129,7 +128,7 @@ None.
 5. Do the either-order parts whose tickets are done: 2334's `font`,
    2338's `frame`, 2347's styled text, 2348's typed values for
    `set_arg`, 2351's test over the engine's `.ui.ron` keys, and the
-   moved screen's folder in 2006's root `shuyi.ron`.
+   moved screen's folder in the root `shuyi.ron` (2006, done).
 6. Run the gates.
 
 ## Acceptance criteria

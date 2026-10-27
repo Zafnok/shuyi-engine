@@ -1,0 +1,63 @@
+// The engine's own project file (ticket 2006): `cargo run -q -p shuyi-cli
+// -- lint`, the gate in CI and in `run-gates`, runs `check-keys` and
+// `check-text` over the engine's code. It names no `rules` package: the
+// engine's own layers are `cargo xtask check-layers`' (ADR-0032).
+(
+    // No key named outside the key pipeline (the `input-actions` skill).
+    check_keys: (
+        rust: ["crates", "examples"],
+        // The one file that reads the keyboard.
+        platform_file: "crates/app/src/keys.rs",
+        // The files that may name keys and buttons, each for its reason.
+        key_files: [
+            // The platform backends' readers and the link's and the
+            // Harness's key and button scripts.
+            "crates/app/src/keys.rs",
+            "crates/app/src/pads/native.rs",
+            "crates/platform/src/harness.rs",
+            "crates/platform/src/link.rs",
+            // The keymap format, the fixed key of `UiAction::Cancel`
+            // (ADR-0036) and the sample game's actions.
+            "crates/assets/src/keymap.rs",
+            "crates/assets/src/keymap/action_set.rs",
+            "crates/assets/src/keymap/sample.rs",
+            // The input runtime.
+            "crates/ui/src/input/bindings.rs",
+            "crates/ui/src/input/crank.rs",
+            "crates/ui/src/input/fixed.rs",
+            "crates/ui/src/input/help_keys.rs",
+            "crates/ui/src/input/keymap.rs",
+            "crates/ui/src/input/pad.rs",
+            // The text key `keys.arrows`, a name in the language file.
+            "crates/ui/src/ctx.rs",
+            // The toy game and the hello-grid example: their actions and
+            // default keys are their own (the `input-actions` skill).
+            "crates/ui/src/toy.rs",
+            "examples/hello-grid/src/action.rs",
+            // The tools: they take keys as text the player of a game
+            // types (`--keys "Enter Up"`), scan for key names, and print
+            // `s` for seconds, `[x]` for a ticked box.
+            "crates/cli/src/check_keys.rs",
+            "crates/cli/src/contract/attach.rs",
+            "crates/cli/src/contract/autobalance.rs",
+            "crates/cli/src/contract/playtest.rs",
+            "crates/cli/src/contract/run.rs",
+            "crates/cli/src/frame_png.rs",
+            "crates/xtask/src/tickets.rs",
+        ],
+        // The rebinding screens' keyboard pictures.
+        picture_files: [
+            "crates/ui/src/screens/layout_picker.rs",
+            "crates/ui/src/screens/layout_picker/glyph.rs",
+        ],
+        hint: "react to an action (the keymap names the keys), or name a key through the player's keymap",
+    ),
+
+    // No screen text written as a literal: the engine's own screens.
+    check_text: (
+        dir: "crates/ui/src/screens",
+        words_file: "crates/ui/src/words.rs",
+        hint: "put the text in the language file and ask for it by key",
+        name_hint: "show a data name through the words helpers",
+    ),
+)
