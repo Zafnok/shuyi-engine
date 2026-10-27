@@ -296,8 +296,16 @@ None.
   `crates/ui/src/frame/raster/tests.rs`, with the new tests (a 2 × 1
   buffer with a rectangle over the test card at scale 2, the missing
   colour, `Image::filled`, every `compare` case, `Tolerance` from RON,
-  and two properties). Every other `frame_png` test passes unchanged,
-  and hello-grid's PNG snapshots pass without `cargo insta accept`.
+  and two properties). Hello-grid's PNG snapshots pass without
+  `cargo insta accept`.
+- **Deviation:** the painter's pixel tests (the sprites, their paints
+  and brightness, the backdrop, the one-bit picture) moved to the
+  raster's tests too, with their expected values unchanged and their
+  pictures made in code. Left in `shuyi-cli`, they didn't reach the
+  raster's code under CI's mutants job, which runs only the tests of the
+  crate a mutant is in. `frame_png`'s tests keep the hand-checked frame
+  and the missing image (now the wrapper's tests: decoded from PNG),
+  the bad atlas, the arguments, `run` and decoding.
 - CI's `no-std` job and the `run-gates` skill build `shuyi-ui` with
   `raster` for `thumbv7em-none-eabihf`.
 - Docs: the raster's module docs, `frame_png.rs`'s, `frame.rs`'s list,
