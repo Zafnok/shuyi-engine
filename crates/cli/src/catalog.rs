@@ -463,7 +463,7 @@ fn resolved_shuyi(game: &Path) -> Result<PathBuf, String> {
         name: String,
         manifest_path: PathBuf,
     }
-    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let cargo = crate::cargo();
     let output = Command::new(cargo)
         .args(["metadata", "--format-version", "1"])
         .current_dir(game)

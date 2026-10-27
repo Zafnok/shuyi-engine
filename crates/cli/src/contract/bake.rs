@@ -141,33 +141,13 @@ fn out_file(input: &BakeInput) -> String {
     })
 }
 
-/// Why `target` can't be baked for in `project`: it has no profile, or the
-/// profiles don't load.
-fn unknown_target(project: &Project, target: &str) -> Option<String> {
-    match target::profiles(&project.config, &project.root) {
-        Ok(profiles) if profiles.contains_key(target) => None,
-        Ok(profiles) => {
-            let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
-            Some(format!(
-                "no target profile \"{target}\"; the profiles are {}",
-                known.join(", ")
-            ))
-        }
-        Err(errors) => {
-            let shown: Vec<String> = errors.iter().map(ToString::to_string).collect();
-            Some(format!(
-                "the target profiles don't load: {}",
-                shown.join("; ")
-            ))
-        }
-    }
-}
-
 /// `bake`: `game`'s pack for `input`, written under `project`'s root.
 pub fn bake(game: &dyn GameTools, project: &Project, input: &BakeInput) -> Answer<BakeOutput> {
     let target = input.target.as_deref();
-    if let Some(why) = target.and_then(|target| unknown_target(project, target)) {
-        return Answer::failed(Op::Bake, codes::TARGET, why);
+    if let Some(Err((code, why))) =
+        target.map(|target| target::profile(&project.config, &project.root, target))
+    {
+        return Answer::failed(Op::Bake, code, why);
     }
     let GameBake {
         bake,

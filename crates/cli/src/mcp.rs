@@ -304,6 +304,12 @@ const START: &str = "Build the game's tool program and start its game headless i
      play a player's input on it and read its frame, picture and log (no scene, events or \
      sounds), `reset` is refused, and `stop` leaves it running.";
 
+/// `lint`'s description.
+const LINT: &str = "Check the game's code: keys named in code or text (check-keys), screen text as literals \
+     (check-text), and the rules crate's fence (clippy's bans on hash maps, floats, clocks, \
+     files and outside luck; no screen or device crate under it). Each finding with its \
+     file, line and code.";
+
 /// What the tool of `op` does, for its description.
 fn description(op: Op, session: bool) -> &'static str {
     match (op, session) {
@@ -319,9 +325,7 @@ fn description(op: Op, session: bool) -> &'static str {
              code. With `baked`, its pack too; with `target`, whether its frame, text and \
              controls fit a target (or `all`)."
         }
-        (Op::Lint, _) => {
-            "Check the game's code: keys named in code or text (check-keys), screen text              written as literals (check-text), and the rules crate's fence (clippy's bans on hash              maps, floats, clocks, files and outside luck; no screen or device crate under it).              Each finding with its file, line and code."
-        }
+        (Op::Lint, _) => LINT,
         (Op::Modules, _) => {
             "The engine's catalog of modules by concern (perspective, bodies and motion, online \
              play, ...): each answer, who gives it (the default engine or a module) and its \
@@ -535,7 +539,7 @@ fn ready(cwd: &Path) -> u8 {
     if let Ok(project) = Project::find(cwd)
         && let Some(program) = &project.config.game
     {
-        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+        let cargo = crate::cargo();
         let built = Command::new(cargo)
             .args(program.cargo_build_args())
             .current_dir(&project.root)

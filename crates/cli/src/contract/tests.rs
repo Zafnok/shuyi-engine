@@ -172,3 +172,29 @@ fn a_validators_problem_carries_its_code_and_help() {
     assert_eq!(json["code"], "SH2008");
     assert_eq!(json["help"], codes::help_of("SH2008").unwrap());
 }
+
+#[test]
+fn each_answers_schema_names_its_own_op_and_no_other() {
+    for op in Op::ALL {
+        let name = format!("{}.output.json", op.name());
+        let file = schemas().into_iter().find(|f| f.name == name).unwrap();
+        assert_eq!(serde_json::to_value(op).unwrap(), op.name());
+        let schema: serde_json::Value = serde_json::from_str(&file.text).unwrap();
+        assert_eq!(schema["properties"]["op"]["const"], op.name(), "{name}");
+        // No other op's name is anywhere as an `op` value, and `Op`'s list
+        // isn't in the schema.
+        assert!(schema["$defs"].get("Op").is_none(), "{name}");
+        for other in Op::ALL.into_iter().filter(|other| *other != op) {
+            let quoted = format!("\"const\": \"{}\"", other.name());
+            assert!(!file.text.contains(&quoted), "{name} holds {quoted}");
+        }
+    }
+    let texts: Vec<String> = ["run", "session.step"]
+        .iter()
+        .map(|name| {
+            let file = format!("{name}.output.json");
+            schemas().into_iter().find(|f| f.name == file).unwrap().text
+        })
+        .collect();
+    assert_ne!(texts[0], texts[1]);
+}

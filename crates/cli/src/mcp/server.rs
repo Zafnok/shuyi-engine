@@ -430,7 +430,16 @@ impl<'a> Server<'a> {
                     Err(why) => {
                         self.restarted = false;
                         let mut answer = answer;
+                        // What stopped the fresh server is the fix, not a
+                        // reconnect: the limit keeps the diagnosis alone.
+                        let diagnosis = stale_diagnosis(&answer, VERSION);
                         if let Some(limits) = answer["limits"].as_array_mut() {
+                            if let Some(diagnosis) = diagnosis {
+                                limits.retain(|l| {
+                                    l.as_str().is_none_or(|l| !l.starts_with(&diagnosis))
+                                });
+                                limits.push(Value::String(diagnosis));
+                            }
                             limits.push(Value::String(format!(
                                 "a fresh server of this checkout didn't start: {why}"
                             )));
@@ -720,20 +729,40 @@ fn answer_of(op: Op, reply: Reply, command: &str) -> (Value, Option<String>) {
     }
 }
 
-/// The limit a host's `answer` gets when its engine speaks another
-/// contract than `version`, the server's: the server was built before the
-/// engine changed, and `command mcp --ready` and a reconnect bring it up to
-/// date. None when they speak the same one: a change of the engine that
-/// changes no schema leaves the server's tools right. A server that
-/// forwards first hands the call to a fresh server of its own workspace,
-/// and writes this only if that one doesn't start.
-pub fn stale(answer: &Value, version: u32, command: &str) -> Option<String> {
+/// What a host's `answer` says when its engine speaks another contract
+/// than `version`, the server's: both contracts and which side is newer.
+/// None when they speak the same one: a change of the engine that changes
+/// no schema leaves the server's tools right.
+fn stale_diagnosis(answer: &Value, version: u32) -> Option<String> {
     let theirs = answer.get("contract")?.as_u64()?;
     (theirs != u64::from(version)).then(|| {
+        let newer = if theirs > u64::from(version) {
+            "the server was built before the engine changed"
+        } else {
+            "the server is newer than the game's engine (a checkout with an older pin?)"
+        };
+        format!("the game's engine speaks contract {theirs} and this server {version}: {newer}")
+    })
+}
+
+/// The limit a host's `answer` gets, where no fresh server is started for
+/// it, when its engine speaks another contract than `version`, the
+/// server's (its two contracts and the newer side), and what fixes it: for an older
+/// server, a reconnect (in Claude Code: /mcp) starts a fresh one; for a
+/// newer one, a reconnect doesn't, and the project's own `shuyi` must be
+/// the MCP entry (`command mcp install`) if the entry runs one installed
+/// for every project. A server that forwards first hands the call to a
+/// fresh server of its own workspace, and writes the diagnosis alone,
+/// beside why that one didn't start.
+pub fn stale(answer: &Value, version: u32, command: &str) -> Option<String> {
+    let diagnosis = stale_diagnosis(answer, version)?;
+    let theirs = answer.get("contract")?.as_u64()?;
+    Some(if theirs > u64::from(version) {
+        format!("{diagnosis}; reconnect it (in Claude Code: /mcp) to start a fresh one")
+    } else {
         format!(
-            "the game's engine speaks contract {theirs} and this server {version}: the server was \
-             built before the engine changed; run \"{command} mcp --ready\", then reconnect it \
-             (in Claude Code: /mcp)"
+            "{diagnosis}; if the MCP entry runs a `shuyi` installed for every project, register \
+             the project's own (`{command} mcp install`)"
         )
     })
 }

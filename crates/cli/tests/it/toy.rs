@@ -58,6 +58,12 @@ fn frame_png_renders_the_toy() {
     );
     let bad = args(&["frame-png", "t.png", "--light", "dusk"]);
     assert_eq!(run(&project, &bad, Some(&ToyTools)), 2);
+    // An unknown target exits as SH3003 does, as `check` and `bake` do.
+    let moon = args(&["frame-png", "t.png", "--target", "moon"]);
+    assert_eq!(
+        run(&project, &moon, Some(&ToyTools)),
+        shuyi_cli::contract::codes::exit_code(Some("SH3003"))
+    );
     fs::remove_dir_all(&dir).unwrap();
 }
 

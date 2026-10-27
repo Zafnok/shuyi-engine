@@ -576,7 +576,7 @@ pub fn run_in_game_program(project: &Project, command: &str, args: &[String]) ->
     let Some(program) = &project.config.game else {
         return crate::contract::cli::no_game(command, args);
     };
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let cargo = crate::cargo();
     match Command::new(cargo)
         .args(program.cargo_args(command, args))
         .current_dir(&project.root)

@@ -156,7 +156,7 @@ pub struct Processes;
 
 impl<'a> Forwarding<'a> for Processes {
     fn workspace(&self, folder: &Path) -> Option<PathBuf> {
-        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+        let cargo = crate::cargo();
         let output = Command::new(cargo)
             .args(["locate-project", "--workspace", "--message-format", "plain"])
             .current_dir(folder)

@@ -133,7 +133,7 @@ pub fn crates(
     triple: &str,
     features: &[String],
 ) -> Result<Vec<Work>, String> {
-    let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+    let cargo = crate::cargo();
     let mut args: Vec<String> = [
         "metadata",
         "--format-version",

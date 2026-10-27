@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2542 — The CLI's seams
@@ -136,18 +136,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `stale` with a newer server says the server is newer, and its test
+- [x] `stale` with a newer server says the server is newer, and its test
       covers both directions.
-- [ ] No help line, page title or MCP tool description holds two spaces
+- [x] No help line, page title or MCP tool description holds two spaces
       in a row (the test).
-- [ ] `check --target moon`, `bake --target moon` and `frame-png
+- [x] `check --target moon`, `bake --target moon` and `frame-png
       --target moon` print the same message with SH3003 and exit with
       the same code.
-- [ ] `std::env::var("CARGO")` and `var_os("CARGO")` appear once in
+- [x] `std::env::var("CARGO")` and `var_os("CARGO")` appear once in
       `crates/cli/src`.
-- [ ] `run.output.json` and `session.step.output.json` differ in `op`,
+- [x] `run.output.json` and `session.step.output.json` differ in `op`,
       and adding an op to `Op` changes no other op's output schema.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -158,5 +158,27 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+All five seams closed.
+
+- `mcp::server::stale` says which side is newer. An older server: reconnect
+  (in Claude Code: /mcp). A newer one: register the project's own `shuyi`
+  (`<command> mcp install`). When a forwarding server's restart fails, the
+  limit keeps only the diagnosis, beside "a fresh server of this checkout
+  didn't start: …". Tests cover `VERSION + 1` and `VERSION - 1`.
+- `lint`'s MCP description lost its run of spaces; two tests fail on a run
+  of spaces or a line break in a codes-table title, help or page title and
+  in any tool description.
+- `contract::target::profile` is the one lookup; `check`, `bake` and
+  `frame-png --target` use it, all with SH3003 and the same exit code.
+  Deviation: it returns `Profile` (the profile with its file), since
+  `check` reports the file.
+- `crate::cargo()` is the one place that reads `CARGO` (nine uses in
+  eight files).
+- Each output schema's `op` is a `const` of its own op; `Op` is no longer
+  in any output schema. Contract version 25 -> 26.
+- `frame-png --target moon` is tested in-process on the toy
+  (`tests/it/toy.rs`), not through the binary, which has no game program
+  to run it on.
+
+Breaking: shuyi-cli: contract: output schemas' `op` is a const of the op, not a reference to `Op`; version 26
+

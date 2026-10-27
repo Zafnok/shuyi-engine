@@ -31,7 +31,7 @@ impl<'a> Launch<'a> for Cargo {
                 format!("{FILE} names no game tool program (`game`), and the tool runs the game"),
             ));
         };
-        let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
+        let cargo = crate::cargo();
         let mut child = Command::new(cargo)
             .args(program.cargo_args("mcp-host", &[]))
             .current_dir(&project.root)

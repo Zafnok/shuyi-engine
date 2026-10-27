@@ -47,8 +47,6 @@ pub mod web;
 
 use std::path::{Path, PathBuf};
 
-use shuyi_assets::target::TargetProfile;
-
 use contract::Op;
 use contract::codes;
 
@@ -511,13 +509,13 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
     let target = match options
         .target
         .as_deref()
-        .map(|id| target_profile(project, id))
+        .map(|id| contract::target::profile(&project.config, &project.root, id))
     {
         None => None,
-        Some(Ok(profile)) => Some(profile),
+        Some(Ok(found)) => Some(found.profile),
         Some(Err((code, e))) => {
-            eprintln!("frame-png: {e}");
-            return code;
+            eprintln!("{}", contract::codes::said("frame-png", code.0, &e, None));
+            return contract::codes::exit_code(Some(code.0));
         }
     };
     match frame_png::run(&project.root, &options, game, target.as_ref()) {
@@ -532,28 +530,10 @@ fn frame_png(project: &Project, args: &[String], game: &dyn GameTools) -> u8 {
     }
 }
 
-/// The profile of target `id` (the engine's or the game's), or the exit
-/// code and what is wrong: the profiles don't load (1), or none has that
-/// id (2).
-fn target_profile(project: &Project, id: &str) -> Result<TargetProfile, (u8, String)> {
-    let profiles =
-        contract::target::profiles(&project.config, &project.root).map_err(|errors| {
-            let shown: Vec<String> = errors.iter().map(ToString::to_string).collect();
-            (
-                1,
-                format!("the target profiles don't load: {}", shown.join("; ")),
-            )
-        })?;
-    profiles.get(id).map(|p| p.profile.clone()).ok_or_else(|| {
-        let known: Vec<&str> = profiles.keys().map(String::as_str).collect();
-        (
-            2,
-            format!(
-                "--target: no target profile \"{id}\"; the profiles are {}",
-                known.join(", ")
-            ),
-        )
-    })
+/// The `cargo` to run: the `CARGO` cargo sets when it runs us, else
+/// `cargo` from the `PATH`.
+pub(crate) fn cargo() -> std::ffi::OsString {
+    std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into())
 }
 
 fn web(project: &Project, args: &[String]) -> Outcome {
