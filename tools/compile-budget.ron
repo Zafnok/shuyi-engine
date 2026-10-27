@@ -8,12 +8,12 @@ Budget(
     // runners' noise. Linux measured 0.72 to 1.04 s, Windows (MSVC) 1.79
     // to 1.95 s. A slower rebuild is found and fixed, not budgeted.
     rebuild: {
-        "linux": 1.6,
-        "windows": 2.9,
+        "linux": 0.0,
+        "windows": 0.0,
     },
     // The most crates a new `blank` game's dependency tree may hold, the
     // engine's among them (`cargo metadata`, every platform's, with the
     // engine's Cargo.lock). A change that adds one raises this number in
     // the same PR, so each new dependency is a choice.
-    dependencies: 144,
+    dependencies: 143,
 )
