@@ -71,13 +71,12 @@ that macOS was tested only in CI.
   - remove the feature flag.
 - **Check**: `cargo tree --workspace` shows none of `gilrs`, `gilrs-core`
   or `vec_map`.
-- **libudev, either order with 2513:** with gilrs gone, if nothing else
-  needs libudev (`cargo tree -i libudev-sys` is empty) and 2513 is
-  done, remove the `lib-udev` row from doctor's Linux table
+- **libudev, from 2513 (done):** with gilrs gone, if nothing else
+  needs libudev (`cargo tree -i libudev-sys` is empty), remove the
+  `lib-udev` row from doctor's Linux table
   (`crates/cli/src/contract/doctor/linux.rs`) and libudev's package
   from the `APT`, `DNF` and `PACMAN` lines of every
-  `scripts/setup-linux.sh`. If 2513 isn't done, nothing here: it leaves
-  libudev out when it lands (its clause).
+  `scripts/setup-linux.sh`.
 - **For the game:** `shuyi-app`'s API is unchanged, so the game's next pin
   bump needs no code change. Say so in the PR.
 

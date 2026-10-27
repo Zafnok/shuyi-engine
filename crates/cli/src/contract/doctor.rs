@@ -1,7 +1,11 @@
 //! `doctor`: checks the toolchain a game on the engine builds with: Rust
 //! and Cargo, rustup's targets, MSYS2's linker on the Windows GNU
-//! toolchain (`AGENTS.md`), and the web target. Each check says what it
-//! found and, if it failed, how to fix it (its help). It passes when
+//! toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
+//! system libraries the backend links and opens, and the web target.
+//! Each check says what it found and, if it failed, how to fix it (its
+//! help): on Linux, the install command for the distribution's package
+//! manager (`/etc/os-release`), and `scripts/setup-linux.sh`, which
+//! installs the same list. It passes when
 //! every check does; when one fails, it answers [`codes::TOOLCHAIN`] and
 //! exits 3.
 //!
@@ -9,6 +13,7 @@
 //! give it any machine.
 
 use std::fmt::Write as _;
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 
@@ -16,6 +21,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{Answer, Op, codes};
+
+pub(crate) mod linux;
 
 /// The web build's target.
 pub const WASM_TARGET: &str = "wasm32-unknown-unknown";
@@ -61,6 +68,9 @@ pub trait Probe {
 
     /// Whether the file at `path` exists.
     fn exists(&self, path: &Path) -> bool;
+
+    /// The text of the file at `path`, if it can be read.
+    fn read(&self, path: &Path) -> Option<String>;
 }
 
 /// The machine `doctor` runs on.
@@ -77,6 +87,10 @@ impl Probe for ThisMachine {
 
     fn exists(&self, path: &Path) -> bool {
         path.is_file()
+    }
+
+    fn read(&self, path: &Path) -> Option<String> {
+        fs::read_to_string(path).ok()
     }
 }
 
@@ -168,6 +182,9 @@ pub fn checks(probe: &dyn Probe) -> DoctorOutput {
             }
         });
     }
+    if host.as_deref().is_some_and(|h| h.contains("-linux-")) {
+        checks.extend(linux::checks(probe));
+    }
     let has_wasm = targets
         .as_deref()
         .is_some_and(|t| t.split_whitespace().any(|line| line == WASM_TARGET));
@@ -189,11 +206,11 @@ pub fn doctor(probe: &dyn Probe, _input: &DoctorInput) -> Answer<DoctorOutput> {
     let ok = output.checks.iter().all(|c| c.ok);
     let mut limits = Vec::new();
     if output.host.is_none() {
-        limits.push("without rustc the host is unknown: MSYS2 was not checked".to_owned());
+        limits.push(
+            "without rustc the host is unknown: MSYS2 and the Linux libraries were not checked"
+                .to_owned(),
+        );
     }
-    limits.push(
-        "the system libraries macroquad links on Linux (ALSA, X11, GL) are not checked".to_owned(),
-    );
     let answer = Answer::new(Op::Doctor, ok, output, limits);
     if ok {
         answer
@@ -232,16 +249,24 @@ mod tests {
 
     use super::*;
 
-    /// A machine with these programs' outputs and these files.
+    /// A machine with these programs' outputs, these files and these
+    /// files' texts.
     #[derive(Default)]
-    struct Fake {
-        programs: BTreeMap<String, String>,
-        files: Vec<PathBuf>,
+    pub(super) struct Fake {
+        pub(super) programs: BTreeMap<String, String>,
+        pub(super) files: Vec<PathBuf>,
+        texts: BTreeMap<PathBuf, String>,
     }
 
     impl Fake {
-        fn with(mut self, command: &str, output: &str) -> Self {
+        pub(super) fn with(mut self, command: &str, output: &str) -> Self {
             self.programs.insert(command.to_owned(), output.to_owned());
+            self
+        }
+
+        /// The machine, with `text` in the file at `path`.
+        pub(super) fn reading(mut self, path: &str, text: &str) -> Self {
+            self.texts.insert(PathBuf::from(path), text.to_owned());
             self
         }
     }
@@ -258,9 +283,13 @@ mod tests {
         fn exists(&self, path: &Path) -> bool {
             self.files.iter().any(|f| f == path)
         }
+
+        fn read(&self, path: &Path) -> Option<String> {
+            self.texts.get(path).cloned()
+        }
     }
 
-    fn rust(host: &str) -> Fake {
+    pub(super) fn rust(host: &str) -> Fake {
         Fake::default()
             .with(
                 "rustc -vV",
@@ -280,10 +309,26 @@ mod tests {
 
     #[test]
     fn a_complete_linux_toolchain_passes() {
-        let machine = rust("x86_64-unknown-linux-gnu").with(
-            "rustup target list --installed",
-            "x86_64-unknown-linux-gnu\nwasm32-unknown-unknown\n",
-        );
+        let mut machine = rust("x86_64-unknown-linux-gnu")
+            .with(
+                "rustup target list --installed",
+                "x86_64-unknown-linux-gnu\nwasm32-unknown-unknown\n",
+            )
+            .with("cc --version", "cc (Ubuntu 13.3.0-6ubuntu2) 13.3.0\n")
+            .with("pkg-config --version", "1.8.1\n")
+            .with("pkg-config --modversion alsa", "1.2.11\n")
+            .with("pkg-config --modversion libudev", "255\n")
+            .reading("/etc/os-release", "ID=ubuntu\n");
+        for soname in [
+            "libX11.so.6",
+            "libXi.so.6",
+            "libxkbcommon.so.0",
+            "libGL.so.1",
+        ] {
+            machine
+                .files
+                .push(PathBuf::from(format!("/usr/lib/x86_64-linux-gnu/{soname}")));
+        }
         let answer = doctor(&machine, &DoctorInput::default());
         assert!(answer.ok, "{answer:?}");
         assert_eq!((answer.code.as_deref(), answer.exit_code()), (None, 0));
@@ -291,7 +336,24 @@ mod tests {
         assert_eq!(output.host.as_deref(), Some("x86_64-unknown-linux-gnu"));
         assert_eq!(
             names(&output, true),
-            ["rust", "cargo", "rustup", "wasm-target"]
+            [
+                "rust",
+                "cargo",
+                "rustup",
+                "cc",
+                "pkg-config",
+                "lib-alsa",
+                "lib-udev",
+                "lib-x11",
+                "lib-xi",
+                "lib-xkbcommon",
+                "lib-gl",
+                "wasm-target"
+            ]
+        );
+        assert_eq!(
+            output.checks[3].found.as_deref(),
+            Some("cc (Ubuntu 13.3.0-6ubuntu2) 13.3.0")
         );
         assert_eq!(
             output.checks[0].found.as_deref(),
@@ -359,7 +421,10 @@ mod tests {
             ["rust", "cargo", "rustup", "wasm-target"]
         );
         assert!(output.checks.iter().all(|c| c.help.is_some()));
-        assert!(answer.limits[0].contains("MSYS2 was not checked"));
+        assert_eq!(
+            answer.limits,
+            ["without rustc the host is unknown: MSYS2 and the Linux libraries were not checked"]
+        );
         assert!(text(output).starts_with("doctor: host unknown\n"));
         // Another host's MSVC toolchain needs no MSYS2.
         assert_eq!(checks(&rust("x86_64-pc-windows-msvc")).checks.len(), 4);
@@ -375,5 +440,11 @@ mod tests {
         assert!(ThisMachine.exists(&manifest));
         assert!(!ThisMachine.exists(&manifest.with_file_name("Nope.toml")));
         assert!(!ThisMachine.exists(Path::new(env!("CARGO_MANIFEST_DIR"))));
+        let text = ThisMachine.read(&manifest).unwrap();
+        assert!(text.contains("name = \"shuyi-cli\""), "{text}");
+        assert_eq!(
+            ThisMachine.read(&manifest.with_file_name("Nope.toml")),
+            None
+        );
     }
 }

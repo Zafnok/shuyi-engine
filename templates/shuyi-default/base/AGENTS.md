@@ -32,6 +32,18 @@ these are the ones a game on it keeps.
   `UiAction`); the keys are the player's, in `files/keymap.ron`, and text
   names a key as `{Confirm}`, which shows the player's own key.
 
+## On Linux and in a cloud agent's container
+
+- Run `bash scripts/setup-linux.sh` once before the first build; it is
+  safe to run again. It installs the C linker, `pkg-config`, the system
+  libraries the engine links and opens, and the pinned Rust.
+- `cargo shuyi doctor` builds the game first, so it can't report a
+  missing library; the script installs everything doctor checks.
+- A cloud agent's container starts bare: run the script first, or name
+  it in the agent's setup step.
+- `.devcontainer/devcontainer.json` runs it in a dev container or a
+  GitHub Codespace.
+
 ## The tools
 
 `cargo shuyi <command>` runs the engine's tools on this game, in its own

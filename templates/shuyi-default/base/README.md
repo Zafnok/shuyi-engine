@@ -24,6 +24,8 @@ cargo shuyi                  # the engine's tools on it (AGENTS.md)
 | `shuyi.ron` | The project file of the engine's tools |
 | `AGENTS.md` | How to work on the game, for people and agents |
 | `.claude/skills/` | The engine's skills for coding agents: how to do each kind of task on the game |
+| `scripts/setup-linux.sh` | Sets up Linux to build the game: the C linker, `pkg-config`, the system libraries and the pinned Rust (`bash scripts/setup-linux.sh`) |
+| `.devcontainer/` | A dev container (or a GitHub Codespace) set up by that script |
 
 It is on the engine's short path; `AGENTS.md` says how it grows past it.
 

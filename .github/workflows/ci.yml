@@ -49,8 +49,8 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   test:
@@ -68,9 +68,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Install macroquad system libraries
+      - name: Set up Linux
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+        run: bash scripts/setup-linux.sh
       - run: cargo test --workspace --locked --no-fail-fast
 
   docs:
@@ -86,8 +86,8 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - run: cargo doc --workspace --no-deps --locked
 
   # The examples built for the web, as Pages publishes them (pages.yml);
@@ -105,8 +105,8 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # `check --target` checks the controls in the game's tool program,
       # which builds natively.
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - name: Hello, Grid fits every target it lists
         working-directory: examples/hello-grid
         run: cargo shuyi check --target all
@@ -122,6 +122,13 @@ jobs:
   # of the engine's template (templates/shuyi-default), on this checkout of
   # the engine, passes the gates its own CI runs. It builds in this
   # repository's target folder, which rust-cache keeps.
+  #
+  # It starts from a bare Ubuntu (ticket 2513), as a cloud agent's
+  # container does: scripts/setup-linux.sh installs everything from
+  # nothing, doctor passes, and the game's own copy of the script then
+  # finds nothing to do. In a container job the `github.workspace` and
+  # `runner.temp` contexts are the host's paths, so the steps use the
+  # `$GITHUB_WORKSPACE` and `$RUNNER_TEMP` variables.
   templates:
     name: templates (${{ matrix.template }})
     needs: changes
@@ -131,24 +138,34 @@ jobs:
       matrix:
         template: [grid, blank]
     runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    defaults:
+      run:
+        shell: bash
     env:
-      CARGO_TARGET_DIR: ${{ github.workspace }}/target
       TEMPLATE: ${{ matrix.template }}
     steps:
+      # The image has no git: checkout downloads the commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: rustup show
+      - name: Set up Linux from nothing
+        run: bash scripts/setup-linux.sh
+      - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           key: template-${{ matrix.template }}
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: The engine's doctor passes
+        run: cargo run -q -p shuyi-cli --locked -- doctor
+      # `shuyi lint finds what breaks the game's code` reads its JSON with jq.
+      - run: apt-get install -y --no-install-recommends jq
       - name: Make a game with shuyi new
         run: cargo run -q -p shuyi-cli --locked -- new "$RUNNER_TEMP/demo" --template "$TEMPLATE" --engine-path "$GITHUB_WORKSPACE"
+      - name: The game's own setup script finds nothing to do
+        run: bash "$RUNNER_TEMP/demo/scripts/setup-linux.sh" | tee "$RUNNER_TEMP/setup.txt" && grep -q 'everything was there already' "$RUNNER_TEMP/setup.txt"
       - name: Run its gates
-        working-directory: ${{ runner.temp }}/demo
         run: |
+          cd "$RUNNER_TEMP/demo"
           cargo fmt --all --check
           cargo clippy --workspace --all-targets -- -D warnings
           cargo test --workspace
@@ -156,6 +173,7 @@ jobs:
           cargo shuyi check --target all
           cargo shuyi check-keys
           cargo shuyi lint
+          cargo shuyi doctor
       # Ticket 2548: a long name lays out the same, so the game's own fmt
       # gate passes whatever it is called. It uses the older form, `new
       # <template> <dir>`, which keeps working (ticket 2501).
@@ -170,8 +188,8 @@ jobs:
       # literal text; without `rules` in shuyi.ron, a limit says so.
       - name: shuyi lint finds what breaks the game's code
         if: matrix.template == 'grid'
-        working-directory: ${{ runner.temp }}/demo
         run: |
+          cd "$RUNNER_TEMP/demo"
           cp -r crates "$RUNNER_TEMP/crates" && cp shuyi.ron "$RUNNER_TEMP/shuyi.ron"
           cat >> crates/rules/src/lib.rs <<'RUST'
 
@@ -223,8 +241,8 @@ jobs:
       # the layers test fails on a screen crate under them.
       - name: The rules crate's fence holds
         if: matrix.template == 'grid'
-        working-directory: ${{ runner.temp }}/demo
         run: |
+          cd "$RUNNER_TEMP/demo"
           lib=crates/rules/src/lib.rs
           cp "$lib" "$RUNNER_TEMP/lib.rs"
           cat >> "$lib" <<'RUST'
@@ -306,8 +324,8 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           key: skills-${{ strategy.job-index }}
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - name: Run the worked examples
         run: cargo xtask skill-examples --shard "$SHARD"
 
@@ -372,8 +390,8 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - run: cargo xtask check-modules
       - name: The default engine, each module alone, and every module together
         run: |
@@ -411,8 +429,8 @@ jobs:
       - run: rustup toolchain install nightly-2026-07-06 --profile minimal
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       # `shuyi-app`'s dependencies need them to be documented.
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
         with:
           tool: cargo-semver-checks@0.51.0
@@ -535,8 +553,8 @@ jobs:
       - run: rustup show
       - run: rustup component add llvm-tools-preview
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Install macroquad system libraries
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxi-dev libgl1-mesa-dev libudev-dev
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
       - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
         with:
           tool: cargo-llvm-cov

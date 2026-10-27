@@ -29,7 +29,10 @@ game one part at a time.
 
 1. **Get the engine.** Clone it, and check the toolchain from its
    folder. `doctor` says what is missing and how to install it (on
-   Windows with the GNU toolchain, MSYS2's linker):
+   Windows with the GNU toolchain, MSYS2's linker). On Linux, or in a
+   cloud agent's bare container, run `bash scripts/setup-linux.sh`
+   first: it installs the C linker, `pkg-config`, the system libraries
+   and the pinned Rust, and the new game gets its own copy.
 
    ```bash
    git clone https://github.com/Zafnok/shuyi-engine

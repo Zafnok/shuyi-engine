@@ -424,7 +424,7 @@ account, its identity check and a certificate profile).
    `HOW-TO-OPEN.txt`; 3049's `Info.plist`, `.icns` and version
    resource; 3050's `export.yml` and `release.yml` if it is done; and
    `Probe` in `crates/cli/src/contract/doctor.rs` as it stands (2513
-   may have added `read`).
+   added `read`).
 3. Add `base64 = "0.22"` to `crates/cli/Cargo.toml`, and
    `proptest.workspace = true` to its dev-dependencies. Run `cargo deny
    check licenses`.

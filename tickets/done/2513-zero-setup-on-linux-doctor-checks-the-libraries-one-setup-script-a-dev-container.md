@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-26
 ---
 
 # 2513 — Zero setup on Linux: doctor checks the libraries, one setup script, a dev container
@@ -364,28 +364,28 @@ what they say of 2513's dev container at it.
 
 ## Acceptance criteria
 
-- [ ] On a Linux host, `shuyi doctor` lists every check of the table
+- [x] On a Linux host, `shuyi doctor` lists every check of the table
       in order, and each failed one has a `help` for the distro's
       package manager, without `sudo` as root (unit tests on fakes).
-- [ ] The "are not checked" limit is gone, and with no `rustc` the limit
+- [x] The "are not checked" limit is gone, and with no `rustc` the limit
       says the Linux libraries were not checked.
-- [ ] `scripts/setup-linux.sh` exists in the engine and in every
+- [x] `scripts/setup-linux.sh` exists in the engine and in every
       template, byte-equal, with no `\r`, and its `APT`, `DNF` and
       `PACMAN` lines equal the table's names in order (a test).
-- [ ] No `apt-get install` line in `.github/workflows/*.yml` or in a
+- [x] No `apt-get install` line in `.github/workflows/*.yml` or in a
       template's workflows names a package of the table (a test), and
       every Linux job that built with the pasted line calls the script.
-- [ ] CI's `templates` job passes in `ubuntu:24.04` for both templates:
+- [x] CI's `templates` job passes in `ubuntu:24.04` for both templates:
       the script from nothing, the engine's `shuyi doctor`, `shuyi new`,
       the game's script again, the game's gates and its `cargo shuyi
       doctor`.
-- [ ] `.devcontainer/devcontainer.json` exists in the engine and in every
+- [x] `.devcontainer/devcontainer.json` exists in the engine and in every
       template (`shuyi new` writes it), parses as JSON, and its `image`
       and `postCreateCommand` equal the engine's (a test).
-- [ ] The README has the Codespaces link, the Linux line and the map
+- [x] The README has the Codespaces link, the Linux line and the map
       row; the engine's `AGENTS.md`, the templates' `AGENTS.md` and
       `README.md`, and `docs/contract.md` say what Scope says.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -425,4 +425,88 @@ what they say of 2513's dev container at it.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done.**
+
+- `crates/cli/src/contract/doctor/linux.rs`: `ROWS`, the table, as
+  Scope gives it (every name checked: Launchpad's noble/amd64 binaries,
+  Fedora's rawhide metadata and packages search, Arch's package search,
+  and Bevy's list; none needed a correction). `Find::Run` for programs
+  and `pkg-config` modules, `Find::Soname` for `ldconfig -p` (run once)
+  then the four library folders. The distribution comes from `ID`, then
+  each word of `ID_LIKE`; a failed row's help is one install command in
+  backticks, without `sudo` when `id -u` prints `0`, then the script
+  hint; an unknown distribution or no os-release gets all three.
+- `doctor.rs`: `Probe::read`, the Linux checks after `rustup` on a
+  host with `-linux-`, the old limit gone and the no-`rustc` limit
+  naming the Linux libraries. `Fake` gains texts to read (`reading`),
+  and it, `with` and `rust` are `pub(super)` for `linux.rs`'s tests.
+- `scripts/setup-linux.sh`, byte-equal in `templates/shuyi-default/base/scripts/`.
+  It checks what is installed first (`dpkg-query`, `rpm -q`,
+  `pacman -Q`) and installs only what is missing, so a second run
+  installs nothing and skips `apt-get update` too. It installs rustup
+  with `--no-self-update` on `rustup toolchain install`, so it never
+  updates the user's rustup.
+- `.devcontainer/devcontainer.json` in the root and the template's
+  `base` part (`"{{name}}"` there). Image tag `ubuntu-24.04` checked on
+  MCR's tag list.
+- Tests in `new/tests.rs`: `every_setup_script_is_the_engines_and_installs_doctors_table`,
+  `every_dev_container_is_set_up_as_the_engines` (it also compares
+  `remoteEnv` and `customizations`) and
+  `no_workflow_installs_doctors_packages_by_hand`, over every short name
+  of the built-in template (`template.short_names`, composed through
+  `plan()`). The template's golden plans (`plans.golden`) are re-blessed
+  for the new files.
+- CI: the nine "Install macroquad system libraries" steps in `ci.yml`
+  (three more than the ticket counted: `modules`, `api` and `coverage`
+  came since), the four in `mutants.yml` and the template's
+  one are `Set up Linux`. The `templates` job runs in
+  `container: ubuntu:24.04` as Scope's steps say.
+- Text: README (Codespaces link, Linux line, map row), `AGENTS.md`,
+  the template's `AGENTS.md` and `README.md`, `docs/contract.md`, and
+  also `SH1003.md` and the `shuyi-new-game` skill (the `document`
+  skill: the problem page and the skill that teaches the first setup
+  name what doctor checks).
+
+**Run where.** Docker on Nick's machine: the script from nothing and
+again in `ubuntu:24.04` (43 s, then 0 s with nothing installed),
+`fedora:latest` and `archlinux:latest`, each followed by `cargo run -p
+shuyi-cli -- doctor`, which passed every check; in
+`mcr.microsoft.com/devcontainers/base:ubuntu-24.04` as its `vscode`
+user (the `sudo` path), doctor passing; and in `ubuntu:24.04`, a game
+made with `shuyi new --template blank`, whose own script found nothing
+to do and whose `cargo shuyi doctor` passed. shellcheck finds nothing.
+
+**Deviations.**
+
+- **pacman runs `-Syu --needed --noconfirm`**, not `-S`: Arch's image
+  ships with no package databases, so `-S` found no package, and Arch
+  supports only syncing with a full upgrade (`-Sy` alone is a partial
+  upgrade). Doctor's help keeps `pacman -S --needed`, right on a synced
+  system.
+- **curl is installed only when `curl` is missing**: Fedora's image has
+  `curl-minimal`, which gives `curl` under another package's name.
+- **The `templates` job installs `jq` after the script**
+  (`apt-get install -y --no-install-recommends jq`): its `shuyi lint`
+  step reads JSON with `jq`, which the bare image lacks. It names no
+  package of the table. It also sets `shell: bash` for the job (the
+  steps use `<<<`), and the game's script step checks that it printed
+  "everything was there already".
+- **The PR is past 600 lines, and kept whole.** About 1000 changed lines
+  without the byte-equal copy, of which about 340 are tests. The cut
+  Scope names (the dev container and the Codespaces link) is under 60
+  of them, so it would not bring the PR near 600, and it would cost a
+  ticket and two `blocked_by` edits for nothing.
+- **`playtest.yml`'s `system-packages` default** still lists the apt
+  packages: it is an input of the reusable workflow, run in the
+  caller's repository, which may have no script (Visions of Shuyi).
+  The workflow test checks that each package of the default is a row's
+  apt package, so the two can't drift.
+
+**For the game.** Visions of Shuyi builds unchanged. Its CI may call
+the engine's script or keep its apt line; that is the game's choice.
+
+**Follow-ups.** None new. 2531 (MCP in the dev containers) and 2802 (the
+book's Linux line and Codespaces link) do what they said; 2531 now names
+this ticket's files and test.
+
+Breaking: shuyi-cli: `contract::doctor::Probe::read`, a new required method of `Probe`: nothing; no game implements `Probe` (only `shuyi-cli`'s tests do), so a game builds unchanged
