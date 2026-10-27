@@ -523,6 +523,79 @@ fn focus_and_battery_go_to_the_game_and_the_window_shortcut_flips_fullscreen() {
     );
 }
 
+/// The frame cap goes to the backend with its serial; the backend's report
+/// reaches the game before the next update, and confirms a request.
+#[test]
+fn the_backends_report_of_its_pacing_confirms_a_request_for_a_cap() {
+    use shuyi_ui::frame_cap::{CapStatus, FrameCap, Pacing};
+    let mut app = App::running(toy::game());
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    assert_eq!(p.frame_cap(), Some((FrameCap::Fps(60), 0)));
+    let game = app.game_mut().unwrap();
+    let request = game.ctx_mut().request_frame_cap(FrameCap::Fps(30));
+    let _ = app.frame(&mut p, Millis(17));
+    assert_eq!(p.frame_cap(), Some((FrameCap::Fps(30), 1)));
+    let status = |app: &App<Toy>| running(app).ctx().frame_cap_status(request);
+    assert_eq!(status(&app), CapStatus::Pending);
+    // Reported between frames: the game has it from the next update on.
+    let mut report = Pacing::new(FrameCap::Fps(30), 1);
+    report.fps = 30;
+    app.set_pacing(report);
+    assert_eq!(status(&app), CapStatus::Pending);
+    // Not while suspended: it waits for a frame that runs the game.
+    p.push_system(SystemEvent::Suspend);
+    let _ = app.frame(&mut p, Millis(34));
+    assert_eq!(status(&app), CapStatus::Pending);
+    p.push_system(SystemEvent::Resume);
+    let _ = app.frame(&mut p, Millis(51));
+    assert_eq!(status(&app), CapStatus::Applied(report));
+    assert_eq!(running(&app).ctx().pacing(), Some(report));
+}
+
+/// Presenting again shows the last frame without running one: no input is
+/// read, nothing steps.
+#[test]
+fn presenting_again_shows_the_last_frame_and_runs_nothing() {
+    let start = Start::new(
+        Card::text("Toy"),
+        |toy: &Toy| toy.look(),
+        |_| Ok(toy::game()),
+    );
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new();
+    app.present_again(&mut p);
+    assert_eq!(p.presented(), 0);
+    let _ = app.frame(&mut p, Millis(0));
+    app.present_again(&mut p);
+    assert_eq!(p.presented(), 2);
+    assert!(matches!(p.last_frame(), Some(Presented::Card(_))));
+    let _ = app.frame(&mut p, Millis(17));
+    let shown = p.last_frame().cloned();
+    p.push_input(&press(Key::F));
+    app.present_again(&mut p);
+    assert_eq!(p.presented(), 4);
+    assert_eq!(p.last_frame().cloned(), shown);
+    assert_eq!(app.frame_number(), 2);
+    // The press waits for the next frame that runs.
+    assert_eq!(running(&app).screens(), ["home"]);
+    let _ = app.frame(&mut p, Millis(34));
+    assert_eq!(running(&app).screens(), ["home", "menu"]);
+    // A failed load's errors, again.
+    let start: Start<Toy> = Start::new(Card::text("Toy"), LookOfToy::look, |_| {
+        Err("broken".to_owned())
+    });
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new();
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(17));
+    app.present_again(&mut p);
+    assert_eq!(
+        p.last_frame(),
+        Some(&Presented::Errors("broken".to_owned()))
+    );
+}
+
 #[test]
 fn a_screen_asks_for_the_system_keyboard_and_hears_back_in_a_later_frame() {
     let (game, log) = steps_game();

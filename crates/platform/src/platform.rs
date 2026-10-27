@@ -12,6 +12,7 @@ pub use shuyi_assets::target::Color;
 use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapSnapshot, MemoryReading, MemoryScopes, PerfClock};
 use shuyi_ui::storage::Storage;
 
@@ -144,14 +145,25 @@ pub struct Frame<'a> {
     /// setting): a windowed backend switches when it changes; a device
     /// that is always full screen ignores it.
     pub fullscreen: bool,
+    /// The most frames a second to show (the player's frame cap): a
+    /// backend that paces its frames paces the next ones to it, and reports
+    /// what it applied before the next frame
+    /// ([`App::set_pacing`](crate::App::set_pacing)).
+    pub frame_cap: FrameCap,
+    /// The serial of the cap's latest change: the backend reports it with
+    /// the cap it applied.
+    pub frame_cap_serial: u32,
 }
 
 impl<'a> Frame<'a> {
-    /// A frame showing `show`, windowed.
+    /// A frame showing `show`, windowed, at the engine's default cap
+    /// ([`FrameCap::DEFAULT`]) with serial 0.
     pub fn new(show: Show<'a>) -> Self {
         Self {
             show,
             fullscreen: false,
+            frame_cap: FrameCap::DEFAULT,
+            frame_cap_serial: 0,
         }
     }
 }
@@ -302,7 +314,12 @@ mod tests {
         assert_eq!((screen.width, screen.height), (400, 240));
         assert_eq!(screen.color, Color::Rgba8);
         assert_eq!(screen.one_bit().color, Color::OneBit);
-        assert!(!Frame::new(Show::Errors("x")).fullscreen);
+        let frame = Frame::new(Show::Errors("x"));
+        assert!(!frame.fullscreen);
+        assert_eq!(
+            (frame.frame_cap, frame.frame_cap_serial),
+            (FrameCap::Fps(60), 0)
+        );
     }
 
     #[test]

@@ -1,7 +1,9 @@
 //! The player's settings: the engine's (the text speed, fullscreen, the
-//! volumes) and the game's own, the map's look; saved as one RON record.
+//! volumes, the frame cap) and the game's own, the map's look; saved as one
+//! RON record.
 
 use serde::{Deserialize, Serialize};
+use shuyi::ui::frame_cap::FrameCap;
 use shuyi::ui::settings::{GameSettings, Settings, TextSpeed};
 
 /// How the stage is drawn: which of the engine's skins.
@@ -43,6 +45,7 @@ struct File {
     fullscreen: bool,
     music_volume: u8,
     sound_volume: u8,
+    frame_cap: FrameCap,
 }
 
 impl Default for File {
@@ -59,6 +62,7 @@ impl File {
             fullscreen: s.fullscreen,
             music_volume: s.music_volume,
             sound_volume: s.sound_volume,
+            frame_cap: s.frame_cap,
         }
     }
 }
@@ -79,6 +83,7 @@ impl GameSettings for Prefs {
         s.fullscreen = file.fullscreen;
         s.music_volume = file.music_volume;
         s.sound_volume = file.sound_volume;
+        s.frame_cap = file.frame_cap;
         Ok(s)
     }
 }
@@ -95,6 +100,7 @@ mod tests {
         s.fullscreen = true;
         s.music_volume = 3;
         s.sound_volume = 7;
+        s.frame_cap = FrameCap::Off;
         let saved = Prefs::to_ron(&s);
         assert_eq!(Prefs::from_ron(&saved), Ok(s));
         assert_eq!(
@@ -102,6 +108,9 @@ mod tests {
             Ok(Settings::<Prefs>::default())
         );
         assert!(Prefs::from_ron("(look: Sideways)").is_err());
+        // A save from before the frame cap reads the default.
+        let old = Prefs::from_ron("Settings(look: Tiles)").map(|s| s.frame_cap);
+        assert_eq!(old, Ok(FrameCap::Fps(60)));
     }
 
     #[test]

@@ -175,7 +175,12 @@ None.
     are in the toy's `en.ron`, and this PR moves them into the engine's
     file with the rest. If not, nothing to do (3047 puts them straight
     in the engine's file).
-  - **2321, 2333, 2340, 2342, 2346, 2349 and 3043, and the parked
+  - **From 2321 (done):** its three keys, `options.row.frame_cap`
+    ("Frame rate"), `options.value.fps` ("{n} FPS") and
+    `options.value.unlimited` ("Unlimited"), are in the toy's `en.ron`
+    and hello-grid's. This PR moves them into the engine's file with the
+    rest, and hello-grid drops them.
+  - **2333, 2340, 2342, 2346, 2349 and 3043, and the parked
     2323** (each adds engine keys): any done first put its English in
     the toy's `en.ron`, and some in hello-grid's too. This PR moves
     those keys into the engine's file with the rest, and hello-grid
@@ -233,7 +238,7 @@ None.
    `crates/assets/src/lang/formats.rs`, `crates/cli/src/lang_status.rs`,
    `crates/cli/src/lib.rs` (lines 60 to 70 and 239 to 260) and
    `crates/ui/src/toy.rs` (lines 339 to 478). Check which of 2006,
-   2226, 2321, 2330, 2333, 2340, 2342, 2346, 2348, 2349, 2353, 2511,
+   2226, 2330, 2333, 2340, 2342, 2346, 2348, 2349, 2353, 2511,
    2802 and 3043 are done.
 2. In `shuyi_assets::lang`, write `merged_english`,
    `Lang::with_engine_english`, `Lang::is_engine`,

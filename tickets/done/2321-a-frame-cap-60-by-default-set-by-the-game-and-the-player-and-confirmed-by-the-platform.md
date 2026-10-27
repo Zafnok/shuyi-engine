@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: sign-off
-completed:
+completed: 2026-10-27
 ---
 
 # 2321 — A frame cap, 60 by default
@@ -252,33 +252,33 @@ choice isn't kept. The game's PR that moves its pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] `Settings::default().frame_cap` is `Fps(60)`; a game that sets
+- [x] `Settings::default().frame_cap` is `Fps(60)`; a game that sets
       `DEFAULT_FRAME_CAP` gets its own; `FrameCap::fps(14)` and
       `fps(1001)` are `Err(OutOfRange)`, `fps(15)` and `fps(1000)` are
       `Ok`.
-- [ ] A toy settings save without `frame_cap` loads with the default;
+- [x] A toy settings save without `frame_cap` loads with the default;
       one with `Off` loads `Off`.
-- [ ] `request_frame_cap` returns `Pending`; after `set_pacing` with its
+- [x] `request_frame_cap` returns `Pending`; after `set_pacing` with its
       serial it's `Applied` with that report; a second request before
       the report makes the first `Superseded` and the second `Applied`
       once its serial is reported.
-- [ ] Changing the cap on the options row bumps the serial and
+- [x] Changing the cap on the options row bumps the serial and
       `FrameOutput` carries the new cap; restore defaults returns it to
       the game's default.
-- [ ] Pacer, with a fake clock: at a 60 cap and 2 ms of work it waits
+- [x] Pacer, with a fake clock: at a 60 cap and 2 ms of work it waits
       about 14.7 ms; when unpaced frames already take 16.7 ms (60 Hz
       vsync) it waits 0; at a 30 cap on that display it waits about one
       more vblank's worth; with `Off` it never waits; after a 100 ms
       frame the next due time is not in the past (no catch-up burst).
-- [ ] Pacer on the web path: a frame before the due time is skipped and
+- [x] Pacer on the web path: a frame before the due time is skipped and
       the `dt` handed on adds up the skipped time.
-- [ ] On the web path, a key pressed and released on skipped frames
+- [x] On the web path, a key pressed and released on skipped frames
       reaches the next frame that runs, once and in order (a unit test
       of the kept events with fake input).
-- [ ] Snapshot of the options screen with the Frame rate row, showing
+- [x] Snapshot of the options screen with the Frame rate row, showing
       "60 FPS".
-- [ ] The completion notes give hello-grid's CPU at 60 and at Unlimited.
-- [ ] All gates in the `run-gates` skill pass, the web build included.
+- [x] The completion notes give hello-grid's CPU at 60 and at Unlimited.
+- [x] All gates in the `run-gates` skill pass, the web build included.
 
 ## Tests required
 
@@ -290,5 +290,104 @@ choice isn't kept. The game's PR that moves its pin follows this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.**
+
+- `shuyi_ui::frame_cap` (new module): `FrameCap` (`Off` or `Fps(u16)`,
+  `#[non_exhaustive]`, default `Fps(60)`, `FrameCap::fps` checks 15 to
+  1000, `limit` holds an out-of-range cap to that range, `key` and
+  `name` for the options screen), `CapError::OutOfRange`, `CHOICES`,
+  `CapRequest`, `CapStatus` and `Pacing` (`#[non_exhaustive]`, built with
+  `Pacing::new`).
+- `GameSettings::DEFAULT_FRAME_CAP` and `FRAME_CAP_CHOICES` (with
+  defaults), `Settings::frame_cap`, saved with `serde(default)` by the
+  `()` form (`EngineOnly`), the toy's `File` and hello-grid's `File`.
+- `Ctx::request_frame_cap`, `frame_cap_status`, `frame_cap_serial` and
+  `pacing`; the serial moves on every change of the cap
+  (`preview_settings`, so `change_settings`, a row and Restore defaults
+  too, and a profile switched to). `Game::set_pacing`;
+  `FrameOutput::frame_cap` and `frame_cap_serial`.
+- `shuyi_platform::Frame::frame_cap` and `frame_cap_serial`,
+  `App::set_pacing` (handed to the game before the next update that
+  runs) and `App::present_again`; `HeadlessPlatform::frame_cap`.
+- `OptionRow::frame_cap()`, on a new `RowValue::choice_shown` (a
+  `Choice` with a `shown` field, so a value can carry a number). The
+  toy's and hello-grid's options screens have the row; their `en.ron`
+  have `options.row.frame_cap`, `options.value.fps` and
+  `options.value.unlimited` (2351 isn't done; it moves them).
+- `shuyi-app`: `Window::vsync` (on by default) and `with_vsync`;
+  `window_conf` sets `platform.swap_interval` to `Some(1)` or
+  `Some(0)`. The pacer (`crates/app/src/pacing.rs`) and its tests on a
+  fake clock and display (no vsync, 60 Hz vsync, VRR at 144 Hz), the web
+  skip (`Pacer::web_frame`, `Macroquad::hold_input`,
+  `App::present_again`) and the held input (`Held`).
+- ADR-0050 (ADR-0049 is taken by the open PR for 2009), and
+  `docs/platform-backends.md`'s *The frame cap*.
+
+**Checked by hand.** The web build in the browser pane, frames driven
+from JS at a cap of 30: a skipped frame shows the last picture again,
+and an Up pressed and let go on a skipped frame moved the title menu
+once, on the next frame that ran, about 35 ms later. On the MCP session,
+hello-grid's options show "Frame rate ◄ 60 FPS ►" and Right steps it
+to 120 and 144.
+
+**CPU, hello-grid in release** (Windows 11, a laptop with an RTX 5090
+Laptop GPU and Intel graphics, 24 logical cores, a 240 Hz display),
+on the title screen, 10 s after 4 s of warm-up, from the process's
+CPU cycles (`QueryProcessCycleTime`, at the 2.7 GHz base clock). Task
+Manager's figure, the process's CPU time, charges a thread that a timer
+wakes for the whole clock tick, so it reads the capped game high and the
+vsync-blocked one low; the cycles are what ran.
+
+| | 60 FPS | Unlimited |
+| - | - | - |
+| vsync on (the default) | 4.0–4.7 % of one core, 60 fps | 8.1 % of one core, 240 fps (vsync) |
+| vsync off | 3.7–3.9 % of one core | 29–33 % of one core (GPU-bound) |
+
+Before this ticket a game ran as Unlimited does.
+
+**Deviations.**
+
+- The pacer's tolerance is 1 %, not about 3 %: a 141 cap on a 144 Hz
+  display is 2 % under it, and at 3 % the pacer read the display's vsync
+  as already limiting, so the cap didn't keep a VRR display in its
+  range. The measure is a rolling average, so jitter doesn't count.
+- The pacer leaves the time the swap takes (vsync's wait for the
+  vblank) out of its own wait; without it, a 30 cap on a 60 Hz vsync
+  display slept to the due time, then missed the vblank and ran at 20.
+  The acceptance criterion's "one more vblank's worth" is that wait.
+- The yielding before the due time is 0.5 ms, not 1.5 ms: sleeps
+  overshot by at most 0.8 ms here, and 1.5 ms of yielding cost about
+  6 % of a core more at 60 frames a second than 0.5 ms. The native
+  pacer reads an `Instant` (`pacing::seconds`), since
+  `miniquad::date::now` reads the system's time there, which can jump.
+- `CapStatus::Superseded` also covers a request that applied and was
+  later replaced (ADR-0050, *Consequences*): the context keeps two
+  numbers, not every serial's history.
+- `Ctx::pacing` is an `Option<Pacing>`: `None` until a platform
+  reports, and on one that never does (the headless backend, the
+  Harness).
+- The grid template's `File` no longer exists: the templates take `()`
+  for their settings, whose form saves `frame_cap`.
+- The engine's `()` form, the toy's and hello-grid's take `frame_cap`
+  in their one version (2110, the versions and fixtures, isn't done; its
+  clause now says the field is in version 1).
+
+**Either order.** None of 2110, 2333, 2351, 2518, 3010, 3044 or 2361
+is done; each one's clause now says what 2321 built, and 2361's, 2518's,
+3010's and 3044's parts are theirs.
+
+**Follow-ups.** None written: no way to set vsync after the window opens
+was found (miniquad reads the swap interval only then).
+
+**For the game (its next pin bump):** additive but for
+`FrameOutput`, which the game never builds. Its settings file should
+save `frame_cap` like hello-grid's (`frame_cap: FrameCap` under
+`serde(default)`), and its options can take `OptionRow::frame_cap()`.
+
+Breaking: shuyi-ui: FrameOutput: `#[non_exhaustive]` with two new fields, `frame_cap` and `frame_cap_serial`: read it field by field (only `Game::frame` builds one; the game builds none).
+
+**Nick:** run `cargo run -p hello-grid`, open Task Manager, and compare
+its CPU with the Frame rate row at 60 FPS and at Unlimited. On a display
+with vsync, Unlimited runs at the display's rate; Task Manager may show
+the capped game higher than the cycles above (see the CPU note). Say
+whether "Frame rate", "60 FPS" and "Unlimited" read right.

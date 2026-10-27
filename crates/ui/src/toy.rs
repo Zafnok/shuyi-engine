@@ -39,6 +39,7 @@ use crate::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};
 use crate::frame::color::EngineColor;
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Layer, Rect, Sprite};
+use crate::frame_cap::FrameCap;
 use crate::game::{Game, GameHooks, ScreenHook};
 use crate::screen::{FrameInput, Screen, Transition};
 use crate::screens::key_bindings::KeyBindingsScreen;
@@ -112,6 +113,7 @@ struct File {
     theme: Theme,
     music_volume: u8,
     sound_volume: u8,
+    frame_cap: FrameCap,
     layout: Option<String>,
 }
 
@@ -125,6 +127,7 @@ impl Default for File {
             theme: s.theme,
             music_volume: s.music_volume,
             sound_volume: s.sound_volume,
+            frame_cap: s.frame_cap,
             layout: None,
         }
     }
@@ -141,6 +144,7 @@ impl GameSettings for Prefs {
             theme: s.theme,
             music_volume: s.music_volume,
             sound_volume: s.sound_volume,
+            frame_cap: s.frame_cap,
             layout: s.layout().map(|l| l.name().to_owned()),
         };
         ron::to_string(&file).unwrap_or_default()
@@ -155,6 +159,7 @@ impl GameSettings for Prefs {
         s.theme = file.theme;
         s.music_volume = file.music_volume;
         s.sound_volume = file.sound_volume;
+        s.frame_cap = file.frame_cap;
         Ok(match file.layout.as_deref().and_then(Layout::from_name) {
             Some(layout) => s.with_layout(layout),
             None => s,
@@ -218,7 +223,7 @@ pub const KEY_ROWS: [KeyRow<Action>; 18] = [
 pub const SPEEDS: [&str; 3] = ["toy.speed.calm", "toy.speed.brisk", "toy.speed.wild"];
 
 /// The options screen's rows: the engine's text speed, the toy's speed,
-/// fullscreen, the theme and the volumes; the layout and the Key bindings
+/// fullscreen, the frame cap, the theme and the volumes; the layout and the Key bindings
 /// screen; the toy's level while it has one (not a setting), a row that
 /// refuses, and Restore defaults.
 pub fn option_rows(ctx: &ToyCtx) -> Vec<OptionRow<Toy>> {
@@ -226,26 +231,27 @@ pub fn option_rows(ctx: &ToyCtx) -> Vec<OptionRow<Toy>> {
         OptionRow::text_speed(),
         OptionRow::new(
             "toy.speed",
-            RowValue::Choice {
-                values: |_| SPEEDS.to_vec(),
-                get: |ctx| usize::from(ctx.settings().game.speed),
-                set: |ctx, i| {
+            RowValue::choice(
+                |_| SPEEDS.to_vec(),
+                |ctx| usize::from(ctx.settings().game.speed),
+                |ctx, i| {
                     let speed = u8::try_from(i).unwrap_or(0);
                     ctx.preview_settings(|s| s.game.speed = speed)
                 },
-            },
+            ),
         ),
         OptionRow::fullscreen(),
+        OptionRow::frame_cap(),
         OptionRow::new(
             "options.row.theme",
-            RowValue::Choice {
-                values: |_| vec!["toy.theme.day", "toy.theme.night"],
-                get: |ctx| usize::from(ctx.settings().theme == Theme::Night),
-                set: |ctx, i| {
+            RowValue::choice(
+                |_| vec!["toy.theme.day", "toy.theme.night"],
+                |ctx| usize::from(ctx.settings().theme == Theme::Night),
+                |ctx, i| {
                     let theme = if i == 1 { Theme::Night } else { Theme::Day };
                     ctx.preview_settings(|s| s.theme = theme)
                 },
-            },
+            ),
         ),
         OptionRow::music_volume(),
         OptionRow::sound_volume(),
@@ -273,15 +279,15 @@ pub fn option_rows(ctx: &ToyCtx) -> Vec<OptionRow<Toy>> {
     if ctx.game.level.is_some() {
         let level = OptionRow::<Toy>::new(
             "toy.level",
-            RowValue::Choice {
-                values: |_| SPEEDS.to_vec(),
-                get: |ctx| ctx.game.level.unwrap_or(0),
-                set: |ctx, i| {
+            RowValue::choice(
+                |_| SPEEDS.to_vec(),
+                |ctx| ctx.game.level.unwrap_or(0),
+                |ctx, i| {
                     let changed = ctx.game.level != Some(i);
                     ctx.game.level = Some(i);
                     changed
                 },
-            },
+            ),
         );
         rows.push(level.unsaved());
     }

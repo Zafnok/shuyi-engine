@@ -62,7 +62,8 @@ None.
 - Closures in `RowValue` (a bigger change; the trait covers the case
   found).
 - Any game's rows.
-- The frame cap row (2321) and the text size row (2323): their values
+- The frame cap row (2321's `OptionRow::frame_cap`, on
+  `RowValue::choice_shown`) and the text size row (2323): their values
   come from the game, not from a type's `ALL`, so they stay written by
   hand.
 

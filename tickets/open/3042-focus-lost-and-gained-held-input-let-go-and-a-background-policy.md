@@ -202,8 +202,8 @@ choice, made in its own repository.
     `Background::KEEP_RUNNING.paused().muted()`;
   - `GameSettings::BACKGROUND: Background`, an associated const that
     defaults to `Background::KEEP_RUNNING`, so every game compiles and
-    behaves as before. (2321 adds its frame-cap consts to the same
-    trait.)
+    behaves as before. (2321's frame-cap consts, `DEFAULT_FRAME_CAP`
+    and `FRAME_CAP_CHOICES`, are on the same trait.)
 - **`App` applies it while unfocused** (not while suspended, which
   already stops everything; sound on `Suspend` is 2344's). `App` keeps
   the policy in a private field set from

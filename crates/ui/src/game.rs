@@ -18,6 +18,7 @@ use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 use crate::audio::{AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::frame::glyph_buffer::GlyphBuffer;
+use crate::frame_cap::{FrameCap, Pacing};
 use crate::input::crank::Crank;
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
@@ -80,8 +81,11 @@ impl RawInputEvent {
     }
 }
 
-/// The result of one frame. `V` is the game's voice clip variant.
+/// The result of one frame. `V` is the game's voice clip variant. Only
+/// [`Game::frame`] builds one, so a field may come without breaking a game
+/// (ADR-0039).
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct FrameOutput<'a, V> {
     /// What to show.
     pub buffer: &'a GlyphBuffer,
@@ -107,6 +111,13 @@ pub struct FrameOutput<'a, V> {
     /// How loud voice clips play, 0–1 ([`Ctx::voice_volume`]). The
     /// platform applies it to the voice that is playing too.
     pub voice_volume: f32,
+    /// The most frames a second to show (the player's frame cap): the
+    /// platform paces its frames to it from the next.
+    pub frame_cap: FrameCap,
+    /// The serial of the cap's latest change ([`Ctx::frame_cap_serial`]):
+    /// the platform reports it back once it has applied the cap
+    /// ([`Game::set_pacing`]).
+    pub frame_cap_serial: u32,
 }
 
 /// A screen the engine opens for the game, by name.
@@ -284,6 +295,17 @@ impl<G: GameData> Game<G> {
             playing.and_then(|(cue, elapsed)| MusicClock::from_elapsed(manifest, cue, elapsed));
     }
 
+    /// Tells the game how the platform paces its frames: the frame cap it
+    /// applied with its serial, and the frames a second it measured
+    /// ([`Pacing`]). The platform calls this before every
+    /// [`frame`](Self::frame), as it does
+    /// [`set_music_playing`](Self::set_music_playing), so a request for a
+    /// cap is confirmed ([`Ctx::frame_cap_status`]) and a screen can show
+    /// the frame rate ([`Ctx::pacing`]).
+    pub fn set_pacing(&mut self, report: Pacing) {
+        self.ctx.set_pacing(report);
+    }
+
     /// Says how many fixed simulation steps are due in the next
     /// [`frame`](Self::frame) (ADR-0003 §2): its screen reads them as
     /// [`FrameInput::ticks`]. The platform's `App` counts them from its
@@ -338,6 +360,8 @@ impl<G: GameData> Game<G> {
             sound_volume: self.ctx.settings().sound_factor(),
             fullscreen: self.ctx.settings().fullscreen,
             voice_volume: self.ctx.voice_gain(),
+            frame_cap: self.ctx.settings().frame_cap,
+            frame_cap_serial: self.ctx.frame_cap_serial(),
         }
     }
 

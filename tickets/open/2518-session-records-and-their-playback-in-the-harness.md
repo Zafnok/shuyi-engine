@@ -65,8 +65,9 @@ What Shuyi has (read on 2026-10-20, checked again on 2026-10-21):
   a record no ticket made; ADR-0005 §3's `shuyi-debug-replay` skill says
   "Reproduce a bug from a record".
 - Later tickets build on this one: 2519 (records from real builds),
-  2357 (rewind) and 2905 (the code reload research). 2220, 2321, 2356,
-  2405 and 3053 add their values to the record in either order. 2029
+  2357 (rewind) and 2905 (the code reload research). 2220, 2356,
+  2405 and 3053 add their values to the record in either order, and
+  this ticket adds 2321's `Pacing` (done). 2029
   plays a record in 2018's capture mode. 2514 and 3046 leave work with
   records to follow-ups.
 
@@ -281,11 +282,14 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     `SessionRecord`, and `Played::limits` warns that frames after it may
     differ (the files' new bytes aren't in the record). If not, 2220
     does it (its own clause says so);
-  - with 2321 (the frame cap): if it is done, the `Pacing` `App` hands
-    the game each frame is kept on `FrameRecord` (`pacing:
-    Option<Pacing>`, written when it changes, with serde derives on
-    `Pacing`) and `Playback` hands it back. If not, 2321 adds it (its
-    own clause says so);
+  - **from 2321 (the frame cap, done):** the backend reports its
+    pacing between frames (`App::set_pacing`), and the next frame that
+    runs the game hands it over before the update
+    (`Game::set_pacing`). Keep the `Pacing` the game was given on
+    `FrameRecord` (`pacing: Option<Pacing>`, written when it changes;
+    add serde derives to `shuyi_ui::frame_cap::Pacing` and
+    `FrameCap`, which has them), and `Playback` hands it back through
+    `App::set_pacing`;
   - with 2356 (debug commands): if it is done, a command run between
     frames goes through `App::command(&mut self, line: &str) ->
     Result<String, String>` (new), which runs `Game::command` and notes
@@ -375,8 +379,8 @@ privacy question for Nick, which parked 3047 asks for crash reports).
 6. Add `Harness::start`, `start_recording`, `session`, `from_session`,
    `play_to` and `play_all`, sharing the per-frame bookkeeping of
    `Harness::frame` (the audio log, the screen log, the quit frame).
-7. Add the either-order parts whose partner is done (2220, 2321, 2356,
-   3053), and the link's test (2521, done).
+7. Add the either-order parts whose partner is done (2220, 2356,
+   3053), 2321's `Pacing` part, and the link's test (2521, done).
 8. Write the property, divergence and boundary tests on the toy game
    (`shuyi_ui::toy`). Tests that need a store, a system keyboard or a
    clock that goes back record on `App` and a `HeadlessPlatform` built

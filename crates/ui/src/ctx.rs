@@ -27,6 +27,7 @@ use crate::audio::{AudioConfig, AudioQueue, MusicClock, pick_from_pool};
 use crate::frame::color::{ColorSet, EngineColor, Palette};
 use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::Cell;
+use crate::frame_cap::{CapRequest, CapStatus, FrameCap, Pacing};
 use crate::input::bindings::{LayoutBindings, PadBindings, PlayerKeys};
 use crate::input::help_keys::HelpKeys;
 use crate::input::keymap::Keymap;
@@ -271,6 +272,11 @@ pub struct Ctx<G: GameData> {
     /// written. [`settings`](Self::settings) differs from it while a
     /// previewed change is neither kept nor put back.
     stored_settings: Settings<G::Settings>,
+    /// The serial of the latest change of the frame cap in the settings
+    /// ([`frame_cap_status`](Self::frame_cap_status)): 0 until one.
+    frame_cap_serial: u32,
+    /// The platform's last report of its pacing; `None` until one.
+    pacing: Option<Pacing>,
     /// Whether debug tools are offered: the Debug action
     /// ([`GameHooks::debug`](crate::GameHooks::debug)) and whatever else
     /// the game offers only to developers. On in debug builds and with the
@@ -361,6 +367,8 @@ impl<G: GameData> Ctx<G> {
             profiles,
             stored_settings: settings.clone(),
             settings,
+            frame_cap_serial: 0,
+            pacing: None,
             debug_tools: crate::DEBUG_TOOLS,
             idle_motion: IdleMotion::Off,
             audio,
@@ -852,6 +860,9 @@ impl<G: GameData> Ctx<G> {
         if self.settings == before {
             return false;
         }
+        if self.settings.frame_cap != before.frame_cap {
+            self.next_frame_cap_serial();
+        }
         self.game.apply_settings(&self.settings, Some(&before));
         if self.settings.theme != before.theme {
             self.apply_theme();
@@ -878,6 +889,64 @@ impl<G: GameData> Ctx<G> {
         self.keep_settings()
     }
 
+    /// Asks for `cap` as the frame cap: it becomes the setting and is
+    /// saved, as [`change_settings`](Self::change_settings) does, and takes
+    /// the next serial even if it is the cap already, so the request is
+    /// confirmed either way. The platform applies it from the next frame;
+    /// check where it is with [`frame_cap_status`](Self::frame_cap_status).
+    /// A save that fails is logged, and the cap applies all the same.
+    pub fn request_frame_cap(&mut self, cap: FrameCap) -> CapRequest {
+        let serial = self.frame_cap_serial;
+        if let Err(e) = self.change_settings(|s| s.frame_cap = cap) {
+            let (level, category) = (LogLevel::Warn, LogCategory::Storage);
+            self.log(level, category, format!("{SETTINGS_KEY}: {e}"));
+        }
+        if self.frame_cap_serial == serial {
+            self.next_frame_cap_serial();
+        }
+        CapRequest::new(self.frame_cap_serial)
+    }
+
+    /// Where `request` is: [`CapStatus::Superseded`] once a later change of
+    /// the cap has taken the next serial; [`CapStatus::Applied`], with the
+    /// report, once the platform has reported its serial
+    /// ([`Game::set_pacing`](crate::Game::set_pacing)); else
+    /// [`CapStatus::Pending`].
+    pub fn frame_cap_status(&self, request: CapRequest) -> CapStatus {
+        if self.frame_cap_serial > request.serial() {
+            return CapStatus::Superseded;
+        }
+        match self.pacing {
+            Some(pacing) if pacing.serial >= request.serial() => CapStatus::Applied(pacing),
+            _ => CapStatus::Pending,
+        }
+    }
+
+    /// The serial of the latest change of the frame cap: what the platform
+    /// is handed with the cap, and reports once it has applied it. 0 until
+    /// the cap changes.
+    pub fn frame_cap_serial(&self) -> u32 {
+        self.frame_cap_serial
+    }
+
+    /// The platform's last report of its pacing (the cap it applied, the
+    /// frames a second it measured), for a screen that shows the frame
+    /// rate; `None` until the platform reports, and on a platform that
+    /// never does.
+    pub fn pacing(&self) -> Option<Pacing> {
+        self.pacing
+    }
+
+    /// Takes the platform's report ([`Game::set_pacing`](crate::Game::set_pacing)).
+    pub(crate) fn set_pacing(&mut self, pacing: Pacing) {
+        self.pacing = Some(pacing);
+    }
+
+    /// The frame cap changed: it takes the next serial.
+    fn next_frame_cap_serial(&mut self) {
+        self.frame_cap_serial = self.frame_cap_serial.saturating_add(1);
+    }
+
     /// Builds [`palette`](Self::palette) from the color theme in the
     /// settings. Keeps the palette if the theme has none, or one that
     /// lacks colors.
@@ -900,6 +969,7 @@ impl<G: GameData> Ctx<G> {
     /// or (with a warning) if they can't be read. A layout saved under the
     /// game's old key is taken over ([`saved_layout`](Self::saved_layout)).
     fn load_settings(&mut self) {
+        let cap_before = self.settings.frame_cap;
         let loaded = match self.storage.read(SETTINGS_KEY) {
             Ok(Some(text)) => Settings::from_ron(&text),
             Ok(None) => Ok(Settings::default()),
@@ -917,6 +987,9 @@ impl<G: GameData> Ctx<G> {
         });
         self.settings.layout = self.saved_layout();
         self.stored_settings = self.settings.clone();
+        if self.settings.frame_cap != cap_before {
+            self.next_frame_cap_serial();
+        }
         self.game.apply_settings(&self.settings, None);
         self.apply_theme();
     }

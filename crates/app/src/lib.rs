@@ -87,6 +87,7 @@ mod backend;
 pub mod keys;
 #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 mod link;
+mod pacing;
 pub mod pads;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
@@ -107,6 +108,7 @@ use shuyi_ui::log::{LogLevel, LogLine};
 
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
+use crate::pacing::{Pacer, WebFrame};
 
 /// The window a game opens. Build it with [`Window::new`]: a struct
 /// literal doesn't compile outside this crate, so a new field never breaks
@@ -118,6 +120,7 @@ use crate::backend::Macroquad;
 ///     width: 640,
 ///     height: 480,
 ///     icon: None,
+///     vsync: true,
 /// };
 /// ```
 #[derive(Debug, Clone, Copy)]
@@ -131,11 +134,28 @@ pub struct Window {
     pub height: i32,
     /// The window's icon, if the game has one.
     pub icon: Option<Icon>,
+    /// Whether the window asks the display's driver for vsync: on by
+    /// default ([`Window::new`]), so frames don't tear. The driver may
+    /// ignore it, and it is read only when the window opens, so it is the
+    /// developer's choice, not the player's.
+    ///
+    /// The frame cap (`shuyi_ui::frame_cap`, 60 frames a second unless the
+    /// game or the player says) limits the rate either way, and never
+    /// waits on top of vsync: on a 60 Hz display with vsync on, a cap of 60
+    /// leaves vsync to it. On a VRR display (G-Sync, `FreeSync`, adaptive
+    /// sync) with vsync on, a cap a few frames under the display's refresh
+    /// (141 on a 144 Hz display) keeps it in its variable range, and the
+    /// display follows the frames. A tick stage steps 60 times a second, so
+    /// above 60 each step shows for whole frames: evenly at 120 and 240, but
+    /// 2 and 3 frames in turn at 144 and 165; a cap that is a multiple of 60
+    /// avoids it.
+    pub vsync: bool,
 }
 
 impl Window {
     /// A window titled `title`, `width` × `height` pixels at start, with
-    /// no icon ([`with_icon`](Self::with_icon) gives one).
+    /// no icon ([`with_icon`](Self::with_icon) gives one) and vsync on
+    /// ([`with_vsync`](Self::with_vsync) turns it off).
     #[must_use]
     pub const fn new(title: &'static str, width: i32, height: i32) -> Self {
         Self {
@@ -143,6 +163,7 @@ impl Window {
             width,
             height,
             icon: None,
+            vsync: true,
         }
     }
 
@@ -151,6 +172,13 @@ impl Window {
     #[must_use]
     pub const fn with_icon(self, icon: Option<Icon>) -> Self {
         Self { icon, ..self }
+    }
+
+    /// The window asking for vsync or not ([`vsync`](Self::vsync)):
+    /// usable in a `const` item.
+    #[must_use]
+    pub const fn with_vsync(self, vsync: bool) -> Self {
+        Self { vsync, ..self }
     }
 }
 
@@ -263,6 +291,11 @@ pub fn window_conf(window: &Window) -> Conf {
         // integer scale is in real pixels (see render.rs).
         high_dpi: true,
         icon: window.icon.and_then(|icon| window_icon(&icon)),
+        platform: miniquad::conf::Platform {
+            // A hint the driver may ignore; miniquad reads it only here.
+            swap_interval: Some(i32::from(window.vsync)),
+            ..Default::default()
+        },
         ..Default::default()
     }
 }
@@ -286,6 +319,14 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// line, a broken asset), and each frame after, `App` reads the keyboard
 /// and controllers, steps the game, plays its sounds, music and voices and
 /// draws its frame. Closing the window lets the game save first.
+///
+/// Frames come no faster than the game's frame cap (`shuyi_ui::frame_cap`,
+/// 60 a second unless the game or the player says): after each frame is
+/// drawn, the loop waits until the next is due, unless vsync or the
+/// machine already keeps them that far apart, and reports how it paces to
+/// the game before the next. On the web the browser sets the rate: a frame
+/// before the due time shows the last one again, and its input waits for
+/// the next frame that runs.
 pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     // Voices (game ADR-0046): none, and nothing said, without the folder.
     let voice_dir = config
@@ -305,11 +346,24 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     backend::tag_decodes();
     let mut platform = Macroquad::new(&mut config);
     let mut app = App::new(start);
+    let mut pacer = Pacer::new(config.window.vsync);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
     let mut link = link::start(config.window.title);
     #[cfg(not(target_arch = "wasm32"))]
     let mut perf_file = perf_file::start();
     loop {
+        let start = pacing::seconds();
+        if cfg!(target_arch = "wasm32") {
+            if pacer.web_frame(start) == WebFrame::Skip {
+                platform.hold_input();
+                app.present_again(&mut platform);
+                next_frame().await;
+                continue;
+            }
+            app.set_pacing(pacer.pacing());
+        } else {
+            pacer.start(start);
+        }
         let now = Millis::from_secs_f64(miniquad::date::now());
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         if let Some(link) = &mut link {
@@ -342,8 +396,24 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         if outcome == FrameOutcome::Quit && !cfg!(target_arch = "wasm32") {
             break;
         }
+        pace(&mut pacer, &platform, &mut app);
         next_frame().await;
     }
+}
+
+/// After a frame is drawn: the cap it asked for applies from the next, and
+/// on native the loop waits until the next is due, then reports how it
+/// paces to `app` (on the web the report goes before each frame that runs).
+fn pace<G: GameData>(pacer: &mut Pacer, platform: &Macroquad, app: &mut App<G>) {
+    let (cap, serial) = platform.frame_cap();
+    pacer.set_cap(cap, serial);
+    if cfg!(target_arch = "wasm32") {
+        return;
+    }
+    let wait = pacer.wait(pacing::seconds());
+    pacing::sleep(wait, pacing::seconds);
+    pacer.waited(pacing::seconds());
+    app.set_pacing(pacer.pacing());
 }
 
 /// Sends the link's answers due after `app`'s frame, and the window's
@@ -505,6 +575,21 @@ mod tests {
     /// A window built in a `const` item, as games build theirs.
     const ICONED: Window =
         Window::new("A game", 640, 480).with_icon(Some(Icon::new(b"small", b"medium", b"big")));
+
+    /// A window without vsync, built in a `const` item.
+    const NO_VSYNC: Window = Window::new("A game", 640, 480).with_vsync(false);
+
+    #[test]
+    fn a_window_asks_for_vsync_unless_told_not_to() {
+        let window = Window::new("A game", 640, 480);
+        assert!(window.vsync);
+        assert_eq!(window_conf(&window).platform.swap_interval, Some(1));
+        let off = NO_VSYNC;
+        assert!(!off.vsync);
+        assert_eq!(window_conf(&off).platform.swap_interval, Some(0));
+        assert!(off.with_vsync(true).vsync);
+        assert!(basic_window(&basic()).vsync);
+    }
 
     #[test]
     fn a_new_window_has_no_icon_and_with_icon_sets_one() {

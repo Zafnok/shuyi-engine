@@ -1,0 +1,61 @@
+---
+source: examples/hello-grid/tests/it/options.rs
+expression: snapshot
+---
+                                                
+                                                
+                                                
+┌─ Options ────────────────────────────────────┐
+│                                              │
+│   Text speed              ◄ Normal ►         │
+│   Frame rate                60 FPS           │
+│   Map look                  Glyphs           │
+│                                              │
+│   Key bindings                               │
+│                                              │
+│   Restore defaults                           │
+│                                              │
+│                                              │
+│                                              │
+│                                              │
+│                                              │
+│                                              │
+│                                              │
+└──────────────────────────────────────────────┘
+                                                
+                                                
+                                                
+  arrows move · Enter change · Backspace back   
+--- colours ---
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+bbcccccccccbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddeeeeeeeeeeeedddddddddddddfdccccccdfdddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bddddddddddddddddddddddddddddddddddddddddddddddb
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aagggggggggggggggggggggggggggggggggggggggggggaaa
+--- legend ---
+a = fg:text bg:background
+b = fg:border bg:panel
+c = fg:highlight bg:panel
+d = fg:text bg:panel
+e = fg:panel bg:focus
+f = fg:text_dim bg:panel
+g = fg:text_dim bg:background

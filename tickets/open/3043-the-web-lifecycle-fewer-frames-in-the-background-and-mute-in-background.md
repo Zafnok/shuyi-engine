@@ -176,8 +176,14 @@ Visions of Shuyi.
   - `templates/grid` sets the same in its `impl GameSettings`
     (`crates/game/src/settings.rs`). The template files aren't formatted
     by `cargo fmt --all`; CI's template job checks them;
-  - names here are 2321's and 3042's as their tickets write them: use
-    what they built.
+  - names here are 3042's as its ticket writes them: use what it built.
+    **From 2321 (done):** the pacer is `shuyi_app`'s private
+    `pacing::Pacer` (`set_cap`, `start`, `wait`, `waited`, `web_frame`
+    and `pacing`), handed the cap in `run`'s `pace` from the frame
+    presented (`Macroquad::frame_cap`); its tests' fake clock is the
+    `Machine` in `crates/app/src/pacing.rs`. The web skip is
+    `WebFrame::Skip`: `Macroquad::hold_input` keeps that frame's input
+    and system events, and `App::present_again` shows the last frame.
 - **The player's Mute in background:**
   - `Settings::mute_in_background: bool`
     (`crates/ui/src/settings.rs`), whose default is the game's
@@ -246,8 +252,8 @@ Visions of Shuyi.
   there. The API is additive (`Settings::mute_in_background`, a public
   field of a struct no game builds by literal since `layout` is
   private; `OptionRow::mute_in_background`; `Background::with_frame_cap`;
-  `Pacing::background`). A struct literal of `Pacing`, if 2321 left it
-  open to one, needs the new field. The game's PR that moves the pin
+  `Pacing::background`). `Pacing` is `#[non_exhaustive]`, built with
+  `Pacing::new` (2321), so the new field breaks nothing. The game's PR that moves the pin
   follows this one. The new public items follow ADR-0039.
 - **Size.** If the PR passes about 600 changed lines (snapshots and
   fixtures aside), the player's Mute in background (the field, the row,

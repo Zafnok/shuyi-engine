@@ -31,6 +31,7 @@ use core::time::Duration;
 
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::Rgb;
+use shuyi_ui::frame_cap::Pacing;
 use shuyi_ui::input::frame_seconds;
 use shuyi_ui::log::{LOG_LINES, LogCategory, LogFilter, LogLevel, LogLine, LogRing};
 use shuyi_ui::perf::{
@@ -407,6 +408,9 @@ pub struct App<G: GameData> {
     /// [`take_new_log`]: Self::take_new_log
     log_read: u64,
     perf: Perf,
+    /// The backend's report of its pacing, until the next frame that runs
+    /// the game hands it over ([`set_pacing`](Self::set_pacing)).
+    pacing: Option<Pacing>,
 }
 
 impl<G: GameData> App<G> {
@@ -463,6 +467,7 @@ impl<G: GameData> App<G> {
             log_filter: LogFilter::default(),
             log_read: 0,
             perf: Perf::new(),
+            pacing: None,
         }
     }
 
@@ -481,6 +486,33 @@ impl<G: GameData> App<G> {
         self.begin(platform);
         let elapsed = self.clock.at(now);
         self.end(platform, elapsed)
+    }
+
+    /// Takes the backend's report of how it paces the frames: the frame
+    /// cap it applied, with the serial the cap came with on the last frame
+    /// it was given ([`Frame::frame_cap_serial`]), and what it measured. A
+    /// backend that paces calls this between frames, and the next frame
+    /// that runs the game hands it over before the update
+    /// ([`Game::set_pacing`]), so a request for a cap is confirmed. A
+    /// later report before that frame replaces it.
+    pub fn set_pacing(&mut self, pacing: Pacing) {
+        self.pacing = Some(pacing);
+    }
+
+    /// Presents the last frame again without running one: no input is
+    /// read, nothing steps and no time passes for the game. For a backend
+    /// whose display wants a picture on a frame the game isn't due (the
+    /// web under a frame cap, where the browser sets the rate and clears
+    /// the picture each frame). Before anything is shown, shows nothing.
+    pub fn present_again(&mut self, platform: &mut impl Platform) {
+        match &self.phase {
+            Phase::Loading {
+                card, shown: true, ..
+            } => platform.present(&Frame::new(Show::Card(card))),
+            Phase::Loading { .. } => {}
+            Phase::Running(game) => present_tagged(platform, game, self.look),
+            Phase::Failed(errors) => platform.present(&Frame::new(Show::Errors(errors))),
+        }
     }
 
     /// Runs one frame `seconds` after the last on a clock of the driver's
@@ -681,6 +713,9 @@ impl<G: GameData> App<G> {
                 }
             }
             Phase::Running(game) if !self.quit => {
+                if let Some(pacing) = self.pacing.take() {
+                    game.set_pacing(pacing);
+                }
                 step(platform, game, &mut self.lists, elapsed);
                 if game.quit_requested() {
                     platform.audio().stop_all();
@@ -935,7 +970,7 @@ fn step<G: GameData>(
 }
 
 /// Presents `game`'s last frame, on its background, in the window mode
-/// its settings ask for.
+/// and at the frame cap its settings ask for.
 fn present_game<G: GameData>(
     platform: &mut impl Platform,
     game: &Game<G>,
@@ -949,6 +984,8 @@ fn present_game<G: GameData>(
     };
     let mut frame = Frame::new(show);
     frame.fullscreen = ctx.settings().fullscreen;
+    frame.frame_cap = ctx.settings().frame_cap;
+    frame.frame_cap_serial = ctx.frame_cap_serial();
     platform.present(&frame);
 }
 
