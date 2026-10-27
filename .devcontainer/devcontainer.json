@@ -1,7 +1,7 @@
 {
   "name": "Shuyi Engine",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
-  "postCreateCommand": "bash scripts/setup-linux.sh",
+  "postCreateCommand": "bash scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && cargo run -q -p shuyi-cli -- mcp install --yes --command \"cargo run -q -p shuyi-cli --\"",
   "remoteEnv": {
     "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin"
   },
