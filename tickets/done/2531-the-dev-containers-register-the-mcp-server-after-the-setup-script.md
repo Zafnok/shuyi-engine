@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: ["2513", "1133"]
 nick_input: none
-completed:
+completed: 2026-10-27
 ---
 
 # 2531 — The dev containers register the MCP server
@@ -91,11 +91,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The engine's and every template's `postCreateCommand` run `mcp
+- [x] The engine's and every template's `postCreateCommand` run `mcp
       install --yes` after the setup script.
-- [ ] CI's templates job still passes (a template's `devcontainer.json`
+- [x] CI's templates job still passes (a template's `devcontainer.json`
       is plain JSON with `{{name}}` its only placeholder).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -112,5 +112,14 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+The engine's and the template's `postCreateCommand` now run the setup
+script, source `"$HOME/.cargo/env"`, then `mcp install --yes` (the
+engine's with `--command "cargo run -q -p shuyi-cli --"`, the template's
+as `cargo shuyi mcp install --yes`). `every_dev_container_is_set_up_as_the_engines`
+checks the exact strings; `image`, `remoteEnv` and `customizations` still
+equal the engine's. The README's Codespaces paragraph and the template's
+`AGENTS.md` `mcp install` row say the container registers the server.
+No container runtime was at hand, so the container itself was not opened.
+`--yes` asks nothing, so `mcp install` needed no change. No follow-ups.
+
+Breaking: none.

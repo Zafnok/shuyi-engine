@@ -1,7 +1,7 @@
 {
   "name": "{{name}}",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
-  "postCreateCommand": "bash scripts/setup-linux.sh",
+  "postCreateCommand": "bash scripts/setup-linux.sh && . \"$HOME/.cargo/env\" && cargo shuyi mcp install --yes",
   "remoteEnv": {
     "PATH": "${containerEnv:PATH}:/home/vscode/.cargo/bin"
   },
