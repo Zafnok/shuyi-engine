@@ -2,7 +2,6 @@
 title = "The website is up"
 date = 2026-10-26
 description = "Shuyi Engine has a home: what it is, its examples, and what is coming."
-draft = true
 +++
 
 Shuyi Engine has a website. It says what the engine is and what it can
