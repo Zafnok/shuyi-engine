@@ -166,11 +166,12 @@ None.
   change them to the book's chapters, and the `//~` texts of its
   fixtures (`crates/xtask/compile-messages/`) with them. If 2510 isn't
   done, nothing here (2510 links the chapters itself).
-- **Fast compiles (2009):** if 2009 is done, move its "Fast compiles"
-  section from `README.md` into a page of the book (the numbers, the
-  setup and the nightly-only options), link it from the quick start,
-  and leave a link in the README in its place. If not, nothing here
-  (2009 writes the page in the book).
+- **From 2009 (done):** move the "Fast compiles" section of `README.md`
+  into a page of the book (the numbers, the setup and the nightly-only
+  options), link it from the quick start, and leave a link in the
+  README in its place. The website's "Fast compiles" card
+  (`site/data/features.toml`) links the README's section: point it at
+  the page.
 - **Either order with 2108:** if 2108 is done, add a twelfth chapter,
   "An optional ECS", after chapter 11 and before 2004's guides:
   `shuyi-ecs`, `EcsRules`, the parallel schedule and `ecs-garden`, with
@@ -199,7 +200,7 @@ None.
 ## Implementation steps
 
 1. Read the README, the ADRs named above, and `docs/contract.md`.
-   Check which of 2009, 2109, 2334, 2351, 2510 and 3050 are done.
+   Check which of 2109, 2334, 2351, 2510 and 3050 are done.
 2. Write the snippets crate and the shortcode, with one chapter's
    snippets.
 3. Write the chapters, each with its snippets.

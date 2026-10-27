@@ -89,10 +89,10 @@ link_text = "Ticket 2905"
 
 [[feature]]
 title = "Fast compiles"
-text = "Compile times measured and gated in CI, and a fast setup in every new game's template."
-status = "Planned"
-link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Ticket 2009"
+text = "A new game rebuilds in about a second on Linux and two on Windows, on stable Rust, and CI holds every change to that budget."
+status = "Ready"
+link = "README.md#fast-compiles"
+link_text = "The numbers and the setup"
 
 [[feature]]
 title = "Free and open source"

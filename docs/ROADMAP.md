@@ -132,10 +132,10 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | Sound | `shuyi-app` today (cues, variants, fades, streamed music), 3029 for every backend; 2341–2345 and 2225 (crossfades, groups and ducking, handles, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
 | Hot reload of assets | 2220 (every asset kind), 1124's maps through it | after MVP |
 | Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
-| Fast compiles | 2009 (measured, gated, a fast setup in the templates) | after MVP |
+| Fast compiles | 2009 (measured, gated, a fast setup in the templates; README.md, *Fast compiles*) | done |
 | Free and open source, MIT or Apache 2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | done |
 
-The order, after the MVP: 2009 and 2220 first (each makes every later
+The order, after the MVP: 2220 first, after 2009 (done; each makes every later
 ticket nicer to work on), then 2329 and 2222, then 2355, then 2904,
 2107, 2108 and 2221, then 2330 and 2905.
 
@@ -289,8 +289,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2526 | Outside modules: `shuyi add` of a crate at a version or revision, read with no code run |
 | 2809 | An Assets page on the website, with other people's work if Nick says yes |
 
-The order, after the MVP, beside the Bevy tickets above (2009 and 2220
-stay first):
+The order, after the MVP, beside the Bevy tickets above (2220
+stays first):
 
 1. What lets the rest be checked: 2332, 2514, 2116, 2020, 2524, 2111
    and 2518 (which waits for 2111).

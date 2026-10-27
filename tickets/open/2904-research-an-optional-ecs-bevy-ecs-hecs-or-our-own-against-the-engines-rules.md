@@ -73,7 +73,9 @@ None. This is technical.
   4. **The web build** without `wasm-bindgen` (game ADR-0034,
      `AGENTS.md`, *Environment*);
   5. **Compile time:** the rebuild of a small game using it, measured
-     with 2009's tool if done (else `cargo build --timings`);
+     as `cargo xtask compile-times` (2009, done) times a new game's
+     (cargo's `Finished … in` after a one-line change, the median of
+     three);
   6. **Size:** the web build's `.wasm` with and without it;
   7. **Speed:** a benchmark of 1 000 and 10 000 entities with three
      systems (move, collide on a grid, count), single-threaded, and
