@@ -213,8 +213,7 @@ None. The sentence this supersedes is Claude's own technical choice
   placement 1120's painters use (camera, parallax, zoom), carried in
   `Fx` all the way to window pixels and rounded once there, halves up.
   - Both painters place a smoothed layer's items with it: `shuyi-app`'s
-    renderer, and the software painter (2332's `shuyi_ui::frame::raster`
-    if 2332 is done; else `Painter` in `crates/cli/src/frame_png.rs`).
+    renderer, and the software painter (2332's `shuyi_ui::frame::raster`).
   - A layer with `Off` is placed exactly as 1120 places it, so its
     pixels don't change.
   - The scale is always whole: 2333's `Fit` mode draws the frame at a

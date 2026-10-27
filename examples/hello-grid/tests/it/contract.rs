@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use hello_grid::tools::{HelloTools, StageRecord};
+use shuyi::core::ContentHash;
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::check::{CheckInput, check};
@@ -257,6 +258,66 @@ fn replay_hashes_every_step_and_finds_where_two_records_part() {
     );
     let missing = replay(&HelloTools, &dir, &replay_of("nope.ron", None));
     assert!(missing.error.unwrap().starts_with("nope.ron: "));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_record_made_with_other_content_is_refused_unless_any_stamp() {
+    let dir = scratch("stamps");
+    let mut one_game = BotsInput::default();
+    one_game.games = 1;
+    let text = bots(&HelloTools, &one_game).result.unwrap().plays[0]
+        .record
+        .clone()
+        .unwrap();
+    // The bots stamp their records with this build, which replays them.
+    let mut record: StageRecord = ron::from_str(&text).unwrap();
+    let now = hello_grid::made();
+    assert_eq!(record.made.as_ref(), Some(&now));
+    assert_eq!(HelloTools.made(), Some(now.clone()));
+    fs::write(dir.join("this.ron"), &text).unwrap();
+    let answer = replay(&HelloTools, &dir, &replay_of("this.ron", None));
+    assert!(answer.ok, "{answer:?}");
+    assert_eq!(answer.result.unwrap().runs[0].made, Some(now.clone()));
+    // Made with other content: refused, naming the record and both
+    // fingerprints.
+    let mut other = now.clone();
+    other.content = ContentHash(now.content.0 ^ 1);
+    record.made = Some(other.clone());
+    fs::write(dir.join("other.ron"), ron::to_string(&record).unwrap()).unwrap();
+    let answer = replay(&HelloTools, &dir, &replay_of("other.ron", None));
+    assert!(!answer.ok);
+    assert_eq!(answer.code.as_deref(), Some("SH3007"));
+    let error = answer.error.unwrap();
+    assert!(
+        error.starts_with(&format!(
+            "other.ron was made with content {}; this build: content {}",
+            other.content, now.content
+        )),
+        "{error}"
+    );
+    // With `any_stamp`, it runs, and the limits say why it may differ.
+    let mut anyway = replay_of("other.ron", None);
+    anyway.any_stamp = true;
+    let answer = replay(&HelloTools, &dir, &anyway);
+    assert!(answer.ok, "{answer:?}");
+    assert!(
+        answer.limits[0].ends_with("a difference may come from that, not a desync"),
+        "{:?}",
+        answer.limits
+    );
+    // A record without a stamp, as written before stamps, runs as before,
+    // and says so.
+    let commands = ron::to_string(&record.commands).unwrap();
+    let unstamped = format!("(seed: {}, commands: {commands})", record.seed);
+    fs::write(dir.join("none.ron"), unstamped).unwrap();
+    let answer = replay(&HelloTools, &dir, &replay_of("none.ron", None));
+    assert!(answer.ok, "{answer:?}");
+    assert!(
+        answer.limits[0].starts_with("none.ron has no stamp"),
+        "{:?}",
+        answer.limits
+    );
     fs::remove_dir_all(&dir).unwrap();
 }
 

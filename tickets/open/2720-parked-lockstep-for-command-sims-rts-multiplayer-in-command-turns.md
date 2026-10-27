@@ -54,11 +54,8 @@ None.
 - **`shuyi_net::lockstep::CommandLockstep<S: CommandSim>`**:
   - settings: `steps_per_turn` (default 4) and `delay_turns` (default 2);
   - 1140's handshake (the peers' `Made` stamps from 2111, and the
-    seed), plus the two settings, which must match. **Either order
-    with 2111:** if 2111 is done, the handshake carries each peer's
-    `Made`; if not, 1140's handshake as it is (the engine version and
-    a content hash the game supplies), and 2111 moves it to `Made`
-    (its clause on the parked records);
+    seed), plus the two settings, which must match. The handshake
+    carries each peer's `Made` (`shuyi_core::Made`, done in 2111);
   - **sending:** a command issued during turn `t` is scheduled for the
     first step of turn `t + delay_turns`. Each peer sends one
     `TurnPacket { turn, player, commands, hash }` per turn on the

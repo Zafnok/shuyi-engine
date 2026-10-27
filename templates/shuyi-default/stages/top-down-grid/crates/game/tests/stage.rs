@@ -127,6 +127,9 @@ fn the_bots_play_to_an_end_and_their_records_replay() {
     assert!(answer.ok, "{answer:?}");
     let run = &answer.result.unwrap().runs[0];
     let parsed: StageRecord = ron::from_str(&record).unwrap();
+    // The bots stamp their records with this build, and replay runs them.
+    assert_eq!(parsed.made, Some(game::made()));
+    assert_eq!(run.made, parsed.made);
     assert_eq!(run.steps.len(), parsed.commands.len() + 1);
     // The record replays to the outcome the bots saw.
     let map = game::game().data().unwrap().own.map;

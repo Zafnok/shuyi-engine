@@ -135,9 +135,8 @@ font (game#0236).
 5. **Renderers.** `shuyi-app` draws a wide glyph as one 16 × 16 quad
    over both cells and skips continuation cells. The one-bit renderer
    draws its two halves. `frame-png` draws the same as `shuyi-app`.
-   **Either order with 2332:** if 2332 is done, the software painter is
-   `crates/ui/src/frame/raster.rs`; if not, `crates/cli/src/frame_png.rs`,
-   and 2332 moves it. **Either order with 2018:** if 2018 is done, add a
+   The software painter is
+   `crates/ui/src/frame/raster.rs` (2332). **Either order with 2018:** if 2018 is done, add a
    line of wide and narrow glyphs to its render card
    (`shuyi_ui::frame::raster::card`), so its `render` CI job compares
    the window with the raster; if not, compare a screenshot of the

@@ -14,9 +14,15 @@
 //! - **every other file** (a picture, a sound) holds its own bytes.
 //!
 //! The file is a header (magic bytes, the [`VERSION`], a checksum of the
-//! rest), an index (the stamp, the target, and each file's path, kinds,
-//! offset and sizes) and each file's bytes, compressed with LZ4 when that
-//! makes them smaller.
+//! rest), an index (the stamp, the target, the fingerprint of its sources,
+//! and each file's path, kinds, offset and sizes) and each file's bytes,
+//! compressed with LZ4 when that makes them smaller.
+//!
+//! A pack stands for its sources: its layer ([`Pack::into_layer`]) gives a
+//! bundle the fingerprint of the bundle it was baked from
+//! ([`Bundle::fingerprint`](crate::bundle::Bundle::fingerprint)), so a
+//! record made on the loose files plays on the pack as made with the same
+//! content.
 //!
 //! The rules:
 //!
@@ -40,9 +46,11 @@ use core::marker::PhantomData;
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use shuyi_core::ContentHash;
 
 use crate::bundle::Layer;
 use crate::error::ContentError;
+use crate::fnv::Hasher;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format};
 
 mod bake;
@@ -59,7 +67,7 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// header, the index, and the binary form of the engine's own kinds. A
 /// change to any of them makes it the next number, and a pack of another
 /// version is refused, never migrated.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";
@@ -91,6 +99,10 @@ pub struct PackInfo {
     pub stamp: String,
     /// The target the pack was baked for (`shuyi bake --target`), if any.
     pub target: Option<String>,
+    /// The fingerprint of the bundle it was baked from
+    /// ([`Bundle::fingerprint`](crate::bundle::Bundle::fingerprint)),
+    /// which its layer stands for.
+    pub content: ContentHash,
 }
 
 /// How a file's bytes are kept.
@@ -196,25 +208,13 @@ pub struct PackFile<'a> {
     pub bytes: Cow<'a, [u8]>,
 }
 
-/// The checksum of a pack: FNV-1a's constants over 64-bit words (the last
-/// few bytes one at a time), each step followed by a shift that folds the
-/// high bits into the low ones, then the length. Any one byte changed
-/// changes it, since each step is a bijection of the hash so far.
+/// The checksum of a pack: the word-wise FNV-1a hash (`crate::fnv`) of
+/// its bytes, then their length.
 fn checksum(bytes: &[u8]) -> u64 {
-    const PRIME: u64 = 0x0100_0000_01b3;
-    let step = |hash: u64, word: u64| {
-        let hash = (hash ^ word).wrapping_mul(PRIME);
-        hash ^ (hash >> 32)
-    };
-    let (words, rest) = bytes.as_chunks::<8>();
-    let mut hash = 0xcbf2_9ce4_8422_2325;
-    for word in words {
-        hash = step(hash, u64::from_le_bytes(*word));
-    }
-    for &b in rest {
-        hash = step(hash, u64::from(b));
-    }
-    step(hash, bytes.len() as u64)
+    let mut hash = Hasher::new();
+    hash.bytes(bytes);
+    hash.word(bytes.len() as u64);
+    hash.0
 }
 
 /// The `N` bytes at `at` in `bytes`, or [`PackError::Truncated`].
@@ -456,11 +456,13 @@ impl<'a> Pack<'a> {
 }
 
 impl Pack<'static> {
-    /// A bundle layer of the pack's files, shown as `name`. A game opens
+    /// A bundle layer of the pack's files, shown as `name`, standing for
+    /// the bundle it was baked from ([`Layer::standing_for`]). A game opens
     /// its pack once, at start-up (most simply one it embeds with
     /// `include_bytes!`): the files it unpacked are kept for the rest of
     /// the run, as the files a game embeds are.
     pub fn into_layer(self, name: &'static str) -> Layer {
+        let content = self.info.content;
         let table: Vec<(&'static str, &'static [u8])> = self
             .files
             .into_iter()
@@ -473,7 +475,7 @@ impl Pack<'static> {
                 (path, bytes)
             })
             .collect();
-        Layer::table(name, Box::leak(table.into_boxed_slice()))
+        Layer::table(name, Box::leak(table.into_boxed_slice())).standing_for(content)
     }
 }
 

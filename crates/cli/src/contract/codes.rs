@@ -77,6 +77,9 @@ pub const GAME_PROGRAM: Code = Code("SH3005");
 /// `link-lost`: the build's link is held by another client, closed, or
 /// answered what `attach` can't read.
 pub const LINK_LOST: Code = Code("SH3006");
+/// `other-stamp`: `replay` was given a record made by another engine,
+/// another build of the game or other content.
+pub const OTHER_STAMP: Code = Code("SH3007");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -421,6 +424,14 @@ pub static TABLE: &[Entry] = &[
         "The build's link is busy, closed, or answered what shuyi can't read",
         "detach the other client attached to the build, or start the build again, then attach \
          again"
+    ),
+    row!(
+        OTHER_STAMP,
+        "other-stamp",
+        Operation,
+        "SH3007",
+        "The record was made by another build or with other content",
+        "make the record again with this build, or replay it with --any-stamp to run it anyway"
     ),
 ];
 

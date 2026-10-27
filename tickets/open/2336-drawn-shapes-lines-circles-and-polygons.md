@@ -195,9 +195,7 @@ not parked.
   Update the module's doc comment, which is the format's spec.
 - **The renderers** paint the runs in whole console pixels:
   - `frame-png`'s `Painter::draw_items` fills each run as a rectangle
-    one console pixel high with `Image::fill` (**either order with
-    2332**: in `shuyi_ui::frame::raster` if 2332 is done, and 2332
-    moves it if not);
+    one console pixel high with `Image::fill` (in `shuyi_ui::frame::raster`, 2332);
   - `shuyi-app`'s `Renderer::draw_items` draws each run with one
     `draw_rectangle`, as it draws an `Overlay` (macroquad batches
     them);
@@ -292,8 +290,7 @@ not parked.
    outlined; a five-pointed star (the even-odd hole in its middle) and a
    concave polygon, filled and outlined; one shape cut by a
    `fill_rect`. Render the same shapes with the `Painter` and look at
-   the picture. In `crates/cli/src/frame_png/tests.rs` (`raster`'s
-   tests if 2332 is done), check the `Painter`'s pixels against
+   the picture. In `raster`'s tests, check the `Painter`'s pixels against
    `for_each_run`. Add shapes to the 1-bit `Thing` generator
    (`onebit/speed_tests.rs`).
 7. Settle the either-order clauses above (2315's rules, 2018's card,

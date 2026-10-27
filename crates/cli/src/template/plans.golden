@@ -21,7 +21,7 @@ bb6026e333cd9cbd crates/game/files/font/atlas.png
 6a670fd99c7bd549 crates/game/files/font/atlas.ron
 ba791d69f803381d crates/game/files/keymap.ron
 1bd1ef013635e3cd crates/game/files/palette.ron
-73d45cb7282ba485 crates/game/src/lib.rs
+0ffc2c6b6705f64c crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 ffa20be348ab831e crates/game/src/stages.rs
 e48dd42a787497ae crates/game/src/title.rs
@@ -51,14 +51,14 @@ bb6026e333cd9cbd crates/game/files/font/atlas.png
 ba791d69f803381d crates/game/files/keymap.ron
 929c655ac697dad3 crates/game/files/palette.ron
 6ce7f8b2d89d719d crates/game/files/stage.map
-73d45cb7282ba485 crates/game/src/lib.rs
+0ffc2c6b6705f64c crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
-c13676d94d4e52dd crates/game/src/stages/top_down_grid/tools.rs
+b3e48be6b267ac9f crates/game/src/stages/top_down_grid/tools.rs
 db5e2588379a32b0 crates/game/src/stages/top_down_grid.rs
 4840525a6e19d42d crates/game/src/stages.rs
 e48dd42a787497ae crates/game/src/title.rs
 10139ba4e01f1301 crates/game/tests/it/main.rs
-65740d191bb5ac66 crates/game/tests/stage.rs
+ad302237f9ed6ee7 crates/game/tests/stage.rs
 dd2774be3effd43f crates/rules/AGENTS.md
 7d39342f9c953a2a crates/rules/Cargo.toml
 a9360fff8f48cb78 crates/rules/clippy.toml

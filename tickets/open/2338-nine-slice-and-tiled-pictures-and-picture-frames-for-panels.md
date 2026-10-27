@@ -341,13 +341,10 @@ None.
 - [ ] `panel_border` with a frame keeps a sprite that was already over
       the panel's inside cells (a unit test).
 - [ ] A panel framed with the test card
-      (`shuyi_ui::frame::raster::test_card` if 2332 is done; else
-      `crates/cli/src/test_card.rs`) shows the card's corner pixels at
+      (`shuyi_ui::frame::raster::test_card`) shows the card's corner pixels at
       the panel's corners in a `frame-png` picture (hand-checked
-      pixels). **Either order with
-      2332:** if 2332 is done, the test uses `shuyi_ui::frame::raster`;
-      if not, it goes in `crates/cli/src/frame_png/tests.rs` and 2332
-      moves it.
+      pixels). The test uses
+      `shuyi_ui::frame::raster`.
 - [ ] 1127, 2722 and 1123 have their lines (2330 too, if it is not
       done), and 2235 matches the types written here.
 - [ ] `shuyi-assets` and `shuyi-ui` still build for

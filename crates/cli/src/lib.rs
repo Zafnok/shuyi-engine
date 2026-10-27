@@ -40,7 +40,6 @@ pub mod private_assets;
 pub mod project;
 pub mod skills;
 pub mod template;
-pub mod test_card;
 #[cfg(feature = "toy")]
 pub mod toy;
 pub mod web;
@@ -58,6 +57,9 @@ pub use game::{
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).
 pub use serde_json;
+/// The test card, a generated test image for sprite items (it lives with
+/// the raster in `shuyi-ui`).
+pub use shuyi_ui::frame::raster::test_card;
 
 /// The commands of `shuyi` that aren't operations of the contract
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
@@ -96,7 +98,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   add <module>                       turn a module on: its feature in Cargo.toml, its skill
   run [steps] [--frames N]          play a key script headless: screens, scene, events, sounds
   scene [steps]                      the scene on screen after a script
-  replay <record> [<other>]          a state hash per step; where two runs part
+  replay <record> [<other>] [--any-stamp]
+                                     a state hash per step; where two runs part; a
+                                     record made by another build: refused, or run
   bots <games>                       the game's bots play: outcomes and measures
   playtest [--stage ID] [--entrant NAME] [--tries N]
                                      each named bot's tries, on every core, against the

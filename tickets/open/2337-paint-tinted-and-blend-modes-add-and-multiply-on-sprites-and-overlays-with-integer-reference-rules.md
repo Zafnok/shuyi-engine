@@ -210,10 +210,8 @@ None.
     and an overlay's opacity to `frame::blend`'s rules;
   - 3017 (parked): per-sprite tint and blend are optional capabilities
     (one-bit draws them by the one-bit rule; the GBA blends per layer).
-- **Either order with 2332** (the Painter moved into
-  `shuyi_ui::frame::raster`): if 2332 is done, the reference changes go
-  there instead of `frame_png.rs`; if not, they go in `frame_png.rs`,
-  and 2332 moves them.
+- **The reference changes** go in `shuyi_ui::frame::raster` (2332), not
+  in `frame_png.rs`.
 - **Either order with 2018 and 2019** (the desktop and web builds
   compared with the raster): if done, add tinted, added and multiplied
   sprites and an overlay at half opacity to their comparison. If not,

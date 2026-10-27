@@ -137,8 +137,8 @@ None.
     at the cell's right edge. The labels are the tool's, not a game's
     text.
   - It writes `Image`'s public fields (`width`, `height`, `rgba`)
-    directly and calls none of its private methods, so it builds the
-    same before and after 2332.
+    directly and calls none of its private methods, so it builds on
+    `shuyi_ui::frame::raster`'s `Image` (2332).
   - A sheet wider or taller than 16 384 px is an error that names its
     size and suggests a smaller `--scale` or other `--columns`. Nothing
     is written.
@@ -202,11 +202,10 @@ None.
 - **Either order with 2315:** if 2315 is done, `--debug` draws its
   channels on every captured frame (a test with a two-frame sheet). If
   not, 2315 does that.
-- **Either order with 2332:** if 2332 has moved `Painter` and `Image`
-  into `shuyi_ui::frame::raster`, the sheet takes that `Image` through
-  `frame_png`'s re-export. The sheet and the encoders stay in
-  `shuyi-cli` either way: they need `png` and `gif`, and the labels are
-  the tool's.
+- `Painter` and `Image` are in `shuyi_ui::frame::raster` (2332), so
+  the sheet takes that `Image` through `frame_png`'s re-export. The
+  sheet and the encoders stay in `shuyi-cli`: they need `png` and
+  `gif`, and the labels are the tool's.
 - **Either order with 2357** (rewind): 2357 adds `frame-png --session
   <file> --until <frame>`. If 2357 is done, `--every` and `--count`
   also work with `--session <file> --until N`: capture i is frame

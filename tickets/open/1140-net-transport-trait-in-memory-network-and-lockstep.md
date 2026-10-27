@@ -54,10 +54,8 @@ None (technical). Scheduling: see above.
 - **Lockstep:** `LockstepSession<R: TurnRules + Serialize>` has:
   - a handshake: each peer's `Made` from 2111, which holds the engine
     version, the game's stamp and `Bundle::fingerprint()`, compared
-    with `Made::check` so a refusal names what differs; and the seed.
-    **Either order with 2111:** if it isn't done, the handshake holds
-    the engine version and a content hash the game supplies, and 2111
-    moves it to `Made`;
+    with `Made::check` so a refusal names what differs; and the seed
+    (`shuyi_core::Made`, done in 2111);
   - who may command when (the game says whose turn it is);
   - commands sent and applied in the same order on both sides;
   - a state hash before the first command and after each one, by

@@ -31,9 +31,9 @@ toy = ["shuyi-ui/toy"]
 shuyi-core = { path = "../core", features = ["schema"] }
 # Fonts, images, palettes, languages and credits.
 shuyi-assets = { path = "../assets" }
-# The frame `frame-png` paints, and the perf records `run --perf` reads
-# (with their schemas).
-shuyi-ui = { path = "../ui", features = ["schema"] }
+# The frame `frame-png` paints (with the raster that paints it), and the
+# perf records `run --perf` reads (with their schemas).
+shuyi-ui = { path = "../ui", features = ["schema", "raster"] }
 # The Harness that plays a game's script, and the live link `attach` speaks;
 # `heap` for the sessions' heap snapshots (`heap::snapshot`).
 shuyi-platform = { path = "../platform", features = ["harness", "link", "heap"] }

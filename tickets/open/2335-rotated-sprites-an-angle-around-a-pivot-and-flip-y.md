@@ -170,9 +170,7 @@ and follow the MVP.
   changes today. Update the module's doc comment, which is the format's
   spec.
 - **The renderers:**
-  - **`frame-png`'s `Painter`** (`crates/cli/src/frame_png.rs`; **either
-    order with 2332**: if 2332 is done, in `shuyi_ui::frame::raster`
-    instead, and 2332 moves it if not):
+  - **The raster's `Painter`** (`shuyi_ui::frame::raster`, 2332):
     - `flip_y` in `blit`. Pass the two flips as one `(bool, bool)`, so
       `blit` stays at seven arguments (clippy's `too_many_arguments`);
     - a sprite at another angle is drawn per console pixel of its
@@ -277,8 +275,7 @@ and follow the MVP.
 7. Draw `flip_y` and turned sprites in `frame-png`, both 1-bit
    renderers and `shuyi-app`.
 8. Build a test scene: the test card (16 × 16;
-   `shuyi_ui::frame::raster::test_card` if 2332 is done, else
-   `crates/cli/src/test_card.rs`, and 2332 moves it) at eight angles,
+   `shuyi_ui::frame::raster::test_card`) at eight angles,
    flipped each way, and turned around a corner pivot, in `dest`s of
    16 × 16 and 32 × 32.
    - In `crates/cli/src/frame_png/tests.rs`, check hand-worked pixels

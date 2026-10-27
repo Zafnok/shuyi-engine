@@ -404,6 +404,13 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   goes up whenever the binary form of an engine kind changes; a pinned
   snapshot of every engine kind's binary form fails until it does. A
   game changes its stamp when one of its own baked kinds changes.
+- **It stands for its sources.** The index holds the fingerprint of the
+  bundle it was baked from (`PackInfo::content`, `Bundle::fingerprint`),
+  and its layer stands for it (`Layer::standing_for`): a bundle of the
+  pack alone has the loose files' fingerprint, and a loose layer laid
+  over it counts as it would over them. So a record or a save stamped
+  with what made it (`shuyi_core::Made`, [ADR-0051](adr/0051-stamped-records-the-engine-version-the-games-word-and-a-fingerprint-of-the-content-and-the-tools-refuse-a-mismatch.md))
+  on the loose files reads as made with the same content on the pack.
 - **Targets.** `shuyi bake --target <id>` takes a target with a profile
   (the engine's in `targets/`, or the game's), passes it to the game,
   which picks the layers and kinds it bakes for it, and the pack records

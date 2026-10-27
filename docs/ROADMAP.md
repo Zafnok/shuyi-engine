@@ -84,6 +84,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2545 | A running MCP server never blocks the next build: it moves its own program aside on Windows, and a cold build has time to finish |
 | 2546 | The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server |
 | 2561 | Moving a running server's program aside never leaves its path empty, so the CLI's tests don't flake in parallel |
+| 2564 | The move-aside tests fail on Windows under load: find whether the program's path is ever empty, and make them hold |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 3063 | Frame times and spans as data: the platform's clock, spans a game marks, and `App`'s record of each frame, in debug builds |
 | 2553 | Perf traces agents read: `shuyi run --perf`, an MCP `perf` tool read from a number, and a running build's trace file, as JSON lines |
@@ -167,7 +168,6 @@ volume), and 2226 and 2349 (game#0825, the language option).
 
 | Ticket | What |
 | ------ | ---- |
-| 2332 | The raster: `frame-png`'s painter in `shuyi-ui`, the picture every backend must match |
 | 2018 | The real window checked in CI under Xvfb, against the raster |
 | 2019 | The web build checked in CI in headless Chromium, against the raster |
 | 2514 | Frames over time from `frame-png`: a sheet, an APNG or a GIF, and the same from MCP |
@@ -292,7 +292,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 The order, after the MVP, beside the Bevy tickets above (2220
 stays first):
 
-1. What lets the rest be checked: 2332, 2514, 2116, 2020, 2524, 2111
+1. What lets the rest be checked: 2514, 2116, 2020, 2524, 2111
    and 2518 (which waits for 2111).
 2. What keeps players' data safe, before the game ships on Steam
    (game#0903): 3045, 3042, 3043, 3041, 3046 and 2110.

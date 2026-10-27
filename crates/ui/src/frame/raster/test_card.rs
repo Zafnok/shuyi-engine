@@ -1,9 +1,12 @@
 //! The test card: a public test image for sprite items, generated, not
-//! art, so the same code always makes the same pixels. `frame-png`'s tests
-//! paint it, and a game may write it into its test files.
+//! art, so the same code always makes the same pixels. The raster's and
+//! `frame-png`'s tests paint it, and a game may write it into its test
+//! files.
 //!
 //! 16×16: a one-pixel white border around four coloured quadrants (red and
 //! green above blue and yellow), so a flip, a crop and a scale each show.
+
+use crate::prelude::*;
 
 /// Width and height of the card in pixels.
 pub const SIZE: u32 = 16;

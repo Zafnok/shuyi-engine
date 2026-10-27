@@ -28,7 +28,8 @@ use shuyi::core::bots::playtest::{
     self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
 };
 use shuyi::core::{
-    Bot, Determinize, Knob, Pos, RandomBot, Report, Sides, TerrainId, TurnRules, play_observed,
+    Bot, Determinize, Knob, Made, Pos, RandomBot, Report, Sides, TerrainId, TurnRules,
+    play_observed,
 };
 use shuyi::platform::harness::Harness;
 use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
@@ -222,7 +223,14 @@ impl GameTools for HelloTools {
         let parsed: StageRecord =
             ron::from_str(&record.text).map_err(|e| format!("{}: {e}", record.file))?;
         let stage = Stage::new(&loaded()?.stage_map, parsed.seed)?;
-        turns(&record.file, stage, &parsed.commands)
+        let mut run = turns(&record.file, stage, &parsed.commands)?;
+        run.made = parsed.made;
+        Ok(run)
+    }
+
+    /// [`crate::made`].
+    fn made(&self) -> Option<Made> {
+        Some(crate::made())
     }
 
     fn bots(&self, input: &BotsInput) -> Result<BotsOutput, String> {
@@ -329,8 +337,9 @@ fn lines(errors: &[ContentError]) -> String {
     errors.join("\n")
 }
 
-/// A record of a stage: its seed and the commands sent to its rules. The
-/// game's record format for `replay`; `bots` writes one of each play.
+/// A record of a stage: its seed and the commands sent to its rules, and
+/// what made it. The game's record format for `replay`; `bots` writes one
+/// of each play.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StageRecord {
@@ -338,6 +347,9 @@ pub struct StageRecord {
     pub seed: u64,
     /// The commands, in order.
     pub commands: Vec<Command>,
+    /// What made it ([`crate::made`]); a record without one still reads.
+    #[serde(default)]
+    pub made: Option<Made>,
 }
 
 /// The stage's scene in `h`: its map as the skin of the player's
@@ -391,6 +403,7 @@ fn bot_play(map: &GridMap<TerrainId, Feature>, seed: u64, limit: u32) -> Result<
     let record = StageRecord {
         seed,
         commands: report.commands.clone(),
+        made: Some(crate::made()),
     };
     let commands = u32::try_from(report.commands.len()).unwrap_or(u32::MAX);
     let mut play = Play::new(seed, outcome, report.turns, commands);
