@@ -10,8 +10,10 @@
 //! - `cargo xtask check-toolchain`
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
+//! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]`
 
 mod api;
+mod compile_times;
 mod docs;
 mod layers;
 mod links;
@@ -69,7 +71,13 @@ usage:
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
       on a fresh `shuyi new` game in target/skill-examples/, or of the skills
       named, or of every <n>th from the <i>th: a verdict per step. The games
-      build in this repository's target folder unless CARGO_TARGET_DIR is set.";
+      build in this repository's target folder unless CARGO_TARGET_DIR is set.
+  cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]
+      Time a new `grid` game's clean build, its rebuild after a one-line change
+      in main.rs and the same for `cargo check`, and count a new `blank` game's
+      crates, on games made in <dir> (target/compile-times). With --budget,
+      fail over its numbers (tools/compile-budget.ron); with --summary, append
+      the table's Markdown to <file>.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -89,6 +97,7 @@ fn main() -> ExitCode {
         }
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
+        Some("compile-times") => compile_times(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -169,6 +178,57 @@ fn skill_examples(root: &Path, args: &[String]) -> ExitCode {
     let outcome = skills::run(root, &skills::games_dir(root), &options, &runner);
     eprint!("{}", outcome.report);
     report("skill-examples", &outcome.errors, &[])
+}
+
+fn compile_times(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = compile_times::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let games = compile_times::games_dir(root, options.dir.as_deref());
+    let maker = script::System { target_dir: None };
+    let game = compile_times::Game {
+        target_dir: games.join("timed").join("target"),
+    };
+    let times = match compile_times::run(root, &games, &maker, &game) {
+        Ok(times) => times,
+        Err(e) => return report("compile-times", &[e], &[]),
+    };
+    let table = times.table();
+    let shown = if options.json {
+        times.json().to_string()
+    } else {
+        table.clone()
+    };
+    // An answer that can't be printed is still in the summary.
+    let _ = writeln!(std::io::stdout().lock(), "{shown}");
+    let mut verdict = compile_times::Verdict::default();
+    if let Some(file) = &options.summary {
+        let written = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(file)
+            .and_then(|mut f| f.write_all(format!("{table}
+").as_bytes()));
+        if let Err(e) = written {
+            verdict.errors.push(format!("{}: {e}", file.display()));
+        }
+    }
+    if let Some(file) = &options.budget {
+        match std::fs::read_to_string(file)
+            .map_err(|e| e.to_string())
+            .and_then(|text| compile_times::parse_budget(&text))
+        {
+            Ok(budget) => {
+                let found =
+                    compile_times::check(&times, &budget, &file.display().to_string());
+                verdict.errors.extend(found.errors);
+                verdict.warnings.extend(found.warnings);
+            }
+            Err(e) => verdict.errors.push(format!("{}: {e}", file.display())),
+        }
+    }
+    report("compile-times", &verdict.errors, &verdict.warnings)
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

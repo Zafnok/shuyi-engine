@@ -1,0 +1,24 @@
+[package]
+name = "shuyi-dylib"
+description = "Shuyi Engine's default crates as one dynamic library, for a game's quicker rebuilds in development: the shuyi crate's `dynamic` feature links it; never in a release"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+# A Rust dylib: rustc takes the crates below from it instead of linking
+# them into each of the game's programs (ticket 2009).
+crate-type = ["dylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+shuyi-core = { path = "../core" }
+shuyi-assets = { path = "../assets" }
+shuyi-ui = { path = "../ui" }
+shuyi-platform = { path = "../platform" }
+shuyi-app = { path = "../app" }

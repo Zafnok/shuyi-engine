@@ -1,0 +1,7 @@
+Budget(
+    rebuild: {
+        "linux": 10.0,
+        "windows": 10.0,
+    },
+    dependencies: 1000,
+)

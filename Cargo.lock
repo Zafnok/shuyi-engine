@@ -1121,6 +1121,7 @@ dependencies = [
  "shuyi-app",
  "shuyi-assets",
  "shuyi-core",
+ "shuyi-dylib",
  "shuyi-platform",
  "shuyi-ui",
 ]
@@ -1204,6 +1205,17 @@ dependencies = [
  "ron",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "shuyi-dylib"
+version = "0.1.0"
+dependencies = [
+ "shuyi-app",
+ "shuyi-assets",
+ "shuyi-core",
+ "shuyi-platform",
+ "shuyi-ui",
 ]
 
 [[package]]
