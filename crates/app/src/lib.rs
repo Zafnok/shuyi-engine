@@ -372,7 +372,8 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
         } else {
             pacer.start(start);
         }
-        let now = Millis::from_secs_f64(miniquad::date::now());
+        // The pacer's reading: one clock for the frame (it never goes back).
+        let now = Millis::from_secs_f64(start);
         #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
         if let Some(link) = &mut link {
             link.before_frame(&app, platform.link_input());

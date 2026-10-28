@@ -288,9 +288,10 @@ impl Held {
     }
 }
 
-/// Seconds on a clock that never goes back, for the pacer: an `Instant`
-/// on native (the system's time, which `miniquad::date::now` reads there,
-/// can jump), the page's clock on the web.
+/// Seconds on the loop's one clock, which the pacer, `App::frame`'s time
+/// and the perf clock all read: an `Instant` on native (the system's time,
+/// which `miniquad::date::now` reads there, can jump), the page's
+/// `Date.now()` on the web.
 pub(crate) fn seconds() -> f64 {
     #[cfg(not(target_arch = "wasm32"))]
     {

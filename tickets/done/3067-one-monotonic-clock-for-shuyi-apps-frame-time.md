@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 3067 — One clock for `shuyi-app`'s frame
@@ -153,16 +153,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `grep -rn "date::now\|get_time()" crates/app/src` finds only
+- [x] `grep -rn "date::now\|get_time()" crates/app/src` finds only
       `pacing::seconds`'s web branch (`pacing.rs`) and the audio seed
       (`backend.rs`, `.to_bits()`).
-- [ ] In `run`, `pacing::seconds()` is read once before `app.frame`, and
+- [x] In `run`, `pacing::seconds()` is read once before `app.frame`, and
       `app.frame` is handed that reading.
-- [ ] `now_us` reads `pacing::seconds()`, and the tests below pass.
-- [ ] `docs/platform-backends.md` no longer says `shuyi-app`'s clock
+- [x] `now_us` reads `pacing::seconds()`, and the tests below pass.
+- [x] `docs/platform-backends.md` no longer says `shuyi-app`'s clock
       reads `get_time`.
-- [ ] The public API listing doesn't change (CI's `api` job).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The public API listing doesn't change (CI's `api` job).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -181,5 +181,16 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`run` hands `App::frame` the pacer's `pacing::seconds()` reading, and
+`now_us` (the perf clock) reads `pacing::seconds()` too, so the frame's
+time, the audio's time and the perf records all come from one clock that
+never goes back on native. Docs updated (`pacing::seconds`, `now_us`,
+`Millis::from_secs_f64`, `docs/platform-backends.md`). Two unit tests
+for `now_us` run without a window. 3041, 3043 and 3068 were open, so
+their clauses were rewritten as what now holds. The web stays on
+`Date.now()` (3068 moves it). No deviations, no follow-ups, no game
+change.
+
+The manual hello-grid run with `SHUYI_PERF` was not done here (no window in this session); the unit tests cover the clock.
+
+No break (no public API change).

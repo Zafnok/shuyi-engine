@@ -23,7 +23,7 @@ Found by an analysis of the engine for areas that do the same job twice
 never goes back. On the web it is `macroquad::miniquad::date::now()`,
 which the JS bundle answers with `Date.now() / 1e3`
 (`crates/cli/web/mq_js_bundle.js`): the system's time, which jumps when
-the clock is set by hand or synced. 3067 makes `pacing::seconds()` the
+the clock is set by hand or synced. 3067 (done) made `pacing::seconds()` the
 loop's one clock (the pacer, `App::frame`'s time and the perf clock), so
 after it every reading of the web build's frame jumps with the system's
 time. A jump forward is one frame whose `dt` is the whole jump (timers

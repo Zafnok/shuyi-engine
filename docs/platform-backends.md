@@ -128,7 +128,9 @@ confirmed. A backend that never reports leaves every request pending.
    (in a frame it measures, `App` first reads the time on `clock`'s
    clock: the frame's start);
 2. the clock: the time since the last frame, and the fixed steps due
-   (60 a second, at most 4 a frame);
+   (60 a second, at most 4 a frame). Read the frame's time from a clock
+   that never goes back, since the system's time jumps, and give `clock`
+   that same one;
 3. while suspended, `poll_input` (dropped) and nothing else: no update,
    nothing presented;
 4. `poll_input`;
@@ -288,8 +290,8 @@ and length, or is `false` if it can't now; `poll()` gives the answer
 A clock to measure frames with, in debug builds
 ([ADR-0046](adr/0046-perf-traces-measured-by-the-backend-kept-by-app-beside-the-log-and-read-by-agents-as-json-lines.md)):
 `PerfClock::Real(now_us)`, where `now_us` gives whole microseconds from
-any fixed start and never goes back (`shuyi-app`'s reads macroquad's
-`get_time`). `App` asks for it once, on its first frame, and only in a
+any fixed start and never goes back (`shuyi-app`'s reads the same clock as
+its frame's time). `App` asks for it once, on its first frame, and only in a
 build with debug tools (`shuyi_ui::DEBUG_TOOLS`): it times the game's
 load, moves the clock into the game's context, and keeps a
 `shuyi_ui::perf::FrameRecord` of each frame while the game's

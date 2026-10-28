@@ -29,8 +29,8 @@ pub struct Millis(pub u64);
 
 impl Millis {
     /// The time `secs` seconds into the clock: a backend whose clock gives
-    /// seconds (`miniquad::date::now`). A negative, NaN or endless time is
-    /// 0.
+    /// seconds as an `f64`, from a clock that should never go back. A
+    /// negative, NaN or endless time is 0.
     pub fn from_secs_f64(secs: f64) -> Self {
         let ms = Duration::try_from_secs_f64(secs).map_or(0, |d| d.as_millis());
         Self(u64::try_from(ms).unwrap_or(u64::MAX))
