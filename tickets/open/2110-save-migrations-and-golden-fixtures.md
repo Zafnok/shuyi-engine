@@ -185,8 +185,7 @@ players keep after a patch.
     before anything writes the key, with a warning naming the copy. A
     later refusal replaces the copy. The keys are valid `Storage` keys,
     and the two kept per profile pass `fits_every_profile`. The copy is
-    a plain `Storage::write`, so 3045's flushed writes cover it in
-    either order.
+    a plain `Storage::write`, so 3045's flushed writes cover it.
   - **Fixtures of every version:** `crates/ui/tests/saves/keybindings/`
     (`v1_keys_only.ron`; `v2_before_1106.ron`, moved from
     `crates/ui/src/input/bindings/saved_before_1106.ron`, with its

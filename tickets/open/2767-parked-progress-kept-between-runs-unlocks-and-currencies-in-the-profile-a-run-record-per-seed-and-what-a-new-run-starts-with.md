@@ -33,7 +33,7 @@ Achievements (3036, parked) are the player's trophies, seen by stores;
 this is game state the game reads at the start of a run. The two don't
 share storage.
 
-**Either order with 2110 and 3045:** if 2110 is done, `Meta`'s saved form migrates through it, and if 3045 is done, writes are flushed through it; if not, a version number and a plain write, and each adds its part when it lands.
+**Either order with 2110:** if 2110 is done, `Meta`'s saved form migrates through it; if not, a version number, and 2110 adds its part when it lands. Every `Storage` write is flushed (3045, done), so `Meta`'s is too.
 
 ## Nick input
 
@@ -51,8 +51,8 @@ None.
   - `hash()`; serialisable with a format version (2110's migrations if
     done).
 - **Kept in the profile** through the storage the engine has, one key
-  per profile, written when a run ends (and flushed, as 3045 says if it
-  is done).
+  per profile, written when a run ends (and flushed, as every `Storage`
+  write is since 3045).
 - **The start of a run**: `Meta` is an argument to the game's run setup,
   so a run is still its seed, its starting `Meta` hash and its commands:
   a record of a run names the `Meta` hash it started from, and a replay

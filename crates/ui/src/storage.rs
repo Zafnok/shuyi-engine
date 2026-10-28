@@ -7,6 +7,11 @@ use crate::prelude::*;
 use alloc::collections::BTreeMap;
 use core::fmt;
 
+#[cfg(any(test, feature = "storage-conformance"))]
+mod power_cut;
+#[cfg(any(test, feature = "storage-conformance"))]
+pub use power_cut::{PowerCutRig, power_cut_suite};
+
 /// Longest key [`Storage`] accepts, in bytes.
 pub const MAX_KEY_LEN: usize = 64;
 
