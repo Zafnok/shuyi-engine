@@ -335,10 +335,12 @@ None.
     (acceptance criteria 2 and 3); split off, the fix would land
     unchecked against a power cut and the follow-up would redo code
     already written and passing.
-  - `Disk` is `Send + Sync`, and the fake disk shares its folder through
+  - `Disk` is `Send + Sync + UnwindSafe + RefUnwindSafe`, and the fake
+    disk shares its folder through
     an `Arc<Mutex<…>>` rather than an `Rc<RefCell<…>>`: a
     `Box<dyn Disk>` that wasn't would have made `FileStorage` lose
-    `Send` and `Sync`, a break of `shuyi-app`'s API. A test keeps it so.
+    those auto traits, a break of `shuyi-app`'s API (CI's `api` job
+    caught the unwind ones). A test keeps them.
   - `list` returns its keys sorted (a `BTreeSet`); `Storage` promises no
     order.
   - `delete` on a folder that doesn't exist yet is `Ok`: the folder's

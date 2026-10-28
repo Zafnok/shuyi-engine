@@ -8,6 +8,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::fs;
 use std::io::{self, Write as _};
+use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::path::{Path, PathBuf};
 
 use shuyi_ui::storage::{Storage, StorageError, is_valid_key};
@@ -278,9 +279,9 @@ fn backend_error(path: &Path, e: &io::Error) -> StorageError {
 }
 
 /// The file calls [`FileStorage`] makes: [`StdDisk`] in the game, a fake
-/// that can lose the power in the tests. `Send` and `Sync`, as
-/// [`FileStorage`] has always been.
-trait Disk: fmt::Debug + Send + Sync {
+/// that can lose the power in the tests. `Send`, `Sync` and unwind safe,
+/// as [`FileStorage`] has always been.
+trait Disk: fmt::Debug + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// A file's bytes.
     fn read(&self, path: &Path) -> io::Result<Vec<u8>>;
     /// Creates (or empties) a file, writes `bytes` and flushes them to the
@@ -403,9 +404,9 @@ mod tests {
     }
 
     #[test]
-    fn the_storage_stays_send_and_sync() {
-        fn send_and_sync<T: Send + Sync>() {}
-        send_and_sync::<FileStorage>();
+    fn the_storage_stays_send_sync_and_unwind_safe() {
+        fn auto_traits<T: Send + Sync + UnwindSafe + RefUnwindSafe>() {}
+        auto_traits::<FileStorage>();
     }
 
     #[test]
