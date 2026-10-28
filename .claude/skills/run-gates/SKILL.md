@@ -173,6 +173,7 @@ They run on every PR, docs-only ones too:
 
 ```bash
 cargo xtask ticket-lint --pr-branch t<NNNN>-<slug>   # the branch, as CI does; without it on main
+cargo xtask changelog > /dev/null   # every done ticket's Breaking: block parses (ticket 2804)
 cargo xtask check-links   # relative links in every *.md resolve (no network)
 cargo xtask check-pins    # actions pinned by SHA, one SHA each, templates' workflows in dependabot.yml, templates' requirements = the root's
 cargo xtask check-toolchain   # one pinned Rust: the templates' channels, rust-version, Dependabot (the bump-rust skill)

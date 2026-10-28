@@ -642,6 +642,10 @@ jobs:
           fi
       - name: Check Markdown links
         run: cargo xtask check-links
+      # A `migration` block that doesn't parse fails here, not when the
+      # site is built (ticket 2804).
+      - name: Check the changelog can be written
+        run: cargo xtask changelog > /dev/null
       - name: Check the actions' pins and the templates' requirements
         run: cargo xtask check-pins
       - name: Check the pinned Rust

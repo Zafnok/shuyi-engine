@@ -134,11 +134,13 @@ asked in 2005's sign-off.
     file differs from what it would write. CI's `tickets` job runs it
     (it reads only tickets, so docs-only PRs run it too), and the
     `run-gates` skill lists it under *The repository's own checks*.
-  - **2804's parser:** 2804 parses the blocks in
-    `crates/xtask/src/changelog.rs`. Reuse that parser (make it
-    `pub(crate)` if it isn't); don't write a second one. If 2804 landed
-    without one, write it here and make the changelog use it, and if
-    `tickets/README.md` lacks the block's shape, document it there.
+  - **2804's parser:** 2804 (done) parses the blocks in
+    `crates/xtask/src/changelog.rs`: `migrations(file, content)` returns
+    each ticket's `Migration`s (`pub(crate)`, with `since`, `what`,
+    `old`, `new`, `before`, `after` and `find`, and it already checks
+    `since` and that each `find` string is in `before` and not in
+    `after`). Reuse it; don't write a second one. The block's shape is
+    in `tickets/README.md`, *Breaking changes*.
   - `serde_json` (MIT OR Apache-2.0, already in `Cargo.lock` through
     `shuyi-cli`; `deny.toml` allows both licenses) and `serde` with
     `derive` join `crates/xtask/Cargo.toml` if 2804 didn't add them, and

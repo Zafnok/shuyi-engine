@@ -54,6 +54,47 @@ completed:           # YYYY-MM-DD when done
 ---
 ```
 
+## Breaking changes
+
+A ticket that breaks the public API, a file format or a golden value
+(ADR-0038) says so in its `## Completion notes`, and `cargo xtask changelog`
+(ticket 2804) lists it at the top of its release's notes. Two things go
+there, in the PR that breaks:
+
+1. A `Breaking:` line, one for each break:
+
+   ```text
+   Breaking: <crate>[, <crate>…]: <item>: <what a game changes>
+   ```
+
+2. Under it, a fenced block whose info string is `migration`, in YAML. It
+   becomes the release's *Migration guide*, and a game's agent reads it.
+
+   ````text
+   ```migration
+   since: 0.2.0
+   what: A timer takes its step as a Step, not a number.
+   old: Timer::new(u32)
+   new: Timer::new(Step)
+   before: |
+     let t = Timer::new(60);
+   after: |
+     let t = Timer::new(Step::from_ticks(60));
+   find: ["Timer::new(60)"]
+   ```
+   ````
+
+   | Field | What |
+   | ----- | ---- |
+   | `since` | The engine version that first has the change, `X.Y.Z`: the workspace `version` after the PR |
+   | `what` | One sentence |
+   | `old`, `new` | The old and new path or signature |
+   | `before`, `after` | A game's code before and after |
+   | `find` | Optional. Literal strings that occur in `before` and not in `after`, so each marks a call site in a game's code |
+
+   A ticket may have several blocks. A block that doesn't parse fails the
+   changelog with its file and line.
+
 ## Parked tickets
 
 A ticket whose title starts with `Parked:` has `status: blocked` and a
