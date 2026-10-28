@@ -141,11 +141,11 @@ None.
   steps, `--act`, the MCP `step` row's "waits in the build's frames")
   and the grid and blank templates' `AGENTS.md` tables (`--act` with
   their own action names) through the `document` skill.
-- **Either order with 2540:** if 2540 is done, move `Step::Crank` into
-  `shuyi_platform::script::Step` with the others, played by
-  `Script::play` with `Harness::crank`; the link's plan refuses it
-  ("crank: not over the live link yet"); if not, nothing to do (2540
-  adds it to `shuyi_platform::script::Step`).
+- **From 2540 (done):** `Step::Crank(f32)` is in `frame_png::Step`
+  (played with `Harness::crank`, read from `--crank`), and
+  `AttachStep::of` refuses it ("crank: not over the live link yet").
+  Move it into `shuyi_platform::script::Step` with the others, and make
+  the link's plan (`script::frames`) refuse it the same way.
 - **Either order with 2353:** if 2353 is done, move `Step::Lang` into
   `shuyi_platform::script::Step`, played with `Harness::set_lang`; the
   link's plan refuses it ("lang: not over the live link yet"); if not,

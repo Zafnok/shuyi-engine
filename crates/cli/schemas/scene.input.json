@@ -123,6 +123,20 @@
           "required": [
             "wait"
           ]
+        },
+        {
+          "description": "`Harness::crank`: the crank winds that many degrees in one frame\n(backwards is negative), as a Playdate front end reports it.",
+          "type": "object",
+          "properties": {
+            "crank": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "crank"
+          ]
         }
       ]
     }
