@@ -40,6 +40,8 @@ pressed by the player's primary key for it, or its primary button when it
 has no key. The game's own start options (`frame-png --help` lists them, such
 as Hello, Grid's `--stage` and `--seed`) go to `run`, `scene`, `bots`,
 `playtest` and `autobalance` too.
+An option the game doesn't offer, one missing its value and one given a value it
+doesn't take are refused with `SH0001` on every path, MCP's `start` among them.
 
 From a game's folder, `cargo shuyi <op>` runs them (the alias the
 templates write in `.cargo/config.toml`, or the engine's for its own

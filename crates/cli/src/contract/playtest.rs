@@ -21,10 +21,12 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_core::bots::playtest::{Check, Found, PlaytestReport, Tried, Tries, judge};
 
-use super::bots::{MAX_GAMES, game_arg, options_text};
+use super::bots::{MAX_GAMES, options_text};
 use super::codes::Code;
 use super::{Answer, Op, codes};
-use crate::game::{GameArg, GameOption, GameTools, PlaytestChecks, PlaytestPlan, code_of};
+use crate::game::{
+    GameArg, GameOption, GameTools, PlaytestChecks, PlaytestPlan, check_start, code_of, game_arg,
+};
 use crate::pool;
 
 mod history;
@@ -143,6 +145,9 @@ pub struct PlaytestOutput {
 /// history: [`kept`] does.
 pub fn playtest(game: &dyn GameTools, input: &PlaytestInput) -> Answer<Vec<PlaytestOutput>> {
     let failed = |code: Code, error: String| Answer::failed(Op::Playtest, code, error);
+    if let Err(e) = check_start(game.frame_options(), &input.start) {
+        return failed(codes::WRONG_ARGUMENTS, e);
+    }
     let tries = input.tries(&game.playtest_defaults());
     if let Err(e) = check_tries(&tries) {
         return failed(codes::WRONG_ARGUMENTS, e);

@@ -133,11 +133,10 @@ None.
   - `PeersInput::check`: 2 to `MAX_PEERS` (8) peers, every step's
     `peer` below `peers`, every step passes `Step::check`, and `frames`
     at most `run::MAX_IDLE_FRAMES / peers`.
-  - **Either order with 2568:** if 2568 is done, call
+  - **From 2568 (done):** call
     `game::check_start(game.frame_options(), &input.start)` at the top
     of the `peers` operation, failing with `codes::WRONG_ARGUMENTS`, and
-    keep `Host::start`'s call ahead of its peers path; if not, nothing
-    to do (2568 adds the call).
+    keep `Host::start`'s call ahead of its peers path.
   - `PeersOutput { peers: Vec<PeerOutput>, desync: Option<Desync> }`;
     `PeerOutput { peer: u32, run: RunOutput, net: NetStats, turns: u32
     }`; `Desync { peer: u32, at: Difference }`, where `at.step` is the

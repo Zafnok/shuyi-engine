@@ -21,11 +21,11 @@ use shuyi_core::bots::balance::{Change, distance};
 use shuyi_core::bots::playtest::{PlaytestReport, Tried, Tries};
 use shuyi_core::{BalanceSettings, Balanced, Stop};
 
-use super::bots::{game_arg, options_text};
+use super::bots::options_text;
 use super::codes::Code;
 use super::playtest::{DEFAULT_TRIES, check_tries, checks_of, choose, played, seconds, threads};
 use super::{Answer, Op, codes};
-use crate::game::{GameArg, GameOption, GameTools, code_of};
+use crate::game::{GameArg, GameOption, GameTools, check_start, code_of, game_arg};
 
 /// The evaluations when the input doesn't say.
 pub const DEFAULT_BUDGET: u32 = 100;
@@ -130,6 +130,9 @@ pub struct AutobalanceOutput {
 /// played on threads and judged.
 pub fn autobalance(game: &dyn GameTools, input: &AutobalanceInput) -> Answer<AutobalanceOutput> {
     let failed = |code: Code, error: String| Answer::failed(Op::Autobalance, code, error);
+    if let Err(e) = check_start(game.frame_options(), &input.start) {
+        return failed(codes::WRONG_ARGUMENTS, e);
+    }
     let settings = input.settings(&game.playtest_defaults());
     if let Err(e) = check_settings(&settings) {
         return failed(codes::WRONG_ARGUMENTS, e);

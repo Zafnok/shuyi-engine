@@ -197,10 +197,10 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   from `PlaytestInput`, and read "`bots`" in this ticket as
   `playtest`; if not, use `BotsInput`'s as written, and 2544 renames
   them.
-  **Either order with 2568:** if 2568 is done, call
+  **From 2568 (done):** call
   `game::check_start(game.frame_options(), &input.start)` at the top of
   the `soak` operation beside its other checks, failing with
-  `codes::WRONG_ARGUMENTS`; if not, nothing to do (2568 adds the call).
+  `codes::WRONG_ARGUMENTS`.
 - `SoakOutput { games: u32, steps: u64, unfinished: u32, failures:
   Vec<SoakFailure> }`. `SoakFailure { seed: u64, check: String, step:
   u32, detail: String, played: u32, shrunk: u32, complete: bool, record:

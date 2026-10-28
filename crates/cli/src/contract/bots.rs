@@ -11,7 +11,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::{Answer, Op, codes};
-use crate::game::{GameArg, GameOption, GameTools, code_of};
+use crate::game::{GameArg, GameOption, GameTools, check_start, code_of};
+
+pub use crate::game::game_arg;
 
 /// The most games one `bots` plays.
 pub const MAX_GAMES: u32 = 10_000;
@@ -164,6 +166,9 @@ pub fn bots(game: &dyn GameTools, input: &BotsInput) -> Answer<BotsOutput> {
         let error = "seed: too big for that many games";
         return Answer::failed(Op::Bots, codes::WRONG_ARGUMENTS, error);
     }
+    if let Err(e) = check_start(game.frame_options(), &input.start) {
+        return Answer::failed(Op::Bots, codes::WRONG_ARGUMENTS, e);
+    }
     match game.bots(input) {
         Ok(output) => {
             let mut limits = Vec::new();
@@ -245,24 +250,6 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<BotsInput, 
     }
     input.games = games.ok_or("missing <games>")?;
     Ok(input)
-}
-
-/// The game's start option `flag`, one of `options`, with its value from
-/// `value` if it takes one.
-pub fn game_arg(
-    flag: &str,
-    options: &[GameOption],
-    value: impl FnOnce() -> Result<String, String>,
-) -> Result<GameArg, String> {
-    let option = options
-        .iter()
-        .find(|option| option.flag == flag)
-        .ok_or_else(|| format!("unknown option: {flag}"))?;
-    let value = option.value.map(|_| value()).transpose()?;
-    Ok(GameArg {
-        flag: flag.to_owned(),
-        value,
-    })
 }
 
 /// What `bots` found, for people.

@@ -22,7 +22,7 @@ use super::perf::{self, PerfSummary};
 use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound, measured_start};
 use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
-use crate::game::{GameArg, GameOption, GameTools, code_of};
+use crate::game::{GameArg, GameOption, GameTools, check_start, code_of, game_arg};
 
 /// The most frames `frames` may ask for: about 28 simulated minutes.
 pub const MAX_IDLE_FRAMES: u32 = 100_000;
@@ -124,6 +124,8 @@ type Played = (Box<dyn Session>, Option<HeapSnapshot>);
 fn played<T>(op: Op, game: &dyn GameTools, input: &RunInput) -> Result<Played, Answer<T>> {
     input
         .check()
+        .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
+    check_start(game.frame_options(), &input.start)
         .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
     let started = if input.measures() {
         measured_start(|| game.session(&input.start))
@@ -401,15 +403,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
                 })?;
             continue;
         }
-        let option = options
-            .iter()
-            .find(|option| option.flag == arg)
-            .ok_or_else(|| format!("unknown option: {arg}"))?;
-        let value = option.value.map(|_| value()).transpose()?;
-        input.start.push(GameArg {
-            flag: arg.clone(),
-            value,
-        });
+        input.start.push(game_arg(arg, options, value)?);
     }
     Ok(input)
 }

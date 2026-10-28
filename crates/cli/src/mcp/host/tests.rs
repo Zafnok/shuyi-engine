@@ -556,3 +556,24 @@ fn a_snapshot_where_the_heap_isnt_counted_by_tag_says_so() {
     let limits = read["limits"].to_string();
     assert!(limits.contains("by memory tag"), "{limits}");
 }
+
+#[cfg(feature = "toy")]
+#[test]
+fn start_refuses_an_option_the_game_doesnt_offer() {
+    let game = crate::toy::ToyTools;
+    let mut host = Host::new(&game, project(PathBuf::from(".")));
+    let typo = ask(
+        &mut host,
+        Op::Start,
+        json!({ "start": [{ "flag": "--lobbby" }] }),
+    );
+    assert_eq!(typo["ok"], false, "{typo}");
+    assert_eq!(typo["code"], "SH0001");
+    assert_eq!(ask(&mut host, Op::Step, json!({}))["code"], "SH0002");
+    let lobby = ask(
+        &mut host,
+        Op::Start,
+        json!({ "start": [{ "flag": "--lobby" }] }),
+    );
+    assert_eq!(lobby["ok"], true, "{lobby}");
+}

@@ -32,7 +32,7 @@ use shuyi_ui::frame::{GlyphBuffer, Rgb};
 use shuyi_ui::input::{Button, Chord};
 
 use crate::codec::{decode_png, encode_png};
-use crate::game::{GameArg, GameOption, GameTools};
+use crate::game::{GameArg, GameOption, GameTools, game_arg};
 
 /// Largest `--scale`.
 pub const MAX_SCALE: u32 = 8;
@@ -239,15 +239,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
             }
             "--target" => parsed.target = Some(value()?),
             flag if flag.starts_with("--") => {
-                let option = options
-                    .iter()
-                    .find(|option| option.flag == flag)
-                    .ok_or_else(|| format!("unknown option: {flag}"))?;
-                let value = option.value.map(|_| value()).transpose()?;
-                parsed.game.push(GameArg {
-                    flag: flag.to_owned(),
-                    value,
-                });
+                parsed.game.push(game_arg(flag, options, value)?);
             }
             path if out.is_none() => out = Some(PathBuf::from(path)),
             extra => return Err(format!("one output path only, not also {extra}")),

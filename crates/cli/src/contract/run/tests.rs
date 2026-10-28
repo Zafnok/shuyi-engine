@@ -584,3 +584,35 @@ fn run_with_perf_on_a_session_that_measured_nothing_says_why() {
         ]
     );
 }
+
+#[test]
+fn a_start_option_the_game_doesnt_offer_is_refused_before_its_session() {
+    let unknown = RunInput {
+        start: vec![GameArg {
+            flag: "--seeed".to_owned(),
+            value: None,
+        }],
+        ..RunInput::default()
+    };
+    let no_value = RunInput {
+        start: vec![GameArg {
+            flag: "--seed".to_owned(),
+            value: None,
+        }],
+        ..RunInput::default()
+    };
+    // The game's session would fail, so only the check can answer SH0001.
+    let game = Fake {
+        session: Err("no session".to_owned()),
+        ..Fake::default()
+    };
+    for input in [&unknown, &no_value] {
+        for answer in [run(&game, input).code, scene(&game, input).code] {
+            assert_eq!(answer.as_deref(), Some("SH0001"));
+        }
+    }
+    assert_eq!(
+        run(&game, &no_value).error.as_deref(),
+        Some("--seed needs a value")
+    );
+}
