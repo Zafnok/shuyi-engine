@@ -233,6 +233,27 @@ keeps it. It must pass `shuyi_ui::storage::conformance_suite` (the
 `storage-conformance` feature), in the backend's tests and, where there is
 a debug build on the device, on the device's real files.
 
+A save must survive the power going at any moment (ticket 3045):
+
+- a write over an old value reads the old value or the new one, never
+  nothing, a mix of the two or an error;
+- a first write reads nothing or the new value, and a delete the old
+  value or nothing;
+- a write or delete that returned `Ok` reads its result after the power
+  comes back;
+- the other keys read as they did, `list()` names exactly the keys that
+  read a value, and with the power on the next write works.
+
+A backend proves this with `shuyi_ui::storage::power_cut_suite` (the same
+feature) over a fake of its medium: a `PowerCutRig` that loses the power
+after any number of operations (a file written, renamed or removed, a
+folder synced; a flash sector erased) and keeps only what the medium had
+made durable. `shuyi-app`'s `FileStorage` does it by writing a `.tmp`
+file and flushing it, keeping the old value as `<key>.ron.bak`, renaming
+the `.tmp` onto `<key>.ron` and flushing the folder; a read of a damaged
+`.ron` falls back to the `.bak`. Its doc comment says what that promises
+on each OS.
+
 ### `audio(&mut self) -> &mut dyn Audio`
 
 The sound device:
@@ -388,6 +409,8 @@ one side, the engine's types on the other.
 - [ ] The frame cap applied and reported (`App::set_pacing`), or the
       device's fixed rate reported as the cap applied.
 - [ ] Its storage passes the conformance suite.
+- [ ] Its storage passes the power-cut suite over a fake of the device's
+      medium.
 - [ ] Its input tests: the device's buttons to `RawInputEvent`s, releases
       before presses.
 - [ ] A target profile (`targets/<id>.ron`, ADR-0008 §1) naming it, and
