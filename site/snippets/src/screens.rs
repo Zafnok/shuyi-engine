@@ -244,10 +244,70 @@ mod tests {
     use std::collections::BTreeMap;
 
     use shuyi::assets::lang::English;
+    use shuyi::ui::input::help_keys::key_name;
 
     use super::*;
     use crate::assets::formats;
     use crate::game;
+
+    #[test]
+    fn each_screen_declares_the_actions_it_reads() {
+        let mut ctx = game().ctx().unwrap();
+        let garden = GardenScreen::new(&ctx.game.own);
+        let screens: Vec<Box<dyn Screen<Data>>> =
+            vec![Box::new(Title), Box::new(garden), Box::new(Leave)];
+        let declared: Vec<_> = screens.iter().map(|s| s.actions()).collect();
+        use UiAction::{Cancel, Confirm, Left, Right};
+        assert_eq!(
+            declared,
+            [
+                Some(vec![Confirm, Cancel]),
+                Some(vec![Left, Right, Confirm, Cancel]),
+                Some(vec![Confirm, Cancel]),
+            ]
+        );
+        // Confirm once the garden is over goes back to the title.
+        let mut over = GardenScreen {
+            garden: Garden::new(&Plan::new(1, 1, 100), 0),
+        };
+        let confirm = || FrameInput::new(vec![Confirm], 0.0, vec![]);
+        assert!(matches!(
+            over.update(&mut ctx, &confirm()),
+            Transition::None
+        ));
+        assert!(over.garden.outcome().is_some());
+        assert!(matches!(over.update(&mut ctx, &confirm()), Transition::Pop));
+    }
+
+    #[test]
+    fn left_walks_back() {
+        let mut h = game().harness();
+        h.keys("Enter Right Right Left");
+        let garden = h.screen::<GardenScreen>().unwrap();
+        assert_eq!(garden.garden.at(), 1);
+    }
+
+    #[test]
+    fn the_title_and_the_question_are_where_they_should_be() {
+        let mut h = game().harness();
+        let frame = h.snapshot();
+        let lines: Vec<&str> = frame.lines().collect();
+        assert_eq!(lines[9].trim(), "Moon Garden", "{frame}");
+        assert_eq!(lines[11].trim(), "made with Shuyi Engine", "{frame}");
+        assert_eq!(lines[23].trim(), "Enter plant · Backspace leave", "{frame}");
+        h.keys("Enter Backspace");
+        let frame = h.snapshot();
+        let lines: Vec<&str> = frame.lines().collect();
+        // The question's box, 32 cells wide from column 8, over the garden,
+        // which shows below it.
+        assert_eq!(lines[9].find('┌'), Some(8), "{frame}");
+        assert_eq!(lines[9].trim_end().chars().count(), 40, "{frame}");
+        assert_eq!(
+            lines[10].trim().trim_matches('│').trim(),
+            "Leave the garden?"
+        );
+        assert!(lines[14].contains("9 seeds left"), "{frame}");
+    }
 
     // ANCHOR: harness
     #[test]
@@ -281,5 +341,7 @@ mod tests {
         };
         let ctx = Ctx::new(data).unwrap();
         assert_eq!(ctx.text("title.name"), "Moon Garden");
+        // The keys come from the game's keymap file.
+        assert_eq!(key_name(ctx.help_keys(), UiAction::Confirm), "Enter");
     }
 }

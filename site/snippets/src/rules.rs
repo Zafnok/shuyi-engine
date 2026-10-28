@@ -203,6 +203,31 @@ mod tests {
         Plan::new(6, 9, 75)
     }
 
+    #[test]
+    fn each_applied_command_is_a_turn_and_a_refused_one_isnt() {
+        let mut garden = Garden::new(&plan(), 7);
+        assert_eq!(garden.turn(), 0);
+        garden.apply(&Command::Right).unwrap();
+        garden.apply(&Command::Right).unwrap();
+        assert!(garden.apply(&Command::Plant).is_ok());
+        let _ = garden.apply(&Command::Left);
+        assert_eq!(garden.turn(), 4);
+        let mut edge = Garden::new(&plan(), 7);
+        assert!(edge.apply(&Command::Left).is_err());
+        assert_eq!(edge.turn(), 0);
+    }
+
+    #[test]
+    fn a_seed_grows_only_on_a_roll_under_its_chance() {
+        // The garden's first roll, from the same seed: a chance equal to it
+        // isn't enough.
+        let roll = SimRng::new(5).roll_percent();
+        let mut garden = Garden::new(&Plan::new(2, 3, roll), 5);
+        assert_eq!(garden.apply(&Command::Plant).unwrap(), [Event::Wilted(0)]);
+        let mut garden = Garden::new(&Plan::new(2, 3, roll + 1), 5);
+        assert_eq!(garden.apply(&Command::Plant).unwrap(), [Event::Grew(0)]);
+    }
+
     // ANCHOR: test
     #[test]
     fn planting_at_the_edge_and_moving_past_it() {
