@@ -272,12 +272,13 @@ impl AttachInput {
 
 impl AttachStep {
     /// `run`'s script step `step`, played over the link.
-    pub(crate) fn of(step: &Step) -> Self {
-        match step {
+    pub(crate) fn of(step: &Step) -> Result<Self, String> {
+        Ok(match step {
             Step::Keys(script) => AttachStep::Keys(script.clone()),
             Step::Pad(script) => AttachStep::Pad(script.clone()),
             Step::Wait(seconds) => AttachStep::Wait(*seconds),
-        }
+            Step::Crank(_) => return Err("crank: not over the live link yet".to_owned()),
+        })
     }
 
     /// The step as the link plays it: a wait in the build's frames.
@@ -414,7 +415,7 @@ fn parse_step(
                 .map_err(|e| format!("--{e}"))
         }));
     }
-    if !matches!(flag, "--keys" | "--script" | "--pad" | "--wait") {
+    if !matches!(flag, "--keys" | "--script" | "--pad" | "--wait" | "--crank") {
         return None;
     }
     let text = match value() {
@@ -422,7 +423,7 @@ fn parse_step(
         Err(e) => return Some(Err(e)),
     };
     let step = Script::parse_step(flag, &text)?;
-    Some(step.map(|step| AttachStep::of(&step)))
+    Some(step.and_then(|step| AttachStep::of(&step)))
 }
 
 /// Why `attach` stopped: its code and what to say.

@@ -33,8 +33,10 @@ is another way to reach them.
 | `schema [<name> \| --out <dir>]` | The contract's JSON schemas | nothing |
 
 A step is `--script "Enter Up"` (or `--keys`: each key chord pressed and
-released in turn), `--pad "South"` (controller buttons, by position) or
-`--wait 0.5` (seconds). Key and button names are the Harness's test-script
+released in turn), `--pad "South"` (controller buttons, by position) 
+`--wait 0.5` (seconds) or `--crank -30` (the crank winds that many
+degrees in one frame, backwards negative; `frame-png`, `run` and `scene`
+only, the live link refuses it). Key and button names are the Harness's test-script
 names. `attach` also takes `--act <Action>`: the game's action by name,
 pressed by the player's primary key for it, or its primary button when it
 has no key. The game's own start options (`frame-png --help` lists them, such
@@ -53,7 +55,7 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 27,
+  "contract": 28,
   "op": "scene",
   "ok": false,
   "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },

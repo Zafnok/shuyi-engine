@@ -182,7 +182,7 @@ pub fn run(repo_root: &Path, pr_branch: Option<&str>, game: &GameSource) -> Repo
     report
 }
 
-fn read_ticket_files(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
+pub(crate) fn read_ticket_files(dir: &Path) -> std::io::Result<Vec<(String, String)>> {
     let mut files = Vec::new();
     for entry in fs::read_dir(dir)? {
         let entry = entry?;
@@ -805,7 +805,7 @@ fn is_valid_ticket_filename(name: &str) -> bool {
 
 /// Splits a ticket into the YAML text between the first `---` line and the
 /// next line that starts with `---`, and the body after that line.
-fn extract_frontmatter(content: &str) -> Option<(&str, &str)> {
+pub(crate) fn extract_frontmatter(content: &str) -> Option<(&str, &str)> {
     let after_open = content.strip_prefix("---\n")?;
     let end = after_open.find("\n---")?;
     let rest = &after_open[end + 1..];

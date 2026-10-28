@@ -68,13 +68,20 @@ and says whether it is easy enough.
   - one Atom feed for all of News, and one per tag.
   - drafts build with `zola serve` and never on Pages (`zola build`
     leaves them out).
-- **Either order with 2804:** 2804's generated posts (a release, or a
+- **With 2804 (done):** 2804's generated posts (a release, or a
   month before the first tag) have a `description` and the `release`
   tag, and no `extra.author`, so the list and the post page show no
-  author for a post without one. If 2804 is done, extend the plain
-  News list it wrote and keep the `tags` taxonomy it declared. If not,
-  declare `tags` (with a feed per tag) here, and 2804's PR makes its
-  posts fit this list.
+  author for a post without one. 2804 is done: extend the plain
+  News list it wrote (`site/templates/news.html`, `macros.html`'s
+  `post_list`) and keep the `tags` taxonomy it declared in
+  `site/config.toml`, with its two plain templates
+  (`taxonomy_list.html`, `taxonomy_single.html`). **From 2804 (done):**
+  its generated posts are in `site/content/news/generated/` (never
+  committed), and `site/content/news/intro/vX.Y.Z.md` (with `draft =
+  true` front matter) holds a release's optional introduction; the News
+  page links the Changelog page by `get_url(path='changelog/')`, and the
+  feed would list that page too unless this ticket's feed template
+  leaves it out (it has no `date`).
 - **`site/content/news/_template.md`**, the file to copy, with each
   field explained in a comment.
 - **A "How to post" page** for Nick (`site/README.md` and a page under

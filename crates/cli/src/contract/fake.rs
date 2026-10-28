@@ -91,6 +91,7 @@ impl Session for FakeSession {
                 }
                 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                 Step::Wait(seconds) => (seconds * 60.0).ceil() as u32,
+                Step::Crank(_) => 1,
             };
         }
     }

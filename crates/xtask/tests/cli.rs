@@ -270,3 +270,38 @@ fn compile_times_rejects_an_unknown_option() {
     assert!(!ok);
     assert!(err.contains("usage:"), "{err}");
 }
+
+#[test]
+fn changelog_writes_markdown_to_stdout() {
+    let output = Command::new(env!("CARGO_BIN_EXE_xtask"))
+        .arg("changelog")
+        .current_dir(std::env::temp_dir())
+        .output()
+        .unwrap_or_else(|e| panic!("the xtask binary does not run: {e}"));
+    assert!(output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        text.starts_with(
+            "# Changelog
+"
+        ),
+        "{text}"
+    );
+}
+
+#[test]
+fn changelog_site_writes_the_pages() {
+    let dir = std::env::temp_dir().join(format!("xtask-cli-changelog-{}", std::process::id()));
+    let (ok, err) = xtask(&["changelog", "--site", &dir.to_string_lossy()]);
+    assert!(ok, "{err}");
+    assert!(dir.join("changelog.md").is_file());
+    assert!(dir.join("news/generated").is_dir());
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn changelog_refuses_an_unknown_option() {
+    let (ok, err) = xtask(&["changelog", "--bogus"]);
+    assert!(!ok);
+    assert!(err.contains("usage:"), "{err}");
+}

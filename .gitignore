@@ -21,3 +21,7 @@ lcov.info
 /site/public/
 # The problem codes' pages, written from crates/cli/errors/ by site/errors.sh.
 /site/content/learn/errors/
+# The changelog and the release posts `cargo xtask changelog --site` writes
+# (ticket 2804); `pages.yml` makes them when it builds.
+/site/content/changelog.md
+/site/content/news/generated/

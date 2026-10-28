@@ -1,0 +1,74 @@
+# Changelog
+
+Every ticket done, by release and then by area, with the engine's breaking changes first. Written from `tickets/done/` and the merges by `cargo xtask changelog`.
+
+## Unreleased
+
+### Assets and formats
+
+- [Hot reload for baked assets](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2203-hot-reload-for-baked-assets.md) ([#41](https://github.com/Zafnok/shuyi-engine/pull/41))
+
+### Other changes
+
+- 1 Sonar fix
+- 1 dependency update
+
+## v0.2.0 — 2026-12-01
+
+### Breaking changes
+
+- shuyi-core: `Timer::new`: pass the step as a `Step` ([Fixed-step timers](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2101-fixed-step-timers.md) ([#38](https://github.com/Zafnok/shuyi-engine/pull/38)))
+
+### Migration guide
+
+#### A timer takes its step as a Step, not a number.
+
+Since `0.2.0`: `Timer::new(u32)` → `Timer::new(Step)` ([Fixed-step timers](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2101-fixed-step-timers.md)).
+
+Before:
+
+```rust
+let t = Timer::new(60);
+```
+
+After:
+
+```rust
+let t = Timer::new(Step::from_ticks(60));
+```
+
+### Core and simulation
+
+- [Fixed-step timers](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2101-fixed-step-timers.md) ([#38](https://github.com/Zafnok/shuyi-engine/pull/38))
+
+### Frame, screens and skins
+
+- [Draw the scene](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2301-draw-the-scene.md) ([#34](https://github.com/Zafnok/shuyi-engine/pull/34))
+
+### Input
+
+- [Rebind keys at run time](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2402-rebind-keys-at-run-time.md) ([#37](https://github.com/Zafnok/shuyi-engine/pull/37))
+
+### Tools and AI support
+
+- [A \<tool> for \[agents\]](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2501-a--tool--for--agents-.md)
+
+### Other changes
+
+- 2 Sonar fixes
+- 1 other pull request
+
+## v0.1.0 — 2026-11-01
+
+### Repository and foundation
+
+- [The workspace](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2001-the-workspace.md) ([#30](https://github.com/Zafnok/shuyi-engine/pull/30))
+
+### Docs and community
+
+- [The website](https://github.com/Zafnok/shuyi-engine/blob/main/tickets/done/2801-the-website.md) ([#25](https://github.com/Zafnok/shuyi-engine/pull/25))
+
+### Other changes
+
+- 1 Sonar fix
+

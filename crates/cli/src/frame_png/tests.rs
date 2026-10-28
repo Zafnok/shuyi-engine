@@ -474,6 +474,37 @@ fn a_step_is_read_from_its_flag() {
 }
 
 #[test]
+fn a_crank_step_is_read_checked_and_kept_in_order() {
+    for (text, degrees) in [("30", 30.0), ("-30", -30.0), ("0.5", 0.5)] {
+        assert_eq!(
+            Script::parse_step("--crank", text),
+            Some(Ok(Step::Crank(degrees)))
+        );
+    }
+    assert_eq!(
+        Script::parse_step("--crank", "far"),
+        Some(Err("--crank: not a number of degrees: far".into()))
+    );
+    let nan = Script::parse_step("--crank", "NaN").unwrap().unwrap_err();
+    assert!(nan.starts_with("--crank: "), "{nan}");
+    assert!(Step::Crank(f32::INFINITY).check().is_err());
+    let parsed = parse_args(
+        &args(&["a.png", "--pad", "South", "--crank", "-30", "--pad", "East"]),
+        &[],
+    )
+    .unwrap();
+    assert_eq!(
+        parsed.script.steps,
+        vec![
+            Step::Pad("South".into()),
+            Step::Crank(-30.0),
+            Step::Pad("East".into())
+        ]
+    );
+    assert!(parse_args(&args(&["a.png", "--crank", "far"]), &[]).is_err());
+}
+
+#[test]
 fn a_new_shot_has_no_warning_and_a_new_script_its_steps() {
     let image = Image {
         width: 1,

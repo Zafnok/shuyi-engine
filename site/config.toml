@@ -13,6 +13,10 @@ build_search_index = false
 generate_feeds = false
 feed_filenames = ["atom.xml"]
 
+# News's posts carry tags; the generated release posts carry `release`
+# (ticket 2804). Each tag has its own feed.
+taxonomies = [{ name = "tags", feed = true }]
+
 [markdown]
 highlight_code = false
 external_links_no_referrer = true

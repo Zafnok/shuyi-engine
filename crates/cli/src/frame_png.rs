@@ -53,6 +53,8 @@ steps (each may repeat):
   --pad \"South\"      press and release each controller button in turn
                      (\"East+DpadDown\": those buttons together)
   --wait 0.5         let that many seconds pass
+  --crank -30        wind the crank that many degrees in one frame
+                     (backwards is negative)
 
 options:
   --scale N            whole-number scale, 1 to {MAX_SCALE} (the game says what by default)
@@ -88,6 +90,8 @@ never-hard-code-a-key rule doesn't apply to them.",
 /// One step of the script, run in the order given.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+// A set that grows: a step is added without a break (ADR-0039).
+#[non_exhaustive]
 pub enum Step {
     /// `Harness::keys`: each chord pressed and released in turn
     /// (`"Enter Up Shift+Space"`).
@@ -98,6 +102,9 @@ pub enum Step {
     /// `Harness::wait`: that many seconds pass, at most [`MAX_WAIT`] in
     /// one step.
     Wait(f32),
+    /// `Harness::crank`: the crank winds that many degrees in one frame
+    /// (backwards is negative), as a Playdate front end reports it.
+    Crank(f32),
 }
 
 /// The longest wait of one step, in seconds: the Harness's most frames
@@ -125,6 +132,11 @@ impl Step {
                     return Err(format!(
                         "wait: {seconds} is not a number of seconds from 0 to {MAX_WAIT:.1}"
                     ));
+                }
+            }
+            Step::Crank(degrees) => {
+                if !degrees.is_finite() {
+                    return Err(format!("crank: {degrees} is not a number of degrees"));
                 }
             }
         }
@@ -155,6 +167,7 @@ impl Script {
                 Step::Keys(script) => h.keys(script),
                 Step::Pad(script) => h.pad(script),
                 Step::Wait(seconds) => h.wait(*seconds),
+                Step::Crank(degrees) => h.crank(*degrees),
             };
         }
     }
@@ -165,7 +178,7 @@ impl Script {
     }
 
     /// Reads the script flag `flag` with its value `value`, if it is one:
-    /// `--keys` (or `--script`), `--pad` or `--wait`. A step the Harness
+    /// `--keys` (or `--script`), `--pad`, `--wait` or `--crank`. A step the Harness
     /// can't play is an error, not a panic later.
     pub fn parse_step(flag: &str, value: &str) -> Option<Result<Step, String>> {
         let step = match flag {
@@ -175,6 +188,12 @@ impl Script {
                 Ok(seconds) => Step::Wait(seconds),
                 Err(_) => {
                     return Some(Err(format!("--wait: not a number of seconds: {value}")));
+                }
+            },
+            "--crank" => match value.parse::<f32>() {
+                Ok(degrees) => Step::Crank(degrees),
+                Err(_) => {
+                    return Some(Err(format!("--crank: not a number of degrees: {value}")));
                 }
             },
             _ => return None,
@@ -220,7 +239,7 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<Options, St
                 .cloned()
         };
         match arg.as_str() {
-            "--keys" | "--pad" | "--wait" => {
+            "--keys" | "--pad" | "--wait" | "--crank" => {
                 let text = value()?;
                 if let Some(step) = Script::parse_step(arg, &text) {
                     steps.push(step?);
