@@ -91,13 +91,12 @@ None.
   carry a `Breaking:` line for `shuyi-cli` (`GameTools::bots` and the
   `bots` operation go; a game gives its bot as a playtest plan with
   one entrant and no checks). The game implements neither hook.
-- **Either order with 2568:** if 2568 is done, `game_arg` and
-  `check_start` live in `crates/cli/src/game.rs`, and `bots.rs`'s `pub
-  use crate::game::game_arg;` goes with the file (add
-  `contract::bots::game_arg` to the `Breaking:` line); if not, move
-  `bots::game_arg` into `crates/cli/src/contract/playtest.rs`, where
-  `playtest` and `autobalance` still call it, and 2568 moves it from
-  there.
+- **From 2568 (done):** `game_arg` and `check_start` live in
+  `crates/cli/src/game.rs`, and `bots.rs`'s `pub use
+  crate::game::game_arg;` goes with the file (add
+  `contract::bots::game_arg` to the `Breaking:` line). `check_start` runs
+  at the top of `playtest` and `autobalance`; `bots::bots` goes with the
+  file.
 - **Either order with 2005** (the first crates.io release): if 2005 is
   done, the break also takes what its version policy asks of a break
   after the release (a version bump and a `CHANGELOG.md` line,

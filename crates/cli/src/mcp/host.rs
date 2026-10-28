@@ -32,7 +32,7 @@ use crate::contract::{
     modules, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
-use crate::game::{GameArg, GameTools, code_of};
+use crate::game::{GameArg, GameTools, check_start, code_of};
 use crate::project::{FILE, Project};
 
 /// What starts each reply line, so the server tells replies from what
@@ -308,6 +308,9 @@ impl<'a> Host<'a> {
     /// The session's game started as `start` says, for `start` or `reset`
     /// (`op`).
     fn start(&mut self, op: Op, start: Vec<GameArg>) -> Answer<StartOutput> {
+        if let Err(e) = check_start(self.tools.frame_options(), &start) {
+            return Answer::failed(op, codes::WRONG_ARGUMENTS, e);
+        }
         let mut game = match measured_start(|| self.tools.session(&start)) {
             Ok(game) => game,
             Err(e) => return Answer::failed(op, code_of(&e), e),

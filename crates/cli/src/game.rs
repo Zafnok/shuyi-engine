@@ -79,6 +79,50 @@ pub struct GameArg {
     pub value: Option<String>,
 }
 
+/// The game's start option `flag`, one of `options`, with its value from
+/// `value` if it takes one.
+///
+/// # Errors
+/// `unknown option: {flag}` if the game doesn't offer `flag`, or what
+/// `value` fails with.
+pub fn game_arg(
+    flag: &str,
+    options: &[GameOption],
+    value: impl FnOnce() -> Result<String, String>,
+) -> Result<GameArg, String> {
+    let option = options
+        .iter()
+        .find(|option| option.flag == flag)
+        .ok_or_else(|| format!("unknown option: {flag}"))?;
+    let value = option.value.map(|_| value()).transpose()?;
+    Ok(GameArg {
+        flag: flag.to_owned(),
+        value,
+    })
+}
+
+/// Checks that the start options `start` are ones the game offers
+/// (`options`): each names one, has a value if it takes one and has none
+/// if it takes none. Every operation that starts the game calls it first,
+/// whether the options came from the command line or from JSON.
+///
+/// # Errors
+/// What is wrong with the first option that is not right.
+pub fn check_start(options: &[GameOption], start: &[GameArg]) -> Result<(), String> {
+    for arg in start {
+        let option = options
+            .iter()
+            .find(|option| option.flag == arg.flag)
+            .ok_or_else(|| format!("unknown option: {}", arg.flag))?;
+        match (option.value, &arg.value) {
+            (Some(_), None) => return Err(format!("{} needs a value", arg.flag)),
+            (None, Some(_)) => return Err(format!("{} takes no value", arg.flag)),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 /// A game's languages, for `lang-status`. Build it with
 /// [`GameLang::new`] (ADR-0039).
 #[derive(Debug, Clone)]
@@ -788,5 +832,46 @@ mod tests {
         assert!(plan.groups.is_empty() && plan.default_entrants.is_empty());
         let got = (plan.checks)(&["a"]);
         assert!(got.is_empty(), "{got:?}");
+    }
+}
+
+#[cfg(test)]
+mod start_tests {
+    use super::*;
+
+    const OPTIONS: [GameOption; 2] = [
+        GameOption::new("--hard", "harder"),
+        GameOption::new("--seed", "seed it").with_value(Some("N")),
+    ];
+
+    fn arg(flag: &str, value: Option<&str>) -> GameArg {
+        GameArg {
+            flag: flag.to_owned(),
+            value: value.map(str::to_owned),
+        }
+    }
+
+    #[test]
+    fn nothing_given_is_fine_with_or_without_options() {
+        assert_eq!(check_start(&[], &[]), Ok(()));
+        assert_eq!(check_start(&OPTIONS, &[]), Ok(()));
+    }
+
+    #[test]
+    fn every_option_given_right_passes() {
+        let start = [arg("--hard", None), arg("--seed", Some("7"))];
+        assert_eq!(check_start(&OPTIONS, &start), Ok(()));
+    }
+
+    #[test]
+    fn a_wrong_option_is_named() {
+        let err = |start: &[GameArg]| check_start(&OPTIONS, start).unwrap_err();
+        assert_eq!(err(&[arg("--hrad", None)]), "unknown option: --hrad");
+        assert_eq!(err(&[arg("--seed", None)]), "--seed needs a value");
+        assert_eq!(err(&[arg("--hard", Some("1"))]), "--hard takes no value");
+        assert_eq!(
+            check_start(&[], &[arg("--hard", None)]).unwrap_err(),
+            "unknown option: --hard"
+        );
     }
 }

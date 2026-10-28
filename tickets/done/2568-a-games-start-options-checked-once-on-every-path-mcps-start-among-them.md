@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2568 — A game's start options checked once, on every path
@@ -140,16 +140,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `grep -rn "find(|option| option.flag ==" crates/cli/src` finds
+- [x] `grep -rn "find(|option| option.flag ==" crates/cli/src` finds
       only `crates/cli/src/game.rs`.
-- [ ] MCP's `start` on the toy with `start: [{"flag": "--lobbby"}]`
+- [x] MCP's `start` on the toy with `start: [{"flag": "--lobbby"}]`
       answers `ok: false` with code `SH0001` and starts no game (a
       following `step` answers that there is no session).
-- [ ] `run` over MCP with an unknown start option answers `SH0001`
+- [x] `run` over MCP with an unknown start option answers `SH0001`
       before the game's `session` runs.
-- [ ] Every existing test of `run`, `scene`, `frame-png`, `bots`,
+- [x] Every existing test of `run`, `scene`, `frame-png`, `bots`,
       `playtest`, `autobalance` and the MCP host passes unchanged.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -166,5 +166,10 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as written. `game::game_arg` and `game::check_start` are in `game.rs` and
+`lib.rs`; `bots::game_arg` stays as a re-export. `check_start` runs first in
+`Host::start`, `run::played`, `bots`, `playtest` and `autobalance`. The
+parsers of `run` and `frame-png` use `game_arg`. 2519, 2544, 2527 and 2529
+were not done, so their clauses are untouched. No deviations, no
+follow-ups. No break.
+Nick: nothing.
