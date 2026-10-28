@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2540 — frame-png scripts wind the crank
@@ -88,10 +88,10 @@ doesn't match on it. The game's PR that moves the pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] `shuyi frame-png out.png --pad "…" --crank -30 --pad South` winds
+- [x] `shuyi frame-png out.png --pad "…" --crank -30 --pad South` winds
       the crank between the two button steps.
-- [ ] `--crank far` is an error naming the value.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `--crank far` is an error naming the value.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -100,5 +100,18 @@ doesn't match on it. The game's PR that moves the pin follows this one.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Added `Step::Crank(f32)` to `frame_png::Step` (`--crank DEGREES`),
+parsed by `Script::parse_step` (not a number is an error naming the
+value), checked finite by `Step::check`, played with `Harness::crank`, in
+`--help`. `Step` is now `#[non_exhaustive]`. `FakeSession` counts one
+frame for it. The live link has no crank: `AttachStep::of` now returns a
+`Result` and refuses it ("crank: not over the live link yet"). Schemas
+regenerated; `contract::VERSION` 28. Docs: `docs/contract.md`. 2566's
+clause about this ticket now says what holds. 2566 had not landed, so the
+step is in `frame_png::Step`, not `shuyi_platform::script::Step`.
+
+Game PR that moves the pin: game ticket 1182 (not opened yet).
+
+Breaking: shuyi-cli: frame_png::Step: a new variant `Crank` and `#[non_exhaustive]`; a game that matches `Step` exhaustively adds a `_` arm (the game doesn't)
+
+Nick input: none.

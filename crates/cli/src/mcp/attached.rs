@@ -164,7 +164,13 @@ impl Attached {
 
     /// `step`: `input` played over the link, answered as `run` answers.
     fn step(&mut self, input: &StepInput) -> Result<(Value, Option<String>), Failed> {
-        let steps = input.script.steps.iter().map(AttachStep::of).collect();
+        let steps = input
+            .script
+            .steps
+            .iter()
+            .map(AttachStep::of)
+            .collect::<Result<_, _>>()
+            .map_err(wrong)?;
         let asked = self.input(steps, input.frames);
         input
             .script
