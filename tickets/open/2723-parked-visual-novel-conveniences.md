@@ -63,8 +63,11 @@ None.
 - **The settings**, `VnSettings` in `shuyi_vn::conv`, saved with the
   player's settings through the platform's storage by key (ADR-0008
   §2), never with a save:
-  - `text_speed`: glyphs per second from a list of steps, or instant.
-    It replaces 2722's default from `vn.ron`;
+  - no text speed: it is the engine's one setting,
+    `Settings::text_speed` (`shuyi_ui::settings::TextSpeed`), which
+    2722's presenter already reads and the options screen already sets
+    (`OptionRow::text_speed()`). The quick menu shows that same row, so
+    a VN game has one text speed, not two;
   - `auto_pause_ms`: a base, plus ms per glyph, from a list of steps;
   - `skip_mode`: `Read` (the default) or `All`.
   - They are a RON text file under one key, versioned, with
@@ -132,7 +135,8 @@ None.
    whether to send `Advance`.
 4. Write `Backlog` and its overlay screen.
 5. Write the `Back` action over `history::back`.
-6. Write the quick menu with the settings rows.
+6. Write the quick menu with the settings rows (the engine's text
+   speed row among them).
 7. Declare the screens' actions and add the fixture layouts (3002).
    Add the pointer clicks (2405).
 

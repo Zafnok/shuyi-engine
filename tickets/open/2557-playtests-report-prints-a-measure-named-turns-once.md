@@ -23,10 +23,10 @@ twice on every try of `cargo shuyi playtest`'s report for people:
 try 3 · hero · … · turns 21 · foe trips 2 · turns 21 · won 1
 ```
 
-- `PlaytestReport`'s `Display` (`crates/core/src/bots/playtest.rs`,
-  `impl fmt::Display for PlaytestReport`, the loop over
-  `entrant.tries`) writes `turns {}` from the try's own `Tried::turns`,
-  then every measure as ` · {name} {value}`.
+- `PlaytestReport`'s `Display` (`crates/core/src/bots/playtest.rs`)
+  calls `PlaytestReport::write_table`, whose loop over `entrant.tries`
+  writes `turns {}` from the try's own `Tried::turns`, then every
+  measure as ` · {name} {value}`.
 - Hello, Grid's measures (`examples/hello-grid/src/tools.rs`,
   `StageMeasure::finish`) include `("turns", report.turns)`, the same
   number, because a check reads measures by name (a `Median` of
@@ -50,6 +50,11 @@ None.
 - The report's tests: a try with a `turns` measure equal to its turns
   reads `… · turns 21 · won 1`, and one with a different `turns` measure
   keeps both.
+- **Either order with 2544** (`bots` folded into `playtest`): it
+  rewrites `playtest`'s text for a plan with no checks. If 2544 is
+  done, apply this rule to every place that writes a try's line, with
+  the same tests; if not, nothing to do (2544 keeps the rule in each
+  try line it writes).
 
 **Out (do not do):**
 - renaming the try's own `turns`, or the JSON's fields (the contract's

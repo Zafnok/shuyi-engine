@@ -179,6 +179,12 @@ None.
     `shuyi new grid`, sets `MOVES` to the eight-way line with `sed`,
     fails if `grep` doesn't then find that line, and runs the same
     gates as "Run its gates".
+  - **Either order with 2033:** if 2033 is done, its test in
+    `crates/cli/src/template/tests.rs` reads every `run: |` block of the
+    `templates` job with a `cargo shuyi check` line, this step's too:
+    write the step's gates as the same lines as "Run its gates", in the
+    same order; if not, nothing to do (2033 makes the step's lines match
+    when it lands).
 - **What changes for the game:** nothing. Two new functions
   (`Cursor::step8`, `steer_on`); `path_overlays` draws a step a
   four-way path never has; the arrowhead's `match` order changes

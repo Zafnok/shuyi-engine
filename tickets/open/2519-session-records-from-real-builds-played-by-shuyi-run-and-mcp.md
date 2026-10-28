@@ -109,6 +109,11 @@ for Nick (parked 3047 asks it for crash reports).
     (`run::parse_args` and its usage line). `RunInput::check` refuses
     start options with a session: the session's start is the game's
     real one.
+  - **Either order with 2568:** if 2568 is done, `run::played` and
+    `Host::start` call `game::check_start` on the start options first:
+    keep that call ahead of the record path (a session has no start
+    options, so it passes); if not, nothing to do (2568 adds the call
+    before both ways).
   - `GameTools::session_from(&self, record: &SessionRecord, stamps:
     Stamps) -> Result<Box<dyn Session>, String>`, with 2518's `Stamps`,
     defaulted to `Err(unsupported("run --session and scene --session",

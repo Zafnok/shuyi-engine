@@ -224,6 +224,12 @@ crate" paragraph to the README's *The name* section.
   - `credits::CODE_LICENSES`, ADR-0002 §8's 14 code ids. If 2223 is
     done, it is there. If not, add it here under that name, and 2223
     keeps it;
+  - **Either order with 2032:** if 2032 is done and this ticket writes
+    `CODE_LICENSES` (2223 didn't), extend 2032's test
+    `licenses_are_deny_tomls_allow_list` (`crates/assets/src/credits.rs`'s
+    tests) so `CODE_LICENSES` plus `OFL-1.1` is also checked against
+    `deny.toml`'s allow list; if not, nothing to do (2032, or 2223,
+    covers it);
   - `credits::license_allowed(expression: &str, list: &[&str]) ->
     Result<bool, String>`: a small evaluator of SPDX expressions (`OR`,
     `AND`, `WITH`, parentheses, and the `/` older crates use for `OR`).

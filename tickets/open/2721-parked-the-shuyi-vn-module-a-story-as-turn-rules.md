@@ -126,12 +126,16 @@ None.
     `Custom { name, args }` for a game's own commands. The state holds
     the end result; transitions and durations live only in the events,
     for the view (2722).
-- **Going back** in `shuyi_vn::history`: `back(story, seed, commands,
-  steps) -> (VnState, Vec<VnCommand>)` replays the commands minus the
-  last `steps` from the start. One step is one stop, so one step back is
-  the line before. `vn.ron`'s `back_past_choices` (default true) says
-  whether going back may undo a choice; when false, `back` stops after
-  the last `Choose`. Replaying from snapshots is 2724.
+- **Going back** in `shuyi_vn::history`, on the engine's
+  `shuyi_core::history::History<VnRules>` (`VnRules` is `TurnRules` and
+  `Clone`), not a second replay: `back(history: &mut
+  History<VnRules>, steps)` picks the point and calls
+  `History::rewind_to`, which replays from the start and forgets the
+  later commands. What is the VN's own is only the point: one step is
+  one stop (one command), so one step back is the line before, and
+  `vn.ron`'s `back_past_choices` (default true) says whether going back
+  may undo a choice; when false, `back` stops after the last `Choose`.
+  Replaying from snapshots is 2724.
 - **Stage directions** in `shuyi_vn::direction` (ADR-0016 §2's table):
   - `show <who> [pose] [expression] [at <place>] [with <transition>]`,
     `hide <who> [with <transition>]`, `move <who> to <place> [over
@@ -154,7 +158,17 @@ None.
     `VnEvent::Custom`. The commands `.dlg` already has and the game
     still uses (such as `@music`) are in the table;
   - these commands are read only when `shuyi-vn` is used. A game that
-    doesn't use the module sees its commands passed through as today.
+    doesn't use the module sees its commands passed through as today;
+  - **`.dlg`'s portraits are the same stage, not a second one.** `.dlg`
+    already places characters: `@left <id> <expression>` and `@right …`
+    (`Step::Place` in `shuyi_assets::dialogue`), `@left clear`
+    (`Step::Clear`), and `id[expression]: text` (`Step::Say`'s
+    `expression`). `Story::build` reads them into the same `Direction`s:
+    `Place` is `show <id> <expression> at left` (or `right`), `Clear`
+    hides whoever stands at that place, and a `Say` with an expression
+    changes it as `show` does. So `@left` and `show` give the same
+    `VnState` (a fixture checks it). `show`/`hide` are the general form:
+    they add poses, other places, transitions and draw order.
 - **Where directions are written:**
   - `.dlg`: `@show …`;
   - **if 2202 is done**: `<<show …>>` in Yarn Spinner and `# show …` as
@@ -175,6 +189,13 @@ None.
   - `default_pose`, `default_expression`, and an `anchor` (the point of
     the picture placed on the place), in whole pixels;
   - `deny_unknown_fields`; errors name the file and line;
+  - **one list of characters.** `.dlg`'s own checks already ask the
+    game who may speak and which expressions exist
+    (`shuyi_assets::dialogue::SceneRules`'s `can_speak` and
+    `expression_problem`, run by `check_scene`). The story's
+    `CharacterDef`s answer them (a `SceneRules` built from the
+    characters), so a VN game writes its characters once, in
+    `*.character.ron`. Say this choice in the module's README;
   - a fuzz-style test (random bytes never panic) and a determinism
     fixture: the decoded value's hash is a row of
     `crates/vn/tests/golden/formats.ron`, a golden table (2116's
@@ -227,7 +248,7 @@ None.
 5. Write `VnState`, `VnCommand`, `VnEvent` and `VnRules`, driving the
    engine's dialogue runner (don't write a second one), and apply each
    direction to the stage.
-6. Write `history::back`.
+6. Write `history::back` over `History<VnRules>`.
 7. If 2202 is done, add the Yarn and Ink forms, their fixtures, and the
    rows in `docs/formats/dialogue.md`.
 8. Add the skill.
@@ -248,6 +269,11 @@ None.
 - [ ] Each direction in ADR-0016 §2's table has a passing fixture, and
       each malformed or unknown one gives an error naming the file and
       line.
+- [ ] A scene placed with `@left`/`@right`, `@left clear` and
+      `id[expression]:` gives the same `VnState` hash at every stop as
+      the same scene written with `show` and `hide`, and an unknown
+      character or expression in either form is reported once, from the
+      `CharacterDef`s.
 - [ ] A command listed in `vn.ron`'s `commands` comes out as
       `VnEvent::Custom` with its arguments.
 - [ ] `character-ron` and `vn-ron` pass their fuzz-style tests, and

@@ -67,15 +67,22 @@ None.
   - `on_events(&[VnEvent])` starts transitions, effects and waits, and
     resets the text reveal for a new line;
   - `tick(dt_ms: u32)` moves them on, in whole ms;
-  - **text reveal**: glyphs revealed = elapsed ms × glyphs per second /
-    1000, in integers. The line is wrapped once, on its full text, so
-    words don't jump between rows as they appear. The speed is a field
-    with a default from `vn.ron` (`text_speed`); 2723 makes it the
-    player's setting;
-  - `on_advance() -> Option<VnCommand>`: the first press finishes the
-    reveal and any running transition; the next one returns `Advance`.
-    A `wait` holds `Advance` until it has passed, unless the player
-    presses again;
+  - **text reveal** is the engine's dialogue text box, not a second
+    one: the presenter holds a `shuyi_ui::dialogue::TextBox` for the
+    line. It wraps once, on the full text (`TextBox::new`), so words
+    don't jump between rows as they appear; it pages a line longer than
+    the box; it types with `type_on`, which `tick` hands `dt_ms` as
+    seconds (presentation may use floats, ADR-0003 §2), and hurries
+    while Confirm is held (`hold`). The speed is the player's one text
+    speed, `ctx.settings().text_speed` (`shuyi_ui::settings::TextSpeed`,
+    already a row of the options screen), through `chars_per_s`: no
+    `text_speed` in `vn.ron`. `VnScene` still carries the count as an
+    integer (`TextBox::shown`);
+  - `on_advance() -> Option<VnCommand>`: the first press is the text
+    box's `confirm` (it finishes the reveal, then turns a page) and
+    finishes any running transition; the press that finds the box
+    `Step::Done` returns `Advance`. A `wait` holds `Advance` until it
+    has passed, unless the player presses again;
   - **`instant`**: when set, transitions, waits and the reveal finish at
     once, so tests read end states (ADR-0016 §4). It is also on while
     idle motion is off (2339's rule; `VnStage` reads `ctx.idle_motion`),
@@ -142,8 +149,9 @@ None.
     ends.
 
 **Out (do not do):**
-- text speed as a player setting, auto, skip, the backlog, read lines,
-  the going-back action, and the vn's own actions (2723);
+- the text speed row in the quick menu, auto, skip, the backlog, read
+  lines, the going-back action, and the vn's own actions (2723);
+- a text speed of the VN's own: it is the engine's `TextSpeed`;
 - save thumbnails, the gallery screen and the route chart screen
   (2724);
 - mouths and blinking (2725);
@@ -159,8 +167,8 @@ None.
 
 1. Write `VnScene` and its dump.
 2. Write `VnPresenter` with `on_events`, `tick`, `on_advance`,
-   `instant`, and the wrap-once text reveal, with unit tests that feed
-   events and ms by hand.
+   `instant`, and the line's `TextBox` at the player's `TextSpeed`,
+   with unit tests that feed events and ms by hand.
 3. Write `build_scene`, with snapshot tests on 2721's fixture story at
    each stop, with `instant` on.
 4. Add `layout` (with its frame name, and its font if 2334 is done) and
@@ -180,10 +188,13 @@ None.
 - [ ] With `instant` on, each stop of the fixture story matches its
       checked-in scene snapshot.
 - [ ] Revealed glyphs never decrease while ticking, never pass the
-      total, and reach it after total × 1000 / speed ms (property test).
-      No line's wrapping changes as it is revealed.
+      page's total, and reach it within one tick of total × 1000 /
+      `chars_per_s` ms (property test). No line's wrapping changes as it
+      is revealed.
 - [ ] The first `on_advance` during a reveal returns `None` and finishes
-      it; the next returns `Advance`.
+      it; on a one-page line the next returns `Advance`. Changing the
+      player's `TextSpeed` changes the reveal; there is no other text
+      speed setting.
 - [ ] Each transition kind's progress runs from 0 to 1000 over its
       duration, whatever its ease, and `instant` jumps it to 1000.
 - [ ] With idle motion on, a `shake` and a `flash` reach the frame

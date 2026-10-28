@@ -73,8 +73,16 @@ None.
   `min`, `mean` or outcome counts, so this answer adds those beside them.
 - **A plan with no checks is a plain bot run.** With no checks the
   answer judges nothing and `ok` is true when every try played; with one
-  entrant it is what `bots` was. The text output for that case is one
-  line per try and the counts, as `bots`' is.
+  entrant it is what `bots` was. The text output for that case is
+  `playtest`'s line per try (`PlaytestReport::write_table`), then the
+  outcome counts and the spreads that `bots`' text prints
+  (`bots::text`, `crates/cli/src/contract/bots.rs`, which has no
+  per-try line).
+  **Either order with 2557** (a `turns` measure printed once): if 2557
+  is done, every try line this ticket writes keeps its rule (a measure
+  named `turns` equal to the try's own turns is left out), with its
+  tests passing; if not, nothing to do (2557 applies it to every try
+  line there is when it lands).
 - **`bots` goes:** `Op::Bots`, `contract/bots.rs` (`Spread` moves to
   `playtest` if it is still needed), `GameTools::bots`,
   `crates/cli/schemas/bots.*.json`, the `bots` subcommand and its usage
@@ -83,15 +91,22 @@ None.
   carry a `Breaking:` line for `shuyi-cli` (`GameTools::bots` and the
   `bots` operation go; a game gives its bot as a playtest plan with
   one entrant and no checks). The game implements neither hook.
+- **Either order with 2568:** if 2568 is done, `game_arg` and
+  `check_start` live in `crates/cli/src/game.rs`, and `bots.rs`'s `pub
+  use crate::game::game_arg;` goes with the file (add
+  `contract::bots::game_arg` to the `Breaking:` line); if not, move
+  `bots::game_arg` into `crates/cli/src/contract/playtest.rs`, where
+  `playtest` and `autobalance` still call it, and 2568 moves it from
+  there.
 - **Either order with 2005** (the first crates.io release): if 2005 is
   done, the break also takes what its version policy asks of a break
   after the release (a version bump and a `CHANGELOG.md` line,
   `work-ticket` §3); if not, the `Breaking:` line is enough.
 - **The grid template plays its bot through `playtest`**
-  (`templates/grid/crates/game/src/tools.rs`): one entrant, its stage's
-  plan, no checks. Its test
+  (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`):
+  one entrant, its stage's plan, no checks. Its test
   `the_bots_play_to_an_end_and_their_records_replay`
-  (`crates/game/tests/it/main.rs`) calls `playtest` and still replays
+  (`stages/top-down-grid/crates/game/tests/stage.rs`) calls `playtest` and still replays
   each record to the outcome the bots saw. Its `AGENTS.md` table row
   and `.cargo/config.toml` comment say `cargo shuyi playtest --tries 20`.
   The blank template's test that `bots` is unsupported tests `playtest`.

@@ -32,6 +32,14 @@ stay small by rule.
   and `pulldown-cmark` (`crates/xtask/Cargo.toml`). `no_std.rs` already
   reads Rust line by line and drops `//` comments (`code_of`), but it
   knows no strings and no `/* */` blocks.
+- `shuyi-cli` already has the scanner this ticket needs (re-read
+  2026-10-28, found by an analysis of the engine for areas that do the
+  same job twice): `check_keys::lex` (`crates/cli/src/check_keys.rs`,
+  `pub(crate)`) splits Rust or RON into `Line { code, comment, strings }`
+  and knows `//` and nested `/* */` comments, strings with escapes, raw
+  strings, and chars apart from lifetimes. `exempt_lines` and
+  `mark_item` find each `#[cfg(test)]` item by counting brackets on
+  those lines. `check_text.rs` uses all three.
 - CI's `tickets` job (`.github/workflows/ci.yml`) builds the xtask and
   runs `ticket-lint` and `check-links` on every PR, docs-only ones too.
 - 2015 added `serde`, `serde_json` and `ron` to the xtask, and the
@@ -117,15 +125,23 @@ choice, and it only goes down.
     nest. A code line that ends in a comment counts. A text file with
     any other extension has no comment marker: every line that isn't
     blank counts.
-  - **One scanner for `.rs`** gives both the line rule and the
-    `#[cfg(test)]` items. It knows strings, raw strings (`r#"…"#`),
-    chars, lifetimes (`'a` is not a char), `//` comments and nested
-    `/* */` blocks, so a `//`, a `/*` or a brace inside a string or a
-    char changes nothing.
-  - **A `#[cfg(test)]` item** runs from the attribute to the end of the
-    item after it: its `;` (`mod tests;`), or the `}` that closes its
-    first `{`. Braces are counted outside strings, raw strings, chars
-    and comments.
+  - **One scanner for `.rs` and `.ron`, the one `check-keys` uses.**
+    `check_keys`'s `lex`, `Line`, `exempt_lines` and `mark_item` move to
+    a public module of their own, `shuyi_cli::rust_lines`
+    (`crates/cli/src/rust_lines.rs`), and `check_keys.rs` and
+    `check_text.rs` call them from there. The xtask calls the same
+    module through its dependency on `shuyi-cli` (the 2501 clause
+    below). `tools/layers.ron` needs no line: it lists only `shuyi`
+    and `shuyi-*` crates, and the xtask is neither. No second lexer is
+    written, so a `//`, a `/*` or a brace inside a string or a char
+    changes nothing, as in `check-keys` today. A line counts when its
+    `code` isn't blank or it is inside a string that spans lines. The
+    move is additive for the game (new public items, nothing removed).
+  - **A `#[cfg(test)]` item** is what `exempt_lines` marks: from the
+    attribute to the end of the item after it, its `;` (`mod tests;`),
+    or the `}` that closes its first `{`. If the counter needs a rule
+    `check-keys` lacks, change it in `rust_lines` with a test, and
+    `check-keys`' and `check-text`'s tests still pass unchanged.
   - **The output:**
     - by default, a table: folder, code, tests, data, setup;
     - `--json`: the same, with every file's path, kind and lines. A
@@ -214,11 +230,13 @@ choice, and it only goes down.
 ## Implementation steps
 
 1. Read `crates/xtask/src/main.rs`, `no_std.rs` (`code_of`,
-   `rust_files`), `crates/xtask/Cargo.toml`, the `tickets` job in
-   `ci.yml`, and the three folders, and `tools/compile-budget.ron` beside
-   the budget this ticket adds.
-2. Write the `.rs` scanner in `template_lines.rs`, then the line rule
-   and the `#[cfg(test)]` items on it, with fixtures as strings.
+   `rust_files`), `crates/xtask/Cargo.toml`, `crates/cli/src/check_keys.rs`
+   (`lex`, `exempt_lines`, `mark_item`) and `check_text.rs`, the
+   `tickets` job in `ci.yml`, and the three folders, and
+   `tools/compile-budget.ron` beside the budget this ticket adds.
+2. Move the scanner to `shuyi_cli::rust_lines`, with `check-keys`' and
+   `check-text`'s tests passing unchanged. Then the line rule in
+   `template_lines.rs` on it, with fixtures as strings.
 3. Write the line rule for the other extensions, the kinds, and the
    folder walk.
 4. Write the table, `--json` and `--summary`. Wire the command into

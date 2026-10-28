@@ -45,6 +45,17 @@ None.
   - the inputs to play;
   - the frames to measure (a range, or "every frame").
 
+  **A scenario is a test input of the tool, not an asset kind**, so it
+  gets no `Format` and isn't in the registry: ADR-0007 is about what a
+  game loads, and a scenario is never in a shipped build. 2018 says the
+  same of its capture plans, and 2518 of its session records. It is a
+  `Scenario` struct (`crates/cli/src/bench.rs`, private to the tool),
+  read from its file with `ron::from_str` as the CLI reads its other
+  test inputs, with a `format_version: u32` (1) that refuses another
+  value. A file that doesn't read is an error naming the file, the line
+  and the column, as a RON error gives them. The name `*.bench.ron`
+  stays: `shuyi bench` finds a game's scenarios by it.
+
   The examples get these scenarios:
   - an idle map;
   - the cursor sweeping the map;
@@ -59,6 +70,20 @@ None.
   the numbers say whether culling alone keeps tile layers in the web
   and Playdate budgets (2360 leaves chunk caching to them); if not,
   nothing to do (2360 adds it).
+
+  **Either order with 2566:** if 2566 is done, a scenario's inputs are a
+  `shuyi_platform::script::Script` (the contract's steps in their serde
+  form, `act` among them), never a step type of its own, and its setup
+  is the game's start options as `RunInput::start` holds them. The bench
+  plays them as `run` does (`Session::play`, then `Session::idle`) with
+  the session's perf on (`Session::set_perf`), so its peak heap is the
+  one `run --perf` reports (`HeapSummary::peak_bytes`,
+  `crates/cli/src/contract/perf.rs`), not a second reading. The
+  instruction counts stay this ticket's own: `run --perf` times frames
+  on the clock, which is never a gate here. If not, the inputs are
+  `frame_png::Script`'s steps, played and measured the same way, and
+  2566 moves them onto `script::Step` with the rest (its own clause
+  says so).
 - **`shuyi bench [--target <id>] [--scenario <name>]`.** It plays each
   scenario through the headless backend (3003), including the conversion
   the target needs. **From 3006 (done):** on a `color: OneBit` target
@@ -146,8 +171,8 @@ None.
 
 ## Implementation steps
 
-1. Write the scenario format (a `Format`, ADR-0007) and its runner on the
-   headless backend.
+1. Write the `Scenario` type (a test input read with serde, not a
+   `Format`: see *Scenarios*) and its runner on the headless backend.
 2. Add the counting allocator's crate (or take 2906's) and the
    Cachegrind measurement, with a per-frame marker. Use client requests, or one process per measured
    range if that is simpler; record which in the PR.

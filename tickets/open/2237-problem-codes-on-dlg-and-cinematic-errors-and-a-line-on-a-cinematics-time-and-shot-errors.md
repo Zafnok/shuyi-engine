@@ -58,6 +58,12 @@ None.
 
   A problem a game's own `Directive` reports (`Parsed::error`) keeps no
   code: its words are the game's.
+
+  **Either order with 2350:** if 2350 is done, `dialogue::char_problem`
+  refuses only control characters, so the first row's character problem
+  is "a control character" (`SH2001`) and its test uses U+0007; if not,
+  write the row and its test as above, and 2350 changes both when it
+  narrows `char_problem`.
 - **Codes and lines for cinematic problems:**
   - `cinematic::check` gives each problem its code: an `id` that isn't
     the file's name and a music cue the manifest lacks `SH2008`; a

@@ -232,6 +232,12 @@ Visions of Shuyi.
   in the page, so both tickets' tests hold.
 - **Either order with 2519:** if it is done, the `Cargo.toml` comment
   and `lib.rs`'s docs name its `download.js` block too.
+- **Either order with 3067:** if 3067 is done, `run` reads the frame's
+  time once, `pacing::seconds()` (the `start` it hands the pacer), and
+  the synchronous frame for a lifecycle code hands `App::frame` that
+  same reading, not a second clock; if not, hand it the frame's `now`
+  as the usual frame gets it (on the web both clocks are `Date.now()`),
+  and 3067 makes that `now` the `pacing::seconds()` reading.
 - **Either order with 3033** (parked): if its `storage.js` is done,
   the lifecycle plugin sits beside it and nothing else changes; its
   writes are synchronous too.

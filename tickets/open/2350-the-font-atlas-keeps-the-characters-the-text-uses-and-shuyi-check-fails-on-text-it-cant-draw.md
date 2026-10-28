@@ -120,9 +120,30 @@ None.
    - 2348's messages are scanned as written: a message's text holds
      every character of every form, and its syntax is ASCII, so
      nothing changes whichever lands first.
+   - **Either order with 2353:** if 2353 is done, its
+     `Lang::with_pseudo` walks every English text and its
+     `LangPack::texts` every screen, data and one-text line of a pack:
+     build `Lang::texts` over one function per pack that
+     `LangPack::texts` calls too (its `Screen`, `Data` and `Dialogue`
+     rows), and make `with_pseudo` take its English from `Lang::texts`
+     (the rows whose `lang` is `None`), so there is one walk; if not,
+     nothing more here (2353 builds both on `Lang::texts`).
 2. **The check:** `shuyi_assets::font::undrawn(atlas: &FontAtlasDef,
    lang: &Lang) -> Vec<ContentError>`, a check across assets after
    loading (ADR-0019 §5):
+   - **one answer to "can the atlas draw this character?"**:
+     `FontAtlasDef::draws(&self, c: char) -> bool` and `drawn(&self) ->
+     impl Iterator<Item = char>`, the characters `draws` accepts in
+     code-point order (`crates/assets/src/font.rs`). Today that is the
+     keys of `glyphs`; 2301 adds its wide glyphs and 2303 every wide
+     set, in these two functions only. `undrawn` asks `draws`.
+     **Either order with 2346:** if 2346 is done, it added both for
+     `Ctx::font_chars`: `undrawn` calls them; if not, add them here,
+     and 2346 fills `Ctx::font_chars` from `drawn`.
+     **Either order with 2353:** if 2353 is done, Hello, Grid's
+     `can_draw` (`Hello::load_from`) becomes `|c| font.draws(c)`, unless
+     2346 already made it so; if not, nothing to do (2353 calls
+     `draws`).
    - one error per language and character the atlas has no glyph for,
      in the order of their first use in `texts`. Control characters
      (`char::is_control`, a `\n` in a text) are skipped;
@@ -157,6 +178,11 @@ None.
    new rule. `names::from_source` uses it as today; its doc (line 249,
    "plain ASCII") says the new rule. A character the font lacks is the
    check's (2) to find, not the parser's.
+   **Either order with 2237:** if 2237 is done, `char_problem`'s
+   problem keeps its `SH2001` code, and the row of 2237's table test
+   (`crates/assets/src/dialogue/tests.rs`) that used a non-ASCII
+   character uses a control character (U+0007); if not, nothing to do
+   (2237 writes the row as a control character).
 4. **`font-atlas` keeps the characters the text uses**
    (`crates/cli/src/font_atlas.rs`):
    - `AtlasChars`, the characters an atlas keeps: every one of
@@ -171,6 +197,11 @@ None.
      glyphs it wants, in code-point order, as today. Its other callers
      pass `&AtlasChars::default()`: `crates/cli/src/toy.rs`,
      `crates/cli/src/glyph_tiles/tests.rs` and `font_atlas.rs`'s tests.
+   - **Either order with 2391:** if 2391 is done, `font_atlas::Atlas`
+     holds its picture as `image: shuyi_assets::image::Image`
+     (`atlas.image.width`, `atlas.image.rgba`): read it there in the
+     callers you change; if not, nothing to do (2391 moves those fields
+     and updates every caller).
    - `run(rules, command, font_paths, out_dir, chars: &AtlasChars)`: its
      summary adds a line naming the characters the text uses that the
      fonts lack (at most 20, then a count). That isn't a failure:
@@ -315,7 +346,8 @@ moves its pin follows it.
    `crates/game/src/tools.rs`, `crates/game/tests/it/main.rs`, README
    and `AGENTS.md`.
 2. Write `TextPart`, `TextAt` and `Lang::texts`, with unit tests.
-3. Write `font::undrawn`, with unit tests.
+3. Write `FontAtlasDef::draws` and `drawn` (unless 2346 did), then
+   `font::undrawn`, with unit tests.
 4. Change `char_problem` and its docs. Update the tests that expect the
    ASCII errors: `non_ascii_text_names_its_column`
    (`crates/assets/src/dialogue/tests.rs`) and `bad_values_are_reported`
@@ -389,7 +421,8 @@ moves its pin follows it.
 
 ## Tests required
 
-- Unit: `Lang::texts` over each part and variants; `font::undrawn`
+- Unit: `Lang::texts` over each part and variants; `draws` true
+  exactly for the characters `drawn` lists; `font::undrawn`
   (one error per language and character, the order, files, the count,
   the hints, combining marks, control characters skipped);
   `char_problem`; `AtlasChars` (ranges, used, required, never a

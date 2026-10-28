@@ -185,6 +185,14 @@ and follow the MVP.
     bigger than its source image: `shuyi_assets::bitmap` enlarges it
     before dithering). At angle 0 the fast renderer keeps today's
     loop, for the device's speed (game ticket 1055).
+  - **Either order with 3056** (one-bit sprites drawn fast): if 3056
+    is done, "today's loop" is its whole-byte path and column table:
+    `flip_y` goes into both (the byte path picks the picture's row from
+    the bottom, as `flip_x` picks the column), a sprite at another
+    angle skips both for the `dest_pixel` path, and flipped and turned
+    sprites join 3056's property test against `reference`. If not,
+    nothing to do (3056 takes `flip_y` and angles into its paths, its
+    clause says so).
   - **`shuyi-app`** (`crates/app/src/render.rs`): `flip_y` goes to
     `DrawTextureParams::flip_y`. A sprite at another angle is drawn from
     a texture made on the CPU:

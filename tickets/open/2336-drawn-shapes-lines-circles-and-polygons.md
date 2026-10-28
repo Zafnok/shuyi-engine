@@ -201,9 +201,9 @@ not parked.
     them);
   - both 1-bit renderers' `draw_items` fill each run, as `at.screen` of
     a one-row rectangle, with `Target::fill` and
-    `Pen::Ink(ink_of(color))`, as they fill a rectangle. An invert
-    colour draws black: `Ink::Invert`'s doc says only a rectangle
-    flips.
+    `Pen::Paint(look.shades.shape(color))`, as they fill a rectangle.
+    A colour whose shade `flips` draws in its pattern: only a
+    rectangle flips.
 - **Either order with 2315:** if 2315 is done, `frame::shape` already
   holds the width-1 line and circle-outline rules (2315 wrote them as
   this scope says, for its gizmos). Build the rest of the module around
@@ -215,6 +215,12 @@ not parked.
   one-bit renderer's `Shades` (the game's inks, or a `PatternMap`) as a
   rectangle's does, in `shuyi_ui::frame::onebit`'s fast renderer and its
   reference, and the fast-equals-reference property tests cover shapes.
+- **Either order with 2389** (the inks removed): if 2389 is done, the
+  renderers' only `Shades` is a `PatternMap`: shapes draw through
+  `Shades::shape` as above, and the tests use a pattern map (2389's
+  test helper). If not, draw the same way, through `Shades::shape`,
+  never `ink_of` or an `Ink`, so 2389 has no shape code to move; it
+  moves this ticket's tests that use `InkShades` with the rest.
 - **Either order with 2018:** if 2018 is done, add shapes of each kind
   to its render card (`shuyi_ui::frame::raster::card`); its `match` on
   `Item` has no `_` arm, so it doesn't compile until the card shows

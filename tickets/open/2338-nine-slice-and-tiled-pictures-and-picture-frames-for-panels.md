@@ -207,6 +207,14 @@ None.
     lands first;
   - the menu's note rule (`widgets/menu/glyph.rs`) leaves out its `├`
     and `┤` joins when its look has a frame; the rule's `─` stays.
+  - **Either order with 2371** (the one-bit look): if 2371 is done, the
+    menu, question and name box painters take a `WidgetLook`, which
+    makes their `PanelLook`: put the frame in it (`WidgetLook::framed`,
+    passed on to that `PanelLook`) instead of a new `frame` argument,
+    the callers setting it from `ctx.panel_frame(style)`;
+    `WidgetLook::ONE_BIT` has none. The text box keeps its argument. If
+    not, add the argument as written, and 2371 moves it into
+    `WidgetLook` (its clause says so).
   - **Either order with 2334:** if 2334 is done, its menu's text look
     (`widgets::menu::text::paint`) draws the game's panel frame
     (`ctx.panel_frame(BoxStyle::Single)`), when it has one, over its

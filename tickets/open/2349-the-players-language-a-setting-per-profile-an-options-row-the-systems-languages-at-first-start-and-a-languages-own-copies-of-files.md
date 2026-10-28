@@ -235,6 +235,16 @@ engine gives the pieces and a default, and the game chooses.
     Both readers (`from_files`, `LangPackRon::decode`) accept `files/`
     and never read it as text. Any other unknown file is still an
     error.
+  - **Either order with 2229** (import settings in `.meta` files): if
+    2229 is done, both readers already skip a settings file
+    (`is_settings_file`): add the `files/` exception beside that skip in
+    the same two loops, and test a pack holding `files/x.png` and
+    `files/x.png.meta` in both; if not, nothing to do (2229 puts its
+    skip beside `files/` and adds that test).
+  - **Either order with 2238:** if 2238 is done, accept `files/` once,
+    in `is_pack_file` (`crates/assets/src/lang.rs`), which both readers
+    call; if not, accept it in both readers, and 2238 moves it into
+    `is_pack_file`.
   - `shuyi_assets::lang::localized_path(languages: &str, chain:
     &[LangCode], path: &str, has: impl Fn(&str) -> bool) -> String`,
     pure: the first `<languages>/<tag>/files/<path>` along the chain

@@ -81,8 +81,19 @@ None.
     `Keymap::primary_button`), with `Press`.
   - `frames(steps, keymap, pad) -> Result<Vec<Planned>, String>`: the
     one plan, `Planned::Events(Vec<RawInputEvent>)` (one frame) or
-    `Planned::Idle(f32)` (seconds with no input). An error names the
-    step (`step 3: act: …`). The Harness and the link both play it.
+    `Planned::Idle(u32)` (that many frames with no input), each frame
+    1/60 s. An error names the step (`step 3: act: …`). The Harness,
+    the link and 2018's capture run all play it.
+  - **One rule for a wait**, `wait_frames(seconds) -> u32`: the seconds
+    at 60 frames a second, rounded up, so a wait above 0 is at least
+    one frame and a wait of 0 is none. A product within a thousandth of
+    a whole number counts as that number (0.5 s is 30 frames, 1/60 s
+    is 1). It replaces `attach::frames_of`, which rounds to the
+    nearest, and the shorter last frame `Script::play` runs today
+    through `Harness::wait`: only a script's wait that isn't whole
+    frames, or is 0 (one frame of no time today), can change a
+    `frame-png` picture. `Harness::wait`, which a game's tests call,
+    keeps its seconds.
   - Serde behind a new feature `script` (`dep:serde`), which `link`
     turns on; `JsonSchema` behind a new feature `schema`
     (`["script", "dep:schemars"]`), which `shuyi-cli` turns on. Add
@@ -95,9 +106,9 @@ None.
   key name the Harness doesn't know does today.
 - **The live link:** `Request::Play { steps: Vec<script::Step> }`.
   `link::Step`, `link::plan`, `press_keys` and `press_pad` go; the
-  server plays the plan, a `Planned::Idle(seconds)` as the build's frames
-  at 60 a second (today's `attach::frames_of`, moved beside it). Raise
-  `link::VERSION` by one.
+  server plays the plan, a `Planned::Idle(n)` as `n` of the build's
+  frames (the waits on the wire stay seconds). Raise `link::VERSION` by
+  one.
 - **The contract** (`crates/cli`):
   - `frame_png` re-exports `shuyi_platform::script::{Script, Step}`, so
     `shuyi_cli::frame_png::Script` still names the type. Its own `Step`,
@@ -124,8 +135,9 @@ None.
     (`docs/contract.md`, *The schemas*). `attach.input.json` keeps its
     shape (`AttachStep` becomes `Step`, the same JSON).
 - **Docs:** ADR-0047 §7 amended (the `write-adr` skill): waits on the
-  wire in seconds, played as the build's frames at 60 a second, and the
-  steps are `shuyi_platform::script::Step`. `docs/contract.md` (its
+  wire in seconds, played as the build's frames at 60 a second, rounded
+  up (`script::wait_frames`), and the steps are
+  `shuyi_platform::script::Step`. `docs/contract.md` (its
   steps, `--act`, the MCP `step` row's "waits in the build's frames")
   and the grid and blank templates' `AGENTS.md` tables (`--act` with
   their own action names) through the `document` skill.
@@ -146,6 +158,40 @@ None.
   already hands `--script` to the step parser: keep it when it calls
   `frame_png::parse_step`; if not, nothing to do (2556 hands `--script`
   to `frame_png::parse_step`).
+- **Either order with 2018:** if 2018 is done, fold its `capture::Step`
+  into `script::Step`: a plan's steps become `capture::PlanStep`s,
+  `Input(script::Step)` or `Capture(String)`, read from the same RON
+  (`act("Confirm")` too); `Plan::frames` takes the keymap and builds on
+  `frames`, a `Planned::Idle(n)` as `n` frames with no events; the
+  key and pad helpers 2018 moved out of `link` (its completion notes say
+  where) go, as `link::plan` does. If not, nothing to do (2018 builds
+  its plan on `script::Step`).
+- **Either order with 2029:** if 2029 is done, its session form of
+  `capture::Plan` stays as it is: only the step form's steps move (the
+  clause with 2018); if not, nothing to do (2029 adds its session form
+  beside the plan's steps as they are then).
+- **Either order with 2019:** if 2019 is done, its web capture run plays
+  2018's plan through `Plan::frames`, so nothing changes there beyond
+  the clause with 2018; if not, nothing to do (2019 reads the plan as
+  it is then).
+- **Either order with 2514:** if 2514 is done, its `Script::then_frames`
+  (an inherent method of the type that becomes a re-export) becomes the
+  free function `frame_png::then_frames(script: &Script, n: u32) ->
+  Script`, and its test that `n` waits of `FRAME_DT` run exactly `n`
+  more frames passes under `wait_frames`; if not, nothing to do (2514
+  writes the free function).
+- **Either order with 3008:** if 3008 is done, the inputs of its
+  `.bench.ron` scenarios move onto `script::Step` with the contract's
+  steps; if not, nothing to do (3008 writes its scenarios' inputs as a
+  `script::Script`).
+- **Either order with 2569:** if 2569 is done, `shuyi-platform` already
+  has a `schema` feature (`["dep:schemars"]`, turned on by `shuyi-cli`)
+  and `schemars` in its `outside` list in `tools/layers.ron`, with
+  `link::LogEntry` deriving `JsonSchema` behind it: add `script` to that
+  feature and derive `JsonSchema` on the script's types behind it, and
+  leave the layers line as it is; if not, nothing to do (this ticket
+  adds the feature as above, and 2569 derives `JsonSchema` on
+  `link::LogEntry` behind it).
 - **For the game:** an API break, which CI's `api` job reports and the
   completion notes carry as `Breaking:` lines (ADR-0038 §6):
   `frame_png::Step` gains `Act` and is `shuyi_platform::script::Step`
@@ -193,7 +239,9 @@ None.
 - [ ] One type of input step in the engine:
       `grep -rn "enum Step" crates/cli crates/platform` finds only
       `shuyi_platform::script::Step` (and the dialogue's and text box's,
-      which are not input).
+      which are not input). If 2018 landed first, its `capture::Step` is
+      gone too: a plan's steps are `capture::PlanStep`s over
+      `script::Step`.
 - [ ] `RawInputEvent::Down` for a script's key is built in one place:
       the link and the Harness both play `script::frames`.
 - [ ] `cargo shuyi run --act Confirm` and `scene --act Confirm` on a
@@ -218,7 +266,8 @@ None.
 
 - Unit (`crates/platform/src/script.rs`): `check` on every kind of bad
   step; `frames` of keys, buttons together, an action by key, an action
-  by button, a wait, and a wait of 0 (no frame); an unknown action's
+  by button, a wait, and a wait of 0 (no frame); `wait_frames` of 0,
+  1/60, 0.5 and 0.51 s (0, 1, 30 and 31 frames); an unknown action's
   error names its step.
 - Property: for random scripts of keys, buttons and waits, the Harness
   playing `Script::play` records the same input frames as the link's

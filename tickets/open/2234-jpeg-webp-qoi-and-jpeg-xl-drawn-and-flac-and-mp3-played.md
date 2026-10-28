@@ -33,8 +33,11 @@ Nothing reads them at run time today:
   `ImageFormat::Png`. A JPEG fails, is logged, and every sprite of it
   is drawn as a magenta rectangle (`MISSING_COLOR`).
 - **Pictures in `frame-png`.** `Painter::new`
-  (`crates/cli/src/frame_png.rs`) decodes with `codec::decode_png`: the
-  same magenta.
+  (`crates/cli/src/frame_png.rs`) decodes the atlas and each picture
+  with `frame_png::decode_image`, which calls `codec::decode_png`, into
+  a `shuyi_ui::frame::raster::Image` (2332 moved the painter there). A
+  JPEG doesn't decode, and its sprites are drawn in
+  `raster::MISSING_COLOR`: the same magenta.
 - **Sounds.** `Audio::load` (`crates/app/src/audio.rs`) hands each
   sound file's bytes to `Backend::load_sound`, macroquad's
   `load_sound_from_bytes`. On native, quad-snd 0.2.8 decodes with
@@ -106,12 +109,26 @@ None.
     function. If not, write `upload_rgba(width, height, rgba) ->
     Texture2D` there (`Texture2D::from_rgba8`, nearest filter) and use
     it, and 2222 uploads its pages with it.
-- **Pictures in `frame-png`,** where `Painter::new` decodes each
-  picture (`crates/cli/src/frame_png.rs`): a PNG with
-  `codec::decode_png` as today, and any other file through the same
-  registry call, into `Image { width, height, rgba }`. `Painter::new`
-  and `Image::decode` keep their signatures. So `frame-png` keeps
-  showing what players see.
+- **Pictures in `frame-png`,** in `frame_png::decode_image`
+  (`crates/cli/src/frame_png.rs`), which `Painter::new` calls for each
+  picture: bytes that start with `image::PNG_SIGNATURE` are decoded as
+  a PNG, and any other file through the same registry call, into
+  `raster::Image { width, height, rgba }`. `Painter::new` and
+  `decode_image` keep their signatures. So `frame-png` keeps showing
+  what players see.
+  - **Either order with 2565:** if 2565 is done, `codec::decode_png` is
+    gone and `decode_image` reads a PNG with
+    `shuyi_assets::bitmap::convert::png_pixels`, the decoder
+    `image::Png` calls: keep that for a PNG and send other bytes to the
+    registry, so the new decoders sit beside `png_pixels` in
+    `shuyi-assets` and `frame-png` reaches them through `decode_image`;
+    if not, a PNG goes to `codec::decode_png` as today, and 2565 moves
+    that branch to `png_pixels`.
+  - **Either order with 2391:** if 2391 is done, the raster's `Image` is
+    `shuyi_assets::image::Image`, the type the registry decodes: hand
+    the decoded picture to the painter as it is, without copying its
+    fields; if not, copy its fields into `raster::Image { width, height,
+    rgba }` as above, and 2391 drops the copy.
 
 - **Sounds in `shuyi_assets::audio`** (`crates/assets/src/audio.rs`).
   The functions are always compiled, also without `std`; only their
@@ -216,8 +233,8 @@ None.
   `track_length_ms` and `MAX_DECODED_BYTES` are a function, a function
   and a constant.
 - **For the game.** No API break: the new items are additions, and
-  `Renderer::new`, `Painter::new` and `Image::decode` keep their
-  signatures. The game's next pin bump needs nothing.
+  `Renderer::new`, `Painter::new` and `frame_png::decode_image` keep
+  their signatures. The game's next pin bump needs nothing.
 
 **Out (do not do):**
 
@@ -254,7 +271,7 @@ None.
 5. Run sounds through `decode_to_wav` in `Audio::load`, write
    `track_bytes` for native music, and change the web's `load_music`.
 6. Decode pictures through the registry in `render.rs` and
-   `frame_png.rs`.
+   `frame_png::decode_image`.
 7. Add the dev-dependencies, write the docs, and settle the *Either
    order* items.
 8. Check by hand, on native and with `cargo shuyi web`: in a game made

@@ -155,6 +155,11 @@ None.
    nothing moves when the focus does. **Either order with 2334:** if its
    `menu::text` look is done, it paints an inactive menu the same way,
    and its `size` doesn't change with it either; if not, 2334 does it.
+   **Either order with 2371:** if 2371 is done, `menu::glyph::paint`
+   takes a `WidgetLook`: an inactive menu leaves out the look's focus
+   bar and note in `WidgetLook::GLYPH` and `WidgetLook::ONE_BIT` alike,
+   with a snapshot of each; if not, nothing to do (2371 does it for its
+   one-bit look, its clause says so).
 4. **Asking a screen**, for tests and later tools:
    `Screen::widget_focus(&self) -> Option<&Focus>`, defaulted to `None`
    (a defaulted method breaks no game); `ScreenStack::widget_focus()`

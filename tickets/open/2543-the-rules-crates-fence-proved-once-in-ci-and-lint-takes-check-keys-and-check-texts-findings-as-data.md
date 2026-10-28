@@ -17,8 +17,8 @@ completed:
 
 2015 fenced a new game's rules crate
 ([ADR-0032](../../docs/adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md)
-§4): `templates/grid/crates/rules/clippy.toml` bans hash maps, floats and
-the clock, `src/lib.rs` denies float arithmetic, and `tests/layers.rs`
+§4): the rules crate's `clippy.toml` bans hash maps, floats and the
+clock, `src/lib.rs` denies float arithmetic, and `tests/layers.rs`
 fails on a screen or device crate under the rules. It wrote 2534 for the
 contract's `lint` instead of building it, and 2534 made `shuyi lint`:
 `check-keys`, `check-text` and the fence (clippy's JSON for the three
@@ -26,6 +26,12 @@ lints, then `cargo tree`) in one answer with file and line
 (`crates/cli/src/contract/lint.rs`). The fence's rules live in one place,
 the template's `clippy.toml`, and a test keeps `lint`'s list of crates
 never under the rules equal to the template's. That coordination worked.
+
+Since 2501 (done) there is one template, `templates/shuyi-default`
+(re-read 2026-10-28). The rules crate is in its grid stage
+(`stages/top-down-grid/crates/rules/`), and every game, `grid` or
+`blank` (`template.ron`'s short names), gets the `base` part's
+`.github/workflows/ci.yml` and `AGENTS.md`, so every game runs `lint`.
 
 A retro of PRs #38–#68 (2026-10-22) found what the layering left behind:
 
@@ -37,10 +43,12 @@ A retro of PRs #38–#68 (2026-10-22) found what the layering left behind:
   step greps clippy's four messages. Only 2015's second half (the layers
   test fails on `shuyi-ui` under the rules) proves something 2534's step
   doesn't. Two fixtures must change when `clippy.toml` does.
-- **The grid template's gates run `check-keys` twice.** Its
-  `.github/workflows/ci.yml` and its `AGENTS.md` (*Before every commit*)
+- **A new game's gates run `check-keys` twice.** The template's
+  `base/.github/workflows/ci.yml` and `base/AGENTS.md` (*The gates*)
   run `cargo shuyi check-keys` and then `cargo shuyi lint`, which runs
-  `check-keys` again. The engine's `templates` job lists both too.
+  `check-keys` again. The engine's `templates` job (*Run its gates*, for
+  `grid` and `blank`), the `run-gates` skill's templates section and the
+  shipped `shuyi-gates` skill list both too.
 - **`lint` reads the checks' printed lines back.** `check_keys::run`
   returns `Vec<String>` of `file:line: what` (`crates/cli/src/check_keys.rs`),
   and `check_text::run_names` the same, so `lint`'s `reported` splits
@@ -68,30 +76,49 @@ None.
   step keeps only its layers half: add `shuyi-ui` under the rules, and
   the layers test fails naming it. Its comment says the clippy half is
   in the step before.
-- **No `check-keys` in the grid template's gates:**
-  `templates/grid/.github/workflows/ci.yml`, `templates/grid/AGENTS.md`'s
-  list, and the engine's `ci.yml` *Run its gates* for the grid template
-  (`check-keys` stays for `blank`, which has no `lint` step). The
-  `check-keys` command itself stays, and `AGENTS.md`'s table may still
-  name it.
+- **No `check-keys` in a new game's gates:**
+  `templates/shuyi-default/base/.github/workflows/ci.yml`,
+  `templates/shuyi-default/base/AGENTS.md`'s list under *The gates*, and
+  the engine's `ci.yml` *Run its gates* (both `grid` and `blank`: each
+  runs `lint`). The `check-keys` command itself stays, `shuyi.ron`'s
+  `check_keys` part stays (`lint` reads it), and `AGENTS.md`'s table may
+  still name it.
 - **From 2022 (done):** the `run-gates` skill's section *A new game
   from each template* copies the templates job's gates in one block
-  for `grid` and `blank`. Change it as `ci.yml` changes: `grid` runs
-  `lint` and no `check-keys`, and `blank` keeps `check-keys`.
+  for `grid` and `blank`. Change it as `ci.yml` changes: `lint` and no
+  `check-keys`.
+- **The shipped `shuyi-gates` skill** (`skills/shuyi-gates/SKILL.md`,
+  its step 2 and its description, and `example.ron`'s last step) runs
+  the gates as the game's `AGENTS.md` lists them: drop `check-keys`
+  there too, since step 1's `lint` runs it.
+- **Either order with 2033:** if 2033 is done, a test in
+  `crates/cli/src/template/tests.rs`
+  (`every_copy_of_a_new_games_gates_is_the_templates_list`) keeps every
+  copy of a new game's gates equal to the template's `AGENTS.md` (*The
+  gates*): change that list first, then the copies the test names,
+  `skills/shuyi-gates/SKILL.md`'s step 2 and
+  `skills/shuyi-gates/example.ron`'s last steps among them; if not,
+  change the places above as written, and 2033 writes its test on the
+  lists as this ticket leaves them.
 - **Findings as data:** `check_keys::run` and `check_text::run_names`
   return a list of `Hit { file, line: Option<usize>, message }` (or reuse
   `check_text::Hit` if it fits), and their commands print them as today,
   byte for byte. `lint` maps them to `Finding`s with no string parsing.
   `reported` stays only for an error reading a file, if one is still a
   string.
+- **Either order with 2570:** if 2570 is done, nothing more to do: its
+  new hits (a keymap name after press, hit, tap or hold) come out of
+  `scan_rust`, `scan_ron` and `scan_dlg` like the rest, and `Hit`
+  carries them; if not, nothing to do (2570 adds a `lint` test for such
+  a hit as a `Hit` when it lands).
 - **`lint` uses `check_text::verdict`**: an over-the-cap count gives the
   findings as today, and the under-the-cap note becomes one of the
   answer's `limits`.
 - `docs/contract.md`'s `lint` row if what it says changes.
 
 **Out (do not do):**
-- a fence or `lint` in the blank template (2511 owns the minimal
-  template);
+- a rules crate or a fence in a `blank` game, which has none (`lint`
+  records a limit there);
 - changing what the checks look for, or `lint`'s answer's shape;
 - `lint` failing (exit 3) when `shuyi.ron` lacks a part: it records a
   limit and runs what the project has, by design;
@@ -101,23 +128,25 @@ None.
 
 1. Read `crates/cli/src/contract/lint.rs` and its tests,
    `check_keys.rs`, `check_text.rs`, `lib.rs` (the `check-keys` and
-   `check-text` arms), `ci.yml`'s `templates` job, and the grid
-   template's `ci.yml` and `AGENTS.md`.
+   `check-text` arms), `ci.yml`'s `templates` job, and the template's
+   `base/.github/workflows/ci.yml` and `base/AGENTS.md`.
 2. `Hit` for `check_keys::run` and `check_text::run_names`, test first:
    the commands' output is unchanged (their existing tests and the
    binary's), and `lint` gets the file and line with no parsing.
 3. `lint` calls `check_text::verdict`; a test for the note as a limit.
-4. The CI steps and the template's gates. Run the templates job's
-   commands locally for `grid` (the `run-gates` skill's templates section).
+4. The CI steps, the template's gates and the two skills. Run the
+   templates job's commands locally for `grid` and `blank` (the
+   `run-gates` skill's templates section).
 
 ## Acceptance criteria
 
 - [ ] `ci.yml` injects the fence's clippy breaks once, and the lint step
       checks the four messages.
-- [ ] The grid template's `ci.yml` and `AGENTS.md` run `lint` and no
-      `check-keys`.
-- [ ] The `run-gates` skill's templates section runs no `check-keys`
-      for `grid` and still runs it for `blank`.
+- [ ] The template's `base/.github/workflows/ci.yml` and
+      `base/AGENTS.md`, and the engine's *Run its gates*, run `lint` and
+      no `check-keys`.
+- [ ] The `run-gates` skill's templates section and the `shuyi-gates`
+      skill run no `check-keys`, and its worked example still passes.
 - [ ] `reported` (or its successor) no longer parses `check-keys`' or
       `check-text`'s findings.
 - [ ] `lint` on a game with fewer literals than its cap has the

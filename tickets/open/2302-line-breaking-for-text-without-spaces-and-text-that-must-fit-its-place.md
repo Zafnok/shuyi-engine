@@ -63,6 +63,14 @@ None.
   worst case (a typed Latin name of that length), so keep it. If
   `word_wrap` takes 2301's width table, pass it on. A unit test:
   `lines_at_longest` on a Japanese line with a name token.
+- **Either order with 2239:** if 2239 is done, the language-pack check
+  (`add_lines`, `crates/assets/src/lang/lines.rs`) counts a translated
+  speech line's pages through `dialogue::box_fit` and
+  `lines_at_longest`, so it gets the new rules too: add a unit test of a
+  pack's Japanese speech line within `max_text` that wraps past
+  `box_lines`, and if `word_wrap` takes 2301's width table, pass it
+  through `box_fit`; if not, nothing to do (2239 adds the pack's page
+  check and that test).
 - An optional width per screen-text key in the source language's
   `ui.ron` (e.g. `max_cells`), parsed and checked in `shuyi_assets::lang`.
 - Beside it, an optional `note` per key: what a translator should know
@@ -121,6 +129,10 @@ None.
    `fill_styled(…).plain()` (`crates/ui/src/text.rs`): make the join in
    the shared code, so the key's `Key` span holds the joined name; if
    not, 2347 builds `fill_styled` on whatever `fill` does then.
+   **Either order with 2390:** if 2390 is done, `fill` walks
+   `shuyi_core::text::split_tokens`: make the join in its `Token` arm;
+   if not, make it where today's loop fills a placeholder, and 2390
+   keeps the join in the `Token` arm when it rewrites the loop.
 4. `ui.ron`: an optional `max_cells` and an optional `note` per key of
    the source language; a key without `max_cells` has no limit. A pack
    can set neither (they describe the place and the English, not the

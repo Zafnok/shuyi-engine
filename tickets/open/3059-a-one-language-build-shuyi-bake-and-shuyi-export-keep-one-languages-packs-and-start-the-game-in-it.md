@@ -45,10 +45,15 @@ completed:
     (`GameBake { bake, bundle, formats }`, `crates/cli/src/game.rs`).
     `Bake::bake` (`crates/assets/src/pack/bake.rs`) walks
     `bundle.files_under("")`.
-  - The pack's index holds `PackInfo { stamp, target }`
-    (`crates/assets/src/pack.rs`, `pack::VERSION` 2). The game opens
-    its pack itself (`Pack::open`, as Hello, Grid's `Hello::from_pack`
-    does), so it can read `Pack::info`.
+  - The pack's index holds `PackInfo { stamp, target, content }`
+    (`crates/assets/src/pack.rs`, `pack::VERSION` 3 since 2111; re-read
+    2026-10-28). `content` is `bundle.fingerprint()` of the bundle it
+    was baked from (`Bake::bake`, `pack/bake.rs`), and a game's stamp
+    (`GameTools::made`, `shuyi_core::Made`) holds the same fingerprint.
+    `shuyi replay` refuses a record made with other content
+    (`crates/cli/src/contract/replay.rs`). The game opens its pack
+    itself (`Pack::open`, as Hello, Grid's `Hello::from_pack` does), so
+    it can read `Pack::info`.
   - `Bundle` (`crates/assets/src/bundle.rs`) reads layers of `'static`
     files. `Layer::leaving_out` names files a layer lacks on purpose; it
     removes none. Nothing hides a folder of a bundle.
@@ -72,7 +77,9 @@ in a store, are the game's.
 - **A bundle without some folders.** `Bundle::without(self, dirs:
   Vec<String>) -> Self`: this bundle with every file under `dirs` gone,
   in every layer. `bytes`, `file`, `has`, `files_in`, `files_under`,
-  `test_part` and `load_each` see none of them. A folder is a whole
+  `test_part`, `load_each` and `fingerprint` see none of them
+  (`fingerprint`, in `bundle/fingerprint.rs`, walks each layer's files
+  itself, so it skips them there too). A folder is a whole
   path segment: hiding `lang/pt` keeps `lang/pt-BR/ui.ron`. `Bundle`'s
   fields are private, so this is additive. It builds without `std`, as
   the rest of the file does.
@@ -90,9 +97,19 @@ in a store, are the game's.
   - `PackInfo::lang: Option<String>`: the canonical tag the pack was
     baked for (`shuyi bake --lang`), if any, and
     `PackInfo::lang_code(&self) -> Option<LangCode>`.
-  - The index changes, so `pack::VERSION` becomes 3 and the snapshot of
-    the binary form is updated. A pack baked before is refused with
-    "bake it again", as any other version is.
+  - The index changes, so `pack::VERSION` becomes the next number (4,
+    from 3 today) and the snapshot of the binary form is updated. A
+    pack baked before is refused with "bake it again", as any other
+    version is.
+  - **The content of a one-language pack** is the fingerprint of what
+    it carries: `Bake::bake` already writes `bundle.fingerprint()`, and
+    the bundle it is handed is `bundle.without(…)`. So it differs from
+    the full bundle's, and from another language's pack's. A game that
+    ships it stamps its records and saves with that content (the
+    fingerprint of a bundle over the pack is `PackInfo::content`), so
+    `shuyi replay` on the full build refuses a record made on the `ja`
+    build as made with other content, and runs it with `any_stamp`.
+    That is on purpose: the files differ. `docs/formats.md` says so.
   - `PackInfo` becomes `#[non_exhaustive]` (ADR-0039: it has grown).
   - `Bake::bake_for_language(&self, formats, bundle, target:
     Option<&str>, lang: &LangCode) -> Result<Baked, Vec<ContentError>>`
@@ -168,15 +185,17 @@ in a store, are the game's.
   `contract::VERSION` up by one, and its line in `versions.json`
   (`docs/contract.md`, *The schemas*).
 - **Docs.**
-  - `docs/formats.md`, *The pack*: the language in the info,
-    `pack::VERSION` 3, and a one-language pack: what it keeps, and how
-    the game starts in it.
+  - `docs/formats.md`, *The pack*: the language in the info, the new
+    `pack::VERSION`, and a one-language pack: what it keeps, its
+    content fingerprint, and how the game starts in it.
   - `docs/contract.md`: the `bake` and `export` rows with `--lang`, the
     `language` code, and the `bake` row of the game's tools table
     (`GameBake::with_languages`).
   - The module docs of `contract/bake.rs`.
 - **For the game:**
-  - `pack::VERSION` 3, so its packs are baked again.
+  - `pack::VERSION` up by one, so its packs are baked again.
+  - A one-language build's records and saves carry that build's
+    content, not the full bundle's.
   - `PackInfo` gains a field and becomes `#[non_exhaustive]`. The
     completion notes carry a `Breaking:` line for each break CI's `api`
     job finds (ADR-0038).
@@ -216,8 +235,8 @@ in a store, are the game's.
 2. Add `Bundle::without`, with its tests in
    `crates/assets/src/bundle.rs`.
 3. Add `lang::folders_off_chain` in `crates/assets/src/lang.rs`.
-4. Add `PackInfo::lang` and `lang_code`, `#[non_exhaustive]`,
-   `pack::VERSION` 3 and `Bake::bake_for_language`. Update the snapshot
+4. Add `PackInfo::lang` and `lang_code`, `#[non_exhaustive]`, the next
+   `pack::VERSION` and `Bake::bake_for_language`. Update the snapshot
    of the binary form (`cargo insta review`) and the tests that build a
    `PackInfo` (`crates/assets/src/pack/tests.rs`).
 5. Add `GameBake::with_languages`, then `--lang` in `contract/bake.rs`:
@@ -251,8 +270,12 @@ in a store, are the game's.
       gives `NOT_OFFERED` (tests).
 - [ ] `Bake::check` finds no difference between the one-language pack
       and the bundle without the other folders (unit test).
-- [ ] A pack of version 2 is refused with "bake it again", and the
+- [ ] A pack of version 3 is refused with "bake it again", and the
       snapshot of the binary form holds the new index.
+- [ ] The `ja` pack's `Pack::info().content` equals
+      `bundle.without(folders).fingerprint()` and differs from the full
+      bundle's `fingerprint()`; a hidden file's bytes changed leave it
+      the same (unit tests).
 - [ ] A `Ctx` whose game loads its `Lang` from the `ja` pack, and
       answers `first_language` from `PackInfo::lang_code`, starts in
       `ja`; `languages_offered` gives the source and `ja` only
@@ -275,7 +298,7 @@ in a store, are the game's.
 - Integration: a one-language pack read back equals its sources
   (`Bake::check`); a game started from it is in its language and offers
   only what shipped.
-- Snapshot: the pack's binary form at version 3.
+- Snapshot: the pack's binary form at the new version.
 
 ## Completion notes
 

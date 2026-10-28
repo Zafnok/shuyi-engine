@@ -202,6 +202,14 @@ None.
 - **Either order with 2315:** if 2315 is done, `--debug` draws its
   channels on every captured frame (a test with a two-frame sheet). If
   not, 2315 does that.
+- **Either order with 2566:** if 2566 is done, `frame_png::Script` is a
+  re-export of `shuyi_platform::script::Script`, which can't take an
+  inherent method in this crate: write `then_frames` as the free
+  function `frame_png::then_frames(script: &Script, n: u32) -> Script`,
+  and each `Step::Wait(FRAME_DT)` still runs exactly one frame, by
+  2566's one rule for a wait (`script::wait_frames` of 1/60 s is 1).
+  If not, write `Script::then_frames` as above, and 2566 turns it into
+  that free function (its own clause says so).
 - `Painter` and `Image` are in `shuyi_ui::frame::raster` (2332), so
   the sheet takes that `Image` through `frame_png`'s re-export. The
   sheet and the encoders stay in `shuyi-cli`: they need `png` and

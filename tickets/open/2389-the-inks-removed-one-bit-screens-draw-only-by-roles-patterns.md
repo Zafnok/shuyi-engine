@@ -75,6 +75,29 @@ None.
   the cursor's colour. Only the toy's grid (`crates/ui/src/toy/grid.rs`)
   and the style's tests use `FlashLook::Invert` today; the toy names a
   flash colour.
+- **Other one-bit code it moves**, from four tickets that draw on the
+  one-bit renderer. Each draws through `Shades::shape` and reads
+  `flips` off it, never `ink_of` or an `Ink`, so only their tests can
+  name an ink:
+  - **Either order with 2336** (drawn shapes): if 2336 is done, move
+    its one-bit shape tests onto the pattern map helper, and check its
+    runs fill through `Shades::shape`. If not, nothing to do (2336
+    draws through `Shades` and tests with a pattern map, its clause
+    says so).
+  - **Either order with 2337** (tint and blend modes): if 2337 is
+    done, move its one-bit tests onto the pattern map helper; its
+    flipping rectangle is a role with `invert: true`. If not, nothing
+    to do (2337's clause says so).
+  - **Either order with 2339** (the veil): if 2339 is done, move its
+    one-bit veil tests and their text snapshot onto the pattern map
+    helper (the snapshot changes only if a veil colour of no role now
+    dithers by luminance; review it). If not, nothing to do (2339's
+    clause says so).
+  - **Either order with 2340** (shake and flash): if 2340 is done, its
+    one-bit flash tests that flash in `Ink::Invert`'s code flash in the
+    helper map's `invert` role instead, and its veil still flips by
+    `Shades::shape`'s `flips`. If not, nothing to do (2340 flashes in
+    a role with `invert`, its clause says so).
 - **Tests:** every test that drew with `InkShades` draws with a
   `PatternMap` of 2388's proof (move that map into a test helper both
   use), and the fast-equals-reference proptests run with pattern maps

@@ -95,8 +95,11 @@ font (game#0236).
    glyph fit the PNG and the same row; no character is both narrow and
    wide. `glyph_rect` stays narrow; add `wide_rect(char)` for the
    16 × 16 rectangle. An atlas with no wide glyphs reads as today.
-   2350's `font::undrawn` counts a character with a wide glyph as
-   drawn.
+   `FontAtlasDef::draws` and `drawn` (added by 2350 or 2346, whichever
+   landed first) take the wide glyphs too, so 2350's `font::undrawn`,
+   2346's `Ctx::font_chars` and 2353's `can_draw` count a character
+   with a wide glyph as drawn. Nothing else reads the glyph maps to
+   answer it.
 2. **The tool.** `font-atlas --wide <font.bdf>`: the wide characters
    taken are exactly the characters of the game's text that the narrow
    fonts lack (2350's `AtlasChars::used`, which `font-atlas` already
@@ -131,7 +134,12 @@ font (game#0236).
    2353:** if 2346 is done, `NameRules` counts a name's length with the
    table; if 2353 is done, `pseudo_text` and `with_pseudo` measure with
    it and its walk skips continuation cells. If not, each does it (its
-   clause says so).
+   clause says so). **Either order with 2239:** if 2239 is done,
+   `dialogue::box_fit` (`crates/assets/src/dialogue/check.rs`) measures
+   with `longest_width` and `lines_at_longest`: give it the `CellWidths`
+   too, and its two callers (`Checker::step`, and `add_lines` in
+   `crates/assets/src/lang/lines.rs`) pass the table; if not, nothing to
+   do (2239 passes it, as its clause says).
 5. **Renderers.** `shuyi-app` draws a wide glyph as one 16 × 16 quad
    over both cells and skips continuation cells. The one-bit renderer
    draws its two halves. `frame-png` draws the same as `shuyi-app`.

@@ -45,8 +45,9 @@ Shuyi today:
 - `crates/cli/src/contract/bots.rs` and `replay.rs` (1129, done):
   `shuyi bots` plays seeded random games and returns a record of each;
   `shuyi replay` runs one record twice and reports the first step whose
-  hashes differ. `templates/grid/crates/game/src/tools.rs` and
-  `examples/hello-grid/src/tools.rs` wire both.
+  hashes differ. The built-in template's grid stage
+  (`templates/shuyi-default/stages/top-down-grid/crates/game/src/stages/top_down_grid/tools.rs`)
+  and `examples/hello-grid/src/tools.rs` wire both.
 
 What none of it catches is state that the serde form leaves out.
 `state_hash` hashes the serde form, so it never sees a `#[serde(skip)]`
@@ -196,6 +197,10 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   from `PlaytestInput`, and read "`bots`" in this ticket as
   `playtest`; if not, use `BotsInput`'s as written, and 2544 renames
   them.
+  **Either order with 2568:** if 2568 is done, call
+  `game::check_start(game.frame_options(), &input.start)` at the top of
+  the `soak` operation beside its other checks, failing with
+  `codes::WRONG_ARGUMENTS`; if not, nothing to do (2568 adds the call).
 - `SoakOutput { games: u32, steps: u64, unfinished: u32, failures:
   Vec<SoakFailure> }`. `SoakFailure { seed: u64, check: String, step:
   u32, detail: String, played: u32, shrunk: u32, complete: bool, record:
@@ -240,9 +245,9 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   `contract.rs`'s module docs, `lib.rs`'s module docs, the
   `description` in `crates/cli/Cargo.toml`, the two rows of `README.md`
   that list them, `examples/hello-grid/README.md` (its tools row and a
-  line under `cargo shuyi bots 30`), and the lines in
-  `templates/blank/AGENTS.md` and `templates/blank/crates/game/src/tools.rs`
-  that say `scene`, `replay` and `bots` need a stage and rules.
+  line under `cargo shuyi bots 30`), and the line of the template's
+  shared `AGENTS.md` (`templates/shuyi-default/base/AGENTS.md`, "`scene`,
+  `replay` and `bots` need a stage and rules") that every game gets.
 - The command line: `shuyi soak <games> [--seed N] [--turns N] [--save
   DIR] [options] [--json]`. `parse_args` takes `--save DIR` out first and
   passes the rest to `bots::parse_args`. `usage` reads like
@@ -257,27 +262,53 @@ own loop, with its own bot per side (Hello, Grid plays the foe with
 it. A separate method with a default says plainly what a game offers.
 Its input keeps `bots`' fields and limits.
 
-**The grid template** (`templates/grid`):
+**The grid stage of the built-in template**
+(`templates/shuyi-default/stages/top-down-grid`, the part
+`stage-top-down-grid`; paths below are under it). The template is a
+`base` part every game gets and this stage's part, which only
+`shuyi new --template grid` (or a game that picks the stage) writes
+(`templates/shuyi-default/template.ron`, `docs/templates.md`). A file
+two parts write fails unless it is a `Cargo.toml` or a `.ron` file, so
+the base's `.github/workflows/ci.yml` and `AGENTS.md` are shared by
+every game, the blank one too, and the soak never goes in them:
 
-- `rules::Stage` (`crates/rules/src/lib.rs:129`) derives `Deserialize`
+- `rules::Stage` (`crates/rules/src/lib.rs:127`) derives `Deserialize`
   too. Its fields all do: `Grid`, `Pos`, `SimRng`, `Outcome`.
 - `Stage::invariants(&self) -> Vec<String>`: both pieces stand on open
   tiles, and the turn is at least 1. It is a small example of the hook a
   game grows.
-- `Tools::soak` in `crates/game/src/tools.rs`, through
-  `shuyi_cli::contract::soak::turns` with `RonCodec`, `Stage::invariants`
-  and `StageRecord` (`replay::turns` is already imported there as
-  `turns`, so name the module).
-- Its CI (`templates/grid/.github/workflows/ci.yml`) runs `cargo shuyi
-  soak 20 --turns 100` after `cargo shuyi check-keys`. This repository's
-  `templates` job (`.github/workflows/ci.yml`) is a matrix over `grid`
-  and `blank`, and the blank game offers no `soak`. So the soak there is
-  a step of its own after "Run its gates", with `if: matrix.template ==
-  'grid'`, in the same working directory.
-- Its `AGENTS.md`: a row in the tools table and a line in the gates.
+- `Tools::soak` in `crates/game/src/stages/top_down_grid/tools.rs`,
+  through `shuyi_cli::contract::soak::turns` with `RonCodec`,
+  `Stage::invariants` and `StageRecord` (`replay::turns` is already
+  imported there as `turns`, so name the module).
+- **Its CI is a workflow of the stage's own,** `.github/workflows/soak.yml`
+  beside the stage's `playtest.yml`, written only into grid games. It
+  runs `cargo shuyi soak 20 --turns 100` on pull requests and pushes to
+  `main`, with the same `permissions: contents: read`, concurrency group
+  and comment style as `playtest.yml`, and the toolchain and cache steps
+  of the base's `ci.yml`. The base's `ci.yml` doesn't change.
+- **This repository's `templates` job** (`.github/workflows/ci.yml`) is
+  a matrix over `grid` and `blank`, and the blank game offers no `soak`.
+  So the soak there is a step of its own after "Run its gates", with
+  `if: matrix.template == 'grid'`, in the same working directory.
+- **Its docs:** a row `cargo shuyi soak 20 --turns 100` in the tools
+  table of the stage's `crates/rules/AGENTS.md` (the table with
+  `cargo shuyi bots 20`), and a line under it saying the stage's
+  `soak.yml` runs it in CI. The base's `AGENTS.md` gets only the word
+  `soak` in its "need a stage and rules" line, above.
+- **Either order with 2033:** if 2033 is done, a test in
+  `crates/cli/src/template/tests.rs` compares each made game's
+  `AGENTS.md` gates with its own `ci.yml`, and the engine's copies (the
+  root `templates` job's "Run its gates", the `run-gates` skill,
+  `shuyi-gates` and its example) with the gates both the blank and the
+  grid games have: the soak is in none of those. It is in the grid
+  stage's own files (`soak.yml` and `crates/rules/AGENTS.md`) and the
+  root job's grid-only step, never in the base's `ci.yml` or `AGENTS.md`
+  gates or in "Run its gates"; check 2033's test passes with it there.
+  If not, nothing to do (2033 checks the soak's line by those rules).
 
 **Hello, Grid** (`examples/hello-grid`): `rules::Stage`
-(`src/rules.rs:156`) derives `Deserialize` (its fields all do), gets the
+(`src/rules.rs:186`) derives `Deserialize` (its fields all do), gets the
 same two invariants (its hero and its foe on open tiles, the turn at
 least 1), and `HelloTools::soak` is wired the same way
 (`docs/contract.md` says its tools write every op). `tests/it/contract.rs`

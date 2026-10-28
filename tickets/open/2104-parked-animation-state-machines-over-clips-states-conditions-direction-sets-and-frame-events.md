@@ -90,12 +90,21 @@ None.
 - **The runner**, pure:
   - `AnimState { state: StateId, entered_step: u32, dir_pick: u8 }`,
     `Copy` and serde: all a simulation stores;
-  - `AnimGraph::step(&self, state, &Params, step, ms_per_step) ->
-    Stepped { state, events: Vec<&str>, used_triggers }`. Events are
-    every frame entered since the previous step, by `crossed`, in
-    order, even when a step is longer than a frame;
+  - `AnimGraph::step(&self, state, &Params, step) -> Stepped { state,
+    events: Vec<&str>, used_triggers }`. Events are every frame entered
+    since the previous step, by `crossed`, in order, even when a step
+    is longer than a frame;
   - `AnimGraph::frame(&self, state, step) -> FrameRef`, through 2231's
-    `frame_at`.
+    `frame_at`;
+  - a state's time is `ms_from_steps(step - entered_step)` ms (the
+    subtraction saturating), 2115's one rule from steps to ms in
+    `shuyi_core::timer`, for `frame_at`, `ended` and events alike. No
+    `ms_per_step` is passed: a whole one (16 or 17) drifts from 60
+    steps a second. **Either order with 2115:** if 2115 is done, use its
+    `ms_from_steps`; if not, write `STEPS_PER_SECOND` (moved from
+    `shuyi_platform::tick`, which re-exports it) and `ms_from_steps` in
+    `shuyi_core::timer` with the rule and tests in 2115's Scope, unless
+    2103 already did, and 2115 keeps them.
 - **The toy and the example:** a test graph on 2231's fixture set (its
   own clips over the fixture's picture, since that set holds only
   `splash`, `waves` and `wind`) with idle, walk in four directions, and

@@ -168,10 +168,15 @@ None. Which look the game uses stays Nick's choice in game#0813.
     every pixel blended with it through `Image::blend`. **Either order
     with 2337:** if done, with `Blend::mix` and `Blend::Alpha`;
   - the one-bit renderer (`onebit.rs` and `onebit/reference.rs`, kept
-    equal): a pixel where `shows(alpha, x, y)` takes the ink of the
-    veil's colour (`ink_of`), so a fade dithers in the order sprites
-    already fade in. `render_changed` redraws the whole screen when the
-    veil changed.
+    equal): a pixel where `shows(alpha, x, y)` takes the veil colour's
+    shade (`shades.shape(color)`, as a rectangle's), so a fade dithers
+    in the order sprites already fade in. `render_changed` redraws the
+    whole screen when the veil changed.
+  - **Either order with 2389** (the inks removed): if 2389 is done, the
+    renderer's only `Shades` is a `PatternMap`, and the one-bit veil
+    tests and their text snapshot use 2389's pattern map helper. If
+    not, the veil goes through `Shades` as above, never `ink_of`, and
+    2389 moves this ticket's tests that use `InkShades` with the rest.
   - The veil goes in `shuyi_ui::frame::raster` (2332), as the reference
     the backends match.
 - **Asking for a look:** `Ctx::transition_look(&mut self, look)`, which

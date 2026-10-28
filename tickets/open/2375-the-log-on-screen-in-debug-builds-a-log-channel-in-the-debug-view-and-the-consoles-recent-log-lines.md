@@ -139,6 +139,15 @@ None.
     screen's gizmos;
   - 2315's `frame-png --debug log` and `--debug all` draw it with no
     change.
+  - **Either order with 2316** (the top screen's readout): its
+    `readout` channel prints `Label` lines from the top-left corner
+    too. The readout keeps rows 0 to n - 1 (n its lines, `paused`
+    included), and the log's lines start on row n, cut to the rows
+    left. If 2316 is done, `log_gizmos` takes the first row
+    (`first_row: usize`), `Game` passes the readout's line count (0
+    with the `readout` channel off), and a test with both channels on
+    finds no two labels on one row; if not, draw from row 0 as above,
+    and 2316 adds the first row.
 - **The console's log lines** (2356's `Ctx::debug_console:
   ConsoleLog`):
   - `Ctx::push_recent_log` also writes each `Warn` and `Error` line to

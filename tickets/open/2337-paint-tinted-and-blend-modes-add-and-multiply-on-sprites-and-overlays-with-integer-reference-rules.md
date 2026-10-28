@@ -156,8 +156,22 @@ None.
   - in the fast renderer an overlay at full opacity with `Alpha` keeps
     today's whole-byte `fill`; any other overlay may be drawn pixel by
     pixel with `set`, as a sprite is (they are rare);
-  - an invert rectangle (`Ink::Invert`) stays as it is: blend and
-    opacity don't apply to it.
+  - a rectangle whose shade `flips` (`shades.shape(color).flips`)
+    stays as it is: blend and opacity don't apply to it.
+  - **Either order with 2389** (the inks removed): if 2389 is done, a
+    flipping rectangle is one in a role whose pattern map says
+    `invert: true` (2388), and the one-bit tests use 2389's pattern map
+    helper. If not, the code reads `flips` off `Shades` as above and
+    names no `Ink`, and 2389 moves this ticket's tests that use
+    `InkShades` or `Ink::Invert`'s code with the rest.
+  - **Either order with 3056** (one-bit sprites drawn fast): if 3056
+    is done, `draw_sprite` has a whole-byte path and a column table:
+    `Paint::Tinted` goes through both as `Image`; `Add` writes only
+    the item's white pixels (`out | bits & m`) and `Multiply` only its
+    black ones (`out & (bits | !m)`), on the byte path too; and
+    tinted, added and multiplied sprites join 3056's property test
+    against `reference`. If not, nothing to do (3056 draws them so,
+    its clause says so).
 - **`shuyi-app`** (`crates/app/src/render.rs`):
   - `Paint::Tinted(c)` in `draw_sprite`: no recolour, and `c` is the
     tint (scaled by brightness, as `Solid`'s colour is). It never makes

@@ -62,6 +62,11 @@ None.
   3049 is done, keep its icon links and put the license link after
   them; if not, nothing more to do (3049 keeps the link, its clause
   says so).
+- **Either order with 3068:** if 3068 is done, `SHELL` also holds the
+  engine's own `clock.js` (`Origin::Engine`): it gets no header, and
+  the test that `gamepad.js` is `shell(name)` alone checks `clock.js`
+  the same way; if not, nothing to do (3068 adds it as
+  `Origin::Engine`, which gets no header).
 
 **Out (do not do):**
 - what `NOTICES.txt` lists, or the table's rows (3039, done; 2223 for

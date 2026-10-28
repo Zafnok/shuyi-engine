@@ -146,7 +146,8 @@ choices.
   - `storage`, or the id when it is unset: one folder name. ASCII
     letters, digits, `.`, `-`, `_` and spaces, with no `.` or space
     first or last (error);
-  - `icon`: the file exists, decodes as PNG (`codec::decode_png`), is
+  - `icon`: the file exists, decodes as PNG (`codec::decode_png`, or
+    `png_pixels` once 2565 is done: the clause below), is
     square, and is at least 512 px a side (error);
   - `icon` and `code` set without `window_icons` (error);
   - a file `app-info` would write differs from the one on disk (error:
@@ -269,6 +270,11 @@ choices.
 - **Docs:** `docs/contract.md`'s `check --target` row and its *The
   templates* section.
 - **Either order:**
+  - **Either order with 2565:** if 2565 is done, `codec::decode_png` is
+    gone: the icon check decodes with
+    `shuyi_assets::bitmap::convert::png_pixels`, which reads every kind
+    of PNG (a grey icon too); if not, use `codec::decode_png` and 2565
+    moves the call onto `png_pixels`.
   - **3004** (export): if it is done, its `export-report.json`'s
     `version` (the function 3004 reads it with) is `app.version` when
     the part sets one, else the package's version, as before. If not,

@@ -137,9 +137,12 @@ None.
   in `crates/cli/src/codec.rs`, over `png`: each frame as RGBA, its
   delay as a fraction of a second, and the plays. `Animation` is
   `#[non_exhaustive]` (ADR-0039). A frame that isn't the whole picture
-  at (0, 0) is an error: `encode_apng` writes every frame whole. If
-  2514's round-trip test already decodes an APNG, move that code here
-  and have the test call it.
+  at (0, 0) is an error: `encode_apng` writes every frame whole. It
+  reads only what `encode_apng` writes, 8-bit RGBA: any other colour
+  type or depth is an error too, so it never trusts `png` to have
+  turned another kind of PNG into RGBA. If 2514's round-trip test
+  already decodes an APNG, move that code here and have the test call
+  it.
 - **`frame-png --preview`** (`frame_png` in `crates/cli/src/lib.rs`):
   with `--preview` as its only argument, `frame-png` takes its options
   from `preview::options` and writes `preview.png` as `--apng` does,
@@ -194,6 +197,15 @@ None.
 
   If not, nothing to do (each makes its README picture its preview when
   it lands; its own clause with 2811 says so).
+- **Either order with 2565:** if 2565 is done, `codec::decode_png` is
+  gone and `codec.rs`'s docs say it only encodes: `decode_apng` still
+  goes in `codec.rs`, beside `encode_apng` (`png_pixels` reads only a
+  PNG's first frame, and an APNG is no asset of `shuyi-assets`), and
+  the module docs say it encodes PNG and APNG files and reads back only
+  its own APNGs, any other PNG being read with
+  `shuyi_assets::bitmap::convert::png_pixels`; if not, write
+  `decode_apng` the same way and leave the module docs, which 2565
+  rewrites around it.
 
 **Out (do not do):**
 - previews for any other example. An example that wants one adds the
@@ -233,7 +245,7 @@ None.
 8. Write `site/copy-previews.sh`, run it in `pages.yml` and the site's
    CI job, add `site/static/previews/` to `.gitignore`, and change the
    card template, the CSS and `site/README.md`.
-9. Settle the clause with 2738 and 2739.
+9. Settle the clauses with 2738 and 2739, and with 2565.
 10. Run the `document` skill for the new part and the new flag, then
     the gates. After the merge, look at the live Examples page.
 
@@ -261,7 +273,7 @@ None.
       names it in Hello, Grid's card.
 - [ ] On the live site, Hello, Grid's card plays the preview, and with
       reduced motion turned on it shows no moving picture.
-- [ ] The clause with 2738 and 2739 is settled.
+- [ ] The clauses with 2738 and 2739, and with 2565, are settled.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
@@ -269,7 +281,8 @@ None.
 - Unit: `Preview` parses from RON, and an unknown field is an error;
   each error of `preview::options`; `decode_apng` round trip with
   `encode_apng` (frames, delays, plays); a frame that isn't whole is an
-  error; the size test over and under a small cap.
+  error, and so is an APNG that isn't 8-bit RGBA; the size test over
+  and under a small cap.
 - Integration (the toy, `crates/cli/tests/it/toy.rs`): in a temporary
   folder, with a `Project::new` holding a `preview` part,
   `frame-png --preview` writes a file that `check` passes. Then `check`

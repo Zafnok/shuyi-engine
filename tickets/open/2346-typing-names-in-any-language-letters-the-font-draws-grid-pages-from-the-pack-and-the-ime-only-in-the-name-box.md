@@ -100,11 +100,25 @@ None.
      Option<BTreeSet<char>>` in `crates/ui/src/ctx.rs` (`BTreeSet` from
      `alloc`, as the crate builds without `std`). `None`, the default,
      draws everything. `App::load` (`crates/platform/src/app.rs`), when
-     it has a look, fills it with the keys of the look's
-     `FontAtlasDef::glyphs` once the game is made, so the windowed and
-     web builds refuse a letter that would show as the atlas's
-     `FALLBACK_GLYPH` (`?`). `App::running` has no look, so the Harness
-     keeps `None`; a test that needs a font sets the field itself.
+     it has a look, fills it with the characters the look's atlas draws
+     (`FontAtlasDef::drawn`, below) once the game is made, so the
+     windowed and web builds refuse a letter that would show as the
+     atlas's `FALLBACK_GLYPH` (`?`). `App::running` has no look, so the
+     Harness keeps `None`; a test that needs a font sets the field
+     itself.
+   - **One answer to "can the atlas draw this character?"**:
+     `FontAtlasDef::draws(&self, c: char) -> bool` and `drawn(&self) ->
+     impl Iterator<Item = char>`, the characters `draws` accepts in
+     code-point order (`crates/assets/src/font.rs`). Today that is the
+     keys of `glyphs`; 2301 adds its wide glyphs and 2303 every wide
+     set, in these two functions only, so a kana the atlas draws is in
+     `font_chars` with no change here. **Either order with 2350:** if
+     2350 is done, it added both for `font::undrawn`: fill `font_chars`
+     from its `drawn`; if not, add them here, and 2350's `undrawn` calls
+     `draws`. **Either order with 2353:** if 2353 is done, Hello, Grid's
+     `can_draw` (`Hello::load_from`) becomes `|c| font.draws(c)`, unless
+     2350 already made it so; if not, nothing to do (2353 calls
+     `draws`).
    - Names already saved load as they are: the rules apply only while
      typing.
    - The module's docs (lines 10 to 12) say the new rules.
@@ -283,7 +297,8 @@ as `Rows` once 2301 is done.
 2. `GridPage` and `LangInfo::name_grid`, the validation,
    `pack::VERSION` and the pinned binary form snapshot, and
    `docs/formats.md`.
-3. `Ctx::font_chars`, the new letter rule, the module's docs, and
+3. `FontAtlasDef::draws` and `drawn` (unless 2350 added them),
+   `Ctx::font_chars`, the new letter rule, the module's docs, and
    `App::load` filling it.
 4. Pages in `NameEntry`, `GridCell::Page`, `Ctx::name_grid`,
    `open_name`'s new argument, the text key and the toy's debug pack.
@@ -303,8 +318,8 @@ as `Rows` once 2301 is done.
       no Denied sound; `×` and `÷` are refused (unit tests).
 - [ ] With `font_chars` lacking `ë`, typing it sounds Denied and leaves
       the name as it was. With a set holding `ゆ` and `き`, typing "ゆき"
-      keeps it; with `font_chars` set from Hello, Grid's atlas (the keys
-      of `Hello::font.glyphs`) it is refused (tests).
+      keeps it; with `font_chars` set from Hello, Grid's atlas
+      (`Hello::font.drawn()`) it is refused (tests).
 - [ ] `App::load` with a look fills `Ctx::font_chars` with the look's
       glyphs; `App::running` leaves it `None` (unit test in
       `crates/platform`).

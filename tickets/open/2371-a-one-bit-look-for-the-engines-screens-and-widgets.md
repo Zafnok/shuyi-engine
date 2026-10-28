@@ -85,6 +85,28 @@ None.
 **Either order with 3010:** if 3010 is done, its example on the Playdate
 uses these painters for its Options screen; if not, 3010 picks them up.
 
+**One look type, not two.** `PanelLook` (`frame/draw.rs`) already holds
+a panel's `BoxStyle` and its border, title, text and background
+colours. `WidgetLook` builds on it: its box style and frame roles are
+what make the painter's `PanelLook`, and it adds only the focus bar,
+disabled text and the note rule.
+
+**Either order with 2338:** if 2338 is done, `PanelLook` has a
+`frame: Option<NineSlice>`, and the question and name box painters take
+it as an extra argument: move that frame into `WidgetLook` (a `framed`
+method, passed on to the `PanelLook` it makes) so each painter takes
+one look, and the engine's callers set it from `ctx.panel_frame(style)`
+as 2338's do; the menu's note rule still leaves out its joins when the
+look has a frame. If not, nothing to do (2338 puts its frame in
+`WidgetLook`, its clause says so).
+
+**Either order with 2355:** if 2355 is done, `MenuView` has `active`:
+`WidgetLook::ONE_BIT` paints an inactive menu's focused item as an
+ordinary row, with no focus bar and no note, as `GLYPH` does, and
+`size` doesn't change with it, with a one-bit snapshot. If not, nothing
+to do (2355 paints the inactive menu in every look, its clause says
+so).
+
 **The game's look as the reference:** the game's one-bit skins
 (`crates/ui/src/screens/playdate.rs`, `options/playdate.rs`,
 `key_bindings/playdate.rs`, `profile/playdate.rs`,
