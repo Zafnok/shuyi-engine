@@ -116,7 +116,7 @@ fn run_says_what_it_could_not_see() {
     }];
     assert_eq!(
         run(&HelloTools, &unknown).error.as_deref(),
-        Some("unknown option --hard")
+        Some("unknown option: --hard")
     );
 }
 
