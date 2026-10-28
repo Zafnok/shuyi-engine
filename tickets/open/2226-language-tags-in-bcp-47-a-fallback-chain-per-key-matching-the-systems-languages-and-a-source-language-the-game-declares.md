@@ -215,6 +215,14 @@ None.
     (`pt_BR`), and `lang-export` and `lang-import` read tags with
     `LangCode::parse`, so a PO saved with `Language: pt_BR` matches the
     folder `pt-BR`; if not, nothing to do (2227's clause does it).
+  - **Either order with 2238:** if 2238 is done, change the folder-name
+    check and its two messages once, in `pack_code`
+    (`crates/assets/src/lang.rs`), which both readers call, and walk the
+    chain over `fresh`: each lookup, and `pack_names` (what `Lang::names`
+    and `pack_from_files` fill names from), takes the first pack along
+    the chain whose entry `fresh` keeps, with `pack_from_files` passing
+    its own pack alone since it reads one pack; if not, nothing to do
+    (2238 merges them after this ticket, as its clause says).
 - **Docs:** the language pack bullet in `docs/formats.md`, and the
   module docs of `lang.rs`: the tag subset, the chain and the source.
   The module docs say why the engine parses the subset itself rather

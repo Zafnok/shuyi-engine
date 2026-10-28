@@ -132,6 +132,12 @@ None. Spending money on agent runs is 2525's question.
     `check`: `cargo fmt --all --check`,
     `cargo clippy --workspace --all-targets -- -D warnings`,
     `cargo test --workspace` and `cargo shuyi check-keys`;
+    **Either order with 2033:** if 2033 is done, the template's list is
+    kept equal in every copy by its test: `Gates` reads its commands
+    from `templates/shuyi-default/base/AGENTS.md`'s *The gates* block,
+    minus the ones listed above as left out, and never from the graded
+    game's copy, which the agent may have changed; if not, nothing to
+    do (2033 makes `Gates` read that block);
   - `Check`: `cargo shuyi check --json` passes;
   - `Targets`: `cargo shuyi check --target <id> --json` passes for each
     id in `targets`;

@@ -251,6 +251,12 @@ ships (rule 7, `deny.toml`) don't change.
   the credits section of `NOTICES.txt` says which languages' engine
   screens a game shows machine-translated. If not, 2352 adds that, as
   its scope says.
+- **Either order with 2032:** if 2032 is done, extend its test
+  `licenses_are_deny_tomls_allow_list` (`crates/assets/src/credits.rs`'s
+  tests) so `CODE_LICENSES` plus `OFL-1.1` is also checked against
+  `deny.toml`'s allow list, and keep its sentence naming `deny.toml` in
+  `LICENSES`'s new doc comment; if not, nothing to do (2032 checks
+  `CODE_LICENSES` too).
 
 **Out (do not do):**
 - An engine screen of credits or notices. Godot leaves it to the game,

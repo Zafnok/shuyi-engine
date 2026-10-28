@@ -84,8 +84,9 @@ None.
     `qps`, and 2226 renames it (its clause says so).
   - `pub fn pseudo_text(text: &str, can_draw: &dyn Fn(char) -> bool) -> String`:
     1. everything between `{` and `}` is copied as it is, as
-       `tip::placeholders` reads them; an unclosed `{` and the rest of
-       the text are copied as they are too;
+       `shuyi_core::text::split_tokens` reads them (the rule
+       `tip::placeholders` keeps); an unclosed `{` and the rest of the
+       text are copied as they are too;
     2. each ASCII letter outside them becomes the first of its accented
        forms that `can_draw` accepts, from a fixed table in the module
        (`a` → `á à â ä å ā`, `E` → `É È Ê Ë Ē`, and so on); a letter with
@@ -106,6 +107,12 @@ None.
     the words inside its branches, and the property test checks each of
     `Message::forms`. If not, 2348 makes `pseudo_text` do that when it
     lands (its clause says so).
+  - **Either order with 2390:** if 2390 is done, `fill` and
+    `tip::placeholders` are built on `split_tokens` too, and
+    `pseudo_text`'s step 1 walks it: a `Token` copied back as `{name}`,
+    an `Unclosed` part as it is, and only `Text` parts changed; if not,
+    walk `split_tokens` all the same, never a brace loop of its own, and
+    2390 has nothing to move in `pseudo_text`.
   - `Lang::with_pseudo(self, can_draw: impl Fn(char) -> bool) -> Result<Self, String>`:
     adds a pack under `PSEUDO` with an entry for every English screen
     text, every data text and every dialogue line and caption
@@ -120,6 +127,13 @@ None.
   - `LangPack::texts(&self) -> impl Iterator<Item = (&str, &str)>`: key
     and text of every screen and data entry and every one-text line, for
     the walk to name a key.
+  - **Either order with 2350:** if 2350 is done, `with_pseudo` takes
+    the English it copies from `Lang::texts` (the rows whose `lang` is
+    `None`), and `LangPack::texts` gives a pack's `Screen`, `Data` and
+    `Dialogue` rows of the same walk (one function over a pack, which
+    `Lang::texts` calls too), so a `TextPart` added later reaches the
+    pseudo pack and the walk's key; if not, write both as above, and
+    2350 builds `Lang::texts` over that one walk.
 - **Builds with debug tools only.** `Ctx::effective_lang` treats
   `PSEUDO` as it treats the game's debug language: English unless
   `debug_tools` is on. A game adds the pack where it loads its text,
@@ -204,7 +218,11 @@ None.
     `toy::lobby()`, and a `Field` game as `crates/ui/tests/it/grid.rs`
     makes one;
   - `examples/hello-grid`: `Hello::load_from` adds the pack under
-    `DEBUG_TOOLS` with `|c| font.glyph_rect(c).is_some()`; a test in
+    `DEBUG_TOOLS` with `|c| font.glyph_rect(c).is_some()` (**either
+    order with 2346 and 2350:** if 2346 or 2350 is done, with
+    `|c| font.draws(c)`, `FontAtlasDef::draws`, the one answer to "can
+    the atlas draw this?"; if not, as written, and whichever of them
+    adds `draws` moves it there); a test in
     `examples/hello-grid/tests/it/pseudo.rs` walks `title`, `talk`,
     `stage` (its map in `skip`), `leave` and `end`, and the engine's
     `options` and `profiles` from the title;
@@ -267,7 +285,8 @@ None.
    (`LineEntry`, `LineText`), `lang/source.rs` (`SourceText`),
    `tip::placeholders`, `Ctx::effective_lang` and the Harness
    (`crates/platform/src/harness.rs`). Check the *Either order* tickets
-   (2226, 2301, 2323, 2334, 2348, 2349, 2351, 2501) for which are done.
+   (2226, 2301, 2323, 2334, 2346, 2348, 2349, 2350, 2351, 2390, 2501)
+   for which are done.
 2. Write `pseudo_text` with its accent table and its tests, then
    `Lang::with_pseudo` and `LangPack::texts`.
 3. Gate `PSEUDO` in `Ctx::effective_lang`, with a test beside the debug

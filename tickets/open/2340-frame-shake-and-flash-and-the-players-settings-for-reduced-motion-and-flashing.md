@@ -168,10 +168,17 @@ None.
 - **Flash, on 2339's veil:** while a flash shows, `Game` sets the veil
   to its colour at `Flash::alpha`, in place of any veil 2339's `compose`
   set. A newer flash replaces the one showing.
-  - The one-bit renderer, and its reference, draw a veil whose colour is
-    `Ink::Invert`'s code (`Ink::code`) by flipping the pixels it covers
-    where `shows(alpha, x, y)`. So a flash in that colour shows whatever
-    is under it, as an `Invert` rectangle does today.
+  - The one-bit renderer, and its reference, draw a veil whose colour's
+    shade flips (`shades.shape(color).flips`, as a rectangle's) by
+    flipping the pixels it covers where `shows(alpha, x, y)`. So a flash
+    in that colour shows whatever is under it, as a flipping rectangle
+    does today.
+  - **Either order with 2389** (the inks removed): if 2389 is done, the
+    flash colour is a role whose pattern map says `invert: true`
+    (2388), and the one-bit flash tests use 2389's pattern map helper.
+    If not, the code reads `flips` off `Shades` as above and names no
+    `Ink`; its tests may flash in `Ink::Invert`'s code through
+    `InkShades`, and 2389 moves them with the rest.
 - **Photosensitivity, whatever the game asks** (in `Game`):
   - at most three flashes start in any one second; a flash asked for
     sooner is dropped (WCAG 2.3.1);
@@ -265,7 +272,7 @@ None.
 4. Add the frame's shake, its snapshot line and the moved frame in every
    painter.
 5. Add `Ctx::shake` and `Ctx::flash`, and play them in `Game`: the
-   veil, the invert ink on one-bit, the two photosensitivity rules, the
+   veil, the flipping veil on one-bit, the two photosensitivity rules, the
    idle-motion rule, `Motion::Reduced` and `shake_strength`.
 6. Check that 2339's ADR names the shake as a whole-frame field like
    the veil, look only, drawn by every painter (2339 writes it so); add

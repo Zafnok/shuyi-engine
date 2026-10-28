@@ -83,7 +83,12 @@ None.
     the voice playing (2725's fake audio test); if not, nothing to do
     (2725 does it).
 - **Going back across a load**: `history::back` (2721) replays from the
-  nearest snapshot instead of from the start when there is one.
+  nearest snapshot instead of from the start when there is one. 2721
+  built `back` on `shuyi_core::history::History<VnRules>`, so a
+  snapshot is a `History` too: `History::from_parts` with the rules
+  rebuilt from the snapshot's `VnState` as its first state and the
+  commands after it, and `rewind_to` on that. No second replay loop;
+  `History` itself doesn't change.
 - **The save and load screens**, glyph cells and sprite items:
   - pages of slots (the count is a `vn.ron` field), each with its
     thumbnail, label and time;
@@ -165,7 +170,7 @@ in the Completion notes.
 2. Write `restore`, with fixtures: a save, then the same story with a
    line's text fixed, with a line added, with a choice reordered, and
    with a line removed.
-3. Make `history::back` start from snapshots.
+3. Make `history::back` start from snapshots (a `History` from each).
 4. Write the thumbnail with 2332's `raster::Painter`.
 5. Write the save and load screens.
 6. Write `VnProfile`, the gallery and the endings list.

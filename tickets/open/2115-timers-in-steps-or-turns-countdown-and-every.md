@@ -135,8 +135,20 @@ None.
     `try_from` aren't `const`, so it widens and narrows with `as`, and
     the narrowing cast carries `#[expect(clippy::cast_possible_truncation,
     reason = "...")]` saying why it fits. It turns a length a designer
-    wrote in milliseconds into steps, once, at load. A rule never sees
-    milliseconds.
+    wrote in milliseconds into steps, once, at load. A timer never
+    counts milliseconds.
+  - **`ms_from_steps(steps: u32) -> u64`**, a `const fn`, the other
+    way: `steps * 1000 / STEPS_PER_SECOND` in `u64`, rounded down,
+    widened with `as` as `steps_from_ms` is. At 60 steps a second that
+    is 0, 16, 33, 50, … and exactly 1000 at step 60, so it never drifts
+    (a whole `ms_per_step` of 16 or 17 drifts 4% or 2% a second). It
+    never overflows (`u32::MAX` steps is 71 582 788 250 ms), and
+    `steps_from_ms` of it gives `steps` back while it fits a `u32`.
+    It is the engine's one rule from steps to ms: data timed in ms
+    (a clip, a particle's life, a bone clip) is read at
+    `ms_from_steps(step - start_step)`. Its docs say so, naming
+    `frame_at`, `particles_at` and `pose_at` in plain backticks, as
+    below for `shuyi-ui`'s items.
   - **`Countdown`**, one shot:
     - private fields `length: u32` and `left: u32`; derives `Debug`,
       `Clone`, `Copy`, `PartialEq`, `Eq`, `Hash`, `Serialize`,
@@ -175,9 +187,9 @@ None.
     saturates. There is no check, and the docs say so.
   - The unit is the caller's: steps or turns in rules. A timer moves
     only when it is advanced, so a paused game's timers wait.
-  - `shuyi_core` re-exports `Countdown`, `Every`, `STEPS_PER_SECOND`
-    and `steps_from_ms` at its root, and the crate docs' first sentence
-    names timers.
+  - `shuyi_core` re-exports `Countdown`, `Every`, `STEPS_PER_SECOND`,
+    `steps_from_ms` and `ms_from_steps` at its root, and the crate
+    docs' first sentence names timers.
   - **Public types (ADR-0039):** the private fields and constructors
     above are its kind 8, so fields can be added without a break.
 - **The module docs: two kinds of time.**
@@ -213,6 +225,23 @@ None.
     already hold `crossed`: add to both files, keep `crossed`, and the
     module docs name it too. If none is done, write both files new;
     the first of them to be worked adds `crossed` to them.
+  - **Either order with 2103 and 2104 (both parked):** each reads its
+    time since a start step at `ms_from_steps(step - start_step)` and
+    takes no `steps_per_second` or `ms_per_step`. If one of them is
+    done, it wrote `STEPS_PER_SECOND` (moved here, with the platform's
+    re-export) and `ms_from_steps` in `crates/core/src/timer.rs` as this
+    Scope says: keep them and their tests, and add the rest. If neither
+    is done, nothing more to do (they use this ticket's).
+  - **Either order with 2134 (parked):** if 2134 is done, nothing to
+    do (it used the `ms_from_steps` of 2104, its blocker); if not,
+    nothing to do (it uses this one).
+  - **Either order with 2231 and 2105 (both parked):** `frame_at` and
+    `pose_at` take a time in ms and leave the step to the caller. If
+    2231 or 2105 is done, its function's docs gain a line: a tick game
+    passes `shuyi_core::timer::ms_from_steps(step - start_step)`. If
+    not, nothing to do (each writes that line).
+  - **Either order with 1123 (parked):** if 1123 is done, nothing to do
+    (it imports clips and times nothing); if not, nothing to do.
 - **The rustdoc of `FrameInput::dt()` and `FrameInput::ticks()`**
   (`crates/ui/src/input/frame.rs`): one sentence each. `dt` is for what
   only looks; rules count `ticks()` or turns, with
@@ -258,7 +287,8 @@ None.
 - changing the `dt` uses in `examples/hello-grid` and
   `crates/ui/src/toy/grid.rs`;
 - clips, particles and animation state machines: they keep counting
-  from a start step (1123, 2231, 2103, 2104);
+  from a start step (1123, 2231, 2103, 2104), and read it in ms with
+  `ms_from_steps`;
 - `TickSim`, `TickDriver` and records (1119); game speed and hit-stop
   (2123); tweens (2109);
 - the real-time grid template and its snake example (2739, parked);
@@ -277,9 +307,12 @@ None.
    `crates/platform/src/tick.rs`, `crates/ui/src/input/frame.rs` and
    the module docs of `crates/core/src/hash.rs`.
 2. Write `crates/core/src/timer.rs` (or add to it, if 2364, 2104 or
-   2105 made it): `STEPS_PER_SECOND`, `steps_from_ms`, `Countdown`,
-   `Every`, the module docs and the doctest. Add `pub mod timer;` (if
-   it isn't there) and the re-exports to `crates/core/src/lib.rs`.
+   2105 made it, or keep what 2103 or 2104 wrote there):
+   `STEPS_PER_SECOND`, `steps_from_ms`, `ms_from_steps`, `Countdown`,
+   `Every`, the module docs and the doctest. Then the docs lines of
+   `frame_at` and `pose_at`, if 2231 or 2105 is done. Add
+   `pub mod timer;` (if it isn't there) and the re-exports to
+   `crates/core/src/lib.rs`.
 3. Add the `shuyi-core` dependency to `crates/platform/Cargo.toml`, and
    swap the constant in `crates/platform/src/tick.rs` for the
    re-export. Its tests pass unchanged.
@@ -295,13 +328,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi_core::timer` has `Countdown`, `Every`, `STEPS_PER_SECOND`
-      and `steps_from_ms`, re-exported at the crate root, with no float
-      (2015's float ban passes).
+- [ ] `shuyi_core::timer` has `Countdown`, `Every`, `STEPS_PER_SECOND`,
+      `steps_from_ms` and `ms_from_steps`, re-exported at the crate
+      root, with no float (2015's float ban passes).
 - [ ] `shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of the
       core's, and the existing `TickClock` tests pass unchanged.
 - [ ] `steps_from_ms` gives 0 for 0, 1 for 1 and for 16, 2 for 17, 3
       for 50, 15 for 250, 60 for 1000, and 257 698 038 for `u32::MAX`.
+- [ ] `ms_from_steps` gives 0 for 0, 16 for 1, 33 for 2, 50 for 3,
+      1000 for 60, and 71 582 788 250 for `u32::MAX`; and
+      `steps_from_ms(ms_from_steps(s))` is `s` for every `s` up to
+      257 698 037 (property test).
 - [ ] For any start value and any split of a total `n` into parts,
       advancing by each part ends in the same value as `advance(n)`.
       `Every` fires `(since + n) / period` times both ways. `Countdown`
@@ -334,13 +371,14 @@ None.
 
 ## Tests required
 
-- Unit: `steps_from_ms` at the values above; `Countdown::advance` at
-  its edges (0, exactly `remaining()`, past it, after it fired),
+- Unit: `steps_from_ms` and `ms_from_steps` at the values above;
+  `Countdown::advance` at its edges (0, exactly `remaining()`, past it, after it fired),
   `restart`, `new_ready`, `elapsed` and `Default`; `Every` with `n`
   below, at and past the period, a period of 0, `until_next` and
   `reset`; an out-of-range value read from RON.
 - Property: split advances equal one advance, for both types; the fire
-  counts; the RON round trip.
+  counts; the RON round trip; `ms_from_steps` back through
+  `steps_from_ms`.
 - Integration: the 30 and 60 frames a second test through `App::frame`
   on the headless backend.
 - Doctest: something that moves every 8 steps.

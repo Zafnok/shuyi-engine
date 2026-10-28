@@ -83,7 +83,10 @@ None.
     read back is equal (ADR-0007 §4).
 - **The maths**, pure:
   - `pose_at(&Rig, clip, elapsed_ms) -> Pose`: local transforms per
-    bone, and the attachment per slot;
+    bone, and the attachment per slot. **Either order with 2115:** if
+    2115 is done, `pose_at`'s docs say a tick game passes
+    `shuyi_core::timer::ms_from_steps(step - start_step)`, the one rule
+    from steps to ms; if not, nothing to do (2115 adds that line);
   - `Pose::mix(&a, &b, weight: u16 /* 0–256 */) -> Pose`, rotation by
     the shorter way round: a cross-fade is mixing two clips' poses
     over a few steps;

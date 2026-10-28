@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2722", "2723", "2231", "2342", "2226", "2344"]
+blocked_by: ["2722", "2723", "2231", "2342", "2226", "2344", "2210", "2214"]
 nick_input: none
 completed:
 ---
@@ -92,12 +92,15 @@ None.
     checked into the game. **From 2204 (done):** `shuyi bake` packs a
     game's sources as they are, so a `*.voice.ron` goes into the pack
     like any other source, and bake computes nothing from the audio;
-  - decoding audio in the tool: use the decoder `shuyi-assets` already
-    has for WAV and OGG if it gives samples. If not, add to `shuyi-cli`
-    only `hound` (WAV, believed Apache-2.0) and `lewton` (OGG Vorbis,
-    believed MIT OR Apache-2.0). Check each license from its
-    `Cargo.toml` and repository on the day, and that `cargo deny check`
-    passes. Neither goes into the runtime crates;
+  - decoding audio in the tool: with the in-house `shuyi-sound` crate,
+    WAV through 2210's `shuyi_sound::wav::decode` and OGG Vorbis through
+    2214's `decode_all` (both blockers), never a second decoder beside
+    it. `shuyi-assets` reads only a sound's header
+    (`crates/assets/src/audio/formats.rs`). `hound` and `lewton` can't
+    be used: `tools/layers.ron` lists both among `devices`, which
+    `shuyi-cli` may not reach (`devices: false`, ADR-0032), and the
+    in-house sound removes them from the tree. `shuyi-cli`'s edge to
+    `shuyi-sound` gets its line in `tools/layers.ron`;
   - a fuzz-style test and a determinism fixture (ADR-0007 §5), with a
     short fixture voice we make (CC0-1.0, ours, listed in
     `THIRD_PARTY_ASSETS.md` as our own, created if it doesn't exist).

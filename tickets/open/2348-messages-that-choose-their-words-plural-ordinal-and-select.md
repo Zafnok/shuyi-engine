@@ -316,6 +316,10 @@ and the plural table are technical.
     code takes the new arguments as every caller's does; nothing else
     changes. If not, nothing to do (2758 uses the selection rules, as
     its clause says).
+  - **Either order with 2238:** if 2238 is done, `Lang::text_in` and
+    `Lang::data_text_in` test an entry with `lang`'s private `fresh` (the
+    entry when it was made from today's English, else `None`), as every
+    lookup does; if not, nothing to do (2238 moves them onto `fresh`).
   - **Public types (ADR-0039):** `Arg`, `Piece`, `Category`, `Kind`,
     `MessageError` and the new `LangStatus` field follow it
     (`#[non_exhaustive]` and constructors).

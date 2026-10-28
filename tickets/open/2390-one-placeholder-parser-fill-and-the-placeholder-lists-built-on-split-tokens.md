@@ -66,6 +66,20 @@ None.
   `split_tokens` and `tokens`, and leave `Message`'s own parser alone
   (it reads plural and select, which `split_tokens` can't); if not,
   nothing to do (2348 builds its fallback on `split_tokens`).
+- **Either order with 2347:** if 2347 is done, `fill` is
+  `fill_styled(…).plain()` and `fill_styled` already walks
+  `split_tokens` (2347's clause): nothing is left to rewrite in `fill`,
+  and the property test runs on it as it is; if not, rewrite `fill`
+  here, and 2347 builds `fill_styled` on the same walk.
+- **Either order with 2302:** if 2302 is done, `fill` joins the words
+  of a multi-word key name with a no-break space where it fills a
+  placeholder: keep that join in the `Token` arm, and its test passes
+  unchanged; if not, nothing to do (2302 makes the join in the `Token`
+  arm).
+- **Either order with 2353:** if 2353 is done, `pseudo_text`
+  (`crates/assets/src/lang/pseudo.rs`) copies `{…}` spans as they are:
+  check it walks `split_tokens`, and move it there if it has a loop of
+  its own; if not, nothing to do (2353 builds it on `split_tokens`).
 - **For the game:** no API change. The game's `lead::split_tokens` and
   `content::tip::placeholders` re-exports keep working.
 
@@ -83,7 +97,8 @@ None.
    re-export it from `crates/core/src/lib.rs` beside `split_tokens`.
 2. Rewrite `fill`'s loop in `crates/ui/src/text.rs` over `split_tokens`.
 3. Make `tip::placeholders` call `tokens`; point `lang.rs` at `tokens`.
-4. Settle the 2348 clause above with what is done.
+4. Settle the 2348, 2347, 2302 and 2353 clauses above with what is
+   done.
 5. Run the gates.
 
 ## Acceptance criteria

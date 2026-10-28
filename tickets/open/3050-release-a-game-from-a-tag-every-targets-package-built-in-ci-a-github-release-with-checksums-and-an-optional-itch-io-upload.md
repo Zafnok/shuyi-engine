@@ -324,6 +324,13 @@ if 2005 has moved it.
   - **2802** (the book). If it is done, chapter 9 ("Targets and
     export") gets a "Releasing" section with the README's text. If not,
     2802 adds it (its scope says so).
+  - **Either order with 2033:** if 2033 is done, run `cargo test -p
+    shuyi-cli --lib template` after adding `--locked`. Its test of the
+    gate lists drops `--locked` and reads the template's `ci.yml` gates
+    from `cargo fmt --all --check` on, so keep the Cargo.lock step
+    before `cargo fmt`, and leave `--locked` out of the template's
+    `AGENTS.md` list; if not, nothing to do (2033's test is written that
+    way).
 
 **Out (do not do):**
 - the exporters and their packages (3004, 3010, 3012). Which glibc the

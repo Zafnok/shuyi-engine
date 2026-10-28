@@ -196,6 +196,10 @@ command that a game keeps out of `legal_commands` (2356) is never sent.
   from `PlaytestInput`, and read "`bots`" in this ticket as
   `playtest`; if not, use `BotsInput`'s as written, and 2544 renames
   them.
+  **Either order with 2568:** if 2568 is done, call
+  `game::check_start(game.frame_options(), &input.start)` at the top of
+  the `soak` operation beside its other checks, failing with
+  `codes::WRONG_ARGUMENTS`; if not, nothing to do (2568 adds the call).
 - `SoakOutput { games: u32, steps: u64, unfinished: u32, failures:
   Vec<SoakFailure> }`. `SoakFailure { seed: u64, check: String, step:
   u32, detail: String, played: u32, shrunk: u32, complete: bool, record:
@@ -275,6 +279,15 @@ Its input keeps `bots`' fields and limits.
   a step of its own after "Run its gates", with `if: matrix.template ==
   'grid'`, in the same working directory.
 - Its `AGENTS.md`: a row in the tools table and a line in the gates.
+- **Either order with 2033:** if 2033 is done, a test in
+  `crates/cli/src/template/tests.rs` compares each made game's
+  `AGENTS.md` gates with its own `ci.yml`, and the engine's copies (the
+  root `templates` job's "Run its gates", the `run-gates` skill,
+  `shuyi-gates` and its example) with the gates both the blank and the
+  grid games have: put the soak in the grid game's `AGENTS.md` gates and
+  its `ci.yml` alike, and in the root job's grid-only step, never in
+  "Run its gates"; if not, nothing to do (2033 checks the soak's line by
+  those rules).
 
 **Hello, Grid** (`examples/hello-grid`): `rules::Stage`
 (`src/rules.rs:156`) derives `Deserialize` (its fields all do), gets the

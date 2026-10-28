@@ -47,7 +47,9 @@ What Shuyi has (read on 2026-10-21):
   name's second copy beside the window's title. `crates/cli/web/README.md`
   says so.
 - `codec::encode_png(width, height, rgba)` and `codec::decode_png(bytes)`
-  are in `crates/cli/src/codec.rs`.
+  are in `crates/cli/src/codec.rs`. 2565 removes `decode_png` for
+  `shuyi_assets::bitmap::convert::png_pixels` (the clause with 2565
+  below).
 - `shuyi_app::window_conf` (`crates/app/src/lib.rs`) sets `high_dpi:
   true`.
 - `shuyi doctor` (`crates/cli/src/contract/doctor.rs`, `checks`) checks
@@ -198,6 +200,9 @@ None.
 - **Either order:**
   - **3052** (the web shell) changes the same `index.html`: whichever
     lands second keeps the others' parts.
+  - **Either order with 2565:** if 2565 is done, `icons` decodes the
+    source with `png_pixels` instead of `decode_png`; if not, use
+    `decode_png` and 2565 moves the call onto `png_pixels`.
   - **Either order with 3066:** if 3066 is done, keep its
     `<link rel="license" href="NOTICES.txt">` in the `<head>`, after
     the icons' links; if not, nothing to do (3066 adds it after them).

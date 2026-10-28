@@ -196,6 +196,10 @@ Record the answers with the `ask-nick` skill in `docs/decisions.md`.
   - **1132** (community files): if it is done, add Nick's answer to
     question 4 to its `CONTRIBUTING.md`; if not, 1132 writes it there
     from `docs/decisions.md`, as its clause says.
+  - **Either order with 2238:** if 2238 is done, test an engine pack's
+    entry with `lang`'s private `fresh`, as the game pack's entry is
+    tested; if not, nothing to do (2238 moves every test onto `fresh`,
+    this one included).
 
 About 550 changed lines, the packs and the snapshots aside.
 

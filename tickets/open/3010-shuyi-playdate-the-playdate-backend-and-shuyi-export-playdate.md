@@ -118,6 +118,14 @@ Nothing here costs money. A device is needed only for 3011.
     lists, in the same integer 1/256 turns, which 1121's `Axis` actions
     bind like a stick's, with a fake-SDK test; if not, nothing to do
     (1121 does it).
+    **Either order with 2410:** if 2410 is done, the rule is picked: A
+    reports `East` and B `West` (ADR-0008 §1, `targets/playdate.ron`),
+    and `PadKind::Playdate`'s docs, its `button_name` (`East` is `A`,
+    `West` is `B`) and a test against the profile already say so; keep
+    that rule, and the fake-SDK test checks A and B report those
+    buttons; if not, nothing more to do in `pad.rs` beyond the rule this
+    ticket keeps in `targets/playdate.ron` (2410 makes `pad.rs`'s docs,
+    names and tests follow it).
   - **The system menu.** Optional actions bound to `Button::SystemMenu0`
     to `SystemMenu7` (3002; `Button::system_menu(n)` gives slot n)
     become `addMenuItem` entries, slot n as item n, up to the profile's

@@ -65,6 +65,19 @@ None.
 - The result is **equal to `reference`** (the plain renderer) for every
   sprite, as the renderer's tests already require.
 - No public API change.
+- **Either order with 2335** (turned sprites): if 2335 is done, the
+  byte path and the column table take `flip_y` too (the byte path picks
+  the picture's row from the bottom, as `flip_x` picks the column), and
+  a sprite at an angle other than 0 skips both for 2335's `dest_pixel`
+  path; the property tests add `flip_y` and angles. If not, nothing to
+  do (2335 adds `flip_y` to whichever path exists, its clause says
+  so).
+- **Either order with 2337** (tint and blend modes): if 2337 is done,
+  the byte path and the column table draw `Paint::Tinted` as `Image`,
+  `Add` as the item's white pixels only (`out | bits & m`) and
+  `Multiply` as its black ones only (`out & (bits | !m)`); the property
+  tests add tinted, added and multiplied sprites. If not, nothing to do
+  (2337 adds them to whichever path exists, its clause says so).
 
 **Out (do not do):**
 - Other items, the glyphs, `render_changed`'s rows.

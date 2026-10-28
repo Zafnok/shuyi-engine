@@ -86,7 +86,10 @@ PR follows this one (game#0239).
    narrow glyphs.
 2. **The atlas.** `FontAtlasDef`'s wide glyphs become a map per set
    name. Validation: a set's cells fit the PNG; a character may be in
-   several sets.
+   several sets. `FontAtlasDef::draws` and `drawn` (2350 or 2346)
+   take every set, so a character in any set counts as drawn where no
+   language is named (2346's `Ctx::font_chars`); step 3's check reads
+   a pack's own set.
 3. **The pack.** `lang.ron` gains `wide_font: Option<String>` (a set
    name) and `wide_punctuation: bool` (default `false`). Validation: a
    pack's `wide_font` names a set the atlas has. 2350's check

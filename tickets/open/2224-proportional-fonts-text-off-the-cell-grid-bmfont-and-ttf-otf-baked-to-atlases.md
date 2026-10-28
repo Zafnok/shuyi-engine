@@ -293,7 +293,12 @@ None.
       is refused; more pages are a follow-up if a font needs them;
     - it fails if the font lacks a glyph of `--glyphs`;
     - `text_font::font_ron(&ProportionalFont) -> String` writes the RON
-      body with LF line endings, as `atlas_ron` does.
+      body with LF line endings, as `atlas_ron` does;
+    - **Either order with 2391:** if 2391 is done, build the page as a
+      `shuyi_assets::image::Image` (`Image::filled(width, height, [255,
+      255, 255, 0])`, then each glyph's alpha) and write it with
+      `encode_png(page.width, page.height, &page.rgba)`; if not, nothing
+      to do (2391 moves the page onto `Image`).
   - usage lines for both in `crates/cli/src/lib.rs`.
 - **Fixtures, all our own** (no row in `THIRD_PARTY_ASSETS.md`):
   - a tiny TTF built in the tests with `write-fonts`

@@ -108,6 +108,14 @@ None.
   runner that a screen's `debug_readout` calls to show an `AnimState`
   as `state name, clip, frame`, with a unit test. If not, nothing to
   do (2104 writes it).
+  **Either order with 2375** (the `log` channel): its log lines are
+  `Label` gizmos from the top-left corner too. The readout keeps rows
+  0 to n - 1 (n its lines, `paused` included), and the log's lines
+  start on row n. If 2375 is done, `log_gizmos` draws from row 0: give
+  it the first row (`first_row: usize`), have `Game` pass the
+  readout's line count (0 with the `readout` channel off), and add a
+  test with both channels on that finds no two labels on one row; if
+  not, nothing to do (2375 starts its lines below the readout).
 - **A tick game.** If 1119 (tick simulation) is done, a step is one
   fixed simulation step, and the readout names the step number. If
   1119 isn't done, 1119 adds that, and this ticket steps frames.

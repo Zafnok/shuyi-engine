@@ -126,8 +126,12 @@ None.
     and a panic in frame n all carry n. Lines before the first frame
     carry 0.
   - **The line:** `{seconds:>9.3} f{frame} {LEVEL:<5} {target}: {text}`.
-    The seconds count from `install`, read with `miniquad::date::now()`
-    (a backend may read the clock).
+    The seconds count from `install`, read with `pacing::seconds()`
+    (a backend may read the clock; it is an `Instant` on native, which
+    never jumps as `miniquad::date::now()` can). **Either order with
+    3067:** if 3067 is done, `pacing::seconds()` is the loop's one clock
+    (the pacer, `App::frame`'s time and the perf clock): nothing more to
+    do; if not, nothing to do (3067 points the rest of the loop at it).
   - **The filter.** `LogFilter::parse(&str) -> Result<LogFilter, String>`
     in `shuyi_ui::log` (pure, `no_std`), over 3040's `LogFilter`:
     - it reads `info`, `warn,audio=debug` and `gilrs=warn`: items split

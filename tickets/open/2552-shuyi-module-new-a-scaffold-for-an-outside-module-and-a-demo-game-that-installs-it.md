@@ -243,6 +243,13 @@ starts.
     --path <its folder> --yes`, and runs `cargo build` there.
 
   The `run-gates` skill's template section gets the same lines.
+  **Either order with 2033:** if 2033 is done, its test reads the
+  `templates` job's `run: |` blocks that have a `cargo shuyi check`
+  line, and the first code block of `run-gates`' *A new game from each
+  template*, as copies of the game's gates: put the module's lines in a
+  step and a code block of their own, never in "Run its gates" or the
+  game's block; if not, nothing to do (2033 checks that its rules skip
+  those lines).
 - **Docs** (the `document` skill):
   - `docs/writing-a-module.md` starts from the command: what it
     writes, and what to fill in first;

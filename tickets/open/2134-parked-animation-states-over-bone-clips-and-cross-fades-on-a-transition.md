@@ -98,18 +98,22 @@ None.
   - `Fading { from: FadeFrom, began: u32, fade: Fade }`, where
     `FadeFrom` is `Playing(AnimState)` or `Mix { a: AnimState, b:
     AnimState, weight: u16 }` (a fade cut short, below);
-  - `BoneGraph::step(&self, anim: BoneAnim, params: &Params, step: u32,
-    ms_per_step: u32) -> BoneStepped { anim, events, used_triggers }`.
+  - `BoneGraph::step(&self, anim: BoneAnim, params: &Params, step: u32)
+    -> BoneStepped { anim, events, used_triggers }`.
     It calls the graph's step. When a transition fires whose fade has
     steps, or a `Dirs` state's pick changes and its fade has steps, it
     starts a fade from what was shown, with `began` the current step;
-  - `BoneGraph::pose(&self, anim: &BoneAnim, step: u32, ms_per_step:
-    u32) -> Pose`. A state's pose is `pose_at` of its clip (for a
-    `Dirs` state, its pick) at `(step - entered_step) * ms_per_step`
-    ms, in `u64`, saturating. With no fade, that pose. During a fade,
-    `Pose::mix(from, to, w)`, where `from` for a `Mix` is
-    `Pose::mix(a, b, weight)`. Drawing needs nothing new: 2105's
-    `RigView::from` takes the `Pose`.
+  - `BoneGraph::pose(&self, anim: &BoneAnim, step: u32) -> Pose`. A
+    state's pose is `pose_at` of its clip (for a `Dirs` state, its pick)
+    at `shuyi_core::timer::ms_from_steps(step - entered_step)` ms (the
+    subtraction saturating), the one rule from steps to ms that 2104's
+    `step` uses too; no `ms_per_step` is passed. With no fade, that
+    pose. During a fade, `Pose::mix(from, to, w)`, where `from` for a
+    `Mix` is `Pose::mix(a, b, weight)`. Drawing needs nothing new:
+    2105's `RigView::from` takes the `Pose`.
+  - **Either order with 2115:** if 2115 is done, use its
+    `ms_from_steps`; if not, use the one 2104 (a blocker) wrote in
+    `shuyi_core::timer`. Either way nothing is written here.
 - **The weight.** At `k = step - began` steps into a fade of `n` steps,
   `p = k * ONE / n` (2109's `ONE`), `e = fade.ease.ease(p)`, and
   `w = e * 256 / ONE`, in `i64`, rounded to nearest with halves up and

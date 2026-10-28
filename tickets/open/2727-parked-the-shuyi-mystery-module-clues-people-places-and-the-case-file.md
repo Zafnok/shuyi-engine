@@ -134,8 +134,14 @@ None.
     `VnState` in `shuyi-vn` in this PR (`VnRules::call(label)`; the end
     of a called block returns instead of ending the story), with tests
     in `shuyi-vn`.
-  - **Going back**: `shuyi_mystery::history::back`, the same replay as
-    2721's `history::back`, over `MysteryCommand`s.
+  - **Going back**: on `shuyi_core::history::History<MysteryRules>`, as
+    2721's `history::back` is on `History<VnRules>`: the replay is
+    `History::rewind_to`, never a copy. Only the point is the module's,
+    by 2721's rule (one command is one step; `back_past_choices` stops
+    after the last `Story(Choose)`). If 2721's `back` takes
+    `History<VnRules>` only, make it generic in `shuyi-vn` over a small
+    trait that says whether a command is a choice, so both modules
+    share it, with tests in `shuyi-vn`.
   - **Saves**: a case saves as its `MysteryCommand`s. If 2724 is done,
     make `VnSave` generic over the command type (each command keeps its
     `at_line` id), so a case uses it unchanged. If 2724 isn't done,
@@ -239,8 +245,9 @@ screen and `MysteryStage` into a parked ticket of their own
 4. Write `MysteryRules`: the command enum, the mode stack, `@clue` and
    `@person` through `VnRules::with_commands`, and the `stops` flag and
    the call stack in `shuyi-vn` if 2721 lacks them.
-5. Write `history::back`, and the save change in 2724's code if 2724
-   is done.
+5. Go back with `History<MysteryRules>` and 2721's `back` (made
+   generic if it needs to be), and the save change in 2724's code if
+   2724 is done.
 6. Write `check::references` and its fixtures.
 7. Write `MysteryStage`, `MysteryAction`, and `CaseFileScene`,
    `CaseFileScreen` and `CaseFileSkin` behind `view`.

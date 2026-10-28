@@ -23,7 +23,9 @@ What is there once the blockers land:
 - **2018's capture mode** (`crates/app/src/capture.rs`, behind
   `shuyi-app`'s `capture` feature) runs a plan
   (`shuyi_platform::capture::Plan`) of steps: keys, pad buttons, waits
-  and captures. It drives `App::frame_after(platform,
+  and captures. They are `capture::Step`s, or, when 2566 landed first,
+  `capture::PlanStep`s over `shuyi_platform::script::Step` (2018's
+  clause with 2566). It drives `App::frame_after(platform,
   capture::FRAME_DT)`, so every run is the same. On each capture it
   reads the window with `get_screen_data()` and compares it with the
   raster (2332) under the plan's `Tolerance`. The `render` CI job runs
@@ -116,6 +118,12 @@ None.
     so;
   - it stays `no_std` + `alloc`, so the `no-std` job's line for
     `--features capture` still builds it.
+- **Either order with 2566:** if 2566 is done, the step form's steps
+  are 2018's `capture::PlanStep`s over `script::Step`, and `Plan::frames`
+  takes the keymap; the session form doesn't change, and `Plan::frames`
+  still gives no frames for a session plan. If not, nothing to do (2566
+  moves the step form's steps onto `script::Step` and leaves the
+  session form alone).
 - **Playback on a platform other than `HeadlessPlatform`**
   (`shuyi_platform::session`). If 2518's `Playback::next` takes
   `&mut HeadlessPlatform` only, give it a trait instead:

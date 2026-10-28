@@ -176,6 +176,13 @@ None.
   allow-listed with a reason. The `run-gates` skill names the job as
   CI-only.
 - **Either order:**
+  - **Either order with 2566:** if 2566 is done, the web's
+    `capture.ron` is 2018's plan with its steps on
+    `shuyi_platform::script::Step` (2018's clause with 2566), played
+    through the same `Plan::frames`, so the copied `frames.ron` may
+    press actions by name (`act`) and nothing else changes here; if
+    not, nothing to do (2566 moves the plan's steps, on the desktop and
+    the web alike);
   - with 2011 (Dependabot, done): `.github/dependabot.yml` gets a `pip`
     entry for `/tools/web-check` (weekly, the same cooldown, its updates
     in one group);

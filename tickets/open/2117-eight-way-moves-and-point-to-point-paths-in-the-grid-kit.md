@@ -225,6 +225,10 @@ None.
 - jump-point search, inexact (weighted) heuristics, Euclidean distance,
   a cap on the tiles searched, and cached paths: each one when a
   measurement on a real map asks for it;
+- a search that stops after a number of tiles expanded and resumes on
+  the next call (work units): 2710 (parked, blocked by this ticket)
+  adds it to `shuyi_core::path` under `flow_field_on`, so its flow
+  fields stay one Dijkstra;
 - hex grids (2121 and 2740, parked), field of view (2120, parked),
   level generators (2119, parked) and the roguelike example (2735,
   parked);

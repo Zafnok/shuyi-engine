@@ -258,6 +258,18 @@ None.
   records for its files report: a `<file>.meta` counts as read when its
   file was read, and a `_folder.meta` when any file in its folder or
   below was, with a test. If not, 2516 applies it (its clause says so).
+- **Either order with 2349:** if 2349 is done, both language readers
+  (`LangPackRon` and `lang::from_files`) already accept a pack's
+  `files/`: put the settings-file skip beside that exception in the
+  same two loops, so any other file is still an error, and test a pack
+  holding `files/x.png` and `files/x.png.meta` in both; if not, nothing
+  more here (2349 adds `files/` beside this skip, and that test).
+- **Either order with 2238:** if 2238 is done, skip a settings file
+  once, in the check of a pack's files that `lang::from_files` and
+  `LangPackRon::decode` share (`is_pack_file` in
+  `crates/assets/src/lang.rs`), so it is neither a pack file nor an
+  error; if not, skip it in both loops as above, and 2238 moves the
+  skip into its shared check.
 
 **Size.** If the PR passes about 600 changed lines (the ADR and the
 docs not counted), the **`shuyi check`** bullet (the contract's `check`

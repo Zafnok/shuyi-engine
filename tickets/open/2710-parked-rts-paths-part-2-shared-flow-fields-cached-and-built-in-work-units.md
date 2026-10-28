@@ -6,7 +6,7 @@ milestone: "Engine: real-time strategy"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["2709", "3009"]
+blocked_by: ["2709", "2117", "3009"]
 nick_input: none
 completed:
 ---
@@ -47,8 +47,21 @@ None.
   - the sectors it covers, from a `Route` (2709);
   - an **integration field**: per covered cell, the cost to the goal
     (`u32`, `u32::MAX` unreached), by Dijkstra from the goal over the
-    covered cells only, with 2709's move costs. The open list is a
-    binary heap ordered by (cost, cell index), so ties are fixed;
+    covered cells only, with 2709's move costs. It is the engine's
+    flow field, not a second Dijkstra: `shuyi_core::path::flow_field_on`
+    (2117, a blocker) with `Topology::Square8(Diagonals::OCTILE)`, the
+    eight steps and corner rule 2709 takes from 2117 too. "Covered cells
+    only" is its cost function answering `None` outside the covered
+    sectors. Its queue is ordered by `(cost, y, x)`, which is (cost,
+    cell index) for cells numbered row by row, so ties are fixed;
+  - **what the core lacks, added there:** a search that stops after a
+    number of tiles expanded and resumes on the next call. Add it to
+    `shuyi_core::path` as a resumable form of the one private search
+    (a state that `step(n)` advances by at most `n` expansions and
+    that says when it is done), and make `flow_field_on` run it to the
+    end, so there is still one Dijkstra. The builder below holds that
+    state. Additive in `shuyi-core`, with a test that a field built in
+    slices equals `flow_field_on`'s;
   - a **direction field**: per covered cell, one of 8 directions toward
     the cheapest neighbour, or none at the goal and on walls. Ties go in
     a fixed order (N, NE, E, SE, S, SW, W, NW). No diagonal cuts a
@@ -97,8 +110,10 @@ None.
 
 ## Implementation steps
 
-1. Write `FlowField`, its Dijkstra and its directions over a set of
-   sectors, as a resumable state that `Think::step` advances.
+1. Add the resumable search to `shuyi_core::path` under
+   `flow_field_on`, with its slice test. Then write `FlowField` over
+   it, and its directions over a set of sectors, as a resumable state
+   that `Think::step` advances.
 2. Write `FlowRequests`, extensions and `FlowCache`.
 3. Wire requests into `RtsSim`'s command phase and the builder into the
    step, with `flow_cells_per_step`.
@@ -109,8 +124,11 @@ None.
 ## Acceptance criteria
 
 - [ ] Building one field in slices of 1, 7 and unlimited units gives the
-      same field (property test with random maps and random slice
-      sizes).
+      same field, equal to `flow_field_on`'s over the same covered cells
+      (property test with random maps and random slice sizes).
+- [ ] `shuyi_rts::paths` has no Dijkstra of its own for fields
+      (`flow_field_on` and the resumable search are the only ones), and
+      `shuyi_core::path`'s existing tests pass unchanged.
 - [ ] From every reachable covered cell, following the directions
       reaches the goal in at most the number of covered cells, and never
       enters a wall (property test on random maps).

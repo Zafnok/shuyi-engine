@@ -38,7 +38,8 @@ What Shuyi has (read on 2026-10-21):
 - A game's files are in the engine's text formats: its keymap, palette
   and English, language packs, `.dlg` dialogue, `.map` maps, the font
   atlas's `atlas.ron`, any target profiles of its own
-  (`examples/hello-grid/files/`, `templates/grid/crates/game/files/`),
+  (`examples/hello-grid/files/`,
+  `templates/shuyi-default/stages/top-down-grid/crates/game/files/`),
   and `shuyi.ron` at its root.
 - None of them has a version. The only versions are binary:
   `bitmap::VERSION` (`crates/assets/src/bitmap.rs`) and `pack::VERSION`
@@ -132,8 +133,23 @@ None.
     earlier one made), each one replacing only the name's bytes, so
     comments, layout and line endings stay byte for byte. The manual
     changes are found and left.
-- **A small RON scanner** behind `find`, private to the module (the
-  `ron` crate gives positions only in its errors, `crates/assets/src/ron.rs`):
+- **One RON span parser, moved, not written again.** The `ron` crate
+  gives positions only in its errors (`crates/assets/src/ron.rs`), but
+  `shuyi-cli` already reads RON for spans (re-read 2026-10-28, found by
+  an analysis of the engine for areas that do the same job twice):
+  `template/ron_merge.rs` (2501), private to `shuyi new`'s composer.
+  Its `Parser` reads text into a `Node` tree of where each value,
+  container, struct name, field name and item starts and ends. It skips
+  whitespace, nested comments, strings, raw strings and chars, and never
+  rewrites the text. `shuyi-assets` can't depend on `shuyi-cli`, so
+  move that parser and `Node` down into a public module of
+  `shuyi-assets` beside `format::changes` (`no_std` with `alloc`), and
+  `ron_merge` calls it from there with its tests passing unchanged.
+  `find` walks the tree for the paths below. Add what this ticket needs
+  and it lacks (byte strings, numbers, the `#![enable(…)]` line,
+  stopping at `---`). If the move can't keep `ron_merge`'s tests
+  unchanged, write the scanner private to `format::changes` as before,
+  and the completion notes say why. Either way:
   - it skips whitespace, `//` and nested `/* */` comments, strings
     (`"…"` with escapes, raw `r"…"` and `r#"…"#`, byte strings), chars,
     numbers, and the `#![enable(…)]` line;
@@ -357,9 +373,10 @@ None.
 1. Read ADR-0019, ADR-0022, 2005's version-policy ADR,
    `crates/assets/src/format.rs`, `crates/cli/src/contract/import.rs`,
    `crates/cli/src/contract/check.rs`, `crates/cli/src/contract/cli.rs`
-   and 2511's `BasicTools`.
-2. Write the scanner and `find`, then `apply`, with their unit and
-   property tests.
+   and 2511's `BasicTools`, and `crates/cli/src/template/ron_merge.rs`.
+2. Move `ron_merge`'s parser into `shuyi-assets` (or write the scanner,
+   as above), then `find`, then `apply`, with their unit and property
+   tests.
 3. Add `Format::changes`, `Formats::changes` and `project::CHANGES`.
 4. Write the op, its walk and its answer. Add it to `Op` and `Op::ALL`,
    `schemas()`, `runs_the_game` and `with_game` in `contract/cli.rs`,

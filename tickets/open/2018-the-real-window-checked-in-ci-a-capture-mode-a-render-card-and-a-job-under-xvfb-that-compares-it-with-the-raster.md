@@ -98,7 +98,8 @@ None.
     one more: `keys("Enter Up")`, `pad("South+East")`, `wait(0.5)`,
     `capture("title")`. `parse` checks key and button names with
     `Chord::parse` and `Button::parse`, so a typo is an error before
-    the first frame runs. A plan that starts with `capture`, repeats a
+    the first frame runs. A plan that starts with `capture` (or with
+    only waits of 0 before its first `capture`), repeats a
     capture's name, or names one with anything but `a`-`z`, `0`-`9`,
     `-` and `_` (names become file names) doesn't parse either. Every
     error names the step by its number and its text;
@@ -112,9 +113,12 @@ None.
     - `pad`: buttons joined by `+` go down together in one frame
       (`PadDown(button, PadKind::default())`) and up together in the
       next (`PadUp(button)`), as `Harness::pad` does;
-    - `wait`: whole frames with no events, rounded up, at least one
-      (the Harness may run a shorter last frame; a capture run never
-      does);
+    - `wait`: whole frames with no events, the seconds at 60 a second
+      rounded up, so a wait above 0 is at least one frame and a wait of
+      0 is none (a product within a thousandth of a whole number counts
+      as that number: 0.5 s is 30 frames). It is the one rule 2566
+      writes as `script::wait_frames`, for the link and the Harness's
+      scripts too;
     - `capture`: names the frame before it, the one on the screen.
 - **The capture mode in `shuyi-app`** (`crates/app/src/capture.rs`,
   public behind a new `capture` feature: `shuyi-platform/capture`,
@@ -280,7 +284,23 @@ None.
     key, button and wait steps (its private `plan`, `press_keys` and
     `press_pad`): move them where both use one copy (the module is
     behind its `link` feature today; `readback` behind `shuyi-app`'s
-    `link`, so give it a cfg that both features turn on);
+    `link`, so give it a cfg that both features turn on). With 2566
+    done first, that copy is already `script::frames` (the clause
+    below);
+  - **Either order with 2566:** if 2566 is done, a plan's steps are
+    `capture::PlanStep::Input(shuyi_platform::script::Step)` or
+    `PlanStep::Capture(String)` (`#[non_exhaustive]`), with no
+    `capture::Step` of their own. A capture is a mark between input
+    steps, not one more `script::Step` the Harness, the link and the
+    contract would each have to refuse, so this is the smaller change.
+    The RON stays as above, with `act("Confirm")` too (how `PlanStep`
+    reads it is the worker's choice; a test reads each kind);
+    `Plan::parse` checks each input step with `Step::check`;
+    `Plan::frames(&self, keymap) -> Result<Vec<PlannedFrame>, String>`
+    builds on `script::frames`, a `Planned::Idle(n)` as `n` frames with
+    no events. Nothing moves out of `link`. If not, build `capture::Step`
+    and `Plan::frames` as written above, with the wait rule above, and
+    2566 folds them into `script::Step` (its own clause says so);
   - the new public types follow ADR-0039;
   - 2703 and 2323 (blocked by this one) say in their own clauses how
     their scenes join the card or a plan; 1120, 2301 and 2222 are in
@@ -295,7 +315,8 @@ None.
 - launching 3004's packaged exports;
 - the templates: a game opts in with its own `capture` feature and
   plans;
-- `frame-png`'s `Step` and `Script`: they stay as they are;
+- `frame-png`'s `Step` and `Script`: 2566 moves them into
+  `shuyi_platform::script` (the clause with 2566 above);
 - reading a running game's window on request (2521, the live link);
 - plans that play a session record (2029, which waits for this ticket,
   2518 and 2519).
@@ -304,9 +325,10 @@ None.
 
 1. Read 2332's `raster` module; `crates/app/src/lib.rs`, `backend.rs`
    and `render.rs`; `crates/platform/src/app.rs`, `harness.rs` and
-   `headless.rs`; `frame_png.rs`'s `Step`; ADR-0011 §5, ADR-0024 and
-   `docs/platform-backends.md`. Check which of 1120, 2222, 2301, 2333,
-   2335, 2336, 2337, 2513, 3042, 3044 and 3046 are done.
+   `headless.rs`; `frame_png.rs`'s `Step` (or `shuyi_platform::script`,
+   from 2566); ADR-0011 §5, ADR-0024 and `docs/platform-backends.md`.
+   Check which of 1120, 2222, 2301, 2333, 2335, 2336, 2337, 2513, 2566,
+   3042, 3044 and 3046 are done.
 2. Write the ADR.
 3. Write `shuyi_platform::capture` and its tests, and add the `no-std`
    job's line.
@@ -367,7 +389,8 @@ say that the clauses naming 2018's render card mean that ticket.
 - Unit: `Plan::parse` (each step, the default tolerance, errors: an
   unknown key or button, a `capture` first, a repeated or bad name);
   `Plan::frames` (the events per step and their order, frame counts,
-  the capture mark, `capture::FRAME_DT` equal to the Harness's); the
+  waits of 0, 1/60, 0.5 and 0.51 s giving 0, 1, 30 and 31 frames, the
+  capture mark, `capture::FRAME_DT` equal to the Harness's); the
   card's variant coverage; flipping rows and cutting out the console on
   a hand-made 4 × 3 picture (the pure helper).
 - Property: for random plans, `Plan::frames` has as many frames as its

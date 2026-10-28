@@ -172,6 +172,12 @@ game's palette names `key`.
     typed arguments and formats a message as its `fill` does, each key
     name in it still a `Key` span, and `Ctx`'s styled functions take
     the same arguments as `text_with`.
+  - **Either order with 2390:** if 2390 is done, `fill` walks
+    `shuyi_core::text::split_tokens`: `fill_styled` keeps that walk (a
+    `Text` part plain, a `Token` filled, an `Unclosed` part copied as it
+    is) and `fill` becomes its `plain()`; if not, build `fill_styled` on
+    `split_tokens` all the same, never on a `split_once('{')` loop of its
+    own, and 2390 then has nothing to rewrite in `fill`.
 - **`shuyi_ui::input::help_keys`:** `help_line_styled(hints) ->
   StyledText`, each key in a `Key` span, the labels and `SEPARATOR`
   plain. `help_line` becomes its `plain()`.
