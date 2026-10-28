@@ -135,7 +135,8 @@ pub(crate) fn migrations(file: &str, content: &str) -> Result<Vec<Migration>, St
             continue;
         }
         let at = format!("{file}:{}", n + 1);
-        let indent = line.len() - text.len();
+        // A block under a list item is indented; YAML reads uniform
+        // indentation as it is.
         let mut yaml = String::new();
         let mut closed = false;
         for (_, inner) in lines.by_ref() {
@@ -143,12 +144,7 @@ pub(crate) fn migrations(file: &str, content: &str) -> Result<Vec<Migration>, St
                 closed = true;
                 break;
             }
-            let cut = inner
-                .char_indices()
-                .take(indent)
-                .take_while(|(_, c)| *c == ' ')
-                .count();
-            yaml.push_str(&inner[cut..]);
+            yaml.push_str(inner);
             yaml.push('\n');
         }
         if !closed {
@@ -1115,6 +1111,8 @@ mod tests {
     fn options_parse() {
         let args = |a: &[&str]| a.iter().map(|s| (*s).to_string()).collect::<Vec<_>>();
         assert!(Options::parse(&args(&[])).is_some());
+        let md = Options::parse(&args(&["--format", "markdown"])).unwrap();
+        assert_eq!(md.format, Format::Markdown);
         let kac = Options::parse(&args(&["--format", "keep-a-changelog"])).unwrap();
         assert_eq!(kac.format, Format::KeepAChangelog);
         assert!(
@@ -1207,5 +1205,127 @@ mod tests {
                 .is_file()
         );
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn since_must_be_three_numbers() {
+        let mut m = Migration {
+            since: "1.2.3".into(),
+            what: "w".into(),
+            old: "a".into(),
+            new: "b".into(),
+            before: "x y".into(),
+            after: "z".into(),
+            find: vec!["x".into()],
+        };
+        assert_eq!(m.check(), Ok(()));
+        for bad in ["1.2", "1.2.3.4", "1..3", "1.x.3", ""] {
+            m.since = bad.into();
+            assert!(m.check().is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn release_tags_are_v_and_three_numbers() {
+        for bad in ["v1.2.3.4", "v1..3", "v1.a.3", "1.2.3", "v.1.2"] {
+            assert!(!is_release_tag(bad), "{bad}");
+        }
+        assert!(is_release_tag("v0.1.0"));
+    }
+
+    #[test]
+    fn a_ticket_subject_has_four_digits_in_brackets() {
+        for bad in ["[abcd] x", "[123] x", "[12345] x", "2804 x", "[2804 x"] {
+            assert_eq!(subject_ticket(bad), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn newer_keeps_the_later_date() {
+        let mut date = None;
+        newer(&mut date, "2026-10-02");
+        newer(&mut date, "2026-10-01");
+        assert_eq!(date.as_deref(), Some("2026-10-02"));
+        newer(&mut date, "2026-10-03");
+        assert_eq!(date.as_deref(), Some("2026-10-03"));
+        newer(&mut date, "2026-10-03");
+        assert_eq!(date.as_deref(), Some("2026-10-03"));
+    }
+
+    #[test]
+    fn every_block_has_its_area() {
+        let blocks = [
+            ("1130", "Carved from the game"),
+            ("2001", "Repository and foundation"),
+            ("2101", "Core and simulation"),
+            ("2201", "Assets and formats"),
+            ("2301", "Frame, screens and skins"),
+            ("2401", "Input"),
+            ("2501", "Tools and AI support"),
+            ("2601", "Networking"),
+            ("2701", "Game styles and examples"),
+            ("2801", "Docs and community"),
+            ("2901", "Research"),
+            ("3001", "Export targets"),
+            ("3101", "3D and HD-2D"),
+            ("9901", "Other tickets"),
+        ];
+        for (id, name) in blocks {
+            assert_eq!(area(id).1, name, "{id}");
+        }
+        assert_eq!(area("2101").0, 21);
+    }
+
+    #[test]
+    fn escape_md_leaves_code_alone() {
+        assert_eq!(escape_md("a <b> [c] `<d>` e"), r"a \<b> \[c\] `<d>` e");
+    }
+
+    #[test]
+    fn a_ticket_after_every_tag_goes_to_unreleased() {
+        let (mut tickets, log) = fake();
+        tickets.push(ticket("2999", "Later", "infra", "2027-01-01", "Done."));
+        let releases = build(&tickets, &log).unwrap();
+        assert_eq!(releases.len(), 3);
+        assert_eq!(releases[0].name(), "Unreleased");
+        assert!(releases[0].tickets.iter().any(|t| t.id == "2999"));
+
+        // With no commit after the last tag, Unreleased is made first.
+        let log = log.lines().skip(2).collect::<Vec<_>>().join(
+            "
+",
+        );
+        let releases = build(&tickets, &log).unwrap();
+        let names: Vec<&str> = releases.iter().map(Release::name).collect();
+        assert_eq!(names, ["Unreleased", "v0.2.0", "v0.1.0"]);
+        assert_eq!(releases[0].tickets.len(), 2);
+    }
+
+    #[test]
+    fn keep_a_changelog_dates_only_the_tags() {
+        let (tickets, _) = fake();
+        let log = "2026-11-10		[2301] Draw the scene (#34)
+";
+        let text = keep_a_changelog(&build(&tickets, log).unwrap());
+        assert!(
+            text.contains(
+                "## [2026-11]
+"
+            ),
+            "{text}"
+        );
+        assert!(!text.contains("## [2026-11] -"), "{text}");
+    }
+
+    #[test]
+    fn git_runs_and_reports_its_failures() {
+        let root = std::env::temp_dir();
+        let git = system_git(&root);
+        assert!(git(&["--version"]).unwrap().starts_with("git version"));
+        assert!(
+            git(&["no-such-subcommand"])
+                .unwrap_err()
+                .contains("no-such-subcommand")
+        );
     }
 }
