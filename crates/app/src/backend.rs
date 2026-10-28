@@ -401,17 +401,35 @@ fn decode_after(token: u32, _: &Decoded<'_>) {
     tags::leave(u16::try_from(token).unwrap_or(tags::OTHER));
 }
 
-/// Microseconds since the start, from macroquad's clock (seconds as an
-/// `f64`, on native and the web): `App` measures frames with it in debug
-/// builds (ADR-0046).
+/// Microseconds on the loop's one clock (`pacing::seconds`, the same one
+/// the pacer and `App::frame`'s time read): `App` measures frames with it
+/// in debug builds (ADR-0046).
 fn now_us() -> u64 {
-    let since = core::time::Duration::try_from_secs_f64(get_time());
+    let since = core::time::Duration::try_from_secs_f64(crate::pacing::seconds());
     since.map_or(0, |d| u64::try_from(d.as_micros()).unwrap_or(u64::MAX))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_perf_clock_never_goes_back() {
+        let a = now_us();
+        let b = now_us();
+        assert!(a <= b, "{a} then {b}");
+    }
+
+    #[test]
+    fn the_perf_clock_is_the_pacers_clock() {
+        let a = crate::pacing::seconds();
+        let u = now_us();
+        let b = crate::pacing::seconds();
+        let micros =
+            |secs: f64| u64::try_from(core::time::Duration::from_secs_f64(secs).as_micros());
+        assert!(micros(a).unwrap() <= u, "{a} {u}");
+        assert!(u <= micros(b).unwrap(), "{u} {b}");
+    }
 
     #[test]
     fn a_build_that_counts_the_heap_has_memory_tags() {
