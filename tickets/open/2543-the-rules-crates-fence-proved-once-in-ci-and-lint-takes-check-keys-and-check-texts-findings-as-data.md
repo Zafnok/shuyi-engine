@@ -106,11 +106,11 @@ None.
   byte for byte. `lint` maps them to `Finding`s with no string parsing.
   `reported` stays only for an error reading a file, if one is still a
   string.
-- **Either order with 2570:** if 2570 is done, nothing more to do: its
-  new hits (a keymap name after press, hit, tap or hold) come out of
-  `scan_rust`, `scan_ron` and `scan_dlg` like the rest, and `Hit`
-  carries them; if not, nothing to do (2570 adds a `lint` test for such
-  a hit as a `Hit` when it lands).
+- **From 2570 (done):** its new hits (a keymap name after press, hit,
+  tap or hold) come out of `scan_rust`, `scan_ron` and `scan_dlg` like the
+  rest, and `Hit` carries them. 2570 added no `lint` test, so this ticket
+  adds one: a `.ron` string "Press Tab to switch" is a finding with its
+  file and line.
 - **`lint` uses `check_text::verdict`**: an over-the-cap count gives the
   findings as today, and the under-the-cap note becomes one of the
   answer's `limits`.
