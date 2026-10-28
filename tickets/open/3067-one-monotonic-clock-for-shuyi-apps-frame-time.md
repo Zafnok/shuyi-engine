@@ -115,7 +115,9 @@ None.
 - **A monotonic clock on the web.** There `miniquad::date::now()` is
   `Date.now()`, which can jump too, and `pacing::seconds` reads it.
   `performance.now()` needs a JS plugin of our own (game ADR-0034, no
-  `wasm-bindgen`). This ticket keeps the web on its one clock, as today.
+  `wasm-bindgen`). This ticket keeps the web on its one clock, as today;
+  3068, blocked by this one, moves `pacing::seconds`'s web branch onto
+  `performance.now()` through `clock.js`.
 - **The audio's random seed** (`miniquad::date::now().to_bits()`,
   `backend.rs:170`): a seed should differ each launch, which the
   system's time does and an `Instant` from the start doesn't. It stays.

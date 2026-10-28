@@ -104,7 +104,11 @@ None.
   2406 (parked).
 - The other `docs/design/…` citations in `crates/` (`controls.md`,
   `title-screen.md`, and `playdate.md` in
-  `crates/ui/src/frame/onebit.rs`): a different topic; leave them.
+  `crates/ui/src/frame/onebit.rs`): 2034's. **Either order with
+  2034:** if 2034 is done, the three Playdate citations above are gone
+  already: check that `pad.rs`'s doc cites `targets/playdate.ron` and
+  ADR-0008 §1 and states the rule this ticket sets; if not, remove
+  them here, and 2034 does the rest.
 - Changing `targets/playdate.ron`, ADR-0008, hello-grid's keymap or the
   controls-fit tests: they already say `East` and `West`.
 

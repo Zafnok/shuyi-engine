@@ -103,6 +103,11 @@ None.
   its two callers pass the table they pass to those today. If not,
   nothing to do (2301 passes its table through `box_fit` with every
   other caller of `text_width`).
+- **Either order with 2241:** if 2241 is done, `add_lines` also runs
+  the game's `speech_problem` on a speech line's `width`, after the
+  `limit` check: keep that call after the `match` on `box_fit`, on the
+  same `width`, whatever `box_fit` answered; if not, nothing to do
+  (2241 adds its call after `box_fit`).
 - **For the game:** no public API change (`box_fit` and `BoxFit` are
   crate-private; the English messages and the pack's width message are
   unchanged). A behaviour change: a pack's speech line too long for one

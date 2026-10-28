@@ -121,10 +121,13 @@ None.
   since it has a `cargo shuyi check` line. Make its lines match if they
   don't; if not, nothing to do (2374 writes the step to match).
 - **Either order with 2527:** if 2527 is done, the soak (`cargo shuyi
-  soak 20 --turns 100`) is a gate of grid games only. Rule 1 compares it
-  in the grid game's own files. It is not in the shared list, so the
-  root job runs it in its grid-only step. Check the test passes; if
-  not, nothing to do (2527 adds the soak by these rules).
+  soak 20 --turns 100`) is a check of grid games only, in files only the
+  grid stage writes: its own workflow
+  (`stages/top-down-grid/.github/workflows/soak.yml`) and its
+  `crates/rules/AGENTS.md`. None of the six rules reads those, the
+  base's `ci.yml` and `AGENTS.md` gates don't hold it, and the root job
+  runs it in its grid-only step, after "Run its gates". Check the test
+  passes; if not, nothing to do (2527 adds the soak by these rules).
 - **Either order with 2552:** if 2552 is done, its module's lines
   (`fmt`, `clippy`, `test` in the module's folder, `shuyi add`, `cargo
   build`) are in a `run:` block and a code block of their own: check
