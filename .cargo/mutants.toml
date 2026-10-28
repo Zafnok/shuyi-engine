@@ -33,9 +33,10 @@ exclude_re = [
     # The default `audio_config` is `AudioConfig::DEFAULT`, which is also
     # `AudioConfig::default()`: its only mutant is the same function.
     "GameData::audio_config",
-    # `Plain` has no lines of its own (`NoDirective` has no values), so its
-    # `direct` can never run.
+    # `Plain` and `Named` have no lines of their own (`NoDirective` has no
+    # values), so their `direct` can never run.
     "<impl DialogueHooks for Plain>::direct",
+    "<impl DialogueHooks for Named>::direct",
     # `web`'s real `wasm-opt` is an optional tool no test machine is sure
     # to have; the logic around it runs on a fake.
     "<impl WasmOpt for RealWasmOpt>::optimize",
