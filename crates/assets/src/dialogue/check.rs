@@ -54,7 +54,8 @@ pub trait Tokens {
     }
 }
 
-/// The tokens of a game that fills in nothing but names.
+/// The tokens of a game that fills in nothing but names. Play its scenes
+/// with `Named` (or `Plain` if its text has no name tokens).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct NoTokens;
 

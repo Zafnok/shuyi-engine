@@ -4,9 +4,11 @@
 
 use alloc::collections::BTreeSet;
 
+use shuyi_assets::names::Names;
+
 use shuyi_assets::dialogue::{
-    CharacterId, ChoiceOption, Directive, LineId, MusicLine, NoDirective, Parsed, Present, Scene,
-    Side, Step, parse_dlg,
+    CharacterId, ChoiceOption, DialogueLimits, Directive, LineId, MusicLine, NoDirective, NoTokens,
+    Parsed, Present, Scene, SceneRules, Side, Step, check_scene, parse_dlg,
 };
 
 use super::*;
@@ -336,4 +338,93 @@ fn the_games_lines_play_on_its_stage_read_or_skipped() {
     a.advance();
     assert_ne!(a, kept);
     assert_eq!(text(&kept).as_deref(), Some("Light."));
+}
+
+fn smith() -> Arc<Names> {
+    let mut names = Names::default();
+    names
+        .names
+        .insert("smith".to_owned(), "ada brook".to_owned());
+    Arc::new(names)
+}
+
+#[test]
+fn named_fills_name_tokens_and_leaves_the_rest_as_written() {
+    let hooks = Named::new(smith());
+    assert_eq!(hooks.fill("Hello, {n:smith}."), "Hello, ada brook.");
+    assert_eq!(hooks.fill("{N:smith} waves."), "Ada brook waves.");
+    assert_eq!(hooks.fill("{n:nobody} {hero}"), "{n:nobody} {hero}");
+    assert_eq!(Plain.fill("{n:smith}"), "{n:smith}");
+}
+
+const NAMED: &str = "\
+@scene named
+@left guide neutral
+@caption The house of {n:smith}
+guide: Hello, {n:smith}.
+@choice
+* yes: Thank you, {n:smith}.
+  guide: {N:smith} waves.
+* no: Not yet.
+@endchoice
+guide: {N:smith} leaves.
+@end
+";
+
+struct NamedRules(Names);
+
+impl SceneRules<NoDirective> for NamedRules {
+    fn limits(&self) -> &DialogueLimits {
+        &DialogueLimits {
+            box_width: 40,
+            box_lines: 2,
+            max_text: 80,
+            max_option: 30,
+            min_options: 2,
+            max_options: 3,
+            max_reaction_texts: 4,
+        }
+    }
+
+    fn tokens(&self) -> &dyn shuyi_assets::dialogue::Tokens {
+        &NoTokens
+    }
+
+    fn names(&self) -> Option<&Names> {
+        Some(&self.0)
+    }
+}
+
+#[test]
+fn a_scene_with_name_tokens_checks_and_plays_with_none_left_on_screen() {
+    let names = smith();
+    let (parsed, errors) = parse_dlg::<NoDirective>("named.dlg", NAMED);
+    assert!(errors.is_empty(), "{errors:?}");
+    let rules = NamedRules(Names::clone(&names));
+    for p in &parsed {
+        assert_eq!(check_scene(p, &rules), vec![]);
+    }
+    let mut p = DialoguePlayer::new(&parsed[0].scene, Named::new(names), &Present::Everyone);
+    let mut seen = 0;
+    while !p.is_finished() {
+        let v = p.current();
+        let shown = [
+            v.text.as_deref().map(str::to_owned),
+            v.caption.as_deref().map(str::to_owned),
+        ]
+        .into_iter()
+        .flatten()
+        .chain(v.choices.iter().flatten().map(ToString::to_string))
+        .collect::<Vec<_>>();
+        for s in &shown {
+            assert!(!s.contains("{n:") && !s.contains("{N:"), "{s}");
+        }
+        seen += shown.len();
+        if p.is_choosing() {
+            p.choose(0);
+        } else {
+            p.advance();
+        }
+    }
+    assert!(seen > 4);
 }

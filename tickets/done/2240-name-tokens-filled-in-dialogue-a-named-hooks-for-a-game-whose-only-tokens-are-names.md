@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2240 — Name tokens filled in dialogue: a `Named` hooks
@@ -114,16 +114,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `grep -rn "substitute(" crates/ui/src` finds `Named`'s `fill` in
+- [x] `grep -rn "substitute(" crates/ui/src` finds `Named`'s `fill` in
       `crates/ui/src/dialogue/player.rs`.
-- [ ] A scene with `{n:<id>}` and `{N:<id>}` in its text, its caption
+- [x] A scene with `{n:<id>}` and `{N:<id>}` in its text, its caption
       and a reply passes `check_scene` with `NoTokens` and a names table,
       and played with `Named` over that table shows no `{n:` or `{N:` in
       any `View` (the test below).
-- [ ] The docs of `Plain` and `NoTokens` name `Named`.
-- [ ] CI's `api` job lists `Named` as an addition and nothing as removed
+- [x] The docs of `Plain` and `NoTokens` name `Named`.
+- [x] CI's `api` job lists `Named` as an addition and nothing as removed
       or changed.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -146,5 +146,11 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Added `shuyi_ui::dialogue::Named` (hooks whose `fill` is
+`Names::substitute`), re-exported beside `Plain`. Docs name which hooks
+goes with which tokens on `Plain`, `NoTokens`, `DialogueHooks::fill` and
+the `shuyi-dialogue` skill (step 4). Tests: unit and a check-then-play
+integration in `player/tests.rs`. No deviations, no follow-ups, nothing
+for Nick.
+
+No break: an addition only.
