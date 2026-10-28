@@ -137,7 +137,7 @@ fn check_op(rig: &mut dyn PowerCutRig, op: Op) {
             fail(7, cut, &format!("setting {KEY} back failed: {e}"));
         }
         rig.restart();
-        expect_read(rig, KEY, op.before(), 4, cut, "set back with the power on");
+        expect_read(rig, KEY, op.before(), 4, cut, " set back with the power on");
 
         rig.cut_after(ops);
         let result = op.run(rig.storage());
@@ -150,7 +150,7 @@ fn check_op(rig: &mut dyn PowerCutRig, op: Op) {
             fail(op.promise(), cut, &format!("{KEY} read {read:?}"));
         }
         if result.is_ok() {
-            expect_read(rig, KEY, op.after(), 4, cut, "after an Ok");
+            expect_read(rig, KEY, op.after(), 4, cut, " after an Ok");
         }
         expect_read(rig, OTHER, Some(OTHER_VALUE), 5, cut, "");
         check_list(rig, cut);
@@ -184,7 +184,7 @@ fn expect_read(
         fail(
             promise,
             cut,
-            &format!("{key} {when} read {read:?}, not {expected:?}"),
+            &format!("{key}{when} read {read:?}, not {expected:?}"),
         );
     }
 }
@@ -233,10 +233,13 @@ mod tests {
     enum Mode {
         /// A write is one operation, durable at once.
         Atomic,
-        /// A write empties the value, then sets it: two operations.
+        /// A write empties the value, then sets it, and a delete empties
+        /// it, then removes it: two operations each.
         InPlace,
         /// A write returns `Ok`, but the restart loses it.
         Forgetful,
+        /// Atomic, but `list()` names no key.
+        Unlisted,
     }
 
     /// A rig over a map, which is its own storage.
@@ -246,6 +249,8 @@ mod tests {
         values: BTreeMap<String, String>,
         durable: BTreeMap<String, String>,
         ops_left: Option<u32>,
+        /// Every write (`Some`) and delete (`None`) the suite asked for.
+        asked: Vec<(String, Option<String>)>,
     }
 
     impl MemoryRig {
@@ -255,6 +260,7 @@ mod tests {
                 values: BTreeMap::new(),
                 durable: BTreeMap::new(),
                 ops_left: None,
+                asked: Vec::new(),
             }
         }
 
@@ -286,6 +292,7 @@ mod tests {
         }
 
         fn write(&mut self, key: &str, value: &str) -> Result<(), StorageError> {
+            self.asked.push((key.to_owned(), Some(value.to_owned())));
             if self.mode == Mode::InPlace {
                 self.set(key, "")?;
             }
@@ -293,6 +300,10 @@ mod tests {
         }
 
         fn delete(&mut self, key: &str) -> Result<(), StorageError> {
+            self.asked.push((key.to_owned(), None));
+            if self.mode == Mode::InPlace {
+                self.set(key, "")?;
+            }
             self.op()?;
             self.values.remove(key);
             self.durable.remove(key);
@@ -300,6 +311,9 @@ mod tests {
         }
 
         fn list(&self) -> Result<Vec<String>, StorageError> {
+            if self.mode == Mode::Unlisted {
+                return Ok(Vec::new());
+            }
             Ok(self.values.keys().cloned().collect())
         }
     }
@@ -322,6 +336,44 @@ mod tests {
     #[test]
     fn an_atomic_storage_passes() {
         power_cut_suite(&mut MemoryRig::new(Mode::Atomic));
+    }
+
+    /// The suite writes the old value and the new one, and deletes, on the
+    /// key it checks.
+    #[test]
+    fn the_suite_writes_the_old_and_the_new_value_and_deletes() {
+        let mut rig = MemoryRig::new(Mode::Atomic);
+        power_cut_suite(&mut rig);
+        for asked in [Some(OLD), Some(NEW), None] {
+            let asked = (KEY.to_owned(), asked.map(ToOwned::to_owned));
+            assert!(rig.asked.contains(&asked), "{asked:?}");
+        }
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "promise 2 (a first write reads nothing or the new value): a first write, power cut after 1 operations"
+    )]
+    fn a_first_write_in_place_fails_promise_2() {
+        let mut rig = MemoryRig::new(Mode::InPlace);
+        rig.write(OTHER, OTHER_VALUE).unwrap();
+        check_op(&mut rig, Op::FirstWrite);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "promise 3 (a delete reads the old value or nothing): a delete, power cut after 1 operations"
+    )]
+    fn a_delete_in_place_fails_promise_3() {
+        let mut rig = MemoryRig::new(Mode::InPlace);
+        rig.write(OTHER, OTHER_VALUE).unwrap();
+        check_op(&mut rig, Op::Delete);
+    }
+
+    #[test]
+    #[should_panic(expected = "promise 6 (list() names exactly the keys that read Some)")]
+    fn a_storage_that_lists_no_key_fails() {
+        power_cut_suite(&mut MemoryRig::new(Mode::Unlisted));
     }
 
     #[test]

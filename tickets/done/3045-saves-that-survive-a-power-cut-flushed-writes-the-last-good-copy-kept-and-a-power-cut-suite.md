@@ -307,8 +307,11 @@ None.
   `crates/ui/src/storage/power_cut.rs`, behind `storage-conformance`,
   `no_std` with `alloc`. Its tests run one in-memory rig in three modes:
   atomic passes, in place fails promise 1 (a cut after 1 operation reads
-  `""`), forgetful fails promise 4. A fourth test checks that an
-  operation that never finishes fails after 10 000 operations.
+  `""`), forgetful fails promise 4. More tests: a first write and a
+  delete in place fail promises 2 and 3, a rig whose `list()` names no
+  key fails promise 6, the suite asks for the old value, the new one and
+  a delete, and an operation that never finishes fails after 10 000
+  operations.
 - **`FileStorage`** (`crates/app/src/storage/native.rs`): its file calls
   go through a private `Disk` (`StdDisk` in the game), and `write`,
   `read`, `delete` and `list` work as the scope says, with `is_good`,
