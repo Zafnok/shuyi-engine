@@ -1,0 +1,46 @@
+// Moon Garden's default keys and buttons, for the six moves of `UiAction`
+// (`shuyi_assets::keymap`). Screens only see the action names on the
+// left; the player rebinds each, keeping up to 3 chords per action. Esc
+// always cancels and Delete empties a key slot, so neither may appear.
+(
+    // ANCHOR: layouts
+    layouts: [
+        (
+            id: "Arrows",
+            name: "layout.arrows",
+            keys: {
+                // Held, they repeat.
+                "Up": ["Up", "w"],
+                "Down": ["Down", "s"],
+                "Left": ["Left", "a"],
+                "Right": ["Right", "d"],
+                "Confirm": ["Enter", "Space", "z"],
+                "Cancel": ["Backspace", "x"],
+            },
+        ),
+    ],
+    // ANCHOR_END: layouts
+    // The keys that work before a layout is picked: the game has one
+    // layout, so this only fills the format's slot.
+    layout_picker: {
+        "Up": ["Up"],
+        "Down": ["Down"],
+        "Confirm": ["Enter"],
+    },
+    // ANCHOR: pad
+    // Buttons by their place on an Xbox-shaped pad.
+    pad: {
+        "Up": ["DpadUp", "LeftStickUp"],
+        "Down": ["DpadDown", "LeftStickDown"],
+        "Left": ["DpadLeft", "LeftStickLeft"],
+        "Right": ["DpadRight", "LeftStickRight"],
+        "Confirm": ["South"],
+        "Cancel": ["East"],
+    },
+    // Each target's own buttons, by its profile's id, for a target with
+    // no keyboard; desktop and web play with the keys above.
+    targets: {},
+    repeat: (delay_ms: 300, interval_ms: 70),
+    stick: (press_percent: 50, release_percent: 35),
+    // ANCHOR_END: pad
+)

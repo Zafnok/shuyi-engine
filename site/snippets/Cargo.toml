@@ -1,0 +1,27 @@
+[package]
+name = "book-snippets"
+description = "The book's code (site/content/learn/book/): a small game on Shuyi Engine, each chapter's part as functions and tests that CI builds and runs, which the site shows by anchor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+# The engine, by its front door, as a game depends on it.
+shuyi = { path = "../../crates/shuyi" }
+# The engine's tools for the game's tool program, and the contract's
+# operations its tests call.
+shuyi-cli = { path = "../../crates/cli" }
+# The game's files, embedded.
+include_dir.workspace = true
+# The game's own part, its rules' state and its saves are plain data.
+serde = { workspace = true, features = ["std"] }
+# Its saves are written as RON.
+ron = { workspace = true, features = ["std"] }
+
+[dev-dependencies]
+proptest.workspace = true

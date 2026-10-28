@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{#- The book's contents: its chapters in order (`weight`), numbered by
+    their `extra.chapter`, then the pages after them (appendices). -#}
+{% block content %}
+<article class="prose">
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+  <ol class="contents">
+    {%- for chapter in section.pages %}{% if chapter.extra.chapter %}
+    <li value="{{ chapter.extra.chapter }}"><a href="{{ chapter.permalink | safe }}">{{ chapter.title }}</a>
+      {%- if chapter.description %}: {{ chapter.description }}{% endif %}</li>
+    {%- endif %}{% endfor %}
+  </ol>
+  <h2>Appendices</h2>
+  <ul class="contents">
+    {%- for page in section.pages %}{% if not page.extra.chapter %}
+    <li><a href="{{ page.permalink | safe }}">{{ page.title }}</a>
+      {%- if page.description %}: {{ page.description }}{% endif %}</li>
+    {%- endif %}{% endfor %}
+  </ul>
+</article>
+{% endblock content %}

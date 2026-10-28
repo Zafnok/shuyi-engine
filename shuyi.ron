@@ -5,7 +5,7 @@
 (
     // No key named outside the key pipeline (the `input-actions` skill).
     check_keys: (
-        rust: ["crates", "examples"],
+        rust: ["crates", "examples", "site/snippets"],
         // The one file that reads the keyboard.
         platform_file: "crates/app/src/keys.rs",
         // The files that may name keys and buttons, each for its reason.

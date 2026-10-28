@@ -1,0 +1,36 @@
+# The crates Learn links in the API docs (/api/), one `[[crate]]` each, by
+# rustdoc's folder name (the package's name with `_` for `-`). pages.yml
+# builds them with `cargo doc` and fails when one of these has no page;
+# check-build.sh fails when an engine crate (`crates/shuyi*`) has no row.
+
+[[crate]]
+name = "shuyi"
+text = "the front door a game depends on: the crates below under short names, the prelude and the modules' features"
+
+[[crate]]
+name = "shuyi_core"
+text = "the seeded RNG, turn rules and their history, the state hash, bots, and the grid kit; no I/O"
+
+[[crate]]
+name = "shuyi_assets"
+text = "the bundle and its layers, the format registry, and the engine's kinds and formats"
+
+[[crate]]
+name = "shuyi_ui"
+text = "the frame, screens and their context, input actions, widgets, skins, settings and storage"
+
+[[crate]]
+name = "shuyi_platform"
+text = "the platform boundary, App, the headless backend, the test Harness and the short path's BasicGame"
+
+[[crate]]
+name = "shuyi_app"
+text = "the macroquad backend for desktop and the web, and run_game"
+
+[[crate]]
+name = "shuyi_cli"
+text = "the tools: the tool contract, the MCP server, and BasicTools and GameTools for a game's tool program"
+
+[[crate]]
+name = "shuyi_alloc_count"
+text = "the heap counter of debug builds"

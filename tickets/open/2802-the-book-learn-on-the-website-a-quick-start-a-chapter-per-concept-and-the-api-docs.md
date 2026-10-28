@@ -5,7 +5,7 @@ type: infra
 milestone: "Engine: public"
 model: sonnet-5
 effort: high
-status: todo
+status: in-progress
 blocked_by: ["2801", "2511", "2513", "2810"]
 nick_input: none
 completed:

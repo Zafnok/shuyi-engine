@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{#- Learn: its text, which ends on the API docs' heading, then a link to
+    each crate of `data/api.toml` in /api/, where `pages.yml` puts what
+    `cargo doc` builds. -#}
+{% block content %}
+<article class="prose">
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+  {%- set api = load_data(path="data/api.toml") %}
+  <ul class="contents">
+    {%- for crate in api.crate %}
+    <li><a href="{{ get_url(path='api/' ~ crate.name ~ '/index.html', trailing_slash=false) }}"><code>{{ crate.name }}</code></a>: {{ crate.text }}</li>
+    {%- endfor %}
+  </ul>
+</article>
+{% endblock content %}

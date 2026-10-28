@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{#- A page of the book: its chapter's number (`extra.chapter`), its text,
+    and the pages before and after it in the book's order (`weight`). -#}
+{% block content %}
+<article class="prose">
+  <p class="meta"><a href="{{ get_url(path='@/learn/book/_index.md') }}">The book</a>
+    {%- if page.extra.chapter %} · Chapter {{ page.extra.chapter }}{% else %} · Appendix{% endif %}</p>
+  <h1>{{ page.title }}</h1>
+  {{ page.content | safe }}
+</article>
+<nav class="pager wrap" aria-label="The book">
+  {%- if page.lower %}
+  <a rel="prev" href="{{ page.lower.permalink | safe }}">← {{ page.lower.title }}</a>
+  {%- else %}<span></span>{% endif %}
+  {%- if page.higher %}
+  <a rel="next" href="{{ page.higher.permalink | safe }}">{{ page.higher.title }} →</a>
+  {%- endif %}
+</nav>
+{% endblock content %}

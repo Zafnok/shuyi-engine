@@ -1,0 +1,9 @@
+// ANCHOR: plan
+// The garden's plan: how many plots it has, how many seeds the player
+// starts with, and how often a seed grows, in percent.
+(
+    plots: 6,
+    seeds: 9,
+    grow_percent: 75,
+)
+// ANCHOR_END: plan
