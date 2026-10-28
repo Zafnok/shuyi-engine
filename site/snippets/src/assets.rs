@@ -97,5 +97,15 @@ mod tests {
         assert_eq!(errors.len(), 1, "{errors:?}");
         let shown = errors[0].to_string();
         assert!(shown.contains("mods/broken/garden.ron"), "{shown}");
+        // A seed that always grows is a plan.
+        let files = BTreeMap::from([(
+            "garden.ron".to_owned(),
+            b"(plots: 6, seeds: 9, grow_percent: 100)".to_vec(),
+        )]);
+        let layer = Layer::owned("mods/sure".to_owned(), files).unwrap();
+        assert_eq!(
+            read_plan(&Bundle::new(vec![layer])),
+            Ok(Plan::new(6, 9, 100))
+        );
     }
 }

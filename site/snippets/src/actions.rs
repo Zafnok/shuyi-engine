@@ -121,6 +121,13 @@ mod tests {
         let keymap = formats.load::<KeymapDef<GardenAction>>(&bundle, "keymap");
         assert!(keymap.is_ok(), "{keymap:?}");
         assert_eq!(GardenAction::from_name("Water"), Some(GardenAction::Water));
+        let repeats: Vec<_> = GardenAction::ALL
+            .iter()
+            .map(|a| a.is_repeatable())
+            .collect();
+        assert_eq!(repeats, [true, true, false, false, false]);
+        let required: Vec<_> = GardenAction::ALL.iter().map(|a| a.is_required()).collect();
+        assert_eq!(required, [true, true, true, false, true]);
         assert_eq!(
             GardenAction::for_ui(UiAction::Cancel),
             Some(GardenAction::Leave)

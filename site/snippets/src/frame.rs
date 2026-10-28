@@ -116,4 +116,21 @@ mod tests {
         assert!(frame.contains("9 seeds left"), "{frame}");
     }
     // ANCHOR_END: test_look
+
+    #[test]
+    fn the_row_is_centred_the_cursor_boxes_its_plot_and_the_help_is_last() {
+        let mut h = game().harness();
+        h.keys("Enter Right");
+        let frame = h.snapshot();
+        let lines: Vec<&str> = frame.lines().collect();
+        // Six plots four cells apart from column 12, the second one boxed.
+        assert_eq!(
+            lines[10].trim_end(),
+            "             ·  │·│  ·   ·   ·   ·",
+            "{frame}"
+        );
+        assert_eq!(lines[9].trim(), "┌─┐", "{frame}");
+        assert_eq!(lines[9].find('┌'), Some(16), "{frame}");
+        assert!(lines[23].contains("Enter plant"), "{frame}");
+    }
 }

@@ -85,5 +85,8 @@ mod tests {
         assert_eq!(data.own, Plan::new(6, 9, 75));
         let h = game().harness();
         assert_eq!(h.screens(), ["title"]);
+        let mut ctx = game().ctx().unwrap();
+        let names: Vec<&str> = every_screen(&mut ctx).iter().map(|s| s.name()).collect();
+        assert_eq!(names, ["title", "garden", "leave"]);
     }
 }
