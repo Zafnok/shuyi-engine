@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 3045 — Saves that survive a power cut
@@ -264,31 +264,31 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `power_cut_suite` passes for the atomic in-memory rig and panics
+- [x] `power_cut_suite` passes for the atomic in-memory rig and panics
       for the in-place and the forgetful ones.
-- [ ] `FileStorage` passes `conformance_suite`, and `power_cut_suite`
+- [x] `FileStorage` passes `conformance_suite`, and `power_cut_suite`
       over the fake disk with process-crash cuts and with power cuts.
-- [ ] Without the folder sync in `write`, the power-cut run fails (said
+- [x] Without the folder sync in `write`, the power-cut run fails (said
       in the PR).
-- [ ] With a good `<key>.ron.bak` beside it, a `<key>.ron` that is
+- [x] With a good `<key>.ron.bak` beside it, a `<key>.ron` that is
       missing, empty, all zero bytes or not UTF-8 reads the backup, and
       the warning names the key and the reason.
-- [ ] With no backup, those files read as they do today.
-- [ ] Writing `""`, or `"\0\0"`, removes the backup and reads back what
+- [x] With no backup, those files read as they do today.
+- [x] Writing `""`, or `"\0\0"`, removes the backup and reads back what
       was written.
-- [ ] `list()` never names a `.bak` or `.tmp` file, and names a key
+- [x] `list()` never names a `.bak` or `.tmp` file, and names a key
       whose `.ron` is missing beside a good `.bak`; `delete` removes the
       backup too; a `.tmp` file a crash left is ignored by `read` and
       `list` and is gone after the next write.
-- [ ] The `FileStorage` doc comment and `docs/platform-backends.md`
+- [x] The `FileStorage` doc comment and `docs/platform-backends.md`
       state the promises (the doc comment per OS, with the `.bak` files
       a folder sync must carry), and the backend checklist names the
       suite.
-- [ ] `cargo build -p shuyi-ui --no-default-features --features
+- [x] `cargo build -p shuyi-ui --no-default-features --features
       storage-conformance --target thumbv7em-none-eabihf --locked`
       builds, and `cargo xtask check-no-std` passes.
-- [ ] The PR description has the timing of step 8.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The PR description has the timing of step 8.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -303,4 +303,47 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- **The suite:** `shuyi_ui::storage::{PowerCutRig, power_cut_suite}` in
+  `crates/ui/src/storage/power_cut.rs`, behind `storage-conformance`,
+  `no_std` with `alloc`. Its tests run one in-memory rig in three modes:
+  atomic passes, in place fails promise 1 (a cut after 1 operation reads
+  `""`), forgetful fails promise 4. A fourth test checks that an
+  operation that never finishes fails after 10 000 operations.
+- **`FileStorage`** (`crates/app/src/storage/native.rs`): its file calls
+  go through a private `Disk` (`StdDisk` in the game), and `write`,
+  `read`, `delete` and `list` work as the scope says, with `is_good`,
+  `damage` (the warning's reason) and the `warn` field. Since 3041 is
+  not done, the warning goes through macroquad's `warn!` in
+  `log_warning`; 3041's text now names it.
+- **The fake disk** (`native/fake_disk.rs`) runs `conformance_suite`
+  and `power_cut_suite` with process-crash cuts and with power cuts.
+  With the folder sync taken out of `write` the power-cut run failed
+  (promise 4: a write over an old value set back with the power on read
+  nothing after the cut, since its rename never reached the disk), and
+  the process-crash run still passed. The sync was put back.
+- **Timing** (this Windows 11 machine, NTFS, release build, 100 writes
+  of 10 KiB): before about 0.45 ms a write, after about 5 ms (three
+  runs: 5.2, 5.1, 4.7 ms). Under the 16 ms of a frame, so no ticket for
+  saving off the main thread.
+- **Deviations:**
+  - The PR is about 1 100 changed lines, over the scope's "about 600",
+    and keeps the fake disk and `FileStorage`'s power-cut runs anyway.
+    They are test code only, and they are what proves the new `write`
+    (acceptance criteria 2 and 3); split off, the fix would land
+    unchecked against a power cut and the follow-up would redo code
+    already written and passing.
+  - `Disk` is `Send + Sync`, and the fake disk shares its folder through
+    an `Arc<Mutex<…>>` rather than an `Rc<RefCell<…>>`: a
+    `Box<dyn Disk>` that wasn't would have made `FileStorage` lose
+    `Send` and `Sync`, a break of `shuyi-app`'s API. A test keeps it so.
+  - `list` returns its keys sorted (a `BTreeSet`); `Storage` promises no
+    order.
+  - `delete` on a folder that doesn't exist yet is `Ok`: the folder's
+    sync answering `NotFound` is not an error there.
+- **For the game:** no API change. Its save folder gains a
+  `<key>.ron.bak` beside each save from the second write on; a Steam
+  Auto-Cloud setup syncs `*.ron` and `*.ron.bak` (3037 says so). The
+  game's pin bump needs no code change.
+- No ADR: the seam is private, and the suite follows
+  `conformance_suite`'s pattern.
+- No break.
