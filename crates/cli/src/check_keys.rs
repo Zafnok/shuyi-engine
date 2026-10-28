@@ -13,12 +13,20 @@
 //! (`press f`, `hold Shift`), a `Shift+` chord, `WASD` or `[F]` counts;
 //! "Escape!" or "fires arrows" as plain words are fine.
 //!
+//! Two lists of keys are read. `KEY_WORDS` holds the bare words a help bar
+//! shows alone. After a press verb, any name the keymap knows (`Key` and
+//! `Button` in `shuyi-assets`: `Tab`, `Start`, `PageUp`, `DpadUp`, …) counts
+//! too, in both scans, so a key added to the keymap is found with no change
+//! here.
+//!
 //! It is a line-based scanner, not a parser: comments are ignored, and a
 //! `#[cfg(test)]` item (usually `mod tests { … }`) is skipped by bracket
 //! counting from the attribute to the end of the item.
 
 use std::fs;
 use std::path::Path;
+
+use shuyi_assets::keymap::{Button, Key};
 
 use crate::project::CheckKeys;
 
@@ -38,7 +46,10 @@ const PLATFORM_READS: [&str; 6] = [
     "get_char_pressed",
     "get_last_key_pressed",
 ];
-/// Key names that must never appear in player text as whole words.
+/// Key names that must never appear in player text as whole words: the bare
+/// words a help bar shows alone. The other names the keymap knows (`Tab`,
+/// `Start`, `Up`, …) are ordinary words in a label, so they count only after
+/// a press verb ([`is_keymap_name`]).
 const KEY_WORDS: [&str; 8] = [
     "Space", "Esc", "Escape", "Enter", "Shift", "arrows", "WASD", "wasd",
 ];
@@ -225,6 +236,37 @@ const PRESS_VERBS: [&str; 4] = ["press", "hit", "tap", "hold"];
 /// article in "Press a key…" and "hold a button".
 fn prose_names_key(text: &str) -> Option<String> {
     let words: Vec<&str> = text.split_whitespace().collect();
+    if let Some(why) = press_instruction(&words, true) {
+        return Some(why);
+    }
+    if text.contains("Shift+") {
+        return Some("names a Shift+ chord".to_owned());
+    }
+    if contains_word(text, "WASD") || contains_word(text, "wasd") {
+        return Some("names the key \"WASD\"".to_owned());
+    }
+    bracketed_letter(text).then(|| "names a key in brackets".to_owned())
+}
+
+/// Whether `word` is a name the keymap knows, of two or more ASCII letters
+/// and digits starting with a letter (`Tab`, `Start`, `PageUp`). It matches
+/// exactly as the keymap writes it, so "up" and "on" stay prose; the
+/// numpad's punctuation names and the single characters are left to the
+/// callers.
+fn is_keymap_name(word: &str) -> bool {
+    word.len() >= 2
+        && word.starts_with(|c: char| c.is_ascii_alphabetic())
+        && word.bytes().all(|b| b.is_ascii_alphanumeric())
+        && (Key::from_name(word).is_some() || Button::from_name(word).is_some())
+}
+
+/// Why `words` tell the player to press a key, if they do: a press verb
+/// followed by a letter, a bare [`KEY_WORDS`] word, a `Shift+` chord, a
+/// function key or a keymap name. A single letter counts only with
+/// `letters`: Rust strings say "hold a brace", and [`names_key`] has its own
+/// rule for "press f". The article in "Press a key…" and "hold a
+/// button" is not the `a` key.
+fn press_instruction(words: &[&str], letters: bool) -> Option<String> {
     for (i, pair) in words.windows(2).enumerate() {
         let [verb, key] = pair else { continue };
         let next = words.get(i + 2).copied().unwrap_or_default();
@@ -236,10 +278,11 @@ fn prose_names_key(text: &str) -> Option<String> {
             continue;
         }
         let key = key.trim_end_matches(|c: char| c.is_ascii_punctuation() && c != '+');
-        let is_key = key.len() == 1 && key.bytes().all(|b| b.is_ascii_alphabetic())
+        let is_key = letters && key.len() == 1 && key.bytes().all(|b| b.is_ascii_alphabetic())
             || KEY_WORDS.iter().any(|w| w.eq_ignore_ascii_case(key))
             || key.starts_with("Shift+")
-            || is_function_key(key);
+            || is_function_key(key)
+            || is_keymap_name(key);
         if PRESS_VERBS.iter().any(|v| v.eq_ignore_ascii_case(verb)) && is_key {
             return Some(format!(
                 "tells the player to {} \"{key}\"",
@@ -247,13 +290,7 @@ fn prose_names_key(text: &str) -> Option<String> {
             ));
         }
     }
-    if text.contains("Shift+") {
-        return Some("names a Shift+ chord".to_owned());
-    }
-    if contains_word(text, "WASD") || contains_word(text, "wasd") {
-        return Some("names the key \"WASD\"".to_owned());
-    }
-    bracketed_letter(text).then(|| "names a key in brackets".to_owned())
+    None
 }
 
 /// Whether `key` is `F1`..`F12` (either case).
@@ -292,6 +329,10 @@ fn names_key(text: &str) -> Option<String> {
         if letter(first) && lower(first) && *first != "a" && lower(second) {
             return Some(format!("names the key \"{first}\""));
         }
+    }
+    // "Press Tab", "hold Start": a keymap name after a press verb.
+    if let Some(why) = press_instruction(&words, false) {
+        return Some(why);
     }
     // "[F]", "[f]".
     bracketed_letter(text).then(|| "names a key in brackets".to_owned())
@@ -945,6 +986,75 @@ let d = is_key_down_fast(x);
         assert_eq!(
             prose_names_key("lord: Hit Space.").as_deref(),
             Some("tells the player to hit \"Space\"")
+        );
+    }
+
+    #[test]
+    fn a_keymap_name_after_a_press_verb_is_a_key() {
+        for line in [
+            "lord: Press Tab to switch.",
+            "lord: press Start!",
+            "lord: Hold Backspace to clear.",
+            "lord: Tap DpadUp.",
+        ] {
+            assert!(prose_names_key(line).is_some(), "{line}");
+        }
+        assert_eq!(
+            prose_names_key("lord: Press Tab to switch.").as_deref(),
+            Some("tells the player to press \"Tab\"")
+        );
+        assert!(names_key("Press Tab to switch").is_some());
+        assert_eq!(
+            names_key("Press Tab to switch").as_deref(),
+            Some("tells the player to press \"Tab\"")
+        );
+    }
+
+    #[test]
+    fn keymap_names_as_plain_words_stay_prose() {
+        for line in [
+            "lord: Hold up!",
+            "lord: Hold down the fort.",
+            "lord: Press on, press forward.",
+            "lord: We hold the North.",
+        ] {
+            assert_eq!(prose_names_key(line), None, "{line}");
+        }
+        for text in ["Start game", "Select a file", "End turn"] {
+            assert_eq!(names_key(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn every_keymap_name_is_found_after_a_press_verb() {
+        let names = Key::ALL
+            .iter()
+            .map(|k| k.name())
+            .chain(Button::ALL.iter().map(|b| b.name()))
+            .filter(|n| {
+                n.len() >= 2
+                    && n.starts_with(|c: char| c.is_ascii_alphabetic())
+                    && n.bytes().all(|b| b.is_ascii_alphanumeric())
+            });
+        let mut count = 0;
+        for name in names {
+            count += 1;
+            let text = format!("press {name}");
+            assert!(prose_names_key(&text).is_some(), "{text}");
+            assert!(names_key(&text).is_some(), "{text}");
+        }
+        assert!(count > 40, "{count}");
+    }
+
+    #[test]
+    fn dlg_press_start_is_one_hit_on_its_line() {
+        let errs = scan_dlg(HINT, "x.dlg", "@scene s\nlord: Press Start to begin.\n");
+        assert_eq!(errs.len(), 1, "{errs:?}");
+        assert!(errs[0].starts_with("x.dlg:2: "), "{}", errs[0]);
+        assert!(
+            errs[0].contains("tells the player to press \"Start\""),
+            "{}",
+            errs[0]
         );
     }
 

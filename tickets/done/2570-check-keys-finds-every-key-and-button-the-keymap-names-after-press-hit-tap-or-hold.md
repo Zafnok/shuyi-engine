@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2570 — check-keys finds every key and button the keymap names
@@ -127,17 +127,17 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `prose_names_key` flags "lord: Press Tab to switch.", "lord: press
+- [x] `prose_names_key` flags "lord: Press Tab to switch.", "lord: press
       Start!", "lord: Hold Backspace to clear." and "lord: Tap DpadUp.";
       `names_key` flags "Press Tab to switch".
-- [ ] "lord: Hold up!", "lord: Hold down the fort.", "lord: Press on,
+- [x] "lord: Hold up!", "lord: Hold down the fort.", "lord: Press on,
       press forward." and "lord: We hold the North." still pass, and
       `names_key` passes "Start game", "Select a file" and "End turn".
-- [ ] Every existing test in `check_keys.rs` passes unchanged.
-- [ ] `grep -n '"Tab"\|"Start"\|"Backspace"' crates/cli/src/check_keys.rs`
+- [x] Every existing test in `check_keys.rs` passes unchanged.
+- [x] `grep -n '"Tab"\|"Start"\|"Backspace"' crates/cli/src/check_keys.rs`
       finds them only in tests: the names come from `keymap.rs`.
-- [ ] `cargo shuyi check-keys` at the root passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo shuyi check-keys` at the root passes.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -154,5 +154,20 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Both scans now flag a keymap name (`Key`/`Button`, two or more ASCII
+letters and digits, exact case) after `press`, `hit`, `tap` or `hold`,
+through one `press_instruction` used by `prose_names_key` and `names_key`.
+The module and `KEY_WORDS` docs say which words are bare and which come
+from the keymap. Tests added for each acceptance line, the all-keys sweep
+and `scan_dlg`.
+
+Deviation: the ticket said the root has no such text, but the shared loop
+also flagged "hold a brace" in two Rust strings (single letter after
+`hold`). `names_key` therefore calls the loop without single letters
+(it already flags "press f"); `.ron` and `.dlg` keep them as before.
+
+2543 was not done: its ticket now says it adds the `lint` test for a
+`.ron` "Press Tab to switch" finding.
+
+No break. `check_keys`' public functions keep their signatures.
+The game's next pin bump may see new `check-keys` hits in its text.
