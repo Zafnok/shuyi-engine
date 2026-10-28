@@ -12,6 +12,7 @@ use core::fmt::Debug;
 use shuyi_assets::dialogue::{
     CharacterId, ChoiceOption, Directive, LineId, MusicLine, Present, Scene, Side, Step,
 };
+use shuyi_assets::names::Names;
 
 /// What a game adds to playing a scene: its own lines
 /// ([`Directive`]s, such as a place behind the talk) and what they have set
@@ -25,6 +26,10 @@ pub trait DialogueHooks: Clone + Debug + PartialEq + Eq {
     type Stage: Clone + Debug + Default + PartialEq + Eq;
 
     /// `text` as shown: the game's tokens filled in. The scene keeps them.
+    ///
+    /// A game with tokens of its own and name tokens (`{n:<id>}`) fills
+    /// both: its own, and the names with [`Names::substitute`]. A game
+    /// with only name tokens plays with [`Named`].
     fn fill<'a>(&self, text: &'a str) -> Cow<'a, str>;
 
     /// Plays the game's line `directive` on `stage`, when the scene reaches
@@ -32,7 +37,9 @@ pub trait DialogueHooks: Clone + Debug + PartialEq + Eq {
     fn direct(&self, stage: &mut Self::Stage, directive: &Self::Directive);
 }
 
-/// The hooks of a game that adds nothing: no lines of its own, no tokens.
+/// The hooks of a game that adds nothing: no lines of its own, no tokens,
+/// not even names: a `{n:<id>}` shows as written. A game with name tokens
+/// plays with [`Named`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Plain;
 
@@ -42,6 +49,47 @@ impl DialogueHooks for Plain {
 
     fn fill<'a>(&self, text: &'a str) -> Cow<'a, str> {
         Cow::Borrowed(text)
+    }
+
+    fn direct(&self, (): &mut (), directive: &Self::Directive) {
+        match *directive {}
+    }
+}
+
+/// The hooks of a game whose only tokens are the names table's: no lines
+/// of its own, and `{n:<id>}` and `{N:<id>}` are filled in with
+/// [`Names::substitute`]. It goes with the check's
+/// [`NoTokens`](shuyi_assets::dialogue::NoTokens).
+///
+/// ```
+/// use std::sync::Arc;
+/// use shuyi_assets::names::Names;
+/// use shuyi_ui::dialogue::{DialogueHooks, Named};
+///
+/// let mut names = Names::default();
+/// names.names.insert("smith".into(), "ada brook".into());
+/// let hooks = Named::new(Arc::new(names));
+/// assert_eq!(hooks.fill("Hello, {n:smith}."), "Hello, ada brook.");
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Named {
+    names: Arc<Names>,
+}
+
+impl Named {
+    /// The hooks that fill in the names of `names`.
+    #[must_use]
+    pub fn new(names: Arc<Names>) -> Self {
+        Self { names }
+    }
+}
+
+impl DialogueHooks for Named {
+    type Directive = shuyi_assets::dialogue::NoDirective;
+    type Stage = ();
+
+    fn fill<'a>(&self, text: &'a str) -> Cow<'a, str> {
+        self.names.substitute(text)
     }
 
     fn direct(&self, (): &mut (), directive: &Self::Directive) {
@@ -205,6 +253,10 @@ impl<H: DialogueHooks> DialoguePlayer<H> {
     }
 
     /// `text` as shown: the game's tokens filled in. The scene keeps them.
+    ///
+    /// A game with tokens of its own and name tokens (`{n:<id>}`) fills
+    /// both: its own, and the names with [`Names::substitute`]. A game
+    /// with only name tokens plays with [`Named`].
     fn fill<'a>(&self, text: &'a str) -> Cow<'a, str> {
         self.hooks.fill(text)
     }

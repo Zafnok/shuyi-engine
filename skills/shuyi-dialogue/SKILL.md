@@ -133,8 +133,11 @@ map) with a type that implements `Directive`: the parser hands it every
 
    - `DialoguePlayer::new(&scene, Plain, &Present::Everyone)` starts a
      scene at its first text box. `Plain` is the hooks of a game with no
-     lines or tokens of its own; a game with them implements
-     `DialogueHooks` (`fill` its tokens, `direct` its lines).
+     lines or tokens of its own, not even names; `Named::new(names)` is
+     those of a game whose only tokens are `{n:<id>}` names. A game with
+     tokens or lines of its own implements `DialogueHooks` (`fill` its
+     tokens, and its name tokens with `Names::substitute`; `direct` its
+     lines).
    - `current()` is a `View`: the portraits on the `left` and `right`,
      which side is the `speaker`, the `text`, the `caption`, whether it
      is `narration`, and the `choices` while a choice is open.

@@ -7,5 +7,5 @@
 pub mod player;
 pub mod text_box;
 
-pub use player::{DialogueHooks, DialoguePlayer, Plain, Portrait, View};
+pub use player::{DialogueHooks, DialoguePlayer, Named, Plain, Portrait, View};
 pub use text_box::{SkipView, Step, TextBox, TextView, WaitView};
