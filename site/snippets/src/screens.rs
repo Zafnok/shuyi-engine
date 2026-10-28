@@ -252,12 +252,12 @@ mod tests {
 
     #[test]
     fn each_screen_declares_the_actions_it_reads() {
+        use UiAction::{Cancel, Confirm, Left, Right};
         let mut ctx = game().ctx().unwrap();
         let garden = GardenScreen::new(&ctx.game.own);
         let screens: Vec<Box<dyn Screen<Data>>> =
             vec![Box::new(Title), Box::new(garden), Box::new(Leave)];
         let declared: Vec<_> = screens.iter().map(|s| s.actions()).collect();
-        use UiAction::{Cancel, Confirm, Left, Right};
         assert_eq!(
             declared,
             [
