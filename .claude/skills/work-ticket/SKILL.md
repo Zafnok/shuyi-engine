@@ -108,6 +108,11 @@ the PR.
    ```
 
    CI's `api` job fails a break whose crate no line names.
+
+   Under each such line, add a `migration` block: how a game moves over
+   the break, written in YAML in a fenced block (the fields are in
+   `tickets/README.md`, *Breaking changes*). The changelog's migration
+   guide is made from it (`cargo xtask changelog`, ticket 2804).
 3. Set `status: done` and `completed: YYYY-MM-DD`.
 4. `git mv tickets/open/<file>.md tickets/done/<file>.md`
 5. **Settle what named this ticket.** Run `grep -rnw "<NNNN>"

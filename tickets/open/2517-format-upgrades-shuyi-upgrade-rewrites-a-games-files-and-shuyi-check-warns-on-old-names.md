@@ -344,8 +344,8 @@ None.
 - **For the game:** nothing changes in its files. The library API does
   change: a new `Op` variant, a new field of `CheckOutput`, and
   `check::check` takes the root. Say so in a `Breaking:` line (2010's
-  form, `work-ticket` §5), with a `migration` block under it if the
-  skill asks for one by then (2804 adds that); the game's PR that moves
+  form, `work-ticket` §5), with a `migration` block under it (the
+  `work-ticket` skill asks for one, 2804); the game's PR that moves
   the pin follows.
 
 **Out (do not do):**

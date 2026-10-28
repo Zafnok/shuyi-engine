@@ -33,9 +33,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The changelog is written from the tags and the whole history
+          # (ticket 2804).
+          fetch-depth: 0
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - uses: ./.github/actions/setup-zola
+      # The Changelog page and a News post for each release, never
+      # committed: written from tickets/done/ and the merges.
+      - name: Write the changelog and the release posts
+        run: cargo xtask changelog --site site/content
       # The base URL is what GitHub serves the site at, so a custom domain
       # (2807) changes it without a change here.
       - name: Read the site's address

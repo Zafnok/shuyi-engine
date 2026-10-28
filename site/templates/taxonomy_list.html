@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<article class="prose">
+  <h1>{{ taxonomy.name | capitalize }}</h1>
+  {%- if terms %}
+  <ul class="post-list">
+    {%- for term in terms %}
+    <li><a href="{{ term.permalink | safe }}">{{ term.name }}</a> ({{ term.page_count }})</li>
+    {%- endfor %}
+  </ul>
+  {%- else %}
+  <p>No posts are tagged yet.</p>
+  {%- endif %}
+</article>
+{% endblock content %}

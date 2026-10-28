@@ -19,3 +19,7 @@ lcov.info
 
 # The website, as `zola build` writes it (site/README.md).
 /site/public/
+# The changelog and the release posts `cargo xtask changelog --site` writes
+# (ticket 2804); `pages.yml` makes them when it builds.
+/site/content/changelog.md
+/site/content/news/generated/

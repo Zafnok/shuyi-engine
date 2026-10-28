@@ -133,8 +133,14 @@ The sign-off also:
   Packs stay refused, never migrated (ADR-0023 §5). The `work-ticket`
   skill's *Public API* bullet says the formats count too.
 - `CHANGELOG.md`, starting at the first release, written by 2804's
-  `cargo xtask changelog --format keep-a-changelog`; its notes are the
-  GitHub release's body and the release's News post (2804).
+  `cargo xtask changelog --format keep-a-changelog` in the release
+  workflow (it reads the tags and the whole history, so the checkout is
+  full: `fetch-depth: 0`). **From 2804 (done):** the tool writes the
+  whole file, not one release's notes, so the GitHub release's body is
+  the section of `CHANGELOG.md` under the tag's `## [X.Y.Z]` heading,
+  up to the next `## [`; the release's News post is made by `pages.yml`
+  (`cargo xtask changelog --site site/content`), and 2804 left no step
+  for it here.
 - **Files outside the crates' folders.** `cargo package` leaves out what
   is outside a crate's folder:
   - `shuyi new`'s templates (`templates/` at the root, embedded by

@@ -33,6 +33,8 @@ copies each example's web build there.
 | ---- | ---- |
 | `config.toml` | The site's settings. `base_url` is for `zola serve`; the build passes `--base-url` |
 | `content/` | The pages: `_index.md` (the home page's text), `learn.md`, `community.md`, `sponsor.md`, `news/` (one Markdown file a post) and `examples/` (one page an example, named as its folder in `examples/`) |
+| `content/changelog.md`, `content/news/generated/` | **Never committed**: `cargo xtask changelog --site site/content` writes the Changelog page and a News post for each release (`release-vX-Y-Z.md`, or `changes-YYYY-MM.md` before the first tag), and `pages.yml` runs it before `zola build`. It needs the tags and the whole history (`git clone` in full, not shallow) |
+| `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage* |
 | `templates/` | The HTML, our own (no theme): `base.html` has the menu and the footer |
 | `static/style.css` | The one stylesheet: system fonts, light and dark |

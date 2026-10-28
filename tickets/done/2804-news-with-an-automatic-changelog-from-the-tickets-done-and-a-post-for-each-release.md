@@ -5,10 +5,10 @@ type: infra
 milestone: "Engine: public"
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: ["2801"]
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2804 — News with an automatic changelog
@@ -135,16 +135,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] On a fake history with two tags, tickets in four blocks, a
+- [x] On a fake history with two tags, tickets in four blocks, a
       `Breaking:` line, a `migration` block and three Sonar PRs, the
       output matches a committed snapshot in each of the three formats,
       and the snapshot shows the block's migration guide section.
-- [ ] The live News page lists release posts (or, before the first tag,
+- [x] The live News page lists release posts (or, before the first tag,
       monthly ones) and the Changelog page lists every ticket in
       `tickets/done/`.
-- [ ] A ticket moved to `done/` shows on the site after its PR merges,
+- [x] A ticket moved to `done/` shows on the site after its PR merges,
       with no other step.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -155,4 +155,49 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done**
+
+- `cargo xtask changelog` (`crates/xtask/src/changelog.rs`): reads
+  `tickets/done/`, the `Breaking:` lines (2010's `breaking_lines`) and the
+  `migration` blocks (`migrations`, `pub(crate)` for 2523, checking `since`
+  and the `find` strings), and `git log --first-parent`. Output: Markdown
+  on stdout, Zola pages with `--site`, `CHANGELOG.md` with `--format
+  keep-a-changelog`. Each release has "Breaking changes", then "Migration
+  guide", then the tickets by area, then one count line each for Sonar
+  fixes, dependency updates and other PRs.
+- Snapshots of the three formats on a fake history (two tags, six blocks,
+  a break with a block, a ticket with no PR, three Sonar PRs) are in
+  `crates/xtask/tests/snapshots/` (`UPDATE_SNAPSHOTS=1` rewrites them).
+- `pages.yml` checks out the full history and runs the tool before `zola
+  build`; the generated files are in `.gitignore`. News links the
+  Changelog page, and so does the footer. News has the `tags` taxonomy
+  with a feed and two plain templates (2805 extends them).
+- CI's `tickets` job and `run-gates` run `cargo xtask changelog`, so a bad
+  `migration` block fails the PR, not the site build.
+- `work-ticket` §5 asks for the `migration` block; `tickets/README.md`
+  has *Breaking changes*; `site/README.md` says what is generated.
+- Settled the clauses that waited on 2804 in 2523, 2805 and 2517, and wrote
+  the handoff to 2005 (the release body is a section of `CHANGELOG.md`).
+
+**Deviations**
+
+- `--site` takes the Zola **content** folder (`site/content`), not
+  `news/generated/`: the tool writes `changelog.md` there and the posts in
+  `news/generated/`. A changelog page inside News would be listed as a post.
+- The history is one `git log --first-parent HEAD` whose decorations name
+  the tags, not `git tag --list`: the tag's date is its commit's, and the
+  commits before it belong to it. `HEAD`, not `main`, so a release
+  workflow on a tag works.
+- A done ticket with no merge commit in the history (the ones that moved
+  from the game) is in the first release dated on or after its
+  `completed` date.
+- `site/content/news/intro/vX.Y.Z.md` needs `draft = true` front matter,
+  or Zola fails on a file without any; the tool drops it.
+- Not verified here: the Zola build and the live pages (no Zola on this
+  machine). CI's `site` job and `pages.yml` build them; the first Pages run
+  after merge is the check of the "live page" criteria.
+
+**Docs:** the three homes above; no rustdoc change (`xtask` is never
+shipped).
+
+No break.

@@ -10,6 +10,6 @@
   {%- else %}
   <p>No posts yet.</p>
   {%- endif %}
-  <p><a href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">The feed (Atom)</a></p>
+  <p><a href="{{ get_url(path='changelog/') }}">The changelog</a>, every ticket done · <a href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">The feed (Atom)</a></p>
 </article>
 {% endblock content %}

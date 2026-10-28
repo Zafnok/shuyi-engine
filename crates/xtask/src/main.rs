@@ -11,8 +11,10 @@
 //! - `cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]`
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]`
+//! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
 
 mod api;
+mod changelog;
 mod compile_times;
 mod docs;
 mod layers;
@@ -77,7 +79,13 @@ usage:
       in main.rs and the same for `cargo check`, and count a new `blank` game's
       crates, on games made in <dir> (target/compile-times). With --budget,
       fail over its numbers (tools/compile-budget.ron); with --summary, append
-      the table's Markdown to <file>.";
+      the table's Markdown to <file>.
+  cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]
+      Write the changelog from tickets/done/ and the first-parent history
+      (ticket 2804): Markdown on stdout; with --site, Zola pages (changelog.md
+      and a post for each release, in news/generated/) in <content dir>; with
+      --format keep-a-changelog, the shape of CHANGELOG.md. Needs the tags and
+      the whole history (a full clone).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -98,6 +106,7 @@ fn main() -> ExitCode {
         Some("api") => api(&root, &args[1..]),
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
+        Some("changelog") => changelog(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -230,6 +239,32 @@ fn compile_times(root: &Path, args: &[String]) -> ExitCode {
         verdict.warnings.extend(found.warnings);
     }
     report("compile-times", &verdict.errors, &verdict.warnings)
+}
+
+fn changelog(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = changelog::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let git = changelog::system_git(root);
+    match changelog::run(root, &options, &git) {
+        Ok(changelog::Output::Stdout(text)) => {
+            let _ = write!(std::io::stdout().lock(), "{text}");
+            ExitCode::SUCCESS
+        }
+        Ok(changelog::Output::Pages(pages)) => {
+            let written = options
+                .site
+                .as_deref()
+                .map_or(Ok(()), |dir| changelog::write_pages(dir, &pages));
+            report(
+                "changelog",
+                &written.err().into_iter().collect::<Vec<_>>(),
+                &[],
+            )
+        }
+        Err(errors) => report("changelog", &errors, &[]),
+    }
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on
