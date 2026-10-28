@@ -13,7 +13,7 @@
 //! (`press f`, `hold Shift`), a `Shift+` chord, `WASD` or `[F]` counts;
 //! "Escape!" or "fires arrows" as plain words are fine.
 //!
-//! Two lists of keys are read. [`KEY_WORDS`] holds the bare words a help bar
+//! Two lists of keys are read. `KEY_WORDS` holds the bare words a help bar
 //! shows alone. After a press verb, any name the keymap knows (`Key` and
 //! `Button` in `shuyi-assets`: `Tab`, `Start`, `PageUp`, `DpadUp`, …) counts
 //! too, in both scans, so a key added to the keymap is found with no change
