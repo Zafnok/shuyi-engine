@@ -107,13 +107,13 @@ None.
   The traits in `shuyi-core`, `shuyi-assets` and `shuyi-ui` stay
   `no_std` (3005); the attribute needs nothing from `std`.
 
-- **The link in each note.** **Either order with 2802** (the book): if
-  it is done, the note links the book's chapter for the trait (a game
-  and its screens, actions, assets and formats, rules as commands). If
-  not, the trait's rustdoc isn't online yet (2802's `/api/`, or docs.rs
-  after 2005), so the note links the file that defines the trait on
-  GitHub (`https://github.com/Zafnok/shuyi-engine/blob/main/crates/ui/src/screen.rs`),
-  and 2802 changes the links to its chapters (edit requested there).
+- **The link in each note.** **From 2802 (done):** the note links the
+  book's chapter for the trait, on the website
+  (`https://zafnok.github.io/shuyi-engine/learn/book/<page>/`):
+  `games-and-screens` for `Screen` and `GameData`, `actions` for
+  `ActionSet`, `assets-and-formats` for `AssetKind` and `Format`,
+  `rules-as-commands` for `TurnRules`, with the `//~` texts of the
+  fixtures to match.
   The attribute takes string literals only, so each note holds its
   link in full.
 

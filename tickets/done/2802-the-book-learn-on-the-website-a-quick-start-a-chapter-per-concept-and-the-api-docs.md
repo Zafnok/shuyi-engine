@@ -5,10 +5,10 @@ type: infra
 milestone: "Engine: public"
 model: sonnet-5
 effort: high
-status: in-progress
+status: done
 blocked_by: ["2801", "2511", "2513", "2810"]
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2802 — The book
@@ -210,14 +210,14 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Eleven chapters are live under `/learn/book/`.
-- [ ] Every code block in the book comes from `site/snippets/` through
+- [x] Eleven chapters are live under `/learn/book/`.
+- [x] Every code block in the book comes from `site/snippets/` through
       the shortcode (a CI grep finds no fenced Rust block in
       `site/content/learn/book/` that isn't a shortcode).
-- [ ] Renaming a public function a snippet uses fails CI.
-- [ ] `/api/` holds each workspace crate's rustdoc.
-- [ ] `docs/README.md` has the book's row and pairs, and `tickets/TEMPLATE.md` carries the rule.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] Renaming a public function a snippet uses fails CI.
+- [x] `/api/` holds each workspace crate's rustdoc.
+- [x] `docs/README.md` has the book's row and pairs, and `tickets/TEMPLATE.md` carries the rule.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -226,4 +226,95 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done.**
+- **The book**, `site/content/learn/book/`: eleven chapters, numbered by
+  `extra.chapter` in `weight` order, and "Fast compiles" as an
+  appendix (a page with no number). The chapters follow one small game,
+  Moon Garden, a row of plots to plant: the quick start lays it out on
+  the short path, and each later chapter shows its part. Learn became a
+  section (`learn.md` → `learn/_index.md`); templates `learn.html`,
+  `book.html` (the contents), `chapter.html` (the chapter's number and
+  the pages before and after) and `errors.html`; table and pager
+  styles in `style.css`. The menu points at `learn/_index.md`, and
+  the home page's "Get started" at the quick start.
+- **The code**, `site/snippets/`: the workspace crate `book-snippets`
+  (`publish = false`, not an engine crate, so no `tools/layers.ron`
+  line): the game, its files (`files/`, with a copy of the template's
+  Terminus atlas and its row in `THIRD_PARTY_ASSETS.md`), a second
+  keymap for chapter 3's `ActionSet`, the project file chapter 9 shows
+  (`project/shuyi.ron`, parsed by a test against the engine's target
+  profiles) and the `build.rs` a web build needs. 22 tests, among them
+  one that every `// ANCHOR:` opens once and ends. The root `shuyi.ron`'s
+  `check_keys` covers it, so `lint` holds the book's code to the rules
+  it teaches.
+- **The shortcode**, `site/templates/shortcodes/snippet.md`:
+  `{{ snippet(file=…, anchor=…, language=…) }}` reads
+  `site/snippets/<file>` with `load_data`, keeps the lines between the
+  anchors without other anchors' lines, and writes a fenced block;
+  `language` defaults to `rust`. A missing file or anchor fails the
+  build (`throw`). The argument isn't `lang`: Zola's global `lang` (the
+  page's language) shadows it. Anchors mark whole items, shown as
+  written: Tera has no way to dedent.
+- **The checks**: `check-build.sh` fails on a fenced Rust block in the
+  book, on an engine crate with no row in `site/data/api.toml`, on a
+  chapter page not built and on chapters not numbered 1 to the last;
+  it checks the new pages exist. CI's `test`, `clippy` and `docs` jobs
+  build the crate, so renaming a public item a snippet uses fails them,
+  and a renamed anchor fails the `site` job's build.
+- **The problem codes' pages**: `site/errors.sh` writes
+  `crates/cli/errors/SH*.md` into `site/content/learn/errors/sh*.md`
+  (lowercase, for 2808's URL rule) with TOML front matter, and the list;
+  the folder is git-ignored. `ci.yml`'s `site` job and `pages.yml` run
+  it before Zola, and `check-build.sh` does too. Chapter 10 links the
+  list, and the chapters link single codes.
+- **The API docs**: `pages.yml` runs `cargo doc --workspace --no-deps
+  --lib` (after the Linux setup, as CI's `docs` job does) and copies
+  `target/doc` to `/api/`, failing when a crate `site/data/api.toml`
+  names has no page. Learn lists the crates from that file. `--lib`
+  because `shuyi-cli`'s binary is also `shuyi`: without it, its page
+  overwrites the front door's at `/api/shuyi/` (cargo's known file-name
+  collision; CI's `docs` job warns of it). So `/api/` holds every
+  workspace library, and `xtask`, a binary only, has none. Checked
+  locally with `cargo doc`; the first Pages run after the merge is the
+  first real one.
+- Renaming `History::rewind_to` was tried: `book-snippets` stopped
+  compiling at the chapter 6 snippet that calls it.
+- **Fast compiles** moved from `README.md` into the book's appendix;
+  the README keeps a paragraph with the link, and the site's card links
+  the page.
+- **Keeping it current**: the docs map has the book's row (its home,
+  `site/content/learn/book/` and `site/snippets/`), the pair of a
+  public concept's rustdoc and its chapter, the chapter for each block
+  in *What each task reads*, and rule 4 names the book;
+  `tickets/TEMPLATE.md` has the acceptance line. `site/README.md` says
+  how to write a snippet.
+- **Settled**: every open ticket that waited on 2802 now says what
+  holds (2004, 2005, 2108, 2109, 2110, 2112, 2114, 2115, 2135, 2220,
+  2221, 2232, 2329, 2334, 2336, 2337, 2338, 2351, 2362, 2510, 2519, 2528,
+  2808, 3050, 3051).
+
+**Checked by hand:** the quick start, run as written on a new `blank`
+game (`shuyi new --engine-path` at this checkout, Windows, GNU
+toolchain): `cargo shuyi run --frames 30` shows the title; the site
+built and served with Zola 0.21.0, its pages looked at in a browser.
+
+**Deviations.**
+- `shuyi web` isn't the quick start's last step: a new game has no
+  `web` part, so `cargo shuyi web` answers `SH1002`. The quick start
+  sends the reader to Hello, Grid in the browser and to chapter 9,
+  which shows the `web` part and the `build.rs` (a new game with those
+  two added built for the web here). Follow-up **2777** puts them, and
+  the wasm target, in the templates and changes the quick start.
+- Chapter 2's "the engine's English beneath it" (2351), chapter 4's
+  sections (2109, 2135, 2362, 2329, 2334, 2336, 2337, 2338), chapter 5's
+  hot reload and Tiled link (2220, 2232), chapter 6's timers (2115),
+  chapter 7's versions and scenes (2110, 2221), chapter 8's solver and
+  sessions (2112, 2519), chapter 9's releasing and signing (3050, 3051),
+  the ECS chapter (2108), 2004's guides and 2510's links: none of those
+  tickets is done, so each now says it writes its part.
+- Chapter 11's table puts Shuyi's word first: on a narrow screen the
+  table scrolls, and the column a reader looks up stays in view.
+
+**Follow-up:** 2777 (new games build for the web as they are).
+
+No break: no engine crate's API changes.

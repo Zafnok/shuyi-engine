@@ -140,10 +140,10 @@ None.
   test that a `Hot` value of the txtimg toy kind reloads when its
   `<file>.meta` changes, and when the `_folder.meta` it reads changes.
   If not, nothing to do (2229 adds that test, its clause says so).
-- **Either order with 2802 (the book):** if 2802 is done, its chapter
-  on assets gets a section on hot reload (`Hot<T>` and
-  `shuyi run --watch`); if not, nothing to do (2802 writes it, its
-  clause says so).
+- **From 2802 (done):** the book's chapter 5, *Assets and formats*
+  (`site/content/learn/book/assets-and-formats.md`), gets a section on
+  hot reload (`Hot<T>` and `shuyi run --watch`), its code a snippet in
+  `site/snippets/`.
 
 **Out (do not do):**
 - reloading code (2905);

@@ -91,7 +91,7 @@ link_text = "Ticket 2905"
 title = "Fast compiles"
 text = "A new game rebuilds in about a second on Linux and two on Windows, on stable Rust, and CI holds every change to that budget."
 status = "Ready"
-link = "README.md#fast-compiles"
+link = "@/learn/book/fast-compiles.md"
 link_text = "The numbers and the setup"
 
 [[feature]]

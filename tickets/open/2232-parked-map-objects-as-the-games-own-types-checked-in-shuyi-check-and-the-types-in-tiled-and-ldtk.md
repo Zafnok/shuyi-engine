@@ -310,9 +310,9 @@ None.
 - **Docs:** *Checks after loading* in `docs/formats.md` gets
   `things::read` and `check_under`. A new section of `docs/formats.md`,
   "Levels from Tiled and LDtk", shows a `Thing` enum, the loader, the
-  line in `check`, and `map-types`. **Either order with 2802:** if 2802
-  is done, the book's chapter on assets links to that section; if not,
-  nothing to do (2802's chapter 5 links it, as its clause says).
+  line in `check`, and `map-types`. **From 2802 (done):** the book's
+  chapter 5 (`site/content/learn/book/assets-and-formats.md`) links to
+  that section.
 - **Problem codes:** the new errors and problems get codes from 2509's
   table.
 - **Either order with 2516:** if 2516 is done, `read` marks the map's

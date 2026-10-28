@@ -233,10 +233,10 @@ not parked.
   `shuyi_core::curve` say a skin draws a curve as lines over
   `pieces()`: name `Shape::line` there. If not, nothing to do (2122
   names it).
-- **Either order with 2802:** if 2802 is done, chapter 4 of the book
-  (the frame and skins) gets a short section on shapes, its code in
-  `site/snippets/` as 2802 says. If not, 2802 writes the chapter from
-  the code.
+- **From 2802 (done):** chapter 4 of the book, *The frame and skins*
+  (`site/content/learn/book/frame-and-skins.md`), gets a short section
+  on drawn shapes (lines, circles and polygons), its code in
+  `site/snippets/` through the `snippet` shortcode.
 - **Either order with 2738** (parked): if 2738 is done,
   `examples/bricks` draws its ball as a square `Overlay`: make it a
   filled circle, and redo its `frame-png` pictures. If not, nothing to
@@ -300,7 +300,7 @@ not parked.
    `for_each_run`. Add shapes to the 1-bit `Thing` generator
    (`onebit/speed_tests.rs`).
 7. Settle the either-order clauses above (2315's rules, 2018's card,
-   2802's chapter, 2738's ball and 2740's path arrow).
+   2738's ball and 2740's path arrow), and write the book's section.
 8. Run the gates, including the `no_std` build of `shuyi-ui`. If the PR
    grows well past about 600 changed lines (fixtures and snapshots
    aside), leave polygons out (`ShapeKind::Polygon`, `Shape::polygon`,

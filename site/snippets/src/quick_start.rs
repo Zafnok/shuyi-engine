@@ -37,13 +37,14 @@ const NAME: &str = "Moon Garden";
 const STORAGE_NAME: &str = "moon_garden";
 
 /// The game: its name, where the player's settings are kept, its files,
-/// how its own part is read from them, its first screen, and every
-/// screen it can show.
+/// how its own part is read from them, its first screen, every screen it
+/// can show, and the engine's modules its features turn on.
 pub fn game() -> BasicGame<UiAction, Plan> {
     // check-text: not player text, a folder
     let files = Layer::dir("files", &FILES);
     BasicGame::with_own(NAME, STORAGE_NAME, files, read_plan, |_| Box::new(Title))
         .screens(every_screen)
+        .modules(shuyi::enabled_modules)
 }
 
 /// Every screen the game can show, for the check that its controls fit

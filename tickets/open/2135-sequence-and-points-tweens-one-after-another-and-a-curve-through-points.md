@@ -204,10 +204,9 @@ None.
   curves and tweens (`skills/shuyi-animate/SKILL.md`, which 2109
   writes) names `Sequence` and `Points`, with the title that drops in;
   `check-skills` passes.
-- **Either order with 2802:** if 2802 is done, the book's section on
-  ease curves and tweens shows them, with a snippet in
-  `site/snippets/`. If not, nothing to do: it names them when it is
-  written (its clause on 2135 says so).
+- **From 2802 (done):** the book's section on ease curves and tweens
+  (chapter 4, `site/content/learn/book/frame-and-skins.md`, which 2109
+  adds) shows them, with a snippet in `site/snippets/`.
 - **What changes for the game:** nothing. The API grows (CI's `api`
   job lists the additions), and no `Ease` or `Tween` value changes.
   The PR says so.
@@ -260,8 +259,7 @@ None.
 6. Write `crates/core/src/ease/sequence/tests.rs`.
 7. Write the module docs' two sections, the two doctests and the crate
    docs' words.
-8. Write the skill's lines, and, if 2802 is done, the book's (the
-   clauses above).
+8. Write the skill's lines, and the book's (the clauses above).
 9. Run the gates, the `no_std` build included. Expect about 600
    changed lines.
 
@@ -305,7 +303,7 @@ None.
       `cargo clippy -p shuyi-core --lib -- -D clippy::float_arithmetic`
       passes.
 - [ ] The two doctests pass. The `shuyi-animate` skill names
-      `Sequence` and `Points`; if 2802 is done, so does the book.
+      `Sequence` and `Points`, and so does the book.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

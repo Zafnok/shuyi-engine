@@ -84,7 +84,7 @@ Why it matters:
   started by hand, a browser, and its developer console. At its next
   pin bump it gets one command, with no code change.
 - **Other 2D games:** every game with a `web` part, Hello, Grid, and
-  the book's and the tutorial's web steps (2802, 2803).
+  the book's and the tutorial's web steps (2803).
 - **Agents.** An agent can't read a browser's console. With `--json`,
   it reads the page's errors in its own terminal and knows when the
   page has loaded the new build. The agent check (2524) grades a web
@@ -254,11 +254,16 @@ None.
     `run`): it serves the exported folder through this server on
     `127.0.0.1` with `dev` off, so no dev script and no watching, and
     prints the URL. If not, 3004 adds it (its own clause says so);
-  - **with 2802 and 2803** (in the MVP's list in `docs/ROADMAP.md`, so
-    most likely done): where the book and the tutorial's `10-ship` step
-    tell the reader to serve the folder, they name `cargo shuyi web
-    --serve --open`. If not, they are written with it (their own
-    clauses say so).
+  - **from 2802 (done):** where the book tells the reader to serve the
+    web build's folder (chapter 9, `site/content/learn/book/targets-and-export.md`,
+    *The web build*), it names `cargo shuyi web --serve --open`.
+    **Either order with 2777:** if 2777 is done, the quick start's
+    `cargo shuyi web` step on a new game becomes `cargo shuyi web
+    --serve --open` too; if not, nothing to do (2777 writes it so);
+  - **with 2803** (in the MVP's list in `docs/ROADMAP.md`, so most
+    likely done): where the tutorial's `10-ship` step tells the reader
+    to serve the folder, it names `cargo shuyi web --serve --open`. If
+    not, it is written with it (its own clause says so).
 - **Docs:**
   - `README.md:181` ("serve that folder over HTTP"): build, serve and
     open in one step with `cargo shuyi web --serve --open`;
@@ -297,7 +302,8 @@ None.
 - watching with the system's file events (a follow-up if polling costs
   too much, as in 2220);
 - 2019's CI check, which serves with Python's `http.server`;
-- a `web` part in the templates (they have none today; 3039 notes it);
+- a `web` part in the templates (2777, which also changes the quick
+  start's web step to `--serve --open` if this ticket is done first);
 - phones' browsers (2407, parked), and Android and iOS apps (3015,
   parked);
 - uploads to a store or a host (3050) and signed packages (3051,

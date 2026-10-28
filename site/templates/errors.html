@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{#- The problem codes: the list `errors.sh` writes, in the codes' order
+    (`weight`), each a page of its own. -#}
+{% block content %}
+<article class="prose">
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+  <ul class="contents">
+    {%- for page in section.pages %}
+    <li><a href="{{ page.permalink | safe }}">{{ page.title }}</a></li>
+    {%- endfor %}
+  </ul>
+</article>
+{% endblock content %}

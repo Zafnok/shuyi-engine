@@ -321,9 +321,9 @@ if 2005 has moved it.
     export --plan`, `git tag -a vX.Y.Z -m <notes>`, the dry run from
     the Actions tab, and turning on itch.io with the `ITCH_GAME`
     variable and the `BUTLER_API_KEY` secret; `check-skills` passes.
-  - **2802** (the book). If it is done, chapter 9 ("Targets and
-    export") gets a "Releasing" section with the README's text. If not,
-    2802 adds it (its scope says so).
+  - **From 2802 (done):** the book's chapter 9 ("Targets and export",
+    `site/content/learn/book/targets-and-export.md`) gets a "Releasing"
+    section with the README's text.
   - **Either order with 2033:** if 2033 is done, run `cargo test -p
     shuyi-cli --lib template` after adding `--locked`. Its test of the
     gate lists drops `--locked` and reads the template's `ci.yml` gates

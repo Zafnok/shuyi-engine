@@ -3,7 +3,8 @@ name: Pages
 # The website (ticket 2801, ADR-0048): Zola builds `site/` at the Pages
 # URL, and each example under `examples/`, built for the web, plays at
 # /examples/<name>/ with the NOTICES.txt its build carries. /hello-grid/
-# redirects to /examples/hello-grid/.
+# redirects to /examples/hello-grid/. The workspace's API docs are at
+# /api/ (ticket 2802).
 
 on:
   push:
@@ -47,11 +48,31 @@ jobs:
           case "$url" in */) ;; *) url="$url/" ;; esac
           echo "base_url=$url" >> "$GITHUB_OUTPUT"
           echo "The site's address: $url"
+      # Learn's problem codes, from crates/cli/errors/ (ticket 2802).
+      - name: Write the problem codes' pages
+        run: bash site/errors.sh
       - name: Build the site
         working-directory: site
         env:
           BASE_URL: ${{ steps.address.outputs.base_url }}
         run: zola build --base-url "$BASE_URL"
+      # Every workspace library's API docs at /api/<crate>/ (ticket 2802),
+      # which Learn links: each crate site/data/api.toml names must be
+      # there. `--lib`: shuyi-cli's binary is also called `shuyi`, and its
+      # page would take the front door's place at /api/shuyi/.
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Build the API docs and put them in the site
+        run: |
+          cargo doc --workspace --no-deps --lib --locked
+          rm -rf site/public/api
+          cp -r target/doc site/public/api
+          for name in $(sed -nE 's/^name = "([a-z0-9_]+)"$/\1/p' site/data/api.toml); do
+            [ -f "site/public/api/$name/index.html" ] || {
+              echo "::error::site/data/api.toml names $name, and cargo doc built no site/public/api/$name/"
+              exit 1
+            }
+          done
       # Every example whose shuyi.ron has a `web` section, each copied whole
       # (its NOTICES.txt with it) over the stub Zola wrote at its path. An
       # example with no page in site/content/examples/ has no card, and

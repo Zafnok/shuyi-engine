@@ -329,8 +329,10 @@ None. Spending money on agent runs is 2525's question.
 - a gate on new APIs: "every new API is judged against it" stays a
   convention until 2525 has a baseline;
 - changing the grid template so the references get shorter (a `web`
-  entry, a `build.rs`, the wasm target): a ticket of its own, if the
-  numbers say so;
+  entry, a `build.rs`, the wasm target): 2777's. **Either order with
+  2777:** if 2777 is done, the template has them, and the reference
+  carries none of them over it; if not, nothing to do (2777 drops them
+  from the reference and writes its number again);
 - playing session records back (2518).
 
 ## Implementation steps

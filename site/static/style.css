@@ -307,6 +307,39 @@ h3 {
   color: var(--muted);
 }
 
+/* Tables in a page scroll on their own on a narrow screen, never the page. */
+.prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.prose th,
+.prose td {
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+/* The book: its contents, and each page's way to the next. */
+
+.contents li {
+  margin-bottom: 0.4rem;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 44rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
 /* The footer. */
 
 .site-footer {

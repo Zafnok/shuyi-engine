@@ -227,9 +227,12 @@ players keep after a patch.
   fixture guard; records refused whole are kept aside. It replaces game
   ADR-0039's "refused, never migrated" as the engine's rule for saves.
   Packs stay refused (ADR-0023 §5).
-- **Either order with 2802:** if the book is written, its chapter "Saves
-  and settings" gets a section on versions, the steps and the fixtures.
-  If not, 2802 writes it from the ADR.
+- **From 2802 (done):** the book's chapter 7, "Saves and settings"
+  (`site/content/learn/book/saves-and-settings.md`), gets a section on
+  versions: `VERSION`, the `Migrate` steps and the `v<N>_*.ron`
+  fixtures `check_saved_forms` checks, written from this ticket's ADR.
+  Its *A save* section says today that another version is refused,
+  never migrated: change it with the snippet (`site/snippets/src/saves.rs`).
 - **From 1134 (done):** its `shuyi-test` skill
   (`skills/shuyi-test/SKILL.md`) gets a paragraph on saved forms (a save
   format's `VERSION`, its `Migrate` steps, the `v<N>_*.ron` fixtures

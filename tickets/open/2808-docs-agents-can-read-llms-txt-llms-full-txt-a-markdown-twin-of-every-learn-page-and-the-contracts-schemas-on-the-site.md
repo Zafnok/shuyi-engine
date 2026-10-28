@@ -238,12 +238,17 @@ None.
   change here, unless 2803 adds an argument or a shortcode for its
   step folders or its diffs: if 2803 is done, read what it added and
   expand it too; if not, 2803 adds that expansion in its PR. 2004's
-  guides (`docs/guides/`) and 2509's error pages
-  (`crates/cli/errors/`, already written) reach Learn through 2802. If they land in
+  guides (`docs/guides/`) reach Learn through the book. If they land in
   `site/content/learn/` as Markdown files before `zola build`, they get
   twins too, as long as `ci.yml` makes the same copy before its `cargo
   xtask llms`. If they come in through a shortcode, that ticket's PR
-  adds its expansion here.
+  adds its expansion here. **From 2802 (done):** 2509's error pages
+  (`crates/cli/errors/`) land in `site/content/learn/errors/` as
+  Markdown, written by `site/errors.sh` (never kept in git) before Zola
+  runs in `ci.yml`'s `site` job and in `pages.yml`: run it before
+  `cargo xtask llms` too, so they get twins. The book's `snippet`
+  shortcode reads `site/snippets/<file>` and takes `file`, `anchor` and
+  `language` (Zola's own `lang` is the page's).
 - **Size:** if the diff, fixtures and snapshots aside, passes about 600
   changed lines, the `{{engine.docs}}` part (`new.rs` and the templates'
   `AGENTS.md`) becomes a follow-up ticket in this milestone, blocked by
@@ -278,9 +283,9 @@ None.
 2. Add `toml` to `crates/xtask/Cargo.toml` for the front matter:
    MIT OR Apache-2.0, both in `deny.toml`'s allow list (check its
    license on the day), with default features off and only what parsing
-   into a `toml::Table` needs. It is xtask only and never ships. If
-   2802 wrote YAML front matter (`---`) instead, read it with
-   `serde_norway`, already a dependency, and add nothing. Add `insta`
+   into a `toml::Table` needs. It is xtask only and never ships. 2802
+   wrote TOML front matter (`+++`); a chapter's number is its
+   `extra.chapter`. Add `insta`
    (`insta.workspace = true`) to xtask's dev-dependencies for the
    snapshots.
 3. Write `llms.rs`: the page list and the URL rule; the twins, with the

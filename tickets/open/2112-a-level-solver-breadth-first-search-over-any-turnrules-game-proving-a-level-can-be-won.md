@@ -168,10 +168,11 @@ None.
 - **From 1134 (done):** add a short section to
   `skills/shuyi-test/SKILL.md`: proving a level winnable with `solve` in
   a game's `check`; `check-skills` passes.
-- **Either order with 2802:** if `site/content/learn/book/` exists,
-  chapter 8 (Testing) gets a short section on `solve`, its code a
-  snippet in `site/snippets/` that CI builds and tests. If not, 2802
-  writes that section.
+- **From 2802 (done):** the book's chapter 8 (*Testing*,
+  `site/content/learn/book/testing.md`) gets a short section on
+  `solve`, its code a snippet in `site/snippets/` that CI builds and
+  tests (the book's garden, `site/snippets/src/rules.rs`, is a
+  `TurnRules` game to prove winnable).
 
 **Out (do not do):**
 - bots that play one side against another, and hiding luck or hidden

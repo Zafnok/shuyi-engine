@@ -339,9 +339,9 @@ account, its identity check and a certificate profile).
     from forks get no secrets);
   - what players see with and without signing.
 
-  **Either order with 2802:** if 2802 is done, the book's chapter 9
-  ("Targets and export") gets a short "Signing" section that links
-  it; if not, 2802 writes that section (its chapter 9 says so).
+  **From 2802 (done):** the book's chapter 9 ("Targets and export",
+  `site/content/learn/book/targets-and-export.md`) gets a short
+  "Signing" section that links it.
 - **Either order with 3050:**
   - If 3050 is done, each template's `release.yml` passes `export.yml`
     an input `sign`, true only on a tag push when the repository
@@ -442,7 +442,7 @@ account, its identity check and a certificate profile).
 8. Add `doctor --signing` and `Probe::list`.
 9. Write `crates/cli/tests/sign_macos.rs` and the `sign-macos` job. Keep
    them if `codesign` accepts the self-signed identity.
-10. Write `docs/signing.md`, the book's section if 2802 is done, and
+10. Write `docs/signing.md`, the book's section, and
     the workflow changes and the templates' "Releasing" link if 3050
     is done.
 11. Run the gates.

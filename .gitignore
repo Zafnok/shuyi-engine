@@ -19,3 +19,5 @@ lcov.info
 
 # The website, as `zola build` writes it (site/README.md).
 /site/public/
+# The problem codes' pages, written from crates/cli/errors/ by site/errors.sh.
+/site/content/learn/errors/
