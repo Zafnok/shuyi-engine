@@ -206,8 +206,13 @@ None.
   - **2010** (done, public API diffs): the completion notes and the PR
     body have the `Breaking:` line its check asks for, for
     `Part::Engine`.
-  - **2802** (the book): if it is done, chapter 2 gets a paragraph on
-    the engine's words and on overriding one; if not, 2802 writes it.
+  - **From 2802 (done):** the book's chapter 2
+    (`site/content/learn/book/games-and-screens.md`, *Text by key*) gets
+    a paragraph on the engine's words beneath the game's and on
+    overriding one. It says today that the keys the engine names
+    (`keys.not_mapped`, …) must be in the game's file: change that line,
+    and the book's `site/snippets/files/en.ron` if it no longer needs
+    them.
   - **2227** (parked, PO files): if it is done, `write_po` writes a
     key whose English is the engine's (`Lang::is_engine`) with
     `#: engine` in place of the game's `ui.ron`; if not, nothing to do
@@ -238,7 +243,7 @@ None.
    `crates/cli/src/lib.rs` (lines 60 to 70 and 239 to 260) and
    `crates/ui/src/toy.rs` (lines 339 to 478). Check which of
    2226, 2330, 2333, 2340, 2342, 2346, 2348, 2349, 2353, 2511,
-   2802 and 3043 are done.
+   and 3043 are done.
 2. In `shuyi_assets::lang`, write `merged_english`,
    `Lang::with_engine_english`, `Lang::is_engine`,
    `from_files_with_engine` and `LangPackRon::with_engine_english`,

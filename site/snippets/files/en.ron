@@ -1,0 +1,33 @@
+// Moon Garden's English: every screen's text by key. A `{name}` that is
+// an action's name shows the player's key for it, and `{Cursor}` the four
+// direction keys.
+{
+    // The keys and layouts the engine names.
+    "keys.not_mapped": "! not mapped",
+    "keys.arrows": "arrows",
+    "keys.chord_join": "+",
+    "layout.arrows": "Arrows",
+
+    // ANCHOR: title
+    // The title.
+    "title.name": "Moon Garden",
+    "title.subtitle": "made with Shuyi Engine",
+    "title.help": "{Confirm} plant · {Cancel} leave",
+    // ANCHOR_END: title
+
+    // ANCHOR: garden
+    // The garden.
+    "garden.seeds": "{seeds} seeds left",
+    "garden.help": "{Cursor} move · {Confirm} plant · {Cancel} leave",
+    "garden.won": "Every plot grows. {Confirm} back",
+    "garden.lost": "Out of seeds. {Confirm} back",
+    // ANCHOR_END: garden
+    // ANCHOR: hint
+    // A key's name filled in by the code that builds the line.
+    "hint.plant": "{key} plants",
+    // ANCHOR_END: hint
+
+    // Asked over the garden.
+    "leave.question": "Leave the garden?",
+    "leave.help": "{Confirm} yes · {Cancel} no",
+}

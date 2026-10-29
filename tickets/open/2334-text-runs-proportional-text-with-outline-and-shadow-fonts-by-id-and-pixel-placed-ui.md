@@ -251,9 +251,10 @@ None.
     pixel rectangles when it names one, the reveal still wrapped once,
     on the full text, as 2722 describes; if not, nothing to do (2722
     does it).
-  - **Either order with 2802:** if 2802 is done, the book's chapter on
-    the frame gets a short section on text runs; if not, nothing to do
-    (2802 writes it, as its chapter 4 says).
+  - **From 2802 (done):** the book's chapter 4
+    (`site/content/learn/book/frame-and-skins.md`) gets a short section
+    on text runs (`GlyphBuffer::add_text`, `TextStyle`, fonts by id),
+    its code in `site/snippets/`.
   - **Either order with 2353:** if 2353 is done, its walk
     (`shuyi_platform::harness::walk`) also reads the buffer's runs
     (`texts()`), leaving out a run inside a stop's `skip`: a run with

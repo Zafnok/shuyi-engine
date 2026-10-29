@@ -115,4 +115,16 @@ exclude_re = [
     # doesn't build, and without `std`, which mutants (a `std` build) never
     # compile.
     'tags\.rs:\d+:\d+: replace with_names -> R',
+    # The book's `main` and `tool_program` (`site/snippets/src/quick_start.rs`)
+    # are a game's two binaries shown as functions, as the examples'
+    # `src/main.rs` above: one opens a window, the other reads the
+    # process's own arguments and answers an `ExitCode`, which can't be
+    # compared. The game they run is tested.
+    'quick_start\.rs:\d+:\d+: replace (main|tool_program)',
+    # The book's long-form data has no sounds: its manifest is the default,
+    # so the mutant that returns a leaked default is the same function.
+    '<impl GameData for OwnData>::audio_manifest -> .* with Box::leak\(Box::new\(Default::default\(\)\)\)',
+    # The book's action set has no fixed keys (`&[]`): the mutant that
+    # returns an empty leaked `Vec` is the same function.
+    '<impl ActionSet for GardenAction>::fixed_keys -> .* with Vec::leak\(Vec::new\(\)\)',
 ]

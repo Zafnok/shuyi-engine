@@ -245,9 +245,10 @@ None.
 - **Either order with 1120** (world layers, parked): if 1120 is done,
   its world-layer sprite items draw `paint` and `blend` through the code
   here. If not, add a line to 1120 saying its sprite items carry them.
-- **Either order with 2802** (the book): if 2802 is done, its chapter
-  "The frame and skins" (`site/content/learn/book/`) gets a short
-  section with a tinted sprite and an additive one. If not, nothing.
+- **From 2802 (done):** the book's chapter 4, "The frame and skins"
+  (`site/content/learn/book/frame-and-skins.md`), gets a short section
+  with a tinted sprite and an additive one, its code in
+  `site/snippets/`.
 - **Public types (ADR-0039):** `Blend` (a set that may grow) is
   `#[non_exhaustive]`. `Paint`, `Sprite` and `Overlay` aren't under the
   ADR yet, and neither its table nor 2024 moves them, so they move

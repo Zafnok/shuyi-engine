@@ -284,11 +284,9 @@ for Nick (parked 3047 asks it for crash reports).
 
 - **Docs:** where debug builds keep their sessions, how to save one
   from the debug menu, how to play one with `shuyi run --session`, and
-  how to keep and bless a golden session. **Either order with 2802:**
-  if it is done, this goes in the book's testing chapter; if not, in a
-  new `docs/sessions.md` with its row in the docs map
-  (`docs/README.md`), and 2802 folds that page into the chapter (its
-  clause says so). A line in `docs/platform-backends.md`'s *Session
+  how to keep and bless a golden session. **From 2802 (done):** this
+  goes in the book's chapter 8 (*Testing*,
+  `site/content/learn/book/testing.md`), its code in `site/snippets/`. A line in `docs/platform-backends.md`'s *Session
   records* (2518) says what `shuyi-app` writes. **From 1134 (done):**
   its `shuyi-debug-replay` skill (`skills/shuyi-debug-replay/SKILL.md`)
   gains a section: reproduce a bug from a session record with `run

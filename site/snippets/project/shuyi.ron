@@ -1,0 +1,33 @@
+// Moon Garden's project file, `shuyi.ron` at the root of its folder: what
+// `cargo shuyi <command>` builds and runs. Paths are from this folder.
+(
+    command: "cargo shuyi",
+
+    // The game's tool program, for the commands that run the game.
+    game: (package: "moon-garden", example: "tools", features: ["tools"]),
+
+    // ANCHOR: targets
+    // `cargo shuyi check --target all`: the targets the game ships on,
+    // each with its frame in pixels, its scale (`integer` or `fit`) and
+    // its smallest text's height.
+    targets: {
+        "desktop": (frame: (384, 384), scale: integer, text_px: 16),
+        "web": (frame: (384, 384), scale: integer, text_px: 16),
+    },
+    // ANCHOR_END: targets
+
+    // ANCHOR: web
+    // `cargo shuyi web`: the game's binary built for the browser, and the
+    // page it runs in, written to `dist/web/`.
+    web: (
+        package: "moon-garden",
+        bin: "moon-garden",
+        title: "Moon Garden",
+        dist: "dist/web",
+    ),
+    // ANCHOR_END: web
+
+    // The game's own license texts, each written whole into the
+    // `NOTICES.txt` of every package the tools make.
+    notices: (texts: ["crates/game/files/font/Terminus-LICENSE.txt"]),
+)

@@ -283,8 +283,7 @@ None.
 - finding builds on the LAN by themselves (mDNS, broadcast). 1143
   (parked) finds games to play, not builds;
 - binary messages and `WsTransport` (1141 and 1142, parked);
-- a `web` part in the templates: no ticket has it yet, and 2524's Out
-  leaves it to a ticket of its own if the eval's numbers say so;
+- a `web` part in the templates (2777);
 - the Playdate (2521's ADR notes it);
 - phones' browsers (2407, parked).
 

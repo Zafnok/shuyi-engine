@@ -196,9 +196,9 @@ None.
     these helpers (`range`, `chance`, `pick`, `shuffle`,
     `pick_weighted`, `Bag`) and one stream per purpose
     (`SimRng::stream`, `fork`); `check-skills` passes;
-  - with 2802: if the book is done, its chapter 6 (rules as commands,
-    determinism and the hash) gains a section on luck with a snippet;
-    if not, add a line to chapter 6 in 2802's scope naming that section;
+  - from 2802 (done): the book's chapter 6 (*Rules as commands*,
+    `site/content/learn/book/rules-as-commands.md`) gains a section on
+    luck with a snippet in `site/snippets/`;
   - with 2116: the golden values below stay as asserts in `rng.rs`'s
     tests. 2116's `determinism` job runs `shuyi-core`'s tests on
     wasm32, so they are checked on x64, ARM64 and wasm32 whichever

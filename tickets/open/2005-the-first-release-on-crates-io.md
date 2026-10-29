@@ -231,10 +231,11 @@ The sign-off also:
   github.token }}`) into `public/v<x.y>/` before `cargo xtask llms`
   runs, and `cargo xtask llms` lists it under *Released versions*. A
   release without the file is skipped with a notice.
-- **The book after the release (2802, done before this, since 2808
-  is blocked by it):** the quick start's install line becomes `cargo
+- **The book after the release (2802, done):** the quick start's
+  install line (`site/content/learn/book/quick-start.md`) becomes `cargo
   install --locked shuyi-cli` from crates.io (the `--git` form goes),
-  and Learn adds each crate's docs.rs link beside its `/api/` link.
+  and Learn adds each crate's docs.rs link beside its `/api/` link
+  (`site/templates/learn.html`, over `site/data/api.toml`).
 - **Either order with 3050** (release a game from a tag): if 3050 is
   done, the tag workflow also exports Hello, Grid through the engine's
   `.github/workflows/export.yml` (3050) for each `build` entry of

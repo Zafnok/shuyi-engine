@@ -24,7 +24,7 @@ designed and well documented at all steps."
 §5 sets two kinds of guide in `docs/guides/`: a direction guide for each
 kind of game, and a move guide for each move a game can make between
 stages. The catalog (2003, done) lists the concerns, their answers and
-the modules. The docs site's book (2802) publishes the guides.
+the modules. The website's book (2802, done) publishes the guides.
 
 At the MVP only one direction is built: top-down grid with turns, the
 game's own. The others are parked. Their guides exist from the start as
@@ -96,8 +96,12 @@ say whether a new developer would know where to start.
   - every answer a guide names is in `docs/modules.ron`;
   - every guide links only to modules and tickets that exist;
   - a guide marked planned names at least one open ticket.
-- **The book** (2802) publishes `docs/guides/` with the catalog, as a
-  part after its chapters.
+- **The book. From 2802 (done):** it publishes `docs/guides/` with the
+  catalog, as a part after its chapters
+  (`site/content/learn/book/`, numbered by `extra.chapter`; a page with
+  none lists after them, `site/templates/book.html`): give the guides
+  their own heading on the book's contents and in Learn
+  (`site/templates/learn.html`).
   **Either order with 2808:** the guides reach Learn as Markdown files
   copied into `site/content/learn/` before Zola runs, in `pages.yml`
   and in `ci.yml` alike, each with front matter (`title`,

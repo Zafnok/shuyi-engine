@@ -23,7 +23,7 @@
     <a class="wordmark" href="{{ get_url(path='@/_index.md') }}">Shuyi Engine</a>
     <ul class="nav-links">
       {%- set current = current_path | default(value="/") %}
-      {{ macros::nav_item(label="Learn", path="@/learn.md", prefix="/learn/", current=current) }}
+      {{ macros::nav_item(label="Learn", path="@/learn/_index.md", prefix="/learn/", current=current) }}
       {{ macros::nav_item(label="News", path="@/news/_index.md", prefix="/news/", current=current) }}
       {{ macros::nav_item(label="Examples", path="@/examples/_index.md", prefix="/examples/", current=current) }}
       {{ macros::nav_item(label="Community", path="@/community.md", prefix="/community/", current=current) }}

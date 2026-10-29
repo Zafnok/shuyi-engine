@@ -62,13 +62,14 @@ None.
   builds every example whose `shuyi.ron` has a `web` section, and fails
   one with no card: add `site/content/examples/ecs-garden.md` (its
   title and two lines as its `description`), as `hello-grid.md` is.
-- **Either order with 2802:** if 2802 is done, add the book's chapter
-  "An optional ECS" after its chapter 11 (`shuyi-ecs`, `EcsRules`, the
-  parallel schedule and `ecs-garden`), its code from `site/snippets/`,
-  and add an entity of `shuyi-ecs` to the row of its chapter 11 table
-  (*Coming from another engine*) that maps a node, a GameObject and a
-  Bevy entity, linked to the new chapter; if not, nothing to do (2802
-  writes both).
+- **From 2802 (done):** add the book's chapter "An optional ECS"
+  (`site/content/learn/book/`, `extra.chapter = 12`, its `weight`
+  between chapter 11's and the appendices') after its chapter 11
+  (`shuyi-ecs`, `EcsRules`, the parallel schedule and `ecs-garden`),
+  its code from `site/snippets/` through the `snippet` shortcode, and
+  add an entity of `shuyi-ecs` to the row of chapter 11's table
+  (`from-another-engine.md`, *Coming from another engine*) that maps a
+  node, a GameObject and a Bevy entity, linked to the new chapter.
 - **The catalog:** with the example passing CI, set `shuyi-ecs`'s
   answer in `docs/modules.ron` and its row in `docs/modules.md` to
   `ready` (2107 adds both as `planned`).

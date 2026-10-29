@@ -49,8 +49,8 @@ Why it matters:
   loader and shell (game ADR-0034: macroquad's loader, no
   `wasm-bindgen`).
 - **Other 2D games:** any game on `shuyi-app` builds for the web with
-  `shuyi web` once its `shuyi.ron` has a `web` part. The templates list
-  the `web` target but have no `web` part yet (2528's Out notes it).
+  `shuyi web` once its `shuyi.ron` has a `web` part; 2777 gives the
+  templates one.
 - **The end goal** (2026-10-19): a game an agent makes comes "with a
   web ver". Until Visions of Shuyi launches the agent check measures
   turn-based games (2026-10-20), and those have web builds too. Today

@@ -671,6 +671,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-zola
+      - name: Write the problem codes' pages
+        run: bash site/errors.sh
       - name: Check the site's links
         working-directory: site
         run: zola check --skip-external-links

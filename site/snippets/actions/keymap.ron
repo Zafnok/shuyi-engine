@@ -1,0 +1,32 @@
+// The keymap file of `GardenAction` (`src/actions.rs`): every action of
+// its `ALL` by name, with its default keys and buttons.
+(
+    // ANCHOR: keymap
+    layouts: [
+        (
+            id: "Arrows",
+            name: "layout.arrows",
+            keys: {
+                "Left": ["Left", "a"],
+                "Right": ["Right", "d"],
+                "Plant": ["Enter", "Space"],
+                "Water": ["w"],
+                "Leave": ["Backspace"],
+            },
+        ),
+    ],
+    pad: {
+        "Left": ["DpadLeft", "LeftStickLeft"],
+        "Right": ["DpadRight", "LeftStickRight"],
+        "Plant": ["South"],
+        "Water": ["West"],
+        "Leave": ["East"],
+    },
+    // ANCHOR_END: keymap
+    layout_picker: {
+        "Plant": ["Enter"],
+    },
+    targets: {},
+    repeat: (delay_ms: 300, interval_ms: 70),
+    stick: (press_percent: 50, release_percent: 35),
+)

@@ -100,6 +100,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 3066 | The web build's vendored scripts point at their notices: a header line in `dist`, and a `rel="license"` link on the page |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
+| 2777 | New games build for the web as they are: a `web` part, a `build.rs` and the wasm target in the templates, so the quick start ends in the browser |
 | 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |

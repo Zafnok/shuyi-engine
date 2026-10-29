@@ -261,10 +261,9 @@ None.
   never read `dt`: `shuyi_core::timer`'s `Countdown` and `Every`,
   advanced by one each turn or once per step of `FrameInput::ticks()`.
   `check-skills` passes.
-- **Either order with 2802** (the book): if 2802 is done, chapter 6,
-  *Rules as commands*, gets a short section on time in rules. If not,
-  this PR adds "time in steps or turns (`shuyi_core::timer`, 2115)" to
-  chapter 6's line in 2802's scope.
+- **From 2802 (done):** the book's chapter 6, *Rules as commands*
+  (`site/content/learn/book/rules-as-commands.md`), gets a short
+  section on time in rules, with a snippet in `site/snippets/`.
 - **Either order with 2004** (the guides): if 2004 is done,
   `docs/guides/top-down-grid.md`'s *In real time* section names
   `shuyi_core::timer`'s `Countdown` and `Every` where it says a turn
@@ -321,8 +320,7 @@ None.
 5. Write the frame-rate test in `crates/platform/src/app/tests.rs`,
    beside `a_second_of_frames_steps_sixty_times_and_a_late_one_four`.
 6. Write the rustdoc sentences, the templates' bullet and the two
-   stage skills' lines. Then, by whether 2802 is done, the book's
-   section or 2802's scope line.
+   stage skills' lines. Then the book's section.
 7. Run the gates, the `no_std` build and `cargo xtask check-no-std`
    included.
 
@@ -363,7 +361,7 @@ None.
       module docs and every template's `AGENTS.md` say how to time a
       rule.
 - [ ] The `shuyi-stage-grid` and `shuyi-stage-field` skills, and
-      2802's chapter 6 or its scope, name `shuyi_core::timer`, and
+      the book's chapter 6, name `shuyi_core::timer`, and
       `check-skills` passes.
 - [ ] `shuyi-core`, `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf`, and `cargo xtask check-no-std` passes.

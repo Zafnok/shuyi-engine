@@ -76,11 +76,11 @@ None.
   scene doesn't name (a component added at run time stays).
 - **Packs:** the pack format (ADR-0023) bakes scenes, and the equality
   test covers a scene fixture.
-- **Either order with 2802 (the book):** if 2802 is done, its chapter
-  7 (saves and settings) gets a section on scenes: a world saved to a
-  `*.scene.ron` file, loaded back with its ids for a save, and
-  instanced with new ids, with its snippets in `site/snippets/`; if
-  not, 2802 writes that section (its chapter 7 says so).
+- **From 2802 (done):** the book's chapter 7, *Saves and settings*
+  (`site/content/learn/book/saves-and-settings.md`), gets a section on
+  scenes: a world saved to a `*.scene.ron` file, loaded back with its
+  ids for a save, and instanced with new ids, with its snippets in
+  `site/snippets/`.
 
 **Out (do not do):**
 - an editor for scenes: the editor research (2506, parked) decides

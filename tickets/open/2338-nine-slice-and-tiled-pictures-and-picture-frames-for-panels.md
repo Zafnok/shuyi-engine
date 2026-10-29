@@ -252,9 +252,11 @@ None.
   the panel's frame; if not, this one comes first and 2224's builds on
   it.
 - **Docs:** module docs for `frame::slice` with a doc test of each
-  helper; `GameData::nine_slice`'s doc names the two names; a short
-  section in the book's chapter on the frame if 2802 is done (if not,
-  2802 writes it when it lands, its scope says so).
+  helper; `GameData::nine_slice`'s doc names the two names; and,
+  **from 2802 (done)**, a short section on nine-slice and tiled
+  pictures and picture frames in the book's chapter 4
+  (`site/content/learn/book/frame-and-skins.md`), its code in
+  `site/snippets/`.
 
 **Out (do not do):**
 - a fill field on `Sprite`, a new kind of `Item`, or any change to

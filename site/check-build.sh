@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# The website's build checks (ADR-0048, ticket 2801), run by ci.yml and
-# pages.yml with `zola` on PATH.
+# The website's build checks (ADR-0048, tickets 2801 and 2802), run by
+# ci.yml and pages.yml with `zola` on PATH.
 #
-#   site/check-build.sh                 builds the site twice, with two base
-#                                       URLs, and checks both outputs
+#   site/check-build.sh                 checks the book's sources, writes
+#                                       the problem codes' pages
+#                                       (errors.sh), builds the site twice,
+#                                       with two base URLs, and checks both
+#                                       outputs
 #   site/check-build.sh hosts DIR BASE  checks a built site in DIR, served
 #                                       at BASE, loads nothing from another
 #                                       host (pages.yml, after the examples
@@ -53,6 +56,24 @@ if grep -rniF "zafnok.github.io" "$site_dir" --exclude=check-build.sh --exclude-
   fail "site/ names zafnok.github.io: build links from the base URL (get_url, @/ links)"
 fi
 
+# Every code block of the book comes from site/snippets/, which CI builds
+# and tests, through the `snippet` shortcode: no fenced Rust of its own.
+book="$site_dir/content/learn/book"
+if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*(rust|rs)([^[:alnum:]_-]|$)' "$book"; then
+  fail "the book has a fenced Rust block: write it in site/snippets/ and show it with the snippet shortcode"
+fi
+
+# Learn links each engine crate's API docs: data/api.toml has a row for
+# each `shuyi*` package under crates/, by rustdoc's name for it.
+for manifest in "$site_dir"/../crates/*/Cargo.toml; do
+  package="$(sed -nE 's/^name = "(shuyi[a-z0-9-]*)"$/\1/p' "$manifest" | head -n 1)"
+  [ -n "$package" ] || continue
+  grep -qxF "name = \"${package//-/_}\"" "$site_dir/data/api.toml" ||
+    fail "site/data/api.toml has no row for $package (its API docs, /api/${package//-/_}/)"
+done
+
+bash "$site_dir/errors.sh"
+
 out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 one="https://one.invalid/first/"
@@ -73,9 +94,19 @@ done
 
 # Every built page is there.
 for page in index.html learn/index.html news/index.html news/atom.xml examples/index.html \
-  examples/hello-grid/index.html hello-grid/index.html community/index.html sponsor/index.html; do
+  examples/hello-grid/index.html hello-grid/index.html community/index.html sponsor/index.html \
+  learn/book/index.html learn/errors/index.html learn/errors/sh0001/index.html; do
   [ -f "$out/one/$page" ] || fail "the build has no $page"
 done
+for chapter in "$book"/*.md; do
+  name="$(basename "$chapter" .md)"
+  [ "$name" = _index ] && continue
+  [ -f "$out/one/learn/book/$name/index.html" ] || fail "the build has no learn/book/$name/"
+done
+# The chapters are numbered 1 to the last, none twice and none missing.
+chapters="$(sed -nE 's/^chapter = ([0-9]+)$/\1/p' "$book"/*.md | sort -n | tr '\n' ' ')"
+expected="$(seq 1 "$(echo "$chapters" | wc -w)" | tr '\n' ' ')"
+[ "$chapters" = "$expected" ] || fail "the book's chapters are numbered ${chapters}rather than $expected"
 grep -qF "${one}examples/hello-grid/" "$out/one/hello-grid/index.html" ||
   fail "/hello-grid/ doesn't redirect to /examples/hello-grid/"
 
