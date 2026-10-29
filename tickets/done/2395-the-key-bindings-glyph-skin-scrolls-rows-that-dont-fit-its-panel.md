@@ -1,5 +1,5 @@
 ---
-id: "2394"
+id: "2395"
 title: The Key bindings screen's glyph skin scrolls rows that don't fit its panel
 type: feature
 milestone: MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed: 2026-10-29
 ---
 
-# 2394 — The Key bindings screen's glyph skin scrolls rows that don't fit its panel
+# 2395 — The Key bindings screen's glyph skin scrolls rows that don't fit its panel
 
 ## Context
 
