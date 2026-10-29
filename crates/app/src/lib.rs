@@ -51,7 +51,7 @@
 //!
 //! With the `capture` feature, a desktop build runs a plan instead of the
 //! player's input when `SHUYI_CAPTURE` names one, compares the window with
-//! the raster on the frames it names, and exits ([`capture`], ADR-0052):
+//! the raster on the frames it names, and exits (the `capture` module, ADR-0052):
 //!
 //! ```text
 //! SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p hello-grid --features capture
