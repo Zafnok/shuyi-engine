@@ -126,11 +126,13 @@ None.
   now writes a byte of the frame at a time, for every sprite. Which
   picture column each shown screen column takes is worked out once a
   sprite (`Columns`):
-  - `Columns::Run`, pixel for pixel: at scale 1, when the first and
-    last shown columns are as far apart in the picture as on the
-    screen. That is exact: the sampled columns step by a whole number,
-    never back, so steps that add up to as many as there are are each
-    1. A row's eight pixels then come out of the picture's row in one
+  - `Columns::Run`, pixel for pixel: at scale 1 with `src` from a
+    column of 0 or more, when the first and last shown columns are as
+    far apart in the picture as on the screen. That is exact: the
+    sampled columns are then floors of a line, stepping by 0 or 1 each
+    or by 1 or more, so steps that add up to as many as there are are
+    each 1. (A `src` from left of the picture is sampled rounding
+    towards 0, which can make columns 0, 0, 2: no run.) A row's eight pixels then come out of the picture's row in one
     shift (`byte_at`), flipped with `reverse_bits`, its mask and the
     picture's edges (`on_picture`) the same way.
   - `Columns::Table` otherwise: a `[u16; 400]` on the stack, one
@@ -161,13 +163,17 @@ None.
 - **Tests.** `sprites_draw_as_the_reference_does`: random sprites only
   (positions off a byte, clips, flips, masks, opacities, brightness,
   `Image`, `Dimmed` and `Solid` paints, half of them pixel for pixel,
-  three pictures with a new 45 × 7 one, many bytes a row) over grey
+  a quarter of `src` sides reaching past the picture, four pictures
+  with a new 45 × 7 one with and without a mask, many bytes a row)
+  over grey
   or a backdrop's scene at zoom 1 to 4, in inks and in roles. The
   general property tests draw the new picture and pixel-for-pixel
   sprites too. Unit tests: pixel-for-pixel detection on and a pixel off
   (picture and screen), a clipped run, a run off the picture, and a
-  scale-2 run that only lands its ends right
-  (`pixel_for_pixel_is_found_exactly`); a flipped sprite's first and
+  scale-2 run and one from left of the picture that only land their
+  ends right (`pixel_for_pixel_is_found_exactly`, and the latter drawn
+  in `a_sprite_from_left_of_its_picture_draws_as_the_reference`); a
+  flipped sprite's first and
   last byte; sprites starting and ending inside one byte;
   `a_fight_draws_as_the_reference` as the fighters move.
 - **Deviations.** The byte path's ends are masked bytes, not pixels one at

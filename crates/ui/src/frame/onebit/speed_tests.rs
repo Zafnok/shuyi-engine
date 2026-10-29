@@ -119,11 +119,13 @@ const WIDE_MASK: [u8; 42] = {
 type Size = (i32, i32);
 
 /// Each test picture: its name, its own size and the size of the image
-/// it stands for. `q.png` is `p.png` enlarged 1.5 times.
-const PICTURES: [(&str, Size, Size); 3] = [
+/// it stands for. `q.png` is `p.png` enlarged 1.5 times, and `n.png` is
+/// `w.png` without its mask.
+const PICTURES: [(&str, Size, Size); 4] = [
     ("p.png", (8, 4), (8, 4)),
     ("q.png", (12, 6), (8, 4)),
     ("w.png", (45, 7), (45, 7)),
+    ("n.png", (45, 7), (45, 7)),
 ];
 
 /// The id of test picture `i` of [`PICTURES`].
@@ -153,6 +155,9 @@ impl Images for TestImages {
         }
         if id == picture_of(2) {
             return Image::new(45, 7, &WIDE, Some(&WIDE_MASK));
+        }
+        if id == picture_of(3) {
+            return Image::new(45, 7, &WIDE, None);
         }
         (id == picture_of(0))
             .then(|| Image::new(8, 4, &PICTURE, Some(&PICTURE_MASK)))
@@ -196,14 +201,19 @@ fn px_rect(w: i32, h: i32) -> impl Strategy<Value = Rect> {
     (-12..w, -12..h, 0..w / 2, 0..h / 2).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h))
 }
 
-/// A part of test picture `picture` and where it goes: anywhere at any
-/// size, or half the time shown pixel for pixel (its picture's size,
-/// which an odd part of `q.png` misses by a fraction).
+/// A part of test picture `picture`, at times reaching up to 4 pixels
+/// past its edges, and where it goes: anywhere at any size, or half the
+/// time shown pixel for pixel (its picture's size, which an odd part of
+/// `q.png` misses by a fraction).
 fn src_and_dest(picture: usize) -> impl Strategy<Value = (Rect, Rect)> {
     let (_, (pw, ph), (sw, sh)) = PICTURES[picture];
-    let src = (0..sw, 0..sh).prop_flat_map(move |(x, y)| {
-        (1..=sw - x, 1..=sh - y).prop_map(move |(w, h)| Rect::new(x, y, w, h))
-    });
+    let side = |size: i32| {
+        prop_oneof![
+            3 => (0..size).prop_flat_map(move |at| (Just(at), 1..=size - at)),
+            1 => (-4..size).prop_flat_map(move |at| (Just(at), 1..=size + 4 - at)),
+        ]
+    };
+    let src = (side(sw), side(sh)).prop_map(|((x, w), (y, h))| Rect::new(x, y, w, h));
     (src, px_rect(420, 260), any::<bool>()).prop_map(move |(src, dest, exact)| {
         let dest = if exact {
             Rect::new(dest.x, dest.y, src.w * pw / sw, src.h * ph / sh)
@@ -1071,6 +1081,46 @@ fn pixel_for_pixel_is_found_exactly() {
         ..shrunk
     };
     assert_eq!(run_of(&halved, &eight, once, (1, 4)), Some(0));
+    // From a column left of the picture, columns −0.375, 0.875 and 2.125
+    // round towards 0 as 0, 0 and 2: two apart over three screen columns,
+    // but no run. Only a `src` from a column of 0 or more is taken for one.
+    let left = Sprite {
+        src: Rect::new(-1, 0, 5, 4),
+        dest: Rect::new(0, 0, 4, 4),
+        ..halved
+    };
+    assert_eq!(run_of(&left, &eight, once, (0, 3)), None);
+    // A flipped run cut short at its right: picture columns 159 to 63.
+    assert_eq!(
+        run_of(&sprite(160, true), &image(160), at, (3, 100)),
+        Some(162)
+    );
+}
+
+/// A sprite from a column left of its picture, which rounding towards 0
+/// samples as 0, 0 and 2 over three screen columns, draws as the
+/// reference draws it, not as a run of 0, 1 and 2.
+#[test]
+fn a_sprite_from_left_of_its_picture_draws_as_the_reference() {
+    let black = Rgb::from(Ink::Black.code());
+    for (picture, dest_x) in [(0, 0), (0, 13), (2, 5), (3, 21)] {
+        let mut buf = GlyphBuffer::with_spec(
+            ConsoleSpec::text(50, 15),
+            Cell::new(' ', black, Rgb::from(Ink::Grey.code())),
+        );
+        buf.add_sprite(Sprite::new(
+            picture_of(picture),
+            Rect::new(-1, 0, 5, 4),
+            Rect::new(dest_x, 0, 4, 4),
+            Layer::Over,
+        ));
+        let (fast, slow) = (fast(&buf), slow(&buf));
+        assert!(
+            fast == slow,
+            "{picture}: first differs at {:?}",
+            first_difference(&fast, &slow)
+        );
+    }
 }
 
 /// The wide test picture's part `src` drawn at `dest` over white, maybe

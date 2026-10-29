@@ -1126,7 +1126,7 @@ fn shows(opacity: u8, x: i32, y: i32) -> bool {
 fn shows_byte(opacity: u8, y: i32) -> u8 {
     (0..8)
         .filter(|&x| shows(opacity, x, y))
-        .fold(0, |byte, x| byte | 0x80 >> x)
+        .fold(0, |byte, x| byte + (0x80 >> x))
 }
 
 /// The highest `n` bits of a byte (none for `n` ≤ 0, all for `n` ≥ 8).
@@ -1135,10 +1135,11 @@ fn ones(n: i32) -> u8 {
     (0xff00u16 >> n.clamp(0, 8)) as u8
 }
 
-/// Of the eight columns from `u` on of a picture `width` wide, those on
-/// it, as a byte.
+/// Of the eight columns from `u` on of a picture `width` wide, those left
+/// of its right edge, as a byte. (A sprite shown pixel for pixel shows
+/// none left of its left edge, [`Columns::of`].)
 fn on_picture(u: i32, width: u16) -> u8 {
-    ones(i32::from(width) - u) & !ones(-u)
+    ones(i32::from(width) - u)
 }
 
 /// The eight pixels from column `u` on of a picture's row `row`, its
@@ -1149,9 +1150,9 @@ fn byte_at(row: &[u8], u: i32) -> u8 {
         usize::try_from(i)
             .ok()
             .and_then(|i| row.get(i))
-            .map_or(0, |&byte| u16::from(byte))
+            .map_or(0, |&byte| byte)
     };
-    let pair = get(u >> 3) << 8 | get((u >> 3) + 1);
+    let pair = u16::from_be_bytes([get(u >> 3), get((u >> 3) + 1)]);
     (pair << (u & 7) >> 8) as u8
 }
 
@@ -1171,8 +1172,8 @@ enum Columns {
     /// Pixel for pixel: screen column `x` takes picture column `k + x`,
     /// or `k − x` if `flipped`.
     Run { k: i32, flipped: bool },
-    /// Screen column `x0 + i` takes picture column `table[i]`; one past
-    /// the picture's width is off it.
+    /// Screen column `x0 + i` takes picture column `table[i]`; one of the
+    /// picture's width or more is off it.
     Table {
         x0: i32,
         table: [u16; WIDTH as usize],
@@ -1200,9 +1201,12 @@ impl Columns {
                 image.source_width,
             )
         };
+        // Shown columns lie in `dest`, so from a `src` column of 0 or
+        // more every sample divides a sum of 0 or more: a floor.
+        let steady = at.scale == 1 && src.x >= 0;
         Self::of(
             shown.x0..shown.x1,
-            at.scale,
+            steady,
             sprite.flip_x,
             image.width,
             column,
@@ -1213,23 +1217,27 @@ impl Columns {
     /// one), screen column `x` taking picture column `column(x)` of a
     /// picture `width` wide; `None` if none is on the picture.
     ///
-    /// A sprite at `scale` 1 whose first and last shown column are as far
-    /// apart in the picture as on the screen is pixel for pixel all
-    /// along: its columns step by a whole number each (0 or more,
-    /// [`Image::sample`] never goes back), and steps that add up to as
-    /// many as there are must each be 1. At a bigger scale, a step of 0
-    /// and one of 2 can add up as two of 1.
+    /// If `steady`, each screen column is a point of the sampling of its
+    /// own (scale 1) and each column the floor of a straight line's value
+    /// (no rounding towards 0 of one below 0). Then, if the first and the
+    /// last shown column are as far apart in the picture as on the
+    /// screen, the sprite is pixel for pixel all along: the floor of a
+    /// line steps by the whole numbers on either side of its slope, so
+    /// either by 0 or 1 each, or by 1 or more, and steps that add up to as
+    /// many as there are must each be 1. Otherwise a step of 0 and one of
+    /// 2 can add up as two of 1: at a bigger scale, or where rounding
+    /// towards 0 makes columns −0.5 and 0.5 both 0.
     #[allow(clippy::cast_sign_loss)] // `x` from `x0` on
     fn of(
         shown: Range<i32>,
-        scale: i32,
+        steady: bool,
         flipped: bool,
         width: u16,
         column: impl Fn(i32) -> i64,
     ) -> Option<Self> {
         let (first, last) = (column(shown.start), column(shown.end - 1));
         let span = if flipped { first - last } else { last - first };
-        if scale == 1 && span == i64::from(shown.end - shown.start - 1) {
+        if steady && span == i64::from(shown.end - shown.start - 1) {
             if first.max(last) < 0 || first.min(last) >= i64::from(width) {
                 return None;
             }
@@ -1244,10 +1252,7 @@ impl Columns {
         }
         let mut table = [u16::MAX; WIDTH as usize];
         for (x, u) in shown.clone().zip(&mut table) {
-            *u = u16::try_from(column(x))
-                .ok()
-                .filter(|&u| u < width)
-                .unwrap_or(width);
+            *u = u16::try_from(column(x)).unwrap_or(u16::MAX);
         }
         Some(Self::Table {
             x0: shown.start,
@@ -1359,8 +1364,7 @@ fn draw_sprite<I: Images, S: Shades>(
         };
         let (showing, light) = (opacity[(y & 3) as usize], brightness[(y & 3) as usize]);
         let line = &mut target.frame[y as usize * ROW_BYTES..][..ROW_BYTES];
-        for c in (shown.x0 >> 3)..=((shown.x1 - 1) >> 3) {
-            let x = c * 8;
+        for x in ((shown.x0 & !7)..shown.x1).step_by(8) {
             let lanes = ones(shown.x1 - x) & !ones(shown.x0 - x);
             let (white, drawn) = columns.bits(row, x, lanes);
             let drawn = drawn & lanes & showing;
@@ -1373,8 +1377,9 @@ fn draw_sprite<I: Images, S: Shades>(
                 (None, Paint::Dimmed) => white | InkShades::of(Ink::Grey).row(y),
                 (None, _) => white,
             };
-            let byte = &mut line[c as usize];
-            *byte = *byte & !drawn | bits & drawn;
+            // The paint's bits where it is drawn, the frame's elsewhere.
+            let byte = &mut line[(x >> 3) as usize];
+            *byte ^= (*byte ^ bits) & drawn;
         }
     }
 }
