@@ -122,11 +122,18 @@ fn the_speaker_holds_the_sounds_started_until_they_stop() {
         .iter()
         .filter_map(SoundRequest::from_request)
         .collect();
+    // Heard out of order, they are kept in id order.
+    let [start_hum, start_buzz] = [&requests[0], &requests[1]];
     assert_eq!(
-        hear(&requests[..2]),
+        hear(&[start_buzz.clone(), start_hum.clone()]),
         [(hum, "hum".into()), (buzz, "buzz".into())]
     );
-    assert_eq!(hear(&requests[2..]), [(buzz, "buzz".into())]);
+    // A start of an id already playing replaces it.
+    assert_eq!(
+        hear(&[SoundRequest::start(buzz, "rain", 1.0)]),
+        [(hum, "hum".into()), (buzz, "rain".into())]
+    );
+    assert_eq!(hear(&requests[2..]), [(buzz, "rain".into())]);
     // A frame without them changes nothing, and quitting stops them.
     assert_eq!(hear(&[]).len(), 1);
     s.stop_all();

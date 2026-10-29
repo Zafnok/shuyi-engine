@@ -172,17 +172,20 @@ impl Speaker {
         &self.playing
     }
 
-    /// Follows one sound request: a start adds a sound playing, a stop
-    /// takes it away.
+    /// Follows one sound request: a start adds a sound playing (or
+    /// replaces the one of its id, as a new game's queue counts from 1
+    /// again), a stop takes it away.
     fn hear(&mut self, request: &SoundRequest) {
         match request {
             SoundRequest::Start { id, cue, .. } => {
-                let at = self.playing.partition_point(|p| p.id < *id);
                 let sound = PlayingSound {
                     id: *id,
                     cue: cue.clone(),
                 };
-                self.playing.insert(at, sound);
+                match self.playing.binary_search_by_key(id, |p| p.id) {
+                    Ok(at) => self.playing[at] = sound,
+                    Err(at) => self.playing.insert(at, sound),
+                }
             }
             SoundRequest::Stop { id } => self.playing.retain(|p| p.id != *id),
             _ => {}
