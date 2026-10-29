@@ -121,6 +121,9 @@ fn a_capture_needs_a_frame_before_it() {
         "step 3 (capture(\"b\")): no frame since the last capture",
     );
     assert!(plan(r#"wait(0.01), capture("title")"#).is_ok());
+    // A key's or a button's press is a frame to capture.
+    assert!(plan(r#"keys("Enter"), capture("title")"#).is_ok());
+    assert!(plan(r#"pad("South"), capture("title")"#).is_ok());
 }
 
 #[test]
@@ -155,6 +158,9 @@ fn waits_round_up_to_whole_frames() {
     assert_eq!(wait_frames(1.0 / 60.0), 1);
     assert_eq!(wait_frames(0.5), 30);
     assert_eq!(wait_frames(0.51), 31);
+    // A thousandth of a frame over rounds down, two round up.
+    assert_eq!(wait_frames(0.016_684), 1);
+    assert_eq!(wait_frames(0.016_7), 2);
     assert_eq!(wait_frames(0.000_001), 1);
     assert_eq!(wait_frames(-1.0), 0);
     assert_eq!(wait_frames(f32::NAN), 0);

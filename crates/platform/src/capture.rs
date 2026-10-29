@@ -85,14 +85,11 @@ pub fn wait_frames(seconds: f32) -> u32 {
     if !(seconds.is_finite() && seconds > 0.0) {
         return 0;
     }
-    let product = seconds.min(MAX_WAIT) * 60.0;
-    // 0 to 36 000.
+    // Whole thousandths of a frame, 0 to 36 000 000: one over a whole
+    // number of frames rounds down, two round up.
     #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let whole = product as u32;
-    #[allow(clippy::cast_precision_loss)] // at most 36 000
-    let rest = product - whole as f32;
-    let frames = if rest > 0.001 { whole + 1 } else { whole };
-    frames.max(1)
+    let thousandths = (seconds.min(MAX_WAIT) * 60_000.0) as u32;
+    (thousandths.saturating_add(998) / 1000).max(1)
 }
 
 /// A plan: its steps, checked, and the tolerance its captures are
