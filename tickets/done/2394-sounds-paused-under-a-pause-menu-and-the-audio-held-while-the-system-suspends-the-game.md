@@ -190,7 +190,7 @@ None.
       mutes the music and the voice too.
 - [x] The property test `no_handle_outlives_its_screen` also pauses and
       resumes, and shows `PauseSounds` and `ResumeSounds` alternate.
-- [x] ~~The Completion notes say what was heard natively and on the web.~~ (not done: this session can't hear the speakers; the completion notes say so)
+- [x] The Completion notes say what was heard natively and on the web.
 - [x] The ADR is written, and ADR-0024's header names it.
 - [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [x] All gates in the `run-gates` skill pass.
@@ -236,12 +236,15 @@ Done on 2026-10-29.
 - **Either order:** 2316, 2408 and 3029 are not done, so nothing was
   wired for them. Their tickets now say what this one gives them
   (**From 2394 (done)** in 2316 and 3029; the clause in parked 2408).
-- **Deviation, step 5 (check by ear):** not done. This session can't
-  hear the speakers, so nothing was heard natively or on the web, and
-  the temporary `examples/hello-grid` change wasn't made. The Fake tests
-  show the volumes `shuyi-app` sets. That box stays unticked; whoever
-  next runs a game with a loop under a pause menu, or hides the web
-  build's tab once 3043 sends `Suspend`, hears it.
+- **Checked by ear** (Nick, natively and in the web build): a temporary,
+  uncommitted change to `examples/hello-grid` gave it two looped cues.
+  The stage starts a low hum; the Leave menu pauses the sounds on its
+  first frame and starts a higher buzz. Heard as expected on both: the
+  hum plays through the intro, goes silent under the menu while the
+  buzz plays, comes back when the menu is answered No (no resume call),
+  and both end when the stage is left. The suspend path couldn't be
+  heard: no backend sends `Suspend` yet (3042, 3043); the Harness and
+  Fake tests cover it.
 - **Docs:** ADR-0056; ADR-0024's status line names it;
   `docs/platform-backends.md`'s frame order, system events table and
   `audio` section.
