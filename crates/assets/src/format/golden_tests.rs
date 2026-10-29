@@ -113,7 +113,7 @@ fn check_rows() -> Rows {
         names: BTreeSet::new(),
     };
     let rate = audio::SAMPLE_RATE;
-    let picture = png_file([255, 0, 0, 255, 0, 0, 255, 128]);
+    let picture = png_file([255, 0, 0, 255, 0, 0, 255, 127]);
     rows.format(&PngInfo, "a.png", &picture, None);
     rows.format(&Png, "a.png", &picture, None);
     rows.format(&OneBitInfo, "a.png", &crate::bitmap::tests::sample(), None);
