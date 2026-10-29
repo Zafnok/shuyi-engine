@@ -61,7 +61,8 @@ What Shuyi has today:
 No ticket owns tweens. Parked tickets already wait for this one: 2362's
 camera blends, 2363's fall-off of sound by distance and 2364's
 keyframed tracks take their curves from `shuyi_core::ease`. After MVP
-tickets 2339, 2341 and 2343 may use it, in either order.
+tickets 2339 and 2343 may use it, in either order; 2341's music fades
+(done) move onto it with 2136.
 
 **Why it matters.** Visions of Shuyi asks for no tweens. Its curves
 above keep working, and this ticket changes none of them. Most other 2D

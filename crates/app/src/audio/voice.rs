@@ -516,9 +516,7 @@ mod tests {
                 cue: "beep".into(),
                 volume: 1.0,
             },
-            Request::PlayMusic {
-                cue: "title".into(),
-            },
+            Request::play_music("title", None),
             Request::StopMusic,
         ];
         audio.hear(&mut fake, &others, &[], 0.1);

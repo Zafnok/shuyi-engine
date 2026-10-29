@@ -67,7 +67,7 @@ pub const MAGIC: [u8; 8] = *b"SHUYIPAK";
 /// header, the index, and the binary form of the engine's own kinds. A
 /// change to any of them makes it the next number, and a pack of another
 /// version is refused, never migrated.
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 
 /// The bytes a baked file in a pack starts with.
 pub const BAKED_MAGIC: [u8; 8] = *b"SHUYIBKD";

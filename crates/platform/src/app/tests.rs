@@ -855,7 +855,7 @@ fn the_music_a_frame_asked_for_is_its_commands() {
     assert!(
         app.music()
             .iter()
-            .any(|c| matches!(c, MusicCommand::Start { cue } if theme(cue))),
+            .any(|c| matches!(c, MusicCommand::Start { cue, .. } if theme(cue))),
         "{:?}",
         app.music()
     );

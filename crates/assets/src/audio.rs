@@ -40,12 +40,22 @@ pub const MAX_VOLUME: u8 = 100;
 /// in milliseconds.
 pub const LENGTH_TOLERANCE_MS: u32 = 20;
 
-/// The validated audio manifest.
+/// The validated audio manifest. Build it with `default()` and assign
+/// its fields (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct AudioManifest {
-    /// How long a music track fades out before the next one starts, in
-    /// milliseconds (`audio.md`: 0.5 s, *tunable*).
+    /// How long a music track fades out on a switch or a stop, in
+    /// milliseconds (`audio.md`: 0.5 s, *tunable*): the default
+    /// [`MusicSwitch`]'s `out_ms`.
     pub music_fade_ms: u32,
+    /// How long the next track fades in, in milliseconds (0, the file's
+    /// default: it starts at full gain): the default switch's `in_ms`.
+    pub music_fade_in_ms: u32,
+    /// Whether the next track starts as the old one begins to fade (a
+    /// crossfade) rather than once it has stopped (`false`, the file's
+    /// default): the default switch's `overlap`.
+    pub music_overlap: bool,
     /// Sound cues by id.
     pub sounds: BTreeMap<String, SoundCue>,
     /// Music cues by id.
@@ -54,6 +64,64 @@ pub struct AudioManifest {
     pub pools: BTreeMap<String, Vec<String>>,
     /// Credits by id.
     pub credits: BTreeMap<String, Credit>,
+}
+
+impl AudioManifest {
+    /// How one music track gives way to the next when a request names no
+    /// switch: the manifest's fade-out, fade-in and overlap.
+    #[must_use]
+    pub const fn music_switch(&self) -> MusicSwitch {
+        MusicSwitch::new(
+            self.music_fade_ms,
+            self.music_fade_in_ms,
+            self.music_overlap,
+        )
+    }
+}
+
+/// How one music track gives way to the next (ADR-0054): the old one
+/// fades out over `out_ms`, and the new one fades in over `in_ms`,
+/// starting as the old one begins to fade (`overlap`, a crossfade) or once
+/// it has stopped. Build it with [`new`](Self::new),
+/// [`after_fade`](Self::after_fade) or [`crossfade`](Self::crossfade)
+/// (ADR-0039).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct MusicSwitch {
+    /// How long the old track fades out, in milliseconds.
+    pub out_ms: u32,
+    /// How long the new track fades in, in milliseconds (0: it starts at
+    /// full gain).
+    pub in_ms: u32,
+    /// Whether the new track starts when the old one begins to fade (a
+    /// crossfade), or after it has stopped.
+    pub overlap: bool,
+}
+
+impl MusicSwitch {
+    /// A fade-out of `out_ms`, a fade-in of `in_ms`, overlapping or not.
+    #[must_use]
+    pub const fn new(out_ms: u32, in_ms: u32, overlap: bool) -> Self {
+        Self {
+            out_ms,
+            in_ms,
+            overlap,
+        }
+    }
+
+    /// The old track fades out over `out_ms`, then the new one starts at
+    /// full gain: the engine's switch before crossfades.
+    #[must_use]
+    pub const fn after_fade(out_ms: u32) -> Self {
+        Self::new(out_ms, 0, false)
+    }
+
+    /// A crossfade: the new track fades in over `ms` while the old one
+    /// fades out over the same time.
+    #[must_use]
+    pub const fn crossfade(ms: u32) -> Self {
+        Self::new(ms, ms, true)
+    }
 }
 
 /// A sound effect: one of its files plays each time. Build it with
@@ -149,6 +217,10 @@ pub struct Credit {
 #[serde(deny_unknown_fields)]
 struct RawFile {
     music_fade_ms: u32,
+    #[serde(default)]
+    music_fade_in_ms: u32,
+    #[serde(default)]
+    music_overlap: bool,
     sounds: Vec<RawSound>,
     music: Vec<RawMusic>,
     pools: Vec<RawPool>,
@@ -380,6 +452,8 @@ pub fn from_source(
         cue_ids: BTreeSet::new(),
         manifest: AudioManifest {
             music_fade_ms: raw.music_fade_ms,
+            music_fade_in_ms: raw.music_fade_in_ms,
+            music_overlap: raw.music_overlap,
             ..AudioManifest::default()
         },
     };
@@ -730,6 +804,35 @@ mod tests {
                 music_fade_ms: 500,
                 ..AudioManifest::default()
             })
+        );
+    }
+
+    /// A file without the fade-in and the overlap reads as before: the
+    /// old track fades out, then the new one starts at full gain.
+    #[test]
+    fn the_default_switch_is_the_fade_out_unless_the_file_says_more() {
+        let m = from_source("a.ron", EMPTY, &all_files()).unwrap_or_default();
+        assert_eq!(m.music_switch(), MusicSwitch::after_fade(500));
+        let source = EMPTY.replace(
+            "music_fade_ms: 500,",
+            "music_fade_ms: 800, music_fade_in_ms: 300, music_overlap: true,",
+        );
+        let m = from_source("a.ron", &source, &all_files()).unwrap_or_default();
+        assert_eq!((m.music_fade_in_ms, m.music_overlap), (300, true));
+        assert_eq!(m.music_switch(), MusicSwitch::new(800, 300, true));
+    }
+
+    #[test]
+    fn the_switch_constructors_set_its_three_fields() {
+        let s = MusicSwitch::new(1, 2, true);
+        assert_eq!((s.out_ms, s.in_ms, s.overlap), (1, 2, true));
+        assert_eq!(
+            MusicSwitch::after_fade(500),
+            MusicSwitch::new(500, 0, false)
+        );
+        assert_eq!(
+            MusicSwitch::crossfade(750),
+            MusicSwitch::new(750, 750, true)
         );
     }
 

@@ -21,10 +21,7 @@ fn a_change_of_stack_is_what_closed_from_the_top_then_what_opened() {
 fn a_music_command_is_named_with_its_cue() {
     let cue = || "theme".to_owned();
     assert_eq!(music(&MusicCommand::Load { cue: cue() }), ("load", "theme"));
-    assert_eq!(
-        music(&MusicCommand::Start { cue: cue() }),
-        ("start", "theme")
-    );
+    assert_eq!(music(&MusicCommand::start(cue(), 1.0)), ("start", "theme"));
     assert_eq!(
         music(&MusicCommand::Gain {
             cue: cue(),

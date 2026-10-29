@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2341 — Music crossfades and fade-ins
@@ -261,31 +261,33 @@ After MVP, with their acceptance criteria, and the PR says so.
 
 ## Acceptance criteria
 
-- [ ] With the default switch, every existing `MusicState`, `Game`,
+- [x] With the default switch, every existing `MusicState`, `Game`,
       `shuyi-app` audio and Harness audio test passes, changed only
       where `PlayMusic` now carries `switch: None` and `Start` carries
       `gain: 1.0`.
-- [ ] A crossfade of 1 s: in the frame of the switch the new track gets
+- [x] A crossfade of 1 s: in the frame of the switch the new track gets
       `Load` and `Start { gain: 0.0 }`; once it sounds, half a second
       later the old track's gain is 0.5 and the new one's 0.5; at 1 s
       the old one gets `Stop` and the new one is at 1.0.
-- [ ] With a 0.3 s load delay on the Harness's `Speaker`
+- [x] ~~With a 0.3 s load delay on the Harness's `Speaker`
       (`Harness::music_load_delay`), the old track keeps its gain until
       the new one sounds, and `Ctx::music_clock` names the old track
-      until then and the new one after.
-- [ ] A track whose file never loads: the fades run after
+      until then and the new one after.~~ (not done: the PR passed the
+      Size limit, so this went to 2393 with the `Speaker`'s changes;
+      `MusicState`'s unit tests show the old track holding its gain)
+- [x] A track whose file never loads: the fades run after
       `LOAD_WAIT_SECS`, and the old track is stopped.
-- [ ] A third request during an overlap: never more than two tracks
+- [x] A third request during an overlap: never more than two tracks
       between `Load` and `Stop`, checked over random request sequences.
-- [ ] The first track after silence fades in when `music_fade_in_ms`
+- [x] The first track after silence fades in when `music_fade_in_ms`
       is set.
-- [ ] An `audio.ron` without the new fields reads as before; one with
+- [x] An `audio.ron` without the new fields reads as before; one with
       them gives the switch it says.
-- [ ] `shuyi-app`: a `Start` with gain 0.0 plays at volume 0, and two
+- [x] `shuyi-app`: a `Start` with gain 0.0 plays at volume 0, and two
       tracks play at once during an overlap (the fake backend's calls).
-- [ ] `pack::VERSION` is one higher and the pack snapshot is accepted.
-- [ ] The ADR is written, with its row in `docs/adr/README.md`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `pack::VERSION` is one higher and the pack snapshot is accepted.
+- [x] The ADR is written, with its row in `docs/adr/README.md`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -302,4 +304,136 @@ After MVP, with their acceptance criteria, and the PR says so.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done.** `MusicSwitch` (`shuyi_assets::audio`, re-exported from
+`shuyi_ui::audio`; `#[non_exhaustive]` with `new`, `after_fade` and
+`crossfade`), the manifest's optional `music_fade_in_ms` and
+`music_overlap` and `AudioManifest::music_switch()`,
+`AudioRequest::PlayMusic`'s `switch` with `AudioQueue::play_music_with`,
+`MusicCommand::Start`'s `gain`, and `MusicState::with_switch` and
+`heard`, called from `Game::set_music_playing`. `shuyi-app`'s player
+starts a track at its `Start`'s gain. ADR-0054 (0053 is taken by the
+open PR of 2019) extends ADR-0004 §6.
+
+How `MusicState` keeps rules 1 to 7: at most two tracks, `current` (the
+older) and `next`; each has a `Ramp`, a straight line from the gain it
+had toward 0 or 1 at one whole fade per `out_ms` or `in_ms`. A fade
+from part-way takes its share of the time, and a fade already going the
+same way at the same pace keeps its progress, which is today's rule for
+a switch during a fade and keeps every old test's exact gains.
+
+**Deviations.**
+
+- **Size.** The PR came to about 1,100 changed lines without the ADR and
+  the snapshot, mostly `MusicState`'s tests. As the ticket's *Size*
+  says, the `Speaker`'s changes and the Harness test with a load delay
+  went to **2393** with their acceptance criteria. The Harness test here
+  checks a crossfade without a delay, in the music commands and the
+  clock.
+- **Rules 5 and 6 read the state, not the request:** "during an
+  overlap" means the incoming track has been started, and asking again
+  for the track fading out fades the incoming one out when it has
+  started and stops it when it was only loaded (today's case). A
+  switch without overlap during a crossfade stops the older track, and
+  the new one starts once the newer has faded out.
+- `MusicState::new(fade_secs)` keeps its meaning to the millisecond (it
+  builds `MusicSwitch::after_fade` from the seconds, rounded).
+- `AudioManifest` became `#[non_exhaustive]` (ADR-0039 kind 4: built
+  with `default()` and assignments); the toy's literal changed so.
+- The golden table's `audio manifest: audio-manifest` row moved with
+  the binary form (`cargo xtask golden --bless`).
+- 3029 isn't done, so the change is in `shuyi-app`'s player; 3029's
+  clause now says it moves with the rest. 2136 isn't done: its clause
+  now says what to move (each `Ramp`).
+
+**Follow-up:** 2393 (the `Speaker` plays two tracks, a Harness test
+with a load delay).
+
+**For the game:** game#1080 (camp's fades) moves the pin past this
+change; its PR doesn't exist yet. Its `audio.ron` needs no change, and
+what it hears doesn't change. The game's Playdate player
+(`crates/playdate/src/audio.rs`) matches `MusicCommand::Start { cue }`:
+it becomes `Start { cue, gain, .. }` and should start the track at that
+gain. Camp's 5 s of quiet between tracks needs a fade to silence of
+3 s, but `stop_music` fades over the default's `out_ms` (a fade length
+per stop is this ticket's Out): 1080 can raise it through the game's
+`engine-change` skill if it can't make the schedule otherwise.
+
+**For Nick:** games can now fade music in, and blend one track into the
+next, by one line in their `audio.ron` or one call per switch. Visions
+of Shuyi hears nothing different.
+
+Breaking: shuyi-ui: audio::AudioRequest::PlayMusic: gains `switch: Option<MusicSwitch>` and is non-exhaustive: build it with `AudioRequest::play_music(cue, None)` and match it with `PlayMusic { cue, .. }`.
+
+```migration
+since: 0.1.0
+what: A request for music carries how to switch to it, and is built with a constructor.
+old: "AudioRequest::PlayMusic { cue }"
+new: "AudioRequest::play_music(cue, switch)"
+before: |
+  let theme = AudioRequest::PlayMusic { cue: "theme".into() };
+  if let AudioRequest::PlayMusic { cue } = request {}
+after: |
+  let theme = AudioRequest::play_music("theme", None);
+  if let AudioRequest::PlayMusic { cue, .. } = request {}
+find: ["PlayMusic { cue }", "PlayMusic { cue: "]
+```
+
+Breaking: shuyi-ui: audio::MusicCommand::Start: gains `gain: f32`, the gain the track starts at, and is non-exhaustive: a backend plays the track at that gain and matches `Start { cue, gain, .. }`; build it with `MusicCommand::start(cue, gain)`.
+
+```migration
+since: 0.1.0
+what: A track's Start says the gain it starts at (0 for one that fades in).
+old: "MusicCommand::Start { cue }"
+new: "MusicCommand::Start { cue, gain, .. }, MusicCommand::start(cue, gain)"
+before: |
+  MusicCommand::Start { cue } => player.start(cue, 1.0),
+after: |
+  MusicCommand::Start { cue, gain, .. } => player.start(cue, *gain),
+find: ["Start { cue }"]
+```
+
+Breaking: shuyi-assets: audio::AudioManifest: gains `music_fade_in_ms` and `music_overlap` and is non-exhaustive: build it with `AudioManifest::default()` and assign its fields. An `audio.ron` reads as before.
+
+```migration
+since: 0.1.0
+what: The audio manifest has a default fade-in and overlap, and is built with default() and assignments.
+old: "AudioManifest { music_fade_ms: 500, ..AudioManifest::default() }"
+new: "AudioManifest::default(), then assign music_fade_ms"
+before: |
+  let mut audio = AudioManifest {
+      music_fade_ms: 500,
+      ..AudioManifest::default()
+  };
+after: |
+  let mut audio = AudioManifest::default();
+  audio.music_fade_ms = 500;
+find: ["AudioManifest {"]
+```
+
+Breaking: shuyi-assets: pack::VERSION: 4 (the audio manifest's binary form has the two fields): a pack baked before is refused; bake it again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: Packs are at version 4; one baked before is refused until it is baked again.
+old: pack::VERSION 3
+new: pack::VERSION 4
+before: |
+  // a pack baked by an engine before this one
+after: |
+  // the same pack, baked again with `shuyi bake`
+```
+
+Breaking: shuyi-assets: formats.ron "audio manifest: audio-manifest": the manifest's state hash moved with its two new fields; a game's own golden row of its audio manifest moves the same way (bless it).
+
+```migration
+since: 0.1.0
+what: An audio manifest's state hash changed with its two new fields.
+old: '"audio manifest: audio-manifest": 51a06dc742cd9913'
+new: '"audio manifest: audio-manifest": 7bca5ef50c2dd0fe'
+before: |
+  // the game's golden table, as blessed before
+after: |
+  // the same table after `cargo xtask golden --bless`
+```
+
+Book: none, the book has no chapter on sound yet; `MusicSwitch`'s and `AudioQueue::play_music_with`'s rustdoc and ADR-0054 say how to switch.

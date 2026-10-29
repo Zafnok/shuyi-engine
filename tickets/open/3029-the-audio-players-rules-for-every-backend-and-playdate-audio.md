@@ -74,11 +74,9 @@ completed:
   (2363, parked) and a loop region for intro-then-loop music (the
   ticket 2902 writes, parked).
 
-**From 2815 (done):** the home page's Sound card keeps a status written
-by hand, because no ticket here shipped today's sound. The first of 3029
-and 2341–2345 to be done moves it to `tickets = ["3029", "2341", "2342",
-"2343", "2344", "2345"]` in `site/data/features.toml`, drops its `status`
-and the comment above it, and gives it back a link text naming them.
+**From 2815 (done):** the home page's Sound card names its tickets
+(`tickets = ["3029", "2341", "2342", "2343", "2344", "2345"]` in
+`site/data/features.toml`, moved there by 2341).
 
 ## Nick input
 
@@ -161,11 +159,11 @@ None.
   sends on the lock and the system menu holds the sound. If 2344 isn't
   done, 2344 adds them where this ticket put the rules, and calls
   `pause` and `resume` for them.
-- **Either order with 2341** (music crossfades): if 2341 is done,
-  `MusicCommand::Start`'s `gain` and two tracks sounding at once during
-  an overlap move with the rest, and the Playdate backend opens a second
-  file player for the incoming track during an overlap. If not, 2341
-  changes the rules in their shared place once this is done.
+- **From 2341 (done):** `shuyi-app`'s player starts a track at
+  `MusicCommand::Start`'s `gain` and plays two tracks at once during a
+  crossfade (ADR-0054); both move with the rest, and the Playdate
+  backend opens a second file player for the incoming track during an
+  overlap.
 - **Either order with 2363 (parked, positional sound):** if 2363 is
   done, `shuyi-app`'s `Backend::play` already takes a pan and the trait
   has `can_pan`. Move them with the rest. The Playdate backend can pan:
@@ -225,7 +223,7 @@ may need an import path changed in that PR.
 ## Implementation steps
 
 1. Read `shuyi-app`'s audio module and its tests; read the game's
-   Playdate audio and conversion. Check whether 2225, 2341, 2342, 2343,
+   Playdate audio and conversion. Check whether 2225, 2342, 2343,
    2344, 2345, 2378, 2363, 2725, 3024, 3027 and 3061 are done (the
    either-order clauses).
 2. Move the rules behind the backend trait; desktop tests unchanged.
@@ -238,8 +236,8 @@ may need an import path changed in that PR.
 - [ ] `shuyi-app`'s audio tests pass unchanged.
 - [ ] Host tests of the Playdate audio with a fake SDK: a cue plays at
       its volume; a fade between two tracks opens the second before
-      closing the first; the music clock follows the file player; if
-      2341 is done, a crossfade has both file players sounding, their
+      closing the first; the music clock follows the file player; a
+      crossfade has both file players sounding, their
       volumes moving opposite ways.
 - [ ] The example exported for the Playdate plays a sound in the
       Simulator, or the reason it can't is recorded.

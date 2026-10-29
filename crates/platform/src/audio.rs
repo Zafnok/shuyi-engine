@@ -83,8 +83,9 @@ pub struct AudioFrame<'a> {
 pub trait Audio {
     /// The music sounding at `now`: its cue and the seconds since it really
     /// started (once its file had loaded), or `None` in silence: nothing
-    /// asked for, a track still loading or whose file failed. During a
-    /// fade, the track fading out.
+    /// asked for, a track still loading or whose file failed. Of two
+    /// tracks sounding (a crossfade), the newest: the old one until the
+    /// new one has loaded.
     fn music_playing(&self, now: Millis) -> Option<(&str, f64)>;
 
     /// Plays one frame's `frame` of audio at `now`: the volumes first, then
@@ -157,12 +158,7 @@ mod tests {
             Some(2)
         );
         assert_eq!(play(AudioRequest::StopVoice), Some(SoundRequest::StopVoice));
-        assert_eq!(
-            play(AudioRequest::PlayMusic {
-                cue: "theme".into()
-            }),
-            None
-        );
+        assert_eq!(play(AudioRequest::play_music("theme", None)), None);
         assert_eq!(play(AudioRequest::StopMusic), None);
     }
 

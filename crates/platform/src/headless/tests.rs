@@ -17,7 +17,7 @@ fn load(cue: String) -> MusicCommand {
 }
 
 fn start(cue: String) -> MusicCommand {
-    MusicCommand::Start { cue }
+    MusicCommand::start(cue, 1.0)
 }
 
 fn stop(cue: String) -> MusicCommand {

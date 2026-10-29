@@ -157,7 +157,7 @@ impl Speaker {
     /// `Stop` (or a fresh `Load`) of that track ends it.
     fn apply(&mut self, command: &MusicCommand, now: Millis) {
         match command {
-            MusicCommand::Start { cue } => self.started = Some((cue.clone(), now)),
+            MusicCommand::Start { cue, .. } => self.started = Some((cue.clone(), now)),
             MusicCommand::Stop { cue } | MusicCommand::Load { cue } => {
                 if self.started.as_ref().is_some_and(|(c, _)| c == cue) {
                     self.started = None;

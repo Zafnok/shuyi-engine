@@ -261,14 +261,17 @@ on each OS.
 The sound device:
 
 - `music_playing(now)`: the music cue sounding and the seconds since it
-  really started (once its file loaded), or `None`;
+  really started (once its file loaded), or `None`; of two tracks
+  sounding (a crossfade), the newest;
 - `play(&frame, now)`: one frame's audio. Set the volumes first
   (`music_volume` and `voice_volume` reach what is already playing), then
   play the `SoundRequest`s in order (a sound cue at its manifest volume
   times its own and the sound volume; a voice clip by its file in the
   game's voice folder; stop the voice; the clips coming, to load ahead),
-  then apply the `MusicCommand`s (load, start, fade, stop), and check on
-  what is still loading. It is called every frame, with nothing to play
+  then apply the `MusicCommand`s (load, start at a gain, fade, stop), and
+  check on what is still loading. Every track started and not stopped
+  plays, so two sound at once in a crossfade, each at its own gain
+  (ADR-0054). It is called every frame, with nothing to play
   too;
 - `stop_all()`: the game quit.
 

@@ -196,12 +196,12 @@ impl<G: GameData> Game<G> {
     }
 
     /// A game showing the screens of `stack`, with the game's `hooks`,
-    /// already drawn. Music fades for as long as the audio manifest says.
+    /// already drawn. Music switches as the audio manifest's default switch
+    /// says ([`AudioManifest::music_switch`]).
     pub fn with_stack(ctx: Ctx<G>, stack: ScreenStack<G>, hooks: GameHooks<G>) -> Self {
         let input = InputState::new(ctx.keymap.clone()).starting_on(ctx.device);
         let blank = ctx.game.blank_cell(&ctx.palette);
-        #[allow(clippy::cast_precision_loss)] // A fade is far shorter than 2^24 ms.
-        let fade_secs = ctx.game.audio_manifest().music_fade_ms as f32 / 1000.0;
+        let switch = ctx.game.audio_manifest().music_switch();
         let mut game = Self {
             stack,
             input,
@@ -209,7 +209,7 @@ impl<G: GameData> Game<G> {
             ctx,
             hooks,
             quit: false,
-            music: MusicState::new(fade_secs),
+            music: MusicState::with_switch(switch),
             audio_out: Vec::new(),
             music_out: Vec::new(),
             ticks: 0,
@@ -288,11 +288,13 @@ impl<G: GameData> Game<G> {
     /// cue and the seconds since the track really started, or `None` in
     /// silence. The platform knows (a track starts once its file has
     /// loaded) and calls this before every [`frame`](Self::frame), so
-    /// screens read a clock at most one frame old.
+    /// screens read a clock at most one frame old. The music's fades learn
+    /// from it when a new track sounds ([`MusicState::heard`]).
     pub fn set_music_playing(&mut self, playing: Option<(&str, f64)>) {
         let manifest = self.ctx.game.audio_manifest();
         self.ctx.music_clock =
             playing.and_then(|(cue, elapsed)| MusicClock::from_elapsed(manifest, cue, elapsed));
+        self.music.heard(self.ctx.music_clock.as_ref());
     }
 
     /// Tells the game how the platform paces its frames: the frame cap it
@@ -583,7 +585,7 @@ impl<G: GameData> Game<G> {
 fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
     match request {
         AudioRequest::PlaySound { cue, .. } => manifest.sounds.contains_key(cue),
-        AudioRequest::PlayMusic { cue } => manifest.music.contains_key(cue),
+        AudioRequest::PlayMusic { cue, .. } => manifest.music.contains_key(cue),
         AudioRequest::StopMusic
         | AudioRequest::PlayVoice { .. }
         | AudioRequest::StopVoice

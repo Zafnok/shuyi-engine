@@ -435,7 +435,7 @@ fn changes(before: &[&str], after: &[&str]) -> (Vec<String>, Vec<String>) {
 fn music(command: &MusicCommand) -> (&'static str, &str) {
     match command {
         MusicCommand::Load { cue } => ("load", cue),
-        MusicCommand::Start { cue } => ("start", cue),
+        MusicCommand::Start { cue, .. } => ("start", cue),
         MusicCommand::Gain { cue, .. } => ("gain", cue),
         MusicCommand::Stop { cue } => ("stop", cue),
     }
