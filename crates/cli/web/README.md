@@ -166,3 +166,61 @@ turns on a feature `web.features` lists) and packages it with the shell. With
 otherwise skips that step silently. Writes `NOTICES.txt` beside the page.
 Prints the output folder and the wasm binary's size. Serve that folder over HTTP (any static file server; the
 WASM binary must not be opened as a `file://` URL).
+
+## Checked in CI
+
+CI's `web-render` job (ticket 2019, [ADR-0053](../../../docs/adr/0053-the-web-build-checked-in-headless-chromium-playwright-for-python-and-a-capture-mode-that-logs.md)) opens web builds in headless Chromium
+with [`tools/web-check/check.py`](../../../tools/web-check/check.py)
+(Playwright for Python). It serves the folder on `127.0.0.1` and records
+every console message, page error and failed request (a status of 400 or
+more, `/favicon.ico` aside). In order:
+
+1. `check.py fixtures`: the three pages in `tools/web-check/fixtures/`
+   must fail, naming a console error, a missing `.wasm` and a canvas of
+   one colour.
+2. `check.py boot` on every example `pages.yml` publishes (each one whose
+   `shuyi.ron` has a `web` part), built with `cargo shuyi web --release`:
+   five seconds of frames, then it fails on a console error, a page error,
+   a failed request, or a canvas of one colour.
+3. The same page with `var register_plugin;` taken out must fail (the
+   error game ticket 0225 fixed).
+4. `check.py capture` on Hello, Grid's capture build (`cargo shuyi web
+   --release --capture`, its `capture/frames.ron` beside the page as
+   `capture.ron`) and on the render card (`shuyi-app`'s `render_card`
+   example built for `wasm32-unknown-unknown` with `capture`, beside this
+   folder's `index.html` and scripts, at `--size 768x576`). A capture
+   build runs its plan, reads the canvas in WebGL and compares it with the
+   raster inside the page, and logs a line per capture to the console:
+   `shuyi-capture: ` and its line of `capture.txt`, an error when it fails.
+   It stops at the first failure, logs `shuyi-capture: done` and keeps
+   that frame on the page. `check.py` waits for `done` (two minutes at
+   most) and fails on a console error.
+
+Each page's canvas (`page.png`) and console (`console.txt`) are uploaded
+as the job's artifact, and the consoles are in its summary.
+
+What the runner needed: no GPU, so Chromium draws WebGL with SwiftShader
+(`--use-angle=swiftshader --enable-unsafe-swiftshader`, always, so a
+machine with a GPU gets the same pixels). Frames advance in the headless
+page on their own. The captures match the raster exactly, within the
+plans' own tolerance: the web needs none of its own.
+
+A new console error is fixed, or added to `ALLOWED_CONSOLE_ERRORS` in
+`check.py` with the reason it is harmless. Warnings never fail a page.
+
+To run it yourself (Python 3; it isn't one of the local gates):
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install --require-hashes -r tools/web-check/requirements.txt
+.venv/bin/python -m playwright install chromium
+.venv/bin/python tools/web-check/check.py boot examples/hello-grid/dist/web
+```
+
+(`.venv\Scripts\` on Windows.) `--out <dir>` says where `page.png` and
+`console.txt` go (`target/web-check/<mode>` unless given), `--seconds N`
+how long `boot` runs, `--size WxH` the page's size (`784x784`, Hello,
+Grid's window, unless given). `tools/web-check/requirements.txt` is made
+from `requirements.in` by hand with `pip-compile --generate-hashes
+--strip-extras requirements.in` (pip-tools), every package pinned with its
+hashes; Dependabot moves them weekly.

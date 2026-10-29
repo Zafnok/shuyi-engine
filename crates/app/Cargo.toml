@@ -41,8 +41,9 @@ link = ["shuyi-platform/link", "dep:image", "dep:getrandom"]
 # `capture`: the capture mode (ADR-0052, ticket 2018). With
 # `SHUYI_CAPTURE=<plan>` set, the game runs as the plan says, its window's
 # pixels are compared with the raster's, and the process exits. On the web
-# it builds and does nothing yet (ticket 2019). Off by default; never in a
-# shipped build.
+# it runs `capture.ron` beside the page and logs each capture to the
+# browser's console (ticket 2019). Off by default; never in a shipped
+# build.
 capture = ["shuyi-platform/capture", "shuyi-ui/raster", "dep:image"]
 
 [dependencies]
@@ -56,6 +57,11 @@ shuyi-platform = { path = "../platform", features = ["heap"] }
 # is the one `#[global_allocator]`, shared with `shuyi-cli`'s.
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
 macroquad.workspace = true
+# The link's picture of the window as a PNG, and the capture mode's: the
+# version macroquad already uses, PNG only (the `link` and `capture`
+# features). On every target: the render card's example encodes its
+# pictures with it on the web too (ticket 2019).
+image = { version = "0.24", default-features = false, features = ["png"], optional = true }
 
 # Storage on the web (ticket 0207): `localStorage`. Native resolves its
 # data directory by hand (see storage/native.rs) rather than pulling in the
@@ -70,10 +76,6 @@ gilrs = "0.11.2"
 # The trace file `SHUYI_PERF` names: each frame's record as a JSON line
 # (ADR-0046).
 serde_json = "1"
-# The link's picture of the window as a PNG, and the capture mode's: the
-# version macroquad already uses, PNG only (the `link` and `capture`
-# features).
-image = { version = "0.24", default-features = false, features = ["png"], optional = true }
 # The link's token: 128 bits from the system (the `link` feature; on the
 # web it would need `wasm-bindgen`).
 getrandom = { version = "0.4", default-features = false, optional = true }
@@ -89,6 +91,11 @@ shuyi-app = { path = ".", features = ["link", "capture"] }
 shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
 # A voice variant for the voice player's tests.
 serde.workspace = true
+
+# The tests run on native alone. These two would pull `getrandom` into the
+# render card's web build (an example builds with the dev-dependencies),
+# and on the web it needs `wasm-bindgen`.
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tempfile = "3"
 # Variant picking property test (audio.rs, ticket 0212).
 proptest.workspace = true
@@ -96,6 +103,6 @@ proptest.workspace = true
 [[example]]
 # The render card (ticket 2392, ADR-0052 §6): every kind of thing a frame
 # draws, in the window and compared with the raster. CI's `render` job
-# runs it under Xvfb.
+# runs it under Xvfb, and `web-render` in headless Chromium (ticket 2019).
 name = "render_card"
 required-features = ["capture"]

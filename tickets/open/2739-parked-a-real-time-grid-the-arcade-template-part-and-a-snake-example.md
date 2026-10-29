@@ -260,7 +260,8 @@ None. When it unparks is his call (above).
     `/examples/snake/`, gets its card (`site/content/examples/snake.md`)
     in the Examples section, and `/snake/` redirects there (`aliases` in
     the card's front matter);
-  - if 2019 is done, its headless browser job opens it too. If 3004 is
+  - 2019's `web-render` job (done) boots it too: it loops over the
+    examples. If 3004 is
     done, `shuyi export web` builds it. If 3010 is done, `shuyi export
     playdate` builds it, and the PR says whether it runs in the Playdate
     Simulator (if the SDK is installed where the PR is made); if not,

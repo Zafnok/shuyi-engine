@@ -44,6 +44,20 @@ updates:
           - minor
           - patch
 
+  # The web build's checker (ticket 2019): Playwright for Python and what
+  # it pulls in, pinned with their hashes in tools/web-check/requirements.txt,
+  # which pip-compile makes from requirements.in. CI only, never shipped.
+  - package-ecosystem: pip
+    directory: "/tools/web-check"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      web-check:
+        patterns:
+          - "*"
+
   # The root's workflows and the templates' (which `shuyi new` copies into
   # every game), in one PR a week so the templates move with the root.
   - package-ecosystem: github-actions

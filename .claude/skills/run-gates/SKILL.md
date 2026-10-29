@@ -133,6 +133,21 @@ Xvfb: `cargo run -p shuyi-app --example render_card --features capture`,
 and `SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p
 hello-grid --features capture`.
 
+## The web build in a browser (CI's `web-render` job, CI only)
+
+The `web-render` job (ticket 2019) opens every example's web build, Hello,
+Grid's capture build and the render card in headless Chromium with
+`tools/web-check/check.py`, and fails on a console error, a page error, a
+failed request or a canvas of one colour. It needs Python 3 and
+Playwright, so it isn't one of these gates. Its wasm32 clippy step is in
+the `wasm` job:
+
+```bash
+cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --lib --examples --locked -- -D warnings
+```
+
+Running `check.py` by hand: `crates/cli/web/README.md`, *Checked in CI*.
+
 ## Golden tables (CI's `determinism` job)
 
 Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build

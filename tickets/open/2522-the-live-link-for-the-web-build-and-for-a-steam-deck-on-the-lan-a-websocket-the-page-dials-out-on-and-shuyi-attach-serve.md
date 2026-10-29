@@ -182,19 +182,21 @@ None.
 
     A native build never sees either, so `link::VERSION` stays 2.
   - **The screenshot** reads the canvas as 2521's native screenshot
-    reads the window (`get_screen_data()`, rows flipped, PNG). If that
-    gives an error or a picture of zeros in WebGL (2019's finding, if
-    2019 is done), the answer is an error that says so.
+    reads the window (`get_screen_data()`, rows flipped, PNG). **From
+    2019 (done):** it works in WebGL: the capture mode reads the canvas
+    so in headless Chromium, pixel for pixel equal to the raster
+    (`crates/app/src/readback.rs`'s `window`, compiled on the web with
+    `capture`; its `window_png` is native only until this ticket turns
+    it on there).
   - **Hello, Grid:** `examples/hello-grid/shuyi.ron`'s `web` part gets
     `features: ["link"]` (2521 adds the `link` feature to its
     `Cargo.toml`), so `cargo shuyi web --link` builds it.
-  - **The wasm32 build is linted:** if 2019 is done, its `cargo clippy
-    --target wasm32-unknown-unknown -p shuyi-app` step in CI's `wasm`
-    job gets `link` in its `--features`. If not, the `wasm` job gets
-    `cargo clippy --target wasm32-unknown-unknown -p shuyi-app
-    --features link --lib --locked -- -D warnings`. This proves `link`
-    builds on wasm32 without `getrandom`. The `run-gates` skill gets
-    the same line beside the web build.
+  - **The wasm32 build is linted:** 2019's (done) `cargo clippy
+    --target wasm32-unknown-unknown -p shuyi-app --features capture
+    --lib --examples` step in CI's `wasm` job gets `link` in its
+    `--features` (`capture,link`). This proves `link` builds on wasm32
+    without `getrandom`. The `run-gates` skill's line (its *The web
+    build in a browser* section) changes the same way.
 - **`shuyi attach --serve [--port P] [--origin <url>]`**
   (`crates/cli/src/contract/attach/serve.rs`): a bridge between the
   page and `shuyi attach`. It answers no contract operation: it prints
@@ -237,13 +239,11 @@ None.
   - `crates/app/src/lib.rs`'s module docs: how to run a web build with
     the link.
 - **Either order:**
-  - with 2019 (the web build in CI): if it is done,
+  - from 2019 (the web build in CI, done):
     `tools/web-check/check.py` gains `link <dir>`. It starts `shuyi
     attach --serve`, opens Hello, Grid's link build with the hash it
     prints, runs `shuyi attach … --act Confirm --json`, and checks that
-    the screens changed. `web-render` runs it. If not, check it by hand
-    in the browser pane with screenshots in the PR, and 2019 adds the
-    mode (its clause says so);
+    the screens changed. `web-render` runs it;
   - with 2528 (`shuyi web --serve`): if it is done, `shuyi web --serve
     --link` also starts the bridge and opens the page with its hash.
     If not, 2528 adds that (its clause says so);
@@ -267,9 +267,9 @@ None.
 - **Size.** If the PR passes about 600 changed lines (fixtures and
   snapshots aside), the LAN setting and the Deck's steps go to a
   follow-up ticket (`write-ticket`, After MVP, blocked by this one),
-  and the PR says so. If it is still over, the work in the either-order
-  clauses with 2019 and 2528 goes to that follow-up too, and the PR
-  points their clauses at it.
+  and the PR says so. If it is still over, `check.py`'s `link` mode
+  (2019's checker) and the either-order clause with 2528 go to that
+  follow-up too, and the PR points them at it.
 
 **Out (do not do):**
 - a page on a public host (GitHub Pages, itch.io) dialing the
@@ -294,7 +294,8 @@ None.
    its test host); `crates/cli/web/` and its README,
    `crates/cli/src/web.rs` and its `gamepad.js` tests,
    `crates/app/src/pads/web.rs`, and 1141 and 1142. Read 2019's
-   findings on reading the canvas, if it is done.
+   findings on reading the canvas (`crates/cli/web/README.md`, *Checked
+   in CI*).
 2. Write the ADR, and the line in 2521's ADR's `Status:`.
 3. Add the LAN setting with its pure decision function and tests, and
    the Deck's steps.

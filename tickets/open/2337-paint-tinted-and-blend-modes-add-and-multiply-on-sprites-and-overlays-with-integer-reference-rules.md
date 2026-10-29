@@ -228,13 +228,9 @@ None.
   in `frame_png.rs`.
 - **The render card** (2392, which 2018's `render` job compares with
   the window): add tinted, added and multiplied sprites and an overlay
-  at half opacity to the card (`raster::card`). **Either order with
-  2019** (the web build compared with the raster): if done, the web
-  shows the card too. If not, the PR shows the same frame drawn by the
-  web build and `frame-png`: a local change to `examples/hello-grid`'s
-  skin, not committed, that draws its `tiles.png` tinted and blended
-  (its tools in `examples/hello-grid/src/tools.rs` run `frame-png`),
-  and 2019 shows the card on the web.
+  at half opacity to the card (`raster::card`). **From 2019 (done):**
+  CI's `web-render` job builds the card for the web and compares it with
+  the raster in WebGL, so the web shows them too.
 - **Either order with 2335** (turned sprites): if 2335 is done, its
   turned-sprite paths (`frame-png`'s per-pixel fill, the one-bit
   `dest_pixel` path, `shuyi-app`'s texture made on the CPU) take
@@ -307,8 +303,8 @@ None.
 7. Add `Tinted` and the two materials to `render.rs`, with the pure
    choices (the recolour and draw colour a paint gets; the `BlendState`
    per mode) in functions the tests can call.
-8. Check the window and the web build against `frame-png` (2392's card
-   and 2019, or by hand as above).
+8. Check the window and the web build against `frame-png` (2392's card,
+   in the `render` and `web-render` jobs).
 9. Write the docs and the lines in the other tickets, and run the
    gates.
 
@@ -324,7 +320,7 @@ None.
       its test, and its picture is in the PR.
 - [ ] The desktop and web builds draw tinted, added and multiplied
       sprites and a half-opacity overlay within one step per channel of
-      `frame-png` (2392's card and 2019, or by hand, shown in the PR).
+      `frame-png` (2392's card, in the `render` and `web-render` jobs).
 - [ ] A `Paint::Tinted` sprite in `shuyi-app` never asks for a
       recoloured texture (a unit test of the pure choice).
 - [ ] The one-bit fast renderer still draws as the reference does, with

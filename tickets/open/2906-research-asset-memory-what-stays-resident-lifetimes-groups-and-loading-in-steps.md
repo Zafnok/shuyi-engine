@@ -182,8 +182,8 @@ None. This is technical.
       flag writes one to a file for the web runs below. Nothing is
       committed.
 - **The web**, by hand in Chromium (the desktop app's browser), as
-  `docs/formats.md`'s web numbers were; if 2019 is done, its headless
-  Chromium may drive the runs:
+  `docs/formats.md`'s web numbers were; 2019's headless Chromium
+  (`tools/web-check/check.py`, done) may drive the runs:
   - the `.wasm` size of Hello, Grid from `cargo shuyi web --release`
     (run in `examples/hello-grid`) with its files embedded (today) and
     with them left out (a scratch build), so the bytes the files add are

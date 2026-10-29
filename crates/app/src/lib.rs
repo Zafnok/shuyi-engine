@@ -61,7 +61,9 @@
 //! `SHUYI_CAPTURE_OUT` (`target/capture` unless set), and exits 0 when
 //! every capture is within the plan's tolerance, 1 when one isn't, and 2
 //! when the plan can't run. Without the feature the variable is never
-//! read.
+//! read. On the web a build with the feature always runs the plan
+//! `capture.ron` beside the page, writes no files and logs each capture's
+//! line to the browser's console instead (ticket 2019).
 //!
 //! A desktop debug build writes its frames' times as it runs when
 //! `SHUYI_PERF` names a file (`SHUYI_PERF=perf.jsonl cargo run`): its log
@@ -102,7 +104,7 @@
 
 mod audio;
 mod backend;
-#[cfg(all(feature = "capture", not(target_arch = "wasm32")))]
+#[cfg(feature = "capture")]
 pub mod capture;
 #[cfg(not(target_arch = "wasm32"))]
 mod folder;
@@ -113,9 +115,9 @@ mod pacing;
 pub mod pads;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
-#[cfg(all(
-    any(feature = "link", feature = "capture"),
-    not(target_arch = "wasm32")
+#[cfg(any(
+    all(feature = "link", not(target_arch = "wasm32")),
+    feature = "capture"
 ))]
 mod readback;
 pub mod render;
@@ -355,7 +357,7 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// before the due time shows the last one again, and its input waits for
 /// the next frame that runs.
 pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
-    #[cfg(all(feature = "capture", not(target_arch = "wasm32")))]
+    #[cfg(feature = "capture")]
     if let Some(plan) = capture::requested() {
         capture::run(config, start, plan).await;
         return;

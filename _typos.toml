@@ -32,4 +32,6 @@ extend-exclude = [
     "**/tests/golden/*.ron",
     # proptest's saved failing cases.
     "proptest-regressions/",
+    # The web checker's pinned Python packages: hashes, made by pip-compile.
+    "tools/web-check/requirements.txt",
 ]

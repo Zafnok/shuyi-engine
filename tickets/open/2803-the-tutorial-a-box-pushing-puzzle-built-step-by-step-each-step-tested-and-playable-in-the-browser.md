@@ -101,10 +101,10 @@ None.
   and any Quit in step 06's menu) only where `ctx.platform.can_quit()`,
   as the templates do then. No step played in the browser then freezes
   when the player leaves. If not, 3053 changes the steps when it lands.
-- **Either order with 2019** (the web build checked in CI): if 2019 is
-  done, add a run of `check.py boot` on each step's web build to its
-  `web-render` job, as it runs for the examples. If not, nothing to do
-  (2019 boots every build `pages.yml` publishes when it is worked).
+- **From 2019 (done):** add a run of `check.py boot` on each step's web
+  build to CI's `web-render` job, as its step *Every example's web build
+  boots* runs for the examples (`crates/cli/web/README.md`, *Checked in
+  CI*).
 
 **Out (do not do):**
 - a second tutorial, for a tick game: tick games are 1119's (parked),

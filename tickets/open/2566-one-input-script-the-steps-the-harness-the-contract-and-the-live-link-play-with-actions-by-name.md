@@ -178,10 +178,9 @@ None.
   `capture::Plan` stays as it is: only the step form's steps move (the
   part from 2018 above); if not, nothing to do (2029 adds its session
   form beside the plan's steps as they are then).
-- **Either order with 2019:** if 2019 is done, its web capture run plays
-  2018's plan through `Plan::frames`, so nothing changes there beyond
-  the part from 2018 above; if not, nothing to do (2019 reads the plan
-  as it is then).
+- **From 2019 (done):** its web capture run plays 2018's plan through
+  `Plan::frames` (`crates/app/src/capture.rs`, the same code on the
+  web), so nothing changes there beyond the part from 2018 above.
 - **Either order with 2514:** if 2514 is done, its `Script::then_frames`
   (an inherent method of the type that becomes a re-export) becomes the
   free function `frame_png::then_frames(script: &Script, n: u32) ->

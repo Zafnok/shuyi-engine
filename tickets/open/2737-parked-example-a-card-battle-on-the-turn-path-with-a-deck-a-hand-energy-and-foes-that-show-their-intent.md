@@ -299,8 +299,8 @@ None.
     change;
   - the example gets its card in the Examples section,
     `site/content/examples/<name>.md` (2801, done).
-    If 2019 is done, its `web-render` job runs `check.py boot` on this
-    build too (add it if the job lists the builds by hand).
+    2019's `web-render` job (done) runs `check.py boot` on this build
+    too: it loops over the examples as `pages.yml` does.
 - **A README** in hello-grid's form, with the lines of its own code
   without tests and data (`cargo xtask template-lines` if 2512 is done;
   counted, and said how, if not). The engine's `README.md` names the

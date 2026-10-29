@@ -65,6 +65,7 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0050](0050-a-setting-the-platform-applies-a-request-with-a-serial-confirmed-by-a-report-before-the-frame.md) | A setting the platform applies: a request with a serial, confirmed by a report before the frame | Accepted; extends ADR-0024 and ADR-0039 §3 |
 | [0051](0051-stamped-records-the-engine-version-the-games-word-and-a-fingerprint-of-the-content-and-the-tools-refuse-a-mismatch.md) | Stamped records: the engine's version, the game's word and a fingerprint of the content, and the tools refuse a mismatch | Accepted; extends ADR-0006 §2, ADR-0007 §5 and ADR-0023 §1 |
 | [0052](0052-the-raster-is-the-reference-picture-backends-are-checked-against-it-in-ci-on-software-gl-through-a-capture-mode.md) | The raster is the reference picture: backends are checked against it in CI on software GL, through a capture mode | Accepted; extends ADR-0011 §5 and ADR-0008 §2 |
+| [0053](0053-the-web-build-checked-in-headless-chromium-playwright-for-python-and-a-capture-mode-that-logs.md) | The web build checked in headless Chromium: Playwright for Python, and a capture mode that logs | Accepted; extends ADR-0052 |
 | [0054](0054-music-switches-are-data-todays-fade-as-the-default-a-crossfade-as-two-tracks-with-gains-and-the-clock-on-the-newest-that-sounds.md) | Music switches are data: today's fade as the default, a crossfade as two tracks with gains, and the clock on the newest that sounds | Accepted; extends ADR-0004 §6 |
 
 Template: [`0000-template.md`](0000-template.md).
