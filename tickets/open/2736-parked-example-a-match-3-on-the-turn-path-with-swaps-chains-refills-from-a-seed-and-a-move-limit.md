@@ -258,7 +258,7 @@ each part is one PR.
   line on the index page from its `web.title`. The `run-gates` skill's
   web-build step loops the same way. If an earlier example made the
   loop, nothing changes. The example gets its card,
-  `site/content/examples/<name>.md` (2801, done); if 2019 is done, its headless browser job opens it too.
+  `site/content/examples/<name>.md` (2801, done); 2019's `web-render` job (done) boots it too: it loops over the examples as `pages.yml` does.
 - **A README** in hello-grid's form: how to run it, its files, its
   targets, what each part of the engine does in it, and its own lines
   without tests and data (`cargo xtask template-lines` if 2512 is done;

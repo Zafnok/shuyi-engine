@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A missing .wasm</title>
+</head>
+<body>
+<!-- check.py's fixture: a canvas of two colours, and a `.wasm` that isn't
+     there, which must fail `boot`. The fetch's 404 is caught, so the
+     request alone fails it. -->
+<canvas id="glcanvas" width="64" height="64"></canvas>
+<script>
+  const context = document.getElementById("glcanvas").getContext("2d");
+  context.fillStyle = "#204060";
+  context.fillRect(0, 0, 64, 64);
+  context.fillStyle = "#e0c080";
+  context.fillRect(16, 16, 32, 32);
+  fetch("missing.wasm").catch(() => {});
+</script>
+</body>
+</html>

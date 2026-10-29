@@ -19,11 +19,21 @@
 //!   the console cut out of the window within the plan's tolerance.
 //!
 //! What it writes, under `SHUYI_CAPTURE_OUT` (`target/capture` unless
-//! set), is [`Report`]'s.
+//! set), is [`Report`]'s. Each capture also logs its line, after
+//! [`PREFIX`].
+//!
+//! On the web (ticket 2019) a build with the feature always runs the plan
+//! [`WEB_PLAN`], beside the page (fetched as macroquad loads a file). It
+//! writes no files: the console's lines are the report. The canvas is read
+//! as the window is, in WebGL. After the last capture, or the first that
+//! fails, or when the plan can't run, it logs [`DONE`] and keeps showing
+//! that frame, for a browser driven by a script to see
+//! (`tools/web-check/check.py`).
 //!
 //! The `render_card` example captures the render card
 //! (`shuyi_ui::frame::raster::card`) the same way, with no game: the
-//! pieces it uses are [`window_layout`], [`read_window`] and [`Report`].
+//! pieces it uses are [`window_layout`], [`read_window`], [`report`] and
+//! [`finish`].
 
 use std::path::{Path, PathBuf};
 
@@ -45,6 +55,12 @@ use crate::readback;
 
 /// The variable naming the plan to run.
 pub const PLAN_VAR: &str = "SHUYI_CAPTURE";
+/// The plan a web build runs: the file beside the page.
+pub const WEB_PLAN: &str = "capture.ron";
+/// What every line the capture mode logs starts with.
+pub const PREFIX: &str = "shuyi-capture: ";
+/// The line logged on the web when the run is over, whatever its outcome.
+pub const DONE: &str = "shuyi-capture: done";
 /// The variable naming the folder the captures are written to.
 pub const OUT_VAR: &str = "SHUYI_CAPTURE_OUT";
 /// The folder the captures are written to unless [`OUT_VAR`] says.
@@ -59,27 +75,60 @@ pub const FAILED: i32 = 1;
 /// the window can't be read or its files written.
 pub const CANNOT_RUN: i32 = 2;
 
-/// The plan [`PLAN_VAR`] names, if it is set.
+/// Whether the run stops at the first capture that fails: on the web,
+/// where the page keeps showing that frame.
+const STOP_AT_FAILURE: bool = cfg!(target_arch = "wasm32");
+
+/// The plan to run: on native the one [`PLAN_VAR`] names, if it is set;
+/// on the web always [`WEB_PLAN`].
 pub(crate) fn requested() -> Option<String> {
-    std::env::var(PLAN_VAR).ok()
+    if cfg!(target_arch = "wasm32") {
+        Some(WEB_PLAN.to_owned())
+    } else {
+        std::env::var(PLAN_VAR).ok()
+    }
 }
 
-/// Runs the game as the plan at `path` says, then exits the process.
+/// Runs the game as the plan at `path` says, then [`finish`]es.
 pub(crate) async fn run<G: GameData>(mut config: AppConfig, start: Start<G>, path: String) {
-    let out = std::env::var(OUT_VAR).map_or_else(|_| PathBuf::from(DEFAULT_OUT), PathBuf::from);
-    let code = match plan(&path).await {
-        Ok(plan) => match Report::new(out) {
-            Ok(report) => play(&mut config, start, &plan, report).await,
-            Err(e) => cannot_run(&e),
-        },
-        Err(e) => cannot_run(&format!("{path}: {e}")),
+    let plan = match plan(&path).await {
+        Ok(plan) => plan,
+        Err(e) => return finish(cannot_run(&format!("{path}: {e}")), || ()).await,
     };
+    match report() {
+        Ok(report) => play(&mut config, start, &plan, report).await,
+        Err(e) => finish(cannot_run(&e), || ()).await,
+    }
+}
+
+/// The report of a run: on native, written into the folder [`OUT_VAR`]
+/// names ([`DEFAULT_OUT`] unless set); on the web, the console's lines
+/// alone ([`Report::console`]).
+pub fn report() -> Result<Report, String> {
+    if cfg!(target_arch = "wasm32") {
+        return Ok(Report::console());
+    }
+    let out = std::env::var(OUT_VAR).map_or_else(|_| PathBuf::from(DEFAULT_OUT), PathBuf::from);
+    Report::new(out)
+}
+
+/// Ends a run with `code`. On native the process exits with it. On the
+/// web, where a page doesn't exit, it logs [`DONE`] and calls `redraw`
+/// before each frame from then on, so the last frame stays on the page.
+pub async fn finish(code: i32, mut redraw: impl FnMut()) {
+    if cfg!(target_arch = "wasm32") {
+        info!("{} (exit code {})", DONE, code);
+        loop {
+            redraw();
+            next_frame().await;
+        }
+    }
     std::process::exit(code);
 }
 
 /// Logs why the plan can't run, and gives [`CANNOT_RUN`].
 fn cannot_run(why: &str) -> i32 {
-    error!("capture: {}", why);
+    error!("{}{}", PREFIX, why);
     CANNOT_RUN
 }
 
@@ -91,13 +140,9 @@ async fn plan(path: &str) -> Result<Plan, String> {
     Plan::parse(&text)
 }
 
-/// Plays `plan`'s frames and gives the exit code.
-async fn play<G: GameData>(
-    config: &mut AppConfig,
-    start: Start<G>,
-    plan: &Plan,
-    report: Report,
-) -> i32 {
+/// Plays `plan`'s frames, then [`finish`]es with the exit code, the last
+/// frame shown again on the web.
+async fn play<G: GameData>(config: &mut AppConfig, start: Start<G>, plan: &Plan, report: Report) {
     let mut platform = Capturing {
         backend: Macroquad::new(config),
         files: config.files,
@@ -110,11 +155,17 @@ async fn play<G: GameData>(
         silent: Silent,
     };
     let mut app = App::new(start);
+    let code = play_frames(&mut app, &mut platform, plan).await;
+    finish(code, || app.present_again(&mut platform)).await;
+}
+
+/// Plays `plan`'s frames and gives the exit code.
+async fn play_frames<G: GameData>(app: &mut App<G>, platform: &mut Capturing, plan: &Plan) -> i32 {
     let frames = plan.frames();
     let captures = frames.iter().filter(|f| f.capture.is_some()).count();
     for frame in frames {
         platform.frame = frame;
-        let outcome = app.frame_after(&mut platform, FRAME_DT);
+        let outcome = app.frame_after(platform, FRAME_DT);
         for line in app.take_new_log() {
             crate::print_line(&line);
         }
@@ -124,19 +175,21 @@ async fn play<G: GameData>(
         if let Some(broken) = &platform.broken {
             return cannot_run(broken);
         }
-        if outcome == shuyi_platform::FrameOutcome::Quit {
+        let failed = platform.report.exit_code() == FAILED;
+        if outcome == shuyi_platform::FrameOutcome::Quit || (STOP_AT_FAILURE && failed) {
             break;
         }
         next_frame().await;
     }
     let report = &platform.report;
-    if report.captured() < captures {
+    let stopped = STOP_AT_FAILURE && report.exit_code() == FAILED;
+    if report.captured() < captures && !stopped {
         return cannot_run(&format!(
             "the game quit after {} of the plan's {captures} captures",
             report.captured()
         ));
     }
-    info!("capture: {}", report.summary());
+    info!("{}{}", PREFIX, report.summary());
     report.exit_code()
 }
 
@@ -335,12 +388,15 @@ pub fn cut_out(
     })
 }
 
-/// The captures written so far: for each, `<name>.window.png` and
-/// `<name>.raster.png`, `<name>.diff.png` when it fails, and a line of
-/// `capture.txt`.
+/// The captures so far. Each logs its line of `capture.txt` after
+/// [`PREFIX`]: a pass at the info level, a failure at
+/// the error level. A report in a folder also writes, for each,
+/// `<name>.window.png` and `<name>.raster.png`, `<name>.diff.png` when it
+/// fails, and its line of `capture.txt`.
 #[derive(Debug)]
 pub struct Report {
-    dir: PathBuf,
+    /// The folder the files go in; none for the console alone.
+    dir: Option<PathBuf>,
     lines: Vec<String>,
     failed: usize,
 }
@@ -349,20 +405,29 @@ impl Report {
     /// A report written into `dir`, made if missing, with an empty
     /// `capture.txt`.
     pub fn new(dir: PathBuf) -> Result<Self, String> {
+        std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         let report = Self {
-            dir,
-            lines: Vec::new(),
-            failed: 0,
+            dir: Some(dir),
+            ..Self::console()
         };
-        std::fs::create_dir_all(&report.dir)
-            .map_err(|e| format!("{}: {e}", report.dir.display()))?;
         report.write_lines()?;
         Ok(report)
     }
 
-    /// Writes the capture `name`: the `window`'s picture, the raster's
-    /// `reference` and, if `comparison` fails, its diff, and its line.
-    /// `scale` is the window's. Gives whether it passed.
+    /// A report that writes no files: its lines are logged alone, as on
+    /// the web.
+    pub fn console() -> Self {
+        Self {
+            dir: None,
+            lines: Vec::new(),
+            failed: 0,
+        }
+    }
+
+    /// Adds the capture `name`: logs its line and, in a folder, writes the
+    /// `window`'s picture, the raster's `reference` and, if `comparison`
+    /// fails, its diff, and the line. `scale` is the window's. Gives
+    /// whether it passed.
     pub fn add(
         &mut self,
         name: &str,
@@ -380,9 +445,9 @@ impl Report {
         }
         let line = line(name, window, reference, comparison, scale);
         if passes {
-            info!("capture: {}", line);
+            info!("{}", console(&line));
         } else {
-            error!("capture: {}", line);
+            error!("{}", console(&line));
         }
         self.lines.push(line);
         self.write_lines()?;
@@ -399,35 +464,51 @@ impl Report {
         if self.failed == 0 { PASSED } else { FAILED }
     }
 
-    /// How many passed, as a line of the log.
+    /// How many passed, and where they were written, as a line of the
+    /// log.
     pub fn summary(&self) -> String {
-        format!(
-            "{} of {} captures passed, in {}",
+        let passed = format!(
+            "{} of {} captures passed",
             self.lines.len() - self.failed,
-            self.lines.len(),
-            self.dir.display()
-        )
+            self.lines.len()
+        );
+        match &self.dir {
+            Some(dir) => format!("{passed}, in {}", dir.display()),
+            None => passed,
+        }
     }
 
-    /// `image` as the PNG file `file` of the folder.
+    /// `image` as the PNG file `file` of the folder, if there is one.
     fn write_png(&self, file: &str, image: &raster::Image) -> Result<(), String> {
+        let Some(dir) = &self.dir else {
+            return Ok(());
+        };
         let png = readback::png(&image.rgba, image.width, image.height)?;
-        write(&self.dir.join(file), &png)
+        write(&dir.join(file), &png)
     }
 
-    /// `capture.txt`, a line per capture.
+    /// `capture.txt`, a line per capture, if there is a folder.
     fn write_lines(&self) -> Result<(), String> {
+        let Some(dir) = &self.dir else {
+            return Ok(());
+        };
         let mut text = self.lines.join("\n");
         if !text.is_empty() {
             text.push('\n');
         }
-        write(&self.dir.join("capture.txt"), text.as_bytes())
+        write(&dir.join("capture.txt"), text.as_bytes())
     }
 }
 
 /// Writes `bytes` to `path`.
 fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     std::fs::write(path, bytes).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// A line of `capture.txt` as it is logged: after [`PREFIX`]. On the web
+/// the console's lines are the report.
+fn console(line: &str) -> String {
+    format!("{PREFIX}{line}")
 }
 
 /// A capture's line of `capture.txt`: its name, its size and scale, the

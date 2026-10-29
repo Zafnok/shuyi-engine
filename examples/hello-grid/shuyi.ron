@@ -43,12 +43,16 @@
         "steam-deck": (frame: (384, 384), scale: integer, text_px: 16),
     },
 
-    // `cargo shuyi web --release`: the web build, in `dist/web/`.
+    // `cargo shuyi web --release`: the web build, in `dist/web/`. With
+    // `--capture`, the capture mode: it runs `capture.ron` beside the page
+    // (CI's `web-render` job copies `capture/frames.ron` there) and logs
+    // each capture to the browser's console.
     web: (
         package: "hello-grid",
         bin: "hello-grid",
         title: "Hello, Grid",
         dist: "dist/web",
+        features: ["capture"],
     ),
 
     // The game's own license texts: each goes whole into the

@@ -9,7 +9,7 @@ use macroquad::prelude::get_screen_data;
 /// The window as drawn so far this frame, as a PNG, with its width and
 /// height in pixels. Called after the frame is drawn and before
 /// `next_frame` shows it.
-#[cfg(feature = "link")]
+#[cfg(all(feature = "link", not(target_arch = "wasm32")))]
 pub(crate) fn window_png() -> Result<(Vec<u8>, u32, u32), String> {
     let (bytes, width, height) = window();
     let rgba = upright(&bytes, width as usize * 4);

@@ -116,6 +116,10 @@ jobs:
       - name: Hello, Grid fits every target it lists
         working-directory: examples/hello-grid
         run: cargo shuyi check --target all
+      # The code compiled for the web alone: the capture mode's and the
+      # render card's (ticket 2019).
+      - name: Clippy on the web's code
+        run: cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --lib --examples --locked -- -D warnings
       - name: Build Hello, Grid for the web
         working-directory: examples/hello-grid
         run: cargo shuyi web --release
@@ -208,6 +212,104 @@ jobs:
         with:
           name: render-captures
           path: target/capture/
+          if-no-files-found: ignore
+
+  # The web build checked (ticket 2019): each web build headless Chromium
+  # opens on 127.0.0.1 (tools/web-check/check.py, with Playwright for
+  # Python), WebGL drawn by SwiftShader (no GPU runner). A console error, a
+  # page error, a failed request or a canvas of one colour fails it. First
+  # the checker's own fixtures, which must fail; then every example
+  # pages.yml publishes, booted; then a copy of Hello, Grid's page without
+  # `var register_plugin;` (game ticket 0225), which must fail; then
+  # Hello, Grid's capture build and the render card, each capture compared
+  # with the raster inside the page as the `render` job does on the
+  # desktop. Every page's canvas and console are uploaded.
+  web-render:
+    name: web-render
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Install the checker and Chromium
+        run: |
+          python3 -m venv "$RUNNER_TEMP/web-check"
+          "$RUNNER_TEMP/web-check/bin/pip" install --require-hashes -r tools/web-check/requirements.txt
+          "$RUNNER_TEMP/web-check/bin/python" -m playwright install --with-deps chromium
+      - name: The checker's fixtures fail
+        run: |
+          "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py fixtures --out target/web-check/fixtures
+      # As pages.yml builds them: every example whose shuyi.ron has a
+      # `web` section.
+      - name: Every example's web build boots
+        run: |
+          for ron in examples/*/shuyi.ron; do
+            grep -qE '^[[:space:]]*web:[[:space:]]*\(' "$ron" || continue
+            dir="$(dirname "$ron")"
+            name="$(basename "$dir")"
+            (cd "$dir" && cargo shuyi web --release)
+            rm -rf "target/web/$name"
+            mkdir -p "target/web/$name"
+            cp -r "$dir/dist/web/." "target/web/$name/"
+            "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "target/web/$name" \
+              --out "target/web-check/boot-$name"
+          done
+      - name: A page without `var register_plugin;` fails
+        run: |
+          page="$RUNNER_TEMP/no-register-plugin"
+          cp -r target/web/hello-grid "$page"
+          sed -i '/^  var register_plugin;$/d' "$page/index.html"
+          code=0
+          "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "$page" \
+            --out target/web-check/no-register-plugin > "$RUNNER_TEMP/no-register-plugin.txt" || code=$?
+          cat "$RUNNER_TEMP/no-register-plugin.txt"
+          if [ "$code" != 1 ] || ! grep -qF "register_plugin is not defined" "$RUNNER_TEMP/no-register-plugin.txt"; then
+            echo "::error::check.py didn't fail the page without var register_plugin;"
+            exit 1
+          fi
+      - name: Hello, Grid's plan in the browser
+        working-directory: examples/hello-grid
+        run: |
+          cargo shuyi web --release --capture
+          cp capture/frames.ron dist/web/capture.ron
+          "$RUNNER_TEMP/web-check/bin/python" ../../tools/web-check/check.py capture dist/web \
+            --out ../../target/web-check/capture-hello-grid
+      # The card's window is its 256 × 192 pixels times 3
+      # (crates/app/examples/render_card.rs).
+      - name: The render card in the browser
+        run: |
+          cargo build -p shuyi-app --example render_card --features capture \
+            --target wasm32-unknown-unknown --release --locked
+          page=target/web/render-card
+          rm -rf "$page"
+          mkdir -p "$page"
+          cp target/wasm32-unknown-unknown/release/examples/render_card.wasm crates/cli/web/*.js "$page/"
+          sed -e 's/%TITLE%/Render card/' -e 's/%WASM%/render_card.wasm/' crates/cli/web/index.html > "$page/index.html"
+          "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py capture "$page" --size 768x576 \
+            --out target/web-check/capture-render-card
+      - name: The consoles in the summary
+        if: always()
+        run: |
+          for file in target/web-check/*/console.txt target/web-check/fixtures/*/console.txt; do
+            [ -f "$file" ] || continue
+            {
+              echo "### ${file#target/web-check/}"
+              echo '```text'
+              cat "$file"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: web-render
+          path: target/web-check/
           if-no-files-found: ignore
 
   # `shuyi new` (tickets 1129 and 2501): a game made with each short name
@@ -817,7 +919,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, render, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, render, web-render, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled
