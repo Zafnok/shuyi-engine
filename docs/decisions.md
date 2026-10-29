@@ -1206,3 +1206,32 @@ change in the game, each made in the pin move's own PR.
 - **The first release (2005) no longer waits for 2014.** When the game
   moves from the git revision to released versions, the game's ticket
   for the move keeps its pin moves working on versions.
+
+## 2026-10-28: pictures in the book, a playground, and a site that keeps up with the tickets
+
+Source: Nick, in a session of this repository, after the book (2802)
+went up, and while 2808 (`llms.txt`) was in its pull request:
+
+> "would be good if the book/site also included some screenshots of how
+> things play together, plus a playground, plus if it auto updates as
+> tickets complete (I know the index.html auto updates but the
+> subdirectories like book idk if they auto update as more stuff gets
+> added or not yet)."
+
+> "and the same note for llms.txt"
+
+**Rules:**
+
+- **The book shows the engine at work:** its chapters carry pictures of
+  a game running, made by the engine's own tools from a script and
+  checked like the book's code, so a picture can't go stale (2813).
+- **The site has a playground:** a game playing in the page beside its
+  data files, which a reader edits and runs again with no install. It
+  edits files, not Rust code: compiling Rust in the browser needs a
+  build server, which costs money (3069, 2814).
+- **What the site says follows the tickets.** The home page's feature
+  cards take their status from the tickets they name, and a change to a
+  public item changes the book or says why not (2815). `llms.txt` and
+  `llms-full.txt` are made from the Learn pages at each deploy (2808),
+  so they follow the book, and the pictures and the playground are in
+  them too.
