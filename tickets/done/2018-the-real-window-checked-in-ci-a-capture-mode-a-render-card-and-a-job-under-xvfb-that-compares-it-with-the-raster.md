@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: in-progress
+status: done
 blocked_by: ["2332"]
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2018 — The real window checked in CI
@@ -355,34 +355,36 @@ say that the clauses naming 2018's render card mean that ticket.
 
 ## Acceptance criteria
 
-- [ ] Under Xvfb on the CI runner, hello-grid with
+- [x] Under Xvfb on the CI runner, hello-grid with
       `SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron` writes its
       three captures and `capture.txt`, and exits 0.
-- [ ] The render card example exits 0 under Xvfb, and its `capture.txt`
-      is in the step summary.
-- [ ] A broken window is caught: shown once in the PR with a temporary
+- [x] ~~The render card example exits 0 under Xvfb, and its `capture.txt`
+      is in the step summary.~~ (not done: the card moved to 2392 by the
+      Size step)
+- [x] A broken window is caught: shown once in the PR with a temporary
       commit that draws `Item::Rect` one pixel to the right in
       `draw_items` (`crates/app/src/render.rs`), then reverted. The job
       fails and uploads a diff.
-- [ ] Two runs of the same plan write byte-identical `.window.png` and
+- [x] Two runs of the same plan write byte-identical `.window.png` and
       `.raster.png` files (`cmp` in the job).
-- [ ] `Plan::parse` of a plan with an unknown key name fails and names
+- [x] `Plan::parse` of a plan with an unknown key name fails and names
       the step, and hello-grid exits 2 on that plan in the job.
-- [ ] Without the `capture` feature `shuyi-app` compiles no capture code
+- [x] Without the `capture` feature `shuyi-app` compiles no capture code
       (`mod capture` and the read of `SHUYI_CAPTURE` are behind
       `#[cfg(feature = "capture")]`), and hello-grid's default features
       don't include `capture`.
-- [ ] `cargo build -p shuyi-platform --no-default-features --features
+- [x] `cargo build -p shuyi-platform --no-default-features --features
       capture --target thumbv7em-none-eabihf --locked` passes, in CI's
       `no-std` job.
-- [ ] The card holds every `Item`, `Paint` and `Layer` variant: the
-      match with no `_` arm compiles, and a test counts them.
-- [ ] The window is read through one helper the link uses too
+- [x] ~~The card holds every `Item`, `Paint` and `Layer` variant: the
+      match with no `_` arm compiles, and a test counts them.~~ (not
+      done: the card moved to 2392 by the Size step)
+- [x] The window is read through one helper the link uses too
       (`crates/app/src/readback.rs`). If 3046 is done, the job's crash
       step passes.
-- [ ] The ADR records the tolerance and the measured numbers; `render`
+- [x] The ADR records the tolerance and the measured numbers; `render`
       is in `ci-result`, or the PR says why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -399,4 +401,70 @@ say that the clauses naming 2018's render card mean that ticket.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done (2026-10-29), PR Zafnok/shuyi-engine#171.**
+
+- **ADR-0052** records the decision: the raster is the reference
+  picture; real backends run in CI on software GL; the capture mode is a
+  backend's cargo feature; a plan is a test input, not an asset kind;
+  the tolerance and the measured numbers; a new item goes on the render
+  card.
+- **Plans** (`shuyi_platform::capture`, the `capture` feature, `no_std`,
+  built so in CI's `no-std` job): `Plan::parse`, `Plan::steps`,
+  `Plan::tolerance`, `Plan::frames`, `PlannedFrame`, `Step` (`keys`,
+  `pad`, `wait`, `capture`), `FRAME_DT`, `MAX_WAIT` and `wait_frames`.
+  `Plan`'s fields are private, so only `parse` makes one. `parse` also
+  refuses two captures with no frame between them (they would name one
+  frame), a case the ticket didn't list.
+- **One copy of the presses** (from 2521): the link's private
+  `press_keys`/`press_pad` now wrap `crates/platform/src/press.rs`
+  (`press::keys`, `press::pad`, `press::buttons`, crate-private, behind
+  `link` or `capture`), which `Plan::frames` uses too. 2566 wasn't done,
+  so this is the "if not" form; 2566 folds them (its clause says so).
+- **The capture mode** (`shuyi_app::capture`, the `capture` feature,
+  native only; on wasm32 it builds and does nothing): it wraps the
+  `Macroquad` backend in a `Platform` of its own (`Capturing`) that gives
+  the plan's input, the close button alone, `MemoryStorage` and
+  `Silent`, and captures in `present`. The window is read by
+  `readback::window`, which the link's `window_png` now uses too, then
+  turned upright by the link's `upright` and cut out (`cut_out`, the
+  pure helper the tests call). Public pieces for the card: `window_layout`,
+  `read_window`, `cut_out`, `Report`, `PASSED`, `FAILED`, `CANNOT_RUN`,
+  `PLAN_VAR`, `OUT_VAR`, `DEFAULT_OUT`.
+- **Hello, Grid**: a `capture` feature (`["window", "shuyi-app/capture"]`:
+  the binary needs `window`, as `link` does) and
+  `examples/hello-grid/capture/frames.ron` (title, stage in glyphs with
+  the piece picked up, stage in tiles switched on the options screen).
+  The Tiles stage draws `Item::Rect`s (the path and the cursor), so the
+  one-pixel break shows on Hello, Grid alone.
+- **CI**: the `render` job, and `clippy` with
+  `--features shuyi-app/capture,hello-grid/capture`. The root
+  `shuyi.ron`'s key lint lists `crates/platform/src/capture.rs` and
+  `press.rs` among the files that may name keys (scripts of keys, like
+  the link's).
+- **Measured**: 0 pixels over the default tolerance in every capture, on
+  llvmpipe 21.1.8 (Mesa 26.0.8) and on a Windows desktop GPU; the worst
+  channel difference is 1 on llvmpipe, 0 on the desktop. No plan names a
+  tolerance of its own.
+- **The one-pixel break**: shown with a temporary commit and reverted
+  (the PR says which runs).
+- **Docs**: ADR-0052, `crates/app/src/lib.rs`'s module docs, the
+  backend checklist in `docs/platform-backends.md`, the `run-gates`
+  skill, and the book's *Testing* chapter (a game's own plan).
+
+**Deviation: the render card moved to 2392.** The diff ran well past 600
+changed lines without it (about 1 300), so as the Size step says,
+`raster::card`, its variant test and `crates/app/examples/render_card.rs`
+are ticket 2392 (After MVP, blocked by this one). The clauses that named
+2018's render card now name 2392's: 1120, 2222, 2301, 2334, 2335, 2336,
+2337, 2360 and 2391 have an "Either order with 2392" clause, and 2019,
+2323, 2386 and 2703 are blocked by 2392. The acceptance criteria on the
+card (its example exits 0, every variant on it) are 2392's.
+
+**Either-order clauses taken:** 2333, 3042, 3044, 3046 and 2566 weren't
+done, so each "if not" branch holds: their tickets now say "From 2018
+(done)" with what they add (2333 the `Fit` capture, 3042 and 3044 keep
+the capture mode free of focus, the remembered window and the cursor,
+3046 its crash step in `render`, 2566 the fold into `script::Step`).
+
+No break: every public item is new (`shuyi_platform::capture`,
+`shuyi_app::capture`), behind features that are off by default.

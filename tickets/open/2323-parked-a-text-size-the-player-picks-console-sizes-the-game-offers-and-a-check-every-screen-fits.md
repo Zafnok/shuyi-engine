@@ -6,7 +6,7 @@ milestone: "Engine: accessibility"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2209", "2018"]
+blocked_by: ["2209", "2018", "2392"]
 nick_input: none
 completed:
 ---
@@ -78,7 +78,7 @@ None.
 - **The renderers:** `shuyi-app`'s `render.rs` and the raster
   (`shuyi_ui::frame::raster`, 2332) draw a glyph at `glyph_scale` with
   nearest-neighbour sampling, with the same pixels: a capture at the
-  second size, on 2018's render card or in a hello-grid plan, compared
+  second size, on 2392's render card or in a hello-grid plan, compared
   by 2018's `render` CI job.
 - **Text runs (2334), if done:** a run keeps its position, and its
   glyphs, advances, line height, and outline and shadow offsets grow by
@@ -116,7 +116,7 @@ None.
 ## Implementation steps
 
 1. Read `ConsoleSpec`, `GlyphBuffer::new`, `GameData`, `Settings` and the
-   options rows, 2209's check, and 2018's render card and plans. Check
+   options rows, 2209's check, 2392's render card and 2018's plans. Check
    which of 2110, 2334, 2351, 2353 and 3001 are done.
 2. Add `TextSize`, the default, the setting and its saved form.
 3. Rebuild the buffer on a change; scale glyphs in `shuyi-app` and the

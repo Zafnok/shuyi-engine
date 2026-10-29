@@ -221,12 +221,11 @@ not parked.
   test helper). If not, draw the same way, through `Shades::shape`,
   never `ink_of` or an `Ink`, so 2389 has no shape code to move; it
   moves this ticket's tests that use `InkShades` with the rest.
-- **Either order with 2018:** if 2018 is done, add shapes of each kind
+- **Either order with 2392:** if 2392 is done, add shapes of each kind
   to its render card (`shuyi_ui::frame::raster::card`); its `match` on
   `Item` has no `_` arm, so it doesn't compile until the card shows
   them. If not, compare a captured window frame of the test scene with
-  `frame-png` by hand, note it in the PR, and 2018's card takes shapes
-  when it is written.
+  `frame-png` by hand, note it in the PR, and 2392 adds them.
 - **Public types (ADR-0039):** `Shape`, `ShapeKind` and `Fill` follow
   it (`#[non_exhaustive]` where they may grow, constructors).
 - **Either order with 2122:** if 2122 is done, the module docs of
@@ -299,7 +298,7 @@ not parked.
    the picture. In `raster`'s tests, check the `Painter`'s pixels against
    `for_each_run`. Add shapes to the 1-bit `Thing` generator
    (`onebit/speed_tests.rs`).
-7. Settle the either-order clauses above (2315's rules, 2018's card,
+7. Settle the either-order clauses above (2315's rules, 2392's card,
    2738's ball and 2740's path arrow), and write the book's section.
 8. Run the gates, including the `no_std` build of `shuyi-ui`. If the PR
    grows well past about 600 changed lines (fixtures and snapshots
@@ -339,8 +338,8 @@ not parked.
 - [ ] The fast 1-bit renderer equals the reference with shapes in its
       frames.
 - [ ] The test scene's snapshot is committed; the window draws it as
-      `frame-png` does (2018's card if done, else by hand, noted in the
-      PR).
+      `frame-png` does (2392's card if 2392 is done, else by hand,
+      noted in the PR).
 - [ ] Every existing snapshot and `frame-png` test passes unchanged.
 - [ ] `shuyi-ui` still builds for `thumbv7em-none-eabihf`.
 - [ ] If step 8 splits polygons off, their criteria move to the new

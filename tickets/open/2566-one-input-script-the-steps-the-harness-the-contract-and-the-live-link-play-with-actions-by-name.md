@@ -158,22 +158,30 @@ None.
   already hands `--script` to the step parser: keep it when it calls
   `frame_png::parse_step`; if not, nothing to do (2556 hands `--script`
   to `frame_png::parse_step`).
-- **Either order with 2018:** if 2018 is done, fold its `capture::Step`
-  into `script::Step`: a plan's steps become `capture::PlanStep`s,
-  `Input(script::Step)` or `Capture(String)`, read from the same RON
-  (`act("Confirm")` too); `Plan::frames` takes the keymap and builds on
-  `frames`, a `Planned::Idle(n)` as `n` frames with no events; the
-  key and pad helpers 2018 moved out of `link` (its completion notes say
-  where) go, as `link::plan` does. If not, nothing to do (2018 builds
-  its plan on `script::Step`).
+- **From 2018 (done):** fold its `capture::Step` (`keys`, `pad`,
+  `wait`, `capture`, in `crates/platform/src/capture.rs`) into
+  `script::Step`. A plan's steps become `capture::PlanStep`s,
+  `Input(script::Step)` or `Capture(String)` (`#[non_exhaustive]`),
+  read from the same RON (`act("Confirm")` too); `Plan::parse` checks
+  each input step with `Step::check`. `Plan::frames` takes the keymap
+  (`Plan::frames(&self, keymap) -> Result<Vec<PlannedFrame>, String>`)
+  and builds on `frames`, a `Planned::Idle(n)` as `n` frames with no
+  events. `capture::wait_frames` and `capture::FRAME_DT` are the wait
+  rule above: one copy, in `script`. The key and pad helpers 2018
+  moved out of `link` (the crate-private `press::keys`, `press::pad`
+  and `press::buttons` in `crates/platform/src/press.rs`, behind `link`
+  or `capture`) become the plan's helpers, and `link::press_keys` and
+  `link::press_pad` go with `link::plan`. `Plan`'s fields are private
+  and `Plan::parse` alone builds one, so only `Plan::steps`, `Step` and
+  `Plan::frames` change: a `Breaking:` line for `shuyi-platform`.
 - **Either order with 2029:** if 2029 is done, its session form of
   `capture::Plan` stays as it is: only the step form's steps move (the
-  clause with 2018); if not, nothing to do (2029 adds its session form
-  beside the plan's steps as they are then).
+  part from 2018 above); if not, nothing to do (2029 adds its session
+  form beside the plan's steps as they are then).
 - **Either order with 2019:** if 2019 is done, its web capture run plays
   2018's plan through `Plan::frames`, so nothing changes there beyond
-  the clause with 2018; if not, nothing to do (2019 reads the plan as
-  it is then).
+  the part from 2018 above; if not, nothing to do (2019 reads the plan
+  as it is then).
 - **Either order with 2514:** if 2514 is done, its `Script::then_frames`
   (an inherent method of the type that becomes a re-export) becomes the
   free function `frame_png::then_frames(script: &Script, n: u32) ->
@@ -222,7 +230,9 @@ None.
 3. Move the link onto `script::Step` and the plan; delete `link::Step`,
    `plan`, `press_keys`, `press_pad`; `link::MAX_WAIT` in seconds; raise
    `link::VERSION`. Fix `crates/app/src/link/tests.rs` and the toy's
-   link host (`crates/cli/src/toy/link.rs`).
+   link host (`crates/cli/src/toy/link.rs`). Move 2018's capture plans
+   onto `script::Step` as the part from 2018 says, and fix
+   `crates/app/src/capture.rs` and Hello, Grid's plan if it changes.
 4. In `crates/cli`: the re-export in `frame_png`, `frame_png::parse_step`
    with `--act`, `AttachStep` removed, `Session::actions`, the action
    check before `run`, `scene` and MCP `step` play, the fake.
@@ -239,9 +249,8 @@ None.
 - [ ] One type of input step in the engine:
       `grep -rn "enum Step" crates/cli crates/platform` finds only
       `shuyi_platform::script::Step` (and the dialogue's and text box's,
-      which are not input). If 2018 landed first, its `capture::Step` is
-      gone too: a plan's steps are `capture::PlanStep`s over
-      `script::Step`.
+      which are not input). 2018's `capture::Step` is gone too: a
+      plan's steps are `capture::PlanStep`s over `script::Step`.
 - [ ] `RawInputEvent::Down` for a script's key is built in one place:
       the link and the Harness both play `script::frames`.
 - [ ] `cargo shuyi run --act Confirm` and `scene --act Confirm` on a

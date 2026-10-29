@@ -111,6 +111,11 @@ None.
   (`crates/cli/src/text_font.rs`) builds a page picture: if it keeps a
   width, a height and an RGBA `Vec<u8>` of its own, make it an `Image`;
   if not, nothing to do (2224 builds its page as an `Image`).
+- **Either order with 2392:** if 2392 is done, its render card
+  (`raster::card`) builds its pictures as `raster::Image`, which keeps
+  its path: check the card still builds, and turn any picture it keeps
+  as a loose width, height and `rgba` into an `Image`; if not, nothing
+  to do (2392 builds the card's pictures in the one type).
 - **For the game:** `shuyi_ui::frame::raster::Image` and
   `shuyi_cli::frame_png::Image` keep their path, their fields and their
   `filled` and `pixel`, and gain `Default`, `Serialize` and
@@ -135,9 +140,8 @@ None.
   that is 2565's.
 - `codec::encode_png`'s signature (`width, height, &rgba`) and the
   sheets of 2514, which write `Image`'s public fields; both keep working.
-- 2018's render card and 3103's (parked) rasterizer name
-  `shuyi_ui::frame::raster::Image`, which keeps its path: nothing to
-  hand them.
+- 3103's (parked) rasterizer names `shuyi_ui::frame::raster::Image`,
+  which keeps its path: nothing to hand it.
 
 ## Implementation steps
 

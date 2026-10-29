@@ -6,7 +6,7 @@ milestone: "Engine: real time"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["1120", "2385", "2406", "2339", "2340", "2018"]
+blocked_by: ["1120", "2385", "2406", "2339", "2340", "2018", "2392"]
 nick_input: none
 completed:
 ---
@@ -197,7 +197,7 @@ None. Unparking is Nick's call, as for every parked ticket.
 - [ ] `frame-png` pictures of the test stage at two (both layouts),
       three (every three-player layout) and four players match their
       checked-in files, and the window draws the same pixels: the
-      four-player scene goes on 2018's render card
+      four-player scene goes on 2392's render card
       (`shuyi_ui::frame::raster::card`) and the `render` CI job passes.
 - [ ] `shuyi check --target playdate` on a fixture game with
       `min_view(240, 160)` and four seats warns `SplitTooSmall` for

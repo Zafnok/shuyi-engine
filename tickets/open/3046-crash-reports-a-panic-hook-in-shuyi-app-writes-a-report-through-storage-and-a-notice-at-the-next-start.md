@@ -305,11 +305,12 @@ anywhere is 3047's question for Nick.
     `docs/crash-reports.md` links to that page for the Deck; if not,
     nothing to do (3012 adds that line and the link, its scope says
     so).
-- **Either order with 2018:** if it is done, its `render` job also runs
-  hello-grid once under `xvfb-run` with `SHUYI_PANIC_AT_FRAME=3` and
-  `XDG_DATA_HOME` in a temporary folder, and checks that one
+- **CI's `render` job** (2018, done; `.github/workflows/ci.yml`) also
+  runs hello-grid once under `xvfb-run` with `SHUYI_PANIC_AT_FRAME=3`
+  and `XDG_DATA_HOME` in a temporary folder, and checks that one
   `crash-*.ron` appeared under it with the fixed message and `frame: 3`,
-  and that the exit code is 101. If not, 2018 adds that step.
+  and that the exit code is 101. 2018 didn't add this step, so this
+  ticket does.
 - **Size.** Count the changed lines of code and tests after step 5
   (docs and the ADR aside). If they pass about 650, the grid template's
   part (its `StageRecord` move, `crash_record`, `pending` and test) goes
@@ -345,8 +346,8 @@ anywhere is 3047's question for Nick.
    `crates/app/src/storage/`, `Setup`, `Start` and `App::load` in
    `crates/platform/src/app.rs`, 3040's log, 2511's `BasicGame` and
    `run_game`, and the stage screens and `tools.rs` of hello-grid and the
-   grid template. Check whether 2018, 2111, 2512, 3012, 3041 and 3048
-   are done.
+   grid template, and 2018's `render` job in `.github/workflows/ci.yml`.
+   Check whether 2111, 2512, 3012, 3041 and 3048 are done.
 2. Write `shuyi_platform::crash`: the report, its keys, `parse`,
    `to_text` and `keep_newest`, with their tests. Add `serde`, `ron`
    and `proptest`, and `tools/layers.ron`'s line.
@@ -360,6 +361,7 @@ anywhere is 3047's question for Nick.
    **Size** above.
 6. Run hello-grid's release build with `SHUYI_PANIC_AT_FRAME=3` on the
    machine at hand, and put the report it wrote in the PR description.
+   Add the crash step to the `render` job.
 7. Write the ADR and the docs, and run the gates.
 
 ## Acceptance criteria
@@ -386,8 +388,8 @@ anywhere is 3047's question for Nick.
 - [ ] hello-grid's release build run with `SHUYI_PANIC_AT_FRAME=3`
       writes a report with the fixed message, `frame: 3` and its top
       screen, with `record: None` (no stage is open at frame 3), and
-      exits with 101 (in the PR description; in CI too if 2018 is
-      done).
+      exits with 101 (in the PR description, and in 2018's `render`
+      job).
 - [ ] `run_game`'s config function sets `crash` to the game's version
       (a unit test with `BasicGame`).
 - [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`

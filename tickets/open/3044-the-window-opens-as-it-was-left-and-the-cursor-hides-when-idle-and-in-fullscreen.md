@@ -257,10 +257,10 @@ None.
     windowed. `present` keeps 3012's rule too: full screen whatever the
     frame says. If not, 3012 sets its default through `conf_from` (its
     scope says so);
-  - with 2018 (the capture mode): if it is done, `window_conf` reads no
-    record when `SHUYI_CAPTURE` is set (with the `capture` feature), and
-    a capture run writes none and leaves the cursor alone; if not, 2018
-    keeps its capture mode so;
+  - the capture mode (2018, done): `window_conf` reads no record when
+    `SHUYI_CAPTURE` (`shuyi_app::capture::PLAN_VAR`) is set, with the
+    `capture` feature, and a capture run writes none and leaves the
+    cursor alone;
   - with 3042 (focus): if it is done, `IdleCursor` shows the cursor on
     `FocusLost`, so it is never hidden over another program; if not,
     3042 adds that (its scope says so);

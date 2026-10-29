@@ -228,9 +228,9 @@ choice, made in its own repository.
     carries this over;
   - the game's hook still hears `FocusLost` and `FocusGained` after
     `App`'s part.
-- **Either order with 2018:** if it is done, a capture run reads no
-  focus events (the tracker is skipped, as the keyboard is); if not,
-  2018 keeps the capture mode so (its own clause says it).
+- **The capture mode** (2018, done): a capture run reads no focus
+  events (`crates/app/src/capture.rs`). Keep it so: the tracker is
+  skipped in a capture run, as the keyboard is.
 - **Either order with 2408** (parked, rumble): if 2408 is done, its
   rule already stops the motors on the `FocusLost` this sends, and
   drops cues until `FocusGained`, whatever the `Background` policy; if
@@ -309,8 +309,9 @@ choice, made in its own repository.
    (`crates/platform/src/app/tests.rs`); `crates/ui/src/input/state.rs`,
    `input/pad.rs` (`Pads::update`), `game.rs` and `settings.rs`;
    ADR-0024 §5 and `docs/platform-backends.md`; macroquad 0.4.16's
-   `src/lib.rs:826-861` and `src/input.rs:231-252`. Check whether 2018,
-   2342, 2405, 3037, 3041 and 3044 are done.
+   `src/lib.rs:826-861` and `src/input.rs:231-252`. Read 2018's
+   `crates/app/src/capture.rs`. Check whether 2342, 2405, 3037, 3041
+   and 3044 are done.
 2. `InputState::forget_held`, `set_keymap` on top of it, and
    `Game::forget_held_input`, with unit tests. If 2405 is done, the
    pointer part too.

@@ -101,10 +101,12 @@ Measured (Hello, Grid's plan, three captures of 768 × 768 at scale 2):
 | Where | Pixels over | Worst channel difference |
 |---|---|---|
 | Windows 11, a desktop GPU (the author's) | 0 | 0 |
-| CI, llvmpipe under Xvfb | (filled in by the PR's runs) | |
+| CI, llvmpipe 21.1.8 (Mesa 26.0.8) under Xvfb | 0 | 1 (`stage-tiles`; 0 on the other two) |
 
-With `Item::Rect` drawn one window pixel to the right, two captures
-fail: 232 and 488 pixels over, worst 188 and 189.
+So the default holds on both, and no plan names a tolerance of its own.
+With `Item::Rect` drawn one window pixel to the right, the two stage
+captures fail (on the author's desktop: 232 and 488 pixels over, worst
+188 and 189), so the default is far from letting that break pass.
 
 ### 6. What a new frame item or paint does
 

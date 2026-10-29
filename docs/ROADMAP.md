@@ -171,6 +171,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | Ticket | What |
 | ------ | ---- |
 | 2018 | The real window checked in CI under Xvfb, against the raster |
+| 2392 | The render card: every frame item and paint, window against raster |
 | 2019 | The web build checked in CI in headless Chromium, against the raster |
 | 2514 | Frames over time from `frame-png`: a sheet, an APNG or a GIF, and the same from MCP |
 
