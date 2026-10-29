@@ -182,11 +182,11 @@ None.
   `dest_size`, `flip_x` and `flip_y`, and a diagonal flip as a quarter
   turn and a flip (the flip test below shows which). A missing texture
   draws `MISSING_COLOR`, logged once, as for sprites.
-- **Either order with 2018:** if 2018 is done, a small tile-layer item
-  goes on its render card (`raster::card`), as 2018 asks of every new
-  frame item, and its job compares the window with the raster; if not,
-  compare a captured frame by hand, as 1120 does, note it in the PR,
-  and 2018 puts a tile-layer item on its card (its clause says so).
+- **Either order with 2392:** if 2392 is done, add a small tile-layer
+  item to its render card (`raster::card`), as ADR-0052 asks of every
+  new frame item, and 2018's `render` job compares the window with the
+  raster; if not, compare a captured frame by hand, as 1120 does, note
+  it in the PR, and 2392 adds it (its clause says so).
 - **A test scene**, built in code in the raster's tests
   (beside the raster), so it is no asset and needs no credit: a `TileMap` value of
   256 by 256 cells of 16 by 16 pixels with two sheets, every flip
@@ -255,7 +255,7 @@ None.
 5. Draw it in `shuyi-app` (`crates/app/src/render.rs`), and compare the
    test scene with the raster.
 6. Add the test scene, its text snapshot and its pictures, and the
-   2018, 2318 and 3008 parts as their clauses say.
+   2392, 2318 and 3008 parts as their clauses say.
 7. Write the ADR, add the line to 2318 if its clause asks for it, and
    run the gates.
 
@@ -283,9 +283,9 @@ None.
       snapshots (`insta::assert_binary_snapshot!`, as
       `examples/hello-grid/tests/it/snapshot.rs` does) and reviewed.
 - [ ] `shuyi-app` and the raster draw the same pixels for the test
-      scene. If 2018 is done, a small tile-layer item goes on its
-      render card (its rule for a new frame item) and its CI job
-      passes; if not, a captured frame is compared by hand and noted in
+      scene. If 2392 is done, a small tile-layer item goes on its
+      render card (ADR-0052's rule for a new frame item) and 2018's
+      `render` job passes; if not, a captured frame is compared by hand and noted in
       the PR.
 - [ ] No snapshot of the game or of the examples changes.
 - [ ] All gates in the `run-gates` skill pass.

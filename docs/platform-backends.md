@@ -415,6 +415,10 @@ one side, the engine's types on the other.
       medium.
 - [ ] Its input tests: the device's buttons to `RawInputEvent`s, releases
       before presses.
+- [ ] Its pixels match the raster (ADR-0052): a capture mode like
+      `shuyi-app`'s (`crates/app/src/capture.rs`), the render card and a
+      game's plans, within the plan's tolerance, in CI where the device
+      can run there.
 - [ ] A target profile (`targets/<id>.ron`, ADR-0008 §1) naming it, and
       the target's device ticket for the numbers (ADR-0008 §6).
 - [ ] For a closed console: a private repository, and nothing of it here.

@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2018"]
+blocked_by: ["2018", "2392"]
 nick_input: none
 completed:
 ---
@@ -40,8 +40,10 @@ Shuyi today:
   that breaks the loader, would reach players unseen.
 - 2801 (the website) and 2803 (the tutorial) promise examples and steps
   that play in the browser. Nothing checks that they load.
-- 2018 adds the capture mode, plans and the render card, on the desktop
-  only. On wasm32 its `capture` feature builds and does nothing.
+- 2018 added the capture mode and plans, on the desktop only. On
+  wasm32 its `capture` feature builds and does nothing. 2392 adds the
+  render card (`raster::card`) and its example,
+  `crates/app/examples/render_card.rs`.
 
 Why it matters:
 
@@ -79,15 +81,15 @@ None.
     flipped, cut out and compared with the raster as on the desktop;
   - **no files.** Each capture logs one line to the browser console
     (miniquad's `console_info` and `console_error`, through its
-    `log-impl` feature, which macroquad turns on). One pure function
-    makes the line, and 2018's `capture.txt` line uses it too, with
-    `shuyi-capture: ` in front:
-    - a pass, with `info!`: `shuyi-capture: <name> ok: <w>x<h> at
-      scale <s>, <over> pixels over <channel>, worst <worst>`;
-    - a failure, with `error!`: the same numbers, the allowed `pixels`,
-      and the first pixel with its two colours (`first at (x, y):
-      window #rrggbb, raster #rrggbb`), or the two sizes when they
-      differ;
+    `log-impl` feature, which macroquad turns on). The line is
+    `capture.txt`'s, made by 2018's private `line` in
+    `crates/app/src/capture.rs` (the name, the size or both sizes when
+    they differ, the scale, the pixels over the tolerance, the worst
+    difference, the first such pixel, and `passed` or `FAILED`), with
+    `shuyi-capture: ` in front. The web uses that one function, so the
+    two never differ:
+    - a pass, with `info!`;
+    - a failure, with `error!`;
   - after the last step, or the first failure, it logs `shuyi-capture:
     done` and keeps showing that frame;
   - if reading the canvas doesn't work in WebGL (an error, or a picture
@@ -98,7 +100,7 @@ None.
   passes `--allow-undefined` on wasm32 (the snippet in
   `crates/cli/web/README.md`, with a `//!` doc like
   `examples/hello-grid/build.rs`'s). A package's build script reaches
-  its own examples (`cargo:rustc-link-arg`), so 2018's `render_card`
+  its own examples (`cargo:rustc-link-arg`), so 2392's `render_card`
   builds for `wasm32-unknown-unknown`. On the web it logs instead of
   writing files. The `wasm` job also runs `cargo clippy --target
   wasm32-unknown-unknown -p shuyi-app --features capture --lib
@@ -109,7 +111,7 @@ None.
     as `application/wasm`;
   - opens it in headless Chromium at `--size WxH` (default `784x784`,
     hello-grid's `WINDOW` in `examples/hello-grid/src/main.rs`; for the
-    card, the window 2018's example opens, the card's size times 3),
+    card, the window 2392's example opens, the card's size times 3),
     device scale 1;
   - records every console message, page error (`pageerror`) and failed
     request (`requestfailed`, or a status of 400 or more, except
@@ -158,7 +160,7 @@ None.
     `examples/hello-grid/shuyi.ron`, then `cargo shuyi web --release
     --capture`, with `examples/hello-grid/capture/frames.ron` copied
     beside it as `capture.ron`; runs `check.py capture`;
-  - builds `render_card` for wasm32 with `capture`; copies
+  - builds 2392's `render_card` for wasm32 with `capture`; copies
     `index.html` and every `.js` file of `crates/cli/web/` beside it,
     with `%TITLE%` and `%WASM%` written in by `sed`; runs `check.py
     capture` with `--size` set to the card's window;
@@ -178,7 +180,8 @@ None.
 - **Either order:**
   - **Either order with 2566:** if 2566 is done, the web's
     `capture.ron` is 2018's plan with its steps on
-    `shuyi_platform::script::Step` (2018's clause with 2566), played
+    `shuyi_platform::script::Step` (2566 folds 2018's `capture::Step`
+    into it), played
     through the same `Plan::frames`, so the copied `frames.ron` may
     press actions by name (`act`) and nothing else changes here; if
     not, nothing to do (2566 moves the plan's steps, on the desktop and
@@ -215,7 +218,7 @@ None.
     `--features capture,link`, so one step lints both. If not, 2522
     adds the mode and puts `link` in that step's `--features`;
   - with 2333 (scale modes): if it is done, the hello-grid capture plan
-    adds the `Fit` capture 2018's clause describes, read from 2333's
+    adds the `Fit` capture 2333 adds on the desktop, read from 2333's
     render target in WebGL; if not, 2333 adds it;
   - with 2801 (done): `pages.yml` builds every example whose
     `shuyi.ron` has a `web` section, today Hello, Grid alone, and each
@@ -230,7 +233,7 @@ None.
   - with 2906 (research: asset memory): if it is done, nothing to do;
     if not, nothing to do either (2906 may drive its web runs with this
     ticket's headless Chromium);
-  - with 2335, 2336 and 2337: the web shows 2018's render card, so
+  - with 2335, 2336 and 2337: the web shows 2392's render card, so
     their items and paints are compared on the web once they are on the
     card. Nothing more here. 2338 adds no item or paint: its pictures
     are plain sprites, which the card already shows.
@@ -260,7 +263,7 @@ None.
 - holding back `pages.yml`'s deploy (it publishes what `main`'s CI
   already checked);
 - Node, npm or a `package.json`;
-- the desktop (2018);
+- the desktop (2018) and its render card (2392);
 - a server for developers, rebuilt on change (2528, `shuyi web
   --serve`);
 - determinism on wasm32 (2116 runs its golden tables under wasmtime,
@@ -271,8 +274,8 @@ None.
 ## Implementation steps
 
 1. Read 2018's capture code and ADR (`crates/app/src/capture.rs`,
-   `crates/platform/src/capture.rs`, `crates/app/examples/render_card.rs`),
-   2332's `raster::compare`, `crates/cli/web/` and its README,
+   `crates/platform/src/capture.rs`), 2392's
+   `crates/app/examples/render_card.rs`, 2332's `raster::compare`, `crates/cli/web/` and its README,
    `crates/cli/src/web.rs` and `pages.yml`. Check whether 2011, 2333,
    2522, 3041, 3043 and 3052 are done.
 2. Make the capture mode read `capture.ron` and log on wasm32, with the
@@ -295,7 +298,7 @@ None.
 - [ ] It fails on a copy whose `index.html` lacks `var register_plugin;`
       (the error game ticket 0225 fixed): shown once in the PR.
 - [ ] `check.py capture` passes on hello-grid's capture build and on
-      the card, and every capture line says `ok`.
+      the card, and every capture line says `passed`.
 - [ ] A failing capture fails the job, with its numbers in
       `console.txt`: shown once in the PR with a plan whose tolerance is
       `(channel: 0, pixels: 0)` on a frame that differs, or a one-pixel
@@ -313,8 +316,8 @@ None.
 
 ## Tests required
 
-- Unit: the capture line's text for a pass, a failure and two sizes
-  that differ (the pure helper shared with `capture.txt`, tested
+- Unit: the console line is `capture.txt`'s line with `shuyi-capture: `
+  in front, for a pass, a failure and two sizes that differ (tested
   natively).
 - Integration (CI): the `web-render` job, the three fixtures first.
 

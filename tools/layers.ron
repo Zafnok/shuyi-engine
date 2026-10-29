@@ -103,6 +103,9 @@
                 // optional `link` feature, ADR-0047).
                 "serde",
                 "serde_json",
+                // A capture's plan, RON (its optional `capture` feature,
+                // ADR-0052).
+                "ron",
             ]),
             devices: false,
             floats: true,

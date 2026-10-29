@@ -228,10 +228,10 @@ None. Our game's frames don't change.
 - [ ] For n = 1 to 4 and any frame size, `split_viewports` gives rects
       that don't overlap and cover the frame exactly (property test).
 - [ ] `frame-png` and the window draw the same pixels. **Either order
-      with 2018:** if 2018 is done, the test scene goes on its render
-      card (`shuyi_ui::frame::raster::card`) or in a plan, and its
+      with 2392:** if 2392 is done, add the test scene's world layers to
+      its render card (`shuyi_ui::frame::raster::card`), and 2018's
       `render` CI job passes; if not, compare a captured frame by hand,
-      note it in the PR, and 2018 adds the scene.
+      note it in the PR, and 2392 adds them.
 - [ ] No snapshot of the game changes.
 - [ ] All gates in the `run-gates` skill pass.
 

@@ -73,9 +73,9 @@ None.
   it, and 2234 uploads its pictures with it.
 - **In the raster** (`shuyi_ui::frame::raster`): atlas pages and inserted
   sprites are drawn as the window draws them, so `frame-png` keeps
-  showing what players see. Either order with 2018: if 2018 is done,
-  add an atlas sprite and an inserted one to its render card; if not,
-  2018's card includes them.
+  showing what players see. **Either order with 2392:** if 2392 is
+  done, add an atlas sprite and an inserted one to its render card
+  (`raster::card`); if not, nothing to do (2392 adds them).
 - Fixtures: images of our own, made for the tests.
 - **Docs** (`docs/formats.md`): a row of *The built-in formats* table
   for `atlas.ron`. In *The kinds of ADR-0007 §1*, split the row that
@@ -102,8 +102,8 @@ None.
 - [ ] An atlas packed at load equals the baked one (the pack's test).
 - [ ] An inserted sprite is drawn on the next frame (a `frame-png`
       snapshot).
-- [ ] If 2018 is done, its render card holds an atlas sprite and an
-      inserted one, and its `render` job passes.
+- [ ] If 2392 is done, its render card holds an atlas sprite and an
+      inserted one, and 2018's `render` job passes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

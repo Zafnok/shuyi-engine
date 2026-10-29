@@ -180,10 +180,10 @@ None.
   `shuyi_ui::frame::raster`) and the one-bit renderer
   (`crates/ui/src/frame/onebit.rs` and its `reference`) draw a run's
   sprites as they draw any sprite. The tests below show it for the two
-  that run headless. **Either order with 2018:** if 2018 is done, a run
-  with an outline and a shadow joins its render card
-  (`shuyi_ui::frame::raster::card`); if not, nothing more here (2018
-  puts one on its card, its clause says so). Until then the card
+  that run headless. **Either order with 2392:** if 2392 is done, add a run
+  with an outline and a shadow to its render card
+  (`shuyi_ui::frame::raster::card`); if not, nothing to do (2392 adds
+  it, its clause says so). Until then the card
   already shows a run's pixels: they are sprites in `Paint::Solid`.
 - **The player's text size. Either order with 2323 (parked):** if
   2323 is done, a run keeps its position, and its glyphs, advances,
@@ -309,7 +309,7 @@ three tickets at it.
 7. Add `TextLabel` and `menu::text`, with snapshots. Then the
    either-order parts whose tickets are done: 2329's `Measure`, 2330's
    `font`, 2355's inactive look, 2338's frame, 2405's hits, 2353's
-   walk, 2018's card, 2722's VN font, 2802's section and 2323's text
+   walk, 2392's card, 2722's VN font, 2802's section and 2323's text
    size.
 8. Add `insta.workspace = true` to `shuyi-cli`'s `[dev-dependencies]`
    (Apache-2.0, already a workspace dependency, allowed by

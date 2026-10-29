@@ -1,5 +1,6 @@
 //! The window read back as a PNG: what the player sees, for a tool that
-//! asks for it (the live link's picture, ADR-0047).
+//! asks for it (the live link's picture, ADR-0047), and for the capture
+//! mode, which compares it with the raster (ADR-0052).
 
 use image::ImageEncoder as _;
 use image::codecs::png::PngEncoder;
@@ -8,11 +9,19 @@ use macroquad::prelude::get_screen_data;
 /// The window as drawn so far this frame, as a PNG, with its width and
 /// height in pixels. Called after the frame is drawn and before
 /// `next_frame` shows it.
+#[cfg(feature = "link")]
 pub(crate) fn window_png() -> Result<(Vec<u8>, u32, u32), String> {
-    let image = get_screen_data();
-    let (width, height) = (u32::from(image.width), u32::from(image.height));
-    let rgba = upright(&image.bytes, usize::from(image.width) * 4);
+    let (bytes, width, height) = window();
+    let rgba = upright(&bytes, width as usize * 4);
     Ok((png(&rgba, width, height)?, width, height))
+}
+
+/// The window as drawn so far this frame, as the GPU reads it back: RGBA,
+/// bottom row first, with its width and height in pixels. The one read of
+/// the window, the link's and the capture mode's.
+pub(crate) fn window() -> (Vec<u8>, u32, u32) {
+    let image = get_screen_data();
+    (image.bytes, u32::from(image.width), u32::from(image.height))
 }
 
 /// The rows of `bytes`, `row` bytes each, in the other order (the window

@@ -226,13 +226,16 @@ None.
     (one-bit draws them by the one-bit rule; the GBA blends per layer).
 - **The reference changes** go in `shuyi_ui::frame::raster` (2332), not
   in `frame_png.rs`.
-- **Either order with 2018 and 2019** (the desktop and web builds
-  compared with the raster): if done, add tinted, added and multiplied
-  sprites and an overlay at half opacity to their comparison. If not,
-  the PR shows the same frame drawn by the desktop build, the web build
-  and `frame-png`: a local change to `examples/hello-grid`'s skin, not
-  committed, that draws its `tiles.png` tinted and blended (its tools
-  in `examples/hello-grid/src/tools.rs` run `frame-png`).
+- **Either order with 2392 and 2019** (the render card, which 2018's
+  `render` job compares with the window, and the web build compared
+  with the raster): if done, add tinted, added and multiplied sprites
+  and an overlay at half opacity to the card (`raster::card`), which
+  the web shows too. If not, the PR shows the same frame drawn by the
+  desktop build, the web build and `frame-png`: a local change to
+  `examples/hello-grid`'s skin, not committed, that draws its
+  `tiles.png` tinted and blended (its tools in
+  `examples/hello-grid/src/tools.rs` run `frame-png`), and 2392 adds
+  them to the card.
 - **Either order with 2335** (turned sprites): if 2335 is done, its
   turned-sprite paths (`frame-png`'s per-pixel fill, the one-bit
   `dest_pixel` path, `shuyi-app`'s texture made on the CPU) take
@@ -305,8 +308,8 @@ None.
 7. Add `Tinted` and the two materials to `render.rs`, with the pure
    choices (the recolour and draw colour a paint gets; the `BlendState`
    per mode) in functions the tests can call.
-8. Check the window and the web build against `frame-png` (2018 and
-   2019, or by hand as above).
+8. Check the window and the web build against `frame-png` (2392's card
+   and 2019, or by hand as above).
 9. Write the docs and the lines in the other tickets, and run the
    gates.
 
@@ -322,7 +325,7 @@ None.
       its test, and its picture is in the PR.
 - [ ] The desktop and web builds draw tinted, added and multiplied
       sprites and a half-opacity overlay within one step per channel of
-      `frame-png` (2018 and 2019, or by hand, shown in the PR).
+      `frame-png` (2392's card and 2019, or by hand, shown in the PR).
 - [ ] A `Paint::Tinted` sprite in `shuyi-app` never asks for a
       recoloured texture (a unit test of the pure choice).
 - [ ] The one-bit fast renderer still draws as the reference does, with

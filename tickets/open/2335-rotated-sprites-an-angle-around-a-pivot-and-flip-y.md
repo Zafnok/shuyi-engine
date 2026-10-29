@@ -238,10 +238,11 @@ and follow the MVP.
   snapshot changes.
 - **Public types (ADR-0039):** the new public types follow it
   (`#[non_exhaustive]`, constructors).
-- **Either order with 2018:** if 2018 is done, add this ticket's test
-  scene to its comparison of the window with the raster. If not,
-  compare a captured window frame with `frame-png` by hand, note it in
-  the PR, and 2018 adds the scene.
+- **Either order with 2392:** if 2392 is done, add rotated and `flip_y`
+  sprites from this ticket's test scene to its render card
+  (`raster::card`), which 2018's `render` job compares with the window.
+  If not, compare a captured window frame with `frame-png` by hand,
+  note it in the PR, and 2392 adds them.
 
 **Out (do not do):**
 - drawn shapes, and rotated rectangles as polygons (2336);
@@ -321,8 +322,9 @@ and follow the MVP.
       pivots).
 - [ ] The fast 1-bit renderer equals the reference with turned and
       flipped sprites in its frames.
-- [ ] The window and `frame-png` draw the test scene the same (2018's
-      job if done, else by hand, noted in the PR).
+- [ ] The window and `frame-png` draw the test scene the same (2392's
+      card in 2018's `render` job if 2392 is done, else by hand, noted
+      in the PR).
 - [ ] No ticket in `tickets/open/`, and not `docs/ROADMAP.md`, still
       sends sprite rotation to 2703 or the sine table to 1119.
 - [ ] `shuyi-core` and `shuyi-ui` still build for

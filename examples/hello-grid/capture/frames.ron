@@ -1,0 +1,31 @@
+// Hello, Grid's plan for the capture mode (ADR-0052): the window's pixels
+// compared with the raster's on the title and on the stage in each look.
+// Run it with
+// `SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p hello-grid --features capture`;
+// CI's `render` job runs it under Xvfb. The keys are the game's defaults
+// (files/keymap.ron).
+(
+    steps: [
+        // The loading card, the load, and the title's first frames.
+        wait(1),
+        capture("title"),
+        // Play, the scene skipped; then the piece picked up and steered.
+        keys("Enter Backspace"),
+        wait(0.25),
+        keys("Enter Up Right Right"),
+        wait(0.25),
+        capture("stage-glyphs"),
+        // The piece put down, the stage left, back at the title.
+        keys("Backspace Backspace Enter"),
+        wait(0.25),
+        // The Tiles look picked on the options screen, and kept.
+        keys("Down Enter Down Down Right Backspace Left Left Enter"),
+        wait(0.25),
+        // Play again, the piece picked up and steered, in tiles.
+        keys("Up Enter Backspace"),
+        wait(0.25),
+        keys("Enter Up Right Right"),
+        wait(0.25),
+        capture("stage-tiles"),
+    ],
+)

@@ -23,13 +23,16 @@ What is there once the blockers land:
 - **2018's capture mode** (`crates/app/src/capture.rs`, behind
   `shuyi-app`'s `capture` feature) runs a plan
   (`shuyi_platform::capture::Plan`) of steps: keys, pad buttons, waits
-  and captures. They are `capture::Step`s, or, when 2566 landed first,
-  `capture::PlanStep`s over `shuyi_platform::script::Step` (2018's
-  clause with 2566). It drives `App::frame_after(platform,
+  and captures. They are `capture::Step`s (`keys`, `pad`, `wait`,
+  `capture`), or, when 2566 landed first, `capture::PlanStep`s over
+  `shuyi_platform::script::Step` (2566 folds them).
+  `Plan` is a struct with private fields, made only by `Plan::parse`
+  and read through `steps()` and `tolerance()`; `Plan::frames()` gives
+  a `PlannedFrame` per frame. The run drives `App::frame_after(platform,
   capture::FRAME_DT)`, so every run is the same. On each capture it
-  reads the window with `get_screen_data()` and compares it with the
-  raster (2332) under the plan's `Tolerance`. The `render` CI job runs
-  it under Xvfb.
+  reads the window with `get_screen_data()` (`readback::window`, the
+  live link's read too) and compares it with the raster (2332) under
+  the plan's `Tolerance`. The `render` CI job runs it under Xvfb.
 - **2518's session record** (`shuyi_platform::session`) holds what the
   platform handed a game: input, system events, clock readings, music
   positions, keyboard answers, the store and the display. `Playback`
@@ -77,8 +80,10 @@ None.
 **In:**
 - **The plan's session form** (`shuyi_platform::capture`, behind the
   `capture` feature):
-  - `Plan` gains `session: Option<SessionPlan>`. It is additive:
-    2018 made `Plan` `#[non_exhaustive]` (ADR-0039). The new
+  - `Plan` gains a private field `session: Option<SessionPlan>` and a
+    reader `Plan::session() -> Option<&SessionPlan>`. It is additive:
+    2018 made `Plan`'s fields private, so only `Plan::parse` builds
+    one (ADR-0039). The new
     `SessionPlan { file: String, captures: Vec<SessionCapture> }` and
     `SessionCapture { frame: u32, name: String }` are
     `#[non_exhaustive]` too, with `new` constructors;
@@ -119,8 +124,8 @@ None.
   - it stays `no_std` + `alloc`, so the `no-std` job's line for
     `--features capture` still builds it.
 - **Either order with 2566:** if 2566 is done, the step form's steps
-  are 2018's `capture::PlanStep`s over `script::Step`, and `Plan::frames`
-  takes the keymap; the session form doesn't change, and `Plan::frames`
+  are `capture::PlanStep`s over `script::Step` (2566 folded 2018's
+  `capture::Step` into them), and `Plan::frames` takes the keymap; the session form doesn't change, and `Plan::frames`
   still gives no frames for a session plan. If not, nothing to do (2566
   moves the step form's steps onto `script::Step` and leaves the
   session form alone).
@@ -228,7 +233,8 @@ None.
   input of the backend, not an asset kind) and 2518's (a record is a
   run's log, not an asset kind, and plays through `App::frame` at its
   recorded times).
-- **For the game:** `Plan` gains a field, additively. If
+- **For the game:** `Plan` gains a private field and a reader,
+  additively. If
   `Playback::next` becomes generic and CI's `api` job calls that a
   break, the completion notes get a `Breaking:` line (ADR-0038), and
   the game's PR that moves the pin follows. The game uses neither

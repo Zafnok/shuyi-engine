@@ -51,7 +51,8 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      # The capture mode and Hello, Grid's are behind features (ADR-0052).
+      - run: cargo clippy --workspace --all-targets --features shuyi-app/capture,hello-grid/capture --locked -- -D warnings
 
   test:
     name: test
@@ -130,6 +131,77 @@ jobs:
         with:
           name: hello-grid-web
           path: examples/hello-grid/dist/web
+
+  # The real window checked (ticket 2018, ADR-0052): Hello, Grid run in its
+  # window as its plan says, under Xvfb with Mesa's llvmpipe (software GL:
+  # no GPU runner), each capture's window compared with the raster's
+  # picture of the same frame within the plan's tolerance. The plan runs
+  # twice and both runs' pictures must be byte for byte the same, and a
+  # plan with a key name that doesn't exist must not run (exit 2). Each
+  # run's `capture.txt` goes in the job's summary, and every picture is
+  # uploaded, a failing capture's diff among them.
+  render:
+    name: render
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    env:
+      LIBGL_ALWAYS_SOFTWARE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Install Xvfb and Mesa's software GL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri mesa-utils
+      - name: The renderer and Mesa's version
+        run: xvfb-run -a -s "-screen 0 1280x1024x24" glxinfo -B
+      - name: The capture mode's tests
+        run: cargo test -p shuyi-app -p shuyi-platform --features shuyi-app/capture --locked
+      - name: Build Hello, Grid with the capture mode
+        run: cargo build -p hello-grid --features capture --locked
+      - name: Hello, Grid's plan, twice, the same pictures both times
+        run: |
+          for out in hello-grid hello-grid-again; do
+            SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron SHUYI_CAPTURE_OUT="target/capture/$out" \
+              xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid
+          done
+          for file in target/capture/hello-grid/*.window.png target/capture/hello-grid/*.raster.png; do
+            cmp "$file" "target/capture/hello-grid-again/$(basename "$file")"
+          done
+      - name: A plan with an unknown key doesn't run
+        run: |
+          printf '(steps: [wait(1), keys("Entr"), capture("title")])\n' > "$RUNNER_TEMP/unknown-key.ron"
+          code=0
+          SHUYI_CAPTURE="$RUNNER_TEMP/unknown-key.ron" SHUYI_CAPTURE_OUT="$RUNNER_TEMP/unknown-key" \
+            xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid || code=$?
+          if [ "$code" != 2 ]; then
+            echo "::error::hello-grid exited $code on a plan with an unknown key, not 2"
+            exit 1
+          fi
+      - name: The captures in the summary
+        if: always()
+        run: |
+          for file in target/capture/*/capture.txt; do
+            [ -f "$file" ] || continue
+            {
+              echo "### ${file#target/capture/}"
+              echo '```text'
+              cat "$file"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: render-captures
+          path: target/capture/
+          if-no-files-found: ignore
 
   # `shuyi new` (tickets 1129 and 2501): a game made with each short name
   # of the engine's template (templates/shuyi-default), on this checkout of
@@ -391,6 +463,7 @@ jobs:
       - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
+      - run: cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
       - run: cargo xtask check-no-std
       # The same tests as with `std`, the headless backend's included. The
       # test harness and the dev-dependencies bring `std` into the build,
@@ -737,7 +810,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, render, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

@@ -1204,6 +1204,7 @@ name = "shuyi-platform"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "ron",
  "serde",
  "serde_json",
  "shuyi-alloc-count",

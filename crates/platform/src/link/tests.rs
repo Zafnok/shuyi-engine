@@ -6,7 +6,7 @@
 use alloc::collections::BTreeMap;
 
 use proptest::prelude::*;
-use shuyi_ui::input::{Key, RepeatDef};
+use shuyi_ui::input::{Key, PadKind, RepeatDef};
 use shuyi_ui::log::{LogCategory, LogLevel, LogLine};
 use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy::{self, Toy};

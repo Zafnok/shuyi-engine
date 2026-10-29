@@ -49,6 +49,20 @@
 //! release build, or one without the feature, never listens; on the web
 //! the feature does nothing yet.
 //!
+//! With the `capture` feature, a desktop build runs a plan instead of the
+//! player's input when `SHUYI_CAPTURE` names one, compares the window with
+//! the raster on the frames it names, and exits (the `capture` module, ADR-0052):
+//!
+//! ```text
+//! SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p hello-grid --features capture
+//! ```
+//!
+//! It writes each capture's pictures and `capture.txt` under
+//! `SHUYI_CAPTURE_OUT` (`target/capture` unless set), and exits 0 when
+//! every capture is within the plan's tolerance, 1 when one isn't, and 2
+//! when the plan can't run. Without the feature the variable is never
+//! read.
+//!
 //! A desktop debug build writes its frames' times as it runs when
 //! `SHUYI_PERF` names a file (`SHUYI_PERF=perf.jsonl cargo run`): its log
 //! names the file, and after each frame it writes that frame's record as a
@@ -88,6 +102,8 @@
 
 mod audio;
 mod backend;
+#[cfg(all(feature = "capture", not(target_arch = "wasm32")))]
+pub mod capture;
 #[cfg(not(target_arch = "wasm32"))]
 mod folder;
 pub mod keys;
@@ -97,7 +113,10 @@ mod pacing;
 pub mod pads;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
-#[cfg(all(feature = "link", not(target_arch = "wasm32")))]
+#[cfg(all(
+    any(feature = "link", feature = "capture"),
+    not(target_arch = "wasm32")
+))]
 mod readback;
 pub mod render;
 pub mod storage;
@@ -336,6 +355,11 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// before the due time shows the last one again, and its input waits for
 /// the next frame that runs.
 pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
+    #[cfg(all(feature = "capture", not(target_arch = "wasm32")))]
+    if let Some(plan) = capture::requested() {
+        capture::run(config, start, plan).await;
+        return;
+    }
     // Voices (game ADR-0046): none, and nothing said, without the folder.
     let voice_dir = config
         .voices

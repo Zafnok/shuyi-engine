@@ -258,6 +258,16 @@ game's choice, through its `engine-change` skill.
   - **2346** (the IME): if it is done, the IME position it computes in
     `shuyi-app` from `layout` goes through `place` with the frame's
     mode; if not, 2346 uses `place` (its clause says so).
+- **From 2018 (done):** the capture mode (`shuyi-app`'s `capture`
+  feature, `crates/app/src/capture.rs`) compares the window with the
+  raster in CI's `render` job. Its plans run at a whole scale
+  (`ScaleMode::Integer`), and Hello, Grid's plan
+  (`examples/hello-grid/capture/frames.ron`) gains one capture in
+  `Fit`. That capture reads the render target `draw` paints into (its
+  texture's pixels, before they are stretched) and compares them with
+  the raster at `draw_scale`; the stretched window is saved for a look
+  only. How a plan asks for `Fit` is this ticket's choice, and a test
+  of `Plan::parse` reads it.
 
 **Out (do not do):**
 - an aspect policy that grows the console by whole cells when the
@@ -385,10 +395,11 @@ types follow ADR-0039.
   - in `Fit`, `draw_scale` is at least 1, and the frame times
     `draw_scale` stays within `MAX_DRAW_PX` unless `draw_scale` is 1;
   - `place` gives the same answer twice.
-- Integration: the `App` and `Harness` tests above. Either order with
-  2018 and 2019: if they are done, their desktop and web comparisons
-  add a `Fit` window and compare its whole-scale picture (the render
-  target, before smoothing) with the raster; if not, they add it.
+- Integration: the `App` and `Harness` tests above, and the `Fit`
+  capture in 2018's `render` CI job (the part from 2018 above). Either
+  order with 2019: if it is done, its web comparison adds the same
+  `Fit` capture, read from the render target in WebGL; if not, nothing
+  to do (2019 adds it, its clause says so).
 
 ## Completion notes
 

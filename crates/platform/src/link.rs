@@ -24,12 +24,13 @@ use alloc::collections::VecDeque;
 use alloc::{format, vec};
 
 use serde::{Deserialize, Serialize};
-use shuyi_ui::input::{ActionSet, Button, ButtonChord, Chord, Keymap, PadKind};
+use shuyi_ui::input::{ActionSet, Button, ButtonChord, Chord, Keymap};
 use shuyi_ui::log::LogRing;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES, PerfRing};
 use shuyi_ui::{GameData, RawInputEvent};
 
 use crate::app::App;
+use crate::press;
 
 /// The link's version: a client and a build speak the same, or the build
 /// closes the link after its hello.
@@ -145,7 +146,7 @@ impl Step {
             }
             Step::Pad(script) => {
                 for token in script.split_whitespace() {
-                    buttons(token).map_err(|e| format!("pad: {e}"))?;
+                    press::buttons(token).map_err(|e| format!("pad: {e}"))?;
                 }
             }
             Step::Act(name) => {
@@ -163,11 +164,6 @@ impl Step {
         }
         Ok(())
     }
-}
-
-/// The buttons of one pad token, `"South"` or `"South+East"`.
-fn buttons(token: &str) -> Result<Vec<Button>, String> {
-    token.split('+').map(Button::parse).collect()
 }
 
 /// What presses an action: a key chord, or a button (or two together).
@@ -857,7 +853,7 @@ fn plan<A: ActionSet>(steps: &[Step], keymap: &Keymap<A>) -> Result<VecDeque<Pla
             }
             Step::Pad(script) => {
                 for token in script.split_whitespace() {
-                    let buttons = buttons(token).map_err(|e| at(format!("pad: {e}")))?;
+                    let buttons = press::buttons(token).map_err(|e| at(format!("pad: {e}")))?;
                     press_pad(&mut frames, &buttons);
                 }
             }
@@ -883,18 +879,13 @@ fn plan<A: ActionSet>(steps: &[Step], keymap: &Keymap<A>) -> Result<VecDeque<Pla
 
 /// `chord` down in one frame and its key up in the next.
 fn press_keys(frames: &mut VecDeque<Planned>, chord: Chord) {
-    frames.push_back(Planned::Events(vec![RawInputEvent::Down(chord)]));
-    frames.push_back(Planned::Events(vec![RawInputEvent::Up(chord.key)]));
+    frames.extend(press::keys(chord).map(Planned::Events));
 }
 
 /// `buttons` down together on a generic pad in one frame, and up in the
 /// next.
 fn press_pad(frames: &mut VecDeque<Planned>, buttons: &[Button]) {
-    let kind = PadKind::default();
-    let down = buttons.iter().map(|&b| RawInputEvent::PadDown(b, kind));
-    frames.push_back(Planned::Events(down.collect()));
-    let up = buttons.iter().map(|&b| RawInputEvent::PadUp(b));
-    frames.push_back(Planned::Events(up.collect()));
+    frames.extend(press::pad(buttons).map(Planned::Events));
 }
 
 #[cfg(test)]

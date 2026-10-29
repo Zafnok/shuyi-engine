@@ -27,7 +27,7 @@ pin, and Nick's machine.
 
 ```bash
 cargo fmt --all --check
-cargo clippy --workspace --all-targets --locked -- -D warnings   # pedantic: the workspace's lints
+cargo clippy --workspace --all-targets --features shuyi-app/capture,hello-grid/capture --locked -- -D warnings   # pedantic: the workspace's lints
 cargo test --workspace --locked --no-fail-fast   # without --no-fail-fast cargo stops at the first failing test binary
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
 cargo deny check
@@ -94,6 +94,7 @@ proc macros are linked, for the host, by MSYS2's `gcc` as usual.
 cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
+cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
 cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
 RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
 ```
@@ -107,6 +108,25 @@ Code that needs `std` goes behind `cfg(feature = "std")`: on the line
 with its `std::` path, or in a module whose file starts with
 `#![cfg(feature = "std")]`. A test that needs `std` (an asset converter,
 `catch_unwind`) gets `#[cfg(feature = "std")]` too.
+
+## The real window (CI's `render` job, CI only)
+
+The `render` job (ADR-0052) runs Hello, Grid's plan in its window under
+Xvfb with Mesa's llvmpipe and compares each capture with the raster. It
+needs Xvfb, so it runs in CI only. On Linux (a dev container, a cloud
+agent's), after `bash scripts/setup-linux.sh`:
+
+```bash
+sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri mesa-utils
+cargo build -p hello-grid --features capture --locked
+SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid
+```
+
+It exits 0 when every capture passes, 1 when one fails, 2 when the plan
+can't run; the pictures and `capture.txt` are under `target/capture/`.
+On any desktop the same plan runs in a real window, without Xvfb:
+`SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p
+hello-grid --features capture`.
 
 ## Golden tables (CI's `determinism` job)
 

@@ -6,7 +6,7 @@ milestone: "Engine: procedural animation"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["2702", "1120", "2335", "2336", "2018"]
+blocked_by: ["2702", "1120", "2335", "2336", "2018", "2392"]
 nick_input: none
 completed:
 ---
@@ -46,7 +46,7 @@ None.
   - a snapshot line for a strip, with points rounded to pixels.
 - **Renderers**: `shuyi-app` and the raster (`shuyi_ui::frame::raster`,
   2332) draw strips, with the same pixels on a test scene that goes on
-  2018's render card.
+  2392's render card.
 - **1-bit**: strips fill with their role's pattern (3006).
 - **A default skin** in the module: chains as strips, pieces as rotated
   sprites (2335), sorted by the body's lowest point.
@@ -63,7 +63,7 @@ None.
    line.
 2. Draw strips in the raster and in `shuyi-app`, and add a test scene
    of five strips and five pieces drawn as 2335's rotated sprites to
-   2018's render card.
+   2392's render card.
 3. Write `BodyView`, `DrawDef` and the default skin.
 4. Draw 2702's test creature at three steps.
 5. Do the 1-bit fill: strips in their role's pattern through 3006's
@@ -74,7 +74,8 @@ None.
 ## Acceptance criteria
 
 - [ ] `shuyi-app` and the raster give the same pixels for the test
-      scene (2018's `render` CI job passes with the scene on the card).
+      scene (2018's `render` CI job passes with the scene on 2392's
+      card).
 - [ ] A strip of constant width along a straight line covers exactly
       the pixels of the matching rectangle.
 - [ ] Snapshots and raster pictures of the test creature at three steps
@@ -87,6 +88,6 @@ None.
 
 - Unit: a strip's runs on hand-made strips.
 - Snapshot: the frame items of the test scene and the test creature.
-- Integration: 2018's `render` job with the scene on the card.
+- Integration: 2018's `render` job with the scene on 2392's card.
 
 ## Completion notes

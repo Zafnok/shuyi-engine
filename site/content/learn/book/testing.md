@@ -68,6 +68,35 @@ cargo shuyi frame-png garden.png --keys "Enter Right Enter" --scale 2
 `--target <id>` a target's display. The picture is for people; tests
 read the state.
 
+That picture is the raster's, painted in software. To check that your
+window draws the same pixels, give your game a `capture` feature
+(`capture = ["shuyi-app/capture"]`) and a plan, a RON file of the same
+steps with captures between them:
+
+```ron
+(
+    steps: [
+        wait(1),
+        capture("title"),
+        keys("Enter"),
+        wait(0.25),
+        capture("garden"),
+    ],
+)
+```
+
+```bash
+SHUYI_CAPTURE=capture/frames.ron cargo run --features capture
+```
+
+The game runs the plan frame by frame, with no saves read or written and
+no sound, compares each capture's window with the raster, writes both
+pictures and `capture.txt` under `target/capture`, and exits 0 when they
+match, 1 when one doesn't (with a picture of where) and 2 when the plan
+can't run. A plan's `tolerance` (`(channel: 2, pixels: 0)` unless it
+says) is how far the window may be from the raster. On Linux CI it runs
+under `xvfb-run`, as this engine's own `render` job does.
+
 ## Bots
 
 A bot is a player made of code: it picks the next command from the
