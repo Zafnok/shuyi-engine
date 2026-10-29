@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: medium
-status: in-progress
+status: done
 blocked_by: ["2018"]
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2392 — The render card
@@ -136,15 +136,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The render card example exits 0 under Xvfb in the `render` job,
+- [x] The render card example exits 0 under Xvfb in the `render` job,
       and its `capture.txt` is in the step summary.
-- [ ] The card holds every `Item`, `Paint` and `Layer` variant: the match
+- [x] The card holds every `Item`, `Paint` and `Layer` variant: the match
       with no `_` arm compiles, and a test counts them.
-- [ ] A broken window is caught: a temporary commit drawing `Item::Rect`
+- [x] A broken window is caught: a temporary commit drawing `Item::Rect`
       one pixel to the right fails the job and uploads the card's diff;
       it is reverted.
-- [ ] ADR-0052's table has the card's numbers on llvmpipe.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ADR-0052's table has the card's numbers on llvmpipe.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -153,4 +153,63 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done (2026-10-29), PR Zafnok/shuyi-engine#172.**
+
+- **The card** (`shuyi_ui::frame::raster::card`, behind `raster`):
+  `build() -> RenderCard` and `RenderCard::painter`, as the ticket's
+  scope says; also `COLUMNS`, `ROWS`, `TEST_CARD_PATH` and
+  `MISSING_PATH`. One frame of 32 × 12 text cells (256 × 192 pixels):
+  a band of four backgrounds and five glyph colours, glyphs on the clear
+  colour and the glyph the atlas lacks (`Z`, the fallback checkerboard
+  in `MISSING_COLOR`), a gallery of fourteen test-card sprites at 1×
+  (every `Paint`, both layers, opacity 128 and 255, brightness 102 and
+  255, mirrored, the missing picture) and four at 2× (under glyphs, cut
+  by a `clip` on odd pixels, mirrored and cut, `Solid` and cut), `Rect`s
+  in both layers (one a single pixel wide), see-through cells with no
+  backdrop behind them, and a backdrop at zoom 2 behind ten by nine
+  cells, its scene (cells, a sprite and a rectangle of its own) offset by
+  half a scene pixel, with solid cells over it, one in the clear colour.
+  Its atlas is six 8 × 16 cells of boxes and bars.
+- **Tests** (`raster/card/tests.rs`): the `match` on `Item`, `Paint` and
+  `Layer` with no `_` arm and a count of each on the card (each at least
+  twice); its size; its sprites' settings; its cells; its backdrop's
+  zoom and offset; the painter's missing colour; the same card every
+  time.
+- **The example** (`crates/app/examples/render_card.rs`,
+  `required-features = ["capture"]`): a window of 768 × 576 (three times
+  the card), the card drawn by `render::Renderer` for three frames, the
+  fourth captured through `shuyi_app::capture` with
+  `Tolerance::default()`, and the exit codes of a plan's run. Its
+  pictures are encoded to PNG once with `image` and kept in a
+  `OnceLock`.
+- **CI**: the `render` job runs it before Hello, Grid's plan, into
+  `target/capture/card`, so the summary step and the artifact already
+  take it.
+- **Measured**: on llvmpipe 21.1.8 (Mesa 26.0.8) at scale 3, 0 pixels
+  over the default tolerance, worst channel difference 1; on the
+  author's Windows desktop (scale 2 there, from the display's scaling),
+  0 over, worst 1. The default holds; no tolerance of its own.
+- **The one-pixel break**: commit 9cfe8f3 drew `Item::Rect` one pixel
+  to the right; its `render` run (run 40823038120) failed on the card (891
+  pixels over, worst 237) and uploaded its pictures (the `render-captures` artifact, the card's diff among them). On the
+  author's desktop: 1 184 over, worst 237. It is reverted.
+- **Docs**: the rustdoc of `raster` and `card`, `shuyi_app::capture`'s
+  module doc, ADR-0052's table, the backend checklist in
+  `docs/platform-backends.md` and the `run-gates` skill.
+- **Either order:** none of 1120, 2222, 2301, 2334, 2335, 2336, 2337,
+  2360 and 2391 is done, so nothing of theirs is on the card; each one's
+  clause now says it adds its part to the card. 2019's ticket names what
+  the example leaves it (it builds on native only).
+
+**Deviation: the table is made with `ImageTable::new`, not
+`from_files`.** The ticket assumed only `from_files` makes an
+`ImageId`; `ImageTable::new` (public, `const`) does too, from the sizes,
+as the raster's own tests do, so no PNG header is written.
+
+No break: the card and its constants are additions to `shuyi-ui`, and
+`shuyi-app` gains an example.
+
+Book: none, the render card is a backend's check of its own pixels
+(`docs/platform-backends.md`), not something a game uses or names.
+
+Nick input: none.
