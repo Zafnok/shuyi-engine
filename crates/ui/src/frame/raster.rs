@@ -13,7 +13,9 @@
 //! sampled at the nearest pixel and blended over what is beneath with
 //! their alpha, as the GPU does. [`one_bit_picture`] paints a one-bit
 //! frame black and white, and [`test_card`] is a generated test image for
-//! sprite items.
+//! sprite items. [`card`] is the render card: one frame with every kind of
+//! thing a frame draws, which a backend draws to hold its pixels to the
+//! raster's.
 //!
 //! Behind the `raster` feature (the tests have it anyway): the default
 //! engine and a console's build don't need it.

@@ -193,7 +193,11 @@ fn cells(buf: &mut GlyphBuffer) {
         let glyph = GLYPHS[i % GLYPHS.len()];
         let fg = FOREGROUNDS[i % FOREGROUNDS.len()];
         buf.set(x, 0, Cell::new(glyph, fg, BACKGROUNDS[i / 4 % 4]));
-        let glyph = if i.is_multiple_of(3) { MISSING_GLYPH } else { glyph };
+        let glyph = if i.is_multiple_of(3) {
+            MISSING_GLYPH
+        } else {
+            glyph
+        };
         buf.set(x, 1, Cell::new(glyph, fg, CLEAR));
     }
     for y in 2..11 {
@@ -297,7 +301,11 @@ fn backdrop(buf: &mut GlyphBuffer, card: ImageId) {
             if i % 5 == 4 {
                 continue; // The clear colour.
             }
-            let glyph = if i.is_multiple_of(2) { GLYPHS[i % 4] } else { ' ' };
+            let glyph = if i.is_multiple_of(2) {
+                GLYPHS[i % 4]
+            } else {
+                ' '
+            };
             let cell = Cell::new(glyph, FOREGROUNDS[i % 5], BACKGROUNDS[i % 4]);
             scene.set(x, y, cell);
         }
@@ -315,7 +323,11 @@ fn backdrop(buf: &mut GlyphBuffer, card: ImageId) {
     for y in clip.y..clip.y + clip.h {
         for x in clip.x..clip.x + clip.w {
             let i = nth(x + y);
-            let glyph = if i.is_multiple_of(3) { GLYPHS[i % 4] } else { ' ' };
+            let glyph = if i.is_multiple_of(3) {
+                GLYPHS[i % 4]
+            } else {
+                ' '
+            };
             buf.set(x, y, Cell::see_through(glyph, FOREGROUNDS[i % 4]));
         }
     }

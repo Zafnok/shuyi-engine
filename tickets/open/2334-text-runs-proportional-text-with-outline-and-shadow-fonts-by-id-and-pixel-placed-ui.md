@@ -180,11 +180,10 @@ None.
   `shuyi_ui::frame::raster`) and the one-bit renderer
   (`crates/ui/src/frame/onebit.rs` and its `reference`) draw a run's
   sprites as they draw any sprite. The tests below show it for the two
-  that run headless. **Either order with 2392:** if 2392 is done, add a run
-  with an outline and a shadow to its render card
-  (`shuyi_ui::frame::raster::card`); if not, nothing to do (2392 adds
-  it, its clause says so). Until then the card
-  already shows a run's pixels: they are sprites in `Paint::Solid`.
+  that run headless. Add a run with an outline and a shadow to the
+  render card (`shuyi_ui::frame::raster::card`, 2392); the card already
+  shows a run's pixels, sprites in `Paint::Solid`, so this shows the
+  run as a run.
 - **The player's text size. Either order with 2323 (parked):** if
   2323 is done, a run keeps its position, and its glyphs, advances,
   line height, and outline and shadow offsets grow by the player's

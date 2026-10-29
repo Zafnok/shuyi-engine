@@ -144,12 +144,10 @@ font (game#0236).
    over both cells and skips continuation cells. The one-bit renderer
    draws its two halves. `frame-png` draws the same as `shuyi-app`.
    The software painter is
-   `crates/ui/src/frame/raster.rs` (2332). **Either order with 2392:** if 2392 is done, add a
-   line of wide and narrow glyphs to its render card
-   (`shuyi_ui::frame::raster::card`), so 2018's `render` CI job compares
-   the window with the raster; if not, compare a screenshot of the
-   window with `frame-png` by hand, note it in the PR, and 2392 puts
-   wide glyphs on the card.
+   `crates/ui/src/frame/raster.rs` (2332). Add a line of wide and
+   narrow glyphs to the render card (`shuyi_ui::frame::raster::card`,
+   2392), so 2018's `render` CI job compares the window with the
+   raster.
 6. **Snapshots.** The Harness's text snapshot prints a continuation
    cell as nothing; say so in the Harness's docs.
 7. A `frame-png` reference PNG of a line with wide and narrow glyphs,

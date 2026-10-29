@@ -41,9 +41,14 @@ Shuyi today:
 - 2801 (the website) and 2803 (the tutorial) promise examples and steps
   that play in the browser. Nothing checks that they load.
 - 2018 added the capture mode and plans, on the desktop only. On
-  wasm32 its `capture` feature builds and does nothing. 2392 adds the
+  wasm32 its `capture` feature builds and does nothing. 2392 added the
   render card (`raster::card`) and its example,
   `crates/app/examples/render_card.rs`.
+- **From 2392 (done):** the example captures through
+  `shuyi_app::capture` (`window_layout`, `read_window`, `Report`),
+  which is compiled on native only, and writes its files with
+  `Report`; its window is 768 × 576 (the card's 256 × 192 times 3).
+  Making it build and log on wasm32 is this ticket's.
 
 Why it matters:
 
