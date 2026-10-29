@@ -178,9 +178,9 @@ launch, on 2026-10-20.
     unit, and a path round a wall with `find_path` and `Topology::Hex`.
 - **A pinned result:** a unit test pins one hex `find_path` (its tiles
   and cost) and one `within` list. CI's `test` job runs them on x64 and
-  ARM64. **Either order with 2116:** if 2116 is done, its `determinism`
-  job also runs them on wasm32 with the rest of `shuyi-core`'s tests.
-  If not, the native runs alone.
+  ARM64. **From 2116 (done):** its `determinism` job also runs them on
+  wasm32 with the rest of `shuyi-core`'s tests, with nothing more to
+  add.
 - **Tiled hex maps. Either order with 1124:** 1124 keeps a Tiled map's
   stagger axis and stagger index. If 1124 is done, add one function
   beside its `TileMap` (`shuyi_assets::tilemap`) that gives a

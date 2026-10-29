@@ -345,10 +345,10 @@ it is technical.
     the comment in `fuzz.yml`;
   - with 2203: formats it has already added behind features join
     `fuzz`'s list; formats it adds later follow the skills' line;
-  - with 2116: if it is done, its `golden_tests.rs` also takes
-    `fixtures()` from `crate::fuzz::fixtures()` when the one in
-    `builtin_tests.rs` is removed; if not, nothing to do (2116 then
-    uses `crate::fuzz::fixtures()`);
+  - from 2116 (done): its `crates/assets/src/format/golden_tests.rs`
+    takes its fixtures and inputs from `builtin_tests.rs`; point it at
+    `crate::fuzz::fixtures()` when the one in `builtin_tests.rs` is
+    removed, and its rows in `tests/golden/formats.ron` stay the same;
   - with 2224: if it is done, `Packed<ProportionalFont>` is in the
     registry (it is in `every_kind()`), the fixture font's page headers
     are in `fixtures()` (they move with the rest of `builtin_tests.rs`'s

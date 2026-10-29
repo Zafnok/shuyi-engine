@@ -82,15 +82,15 @@ None (technical).
   as the Playdate, ADR-0008). If it doesn't, the README says so, and a
   game that builds its core without `std` keeps scripting behind a
   feature of its own.
-- **Either order with 2116:** if it is done, add `-p shuyi-script` to
-  the wasm32 `cargo test` of CI's `determinism` job, and a golden table
+- **From 2116 (done):** add `-p shuyi-script` to the wasm32
+  `cargo test` step of CI's `determinism` job, and a golden table
   `crates/script/tests/golden/scripts.ron` (2116's
   `shuyi_assets::golden`, a dev-dependency with its `golden` feature,
-  checked by a test with `golden` in its name) holding what three
-  fixture scripts return on fixed views. The same values are then
-  checked on x64, ARM64 and wasm32. If not, keep the property test, and
-  2116 adds the crate and the table. Don't build a one-off wasm32 check
-  here.
+  checked by a test with `golden` in its name, through
+  `shuyi_assets::golden!`) holding what three fixture scripts return
+  on fixed views. The same values are then checked on x64, ARM64 and
+  wasm32. `cargo xtask golden --bless` writes the table. Don't build a
+  one-off wasm32 check here.
 
 **Out (do not do):**
 - Anything a game does with scripts: its view types, its effects, where
@@ -118,8 +118,8 @@ None (technical).
 3. Add `crates/script` with the chosen runtime's features cut to what the
    ADR allows; the metadata and README.
 4. The API above, with its tests.
-5. Check the WASM build and `cargo deny check`; work the either-order
-   clause with 2116.
+5. Check the WASM build and `cargo deny check`; add the golden table
+   and the `determinism` job's `-p shuyi-script` (from 2116).
 
 ## Acceptance criteria
 
@@ -133,15 +133,15 @@ None (technical).
 - [ ] A script can't read a clock, a random source, a file or the
       network (tests that each such call fails to compile or errors).
 - [ ] The WASM build and `cargo deny check` pass.
-- [ ] If 2116 is done, the fixture scripts' values match their golden
-      table in CI's `test` and `determinism` jobs.
+- [ ] The fixture scripts' values match their golden table in CI's
+      `test` and `determinism` jobs.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: compile errors, limits, reading back values.
 - Property: determinism over generated views.
-- Golden (if 2116 is done): three fixture scripts' values in
+- Golden: three fixture scripts' values in
   `crates/script/tests/golden/scripts.ron`.
 
 ## Completion notes

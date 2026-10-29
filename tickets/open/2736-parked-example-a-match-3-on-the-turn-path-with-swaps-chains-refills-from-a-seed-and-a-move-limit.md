@@ -241,12 +241,12 @@ each part is one PR.
   start, with a gem picked, and at a level's end
   (`insta::assert_binary_snapshot!`, as hello-grid's
   `tests/it/snapshot.rs`); `cargo shuyi check`, `check --target all`
-  and `check-keys`. **Either order with 2116:** if 2116 is done, a
-  golden table of one record, as Hello, Grid's (`tests/golden.rs`, the
-  window behind a default `window` feature, its own wasm32 step in the
-  `determinism` job); if not, nothing (2116 adds none to an example
-  that lands first). If
-  2527 is done, `shuyi soak` over 20 seeds.
+  and `check-keys`. **From 2116 (done):** a golden table of one
+  record, as Hello, Grid's (`tests/golden.rs`, the window behind a
+  default `window` feature, and its own `cargo test --target
+  wasm32-wasip1 -p <example> --no-default-features --test golden` step
+  in the `determinism` job). If 2527 is done, `shuyi soak` over 20
+  seeds.
 - **CI and Pages,** either order with the other examples (2735, 2737,
   2738, 2739 and 2740): if the `wasm` job of `.github/workflows/ci.yml`
   and `.github/workflows/pages.yml` still name each example by hand

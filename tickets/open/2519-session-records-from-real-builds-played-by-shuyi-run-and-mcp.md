@@ -75,7 +75,7 @@ for Nick (parked 3047 asks it for crash reports).
 
 ## Scope
 
-**In, part A: playing records** (2357 and 2116 build on it):
+**In, part A: playing records** (2357 builds on it):
 
 - **The starts move into the libraries:**
   - `hello_grid::start() -> Start<Hello>` in `src/lib.rs`, moved from
@@ -176,16 +176,19 @@ for Nick (parked 3047 asks it for crash reports).
     (the title, the options screen, the stage, a few moves on it). A
     test marked `#[ignore = "writes the golden session"]` beside the
     check makes it, so it can be made again.
-  - `examples/hello-grid/tests/it/session.rs` plays it with
+  - Hello, Grid's `tests/golden.rs` target plays it with
     `assert_session`, the path built from `env!("CARGO_MANIFEST_DIR")`,
     in a test with `golden` in its name. The PR says how to bless it.
-    - **Either order with 2116:** if it is done, the session test lives
-      in Hello, Grid's `tests/golden.rs` target (not
-      `tests/it/session.rs`), with `golden` in its name. CI's
-      `determinism` job then plays the session on wasm32 (its runner
-      maps the workspace, so `assert_session` opens the file), and
-      `cargo xtask golden --bless`, which sets `SHUYI_BLESS=1`,
-      blesses it with the tables. If not, 2116 moves it.
+    - **From 2116 (done):** that target holds Hello, Grid's golden
+      table (`tests/golden/hello-grid.ron`) and builds with
+      `--no-default-features` (no `window`), so the session test
+      needs nothing of the window. CI's `determinism` job runs it
+      (`cargo test --target wasm32-wasip1 -p hello-grid
+      --no-default-features --test golden`), so it plays the session
+      on wasm32 too (its runner maps the workspace, so
+      `assert_session` opens the file), and `cargo xtask golden
+      --bless`, which sets `SHUYI_BLESS=1`, blesses it with the
+      tables.
   - The templates get no session files (they stay small, and a new
     game's author doesn't bless files they didn't make); the docs say
     how to add one.
@@ -348,8 +351,8 @@ for Nick (parked 3047 asks it for crash reports).
    `start`.
 4. Write `check_session`, `bless_session` and `assert_session`, record
    Hello, Grid's golden session, and write its test. Bless it with
-   `SHUYI_BLESS=1 cargo test -p hello-grid golden`, or with `cargo xtask
-   golden --bless` if 2116 is done.
+   `cargo xtask golden --bless` (2116), or with
+   `SHUYI_BLESS=1 cargo test -p hello-grid golden`.
 5. Write `sessions.rs` and the desktop recording, writes and ring.
 6. Count the diff (**Size**). If it fits, add `Ctx::session_recording`,
    the debug menu entry, `App::take_session_save` and Hello, Grid's
@@ -386,8 +389,8 @@ for Nick (parked 3047 asks it for crash reports).
 - [ ] Hello, Grid's golden session test passes. `bless_session` on the
       golden text keeps every input and gives this build's stamp and
       hashes (a test on the text, with no file); bless runs through
-      `SHUYI_BLESS=1`, or `cargo xtask golden --bless` once 2116 is
-      done.
+      `SHUYI_BLESS=1`, or `cargo xtask golden --bless`. CI's
+      `determinism` job plays the session on wasm32.
 - [ ] A new game from each template plays a session: the grid
       template's `tests/it/main.rs` and `BasicTools`' tests in
       `shuyi-cli` record one with `Harness::start_recording` and play it

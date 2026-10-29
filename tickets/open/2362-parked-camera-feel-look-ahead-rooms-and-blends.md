@@ -290,7 +290,9 @@ None.
       equal to its source.
 - [ ] A checked-in table of dumps for a 600-step scripted target path
       matches on native and on `wasm32`, where 1119 checks its `Fx`
-      table. If 2116 is done, the table is one of its fixtures.
+      table. The table is a golden table (2116's
+      `shuyi_assets::golden`), checked by a test with `golden` in its
+      name.
 - [ ] 1120's test scene, given two rooms, has `frame-png` snapshots
       before, during and after a slide.
 - [ ] A tick record's replay hashes are the same with these camera

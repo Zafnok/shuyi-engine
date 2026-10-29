@@ -66,8 +66,11 @@ None.
     ADR-0007 §5). Its feature
     joins `shuyi-assets`'s self dev-dependency, so CI's `test` job
     (x64, ARM64) and `determinism` job (wasm32) build and check it.
-    **Either order with 2116:** if it isn't done, pin the hashes in a
-    plain test, and 2116 moves them into its table;
+    **From 2116 (done):** the row is a `rows.format(…)` line in
+    `crates/assets/src/format/golden_tests.rs`, blessed with
+    `cargo xtask golden --bless`; its guard `missing_rows` already
+    covers `Image`, `ImageInfo`, `Sound` and `MusicTrack`, so a format
+    with no row fails it;
   - a fuzz-style test. **Either order with 2020:** if 2020 is done,
     the format's feature also joins the `fuzz` feature's list in
     `crates/assets/Cargo.toml`, so its fuzz registry runs it; if not,
@@ -96,16 +99,13 @@ decode only PNG pixels, and macroquad plays only WAV and OGG.
       for an image, the header for a sound; decoded samples aren't
       pinned), checked by CI's `test` job (x64, ARM64) and
       `determinism` job (wasm32), with the formats' features added to
-      `shuyi-assets`'s self dev-dependency. Either order with 2116: if
-      it isn't done, pin the hashes in a plain test, and 2116 moves
-      them into its table.
+      `shuyi-assets`'s self dev-dependency.
 - [ ] `cargo deny check` passes with every feature on.
 - [ ] `docs/formats.md` has the license and size table.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Fixture, determinism (a golden row, or a plain pinned test if 2116
-  isn't done) and property tests per format.
+- Fixture, determinism (a golden row) and property tests per format.
 
 ## Completion notes

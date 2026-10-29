@@ -240,10 +240,13 @@ None.
     Shuyi (`AGENTS.md` rule 4);
   - tests: a Harness playthrough to the goal through actions only
     (`Harness::act`); a bot that plays 20 seeds with no rules error;
-    replay determinism (the same hash list twice; **either order with
-    2116:** if 2116 is done, add a golden table as its docs say a new
-    example does; if not, nothing to do); `frame-png` pictures of the
-    start and of a path across rows, as binary snapshots like
+    replay determinism (the same hash list twice; **from 2116
+    (done):** a golden table of one record as Hello, Grid's
+    `tests/golden.rs`, the window behind a default `window` feature,
+    and its own `--no-default-features --test golden` step in CI's
+    `determinism` job, as its docs say a new example does);
+    `frame-png` pictures of the start and of a path across rows, as
+    binary snapshots like
     `examples/hello-grid/tests/it/snapshot.rs`;
     `cargo shuyi check`, `cargo shuyi check --target all` and
     `cargo shuyi check-keys` pass from its folder.

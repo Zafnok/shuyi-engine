@@ -272,14 +272,13 @@ None.
 
   If 2113 isn't done, nothing here: 2113's clause with 2737 adds all
   of this when it lands.
-- **Golden table, either order with 2116:** if it is done, the example
-  gets a golden table as Hello, Grid's
-  (`tests/golden/card-battle.ron`, a record
+- **Golden table, from 2116 (done):** the example gets a golden table
+  as Hello, Grid's (`tests/golden/card-battle.ron`, a record
   `tests/records/seed-11.ron` from `cargo shuyi bots 1 --seed 11 --json`,
   checked by `tests/golden.rs`), its window behind a default `window`
   feature, and its own `cargo test --target wasm32-wasip1 -p card-battle
-  --test golden` step in the `determinism` job, as 2116 says a new
-  example does. If not, nothing.
+  --no-default-features --test golden` step in the `determinism` job,
+  as 2116 says a new example does.
 - **Soak, either order with 2527:** if it is done, the tools implement
   `soak` through `shuyi_cli::contract::soak::turns` with `RonCodec` and
   `Run::invariants` (the deck whole while a fight is on, energy and
@@ -372,7 +371,8 @@ the PR. The run then has one fight.
 7. Add the offer, the reward screen and fight 2: the rules, their unit
    tests, the playthrough carried on to fight 2, and the reward
    picture.
-8. Add the parts of 2113, 2116 and 2527 that are done.
+8. Add the golden table (2116), and the parts of 2113 and 2527 that
+   are done.
 9. Add the eval task, or the line in 2524. Run the gates.
 
 ## Acceptance criteria
@@ -404,7 +404,8 @@ the PR. The run then has one fight.
       `README.md` names the example.
 - [ ] If 2113 is done, `Run` implements `Determinize`, both search tests
       pass, and the win counts are in the Completion notes.
-- [ ] If 2116 or 2527 is done, its part above is in.
+- [ ] The golden table above is in, and if 2527 is done, its part
+      above is in.
 - [ ] `evals/tasks/card-battle.ron` grades this example with
       `cargo xtask eval-reference card-battle`, or 2524's scope names
       the task.
@@ -427,8 +428,8 @@ the PR. The run then has one fight.
   energy is never below 0; health never above its maximum.
 - Integration (`tests/it/`): the playthrough; 50 seeds; replay; the
   hidden pile; `check`, `check --target all` and `check-keys`; the
-  search tests if 2113 is done; the golden table if 2116 is; soak if
-  2527 is.
+  search tests if 2113 is done; soak if 2527 is.
+- Golden: the record's hashes, natively and on wasm32 (2116).
 - Snapshot: `frame-png` pictures of fight 1's first turn, a target
   being chosen in fight 1 and the reward, as insta binary snapshots as
   in `examples/hello-grid/tests/it/snapshot.rs`.

@@ -4,7 +4,7 @@ const TABLE: &str = "{\n    \"a\": \"1\",\n    \"b\": \"2\",\n}\n";
 
 /// The report of `golden`, which must fail.
 fn report(golden: Golden) -> GoldenReport {
-    golden
+    *golden
         .finish()
         .err()
         .unwrap_or_else(|| panic!("expected a report"))

@@ -163,12 +163,15 @@ None.
   and a `Csv<T, R>` of a small kind and row type of `fuzz.rs`'s own in
   `fuzz::registry()`, and add `json` and `csv` to the `fuzz` feature's
   list in `crates/assets/Cargo.toml`. If not, 2020 does it.
-- **Either order with 2116:** if 2116 is done, give each format a row
-  in `crates/assets/tests/golden/formats.ron` (`<kind>: json` and
+- **From 2116 (done):** give each format a row in
+  `crates/assets/tests/golden/formats.ron` (`<kind>: json` and
   `<kind>: csv`, the `state_hash` of what it decodes from a small
-  fixture). Its `determinism` job builds them through the self
-  dev-dependency above. If not, 2116 adds the rows. Until then the
-  three-format test, with its value written out, is the fixture.
+  fixture): a `rows.format(…)` line each in
+  `crates/assets/src/format/golden_tests.rs`, beside `Ron::<Table>`'s,
+  blessed with `cargo xtask golden --bless`. Its `determinism` job
+  builds them through the self dev-dependency above. They aren't
+  standard formats, so its guard `missing_rows` doesn't ask for them:
+  the lines are this ticket's to add.
 - **Public types (ADR-0039):** both formats keep their fields private
   behind constructors, as `Ron` does (the ADR's kind 8), so a new field
   breaks no game.

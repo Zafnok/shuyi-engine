@@ -93,7 +93,9 @@ The sign-off also:
     `determinism` job): in an engine crate's table, or in an example's
     table when that example's own `src/`, `files/`, `tests/records/` or
     `Cargo.toml` didn't change in the same PR. A replay that plays
-    differently is a break even when no API changed.
+    differently is a break even when no API changed. CI asks for its
+    `Breaking:` line once 2035 (`cargo xtask golden --breaks`) is
+    done.
   - **Problem codes** (2509) and the exit codes 0 to 3 are public API:
     a code is never reused or renumbered, a retired code keeps its page,
     and changing what an exit code means is a breaking change.

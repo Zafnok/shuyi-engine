@@ -73,6 +73,7 @@
 use crate::prelude::*;
 
 use alloc::collections::BTreeMap;
+use alloc::collections::btree_map::Entry;
 use core::fmt;
 
 /// A golden table being checked ([module docs](self)).
@@ -109,18 +110,18 @@ impl Golden {
     /// checked twice is a problem [`finish`](Self::finish) reports; the
     /// first value stands.
     pub fn check(&mut self, name: impl Into<String>, value: impl fmt::Display) {
-        let name = name.into();
-        if self.checked.contains_key(&name) {
-            self.twice.push(name);
-        } else {
-            self.checked.insert(name, value.to_string());
+        match self.checked.entry(name.into()) {
+            Entry::Occupied(row) => self.twice.push(row.key().clone()),
+            Entry::Vacant(row) => {
+                row.insert(value.to_string());
+            }
         }
     }
 
     /// Passes when every row checked equals the table's and every row of
     /// the table was checked; otherwise the [`GoldenReport`] of what
     /// differs.
-    pub fn finish(self) -> Result<(), GoldenReport> {
+    pub fn finish(self) -> Result<(), Box<GoldenReport>> {
         let (table, unreadable) = match self.table {
             Ok(table) => (table, None),
             Err(why) => (BTreeMap::new(), Some(why)),
@@ -150,7 +151,7 @@ impl Golden {
         {
             return Ok(());
         }
-        Err(GoldenReport {
+        Err(Box::new(GoldenReport {
             path: self.path,
             changed,
             added,
@@ -158,7 +159,7 @@ impl Golden {
             twice: self.twice,
             unreadable,
             table: table_text(&self.checked),
-        })
+        }))
     }
 
     /// [`finish`](Self::finish), panicking with the report if it fails:
