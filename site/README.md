@@ -40,10 +40,11 @@ copies each example's web build there.
 | `snippets/` | The book's code: a crate of the workspace, `book-snippets`, which CI builds and tests with the rest |
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage* |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
-| `templates/` | The HTML, our own (no theme): `base.html` has the menu and the footer; `shortcodes/snippet.md` shows the book's code |
+| `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `shortcodes/snippet.md` shows the book's code |
 | `static/style.css` | The one stylesheet: system fonts, light and dark |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
+| `llms-header.md` | The start of `llms.txt`: its title, its summary and what Shuyi is ([The docs for agents](#the-docs-for-agents)) |
 
 ## The rules
 
@@ -70,6 +71,40 @@ copies each example's web build there.
 - A new engine crate gets its row in `data/api.toml`, or the build
   checks fail.
 
+## The docs for agents
+
+After `zola build`, and once the API docs are in, `cargo xtask llms`
+(`crates/xtask/src/llms.rs`, ticket 2808) writes into the built site, in
+the shape of <https://llmstxt.org/>:
+
+- a Markdown twin of each Learn page that isn't a draft, at its URL with
+  `index.md` on the end (`/learn/book/quick-start/index.md`): its title,
+  a `Source:` line, and its text, each `snippet` shortcode replaced by the
+  code it shows and each link made absolute (a `@/` link to a Learn page
+  goes to that page's twin). The page's HTML links its twin
+  (`templates/base.html`);
+- `llms.txt`: [`llms-header.md`](llms-header.md), written by hand, the
+  version and the commit, then a list of links for each section of Learn,
+  the contract, the API docs, the released versions' copies and the
+  optional reading;
+- `llms-full.txt`: every twin in one file, which fails above
+  `FULL_BUDGET_BYTES` (400 000 bytes, about 100 000 tokens). Raising it is
+  a change in a PR, on purpose;
+- the contract's schemas, `crates/cli/schemas/`, at
+  `/contract/schemas/v<N>/`, with an `index.md`.
+
+Change Learn, never a twin: they are written at each build. The twins
+follow Zola's URL rule only for names already in slug form, so a Learn
+page that sets `slug` or `path`, or a file or folder named other than
+lowercase letters, digits and `-`, fails the tool. A shortcode added to
+Learn needs its expansion in `llms.rs` in the same PR, or the tool fails
+on it. To try it on a local build:
+
+```bash
+zola build --output-dir public
+cargo xtask llms --public public --base-url http://127.0.0.1:1111/ --commit HEAD
+```
+
 ## The checks
 
 CI's `site` job, on every pull request:
@@ -79,6 +114,11 @@ bash errors.sh
 zola check --skip-external-links
 bash check-build.sh
 ```
+
+then builds the site once more and runs `cargo xtask llms` over it, so a
+shortcode left unexpanded, a broken `llms.txt` link or a full file over
+its budget fails before the merge. The API docs aren't built there, so
+their links are checked by `pages.yml`.
 
 `zola check` checks the `@/` links and their anchors. `check-build.sh`
 fails on a fenced Rust block in the book, and on an engine crate with

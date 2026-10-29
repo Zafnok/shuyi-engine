@@ -16,6 +16,14 @@
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="{{ get_url(path='style.css', cachebust=true) }}">
 <link rel="alternate" type="application/atom+xml" title="Shuyi Engine news" href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">
+{#- A Learn page's Markdown twin, which `cargo xtask llms` writes beside
+    it after the build (ticket 2808). #}
+{%- if page.relative_path %}{% set source = page.relative_path %}
+{%- elif section.relative_path %}{% set source = section.relative_path %}
+{%- else %}{% set source = "" %}{% endif %}
+{%- if source is starting_with("learn/") %}
+<link rel="alternate" type="text/markdown" href="index.md">
+{%- endif %}
 </head>
 <body>
 <header class="site-header">
@@ -43,6 +51,7 @@
       <li><a href="{{ config.extra.repo | safe }}">The repository</a></li>
       <li><a href="{{ get_url(path='changelog/') }}">The changelog</a></li>
       <li><a href="{{ get_url(path='news/atom.xml', trailing_slash=false) }}">The news feed</a></li>
+      <li>For agents: <a href="{{ get_url(path='llms.txt', trailing_slash=false) }}">llms.txt</a></li>
     </ul>
   </div>
 </footer>

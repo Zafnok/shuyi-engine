@@ -23,6 +23,7 @@ repository has no row here.
 | An example game | [`examples/`](../examples/), each example's `README.md` | changes what an example does or how to run it |
 | How an agent makes a game on the engine, task by task | [`skills/`](../skills/), the skill pack: each skill's `SKILL.md`, its worked example `example.ron` (CI runs it on a new game), and the pack's [`README.md`](../skills/README.md); the plugin is `.claude-plugin/marketplace.json` ([ADR-0043](adr/0043-the-skill-pack-skills-at-the-root-worked-examples-run-by-the-xtask-check-skills-in-the-cli-and-the-pack-folder-as-the-plugin.md)) | changes what a skill teaches (an operation, a field, a problem code, a template, a format, a rule a game keeps), or adds a skill |
 | How to make a game on the engine, idea by idea: the quick start, then a chapter per concept, with code CI builds and tests | The book, [`site/content/learn/book/`](../site/content/learn/book/), one page a chapter; its code in [`site/snippets/`](../site/snippets/), the crate `book-snippets`, shown by the `snippet` shortcode ([`site/templates/shortcodes/snippet.md`](../site/templates/shortcodes/snippet.md), [`site/README.md`](../site/README.md)) | adds or changes something public: a public item a game names, an operation or a field of the contract, a format, a rule a game keeps, a template |
+| The docs as agents read them: `llms.txt`, `llms-full.txt`, a Markdown twin of each Learn page at its URL with `index.md` on the end, and the contract's schemas at `/contract/schemas/v<N>/` | Generated at each build of the site by `cargo xtask llms` from Learn ([`site/content/learn/`](../site/content/learn/)), `crates/cli/schemas/` and the hand-written start of `llms.txt`, [`site/llms-header.md`](../site/llms-header.md) ([`site/README.md`](../site/README.md), *The docs for agents*). Change Learn or the header, never a twin | changes what Shuyi is in a sentence (the header), or adds a shortcode to Learn (its expansion in `crates/xtask/src/llms.rs`) |
 | Every third-party file | [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md) | adds or removes a non-crate asset |
 | The website's pages: the home page's text, Learn, News, the Examples cards, Community and Sponsor | [`site/content/`](../site/content/), and the home page's feature cards in [`site/data/features.toml`](../site/data/features.toml) ([ADR-0048](adr/0048-the-website-zola-0-21-pinned-in-site-sections-of-our-own-templates-and-the-base-url-passed-by-the-build.md)) | adds or changes a section or a page of the site, adds an example, or changes what a feature's status is |
 
@@ -40,7 +41,7 @@ repository has no row here.
 | What a new game's compile may cost: its rebuild's seconds on CI's runners, and its dependency count | [`tools/compile-budget.ron`](../tools/compile-budget.ron), checked by `cargo xtask compile-times` in CI's `compile-times` job ([ADR-0049](adr/0049-fast-compiles-a-new-games-rebuild-timed-in-ci-against-a-budget-no-debug-info-in-dev-and-no-dynamic-engine.md)) | adds a crate to a new game, or makes its rebuild faster or slower |
 | The Sonar policy and its script | [`tools/sonar-triage/README.md`](../tools/sonar-triage/README.md) | changes how Sonar findings are triaged |
 | The MCP server sessions here use: `shuyi mcp`, run as `cargo run -q -p shuyi-cli -- mcp` | [`.mcp.json`](../.mcp.json) and [`.claude/settings.json`](../.claude/settings.json), what `cargo shuyi mcp install --dry-run --command "cargo run -q -p shuyi-cli --"` prints for Claude Code (a test checks) | changes how the server is run or registered |
-| How to preview and build the website, and its rules | [`site/README.md`](../site/README.md) | changes how the site is built, checked or published (`pages.yml`, the `site` job, the pinned Zola) |
+| How to preview and build the website, and its rules, and the docs for agents `cargo xtask llms` writes into it: the twins' rule, the URL rule and the full file's budget | [`site/README.md`](../site/README.md) | changes how the site is built, checked or published (`pages.yml`, the `site` job, the pinned Zola, `crates/xtask/src/llms.rs`) |
 | The web shell a game's web build runs in | [`crates/cli/web/README.md`](../crates/cli/web/README.md) | changes the page, the loader or the files `shuyi web` writes |
 | Where each fact is written | this file | makes a new home for docs (rule 5) |
 
@@ -113,7 +114,7 @@ A ticket from `1119`–`1150` reads the row of its area.
 | The device crates | [`tools/layers.ron`](../tools/layers.ron), `devices` | `templates/shuyi-default/stages/top-down-grid/crates/rules/tests/layers.rs`, and its list in `shuyi_cli::contract::lint::NEVER` | `layers.rs`'s `a_new_games_rules_test_keeps_a_copy_of_the_devices` (`crates/xtask`); `lint`'s `the_crates_never_under_the_rules_are_the_templates` |
 
 Coming homes get their rows when they land: the guides, `docs/guides/`
-(2004), and `llms.txt` (2808).
+(2004).
 A skill of the pack that teaches what one of this repository's skills
 teaches is the source for what holds in every game; ours keeps only what
 holds here and links it, and the pair gets a row above.

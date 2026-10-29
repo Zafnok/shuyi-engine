@@ -103,6 +103,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2777 | New games build for the web as they are: a `web` part, a `build.rs` and the wasm target in the templates, so the quick start ends in the browser |
 | 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
+| 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
 | 2805 | The blog: Nick's posts in News, by hand or drafted by Claude |
 | 2806 | Sponsors: GitHub Sponsors and Ko-fi, a sponsor page and a strip on the home page |

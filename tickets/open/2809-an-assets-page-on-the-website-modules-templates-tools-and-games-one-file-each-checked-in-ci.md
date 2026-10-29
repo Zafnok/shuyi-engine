@@ -61,8 +61,9 @@ What this ticket builds on:
 - `crates/xtask/src/`: `ticket-lint`, `check-links` (relative links
   only; it never fetches the web) and `check-no-std`. The last two are
   each a `run(root: &Path) -> Vec<String>` of errors. CI's `tickets`
-  job runs the first two. 2808 adds `toml` to the xtask for the Learn pages' front
-  matter.
+  job runs the first two. 2808 (done) added `toml` to the xtask for the
+  Learn pages' front matter (`toml = { version = "1.1",
+  default-features = false, features = ["parse", "serde", "std"] }`).
 
 **Why it matters:**
 
@@ -220,9 +221,8 @@ not this ticket's.
   - the body holds raw HTML or an image (a `<` outside a code span, or
     `![`).
 - **The xtask's dependencies:**
-  - `toml`, if 2808 didn't add it: `toml = { version = "1",
-    default-features = false, features = ["std", "parse", "serde"] }`.
-    `toml` is MIT OR Apache-2.0. It brings `serde_core`,
+  - `toml`: none to add, 2808 (done) added it with the features this
+    needs. `toml` is MIT OR Apache-2.0. It brings `serde_core`,
     `serde_spanned`, `toml_datetime` and `toml_parser` (MIT OR
     Apache-2.0) and `winnow` (MIT), as read from toml 1.1.8's manifest
     on 2026-10-20. `deny.toml` allows both licenses. Check again on the

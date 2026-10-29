@@ -1,0 +1,27 @@
+---
+source: crates/xtask/src/llms/tests.rs
+expression: "fixture.read(\"learn/book/start/index.md\")"
+---
+# Start
+
+Source: https://docs.invalid/engine/learn/book/start/
+
+A garden:
+
+```rust
+/// A garden of rows.
+pub struct Garden {
+    pub rows: u8,
+}
+```
+
+Its rows alone:
+
+```rust
+    pub rows: u8,
+```
+
+Then read [the rows' file](https://docs.invalid/engine/learn/book/later/index.md#the-rows), with the plan
+beside it:
+
+![The plan](https://docs.invalid/engine/learn/book/start/plan.svg)

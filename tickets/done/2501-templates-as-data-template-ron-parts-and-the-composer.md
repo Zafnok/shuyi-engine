@@ -66,7 +66,7 @@ None.
     `conflicts`, and returns `Plan { files: BTreeMap<PathBuf, Vec<u8>>,
     modules, targets, stages }`.
   - **Placeholders:** `{{name}}`, `{{crate_name}}` (1129's `{{crate}}`,
-    renamed), 1129's `"{{engine.<crate>}}"`, 2808's `{{engine.docs}}`
+    renamed), 1129's `"{{engine.<crate>}}"`, 2812's `{{engine.docs}}`
     (in the base part's `AGENTS.md`) and `{{answer.<question>}}` in file
     contents and file names. `${{ … }}` (a GitHub Actions
     expression) passes through untouched, as 3050 makes `new`'s `fill`
@@ -220,10 +220,10 @@ None.
     importer, and the base part's `AGENTS.md` keeps the row for
     `cargo shuyi upgrade` in its table of tools. If not, nothing to do:
     2517 puts them in the parts (its clause says so).
-  - **2808** (`{{engine.docs}}`): if 2808 is done, the base part's
+  - **2812** (`{{engine.docs}}`): if 2812 is done, the base part's
     `AGENTS.md` keeps the placeholder, and `compose` fills it from the
     game's `Engine` as `new`'s `files()` did, with its test. If not,
-    nothing to do: 2808 adds it to the base part and to `compose` (its
+    nothing to do: 2812 adds it to the base part and to `compose` (its
     clause says so).
 
 **Out (do not do):**

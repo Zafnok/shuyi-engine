@@ -102,14 +102,13 @@ say whether a new developer would know where to start.
   none lists after them, `site/templates/book.html`): give the guides
   their own heading on the book's contents and in Learn
   (`site/templates/learn.html`).
-  **Either order with 2808:** the guides reach Learn as Markdown files
+  **From 2808 (done):** the guides reach Learn as Markdown files
   copied into `site/content/learn/` before Zola runs, in `pages.yml`
-  and in `ci.yml` alike, each with front matter (`title`,
-  `description`, `weight`) and a name in slug form. If 2808 is done,
-  `cargo xtask llms` twins them and puts them in `llms-full.txt`:
-  check it passes within its budget, and add the expansion of any
-  shortcode they use to `llms.rs`; if not, nothing more to do (2808
-  twins every page under `site/content/learn/`).
+  and in `ci.yml`'s `site` job alike (before its `cargo xtask llms`
+  too), each with front matter (`title`, `description`, `weight`) and a
+  name in slug form. `cargo xtask llms` twins them and puts them in
+  `llms-full.txt`: check it passes within its budget, and add the
+  expansion of any shortcode they use to `crates/xtask/src/llms.rs`.
 - **From 1134 (done)** (the skill pack): the `shuyi-new-game` skill
   (`skills/shuyi-new-game/SKILL.md`) sends an agent to the direction
   guide before it chooses a template. It names the guide in words: the

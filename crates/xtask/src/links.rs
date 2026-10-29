@@ -10,8 +10,14 @@ use pulldown_cmark::{Event, Parser, Tag};
 /// Folders never searched for Markdown, by name.
 pub(crate) const SKIPPED_DIRS: &[&str] = &[".git", "target", "node_modules", "dist"];
 /// Folders never searched for Markdown, by path from the root: the app's
-/// worktrees are other checkouts of this repository.
-const SKIPPED_PATHS: &[&str] = &[".claude/worktrees"];
+/// worktrees are other checkouts of this repository, a local build of the
+/// site holds the twins `cargo xtask llms` writes, and the fixture site of
+/// its tests holds Zola's `@/` links and links broken on purpose.
+const SKIPPED_PATHS: &[&str] = &[
+    ".claude/worktrees",
+    "site/public",
+    "crates/xtask/tests/fixtures/llms",
+];
 
 /// Checks every `*.md` file under `repo_root` and returns every broken link
 /// (empty means clean).

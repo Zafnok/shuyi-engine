@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: sonnet-5
 effort: low
 status: blocked
-blocked_by: ["2801", "2016", "2808"]
+blocked_by: ["2801", "2016", "2808", "2812"]
 nick_input: setup
 completed:
 ---
@@ -19,7 +19,7 @@ completed:
 
 2801 builds the site with `base_url` passed in by the build, so the
 site itself moves by changing one value. A few places outside the site
-name its address too: the README, the crates' metadata, and 2808's
+name its address too: the README, the crates' metadata, and 2812's
 `ENGINE_SITE`, which new games' `AGENTS.md` links. 2016's
 `docs/continuity.md` lists the accounts the engine runs on, with a
 "none yet, 2807" row for the domain. A domain costs money every year,
@@ -51,7 +51,7 @@ so buying one is Nick's (`AGENTS.md`, *Who decides what*).
   passes the same URL. The repository's Pages settings get the domain,
   and "Enforce HTTPS" once the certificate is issued.
 - The README, `Cargo.toml`'s `homepage`, every crate's `documentation`
-  link, and `ENGINE_SITE` in `crates/cli/src/contract/new.rs` (2808,
+  link, and `ENGINE_SITE` in `crates/cli/src/contract/new.rs` (2812,
   linked from new games' `AGENTS.md`) use the domain.
 - A row in `docs/continuity.md` (2016) for the domain, in place of its
   "none yet, 2807": the registrar's name, that auto-renew is on, the
@@ -86,7 +86,7 @@ so buying one is Nick's (`AGENTS.md`, *Who decides what*).
 ## Tests required
 
 - The 2801 base-URL test, with the domain.
-- 2808's `new.rs` unit tests of `{{engine.docs}}`, with the domain.
+- 2812's `new.rs` unit tests of `{{engine.docs}}`, with the domain.
 
 ## Completion notes
 

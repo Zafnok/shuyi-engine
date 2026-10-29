@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["2801", "2802"]
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 2808 — Docs agents can read
@@ -305,34 +305,40 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The live site serves `/llms.txt` with an H1, a blockquote, the
+- [x] ~~The live site serves `/llms.txt` with an H1, a blockquote, the
       version and the commit, and the H2 sections above, and every link
-      in it resolves.
-- [ ] Every page under `site/content/learn/` that isn't a draft has its
+      in it resolves.~~ (not done before the merge: the live site changes
+      only when `pages.yml` runs on `main`. A build of the real site at
+      the Pages URL, with `cargo xtask llms` over it, gives that
+      `llms.txt` and its link check passes, the API links aside, which
+      only `pages.yml` builds and checks. Fetching the live files is
+      the first thing to do after the merge.)
+- [x] Every page under `site/content/learn/` that isn't a draft has its
       twin at its URL with `index.md` on the end, and its HTML links
       the twin.
-- [ ] `/llms-full.txt` holds every twin in `llms.txt`'s order with
+- [x] `/llms-full.txt` holds every twin in `llms.txt`'s order with
       snippets as code. The Pages run prints its size, and a size over
       the budget fails (fixture test).
-- [ ] A twin's code block is the same text as the anchored lines of its
+- [x] A twin's code block is the same text as the anchored lines of its
       snippet file, with nested anchor lines dropped (fixture test).
-- [ ] An unknown shortcode, a page with `slug` or `path`, a page whose
+- [x] An unknown shortcode, a page with `slug` or `path`, a page whose
       URL Zola didn't build, or a broken `llms.txt` link fails the
       command with the file and line (fixture tests), and so fails CI
       on a pull request.
-- [ ] `/contract/schemas/v<N>/` holds every file of
+- [x] `/contract/schemas/v<N>/` holds every file of
       `crates/cli/schemas/` for the current contract version, and
       `llms.txt` links its index.
-- [ ] `llms.txt` lists a `v<x.y>/llms-full.txt` put in the output
+- [x] `llms.txt` lists a `v<x.y>/llms-full.txt` put in the output
       folder, and says "none yet" without one (fixture tests).
-- [ ] `--full-only --out <dir>` writes `llms-full.txt` alone.
-- [ ] `shuyi new` with `--engine-rev`, with the default and with
+- [x] `--full-only --out <dir>` writes `llms-full.txt` alone.
+- [x] ~~`shuyi new` with `--engine-rev`, with the default and with
       `--engine-path` writes an `AGENTS.md` whose engine links name
       that commit, `main` and the site, or the checkout, and no file of
-      a new game holds `{{`.
-- [ ] `cargo xtask check-links` passes with a local `site/public` and
+      a new game holds `{{`.~~ (not done: split into 2812, as the
+      ticket's *Size* line says)
+- [x] `cargo xtask check-links` passes with a local `site/public` and
       the fixture site in place.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -352,4 +358,50 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-10-28.
+
+- **`cargo xtask llms`** (`crates/xtask/src/llms.rs`, its tests in
+  `crates/xtask/src/llms/tests.rs`, the fixture site in
+  `crates/xtask/tests/fixtures/llms/` and three insta snapshots) writes
+  the twins, `llms.txt`, `llms-full.txt` and the schemas, and runs every
+  check of the scope, listing all the errors. The real site today: 46
+  pages (Learn, the book and the 31 problem codes), and `llms-full.txt`
+  is 104 400 bytes, about 26 100 tokens, a quarter of the budget.
+- **The site:** `base.html` links a Learn page's twin in its `<head>`
+  (one test of `page.relative_path` or `section.relative_path`, so both
+  page and section templates get it, and nothing outside Learn), and
+  its footer and `learn.html` have the "For agents: llms.txt" line.
+  `site/llms-header.md` is the start of `llms.txt`. `site/README.md`
+  has *The docs for agents*.
+- **Workflows:** `pages.yml` runs the tool after the API docs and the
+  examples are in, with the same `BASE_URL` value as `zola build`;
+  `ci.yml`'s `site` job builds the site again into `$RUNNER_TEMP` and
+  runs it there (it now sets up Rust for the xtask).
+- **Dependencies:** `toml` 1.1 (MIT OR Apache-2.0, read from its
+  manifest on the day; `cargo deny check` passes), with `parse`,
+  `serde` and `std` only: `toml::Table` and `toml::Value` need `serde`
+  in 1.1. `insta` in xtask's dev-dependencies.
+
+Deviations:
+
+- **Split, by the ticket's *Size* line:** the diff passed 600 lines
+  (fixtures and snapshots aside, `llms.rs` and its tests alone are
+  about 2 100), so the `{{engine.docs}}` part (`new.rs`, the template's
+  `AGENTS.md`, `template::Fill`) is **2812**. 2005 now waits for it too,
+  and the mentions in 2005, 2807 (parked: its `blocked_by` gains 2812)
+  and the done 2501 point at it. Its acceptance box here is struck.
+- `llms-full.txt` starts with a line of its own before the first twin:
+  the version, the commit and its date, and where `llms.txt` is, so a
+  frozen copy at `/v<x.y>/` says what it documents.
+- `llms.txt`'s *Optional* links the ADRs' index (`docs/adr/README.md`)
+  rather than each ADR: its relative links resolve on the raw host too,
+  and `llms.txt` stays short.
+- The API links carry each crate's `description` from its `Cargo.toml`.
+- A name that starts with a date (`2026-10-20-x`) is an error of the URL
+  rule too: Zola takes the date off such a name.
+- The schemas' index isn't a twin, so it isn't in `llms-full.txt`.
+
+Follow-up: 2812 (above). After the merge, fetch `/llms.txt`, one twin
+and `/llms-full.txt` from the live site.
+
+No break: the xtask is never published, and no public crate changed.

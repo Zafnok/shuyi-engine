@@ -4,7 +4,9 @@ name: Pages
 # URL, and each example under `examples/`, built for the web, plays at
 # /examples/<name>/ with the NOTICES.txt its build carries. /hello-grid/
 # redirects to /examples/hello-grid/. The workspace's API docs are at
-# /api/ (ticket 2802).
+# /api/ (ticket 2802). `cargo xtask llms` writes the docs for agents into
+# it last: llms.txt, llms-full.txt, a Markdown twin of each Learn page and
+# the contract's schemas (ticket 2808).
 
 on:
   push:
@@ -101,6 +103,12 @@ jobs:
             cp -r "$dir/dist/web/." "$dest/"
             [ -f "$dest/NOTICES.txt" ] || { echo "::error::examples/$name's web build has no NOTICES.txt"; exit 1; }
           done
+      # At the base URL Zola built with, after the API docs are in: llms.txt
+      # links them, and each link must name a file of the site.
+      - name: Write the docs for agents
+        env:
+          BASE_URL: ${{ steps.address.outputs.base_url }}
+        run: cargo xtask llms --public site/public --base-url "$BASE_URL" --commit "$GITHUB_SHA"
       - name: The site loads nothing from another host
         env:
           BASE_URL: ${{ steps.address.outputs.base_url }}
