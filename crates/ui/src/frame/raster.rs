@@ -30,6 +30,7 @@ use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, PxRect, Sprite};
 use crate::frame::onebit::{self, Frame};
 
+pub mod card;
 pub mod test_card;
 
 /// The colour of what is missing, as in `shuyi-app` (macroquad's
