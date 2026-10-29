@@ -92,3 +92,10 @@ serde.workspace = true
 tempfile = "3"
 # Variant picking property test (audio.rs, ticket 0212).
 proptest.workspace = true
+
+[[example]]
+# The render card (ticket 2392, ADR-0052 §6): every kind of thing a frame
+# draws, in the window and compared with the raster. CI's `render` job
+# runs it under Xvfb.
+name = "render_card"
+required-features = ["capture"]

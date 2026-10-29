@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-10-29
 - **Related tickets:** 2018 (this); 2332 (the raster); 2019 (the web
-  build's capture); 2392 (the render card); 2566 (one input script);
+  build's capture); 2392 (the render card, measured in §5); 2566 (one input script);
   2333 (scale modes); 3034, 2326 and 3104 (later painters)
 - **Extends:** ADR-0011 §5 (GPU output is compared with the software
   reference only by eye or with a tolerance), ADR-0008 §2 (only
@@ -108,6 +108,18 @@ With `Item::Rect` drawn one window pixel to the right, the two stage
 captures fail (on llvmpipe in CI: 116 and 244 pixels over, worst 188
 and 189; on the author's desktop: 232 and 488), so the default is far
 from letting that break pass.
+
+The render card (2392), one capture of 768 × 576 at scale 3 in CI (the
+author's desktop scales its display, so scale 2 there):
+
+| Where | Pixels over | Worst channel difference |
+|---|---|---|
+| Windows 11, a desktop GPU (the author's), scale 2 | 0 | 1 |
+| CI, llvmpipe 21.1.8 (Mesa 26.0.8) under Xvfb, scale 3 | 0 | 1 |
+
+The default holds for it too. With `Item::Rect` drawn one window pixel
+to the right it fails: 891 pixels over, worst 237, on llvmpipe; 1 184
+over, worst 237, on the author's desktop.
 
 ### 6. What a new frame item or paint does
 

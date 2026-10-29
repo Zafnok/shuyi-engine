@@ -226,16 +226,15 @@ None.
     (one-bit draws them by the one-bit rule; the GBA blends per layer).
 - **The reference changes** go in `shuyi_ui::frame::raster` (2332), not
   in `frame_png.rs`.
-- **Either order with 2392 and 2019** (the render card, which 2018's
-  `render` job compares with the window, and the web build compared
-  with the raster): if done, add tinted, added and multiplied sprites
-  and an overlay at half opacity to the card (`raster::card`), which
-  the web shows too. If not, the PR shows the same frame drawn by the
-  desktop build, the web build and `frame-png`: a local change to
-  `examples/hello-grid`'s skin, not committed, that draws its
-  `tiles.png` tinted and blended (its tools in
-  `examples/hello-grid/src/tools.rs` run `frame-png`), and 2392 adds
-  them to the card.
+- **The render card** (2392, which 2018's `render` job compares with
+  the window): add tinted, added and multiplied sprites and an overlay
+  at half opacity to the card (`raster::card`). **Either order with
+  2019** (the web build compared with the raster): if done, the web
+  shows the card too. If not, the PR shows the same frame drawn by the
+  web build and `frame-png`: a local change to `examples/hello-grid`'s
+  skin, not committed, that draws its `tiles.png` tinted and blended
+  (its tools in `examples/hello-grid/src/tools.rs` run `frame-png`),
+  and 2019 shows the card on the web.
 - **Either order with 2335** (turned sprites): if 2335 is done, its
   turned-sprite paths (`frame-png`'s per-pixel fill, the one-bit
   `dest_pixel` path, `shuyi-app`'s texture made on the CPU) take

@@ -20,6 +20,10 @@
 //!
 //! What it writes, under `SHUYI_CAPTURE_OUT` (`target/capture` unless
 //! set), is [`Report`]'s.
+//!
+//! The `render_card` example captures the render card
+//! (`shuyi_ui::frame::raster::card`) the same way, with no game: the
+//! pieces it uses are [`window_layout`], [`read_window`] and [`Report`].
 
 use std::path::{Path, PathBuf};
 

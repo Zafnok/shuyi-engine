@@ -111,21 +111,26 @@ with its `std::` path, or in a module whose file starts with
 
 ## The real window (CI's `render` job, CI only)
 
-The `render` job (ADR-0052) runs Hello, Grid's plan in its window under
-Xvfb with Mesa's llvmpipe and compares each capture with the raster. It
-needs Xvfb, so it runs in CI only. On Linux (a dev container, a cloud
+The `render` job (ADR-0052) runs the render card (`shuyi-app`'s
+`render_card` example: every kind of thing a frame draws) and Hello,
+Grid's plan in their windows under Xvfb with Mesa's llvmpipe, and
+compares each capture with the raster. It needs Xvfb, so it runs in CI
+only. On Linux (a dev container, a cloud
 agent's), after `bash scripts/setup-linux.sh`:
 
 ```bash
 sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri mesa-utils
+cargo build -p shuyi-app --example render_card --features capture --locked
+SHUYI_CAPTURE_OUT=target/capture/card LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/examples/render_card
 cargo build -p hello-grid --features capture --locked
 SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/hello-grid
 ```
 
 It exits 0 when every capture passes, 1 when one fails, 2 when the plan
 can't run; the pictures and `capture.txt` are under `target/capture/`.
-On any desktop the same plan runs in a real window, without Xvfb:
-`SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p
+On any desktop the card and the plan run in a real window, without
+Xvfb: `cargo run -p shuyi-app --example render_card --features capture`,
+and `SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron cargo run -p
 hello-grid --features capture`.
 
 ## Golden tables (CI's `determinism` job)

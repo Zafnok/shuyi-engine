@@ -135,9 +135,11 @@ jobs:
   # The real window checked (ticket 2018, ADR-0052): Hello, Grid run in its
   # window as its plan says, under Xvfb with Mesa's llvmpipe (software GL:
   # no GPU runner), each capture's window compared with the raster's
-  # picture of the same frame within the plan's tolerance. The plan runs
-  # twice and both runs' pictures must be byte for byte the same, and a
-  # plan with a key name that doesn't exist must not run (exit 2). Each
+  # picture of the same frame within the plan's tolerance. First the
+  # render card (ticket 2392): every kind of thing a frame draws, in the
+  # window and compared the same way. The plan runs twice and both runs'
+  # pictures must be byte for byte the same, and a plan with a key name
+  # that doesn't exist must not run (exit 2). Each
   # run's `capture.txt` goes in the job's summary, and every picture is
   # uploaded, a failing capture's diff among them.
   render:
@@ -163,6 +165,11 @@ jobs:
         run: xvfb-run -a -s "-screen 0 1280x1024x24" glxinfo -B
       - name: The capture mode's tests
         run: cargo test -p shuyi-app -p shuyi-platform --features shuyi-app/capture --locked
+      - name: The render card, every kind of thing a frame draws
+        run: |
+          cargo build -p shuyi-app --example render_card --features capture --locked
+          SHUYI_CAPTURE_OUT=target/capture/card \
+            xvfb-run -a -s "-screen 0 1280x1024x24" target/debug/examples/render_card
       - name: Build Hello, Grid with the capture mode
         run: cargo build -p hello-grid --features capture --locked
       - name: Hello, Grid's plan, twice, the same pictures both times

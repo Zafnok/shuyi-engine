@@ -1,0 +1,126 @@
+---
+source: crates/ui/src/frame/raster/card/tests.rs
+expression: build().buffer.to_snapshot(&engine_palette())
+---
+#o-|#o-|#o-|#o-|#o-|#o-|#o-|#o-|
+Zo-Z#oZ|#Z-|Zo-Z#oZ|#Z-|Zo-Z#oZ|
+                      #  |  -   
+                     #  |  -  o 
+                       o# -  o  
+                      |  -  o   
+#o-|#o-|             |  -  o  # 
+                       -  o  #  
+                      -  o  #   
+                     -  o  #  | 
+                       o  #  |  
+o o o o Z                       
+--- colours ---
+abcdefghijklmnopbcdqfghrjklsnopt
+uvwxyuvwxyuvwxyuvwxyuvwxyuvwxyuv
+zAzAzAzAzAzAzAzAzAzAuBCDEBCDEBCu
+AzAzAzAzAzAzAzAzAzAzuCDEBCDEBCDu
+zAzAzAzAzAzAzAzAzAzAuDEgwDEBCDEu
+AzAzAzAzAzAzAzAzAzAzuEBCDEBCDEBu
+zFGHIAJKzAzAzAzAzAzAuBCDEBCDEBCu
+AzAzAzAzAzAzAzAzAzAzuCDEBCDEBCDu
+zAzAzAzAzAzAzAzAzAzAuDEBCDEpCDEu
+AzAzAzAzAzAzAzAzAzAzuEBCDEBCDEBu
+zAzAzAzAzAzAzAzAzAzAuBCDEBCDEBCu
+EEEEEEEEDuuuuuuuuuuuuuuuuuuuuuuu
+--- legend ---
+a = fg:bright bg:#283c78
+b = fg:#fac83c bg:#283c78
+c = fg:#5adcf0 bg:#283c78
+d = fg:#f05ac8 bg:#283c78
+e = fg:#0a0a0a bg:#782832
+f = fg:bright bg:#782832
+g = fg:#fac83c bg:#782832
+h = fg:#5adcf0 bg:#782832
+i = fg:#f05ac8 bg:#1e643c
+j = fg:#0a0a0a bg:#1e643c
+k = fg:bright bg:#1e643c
+l = fg:#fac83c bg:#1e643c
+m = fg:#5adcf0 bg:#968c28
+n = fg:#f05ac8 bg:#968c28
+o = fg:#0a0a0a bg:#968c28
+p = fg:bright bg:#968c28
+q = fg:#0a0a0a bg:#283c78
+r = fg:#f05ac8 bg:#782832
+s = fg:#5adcf0 bg:#1e643c
+t = fg:#fac83c bg:#968c28
+u = fg:bright bg:#14121c
+v = fg:#fac83c bg:#14121c
+w = fg:#5adcf0 bg:#14121c
+x = fg:#f05ac8 bg:#14121c
+y = fg:#0a0a0a bg:#14121c
+z = fg:bright bg:#464650
+A = fg:bright bg:#c8beaa
+B = fg:#f05ac8 bg:see-through
+C = fg:bright bg:see-through
+D = fg:#fac83c bg:see-through
+E = fg:#5adcf0 bg:see-through
+F = fg:#fac83c bg:#c8beaa
+G = fg:#5adcf0 bg:#464650
+H = fg:#f05ac8 bg:#c8beaa
+I = fg:#0a0a0a bg:#464650
+J = fg:#fac83c bg:#464650
+K = fg:#5adcf0 bg:#c8beaa
+--- overlays ---
+under 0,23 256x3  #e62828
+over  5,6 5x3  #283c78
+over  37,6 5x3  #782832
+over  69,6 5x3  #1e643c
+over  101,6 5x3  #968c28
+over  161,33 1x140  bright
+over  30,40 4x7  #28dc5a
+under sprite 4,36 16x16  card/test_card.png 0,0 16x16
+over  sprite 26,36 16x16  card/test_card.png 0,0 16x16
+over  sprite 48,36 16x16  card/test_card.png 0,0 16x16 solid=#fac83c
+over  sprite 70,36 16x16  card/test_card.png 0,0 16x16 dimmed
+over  sprite 92,36 16x16  card/test_card.png 0,0 16x16 shade=400:700,750,1000
+over  sprite 114,36 16x16  card/test_card.png 0,0 16x16 flip
+over  sprite 136,36 16x16  card/missing.png 0,0 16x16
+over  sprite 4,60 16x16  card/test_card.png 0,0 16x16 opacity=128
+over  sprite 26,60 16x16  card/test_card.png 0,0 16x16 opacity=128 solid=#fac83c
+over  sprite 48,60 16x16  card/test_card.png 0,0 16x16 bright=102
+over  sprite 70,60 16x16  card/test_card.png 0,0 16x16 opacity=128 bright=102 solid=#fac83c
+over  sprite 92,60 16x16  card/test_card.png 0,0 16x16 bright=102 dimmed
+under sprite 114,60 16x16  card/test_card.png 0,0 16x16 flip opacity=128
+over  sprite 136,60 16x16  card/test_card.png 0,0 16x16 opacity=128 bright=102 shade=400:700,750,1000
+under sprite 4,98 32x32  card/test_card.png 0,0 16x16
+over  sprite 42,98 32x32  card/test_card.png 0,0 16x16 clip=47,101 21x23
+over  sprite 80,98 32x32  card/test_card.png 0,0 16x16 flip clip=85,101 21x23
+under sprite 118,98 32x32  card/test_card.png 0,0 16x16 solid=#5adcf0 clip=121,105 25x15
+--- backdrop: clip 21,2 10x9  origin 0.5,0.5  zoom 2 ---
+# -   
+- # - 
+#   # 
+- # - 
+  - # 
+--- colours ---
+abcdef
+ghiejk
+lmenop
+qeabcd
+efghie
+--- legend ---
+a = fg:bright bg:#283c78
+b = fg:#fac83c bg:#782832
+c = fg:#5adcf0 bg:#1e643c
+d = fg:#f05ac8 bg:#968c28
+e = fg:bright bg:#14121c
+f = fg:bright bg:#782832
+g = fg:#fac83c bg:#1e643c
+h = fg:#5adcf0 bg:#968c28
+i = fg:#f05ac8 bg:#283c78
+j = fg:bright bg:#1e643c
+k = fg:#fac83c bg:#968c28
+l = fg:#5adcf0 bg:#283c78
+m = fg:#f05ac8 bg:#782832
+n = fg:bright bg:#968c28
+o = fg:#fac83c bg:#283c78
+p = fg:#5adcf0 bg:#782832
+q = fg:#f05ac8 bg:#1e643c
+--- overlays ---
+over  sprite 12,20 16x16  card/test_card.png 0,0 16x16
+under 3,45 30x2  #e62828
