@@ -1,6 +1,6 @@
 ---
 name: run-gates
-description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the skill pack's worked examples and a game's compile times; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
+description: Run the local quality gates before pushing (fmt, clippy pedantic, tests, docs, cargo-deny, machete, the examples' web build, the crates' layers, the modules, the no-std build, the golden tables on wasm32, the skill pack's worked examples and a game's compile times; the ticket lint, typos, links, the docs map and the pinned Rust). Mutation testing runs in CI only. Use before every commit you intend to push, and whenever CI fails and you need to reproduce it.
 ---
 
 # Run the local gates
@@ -107,6 +107,60 @@ Code that needs `std` goes behind `cfg(feature = "std")`: on the line
 with its `std::` path, or in a module whose file starts with
 `#![cfg(feature = "std")]`. A test that needs `std` (an asset converter,
 `catch_unwind`) gets `#[cfg(feature = "std")]` too.
+
+## Golden tables (CI's `determinism` job)
+
+Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build
+gives: a decoded asset's `state_hash` (`crates/assets/tests/golden/formats.ron`),
+a record's state hash at each step (`examples/hello-grid/tests/golden/hello-grid.ron`).
+Their tests have `golden` in their names. They run:
+
+- natively in the `test` job, on x64 (Windows, Linux) and ARM64 (macOS);
+- on wasm32 under wasmtime in the `determinism` job, with every unit and
+  integration test of `shuyi-core`, `shuyi-assets`, `shuyi-ui` and
+  `shuyi-platform`, and Hello, Grid's `golden` test.
+
+A table's test that fails prints the rows that moved and the new table.
+Bless it, which runs the golden tests, writes each table they print and
+runs them again:
+
+```bash
+cargo xtask golden --bless
+```
+
+New rows are not a break. A changed or removed row is: add a `Breaking:`
+line naming the table (`Breaking: shuyi-assets: formats.ron "lights:
+lights": <what a game sees>`) to the ticket's completion notes. If you
+didn't mean to move it, find what did.
+
+The wasm32 run is not a local gate. It needs the target and wasmtime at
+the version CI pins:
+
+```bash
+rustup target add wasm32-wasip1
+cargo install --locked wasmtime-cli@49.0.3
+```
+
+Run it with the job's runner and two commands before pushing a change to
+number code, hashing, a decoder or the pack (in Git Bash, from the
+repository root):
+
+```bash
+export CARGO_TARGET_WASM32_WASIP1_RUNNER="wasmtime run --dir=$PWD::$PWD --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=$PWD"
+cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture
+cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
+```
+
+On Windows only `-- golden` passes in the first: the snapshot tests open
+the Windows paths compiled into them, which WASI can't. On Linux (or in
+a Linux container) both pass whole. A test that needs threads or
+unwinding, which WASI preview 1 lacks, gets `#[cfg_attr(target_os =
+"wasi", ignore = "…")]` saying so; any other test that fails on wasm32 is
+a determinism bug, never ignored.
+
+A new example with a golden table adds its own step to the job: `cargo
+test --target wasm32-wasip1 -p <example> --no-default-features --test
+golden`, its window feature off, as Hello, Grid's is.
 
 ## A new game from each template (CI's `templates` job)
 

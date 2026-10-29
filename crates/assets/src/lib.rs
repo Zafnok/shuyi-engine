@@ -23,6 +23,9 @@
 //! a [`Formats`] registry, then asks it for an asset by id. A game may
 //! ship its assets baked into one [`pack`] (`.shuyipak`), proven equal to
 //! its sources.
+//!
+//! For tests, behind the `golden` feature: golden tables (`golden`),
+//! values a build gives pinned in a file, the same on every platform.
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;

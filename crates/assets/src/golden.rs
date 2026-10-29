@@ -61,10 +61,11 @@
 //! New rows are not a break. A changed or removed row is: this build no
 //! longer gives what an earlier one gave, so a game's record replays
 //! differently or its asset reads as another. The PR that blesses it adds
-//! a `Breaking:` line naming the table to its ticket's completion notes,
-//! and CI's `determinism` job (`cargo xtask golden --breaks`) fails
-//! without one. An example's table whose example changed its own files in
-//! the same PR moved with its own rules, not the engine's: no line.
+//! a `Breaking:` line naming the table to its ticket's completion notes
+//! (the version policy counts it as a break; ticket 2035 makes CI's
+//! `determinism` job check the line). An example's table whose example
+//! changed its own files in the same PR moved with its own rules, not the
+//! engine's: no line.
 //!
 //! No I/O and no `std`: a crate whose tests run without `std` uses it as
 //! a dev-dependency with `default-features = false`.

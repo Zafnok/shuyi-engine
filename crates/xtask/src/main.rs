@@ -15,11 +15,13 @@
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask site-data --site <dir>`
+//! - `cargo xtask golden --bless`
 
 mod api;
 mod changelog;
 mod compile_times;
 mod docs;
+mod golden;
 mod layers;
 mod links;
 mod llms;
@@ -106,7 +108,13 @@ usage:
       card of <dir>/data/features.toml that names `tickets`, Ready when all
       are in tickets/done/, In progress when some are, Planned when none is,
       and its link text when it has none. Fails on a card with both `tickets`
-      and `status`, or naming a ticket in neither tickets/open/ nor done/.";
+      and `status`, or naming a ticket in neither tickets/open/ nor done/.
+  cargo xtask golden --bless
+      Write the golden tables (shuyi_assets::golden, ticket 2116): run every
+      test with `golden` in its name with SHUYI_BLESS=1, write each table a
+      failed test printed (never outside the repository), show `git diff
+      --stat` over them, and run the tests again: they must pass. A changed
+      or removed row needs a `Breaking:` line in the ticket.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -130,6 +138,7 @@ fn main() -> ExitCode {
         Some("changelog") => changelog(&root, &args[1..]),
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),
+        Some("golden") if args[1..] == ["--bless"] => bless(&root),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -186,6 +195,14 @@ fn api(root: &Path, args: &[String]) -> ExitCode {
         options.verdict.as_deref(),
     ));
     report("api", &errors, &outcome.warnings)
+}
+
+fn bless(root: &Path) -> ExitCode {
+    let outcome = golden::bless(root, &api::System);
+    for line in &outcome.lines {
+        eprintln!("{line}");
+    }
+    report("golden", &outcome.errors, &[])
 }
 
 fn skill_examples(root: &Path, args: &[String]) -> ExitCode {

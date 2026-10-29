@@ -302,8 +302,11 @@ impl Format for TxtImg {
   (`file.sibling`, `file.with_extension`). Without a bundle they are
   missing, and the format says so.
 - **Determinism**: the same bytes give the same asset on every platform
-  (ADR-0007 §5). A format that decodes with floats checks in a fixture
-  of its decoded output.
+  (ADR-0007 §5). Its fixture is a row of its crate's golden table
+  (`shuyi_assets::golden`, behind the `golden` feature): the `state_hash`
+  of what it decodes from a fixed file, named `<kind>: <format id>`. The
+  engine's CI checks its own tables on x64, ARM64 and 32-bit wasm32; a
+  format that decodes with floats needs one most.
 - **A second kind** from the same file (here the size alone, for the
   image table) is a second small format, `TxtImgInfo`, that reads through
   the first.
