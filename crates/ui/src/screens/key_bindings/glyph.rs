@@ -241,7 +241,9 @@ fn scroll<A: Copy + PartialEq>(view: &KeyBindingsView<A>, placed: &Rows, last: i
         .zip(&placed.actions)
         .find_map(|(row, &y)| row.focused().then_some(y))
         .or_else(|| view.restore.focused.then_some(end));
-    let by = focused.map_or(0, |y| y - last).clamp(0, end - last);
+    // The focus is never below Restore defaults, so this never scrolls
+    // past it.
+    let by = focused.map_or(0, |y| y - last).max(0);
     Scroll {
         by,
         above: by > 0,

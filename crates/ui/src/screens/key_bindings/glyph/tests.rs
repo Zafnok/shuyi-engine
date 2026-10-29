@@ -747,8 +747,12 @@ fn a_list_longer_than_the_panel_scrolls_to_the_focus() {
     assert!(scrolled.above && !scrolled.below);
     let buf = painted(&c, &v);
     assert!(text(&buf, LAST_ROW).contains(" Restore defaults "));
-    assert!(text(&buf, FIRST_ROW).contains('▲'));
-    assert!(!text(&buf, FIRST_ROW).contains("Must have a key"));
+    // The list starts on the row under the columns' headings, which stay.
+    assert!(text(&buf, COLUMNS_Y).contains("Key 1"));
+    assert!(text(&buf, COLUMNS_Y + 1).contains('▲'));
+    assert!(!text(&buf, COLUMNS_Y + 1).contains("Must have a key"));
+    let first = text(&buf, COLUMNS_Y + 1);
+    assert!(first.trim_start_matches(['│', ' ']).len() > 3, "{first}");
     let border = text(&buf, LAST_ROW + 1);
     assert!(border.trim().starts_with('└'), "{border}");
 }
