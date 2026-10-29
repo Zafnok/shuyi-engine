@@ -1015,6 +1015,17 @@ mod tests {
         assert_eq!(frame(&mut m, &[], 0.5), []);
         m.heard(Some(&clock("battle")));
         assert_eq!(frame(&mut m, &[], 0.25), [gain("battle", 0.25)]);
+        // A track waiting to start doesn't count the load wait: after a
+        // fade-out as long as the wait, it still waits to sound.
+        let mut m = sounding("title");
+        let switch = play_with("battle", MusicSwitch::new(3000, 1000, false));
+        frame(&mut m, &[switch], 0.0);
+        assert_eq!(frame(&mut m, &[], 1.5), [gain("title", 0.5)]);
+        assert_eq!(
+            frame(&mut m, &[], 1.5),
+            [stop("title"), start_at("battle", 0.0)]
+        );
+        assert_eq!(frame(&mut m, &[], 1.0), []);
     }
 
     #[test]
@@ -1087,6 +1098,8 @@ mod tests {
             [stop("battle"), gain("title", 1.0)]
         );
         assert_eq!((m.current(), m.target()), (Some("title"), Some("title")));
+        // From 0.75 it took a quarter of the fade, and is done.
+        assert_eq!(frame(&mut m, &[], 0.125), []);
         // With no fade-in it is back at full gain at once.
         let mut m = crossfading(0.25);
         let back = play_with("title", MusicSwitch::new(500, 0, true));
