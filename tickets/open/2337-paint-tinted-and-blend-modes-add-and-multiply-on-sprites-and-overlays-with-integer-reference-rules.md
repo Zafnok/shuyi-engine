@@ -164,14 +164,14 @@ None.
     helper. If not, the code reads `flips` off `Shades` as above and
     names no `Ink`, and 2389 moves this ticket's tests that use
     `InkShades` or `Ink::Invert`'s code with the rest.
-  - **Either order with 3056** (one-bit sprites drawn fast): if 3056
-    is done, `draw_sprite` has a whole-byte path and a column table:
-    `Paint::Tinted` goes through both as `Image`; `Add` writes only
-    the item's white pixels (`out | bits & m`) and `Multiply` only its
-    black ones (`out & (bits | !m)`), on the byte path too; and
-    tinted, added and multiplied sprites join 3056's property test
-    against `reference`. If not, nothing to do (3056 draws them so,
-    its clause says so).
+  - **From 3056 (done):** `draw_sprite` writes a byte at a time, its
+    pixels from `Columns` (`Run` pixel for pixel, `Table` otherwise),
+    as `out & !m | bits & m`: `Paint::Tinted` goes through it as
+    `Image`; `Add` writes only the item's white pixels (`out | bits &
+    m`) and `Multiply` only its black ones (`out & (bits | !m)`); and
+    tinted, added and multiplied sprites join
+    `sprites_draw_as_the_reference_does` (`onebit/speed_tests.rs`)
+    against `reference`.
 - **`shuyi-app`** (`crates/app/src/render.rs`):
   - `Paint::Tinted(c)` in `draw_sprite`: no recolour, and `c` is the
     tint (scaled by brightness, as `Solid`'s colour is). It never makes

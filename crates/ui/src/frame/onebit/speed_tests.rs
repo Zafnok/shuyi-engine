@@ -14,6 +14,8 @@ use crate::frame::console::ConsoleSpec;
 use crate::frame::glyph_buffer::{Cell, Overlay, Rect};
 use crate::prelude::*;
 
+mod timing;
+
 /// A font of 8 × 16 cells: `X` a block, `?` (the fallback) two corners,
 /// `[` and `]` a column at either side, `"` two dots, `#` every pixel.
 fn test_font() -> (FontAtlasDef, Vec<u8>) {
@@ -86,23 +88,73 @@ const BIG_MASK: [u8; 12] = [
     0b1110_0000,
 ];
 
+/// `N` pseudo-random bytes, the same every build.
+const fn noise_bytes<const N: usize>(seed: u32) -> [u8; N] {
+    let mut bytes = [0; N];
+    let (mut state, mut i) = (seed | 1, 0);
+    while i < N {
+        state ^= state << 13;
+        state ^= state >> 17;
+        state ^= state << 5;
+        bytes[i] = state.to_be_bytes()[0];
+        i += 1;
+    }
+    bytes
+}
+
+/// A wide test picture, 45 × 7 (rows of 6 bytes, the last in part): many
+/// bytes a row, at every alignment, its mask see-through here and there.
+const WIDE: [u8; 42] = noise_bytes(3);
+const WIDE_MASK: [u8; 42] = {
+    let (mut mask, more) = (noise_bytes::<42>(5), noise_bytes::<42>(9));
+    let mut i = 0;
+    while i < mask.len() {
+        mask[i] |= more[i];
+        i += 1;
+    }
+    mask
+};
+
+/// A width and a height.
+type Size = (i32, i32);
+
+/// Each test picture: its name, its own size and the size of the image
+/// it stands for. `q.png` is `p.png` enlarged 1.5 times.
+const PICTURES: [(&str, Size, Size); 3] = [
+    ("p.png", (8, 4), (8, 4)),
+    ("q.png", (12, 6), (8, 4)),
+    ("w.png", (45, 7), (45, 7)),
+];
+
+/// The id of test picture `i` of [`PICTURES`].
+#[allow(clippy::cast_sign_loss)] // sizes
+fn picture_of(i: usize) -> ImageId {
+    let sizes = PICTURES.map(|(name, _, (w, h))| {
+        let size = shuyi_assets::image::ImageInfo::new(w as u32, h as u32);
+        (name, size)
+    });
+    let table = shuyi_assets::image::ImageTable::new(sizes.into());
+    table.id(PICTURES[i].0).unwrap()
+}
+
 /// The test picture's id: `q.png` (the enlarged picture) if `big`, else
 /// `p.png`; both stand for an 8 × 4 image.
 fn picture_id(big: bool) -> ImageId {
-    let size = shuyi_assets::image::ImageInfo::new(8, 4);
-    let table = shuyi_assets::image::ImageTable::new([("p.png", size), ("q.png", size)].into());
-    table.id(if big { "q.png" } else { "p.png" }).unwrap()
+    picture_of(usize::from(big))
 }
 
 struct TestImages;
 
 impl Images for TestImages {
     fn image(&self, id: ImageId) -> Option<Image<'_>> {
-        if id == picture_id(true) {
+        if id == picture_of(1) {
             let big = Image::new(12, 6, &BIG_PICTURE, Some(&BIG_MASK))?;
             return Some(big.with_source(8, 4));
         }
-        (id == picture_id(false))
+        if id == picture_of(2) {
+            return Image::new(45, 7, &WIDE, Some(&WIDE_MASK));
+        }
+        (id == picture_of(0))
             .then(|| Image::new(8, 4, &PICTURE, Some(&PICTURE_MASK)))
             .flatten()
     }
@@ -135,37 +187,60 @@ enum Thing {
     Rect(Rect, usize, bool),
     /// A test picture: `src` (inside the picture), `dest`, `clip`,
     /// flipped, opacity, brightness, paint (0 the image, 1 dimmed, 2
-    /// in a colour of [`colors`] after it), the layer, and whether it is
-    /// the enlarged picture.
-    Sprite(Rect, Rect, Rect, bool, u8, u8, usize, bool, bool),
+    /// in a colour of [`colors`] after it), the layer, and which of
+    /// [`PICTURES`] it is.
+    Sprite(Rect, Rect, Rect, bool, u8, u8, usize, bool, usize),
 }
 
 fn px_rect(w: i32, h: i32) -> impl Strategy<Value = Rect> {
     (-12..w, -12..h, 0..w / 2, 0..h / 2).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h))
 }
 
+/// A part of test picture `picture` and where it goes: anywhere at any
+/// size, or half the time shown pixel for pixel (its picture's size,
+/// which an odd part of `q.png` misses by a fraction).
+fn src_and_dest(picture: usize) -> impl Strategy<Value = (Rect, Rect)> {
+    let (_, (pw, ph), (sw, sh)) = PICTURES[picture];
+    let src = (0..sw, 0..sh).prop_flat_map(move |(x, y)| {
+        (1..=sw - x, 1..=sh - y).prop_map(move |(w, h)| Rect::new(x, y, w, h))
+    });
+    (src, px_rect(420, 260), any::<bool>()).prop_map(move |(src, dest, exact)| {
+        let dest = if exact {
+            Rect::new(dest.x, dest.y, src.w * pw / sw, src.h * ph / sh)
+        } else {
+            dest
+        };
+        (src, dest)
+    })
+}
+
 fn thing() -> impl Strategy<Value = Thing> {
     let n = colors().len();
-    let src = (0..8, 0..4).prop_flat_map(|(x, y)| {
-        (1..=8 - x, 1..=4 - y).prop_map(move |(w, h)| Rect::new(x, y, w, h))
-    });
     prop_oneof![
         (px_rect(420, 260), 0..n, any::<bool>()).prop_map(|(r, c, l)| Thing::Rect(r, c, l)),
-        (
-            src,
-            px_rect(420, 260),
-            px_rect(420, 260),
-            any::<bool>(),
-            prop_oneof![Just(u8::MAX), any::<u8>()],
-            prop_oneof![Just(u8::MAX), any::<u8>()],
-            0..n + 2,
-            any::<bool>(),
-            any::<bool>(),
-        )
-            .prop_map(|(s, d, c, f, o, b, p, l, big)| {
-                Thing::Sprite(s, d, c, f, o, b, p, l, big)
-            }),
+        sprite(),
     ]
+}
+
+/// A [`Thing::Sprite`].
+fn sprite() -> impl Strategy<Value = Thing> {
+    let n = colors().len();
+    (0..PICTURES.len())
+        .prop_flat_map(move |picture| {
+            (
+                src_and_dest(picture),
+                px_rect(420, 260),
+                any::<bool>(),
+                prop_oneof![Just(u8::MAX), any::<u8>()],
+                prop_oneof![Just(u8::MAX), any::<u8>()],
+                0..n + 2,
+                any::<bool>(),
+                Just(picture),
+            )
+        })
+        .prop_map(|((s, d), c, f, o, b, p, l, picture)| {
+            Thing::Sprite(s, d, c, f, o, b, p, l, picture)
+        })
 }
 
 impl Thing {
@@ -176,7 +251,7 @@ impl Thing {
             Thing::Rect(rect, color, over) => {
                 buf.add_overlay(Overlay::new(rect, colors[color], layer(over)));
             }
-            Thing::Sprite(src, dest, clip, flip_x, opacity, brightness, paint, over, big) => {
+            Thing::Sprite(src, dest, clip, flip_x, opacity, brightness, paint, over, picture) => {
                 let paint = match paint {
                     0 => Paint::Image,
                     1 => Paint::Dimmed,
@@ -188,7 +263,7 @@ impl Thing {
                     opacity,
                     brightness,
                     paint,
-                    ..Sprite::new(picture_id(big), src, dest, layer(over))
+                    ..Sprite::new(picture_of(picture), src, dest, layer(over))
                 });
             }
         }
@@ -747,6 +822,311 @@ fn a_window_ending_inside_a_byte_cuts_the_scene_there() {
     );
     // Black up to the window's edge at x = 18, white past it.
     assert!(!is_white(&fast, 17, 0) && is_white(&fast, 18, 0));
+}
+
+/// Pseudo-random bytes, the same every run.
+fn noise(len: usize, seed: u32) -> Vec<u8> {
+    let mut state = seed | 1;
+    (0..len)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            state.to_be_bytes()[0]
+        })
+        .collect()
+}
+
+/// The pictures of a fight like the game's (ticket 3056): a 400 × 110
+/// backdrop enlarged from a 336-pixel-wide PNG, and two 160 × 160
+/// fighters enlarged twice from 80 × 80 ones, masked.
+struct Fight {
+    backdrop: Vec<u8>,
+    fighter: Vec<u8>,
+    mask: Vec<u8>,
+}
+
+impl Fight {
+    fn new() -> Self {
+        // The mask: a disc, see-through outside it.
+        let mut mask = vec![0u8; Image::stride(160) * 160];
+        for y in 0..160usize {
+            for x in 0..160usize {
+                if x.abs_diff(80).pow(2) + y.abs_diff(80).pow(2) < 78 * 78 {
+                    mask[y * 20 + x / 8] |= 0x80 >> (x & 7);
+                }
+            }
+        }
+        Self {
+            backdrop: noise(Image::stride(400) * 110, 7),
+            fighter: noise(Image::stride(160) * 160, 11),
+            mask,
+        }
+    }
+
+    fn table() -> shuyi_assets::image::ImageTable {
+        use shuyi_assets::image::{ImageInfo, ImageTable};
+        ImageTable::new(
+            [
+                ("backdrop.png", ImageInfo::new(336, 92)),
+                ("fighter.png", ImageInfo::new(80, 80)),
+            ]
+            .into(),
+        )
+    }
+
+    /// The frame: the backdrop across the screen, the two fighters over
+    /// it at `x` and `x + 176`, the second flipped, neither on a byte.
+    fn frame(x: i32) -> GlyphBuffer {
+        let table = Self::table();
+        let black = Rgb::from(Ink::Black.code());
+        let mut buf =
+            GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::see_through(' ', black));
+        let backdrop = table.id("backdrop.png").unwrap();
+        let fighter = table.id("fighter.png").unwrap();
+        buf.add_sprite(Sprite::new(
+            backdrop,
+            Rect::new(0, 0, 336, 92),
+            Rect::new(0, 20, 400, 110),
+            Layer::Under,
+        ));
+        for (dx, flip_x) in [(0, false), (176, true)] {
+            buf.add_sprite(Sprite {
+                flip_x,
+                ..Sprite::new(
+                    fighter,
+                    Rect::new(0, 0, 80, 80),
+                    Rect::new(x + dx, 60, 160, 160),
+                    Layer::Under,
+                )
+            });
+        }
+        buf
+    }
+}
+
+impl Images for Fight {
+    fn image(&self, id: ImageId) -> Option<Image<'_>> {
+        let table = Self::table();
+        if id == table.id("backdrop.png")? {
+            return Some(Image::new(400, 110, &self.backdrop, None)?.with_source(336, 92));
+        }
+        let fighter = Image::new(160, 160, &self.fighter, Some(&self.mask))?;
+        (id == table.id("fighter.png")?).then(|| fighter.with_source(80, 80))
+    }
+}
+
+/// The fight's frame, as the fighters move a pixel at a time, draws as
+/// the reference draws it.
+#[test]
+fn a_fight_draws_as_the_reference() {
+    let (atlas, bits) = test_font();
+    let font = Font::new(&atlas, &bits).unwrap();
+    let fight = Fight::new();
+    let (mut fast, mut slow) = (Box::new([0u8; FRAME_BYTES]), Box::new([0u8; FRAME_BYTES]));
+    for x in 0..9 {
+        let buf = Fight::frame(x * 3 + 5);
+        render(&buf, &font, &fight, &mut fast);
+        reference::render(&buf, &font, &fight, &mut slow);
+        assert!(
+            fast == slow,
+            "at {x}: first differs at {:?}",
+            first_difference(&fast, &slow)
+        );
+    }
+}
+
+/// A buffer of grey cells and only sprites, half the time see-through
+/// over a backdrop's scene of sprites, at any zoom.
+fn sprites_buffer() -> impl Strategy<Value = GlyphBuffer> {
+    let things = || prop::collection::vec(sprite(), 1..10);
+    let window = (0..52, 0..16, 1..52, 1..16).prop_map(|(x, y, w, h)| Rect::new(x, y, w, h));
+    let backdrop = (things(), window, (-80.0f32..80.0, -40.0f32..40.0), 1..=4u8);
+    (things(), prop::option::of(backdrop)).prop_map(|(things, backdrop)| {
+        let grey = Rgb::from(Ink::Grey.code());
+        let fill = |see_through| {
+            if see_through {
+                Cell::see_through(' ', grey)
+            } else {
+                Cell::new(' ', grey, grey)
+            }
+        };
+        let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), fill(backdrop.is_some()));
+        for thing in &things {
+            thing.put(&mut buf);
+        }
+        if let Some((scene_things, window, origin, zoom)) = backdrop {
+            let mut scene = GlyphBuffer::with_spec(ConsoleSpec::text(24, 8), fill(false));
+            for thing in &scene_things {
+                thing.put(&mut scene);
+            }
+            buf.set_backdrop(Rc::new(scene), window, origin, zoom);
+        }
+        buf
+    })
+}
+
+proptest! {
+    /// Sprites anywhere (on a byte or not, clipped, flipped, masked, at
+    /// any opacity and brightness, in their own pixels, dimmed or solid,
+    /// pixel for pixel or not, at any scale) draw as the reference draws
+    /// them (ticket 3056).
+    #[test]
+    fn sprites_draw_as_the_reference_does(buf in sprites_buffer()) {
+        let (fast, slow) = (fast(&buf), slow(&buf));
+        prop_assert!(fast == slow, "first differs at {:?}", first_difference(&fast, &slow));
+        let (fast, slow) = (fast_with_roles(&buf), slow_with_roles(&buf));
+        prop_assert!(fast == slow, "with roles, first differs at {:?}", first_difference(&fast, &slow));
+    }
+}
+
+/// Whether `sprite`, drawn from `image` at `at` over screen columns
+/// `x0..x1`, is found pixel for pixel, and its `k` if so.
+fn run_of(sprite: &Sprite, image: &Image<'_>, at: Place, (x0, x1): (i32, i32)) -> Option<i32> {
+    let shown = Clip {
+        x0,
+        y0: 0,
+        x1,
+        y1: 1,
+    };
+    match Columns::of_sprite(sprite, image, at, shown)? {
+        Columns::Run { k, .. } => Some(k),
+        Columns::Table { .. } => None,
+    }
+}
+
+/// A sprite is pixel for pixel when its part of the picture is the
+/// picture's size on the screen: not one pixel of picture or of screen
+/// more or less, and not at a scale that only lands its ends right.
+#[test]
+fn pixel_for_pixel_is_found_exactly() {
+    let data = [0u8; 21 * 4];
+    // A picture `width` wide standing for an 80-pixel-wide image.
+    let image = |width: u16| {
+        Image::new(width, 4, &data, None)
+            .unwrap()
+            .with_source(80, 4)
+    };
+    // All 80 pixels of it, `w` pixels wide from x = 3.
+    let sprite = |w: i32, flip_x: bool| Sprite {
+        flip_x,
+        ..Sprite::new(
+            picture_of(0),
+            Rect::new(0, 0, 80, 4),
+            Rect::new(3, 0, w, 4),
+            Layer::Over,
+        )
+    };
+    let at = Place::ORIGIN;
+    assert_eq!(
+        run_of(&sprite(160, false), &image(160), at, (3, 163)),
+        Some(-3)
+    );
+    assert_eq!(
+        run_of(&sprite(160, true), &image(160), at, (3, 163)),
+        Some(162)
+    );
+    for flip_x in [false, true] {
+        let all = (3, 163);
+        assert_eq!(run_of(&sprite(160, flip_x), &image(161), at, all), None);
+        assert_eq!(run_of(&sprite(160, flip_x), &image(159), at, all), None);
+        assert_eq!(
+            run_of(&sprite(161, flip_x), &image(160), at, (3, 164)),
+            None
+        );
+        assert_eq!(
+            run_of(&sprite(159, flip_x), &image(160), at, (3, 162)),
+            None
+        );
+    }
+    // Ten columns of a sprite a pixel too wide still step by one each.
+    assert_eq!(
+        run_of(&sprite(161, false), &image(160), at, (3, 13)),
+        Some(-3)
+    );
+    // Off the picture altogether: nothing to draw.
+    let past = Sprite {
+        src: Rect::new(100, 0, 80, 4),
+        ..sprite(160, false)
+    };
+    assert!(Columns::of_sprite(&past, &image(160), at, Clip::SCREEN).is_none());
+    // At scale 2, columns 1, 3, 3 of an 8-pixel picture shrunk to 4 end
+    // two apart over three screen columns, but they don't step by one.
+    let eight = Image::new(8, 4, &data, None).unwrap();
+    let shrunk = Sprite::new(
+        picture_of(0),
+        Rect::new(0, 0, 8, 4),
+        Rect::new(0, 0, 4, 4),
+        Layer::Over,
+    );
+    let twice = Place {
+        x: 0,
+        y: 0,
+        scale: 2,
+    };
+    assert_eq!(run_of(&shrunk, &eight, twice, (1, 4)), None);
+    let once = Place { scale: 1, ..twice };
+    let halved = Sprite {
+        dest: Rect::new(0, 0, 8, 4),
+        ..shrunk
+    };
+    assert_eq!(run_of(&halved, &eight, once, (1, 4)), Some(0));
+}
+
+/// The wide test picture's part `src` drawn at `dest` over white, maybe
+/// flipped: every pixel of rows 0..7 is the picture's under it (where
+/// its mask draws it) or white, and the reference draws the same.
+fn check_wide(src: Rect, dest: Rect, flip_x: bool) {
+    let black = Rgb::from(Ink::Black.code());
+    let white = Rgb::from(Ink::White.code());
+    let mut buf = GlyphBuffer::with_spec(ConsoleSpec::text(50, 15), Cell::new(' ', black, white));
+    buf.add_sprite(Sprite {
+        flip_x,
+        ..Sprite::new(picture_of(2), src, dest, Layer::Over)
+    });
+    let frame = fast(&buf);
+    let slow = slow(&buf);
+    assert!(
+        frame == slow,
+        "first differs at {:?}",
+        first_difference(&frame, &slow)
+    );
+    let image = TestImages.image(picture_of(2)).unwrap();
+    for y in 0..7 {
+        for x in 0..64 {
+            let d = x - dest.x;
+            let expected = if (0..dest.w).contains(&d) && (0..dest.h).contains(&(y - dest.y)) {
+                let u = if flip_x { dest.w - 1 - d } else { d } + src.x;
+                image.pixel(u.into(), (y + src.y - dest.y).into())
+            } else {
+                None
+            };
+            assert_eq!(
+                is_white(&frame, x, y),
+                expected.unwrap_or(true),
+                "({x}, {y})"
+            );
+        }
+    }
+}
+
+/// A flipped sprite shown pixel for pixel, from inside a byte to inside
+/// another: its first byte holds the picture's last columns, its last
+/// byte the first.
+#[test]
+fn a_flipped_sprite_ends_in_its_pictures_first_column() {
+    check_wide(Rect::new(0, 0, 45, 7), Rect::new(5, 0, 45, 7), true);
+    check_wide(Rect::new(0, 0, 45, 7), Rect::new(5, 0, 45, 7), false);
+}
+
+/// A sprite that starts and ends inside one byte touches only its own
+/// pixels of it, flipped or not.
+#[test]
+fn a_sprite_inside_a_byte_draws_only_there() {
+    for flip_x in [false, true] {
+        check_wide(Rect::new(10, 0, 4, 7), Rect::new(10, 0, 4, 7), flip_x);
+        check_wide(Rect::new(37, 2, 3, 5), Rect::new(17, 0, 3, 5), flip_x);
+    }
 }
 
 /// Shades that count how often each is asked.

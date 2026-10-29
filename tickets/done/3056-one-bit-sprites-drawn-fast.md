@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 3056 — One-bit sprites drawn fast
@@ -105,12 +105,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every sprite renders equal to `reference` (property tests over the
+- [x] Every sprite renders equal to `reference` (property tests over the
       cases in step 5).
-- [ ] The fight-like frame of step 2 renders at least 4 times faster on
+- [x] The fight-like frame of step 2 renders at least 4 times faster on
       the PC than before; the numbers are in the completion notes.
-- [ ] No public API change (CI's `api` job).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] No public API change (CI's `api` job).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -122,5 +122,62 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **What was done.** `draw_sprite` (`crates/ui/src/frame/onebit.rs`)
+  now writes a byte of the frame at a time, for every sprite. Which
+  picture column each shown screen column takes is worked out once a
+  sprite (`Columns`):
+  - `Columns::Run`, pixel for pixel: at scale 1, when the first and
+    last shown columns are as far apart in the picture as on the
+    screen. That is exact: the sampled columns step by a whole number,
+    never back, so steps that add up to as many as there are are each
+    1. A row's eight pixels then come out of the picture's row in one
+    shift (`byte_at`), flipped with `reverse_bits`, its mask and the
+    picture's edges (`on_picture`) the same way.
+  - `Columns::Table` otherwise: a `[u16; 400]` on the stack, one
+    `Image::sample` per column, then a table lookup per pixel. Nothing
+    allocates.
+
+  The opacity's and brightness's dithers are a byte a row
+  (`shows_byte`, 4 rows each sprite), the solid and dimmed paints'
+  patterns too, and each byte is written as `out & !m | bits & m`, its
+  two end bytes masked to the shown pixels. The picture's row is
+  still sampled once a row. `Target::set` is gone; `Image::pixel` is
+  kept for `reference` only.
+- **Speed** (this PC, `cargo test -p shuyi-ui --lib a_fight_draws_fast`,
+  the least of 9 tries of 4 renders; the frame is the ticket's: a
+  400 × 110 backdrop from a 400-pixel-wide picture of a 336-pixel PNG,
+  and two masked 160 × 160 fighters enlarged twice, one flipped, neither
+  on a byte):
+
+  | build | before | after | plain renderer, same run |
+  | --- | --- | --- | --- |
+  | release | 1.07 ms | 60.7 µs | 805 µs |
+  | test (debug) | 4.02 ms | 0.53 ms | 3.15 ms |
+
+  13 times faster than the plain renderer in the same run (the fast one
+  was as slow as it before), 17 times faster than before's measured
+  number. `speed_tests/timing.rs` asserts the 4 times against the
+  plain renderer on every test run (`std` only, as it reads the clock).
+- **Tests.** `sprites_draw_as_the_reference_does`: random sprites only
+  (positions off a byte, clips, flips, masks, opacities, brightness,
+  `Image`, `Dimmed` and `Solid` paints, half of them pixel for pixel,
+  three pictures with a new 45 × 7 one, many bytes a row) over grey
+  or a backdrop's scene at zoom 1 to 4, in inks and in roles. The
+  general property tests draw the new picture and pixel-for-pixel
+  sprites too. Unit tests: pixel-for-pixel detection on and a pixel off
+  (picture and screen), a clipped run, a run off the picture, and a
+  scale-2 run that only lands its ends right
+  (`pixel_for_pixel_is_found_exactly`); a flipped sprite's first and
+  last byte; sprites starting and ending inside one byte;
+  `a_fight_draws_as_the_reference` as the fighters move.
+- **Deviations.** The byte path's ends are masked bytes, not pixels one at
+  a time: the same pixels, and simpler. The general path writes bytes
+  too (from the table), not pixels.
+- **2335 and 2337** are open, so neither `flip_y`, angles nor the new
+  paints were added. Their clauses now say what holds.
+- **Docs.** None beyond the module's doc comment: no public item,
+  format or rule changed, only how fast the one-bit renderer draws.
+- **The game.** game#1078 moves the pin past this and measures on the
+  device; no game PR exists yet.
+
+No break.

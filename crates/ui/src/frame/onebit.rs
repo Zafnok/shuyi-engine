@@ -26,8 +26,9 @@
 //! *One-bit pictures*). Nothing here allocates.
 //!
 //! Made for the device's speed (ticket 1055, game ADR-0077): 32-bit
-//! coordinates, a pattern's byte looked up, whole bytes written whole,
-//! only the cells near the part being drawn visited, and
+//! coordinates, a pattern's byte looked up, whole bytes written whole
+//! (a sprite's too, ticket 3056), only the cells near the part being
+//! drawn visited, and
 //! [`render_changed`] redraws only where a frame differs from the last.
 //! [`reference`] is the plain renderer this one must equal.
 
@@ -359,6 +360,7 @@ impl<'a> Image<'a> {
 
     /// Pixel `(x, y)`: `Some(true)` white, `Some(false)` black, `None`
     /// see-through or off the picture.
+    #[cfg(any(test, feature = "onebit-reference"))]
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)] // checked first
     fn pixel(&self, x: i64, y: i64) -> Option<bool> {
         if !(0..i64::from(self.width)).contains(&x) || !(0..i64::from(self.height)).contains(&y) {
@@ -890,17 +892,6 @@ impl Target<'_> {
             row[last] = pen.apply(row[last], right, y);
         }
     }
-
-    /// Sets pixel `(x, y)`, which must be inside the clip.
-    fn set(&mut self, x: i32, y: i32, white: bool) {
-        let byte = &mut self.frame[byte_index(x, y)];
-        let bit = 0x80 >> (x & 7);
-        if white {
-            *byte |= bit;
-        } else {
-            *byte &= !bit;
-        }
-    }
 }
 
 /// Draws `buf`'s cells and items at `at` into `target`: cell backgrounds
@@ -1130,10 +1121,194 @@ fn shows(opacity: u8, x: i32, y: i32) -> bool {
     u32::from(opacity) * 16 > rank * 255 + 127
 }
 
+/// The pixels of screen row `y` a sprite of `opacity` shows ([`shows`]),
+/// in a byte of a [`Frame`]: like a pattern, the same all along the row.
+fn shows_byte(opacity: u8, y: i32) -> u8 {
+    (0..8)
+        .filter(|&x| shows(opacity, x, y))
+        .fold(0, |byte, x| byte | 0x80 >> x)
+}
+
+/// The highest `n` bits of a byte (none for `n` ≤ 0, all for `n` ≥ 8).
+#[allow(clippy::cast_possible_truncation)] // the low byte
+fn ones(n: i32) -> u8 {
+    (0xff00u16 >> n.clamp(0, 8)) as u8
+}
+
+/// Of the eight columns from `u` on of a picture `width` wide, those on
+/// it, as a byte.
+fn on_picture(u: i32, width: u16) -> u8 {
+    ones(i32::from(width) - u) & !ones(-u)
+}
+
+/// The eight pixels from column `u` on of a picture's row `row`, its
+/// highest bit column `u`; a column past either end is 0.
+#[allow(clippy::cast_possible_truncation)] // the high byte
+fn byte_at(row: &[u8], u: i32) -> u8 {
+    let get = |i: i32| {
+        usize::try_from(i)
+            .ok()
+            .and_then(|i| row.get(i))
+            .map_or(0, |&byte| u16::from(byte))
+    };
+    let pair = get(u >> 3) << 8 | get((u >> 3) + 1);
+    (pair << (u & 7) >> 8) as u8
+}
+
+/// One row of a sprite's picture: its pixels and its mask (`None`: all
+/// drawn).
+#[derive(Copy, Clone)]
+struct PictureRow<'a> {
+    data: &'a [u8],
+    mask: Option<&'a [u8]>,
+    width: u16,
+}
+
+/// Which picture column each shown screen column of a sprite takes.
+// The table is on the stack, built once a sprite: nothing here allocates.
+#[allow(clippy::large_enum_variant)]
+enum Columns {
+    /// Pixel for pixel: screen column `x` takes picture column `k + x`,
+    /// or `k − x` if `flipped`.
+    Run { k: i32, flipped: bool },
+    /// Screen column `x0 + i` takes picture column `table[i]`; one past
+    /// the picture's width is off it.
+    Table {
+        x0: i32,
+        table: [u16; WIDTH as usize],
+    },
+}
+
+impl Columns {
+    /// The columns of `sprite`'s screen columns `shown`, drawn from
+    /// `image` at `at`: each takes the picture column under its centre
+    /// ([`Image::sample`]).
+    fn of_sprite(sprite: &Sprite, image: &Image<'_>, at: Place, shown: Clip) -> Option<Self> {
+        let (src, dest) = (sprite.src, sprite.dest);
+        let (src_w, dest_w) = (i64::from(src.w), i64::from(dest.w));
+        let column = |x: i32| {
+            let mut dx = i64::from((x - at.x).div_euclid(at.scale)) - i64::from(dest.x);
+            if sprite.flip_x {
+                dx = dest_w - 1 - dx;
+            }
+            Image::sample(
+                dx,
+                src.x.into(),
+                src_w,
+                dest_w,
+                image.width,
+                image.source_width,
+            )
+        };
+        Self::of(
+            shown.x0..shown.x1,
+            at.scale,
+            sprite.flip_x,
+            image.width,
+            column,
+        )
+    }
+
+    /// The columns of screen columns `shown` (on the screen, at least
+    /// one), screen column `x` taking picture column `column(x)` of a
+    /// picture `width` wide; `None` if none is on the picture.
+    ///
+    /// A sprite at `scale` 1 whose first and last shown column are as far
+    /// apart in the picture as on the screen is pixel for pixel all
+    /// along: its columns step by a whole number each (0 or more,
+    /// [`Image::sample`] never goes back), and steps that add up to as
+    /// many as there are must each be 1. At a bigger scale, a step of 0
+    /// and one of 2 can add up as two of 1.
+    #[allow(clippy::cast_sign_loss)] // `x` from `x0` on
+    fn of(
+        shown: Range<i32>,
+        scale: i32,
+        flipped: bool,
+        width: u16,
+        column: impl Fn(i32) -> i64,
+    ) -> Option<Self> {
+        let (first, last) = (column(shown.start), column(shown.end - 1));
+        let span = if flipped { first - last } else { last - first };
+        if scale == 1 && span == i64::from(shown.end - shown.start - 1) {
+            if first.max(last) < 0 || first.min(last) >= i64::from(width) {
+                return None;
+            }
+            // On the picture, so less than its width plus the screen's.
+            let first = i32::try_from(first).ok()?;
+            let k = if flipped {
+                first + shown.start
+            } else {
+                first - shown.start
+            };
+            return Some(Self::Run { k, flipped });
+        }
+        let mut table = [u16::MAX; WIDTH as usize];
+        for (x, u) in shown.clone().zip(&mut table) {
+            *u = u16::try_from(column(x))
+                .ok()
+                .filter(|&u| u < width)
+                .unwrap_or(width);
+        }
+        Some(Self::Table {
+            x0: shown.start,
+            table,
+        })
+    }
+
+    /// The pixels of `row` that screen columns `x..x + 8` take, `lanes`
+    /// of them (a byte, its highest bit `x`) shown: whether each is white,
+    /// and whether it is drawn.
+    #[allow(clippy::cast_sign_loss)] // `lanes` are shown columns
+    fn bits(&self, row: PictureRow<'_>, x: i32, lanes: u8) -> (u8, u8) {
+        let PictureRow { data, mask, width } = row;
+        match *self {
+            Self::Run { k, flipped } => {
+                // The lowest of the eight picture columns.
+                let u = if flipped { k - x - 7 } else { k + x };
+                let white = byte_at(data, u);
+                let drawn = on_picture(u, width) & mask.map_or(u8::MAX, |mask| byte_at(mask, u));
+                if flipped {
+                    (white.reverse_bits(), drawn.reverse_bits())
+                } else {
+                    (white, drawn)
+                }
+            }
+            Self::Table { x0, ref table } => {
+                let (mut white, mut drawn) = (0, 0);
+                for i in 0..8 {
+                    let bit = 0x80 >> i;
+                    if lanes & bit == 0 {
+                        continue;
+                    }
+                    let u = table[(x + i - x0) as usize];
+                    if u >= width {
+                        continue;
+                    }
+                    let (at, shift) = (usize::from(u >> 3), 7 - (u & 7));
+                    if mask.is_none_or(|mask| mask[at] >> shift & 1 == 1) {
+                        drawn |= bit;
+                    }
+                    if data[at] >> shift & 1 == 1 {
+                        white |= bit;
+                    }
+                }
+                (white, drawn)
+            }
+        }
+    }
+}
+
 /// Draws the visible part of `sprite` at `at`: each screen pixel takes
 /// the picture's pixel under its centre, as nearest sampling does
 /// ([`Image::sample`]), coloured as its paint says. Without an image it is
 /// a grey rectangle.
+///
+/// A byte of the frame at a time (ticket 3056): which picture column each
+/// screen column takes is worked out once for the sprite ([`Columns`]),
+/// and the opacity's, brightness's and paint's pixels are patterns, a
+/// byte a row. A sprite shown pixel for pixel takes a row's eight pixels
+/// from the picture's in one shift.
+#[allow(clippy::cast_sign_loss)] // on the screen
 fn draw_sprite<I: Images, S: Shades>(
     target: &mut Target<'_>,
     sprite: &Sprite,
@@ -1148,13 +1323,18 @@ fn draw_sprite<I: Images, S: Shades>(
         target.fill(shown, Pen::ink(Ink::Grey));
         return;
     };
+    let Some(columns) = Columns::of_sprite(sprite, &image, at, shown) else {
+        return;
+    };
     let (src, dest) = (sprite.src, sprite.dest);
-    let (src_w, src_h) = (i64::from(src.w), i64::from(src.h));
-    let (dest_w, dest_h) = (i64::from(dest.w), i64::from(dest.h));
+    let (src_h, dest_h) = (i64::from(src.h), i64::from(dest.h));
     let solid = match sprite.paint {
         Paint::Solid(color) => Some(look.shades.shape(color)),
         Paint::Image | Paint::Dimmed | Paint::Shaded(_) => None,
     };
+    let opacity = [0, 1, 2, 3].map(|y| shows_byte(sprite.opacity, y));
+    let brightness = [0, 1, 2, 3].map(|y| shows_byte(sprite.brightness, y));
+    let stride = Image::stride(image.width);
     for y in shown.y0..shown.y1 {
         let dy = i64::from((y - at.y).div_euclid(at.scale)) - i64::from(dest.y);
         let v = Image::sample(
@@ -1165,35 +1345,36 @@ fn draw_sprite<I: Images, S: Shades>(
             image.height,
             image.source_height,
         );
-        for x in shown.x0..shown.x1 {
-            let mut dx = i64::from((x - at.x).div_euclid(at.scale)) - i64::from(dest.x);
-            if sprite.flip_x {
-                dx = dest_w - 1 - dx;
-            }
-            let u = Image::sample(
-                dx,
-                src.x.into(),
-                src_w,
-                dest_w,
-                image.width,
-                image.source_width,
-            );
-            let Some(white) = image.pixel(u, v) else {
-                continue;
-            };
-            if !shows(sprite.opacity, x, y) {
-                continue;
-            }
+        let Some(v) = usize::try_from(v)
+            .ok()
+            .filter(|&v| v < usize::from(image.height))
+        else {
+            continue;
+        };
+        let start = v * stride;
+        let row = PictureRow {
+            data: &image.data[start..start + stride],
+            mask: image.mask.map(|mask| &mask[start..start + stride]),
+            width: image.width,
+        };
+        let (showing, light) = (opacity[(y & 3) as usize], brightness[(y & 3) as usize]);
+        let line = &mut target.frame[y as usize * ROW_BYTES..][..ROW_BYTES];
+        for c in (shown.x0 >> 3)..=((shown.x1 - 1) >> 3) {
+            let x = c * 8;
+            let lanes = ones(shown.x1 - x) & !ones(shown.x0 - x);
+            let (white, drawn) = columns.bits(row, x, lanes);
+            let drawn = drawn & lanes & showing;
             // A darkened picture (game ADR-0075): fewer of its white pixels.
-            let white = white && shows(sprite.brightness, x, y);
-            let white = match (solid, sprite.paint) {
-                (Some(shade), _) => shade.is_white(x, y),
+            let white = white & light;
+            let bits = match (solid, sprite.paint) {
+                (Some(shade), _) => shade.row(y),
                 // One-bit has no dimming: every other pixel goes white
                 // (`docs/design/playdate.md`, the faded listener).
-                (None, Paint::Dimmed) => white || ink_is_white(Ink::Grey, x, y),
+                (None, Paint::Dimmed) => white | InkShades::of(Ink::Grey).row(y),
                 (None, _) => white,
             };
-            target.set(x, y, white);
+            let byte = &mut line[c as usize];
+            *byte = *byte & !drawn | bits & drawn;
         }
     }
 }
