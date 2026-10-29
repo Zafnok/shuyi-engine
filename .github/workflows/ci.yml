@@ -402,6 +402,41 @@ jobs:
           RUSTFLAGS: -D warnings -A unused-imports
         run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
 
+  # The same state on every platform (ADR-0002 §2, ticket 2116). x64 and
+  # ARM64 are the `test` job's legs (`macos-latest` is Apple silicon); this
+  # job adds the 32-bit target the web build ships, wasm32, under wasmtime
+  # (WASI preview 1): every unit and integration test of the crates that
+  # build without a device backend, and Hello, Grid's golden test (its
+  # record replayed, its assets read, and read back from a pack baked
+  # here). A new example with a golden table adds its own step, with its
+  # window feature off. The workspace is mapped at its own path, so the
+  # paths compiled into the tests (insta's snapshots, proptest's
+  # regressions) open as they do natively. A failing test aborts its whole
+  # binary on wasm32: `--nocapture` shows why, `--no-fail-fast` runs the
+  # others. Doctests stay native.
+  determinism:
+    name: determinism
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TARGET_WASM32_WASIP1_RUNNER: wasmtime run --dir=${{ github.workspace }}::${{ github.workspace }} --env=CI=true --env=INSTA_UPDATE=no --env=INSTA_WORKSPACE_ROOT=${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - run: rustup target add wasm32-wasip1
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # The run-gates skill names this version for a local run.
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: wasmtime@49.0.3
+      - name: The engine's crates' tests on wasm32
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture
+      - name: Hello, Grid's golden table on wasm32
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
+
   # The crates' layers as tools/layers.ron writes them (ticket 2015,
   # ADR-0032): which engine crate depends on which, the outside crates of
   # the pure ones, no device crate below any crate but the backend's, and
@@ -702,7 +737,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, compile-times, no-std, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

@@ -21,7 +21,10 @@ include_dir = "0.7"
 thiserror = { version = "2", default-features = false }
 once_cell = { version = "1", default-features = false, features = ["race", "alloc"] }
 libm = "0.2"
-proptest = "1"
+# Without `fork` and `timeout`, which no test uses: their `wait-timeout`
+# doesn't build for WASI, where CI's `determinism` job runs the tests
+# (ticket 2116).
+proptest = { version = "1", default-features = false, features = ["std", "bit-set"] }
 insta = "1"
 
 [workspace.lints.rust]

@@ -202,8 +202,9 @@ None.
   `with_*` methods above. `Dir8` stays exhaustive, a closed set.
 - **A pinned path:** a unit test pins one eight-way `find_path` on a
   fixed map (its tiles and cost). CI's `test` job runs it on x64 and
-  ARM64. If 2116 is done, its `determinism` job also runs `shuyi-core`'s
-  tests on wasm32. If not, the native runs alone.
+  ARM64. **From 2116 (done):** its `determinism` job also runs
+  `shuyi-core`'s tests on wasm32, so the test runs there too, with
+  nothing more to add.
 - **Either order with 2004** (guides): if 2004 is done, add a paragraph
   to `docs/guides/top-down-grid.md`: four-way by default, eight-way with
   `Topology::Square8`, and `find_path`. If not, 2004 writes it.

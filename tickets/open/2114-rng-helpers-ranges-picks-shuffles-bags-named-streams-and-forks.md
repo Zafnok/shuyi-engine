@@ -199,10 +199,10 @@ None.
   - from 2802 (done): the book's chapter 6 (*Rules as commands*,
     `site/content/learn/book/rules-as-commands.md`) gains a section on
     luck with a snippet in `site/snippets/`;
-  - with 2116: the golden values below stay as asserts in `rng.rs`'s
-    tests. 2116's `determinism` job runs `shuyi-core`'s tests on
-    wasm32, so they are checked on x64, ARM64 and wasm32 whichever
-    ticket lands first;
+  - from 2116 (done): the golden values below stay as asserts in
+    `rng.rs`'s tests. 2116's `determinism` job runs `shuyi-core`'s
+    tests on wasm32, so they are checked on x64, ARM64 and wasm32 with
+    nothing more to add;
   - with 2108: if 2108 is done, give each system that draws its own
     stream, `SimRng::fork(<system name>)` on the world's `SimRng` in
     schedule order before the systems run, in both of `shuyi-ecs`'s

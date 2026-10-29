@@ -36,6 +36,9 @@ use crate::error::ContentError;
 use crate::prelude::*;
 
 mod fingerprint;
+/// The fixed bundle whose fingerprint `formats.ron` pins (`format::golden_tests`).
+#[cfg(test)]
+pub(crate) use fingerprint::tests::fixed as fixed_fingerprint_bundle;
 
 #[cfg(feature = "std")]
 use include_dir::Dir;
@@ -1239,6 +1242,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        target_os = "wasi",
+        ignore = "needs threads and unwinding, which WASI preview 1 lacks"
+    )]
     fn story_only_hides_the_test_layers_from_this_thread_until_it_returns() {
         let bundle = with_tests();
         let path = "data/t.ron";
@@ -1359,6 +1366,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(
+        target_os = "wasi",
+        ignore = "needs threads and unwinding, which WASI preview 1 lacks"
+    )]
     fn reading_makes_this_thread_read_another_bundle_until_it_returns() {
         let other: &'static Bundle =
             Box::leak(Box::new(Bundle::new(vec![Layer::table("other", OVER)])));

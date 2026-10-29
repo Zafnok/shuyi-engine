@@ -14,6 +14,9 @@ workspace = true
 [[bin]]
 name = "hello-grid"
 path = "src/main.rs"
+# The window's binary; the library and its tests build without it, for a
+# target with no window (CI's `determinism` job, ticket 2116).
+required-features = ["window"]
 
 [[example]]
 # The game's tool program: `frame-png` and `lang-status` on this project
@@ -22,13 +25,18 @@ name = "tools"
 required-features = ["tools"]
 
 [features]
+default = ["window"]
+# `window`: the binary, which opens the game in macroquad's window.
+# Without it the library builds for a target that has none, as the
+# golden test does under WASI (`tests/golden.rs`).
+window = ["dep:macroquad"]
 # `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
 # for its tool program and its tests.
 tools = ["dep:shuyi-cli"]
 # `link`: the live link, so `cargo shuyi attach` reaches the game running
 # in its window: `SHUYI_LINK=0 cargo run -p hello-grid --features link`,
 # in a debug build. Off by default.
-link = ["shuyi-app/link"]
+link = ["window", "shuyi-app/link"]
 
 [dependencies]
 # The engine, by its front door: its crates as `shuyi::core`, `shuyi::ui`
@@ -40,7 +48,7 @@ shuyi-cli = { path = "../../crates/cli", optional = true }
 # feature.
 shuyi-app = { path = "../../crates/app", optional = true }
 # The entry point: `#[macroquad::main]` has to be in the binary.
-macroquad.workspace = true
+macroquad = { workspace = true, optional = true }
 serde = { workspace = true, features = ["std"] }
 ron = { workspace = true, features = ["std"] }
 # The files under `files/`, embedded.
@@ -51,6 +59,9 @@ include_dir.workspace = true
 ignored = ["shuyi-app"]
 
 [dev-dependencies]
-# The Harness and the tools for the tests in tests/.
-hello-grid = { path = ".", features = ["tools"] }
+# The Harness and the tools for the tests in tests/, without the window:
+# the golden test builds for WASI (ticket 2116).
+hello-grid = { path = ".", default-features = false, features = ["tools"] }
 insta.workspace = true
+# The golden table of `tests/golden.rs`.
+shuyi-assets = { path = "../../crates/assets", features = ["golden"] }

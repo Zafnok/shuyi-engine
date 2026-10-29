@@ -95,7 +95,7 @@ pub(crate) fn wav(channels: u16, rate: u32, encoding: u16) -> Vec<u8> {
 }
 
 /// The first page of an OGG Vorbis file (two lacing values).
-fn ogg(channels: u8, rate: u32) -> Vec<u8> {
+pub(crate) fn ogg(channels: u8, rate: u32) -> Vec<u8> {
     let mut o = b"OggS".to_vec();
     o.extend_from_slice(&[0; 22]);
     o.extend_from_slice(&[2, 30, 0]);
@@ -846,7 +846,7 @@ fn code(code: &str) -> LangCode {
 }
 
 /// English's screen text, the pack's description and its screen text.
-fn pack_files() -> [(&'static str, Vec<u8>); 3] {
+pub(crate) fn pack_files() -> [(&'static str, Vec<u8>); 3] {
     [
         ("lang/en/ui.ron", ENGLISH_UI.into()),
         ("lang/xx/lang.ron", PACK_INFO.into()),

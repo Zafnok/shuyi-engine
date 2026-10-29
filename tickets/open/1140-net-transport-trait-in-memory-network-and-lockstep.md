@@ -106,11 +106,11 @@ None (technical). Scheduling: see above.
   in words (a game reaches the engine's docs through its `AGENTS.md`,
   and `check-skills` fails a link that leaves the pack). Its worked
   example is not this ticket's: the later of 2529 and 1145 writes it.
-- **Either order with 2116:** if 2116 is done, `-p shuyi-net` joins
-  the wasm32 `cargo test` of CI's `determinism` job, as `shuyi-script`
-  does (2101), so the lockstep and message tests also run on wasm32,
-  where a browser peer (1142) runs. If not, nothing to do (2116 adds
-  the crate, as its clause says).
+- **From 2116 (done):** add `-p shuyi-net` to the wasm32 `cargo test`
+  step of CI's `determinism` job, so the lockstep and message tests
+  also run on wasm32, where a browser peer (1142) runs. A test that
+  needs threads or unwinding is ignored there, as in 2116's crates:
+  `#[cfg_attr(target_os = "wasi", ignore = "…")]`.
 
 **Out (do not do):**
 - real sockets (1141, 1143); servers (1141);
@@ -123,9 +123,9 @@ None (technical). Scheduling: see above.
   peer): 2529, over this ticket's `MemoryNetwork` and
   `LockstepSession`;
 - building the check that machines of different kinds (x64, ARM64,
-  wasm32) give the same hashes: 2116 builds it, in CI's `test` job
+  wasm32) give the same hashes: 2116 built it, in CI's `test` job
   (x64, ARM64) and its `determinism` job (wasm32), and `shuyi-net`
-  joins it by the clause with 2116 above. A lockstep test here runs
+  joins it by the line from 2116 above. A lockstep test here runs
   both peers in one process;
 - voice chat (2910 researches it). **Either order with 2910:** if 2910
   is done, read its ADR and do any line it added to this scope for

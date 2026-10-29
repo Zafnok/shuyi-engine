@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2116 — Determinism fixtures on x64, ARM64 and wasm32
@@ -501,34 +501,34 @@ it.
 
 ## Acceptance criteria
 
-- [ ] CI's `determinism` job runs every unit and integration test of
+- [x] CI's `determinism` job runs every unit and integration test of
       `shuyi-core`, `shuyi-assets`, `shuyi-ui` and `shuyi-platform`, and
       Hello, Grid's `golden` test, on `wasm32-wasip1` under wasmtime,
       and passes. The PR lists every test ignored there, and why.
-- [ ] `formats.ron` has a row for every format of `Formats::standard()`
+- [x] `formats.ron` has a row for every format of `Formats::standard()`
       (with `png`, so `Dlg` and `TargetRon` too) and for `MapText`,
       `KeymapRon`, `CinematicRon`, `LangPackRon` and `Ron<T>`.
-- [ ] The guard fails on a registry with a toy format of a covered kind
+- [x] The guard fails on a registry with a toy format of a covered kind
       that has no row (unit test).
-- [ ] Hello, Grid's table holds one row per step of the checked-in
+- [x] Hello, Grid's table holds one row per step of the checked-in
       record, its outcome, and one row per asset; the assets read back
       from a pack baked on wasm32 equal them.
-- [ ] Changing a value fails the table's test with the report described
+- [x] Changing a value fails the table's test with the report described
       above, its new table between the two marker lines.
-- [ ] `cargo xtask golden --bless` rewrites exactly the tables whose
+- [x] `cargo xtask golden --bless` rewrites exactly the tables whose
       tests failed, and the tests pass after it.
-- [ ] `cargo xtask golden --breaks` fails on a PR that changes or
+- [x] ~~`cargo xtask golden --breaks` fails on a PR that changes or
       removes a golden value without a `Breaking:` line naming its
       table, and passes with one, or when only rows were added (unit
-      tests and the demo PR). If **Size** moved it out, this line is
-      the follow-up ticket's.
-- [ ] The demo PR's runs (step 7: three, or two without `--breaks`)
+      tests and the demo PR).~~ (not done: **Size** moved it out, so
+      this line is 2035's)
+- [x] The demo PR's runs (step 7: three, or two without `--breaks`)
       are linked from this PR.
-- [ ] The `no-std` job's test run still passes with the new `proptest`
+- [x] The `no-std` job's test run still passes with the new `proptest`
       features.
-- [ ] `cargo shuyi web --release` and `cargo shuyi check --target all`
+- [x] `cargo shuyi web --release` and `cargo shuyi check --target all`
       from `examples/hello-grid` work as before.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -548,4 +548,96 @@ it.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+What was done:
+
+- **`shuyi_assets::golden`** behind the new feature `golden`
+  (`crates/assets/src/golden.rs`, `no_std` + `alloc`, no new
+  dependency): `Golden::new`, `check`, `finish`, `assert`, the report
+  (`GoldenReport`, `#[non_exhaustive]`, ADR-0039 kind 3) with its
+  `Display` and the two marker lines, `table_text`, and the
+  `golden!` macro. The module docs hold what goes in a table, how to
+  bless, how a game or an example adds one, and the break rule. Unit
+  tests in `golden/tests.rs`. `shuyi-assets`'s self dev-dependency
+  turns on `golden`.
+- **`crates/assets/tests/golden/formats.ron`**, 21 rows, checked by
+  `crates/assets/src/format/golden_tests.rs`: one per format of
+  `Formats::standard()` (with `png`), `pattern-map` included, which the
+  ticket's list missed; `MapText`, `KeymapRon`, `CinematicRon`,
+  `LangPackRon` and `Ron<T>` with `builtin_tests.rs`'s test types; and
+  `fingerprint`. The guard is `missing_rows`, over a registry, with a
+  toy-format test. 2020 isn't done, so it uses `builtin_tests.rs`'s
+  inputs (`ogg` and `pack_files` made `pub(crate)`; `bitmap.rs`'s and
+  `target.rs`'s test modules and their `sample` and `profile` too).
+  2515 isn't done, so the guard walks a fixed list of kinds.
+- **From 2111:** the fixed bundle's fingerprint moved from the constant
+  of `a_fixed_bundle_has_a_pinned_fingerprint` to the row
+  `fingerprint` (same value, `4a15fc0ed2ac24d7`); the test that stays
+  checks the offset basis only. Hello, Grid's table has
+  `fingerprint files`.
+- **Hello, Grid:** `tests/records/seed-11.ron` (seed 11's play ends,
+  caught on turn 43, 86 commands; no `made`), `tests/golden.rs` and
+  `tests/golden/hello-grid.ron`: 87 step rows, `outcome`, 8 asset rows
+  and `fingerprint files`; the pack baked in the test reads back equal
+  (asserted, no second row). A default feature `window` gates macroquad
+  and the binary (`required-features`); `link` turns `window` on.
+  `build.rs` passes `--allow-undefined` on `wasm32-unknown-unknown`
+  only.
+- **proptest** without `fork` and `timeout`. The `no-std` job's test
+  run passes with it.
+- **CI's `determinism` job**, in `ci-result`'s `needs`, with wasmtime
+  49.0.3 through the pinned `taiki-e/install-action` (it carries
+  wasmtime; 49.0.3 is the newest its manifest knows). No stack-size
+  flag was needed. Step 1: `macos-latest` is macOS 26 on arm64 (the
+  runner images' README, 2026-10-28), so ARM64 stays the `test` job's.
+- **`cargo xtask golden --bless`** (`crates/xtask/src/golden.rs`),
+  through `api::Runner`, which gained `run_with_env` (a default that
+  refuses, as `script::Runner::run_with_input` does) for
+  `SHUYI_BLESS=1`. Tested with fake runs; run for real it restored two
+  tables broken by hand and the tests passed after it.
+- **Docs:** the `run-gates` skill's section *Golden tables (CI's
+  `determinism` job)*, the `write-ticket` skill's determinism fixture
+  line, `docs/formats.md`'s *Determinism* bullet, the book's testing
+  chapter (*Golden values*), Hello, Grid's README, the assets crate
+  doc. `_typos.toml` skips `**/tests/golden/*.ron` (hex hashes).
+- **The rule:** 2005 already says a changed or removed golden value is
+  a break (its *Golden values* bullet), so nothing to add here.
+
+Deviations:
+
+- **`--breaks` moved to 2035.** Step 6's count: about 930 changed
+  lines before `--bless`, tables and the record aside (the module's
+  docs and tests alone are over 400), past the 450 the ticket sets. So
+  2035 holds `--breaks`, its CI step (`fetch-depth: 2`, `HEAD_REF`,
+  `EVENT_NAME`) and its demo, and the demo PR here shows the failing
+  test and the bless only.
+- **The `shuyi` front door has no `app` on WASI.** Hello, Grid depends
+  on `shuyi`, which always pulled `shuyi-app` (the ticket assumed a
+  direct dependency). Its test linked under WASI, but wasmtime refused
+  it: miniquad's web callbacks import `env::sapp_set_cursor`, which
+  nothing provides there. `shuyi-app` is now a dependency of `shuyi` on
+  `cfg(not(target_os = "wasi"))` only, and `shuyi::app` and
+  `prelude::run_game` are gated the same: a target dependency, not a
+  cargo feature, so `check-modules` (a feature names a module) holds.
+  Nothing changes on any target that has a window.
+- **`Golden::finish` returns `Result<(), Box<GoldenReport>>`**, not a
+  bare `GoldenReport`: clippy's `result_large_err`.
+- **`shuyi-cli` built for `wasm32-wasip1` with no change.**
+- **`long_waits_are_refused`** is ignored with "needs unwinding, which
+  WASI preview 1 lacks": it uses no thread.
+
+Ignored on wasm32 (the `determinism` job), by attribute:
+`bundle::tests::story_only_hides_the_test_layers_from_this_thread_until_it_returns`
+and `bundle::tests::reading_makes_this_thread_read_another_bundle_until_it_returns`
+(`shuyi-assets`: `catch_unwind` and `std::thread::spawn`), and
+`scripts::long_waits_are_refused` (`shuyi-ui`'s `it`: `catch_unwind`).
+libtest ignores every `#[should_panic]` test on wasm by itself (1.99.1
+does): 11 in `shuyi-core`, 1 in `shuyi-assets`, 10 in `shuyi-ui`'s lib
+and 2 in its `it`, 1 in `shuyi-platform`'s lib and 1 in its `it`. No
+other test failed on wasm32: no determinism bug found.
+
+Follow-up tickets: 2035 (`cargo xtask golden --breaks` and its CI step).
+
+No break: no golden value moved (the tables are new; `fingerprint`
+keeps the pinned value), and the public API only grows
+(`shuyi_assets::golden`, behind a feature). `shuyi::app` is gone on WASI
+only, where it never ran.

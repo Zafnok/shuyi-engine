@@ -100,11 +100,14 @@ None.
   Vec<FormatInfo> }`, `FormatInfo { id: &'static str, extensions:
   &'static [&'static str] }`. The private `Kind` trait gains the method
   that lists them. No `std`, no new dependency.
-  - **Either order with 2116:** if it is done, its guard in
-    `crates/assets/src/format/golden_tests.rs` (every id
-    `Formats::standard().ids::<K>()` lists for a covered kind has a row)
-    moves onto `Formats::standard().kinds()`, failing on any standard
-    format with no row. If not, 2116 uses `kinds()` directly.
+  - **From 2116 (done):** its guard `missing_rows` in
+    `crates/assets/src/format/golden_tests.rs` checks that every id
+    `Formats::standard().ids::<K>()` lists for a fixed list of covered
+    kinds has a row `<kind>: <format id>`. Move it onto
+    `Formats::standard().kinds()` and drop the list, so it fails on any
+    standard format with no row; its test
+    `the_golden_guard_fails_on_a_format_of_a_covered_kind_with_no_row`
+    keeps passing.
   - **Either order with 2020:** both add a method to the private `Kind`
     trait. If 2020 is done, put this one beside its fuzz method. If not,
     2020 puts its method beside this one.
@@ -285,10 +288,10 @@ to a follow-up ticket (`write-ticket`), After MVP, and the PR says so.
    `crates/assets/src/ron.rs`, `crates/cli/src/contract/import.rs`,
    `contract.rs` and `contract/cli.rs`, and the standard RON formats'
    parsers named above. Read 2907's ADR if it is done, and check which
-   of 2116, 2020, 2230 and 2516 are done.
+   of 2020, 2230 and 2516 are done.
 2. Write the ADR.
-3. Add `Formats::kinds()` with its tests. Do the 2116 and 2020 parts if
-   they are done.
+3. Add `Formats::kinds()` with its tests. Move 2116's guard onto it;
+   do the 2020 part if 2020 is done.
 4. Move `schemars` to the workspace. Add the `schema` feature,
    `TextSchema`, `Ron::with_example`, the derives on the raw types,
    `Button`'s schema by hand, the examples and their tests.

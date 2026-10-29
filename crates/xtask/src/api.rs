@@ -73,6 +73,20 @@ pub struct Ran {
 pub trait Runner {
     /// Runs `program` with `args` in `dir`. An error says it could not start.
     fn run(&self, dir: &Path, program: &str, args: &[&str]) -> Result<Ran, String>;
+
+    /// Runs `program` with `args` in `dir`, with the variables of `env` set
+    /// too (`cargo xtask golden`'s `SHUYI_BLESS`). A runner that can't set
+    /// them says so.
+    fn run_with_env(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Result<Ran, String> {
+        let _ = (dir, args, env);
+        Err(format!("this runner can't set `{program}`'s environment"))
+    }
 }
 
 /// The real commands.
@@ -80,8 +94,19 @@ pub struct System;
 
 impl Runner for System {
     fn run(&self, dir: &Path, program: &str, args: &[&str]) -> Result<Ran, String> {
+        self.run_with_env(dir, program, args, &[])
+    }
+
+    fn run_with_env(
+        &self,
+        dir: &Path,
+        program: &str,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Result<Ran, String> {
         let output = Command::new(program)
             .args(args)
+            .envs(env.iter().copied())
             .current_dir(dir)
             .output()
             .map_err(|e| format!("`{program}` did not run ({e})"))?;

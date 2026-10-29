@@ -148,6 +148,10 @@ fn wait_runs_frames_of_at_most_frame_dt() {
 }
 
 #[test]
+#[cfg_attr(
+    target_os = "wasi",
+    ignore = "needs unwinding, which WASI preview 1 lacks"
+)]
 fn long_waits_are_refused() {
     let (mut h, log) = recorder();
     h.wait(32.0);

@@ -318,12 +318,19 @@ parked.
     writer. If not, nothing to do (2234 adds `.flac` and `.mp3`
     beside `.sfx.ron`, and makes `sfx::to_wav` call its writer).
   - **MCP.** `shuyi mcp` (1133, done) makes its tools from `Op::ALL`; a new operation needs its arm in `mcp::host::one_off` and in `mcp::description`, which the compiler asks for, and is in `contract::cli::runs_the_game` if it runs the game (so it takes `project` and runs in the game's tool program).
-  - **2116.** If it is done, the presets' WAV hashes are rows of
+  - **From 2116 (done):** the presets' WAV hashes are rows of
     `crates/assets/tests/golden/sfx.ron` (through
-    `shuyi_assets::golden`) in place of this ticket's own table, and
-    CI's `determinism` job checks them on wasm32, since `sfx` is in the
-    features of `shuyi-assets`' self dev-dependency (above). If not,
-    2116 does it.
+    `shuyi_assets::golden`, `golden!("tests/golden/sfx.ron")` in a test
+    with `golden` in its name), not a table of this ticket's own,
+    blessed with `cargo xtask golden --bless`, and CI's `determinism`
+    job checks them on wasm32, since `sfx` is in the features of
+    `shuyi-assets`' self dev-dependency (above). The two formats also
+    get rows in `crates/assets/tests/golden/formats.ron` (`sound: sfx`
+    and `sound effect: sfx`), a `rows.format(…)` line each in
+    `crates/assets/src/format/golden_tests.rs`: its guard
+    `missing_rows` covers `Sound` and fails without the first, and
+    `SfxDef` joins its list of covered kinds (unless 2515 has moved
+    the guard onto `Formats::kinds()`).
   - **2378** (cue rules, part two, which adds the `Sound` kind's
     `length_ms` and `sound_length_ms`). If it is done, `SfxRon` fills
     `length_ms` with the sound's length (`n × 1000 / SAMPLE_RATE`), and
@@ -388,9 +395,9 @@ parked.
    dev-dependency, and update the registry's test.
 3. Write `render` and `to_wav`, with the unit and property tests.
 4. Write the presets and `preset(name, seed)`, and pin each preset's
-   WAV hash (`shuyi_core::state_hash`) in a table in the module's
-   tests. Tune them by ear with the WAVs, and say in the PR how they
-   were checked.
+   WAV hash (`shuyi_core::state_hash`) as a row of
+   `crates/assets/tests/golden/sfx.ron` (2116). Tune them by ear with
+   the WAVs, and say in the PR how they were checked.
 5. Change the manifest check, write `audio::playable`, and add the
    `import` kind with `shuyi-cli`'s feature.
 6. Give the templates their sounds: the files, `BasicData::load` and
@@ -420,8 +427,9 @@ number, which adds them.
 - [ ] `cargo build -p shuyi-assets --no-default-features --features sfx
       --target thumbv7em-none-eabihf` passes, in CI's `no-std` job and
       in the `run-gates` skill, beside the build without the feature.
-- [ ] Each preset renders to the bytes a checked-in hash pins, and
-      rendering twice gives the same bytes.
+- [ ] Each preset renders to the bytes its row in
+      `crates/assets/tests/golden/sfx.ron` pins, on x64, ARM64 and
+      wasm32, and rendering twice gives the same bytes.
 - [ ] Over a cycle, the sine stays within 66 (0.2 % of 32 767) of
       `32 767 × f64::sin`, in a host test.
 - [ ] A game made with `shuyi new` from each template has the four menu

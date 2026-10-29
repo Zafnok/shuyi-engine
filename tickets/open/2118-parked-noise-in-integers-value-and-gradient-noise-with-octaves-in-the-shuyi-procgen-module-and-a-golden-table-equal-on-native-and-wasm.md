@@ -222,7 +222,8 @@ None.
     144 samples on one line, row-major, separated by spaces;
   - it is blessed with `cargo xtask golden --bless`, never by an ignored
     test. It changes only in a PR with a `Breaking:` line (the ADR
-    below);
+    below; CI checks that line once 2035's `cargo xtask golden
+    --breaks` is in);
   - add `-p shuyi-procgen` to the wasm32 `cargo test` of CI's
     `determinism` job (`.github/workflows/ci.yml`), so CI checks it on
     x64, ARM64 and wasm32.

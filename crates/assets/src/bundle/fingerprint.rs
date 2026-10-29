@@ -44,7 +44,7 @@ impl Bundle {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use alloc::collections::BTreeMap;
 
     use super::super::{Layer, story_only};
@@ -72,12 +72,16 @@ mod tests {
         Bundle::new(vec![layer(files)]).fingerprint()
     }
 
+    /// A fixed bundle of two layers. Its fingerprint is the row
+    /// `fingerprint` of `tests/golden/formats.ron` (ticket 2116): a change
+    /// there changes every stamp a game wrote, whose records then read as
+    /// made with other content.
+    pub(crate) fn fixed() -> Bundle {
+        Bundle::new(vec![Layer::table("over", OVER), Layer::table("base", BASE)])
+    }
+
     #[test]
-    fn a_fixed_bundle_has_a_pinned_fingerprint() {
-        // A change here changes every stamp a game wrote: its records then
-        // read as made with other content.
-        let bundle = Bundle::new(vec![Layer::table("over", OVER), Layer::table("base", BASE)]);
-        assert_eq!(bundle.fingerprint(), ContentHash(0x4a15_fc0e_d2ac_24d7));
+    fn no_layer_is_the_offset_basis() {
         // No layer, or an empty one, is FNV-1a's offset basis.
         assert_eq!(
             Bundle::new(Vec::new()).fingerprint(),

@@ -141,10 +141,13 @@ if he wants rumble in the game.
   - `Importers::standard()` (`crates/cli/src/contract/import.rs`)
     gets the kind, summed up as `count(r.cues.len(), "rumble cue",
     "rumble cues")`, as it sums up `Names`;
-  - **either order with 2116:** if it is done, the format gets a row
-    in `crates/assets/tests/golden/formats.ron`, whose test wants one
-    for every format of `Formats::standard()`. If not, 2116 adds it
-    with the others;
+  - **from 2116 (done):** the format gets a row in
+    `crates/assets/tests/golden/formats.ron` (`rumble: <format id>`):
+    a `rows.format(…)` line in
+    `crates/assets/src/format/golden_tests.rs`, and `RumbleCues` joins
+    the covered kinds of its guard `missing_rows` (if 2515 hasn't moved
+    the guard onto `Formats::kinds()` yet). `cargo xtask golden
+    --bless` writes the row;
   - **either order with 2515:** if it is done, `RumbleRon` implements
     `TextSchema` (the raw form derives `JsonSchema` under the `schema`
     feature), has an example in `crates/assets/kinds/rumble.ron`, and
@@ -370,12 +373,12 @@ if he wants rumble in the game.
    audio path (`crates/ui/src/audio.rs`; `Game::frame` and
    `collect_audio` in `crates/ui/src/game.rs`; `step` in
    `crates/platform/src/app.rs`; `crates/platform/src/audio.rs`) and the
-   Harness. Check which of 2110, 2116, 2340, 2342, 2344, 2351, 2406,
-   2515 and 3042 are done.
+   Harness. Check which of 2110, 2340, 2342, 2344, 2351, 2406, 2515
+   and 3042 are done.
 2. Write `shuyi_assets::rumble`, its format and its tests; register it;
-   add the rows to `docs/formats.md` and the kind to
-   `Importers::standard()`; add 2116's and 2515's parts if they are
-   done.
+   add the rows to `docs/formats.md`, the kind to
+   `Importers::standard()` and the golden row (2116); add 2515's part
+   if it is done.
 3. Write `shuyi_ui::rumble`, the `Ctx` field, `GameData::rumble_cues`,
    the `FrameOutput` fields and the debug-build check.
 4. Add the setting, the row, its text and the saved forms (with 2110's

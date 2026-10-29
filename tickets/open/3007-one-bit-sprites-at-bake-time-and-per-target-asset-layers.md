@@ -118,7 +118,7 @@ None. Which pictures the game redraws by hand is the game's choice
 ## Implementation steps
 
 1. Write the three ditherers with fixture images and their expected
-   outputs (rows of 2116's golden table, or checked-in bits).
+   outputs (rows of a golden table, 2116's `shuyi_assets::golden`).
 2. Add `OneBitSettings` as 2229's `onebit` section, registered in
    `Formats::register_standard`, and the dithering format that reads
    it and writes a `bitmap` file.
@@ -132,8 +132,7 @@ None. Which pictures the game redraws by hand is the game's choice
 - [ ] Each ditherer's output on the fixtures matches its row in a
       golden table (2116's `shuyi_assets::golden`) in `shuyi-assets`,
       checked on x64, ARM64 and wasm32 by CI's `test` and
-      `determinism` jobs (if 2116 isn't done, plain checked-in bits,
-      which 2116's job then runs).
+      `determinism` jobs (`shuyi-assets` is already in the latter).
 - [ ] A file in `assets@playdate/` replaces the dithered image, and the
       bake report says so.
 - [ ] `dither: none` on a colour image is an error naming the file.

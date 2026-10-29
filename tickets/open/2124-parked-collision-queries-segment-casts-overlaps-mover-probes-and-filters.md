@@ -226,10 +226,10 @@ None.
   answer. A test compares the text with
   `crates/core/src/collide/query/fixtures.txt`, read with
   `include_str!` so the test opens no file, and prints the new text
-  when they differ. CI's `test` job runs it on x64 and ARM64. 2116's
-  `determinism` job runs `shuyi-core`'s tests on `wasm32-wasip1`, so
-  once 2116 is done it runs there too, with nothing more to add (2114's
-  pinned values in `rng.rs` work the same way).
+  when they differ. CI's `test` job runs it on x64 and ARM64. **From
+  2116 (done):** its `determinism` job runs `shuyi-core`'s tests on
+  `wasm32-wasip1`, so it runs there too, with nothing more to add
+  (2114's pinned values in `rng.rs` work the same way).
 
 **Out (do not do):**
 - slopes, rotated boxes, polygons, and circles as bodies;

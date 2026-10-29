@@ -22,6 +22,12 @@ shuyi-core = { path = "../core" }
 shuyi-assets = { path = "../assets" }
 shuyi-ui = { path = "../ui" }
 shuyi-platform = { path = "../platform" }
+
+# The macroquad backend, on every target with a window. WASI has none, and
+# macroquad's web callbacks there are imports nothing provides: a game's
+# library tests build for it without the backend (CI's `determinism` job,
+# ticket 2116).
+[target.'cfg(not(target_os = "wasi"))'.dependencies]
 shuyi-app = { path = "../app" }
 
 [dev-dependencies]

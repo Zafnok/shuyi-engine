@@ -27,6 +27,9 @@ extend-exclude = [
     # The contract's schemas by version: hashes, as `cargo shuyi schema`
     # prints them.
     "crates/cli/schemas/versions.json",
+    # Golden tables (`shuyi_assets::golden`): hashes, written by
+    # `cargo xtask golden --bless`.
+    "**/tests/golden/*.ron",
     # proptest's saved failing cases.
     "proptest-regressions/",
 ]

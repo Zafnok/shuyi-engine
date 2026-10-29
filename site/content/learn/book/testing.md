@@ -101,6 +101,20 @@ record that says what made it ([chapter 7](@/learn/book/saves-and-settings.md#a-
 is refused by another build of the game
 ([`SH3007`](@/learn/errors/sh3007.md)) rather than compared.
 
+## Golden values
+
+A record kept in the repository pins what the game does: its hash at
+every step, in a golden table beside the tests. With `shuyi-assets`'s
+`golden` feature in its dev-dependencies, a test reads a table with
+`shuyi_assets::golden!("tests/golden/stage.ron")`, checks each row
+(`check("step 007", hash)`), and calls `assert`. A table starts as a
+file holding `{}`; a test that fails prints the rows that moved and the
+new table, to copy into the file when the change was meant. A row that
+changes is a play that changed: the same seed and commands no longer
+give the same game, so old records of it no longer replay. Run the tests
+on every platform the game ships for, and the table says whether they
+all play alike.
+
 ## Live, between calls
 
 `cargo shuyi run --script "Enter Right" --frames 30` plays a script once
