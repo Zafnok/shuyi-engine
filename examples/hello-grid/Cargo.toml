@@ -37,6 +37,11 @@ tools = ["dep:shuyi-cli"]
 # in its window: `SHUYI_LINK=0 cargo run -p hello-grid --features link`,
 # in a debug build. Off by default.
 link = ["window", "shuyi-app/link"]
+# `capture`: the capture mode (ADR-0052), which runs a plan and compares
+# the window with the raster: `SHUYI_CAPTURE=examples/hello-grid/capture/frames.ron
+# cargo run -p hello-grid --features capture`. Off by default; CI's
+# `render` job runs it under Xvfb.
+capture = ["window", "shuyi-app/capture"]
 
 [dependencies]
 # The engine, by its front door: its crates as `shuyi::core`, `shuyi::ui`
@@ -44,8 +49,8 @@ link = ["window", "shuyi-app/link"]
 shuyi = { path = "../../crates/shuyi" }
 # The engine's tools, which turn on the Harness.
 shuyi-cli = { path = "../../crates/cli", optional = true }
-# The macroquad backend, already under `shuyi`, named for its `link`
-# feature.
+# The macroquad backend, already under `shuyi`, named for its `link` and
+# `capture` features.
 shuyi-app = { path = "../../crates/app", optional = true }
 # The entry point: `#[macroquad::main]` has to be in the binary.
 macroquad = { workspace = true, optional = true }
@@ -55,7 +60,7 @@ ron = { workspace = true, features = ["std"] }
 include_dir.workspace = true
 
 [package.metadata.cargo-machete]
-# Named for its feature (`link`), not its code.
+# Named for its features (`link`, `capture`), not its code.
 ignored = ["shuyi-app"]
 
 [dev-dependencies]

@@ -30,6 +30,10 @@ link = ["std", "dep:serde", "dep:serde_json"]
 # into a `HeapSnapshot`, which `shuyi-app` and `shuyi-cli` share. It needs
 # the counter's types, not its global static (`global`).
 heap = ["dep:shuyi-alloc-count"]
+# `capture`: plans, which a backend's capture mode plays and whose frames
+# it compares with the raster (ADR-0052, ticket 2018). `no_std`: CI's
+# `no-std` job builds it so.
+capture = ["shuyi-ui/raster", "dep:serde", "dep:ron"]
 
 [dependencies]
 # The font atlas, the image table and the voice clips' file names.
@@ -39,13 +43,16 @@ shuyi-ui = { path = "../ui", default-features = false }
 # The live link's requests and answers as JSON lines (the `link` feature).
 serde = { workspace = true, optional = true }
 serde_json = { version = "1", optional = true }
+# A plan's file (the `capture` feature).
+ron = { workspace = true, optional = true }
 # The heap counter's counts and rows (the `heap` feature), never its
 # global static.
 shuyi-alloc-count = { path = "../alloc-count", default-features = false, optional = true }
 
 [dev-dependencies]
 # The Harness and the toy game for the tests.
-shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap"] }
+shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap", "capture"] }
 shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }
-# The link's server and the Harness playing random scripts alike.
+# The link's server and the Harness playing random scripts alike, and
+# random plans.
 proptest.workspace = true

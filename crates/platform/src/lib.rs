@@ -18,6 +18,8 @@
 //!   feature);
 //! - the live `link`'s wire and server (the `link` feature), which a
 //!   backend's listener runs so a tool reaches a running debug build;
+//! - `capture`'s plans (the `capture` feature): the input a backend's
+//!   capture mode plays, and the frames it compares with the raster;
 //! - `heap::snapshot` (the `heap` feature): the heap counter's rows as a
 //!   heap snapshot, for a backend that counts the heap.
 //!
@@ -40,6 +42,8 @@ mod alloc_prelude {
 pub mod app;
 pub mod audio;
 pub mod basic;
+#[cfg(feature = "capture")]
+pub mod capture;
 #[cfg(any(test, feature = "harness"))]
 pub mod harness;
 pub mod headless;
@@ -48,6 +52,8 @@ pub mod heap;
 #[cfg(feature = "link")]
 pub mod link;
 pub mod platform;
+#[cfg(any(feature = "link", feature = "capture"))]
+mod press;
 pub mod text_input;
 pub mod tick;
 
