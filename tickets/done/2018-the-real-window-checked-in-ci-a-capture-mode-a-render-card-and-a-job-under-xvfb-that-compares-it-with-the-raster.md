@@ -449,6 +449,9 @@ say that the clauses naming 2018's render card mean that ticket.
   to the right; its `render` run failed (the stage captures 116 and 244
   pixels over, worst 188 and 189) and uploaded the diffs. It is
   reverted.
+- **`ci-result`**: `render` was re-run three times on the PR's reverted
+  head (run 40819962349): each passed with the same `capture.txt`, so it
+  joined `ci-result`'s `needs`.
 - **Docs**: ADR-0052, `crates/app/src/lib.rs`'s module docs, the
   backend checklist in `docs/platform-backends.md`, the `run-gates`
   skill, and the book's *Testing* chapter (a game's own plan).
