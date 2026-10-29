@@ -89,11 +89,11 @@ None.
     load order);
   - `docs/platform-backends.md`: where 3067 says the web reads
     `Date.now()`, it says `performance.now()`.
-- **Either order with 3066:** if 3066 is done, `clock.js` is
-  `Origin::Engine`, so `dist` has it with no `/*!` header: its test that
-  `gamepad.js` is `shell(name)` alone covers `clock.js` too; if not,
-  nothing to do (3066 writes a header only for `Origin::Vendored`
-  rows, which `clock.js` isn't).
+- **From 3066 (done):** `package` writes a `/*!` header only for an
+  `Origin::Vendored` row (`shipped_shell_file`). `clock.js` is
+  `Origin::Engine`, so `dist` has it with no header:
+  `package_copies_wasm_and_writes_the_shell` checks it is `shell(name)`
+  alone, as it does `gamepad.js`.
 - **For the game:** no API change (`pacing` is private, the two exports
   are the loader's). The game's web build gets `clock.js` from
   `shuyi web` at its next pin bump, with no code change. No `Breaking:`

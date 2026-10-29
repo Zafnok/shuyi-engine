@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: ["3039"]
 nick_input: none
-completed:
+completed: 2026-10-28
 ---
 
 # 3066 — The web build's vendored scripts point at their notices
@@ -92,16 +92,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi web --release` in `examples/hello-grid` writes
+- [x] `cargo shuyi web --release` in `examples/hello-grid` writes
       `mq_js_bundle.js`, `sapp_jsutils.js` and `quad-storage.js`, each
       starting with its `/*!` header; `gamepad.js` has none.
-- [ ] The committed copies under `crates/cli/web/` are unchanged
+- [x] The committed copies under `crates/cli/web/` are unchanged
       (`git diff` shows only `index.html` and `README.md` there).
-- [ ] `dist/web/index.html` has `<link rel="license" href="NOTICES.txt">`
+- [x] `dist/web/index.html` has `<link rel="license" href="NOTICES.txt">`
       in its `<head>`.
-- [ ] Hello, Grid's web build still loads and runs (the page's console
+- [x] Hello, Grid's web build still loads and runs (the page's console
       has no new error).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -111,5 +111,20 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `web.rs` gained `shipped_shell_file`: a file of `SHELL` whose
+  `SHELL_NOTICES` row is `Origin::Vendored` gets
+  `/*! <file>: <work> <version>, MIT. See NOTICES.txt. */` as its first
+  line in `dist`; the engine's own files are written as committed.
+  `package` calls it for every file but `index.html`.
+- `index.html` links `NOTICES.txt` with `<link rel="license">` after the
+  `<title>`. 3052, 3049 and 3068 were not done, so nothing else to keep;
+  their clauses now say what holds.
+- Tests: `package_copies_wasm_and_writes_the_shell` checks each script's
+  exact bytes in `dist` (header then file, `gamepad.js` alone) and the
+  link; `a_vendored_script_starts_with_a_one_line_header_and_the_engines_files_get_none`
+  checks the header for each row of `SHELL_NOTICES`.
+- Checked by hand: Hello, Grid's `cargo shuyi web --release` writes the
+  three headers and the link, and the page loads and runs frames in the
+  browser with only the console line it already had (`quad_net` unused).
+- Docs: `crates/cli/web/README.md` (*Files* and *Notices*).
+- No break: no public API changed. No follow-up tickets.
