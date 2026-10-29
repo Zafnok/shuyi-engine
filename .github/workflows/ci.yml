@@ -661,8 +661,11 @@ jobs:
   # The website (ticket 2801, ADR-0048): Zola's check of its internal links
   # and anchors (`@/…`; no network), and site/check-build.sh: two base URLs
   # give outputs that never name each other's, and no page loads anything
-  # from another host. Cheap, and Markdown is what it reads, so this always
-  # runs, like `tickets`. pages.yml builds and publishes the site on main.
+  # from another host. Then the docs for agents over a build (ticket 2808):
+  # no shortcode left unexpanded, every llms.txt link resolving but the API
+  # docs' (pages.yml builds those), and llms-full.txt under its budget.
+  # Cheap, and Markdown is what it reads, so this always runs, like
+  # `tickets`. pages.yml builds and publishes the site on main.
   site:
     name: site
     runs-on: ubuntu-latest
@@ -670,6 +673,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - uses: ./.github/actions/setup-zola
       - name: Write the problem codes' pages
         run: bash site/errors.sh
@@ -678,6 +683,13 @@ jobs:
         run: zola check --skip-external-links
       - name: Check the site's builds
         run: bash site/check-build.sh
+      - name: Check the docs for agents
+        env:
+          BASE_URL: https://zafnok.github.io/shuyi-engine/
+        run: |
+          out="$RUNNER_TEMP/site"
+          (cd site && zola build --base-url "$BASE_URL" --output-dir "$out" --force)
+          cargo xtask llms --public "$out" --base-url "$BASE_URL" --commit "$GITHUB_SHA"
 
   # Single required check for this workflow. Matrix jobs skipped by `if:`
   # report one check with an unexpanded name, never the per-leg names, so

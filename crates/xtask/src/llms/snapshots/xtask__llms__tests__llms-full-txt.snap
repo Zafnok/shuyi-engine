@@ -1,0 +1,98 @@
+---
+source: crates/xtask/src/llms/tests.rs
+expression: "fixture.read(\"llms-full.txt\")"
+---
+# Shuyi Engine 0.3.0: every page of Learn
+
+From commit 0123456789abcdef0123456789abcdef01234567 of 2026-10-28. The list of them, and the rest of the docs, are in https://docs.invalid/engine/llms.txt.
+
+---
+
+# Learn
+
+Source: https://docs.invalid/engine/learn/
+
+Start with [the book](https://docs.invalid/engine/learn/book/index.md), or read [the news](https://docs.invalid/engine/news/).
+
+---
+
+# The book
+
+Source: https://docs.invalid/engine/learn/book/
+
+Read it in order.
+
+---
+
+# Start
+
+Source: https://docs.invalid/engine/learn/book/start/
+
+A garden:
+
+```rust
+/// A garden of rows.
+pub struct Garden {
+    pub rows: u8,
+}
+```
+
+Its rows alone:
+
+```rust
+    pub rows: u8,
+```
+
+Then read [the rows' file](https://docs.invalid/engine/learn/book/later/index.md#the-rows), with the plan
+beside it:
+
+![The plan](https://docs.invalid/engine/learn/book/start/plan.svg)
+
+---
+
+# Later
+
+Source: https://docs.invalid/engine/learn/book/later/
+
+## The rows
+
+```ron
+(rows: 3)
+```
+
+A page shows code with the shortcode, written in a code block as
+
+```text
+{{ snippet(file="src/garden.rs", anchor="garden") }}
+```
+
+The [changelog][log] is outside Learn, and [the web](https://example.com/)
+stays as it is.
+
+[log]: https://docs.invalid/engine/changelog/
+
+---
+
+# The guide
+
+Source: https://docs.invalid/engine/learn/guide/
+
+Pages to read in any order.
+
+---
+
+# Tips
+
+Source: https://docs.invalid/engine/learn/guide/tips/
+
+Keep each page short.
+
+---
+
+# The map
+
+Source: https://docs.invalid/engine/learn/guide/map/
+
+![The map](https://docs.invalid/engine/learn/guide/map/map.svg)
+
+Back to [the tips](https://docs.invalid/engine/learn/guide/tips/).

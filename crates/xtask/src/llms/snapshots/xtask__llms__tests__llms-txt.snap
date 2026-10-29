@@ -1,0 +1,47 @@
+---
+source: crates/xtask/src/llms/tests.rs
+expression: "fixture.read(\"llms.txt\")"
+---
+# Fixture Engine
+
+> A fixture of the site, for `cargo xtask llms`'s tests.
+
+It has two sections of Learn and four pages.
+
+This copy documents Shuyi Engine 0.3.0 at commit [`0123456`](https://github.com/Zafnok/shuyi-engine/commit/0123456789abcdef0123456789abcdef01234567), of 2026-10-28. It follows the `main` branch and changes with each merge, so a game on a released version reads its version's copy, under *Released versions*. Each page listed under Learn's sections is also in one file, [llms-full.txt](https://docs.invalid/engine/llms-full.txt): 1626 bytes, about 406 tokens.
+
+## Learn
+
+- [Learn](https://docs.invalid/engine/learn/index.md): The fixture's Learn.
+
+## The book
+
+- [The book](https://docs.invalid/engine/learn/book/index.md): The fixture's book, a page each.
+- [Start](https://docs.invalid/engine/learn/book/start/index.md): The first page, with code.
+- [Later](https://docs.invalid/engine/learn/book/later/index.md)
+
+## The guide
+
+- [The guide](https://docs.invalid/engine/learn/guide/index.md)
+- [Tips](https://docs.invalid/engine/learn/guide/tips/index.md): Weighed before the map, though named after it.
+- [The map](https://docs.invalid/engine/learn/guide/map/index.md): A page with its files beside it.
+
+## Contract
+
+- [The tool contract](https://raw.githubusercontent.com/Zafnok/shuyi-engine/0123456789abcdef0123456789abcdef01234567/docs/contract.md): the operations an agent, CI or a person runs on a game, each with a typed input and a typed answer, on the command line or over MCP
+- [Its schemas, version 2](https://docs.invalid/engine/contract/schemas/v2/index.md): the JSON Schema of each operation's input and answer
+
+## API
+
+- [`shuyi`](https://docs.invalid/engine/api/shuyi/index.html): rustdoc's HTML. The front door.
+- [`shuyi_core`](https://docs.invalid/engine/api/shuyi_core/index.html): rustdoc's HTML. The core.
+- [`shuyi_window`](https://docs.invalid/engine/api/shuyi_window/index.html): rustdoc's HTML. The backend.
+
+## Released versions
+
+None yet.
+
+## Optional
+
+- [The ADRs](https://raw.githubusercontent.com/Zafnok/shuyi-engine/0123456789abcdef0123456789abcdef01234567/docs/adr/README.md): why each technical choice was made, a record each
+- [The roadmap](https://raw.githubusercontent.com/Zafnok/shuyi-engine/0123456789abcdef0123456789abcdef01234567/docs/ROADMAP.md): the order the work is done in, and what is parked

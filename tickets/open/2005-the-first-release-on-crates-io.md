@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804", "2010", "2011", "2012", "2013", "2016", "2509", "2513", "2808"]
+blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804", "2010", "2011", "2012", "2013", "2016", "2509", "2513", "2808", "2812"]
 nick_input: sign-off
 completed:
 ---
@@ -195,7 +195,7 @@ The sign-off also:
 - New games then depend on the released version, not the repository's
   `main`. `Engine`'s `#[default]` (`crates/cli/src/contract/new.rs:79`,
   `Main` today) becomes the released version, and `main` stays only
-  when asked for. `{{engine.docs}}` (2808, `files()` in
+  when asked for. `{{engine.docs}}` (2812, `fill_for` in
   `crates/cli/src/contract/new.rs`) names, for a game on a released
   version, `AGENTS.md` at the tag and
   `<ENGINE_SITE>/v<x.y>/llms-full.txt`.

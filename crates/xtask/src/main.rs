@@ -12,6 +12,8 @@
 //! - `cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]`
 //! - `cargo xtask compile-times [--json] [--budget <file>] [--summary <file>] [--dir <dir>]`
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
+//! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
+//! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 
 mod api;
 mod changelog;
@@ -19,6 +21,7 @@ mod compile_times;
 mod docs;
 mod layers;
 mod links;
+mod llms;
 mod modules;
 mod no_std;
 mod pins;
@@ -85,7 +88,15 @@ usage:
       (ticket 2804): Markdown on stdout; with --site, Zola pages (changelog.md
       and a post for each release, in news/generated/) in <content dir>; with
       --format keep-a-changelog, the shape of CHANGELOG.md. Needs the tags and
-      the whole history (a full clone).";
+      the whole history (a full clone).
+  cargo xtask llms --public <dir> --base-url <url> --commit <sha>
+      After `zola build` into <dir> at <url>, write the docs for agents there
+      (ticket 2808): a Markdown twin of each Learn page (its URL + index.md),
+      llms.txt, llms-full.txt and the contract's schemas, and check them: each
+      twin's page built, no shortcode left, every llms.txt link resolving, and
+      llms-full.txt under its budget.
+  cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>
+      Write llms-full.txt alone into <dir>, for a release to attach.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -107,6 +118,7 @@ fn main() -> ExitCode {
         Some("skill-examples") => skill_examples(&root, &args[1..]),
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("changelog") => changelog(&root, &args[1..]),
+        Some("llms") => llms(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -265,6 +277,25 @@ fn changelog(root: &Path, args: &[String]) -> ExitCode {
         }
         Err(errors) => report("changelog", &errors, &[]),
     }
+}
+
+fn llms(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = llms::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let date = llms::git_date(root);
+    let env = llms::Env {
+        date: &date,
+        budget: llms::FULL_BUDGET_BYTES,
+    };
+    let outcome = llms::run(root, &options, &env);
+    let mut stdout = std::io::stdout().lock();
+    for note in &outcome.notes {
+        // A note that can't be printed leaves the check's verdict as it is.
+        let _ = writeln!(stdout, "{note}");
+    }
+    report("llms", &outcome.errors, &[])
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

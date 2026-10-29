@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 
-{#- Learn: its text, which ends on the API docs' heading, then a link to
-    each crate of `data/api.toml` in /api/, where `pages.yml` puts what
-    `cargo doc` builds. -#}
+{#- Learn: a line for agents, its text, which ends on the API docs'
+    heading, then a link to each crate of `data/api.toml` in /api/, where
+    `pages.yml` puts what `cargo doc` builds. -#}
 {% block content %}
 <article class="prose">
   <h1>{{ section.title }}</h1>
+  <p class="meta">For agents: <a href="{{ get_url(path='llms.txt', trailing_slash=false) }}">llms.txt</a></p>
   {{ section.content | safe }}
   {%- set api = load_data(path="data/api.toml") %}
   <ul class="contents">

@@ -74,12 +74,11 @@ None.
   it before the tutorial exists, naming the tutorial without a link and
   saying it is coming. Link that name to step 01's page, the
   tutorial's first.
-- **Either order with 2808:** if 2808 is done, the pages get their
-  Markdown twins with no change, but an argument or a shortcode added
-  here for the step folders or the diffs needs its expansion in `cargo
-  xtask llms` (`crates/xtask/src/llms.rs`) in this PR, or its run in
-  `ci.yml` fails; if not, nothing to do (2808 expands the shortcodes
-  as this ticket leaves them).
+- **From 2808 (done):** the pages get their Markdown twins with no
+  change, but an argument or a shortcode added here for the step
+  folders or the diffs needs its expansion in `cargo xtask llms`
+  (`crates/xtask/src/llms.rs`) in this PR, or its run in `ci.yml`
+  fails.
 - **CI:** each step is built and tested (`cargo test` in each folder),
   in a matrix job of `ci.yml`. The steps aren't workspace members, so
   each has its own `Cargo.lock`; the job runs `cargo update -p
