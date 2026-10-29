@@ -40,7 +40,7 @@ repository (`game#NNNN`).
 ## Acceptance criteria
 
 - [ ] …
-- [ ] The book's chapter is updated (2802), or the completion notes say why not.
+- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

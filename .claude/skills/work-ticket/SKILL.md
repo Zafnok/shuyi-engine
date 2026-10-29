@@ -109,6 +109,17 @@ the PR.
 
    CI's `api` job fails a break whose crate no line names.
 
+   Beside them, when the public API changed (a break or an addition) and
+   the PR changes no file under `site/content/learn/` or `site/snippets/`,
+   add a `Book:` line saying why the book needs no change (ticket 2815):
+
+   ```text
+   Book: none, <why>
+   ```
+
+   CI's `api` job fails such a change with neither. The better answer is
+   usually the book's chapter the docs map names for the item.
+
    Under each such line, add a `migration` block: how a game moves over
    the break, written in YAML in a fenced block (the fields are in
    `tickets/README.md`, *Breaking changes*). The changelog's migration

@@ -17,10 +17,12 @@ winget install -e --id getzola.zola --version 0.21.0
 
 On Linux or macOS, take `zola-v0.21.0-*` from
 [its release](https://github.com/getzola/zola/releases/tag/v0.21.0).
-Then, in this folder, write the problem codes' pages and serve the site:
+Then, in this folder, write the problem codes' pages and the feature
+cards' statuses, and serve the site:
 
 ```bash
 bash errors.sh
+cargo xtask site-data --site .
 zola serve --drafts
 ```
 
@@ -38,7 +40,8 @@ copies each example's web build there.
 | `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
 | `content/learn/` | Learn: `_index.md`, `book/` (the book, one page a chapter, in `weight` order, each numbered by its `extra.chapter`; a page with none is an appendix) and `errors/`, which `errors.sh` writes |
 | `snippets/` | The book's code: a crate of the workspace, `book-snippets`, which CI builds and tests with the rest |
-| `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage* |
+| `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
+| `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
 | `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `shortcodes/snippet.md` shows the book's code |
 | `static/style.css` | The one stylesheet: system fonts, light and dark |
@@ -70,6 +73,30 @@ copies each example's web build there.
   inside them. A file or an anchor that isn't there fails the build.
 - A new engine crate gets its row in `data/api.toml`, or the build
   checks fail.
+
+## What follows the tickets
+
+`pages.yml` builds the whole site again on every push to `main`. What it
+shows is made from the repository at each build, but for the book's words
+and the feature cards' text:
+
+| Part | Made at each build from | Follows the tickets |
+| ---- | ----------------------- | ------------------- |
+| The Changelog and the release posts | `tickets/done/` and the merges | yes |
+| The API docs at `/api/` | `cargo doc` | yes |
+| The problem codes' pages | `crates/cli/errors/` | yes |
+| The Examples | each example's web build | yes |
+| The feature cards' statuses | the `tickets` each card names (`cargo xtask site-data`, ticket 2815) | yes: **Ready** when all are in `tickets/done/`, **In progress** when some are, **Planned** when none is |
+| The book's code | `snippets/`, built and tested in CI | yes: a change that breaks it fails |
+| The book's words | written by hand | when a PR changes them: CI's `api` job fails a change to the public API that changes no file of the book and has no `Book:` line in its ticket's notes saying why not |
+| `llms.txt`, `llms-full.txt` and the twins | the Learn pages | as the book does |
+| The feature cards' text | `data/features.toml`, written by hand | no |
+
+A card that names a ticket in neither `tickets/open/` nor
+`tickets/done/`, or has both `tickets` and `status`, fails the command,
+and the build checks (`check-build.sh`) fail a home page that doesn't
+show a card's made status. Name a done ticket that shipped the part a
+card has today, so the card says it's partly there.
 
 ## The docs for agents
 

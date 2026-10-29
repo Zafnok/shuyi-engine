@@ -25,3 +25,6 @@ lcov.info
 # (ticket 2804); `pages.yml` makes them when it builds.
 /site/content/changelog.md
 /site/content/news/generated/
+# The feature cards' statuses `cargo xtask site-data --site site` makes from
+# the tickets they name (ticket 2815); `pages.yml` and CI make them.
+/site/data/tickets.toml
