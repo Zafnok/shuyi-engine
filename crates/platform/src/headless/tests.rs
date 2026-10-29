@@ -98,6 +98,50 @@ fn the_platforms_speaker_is_the_one_it_plays_on() {
 }
 
 #[test]
+fn the_speaker_holds_the_sounds_started_until_they_stop() {
+    let mut queue = shuyi_ui::audio::AudioQueue::<shuyi_ui::toy::Voice>::default();
+    let [hum, buzz] = [queue.start_sound("hum"), queue.start_sound("buzz")];
+    queue.stop_sound(hum, 0);
+    let mut s = Speaker::default();
+    let mut hear = |requests: &[SoundRequest]| {
+        let frame = AudioFrame {
+            requests,
+            music: &[],
+            music_volume: 1.0,
+            sound_volume: 1.0,
+            voice_volume: 1.0,
+        };
+        s.play(&frame, Millis(0));
+        s.sounds_playing()
+            .iter()
+            .map(|p| (p.id, p.cue.clone()))
+            .collect::<Vec<_>>()
+    };
+    let requests: Vec<SoundRequest> = queue
+        .take()
+        .iter()
+        .filter_map(SoundRequest::from_request)
+        .collect();
+    // Heard out of order, they are kept in id order.
+    let [start_hum, start_buzz] = [&requests[0], &requests[1]];
+    assert_eq!(
+        hear(&[start_buzz.clone(), start_hum.clone()]),
+        [(hum, "hum".into()), (buzz, "buzz".into())]
+    );
+    // A start of an id already playing replaces it.
+    assert_eq!(
+        hear(&[SoundRequest::start(buzz, "rain", 1.0)]),
+        [(hum, "hum".into()), (buzz, "rain".into())]
+    );
+    assert_eq!(hear(&requests[2..]), [(buzz, "rain".into())]);
+    // A frame without them changes nothing, and quitting stops them.
+    assert_eq!(hear(&[]).len(), 1);
+    s.stop_all();
+    let got = s.sounds_playing();
+    assert!(got.is_empty(), "{got:?}");
+}
+
+#[test]
 fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     let mut s = Speaker::default();
     assert_eq!(s.volumes(), (1.0, 1.0, 1.0));

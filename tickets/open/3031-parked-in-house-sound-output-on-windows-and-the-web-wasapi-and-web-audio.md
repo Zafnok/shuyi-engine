@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: opus-5.5
 effort: xhigh
 status: blocked
-blocked_by: ["3030", "3003", "3029", "2344"]
+blocked_by: ["3030", "3003", "3029", "2344", "2394"]
 nick_input: sign-off
 completed:
 ---
@@ -52,9 +52,9 @@ sounds wrong, cuts out, or starts late.
     the system's audio thread;
   - `Output::suspend` and `resume`, for 3003's `Suspend` and `Resume`
     events (the web build sends them when its tab is hidden and shown,
-    since 3043), reached through `Audio::suspend` and `resume` (2344),
+    since 3043), reached through `Audio::suspend` and `resume` (2394),
     which `App` calls on those events; while suspended the backend's
-    music clock holds, as 2344's rule for a backend that can pause says;
+    music clock holds, as 2394's rule for a backend that can pause says;
   - errors when there's no device, and a quiet fallback the caller picks
     (no sound rather than a crash).
 - **Windows**: WASAPI shared mode, event-driven, on its own thread, through

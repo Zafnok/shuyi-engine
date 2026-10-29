@@ -36,7 +36,7 @@ use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
 
 use crate::app::{App, FrameOutcome, SystemHook};
-use crate::headless::{HeadlessPlatform, Presented};
+use crate::headless::{HeadlessPlatform, PlayingSound, Presented};
 use crate::platform::SystemEvent;
 
 /// Simulated length of one frame, in seconds (60 fps).
@@ -365,16 +365,25 @@ impl<G: GameData> Harness<G> {
         self.audio.concat()
     }
 
-    /// The sound cues (not music) played so far, in order.
+    /// The sound cues (not music) played or started so far, in order.
     pub fn sounds(&self) -> Vec<String> {
         self.audio
             .iter()
             .flatten()
             .filter_map(|r| match r {
-                AudioRequest::PlaySound { cue, .. } => Some(cue.clone()),
+                AudioRequest::PlaySound { cue, .. } | AudioRequest::StartSound { cue, .. } => {
+                    Some(cue.clone())
+                }
                 _ => None,
             })
             .collect()
+    }
+
+    /// The sounds started with a handle that are still playing, as the
+    /// headless backend's [`Speaker`](crate::headless::Speaker) holds them,
+    /// in id order.
+    pub fn sounds_playing(&self) -> &[PlayingSound] {
+        self.platform.speaker().sounds_playing()
     }
 
     /// The lines whose voice clip was asked for so far, in order, as line

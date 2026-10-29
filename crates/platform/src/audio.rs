@@ -10,7 +10,7 @@
 use crate::alloc_prelude::*;
 
 use shuyi_assets::voice::{ClipVariant, clip_file};
-use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_ui::audio::{AudioRequest, MusicCommand, SoundId};
 
 use crate::platform::Millis;
 
@@ -19,12 +19,38 @@ use crate::platform::Millis;
 /// voice folder ([`clip_file`]). The music's requests are already
 /// [`MusicCommand`]s.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum SoundRequest {
     /// Play a sound cue once, at `volume` (0–1) times the cue's own volume.
     Sound {
         /// The sound cue.
         cue: String,
         /// A multiplier on the cue's volume, 0–1.
+        volume: f32,
+    },
+    /// Play a sound cue until [`Stop`](Self::Stop) of its `id`: looped if
+    /// the cue says so, else once. Build it with [`SoundRequest::start`]
+    /// (ADR-0039).
+    #[non_exhaustive]
+    Start {
+        /// Its handle.
+        id: SoundId,
+        /// The sound cue.
+        cue: String,
+        /// A multiplier on the cue's volume, 0–1.
+        volume: f32,
+    },
+    /// Stop the sound started as `id`, at once: that one playback, not the
+    /// cue's others.
+    Stop {
+        /// Its handle.
+        id: SoundId,
+    },
+    /// Set the volume of the sound started as `id`.
+    Volume {
+        /// Its handle.
+        id: SoundId,
+        /// The new multiplier on the cue's volume, 0–1.
         volume: f32,
     },
     /// Say a line: play its clip once, stopping the voice that is playing.
@@ -43,12 +69,27 @@ pub enum SoundRequest {
 }
 
 impl SoundRequest {
+    /// A [`Start`](Self::Start) of `cue` as `id` at `volume`.
+    pub fn start(id: SoundId, cue: impl Into<String>, volume: f32) -> Self {
+        Self::Start {
+            id,
+            cue: cue.into(),
+            volume,
+        }
+    }
+
     /// `request` as the device gets it; `None` for a music request, which
     /// the frame's music commands already say.
     pub fn from_request<V: ClipVariant>(request: &AudioRequest<V>) -> Option<Self> {
         Some(match request {
             AudioRequest::PlaySound { cue, volume } => Self::Sound {
                 cue: cue.clone(),
+                volume: *volume,
+            },
+            AudioRequest::StartSound { id, cue, volume } => Self::start(*id, cue.clone(), *volume),
+            AudioRequest::StopSound { id } => Self::Stop { id: *id },
+            AudioRequest::SoundVolume { id, volume } => Self::Volume {
+                id: *id,
                 volume: *volume,
             },
             AudioRequest::PlayVoice { line, variant } => Self::Voice {
@@ -58,7 +99,8 @@ impl SoundRequest {
             AudioRequest::PreloadVoices { lines } => Self::PreloadVoices {
                 clips: lines.iter().map(|(l, v)| clip_file(l, *v)).collect(),
             },
-            AudioRequest::PlayMusic { .. } | AudioRequest::StopMusic => return None,
+            // The music's, and any request this engine doesn't know yet.
+            _ => return None,
         })
     }
 }
@@ -94,7 +136,8 @@ pub trait Audio {
     /// play too.
     fn play(&mut self, frame: &AudioFrame<'_>, now: Millis);
 
-    /// Stops the music and the voice: the game has quit.
+    /// Stops the music, the voice and the sounds started with a handle:
+    /// the game has quit.
     fn stop_all(&mut self);
 }
 
@@ -158,6 +201,23 @@ mod tests {
             Some(2)
         );
         assert_eq!(play(AudioRequest::StopVoice), Some(SoundRequest::StopVoice));
+        let mut queue = shuyi_ui::audio::AudioQueue::<Voice>::default();
+        let id = queue.start_sound_at("hum", 0.5);
+        queue.set_sound_volume(id, 0.25);
+        queue.stop_sound(id, 0);
+        let got: Vec<_> = queue
+            .take()
+            .iter()
+            .filter_map(SoundRequest::from_request)
+            .collect();
+        assert_eq!(
+            got,
+            [
+                SoundRequest::start(id, "hum", 0.5),
+                SoundRequest::Volume { id, volume: 0.25 },
+                SoundRequest::Stop { id },
+            ]
+        );
         assert_eq!(play(AudioRequest::play_music("theme", None)), None);
         assert_eq!(play(AudioRequest::StopMusic), None);
     }

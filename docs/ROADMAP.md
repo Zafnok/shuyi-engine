@@ -132,7 +132,7 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3015 (mobile) | 3004 with the export targets; 3015 parked |
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
 | Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
-| Sound | `shuyi-app` today (cues, variants, fades, streamed music), 3029 for every backend; 2341–2345 and 2225 (crossfades, groups and ducking, handles, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
+| Sound | `shuyi-app` today (cues, variants, fades, streamed music), 3029 for every backend; 2341–2345, 2394 and 2225 (crossfades, groups and ducking, handles and pauses, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
 | Hot reload of assets | 2220 (every asset kind), 1124's maps through it | after MVP |
 | Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
 | Fast compiles | 2009 (measured, gated, a fast setup in the templates; README.md, *Fast compiles*) | done |
@@ -195,7 +195,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | ------ | ---- |
 | 2342 | Sound groups as data: a master volume and a volume per group on a loudness curve |
 | 2343 | Ducking: a group lowered while a voice plays |
-| 2344 | Looped sounds with handles, paused under a pause menu and while the system suspends the game |
+| 2344 | Looped sounds with handles, owned by the screen that started them |
+| 2394 | Sounds paused under a pause menu, and the audio held while the system suspends the game |
 | 2345 | Cue rules as data: variants without repeats, random volume, copy caps, minimum gaps and priority |
 | 2341 | Music crossfades and fade-ins, with today's fade-out-then-start as the default |
 | 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |

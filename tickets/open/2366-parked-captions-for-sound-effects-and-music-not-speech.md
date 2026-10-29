@@ -244,13 +244,14 @@ None.
     `Game::collect_audio`, so a play they drop (a gap, a cap, every
     voice busy) still shows its caption: the thing happened. Done or
     not, nothing more to do here.
-  - **2342, 2344 and 2345** each add a field to `SoundCue`, and 2342
+  - **2342 and 2345** each add a field to `SoundCue`, and 2342
     and 2365 each add one to `MusicCue`. The later to land rebases onto
-    the other's cue and bumps `pack::VERSION` again.
-  - **2344:** if 2344 is done, `feed` treats a `StartSound` of a
-    captioned cue as a `PlaySound`: its line is added once when it
-    starts, never again per loop, with a test. If not, 2344 does it
-    (its clause says so).
+    the other's cue and bumps `pack::VERSION` again. **From 2344
+    (done):** `SoundCue` has `looped`, and `pack::VERSION` is 5.
+  - **From 2344 (done):** `AudioRequest::StartSound` starts a sound
+    with a handle, looped if its cue says so. `feed` treats a
+    `StartSound` of a captioned cue as a `PlaySound`: its line is added
+    once when it starts, never again per loop, with a test.
   - **Public types (ADR-0039):** `SoundCue` is under it (2024), and its
     `new` leaves `caption` at `None`. `MusicCue` moves under it in this
     PR if it isn't already, as its *When* rule says of a type that next

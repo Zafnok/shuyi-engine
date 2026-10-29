@@ -70,7 +70,7 @@ completed:
   to share that trait across desktop, the web and the Playdate, and
   later the GBA (3027) and the DS (3024). That makes it the cheap moment
   to decide how the trait grows without breaking a backend: a real
-  pause for 2344 and a playback rate for pitch now, and later a pan
+  pause for 2394 and a playback rate for pitch now, and later a pan
   (2363, parked) and a loop region for intro-then-loop music (the
   ticket 2902 writes, parked).
 
@@ -133,32 +133,33 @@ None.
     `take_warnings`, for example "this backend can't pause sounds: they
     are muted instead". A second call gives no warning.
   - After the warning, the player carries on with the feature's
-    fallback. For a pause it is 2344's rule: the sound is muted
+    fallback. For a pause it is 2394's rule: the sound is muted
     (volume 0) and runs on silently, and `resume` gives it its volume
     back. For a rate, the sound plays at 1.0.
   - The macroquad backend keeps the defaults, because quad-snd 0.2.8
     has no pause and no rate. The Playdate backend implements them over
     the SDK's sample and file players if the SDK has them (check its
-    sound docs on the day). 2344 connects the pause to requests.
+    sound docs on the day). 2394 connects the pause to requests.
   - **Either order with 3017** (parked, target capabilities): if 3017
     is done, list the provided methods the Playdate backend implements
     (`Pause` if it pauses with the SDK, `Rate` if it sets the rate with
     the SDK, `Pan` if 2363 is done) in `targets/playdate.ron`'s
     `capabilities.audio.features`; if not, nothing to do (3017 reads
     them from this backend when it lands).
-- **Either order with 2344** (looped sounds with handles,
-  `pause_sounds`, `Audio::suspend` and `resume`): if 2344 is done, its
-  handled sounds (`SoundRequest::Start`, `Stop`, `Volume`,
-  `PauseSounds`, `ResumeSounds`), the per-playback handle
+- **From 2344 (done):** its handled sounds (`SoundRequest::Start`,
+  `Stop`, `Volume`, kept by `SoundId` as `Handled` in
+  `crates/app/src/audio.rs`) and the per-playback handle
   (`Backend::play` returning `Self::Playing`, `set_playing_volume`,
-  `stop_playing`) and its pausing rule move with the rules. `pause` and
-  `resume` above then take the handle, and 2344's mute becomes their
-  fallback. The Playdate gives each handle a sample player of its own
-  and pauses it with the SDK rather than muting it, and its
-  `Audio::suspend` pauses every player, so the `Suspend` that 3010
-  sends on the lock and the system menu holds the sound. If 2344 isn't
-  done, 2344 adds them where this ticket put the rules, and calls
-  `pause` and `resume` for them.
+  `stop_playing`) move with the rules. `pause` and `resume` above take
+  the handle. The Playdate gives each handle a sample player of its own.
+- **Either order with 2394** (`pause_sounds`, `Audio::suspend` and
+  `resume`): if 2394 is done, its `PauseSounds`, `ResumeSounds` and
+  pausing rule move with the rules, and its mute becomes the fallback of
+  `pause` and `resume`. The Playdate pauses each handle's sample player
+  with the SDK rather than muting it, and its `Audio::suspend` pauses
+  every player, so the `Suspend` that 3010 sends on the lock and the
+  system menu holds the sound. If 2394 isn't done, 2394 adds them where
+  this ticket put the rules, and calls `pause` and `resume` for them.
 - **From 2341 (done):** `shuyi-app`'s player starts a track at
   `MusicCommand::Start`'s `gain` and plays two tracks at once during a
   crossfade (ADR-0054); both move with the rest, and the Playdate
@@ -224,7 +225,7 @@ may need an import path changed in that PR.
 
 1. Read `shuyi-app`'s audio module and its tests; read the game's
    Playdate audio and conversion. Check whether 2225, 2342, 2343,
-   2344, 2345, 2378, 2363, 2725, 3024, 3027 and 3061 are done (the
+   2394, 2345, 2378, 2363, 2725, 3024, 3027 and 3061 are done (the
    either-order clauses).
 2. Move the rules behind the backend trait; desktop tests unchanged.
 3. Add the provided methods and the warning helper, and write the ADR.
@@ -248,10 +249,10 @@ may need an import path changed in that PR.
 - [ ] With the fake SDK, a paused track resumes from where it stopped.
       If the SDK lacks a pause, the Playdate backend keeps the default
       and the completion notes say why.
-- [ ] If 2344 is done: host tests with the fake SDK show `suspend`
-      pausing the sample and file players and `resume` starting them
-      again where they were, and a handle's sample player stopping
-      alone.
+- [ ] Host tests with the fake SDK show a handle's sample player
+      stopping alone. If 2394 is done, they also show `suspend` pausing
+      the sample and file players and `resume` starting them again
+      where they were.
 - [ ] If 2378 is done: with the fake SDK, of two copies of one sound,
       the one `SoundRequest::StopCopy` names stops and the other plays
       on.

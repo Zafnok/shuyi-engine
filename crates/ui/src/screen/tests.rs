@@ -8,6 +8,8 @@ use crate::frame::color::Rgb;
 use crate::frame::glyph_buffer::Cell;
 use crate::toy::{Action, Home, Toy, ToyCtx, ctx};
 
+mod sounds;
+
 type Log = Rc<RefCell<Vec<String>>>;
 
 /// A test screen that logs calls, answers updates (and being uncovered)

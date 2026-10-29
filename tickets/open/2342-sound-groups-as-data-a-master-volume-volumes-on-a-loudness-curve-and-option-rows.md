@@ -271,9 +271,13 @@ moves to the MVP.
   `AudioManifestRon` writer writes `groups` and the cues' `group`, and
   its round-trip test covers a manifest with them; if not, 2218 writes
   them with the rest of the kind.
-- **2344** (looped sounds with handles): if it is done, a looped sound
-  follows its group's gain while it plays, as a track does; if not,
-  2344 does that.
+- **From 2344 (done):** a sound started with a handle is one playback
+  the player keeps by its `SoundId` (`Handled` in
+  `crates/app/src/audio.rs`), at its cue volume times its requests'
+  volume times the player's sound volume, set again on the playback
+  (`Backend::set_playing_volume`) when the sound volume changes. This
+  ticket plays it at `gains.sound(cue)` in place of the player's sound
+  volume, and sets it again when that gain changes, as a track's is.
 - **2345** (cue rules): if it is done, `SoundCue::new` leaves `group`
   at `None`, and the player plays a sound at `percent(cue_volume)`
   (the volume 2345's `Cues` picked, carried by `SoundRequest::Sound`)

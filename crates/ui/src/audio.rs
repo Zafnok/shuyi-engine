@@ -13,6 +13,14 @@
 //! things on every screen ([`MenuSound`]); which cues those are is the
 //! game's ([`AudioConfig`], from [`GameData::audio_config`]).
 //!
+//! A sound that must be stopped (rain, a hum, a cue that loops) is started
+//! with a handle: [`AudioQueue::start_sound`] gives its [`SoundId`], which
+//! [`stop_sound`](AudioQueue::stop_sound), with or without a fade, and
+//! [`set_sound_volume`](AudioQueue::set_sound_volume) take. It belongs to
+//! the screen that started it: when that screen leaves the stack, its
+//! sounds stop, so a loop can't outlive it. A loop meant to outlive a
+//! screen is started by the screen below it, or is music.
+//!
 //! ```
 //! # use shuyi_ui::audio::{AudioQueue, AudioRequest};
 //! let mut audio = AudioQueue::<()>::default();
@@ -31,6 +39,11 @@ use shuyi_assets::voice::ClipVariant;
 #[cfg(doc)]
 use crate::GameData;
 use crate::input::frame_seconds;
+use alloc::collections::BTreeMap;
+
+mod handles;
+
+use handles::Handle;
 
 /// The sounds the engine's widgets and screens play: the same cue means
 /// the same thing on every screen.
@@ -92,15 +105,52 @@ impl Default for AudioConfig {
     }
 }
 
+/// A sound started with a handle ([`AudioQueue::start_sound`]): the
+/// queue's count of them, from 1, so the same calls give the same ids on
+/// every run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SoundId(u32);
+
+impl SoundId {
+    /// The count behind it.
+    pub const fn get(self) -> u32 {
+        self.0
+    }
+}
+
 /// Something a screen wants heard. Cue ids are the ones in the game's
 /// audio manifest ([`AudioManifest`]).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum AudioRequest<V> {
     /// Play a sound cue once, at `volume` (0–1) times the cue's own volume.
     PlaySound {
         /// The sound cue.
         cue: String,
         /// A multiplier on the cue's volume, 0–1.
+        volume: f32,
+    },
+    /// Play a sound cue until [`StopSound`](Self::StopSound) of its `id`
+    /// (looped if the cue says so, else once), at `volume` (0–1) times the
+    /// cue's own volume.
+    StartSound {
+        /// Its handle.
+        id: SoundId,
+        /// The sound cue.
+        cue: String,
+        /// A multiplier on the cue's volume, 0–1.
+        volume: f32,
+    },
+    /// Stop the sound started as `id`, at once.
+    StopSound {
+        /// Its handle.
+        id: SoundId,
+    },
+    /// Set the volume of the sound started as `id`.
+    SoundVolume {
+        /// Its handle.
+        id: SoundId,
+        /// The new multiplier on the cue's volume, 0–1.
         volume: f32,
     },
     /// Switch to a music cue. Asking for the track already playing does
@@ -144,11 +194,16 @@ impl<V> AudioRequest<V> {
         }
     }
 
-    /// The cue this request names, if any.
+    /// The cue this request names, if any: a sound played or started, or
+    /// a track.
     pub fn cue(&self) -> Option<&str> {
         match self {
-            Self::PlaySound { cue, .. } | Self::PlayMusic { cue, .. } => Some(cue),
-            Self::StopMusic
+            Self::PlaySound { cue, .. }
+            | Self::StartSound { cue, .. }
+            | Self::PlayMusic { cue, .. } => Some(cue),
+            Self::StopSound { .. }
+            | Self::SoundVolume { .. }
+            | Self::StopMusic
             | Self::PlayVoice { .. }
             | Self::StopVoice
             | Self::PreloadVoices { .. } => None,
@@ -157,11 +212,19 @@ impl<V> AudioRequest<V> {
 }
 
 /// The requests screens made this frame. `Game` empties it every frame.
-/// It knows which cues the [`MenuSound`]s are ([`AudioConfig`]).
+/// It knows which cues the [`MenuSound`]s are ([`AudioConfig`]), and the
+/// sounds started with a handle that haven't stopped.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AudioQueue<V> {
     requests: Vec<AudioRequest<V>>,
     config: AudioConfig,
+    /// The last [`SoundId`] given; 0 before the first.
+    last_id: u32,
+    /// The sounds started with a handle and not yet stopped.
+    handles: BTreeMap<SoundId, Handle>,
+    /// The depth on the screen stack of the screen running now: the owner
+    /// of the sounds it starts.
+    owner: usize,
 }
 
 impl<V> Default for AudioQueue<V> {
@@ -176,6 +239,9 @@ impl<V> AudioQueue<V> {
         Self {
             requests: Vec::new(),
             config,
+            last_id: 0,
+            handles: BTreeMap::new(),
+            owner: 0,
         }
     }
 
@@ -202,14 +268,9 @@ impl<V> AudioQueue<V> {
     /// Plays sound `cue` once at `volume` (0–1, clamped) times its own
     /// volume.
     pub fn play_sound_at(&mut self, cue: &str, volume: f32) {
-        let volume = if volume.is_nan() {
-            0.0
-        } else {
-            volume.clamp(0.0, 1.0)
-        };
         self.requests.push(AudioRequest::PlaySound {
             cue: cue.to_owned(),
-            volume,
+            volume: clamp_volume(volume),
         });
     }
 
@@ -261,6 +322,15 @@ impl<V> AudioQueue<V> {
     /// Empties the queue, returning its requests in order.
     pub fn take(&mut self) -> Vec<AudioRequest<V>> {
         core::mem::take(&mut self.requests)
+    }
+}
+
+/// `volume` within 0–1; NaN is 0.
+fn clamp_volume(volume: f32) -> f32 {
+    if volume.is_nan() {
+        0.0
+    } else {
+        volume.clamp(0.0, 1.0)
     }
 }
 
@@ -617,6 +687,9 @@ impl MusicState {
     pub fn request<V>(&mut self, request: &AudioRequest<V>, out: &mut Vec<MusicCommand>) {
         match request {
             AudioRequest::PlaySound { .. }
+            | AudioRequest::StartSound { .. }
+            | AudioRequest::StopSound { .. }
+            | AudioRequest::SoundVolume { .. }
             | AudioRequest::PlayVoice { .. }
             | AudioRequest::StopVoice
             | AudioRequest::PreloadVoices { .. } => {}

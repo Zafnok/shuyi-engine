@@ -57,6 +57,11 @@ shuyi-platform = { path = "../platform", features = ["heap"] }
 # is the one `#[global_allocator]`, shared with `shuyi-cli`'s.
 shuyi-alloc-count = { path = "../alloc-count", features = ["global"] }
 macroquad.workspace = true
+# Sound effects play on a quad-snd context of the player's own, where each
+# playback stops alone (ticket 2344), and native music decodes on a worker
+# thread into contexts of its own (ticket 0215, game ADR-0028). The same
+# version macroquad's `audio` feature uses, on every target.
+quad-snd = "0.2.8"
 # The link's picture of the window as a PNG, and the capture mode's: the
 # version macroquad already uses, PNG only (the `link` and `capture`
 # features). On every target: the render card's example encodes its
@@ -66,10 +71,7 @@ image = { version = "0.24", default-features = false, features = ["png"], option
 # Storage on the web (ticket 0207): `localStorage`. Native resolves its
 # data directory by hand (see storage/native.rs) rather than pulling in the
 # `directories` crate, which drags in MPL-2.0 (denied by game ADR-0013).
-# Native music decodes on a worker thread into its own quad-snd context
-# (ticket 0215, game ADR-0028). The same version macroquad's `audio` feature uses.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-quad-snd = "0.2.8"
 # Controllers on Windows, Linux and macOS (ticket 0219, game ADR-0034). The web
 # build reads the browser's Gamepad API through `crates/cli/web/gamepad.js` instead.
 gilrs = "0.11.2"

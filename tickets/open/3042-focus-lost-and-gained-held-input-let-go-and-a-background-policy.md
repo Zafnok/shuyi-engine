@@ -87,7 +87,7 @@ What Shuyi has today (checked 2026-10-21):
 - **No policy for the background.** A game that wants to stop while
   the player is elsewhere, or to go quiet, has to write it in its hook.
   2321's Out section asks for a ticket that lowers the frame rate
-  while unfocused; that is 3043. Sound held on `Suspend` is 2344's.
+  while unfocused; that is 3043. Sound held on `Suspend` is 2394's.
 
 Why it matters:
 
@@ -205,7 +205,7 @@ choice, made in its own repository.
     behaves as before. (2321's frame-cap consts, `DEFAULT_FRAME_CAP`
     and `FRAME_CAP_CHOICES`, are on the same trait.)
 - **`App` applies it while unfocused** (not while suspended, which
-  already stops everything; sound on `Suspend` is 2344's). `App` keeps
+  already stops everything; sound on `Suspend` is 2394's). `App` keeps
   the policy in a private field set from
   `<G::Settings as GameSettings>::BACKGROUND` when it is made, so its
   own tests (a child module) can set another policy on the toy:
@@ -284,7 +284,7 @@ choice, made in its own repository.
   the save inside the browser's event), fewer frames in the
   background, and the player's Mute in background setting: 3043;
 - holding sound on `Suspend`, and looped sounds that follow the mute:
-  2344;
+  2394;
 - `Suspend` for a minimized desktop window: miniquad 0.4.11 reports a
   minimize as a focus change, so the backend can't tell. A winit
   backend can (3034, parked);

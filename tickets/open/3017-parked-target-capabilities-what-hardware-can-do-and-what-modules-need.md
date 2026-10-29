@@ -121,7 +121,7 @@ None.
 
   Each profile's audio `features` comes from what its backend plays on
   the day. For quad-snd 0.2.8 (desktop, web, Steam Deck) it is `[]`:
-  quad-snd can't pause (2344 mutes instead), change the rate, pan or
+  quad-snd can't pause (2394 mutes instead), change the rate, pan or
   loop a region. A ticket that gives that backend a feature (2902's
   chosen stack, say) adds it. **Either order with 3029:** if 3029 is
   done, the Playdate's lists the provided methods its backend

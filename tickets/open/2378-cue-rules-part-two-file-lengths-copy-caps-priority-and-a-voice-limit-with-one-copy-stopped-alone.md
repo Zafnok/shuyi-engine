@@ -183,19 +183,14 @@ None.
   and add the line to `crates/cli/schemas/versions.json` (ADR-0022 §5).
 - **`shuyi-app` stops one copy alone** (`crates/app/src/audio.rs`,
   `crates/app/src/backend.rs`):
-  - **Either order with 2344:** if 2344 is done, use the per-playback
-    handle it gave `Backend::play` (`Self::Playing`, `stop_playing`) and
-    its quad-snd context for sound effects. A handled sound
-    (`SoundRequest::Start`) gets no `copy` and holds no copy or voice in
-    `Cues`, as 2344 says: the game stops it itself. If not, add them as
-    2344 describes, and 2344 uses them: `Backend::play` returns
-    `Self::Playing`, `Backend` gains `stop_playing(playing)`, and sound
-    effects load into a quad-snd `AudioContext` of `shuyi-app`'s own,
-    natively and on the web, where `load_sound` waits for
-    `Sound::is_loaded`. quad-snd 0.2.8 (MIT or Apache-2.0, allowed by
-    `deny.toml`) is already in the tree through macroquad's `audio`
-    feature: it moves from `shuyi-app`'s native dependencies to its
-    dependencies on every target, at the same version;
+  - **From 2344 (done):** `Backend::play` returns `Self::Playing`, one
+    playback, and `Backend` has `set_playing_volume` and
+    `stop_playing(playing)`. Sound effects load into a quad-snd
+    `AudioContext` of `shuyi-app`'s own, natively and on the web
+    (`device::Macroquad`'s `effects`), and quad-snd is a dependency on
+    every target. Use them. A handled sound (`SoundRequest::Start`)
+    gets no `copy` and holds no copy or voice in `Cues`: the game stops
+    it itself;
   - the player keeps each copy's `Playing` by its `CopyId` until
     `StopCopy` names it or its length (the cue's `lengths_ms`) has
     passed by the frame's time. A copy of unknown length keeps none;
@@ -283,7 +278,7 @@ version and the 2225 clause. That PR adds it to this ticket's
    the new `DropWhy`s, with the unit tests and the property test.
 5. `SoundRequest::Sound`'s `copy`, `SoundRequest::StopCopy`, the
    `Speaker`, and the platform's tests; the Harness test.
-6. `shuyi-app`: the per-playback handle (2344's, or added here), a
+6. `shuyi-app`: the per-playback handle (2344's), a
    handle per copy, and `StopCopy`. Check by ear on the desktop and in
    the web build (the `run` skill) that hello-grid's menu and cursor
    sounds still play.

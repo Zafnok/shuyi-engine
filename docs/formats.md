@@ -132,7 +132,10 @@ What each one reads:
 - **The audio manifest** reads its sound files beside it (`audio/audio.ron`
   names `sfx/a.wav`, the bundle's `audio/sfx/a.wav`). The music folder
   isn't in the bundle, so its tracks are checked by a tool that can see
-  it, with `audio::from_source`.
+  it, with `audio::from_source`. A sound may say `looped: true`: it loops
+  until the game stops it, and is started with a handle
+  (`AudioQueue::start_sound`, ADR-0055). Left out, it is `false`, and
+  the sound plays once.
 - **The font atlas** reads the PNG beside its glyph map with the same
   name (`fonts/atlas.ron` and `fonts/atlas.png`).
 - **A language pack** is read from its `lang.ron`, in a directory named

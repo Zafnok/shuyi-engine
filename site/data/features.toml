@@ -70,8 +70,8 @@ link = "docs/ROADMAP.md#bevys-homepage"
 
 [[feature]]
 title = "Sound"
-text = "Cues with variants, fades, crossfades and streamed music today; groups with ducking, and positional sound to come."
-tickets = ["3029", "2341", "2342", "2343", "2344", "2345"]
+text = "Cues with variants, fades, crossfades, looped sounds with handles and streamed music today; groups with ducking, and positional sound to come."
+tickets = ["3029", "2341", "2342", "2343", "2344", "2345", "2394"]
 link = "docs/ROADMAP.md#bevys-homepage"
 
 [[feature]]

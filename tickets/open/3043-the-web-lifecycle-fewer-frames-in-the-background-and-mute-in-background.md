@@ -271,7 +271,7 @@ Visions of Shuyi.
   cache and phones ignore it;
 - the Page Lifecycle API's `freeze` and `resume` events: a frozen page
   was hidden first, so `visibilitychange` covers it;
-- holding the sound on `Suspend` (2344), and the browser's
+- holding the sound on `Suspend` (2394), and the browser's
   `AudioContext.suspend()` (3031, parked);
 - `Suspend` for a minimized desktop window (3034; 3042 says why);
 - a lower frame rate on an idle screen that has the focus (3013 writes

@@ -415,6 +415,7 @@ mod tests {
             files: vec!["a.ogg".into()],
             volume: 100,
             credit,
+            looped: false,
         }
     }
 

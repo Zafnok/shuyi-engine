@@ -216,6 +216,7 @@ impl<G: GameData> Game<G> {
             modules: Vec::new(),
             installed: Vec::new(),
         };
+        game.stack.own_top(&mut game.ctx);
         game.redraw();
         game
     }
@@ -367,15 +368,24 @@ impl<G: GameData> Game<G> {
         }
     }
 
-    /// Moves the screens' audio requests into this frame's output and runs
-    /// the music state machine. In debug builds, a cue the manifest lacks
-    /// is a bug in the screen and panics.
+    /// Advances the sounds' fades, moves the screens' audio requests into
+    /// this frame's output and runs the music state machine. In debug
+    /// builds, a cue the manifest lacks is a bug in the screen and panics,
+    /// and so does a looped cue played without a handle, which nothing
+    /// could stop (a release build plays it once).
     fn collect_audio(&mut self, dt: f32) {
+        self.ctx.audio.advance(dt);
         self.audio_out = self.ctx.audio.take();
         for request in &self.audio_out {
+            let manifest = self.ctx.game.audio_manifest();
             debug_assert!(
-                is_known(self.ctx.game.audio_manifest(), request),
+                is_known(manifest, request),
                 "audio request for a cue not in the audio manifest: {request:?}"
+            );
+            debug_assert!(
+                !plays_a_loop(manifest, request),
+                "play_sound of the looped cue {:?}: start it with start_sound, whose handle stops it",
+                request.cue().unwrap_or_default()
             );
             self.music.request(request, &mut self.music_out);
         }
@@ -584,13 +594,24 @@ impl<G: GameData> Game<G> {
 /// Whether `request` names a cue of the right kind in `manifest`.
 fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
     match request {
-        AudioRequest::PlaySound { cue, .. } => manifest.sounds.contains_key(cue),
+        AudioRequest::PlaySound { cue, .. } | AudioRequest::StartSound { cue, .. } => {
+            manifest.sounds.contains_key(cue)
+        }
         AudioRequest::PlayMusic { cue, .. } => manifest.music.contains_key(cue),
-        AudioRequest::StopMusic
+        AudioRequest::StopSound { .. }
+        | AudioRequest::SoundVolume { .. }
+        | AudioRequest::StopMusic
         | AudioRequest::PlayVoice { .. }
         | AudioRequest::StopVoice
         | AudioRequest::PreloadVoices { .. } => true,
     }
+}
+
+/// Whether `request` plays a looped sound cue once, with no handle to
+/// stop it.
+fn plays_a_loop<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
+    matches!(request, AudioRequest::PlaySound { cue, .. }
+        if manifest.sounds.get(cue).is_some_and(|s| s.looped))
 }
 
 #[cfg(test)]

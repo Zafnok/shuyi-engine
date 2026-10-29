@@ -141,7 +141,7 @@ None.
     instruments, at the cue's group gain from the shared player (2342,
     done by then too), set again when the gain changes. The gains
     already hold the master volume and any ducking;
-  - a pause or a `Suspend` (3029's pause, by 2344's rule) stops the
+  - a pause or a `Suspend` (3029's pause, by 2394's rule) stops the
     SDK sequence and keeps its step. A resume sets that step and plays
     on;
   - stopping or unloading the cue frees its SDK objects.

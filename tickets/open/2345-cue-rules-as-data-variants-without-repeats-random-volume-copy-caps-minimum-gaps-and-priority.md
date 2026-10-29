@@ -270,12 +270,14 @@ None.
   - **3029:** if it is done, the shared player it made plays the given
     file and volume as above; if not, `shuyi-app`'s player does, and
     3029 moves it with these changes in.
-  - **2344** (looped sounds with handles): if it is done,
-    `SoundCue::new` sets `looped: false`, and `Cues` gives its
-    `SoundRequest::Start` a file and a cue volume as it does `Sound`,
-    with no gap (the game stops a handled sound itself). If not, 2344
-    does that. The second to land rebases onto the other's `SoundCue`
-    and bumps `pack::VERSION` again.
+  - **From 2344 (done):** `SoundCue` has `looped` (`SoundCue::new`
+    sets it to `false`, `with_looped` changes it), and `pack::VERSION`
+    is 5. This ticket rebases onto that `SoundCue` and bumps the
+    version again. `Cues` gives `SoundRequest::Start` (a
+    `#[non_exhaustive]` variant, built with `SoundRequest::start`) a
+    file and a cue volume as it does `Sound`, with no gap: the game
+    stops a handled sound itself. The player's `Audio::start_sound`
+    in `crates/app/src/audio.rs` is where it plays.
   - **2342** (sound groups): if it is done, `SoundCue::new` leaves
     `group` empty, and the player multiplies `percent(cue_volume)` by
     the gains 2342 gives in place of `sound_volume`. If not, 2342 does

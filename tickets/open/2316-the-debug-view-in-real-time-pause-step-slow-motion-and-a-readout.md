@@ -82,11 +82,11 @@ None.
     slowed pace.
 
   Audio requests made by a stepped update play as usual. **Either order
-  with 2344:** if 2344 is done, pausing calls `AudioQueue::pause_sounds`
+  with 2394:** if 2394 is done, pausing calls `AudioQueue::pause_sounds`
   under the queue's crate-private owner that no pop releases, and
   unpausing calls `resume_sounds`, so looped and other handled sounds
-  hold while the game is paused. A step doesn't release them. If 2344
-  isn't done, 2344 adds this wiring.
+  hold while the game is paused. A step doesn't release them. If 2394
+  isn't done, 2394 adds this wiring.
 
   **Modules (2358, ADR-0040):** `Game::step` runs the modules'
   `before_update` hooks just before the stack's update, and pausing
@@ -149,7 +149,7 @@ None.
   through this ticket's `DebugView::paused`. Going back in a turn
   game's rules stays `shuyi_core::history`'s;
 - editing state from the readout (the editor's inspector, 2507);
-- pausing the music, the voice or one-shot cues already playing (2344
+- pausing the music, the voice or one-shot cues already playing (2394
   holds only sounds started with a handle);
 - game speed and hit-stop for tick games (2123, parked with real time).
   This ticket's slow motion stays per frame and works for turn games
@@ -160,7 +160,7 @@ None.
 ## Implementation steps
 
 1. Read 2315's ADR and code, `game.rs`, the `input-actions` skill, and
-   `keymap/sample.rs`. Check which of 1119, 2123, 2344, 2361 and 2367
+   `keymap/sample.rs`. Check which of 1119, 2123, 2394, 2361 and 2367
    are done (the either-order clauses).
 2. Add the two `UiAction`s, and map them in the sample keymap and the
    toy.

@@ -527,10 +527,12 @@ impl<G: GameData> Session for Headless<G> {
             .audio_log()
             .into_iter()
             .filter_map(|(frame, request)| match request {
-                AudioRequest::PlaySound { cue, .. } => Some(Sound {
-                    frame,
-                    cue: cue.clone(),
-                }),
+                AudioRequest::PlaySound { cue, .. } | AudioRequest::StartSound { cue, .. } => {
+                    Some(Sound {
+                        frame,
+                        cue: cue.clone(),
+                    })
+                }
                 _ => None,
             })
             .collect()

@@ -425,8 +425,9 @@ fn track(cue: &str) -> MusicCue {
 pub struct Toy {
     lang: Lang,
     keymap: KeymapDef<Action>,
-    /// The cues: the sound `click` and the engine's menu sounds, the track
-    /// `theme`, four more in the pool `fights`, and a 0.5 s fade.
+    /// The cues: the sound `click` and the engine's menu sounds, the looped
+    /// sound `hum` (the same file), the track `theme`, four more in the
+    /// pool `fights`, and a 0.5 s fade.
     pub audio: AudioManifest,
     day: PaletteDef,
     night: PaletteDef,
@@ -486,6 +487,8 @@ impl Toy {
         audio.music_fade_ms = 500;
         let click = SoundCue::new(vec!["click.wav".to_owned()], 100, CreditRef::Own);
         audio.sounds.insert("click".to_owned(), click.clone());
+        let hum = click.clone().with_looped(true);
+        audio.sounds.insert("hum".to_owned(), hum);
         // The engine's menu sounds, by their default names.
         let config = crate::audio::AudioConfig::DEFAULT;
         for cue in [
