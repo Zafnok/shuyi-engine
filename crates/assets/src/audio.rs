@@ -136,18 +136,30 @@ pub struct SoundCue {
     pub volume: u8,
     /// Who made it.
     pub credit: CreditRef,
+    /// Whether it loops until it is stopped (`false`, the file's default:
+    /// it plays once). A looped cue is started with a handle
+    /// (`AudioQueue::start_sound` in `shuyi-ui`), which stops it.
+    pub looped: bool,
 }
 
 impl SoundCue {
     /// The sound of `files` (one picked each time), at `volume` percent,
-    /// made by `credit`.
+    /// made by `credit`, played once.
     #[must_use]
     pub const fn new(files: Vec<String>, volume: u8, credit: CreditRef) -> Self {
         Self {
             files,
             volume,
             credit,
+            looped: false,
         }
+    }
+
+    /// The same cue, looped until it is stopped or not.
+    #[must_use]
+    pub const fn with_looped(mut self, looped: bool) -> Self {
+        self.looped = looped;
+        self
     }
 }
 
@@ -234,6 +246,8 @@ struct RawSound {
     files: Vec<String>,
     volume: u8,
     credit: CreditRef,
+    #[serde(default)]
+    looped: bool,
 }
 
 #[derive(Deserialize)]
@@ -573,6 +587,7 @@ impl Check<'_> {
             files: s.files,
             volume: s.volume,
             credit: s.credit,
+            looped: s.looped,
         };
         self.manifest.sounds.insert(id, entry);
     }
@@ -851,8 +866,9 @@ mod tests {
             ))
         );
         assert_eq!(
-            m.sounds.get("ui_tick").map(|s| &s.credit),
-            Some(&CreditRef::Own)
+            m.sounds.get("ui_tick").map(|s| (&s.credit, s.looped)),
+            Some((&CreditRef::Own, false)),
+            "a sound plays once unless it says it loops"
         );
         let title = m.music.get("title");
         assert_eq!(
@@ -879,6 +895,15 @@ mod tests {
         assert_eq!(sunrise.tags, ["music", "title"]);
         assert_eq!(sunrise.note, "V1 file");
         assert_eq!(m.credits.get("ours").map(|c| c.title.as_str()), Some(""));
+    }
+
+    #[test]
+    fn a_sound_may_loop() {
+        let source = r#"(music_fade_ms: 0, music: [], pools: [], credits: [], sounds: [
+            (id: "rain", files: ["sfx/ui_tick.wav"], volume: 40, credit: Own, looped: true),
+        ])"#;
+        let m = from_source("a.ron", source, &all_files()).unwrap_or_default();
+        assert_eq!(m.sounds.get("rain").map(|s| s.looped), Some(true));
     }
 
     #[test]
@@ -1291,7 +1316,13 @@ mod tests {
                 files: alloc::vec!["sfx/a.wav".into()],
                 volume: 60,
                 credit: CreditRef::Own,
+                looped: false,
             }
+        );
+        assert!(
+            SoundCue::new(Vec::new(), 60, CreditRef::Own)
+                .with_looped(true)
+                .looped
         );
         assert_eq!((FILES.music_dir, FILES.music.is_none()), ("music", true));
         assert_eq!((FILES.sound_shown)("x.wav"), "base/audio/x.wav");

@@ -704,6 +704,36 @@ fn an_unknown_cue_panics_in_debug_builds() {
 }
 
 #[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "play_sound of the looped cue \"hum\"")]
+fn playing_a_looped_cue_without_a_handle_panics_in_debug_builds() {
+    let mut ctx = ctx();
+    ctx.audio.play_sound("hum");
+    let mut game = Game::new(ctx, Box::new(Noisy), GameHooks::default());
+    game.frame(&[], 0.0);
+}
+
+/// A sound's fade moves with the frames' time, in the frame's own
+/// requests.
+#[test]
+fn a_sounds_fade_moves_with_the_frames() {
+    let mut ctx = ctx();
+    let id = ctx.audio.start_sound("hum");
+    ctx.audio.stop_sound(id, 1000);
+    let mut game = Game::new(ctx, Box::new(Noisy), GameHooks::default());
+    let out = game.frame(&[], 0.25);
+    let start = AudioRequest::StartSound {
+        id,
+        cue: "hum".into(),
+        volume: 1.0,
+    };
+    let quarter = AudioRequest::SoundVolume { id, volume: 0.75 };
+    assert_eq!(out.audio, [start, quarter]);
+    let out = game.frame(&[], 0.75);
+    assert_eq!(out.audio, [AudioRequest::StopSound { id }]);
+}
+
+#[test]
 fn cues_must_be_of_the_right_kind() {
     let toy = Toy::new();
     let audio = &toy.audio;
@@ -719,6 +749,13 @@ fn cues_must_be_of_the_right_kind() {
     assert!(!is_known(audio, &sound("theme")));
     assert!(is_known(audio, &play("theme")));
     assert!(!is_known(audio, &play("click")));
+    let mut queue = crate::audio::AudioQueue::<Voice>::default();
+    let id = queue.start_sound("hum");
+    queue.start_sound("theme");
+    queue.set_sound_volume(id, 0.5);
+    queue.stop_sound(id, 0);
+    let known: Vec<bool> = queue.take().iter().map(|r| is_known(audio, r)).collect();
+    assert_eq!(known, [true, false, true, true]);
     let line = shuyi_assets::dialogue::LineId::new("x");
     for request in [
         AudioRequest::StopMusic,

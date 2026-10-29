@@ -5,6 +5,7 @@
 //! scripts are tested in `shuyi-ui`'s `tests/it`, over the toy's screens.
 
 mod bare;
+mod sounds;
 
 use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::{FRAME_DT, Harness};

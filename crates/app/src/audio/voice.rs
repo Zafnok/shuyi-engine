@@ -83,7 +83,8 @@ impl<B: Backend> Voices<B> {
                 self.coming.clone_from(clips);
                 self.passed = 0;
             }
-            SoundRequest::Sound { .. } => return,
+            // The sounds', and any request this player doesn't know.
+            _ => return,
         }
         self.keep_wanted(backend, abandoned);
     }

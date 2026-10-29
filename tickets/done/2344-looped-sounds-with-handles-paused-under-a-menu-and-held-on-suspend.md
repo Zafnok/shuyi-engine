@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2344 — Looped sounds with handles, paused under a menu and held on suspend
@@ -367,36 +367,42 @@ points the tickets that name 2344 for them (2316, 2408, 3029, 3031,
 
 ## Acceptance criteria
 
-- [ ] A manifest with `looped: true` on a sound loads it; one without
+- [x] A manifest with `looped: true` on a sound loads it; one without
       the field loads as before. The pack snapshot moved with `VERSION`.
-- [ ] Unit: ids count from 1 and are the same on a second run of the
+- [x] Unit: ids count from 1 and are the same on a second run of the
       same calls; `stop_sound(id, 0)` sends one `StopSound`; a 500 ms
       fade over frames of 1/60 s sends falling `SoundVolume`s, then one
       `StopSound` on the frame it ends; an unknown id sends nothing.
-- [ ] Harness, with the toy's `hum`: a screen starts it and pops; that
+- [x] Harness, with the toy's `hum`: a screen starts it and pops; that
       frame sends its `StopSound`, and `sounds_playing()` is empty
       after. A replace does the same. A loop started by the screen under
       a pushed menu keeps playing.
-- [ ] Harness: a menu pushed over a screen with a loop calls
+- [x] ~~Harness: a menu pushed over a screen with a loop calls
       `pause_sounds`; the loop is paused, a loop the menu starts after
       that plays unpaused, and popping the menu stops the menu's loop
-      and resumes the first with no `resume_sounds` call.
-- [ ] Harness: two pauses send one `PauseSounds`, and one `ResumeSounds`
-      when the last ends.
-- [ ] Harness: `system(SystemEvent::Suspend)` leaves the `Speaker`
+      and resumes the first with no `resume_sounds` call.~~ (not done:
+      the pauses moved to 2394 by the size rule)
+- [x] ~~Harness: two pauses send one `PauseSounds`, and one `ResumeSounds`
+      when the last ends.~~ (not done: moved to 2394)
+- [x] ~~Harness: `system(SystemEvent::Suspend)` leaves the `Speaker`
       suspended and `system(SystemEvent::Resume)` brings it back; a
-      second `Suspend` changes nothing.
-- [ ] In a debug build, `play_sound` of a looped cue panics in
+      second `Suspend` changes nothing.~~ (not done: moved to 2394)
+- [x] In a debug build, `play_sound` of a looped cue panics in
       `collect_audio`, and the message names the cue.
-- [ ] `shuyi-app` with the `Fake`: a looped cue starts a playback with
+- [x] `shuyi-app` with the `Fake`: a looped cue starts a playback with
       `looped`; its volume follows `set_sound_volume` and the player's
       sound volume; `Stop` stops that playback only, while a second copy
-      of the cue plays on; `PauseSounds` and `suspend` set volume 0, and
-      `ResumeSounds` and `resume` restore it.
-- [ ] The web build builds with quad-snd as a direct dependency, and
+      of the cue plays on. ~~`PauseSounds` and `suspend` set volume 0, and
+      `ResumeSounds` and `resume` restore it.~~ (not done: moved to 2394)
+- [x] The web build builds with quad-snd as a direct dependency, and
       the Completion notes say what was heard natively and on the web.
-- [ ] The ADR is written, and ADR-0024's header names it.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written (ADR-0055). ~~ADR-0024's header names it.~~
+      (not done: its status line says it extends ADR-0024 §2, and an
+      accepted ADR isn't rewritten; the §5 amendment is 2394's ADR)
+- [x] All gates in the `run-gates` skill pass, but `cargo xtask api`,
+      whose `cargo-semver-checks` couldn't build the base's `shuyi-app`
+      on this Windows machine (a build script it never ran); CI's `api`
+      job runs it.
 
 ## Tests required
 
@@ -415,4 +421,157 @@ points the tickets that name 2344 for them (2316, 2408, 3029, 3031,
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done** (ADR-0055):
+
+- `SoundCue::looped` (`looped: true` in `audio.ron`, `false` when left
+  out; `SoundCue::with_looped`), the toy's looped `hum`, `docs/formats.md`,
+  `pack::VERSION` 5 and its snapshot, and the golden row of the audio
+  manifest blessed.
+- `shuyi_ui::audio::SoundId` and `AudioQueue::start_sound`,
+  `start_sound_at`, `stop_sound(id, fade_ms)`, `set_sound_volume`,
+  `sound_is_live` and `advance(dt)`, in `crates/ui/src/audio/handles.rs`.
+  `AudioRequest::StartSound`, `StopSound` and `SoundVolume`;
+  `AudioRequest` is now `#[non_exhaustive]` (ADR-0039 §6).
+- `ScreenStack` sets the owner before it runs a screen and after each
+  transition (`own_top`), and stops a leaving screen's handles in
+  `apply_in` on a pop or a replace (`release_top`); `Game::with_stack`
+  sets the top as owner. `collect_audio` calls `advance` before `take`,
+  and panics in a debug build on `play_sound` of a looped cue, naming it.
+- `SoundRequest::Start` (`#[non_exhaustive]`, `SoundRequest::start`),
+  `Stop` and `Volume`; `SoundRequest` is `#[non_exhaustive]`. The
+  `Speaker` keeps `PlayingSound`s (`Speaker::sounds_playing`,
+  `Harness::sounds_playing`); `Harness::sounds` and the contract's
+  `sounds` list a started cue, with no change of shape. `stop_all`
+  stops the handled sounds.
+- `shuyi-app`: quad-snd is a dependency on every target (0.2.8, the
+  version macroquad brings; `cargo deny` passes). Sound effects load into
+  a quad-snd context of the player's own, opened with the first sound;
+  on the web `load_sound` waits for `Sound::is_loaded`, and natively a
+  file quad-snd can't decode is a warning, not a panic.
+  `Backend::play` returns `Self::Playing`, with `set_playing_volume` and
+  `stop_playing`; the player keeps each handled sound's playback by its
+  `SoundId` and sets it again when the sound volume changes.
+- Tests: the queue's unit tests (ids, clamping, a stop, an unknown id, a
+  500 ms fade over 1/60 s frames, bad frame times, a release), the stack's
+  tests and the property test `no_handle_outlives_its_screen`, the
+  `Game`'s fade and debug panic, `from_request` and the `Speaker`, the
+  Harness cases in `crates/platform/tests/it/sounds.rs`, and the player
+  against the `Fake`.
+
+**Heard** with a temporary change to hello-grid (not committed): a
+looped 220 Hz cue started on the stage, faded out over 2 s on Cancel.
+Natively and in the web build (served locally, in a browser), the hum
+looped under the menu blips and faded out over about 2 s on Cancel. The
+web page loaded with no console errors.
+
+**Deviations:**
+
+- **Split by the ticket's size rule.** Without the pauses the PR is
+  already well past 600 changed lines, so the pauses went to **2394**,
+  as **Size** says: `pause_sounds` and `resume_sounds`, `PauseSounds`
+  and `ResumeSounds`, `Audio::suspend` and `resume`, `App`'s wiring, the
+  mute rule, the ADR-0024 §5 amendment, and the 2316 and 2408 clauses.
+  2316, 2408, 3029, 3031, 3042, 3043 (and 2123, 2902, 3017, 3030, 3057)
+  now name 2394 for them. The acceptance criteria on pauses, two pauses
+  and `Suspend`, and the Fake's mute, are 2394's.
+- **A `Playing` for effects only.** Music and voice clips have no
+  playback handle (`Self::Playing` is `None` for them in the macroquad
+  backend): no request starts one by a handle, and they stop by their
+  clip as before.
+- A sound fading out ignores `set_sound_volume`, and a second
+  `stop_sound` with a fade keeps the first fade; one with 0 stops it at
+  once.
+- `AudioQueue::sound_is_live` is new: it says whether a handle is live,
+  for games and tests.
+
+**Either-order clauses:** 2316, 2342, 2345, 2366, 2378, 2408 and 3029
+aren't done. 2342's, 2345's, 2366's, 2367's and 2378's now say what
+2344 left them (**From 2344 (done)**); 3029's handle part is a
+**From 2344 (done)** and its pause part an either-order with 2394.
+
+**Follow-up:** 2394 (pauses under a menu and the audio held on
+`Suspend`).
+
+**For the game:** its next pin bump rebakes packs (version 5) and blesses
+its golden row of the audio manifest, if it has one. Its
+`if let AudioRequest::PlaySound { .. }` patterns keep compiling; an
+exhaustive `match` on `AudioRequest` or `SoundRequest` needs a wildcard
+arm. No game PR moves the pin yet; the game asks for nothing here, so
+the next game ticket that moves the pin carries it.
+
+**For Nick:** a game can now play a looping sound (rain, a hum) in one
+line, fade it out in one more, and the loop stops by itself when its
+screen closes. Holding sounds under a pause menu and while the device
+sleeps is the next ticket, 2394. Visions of Shuyi hears nothing
+different.
+
+Breaking: shuyi-ui: audio::AudioRequest: gains `StartSound`, `StopSound` and `SoundVolume` and is non-exhaustive: a `match` on it outside `shuyi-ui` needs a wildcard arm.
+
+```migration
+since: 0.1.0
+what: An audio request may be a sound started, stopped or changed by its handle, and the enum may grow.
+old: "match request { AudioRequest::PlaySound { .. } => .., AudioRequest::StopVoice => .., /* every variant */ }"
+new: "match request { AudioRequest::PlaySound { .. } => .., _ => .. }"
+before: |
+  match request {
+      AudioRequest::PlaySound { cue, .. } => play(cue),
+      AudioRequest::PlayMusic { .. } | AudioRequest::StopMusic => {}
+      AudioRequest::PlayVoice { .. } | AudioRequest::StopVoice | AudioRequest::PreloadVoices { .. } => {}
+  }
+after: |
+  match request {
+      AudioRequest::PlaySound { cue, .. } => play(cue),
+      _ => {}
+  }
+```
+
+Breaking: shuyi-platform: audio::SoundRequest: gains `Start`, `Stop` and `Volume` and is non-exhaustive: a backend's `match` on it needs a wildcard arm, and plays `Start { id, cue, volume, .. }` until `Stop { id }`.
+
+```migration
+since: 0.1.0
+what: A sound request may start, stop or change a sound by its handle, and the enum may grow.
+old: "match request { SoundRequest::Sound { .. } => .., SoundRequest::Voice { .. } => .., /* every variant */ }"
+new: "match request { SoundRequest::Sound { .. } => .., SoundRequest::Start { id, cue, volume, .. } => .., _ => .. }"
+before: |
+  match request {
+      SoundRequest::Sound { cue, volume } => play(cue, *volume),
+      SoundRequest::Voice { clip } => say(clip),
+      SoundRequest::StopVoice | SoundRequest::PreloadVoices { .. } => {}
+  }
+after: |
+  match request {
+      SoundRequest::Sound { cue, volume } => play(cue, *volume),
+      SoundRequest::Voice { clip } => say(clip),
+      SoundRequest::Start { id, cue, volume, .. } => start(*id, cue, *volume),
+      SoundRequest::Stop { id } => stop(*id),
+      _ => {}
+  }
+```
+
+Breaking: shuyi-assets: pack::VERSION: 5 (a sound cue's binary form has `looped`): a pack baked before is refused; bake it again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: Packs are at version 5; one baked before is refused until it is baked again.
+old: pack::VERSION 4
+new: pack::VERSION 5
+before: |
+  // a pack baked by an engine before this one
+after: |
+  // the same pack, baked again with `shuyi bake`
+```
+
+Breaking: shuyi-assets: formats.ron "audio manifest: audio-manifest": the manifest's state hash moved with the sound cues' `looped`; a game's own golden row of its audio manifest moves the same way (bless it).
+
+```migration
+since: 0.1.0
+what: An audio manifest's state hash changed with the sound cues' new field.
+old: '"audio manifest: audio-manifest": 7bca5ef50c2dd0fe'
+new: '"audio manifest: audio-manifest": 0bcf9f8817da21e0'
+before: |
+  // the game's golden table, as blessed before
+after: |
+  // the same table after `cargo xtask golden --bless`
+```
+
+Book: none, the book has no chapter on sound yet; `AudioQueue::start_sound`'s rustdoc, the `audio` module docs and ADR-0055 say how to use handles.

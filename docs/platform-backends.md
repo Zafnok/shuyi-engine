@@ -264,16 +264,20 @@ The sound device:
   really started (once its file loaded), or `None`; of two tracks
   sounding (a crossfade), the newest;
 - `play(&frame, now)`: one frame's audio. Set the volumes first
-  (`music_volume` and `voice_volume` reach what is already playing), then
-  play the `SoundRequest`s in order (a sound cue at its manifest volume
-  times its own and the sound volume; a voice clip by its file in the
-  game's voice folder; stop the voice; the clips coming, to load ahead),
+  (`music_volume`, `sound_volume` and `voice_volume` reach what is
+  already playing), then play the `SoundRequest`s in order (a sound cue
+  at its manifest volume times its own and the sound volume; a sound
+  started with a handle, looped if its cue says so, kept by its id as
+  one playback that its `Volume` and `Stop` change alone, ADR-0055; a
+  voice clip by its file in the game's voice folder; stop the voice; the
+  clips coming, to load ahead),
   then apply the `MusicCommand`s (load, start at a gain, fade, stop), and
   check on what is still loading. Every track started and not stopped
   plays, so two sound at once in a crossfade, each at its own gain
   (ADR-0054). It is called every frame, with nothing to play
   too;
-- `stop_all()`: the game quit.
+- `stop_all()`: the game quit: stop the music, the voice and the sounds
+  started with a handle.
 
 Until ticket 3029 moves the rules of playing (variants, fades, the music
 clock) into a player every backend shares, they are in `shuyi-app`'s

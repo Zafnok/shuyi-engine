@@ -21,6 +21,14 @@
 //! with its [guard](ScreenStack::guard_actions) on (the test Harness's)
 //! hands a screen only the actions it declares, and logs the others
 //! ([`ScreenStack::undeclared`]).
+//!
+//! A sound started with a handle ([`AudioQueue::start_sound`]) belongs to
+//! the screen that started it: when that screen leaves the stack through
+//! [`ScreenStack::apply_in`], the stack stops it, so a loop can't outlive
+//! its screen. A sound started from outside any screen belongs to the top
+//! one.
+//!
+//! [`AudioQueue::start_sound`]: crate::audio::AudioQueue::start_sound
 
 use crate::prelude::*;
 use core::any::Any;
@@ -288,6 +296,7 @@ impl<G: GameData> ScreenStack<G> {
     /// quit ([`Transition::Quit`], or the last screen popped). Does nothing
     /// and returns `true` on an empty stack.
     pub fn update(&mut self, ctx: &mut Ctx<G>, input: &FrameInput<G::Action>) -> bool {
+        self.own_top(ctx);
         let Some(top) = self.screens.last_mut() else {
             return true;
         };
@@ -310,29 +319,53 @@ impl<G: GameData> ScreenStack<G> {
     /// [`Screen::covered`]; a pop calls the new top's
     /// [`Screen::uncovered`] with what the screen popped with, then applies
     /// the transition that returns, and so on. A replace tells nobody.
-    /// Returns `true` if the game should quit.
+    /// A screen that leaves (a pop or a replace) takes its sounds with it
+    /// ([`AudioQueue::start_sound`]). Returns `true` if the game should
+    /// quit.
+    ///
+    /// [`AudioQueue::start_sound`]: crate::audio::AudioQueue::start_sound
     pub fn apply_in(&mut self, ctx: &mut Ctx<G>, transition: Transition<G>) -> bool {
         let mut next = transition;
-        loop {
+        let quit = loop {
             let result = match next {
                 Transition::Pop => None,
                 Transition::PopWith(result) => Some(result),
                 Transition::Push(screen) => {
+                    self.own_top(ctx);
                     if let Some(top) = self.screens.last_mut() {
                         top.covered(ctx);
                     }
                     self.screens.push(screen);
-                    break;
+                    break false;
                 }
-                other => return self.apply(other),
+                replace @ Transition::Replace(_) => {
+                    self.release_top(ctx);
+                    break self.apply(replace);
+                }
+                other => break self.apply(other),
             };
+            self.release_top(ctx);
             self.screens.pop();
+            self.own_top(ctx);
             let Some(top) = self.screens.last_mut() else {
-                break;
+                break true;
             };
             next = top.uncovered(ctx, result);
+        };
+        self.own_top(ctx);
+        quit
+    }
+
+    /// Makes the top screen the owner of the sounds started from now on.
+    pub(crate) fn own_top(&self, ctx: &mut Ctx<G>) {
+        ctx.audio.set_owner(self.screens.len().saturating_sub(1));
+    }
+
+    /// Stops the top screen's sounds: it is leaving.
+    fn release_top(&self, ctx: &mut Ctx<G>) {
+        if let Some(depth) = self.screens.len().checked_sub(1) {
+            ctx.audio.release(depth);
         }
-        self.screens.is_empty()
     }
 
     /// Applies a transition as if the top screen had returned it, to the

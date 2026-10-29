@@ -10,6 +10,10 @@
 //! the game's voice folder. The device calls sit behind [`Backend`], so
 //! everything else here is tested without a sound card.
 //!
+//! A sound started with a handle (`SoundRequest::Start`) is one playback
+//! the player keeps by its id, so that one copy stops alone and its volume
+//! follows the requests and the player's sound volume.
+//!
 //! It also knows when each track really started ([`Audio::music_playing`],
 //! game ADR-0037): a track asked for only sounds once its file has loaded, and
 //! screens that keep time with the music need the real moment.
@@ -23,7 +27,7 @@ use std::path::{Path, PathBuf};
 
 use shuyi_assets::audio::{AudioManifest, Files};
 use shuyi_platform::SoundRequest;
-use shuyi_ui::audio::MusicCommand;
+use shuyi_ui::audio::{MusicCommand, SoundId};
 
 use self::voice::Voices;
 
@@ -33,6 +37,8 @@ pub(crate) trait Backend {
     type Sound;
     /// A music track or voice clip being loaded.
     type Loading;
+    /// One playback of a sound, which stops alone.
+    type Playing;
 
     /// Decodes an embedded sound file.
     async fn load_sound(&mut self, bytes: &[u8]) -> Result<Self::Sound, String>;
@@ -43,12 +49,16 @@ pub(crate) trait Backend {
     /// How long `sound` plays, in seconds, if that is known: it is for an
     /// OGG file loaded with [`load_music`](Self::load_music).
     fn length(&self, sound: &Self::Sound) -> Option<f64>;
-    /// Plays `sound` from the start at `volume` (0–1).
-    fn play(&mut self, sound: &Self::Sound, volume: f32, looped: bool);
+    /// Plays `sound` from the start at `volume` (0–1): this playback.
+    fn play(&mut self, sound: &Self::Sound, volume: f32, looped: bool) -> Self::Playing;
     /// Changes the volume of `sound` wherever it plays.
     fn set_volume(&mut self, sound: &Self::Sound, volume: f32);
     /// Stops `sound`.
     fn stop(&mut self, sound: &Self::Sound);
+    /// Changes the volume of `playing` alone.
+    fn set_playing_volume(&mut self, playing: &Self::Playing, volume: f32);
+    /// Stops `playing` alone: other copies of its sound play on.
+    fn stop_playing(&mut self, playing: Self::Playing);
 }
 
 /// The audio player: owns the decoded sounds and the music tracks.
@@ -72,6 +82,25 @@ pub(crate) struct Audio<B: Backend> {
     /// multipliers on every cue's own volume.
     music_volume: f32,
     sound_volume: f32,
+    /// The sounds started with a handle and not stopped.
+    handled: BTreeMap<SoundId, Handled<B>>,
+}
+
+/// A sound started with a handle: its playback and what its volume is
+/// made of.
+struct Handled<B: Backend> {
+    playing: B::Playing,
+    /// The cue's own volume, 0–1.
+    cue_volume: f32,
+    /// The volume its requests gave, 0–1.
+    volume: f32,
+}
+
+impl<B: Backend> Handled<B> {
+    /// What it plays at, with the player's sound volume `sound`.
+    fn level(&self, sound: f32) -> f32 {
+        self.cue_volume * self.volume * sound
+    }
 }
 
 struct Track<B: Backend> {
@@ -137,14 +166,20 @@ impl<B: Backend> Audio<B> {
             warnings,
             music_volume: 1.0,
             sound_volume: 1.0,
+            handled: BTreeMap::new(),
         }
     }
 
     /// Sets the player's volumes (the Options screen's, 0–1): every sound
-    /// and track plays at its own volume times these. A change to the
-    /// music's reaches the tracks already playing.
+    /// and track plays at its own volume times these. A change reaches the
+    /// tracks and the sounds started with a handle already playing.
     pub(crate) fn set_volumes(&mut self, backend: &mut B, music: f32, sound: f32) {
-        self.sound_volume = sound;
+        if (sound - self.sound_volume).abs() > f32::EPSILON {
+            self.sound_volume = sound;
+            for handled in self.handled.values() {
+                backend.set_playing_volume(&handled.playing, handled.level(sound));
+            }
+        }
         if (music - self.music_volume).abs() <= f32::EPSILON {
             return;
         }
@@ -168,9 +203,7 @@ impl<B: Backend> Audio<B> {
         now: f64,
     ) {
         for request in requests {
-            if let SoundRequest::Sound { cue, volume } = request {
-                self.play_sound(backend, cue, *volume);
-            }
+            self.sound(backend, request);
             self.voices
                 .request(backend, request, now, &mut self.abandoned);
         }
@@ -194,18 +227,72 @@ impl<B: Backend> Audio<B> {
             .map(|(cue, started_at)| (cue, (now - started_at).max(0.0)))
     }
 
-    fn play_sound(&mut self, backend: &mut B, cue: &str, volume: f32) {
+    /// Applies one sound request (the voice's are [`Voices`]').
+    fn sound(&mut self, backend: &mut B, request: &SoundRequest) {
+        match request {
+            SoundRequest::Sound { cue, volume } => {
+                // A looped cue played this way (a bug the debug build
+                // catches) plays once: nothing could stop it.
+                self.play_sound(backend, cue, *volume, false);
+            }
+            SoundRequest::Start {
+                id, cue, volume, ..
+            } => {
+                self.start_sound(backend, *id, cue, *volume);
+            }
+            SoundRequest::Stop { id } => {
+                if let Some(handled) = self.handled.remove(id) {
+                    backend.stop_playing(handled.playing);
+                }
+            }
+            SoundRequest::Volume { id, volume } => {
+                if let Some(handled) = self.handled.get_mut(id) {
+                    handled.volume = *volume;
+                    let level = handled.level(self.sound_volume);
+                    backend.set_playing_volume(&handled.playing, level);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Plays a variant of sound `cue` at `volume` times its own and the
+    /// player's sound volume, looped or not: the playback, unless the cue
+    /// is unknown or none of its files loaded.
+    fn play_sound(
+        &mut self,
+        backend: &mut B,
+        cue: &str,
+        volume: f32,
+        looped: bool,
+    ) -> Option<B::Playing> {
         let (Some(def), Some(variants)) = (self.manifest.sounds.get(cue), self.sounds.get(cue))
         else {
             self.warnings.push(format!("unknown sound cue \"{cue}\""));
-            return;
+            return None;
         };
         if variants.is_empty() {
-            return; // Its files failed to load (warned then).
+            return None; // Its files failed to load (warned then).
         }
         let sound = &variants[self.rng.below(variants.len())];
         let volume = percent(def.volume) * volume * self.sound_volume;
-        backend.play(sound, volume, false);
+        Some(backend.play(sound, volume, looped))
+    }
+
+    /// Starts sound `cue` as `id`, looped if its cue says so.
+    fn start_sound(&mut self, backend: &mut B, id: SoundId, cue: &str, volume: f32) {
+        let def = self.manifest.sounds.get(cue);
+        let (looped, cue_volume) = def.map_or((false, 1.0), |d| (d.looped, percent(d.volume)));
+        if let Some(playing) = self.play_sound(backend, cue, volume, looped) {
+            let handled = Handled {
+                playing,
+                cue_volume,
+                volume,
+            };
+            if let Some(old) = self.handled.insert(id, handled) {
+                backend.stop_playing(old.playing);
+            }
+        }
     }
 
     fn music(&mut self, backend: &mut B, command: &MusicCommand, now: f64) {
@@ -263,12 +350,15 @@ impl<B: Backend> Audio<B> {
         }
     }
 
-    /// Stops all music and the voice (the game quit, e.g. on the web page
-    /// that stays open).
+    /// Stops all music, the voice and the sounds started with a handle
+    /// (the game quit, e.g. on the web page that stays open).
     pub(crate) fn stop_all(&mut self, backend: &mut B) {
         let cues: Vec<String> = self.tracks.keys().cloned().collect();
         for cue in cues {
             self.stop_track(backend, &cue);
+        }
+        for handled in std::mem::take(&mut self.handled).into_values() {
+            backend.stop_playing(handled.playing);
         }
         self.voices.stop_all(backend, &mut self.abandoned);
     }
@@ -381,11 +471,14 @@ impl VariantRng {
     }
 }
 
-/// The real backend: macroquad's audio (quad-snd). On native, music is
-/// decoded on a worker thread into its own quad-snd context
-/// ([`native_music`], game ADR-0028); on the web the browser decodes it
-/// asynchronously, so it goes through macroquad like the sounds.
+/// The real backend: quad-snd, which macroquad's audio is. Sound effects
+/// load into a quad-snd context of the player's own, where each playback
+/// stops and changes its volume alone. On native, music is decoded on a
+/// worker thread into contexts of its own ([`native_music`], game
+/// ADR-0028); on the web the browser decodes it asynchronously, so it goes
+/// through macroquad's.
 pub(crate) mod device {
+    #[cfg(target_arch = "wasm32")]
     use macroquad::audio::{
         PlaySoundParams, Sound, load_sound_from_bytes, play_sound, set_sound_volume, stop_sound,
     };
@@ -393,23 +486,30 @@ pub(crate) mod device {
     use macroquad::experimental::coroutines::{Coroutine, start_coroutine};
     #[cfg(target_arch = "wasm32")]
     use macroquad::file::load_file;
+    #[cfg(not(target_arch = "wasm32"))]
+    use quad_snd::PlaySoundParams;
+    use quad_snd::{AudioContext, Playback};
 
     #[cfg(not(target_arch = "wasm32"))]
     use super::native_music::{Contexts, Music, Pending};
 
-    /// Plays through macroquad. Only usable inside its main loop.
+    /// Plays through quad-snd. Only usable inside macroquad's main loop.
     #[derive(Default)]
     pub(crate) struct Macroquad {
         /// Spare music contexts.
         #[cfg(not(target_arch = "wasm32"))]
         contexts: Contexts,
+        /// The sound effects' context, opened with the first sound.
+        effects: Option<AudioContext>,
     }
 
     /// A decoded sound, track or voice clip.
     pub(crate) enum Clip {
-        /// In macroquad's own context: every sound, and (with its length
-        /// in milliseconds, if it is an OGG file) music and voices on the
-        /// web.
+        /// A sound effect, in the effects' context.
+        Effect(quad_snd::Sound),
+        /// A music track or voice clip on the web, in macroquad's context,
+        /// with its length in milliseconds if it is an OGG file.
+        #[cfg(target_arch = "wasm32")]
         Shared(Sound, Option<u32>),
         /// A native music track or voice clip in a context of its own.
         #[cfg(not(target_arch = "wasm32"))]
@@ -422,12 +522,34 @@ pub(crate) mod device {
         type Loading = Coroutine<Result<(Sound, Option<u32>), String>>;
         #[cfg(not(target_arch = "wasm32"))]
         type Loading = Pending<Result<Music, String>>;
+        /// A sound effect's playback; music and voices have none (they are
+        /// stopped by their clip).
+        type Playing = Option<Playback>;
 
+        #[cfg(not(target_arch = "wasm32"))]
+        fn load_sound(
+            &mut self,
+            bytes: &[u8],
+        ) -> impl std::future::Future<Output = Result<Clip, String>> {
+            use std::panic::{AssertUnwindSafe, catch_unwind};
+            let ctx = self.effects.get_or_insert_with(AudioContext::new);
+            // quad-snd `unwrap`s the decode, at once on native.
+            let loaded = catch_unwind(AssertUnwindSafe(|| quad_snd::Sound::load(ctx, bytes)))
+                .map(Clip::Effect)
+                .map_err(|_| "not a readable OGG or WAV file".to_owned());
+            std::future::ready(loaded)
+        }
+
+        #[cfg(target_arch = "wasm32")]
         async fn load_sound(&mut self, bytes: &[u8]) -> Result<Clip, String> {
-            load_sound_from_bytes(bytes)
-                .await
-                .map(|sound| Clip::Shared(sound, None))
-                .map_err(|e| e.to_string())
+            let ctx = self.effects.get_or_insert_with(AudioContext::new);
+            let sound = quad_snd::Sound::load(ctx, bytes);
+            // The browser decodes it in the background, as for
+            // macroquad's `load_sound_from_bytes`.
+            while !sound.is_loaded() {
+                macroquad::window::next_frame().await;
+            }
+            Ok(Clip::Effect(sound))
         }
 
         #[cfg(target_arch = "wasm32")]
@@ -464,6 +586,8 @@ pub(crate) mod device {
 
         fn length(&self, sound: &Clip) -> Option<f64> {
             let ms = match sound {
+                Clip::Effect(_) => None,
+                #[cfg(target_arch = "wasm32")]
                 Clip::Shared(_, length) => *length,
                 #[cfg(not(target_arch = "wasm32"))]
                 Clip::Music(m) => m.length_ms(),
@@ -471,16 +595,26 @@ pub(crate) mod device {
             ms.map(|ms| f64::from(ms) / 1000.0)
         }
 
-        fn play(&mut self, sound: &Clip, volume: f32, looped: bool) {
+        fn play(&mut self, sound: &Clip, volume: f32, looped: bool) -> Option<Playback> {
+            let params = PlaySoundParams { looped, volume };
             match sound {
-                Clip::Shared(s, _) => play_sound(s, PlaySoundParams { looped, volume }),
+                Clip::Effect(s) => return Some(s.play(self.effects.as_ref()?, params)),
+                #[cfg(target_arch = "wasm32")]
+                Clip::Shared(s, _) => play_sound(s, params),
                 #[cfg(not(target_arch = "wasm32"))]
                 Clip::Music(m) => m.play(volume, looped),
             }
+            None
         }
 
         fn set_volume(&mut self, sound: &Clip, volume: f32) {
             match sound {
+                Clip::Effect(s) => {
+                    if let Some(ctx) = &self.effects {
+                        s.set_volume(ctx, volume);
+                    }
+                }
+                #[cfg(target_arch = "wasm32")]
                 Clip::Shared(s, _) => set_sound_volume(s, volume),
                 #[cfg(not(target_arch = "wasm32"))]
                 Clip::Music(m) => m.set_volume(volume),
@@ -489,9 +623,27 @@ pub(crate) mod device {
 
         fn stop(&mut self, sound: &Clip) {
             match sound {
+                Clip::Effect(s) => {
+                    if let Some(ctx) = &self.effects {
+                        s.stop(ctx);
+                    }
+                }
+                #[cfg(target_arch = "wasm32")]
                 Clip::Shared(s, _) => stop_sound(s),
                 #[cfg(not(target_arch = "wasm32"))]
                 Clip::Music(m) => m.stop(),
+            }
+        }
+
+        fn set_playing_volume(&mut self, playing: &Option<Playback>, volume: f32) {
+            if let (Some(playback), Some(ctx)) = (playing, &self.effects) {
+                playback.set_volume(ctx, volume);
+            }
+        }
+
+        fn stop_playing(&mut self, playing: Option<Playback>) {
+            if let (Some(playback), Some(ctx)) = (playing, &self.effects) {
+                playback.stop(ctx);
             }
         }
     }
@@ -617,18 +769,21 @@ mod tests {
 
     /// Records every call. Sounds are names; music and voice loads finish
     /// when their path is put in `ready` (or fail if in `broken`). A file
-    /// plays for `length` seconds, if set.
+    /// plays for `length` seconds, if set. Each play is a playback,
+    /// numbered from 1 (`#1`).
     #[derive(Default)]
     pub(crate) struct Fake {
         pub(crate) log: Log,
         pub(crate) ready: Vec<String>,
         pub(crate) broken: Vec<String>,
         pub(crate) length: Option<f64>,
+        pub(crate) plays: u32,
     }
 
     impl Backend for Fake {
         type Sound = String;
         type Loading = String;
+        type Playing = u32;
 
         fn load_sound(&mut self, bytes: &[u8]) -> impl Future<Output = Result<String, String>> {
             std::future::ready(decode_wav(bytes).map(|samples| format!("wav{samples}")))
@@ -653,11 +808,13 @@ mod tests {
             self.length
         }
 
-        fn play(&mut self, sound: &String, volume: f32, looped: bool) {
+        fn play(&mut self, sound: &String, volume: f32, looped: bool) -> u32 {
             let looped = if looped { " looped" } else { "" };
             self.log
                 .borrow_mut()
                 .push(format!("play {sound} {volume:.2}{looped}"));
+            self.plays += 1;
+            self.plays
         }
 
         fn set_volume(&mut self, sound: &String, volume: f32) {
@@ -668,6 +825,16 @@ mod tests {
 
         fn stop(&mut self, sound: &String) {
             self.log.borrow_mut().push(format!("stop {sound}"));
+        }
+
+        fn set_playing_volume(&mut self, playing: &u32, volume: f32) {
+            self.log
+                .borrow_mut()
+                .push(format!("volume #{playing} {volume:.2}"));
+        }
+
+        fn stop_playing(&mut self, playing: u32) {
+            self.log.borrow_mut().push(format!("stop #{playing}"));
         }
     }
 
@@ -687,6 +854,8 @@ mod tests {
             )
         };
         m.sounds.insert("beep".into(), sound(&["sfx/beep.wav"], 50));
+        let rain = sound(&["sfx/beep.wav"], 50).with_looped(true);
+        m.sounds.insert("rain".into(), rain);
         let steps = ["sfx/step_1.wav", "sfx/step_2.wav", "sfx/step_3.wav"];
         m.sounds.insert("step".into(), sound(&steps, 100));
         m.sounds
@@ -769,6 +938,56 @@ mod tests {
             cue: cue.into(),
             gain,
         }
+    }
+
+    #[test]
+    fn a_started_sound_is_one_playback_its_requests_and_the_sound_volume_reach() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        audio.take_warnings();
+        let mut queue = shuyi_ui::audio::AudioQueue::<Take>::default();
+        let [first, second] = [queue.start_sound("rain"), queue.start_sound("rain")];
+        let once = queue.start_sound("beep");
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            [
+                "play wav100 0.50 looped",
+                "play wav100 0.50 looped",
+                "play wav100 0.50"
+            ]
+        );
+        queue.set_sound_volume(first, 0.5);
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(fake.calls(), ["volume #1 0.25"]);
+        // The player's sound volume reaches every playback, at its own.
+        audio.set_volumes(&mut fake, 1.0, 0.4);
+        assert_eq!(
+            fake.calls(),
+            ["volume #1 0.10", "volume #2 0.20", "volume #3 0.20"]
+        );
+        // A stop stops that copy alone; the other plays on.
+        queue.stop_sound(first, 0);
+        queue.stop_sound(once, 0);
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(fake.calls(), ["stop #1", "stop #3"]);
+        audio.hear(&mut fake, &[], &[], 0.0);
+        let got = fake.calls();
+        assert!(got.is_empty(), "{got:?}");
+        audio.stop_all(&mut fake);
+        assert_eq!(fake.calls(), ["stop #2"]);
+        queue.set_sound_volume(second, 1.0);
+        queue.stop_sound(second, 0);
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert!(fake.calls().is_empty(), "a stopped id is gone");
+    }
+
+    #[test]
+    fn a_looped_cue_played_without_a_handle_plays_once() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        audio.hear(&mut fake, &[sound("rain", 1.0)], &[], 0.0);
+        assert_eq!(fake.calls(), ["play wav100 0.50"]);
     }
 
     #[test]

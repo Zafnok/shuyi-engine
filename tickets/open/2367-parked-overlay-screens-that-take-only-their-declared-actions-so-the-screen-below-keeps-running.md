@@ -221,14 +221,14 @@ None.
   Harness test that its pause stops an `Everything` overlay's timer and
   the screen under it alike. If not, 2316 adds that test (an edit to
   2316 says so).
-- **Either order with 2344** (looped sounds a screen owns): 2344 keys a
-  sound's owner by the depth of the screen that started it. A push
-  between screens moves the depths above it, so the owner becomes the
-  entry's serial number. If 2344 is done, change its owner to the
-  serial number, set it before each running screen's `update`,
-  `covered` and `uncovered`, and stop a screen's handles when it leaves
-  at its place in the walk, as `apply_in` does. If 2344 isn't done,
-  edit 2344 in this PR to key its owners by the serial number.
+- **From 2344 (done):** a sound's owner is the depth of the screen
+  that started it (`AudioQueue::set_owner` and `release`, crate-private,
+  in `crates/ui/src/audio/handles.rs`; `ScreenStack::own_top` and
+  `release_top` in `screen.rs`). A push between screens moves the
+  depths above it, so the owner becomes the entry's serial number:
+  change it to the serial number, set it before each running screen's
+  `update`, `covered` and `uncovered`, and stop a screen's handles when
+  it leaves at its place in the walk, as `apply_in` does.
 - **Either order with 2322** (the accessibility tree): if 2322 is done,
   the tree's focus is in the top-most running screen that takes
   actions, so a `Passes::Everything` notice never holds it, and the
@@ -379,7 +379,7 @@ step 8 (the controls check of overlays: `passes` and `over`,
       `Everything` screen is neither checked nor warned about.
 - [ ] `FitRule` and `ScreenActions` are `#[non_exhaustive]` (or as
       2013's ADR says for their kind).
-- [ ] If 2344 is done, a sound started by the screen under a notice
+- [ ] A sound started by the screen under a notice
       stays that screen's after a push lands between them, and stops
       when that screen leaves.
 - [ ] `shuyi run` and `shuyi scene` answers list `running`; the contract

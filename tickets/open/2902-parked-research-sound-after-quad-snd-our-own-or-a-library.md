@@ -60,7 +60,7 @@ calls: how much is ours, how long it takes, and what it costs the game.
     and the GBA (3027, 3029), and the formats of 2203 (FLAC, MP3);
   - required, from 3029's provided methods and the tickets that call
     them: pausing and resuming a playing sound (3029's `pause` and
-    `resume`, for 2344; quad-snd can only mute); a playback rate for
+    `resume`, for 2394; quad-snd can only mute); a playback rate for
     pitch (a provided `set_rate` on 3029's trait, by its rule for a
     feature some backends lack; no backend plays one today, and 3030's
     resampler plans one); handles that set the volume of one playing

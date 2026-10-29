@@ -15,7 +15,7 @@ use alloc::collections::VecDeque;
 use alloc::vec;
 
 use shuyi_ui::RawInputEvent;
-use shuyi_ui::audio::MusicCommand;
+use shuyi_ui::audio::{MusicCommand, SoundId};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
@@ -96,9 +96,21 @@ impl Presented {
     }
 }
 
+/// A sound started with a handle that the [`Speaker`] holds as playing.
+/// Only the `Speaker` builds one (ADR-0039).
+#[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
+pub struct PlayingSound {
+    /// Its handle.
+    pub id: SoundId,
+    /// Its sound cue.
+    pub cue: String,
+}
+
 /// The headless backend's sound device: it records what the last frame
-/// played and works out which music "sounds" from the music commands and
-/// the clock.
+/// played, works out which music "sounds" from the music commands and the
+/// clock, and keeps the sounds started with a handle until they stop (one
+/// that plays once too: it knows no lengths).
 #[derive(Debug, Clone, Default)]
 pub struct Speaker {
     /// Seconds a track takes to load: it sounds that long after its
@@ -116,6 +128,8 @@ pub struct Speaker {
     volumes: Option<(f32, f32, f32)>,
     /// Whether everything was stopped (the game quit).
     stopped: bool,
+    /// The sounds started with a handle and not stopped, in id order.
+    playing: Vec<PlayingSound>,
 }
 
 impl Speaker {
@@ -153,6 +167,28 @@ impl Speaker {
         self.stopped
     }
 
+    /// The sounds started with a handle and not yet stopped, in id order.
+    pub fn sounds_playing(&self) -> &[PlayingSound] {
+        &self.playing
+    }
+
+    /// Follows one sound request: a start adds a sound playing, a stop
+    /// takes it away.
+    fn hear(&mut self, request: &SoundRequest) {
+        match request {
+            SoundRequest::Start { id, cue, .. } => {
+                let at = self.playing.partition_point(|p| p.id < *id);
+                let sound = PlayingSound {
+                    id: *id,
+                    cue: cue.clone(),
+                };
+                self.playing.insert(at, sound);
+            }
+            SoundRequest::Stop { id } => self.playing.retain(|p| p.id != *id),
+            _ => {}
+        }
+    }
+
     /// Follows one music command: a `Start` starts the count at `now`; a
     /// `Stop` (or a fresh `Load`) of that track ends it.
     fn apply(&mut self, command: &MusicCommand, now: Millis) {
@@ -179,6 +215,9 @@ impl Audio for Speaker {
         self.volumes = Some((frame.music_volume, frame.sound_volume, frame.voice_volume));
         self.requests.clear();
         self.requests.extend_from_slice(frame.requests);
+        for request in frame.requests {
+            self.hear(request);
+        }
         self.music.clear();
         self.music.extend_from_slice(frame.music);
         for command in frame.music {
@@ -188,6 +227,7 @@ impl Audio for Speaker {
 
     fn stop_all(&mut self) {
         self.started = None;
+        self.playing.clear();
         self.stopped = true;
     }
 }

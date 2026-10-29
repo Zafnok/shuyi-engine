@@ -33,8 +33,9 @@ shuyi-gba". The order between them:
 - **If this is done first**, 3027 uses this mixer and keeps only the GBA's
   timing and its 8-bit output.
 
-2344 gives games sound handles (`SoundId`), `pause_sounds` and
-`Audio::suspend` over quad-snd, which can only mute a sound it holds.
+2344 gives games sound handles (`SoundId`), and 2394 `pause_sounds`
+and `Audio::suspend`, over quad-snd, which can only mute a sound it
+holds.
 This mixer's `VoiceId`, `looped`, `fade_to`, `stop`, `pause` and
 `resume` back them once it replaces quad-snd.
 
@@ -61,7 +62,7 @@ None.
     through this mixer (3031, 3032);
   - this list holds every need that 2902's needs list marks required, so
     the mixer is no smaller than the trait 3029 shares: `rate` (pitch,
-    2345), `pause` and `resume` (2344), a stream's loop region (intro
+    2345), `pause` and `resume` (2394), a stream's loop region (intro
     then loop), two streams at once for a crossfade (2341), and a voice
     limit that never steals a voice (2345's rule, 2378's limit). It also
     holds the balance 2902 notes for positioned sound (2363). If 2902's
@@ -77,7 +78,7 @@ None.
     first passes it, or a seek; 2214 has only `rewind`), say which in the
     completion notes;
   - `set_volume`, `fade_to(volume, millis)`, `stop`, `is_playing`;
-  - `pause(VoiceId)` and `resume(VoiceId)`, so 2344's `PauseSounds` and
+  - `pause(VoiceId)` and `resume(VoiceId)`, so 2394's `PauseSounds` and
     `Audio::suspend` hold a sound where it is instead of letting it run
     on muted;
   - `render(&mut self, out: &mut [i16])`: mixes every voice into `out`,

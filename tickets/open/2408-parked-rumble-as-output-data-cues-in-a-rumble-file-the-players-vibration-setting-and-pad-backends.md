@@ -215,11 +215,11 @@ if he wants rumble in the game.
     quitting stop the motors and the player in that frame. While
     suspended, or until `FocusGained`, cues asked for are dropped. A
     resume restarts nothing;
-  - **pauses, either order with 2344:** if 2344 is done, a frame whose
+  - **pauses, either order with 2394:** if 2394 is done, a frame whose
     audio holds its `PauseSounds` request stops the motors. That covers
-    a pause menu, and 2316's debug pause, which pauses through 2344's
+    a pause menu, and 2316's debug pause, which pauses through 2394's
     owner. Cues asked for after it play, as a menu's own sounds do. If
-    2344 isn't done, 2344 does it when it lands (its own either-order
+    2394 isn't done, 2394 does it when it lands (its own either-order
     clause);
   - **either order with 3042 and 3043:** they make `shuyi-app` send
     `FocusLost` from the window and `Suspend` from a hidden tab. The

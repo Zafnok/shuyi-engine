@@ -309,7 +309,7 @@ None.
   tests it under speed;
 - slowing, pitching or pausing sounds and music with the speed: a
   ticket when a game asks, on the playback rate the parked mixer (3030)
-  brings. Sounds paused under a pause menu are 2344's;
+  brings. Sounds paused under a pause menu are 2394's;
 - scaling `FrameInput::dt` for turn games: a turn stage that wants a
   battle-speed setting multiplies its own `dt`, as `HurryClock` (2312)
   does;
