@@ -174,7 +174,9 @@ None.
   `Layer` with no `_` arm and a count of each on the card (each at least
   twice); its size; its sprites' settings; its cells; its backdrop's
   zoom and offset; the painter's missing colour; the same card every
-  time.
+  time; the atlas as a text picture; and the frame's text snapshot
+  (cells, items and the backdrop's scene), added when CI's diff mutants
+  found the card's layout and atlas unpinned.
 - **The example** (`crates/app/examples/render_card.rs`,
   `required-features = ["capture"]`): a window of 768 × 576 (three times
   the card), the card drawn by `render::Renderer` for three frames, the

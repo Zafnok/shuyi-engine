@@ -1,6 +1,9 @@
 use alloc::collections::BTreeSet;
 
+use insta::assert_snapshot;
+
 use super::*;
+use crate::frame::color::tests::engine_palette;
 use crate::frame::glyph_buffer::Item;
 use crate::frame::raster::MISSING_COLOR;
 
@@ -146,4 +149,55 @@ fn the_card_is_the_same_every_time() {
         painter.render(&card.buffer, 3),
         painter.render(&card.buffer, 3)
     );
+}
+
+/// The atlas's picture, a row of text per pixel row: `#` where a glyph's
+/// pixel is set, `.` where it is see-through. Its cells: the space, `#`,
+/// `o`, `-`, `|` and the fallback.
+const ATLAS: &str = "\
+...................................##...........
+...................................##...........
+.........######....................##.....#.#.#.
+.........######..######............##....#.#.#..
+.........######..#....#............##.....#.#.#.
+.........######..#....#............##....#.#.#..
+.........######..#....#............##.....#.#.#.
+.........######..#....#.########...##....#.#.#..
+.........######..#....#.########...##.....#.#.#.
+.........######..#....#............##....#.#.#..
+.........######..#....#............##.....#.#.#.
+.........######..#....#............##....#.#.#..
+.........######..######............##.....#.#.#.
+.........######....................##....#.#.#..
+...................................##...........
+...................................##...........
+";
+
+#[test]
+fn the_atlas_is_boxes_and_bars() {
+    let card = build();
+    let image = &card.atlas_image;
+    let mut text = String::new();
+    for y in 0..image.height {
+        for x in 0..image.width {
+            let [r, g, b, a] = image.pixel(x, y).unwrap();
+            text.push(match [r, g, b, a] {
+                [255, 255, 255, 255] => '#',
+                [0, 0, 0, 0] => '.',
+                _ => '?',
+            });
+        }
+        text.push('\n');
+    }
+    assert_eq!(text, ATLAS);
+    let at = |glyph| card.atlas.glyph_rect(glyph).map(|r| (r.x, r.y));
+    assert_eq!(at(' '), Some((0, 0)));
+    assert_eq!(at(FALLBACK_GLYPH), Some((40, 0)));
+}
+
+#[test]
+fn the_card_is_as_its_snapshot_says() {
+    // Every cell, item and backdrop of the card, so a change to what it
+    // shows is seen in review.
+    assert_snapshot!(build().buffer.to_snapshot(&engine_palette()));
 }
