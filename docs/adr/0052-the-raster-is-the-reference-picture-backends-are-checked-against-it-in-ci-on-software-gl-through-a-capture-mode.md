@@ -105,8 +105,9 @@ Measured (Hello, Grid's plan, three captures of 768 × 768 at scale 2):
 
 So the default holds on both, and no plan names a tolerance of its own.
 With `Item::Rect` drawn one window pixel to the right, the two stage
-captures fail (on the author's desktop: 232 and 488 pixels over, worst
-188 and 189), so the default is far from letting that break pass.
+captures fail (on llvmpipe in CI: 116 and 244 pixels over, worst 188
+and 189; on the author's desktop: 232 and 488), so the default is far
+from letting that break pass.
 
 ### 6. What a new frame item or paint does
 

@@ -445,8 +445,10 @@ say that the clauses naming 2018's render card mean that ticket.
   llvmpipe 21.1.8 (Mesa 26.0.8) and on a Windows desktop GPU; the worst
   channel difference is 1 on llvmpipe, 0 on the desktop. No plan names a
   tolerance of its own.
-- **The one-pixel break**: shown with a temporary commit and reverted
-  (the PR says which runs).
+- **The one-pixel break**: commit f67fa1b drew `Item::Rect` one pixel
+  to the right; its `render` run failed (the stage captures 116 and 244
+  pixels over, worst 188 and 189) and uploaded the diffs. It is
+  reverted.
 - **Docs**: ADR-0052, `crates/app/src/lib.rs`'s module docs, the
   backend checklist in `docs/platform-backends.md`, the `run-gates`
   skill, and the book's *Testing* chapter (a game's own plan).
