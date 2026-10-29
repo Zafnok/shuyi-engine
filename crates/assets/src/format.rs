@@ -845,3 +845,6 @@ mod tests;
 
 #[cfg(test)]
 pub(crate) mod builtin_tests;
+
+#[cfg(test)]
+mod golden_tests;

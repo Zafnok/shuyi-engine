@@ -46,6 +46,8 @@ pub mod error;
 mod fnv;
 pub mod font;
 pub mod format;
+#[cfg(feature = "golden")]
+pub mod golden;
 pub mod grid_map;
 pub mod image;
 pub mod ink;

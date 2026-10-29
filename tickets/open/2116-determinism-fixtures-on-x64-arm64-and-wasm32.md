@@ -5,7 +5,7 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: in-progress
 blocked_by: []
 nick_input: none
 completed:

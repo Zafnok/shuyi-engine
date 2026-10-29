@@ -302,14 +302,14 @@ impl Size {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use proptest::prelude::*;
 
     use super::*;
     use crate::format::Formats;
 
     /// A whole profile, with `extra` added to its display.
-    fn profile(id: &str, display_extra: &str) -> String {
+    pub(crate) fn profile(id: &str, display_extra: &str) -> String {
         format!(
             "(
     id: \"{id}\",

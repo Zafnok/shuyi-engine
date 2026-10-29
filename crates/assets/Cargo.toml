@@ -21,6 +21,10 @@ png = ["std", "dep:png"]
 # `keymap::sample`, a sample game's actions and keymap file, for other
 # engine crates' tests of input (ticket 1107).
 sample-actions = []
+# `golden`: golden tables, values a build gives pinned in a file beside
+# the tests (ticket 2116). For tests: a crate turns it on in its
+# dev-dependency on this one.
+golden = []
 
 [dependencies]
 # The grid a `.map` file is read into (`grid_map`); character ids and the
@@ -45,6 +49,6 @@ lz4_flex = { version = "0.14", default-features = false, features = ["alloc", "s
 proptest.workspace = true
 # The pinned binary form of every engine kind (`pack`'s tests).
 insta.workspace = true
-# Its own tests read PNGs too (`bitmap::convert::png_pixels`), whatever
-# features the test run turns on.
-shuyi-assets = { path = ".", features = ["png"] }
+# Its own tests read PNGs too (`bitmap::convert::png_pixels`), and check
+# its golden tables (`golden`), whatever features the test run turns on.
+shuyi-assets = { path = ".", features = ["png", "golden"] }

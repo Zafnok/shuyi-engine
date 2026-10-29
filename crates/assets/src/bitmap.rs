@@ -266,12 +266,12 @@ pub fn encode(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use proptest::prelude::*;
 
     /// A 9 × 2 picture made from a 3 × 1 PNG: two styles and a mask.
-    fn sample() -> Vec<u8> {
+    pub(crate) fn sample() -> Vec<u8> {
         let a: &[u8] = &[0b1000_0000, 0b1000_0000, 0, 0];
         let b: &[u8] = &[0b0111_1111, 0, 0xff, 0x80];
         let mask: &[u8] = &[0xff, 0x80, 0b0111_1111, 0];
