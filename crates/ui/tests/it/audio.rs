@@ -4,14 +4,14 @@
 //! from when a track starts sounding.
 
 use shuyi_platform::harness::{FRAME_DT, Harness};
-use shuyi_ui::audio::{AudioRequest, MusicCommand};
+use shuyi_ui::audio::{AudioRequest, MusicCommand, MusicSwitch};
 use shuyi_ui::frame::GlyphBuffer;
 use shuyi_ui::settings::MAX_VOLUME;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx, Voice};
 use shuyi_ui::{FrameInput, Game, GameHooks, Screen, Transition};
 
-/// Clicks on Confirm, plays the track `theme` on Cancel and the fights'
-/// pool on Info.
+/// Clicks on Confirm, plays the track `theme` on Cancel, the fights' pool
+/// on Info, and crossfades to `drums` over 1 s on Menu.
 struct Beeper;
 
 impl Screen<Toy> for Beeper {
@@ -29,6 +29,9 @@ impl Screen<Toy> for Beeper {
                         ctx.audio.play_music(&cue);
                     }
                 }
+                Action::Menu => ctx
+                    .audio
+                    .play_music_with("drums", MusicSwitch::crossfade(1000)),
                 _ => {}
             }
         }
@@ -58,14 +61,12 @@ fn load(cue: &str) -> MusicCommand {
 }
 
 fn start(cue: &str) -> MusicCommand {
-    MusicCommand::Start { cue: cue.into() }
+    MusicCommand::start(cue, 1.0)
 }
 
 #[test]
 fn records_the_audio_screens_ask_for() {
-    let theme = AudioRequest::PlayMusic {
-        cue: "theme".into(),
-    };
+    let theme = AudioRequest::play_music("theme", None);
     let mut h = beeper();
     let found = h.audio_requests();
     assert!(found.is_empty(), "{found:?}");
@@ -234,9 +235,7 @@ fn the_clock_follows_a_switch_of_track_once_the_fade_ends() {
 
 #[test]
 fn the_audio_log_says_which_frame_asked_for_what() {
-    let theme = AudioRequest::PlayMusic {
-        cue: "theme".into(),
-    };
+    let theme = AudioRequest::play_music("theme", None);
     let mut h = beeper();
     // Frames 1 and 2: the click and its release; then 3 and 4.
     h.keys("f d");
@@ -256,4 +255,49 @@ fn the_audio_log_says_which_frame_asked_for_what() {
     assert!(found.is_empty(), "{found:?}");
     h.wait(FRAME_DT).keys("f");
     assert_eq!(h.audio_log(), [(6, &click())]);
+}
+
+/// The gain each music command of the run gave `cue`, in order, with its
+/// frame: its `Start`'s, then its `Gain`s.
+fn gains(h: &Harness<Toy>, cue: &str) -> Vec<(u32, f32)> {
+    let log = h.music_log().into_iter();
+    log.filter_map(|(frame, command)| match command {
+        MusicCommand::Start { cue: c, gain, .. } | MusicCommand::Gain { cue: c, gain } => {
+            (c == cue).then_some((frame, *gain))
+        }
+        _ => None,
+    })
+    .collect()
+}
+
+/// A crossfade of 1 s: the new track starts silent beside the old one, and
+/// once it sounds their gains move opposite ways until the old one stops.
+#[test]
+fn a_crossfade_plays_both_tracks_until_the_old_one_has_faded() {
+    let mut h = beeper();
+    h.keys("d").wait(1.0).act(Action::Menu);
+    assert_eq!(
+        h.music_commands()[2..],
+        [load("drums"), MusicCommand::start("drums", 0.0)]
+    );
+    let switched = h.frame_count();
+    h.wait(0.5);
+    // From the frame after the switch, the first to see the new track
+    // sound, both gains move every frame, and they add up to 1.
+    let (theme, drums) = (gains(&h, "theme"), gains(&h, "drums"));
+    assert_eq!(theme.len(), drums.len(), "{theme:?} {drums:?}");
+    assert_eq!(drums[0], (switched, 0.0));
+    for ((f, old), (g, new)) in theme[1..].iter().zip(&drums[1..]) {
+        assert!(f == g && *f > switched, "{f} {g}");
+        assert!((old + new - 1.0).abs() < 1e-4, "{old} {new}");
+    }
+    let last = theme.last().map_or(0.0, |(_, gain)| *gain);
+    assert!((last - 0.5).abs() < 0.05, "{theme:?}");
+    assert!(sounds_at(&h, "drums", 0.5), "{:?}", h.music_clock());
+    h.wait(0.55);
+    let stop = MusicCommand::Stop {
+        cue: "theme".into(),
+    };
+    assert!(h.music_commands().contains(&stop));
+    assert_eq!(gains(&h, "drums").last().map(|(_, gain)| *gain), Some(1.0));
 }

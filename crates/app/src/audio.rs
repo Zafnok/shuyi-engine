@@ -5,7 +5,8 @@
 //! Sounds are embedded and decoded once at start-up. Music is loaded from
 //! the game's music folder when a track is about to play and freed when it
 //! stops, so at most two tracks (the one fading out and the next) are in
-//! memory. Voice clips ([`voice`], game ADR-0046) are loaded the same way from
+//! memory. In a crossfade the two play at once, their gains moving
+//! opposite ways (ADR-0054). Voice clips ([`voice`], game ADR-0046) are loaded the same way from
 //! the game's voice folder. The device calls sit behind [`Backend`], so
 //! everything else here is tested without a sound card.
 //!
@@ -181,9 +182,9 @@ impl<B: Backend> Audio<B> {
 
     /// The music sounding at `now` (on [`play`](Self::play)'s clock): its
     /// cue and the seconds since it started. `None` in silence, which
-    /// includes a track still loading or whose file failed. During a fade
-    /// this is the track fading out: the next one starts when the fade
-    /// ends. A track played once is still reported after it has ended
+    /// includes a track still loading or whose file failed. Of two tracks
+    /// (a crossfade) it is the newest that sounds: the old one until the
+    /// new one has loaded. A track played once is still reported after it has ended
     /// (quad-snd doesn't say when it does; `ui` knows its length).
     pub(crate) fn music_playing(&self, now: f64) -> Option<(&str, f64)> {
         self.tracks
@@ -226,12 +227,13 @@ impl<B: Backend> Audio<B> {
                 };
                 self.tracks.insert(cue.clone(), track);
             }
-            MusicCommand::Start { cue } => {
+            MusicCommand::Start { cue, gain, .. } => {
                 if let Some(track) = self.tracks.get_mut(cue) {
                     track.playing = true;
-                    track.gain = 1.0;
+                    track.gain = *gain;
                     if let TrackState::Ready(sound) = &track.state {
-                        backend.play(sound, track.volume * self.music_volume, track.looped);
+                        let volume = track.volume * track.gain * self.music_volume;
+                        backend.play(sound, volume, track.looped);
                         track.started_at = Some(now);
                     }
                 }
@@ -755,7 +757,7 @@ mod tests {
     }
 
     fn start(cue: String) -> MusicCommand {
-        MusicCommand::Start { cue }
+        MusicCommand::start(cue, 1.0)
     }
 
     fn stop(cue: String) -> MusicCommand {
@@ -777,9 +779,7 @@ mod tests {
             audio.take_warnings(),
             ["sound \"broken\": bundle/sfx/broken.wav: not a PCM WAV"]
         );
-        let music_request = Request::PlayMusic {
-            cue: "title".into(),
-        };
+        let music_request = Request::play_music("title", None);
         audio.hear(
             &mut fake,
             &[sound("beep", 1.0), music_request, sound("beep", 0.5)],
@@ -1152,6 +1152,74 @@ mod tests {
             audio.play(&mut fake, &[], &[cmd(start, second)], 2.0);
             assert_eq!(audio.music_playing(2.5), Some((second, 0.5)));
         }
+    }
+
+    /// A track that fades in starts at its `Start`'s gain, loaded or not.
+    #[test]
+    fn a_start_at_gain_zero_plays_at_volume_zero() {
+        let mut fake = Fake::default();
+        fake.ready.push("music/sting.ogg".into());
+        let mut audio = audio(&mut fake);
+        let silent = MusicCommand::start("sting", 0.0);
+        audio.play(&mut fake, &[], &[cmd(load, "sting"), silent], 0.0);
+        audio.play(&mut fake, &[], &[gain("sting", 0.5)], 0.0);
+        assert_eq!(
+            fake.calls(),
+            [
+                "load music/sting.ogg",
+                "play music/sting.ogg 0.00",
+                "volume music/sting.ogg 0.50"
+            ]
+        );
+        // Still loading: it starts at that gain once loaded.
+        let silent = MusicCommand::start("title", 0.0);
+        audio.play(&mut fake, &[], &[cmd(load, "title"), silent], 0.0);
+        fake.ready.push("music/title.ogg".into());
+        audio.play(&mut fake, &[], &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            ["load music/title.ogg", "play music/title.ogg 0.00 looped"]
+        );
+    }
+
+    /// A crossfade, as `MusicState` sends it: the two tracks play at once,
+    /// their gains moving opposite ways, and the report follows the new
+    /// one once it sounds.
+    #[test]
+    fn two_tracks_play_at_once_in_a_crossfade() {
+        let mut fake = Fake::default();
+        fake.ready.push("music/title.ogg".into());
+        let mut audio = audio(&mut fake);
+        let cmds = [cmd(load, "title"), cmd(start, "title")];
+        audio.play(&mut fake, &[], &cmds, 1.0);
+        let crossfade = [cmd(load, "sting"), MusicCommand::start("sting", 0.0)];
+        audio.play(&mut fake, &[], &crossfade, 2.0);
+        assert_eq!(audio.music_playing(2.5), Some(("title", 1.5)));
+        fake.ready.push("music/sting.ogg".into());
+        audio.play(&mut fake, &[], &[], 3.0);
+        assert_eq!(audio.music_playing(3.5), Some(("sting", 0.5)));
+        let halfway = [gain("title", 0.5), gain("sting", 0.5)];
+        audio.play(&mut fake, &[], &halfway, 3.5);
+        audio.play(
+            &mut fake,
+            &[],
+            &[cmd(stop, "title"), gain("sting", 1.0)],
+            4.0,
+        );
+        assert_eq!(
+            fake.calls(),
+            [
+                "load music/title.ogg",
+                "play music/title.ogg 0.80 looped",
+                "load music/sting.ogg",
+                "play music/sting.ogg 0.00",
+                "volume music/title.ogg 0.40",
+                "volume music/sting.ogg 0.50",
+                "stop music/title.ogg",
+                "volume music/sting.ogg 1.00",
+            ]
+        );
+        assert_eq!(audio.music_playing(4.5), Some(("sting", 1.5)));
     }
 
     #[test]

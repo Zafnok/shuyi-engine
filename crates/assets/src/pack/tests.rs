@@ -412,7 +412,7 @@ fn a_pack_of_another_version_or_stamp_is_refused_with_a_message_to_bake_again() 
     );
     assert_eq!(
         PackError::Version { found: 0 }.to_string(),
-        "the pack is of pack format version 0 and this engine reads version 3: bake it again \
+        "the pack is of pack format version 0 and this engine reads version 4: bake it again \
          with `shuyi bake`"
     );
     let error = Pack::open(&bytes, "test 2").unwrap_err();

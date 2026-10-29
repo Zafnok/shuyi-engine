@@ -482,10 +482,8 @@ impl Toy {
         .unwrap_or_else(|e| panic!("{e:?}"));
         let code = LangCode::new(DEBUG_LANG).unwrap_or_default();
         let lang = Lang::new(english, [(code, pack)].into());
-        let mut audio = AudioManifest {
-            music_fade_ms: 500,
-            ..AudioManifest::default()
-        };
+        let mut audio = AudioManifest::default();
+        audio.music_fade_ms = 500;
         let click = SoundCue::new(vec!["click.wav".to_owned()], 100, CreditRef::Own);
         audio.sounds.insert("click".to_owned(), click.clone());
         // The engine's menu sounds, by their default names.

@@ -68,16 +68,11 @@ text = "Save and load whole worlds as text, keeping their ids, with instances an
 tickets = ["2221"]
 link = "docs/ROADMAP.md#bevys-homepage"
 
-# Today's sound came with the engine's carve from the game, so no ticket
-# here shipped it: its tickets alone would say "Planned". Its status stays
-# by hand until one of them is done; then it takes
-# `tickets = ["3029", "2341", "2342", "2343", "2344", "2345"]`.
 [[feature]]
 title = "Sound"
-text = "Cues with variants, fades and streamed music today; crossfades, groups with ducking, and positional sound to come."
-status = "In progress"
+text = "Cues with variants, fades, crossfades and streamed music today; groups with ducking, and positional sound to come."
+tickets = ["3029", "2341", "2342", "2343", "2344", "2345"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Sound on the roadmap"
 
 [[feature]]
 title = "Hot reload of assets"

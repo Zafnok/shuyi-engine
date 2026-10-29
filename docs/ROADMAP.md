@@ -198,6 +198,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2344 | Looped sounds with handles, paused under a pause menu and while the system suspends the game |
 | 2345 | Cue rules as data: variants without repeats, random volume, copy caps, minimum gaps and priority |
 | 2341 | Music crossfades and fade-ins, with today's fade-out-then-start as the default |
+| 2393 | The headless `Speaker` plays two tracks: a crossfade seen in the Harness with its gains and a load delay |
 | 2225 | Sound effects from a few numbers (`.sfx.ron`), and menu sounds for new games |
 
 **Text and languages:**

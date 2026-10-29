@@ -293,7 +293,8 @@ pub struct Ctx<G: GameData> {
     /// Where the music that is sounding is in its track, for a screen that
     /// keeps time with it. `None` in silence: nothing asked for, the track
     /// still loading, its file missing, or a track played once that has
-    /// ended. During a fade it is the track fading out. The platform
+    /// ended. Of two tracks sounding (a crossfade) it is the newest:
+    /// the old one until the new one has loaded. The platform
     /// reports it each frame through
     /// [`Game::set_music_playing`](crate::Game::set_music_playing).
     pub music_clock: Option<MusicClock>,

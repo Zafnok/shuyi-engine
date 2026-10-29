@@ -596,6 +596,7 @@ fn frames_carry_the_audio_screens_asked_for() {
     let out = game.frame(&[], 0.0);
     let theme = AudioRequest::PlayMusic {
         cue: "theme".into(),
+        switch: None,
     };
     assert_eq!(out.audio, [theme]);
     let load = MusicCommand::Load {
@@ -603,6 +604,7 @@ fn frames_carry_the_audio_screens_asked_for() {
     };
     let start = MusicCommand::Start {
         cue: "theme".into(),
+        gain: 1.0,
     };
     assert_eq!(out.music, [load, start]);
     let out = game.frame(&[down(Key::F)], 0.0);
@@ -635,6 +637,7 @@ fn frames_carry_the_music_fade_of_the_manifest() {
     };
     let start = MusicCommand::Start {
         cue: "drums".into(),
+        gain: 1.0,
     };
     assert_eq!(out.music, [stop, start]);
     assert_eq!(game.music().current(), Some("drums"));
@@ -650,6 +653,35 @@ fn frames_carry_the_music_fade_of_the_manifest() {
         gain: 0.75,
     };
     assert_eq!(out.music[1..], [gain]);
+}
+
+/// With the manifest's fade-in, the first track after silence starts at
+/// gain 0 and rises once the platform says it sounds.
+#[test]
+fn the_first_track_fades_in_once_it_sounds_with_the_manifests_fade_in() {
+    let mut ctx = ctx();
+    ctx.game.audio.music_fade_in_ms = 1000;
+    ctx.audio.play_music("theme");
+    let mut game = Game::new(ctx, Box::new(Noisy), GameHooks::default());
+    let out = game.frame(&[], 0.5);
+    let load = MusicCommand::Load {
+        cue: "theme".into(),
+    };
+    let start = MusicCommand::Start {
+        cue: "theme".into(),
+        gain: 0.0,
+    };
+    assert_eq!(out.music, [load, start]);
+    game.set_music_playing(None);
+    let out = game.frame(&[], 0.5);
+    assert!(out.music.is_empty(), "{:?}", out.music);
+    game.set_music_playing(Some(("theme", 0.0)));
+    let out = game.frame(&[], 0.25);
+    let quarter = MusicCommand::Gain {
+        cue: "theme".into(),
+        gain: 0.25,
+    };
+    assert_eq!(out.music, [quarter]);
 }
 
 #[test]
@@ -679,7 +711,10 @@ fn cues_must_be_of_the_right_kind() {
         cue: cue.into(),
         volume: 1.0,
     };
-    let play = |cue: &str| AudioRequest::<Voice>::PlayMusic { cue: cue.into() };
+    let play = |cue: &str| AudioRequest::<Voice>::PlayMusic {
+        cue: cue.into(),
+        switch: None,
+    };
     assert!(is_known(audio, &sound("click")));
     assert!(!is_known(audio, &sound("theme")));
     assert!(is_known(audio, &play("theme")));

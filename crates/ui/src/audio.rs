@@ -18,11 +18,12 @@
 //! let mut audio = AudioQueue::<()>::default();
 //! audio.play_sound("menu_beep");
 //! audio.play_music("theme");
-//! assert_eq!(audio.pending()[1], AudioRequest::PlayMusic { cue: "theme".into() });
+//! assert_eq!(audio.pending()[1], AudioRequest::play_music("theme", None));
 //! ```
 
 use crate::prelude::*;
 use shuyi_assets::audio::AudioManifest;
+pub use shuyi_assets::audio::MusicSwitch;
 use shuyi_assets::dialogue::LineId;
 #[cfg(doc)]
 use shuyi_assets::voice::ClipVariant;
@@ -103,10 +104,14 @@ pub enum AudioRequest<V> {
         volume: f32,
     },
     /// Switch to a music cue. Asking for the track already playing does
-    /// nothing.
+    /// nothing. Build it with [`AudioRequest::play_music`] (ADR-0039).
+    #[non_exhaustive]
     PlayMusic {
         /// The music cue.
         cue: String,
+        /// How the track playing gives way to it; `None` for the audio
+        /// manifest's default ([`AudioManifest::music_switch`]).
+        switch: Option<MusicSwitch>,
     },
     /// Fade the music out.
     StopMusic,
@@ -130,10 +135,19 @@ pub enum AudioRequest<V> {
 }
 
 impl<V> AudioRequest<V> {
+    /// A [`PlayMusic`](Self::PlayMusic) of `cue`, switching with `switch`
+    /// (`None`: the manifest's default).
+    pub fn play_music(cue: impl Into<String>, switch: Option<MusicSwitch>) -> Self {
+        Self::PlayMusic {
+            cue: cue.into(),
+            switch,
+        }
+    }
+
     /// The cue this request names, if any.
     pub fn cue(&self) -> Option<&str> {
         match self {
-            Self::PlaySound { cue, .. } | Self::PlayMusic { cue } => Some(cue),
+            Self::PlaySound { cue, .. } | Self::PlayMusic { cue, .. } => Some(cue),
             Self::StopMusic
             | Self::PlayVoice { .. }
             | Self::StopVoice
@@ -199,11 +213,18 @@ impl<V> AudioQueue<V> {
         });
     }
 
-    /// Switches the music to `cue` (nothing happens if it's already on).
+    /// Switches the music to `cue` (nothing happens if it's already on),
+    /// as the audio manifest's default switch says.
     pub fn play_music(&mut self, cue: &str) {
-        self.requests.push(AudioRequest::PlayMusic {
-            cue: cue.to_owned(),
-        });
+        self.requests.push(AudioRequest::play_music(cue, None));
+    }
+
+    /// Switches the music to `cue` as `switch` says (nothing happens if
+    /// it's already on): how long the old track fades out and the new one
+    /// fades in, and whether the two overlap.
+    pub fn play_music_with(&mut self, cue: &str, switch: MusicSwitch) {
+        self.requests
+            .push(AudioRequest::play_music(cue, Some(switch)));
     }
 
     /// Fades the music out.
@@ -323,11 +344,17 @@ pub enum MusicCommand {
         /// The music cue.
         cue: String,
     },
-    /// Play `cue` (loaded earlier) from the start at full gain, looped if
-    /// the manifest says so. If it isn't loaded yet, play it once it is.
+    /// Play `cue` (loaded earlier) from the start at `gain`, looped if the
+    /// manifest says so. If it isn't loaded yet, play it once it is. Build
+    /// it with [`MusicCommand::start`] (ADR-0039).
+    #[non_exhaustive]
     Start {
         /// The music cue.
         cue: String,
+        /// The gain it starts at (0–1, a multiplier on its manifest
+        /// volume): 1 for a track that starts at full gain, 0 for one that
+        /// fades in.
+        gain: f32,
     },
     /// Set `cue`'s gain (0–1, a multiplier on its manifest volume).
     Gain {
@@ -343,48 +370,245 @@ pub enum MusicCommand {
     },
 }
 
-/// Which track plays, and the fade between tracks: the old one fades out,
-/// then the new one starts; a cue already playing doesn't restart. Pure:
-/// feed it requests and time, read the commands.
+impl MusicCommand {
+    /// A [`Start`](Self::Start) of `cue` at `gain`.
+    pub fn start(cue: impl Into<String>, gain: f32) -> Self {
+        Self::Start {
+            cue: cue.into(),
+            gain,
+        }
+    }
+}
+
+/// Which tracks play, and how one gives way to the next (ADR-0054): each
+/// switch is a [`MusicSwitch`], the request's own or the default one. The
+/// old track fades out; the new one starts once it has stopped, or as it
+/// begins to fade (a crossfade), and may fade in. A cue already playing
+/// doesn't restart, and at most two tracks are loaded at once. A fade-in,
+/// and an old track's fade in a crossfade, wait until the new track sounds
+/// ([`heard`](Self::heard)), or [`LOAD_WAIT_SECS`](Self::LOAD_WAIT_SECS).
+/// Pure: feed it requests, time and what sounds, read the commands.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MusicState {
-    /// Fade-out length in seconds.
-    fade_secs: f32,
-    /// The track playing (or fading out).
-    current: Option<String>,
-    /// The fade in progress, if any.
-    fade: Option<Fade>,
+    /// The switch of a request that names none, and the fade of a stop.
+    default: MusicSwitch,
+    /// The older track: the one playing, or fading out during a switch.
+    current: Option<Track>,
+    /// The newer track: the one a switch brings in, waiting for `current`
+    /// to stop or sounding beside it; after a stop during a crossfade,
+    /// fading out beside it. Never set without `current`.
+    next: Option<Track>,
 }
 
-/// A fade-out of the current track.
+/// One track between its `Load` and its `Stop`.
 #[derive(Debug, Clone, PartialEq)]
-struct Fade {
-    /// Seconds since it began.
-    elapsed: f32,
-    /// What starts when it ends (already loading); `None` for silence.
-    next: Option<String>,
+struct Track {
+    cue: String,
+    /// Whether it was sent `Start`.
+    started: bool,
+    /// Whether the music clock has named it since its `Start`.
+    heard: bool,
+    /// Seconds since its `Start`, while it isn't heard (up to the load
+    /// wait).
+    waited: f32,
+    /// Its gain, rising to 1 (playing or fading in) or falling to 0
+    /// (fading out, then stopped).
+    ramp: Ramp,
 }
 
-impl MusicState {
-    /// Silence, with fades `fade_secs` long (negative or NaN counts as 0).
-    pub fn new(fade_secs: f32) -> Self {
+/// A gain moving in a straight line to 0 or 1, at one whole fade per
+/// `secs`: a fade from a gain part-way takes its share of the time.
+#[derive(Debug, Clone, PartialEq)]
+struct Ramp {
+    /// The gain when it began.
+    from: f32,
+    /// Whether it ends at 1 (else at 0).
+    rising: bool,
+    /// Seconds a fade from one end to the other takes.
+    secs: f32,
+    /// Seconds it has run.
+    elapsed: f32,
+}
+
+impl Ramp {
+    /// A gain that stays at `gain`.
+    fn at(gain: f32) -> Self {
         Self {
-            fade_secs: fade_secs.max(0.0),
-            current: None,
-            fade: None,
+            from: gain,
+            rising: gain >= 1.0,
+            secs: 0.0,
+            elapsed: 0.0,
         }
     }
 
-    /// The track playing or fading out.
-    pub fn current(&self) -> Option<&str> {
-        self.current.as_deref()
+    fn to(&self) -> f32 {
+        if self.rising { 1.0 } else { 0.0 }
     }
 
-    /// The track that plays once the fade ends, or the current one.
+    /// Whether it has reached its end.
+    fn done(&self) -> bool {
+        self.elapsed >= self.secs * (self.from - self.to()).abs()
+    }
+
+    fn gain(&self) -> f32 {
+        if self.done() {
+            return self.to();
+        }
+        // Not done, so `secs` is above 0.
+        let moved = self.elapsed / self.secs;
+        let gain = if self.rising {
+            self.from + moved
+        } else {
+            self.from - moved
+        };
+        gain.clamp(0.0, 1.0)
+    }
+}
+
+impl Track {
+    /// `cue`, loaded and not started: it starts at full gain, or at 0 to
+    /// fade in over `switch`'s `in_ms`.
+    fn new(cue: &str, switch: MusicSwitch) -> Self {
+        let from = if switch.in_ms == 0 { 1.0 } else { 0.0 };
+        Self {
+            cue: cue.into(),
+            started: false,
+            heard: false,
+            waited: 0.0,
+            ramp: Ramp {
+                from,
+                rising: true,
+                secs: secs(switch.in_ms),
+                elapsed: 0.0,
+            },
+        }
+    }
+
+    fn start(&mut self, out: &mut Vec<MusicCommand>) {
+        self.started = true;
+        out.push(MusicCommand::start(self.cue.clone(), self.ramp.gain()));
+    }
+
+    /// Sends the gain toward 1 (`rising`) or 0, a whole fade taking `ms`.
+    /// A ramp already going there at that pace keeps its progress.
+    fn aim(&mut self, rising: bool, ms: u32) {
+        let secs = secs(ms);
+        if self.ramp.rising != rising || self.ramp.secs.to_bits() != secs.to_bits() {
+            self.ramp = Ramp {
+                from: self.ramp.gain(),
+                rising,
+                secs,
+                elapsed: 0.0,
+            };
+        }
+    }
+
+    /// Whether it sounds, or has been waited for long enough.
+    fn sounds(&self) -> bool {
+        self.heard || self.waited >= MusicState::LOAD_WAIT_SECS
+    }
+
+    /// Whether it is started, fading in and not yet sounding: the old
+    /// track holds its gain until it does.
+    fn coming_in_unheard(&self) -> bool {
+        self.started && self.ramp.rising && !self.sounds()
+    }
+
+    /// Counts `dt` more seconds waited for it to sound.
+    fn wait(&mut self, dt: f32) {
+        if self.started && !self.heard {
+            self.waited = (self.waited + dt).min(MusicState::LOAD_WAIT_SECS);
+        }
+    }
+
+    /// Advances its fade by `dt`, appending the gain, or the stop when a
+    /// fade-out ends (then it returns `true`). A track waiting to start,
+    /// or to sound before it fades in, doesn't move.
+    fn step(&mut self, dt: f32, out: &mut Vec<MusicCommand>) -> bool {
+        if !self.started {
+            return false;
+        }
+        let rising = self.ramp.rising;
+        if rising && (self.ramp.done() || !self.sounds()) {
+            return false;
+        }
+        self.ramp.elapsed += dt;
+        if !rising && self.ramp.done() {
+            out.push(MusicCommand::Stop {
+                cue: self.cue.clone(),
+            });
+            return true;
+        }
+        out.push(MusicCommand::Gain {
+            cue: self.cue.clone(),
+            gain: self.ramp.gain(),
+        });
+        false
+    }
+}
+
+/// `ms` in seconds.
+fn secs(ms: u32) -> f32 {
+    // A fade is far shorter than 2^24 ms.
+    #[allow(clippy::cast_precision_loss)]
+    let ms = ms as f32;
+    ms / 1000.0
+}
+
+impl MusicState {
+    /// How long a fade waits for the new track to sound, in seconds: after
+    /// that it runs anyway, so a file that never loads never holds the old
+    /// track.
+    pub const LOAD_WAIT_SECS: f32 = 3.0;
+
+    /// Silence, with switches that fade out over `fade_secs` (to the
+    /// millisecond; negative or NaN counts as 0), then start the new track
+    /// at full gain ([`MusicSwitch::after_fade`]).
+    pub fn new(fade_secs: f32) -> Self {
+        // Clamped to 0 above, and a fade is far shorter than 2^32 ms.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let ms = (fade_secs.max(0.0) * 1000.0).round() as u32;
+        Self::with_switch(MusicSwitch::after_fade(ms))
+    }
+
+    /// Silence, switching with `default` when a request names no switch,
+    /// and stopping with its `out_ms`.
+    pub fn with_switch(default: MusicSwitch) -> Self {
+        Self {
+            default,
+            current: None,
+            next: None,
+        }
+    }
+
+    /// The track playing, or fading out during a switch.
+    pub fn current(&self) -> Option<&str> {
+        self.current.as_ref().map(|t| t.cue.as_str())
+    }
+
+    /// The track a switch brings in, or the current one; `None` while the
+    /// music fades to silence.
     pub fn target(&self) -> Option<&str> {
-        match &self.fade {
-            Some(fade) => fade.next.as_deref(),
-            None => self.current(),
+        [&self.next, &self.current]
+            .into_iter()
+            .flatten()
+            .find(|t| t.ramp.rising)
+            .map(|t| t.cue.as_str())
+    }
+
+    /// Tells it what sounds: the music clock the platform reported for this
+    /// frame ([`Ctx::music_clock`](crate::Ctx::music_clock)). A track sounds
+    /// once the clock names it, and stays sounding after.
+    /// [`Game::set_music_playing`](crate::Game::set_music_playing) calls it
+    /// every frame.
+    pub fn heard(&mut self, clock: Option<&MusicClock>) {
+        let Some(clock) = clock else {
+            return;
+        };
+        for track in [&mut self.current, &mut self.next].into_iter().flatten() {
+            if track.started && track.cue == clock.cue {
+                track.heard = true;
+            }
         }
     }
 
@@ -396,87 +620,121 @@ impl MusicState {
             | AudioRequest::PlayVoice { .. }
             | AudioRequest::StopVoice
             | AudioRequest::PreloadVoices { .. } => {}
-            AudioRequest::PlayMusic { cue } => self.play(cue, out),
+            AudioRequest::PlayMusic { cue, switch } => {
+                self.play(cue, switch.unwrap_or(self.default), out);
+            }
             AudioRequest::StopMusic => self.stop(out),
         }
     }
 
-    fn play(&mut self, cue: &str, out: &mut Vec<MusicCommand>) {
-        let Some(current) = &self.current else {
+    fn play(&mut self, cue: &str, switch: MusicSwitch, out: &mut Vec<MusicCommand>) {
+        if self.current.is_none() {
+            let mut track = Track::new(cue, switch);
             out.push(MusicCommand::Load { cue: cue.into() });
-            out.push(MusicCommand::Start { cue: cue.into() });
-            self.current = Some(cue.into());
+            track.start(out);
+            self.current = Some(track);
             return;
-        };
+        }
         if self.target() == Some(cue) {
             return;
         }
-        if let Some(Fade {
-            next: Some(next), ..
-        }) = &self.fade
-        {
-            // A newer request wins: drop the one waiting to start.
-            out.push(MusicCommand::Stop { cue: next.clone() });
-        }
-        if current == cue {
-            // Asked again for the track that is fading out: keep it.
-            out.push(MusicCommand::Gain {
-                cue: cue.into(),
-                gain: 1.0,
-            });
-            self.fade = None;
+        self.drop_waiting(out);
+        if let Some(mut back) = self.take(cue) {
+            // Asked again for a track that is fading out: it comes back,
+            // and the other one goes.
+            if let Some(other) = &mut self.current {
+                other.aim(false, switch.out_ms);
+            }
+            if switch.in_ms == 0 {
+                back.ramp = Ramp::at(1.0);
+                out.push(MusicCommand::Gain {
+                    cue: cue.into(),
+                    gain: 1.0,
+                });
+            } else {
+                back.aim(true, switch.in_ms);
+            }
+            self.push(back);
             return;
         }
+        if self.next.is_some() {
+            // Two tracks sound: the older one stops at once.
+            if let Some(older) = self.current.take() {
+                out.push(MusicCommand::Stop { cue: older.cue });
+            }
+            self.current = self.next.take();
+        }
+        if let Some(old) = &mut self.current {
+            old.aim(false, switch.out_ms);
+        }
         out.push(MusicCommand::Load { cue: cue.into() });
-        let elapsed = self.fade.as_ref().map_or(0.0, |f| f.elapsed);
-        self.fade = Some(Fade {
-            elapsed,
-            next: Some(cue.into()),
-        });
+        let mut track = Track::new(cue, switch);
+        if switch.overlap {
+            track.start(out);
+        }
+        self.next = Some(track);
+    }
+
+    /// Stops a track waiting for the old one to fade: a newer request wins.
+    fn drop_waiting(&mut self, out: &mut Vec<MusicCommand>) {
+        if let Some(next) = self.next.take_if(|t| !t.started) {
+            out.push(MusicCommand::Stop { cue: next.cue });
+        }
+    }
+
+    /// Takes `cue`'s track out, if it has one; the other stays `current`.
+    fn take(&mut self, cue: &str) -> Option<Track> {
+        if let Some(next) = self.next.take_if(|t| t.cue == cue) {
+            return Some(next);
+        }
+        let current = self.current.take_if(|t| t.cue == cue)?;
+        self.current = self.next.take();
+        Some(current)
+    }
+
+    /// Adds `track` as the newer one.
+    fn push(&mut self, track: Track) {
+        if self.current.is_none() {
+            self.current = Some(track);
+        } else {
+            self.next = Some(track);
+        }
     }
 
     fn stop(&mut self, out: &mut Vec<MusicCommand>) {
-        if self.current.is_none() {
-            return;
+        self.drop_waiting(out);
+        for track in [&mut self.current, &mut self.next].into_iter().flatten() {
+            track.aim(false, self.default.out_ms);
         }
-        let elapsed = match self.fade.take() {
-            Some(Fade { elapsed, next }) => {
-                if let Some(next) = next {
-                    out.push(MusicCommand::Stop { cue: next });
-                }
-                elapsed
-            }
-            None => 0.0,
-        };
-        self.fade = Some(Fade {
-            elapsed,
-            next: None,
-        });
     }
 
-    /// Advances a fade by `dt` seconds, appending the gain change, or the
-    /// stop and next start when it ends.
+    /// Advances the fades by `dt` seconds, appending the gain changes, the
+    /// stop of a track faded out and the start of the one waiting for it.
     pub fn update(&mut self, dt: f32, out: &mut Vec<MusicCommand>) {
-        let (Some(current), Some(fade)) = (&self.current, &mut self.fade) else {
-            return;
-        };
-        fade.elapsed += frame_seconds(dt);
-        if fade.elapsed < self.fade_secs {
-            out.push(MusicCommand::Gain {
-                cue: current.clone(),
-                gain: 1.0 - fade.elapsed / self.fade_secs,
-            });
-            return;
+        let dt = frame_seconds(dt);
+        for track in [&mut self.current, &mut self.next].into_iter().flatten() {
+            track.wait(dt);
         }
-        out.push(MusicCommand::Stop {
-            cue: current.clone(),
-        });
-        let next = fade.next.take();
-        if let Some(next) = &next {
-            out.push(MusicCommand::Start { cue: next.clone() });
+        // In a crossfade the old track holds its gain until the new one
+        // sounds.
+        let waiting = self.next.as_ref().is_some_and(Track::coming_in_unheard);
+        if let Some(current) = &mut self.current {
+            let held = waiting && !current.ramp.rising;
+            if !held && current.step(dt, out) {
+                self.current = None;
+            }
         }
-        self.current = next;
-        self.fade = None;
+        if let Some(next) = &mut self.next
+            && next.step(dt, out)
+        {
+            self.next = None;
+        }
+        if self.current.is_none() {
+            self.current = self.next.take();
+            if let Some(track) = self.current.as_mut().filter(|t| !t.started) {
+                track.start(out);
+            }
+        }
     }
 }
 
@@ -490,7 +748,10 @@ mod tests {
     type AudioQueue = super::AudioQueue<Voice>;
 
     fn play(cue: &str) -> AudioRequest {
-        AudioRequest::PlayMusic { cue: cue.into() }
+        AudioRequest::PlayMusic {
+            cue: cue.into(),
+            switch: None,
+        }
     }
 
     fn load(cue: &str) -> MusicCommand {
@@ -498,7 +759,10 @@ mod tests {
     }
 
     fn start(cue: &str) -> MusicCommand {
-        MusicCommand::Start { cue: cue.into() }
+        MusicCommand::Start {
+            cue: cue.into(),
+            gain: 1.0,
+        }
     }
 
     fn stop(cue: &str) -> MusicCommand {
@@ -649,6 +913,239 @@ mod tests {
         for dt in [-1.0, f32::NAN, f32::INFINITY] {
             assert_eq!(frame(&mut m, &[], dt), [gain("title", 0.5)]);
         }
+    }
+
+    fn play_with(cue: &str, switch: MusicSwitch) -> AudioRequest {
+        AudioRequest::play_music(cue, Some(switch))
+    }
+
+    fn start_at(cue: &str, gain: f32) -> MusicCommand {
+        MusicCommand::start(cue, gain)
+    }
+
+    /// The clock of `cue`, as the platform reports a track that sounds.
+    fn clock(cue: &str) -> MusicClock {
+        MusicClock {
+            cue: cue.into(),
+            position: 0.0,
+            length: 10.0,
+        }
+    }
+
+    /// Music with a 0.5 s fade, playing `cue`, which sounds.
+    fn sounding(cue: &str) -> MusicState {
+        let mut m = playing(cue);
+        m.heard(Some(&clock(cue)));
+        m
+    }
+
+    /// `sounding("title")`, then a crossfade of 1 s to `battle`, which
+    /// sounds and has run `secs`.
+    fn crossfading(secs: f32) -> MusicState {
+        let mut m = sounding("title");
+        frame(
+            &mut m,
+            &[play_with("battle", MusicSwitch::crossfade(1000))],
+            0.0,
+        );
+        m.heard(Some(&clock("battle")));
+        frame(&mut m, &[], secs);
+        m
+    }
+
+    #[test]
+    fn a_crossfade_starts_the_new_track_at_once_and_fades_both_once_it_sounds() {
+        let mut m = sounding("title");
+        let crossfade = play_with("battle", MusicSwitch::crossfade(1000));
+        assert_eq!(
+            frame(&mut m, &[crossfade], 0.0),
+            [load("battle"), start_at("battle", 0.0)]
+        );
+        assert_eq!((m.current(), m.target()), (Some("title"), Some("battle")));
+        // Until the new track sounds, the old one keeps its gain.
+        assert_eq!(frame(&mut m, &[], 0.25), []);
+        m.heard(Some(&clock("title")));
+        assert_eq!(frame(&mut m, &[], 0.25), []);
+        m.heard(Some(&clock("battle")));
+        assert_eq!(
+            frame(&mut m, &[], 0.5),
+            [gain("title", 0.5), gain("battle", 0.5)]
+        );
+        assert_eq!(
+            frame(&mut m, &[], 0.5),
+            [stop("title"), gain("battle", 1.0)]
+        );
+        assert_eq!((m.current(), m.target()), (Some("battle"), Some("battle")));
+        assert_eq!(frame(&mut m, &[], 0.5), []);
+    }
+
+    #[test]
+    fn a_fade_in_starts_at_silence_and_rises_once_the_track_sounds() {
+        let mut m = MusicState::with_switch(MusicSwitch::new(500, 1000, false));
+        assert_eq!(
+            frame(&mut m, &[play("title")], 0.5),
+            [load("title"), start_at("title", 0.0)]
+        );
+        // No clock, or another cue's, isn't this track sounding.
+        m.heard(None);
+        m.heard(Some(&clock("battle")));
+        assert_eq!(frame(&mut m, &[], 0.5), []);
+        m.heard(Some(&clock("title")));
+        assert_eq!(frame(&mut m, &[], 0.5), [gain("title", 0.5)]);
+        // It stays sounding without being named again.
+        m.heard(None);
+        assert_eq!(frame(&mut m, &[], 0.5), [gain("title", 1.0)]);
+        assert_eq!(frame(&mut m, &[], 0.5), []);
+    }
+
+    #[test]
+    fn without_overlap_the_new_track_fades_in_after_the_old_one_stops() {
+        let mut m = sounding("title");
+        let switch = play_with("battle", MusicSwitch::new(500, 1000, false));
+        assert_eq!(
+            frame(&mut m, core::slice::from_ref(&switch), 0.25),
+            [load("battle"), gain("title", 0.5)]
+        );
+        // The clock can't name a track before its `Start`.
+        m.heard(Some(&clock("battle")));
+        assert_eq!(
+            frame(&mut m, &[], 0.25),
+            [stop("title"), start_at("battle", 0.0)]
+        );
+        assert_eq!(frame(&mut m, &[], 0.5), []);
+        m.heard(Some(&clock("battle")));
+        assert_eq!(frame(&mut m, &[], 0.25), [gain("battle", 0.25)]);
+        // A track waiting to start doesn't count the load wait: after a
+        // fade-out as long as the wait, it still waits to sound.
+        let mut m = sounding("title");
+        let switch = play_with("battle", MusicSwitch::new(3000, 1000, false));
+        frame(&mut m, &[switch], 0.0);
+        assert_eq!(frame(&mut m, &[], 1.5), [gain("title", 0.5)]);
+        assert_eq!(
+            frame(&mut m, &[], 1.5),
+            [stop("title"), start_at("battle", 0.0)]
+        );
+        assert_eq!(frame(&mut m, &[], 1.0), []);
+    }
+
+    #[test]
+    fn a_track_that_never_sounds_is_faded_in_after_the_load_wait() {
+        let mut m = sounding("title");
+        frame(
+            &mut m,
+            &[play_with("battle", MusicSwitch::crossfade(1000))],
+            0.0,
+        );
+        assert_eq!(frame(&mut m, &[], 2.5), []);
+        assert_eq!(MusicState::LOAD_WAIT_SECS, 3.0);
+        assert_eq!(
+            frame(&mut m, &[], 0.5),
+            [gain("title", 0.5), gain("battle", 0.5)]
+        );
+        assert_eq!(
+            frame(&mut m, &[], 0.5),
+            [stop("title"), gain("battle", 1.0)]
+        );
+    }
+
+    #[test]
+    fn a_switch_during_a_crossfade_stops_the_older_track_and_fades_out_the_newer() {
+        let mut m = crossfading(0.5);
+        assert_eq!(
+            frame(
+                &mut m,
+                &[play_with("boss", MusicSwitch::crossfade(1000))],
+                0.0
+            ),
+            [stop("title"), load("boss"), start_at("boss", 0.0)]
+        );
+        assert_eq!((m.current(), m.target()), (Some("battle"), Some("boss")));
+        m.heard(Some(&clock("boss")));
+        // `battle` falls from the 0.5 it had reached.
+        assert_eq!(
+            frame(&mut m, &[], 0.25),
+            [gain("battle", 0.25), gain("boss", 0.25)]
+        );
+        assert_eq!(
+            frame(&mut m, &[], 0.25),
+            [stop("battle"), gain("boss", 0.5)]
+        );
+        // A switch without overlap during a crossfade: the new track
+        // waits for the newer one to fade out.
+        let mut m = crossfading(0.5);
+        assert_eq!(
+            frame(&mut m, &[play("boss")], 0.125),
+            [stop("title"), load("boss"), gain("battle", 0.25)]
+        );
+        assert_eq!(frame(&mut m, &[], 0.125), [stop("battle"), start("boss")]);
+    }
+
+    #[test]
+    fn asking_again_for_the_track_fading_out_in_a_crossfade_brings_it_back() {
+        let mut m = crossfading(0.25);
+        let back = play_with("title", MusicSwitch::crossfade(1000));
+        assert_eq!(
+            frame(&mut m, &[back], 0.0),
+            [gain("battle", 0.25), gain("title", 0.75)]
+        );
+        assert_eq!((m.current(), m.target()), (Some("battle"), Some("title")));
+        assert_eq!(
+            frame(&mut m, &[], 0.125),
+            [gain("battle", 0.125), gain("title", 0.875)]
+        );
+        assert_eq!(
+            frame(&mut m, &[], 0.125),
+            [stop("battle"), gain("title", 1.0)]
+        );
+        assert_eq!((m.current(), m.target()), (Some("title"), Some("title")));
+        // From 0.75 it took a quarter of the fade, and is done.
+        assert_eq!(frame(&mut m, &[], 0.125), []);
+        // With no fade-in it is back at full gain at once.
+        let mut m = crossfading(0.25);
+        let back = play_with("title", MusicSwitch::new(500, 0, true));
+        assert_eq!(
+            frame(&mut m, &[back], 0.0),
+            [gain("title", 1.0), gain("battle", 0.25)]
+        );
+    }
+
+    #[test]
+    fn stop_music_during_a_crossfade_fades_both_tracks_from_their_gains() {
+        let mut m = crossfading(0.25);
+        assert_eq!(
+            frame(&mut m, &[AudioRequest::StopMusic], 0.125),
+            [gain("title", 0.5), stop("battle")]
+        );
+        assert_eq!((m.current(), m.target()), (Some("title"), None));
+        assert_eq!(frame(&mut m, &[], 0.25), [stop("title")]);
+        assert_eq!(m.current(), None);
+    }
+
+    #[test]
+    fn the_default_switch_is_the_one_a_request_without_one_gets() {
+        let mut m = MusicState::with_switch(MusicSwitch::crossfade(1000));
+        frame(&mut m, &[play("title")], 0.0);
+        m.heard(Some(&clock("title")));
+        assert_eq!(frame(&mut m, &[], 1.0), [gain("title", 1.0)]);
+        assert_eq!(
+            frame(&mut m, &[play("battle")], 0.0),
+            [load("battle"), start_at("battle", 0.0)]
+        );
+        // A request's own switch wins over it.
+        let mut m = MusicState::with_switch(MusicSwitch::crossfade(1000));
+        frame(&mut m, &[play("title")], 0.0);
+        assert_eq!(
+            frame(
+                &mut m,
+                &[play_with("battle", MusicSwitch::after_fade(0))],
+                0.0
+            ),
+            [load("battle"), stop("title"), start("battle")]
+        );
+        assert_eq!(
+            MusicState::new(0.5),
+            MusicState::with_switch(MusicSwitch::after_fade(500))
+        );
     }
 
     #[test]
@@ -899,6 +1396,69 @@ mod tests {
                 (0.0..clock.length).contains(&clock.position),
                 "{clock:?}"
             );
+        }
+    }
+
+    /// One step of [`at_most_two_tracks_load_and_every_gain_is_a_gain`].
+    #[derive(Debug, Clone)]
+    enum Step {
+        Play(usize, Option<MusicSwitch>),
+        Stop,
+        Heard(Option<usize>),
+        Frame(f32),
+    }
+
+    fn step() -> impl proptest::strategy::Strategy<Value = Step> {
+        use proptest::prelude::*;
+        let switch = (0u32..1500, 0u32..1500, any::<bool>())
+            .prop_map(|(out_ms, in_ms, overlap)| MusicSwitch::new(out_ms, in_ms, overlap));
+        prop_oneof![
+            (0usize..4, proptest::option::of(switch)).prop_map(|(c, s)| Step::Play(c, s)),
+            Just(Step::Stop),
+            proptest::option::of(0usize..4).prop_map(Step::Heard),
+            (0.0f32..1.0).prop_map(Step::Frame),
+        ]
+    }
+
+    proptest::proptest! {
+        /// Whatever is asked, heard and however time passes, at most two
+        /// tracks are between their `Load` and their `Stop`; a track is
+        /// loaded once, started, changed and stopped only while loaded;
+        /// and every gain is 0 to 1.
+        #[test]
+        fn at_most_two_tracks_load_and_every_gain_is_a_gain(
+            default in (0u32..1500, 0u32..1500, proptest::prelude::any::<bool>()),
+            steps in proptest::collection::vec(step(), 0..80),
+        ) {
+            const CUES: [&str; 4] = ["a", "b", "c", "d"];
+            let mut m = MusicState::with_switch(MusicSwitch::new(default.0, default.1, default.2));
+            let mut loaded: alloc::collections::BTreeSet<String> = alloc::collections::BTreeSet::new();
+            let mut out = Vec::new();
+            for step in steps {
+                match step {
+                    Step::Play(c, switch) => m.request(&AudioRequest::play_music(CUES[c], switch), &mut out),
+                    Step::Stop => m.request(&AudioRequest::StopMusic, &mut out),
+                    Step::Heard(c) => m.heard(c.map(|c| clock(CUES[c])).as_ref()),
+                    Step::Frame(dt) => m.update(dt, &mut out),
+                }
+                for command in out.drain(..) {
+                    match &command {
+                        MusicCommand::Load { cue } => {
+                            proptest::prop_assert!(loaded.insert(cue.clone()), "{command:?}");
+                        }
+                        MusicCommand::Start { cue, gain } | MusicCommand::Gain { cue, gain } => {
+                            proptest::prop_assert!(loaded.contains(cue), "{command:?}");
+                            proptest::prop_assert!((0.0..=1.0).contains(gain), "{command:?}");
+                        }
+                        MusicCommand::Stop { cue } => {
+                            proptest::prop_assert!(loaded.remove(cue), "{command:?}");
+                        }
+                    }
+                    proptest::prop_assert!(loaded.len() <= 2, "{loaded:?}");
+                }
+                let current = m.current().map(str::to_owned);
+                proptest::prop_assert!(current.is_none_or(|c| loaded.contains(&c)));
+            }
         }
     }
 

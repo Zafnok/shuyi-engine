@@ -39,11 +39,14 @@ What is written by hand today (read on 2026-10-24):
   `crate::float`'s without `std`, so its last bits may differ between
   targets. `draw_cursor` (`crates/ui/src/grid/glyph/cursor.rs`) fades
   the corner marks and the tile glow by it.
-- **Music fades** (`MusicState::update`, `crates/ui/src/audio.rs`): a
-  gain of `1 - elapsed / fade_secs`, where `elapsed` sums the frames'
-  `dt` in `f32` seconds. `Game::with_stack` (`crates/ui/src/game.rs`)
-  turns the manifest's `music_fade_ms: u32` into those seconds with a
-  float cast.
+- **Music fades** (`MusicState::update`, `crates/ui/src/audio.rs`):
+  since 2341 each track's gain is a `Ramp`, a straight line from the
+  gain it had (`from`) toward 0 or 1 at `elapsed / secs`, where
+  `elapsed` sums the frames' `dt` in `f32` seconds and `secs` is the
+  switch's `out_ms` or `in_ms` over 1000. A whole fade-out is today's
+  `1 - elapsed / secs`. `Game::with_stack` (`crates/ui/src/game.rs`)
+  builds the state from `AudioManifest::music_switch()`, in whole
+  milliseconds, with no float cast.
 - **`Pan::centre`** (`crates/ui/src/cinematic.rs`): eased by
   `ease_in_out`, the `f32` smoothstep. 2109 keeps `ease_in_out` as it
   is, so the game's own calls of it draw as today.
@@ -122,12 +125,9 @@ None.
     goes if nothing else in the file uses it;
   - the doc comments of `brightness` and `pulse` name the tween.
 - **Music fades** (`MusicState`, `crates/ui/src/audio.rs`):
-  - `MusicState` keeps its fade length in whole milliseconds
-    (`fade_ms: u32`). A new `MusicState::with_fade_ms(ms: u32)` takes
-    them. `new(fade_secs)` calls it with `cinematic::millis(fade_secs)`
-    (saturating at `u32::MAX`; below 0 or not a number still counts as
-    0). `Game::with_stack` passes `music_fade_ms` to `with_fade_ms`
-    and drops its float cast and its `#[allow]`;
+  - `MusicSwitch` holds the fade lengths in whole milliseconds and
+    `MusicState::with_switch` takes it (2341), so there is no
+    `with_fade_ms`; `new(fade_secs)` keeps rounding to the millisecond;
   - while a track fades out, its gain is a `Tween<i32>` from `ONE` to
     0, `Linear`, over `fade_ms`, read at `millis(elapsed)` and sent as
     `value as f32 / ONE as f32`;
@@ -162,21 +162,18 @@ None.
   2109 says (if it uses `Ease::Smooth` already, leave it); if not,
   nothing to do: 2109 is done before this ticket, so 2339 takes
   `Ease::Smooth` when it is built (its clause on 2109 says so).
-- **Either order with 2341:** if 2341 is done, `MusicState` has
-  fade-ins, overlaps and a `MusicSwitch` in whole milliseconds: move
-  every gain it computes (the fade-out, the fade-in, an overlap's two,
-  and a fade from the gain a track had reached) onto `Tween`s by the
-  rule above, its tests unchanged, and leave out `with_fade_ms` (its
-  `with_switch` already takes milliseconds); if not, move today's
-  fade-out, and 2341 builds its fades on `Tween` the same way (its
-  clause on 2136 says so).
+- **From 2341 (done):** `MusicState` has fade-ins, overlaps and a
+  `MusicSwitch` in whole milliseconds, each fade a `Ramp`: move every
+  gain it computes (the fade-out, the fade-in, an overlap's two, and a
+  fade from the gain a track had reached) onto `Tween`s by the rule
+  above, its tests unchanged.
 - **Either order with 2364** (parked; keyframed tracks in the cinematic
   file): if 2364 is done, its tracks already ease through
   `Easing::ease`, and `Pan` is still today's (its Out leaves `Pan` to
   this ticket): move `Pan` as above and nothing of 2364's; if not,
   nothing to do: 2364 leaves `Pan` alone when it is built.
 - **What changes for the game:** no API break, so no `Breaking:` line.
-  `with_fade_ms` is new, and nothing else public changes shape. The
+  Nothing public changes shape. The
   cursor's brightness and a pan's centre may differ from today's in
   their last bits, within the bounds above. Where that falls on a
   rounding edge, one channel of a colour or a tenth of a pixel in a
@@ -212,15 +209,14 @@ None.
    `grid/glyph/cursor.rs`, `audio.rs` (`MusicState` and its tests),
    `game.rs` (`with_stack`), `cinematic.rs` and `cinematic/tests.rs`,
    `frame/color.rs`, `dialogue/text_box.rs` and `hurry.rs`, all under
-   `crates/ui/src/`. Check whether 2339, 2341 and 2364 are done.
+   `crates/ui/src/`. Check whether 2339 and 2364 are done.
 2. Run the workspace's tests before changing anything, so every
    snapshot is known to pass.
 3. In each module's tests, copy today's formula as a private reference
    (`pulse_before`, `gain_before`, `centre_before`). Move the motion,
    then compare against the reference (Tests required).
 4. The cursor's pulse.
-5. Music fades: `with_fade_ms`, the tween, and `Game::with_stack`; or,
-   if 2341 is done, every fade it built.
+5. Music fades: every fade 2341 built (each `Ramp`), onto the tween.
 6. `Pan::centre`.
 7. If 2339 is done and still has its private formula,
    `transition::progress`.
@@ -228,7 +224,7 @@ None.
    test.
 9. Run the gates, the `no_std` build of `shuyi-ui` included. Check
    that `git status` shows no changed or new `.snap` file. Expect about
-   300 changed lines, and about 400 with 2341's fades.
+   400 changed lines, with 2341's fades.
 
 ## Acceptance criteria
 
@@ -241,9 +237,8 @@ None.
       1 s fade at a `dt` of 1/30, every frame sends today's commands,
       but for gains, which are within half a millisecond of the fade
       plus 1/65536; `Stop` comes on the same frame as today.
-- [ ] `MusicState::with_fade_ms(500)` and `MusicState::new(0.5)` send
-      the same commands, and `Game::with_stack` builds the state from
-      `music_fade_ms` with no float cast.
+- [ ] `MusicState::with_switch(MusicSwitch::after_fade(500))` and
+      `MusicState::new(0.5)` send the same commands.
 - [ ] `Pan::centre` eases through `ease_f32(&Ease::Smooth, …)`. At
       every progress in steps of 1/1000 it is within 3/65536 of the
       distance from `from` to `to` of today's centre, and it gives
@@ -256,8 +251,8 @@ None.
       through `Ease::Smooth`. It is within one thousandth of the
       formula at every `elapsed_ms` from 0 to `ms`, for `ms` of 1, 7,
       400 and 65 535, and gives 1000 when `ms` is 0.
-- [ ] If 2341 is done, each of its fades reads a `Tween`, and its
-      tests pass unchanged.
+- [ ] Each of 2341's fades reads a `Tween`, and its tests pass
+      unchanged.
 - [ ] Every existing test keeps its expected values, and the PR lists
       each tolerance it widened.
 - [ ] No snapshot in the repository changes, and no `.snap.new` file
@@ -269,7 +264,7 @@ None.
 
 - Unit: `pulse` at 0, a quarter, a half and a whole period, and at a
   `t` below 0, past the period, infinite and not a number;
-  `with_fade_ms` against `new`; a fade of 0 ms; `Pan::centre` at 0,
+  `with_switch(MusicSwitch::after_fade(ms))` against `new`; a fade of 0 ms; `Pan::centre` at 0,
   1, not a number and infinity.
 - Comparison against today's formulas, kept in the tests: the cursor
   at 4096 points of a period, the two fades frame by frame, the pan at
