@@ -1,7 +1,9 @@
 //! Sounds started with a handle, in the Harness: they belong to the
-//! screen that started them, and the headless backend's `Speaker` holds
-//! them as playing until they stop.
+//! screen that started them, a pause menu holds the ones below it, and
+//! the headless backend's `Speaker` holds them as playing until they
+//! stop, and the audio while the system suspends the game.
 
+use shuyi_platform::SystemEvent;
 use shuyi_platform::harness::Harness;
 use shuyi_ui::audio::AudioRequest;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
@@ -10,7 +12,8 @@ use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
 use shuyi_ui::{Game, GameHooks};
 
 /// A screen with a loop: Confirm starts the toy's `hum`, Cancel pops,
-/// Select pushes another, and Menu replaces it with another.
+/// Select pushes another, Menu replaces it with another, and up and down
+/// pause the sounds and resume them.
 struct Looper;
 
 impl Screen<Toy> for Looper {
@@ -24,6 +27,8 @@ impl Screen<Toy> for Looper {
             Action::Cancel,
             Action::Select,
             Action::Menu,
+            Action::CursorUp,
+            Action::CursorDown,
         ])
     }
 
@@ -36,6 +41,8 @@ impl Screen<Toy> for Looper {
                 Action::Cancel => return Transition::Pop,
                 Action::Select => return Transition::Push(Box::new(Self)),
                 Action::Menu => return Transition::Replace(Box::new(Self)),
+                Action::CursorUp => ctx.audio.pause_sounds(),
+                Action::CursorDown => ctx.audio.resume_sounds(),
                 _ => {}
             }
         }
@@ -108,4 +115,79 @@ fn a_loop_under_a_pushed_screen_plays_on() {
     h.act(Action::Cancel);
     assert_eq!(stopped(&h), [2]);
     assert_eq!(playing(&h), [1]);
+}
+
+/// The ids of the sounds the `Speaker` holds as paused.
+fn paused(h: &Harness<Toy>) -> Vec<u32> {
+    h.sounds_playing()
+        .iter()
+        .filter(|p| p.paused)
+        .map(|p| p.id.get())
+        .collect()
+}
+
+/// How many `PauseSounds` and `ResumeSounds` the last frame sent.
+fn pauses(h: &Harness<Toy>) -> (usize, usize) {
+    let audio = h.last_frame_audio();
+    let count =
+        |want: fn(&AudioRequest<toy::Voice>) -> bool| audio.iter().filter(|r| want(r)).count();
+    (
+        count(|r| matches!(r, AudioRequest::PauseSounds)),
+        count(|r| matches!(r, AudioRequest::ResumeSounds)),
+    )
+}
+
+#[test]
+fn a_menu_that_pauses_holds_the_loop_below_and_its_pop_resumes_it() {
+    let mut h = looper();
+    h.act(Action::Confirm);
+    // The menu pauses on its first frame, then starts a loop of its own.
+    h.act(Action::Select).act(Action::CursorUp);
+    assert_eq!(paused(&h), [1]);
+    h.act(Action::Confirm);
+    assert_eq!(playing(&h), [1, 2]);
+    assert_eq!(paused(&h), [1], "the menu's own loop plays");
+    // Popping it stops its loop and ends its pause, with no resume.
+    h.act(Action::Cancel);
+    assert_eq!(stopped(&h), [2]);
+    assert_eq!(pauses(&h), (0, 1));
+    assert_eq!(playing(&h), [1]);
+    let got = paused(&h);
+    assert!(got.is_empty(), "{got:?}");
+}
+
+#[test]
+fn two_pauses_send_one_pause_and_one_resume_when_the_last_ends() {
+    let mut h = looper();
+    h.act(Action::Confirm);
+    h.act(Action::Select).act(Action::CursorUp);
+    assert_eq!(pauses(&h), (1, 0));
+    h.act(Action::CursorUp);
+    assert_eq!(pauses(&h), (0, 0), "pausing again every frame is fine");
+    h.act(Action::Select).act(Action::CursorUp);
+    assert_eq!(pauses(&h), (0, 0));
+    h.act(Action::Cancel);
+    assert_eq!(pauses(&h), (0, 0), "the menu below still pauses");
+    assert_eq!(paused(&h), [1]);
+    h.act(Action::CursorDown);
+    assert_eq!(pauses(&h), (0, 1));
+    let got = paused(&h);
+    assert!(got.is_empty(), "{got:?}");
+}
+
+#[test]
+fn a_suspend_holds_the_audio_until_the_resume_and_a_second_changes_nothing() {
+    let mut h = looper();
+    h.act(Action::Confirm);
+    assert!(!h.platform().speaker().suspended());
+    h.system(SystemEvent::Suspend);
+    assert!(h.platform().speaker().suspended());
+    h.system(SystemEvent::Suspend);
+    assert!(h.platform().speaker().suspended());
+    assert_eq!(playing(&h), [1]);
+    h.system(SystemEvent::Resume);
+    assert!(!h.platform().speaker().suspended());
+    assert_eq!(playing(&h), [1]);
+    let got = paused(&h);
+    assert!(got.is_empty(), "{got:?}");
 }

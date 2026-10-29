@@ -105,12 +105,16 @@ pub struct PlayingSound {
     pub id: SoundId,
     /// Its sound cue.
     pub cue: String,
+    /// Whether [`SoundRequest::PauseSounds`] paused it.
+    pub paused: bool,
 }
 
 /// The headless backend's sound device: it records what the last frame
 /// played, works out which music "sounds" from the music commands and the
 /// clock, and keeps the sounds started with a handle until they stop (one
-/// that plays once too: it knows no lengths).
+/// that plays once too: it knows no lengths). Like `shuyi-app`, it mutes
+/// rather than pauses: while [`suspended`](Self::suspended) its music
+/// clock runs on.
 #[derive(Debug, Clone, Default)]
 pub struct Speaker {
     /// Seconds a track takes to load: it sounds that long after its
@@ -130,6 +134,8 @@ pub struct Speaker {
     stopped: bool,
     /// The sounds started with a handle and not stopped, in id order.
     playing: Vec<PlayingSound>,
+    /// Whether the system suspended the game ([`Audio::suspend`]).
+    suspended: bool,
 }
 
 impl Speaker {
@@ -172,6 +178,11 @@ impl Speaker {
         &self.playing
     }
 
+    /// Whether the audio is held because the system suspended the game.
+    pub fn suspended(&self) -> bool {
+        self.suspended
+    }
+
     /// Follows one sound request: a start adds a sound playing (or
     /// replaces the one of its id, as a new game's queue counts from 1
     /// again), a stop takes it away.
@@ -181,6 +192,7 @@ impl Speaker {
                 let sound = PlayingSound {
                     id: *id,
                     cue: cue.clone(),
+                    paused: false,
                 };
                 match self.playing.binary_search_by_key(id, |p| p.id) {
                     Ok(at) => self.playing[at] = sound,
@@ -188,6 +200,8 @@ impl Speaker {
                 }
             }
             SoundRequest::Stop { id } => self.playing.retain(|p| p.id != *id),
+            SoundRequest::PauseSounds => self.playing.iter_mut().for_each(|p| p.paused = true),
+            SoundRequest::ResumeSounds => self.playing.iter_mut().for_each(|p| p.paused = false),
             _ => {}
         }
     }
@@ -232,6 +246,14 @@ impl Audio for Speaker {
         self.started = None;
         self.playing.clear();
         self.stopped = true;
+    }
+
+    fn suspend(&mut self) {
+        self.suspended = true;
+    }
+
+    fn resume(&mut self) {
+        self.suspended = false;
     }
 }
 

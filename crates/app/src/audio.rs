@@ -14,6 +14,13 @@
 //! the player keeps by its id, so that one copy stops alone and its volume
 //! follows the requests and the player's sound volume.
 //!
+//! quad-snd can't pause (ADR-0056): a sound paused under a menu
+//! (`SoundRequest::PauseSounds`) is muted, and so is everything sounding
+//! while the system suspends the game ([`Audio::suspend`]: the sounds
+//! started with a handle, the voice and the music). A muted sound runs on
+//! silently, so a track's clock runs too, and comes back at the volume it
+//! would have had.
+//!
 //! It also knows when each track really started ([`Audio::music_playing`],
 //! game ADR-0037): a track asked for only sounds once its file has loaded, and
 //! screens that keep time with the music need the real moment.
@@ -84,6 +91,10 @@ pub(crate) struct Audio<B: Backend> {
     sound_volume: f32,
     /// The sounds started with a handle and not stopped.
     handled: BTreeMap<SoundId, Handled<B>>,
+    /// The voice volume asked for, 0–1, kept while suspended.
+    voice_volume: f32,
+    /// Whether the system suspended the game: everything is muted.
+    suspended: bool,
 }
 
 /// A sound started with a handle: its playback and what its volume is
@@ -94,12 +105,19 @@ struct Handled<B: Backend> {
     cue_volume: f32,
     /// The volume its requests gave, 0–1.
     volume: f32,
+    /// Whether `PauseSounds` paused it: it is muted until `ResumeSounds`.
+    paused: bool,
 }
 
 impl<B: Backend> Handled<B> {
-    /// What it plays at, with the player's sound volume `sound`.
-    fn level(&self, sound: f32) -> f32 {
-        self.cue_volume * self.volume * sound
+    /// What it plays at, with the player's sound volume `sound`: nothing
+    /// while it is paused or the game is `suspended`.
+    fn level(&self, sound: f32, suspended: bool) -> f32 {
+        if self.paused || suspended {
+            0.0
+        } else {
+            self.cue_volume * self.volume * sound
+        }
     }
 }
 
@@ -167,6 +185,8 @@ impl<B: Backend> Audio<B> {
             music_volume: 1.0,
             sound_volume: 1.0,
             handled: BTreeMap::new(),
+            voice_volume: 1.0,
+            suspended: false,
         }
     }
 
@@ -176,19 +196,69 @@ impl<B: Backend> Audio<B> {
     pub(crate) fn set_volumes(&mut self, backend: &mut B, music: f32, sound: f32) {
         if (sound - self.sound_volume).abs() > f32::EPSILON {
             self.sound_volume = sound;
-            for handled in self.handled.values() {
-                backend.set_playing_volume(&handled.playing, handled.level(sound));
-            }
+            self.set_handled_volumes(backend);
         }
         if (music - self.music_volume).abs() <= f32::EPSILON {
             return;
         }
         self.music_volume = music;
+        self.set_track_volumes(backend);
+    }
+
+    /// The player's music volume as the tracks hear it: nothing while
+    /// suspended.
+    fn music_level(&self) -> f32 {
+        if self.suspended {
+            0.0
+        } else {
+            self.music_volume
+        }
+    }
+
+    /// Sets every track playing to its volume times its gain and the
+    /// music level.
+    fn set_track_volumes(&self, backend: &mut B) {
+        let music = self.music_level();
         for track in self.tracks.values() {
             if let (true, TrackState::Ready(sound)) = (track.playing, &track.state) {
                 backend.set_volume(sound, track.volume * track.gain * music);
             }
         }
+    }
+
+    /// Sets every sound started with a handle to its level.
+    fn set_handled_volumes(&self, backend: &mut B) {
+        for handled in self.handled.values() {
+            let level = handled.level(self.sound_volume, self.suspended);
+            backend.set_playing_volume(&handled.playing, level);
+        }
+    }
+
+    /// Mutes everything sounding while the system suspends the game: the
+    /// sounds started with a handle, the voice and the music (quad-snd
+    /// can't pause). Sounds played once finish. A second call does
+    /// nothing.
+    pub(crate) fn suspend(&mut self, backend: &mut B) {
+        if self.suspended {
+            return;
+        }
+        self.suspended = true;
+        self.set_handled_volumes(backend);
+        self.set_track_volumes(backend);
+        self.voices.set_volume(backend, 0.0);
+    }
+
+    /// Brings back what [`suspend`](Self::suspend) muted, at the volumes
+    /// asked for meanwhile; a sound paused under a menu stays muted. A
+    /// call while not suspended does nothing.
+    pub(crate) fn resume(&mut self, backend: &mut B) {
+        if !self.suspended {
+            return;
+        }
+        self.suspended = false;
+        self.set_handled_volumes(backend);
+        self.set_track_volumes(backend);
+        self.voices.set_volume(backend, self.voice_volume);
     }
 
     /// Plays one frame's sound and voice `requests`, applies the `music`
@@ -248,10 +318,12 @@ impl<B: Backend> Audio<B> {
             SoundRequest::Volume { id, volume } => {
                 if let Some(handled) = self.handled.get_mut(id) {
                     handled.volume = *volume;
-                    let level = handled.level(self.sound_volume);
+                    let level = handled.level(self.sound_volume, self.suspended);
                     backend.set_playing_volume(&handled.playing, level);
                 }
             }
+            SoundRequest::PauseSounds => self.pause_handled(backend, true),
+            SoundRequest::ResumeSounds => self.pause_handled(backend, false),
             _ => {}
         }
     }
@@ -279,6 +351,18 @@ impl<B: Backend> Audio<B> {
         Some(backend.play(sound, volume, looped))
     }
 
+    /// Pauses (mutes) every sound started with a handle, or resumes the
+    /// ones paused.
+    fn pause_handled(&mut self, backend: &mut B, paused: bool) {
+        for handled in self.handled.values_mut() {
+            if handled.paused != paused {
+                handled.paused = paused;
+                let level = handled.level(self.sound_volume, self.suspended);
+                backend.set_playing_volume(&handled.playing, level);
+            }
+        }
+    }
+
     /// Starts sound `cue` as `id`, looped if its cue says so.
     fn start_sound(&mut self, backend: &mut B, id: SoundId, cue: &str, volume: f32) {
         let def = self.manifest.sounds.get(cue);
@@ -288,7 +372,11 @@ impl<B: Backend> Audio<B> {
                 playing,
                 cue_volume,
                 volume,
+                paused: false,
             };
+            if self.suspended {
+                backend.set_playing_volume(&handled.playing, 0.0);
+            }
             if let Some(old) = self.handled.insert(id, handled) {
                 backend.stop_playing(old.playing);
             }
@@ -315,21 +403,23 @@ impl<B: Backend> Audio<B> {
                 self.tracks.insert(cue.clone(), track);
             }
             MusicCommand::Start { cue, gain, .. } => {
+                let music = self.music_level();
                 if let Some(track) = self.tracks.get_mut(cue) {
                     track.playing = true;
                     track.gain = *gain;
                     if let TrackState::Ready(sound) = &track.state {
-                        let volume = track.volume * track.gain * self.music_volume;
+                        let volume = track.volume * track.gain * music;
                         backend.play(sound, volume, track.looped);
                         track.started_at = Some(now);
                     }
                 }
             }
             MusicCommand::Gain { cue, gain } => {
+                let music = self.music_level();
                 if let Some(track) = self.tracks.get_mut(cue) {
                     track.gain = *gain;
                     if let (true, TrackState::Ready(sound)) = (track.playing, &track.state) {
-                        let volume = track.volume * track.gain * self.music_volume;
+                        let volume = track.volume * track.gain * music;
                         backend.set_volume(sound, volume);
                     }
                 }
@@ -366,11 +456,15 @@ impl<B: Backend> Audio<B> {
     /// Sets how loud voice clips play (0–1; `FrameOutput::voice_volume`),
     /// the one playing included.
     pub(crate) fn set_voice_volume(&mut self, backend: &mut B, volume: f32) {
-        self.voices.set_volume(backend, volume);
+        self.voice_volume = volume;
+        if !self.suspended {
+            self.voices.set_volume(backend, volume);
+        }
     }
 
     /// Finishes loads: a track asked to play starts now.
     fn poll(&mut self, backend: &mut B, now: f64) {
+        let music = self.music_level();
         for (cue, track) in &mut self.tracks {
             let TrackState::Loading(loading) = &mut track.state else {
                 continue;
@@ -379,7 +473,7 @@ impl<B: Backend> Audio<B> {
                 None => {}
                 Some(Ok(sound)) => {
                     if track.playing {
-                        let volume = track.volume * track.gain * self.music_volume;
+                        let volume = track.volume * track.gain * music;
                         backend.play(&sound, volume, track.looped);
                         track.started_at = Some(now);
                     }
@@ -980,6 +1074,81 @@ mod tests {
         queue.stop_sound(second, 0);
         audio.hear(&mut fake, &queue.take(), &[], 0.0);
         assert!(fake.calls().is_empty(), "a stopped id is gone");
+    }
+
+    #[test]
+    fn a_pause_mutes_the_sounds_playing_and_its_resume_restores_them() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        let mut queue = shuyi_ui::audio::AudioQueue::<Take>::default();
+        let below = queue.start_sound("rain");
+        queue.pause_sounds();
+        let menu = queue.start_sound_at("rain", 0.5);
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(
+            fake.calls(),
+            [
+                "play wav100 0.50 looped",
+                "volume #1 0.00",
+                "play wav100 0.25 looped"
+            ]
+        );
+        // A paused sound keeps the volumes it is given, silently.
+        queue.set_sound_volume(below, 0.5);
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        audio.set_volumes(&mut fake, 1.0, 0.5);
+        assert_eq!(
+            fake.calls(),
+            ["volume #1 0.00", "volume #1 0.00", "volume #2 0.12"]
+        );
+        queue.resume_sounds();
+        audio.hear(&mut fake, &queue.take(), &[], 0.0);
+        assert_eq!(fake.calls(), ["volume #1 0.12"]);
+        assert!(queue.sound_is_live(menu));
+    }
+
+    #[test]
+    fn a_suspend_mutes_the_sounds_and_the_music_and_the_resume_restores_them() {
+        let mut fake = Fake {
+            ready: vec!["music/title.ogg".into()],
+            ..Fake::default()
+        };
+        let mut audio = audio(&mut fake);
+        let mut queue = shuyi_ui::audio::AudioQueue::<Take>::default();
+        let [below, other] = [queue.start_sound("rain"), queue.start_sound("rain")];
+        queue.pause_sounds();
+        let music = [cmd(load, "title"), cmd(start, "title")];
+        audio.hear(&mut fake, &queue.take(), &music, 0.0);
+        fake.calls();
+        audio.suspend(&mut fake);
+        assert_eq!(
+            fake.calls(),
+            [
+                "volume #1 0.00",
+                "volume #2 0.00",
+                "volume music/title.ogg 0.00"
+            ]
+        );
+        audio.suspend(&mut fake);
+        assert!(fake.calls().is_empty(), "a second suspend does nothing");
+        // It mutes: the track's clock runs on.
+        assert_eq!(audio.music_playing(2.0), Some(("title", 2.0)));
+        audio.resume(&mut fake);
+        // The pause under a menu holds; the music comes back.
+        assert_eq!(
+            fake.calls(),
+            [
+                "volume #1 0.00",
+                "volume #2 0.00",
+                "volume music/title.ogg 0.80"
+            ]
+        );
+        audio.resume(&mut fake);
+        assert!(fake.calls().is_empty(), "a second resume does nothing");
+        queue.resume_sounds();
+        audio.hear(&mut fake, &queue.take(), &[], 3.0);
+        assert_eq!(fake.calls(), ["volume #1 0.50", "volume #2 0.50"]);
+        assert!(queue.sound_is_live(below) && queue.sound_is_live(other));
     }
 
     #[test]

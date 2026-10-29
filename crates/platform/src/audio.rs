@@ -53,6 +53,13 @@ pub enum SoundRequest {
         /// The new multiplier on the cue's volume, 0–1.
         volume: f32,
     },
+    /// Pause every sound started with a handle that is playing now; one
+    /// started after it plays. Sound cues played once, the music and the
+    /// voice go on. A sound paused keeps the volume it is given and sounds
+    /// at it when it resumes; one stopped while paused is gone.
+    PauseSounds,
+    /// Resume the sounds [`PauseSounds`](Self::PauseSounds) paused.
+    ResumeSounds,
     /// Say a line: play its clip once, stopping the voice that is playing.
     Voice {
         /// The clip's file in the voice folder.
@@ -95,6 +102,8 @@ impl SoundRequest {
             AudioRequest::PlayVoice { line, variant } => Self::Voice {
                 clip: clip_file(line, *variant),
             },
+            AudioRequest::PauseSounds => Self::PauseSounds,
+            AudioRequest::ResumeSounds => Self::ResumeSounds,
             AudioRequest::StopVoice => Self::StopVoice,
             AudioRequest::PreloadVoices { lines } => Self::PreloadVoices {
                 clips: lines.iter().map(|(l, v)| clip_file(l, *v)).collect(),
@@ -122,6 +131,14 @@ pub struct AudioFrame<'a> {
 }
 
 /// A backend's sound device.
+///
+/// **Pausing.** A backend that can pause a sound pauses it; one that
+/// can't mutes it (volume 0) and lets it run on silently. That holds for
+/// [`SoundRequest::PauseSounds`] and for [`suspend`](Self::suspend). A
+/// sound held either way keeps the volume it is given and sounds at it
+/// when it is released, and [`music_playing`](Self::music_playing) says
+/// where the track really is: a paused track's clock holds, a muted one's
+/// runs.
 pub trait Audio {
     /// The music sounding at `now`: its cue and the seconds since it really
     /// started (once its file had loaded), or `None` in silence: nothing
@@ -139,6 +156,20 @@ pub trait Audio {
     /// Stops the music, the voice and the sounds started with a handle:
     /// the game has quit.
     fn stop_all(&mut self);
+
+    /// Holds everything sounding (the sounds started with a handle, the
+    /// voice and the music) while the system suspends the game
+    /// ([`SystemEvent::Suspend`](crate::SystemEvent::Suspend)); sound
+    /// cues played once finish. Pauses, or mutes where the backend can't
+    /// pause. A second call does nothing.
+    ///
+    /// It has no default: every backend says what it can hold (ADR-0056).
+    fn suspend(&mut self);
+
+    /// Brings back what [`suspend`](Self::suspend) held, and leaves a
+    /// [`SoundRequest::PauseSounds`] pause in place. A call while not
+    /// suspended does nothing.
+    fn resume(&mut self);
 }
 
 /// A device that plays nothing: for a backend with no sound yet, and tests.
@@ -153,6 +184,10 @@ impl Audio for Silent {
     fn play(&mut self, _: &AudioFrame<'_>, _: Millis) {}
 
     fn stop_all(&mut self) {}
+
+    fn suspend(&mut self) {}
+
+    fn resume(&mut self) {}
 }
 
 #[cfg(test)]
@@ -218,6 +253,14 @@ mod tests {
                 SoundRequest::Stop { id },
             ]
         );
+        assert_eq!(
+            play(AudioRequest::PauseSounds),
+            Some(SoundRequest::PauseSounds)
+        );
+        assert_eq!(
+            play(AudioRequest::ResumeSounds),
+            Some(SoundRequest::ResumeSounds)
+        );
         assert_eq!(play(AudioRequest::play_music("theme", None)), None);
         assert_eq!(play(AudioRequest::StopMusic), None);
     }
@@ -233,6 +276,8 @@ mod tests {
             voice_volume: 1.0,
         };
         silent.play(&frame, Millis(0));
+        silent.suspend();
+        silent.resume();
         silent.stop_all();
         assert_eq!(silent.music_playing(Millis(0)), None);
     }

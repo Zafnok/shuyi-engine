@@ -6,6 +6,10 @@ use crate::prelude::*;
 use super::{AudioQueue, AudioRequest, SoundId, clamp_volume, secs};
 use crate::input::frame_seconds;
 
+/// The owner of code outside the screen stack, such as the debug view's
+/// pause (2316): no pop releases it, so its pause lasts until it resumes.
+pub(crate) const OUTSIDE_THE_STACK: usize = usize::MAX;
+
 /// A sound started with a handle and not yet stopped.
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct Handle {
@@ -127,15 +131,44 @@ impl<V> AudioQueue<V> {
         }
     }
 
+    /// Pauses every sound started with a handle that is playing now, for
+    /// a pause menu: one started after it plays, so the menu's own sounds
+    /// are heard. Sound cues played once, the music and the voice go on.
+    /// The pause is the calling screen's and lasts until it calls
+    /// [`resume_sounds`](Self::resume_sounds) or leaves the stack. A
+    /// screen pauses at most once, so calling it every frame is fine, and
+    /// several screens pausing don't stack further: the queue sends
+    /// [`AudioRequest::PauseSounds`] when the first pause begins and
+    /// [`AudioRequest::ResumeSounds`] when the last ends.
+    pub fn pause_sounds(&mut self) {
+        if self.pauses.is_empty() {
+            self.requests.push(AudioRequest::PauseSounds);
+        }
+        self.pauses.insert(self.owner);
+    }
+
+    /// Ends the calling screen's [`pause_sounds`](Self::pause_sounds). A
+    /// screen that isn't pausing does nothing.
+    pub fn resume_sounds(&mut self) {
+        self.end_pause(self.owner);
+    }
+
+    /// Whether some screen is pausing the sounds.
+    pub fn sounds_paused(&self) -> bool {
+        !self.pauses.is_empty()
+    }
+
     /// Makes the screen at `depth` on the stack the owner of the sounds
     /// started from now on: the stack calls it before it runs a screen.
+    /// [`OUTSIDE_THE_STACK`] is the owner of code outside the stack.
     pub(crate) fn set_owner(&mut self, depth: usize) {
         self.owner = depth;
     }
 
     /// Stops at once the sounds of the screen at `depth`, which is leaving
-    /// the stack; one fading out finishes its fade.
+    /// the stack, and ends its pause; one fading out finishes its fade.
     pub(crate) fn release(&mut self, depth: usize) {
+        debug_assert_ne!(depth, OUTSIDE_THE_STACK, "no pop releases it");
         let owned: Vec<SoundId> = self
             .handles
             .iter()
@@ -144,6 +177,13 @@ impl<V> AudioQueue<V> {
             .collect();
         for id in owned {
             self.stop_now(id);
+        }
+        self.end_pause(depth);
+    }
+
+    fn end_pause(&mut self, owner: usize) {
+        if self.pauses.remove(&owner) && self.pauses.is_empty() {
+            self.requests.push(AudioRequest::ResumeSounds);
         }
     }
 
@@ -311,5 +351,60 @@ mod tests {
         audio.advance(0.1);
         assert_eq!(audio.take(), [AudioRequest::StopSound { id: fading }]);
         assert!(audio.sound_is_live(below));
+    }
+
+    #[test]
+    fn a_screen_pausing_twice_pauses_once_and_its_resume_ends_it() {
+        let mut audio = AudioQueue::default();
+        audio.set_owner(1);
+        audio.pause_sounds();
+        audio.pause_sounds();
+        assert!(audio.sounds_paused());
+        // Another screen's resume ends no pause of this one's.
+        audio.set_owner(0);
+        audio.resume_sounds();
+        assert_eq!(audio.take(), [AudioRequest::PauseSounds]);
+        audio.set_owner(1);
+        audio.resume_sounds();
+        audio.resume_sounds();
+        assert_eq!(audio.take(), [AudioRequest::ResumeSounds]);
+        assert!(!audio.sounds_paused());
+    }
+
+    #[test]
+    fn pauses_by_two_owners_send_one_pause_and_one_resume_when_the_last_ends() {
+        let mut audio = AudioQueue::default();
+        audio.set_owner(1);
+        audio.pause_sounds();
+        audio.set_owner(OUTSIDE_THE_STACK);
+        audio.pause_sounds();
+        audio.set_owner(1);
+        audio.resume_sounds();
+        assert_eq!(audio.take(), [AudioRequest::PauseSounds]);
+        assert!(audio.sounds_paused(), "the outside pause holds");
+        audio.set_owner(OUTSIDE_THE_STACK);
+        audio.resume_sounds();
+        assert_eq!(audio.take(), [AudioRequest::ResumeSounds]);
+    }
+
+    #[test]
+    fn a_release_ends_the_leaving_screens_pause_after_stopping_its_sounds() {
+        let mut audio = AudioQueue::default();
+        audio.set_owner(1);
+        audio.pause_sounds();
+        let menu = audio.start_sound("hum");
+        audio.take();
+        audio.release(2);
+        let got = audio.take();
+        assert!(got.is_empty(), "{got:?}");
+        audio.release(1);
+        assert_eq!(
+            audio.take(),
+            [
+                AudioRequest::StopSound { id: menu },
+                AudioRequest::ResumeSounds
+            ]
+        );
+        assert!(!audio.sounds_paused());
     }
 }

@@ -152,14 +152,15 @@ None.
   (`Backend::play` returning `Self::Playing`, `set_playing_volume`,
   `stop_playing`) move with the rules. `pause` and `resume` above take
   the handle. The Playdate gives each handle a sample player of its own.
-- **Either order with 2394** (`pause_sounds`, `Audio::suspend` and
-  `resume`): if 2394 is done, its `PauseSounds`, `ResumeSounds` and
-  pausing rule move with the rules, and its mute becomes the fallback of
-  `pause` and `resume`. The Playdate pauses each handle's sample player
-  with the SDK rather than muting it, and its `Audio::suspend` pauses
-  every player, so the `Suspend` that 3010 sends on the lock and the
-  system menu holds the sound. If 2394 isn't done, 2394 adds them where
-  this ticket put the rules, and calls `pause` and `resume` for them.
+- **From 2394 (done)** (`pause_sounds`, `Audio::suspend` and
+  `resume`, ADR-0056): `SoundRequest::PauseSounds` and `ResumeSounds`,
+  and `shuyi-app`'s mute for them and for `suspend` (a `paused` flag on
+  `Handled`, a `suspended` flag and the voice volume kept in the player,
+  `crates/app/src/audio.rs`), move with the rules, and the mute becomes
+  the fallback of `pause` and `resume`. The Playdate pauses each
+  handle's sample player with the SDK rather than muting it, and its
+  `Audio::suspend` pauses every player, so the `Suspend` that 3010 sends
+  on the lock and the system menu holds the sound.
 - **From 2341 (done):** `shuyi-app`'s player starts a track at
   `MusicCommand::Start`'s `gain` and plays two tracks at once during a
   crossfade (ADR-0054); both move with the rest, and the Playdate
@@ -250,9 +251,8 @@ may need an import path changed in that PR.
       If the SDK lacks a pause, the Playdate backend keeps the default
       and the completion notes say why.
 - [ ] Host tests with the fake SDK show a handle's sample player
-      stopping alone. If 2394 is done, they also show `suspend` pausing
-      the sample and file players and `resume` starting them again
-      where they were.
+      stopping alone. They also show `suspend` pausing the sample and
+      file players and `resume` starting them again where they were.
 - [ ] If 2378 is done: with the fake SDK, of two copies of one sound,
       the one `SoundRequest::StopCopy` names stops and the other plays
       on.

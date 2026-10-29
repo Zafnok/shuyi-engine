@@ -600,6 +600,8 @@ fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
         AudioRequest::PlayMusic { cue, .. } => manifest.music.contains_key(cue),
         AudioRequest::StopSound { .. }
         | AudioRequest::SoundVolume { .. }
+        | AudioRequest::PauseSounds
+        | AudioRequest::ResumeSounds
         | AudioRequest::StopMusic
         | AudioRequest::PlayVoice { .. }
         | AudioRequest::StopVoice

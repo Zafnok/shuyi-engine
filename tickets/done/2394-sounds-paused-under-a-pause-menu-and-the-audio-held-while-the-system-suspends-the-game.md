@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2394 — Sounds paused under a pause menu, and the audio held on suspend
@@ -176,24 +176,24 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Harness: a menu pushed over a screen with a loop calls
+- [x] Harness: a menu pushed over a screen with a loop calls
       `pause_sounds`; the loop is paused, a loop the menu starts after
       that plays unpaused, and popping the menu stops the menu's loop
       and resumes the first with no `resume_sounds` call.
-- [ ] Harness: two pauses send one `PauseSounds`, and one `ResumeSounds`
+- [x] Harness: two pauses send one `PauseSounds`, and one `ResumeSounds`
       when the last ends.
-- [ ] Harness: `system(SystemEvent::Suspend)` leaves the `Speaker`
+- [x] Harness: `system(SystemEvent::Suspend)` leaves the `Speaker`
       suspended and `system(SystemEvent::Resume)` brings it back; a
       second `Suspend` changes nothing.
-- [ ] `shuyi-app` with the `Fake`: `PauseSounds` and `suspend` set
+- [x] `shuyi-app` with the `Fake`: `PauseSounds` and `suspend` set
       volume 0, and `ResumeSounds` and `resume` restore it; `suspend`
       mutes the music and the voice too.
-- [ ] The property test `no_handle_outlives_its_screen` also pauses and
+- [x] The property test `no_handle_outlives_its_screen` also pauses and
       resumes, and shows `PauseSounds` and `ResumeSounds` alternate.
-- [ ] The Completion notes say what was heard natively and on the web.
-- [ ] The ADR is written, and ADR-0024's header names it.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~The Completion notes say what was heard natively and on the web.~~ (not done: this session can't hear the speakers; the completion notes say so)
+- [x] The ADR is written, and ADR-0024's header names it.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -206,4 +206,71 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done on 2026-10-29.
+
+- **The queue** (`crates/ui/src/audio/handles.rs`): `pause_sounds`,
+  `resume_sounds` and `sounds_paused`. The queue keeps the set of owners
+  pausing; `PauseSounds` goes when the set stops being empty and
+  `ResumeSounds` when it empties. `release` ends the leaving screen's
+  pause after it stops its sounds. The crate-private owner is
+  `OUTSIDE_THE_STACK` (`usize::MAX`); `release` asserts in debug builds
+  that no pop reaches it. `AudioRequest` gains `PauseSounds` and
+  `ResumeSounds`; `MusicState::request` ignores them and `is_known` knows
+  them.
+- **The device side:** `SoundRequest::PauseSounds` and `ResumeSounds`;
+  `Audio::suspend` and `resume`, required (ADR-0039 §7: an empty default
+  would let a new backend's music play on through a suspend without a
+  word), with the pause-or-mute rule on the trait. `Silent` does nothing.
+  `App::on_system_event` takes the platform and calls them; nothing after
+  the game has quit (its early return).
+- **Headless:** `PlayingSound::paused`, `Speaker::suspended()`; the
+  `Speaker` mutes, so its music clock runs on while suspended.
+- **`shuyi-app`:** `Handled` has a `paused` flag and the player a
+  `suspended` flag and the voice volume asked for. A handled sound's
+  level is 0 while paused or suspended, a track's music level is 0 while
+  suspended, and the voice is set to 0. Volumes asked for meanwhile are
+  kept and applied on the way back. A sound started or a track started
+  while suspended starts muted (no frame plays while suspended today, so
+  this is only a guard). `Sound` in `backend.rs` does nothing before the
+  game has loaded.
+- **Either order:** 2316, 2408 and 3029 are not done, so nothing was
+  wired for them. Their tickets now say what this one gives them
+  (**From 2394 (done)** in 2316 and 3029; the clause in parked 2408).
+- **Deviation, step 5 (check by ear):** not done. This session can't
+  hear the speakers, so nothing was heard natively or on the web, and
+  the temporary `examples/hello-grid` change wasn't made. The Fake tests
+  show the volumes `shuyi-app` sets. That box stays unticked; whoever
+  next runs a game with a loop under a pause menu, or hides the web
+  build's tab once 3043 sends `Suspend`, hears it.
+- **Docs:** ADR-0056; ADR-0024's status line names it;
+  `docs/platform-backends.md`'s frame order, system events table and
+  `audio` section.
+
+Breaking: shuyi-platform: Audio: gains the required methods `suspend` and `resume`: a backend outside the engine implements both (pause, or mute where it can't, and bring back).
+
+```migration
+since: 0.1.0
+what: The sound device holds its audio while the system suspends the game, so every backend implements Audio::suspend and Audio::resume.
+old: "impl Audio for MyDevice { fn music_playing(..); fn play(..); fn stop_all(..); }"
+new: "impl Audio for MyDevice { fn music_playing(..); fn play(..); fn stop_all(..); fn suspend(&mut self); fn resume(&mut self); }"
+before: |
+  impl Audio for MyDevice {
+      fn music_playing(&self, now: Millis) -> Option<(&str, f64)> { self.music(now) }
+      fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) { self.mix(frame, now) }
+      fn stop_all(&mut self) { self.silence() }
+  }
+after: |
+  impl Audio for MyDevice {
+      fn music_playing(&self, now: Millis) -> Option<(&str, f64)> { self.music(now) }
+      fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) { self.mix(frame, now) }
+      fn stop_all(&mut self) { self.silence() }
+      fn suspend(&mut self) { self.mute_all() }
+      fn resume(&mut self) { self.unmute_all() }
+  }
+```
+
+The new `AudioRequest` and `SoundRequest` variants are additions (both
+enums are `#[non_exhaustive]`), and so is `PlayingSound::paused`. The
+game has no backend of its own, so its pin bump needs no change.
+
+Book: none, the book has no chapter on sound yet; `AudioQueue::pause_sounds`'s rustdoc, the `Audio` trait's docs, `docs/platform-backends.md` and ADR-0056 say how to use them.

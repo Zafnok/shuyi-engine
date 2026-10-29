@@ -350,6 +350,24 @@ mod tests {
         );
     }
 
+    /// A suspend mutes the voice playing, a volume asked for meanwhile
+    /// waits, and the resume brings it back at that volume.
+    #[test]
+    fn a_suspend_mutes_the_voice_until_the_resume() {
+        let mut fake = all_ready();
+        let mut audio = audio(&mut fake);
+        audio.set_voice_volume(&mut fake, 0.8);
+        audio.hear(&mut fake, &[play(0)], &[], 0.0);
+        fake.calls();
+        audio.suspend(&mut fake);
+        assert_eq!(fake.calls(), [format!("volume {} 0.00", path(0))]);
+        audio.set_voice_volume(&mut fake, 0.5);
+        let found = fake.calls();
+        assert!(found.is_empty(), "{found:?}");
+        audio.resume(&mut fake);
+        assert_eq!(fake.calls(), [format!("volume {} 0.50", path(0))]);
+    }
+
     /// Acceptance: clips play at the voice volume, and a change reaches
     /// the clip that is playing.
     #[test]

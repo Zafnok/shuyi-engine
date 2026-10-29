@@ -1,6 +1,7 @@
 # ADR-0024: The platform boundary as built: App runs a frame, time in milliseconds, storage handed over, and the Harness on the headless backend
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0056 (§2: `Audio::suspend` and
+  `resume`; §5: `Suspend` holds the audio)
 - **Date:** 2026-10-20
 - **Related tickets:** 3003; 3005 (`no_std`), 3006 (1-bit output), 3010
   (the Playdate backend), 3012 (the Steam Deck), 3023 (surfaces), 3029

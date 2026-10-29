@@ -39,7 +39,7 @@ use shuyi_assets::voice::ClipVariant;
 #[cfg(doc)]
 use crate::GameData;
 use crate::input::frame_seconds;
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 
 mod handles;
 
@@ -153,6 +153,12 @@ pub enum AudioRequest<V> {
         /// The new multiplier on the cue's volume, 0–1.
         volume: f32,
     },
+    /// Pause every sound started with a handle that is playing now
+    /// ([`AudioQueue::pause_sounds`]); one started after it plays. Sound
+    /// cues played once, the music and the voice go on.
+    PauseSounds,
+    /// Resume the sounds [`PauseSounds`](Self::PauseSounds) paused.
+    ResumeSounds,
     /// Switch to a music cue. Asking for the track already playing does
     /// nothing. Build it with [`AudioRequest::play_music`] (ADR-0039).
     #[non_exhaustive]
@@ -203,6 +209,8 @@ impl<V> AudioRequest<V> {
             | Self::PlayMusic { cue, .. } => Some(cue),
             Self::StopSound { .. }
             | Self::SoundVolume { .. }
+            | Self::PauseSounds
+            | Self::ResumeSounds
             | Self::StopMusic
             | Self::PlayVoice { .. }
             | Self::StopVoice
@@ -225,6 +233,9 @@ pub struct AudioQueue<V> {
     /// The depth on the screen stack of the screen running now: the owner
     /// of the sounds it starts.
     owner: usize,
+    /// The owners pausing the sounds now: the depths of screens, and
+    /// the owner outside the stack that no pop releases.
+    pauses: BTreeSet<usize>,
 }
 
 impl<V> Default for AudioQueue<V> {
@@ -242,6 +253,7 @@ impl<V> AudioQueue<V> {
             last_id: 0,
             handles: BTreeMap::new(),
             owner: 0,
+            pauses: BTreeSet::new(),
         }
     }
 
@@ -690,6 +702,8 @@ impl MusicState {
             | AudioRequest::StartSound { .. }
             | AudioRequest::StopSound { .. }
             | AudioRequest::SoundVolume { .. }
+            | AudioRequest::PauseSounds
+            | AudioRequest::ResumeSounds
             | AudioRequest::PlayVoice { .. }
             | AudioRequest::StopVoice
             | AudioRequest::PreloadVoices { .. } => {}
