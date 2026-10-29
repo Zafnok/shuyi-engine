@@ -30,6 +30,14 @@ itself, so a game needs no copy of its own.
 - `gamepad.js`: controllers, a miniquad JS plugin over the browser's
   Gamepad API. The engine's own code, not vendored. See below.
 
+In `dist`, each vendored script starts with one line naming its work
+and pointing at the notices, then the committed file:
+`/*! <file>: <work> <version>, MIT. See NOTICES.txt. */`
+(`shipped_shell_file` in `web.rs`, from the file's `SHELL_NOTICES` row).
+A comment before `"use strict";` keeps the file strict, and `/*!` keeps
+it through minifiers. The committed files here stay as vendored, and the
+engine's own files get no header.
+
 ## Notices
 
 Every build writes `NOTICES.txt` beside the page (`shuyi-cli`'s
@@ -51,7 +59,9 @@ Every build writes `NOTICES.txt` beside the page (`shuyi-cli`'s
   `notices` part names them (`notices: (texts: [...])`).
 
 Then every text once, headed by the works it covers. The same inputs
-give the same bytes.
+give the same bytes. `index.html` links the file in its `<head>` with
+`<link rel="license" href="NOTICES.txt">`, the way browsers and
+crawlers look for a page's license.
 
 ## The link argument a game's binary needs
 

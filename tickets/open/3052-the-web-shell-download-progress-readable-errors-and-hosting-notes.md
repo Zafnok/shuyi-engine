@@ -96,7 +96,7 @@ What is planned:
 - 2528 (After MVP) serves the web build with `shuyi web --serve` and
   sends the browser's log to the terminal through its `dev.js`. Its
   either-order clause with this ticket sends the page's state too.
-- 3039 (done) added `NOTICES.txt` beside the page, 3066 (MVP) adds a
+- 3039 (done) added `NOTICES.txt` beside the page, 3066 (done) added a
   `rel="license"` link to it, and 3049 (After MVP) the game's icons and
   title.
 - 3043, 2522, 2519 and 2349 (After MVP) add `lifecycle.js`, `net.js`,
@@ -294,9 +294,9 @@ None.
       is on: what the setting shows after.
 - **Either order with 3049:** both change `index.html`; whichever
   lands later keeps the other's parts.
-- **Either order with 3066:** if 3066 is done, keep its
-  `<link rel="license" href="NOTICES.txt">` in the `<head>`; if not,
-  nothing to do (3066 adds it beside this ticket's parts).
+- **From 3066 (done):** `index.html`'s `<head>` has
+  `<link rel="license" href="NOTICES.txt">`; keep it beside this
+  ticket's parts.
 - **From 3039 (done):** `shell.js` goes in `SHELL_NOTICES` (`web.rs`'s
   notices table) as the engine's own (its test fails until it does).
 - **Either order with 3043, 2522, 2519, 2349 and 2377:** they add

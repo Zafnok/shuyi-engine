@@ -124,6 +124,24 @@ pub fn shell_works() -> Vec<Work> {
         .collect()
 }
 
+/// A file of [`SHELL`] as `dist` gets it: a vendored script starts with
+/// a `/*!` line naming its work and pointing at `NOTICES.txt` (a comment
+/// before `"use strict";` keeps it strict, and `/*!` survives
+/// minifiers); the engine's own files are as committed.
+fn shipped_shell_file(name: &str, text: &str) -> String {
+    let origin = SHELL_NOTICES
+        .iter()
+        .find(|(file, _)| *file == name)
+        .map(|(_, origin)| origin);
+    match origin {
+        Some(Origin::Vendored { work, version, .. }) => format!(
+            "/*! {name}: {work} {version}, MIT. See {}. */\n{text}",
+            notices::FILE
+        ),
+        _ => text.to_owned(),
+    }
+}
+
 /// The target the game is built for.
 const TARGET: &str = "wasm32-unknown-unknown";
 
@@ -303,7 +321,7 @@ fn package(
             text.replace("%TITLE%", &rules.title)
                 .replace("%WASM%", &wasm_name)
         } else {
-            text.to_owned()
+            shipped_shell_file(name, text)
         };
         let shell_dst = dist.join(name);
         fs::write(&shell_dst, text).map_err(|e| format!("write {}: {e}", shell_dst.display()))?;
@@ -646,15 +664,28 @@ mod tests {
         assert!(html.contains("<title>The Game</title>"), "{html}");
         assert!(html.contains(r#"load("the-game.wasm");"#), "{html}");
         assert!(!html.contains("%TITLE%") && !html.contains("%WASM%"));
-        for name in [
-            "mq_js_bundle.js",
-            "sapp_jsutils.js",
-            "quad-storage.js",
-            "gamepad.js",
+        assert!(
+            html.contains(r#"<link rel="license" href="NOTICES.txt">"#),
+            "{html}"
+        );
+        for (name, header) in [
+            (
+                "mq_js_bundle.js",
+                "/*! mq_js_bundle.js: macroquad 0.4.16, MIT. See NOTICES.txt. */\n",
+            ),
+            (
+                "sapp_jsutils.js",
+                "/*! sapp_jsutils.js: sapp-jsutils 0.1.7, MIT. See NOTICES.txt. */\n",
+            ),
+            (
+                "quad-storage.js",
+                "/*! quad-storage.js: quad-storage 0.1.3, MIT. See NOTICES.txt. */\n",
+            ),
+            ("gamepad.js", ""),
         ] {
             assert_eq!(
                 fs::read_to_string(dist.join(name)).unwrap(),
-                shell(name),
+                format!("{header}{}", shell(name)),
                 "{name}"
             );
         }
@@ -730,6 +761,24 @@ mod tests {
                     .unwrap_or_else(|| panic!("{file} has a row in THIRD_PARTY_ASSETS.md"));
                 assert!(row.contains(&format!("| {version} ")), "{file}: {row}");
                 assert!(row.contains(text.0), "{file}: {row}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_vendored_script_starts_with_a_one_line_header_and_the_engines_files_get_none() {
+        for (file, origin) in &SHELL_NOTICES {
+            let shipped = shipped_shell_file(file, shell(file));
+            if let Origin::Vendored { work, version, .. } = origin {
+                let (first, rest) = shipped.split_once('\n').unwrap();
+                assert!(first.starts_with("/*! "), "{file}: {first}");
+                assert!(first.ends_with(" */"), "{file}: {first}");
+                assert_eq!(first.matches("*/").count(), 1, "{file}: {first}");
+                assert!(first.contains(&format!("{work} {version}, MIT")), "{first}");
+                assert!(first.contains(notices::FILE), "{first}");
+                assert_eq!(rest, shell(file), "{file}");
+            } else {
+                assert_eq!(shipped, shell(file), "{file}");
             }
         }
     }

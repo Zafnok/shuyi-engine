@@ -203,9 +203,9 @@ None.
   - **Either order with 2565:** if 2565 is done, `icons` decodes the
     source with `png_pixels` instead of `decode_png`; if not, use
     `decode_png` and 2565 moves the call onto `png_pixels`.
-  - **Either order with 3066:** if 3066 is done, keep its
-    `<link rel="license" href="NOTICES.txt">` in the `<head>`, after
-    the icons' links; if not, nothing to do (3066 adds it after them).
+  - **From 3066 (done):** `index.html`'s `<head>` has
+    `<link rel="license" href="NOTICES.txt">` after the `<title>`; keep
+    it, and put it after the icons' links.
   - **From 3039 (done):** `NOTICES.txt`'s heading takes the game's
     title from `web.title` (`notices::write`'s `title`, from
     `web::package`). This ticket makes the heading take the same title
