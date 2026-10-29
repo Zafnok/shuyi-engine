@@ -206,6 +206,12 @@ None.
   `shuyi_assets::bitmap::convert::png_pixels`; if not, write
   `decode_apng` the same way and leave the module docs, which 2565
   rewrites around it.
+- **Either order with 2813:** if 2813 is done, `frame_png/kept.rs`
+  already compares a kept still with what its args make; write
+  `preview::check` over the parts of it both share (decoding, the pixel
+  comparison, the message that ends with the command remaking the
+  file), moved into `kept.rs` if they are private there. If not,
+  nothing to do (2813 moves what both share when it lands).
 
 **Out (do not do):**
 - previews for any other example. An example that wants one adds the

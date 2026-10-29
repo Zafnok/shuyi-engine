@@ -557,6 +557,19 @@ what its tools and short path promise.
 | 2383 | A ready-made talk screen: a `.dlg` scene over the screen below, in the engine's text box, with replies |
 | 2384 | Music on the short path: `audio.ron`'s music cues played, the music clock running, and a stage's own part checked against them (after 2225) |
 
+### The website shows the engine at work
+
+On 2026-10-28 Nick asked for pictures in the book, a playground, and a
+site that keeps up with the tickets
+([`decisions.md`](decisions.md)). Each comes after 2808.
+
+| Ticket | What |
+| ------ | ---- |
+| 2813 | Pictures in the book: Hello, Grid's shots made by `frame-png`, checked in and tested equal |
+| 3069 | Files from the page: a web build lays the files its page holds over its own |
+| 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
+| 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
+
 ## Parked
 
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
