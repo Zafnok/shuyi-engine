@@ -262,14 +262,14 @@ None.
     - fullscreen comes from the game's Fullscreen setting and its
       shortcut, not from the page.
 - **Checks in a browser,** on Hello, Grid's release web build:
-  - **either order with 2019:** if it is done, add to
+  - **from 2019 (done):** add to
     `tools/web-check/check.py`: `boot` waits for `data-shuyi="running"`
     (within its `--seconds`) and fails on `data-shuyi="error"`, printing
     `data-shuyi-error` and the panel's text; the build with its `.wasm`
     removed must show `download`, and a run with Chromium's
-    `--disable-webgl` must show `webgl`. Its `render_card` page, which
-    leaves `%WASM_BYTES%` unfilled, still runs. If not, run the cases
-    below by hand, and 2019 adds them (its clause says so);
+    `--disable-webgl` must show `webgl` (its `CHROMIUM_ARGS` are
+    SwiftShader's). Its `render_card` page, which leaves `%WASM_BYTES%`
+    unfilled, still runs;
   - **by hand** (the `run` skill and the browser pane), each recorded in
     the Completion notes, with screenshots in the PR. If the pane is
     hidden and frames don't run, drive them from the console with

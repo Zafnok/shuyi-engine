@@ -1,0 +1,8 @@
+# The checker of the web build (tools/web-check/check.py, ticket 2019).
+# `requirements.txt` is made from this file by hand, never in CI:
+#
+#     pip-compile --generate-hashes --strip-extras requirements.in
+#
+# so every package is pinned with `==` and its hashes, and CI installs it
+# with `pip install --require-hashes`.
+playwright==1.64.0

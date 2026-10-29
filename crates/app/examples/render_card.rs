@@ -13,15 +13,18 @@
 //! under `SHUYI_CAPTURE_OUT` (`target/capture` unless set), and exits as a
 //! plan's run does: 0 when the window matches the raster, 1 when it
 //! doesn't, 2 when it can't run.
+//!
+//! On the web (ticket 2019; `crates/cli/web/README.md`, *Checked in CI*)
+//! it writes nothing: it logs the capture's line to the browser's console,
+//! then `shuyi-capture: done`, and keeps showing the card.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use image::ImageEncoder as _;
 use image::codecs::png::PngEncoder;
 use macroquad::prelude::{error, info, next_frame};
-use shuyi_app::capture::{self, Report, read_window, window_layout};
+use shuyi_app::capture::{self, read_window, window_layout};
 use shuyi_app::render::Renderer;
 use shuyi_app::{Window, window_conf};
 use shuyi_ui::frame::raster::card::{self, RenderCard};
@@ -49,24 +52,33 @@ fn main() {
     macroquad::Window::from_config(window_conf(&window), show(card));
 }
 
-/// Draws and captures the card, then exits with the run's code.
+/// Draws and captures the card, then finishes with the run's code (on the
+/// web, still drawing the card).
 async fn show(card: RenderCard) {
-    let code = match draw_and_capture(&card).await {
+    let mut renderer = None;
+    let code = match draw_and_capture(&card, &mut renderer).await {
         Ok(code) => code,
         Err(e) => {
-            error!("render card: {}", e);
+            error!("{}render card: {}", capture::PREFIX, e);
             capture::CANNOT_RUN
         }
     };
-    std::process::exit(code);
+    capture::finish(code, || {
+        if let Some(renderer) = &mut renderer {
+            renderer.draw(&card.buffer);
+        }
+    })
+    .await;
 }
 
-/// Draws the card for a few frames, compares the last with the raster's
-/// picture, writes the report, and gives the exit code.
-async fn draw_and_capture(card: &RenderCard) -> Result<i32, String> {
-    let out = std::env::var(capture::OUT_VAR)
-        .map_or_else(|_| PathBuf::from(capture::DEFAULT_OUT), PathBuf::from);
-    let mut report = Report::new(out)?;
+/// Draws the card for a few frames with a renderer it leaves in
+/// `renderer`, compares the last with the raster's picture, writes the
+/// report, and gives the exit code.
+async fn draw_and_capture(
+    card: &RenderCard,
+    renderer: &mut Option<Renderer>,
+) -> Result<i32, String> {
+    let mut report = capture::report()?;
     let atlas_png = png(&card.atlas_image)?;
     let files = card
         .images
@@ -74,13 +86,13 @@ async fn draw_and_capture(card: &RenderCard) -> Result<i32, String> {
         .map(|(id, image)| Ok((id.path(), png(image)?)))
         .collect::<Result<_, String>>()?;
     FILES.get_or_init(|| files);
-    let mut renderer = Renderer::new(
+    let renderer = renderer.insert(Renderer::new(
         card.atlas.clone(),
         &atlas_png,
         card.clear,
         &card.table,
         file,
-    )?;
+    )?);
     for _ in 0..FRAMES_BEFORE {
         renderer.draw(&card.buffer);
         next_frame().await;
@@ -91,7 +103,7 @@ async fn draw_and_capture(card: &RenderCard) -> Result<i32, String> {
     let window = read_window(&fit, reference.width, reference.height)?;
     let comparison = raster::compare(&window, &reference, Tolerance::default());
     report.add("card", &window, &reference, &comparison, fit.scale)?;
-    info!("render card: {}", report.summary());
+    info!("{}render card: {}", capture::PREFIX, report.summary());
     Ok(report.exit_code())
 }
 

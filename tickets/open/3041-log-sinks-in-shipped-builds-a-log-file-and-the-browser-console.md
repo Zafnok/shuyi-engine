@@ -106,6 +106,12 @@ None.
     `log_warning` in `storage/native.rs` (`storage`), the warning of a
     read that falls back to a save's backup. They name the `log`
     crate, not macroquad's prelude, so they outlive macroquad (3034).
+    **From 2019 (done):** the capture mode's lines
+    (`crates/app/src/capture.rs`, and the `render_card` example's) are
+    macroquad `info!` and `error!` calls starting `shuyi-capture: `; they
+    move with the others, under the target `platform`. CI's
+    `tools/web-check/check.py` finds them anywhere in a console line and
+    fails on any console error, so a sink's prefix changes nothing there.
   - **App's lines:** `print_line` (`lib.rs:355-370`) hands each line of
     `app.take_new_log()` to `log` with its category's name as the target
     and its level mapped (`LogLevel::Error` to `log::Level::Error`, and

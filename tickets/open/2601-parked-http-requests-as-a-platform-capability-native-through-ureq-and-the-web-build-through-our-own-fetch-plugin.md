@@ -396,8 +396,8 @@ the same note and milestone, and `blocked_by` this ticket and follow-up
   engine's own, as `gamepad.js` is (its test fails until it does).
 - **Out:** moving the web backend to a crate if 3034 (parked) moves the
   web build to `wasm-bindgen` (3034's tickets decide); automating the
-  browser check (a follow-up for 2019's checker, written in that PR if
-  2019 is done; if not, 2019's PR writes it, as its clause says).
+  browser check (a follow-up for 2019's checker, `tools/web-check/check.py`,
+  written in that PR).
 
 Its steps: read `pads/web.rs`, `gamepad.js`, `crates/cli/src/web.rs`
 and its tests, and check whether 2522 and 3043 are done; write

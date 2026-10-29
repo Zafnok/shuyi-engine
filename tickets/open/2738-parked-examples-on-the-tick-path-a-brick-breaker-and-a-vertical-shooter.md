@@ -216,7 +216,7 @@ None. When it unparks is his call (above).
   - `pages.yml` already loops (2801, done): each example gets its card,
     `site/content/examples/<name>.md`, plays at `/examples/<name>/`, and
     `/bricks/` redirects there (`aliases` in the card's front matter).
-    If 2019 is done, its headless browser job opens it.
+    2019's `web-render` job (done) boots it: it loops over the examples.
 - **The eval:** if 2524 is done, add `evals/tasks/bricks.ron`: template
   `blank`, targets `desktop` and `web`, reference
   `Project("examples/bricks")`, and the checks `Check`, `Targets`,

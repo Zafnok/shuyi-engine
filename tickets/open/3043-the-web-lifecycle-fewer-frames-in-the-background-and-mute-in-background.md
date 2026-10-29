@@ -211,13 +211,11 @@ Visions of Shuyi.
     the page runs no frames, as in a hidden pane, call
     `wasm_exports.frame()` once). Then a `pagehide` event alone, the
     page still visible: `Suspend` between markers;
-  - **either order with 2019:** if it is done, this is a `lifecycle`
-    mode of its `tools/web-check/check.py`, run in its CI job; if not,
-    the same steps by hand in the browser pane (the `run` skill),
-    recorded in the Completion notes, and 2019 adds the mode.
-- **Either order with 2019's capture mode on the web:** if it is done,
-  a capture run reads no lifecycle events; if not, 2019 keeps its
-  capture mode so.
+  - **from 2019 (done):** this is a `lifecycle` mode of its
+    `tools/web-check/check.py`, run in its CI job, `web-render`.
+- **From 2019's capture mode on the web (done):** a capture run reads
+  no lifecycle events: `crates/app/src/capture.rs`'s `Capturing` takes
+  no system event but quitting, and keeps so.
 - **Either order with 2351:** if it is done, the row's English goes in
   the engine's built-in text; if not, in the toy's `en.ron` (and 2351
   moves it).
@@ -299,7 +297,7 @@ Visions of Shuyi.
    and the grid template.
 6. `Settings::mute_in_background`, the row, the toy and the `()` form,
    with tests.
-7. The browser check (2019's mode, or by hand).
+7. The browser check (the `lifecycle` mode of 2019's `check.py`).
 8. `docs/platform-backends.md`, the `Cargo.toml` and `lib.rs` comments,
    then the gates.
 
@@ -348,7 +346,7 @@ Visions of Shuyi.
   default and saved forms (the toy's and `()`'s); the options row.
 - Integration: `App` order tests and the hook's write through
   `HeadlessPlatform`; the mute while unfocused.
-- Browser: the lifecycle check (2019's job or by hand, as above).
+- Browser: the lifecycle check (2019's job, as above).
 
 ## Completion notes
 

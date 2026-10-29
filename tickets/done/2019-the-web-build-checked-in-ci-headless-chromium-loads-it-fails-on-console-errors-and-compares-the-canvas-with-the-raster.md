@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: ["2018", "2392"]
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2019 — The web build checked in CI
@@ -299,25 +299,25 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `check.py boot` passes on the release build `pages.yml` publishes.
-- [ ] It fails on a copy whose `index.html` lacks `var register_plugin;`
+- [x] `check.py boot` passes on the release build `pages.yml` publishes.
+- [x] It fails on a copy whose `index.html` lacks `var register_plugin;`
       (the error game ticket 0225 fixed): shown once in the PR.
-- [ ] `check.py capture` passes on hello-grid's capture build and on
+- [x] `check.py capture` passes on hello-grid's capture build and on
       the card, and every capture line says `passed`.
-- [ ] A failing capture fails the job, with its numbers in
+- [x] A failing capture fails the job, with its numbers in
       `console.txt`: shown once in the PR with a plan whose tolerance is
       `(channel: 0, pixels: 0)` on a frame that differs, or a one-pixel
       change.
-- [ ] The three fixtures fail `check.py`, naming the console error, the
+- [x] The three fixtures fail `check.py`, naming the console error, the
       missing URL and the one-colour canvas.
-- [ ] `requirements.txt` installs with `pip install --require-hashes`,
+- [x] `requirements.txt` installs with `pip install --require-hashes`,
       and the PR lists each package's license.
-- [ ] `render_card` builds for `wasm32-unknown-unknown` with `capture`,
+- [x] `render_card` builds for `wasm32-unknown-unknown` with `capture`,
       and the `wasm` job's clippy step passes.
-- [ ] Each either-order mode whose ticket is done runs in `web-render`
+- [x] Each either-order mode whose ticket is done runs in `web-render`
       and passes, or the follow-up ticket names it.
-- [ ] `web-render` is in `ci-result`, or the PR says why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `web-render` is in `ci-result`, or the PR says why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -328,4 +328,71 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done.** CI's new `web-render` job opens the web builds in headless
+Chromium with `tools/web-check/check.py` (Python 3, Playwright 1.64.0):
+the three fixtures (each must fail), every example `pages.yml` publishes
+booted, a copy of Hello, Grid's page without `var register_plugin;`
+(must fail), Hello, Grid's capture build and the render card. It is in
+`ci-result`. ADR-0053 records the choices.
+
+- **The capture mode on the web** (`crates/app/src/capture.rs`, now
+  compiled on wasm32 with `capture`): a web build always runs
+  `capture.ron` beside the page (`WEB_PLAN`, read with
+  `macroquad::file::load_string`), reads the canvas with
+  `get_screen_data()` as on the desktop, and writes no files:
+  `Report::console()` keeps the lines, and every capture line is logged
+  as `shuyi-capture: ` + its line of `capture.txt` (one private
+  `console`, used by the file report too: the desktop's log lines now
+  carry the same prefix instead of `capture: `). The web stops at the
+  first failure; `capture::finish` logs `shuyi-capture: done (exit code
+  N)` and keeps drawing the last frame (the game's `present_again`, the
+  card's renderer). New public items, all under `capture`: `WEB_PLAN`,
+  `PREFIX`, `DONE`, `report()`, `finish()`, `Report::console()`.
+- **Reading the canvas works in WebGL.** Every capture matched the
+  raster exactly (worst 0) in Chromium 156 with SwiftShader, Hello,
+  Grid's three and the card's: no web tolerance needed, so the pixel
+  half needs no follow-up.
+- **SwiftShader always:** `--use-angle=swiftshader
+  --enable-unsafe-swiftshader`, on the runner and on a machine with a
+  GPU, so every machine gets the same pixels. Frames advance in the
+  headless page on their own: no `wasm_exports.frame()` driving.
+- **`shuyi-app`:** a `build.rs` (`--allow-undefined` on
+  `wasm32-unknown-unknown`, for `render_card`); its `image` dependency
+  is on every target (the example encodes its PNG files on the web too);
+  `tempfile` and `proptest` became native-only dev-dependencies, since
+  an example builds with the dev-dependencies and they pulled
+  `getrandom` (which needs `wasm-bindgen` on the web) into it.
+- **The `wasm` job** runs `cargo clippy --target wasm32-unknown-unknown
+  -p shuyi-app --features capture --lib --examples --locked -- -D
+  warnings`.
+- **Hello, Grid:** `capture` is in `web.features`, so `cargo shuyi web
+  --release --capture` builds the capture variant.
+- **Python packages** (`tools/web-check/requirements.txt`, CI only,
+  checked 2026-10-29): playwright 1.64.0 (Apache-2.0), greenlet 3.5.6
+  (MIT AND PSF-2.0), pyee 14.0.0 (MIT), typing-extensions 4.16.0
+  (PSF-2.0). None is one ADR-0002 §8 denies. Dependabot has a `pip`
+  entry for `/tools/web-check` (weekly, 7-day cooldown, one group).
+- **Shown once, locally** (Windows, Chromium 156): a one-pixel change
+  in the window's read failed `check.py capture` with `title: 768 × 768
+  at scale 2; 1 pixels over (channel 2, pixels 0); worst 128; first 0,
+  0; FAILED` in `console.txt`; the page without `var register_plugin;`
+  failed with `page error: register_plugin is not defined` (CI repeats
+  this one every run).
+- **Either order:** 2011 (done): the `pip` entry. 2801 (done): the boot
+  step loops over the examples as `pages.yml` does. 2566, 3041, 3052,
+  3043, 2522, 2333, 2803, 2739 and 2735–2738 aren't done: their clauses
+  now say what they add to `check.py` or the job, as **From 2019
+  (done)** lines. 2601's backend isn't done, so its follow-up is its
+  PR's. 2906: nothing to do.
+- **Size:** about 1000 changed lines with the ADR, docs and ticket
+  clauses, near 600 in code and CI. No either-order mode was due here
+  (none of their tickets is done), so none moved to a follow-up.
+
+No break: `shuyi-app`'s `capture` module gains items and builds on the
+web; `Report::new`, `window_layout`, `read_window` and `cut_out` are
+unchanged.
+
+Book: none, the capture mode is a backend's check of its own pixels in
+CI, not something a game uses or names.
+
+Nick input: none.

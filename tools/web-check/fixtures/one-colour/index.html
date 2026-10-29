@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A canvas of one colour</title>
+</head>
+<body>
+<!-- check.py's fixture: no error, and a canvas of one colour, as a game
+     that never draws shows, which must fail `boot`. -->
+<canvas id="glcanvas" width="64" height="64"></canvas>
+<script>
+  const context = document.getElementById("glcanvas").getContext("2d");
+  context.fillStyle = "#000000";
+  context.fillRect(0, 0, 64, 64);
+</script>
+</body>
+</html>

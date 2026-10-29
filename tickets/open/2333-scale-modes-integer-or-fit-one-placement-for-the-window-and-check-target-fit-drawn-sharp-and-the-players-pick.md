@@ -396,10 +396,11 @@ types follow ADR-0039.
     `draw_scale` stays within `MAX_DRAW_PX` unless `draw_scale` is 1;
   - `place` gives the same answer twice.
 - Integration: the `App` and `Harness` tests above, and the `Fit`
-  capture in 2018's `render` CI job (the part from 2018 above). Either
-  order with 2019: if it is done, its web comparison adds the same
-  `Fit` capture, read from the render target in WebGL; if not, nothing
-  to do (2019 adds it, its clause says so).
+  capture in 2018's `render` CI job (the part from 2018 above). **From
+  2019 (done):** CI's `web-render` job runs the same plan,
+  `examples/hello-grid/capture/frames.ron`, in headless Chromium, so the
+  `Fit` capture added to it is compared in WebGL too, read from the
+  render target.
 
 ## Completion notes
 

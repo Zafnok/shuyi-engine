@@ -101,6 +101,41 @@ fn a_line_names_both_sizes_when_they_differ() {
     );
 }
 
+/// The web's console has the lines alone (ticket 2019): each is the line
+/// of `capture.txt`, after the prefix `check.py` looks for.
+#[test]
+fn a_console_line_is_the_files_line_after_the_prefix() {
+    let reference = solid(4, 2, [10, 20, 30]);
+    let close = solid(4, 2, [11, 20, 30]);
+    let far = solid(4, 2, [60, 20, 30]);
+    let narrow = solid(3, 2, [10, 20, 30]);
+    let cases = [
+        (&close, Tolerance::default(), "passed"),
+        (&far, Tolerance::default(), "FAILED"),
+        (&narrow, Tolerance::new(0, 5), "FAILED"),
+    ];
+    for (window, tolerance, verdict) in cases {
+        let comparison = compare(window, &reference, tolerance);
+        let file_line = line("title", window, &reference, &comparison, 3);
+        let logged = console(&file_line);
+        assert_eq!(logged, format!("shuyi-capture: {file_line}"));
+        assert!(logged.ends_with(verdict), "{logged}");
+    }
+    assert!(DONE.starts_with(PREFIX));
+}
+
+#[test]
+fn a_console_report_writes_nothing_and_counts_the_same() {
+    let mut report = Report::console();
+    let reference = solid(4, 2, [10, 20, 30]);
+    let far = solid(4, 2, [60, 20, 30]);
+    let failed = compare(&far, &reference, Tolerance::default());
+    assert!(!report.add("stage", &far, &reference, &failed, 3).unwrap());
+    assert_eq!(report.captured(), 1);
+    assert_eq!(report.exit_code(), FAILED);
+    assert_eq!(report.summary(), "0 of 1 captures passed");
+}
+
 #[test]
 fn a_report_that_cannot_be_written_is_an_error() {
     let dir = tempfile::tempdir().unwrap();
@@ -128,7 +163,7 @@ fn only_the_capture_feature_reads_shuyi_capture() {
     }
     assert_eq!(naming, [PathBuf::from("capture.rs")]);
     let lib = include_str!("../lib.rs");
-    let gate = "#[cfg(all(feature = \"capture\", not(target_arch = \"wasm32\")))]
+    let gate = "#[cfg(feature = \"capture\")]
 pub mod capture;";
     assert!(lib.contains(gate));
 }

@@ -209,7 +209,7 @@ None.
   - if an earlier example made the loop, this one needs no workflow
     change;
   - the example gets its card in the website's Examples section,
-    `site/content/examples/<name>.md` (2801, done). If 2019 is done, its headless browser job opens it too.
+    `site/content/examples/<name>.md` (2801, done). 2019's `web-render` job (done) boots it too: it loops over the examples as `pages.yml` does.
 - **The template part** (2501): in `templates/shuyi-default/`, a part
   `kind-roguelike`, `when: Picked(kind, roguelike)`:
   - it turns on `procgen` and adds a stage with one generated floor, the
