@@ -69,6 +69,12 @@ looping the whole file. They wait for the sound research (2902, parked),
 which writes that ticket with the backend that can play it. Beat and bar
 switches are 2365 (parked, and blocked by this ticket).
 
+**From 2815 (done):** the home page's Sound card keeps a status written
+by hand, because no ticket here shipped today's sound. The first of 3029
+and 2341–2345 to be done moves it to `tickets = ["3029", "2341", "2342",
+"2343", "2344", "2345"]` in `site/data/features.toml`, drops its `status`
+and the comment above it, and gives it back a link text naming them.
+
 ## Nick input
 
 None.

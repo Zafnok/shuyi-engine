@@ -985,6 +985,19 @@ const COMPLETION_NOTES: &str = "## Completion notes";
 /// notes` that starts with `Breaking:`, after an optional `- ` list marker,
 /// returned from `Breaking:` on. Lines in any other section don't count.
 pub(crate) fn breaking_lines(body: &str) -> Vec<&str> {
+    notes_lines(body, "Breaking:")
+}
+
+/// The `Book:` lines of a ticket (ticket 2815), read as [`breaking_lines`]
+/// reads the `Breaking:` lines: why a change to the public API needs no
+/// change to the book.
+pub(crate) fn book_lines(body: &str) -> Vec<&str> {
+    notes_lines(body, "Book:")
+}
+
+/// Each line under `## Completion notes` that starts with `mark`, after an
+/// optional `- ` list marker, returned from `mark` on.
+fn notes_lines<'a>(body: &'a str, mark: &str) -> Vec<&'a str> {
     let mut in_notes = false;
     let mut found = Vec::new();
     // `lines` drops a CR before each LF too.
@@ -998,7 +1011,7 @@ pub(crate) fn breaking_lines(body: &str) -> Vec<&str> {
         }
         let text = line.trim_start();
         let text = text.strip_prefix("- ").unwrap_or(text);
-        if text.starts_with("Breaking:") {
+        if text.starts_with(mark) {
             found.push(text);
         }
     }
@@ -1525,6 +1538,21 @@ README.md
         assert_eq!(
             breaking_lines("## Scope\n\nBreaking: shuyi-core: `f`: call `g`.\n"),
             Vec::<&str>::new()
+        );
+    }
+
+    #[test]
+    fn book_lines_read_the_completion_notes_only() {
+        let body = "## Scope\n\nBook: not here\n\n## Completion notes\n\n\
+                    - Book: none, a helper the tests call made public.\n\
+                    Breaking: shuyi-core: `f`: call `g`.\n";
+        assert_eq!(
+            book_lines(body),
+            vec!["Book: none, a helper the tests call made public."]
+        );
+        assert_eq!(
+            breaking_lines(body),
+            vec!["Breaking: shuyi-core: `f`: call `g`."]
         );
     }
 

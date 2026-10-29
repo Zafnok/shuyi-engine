@@ -14,6 +14,7 @@
 //! - `cargo xtask changelog [--site <content dir>] [--format keep-a-changelog]`
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
+//! - `cargo xtask site-data --site <dir>`
 
 mod api;
 mod changelog;
@@ -26,6 +27,7 @@ mod modules;
 mod no_std;
 mod pins;
 mod script;
+mod site_data;
 mod skills;
 mod tickets;
 mod toolchain;
@@ -70,7 +72,9 @@ usage:
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
       and the breaks (cargo-semver-checks), appending the Markdown to <file>.
       With --pr-branch, a break needs a `Breaking:` line in the branch's
-      ticket (ADR-0038). With --verdict, write `none`, `added` or `breaking`
+      ticket (ADR-0038), and a change that changes no file under
+      site/content/learn/ or site/snippets/ a `Book:` line saying why the
+      book needs none (ticket 2815). With --verdict, write `none`, `added` or `breaking`
       to <file>, for the PR's `api:` label.
   cargo xtask skill-examples [<skill>...] [--shard <i>/<n>]
       Run the worked example of each skill of the skill pack (skills/, ADR-0043)
@@ -96,7 +100,13 @@ usage:
       twin's page built, no shortcode left, every llms.txt link resolving, and
       llms-full.txt under its budget.
   cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>
-      Write llms-full.txt alone into <dir>, for a release to attach.";
+      Write llms-full.txt alone into <dir>, for a release to attach.
+  cargo xtask site-data --site <dir>
+      Write <dir>/data/tickets.toml (ticket 2815): the status of each feature
+      card of <dir>/data/features.toml that names `tickets`, Ready when all
+      are in tickets/done/, In progress when some are, Planned when none is,
+      and its link text when it has none. Fails on a card with both `tickets`
+      and `status`, or naming a ticket in neither tickets/open/ nor done/.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -119,6 +129,7 @@ fn main() -> ExitCode {
         Some("compile-times") => compile_times(&root, &args[1..]),
         Some("changelog") => changelog(&root, &args[1..]),
         Some("llms") => llms(&root, &args[1..]),
+        Some("site-data") => site_data(&root, &args[1..]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE
@@ -296,6 +307,15 @@ fn llms(root: &Path, args: &[String]) -> ExitCode {
         let _ = writeln!(stdout, "{note}");
     }
     report("llms", &outcome.errors, &[])
+}
+
+fn site_data(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = site_data::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    let errors = site_data::run(root, &options).err().unwrap_or_default();
+    report("site-data", &errors, &[])
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

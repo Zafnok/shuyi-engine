@@ -5,24 +5,30 @@
 # Pairs). The rows after them are what the engine has that Bevy's
 # homepage doesn't name.
 #
-# - `status`: "Ready" (works today), "In progress" (partly there) or
-#   "Planned" (has a ticket).
+# - `tickets`: the tickets that make the feature. The card's status is
+#   made from them at each build (`cargo xtask site-data`, ticket 2815):
+#   "Ready" when every one is in tickets/done/, "In progress" when some
+#   are, "Planned" when none is. With no `link_text`, its link text names
+#   them ("Tickets 2904, 2107 and 2108"). A card with `tickets` has no
+#   `status`. Name a done ticket that shipped the part there today, so a
+#   card partly there says so.
+# - `status`, on a card with no `tickets`: "Ready" (works today), "In
+#   progress" (partly there) or "Planned" (has a ticket).
 # - `link`: a page of this site (`@/…`) or a path in the repository,
 #   linked on GitHub.
 
 [[feature]]
 title = "Data driven"
 text = "An optional ECS: components as plain structs, systems as functions, queries and a parallel schedule that keeps replays the same. Plain structs stay the default."
-status = "Planned"
+tickets = ["2904", "2107", "2108"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Tickets 2904, 2107, 2108"
 
 [[feature]]
 title = "2D renderer"
 text = "Sprite sheets, texture atlases, cameras, rotated and tinted sprites, shapes, nine-slice pictures and materials, on a skin that never touches the rules."
-status = "In progress"
+tickets = ["2332", "2222", "2335", "2336", "2337", "2338"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Tickets 2222, 2335–2338"
+link_text = "Tickets 2332, 2222, 2335–2338"
 
 [[feature]]
 title = "3D renderer"
@@ -34,16 +40,14 @@ link_text = "ADR-0011"
 [[feature]]
 title = "Render graph"
 text = "A renderer on wgpu, not tied to one graphics API, with a graph of passes a game can extend."
-status = "Planned"
+tickets = ["3034", "2331"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Tickets 3034, 2331"
 
 [[feature]]
 title = "Animation"
 text = "Clips from sprite sheets, state machines, 2D skeletons, and glTF animation with blending and morph targets."
-status = "Planned"
+tickets = ["2104", "2105", "3110"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Tickets 2104, 2105, 3110"
 
 [[feature]]
 title = "Cross platform"
@@ -55,37 +59,37 @@ link_text = "Platform backends"
 [[feature]]
 title = "UI"
 text = "Screens, menus and widgets that say what to show, with layout in the style of flexbox, declared in code or in a file."
-status = "In progress"
+tickets = ["2309", "2310", "2329", "2330", "2355"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Tickets 2329, 2330, 2355"
 
 [[feature]]
 title = "Scenes"
 text = "Save and load whole worlds as text, keeping their ids, with instances and live reload."
-status = "Planned"
+tickets = ["2221"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Ticket 2221"
 
+# Today's sound came with the engine's carve from the game, so no ticket
+# here shipped it: its tickets alone would say "Planned". Its status stays
+# by hand until one of them is done; then it takes
+# `tickets = ["3029", "2341", "2342", "2343", "2344", "2345"]`.
 [[feature]]
 title = "Sound"
 text = "Cues with variants, fades and streamed music today; crossfades, groups with ducking, and positional sound to come."
 status = "In progress"
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Tickets 3029, 2341–2345"
+link_text = "Sound on the roadmap"
 
 [[feature]]
 title = "Hot reload of assets"
 text = "Change a map, a sprite or a line of dialogue and see it in the running game, for every kind of asset."
-status = "Planned"
+tickets = ["2220"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Ticket 2220"
 
 [[feature]]
 title = "Hot reload of code"
 text = "Change a game's code while it runs. Research first, on what Rust allows."
-status = "Planned"
+tickets = ["2905"]
 link = "docs/ROADMAP.md#bevys-homepage"
-link_text = "Ticket 2905"
 
 [[feature]]
 title = "Fast compiles"

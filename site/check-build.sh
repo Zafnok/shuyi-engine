@@ -113,5 +113,18 @@ grep -qF "${one}examples/hello-grid/" "$out/one/hello-grid/index.html" ||
 check_hosts "$out/one" "$one"
 check_hosts "$out/two" "$two"
 
+# The home page shows each card's status as its tickets make it (ticket
+# 2815), once `cargo xtask site-data` has written them, as CI does first.
+made="$site_dir/data/tickets.toml"
+if [ -f "$made" ]; then
+  shown="$(tr '\n' ' ' <"$out/one/index.html" |
+    grep -oE '<h3>[^<]*</h3> *<p>[^<]*</p> *<p class="card-foot"> *<span class="status [^"]*">[^<]*</span>' |
+    sed -E 's/^<h3>([^<]*)<\/h3>.*">([^<]*)<\/span>$/\1|\2/')"
+  while IFS='|' read -r title status; do
+    grep -qxF "$title|$status" <<<"$shown" ||
+      fail "the home page doesn't show the card $title as $status, the status its tickets make"
+  done < <(sed -nE -e 's/^\["(.*)"\]$/\1/p' -e 's/^status = "(.*)"$/|\1/p' "$made" | paste -d '' - -)
+fi
+
 [ "$failed" = 0 ] && echo "The site's build checks passed."
 exit "$failed"

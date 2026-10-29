@@ -218,8 +218,10 @@ Not a local gate: it needs a nightly and two tools. CI runs it on every
 PR that changes a crate (ADR-0038): it shows what merging adds to the
 public API of the seven crates a game uses, and fails a break that the
 branch's ticket has no `Breaking:` line for (the `work-ticket` skill,
-§5). Before pushing a change you think breaks, run it from the
-repository root:
+§5). It also fails a change to the public API that changes no file of
+the book (`site/content/learn/`, `site/snippets/`) when the ticket's
+notes have no `Book:` line saying why (ticket 2815). Before pushing a
+change you think breaks, run it from the repository root:
 
 ```bash
 cargo xtask api --pr-branch t<NNNN>-<slug>   # against `git merge-base HEAD main`; without --pr-branch, no rule

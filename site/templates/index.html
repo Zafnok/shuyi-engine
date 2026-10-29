@@ -19,14 +19,28 @@
     <span class="status status-planned">Planned</span> has a ticket
   </p>
   {%- set features = load_data(path="data/features.toml") %}
+  {#- The statuses made from the cards' tickets, by `cargo xtask site-data`
+      (ticket 2815). Without the file, each card shows its own. #}
+  {%- set made = load_data(path="data/tickets.toml", required=false) %}
   <ul class="cards">
     {%- for feature in features.feature %}
+    {%- set status = feature.status | default(value="Planned") %}
+    {%- set named = "" %}
+    {%- if feature.tickets %}{% set named = feature.tickets | join(sep=", ") %}{% set named = "Tickets " ~ named %}{% endif %}
+    {%- set link_text = feature.link_text | default(value=named) %}
+    {%- if made %}
+    {%- set card = made | get(key=feature.title, default="") %}
+    {%- if card %}
+    {%- set status = card.status %}
+    {%- set link_text = card.link_text %}
+    {%- endif %}
+    {%- endif %}
     <li class="card">
       <h3>{{ feature.title }}</h3>
       <p>{{ feature.text }}</p>
       <p class="card-foot">
-        <span class="status status-{{ feature.status | lower | replace(from=' ', to='-') }}">{{ feature.status }}</span>
-        <a href="{% if feature.link is starting_with('@/') %}{{ get_url(path=feature.link) }}{% else %}{{ config.extra.repo | safe }}/blob/main/{{ feature.link | safe }}{% endif %}">{{ feature.link_text }}</a>
+        <span class="status status-{{ status | lower | replace(from=' ', to='-') }}">{{ status }}</span>
+        <a href="{% if feature.link is starting_with('@/') %}{{ get_url(path=feature.link) }}{% else %}{{ config.extra.repo | safe }}/blob/main/{{ feature.link | safe }}{% endif %}">{{ link_text }}</a>
       </p>
     </li>
     {%- endfor %}

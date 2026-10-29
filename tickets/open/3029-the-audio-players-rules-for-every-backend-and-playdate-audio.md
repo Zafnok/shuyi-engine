@@ -74,6 +74,12 @@ completed:
   (2363, parked) and a loop region for intro-then-loop music (the
   ticket 2902 writes, parked).
 
+**From 2815 (done):** the home page's Sound card keeps a status written
+by hand, because no ticket here shipped today's sound. The first of 3029
+and 2341–2345 to be done moves it to `tickets = ["3029", "2341", "2342",
+"2343", "2344", "2345"]` in `site/data/features.toml`, drops its `status`
+and the comment above it, and gives it back a link text naming them.
+
 ## Nick input
 
 None.

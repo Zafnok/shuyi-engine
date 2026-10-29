@@ -169,7 +169,8 @@ fn temp_root(name: &str) -> PathBuf {
 }
 
 const TICKET_2100: &str = "---\nid: \"2100\"\n---\n\n# 2100 — A\n\n## Completion notes\n\n\
-                           Breaking: shuyi-core: `shuyi_core::state_hash`: hash with `StateHash::of`.\n";
+                           Breaking: shuyi-core: `shuyi_core::state_hash`: hash with `StateHash::of`.\n\
+                           Book: none, the hash is not in the book.\n";
 
 // -- the options --
 
@@ -482,6 +483,131 @@ fn no_break_on_a_sonar_branch_passes() {
     ));
 }
 
+// -- the book's rule --
+
+/// A change to `shuyi-ui`'s public API with no semver finding.
+fn added_ui() -> Vec<CrateApi> {
+    vec![
+        CrateApi::new(
+            "shuyi-ui",
+            Some(&[]),
+            &lines(&["pub fn shuyi_ui::a()"]),
+            Vec::new(),
+        ),
+        CrateApi::new("shuyi-core", Some(&[]), &[], Vec::new()),
+    ]
+}
+
+fn done_with(notes: &'static str) -> impl Fn(&str) -> Option<String> {
+    move |id| (id == "2100").then(|| format!("## Completion notes\n\n{notes}\n"))
+}
+
+#[test]
+fn an_api_change_without_the_book_or_a_line_fails() {
+    let changed = lines(&["crates/ui/src/lib.rs", "site/content/news/x.md"]);
+    let Verdict::Fail(why) = book_rule(&added_ui(), "t2100-a", &changed, &done_with("Done."))
+    else {
+        panic!("passed");
+    };
+    assert!(
+        why.starts_with("ticket 2100's `## Completion notes` have no `Book:` line."),
+        "{why}"
+    );
+    assert!(why.contains("The public API of shuyi-ui changed"), "{why}");
+    assert!(!why.contains("shuyi-core"), "{why}");
+    assert!(why.contains("the docs map (docs/README.md)"), "{why}");
+    assert!(why.ends_with("\n\n    Book: none, <why>"), "{why}");
+}
+
+#[test]
+fn an_api_change_with_a_book_line_passes_and_quotes_it() {
+    let verdict = book_rule(
+        &added_ui(),
+        "t2100-a",
+        &[],
+        &done_with("- Book: none, a helper the tests call made public."),
+    );
+    assert_eq!(
+        verdict,
+        Verdict::Pass(
+            "ticket 2100's notes say: Book: none, a helper the tests call made public.".to_string()
+        )
+    );
+}
+
+#[test]
+fn an_api_change_with_the_book_changed_passes() {
+    for file in [
+        "site/content/learn/book/screens.md",
+        "site/snippets/src/rules.rs",
+    ] {
+        let changed = lines(&["crates/ui/src/lib.rs", file]);
+        let verdict = book_rule(&added_ui(), "t2100-a", &changed, &done_with("Done."));
+        assert!(
+            matches!(&verdict, Verdict::Pass(why) if why.starts_with("the book changed")),
+            "{verdict:?}"
+        );
+    }
+}
+
+#[test]
+fn a_branch_with_no_ticket_is_skipped() {
+    for branch in [
+        "dependabot/cargo/serde-1.0.300",
+        "sonar/312-lifetimes",
+        "game-1203-x",
+    ] {
+        let verdict = book_rule(&added_ui(), branch, &[], &no_ticket);
+        assert!(
+            matches!(&verdict, Verdict::Pass(why) if why.contains("names no ticket")),
+            "{verdict:?}"
+        );
+    }
+}
+
+#[test]
+fn no_api_change_asks_nothing_of_the_book() {
+    let listing = lines(&["pub fn a()"]);
+    let crates = [CrateApi::new(
+        "shuyi-ui",
+        Some(&listing),
+        &listing,
+        Vec::new(),
+    )];
+    assert!(matches!(
+        book_rule(&crates, "t2100-a", &[], &no_ticket),
+        Verdict::Pass(_)
+    ));
+}
+
+#[test]
+fn an_api_change_on_a_ticket_not_done_fails() {
+    let Verdict::Fail(why) = book_rule(&added_ui(), "t2100-a", &[], &no_ticket) else {
+        panic!("passed");
+    };
+    assert!(
+        why.starts_with("ticket 2100 is not in tickets/done/"),
+        "{why}"
+    );
+}
+
+#[test]
+fn the_summary_ends_with_the_books_verdict() {
+    let crates = added_ui();
+    let pass = Verdict::Pass("fine.".to_string());
+    let text = summary("abc", &crates, &[], Some(&pass), Some(&pass));
+    assert!(
+        text.ends_with("**Pass:** fine.\n\n**Book:** fine.\n"),
+        "{text}"
+    );
+    let fail = Verdict::Fail("no line\n".to_string());
+    let text = summary("abc", &crates, &[], Some(&pass), Some(&fail));
+    assert!(
+        text.ends_with("**Book, fail:**\n\n```text\nno line\n```\n"),
+        "{text}"
+    );
+}
+
 #[test]
 fn named_crates_read_the_list_before_the_item() {
     assert_eq!(
@@ -572,7 +698,7 @@ and how
 ```
 ";
     assert_eq!(
-        summary("abc123", &crates, &warnings, Some(&verdict)),
+        summary("abc123", &crates, &warnings, Some(&verdict), None),
         expected
     );
 }
@@ -581,7 +707,7 @@ and how
 fn the_summary_cuts_a_diff_at_200_lines() {
     let head: Vec<String> = (0..203).map(|i| format!("pub fn f{i:03}()")).collect();
     let crates = vec![CrateApi::new("shuyi-ui", Some(&[]), &head, Vec::new())];
-    let text = summary("abc", &crates, &[], None);
+    let text = summary("abc", &crates, &[], None, None);
     assert!(
         text.contains("+pub fn f199()\n```\n\nAnd 3 more.\n"),
         "{text}"
@@ -602,6 +728,7 @@ fn the_summary_shows_exactly_200_lines_without_a_cut() {
         &crates,
         &[],
         Some(&Verdict::Pass("fine.".to_string())),
+        None,
     );
     assert!(text.contains("+pub fn f199()\n```\n\n</details>"), "{text}");
     assert!(!text.contains("more."), "{text}");
@@ -880,9 +1007,10 @@ fn a_break_with_its_line_in_the_done_ticket_passes() {
     let outcome = run(&root, &options, &breaking_run(&root));
     assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
     assert!(
-        outcome
-            .summary
-            .ends_with("**Pass:** ticket 2100 has a `Breaking:` line for shuyi-core.\n"),
+        outcome.summary.ends_with(
+            "**Pass:** ticket 2100 has a `Breaking:` line for shuyi-core.\n\n\
+             **Book:** ticket 2100's notes say: Book: none, the hash is not in the book.\n"
+        ),
         "{}",
         outcome.summary
     );
@@ -904,9 +1032,69 @@ fn a_break_without_its_line_fails() {
         ..Options::default()
     };
     let outcome = run(&root, &options, &breaking_run(&root));
-    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    // Its notes have no `Book:` line either.
+    assert_eq!(outcome.errors.len(), 2, "{:?}", outcome.errors);
     assert!(outcome.errors[0].contains("no `Breaking:` line naming shuyi-core"));
+    assert!(outcome.errors[1].contains("have no `Book:` line"));
     assert!(outcome.summary.contains("**Fail:**"), "{}", outcome.summary);
+    assert!(
+        outcome.summary.contains("**Book, fail:**"),
+        "{}",
+        outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_run_reads_the_books_change_from_git() {
+    let root = temp_root("book-changed");
+    fs::write(
+        root.join("tickets/done/2100-a.md"),
+        "## Completion notes\n\nBreaking: shuyi-core: `f`: g.\n",
+    )
+    .unwrap();
+    let options = Options {
+        base: Some("abc123".to_string()),
+        pr_branch: Some("t2100-a".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root).answer(
+        "head: git diff --name-only abc123",
+        Ok(ok("crates/core/src/lib.rs\nsite/snippets/src/rules.rs\n")),
+    );
+    let outcome = run(&root, &options, &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    assert!(
+        outcome.summary.ends_with(
+            "**Book:** the book changed with the public API (1 file(s) under \
+             site/content/learn/ or site/snippets/).\n"
+        ),
+        "{}",
+        outcome.summary
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_failed_git_diff_fails_the_book_rule() {
+    let root = temp_root("book-diff-failed");
+    fs::write(root.join("tickets/done/2100-a.md"), TICKET_2100).unwrap();
+    let options = Options {
+        base: Some("abc123".to_string()),
+        pr_branch: Some("t2100-a".to_string()),
+        ..Options::default()
+    };
+    let fake = breaking_run(&root).answer(
+        "head: git diff --name-only",
+        Ok(failed("fatal: bad revision")),
+    );
+    let outcome = run(&root, &options, &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        outcome.errors[0].contains("`git diff --name-only abc123` failed"),
+        "{:?}",
+        outcome.errors
+    );
     let _ = fs::remove_dir_all(&root);
 }
 

@@ -452,9 +452,10 @@ jobs:
   # The public API of the crates a game uses (ticket 2010, ADR-0038): what
   # merging adds to each crate's listing (cargo-public-api) and its breaks
   # (cargo-semver-checks), against the base's tip, in the job summary. A
-  # break needs a `Breaking:` line in the branch's ticket. On a pull
-  # request HEAD is the merge commit and HEAD^1 the base's tip, as in
-  # changes.yml.
+  # break needs a `Breaking:` line in the branch's ticket, and a change
+  # that changes no file of the book a `Book:` line saying why (ticket
+  # 2815). On a pull request HEAD is the merge commit and HEAD^1 the
+  # base's tip, as in changes.yml.
   api:
     name: api
     needs: changes
@@ -664,6 +665,7 @@ jobs:
   # from another host. Then the docs for agents over a build (ticket 2808):
   # no shortcode left unexpanded, every llms.txt link resolving but the API
   # docs' (pages.yml builds those), and llms-full.txt under its budget.
+  # The feature cards' statuses come from their tickets (ticket 2815).
   # Cheap, and Markdown is what it reads, so this always runs, like
   # `tickets`. pages.yml builds and publishes the site on main.
   site:
@@ -678,6 +680,9 @@ jobs:
       - uses: ./.github/actions/setup-zola
       - name: Write the problem codes' pages
         run: bash site/errors.sh
+      # check-build.sh checks the home page shows them (ticket 2815).
+      - name: Write the feature cards' statuses
+        run: cargo xtask site-data --site site
       - name: Check the site's links
         working-directory: site
         run: zola check --skip-external-links

@@ -46,6 +46,10 @@ jobs:
       # committed: written from tickets/done/ and the merges.
       - name: Write the changelog and the release posts
         run: cargo xtask changelog --site site/content
+      # The feature cards' statuses, made from the tickets they name and
+      # never committed (ticket 2815).
+      - name: Write the feature cards' statuses
+        run: cargo xtask site-data --site site
       # The base URL is what GitHub serves the site at, so a custom domain
       # (2807) changes it without a change here.
       - name: Read the site's address
