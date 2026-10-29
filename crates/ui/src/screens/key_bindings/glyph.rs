@@ -14,7 +14,7 @@
 //! note, with no room after the slots, is written over them (they are all
 //! empty when it shows).
 //!
-//! Rows that don't fit the panel scroll ([`Scroll`]): the list moves up
+//! Rows that don't fit the panel scroll: the list moves up
 //! just enough to keep the focused row (or Restore defaults) on the panel,
 //! and a `▲` or `▼` on the panel's right border says rows are hidden above
 //! or below.
