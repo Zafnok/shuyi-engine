@@ -238,7 +238,7 @@ impl Renderer {
                 vec2(visible.w as f32, visible.h as f32) * scale,
             );
             match item {
-                Item::Rect(rect) => draw_rectangle(x, y, size.x, size.y, color(rect.color)),
+                Item::Rect(rect) => draw_rectangle(x + 1.0, y, size.x, size.y, color(rect.color)),
                 Item::Sprite(sprite) => self.draw_sprite(sprite, x, y, size),
             }
         }
