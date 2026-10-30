@@ -238,6 +238,46 @@ fn a_feature_of_the_front_door_with_no_row_fails() {
     );
 }
 
+/// A backend answers no concern: its README and its row in the table of
+/// backends are what it needs, and no metadata.
+#[test]
+fn a_backend_needs_its_readme_and_its_row_not_metadata() {
+    let mut files = clean();
+    let row = "\n## Platform backends\n\n| Backend |\n| ------- |\n| `shuyi-gadget` |\n";
+    files.insert(CATALOG.to_owned(), format!("{CATALOG_MD}{row}"));
+    files.insert(
+        "crates/gadget/Cargo.toml".into(),
+        manifest("shuyi-gadget", ""),
+    );
+    assert_eq!(
+        checked("backend-bare", &files),
+        [
+            "shuyi-gadget is a backend (it has a row in docs/modules.md's Platform backends) \
+             with no README.md: write one"
+        ]
+    );
+    files.insert("crates/gadget/README.md".into(), "# shuyi-gadget\n".into());
+    assert_eq!(checked("backend", &files), [] as [String; 0]);
+}
+
+/// `std` and `app` are the default engine's, and no module's.
+#[test]
+fn the_front_doors_own_features_need_no_row() {
+    let mut files = clean();
+    files.insert(
+        "crates/shuyi/Cargo.toml".into(),
+        manifest(
+            "shuyi",
+            "[features]\ndefault = [\"std\", \"app\"]\nstd = []\napp = [\"std\"]\n\
+             alpha = [\"dep:shuyi-alpha\"]\nbeta = [\"dep:shuyi-beta\"]\n\n\
+             [dependencies]\nshuyi-core = { path = \"../core\" }\n\
+             shuyi-alpha = { path = \"../alpha\", optional = true }\n\
+             shuyi-beta = { path = \"../beta\", optional = true }\n",
+        ),
+    );
+    assert_eq!(checked("front-door", &files), [] as [String; 0]);
+}
+
 #[test]
 fn missing_files_are_errors() {
     let mut files = clean();

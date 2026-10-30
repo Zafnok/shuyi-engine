@@ -7,7 +7,9 @@
 
 pub mod stage;
 
-use std::any::Any;
+use core::any::Any;
+
+use crate::prelude::*;
 
 use shuyi::assets::dialogue::{Present, Side as Speaker};
 use shuyi::ui::dialogue::{DialoguePlayer, Plain, Step, TextBox, TextView, WaitView};

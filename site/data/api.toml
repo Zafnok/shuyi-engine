@@ -28,6 +28,10 @@ name = "shuyi_app"
 text = "the macroquad backend for desktop and the web, and run_game"
 
 [[crate]]
+name = "shuyi_playdate"
+text = "the Playdate backend, for a game built by shuyi export playdate"
+
+[[crate]]
 name = "shuyi_cli"
 text = "the tools: the tool contract, the MCP server, and BasicTools and GameTools for a game's tool program"
 

@@ -6,18 +6,25 @@
 //! - [`core`], [`assets`], [`ui`], [`platform`] and [`app`]: the default
 //!   engine's crates, `shuyi-core` to `shuyi-app`, under short names
 //!   (`app`, the macroquad backend, on every target but WASI, which has no
-//!   window);
+//!   window, and with its feature, on by default; a game on a device without
+//!   `std` turns the default features off);
 //! - [`prelude`]: what a game on the short path names, with
 //!   [`run_game`](prelude::run_game);
 //! - [`enabled_modules`]: the [`Module`] of each module turned on, which
 //!   the game installs once.
+#![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(target_os = "wasi"))]
+extern crate alloc;
+
+#[cfg(all(feature = "app", not(target_os = "wasi")))]
 pub use shuyi_app as app;
 pub use shuyi_assets as assets;
 pub use shuyi_core as core;
 pub use shuyi_platform as platform;
 pub use shuyi_ui as ui;
+
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use shuyi_ui::GameData;
 use shuyi_ui::module::Module;
@@ -26,7 +33,7 @@ use shuyi_ui::module::Module;
 /// prelude, and [`run_game`](shuyi_app::run_game), which runs it from a
 /// plain `main`.
 pub mod prelude {
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(all(feature = "app", not(target_os = "wasi")))]
     pub use shuyi_app::run_game;
     pub use shuyi_platform::prelude::*;
 }
@@ -63,7 +70,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_os = "wasi"))]
+    #[cfg(all(feature = "app", not(target_os = "wasi")))]
     fn the_prelude_names_the_short_path_and_run_game() {
         use crate::prelude::{BasicGame, UiAction, run_game};
         let _: fn(BasicGame<UiAction>) = run_game::<UiAction, ()>;

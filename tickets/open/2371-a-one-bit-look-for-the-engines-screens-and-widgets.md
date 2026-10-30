@@ -82,8 +82,12 @@ None.
 - The Playdate backend (3010; this ticket needs no device, only the
   one-bit frame).
 
-**Either order with 3010:** if 3010 is done, its example on the Playdate
-uses these painters for its Options screen; if not, 3010 picks them up.
+**From 3010 (done):** Hello, Grid (`examples/hello-grid`) runs on the
+Playdate (`src/playdate.rs`, its console `PLAYDATE_CONSOLE` of 50 × 15,
+its `Hello::one_bit_ctx`). Its Options screen there is the engine's
+glyph options, painted through the pattern map, and cut off where they
+don't fit 15 rows. This ticket moves it onto these painters, and
+`docs/targets/playdate.md`'s line on the engine's screens goes with it.
 
 **One look type, not two.** `PanelLook` (`frame/draw.rs`) already holds
 a panel's `BoxStyle` and its border, title, text and background

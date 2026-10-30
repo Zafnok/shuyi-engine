@@ -267,6 +267,12 @@ impl<G: GameData> ScreenStack<G> {
         self.screens.last().map(|s| s.name())
     }
 
+    /// The actions the top screen declares it reacts to
+    /// ([`Screen::actions`]), if it declares them.
+    pub fn top_actions(&self) -> Option<Vec<G::Action>> {
+        self.screens.last().and_then(|s| s.actions())
+    }
+
     /// Puts `screen` on top, to build a stack: the screen below is not
     /// told ([`Screen::covered`]); [`apply_in`](Self::apply_in) with
     /// [`Transition::Push`] tells it.

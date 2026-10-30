@@ -57,8 +57,9 @@ Ship only what `check --target` passes.
    check the `desktop` profile) and builds nothing on an error. Then it
    writes the package into `dist/export/<target>/`: `windows` a zip,
    `linux` a `tar.gz`, `macos` a folder with one `.app` for Apple
-   silicon and Intel Macs, signed ad hoc, and `web` the web build's
-   folder and its zip (step 3 first). Each desktop target builds on its
+   silicon and Intel Macs, signed ad hoc, `web` the web build's
+   folder and its zip (step 3 first), and `playdate` a `.pdx` and its zip
+   (`docs/targets/playdate.md`). Each desktop target builds on its
    own system, and a missing Rust target says its `rustup target add`.
    - Every package carries `NOTICES.txt` (step 3), and the `windows`
      and `macos` ones `HOW-TO-OPEN.txt`: the packages aren't signed by a

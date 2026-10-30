@@ -199,10 +199,15 @@ engine gives the pieces and a default, and the game chooses.
     `Setup::languages`, and the headless backend takes them through
     `HeadlessPlatform::with_facts`), and `Setup::ctx` hands them to
     `Ctx::set_system_languages` before the settings load.
-  - **Either order with 3010** (the Playdate backend): if it is done,
-    `shuyi-playdate` answers `languages` from the SDK's
-    `system->getLanguage()` (English gives `en`, Japanese `ja`,
-    anything else none); if not, 3010 does that.
+  - **From 3010 (done):** `shuyi-playdate` fills the rest of its
+    `facts()` from the profile (`Playdate<S>` in
+    `crates/playdate/src/backend.rs`) but leaves `languages` empty,
+    since the `Sdk` trait (`src/sdk.rs`) has no call for the system's
+    language. This ticket adds one over the SDK's
+    `system->getLanguage()` (in the C shim, `shim/shim.c`, the real
+    `Device` in `src/device/mod.rs` and the fake in `src/fake.rs`), and
+    `facts()` fills `languages` from it (English gives `en`, Japanese
+    `ja`, anything else none), with a fake-SDK test.
 - **The options row.**
   - `RowValue::Names { values: fn(&Ctx<G>) -> Vec<String>, get, set }`:
     a choice whose values show as written, not looked up as text keys

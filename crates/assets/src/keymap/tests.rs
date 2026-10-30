@@ -1064,14 +1064,14 @@ fn the_chord_window_is_read_from_the_file() {
 #[test]
 fn the_crank_notch_is_read_from_the_file() {
     let k = KeymapDef::from_source("k.ron", &source_with_playdate("", "")).unwrap_or_default();
-    assert_eq!(k.crank, CrankDef { notch_degrees: 30 });
+    assert_eq!(k.crank, CrankDef::default());
     let src = source_with_playdate(
         "",
-        "    crank: (notch_degrees: 45),
+        "    crank: (notch_degrees: 60),
 ",
     );
     let k = KeymapDef::from_source("k.ron", &src).unwrap_or_default();
-    assert_eq!(k.crank, CrankDef { notch_degrees: 45 });
+    assert_eq!(k.crank, CrankDef { notch_degrees: 60 });
     for bad in [0, 361] {
         let src = source_with_playdate(
             "",

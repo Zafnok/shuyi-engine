@@ -266,10 +266,15 @@ None.
     `examples/hello-grid` alone, and `tools/export-check/`'s file lists
     name its program; this ticket adds snake to the job (its export and
     check steps, with the lists taking the program's name), so `shuyi
-    export` builds it for each of the job's targets. If 3010 is done, `shuyi export
-    playdate` builds it, and the PR says whether it runs in the Playdate
-    Simulator (if the SDK is installed where the PR is made); if not,
-    3010 does it.
+    export` builds it for each of the job's targets. **From 3010
+    (done):** `shuyi export playdate` is there, and builds a game that
+    does what *What a game adds* in `docs/targets/playdate.md` says (a
+    `playdate` feature and `shuyi_playdate::main!`, as Hello, Grid's
+    `src/playdate.rs`). It runs on a developer's machine, never in CI
+    (the SDK's license), so the `export` job's targets leave it out.
+    The example does that, `shuyi export playdate` builds it, and the PR
+    says whether it runs in the Playdate Simulator (`--run`, if the SDK
+    is installed where the PR is made).
 - **The template part `stage-arcade-grid`** in `templates/shuyi-default/`
   (2501):
   - the built-in template gets its own question `time` ("On a grid:
@@ -315,8 +320,9 @@ None.
   - leave `Replay` out of its checks: a tick game has no `bots` here
     (Out), so the grader gets no record. This ticket's replay test
     covers the example;
-  - if 3010 is done, add `playdate` to its targets and drop its
-    `unmeasured` Playdate entry; if not, 3010 does it;
+  - **From 3010 (done):** 3010 left `evals/tasks` alone, so add
+    `playdate` to its targets and drop its `unmeasured` Playdate entry,
+    if its reference passes `cargo shuyi check --target playdate`;
   - the `eval` job's `cargo xtask eval-reference --all` grades it, and
     `cargo xtask eval-reference snake` passes.
 

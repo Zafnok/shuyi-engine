@@ -1043,3 +1043,88 @@ fn the_guard_holds_back_what_a_screen_does_not_declare() {
     game.act(Action::Info);
     assert_eq!(game.undeclared_actions().len(), 1);
 }
+
+/// The toy with Confirm and Cancel, what its home screen requires, on the
+/// crank alone.
+fn on_the_crank() -> Game<Toy> {
+    let mut ctx = ctx();
+    ctx.keymap = ctx.keymap.clone().with_pad([
+        (Button::CrankForward, Action::Confirm),
+        (Button::CrankBack, Action::Cancel),
+    ]);
+    crate::toy::game_on(ctx)
+}
+
+/// Row `y` of what `game` shows.
+fn row_of(game: &Game<Toy>, y: i32) -> String {
+    let buffer = game.buffer();
+    (0..i32::from(buffer.width()))
+        .filter_map(|x| buffer.get(x, y).map(|cell| cell.glyph))
+        .collect()
+}
+
+#[test]
+fn a_docked_crank_gets_a_hint_centred_on_the_last_row() {
+    let mut game = on_the_crank();
+    game.redraw();
+    let bottom = i32::from(game.buffer().height()) - 1;
+    let blank = row_of(&game, bottom);
+    assert_eq!(blank.trim(), "", "undocked, no hint");
+    game.ctx_mut().crank_docked = true;
+    game.redraw();
+    let hint = CRANK_HINT_ENGLISH;
+    let left = (blank.chars().count() - hint.chars().count()) / 2;
+    let right = blank.chars().count() - hint.chars().count() - left;
+    let expected = format!("{}{hint}{}", " ".repeat(left), " ".repeat(right));
+    assert_eq!(row_of(&game, bottom), expected);
+    assert_eq!(row_of(&game, bottom - 1).trim(), "", "on that row alone");
+    game.ctx_mut().crank_docked = false;
+    game.redraw();
+    assert_eq!(row_of(&game, bottom).trim(), "", "and gone when it is out");
+}
+
+#[test]
+fn no_hint_while_the_required_actions_have_a_button() {
+    let mut game = crate::toy::game_on(ctx());
+    game.ctx_mut().crank_docked = true;
+    game.redraw();
+    let bottom = i32::from(game.buffer().height()) - 1;
+    assert_eq!(row_of(&game, bottom).trim(), "");
+}
+
+#[test]
+fn the_top_screens_actions_are_what_it_declares() {
+    let game = crate::toy::game_on(ctx());
+    assert_eq!(
+        game.stack.top_actions(),
+        Some(vec![Action::Confirm, Action::Cancel])
+    );
+}
+
+#[test]
+fn a_crank_turned_in_steps_presses_as_one_turned_in_degrees() {
+    let mut crank = Crank::new(shuyi_assets::keymap::CrankDef::default());
+    let kind = PadKind::Playdate;
+    let forward = Button::CrankForward;
+    let (down, up) = (
+        RawInputEvent::PadDown(forward, kind),
+        RawInputEvent::PadUp(forward),
+    );
+    assert_eq!(
+        RawInputEvent::from_crank_steps(&mut crank, 64, false, kind),
+        [down, up, down, up]
+    );
+    assert_eq!(
+        RawInputEvent::from_crank_steps(&mut crank, 31, false, kind),
+        []
+    );
+    // Docked: nothing, and what was wound is forgotten.
+    assert_eq!(
+        RawInputEvent::from_crank_steps(&mut crank, 1, true, kind),
+        []
+    );
+    assert_eq!(
+        RawInputEvent::from_crank_steps(&mut crank, 1, false, kind),
+        []
+    );
+}

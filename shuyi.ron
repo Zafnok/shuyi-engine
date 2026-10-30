@@ -15,6 +15,7 @@
             // presses they share.
             "crates/app/src/keys.rs",
             "crates/app/src/pads/native.rs",
+            "crates/playdate/src/input.rs",
             "crates/platform/src/capture.rs",
             "crates/platform/src/harness.rs",
             "crates/platform/src/link.rs",

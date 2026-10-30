@@ -5,6 +5,8 @@
 //! `files/tiles.png`, which `cargo shuyi glyph-tiles` draws from the same
 //! glyphs and colors, `shuyi.ron` says which).
 
+use crate::prelude::*;
+
 use shuyi::assets::image::{ImageId, ImageRect};
 use shuyi::assets::tileset::{Look as TileLook, TerrainTiles};
 use shuyi::core::{Pos, TerrainId};

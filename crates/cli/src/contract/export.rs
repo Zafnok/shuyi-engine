@@ -33,7 +33,7 @@ pub const REPORT: &str = "export-report.json";
 // (ADR-0039).
 #[non_exhaustive]
 pub struct ExportInput {
-    /// The target: `windows`, `linux`, `macos` or `web`. Any other
+    /// The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other
     /// target's check runs, and the answer says it has no exporter yet.
     pub target: String,
     /// The folder the package goes in, from the game's folder;
@@ -150,15 +150,19 @@ pub fn export(
         Ok(cx) => cx,
         Err(e) => return failed(&e),
     };
+    if let Err(e) = exporter.prepare(&cx, project, game) {
+        return failed(&e);
+    }
     let mut report = match exporter.export(&cx) {
         Ok(report) => report,
         Err(e) => return failed(&e),
     };
-    report.warnings = problems
-        .into_iter()
-        .filter(|p| p.level == Level::Warning)
-        .cloned()
-        .collect();
+    report.warnings.extend(
+        problems
+            .into_iter()
+            .filter(|p| p.level == Level::Warning)
+            .cloned(),
+    );
     let mut answer = Answer::new(op, true, report, checked.limits);
     let json = serde_json::to_string_pretty(&answer.result).unwrap_or_default();
     if let Err(e) = fs::write(cx.out.join(REPORT), format!("{json}\n")) {
@@ -211,14 +215,14 @@ pub fn parse_args(args: &[String]) -> Result<ExportInput, String> {
             _ => return Err("one target".to_owned()),
         }
     }
-    input.target = target.ok_or("a target: windows, linux, macos or web")?;
+    input.target = target.ok_or("a target: windows, linux, macos, web or playdate")?;
     Ok(input)
 }
 
 /// `export`'s usage, with `command` as the tool's name.
 pub fn usage(command: &str) -> String {
     format!(
-        "usage: {command} export <windows | linux | macos | web> [--out <dir>] [--release] \
+        "usage: {command} export <windows | linux | macos | web | playdate> [--out <dir>] [--release] \
          [--run] [--json]"
     )
 }

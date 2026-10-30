@@ -767,3 +767,15 @@ fn runs_cross_bytes_and_clip() {
     assert_eq!(widen(0b1000_0001, 2), 0xc003 << 48);
     assert_eq!(widen(0b0100_0000, 4), 0x0f << 56);
 }
+
+#[test]
+fn pictures_behind_a_borrow_are_the_same_pictures() {
+    let bits = [0xF0];
+    let image = Image::new(8, 1, &bits, None).unwrap_or_else(|| panic!());
+    let one = One(image);
+    let borrowed: &dyn Images = &one;
+    assert_eq!(
+        <&dyn Images as Images>::image(&borrowed, picture_id()),
+        Some(image)
+    );
+}

@@ -222,8 +222,12 @@ each part is one PR.
   `check_keys` section as the templates' have, the `game` tool program
   and a `web` section (`title: "Match Three"`). It has a
   `palette@onebit.ron` (3006) and a `frame-png --target playdate`
-  picture. If
-  3010 is done, `shuyi export playdate` builds it.
+  picture. **From 3010 (done):** `shuyi export playdate` is there, and
+  builds a game that does what *What a game adds* in
+  `docs/targets/playdate.md` says (a `playdate` feature and
+  `shuyi_playdate::main!`, as Hello, Grid's `src/playdate.rs`). This
+  example does that, `shuyi export playdate` builds it, and its report
+  gives the `.pdx` size against the profile's `package_bytes`.
 - **The tools** (`src/tools.rs`, and `examples/tools.rs` calling
   `shuyi_cli::main_with`): its own `GameTools`, which calls 2511's
   `BasicTools` for `frame`, `lang`, `check` and `controls`, and adds

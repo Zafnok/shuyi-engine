@@ -98,6 +98,6 @@ Backends are crates of their own (ADR-0008): a game's binary runs on one.
 | Backend | Serves | Status | Tickets |
 | ------- | ------ | ------ | ------- |
 | `shuyi-app` | desktop, the web and the Steam Deck, over macroquad (default) | ready | — |
-| `shuyi-playdate` | the Playdate | planned | 3010 |
+| `shuyi-playdate` | the Playdate | ready | 3010 |
 | `shuyi-gba` | the Game Boy Advance | parked | 3021 |
 | `shuyi-nds` | the Nintendo DS | parked | 3024 |

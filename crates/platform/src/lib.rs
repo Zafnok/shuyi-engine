@@ -65,7 +65,7 @@ pub use app::{App, Card, FrameOutcome, Load, LookOf, Setup, Start, SystemHook};
 pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;
-pub use platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
+pub use platform::{DisplayInfo, Frame, Look, Millis, OneBitLook, Platform, Show, SystemEvent};
 pub use shuyi_ui::storage::Storage;
 pub use text_input::{TextAnswer, TextAsk, TextInput};
 

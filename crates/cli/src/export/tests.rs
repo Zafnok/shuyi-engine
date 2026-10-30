@@ -36,6 +36,8 @@ fn cx(name: &str, target: &str) -> ExportCx {
             voice: None,
             dist: "dist/web".to_owned(),
         }),
+        app: None,
+        features: Vec::new(),
     }
 }
 
@@ -52,10 +54,21 @@ fn every_exporters_builds_turn_on_no_feature_and_never_the_live_link() {
                     args.windows(2)
                         .any(|w| w[0] == "--target" && w[1] == *triple)
                 );
-                assert!(
-                    !args.iter().any(|a| a.contains("feature") || a == "-F"),
-                    "{args:?}"
-                );
+                // The Playdate's build turns on what makes the library the
+                // game there, and nothing else.
+                let features: Vec<&String> = args
+                    .windows(2)
+                    .filter(|w| w[0] == "--features")
+                    .map(|w| &w[1])
+                    .collect();
+                if exporter.id() == "playdate" {
+                    assert_eq!(features, [playdate::FEATURE], "{args:?}");
+                } else {
+                    assert!(
+                        !args.iter().any(|a| a.contains("feature") || a == "-F"),
+                        "{args:?}"
+                    );
+                }
                 assert_eq!(args.iter().any(|a| a == "--release"), release, "{args:?}");
                 assert_eq!(no_live_link(args), Ok(()));
             }
@@ -79,12 +92,15 @@ fn every_exporters_builds_turn_on_no_feature_and_never_the_live_link() {
 }
 
 #[test]
-fn the_exporters_are_the_four_targets_with_their_profiles() {
-    assert_eq!(ids(), ["windows", "linux", "macos", "web"]);
+fn the_exporters_are_the_targets_with_their_profiles() {
+    assert_eq!(ids(), ["windows", "linux", "macos", "web", "playdate"]);
     let profiles: Vec<&str> = exporters().iter().map(|e| e.profile()).collect();
-    assert_eq!(profiles, ["desktop", "desktop", "desktop", "web"]);
+    assert_eq!(
+        profiles,
+        ["desktop", "desktop", "desktop", "web", "playdate"]
+    );
     assert_eq!(find("macos").unwrap().triples().len(), 2);
-    assert!(find("playdate").is_none());
+    assert!(find("steam-deck").is_none());
 }
 
 #[test]

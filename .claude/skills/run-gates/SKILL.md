@@ -95,6 +95,8 @@ cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --n
 cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
 cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
+RUSTFLAGS="--cfg shuyi_playdate_sdk" cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked
+cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked
 cargo xtask check-no-std   # no `std::` path outside cfg(feature = "std") in those three
 RUSTFLAGS="-D warnings -A unused-imports" cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
 ```

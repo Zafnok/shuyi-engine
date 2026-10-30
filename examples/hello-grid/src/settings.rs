@@ -2,6 +2,9 @@
 //! volumes, the frame cap) and the game's own, the map's look; saved as one
 //! RON record.
 
+#[allow(unused_imports)]
+use crate::prelude::*;
+
 use serde::{Deserialize, Serialize};
 use shuyi::ui::frame_cap::FrameCap;
 use shuyi::ui::settings::{GameSettings, Settings, TextSpeed};

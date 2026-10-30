@@ -25,14 +25,21 @@ name = "tools"
 required-features = ["tools"]
 
 [features]
-default = ["window"]
+default = ["std", "window"]
+# `std`: the game's files embedded, and everything else a computer has.
+# Without it the library builds for a device with no standard library, and
+# reads its files from a baked pack (`hello_grid::Hello::one_bit_ctx`).
+std = ["shuyi/std", "dep:include_dir", "serde/std", "ron/std"]
 # `window`: the binary, which opens the game in macroquad's window.
 # Without it the library builds for a target that has none, as the
 # golden test does under WASI (`tests/golden.rs`).
-window = ["dep:macroquad"]
+window = ["std", "shuyi/app", "dep:macroquad"]
 # `tools`: the game's `frame-png` and `lang-status` (`hello_grid::tools`),
 # for its tool program and its tests.
-tools = ["dep:shuyi-cli"]
+tools = ["std", "dep:shuyi-cli"]
+# `playdate`: the game on the Playdate (`hello_grid::playdate`), which
+# `cargo shuyi export playdate` builds with its default features off.
+playdate = ["dep:shuyi-playdate"]
 # `link`: the live link, so `cargo shuyi attach` reaches the game running
 # in its window: `SHUYI_LINK=0 cargo run -p hello-grid --features link`,
 # in a debug build. Off by default.
@@ -46,7 +53,9 @@ capture = ["window", "shuyi-app/capture"]
 [dependencies]
 # The engine, by its front door: its crates as `shuyi::core`, `shuyi::ui`
 # and the rest, the macroquad backend among them, and no module.
-shuyi = { path = "../../crates/shuyi" }
+shuyi = { path = "../../crates/shuyi", default-features = false }
+# The Playdate backend (the `playdate` feature).
+shuyi-playdate = { path = "../../crates/playdate", optional = true }
 # The engine's tools, which turn on the Harness.
 shuyi-cli = { path = "../../crates/cli", optional = true }
 # The macroquad backend, already under `shuyi`, named for its `link` and
@@ -54,10 +63,10 @@ shuyi-cli = { path = "../../crates/cli", optional = true }
 shuyi-app = { path = "../../crates/app", optional = true }
 # The entry point: `#[macroquad::main]` has to be in the binary.
 macroquad = { workspace = true, optional = true }
-serde = { workspace = true, features = ["std"] }
-ron = { workspace = true, features = ["std"] }
+serde.workspace = true
+ron.workspace = true
 # The files under `files/`, embedded.
-include_dir.workspace = true
+include_dir = { workspace = true, optional = true }
 
 [package.metadata.cargo-machete]
 # Named for its features (`link`, `capture`), not its code.

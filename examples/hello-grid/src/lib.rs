@@ -14,11 +14,26 @@
 //! [`bake`]). On the Playdate, `files@playdate/` is laid over them
 //! ([`bundle`]): its tileset drawn in black and white, which
 //! `cargo shuyi bake --target playdate` takes in place of dithering the
-//! colour one ([`one_bit_bake`]).
+//! colour one ([`one_bit_bake`]). There the device has no standard library,
+//! and the game reads a pack baked so ([`Hello::one_bit_ctx`], `playdate`).
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
+
+/// What `std`'s prelude gives for free, for the build without it.
+mod prelude {
+    pub use alloc::borrow::ToOwned;
+    pub use alloc::boxed::Box;
+    pub use alloc::string::{String, ToString};
+    pub use alloc::vec::Vec;
+    pub use alloc::{format, vec};
+}
 
 pub mod action;
 pub mod app_info;
 pub mod map;
+#[cfg(feature = "playdate")]
+pub mod playdate;
 pub mod rules;
 pub mod screens;
 pub mod settings;
@@ -27,15 +42,19 @@ pub mod sound;
 #[cfg(feature = "tools")]
 pub mod tools;
 
-use std::collections::BTreeMap;
+use alloc::collections::BTreeMap;
+#[cfg(feature = "std")]
 use std::sync::OnceLock;
 
+#[cfg(feature = "std")]
 use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
 use shuyi::assets::ContentError;
 use shuyi::assets::audio::AudioManifest;
 use shuyi::assets::bitmap::OneBitFile;
-use shuyi::assets::bundle::{Bundle, Layer};
+use shuyi::assets::bundle::Bundle;
+#[cfg(feature = "std")]
+use shuyi::assets::bundle::Layer;
 use shuyi::assets::dialogue::{DialogueFile, DialogueTable};
 use shuyi::assets::font::{FontAtlasDef, FontAtlasRon};
 use shuyi::assets::format::{AssetKind, Formats};
@@ -44,44 +63,56 @@ use shuyi::assets::image::{ImageId, ImageTable};
 use shuyi::assets::keymap::{KeymapDef, KeymapRon, Layout};
 use shuyi::assets::lang::Lang;
 use shuyi::assets::lighting::Lighting;
+use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::pack::{Bake, Pack};
 use shuyi::assets::palette::{PaletteDef, PaletteRon};
 use shuyi::assets::ron::Ron;
 use shuyi::assets::voice::ClipVariant;
-use shuyi::core::{Made, TerrainId};
+#[cfg(feature = "std")]
+use shuyi::core::Made;
+use shuyi::core::TerrainId;
+use shuyi::platform::{Look, OneBitLook};
+use shuyi::ui::frame::onebit::{Font, PatternMap};
 use shuyi::ui::frame::{ConsoleSpec, EngineColor};
 use shuyi::ui::grid::SpriteSkin;
 use shuyi::ui::{Ctx, Game, GameData, GameHooks};
 
 pub use action::Action;
+use prelude::*;
 use rules::Feature;
 pub use settings::{MapLook, Prefs};
 
 /// The game's files, embedded.
+#[cfg(feature = "std")]
 static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
 
 /// The embedded file at `path` (relative to `files/`), if there is one.
+#[cfg(feature = "std")]
 pub fn file(path: &str) -> Option<&'static [u8]> {
     FILES.get_file(path).map(include_dir::File::contents)
 }
 
 /// The game's files as a bundle layer, shown under `files`
 /// (`files/palette.ron`).
+#[cfg(feature = "std")]
 pub fn layer() -> Layer {
     Layer::dir("files", &FILES)
 }
 
 /// The game's files drawn for the Playdate, embedded.
+#[cfg(feature = "std")]
 static PLAYDATE_FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files@playdate");
 
 /// The game's layers for its targets, each over `files/` on its target
 /// alone: `files@playdate`, its tileset drawn in black and white.
+#[cfg(feature = "std")]
 pub fn target_layers() -> [Layer; 1] {
     [Layer::dir("files@playdate", &PLAYDATE_FILES)]
 }
 
 /// The game's files on `target` (by its profile's id; `None` for every
 /// target): [`layer`], with the target's own layer over it.
+#[cfg(feature = "std")]
 pub fn bundle(target: Option<&str>) -> Bundle {
     Bundle::for_target(vec![layer()], &target_layers(), target)
 }
@@ -120,6 +151,7 @@ pub const PACK_STAMP: &str = concat!("hello-grid ", env!("CARGO_PKG_VERSION"));
 
 /// What made this build, for its records: [`PACK_STAMP`] and the
 /// fingerprint of the files it ships, computed once.
+#[cfg(feature = "std")]
 pub fn made() -> Made {
     static MADE: OnceLock<Made> = OnceLock::new();
     MADE.get_or_init(|| Made::new(PACK_STAMP, Bundle::new(vec![layer()]).fingerprint()))
@@ -171,9 +203,43 @@ pub const LAYOUT: Layout = Layout::named("Arrows");
 /// The game's console: 48 × 24 cells of 8 × 16 pixels.
 pub const CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
 
+/// The target whose screen is too short for [`CONSOLE`].
+pub const PLAYDATE: &str = "playdate";
+
+/// The game's console on the Playdate's 400 × 240 screen: 50 × 15 cells.
+pub const PLAYDATE_CONSOLE: ConsoleSpec = ConsoleSpec::text(50, 15);
+
+/// The font atlas's one-bit rows (`cargo shuyi font-atlas` writes them
+/// beside it), which a one-bit screen draws glyphs with.
+pub const FONT_1BIT: &str = "font/atlas_1bit.bin";
+
+/// The skin's pattern map, beside its palette in `files/` (ADR-0008 §4).
+pub const PATTERN_MAP: &str = "palette@onebit.ron";
+
+/// The console the game has on `target`.
+pub fn console_on(target: &str) -> ConsoleSpec {
+    if target == PLAYDATE {
+        PLAYDATE_CONSOLE
+    } else {
+        CONSOLE
+    }
+}
+
+/// What the game's frames are painted with on a one-bit screen.
+#[derive(Debug)]
+pub struct OneBit {
+    /// Each color's patterns.
+    pub map: PatternMap,
+    /// The font's one-bit rows.
+    pub font: Font<'static>,
+    /// The pack the pictures are in.
+    pub pictures: &'static Bundle,
+}
+
 /// The game's data and state, which its screens share.
 #[derive(Debug)]
 pub struct Hello {
+    console: ConsoleSpec,
     lang: Lang,
     keymap: KeymapDef<Action>,
     audio: AudioManifest,
@@ -191,18 +257,75 @@ pub struct Hello {
     pub lights: Lighting,
     /// The seed of the next stage's luck.
     pub seed: u64,
+    /// What a one-bit screen paints it with, where the game runs on one.
+    pub one_bit: Option<OneBit>,
 }
 
 impl Hello {
     /// The game's data from its embedded files, or every problem found.
+    #[cfg(feature = "std")]
     pub fn load() -> Result<Self, Vec<ContentError>> {
         Self::load_from(&Bundle::new(vec![layer()]), &formats())
     }
 
     /// The game's data from its embedded files as target `target` has
-    /// them ([`bundle`]), or every problem found.
+    /// them ([`bundle`]), with its console and buttons, or every problem
+    /// found.
+    #[cfg(feature = "std")]
     pub fn load_on(target: &str) -> Result<Self, Vec<ContentError>> {
-        Self::load_from(&bundle(Some(target)), &formats())
+        let mut game = Self::load_from(&bundle(Some(target)), &formats())?;
+        game.keymap = game.keymap.for_target(target);
+        game.console = console_on(target);
+        Ok(game)
+    }
+
+    /// The context of the game on the Playdate, from the pack `bytes` that
+    /// `cargo shuyi bake --target playdate` made ([`one_bit_bake`]), kept
+    /// for as long as the game runs, with its one-bit look; or every
+    /// problem found.
+    pub fn one_bit_ctx(bytes: &'static [u8]) -> Result<Ctx<Self>, Vec<ContentError>> {
+        let problem = |e: String| vec![ContentError::new("pack", e)];
+        let pack = Pack::open(bytes, PACK_STAMP).map_err(|e| problem(e.to_string()))?;
+        let mut formats = formats();
+        one_bit_bake()
+            .register(&mut formats)
+            .map_err(|e| problem(e.to_string()))?;
+        // Kept for as long as the game runs, which is as long as the device
+        // runs it: the font and the pictures read from it.
+        let bundle: &'static Bundle =
+            Box::leak(Box::new(Bundle::new(vec![pack.into_layer("pack")])));
+        let mut game = Self::load_from(bundle, &formats)?;
+        game.keymap = game.keymap.for_target(PLAYDATE);
+        game.console = PLAYDATE_CONSOLE;
+        let patterns = formats.load::<PatternMapDef>(bundle, PATTERN_MAP)?;
+        let bits = bundle
+            .bytes(FONT_1BIT)
+            .ok_or_else(|| problem(format!("no {FONT_1BIT}")))?;
+        let atlas: &'static FontAtlasDef = Box::leak(Box::new(game.font.clone()));
+        let font = Font::new(atlas, bits).map_err(|e| problem(e.to_owned()))?;
+        let mut ctx = Ctx::new(game).map_err(|missing| problem(format!("colors: {missing:?}")))?;
+        ctx.use_layout(LAYOUT);
+        let map = PatternMap::new(ctx.palette.iter(), &patterns);
+        ctx.game.one_bit = Some(OneBit {
+            map,
+            font,
+            pictures: bundle,
+        });
+        Ok(ctx)
+    }
+
+    /// What the game's frames are painted with: on a one-bit screen, its
+    /// one-bit look too.
+    pub fn look(&self) -> Look<'_> {
+        let look = Look::new(&self.font, &self.images);
+        match &self.one_bit {
+            Some(one_bit) => look.with_one_bit(OneBitLook::new(
+                &one_bit.map,
+                &one_bit.font,
+                &one_bit.pictures,
+            )),
+            None => look,
+        }
     }
 
     /// The game's data from pack `bytes` (embedded with `include_bytes!`),
@@ -259,6 +382,7 @@ impl Hello {
                 Some(font),
                 Some(images),
             ) => Ok(Self {
+                console: CONSOLE,
                 lang: Lang::new(english.0, BTreeMap::new()),
                 keymap,
                 audio: sound::manifest(),
@@ -269,6 +393,7 @@ impl Hello {
                 images,
                 lights: Lighting::default(),
                 seed: 0,
+                one_bit: None,
             }),
             _ => Err(errors),
         }
@@ -321,7 +446,7 @@ impl GameData for Hello {
     }
 
     fn console(&self) -> ConsoleSpec {
-        CONSOLE
+        self.console
     }
 
     fn theme_def(&self, (): ()) -> Option<&PaletteDef> {
@@ -340,6 +465,7 @@ impl GameData for Hello {
 ///
 /// If the game's files don't load or its palette lacks a color, which its
 /// tests rule out.
+#[cfg(feature = "std")]
 pub fn ctx(seed: u64) -> Ctx<Hello> {
     ctx_of(Hello::load(), seed)
 }
@@ -351,11 +477,13 @@ pub fn ctx(seed: u64) -> Ctx<Hello> {
 /// # Panics
 ///
 /// As [`ctx`].
+#[cfg(feature = "std")]
 pub fn ctx_on(target: &str, seed: u64) -> Ctx<Hello> {
     ctx_of(Hello::load_on(target), seed)
 }
 
 /// The context of `loaded` (see [`ctx`]).
+#[cfg(feature = "std")]
 fn ctx_of(loaded: Result<Hello, Vec<ContentError>>, seed: u64) -> Ctx<Hello> {
     let mut game = loaded.unwrap_or_else(|errors| {
         let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();

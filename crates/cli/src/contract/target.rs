@@ -113,7 +113,12 @@ impl TargetProblem {
     /// A problem of the display's (`check` [`Fits`](TargetCheck::Fits) or
     /// [`Text`](TargetCheck::Text)), or of the game's `app` part
     /// ([`App`](TargetCheck::App)), with `setting`.
-    fn display(level: Level, check: TargetCheck, setting: String, message: String) -> Self {
+    pub(crate) fn display(
+        level: Level,
+        check: TargetCheck,
+        setting: String,
+        message: String,
+    ) -> Self {
         Self {
             level,
             check,

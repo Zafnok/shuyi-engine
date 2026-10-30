@@ -258,13 +258,14 @@ None. Spending money on agent runs is 2525's question.
     one is done, it added its task here: write that task file too,
     with its example as its `Project` reference. If not, nothing to
     do: each one writes its own task when it lands.
-  - Every task has `unmeasured: [(what: "a Playdate build", waits_for:
-    "3010")]`. **Either order with 3010:** if 3010 is done, the
-    turn-based tasks whose references pass `cargo shuyi check --target
-    playdate` list `playdate` in their `targets` instead and have no
-    Playdate entry; a reference that doesn't pass keeps the entry, and
-    gets a ticket for what stops it; if not, nothing to do (3010's PR
-    adds `playdate` and drops the entry).
+  - **From 3010 (done):** `shuyi export playdate` exists, and 3010
+    left `evals/tasks` to this ticket. The turn-based tasks whose
+    references pass `cargo shuyi check --target playdate` list
+    `playdate` in their `targets` and have no `unmeasured` Playdate
+    entry. A reference that doesn't pass keeps the entry, and gets a
+    ticket for what stops it, which is the entry's `waits_for`. A task
+    with no reference yet keeps it too, with the ticket that gives it
+    one as its `waits_for` (snake's 2739, the platformer's 1127).
 - **The tic-tac-toe prompt**, as a draft. The session may change the
   words, never the facts the checks read:
 
@@ -322,7 +323,7 @@ None. Spending money on agent runs is 2525's question.
   workspace (the first is 2739's or 1127's): there they run over the
   whole workspace;
 - the Playdate build (3010) and `shuyi export` checks (3004), beyond the
-  either-order clauses with them above;
+  clauses with them above;
 - the lines a template hands its author (2512);
 - grading by a model (fun, looks): every verdict comes from the
   contract or cargo;
