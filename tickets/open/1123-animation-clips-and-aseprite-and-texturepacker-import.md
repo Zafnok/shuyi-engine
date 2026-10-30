@@ -107,9 +107,8 @@ particles (2103); tweens on sprites (`shuyi_core::ease::Tween`, 2109).
 Code over a store: `Atlas` and what the importers read are plain data
 that name neither `Arena` (1119) nor `shuyi-ecs`'s `World` (2904's ADR),
 and a tick game keeps `(clip, start_step)` in whichever store it uses.
-**Either order with 2115:** if 2115 is done, nothing to do (the time
-since `start_step` is its `ms_from_steps`, named in `frame_at`'s docs);
-if not, nothing to do (2115 adds it).
+The time since `start_step` is `shuyi_core::timer::ms_from_steps`, named
+in `frame_at`'s docs: nothing to do here.
 
 ## Implementation steps
 

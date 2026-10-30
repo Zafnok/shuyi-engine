@@ -223,7 +223,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | ------ | ---- |
 | 2109 | Ease curves in integers, and tweens and sequences drawn from the time alone |
 | 2114 | RNG helpers: ranges, chances, picks, shuffles, bags, named streams and forks |
-| 2115 | Timers in steps or turns |
+| 2115 (done) | Timers in steps or turns |
 | 2117 | Eight-way moves with a corner rule, and point-to-point A* in the grid kit |
 | 2112 | A level solver: breadth-first search over any `TurnRules` game |
 | 2113 | Search bots: minimax and MCTS over any `TurnRules` game, sliced by work units (after 2125, 2112 and 3009) |
@@ -318,7 +318,7 @@ real-time step:
 
 | Game | The chain |
 | ---- | --------- |
-| Snake | 2511 (done), 2114 and 2115, then 2137 (1119's tick part), then 2739 (the arcade template and a snake example). Unparked on 2026-10-30. The web build works today; the Playdate build needs 3010 |
+| Snake | 2511 and 2115 (done), 2114, then 2137 (1119's tick part), then 2739 (the arcade template and a snake example). Unparked on 2026-10-30. The web build works today; the Playdate build needs 3010 |
 | A platformer | 2137, then 1119, 1120, 1122, 1123 and 2231, 1124 and 2360 (all parked but 2137), then 1127 (the platformer and its template) |
 
 Until then, the agent eval (2524, 2525) measures the end goal on
@@ -330,7 +330,7 @@ demos", [`decisions.md`](decisions.md)): the game's needs from the
 engine were met, and hello-grid is too small to show what the engine
 does. The order, after the game's own requests:
 
-1. 2115 (timers), with 2114 (random helpers) beside it;
+1. 2115 (timers, done), with 2114 (random helpers) beside it;
 2. 2137, 1119's tick part split out of it: `TickSim`, records that
    replay, and `TickDriver` with its input latch;
 3. 2739: the arcade template part and snake, on Pages;

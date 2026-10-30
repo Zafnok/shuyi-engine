@@ -18,7 +18,7 @@ workspace = true
 default = ["std"]
 # Without it the crate is `no_std` + `alloc`, for the Playdate (ADR-0008 §5;
 # CI's `no-std` job builds it so, ticket 3005).
-std = ["shuyi-assets/std", "shuyi-ui/std", "shuyi-alloc-count?/std"]
+std = ["shuyi-core/std", "shuyi-assets/std", "shuyi-ui/std", "shuyi-alloc-count?/std"]
 # `harness`: the headless test driver for a game's integration tests
 # (game ADR-0017).
 harness = []
@@ -36,6 +36,8 @@ heap = ["dep:shuyi-alloc-count"]
 capture = ["shuyi-ui/raster", "dep:serde", "dep:ron"]
 
 [dependencies]
+# The step rate, which `tick` re-exports.
+shuyi-core = { path = "../core", default-features = false }
 # The font atlas, the image table and the voice clips' file names.
 shuyi-assets = { path = "../assets", default-features = false }
 # The game's frame loop (`Game`), its context and storage.

@@ -93,7 +93,8 @@ impl<A: ActionSet> FrameInput<A> {
     }
 
     /// Seconds since the previous frame: always finite and at least 0, so
-    /// a screen adds it up as it is.
+    /// a screen adds it up as it is. It is for what only looks: rules count
+    /// [`ticks`](Self::ticks) or turns, with `shuyi_core::timer`.
     pub fn dt(&self) -> f32 {
         self.dt
     }
@@ -110,7 +111,8 @@ impl<A: ActionSet> FrameInput<A> {
     /// it this many times. The platform's `App` counts them from its clock
     /// (`shuyi_platform::tick`); 0 while the game is suspended, in an
     /// update with no time passing ([`Game::act`](crate::Game::act)) and
-    /// in a frame no `App` ran.
+    /// in a frame no `App` ran. Rules time things in these steps, with
+    /// `shuyi_core::timer`, and never with [`dt`](Self::dt).
     pub fn ticks(&self) -> u32 {
         self.ticks
     }

@@ -87,8 +87,10 @@ so tests, bots and replays all rest on the rules alone.
   take a `RandomSource`, so a test hands them a `ScriptedRng` with the
   rolls it wants.
 - **Count turns, never time.** A rule that waits ("the door opens on
-  turn 5") counts turns or commands. The rules never read a frame's
-  `dt` or the clock.
+  turn 5") counts turns or commands, with `shuyi_core::timer`'s
+  `Countdown` and `Every` in the state, advanced by one each turn in
+  `apply`, or once per step of `FrameInput::ticks()` in a game that
+  steps. The rules never read a frame's `dt` or the clock.
 - **Ordered maps only**: `BTreeMap` and `BTreeSet`. The state's hash
   (`shuyi_core::state_hash`, which replays compare) must be the same on
   every run.

@@ -237,11 +237,9 @@ None.
     `shuyi_core::fx`): if 1119 is done, add `Lerp` for `Fx` and `FxVec2`
     here, rounding as `Fx` does. If not, nothing to do: 1119's Scope
     implements them when it lands (its clause on 2109);
-  - **either order with 2115:** if 2115 is done, the module docs of
-    `shuyi_core::timer` (`crates/core/src/timer.rs`) gain a line that
-    points at `shuyi_core::ease`: a timer says when, a tween says how
-    far. If not, 2115 writes it (its scope says so). Either way the
-    line sits in `timer`'s docs, as 2115's clause has it;
+  - **from 2115 (done):** the module docs of `shuyi_core::timer`
+    (`crates/core/src/timer.rs`) gain a line that points at
+    `shuyi_core::ease`: a timer says when, a tween says how far;
   - **either order with 2369** (parked; a light cycle of named lights
     in `shuyi-assets`): if 2369 is done, its cycle file's stops gain
     `ease: Ease` (default `Linear`): the blend's `permille` goes

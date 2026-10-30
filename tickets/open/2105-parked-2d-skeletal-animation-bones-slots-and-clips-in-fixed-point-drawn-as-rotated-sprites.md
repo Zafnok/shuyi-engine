@@ -83,10 +83,9 @@ None.
     read back is equal (ADR-0007 §4).
 - **The maths**, pure:
   - `pose_at(&Rig, clip, elapsed_ms) -> Pose`: local transforms per
-    bone, and the attachment per slot. **Either order with 2115:** if
-    2115 is done, `pose_at`'s docs say a tick game passes
-    `shuyi_core::timer::ms_from_steps(step - start_step)`, the one rule
-    from steps to ms; if not, nothing to do (2115 adds that line);
+    bone, and the attachment per slot. `pose_at`'s docs say a tick
+    game passes `shuyi_core::timer::ms_from_steps(step - start_step)`,
+    the one rule from steps to ms;
   - `Pose::mix(&a, &b, weight: u16 /* 0–256 */) -> Pose`, rotation by
     the shorter way round: a cross-fade is mixing two clips' poses
     over a few steps;
@@ -102,8 +101,7 @@ None.
       uses the `crossed` this ticket writes).
     - **Either order with 2364:** if 2364 is done, build
       `events_between` on `crossed`. If not, write `crossed` in
-      `shuyi_core::timer` with the rule in 2364's Scope (and its either
-      order with 2115), and 2364 uses it.
+      `shuyi_core::timer` with the rule in 2364's Scope, and 2364 uses it.
 - **The view and skin** (behind a `view` feature, as 2703 does):
   `RigView::from(&Rig, &Pose, skin, origin, facing)` → one sprite item
   per slot with its angle (2335), on a world layer (1120), in slot

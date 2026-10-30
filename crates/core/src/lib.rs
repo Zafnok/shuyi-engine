@@ -1,5 +1,5 @@
-//! Shuyi Engine's core: the seeded RNG, the simulation traits and the
-//! tactics kit (a square grid, paths over it, the tiles each piece can
+//! Shuyi Engine's core: the seeded RNG, timers in steps or turns
+//! ([`timer`]), the simulation traits and the tactics kit (a square grid, paths over it, the tiles each piece can
 //! strike and the danger at a tile ([`threat`]), turns and their history,
 //! and bots that play a game to its end, among them a rollout bot that
 //! plans on copies of the game: [`Determinize`], [`Evaluate`], [`Order`],
@@ -38,6 +38,7 @@ pub mod rng;
 pub mod save;
 pub mod text;
 pub mod threat;
+pub mod timer;
 pub mod turn;
 
 pub use bots::{
@@ -59,4 +60,5 @@ pub use threat::{
     Danger, GoalDistance, OrderHooks, Ranges, Strike, TacticsOrder, Threat, Threats, strike_area,
     strike_area_from,
 };
+pub use timer::{Countdown, Every, STEPS_PER_SECOND, ms_from_steps, steps_from_ms};
 pub use turn::TurnRules;

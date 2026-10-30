@@ -5,8 +5,7 @@
 
 use core::time::Duration;
 
-/// Fixed simulation steps a second.
-pub const STEPS_PER_SECOND: u32 = 60;
+pub use shuyi_core::timer::STEPS_PER_SECOND;
 
 /// The most steps one frame runs: a frame later than this drops the rest
 /// of its time.

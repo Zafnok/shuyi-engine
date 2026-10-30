@@ -51,8 +51,8 @@ What Shuyi has today:
   `millis`. 2364 (parked) adds keyed tracks, sound cues and markers to
   the file and leaves the beat clock here. Whichever of the two lands
   second makes their times take beats.
-- Fixed steps: `shuyi_platform::tick::STEPS_PER_SECOND` is 60 (2115
-  moves it into `shuyi_core::timer`), and a screen reads the steps due
+- Fixed steps: `shuyi_platform::tick::STEPS_PER_SECOND` is 60 (a
+  re-export of `shuyi_core::timer`'s), and a screen reads the steps due
   in a frame from `FrameInput::ticks()`.
 - 2205 (parked MIDI) has a tempo map for sequences only; recorded music
   has nothing.
