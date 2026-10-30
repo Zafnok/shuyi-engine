@@ -66,7 +66,8 @@ right, and they stay.
 
 What is planned:
 
-- 1119 (parked): `TickSim`, records and `TickDriver`, and no timers.
+- 2137: `TickSim`, records and `TickDriver`, and no timers. It waits
+  for this ticket.
 - 2706 (parked): `CommandQueue`, commands scheduled for a later step.
 - 1127 (parked): coyote time and a jump buffer "at their exact step
   limits", which a controller would count by hand.
@@ -288,9 +289,9 @@ None.
 - clips, particles and animation state machines: they keep counting
   from a start step (1123, 2231, 2103, 2104), and read it in ms with
   `ms_from_steps`;
-- `TickSim`, `TickDriver` and records (1119); game speed and hit-stop
+- `TickSim`, `TickDriver` and records (2137); game speed and hit-stop
   (2123); tweens (2109);
-- the real-time grid template and its snake example (2739, parked);
+- the real-time grid template and its snake example (2739);
 - the card-battle example (2737, parked), which counts weak turns with
   `Countdown` if this is done. **Either order with 2737:** if 2737 is
   done, its `u8` weak turns stay: nothing to do. If not, nothing to do

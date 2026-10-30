@@ -291,7 +291,7 @@ Nothing here costs money. A device is needed only for 3011.
   playdate`. If a reference doesn't, keep the entry and write a ticket
   for what stops it. If 2524 isn't done, nothing to do: 2524's
   either-order clause does it. The end goal names a Playdate build.
-- **Either order with 2739** (parked, the snake example): if 2739 is
+- **Either order with 2739** (the snake example): if 2739 is
   done, `shuyi export playdate` also builds `examples/snake`, whose
   frame fits the screen and whose `shuyi.ron` lists `playdate`, and the
   PR says whether it runs in the Simulator; and `evals/tasks/snake.ron`

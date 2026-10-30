@@ -50,7 +50,7 @@ say whether a new developer would know where to start.
     and `find_path` from one tile to another; if not, 2117 adds that
     paragraph. It ends with a short planned section, *In real time*: a
     grid that steps in real time (snake) waits for 2739, which builds
-    on 1119. Until then a turn game times its rules in turns, never
+    on 2137. Until then a turn game times its rules in turns, never
     with `dt`. **Either order with 2115:** if 2115 is done, that
     sentence names `shuyi_core::timer`'s `Countdown` and `Every`; if
     not, it says the rules count turns in their own state, and 2115

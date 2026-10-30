@@ -1,19 +1,17 @@
 ---
 id: "2562"
-title: "Parked: An A/B against Bevy: the same agent makes the maze chase in each engine, scored on one-shot passes, friction, deterministic checks and lines, published on Pages"
+title: "An A/B against Bevy: the same agent makes the maze chase in each engine, scored on one-shot passes, friction, deterministic checks and lines, published on Pages"
 type: infra
 milestone: "Engine: real time"
 model: opus-5.5
 effort: high
-status: blocked
-blocked_by: ["2776", "2525"]
+status: todo
+blocked_by: ["2572", "2525"]
 nick_input: decision
 completed:
 ---
 
 # 2562 — An A/B against Bevy on the maze chase
-
-> **Parked** (Nick, 2026-10-26: "Ticket it, parked", `docs/decisions.md`): its game runs in real time, parked with 1119 and 2739 until Visions of Shuyi launches. Nick unparks it, with 2776. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -25,6 +23,11 @@ with 2) less friction and 3) more deterministic handling (i.e. we have
 skills and MCP) and 4) approx equal LOC (this matters less since it's
 agent first engine but would be a less subjective benchmark)".
 
+On 2026-10-30 Nick unparked the demo chain ("we need better demos",
+`docs/decisions.md`), this A/B last, "After the maze chase": it starts
+once the maze chase and its eval task are done, and spends nothing
+before his answer below.
+
 The eval does most of the work already, for Shuyi alone:
 
 - 2524 gives tasks as data, a grader through the contract, and the line
@@ -34,8 +37,8 @@ The eval does most of the work already, for Shuyi alone:
   a fresh folder, with a time box and a budget, and records minutes,
   cargo's minutes (its `cargo` wrapper's `cargo.log`), tokens, cost and
   lines in `results.json`;
-- 2776 gives the maze chase task (`evals/tasks/maze-chase.ron`) and its
-  reference solution, `examples/maze-chase`.
+- 2776 gives the maze chase's reference solution, `examples/maze-chase`,
+  and 2572 its task (`evals/tasks/maze-chase.ron`).
 
 This ticket adds the second arm: the same agent making the same game
 with Bevy, and the same scores for both. Bevy has no tool contract, so

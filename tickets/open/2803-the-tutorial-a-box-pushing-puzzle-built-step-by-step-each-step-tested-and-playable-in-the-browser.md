@@ -107,8 +107,8 @@ None.
   CI*).
 
 **Out (do not do):**
-- a second tutorial, for a tick game: tick games are 1119's (parked),
-  and the first tick example is snake (2739, parked);
+- a second tutorial, for a tick game: tick games are 2137's,
+  and the first tick example is snake (2739);
 - an automatic browser check of each step's web build beyond the
   clause with 2019 above; here each step is also played by hand;
 - hot reload of code: 2905's research tries its options on step 10's

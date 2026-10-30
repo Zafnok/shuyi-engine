@@ -239,7 +239,7 @@ None. Spending money on agent runs is 2525's question.
     [("/moves", Some("0")), ("/won", Some("false"))] }`, where the steps
     are `[]` if the game opens on that stage and `[Act("Confirm")]` if
     it opens on its level menu.
-  - **`snake.ron`**, `waits_for: ["2739"]` (which builds on 1119), and
+  - **`snake.ron`**, `waits_for: ["2739"]` (which builds on 2137), and
     **`platformer.ron`**, `waits_for: ["1127"]`: the end goal's own
     games. Their prompts and checks (a length, a score or a level in the
     scene data) are written now, with no reference, so they are on

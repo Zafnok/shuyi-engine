@@ -71,7 +71,7 @@ What Shuyi has today:
 
 What is planned:
 
-- ADR-0003 §2 and 1119: `TickInput` holds input "per player", but no
+- ADR-0003 §2 and 2137: `TickInput` holds input "per player", but no
   ticket says which player a key or a pad belongs to.
 - 1121: the pointer and sticks, for one player.
 - 1120: world layers with cameras. Split screen comes through each
@@ -98,9 +98,9 @@ Why it matters:
 - **The end goal of 2026-10-19** (snake in under an hour, in few lines):
   a one-player game writes nothing new, since `Shared` is the default. A
   two-player snake sets one policy and reads `FrameInput::seat(n)`.
-- **Cheaper now than later.** 1119's `TickInput` and 1121's pointer and
+- **Cheaper now than later.** 2137's `TickInput` and 1121's pointer and
   sticks would otherwise be built on one `InputState`. The edits this
-  ticket asks of 1119 and 1121 keep them seat-shaped from the start.
+  ticket asks of 2137 and 1121 keep them seat-shaped from the start.
 
 ## Nick input
 
@@ -292,11 +292,11 @@ online)?
     `setting` as `GameControls::with_seats` and `keymap split_keyboard`.
     These are new values in the answer, not a new shape (the version
     goes up once, for `Step::Pad` above).
-- **Either order with 1119:** if 1119 is done, `TickInput` holds one
+- **Either order with 2137:** if 2137 is done, `TickInput` holds one
   entry per seat, by seat number, and `TickDriver` fills each filled
   seat's from `FrameInput::seat(n)`. A seat that joins or leaves changes
-  the entries from the next step, so a `TickRecord` replays it. If 1119
-  isn't done, 1119 does this (an edit to 1119 says so).
+  the entries from the next step, so a `TickRecord` replays it. If 2137
+  isn't done, 2137 does this (its clause says so).
 - **Either order with 1120:** if 1120 is done with its viewports, a test
   scene gives each filled seat the stage's layers in a viewport from
   `split_viewports(frame, n)` for the n filled seats, each camera
@@ -360,7 +360,7 @@ online)?
 1. Read ADR-0003 §2 and §8, ADR-0025, 2013's ADR, `pad.rs`, `game.rs`,
    `input/state.rs`, `input/frame.rs`, `ctx.rs` (`keymap`, `keymap_for`,
    `pad_bindings`), `harness.rs`, `frame_png.rs`'s `Step` and `Script`,
-   `fit.rs` and `target.rs`. Check which of 1119, 1120, 1121, 2405,
+   `fit.rs` and `target.rs`. Check which of 2137, 1120, 1121, 2405,
    2408, 2518 and 3042 are done.
 2. Write the ADR.
 3. Pad ids on the raw events: `Pads::update` per pad, `PadRemoved`,

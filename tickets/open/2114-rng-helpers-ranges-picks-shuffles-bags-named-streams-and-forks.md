@@ -209,7 +209,7 @@ None.
     schedules (serial and parallel), and add two such systems to 2108's
     property test; if not, nothing to do (2108 forks them, its scope
     says so);
-  - with 2739 (parked, the snake example): if 2739 is done, its food
+  - with 2739 (the snake example): if 2739 is done, its food
     placement moves onto `pick` with the same draw, like the callers
     above; if not, nothing to do (2739 uses `pick`, as its scope says);
   - `Bag` follows ADR-0039's rules for public types.

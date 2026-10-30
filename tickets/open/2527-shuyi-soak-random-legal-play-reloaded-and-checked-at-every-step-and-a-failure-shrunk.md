@@ -346,7 +346,7 @@ input with a `Default`, `Check` and `Verdict` as enums that may grow,
 and `Checks`, `Failure` and `Shrunk`.
 
 **Out (do not do):**
-- tick sims: 1119 (parked) has an Out line for the same check over a
+- tick sims: 2137 has an Out line for the same check over a
   `TickSim`, which 2549 (parked) does;
 - command sims (2706): the same check over a `CommandSim` is 2772's;
 - desyncs between several peers (1140, 2529);

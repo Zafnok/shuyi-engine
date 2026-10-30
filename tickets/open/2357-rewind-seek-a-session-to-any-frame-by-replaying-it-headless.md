@@ -108,7 +108,7 @@ Why it matters:
   watches it happen again with the debug view's channels on. The turn
   history already goes back in the rules. This goes back in everything
   around them.
-- **Other 2D games.** In a tick game (once 1119 is unparked), the jump
+- **Other 2D games.** In a tick game (once 2137 is done), the jump
   that went wrong is one second back.
 - **The end goal** (2026-10-19): an agent bisects a session with
   `run --session <file> --until N` for a few N, finds the first frame

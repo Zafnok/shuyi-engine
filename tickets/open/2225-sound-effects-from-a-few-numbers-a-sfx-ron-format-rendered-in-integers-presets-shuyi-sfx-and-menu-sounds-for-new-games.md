@@ -356,7 +356,7 @@ parked.
     - the brick-breaker (`examples/bricks`, 2738): a bounce, a break and
       a lost-life sound from the presets, played on its `Bounced`,
       `Broke` and `LifeLost` events.
-  - **2739** (parked: the snake example). If it is done,
+  - **2739** (the snake example). If it is done,
     `examples/snake` gets an eat and a death sound from the presets,
     played on its `Ate` and `Died` events, and its README drops the
     line that says it has none. If not, nothing to do: 2739 uses the
