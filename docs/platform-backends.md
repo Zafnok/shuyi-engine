@@ -38,12 +38,15 @@ do. The decisions behind it are
   is never merged here, not even behind a feature. The engine's part is
   to keep `Platform` small, stable and documented.
 - **`Platform` stays small** (ADR-0040 §7). A backend implements the
-  seven methods below, and may give the eighth and ninth, `clock` and
-  `memory`, which have defaults. Every method added to `Platform` later has a
-  default, and a device service a backend may lack returns an `Option`,
-  as `text_input` does, so a backend written today (a private console's)
-  keeps building. `crates/platform/tests/it/bare.rs` implements only the
-  seven and fails to compile if one without a default is added.
+  eight methods below without a default, and may give the rest (`clock`,
+  `memory` and the heap's), which have defaults. Every method added to
+  `Platform` later has a default, and a device service a backend may lack
+  returns an `Option`, as `text_input` does, so a backend written today (a
+  private console's) keeps building. The one exception is `facts`
+  (ADR-0060): a backend always says which target it is, so a default
+  would hand a console the desktop's facts. `crates/platform/tests/it/bare.rs`
+  implements only the eight and fails to compile if one without a
+  default is added.
 - **Licenses.** A public backend's dependencies follow ADR-0002 §8, like
   the rest of the engine.
 - **Small devices are `no_std`.** `shuyi-platform`, `shuyi-ui`,
@@ -148,7 +151,7 @@ confirmed. A backend that never reports leaves every request pending.
     frame's end read after it).
 
 The game's first frames are different: frame 1 presents the loading card;
-frame 2 calls `display` and `storage` for the game's `Setup`, runs the
+frame 2 calls `display`, `storage` and `facts` for the game's `Setup`, runs the
 game's load (seconds, on a slow device) and presents the game's first
 frame; frames after run the game. A failed load presents its errors until
 the player quits.
@@ -307,6 +310,20 @@ through `poll_input`. `open(&ask)` shows it with the ask's prompt, text
 and length, or is `false` if it can't now; `poll()` gives the answer
 (`Typed(text)` or `Cancelled`) once the player closes it.
 
+### `facts(&self) -> PlatformFacts`
+
+Where the game runs (`shuyi_ui::PlatformFacts`, ADR-0060): the target's
+id, whether the game may quit (`quit`: `System` where the player leaves
+through the system, and a game shows no Quit), whether it is in a
+window that goes full screen and back (`windowed`), and the keyboard,
+pointer and touch screen the device has. Read them from the target's
+profile with `PlatformFacts::from_profile` (`targets/<id>.ron`,
+embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
+what the backend reads of the system. They are constant for a run: `App`
+asks once, for the game's `Setup`, and the game's context keeps them
+(`Ctx::platform`). There is no default: a backend always says which
+target it is.
+
 ### `clock(&self) -> Option<PerfClock>` (has a default)
 
 A clock to measure frames with, in debug builds
@@ -430,6 +447,8 @@ one side, the engine's types on the other.
 - [ ] A crate of its own, depending on `shuyi-platform` (and `shuyi-ui`,
       `shuyi-assets`), with the device's SDK behind it.
 - [ ] Each method above, and the loop calling `App::frame`.
+- [ ] `facts` from its target's profile: the profile's id, read with
+      `PlatformFacts::from_profile`, never the desktop's default.
 - [ ] The frame cap applied and reported (`App::set_pacing`), or the
       device's fixed rate reported as the cap applied.
 - [ ] Its storage passes the conformance suite.

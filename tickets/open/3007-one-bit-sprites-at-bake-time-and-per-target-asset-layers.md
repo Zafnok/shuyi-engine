@@ -70,11 +70,10 @@ None. Which pictures the game redraws by hand is the game's choice
   `assets@playdate/` wins over dithering `assets/hero.png`. A settings
   file is a file like any other:
   `assets@playdate/images/hero.png.meta` replaces the base one (2229).
-  At run time the target's id is `PlatformFacts::target` (3053).
-  **Either order with 3053:** if 3053 is done, a running game's load
-  picks the layer by `setup.platform.target`. If not, the layer is
-  picked when baking only, and the pack a target runs from already
-  holds it; 3053 adds the pick at load (its clause says so).
+  At run time the target's id is `PlatformFacts::target`.
+  **From 3053 (done):** a running game's load also picks the layer by
+  `setup.platform.target`, so a run that isn't from a target's baked
+  pack still uses its layer.
 - **A language's copies** (2349: `lang/<tag>/files/<path>`) are plain
   paths in the bundle, so a target layer may hold its own
   (`assets@playdate/lang/ja/files/title/end.png`). `Ctx::localized`
@@ -126,7 +125,7 @@ None. Which pictures the game redraws by hand is the game's choice
    it and writes a `bitmap` file.
 3. Add the target layers to the bundle, and the helper a game's
    `GameTools::bake` calls to use them (the `--target` flag is 2204's).
-   If 3053 is done, pick the layer at load by `setup.platform.target`.
+   Pick the layer at load by `setup.platform.target` (3053, done).
 4. Write the equality test, and add the contact sheet.
 
 ## Acceptance criteria

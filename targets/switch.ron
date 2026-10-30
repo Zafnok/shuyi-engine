@@ -14,5 +14,7 @@
     ),
     frame_rate: (target: 60, floor: 60),
     input: (),
+    // The player leaves by the Home button: a game shows no Quit.
+    quit: System,
     backend: "private",
 )

@@ -146,8 +146,7 @@ Steam Cloud works two ways (Steamworks documentation, *Steam Cloud*):
   ticket's `steam` feature.
 - **Steam's game language** (`ISteamApps::GetCurrentGameLanguage`):
   with the `steam` feature, `shuyi-app` puts it first in
-  `Platform::languages` (2349; in 3053's `PlatformFacts::languages` if
-  3053 folded them in), mapped from Steam's API language names to tags
+  `PlatformFacts::languages` (2349, in 3053's facts), mapped from Steam's API language names to tags
   (`schinese` to `zh-Hans`, `tchinese` to `zh-Hant`, `brazilian` to
   `pt-BR`, `latam` to `es-419`, `koreana` to `ko`, the others by their
   language), so a player who set the game's language in Steam starts in

@@ -457,7 +457,7 @@ fn the_first_key_screen_opens_only_while_needed() {
     tap(&mut game, Key::Z);
     assert_eq!(game.screens(), ["home"]);
     let mut console = first_launch();
-    console.keyboard = Keyboard::Absent;
+    console.platform.keyboard = Keyboard::Absent;
     let mut game = hooked(console);
     tap(&mut game, Key::Z);
     pad_tap(&mut game, Button::South);
@@ -817,6 +817,11 @@ fn frames_carry_the_volumes_and_fullscreen() {
     assert!(game.frame(&[], 0.0).fullscreen);
     assert!(game.ctx().settings().fullscreen);
     game.toggle_fullscreen();
+    assert!(!game.frame(&[], 0.0).fullscreen);
+    // A device that is always full screen: the setting stays as it was.
+    game.ctx_mut().platform.windowed = false;
+    game.toggle_fullscreen();
+    assert!(!game.ctx().settings().fullscreen);
     assert!(!game.frame(&[], 0.0).fullscreen);
 }
 

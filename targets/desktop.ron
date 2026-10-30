@@ -8,6 +8,8 @@
         color: Rgba8,
         min_text_px: 10,
         good_text_px: 12,
+        // A window, switched to full screen and back by the player.
+        windowed: true,
     ),
     frame_rate: (target: 60, floor: 60),
     input: (

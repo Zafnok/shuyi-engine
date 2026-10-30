@@ -266,8 +266,8 @@ None.
       console. Actions are ignored while it types, as `NameBox::handle`
       ignores them, so a letter bound to an action types the letter.
     - It shows the log's last lines that fit, then `> ` and the input.
-    - Without a keyboard (`Ctx::keyboard`, which 3053 moves to
-      `ctx.platform.keyboard`: use whichever exists), it shows one line
+    - Without a keyboard (`ctx.platform.keyboard`, from 3053, done), it
+      shows one line
       saying it needs a keyboard and that the contract's `--command`
       reaches the same commands. Its Cancel action closes it.
     - It declares `UiAction::Cancel` only.

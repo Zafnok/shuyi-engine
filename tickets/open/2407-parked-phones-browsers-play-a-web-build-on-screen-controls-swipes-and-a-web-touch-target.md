@@ -170,10 +170,10 @@ grows past that, its painter goes in a ticket of its own.
    - `PadKind::Touch`, named like an Xbox pad in `button_name`, which is
      how the default set labels its buttons. It joins `PadKind::ALL`.
    - The controls show after the first touch, and hide after a key or a
-     real pad is used. Any touch ends the key prompt. Either order with
-     3053: if it is done, they also show from the start where
-     `ctx.platform` says touch and no keyboard (on the web, item 3 makes
-     it say so on a phone); if not, the first touch shows them.
+     real pad is used. Any touch ends the key prompt. **From 3053
+     (done):** they also show from the start where `ctx.platform` says
+     touch and no keyboard (on the web, item 3 makes it say so on a
+     phone).
    - `DisplayInfo` (`crates/platform/src/platform.rs`) gets the safe
      area's insets (`shuyi_assets::target::Insets`), zero until a
      backend says otherwise.
@@ -212,10 +212,10 @@ grows past that, its painter goes in a ticket of its own.
      `env(safe-area-inset-*)`) handed to `DisplayInfo` through a small
      JS plugin of our own, like `gamepad.js`.
    - The same plugin says whether the browser's main pointer is coarse
-     (`matchMedia("(pointer: coarse)")`). Either order with 3053, whose
-     `shuyi-app` says `web` on wasm32: if it is done, a coarse pointer
-     makes `shuyi-app` report `web-touch`'s facts, so a phone shows the
-     controls from the start; if not, they show after the first touch.
+     (`matchMedia("(pointer: coarse)")`). **From 3053 (done)**, whose
+     `shuyi-app` says `web` on wasm32 (`crates/app/src/facts.rs`): a
+     coarse pointer makes `shuyi-app` report `web-touch`'s facts, so a
+     phone shows the controls from the start.
    - `examples/hello-grid` gets a `web-touch` table in
      `files/keymap.ron` and a `web-touch` target in `shuyi.ron`, and
      `shuyi check --target web-touch` passes on it.

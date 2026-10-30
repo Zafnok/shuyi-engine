@@ -9,12 +9,12 @@ use core::time::Duration;
 use shuyi_assets::font::FontAtlasDef;
 use shuyi_assets::image::ImageTable;
 pub use shuyi_assets::target::Color;
-use shuyi_ui::RawInputEvent;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapSnapshot, MemoryReading, MemoryScopes, PerfClock};
 use shuyi_ui::storage::Storage;
+use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::Audio;
@@ -198,9 +198,9 @@ pub enum SystemEvent {
 }
 
 /// What a backend gives the engine: a display to [`present`] frames on,
-/// the player's input, the system's events, storage, a sound device and,
-/// if the device has one, its own keyboard for text and, in debug builds,
-/// a clock to measure frames with.
+/// the player's input, the system's events, storage, a sound device, the
+/// facts of where the game runs and, if the device has one, its own
+/// keyboard for text and, in debug builds, a clock to measure frames with.
 ///
 /// The backend owns the loop (macroquad's, the Playdate SDK's update
 /// callback, a console's main loop) and calls [`App::frame`] once per
@@ -240,6 +240,19 @@ pub trait Platform {
     /// one), if the device has one; `None` where the player types on keys,
     /// which come through [`poll_input`](Self::poll_input).
     fn text_input(&mut self) -> Option<&mut dyn TextInput>;
+
+    /// Where the game runs ([`PlatformFacts`]): the target's id, whether
+    /// the game may quit, whether its window goes full screen and back,
+    /// and the keyboard, pointer and touch screen the device has. Read
+    /// from the target's profile, or from what the backend reads of the
+    /// system; constant for a run. `App` asks once, as the game loads, and
+    /// the game's context keeps them ([`Ctx::platform`]).
+    ///
+    /// It has no default: a backend always says which target it is, so a
+    /// console's can't inherit the desktop's facts by forgetting.
+    ///
+    /// [`Ctx::platform`]: shuyi_ui::Ctx::platform
+    fn facts(&self) -> PlatformFacts;
 
     /// A clock in whole microseconds, to measure frames with in debug
     /// builds (ADR-0046): `App` takes it once, on its first frame, and only

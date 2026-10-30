@@ -243,9 +243,10 @@ None.
   store owned by the engine, if 2906's ADR decides one; the store's
   build ticket then shows them in the `memory` channel (2906's clause
   says so);
-- a budget line in `shuyi-app`. It reads no profile at run time, and a
-  64-bit desktop heap is only a proxy for a Playdate's; `shuyi bench`
-  (3008) gates the proxies. A follow-up after 3053 if a developer asks;
+- a budget line in `shuyi-app`. Its target's facts at run time (3053,
+  done) carry no budgets, and a 64-bit desktop heap is only a proxy for
+  a Playdate's; `shuyi bench` (3008) gates the proxies. A follow-up if a
+  developer asks;
 - loads by kind on the Playdate backend (no `std`, so no `Mutex`). They
   are the same as on desktop, apart from per-target layers (3007);
 - call stacks per allocation and Tracy's memory view (3063's ADR);

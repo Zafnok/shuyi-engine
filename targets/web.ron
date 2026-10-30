@@ -7,6 +7,8 @@
         color: Rgba8,
         min_text_px: 10,
         good_text_px: 12,
+        // The canvas goes full screen and back (`set_fullscreen`).
+        windowed: true,
     ),
     frame_rate: (target: 60, floor: 30),
     input: (
@@ -22,6 +24,8 @@
         pointer: true,
         keyboard: true,
     ),
+    // The player leaves by closing the tab: a game shows no Quit.
+    quit: System,
     budgets: (
         // Provisional: 3008's benchmarks calibrate it.
         frame_instructions: 20_000_000,

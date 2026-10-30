@@ -59,7 +59,7 @@ fn a_new_ctx_starts_on_the_games_palette_console_and_picker_keys() {
     assert_eq!(c.profiles().all()[0].name, "Player 1");
     assert_eq!(c.debug_tools, crate::DEBUG_TOOLS);
     assert_eq!(c.idle_motion, IdleMotion::Off);
-    assert_eq!(c.keyboard, Keyboard::Present);
+    assert_eq!(c.platform, PlatformFacts::default());
     assert_eq!(c.key_prompt, KeyPrompt::Off);
     assert_eq!(c.music_seed, DEFAULT_MUSIC_SEED);
     assert_eq!(c.music_clock, None);

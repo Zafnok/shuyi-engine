@@ -165,8 +165,8 @@ The sign-off also:
     folders too; no gate checks them.
   - `targets/` at the root is outside the crates that embed it too:
     `shuyi-cli` (`TARGETS`, `crates/cli/src/contract/target.rs:33`, with
-    `include_dir`) and, once 3053 lands, `shuyi-app`
-    (`crates/app/src/facts.rs`, with `include_str!`). Move or copy the
+    `include_dir`) and `shuyi-app` (`crates/app/src/facts.rs`, with
+    `include_str!`; from 3053, done). Move or copy the
     profiles into one package (`shuyi-assets`, which owns
     `TargetProfile`, is the natural one), embed them there, and have
     each crate read them from it rather than by a path into its folder.

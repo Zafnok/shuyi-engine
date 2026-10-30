@@ -109,6 +109,24 @@ fn up_and_down_move_the_focus_and_wrap() {
     assert_eq!(keys, ROWS);
 }
 
+/// A device that is always full screen has no Fullscreen row, whatever
+/// the game's rows say, and the focus steps over where it was.
+#[test]
+fn the_fullscreen_row_shows_only_in_a_window() {
+    use Action::CursorDown;
+    let mut c = ctx();
+    c.platform.windowed = false;
+    let mut s = on(FULLSCREEN_ROW);
+    let keys: Vec<_> = s.rows(&c).iter().map(|r| r.key).collect();
+    let windowed: Vec<_> = ROWS.into_iter().filter(|&k| k != FULLSCREEN_ROW).collect();
+    assert_eq!(keys, windowed);
+    assert_eq!(s.focus(&c), ROWS[0]);
+    press(&mut s, &mut c, &[CursorDown, CursorDown]);
+    assert_eq!(s.focus(&c), "options.row.frame_cap");
+    assert!(s.focused_row(&c).is_some_and(|r| r.key != FULLSCREEN_ROW));
+    assert!(!s.view(&c).rows.iter().any(|r| r.key == FULLSCREEN_ROW));
+}
+
 #[test]
 fn left_and_right_step_a_setting_and_stop_at_the_ends() {
     use Action::{CursorLeft, CursorRight};

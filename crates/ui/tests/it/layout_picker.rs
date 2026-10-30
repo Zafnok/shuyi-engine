@@ -39,7 +39,7 @@ fn a_controller_button_doesnt_open_it_and_acts() {
 #[test]
 fn without_a_keyboard_it_never_opens() {
     let mut ctx = toy::first_launch();
-    ctx.keyboard = Keyboard::Absent;
+    ctx.platform.keyboard = Keyboard::Absent;
     let mut h = Harness::new(toy::game_on(ctx));
     h.keys("z");
     assert_eq!(h.screens(), ["home"]);

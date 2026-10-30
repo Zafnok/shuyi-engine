@@ -4,8 +4,9 @@
 //! layout switched through the layout picker), the Key bindings screen
 //! with the toy's rows, and a scene read in the engine's text box.
 
+use shuyi_assets::target::TargetProfile;
 use shuyi_platform::harness::Harness;
-use shuyi_ui::screens::options::{LeaveChoice, OptionsScreen, ValueView};
+use shuyi_ui::screens::options::{FULLSCREEN_ROW, LeaveChoice, OptionsScreen, ValueView};
 use shuyi_ui::settings::{SETTINGS_KEY, TextSpeed};
 use shuyi_ui::storage::Storage;
 use shuyi_ui::toy::{self, LEFT_HANDED, Lobby, Talk, Toy};
@@ -50,6 +51,37 @@ fn the_lobby_is_an_engine_menu_with_its_sounds() {
         "{}",
         h.snapshot()
     );
+}
+
+/// The engine's profile `id`, from `targets/`.
+fn engine_profile(id: &str) -> TargetProfile {
+    let source = match id {
+        "desktop" => include_str!("../../../../targets/desktop.ron"),
+        "web" => include_str!("../../../../targets/web.ron"),
+        "steam-deck" => include_str!("../../../../targets/steam-deck.ron"),
+        "playdate" => include_str!("../../../../targets/playdate.ron"),
+        _ => panic!("no profile {id}"),
+    };
+    TargetProfile::from_source(id, id, source).unwrap_or_else(|e| panic!("{e:?}"))
+}
+
+/// A device that is always full screen shows no Fullscreen row; a window
+/// and a browser's canvas do.
+#[test]
+fn the_options_screen_offers_fullscreen_only_in_a_window() {
+    for (id, windowed) in [
+        ("desktop", true),
+        ("web", true),
+        ("steam-deck", false),
+        ("playdate", false),
+    ] {
+        let mut h = lobby().as_target(&engine_profile(id));
+        h.keys("f");
+        assert_eq!(h.screens(), ["lobby", "options"], "{id}");
+        let view = options(&h).view(h.ctx());
+        let shown = view.row(FULLSCREEN_ROW).is_some();
+        assert_eq!(shown, windowed, "{id}");
+    }
 }
 
 #[test]

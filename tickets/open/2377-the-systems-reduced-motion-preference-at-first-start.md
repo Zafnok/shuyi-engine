@@ -40,18 +40,18 @@ off
 2340 gives the switch; this ticket sets it from the start for a player
 who has already asked their system.
 
-What Shuyi will have once the blockers are done:
+What Shuyi has, or will have once the blockers are done:
 
 - **3053's facts.** `PlatformFacts` (`crates/ui/src/platform_facts.rs`)
   on `Ctx::platform`: constant for a run, from the target's profile or
   from what the backend reads of the system. `Platform::facts` is a
   required method, `HeadlessPlatform::with_facts` sets them in tests,
   and `shuyi-app`'s `run` reads the profile's facts with `facts_for`
-  (`crates/app/src/facts.rs`) before the loop.
+  (`crates/app/src/facts.rs`, through `start_as`) before the loop
+  (3053, done).
 - **The order at load.** `Setup::ctx` (`crates/platform/src/app.rs`)
   sets the context's fields before `with_storage` loads the settings
-  (it sets `ctx.keyboard` there today; 3053 puts `ctx.platform` in its
-  place).
+  (3053 sets `ctx.platform` there, before it).
 - **The defaults.** `Ctx::load_settings` (`crates/ui/src/ctx.rs`) uses
   `Settings::default()` when the profile has no settings saved
   (`Ok(None)`) and when they can't be read. It runs at start and, from

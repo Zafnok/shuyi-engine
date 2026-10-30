@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-30
 ---
 
 # 3053 — Platform facts at run time
@@ -336,37 +336,41 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every file in `targets/` decodes with the `quit` and `windowed`
+- [x] Every file in `targets/` decodes with the `quit` and `windowed`
       values above (a test reads each), and a profile without the two
       fields loads with `Game` and `false`.
-- [ ] `PlatformFacts::default()` equals `from_profile` of
+- [x] `PlatformFacts::default()` equals `from_profile` of
       `targets/desktop.ron`.
-- [ ] `target_id(false, None)` is `desktop`, `target_id(true, None)` is
+- [x] `target_id(false, None)` is `desktop`, `target_id(true, None)` is
       `web`, and `target_id(_, Some("steam-deck"))` is `steam-deck` on
       either; `facts_for` reads each embedded profile, and
       `facts_for("nowhere")` is an error naming `nowhere` and the three
       ids it knows.
-- [ ] `App::load` on a headless platform with the `steam-deck` facts
+- [x] `App::load` on a headless platform with the `steam-deck` facts
       gives a context with `Keyboard::Absent` and `windowed` false.
-- [ ] Hello, Grid's title as `web` has no Quit item and no input quits
+- [x] Hello, Grid's title as `web` has no Quit item and no input quits
       it; as `desktop` it has Quit, and its title snapshot is unchanged
       (Harness tests reading the view).
-- [ ] The blank template as `web`: Cancel on the title doesn't quit and
-      the help is empty; as `desktop`, Cancel quits.
-- [ ] The grid template as `web`: Cancel on the stage doesn't quit and
-      the help names no leaving; as `desktop`, it quits.
-- [ ] The toy's options screen as `steam-deck` and as `playdate` has no
+- [x] ~~The blank template as `web`: Cancel on the title doesn't quit and
+      the help is empty; as `desktop`, Cancel quits.~~ (not done: moved
+      to 2778 by the **Size** clause)
+- [x] ~~The grid template as `web`: Cancel on the stage doesn't quit and
+      the help names no leaving; as `desktop`, it quits.~~ (not done:
+      moved to 2778 by the **Size** clause; the grid stage now goes back
+      to the title on Cancel and never quits)
+- [x] The toy's options screen as `steam-deck` and as `playdate` has no
       Fullscreen row; as `desktop` and as `web` it has one.
-- [ ] `ToggleFullscreen` where `windowed` is false leaves the setting as
+- [x] `ToggleFullscreen` where `windowed` is false leaves the setting as
       it was; where it is true, it flips it as before.
-- [ ] The same keys in Hello, Grid as `desktop` and as `web` give the
+- [x] The same keys in Hello, Grid as `desktop` and as `web` give the
       same stage state hash.
-- [ ] `shuyi-ui` and `shuyi-platform` still build for
+- [x] `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf` (CI's no-std job).
-- [ ] A game made from each template passes CI's `templates` job's
-      gates.
-- [ ] The ADR is written and listed in `docs/adr/README.md`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~A game made from each template passes CI's `templates` job's
+      gates.~~ (not done here: the templates don't change in this PR;
+      2778 runs them, and CI's `templates` job runs them on this one)
+- [x] The ADR is written and listed in `docs/adr/README.md`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -384,4 +388,137 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**What was done.**
+
+- `TargetProfile::quit: Quit` (`Game` by default, `System`) and
+  `Display::windowed` (default `false`), with serde defaults; the
+  engine's `targets/*.ron` set them as the Scope says, each with a
+  comment. A test in `crates/cli/src/contract/target/tests.rs` reads
+  every file's two values.
+- `shuyi_ui::PlatformFacts` (`crates/ui/src/platform_facts.rs`, `no_std`,
+  `#[non_exhaustive]`), with `from_profile`, `can_quit` and a `Default`
+  equal to the `desktop` profile's. `Ctx::platform` replaces
+  `Ctx::keyboard`; `Game::toggle_fullscreen` and
+  `OptionsScreen::rows` honour `windowed` (the row's key is now the
+  public `FULLSCREEN_ROW`).
+- `Platform::facts`, required; `Setup::platform` replaces
+  `Setup::keyboard`; `HeadlessPlatform::with_facts`;
+  `Harness::as_target`. Every `Platform` implements `facts`, the bare
+  backend's test included (its doc says why it is the exception).
+- `shuyi-app`: `crates/app/src/facts.rs` (`target_id`, `this_target`,
+  the three embedded profiles, `facts_for`, and `start_as`, which swaps
+  the load for one that returns the error). `run` calls it before the
+  capture branch, so the capture mode runs as the target too.
+- Hello, Grid's title leaves out Quit where `!can_quit()`, with Harness
+  tests, a `title_web` snapshot and the desktop/web state hash test.
+- ADR-0060; `docs/platform-backends.md` (the `facts` section, frame 2,
+  the rule on required methods, a checklist line); `AGENTS.md` rule 5's
+  line; the book: chapter 9's *Where the game runs* with a tested
+  snippet (`as_target`), and chapter 2's title snippet quits only where
+  `can_quit()`.
+
+**Deviations.**
+
+- **Size.** With the tests, the ADR and the docs the PR passed 600
+  changed lines, so the template's part went to **2778** (blocked by
+  this one), as the **Size** clause says. The templates had also changed
+  since the ticket was written: the blank and grid templates are one
+  template (`templates/shuyi-default`), the title is the base's, and
+  the grid stage's Cancel goes back to the title (`Transition::Pop`), so
+  the two `stage.help.stay` keys aren't needed. 2778 says so, and 2803's
+  clause now names 2778.
+- `Quit` is `#[non_exhaustive]` (ADR-0039 §6: a set that may grow).
+- `shuyi-app`'s run calls `start_as` (in `facts.rs`) rather than
+  swapping the load inline, so its test drives the swap on the headless
+  backend.
+- The capture mode (`capture.rs`) runs with the build's facts too; it
+  wasn't named.
+
+**Either-order clauses.** None of 2349, 2348, 2518, 2803, 3007 and 2005
+was done; each now says what holds from 3053 (done). 3007 picks the
+layer at load itself (its clause said 3053 would; this one said 3007
+would, and 3007 now does).
+
+**Follow-ups.** 2778 (the template's title).
+
+Breaking: shuyi-ui: Ctx::keyboard: it is `ctx.platform.keyboard` (`Ctx::platform: PlatformFacts`).
+
+```migration
+since: 0.1.0
+what: The context's keyboard moved into the platform's facts.
+old: Ctx::keyboard
+new: Ctx::platform.keyboard
+before: |
+  ctx.keyboard = Keyboard::Absent;
+after: |
+  ctx.platform.keyboard = Keyboard::Absent;
+find: ["ctx.keyboard"]
+```
+
+Breaking: shuyi-platform: Setup::keyboard and Platform: `Setup::keyboard` is `setup.platform.keyboard`, and a `Platform` of the game's own implements the required `facts(&self) -> PlatformFacts` (its target's, from `PlatformFacts::from_profile`).
+
+```migration
+since: 0.1.0
+what: A backend says its platform's facts, and the setup carries them.
+old: Setup::keyboard
+new: Setup::platform.keyboard, and Platform::facts
+before: |
+  start.before_load(|setup| setup.keyboard = Keyboard::Absent)
+after: |
+  start.before_load(|setup| setup.platform.keyboard = Keyboard::Absent)
+find: ["setup.keyboard"]
+```
+
+Breaking: shuyi-assets: TargetProfile and target::Display: each has a new public field (`quit`, `windowed`); code that builds one with a struct literal adds it. Files are unchanged: both fields have serde defaults.
+
+```migration
+since: 0.1.0
+what: A target profile says how the player quits and whether its display is a window.
+old: Display { sizes, color, min_text_px, good_text_px, safe_area }
+new: Display { sizes, color, min_text_px, good_text_px, safe_area, windowed }
+before: |
+  Display { sizes, color, min_text_px, good_text_px, safe_area }
+after: |
+  Display { sizes, color, min_text_px, good_text_px, safe_area, windowed: false }
+find: ["safe_area }"]
+```
+
+Breaking: shuyi-assets: pack::VERSION: 6 (a target profile's binary form has `quit` and `windowed`): a pack baked before is refused; bake it again with `shuyi bake`.
+
+```migration
+since: 0.1.0
+what: The pack format is version 6; a pack baked before is refused.
+old: pack::VERSION 5
+new: pack::VERSION 6
+before: |
+  shuyi bake   # a pack of version 5
+after: |
+  shuyi bake   # bake it again: version 6
+```
+
+Breaking: shuyi-assets: formats.ron "target profile: target-ron": the decoded profile has the two new fields, so its state hash moved; nothing for a game to change.
+
+```migration
+since: 0.1.0
+what: The golden state hash of a decoded target profile moved with its two new fields.
+old: 'formats.ron "target profile: target-ron": a51804880890f80b'
+new: 'formats.ron "target profile: target-ron": 9dbfa252bb4b827b'
+before: |
+  a51804880890f80b
+after: |
+  9dbfa252bb4b827b
+```
+
+Book: the book changes: chapter 9 (*Where the game runs*, with the `as_target` snippet) and chapter 2's title snippet.
+
+**For the game.** At its next pin bump: `ctx.keyboard` and
+`setup.keyboard` become `ctx.platform.keyboard` and
+`setup.platform.keyboard`, and a `Platform` of its own (its Playdate
+front end, if it implements one) implements `facts` from
+`targets/playdate.ron`, which also gives `Keyboard::Absent`, so its
+hand-set keyboard goes. Its title can hide Quit with
+`ctx.platform.can_quit()`. No game PR exists yet; the game's pin bump
+follows this PR.
+
+**For Nick.** On the web, the Hello, Grid demo's title no longer offers
+a Quit that did nothing.

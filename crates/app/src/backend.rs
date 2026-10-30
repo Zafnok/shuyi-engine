@@ -24,7 +24,7 @@ use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
-use shuyi_ui::{Game, GameData, RawInputEvent};
+use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
 use crate::audio::{self, Audio, device};
 use crate::pacing::Held;
@@ -99,6 +99,8 @@ pub(crate) struct Macroquad {
     text_input: Option<Box<dyn TextInput>>,
     /// Whether [`start`](Self::start) has run.
     started: bool,
+    /// Where the game runs: this build's target's facts.
+    facts: PlatformFacts,
     /// The frame cap the last frame presented asked for, and its serial.
     frame_cap: (FrameCap, u32),
     /// The input of frames that didn't run the game, for the next that
@@ -110,10 +112,11 @@ pub(crate) struct Macroquad {
 }
 
 impl Macroquad {
-    /// The backend for a game `config` describes. Closing the window asks
-    /// the game first ([`SystemEvent::QuitRequested`]) on native, where a
-    /// window can be closed.
-    pub(crate) fn new(config: &mut AppConfig) -> Self {
+    /// The backend for a game `config` describes, on the target `facts`
+    /// describe. Closing the window asks the game first
+    /// ([`SystemEvent::QuitRequested`]) on native, where a window can be
+    /// closed.
+    pub(crate) fn new(config: &mut AppConfig, facts: PlatformFacts) -> Self {
         if !cfg!(target_arch = "wasm32") {
             prevent_quit();
         }
@@ -129,6 +132,7 @@ impl Macroquad {
             sound: Sound::default(),
             text_input: config.text_input.take(),
             started: false,
+            facts,
             frame_cap: (FrameCap::DEFAULT, 0),
             held: Held::default(),
             #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
@@ -355,6 +359,10 @@ impl Platform for Macroquad {
         self.text_input
             .as_deref_mut()
             .map(|t| t as &mut dyn TextInput)
+    }
+
+    fn facts(&self) -> PlatformFacts {
+        self.facts.clone()
     }
 
     fn clock(&self) -> Option<PerfClock> {
