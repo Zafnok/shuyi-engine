@@ -58,6 +58,8 @@ pub const RESTORED_MESSAGE: &str = "options.message.restored";
 pub const ON_OFF: [&str; 2] = ["options.value.off", "options.value.on"];
 /// Text key of the help line on a row whose value the cursor changes.
 pub const HELP_CHANGE: &str = "options.help.change";
+/// Text key of the Fullscreen row's name ([`OptionRow::fullscreen`]).
+pub const FULLSCREEN_ROW: &str = "options.row.fullscreen";
 /// Text key of the help line on a volume.
 pub const HELP_VOLUME: &str = "options.help.volume";
 /// Text key of the help line while the volume box is open on a
@@ -321,10 +323,12 @@ impl<G: GameData> OptionRow<G> {
         )
     }
 
-    /// Whether the game fills the screen (in the settings).
+    /// Whether the game fills the screen (in the settings). The options
+    /// screen leaves it out where the game isn't in a window
+    /// ([`OptionsScreen::rows`]).
     pub fn fullscreen() -> Self {
         Self::new(
-            "options.row.fullscreen",
+            FULLSCREEN_ROW,
             RowValue::Toggle {
                 get: |ctx| ctx.settings().fullscreen,
                 set: |ctx, on| ctx.preview_settings(|s| s.fullscreen = on),
@@ -587,9 +591,18 @@ impl<G: GameData> OptionsScreen<G> {
         self
     }
 
-    /// The rows `ctx` shows, top to bottom.
+    /// The rows `ctx` shows, top to bottom: the game's, less the
+    /// Fullscreen row ([`OptionRow::fullscreen`]'s key) where the game
+    /// isn't in a window ([`PlatformFacts::windowed`]): a device that is
+    /// always full screen.
+    ///
+    /// [`PlatformFacts::windowed`]: crate::PlatformFacts::windowed
     pub fn rows(&self, ctx: &Ctx<G>) -> Vec<OptionRow<G>> {
-        (self.rows)(ctx)
+        let mut rows = (self.rows)(ctx);
+        if !ctx.platform.windowed {
+            rows.retain(|row| row.key != FULLSCREEN_ROW);
+        }
+        rows
     }
 
     /// The focused row's key (`""` with no rows).

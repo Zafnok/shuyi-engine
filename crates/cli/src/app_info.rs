@@ -2,7 +2,7 @@
 //! rules ([`problems`], which `check --target` reports), and `app-info`,
 //! which writes it as the Rust constant the game's binary compiles
 //! ([`rust`], [`run`]) and the window's icons, downscaled from the game's
-//! one icon ([`downscale`], ADR-0060).
+//! one icon ([`downscale`], ADR-0061).
 //!
 //! The rules:
 //!
@@ -178,7 +178,7 @@ pub fn icon(part: &AppPart, root: &Path) -> Result<Option<Icon>, String> {
 
 /// `rgba`, a `width` × `height` picture of RGBA8 pixels, downscaled to
 /// `size` × `size`, in integers, so the same picture gives the same bytes
-/// everywhere (ADR-0060). Each pixel out is the mean of the pixels of its
+/// everywhere (ADR-0061). Each pixel out is the mean of the pixels of its
 /// square in, from `x * width / size` up to `(x + 1) * width / size` (and
 /// the same down), in premultiplied alpha, so a transparent pixel adds
 /// nothing to the colour beside it; each mean is rounded half up.

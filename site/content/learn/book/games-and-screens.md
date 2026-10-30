@@ -26,7 +26,9 @@ it:
   that they fit each target's buttons, and in tests a screen gets only
   the actions it declares ([chapter 3](@/learn/book/actions.md)).
 - `update` runs once a frame while the screen is on top. It reads the
-  frame's actions and answers with a `Transition`.
+  frame's actions and answers with a `Transition`. Cancel quits only
+  where `ctx.platform.can_quit()`: on the web the player closes the tab
+  instead ([chapter 9](@/learn/book/targets-and-export.md)).
 - `draw` paints the screen into the frame. Here it paints the view,
   plain data built by `view`; [chapter 4](@/learn/book/frame-and-skins.md)
   says why the two are apart.

@@ -1020,7 +1020,7 @@ fn a_bad_frame_time_neither_backs_out_nor_breaks_the_hold() {
 #[test]
 fn with_no_keyboard_only_the_controller_side_shows() {
     let mut c = pad_ctx();
-    c.keyboard = Keyboard::Absent;
+    c.platform.keyboard = Keyboard::Absent;
     c.device = Device::Keyboard;
     let layout = c.shown_layout().unwrap();
     let mut keys = c.layout_bindings(layout);

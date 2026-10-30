@@ -1,4 +1,4 @@
-# ADR-0060: A game's icon: one square picture downscaled in integers by the tool, and the window's icon in `AppInfo`
+# ADR-0061: A game's icon: one square picture downscaled in integers by the tool, and the window's icon in `AppInfo`
 
 - **Status:** Accepted; extends ADR-0059
 - **Date:** 2026-10-30

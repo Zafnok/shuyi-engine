@@ -28,6 +28,14 @@ use hello_grid::screens::StageScreen;
 use hello_grid::tools::Start;
 use shuyi::core::{Pos, TurnRules, flow_field};
 use shuyi::platform::harness::Harness;
+use shuyi_cli::contract::target::engine_profiles;
+
+/// The game at its title, its first stage seeded with `seed`, run as the
+/// engine's target `id` (`desktop`, `web`).
+pub fn title_on(id: &str, seed: u64) -> Harness<Hello> {
+    let profiles = engine_profiles().unwrap_or_else(|e| panic!("{e:?}"));
+    title(seed).as_target(&profiles[id].profile)
+}
 
 /// The game at its title, its first stage seeded with `seed`.
 pub fn title(seed: u64) -> Harness<Hello> {

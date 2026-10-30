@@ -22,6 +22,8 @@
 //! - a `toy` game to try things on (the `toy` feature); the test Harness
 //!   that drives a game without a window is `shuyi_platform::harness`;
 //! - the [`system_keyboard`] a text box may ask the platform for;
+//! - the [`platform_facts`]: where the game runs, which screens read
+//!   instead of a `cfg!` ([`Ctx::platform`]);
 //! - the engine's [`log`]: lines with a level, a category and a frame,
 //!   given through [`Ctx::log`];
 //! - [`perf`]: frame times and the spans a game marks
@@ -74,6 +76,7 @@ pub mod input;
 pub mod log;
 pub mod module;
 pub mod perf;
+pub mod platform_facts;
 pub mod profiles;
 pub mod screen;
 pub mod screens;
@@ -90,6 +93,7 @@ pub use basic::BasicData;
 pub use ctx::{Ctx, GameData, IdleMotion, KeyPrompt, Keyboard};
 pub use game::{FrameOutput, Game, GameHooks, RawInputEvent, ScreenHook};
 pub use hurry::HurryClock;
+pub use platform_facts::PlatformFacts;
 pub use screen::{FrameInput, Screen, ScreenResult, ScreenStack, Transition};
 
 /// Whether this build offers the developer's tools: debug builds, and

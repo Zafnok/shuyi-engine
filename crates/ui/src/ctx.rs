@@ -35,6 +35,7 @@ use crate::input::state::Device;
 use crate::log::{LOG_LINES, LogCategory, LogLevel, LogLine, LogRing};
 use crate::module;
 use crate::perf::{FrameRecord, MemoryScopes, PerfClock, PerfState, TagClass};
+use crate::platform_facts::PlatformFacts;
 use crate::profiles::{self, ProfileError, ProfileId, ProfileStore, Profiles};
 use crate::settings::{GameSettings, SETTINGS_KEY, Settings};
 use crate::storage::{Storage, StorageError};
@@ -185,7 +186,8 @@ pub enum IdleMotion {
     On,
 }
 
-/// Whether the platform has a keyboard ([`Ctx::keyboard`]).
+/// Whether the platform has a keyboard
+/// ([`PlatformFacts::keyboard`](crate::PlatformFacts::keyboard)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Keyboard {
     /// It does (a computer, a browser): a first key press opens the
@@ -322,11 +324,14 @@ pub struct Ctx<G: GameData> {
     /// [`KeyPrompt::Waiting`], and `Game` moves it on to
     /// [`KeyPrompt::Pressed`] at the first key or button press.
     pub key_prompt: KeyPrompt,
-    /// Whether the platform has a keyboard. [`Keyboard::Present`] here; a
-    /// front end without one sets [`Keyboard::Absent`] before the
-    /// [`Game`](crate::Game) starts, along with the
-    /// [`device`](Self::device) it has.
-    pub keyboard: Keyboard,
+    /// Where the game runs: the target's id, whether the game may quit,
+    /// whether its window goes full screen and back, and the keyboard,
+    /// pointer and touch screen the device has. The `desktop` target's
+    /// here ([`PlatformFacts::default`]); the platform hands over its own
+    /// before the [`Game`](crate::Game) starts (a front end without a
+    /// keyboard sets the [`device`](Self::device) it has too). Screens
+    /// read it; a game's rules never do.
+    pub platform: PlatformFacts,
     /// The system's own keyboard for a text box (a console's, Steam's on
     /// the Steam Deck), if the platform has one: absent here, and the
     /// platform's `App` says so before every frame.
@@ -381,7 +386,7 @@ impl<G: GameData> Ctx<G> {
             music_picks: 0,
             clock_s: 0.0,
             key_prompt: KeyPrompt::Off,
-            keyboard: Keyboard::Present,
+            platform: PlatformFacts::default(),
             system_keyboard: SystemKeyboard::default(),
             lang: LangCode::english(),
             english: LangCode::english(),

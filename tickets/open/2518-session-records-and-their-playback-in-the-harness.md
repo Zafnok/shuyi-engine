@@ -65,8 +65,9 @@ What Shuyi has (read on 2026-10-20, checked again on 2026-10-21):
   a record no ticket made; ADR-0005 §3's `shuyi-debug-replay` skill says
   "Reproduce a bug from a record".
 - Later tickets build on this one: 2519 (records from real builds),
-  2357 (rewind) and 2905 (the code reload research). 2220, 2356,
-  2405 and 3053 add their values to the record in either order, and
+  2357 (rewind) and 2905 (the code reload research). 2220, 2356
+  and 2405 add their values to the record in either order, 3053's
+  platform facts are in it (3053 is done), and
   this ticket adds 2321's `Pacing` (done). 2029
   plays a record in 2018's capture mode. 2514 and 3046 leave work with
   records to follow-ups.
@@ -141,12 +142,12 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     - `format_version: u32` (`FORMAT_VERSION`, 1);
     - `made: Option<Made>` (2111): the build that made it;
     - `display: DisplayInfo`: what `App::load` was given;
-    - `platform: PlatformFacts` (either order with 3053): what
+    - `platform: PlatformFacts` (**from 3053, done**): what
       `App::load` got from `Platform::facts`, with serde derives on
-      `PlatformFacts`. Playback hands it to
+      `PlatformFacts` (`crates/ui/src/platform_facts.rs`, and on
+      `Keyboard` and `shuyi_assets::target::Quit`). Playback hands it to
       `HeadlessPlatform::with_facts`, so a session plays back as the
-      target it was recorded on. If 3053 isn't done, leave it out, and
-      3053 adds it;
+      target it was recorded on;
     - `storage: BTreeMap<String, String>`: every key and value in the
       store when it was handed over (`list`, then `read` of each), and
       `storage_complete: bool`, false if the keys or a value couldn't be
@@ -379,8 +380,9 @@ privacy question for Nick, which parked 3047 asks for crash reports).
 6. Add `Harness::start`, `start_recording`, `session`, `from_session`,
    `play_to` and `play_all`, sharing the per-frame bookkeeping of
    `Harness::frame` (the audio log, the screen log, the quit frame).
-7. Add the either-order parts whose partner is done (2220, 2356,
-   3053), 2321's `Pacing` part, and the link's test (2521, done).
+7. Add the either-order parts whose partner is done (2220, 2356),
+   the platform facts (3053, done), 2321's `Pacing` part, and the
+   link's test (2521, done).
 8. Write the property, divergence and boundary tests on the toy game
    (`shuyi_ui::toy`). Tests that need a store, a system keyboard or a
    clock that goes back record on `App` and a `HeadlessPlatform` built

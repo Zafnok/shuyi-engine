@@ -92,13 +92,12 @@ splits it.
   game, write the ticket for the engine screen of credits and notices
   that 2223 leaves out until a phone or console asks (from 3039's
   `notices` works and `credits::merge`).
-- **Platform facts.** **Either order with 3053:** if 3053 is done, the
-  `android` and `ios` exporters set `SHUYI_TARGET` (`android`, `ios`)
-  in their builds, and `shuyi-app` embeds `targets/android.ron` and
-  `targets/ios.ron` beside the profiles it already embeds, so a phone
-  runs with its own facts (`quit: System`, touch), not the desktop's
-  (3053's Out leaves this here); if not, the split's exporter tickets
-  are blocked by 3053.
+- **Platform facts.** **From 3053 (done):** the `android` and `ios`
+  exporters set `SHUYI_TARGET` (`android`, `ios`) in their builds, and
+  `shuyi-app` embeds `targets/android.ron` and `targets/ios.ron` beside
+  the profiles it already embeds (`PROFILES`, `crates/app/src/facts.rs`),
+  so a phone runs with its own facts (`quit: System`, touch), not the
+  desktop's (3053's Out leaves this here).
 - **On a device:** the bench scenarios on a four-year-old mid-range
   phone, against the budgets.
 

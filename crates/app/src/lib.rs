@@ -106,6 +106,7 @@ mod audio;
 mod backend;
 #[cfg(feature = "capture")]
 pub mod capture;
+mod facts;
 #[cfg(not(target_arch = "wasm32"))]
 mod folder;
 pub mod keys;
@@ -212,7 +213,7 @@ impl Window {
 }
 
 /// A window icon: PNG files of 16, 32 and 64 pixels square. It is
-/// `shuyi_platform`'s, which a game's `AppInfo` carries (ADR-0060).
+/// `shuyi_platform`'s, which a game's `AppInfo` carries (ADR-0061).
 pub use shuyi_platform::WindowIcon as Icon;
 
 /// Where a game's voice clips are (game ADR-0046): a folder shipped beside the
@@ -333,6 +334,12 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// and controllers, steps the game, plays its sounds, music and voices and
 /// draws its frame. Closing the window lets the game save first.
 ///
+/// The game's context gets this build's target's facts
+/// (`shuyi_ui::PlatformFacts`): the target is `SHUYI_TARGET` when the
+/// build sets it (the Steam Deck's export sets `steam-deck`), else `web`
+/// on the web and `desktop` elsewhere. A target this backend has no
+/// profile of is shown as the game's error.
+///
 /// Frames come no faster than the game's frame cap (`shuyi_ui::frame_cap`,
 /// 60 a second unless the game or the player says): after each frame is
 /// drawn, the loop waits until the next is due, unless vsync or the
@@ -341,9 +348,11 @@ fn window_icon(icon: &Icon) -> Option<miniquad::conf::Icon> {
 /// before the due time shows the last one again, and its input waits for
 /// the next frame that runs.
 pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
+    // Which target this build is: an unknown one is the load's error.
+    let (start, facts) = facts::start_as(facts::this_target(), start);
     #[cfg(feature = "capture")]
     if let Some(plan) = capture::requested() {
-        capture::run(config, start, plan).await;
+        capture::run(config, start, plan, facts).await;
         return;
     }
     // Voices (game ADR-0046): none, and nothing said, without the folder.
@@ -362,7 +371,7 @@ pub async fn run<G: GameData>(mut config: AppConfig, start: Start<G>) {
     let start = start.before_load(move |setup| setup.voice_manifest = voice_manifest);
     // What each decode allocates counts under its kind, from the load on.
     backend::tag_decodes();
-    let mut platform = Macroquad::new(&mut config);
+    let mut platform = Macroquad::new(&mut config, facts);
     let mut app = App::new(start);
     let mut pacer = Pacer::new(config.window.vsync);
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]

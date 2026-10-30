@@ -8,6 +8,7 @@ use alloc::format;
 use alloc::rc::Rc;
 use core::cell::RefCell;
 
+use shuyi_assets::target::TargetProfile;
 use shuyi_ui::frame::glyph_buffer::{Cell, GlyphBuffer};
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::log::{LogCategory, LogFilter, LogLevel};
@@ -16,7 +17,7 @@ use shuyi_ui::screen::{FrameInput, Screen, Transition};
 use shuyi_ui::storage::MemoryStorage;
 use shuyi_ui::system_keyboard::TextAsk;
 use shuyi_ui::toy::{self, Action, Toy, ToyCtx};
-use shuyi_ui::{GameHooks, IdleMotion};
+use shuyi_ui::{GameHooks, IdleMotion, Keyboard};
 
 use super::*;
 use crate::headless::{HeadlessPlatform, Presented, ScriptedKeyboard};
@@ -326,6 +327,10 @@ impl Platform for RecordLook {
         self.headless.storage()
     }
 
+    fn facts(&self) -> PlatformFacts {
+        self.headless.facts()
+    }
+
     fn audio(&mut self) -> &mut dyn crate::audio::Audio {
         self.headless.audio()
     }
@@ -386,7 +391,7 @@ fn the_setup_puts_the_platform_into_the_games_context() {
     )
     .before_load(|setup| {
         setup.key_prompt = KeyPrompt::Off;
-        setup.keyboard = Keyboard::Absent;
+        setup.platform.keyboard = Keyboard::Absent;
     });
     let mut app = App::new(start);
     let mut p = HeadlessPlatform::new().with_storage(Box::new(saved));
@@ -395,7 +400,7 @@ fn the_setup_puts_the_platform_into_the_games_context() {
     let ctx = running(&app).ctx();
     assert_eq!(ctx.idle_motion, IdleMotion::On);
     assert_eq!(ctx.key_prompt, KeyPrompt::Off);
-    assert_eq!(ctx.keyboard, Keyboard::Absent);
+    assert_eq!(ctx.platform.keyboard, Keyboard::Absent);
     assert_eq!(ctx.music_seed, mix(1_700_000_000_000));
     assert_eq!(ctx.music_seed, 0x0D0D_FFE4_EF39_1603);
     assert_eq!(
@@ -413,10 +418,8 @@ fn by_default_the_setup_waits_for_a_key_on_a_keyboard() {
         |toy: &Toy| toy.look(),
         |setup| {
             assert_eq!(setup.voice_manifest, None);
-            assert_eq!(
-                (setup.key_prompt, setup.keyboard),
-                (KeyPrompt::Waiting, Keyboard::Present)
-            );
+            assert_eq!(setup.key_prompt, KeyPrompt::Waiting);
+            assert_eq!(setup.platform, PlatformFacts::default());
             Ok(toy::game_on(setup.ctx(toy::ctx())))
         },
     );
@@ -426,6 +429,45 @@ fn by_default_the_setup_waits_for_a_key_on_a_keyboard() {
     let _ = app.frame(&mut p, Millis(1));
     let ctx = running(&app).ctx();
     assert_eq!(ctx.key_prompt, KeyPrompt::Waiting);
+}
+
+/// The platform's facts reach the game's context: the Steam Deck's, with
+/// no keyboard and always full screen.
+#[test]
+fn the_load_hands_the_platforms_facts_to_the_game() {
+    let source = include_str!("../../../../targets/steam-deck.ron");
+    let deck = TargetProfile::from_source("steam-deck.ron", "steam-deck", source).unwrap();
+    let facts = PlatformFacts::from_profile(&deck);
+    let start = Start::new(
+        Card::text("A toy"),
+        |toy: &Toy| toy.look(),
+        |setup| Ok(toy::game_on(setup.ctx(toy::ctx()))),
+    );
+    let mut app = App::new(start);
+    let mut p = HeadlessPlatform::new().with_facts(facts.clone());
+    let _ = app.frame(&mut p, Millis(0));
+    let _ = app.frame(&mut p, Millis(16));
+    let ctx = running(&app).ctx();
+    assert_eq!(ctx.platform, facts);
+    assert_eq!(ctx.platform.target, "steam-deck");
+    assert_eq!(ctx.platform.keyboard, Keyboard::Absent);
+    assert!(!ctx.platform.windowed);
+}
+
+/// The window's shortcut flips the Fullscreen setting in a window, and
+/// leaves it where the game is always full screen.
+#[test]
+fn the_fullscreen_shortcut_flips_the_setting_only_in_a_window() {
+    for windowed in [true, false] {
+        let mut game = toy::game();
+        game.ctx_mut().platform.windowed = windowed;
+        let mut app = App::running(game);
+        let mut p = HeadlessPlatform::new();
+        p.push_system(SystemEvent::ToggleFullscreen);
+        let _ = app.frame(&mut p, Millis(0));
+        let fullscreen = running(&app).ctx().settings().fullscreen;
+        assert_eq!(fullscreen, windowed, "windowed: {windowed}");
+    }
 }
 
 #[test]
@@ -661,6 +703,9 @@ fn a_keyboard_that_cannot_open_cancels_the_ask() {
         }
         fn text_input(&mut self) -> Option<&mut dyn TextInput> {
             Some(&mut self.1)
+        }
+        fn facts(&self) -> PlatformFacts {
+            self.0.facts()
         }
     }
     let (game, log) = steps_game();

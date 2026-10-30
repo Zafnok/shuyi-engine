@@ -312,14 +312,14 @@ impl<G: GameData> KeyBindingsScreen<G> {
         // The loader refuses a keymap without layouts.
         let layout = ctx.shown_layout().unwrap_or(Layout::named("none"));
         let side = match ctx.device {
-            _ if ctx.keyboard == Keyboard::Absent => Side::Controller,
+            _ if ctx.platform.keyboard == Keyboard::Absent => Side::Controller,
             Device::Keyboard => Side::Keyboard,
             Device::Pad(_) => Side::Controller,
         };
         Self {
             rows,
             paint: glyph::paint,
-            keyboard: ctx.keyboard,
+            keyboard: ctx.platform.keyboard,
             layout,
             opened_with: ctx.keymap.clone(),
             side,

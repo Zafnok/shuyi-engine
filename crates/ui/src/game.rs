@@ -319,9 +319,13 @@ impl<G: GameData> Game<G> {
 
     /// Flips the Fullscreen setting, as a window's own shortcut does. The
     /// platform then switches the window on the next frame, and an options
-    /// screen shows the new value.
+    /// screen shows the new value. Does nothing where the game isn't in a
+    /// window ([`PlatformFacts::windowed`](crate::PlatformFacts::windowed)
+    /// false): a device that is always full screen.
     pub fn toggle_fullscreen(&mut self) {
-        let _ = self.ctx.change_settings(|s| s.fullscreen = !s.fullscreen);
+        if self.ctx.platform.windowed {
+            let _ = self.ctx.change_settings(|s| s.fullscreen = !s.fullscreen);
+        }
     }
 
     /// Runs one frame: applies `events` (in order), advances input by `dt`
@@ -403,7 +407,7 @@ impl<G: GameData> Game<G> {
         // game's first-key screen over whatever is showing and does nothing
         // else; that screen then takes the keys. Without a keyboard, never.
         let first_key = self.hooks.first_key.filter(|hook| {
-            self.ctx.keyboard == Keyboard::Present
+            self.ctx.platform.keyboard == Keyboard::Present
                 && self.ctx.layout().is_none()
                 && !self.stack.names().contains(&hook.name)
                 && events.iter().any(|e| matches!(e, RawInputEvent::Down(_)))

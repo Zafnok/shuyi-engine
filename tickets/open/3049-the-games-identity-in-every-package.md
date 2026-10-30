@@ -42,7 +42,7 @@ What Shuyi has (read on 2026-10-21):
   checks the icon (an `app_info::Icon { side, rgba }`, or the error
   `check --target` reports as `app.icon`), and
   `app_info::downscale(w, h, rgba, size)` makes a `size` × `size`
-  picture in integers (ADR-0060). `app-info` writes the window's 16, 32
+  picture in integers (ADR-0061). `app-info` writes the window's 16, 32
   and 64 px icons with them; every package's size uses the same two.
 - 3004 (done) added `shuyi export` and four exporters
   (`crates/cli/src/export.rs`, `export/desktop.rs`, `export/web.rs`):

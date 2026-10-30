@@ -1,7 +1,7 @@
 //! [`AppInfo`]: who a game is, the same on every target: the name players
 //! see, a reverse-DNS id, its version and build, its publisher, the name
 //! its saves are kept under (ADR-0059), and its window's icon
-//! ([`WindowIcon`], ADR-0060).
+//! ([`WindowIcon`], ADR-0061).
 //!
 //! A game writes it once, in its `shuyi.ron`'s `app` part, and
 //! `shuyi app-info` writes it as a Rust constant (`pub const APP:
@@ -59,7 +59,7 @@ pub struct AppInfo {
 }
 
 /// A window's icon: PNG files of 16, 32 and 64 pixels square, which
-/// `shuyi app-info` downscales from the game's one icon (ADR-0060). Build
+/// `shuyi app-info` downscales from the game's one icon (ADR-0061). Build
 /// it with [`WindowIcon::new`].
 ///
 /// ```compile_fail

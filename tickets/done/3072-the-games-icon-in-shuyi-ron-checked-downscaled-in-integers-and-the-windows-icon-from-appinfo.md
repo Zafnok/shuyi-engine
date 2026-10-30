@@ -172,7 +172,7 @@ None.
   commented out, with a line in its `AGENTS.md`. The `new` test makes a
   game from both short names, then runs `app-info --check`; it then
   adds an icon and writes and checks the window's icons.
-- **ADR-0060.**
+- **ADR-0061.**
 - **Docs:** `docs/contract.md` (the `check --target` row and the
   template's paragraph), the book's chapter 9 and its snippet
   `project/shuyi.ron`, and the `shuyi-ship` skill.

@@ -193,13 +193,12 @@ engine gives the pieces and a default, and the game chooses.
   - **The headless backend:** `HeadlessPlatform::with_languages(self,
     languages: &[&str]) -> Self`, as the system writes them; none by
     default.
-  - **Either order with 3053** (platform facts at run time): if it is
-    done, the languages are `PlatformFacts::languages: Vec<LangCode>`,
+  - **From 3053 (done):** the languages are
+    `PlatformFacts::languages: Vec<LangCode>` (`crates/ui/src/platform_facts.rs`),
     filled by each backend's `facts()` (so no `Platform::languages` or
     `Setup::languages`, and the headless backend takes them through
     `HeadlessPlatform::with_facts`), and `Setup::ctx` hands them to
-    `Ctx::set_system_languages` before the settings load. If not, this
-    ticket adds them as above and 3053 folds them in.
+    `Ctx::set_system_languages` before the settings load.
   - **Either order with 3010** (the Playdate backend): if it is done,
     `shuyi-playdate` answers `languages` from the SDK's
     `system->getLanguage()` (English gives `en`, Japanese `ja`,
@@ -317,8 +316,8 @@ follows this one. It builds game#0825 on `Settings::language` (an
    `crates/ui/src/ctx.rs`; `OptionsScreen` and `RowValue`; `App::load`
    and `Setup::ctx` (`crates/platform/src/app.rs`); `HeadlessPlatform`;
    `crates/app/src/pads.rs`, `pads/web.rs` and `crates/cli/web/gamepad.js`
-   with their tests in `crates/cli/src/web.rs`. Check whether 2110,
-   3053 and 2353 are done, for their clauses.
+   with their tests in `crates/cli/src/web.rs`. Check whether 2110
+   and 2353 are done, for their clauses.
 2. Add `Settings::language`, the four saved forms and `FirstLanguage`.
    The grid template isn't formatted by `cargo fmt --all` (CI's
    template job checks it), so format it on its own.

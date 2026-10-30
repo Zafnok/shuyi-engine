@@ -161,7 +161,7 @@ pub struct AppPart {
     #[serde(default)]
     pub code: Option<String>,
     /// The game's icon: one square PNG, 512 pixels a side or more, which
-    /// the tools downscale to every size a target asks (ADR-0060).
+    /// the tools downscale to every size a target asks (ADR-0061).
     #[serde(default)]
     pub icon: Option<String>,
     /// The folder where `app-info` writes the window's icons, `16.png`,

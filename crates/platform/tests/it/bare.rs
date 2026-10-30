@@ -1,15 +1,17 @@
-//! [`Bare`]: a backend that implements only the seven methods of
-//! ADR-0024 §2, as a private console's backend may, and runs a frame of
-//! the toy game.
+//! [`Bare`]: a backend that implements only the required methods (the
+//! seven of ADR-0024 §2, and `facts`), as a private console's backend
+//! may, and runs a frame of the toy game.
 //!
 //! A method added to `Platform` without a default fails to compile here:
-//! give it a default instead (ADR-0040 §7), so no backend breaks.
+//! give it a default instead (ADR-0040 §7), so no backend breaks. The one
+//! exception is `facts`: a backend always says which target it is
+//! (ADR-0060).
 
 use shuyi_platform::{App, Audio, DisplayInfo, Frame, FrameOutcome, Millis, Platform};
 use shuyi_platform::{Silent, SystemEvent, TextInput};
-use shuyi_ui::RawInputEvent;
 use shuyi_ui::storage::{MemoryStorage, Storage};
 use shuyi_ui::toy;
+use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 /// The fewest methods a backend can have: no sound, no system keyboard,
 /// storage in memory.
@@ -43,6 +45,10 @@ impl Platform for Bare {
 
     fn text_input(&mut self) -> Option<&mut dyn TextInput> {
         None
+    }
+
+    fn facts(&self) -> PlatformFacts {
+        PlatformFacts::default()
     }
 }
 

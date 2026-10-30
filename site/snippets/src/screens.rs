@@ -53,13 +53,13 @@ impl Screen<Data> for Title {
         "title"
     }
 
-    /// Confirm starts the garden, and Cancel leaves the game.
+    /// Confirm starts the garden, and Cancel leaves the game where it may.
     fn actions(&self) -> Option<Vec<UiAction>> {
         Some(vec![UiAction::Confirm, UiAction::Cancel])
     }
 
     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
-        if input.actions.contains(&UiAction::Cancel) {
+        if input.actions.contains(&UiAction::Cancel) && ctx.platform.can_quit() {
             return Transition::Quit;
         }
         if input.actions.contains(&UiAction::Confirm) {
@@ -325,6 +325,19 @@ mod tests {
         assert_eq!(h.screens(), ["title"]);
     }
     // ANCHOR_END: harness
+
+    // ANCHOR: as_target
+    #[test]
+    fn on_the_web_cancel_on_the_title_doesnt_quit() {
+        let profiles = shuyi_cli::contract::target::engine_profiles().unwrap();
+        let mut h = game().harness().as_target(&profiles["web"].profile);
+        h.keys("Backspace");
+        assert!(!h.quit_requested());
+        let mut h = game().harness().as_target(&profiles["desktop"].profile);
+        h.keys("Backspace");
+        assert!(h.quit_requested());
+    }
+    // ANCHOR_END: as_target
 
     #[test]
     fn the_long_form_reads_the_same_files() {

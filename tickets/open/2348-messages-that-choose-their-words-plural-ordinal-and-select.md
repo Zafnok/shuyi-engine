@@ -143,7 +143,7 @@ and the plural table are technical.
   - **Built-in arguments:** `device`, the device pressed last
     (`keyboard`, `xbox`, `playstation`, `playstation4`, `nintendo`,
     `playdate`, `generic`), and `target`, the target profile's id
-    (ADR-0008), reserved until 3053 gives the target at run time. A
+    (ADR-0008), `ctx.platform.target` (3053, done). A
     value the caller passes under the same name wins. A branch by
     device changes the words, never names a key: keys still come from
     `{Action}` placeholders (`AGENTS.md` rule 8).
@@ -285,9 +285,8 @@ and the plural table are technical.
     space: keep that join where `fill` writes a `Piece::Arg` by
     `lookup`, so 2302's test passes unchanged. If not, 2302 does both
     (its step 3 joins the words where `fill` writes a key's name).
-  - **3053:** if it is done, fill `target` from `ctx.platform.target`,
-    beside `device`. If not, `target` stays reserved, and 3053 fills
-    it.
+  - **From 3053 (done):** fill `target` from `ctx.platform.target`,
+    beside `device`.
   - **2226:** if it is done, look the plural table up by
     `LangCode::language()` (`pt-BR` uses `pt`), and `Lang::text_in` and
     `Lang::data_text_in` give the code of whichever language in the
@@ -356,8 +355,7 @@ and the plural table are technical.
 - The atlas check (2350): it scans a message's text as written. That
   text holds every character of every form, and its syntax is ASCII,
   which `ATLAS_RANGES` keeps, so neither ticket changes for the other.
-- A value for `target` before 3053; reading the device anywhere but
-  the `Ctx::device` field.
+- Reading the device anywhere but the `Ctx::device` field.
 - Moving the templates' or the game's English onto
   `english_from_source`.
 

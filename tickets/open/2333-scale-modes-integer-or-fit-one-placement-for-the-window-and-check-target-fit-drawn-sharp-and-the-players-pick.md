@@ -282,11 +282,10 @@ game's choice, through its `engine-change` skill.
   the frame, and drawing them past it is a ticket when a game asks;
 - screen effects (2326);
 - window sizes in whole multiples, and a remembered window size (3044);
-- a different default per target: the running game doesn't know its
-  target yet (3053 adds that). Neither ticket does it: it is a
-  follow-up of its own, blocked by this one and 3053, written when a
-  game needs a different default on one target (3053's Out says the
-  same);
+- a different default per target: the running game knows its target
+  (`ctx.platform.target`, from 3053, done), but neither ticket does it:
+  it is a follow-up of its own, blocked by this one, written when a game
+  needs a different default on one target (3053's Out says the same);
 - stretching to fill with uneven pixels;
 - other backends: `shuyi-playdate` (3010) shows its display 1:1;
 - the game's options screen and saved form (the game's own ticket, if

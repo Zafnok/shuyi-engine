@@ -53,6 +53,29 @@ fn every_engine_profile_decodes_under_its_files_name() {
     assert_eq!(planned, ["android", "ios", "switch"]);
 }
 
+/// Where the player leaves a game, and whether its window goes full
+/// screen and back, on each of the engine's targets.
+#[test]
+fn every_engine_profile_says_how_the_player_quits_and_whether_it_is_windowed() {
+    use shuyi_assets::target::Quit;
+    let facts: Vec<(String, Quit, bool)> = engine_profiles()
+        .unwrap()
+        .into_values()
+        .map(|p| (p.profile.id, p.profile.quit, p.profile.display.windowed))
+        .collect();
+    let expected = [
+        ("android", Quit::System, false),
+        ("desktop", Quit::Game, true),
+        ("ios", Quit::System, false),
+        ("playdate", Quit::System, false),
+        ("steam-deck", Quit::Game, false),
+        ("switch", Quit::System, false),
+        ("web", Quit::System, true),
+    ]
+    .map(|(id, quit, windowed)| (id.to_owned(), quit, windowed));
+    assert_eq!(facts, expected);
+}
+
 #[test]
 fn the_playdate_profile_is_adr_0008s() {
     use Button::*;
