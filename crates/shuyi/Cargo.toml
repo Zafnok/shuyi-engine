@@ -15,20 +15,26 @@ workspace = true
 # `shuyi-` (`physics` for `shuyi-physics`), and a row in docs/modules.md.
 # None yet: a module's ticket adds its feature, its optional dependency
 # and its line in `enabled_modules` (ADR-0009 §6). `cargo xtask
-# check-modules` fails on a feature with no catalog row.
+# check-modules` fails on a feature with no catalog row. `std` and `app` are
+# the default engine's, no modules: a game on a device with neither, such as
+# the Playdate, turns the default features off (ADR-0062).
+[features]
+default = ["std", "app"]
+std = ["shuyi-core/std", "shuyi-assets/std", "shuyi-ui/std", "shuyi-platform/std"]
+app = ["std", "dep:shuyi-app"]
 
 [dependencies]
-shuyi-core = { path = "../core" }
-shuyi-assets = { path = "../assets" }
-shuyi-ui = { path = "../ui" }
-shuyi-platform = { path = "../platform" }
+shuyi-core = { path = "../core", default-features = false }
+shuyi-assets = { path = "../assets", default-features = false }
+shuyi-ui = { path = "../ui", default-features = false }
+shuyi-platform = { path = "../platform", default-features = false }
 
 # The macroquad backend, on every target with a window. WASI has none, and
 # macroquad's web callbacks there are imports nothing provides: a game's
 # library tests build for it without the backend (CI's `determinism` job,
 # ticket 2116).
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
-shuyi-app = { path = "../app" }
+shuyi-app = { path = "../app", optional = true }
 
 [dev-dependencies]
 # The toy game, to install every module on.

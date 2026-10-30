@@ -13,13 +13,14 @@ use core::any::Any;
 use core::fmt;
 
 use shuyi_assets::audio::AudioManifest;
-use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
+use shuyi_assets::keymap::{ActionSet, Button, ButtonChord, Chord, Key, UiAction};
 
 use crate::audio::{AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
-use crate::frame::glyph_buffer::GlyphBuffer;
+use crate::frame::EngineColor;
+use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 use crate::frame_cap::{FrameCap, Pacing};
-use crate::input::crank::Crank;
+use crate::input::crank::{Crank, Notches};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
@@ -72,7 +73,29 @@ impl RawInputEvent {
             crank.dock();
             return Vec::new();
         }
-        let Some((button, times)) = Crank::presses(crank.turn(degrees)) else {
+        Self::crank_notches(crank.turn(degrees), kind)
+    }
+
+    /// [`from_crank`](Self::from_crank) of a turn in `steps`, whole
+    /// [`STEPS_PER_TURN`](crate::input::crank::STEPS_PER_TURN)ths of a
+    /// turn ([`Crank::turn_steps`]): what a backend that reads a float
+    /// hands on from its boundary.
+    pub fn from_crank_steps(
+        crank: &mut Crank,
+        steps: i32,
+        docked: bool,
+        kind: PadKind,
+    ) -> Vec<Self> {
+        if docked {
+            crank.dock();
+            return Vec::new();
+        }
+        Self::crank_notches(crank.turn_steps(steps), kind)
+    }
+
+    /// A press and a release for each of `notches`.
+    fn crank_notches(notches: Notches, kind: PadKind) -> Vec<Self> {
+        let Some((button, times)) = Crank::presses(notches) else {
             return Vec::new();
         };
         (0..times)
@@ -535,6 +558,40 @@ impl<G: GameData> Game<G> {
                 module.draw_over(&self.ctx, &mut self.buffer);
             }
         }
+        self.draw_crank_hint();
+    }
+
+    /// The hint to unfold the crank, on the last row, while it is docked
+    /// and an action the top screen requires can only be pressed by
+    /// winding it: a docked crank gives no notches.
+    fn draw_crank_hint(&mut self) {
+        if !self.ctx.crank_docked {
+            return;
+        }
+        let needs_crank = self.stack.top_actions().is_some_and(|actions| {
+            actions
+                .into_iter()
+                .filter(|action| action.is_required())
+                .any(|action| only_on_the_crank(&self.input.keymap().buttons_for(action)))
+        });
+        if !needs_crank {
+            return;
+        }
+        let hint = if self.ctx.game.lang().has(CRANK_HINT) {
+            self.ctx.text(CRANK_HINT)
+        } else {
+            CRANK_HINT_ENGLISH
+        };
+        let ink = self.ctx.palette.engine(EngineColor::Warning);
+        let paper = self.ctx.palette.engine(EngineColor::Panel);
+        let (width, y) = (
+            i32::from(self.buffer.width()),
+            i32::from(self.buffer.height()) - 1,
+        );
+        self.buffer
+            .fill_rect(Rect::new(0, y, width, 1), Cell::new(' ', ink, paper));
+        let len = i32::try_from(hint.chars().count()).unwrap_or(width);
+        self.buffer.print((width - len).max(0) / 2, y, hint, ink, paper);
     }
 
     /// The top-most screen of type `T` on the stack, if it opts in
@@ -593,6 +650,24 @@ impl<G: GameData> Game<G> {
     pub fn screens(&self) -> Vec<&'static str> {
         self.stack.names()
     }
+}
+
+/// The text key of the hint to unfold the crank.
+pub const CRANK_HINT: &str = "crank.unfold";
+
+/// The hint in English, for a game whose text has no [`CRANK_HINT`].
+// check-text: the engine's fallback, for a game that says nothing else
+const CRANK_HINT_ENGLISH: &str = "Unfold the crank to go on";
+
+/// Whether `chords` are all the buttons of an action and each needs the
+/// crank wound, so that with it docked the action can't be pressed.
+fn only_on_the_crank(chords: &[ButtonChord]) -> bool {
+    let wound = |button| matches!(button, Button::CrankBack | Button::CrankForward);
+    !chords.is_empty()
+        && chords.iter().all(|chord| match chord.buttons() {
+            Some((a, b)) => wound(a) || wound(b),
+            None => wound(chord.first()),
+        })
 }
 
 /// Whether `request` names a cue of the right kind in `manifest`.

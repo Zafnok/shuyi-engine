@@ -164,6 +164,9 @@ impl Setup {
         ctx.idle_motion = IdleMotion::On;
         ctx.music_seed = self.seed;
         ctx.key_prompt = self.key_prompt;
+        if let Some(device) = self.platform.device {
+            ctx.device = device;
+        }
         ctx.platform = self.platform;
         let mut ctx = ctx.with_storage(self.storage);
         if let Some(manifest) = &self.voice_manifest {
@@ -694,6 +697,11 @@ impl<G: GameData> App<G> {
                 }
             }
             SystemEvent::LowBattery => {}
+            SystemEvent::CrankDocked | SystemEvent::CrankUndocked => {
+                if let Some(game) = self.game_mut() {
+                    game.ctx_mut().crank_docked = event == SystemEvent::CrankDocked;
+                }
+            }
         }
         if let (Some(hook), Phase::Running(game)) = (self.on_system, &mut self.phase) {
             hook(game, event);

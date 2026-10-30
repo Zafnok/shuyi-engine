@@ -50,10 +50,7 @@ pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
 
 /// What a game on the short path is painted with: its font and pictures.
 fn look<A: ActionSet, T: Debug + 'static>(data: &BasicData<A, T>) -> Look<'_> {
-    Look {
-        font: &data.font,
-        images: &data.images,
-    }
+    Look::new(&data.font, &data.images)
 }
 
 impl<A: ActionSet> BasicGame<A> {

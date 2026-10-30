@@ -2,6 +2,8 @@
 //! with glyphs in the palette's colors. The map itself is painted by the
 //! engine's skins ([`crate::map`]); this paints the lines round it.
 
+use crate::prelude::*;
+
 use shuyi::ui::dialogue::TextView;
 use shuyi::ui::dialogue::text_box::{self, glyph::BoxPlace};
 use shuyi::ui::frame::glyph_buffer::{BoxStyle, Cell, GlyphBuffer, Rect};
@@ -89,6 +91,12 @@ fn centred_menu<G: GameData>(ctx: &Ctx<G>, view: &MenuView, buf: &mut GlyphBuffe
     menu::glyph::paint(ctx, view, buf, x, y);
 }
 
+/// How far up a screen's lines move on a short console, so the menu clears
+/// the help on the last row: on the Playdate's 15 rows, three.
+fn raised(buf: &GlyphBuffer) -> i32 {
+    (24 - i32::from(buf.height())).clamp(0, 3)
+}
+
 /// The title: the name in a box, the line under it, the menu, the help.
 pub fn paint_title<G: GameData>(ctx: &Ctx<G>, view: &TitleView, buf: &mut GlyphBuffer) {
     let palette = &ctx.palette;
@@ -96,20 +104,24 @@ pub fn paint_title<G: GameData>(ctx: &Ctx<G>, view: &TitleView, buf: &mut GlyphB
     let c = |e| palette.engine(e);
     let width = i32::try_from(view.name.chars().count()).unwrap_or(0) + 6;
     let x = (i32::from(buf.width()) - width).max(0) / 2;
+    let up = raised(buf);
     buf.draw_box(
-        Rect::new(x, 3, width, 3),
+        Rect::new(x, 3 - up, width, 3),
         BoxStyle::Double,
         c(EngineColor::Border),
         bg,
     );
-    line(buf, 4, &view.name, c(EngineColor::Highlight), bg);
-    line(buf, 7, &view.subtitle, c(EngineColor::TextDim), bg);
-    centred_menu(ctx, &view.menu, buf, 10);
+    line(buf, 4 - up, &view.name, c(EngineColor::Highlight), bg);
+    line(buf, 7 - up, &view.subtitle, c(EngineColor::TextDim), bg);
+    centred_menu(ctx, &view.menu, buf, 10 - up);
     help(palette, buf, &view.help, bg);
 }
 
-/// Where the scene's text box goes: the bottom seven rows.
-pub const TALK_BOX: BoxPlace = BoxPlace::new(Rect::new(0, 17, 48, 7), 2, 19);
+/// Where the scene's text box goes in `buf`: the bottom seven rows.
+pub fn talk_box(buf: &GlyphBuffer) -> BoxPlace {
+    let (width, height) = (i32::from(buf.width()), i32::from(buf.height()));
+    BoxPlace::new(Rect::new(0, height - 7, width, 7), 2, height - 5)
+}
 
 /// A scene's text box, with the speaker's name.
 pub fn paint_talk<G: GameData>(
@@ -118,7 +130,8 @@ pub fn paint_talk<G: GameData>(
     speaker: Option<&str>,
     buf: &mut GlyphBuffer,
 ) {
-    text_box::glyph::paint(ctx, buf, TALK_BOX, view, speaker);
+    let place = talk_box(buf);
+    text_box::glyph::paint(ctx, buf, place, view, speaker);
 }
 
 /// The lines round the stage's map: the turn and what is happening on the
@@ -154,7 +167,8 @@ pub fn paint_end<G: GameData>(ctx: &Ctx<G>, view: &EndView, buf: &mut GlyphBuffe
     } else {
         EngineColor::Warning
     };
-    line(buf, 6, &view.headline, palette.engine(color), bg);
-    centred_menu(ctx, &view.menu, buf, 10);
+    let up = raised(buf);
+    line(buf, 6 - up, &view.headline, palette.engine(color), bg);
+    centred_menu(ctx, &view.menu, buf, 10 - up);
     help(palette, buf, &view.help, bg);
 }

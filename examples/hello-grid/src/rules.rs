@@ -14,7 +14,9 @@
 //! [`Determinize`], ordered by [`hero_order`], played on by [`playout`]
 //! ([`Walk`] and [`Chase`]) and judged by [`score`].
 
-use std::fmt;
+use core::fmt;
+
+use crate::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat};

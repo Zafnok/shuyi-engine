@@ -2,9 +2,14 @@
 //! blip for each of the engine's menu and cursor sounds, a sine at its own
 //! pitch that fades out, as a 16-bit mono WAV at the engine's sample rate.
 
+#[cfg(feature = "std")]
 use std::borrow::Cow;
 
-use shuyi::assets::audio::{AudioManifest, Bytes, CreditRef, Files, SAMPLE_RATE, SoundCue};
+use crate::prelude::*;
+
+use shuyi::assets::audio::{AudioManifest, CreditRef, SoundCue};
+#[cfg(feature = "std")]
+use shuyi::assets::audio::{Bytes, Files, SAMPLE_RATE};
 use shuyi::ui::audio::AudioConfig;
 
 /// Each sound file: its name, pitch in hertz and length in milliseconds.
@@ -35,27 +40,32 @@ pub fn manifest() -> AudioManifest {
 
 /// The sound files for the platform: the blips, made when asked for; no
 /// music folder.
+#[cfg(feature = "std")]
 pub fn files() -> Files<'static> {
     Files::new(&file, &shown, &left_out, "music")
 }
 
 /// How errors name a sound file: as the manifest does.
+#[cfg(feature = "std")]
 fn shown(name: &str) -> String {
     format!("(made by code) {name}")
 }
 
 /// Whether a build leaves the sound file out on purpose: none does.
+#[cfg(feature = "std")]
 fn left_out(_: &str) -> bool {
     false
 }
 
 /// The file `name` of [`BLIPS`], or `None`.
+#[cfg(feature = "std")]
 pub fn file(name: &str) -> Bytes {
     let &(_, pitch, ms) = BLIPS.iter().find(|(file, ..)| *file == name)?;
     Some(Cow::Owned(wav(pitch, ms)))
 }
 
 /// A sine of `pitch` hertz, `ms` milliseconds long, fading out, as a WAV.
+#[cfg(feature = "std")]
 pub fn wav(pitch: f32, ms: u32) -> Vec<u8> {
     let count = SAMPLE_RATE * ms / 1000;
     let samples: Vec<i16> = (0..count)

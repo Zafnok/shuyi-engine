@@ -392,6 +392,14 @@ pub trait Images {
     fn image(&self, id: ImageId) -> Option<Image<'_>>;
 }
 
+/// The pictures behind a borrow are the same pictures: a `&dyn Images`
+/// draws as any other.
+impl<T: Images + ?Sized> Images for &T {
+    fn image(&self, id: ImageId) -> Option<Image<'_>> {
+        (**self).image(id)
+    }
+}
+
 /// No pictures at all.
 impl Images for () {
     fn image(&self, _: ImageId) -> Option<Image<'_>> {

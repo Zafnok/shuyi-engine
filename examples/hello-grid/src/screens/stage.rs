@@ -10,10 +10,13 @@
 //! What it shows is a [`MapScene`] that the skin of the player's settings
 //! paints, and a [`StageView`] of the lines round it.
 
-use std::any::Any;
+use core::any::Any;
+
+use crate::prelude::*;
 
 use shuyi::core::{Bot, Dir, Pos, Reach, Sides, TurnRules};
 use shuyi::ui::audio::MenuSound;
+use shuyi::ui::frame::ConsoleSpec;
 use shuyi::ui::frame::glyph_buffer::{GlyphBuffer, Rect};
 use shuyi::ui::grid::{Camera, Cursor, CursorStyle, CursorView, GridSkin, MapScene, steer, walk};
 use shuyi::ui::{FrameInput, Screen, ScreenResult, Transition};
@@ -27,8 +30,11 @@ use crate::settings::MapLook;
 use crate::skin::{self, StageView};
 use crate::{Action, Hello};
 
-/// The cells the map is shown in: all but the top and bottom rows.
-pub const AREA: Rect = Rect::new(0, 1, 48, 22);
+/// The cells the map is shown in on `console`: all but the top and bottom
+/// rows.
+pub fn area(console: ConsoleSpec) -> Rect {
+    Rect::new(0, 1, i32::from(console.cols), i32::from(console.rows) - 2)
+}
 
 /// A piece on its way along its path.
 #[derive(Debug, Clone, PartialEq)]
@@ -265,9 +271,9 @@ impl StageScreen {
         }
     }
 
-    /// The tiles the player's skin fits in [`AREA`].
+    /// The tiles the player's skin fits in [`area`].
     pub fn view_tiles(ctx: &HelloCtx) -> (i32, i32) {
-        Self::with_skin(ctx, |skin, _| skin.view_tiles(AREA))
+        Self::with_skin(ctx, |skin, _| skin.view_tiles(area(ctx.console)))
     }
 }
 
@@ -324,9 +330,10 @@ impl Screen<Hello> for StageScreen {
     fn draw(&self, ctx: &HelloCtx, buf: &mut GlyphBuffer) {
         let looks = shuyi::ui::grid::Looks::new(&ctx.palette, &Terrain, &ctx.game.lights);
         Self::with_skin(ctx, |skin, painter| {
-            let scene = self.scene(skin.view_tiles(AREA));
+            let area = area(ctx.console);
+            let scene = self.scene(skin.view_tiles(area));
             skin::paint_stage(&ctx.palette, &self.view(ctx), buf);
-            skin.paint(&looks, &scene, AREA, painter, buf);
+            skin.paint(&looks, &scene, area, painter, buf);
         });
     }
 

@@ -115,7 +115,7 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   import <file> [--print]            read a file through the format registry
   bake [--target <id>] [--out <file>]
                                      bake the game's sources into one pack: sizes and times
-  export <windows | linux | macos | web> [--out <dir>] [--release] [--run]
+  export <windows | linux | macos | web | playdate> [--out <dir>] [--release] [--run]
                                      check the game against the target, then build and package
                                      it, with NOTICES.txt and export-report.json
   doctor                             check the toolchain and say how to fix it

@@ -11,15 +11,33 @@
 //! the other way starts a fresh notch (so after a notch back, the next
 //! notch forwards is a whole notch away, and a hand resting on the crank
 //! never gives a notch). A docked crank gives none and forgets what was
-//! wound.
+//! wound. A backend whose device says how far a crank turned as a float
+//! turns it into whole [`STEPS_PER_TURN`]ths of a turn at its boundary and
+//! hands those to [`Crank::turn_steps`]: no float goes further.
 
 use core::cmp::Ordering;
 
 use shuyi_assets::keymap::{Button, CrankDef};
 
-/// Thousandths of a degree in a degree: turns are summed in whole
+/// Thousandths of a degree in a degree: a turn in degrees counts in whole
 /// thousandths, so adding them up is exact.
 const MILLI: f32 = 1000.0;
+
+/// How many steps make a whole turn ([`Crank::turn_steps`]).
+pub const STEPS_PER_TURN: i32 = 256;
+
+/// What a crank counts in, a 32,000th of a degree: a thousandth of a degree
+/// and a step (360 / 256 degrees) are each a whole number of them.
+const UNITS_PER_DEGREE: i32 = 32_000;
+
+/// A thousandth of a degree, in those units.
+const UNITS_PER_MILLI: i32 = UNITS_PER_DEGREE / 1000;
+
+/// A step, in those units.
+const UNITS_PER_STEP: i32 = UNITS_PER_DEGREE * 360 / STEPS_PER_TURN;
+
+/// Most steps one frame counts (a hundred turns, as [`MOST_DEGREES`]).
+const MOST_STEPS: i32 = 100 * STEPS_PER_TURN;
 
 /// Most degrees one frame counts (a hundred turns): a turn beyond it is a
 /// broken reading, not a player.
@@ -31,10 +49,10 @@ pub type Notches = i32;
 /// A crank's notches (see the [module docs](self)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Crank {
-    /// One notch, in thousandths of a degree (at least 1).
+    /// One notch, in [`UNITS_PER_DEGREE`]ths of a degree (at least 1).
     notch: i32,
     /// Wound one way since the last notch or the last turn the other
-    /// way, in thousandths of a degree: always less than a notch.
+    /// way, in the same units: always less than a notch.
     wound: i32,
 }
 
@@ -42,7 +60,7 @@ impl Crank {
     /// A crank with nothing wound yet, `def.notch_degrees` to the notch.
     pub fn new(def: CrankDef) -> Self {
         Self {
-            notch: (i32::from(def.notch_degrees) * 1000).max(1),
+            notch: (i32::from(def.notch_degrees) * UNITS_PER_DEGREE).max(1),
             wound: 0,
         }
     }
@@ -59,11 +77,22 @@ impl Crank {
         // In range by the clamp above.
         #[allow(clippy::cast_possible_truncation)]
         let milli = milli as i32;
+        self.wind(milli * UNITS_PER_MILLI)
+    }
+
+    /// The crank turned `steps` [`STEPS_PER_TURN`]ths of a turn since the
+    /// last call, as [`turn`](Self::turn) takes degrees.
+    pub fn turn_steps(&mut self, steps: i32) -> Notches {
+        self.wind(steps.clamp(-MOST_STEPS, MOST_STEPS) * UNITS_PER_STEP)
+    }
+
+    /// Winds `units` more, and gives the notches that completes.
+    fn wind(&mut self, units: i32) -> Notches {
         // Turned the other way: a fresh notch.
-        if milli.signum() == -self.wound.signum() {
+        if units.signum() == -self.wound.signum() {
             self.wound = 0;
         }
-        let wound = self.wound + milli;
+        let wound = self.wound + units;
         // Towards zero, so the rest keeps the turn's sign and is less than
         // a notch.
         let notches = wound / self.notch;
@@ -103,12 +132,28 @@ mod tests {
     }
 
     #[test]
-    fn a_notch_is_thirty_degrees_by_default() {
-        assert_eq!(CrankDef::default().notch_degrees, 30);
+    fn a_notch_is_forty_five_degrees_by_default() {
+        assert_eq!(CrankDef::default().notch_degrees, 45);
         let mut c = Crank::new(CrankDef::default());
-        assert_eq!(c.turn(29.0), 0);
+        assert_eq!(c.turn(44.0), 0);
         assert_eq!(c.turn(1.0), 1);
-        assert_eq!(c.turn(-30.0), -1);
+        assert_eq!(c.turn(-45.0), -1);
+    }
+
+    /// A step is 360 / 256 degrees, whatever the notch.
+    #[test]
+    fn steps_of_a_turn_wind_as_degrees_do() {
+        let mut c = Crank::new(CrankDef::default());
+        assert_eq!(c.turn_steps(31), 0);
+        assert_eq!(c.turn_steps(1), 1, "32 steps are 45 degrees");
+        assert_eq!(c.turn_steps(-32), -1);
+        assert_eq!(c.turn_steps(64), 2, "a quarter turn is two notches");
+        let mut c = crank(30);
+        assert_eq!(c.turn_steps(21), 0, "21 steps are 29.53 degrees");
+        assert_eq!(c.turn_steps(1), 1, "and 22 are 30.94");
+        assert_eq!(c.turn(29.0), 0);
+        assert_eq!(c.turn_steps(1), 1, "what was left counts: 0.94, 29 and 1.41");
+        assert_eq!(c.turn_steps(i32::MAX), 1200, "a hundred turns at most");
     }
 
     #[test]

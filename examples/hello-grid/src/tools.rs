@@ -54,6 +54,7 @@ use shuyi_cli::{
 use crate::map::Terrain;
 use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Tuning, Walk};
 use crate::screens::StageScreen;
+pub use crate::{FONT_1BIT, PATTERN_MAP};
 use crate::{Action, FONT_PNG, Hello, MapLook};
 
 /// The game's own `frame-png` options.
@@ -99,7 +100,15 @@ impl Start {
 
     /// The game in the Harness, started so.
     pub fn harness(self) -> Harness<Hello> {
-        let mut ctx = crate::ctx(self.seed);
+        self.harness_of(crate::ctx(self.seed))
+    }
+
+    /// The game in the Harness on target `target`, started so.
+    pub fn harness_on(self, target: &str) -> Harness<Hello> {
+        self.harness_of(crate::ctx_on(target, self.seed))
+    }
+
+    fn harness_of(self, mut ctx: shuyi::ui::Ctx<Hello>) -> Harness<Hello> {
         ctx.preview_settings(|s| s.game.look = self.look);
         let game = if self.stage {
             let stage = StageScreen::new(&mut ctx).briefed();
@@ -125,13 +134,6 @@ pub fn picture(h: &Harness<Hello>, scale: u32) -> Result<shuyi_cli::frame_png::I
     )?;
     Ok(painter.render(h.game().buffer(), scale))
 }
-
-/// The skin's pattern map, beside its palette in `files/` (ADR-0008 §4).
-pub const PATTERN_MAP: &str = "palette@onebit.ron";
-
-/// The font atlas's one-bit rows (`cargo shuyi font-atlas` writes them
-/// beside it), which a one-bit screen draws glyphs with.
-pub const FONT_1BIT: &str = "font/atlas_1bit.bin";
 
 /// The skin's palette and its pattern map: its look on a one-bit target.
 pub fn one_bit_skin() -> Result<OneBitSkin, String> {
@@ -187,16 +189,15 @@ impl GameTools for HelloTools {
         Ok(Shot::new(picture(&h, scale.unwrap_or(1))?, h.top_screen()))
     }
 
-    /// The frame as [`one_bit_picture`] paints it: the same on every
-    /// one-bit target, the Playdate's 400 × 240 screen.
+    /// The frame on `target` as [`one_bit_picture`] paints it.
     fn frame_one_bit(
         &self,
-        _target: &str,
+        target: &str,
         options: &[GameArg],
         script: &Script,
         scale: Option<u32>,
     ) -> Result<Shot, String> {
-        let mut h = Start::from_options(options)?.harness();
+        let mut h = Start::from_options(options)?.harness_on(target);
         script.play(&mut h);
         Ok(Shot::new(
             one_bit_picture(&h, scale.unwrap_or(1))?,
