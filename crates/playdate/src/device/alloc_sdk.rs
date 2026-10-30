@@ -71,6 +71,10 @@ unsafe impl GlobalAlloc for SdkAlloc {
     }
 
     unsafe fn dealloc(&self, block: *mut u8, layout: Layout) {
+        // A failed `alloc` gives null, and null has no address before it.
+        if block.is_null() {
+            return;
+        }
         let raw = if heap::needs_padding(layout.align()) {
             #[allow(clippy::cast_ptr_alignment)]
             unsafe {
