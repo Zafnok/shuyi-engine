@@ -1338,6 +1338,20 @@ mod tests {
         SEEN.take().unwrap_or_default()
     }
 
+    /// A section of import settings, for the watcher's test.
+    #[derive(Debug, Default, PartialEq, Eq, serde::Deserialize)]
+    #[serde(default, deny_unknown_fields)]
+    struct Flip {
+        flip: bool,
+    }
+
+    impl crate::import_settings::ImportSettings for Flip {
+        const SECTION: &'static str = "flip";
+    }
+
+    /// Settings in a folder, none beside the file.
+    static SETTINGS: &[(&str, &[u8])] = &[("images/_folder.meta", b"(flip: (flip: true))")];
+
     /// The only test that sets the watcher: it is process-wide.
     #[test]
     fn the_watcher_is_told_of_every_file_read() {
@@ -1361,6 +1375,23 @@ mod tests {
             [
                 ("data/a.ron".to_owned(), true),
                 ("data/nope.ron".to_owned(), false)
+            ]
+        );
+        // Each settings file looked for is heard of, found or not, up to
+        // the first that has the section.
+        let settings = Bundle::new(vec![Layer::table("base", SETTINGS)]);
+        let hero = crate::format::AssetPath::new("images/hero.png");
+        let mut read = None;
+        let seen = watched(|| {
+            read =
+                Some(crate::format::DecodeCx::in_bundle(&settings).import_settings::<Flip>(&hero));
+        });
+        assert_eq!(read, Some(Ok(Flip { flip: true })));
+        assert_eq!(
+            seen,
+            [
+                ("images/hero.png.meta".to_owned(), false),
+                ("images/_folder.meta".to_owned(), true)
             ]
         );
     }

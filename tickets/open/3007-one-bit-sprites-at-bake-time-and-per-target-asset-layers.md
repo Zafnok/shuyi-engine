@@ -58,8 +58,8 @@ None. Which pictures the game redraws by hand is the game's choice
 - **Per-image settings** are an `onebit` section of the image's import
   settings (2229): `OneBitSettings { dither, alpha_cut, invert }`
   implements `ImportSettings` and is registered in
-  `Formats::register_standard`, so `shuyi check` checks it with no
-  Playdate bake running. `images/hero.png.meta` holding `(onebit:
+  `Formats::register_standard`, so `Formats::check_import_settings`
+  checks it with no Playdate bake running. `images/hero.png.meta` holding `(onebit:
   (dither: bayer))` sets one image, and `images/_folder.meta` sets a
   folder. With neither, the defaults apply (`atkinson`, 128, `false`).
   The dithering format reads it with
@@ -111,6 +111,8 @@ None. Which pictures the game redraws by hand is the game's choice
 - audio conversion for the Playdate (3029: `shuyi export playdate`
   bakes sounds and music to ADPCM);
 - the settings file itself, its folder defaults and its errors (2229);
+- `shuyi check` running `Formats::check_import_settings` on a game's
+  bundle (2571);
 - a language's copies of files and `Ctx::localized` (2349): nothing
   here builds them, and the order above is stated in both tickets;
 - knowing the target at run time (3053's `PlatformFacts`).

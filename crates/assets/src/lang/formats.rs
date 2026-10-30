@@ -9,6 +9,7 @@ use super::{
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::ContentError;
 use crate::format::{AssetKind, AssetPath, DecodeCx, Format, TEXT_MAX_BYTES, join, text};
+use crate::import_settings::is_settings_file;
 
 impl AssetKind for LangPack {
     const NAME: &'static str = "language pack";
@@ -143,7 +144,7 @@ impl Format for LangPackRon {
                 .unwrap_or(path);
             if is_dialogue_file(name) {
                 dialogue.extend(read(path));
-            } else if ![UI_FILE, INFO_FILE, DATA_FILE].contains(&name) {
+            } else if !is_settings_file(name) && ![UI_FILE, INFO_FILE, DATA_FILE].contains(&name) {
                 unknown.push(ContentError::new(cx.shown(path), NOT_A_LANGUAGE_FILE));
             }
         }

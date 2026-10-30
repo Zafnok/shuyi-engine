@@ -633,14 +633,15 @@ fn a_registry_claims_the_extensions_of_its_kinds_formats_in_any_case() {
 }
 
 #[test]
-fn a_registry_shows_its_kinds_formats_and_limits() {
+fn a_registry_shows_its_kinds_formats_sections_and_limits() {
     let mut formats = words();
     assert_eq!(formats.register(Digits), Ok(()));
+    assert_eq!(formats.register_import_settings::<Mirror>(), Ok(()));
     formats.limits = Limits { max_bytes: 9 };
     assert_eq!(
         format!("{formats:?}"),
         "Formats { kinds: [(\"word\", [\"upper\", \"either\", \"lower\"]), (\"number\", \
-         [\"digits\"])], limits: Limits { max_bytes: 9 } }"
+         [\"digits\"])], sections: [\"mirror\"], limits: Limits { max_bytes: 9 } }"
     );
 }
 
@@ -870,4 +871,211 @@ fn a_registry_is_send_and_sync() {
     fn shared<T: Send + Sync>() {}
     shared::<Formats>();
     shared::<DecodeWatch>();
+}
+
+/// The tests' section of import settings.
+#[derive(Debug, Default, PartialEq, Eq, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct Mirror {
+    mirror: bool,
+}
+
+impl ImportSettings for Mirror {
+    const SECTION: &'static str = "mirror";
+}
+
+/// A section with a field that has no default.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Strict {
+    size: u8,
+}
+
+impl ImportSettings for Strict {
+    const SECTION: &'static str = "strict";
+}
+
+/// A section that reads fields it doesn't have.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default)]
+struct Loose {}
+
+impl ImportSettings for Loose {
+    const SECTION: &'static str = "loose";
+}
+
+/// The same name as [`Mirror`].
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct OtherMirror {}
+
+impl ImportSettings for OtherMirror {
+    const SECTION: &'static str = "mirror";
+}
+
+#[test]
+fn a_section_is_refused_twice_without_defaults_or_open_to_unknown_fields() {
+    let mut formats = Formats::new();
+    assert_eq!(formats.register_import_settings::<Mirror>(), Ok(()));
+    let refused = [
+        (
+            formats.register_import_settings::<OtherMirror>(),
+            RegisterError::SectionTwice { section: "mirror" },
+            "is registered already",
+        ),
+        (
+            formats.register_import_settings::<Strict>(),
+            RegisterError::SectionWithoutDefault { section: "strict" },
+            "#[serde(default)]",
+        ),
+        (
+            formats.register_import_settings::<Loose>(),
+            RegisterError::SectionAllowsUnknownFields { section: "loose" },
+            "#[serde(deny_unknown_fields)]",
+        ),
+    ];
+    for (got, want, says) in refused {
+        assert_eq!(got.as_ref().err(), Some(&want));
+        assert!(want.to_string().contains(says), "{want}");
+    }
+    assert_eq!(formats.import_settings_sections(), ["mirror"]);
+    // A field without a default still reads when it is given.
+    assert_eq!(
+        ::ron::from_str::<Strict>("(size: 3)").map(|s| s.size).ok(),
+        Some(3)
+    );
+    assert_eq!(
+        Formats::standard().import_settings_sections(),
+        Vec::<&str>::new()
+    );
+}
+
+#[test]
+fn no_format_may_claim_meta() {
+    let mut formats = Formats::new();
+    let reserved = RegisterError::Reserved {
+        kind: "word",
+        format: "settings",
+    };
+    let probe = || Probe::new("settings", &["txt", "meta"]);
+    assert_eq!(formats.register(probe()), Err(reserved.clone()));
+    assert_eq!(formats.replace(probe()), Err(reserved.clone()));
+    assert_eq!(formats.ids::<Word>(), Vec::<&str>::new());
+    assert!(
+        reserved
+            .to_string()
+            .contains("kept for import settings files")
+    );
+}
+
+/// The settings of a bundle: good ones, and one of each problem.
+static SETTINGS: &[(&str, &[u8])] = &[
+    ("_folder.meta", b"(mirror: (mirror: true))"),
+    ("gone.png.meta", b"()"),
+    (
+        "images/_folder.meta",
+        b"(\n    mirror: (),\n    nope: (),\n)",
+    ),
+    ("images/_folder.meta.meta", b"()"),
+    ("images/a.png", b""),
+    ("images/a.png.meta", b"(\n    mirror: (flip: true),\n)"),
+    ("images/b.png", b""),
+    ("images/b.png.meta", b"(mirror: ("),
+    ("left.png.meta", b"()"),
+];
+
+/// What `check_import_settings` finds in the bundle of `files`, as
+/// `(file, line, code)`, with a [`Mirror`] section registered.
+fn settings_problems(files: &'static [(&'static str, &'static [u8])]) -> Vec<ContentError> {
+    let mut formats = Formats::new();
+    assert_eq!(formats.register_import_settings::<Mirror>(), Ok(()));
+    let bundle = Bundle::new(vec![Layer::table("base", files).leaving_out(&["left.png"])]);
+    formats.check_import_settings(&bundle)
+}
+
+#[test]
+fn every_settings_file_of_a_bundle_is_checked() {
+    let problems = settings_problems(SETTINGS);
+    let found: Vec<(&str, Option<u32>, Option<crate::error::Code>)> = problems
+        .iter()
+        .map(|e| (e.file.as_str(), e.line, e.code))
+        .collect();
+    assert_eq!(
+        found,
+        [
+            ("base/gone.png.meta", None, Some(codes::MISSING_FILE)),
+            (
+                "base/images/_folder.meta",
+                Some(3),
+                Some(codes::UNKNOWN_NAME)
+            ),
+            ("base/images/_folder.meta.meta", None, None),
+            ("base/images/a.png.meta", Some(2), Some(codes::PARSE)),
+            ("base/images/b.png.meta", Some(1), Some(codes::PARSE)),
+        ]
+    );
+    let says = |at: usize, words: &str| problems.get(at).is_some_and(|e| e.message.contains(words));
+    assert!(says(0, "base/gone.png, which the bundle doesn't have"));
+    assert!(says(
+        1,
+        "unknown section \"nope\"; the sections registered are mirror"
+    ));
+    assert!(says(
+        2,
+        "settings of the settings file base/images/_folder.meta"
+    ));
+    assert!(says(3, "flip"));
+}
+
+#[test]
+fn a_bundle_of_good_settings_has_no_problem() {
+    static GOOD: &[(&str, &[u8])] = &[
+        ("_folder.meta", b"// all\n(mirror: (mirror: true))"),
+        ("images/a.png", b""),
+        ("images/a.png.meta", b"()"),
+    ];
+    assert_eq!(settings_problems(GOOD), []);
+    let unknown = Formats::new().check_import_settings(&Bundle::new(vec![Layer::table("b", GOOD)]));
+    assert!(
+        unknown
+            .first()
+            .is_some_and(|e| e.message.ends_with("no section is registered"))
+    );
+}
+
+/// Data tables with settings files beside them and in their folder.
+static TABLES: &[(&str, &[u8])] = &[
+    ("data/_folder.meta", b"()"),
+    ("data/a.ron", b"(rows: [1])"),
+    ("data/a.ron.meta", b"()"),
+    ("data/deep/b.ron", b"(rows: [])"),
+    ("data/deep/b.ron.meta", b"()"),
+    ("images/_folder.meta", b"()"),
+];
+
+#[test]
+fn the_walkers_over_a_folder_skip_settings_files() {
+    use crate::format::builtin_tests::{Table, bundle as owned, png_file};
+    use crate::image::ImageTable;
+    let mut formats = Formats::standard();
+    assert_eq!(formats.register(crate::ron::Ron::<Table>::new()), Ok(()));
+    let tables = Bundle::new(vec![Layer::table("base", TABLES)]);
+    let under = formats.load_under::<Table>(&tables, "data");
+    assert_eq!(
+        under.map(|tables| tables.into_keys().collect::<Vec<_>>()),
+        Ok(vec!["data/a.ron", "data/deep/b.ron"])
+    );
+    let each = formats.load_each::<Table>(&tables, "data");
+    assert_eq!(each.keys().copied().collect::<Vec<_>>(), ["data/a.ron"]);
+    assert!(each.values().all(Result::is_ok));
+    let images = owned(vec![
+        ("images/_folder.meta", b"()".to_vec()),
+        ("images/a.png", png_file([0; 8])),
+        ("images/a.png.meta", b"()".to_vec()),
+    ]);
+    let only_the_png = |table: Result<ImageTable, Vec<ContentError>>| {
+        table.is_ok_and(|table| table.ids().count() == 1 && table.id("images/a.png").is_some())
+    };
+    assert!(only_the_png(ImageTable::load(images, &[])));
+    assert!(only_the_png(ImageTable::load_with(images, &formats, &[])));
 }
