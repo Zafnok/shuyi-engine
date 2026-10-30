@@ -17,6 +17,7 @@ use shuyi_ui::input::help_keys::key_name;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::{LogCategory, LogLevel};
+use shuyi_ui::perf::{HeapCounts, MemoryReading};
 use shuyi_ui::toy::{self, Action, Toy};
 use shuyi_ui::{Game, Keyboard};
 
@@ -107,6 +108,30 @@ fn a_failed_load_shows_why_once() {
     assert_eq!(sdk.take_texts(), [("no such file".to_string(), true)]);
     assert!(!driver.update(), "the same text is not drawn again");
     assert_eq!(sdk.take_texts(), []);
+}
+
+#[test]
+fn a_light_card_is_black_on_white_and_a_picture_shows_its_ground() {
+    let white = shuyi_ui::frame::Rgb::new(255, 255, 255);
+    let black = shuyi_ui::frame::Rgb::new(0, 0, 0);
+    for (card, text, on_white) in [
+        (Card::text("Toy").colored(black, white), "Toy", true),
+        (Card::picture("card.png"), "", false),
+    ] {
+        let sdk = FakeSdk::default();
+        let start = Start::new(card, look, |setup| Ok(load(setup)));
+        let mut driver = Driver::new(start, sdk.clone());
+        assert!(driver.update());
+        assert_eq!(sdk.take_texts(), [(text.to_string(), on_white)]);
+    }
+}
+
+#[test]
+fn a_frame_like_the_last_doesnt_touch_the_frame_buffer() {
+    let (sdk, mut driver) = running();
+    let before = sdk.frame_uses();
+    assert!(!driver.update());
+    assert_eq!(sdk.frame_uses(), before);
 }
 
 #[test]
@@ -276,6 +301,48 @@ fn on_the_menu(setup: Setup) -> Game<Toy> {
         (Button::SystemMenu3, Action::Confirm),
     ]);
     toy::game_on(ctx)
+}
+
+#[test]
+fn a_menu_the_sdk_refuses_is_logged_and_one_it_takes_isnt() {
+    let refused = |full: bool| {
+        let sdk = FakeSdk::default();
+        if full {
+            sdk.fill_menu();
+        }
+        let start = Start::new(Card::text("Toy"), look, |setup| Ok(on_the_menu(setup)));
+        let mut driver = Driver::new(start, sdk.clone());
+        driver.update();
+        driver.update();
+        sdk.logs().iter().any(|line| line.contains("refused"))
+    };
+    assert!(refused(true));
+    assert!(!refused(false));
+}
+
+/// The game with `Cancel` on the first menu item alone.
+fn cancel_on_the_menu(setup: Setup) -> Game<Toy> {
+    let mut ctx = setup.ctx(toy::ctx());
+    ctx.keymap = ctx
+        .keymap
+        .clone()
+        .with_pad([(Button::SystemMenu0, Action::Cancel)]);
+    toy::game_on(ctx)
+}
+
+#[test]
+fn a_menu_item_chosen_reaches_the_game_as_its_action() {
+    let sdk = FakeSdk::default();
+    let start = Start::new(Card::text("Toy"), look, |setup| {
+        Ok(cancel_on_the_menu(setup))
+    });
+    let mut driver = Driver::new(start, sdk.clone());
+    driver.update();
+    driver.update();
+    driver.menu_chosen(0);
+    driver.update();
+    driver.update();
+    assert!(driver.app().has_quit(), "Cancel on the home screen quits");
 }
 
 #[test]
@@ -457,6 +524,11 @@ fn the_clock_goes_on_past_the_counters_wrap() {
     let mut clock = Clock::default();
     assert_eq!(clock.at(u32::MAX), Millis(u64::from(u32::MAX)));
     assert_eq!(clock.at(5), Millis((1 << 32) + 5));
+    assert_eq!(
+        clock.at(5),
+        Millis((1 << 32) + 5),
+        "the same reading isn't a wrap"
+    );
 }
 
 #[test]
@@ -482,7 +554,10 @@ fn the_log_goes_to_the_console_one_line_each_with_its_frame() {
 fn the_debug_build_has_a_clock_and_counts_the_heap() {
     let mut platform = Playdate::new(FakeSdk::default());
     assert_eq!(platform.clock().is_some(), cfg!(debug_assertions));
-    assert!(platform.memory().is_some());
+    assert_eq!(
+        platform.memory(),
+        Some(MemoryReading::new(HeapCounts::new(1024, 2048, 3)))
+    );
 }
 
 #[test]

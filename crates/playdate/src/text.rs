@@ -79,6 +79,13 @@ mod tests {
     }
 
     #[test]
+    fn fixed_text_keeps_a_byte_for_its_nul() {
+        let mut text = FixedText::<4>::new();
+        let _ = write!(text, "abcd");
+        assert_eq!(text.as_c_bytes(), b"abc\0");
+    }
+
+    #[test]
     fn fixed_text_is_cut_at_a_character_and_stays_cut() {
         let mut text = FixedText::<5>::new();
         let _ = write!(text, "ab\0é");

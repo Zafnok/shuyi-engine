@@ -222,6 +222,25 @@ mod tests {
     }
 
     #[test]
+    fn an_action_is_only_on_the_crank_when_every_chord_needs_it() {
+        let wound = ButtonChord::single(Button::CrankForward);
+        let back = ButtonChord::single(Button::CrankBack);
+        let plain = ButtonChord::single(Button::East);
+        let chord = |a, b| ButtonChord::pair(a, b).unwrap_or_else(|| panic!());
+        assert!(
+            !only_on_the_crank(&[]),
+            "no button at all isn't the crank's"
+        );
+        assert!(only_on_the_crank(&[wound]));
+        assert!(only_on_the_crank(&[back, wound]));
+        assert!(!only_on_the_crank(&[plain]));
+        assert!(!only_on_the_crank(&[wound, plain]), "a button still works");
+        assert!(only_on_the_crank(&[chord(Button::East, Button::CrankBack)]));
+        assert!(only_on_the_crank(&[chord(Button::CrankBack, Button::East)]));
+        assert!(!only_on_the_crank(&[chord(Button::East, Button::West)]));
+    }
+
+    #[test]
     fn notches_press_the_crank_buttons() {
         assert_eq!(Crank::presses(0), None);
         assert_eq!(Crank::presses(-3), Some((Button::CrankBack, 3)));

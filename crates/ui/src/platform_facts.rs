@@ -100,6 +100,16 @@ impl Default for PlatformFacts {
 mod tests {
     use super::*;
 
+    #[test]
+    fn a_target_says_the_device_its_player_holds() {
+        let device = Device::Pad(crate::input::pad::PadKind::Playdate);
+        assert_eq!(PlatformFacts::default().device, None);
+        assert_eq!(
+            PlatformFacts::default().with_device(device).device,
+            Some(device)
+        );
+    }
+
     /// The engine's profile `id`, from `targets/`.
     fn engine(id: &str, source: &str) -> TargetProfile {
         let file = format!("targets/{id}.ron");

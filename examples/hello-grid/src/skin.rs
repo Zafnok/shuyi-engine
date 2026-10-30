@@ -172,3 +172,46 @@ pub fn paint_end<G: GameData>(ctx: &Ctx<G>, view: &EndView, buf: &mut GlyphBuffe
     centred_menu(ctx, &view.menu, buf, 10 - up);
     help(palette, buf, &view.help, bg);
 }
+
+#[cfg(test)]
+mod tests {
+    use shuyi::ui::frame::ConsoleSpec;
+
+    use super::*;
+    use crate::rules::Outcome;
+    use crate::screens::End;
+    use crate::{PLAYDATE, PLAYDATE_CONSOLE, ctx_on};
+
+    fn buffer(spec: ConsoleSpec) -> GlyphBuffer {
+        let cell = Cell::new(' ', Rgb::new(0, 0, 0), Rgb::new(0, 0, 0));
+        GlyphBuffer::with_spec(spec, cell)
+    }
+
+    /// Row `y` of `buf`.
+    fn row(buf: &GlyphBuffer, y: i32) -> String {
+        (0..i32::from(buf.width()))
+            .filter_map(|x| buf.get(x, y).map(|cell| cell.glyph))
+            .collect()
+    }
+
+    #[test]
+    fn the_talk_box_is_the_bottom_seven_rows_of_any_console() {
+        let place = talk_box(&buffer(PLAYDATE_CONSOLE));
+        assert_eq!(place.frame, Rect::new(0, 8, 50, 7));
+        assert_eq!((place.text_x, place.text_y), (2, 10));
+        let place = talk_box(&buffer(crate::CONSOLE));
+        assert_eq!(place.frame, Rect::new(0, 17, 48, 7));
+        assert_eq!(place.text_y, 19);
+    }
+
+    #[test]
+    fn the_end_clears_the_help_on_a_short_console() {
+        let ctx = ctx_on(PLAYDATE, 0);
+        let view = End::new(Outcome::Won { turn: 3 }).view(&ctx);
+        let mut buf = buffer(PLAYDATE_CONSOLE);
+        paint_end(&ctx, &view, &mut buf);
+        assert!(row(&buf, 3).contains(&view.headline), "{:?}", row(&buf, 3));
+        assert_ne!(row(&buf, 7).trim(), "", "the menu's top");
+        assert_eq!(row(&buf, 6).trim(), "", "just above it");
+    }
+}

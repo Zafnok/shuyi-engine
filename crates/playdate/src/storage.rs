@@ -185,10 +185,10 @@ impl<S: Sdk> Storage for SdkStorage<S> {
     }
 
     fn list(&self) -> Result<Vec<String>, StorageError> {
-        // A folder not made yet holds no keys.
-        let names = if self.swept || self.folder.is_empty() {
+        let names = if self.folder.is_empty() {
             self.names()?
         } else {
+            // A folder not made yet holds no keys.
             self.names().unwrap_or_default()
         };
         let mut keys = BTreeSet::new();
@@ -371,6 +371,31 @@ mod tests {
         sdk.put_file("slot.ron.tmp", b"");
         let keys = storage.list().unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(keys, ["settings".to_string()]);
+    }
+
+    #[test]
+    fn the_first_write_removes_what_a_crash_left() {
+        let sdk = FakeSdk::default();
+        sdk.put_file("slot.ron.tmp", b"half");
+        let mut storage = SdkStorage::new(sdk.clone());
+        storage
+            .write("other", "(a)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(sdk.file("slot.ron.tmp"), None);
+    }
+
+    #[test]
+    fn a_data_folder_that_cant_be_listed_is_an_error_and_a_folder_not_made_holds_nothing() {
+        let sdk = FakeSdk::default();
+        assert_eq!(
+            SdkStorage::in_folder(sdk.clone(), "saves").list().ok(),
+            Some(Vec::new())
+        );
+        sdk.cut_power_after(0);
+        assert!(matches!(
+            SdkStorage::new(sdk).list(),
+            Err(StorageError::Backend(_))
+        ));
     }
 
     #[test]

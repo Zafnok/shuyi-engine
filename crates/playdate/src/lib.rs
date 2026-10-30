@@ -124,6 +124,11 @@ mod tests {
             .collect()
     }
 
+    #[test]
+    fn off_the_device_there_is_no_pack() {
+        assert!(crate::pack().is_err());
+    }
+
     /// `[lints]` is copied from the workspace's because one lint differs
     /// (`unsafe_code`): the copy must not drift.
     #[test]

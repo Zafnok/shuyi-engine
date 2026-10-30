@@ -8,9 +8,16 @@
 # screens, the context, the frame loop and the grid run on. `shuyi-cli`'s
 # toy tools (`toy.rs`) are that toy's `frame-png` and `lang-status`, for
 # the tool's own tests.
+#
+# `shuyi-playdate`'s `src/device/` is the real SDK's calls, built only with
+# `--cfg shuyi_playdate_sdk` for a device no test has; the rest of the crate
+# is tested on a fake of them. An example's `src/playdate.rs` hands it to that
+# backend, as `src/main.rs` hands it to the shell.
 exclude_globs = [
     "crates/app/**",
+    "crates/playdate/src/device/**",
     "examples/*/src/main.rs",
+    "examples/*/src/playdate.rs",
     "crates/assets/src/keymap/sample.rs",
     "crates/ui/src/toy.rs",
     "crates/ui/src/toy/**",

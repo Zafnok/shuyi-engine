@@ -47,6 +47,8 @@ struct State {
     logs: Vec<String>,
     refresh_rate: Option<u16>,
     menu: Vec<(String, u8)>,
+    menu_full: bool,
+    frame_uses: u32,
     data: BTreeMap<String, File>,
     folders: BTreeSet<String>,
     bundled: BTreeMap<String, Vec<u8>>,
@@ -69,6 +71,8 @@ impl Default for State {
             logs: Vec::new(),
             refresh_rate: None,
             menu: Vec::new(),
+            menu_full: false,
+            frame_uses: 0,
             data: BTreeMap::new(),
             folders: BTreeSet::new(),
             bundled: BTreeMap::new(),
@@ -142,6 +146,16 @@ impl FakeSdk {
     /// The menu's items, in the order added.
     pub fn menu(&self) -> Vec<(String, u8)> {
         self.0.borrow().menu.clone()
+    }
+
+    /// The system menu refuses every item from now on.
+    pub fn fill_menu(&self) {
+        self.0.borrow_mut().menu_full = true;
+    }
+
+    /// How many times the frame buffer has been touched.
+    pub fn frame_uses(&self) -> u32 {
+        self.0.borrow().frame_uses
     }
 
     /// The frame buffer, now.
@@ -234,7 +248,11 @@ impl Sdk for FakeSdk {
     }
 
     fn add_menu_item(&self, title: &str, slot: u8) -> bool {
-        self.0.borrow_mut().menu.push((title.to_owned(), slot));
+        let mut state = self.0.borrow_mut();
+        if state.menu_full {
+            return false;
+        }
+        state.menu.push((title.to_owned(), slot));
         true
     }
 
@@ -243,7 +261,9 @@ impl Sdk for FakeSdk {
     }
 
     fn with_frame(&self, draw: impl FnOnce(&mut Frame)) {
-        draw(&mut self.0.borrow_mut().frame);
+        let mut state = self.0.borrow_mut();
+        state.frame_uses += 1;
+        draw(&mut state.frame);
     }
 
     fn mark_rows(&self, first: i32, last: i32) {
@@ -321,6 +341,9 @@ impl Sdk for FakeSdk {
 
     fn data_names(&self, folder: &str) -> Result<Vec<String>, String> {
         let state = self.0.borrow();
+        if state.ops_left == Some(0) {
+            return Err("the power is off".to_owned());
+        }
         let prefix = if folder.is_empty() {
             String::new()
         } else {

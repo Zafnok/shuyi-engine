@@ -389,6 +389,25 @@ mod tests {
     }
 
     #[test]
+    fn a_one_bit_look_is_part_of_a_look_and_says_what_it_holds() {
+        let font = FontAtlasDef {
+            cell_w: 8,
+            cell_h: 8,
+            columns: 16,
+            glyphs: alloc::collections::BTreeMap::new(),
+        };
+        let images = ImageTable::default();
+        let map = PatternMap::default();
+        let rows = Font::new(&font, &[]).unwrap_or_else(|e| panic!("{e}"));
+        let one_bit = OneBitLook::new(&map, &rows, &());
+        let shown = alloc::format!("{one_bit:?}");
+        assert!(shown.starts_with("OneBitLook"), "{shown}");
+        assert!(Look::new(&font, &images).one_bit.is_none());
+        let look = Look::new(&font, &images).with_one_bit(one_bit);
+        assert!(look.one_bit.is_some());
+    }
+
+    #[test]
     fn a_new_look_is_the_literal() {
         let font = FontAtlasDef {
             cell_w: 8,
