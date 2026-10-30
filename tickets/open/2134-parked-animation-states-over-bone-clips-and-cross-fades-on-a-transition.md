@@ -111,9 +111,8 @@ None.
     pose. During a fade, `Pose::mix(from, to, w)`, where `from` for a
     `Mix` is `Pose::mix(a, b, weight)`. Drawing needs nothing new:
     2105's `RigView::from` takes the `Pose`.
-  - **Either order with 2115:** if 2115 is done, use its
-    `ms_from_steps`; if not, use the one 2104 (a blocker) wrote in
-    `shuyi_core::timer`. Either way nothing is written here.
+  - Use `shuyi_core::timer::ms_from_steps`. Nothing is written
+    here.
 - **The weight.** At `k = step - began` steps into a fade of `n` steps,
   `p = k * ONE / n` (2109's `ONE`), `e = fade.ease.ease(p)`, and
   `w = e * 256 / ONE`, in `i64`, rounded to nearest with halves up and

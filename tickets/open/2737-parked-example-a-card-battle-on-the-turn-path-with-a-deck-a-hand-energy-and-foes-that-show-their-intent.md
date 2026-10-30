@@ -161,8 +161,7 @@ None.
     makes each one do its intent in order, picks each one's next
     intent, and counts the foes' weak turns down. Then the hero's block
     falls to 0, energy is set to the hero's energy again and a new hand
-    is drawn. Weak turns are a `shuyi_core::timer::Countdown` if 2115
-    is done, a `u8` if not;
+    is drawn. Weak turns are a `shuyi_core::timer::Countdown`;
   - **sides:** `Hero` moves on its turn and during an offer; `Foes`
     moves from `EndTurn` until `FoesAct`. `turn()` counts the hero's
     turns from the run's start.

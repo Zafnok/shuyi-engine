@@ -7,7 +7,7 @@ use core::fmt;
 
 use serde::{Deserialize, Serialize};
 use shuyi::core::bots::Sides;
-use shuyi::core::{SimRng, TurnRules};
+use shuyi::core::{Countdown, Every, SimRng, TurnRules};
 
 use crate::assets::Plan;
 
@@ -181,6 +181,41 @@ impl Sides for Garden {
 }
 // ANCHOR_END: sides
 
+// ANCHOR: time
+/// What the garden times, in its state: rain every few turns, and a watering
+/// can that needs a wait between uses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Seasons {
+    rain: Every,
+    can: Countdown,
+}
+
+impl Seasons {
+    /// Rain every `rain` turns, and a can ready now, then every `can` turns.
+    pub fn new(rain: u32, can: u32) -> Self {
+        Self {
+            rain: Every::new(rain),
+            can: Countdown::new_ready(can),
+        }
+    }
+
+    /// Where a turn ends: whether it rains.
+    pub fn end_turn(&mut self) -> bool {
+        self.can.advance(1);
+        self.rain.advance(1) > 0
+    }
+
+    /// Uses the can if it's ready, and says whether it was.
+    pub fn water(&mut self) -> bool {
+        let ready = self.can.ready();
+        if ready {
+            self.can.restart();
+        }
+        ready
+    }
+}
+// ANCHOR_END: time
+
 impl fmt::Display for Refusal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // check-text: not player text, what a replay's step says
@@ -270,6 +305,16 @@ mod tests {
         assert_eq!(play(7), play(7));
     }
     // ANCHOR_END: hash
+
+    #[test]
+    fn it_rains_every_third_turn_and_the_can_waits_two() {
+        let mut seasons = Seasons::new(3, 2);
+        assert!(seasons.water());
+        assert!(!seasons.water());
+        let rained = [0; 6].map(|_| seasons.end_turn());
+        assert_eq!(rained, [false, false, true, false, false, true]);
+        assert!(seasons.water());
+    }
 
     #[test]
     fn every_plot_grown_wins_and_no_seed_left_loses() {

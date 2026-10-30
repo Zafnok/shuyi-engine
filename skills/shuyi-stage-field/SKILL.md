@@ -68,8 +68,10 @@ shape the engine's simulation will take:
    which differs from machine to machine. Only a skin reads it, to show
    motion between steps.
 3. **Count in whole numbers.** Positions in pixels, or in parts of a pixel
-   (256 to the pixel) in an `i32`; speeds in those units per step. Time a rule by
-   counting steps: a cooldown of 30 steps is half a second.
+   (256 to the pixel) in an `i32`; speeds in those units per step. Time a rule
+   with `shuyi_core::timer`'s `Countdown` and `Every` in the state, advanced by
+   one in each step of `FrameInput::ticks()`: a cooldown of 30 steps is half a
+   second.
 4. **Hand the rules plain input.** Turn the frame's actions into a value
    of the rules' own (which way, which button pressed this step), so a
    test, a bot or a replay can give the same input without a screen.

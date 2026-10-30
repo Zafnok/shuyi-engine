@@ -115,11 +115,9 @@ None.
   - `AnimationClip::ended(&self, elapsed_ms: u64) -> bool`: true from
     `length_ms` on (never for `Loop`), for 2104's `ended`;
   - `pub fn frame_at<F>(clip: &AnimationClip<F>, elapsed_ms: u64) ->
-    Option<&F>`, the name ADR-0004 §3 and 2104 use. **Either order
-    with 2115:** if 2115 is done, `frame_at`'s docs say a tick game
-    passes `shuyi_core::timer::ms_from_steps(step - start_step)`, the
-    one rule from steps to ms; if not, nothing to do (2115 adds that
-    line).
+    Option<&F>`, the name ADR-0004 §3 and 2104 use. `frame_at`'s docs say a tick
+    game passes `shuyi_core::timer::ms_from_steps(step - start_step)`,
+    the one rule from steps to ms.
 - **The order**, written in the module docs with an example:
   - `Forward` shows frames `0..n`, `Reverse` shows `n - 1` down to `0`;
   - `PingPong` shows `0..n`, then `n - 2` down to `1`: a cycle of

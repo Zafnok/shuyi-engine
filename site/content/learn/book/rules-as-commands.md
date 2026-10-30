@@ -74,6 +74,23 @@ A state hashes the same each run only if it serializes the same: its
 maps must be `BTreeMap` and its sets `BTreeSet`, never a hash map whose
 order changes from run to run.
 
+## Time in rules
+
+Rules have no clock, so they count what they have: turns, or in a
+real-time game, steps. `shuyi_core::timer` has the two timers a game
+sets and forgets. A `Countdown` fires once and is the cooldown too; an
+`Every` repeats. They live in the state, so they save, hash and replay
+with it:
+
+{{ snippet(file="src/rules.rs", anchor="time") }}
+
+A turn game advances them by one where its turn ends, in `apply`. A
+real-time game advances them by one in each step, stepping its rules once
+for each of `input.ticks()`, so a timer fires on the same step at 30 and
+at 60 frames a second. `input.dt()` is for what only looks, such as a
+glide or a blink: a rule timed by it would change with the frame rate,
+and replays would stop agreeing.
+
 ## A rules crate of their own
 
 A game made with `--template grid` keeps its rules in a crate of their

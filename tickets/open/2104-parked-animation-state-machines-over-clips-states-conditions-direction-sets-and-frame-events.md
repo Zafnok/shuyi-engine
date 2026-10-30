@@ -78,7 +78,7 @@ None.
     is the first call (`prev` is none), so an event on the first frame
     fires then. **Either order with 2364:** if it is done, use
     `crossed`; if not, write `crossed` in `shuyi_core::timer` with the
-    rule and tests in 2364's Scope (creating the module if 2115 hasn't),
+    rule and tests in 2364's Scope (the module exists),
     and 2364 uses it.
     **Either order with 2105:** if 2105 is done and 2364 isn't, 2105
     wrote `crossed` in `shuyi_core::timer`: use it, and don't write it
@@ -100,11 +100,7 @@ None.
     subtraction saturating), 2115's one rule from steps to ms in
     `shuyi_core::timer`, for `frame_at`, `ended` and events alike. No
     `ms_per_step` is passed: a whole one (16 or 17) drifts from 60
-    steps a second. **Either order with 2115:** if 2115 is done, use its
-    `ms_from_steps`; if not, write `STEPS_PER_SECOND` (moved from
-    `shuyi_platform::tick`, which re-exports it) and `ms_from_steps` in
-    `shuyi_core::timer` with the rule and tests in 2115's Scope, unless
-    2103 already did, and 2115 keeps them.
+    steps a second.
 - **The toy and the example:** a test graph on 2231's fixture set (its
   own clips over the fixture's picture, since that set holds only
   `splash`, `waves` and `wind`) with idle, walk in four directions, and
@@ -130,7 +126,7 @@ None.
 ## Implementation steps
 
 1. Read ADR-0004 §3, 2231's `anim` module, 2335's `Angle` and 2364's
-   rule for marks between two times. Check whether 2364, 2105 and 2115
+   rule for marks between two times. Check whether 2364 and 2105
    are done.
 2. Write the types and the checks, with fixtures.
 3. Write `step` and `frame`, with unit and property tests. If neither

@@ -251,10 +251,8 @@ than one PR. The last paragraph of **In** says how to split.
     mark once, not once per loop. `Some(0)` acts as `None`.
   - With no wrap (a clip played once), nothing past the last mark is
     crossed.
-  - **Either order with 2115:** if 2115 is done, `crossed` goes into
-    its `crates/core/src/timer.rs`. If not, create that module with
-    `crossed` alone (tests in `crates/core/src/timer/tests.rs`), and
-    2115 adds to it.
+  - `crossed` goes into `crates/core/src/timer.rs`, with its tests in
+    `crates/core/src/timer/tests.rs`, and the module docs name it.
   - **Either order with 2104 and 2105:** if either is done, it wrote
     `crossed` in `shuyi_core::timer` by this rule (their scopes write
     it when 2364 isn't done): use it, add the edge tests listed under
@@ -321,7 +319,7 @@ than one PR. The last paragraph of **In** says how to split.
   `status: todo` if Nick unparked this ticket whole, and parked with
   this ticket's note if he unparked it for one part. In the same PR,
   make the tickets that name 2364 for that part name the new ticket:
-  2104, 2105, 2115, 2339, 2366 and 2722 for cues, markers, enters and
+  2104, 2105, 2339, 2366 and 2722 for cues, markers, enters and
   `crossed`; 2109, 2122 and 2362 for tracks; 2365 for both (keys are
   part 1, cues and markers part 2).
 
@@ -360,7 +358,7 @@ than one PR. The last paragraph of **In** says how to split.
 1. Read ADR-0004 §3, ADR-0007, ADR-0019, ADR-0023 §5, 2109's ADR and
    `shuyi_core::ease`, 2339's `shuyi_ui::frame::transition`, both
    `cinematic` modules and their tests, and the pack's pinned-form test.
-   Check whether 2104, 2105, 2115 and 2365 are done. Read
+   Check whether 2104, 2105 and 2365 are done. Read
    the game's cinematic shot code (its repository is public; game#1153's
    row names `ui/cinematic*`) and say in the PR, in the engine's words,
    which kinds of shot code the part being done could replace.

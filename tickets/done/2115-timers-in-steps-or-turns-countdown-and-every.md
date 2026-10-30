@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-30
 ---
 
 # 2115 — Timers in steps or turns: Countdown and Every
@@ -327,46 +327,47 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi_core::timer` has `Countdown`, `Every`, `STEPS_PER_SECOND`,
+- [x] `shuyi_core::timer` has `Countdown`, `Every`, `STEPS_PER_SECOND`,
       `steps_from_ms` and `ms_from_steps`, re-exported at the crate
       root, with no float (2015's float ban passes).
-- [ ] `shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of the
-      core's, and the existing `TickClock` tests pass unchanged.
-- [ ] `steps_from_ms` gives 0 for 0, 1 for 1 and for 16, 2 for 17, 3
+- [x] ~~`shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of the
+      core's~~ (not done: a `const` set from the core's, see the notes), and
+      the existing `TickClock` tests pass unchanged.
+- [x] `steps_from_ms` gives 0 for 0, 1 for 1 and for 16, 2 for 17, 3
       for 50, 15 for 250, 60 for 1000, and 257 698 038 for `u32::MAX`.
-- [ ] `ms_from_steps` gives 0 for 0, 16 for 1, 33 for 2, 50 for 3,
+- [x] `ms_from_steps` gives 0 for 0, 16 for 1, 33 for 2, 50 for 3,
       1000 for 60, and 71 582 788 250 for `u32::MAX`; and
       `steps_from_ms(ms_from_steps(s))` is `s` for every `s` up to
       257 698 037 (property test).
-- [ ] For any start value and any split of a total `n` into parts,
+- [x] For any start value and any split of a total `n` into parts,
       advancing by each part ends in the same value as `advance(n)`.
       `Every` fires `(since + n) / period` times both ways. `Countdown`
       fires at most once, and exactly once when it was not ready and
       `n` is at least its `remaining()` (property tests).
-- [ ] A `Countdown` restarted after it fired fires again after its
+- [x] A `Countdown` restarted after it fired fires again after its
       length; `new_ready` is ready before any advance; a length of 0
       never fires. `Every::new(0)` acts as `Every::new(1)`, and so does
       an `Every` read from RON with a period of 0.
-- [ ] An out-of-range value read from RON (`left` above `length`,
+- [x] An out-of-range value read from RON (`left` above `length`,
       `since` at or above `period`) panics in no method, and
       `until_next` is 1 for it.
-- [ ] `Countdown` and `Every` read back equal from RON, and the
+- [x] `Countdown` and `Every` read back equal from RON, and the
       `state_hash` of one fixed value of each equals a constant in the
       tests.
-- [ ] A test in `crates/platform/src/app/tests.rs` runs two seconds of
+- [x] A test in `crates/platform/src/app/tests.rs` runs two seconds of
       frames through `App::frame` at 60 frames a second (16, 17, 17 ms)
       and at 30 (33, 33, 34 ms). Each run steps 120 times, and an
       `Every::new(8)` advanced once per step fires on the same steps
       (8, 16, …, 120) in both.
-- [ ] The doctest passes, and the rustdoc of `dt()` and `ticks()`, the
+- [x] The doctest passes, and the rustdoc of `dt()` and `ticks()`, the
       module docs and every template's `AGENTS.md` say how to time a
       rule.
-- [ ] The `shuyi-stage-grid` and `shuyi-stage-field` skills, and
+- [x] The `shuyi-stage-grid` and `shuyi-stage-field` skills, and
       the book's chapter 6, name `shuyi_core::timer`, and
       `check-skills` passes.
-- [ ] `shuyi-core`, `shuyi-ui` and `shuyi-platform` still build for
+- [x] `shuyi-core`, `shuyi-ui` and `shuyi-platform` still build for
       `thumbv7em-none-eabihf`, and `cargo xtask check-no-std` passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -384,4 +385,28 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+- `shuyi_core::timer` holds `STEPS_PER_SECOND`, `steps_from_ms`,
+  `ms_from_steps`, `Countdown` and `Every`, re-exported at the crate root.
+  `shuyi_platform::tick::STEPS_PER_SECOND` takes its value from it, its path
+  and value unchanged.
+- The frame-rate test is in `crates/platform/src/app/tests.rs`, and the
+  hash constants were worked out separately from the hash's form before they
+  were pinned.
+- The rustdoc of `dt()` and `ticks()`, the `base` part's `AGENTS.md`, both
+  stage skills and the book's chapter 6 (section *Time in rules*, with
+  `Seasons` in `site/snippets/src/rules.rs`) say how to time a rule. The
+  README's `shuyi-core` row names timers.
+- `crates/cli/src/template/plans.golden` is blessed: only `AGENTS.md`'s hash
+  moved, in both plans.
+- Deviation: `shuyi_platform::tick::STEPS_PER_SECOND` is a `pub const` set
+  from the core's, not the `pub use` the Scope asks for. CI's `api` job reads
+  a `pub use` of another crate's const as the const removed, a break no game
+  would see, and a `Breaking:` line would put a false entry in the migration
+  guide. There is still one source.
+- Deviation: `steps_from_ms` uses `u64::div_ceil(1000)`, not `+ 999` and `/`,
+  because clippy refuses the hand-written form. The values are the same.
+- Settled the clauses naming this ticket in 1123, 2004, 2103, 2104, 2105,
+  2109, 2134, 2231, 2364, 2365 and 2737, and the roadmap. The `ease` line in
+  this module's docs is 2109's to write.
+- For the game: nothing changes. The API only grows. No game pin is needed.
+- No break: no `Breaking:` line. The book is changed, so no `Book:` line.

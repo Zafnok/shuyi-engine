@@ -22,6 +22,10 @@ these are the ones a game on it keeps.
   failure in the code, never by loosening `clippy.toml` or the test. A
   folder with an `AGENTS.md` of its own (`crates/rules/AGENTS.md`) has
   more rules for its files.
+- Time a rule in turns or steps with `shuyi_core::timer` (`Countdown`,
+  `Every`): advance it by one each turn in `apply`, or once per step of
+  `input.ticks()`. Never time a rule with `input.dt()`, which is for
+  what only looks.
 - `crates/game` is everything else: the game's data (`files/`, embedded),
   its screens, its look, its tools. Only the engine's `shuyi-app`
   touches the window, the files, the audio device and the clock.

@@ -68,12 +68,7 @@ None.
     Particle>`. The emitter's age is `ms_from_steps(step - start_step)`
     ms (the subtraction saturating), 2115's one rule from steps to ms in
     `shuyi_core::timer`, which `life_ms` and `duration_ms` are read
-    against; no `steps_per_second` is passed. **Either order with
-    2115:** if 2115 is done, use its `ms_from_steps`; if not, write
-    `STEPS_PER_SECOND` (moved from `shuyi_platform::tick`, which
-    re-exports it) and `ms_from_steps` in `shuyi_core::timer` with the
-    rule and tests in 2115's Scope, unless 2104 already did, and 2115
-    keeps them. Particle `i` is born at
+    against; no `steps_per_second` is passed. Particle `i` is born at
     `i / rate` seconds (after the burst), lives the life its own random
     numbers pick, and is at `origin + v·t + ½·a·t²` at age `t`. Its
     random numbers come from `shuyi_core::rng::mix_at(seed, i)` (2114),

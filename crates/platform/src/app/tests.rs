@@ -152,6 +152,42 @@ fn a_second_of_frames_steps_sixty_times_and_a_late_one_four() {
     assert_eq!(log.borrow().last().map(|s| s.ticks), Some(4));
 }
 
+/// The steps at which an `Every::new(8)`, advanced once per step, fires over
+/// frames of `frame_ms` milliseconds, and the steps run.
+fn firing_steps(frame_ms: impl Iterator<Item = u64>) -> (Vec<u32>, u32) {
+    let (game, log) = steps_game();
+    let mut app = App::running(game);
+    let mut p = HeadlessPlatform::new();
+    let mut now = 0;
+    let _ = app.frame(&mut p, Millis(now));
+    for ms in frame_ms {
+        now += ms;
+        let _ = app.frame(&mut p, Millis(now));
+    }
+    let mut timer = shuyi_core::Every::new(8);
+    let mut fired = Vec::new();
+    let mut step = 0;
+    for seen in log.borrow().iter() {
+        for _ in 0..seen.ticks {
+            step += 1;
+            if timer.advance(1) > 0 {
+                fired.push(step);
+            }
+        }
+    }
+    (fired, step)
+}
+
+#[test]
+fn a_timer_fires_on_the_same_steps_at_thirty_and_sixty_frames_a_second() {
+    let sixty = [16, 17, 17].into_iter().cycle().take(120);
+    let thirty = [33, 33, 34].into_iter().cycle().take(60);
+    let (at_sixty, steps) = firing_steps(sixty);
+    assert_eq!(steps, 120);
+    assert_eq!(at_sixty, (1..=15).map(|n| n * 8).collect::<Vec<u32>>());
+    assert_eq!(firing_steps(thirty), (at_sixty, 120));
+}
+
 #[test]
 fn suspended_ten_minutes_the_game_steps_at_most_once_after_resuming() {
     let (game, log) = steps_game();

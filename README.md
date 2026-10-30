@@ -136,7 +136,7 @@ counter. An engine crate never depends on a game.
 
 | Crate | Folder | Owns |
 | ----- | ------ | ---- |
-| `shuyi-core` | `crates/core` | The seeded RNG, the simulation traits, and the tactics kit: grid, paths, turns. No I/O. |
+| `shuyi-core` | `crates/core` | The seeded RNG, timers in steps or turns, the simulation traits, and the tactics kit: grid, paths, turns. No I/O. |
 | `shuyi-assets` | `crates/assets` | Bundle layers, images, fonts, palette, audio cues, languages, keymaps, tilesets, importers, error reports. |
 | `shuyi-ui` | `crates/ui` | The frame, screens, input actions, widgets, skins, cinematics and the grid map. |
 | `shuyi-platform` | `crates/platform` | The platform boundary: the `Platform` trait every backend implements, `App`, which runs one frame of a game for the backend's loop (the loading card, fixed steps, suspend and resume), the headless backend and the test Harness; a game on the short path (`BasicGame`) and the `prelude` it names. No devices ([`docs/platform-backends.md`](docs/platform-backends.md)). |
