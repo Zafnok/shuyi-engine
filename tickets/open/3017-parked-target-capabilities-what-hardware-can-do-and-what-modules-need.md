@@ -217,10 +217,10 @@ None.
   gba has three_d: none", and "stage battle needs 200 sprites at once;
   target gba has 128".
 - **`shuyi export <id>` refuses** a game with any problem, through the
-  check it already runs (3004). **Either order with 3004:** if 3004 is
-  done, add `left_out` to its `export-report.json`, beside the check's
-  warnings; if not, nothing to do (3004's export refuses through the
-  check, and 3004 adds `left_out` when it lands).
+  check it already runs (3004). **From 3004 (done):** its
+  `export-report.json` (`contract::export::ExportOutput`) holds the
+  check's `warnings` and no `left_out`; this ticket adds `left_out`
+  beside them.
 
 **Out (do not do):**
 - the screen-count and layout check (3023);
@@ -322,7 +322,7 @@ ticket if this one is done.
 - [ ] On `nds`, a skin with `bloom` optional and `fog` required passes,
       and `bloom` is listed in `left_out`. With `bloom` required, it
       fails.
-- [ ] If 3004 is done, `shuyi export gba` refuses the first fixture,
+- [ ] `shuyi export gba` refuses the first fixture,
       and prints the check's errors.
 - [ ] `cargo xtask check-modules` fails on a fixture module with no
       `needs` key.

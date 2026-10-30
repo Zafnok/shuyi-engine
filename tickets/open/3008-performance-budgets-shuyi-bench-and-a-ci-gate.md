@@ -96,11 +96,11 @@ None.
     (for example `iai-callgrind`; check its current name, version and
     license) or a small wrapper around `valgrind --tool=cachegrind`;
   - **peak heap**, from the counting allocator below;
-  - **package size**. **Either order with 3004:** if 3004 is done, it
-    comes from `shuyi export`'s `export-report.json` (for `web`, the
-    size of the zip 3004 writes, with `index.html` at its root); if not,
-    it is the asset bytes, and 3004 switches it to the export's sizes
-    (its clause says so). **Either order with 2516:** if 2516 is done, a
+  - **package size**. **From 3004 (done):** it comes from `shuyi
+    export`'s `export-report.json` (`contract::export::ExportOutput`),
+    whose `sizes` list the package first (for `web`, the zip with
+    `index.html` at its root), with a test. **Either order with
+    2516:** if 2516 is done, a
     package over budget names its largest files and the files no load
     read, from `shuyi check`'s files report. If not, 2516 adds that (its
     own clause says so).

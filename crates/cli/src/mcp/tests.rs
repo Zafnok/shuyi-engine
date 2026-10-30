@@ -68,7 +68,8 @@ fn the_tools_that_run_the_game_or_read_its_files_take_a_project() {
             "playtest",
             "autobalance",
             "import",
-            "bake"
+            "bake",
+            "export"
         ]
     );
     assert!(!takes_project(Op::Scene, true));

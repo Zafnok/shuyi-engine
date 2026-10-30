@@ -35,12 +35,15 @@ What Shuyi has (read on 2026-10-21):
   `publisher`, and `icon`, one square PNG of 512 px or more), with a
   version parser and `app_info::downscale(w, h, rgba, size)` in
   `crates/cli/src/app_info.rs`.
-- 3004 adds `shuyi export` and five exporters: `windows` (a zip built
-  for `x86_64-pc-windows-gnu`), `linux` and `linux-arm64` (a `tar.gz`
-  each), `macos` (a universal `.app` with a minimal Info.plist and an
-  ad-hoc signature, built in CI on macOS runners) and `web` (the web
-  build's folder). Its scope says nothing of an icon or version in the
-  exe, a bundle id, a `.desktop` file or a favicon.
+- 3004 (done) added `shuyi export` and four exporters
+  (`crates/cli/src/export.rs`, `export/desktop.rs`, `export/web.rs`):
+  `windows` (a zip built for `x86_64-pc-windows-gnu`), `linux` (a
+  `tar.gz`, built in CI in Valve's sniper SDK container), `macos` (a
+  universal `.app` with a minimal Info.plist from `desktop::info_plist`
+  and an ad-hoc signature, built in CI on macOS runners) and `web` (the
+  web build's folder and its zip). 3071 adds `linux-arm64`. None puts
+  an icon or version in the exe, a bundle id, a `.desktop` file or a
+  favicon.
 - The web shell (`crates/cli/web/index.html`) has a `<title>%TITLE%</title>`
   and no icon. `package` in `crates/cli/src/web.rs` fills it from
   `web.title` (`Web::title`, a `String` that is empty when unset), the
@@ -79,8 +82,8 @@ None.
     Option<PathBuf> }`, from 3048's part and the project's root. The
     `version` is the part's, or else the game's package version from
     `cargo metadata --no-deps --format-version 1`: the same value as
-    3004's report. Use 3004's function for it if it has one; if not,
-    write it here and make the report call it;
+    3004's report, which `metadata` in `crates/cli/src/export.rs` reads
+    into `ExportCx::version`: use it;
   - `Identity::numbers() -> Result<[u16; 4], String>`: major, minor and
     patch from 3048's version parser, then `build`. A number over 65535
     is an error naming `app.version` or `app.build`;
@@ -152,15 +155,16 @@ None.
     covers them;
   - the `.app` folder is named after the name, with `/` and `:`
     replaced by `-`.
-- **`linux` and `linux-arm64`** (if 3004's step 8 moved `linux-arm64`
-  to a follow-up ticket that isn't done, that ticket adds these):
+- **`linux`** (**Either order with 3071:** if 3071 is done, its
+  `linux-arm64` package gets the same; if not, nothing to do, 3071
+  gives it these files when it lands):
   - in each `tar.gz`: `share/applications/<id>.desktop` (`[Desktop
     Entry]`, `Type=Application`, `Name`, `Exec` the binary's name,
     `Icon` the id, `Categories=Game;`, `Terminal=false`), and
     `share/icons/hicolor/<n>x<n>/apps/<id>.png` for 16, 32, 48, 64, 128,
     256 and 512;
-  - the export docs (`docs/contract.md`'s `export` row, or the page 3004
-    wrote for `export`) say how a player installs them: `share/` into
+  - `docs/targets/desktop.md` (3004's page on the desktop packages)
+    says how a player installs them: `share/` into
     `~/.local/share`, and the binary on `PATH` or `Exec` set to its full
     path. A player who runs the binary directly needs neither.
 - **`web`,** in `package` (`crates/cli/src/web.rs`), so `shuyi web` and
@@ -180,7 +184,10 @@ None.
     ends;
   - `crates/cli/web/README.md` and `web.rs`'s module docs say where the
     title comes from and what `%ICONS%` becomes.
-- **CI** (3004's export job), on 3004's fixture game given an `app` part
+- **CI** (3004's `export` job in `.github/workflows/ci.yml`, which
+  exports `examples/hello-grid` and checks its file lists in
+  `tools/export-check/`; 3004 made no fixture game, so this ticket adds
+  one), on that fixture game given an `app` part
   (`name: "Lune Café"`, a publisher, `version: "1.2.3"`, `build: 4`) and
   an icon. The icon is a 1024 px PNG of a few flat squares, drawn by a
   test helper with `encode_png` and checked in; a test checks the file
@@ -190,7 +197,7 @@ None.
     section table and, in UTF-16LE, `VS_VERSION_INFO`, the product name
     and the publisher. The job runs it with `--ignored` after `shuyi
     export windows`;
-  - a step on `macos-latest` (added if 3004's job has none) exports the
+  - the job's `macos` leg (`macos-latest`, on pushes to `main`) exports the
     fixture for `macos`. `plutil -lint` passes on the Info.plist, and
     `iconutil -c iconset` reads the `.icns`;
   - on the Linux runner, `desktop-file-validate` passes on the
@@ -239,7 +246,7 @@ None.
 
 ## Implementation steps
 
-1. Read 3004's exporters and fixture as merged, 3048's
+1. Read 3004's exporters and CI's `export` job as merged, 3048's
    `crates/cli/src/app_info.rs` and `AppPart`, `crates/cli/src/web.rs`,
    `web/index.html` and `web/README.md`, `contract/doctor.rs`, and the
    `doctor` and `export` rows of `docs/contract.md`.
@@ -290,8 +297,8 @@ None.
   512 px source gives); the `.desktop` text; `%ICONS%` with and without
   an icon; the title's fallback and escaping; the doctor's `windres`
   check.
-- Integration: each exporter on the fixture, with 3004's file-list
-  snapshots updated; `windres` and `cargo rustc` through a fake runner,
+- Integration: each exporter on the fixture, with 3004's file lists
+  (`tools/export-check/<target>.txt`) updated; `windres` and `cargo rustc` through a fake runner,
   for their arguments; the fixture icon equals the helper's; the CI
   checks above on real packages.
 

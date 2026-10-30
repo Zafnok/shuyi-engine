@@ -72,8 +72,10 @@ What is planned:
   --serve` once this ticket is done.
 - 3041 (After MVP): log sinks; on the web, the browser's console by
   level, and a panic hook that logs the message.
-- 3004 (After MVP): `shuyi export web` packages the folder and runs
-  nothing.
+- 3004 (done): `shuyi export web` packages the folder
+  (`crates/cli/src/export/web.rs`), and its `--run` gives the
+  `Exporter` trait's default answer, "no run step for web yet"
+  (`SH3010`).
 - 3039 (done): `web::run` and `package` also write `NOTICES.txt` into
   `web.dist`, and `package` takes every work for it as an argument.
 
@@ -249,11 +251,12 @@ None.
     `"error":<code>` from `data-shuyi-error` under `error`), and 3052's
     `file` message names `shuyi web --serve`, as its table says. If not,
     3052 does both (its own clause says so);
-  - **with 3004:** if it is done, this ticket gives its `web` exporter
-    the run step (`shuyi export web --run`, on the `Exporter` trait's
-    `run`): it serves the exported folder through this server on
-    `127.0.0.1` with `dev` off, so no dev script and no watching, and
-    prints the URL. If not, 3004 adds it (its own clause says so);
+  - **from 3004 (done):** this ticket gives its `web` exporter
+    (`crates/cli/src/export/web.rs`) the run step (`shuyi export web
+    --run`, the `Exporter` trait's `run`, whose `RunCx` gives the
+    export's folder and its report): it serves the exported folder
+    through this server on `127.0.0.1` with `dev` off, so no dev script
+    and no watching, and prints the URL;
   - **from 2802 (done):** where the book tells the reader to serve the
     web build's folder (chapter 9, `site/content/learn/book/targets-and-export.md`,
     *The web build*), it names `cargo shuyi web --serve --open`.
@@ -282,9 +285,9 @@ None.
   (`write-ticket`), After MVP, blocked by this one, and the PR says so.
   The PR then points the lines that need `--lan` at that follow-up:
   2407's QR code (its third ticket's blocker) and 2522's Out.
-  If it is still over, the either-order items with 2522 and 3004 go to
-  that follow-up too, and its text takes over this ticket's side of
-  their clauses.
+  If it is still over, the either-order item with 2522 and the run
+  step from 3004 go to that follow-up too, and its text takes over
+  this ticket's side of them.
 
 **Out (do not do):**
 - a QR code of the LAN address: it is for phones, whose browsers are
@@ -313,7 +316,7 @@ None.
 
 1. Read `crates/cli/src/web.rs` and its tests, `fn web` in
    `crates/cli/src/lib.rs`, `crates/cli/web/index.html` and
-   `crates/cli/web/README.md`. Check whether 2522, 3004, 3052, 2802 and
+   `crates/cli/web/README.md`. Check whether 2522, 3052, 2802 and
    2803 are done, and read `package` as 3039 left it.
 2. Add the flags and the feature-name check, with their tests.
 3. Write the server: requests, files, types, Host and Origin, the

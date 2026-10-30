@@ -9,8 +9,11 @@ text is committed next to it.
 A game made with the engine ships some of these too. `shuyi web` writes
 the web shell's JavaScript, with its license texts, into the
 `NOTICES.txt` beside the page, with the crates compiled in and the
-game's own texts (its `shuyi.ron`'s `notices`). The controller database,
-which only native builds compile in, is ticket 3004's.
+game's own texts (its `shuyi.ron`'s `notices`). `shuyi export` writes one
+into every package, and a native one lists the controller database
+`gilrs` compiles in. The files the engine's crates ship are data too,
+`shuyi_cli::notices::FILES`, which a test keeps equal to the rows here
+whose license file is under `crates/`.
 
 | Item | Source URL | Version | License | License file | Used for | Added by |
 | ---- | ---------- | ------- | ------- | ------------ | -------- | -------- |

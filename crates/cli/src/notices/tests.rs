@@ -274,3 +274,75 @@ fn hello_grids_web_build_holds_macroquad_and_quad_snd_and_no_dev_or_build_crate(
     );
     assert!(error.unwrap_err().starts_with("cargo metadata failed"));
 }
+
+#[test]
+fn a_native_build_of_hello_grid_lists_the_controller_database_with_its_zlib_text() {
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
+    let native = crates(&example, "hello-grid", "x86_64-unknown-linux-gnu", &[]).unwrap();
+    let files = engine_files(Build::Native, &native);
+    assert_eq!(
+        names(&files),
+        ["gamecontrollerdb.txt, from SDL_GameControllerDB, compiled in by gilrs"]
+    );
+    assert_eq!(files[0].section, Section::Data);
+    assert_eq!(files[0].license, "Zlib");
+    let text = &files[0].texts[0];
+    assert_eq!(text.label, "SDL_GameControllerDB-LICENSE.txt");
+    assert!(text.body.contains("Sam Lantinga"), "{}", text.body);
+    let notices = render("Hello, Grid", &files);
+    assert!(notices.contains("\nData compiled in\n"), "{notices}");
+    // The web build has no gilrs, and the shell lists its own scripts.
+    let web = crates(&example, "hello-grid", "wasm32-unknown-unknown", &[]).unwrap();
+    assert_eq!(engine_files(Build::Native, &web), Vec::<Work>::new());
+    assert_eq!(engine_files(Build::Web, &native), Vec::<Work>::new());
+}
+
+#[test]
+fn the_engines_files_are_the_rows_of_third_party_assets_under_crates() {
+    let assets = include_str!("../../../../THIRD_PARTY_ASSETS.md");
+    // The rows whose license file is under `crates/`: what the engine's
+    // own crates ship.
+    let mut rows: Vec<&str> = assets
+        .lines()
+        .filter(|line| line.starts_with("| "))
+        .filter_map(|line| line.split("](crates/").nth(1))
+        .filter_map(|rest| rest.split(')').next())
+        .collect();
+    rows.sort_unstable();
+    let mut listed: Vec<String> = FILES
+        .iter()
+        .map(|file| file.text.0.trim_start_matches("crates/").to_owned())
+        .collect();
+    listed.sort_unstable();
+    assert_eq!(
+        rows, listed,
+        "FILES and THIRD_PARTY_ASSETS.md's rows under crates/"
+    );
+    for file in &FILES {
+        let row = assets
+            .lines()
+            .find(|line| line.contains(&format!("]({})", file.text.0)))
+            .unwrap();
+        assert!(
+            row.contains(&format!("| {} ", file.license)),
+            "{}: {row}",
+            file.file
+        );
+        if !file.version.is_empty() {
+            assert!(
+                row.contains(&format!("| {} ", file.version)),
+                "{}: {row}",
+                file.file
+            );
+        }
+        let on_disk = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../..")
+            .join(file.text.0);
+        assert_eq!(
+            fs::read_to_string(on_disk).unwrap(),
+            file.text.1,
+            "{}",
+            file.file
+        );
+    }
+}

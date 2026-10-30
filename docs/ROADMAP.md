@@ -129,7 +129,7 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | 3D renderer: lights, shadows, cameras, meshes, materials, glTF | 3101–3109 | parked |
 | Render graph | 3034 (wgpu, not tied to one API), 2331 (the graph) | parked |
 | Animation: skeletal rigs, blending, morph targets, glTF | 1123 and 2231 (clips), 2104 (state machines), 2105 (2D skeletons), 3102 (glTF), 3110 (3D blending and morph targets) | parked |
-| Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3015 (mobile) | 3004 with the export targets; 3015 parked |
+| Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3071 (Linux on Arm), 3015 (mobile) | partial: Windows, Linux, macOS and the web done (3004); 3071 after MVP; 3015 parked |
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
 | Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
 | Sound | `shuyi-app` today (cues, variants, fades, streamed music), 3029 for every backend; 2341–2345, 2394 and 2225 (crossfades, groups and ducking, handles and pauses, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
@@ -303,7 +303,7 @@ stays first):
 2. What keeps players' data safe, before the game ships on Steam
    (game#0903): 3045, 3042, 3043, 3041, 3046 and 2110.
 3. The rest, a group at a time, each in the order of its table. The
-   shipping group goes with 3004, and 2112 comes before 3009.
+   shipping group goes with 3004 (done), and 2112 comes before 3009.
 
 ### The end goal
 
@@ -503,6 +503,7 @@ The tickets, in order:
 | 3003 | The platform boundary: `shuyi-platform`, `App::frame`, a headless backend |
 | 3002 | Controls fit: each screen's required actions fit the target, or it doesn't ship |
 | 3004 | `shuyi export <target>`: Windows, Linux, macOS, the web |
+| 3071 | What a package loads, audited against a list per target, and a `linux-arm64` package |
 | 3005 | `no_std` core, UI and platform, gated in CI |
 | 3008 | Performance budgets: `shuyi bench`, gated in CI |
 | 3006 | 1-bit output: patterns per palette role, a check that sides stay distinct |
@@ -704,7 +705,7 @@ comparison*, has the rest). The order, when unparked:
   first user; crash reports sent (3047) after 3046 and 2601; several
   peers in one headless run (2529) after 1140.
 - **Export targets that cost money or need a yes:** phones' browsers
-  (2407) after 2405; paid signing (3051) after 3004.
+  (2407) after 2405; paid signing (3051) after 3004 (done).
 
 The same day Nick added three kinds of game. Like real-time strategy,
 visual novels and detective games, they wait until after Visions of

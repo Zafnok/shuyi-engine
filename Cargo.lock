@@ -1170,6 +1170,8 @@ dependencies = [
 name = "shuyi-cli"
 version = "0.1.0"
 dependencies = [
+ "crc32fast",
+ "flate2",
  "include_dir",
  "insta",
  "png 0.18.1",

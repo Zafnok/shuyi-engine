@@ -21,6 +21,7 @@
 //! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
+//! | `export <target>` | the target's check, then the game built and packaged for it: a zip, a `tar.gz`, an `.app` or a web folder, with `NOTICES.txt` and `export-report.json` | [`export`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
 //! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
 //! | `attach <host:port>` | a running debug build over the live link: steps played as a player's input, then its screens, frame, log and window's picture | [`attach`] |
@@ -49,6 +50,7 @@ pub mod cli;
 pub mod codes;
 pub mod doctor;
 pub mod explain;
+pub mod export;
 #[cfg(test)]
 pub(crate) mod fake;
 pub mod import;
@@ -73,7 +75,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 28;
+pub const VERSION: u32 = 29;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -111,6 +113,8 @@ pub enum Op {
     Explain,
     /// A running build reached over the live link.
     Attach,
+    /// The game checked against a target, built and packaged for it.
+    Export,
     /// The MCP session's game started headless.
     Start,
     /// The MCP session's game played on: a script, then idle frames.
@@ -130,7 +134,7 @@ pub enum Op {
 
 impl Op {
     /// Every operation, in the order the usage lists them.
-    pub const ALL: [Op; 16] = [
+    pub const ALL: [Op; 17] = [
         Op::New,
         Op::Check,
         Op::Lint,
@@ -144,6 +148,7 @@ impl Op {
         Op::Autobalance,
         Op::Import,
         Op::Bake,
+        Op::Export,
         Op::Doctor,
         Op::Explain,
         Op::Attach,
@@ -181,6 +186,7 @@ impl Op {
             Op::Doctor => "doctor",
             Op::Explain => "explain",
             Op::Attach => "attach",
+            Op::Export => "export",
             Op::Start => "start",
             Op::Step => "step",
             Op::FramePng => "frame_png",
@@ -463,6 +469,7 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
         (Op::Doctor, _) => pair::<doctor::DoctorInput, doctor::DoctorOutput>(op, name),
         (Op::Explain, _) => pair::<explain::ExplainInput, explain::ExplainOutput>(op, name),
         (Op::Attach, _) => pair::<attach::AttachInput, attach::AttachOutput>(op, name),
+        (Op::Export, _) => pair::<export::ExportInput, export::ExportOutput>(op, name),
         (Op::Start, _) => pair::<StartInput, StartOutput>(op, name),
         (Op::Step, _) => pair::<StepInput, run::RunOutput>(op, name),
         (Op::FramePng, _) => pair::<FramePngInput, FramePngOutput>(op, name),

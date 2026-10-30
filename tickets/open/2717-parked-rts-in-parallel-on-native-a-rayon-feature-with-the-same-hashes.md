@@ -74,11 +74,11 @@ None.
     `cargo tree`;
   - a build with `parallel` for `wasm32-unknown-unknown` fails with the
     `compile_error!` message;
-  - **Either order with 3004:** if 3004 is done, `shuyi export`
-    refuses `parallel` for a target whose profile isn't `desktop` or
-    `steam-deck` (so `windows`, `linux`, `linux-arm64`, `macos` and
-    3012's `steam-deck` allow it; `web`, `playdate` and the rest
-    refuse). If not, nothing to do (3004's clause on 2717 adds it).
+  - **From 3004 (done):** this ticket makes `shuyi export`
+    (`crates/cli/src/contract/export.rs`) refuse `parallel` for a
+    target whose profile isn't `desktop` or `steam-deck`, naming the
+    feature (so the desktop exporters and 3012's `steam-deck` allow
+    it; `web`, `playdate` and the rest refuse), with a unit test.
 - **A speed report** (not a gate): the step time of a battle fixture of
   2 × 2 500 units (made here, from 2712's fixture kinds, no AI) with and
   without the feature on the CI runner, in the README. Wall time is fine
@@ -111,8 +111,8 @@ None.
 - [ ] `cargo tree` of the web build has no `rayon` (CI check).
 - [ ] A `wasm32` build with `parallel` fails with the documented message
       (CI check).
-- [ ] If 3004 is done, `shuyi export` refuses `parallel` on a target
-      whose profile isn't `desktop` or `steam-deck` (test).
+- [ ] `shuyi export` refuses `parallel` on a target whose profile
+      isn't `desktop` or `steam-deck` (test).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

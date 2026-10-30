@@ -87,8 +87,8 @@ What Shuyi has today (checked 2026-10-20):
 
 What is planned:
 
-- 3004 (After MVP) packages the web folder. An edit request there adds
-  the zip with `index.html` at its root that portals take.
+- 3004 (done) packages the web folder, and a zip of it with
+  `index.html` at its root that portals take.
 - 2019 (After MVP) opens the web build in headless Chromium and fails
   on console errors. Its either-order clause with this ticket reads the
   page's state. Its `render_card` page is a copy of `index.html` with
@@ -251,9 +251,9 @@ None.
       root, marked to be played in the browser; the embed's size; its
       fullscreen button option, which fullscreens itch's own frame; and
       whatever its page says on the day about file names and limits,
-      with its link. **Either order with 3004:** if 3004 is done, name
-      the zip that `shuyi export web` writes; if not, say to zip the
-      folder by hand, and 3004 names its zip here (its clause says so);
+      with its link. **From 3004 (done):** name the zip that `shuyi
+      export web` writes, `dist/export/web/<program>-<version>-web.zip`
+      (`index.html` at its root);
     - **a frame on another site:** `<iframe src="…/index.html"
       allow="autoplay; fullscreen; gamepad">`, why each is there (sound
       without a second click where the browser allows it, the
@@ -332,7 +332,7 @@ None.
   fullscreen with the browser's own key: it needs `shuyi-app` code that
   reads the browser's state, which 3062 adds (the clause with it says
   what the check above does);
-- the zip with `index.html` at its root (3004, an edit request there),
+- the zip with `index.html` at its root (3004, done),
   and uploading it to itch.io or any portal (3050);
 - pre-compressed `.br` and `.gz` copies: hosts compress what they serve,
   and a pre-compressed file needs server headers;

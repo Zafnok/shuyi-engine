@@ -214,11 +214,11 @@ when (dropping a platform for a while, say), it asks Nick with the
   (`crates/cli/src/contract/doctor/linux.rs`) and
   `scripts/setup-linux.sh` (2513) to match, in the PR that removes
   macroquad.
-  **Either order with 3004:** if 3004 is done, that PR also checks
-  `crates/cli/export/libraries.ron` (3004's library audit) for every
+  **Either order with 3071:** if 3071 is done, that PR also checks
+  `crates/cli/export/libraries.ron` (3071's library audit) for every
   target against what winit and wgpu load, and updates it; if not, the
-  ticket that removes macroquad says the same in a clause with 3004,
-  and 3004 names it back.
+  ticket that removes macroquad says the same in a clause with 3071,
+  and 3071 names it back.
 - **Android and iOS later** (ADR-0008): what the design must not rule out.
 - **The order of the build**, so the game keeps working at every step:
   for example, a new backend crate beside `shuyi-app` behind a feature,
@@ -272,8 +272,8 @@ when (dropping a platform for a while, say), it asks Nick with the
       `blocked_by` chain, and passes the ticket lint.
 - [ ] The tickets say how each piece keeps 2018's `render` and 2019's
       `web-render` jobs green, and the one that removes macroquad
-      changes doctor's Linux table, `scripts/setup-linux.sh` and 3004's
-      `libraries.ron` (by a clause with 3004 if 3004 is still open).
+      changes doctor's Linux table, `scripts/setup-linux.sh` and 3071's
+      `libraries.ron` (by a clause with 3071 if 3071 is still open).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

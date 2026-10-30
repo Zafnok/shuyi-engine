@@ -1,6 +1,6 @@
 +++
 title = "Targets and export"
-description = "Each target says what its hardware can do, shuyi check --target holds a game to it, and shuyi web builds the browser's page."
+description = "Each target says what its hardware can do, shuyi check --target holds a game to it, shuyi web builds the browser's page, and shuyi export packages the game for players."
 weight = 90
 
 [extra]
@@ -78,6 +78,36 @@ build carries, with the game's own texts that `shuyi.ron`'s `notices`
 names. Serve that folder over HTTP and open it in a browser; a page
 opened from the disk can't load its `.wasm`. The engine's examples on
 this site are such folders.
+
+## Export
+
+```bash
+cargo shuyi export windows --release
+```
+
+makes the package players download. It runs the target's check first
+(`windows`, `linux` and `macos` all check `desktop`) and builds nothing
+if the check finds an error. Then it builds the game for the target and
+writes into `dist/export/<target>/`:
+
+- `windows`: a zip of the `.exe`;
+- `linux`: a `tar.gz` that runs on any Linux with glibc 2.31 or newer;
+- `macos`: a folder with one `.app` for Apple silicon and Intel Macs,
+  signed ad hoc;
+- `web`: the web build's folder and a zip of it, `index.html` at its
+  root, as itch.io takes it.
+
+Each desktop package builds on its own system: Windows on Windows,
+Linux on Linux, macOS on a Mac (CI has all three). Every package carries
+`NOTICES.txt`. The Windows and macOS ones also carry `HOW-TO-OPEN.txt`:
+they aren't signed by a developer, so a player opens them once by hand.
+
+With `--release`, the build carries nothing of the machine it was made
+on: its paths are renamed, and a program that still holds one is
+refused. On Windows and Linux, `<package>.debug` beside the package
+keeps the program's line tables for crash reports, and is never
+shipped. `export-report.json` beside it gives the version, the sizes,
+the check's warnings and the signing, and `--run` runs the package.
 
 ## Size and speed
 

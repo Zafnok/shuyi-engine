@@ -242,7 +242,7 @@ account, its identity check and a certificate profile).
   3. `codesign --force --options runtime --timestamp --keychain <kc>
      --sign <identity>` on each piece of nested code, deepest first,
      then on the bundle. Not `--deep`, which Apple advises against for
-     signing. If 3004's exporter joins architectures with `lipo`,
+     signing. 3004's exporter joins architectures with `lipo`, so
      signing comes after it, because `lipo` drops signatures.
   4. No entitlements. The backend (macroquad, its audio, gilrs) needs
      no JIT, no unsigned memory and no library loaded from outside the

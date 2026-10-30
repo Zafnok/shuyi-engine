@@ -7,6 +7,8 @@ seh = "seh"
 # Shepperd's method: a quaternion from a rotation matrix, named after
 # Stanley W. Shepperd (ticket 3112).
 shepperd = "shepperd"
+# The `flate2` crate, which `shuyi export`'s archives deflate with.
+flate = "flate"
 
 [files]
 extend-exclude = [

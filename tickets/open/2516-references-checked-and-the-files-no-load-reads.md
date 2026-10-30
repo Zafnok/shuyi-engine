@@ -244,11 +244,11 @@ None.
   `Ref<ImageInfo>` (the `image` kind), so `check` gives a missing
   image its file and line. If not, nothing to do (2235 writes them
   as `Ref`s).
-- **Either order with 3004:** if 3004 is done, `shuyi export` writes
-  the files report's `unread` and `largest` into `export-report.json`,
-  taken from a plain `shuyi check` run (`check --target`, which export
-  runs first, makes no files report), with a test. If not, nothing to
-  do (3004's clause says so).
+- **From 3004 (done):** `shuyi export` writes `export-report.json`
+  (`contract::export::ExportOutput`, `crates/cli/src/contract/export.rs`)
+  without the files report. This ticket adds its `unread` and `largest`
+  to it, taken from a plain `shuyi check` run (`check --target`, which
+  export runs first, makes no files report), with a test.
 - **Either order with 3008:** if 3008 is done, a package over budget in
   `shuyi bench` names the files report's `largest` and `unread` files,
   taken from `check`'s answer, not counted again. If not, nothing to do

@@ -47,8 +47,11 @@ What Shuyi has and plans (read 2026-10-21):
   "line-tables-only"` in the root `Cargo.toml`, inside each `.exe` on
   Windows GNU. CI's `test` job runs on `windows-latest` (MSVC, so PDB
   files), `ubuntu-latest` and `macos-latest`.
-- **Nothing keeps a build's debug info.** 3004 packages builds
-  stripped.
+- **From 3004 (done):** `shuyi export --release` keeps the program
+  with its line tables beside the `windows` and `linux` packages as
+  `<package>.debug`, and ships a copy stripped with `objcopy
+  --strip-debug` (`crates/cli/src/export/desktop.rs`). Nothing else
+  keeps a build's debug info.
 - **1134** (done) wrote a `shuyi-debug-replay` skill
   (`skills/shuyi-debug-replay/SKILL.md`: reproduce a bug from a
   record), whose crash path says it is still to come: nothing makes a
@@ -106,7 +109,10 @@ None.
     in the hook. `backtrace` joins `shuyi-app`'s native-only
     dependencies (`[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`),
     in the versions of `addr2line` and `object` this ticket uses, so
-    `Cargo.lock` holds one of each;
+    `Cargo.lock` holds one of each. **Either order with 3071:** if
+    3071 is done, use the `object` version its library audit brought
+    (`crates/cli/Cargo.toml`); if not, nothing to do (3071 uses this
+    one);
   - the executable's place, found once by `crash::install`:
     - Windows: the module base of a frame of `install` itself (from
       `backtrace::trace`); a frame is in the executable when its
@@ -128,13 +134,16 @@ None.
   ship a copy made with `objcopy --strip-debug` (MSYS2's mingw-w64
   binutils on Windows GNU). Stripping after the link moves no code, so
   the offsets agree.
-  - **Either order with 3004:** if 3004 is done, the by-hand recipe
-    also remaps the build's paths as 3004's exporters do, or points at
-    `shuyi export --release`. Then the copy shipped doesn't carry the
-    builder's home folder, and the docs say that `NamedFrame.file`
-    shows the remapped names (`/cargo/registry/...`, the package's
-    name). If 3004 isn't done, 3004 adds this when it lands (its scope
-    says so).
+  - **From 3004 (done):** `shuyi export --release` remaps the build's
+    paths (`export::paths`, `crates/cli/src/export/paths.rs`:
+    `--remap-path-prefix` through `CARGO_ENCODED_RUSTFLAGS`, the
+    workspace root to the package's name, `CARGO_HOME` to `/cargo`,
+    `RUSTUP_HOME` to `/rustup`, the target folder to `/target`). The
+    by-hand recipe also remaps them the same way, or points at `shuyi
+    export --release`. Then the copy shipped doesn't carry the
+    builder's home folder, and the docs say that `shuyi crash` and
+    `NamedFrame.file` name files by the remapped names
+    (`/cargo/registry/...`, the package's name).
 - **`crash <report> [--symbols <file>]`**, a new contract operation
   (`crates/cli/src/contract/crash.rs`, `Op::Crash`, after `Op::Replay`
   in `Op::ALL`). Like `doctor`, it runs in `shuyi` itself, without the
@@ -271,7 +280,7 @@ None.
   ["2520"]`), written in this PR from this ticket's bullets, with their
   acceptance criteria and tests. `CrashOutput.frames` and its schema
   then come with the follow-up too. The lines
-  of 3004, 3012, 3047 and 3050 that name 2520's debug file then name
+  of 3012, 3047 and 3050 that name 2520's debug file then name
   the follow-up.
 
 **Out (do not do):**

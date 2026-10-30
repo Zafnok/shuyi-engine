@@ -18,7 +18,7 @@ use serde::Serialize;
 
 use super::codes::{self, Code};
 use super::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint,
+    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay, run, schemas,
 };
 use crate::game::GameTools;
@@ -199,10 +199,11 @@ fn schema(args: &[String], cwd: &Path, command: &str) -> u8 {
     }
 }
 
-/// Whether op `name` with `args` checks targets (`check --target`), which
-/// runs on the project file alone, without the game's tools.
+/// Whether op `name` with `args` checks targets (`check --target`, and
+/// `export`, which starts with that check), which runs on the project
+/// file alone, without the game's tools.
 pub fn checks_targets(name: &str, args: &[String]) -> bool {
-    name == "check" && args.iter().any(|a| a == "--target")
+    name == "export" || (name == "check" && args.iter().any(|a| a == "--target"))
 }
 
 /// `check --target` with `args` on `project`, with the game's tools
@@ -216,6 +217,21 @@ pub fn check_targets(project: &Project, args: &[String], game: Option<&dyn GameT
             check::text,
         ),
         Err(e) => wrong(json, Op::Check, &e, &check::usage(project.config.command())),
+    }
+}
+
+/// `export` with `args` on `project`, with the game's tools `game` if
+/// they are at hand (for its check's controls).
+pub fn export(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
+    let (json, args) = split_json(args);
+    match export::parse_args(&args) {
+        Ok(input) => print(json, &export::export(project, &input, game), export::text),
+        Err(e) => wrong(
+            json,
+            Op::Export,
+            &e,
+            &export::usage(project.config.command()),
+        ),
     }
 }
 
@@ -280,6 +296,7 @@ pub fn runs_the_game(name: &str) -> bool {
             | "autobalance"
             | "import"
             | "bake"
+            | "export"
     )
 }
 
@@ -298,6 +315,14 @@ pub fn with_game(project: &Project, name: &str, args: &[String], game: &dyn Game
             ),
             Ok(input) => print(json, &check::check(game, &input), check::text),
             Err(e) => wrong(json, Op::Check, &e, &check::usage(command)),
+        },
+        "export" => match export::parse_args(&args) {
+            Ok(input) => print(
+                json,
+                &export::export(project, &input, Some(game)),
+                export::text,
+            ),
+            Err(e) => wrong(json, Op::Export, &e, &export::usage(command)),
         },
         "bake" => match bake::parse_args(&args) {
             Ok(input) => print(json, &bake::bake(game, project, &input), bake::text),
@@ -449,6 +474,7 @@ mod tests {
             "autobalance",
             "import",
             "bake",
+            "export",
         ] {
             assert!(runs_the_game(op), "{op}");
         }
@@ -659,7 +685,7 @@ mod tests {
             without_project("schema", &args(&["--out", "s"]), &dir, "shuyi"),
             Some(0)
         );
-        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 48);
+        assert_eq!(fs::read_dir(dir.join("s")).unwrap().count(), 50);
         // A file where the folder should be.
         fs::write(dir.join("f"), "").unwrap();
         assert_eq!(

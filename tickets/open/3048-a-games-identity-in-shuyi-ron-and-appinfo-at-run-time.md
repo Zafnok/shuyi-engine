@@ -275,10 +275,12 @@ choices.
     `shuyi_assets::bitmap::convert::png_pixels`, which reads every kind
     of PNG (a grey icon too); if not, use `codec::decode_png` and 2565
     moves the call onto `png_pixels`.
-  - **3004** (export): if it is done, its `export-report.json`'s
-    `version` (the function 3004 reads it with) is `app.version` when
-    the part sets one, else the package's version, as before. If not,
-    3004 reads it (its scope says so).
+  - **From 3004 (done):** `export-report.json`'s `version` is the
+    package's version, which `metadata` in `crates/cli/src/export.rs`
+    reads with `cargo metadata --no-deps` into `ExportCx::version` (it
+    names the package's files too, `ExportCx::base`). This ticket makes
+    it `app.version` when the part sets one, else the package's
+    version, as before, with a test.
   - **3044** (the window): if it is done, the grid template's and
     hello-grid's `WINDOW` is `Window::console(APP.name, CONSOLE, 2,
     16).with_icon(APP.window_icon)`, and they call
@@ -352,7 +354,7 @@ choices.
    `contract/new.rs`; `crates/app/src/lib.rs` (`Window`, `Icon`,
    `run_game`) and `crates/platform/src/basic.rs`; 2013's ADR; and the
    templates' and hello-grid's `lib.rs`, `main.rs` and `shuyi.ron`.
-   Check whether 3004, 3044, 3046, 2111, 2501, 2502 and 3050 are done.
+   Check whether 3044, 3046, 2111, 2501, 2502 and 3050 are done.
 2. Add `AppPart` to `Config`, mark `Config` `#[non_exhaustive]`, and
    write the parse tests.
 3. Write `app_info.rs`: the rules, `downscale`, the generator and

@@ -1,6 +1,7 @@
 //! Shuyi Engine's tools, `shuyi`: the tool contract's operations (`new`,
 //! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
-//! `import`, `bake`, `doctor`, `explain`, `attach`, each with `--json`; [`contract`]), the contract as
+//! `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`; [`contract`]),
+//! the exporters `export` runs ([`export`]), the contract as
 //! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
 //! `web` and `private-assets`, each a module of library functions with a
@@ -28,6 +29,7 @@ pub mod check_keys;
 pub mod check_text;
 pub mod codec;
 pub mod contract;
+pub mod export;
 pub mod font_atlas;
 pub mod frame_png;
 pub mod game;
@@ -111,6 +113,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   import <file> [--print]            read a file through the format registry
   bake [--target <id>] [--out <file>]
                                      bake the game's sources into one pack: sizes and times
+  export <windows | linux | macos | web> [--out <dir>] [--release] [--run]
+                                     check the game against the target, then build and package
+                                     it, with NOTICES.txt and export-report.json
   doctor                             check the toolchain and say how to fix it
   explain [<code>]                   every problem code (SH2003), or one code's page
   attach <host:port> --token <t> [steps] [--screenshot <file.png>]
@@ -238,10 +243,17 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
     }
     if contract::cli::checks_targets(name, args) {
         // The controls need the game's tools: in its tool program.
+        let checked = |game| {
+            if name == "export" {
+                contract::cli::export(project, args, game)
+            } else {
+                contract::cli::check_targets(project, args, game)
+            }
+        };
         return match game {
-            Some(game) => contract::cli::check_targets(project, args, Some(game)),
+            Some(game) => checked(Some(game)),
             None if project.config.game.is_some() => game::run_in_game_program(project, name, args),
-            None => contract::cli::check_targets(project, args, None),
+            None => checked(None),
         };
     }
     if contract::cli::runs_the_game(name) {

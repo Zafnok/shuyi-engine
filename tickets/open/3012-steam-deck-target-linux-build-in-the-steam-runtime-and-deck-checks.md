@@ -44,7 +44,10 @@ None. Running it on a real Deck is 3013.
   - it reuses the `linux` exporter's build (3004):
     `x86_64-unknown-linux-gnu` in the Steam Linux Runtime 3.0
     ("sniper") SDK container, in CI, with 3004's path remapping and
-    library audit, so the binary runs on the Deck's libraries. 3004 set
+    path search, so the binary runs on the Deck's libraries. **Either
+    order with 3071:** if 3071 is done, the exporter also runs its
+    library audit against the `linux` list; if not, nothing to do (3071
+    runs it in `steam-deck` when it lands). 3004 set
     the container up and recorded the image, so this exporter only adds
     `SHUYI_TARGET=steam-deck` to the build (see *Display*) and changes
     the package;
@@ -153,8 +156,9 @@ None. Running it on a real Deck is 3013.
 ## Acceptance criteria
 
 - [ ] CI produces a `steam-deck` package for an example, built in
-      3004's sniper container job. Its report passes 3004's library
-      audit (no `GLIBC_` version above the floor).
+      3004's sniper container job. `tools/export-check/check.sh` finds
+      no `GLIBC_` version above the floor in it (and 3071's audit
+      passes, if 3071 is done).
 - [ ] The package's binary is built with `SHUYI_TARGET=steam-deck` (the
       exporter's test reads its build command), and a headless test
       with the `steam-deck` facts shows no Fullscreen row.

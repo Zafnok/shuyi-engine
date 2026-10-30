@@ -1,0 +1,3 @@
+{base}/HOW-TO-OPEN.txt
+{base}/NOTICES.txt
+{base}/hello-grid.exe

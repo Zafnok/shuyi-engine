@@ -214,10 +214,13 @@ Nothing here costs money. A device is needed only for 3011.
   1. it runs `check --target playdate`;
   2. it builds for `thumbv7em-none-eabihf` (with `cargo-playdate`, or
      the steps it does, written out; check its license), through 3004's
-     path remapping. As 3004's ADR says of every package, the exporter
-     then runs 3004's path search over the ELF, and its library audit
-     against a `playdate` list in `crates/cli/export/libraries.ron`
-     (expected empty: a `no_std` game links everything statically);
+     path remapping. As 3004's ADR (ADR-0058) says of every package,
+     the exporter then runs 3004's path search over the ELF.
+     **Either order with 3071:** if 3071 is done, it also runs 3071's
+     library audit against a `playdate` list in
+     `crates/cli/export/libraries.ron` (expected empty: a `no_std` game
+     links everything statically); if not, nothing to do (3071 adds the
+     list and the call when it lands);
   3. it writes `pdxinfo` from `shuyi.ron`'s `app` part (3048): `name`,
      `author` (the publisher), `bundleID` (the id), `version`,
      `buildNumber` (the build) and `imagePath`. The launcher's icon and
@@ -327,7 +330,8 @@ Nothing here costs money. A device is needed only for 3011.
 - [ ] `shuyi export playdate` on the example produces a `.pdx`, and its
       size is in the report.
 - [ ] The `.pdx`'s ELF passes 3004's path search (none of the build
-      machine's paths) and its library audit against `playdate`'s list.
+      machine's paths), and 3071's library audit against `playdate`'s
+      list if 3071 is done.
 - [ ] Host tests with the fake SDK:
   - [ ] a crank turn of 90° gives two `CrankForward`s;
   - [ ] only changed rows are marked;

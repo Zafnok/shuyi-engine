@@ -70,5 +70,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0055](0055-sounds-by-a-handle-the-queue-gives-owned-by-the-screen-that-started-them-and-one-playback-each-in-shuyi-app.md) | Sounds by a handle the queue gives, owned by the screen that started them, and one playback each in shuyi-app | Accepted; extends ADR-0004 §6 and ADR-0024 §2 |
 | [0056](0056-sounds-paused-under-a-menu-by-the-screen-that-paused-the-audio-held-on-suspend-and-a-mute-where-a-backend-cant-pause.md) | Sounds paused under a menu by the screen that paused, the audio held on suspend, and a mute where a backend can't pause | Accepted; extends ADR-0055, amends ADR-0024 §2 and §5 |
 | [0057](0057-import-settings-a-meta-file-beside-a-file-and-folder-defaults-typed-sections-the-nearest-wins.md) | Import settings: a `.meta` file beside a file and folder defaults, typed sections, the nearest wins | Accepted; extends ADR-0007 and ADR-0019 §5 |
+| [0058](0058-export-packages-carry-nothing-of-the-build-machine-paths-remapped-and-searched-the-linux-floor-in-the-sniper-sdk-and-a-checked-package-per-target.md) | Export packages carry nothing of the build machine: paths remapped and searched, the Linux floor in the sniper SDK, and a checked package per target | Accepted; extends ADR-0008 |
 
 Template: [`0000-template.md`](0000-template.md).

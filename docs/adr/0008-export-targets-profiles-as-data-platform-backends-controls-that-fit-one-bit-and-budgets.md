@@ -1,7 +1,8 @@
 # ADR-0008: Export targets: profiles as data, platform backends, controls that fit, 1-bit graphics, performance budgets
 
 - **Status:** Accepted; extended by ADR-0057 (§4's "an image's sidecar"
-  is its import settings file, `<image>.meta`)
+  is its import settings file, `<image>.meta`); extended by ADR-0058
+  (export packages: paths remapped and searched, the Linux floor)
 - **Date:** 2026-10-15
 - **Related tickets:** 3001–3016; game 1025 (the parked Playdate port),
   game 0903 (Steam readiness)

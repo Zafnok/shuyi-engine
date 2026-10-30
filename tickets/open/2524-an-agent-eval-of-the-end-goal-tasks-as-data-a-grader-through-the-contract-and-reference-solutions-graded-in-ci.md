@@ -143,12 +143,12 @@ None. Spending money on agent runs is 2525's question.
     id in `targets`;
   - `Web`: `cargo shuyi web --release` exits 0, and the folder that
     `shuyi.ron`'s `web.dist` names holds `index.html` and one `.wasm`.
-    **Either order with 3004:** if 3004 is done, `Web` runs `cargo
-    shuyi export web` and reads its folder instead, and the turn-based
-    tasks gain an `Export` check for `linux` (the package exists), run
-    in the sniper container as CI's `linux` export is, since outside it
-    3004's audit refuses a newer glibc; if not, nothing to do (3004's
-    PR does both);
+    **From 3004 (done):** `Web` runs `cargo shuyi export web` instead
+    and reads its folder (`dist/export/web`), and the turn-based tasks
+    gain an `Export` check for `linux` (the package exists). It runs in
+    the sniper SDK container, as the `linux` leg of CI's `export` job
+    does (the image pinned by digest there), so the package's glibc
+    floor is the container's (2.31, `docs/targets/desktop.md`);
   - `Responds { steps }`: `run --json` with the steps answers `ok`, and
     its `frame` or its `scene` differs from a `run --frames <n> --json`
     with no input, where `n` is the first answer's `frames`. A panic in
