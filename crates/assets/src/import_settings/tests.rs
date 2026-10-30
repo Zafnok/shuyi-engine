@@ -187,6 +187,29 @@ fn a_file_that_doesnt_read_is_an_error_at_its_place() {
     for source in ["[1, 2]", "7", "\"onebit\"", ""] {
         assert!(names(source).is_err(), "{source}");
     }
+    // Not a struct: the error says what a settings file holds.
+    let list = names("[1, 2]").err().unwrap_or_default();
+    assert!(
+        list.iter().any(|m| m.contains("a struct of sections")),
+        "{list:?}"
+    );
+}
+
+#[test]
+fn a_section_whose_name_isnt_right_before_its_colon_is_placed_at_its_value() {
+    // A comment between the name and the colon: the value's place.
+    let source = "(onebit /* x */ :  (cut: 1))";
+    let sections = split(source).unwrap_or_default();
+    assert_eq!(
+        sections.first().map(|s| (s.name.as_str(), s.at)),
+        Some((
+            "onebit",
+            Place {
+                line: 1,
+                column: 20
+            }
+        ))
+    );
 }
 
 #[test]
@@ -202,6 +225,8 @@ fn a_section_given_twice_is_an_error() {
 
 #[test]
 fn a_file_too_big_or_not_text_is_refused() {
+    // Up to the limit reads.
+    assert_eq!(sections("s.meta", b"()", 2), Ok(Vec::new()));
     let big = sections("s.meta", b"(onebit: ())", 4).err();
     assert_eq!(
         big.as_deref().and_then(<[_]>::first).and_then(|e| e.code),
