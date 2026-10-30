@@ -1,19 +1,17 @@
 ---
 id: "2776"
-title: "Parked: A maze chase example on TickSim: pellets, chasers on flow fields, power pellets, and its eval task, played on Pages"
+title: "A maze chase example on TickSim: pellets, chasers on flow fields and power pellets, played on Pages"
 type: feature
 milestone: "Engine: real time"
 model: opus-5.5
 effort: high
-status: blocked
-blocked_by: ["2739", "2524"]
+status: todo
+blocked_by: ["2739"]
 nick_input: none
 completed:
 ---
 
 # 2776 — A maze chase example on TickSim
-
-> **Parked** (Nick, 2026-10-26: "Ticket it, parked", `docs/decisions.md`): it is real-time work, parked with 1119 and 2739 until Visions of Shuyi launches. Unparking 1119 and 2739 doesn't unpark this ticket: Nick unparks it, with 2562. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -22,18 +20,23 @@ many lines, an agent makes a Pac-Man-style game in each engine, hosted
 on Pages ([`docs/decisions.md`](../../docs/decisions.md), 2026-10-26).
 That is 2562. It needs, on Shuyi's side:
 
-- **a reference solution**, which proves the task can be done on the
-  engine's tick path and gives the eval (2524) something to grade, as
-  snake (2739) does for its task;
+- **a reference solution**, this ticket, which proves the task can be
+  done on the engine's tick path and gives the eval (2524) something to
+  grade, as snake (2739) does for its task;
 - **the task as data**, `evals/tasks/maze-chase.ron`, which 2562 runs
-  through an agent in each engine.
+  through an agent in each engine: 2572.
+
+On 2026-10-30 Nick unparked the demo chain ("we need better demos",
+`docs/decisions.md`): this example is its second game, after snake. The
+eval task was split out of this ticket then, so the game plays on Pages
+without waiting for the eval (2524) and the tickets before it.
 
 A maze chase is the next arcade game after snake on a real-time grid:
 2739's ADR names "a maze chase on a grid" among the games a grid tick
 stage serves. It adds what snake lacks: actors that chase the player
 (`shuyi_core::path::flow_field`, `crates/core/src/path.rs:118`), modes on
 a timer (scatter, chase, frightened), and a player who turns early at a
-corner because the turn is held (the input rule of 1119's driver).
+corner because the turn is held (the input rule of 2137's driver).
 
 **Not Pac-Man** (the 2026-10-26 rule): the example takes no name,
 character, maze layout, sound or art from it. Its maze is drawn for this
@@ -50,7 +53,7 @@ None. When it unparks is his call (above).
 - **`examples/maze-chase`**, a game made the way 2739 makes snake: from
   the arcade template part (`cargo shuyi new --template arcade`, 2739),
   then changed, so its lines over the template are counted the same way.
-  - **the rules**, a `TickSim` (1119) in tile coordinates
+  - **the rules**, a `TickSim` (2137) in tile coordinates
     (`shuyi_core::grid`):
     - the maze is `files/maze.map` (the grid template's map format):
       walls, pellets, four power pellets, a pen in the middle and a
@@ -79,7 +82,7 @@ None. When it unparks is his call (above).
       `Tuning` in `files/tuning.ron`, read with `shuyi_assets::ron::Ron`.
   - **the screens:** a title, the stage, a pause menu on `Cancel`, and a
     game-over screen with the score that starts again on `Confirm`,
-    built as snake's are, through 1119's driver and a `MapScene`.
+    built as snake's are, through 2137's driver and a `MapScene`.
   - **the actions:** `Up`, `Down`, `Left`, `Right`, `Confirm`, `Cancel`,
     as snake's. Nothing names a key (the `input-actions` skill).
   - **the tools** (`src/tools.rs`): a `GameTools` as snake's, with a
@@ -89,16 +92,6 @@ None. When it unparks is his call (above).
   - the targets snake lists, a frame the Playdate fits, the font copied
     as snake's is (with its `THIRD_PARTY_ASSETS.md` row), and a README
     in hello-grid's form with the lines of its own code.
-- **The eval task** `evals/tasks/maze-chase.ron` in 2524's format:
-  - `prompt`: "Make me a maze chase game with Shuyi Engine: a player who
-    eats pellets in a maze, four chasers with different ways of chasing,
-    power pellets that make them run, lives and a score, with a web
-    build." Only the engine's name changes in 2562's Bevy run;
-  - `template`: `"arcade"`, `name`: `"maze-chase"`,
-    `time_box_minutes`: 60, `targets`: `desktop` and `web`;
-  - `checks`: `Gates`, `Check`, `Targets`, `Web`, `Responds` with
-    `Act("Left")` and a wait, and `Replay`;
-  - `reference`: `Project("examples/maze-chase")`.
 - **Tests of the example** (`tests/it/`), as snake's:
   - a Harness playthrough of seed 1 through actions only: eat a pellet,
     eat a power pellet, eat a frightened chaser, lose a life, and start
@@ -121,12 +114,14 @@ None. When it unparks is his call (above).
   scope says.
 
 **Out (do not do):**
+- The eval task, `evals/tasks/maze-chase.ron`: 2572.
 - The Bevy side and the comparison: 2562.
 - Bots for the maze chase: `bots` stays unsupported, as snake's.
 - Sound: the A/B (2562) measures the game without it. A follow-up
   ticket may add it once the example lands.
 - Any engine API the example finds missing: write it as a ticket
-  (`write-ticket`), parked with this one, and note the lines it would
+  (`write-ticket`), open if this example needs it and parked if not
+  (2026-10-30), and note the lines it would
   save in the completion notes.
 
 ## Implementation steps
@@ -138,10 +133,8 @@ None. When it unparks is his call (above).
 3. Write the rules (`src/rules.rs`) and their unit tests, the chasers'
    targets one function each.
 4. Write the screens, the tools and the README.
-5. Write the Harness tests, the golden record, the pictures, and the
-   eval task.
-6. Run the eval's grader on the task (`cargo xtask eval-reference
-   maze-chase`, 2524) and the `run-gates` skill.
+5. Write the Harness tests, the golden record and the pictures.
+6. Run the `run-gates` skill.
 
 ## Acceptance criteria
 
@@ -151,8 +144,7 @@ None. When it unparks is his call (above).
       2026-10-26 rule); the PR says so.
 - [ ] Every test under *Tests required* passes, the golden record in the
       `determinism` job among them.
-- [ ] 2524's grader passes `evals/tasks/maze-chase.ron` on the
-      reference.
+- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] The README states the example's lines over the template.
 - [ ] All gates in the `run-gates` skill pass.
 
@@ -163,7 +155,7 @@ None. When it unparks is his call (above).
 - Property: random inputs for 3 000 steps (above).
 - Snapshot / integration: the Harness playthrough, the 1/30 s and
   1/60 s runs, the replay and its golden table, the `frame-png`
-  pictures, the contract's checks.
+  pictures, `cargo shuyi check` and `check --target all`.
 
 ## Completion notes
 

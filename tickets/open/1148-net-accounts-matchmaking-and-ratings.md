@@ -74,12 +74,12 @@ our game without 0053.
     it carries (`Submission::record`) re-simulates, like 1146's result
     record, to the score it claims. On the client, `shuyi-net` gets a
     backend implementing 3054's `Leaderboards` over this server.
-    **Either order with 1119:** a turn game's record re-simulates with
-    `History`. If 1119 is done, a tick game's record (its `TickRecord`,
-    through 1119's `replay`) re-simulates too, and the tests refuse a
+    **Either order with 2137:** a turn game's record re-simulates with
+    `History`. If 2137 is done, a tick game's record (its `TickRecord`,
+    through 2137's `replay`) re-simulates too, and the tests refuse a
     forged tick score. If not, a tick game's score doesn't count yet,
     and this PR writes a parked follow-up ticket (the `write-ticket`
-    skill), blocked by 1119, that adds the tick check to this server.
+    skill), blocked by 2137, that adds the tick check to this server.
 - A client API in `shuyi-net` for queueing, cancelling, getting matched,
   and reading a rating. It may reach the services over HTTP through
   2601's capability (`Ctx::http`), which works on native and in the web

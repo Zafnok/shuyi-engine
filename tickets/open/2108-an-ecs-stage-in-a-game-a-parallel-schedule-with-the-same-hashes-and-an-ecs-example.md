@@ -34,10 +34,10 @@ None.
   command by inserting it as a resource and running a schedule. History
   and undo (`shuyi_core::history`) work on the world's dump or on a
   diff, whichever 2107's dump makes cheaper (measure).
-- **Tick games:** **either order with 1119** (parked). If 1119 is done,
+- **Tick games:** **either order with 2137**. If 2137 is done,
   an `EcsTickSim` that runs a schedule per step with the step's inputs
   as a resource. If not, write a parked follow-up ticket for this
-  adapter (the `write-ticket` skill), blocked by 1119, and name it in a
+  adapter (the `write-ticket` skill), blocked by 2137, and name it in a
   section of the module's docs.
 - **Views:** a system can build the frame's plain-data view from
   queries; the skin paints it as any other (`AGENTS.md` rule 9).
@@ -81,7 +81,7 @@ None.
 ## Implementation steps
 
 1. Write `EcsRules`, with history.
-2. Write the tick adapter if 1119 is done.
+2. Write the tick adapter if 2137 is done.
 3. Write the parallel schedule and its property test, with a forked
    stream for each system that draws if 2114 is done.
 4. Write the example, with its tests and web build.

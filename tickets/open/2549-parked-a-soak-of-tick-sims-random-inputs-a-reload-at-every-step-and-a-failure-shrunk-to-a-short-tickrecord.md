@@ -6,14 +6,14 @@ milestone: "Engine: real time"
 model: opus-5.5
 effort: high
 status: blocked
-blocked_by: ["1119", "2527"]
+blocked_by: ["2137", "2527"]
 nick_input: none
 completed:
 ---
 
 # 2549 — A soak of tick sims: random inputs, reloaded at every step
 
-> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): a follow-up of the parked tick simulation (1119), and a follow-up of parked work is parked, so it starts after 1119 is unparked and done, and after 2527. If 1119 is unparked early because the game needs it (`docs/decisions.md`, 2026-10-20), this stays parked until Nick says it comes too. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets for networking, styles for later"; 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): a follow-up of the tick simulation, which was parked when this was written. 2137 (1119's tick part, unparked with the demo chain on 2026-10-30, `docs/decisions.md`) gives what this soaks, but this ticket wasn't unparked with it: it stays parked until Nick says it comes too, and it starts after 2137 and 2527. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -26,9 +26,9 @@ finds state that the serde form leaves out, such as a
 `#[serde(skip)]` field or a cache. `replay` can't see that state,
 because a replay rebuilds the state from the start.
 
-Tick sims (1119,
+Tick sims (2137,
 [ADR-0003](../../docs/adr/0003-game-styles-stages-two-kinds-of-simulation-cameras-and-projections.md)
-§2) can have the same bug, and nothing checks for it. 1119's tests
+§2) can have the same bug, and nothing checks for it. 2137's tests
 replay a record twice and compare the hashes, and a lost field passes
 that test. A tick game saved in progress rests on the serde form, and
 so does a state sent to a peer later
@@ -37,14 +37,14 @@ A tick sim also has a second gap. `TickSim::hash` is the game's own
 function, not `state_hash` of the serde form, so a hash that misses a
 field hides a difference too.
 
-1119's **Out** leaves this check to this ticket, and so does 2527's.
+2137's **Out** leaves this check to this ticket, and so does 2527's.
 2527 checks `TurnRules` games only: it needs `legal_commands`, `check`
 and `outcome`, and a `TickSim` has none of them. But a `TickSim` takes
 any `TickInput`, so this soak needs no list of legal moves. Random
 presses, holds and releases of the game's actions are all legal input.
 
 It is cheap. It reuses 2527's `Codec`, `Checks`, `Check`, `Failure`,
-`Shrunk` and delta debugging, and 1119's `TickInput`, `TickRecord` and
+`Shrunk` and delta debugging, and 2137's `TickInput`, `TickRecord` and
 `replay`.
 
 Why it matters: the end goal of 2026-10-19 (`docs/decisions.md`) names
@@ -77,7 +77,7 @@ soak. No new dependency, and no float.
     the same inputs on every platform. It never sees the state, so it
     never draws from the state's `SimRng`.
   - It keeps which actions each seat has down, and makes only lists
-    that 1119's latch could make:
+    that 2137's latch could make:
     - an action that is up is pressed one step in 8. One press in 4 is
       a tap: `pressed`, not `held`, and `released` in the next step.
       The rest are holds: `pressed` and `held`;
@@ -119,15 +119,15 @@ soak. No new dependency, and no float.
   Failure<TickInput>>`: steps `steps` times (a `TickSim` has no
   outcome), and checks every step. On a pass it returns the play's
   record: `blank` with every step's input added. `blank` is an empty
-  record for `start`, made as 1119 makes one (its seed, and its `Made`
+  record for `start`, made as 2137 makes one (its seed, and its `Made`
   stamp if `TickRecord` has one).
 - `inputs<S, C>(start: &S, blank: &TickRecord, inputs: &[TickInput],
   checks) -> Result<(), Failure<TickInput>>`: a fixed list checked the
   same way, for a kept record and for shrinking. Every list plays,
   because `TickSim::step` takes any `TickInput`.
 - `record(blank: &TickRecord, inputs: &[TickInput]) -> TickRecord`: the
-  record a failure's inputs make, which 1119's `replay` reproduces. If
-  1119's `TickRecord` has no public way to add one step's input, or to
+  record a failure's inputs make, which 2137's `replay` reproduces. If
+  2137's `TickRecord` has no public way to add one step's input, or to
   list the inputs it holds, add `TickRecord::push(&mut self, input:
   TickInput)` and `TickRecord::inputs(&self) -> Vec<TickInput>` in
   `crates/core/src/tick.rs`, run-length encoded as the driver writes
@@ -146,7 +146,7 @@ soak. No new dependency, and no float.
     shrink tests pass unchanged.
 - Bounds: `S: TickSim + Clone + Serialize + DeserializeOwned`, and
   `S::Event: PartialEq + Debug`. `TickInput` and `TickRecord` have
-  serde already (1119). If `TickInput` or `TickRecord` take a type
+  serde already (2137). If `TickInput` or `TickRecord` take a type
   parameter (the game's debug inputs), the functions here take it too.
 - No re-exports at the crate's root: a game writes
   `shuyi_core::soak::tick::play`.
@@ -170,12 +170,12 @@ leave out a field that the serde form holds.
 At the end of a play or a list, steps 1 and 2 run once more on the last
 state. Then the play's `record(blank, inputs)` goes through the codec,
 and `replay` runs it from a clone of `start`. It must give one hash for
-each step played (and the start's, if 1119's `replay` returns one), and
-each must equal A's `TickSim::hash` at that step (`record`). If 1119's
+each step played (and the start's, if 2137's `replay` returns one), and
+each must equal A's `TickSim::hash` at that step (`record`). If 2137's
 `replay` takes the build's `Made`, pass the record's own: the soak
 tests the state, not the stamp.
 
-**1119's example sim** (the dot moved by input with inertia, in the
+**2137's example sim** (the dot moved by input, in the
 engine's tests) is soaked. Its state derives `Clone`, `Serialize` and
 `Deserialize` if it doesn't yet. A test beside its own tests runs
 `play` for 50 seeds of 600 steps each (10 seconds of play), with
@@ -204,7 +204,7 @@ for `Check::ALL`, as above.
   games through `GameTools::soak`. A tick game calls `soak::tick` from
   its own tests. The contract's tick replay is 2739's;
 - `TickDriver`, frame rates and the input latch: the soak steps the sim
-  straight, as `replay` does. 1119's Harness sweep tests the latch;
+  straight, as `replay` does. 2137's Harness sweep tests the latch;
 - random axes and pointer positions in `TickInput`. 1121 adds them to
   `TickInput`, and `RandomInputs` leaves them at rest. A game that
   reads them hands in its own `Inputs`;
@@ -218,7 +218,7 @@ for `Check::ALL`, as above.
 
 ## Implementation steps
 
-1. Read 2527's `crates/core/src/soak.rs` and its tests, and 1119's
+1. Read 2527's `crates/core/src/soak.rs` and its tests, and 2137's
    `crates/core/src/tick.rs` (`TickSim`, `TickInput`, `TickRecord`,
    `replay`) and its example sim.
 2. In `soak.rs`: share the delta debugging between the shrinks, move
@@ -231,7 +231,7 @@ for `Check::ALL`, as above.
    `finish()`. Then `play`, `inputs`, `record` and `shrink` over it.
 5. Write the fixture sims and the tests below. The tests' codec is RON
    (the core's dev-dependency).
-6. Soak 1119's example sim, write the docs and the `shuyi-test`
+6. Soak 2137's example sim, write the docs and the `shuyi-test`
    paragraph, and run the gates.
 
 Size: about 250 lines in the core and 300 in tests. The fixture sims
@@ -260,7 +260,7 @@ count in the tests.
 - [ ] Shrinking is deterministic, a complete shrink is 1-minimal (no
       single step can go), and with `runs` 0 a failure comes back whole
       with `complete: false`. 2527's shrink tests still pass.
-- [ ] 1119's example sim passes 50 seeds of 600 steps.
+- [ ] 2137's example sim passes 50 seeds of 600 steps.
 - [ ] `skills/shuyi-test/SKILL.md` shows the tick soak, and
       `check-skills` passes.
 - [ ] `shuyi-core` still builds for `thumbv7em-none-eabihf`, and its
@@ -278,7 +278,7 @@ count in the tests.
   latch could make; `play` gives the same record twice; a passing play's
   record replays to A's hashes; a shrunk failure still fails the same
   check, is no longer than its input, and fails again through `inputs`.
-- Integration: 1119's example sim soaked for 50 seeds.
+- Integration: 2137's example sim soaked for 50 seeds.
 
 ## Completion notes
 

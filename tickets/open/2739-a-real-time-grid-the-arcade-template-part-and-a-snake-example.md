@@ -1,19 +1,17 @@
 ---
 id: "2739"
-title: "Parked: A real-time grid: the arcade template part and a snake example on TickSim, built for the web and the Playdate"
+title: "A real-time grid: the arcade template part and a snake example on TickSim, built for the web and the Playdate"
 type: feature
 milestone: "Engine: real time"
 model: opus-5.5
 effort: high
-status: blocked
-blocked_by: ["1119", "2115", "2501", "2511"]
+status: todo
+blocked_by: ["2137", "2115", "2501", "2511"]
 nick_input: none
 completed:
 ---
 
 # 2739 — A real-time grid: the arcade template part and a snake example
-
-> **Parked** (Nick, 2026-10-20: "unless these real-time work tickets overlap with visions of shuyi they should be parked until visions of shuyi is complete"): this is real-time work, so it waits until Visions of Shuyi launches, unless the game needs it first (the game is turn-based and has no use for a snake; its ticket 0060 saying the army walks around freely would unpark 1119, which this builds on, and Nick would then say whether this comes too). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -35,10 +33,11 @@ Their first-hour paths are small real-time games:
 "make me a snake game with Shuyi Engine" makes it, with a web build, a
 Playdate build and the other targets, in under an hour and in few
 lines. Every new API is judged against it. On 2026-10-20 Nick put the
-real-time work snake needs after the game's launch; until then the
-agent check of the end goal measures turn-based games. This ticket is
-where snake gets built once real time unparks: the shortest path to the
-end goal's first named game.
+real-time work snake needs after the game's launch. On 2026-10-30 he
+unparked the demo chain (snake, the maze chase and the A/B against
+Bevy): "we need better demos. hello, grid is garbage it's too easy and
+simple". This ticket is where snake gets built: the shortest path to
+the end goal's first named game, and the first demo of that chain.
 
 What Shuyi has today:
 
@@ -65,8 +64,9 @@ What Shuyi has today:
 
 What is planned:
 
-- 1119 (parked): `TickSim`, `TickInput`, `TickRecord`, `replay` and the
-  driver. Snake needs only that part of it, not `Fx` or the arena;
+- 2137 (1119's tick part, split out on 2026-10-30): `TickSim`,
+  `TickInput`, `TickRecord`, `replay` and the driver. Snake needs only
+  that, not 1119's `Fx` or arena (still parked);
 - 2115 (After MVP): `Countdown` and `Every` in `shuyi_core::timer`. It
   names this ticket: the snake moves every few steps with `Every`, never
   with `dt`, so a replay and the Playdate's 30 frames a second agree with
@@ -83,7 +83,8 @@ What is planned:
 Why it matters:
 
 - **The game first:** Visions of Shuyi needs none of this, which is why
-  it waits.
+  it waited until the game's needs from the engine were met
+  (2026-10-30).
 - **Other 2D games:** a grid that steps in real time is a direction
   ADR-0009 §2 allows and nothing serves. ADR-0003 §1 claims a style only
   when its example passes CI.
@@ -97,7 +98,7 @@ from Visions of Shuyi (`AGENTS.md` rule 4).
 
 ## Nick input
 
-None. When it unparks is his call (above).
+None.
 
 ## Scope
 
@@ -122,20 +123,20 @@ None. When it unparks is his call (above).
   - Alternatives considered include `TurnRules` with one command per
     step of `ticks()`: a record would hold a command per step, bots and
     `legal_commands` would see time as a move, and agents would learn a
-    path that 1119 makes legacy.
+    path that 2137 makes legacy.
 - **A tick replay in the contract:**
   `shuyi_cli::contract::replay::ticks(file, initial, record, outcome) ->
-  Result<ReplayRun, String>` beside `turns`, over 1119's `TickSim` and
+  Result<ReplayRun, String>` beside `turns`, over 2137's `TickSim` and
   `TickRecord`:
   - `initial` is the state the caller built from the record's seed;
-    `outcome` is a function `Fn(&S) -> Option<String>`, because 1119's
+    `outcome` is a function `Fn(&S) -> Option<String>`, because 2137's
     `TickSim` has no `outcome()` (the snake passes its own);
   - step 0, then one `ReplayStep` per step;
   - `command` is the step's input in words (the actions pressed and
     released, such as "pressed Up"), none for a step with no input.
     `hash` is `TickSim::hash` in sixteen hex digits, as `StateHash`
     prints; `events` as `turns` gives them; `refused` is always none;
-  - the answer's schema doesn't change. If 1119 or another ticket has
+  - the answer's schema doesn't change. If 2137 or another ticket has
     already added a tick replay, use it;
   - `docs/contract.md`'s `replay` row (*What a game gives*) names
     `replay::ticks` for a tick game beside `replay::turns`.
@@ -172,7 +173,7 @@ None. When it unparks is his call (above).
   - **the screens:** a title, the stage, a pause menu on `Cancel`, and a
     game-over screen with the score that starts again on `Confirm`. The
     stage steps the rules once for each of `input.ticks()` through
-    1119's driver, and builds a `MapScene` whose units are the head, the
+    2137's driver, and builds a `MapScene` whose units are the head, the
     body and the food. A suspended game gets 0 ticks, so the snake
     waits. If 3042 is done, the example's `GameSettings::BACKGROUND` is
     `Background::KEEP_RUNNING.paused()`, and its system hook pushes the
@@ -228,7 +229,7 @@ None. When it unparks is his call (above).
     goes through the contract's `replay` with the example's tools, as
     hello-grid's `tests/it/contract.rs` does. It lists step 0 and one
     step per tick, and the two runs have no difference. 2116 is done
-    before this ticket (1119 needs it first), so the record is also
+    before this ticket, so the record is also
     checked in with a golden table of the example's own, in the form
     2116 gives Hello, Grid's: the record in
     `examples/snake/tests/records/seed-1.ron`, the table
@@ -336,13 +337,13 @@ None. When it unparks is his call (above).
 - game speed and hit-stop (2123, parked), and drawing between steps
   (2361, parked);
 - the brick-breaker and the vertical shooter (2738, parked);
-- an early snake on `TurnRules` with a command per `ticks()` before 1119
+- an early snake on `TurnRules` with a command per `ticks()` before 2137
   (the ADR says why);
 - new engine features beyond `ticks`. A gap the example shows becomes a
   ticket (the `write-ticket` skill);
 - if the PR passes about 600 changed lines without fixtures and
   snapshots, move the template part, its CI entry, the guide section and
-  the skill to a follow-up ticket, parked with this one (the
+  the skill to a follow-up ticket (the
   `write-ticket` skill), and say so in the PR. The same PR changes
   2004's and 3042's mentions of 2739 for those pieces to the new
   ticket's id.
@@ -352,7 +353,7 @@ None. When it unparks is his call (above).
 
 ## Implementation steps
 
-1. Read ADR-0003 §1 and §2, ADR-0009 §2, ADR-0013 §1 and §3, 1119's
+1. Read ADR-0003 §1 and §2, ADR-0009 §2, ADR-0013 §1 and §3, 2137's
    `tick` module and driver, 2115's `Every`, 2511's short path, 2501's
    `template.ron`, and `examples/hello-grid` (its README, `shuyi.ron`,
    `src/tools.rs` and `tests/it/`). Check which of the either-order

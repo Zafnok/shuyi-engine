@@ -54,7 +54,7 @@ What it builds on:
   `Mover::move_x` and `move_y` (one pixel at a time, returning what
   they hit), `Trigger`, and the top-down controller with its numbers as
   data;
-- 2739 (parked): snake, the first real-time example, which Nick's end
+- 2739: snake, the first real-time example, which Nick's end
   goal names. It adds `shuyi_cli::contract::replay::ticks`, which
   replays a `TickRecord` through the contract, and it builds on 2115's
   `Every`. These examples follow its form;

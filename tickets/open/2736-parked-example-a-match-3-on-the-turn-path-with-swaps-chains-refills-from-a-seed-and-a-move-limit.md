@@ -71,7 +71,7 @@ What is planned:
   `pick` and `shuffle` on `RandomSource`;
 - 2803: the tutorial's box-pushing puzzle, the other puzzle on a grid;
 - 2735, 2737 and 2738 (parked): the roguelike and the rest of the
-  gallery; 2739 (parked): snake;
+  gallery; 2739: snake;
 - 2801: the website's Examples section, one card per example; 2524: the
   agent eval, whose tasks a reference example passes.
 

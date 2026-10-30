@@ -290,8 +290,8 @@ None.
 - A typed listing of commands in `run`'s answer, and one MCP tool per
   command with its own schema. `help` answers as text. Write a ticket
   when an agent needs more.
-- Commands for tick games. 1119 (parked) adds them as inputs of the
-  next step (its clause says so). If 1119 is done first, add them here
+- Commands for tick games. 2137 adds them as inputs of the
+  next step (its clause says so). If 2137 is done first, add them here
   as its clause describes.
 - Rewind (2357). It seeks over session records, so it gets commands
   through 2518 and needs nothing here.

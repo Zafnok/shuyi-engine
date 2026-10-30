@@ -47,7 +47,7 @@ What Shuyi has (read on 2026-10-20, checked again on 2026-10-21):
   - `shuyi replay` (`crates/cli/src/contract/replay.rs`) re-runs a turn
     game's rules record. Hello, Grid's `StageRecord` (a seed and
     commands, `examples/hello-grid/src/tools.rs:222-230`) is written
-    only by `bots`. 1119's `TickRecord` and 2706's `CommandRecord` are
+    only by `bots`. 2137's `TickRecord` and 2706's `CommandRecord` are
     parked. None of them holds menus, screens, the clock, the storage,
     the music or the keyboard's answers.
   - The Harness (`crates/platform/src/harness.rs`) and `shuyi run` play
@@ -89,7 +89,7 @@ Why it matters:
   happened instead of guessing.
 
 **How it relates to the rules' records.** `StageRecord`, `TickRecord`
-(1119) and `CommandRecord` (2706) replay a game's rules: a seed and
+(2137) and `CommandRecord` (2706) replay a game's rules: a seed and
 commands, a hash per step. They stay as they are. A session record is
 one level down: what the platform gave the whole game, menus and
 screens included, with a hash per frame. Playing a session runs the
@@ -352,7 +352,7 @@ privacy question for Nick, which parked 3047 asks for crash reports).
   times, music and the keyboard don't fit a script).
 - Playing a record from another engine version or other content:
   refused (2111's stamp); reading older record versions: never.
-- Changing the rules' records (`StageRecord`, 1119, 2706).
+- Changing the rules' records (`StageRecord`, 2137, 2706).
 - Recording on the Playdate or GBA backends: `App` records on any
   backend, but writing a record is each backend's, and 2519 does only
   `shuyi-app`.

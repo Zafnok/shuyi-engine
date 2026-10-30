@@ -1235,3 +1235,52 @@ went up, and while 2808 (`llms.txt`) was in its pull request:
   `llms-full.txt` are made from the Learn pages at each deploy (2808),
   so they follow the book, and the pictures and the playground are in
   them too.
+
+## 2026-10-30: real demos: snake, the maze chase and the A/B unparked
+
+Source: Nick, in a session of this repository:
+
+> "we need better demos. hello, grid is garbage it's too easy and
+> simple. now that our engine is growing robust we can have real demos,
+> like snake or pac-man. I think we had pac-man clone referenced in the
+> tickets parked behind realtime. what's the golden path to get there"
+
+Shown the chain (2115, 1119's tick part, 2739, 2776, 2562) and that
+real time waits for the game's launch (2026-10-20, above):
+
+> "I think we've already unblocked visions of shuyi entirely from an
+> engine perspective and now we're just doing victory laps. so this is a
+> good time to add more features."
+
+On that day the game's open requests here were wide glyphs and the line
+breaking of Chinese and Japanese text (2301–2303), scripts (2101,
+2102) and two tidy-ups of the bots (2133, 2544). None held up the game.
+Asked how far the unpark reaches (all 30 real-time tickets, the demo
+chain alone, or every one of the 193 parked tickets), he chose **"Just
+the demo chain"**. Asked whether the A/B against Bevy unparks too, with
+the cost of its agent runs, he chose **"After the maze chase"**.
+
+**Rules:**
+
+- **The demo chain is unparked**, in this order:
+  - 2115 (timers, already open);
+  - 2137, 1119's tick part split out of it: `TickSim`, records that
+    replay, and `TickDriver` with the latch that gives each press to
+    one step;
+  - 2739 (snake and the arcade template part);
+  - 2776 (the maze chase example);
+  - 2572 (the maze chase's eval task, split out of 2776 so the game
+    doesn't wait for the eval);
+  - 2562 (the A/B). It still asks Nick what it may spend before any
+    agent runs.
+- **The rest of real time stays parked**, 1119 among them, now
+  fixed-point numbers and the entity arena, after 2137. So do
+  collision, cameras, the platformer, and the brick-breaker and the
+  shooter (2738). The 2026-10-20 rule holds for them. A gap the demos
+  find becomes a ticket, open if a demo needs it, parked if not.
+- **The game still comes first** when it asks for something: a request
+  from the game goes ahead of the demo chain.
+- **Not Pac-Man** (2026-10-26): the maze chase takes no name,
+  character, maze, sound or art from it.
+- **The end goal's snake is measured again**: the agent eval's snake
+  task gets its reference (2739) and is graded in CI once 2524 lands.

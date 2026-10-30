@@ -318,12 +318,29 @@ real-time step:
 
 | Game | The chain |
 | ---- | --------- |
-| Snake | 2511, 2114 and 2115 (MVP and after MVP), then 1119 (real time, parked), then 2739 (the arcade template and a snake example). The web build works today; the Playdate build needs 3010 |
-| A platformer | 1119, 1120, 1122, 1123 and 2231, 1124 and 2360 (all parked), then 1127 (the platformer and its template) |
+| Snake | 2511 (done), 2114 and 2115, then 2137 (1119's tick part), then 2739 (the arcade template and a snake example). Unparked on 2026-10-30. The web build works today; the Playdate build needs 3010 |
+| A platformer | 2137, then 1119, 1120, 1122, 1123 and 2231, 1124 and 2360 (all parked but 2137), then 1127 (the platformer and its template) |
 
 Until then, the agent eval (2524, 2525) measures the end goal on
 turn-based games, and 2511 and 2512 keep the lines a game's author owns
-few. The small games of the gallery (2736–2738) and the roguelike
+few.
+
+On 2026-10-30 Nick unparked the demo chain alone ("we need better
+demos", [`decisions.md`](decisions.md)): the game's needs from the
+engine were met, and hello-grid is too small to show what the engine
+does. The order, after the game's own requests:
+
+1. 2115 (timers), with 2114 (random helpers) beside it;
+2. 2137, 1119's tick part split out of it: `TickSim`, records that
+   replay, and `TickDriver` with its input latch;
+3. 2739: the arcade template part and snake, on Pages;
+4. 2776: the maze chase, on Pages;
+5. 2572, the maze chase's eval task, once the eval (2524) is done;
+6. 2562, the A/B against Bevy, after 2572 and 2525, and after Nick says
+   what it may spend.
+
+The rest of real time stays parked, 1119 among them (now fixed-point
+numbers and the entity arena, after 2137). The small games of the gallery (2736–2738) and the roguelike
 (2735) are the eval's reference answers once they are unparked.
 
 ### Requests from the game
@@ -592,7 +609,9 @@ be parked until visions of shuyi is complete". So the real-time work
 (1119–1128, and the tickets built on it below) waits until Visions of
 Shuyi launches, not only until the MVP. The game's 0060 still unparks
 1119–1125, and a piece the game asks for through its `engine-change`
-skill is split out and unparked alone.
+skill is split out and unparked alone. On 2026-10-30 Nick unparked the
+demo chain alone: 2137 (1119's tick part), 2739, 2776, 2572 and 2562
+(*The end goal*, above).
 
 On 2026-10-17 Nick added 3D, HD-2D, and GBA and DS ports as engine
 features ([`decisions.md`](decisions.md)). Nothing in the game needs
@@ -684,8 +703,8 @@ On 2026-10-20 a second comparison, with Unity, Unreal and the 2D engines
 too, parked what the game doesn't need (phase 3, *The second
 comparison*, has the rest). The order, when unparked:
 
-- **Real time** (until the launch, like 1119–1128): 1119, with its
-  input latch, then 1120. Animation clips for any game (2231) need
+- **Real time** (until the launch, like 1119–1128): 1119 (after 2137,
+  which is unparked), then 1120. Animation clips for any game (2231) need
   nothing parked, then animated tiles and unit frames (2359). The
   tile-layer painter (2360) after 1120, 1124 and 2231, and before 1125
   and 1127. Drawing between steps (2361) after 1119 and 1120; camera
@@ -693,7 +712,8 @@ comparison*, has the rest). The order, when unparked:
   curves and a follower (2122) after 1119; collision queries (2124)
   after 1122; map objects as the game's types (2232) with 1124;
   positional sound (2363) and local multiplayer seats (2406) need
-  nothing parked. The arcade template and snake (2739) after 1119.
+  nothing parked. The arcade template and snake (2739) are unparked
+  (2026-10-30).
 - **Animation and sound:** cinematic tracks and markers (2364) after
   2109 and 2339; a beat and bar clock (2365) after 2341.
 - **Accessibility and input:** captions for sounds (2366) and rumble
@@ -772,16 +792,16 @@ On 2026-10-26 Nick asked for an A/B against Bevy: the same agent making
 a maze chase in each engine, scored on one-shot passes, friction,
 deterministic checks and lines, with both games on Pages
 ([`decisions.md`](decisions.md)). It runs in real time, so he parked
-it. The order, when unparked: the maze chase example and its eval task
-(2776) after 2739 and 2524, then the A/B (2562) after 2776 and 2525.
+it, and on 2026-10-30 he unparked it with the demo chain: the maze chase
+example (2776) after 2739, its eval task (2572) after 2776 and 2524, then
+the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 
 | Tickets | What | Unparked early if |
 | ------- | ---- | ----------------- |
 | 1119–1125 | Real time: fixed-step simulation, cameras, pointer and analog input, collision, animation, Tiled and LDtk, and a walkable town that starts a grid battle. Waits until Visions of Shuyi launches (2026-10-20) | the game's 0060 says the army walks around freely, or the game asks for a piece |
 | 1126–1128 | Isometric, side view (platformer), optional physics. Wait until Visions of Shuyi launches (2026-10-20) | — |
-| 2231, 2359–2363, 2122–2124, 2232, 2406, 2739 | Real time from the second comparison: clips for any game, animated tiles, the tile-layer painter, drawing between steps, camera feel, positional sound, curves, game speed and hit-stop, collision queries, map objects as the game's types, local multiplayer seats, and the arcade template with snake | the game asks for the piece (each ticket's Parked note says how) |
+| 2231, 2359–2363, 2122–2124, 2232, 2406 | Real time from the second comparison: clips for any game, animated tiles, the tile-layer painter, drawing between steps, camera feel, positional sound, curves, game speed and hit-stop, collision queries, map objects as the game's types, and local multiplayer seats | the game asks for the piece (each ticket's Parked note says how) |
 | 2385–2387, 2774–2775 | Local split screen for two to four players: layouts side by side or stacked and the three- and four-player shapes with the player's pick, a view per seat with its camera, HUD rectangle and spare quarter, a check that views fit the target, a listener per view, an example and a template part | Nick asks (2026-10-24: "These will be parked since they're not needed for Visions of Shuyi") |
-| 2776, 2562 | An A/B against Bevy: a maze chase example on the tick path with its eval task, then the same agent making it in each engine, scored on one-shot passes, friction, deterministic checks and lines, both games on Pages | Nick asks (2026-10-26: "Ticket it, parked") |
 | 2364–2368, 2408, 2227, 2352, 2908 | Cinematic tracks, a beat clock, captions for sounds, overlay screens that let the screen below run, memory in the debug view, rumble, translator files, machine-translated engine screens, and research on right-to-left scripts | Nick asks |
 | 3047, 3054–3055, 2601, 2529 | Crash reports sent, leaderboards, presence, HTTP requests, several peers in one headless run | Nick asks; 2529 with networking |
 | 2407, 3051 | Phones' browsers as a way to play a web build; paid code signing | Nick decides (each ticket asks) |

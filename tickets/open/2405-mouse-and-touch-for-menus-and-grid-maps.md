@@ -56,7 +56,7 @@ core:
 **What is planned.** Parked 1121 bundles two kinds of work: raw mouse
 and touch events with "a Harness test clicks a menu row", which need no
 real time, and stick axes, a dead zone and the pointer in world pixels
-in `TickInput`, which need 1119. Because of the bundle, all pointer
+in `TickInput`, which need 2137 and 1121. Because of the bundle, all pointer
 input waits for real time. Nick split it on 2026-10-20
 ([`docs/decisions.md`](../../docs/decisions.md)): the features most
 games expect come after the MVP, not parked, and "some take the
