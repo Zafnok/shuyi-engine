@@ -124,9 +124,11 @@ confirmed. A backend that never reports leaves every request pending.
 
 `App` calls the platform in this order:
 
-1. `system_events`: a `Resume` restarts the clock before it is read
-   (in a frame it measures, `App` first reads the time on `clock`'s
-   clock: the frame's start);
+1. `system_events`: a `Suspend` calls `audio().suspend()`, and a
+   `Resume` calls `audio().resume()` and restarts the clock before it is
+   read (in a frame it measures, `App` first reads the time on `clock`'s
+   clock: the frame's start); after the game has quit, neither does
+   anything;
 2. the clock: the time since the last frame, and the fixed steps due
    (60 a second, at most 4 a frame). Read the frame's time from a clock
    that never goes back, since the system's time jumps, and give `clock`
@@ -215,8 +217,8 @@ Add what the system said since the last call:
 
 | Event | When | What `App` does |
 | ----- | ---- | --------------- |
-| `Suspend` | the device sleeps or locks, the home menu opens, the app goes to the background | the game's hook saves; no update and nothing presented until `Resume` |
-| `Resume` | the game runs again | the time away is forgotten: the next frame counts none, so no catch-up steps |
+| `Suspend` | the device sleeps or locks, the home menu opens, the app goes to the background | `audio().suspend()` holds the audio; the game's hook saves; no update and nothing presented until `Resume` |
+| `Resume` | the game runs again | `audio().resume()` brings the audio back; the time away is forgotten: the next frame counts none, so no catch-up steps |
 | `FocusLost`, `FocusGained` | an overlay or another window takes the player's attention, and gives it back | the game's hook hears it (and may pause) |
 | `QuitRequested` | the player closes the game (a window's close button) | the game's hook saves, then `FrameOutcome::Quit` |
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
@@ -270,14 +272,27 @@ The sound device:
   started with a handle, looped if its cue says so, kept by its id as
   one playback that its `Volume` and `Stop` change alone, ADR-0055; a
   voice clip by its file in the game's voice folder; stop the voice; the
-  clips coming, to load ahead),
+  clips coming, to load ahead; `PauseSounds` pauses every sound started
+  with a handle playing now, and `ResumeSounds` resumes them, ADR-0056),
   then apply the `MusicCommand`s (load, start at a gain, fade, stop), and
   check on what is still loading. Every track started and not stopped
   plays, so two sound at once in a crossfade, each at its own gain
   (ADR-0054). It is called every frame, with nothing to play
   too;
 - `stop_all()`: the game quit: stop the music, the voice and the sounds
-  started with a handle.
+  started with a handle;
+- `suspend()` and `resume()`: the system suspended the game, and gave it
+  back. `suspend` holds everything sounding (the sounds started with a
+  handle, the voice, the music; a sound cue played once finishes), and
+  `resume` brings it back, leaving a `PauseSounds` pause in place. Both
+  are required, and a second call does nothing.
+
+**Holding a sound** (ADR-0056): a backend that can pause pauses; one that
+can't mutes it (volume 0) and lets it run on silently. A held sound
+keeps the volume it is given and sounds at it when it is released, and
+`music_playing` says where the track really is: a paused track's clock
+holds, a muted one's runs. quad-snd can't pause, so `shuyi-app` mutes,
+and the headless `Speaker` does as it does.
 
 Until ticket 3029 moves the rules of playing (variants, fades, the music
 clock) into a player every backend shares, they are in `shuyi-app`'s

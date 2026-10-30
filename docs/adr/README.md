@@ -68,5 +68,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0053](0053-the-web-build-checked-in-headless-chromium-playwright-for-python-and-a-capture-mode-that-logs.md) | The web build checked in headless Chromium: Playwright for Python, and a capture mode that logs | Accepted; extends ADR-0052 |
 | [0054](0054-music-switches-are-data-todays-fade-as-the-default-a-crossfade-as-two-tracks-with-gains-and-the-clock-on-the-newest-that-sounds.md) | Music switches are data: today's fade as the default, a crossfade as two tracks with gains, and the clock on the newest that sounds | Accepted; extends ADR-0004 §6 |
 | [0055](0055-sounds-by-a-handle-the-queue-gives-owned-by-the-screen-that-started-them-and-one-playback-each-in-shuyi-app.md) | Sounds by a handle the queue gives, owned by the screen that started them, and one playback each in shuyi-app | Accepted; extends ADR-0004 §6 and ADR-0024 §2 |
+| [0056](0056-sounds-paused-under-a-menu-by-the-screen-that-paused-the-audio-held-on-suspend-and-a-mute-where-a-backend-cant-pause.md) | Sounds paused under a menu by the screen that paused, the audio held on suspend, and a mute where a backend can't pause | Accepted; extends ADR-0055, amends ADR-0024 §2 and §5 |
 
 Template: [`0000-template.md`](0000-template.md).

@@ -63,6 +63,19 @@ impl shuyi_platform::Audio for Sound {
             player.stop_all(&mut self.speaker);
         }
     }
+
+    /// Mutes everything: quad-snd can't pause (ADR-0056).
+    fn suspend(&mut self) {
+        if let Some(player) = &mut self.player {
+            player.suspend(&mut self.speaker);
+        }
+    }
+
+    fn resume(&mut self) {
+        if let Some(player) = &mut self.player {
+            player.resume(&mut self.speaker);
+        }
+    }
 }
 
 /// The macroquad backend.

@@ -81,12 +81,13 @@ None.
     (pause drops input; slow motion doesn't), and key repeats keep the
     slowed pace.
 
-  Audio requests made by a stepped update play as usual. **Either order
-  with 2394:** if 2394 is done, pausing calls `AudioQueue::pause_sounds`
-  under the queue's crate-private owner that no pop releases, and
-  unpausing calls `resume_sounds`, so looped and other handled sounds
-  hold while the game is paused. A step doesn't release them. If 2394
-  isn't done, 2394 adds this wiring.
+  Audio requests made by a stepped update play as usual. **From 2394
+  (done):** pausing calls `AudioQueue::pause_sounds` under the queue's
+  crate-private owner that no pop releases (`OUTSIDE_THE_STACK` in
+  `crates/ui/src/audio/handles.rs`: `set_owner(OUTSIDE_THE_STACK)`, then
+  `pause_sounds`, then the stack's `own_top` again), and unpausing calls
+  `resume_sounds` the same way, so looped and other handled sounds hold
+  while the game is paused. A step doesn't release them.
 
   **Modules (2358, ADR-0040):** `Game::step` runs the modules'
   `before_update` hooks just before the stack's update, and pausing

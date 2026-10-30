@@ -7,9 +7,11 @@
 //!
 //! A game starts in a loading phase ([`Start`]): the first frame shows a
 //! [`Card`] the game gives, the next loads the game behind it, and the
-//! frames after run it. On [`SystemEvent::Suspend`] the game's hook saves
-//! and `App` stops stepping; on [`SystemEvent::Resume`] it forgets the
-//! time it was away, so a sleep never becomes a burst of catch-up steps.
+//! frames after run it. On [`SystemEvent::Suspend`] the game's hook saves,
+//! `App` stops stepping and the device holds the audio
+//! ([`Audio::suspend`](crate::Audio::suspend)); on [`SystemEvent::Resume`]
+//! the audio comes back and `App` forgets the time it was away, so a sleep
+//! never becomes a burst of catch-up steps.
 //!
 //! `App` keeps the log (ADR-0030): at the end of every frame it takes the
 //! lines the game logged ([`Ctx::log`]), stamps them with the frame's
@@ -663,20 +665,24 @@ impl<G: GameData> App<G> {
         events.clear();
         platform.system_events(&mut events);
         for &event in &events {
-            self.on_system_event(event);
+            self.on_system_event(platform, event);
         }
         self.lists.system = events;
     }
 
-    fn on_system_event(&mut self, event: SystemEvent) {
+    fn on_system_event(&mut self, platform: &mut impl Platform, event: SystemEvent) {
         if self.quit {
             return;
         }
         match event {
-            SystemEvent::Suspend => self.suspended = true,
+            SystemEvent::Suspend => {
+                self.suspended = true;
+                platform.audio().suspend();
+            }
             SystemEvent::Resume => {
                 self.suspended = false;
                 self.clock.restart();
+                platform.audio().resume();
             }
             SystemEvent::FocusLost => self.focused = false,
             SystemEvent::FocusGained => self.focused = true,

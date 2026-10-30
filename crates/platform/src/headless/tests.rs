@@ -142,6 +142,49 @@ fn the_speaker_holds_the_sounds_started_until_they_stop() {
 }
 
 #[test]
+fn the_speaker_pauses_what_plays_and_mutes_on_suspend_with_its_clock_running() {
+    let mut queue = shuyi_ui::audio::AudioQueue::<shuyi_ui::toy::Voice>::default();
+    let [first, second] = [queue.start_sound("hum"), queue.start_sound("hum")];
+    let mut s = Speaker::default();
+    let mut hear = |requests: &[SoundRequest], music: &[MusicCommand]| {
+        let frame = AudioFrame {
+            requests,
+            music,
+            music_volume: 1.0,
+            sound_volume: 1.0,
+            voice_volume: 1.0,
+        };
+        s.play(&frame, Millis(0));
+        s.sounds_playing()
+            .iter()
+            .map(|p| (p.id.get(), p.paused))
+            .collect::<Vec<_>>()
+    };
+    let started = hear(
+        &[
+            SoundRequest::start(first, "hum", 1.0),
+            SoundRequest::PauseSounds,
+            SoundRequest::start(second, "hum", 1.0),
+        ],
+        &[command("a", start)],
+    );
+    assert_eq!(started, [(1, true), (2, false)]);
+    assert_eq!(
+        hear(&[SoundRequest::ResumeSounds], &[]),
+        [(1, false), (2, false)]
+    );
+    assert!(!s.suspended());
+    s.suspend();
+    s.suspend();
+    assert!(s.suspended());
+    // It mutes: the track's clock runs on.
+    assert_eq!(s.music_playing(Millis(500)), Some(("a", 0.5)));
+    s.resume();
+    s.resume();
+    assert!(!s.suspended());
+}
+
+#[test]
 fn the_speaker_keeps_the_last_frame_and_stops_on_quit() {
     let mut s = Speaker::default();
     assert_eq!(s.volumes(), (1.0, 1.0, 1.0));

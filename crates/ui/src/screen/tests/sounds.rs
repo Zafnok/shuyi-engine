@@ -99,6 +99,9 @@ enum Step {
     Stop(usize, u32),
     Volume(usize, f32),
     Advance(f32),
+    /// The top screen pauses the sounds, or ends its pause.
+    Pause,
+    Resume,
     Push,
     Pop,
     Replace,
@@ -111,6 +114,8 @@ fn step() -> impl proptest::strategy::Strategy<Value = Step> {
         (0usize..12, prop_oneof![Just(0u32), 1u32..400]).prop_map(|(n, ms)| Step::Stop(n, ms)),
         (0usize..12, 0.0f32..1.0).prop_map(|(n, v)| Step::Volume(n, v)),
         (0.0f32..0.2).prop_map(Step::Advance),
+        Just(Step::Pause),
+        Just(Step::Resume),
         Just(Step::Push),
         Just(Step::Pop),
         Just(Step::Replace),
@@ -118,10 +123,12 @@ fn step() -> impl proptest::strategy::Strategy<Value = Step> {
 }
 
 proptest::proptest! {
-    /// Whatever screens start, stop and fade, and however the stack
-    /// changes through `apply_in`, once every fade has ended each handle
-    /// got exactly one stop or is live, and every live one belongs to a
-    /// screen on the stack.
+    /// Whatever screens start, stop, fade, pause and resume, and however
+    /// the stack changes through `apply_in`, once every fade has ended
+    /// each handle got exactly one stop or is live, every live one belongs
+    /// to a screen on the stack, `PauseSounds` and `ResumeSounds`
+    /// alternate, and the sounds are paused only while a screen on the
+    /// stack pauses them.
     #[test]
     fn no_handle_outlives_its_screen(steps in proptest::collection::vec(step(), 0..40)) {
         let log = Log::default();
@@ -129,6 +136,8 @@ proptest::proptest! {
         let mut ctx = ctx();
         let mut started: Vec<SoundId> = Vec::new();
         let mut requests = Vec::new();
+        // The depths pausing, as the queue should see them.
+        let mut pausing = alloc::collections::BTreeSet::new();
         for step in steps {
             let probe = Probe::boxed("p", false, &log);
             match step {
@@ -144,19 +153,43 @@ proptest::proptest! {
                     }
                 }
                 Step::Advance(dt) => ctx.audio.advance(dt),
+                Step::Pause => {
+                    stack.own_top(&mut ctx);
+                    ctx.audio.pause_sounds();
+                    pausing.insert(stack.names().len() - 1);
+                }
+                Step::Resume => {
+                    stack.own_top(&mut ctx);
+                    ctx.audio.resume_sounds();
+                    pausing.remove(&(stack.names().len() - 1));
+                }
                 Step::Push => {
                     stack.apply_in(&mut ctx, Transition::Push(probe));
                 }
                 // The last screen stays: popping it ends the game.
                 Step::Pop if stack.names().len() > 1 => {
+                    pausing.remove(&(stack.names().len() - 1));
                     stack.apply_in(&mut ctx, Transition::Pop);
                 }
                 Step::Pop => {}
                 Step::Replace => {
+                    pausing.remove(&(stack.names().len() - 1));
                     stack.apply_in(&mut ctx, Transition::Replace(probe));
                 }
             }
+            proptest::prop_assert_eq!(ctx.audio.sounds_paused(), !pausing.is_empty());
             requests.extend(ctx.audio.take());
+        }
+        let pauses: Vec<bool> = requests
+            .iter()
+            .filter_map(|r| match r {
+                AudioRequest::PauseSounds => Some(true),
+                AudioRequest::ResumeSounds => Some(false),
+                _ => None,
+            })
+            .collect();
+        for (n, &pause) in pauses.iter().enumerate() {
+            proptest::prop_assert_eq!(pause, n % 2 == 0, "{:?}", pauses);
         }
         // Every fade is under 0.4 s.
         ctx.audio.advance(1.0);
