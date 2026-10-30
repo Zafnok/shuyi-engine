@@ -60,6 +60,8 @@ exclude_re = [
     # an empty leaked `Vec` is the same function. Its other mutants are
     # caught.
     'OneBitInfo>::extensions -> .* with Vec::leak\(Vec::new\(\)\)',
+    # So does the format that reads one whole.
+    'OneBitFile>::extensions -> .* with Vec::leak\(Vec::new\(\)\)',
     # A baked file's format claims no extension either (`&[]`), with the
     # same mutant.
     'Packed<K>>::extensions -> .* with Vec::leak\(Vec::new\(\)\)',
