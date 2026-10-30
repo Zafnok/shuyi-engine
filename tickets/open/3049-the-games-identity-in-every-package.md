@@ -36,8 +36,14 @@ What Shuyi has (read on 2026-10-21):
   `app_info::problems` in `crates/cli/src/app_info.rs`, whose
   `check_version` parses with the `semver` crate (already the CLI's).
   `ExportCx::version` is already `app.version` when the part sets one,
-  else the package's. 3072 adds `icon` (one square PNG of 512 px or
-  more) and `app_info::downscale(w, h, rgba, size)`.
+  else the package's.
+- **From 3072 (done):** `AppPart` has `icon` (one square PNG of 512 px
+  or more) and `window_icons`. `app_info::icon(part, root)` reads and
+  checks the icon (an `app_info::Icon { side, rgba }`, or the error
+  `check --target` reports as `app.icon`), and
+  `app_info::downscale(w, h, rgba, size)` makes a `size` × `size`
+  picture in integers (ADR-0061). `app-info` writes the window's 16, 32
+  and 64 px icons with them; every package's size uses the same two.
 - 3004 (done) added `shuyi export` and four exporters
   (`crates/cli/src/export.rs`, `export/desktop.rs`, `export/web.rs`):
   `windows` (a zip built for `x86_64-pc-windows-gnu`), `linux` (a

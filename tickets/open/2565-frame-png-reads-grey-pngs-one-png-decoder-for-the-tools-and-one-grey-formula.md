@@ -84,11 +84,13 @@ None.
   writes: it stays, and `codec.rs`'s docs say it encodes PNG and APNG
   files and reads back only its own APNGs, any other PNG being read
   with `png_pixels`; if not, nothing to do (2811 writes those docs).
-- **Either order with 3072 and 3049:** if either is done, its icon
-  code (`check --target`'s icon check, `icons` in packaging) calls
-  `decode_png`: move it onto `png_pixels` with the other callers; if
-  not, nothing to do (3072 and 3049 decode with `png_pixels`). 3048
-  (done) left the icon to 3072 and decodes no PNG.
+- **From 3072 (done):** `app_info::icon` (`crates/cli/src/app_info.rs`,
+  the icon `check --target` checks and `app-info` downscales) decodes
+  with `codec::decode_png`: move it onto `png_pixels` with the other
+  callers. **Either order with 3049:** if it is done, its `icons` in
+  packaging decodes the icon too (through `app_info::icon`, or
+  `decode_png` if it calls one itself): the same move; if not, nothing
+  to do (3049 decodes with `png_pixels`).
 - **Either order with 2391:** if 2391 is done, `frame_png::decode_image`
   and `glyph_tiles::render_files` build a `shuyi_assets::image::Image`
   from the decoder's `(width, height, rgba)`: swap `decode_png` for

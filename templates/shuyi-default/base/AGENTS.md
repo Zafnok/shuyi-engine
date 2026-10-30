@@ -105,7 +105,9 @@ which the game reads (`app_info::APP`): run it after each change there,
 never edit the file. `cargo shuyi check --target all` fails while the
 file is out of date, and warns while the id is the placeholder
 `com.example.…`: set your own before you hand out a build, since the
-folder the player's saves are kept in follows it.
+folder the player's saves are kept in follows it. Its icon is `app.icon`,
+one square PNG of 512 pixels or more: `app-info` downscales it into the
+window's icons (`crates/game/icon`), which `APP` carries.
 
 ## The stages
 

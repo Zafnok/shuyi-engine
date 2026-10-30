@@ -13,8 +13,9 @@
 //! - [`BasicGame`] ([`basic`]): a game on the short path, described once
 //!   for its binary, its tools and its tests, and the [`prelude`] such a
 //!   game names;
-//! - [`AppInfo`] ([`app_info`]): who a game is, its name, id, version and
-//!   storage's name, as its `shuyi.ron` says;
+//! - [`AppInfo`] ([`app_info`]): who a game is, its name, id, version,
+//!   storage's name and window's icon ([`WindowIcon`]), as its `shuyi.ron`
+//!   says;
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature);
@@ -61,7 +62,7 @@ pub mod text_input;
 pub mod tick;
 
 pub use app::{App, Card, FrameOutcome, Load, LookOf, Setup, Start, SystemHook};
-pub use app_info::AppInfo;
+pub use app_info::{AppInfo, WindowIcon};
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;
 pub use platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};

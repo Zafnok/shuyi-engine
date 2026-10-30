@@ -22,6 +22,12 @@
         // publisher: "",
         // The Rust file `app-info` writes.
         code: "crates/game/src/app_info.rs",
+        // The game's icon: one square PNG, 512 pixels a side or more, which
+        // the tools downscale to every size a target asks.
+        // icon: "art/icon.png",
+        // Where `app-info` writes the window's icons, 16, 32 and 64 pixels,
+        // which `code` reads; outside `files/`, so they are embedded once.
+        window_icons: "crates/game/icon",
     ),
 
     // The game's tool program, for the commands that run the game:

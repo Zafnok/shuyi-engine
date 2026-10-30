@@ -1,7 +1,8 @@
 //! Who the game is: `shuyi.ron`'s `app` part ([`AppPart`], ADR-0059), its
 //! rules ([`problems`], which `check --target` reports), and `app-info`,
 //! which writes it as the Rust constant the game's binary compiles
-//! ([`rust`], [`run`]).
+//! ([`rust`], [`run`]) and the window's icons, downscaled from the game's
+//! one icon ([`downscale`], ADR-0061).
 //!
 //! The rules:
 //!
@@ -14,12 +15,18 @@
 //!   `-pre-release` and `+build`;
 //! - `build`: 1 or more;
 //! - `storage`, or the id when it is unset: one folder name;
-//! - the file `app-info` writes (`code`) is the one on disk.
+//! - `icon`, when given: a PNG file, square, [`ICON_SIDE`] pixels a side
+//!   or more;
+//! - `window_icons`: set when `icon` and `code` are, since the Rust reads
+//!   the window's icons from there;
+//! - the files `app-info` writes (`code` and the window's icons) are the
+//!   ones on disk.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
+use crate::codec;
 use crate::contract::target::Level;
 use crate::project::{AppPart, FILE};
 
@@ -28,6 +35,14 @@ const PART: &str = "app";
 
 /// The id's start that marks it as a placeholder.
 pub const PLACEHOLDER: &str = "com.example.";
+
+/// The smallest side of the game's icon, in pixels: every size a target
+/// asks is downscaled from it, never scaled up.
+pub const ICON_SIDE: u32 = 512;
+
+/// The window's icons' sides, in pixels: `WindowIcon`'s small, medium and
+/// big.
+pub const WINDOW_ICON_SIDES: [u32; 3] = [16, 32, 64];
 
 /// A problem of the `app` part.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,13 +70,18 @@ impl AppProblem {
 }
 
 /// Every problem of `part`, in the project at `root` whose tool is called
-/// `command`: its fields by the rules, and the file `app-info` writes when
-/// it isn't the one on disk.
+/// `command`: its fields and its icon by the rules, and each file
+/// `app-info` writes that isn't the one on disk.
 pub fn problems(part: &AppPart, root: &Path, command: &str) -> Vec<AppProblem> {
-    let mut out = fields(part);
+    let mut out = checked(part, root);
     for path in stale(part, root, command) {
+        let field = if is_png(&path) {
+            "window_icons"
+        } else {
+            "code"
+        };
         out.push(AppProblem::error(
-            "code",
+            field,
             format!("{path} is out of date: run `{command} app-info`"),
         ));
     }
@@ -104,7 +124,104 @@ fn fields(part: &AppPart) -> Vec<AppProblem> {
     if let Err(e) = check_storage(part.storage()) {
         out.push(AppProblem::error(field, e));
     }
+    if part.icon.is_some() && part.code.is_some() && part.window_icons.is_none() {
+        out.push(AppProblem::error(
+            "window_icons",
+            "the icon and `code` are set, so `window_icons` must be too: the folder where \
+             `app-info` writes the window's icons, which `code` reads",
+        ));
+    }
     out
+}
+
+/// The problems of `part`'s fields, and of its icon, read from `root`.
+fn checked(part: &AppPart, root: &Path) -> Vec<AppProblem> {
+    let mut out = fields(part);
+    if let Err(e) = icon(part, root) {
+        out.push(AppProblem::error("icon", e));
+    }
+    out
+}
+
+/// The game's icon: `side` × `side` RGBA8 pixels.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Icon {
+    /// Its width and height, in pixels.
+    pub side: u32,
+    /// Its pixels, row by row, four bytes each.
+    pub rgba: Vec<u8>,
+}
+
+/// `part`'s icon, read from the project at `root` and checked: a PNG
+/// file, square, [`ICON_SIDE`] pixels a side or more. `None` when the part
+/// names none.
+pub fn icon(part: &AppPart, root: &Path) -> Result<Option<Icon>, String> {
+    let Some(path) = &part.icon else {
+        return Ok(None);
+    };
+    let bytes = fs::read(root.join(path)).map_err(|e| format!("{path} can't be read: {e}"))?;
+    let (width, height, rgba) =
+        codec::decode_png(&bytes).map_err(|e| format!("{path} isn't a PNG file: {e}"))?;
+    if width != height {
+        return Err(format!(
+            "{path} is {width} × {height} pixels: an icon is square"
+        ));
+    }
+    if width < ICON_SIDE {
+        return Err(format!(
+            "{path} is {width} pixels a side: an icon is {ICON_SIDE} or more, so every size a \
+             target asks is made from it by downscaling"
+        ));
+    }
+    Ok(Some(Icon { side: width, rgba }))
+}
+
+/// `rgba`, a `width` × `height` picture of RGBA8 pixels, downscaled to
+/// `size` × `size`, in integers, so the same picture gives the same bytes
+/// everywhere (ADR-0061). Each pixel out is the mean of the pixels of its
+/// square in, from `x * width / size` up to `(x + 1) * width / size` (and
+/// the same down), in premultiplied alpha, so a transparent pixel adds
+/// nothing to the colour beside it; each mean is rounded half up.
+pub fn downscale(width: u32, height: u32, rgba: &[u8], size: u32) -> Vec<u8> {
+    let bounds = |at: u32, whole: u32| {
+        let from = u64::from(at) * u64::from(whole) / u64::from(size);
+        let to = (u64::from(at) + 1) * u64::from(whole) / u64::from(size);
+        (from, to.max(from + 1))
+    };
+    let mut out = Vec::with_capacity(4 * size as usize * size as usize);
+    for y in 0..size {
+        let (top, bottom) = bounds(y, height);
+        for x in 0..size {
+            let (left, right) = bounds(x, width);
+            // The sum of alpha, and of each colour times its alpha.
+            let (mut alpha, mut colour) = (0_u64, [0_u64; 3]);
+            for row in top..bottom {
+                for column in left..right {
+                    let at = usize::try_from(4 * (row * u64::from(width) + column))
+                        .unwrap_or(usize::MAX);
+                    let Some(pixel) = rgba.get(at..at + 4) else {
+                        continue;
+                    };
+                    let a = u64::from(pixel[3]);
+                    alpha += a;
+                    for (sum, &c) in colour.iter_mut().zip(pixel) {
+                        *sum += u64::from(c) * a;
+                    }
+                }
+            }
+            let count = (bottom - top) * (right - left);
+            for sum in colour {
+                out.push(if alpha == 0 { 0 } else { half_up(sum, alpha) });
+            }
+            out.push(half_up(alpha, count));
+        }
+    }
+    out
+}
+
+/// `sum / count`, rounded half up, as a byte: the mean of bytes is one.
+fn half_up(sum: u64, count: u64) -> u8 {
+    u8::try_from((2 * sum + count) / (2 * count)).unwrap_or(u8::MAX)
 }
 
 /// Whether `name` can be the name players see: not empty, with no
@@ -222,12 +339,26 @@ pub fn rust(part: &AppPart, command: &str) -> String {
     if !part.publisher.is_empty() {
         let _ = write!(app, "\n    .with_publisher({})", quoted(&part.publisher));
     }
+    let mut uses = "AppInfo";
+    if let Some(paths) = window_icon_paths(part) {
+        uses = "{AppInfo, WindowIcon}";
+        let code = part.code.as_deref().unwrap_or_default();
+        app.push_str("\n    .with_window_icon(Some(WindowIcon::new(");
+        for (_, path) in paths {
+            let _ = write!(
+                app,
+                "\n        include_bytes!({}),",
+                quoted(&relative(code, &path))
+            );
+        }
+        app.push_str("\n    )))");
+    }
     format!(
         "// Generated by `{command} {COMMAND}` from {FILE}'s `{PART}`. Do not edit.\n\
          //! Who the game is, as `{FILE}`'s `{PART}` says: its name, id and version, and the\n\
          //! name its saves are kept under.\n\
          \n\
-         use shuyi::platform::AppInfo;\n\
+         use shuyi::platform::{uses};\n\
          \n\
          /// Who the game is: the window's title, the loading card and the storage read it.\n\
          // check-text: not player text, who the game is (`{FILE}`'s `{PART}`)\n\
@@ -239,23 +370,78 @@ pub fn rust(part: &AppPart, command: &str) -> String {
 /// The command's name.
 pub const COMMAND: &str = "app-info";
 
-/// The files `app-info` writes for `part`: each path from the project's
-/// root and its bytes.
-pub fn files(part: &AppPart, command: &str) -> Vec<(String, Vec<u8>)> {
-    part.code
-        .iter()
-        .map(|path| (path.clone(), rust(part, command).into_bytes()))
-        .collect()
+/// The window's icons `app-info` writes for `part`, each side and path from
+/// the project's root (`<window_icons>/16.png`, …): `None` unless the part
+/// has an icon and `window_icons`.
+fn window_icon_paths(part: &AppPart) -> Option<[(u32, String); 3]> {
+    part.icon.as_ref()?;
+    let folder = part.window_icons.as_deref()?.trim_end_matches(['/', '\\']);
+    Some(WINDOW_ICON_SIDES.map(|side| (side, format!("{folder}/{side}.png"))))
+}
+
+/// Whether `path`, a file `app-info` writes, is a picture: one of the
+/// window's icons, not the Rust file.
+fn is_png(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("png"))
+}
+
+/// `to`, a path from the project's root, as a path from the folder of
+/// `from`, another, with `/` between its parts: what `include_bytes!` in
+/// `from` names `to` by.
+fn relative(from: &str, to: &str) -> String {
+    let parts = |path: &str| -> Vec<String> {
+        path.split(['/', '\\'])
+            .filter(|part| !part.is_empty() && *part != ".")
+            .map(str::to_owned)
+            .collect()
+    };
+    let mut folder = parts(from);
+    folder.pop();
+    let to = parts(to);
+    let shared = folder.iter().zip(&to).take_while(|(a, b)| a == b).count();
+    let mut out = vec!["..".to_owned(); folder.len() - shared];
+    out.extend_from_slice(&to[shared..]);
+    out.join("/")
+}
+
+/// The Rust file `app-info` writes for `part`, its path and its bytes.
+fn rust_file(part: &AppPart, command: &str) -> Option<(String, Vec<u8>)> {
+    let path = part.code.clone()?;
+    Some((path, rust(part, command).into_bytes()))
+}
+
+/// The files `app-info` writes for `part` in the project at `root`: each
+/// path from the root and its bytes, the Rust file and then the window's
+/// icons, downscaled from the icon. Fails when the icon doesn't load.
+pub fn files(part: &AppPart, root: &Path, command: &str) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut out: Vec<_> = rust_file(part, command).into_iter().collect();
+    if let Some(paths) = window_icon_paths(part)
+        && let Some(icon) = icon(part, root)?
+    {
+        for (side, path) in paths {
+            let pixels = downscale(icon.side, icon.side, &icon.rgba, side);
+            out.push((path, codec::encode_png(side, side, &pixels)?));
+        }
+    }
+    Ok(out)
 }
 
 /// The files `app-info` would write for `part` that differ from those in
 /// `root` (a missing file differs), by their paths. A text file's line
-/// endings don't count.
+/// endings don't count. When the icon doesn't load, the window's icons
+/// aren't compared: the icon's rule says why.
 pub fn stale(part: &AppPart, root: &Path, command: &str) -> Vec<String> {
-    files(part, command)
+    let files = files(part, root, command)
+        .unwrap_or_else(|_| rust_file(part, command).into_iter().collect());
+    files
         .into_iter()
         .filter(|(path, bytes)| {
             fs::read(root.join(path)).map_or(true, |disk| {
+                if is_png(path) {
+                    return disk != *bytes;
+                }
                 let lf: Vec<u8> = disk.into_iter().filter(|&b| b != b'\r').collect();
                 lf != *bytes
             })
@@ -268,7 +454,7 @@ pub fn stale(part: &AppPart, root: &Path, command: &str) -> Vec<String> {
 /// files, or with `check` writes nothing and fails naming each file that
 /// differs. A part with an error writes nothing and fails with them.
 pub fn run(part: &AppPart, root: &Path, command: &str, check: bool) -> Result<String, String> {
-    let errors: Vec<String> = fields(part)
+    let errors: Vec<String> = checked(part, root)
         .into_iter()
         .filter(|p| p.level == Level::Error)
         .map(|p| format!("{}: {}", p.setting, p.message))
@@ -280,7 +466,8 @@ pub fn run(part: &AppPart, root: &Path, command: &str, check: bool) -> Result<St
             errors.join("\n  ")
         ));
     }
-    if part.code.is_none() {
+    let files = files(part, root, command)?;
+    if files.is_empty() {
         return Ok(format!(
             "{COMMAND}: {FILE}'s `{PART}` names no `code`: no file to write"
         ));
@@ -297,7 +484,7 @@ pub fn run(part: &AppPart, root: &Path, command: &str, check: bool) -> Result<St
         ));
     }
     let mut wrote = Vec::new();
-    for (path, bytes) in files(part, command) {
+    for (path, bytes) in files {
         let full = root.join(&path);
         if let Some(parent) = full.parent() {
             fs::create_dir_all(parent).map_err(|e| format!("create {}: {e}", parent.display()))?;
