@@ -51,8 +51,7 @@ impl Screen<Data> for Title {
         "title"
     }
 
-    /// Confirm, if there is a stage to start, and Cancel to leave. Cancel is
-    /// declared on every target, and does nothing where the game can't quit.
+    /// Confirm, if there is a stage to start, and Cancel to leave.
     fn actions(&self) -> Option<Vec<UiAction>> {
         let mut actions = vec![UiAction::Cancel];
         if !stages::names().is_empty() {
