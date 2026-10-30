@@ -23,7 +23,7 @@
       "default": false
     },
     "target": {
-      "description": "The target: `windows`, `linux`, `macos` or `web`. Any other\ntarget's check runs, and the answer says it has no exporter yet.",
+      "description": "The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other\ntarget's check runs, and the answer says it has no exporter yet.",
       "type": "string"
     }
   },

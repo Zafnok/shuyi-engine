@@ -15,7 +15,7 @@
 //! ([`bundle`]): its tileset drawn in black and white, which
 //! `cargo shuyi bake --target playdate` takes in place of dithering the
 //! colour one ([`one_bit_bake`]). There the device has no standard library,
-//! and the game reads a pack baked so ([`Hello::one_bit_ctx`], [`playdate`]).
+//! and the game reads a pack baked so ([`Hello::one_bit_ctx`], `playdate`).
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;

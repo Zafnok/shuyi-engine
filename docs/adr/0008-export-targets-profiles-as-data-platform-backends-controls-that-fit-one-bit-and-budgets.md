@@ -2,7 +2,8 @@
 
 - **Status:** Accepted; extended by ADR-0057 (§4's "an image's sidecar"
   is its import settings file, `<image>.meta`); extended by ADR-0058
-  (export packages: paths remapped and searched, the Linux floor)
+  (export packages: paths remapped and searched, the Linux floor); §2's
+  "over the MIT `playdate` crates" changed by ADR-0062 (a C shim)
 - **Date:** 2026-10-15
 - **Related tickets:** 3001–3016; game 1025 (the parked Playdate port),
   game 0903 (Steam readiness)

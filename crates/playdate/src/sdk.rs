@@ -95,7 +95,7 @@ pub trait Sdk: Clone + fmt::Debug + 'static {
     /// The names in `folder` of the game's data folder (`""`: the data
     /// folder itself); a folder's has a `/` after it.
     fn data_names(&self, folder: &str) -> Result<Vec<String>, String>;
-    /// Makes `folder` in the game's data folder, if it isn't there.
+    /// Makes `folder` in the game's data folder; an error if it is there.
     fn make_data_folder(&self, folder: &str) -> Result<(), String>;
 }
 

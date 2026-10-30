@@ -55,6 +55,13 @@ pub const DEFAULT_CRATES: [&str; 7] = [
 /// modules: the front door and this tool.
 const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];
 
+/// The heading of the catalog's table of backends, which answer no concern
+/// and are no feature of the front door.
+const BACKENDS: &str = "## Platform backends";
+
+/// The features of the front door that are the default engine's, no modules.
+const ENGINE_FEATURES: [&str; 3] = ["default", "std", "app"];
+
 /// `docs/modules.ron`, as the check reads it (`shuyi_cli::catalog` reads
 /// all of it).
 #[derive(Debug, Deserialize)]
@@ -162,6 +169,17 @@ pub fn rows(catalog: &str) -> BTreeSet<String> {
         .collect()
 }
 
+/// The first names of the rows of the catalog's *Platform backends* table.
+pub fn backends(catalog: &str) -> BTreeSet<String> {
+    let table: Vec<&str> = catalog
+        .lines()
+        .skip_while(|line| line.trim() != BACKENDS)
+        .skip(1)
+        .take_while(|line| !line.starts_with("## "))
+        .collect();
+    rows(&table.join("\n"))
+}
+
 /// Whether `member` sits in a folder of `crates/`.
 fn under_crates(member: &Member) -> bool {
     member
@@ -169,6 +187,47 @@ fn under_crates(member: &Member) -> bool {
         .parent()
         .and_then(Path::file_name)
         .is_some_and(|name| name == "crates")
+}
+
+/// The modules of `graph`: the crates under `crates/` that are neither
+/// default crates, nor backends, nor the front door and this tool.
+fn modules_of<'a>(graph: &'a Graph, backends: &BTreeSet<String>) -> BTreeMap<&'a str, &'a Member> {
+    graph
+        .members
+        .iter()
+        .filter(|(name, member)| {
+            under_crates(member)
+                && !DEFAULT_CRATES.contains(&name.as_str())
+                && !NOT_MODULES.contains(&name.as_str())
+                && !backends.contains(name.as_str())
+        })
+        .map(|(name, member)| (name.as_str(), member))
+        .collect()
+}
+
+/// Every error the backends of `graph` have: each needs its README, and has
+/// its row by being one.
+fn backend_errors(
+    graph: &Graph,
+    backends: &BTreeSet<String>,
+    has_readme: &impl Fn(&Member) -> bool,
+) -> Vec<String> {
+    graph
+        .members
+        .iter()
+        .filter(|(name, member)| {
+            under_crates(member)
+                && backends.contains(name.as_str())
+                && !DEFAULT_CRATES.contains(&name.as_str())
+                && !has_readme(member)
+        })
+        .map(|(name, _)| {
+            format!(
+                "{name} is a backend (it has a row in {CATALOG}'s Platform backends) with no \
+                 README.md: write one"
+            )
+        })
+        .collect()
 }
 
 /// Every error the modules of `graph` have against `concerns` and the
@@ -180,17 +239,9 @@ pub fn check(
     has_readme: impl Fn(&Member) -> bool,
 ) -> Vec<String> {
     let rows = rows(catalog);
-    let modules: BTreeMap<&str, &Member> = graph
-        .members
-        .iter()
-        .filter(|(name, member)| {
-            under_crates(member)
-                && !DEFAULT_CRATES.contains(&name.as_str())
-                && !NOT_MODULES.contains(&name.as_str())
-        })
-        .map(|(name, member)| (name.as_str(), member))
-        .collect();
-    let mut errors = Vec::new();
+    let backends = backends(catalog);
+    let modules = modules_of(graph, &backends);
+    let mut errors = backend_errors(graph, &backends, &has_readme);
 
     // Rule 1.
     for name in DEFAULT_CRATES {
@@ -274,7 +325,11 @@ pub fn check(
 
     // Rule 5.
     if let Some(front) = graph.members.get("shuyi") {
-        for feature in front.features.iter().filter(|f| *f != "default") {
+        for feature in front
+            .features
+            .iter()
+            .filter(|f| !ENGINE_FEATURES.contains(&f.as_str()))
+        {
             let row = format!("shuyi-{feature}");
             if !rows.contains(&row) {
                 errors.push(format!(

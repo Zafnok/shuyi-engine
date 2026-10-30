@@ -67,12 +67,12 @@ None. Selling is 3018's question.
 - **The crate `shuyi-nds`** (`crates/nds`), `#![no_std]` with `alloc`,
   for `armv5te-none-eabi`, implementing `Platform` (3003), with a
   README and its catalog row (2003 wrote it, parked):
-  - **`check-modules`.** **Either order with 3010:** if 3010 is done,
-    the check already takes a crate whose row is in `docs/modules.md`'s
-    *Platform backends* table as a backend (its README and row, no
-    `[package.metadata.shuyi]`): give this crate no metadata. If not,
-    teach the check that here (unless 3021 did), with a fixture, as
-    3010 says;
+  - **`check-modules`.** **From 3010 (done):** the check already takes
+    a crate whose row is in `docs/modules.md`'s *Platform backends*
+    table as a backend, needing its README and that row, not
+    `[package.metadata.shuyi]` (`backends` in
+    `crates/xtask/src/modules.rs`, with fixtures): give this crate no
+    metadata;
   - **bindings**: `crates/nds/src/sys.rs`, hand-written `extern "C"`
     declarations for the `libnds` functions and registers the backend
     calls, and nothing else. Each one names the `libnds` header it comes

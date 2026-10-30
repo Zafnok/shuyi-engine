@@ -657,6 +657,13 @@ jobs:
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-platform --no-default-features --features capture --target thumbv7em-none-eabihf --locked
+      # The Playdate backend as the device links it, and a game on it. The SDK
+      # itself stays out of CI: its license gives no leave to fetch it on a
+      # runner, so `shuyi export playdate` runs on a developer's machine.
+      - run: cargo build -p shuyi-playdate --target thumbv7em-none-eabihf --locked
+        env:
+          RUSTFLAGS: --cfg shuyi_playdate_sdk
+      - run: cargo build -p hello-grid --lib --no-default-features --features playdate --target thumbv7em-none-eabihf --locked
       - run: cargo xtask check-no-std
       # The same tests as with `std`, the headless backend's included. The
       # test harness and the dev-dependencies bring `std` into the build,

@@ -1,5 +1,7 @@
 //! Panics stop the game with the SDK's error screen, showing the message
-//! and logging it to the console.
+//! and logging it to the console. On the device that call never comes back;
+//! on the Simulator `shim.c` leaves the game's call from inside it, so its
+//! window stays alive.
 
 use core::ffi::c_char;
 use core::fmt::Write as _;

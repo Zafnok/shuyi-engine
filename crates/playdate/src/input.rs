@@ -10,9 +10,9 @@ use alloc::vec::Vec;
 
 use shuyi_assets::keymap::{CrankDef, StickDef};
 use shuyi_ui::RawInputEvent;
+use shuyi_ui::input::Button;
 use shuyi_ui::input::crank::{Crank, STEPS_PER_TURN};
 use shuyi_ui::input::pad::{PadKind, PadState, Pads};
-use shuyi_ui::input::Button;
 
 /// The SDK's `PDButtons` bits (`pd_api_sys.h`; `shim/shim.c` checks this
 /// copy against the header), each with the binding position it reports.
@@ -24,6 +24,21 @@ pub const BUTTONS: [(u32, Button); 6] = [
     (0x20, Button::East),
     (0x10, Button::West),
 ];
+
+/// The button of the system menu's item in `slot`, if there is one.
+pub fn menu_button(slot: u8) -> Option<Button> {
+    Button::system_menu(slot)
+}
+
+/// What the player's choice of the system menu's item in `slot` is: a press
+/// and a release of its button.
+pub fn menu_press(slot: u8) -> Option<[RawInputEvent; 2]> {
+    let button = menu_button(slot)?;
+    Some([
+        RawInputEvent::PadDown(button, PadKind::Playdate),
+        RawInputEvent::PadUp(button),
+    ])
+}
 
 /// The Playdate's one pad: never unplugged, no sticks.
 const PAD: usize = 0;
@@ -101,7 +116,8 @@ impl PadInput {
         docked: bool,
     ) -> Vec<RawInputEvent> {
         let held = state(current | pushed);
-        let mut events = RawInputEvent::from_pads(&mut self.pads, &[(PAD, PadKind::Playdate, held)]);
+        let mut events =
+            RawInputEvent::from_pads(&mut self.pads, &[(PAD, PadKind::Playdate, held)]);
         if docked {
             self.steps = Steps::default();
         }
@@ -148,7 +164,9 @@ mod tests {
 
     /// The presses and releases of `button`, `times` times.
     fn notches(button: Button, times: usize) -> Vec<RawInputEvent> {
-        (0..times).flat_map(|_| [down(button), up(button)]).collect()
+        (0..times)
+            .flat_map(|_| [down(button), up(button)])
+            .collect()
     }
 
     #[test]
@@ -180,7 +198,7 @@ mod tests {
         .unwrap_or_else(|e| panic!("{e:?}"));
         for (_, button) in BUTTONS {
             assert!(
-                profile.input.buttons.iter().any(|name| *name == button),
+                profile.input.buttons.contains(&button),
                 "{button:?} isn't in {:?}",
                 profile.input.buttons
             );
@@ -207,10 +225,7 @@ mod tests {
     #[test]
     fn a_crank_turn_of_90_degrees_gives_two_notches_forward() {
         let mut p = pad();
-        assert_eq!(
-            p.poll(0, 0, 90.0, false),
-            notches(Button::CrankForward, 2)
-        );
+        assert_eq!(p.poll(0, 0, 90.0, false), notches(Button::CrankForward, 2));
         assert_eq!(p.poll(0, 0, -45.0, false), notches(Button::CrankBack, 1));
     }
 

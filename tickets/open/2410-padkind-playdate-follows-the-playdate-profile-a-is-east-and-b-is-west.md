@@ -77,13 +77,16 @@ None.
 - **The tests:** `pad/tests.rs`'s Playdate test and `chord_tests.rs`
   move to `East` and `West`, and a new test ties `pad.rs` to the
   profile file (below).
-- **Either order with 3010:** if 3010 is done, make `pad.rs`'s docs,
-  `button_name` and tests follow the rule `targets/playdate.ron` has
-  then (if 3010 moved A and B to `South` and `East`, `button_name`
-  keeps the Xbox names and `chord_tests.rs` its keymap, and only the
-  docs, the dead citations and the new test against the profile are
-  left); if not, A is `East` and B is `West` as the profile says
-  today, and 3010 keeps that rule.
+- **From 3010 (done):** the rule is kept: A is `East` and B is `West`,
+  as `targets/playdate.ron` says. `PadInput` in
+  `crates/playdate/src/input.rs` reports `East` and `West`, with a test
+  (`every_button_is_one_the_profile_lists`) against the profile.
+  `PadKind::Playdate`'s names are not changed: this ticket makes
+  `pad.rs`'s docs, `button_name` and tests follow the rule, as above.
+  The backend's test `the_first_frames_help_names_the_playdates_buttons`
+  (`crates/playdate/src/driver/tests.rs`) compares the first frame's
+  help with `PadKind::Playdate`'s own names, so it passes before and
+  after this ticket. Until then the help says A as `B` and B as `X`.
 - **For the game:** no signature changes, so CI's `api` job finds
   nothing, but `button_name`'s answer changes for `PadKind::Playdate`.
   Write a `Breaking:` line for it (ADR-0038 §6: a break the job can't

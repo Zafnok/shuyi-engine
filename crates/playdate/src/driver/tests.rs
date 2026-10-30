@@ -130,7 +130,11 @@ fn a_game_with_no_one_bit_look_says_so() {
 fn only_changed_rows_are_marked_and_copied() {
     let (sdk, mut driver) = running();
     let marked = sdk.take_marked();
-    assert_eq!(marked.len(), 1, "one run, the screen's first draw: {marked:?}");
+    assert_eq!(
+        marked.len(),
+        1,
+        "one run, the screen's first draw: {marked:?}"
+    );
     assert!(!driver.update(), "nothing changed");
     assert_eq!(sdk.take_marked(), []);
     let before = sdk.frame();
@@ -361,9 +365,7 @@ fn the_lock_and_the_menu_suspend_and_resume_once() {
     let events = |platform: &mut Playdate<FakeSdk>| {
         let mut out = Vec::new();
         platform.system_events(&mut out);
-        out.retain(|event| {
-            !matches!(event, SystemEvent::CrankDocked | SystemEvent::CrankUndocked)
-        });
+        out.retain(|event| !matches!(event, SystemEvent::CrankDocked | SystemEvent::CrankUndocked));
         out
     };
     assert!(platform.event(SdkEvent::Pause), "heard at once");
@@ -461,8 +463,11 @@ fn the_clock_goes_on_past_the_counters_wrap() {
 fn the_log_goes_to_the_console_one_line_each_with_its_frame() {
     let (sdk, mut driver) = running();
     let game = driver.app.game_mut().unwrap_or_else(|| panic!("loaded"));
-    game.ctx_mut()
-        .log(LogLevel::Warn, LogCategory::Assets, "a file is big".to_string());
+    game.ctx_mut().log(
+        LogLevel::Warn,
+        LogCategory::Assets,
+        "a file is big".to_string(),
+    );
     driver.update();
     let frame = driver.app().frame_number();
     assert!(

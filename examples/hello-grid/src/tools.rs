@@ -54,8 +54,8 @@ use shuyi_cli::{
 use crate::map::Terrain;
 use crate::rules::{self, Chase, Command, Event, Feature, Outcome, Side, Stage, Tuning, Walk};
 use crate::screens::StageScreen;
-pub use crate::{FONT_1BIT, PATTERN_MAP};
 use crate::{Action, FONT_PNG, Hello, MapLook};
+pub use crate::{FONT_1BIT, PATTERN_MAP};
 
 /// The game's own `frame-png` options.
 pub const OPTIONS: [GameOption; 3] = [

@@ -4,9 +4,11 @@ use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use shuyi_assets::keymap::{ActionSet, Button};
+use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::target::TargetProfile;
-use shuyi_platform::{Audio, DisplayInfo, Frame, Platform, Silent, Storage, SystemEvent, TextInput};
+use shuyi_platform::{
+    Audio, DisplayInfo, Frame, Platform, Silent, Storage, SystemEvent, TextInput,
+};
 use shuyi_ui::frame_cap::{FrameCap, Pacing};
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
@@ -14,7 +16,7 @@ use shuyi_ui::perf::{MemoryReading, PerfClock};
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
 use crate::display::Screen;
-use crate::input::PadInput;
+use crate::input::{PadInput, menu_button, menu_press};
 use crate::sdk::{PACK, Sdk, SdkEvent};
 use crate::storage::SdkStorage;
 
@@ -100,8 +102,8 @@ impl<S: Sdk> Playdate<S> {
         self.pad.set_crank(data.keymap_def().crank);
         self.docked = None;
         for slot in 0..self.menu_slots {
-            let bound = Button::system_menu(slot)
-                .and_then(|button| game.input().keymap().pad_action(button));
+            let bound =
+                menu_button(slot).and_then(|button| game.input().keymap().pad_action(button));
             let Some(action) = bound else {
                 continue;
             };
@@ -190,10 +192,7 @@ impl<S: Sdk> Platform for Playdate<S> {
         let docked = self.sdk.crank_docked();
         out.extend(self.pad.poll(current, pushed, turned, docked));
         for slot in self.chosen.drain(..) {
-            if let Some(button) = Button::system_menu(slot) {
-                out.push(RawInputEvent::PadDown(button, PadKind::Playdate));
-                out.push(RawInputEvent::PadUp(button));
-            }
+            out.extend(menu_press(slot).into_iter().flatten());
         }
     }
 

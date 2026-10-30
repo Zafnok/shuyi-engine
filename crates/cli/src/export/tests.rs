@@ -95,9 +95,12 @@ fn every_exporters_builds_turn_on_no_feature_and_never_the_live_link() {
 fn the_exporters_are_the_targets_with_their_profiles() {
     assert_eq!(ids(), ["windows", "linux", "macos", "web", "playdate"]);
     let profiles: Vec<&str> = exporters().iter().map(|e| e.profile()).collect();
-    assert_eq!(profiles, ["desktop", "desktop", "desktop", "web", "playdate"]);
+    assert_eq!(
+        profiles,
+        ["desktop", "desktop", "desktop", "web", "playdate"]
+    );
     assert_eq!(find("macos").unwrap().triples().len(), 2);
-    assert!(find("playdate").is_none());
+    assert!(find("steam-deck").is_none());
 }
 
 #[test]

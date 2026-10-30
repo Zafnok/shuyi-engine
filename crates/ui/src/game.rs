@@ -13,14 +13,14 @@ use core::any::Any;
 use core::fmt;
 
 use shuyi_assets::audio::AudioManifest;
-use shuyi_assets::keymap::{ActionSet, Button, ButtonChord, Chord, Key, UiAction};
+use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
 use crate::audio::{AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::frame::EngineColor;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
 use crate::frame_cap::{FrameCap, Pacing};
-use crate::input::crank::{Crank, Notches};
+use crate::input::crank::{Crank, Notches, only_on_the_crank};
 use crate::input::frame_seconds;
 use crate::input::pad::{PadId, PadKind, PadState, Pads};
 use crate::input::state::{Device, InputState};
@@ -76,10 +76,9 @@ impl RawInputEvent {
         Self::crank_notches(crank.turn(degrees), kind)
     }
 
-    /// [`from_crank`](Self::from_crank) of a turn in `steps`, whole
-    /// [`STEPS_PER_TURN`](crate::input::crank::STEPS_PER_TURN)ths of a
-    /// turn ([`Crank::turn_steps`]): what a backend that reads a float
-    /// hands on from its boundary.
+    /// [`from_crank`](Self::from_crank) of a turn in whole `steps`
+    /// ([`Crank::turn_steps`]): what a backend that reads a float hands on
+    /// from its boundary.
     pub fn from_crank_steps(
         crank: &mut Crank,
         steps: i32,
@@ -591,7 +590,8 @@ impl<G: GameData> Game<G> {
         self.buffer
             .fill_rect(Rect::new(0, y, width, 1), Cell::new(' ', ink, paper));
         let len = i32::try_from(hint.chars().count()).unwrap_or(width);
-        self.buffer.print((width - len).max(0) / 2, y, hint, ink, paper);
+        self.buffer
+            .print((width - len).max(0) / 2, y, hint, ink, paper);
     }
 
     /// The top-most screen of type `T` on the stack, if it opts in
@@ -658,17 +658,6 @@ pub const CRANK_HINT: &str = "crank.unfold";
 /// The hint in English, for a game whose text has no [`CRANK_HINT`].
 // check-text: the engine's fallback, for a game that says nothing else
 const CRANK_HINT_ENGLISH: &str = "Unfold the crank to go on";
-
-/// Whether `chords` are all the buttons of an action and each needs the
-/// crank wound, so that with it docked the action can't be pressed.
-fn only_on_the_crank(chords: &[ButtonChord]) -> bool {
-    let wound = |button| matches!(button, Button::CrankBack | Button::CrankForward);
-    !chords.is_empty()
-        && chords.iter().all(|chord| match chord.buttons() {
-            Some((a, b)) => wound(a) || wound(b),
-            None => wound(chord.first()),
-        })
-}
 
 /// Whether `request` names a cue of the right kind in `manifest`.
 fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {

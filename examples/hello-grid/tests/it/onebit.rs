@@ -78,8 +78,7 @@ fn frame_png_on_the_playdate_paints_the_title_in_black_and_white() {
         Some(&profiles["playdate"].profile),
     )
     .unwrap_or_else(|e| panic!("{e}"));
-    // The Playdate's whole screen, though the frame is taller: the
-    // README says why it doesn't fit.
+    // The Playdate's whole screen, which its console fills.
     assert_eq!(said, "frame-png: title → title.png (400×240)");
     let png = fs::read(dir.join("title.png")).unwrap_or_else(|e| panic!("{e}"));
     let _ = fs::remove_dir_all(&dir);

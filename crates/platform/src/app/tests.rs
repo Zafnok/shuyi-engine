@@ -290,10 +290,7 @@ trait LookOfToy {
 
 impl LookOfToy for Toy {
     fn look(&self) -> Look<'_> {
-        Look {
-            font: &FONT,
-            images: &IMAGES,
-        }
+        Look::new(&FONT, &IMAGES)
     }
 }
 

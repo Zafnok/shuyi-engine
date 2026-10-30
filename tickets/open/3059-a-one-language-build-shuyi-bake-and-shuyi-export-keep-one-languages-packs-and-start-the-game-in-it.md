@@ -65,8 +65,8 @@ completed:
     its exporter (`crates/cli/src/export.rs`). No exporter puts a pack
     in its package: `shuyi.ron` has no setting by which a game asks for
     one (2204 added none), so a desktop or web package holds the
-    program with the game's files built in. Only the Playdate's (3010)
-    will bake a pack.
+    program with the game's files built in. Only the Playdate's (3010,
+    done) bakes a pack, in `Exporter::prepare`.
 
 ## Nick input
 
@@ -170,19 +170,20 @@ in a store, are the game's.
     the program, refuses `--lang` with the `language` code: their
     folders can't be left out without a pack. The message says to ship
     a pack (`docs/formats.md`, *The pack*).
-- **Either order with 3010** (the Playdate's exporter): if 3010 is
-  done, its `playdate` exporter takes `--lang`. It bakes the `playdate`
-  pack for that language, as `bake --target playdate --lang` does, and
-  names the `.pdx` per language as the other exports do. Its `pdxinfo`
-  is per language too: `bundleID` is the game's id with the tag after a
-  dot, in lower case (`com.example.game.ja`), and `name` is the game's
-  name with the tag in brackets (`Game (ja)`). Check the SDK's docs for
-  the characters a bundle id may hold, and record it. Builds for two
-  languages then sit side by side on one device, and each keeps its
-  saves in its own data folder. A unit test reads the `pdxinfo` of a
-  `--lang ja` export, and `docs/targets/playdate.md` says how to make
-  one build per language. If not, nothing to do: 3010 does it (its
-  clause says so).
+- **From 3010 (done):** the Playdate's exporter (`PLAYDATE` in
+  `crates/cli/src/export/playdate.rs`) takes no `--lang`. It bakes the
+  game's pack in `Exporter::prepare`, through the contract's `bake`,
+  and writes `pdxinfo` in `pdxinfo()`. This ticket gives it `--lang`.
+  It bakes the `playdate` pack for that language, as `bake --target
+  playdate --lang` does, and names the `.pdx` per language as the other
+  exports do. Its `pdxinfo` is per language too: `bundleID`
+  is the game's id with the tag after a dot, in lower case
+  (`com.example.game.ja`), and `name` is the game's name with the tag
+  in brackets (`Game (ja)`). Check the SDK's docs for the characters a
+  bundle id may hold, and record it. Builds for two languages then sit
+  side by side on one device, and each keeps its saves in its own data
+  folder. A unit test reads the `pdxinfo` of a `--lang ja` export, and
+  `docs/targets/playdate.md` says how to make one build per language.
 - **The schemas.** `bake`'s and `export`'s input and answer change in
   one contract version: `cargo shuyi schema --out crates/cli/schemas`,
   `contract::VERSION` up by one, and its line in `versions.json`
@@ -231,10 +232,9 @@ in a store, are the game's.
 1. Read 2349's result (`FirstLanguage`, `GameData::first_language`,
    `languages_offered`, a pack's `files/`); 2226's `Lang::chain`,
    `Lang::source_lang` and `LangCode::parse`; and 3004's `export`
-   operation, its `Exporter` trait (no step puts a pack in a
-   package yet). Read `crates/cli/src/contract/bake.rs`,
-   `crates/assets/src/pack.rs`, `pack/bake.rs` and `bundle.rs`. Check
-   whether 3010 is done, for its clause.
+   operation, its `Exporter` trait (only the Playdate's `prepare`
+   bakes a pack into a package). Read `crates/cli/src/contract/bake.rs`,
+   `crates/assets/src/pack.rs`, `pack/bake.rs` and `bundle.rs`.
 2. Add `Bundle::without`, with its tests in
    `crates/assets/src/bundle.rs`.
 3. Add `lang::folders_off_chain` in `crates/assets/src/lang.rs`.

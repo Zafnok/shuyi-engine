@@ -147,7 +147,7 @@ impl<S: Sdk> Storage for SdkStorage<S> {
         check_key(key)?;
         if !self.swept {
             let folder = self.folder.trim_end_matches('/');
-            if !folder.is_empty() {
+            if !folder.is_empty() && self.sdk.data_names(folder).is_err() {
                 self.sdk
                     .make_data_folder(folder)
                     .map_err(|e| backend(folder, &e))?;
@@ -294,7 +294,10 @@ mod tests {
             sdk.data_names("").unwrap_or_default(),
             ["settings.ron".to_string(), "storage-check/".to_string()]
         );
-        assert_eq!(sdk.data_names(CHECK_FOLDER).unwrap_or_default(), [] as [String; 0]);
+        assert_eq!(
+            sdk.data_names(CHECK_FOLDER).unwrap_or_default(),
+            [] as [String; 0]
+        );
     }
 
     #[test]
@@ -311,9 +314,13 @@ mod tests {
     fn a_write_goes_tmp_then_bak_then_rename_each_flushed() {
         let sdk = FakeSdk::default();
         let mut storage = SdkStorage::new(sdk.clone());
-        storage.write("slot", "(a)").unwrap_or_else(|e| panic!("{e}"));
+        storage
+            .write("slot", "(a)")
+            .unwrap_or_else(|e| panic!("{e}"));
         sdk.take_file_calls();
-        storage.write("slot", "(b)").unwrap_or_else(|e| panic!("{e}"));
+        storage
+            .write("slot", "(b)")
+            .unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(
             sdk.take_file_calls(),
             [
@@ -323,27 +330,42 @@ mod tests {
             ]
         );
         assert_eq!(sdk.file("slot.ron.bak").as_deref(), Some(&b"(a)"[..]));
-        assert_eq!(storage.read("slot").unwrap_or_default().as_deref(), Some("(b)"));
+        assert_eq!(
+            storage.read("slot").unwrap_or_default().as_deref(),
+            Some("(b)")
+        );
     }
 
     #[test]
     fn damage_reads_the_backup() {
         let sdk = FakeSdk::default();
         let mut storage = SdkStorage::new(sdk.clone());
-        storage.write("slot", "(a)").unwrap_or_else(|e| panic!("{e}"));
-        storage.write("slot", "(b)").unwrap_or_else(|e| panic!("{e}"));
+        storage
+            .write("slot", "(a)")
+            .unwrap_or_else(|e| panic!("{e}"));
+        storage
+            .write("slot", "(b)")
+            .unwrap_or_else(|e| panic!("{e}"));
         sdk.put_file("slot.ron", &[0, 0, 0]);
-        assert_eq!(storage.read("slot").unwrap_or_default().as_deref(), Some("(a)"));
+        assert_eq!(
+            storage.read("slot").unwrap_or_default().as_deref(),
+            Some("(a)")
+        );
         sdk.put_file("slot.ron", &[0xff]);
         sdk.put_file("slot.ron.bak", &[0xff]);
-        assert!(matches!(storage.read("slot"), Err(StorageError::Backend(_))));
+        assert!(matches!(
+            storage.read("slot"),
+            Err(StorageError::Backend(_))
+        ));
     }
 
     #[test]
     fn only_keys_are_listed() {
         let sdk = FakeSdk::default();
         let mut storage = SdkStorage::new(sdk.clone());
-        storage.write("settings", "()").unwrap_or_else(|e| panic!("{e}"));
+        storage
+            .write("settings", "()")
+            .unwrap_or_else(|e| panic!("{e}"));
         sdk.put_file("load-report.txt", b"");
         sdk.put_file("Bad Name.ron", b"");
         sdk.put_file("slot.ron.tmp", b"");
@@ -354,11 +376,17 @@ mod tests {
     #[test]
     fn a_bad_key_is_an_error() {
         let mut storage = SdkStorage::new(FakeSdk::default());
-        assert!(matches!(storage.read("a/b"), Err(StorageError::InvalidKey(_))));
+        assert!(matches!(
+            storage.read("a/b"),
+            Err(StorageError::InvalidKey(_))
+        ));
         assert!(matches!(
             storage.write("a/b", "x"),
             Err(StorageError::InvalidKey(_))
         ));
-        assert!(matches!(storage.delete("a/b"), Err(StorageError::InvalidKey(_))));
+        assert!(matches!(
+            storage.delete("a/b"),
+            Err(StorageError::InvalidKey(_))
+        ));
     }
 }

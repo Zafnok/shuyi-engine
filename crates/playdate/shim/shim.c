@@ -22,7 +22,33 @@ extern void shuyi_playdate_menu_chosen(int slot);
 
 void* pd_realloc(void* ptr, size_t size) { return pd->system->realloc(ptr, size); }
 void pd_log(const char* text) { pd->system->logToConsole("%s", text); }
-void pd_error(const char* text) { pd->system->error("%s", text); }
+
+#ifdef TARGET_SIMULATOR
+// On the Simulator `error` shows the message and comes back, on the thread its
+// window runs on. So a panic leaves the game's call for good and no call goes
+// in again, and the window stays alive to show it. Nothing the panic jumps over
+// runs again, so no destructor is missed.
+static void* stop_here[5];
+static int stopped;
+#define CALL_GAME(call, otherwise) \
+	do { \
+		if (stopped || __builtin_setjmp(stop_here)) { \
+			return otherwise; \
+		} \
+		call; \
+	} while (0)
+#else
+#define CALL_GAME(call, otherwise) call
+#endif
+
+void pd_error(const char* text)
+{
+	pd->system->error("%s", text);
+#ifdef TARGET_SIMULATOR
+	stopped = 1;
+	__builtin_longjmp(stop_here, 1);
+#endif
+}
 
 // --- time -------------------------------------------------------------------
 
@@ -55,7 +81,10 @@ int pd_crank_docked(void) { return pd->system->isCrankDocked(); }
 
 // The SDK calls this when the player chooses one of the game's items;
 // `userdata` is the item's slot, handed on to the Rust side.
-static void menu_chosen(void* userdata) { shuyi_playdate_menu_chosen((int)(intptr_t)userdata); }
+static void menu_chosen(void* userdata)
+{
+	CALL_GAME(shuyi_playdate_menu_chosen((int)(intptr_t)userdata), );
+}
 
 int pd_add_menu_item(const char* title, int slot)
 {
@@ -124,7 +153,7 @@ _Static_assert(kEventLock == 2 && kEventUnlock == 3 && kEventPause == 4 && kEven
 static int update(void* userdata)
 {
 	(void)userdata;
-	return shuyi_playdate_update();
+	CALL_GAME(return shuyi_playdate_update(), 0);
 }
 
 #ifdef _WINDLL
@@ -137,10 +166,10 @@ int eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
 		const char* error = NULL;
 		pd = playdate;
 		font = pd->graphics->loadFont("/System/Fonts/Asheville-Sans-14-Bold.pft", &error);
-		shuyi_playdate_init();
 		pd->system->setUpdateCallback(update, NULL);
+		CALL_GAME(shuyi_playdate_init(), 0);
 	} else if (event != kEventInitLua) {
-		shuyi_playdate_event((int)event);
+		CALL_GAME(shuyi_playdate_event((int)event), 0);
 	}
 	return 0;
 }

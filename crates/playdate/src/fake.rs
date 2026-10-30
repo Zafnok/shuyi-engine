@@ -173,7 +173,11 @@ impl FakeSdk {
 
     /// The data folder's file `path`, now.
     pub fn file(&self, path: &str) -> Option<Vec<u8>> {
-        self.0.borrow().data.get(path).map(|file| file.bytes.clone())
+        self.0
+            .borrow()
+            .data
+            .get(path)
+            .map(|file| file.bytes.clone())
     }
 
     /// The data folder's writes and renames since the last call.
@@ -338,7 +342,10 @@ impl Sdk for FakeSdk {
     }
 
     fn make_data_folder(&self, folder: &str) -> Result<(), String> {
-        self.0.borrow_mut().folders.insert(folder.to_owned());
-        Ok(())
+        if self.0.borrow_mut().folders.insert(folder.to_owned()) {
+            Ok(())
+        } else {
+            Err(format!("{folder} is there"))
+        }
     }
 }

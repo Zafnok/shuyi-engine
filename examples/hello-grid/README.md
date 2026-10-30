@@ -26,6 +26,7 @@ cargo test -p hello-grid             # the tests
 | `src/lib.rs` | The game's data (`GameData`), loaded from `files/` |
 | `src/action.rs`, `src/settings.rs`, `src/sound.rs` | Its actions, its settings, its sounds (made by code) |
 | `src/main.rs` | The binary: what the platform shell needs to know (the default `window` feature) |
+| `src/playdate.rs` | The game on the Playdate (the `playdate` feature, without `std`): its data from the pack in the `.pdx` |
 | `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
 | `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
 | `files@playdate/` | Embedded, laid over `files/` on the Playdate alone: the tileset drawn in black and white, and its settings (`dither: none`) |
@@ -74,12 +75,13 @@ walker.
 
 ## Targets
 
-`shuyi.ron` lists the desktop, the web and the Steam Deck, and `cargo
-shuyi check --target all` passes on each. On the Deck the 384 × 384 frame
-is shown at scale 2, so its 16 px text is 32 px. The Playdate is not
-listed: the frame is taller than its 240 px screen even at scale 1.
-Fitting it would take a smaller console for that target, which this
-example doesn't have.
+`shuyi.ron` lists the desktop, the web, the Steam Deck and the Playdate, and
+`cargo shuyi check --target all` passes on each. On the Deck the 384 × 384
+frame is shown at scale 2, so its 16 px text is 32 px. On the Playdate the
+console is 50 × 15 cells, its 400 × 240 screen
+(`hello_grid::PLAYDATE_CONSOLE`), and `cargo shuyi export playdate` makes a
+`.pdx` that opens in the SDK's Simulator
+([`docs/targets/playdate.md`](../../docs/targets/playdate.md)).
 
 The controls fit every target, the Playdate too. Every screen declares
 the actions it reacts to, and `files/keymap.ron` has a table of buttons

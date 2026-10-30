@@ -359,7 +359,12 @@ fn rust_lib(cx: &ExportCx, triple: &str) -> PathBuf {
 fn device_steps(cx: &ExportCx, tools: &Tools, dirs: &Dirs) -> Vec<Step> {
     let c_api = tools.sdk.join("C_API");
     let compile = |input: PathBuf, output: PathBuf, strict: bool| {
-        let mut args = os_args(DEVICE_CPU_FLAGS.iter().chain(&DEVICE_COMPILE_FLAGS).copied());
+        let mut args = os_args(
+            DEVICE_CPU_FLAGS
+                .iter()
+                .chain(&DEVICE_COMPILE_FLAGS)
+                .copied(),
+        );
         if strict {
             args.push("-Werror".into());
         }
@@ -540,16 +545,17 @@ fn execute(cx: &ExportCx, steps: &[Step]) -> Result<(), ExportError> {
 }
 
 /// The `pdxinfo` of the game `part` says, at `version`, with the launcher's
-/// images in [`LAUNCHER`] if it has any.
+/// images in its launcher folder if it has any.
 pub fn pdxinfo(part: &AppPart, version: &str, images: bool) -> String {
-    let mut text = format!(
-        "name={}\nauthor={}\nbundleID={}\nversion={version}\nbuildNumber={}\n",
+    let image_path = if images {
+        format!("imagePath={LAUNCHER}\n")
+    } else {
+        String::new()
+    };
+    format!(
+        "name={}\nauthor={}\nbundleID={}\nversion={version}\nbuildNumber={}\n{image_path}",
         part.name, part.publisher, part.id, part.build
-    );
-    if images {
-        text.push_str(&format!("imagePath={LAUNCHER}\n"));
-    }
-    text
+    )
 }
 
 /// One-bit picture file `file`'s first style as an RGBA PNG: what is
@@ -606,7 +612,10 @@ fn card_from_icon(side: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
         height,
         rgba: out,
     };
-    one_bit_png(&dither(&image, OneBitSettings::new(Dither::Threshold(128)))?)
+    one_bit_png(&dither(
+        &image,
+        OneBitSettings::new(Dither::Threshold(128)),
+    )?)
 }
 
 /// The launcher's images of the game `part` says, by file name: from its
@@ -643,8 +652,8 @@ fn setup_c_notice(sdk: &Path) -> Result<Work, ExportError> {
     let license = fs::read_to_string(&file)
         .map_err(|e| ExportError::Build(format!("read {}: {e}", file.display())))?;
     let mut work = Work::new(Section::Crates, "setup.c, of the Playdate SDK");
-    work.license = "0BSD".to_owned();
-    work.source = "Panic Inc., https://play.date/dev/".to_owned();
+    "0BSD".clone_into(&mut work.license);
+    "Panic Inc., https://play.date/dev/".clone_into(&mut work.source);
     work.texts = vec![Text::new("the SDK's buildsupport/License.md", license)];
     Ok(work)
 }
@@ -736,9 +745,11 @@ impl Exporter for PlaydateExporter {
                 crate::project::FILE
             ))
         })?;
-        let mut input = BakeInput::default();
-        input.target = Some(cx.profile.clone());
-        input.out = Some(format!("{}/{BAKED}", cx.shown.replace('\\', "/")));
+        let input = BakeInput {
+            target: Some(cx.profile.clone()),
+            out: Some(format!("{}/{BAKED}", cx.shown.replace('\\', "/"))),
+            ..BakeInput::default()
+        };
         let answer = bake(game, project, &input);
         if answer.ok {
             Ok(())
@@ -785,9 +796,8 @@ impl Exporter for PlaydateExporter {
             }
         }
         let baked = cx.out.join(BAKED);
-        fs::rename(&baked, dirs.source.join(playdate_pack())).map_err(|e| {
-            ExportError::Build(format!("move the pack {}: {e}", baked.display()))
-        })?;
+        fs::rename(&baked, dirs.source.join(playdate_pack()))
+            .map_err(|e| ExportError::Build(format!("move the pack {}: {e}", baked.display())))?;
         let mut works = notices::crates(&cx.root, &cx.package, DEVICE, &[FEATURE.to_owned()])
             .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));

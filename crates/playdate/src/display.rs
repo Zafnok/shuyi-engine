@@ -112,7 +112,14 @@ impl Screen {
         match &mut self.shown {
             Some(shown) if shown == buffer && !self.stale => return,
             Some(shown) => {
-                onebit::render_changed_with(shown, buffer, font, &look.images, map, &mut self.drawn);
+                onebit::render_changed_with(
+                    shown,
+                    buffer,
+                    font,
+                    &look.images,
+                    map,
+                    &mut self.drawn,
+                );
                 shown.clone_from(buffer);
             }
             None => {

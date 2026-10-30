@@ -12,12 +12,12 @@
 //! notch forwards is a whole notch away, and a hand resting on the crank
 //! never gives a notch). A docked crank gives none and forgets what was
 //! wound. A backend whose device says how far a crank turned as a float
-//! turns it into whole [`STEPS_PER_TURN`]ths of a turn at its boundary and
-//! hands those to [`Crank::turn_steps`]: no float goes further.
+//! turns it into whole steps at its boundary, [`STEPS_PER_TURN`] to the turn,
+//! and hands those to [`Crank::turn_steps`]: no float goes further.
 
 use core::cmp::Ordering;
 
-use shuyi_assets::keymap::{Button, CrankDef};
+use shuyi_assets::keymap::{Button, ButtonChord, CrankDef};
 
 /// Thousandths of a degree in a degree: a turn in degrees counts in whole
 /// thousandths, so adding them up is exact.
@@ -49,7 +49,7 @@ pub type Notches = i32;
 /// A crank's notches (see the [module docs](self)).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Crank {
-    /// One notch, in [`UNITS_PER_DEGREE`]ths of a degree (at least 1).
+    /// One notch, in units, [`UNITS_PER_DEGREE`] to the degree (at least 1).
     notch: i32,
     /// Wound one way since the last notch or the last turn the other
     /// way, in the same units: always less than a notch.
@@ -80,8 +80,8 @@ impl Crank {
         self.wind(milli * UNITS_PER_MILLI)
     }
 
-    /// The crank turned `steps` [`STEPS_PER_TURN`]ths of a turn since the
-    /// last call, as [`turn`](Self::turn) takes degrees.
+    /// The crank turned `steps` since the last call, [`STEPS_PER_TURN`] to
+    /// the turn, as [`turn`](Self::turn) takes degrees.
     pub fn turn_steps(&mut self, steps: i32) -> Notches {
         self.wind(steps.clamp(-MOST_STEPS, MOST_STEPS) * UNITS_PER_STEP)
     }
@@ -119,6 +119,17 @@ impl Crank {
     }
 }
 
+/// Whether `chords` are all the buttons of an action and each needs the
+/// crank wound, so that with it docked the action can't be pressed.
+pub fn only_on_the_crank(chords: &[ButtonChord]) -> bool {
+    let wound = |button| matches!(button, Button::CrankBack | Button::CrankForward);
+    !chords.is_empty()
+        && chords.iter().all(|chord| match chord.buttons() {
+            Some((a, b)) => wound(a) || wound(b),
+            None => wound(chord.first()),
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use proptest::prelude::*;
@@ -152,7 +163,11 @@ mod tests {
         assert_eq!(c.turn_steps(21), 0, "21 steps are 29.53 degrees");
         assert_eq!(c.turn_steps(1), 1, "and 22 are 30.94");
         assert_eq!(c.turn(29.0), 0);
-        assert_eq!(c.turn_steps(1), 1, "what was left counts: 0.94, 29 and 1.41");
+        assert_eq!(
+            c.turn_steps(1),
+            1,
+            "what was left counts: 0.94, 29 and 1.41"
+        );
         assert_eq!(c.turn_steps(i32::MAX), 1200, "a hundred turns at most");
     }
 
