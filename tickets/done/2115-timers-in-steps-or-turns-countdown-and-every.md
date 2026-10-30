@@ -330,8 +330,9 @@ None.
 - [x] `shuyi_core::timer` has `Countdown`, `Every`, `STEPS_PER_SECOND`,
       `steps_from_ms` and `ms_from_steps`, re-exported at the crate
       root, with no float (2015's float ban passes).
-- [x] `shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of the
-      core's, and the existing `TickClock` tests pass unchanged.
+- [x] ~~`shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of the
+      core's~~ (not done: a `const` set from the core's, see the notes), and
+      the existing `TickClock` tests pass unchanged.
 - [x] `steps_from_ms` gives 0 for 0, 1 for 1 and for 16, 2 for 17, 3
       for 50, 15 for 250, 60 for 1000, and 257 698 038 for `u32::MAX`.
 - [x] `ms_from_steps` gives 0 for 0, 16 for 1, 33 for 2, 50 for 3,
@@ -386,8 +387,8 @@ None.
 
 - `shuyi_core::timer` holds `STEPS_PER_SECOND`, `steps_from_ms`,
   `ms_from_steps`, `Countdown` and `Every`, re-exported at the crate root.
-  `shuyi_platform::tick::STEPS_PER_SECOND` is a re-export of it, its path and
-  value unchanged.
+  `shuyi_platform::tick::STEPS_PER_SECOND` takes its value from it, its path
+  and value unchanged.
 - The frame-rate test is in `crates/platform/src/app/tests.rs`, and the
   hash constants were worked out separately from the hash's form before they
   were pinned.
@@ -397,6 +398,11 @@ None.
   README's `shuyi-core` row names timers.
 - `crates/cli/src/template/plans.golden` is blessed: only `AGENTS.md`'s hash
   moved, in both plans.
+- Deviation: `shuyi_platform::tick::STEPS_PER_SECOND` is a `pub const` set
+  from the core's, not the `pub use` the Scope asks for. CI's `api` job reads
+  a `pub use` of another crate's const as the const removed, a break no game
+  would see, and a `Breaking:` line would put a false entry in the migration
+  guide. There is still one source.
 - Deviation: `steps_from_ms` uses `u64::div_ceil(1000)`, not `+ 999` and `/`,
   because clippy refuses the hand-written form. The values are the same.
 - Settled the clauses naming this ticket in 1123, 2004, 2103, 2104, 2105,
