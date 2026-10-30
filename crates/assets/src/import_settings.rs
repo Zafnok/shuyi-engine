@@ -91,20 +91,12 @@ pub fn settings_of(file: &str) -> String {
 /// first: its own ([`settings_of`]), then the [`FOLDER_SETTINGS`] of its
 /// folder and of each folder above it, up to the root.
 pub fn settings_chain(file: &str) -> Vec<String> {
+    // Each folder is the path up to one of its slashes, the nearest last.
+    let folders = file.match_indices('/').rev().map(|(at, _)| &file[..at]);
     let mut chain = vec![settings_of(file)];
-    let mut dir = parent(file);
-    loop {
-        chain.push(join(dir, FOLDER_SETTINGS));
-        if dir.is_empty() {
-            return chain;
-        }
-        dir = parent(dir);
-    }
-}
-
-/// The directory `path` is in, `""` at the root.
-fn parent(path: &str) -> &str {
-    path.rsplit_once('/').map_or("", |(dir, _)| dir)
+    chain.extend(folders.map(|dir| join(dir, FOLDER_SETTINGS)));
+    chain.push(FOLDER_SETTINGS.to_owned());
+    chain
 }
 
 /// A place in a settings file: a 1-based line and column (in characters).
