@@ -8,7 +8,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 3ff31f910a652891 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-349a0533ee8a2713 AGENTS.md
+bf7ef8c3b3959c79 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 c711d1bb70e03694 README.md
@@ -21,7 +21,8 @@ bb6026e333cd9cbd crates/game/files/font/atlas.png
 6a670fd99c7bd549 crates/game/files/font/atlas.ron
 ba791d69f803381d crates/game/files/keymap.ron
 1bd1ef013635e3cd crates/game/files/palette.ron
-0ffc2c6b6705f64c crates/game/src/lib.rs
+f23feaa7846d2643 crates/game/src/app_info.rs
+db2db64dafb70062 crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 ffa20be348ab831e crates/game/src/stages.rs
 e48dd42a787497ae crates/game/src/title.rs
@@ -29,7 +30,7 @@ e48dd42a787497ae crates/game/src/title.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-803d754198daed33 shuyi.ron
+9616eff0bd495e19 shuyi.ron
 
 [grid] base, stage-top-down-grid
 d4b465b5e5a1bbb5 .cargo/config.toml
@@ -37,7 +38,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 3ff31f910a652891 .github/workflows/ci.yml
 4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-349a0533ee8a2713 AGENTS.md
+bf7ef8c3b3959c79 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 e38c9bf7515affe5 Cargo.toml
 c711d1bb70e03694 README.md
@@ -51,7 +52,8 @@ bb6026e333cd9cbd crates/game/files/font/atlas.png
 ba791d69f803381d crates/game/files/keymap.ron
 929c655ac697dad3 crates/game/files/palette.ron
 6ce7f8b2d89d719d crates/game/files/stage.map
-0ffc2c6b6705f64c crates/game/src/lib.rs
+f23feaa7846d2643 crates/game/src/app_info.rs
+db2db64dafb70062 crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 b3e48be6b267ac9f crates/game/src/stages/top_down_grid/tools.rs
 db5e2588379a32b0 crates/game/src/stages/top_down_grid.rs
@@ -67,4 +69,4 @@ a9360fff8f48cb78 crates/rules/clippy.toml
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-78f2aa5298afa4fc shuyi.ron
+59beb34fa8d3bc22 shuyi.ron

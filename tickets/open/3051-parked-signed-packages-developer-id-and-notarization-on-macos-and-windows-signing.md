@@ -71,8 +71,8 @@ re-check when unparked):
     and `web`, `"ad-hoc"` for `macos`;
   - `HOW-TO-OPEN.txt` in every `windows` and `macos` package, telling a
     player how to open an unsigned build.
-- 3048 adds the `app` part of `shuyi.ron` (`AppPart`: the reverse-DNS
-  id, the version). 3049 writes it into the packages: `Info.plist` and
+- 3048 (done) added the `app` part of `shuyi.ron` (`AppPart`: the
+  reverse-DNS id, the version). 3049 writes it into the packages: `Info.plist` and
   the `.icns` in the `.app`, and the exe's version resource.
 - 3050 releases a game from a tag. Each template gets a reusable
   `.github/workflows/export.yml` (one target on its runner) and a

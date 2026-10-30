@@ -1,6 +1,6 @@
 //! `check --target <id>`: whether the game fits a target (ADR-0008 §1),
 //! by the target's profile and the game's setting for it in `shuyi.ron`
-//! ([`TargetSetting`]). Four checks for now:
+//! ([`TargetSetting`]). Five checks for now:
 //!
 //! - **Fits.** The frame times its scale fits the display inside its safe
 //!   area.
@@ -16,6 +16,10 @@
 //!   apart stay distinct, and text is black on white or the inverse
 //!   (ADR-0008 §4; [`shuyi_assets::onebit::check`]; [`one_bit`]). It needs
 //!   the game's tools (`GameTools::one_bit`).
+//! - **App.** Who the game is, `shuyi.ron`'s `app` part: its name, id,
+//!   version, build and storage's name, and whether the Rust file
+//!   `app-info` writes is up to date ([`crate::app_info`]; [`app`]). The
+//!   same on every target.
 //!
 //! The engine's profiles are the files of `targets/` at the repository's
 //! root, embedded; a game's own (`shuyi.ron`'s `target_profiles`) add to
@@ -33,6 +37,7 @@ use shuyi_assets::target::{Size, TargetProfile, TargetRon};
 use shuyi_assets::{AssetPath, ContentError, DecodeCx, Format};
 use shuyi_ui::input::fit::{FitProblem, FitRule};
 
+use crate::app_info::AppProblem;
 use crate::contract::codes;
 use crate::game::OneBitSkin;
 use crate::project::{Config, FILE, Scale, TargetSetting};
@@ -56,6 +61,8 @@ pub enum Level {
 /// Which check found a target problem.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
+// A set that grows with the checks (ADR-0039).
+#[non_exhaustive]
 pub enum TargetCheck {
     /// The frame at its scale fits the display.
     Fits,
@@ -67,6 +74,8 @@ pub enum TargetCheck {
     /// On a one-bit display, every role has patterns and the roles that
     /// tell things apart stay distinct.
     OneBit,
+    /// Who the game is: `shuyi.ron`'s `app` part.
+    App,
 }
 
 /// A problem of the game on one target.
@@ -102,7 +111,8 @@ pub struct TargetProblem {
 
 impl TargetProblem {
     /// A problem of the display's (`check` [`Fits`](TargetCheck::Fits) or
-    /// [`Text`](TargetCheck::Text)) with `setting`.
+    /// [`Text`](TargetCheck::Text)), or of the game's `app` part
+    /// ([`App`](TargetCheck::App)), with `setting`.
     fn display(level: Level, check: TargetCheck, setting: String, message: String) -> Self {
         Self {
             level,
@@ -454,6 +464,15 @@ pub fn one_bit(skin: &OneBitSkin) -> Vec<TargetProblem> {
             inputs: Vec::new(),
             roles: p.roles,
         })
+        .collect()
+}
+
+/// The problems of the game's `app` part ([`crate::app_info::problems`]),
+/// as target problems about its fields (`app.id`).
+pub fn app(found: Vec<AppProblem>) -> Vec<TargetProblem> {
+    found
+        .into_iter()
+        .map(|p| TargetProblem::display(p.level, TargetCheck::App, p.setting, p.message))
         .collect()
 }
 

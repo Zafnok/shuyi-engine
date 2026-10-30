@@ -3,6 +3,17 @@
 (
     command: "cargo shuyi",
 
+    // Who the game is, the same on every target: `cargo shuyi app-info`
+    // writes it into `src/app_info.rs` (`hello_grid::app_info::APP`), and
+    // `check --target` checks it. The storage name is the one the game had
+    // before it had this part, so players' settings keep loading.
+    app: (
+        name: "Hello, Grid",
+        id: "io.github.zafnok.shuyi-engine.hello-grid",
+        storage: "shuyi-hello-grid",
+        code: "src/app_info.rs",
+    ),
+
     // The game's tool program, for `frame-png` and `lang-status`.
     game: (package: "hello-grid", example: "tools", features: ["tools"]),
 

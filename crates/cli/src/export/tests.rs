@@ -126,6 +126,16 @@ fn the_program_is_the_one_named_as_the_package_or_the_only_one() {
 }
 
 #[test]
+fn the_version_is_the_app_parts_else_the_packages() {
+    let package = || "0.1.0".to_owned();
+    assert_eq!(version(None, package()), "0.1.0");
+    let mut app = crate::project::AppPart::new("A game", "com.example.a-game");
+    assert_eq!(version(Some(&app), package()), "0.1.0");
+    app.version = Some("1.4.0".to_owned());
+    assert_eq!(version(Some(&app), package()), "1.4.0");
+}
+
+#[test]
 fn a_missing_target_says_how_to_add_it() {
     assert_eq!(
         missing_target("x86_64-apple-darwin").message(),

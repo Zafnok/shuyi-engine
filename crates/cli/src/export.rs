@@ -145,7 +145,8 @@ pub struct ExportCx {
     pub package: String,
     /// The program it builds.
     pub bin: String,
-    /// The package's version.
+    /// The game's version: `shuyi.ron`'s `app.version` when it sets one,
+    /// else the package's.
     pub version: String,
     /// The game's title, for `NOTICES.txt`.
     pub title: String,
@@ -213,7 +214,8 @@ impl ExportCx {
                 crate::project::FILE
             ))
         })?;
-        let (version, bins) = metadata(root, &package)?;
+        let (package_version, bins) = metadata(root, &package)?;
+        let version = version(config.app.as_ref(), package_version);
         let bin = match web {
             Some(web) if exporter.id() == "web" => web.bin.clone(),
             _ => program(&package, &bins)?,
@@ -369,6 +371,12 @@ impl ExportCx {
         works.extend(self.game.iter().cloned());
         notices::write(dir, &self.title, &works).map_err(ExportError::Build)
     }
+}
+
+/// The game's version: `app`'s, when it sets one, else its package's,
+/// `package`.
+fn version(app: Option<&crate::project::AppPart>, package: String) -> String {
+    app.and_then(|app| app.version.clone()).unwrap_or(package)
 }
 
 /// The version and the programs of `package`, by `cargo metadata

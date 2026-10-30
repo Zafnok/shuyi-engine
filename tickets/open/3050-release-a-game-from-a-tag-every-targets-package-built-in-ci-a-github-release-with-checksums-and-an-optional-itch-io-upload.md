@@ -101,8 +101,10 @@ if 2005 has moved it.
   `BTreeMap<String, TargetSetting>` `targets` field of `Config` in
   `crates/cli/src/project.rs`) and answers an `ExportPlan`:
   - `version`: the version the packages carry, the one 3004's
-    `export-report.json` writes (if 3048 is done, that is `shuyi.ron`'s
-    `app.version` when the part sets one; if not, 3048 makes it so);
+    `export-report.json` writes: `shuyi.ron`'s `app.version` when the
+    part sets one, else the package's (`ExportCx::of` in
+    `crates/cli/src/export.rs`, 3048), with a test that the plan's is
+    `app.version` when set;
   - `prerelease`: whether the version has a pre-release part
     (`1.2.0-beta.1`);
   - `exports`: one `PlannedExport { exporter, profile, host, container,
@@ -271,9 +273,9 @@ if 2005 has moved it.
     every engine PR runs the file a game's release runs.
 - **Docs:**
   - each template's `README.md` gets a "Releasing" section:
-    - set the version (`[workspace.package]` in `Cargo.toml`, or
-      `app.version` in `shuyi.ron` when the game sets it, if 3048 is
-      done; if not, 3048 adds that when it lands), commit, run
+    - set the version (`app.version` in `shuyi.ron` when the game sets
+      it, else `[workspace.package]` in `Cargo.toml`), run `cargo shuyi
+      app-info`, commit, run
       `git tag -a vX.Y.Z -m "<notes>"`, and push the tag;
     - a dry run from the Actions tab;
     - the itch.io variable and secret, and that the web channel is set
@@ -343,7 +345,7 @@ if 2005 has moved it.
 - signing and notarizing on macOS and Windows (3051, parked; it costs
   money);
 - the game's identity in each package: icons, version resources,
-  `Info.plist` (3048, 3049);
+  `Info.plist` (3049, 3072);
 - crates.io, and the engine's own release workflow beyond the job above
   (2005);
 - zizmor, the pins check and Dependabot over the templates' workflows

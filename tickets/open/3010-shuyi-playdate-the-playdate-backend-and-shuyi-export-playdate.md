@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: xhigh
 status: todo
-blocked_by: ["3002", "3003", "3004", "3005", "3006", "2204", "3007", "3045", "3040", "3048", "3053"]
+blocked_by: ["3002", "3003", "3004", "3005", "3006", "2204", "3007", "3045", "3040", "3048", "3072", "3053"]
 nick_input: setup
 completed:
 ---
@@ -30,7 +30,9 @@ ticket depends on the earlier ones:
 - the controls check guards the inputs (3002);
 - saves survive a power cut, and a suite says what that means (3045);
 - `App` keeps a log (3040);
-- the game's name, id, version and icon are in `shuyi.ron` (3048);
+- the game's name, id, version, build and publisher are in
+  `shuyi.ron`'s `app` part (`AppPart`, checked by
+  `shuyi_cli::app_info::problems`; 3048), and its icon is too (3072);
 - a backend reports its platform's facts (3053).
 
 The device facts (ADR-0008, *Context*): 400 × 240 1-bit, refresh up to
@@ -224,10 +226,10 @@ Nothing here costs money. A device is needed only for 3011.
   3. it writes `pdxinfo` from `shuyi.ron`'s `app` part (3048): `name`,
      `author` (the publisher), `bundleID` (the id), `version`,
      `buildNumber` (the build) and `imagePath`. The launcher's icon and
-     card come from 3007's 1-bit bake of `app.icon`, or from files the
-     game names in two optional fields this ticket adds to `AppPart`
-     (`playdate_icon`, `playdate_card`), checked like 3048's other
-     fields;
+     card come from 3007's 1-bit bake of `app.icon` (3072), or from
+     files the game names in two optional fields this ticket adds to
+     `AppPart` (`playdate_icon`, `playdate_card`), checked in
+     `app_info::problems` like the part's other fields;
   4. it bakes the pack;
   5. it writes `NOTICES.txt` beside the pack, so the `.pdx` carries it,
      with 3039's `notices` module (the crates for

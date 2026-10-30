@@ -13,6 +13,8 @@
 //! - [`BasicGame`] ([`basic`]): a game on the short path, described once
 //!   for its binary, its tools and its tests, and the [`prelude`] such a
 //!   game names;
+//! - [`AppInfo`] ([`app_info`]): who a game is, its name, id, version and
+//!   storage's name, as its `shuyi.ron` says;
 //! - the [`headless`] backend, which plays scripted input and records what
 //!   it was shown, and the test `harness` over it (the `harness`
 //!   feature);
@@ -40,6 +42,7 @@ mod alloc_prelude {
 }
 
 pub mod app;
+pub mod app_info;
 pub mod audio;
 pub mod basic;
 #[cfg(feature = "capture")]
@@ -58,6 +61,7 @@ pub mod text_input;
 pub mod tick;
 
 pub use app::{App, Card, FrameOutcome, Load, LookOf, Setup, Start, SystemHook};
+pub use app_info::AppInfo;
 pub use audio::{Audio, AudioFrame, Silent, SoundRequest};
 pub use basic::BasicGame;
 pub use platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
@@ -78,5 +82,5 @@ pub mod prelude {
         BasicData, Ctx, FrameInput, Game, GameData, GameHooks, Screen, ScreenResult, Transition,
     };
 
-    pub use crate::{BasicGame, Card, Look, Setup, Start};
+    pub use crate::{AppInfo, BasicGame, Card, Look, Setup, Start};
 }

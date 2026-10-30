@@ -6,7 +6,9 @@
 
 #[cfg(test)]
 mod tests {
-    use shuyi_cli::contract::target::engine_profiles;
+    use std::path::Path;
+
+    use shuyi_cli::contract::target::{Level, engine_profiles};
     use shuyi_cli::project::Config;
 
     #[test]
@@ -19,5 +21,20 @@ mod tests {
         }
         let web = config.web.unwrap();
         assert_eq!(web.dist, "dist/web");
+    }
+
+    #[test]
+    fn who_the_game_is_warns_of_the_placeholder_id() {
+        let config = Config::parse(include_str!("../project/shuyi.ron")).unwrap();
+        let app = config.app.unwrap();
+        // The snippets write no `code` here, so it is out of date.
+        let found = shuyi_cli::app_info::problems(&app, Path::new("."), "cargo shuyi");
+        let settings: Vec<&str> = found.iter().map(|p| p.setting.as_str()).collect();
+        assert_eq!(settings, ["app.id", "app.code"]);
+        assert_eq!(found[0].level, Level::Warning);
+        // The quick start's game is this one.
+        let quick = crate::quick_start::APP;
+        assert_eq!((quick.name, quick.id), (app.name.as_str(), app.id.as_str()));
+        assert_eq!(Some(quick.version), app.version.as_deref());
     }
 }

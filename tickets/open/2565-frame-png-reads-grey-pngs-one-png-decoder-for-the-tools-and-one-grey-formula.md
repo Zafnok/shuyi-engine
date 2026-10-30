@@ -84,10 +84,11 @@ None.
   writes: it stays, and `codec.rs`'s docs say it encodes PNG and APNG
   files and reads back only its own APNGs, any other PNG being read
   with `png_pixels`; if not, nothing to do (2811 writes those docs).
-- **Either order with 3048 and 3049:** if either is done, its icon
+- **Either order with 3072 and 3049:** if either is done, its icon
   code (`check --target`'s icon check, `icons` in packaging) calls
   `decode_png`: move it onto `png_pixels` with the other callers; if
-  not, nothing to do (3048 and 3049 decode with `png_pixels`).
+  not, nothing to do (3072 and 3049 decode with `png_pixels`). 3048
+  (done) left the icon to 3072 and decodes no PNG.
 - **Either order with 2391:** if 2391 is done, `frame_png::decode_image`
   and `glyph_tiles::render_files` build a `shuyi_assets::image::Image`
   from the decoder's `(width, height, rgba)`: swap `decode_png` for

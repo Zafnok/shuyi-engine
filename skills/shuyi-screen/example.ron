@@ -8,7 +8,7 @@ Example(
     steps: [
         // The screen: its view (plain data), its skin, its actions.
         Write(to: "crates/game/src/about.rs", from: "example/about.rs"),
-        Edit(file: "crates/game/src/lib.rs", find: "pub mod stages;\npub mod title;", replace: "pub mod about;\npub mod stages;\npub mod title;"),
+        Edit(file: "crates/game/src/lib.rs", find: "pub mod app_info;\npub mod stages;", replace: "pub mod about;\npub mod app_info;\npub mod stages;"),
         // Every screen the game can show, for `check --target`.
         Edit(
             file: "crates/game/src/lib.rs",

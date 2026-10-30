@@ -241,19 +241,17 @@ anywhere is 3047's question for Nick.
     version from `crash.game_version`: if 3041 is done, add it here; if
     not, 3041 does (its scope says so).
 - **The short path (2511):** `run_game` sets `crash` for every game on
-  it, in the pure function that makes its `AppConfig`. If 3048 is done
-  and `BasicGame` holds its `AppInfo`, the version is that `AppInfo`'s
-  `version`. Otherwise `BasicGame` gains a `version(&'static str)`
-  builder (default `""`) and a `game_version()` getter for the backends,
-  and the blank template's `lib.rs` calls `.version(env!(
-  "CARGO_PKG_VERSION"))` in `game()`. 3048 removes that builder and its
-  call when it lands, with a `Breaking:` line (its scope says so). The
-  blank template's `main.rs` (one `run_game` call) doesn't change. If
+  it, in the pure function that makes its `AppConfig` (`basic_config`).
+  **From 3048 (done):** `BasicGame` holds the game's
+  `shuyi_platform::AppInfo` (`BasicGame::app()`), whose `version` is
+  `shuyi.ron`'s `app.version` or the crate's: the report's version is
+  `game.app().version`, and `BasicGame` gains no builder. The template's
+  `main.rs` (one `run_game` call) doesn't change. If
   2512 is done, `cargo xtask template-lines` still passes.
 - **The grid template and hello-grid** (the long form):
-  - `config()` sets `crash` to `CrashReports::new(env!(
-    "CARGO_PKG_VERSION"))`. If 3048 is done, the version comes from its
-    `AppInfo`; if not, 3048 moves it there;
+  - hello-grid's `config()` sets `crash` to
+    `CrashReports::new(APP.version)` (`hello_grid::app_info::APP`, 3048).
+    The template has no `config()` since 2511: `run_game` covers it;
   - `StageRecord` moves out of `tools.rs` into the stage screen's module
     (`examples/hello-grid/src/screens/stage.rs`,
     `templates/grid/crates/game/src/stage.rs`), which the shipped binary
@@ -347,7 +345,7 @@ anywhere is 3047's question for Nick.
    `crates/platform/src/app.rs`, 3040's log, 2511's `BasicGame` and
    `run_game`, and the stage screens and `tools.rs` of hello-grid and the
    grid template, and 2018's `render` job in `.github/workflows/ci.yml`.
-   Check whether 2111, 2512, 3012, 3041 and 3048 are done.
+   Check whether 2111, 2512, 3012 and 3041 are done.
 2. Write `shuyi_platform::crash`: the report, its keys, `parse`,
    `to_text` and `keep_newest`, with their tests. Add `serde`, `ron`
    and `proptest`, and `tools/layers.ron`'s line.

@@ -95,9 +95,21 @@ here, the garden's plan (a new `blank` game has none, `()`):
 
 {{ snippet(file="src/quick_start.rs", anchor="data") }}
 
-And `game()` gives the rest, a `BasicGame`: its name, where the
-player's settings are kept, its files, its first screen, and every
-screen it can show:
+Who the game is, its name, its reverse-DNS id and its version, is
+written once, in `shuyi.ron`'s `app` ([chapter 9](@/learn/book/targets-and-export.md)).
+`cargo shuyi app-info` writes it as a constant in
+`crates/game/src/app_info.rs`, which the window's title, the loading
+card and the storage read; never edit that file:
+
+{{ snippet(file="src/quick_start.rs", anchor="app") }}
+
+The player's settings are kept under the id. A new game's is a
+placeholder, `com.example.moon-garden`, which `check --target` warns of:
+set your own before you hand out a build, since two games with one id
+share their saves.
+
+And `game()` gives the rest, a `BasicGame`: who it is, its files, its
+first screen, and every screen it can show:
 
 {{ snippet(file="src/quick_start.rs", anchor="game") }}
 
@@ -116,6 +128,7 @@ The rest of the folder:
 | Path | What |
 | ---- | ---- |
 | `crates/game/src/title.rs` | The title, the first screen ([chapter 2](@/learn/book/games-and-screens.md)) |
+| `crates/game/src/app_info.rs` | Who the game is, written by `cargo shuyi app-info` from `shuyi.ron` |
 | `crates/game/files/` | The English text (`en.ron`), the keys (`keymap.ron`), the colors (`palette.ron`) and the font |
 | `crates/game/tests/` | The game played without a window, and through its tools ([chapter 8](@/learn/book/testing.md)) |
 | `shuyi.ron` | The project file the tools read ([chapter 9](@/learn/book/targets-and-export.md)) |

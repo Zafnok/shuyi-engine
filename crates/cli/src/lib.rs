@@ -2,7 +2,7 @@
 //! `check`, `lint`, `modules`, `add`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`,
 //! `import`, `bake`, `export`, `doctor`, `explain`, `attach`, each with `--json`; [`contract`]),
 //! the exporters `export` runs ([`export`]), the contract as
-//! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`,
+//! an MCP server with a session (`mcp`, `mcp install`; [`mcp`]), and `frame-png`, `font-atlas`, `app-info`,
 //! `glyph-tiles`, `check-keys`, `check-text`, `check-skills`, `lang-status`,
 //! `web` and `private-assets`, each a module of library functions with a
 //! thin wrapper here; the engine's modules as `modules` and `add` read them
@@ -23,6 +23,7 @@
 //! A CLI tool prints to stdout by design, so `print_stdout` is allowed here.
 #![allow(clippy::print_stdout)]
 
+pub mod app_info;
 pub mod basic;
 pub mod catalog;
 pub mod check_keys;
@@ -67,7 +68,7 @@ pub use shuyi_ui::frame::raster::test_card;
 /// ([`Op::ALL`]), as [`usage`] lists them: with the contract's operations
 /// and the MCP session's tools, the commands a skill may name
 /// ([`skills::check`]).
-pub const COMMANDS: [&str; 12] = [
+pub const COMMANDS: [&str; 13] = [
     "schema",
     "mcp",
     "mcp-host",
@@ -76,6 +77,7 @@ pub const COMMANDS: [&str; 12] = [
     "check-skills",
     "lang-status",
     "font-atlas",
+    "app-info",
     "glyph-tiles",
     "frame-png",
     "web",
@@ -137,6 +139,8 @@ commands:
   lang-status <code> [--only ui|data|dialogue] [--file <dlg>]
                                      list a language pack's missing, stale and orphaned text
   font-atlas <font.bdf>... <out-dir> build the font atlas from BDF fonts
+  app-info [--check]                 write who the game is ({file}'s `app`) as its Rust
+                                     constant; --check: fail if it is out of date
   glyph-tiles                        draw a tileset of the font's glyphs on colored squares
   frame-png <out.png> [steps]        render a scripted game frame to a PNG (frame-png --help)
   web [--release] [--<feature>...]   build and package the web (WASM) build
@@ -286,6 +290,7 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
             None => Ok(game::run_in_game_program(project, name, args)),
         },
         "font-atlas" => font_atlas(project, args),
+        "app-info" => app_info(project, args),
         "glyph-tiles" => glyph_tiles(project, args),
         "frame-png" => match game {
             Some(game) => Ok(frame_png(project, args, game)),
@@ -483,6 +488,25 @@ fn font_atlas(project: &Project, args: &[String]) -> Outcome {
             }
         },
     )
+}
+
+fn app_info(project: &Project, args: &[String]) -> Outcome {
+    let part = project.part(&project.config.app, "app")?;
+    let command = project.config.command();
+    let Ok(check) = app_info::parse_args(args) else {
+        eprintln!("usage: {command} app-info [--check]");
+        return Ok(2);
+    };
+    Ok(match app_info::run(part, &project.root, command, check) {
+        Ok(summary) => {
+            println!("{summary}");
+            0
+        }
+        Err(e) => {
+            eprintln!("app-info: {e}");
+            1
+        }
+    })
 }
 
 fn glyph_tiles(project: &Project, args: &[String]) -> Outcome {

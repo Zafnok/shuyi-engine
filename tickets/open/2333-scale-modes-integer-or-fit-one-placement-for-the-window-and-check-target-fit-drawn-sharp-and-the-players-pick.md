@@ -222,8 +222,11 @@ game's choice, through its `engine-change` skill.
     offer it (GameTools::scale)", or, with no tool program, "… it needs
     the game's tools, and shuyi.ron names no game tool program
     (`game`)". It goes after the per-target lines, and the last line
-    becomes "only the frame's fit, the text's size, the controls and
-    the scale are checked yet";
+    becomes "only the frame's fit, the text's size, the controls, the
+    scale, one-bit patterns and the identity are checked yet" (**from
+    3048, done:** the line today ends "the controls, one-bit patterns
+    and the identity are checked yet", after the identity's own line
+    when `shuyi.ron` has no `app`);
   - `Fake` (`crates/cli/src/contract/fake.rs`) gets a `scale` field
     for the tests;
   - the grid template's tools (`templates/grid/crates/game/src/tools.rs`)

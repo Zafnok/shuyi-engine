@@ -3,8 +3,11 @@
 //! and its stages' own part. It opens on the title ([`title`]), which
 //! starts its first stage ([`stages`]) if it has one. [`game`] says all
 //! the engine needs to know: `src/main.rs` runs it, and
-//! `examples/tools.rs` hands it to the engine's tools.
+//! `examples/tools.rs` hands it to the engine's tools. Who the game is,
+//! its name, id and version, is `shuyi.ron`'s `app`, which
+//! `cargo shuyi app-info` writes into [`app_info`].
 
+pub mod app_info;
 pub mod stages;
 pub mod title;
 
@@ -23,36 +26,28 @@ static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
 /// and its stages' own part.
 pub type Data = BasicData<UiAction, stages::Own>;
 
-/// The game's name.
-// check-text: not player text, the window's title (`files/en.ron` has it too)
-const NAME: &str = "{{name}}";
-
-/// Where the player's settings and keys are kept: never change it, or
-/// every player's are lost.
-// check-text: not player text, a storage name
-const STORAGE_NAME: &str = "{{crate_name}}";
-
-/// The game: its name, where the player's settings and keys are kept, its
-/// files and its stages' part of them, its first screen, every screen it
-/// can show, and the engine's modules its features turn on (`Cargo.toml`).
+/// The game: who it is ([`app_info::APP`]: its name, and where the
+/// player's settings and keys are kept), its files and its stages' part of
+/// them, its first screen, every screen it can show, and the engine's
+/// modules its features turn on (`Cargo.toml`).
 pub fn game() -> BasicGame<UiAction, stages::Own> {
     // check-text: not player text, a folder
     let files = Layer::dir("files", &FILES);
-    BasicGame::with_own(NAME, STORAGE_NAME, files, stages::own, |_| {
+    BasicGame::with_own(app_info::APP, files, stages::own, |_| {
         Box::new(title::Title)
     })
     .screens(screens)
     .modules(shuyi::enabled_modules)
 }
 
-/// What made this build, for its records and saves: the game's name and
+/// What made this build, for its records and saves: the game's id and
 /// version, and the fingerprint of the files it ships, computed once. A
 /// record or a save keeps it in a `made` field, checked on reading.
 pub fn made() -> Made {
     static MADE: OnceLock<Made> = OnceLock::new();
     MADE.get_or_init(|| {
         // check-text: not player text, the build's name in its records
-        let build = concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION"));
+        let build = format!("{} {}", app_info::APP.id, app_info::APP.version);
         Made::new(build, game().bundle().fingerprint())
     })
     .clone()
@@ -81,6 +76,7 @@ mod tests {
         let made = made();
         assert_eq!(made.content, game().bundle().fingerprint());
         assert_eq!(made, Made::new(made.game.clone(), made.content));
-        assert!(made.game.ends_with(env!("CARGO_PKG_VERSION")), "{made:?}");
+        assert!(made.game.starts_with(app_info::APP.id), "{made:?}");
+        assert!(made.game.ends_with(app_info::APP.version), "{made:?}");
     }
 }

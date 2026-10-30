@@ -1,7 +1,7 @@
 //! Chapter 1, the quick start: Moon Garden on the short path, as a game
 //! made with `shuyi new` has it. In a new game `game` and `Data` are in
-//! `crates/game/src/lib.rs`, `main` is `src/main.rs` and `tool_program`
-//! is `examples/tools.rs`.
+//! `crates/game/src/lib.rs`, `APP` in `crates/game/src/app_info.rs`,
+//! `main` is `src/main.rs` and `tool_program` is `examples/tools.rs`.
 
 use std::process::ExitCode;
 
@@ -26,23 +26,23 @@ static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
 pub type Data = BasicData<UiAction, Plan>;
 // ANCHOR_END: data
 
+// ANCHOR: app
+/// Who the game is: its name, its id (the player's settings are kept under
+/// it) and its version. `cargo shuyi app-info` writes it from `shuyi.ron`'s
+/// `app`.
+// check-text: not player text, who the game is
+#[rustfmt::skip]
+pub const APP: AppInfo = AppInfo::new("Moon Garden", "com.example.moon-garden", "0.1.0");
+// ANCHOR_END: app
+
 // ANCHOR: game
-/// The game's name.
-// check-text: not player text, the window's title (`files/en.ron` has it too)
-const NAME: &str = "Moon Garden";
-
-/// Where the player's settings and keys are kept: never change it, or
-/// every player's are lost.
-// check-text: not player text, a storage name
-const STORAGE_NAME: &str = "moon_garden";
-
-/// The game: its name, where the player's settings are kept, its files,
-/// how its own part is read from them, its first screen, every screen it
-/// can show, and the engine's modules its features turn on.
+/// The game: who it is, its files, how its own part is read from them,
+/// its first screen, every screen it can show, and the engine's modules
+/// its features turn on.
 pub fn game() -> BasicGame<UiAction, Plan> {
     // check-text: not player text, a folder
     let files = Layer::dir("files", &FILES);
-    BasicGame::with_own(NAME, STORAGE_NAME, files, read_plan, |_| Box::new(Title))
+    BasicGame::with_own(APP, files, read_plan, |_| Box::new(Title))
         .screens(every_screen)
         .modules(shuyi::enabled_modules)
 }

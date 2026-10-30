@@ -1,5 +1,5 @@
-//! The project file, `shuyi.ron`, at a game's root: which paths each check
-//! scans, the game's tool program (for the commands that run the game),
+//! The project file, `shuyi.ron`, at a game's root: who the game is (its
+//! `app` part), which paths each check scans, the game's tool program (for the commands that run the game),
 //! the font atlas's rules, the web build's package, the game's own license
 //! texts and the private repository's settings, and the targets the game
 //! ships on. A command
@@ -78,10 +78,17 @@ impl Project {
 /// What `shuyi.ron` says.
 #[derive(Debug, Clone, Default, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
+// Parsed, never built by a literal outside this crate: it may gain parts
+// (ADR-0039).
+#[non_exhaustive]
 pub struct Config {
     /// What the project calls this tool in what it prints (`usage: …`,
     /// generated files): `shuyi` unless it says otherwise.
     pub command: Option<String>,
+    /// Who the game is: its name, id, version and storage's name, which
+    /// `check --target` checks and `app-info` writes as Rust
+    /// ([`crate::app_info`]).
+    pub app: Option<AppPart>,
     /// The game's tool program, for `frame-png` and `lang-status`.
     pub game: Option<GameProgram>,
     /// `check-keys`.
@@ -123,6 +130,61 @@ impl Config {
     /// The tool's name in what it prints.
     pub fn command(&self) -> &str {
         self.command.as_deref().unwrap_or("shuyi")
+    }
+}
+
+/// Who the game is, the same on every target ([`crate::app_info`],
+/// ADR-0059).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct AppPart {
+    /// The name players see.
+    pub name: String,
+    /// Its reverse-DNS id, unique to the game: `com.example.moon-garden`.
+    pub id: String,
+    /// Its version, semver; without it, its crate's
+    /// (`CARGO_PKG_VERSION`).
+    #[serde(default)]
+    pub version: Option<String>,
+    /// A number that only grows from one build handed out to the next.
+    #[serde(default = "first_build")]
+    pub build: u32,
+    /// Who publishes it.
+    #[serde(default)]
+    pub publisher: String,
+    /// The name its saves are kept under; without it, the id.
+    #[serde(default)]
+    pub storage: Option<String>,
+    /// Where `app-info` writes the Rust file (`crates/game/src/app_info.rs`);
+    /// without it, no Rust is written.
+    #[serde(default)]
+    pub code: Option<String>,
+}
+
+/// A game's first build.
+const fn first_build() -> u32 {
+    1
+}
+
+impl AppPart {
+    /// The game called `name` with the id `id`, and every other field at
+    /// its default.
+    pub fn new(name: impl Into<String>, id: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            id: id.into(),
+            version: None,
+            build: first_build(),
+            publisher: String::new(),
+            storage: None,
+            code: None,
+        }
+    }
+
+    /// The name its saves are kept under: its `storage`, else its id.
+    pub fn storage(&self) -> &str {
+        self.storage.as_deref().unwrap_or(&self.id)
     }
 }
 
@@ -406,6 +468,37 @@ mod tests {
         assert_eq!(config.font_atlas.unwrap().required_glyphs, "?ab");
         assert!(Config::parse("(colour: 1)").is_err());
         assert!(Config::parse("(web: (name: \"x\"))").is_err());
+    }
+
+    #[test]
+    fn the_app_part_is_read_with_its_defaults_and_unknown_fields_refused() {
+        let config =
+            Config::parse(r#"(app: (name: "Moon Garden", id: "com.example.moon-garden"))"#)
+                .unwrap();
+        let app = config.app.unwrap();
+        assert_eq!(app, AppPart::new("Moon Garden", "com.example.moon-garden"));
+        assert_eq!((app.build, app.publisher.as_str()), (1, ""));
+        assert_eq!((&app.version, &app.code), (&None, &None));
+        assert_eq!(app.storage(), "com.example.moon-garden");
+        let text = r#"(app: (
+    name: "Moon Garden",
+    id: "com.example.moon-garden",
+    version: "1.2.0-beta.1",
+    build: 12,
+    publisher: "Someone",
+    storage: "moon_garden",
+    code: "crates/game/src/app_info.rs",
+))"#;
+        let app = Config::parse(text).unwrap().app.unwrap();
+        assert_eq!(app.version.as_deref(), Some("1.2.0-beta.1"));
+        assert_eq!((app.build, app.publisher.as_str()), (12, "Someone"));
+        assert_eq!(app.storage(), "moon_garden");
+        assert_eq!(app.code.as_deref(), Some("crates/game/src/app_info.rs"));
+        assert!(Config::parse(r#"(app: (name: "A", id: "a.b", colour: 1))"#).is_err());
+        assert!(
+            Config::parse(r#"(app: (name: "A"))"#).is_err(),
+            "the id is needed"
+        );
     }
 
     #[test]

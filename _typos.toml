@@ -9,6 +9,9 @@ seh = "seh"
 shepperd = "shepperd"
 # The `flate2` crate, which `shuyi export`'s archives deflate with.
 flate = "flate"
+# `lune-caf`, the crate name `shuyi new` makes of "Lune Café", the
+# tests' game name beyond ASCII.
+caf = "caf"
 
 [files]
 extend-exclude = [
