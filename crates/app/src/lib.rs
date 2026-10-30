@@ -487,7 +487,7 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
 const BASIC_MARGIN: i32 = 16;
 
 /// The window of a game on the short path: its console at twice its size
-/// and a small margin, titled with its name.
+/// and a small margin, titled with its name (`AppInfo::name`).
 fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Window {
     let console = game.console_spec();
     let side = |cells: u16, cell: u16| i32::from(cells) * i32::from(cell) * 2 + BASIC_MARGIN;
@@ -519,7 +519,7 @@ fn sound_left_out(_: &str) -> bool {
 }
 
 /// What the backend needs to know about a game on the short path: its
-/// storage's name, its files from the installed bundle and its font's
+/// storage's name (`AppInfo::storage`), its files from the installed bundle and its font's
 /// picture; no sounds, no voices and no system keyboard.
 fn basic_config<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> AppConfig {
     let sounds = Files::new(&no_sound, &sound_shown, &sound_left_out, "music");
@@ -577,6 +577,8 @@ fn wrap(text: &str, width: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use shuyi_platform::AppInfo;
+
     use super::*;
 
     #[test]
@@ -664,7 +666,8 @@ mod tests {
     /// A game on the short path with no files.
     fn basic() -> BasicGame<shuyi_assets::keymap::UiAction> {
         let files = shuyi_assets::bundle::Layer::table("files", &[]);
-        BasicGame::new("A game", "a-game", files, |_| unreachable!("never started"))
+        let app = AppInfo::new("A game", "com.example.a-game", "0.1.0").with_storage("a-game");
+        BasicGame::new(app, files, |_| unreachable!("never started"))
     }
 
     #[test]
@@ -678,6 +681,16 @@ mod tests {
         let small = basic().console(shuyi_ui::frame::ConsoleSpec::text(20, 10));
         let window = basic_window(&small);
         assert_eq!((window.width, window.height), (336, 336));
+    }
+
+    #[test]
+    fn a_short_path_games_storage_is_its_ids_unless_it_says() {
+        let files = shuyi_assets::bundle::Layer::table("files", &[]);
+        let app = AppInfo::new("A game", "com.example.a-game", "0.1.0");
+        let game: BasicGame<shuyi_assets::keymap::UiAction> =
+            BasicGame::new(app, files, |_| unreachable!("never started"));
+        assert_eq!(basic_config(&game).storage_name, "com.example.a-game");
+        assert_eq!(basic_window(&game).title, "A game");
     }
 
     #[test]

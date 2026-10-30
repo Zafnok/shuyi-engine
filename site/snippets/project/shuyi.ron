@@ -3,6 +3,20 @@
 (
     command: "cargo shuyi",
 
+    // ANCHOR: app
+    // Who the game is, the same on every target: `cargo shuyi check
+    // --target all` checks it, and `cargo shuyi app-info` writes it into
+    // `code`, the Rust the game's binary reads.
+    app: (
+        name: "Moon Garden",
+        // Reverse-DNS, unique to the game: its saves are kept under it.
+        id: "com.example.moon-garden",
+        // Without it, the crate's version.
+        version: "0.1.0",
+        code: "crates/game/src/app_info.rs",
+    ),
+    // ANCHOR_END: app
+
     // The game's tool program, for the commands that run the game.
     game: (package: "moon-garden", example: "tools", features: ["tools"]),
 

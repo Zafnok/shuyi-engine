@@ -3,6 +3,27 @@
 (
     command: "cargo shuyi",
 
+    // Who the game is, the same on every target. `cargo shuyi check
+    // --target all` checks it; `cargo shuyi app-info` writes it into
+    // `code`, which the game's binary reads (`app_info::APP`): run it after
+    // each change here.
+    app: (
+        // The name players see.
+        name: "{{name}}",
+        // Its reverse-DNS id, unique to the game: the folder its saves are
+        // kept in follows it. Set your own (`io.github.<you>.<game>`)
+        // before you hand out a build, and never change it after.
+        id: "com.example.{{crate_name}}",
+        // Its version, semver; without it, the crate's (`Cargo.toml`).
+        // version: "0.1.0",
+        // A number that only grows from one build handed out to the next.
+        // build: 1,
+        // Who publishes it.
+        // publisher: "",
+        // The Rust file `app-info` writes.
+        code: "crates/game/src/app_info.rs",
+    ),
+
     // The game's tool program, for the commands that run the game:
     // frame-png, lang-status, check, run, scene, replay, bots, import.
     game: (package: "{{crate_name}}", example: "tools", features: ["tools"]),

@@ -69,7 +69,8 @@ impl Screen<Data> for Hello {
 
 fn tools(files: &'static [(&'static str, &'static [u8])]) -> BasicTools<UiAction> {
     let files = Layer::table("files", files);
-    BasicTools::new(BasicGame::new("Demo", "demo", files, |_| Box::new(Hello)))
+    let app = shuyi_platform::AppInfo::new("Demo", "com.example.demo", "0.1.0");
+    BasicTools::new(BasicGame::new(app, files, |_| Box::new(Hello)))
 }
 
 #[test]

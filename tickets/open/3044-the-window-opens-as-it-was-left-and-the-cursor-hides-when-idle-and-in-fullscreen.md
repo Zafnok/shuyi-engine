@@ -241,12 +241,14 @@ None.
   - 2511 (`run_game`) is done: the blank template has no `WINDOW` or
     `window_conf`, and `run_game`'s window function (`basic_window`)
     uses `Window::console` and the new `window_conf` as above;
-  - with 3048 (the game's identity): if it is done, the grid template
-    and hello-grid write
-    `Window::console(APP.name, CONSOLE, 2, 16).with_icon(APP.window_icon)`
-    and call `window_conf(&WINDOW, APP.storage)`; `with_icon` takes
-    `Option<Icon>`, so `APP.window_icon` passes straight in. If not,
-    3048 makes that change (its scope says so);
+  - **from 3048 (done):** hello-grid's `main.rs` reads who the game is
+    from `hello_grid::app_info::APP`: `Window::new(APP.name, …)` and
+    `AppConfig::new(WINDOW, APP.storage, …)`. The template has no
+    `WINDOW` (its window is `run_game`'s, titled with `game.name()`).
+    This ticket writes hello-grid's as
+    `Window::console(APP.name, CONSOLE, 2, 16)` and calls
+    `window_conf(&WINDOW, APP.storage)`. The window's icon from `APP`
+    is 3072's;
   - with 3041 (log sinks): if it is done, the warning `run` logs is
     `log::warn!(target: "platform", …)`; if not, macroquad's `warn!`,
     which 3041 moves. `run` logs it, not `window_conf`, because 3041's

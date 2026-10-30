@@ -207,6 +207,11 @@
           "description": "On a one-bit display, every role has patterns and the roles that\ntell things apart stay distinct.",
           "type": "string",
           "const": "one-bit"
+        },
+        {
+          "description": "Who the game is: `shuyi.ron`'s `app` part.",
+          "type": "string",
+          "const": "app"
         }
       ]
     },

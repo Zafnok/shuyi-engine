@@ -24,10 +24,11 @@
 //!
 //! A GitHub Actions expression, `${{ … }}`, is left as it is. The game's
 //! Rust code names its own crates `game` and `rules` (their `[lib]
-//! name`), so its Rust holds a placeholder only in a string: the game's
-//! name and its storage's name, each the whole of its own `const`
-//! (`lib.rs`), so rustfmt lays the code out the same whatever the names'
-//! length.
+//! name`), so its Rust holds a placeholder only in the strings of
+//! `app_info.rs`: who the game is, as `app-info` writes it from
+//! `shuyi.ron`'s `app` ([`crate::app_info`]). Its one `const` is kept from
+//! rustfmt, so the file `new` fills is the one `app-info` writes, whatever
+//! the name's length.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;

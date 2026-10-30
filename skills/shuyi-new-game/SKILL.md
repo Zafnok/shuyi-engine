@@ -102,10 +102,16 @@ game one part at a time.
 A new game names only what the engine can't read from its files:
 
 - `crates/game/src/lib.rs`: `game()` returns a `BasicGame` (made with
-  `BasicGame::with_own`): the game's name, its storage's name (never
-  change it once players have saves), its `files/` folder, its stages'
-  own part and its first screen, with `.screens(...)` (every screen it
-  can show) and `.modules(shuyi::enabled_modules)`.
+  `BasicGame::with_own`): who the game is (`app_info::APP`), its
+  `files/` folder, its stages' own part and its first screen, with
+  `.screens(...)` (every screen it can show) and
+  `.modules(shuyi::enabled_modules)`.
+- `shuyi.ron`'s `app`: the game's name, its reverse-DNS id and its
+  version. `cargo shuyi app-info` writes them into
+  `crates/game/src/app_info.rs`; never edit that file. The id names the
+  folder the player's saves are kept in: replace the placeholder
+  `com.example.…` before a build is handed out, and never change it
+  after (or set `storage` to the old name).
 - `Data = BasicData<UiAction, stages::Own>`: the text, keys, palette and
   font read from `files/`, with the six moves of `UiAction` as its
   actions.

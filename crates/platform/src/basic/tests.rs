@@ -102,16 +102,24 @@ fn two_markers() -> Vec<Box<dyn Module<Data>>> {
     vec![Box::new(Marker), Box::new(Marker)]
 }
 
+/// Who the demo is.
+const DEMO: AppInfo = AppInfo::new("Demo", "com.example.demo", "0.1.0").with_storage("demo");
+
 fn demo(files: &'static [(&'static str, &'static [u8])]) -> BasicGame<UiAction> {
-    BasicGame::new("Demo", "demo", Layer::table("files", files), |_| {
-        Box::new(Hello)
-    })
+    BasicGame::new(DEMO, Layer::table("files", files), |_| Box::new(Hello))
 }
 
 #[test]
 fn it_starts_on_its_first_screen_in_the_keymaps_first_layout() {
     let game = demo(GOOD);
     assert_eq!((game.name(), game.storage_name()), ("Demo", "demo"));
+    assert_eq!(game.app(), DEMO);
+    let own_storage = BasicGame::<UiAction>::new(
+        AppInfo::new("A", "com.example.a", "1.0.0"),
+        game.files,
+        |_| Box::new(Hello),
+    );
+    assert_eq!(own_storage.storage_name(), "com.example.a");
     assert_eq!(game.console_spec(), BASIC_CONSOLE);
     assert!(game.bundle().has("keymap.ron"));
     let ctx = game.ctx().unwrap_or_else(|e| panic!("{e}"));
@@ -215,5 +223,8 @@ fn a_game_is_copied_and_shown_by_its_name() {
     let copy = game;
     assert_eq!(game.name(), copy.clone().name());
     let shown = format!("{game:?}");
-    assert!(shown.starts_with("BasicGame { name: \"Demo\""), "{shown}");
+    assert!(
+        shown.starts_with("BasicGame { app: AppInfo { name: \"Demo\""),
+        "{shown}"
+    );
 }

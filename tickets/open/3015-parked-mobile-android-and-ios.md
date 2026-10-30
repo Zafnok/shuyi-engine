@@ -82,8 +82,8 @@ splits it.
   with fixed names, as 3051 does for the desktop. If 3051 is done, the
   `ios` exporter reuses its temporary keychain step and its `Redactor`.
   If not, this ticket writes them and 3051 reuses them. Each store
-  package's id, name, version and icons come from `shuyi.ron`'s `app`
-  part (3048). Android's application id allows no `-`, which 3048's id
+  package's id, name and version come from `shuyi.ron`'s `app` part
+  (3048), and its icons from the part's `icon` (3072). Android's application id allows no `-`, which 3048's id
   allows, so the Android exporter maps it to `_` and `check --target
   android` warns that it did.
 - **License notices.** A phone app's files are no folder a player can

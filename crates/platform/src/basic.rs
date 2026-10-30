@@ -1,6 +1,6 @@
 //! [`BasicGame`]: a game on the short path (ADR-0036), described once for
 //! its binary, its tools and its tests. It holds what the engine can't
-//! read from the game's files: its name, its storage's name, its files,
+//! read from the game's files: who it is ([`AppInfo`]), its files,
 //! its first screen and, if it has them, its console, its own part and
 //! every screen it can show, and the modules it installs. From it come
 //! its data ([`BasicGame::data`]), its context ([`BasicGame::ctx`]), its
@@ -19,6 +19,7 @@ use shuyi_ui::module::{Module, ModuleError};
 use shuyi_ui::{Ctx, Game, GameData, GameHooks, Screen};
 
 use crate::app::{Card, Start};
+use crate::app_info::AppInfo;
 use crate::platform::Look;
 
 /// The screen a game on the short path starts on, made on its context.
@@ -38,8 +39,7 @@ pub const BASIC_CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
 /// A game on the short path: its data is a [`BasicData`] of actions `A`
 /// and its own part `T`, read from one layer of files.
 pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
-    name: &'static str,
-    storage: &'static str,
+    app: AppInfo,
     files: Layer,
     own: Own<T>,
     first: First<A, T>,
@@ -57,33 +57,20 @@ fn look<A: ActionSet, T: Debug + 'static>(data: &BasicData<A, T>) -> Look<'_> {
 }
 
 impl<A: ActionSet> BasicGame<A> {
-    /// The game called `name`, its saves under `storage` (never change
-    /// it, or every player's are lost), its files in `files`, starting on
-    /// the screen `first` makes.
-    pub fn new(
-        name: &'static str,
-        storage: &'static str,
-        files: Layer,
-        first: First<A, ()>,
-    ) -> Self {
+    /// The game `app` (its name, and the storage its saves are kept
+    /// under), its files in `files`, starting on the screen `first` makes.
+    pub fn new(app: AppInfo, files: Layer, first: First<A, ()>) -> Self {
         // No part of its own: there is none to read.
-        Self::with_own(name, storage, files, |_| Ok(()), first)
+        Self::with_own(app, files, |_| Ok(()), first)
     }
 }
 
 impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     /// As [`BasicGame::new`], for a game with a part of its own, which
     /// `own` reads from its files ([`BasicData::own`]).
-    pub fn with_own(
-        name: &'static str,
-        storage: &'static str,
-        files: Layer,
-        own: Own<T>,
-        first: First<A, T>,
-    ) -> Self {
+    pub fn with_own(app: AppInfo, files: Layer, own: Own<T>, first: First<A, T>) -> Self {
         Self {
-            name,
-            storage,
+            app,
             files,
             own,
             first,
@@ -116,14 +103,19 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         self
     }
 
+    /// Who it is.
+    pub fn app(&self) -> AppInfo {
+        self.app
+    }
+
     /// Its name: the window's title and the loading card's line.
     pub fn name(&self) -> &'static str {
-        self.name
+        self.app.name
     }
 
     /// The name its saves are kept under.
     pub fn storage_name(&self) -> &'static str {
-        self.storage
+        self.app.storage
     }
 
     /// The console it starts on.
@@ -187,7 +179,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
     /// module that can't be installed, is the load's error, which the
     /// platform shows in place of the game.
     pub fn start(self) -> Start<BasicData<A, T>> {
-        Start::new(Card::text(self.name), look::<A, T>, move |setup| {
+        Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
             let ctx = self.ctx()?;
             self.game(setup.ctx(ctx)).map_err(|e| e.to_string())
         })
@@ -224,8 +216,7 @@ impl<A: ActionSet, T: Debug + 'static> Copy for BasicGame<A, T> {}
 impl<A: ActionSet, T: Debug + 'static> Debug for BasicGame<A, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BasicGame")
-            .field("name", &self.name)
-            .field("storage", &self.storage)
+            .field("app", &self.app)
             .field("files", &self.files.name)
             .field("console", &self.console)
             .finish_non_exhaustive()

@@ -7,7 +7,8 @@
 //!
 //! `check --target <id>` checks instead that the game fits target `id`,
 //! or every target its `shuyi.ron` lists with `--target all`
-//! ([`super::target`]). The display needs only the project file; the
+//! ([`super::target`]). The display and who the game is (`shuyi.ron`'s
+//! `app`) need only the project file; the
 //! controls, and a one-bit target's patterns, need the game's tools too,
 //! and without them the answer says they weren't checked. It passes when
 //! no target has an error; warnings don't fail it.
@@ -21,6 +22,7 @@ use shuyi_assets::target::Color;
 
 use super::target::{self, Level, TargetReport};
 use super::{Answer, Op, Problem, bake, codes};
+use crate::app_info;
 use crate::game::{GameTools, code_of};
 use crate::project::{Config, FILE};
 
@@ -130,6 +132,10 @@ pub fn targets(
             None
         }
     };
+    let app = config
+        .app
+        .as_ref()
+        .map(|part| app_info::problems(part, root, config.command()));
     for (id, setting) in settings {
         let profile = match target::profile(config, root, id) {
             Ok(profile) => profile,
@@ -164,14 +170,21 @@ pub fn targets(
                 )),
             }
         }
+        if let Some(app) = &app {
+            problems.extend(target::app(app.clone()));
+        }
         reports.push(TargetReport {
             target: id.to_owned(),
             profile: profile.file.clone(),
             problems,
         });
     }
+    if app.is_none() {
+        limits.push(format!("the identity isn't checked: {FILE} has no `app`"));
+    }
     limits.push(
-        "only the frame's fit, the text's size, the controls and one-bit patterns are checked yet"
+        "only the frame's fit, the text's size, the controls, one-bit patterns and the identity \
+         are checked yet"
             .to_owned(),
     );
     let ok = !reports.iter().any(TargetReport::failed);
@@ -373,8 +386,9 @@ mod tests {
             [
                 "the controls aren't checked: they need the game's tools, and shuyi.ron names no \
                  game tool program (`game`)",
-                "only the frame's fit, the text's size, the controls and one-bit patterns are \
-                 checked yet"
+                "the identity isn't checked: shuyi.ron has no `app`",
+                "only the frame's fit, the text's size, the controls, one-bit patterns and the \
+                 identity are checked yet"
             ]
         );
         let all = targets(&config, root, &on("all"), None);
@@ -390,7 +404,7 @@ mod tests {
             "{}",
             text(out)
         );
-        assert_eq!(all.limits.len(), 4, "desktop takes any size");
+        assert_eq!(all.limits.len(), 5, "desktop takes any size");
         assert_eq!(
             all.limits[2],
             "playdate's one-bit patterns aren't checked: they need the game's tools, and \
@@ -424,6 +438,43 @@ mod tests {
                 .error
                 .unwrap()
                 .starts_with("the target profiles don't load: no-such-folder: ")
+        );
+    }
+
+    #[test]
+    fn the_app_part_is_checked_on_every_target() {
+        let with = |app: &str| {
+            crate::project::Config::parse(&format!(
+                r#"(app: {app}, targets: {{
+    "desktop": (frame: (400, 240), scale: integer, text_px: 16),
+    "web": (frame: (400, 240), scale: integer, text_px: 16),
+}})"#
+            ))
+            .unwrap()
+        };
+        let root = Path::new(".");
+        let bad = with(r#"(name: "Moon Garden", id: "moon")"#);
+        let answer = targets(&bad, root, &on("all"), None);
+        assert!(!answer.ok, "a bad id fails");
+        for report in &answer.result.as_ref().unwrap().targets {
+            let found: Vec<(Level, TargetCheck, &str)> = report
+                .problems
+                .iter()
+                .map(|p| (p.level, p.check, p.setting.as_str()))
+                .collect();
+            assert_eq!(found, [(Level::Error, TargetCheck::App, "app.id")]);
+        }
+        assert!(!answer.limits.iter().any(|l| l.contains("identity isn't")));
+        let placeholder = with(r#"(name: "Moon Garden", id: "com.example.moon-garden")"#);
+        let answer = targets(&placeholder, root, &on("web"), None);
+        assert!(answer.ok, "the placeholder is a warning");
+        let out = answer.result.as_ref().unwrap();
+        assert_eq!(out.targets[0].problems[0].level, Level::Warning);
+        assert!(
+            text(out)
+                .contains("  warning: web: app.id: \"com.example.moon-garden\" is a placeholder"),
+            "{}",
+            text(out)
         );
     }
 

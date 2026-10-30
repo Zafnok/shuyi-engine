@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5
 effort: high
 status: todo
-blocked_by: ["3004", "3048"]
+blocked_by: ["3004", "3048", "3072"]
 nick_input: none
 completed:
 ---
@@ -30,11 +30,14 @@ game's name, version and icon into each package:
 
 What Shuyi has (read on 2026-10-21):
 
-- 3048 puts the identity in `shuyi.ron`'s `app` part (`AppPart` in
-  `crates/cli/src/project.rs`: `name`, `id`, `version`, `build`,
-  `publisher`, and `icon`, one square PNG of 512 px or more), with a
-  version parser and `app_info::downscale(w, h, rgba, size)` in
-  `crates/cli/src/app_info.rs`.
+- **From 3048 (done):** the identity is `shuyi.ron`'s `app` part
+  (`AppPart` in `crates/cli/src/project.rs`: `name`, `id`, `version`,
+  `build`, `publisher`, `storage` and `code`), checked by
+  `app_info::problems` in `crates/cli/src/app_info.rs`, whose
+  `check_version` parses with the `semver` crate (already the CLI's).
+  `ExportCx::version` is already `app.version` when the part sets one,
+  else the package's. 3072 adds `icon` (one square PNG of 512 px or
+  more) and `app_info::downscale(w, h, rgba, size)`.
 - 3004 (done) added `shuyi export` and four exporters
   (`crates/cli/src/export.rs`, `export/desktop.rs`, `export/web.rs`):
   `windows` (a zip built for `x86_64-pc-windows-gnu`), `linux` (a
@@ -85,11 +88,12 @@ None.
     3004's report, which `metadata` in `crates/cli/src/export.rs` reads
     into `ExportCx::version`: use it;
   - `Identity::numbers() -> Result<[u16; 4], String>`: major, minor and
-    patch from 3048's version parser, then `build`. A number over 65535
+    patch from `semver::Version::parse` (as `app_info::check_version`
+    parses it), then `build`. A number over 65535
     is an error naming `app.version` or `app.build`;
   - `icons(identity, sizes) -> Result<Vec<(u32, Vec<u8>)>, String>`: a
     PNG at each size no larger than the source, through `decode_png`,
-    3048's `downscale` and `encode_png`. Empty without an icon. `shuyi
+    3072's `downscale` and `encode_png`. Empty without an icon. `shuyi
     web` doesn't run `check --target`, so a bad icon is an error here
     too, naming its path;
   - `ico(pictures) -> Vec<u8>`: the 6-byte header (0, type 1, the
@@ -180,7 +184,7 @@ None.
     Without it the page takes `app.name`; with neither, `web` fails with
     "shuyi.ron has no `web.title` or `app.name`". The title is written
     with `&`, `<`, `>` and `"` escaped. hello-grid's `web.title` goes,
-    since its `app.name` (3048) is the same. The name's second copy
+    since its `app.name` (`"Hello, Grid"`, 3048) is the same. The name's second copy
     ends;
   - `crates/cli/web/README.md` and `web.rs`'s module docs say where the
     title comes from and what `%ICONS%` becomes.
@@ -222,19 +226,20 @@ None.
     there. If not, nothing.
 - **For the game:** a `shuyi.ron` with `web.title` reads as before.
   `Web::title`'s type changes, for code that builds a `Web` by hand.
-  Nothing else changes until the game adds an `app` part (3048). Say so
-  in the PR.
+  Nothing else changes until the game adds an `app` part. Say so in the
+  PR.
 - **Size:** if the PR passes about 600 changed lines, the web part (the
   icons, `%ICONS%`, the title from `app.name` and its escaping, the
   README, and the `NOTICES.txt` heading) goes to a follow-up ticket (the
-  `write-ticket` skill, After MVP, blocked by this one and 3048), and
+  `write-ticket` skill, After MVP, blocked by this one), and
   hello-grid's `web.title` stays until that ticket.
 
 **Out (do not do):**
 - signing and notarising (3051, parked: they cost money);
-- Playdate's `pdxinfo`, launcher icon and card: 3010, which reads 3048's
-  part;
-- the `app` part, its checks and the window's icons: 3048;
+- Playdate's `pdxinfo`, launcher icon and card: 3010, which reads the
+  `app` part;
+- the `app` part and its checks (3048, done), the icon and the window's
+  icons (3072);
 - the Steam Deck (3012), since Steam shows its own art; store and
   library art;
 - mobile manifests (3015, parked);
@@ -246,8 +251,8 @@ None.
 
 ## Implementation steps
 
-1. Read 3004's exporters and CI's `export` job as merged, 3048's
-   `crates/cli/src/app_info.rs` and `AppPart`, `crates/cli/src/web.rs`,
+1. Read 3004's exporters and CI's `export` job as merged,
+   `crates/cli/src/app_info.rs` and `AppPart` as 3048 and 3072 left them, `crates/cli/src/web.rs`,
    `web/index.html` and `web/README.md`, `contract/doctor.rs`, and the
    `doctor` and `export` rows of `docs/contract.md`.
 2. Write `identity.rs`: `Identity`, `numbers`, `icons` and `ico`, with

@@ -110,18 +110,46 @@ fn the_grid_game_calls_the_engines_playtest_workflow_at_its_engine_commit() {
 fn every_short_names_game_ships_on_the_desktop_and_the_web_and_fits_them() {
     let template = built_in();
     for short in ["grid", "blank"] {
-        let input = NewInput::new("g").template(short);
-        let (plan, _) = plan(Path::new("."), &template, &input, "Moon", "moon").unwrap();
-        let text = String::from_utf8_lossy(&plan.files[Path::new("shuyi.ron")]).into_owned();
-        let config = crate::project::Config::parse(&text).unwrap();
-        let ids: Vec<&str> = config.targets.keys().map(String::as_str).collect();
-        assert_eq!(ids, ["desktop", "web"], "{short}");
-        let input = crate::contract::check::CheckInput {
-            target: Some("all".to_owned()),
-            ..crate::contract::check::CheckInput::default()
-        };
-        let answer = crate::contract::check::targets(&config, Path::new("."), &input, None);
-        assert!(answer.ok, "{short}: {answer:?}");
+        for (name, krate) in [("Moon", "moon"), ("Lune Café", "lune-caf")] {
+            let input = NewInput::new("g").template(short);
+            let (plan, _) = plan(Path::new("."), &template, &input, name, krate).unwrap();
+            let dir = scratch(&format!("fits-{short}-{krate}"));
+            template::apply(&plan, &dir, false).unwrap();
+            let project = crate::project::Project::load(&dir).unwrap();
+            let config = &project.config;
+            let ids: Vec<&str> = config.targets.keys().map(String::as_str).collect();
+            assert_eq!(ids, ["desktop", "web"], "{short}");
+            // The game's `app_info.rs` is the one `app-info` writes.
+            let app = config.app.as_ref().unwrap();
+            assert_eq!(app.name, name);
+            let command = config.command();
+            assert!(
+                crate::app_info::stale(app, &dir, command).is_empty(),
+                "{short} {name}"
+            );
+            let input = crate::contract::check::CheckInput {
+                target: Some("all".to_owned()),
+                ..crate::contract::check::CheckInput::default()
+            };
+            let answer = crate::contract::check::targets(config, &dir, &input, None);
+            assert!(answer.ok, "{short}: {answer:?}");
+            // The one problem: the placeholder id, on each target.
+            for report in &answer.result.as_ref().unwrap().targets {
+                let found: Vec<(&str, &str)> = report
+                    .problems
+                    .iter()
+                    .map(|p| {
+                        (
+                            p.setting.as_str(),
+                            &p.message[..p.message.find(' ').unwrap()],
+                        )
+                    })
+                    .collect();
+                let id = format!("\"com.example.{krate}\"");
+                assert_eq!(found, [("app.id", id.as_str())], "{short} {name}");
+            }
+            fs::remove_dir_all(&dir).unwrap();
+        }
     }
 }
 

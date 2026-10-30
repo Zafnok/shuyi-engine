@@ -280,7 +280,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 3044 | The window opens as it was left, and the cursor hides when idle and in fullscreen |
 | 2405 | Mouse and touch for menus and grid maps, split out of parked 1121, never required |
 | 3053 | Platform facts at run time: the target, quitting, full screen, keyboard, pointer and touch |
-| 3048 | A game's identity in `shuyi.ron`: name, id, version, publisher and one icon |
+| 3048 | A game's identity in `shuyi.ron`: name, id, version and publisher |
+| 3072 | The game's icon in `shuyi.ron`, and the window's icon from it |
 | 3049 | The identity in every package: icons, version resources, `Info.plist`, `.desktop` files |
 | 2223 | Credits are the game's: every third-party file covered, and the credits in every build's notices |
 | 3050 | Release a game from a tag: every target's package built in CI, a GitHub Release, and itch.io |

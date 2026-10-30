@@ -5,24 +5,23 @@
 // A release build on Windows is a GUI program: no console window.
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
+use hello_grid::app_info::APP;
 use hello_grid::{FONT_PNG, Hello, sound};
 use macroquad::window::Conf;
 use shuyi::app::{AppConfig, Window};
 use shuyi::platform::{Card, Look, Setup, Start};
 use shuyi::ui::Game;
 
-/// The window: the console at twice its size, and a small margin.
-const WINDOW: Window = Window::new("Hello, Grid", 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
+/// The window, titled with the game's name: the console at twice its
+/// size, and a small margin.
+const WINDOW: Window = Window::new(APP.name, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
 
-/// Where the settings and key bindings are kept: never change it, or every
-/// player's are lost.
-const STORAGE_NAME: &str = "shuyi-hello-grid";
-
-/// What the macroquad backend needs to know about the game.
+/// What the macroquad backend needs to know about the game: its settings
+/// and key bindings are kept under `APP.storage`.
 fn config() -> AppConfig {
     AppConfig::new(
         WINDOW,
-        STORAGE_NAME,
+        APP.storage,
         hello_grid::file,
         FONT_PNG,
         sound::files(),
@@ -49,6 +48,6 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
-    let start = Start::new(Card::text(WINDOW.title), look, |setup| Ok(start(setup)));
+    let start = Start::new(Card::text(APP.name), look, |setup| Ok(start(setup)));
     shuyi::app::run(config(), start).await;
 }

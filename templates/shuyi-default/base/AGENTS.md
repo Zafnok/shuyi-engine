@@ -96,6 +96,14 @@ on (`shuyi::enabled_modules`); `src/main.rs` runs it with the prelude's
 (the engine's `BasicTools`, or a stage's own on top of them). A screen
 names what it needs from `shuyi::prelude`.
 
+Who the game is, its name, id and version, is `shuyi.ron`'s `app`.
+`cargo shuyi app-info` writes it into `crates/game/src/app_info.rs`,
+which the game reads (`app_info::APP`): run it after each change there,
+never edit the file. `cargo shuyi check --target all` fails while the
+file is out of date, and warns while the id is the placeholder
+`com.example.…`: set your own before you hand out a build, since the
+folder the player's saves are kept in follows it.
+
 ## The stages
 
 `crates/game/src/stages.rs` lists the game's stages, in order: `shuyi

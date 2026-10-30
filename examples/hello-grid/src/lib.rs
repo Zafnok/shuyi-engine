@@ -14,6 +14,7 @@
 //! [`bake`]).
 
 pub mod action;
+pub mod app_info;
 pub mod map;
 pub mod rules;
 pub mod screens;
@@ -347,6 +348,15 @@ mod tests {
         let got = OnlyClip::split();
         assert!(got.is_empty(), "{got:?}");
         assert!(OnlyClip.is_only());
+    }
+
+    /// The window's title and the storage's name are what they were
+    /// before `shuyi.ron` held them: players' settings keep loading.
+    #[test]
+    fn who_the_game_is_kept_its_title_and_storage() {
+        let app = app_info::APP;
+        assert_eq!((app.name, app.storage), ("Hello, Grid", "shuyi-hello-grid"));
+        assert_eq!(app.version, env!("CARGO_PKG_VERSION"));
     }
 
     #[test]

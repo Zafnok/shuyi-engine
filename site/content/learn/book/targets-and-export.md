@@ -29,6 +29,23 @@ the height of its smallest text:
 
 {{ snippet(file="project/shuyi.ron", anchor="targets", language="ron") }}
 
+## Who the game is
+
+Every target gets the same name, id and version, written once in
+`shuyi.ron`'s `app`:
+
+{{ snippet(file="project/shuyi.ron", anchor="app", language="ron") }}
+
+- `name` is the name players see, and `id` is reverse-DNS: two or more
+  parts between dots, of letters, digits and `-`, each starting with a
+  letter. The player's saves are kept under the id (or under `storage`,
+  when the part sets one), so it never changes after a release.
+- `version` is semver; without it, the crate's version. `build`, a
+  number that only grows, and `publisher` are for the targets that ask.
+- `cargo shuyi app-info` writes the part into `code` as the game's
+  `APP`, a `shuyi::platform::AppInfo` the binary reads; `--check` fails
+  when the file is out of date.
+
 ## Checking them
 
 ```bash
@@ -45,7 +62,10 @@ checks, for each target the game lists, that:
   named after it, `targets: { "steam-deck": { … } }`; when the actions
   don't fit, the screen changes, since the engine never folds actions
   onto fewer buttons;
-- on a one-bit target, every palette role has a pattern.
+- on a one-bit target, every palette role has a pattern;
+- the `app` part keeps its rules, and the file `app-info` writes is up
+  to date. An id under `com.example.` is a warning: two games with it
+  share their saves.
 
 Each problem names its target, the setting in `shuyi.ron` and the
 numbers. `--target <id>` checks one.
