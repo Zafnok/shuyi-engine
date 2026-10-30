@@ -8,7 +8,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 3ff31f910a652891 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-be2d480904105f96 AGENTS.md
+ad74a42c31ccec50 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 c711d1bb70e03694 README.md
@@ -25,8 +25,8 @@ f23feaa7846d2643 crates/game/src/app_info.rs
 db2db64dafb70062 crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 ffa20be348ab831e crates/game/src/stages.rs
-e48dd42a787497ae crates/game/src/title.rs
-10139ba4e01f1301 crates/game/tests/it/main.rs
+fbc4754f1d90d0da crates/game/src/title.rs
+83eee765479e0484 crates/game/tests/it/main.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
@@ -38,7 +38,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 3ff31f910a652891 .github/workflows/ci.yml
 4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-be2d480904105f96 AGENTS.md
+ad74a42c31ccec50 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 e38c9bf7515affe5 Cargo.toml
 c711d1bb70e03694 README.md
@@ -58,8 +58,8 @@ c2a32153feca5b36 crates/game/src/main.rs
 b3e48be6b267ac9f crates/game/src/stages/top_down_grid/tools.rs
 db5e2588379a32b0 crates/game/src/stages/top_down_grid.rs
 4840525a6e19d42d crates/game/src/stages.rs
-e48dd42a787497ae crates/game/src/title.rs
-10139ba4e01f1301 crates/game/tests/it/main.rs
+fbc4754f1d90d0da crates/game/src/title.rs
+83eee765479e0484 crates/game/tests/it/main.rs
 ad302237f9ed6ee7 crates/game/tests/stage.rs
 dd2774be3effd43f crates/rules/AGENTS.md
 7d39342f9c953a2a crates/rules/Cargo.toml

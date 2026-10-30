@@ -1,6 +1,8 @@
 //! The title, the game's first screen: the game's name in a box, a line
 //! under it, and the help. Confirm starts the first stage, if the game
-//! has one ([`crate::stages`]); Cancel leaves the game.
+//! has one ([`crate::stages`]); Cancel leaves the game, where the game can
+//! (`ctx.platform.can_quit()`: not on the web, where the player closes the
+//! tab, nor on a console, where the home button leaves).
 //!
 //! It builds a [`TitleView`] (plain data) and paints it with glyphs:
 //! tests of what it shows read the view.
@@ -18,7 +20,8 @@ pub struct TitleView {
     pub subtitle: String,
     /// How to start the first stage, if the game has one.
     pub play: Option<String>,
-    /// The help line.
+    /// The help line: empty where the game can't quit, since Cancel is the
+    /// only thing it would name.
     pub help: String,
 }
 
@@ -33,7 +36,11 @@ impl Title {
             title: ctx.text("title.name").to_owned(),
             subtitle: ctx.text("title.subtitle").to_owned(),
             play: (!stages::names().is_empty()).then(|| ctx.text_with("title.play", &[])),
-            help: ctx.text_with("title.help", &[]),
+            help: if ctx.platform.can_quit() {
+                ctx.text_with("title.help", &[])
+            } else {
+                String::new()
+            },
         }
     }
 }
@@ -54,7 +61,7 @@ impl Screen<Data> for Title {
     }
 
     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
-        if input.actions.contains(&UiAction::Cancel) {
+        if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel) {
             return Transition::Quit;
         }
         if input.actions.contains(&UiAction::Confirm)
