@@ -109,8 +109,8 @@ pub fn brightness([r, g, b, _]: [u8; 4]) -> u8 {
 /// The one-bit picture file of `image` made by `settings`: one style the
 /// image's size, and a mask if a pixel is see-through. Its source size is
 /// the image's own. An error, in plain words, for a picture too big for
-/// the file (a side over 65,535 pixels), or for one with a grey under
-/// [`Dither::None`].
+/// the file (a side over 65,535 pixels), with no pixels or short of them,
+/// or for one with a grey under [`Dither::None`].
 pub fn dither(image: &Image, settings: OneBitSettings) -> Result<Vec<u8>, String> {
     let too_big = || {
         format!(
@@ -121,7 +121,13 @@ pub fn dither(image: &Image, settings: OneBitSettings) -> Result<Vec<u8>, String
     let width = u16::try_from(image.width).map_err(|_| too_big())?;
     let height = u16::try_from(image.height).map_err(|_| too_big())?;
     let size = usize::from(width) * usize::from(height);
-    if width == 0 || height == 0 || image.rgba.len() != size * 4 {
+    if width == 0 || height == 0 {
+        return Err(format!(
+            "a {}×{} px picture has no pixels",
+            image.width, image.height
+        ));
+    }
+    if image.rgba.len() != size * 4 {
         return Err(format!(
             "a {}×{} px picture needs {} bytes of pixels, and has {}",
             image.width,

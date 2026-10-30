@@ -165,6 +165,13 @@ fn a_flat_grey_under_bayer_is_the_pattern_maps_dither() {
             assert_eq!(style[y * 2], pattern[y % 8], "grey {v}, row {y}");
             assert_eq!(style[y * 2 + 1], pattern[y % 8], "grey {v}, row {y}");
         }
+        // A width that isn't a multiple of 8 starts each row at the
+        // pattern's first column too.
+        let narrow = image(3, &[grey(v); 3 * 8]);
+        let file = dither(&narrow, OneBitSettings::new(Dither::Bayer)).unwrap_or_default();
+        let style = Bitmap::parse(&file).map(|b| b.style(0).map(<[u8]>::to_vec));
+        let rows: Vec<u8> = pattern.iter().map(|row| row & 0b1110_0000).collect();
+        assert_eq!(style, Ok(Some(rows)), "grey {v}, 3 wide");
     }
 }
 
@@ -199,7 +206,16 @@ fn a_picture_too_big_or_short_of_pixels_is_refused() {
         error.as_deref(),
         Some("a 2×2 px picture needs 16 bytes of pixels, and has 12")
     );
-    assert!(dither(&Image::default(), OneBitSettings::default()).is_err());
+    for (width, height) in [(0, 2), (2, 0), (0, 0)] {
+        let empty = Image {
+            width,
+            height,
+            rgba: Vec::new(),
+        };
+        let error = dither(&empty, OneBitSettings::default()).err();
+        let expected = format!("a {width}×{height} px picture has no pixels");
+        assert_eq!(error, Some(expected));
+    }
 }
 
 #[test]
@@ -313,6 +329,7 @@ fn the_format_names_the_file_of_a_grey_under_none_and_reads_a_one_bit_file() {
     // A one-bit picture file in a PNG's place is read as it is.
     let drawn = picture(files, "drawn.png").unwrap_or_else(|e| panic!("{e:?}"));
     assert_eq!(drawn.file(), file);
+    assert_eq!(drawn.into_file(), file);
     assert!(picture(files, "bad.png").is_err());
     let formats = Formats::standard();
     assert_eq!(
@@ -320,6 +337,10 @@ fn the_format_names_the_file_of_a_grey_under_none_and_reads_a_one_bit_file() {
         ["one-bit", "dithered"],
         "a one-bit file is known by its bytes first"
     );
+    // A one-bit file claims no extension; only a PNG is dithered.
+    assert_eq!(formats.extensions::<OneBitPicture>(), ["png"]);
+    assert!(Dithered.sniff(b"\x89PNG\r\n\x1a\n"));
+    assert!(!Dithered.sniff(&file));
     let cx = DecodeCx::new();
     assert!(
         Dithered

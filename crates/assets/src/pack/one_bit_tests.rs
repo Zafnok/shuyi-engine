@@ -97,10 +97,22 @@ fn decoding_a_baked_picture_equals_dithering_its_decoded_source() {
         let again = dither(&image, settings_of(name).0).map(OneBitPicture::new);
         assert_eq!(decoded.ok(), again.ok().and_then(Result::ok), "{path}");
     }
-    // The check proves the same of every picture, and the rest is kept.
+    // Reading every picture as the game would finds no error in the
+    // sources nor in the pack, and a picture that doesn't read is one.
     let mut formats = Formats::standard();
     bake.register(&mut formats)
         .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(bake.load(&formats, &source), []);
+    assert_eq!(bake.load(&formats, &pack), []);
+    let broken = layer(
+        "broken",
+        vec![("images/ramp.png".to_owned(), b"\x89PNG".to_vec())],
+    );
+    let broken = Bundle::new(vec![broken, game()]);
+    let errors = bake.load(&formats, &broken);
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].file, "broken/images/ramp.png");
+    // The check proves the same of every picture, and the rest is kept.
     assert_eq!(bake.check(&formats, &source, &pack), []);
     assert_eq!(pack.bytes("data/palette.ron"), Some(&b"{}"[..]));
     assert_eq!(

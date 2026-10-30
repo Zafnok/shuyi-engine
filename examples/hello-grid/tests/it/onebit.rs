@@ -132,6 +132,14 @@ fn the_playdate_pack_holds_every_picture_one_bit_and_the_game_plays_from_it() {
     }
     let tiles = Bitmap::parse(pack.get("tiles.png").unwrap_or_default());
     assert_eq!(tiles.map(|t| t.source_size()), Ok((192, 24)));
+    // A colour target, or none, keeps its pictures as they are.
+    for target in [None, Some("web"), Some("no-such-target")] {
+        let kinds = HelloTools
+            .bake(target)
+            .map(|game| game.bake.kinds())
+            .unwrap_or_else(|e| panic!("{e}"));
+        assert!(!kinds.contains(&"one-bit picture"), "{target:?}: {kinds:?}");
+    }
     let game = HelloTools
         .bake(Some("playdate"))
         .unwrap_or_else(|e| panic!("{e}"));
