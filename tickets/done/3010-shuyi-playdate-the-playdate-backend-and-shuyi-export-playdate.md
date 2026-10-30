@@ -444,4 +444,18 @@ after: |
 find: ["web: None }"]
 ```
 
+Breaking: shuyi-platform: `Look`, `Frame`, `Show`: `Look` holds a `&dyn Images`, so it is no longer `Send`, `Sync` or unwind safe, and `Frame` and `Show` no longer unwind safe: nothing here moved one across threads or a `catch_unwind`, and code that did draws on its own thread.
+
+```migration
+since: 0.2.0
+what: Look holds a one-bit look with a &dyn Images, so it no longer crosses threads or a catch_unwind.
+old: "std::panic::catch_unwind(|| paint(look))"
+new: "paint(look)"
+before: |
+  let _ = std::panic::catch_unwind(|| paint(look));
+after: |
+  paint(look);
+find: ["catch_unwind(|| paint(look))"]
+```
+
 Book: chapter 9 (`targets-and-export.md`) names the Playdate's package.
