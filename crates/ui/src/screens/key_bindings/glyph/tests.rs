@@ -682,3 +682,96 @@ fn the_small_console_snapshot() {
     let buf = painted_on(&c, &small_view(), SMALL);
     insta::assert_snapshot!(buf.to_snapshot(&c.palette));
 }
+
+/// [`view`] with its optional rows listed twice more, so the list is
+/// longer than the panel on [`PC`].
+fn long_view() -> KeyBindingsView {
+    let mut v = view(Side::Keyboard);
+    let more = v.groups[1].clone();
+    v.groups.push(GroupView {
+        heading: "More".to_owned(),
+        ..more.clone()
+    });
+    v.groups.push(GroupView {
+        heading: "Even more".to_owned(),
+        ..more
+    });
+    v
+}
+
+/// The last row a row may use on [`PC`]: the one over the panel's bottom
+/// border.
+const LAST_ROW: i32 = PANEL.y + PANEL.h - 2;
+
+/// A list that fits doesn't scroll, and shows no arrows.
+#[test]
+fn a_list_that_fits_doesnt_scroll() {
+    let c = ctx();
+    let v = view(Side::Keyboard);
+    let placed = place(&v);
+    assert!(placed.restore <= LAST_ROW);
+    let none = Scroll {
+        by: 0,
+        above: false,
+        below: false,
+    };
+    assert_eq!(scroll(&v, &placed, LAST_ROW), none);
+    let buf = painted(&c, &v);
+    assert!(!text(&buf, FIRST_ROW).contains('▲'));
+    assert!(!text(&buf, LAST_ROW).contains('▼'));
+}
+
+/// A list longer than the panel starts at its top, a `▼` on the border
+/// saying more is below; Restore defaults focused moves it up just enough
+/// for Restore defaults to be on the last row, a `▲` saying rows are
+/// hidden above; nothing is drawn outside the panel.
+#[test]
+fn a_list_longer_than_the_panel_scrolls_to_the_focus() {
+    let c = ctx();
+    let mut v = long_view();
+    let placed = place(&v);
+    assert!(placed.restore > LAST_ROW);
+    let buf = painted(&c, &v);
+    assert!(text(&buf, 4).contains("Must have a key"));
+    assert!(
+        text(&buf, LAST_ROW).ends_with("▼  "),
+        "{}",
+        text(&buf, LAST_ROW)
+    );
+    assert!(!text(&buf, FIRST_ROW).contains('▲'));
+    let border = text(&buf, LAST_ROW + 1);
+    assert!(border.trim().starts_with('└'), "{border}");
+    v.restore.focused = true;
+    let scrolled = scroll(&v, &placed, LAST_ROW);
+    assert_eq!(scrolled.by, placed.restore - LAST_ROW);
+    assert!(scrolled.above && !scrolled.below);
+    let buf = painted(&c, &v);
+    assert!(text(&buf, LAST_ROW).contains(" Restore defaults "));
+    // The list starts on the row under the columns' headings, which stay.
+    assert!(text(&buf, COLUMNS_Y).contains("Key 1"));
+    assert!(text(&buf, COLUMNS_Y + 1).contains('▲'));
+    assert!(!text(&buf, COLUMNS_Y + 1).contains("Must have a key"));
+    let first = text(&buf, COLUMNS_Y + 1);
+    assert!(first.trim_start_matches(['│', ' ']).len() > 3, "{first}");
+    let border = text(&buf, LAST_ROW + 1);
+    assert!(border.trim().starts_with('└'), "{border}");
+}
+
+/// A focused action below the panel's last row is scrolled up to it, and
+/// its choices open beside it where it is shown.
+#[test]
+fn a_focused_action_below_the_panel_is_scrolled_into_view() {
+    let c = ctx();
+    let mut v = long_view();
+    let last_group = v.groups.len() - 1;
+    v.groups[last_group].rows[0].focus = Some(0);
+    let placed = place(&v);
+    let natural = placed.actions[v.rows().position(RowView::focused).unwrap()];
+    assert!(natural > LAST_ROW);
+    let scrolled = scroll(&v, &placed, LAST_ROW);
+    assert_eq!(scrolled.by, natural - LAST_ROW);
+    assert!(scrolled.above && scrolled.below);
+    let buf = painted(&c, &v);
+    let bar = c.palette.engine(EngineColor::Focus);
+    assert_eq!(buf.get(SLOTS_X, LAST_ROW).unwrap().bg, bar);
+}

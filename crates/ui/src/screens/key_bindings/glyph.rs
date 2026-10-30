@@ -13,6 +13,11 @@
 //! long for its column is cut, its last cell a `…`, and the not-mapped
 //! note, with no room after the slots, is written over them (they are all
 //! empty when it shows).
+//!
+//! Rows that don't fit the panel scroll: the list moves up
+//! just enough to keep the focused row (or Restore defaults) on the panel,
+//! and a `▲` or `▼` on the panel's right border says rows are hidden above
+//! or below.
 
 use super::Side;
 use super::view::{ChoicesView, KeyBindingsView, RowView, SlotView, SwitchView};
@@ -204,6 +209,63 @@ fn place<A>(view: &KeyBindingsView<A>) -> Rows {
     }
 }
 
+/// How far the rows are moved up so the focused one shows, and whether
+/// rows are hidden above or below the panel.
+#[derive(Debug, PartialEq, Eq)]
+struct Scroll {
+    /// Rows the list is moved up by.
+    by: i32,
+    /// Whether rows are hidden above the first one shown.
+    above: bool,
+    /// Whether rows are hidden below the last one shown.
+    below: bool,
+}
+
+/// The first console row the list may use: under the columns' headings.
+const FIRST_ROW: i32 = COLUMNS_Y + 1;
+
+/// The scroll of `placed` (`view`'s rows) on a panel whose last inner row
+/// is `last`: none while Restore defaults fits; else just enough that the
+/// focused action (or Restore defaults) is on row `last` or above.
+fn scroll<A: Copy + PartialEq>(view: &KeyBindingsView<A>, placed: &Rows, last: i32) -> Scroll {
+    let end = placed.restore;
+    if end <= last {
+        return Scroll {
+            by: 0,
+            above: false,
+            below: false,
+        };
+    }
+    let focused = view
+        .rows()
+        .zip(&placed.actions)
+        .find_map(|(row, &y)| row.focused().then_some(y))
+        .or_else(|| view.restore.focused.then_some(end));
+    // The focus is never below Restore defaults, so this never scrolls
+    // past it.
+    let by = focused.map_or(0, |y| y - last).max(0);
+    Scroll {
+        by,
+        above: by > 0,
+        below: end - by > last,
+    }
+}
+
+/// `placed` moved up by `scroll`, its rows outside `FIRST_ROW..=last`
+/// marked with `None`.
+fn shown(
+    placed: &Rows,
+    scroll: &Scroll,
+    last: i32,
+) -> (Vec<Option<i32>>, Vec<Option<i32>>, Option<i32>) {
+    let on = |y: i32| Some(y - scroll.by).filter(|y| (FIRST_ROW..=last).contains(y));
+    (
+        placed.headings.iter().map(|&y| on(y)).collect(),
+        placed.actions.iter().map(|&y| on(y)).collect(),
+        on(placed.restore),
+    )
+}
+
 /// Paints `view` over the whole of `buf`.
 pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: &mut GlyphBuffer) {
     let c = |e| ctx.palette.engine(e);
@@ -226,20 +288,36 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
         buf.print(at.slot_x(j) + 1, COLUMNS_Y, &heading, dim, bg);
     }
     let placed = place(view);
-    let mut rows = view.rows().zip(&placed.actions);
-    for (group, &heading_y) in view.groups.iter().zip(&placed.headings) {
-        buf.print(at.heading_x(), heading_y, &group.heading, bar, bg);
+    let last = at.panel.y + at.panel.h - 2;
+    let scrolled = scroll(view, &placed, last);
+    let (headings, actions, restore) = shown(&placed, &scrolled, last);
+    let mut rows = view.rows().zip(&actions);
+    for (group, heading_y) in view.groups.iter().zip(&headings) {
+        if let Some(y) = *heading_y {
+            buf.print(at.heading_x(), y, &group.heading, bar, bg);
+        }
         for _ in &group.rows {
-            if let Some((row, &y)) = rows.next() {
+            if let Some((row, &Some(y))) = rows.next() {
                 paint_row(ctx, buf, view, row, &at, y);
             }
         }
     }
-    if view.restore.focused {
-        let label = format!(" {} ", view.restore.label);
-        buf.print(at.label_x - 1, placed.restore, &label, bg, bar);
-    } else {
-        buf.print(at.label_x, placed.restore, &view.restore.label, text, bg);
+    match restore {
+        Some(y) if view.restore.focused => {
+            let label = format!(" {} ", view.restore.label);
+            buf.print(at.label_x - 1, y, &label, bg, bar);
+        }
+        Some(y) => {
+            buf.print(at.label_x, y, &view.restore.label, text, bg);
+        }
+        None => {}
+    }
+    let border = c(EngineColor::Border);
+    if scrolled.above {
+        buf.print(at.right(), FIRST_ROW, "▲", border, bg);
+    }
+    if scrolled.below {
+        buf.print(at.right(), last, "▼", border, bg);
     }
 
     if let Some(message) = &view.message {
@@ -252,8 +330,8 @@ pub fn paint<G: GameData>(ctx: &Ctx<G>, view: &KeyBindingsView<G::Action>, buf: 
     if let Some(choices) = &view.choices {
         let focused_y = view
             .rows()
-            .zip(&placed.actions)
-            .find_map(|(row, &y)| row.focused().then_some(y));
+            .zip(&actions)
+            .find_map(|(row, &y)| y.filter(|_| row.focused()));
         if let Some(y) = focused_y {
             paint_choices(ctx, buf, choices, &at, y);
         }
