@@ -136,8 +136,7 @@ fn the_playdate_pack_holds_every_picture_one_bit_and_the_game_plays_from_it() {
     for target in [None, Some("web"), Some("no-such-target")] {
         let kinds = HelloTools
             .bake(target)
-            .map(|game| game.bake.kinds())
-            .unwrap_or_else(|e| panic!("{e}"));
+            .map_or_else(|e| panic!("{e}"), |game| game.bake.kinds());
         assert!(!kinds.contains(&"one-bit picture"), "{target:?}: {kinds:?}");
     }
     let game = HelloTools
