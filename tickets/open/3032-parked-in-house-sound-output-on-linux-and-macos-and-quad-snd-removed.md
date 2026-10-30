@@ -55,12 +55,12 @@ at hand, say so, and the ticket notes that macOS was tested only in CI.
   `pkg-config --modversion alsa` to the soname `libasound.so.2`. The
   row's packages, and the package lines of every
   `scripts/setup-linux.sh`, follow if the package changes.
-  **Either order with 3004:** if 3004 is done, remove `libasound.so.2`
+  **Either order with 3071:** if 3071 is done, remove `libasound.so.2`
   from the `linux` and `linux-arm64` lists in
-  `crates/cli/export/libraries.ron` (3004's library audit), so a link to
+  `crates/cli/export/libraries.ron` (3071's library audit), so a link to
   ALSA at build time fails the export, and drop it from
   `docs/targets/desktop.md` if that names it; if not, nothing to do
-  (3004 leaves it out).
+  (3071 leaves it out).
 - **macOS**: a default-output Audio Unit with a render callback, through
   the `objc2-*` crates.
 - **The switch**: `in-house-sound` becomes the only path:

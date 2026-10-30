@@ -1,0 +1,5 @@
+{base}/HOW-TO-OPEN.txt
+{base}/NOTICES.txt
+{base}/hello-grid.app/Contents/Info.plist
+{base}/hello-grid.app/Contents/MacOS/hello-grid
+{base}/hello-grid.app/Contents/_CodeSignature/CodeResources

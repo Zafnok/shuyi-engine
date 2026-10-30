@@ -22,7 +22,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::notices::{self, Section, Text, Work};
+use crate::export::paths;
+use crate::notices::{self, EngineFile, Section, Work};
 use crate::project::Web;
 
 /// The shell's files: name and contents. `index.html` has `%TITLE%` and
@@ -36,89 +37,43 @@ const SHELL: [(&str, &str); 5] = [
 ];
 
 /// Where a file of [`SHELL`] comes from, for `NOTICES.txt`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Origin {
     /// The engine's own code, under the engine's licenses.
     Engine,
-    /// Vendored from another work, under MIT.
-    Vendored {
-        /// The work it comes from.
-        work: &'static str,
-        /// The work's version.
-        version: &'static str,
-        /// Where it comes from.
-        source: &'static str,
-        /// Its license text's file in `web/`, and the text.
-        text: (&'static str, &'static str),
-    },
+    /// Vendored from another work: its row of [`notices::FILES`].
+    Vendored,
 }
 
 /// Each file of [`SHELL`], by name, and where it comes from.
 const SHELL_NOTICES: [(&str, Origin); 5] = [
     ("index.html", Origin::Engine),
-    (
-        "mq_js_bundle.js",
-        Origin::Vendored {
-            work: "macroquad",
-            version: "0.4.16",
-            source: "https://github.com/not-fl3/macroquad",
-            text: (
-                "mq_js_bundle-LICENSE-MIT.txt",
-                include_str!("../web/mq_js_bundle-LICENSE-MIT.txt"),
-            ),
-        },
-    ),
-    (
-        "sapp_jsutils.js",
-        Origin::Vendored {
-            work: "sapp-jsutils",
-            version: "0.1.7",
-            source: "https://github.com/not-fl3/sapp-jsutils",
-            text: (
-                "sapp_jsutils-LICENSE-MIT.txt",
-                include_str!("../web/sapp_jsutils-LICENSE-MIT.txt"),
-            ),
-        },
-    ),
-    (
-        "quad-storage.js",
-        Origin::Vendored {
-            work: "quad-storage",
-            version: "0.1.3",
-            source: "https://github.com/optozorax/quad-storage",
-            text: (
-                "quad-storage-LICENSE-MIT.txt",
-                include_str!("../web/quad-storage-LICENSE-MIT.txt"),
-            ),
-        },
-    ),
+    ("mq_js_bundle.js", Origin::Vendored),
+    ("sapp_jsutils.js", Origin::Vendored),
+    ("quad-storage.js", Origin::Vendored),
     ("gamepad.js", Origin::Engine),
 ];
+
+/// The row of [`notices::FILES`] of the shell's file `name`.
+fn vendored(name: &str) -> Option<&'static EngineFile> {
+    notices::FILES
+        .iter()
+        .find(|file| file.file.strip_prefix("crates/cli/web/") == Some(name))
+}
 
 /// The shell's files as works of `NOTICES.txt`, in the shell's order.
 pub fn shell_works() -> Vec<Work> {
     SHELL_NOTICES
         .iter()
-        .map(|(file, origin)| match origin {
-            Origin::Engine => Work {
+        .map(|(file, origin)| match (origin, vendored(file)) {
+            (Origin::Vendored, Some(vendored)) => vendored.work(Section::Shell),
+            _ => Work {
                 section: Section::Shell,
                 name: format!("{file}, from Shuyi Engine"),
                 version: env!("CARGO_PKG_VERSION").to_owned(),
                 license: env!("CARGO_PKG_LICENSE").to_owned(),
                 source: env!("CARGO_PKG_REPOSITORY").to_owned(),
                 texts: notices::engine_texts(),
-            },
-            Origin::Vendored {
-                work,
-                version,
-                source,
-                text,
-            } => Work {
-                section: Section::Shell,
-                name: format!("{file}, from {work}"),
-                version: (*version).to_owned(),
-                license: "MIT".to_owned(),
-                source: (*source).to_owned(),
-                texts: vec![Text::new(text.0, text.1)],
             },
         })
         .collect()
@@ -129,21 +84,20 @@ pub fn shell_works() -> Vec<Work> {
 /// before `"use strict";` keeps it strict, and `/*!` survives
 /// minifiers); the engine's own files are as committed.
 fn shipped_shell_file(name: &str, text: &str) -> String {
-    let origin = SHELL_NOTICES
-        .iter()
-        .find(|(file, _)| *file == name)
-        .map(|(_, origin)| origin);
-    match origin {
-        Some(Origin::Vendored { work, version, .. }) => format!(
-            "/*! {name}: {work} {version}, MIT. See {}. */\n{text}",
+    match vendored(name) {
+        Some(file) => format!(
+            "/*! {name}: {} {}, {}. See {}. */\n{text}",
+            file.work,
+            file.version,
+            file.license,
             notices::FILE
         ),
-        _ => text.to_owned(),
+        None => text.to_owned(),
     }
 }
 
 /// The target the game is built for.
-const TARGET: &str = "wasm32-unknown-unknown";
+pub(crate) const TARGET: &str = "wasm32-unknown-unknown";
 
 /// Parsed `web` arguments.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -191,7 +145,7 @@ pub fn parse_args(rules: &Web, command: &str, args: &[String]) -> Result<Options
 }
 
 /// The `cargo` arguments that build the wasm binary for `options`.
-fn cargo_args(rules: &Web, options: &Options) -> Vec<String> {
+pub(crate) fn cargo_args(rules: &Web, options: &Options) -> Vec<String> {
     let mut args: Vec<String> = ["build", "-p", &rules.package, "--target", TARGET]
         .map(str::to_owned)
         .to_vec();
@@ -259,15 +213,28 @@ fn target_dir_of(
 /// license texts, [`notices::game_texts`]); the crates compiled in and the
 /// shell's files are found here. A crate with no license text found is
 /// named in a warning.
+///
+/// A release build has its paths remapped, and its binary is refused if it
+/// still holds one of the build machine's ([`paths`]).
 pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result<String, String> {
     let cargo = crate::cargo();
-    let status = Command::new(cargo)
-        .args(cargo_args(rules, options))
-        .current_dir(root)
+    let target = target_dir(root);
+    let workspace = workspace_root(root);
+    let mut build = Command::new(cargo);
+    build.args(cargo_args(rules, options)).current_dir(root);
+    if options.release {
+        let remaps = paths::remaps(&workspace, &target, &rules.package);
+        build.env(paths::ENCODED, paths::remapped_flags_here(&remaps));
+    }
+    let status = build
         .status()
         .map_err(|e| format!("spawn cargo build: {e}"))?;
     if !status.success() {
         return Err(format!("cargo build exited with {status}"));
+    }
+    if options.release {
+        let needles = paths::needles(&[root, &workspace]);
+        paths::check_file(&wasm_artifact_path(rules, &target, options), &needles)?;
     }
     let mut works = notices::crates(root, &rules.package, TARGET, &options.features)?;
     let bare: Vec<&str> = works
@@ -284,14 +251,21 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
     }
     works.extend(shell_works());
     works.extend(game.iter().cloned());
-    package(
-        &RealWasmOpt,
-        rules,
-        root,
-        &target_dir(root),
-        options,
-        &works,
-    )
+    package(&RealWasmOpt, rules, root, &target, options, &works)
+}
+
+/// The root of the workspace the project at `root` builds in: the folder
+/// of `cargo locate-project --workspace`'s manifest, else `root`.
+pub fn workspace_root(root: &Path) -> PathBuf {
+    Command::new(crate::cargo())
+        .args(["locate-project", "--workspace", "--message-format", "plain"])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .and_then(|output| String::from_utf8(output.stdout).ok())
+        .and_then(|text| PathBuf::from(text.trim()).parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| root.to_path_buf())
 }
 
 /// Copies the wasm artifact and writes the web shell and `NOTICES.txt`
@@ -701,7 +675,10 @@ mod tests {
         write_wasm(&root, &debug(), b"w");
         let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
         let mut font = Work::new(Section::Game, "files/font/OFL.txt");
-        font.texts = vec![Text::new("files/font/OFL.txt", "Open Font License\n")];
+        font.texts = vec![notices::Text::new(
+            "files/font/OFL.txt",
+            "Open Font License\n",
+        )];
         let mut works = shell_works();
         works.push(font);
         package(
@@ -729,47 +706,42 @@ mod tests {
     }
 
     #[test]
-    fn every_shell_file_has_its_notice_and_every_vendored_one_its_row_in_third_party_assets() {
+    fn every_shell_file_has_its_notice_and_the_vendored_ones_are_the_web_files() {
         let table: Vec<&str> = SHELL_NOTICES.iter().map(|(file, _)| *file).collect();
         let shell: Vec<&str> = SHELL.iter().map(|(file, _)| *file).collect();
         assert_eq!(
             table, shell,
             "a file of SHELL needs its row in SHELL_NOTICES"
         );
-        let assets = include_str!("../../../THIRD_PARTY_ASSETS.md");
-        // The scripts it names, as `crates/cli/web/<file>.js`.
-        let mut listed: Vec<&str> = assets
-            .split("`crates/cli/web/")
-            .skip(1)
-            .filter_map(|rest| rest.split('`').next())
-            .filter(|file| Path::new(file).extension().is_some_and(|ext| ext == "js"))
-            .collect();
-        listed.sort_unstable();
-        listed.dedup();
+        // The vendored scripts are the web files of `notices::FILES`, which
+        // a test keeps equal to THIRD_PARTY_ASSETS.md.
         let mut vendored: Vec<&str> = SHELL_NOTICES
             .iter()
-            .filter(|(_, origin)| matches!(origin, Origin::Vendored { .. }))
+            .filter(|(_, origin)| *origin == Origin::Vendored)
             .map(|(file, _)| *file)
             .collect();
         vendored.sort_unstable();
-        assert_eq!(listed, vendored);
+        let mut web: Vec<&str> = notices::FILES
+            .iter()
+            .filter(|file| file.builds.contains(&notices::Build::Web))
+            .filter_map(|file| file.file.strip_prefix("crates/cli/web/"))
+            .collect();
+        web.sort_unstable();
+        assert_eq!(vendored, web);
         for (file, origin) in &SHELL_NOTICES {
-            if let Origin::Vendored { version, text, .. } = origin {
-                let row = assets
-                    .lines()
-                    .find(|line| line.starts_with(&format!("| `crates/cli/web/{file}`")))
-                    .unwrap_or_else(|| panic!("{file} has a row in THIRD_PARTY_ASSETS.md"));
-                assert!(row.contains(&format!("| {version} ")), "{file}: {row}");
-                assert!(row.contains(text.0), "{file}: {row}");
-            }
+            assert_eq!(
+                super::vendored(file).is_some(),
+                *origin == Origin::Vendored,
+                "{file}"
+            );
         }
     }
 
     #[test]
     fn a_vendored_script_starts_with_a_one_line_header_and_the_engines_files_get_none() {
-        for (file, origin) in &SHELL_NOTICES {
+        for (file, _) in &SHELL_NOTICES {
             let shipped = shipped_shell_file(file, shell(file));
-            if let Origin::Vendored { work, version, .. } = origin {
+            if let Some(EngineFile { work, version, .. }) = vendored(file) {
                 let (first, rest) = shipped.split_once('\n').unwrap();
                 assert!(first.starts_with("/*! "), "{file}: {first}");
                 assert!(first.ends_with(" */"), "{file}: {first}");

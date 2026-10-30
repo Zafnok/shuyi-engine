@@ -1,6 +1,6 @@
 //! `doctor`: checks the toolchain a game on the engine builds with: Rust
-//! and Cargo, rustup's targets, MSYS2's linker on the Windows GNU
-//! toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
+//! and Cargo, rustup's targets, MSYS2's linker and `objcopy` on the
+//! Windows GNU toolchain (`AGENTS.md`), on Linux the C linker, `pkg-config` and the
 //! system libraries the backend links and opens, and the web target.
 //! Each check says what it found and, if it failed, how to fix it (its
 //! help): on Linux, the install command for the distribution's package
@@ -184,6 +184,21 @@ pub fn checks(probe: &dyn Probe) -> DoctorOutput {
     }
     if host.as_deref().is_some_and(|h| h.contains("-linux-")) {
         checks.extend(linux::checks(probe));
+    }
+    // `export --release` strips the package's copy of the program with
+    // binutils' objcopy. On Linux the C linker's packages (the `cc` row)
+    // bring binutils.
+    if host.as_deref().is_some_and(|h| h.ends_with("windows-gnu")) {
+        checks.push(match probe.output("objcopy", &["--version"]) {
+            Some(text) => pass("objcopy", first_line(&text)),
+            None => fail(
+                "objcopy",
+                None,
+                "`export --release` strips the package's program with binutils' objcopy, which \
+                 comes with MSYS2's mingw-w64 GCC: `C:\\msys64\\usr\\bin\\pacman.exe -S \
+                 mingw-w64-x86_64-binutils`, with C:\\msys64\\mingw64\\bin on PATH",
+            ),
+        });
     }
     let has_wasm = targets
         .as_deref()
@@ -371,9 +386,26 @@ mod tests {
         let targets = "x86_64-pc-windows-gnu\n";
         let machine = rust("x86_64-pc-windows-gnu").with("rustup target list --installed", targets);
         let output = checks(&machine);
-        assert_eq!(names(&output, false), ["msys2-gcc", "wasm-target"]);
+        assert_eq!(
+            names(&output, false),
+            ["msys2-gcc", "objcopy", "wasm-target"]
+        );
         let msys = &output.checks[3];
         assert!(msys.help.as_deref().unwrap().contains("MSYS2.MSYS2"));
+        let objcopy = &output.checks[4];
+        assert!(
+            objcopy
+                .help
+                .as_deref()
+                .unwrap()
+                .contains("mingw-w64-x86_64-binutils")
+        );
+        let with = machine.with("objcopy --version", "GNU objcopy (GNU Binutils) 2.45\n");
+        let check = &checks(&with).checks[4];
+        assert_eq!(
+            check.found.as_deref(),
+            Some("GNU objcopy (GNU Binutils) 2.45")
+        );
         let wasm = output.checks.last().unwrap();
         assert_eq!(
             wasm.help.as_deref(),

@@ -304,6 +304,13 @@ const START: &str = "Build the game's tool program and start its game headless i
      play a player's input on it and read its frame, picture and log (no scene, events or \
      sounds), `reset` is refused, and `stop` leaves it running.";
 
+/// What `export`'s tool does.
+const EXPORT: &str = "Check the game against `target` (`windows`, `linux`, `macos`, `web`), then \
+     build and package it there: a zip, a tar.gz, a signed .app or a web folder and its zip, \
+     each with NOTICES.txt, and export-report.json beside it, in `out` (dist/export/<target> by \
+     default). `release` remaps the build's paths and keeps the debug file beside the package; \
+     `run` runs the package after.";
+
 /// `lint`'s description.
 const LINT: &str = "Check the game's code: keys named in code or text (check-keys), screen text as literals \
      (check-text), and the rules crate's fence (clippy's bans on hash maps, floats, clocks, \
@@ -387,6 +394,7 @@ fn description(op: Op, session: bool) -> &'static str {
              and how to fix it. Every failed answer has a `code`."
         }
         (Op::Attach, _) => ATTACH,
+        (Op::Export, _) => EXPORT,
         (Op::Start, _) => START,
         (Op::Step, _) => {
             "Play on in the session: a script of keys, pad buttons and waits, then `frames` idle \

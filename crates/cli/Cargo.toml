@@ -59,6 +59,10 @@ toml_edit = { version = "0.25", default-features = false, features = ["parse", "
 semver = { version = "1", default-features = false, features = ["std", "serde"] }
 # A skill's frontmatter (`SKILL.md`'s YAML), for `check-skills`.
 serde_norway = "0.9"
+# `export`'s archives: deflate and gzip for its zips and `tar.gz`
+# (miniz_oxide, in Rust), and the zip's CRC-32.
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+crc32fast = { version = "1", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 # The toy game's tools for the integration tests in tests/.

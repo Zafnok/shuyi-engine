@@ -63,8 +63,7 @@ What Shuyi has with 3040 done (ADR-0030), lines as of 2026-10-24:
 Why it matters. Visions of Shuyi is getting ready for Steam
 (game#0903) as a Windows release build. The first player whose game
 misbehaves has nothing to send, and its developer nothing to read. The
-same holds for every game exported by 3004, so it comes before 3004 in
-`docs/ROADMAP.md`'s order.
+same holds for every game `shuyi export` (3004, done) packages.
 
 ## Nick input
 
@@ -166,7 +165,7 @@ None.
     files at the top of that folder, so `logs/` never shows up as a save.
     A public `shuyi_app::storage::log_dir(name) -> Option<PathBuf>`
     (`data_dir(name)` joined with `logs`) names the folder, for `run`,
-    the docs, 3004 and 3046.
+    the docs (`docs/targets/desktop.md` among them) and 3046.
     - **Rotation at start:** `previous-2.log` becomes `previous-3.log`,
       `previous-1.log` becomes `previous-2.log`, `latest.log` becomes
       `previous-1.log`, and the old `previous-3.log` is deleted. The last
@@ -240,6 +239,13 @@ None.
   `docs/targets/steam-deck.md` also says that the log files land in
   the `logs` folder (`storage::log_dir`) of the data folder it names;
   if not, nothing to do (3012 adds that line, its scope says so).
+  **From 3004 (done):** `docs/targets/desktop.md` (what the `windows`,
+  `linux` and `macos` packages run on, and how to make them) has no
+  section on the log file. This ticket adds one: where
+  `shuyi_app::storage::log_dir` puts `latest.log` and the previous
+  runs' files on Windows, macOS and Linux for an exported game, so a
+  developer can tell a player what to send, with a link to
+  `docs/platform-backends.md`'s *Logs*.
 - **Size:** if the PR passes about 600 changed lines, `SHUYI_LOG` and
   `LogFilter::parse`, with their tests and criteria, go to a follow-up
   ticket (the `write-ticket` skill, After MVP, blocked by this one), and

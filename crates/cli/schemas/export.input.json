@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExportInput",
+  "description": "What `export` makes.",
+  "type": "object",
+  "properties": {
+    "out": {
+      "description": "The folder the package goes in, from the game's folder;\n`dist/export/<target>` without it.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
+    "release": {
+      "description": "Whether to build with `--release`: the build's paths remapped and\nsearched for, and on Windows and Linux the debug file kept beside\nthe package.",
+      "type": "boolean",
+      "default": false
+    },
+    "run": {
+      "description": "Whether to run the package after writing it.",
+      "type": "boolean",
+      "default": false
+    },
+    "target": {
+      "description": "The target: `windows`, `linux`, `macos` or `web`. Any other\ntarget's check runs, and the answer says it has no exporter yet.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "target"
+  ]
+}

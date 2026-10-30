@@ -46,6 +46,8 @@ pub enum Section {
     Crates,
     /// The web shell's files beside the page.
     Shell,
+    /// The engine's files a crate compiles in that aren't crates.
+    Data,
     /// The game's own files whose texts it names in `shuyi.ron`.
     Game,
 }
@@ -56,9 +58,147 @@ impl Section {
         match self {
             Self::Crates => "The crates compiled in",
             Self::Shell => "The web shell's files",
+            Self::Data => "Data compiled in",
             Self::Game => "The game's files",
         }
     }
+}
+
+/// What a package is built for, as [`FILES`] says which carry a file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Build {
+    /// The web build: the shell's files beside the page.
+    Web,
+    /// A native build (Windows, Linux, macOS).
+    Native,
+}
+
+/// A file of the engine's that reaches a game's package and isn't a
+/// crate. Every one has its row in `THIRD_PARTY_ASSETS.md` (a test).
+#[derive(Debug, Clone, Copy)]
+pub struct EngineFile {
+    /// The file in the engine's repository, or the folder of the crate it
+    /// is compiled in from.
+    pub file: &'static str,
+    /// The work it comes from.
+    pub work: &'static str,
+    /// The work's version, if it has one.
+    pub version: &'static str,
+    /// Where it comes from.
+    pub source: &'static str,
+    /// Its license.
+    pub license: &'static str,
+    /// Its license text's file in the repository, and the text.
+    pub text: (&'static str, &'static str),
+    /// The builds that carry it.
+    pub builds: &'static [Build],
+    /// The crate that compiles it in, if a crate does: it is carried only
+    /// when that crate is.
+    pub within: Option<&'static str>,
+}
+
+/// The engine's files that aren't crates, as data: the web shell's
+/// vendored scripts, and the controller database `gilrs` compiles into
+/// native builds (which the crates' walk misses, in a subfolder of its
+/// package).
+pub const FILES: [EngineFile; 4] = [
+    EngineFile {
+        file: "crates/cli/web/mq_js_bundle.js",
+        work: "macroquad",
+        version: "0.4.16",
+        source: "https://github.com/not-fl3/macroquad",
+        license: "MIT",
+        text: (
+            "crates/cli/web/mq_js_bundle-LICENSE-MIT.txt",
+            include_str!("../web/mq_js_bundle-LICENSE-MIT.txt"),
+        ),
+        builds: &[Build::Web],
+        within: None,
+    },
+    EngineFile {
+        file: "crates/cli/web/sapp_jsutils.js",
+        work: "sapp-jsutils",
+        version: "0.1.7",
+        source: "https://github.com/not-fl3/sapp-jsutils",
+        license: "MIT",
+        text: (
+            "crates/cli/web/sapp_jsutils-LICENSE-MIT.txt",
+            include_str!("../web/sapp_jsutils-LICENSE-MIT.txt"),
+        ),
+        builds: &[Build::Web],
+        within: None,
+    },
+    EngineFile {
+        file: "crates/cli/web/quad-storage.js",
+        work: "quad-storage",
+        version: "0.1.3",
+        source: "https://github.com/optozorax/quad-storage",
+        license: "MIT",
+        text: (
+            "crates/cli/web/quad-storage-LICENSE-MIT.txt",
+            include_str!("../web/quad-storage-LICENSE-MIT.txt"),
+        ),
+        builds: &[Build::Web],
+        within: None,
+    },
+    EngineFile {
+        file: "gamecontrollerdb.txt",
+        work: "SDL_GameControllerDB",
+        version: "",
+        source: "https://github.com/mdqinc/SDL_GameControllerDB",
+        license: "Zlib",
+        text: (
+            "crates/app/SDL_GameControllerDB-LICENSE.txt",
+            include_str!("../../app/SDL_GameControllerDB-LICENSE.txt"),
+        ),
+        builds: &[Build::Native],
+        within: Some("gilrs"),
+    },
+];
+
+impl EngineFile {
+    /// Its name as `NOTICES.txt` lists it: the file and its work.
+    pub fn name(&self) -> String {
+        let file = self.file.rsplit('/').next().unwrap_or(self.file);
+        match self.within {
+            Some(krate) => format!("{file}, from {}, compiled in by {krate}", self.work),
+            None => format!("{file}, from {}", self.work),
+        }
+    }
+
+    /// Its license text's file name, without its folders.
+    pub fn text_name(&self) -> &'static str {
+        self.text.0.rsplit('/').next().unwrap_or(self.text.0)
+    }
+
+    /// Its work in `section`.
+    pub fn work(&self, section: Section) -> Work {
+        Work {
+            section,
+            name: self.name(),
+            version: self.version.to_owned(),
+            license: self.license.to_owned(),
+            source: self.source.to_owned(),
+            texts: vec![Text::new(self.text_name(), self.text.1)],
+        }
+    }
+}
+
+/// The works of [`FILES`] that a `build` package carries whose crates are
+/// `crates` (the [`crates`] compiled in), apart from the web shell's,
+/// which `web` lists with the shell.
+pub fn engine_files(build: Build, crates: &[Work]) -> Vec<Work> {
+    FILES
+        .iter()
+        .filter(|file| file.builds.contains(&build))
+        .filter_map(|file| {
+            let krate = file.within?;
+            crates
+                .iter()
+                .any(|work| work.name == krate)
+                .then(|| file.work(Section::Data))
+        })
+        .collect()
 }
 
 /// A license or notice text.

@@ -28,7 +28,7 @@ use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
 use crate::contract::session::{Session, measured_start};
 use crate::contract::{
-    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, import, lint,
+    Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay,
 };
 use crate::frame_png::MAX_SCALE;
@@ -170,6 +170,10 @@ pub fn one_off(
                 }
             })
         }
+        Op::Export => match project {
+            Ok(p) => answered(op, input, |i| export::export(p, &i, game)),
+            Err((code, error)) => failed(op, *code, error.clone()),
+        },
         Op::Lint => match project {
             Ok(p) => answered(op, input, |i| lint::lint(&lint::ThisMachine, p, &i)),
             Err((code, error)) => failed(op, *code, error.clone()),

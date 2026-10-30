@@ -80,6 +80,17 @@ pub const LINK_LOST: Code = Code("SH3006");
 /// `other-stamp`: `replay` was given a record made by another engine,
 /// another build of the game or other content.
 pub const OTHER_STAMP: Code = Code("SH3007");
+/// `target-check`: `export` ran the target's check, which found errors,
+/// and built nothing.
+pub const TARGET_CHECK: Code = Code("SH3008");
+/// `build-path`: `export` (or `web --release`) found a path of the build
+/// machine in the built program, and refused the package.
+pub const BUILD_PATH: Code = Code("SH3009");
+/// `no-exporter`: the target passes its check, but has no exporter, or no
+/// run step, yet.
+pub const NO_EXPORTER: Code = Code("SH3010");
+/// `package`: `export`'s build, or writing its package, failed.
+pub const PACKAGE: Code = Code("SH3011");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -432,6 +443,42 @@ pub static TABLE: &[Entry] = &[
         "SH3007",
         "The record was made by another build or with other content",
         "make the record again with this build, or replay it with --any-stamp to run it anyway"
+    ),
+    row!(
+        TARGET_CHECK,
+        "target-check",
+        Operation,
+        "SH3008",
+        "The target's check found errors, so nothing was exported",
+        "fix each error the message lists (`check --target <profile>` shows them too), then \
+         export again"
+    ),
+    row!(
+        BUILD_PATH,
+        "build-path",
+        Operation,
+        "SH3009",
+        "The built program holds a path of the build machine",
+        "build where the path the message names is remapped: depend on the engine through \
+         cargo (a git revision, or a checkout inside the game's folder), not by a path outside \
+         the game's workspace, and keep CARGO_HOME and the target folder where cargo puts them"
+    ),
+    row!(
+        NO_EXPORTER,
+        "no-exporter",
+        Operation,
+        "SH3010",
+        "The target has no exporter, or no run step, yet",
+        "export for a target the message lists, or run the package by hand"
+    ),
+    row!(
+        PACKAGE,
+        "package",
+        Operation,
+        "SH3011",
+        "The export's build, or writing its package, failed",
+        "fix what the message says (a compile error, a tool that failed, a folder that can't be \
+         written), then export again"
     ),
 ];
 

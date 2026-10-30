@@ -203,10 +203,10 @@ grows past that, its painter goes in a ticket of its own.
    - A new `Input` field (for example `on_screen: bool`) says the game's
      on-screen control set adds its buttons to the profile's.
      `GameControls::fit` counts them. `steam-deck.ron` leaves it off.
-   - One package serves `web` and `web-touch`. Either order with 3004:
-     if it is done, this ticket makes `shuyi export web` also run the
-     `web-touch` check when the game's `shuyi.ron` lists that target; if
-     not, it adds that to 3004's scope.
+   - One package serves `web` and `web-touch`. **From 3004 (done):**
+     `shuyi export web` (`crates/cli/src/export/web.rs`) runs the `web`
+     check only; this ticket makes it also run the `web-touch` check
+     when the game's `shuyi.ron` lists that target.
    - The web shell: `viewport-fit=cover`, `touch-action: none` on the
      canvas, no double-tap zoom, and the safe-area insets (CSS
      `env(safe-area-inset-*)`) handed to `DisplayInfo` through a small

@@ -226,12 +226,17 @@ ships (rule 7, `deny.toml`) don't change.
   (rule 7) don't change.
 
 **Either order:**
-- **3004** (`shuyi export`): if 3004 is done, its exporters hand
-  3039's `notices` module the game's works from one function: add
-  `works(project)` there, so every package gets the credits, and give
-  the fixture game of 3004's `web` and `linux` export tests a `credits`
-  part whose section their `NOTICES.txt` then shows. If not, 3004 adds
-  both (its scope says so).
+- **From 3004 (done):** `shuyi export` takes the game's works in
+  `ExportCx::of` (`crates/cli/src/export.rs`) with
+  `notices::game_texts`, and every exporter writes them into its
+  package's `NOTICES.txt`; `shuyi web` takes them the same way in
+  `lib.rs`'s `web`. Add `works(project)` to the `notices` module and
+  call it from both, so every package gets the credits. CI's `export`
+  job exports `examples/hello-grid` and checks each package with
+  `tools/export-check/check.sh`: give hello-grid a `credits` part, and
+  check that the `web` and `linux` packages' `NOTICES.txt` show its
+  section "Works the game credits" (in `check.sh`, or in a test in
+  `crates/cli/src/export/tests.rs`).
 - **2218** (writers of the text formats): if it is done, the writers of
   `CreditsRon` and `AudioManifestRon` write `licenses` and `files`, and
   their round trips cover them. If not, 2218 writes the files as they

@@ -136,6 +136,90 @@ jobs:
           name: hello-grid-web
           path: examples/hello-grid/dist/web
 
+  # The packages (ticket 3004, ADR-0057): every example exported with
+  # `shuyi export <target> --release`, which runs the target's check,
+  # remaps the build's paths and refuses a program that still holds one;
+  # then tools/export-check/check.sh checks the package's files, the
+  # debug file beside it, what the program loads, and on macOS the
+  # signature and both slices. `windows`, `linux` and `web` on every PR,
+  # `macos` on pushes to main. The Linux package builds in Valve's Steam
+  # Linux Runtime 3.0 ("sniper") SDK, Debian 11's glibc 2.31 the floor:
+  # its 3.0.20261007.263965, pinned by the digest the registry gave on
+  # 2026-10-29 (registry.gitlab.steamos.cloud/v2/steamrt/sniper/sdk/
+  # manifests/<tag>; amd64 only). One job over a matrix, each leg its
+  # runner and its toolchain's setup.
+  export:
+    name: export (${{ matrix.target }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [windows, linux, web, macos]
+        exclude: ${{ github.event_name == 'push' && fromJSON('[]') || fromJSON('[{"target":"macos"}]') }}
+        include:
+          - target: windows
+            os: windows-latest
+          - target: linux
+            os: ubuntu-latest
+            container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:3.0.20261007.263965@sha256:220d1dc739254155a91c010f959a4f8e7c183e69d18300d6be53a20aee12b02d
+          - target: web
+            os: ubuntu-latest
+          - target: macos
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Linux
+        if: matrix.target == 'linux' || matrix.target == 'web'
+        run: bash scripts/setup-linux.sh
+      - name: Set up Rust
+        if: matrix.target != 'linux' && matrix.target != 'web'
+        run: rustup show
+      # The engine's `.cargo/config.toml` links the GNU target with
+      # MSYS2's mingw-w64 GCC, whose binutils give `objcopy`.
+      - name: Set up the Windows GNU target
+        if: matrix.target == 'windows'
+        run: |
+          /c/msys64/usr/bin/pacman.exe -Sy --noconfirm --needed mingw-w64-x86_64-gcc
+          echo 'C:\msys64\mingw64\bin' >> "$GITHUB_PATH"
+          rustup target add x86_64-pc-windows-gnu
+      - name: Set up both Mac targets
+        if: matrix.target == 'macos'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: export-${{ matrix.target }}
+      - name: Export Hello, Grid
+        working-directory: examples/hello-grid
+        run: cargo shuyi export "$TARGET" --release
+      - name: Check the package
+        run: bash tools/export-check/check.sh "$TARGET" examples/hello-grid/dist/export/"$TARGET"
+      # The `.app` keeps its signature and its program's mode in a zip
+      # `ditto` writes; the artifact's own zip would drop them.
+      - name: Zip the macOS package
+        if: matrix.target == 'macos'
+        working-directory: examples/hello-grid/dist/export/macos
+        run: ditto -c -k --keepParent "$(ls -d hello-grid-*-macos)" hello-grid-macos.zip
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: hello-grid-export-${{ matrix.target }}
+          path: |
+            examples/hello-grid/dist/export/${{ matrix.target }}/*.zip
+            examples/hello-grid/dist/export/${{ matrix.target }}/*.tar.gz
+            examples/hello-grid/dist/export/${{ matrix.target }}/*.debug
+            examples/hello-grid/dist/export/${{ matrix.target }}/export-report.json
+          retention-days: 7
+
   # The real window checked (ticket 2018, ADR-0052): Hello, Grid run in its
   # window as its plan says, under Xvfb with Mesa's llvmpipe (software GL:
   # no GPU runner), each capture's window compared with the raster's
@@ -919,7 +1003,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, render, web-render, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

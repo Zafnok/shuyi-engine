@@ -1,0 +1,271 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Answer",
+  "description": "What an operation answers.",
+  "type": "object",
+  "properties": {
+    "code": {
+      "description": "The problem code of its error (`SH1002`), or of its failure when\nit ran and failed on the setup (`doctor`); `shuyi explain <code>`\nprints its page.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "contract": {
+      "description": "The contract's version ([`VERSION`]).",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "error": {
+      "description": "Why it could not run, if it could not.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "help": {
+      "description": "How to fix it, with the code.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "limits": {
+      "description": "What it could not determine, in plain words.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "ok": {
+      "description": "Whether it passed: nothing found by a check, runs that agree, a\ngame made, a toolchain complete. False too when it could not run.",
+      "type": "boolean"
+    },
+    "op": {
+      "description": "The operation.",
+      "type": "string",
+      "const": "export"
+    },
+    "result": {
+      "description": "What it found or made; absent when it could not run.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExportOutput"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "contract",
+    "op",
+    "ok",
+    "limits"
+  ],
+  "$defs": {
+    "ExportOutput": {
+      "description": "What `export` made: `export-report.json`.",
+      "type": "object",
+      "properties": {
+        "debug": {
+          "description": "With `--release` on Windows and Linux, the program with its debug\nsections, kept beside the package and never in it\n(`game-0.1.0-linux.debug`).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "folder": {
+          "description": "The folder the package was made from, from the export's folder:\nwhat `--run` runs.",
+          "type": "string"
+        },
+        "out": {
+          "description": "The export's folder, as the game shows it.",
+          "type": "string"
+        },
+        "package": {
+          "description": "The package, from the export's folder: a zip, a `tar.gz` or a\nfolder.",
+          "type": "string"
+        },
+        "profile": {
+          "description": "The target profile its check ran with.",
+          "type": "string"
+        },
+        "signing": {
+          "description": "How the package is signed.",
+          "$ref": "#/$defs/Signing"
+        },
+        "sizes": {
+          "description": "The package's size first (for `web`, its zip's), then each program\nin it.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FileSize"
+          }
+        },
+        "target": {
+          "description": "The target.",
+          "type": "string"
+        },
+        "version": {
+          "description": "The game's version: its package's.",
+          "type": "string"
+        },
+        "warnings": {
+          "description": "The check's warnings.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TargetProblem"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "profile",
+        "version",
+        "out",
+        "package",
+        "folder",
+        "sizes",
+        "warnings",
+        "signing"
+      ]
+    },
+    "FileSize": {
+      "description": "A file of the export and its size.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "description": "Its size in bytes.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "file": {
+          "description": "The file, from the export's folder (`game-0.1.0-windows.zip`,\n`game-0.1.0-windows/game.exe`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "bytes"
+      ]
+    },
+    "Level": {
+      "description": "How bad a target problem is.",
+      "oneOf": [
+        {
+          "description": "The game doesn't fit the target: the check fails.",
+          "type": "string",
+          "const": "error"
+        },
+        {
+          "description": "It fits, short of what the target recommends.",
+          "type": "string",
+          "const": "warning"
+        }
+      ]
+    },
+    "Signing": {
+      "description": "How a package is signed.",
+      "oneOf": [
+        {
+          "description": "Not signed.",
+          "type": "string",
+          "const": "none"
+        },
+        {
+          "description": "Signed by no one (`codesign --sign -`): Apple silicon runs it, and\nthe player opens it once with Open Anyway.",
+          "type": "string",
+          "const": "ad-hoc"
+        }
+      ]
+    },
+    "TargetCheck": {
+      "description": "Which check found a target problem.",
+      "oneOf": [
+        {
+          "description": "The frame at its scale fits the display.",
+          "type": "string",
+          "const": "fits"
+        },
+        {
+          "description": "The smallest text is tall enough.",
+          "type": "string",
+          "const": "text"
+        },
+        {
+          "description": "The required actions of each screen bind to distinct inputs of the\ntarget.",
+          "type": "string",
+          "const": "controls"
+        },
+        {
+          "description": "On a one-bit display, every role has patterns and the roles that\ntell things apart stay distinct.",
+          "type": "string",
+          "const": "one-bit"
+        }
+      ]
+    },
+    "TargetProblem": {
+      "description": "A problem of the game on one target.",
+      "type": "object",
+      "properties": {
+        "actions": {
+          "description": "The actions a controls problem is about, by name.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "check": {
+          "description": "The check that found it.",
+          "$ref": "#/$defs/TargetCheck"
+        },
+        "inputs": {
+          "description": "The inputs a controls problem is about, as the keymap file names\nthem (`East`, `East+West`).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "level": {
+          "description": "An error or a warning.",
+          "$ref": "#/$defs/Level"
+        },
+        "message": {
+          "description": "What is wrong, with the numbers.",
+          "type": "string"
+        },
+        "roles": {
+          "description": "The palette roles a one-bit problem is about (`team.player`).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "screen": {
+          "description": "The screen a controls problem is about, if one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "setting": {
+          "description": "The game's setting it is about: in `shuyi.ron`\n(`targets.\"playdate\".frame`), the keymap file's table for the\ntarget (`keymap targets.\"playdate\"`), a screen's declaration\n(`screen \"title\"`), or the skin's pattern map\n(`files/palette@onebit.ron`).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "level",
+        "check",
+        "setting",
+        "message"
+      ]
+    }
+  }
+}

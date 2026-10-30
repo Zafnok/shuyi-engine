@@ -75,10 +75,12 @@ None.
   3004's desktop exporters, each on the runner the engine's own CI
   uses: `windows`, `linux` inside the Steam Linux Runtime ("sniper")
   SDK container, and `macos` (the universal app) on `macos-latest`.
-  `linux-arm64` on `ubuntu-24.04-arm` is a commented line the developer
-  turns on. Copy the container line from the engine's
-  `.github/workflows/ci.yml`, so a game's Linux package has the
-  engine's glibc floor and passes 3004's library audit. A target whose
+  Copy the container line from the engine's `.github/workflows/ci.yml`
+  (its `export` job), so a game's Linux package has the engine's glibc
+  floor. **Either order with 3071:** if 3071 is done, the matrix also
+  has a `linux-arm64` entry on `ubuntu-24.04-arm`, in the container
+  3071's leg uses, as a commented line the developer turns on; if not,
+  nothing to do (3071 adds that line when it lands). A target whose
   exporter needs a tool CI can't have (the Playdate SDK) runs the check
   only, and the workflow says why in a comment.
 - **Either order with 3050** (release a game from a tag): if 3050 is

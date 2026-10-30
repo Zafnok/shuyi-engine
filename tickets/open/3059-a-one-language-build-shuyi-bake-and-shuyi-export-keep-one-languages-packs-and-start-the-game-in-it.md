@@ -61,9 +61,12 @@ completed:
     `lang-status`): a `Lang` with every pack. 2226 gives `Lang::chain`,
     `Lang::source_lang`, `LangCode::parse`, and pack folders named by
     canonical tags.
-  - `shuyi export <target>` (3004) runs the target's check and its
-    exporter, and puts the game's pack in the package when the game
-    ships one (its step 3).
+  - `shuyi export <target>` (3004, done) runs the target's check and
+    its exporter (`crates/cli/src/export.rs`). No exporter puts a pack
+    in its package: `shuyi.ron` has no setting by which a game asks for
+    one (2204 added none), so a desktop or web package holds the
+    program with the game's files built in. Only the Playdate's (3010)
+    will bake a pack.
 
 ## Nick input
 
@@ -228,8 +231,8 @@ in a store, are the game's.
 1. Read 2349's result (`FirstLanguage`, `GameData::first_language`,
    `languages_offered`, a pack's `files/`); 2226's `Lang::chain`,
    `Lang::source_lang` and `LangCode::parse`; and 3004's `export`
-   operation, its `Exporter` trait and the step that puts the pack in a
-   package. Read `crates/cli/src/contract/bake.rs`,
+   operation, its `Exporter` trait (no step puts a pack in a
+   package yet). Read `crates/cli/src/contract/bake.rs`,
    `crates/assets/src/pack.rs`, `pack/bake.rs` and `bundle.rs`. Check
    whether 3010 is done, for its clause.
 2. Add `Bundle::without`, with its tests in

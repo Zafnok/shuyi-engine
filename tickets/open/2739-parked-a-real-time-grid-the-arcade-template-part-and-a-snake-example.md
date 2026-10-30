@@ -261,8 +261,11 @@ None. When it unparks is his call (above).
     in the Examples section, and `/snake/` redirects there (`aliases` in
     the card's front matter);
   - 2019's `web-render` job (done) boots it too: it loops over the
-    examples. If 3004 is
-    done, `shuyi export web` builds it. If 3010 is done, `shuyi export
+    examples. **From 3004 (done):** CI's `export` job exports
+    `examples/hello-grid` alone, and `tools/export-check/`'s file lists
+    name its program; this ticket adds snake to the job (its export and
+    check steps, with the lists taking the program's name), so `shuyi
+    export` builds it for each of the job's targets. If 3010 is done, `shuyi export
     playdate` builds it, and the PR says whether it runs in the Playdate
     Simulator (if the SDK is installed where the PR is made); if not,
     3010 does it.

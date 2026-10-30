@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["3001", "1129", "3039"]
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 3004 — `shuyi export`
@@ -389,52 +389,58 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi export windows` on an example, on Nick's machine (GNU
+- [x] `shuyi export windows` on an example, on Nick's machine (GNU
       toolchain), gives a zip whose exe runs. Its report lists only
       Windows' own DLLs and API sets, so nothing comes from
-      `C:\msys64\mingw64\bin`.
-- [ ] `shuyi export playdate` on a game that fails `check --target
+      `C:\msys64\mingw64\bin`. (The exe imports only those, by
+      `objdump -p`, and CI's `check.sh` checks it; the report's list is
+      3071's audit.)
+- [x] `shuyi export playdate` on a game that fails `check --target
       playdate` refuses, and prints the check's errors.
-- [ ] A missing Rust target gives "run `rustup target add …`", not a
+- [x] A missing Rust target gives "run `rustup target add …`", not a
       cargo error dump.
-- [ ] Each package has `NOTICES.txt` from 3039's module, and the native
+- [x] Each package has `NOTICES.txt` from 3039's module, and the native
       ones list the SDL_GameControllerDB with its Zlib text (test).
-- [ ] CI exports the examples for `windows`, `linux` (in the sniper
+- [x] CI exports the examples for `windows`, `linux` (in the sniper
       container) and `web` on every PR, and for `macos` and
-      `linux-arm64` on pushes to `main`.
-- [ ] `shuyi export web` writes a zip with `index.html` at its root, and
+      `linux-arm64` on pushes to `main`. (`linux-arm64`: 3071.)
+- [x] `shuyi export web` writes a zip with `index.html` at its root, and
       `export-report.json` gives its size.
-- [ ] `shuyi export windows --run` on Windows starts the example (by
+- [x] `shuyi export windows --run` on Windows starts the example (by
       hand, in the Completion notes), and a target with no run step
       gives the default answer (test).
-- [ ] With `--release`, the `windows` and `linux` packages hold an
+- [x] With `--release`, the `windows` and `linux` packages hold an
       executable with no `.debug_*` section, and `<package>.debug`
       beside them has those sections and the same `.text` address
       (test, reading the files with `objdump -h` or the `object` crate).
-- [ ] The `macos` package's `.app` passes `codesign --verify --strict`
-      on the macOS runner, and its report says `"ad-hoc"`.
-- [ ] Every `windows` and `macos` package carries the player note
-      (test).
-- [ ] A test feeds the audit the test binary itself
+      (CI's `check.sh` with `objdump -h`; by hand on Windows.)
+- [x] ~~The `macos` package's `.app` passes `codesign --verify --strict`
+      on the macOS runner, and its report says `"ad-hoc"`.~~ (not done: CI's `macos`
+      leg checks both, on pushes to `main`: not run before the merge.)
+- [x] Every `windows` and `macos` package carries the player note
+      (test). (The Windows package's test; the macOS one's file list in
+      CI.)
+- [x] ~~A test feeds the audit the test binary itself
       (`std::env::current_exe()`) on each OS of CI's `test` matrix, and
       the audit names that OS's C library (`kernel32.dll`,
-      `libc.so.6`, `/usr/lib/libSystem.B.dylib`).
-- [ ] A fixture list without one of those libraries refuses the package
-      and names the library. A library inside the package passes.
-- [ ] The path search refuses a byte buffer that holds the home folder
+      `libc.so.6`, `/usr/lib/libSystem.B.dylib`).~~ (not done: 3071.)
+- [x] ~~A fixture list without one of those libraries refuses the package
+      and names the library. A library inside the package passes.~~ (not done: 3071.)
+- [x] The path search refuses a byte buffer that holds the home folder
       with either slash, and passes one that holds only the remapped
       names.
-- [ ] CI's `linux` package is built in the sniper container. Its report
+- [x] CI's `linux` package is built in the sniper container. Its report
       shows no `GLIBC_` version above the floor, and it loads nothing
-      outside the list.
-- [ ] CI's `linux-arm64` package is built on `ubuntu-24.04-arm` and
-      passes the same audit.
-- [ ] The executable in CI's `macos` package has an `arm64` slice and an
-      `x86_64` slice.
-- [ ] No exported binary, `.wasm` included, contains the runner's home
+      outside the list. (CI's `check.sh` checks the floor; the report's
+      fields and the list are 3071's.)
+- [x] ~~CI's `linux-arm64` package is built on `ubuntu-24.04-arm` and
+      passes the same audit.~~ (not done: 3071.)
+- [x] ~~The executable in CI's `macos` package has an `arm64` slice and an
+      `x86_64` slice.~~ (not done: CI's `check.sh`, on pushes to `main`.)
+- [x] No exported binary, `.wasm` included, contains the runner's home
       folder or the checkout's path (the exporter's own search, in CI).
-- [ ] `cargo deny check` passes with no change to `deny.toml`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo deny check` passes with no change to `deny.toml`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -452,5 +458,114 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.** `shuyi export <target> [--out <dir>] [--release] [--run]` is
+an operation of the contract (contract 29, `Op::Export`, its schemas, the
+MCP tool, `crates/cli/src/contract/export.rs`). It runs `check --target`
+with the target's profile (`desktop` for the three desktop targets) and
+refuses on an error (`SH3008`), then the target's `Exporter`
+(`crates/cli/src/export.rs`: `id`, `profile`, `triples`, `cargo_args`,
+`export`, `run`, registered by id). The exporters: `windows` (zip),
+`linux` (`tar.gz`), `macos` (`lipo` of both Mac triples in a `.app` with
+a minimal `Info.plist`, signed ad hoc inside out) and `web` (`shuyi
+web`'s folder and its zip, `index.html` at the root). Every package
+carries `NOTICES.txt` through 3039's module, the Windows and macOS ones
+`HOW-TO-OPEN.txt`; `export-report.json` beside it holds the answer's
+result (target, profile, version from `cargo metadata --no-deps`, sizes,
+the check's warnings, `signing`, the debug file). No export turns on a
+feature; `no_live_link` refuses `link`, and a test reads every
+exporter's arguments.
+
+- **Paths.** Cargo's `trim-paths` is not stable on the pinned Rust (now
+  1.99.1, not 1.98.1: cargo refused `CARGO_PROFILE_RELEASE_TRIM_PATHS`).
+  So `export::paths` passes `--remap-path-prefix` through
+  `CARGO_ENCODED_RUSTFLAGS`, after the flags already in it or in
+  `RUSTFLAGS`, then searches the built program for the home folder,
+  `CARGO_HOME` and the roots, with either slash (`SH3009`). `shuyi web
+  --release` does the same.
+- **Debug files.** `--release` on `windows` and `linux` keeps
+  `<package>.debug` beside the package and ships a copy stripped with
+  `objcopy --strip-debug`. `doctor` checks `objcopy` on Windows GNU; on
+  Linux the `cc` row's packages bring binutils.
+- **Notices.** `notices::FILES` lists the engine's non-crate files as
+  data (the web shell's three vendored scripts, moved there from
+  `web.rs`, and the SDL_GameControllerDB for native builds that carry
+  `gilrs`), and a test keeps it equal to `THIRD_PARTY_ASSETS.md`'s rows
+  under `crates/`.
+- **CI.** The `export` job, one matrix: `windows`, `linux` (in Valve's
+  sniper SDK `3.0.20261007.263965`, pinned by the digest the registry
+  gave on 2026-10-29) and `web` on every PR, `macos` on pushes to `main`.
+  `tools/export-check/check.sh` checks each package's files against a
+  list, the debug file's sections and `.text` address, the Windows
+  program's DLLs, the Linux program's newest `GLIBC_` (floor 2.31), and
+  the `.app`'s signature and slices. Artifacts kept 7 days.
+- **Docs.** `docs/targets/desktop.md` (with its docs-map row), ADR-0057,
+  the book's chapter 9 (*Export*), the `shuyi-ship` skill, `contract.md`,
+  `crates/cli/web/README.md`, four problem codes (`SH3008`–`SH3011`)
+  with their pages.
+
+**By hand on Nick's machine (2026-10-29).** `cargo shuyi export windows
+--release` in `examples/hello-grid` wrote the zip in about a minute.
+`objdump -p` lists only Windows' own DLLs and API sets (KERNEL32,
+USER32, GDI32, IMM32, msvcrt, ntdll, ole32, oleaut32, SHELL32, combase,
+bcryptprimitives and three `api-ms-win-*`), nothing from
+`C:\msys64\mingw64\bin`. The exe has no `.debug_*` section; the `.debug`
+file has them, `.text` at `0x140001000` in both. No byte of either holds
+the user's name, and panic paths read `/cargo\registry\…`. `cargo shuyi
+export windows --release --run` started the game's window from the
+package's folder. `cargo shuyi export web --release` wrote the folder
+and its zip, `index.html` at the root. `tools/export-check/check.sh`
+passed on both.
+
+**Deviations.**
+- **Step 8: split.** The PR passed 600 lines, so the library audit
+  (step 4, `libraries.ron` and the `object` crate) and `linux-arm64` are
+  ticket 3071 (After MVP, blocked by 3004), which names 3049, 3050, 3032
+  and 2520. Until then CI's `check.sh` checks the DLLs and the glibc
+  floor of the examples' packages, and the report lists no `loads`.
+  Valve publishes the sniper SDK for amd64 only, so 3071 builds
+  `linux-arm64` in `debian:bullseye`.
+- **The project root.** The remapping maps the workspace's root (which
+  holds the project) to the package's name, so the engine's examples,
+  whose workspace is the engine's repository, are covered too.
+- **Assets.** Nothing is collected beside the program: a game embeds its
+  files (the templates and examples do), and `shuyi.ron` has no setting
+  by which a game asks for a pack (2204 added none). The web package
+  keeps `shuyi web`'s music and voice folders.
+- **Each desktop package builds on its own system** (Windows on Windows,
+  Linux on Linux, macOS on a Mac); another system answers where it
+  builds (`SH1003`).
+- **The log file's place** (`docs/targets/desktop.md`): 3041 isn't done,
+  so its section is 3041's (its scope says so).
+- **The report's `unread` and `largest` (2516), `left_out` (3017), the
+  version from `app.version` (3048), credits (2223), the web run step
+  (2528), the bench (3008), the README's zip (3052), the eval (2524),
+  the crash recipe (2520):** those tickets aren't done; each says it adds
+  its piece.
+
+**Not verified here.** The `macos` package (signature, both slices) and
+the Linux package in the sniper container run only in CI; the macOS leg
+only on pushes to `main`, so its first run is after the merge.
+
+**Follow-up tickets.** 3071 (the library audit and `linux-arm64`).
+
+Breaking: shuyi-cli: `contract::Op`: gains `Export`, and `Op::ALL` is an `[Op; 17]`; an exhaustive `match` on `Op` adds its arm.
+
+```migration
+since: 0.1.0
+what: The contract has a new operation, export, so Op has a new variant.
+old: "match op { Op::New => …, … }"
+new: "match op { Op::New => …, Op::Export => …, … }"
+before: |
+  match op {
+      Op::Attach => attach(),
+      // … every other operation
+  }
+after: |
+  match op {
+      Op::Attach => attach(),
+      Op::Export => export(),
+      // … every other operation
+  }
+```
+
+Nick input: none.

@@ -41,11 +41,13 @@ What Shuyi has today:
 - **The engine's CI.** The `wasm` job in `.github/workflows/ci.yml`
   builds Hello, Grid for the web as a PR artifact, and `pages.yml`
   publishes it. Nothing else is published.
-- **Exporters.** 3004 builds `shuyi export <target>` for `windows`,
-  `linux`, `linux-arm64` (on GitHub's `ubuntu-24.04-arm` runner),
-  `macos` and `web`. It exports the examples as 7-day PR artifacts,
-  and builds Linux and macOS in CI only. Its Out list has signing and
-  store uploads.
+- **Exporters.** 3004 (done) built `shuyi export <target>`
+  (`crates/cli/src/export.rs`) for `windows`, `linux` (in Valve's
+  sniper SDK container), `macos` and `web`. CI's `export` job exports
+  `examples/hello-grid` as 7-day artifacts (`windows`, `linux` and
+  `web` on every PR, `macos` on pushes to `main`), and builds Linux and
+  macOS in CI only. Its Out list has signing and store uploads. 3071
+  adds `linux-arm64`, on GitHub's `ubuntu-24.04-arm` runner.
 - **More packages.** 3012 adds a `steam-deck` package built in the
   Steam Linux Runtime container. 3010 adds a Playdate `.pdx`, built in
   CI only if the SDK's license allows.
@@ -107,13 +109,14 @@ if 2005 has moved it.
     ci, why }` per exporter of each target. Targets come in the map's
     order (sorted by id), and a profile's exporters in the order they
     are registered. The `desktop` profile (`targets/desktop.ron`) gives
-    `windows`, `linux`, `linux-arm64` and `macos`, and `web` gives
-    `web`. If 3004's step 8 moved `linux-arm64` to a follow-up ticket
-    that isn't done, that ticket fills its `host()`, `container()` and
-    `ci()` when it lands;
+    `windows`, `linux` and `macos`, and `web` gives `web`.
+    **Either order with 3071:** if 3071 is done, `desktop` also gives
+    `linux-arm64`, and this ticket fills its `host()`, `container()`
+    and `ci()` as for the others; if not, nothing to do (3071 fills them
+    when it lands);
   - `host` is `linux`, `linux-arm64`, `windows` or `macos`, the runner
     the exporter builds on in CI. `linux-arm64` builds on Arm, as
-    3004's CI does. `container` is an image to build in, or none. `ci`
+    3071's CI leg does. `container` is an image to build in, or none. `ci`
     is `build` or `check-only`, and `why` says why for `check-only`;
   - a target with no registered exporter (a `Planned` profile such as
     `switch`, or `steam-deck` before 3012) is a `limits` entry that
@@ -123,10 +126,9 @@ if 2005 has moved it.
     `version` exactly, and its error names both.
 
   The `Exporter` trait (3004) gains `host()`, `container()` and `ci()`,
-  and every registered exporter fills them. The plan needs the profile
-  each exporter checks (3004's edit: `windows`, `linux`, `linux-arm64`
-  and `macos` check `desktop`). If 3004's trait has no method that says
-  so, add `profile()` beside the three.
+  and every registered exporter fills them. The plan takes the profile
+  each exporter checks from the trait's `profile()` (3004: `windows`,
+  `linux` and `macos` check `desktop`).
 - **The per-target job.** Each template gets
   `.github/workflows/export.yml`, a reusable workflow
   (`on: workflow_call`, as the engine's `changes.yml` is). Its inputs
@@ -141,13 +143,13 @@ if 2005 has moved it.
     --release` in `dir`;
   - a package that is a folder is made into one file on its own runner
     before the upload, because `actions/upload-artifact` keeps no file
-    permissions. The web package uses the zip 3004 writes (3052's edit
-    to 3004), or a zip of the folder if there is none. The macOS
+    permissions. The web package uses the zip 3004 writes
+    (`<program>-<version>-web.zip`, `index.html` at its root). The macOS
     package is zipped with `ditto -c -k --keepParent`, which keeps the
     executable bit and the ad-hoc signature;
   - it uploads the package as the artifact `package-<target>`, kept 7
-    days, with the `.debug` file beside it if 3004 writes one (2520's
-    edit to 3004).
+    days, with the `.debug` file 3004 writes beside the `windows` and
+    `linux` packages.
 - **The release.** Each template gets `.github/workflows/release.yml`.
   It runs on a pushed tag `v*`, and on `workflow_dispatch` as a dry run
   that skips the last two jobs:
@@ -156,7 +158,7 @@ if 2005 has moved it.
   2. `plan`: on Linux after the same setup as `ci.yml`, `cargo shuyi
      export --plan --tag "$TAG" --json` (no `--tag` on a dry run). The
      `build` entries, read with `jq`, are the job's `matrix` output. In
-     a private repository `jq` also drops `linux-arm64`, since 3004's
+     a private repository `jq` also drops `linux-arm64`, since 3071's
      `ubuntu-24.04-arm` runner is free for public repositories (check
      on the day whether a private one gets it free too, and keep the
      entry if so). The job fails with a plain message when no entry is
@@ -357,11 +359,11 @@ if 2005 has moved it.
 ## Implementation steps
 
 1. Read 3004's `Exporter` trait, its `export` operation and its CI job,
-   2520's `.debug` file if 3004 writes it, 2011's zizmor job and
+   the `.debug` file it writes, 2011's zizmor job and
    `check-pins`, 2513's `templates` job, and 2005's workflow if it is
    done. Check where the templates live now.
-2. Add `host()`, `container()` and `ci()` to `Exporter` (and
-   `profile()` if it is missing), and `--plan` and `--tag` to `export`.
+2. Add `host()`, `container()` and `ci()` to `Exporter`, and `--plan`
+   and `--tag` to `export`.
    Raise the contract's `VERSION` (`crates/cli/src/contract.rs`), and
    regenerate the schemas in `crates/cli/schemas/`, `versions.json`
    included.

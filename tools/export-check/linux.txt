@@ -1,0 +1,2 @@
+{base}/NOTICES.txt
+{base}/hello-grid

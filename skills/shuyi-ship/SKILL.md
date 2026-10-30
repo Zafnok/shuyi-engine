@@ -1,6 +1,6 @@
 ---
 name: shuyi-ship
-description: Get a game on Shuyi Engine ready to ship. A release build; the web build (what a new game lacks for it, then `cargo shuyi web --release`); the targets it ships on and their controls (`check --target`); a baked pack; and the credits of every third-party work it uses. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, or making pictures for a store page. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
+description: Get a game on Shuyi Engine ready to ship. A package per target (`cargo shuyi export <target>`); the web build (what a new game lacks for it, then `cargo shuyi web --release`); the targets it ships on and their controls (`check --target`); a baked pack; and the credits of every third-party work it uses. Use when building a game for players or the web, adding a target such as the Steam Deck, writing its credits, or making pictures for a store page. Not for the checks before a commit (shuyi-gates) or a new game (shuyi-new-game).
 license: MIT OR Apache-2.0
 metadata:
   version: "1.0"
@@ -41,14 +41,31 @@ Ship only what `check --target` passes.
    required actions fit its buttons. A problem names the setting to
    change (`targets` in `shuyi.ron`, or the keymap's `targets`).
 
-2. **A release build** for the desktop, from the game's folder:
+2. **A package per target**, from the game's folder:
 
    ```bash
-   cargo build --release -p <crate>
+   cargo shuyi export windows --release
    ```
 
-   The template's release profile already trims the binary (`lto`,
-   `strip`), and a release build on Windows opens no console window.
+   It runs the target's check first (`windows`, `linux` and `macos`
+   check the `desktop` profile) and builds nothing on an error. Then it
+   writes the package into `dist/export/<target>/`: `windows` a zip,
+   `linux` a `tar.gz`, `macos` a folder with one `.app` for Apple
+   silicon and Intel Macs, signed ad hoc, and `web` the web build's
+   folder and its zip (step 3 first). Each desktop target builds on its
+   own system, and a missing Rust target says its `rustup target add`.
+   - Every package carries `NOTICES.txt` (step 3), and the `windows`
+     and `macos` ones `HOW-TO-OPEN.txt`: the packages aren't signed by a
+     developer, so players open them once by hand.
+   - `--release` remaps the build's paths and refuses a program that
+     still holds one of this machine's. On `windows` and `linux` it
+     keeps `<package>.debug` beside the package: keep it with the
+     release for crash reports, and never ship it.
+   - `export-report.json` beside it gives the version, the sizes, the
+     check's warnings and the signing; `--run` runs the package, on its
+     own system.
+
+   A release build on Windows opens no console window.
 
 3. **The web build.** A new game lacks three things for it:
    - a `web` entry in `shuyi.ron`: the game's package and binary (its
@@ -192,6 +209,11 @@ with `cargo shuyi explain <code>`:
   command needs.
 - `SH3001`: the game's tools don't offer the operation (`bake` without
   a pack).
+- `export`: `SH3008`, the target's check found errors (listed); `SH3009`,
+  the program holds a path of this machine (depend on the engine by a
+  git revision, not a path outside the game); `SH3010`, no exporter or
+  no run step for that target yet; `SH3011`, the build or a packaging
+  tool failed; `SH1003`, a Rust target or tool is missing.
 - `import` answers `ok: false` with each error's file and line (and its
   code when its class has one): a credit with an empty field, a source
   that isn't a web link, a license not on the list.
