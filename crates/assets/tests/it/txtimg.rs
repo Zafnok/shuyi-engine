@@ -12,10 +12,16 @@
 //! The first line is `txtimg`, the width and the height. Then come
 //! `height` rows of `width` pixels: `.` see-through, `#` white, `k` black,
 //! `r` red, `g` green, `b` blue.
+//!
+//! Its import settings (ADR-0057) are the section `txtimg`, in the
+//! picture's `.meta` file or a folder's `_folder.meta`:
+//! `(txtimg: (mirror: true))` flips it left to right.
 
 use proptest::prelude::*;
+use serde::Deserialize;
 use shuyi_assets::format::{AssetPath, DecodeCx, Encode, Format, Formats, TEXT_MAX_BYTES, text};
 use shuyi_assets::image::{Image, ImageId, ImageInfo, ImageTable};
+use shuyi_assets::import_settings::ImportSettings;
 use shuyi_assets::{Bundle, ContentError, Layer};
 
 /// The first word of every text image.
@@ -33,6 +39,18 @@ const PIXELS: [(char, [u8; 4]); 6] = [
 
 /// A text image, read for its pixels (`txtimg`, `.txtimg`).
 struct TxtImg;
+
+/// The toy's import settings, the section `txtimg`.
+#[derive(Debug, Default, PartialEq, Eq, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct TxtImgSettings {
+    /// Whether the picture is flipped left to right.
+    mirror: bool,
+}
+
+impl ImportSettings for TxtImgSettings {
+    const SECTION: &'static str = "txtimg";
+}
 
 /// A text image, read for its size (`txtimg`, `.txtimg`): what the image
 /// table reads.
@@ -61,9 +79,19 @@ impl Format for TxtImg {
         &self,
         file: &AssetPath,
         bytes: &[u8],
-        _cx: &DecodeCx<'_>,
+        cx: &DecodeCx<'_>,
     ) -> Result<Image, Vec<ContentError>> {
-        read(file, bytes)
+        let mut image = read(file, bytes)?;
+        if cx.import_settings::<TxtImgSettings>(file)?.mirror {
+            let row = usize::try_from(image.width).unwrap_or_default() * 4;
+            for pixels in image.rgba.chunks_mut(row.max(4)) {
+                // Reversing the bytes reverses each pixel too; reversing
+                // each pixel back keeps its colour.
+                pixels.reverse();
+                pixels.chunks_mut(4).for_each(<[u8]>::reverse);
+            }
+        }
+        Ok(image)
     }
 }
 
@@ -206,12 +234,64 @@ fn sizes(formats: &Formats, bundle: &Bundle) -> Vec<(&'static str, ImageInfo)> {
     table.ids().filter_map(size).collect()
 }
 
-/// The toy's two formats, registered beside the engine's.
+/// The toy's two formats and its section, registered beside the
+/// engine's.
 fn with_txtimg() -> Formats {
     let mut formats = Formats::standard();
     assert_eq!(formats.register(TxtImg), Ok(()));
     assert_eq!(formats.register(TxtImgInfo), Ok(()));
+    assert_eq!(formats.register_import_settings::<TxtImgSettings>(), Ok(()));
     formats
+}
+
+#[test]
+fn a_text_image_is_mirrored_by_its_own_settings_or_its_folders() {
+    let own = bundle(&[
+        ("images/card.txtimg", TEXT_CARD),
+        ("images/card.txtimg.meta", b"(txtimg: (mirror: true))"),
+    ]);
+    let folder = bundle(&[
+        (
+            "images/_folder.meta",
+            b"// every picture here
+(txtimg: (mirror: true))",
+        ),
+        ("images/card.txtimg", TEXT_CARD),
+    ]);
+    let neither = bundle(&[
+        ("images/_folder.meta", b"(txtimg: (mirror: true))"),
+        ("images/card.txtimg", TEXT_CARD),
+        ("images/card.txtimg.meta", b"(txtimg: ())"),
+    ]);
+    let formats = with_txtimg();
+    let mirrored = Ok([0, 0, 0, 0, 255, 0, 0, 255].to_vec());
+    for settings in [&own, &folder] {
+        assert_eq!(card(&formats, settings).map(|image| image.rgba), mirrored);
+        assert_eq!(formats.check_import_settings(settings), []);
+    }
+    // Its own section is taken whole: `mirror` left out is its default.
+    let plain = card(&formats, &neither).map(|image| image.rgba);
+    assert_eq!(plain, Ok(RED_THEN_CLEAR.to_vec()));
+    // A typo in the section is found, at its line.
+    let typo = bundle(&[
+        ("images/card.txtimg", TEXT_CARD),
+        (
+            "images/card.txtimg.meta",
+            b"(
+    txtimg: (flip: true),
+)",
+        ),
+    ]);
+    let found: Vec<String> = formats
+        .check_import_settings(&typo)
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!(
+        found[0].starts_with("base/images/card.txtimg.meta:2:"),
+        "{found:?}"
+    );
 }
 
 #[test]

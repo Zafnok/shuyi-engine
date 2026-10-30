@@ -1,6 +1,7 @@
 # ADR-0019: The format registry: kinds are types, a format reads one file, conflicts are per kind
 
-- **Status:** Accepted
+- **Status:** Accepted; extended by ADR-0057 (import settings: per file
+  and per folder, beside §5's game-wide choices)
 - **Date:** 2026-10-19
 - **Related tickets:** 2201 (the registry); 2202, 2203, 2204, 1123 and 1124
   (the formats that come after it)

@@ -136,7 +136,7 @@ jobs:
           name: hello-grid-web
           path: examples/hello-grid/dist/web
 
-  # The packages (ticket 3004, ADR-0057): every example exported with
+  # The packages (ticket 3004, ADR-0058): every example exported with
   # `shuyi export <target> --release`, which runs the target's check,
   # remaps the build's paths and refuses a program that still holds one;
   # then tools/export-check/check.sh checks the package's files, the

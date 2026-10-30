@@ -76,7 +76,7 @@ splits it.
 - **Exporters.** `android` (an AAB or APK; macroquad's own Android tool,
   license checked) and `ios` (an Xcode project built in CI on macOS).
   Both are `Exporter`s (3004), and each package passes 3004's path
-  search and 3071's library audit, as ADR-0057 says, against a list for its
+  search and 3071's library audit, as ADR-0058 says, against a list for its
   target in `crates/cli/export/libraries.ron`.
   Signing uses secrets Nick sets up, read from environment variables
   with fixed names, as 3051 does for the desktop. If 3051 is done, the

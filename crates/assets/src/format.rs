@@ -27,6 +27,14 @@
 //!   against the game's characters, a cinematic against its music) runs
 //!   after, on the assets loaded.
 //!
+//! A format may read settings for its file (ADR-0057,
+//! [`import_settings`]): a section of the
+//! `.meta` file beside it, or of a folder's `_folder.meta`
+//! ([`DecodeCx::import_settings`]). The registry knows each section's type
+//! ([`Formats::register_import_settings`]) and checks every settings file
+//! of a bundle ([`Formats::check_import_settings`]); no format may claim
+//! `meta`.
+//!
 //! A front end may watch every decode the registry makes
 //! ([`watch_decodes`]): its kind, its file, its size and whether it read,
 //! told before and after each, on the thread that decodes. A debug build
@@ -42,6 +50,9 @@ use once_cell::race::OnceBox;
 
 use crate::bundle::Bundle;
 use crate::error::{ContentError, codes};
+use crate::import_settings::{
+    self, CheckSection, ImportSettings, SETTINGS_EXTENSION, is_settings_file, settings_chain,
+};
 
 /// A kind of asset: the plain type a [`Format`] reads into. The engine's
 /// kinds are its own types (`ImageInfo`, `PaletteDef`, `DialogueFile`…);
@@ -297,6 +308,32 @@ impl<'a> DecodeCx<'a> {
             .map(|bundle| bundle.files_under(dir))
             .unwrap_or_default()
     }
+
+    /// The import settings `S` of `file` (ADR-0057): its section in the
+    /// nearest settings file of [`settings_chain`] that has one (the file's
+    /// own `.meta`, then each folder's `_folder.meta` up to the root),
+    /// whole; `S::default()` without a bundle or when none has it. Each
+    /// file looked for is read with [`bytes`](Self::bytes), so the
+    /// [`watch`](crate::bundle::watch)er hears of it, found or not. A
+    /// settings file on the way that doesn't read is an error, even when a
+    /// farther one has the section.
+    pub fn import_settings<S: ImportSettings>(
+        &self,
+        file: &AssetPath,
+    ) -> Result<S, Vec<ContentError>> {
+        let max = TEXT_MAX_BYTES.min(self.limits.max_bytes);
+        for path in settings_chain(file.path()) {
+            let Some(bytes) = self.bytes(&path) else {
+                continue;
+            };
+            let shown = self.shown(&path);
+            let sections = import_settings::sections(&shown, bytes, max)?;
+            if let Some(section) = sections.iter().find(|s| s.name == S::SECTION) {
+                return import_settings::read_section(&shown, section).map_err(|e| vec![e]);
+            }
+        }
+        Ok(S::default())
+    }
 }
 
 /// The text of a text format's file `bytes`, or the error that it isn't
@@ -395,8 +432,10 @@ pub fn watch_decodes(watch: DecodeWatch) -> Result<(), DecodeWatch> {
     DECODE_WATCH.set(Box::new(watch)).map_err(|watch| *watch)
 }
 
-/// Why a format could not be registered.
+/// Why a format, or a section of import settings, could not be
+/// registered. More reasons may come (ADR-0039).
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[non_exhaustive]
 pub enum RegisterError {
     /// It claims an extension an earlier format of its kind claims.
     #[error(
@@ -434,6 +473,42 @@ pub enum RegisterError {
         format: &'static str,
         /// The extension.
         extension: &'static str,
+    },
+    /// It claims `meta`, the extension of import settings files.
+    #[error(
+        "{kind} format \"{format}\" claims the extension \"meta\", which is kept for import \
+         settings files (<file>.meta and _folder.meta)"
+    )]
+    Reserved {
+        /// The kind.
+        kind: &'static str,
+        /// The format refused.
+        format: &'static str,
+    },
+    /// A section of import settings of its name is registered already.
+    #[error("the import settings section \"{section}\" is registered already")]
+    SectionTwice {
+        /// The section's name.
+        section: &'static str,
+    },
+    /// The section's type can't read `()`: a field has no default.
+    #[error(
+        "the import settings section \"{section}\" can't read (): a field has no default; add \
+         #[serde(default)] to its struct"
+    )]
+    SectionWithoutDefault {
+        /// The section's name.
+        section: &'static str,
+    },
+    /// The section's type reads a field it doesn't have, so a typo would
+    /// go unseen.
+    #[error(
+        "the import settings section \"{section}\" reads fields it doesn't have, so a typo \
+         would go unseen; add #[serde(deny_unknown_fields)] to its struct"
+    )]
+    SectionAllowsUnknownFields {
+        /// The section's name.
+        section: &'static str,
     },
 }
 
@@ -509,11 +584,26 @@ fn bad_extension<F: Format>(format: &F) -> Option<RegisterError> {
     })
 }
 
+/// The error refusing `format` if it claims [`SETTINGS_EXTENSION`].
+fn reserved<F: Format>(format: &F) -> Option<RegisterError> {
+    format
+        .extensions()
+        .iter()
+        .any(|extension| extension.eq_ignore_ascii_case(SETTINGS_EXTENSION))
+        .then(|| RegisterError::Reserved {
+            kind: <F::Asset as AssetKind>::NAME,
+            format: format.id(),
+        })
+}
+
 /// The formats of every kind ([module docs](self)).
 #[derive(Default)]
 pub struct Formats {
     /// One [`KindList`] per kind that has a format.
     kinds: Vec<Box<dyn Kind>>,
+    /// The sections of import settings, by name, each with how its text is
+    /// checked.
+    sections: BTreeMap<&'static str, CheckSection>,
     /// The limits [`Formats::load`] and [`Formats::load_under`] decode with.
     pub limits: Limits,
 }
@@ -527,6 +617,7 @@ impl fmt::Debug for Formats {
             .collect();
         f.debug_struct("Formats")
             .field("kinds", &kinds)
+            .field("sections", &self.import_settings_sections())
             .field("limits", &self.limits)
             .finish()
     }
@@ -594,7 +685,10 @@ impl Formats {
     /// Adds `format` after the formats of its kind, unless one of them has
     /// its id or claims one of its extensions.
     pub fn register<F: Format>(&mut self, format: F) -> Result<(), RegisterError> {
-        if let Some(error) = bad_extension(&format).or_else(|| conflict(self.list(), &format)) {
+        if let Some(error) = bad_extension(&format)
+            .or_else(|| reserved(&format))
+            .or_else(|| conflict(self.list(), &format))
+        {
             return Err(error);
         }
         self.insert(None, Box::new(format));
@@ -605,7 +699,7 @@ impl Formats {
     /// claim one of its extensions (after them all if none does), and
     /// returns their ids.
     pub fn replace<F: Format>(&mut self, format: F) -> Result<Vec<&'static str>, RegisterError> {
-        if let Some(error) = bad_extension(&format) {
+        if let Some(error) = bad_extension(&format).or_else(|| reserved(&format)) {
             return Err(error);
         }
         let mut replaced = Vec::new();
@@ -643,6 +737,76 @@ impl Formats {
                 formats: vec![format],
             })),
         }
+    }
+
+    /// Registers the section of import settings `S` (ADR-0057), so
+    /// [`check_import_settings`](Self::check_import_settings) knows it.
+    /// Refuses, in this order, a second section of its name, a type that
+    /// can't read `()` (a field with no default) and one that reads
+    /// `(shuyi_probe: ())` (it doesn't deny unknown fields).
+    pub fn register_import_settings<S: ImportSettings>(&mut self) -> Result<(), RegisterError> {
+        let section = S::SECTION;
+        if self.sections.contains_key(section) {
+            return Err(RegisterError::SectionTwice { section });
+        }
+        if ::ron::from_str::<S>("()").is_err() {
+            return Err(RegisterError::SectionWithoutDefault { section });
+        }
+        if ::ron::from_str::<S>("(shuyi_probe: ())").is_ok() {
+            return Err(RegisterError::SectionAllowsUnknownFields { section });
+        }
+        self.sections
+            .insert(section, import_settings::check_section::<S>);
+        Ok(())
+    }
+
+    /// The names of the sections of import settings registered, in order.
+    pub fn import_settings_sections(&self) -> Vec<&'static str> {
+        self.sections.keys().copied().collect()
+    }
+
+    /// Every problem of every settings file of `bundle` (ADR-0057): a file
+    /// that doesn't read, a section no one registered or that doesn't read
+    /// as its type, and a `<name>.meta` whose file the bundle lacks (and
+    /// doesn't leave out on purpose) or is itself a settings file.
+    pub fn check_import_settings(&self, bundle: &Bundle) -> Vec<ContentError> {
+        let max = TEXT_MAX_BYTES.min(self.limits.max_bytes);
+        let mut errors = Vec::new();
+        for path in bundle.files_under("") {
+            if !is_settings_file(path) {
+                continue;
+            }
+            let shown = bundle.display_path(path);
+            errors.extend(import_settings::orphan(bundle, path, &shown));
+            let bytes = bundle.bytes(path).unwrap_or_default();
+            match import_settings::sections(&shown, bytes, max) {
+                Ok(sections) => {
+                    for section in &sections {
+                        match self.sections.get(section.name.as_str()) {
+                            Some(check) => errors.extend(check(&shown, section)),
+                            None => errors.push(self.unknown_section(&shown, section)),
+                        }
+                    }
+                }
+                Err(e) => errors.extend(e),
+            }
+        }
+        errors
+    }
+
+    /// The error that `section`, of the settings file shown as `shown`, is
+    /// no registered section.
+    fn unknown_section(&self, shown: &str, section: &import_settings::Section<'_>) -> ContentError {
+        let known = if self.sections.is_empty() {
+            "no section is registered".to_owned()
+        } else {
+            format!(
+                "the sections registered are {}",
+                self.import_settings_sections().join(", ")
+            )
+        };
+        let message = format!("unknown section \"{}\"; {known}", section.name);
+        section.error(shown, message).with_code(codes::UNKNOWN_NAME)
     }
 
     /// The ids of kind `K`'s formats, in the order they are tried.

@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-3004 built `shuyi export <target>` ([ADR-0057](../../docs/adr/0057-export-packages-carry-nothing-of-the-build-machine-paths-remapped-and-searched-the-linux-floor-in-the-sniper-sdk-and-a-checked-package-per-target.md),
+3004 built `shuyi export <target>` ([ADR-0058](../../docs/adr/0058-export-packages-carry-nothing-of-the-build-machine-paths-remapped-and-searched-the-linux-floor-in-the-sniper-sdk-and-a-checked-package-per-target.md),
 `crates/cli/src/export.rs`): the `windows`, `linux`, `macos` and `web`
 exporters, the path search, the debug file, and CI's `export` job. Its
 PR passed 600 changed lines, so two pieces of its scope moved here
@@ -114,7 +114,7 @@ None.
   Raspberry Pi 5 or an Arm Chromebook, with how to report), and how to
   make it by hand in `debian:bullseye`; and the audit's lists, with
   what to do when a game's program loads a library the list lacks.
-  [ADR-0057](../../docs/adr/0057-export-packages-carry-nothing-of-the-build-machine-paths-remapped-and-searched-the-linux-floor-in-the-sniper-sdk-and-a-checked-package-per-target.md)
+  [ADR-0058](../../docs/adr/0058-export-packages-carry-nothing-of-the-build-machine-paths-remapped-and-searched-the-linux-floor-in-the-sniper-sdk-and-a-checked-package-per-target.md)
   §8 already says every exporter passes the audit: no new ADR unless the
   design changes.
 - The `shuyi-ship` skill (`skills/shuyi-ship/SKILL.md`) names

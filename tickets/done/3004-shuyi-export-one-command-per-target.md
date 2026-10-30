@@ -498,7 +498,7 @@ exporter's arguments.
   list, the debug file's sections and `.text` address, the Windows
   program's DLLs, the Linux program's newest `GLIBC_` (floor 2.31), and
   the `.app`'s signature and slices. Artifacts kept 7 days.
-- **Docs.** `docs/targets/desktop.md` (with its docs-map row), ADR-0057,
+- **Docs.** `docs/targets/desktop.md` (with its docs-map row), ADR-0058,
   the book's chapter 9 (*Export*), the `shuyi-ship` skill, `contract.md`,
   `crates/cli/web/README.md`, four problem codes (`SH3008`–`SH3011`)
   with their pages.

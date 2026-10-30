@@ -214,7 +214,7 @@ Nothing here costs money. A device is needed only for 3011.
   1. it runs `check --target playdate`;
   2. it builds for `thumbv7em-none-eabihf` (with `cargo-playdate`, or
      the steps it does, written out; check its license), through 3004's
-     path remapping. As 3004's ADR (ADR-0057) says of every package,
+     path remapping. As 3004's ADR (ADR-0058) says of every package,
      the exporter then runs 3004's path search over the ELF.
      **Either order with 3071:** if 3071 is done, it also runs 3071's
      library audit against a `playdate` list in

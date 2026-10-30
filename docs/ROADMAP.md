@@ -237,6 +237,7 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | 2111 | Stamped records: the engine, the game and the content that made a record or a save |
 | 2228 | `Bundle::versions`: every layer's copy of a file, for loaders that merge layers |
 | 2229 | Import settings beside any file and per folder |
+| 2571 | `shuyi check` checks the game's import settings files (after 2229) |
 | 2230 | JSON and CSV tables as formats of a game's own data kinds |
 | 2515 | `shuyi kinds`: every kind a game registers, with a JSON schema of each format |
 | 2516 | References between assets checked, and unused shipped files reported |

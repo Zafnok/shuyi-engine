@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: high
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-29
 ---
 
 # 2229 — Import settings beside any file and per folder
@@ -320,49 +320,49 @@ After MVP, and the PR says so. `Bake::bake` keeps its check here.
 
 ## Acceptance criteria
 
-- [ ] A format reads its section from `images/hero.png.meta`; with none,
+- [x] A format reads its section from `images/hero.png.meta`; with none,
       from `images/_folder.meta`; with none, from `_folder.meta` at the
       root; with none, `S::default()` (unit tests over a table bundle).
-- [ ] A section is taken whole from the nearest file that has it: a
+- [x] A section is taken whole from the nearest file that has it: a
       folder's `dither` doesn't fill in a file's own section that
       leaves `dither` out (unit test).
-- [ ] A settings file in a higher layer replaces the lower layer's
+- [x] A settings file in a higher layer replaces the lower layer's
       (unit test over two table layers).
-- [ ] Bad RON, an unknown section, an unknown field and a bad value
+- [x] Bad RON, an unknown section, an unknown field and a bad value
       each give an error with the settings file's shown name and the
       line of the problem in the file, also when it is in the second
       section (unit tests).
-- [ ] `register_import_settings` refuses a second section of one name, a
+- [x] `register_import_settings` refuses a second section of one name, a
       type without `deny_unknown_fields`, and a type with a field that
       has no default (unit tests).
-- [ ] `register` and `replace` refuse a format that claims `meta` (unit
+- [x] `register` and `replace` refuse a format that claims `meta` (unit
       test).
-- [ ] `check_import_settings` reports a `<name>.meta` whose file is
+- [x] `check_import_settings` reports a `<name>.meta` whose file is
       missing, and a settings file of a settings file, but not a
       `<name>.meta` whose file a layer leaves out on purpose (unit
       tests).
-- [ ] `load_under`, `load_each`, `Bake::under`, `ImageTable::load`,
+- [x] `load_under`, `load_each`, `Bake::under`, `ImageTable::load`,
       `ImageTable::load_with`, `LangPackRon` and `lang::from_files` skip
       settings files; a folder of `ron::Ron<T>` tables with a
       `_folder.meta` in it still loads (tests).
-- [ ] `Bake::bake` refuses a bundle with a bad settings file; a good one
+- [x] `Bake::bake` refuses a bundle with a bad settings file; a good one
       is in the pack as its own bytes, and `Bake::check` passes (test).
-- [ ] `check` reports a bad settings file of the fake game's bundle,
+- [x] ~~`check` reports a bad settings file of the fake game's bundle,
       `check --baked` reports it once, and `check` says in its `limits`
       that settings weren't checked for a game without `bake` (contract
-      tests).
-- [ ] The txtimg toy is mirrored by its own `.meta` and by a
+      tests).~~ (not done: moved to 2571 by the Size rule)
+- [x] The txtimg toy is mirrored by its own `.meta` and by a
       `_folder.meta` (integration test).
-- [ ] `bundle::watch` hears of every settings file looked for, found or
+- [x] `bundle::watch` hears of every settings file looked for, found or
       not (in the one test that sets the watcher).
-- [ ] Random bytes as a settings file never make `import_settings` or
+- [x] Random bytes as a settings file never make `import_settings` or
       `check_import_settings` panic (property test).
-- [ ] `shuyi-assets` builds without `std`
+- [x] `shuyi-assets` builds without `std`
       (`cargo build -p shuyi-assets --no-default-features --target
       thumbv7em-none-eabihf --locked`).
-- [ ] The ADR, its row in `docs/adr/README.md`, the `Status` lines of
+- [x] The ADR, its row in `docs/adr/README.md`, the `Status` lines of
       ADR-0019 and ADR-0008, and the `docs/formats.md` section are in.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -395,4 +395,93 @@ After MVP, and the PR says so. `Bake::bake` keeps its check here.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+**Done**, but for the `shuyi check` bullet: by the **Size** rule it is
+ticket 2571 (After MVP). Without it the PR is about 1,200 changed lines
+of code and tests (the ADR and the docs not counted), so the rule
+applied. `Bake::bake` keeps its check here, so `shuyi bake` and
+`shuyi check --baked` already refuse a bad settings file.
+
+- **ADR-0057**, *Import settings: a `.meta` file beside a file and
+  folder defaults, typed sections, the nearest wins*. Its row is in
+  `docs/adr/README.md`. ADR-0019's and ADR-0008's `Status` lines name it,
+  and so do their rows.
+- **`shuyi_assets::import_settings`** (`crates/assets/src/import_settings.rs`):
+  `ImportSettings`, `SETTINGS_EXTENSION`, `FOLDER_SETTINGS`,
+  `is_settings_file` (any case), `settings_of` and `settings_chain`; the
+  crate-private splitter (`sections`), `read_section`, the registry's
+  `check_section` and `orphan`. It builds without `std`.
+- **`DecodeCx::import_settings`**, and in `Formats`:
+  `register_import_settings`, `import_settings_sections` and
+  `check_import_settings`. `register` and `replace` refuse a format
+  that claims `meta`. The `Debug` of `Formats` lists the sections.
+  `Formats::standard()` registers none.
+- **`RegisterError`** is `#[non_exhaustive]` and gains `Reserved`,
+  `SectionTwice`, `SectionWithoutDefault` and
+  `SectionAllowsUnknownFields`.
+- **Walkers:** `LangPackRon` and `lang::from_files` skip settings
+  files. A test shows that `load_under`, `load_each`, `Bake::under`,
+  `ImageTable::load` and `ImageTable::load_with` skip them already.
+- **`Bake::bake`** returns `check_import_settings`'s errors with its
+  own.
+- **The toy** reads a `txtimg` section (`TxtImgSettings { mirror }`),
+  and its test is mirrored by its own `.meta` and by a `_folder.meta`.
+- **Docs:** `docs/formats.md` gets *Import settings*, a step in
+  *Writing a format plugin*, a rule (`meta` is reserved), and the
+  language-pack line. The book's chapter 5 gets a short section,
+  *Settings beside a file*. The docs map's `22xx` row links ADR-0057.
+
+**Deviations:**
+
+- Errors about a whole section (an unknown section, a section given
+  twice) point at the section's name, not at its value. That place is
+  easier to find. If the name isn't found right before the colon, they
+  point at the value's start.
+- Additions the ticket didn't name: a section given twice in one file
+  is an error (`codes::DUPLICATE`), and a settings file is read at most
+  `TEXT_MAX_BYTES` and the registry's `Limits` (`codes::TOO_BIG`), like
+  a text format's file.
+- The error codes: bad RON and errors inside a section are
+  `codes::PARSE`, an unknown section is `codes::UNKNOWN_NAME`, and a
+  `<name>.meta` without its file is `codes::MISSING_FILE`. A settings
+  file of a settings file has no code: no content code fits it.
+- The registry's tests went into `format/tests.rs`, as the ticket said.
+  The walker test for `Bake::under` is the pack test
+  `settings_files_are_checked_and_kept_as_their_own_bytes`.
+- `format::builtin_tests::edited` is now `pub(crate)`, so the property
+  tests can reuse it.
+
+**The "either order" clauses:** 2220, 2516, 2349 and 2238 were open, so
+each took its *if not* branch. Their clauses now say what holds
+("**From 2229 (done):** …"). 3007 now says its typo check is
+`Formats::check_import_settings`, and its **Out** names 2571 for
+`shuyi check`.
+
+**Follow-up:** 2571 (`shuyi check` checks the game's import settings
+files).
+
+**For the game:** it needs nothing new from this now. The game has no
+`match` on `RegisterError`, so this change doesn't break it. No game PR
+or ticket moves the pin to this change yet: the game's next pin bump
+picks it up.
+
+Breaking: shuyi-assets: format::RegisterError: it is `#[non_exhaustive]` and gains `Reserved`, `SectionTwice`, `SectionWithoutDefault` and `SectionAllowsUnknownFields`, so a `match` on it needs a `_` arm.
+
+```migration
+since: 0.1.0
+what: RegisterError can now grow, so a match on it ends with a wildcard arm.
+old: "match error { RegisterError::Extension { .. } => a, RegisterError::Id { .. } => b, RegisterError::BadExtension { .. } => c }"
+new: "match error { RegisterError::Extension { .. } => a, RegisterError::Id { .. } => b, _ => c }"
+before: |
+  match error {
+      RegisterError::Extension { .. } => "extension",
+      RegisterError::Id { .. } => "id",
+      RegisterError::BadExtension { .. } => "bad extension",
+  }
+after: |
+  match error {
+      RegisterError::Extension { .. } => "extension",
+      RegisterError::Id { .. } => "id",
+      _ => "other",
+  }
+find: ["RegisterError::BadExtension { .. } =>"]
+```

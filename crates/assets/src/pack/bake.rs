@@ -318,8 +318,9 @@ impl Bake {
     /// The pack of `bundle`, baked for `target`: each file this bake names
     /// holds its assets read with `formats`, and every other file its own
     /// bytes, and its index holds `bundle`'s fingerprint, which the pack
-    /// then stands for. Refuses a source with errors: every one of them is
-    /// returned.
+    /// then stands for. Import settings files go in as their own bytes
+    /// too, once they check ([`Formats::check_import_settings`]). Refuses
+    /// a source with errors: every one of them is returned.
     pub fn bake(
         &self,
         formats: &Formats,
@@ -327,6 +328,7 @@ impl Bake {
         target: Option<&str>,
     ) -> Result<Baked, Vec<ContentError>> {
         let (planned, mut errors) = self.planned(formats, bundle);
+        errors.extend(formats.check_import_settings(bundle));
         let mut contents = BTreeMap::new();
         let mut files = Vec::new();
         for path in bundle.files_under("") {

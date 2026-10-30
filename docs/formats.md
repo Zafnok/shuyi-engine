@@ -62,6 +62,10 @@ The code is `shuyi_assets::format` (`crates/assets/src/format.rs`).
   through its `DecodeCx` (a sidecar's picture, a manifest's sounds, a
   pack's English). A check against another kind of asset runs after,
   on the assets loaded (below).
+- **`meta` is reserved.** No format may claim the extension `meta`:
+  `register` and `replace` refuse it (`RegisterError::Reserved`). It is
+  the extension of import settings files (below), so no walker over a
+  folder reads one as an asset.
 - **Never a panic.** Bytes may come from mods or downloads. Every
   built-in format has a property test that random bytes, and its own
   fixtures with a few characters changed, never make it panic.
@@ -143,7 +147,8 @@ What each one reads:
   against English's beside it (`lang/en/ui.ron`), and its `data.ron` and
   `dialogue/*.ron`, checked against the game's data text when the format
   has it (`LangPackRon::with_data`) and left out otherwise. Any other file
-  in its directory is an error.
+  in its directory is an error, except import settings files (below),
+  which are skipped.
 - **`.dlg`, `.map`, keymaps, cinematics and the RON sidecars** read what
   their parsers read (`dialogue::parse_dlg`, `grid_map::parse`,
   `KeymapDef::from_source`, `cinematic::parse`, each module's
@@ -304,6 +309,29 @@ impl Format for TxtImg {
   `cx.left_out`, `cx.files_under`), found from the file's own path
   (`file.sibling`, `file.with_extension`). Without a bundle they are
   missing, and the format says so.
+- **Settings that differ by file or folder** come from
+  `cx.import_settings::<S>(file)` (*Import settings*, below). The toy
+  flips a picture left to right when its section says so:
+
+  ```rust
+  #[derive(Debug, Default, PartialEq, Eq, Deserialize)]
+  #[serde(default, deny_unknown_fields)]
+  struct TxtImgSettings {
+      mirror: bool,
+  }
+
+  impl ImportSettings for TxtImgSettings {
+      const SECTION: &'static str = "txtimg";
+  }
+
+  // In `decode`, once the picture is read:
+  if cx.import_settings::<TxtImgSettings>(file)?.mirror {
+      // flip each row
+  }
+  ```
+
+  A choice the same for the whole game stays in the format's value
+  instead (ADR-0019 §5).
 - **Determinism**: the same bytes give the same asset on every platform
   (ADR-0007 §5). Its fixture is a row of its crate's golden table
   (`shuyi_assets::golden`, behind the `golden` feature): the `state_hash`
@@ -333,6 +361,7 @@ property test checks it on random assets the format can hold.
 let mut formats = Formats::standard();
 formats.register(TxtImg)?;
 formats.register(TxtImgInfo)?;
+formats.register_import_settings::<TxtImgSettings>()?;
 ```
 
 From then on `formats.load::<Image>(&bundle, "images/card")` reads
@@ -352,6 +381,70 @@ The toy's tests are the checklist for any format:
 - `encode` then `decode` gives the asset back (if it encodes);
 - a property test: random bytes, and text shaped like the format, never
   panic.
+
+## Import settings
+
+How one file, or every file of a folder, is read or baked: a picture's
+dither on a one-bit target (3007), its palette group (3019). The files
+are RON, beside the files they set
+([ADR-0057](adr/0057-import-settings-a-meta-file-beside-a-file-and-folder-defaults-typed-sections-the-nearest-wins.md));
+the code is `shuyi_assets::import_settings`.
+
+- **The two names.** `images/hero.png.meta` holds `images/hero.png`'s
+  own settings: the file's full name, then `.meta`, so `hero.png` and
+  `hero.ogg` never share one. `_folder.meta` in a folder holds the
+  defaults of every file in it and below it.
+- **What is in one.** A struct of sections, each named after the step
+  that reads it, never after a file format:
+
+  ```ron
+  // images/_folder.meta: every picture here
+  (
+      onebit: (dither: bayer),
+      indexed: (group: "ui"),
+  )
+  ```
+
+  `()` holds no section. A section given twice is an error.
+- **Which wins.** For a file, the files looked at are its own `.meta`,
+  then `_folder.meta` in its folder, then in each folder above it up to
+  the root (`import_settings::settings_chain`). A section is taken whole
+  from the first that has it: a folder's `dither` doesn't fill in a
+  file's own `onebit` section that leaves `dither` out, the section's
+  default does. With none, the section's `Default`.
+- **Layers.** A settings file is a file: a higher layer's copy replaces
+  a lower one's (`assets@playdate/images/hero.png.meta` replaces
+  `assets/images/hero.png.meta`). Nearness wins over layers: a higher
+  layer's `_folder.meta` doesn't override a file's own `.meta` in a
+  lower layer.
+- **A section is a struct** with `#[serde(default, deny_unknown_fields)]`
+  that implements `ImportSettings`, named by its `SECTION`. The engine's
+  sections hold integers, bools, enums and strings, never floats.
+- **Registering it.** `formats.register_import_settings::<S>()`, at
+  start-up, whether or not the step that reads it runs this build, so a
+  typo in a Playdate setting is found on a desktop build too. It refuses
+  a second section of one name, a type with a field that has no default,
+  and a type that doesn't deny unknown fields, each with the attribute
+  to add. The engine registers its own in `Formats::register_standard`;
+  `Formats::standard()` has none yet.
+- **Reading it in a format.** `cx.import_settings::<S>(file)` walks the
+  chain through the bundle, so a front end that watches reads hears of
+  every settings file looked for, and gives the section or its default.
+  A settings file on the way that doesn't read is an error, even when a
+  farther one has the section.
+- **The errors** name the settings file, a line and a column: bad RON, a
+  section given twice, an unknown section (with the registered ones), an
+  unknown field or a bad value inside a section, and a `<name>.meta`
+  whose file the bundle lacks (unless a layer leaves that file out on
+  purpose) or is itself a settings file.
+  `formats.check_import_settings(&bundle)` finds every one in a bundle;
+  `Bake::bake` runs it and refuses a bundle with any.
+- **Packs.** A settings file goes into a pack as its own bytes, like any
+  file the bake doesn't name, so a file kept raw and decoded at run time
+  reads the same settings from the pack as from its sources.
+- **Settings are not data.** The engine's RON sidecars (font atlas,
+  palette, lights, names, the audio manifest) are assets of their own,
+  and a game's data stays its own kinds.
 
 ## Optimized formats
 

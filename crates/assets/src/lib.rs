@@ -53,6 +53,7 @@ pub mod format;
 pub mod golden;
 pub mod grid_map;
 pub mod image;
+pub mod import_settings;
 pub mod ink;
 pub mod keymap;
 pub mod lang;

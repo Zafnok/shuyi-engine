@@ -1,4 +1,4 @@
-# ADR-0057: Export packages carry nothing of the build machine: paths remapped and searched, the Linux floor in the sniper SDK, and a checked package per target
+# ADR-0058: Export packages carry nothing of the build machine: paths remapped and searched, the Linux floor in the sniper SDK, and a checked package per target
 
 - **Status:** Accepted; extends ADR-0008 (export targets)
 - **Date:** 2026-10-29
