@@ -33,6 +33,23 @@ fn the_title_shows_the_games_name_and_cancel_leaves() {
 }
 
 #[test]
+fn the_title_quits_only_where_the_game_can() {
+    let profiles = engine_profiles().unwrap();
+    let mut h = game::game().harness().as_target(&profiles["web"].profile);
+    assert_eq!(Title::view(h.ctx()).help, "");
+    h.keys("Backspace");
+    assert!(!h.quit_requested());
+    assert_eq!(h.screens(), ["title"]);
+
+    let mut h = game::game()
+        .harness()
+        .as_target(&profiles["desktop"].profile);
+    assert_ne!(Title::view(h.ctx()).help, "");
+    h.keys("Backspace");
+    assert!(h.quit_requested());
+}
+
+#[test]
 fn confirm_starts_the_first_stage_if_there_is_one() {
     let mut h = game::game().harness();
     h.keys("Enter");

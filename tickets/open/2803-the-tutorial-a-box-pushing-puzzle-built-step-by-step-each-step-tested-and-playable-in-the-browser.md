@@ -97,11 +97,10 @@ None.
   `Cancel`), plus its undo action. `BasicTools` has no scene, bot or
   replay, so by step 09 the game has its own `GameTools`, which calls
   `BasicTools` for the rest (2511's way on).
-- **Either order with 2778:** if it is done, every step leaves (Cancel,
-  and any Quit in step 06's menu) only where `ctx.platform.can_quit()`
-  (3053's facts, done), as the template's title does then. No step
-  played in the browser then freezes when the player leaves. If not,
-  2778 changes the steps when it lands.
+- **From 2778 (done):** the template's title already quits only where
+  `ctx.platform.can_quit()`. Every step leaves (Cancel, and any Quit in
+  step 06's menu) only there too, as the title does, so no step played in
+  the browser freezes when the player leaves.
 - **From 2019 (done):** add a run of `check.py boot` on each step's web
   build to CI's `web-render` job, as its step *Every example's web build
   boots* runs for the examples (`crates/cli/web/README.md`, *Checked in

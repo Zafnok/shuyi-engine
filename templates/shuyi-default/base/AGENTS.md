@@ -31,6 +31,9 @@ these are the ones a game on it keeps.
 - **Never hard-code a key.** Code reacts to actions (the six moves of
   `UiAction`); the keys are the player's, in `files/keymap.ron`, and text
   names a key as `{Confirm}`, which shows the player's own key.
+- **Ask `ctx.platform`, never `cfg!`:** offer Quit only where
+  `ctx.platform.can_quit()`. Screens read the facts; the rules crate never
+  does.
 
 ## On Linux and in a cloud agent's container
 

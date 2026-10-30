@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: ["3053"]
 nick_input: none
-completed:
+completed: 2026-10-30
 ---
 
 # 2778 — The template's title quits only where the game can
@@ -81,15 +81,15 @@ None.
 
 ## Acceptance criteria
 
-- [ ] A game made with `--template blank`, run as `web`: Cancel on the
+- [x] A game made with `--template blank`, run as `web`: Cancel on the
       title doesn't quit and the help is empty; as `desktop`, Cancel
       quits.
-- [ ] The same for `--template grid`.
-- [ ] A new game's `AGENTS.md` has the line.
-- [ ] A game made from each short name passes CI's `templates` job's
+- [x] The same for `--template grid`.
+- [x] A new game's `AGENTS.md` has the line.
+- [x] A game made from each short name passes CI's `templates` job's
       gates.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -97,5 +97,12 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+The title (`title.rs`) now quits on Cancel only where `ctx.platform.can_quit()`,
+and its `TitleView::help` is empty elsewhere (the web, a console). The
+template's `AGENTS.md` has the `ctx.platform` bullet. A new test in the
+template's `tests/it/main.rs` runs the title as `web` and `desktop`. A game made
+from `blank` and from `grid` passed fmt, clippy, tests and `check --target all`.
+`site/tutorial/` doesn't exist yet, so 2803 got a "From 2778 (done)" note
+instead.
+
+Book: none, no public API changed (template code and its AGENTS.md only).
