@@ -445,7 +445,7 @@ onto it. ADR-0059.
   for 3072: `icon`, `window_icons`, their checks, `downscale`,
   `WindowIcon`'s move into `shuyi-platform`, and the window's icon in
   `AppInfo` and `run_game`. 3049 now waits for 3072 too, and so does
-  3010 (it bakes `app.icon`). The acceptance criteria on the icon PNGs,
+  3010 (it bakes `app.icon`). The acceptance criteria on the icon files,
   `downscale` and `WindowIcon` are 3072's.
 - **The templates:** 2501 and 2511 made one composed template,
   `templates/shuyi-default`, and both short names run through

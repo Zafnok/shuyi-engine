@@ -5,9 +5,18 @@
 Example(
     template: "grid",
     steps: [
+        // The game's own id in place of the placeholder (its saves are
+        // kept under it), written into `app_info.rs` by `app-info`.
+        Edit(
+            file: "shuyi.ron",
+            find: "id: \"com.example.shuyi-ship\",",
+            replace: "id: \"io.github.someone.shuyi-ship\",",
+        ),
+        Cargo(args: ["shuyi", "app-info"]),
         // The targets `shuyi.ron` lists fit as the game is.
         Shuyi(args: ["check", "--target", "all"], expect: [
             Is("/result/targets/0/target", "desktop"),
+            Is("/result/targets/0/problems", "[]"),
             Is("/result/targets/1/target", "web"),
         ]),
         // The Steam Deck has no keyboard: added to the targets, it fails

@@ -29,8 +29,11 @@ Ship only what `check --target` passes.
 
 ## Steps
 
-1. **Pass the gates first** (`shuyi-gates`), then check every target
-   `shuyi.ron` lists:
+1. **Pass the gates first** (`shuyi-gates`). Give the game its own id
+   in `shuyi.ron`'s `app` (`io.github.<you>.<game>` in place of
+   `com.example.…`), then run `cargo shuyi app-info`: the player's saves
+   are kept under the id, so it never changes after a release. Then
+   check every target `shuyi.ron` lists:
 
    ```bash
    cargo shuyi check --target all
@@ -38,8 +41,9 @@ Ship only what `check --target` passes.
 
    For each target it checks that the frame fits its display at the
    game's scale, the smallest text is tall enough, and every screen's
-   required actions fit its buttons. A problem names the setting to
-   change (`targets` in `shuyi.ron`, or the keymap's `targets`).
+   required actions fit its buttons, and `app` too. A problem names the
+   setting to change (`targets` or `app` in `shuyi.ron`, or the keymap's
+   `targets`).
 
 2. **A package per target**, from the game's folder:
 
@@ -200,7 +204,8 @@ Branch on the answer's `code`, never its message, and read its page
 with `cargo shuyi explain <code>`:
 
 - `check --target` answers `ok: false` with no code: each target's
-  `problems` has its `check` (`fits`, `text`, `controls`, `one-bit`),
+  `problems` has its `check` (`fits`, `text`, `controls`, `one-bit`,
+  `app`),
   its `setting` and its message. Change that setting; a `warning` doesn't
   fail it.
 - `SH3003`: no such target in `shuyi.ron`'s `targets`, or the target
@@ -220,8 +225,8 @@ with `cargo shuyi explain <code>`:
 
 ## Worked example
 
-[`example.ron`](example.ron) runs on a new `grid` game: `check --target
-all` passes; the Steam Deck added to its targets fails it, with the
+[`example.ron`](example.ron) runs on a new `grid` game: its own id and
+`app-info`, then `check --target all` passes; the Steam Deck added to its targets fails it, with the
 controls' problem; a button table in the keymap fixes it. Then the web
 entry, `build.rs` and the web target, `cargo shuyi web --release`, the
 page and the binary in `dist/web/`, a credits file that `import` reads,
