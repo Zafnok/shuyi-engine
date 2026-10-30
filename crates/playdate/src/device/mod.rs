@@ -243,6 +243,13 @@ impl Sdk for Device {
     }
 }
 
+/// The game's baked pack, which `shuyi export playdate` places in the
+/// `.pdx` ([`crate::sdk::PACK`]), read whole into the heap and kept for as
+/// long as the game runs.
+pub fn pack() -> Result<&'static [u8], String> {
+    crate::backend::read_pack(&Device)
+}
+
 /// What the entry points drive, whatever the game's type.
 trait Running {
     fn update(&mut self) -> bool;

@@ -45,13 +45,8 @@ mod fake;
 pub use backend::Playdate;
 pub use driver::Driver;
 
-/// The game's baked pack, which `shuyi export playdate` places in the
-/// `.pdx` ([`sdk::PACK`]), read whole into the heap and kept for as long as
-/// the game runs. Off the device there is none.
 #[cfg(shuyi_playdate_sdk)]
-pub fn pack() -> Result<&'static [u8], alloc::string::String> {
-    backend::read_pack(&device::Device)
-}
+pub use device::pack;
 
 /// The game's baked pack: off the device there is none.
 #[cfg(not(shuyi_playdate_sdk))]
