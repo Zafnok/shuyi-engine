@@ -874,6 +874,22 @@ fn a_language_pack_is_read_from_its_lang_ron_as_the_languages_read_it() {
 }
 
 #[test]
+fn a_settings_file_in_a_language_pack_is_no_error() {
+    let [english, info, ui] = pack_files();
+    let settings = |path: &'static str| (path, b"()".to_vec());
+    let files = vec![
+        english,
+        info,
+        ui,
+        settings("lang/xx/_folder.meta"),
+        settings("lang/xx/ui.ron.meta"),
+        settings("lang/xx/dialogue/_folder.meta"),
+    ];
+    let read = bundled(&lang_pack(), bundle(files), "lang/xx/lang.ron");
+    assert!(read.is_ok(), "{read:?}");
+}
+
+#[test]
 fn a_language_packs_errors_name_its_files() {
     let pack = |files: Vec<(&'static str, Vec<u8>)>, path: &str| {
         shown(bundled(&lang_pack(), bundle(files), path))
@@ -1087,7 +1103,7 @@ fn the_formats_of_a_games_types_show_what_they_are() {
 
 /// Up to three edits of `source`, each a character taken out, put in or
 /// changed, from those that shape the engine's text formats.
-fn edited(source: &'static str) -> impl Strategy<Value = String> {
+pub(crate) fn edited(source: &'static str) -> impl Strategy<Value = String> {
     const CHARS: &[char] = &[
         '(', ')', '{', '}', '[', ']', ':', ',', '"', '\'', '\n', ' ', '-', '#', '@', '*', '>', '.',
         '/', 'a', 'z', '0', '9', '~', 'é', '\0',

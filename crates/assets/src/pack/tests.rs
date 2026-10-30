@@ -295,6 +295,49 @@ fn a_source_with_errors_is_refused_with_every_error() {
 }
 
 #[test]
+fn settings_files_are_checked_and_kept_as_their_own_bytes() {
+    let files = |extra: (&'static str, Vec<u8>)| {
+        bundle(vec![
+            ("data/_folder.meta", b"()".to_vec()),
+            ("data/a.ron", TABLE.into()),
+            ("data/a.ron.meta", b"()".to_vec()),
+            extra,
+        ])
+    };
+    let bake = Bake::new(STAMP).under::<Table>("data");
+    let good = files(("data/b.ron", TABLE.into()));
+    let baked = bake
+        .bake(&formats(), good, None)
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let kinds: Vec<(&str, &[&str])> = baked
+        .files
+        .iter()
+        .map(|file| (file.path.as_str(), file.kinds.as_slice()))
+        .collect();
+    assert_eq!(
+        kinds,
+        [
+            ("data/_folder.meta", &[][..]),
+            ("data/a.ron", &["table"][..]),
+            ("data/a.ron.meta", &[][..]),
+            ("data/b.ron", &["table"][..]),
+        ]
+    );
+    let bytes: &'static [u8] = Box::leak(baked.bytes.into_boxed_slice());
+    let pack = pack_bundle(Pack::open(bytes, STAMP).unwrap_or_else(|e| panic!("{e}")));
+    assert_eq!(pack.bytes("data/a.ron.meta"), Some(&b"()"[..]));
+    assert_eq!(bake.check(&pack_formats(&bake), good, &pack), []);
+    let bad = files(("data/b.ron.meta", b"(nope: ())".to_vec()));
+    let refused = bake.bake(&formats(), bad, None).err().unwrap_or_default();
+    let refused: Vec<String> = refused.iter().map(ToString::to_string).collect();
+    assert_eq!(refused.len(), 2, "{refused:?}");
+    assert!(
+        refused[0].starts_with("base/data/b.ron.meta: these are the settings of base/data/b.ron")
+    );
+    assert!(refused[1].starts_with("base/data/b.ron.meta:1:2: unknown section \"nope\""));
+}
+
+#[test]
 fn two_kinds_of_one_name_cant_be_baked_together() {
     let bake = Bake::new(STAMP)
         .asset::<DialogueFile<Cue>>("dialogue/gate.dlg")

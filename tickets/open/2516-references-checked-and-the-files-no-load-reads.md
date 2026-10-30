@@ -221,10 +221,11 @@ None.
   there, so `versions`' reads are recorded too. If not, record in
   `Bundle::bytes`, and 2228 moves it into its helper (its clause says
   so).
-- **Either order with 2229:** if 2229 is done, a `<file>.meta` counts
-  as read when its file was read, and a `_folder.meta` when any file in
-  its folder or below was read. If not, the ADR states that rule, and
-  2229 follows it.
+- **From 2229 (done):** a `<file>.meta` counts as read when its file
+  was read, and a `_folder.meta` when any file in its folder or below
+  was read: the ADR states that rule, and a test proves it
+  (`shuyi_assets::import_settings::is_settings_file` tells a settings
+  file).
 - **Problem codes (2509, done; ADR-0028):** the dangling-reference
   error is a `Problem` with a content code of its own: a new row
   (`dangling-reference`, the next free `SH20nn`) in

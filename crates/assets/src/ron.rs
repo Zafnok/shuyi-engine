@@ -116,7 +116,7 @@ pub fn parse_ron_seed<'de, S: DeserializeSeed<'de>>(
 }
 
 /// `e` as an error of `file`.
-fn error(file: &str, e: &::ron::error::SpannedError) -> ContentError {
+pub(crate) fn error(file: &str, e: &::ron::error::SpannedError) -> ContentError {
     // `span.end` is the offending token; `span.start` can be the
     // whitespace before it.
     let pos = e.span.end;

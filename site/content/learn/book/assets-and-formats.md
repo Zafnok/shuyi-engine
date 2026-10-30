@@ -78,6 +78,18 @@ platform. The engine's [formats
 page](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md)
 walks through one, with its tests, and lists the built-in formats.
 
+## Settings beside a file
+
+Some choices differ from one file to the next: how a picture is made
+one-bit, which palette it uses. They go in a small RON file beside it,
+`images/hero.png.meta`, or for a whole folder in its `_folder.meta`. Each
+holds sections named after the step that reads them, such as
+`(onebit: (dither: bayer))`, and the nearest file with a section wins.
+A format reads its section with `DecodeCx::import_settings`, and a typo
+in any settings file is an error with its line. The formats page says
+[how settings are
+found](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#import-settings).
+
 ## The pack
 
 A game may ship its files baked into one pack, a `.shuyipak` file

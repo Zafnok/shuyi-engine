@@ -136,10 +136,12 @@ None.
   channel a `Note` label "reloaded <file>", shown for two seconds of
   frames when a `Hot<TileMap>` reloads; if not, nothing to do (2318
   adds it).
-- **Either order with 2229 (import settings):** if 2229 is done, add a
-  test that a `Hot` value of the txtimg toy kind reloads when its
-  `<file>.meta` changes, and when the `_folder.meta` it reads changes.
-  If not, nothing to do (2229 adds that test, its clause says so).
+- **From 2229 (done, import settings):** add a test that a `Hot` value
+  of the txtimg toy kind (`crates/assets/tests/it/txtimg.rs`, whose
+  `TxtImg` reads the `txtimg` section through `cx.import_settings`)
+  reloads when its `<file>.meta` changes, and when the `_folder.meta` it
+  reads changes. The settings files are read through the bundle
+  (`DecodeCx::bytes`), so the reads `Hot` tracks hold them.
 - **From 2802 (done):** the book's chapter 5, *Assets and formats*
   (`site/content/learn/book/assets-and-formats.md`), gets a section on
   hot reload (`Hot<T>` and `shuyi run --watch`), its code a snippet in

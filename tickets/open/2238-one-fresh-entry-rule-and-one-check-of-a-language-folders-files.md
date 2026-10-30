@@ -93,11 +93,12 @@ None.
   pack alone, since it reads one pack; if not, merge today's code, and
   2226 changes the check and the walk in the one place each (its
   clause).
-- **Either order with 2229:** if 2229 is done, both readers skip a
-  settings file: move that skip into the shared check, so a settings
-  file is neither a pack file nor an error, and 2229's tests pass
-  unchanged; if not, nothing to do (2229 adds the skip once, to the
-  shared check).
+- **From 2229 (done):** both readers skip a settings file
+  (`is_settings_file`, in `LangPackRon::decode`'s loop and in
+  `lang::from_files`'s): move that skip into the shared check, so a
+  settings file is neither a pack file nor an error, and 2229's tests
+  (`a_settings_file_in_a_language_pack_is_no_error`,
+  `a_settings_file_among_the_languages_is_no_error`) pass unchanged.
 - **Either order with 2349:** if 2349 is done, both readers accept a
   pack's `files/` folder: move that into `is_pack_file` (a path under
   `files/` is a pack file, never read as text), and 2349's tests pass

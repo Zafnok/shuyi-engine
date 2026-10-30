@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use crate::dialogue::{DialogueLimits, Tokens};
 use crate::error::{ContentError, codes};
 use crate::format::AssetKind;
+use crate::import_settings::is_settings_file;
 use crate::names::Names;
 use crate::ron::parse_ron;
 use crate::tip::placeholders;
@@ -549,8 +550,8 @@ fn is_dialogue_file(name: &str) -> bool {
 /// Validates the languages made of `files`: English's `en/ui.ron`, and a
 /// pack for every other directory, which needs its `lang.ron` and
 /// `ui.ron` and may have a `data.ron` and `dialogue/<file>.ron` files
-/// (checked against `data`; left out without it). Any other file is an
-/// error. `display` gives the name a path is reported under. Reports
+/// (checked against `data`; left out without it). Import settings files
+/// are skipped (ADR-0057); any other file is an error. `display` gives the name a path is reported under. Reports
 /// every problem found; with English broken the packs are not checked
 /// (each entry would be an unknown key).
 pub fn from_files(
@@ -570,6 +571,9 @@ pub fn from_files(
     };
     let mut dirs = BTreeSet::new();
     for file in files {
+        if is_settings_file(file.path) {
+            continue;
+        }
         let known = match file.path.split_once('/') {
             Some((ENGLISH, name)) => name == UI_FILE,
             Some((dir, name)) => {
@@ -953,6 +957,19 @@ mod tests {
         let errors = from_files(&binary, None, str::to_owned, &RULES).unwrap_err();
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].file, "en/ui.ron");
+    }
+
+    #[test]
+    fn a_settings_file_among_the_languages_is_no_error() {
+        let read = files(&[
+            ("_folder.meta", "()"),
+            ("en/ui.ron", ENGLISH_SOURCE),
+            ("en/ui.ron.meta", "()"),
+            ("xx/_folder.meta", "()"),
+            ("xx/lang.ron", INFO),
+            ("xx/ui.ron", UI),
+        ]);
+        assert!(read.is_ok(), "{read:?}");
     }
 
     #[test]
