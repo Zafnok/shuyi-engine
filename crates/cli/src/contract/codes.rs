@@ -459,9 +459,9 @@ pub static TABLE: &[Entry] = &[
         Operation,
         "SH3009",
         "The built program holds a path of the build machine",
-        "build where the path the message names is remapped: depend on the engine through \
-         cargo (a git revision, or a checkout inside the game's folder), not by a path outside \
-         the game's workspace, and keep CARGO_HOME and the target folder where cargo puts them"
+        "find the code that writes the path into the program as a value (env!(\"CARGO_MANIFEST_DIR\"), \
+         OUT_DIR) and keep it out of what ships, and keep CARGO_HOME and the target folder where \
+         cargo puts them"
     ),
     row!(
         NO_EXPORTER,

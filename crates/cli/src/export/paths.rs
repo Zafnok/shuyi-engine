@@ -19,12 +19,19 @@ pub const FOUND: &str = "the build holds a path of the build machine";
 pub const ENCODED: &str = "CARGO_ENCODED_RUSTFLAGS";
 
 /// The folders a release build is remapped from: the workspace's root
-/// (to the package's name), `CARGO_HOME` (`/cargo`), `RUSTUP_HOME`
-/// (`/rustup`) and the target folder (`/target`), in that order. rustc
-/// tries the last first, so a folder inside another one still gets its
-/// own name.
-pub fn remaps(workspace: &Path, target: &Path, name: &str) -> Vec<(PathBuf, String)> {
+/// (to the package's name), each package of `outside` (a folder outside
+/// the workspace that the build reads by a path, to its name),
+/// `CARGO_HOME` (`/cargo`), `RUSTUP_HOME` (`/rustup`) and the target
+/// folder (`/target`), in that order. rustc tries the last first, so a
+/// folder inside another one still gets its own name.
+pub fn remaps(
+    workspace: &Path,
+    target: &Path,
+    name: &str,
+    outside: &[(PathBuf, String)],
+) -> Vec<(PathBuf, String)> {
     let mut remaps = vec![(workspace.to_path_buf(), name.to_owned())];
+    remaps.extend(outside.iter().cloned());
     if let Some(cargo) = cargo_home() {
         remaps.push((cargo, "/cargo".to_owned()));
     }
@@ -33,6 +40,50 @@ pub fn remaps(workspace: &Path, target: &Path, name: &str) -> Vec<(PathBuf, Stri
     }
     remaps.push((target.to_path_buf(), "/target".to_owned()));
     remaps
+}
+
+/// `cargo metadata`'s answer, the fields [`outside`] reads.
+#[derive(serde::Deserialize)]
+struct Metadata {
+    packages: Vec<Package>,
+}
+
+#[derive(serde::Deserialize)]
+struct Package {
+    name: String,
+    source: Option<String>,
+    manifest_path: PathBuf,
+}
+
+/// The packages the project at `root` builds from a path outside its
+/// `workspace` (the engine, when a game names it by `path = "…"`), each
+/// folder with its name, by `cargo metadata`. None if it doesn't run.
+pub fn outside(root: &Path, workspace: &Path) -> Vec<(PathBuf, String)> {
+    std::process::Command::new(crate::cargo())
+        .args(["metadata", "--format-version", "1"])
+        .current_dir(root)
+        .output()
+        .ok()
+        .filter(|output| output.status.success())
+        .map(|output| outside_of(&String::from_utf8_lossy(&output.stdout), workspace))
+        .unwrap_or_default()
+}
+
+/// [`outside`] from `cargo metadata`'s answer, `json`: the packages with
+/// no source (read from a path) whose folder isn't in `workspace`.
+fn outside_of(json: &str, workspace: &Path) -> Vec<(PathBuf, String)> {
+    let Ok(meta) = serde_json::from_str::<Metadata>(json) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(PathBuf, String)> = meta
+        .packages
+        .into_iter()
+        .filter(|p| p.source.is_none())
+        .filter_map(|p| Some((p.manifest_path.parent()?.to_path_buf(), p.name)))
+        .filter(|(dir, _)| !dir.starts_with(workspace))
+        .collect();
+    found.sort();
+    found
 }
 
 /// The home folder: `HOME`, else `USERPROFILE`.
@@ -238,8 +289,30 @@ mod tests {
     }
 
     #[test]
+    fn the_packages_read_by_a_path_outside_the_workspace_are_remapped_to_their_names() {
+        let json = r#"{"packages": [
+            {"name": "game", "source": null, "manifest_path": "/w/game/Cargo.toml"},
+            {"name": "shuyi-core", "source": null, "manifest_path": "/e/crates/core/Cargo.toml"},
+            {"name": "serde", "source": "registry+https://x", "manifest_path": "/c/serde/Cargo.toml"}
+        ]}"#;
+        assert_eq!(
+            outside_of(json, Path::new("/w")),
+            [(PathBuf::from("/e/crates/core"), "shuyi-core".to_owned())]
+        );
+        assert_eq!(outside_of("not json", Path::new("/w")), []);
+        let outside = [(PathBuf::from("/e/crates/core"), "shuyi-core".to_owned())];
+        let remaps = remaps(Path::new("/w"), Path::new("/w/target"), "game", &outside);
+        assert_eq!(remaps[1], outside[0]);
+        // This crate, from Hello, Grid's folder: the engine is its
+        // workspace, so nothing is outside.
+        let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
+        let workspace = crate::web::workspace_root(&example);
+        assert_eq!(super::outside(&example, &workspace), []);
+    }
+
+    #[test]
     fn the_remaps_end_with_the_target_folder_and_start_with_the_workspace() {
-        let remaps = remaps(Path::new("/w"), Path::new("/w/target"), "game");
+        let remaps = remaps(Path::new("/w"), Path::new("/w/target"), "game", &[]);
         assert_eq!(remaps[0], (PathBuf::from("/w"), "game".to_owned()));
         assert_eq!(
             remaps.last().unwrap(),

@@ -526,7 +526,15 @@ passed on both.
   `linux-arm64` in `debian:bullseye`.
 - **The project root.** The remapping maps the workspace's root (which
   holds the project) to the package's name, so the engine's examples,
-  whose workspace is the engine's repository, are covered too.
+  whose workspace is the engine's repository, are covered too. Each
+  package read by a path outside the workspace (`cargo metadata`: no
+  source) is remapped to its own name too: CI's skill examples, games
+  made with `shuyi new --engine-path`, name the engine that way, and
+  the search refused them before.
+- **`.debug_gdb_scripts`.** rustc writes it on Linux as loaded data
+  (the name of gdb's pretty-printer script, no path), so `objcopy
+  --strip-debug` keeps it in the Linux program; `check.sh` leaves it
+  out of the sections it counts.
 - **Assets.** Nothing is collected beside the program: a game embeds its
   files (the templates and examples do), and `shuyi.ron` has no setting
   by which a game asks for a pack (2204 added none). The web package

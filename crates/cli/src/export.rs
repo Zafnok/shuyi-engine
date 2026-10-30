@@ -300,7 +300,8 @@ impl ExportCx {
         let mut cargo = Command::new(crate::cargo());
         cargo.args(&args).current_dir(&self.root);
         if self.release {
-            let remaps = paths::remaps(&self.workspace, &self.target_dir, &self.package);
+            let outside = paths::outside(&self.root, &self.workspace);
+            let remaps = paths::remaps(&self.workspace, &self.target_dir, &self.package, &outside);
             cargo.env(paths::ENCODED, paths::remapped_flags_here(&remaps));
             if keep_debug {
                 cargo.env("CARGO_PROFILE_RELEASE_STRIP", "false");

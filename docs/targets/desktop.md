@@ -39,7 +39,9 @@ tools are that system's. On another one, `export` says where it builds.
 `--release` builds what players get:
 
 - **Nothing of the build machine.** The build's paths are renamed: the
-  workspace to the game's package name, Cargo's home to `/cargo`,
+  workspace to the game's package name, a crate read by a path
+  outside it (the engine, named by `path = "…"`) to its own name,
+  Cargo's home to `/cargo`,
   rustup's to `/rustup`, the target folder to `/target`. A panic then
   names `/cargo/registry/…`, not the builder's home folder. The program
   is then searched for the home folder, Cargo's home and the game's

@@ -223,7 +223,8 @@ pub fn run(rules: &Web, root: &Path, options: &Options, game: &[Work]) -> Result
     let mut build = Command::new(cargo);
     build.args(cargo_args(rules, options)).current_dir(root);
     if options.release {
-        let remaps = paths::remaps(&workspace, &target, &rules.package);
+        let outside = paths::outside(root, &workspace);
+        let remaps = paths::remaps(&workspace, &target, &rules.package, &outside);
         build.env(paths::ENCODED, paths::remapped_flags_here(&remaps));
     }
     let status = build

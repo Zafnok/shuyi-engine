@@ -86,7 +86,7 @@ drop the flag.
 A release build (`shuyi web --release`, and `shuyi export web
 --release`) sets `CARGO_ENCODED_RUSTFLAGS` too: the flags already in it
 or in `RUSTFLAGS`, then a `--remap-path-prefix` for the workspace,
-Cargo's and rustup's homes and the target folder, so the `.wasm` holds
+each crate read by a path outside it, Cargo's and rustup's homes and the target folder, so the `.wasm` holds
 no path of the build machine (ADR-0057). That variable also wins over a
 game's `rustflags` in `.cargo/config.toml`, which these builds don't
 get. The built `.wasm` is then searched for the home folder, Cargo's

@@ -50,8 +50,13 @@ fi
 # The program's sections, and its debug file's.
 sections() {
   local program="$1" debug="$out/$folder.debug"
-  if objdump -h "$program" | grep -q ' \.debug_'; then
-    echo "check: $program has .debug_* sections"; exit 1
+  # `.debug_gdb_scripts` is loaded data rustc writes on ELF (the name of
+  # gdb's pretty-printer script, no path): `objcopy --strip-debug` keeps
+  # it, as it keeps every section the program loads.
+  local left
+  left=$(objdump -h "$program" | awk '$2 ~ /^\.debug_/ && $2 != ".debug_gdb_scripts" { print $2 }')
+  if [ -n "$left" ]; then
+    echo "check: $program has debug sections: $(echo "$left" | tr '\n' ' ')"; exit 1
   fi
   objdump -h "$debug" | grep -q ' \.debug_line' || { echo "check: $debug has no .debug_line"; exit 1; }
   local a b

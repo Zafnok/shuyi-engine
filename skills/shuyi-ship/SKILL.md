@@ -210,8 +210,8 @@ with `cargo shuyi explain <code>`:
 - `SH3001`: the game's tools don't offer the operation (`bake` without
   a pack).
 - `export`: `SH3008`, the target's check found errors (listed); `SH3009`,
-  the program holds a path of this machine (depend on the engine by a
-  git revision, not a path outside the game); `SH3010`, no exporter or
+  the program holds a path of this machine (code writes one in as a
+  value, such as `env!("CARGO_MANIFEST_DIR")`); `SH3010`, no exporter or
   no run step for that target yet; `SH3011`, the build or a packaging
   tool failed; `SH1003`, a Rust target or tool is missing.
 - `import` answers `ok: false` with each error's file and line (and its

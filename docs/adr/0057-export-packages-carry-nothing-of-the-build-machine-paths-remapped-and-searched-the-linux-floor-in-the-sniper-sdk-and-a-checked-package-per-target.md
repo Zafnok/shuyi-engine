@@ -51,7 +51,8 @@
    web --release`, passes `--remap-path-prefix` through
    `CARGO_ENCODED_RUSTFLAGS`, after the flags already in it or in
    `RUSTFLAGS`, never replacing them: the workspace's root to the
-   package's name, `CARGO_HOME` to `/cargo`, `RUSTUP_HOME` to `/rustup`,
+   package's name, each package read by a path outside the workspace
+   (the engine, named by `path = "…"`) to its own name, `CARGO_HOME` to `/cargo`, `RUSTUP_HOME` to `/rustup`,
    the target folder to `/target`, in that order. A game's `rustflags` in
    `.cargo/config.toml` don't reach these builds. The built program, or
    `.wasm`, is then searched for the home folder, `CARGO_HOME`, the
