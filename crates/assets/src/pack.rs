@@ -557,4 +557,6 @@ impl<K: AssetKind + DeserializeOwned> Format for Packed<K> {
 }
 
 #[cfg(test)]
+mod one_bit_tests;
+#[cfg(test)]
 mod tests;

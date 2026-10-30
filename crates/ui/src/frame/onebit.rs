@@ -399,6 +399,16 @@ impl Images for () {
     }
 }
 
+/// The pictures of a one-bit target's pack (`shuyi bake --target
+/// playdate`): the one-bit picture file at each image's path, its first
+/// style, read where it lies. A PNG, or no file, is no picture.
+impl Images for shuyi_assets::Bundle {
+    fn image(&self, id: ImageId) -> Option<Image<'_>> {
+        let bitmap = Bitmap::parse(self.bytes(id.path())?).ok()?;
+        Image::from_bitmap(&bitmap, 0)
+    }
+}
+
 /// The steps of a render, in order, for timing them on the device
 /// ([`render_marked`]).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

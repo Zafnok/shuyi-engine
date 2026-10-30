@@ -650,8 +650,11 @@ impl Formats {
         };
         self.register(image::PngInfo)?;
         self.register(bitmap::OneBitInfo)?;
+        self.register(bitmap::OneBitFile)?;
         #[cfg(feature = "png")]
         self.register(image::Png)?;
+        #[cfg(feature = "png")]
+        self.register(bitmap::dither::Dithered)?;
         self.register(audio::Wav)?;
         self.register(audio::OggVorbis)?;
         self.register(audio::OggVorbisTrack)?;
@@ -664,6 +667,7 @@ impl Formats {
         self.register(names::NamesRon)?;
         self.register(dialogue::Dlg::<dialogue::NoDirective>::new())?;
         self.register(target::TargetRon)?;
+        self.register_import_settings::<bitmap::dither::OneBitSettings>()?;
         Ok(())
     }
 

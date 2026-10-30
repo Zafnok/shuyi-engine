@@ -178,7 +178,14 @@ Ship only what `check --target` passes.
 
    say what went in and prove the pack equal to its sources. A game made
    with `shuyi new` has no pack, and `bake` says it isn't offered
-   (`SH3001`).
+   (`SH3001`). For a black-and-white target, its tools bake every picture
+   as a one-bit picture (`Bake::under_as("", OneBitFile)`) from the
+   bundle `Bundle::for_target` lays out, its `assets@<target>/` folder
+   over `assets/`. `cargo shuyi bake --target playdate --sheet sheet.png`
+   names the pictures dithered (their `onebit` settings in a `.meta`
+   beside each, or a folder's `_folder.meta`) and draws each beside its
+   source: one the dither spoils is drawn by hand at the same path in
+   `assets@playdate/`.
 
 7. **Pictures for a store page** come from the game with no window:
 

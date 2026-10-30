@@ -11,7 +11,10 @@
 //! stage, the font atlas and the tileset. It reads them through the
 //! engine's format registry ([`formats`]), so the same loader reads them
 //! from a pack that `cargo shuyi bake` made of them ([`Hello::from_pack`],
-//! [`bake`]).
+//! [`bake`]). On the Playdate, `files@playdate/` is laid over them
+//! ([`bundle`]): its tileset drawn in black and white, which
+//! `cargo shuyi bake --target playdate` takes in place of dithering the
+//! colour one ([`one_bit_bake`]).
 
 pub mod action;
 pub mod app_info;
@@ -31,6 +34,7 @@ use include_dir::{Dir, include_dir};
 use serde::{Deserialize, Serialize};
 use shuyi::assets::ContentError;
 use shuyi::assets::audio::AudioManifest;
+use shuyi::assets::bitmap::OneBitFile;
 use shuyi::assets::bundle::{Bundle, Layer};
 use shuyi::assets::dialogue::{DialogueFile, DialogueTable};
 use shuyi::assets::font::{FontAtlasDef, FontAtlasRon};
@@ -65,6 +69,21 @@ pub fn file(path: &str) -> Option<&'static [u8]> {
 /// (`files/palette.ron`).
 pub fn layer() -> Layer {
     Layer::dir("files", &FILES)
+}
+
+/// The game's files drawn for the Playdate, embedded.
+static PLAYDATE_FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files@playdate");
+
+/// The game's layers for its targets, each over `files/` on its target
+/// alone: `files@playdate`, its tileset drawn in black and white.
+pub fn target_layers() -> [Layer; 1] {
+    [Layer::dir("files@playdate", &PLAYDATE_FILES)]
+}
+
+/// The game's files on `target` (by its profile's id; `None` for every
+/// target): [`layer`], with the target's own layer over it.
+pub fn bundle(target: Option<&str>) -> Bundle {
+    Bundle::for_target(vec![layer()], &target_layers(), target)
 }
 
 /// The game's English screen text, by key: `en.ron`.
@@ -120,6 +139,14 @@ pub fn bake() -> Bake {
         .asset::<FontAtlasDef>(FONT_RON)
 }
 
+/// What `cargo shuyi bake` bakes for a one-bit target: [`bake`], and
+/// every picture as a one-bit picture file at its PNG's path, which the
+/// device draws as it is. Each is dithered by its import settings, or
+/// taken from the target's layer where it has one ([`bundle`]).
+pub fn one_bit_bake() -> Bake {
+    bake().under_as("", OneBitFile)
+}
+
 /// What `load` gives, or `None` with its problems added to `errors`.
 fn gather<T>(
     errors: &mut Vec<ContentError>,
@@ -170,6 +197,12 @@ impl Hello {
     /// The game's data from its embedded files, or every problem found.
     pub fn load() -> Result<Self, Vec<ContentError>> {
         Self::load_from(&Bundle::new(vec![layer()]), &formats())
+    }
+
+    /// The game's data from its embedded files as target `target` has
+    /// them ([`bundle`]), or every problem found.
+    pub fn load_on(target: &str) -> Result<Self, Vec<ContentError>> {
+        Self::load_from(&bundle(Some(target)), &formats())
     }
 
     /// The game's data from pack `bytes` (embedded with `include_bytes!`),
@@ -308,7 +341,23 @@ impl GameData for Hello {
 /// If the game's files don't load or its palette lacks a color, which its
 /// tests rule out.
 pub fn ctx(seed: u64) -> Ctx<Hello> {
-    let mut game = Hello::load().unwrap_or_else(|errors| {
+    ctx_of(Hello::load(), seed)
+}
+
+/// [`ctx`], with the game's files as target `target` has them
+/// ([`Hello::load_on`]): what the game runs with on the platform, whose
+/// facts name the target.
+///
+/// # Panics
+///
+/// As [`ctx`].
+pub fn ctx_on(target: &str, seed: u64) -> Ctx<Hello> {
+    ctx_of(Hello::load_on(target), seed)
+}
+
+/// The context of `loaded` (see [`ctx`]).
+fn ctx_of(loaded: Result<Hello, Vec<ContentError>>, seed: u64) -> Ctx<Hello> {
+    let mut game = loaded.unwrap_or_else(|errors| {
         let errors: Vec<String> = errors.iter().map(ToString::to_string).collect();
         panic!("the game's files: {}", errors.join("\n"))
     });

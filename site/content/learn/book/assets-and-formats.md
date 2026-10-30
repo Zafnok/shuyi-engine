@@ -98,3 +98,22 @@ check --baked` proves every asset read from the pack equal to the one
 read from its source, so the text files stay what the game is made of.
 The formats page says [how a pack is
 built](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-pack).
+
+## A target's own files
+
+A folder `assets@playdate/` beside `assets/` holds the files the
+Playdate uses in place of the game's: a picture drawn by hand in black
+and white, a settings file. `Bundle::for_target` lays it over `assets/`
+when the game bakes or runs for that target (`ctx.platform.target`), and
+leaves every other target's out.
+
+On a black-and-white screen a game bakes every picture once as a one-bit
+picture (`Bake::under_as` with `OneBitFile`), so the device never
+dithers. Each PNG is dithered by its `onebit` settings: `atkinson` for
+pictures, `bayer` for flat art and anything that moves, `threshold(N)`
+for line art, or `none` for art already black and white, unless the
+target's folder has its own. `cargo shuyi bake --target playdate
+--sheet sheet.png` names the pictures it dithered and draws each beside
+its source, so you see which ones are worth drawing by hand. The
+formats page says [what each dither
+does](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#the-onebit-section).

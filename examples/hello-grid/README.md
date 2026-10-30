@@ -28,6 +28,7 @@ cargo test -p hello-grid             # the tests
 | `src/main.rs` | The binary: what the platform shell needs to know (the default `window` feature) |
 | `src/tools.rs`, `examples/tools.rs` | Its tools (`frame-png`, `lang-status`, and the tool contract's `check`, `run`, `scene`, `replay`, `bots`, `playtest`, `autobalance`, `import`); the knobs an autobalance search turns (`Trip` and `HeadStart`, `shuyi_core::Knob`); and the tool program `shuyi` runs them in |
 | `files/` | Embedded: the keymap, palette and its one-bit patterns, English text, scene (`.dlg`), stage (`.map`), font atlas and tileset |
+| `files@playdate/` | Embedded, laid over `files/` on the Playdate alone: the tileset drawn in black and white, and its settings (`dither: none`) |
 | `files-src/` | Not embedded: the font the atlas is made from |
 | `shuyi.ron` | The project file of the engine's tools |
 | `playtest.ron` | The playtest's checks: how often each hero should reach the goal (`cargo shuyi playtest`) |
@@ -63,6 +64,7 @@ cargo shuyi autobalance                            # tune balance.ron's stage in
 cargo shuyi autobalance --time 60 --apply          # at most a minute, then write the tuning found
 cargo shuyi replay play.ron                        # a bot's record (bots --json), step by step
 cargo shuyi import files/stage.map
+cargo shuyi bake --target playdate --sheet sheet.png  # every picture one-bit
 ```
 
 `tests/it/bots.rs` also plays a rollout hero (`shuyi_core::Rollout`)
@@ -95,10 +97,18 @@ title.png --target playdate` paints the title as the Playdate would show
 it, the top 240 pixels of the frame:
 `tests/it/snapshots/it__onebit__title_playdate.snap.png`.
 
+On the Playdate its files come with `files@playdate/` over them
+(`hello_grid::bundle`, picked by the platform's target when it runs):
+its tileset, drawn by hand in black and white. `cargo shuyi bake
+--target playdate` makes every picture a one-bit picture once: the
+tileset taken from that folder, the font's picture dithered (the answer
+names it, and `--sheet` draws it beside its source).
+
 ## Art and licenses
 
 Terminus Font 4.49.1 (`files-src/ter-u16n.bdf`, unmodified, and the atlas
 made from it) is under the SIL Open Font License 1.1:
 `files/font/Terminus-LICENSE.txt`. Everything else here is the engine's
-own: the tileset is the font's glyphs on the palette's colors, and the
-sounds are sine blips the game makes when it starts.
+own: the tileset is the font's glyphs on the palette's colors (and in
+black and white in `files@playdate/`), and the sounds are sine blips the
+game makes when it starts.

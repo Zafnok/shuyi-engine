@@ -19,6 +19,12 @@
 //! what it uses. [`Bundle::left_out`] lets a loader tell such a file from
 //! one that is missing.
 //!
+//! A layer may be **for a target** (ADR-0008 §4): `assets@playdate` is
+//! `assets`' layer for the Playdate, used only when baking or running
+//! for it. [`Bundle::for_target`] lays it right above `assets`, so any
+//! file there (a hand-drawn one-bit `hero.png`, a settings file) replaces
+//! the one at the same path, and leaves out every other target's.
+//!
 //! A bundle's [`fingerprint`](Bundle::fingerprint) stands for the content
 //! that ships, the same on every platform: what a record or a save is
 //! stamped with (`shuyi_core::made`).
@@ -323,6 +329,24 @@ impl Layer {
             ..self
         }
     }
+
+    /// The target this layer is for, as its name says after the last
+    /// [`TARGET_MARK`]: `playdate` for `assets@playdate`. `None` for a
+    /// layer for every target (`assets`).
+    pub fn target(&self) -> Option<&'static str> {
+        let (base, target) = self.name.rsplit_once(TARGET_MARK)?;
+        (!base.is_empty() && !target.is_empty()).then_some(target)
+    }
+}
+
+/// What a layer's name puts between the name of the layer it is laid over
+/// and the target it is for: `assets@playdate` ([`Bundle::for_target`]).
+pub const TARGET_MARK: char = '@';
+
+/// The name of `layer`'s layer for `target`: `assets@playdate` for
+/// `assets` and `playdate`.
+pub fn target_layer_name(layer: &str, target: &str) -> String {
+    format!("{layer}{TARGET_MARK}{target}")
 }
 
 /// The layers a game reads its files from.
@@ -342,6 +366,53 @@ impl Bundle {
         layers.sort_by_key(|layer| layer.test);
         let shipped = layers.iter().filter(|layer| !layer.test).count();
         Self { layers, shipped }
+    }
+
+    /// The bundle of `layers` for `target` (ADR-0008 §4): each of
+    /// `layers` with its layer for `target` from `per_target` laid right
+    /// above it, the one named `<name>@<target>`
+    /// ([`target_layer_name`]), so a file there replaces the one at the
+    /// same path. Every other layer of `per_target` (another target's, or
+    /// one over no layer of `layers`) is left out, and with no target all
+    /// of them are: the bundle of `layers` alone ([`Bundle::new`]).
+    ///
+    /// A game embeds its target layers beside its files, and picks the
+    /// bundle by the target it bakes for (`GameTools::bake`) or runs on
+    /// (`PlatformFacts::target`):
+    ///
+    /// ```
+    /// use shuyi_assets::bundle::{Bundle, Layer};
+    ///
+    /// static ASSETS: &[(&str, &[u8])] = &[("hero.png", b"colour"), ("map.ron", b"map")];
+    /// static PLAYDATE: &[(&str, &[u8])] = &[("hero.png", b"drawn in black and white")];
+    /// let layers = || vec![Layer::table("assets", ASSETS)];
+    /// let targets = [Layer::table("assets@playdate", PLAYDATE)];
+    ///
+    /// let bundle = Bundle::for_target(layers(), &targets, Some("playdate"));
+    /// assert_eq!(bundle.file("hero.png"), Some("drawn in black and white"));
+    /// assert_eq!(bundle.display_path("hero.png"), "assets@playdate/hero.png");
+    /// assert_eq!(bundle.file("map.ron"), Some("map"));
+    /// let web = Bundle::for_target(layers(), &targets, Some("web"));
+    /// assert_eq!(web.file("hero.png"), Some("colour"));
+    /// ```
+    pub fn for_target(layers: Vec<Layer>, per_target: &[Layer], target: Option<&str>) -> Self {
+        let Some(target) = target else {
+            return Self::new(layers);
+        };
+        let mut laid = Vec::with_capacity(layers.len() + per_target.len());
+        for layer in layers {
+            let name = target_layer_name(layer.name, target);
+            laid.extend(per_target.iter().filter(|over| over.name == name));
+            laid.push(layer);
+        }
+        Self::new(laid)
+    }
+
+    /// The layer this thread reads the file at `path` from, if a layer has
+    /// it: whether it is the game's own, a mod's, or a target's
+    /// ([`Layer::target`]).
+    pub fn layer_of(&self, path: &str) -> Option<&Layer> {
+        find(self.read(), path).map(|(layer, _)| layer)
     }
 
     /// Every layer, in the order files are read from them.
@@ -825,6 +896,61 @@ mod tests {
         let bundle = merged();
         let got = bundle.tests();
         assert!(got.is_empty(), "{got:?}");
+    }
+
+    /// A game's files, its mod layer's, and its layers for two targets.
+    static GAME: &[(&str, &[u8])] = &[("a.png", b"game a"), ("b.png", b"game b")];
+    static MODDED: &[(&str, &[u8])] = &[("a.png", b"mod a")];
+    static PLAYDATE: &[(&str, &[u8])] = &[("b.png", b"playdate b"), ("c.png", b"playdate c")];
+    static GBA: &[(&str, &[u8])] = &[("b.png", b"gba b")];
+
+    fn per_target() -> [Layer; 4] {
+        [
+            Layer::table("assets@gba", GBA),
+            Layer::table("assets@playdate", PLAYDATE),
+            Layer::table("mods@playdate", MODDED),
+            Layer::table("nothing@playdate", MODDED),
+        ]
+    }
+
+    #[test]
+    fn a_targets_layer_is_laid_right_above_its_own() {
+        let layers = || vec![Layer::table("mods", MODDED), Layer::table("assets", GAME)];
+        let bundle = Bundle::for_target(layers(), &per_target(), Some("playdate"));
+        assert_eq!(
+            names(bundle.layers()),
+            ["mods@playdate", "mods", "assets@playdate", "assets"]
+        );
+        assert_eq!(bundle.file("b.png"), Some("playdate b"));
+        assert_eq!(bundle.display_path("b.png"), "assets@playdate/b.png");
+        assert_eq!(bundle.file("c.png"), Some("playdate c"));
+        // A layer above the game's still wins over the game's target layer.
+        assert_eq!(bundle.display_path("a.png"), "mods@playdate/a.png");
+        let layer = |path| bundle.layer_of(path).map(Layer::target);
+        assert_eq!(layer("b.png"), Some(Some("playdate")));
+        assert_eq!(layer("x.png"), None);
+        // Another target's layer is left out, and so is every one with no
+        // target.
+        let gba = Bundle::for_target(layers(), &per_target(), Some("gba"));
+        assert_eq!(names(gba.layers()), ["mods", "assets@gba", "assets"]);
+        assert_eq!(gba.file("b.png"), Some("gba b"));
+        let none = Bundle::for_target(layers(), &per_target(), None);
+        assert_eq!(names(none.layers()), ["mods", "assets"]);
+        let web = Bundle::for_target(layers(), &per_target(), Some("web"));
+        assert_eq!(names(web.layers()), ["mods", "assets"]);
+        assert_eq!(web.fingerprint(), none.fingerprint());
+        assert_ne!(bundle.fingerprint(), none.fingerprint());
+    }
+
+    #[test]
+    fn a_layer_is_for_the_target_after_its_last_mark() {
+        let target = |name| Layer::table(name, GAME).target();
+        assert_eq!(target("assets@playdate"), Some("playdate"));
+        assert_eq!(target("a@b@steam-deck"), Some("steam-deck"));
+        assert_eq!(target("assets"), None);
+        assert_eq!(target("@playdate"), None);
+        assert_eq!(target("assets@"), None);
+        assert_eq!(target_layer_name("files", "playdate"), "files@playdate");
     }
 
     #[test]

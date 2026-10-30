@@ -34,11 +34,13 @@ fn look(game: &Hello) -> Look<'_> {
     Look::new(&game.font, &game.images)
 }
 
-/// The game on the platform's `setup`, at its title. The stages' luck is
-/// seeded from the clock (the platform's music seed), so each launch plays
+/// The game on the platform's `setup`, at its title, with its files as
+/// the target the platform names has them. The stages' luck is seeded
+/// from the clock (the platform's music seed), so each launch plays
 /// differently.
 fn start(setup: Setup) -> Game<Hello> {
-    let mut ctx = setup.ctx(hello_grid::ctx(0));
+    let target = setup.platform.target.clone();
+    let mut ctx = setup.ctx(hello_grid::ctx_on(&target, 0));
     ctx.game.seed = ctx.music_seed;
     hello_grid::game(ctx)
 }

@@ -84,6 +84,8 @@ The standard ones, in `Formats::standard()`:
 | image | `image::ImageInfo` (its size) | `image::PngInfo` | `png` | `png` | `\x89PNG\r\n\x1a\n` | 64 MiB |
 | image | `image::ImageInfo` | `bitmap::OneBitInfo` | `one-bit` | none | `1BIT` | 16 MiB |
 | image pixels | `image::Image` (RGBA) | `image::Png`, with the `png` feature | `png` | `png` | `\x89PNG\r\n\x1a\n` | 64 MiB |
+| one-bit picture | `bitmap::OneBitPicture` (a one-bit picture file, whole) | `bitmap::OneBitFile` | `one-bit` | none | `1BIT` | 16 MiB |
+| one-bit picture | `bitmap::OneBitPicture` | `bitmap::dither::Dithered`, with the `png` feature | `dithered` | `png` | `\x89PNG\r\n\x1a\n` | 64 MiB |
 | sound | `audio::Sound` (its header) | `audio::Wav` | `wav` | `wav` | `RIFF`, then `WAVE` | 64 MiB |
 | sound | `audio::Sound` | `audio::OggVorbis` | `ogg-vorbis` | `ogg` | `OggS` | 64 MiB |
 | music track | `audio::MusicTrack` (its header and length) | `audio::OggVorbisTrack` | `ogg-vorbis` | `ogg` | `OggS` | 64 MiB |
@@ -128,7 +130,12 @@ What each one reads:
   (`ImageInfo::checked`).
 - **A one-bit picture** in a PNG's place gives the size of the PNG it was
   made from. It claims no extension, so a `.1bit` file beside a PNG (a
-  touched-up picture a build reads) is no image of its own.
+  touched-up picture a build reads) is no image of its own. Read whole
+  (`OneBitFile`), it is what a one-bit screen draws with no copying:
+  `shuyi_ui`'s one-bit renderer takes a bundle's pictures as they lie.
+- **A PNG dithered** (`Dithered`) is made a one-bit picture by its
+  `onebit` import settings, below, in integers, so it is the same file on
+  every platform.
 - **WAV and OGG Vorbis** read the header: one or two channels at
   44.1 kHz. A music track must be a whole file, whose last Ogg page gives
   its length. `audio::format_problem`, which the manifest check uses,
@@ -385,7 +392,7 @@ The toy's tests are the checklist for any format:
 ## Import settings
 
 How one file, or every file of a folder, is read or baked: a picture's
-dither on a one-bit target (3007), its palette group (3019). The files
+dither on a one-bit target, its palette group on an indexed one. The files
 are RON, beside the files they set
 ([ADR-0057](adr/0057-import-settings-a-meta-file-beside-a-file-and-folder-defaults-typed-sections-the-nearest-wins.md));
 the code is `shuyi_assets::import_settings`.
@@ -425,8 +432,8 @@ the code is `shuyi_assets::import_settings`.
   typo in a Playdate setting is found on a desktop build too. It refuses
   a second section of one name, a type with a field that has no default,
   and a type that doesn't deny unknown fields, each with the attribute
-  to add. The engine registers its own in `Formats::register_standard`;
-  `Formats::standard()` has none yet.
+  to add. The engine registers its own in `Formats::register_standard`:
+  `onebit`, below.
 - **Reading it in a format.** `cx.import_settings::<S>(file)` walks the
   chain through the bundle, so a front end that watches reads hears of
   every settings file looked for, and gives the section or its default.
@@ -446,10 +453,38 @@ the code is `shuyi_assets::import_settings`.
   palette, lights, names, the audio manifest) are assets of their own,
   and a game's data stays its own kinds.
 
+### The `onebit` section
+
+How a picture is made one-bit for a black-and-white screen
+(`bitmap::dither::OneBitSettings`, ADR-0008 §4). Every field may be left
+out:
+
+```ron
+// images/_folder.meta
+(onebit: (dither: bayer, alpha_cut: 128, invert: false))
+```
+
+- **`dither`**: `atkinson` (the default, for pictures: error diffusion,
+  three quarters of each pixel's error spread to six after it), `bayer`
+  (the 8 × 8 ordered dither, for flat art and anything that moves: a
+  flat grey is the pattern map's own dither of it), `threshold(N)` (white
+  from brightness `N` up, for line art) or `none` (the picture must
+  already be black and white, and any other drawn pixel is an error
+  naming the file, the pixel and its colour).
+- **`alpha_cut`** (128): a pixel whose alpha is below it is see-through,
+  clear in the picture's mask and white in it, and no error spreads to or
+  from it; 0 draws every pixel.
+- **`invert`** (`false`): the brightness turned over first.
+
+A pixel's brightness is `(77 r + 150 g + 29 b + 128) / 256`, from 0 to
+255. The picture keeps its size, one dot a pixel. `bitmap::dither::dither`
+does it for a decoded picture, and `Dithered` for a PNG in a bundle.
+
 ## Optimized formats
 
 An optimized format is derived from a text source by a tool and tested
-equal to it (ADR-0007 §4). The first is the pack below. JPEG, WebP, QOI,
+equal to it (ADR-0007 §4). The first is the pack below; a one-bit picture
+baked from a PNG is another, kept in a pack in its own format. JPEG, WebP, QOI,
 JPEG XL, FLAC and MP3 come as plugins in ticket 2203; Yarn Spinner and
 Ink in ticket 2202.
 
@@ -491,9 +526,19 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
   is, and a game's own kinds derive the same. Bake only kinds whose files
   nothing else reads raw: not a PNG the platform draws, nor a sound it
   plays, nor a picture a font atlas reads beside it.
+- **In a format of its own.** `.under_as(dir, format)` bakes every file of
+  `format`'s kind under `dir`, read with the game's formats, and keeps it
+  in `format`'s own bytes (`Encode`), at its path, for whatever reads the
+  file raw on the target. A one-bit target's game bakes its pictures so,
+  `.under_as("", OneBitFile)`: each PNG goes in as a one-bit picture file
+  dithered by its settings, which the image table and the one-bit
+  renderer read as they are. `Bake::register` adds `format` where the
+  kind lacks it, and such a file is baked as no other kind.
 - **Proven equal.** `shuyi check --baked` bakes the game in memory and
   reads every baked asset from the pack and from its source: they must be
-  equal (`Bake::check`). Every other file must be the same bytes, and no
+  equal (`Bake::check`). For a file in a format of its own, the pack's
+  file read by that format equals the source read by the game's formats:
+  a one-bit picture equals dithering its PNG again with its settings. Every other file must be the same bytes, and no
   file may be missing or extra. The pack's own tests do the same for one
   file of every kind of the built-in formats.
 - **Refused, never migrated.** A pack of another `pack::VERSION`, or
@@ -513,8 +558,33 @@ under them. The code is `shuyi_assets::pack`; its reader builds without
 - **Targets.** `shuyi bake --target <id>` takes a target with a profile
   (the engine's in `targets/`, or the game's), passes it to the game,
   which picks the layers and kinds it bakes for it, and the pack records
-  it (`PackInfo::target`). Ticket 3007 bakes one-bit pictures for the
-  Playdate through it.
+  it (`PackInfo::target`). For a one-bit target (the Playdate) a game
+  bakes its pictures one-bit, from its target's own files where it has
+  them (below). The answer names every picture dithered, for an artist to
+  check, and those the target's files replaced; `--sheet <file>` draws
+  each dithered picture beside its source in one PNG.
+
+### A target's own files
+
+A folder `assets@<target>/` beside `assets/` holds files that target
+uses in place of the game's (ADR-0008 §4): a picture drawn by hand where
+dithering spoils it, a settings file. It is a layer laid right above its
+own, used only when baking or running for that target:
+
+```rust
+static ASSETS: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets");
+static PLAYDATE: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets@playdate");
+
+let targets = [Layer::dir("assets@playdate", &PLAYDATE)];
+// `target` is what `GameTools::bake` gets, or `ctx.platform.target`.
+let bundle = Bundle::for_target(vec![Layer::dir("assets", &ASSETS)], &targets, target);
+```
+
+Any file may be replaced so, a settings file too
+(`assets@playdate/images/hero.png.meta` replaces the base one), and a
+language's copy of a file (`assets@playdate/lang/ja/files/title/end.png`)
+is a plain path like any other. Another target's layer is left out, and
+`Layer::target` and `Bundle::layer_of` tell where a file was read from.
 
 `shuyi bake` writes `target/shuyi/game.shuyipak` (or `<target>.shuyipak`,
 or `--out <file>`) and says what went in, the sizes and the times:

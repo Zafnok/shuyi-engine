@@ -7,7 +7,8 @@
 //! turns, [`Trip`] and [`HeadStart`], on the stage `balance.ron` tunes,
 //! [`autobalance_plan`]), `import` (the stage's `.map` and the
 //! keymap besides the engine's kinds), `bake` (its text baked into a
-//! pack, [`crate::bake`]), the controls `check --target` checks
+//! pack, [`crate::bake`], and on a one-bit target its pictures made
+//! one-bit, [`crate::one_bit_bake`]), the controls `check --target` checks
 //! ([`controls`]), and its look on a one-bit target: the pattern map
 //! `check --target` checks ([`one_bit_skin`]) and `frame-png --target
 //! playdate` paints with ([`one_bit_picture`]). `examples/tools.rs` is the
@@ -24,6 +25,7 @@ use shuyi::assets::grid_map::{GridMap, MapText};
 use shuyi::assets::keymap::{KeymapDef, KeymapRon};
 use shuyi::assets::onebit::PatternMapDef;
 use shuyi::assets::palette::PaletteDef;
+use shuyi::assets::target::Color;
 use shuyi::core::bots::playtest::{
     self, Check, Entrant, Measure, Measures, PlaytestError, PlaytestReport, Tries, play_tries,
 };
@@ -41,6 +43,7 @@ use shuyi_cli::contract::import::Importers;
 use shuyi_cli::contract::playtest::{PlaytestInput, Summary};
 use shuyi_cli::contract::replay::{Record, ReplayRun, turns};
 use shuyi_cli::contract::session::{Headless, Scene, Session};
+use shuyi_cli::contract::target::engine_profiles;
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{
@@ -304,14 +307,25 @@ impl GameTools for HelloTools {
         Some(one_bit_skin())
     }
 
-    /// One pack for every target: the game's files, its text baked.
-    fn bake(&self, _target: Option<&str>) -> Result<GameBake, String> {
-        Ok(GameBake::new(
-            crate::bake(),
-            Bundle::new(vec![crate::layer()]),
-            crate::formats(),
-        ))
+    /// The game's files as `target` has them, its text baked; on a
+    /// one-bit target its pictures too, as one-bit picture files.
+    fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
+        let bake = if target.is_some_and(is_one_bit) {
+            crate::one_bit_bake()
+        } else {
+            crate::bake()
+        };
+        Ok(GameBake::new(bake, crate::bundle(target), crate::formats()))
     }
+}
+
+/// Whether the engine's profile of target `id` has a one-bit display.
+fn is_one_bit(id: &str) -> bool {
+    engine_profiles().is_ok_and(|profiles| {
+        profiles
+            .get(id)
+            .is_some_and(|found| found.profile.display.color == Color::OneBit)
+    })
 }
 
 /// The game's keymap and every screen it can show, for `check --target`.

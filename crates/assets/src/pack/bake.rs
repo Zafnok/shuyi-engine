@@ -1,6 +1,9 @@
 //! Baking: which assets a game bakes ([`Bake`]), the pack made of its
 //! bundle ([`Bake::bake`]), and the proof that every asset read from the
-//! pack equals the one read from its source ([`Bake::check`]).
+//! pack equals the one read from its source ([`Bake::check`]). An asset
+//! is baked in the pack's binary form, or in a format of its own
+//! ([`Bake::under_as`]): a one-bit target's pictures, as one-bit picture
+//! files.
 use crate::prelude::*;
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -14,7 +17,7 @@ use serde::de::DeserializeOwned;
 use super::{Content, PackInfo, Packed, write};
 use crate::bundle::Bundle;
 use crate::error::{ContentError, codes};
-use crate::format::{AssetKind, Formats, RegisterError};
+use crate::format::{AssetKind, Encode, Formats, RegisterError};
 
 /// A kind that can be baked: it has a binary form (serde, both ways), and
 /// two of it can be compared, for [`Bake::check`].
@@ -72,6 +75,63 @@ trait BakeKind: Send + Sync {
     /// Reads the asset at `path` of `bundle`, and drops it.
     fn load(&self, formats: &Formats, bundle: &Bundle, path: &str)
     -> Result<(), Vec<ContentError>>;
+
+    /// Whether [`encode`](Self::encode) gives the file's bytes in a format
+    /// of the kind ([`Bake::under_as`]), not the pack's binary form.
+    fn own_format(&self) -> bool {
+        false
+    }
+}
+
+/// The paths of the files of kind `K` that `which` names in `bundle`.
+fn paths_of<K: AssetKind>(
+    formats: &Formats,
+    bundle: &Bundle,
+    which: &Which,
+) -> Result<Vec<String>, Vec<ContentError>> {
+    match which {
+        Which::Id(id) => formats
+            .find::<K>(bundle, id)
+            .map(|path| vec![path])
+            .map_err(|e| vec![e]),
+        Which::Under(dir) => Ok(bundle
+            .files_under(dir)
+            .into_iter()
+            .filter(|path| formats.claims::<K>(path))
+            .map(ToOwned::to_owned)
+            .collect()),
+    }
+}
+
+/// Whether the asset of kind `K` at `path` reads the same from `pack` as
+/// from `source` with `formats`, once a format `id` reads it from the
+/// pack ([`BakeKind::same`]).
+fn same_in<K: AssetKind + PartialEq>(
+    formats: &Formats,
+    (source, pack): (&Bundle, &Bundle),
+    path: &str,
+    id: &str,
+) -> Result<(), Vec<ContentError>> {
+    let shown = pack.display_path(path);
+    if !formats.ids::<K>().contains(&id) {
+        let message = format!(
+            "no format reads a baked {}: register the pack's formats (Bake::register)",
+            K::NAME
+        );
+        return Err(vec![ContentError::new(shown, message)]);
+    }
+    let from_source = formats.load::<K>(source, path)?;
+    let from_pack = formats.load::<K>(pack, path)?;
+    if from_source == from_pack {
+        return Ok(());
+    }
+    let message = format!(
+        "the {} read from the pack differs from the one read from its source",
+        K::NAME
+    );
+    Err(vec![
+        ContentError::new(shown, message).with_code(codes::PACK_DIFFERS),
+    ])
 }
 
 /// Kind `K`.
@@ -92,18 +152,7 @@ impl<K: Bakeable> BakeKind for KindOf<K> {
         bundle: &Bundle,
         which: &Which,
     ) -> Result<Vec<String>, Vec<ContentError>> {
-        match which {
-            Which::Id(id) => formats
-                .find::<K>(bundle, id)
-                .map(|path| vec![path])
-                .map_err(|e| vec![e]),
-            Which::Under(dir) => Ok(bundle
-                .files_under(dir)
-                .into_iter()
-                .filter(|path| formats.claims::<K>(path))
-                .map(ToOwned::to_owned)
-                .collect()),
-        }
+        paths_of::<K>(formats, bundle, which)
     }
 
     fn encode(
@@ -126,26 +175,7 @@ impl<K: Bakeable> BakeKind for KindOf<K> {
         pack: &Bundle,
         path: &str,
     ) -> Result<(), Vec<ContentError>> {
-        let shown = pack.display_path(path);
-        if !formats.ids::<K>().contains(&Packed::<K>::ID) {
-            let message = format!(
-                "no format reads a baked {}: register the pack's formats (Bake::register)",
-                K::NAME
-            );
-            return Err(vec![ContentError::new(shown, message)]);
-        }
-        let from_source = formats.load::<K>(source, path)?;
-        let from_pack = formats.load::<K>(pack, path)?;
-        if from_source == from_pack {
-            return Ok(());
-        }
-        let message = format!(
-            "the {} read from the pack differs from the one read from its source",
-            K::NAME
-        );
-        Err(vec![
-            ContentError::new(shown, message).with_code(codes::PACK_DIFFERS),
-        ])
+        same_in::<K>(formats, (source, pack), path, Packed::<K>::ID)
     }
 
     fn register(&self, formats: &mut Formats) -> Result<(), RegisterError> {
@@ -165,6 +195,73 @@ impl<K: Bakeable> BakeKind for KindOf<K> {
     }
 }
 
+/// The assets of format `F`'s kind, read with a bake's formats and kept
+/// in the pack in `F`'s own bytes ([`Bake::under_as`]).
+struct InFormat<F>(F);
+
+impl<F> BakeKind for InFormat<F>
+where
+    F: Encode + Clone,
+    F::Asset: PartialEq,
+{
+    fn name(&self) -> &'static str {
+        <F::Asset as AssetKind>::NAME
+    }
+
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<F::Asset>()
+    }
+
+    fn paths(
+        &self,
+        formats: &Formats,
+        bundle: &Bundle,
+        which: &Which,
+    ) -> Result<Vec<String>, Vec<ContentError>> {
+        paths_of::<F::Asset>(formats, bundle, which)
+    }
+
+    fn encode(
+        &self,
+        formats: &Formats,
+        bundle: &Bundle,
+        path: &str,
+    ) -> Result<Vec<u8>, Vec<ContentError>> {
+        let asset = formats.load::<F::Asset>(bundle, path)?;
+        Ok(self.0.encode(&asset))
+    }
+
+    fn same(
+        &self,
+        formats: &Formats,
+        source: &Bundle,
+        pack: &Bundle,
+        path: &str,
+    ) -> Result<(), Vec<ContentError>> {
+        same_in::<F::Asset>(formats, (source, pack), path, self.0.id())
+    }
+
+    fn register(&self, formats: &mut Formats) -> Result<(), RegisterError> {
+        if formats.ids::<F::Asset>().contains(&self.0.id()) {
+            return Ok(());
+        }
+        formats.register(self.0.clone())
+    }
+
+    fn load(
+        &self,
+        formats: &Formats,
+        bundle: &Bundle,
+        path: &str,
+    ) -> Result<(), Vec<ContentError>> {
+        formats.load::<F::Asset>(bundle, path).map(drop)
+    }
+
+    fn own_format(&self) -> bool {
+        true
+    }
+}
+
 /// What a game bakes into a pack: which assets of which kinds, the same
 /// way its loaders ask for them ([`asset`](Self::asset) as
 /// [`Formats::load`], [`under`](Self::under) as [`Formats::load_under`]),
@@ -173,8 +270,9 @@ impl<K: Bakeable> BakeKind for KindOf<K> {
 ///
 /// A file whose bytes something other than its kind's format reads (a
 /// picture the platform draws, a sound it plays, a file another format
-/// reads beside its own) stays as it is: bake only kinds whose files
-/// nothing else reads.
+/// reads beside its own) stays as it is, or is baked in a format that
+/// reader knows ([`under_as`](Self::under_as)): bake only kinds whose
+/// files nothing else reads.
 pub struct Bake {
     stamp: String,
     plan: Vec<(Box<dyn BakeKind>, Which)>,
@@ -205,9 +303,13 @@ pub struct Baked {
 
 /// One file of a [`Baked`] pack.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct BakedFile {
     /// Its path.
     pub path: String,
+    /// Its source as messages show it ([`Bundle::display_path`]), under
+    /// the layer it was read from (`assets@playdate/hero.png`).
+    pub shown: String,
     /// The kinds it was baked as; none if it went in as its own bytes.
     pub kinds: Vec<&'static str>,
     /// Its source's bytes.
@@ -256,6 +358,38 @@ impl Bake {
             Box::new(KindOf::<K>(PhantomData)),
             Which::Under(dir.to_owned()),
         ));
+        self
+    }
+
+    /// This bake, baking every file of `format`'s kind under directory
+    /// `dir` (`""` for the whole bundle) whose extension a format of the
+    /// kind claims, read with the bake's formats, and kept in the pack in
+    /// `format`'s own bytes ([`Encode`]) instead of the pack's binary
+    /// form: an optimized format derived from its source (ADR-0007 §4),
+    /// which whatever reads the file on the target reads as it is. A
+    /// one-bit target's pictures go in as one-bit picture files so, each
+    /// at its PNG's path:
+    ///
+    /// ```
+    /// use shuyi_assets::bitmap::OneBitFile;
+    /// use shuyi_assets::pack::Bake;
+    ///
+    /// let bake = Bake::new("my-game 1").under_as("", OneBitFile);
+    /// assert_eq!(bake.kinds(), ["one-bit picture"]);
+    /// ```
+    ///
+    /// [`register`](Self::register) registers `format` where its kind
+    /// lacks it, and [`check`](Self::check) proves each such file of the
+    /// pack, read by it, equal to its source read with the bake's
+    /// formats. A file baked so is baked as no other kind.
+    #[must_use]
+    pub fn under_as<F>(mut self, dir: &str, format: F) -> Self
+    where
+        F: Encode + Clone,
+        F::Asset: PartialEq,
+    {
+        self.plan
+            .push((Box::new(InFormat(format)), Which::Under(dir.to_owned())));
         self
     }
 
@@ -312,12 +446,24 @@ impl Bake {
                 Err(e) => errors.extend(e),
             }
         }
+        for (path, kinds) in &planned {
+            if kinds.len() > 1 && kinds.iter().any(|kind| kind.own_format()) {
+                let names: Vec<&str> = kinds.iter().map(|kind| kind.name()).collect();
+                let message = format!(
+                    "the bake keeps it in a format of its own and bakes it as {}; a file kept \
+                     in its own format is baked as one kind",
+                    names.join(" and ")
+                );
+                errors.push(ContentError::new(bundle.display_path(path), message));
+            }
+        }
         (planned, errors)
     }
 
     /// The pack of `bundle`, baked for `target`: each file this bake names
-    /// holds its assets read with `formats`, and every other file its own
-    /// bytes, and its index holds `bundle`'s fingerprint, which the pack
+    /// holds its assets read with `formats` (or, baked
+    /// [`under_as`](Self::under_as) a format, that format's bytes), every
+    /// other file its own bytes, and its index holds `bundle`'s fingerprint, which the pack
     /// then stands for. Import settings files go in as their own bytes
     /// too, once they check ([`Formats::check_import_settings`]). Refuses
     /// a source with errors: every one of them is returned.
@@ -336,6 +482,11 @@ impl Bake {
             let kinds = planned.get(path).map(Vec::as_slice).unwrap_or_default();
             let content = if kinds.is_empty() {
                 Content::Raw(source.to_vec())
+            } else if let [kind] = kinds
+                && kind.own_format()
+            {
+                let bytes = kind.encode(formats, bundle, path);
+                Content::Raw(bytes.map_err(|e| errors.extend(e)).unwrap_or_default())
             } else {
                 let mut sections = BTreeMap::new();
                 for kind in kinds {
@@ -350,6 +501,7 @@ impl Bake {
             };
             files.push(BakedFile {
                 path: path.to_owned(),
+                shown: bundle.display_path(path),
                 kinds: kinds.iter().map(|kind| kind.name()).collect(),
                 source: source.len(),
             });
