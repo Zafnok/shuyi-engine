@@ -1,6 +1,8 @@
 // Valve's Steam Deck, a Linux PC (ADR-0008 §1 and §6). Deck Verified asks
 // for text at least 9 px tall at 1280 × 800, 12 px recommended, and a
-// default controller layout that reaches all content.
+// default controller layout that reaches all content. A game is always
+// full screen there (`windowed` left out) and quits itself (`quit` left
+// out: `Game`).
 (
     id: "steam-deck",
     status: Supported,

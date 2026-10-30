@@ -22,6 +22,8 @@
         axes: ["Crank"],
         system_menu_slots: 3,
     ),
+    // The player leaves through the system's Home: a game shows no Quit.
+    quit: System,
     budgets: (
         // Provisional: half of 168 MHz ÷ 30, leaving the rest to the SDK,
         // the display and audio. 3011 measures it on the device.

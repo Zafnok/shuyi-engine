@@ -26,6 +26,7 @@ use alloc::{format, vec};
 use core::any::Any;
 
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
+use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
 use shuyi_ui::input::crank::Crank;
 use shuyi_ui::input::pad::PadKind;
@@ -33,7 +34,7 @@ use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryScopes, PerfClock, PerfRing};
 use shuyi_ui::storage::Storage;
-use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, RawInputEvent};
+use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::app::{App, FrameOutcome, SystemHook};
 use crate::headless::{HeadlessPlatform, PlayingSound, Presented};
@@ -114,6 +115,19 @@ impl<G: GameData> Harness<G> {
     pub fn at_prompt(mut self) -> Self {
         let game = self.game_mut();
         game.ctx_mut().key_prompt = KeyPrompt::Waiting;
+        game.redraw();
+        self
+    }
+
+    /// Runs the game as the target `profile` describes: its facts
+    /// ([`PlatformFacts::from_profile`]) go into the context
+    /// ([`Ctx::platform`]), and the screen redraws. Call it before the
+    /// screen under test opens: a screen may keep what it read as it
+    /// opened (the key bindings screen keeps the keyboard).
+    #[must_use]
+    pub fn as_target(mut self, profile: &TargetProfile) -> Self {
+        let game = self.game_mut();
+        game.ctx_mut().platform = PlatformFacts::from_profile(profile);
         game.redraw();
         self
     }

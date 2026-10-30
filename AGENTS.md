@@ -47,6 +47,8 @@ Where each kind of fact is written, and what each task reads first, is in
      simulation);
    - state changes only through commands (turn games) or inputs per step
      (tick games);
+   - a screen asks where it runs through `ctx.platform`, never a
+     `cfg!`, and the rules never read it ([ADR-0060](docs/adr/0060-platform-facts-at-run-time-read-from-the-targets-profile-handed-through-setup-and-read-by-screens-never-by-rules.md));
    - only platform backends touch windows, files, audio devices and
      the clock: `shuyi-app` (macroquad), and later `shuyi-playdate`,
      `shuyi-gba`, `shuyi-nds` and private console backends ([ADR-0008](docs/adr/0008-export-targets-profiles-as-data-platform-backends-controls-that-fit-one-bit-and-budgets.md)).

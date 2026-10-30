@@ -204,9 +204,9 @@ from the two sections after **Out**.
     category `Platform`: the method, the host and the purpose, then the
     status, the bytes and the time. Never the query, a header or a
     body;
-  - **either order with 3053:** if it is done, its platform facts say
-    whether HTTP is present; if not, `HttpQueue::is_present` is enough,
-    and 3053 needs nothing from here.
+  - **From 3053 (done):** its platform facts (`PlatformFacts`) could
+    say whether HTTP is present, but `HttpQueue::is_present` is enough,
+    and nothing here adds a fact.
 - **What changes for the game:** nothing at its next pin bump. The API
   is additive: `Platform::http` has a default, and `Ctx` gains a field
   but has private fields, so no game builds it with a struct literal.
@@ -421,7 +421,7 @@ Its acceptance criteria:
 ## Implementation steps
 
 1. Read ADR-0006, ADR-0024, `system_keyboard.rs`, `App`'s `run` and
-   `step`, and `headless.rs`. Check whether 3053 is done.
+   `step`, and `headless.rs`.
 2. Unless `tickets/open` already holds them, write the two follow-up
    tickets with the `write-ticket` skill, from the two sections above:
    each with the context it needs from this ticket, its scope, steps,

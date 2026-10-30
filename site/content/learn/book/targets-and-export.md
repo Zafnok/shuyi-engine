@@ -29,6 +29,24 @@ the height of its smallest text:
 
 {{ snippet(file="project/shuyi.ron", anchor="targets", language="ron") }}
 
+## Where the game runs
+
+A running game knows its target: `ctx.platform`
+(`shuyi::ui::PlatformFacts`) holds the target's id and what its profile
+says a game may do there. A screen asks it, never a `cfg!`:
+
+- `can_quit()` is false where the player leaves through the system (the
+  web's tab, a console's home button): a title offers no Quit there.
+- `windowed` is false on a device that is always full screen: the
+  engine's options screen leaves out its Fullscreen row.
+- `keyboard`, `pointer` and `touch` say what the player has.
+
+The facts are the screens'. A game's rules never read them, so the same
+commands play the same game on every target. A test runs a screen as a
+target with `Harness::as_target`, before the screen opens:
+
+{{ snippet(file="src/screens.rs", anchor="as_target") }}
+
 ## Who the game is
 
 Every target gets the same name, id and version, written once in

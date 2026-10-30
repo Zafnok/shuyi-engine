@@ -110,7 +110,9 @@ pub enum TitleChoice {
     Quit,
 }
 
-/// The title menu's items, by their text keys, top to bottom.
+/// The title menu's items, by their text keys, top to bottom. Quit is
+/// last, and left out where the player leaves through the system (a
+/// browser's tab): [`PlatformFacts::can_quit`](shuyi::ui::PlatformFacts::can_quit).
 pub const TITLE_ITEMS: [(&str, TitleChoice); 4] = [
     ("title.play", TitleChoice::Play),
     ("title.options", TitleChoice::Options),
@@ -118,8 +120,8 @@ pub const TITLE_ITEMS: [(&str, TitleChoice); 4] = [
     ("title.quit", TitleChoice::Quit),
 ];
 
-/// The title: the game's name and a menu of Play, Options, Profiles and
-/// Quit.
+/// The title: the game's name and a menu of Play, Options, Profiles and,
+/// where the game may quit, Quit.
 #[derive(Debug, Default)]
 pub struct Title {
     /// Which item has the focus.
@@ -133,10 +135,13 @@ impl Title {
     }
 
     /// The menu: its labels are text keys, put in the player's language
-    /// when the skin paints them.
-    fn menu(&self) -> Menu<TitleChoice> {
+    /// when the skin paints them. No Quit where the platform says the
+    /// player leaves through the system.
+    fn menu(&self, ctx: &HelloCtx) -> Menu<TitleChoice> {
+        let can_quit = ctx.platform.can_quit();
         let items = TITLE_ITEMS
             .iter()
+            .filter(|&&(_, choice)| can_quit || choice != TitleChoice::Quit)
             .map(|&(key, choice)| MenuItem::keyed(key).with_value(choice));
         Menu::new(items.collect())
             .without_cancel()
@@ -148,7 +153,7 @@ impl Title {
         TitleView {
             name: ctx.text("title.name").to_owned(),
             subtitle: ctx.text("title.subtitle").to_owned(),
-            menu: self.menu().view(),
+            menu: self.menu(ctx).view(),
             help: ctx.text_with("title.help", &[]),
         }
     }
@@ -170,7 +175,7 @@ impl Screen<Hello> for Title {
             // own: the game's only one (until ticket 2401).
             ctx.use_layout(crate::LAYOUT);
         }
-        let mut menu = self.menu();
+        let mut menu = self.menu(ctx);
         for &action in &input.actions {
             let event = menu.handle_with_sound(action, &mut ctx.audio);
             self.focus = menu.focus();

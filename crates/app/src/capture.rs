@@ -47,7 +47,7 @@ use shuyi_ui::frame::console::{Layout, layout};
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame::raster::{self, Comparison, Painter, Tolerance};
 use shuyi_ui::storage::MemoryStorage;
-use shuyi_ui::{GameData, RawInputEvent};
+use shuyi_ui::{GameData, PlatformFacts, RawInputEvent};
 
 use crate::AppConfig;
 use crate::backend::Macroquad;
@@ -90,13 +90,18 @@ pub(crate) fn requested() -> Option<String> {
 }
 
 /// Runs the game as the plan at `path` says, then [`finish`]es.
-pub(crate) async fn run<G: GameData>(mut config: AppConfig, start: Start<G>, path: String) {
+pub(crate) async fn run<G: GameData>(
+    mut config: AppConfig,
+    start: Start<G>,
+    path: String,
+    facts: PlatformFacts,
+) {
     let plan = match plan(&path).await {
         Ok(plan) => plan,
         Err(e) => return finish(cannot_run(&format!("{path}: {e}")), || ()).await,
     };
     match report() {
-        Ok(report) => play(&mut config, start, &plan, report).await,
+        Ok(report) => play(&mut config, start, &plan, report, facts).await,
         Err(e) => finish(cannot_run(&e), || ()).await,
     }
 }
@@ -142,9 +147,15 @@ async fn plan(path: &str) -> Result<Plan, String> {
 
 /// Plays `plan`'s frames, then [`finish`]es with the exit code, the last
 /// frame shown again on the web.
-async fn play<G: GameData>(config: &mut AppConfig, start: Start<G>, plan: &Plan, report: Report) {
+async fn play<G: GameData>(
+    config: &mut AppConfig,
+    start: Start<G>,
+    plan: &Plan,
+    report: Report,
+    facts: PlatformFacts,
+) {
     let mut platform = Capturing {
-        backend: Macroquad::new(config),
+        backend: Macroquad::new(config, facts),
         files: config.files,
         font_png: config.font_png,
         tolerance: plan.tolerance(),
@@ -288,6 +299,10 @@ impl Platform for Capturing {
 
     fn text_input(&mut self) -> Option<&mut dyn TextInput> {
         None
+    }
+
+    fn facts(&self) -> PlatformFacts {
+        self.backend.facts()
     }
 }
 

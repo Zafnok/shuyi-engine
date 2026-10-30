@@ -14,7 +14,6 @@ use crate::alloc_prelude::*;
 use alloc::collections::VecDeque;
 use alloc::vec;
 
-use shuyi_ui::RawInputEvent;
 use shuyi_ui::audio::{MusicCommand, SoundId};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
@@ -23,6 +22,7 @@ use shuyi_ui::perf::{
     HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass, TagRow,
 };
 use shuyi_ui::storage::{MemoryStorage, Storage};
+use shuyi_ui::{PlatformFacts, RawInputEvent};
 
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
@@ -368,6 +368,8 @@ pub struct HeadlessPlatform {
     storage: Option<Box<dyn Storage>>,
     speaker: Speaker,
     keyboard: Option<ScriptedKeyboard>,
+    /// Where the game is said to run.
+    facts: PlatformFacts,
     /// The clock it gives to measure frames with, if a test set one.
     clock: Option<PerfClock>,
     /// Where its memory readings come from.
@@ -407,6 +409,7 @@ impl HeadlessPlatform {
             storage: None,
             speaker: Speaker::default(),
             keyboard: None,
+            facts: PlatformFacts::default(),
             clock: None,
             memory: Memory::None,
             memory_calls: 0,
@@ -429,6 +432,15 @@ impl HeadlessPlatform {
     #[must_use]
     pub fn with_storage(mut self, storage: Box<dyn Storage>) -> Self {
         self.storage = Some(storage);
+        self
+    }
+
+    /// The same backend saying the game runs where `facts` say (the
+    /// `desktop` target's until called): a target's, read from its
+    /// profile with [`PlatformFacts::from_profile`].
+    #[must_use]
+    pub fn with_facts(mut self, facts: PlatformFacts) -> Self {
+        self.facts = facts;
         self
     }
 
@@ -585,6 +597,10 @@ impl Platform for HeadlessPlatform {
 
     fn text_input(&mut self) -> Option<&mut dyn TextInput> {
         self.keyboard.as_mut().map(|k| k as &mut dyn TextInput)
+    }
+
+    fn facts(&self) -> PlatformFacts {
+        self.facts.clone()
     }
 
     fn clock(&self) -> Option<PerfClock> {

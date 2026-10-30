@@ -41,7 +41,7 @@ use shuyi_ui::perf::{
 };
 use shuyi_ui::storage::Storage;
 use shuyi_ui::system_keyboard::TextAnswer;
-use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, Keyboard, RawInputEvent};
+use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInputEvent};
 
 use crate::audio::{AudioFrame, SoundRequest};
 use crate::platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
@@ -146,9 +146,10 @@ pub struct Setup {
     pub seed: u64,
     /// The text of the voice manifest the backend read, if it found one.
     pub voice_manifest: Option<String>,
-    /// Whether the device has a keyboard: [`Keyboard::Present`] unless the
-    /// backend says not.
-    pub keyboard: Keyboard,
+    /// Where the game runs: the target's id, whether the game may quit,
+    /// whether its window goes full screen, and the keyboard, pointer and
+    /// touch screen the device has ([`Platform::facts`]).
+    pub platform: PlatformFacts,
     /// Whether the game waits for a first key press (browsers block sound
     /// until one): [`KeyPrompt::Waiting`] unless the backend says not.
     pub key_prompt: KeyPrompt,
@@ -157,13 +158,13 @@ pub struct Setup {
 impl Setup {
     /// `ctx` on this platform: its saves and settings in the platform's
     /// storage, the voices the voice manifest allows, idle motion on, the
-    /// keyboard and key prompt the backend says, and the music seeded from
-    /// the clock so each launch picks differently.
+    /// platform's facts and the key prompt the backend says, and the music
+    /// seeded from the clock so each launch picks differently.
     pub fn ctx<G: GameData>(self, mut ctx: Ctx<G>) -> Ctx<G> {
         ctx.idle_motion = IdleMotion::On;
         ctx.music_seed = self.seed;
         ctx.key_prompt = self.key_prompt;
-        ctx.keyboard = self.keyboard;
+        ctx.platform = self.platform;
         let mut ctx = ctx.with_storage(self.storage);
         if let Some(manifest) = &self.voice_manifest {
             ctx.set_voice_manifest(manifest);
@@ -760,7 +761,7 @@ impl<G: GameData> App<G> {
             storage: platform.storage(),
             seed: mix(now.0),
             voice_manifest: None,
-            keyboard: Keyboard::Present,
+            platform: platform.facts(),
             key_prompt: KeyPrompt::Waiting,
         };
         drain(platform, &mut self.lists.input);

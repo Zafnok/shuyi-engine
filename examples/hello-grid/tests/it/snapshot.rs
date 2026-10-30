@@ -37,6 +37,9 @@ fn the_stage_in_tiles() {
 fn the_title_and_the_end_as_text() {
     let h = crate::title(0);
     insta::assert_snapshot!("title", h.snapshot());
+    assert_eq!(crate::title_on("desktop", 0).snapshot(), h.snapshot());
+    // On the web, where the tab closes the game, the menu has no Quit.
+    insta::assert_snapshot!("title_web", crate::title_on("web", 0).snapshot());
     let mut h = crate::title(7);
     h.keys("Enter Backspace");
     crate::play_out(&mut h, crate::to_the_goal);

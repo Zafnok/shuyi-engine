@@ -189,8 +189,8 @@ Nothing here costs money. A device is needed only for 3011.
     help text names A and B from the first frame, before any press; a
     host test with the fake SDK reads the first frame's help.
   - **The system's language.** Either order with 2349: if 2349 is done,
-    `facts()` also fills `PlatformFacts::languages` (where 2349 and 3053
-    put the system's languages, whichever lands second) from the SDK's
+    `facts()` also fills `PlatformFacts::languages` (where 2349 puts
+    the system's languages, 3053 being done) from the SDK's
     `system->getLanguage()` (English gives `en`, Japanese `ja`,
     anything else none); if not, 2349 does it.
 - **The catalog and `check-modules`.** **From 2003 (done):** the check

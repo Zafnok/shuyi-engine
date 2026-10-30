@@ -66,6 +66,9 @@ pub struct TargetProfile {
     pub frame_rate: FrameRate,
     /// What the player can press.
     pub input: Input,
+    /// How the player leaves a game there: by its own Quit unless said.
+    #[serde(default)]
+    pub quit: Quit,
     /// What a game may spend there.
     #[serde(default)]
     pub budgets: Budgets,
@@ -102,6 +105,11 @@ pub struct Display {
     /// The edges a game may not draw what matters under.
     #[serde(default)]
     pub safe_area: Insets,
+    /// Whether the game is in a window the player can switch to full
+    /// screen and back (a desktop's, a browser's canvas). `false` for a
+    /// device that is always full screen.
+    #[serde(default)]
+    pub windowed: bool,
 }
 
 /// A screen's size, in device pixels.
@@ -125,6 +133,19 @@ pub enum Color {
     Rgba8,
     /// Black and white (ADR-0008 §4).
     OneBit,
+}
+
+/// How the player leaves a game on a target.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
+pub enum Quit {
+    /// The game's own Quit closes it (a desktop's window).
+    #[default]
+    Game,
+    /// The player leaves through the system (a browser's tab, the
+    /// Playdate's Home, a console's or a phone's home button), and a game
+    /// shows no Quit.
+    System,
 }
 
 /// Insets from each edge of a display, in device pixels.
@@ -337,6 +358,20 @@ pub(crate) mod tests {
         assert_eq!(p.budgets.startup_ms, Some(5000));
         assert_eq!(p.budgets.frame_instructions, None);
         assert!(!p.input.touch);
+        // A profile from before `quit` and `windowed`: the game quits
+        // itself, always full screen.
+        assert_eq!((p.quit, p.display.windowed), (Quit::Game, false));
+    }
+
+    #[test]
+    fn a_profile_says_how_the_player_quits_and_whether_it_is_windowed() {
+        let source = profile("small", "windowed: true")
+            .replace("    backend:", "    quit: System,\n    backend:");
+        let p = read("small", &source).unwrap();
+        assert_eq!((p.quit, p.display.windowed), (Quit::System, true));
+        let wrong = profile("small", "").replace("    backend:", "    quit: Home,\n    backend:");
+        let errors = read("small", &wrong).unwrap_err();
+        assert!(errors[0].contains("Home"), "{errors:?}");
     }
 
     #[test]

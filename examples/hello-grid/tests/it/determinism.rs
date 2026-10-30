@@ -4,10 +4,10 @@
 
 use hello_grid::Hello;
 use hello_grid::rules::{Chase, Command, Event, Side, Stage};
-use shuyi::core::{Bot, RandomBot, TurnRules, play};
+use shuyi::core::{Bot, RandomBot, TurnRules, play, state_hash};
 use shuyi::platform::harness::Harness;
 
-use crate::{play_out, stage, title, to_the_goal};
+use crate::{play_out, stage, title, title_on, to_the_goal};
 
 fn stage_of(seed: u64) -> Stage {
     let game = Hello::load().unwrap_or_else(|e| panic!("{e:?}"));
@@ -72,6 +72,22 @@ fn played(seed: u64) -> Harness<Hello> {
     h.keys("Enter Backspace");
     play_out(&mut h, to_the_goal);
     h
+}
+
+/// The platform's facts are the screens', never the rules': the same keys
+/// on the desktop and on the web give the same stage.
+#[test]
+fn the_same_keys_on_the_desktop_and_the_web_give_the_same_stage() {
+    let hash = |id: &str| {
+        let mut h = title_on(id, 5);
+        h.keys("Enter Backspace");
+        for _ in 0..3 {
+            let to = to_the_goal(&stage(&h).stage);
+            crate::walk_to(&mut h, to);
+        }
+        state_hash(&stage(&h).stage).unwrap_or_else(|e| panic!("{e}"))
+    };
+    assert_eq!(hash("desktop"), hash("web"));
 }
 
 #[test]

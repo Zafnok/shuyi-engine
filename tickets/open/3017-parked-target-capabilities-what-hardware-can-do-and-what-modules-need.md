@@ -95,8 +95,7 @@ None.
   `input`'s `pointer`, `touch` and `keyboard`. If this ticket moves a
   field it reads (touch into `screens`' `Surface.touch`, say), change
   `from_profile` in the same PR, so check time and run time read one
-  place. If 3053 isn't done, it reads them where this ticket leaves
-  them.
+  place.
 - **Every profile gets its capabilities**, with a comment on each
   provisional number naming the ticket that checks it:
 

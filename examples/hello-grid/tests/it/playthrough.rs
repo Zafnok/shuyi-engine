@@ -2,6 +2,7 @@
 //! the scene read, the stage walked to the goal, the end screen and back
 //! to the title; caught by the foe; and leaving the stage.
 
+use hello_grid::Hello;
 use hello_grid::map::MOVE;
 use hello_grid::rules::{Outcome, Side, TRIP_PERCENT};
 use hello_grid::screens::{End, Leave, StageScreen, Talk, Title};
@@ -11,7 +12,7 @@ use shuyi::platform::harness::Harness;
 use shuyi::ui::grid::MapUnit;
 use shuyi::ui::{Game, GameHooks};
 
-use crate::{play_out, stage, title, to_the_foe, to_the_goal, walk_to};
+use crate::{play_out, stage, title, title_on, to_the_foe, to_the_goal, walk_to};
 
 #[test]
 fn the_title_opens_the_stage_with_its_scene_read_over_it() {
@@ -49,12 +50,34 @@ fn the_title_opens_the_stage_with_its_scene_read_over_it() {
 
 #[test]
 fn quit_on_the_title_quits() {
-    let mut h = title(1);
+    let mut h = title_on("desktop", 1);
     h.keys("Down Down Down");
     assert_eq!(h.screen::<Title>().map(|t| t.focus), Some(3));
     assert!(!h.quit_requested());
     h.keys("Enter");
     assert!(h.quit_requested());
+}
+
+/// On the web the player leaves by closing the tab: the title offers no
+/// Quit, and nothing quits it.
+#[test]
+fn the_title_on_the_web_has_no_quit() {
+    let mut h = title_on("web", 1);
+    let labels = |h: &Harness<Hello>| -> Vec<String> {
+        let view = h.screen::<Title>().unwrap().view(h.ctx());
+        let items = view.menu.items.iter();
+        items.map(|i| h.ctx().label(&i.label)).collect()
+    };
+    assert_eq!(labels(&h), ["Play", "Options", "Profiles"]);
+    assert!(!h.snapshot().contains("Quit"), "{}", h.snapshot());
+    // The menu goes round from Profiles to Play; Cancel does nothing.
+    h.keys("Up Enter");
+    assert_eq!(h.screens(), ["title", "profiles"]);
+    h.keys("Backspace Backspace Backspace Up Up Up Up Up Up Backspace");
+    assert_eq!(h.screens(), ["title"]);
+    assert!(!h.quit_requested());
+    let desktop = title_on("desktop", 1);
+    assert_eq!(labels(&desktop).last().map(String::as_str), Some("Quit"));
 }
 
 #[test]
