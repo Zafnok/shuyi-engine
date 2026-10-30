@@ -127,6 +127,11 @@ fn every_short_names_game_ships_on_the_desktop_and_the_web_and_fits_them() {
                 crate::app_info::stale(app, &dir, command).is_empty(),
                 "{short} {name}"
             );
+            assert_eq!(
+                crate::app_info::run(app, &dir, command, true),
+                Ok("app-info: up to date".to_owned()),
+                "{short} {name}"
+            );
             let input = crate::contract::check::CheckInput {
                 target: Some("all".to_owned()),
                 ..crate::contract::check::CheckInput::default()
@@ -148,6 +153,21 @@ fn every_short_names_game_ships_on_the_desktop_and_the_web_and_fits_them() {
                 let id = format!("\"com.example.{krate}\"");
                 assert_eq!(found, [("app.id", id.as_str())], "{short} {name}");
             }
+            // With an icon, `app-info` writes the window's icons where the
+            // template says, beside the code and outside `files/`.
+            assert_eq!(app.window_icons.as_deref(), Some("crates/game/icon"));
+            let mut iconed = app.clone();
+            iconed.icon = Some("art/icon.png".to_owned());
+            fs::create_dir_all(dir.join("art")).unwrap();
+            let white = vec![255; 4 * 512 * 512];
+            let png = crate::codec::encode_png(512, 512, &white).unwrap();
+            fs::write(dir.join("art/icon.png"), png).unwrap();
+            crate::app_info::run(&iconed, &dir, command, false).unwrap();
+            assert!(dir.join("crates/game/icon/64.png").is_file());
+            assert_eq!(
+                crate::app_info::run(&iconed, &dir, command, true),
+                Ok("app-info: up to date".to_owned())
+            );
             fs::remove_dir_all(&dir).unwrap();
         }
     }

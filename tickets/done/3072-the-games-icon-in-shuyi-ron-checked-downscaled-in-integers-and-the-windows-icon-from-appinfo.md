@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5
 effort: high
-status: todo
+status: done
 blocked_by: ["3048"]
 nick_input: none
-completed:
+completed: 2026-10-30
 ---
 
 # 3072 — The game's icon in shuyi.ron, and the window's icon from AppInfo
@@ -112,24 +112,24 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `cargo shuyi app-info` on a fixture with a 512 px icon writes the
+- [x] `cargo shuyi app-info` on a fixture with a 512 px icon writes the
       Rust file and three PNG files of 16, 32 and 64 px. Running it twice
       gives the same bytes; `--check` then exits 0, and after a change
       to the icon it exits 1, naming the file.
-- [ ] `downscale` of a picture of one colour gives that colour; of a
+- [x] `downscale` of a picture of one colour gives that colour; of a
       2 × 2 checkerboard to 1 × 1, the rounded mean; a fully transparent
       pixel adds nothing to its neighbours' colour.
-- [ ] Each icon rule has a test that breaks it and gets its error,
+- [x] Each icon rule has a test that breaks it and gets its error,
       naming `app.icon` or `app.window_icons`.
-- [ ] `WindowIcon` is `#[non_exhaustive]` with a `const fn new`;
+- [x] `WindowIcon` is `#[non_exhaustive]` with a `const fn new`;
       `shuyi_app::Icon` is the same type.
-- [ ] `run_game`'s window has `APP.window_icon`.
-- [ ] A game made by `shuyi new` still passes `app-info --check` and
+- [x] `run_game`'s window has `APP.window_icon`.
+- [x] A game made by `shuyi new` still passes `app-info --check` and
       `check --target all`.
-- [ ] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
-- [ ] The book's chapter is updated, or the completion notes have a
+- [x] `shuyi-platform` still builds for `thumbv7em-none-eabihf`.
+- [x] The book's chapter is updated, or the completion notes have a
       `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -140,5 +140,78 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done.**
+
+- **`AppPart`** has `icon` and `window_icons`.
+- **The rules** (`app_info::problems`, so `check --target`):
+  - `icon` reads, decodes as PNG (`codec::decode_png`; 2565 isn't done),
+    is square and is 512 px a side or more (`app.icon`);
+  - `icon` and `code` set without `window_icons` is an error
+    (`app.window_icons`);
+  - a stale window icon is a problem `app.window_icons`, and a stale
+    Rust file stays `app.code`.
+- **New items in `app_info`:** `app_info::icon(part, root)` reads and
+  checks the icon (`Icon { side, rgba }`), for 3049 too.
+  `ICON_SIDE` and `WINDOW_ICON_SIDES` are the sizes.
+- **`downscale`** is as the scope says: in `u64`, each output square
+  never empty (`to.max(from + 1)`), premultiplied, rounded half up.
+- **`app-info`:** `files(part, root, command)` lists the Rust file, then
+  `<window_icons>/16.png`, `32.png` and `64.png`, so `stale` and
+  `--check` cover them. A PNG file is compared byte for byte; only the
+  Rust file ignores line endings. When the icon doesn't load, `stale`
+  compares the Rust file alone and the icon's rule says why. With an
+  icon and `window_icons` but no `code`, it still writes the PNG files.
+  The generated Rust gets `.with_window_icon(Some(WindowIcon::new(
+  include_bytes!(..), ..)))` last, with its paths relative to the Rust
+  file (snapshot `rust_window_icon`).
+- **`shuyi_platform::WindowIcon`** (re-exported at the crate's root) and
+  `AppInfo::window_icon` / `with_window_icon`. `shuyi_app::Icon` is
+  `pub use shuyi_platform::WindowIcon as Icon`. `run_game`'s window
+  takes `game.app().window_icon`, with a test.
+- **The template:** `window_icons: "crates/game/icon"` and the icon
+  commented out, with a line in its `AGENTS.md`. The `new` test makes a
+  game from both short names, then runs `app-info --check`; it then
+  adds an icon and writes and checks the window's icons.
+- **ADR-0061.**
+- **Docs:** `docs/contract.md` (the `check --target` row and the
+  template's paragraph), the book's chapter 9 and its snippet
+  `project/shuyi.ron`, and the `shuyi-ship` skill.
+
+**Deviations:**
+
+- Hello, Grid's own `WINDOW` (its long form, not `run_game`) also takes
+  `.with_icon(APP.window_icon)`, so 3044, which rewrites that window,
+  keeps it. Hello, Grid has no icon, so it is `None`.
+- The book's snippet sets `icon` and `window_icons`, so its test expects
+  `app.icon` (the snippets have no picture) beside `app.id` and
+  `app.code`.
+
+**Follow-ups:** none new. 2565's clause now says `app_info::icon` moves
+onto `png_pixels`, and 3049 and 3044 have *From 3072 (done)* lines.
+
+Breaking: shuyi-app: Icon is now shuyi_platform::WindowIcon, re-exported under the same name: nothing changes in a game, since `shuyi_app::Icon`, `Icon::new`, `Window::icon` and `Window::with_icon` are the same
+
+```migration
+since: 0.1.0
+what: shuyi_app::Icon is now a re-export of shuyi_platform::WindowIcon, the window's icon that AppInfo carries; its fields and constructor are the same.
+old: "shuyi_app::Icon (a struct of shuyi-app)"
+new: "shuyi_app::Icon = shuyi_platform::WindowIcon"
+before: |
+  const WINDOW: Window = Window::new("A game", 640, 480).with_icon(Some(Icon::new(SMALL, MEDIUM, BIG)));
+after: |
+  const WINDOW: Window = Window::new("A game", 640, 480).with_icon(Some(Icon::new(SMALL, MEDIUM, BIG)));
+```
+
+Breaking: shuyi-cli: app_info::files takes the project's root: a caller passes it, and gets a Result, since the window's icons are read from the icon
+
+```migration
+since: 0.1.0
+what: shuyi_cli::app_info::files reads the icon from the project's root, and fails when it doesn't load.
+old: "app_info::files(part: &AppPart, command: &str) -> Vec<(String, Vec<u8>)>"
+new: "app_info::files(part: &AppPart, root: &Path, command: &str) -> Result<Vec<(String, Vec<u8>)>, String>"
+before: |
+  let files = app_info::files(&part, "shuyi");
+after: |
+  let files = app_info::files(&part, &root, "shuyi")?;
+find: ["app_info::files(&part, \"shuyi\")"]
+```

@@ -212,25 +212,9 @@ impl Window {
     }
 }
 
-/// A window icon: PNG files of 16, 32 and 64 pixels square.
-#[derive(Debug, Clone, Copy)]
-#[non_exhaustive]
-pub struct Icon {
-    /// The 16 × 16 picture.
-    pub small: &'static [u8],
-    /// The 32 × 32 picture.
-    pub medium: &'static [u8],
-    /// The 64 × 64 picture.
-    pub big: &'static [u8],
-}
-
-impl Icon {
-    /// An icon of the three pictures, 16, 32 and 64 pixels square.
-    #[must_use]
-    pub const fn new(small: &'static [u8], medium: &'static [u8], big: &'static [u8]) -> Self {
-        Self { small, medium, big }
-    }
-}
+/// A window icon: PNG files of 16, 32 and 64 pixels square. It is
+/// `shuyi_platform`'s, which a game's `AppInfo` carries (ADR-0061).
+pub use shuyi_platform::WindowIcon as Icon;
 
 /// Where a game's voice clips are (game ADR-0046): a folder shipped beside the
 /// game (not embedded), with a folder per language holding the manifest
@@ -496,7 +480,8 @@ pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
 const BASIC_MARGIN: i32 = 16;
 
 /// The window of a game on the short path: its console at twice its size
-/// and a small margin, titled with its name (`AppInfo::name`).
+/// and a small margin, titled with its name (`AppInfo::name`), with its
+/// icon (`AppInfo::window_icon`).
 fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Window {
     let console = game.console_spec();
     let side = |cells: u16, cell: u16| i32::from(cells) * i32::from(cell) * 2 + BASIC_MARGIN;
@@ -505,6 +490,7 @@ fn basic_window<A: ActionSet, T: Debug + 'static>(game: &BasicGame<A, T>) -> Win
         side(console.cols, console.cell_w),
         side(console.rows, console.cell_h),
     )
+    .with_icon(game.app().window_icon)
 }
 
 /// A file of the bundle [`run_game`] installed.
@@ -700,6 +686,18 @@ mod tests {
             BasicGame::new(app, files, |_| unreachable!("never started"));
         assert_eq!(basic_config(&game).storage_name, "com.example.a-game");
         assert_eq!(basic_window(&game).title, "A game");
+    }
+
+    #[test]
+    fn a_short_path_games_window_has_its_apps_icon() {
+        let files = shuyi_assets::bundle::Layer::table("files", &[]);
+        let icon = Icon::new(b"small", b"medium", b"big");
+        let app =
+            AppInfo::new("A game", "com.example.a-game", "0.1.0").with_window_icon(Some(icon));
+        let game: BasicGame<shuyi_assets::keymap::UiAction> =
+            BasicGame::new(app, files, |_| unreachable!("never started"));
+        assert_eq!(basic_window(&game).icon, Some(icon));
+        assert_eq!(basic_config(&game).window.icon, Some(icon));
     }
 
     #[test]

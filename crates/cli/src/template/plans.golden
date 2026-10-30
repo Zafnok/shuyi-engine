@@ -8,7 +8,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 3ff31f910a652891 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-bf7ef8c3b3959c79 AGENTS.md
+be2d480904105f96 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 c711d1bb70e03694 README.md
@@ -30,7 +30,7 @@ e48dd42a787497ae crates/game/src/title.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-9616eff0bd495e19 shuyi.ron
+9cf63df7bd9fee45 shuyi.ron
 
 [grid] base, stage-top-down-grid
 d4b465b5e5a1bbb5 .cargo/config.toml
@@ -38,7 +38,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 3ff31f910a652891 .github/workflows/ci.yml
 4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-bf7ef8c3b3959c79 AGENTS.md
+be2d480904105f96 AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 e38c9bf7515affe5 Cargo.toml
 c711d1bb70e03694 README.md
@@ -69,4 +69,4 @@ a9360fff8f48cb78 crates/rules/clippy.toml
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
-59beb34fa8d3bc22 shuyi.ron
+442c91104da7a23e shuyi.ron
