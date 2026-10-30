@@ -31,9 +31,11 @@ Ship only what `check --target` passes.
 
 1. **Pass the gates first** (`shuyi-gates`). Give the game its own id
    in `shuyi.ron`'s `app` (`io.github.<you>.<game>` in place of
-   `com.example.…`), then run `cargo shuyi app-info`: the player's saves
-   are kept under the id, so it never changes after a release. Then
-   check every target `shuyi.ron` lists:
+   `com.example.…`), and its icon (`icon`, one square PNG of 512 pixels
+   or more), then run `cargo shuyi app-info`: the player's saves are
+   kept under the id, so it never changes after a release, and the
+   window's icons are downscaled from the icon. Then check every target
+   `shuyi.ron` lists:
 
    ```bash
    cargo shuyi check --target all

@@ -247,8 +247,10 @@ None.
     `WINDOW` (its window is `run_game`'s, titled with `game.name()`).
     This ticket writes hello-grid's as
     `Window::console(APP.name, CONSOLE, 2, 16)` and calls
-    `window_conf(&WINDOW, APP.storage)`. The window's icon from `APP`
-    is 3072's;
+    `window_conf(&WINDOW, APP.storage)`. From 3072 (done): `APP`
+    carries the window's icon (`AppInfo::window_icon`, `None` for
+    hello-grid, which has no icon) and `run_game` sets it; hello-grid's
+    `WINDOW` keeps `.with_icon(APP.window_icon)`;
   - with 3041 (log sinks): if it is done, the warning `run` logs is
     `log::warn!(target: "platform", …)`; if not, macroquad's `warn!`,
     which 3041 moves. `run` logs it, not `window_conf`, because 3041's

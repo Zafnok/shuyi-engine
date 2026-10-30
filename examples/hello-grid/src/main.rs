@@ -13,8 +13,9 @@ use shuyi::platform::{Card, Look, Setup, Start};
 use shuyi::ui::Game;
 
 /// The window, titled with the game's name: the console at twice its
-/// size, and a small margin.
-const WINDOW: Window = Window::new(APP.name, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16);
+/// size, and a small margin, with the game's icon (none yet).
+const WINDOW: Window =
+    Window::new(APP.name, 48 * 8 * 2 + 16, 24 * 16 * 2 + 16).with_icon(APP.window_icon);
 
 /// What the macroquad backend needs to know about the game: its settings
 /// and key bindings are kept under `APP.storage`.

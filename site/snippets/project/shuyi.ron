@@ -14,6 +14,10 @@
         // Without it, the crate's version.
         version: "0.1.0",
         code: "crates/game/src/app_info.rs",
+        // One square PNG, 512 pixels a side or more.
+        icon: "art/icon.png",
+        // Where `app-info` writes the window's icons, which `code` reads.
+        window_icons: "crates/game/icon",
     ),
     // ANCHOR_END: app
 

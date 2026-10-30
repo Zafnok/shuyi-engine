@@ -45,6 +45,14 @@ Every target gets the same name, id and version, written once in
 - `cargo shuyi app-info` writes the part into `code` as the game's
   `APP`, a `shuyi::platform::AppInfo` the binary reads; `--check` fails
   when the file is out of date.
+- `icon` is the game's one picture: a square PNG, 512 pixels a side or
+  more. The tools make every size a target asks from it, never at run
+  time: `app-info` writes the window's icons, 16, 32 and 64 pixels,
+  into `window_icons`, and `APP` carries them (`window_icon`), so the
+  window shows it. Each size is the mean of the pixels it covers,
+  weighed by how opaque they are, so a transparent edge doesn't darken
+  the color beside it, and the same picture gives the same files on
+  every computer.
 
 ## Checking them
 
@@ -63,8 +71,8 @@ checks, for each target the game lists, that:
   don't fit, the screen changes, since the engine never folds actions
   onto fewer buttons;
 - on a one-bit target, every palette role has a pattern;
-- the `app` part keeps its rules, and the file `app-info` writes is up
-  to date. An id under `com.example.` is a warning: two games with it
+- the `app` part keeps its rules, its icon is a square PNG of 512
+  pixels or more, and the files `app-info` writes are up to date. An id under `com.example.` is a warning: two games with it
   share their saves.
 
 Each problem names its target, the setting in `shuyi.ron` and the

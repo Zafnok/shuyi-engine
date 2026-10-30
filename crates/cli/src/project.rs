@@ -160,6 +160,14 @@ pub struct AppPart {
     /// without it, no Rust is written.
     #[serde(default)]
     pub code: Option<String>,
+    /// The game's icon: one square PNG, 512 pixels a side or more, which
+    /// the tools downscale to every size a target asks (ADR-0060).
+    #[serde(default)]
+    pub icon: Option<String>,
+    /// The folder where `app-info` writes the window's icons, `16.png`,
+    /// `32.png` and `64.png` (`crates/game/icon`); `code` reads them.
+    #[serde(default)]
+    pub window_icons: Option<String>,
 }
 
 /// A game's first build.
@@ -179,6 +187,8 @@ impl AppPart {
             publisher: String::new(),
             storage: None,
             code: None,
+            icon: None,
+            window_icons: None,
         }
     }
 
@@ -488,8 +498,12 @@ mod tests {
     publisher: "Someone",
     storage: "moon_garden",
     code: "crates/game/src/app_info.rs",
+    icon: "art/icon.png",
+    window_icons: "crates/game/icon",
 ))"#;
         let app = Config::parse(text).unwrap().app.unwrap();
+        assert_eq!(app.icon.as_deref(), Some("art/icon.png"));
+        assert_eq!(app.window_icons.as_deref(), Some("crates/game/icon"));
         assert_eq!(app.version.as_deref(), Some("1.2.0-beta.1"));
         assert_eq!((app.build, app.publisher.as_str()), (12, "Someone"));
         assert_eq!(app.storage(), "moon_garden");

@@ -27,10 +27,15 @@ mod tests {
     fn who_the_game_is_warns_of_the_placeholder_id() {
         let config = Config::parse(include_str!("../project/shuyi.ron")).unwrap();
         let app = config.app.unwrap();
-        // The snippets write no `code` here, so it is out of date.
+        // The snippets have no icon and write no `code` here: the icon
+        // can't be read, and the code is out of date.
         let found = shuyi_cli::app_info::problems(&app, Path::new("."), "cargo shuyi");
         let settings: Vec<&str> = found.iter().map(|p| p.setting.as_str()).collect();
-        assert_eq!(settings, ["app.id", "app.code"]);
+        assert_eq!(settings, ["app.id", "app.icon", "app.code"]);
+        assert!(
+            found[1].message.starts_with("art/icon.png can't be read"),
+            "{found:?}"
+        );
         assert_eq!(found[0].level, Level::Warning);
         // The quick start's game is this one.
         let quick = crate::quick_start::APP;

@@ -1,6 +1,7 @@
 //! [`AppInfo`]: who a game is, the same on every target: the name players
-//! see, a reverse-DNS id, its version and build, its publisher, and the
-//! name its saves are kept under (ADR-0059).
+//! see, a reverse-DNS id, its version and build, its publisher, the name
+//! its saves are kept under (ADR-0059), and its window's icon
+//! ([`WindowIcon`], ADR-0060).
 //!
 //! A game writes it once, in its `shuyi.ron`'s `app` part, and
 //! `shuyi app-info` writes it as a Rust constant (`pub const APP:
@@ -29,6 +30,7 @@
 ///     publisher: "",
 ///     storage: "com.example.a-game",
 ///     build: 1,
+///     window_icon: None,
 /// };
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,6 +53,39 @@ pub struct AppInfo {
     /// A number that only grows from one build handed out to the next,
     /// where a target asks for one beside the version.
     pub build: u32,
+    /// The window's icon, where a backend shows one; `None` for none.
+    /// `shuyi app-info` makes it from `shuyi.ron`'s `app.icon`.
+    pub window_icon: Option<WindowIcon>,
+}
+
+/// A window's icon: PNG files of 16, 32 and 64 pixels square, which
+/// `shuyi app-info` downscales from the game's one icon (ADR-0060). Build
+/// it with [`WindowIcon::new`].
+///
+/// ```compile_fail
+/// let icon = shuyi_platform::WindowIcon {
+///     small: b"",
+///     medium: b"",
+///     big: b"",
+/// };
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct WindowIcon {
+    /// The 16 × 16 picture.
+    pub small: &'static [u8],
+    /// The 32 × 32 picture.
+    pub medium: &'static [u8],
+    /// The 64 × 64 picture.
+    pub big: &'static [u8],
+}
+
+impl WindowIcon {
+    /// An icon of the three pictures, 16, 32 and 64 pixels square.
+    #[must_use]
+    pub const fn new(small: &'static [u8], medium: &'static [u8], big: &'static [u8]) -> Self {
+        Self { small, medium, big }
+    }
 }
 
 impl AppInfo {
@@ -65,6 +100,7 @@ impl AppInfo {
             publisher: "",
             storage: id,
             build: 1,
+            window_icon: None,
         }
     }
 
@@ -85,6 +121,16 @@ impl AppInfo {
     #[must_use]
     pub const fn with_publisher(self, publisher: &'static str) -> Self {
         Self { publisher, ..self }
+    }
+
+    /// The game with `icon` as its window's icon (`None` for none,
+    /// [`window_icon`](Self::window_icon)).
+    #[must_use]
+    pub const fn with_window_icon(self, icon: Option<WindowIcon>) -> Self {
+        Self {
+            window_icon: icon,
+            ..self
+        }
     }
 }
 
@@ -109,6 +155,26 @@ mod tests {
             (app.storage, app.build, app.publisher),
             ("com.example.a-game", 1, "")
         );
+        assert_eq!(app.window_icon, None);
+    }
+
+    /// An icon set in a `const` item, as the generated file sets it.
+    const ICONED: AppInfo = AppInfo::new("A game", "com.example.a-game", "1.2.3")
+        .with_window_icon(Some(WindowIcon::new(b"small", b"medium", b"big")));
+
+    #[test]
+    fn with_window_icon_sets_the_icon_alone() {
+        let icon = ICONED.window_icon.unwrap();
+        assert_eq!(
+            (icon.small, icon.medium, icon.big),
+            (&b"small"[..], &b"medium"[..], &b"big"[..])
+        );
+        assert_eq!(
+            ICONED.with_window_icon(None),
+            AppInfo::new("A game", "com.example.a-game", "1.2.3")
+        );
+        assert_eq!(SET.with_window_icon(Some(icon)).window_icon, Some(icon));
+        assert_eq!(SET.with_window_icon(Some(icon)).storage, "a-game");
     }
 
     #[test]
