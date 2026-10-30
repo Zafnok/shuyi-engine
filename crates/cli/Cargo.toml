@@ -29,8 +29,9 @@ toy = ["shuyi-ui/toy"]
 [dependencies]
 # The state hash `replay` compares, and the turn rules it re-runs.
 shuyi-core = { path = "../core", features = ["schema"] }
-# Fonts, images, palettes, languages and credits.
-shuyi-assets = { path = "../assets" }
+# Fonts, images, palettes, languages and credits; with `png`, the
+# pictures a one-bit bake dithers, and the sources its contact sheet draws.
+shuyi-assets = { path = "../assets", features = ["png"] }
 # The frame `frame-png` paints (with the raster that paints it), and the
 # perf records `run --perf` reads (with their schemas).
 shuyi-ui = { path = "../ui", features = ["schema", "raster"] }

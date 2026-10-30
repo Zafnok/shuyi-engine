@@ -510,6 +510,8 @@ The tickets, in order:
 | 3008 | Performance budgets: `shuyi bench`, gated in CI |
 | 3006 | 1-bit output: patterns per palette role, a check that sides stay distinct |
 | 3007 | 1-bit sprites at bake time, hand-drawn overrides per target (after 2204 and 2229) |
+| 3073 | `frame-png` on a one-bit target paints sprites from the target's one-bit pictures |
+| 3074 | `check --baked --target` proves a target's pack equal to its sources |
 | 3009 | Bots think in slices: the frame rate holds, the decision never changes (first user: the game's enemy AI on the Playdate, game#1051) |
 | 3012 | Steam Deck target |
 | 3013 | Steam Deck on the device: frame times and battery |

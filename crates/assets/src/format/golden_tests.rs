@@ -17,7 +17,8 @@ use super::*;
 use crate::audio::{
     self, AudioManifest, AudioManifestRon, MusicTrack, OggVorbis, OggVorbisTrack, Sound, Wav,
 };
-use crate::bitmap::OneBitInfo;
+use crate::bitmap::dither::Dithered;
+use crate::bitmap::{OneBitFile, OneBitInfo, OneBitPicture};
 use crate::cinematic::{CinematicFile, CinematicRon};
 use crate::credits::{CreditsFile, CreditsRon};
 use crate::dialogue::tests::Cue;
@@ -86,6 +87,7 @@ fn missing_rows(formats: &Formats, rows: &BTreeSet<String>) -> Vec<String> {
     let mut missing = Vec::new();
     kind::<ImageInfo>(formats, rows, &mut missing);
     kind::<Image>(formats, rows, &mut missing);
+    kind::<OneBitPicture>(formats, rows, &mut missing);
     kind::<Sound>(formats, rows, &mut missing);
     kind::<MusicTrack>(formats, rows, &mut missing);
     kind::<AudioManifest>(formats, rows, &mut missing);
@@ -117,6 +119,8 @@ fn check_rows() -> Rows {
     rows.format(&PngInfo, "a.png", &picture, None);
     rows.format(&Png, "a.png", &picture, None);
     rows.format(&OneBitInfo, "a.png", &crate::bitmap::tests::sample(), None);
+    rows.format(&OneBitFile, "a.png", &crate::bitmap::tests::sample(), None);
+    rows.format(&Dithered, "a.png", &picture, None);
     rows.format(&Wav, "a.wav", &wav(1, rate, 1), None);
     rows.format(&OggVorbis, "a.ogg", &ogg(2, rate), None);
     rows.format(&OggVorbisTrack, "a.ogg", &ogg_file(rate, 88_200), None);

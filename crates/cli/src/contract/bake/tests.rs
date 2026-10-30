@@ -33,6 +33,7 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
     let input = BakeInput {
         target: Some("playdate".to_owned()),
         out: None,
+        sheet: None,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     assert!(answer.ok, "{answer:?}");
@@ -60,6 +61,7 @@ fn bake_writes_the_pack_and_says_what_went_in_and_how_long_it_took() {
     let input = BakeInput {
         target: None,
         out: Some("out/p.shuyipak".to_owned()),
+        sheet: None,
     };
     assert!(bake(&Fake::default(), &project(&dir), &input).ok);
     assert!(dir.join("out/p.shuyipak").is_file());
@@ -109,6 +111,7 @@ fn bake_refuses_a_target_with_no_profile() {
     let input = BakeInput {
         target: Some("toaster".to_owned()),
         out: None,
+        sheet: None,
     };
     let answer = bake(&Fake::default(), &project(&dir), &input);
     let error = answer.error.unwrap_or_default();
@@ -184,10 +187,18 @@ fn check_baked_proves_the_pack_equal_to_its_sources() {
 fn bakes_arguments_are_a_target_and_a_file() {
     let args = |items: &[&str]| items.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
     assert_eq!(
-        parse_args(&args(&["--target", "playdate", "--out", "p.shuyipak"])),
+        parse_args(&args(&[
+            "--target",
+            "playdate",
+            "--out",
+            "p.shuyipak",
+            "--sheet",
+            "s.png"
+        ])),
         Ok(BakeInput {
             target: Some("playdate".to_owned()),
             out: Some("p.shuyipak".to_owned()),
+            sheet: Some("s.png".to_owned()),
         })
     );
     assert_eq!(parse_args(&[]), Ok(BakeInput::default()));
@@ -201,7 +212,7 @@ fn bakes_arguments_are_a_target_and_a_file() {
     );
     assert_eq!(
         usage("shuyi"),
-        "usage: shuyi bake [--target <id>] [--out <file>] [--json]"
+        "usage: shuyi bake [--target <id>] [--out <file>] [--sheet <file>] [--json]"
     );
     assert_eq!(bytes(1_234_567), "1,234,567");
     assert_eq!(bytes(123_456), "123,456");
@@ -224,12 +235,31 @@ fn the_text_says_how_big_the_pack_is_beside_its_sources() {
             bake_us: 1_500,
             load_sources_us: 900,
             load_pack_us: 300,
+            dithered: Vec::new(),
+            replaced: Vec::new(),
+            sheet: None,
         }),
     };
     assert_eq!(
         text(&output),
         "bake: p.shuyipak: 4 files, 1 baked (palette)\n  size: sources 200 bytes, pack 50 bytes \
          (25%)\n  baked in 1.5 ms\n  load: sources 0.9 ms, pack 0.3 ms\n"
+    );
+    // A one-bit bake names the pictures it dithered and those the
+    // target's layer replaced, and the contact sheet.
+    let mut one_bit = output;
+    if let Some(pack) = &mut one_bit.pack {
+        pack.dithered = vec!["assets/a.png".to_owned(), "assets/b.png".to_owned()];
+        pack.replaced = vec!["assets@playdate/c.png".to_owned()];
+        pack.sheet = Some("sheet.png".to_owned());
+    }
+    let shown = text(&one_bit);
+    assert!(
+        shown.ends_with(
+            "  dithered 2 picture(s), to check: assets/a.png, assets/b.png\n  from the target's \
+             layer: assets@playdate/c.png\n  contact sheet: sheet.png\n"
+        ),
+        "{shown}"
     );
 }
 

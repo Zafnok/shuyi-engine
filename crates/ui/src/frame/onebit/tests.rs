@@ -400,6 +400,35 @@ fn a_sprite_draws_its_one_bit_picture() {
     );
 }
 
+#[test]
+fn a_one_bit_packs_bundle_gives_the_picture_at_each_images_path() {
+    use shuyi_assets::bitmap::encode;
+    use shuyi_assets::bundle::{Bundle, Layer as BundleLayer};
+    let file = encode((4, 2), (4, 2), &[&PICTURE], Some(&PICTURE_MASK)).unwrap();
+    let bundle_of = |bytes: Vec<u8>| {
+        let files: &'static [(&'static str, &'static [u8])] =
+            Box::leak(vec![("p.png", &*Box::leak(bytes.into_boxed_slice()))].into_boxed_slice());
+        Bundle::new(vec![BundleLayer::table("pack", files)])
+    };
+    let mut b = buf(1, 1);
+    b.fill_rect(b.bounds(), Cell::new(' ', c(Ink::Black), c(Ink::Grey)));
+    let sprite = Sprite::new(
+        picture_id(),
+        Rect::new(0, 0, 4, 2),
+        Rect::new(0, 0, 8, 4),
+        Layer::Over,
+    );
+    b.add_sprite(sprite);
+    let from_pack = text(&draw_with(&b, &bundle_of(file)), 0, 0, 8, 4);
+    assert_eq!(from_pack, sprite_frame(|s| s, false));
+    // A PNG at its path is no one-bit picture: a grey rectangle.
+    let png = bundle_of(b"\x89PNG\r\n\x1a\n".to_vec());
+    assert_eq!(
+        text(&draw_with(&b, &png), 0, 0, 8, 4),
+        sprite_frame(|s| s, true)
+    );
+}
+
 /// Any image's id: [`One`] gives every id its picture.
 struct One<'a>(Image<'a>);
 

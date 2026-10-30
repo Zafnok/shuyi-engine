@@ -662,6 +662,10 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.ids::<ImageInfo>(), ["png", "one-bit"]);
     assert_eq!(formats.extensions::<ImageInfo>(), ["png"]);
     assert_eq!(formats.ids::<Image>(), ["png"]);
+    assert_eq!(
+        formats.ids::<crate::bitmap::OneBitPicture>(),
+        ["one-bit", "dithered"]
+    );
     assert_eq!(formats.ids::<Sound>(), ["wav", "ogg-vorbis"]);
     assert_eq!(formats.extensions::<Sound>(), ["wav", "ogg"]);
     assert_eq!(formats.ids::<MusicTrack>(), ["ogg-vorbis"]);
@@ -677,7 +681,9 @@ fn the_standard_formats_are_the_engines_that_need_nothing_of_a_game() {
     assert_eq!(formats.limits, Limits::NONE);
     // Every kind: nothing else.
     let kinds = format!("{formats:?}").matches("\", [\"").count();
-    assert_eq!(kinds, 13);
+    assert_eq!(kinds, 14);
+    // And the engine's one section of import settings.
+    assert_eq!(formats.import_settings_sections(), ["onebit"]);
     // Registered again, the first is refused.
     let mut twice = Formats::standard();
     assert_eq!(
@@ -944,10 +950,7 @@ fn a_section_is_refused_twice_without_defaults_or_open_to_unknown_fields() {
         ::ron::from_str::<Strict>("(size: 3)").map(|s| s.size).ok(),
         Some(3)
     );
-    assert_eq!(
-        Formats::standard().import_settings_sections(),
-        Vec::<&str>::new()
-    );
+    assert_eq!(Formats::standard().import_settings_sections(), ["onebit"]);
 }
 
 #[test]

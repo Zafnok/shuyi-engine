@@ -226,10 +226,18 @@ Nothing here costs money. A device is needed only for 3011.
   3. it writes `pdxinfo` from `shuyi.ron`'s `app` part (3048): `name`,
      `author` (the publisher), `bundleID` (the id), `version`,
      `buildNumber` (the build) and `imagePath`. The launcher's icon and
-     card come from 3007's 1-bit bake of `app.icon` (3072), or from
+     card come from a 1-bit bake of `app.icon` (3072), or from
      files the game names in two optional fields this ticket adds to
      `AppPart` (`playdate_icon`, `playdate_card`), checked in
-     `app_info::problems` like the part's other fields;
+     `app_info::problems` like the part's other fields.
+     **From 3007 (done):** `shuyi_assets::bitmap::dither::dither(&image,
+     settings)` makes a one-bit picture file of any decoded picture
+     (`image::Image`), in integers, and a game's Playdate pack holds every
+     picture of its bundle as one (`Bake::under_as("", OneBitFile)`).
+     `app.icon` is a file of the project, not of the bundle, so the
+     exporter decodes it (`image::Png`), downscales it (3072's
+     `app-info`), and dithers it itself with `OneBitSettings::default()`
+     (or `threshold(128)` for the card's line art; say which in the PR);
   4. it bakes the pack;
   5. it writes `NOTICES.txt` beside the pack, so the `.pdx` carries it,
      with 3039's `notices` module (the crates for

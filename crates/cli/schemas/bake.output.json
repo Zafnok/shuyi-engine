@@ -111,6 +111,14 @@
           "format": "uint32",
           "minimum": 0
         },
+        "dithered": {
+          "description": "The pictures made one-bit by dithering a PNG of the game's own\nlayers, as messages show them: what an artist checks.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
         "file": {
           "description": "Its file, from the project's root.",
           "type": "string"
@@ -145,6 +153,22 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0
+        },
+        "replaced": {
+          "description": "The pictures read from the target's own layer\n(`assets@<target>/`) in place of the game's.",
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "sheet": {
+          "description": "The contact sheet written, from the project's root, if one was\nasked for.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
         },
         "source_bytes": {
           "description": "The sources' bytes, added up.",

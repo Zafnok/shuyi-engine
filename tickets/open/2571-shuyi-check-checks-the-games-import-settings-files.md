@@ -25,8 +25,11 @@ file of a bundle: bad RON, an unknown section, an unknown field or a
 bad value, a `<name>.meta` whose file is missing, a settings file of a
 settings file.
 
-3007 registers the engine's first section, `onebit`, and leaves `shuyi
-check` running this check to this ticket.
+**From 3007 (done):** `Formats::register_standard` registers the
+engine's first section, `onebit` (`shuyi_assets::bitmap::dither::OneBitSettings`),
+so `Formats::standard().check_import_settings` already finds a typo in
+it with its settings file and line, with no Playdate bake running. `shuyi
+check` running that check on a game's bundle is this ticket's.
 
 `Bake::bake` (`crates/assets/src/pack/bake.rs`) already runs it, so
 `shuyi bake` and `shuyi check --baked` refuse a bad settings file. Plain

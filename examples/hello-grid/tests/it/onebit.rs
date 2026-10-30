@@ -1,17 +1,30 @@
 //! ADR-0008 §4 on Hello, Grid: its look on a black and white screen.
 //! `files/palette@onebit.ron` gives every role of its palette patterns
-//! and keeps apart what its colours tell apart, and `frame-png --target
+//! and keeps apart what its colours tell apart, `frame-png --target
 //! playdate` paints its title as the Playdate shows it, checked as a
-//! snapshot (the `.png` beside the `.snap` is the picture).
+//! snapshot (the `.png` beside the `.snap` is the picture), and `bake
+//! --target playdate` makes every picture one-bit, its tileset from
+//! `files@playdate/`, in a pack the game plays from on the headless
+//! backend.
 
 use std::fs;
 use std::path::PathBuf;
 
-use hello_grid::tools::{HelloTools, one_bit_skin};
+use hello_grid::screens::StageScreen;
+use hello_grid::tools::{FONT_1BIT, HelloTools, one_bit_skin};
+use hello_grid::{Hello, LAYOUT, MapLook, PACK_STAMP};
+use shuyi::assets::bitmap::Bitmap;
+use shuyi::assets::bundle::Bundle;
 use shuyi::assets::onebit::Pattern;
-use shuyi_cli::GameTools;
+use shuyi::assets::pack::Pack;
+use shuyi::platform::harness::Harness;
+use shuyi::ui::frame::onebit::{Font, Images, PatternMap, to_one_bit};
+use shuyi::ui::{Ctx, Game, GameHooks};
+use shuyi_cli::contract::bake::{BakeInput, bake};
 use shuyi_cli::contract::target::{Level, engine_profiles, one_bit};
 use shuyi_cli::frame_png::{self, Script};
+use shuyi_cli::project::Config;
+use shuyi_cli::{GameTools, Project};
 
 #[test]
 fn every_role_has_patterns_and_the_pieces_and_the_ground_stay_apart() {
@@ -77,4 +90,88 @@ fn frame_png_on_the_playdate_paints_the_title_in_black_and_white() {
         .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!((big.image.width, big.image.height), (800, 480));
     assert_eq!(big.shows, "title");
+}
+
+#[test]
+fn the_playdate_pack_holds_every_picture_one_bit_and_the_game_plays_from_it() {
+    // Its own folder: the other test here empties `temp_dir`'s.
+    let dir = std::env::temp_dir().join(format!("hello-grid-bake-onebit-{}", std::process::id()));
+    let project = Project::new(dir.clone(), Config::default());
+    let mut input = BakeInput::default();
+    input.target = Some("playdate".to_owned());
+    input.sheet = Some("sheet.png".to_owned());
+    let answer = bake(&HelloTools, &project, &input);
+    assert!(answer.ok, "{answer:?}");
+    let made = answer
+        .result
+        .unwrap_or_else(|| panic!())
+        .pack
+        .unwrap_or_else(|| panic!());
+    // The font's picture is dithered; the tileset is the one drawn for the
+    // Playdate.
+    assert_eq!(made.dithered, ["files/font/atlas.png"]);
+    assert_eq!(made.replaced, ["files@playdate/tiles.png"]);
+    assert!(
+        made.kinds.contains(&"one-bit picture".to_owned()),
+        "{made:?}"
+    );
+    let sheet = fs::read(dir.join("sheet.png")).unwrap_or_else(|e| panic!("{e}"));
+    assert!(sheet.starts_with(b"\x89PNG"));
+    let bytes: &'static [u8] = fs::read(dir.join(&made.file))
+        .unwrap_or_else(|e| panic!("{e}"))
+        .leak();
+    let _ = fs::remove_dir_all(&dir);
+
+    // Every picture in it is a one-bit picture at its PNG's path, and the
+    // pack is proven equal to its sources.
+    let pack = Pack::open(bytes, PACK_STAMP).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(pack.info().target.as_deref(), Some("playdate"));
+    for path in ["tiles.png", "font/atlas.png"] {
+        let file = pack.get(path).unwrap_or_default();
+        assert!(Bitmap::is_bitmap(file), "{path}");
+    }
+    let tiles = Bitmap::parse(pack.get("tiles.png").unwrap_or_default());
+    assert_eq!(tiles.map(|t| t.source_size()), Ok((192, 24)));
+    // A colour target, or none, keeps its pictures as they are.
+    for target in [None, Some("web"), Some("no-such-target")] {
+        let kinds = HelloTools
+            .bake(target)
+            .map_or_else(|e| panic!("{e}"), |game| game.bake.kinds());
+        assert!(!kinds.contains(&"one-bit picture"), "{target:?}: {kinds:?}");
+    }
+    let game = HelloTools
+        .bake(Some("playdate"))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let pack = Bundle::new(vec![pack.into_layer("pack")]);
+    let mut formats = game.formats;
+    game.bake
+        .register(&mut formats)
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(game.bake.check(&formats, &game.bundle, &pack), []);
+
+    // The game loads from it and plays on the headless backend as the
+    // Playdate, its stage in tiles.
+    let hello = Hello::load_from(&pack, &formats).unwrap_or_else(|e| panic!("{e:?}"));
+    let mut ctx = Ctx::new(hello).unwrap_or_else(|missing| panic!("{missing:?}"));
+    ctx.use_layout(LAYOUT);
+    ctx.preview_settings(|s| s.game.look = MapLook::Tiles);
+    let stage = StageScreen::new(&mut ctx).briefed();
+    let profiles = engine_profiles().unwrap_or_else(|e| panic!("{e:?}"));
+    let mut h = Harness::new(Game::new(ctx, Box::new(stage), GameHooks::default()))
+        .as_target(&profiles["playdate"].profile);
+    h.wait(0.5);
+    assert_eq!(h.screens(), ["stage"]);
+    assert_eq!(h.ctx().platform.target, "playdate");
+
+    // Its sprites are drawn from the pack's one-bit pictures, where with
+    // none they are grey rectangles.
+    let tiles = h.ctx().game.tiles();
+    assert!(pack.image(tiles).is_some());
+    let skin = one_bit_skin().unwrap_or_else(|e| panic!("{e}"));
+    let map = PatternMap::new(h.ctx().palette.iter(), &skin.map);
+    let bits = pack.bytes(FONT_1BIT).unwrap_or_default();
+    let font = Font::new(&h.ctx().game.font, bits).unwrap_or_else(|e| panic!("{e}"));
+    let drawn = to_one_bit(h.game().buffer(), &map, &font, &pack);
+    let grey = to_one_bit(h.game().buffer(), &map, &font, &());
+    assert_ne!(drawn.bytes(), grey.bytes());
 }

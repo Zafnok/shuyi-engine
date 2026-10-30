@@ -28,16 +28,22 @@
 //! | 12–13, 14–15 | the source size, each at least 1 |
 //! | 16… | each style's rows, in order, then the mask's rows if any |
 //!
-//! As a format (ADR-0007), a one-bit picture in a PNG's place is read for
-//! the size of that PNG ([`OneBitInfo`]).
+//! As formats (ADR-0007), a one-bit picture in a PNG's place is read for
+//! the size of that PNG ([`OneBitInfo`]), and whole as a
+//! [`OneBitPicture`] ([`OneBitFile`]). A one-bit target's pack holds its
+//! pictures so: `shuyi bake --target playdate` makes each PNG one in
+//! integers ([`dither`]), and the device draws it with no copying.
 use crate::prelude::*;
 
+use serde::Serialize;
+
 use crate::error::ContentError;
-use crate::format::{AssetPath, DecodeCx, Format};
+use crate::format::{AssetKind, AssetPath, DecodeCx, Encode, Format};
 use crate::image::ImageInfo;
 
 #[cfg(feature = "std")]
 pub mod convert;
+pub mod dither;
 
 /// The most bytes a one-bit picture file may have: 16 MiB, far more than
 /// a one-bit screen's pictures need (the Playdate's whole screen is 12 KB
@@ -78,6 +84,83 @@ impl Format for OneBitInfo {
         _cx: &DecodeCx<'_>,
     ) -> Result<ImageInfo, Vec<ContentError>> {
         source_info(bytes).map_err(|message| vec![ContentError::new(file.shown(), message)])
+    }
+}
+
+/// A one-bit picture file, whole and checked ([`Bitmap::parse`]): what a
+/// one-bit target's pictures are baked as (ADR-0008 §4). [`OneBitFile`]
+/// reads one from a one-bit picture file, and with the `png` feature
+/// [`dither::Dithered`] makes one from a PNG.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct OneBitPicture {
+    file: Vec<u8>,
+}
+
+impl OneBitPicture {
+    /// The picture of one-bit picture file `file`, or what is wrong with
+    /// it ([`Bitmap::parse`]).
+    pub fn new(file: Vec<u8>) -> Result<Self, &'static str> {
+        Bitmap::parse(&file)?;
+        Ok(Self { file })
+    }
+
+    /// Its file's bytes, which [`Bitmap::parse`] reads.
+    pub fn file(&self) -> &[u8] {
+        &self.file
+    }
+
+    /// Its file's bytes, kept.
+    pub fn into_file(self) -> Vec<u8> {
+        self.file
+    }
+}
+
+impl AssetKind for OneBitPicture {
+    const NAME: &'static str = "one-bit picture";
+}
+
+/// A one-bit picture file read whole as a [`OneBitPicture`] (`one-bit`).
+/// Like [`OneBitInfo`], it claims no extension and is found by its magic
+/// bytes, at a PNG's path in a one-bit target's pack or in place of a PNG
+/// in a target's layer. It writes the file back as it was ([`Encode`]),
+/// which is how a bake keeps a picture in its pack
+/// ([`Bake::under_as`](crate::pack::Bake::under_as)).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct OneBitFile;
+
+impl Format for OneBitFile {
+    type Asset = OneBitPicture;
+
+    fn id(&self) -> &'static str {
+        "one-bit"
+    }
+
+    fn extensions(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn sniff(&self, bytes: &[u8]) -> bool {
+        Bitmap::is_bitmap(bytes)
+    }
+
+    fn max_bytes(&self) -> usize {
+        MAX_BYTES
+    }
+
+    fn decode(
+        &self,
+        file: &AssetPath,
+        bytes: &[u8],
+        _cx: &DecodeCx<'_>,
+    ) -> Result<OneBitPicture, Vec<ContentError>> {
+        OneBitPicture::new(bytes.to_vec())
+            .map_err(|message| vec![ContentError::new(file.shown(), message)])
+    }
+}
+
+impl Encode for OneBitFile {
+    fn encode(&self, asset: &OneBitPicture) -> Vec<u8> {
+        asset.file.clone()
     }
 }
 

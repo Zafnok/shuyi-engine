@@ -12,6 +12,14 @@
       ],
       "default": null
     },
+    "sheet": {
+      "description": "A contact sheet to write, from the project's root: a PNG of every\npicture the bake dithered, each beside its source, for review.",
+      "type": [
+        "string",
+        "null"
+      ],
+      "default": null
+    },
     "target": {
       "description": "The target to bake for, by its profile's id, passed to the game;\nnone for its default bundle.",
       "type": [
