@@ -5,10 +5,10 @@ type: infra
 milestone: After MVP
 model: sonnet-5
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-10-30
 ---
 
 # 2036 — A ticket is one PR of about 1,500 changed lines or fewer
@@ -56,10 +56,10 @@ Expected size: under 20 changed lines.
 
 ## Acceptance criteria
 
-- [ ] `write-ticket` says about 1,500 changed lines; the grep finds 600 stated
+- [x] `write-ticket` says about 1,500 changed lines; the grep finds 600 stated
       as the rule nowhere else.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -67,5 +67,11 @@ Expected size: under 20 changed lines.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`write-ticket`, step 5, now says about 1,500 changed lines or fewer. The grep
+found the number stated as the rule nowhere else. `docs/decisions.md` has
+Nick's words. As the ticket's **Out** says, the open tickets that mention about
+600 lines keep their text. The new limit comes from the skill.
+
+No game PR moves the pin for this: it changes process text only.
+
+Book: none, this is the repository's process and no public item changed.
