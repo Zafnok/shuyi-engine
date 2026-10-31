@@ -533,7 +533,7 @@ The tickets, in order:
 | 3012 | Steam Deck target |
 | 3013 | Steam Deck on the device: frame times and battery |
 | 3010 | The Playdate backend and `shuyi export playdate` |
-| 3075 | A crash report on the Playdate (after 3046) |
+| 3076 | A crash report on the Playdate (after 3046) |
 | 3011 | Playdate on the device: frame times and memory, budgets calibrated |
 
 3001, 3003 and 3005 are the cheapest early, because each one gets
