@@ -3,7 +3,7 @@ id: "2543"
 title: "The rules crate's fence proved once in CI, the grid template's gates run lint without check-keys, and lint takes check-keys' and check-text's findings as data"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

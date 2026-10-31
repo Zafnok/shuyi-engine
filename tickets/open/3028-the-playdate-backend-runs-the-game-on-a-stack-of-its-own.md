@@ -3,7 +3,7 @@ id: "3028"
 title: "The Playdate backend runs the game on a stack of its own taken from the heap, and reports how much of it was used"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: todo
 blocked_by: ["3010"]

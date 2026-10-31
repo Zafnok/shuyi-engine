@@ -3,7 +3,7 @@ id: "2815"
 title: "The site keeps up with the tickets: the home page's feature cards take their status from the tickets they name, and a public API change changes the book or has a Book line"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: ["2808"]

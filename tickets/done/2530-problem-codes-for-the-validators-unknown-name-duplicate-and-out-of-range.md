@@ -3,7 +3,7 @@ id: "2530"
 title: "Problem codes for the validators: unknown-name, duplicate and out-of-range in the keymap, the language packs and the maps"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: ["2509"]

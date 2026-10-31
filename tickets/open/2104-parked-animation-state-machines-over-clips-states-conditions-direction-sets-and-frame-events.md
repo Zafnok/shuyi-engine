@@ -3,7 +3,7 @@ id: "2104"
 title: "Parked: Animation state machines over clips: states, conditions on parameters, exits when a clip ends, direction sets and frame events, as data"
 type: feature
 milestone: "Engine: animation"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["1119", "2231", "2335"]

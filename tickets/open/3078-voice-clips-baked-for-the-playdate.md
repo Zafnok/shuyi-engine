@@ -3,7 +3,7 @@ id: "3078"
 title: "Voice clips baked for the Playdate: the export bakes a game's voice folder, and the player finds them"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

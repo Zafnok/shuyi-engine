@@ -3,7 +3,7 @@ id: "2215"
 title: "Parked: In-house file embedding: the shuyi-embed crate writes a game's file table at build time on every target, and include_dir is removed"
 type: feature
 milestone: "Engine: in-house platform"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: []

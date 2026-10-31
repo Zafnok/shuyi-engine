@@ -3,7 +3,7 @@ id: "2009"
 title: "Fast compiles: a game's rebuild time measured, a CI gate that keeps it down, and a fast dev setup in the templates"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2513"]

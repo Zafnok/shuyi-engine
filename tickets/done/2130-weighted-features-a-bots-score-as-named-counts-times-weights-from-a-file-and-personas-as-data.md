@@ -3,7 +3,7 @@ id: "2130"
 title: "Weighted features: a bot's score as the game's named counts times weights from a file, and named personas (planner settings and weights) as data"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

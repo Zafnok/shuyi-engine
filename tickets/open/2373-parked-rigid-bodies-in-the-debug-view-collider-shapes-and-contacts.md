@@ -3,7 +3,7 @@ id: "2373"
 title: "Parked: Rigid bodies in the debug view: each collider's shape and the last step's contacts on the collision channel"
 type: feature
 milestone: "Engine: more styles"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["1128", "2317"]

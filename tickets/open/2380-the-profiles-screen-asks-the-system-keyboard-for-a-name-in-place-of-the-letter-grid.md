@@ -3,7 +3,7 @@ id: "2380"
 title: The profiles screen asks the system keyboard for a name in place of the letter grid, and checks the answer with the name rules
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2346"]

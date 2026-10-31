@@ -3,7 +3,7 @@ id: "2529"
 title: "Parked: Several peers in one headless run: shuyi peers with network faults, a desync report, and MCP tools per peer"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1140", "1133"]

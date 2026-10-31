@@ -3,7 +3,7 @@ id: "2702"
 title: "Parked: Procedural animation: limbs that reach (two-bone and FABRIK) and a gait that finds footholds on tiles"
 type: feature
 milestone: "Engine: procedural animation"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2701"]

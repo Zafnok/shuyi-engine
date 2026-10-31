@@ -3,7 +3,7 @@ id: "2388"
 title: "One-bit roles learn what the inks do: a Dots pattern, glyphs edged in white, and rectangles that invert"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

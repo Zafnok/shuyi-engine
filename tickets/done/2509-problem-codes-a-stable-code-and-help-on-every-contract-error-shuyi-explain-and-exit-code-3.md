@@ -3,7 +3,7 @@ id: "2509"
 title: "Problem codes: a stable code and a help line on every error the contract gives, shuyi explain to read its page, and exit code 3 for fix the setup, then retry"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

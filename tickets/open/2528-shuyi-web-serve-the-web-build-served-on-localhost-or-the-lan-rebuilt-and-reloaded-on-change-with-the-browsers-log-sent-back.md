@@ -3,7 +3,7 @@ id: "2528"
 title: "shuyi web --serve: the web build served on localhost or the LAN, rebuilt and reloaded on change, with the browser's log sent back to the terminal"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

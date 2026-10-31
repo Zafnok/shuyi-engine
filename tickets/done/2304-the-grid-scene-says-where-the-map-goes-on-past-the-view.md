@@ -3,7 +3,7 @@ id: "2304"
 title: "The grid scene says where the map goes on past the view, and the grid skins let a game paint over the units and under the cursor"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

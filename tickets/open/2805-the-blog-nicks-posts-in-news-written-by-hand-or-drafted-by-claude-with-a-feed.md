@@ -3,7 +3,7 @@ id: "2805"
 title: "The blog: Nick's posts in News, written by hand or drafted by the agent, with authors, images, drafts and a feed"
 type: infra
 milestone: "Engine: public"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2801"]

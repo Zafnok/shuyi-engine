@@ -3,7 +3,7 @@ id: "2113"
 title: "Search bots: minimax and MCTS over any TurnRules game with sides, sliced by work units, never seeing the luck to come"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2112", "3009", "2125"]

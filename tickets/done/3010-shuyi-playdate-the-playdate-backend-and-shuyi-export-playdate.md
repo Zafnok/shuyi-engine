@@ -3,7 +3,7 @@ id: "3010"
 title: "shuyi-playdate: the Playdate backend (update callback, d-pad, A, B and crank, 1-bit display with changed rows, storage) and shuyi export playdate"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: done
 blocked_by: ["3002", "3003", "3004", "3005", "3006", "2204", "3007", "3045", "3040", "3048", "3072", "3053"]

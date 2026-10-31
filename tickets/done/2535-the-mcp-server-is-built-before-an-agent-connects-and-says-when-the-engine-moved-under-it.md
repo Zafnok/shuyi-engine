@@ -3,7 +3,7 @@ id: "2535"
 title: "The MCP server is built before an agent connects, and says when the game's engine moved under it"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: ["1133"]

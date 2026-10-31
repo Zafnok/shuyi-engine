@@ -3,7 +3,7 @@ id: "2383"
 title: "A ready-made talk screen: a .dlg scene over the screen below, in the engine's text box, with replies"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: []

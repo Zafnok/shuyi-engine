@@ -3,7 +3,7 @@ id: "2387"
 title: "Parked: Positional sound in split screen: a listener per view, each sound played once for the listener that hears it loudest, and pan by where the view sits"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2363", "2386"]

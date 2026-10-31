@@ -3,7 +3,7 @@ id: "2744"
 title: "Parked: The crawl automap: cells and edges seen kept in the save, a map widget and screen, notes on cells, and travel to a seen cell"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2742"]

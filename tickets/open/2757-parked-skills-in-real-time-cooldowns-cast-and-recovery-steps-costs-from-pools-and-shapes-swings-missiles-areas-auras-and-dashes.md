@@ -3,7 +3,7 @@ id: "2757"
 title: "Parked: Skills in real time: cooldowns, cast and recovery steps, costs from pools, and shapes (swings, missiles, areas, auras and dashes)"
 type: feature
 milestone: "Engine: action RPGs"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2756", "2750"]

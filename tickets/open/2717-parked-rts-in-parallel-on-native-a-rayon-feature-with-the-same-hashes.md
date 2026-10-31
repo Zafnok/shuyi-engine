@@ -3,7 +3,7 @@ id: "2717"
 title: "Parked: RTS in parallel on native: a rayon feature that gives the same hashes as one thread"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2712"]

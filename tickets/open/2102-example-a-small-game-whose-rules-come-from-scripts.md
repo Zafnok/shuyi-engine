@@ -3,7 +3,7 @@ id: "2102"
 title: "Example: a small game with a rule from a script, the shuyi-script module's example"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2101"]

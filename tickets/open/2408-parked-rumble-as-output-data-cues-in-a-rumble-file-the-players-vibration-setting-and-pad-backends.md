@@ -3,7 +3,7 @@ id: "2408"
 title: "Parked: Rumble as output data: cues in a rumble file, the player's vibration setting, and backends for pads on desktop and in the browser"
 type: feature
 milestone: "Engine: input"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2511"]

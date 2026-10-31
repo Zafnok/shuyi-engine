@@ -3,7 +3,7 @@ id: "2317"
 title: "Parked: Collision bounds in the debug view: solid tiles, boxes, triggers and what each mover hit"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2315", "1122"]

@@ -3,7 +3,7 @@ id: "1125"
 title: "Parked: Example: a walkable top-down town that starts a grid battle and comes back (moving between game styles)"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["1120", "1121", "1122", "1123", "1124", "2360"]

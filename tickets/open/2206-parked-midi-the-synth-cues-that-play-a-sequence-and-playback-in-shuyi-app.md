@@ -3,7 +3,7 @@ id: "2206"
 title: "Parked: MIDI: the synth, cues that play a sequence with a bank, playback in shuyi-app, and a wizard part with an example"
 type: feature
 milestone: "Engine: MIDI music"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2205", "2342", "2344"]

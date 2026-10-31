@@ -3,7 +3,7 @@ id: "2027"
 title: "No handoff on one side only: the backlog audited, the rule in write-ticket and work-ticket, and a ticket-lint error on a one-way clause"
 type: infra
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: done
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2727"
 title: "Parked: The shuyi-mystery module: clues, people and places as data, the case file and its screen"
 type: feature
 milestone: "Engine: detective games"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2722", "2116"]

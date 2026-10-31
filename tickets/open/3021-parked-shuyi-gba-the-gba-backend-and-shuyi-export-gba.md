@@ -3,7 +3,7 @@ id: "3021"
 title: "Parked: shuyi-gba: the GBA backend (tile backgrounds, hardware scroll, sprites, a frame per vertical blank, saves) and shuyi export gba"
 type: feature
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["3018", "3003", "3004", "3017", "3019", "3020", "3045"]

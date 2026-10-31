@@ -3,7 +3,7 @@ id: "2334"
 title: "Text runs: proportional text placed in pixels with an outline and a shadow, fonts by id, and pixel-placed UI"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2224"]

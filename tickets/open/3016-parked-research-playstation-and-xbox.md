@@ -3,7 +3,7 @@ id: "3016"
 title: "Parked: Research: PlayStation and Xbox, their partner programs, costs, toolchains and whether a Rust engine can ship there"
 type: research
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3003"]

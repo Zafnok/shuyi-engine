@@ -3,7 +3,7 @@ id: "2778"
 title: "The template's title quits only where the game can: Cancel and its help line by ctx.platform.can_quit(), and the rule in a new game's AGENTS.md"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: ["3053"]

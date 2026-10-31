@@ -3,7 +3,7 @@ id: "2771"
 title: "Parked: A hex-grid template part: shuyi new starts a hex game from Hello, Hex's stage"
 type: feature
 milestone: "Engine: hex grids"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: blocked
 blocked_by: ["2740", "2501"]

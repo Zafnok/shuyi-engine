@@ -3,7 +3,7 @@ id: "2013"
 title: "Public types that can grow without breaking a game: an ADR on #[non_exhaustive] and constructors, the exhaustive lints in shuyi-app, and Window, AppConfig, BoxPlace and MapScene moved onto it"
 type: infra
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: done
 blocked_by: []

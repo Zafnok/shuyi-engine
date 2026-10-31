@@ -3,7 +3,7 @@ id: "3056"
 title: "One-bit sprites drawn fast: whole bytes for a picture shown pixel for pixel, and no division per pixel otherwise"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

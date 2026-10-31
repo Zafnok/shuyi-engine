@@ -3,7 +3,7 @@ id: "2120"
 title: "Parked: Field of view and line of sight on the grid: symmetric shadowcasting, line checks, and remembered tiles"
 type: feature
 milestone: "Engine: roguelikes"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: blocked
 blocked_by: []

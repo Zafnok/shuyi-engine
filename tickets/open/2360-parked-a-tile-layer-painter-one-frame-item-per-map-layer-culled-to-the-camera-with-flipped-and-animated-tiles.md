@@ -3,7 +3,7 @@ id: "2360"
 title: "Parked: A tile-layer painter: one frame item per Tiled or LDtk map layer, culled to the camera, with flipped and animated tiles"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["1120", "1124", "2231", "2335"]

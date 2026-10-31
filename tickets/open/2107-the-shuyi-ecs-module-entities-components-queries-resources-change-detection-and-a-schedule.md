@@ -3,7 +3,7 @@ id: "2107"
 title: "The shuyi-ecs module: entities, components as plain structs, queries, resources, change detection, commands and a deterministic schedule"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2904", "2003", "2015"]

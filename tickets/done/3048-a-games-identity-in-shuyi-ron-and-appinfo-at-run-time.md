@@ -3,7 +3,7 @@ id: "3048"
 title: "A game's identity in shuyi.ron: its name, a reverse-DNS id, version, build, publisher and one icon, checked by check --target, and an AppInfo the game's binary reads"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: ["2013", "2511"]

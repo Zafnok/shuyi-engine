@@ -3,7 +3,7 @@ id: "3062"
 title: "The Fullscreen setting follows the system: leaving fullscreen with the browser's own control turns it off, and switching with macOS's own control turns it either way"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: []

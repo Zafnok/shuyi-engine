@@ -3,7 +3,7 @@ id: "3004"
 title: "shuyi export <target>: one command that checks a game and packages it for a target, starting with Windows, Linux, macOS and the web"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: ["3001", "1129", "3039"]

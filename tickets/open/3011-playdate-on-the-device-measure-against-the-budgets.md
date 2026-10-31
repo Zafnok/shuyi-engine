@@ -3,7 +3,7 @@ id: "3011"
 title: "Playdate on the device: run the bench scenarios on Rev A or Rev B hardware, record frame times and memory, and calibrate the playdate budgets"
 type: research
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["3007", "3008", "3009", "3010", "3028"]

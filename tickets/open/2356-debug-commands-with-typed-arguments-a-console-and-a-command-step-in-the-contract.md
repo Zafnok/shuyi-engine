@@ -3,7 +3,7 @@ id: "2356"
 title: "Debug commands: typed arguments that screens declare, a console to type them, a command step in the contract and MCP, and changes recorded through the game's own commands"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2316"]

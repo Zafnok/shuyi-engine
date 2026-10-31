@@ -3,7 +3,7 @@ id: "2003"
 title: "Modules: the catalog by concern, module metadata, the shuyi crate with a feature per module, and shuyi modules and shuyi add"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["game#1131", "1129", "2015", "2358", "2511"]

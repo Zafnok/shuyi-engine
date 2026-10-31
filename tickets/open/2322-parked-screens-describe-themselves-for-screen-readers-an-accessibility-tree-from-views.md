@@ -3,7 +3,7 @@ id: "2322"
 title: "Parked: Screens describe themselves for screen readers: an accessibility tree built from the engine's views, the focus, and announcements"
 type: feature
 milestone: "Engine: accessibility"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2405"]

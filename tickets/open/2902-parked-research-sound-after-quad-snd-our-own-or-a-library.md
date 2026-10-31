@@ -3,7 +3,7 @@ id: "2902"
 title: "Parked: Research: sound after quad-snd: our own decoders, mixer and output, or a library, and the tickets that follow"
 type: research
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3003", "3029"]

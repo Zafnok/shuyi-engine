@@ -3,7 +3,7 @@ id: "2736"
 title: "Parked: Example: a match-3 on the turn path, with swaps, chains, refills from a seed and a move limit"
 type: feature
 milestone: "Engine: examples"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2114"]

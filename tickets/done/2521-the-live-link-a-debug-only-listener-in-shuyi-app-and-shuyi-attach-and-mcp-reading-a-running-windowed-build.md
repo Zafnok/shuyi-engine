@@ -3,7 +3,7 @@ id: "2521"
 title: "The live link: an ADR, a debug-only listener in shuyi-app, and shuyi attach and MCP reading a running windowed build"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["1133", "3040"]

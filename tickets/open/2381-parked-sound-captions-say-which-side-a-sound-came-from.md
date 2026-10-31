@@ -3,7 +3,7 @@ id: "2381"
 title: "Parked: Sound captions say which side a sound came from: a side mark on each caption line, from the pan positional sound resolves"
 type: feature
 milestone: "Engine: accessibility"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2363", "2366"]

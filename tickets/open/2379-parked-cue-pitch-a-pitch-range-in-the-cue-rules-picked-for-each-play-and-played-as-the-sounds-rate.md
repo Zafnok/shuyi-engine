@@ -3,7 +3,7 @@ id: "2379"
 title: "Parked: Cue pitch: a pitch range in the cue rules, picked for each play like the volume and played as the sound's rate"
 type: feature
 milestone: "Engine: in-house platform"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2344", "2345", "2378", "3029", "3030", "3031", "3032"]

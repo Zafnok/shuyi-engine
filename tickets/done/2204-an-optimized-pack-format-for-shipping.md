@@ -3,7 +3,7 @@ id: "2204"
 title: "An optimized pack format for shipping: shuyi bake, one indexed compressed file, proven equal to its sources"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2201", "1129"]

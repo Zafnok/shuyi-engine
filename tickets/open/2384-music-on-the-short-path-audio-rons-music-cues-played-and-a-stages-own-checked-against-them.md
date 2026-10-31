@@ -3,7 +3,7 @@ id: "2384"
 title: "Music on the short path: audio.ron's music cues played, the music clock running, and a stage's own part checked against them"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2225"]

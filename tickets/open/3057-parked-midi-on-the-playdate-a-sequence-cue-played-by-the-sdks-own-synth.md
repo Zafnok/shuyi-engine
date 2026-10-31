@@ -3,7 +3,7 @@ id: "3057"
 title: "Parked: MIDI on the Playdate: a sequence cue played by the SDK's own synth"
 type: feature
 milestone: "Engine: MIDI music"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2206", "3029"]

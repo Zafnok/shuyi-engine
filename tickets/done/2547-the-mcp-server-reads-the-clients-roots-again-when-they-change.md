@@ -3,7 +3,7 @@ id: "2547"
 title: "The MCP server reads the client's roots again when they change"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: ["2546"]

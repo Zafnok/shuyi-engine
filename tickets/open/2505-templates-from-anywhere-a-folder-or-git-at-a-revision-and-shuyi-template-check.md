@@ -3,7 +3,7 @@ id: "2505"
 title: "Templates from anywhere: a folder or a git repository at a revision, no code run, shuyi template check and shuyi template new"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2502"]

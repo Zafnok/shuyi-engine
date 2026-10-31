@@ -3,7 +3,7 @@ id: "2129"
 title: "Playtest targets by tier: what a success is, a band per tier, floors and median comparisons in one file, turned into a stage's checks"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

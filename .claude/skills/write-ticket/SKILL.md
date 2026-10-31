@@ -5,7 +5,7 @@ description: Create a new ticket file in tickets/open/ using the repository temp
 
 # Write a ticket
 
-Tickets must be good enough that an implementation-capable model can complete
+Tickets must be good enough that a model from the recommended pair can complete
 them without asking questions.
 
 ## Steps
@@ -21,8 +21,8 @@ them without asking questions.
 3. Copy `tickets/TEMPLATE.md` to `tickets/open/NNNN-short-kebab-title.md`.
    Keep a bare `@word` out of the title.
 4. **Fill in every section:**
-   - **Model/effort:** choose a capability and relative effort from
-     `tickets/README.md`, never a provider model id.
+   - **Model/effort:** copy one complete Claude/OpenAI pair and choose effort
+     from `tickets/README.md`; never use a category or swap the pairs.
    - **Context:** why the ticket exists. Link the ADRs, the decisions,
      and the tickets it builds on (`game#NNNN` for the game's).
    - **Nick input:** `None.` / *Decision* / *Setup* (exact clicks) /

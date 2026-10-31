@@ -3,7 +3,7 @@ id: "2026"
 title: Main passes CI on Rust 1.99 again (clippy and the api job), and a Rust bump is checked on today's main before it merges
 type: bug
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

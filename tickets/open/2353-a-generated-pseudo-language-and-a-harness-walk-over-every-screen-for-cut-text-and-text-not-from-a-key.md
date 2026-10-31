@@ -3,7 +3,7 @@ id: "2353"
 title: "A generated pseudo-language and a Harness walk over every screen for cut text and text not from a key"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2511"]

@@ -3,7 +3,7 @@ id: "2209"
 title: "Word wrap in the assets crate, and a check that a line of text fits its box once its tokens are at their longest"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

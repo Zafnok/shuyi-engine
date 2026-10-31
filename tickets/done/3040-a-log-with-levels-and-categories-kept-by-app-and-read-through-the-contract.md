@@ -3,7 +3,7 @@ id: "3040"
 title: "One log for the engine and the game: lines with a level, a category and a frame, App keeps the last 500, and the contract's run and scene answers carry them"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

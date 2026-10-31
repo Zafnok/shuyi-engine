@@ -3,7 +3,7 @@ id: "2344"
 title: "Looped sounds with handles: start, stop, fade and set the volume by id, sounds a screen owns, paused under a pause menu, and audio held while the system suspends the game"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

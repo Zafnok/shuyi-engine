@@ -3,7 +3,7 @@ id: "2725"
 title: "Parked: Visual novel voices and living characters: a voice per line id, mouths that move with it, and eyes that blink"
 type: feature
 milestone: "Engine: visual novels"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2722", "2723", "2231", "2342", "2226", "2344", "2210", "2214"]

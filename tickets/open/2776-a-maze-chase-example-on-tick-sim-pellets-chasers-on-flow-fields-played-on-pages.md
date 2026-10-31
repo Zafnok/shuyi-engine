@@ -3,7 +3,7 @@ id: "2776"
 title: "A maze chase example on TickSim: pellets, chasers on flow fields and power pellets, played on Pages"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2739"]

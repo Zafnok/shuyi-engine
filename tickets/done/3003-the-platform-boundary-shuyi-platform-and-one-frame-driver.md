@@ -3,7 +3,7 @@ id: "3003"
 title: "The platform boundary: a shuyi-platform crate with the Platform trait and App::frame, and shuyi-app as its macroquad backend"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: done
 blocked_by: ["game#1131"]

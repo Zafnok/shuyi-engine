@@ -3,7 +3,7 @@ id: "2362"
 title: "Parked: Camera feel: look-ahead, rooms that hold the camera, blends between camera goals, and the camera's numbers in a file"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["1120", "2109"]

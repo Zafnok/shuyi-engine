@@ -3,7 +3,7 @@ id: "2901"
 title: "Research: better game images with machine learning (learned compression, upscaling), as a separate repository with a loader plugin, measured against JPEG XL"
 type: research
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: todo
 blocked_by: ["2201"]

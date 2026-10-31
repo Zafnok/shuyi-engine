@@ -3,7 +3,7 @@ id: "2114"
 title: "RNG helpers: ranges, chances, picks, shuffles, bags and weighted picks on RandomSource, and named streams and forks of SimRng"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: todo
 blocked_by: []

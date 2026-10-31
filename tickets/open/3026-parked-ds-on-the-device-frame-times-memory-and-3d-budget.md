@@ -3,7 +3,7 @@ id: "3026"
 title: "Parked: DS on the device: run the bench scenarios on a DS and a DSi through a flash cart, measure frame times, memory and the 3D budget, and calibrate the nds budgets"
 type: research
 milestone: "Parked: export targets"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["3024", "3025"]

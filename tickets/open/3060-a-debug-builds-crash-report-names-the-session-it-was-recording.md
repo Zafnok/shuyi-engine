@@ -3,7 +3,7 @@ id: "3060"
 title: "A debug build's crash report names the session it was recording, written at the panic"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: todo
 blocked_by: ["3046", "2519"]

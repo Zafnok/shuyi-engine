@@ -3,7 +3,7 @@ id: "1123"
 title: "Parked: Aseprite and TexturePacker sheets imported into atlases and animation clips"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2231"]

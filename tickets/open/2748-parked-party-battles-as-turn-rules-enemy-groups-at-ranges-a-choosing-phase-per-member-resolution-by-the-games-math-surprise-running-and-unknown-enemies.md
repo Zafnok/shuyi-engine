@@ -3,7 +3,7 @@ id: "2748"
 title: "Parked: Party battles as turn rules: enemy groups at ranges, a choosing phase per member, resolution by the game's math, surprise, running, and unknown enemies"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2745", "2114"]

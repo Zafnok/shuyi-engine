@@ -3,7 +3,7 @@ id: "3064"
 title: "The heap counter in debug builds: a counting allocator in a default crate of its own, on in every debug build of a game and its tool program, and heap counts in each frame's record"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["3063", "2553"]

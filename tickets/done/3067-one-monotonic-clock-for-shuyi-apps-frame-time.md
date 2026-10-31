@@ -3,7 +3,7 @@ id: "3067"
 title: "One clock for shuyi-app's frame: App::frame's time and the perf clock read the pacer's monotonic clock, not the system's time"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

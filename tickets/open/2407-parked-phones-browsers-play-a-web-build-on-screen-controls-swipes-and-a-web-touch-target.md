@@ -3,7 +3,7 @@ id: "2407"
 title: "Parked: Phones' browsers play a web build: on-screen controls as data, swipes as buttons, and a web-touch target"
 type: feature
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2405"]

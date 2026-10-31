@@ -3,7 +3,7 @@ id: "2569"
 title: "The live link's phase named once, so a new phase can't read as running, and attach answering the link's own log entry"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: todo
 blocked_by: []

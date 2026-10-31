@@ -3,7 +3,7 @@ id: "3047"
 title: "Parked: Crash reports sent, if the player agrees, to an address the game sets"
 type: feature
 milestone: "Engine: crash reports"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3046", "2601"]

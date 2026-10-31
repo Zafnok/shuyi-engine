@@ -3,7 +3,7 @@ id: "2390"
 title: "One placeholder parser: fill and the placeholder lists built on split_tokens"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: todo
 blocked_by: []

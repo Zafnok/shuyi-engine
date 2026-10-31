@@ -3,7 +3,7 @@ id: "2015"
 title: "check-layers over cargo metadata, a float ban in shuyi-core, and a new game's rules crate kept pure"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: []

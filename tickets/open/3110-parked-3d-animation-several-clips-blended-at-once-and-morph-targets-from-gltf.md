@@ -3,7 +3,7 @@ id: "3110"
 title: "Parked: 3D animation: several clips at once with weights and smooth blends, and morph targets read from glTF"
 type: feature
 milestone: "Parked: 3D"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3102", "3103", "3104"]

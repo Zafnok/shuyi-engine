@@ -3,7 +3,7 @@ id: "2328"
 title: "Parked: 2D lights: ambient light, point lights from the scene, and normal maps beside sprites, on the wgpu renderer"
 type: feature
 milestone: "Engine: 2D effects"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1120", "2229", "2326"]

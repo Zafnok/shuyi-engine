@@ -3,7 +3,7 @@ id: "2513"
 title: "Zero setup on Linux: shuyi doctor checks the C linker and the system libraries, one setup script for containers and cloud agents, a dev container, and CI from a bare Ubuntu"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: []

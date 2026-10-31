@@ -3,7 +3,7 @@ id: "1142"
 title: "Parked: Networking, step 3: WebSocket in the web build through our own miniquad JS plugin"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1141"]

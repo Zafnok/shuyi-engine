@@ -3,7 +3,7 @@ id: "2774"
 title: "Parked: A split-screen example: a couch game for one to four players on pads and keyboard halves, in every layout, tested in CI"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2386", "2387", "2114", "2115"]

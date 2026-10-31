@@ -3,7 +3,7 @@ id: "2324"
 title: "Parked: Colour vision: a check that distinct palette roles stay apart for protanopia, deuteranopia and tritanopia, text contrast, and frame-png through each"
 type: feature
 milestone: "Engine: accessibility"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["3006"]

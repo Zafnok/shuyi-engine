@@ -3,7 +3,7 @@ id: "2541"
 title: "shuyi autobalance runs the search for a game's stage on every core, with a time limit, prints the changes and writes the stage back"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2532"]

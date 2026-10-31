@@ -3,7 +3,7 @@ id: "2734"
 title: "Parked: RTS view: placing buildings, the production panel, the resource bar and idle workers"
 type: feature
 milestone: "Engine: real-time strategy"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2733", "2716", "2354", "2355"]

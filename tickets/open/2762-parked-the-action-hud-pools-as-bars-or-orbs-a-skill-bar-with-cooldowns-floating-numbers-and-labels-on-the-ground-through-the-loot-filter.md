@@ -3,7 +3,7 @@ id: "2762"
 title: "Parked: The action HUD: pools as bars or orbs, a skill bar with cooldowns, floating numbers, and labels on the ground through the loot filter"
 type: feature
 milestone: "Engine: action RPGs"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2757", "2758", "2109"]

@@ -3,7 +3,7 @@ id: "2020"
 title: "Fuzzing in CI: cargo-fuzz over every registered format and the pack, crash inputs kept as regression tests, and a threat model for untrusted files"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

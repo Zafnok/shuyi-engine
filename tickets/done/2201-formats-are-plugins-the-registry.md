@@ -3,7 +3,7 @@ id: "2201"
 title: "Formats are plugins: asset kinds, the Format trait, the registry, and today's loaders as built-in formats"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: done
 blocked_by: ["2002", "game#1131"]

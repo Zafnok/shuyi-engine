@@ -3,7 +3,7 @@ id: "2402"
 title: "Parked: In-house controllers, part 1: the shuyi-pads crate, a standard pad, the mapping database, and Windows"
 type: feature
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2903"]

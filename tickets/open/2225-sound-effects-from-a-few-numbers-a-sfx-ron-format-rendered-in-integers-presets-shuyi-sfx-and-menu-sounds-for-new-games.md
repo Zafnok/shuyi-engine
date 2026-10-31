@@ -3,7 +3,7 @@ id: "2225"
 title: "Sound effects from a few numbers: a .sfx.ron format of the Sound kind rendered in integers at load, presets, shuyi sfx, and menu sounds for new games"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2511"]

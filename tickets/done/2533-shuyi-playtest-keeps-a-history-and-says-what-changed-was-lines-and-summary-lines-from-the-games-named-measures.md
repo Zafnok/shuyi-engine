@@ -3,7 +3,7 @@ id: "2533"
 title: "shuyi playtest keeps a history and says what changed: `was …` beside each entrant, and summary lines from the game's named measures"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: ["2532"]

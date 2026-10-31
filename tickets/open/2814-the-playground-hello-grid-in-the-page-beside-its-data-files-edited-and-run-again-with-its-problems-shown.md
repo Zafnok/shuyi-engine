@@ -3,7 +3,7 @@ id: "2814"
 title: "The playground: Hello, Grid playing in a Learn page beside its data files, which a reader edits and runs again, with its problems shown"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["3069", "2808"]

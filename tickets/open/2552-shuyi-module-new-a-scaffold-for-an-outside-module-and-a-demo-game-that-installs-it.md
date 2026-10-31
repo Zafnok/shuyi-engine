@@ -3,7 +3,7 @@ id: "2552"
 title: "shuyi module new: a scaffold for an outside module, with its metadata, README, skill and a demo game that installs it"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2526"]

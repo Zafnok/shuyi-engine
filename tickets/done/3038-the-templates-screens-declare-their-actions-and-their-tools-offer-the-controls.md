@@ -3,7 +3,7 @@ id: "3038"
 title: "The templates' screens declare their actions, and their tools offer the controls to check --target"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: ["3002"]

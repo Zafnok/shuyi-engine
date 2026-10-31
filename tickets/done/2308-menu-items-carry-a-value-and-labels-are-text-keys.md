@@ -3,7 +3,7 @@ id: "2308"
 title: "Menu items carry a value of the game's type, and their labels are text keys translated when the menu is painted"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: done
 blocked_by: ["2307"]

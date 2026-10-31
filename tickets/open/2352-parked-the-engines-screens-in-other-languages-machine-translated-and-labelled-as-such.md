@@ -3,7 +3,7 @@ id: "2352"
 title: "Parked: The engine's screens in other languages, machine-translated and labelled as such"
 type: feature
 milestone: "Engine: localization"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2351", "2350"]

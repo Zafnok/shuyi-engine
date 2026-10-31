@@ -3,7 +3,7 @@ id: "2601"
 title: "Parked: HTTP requests as a platform capability: an ADR, Platform::http, a request handshake through Ctx that never blocks a frame, and scripted replies, with the ureq and fetch backends as two follow-up tickets"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: []

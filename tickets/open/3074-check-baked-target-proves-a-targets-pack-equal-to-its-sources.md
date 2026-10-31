@@ -3,7 +3,7 @@ id: "3074"
 title: "check --baked --target <id> proves a target's pack equal to its sources"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["3007"]

@@ -3,7 +3,7 @@ id: "2707"
 title: "Parked: The shuyi-rts module: the unit table, unit kinds as data, orders and order queues, and the Kind of game concern"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2705", "2706", "2003", "2201", "2116"]

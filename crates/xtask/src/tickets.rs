@@ -37,7 +37,12 @@ const REQUIRED_KEYS: &[&str] = &[
 ];
 
 const VALID_TYPES: &[&str] = &["feature", "infra", "decision", "bug", "research"];
-const VALID_MODELS: &[&str] = &["mechanical", "implementation", "reasoning", "creative"];
+const VALID_MODELS: &[&str] = &[
+    "haiku-4.5 / gpt-6-luna",
+    "sonnet-5 / gpt-6.1-terra",
+    "opus-5.5 / gpt-6.1-sol",
+    "fable-5.1 / gpt-6-astra",
+];
 const VALID_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
 const VALID_STATUSES: &[&str] = &["todo", "in-progress", "blocked", "done"];
 const VALID_NICK_INPUTS: &[&str] = &["none", "decision", "setup", "sign-off"];
@@ -1087,7 +1092,7 @@ id: \"2106\"
 title: \"Test ticket\"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: [\"2102\", \"game#1131\"]
@@ -1099,14 +1104,37 @@ completed:
 ";
 
     #[test]
-    fn routes_by_capability_and_rejects_provider_model_ids() {
-        for model in ["mechanical", "implementation", "reasoning", "creative"] {
-            let fm = VALID_FRONTMATTER.replace("model: implementation", &format!("model: {model}"));
+    fn routes_by_exact_provider_pairs_and_rejects_ambiguous_or_mismatched_models() {
+        for model in [
+            "haiku-4.5 / gpt-6-luna",
+            "sonnet-5 / gpt-6.1-terra",
+            "opus-5.5 / gpt-6.1-sol",
+            "fable-5.1 / gpt-6-astra",
+        ] {
+            let fm = VALID_FRONTMATTER.replace(
+                "model: sonnet-5 / gpt-6.1-terra",
+                &format!("model: {model}"),
+            );
             let ticket = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &fm);
             assert!(ticket.errors.is_empty(), "{model}: {:?}", ticket.errors);
         }
-        for model in ["sonnet-5", "gpt-6-astra", "unknown"] {
-            let fm = VALID_FRONTMATTER.replace("model: implementation", &format!("model: {model}"));
+        for model in [
+            "mechanical",
+            "implementation",
+            "reasoning",
+            "creative",
+            "opus-5.5",
+            "gpt-6.1-sol",
+            "opus-5.5 / gpt-6-astra",
+            "sonnet-5 / gpt-6.1-sol",
+            "fable-5.1 / gpt-6.1-sol",
+            "haiku-4.5 / gpt-6.1-terra",
+            "unknown",
+        ] {
+            let fm = VALID_FRONTMATTER.replace(
+                "model: sonnet-5 / gpt-6.1-terra",
+                &format!("model: {model}"),
+            );
             let ticket = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &fm);
             assert!(
                 ticket.errors.iter().any(|e| e.contains("`model:")),

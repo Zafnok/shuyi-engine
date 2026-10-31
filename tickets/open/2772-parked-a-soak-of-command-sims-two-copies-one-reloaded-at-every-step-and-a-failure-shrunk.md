@@ -3,7 +3,7 @@ id: "2772"
 title: "Parked: A soak of command sims: a CommandSim stepped as two copies, one saved and reloaded at every step, and a failure shrunk to a short record"
 type: feature
 milestone: "Engine: real-time strategy"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2706", "2527"]

@@ -3,7 +3,7 @@ id: "2556"
 title: "frame-png takes --script, as run and scene do"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

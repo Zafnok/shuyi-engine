@@ -3,7 +3,7 @@ id: "3031"
 title: "Parked: In-house sound output, part 1: the shuyi-sound-out crate, Windows through WASAPI, and the web through our own Web Audio plugin"
 type: feature
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["3030", "3003", "3029", "2344", "2394"]

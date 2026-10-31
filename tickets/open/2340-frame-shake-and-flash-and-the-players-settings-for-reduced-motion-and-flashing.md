@@ -3,7 +3,7 @@ id: "2340"
 title: "Frame shake and flash, and the player's settings for reduced motion, shake strength and flashing"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2339"]

@@ -3,7 +3,7 @@ id: "2905"
 title: "Research: hot reload of a game's code: patching the running binary, or a rebuild that restarts and replays to the same moment"
 type: research
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2220", "2518", "2519"]

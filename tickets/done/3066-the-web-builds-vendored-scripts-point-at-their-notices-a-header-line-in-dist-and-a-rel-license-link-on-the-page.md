@@ -3,7 +3,7 @@ id: "3066"
 title: "The web build's vendored scripts point at their notices: a header line in dist, and a rel=\"license\" link on the page"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: ["3039"]

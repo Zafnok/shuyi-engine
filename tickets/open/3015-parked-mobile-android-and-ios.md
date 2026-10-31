@@ -3,7 +3,7 @@ id: "3015"
 title: "Parked: Mobile (Android and iOS): on-screen touch controls as an input profile, safe areas, the app lifecycle, and store builds"
 type: feature
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["3002", "3003", "3004", "3008"]

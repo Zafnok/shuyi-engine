@@ -3,7 +3,7 @@ id: "2217"
 title: "Parked: Spine import: the official Spine runtime in an opt-in module whose users bring their own Spine license, or a reader of our own (Nick picks when unparked)"
 type: feature
 milestone: "Engine: animation"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2105", "2336"]

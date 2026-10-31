@@ -3,7 +3,7 @@ id: "2218"
 title: "Writers of the engine's text formats, so shuyi import --print writes our own text"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["1129"]

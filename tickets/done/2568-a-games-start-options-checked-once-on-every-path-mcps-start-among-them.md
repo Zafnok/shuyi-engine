@@ -3,7 +3,7 @@ id: "2568"
 title: "A game's start options checked once, on every path: MCP's start refuses an option the game doesn't offer"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

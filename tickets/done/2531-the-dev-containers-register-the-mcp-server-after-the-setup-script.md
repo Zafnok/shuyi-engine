@@ -3,7 +3,7 @@ id: "2531"
 title: "The dev containers register the MCP server after the setup script, so an agent in a container or a Codespace finds it"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: ["2513", "1133"]

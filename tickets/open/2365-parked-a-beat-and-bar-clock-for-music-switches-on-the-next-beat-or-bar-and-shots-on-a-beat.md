@@ -3,7 +3,7 @@ id: "2365"
 title: "Parked: A beat and bar clock for music: an integer tempo per track, beats from the music clock or a sim's steps, switches on the next beat or bar, and shots on a beat"
 type: feature
 milestone: "Engine: audio"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2013", "2341"]

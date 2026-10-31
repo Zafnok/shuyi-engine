@@ -3,7 +3,7 @@ id: "2562"
 title: "An A/B against Bevy: the same agent makes the maze chase in each engine, scored on one-shot passes, friction, deterministic checks and lines, published on Pages"
 type: infra
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2572", "2525"]

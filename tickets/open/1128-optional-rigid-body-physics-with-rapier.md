@@ -3,7 +3,7 @@ id: "1128"
 title: "Parked: Optional rigid-body physics: a shuyi-physics crate over rapier2d with cross-platform determinism"
 type: feature
 milestone: "Engine: more styles"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1122", "2116"]

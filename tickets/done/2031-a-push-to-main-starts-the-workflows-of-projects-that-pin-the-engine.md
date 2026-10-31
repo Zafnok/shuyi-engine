@@ -3,7 +3,7 @@ id: "2031"
 title: "A push to main starts the watcher workflows of projects that pin the engine, with a token that can only run workflows"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

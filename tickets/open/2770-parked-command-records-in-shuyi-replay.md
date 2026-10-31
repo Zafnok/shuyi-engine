@@ -3,7 +3,7 @@ id: "2770"
 title: "Parked: Command records in shuyi replay: replay::commands re-runs a CommandRecord with a hash per step"
 type: feature
 milestone: "Engine: real-time strategy"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2706", "2111"]

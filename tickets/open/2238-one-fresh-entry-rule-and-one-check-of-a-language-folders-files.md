@@ -3,7 +3,7 @@ id: "2238"
 title: "One fresh-entry rule for the language packs, and one check of a language folder's files for both readers"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: todo
 blocked_by: []

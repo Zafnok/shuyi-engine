@@ -1,6 +1,6 @@
 # ADR-0064: Portable agent workflows and capability routing
 
-- **Status:** Accepted
+- **Status:** Accepted; model routing amended by ADR-0065
 - **Date:** 2026-10-31
 - **Related tickets:** 2037
 

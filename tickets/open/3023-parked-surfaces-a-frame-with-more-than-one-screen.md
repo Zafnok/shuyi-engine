@@ -3,7 +3,7 @@ id: "3023"
 title: "Parked: Surfaces: a frame with more than one screen, layouts for targets with fewer, pointers per surface, and a check for games that need two visible at once"
 type: feature
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3003", "3017", "2405"]

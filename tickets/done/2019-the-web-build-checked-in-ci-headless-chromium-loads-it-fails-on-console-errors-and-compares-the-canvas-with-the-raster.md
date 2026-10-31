@@ -3,7 +3,7 @@ id: "2019"
 title: "The web build checked in CI: headless Chromium loads it, fails on console errors and failed requests, and compares the canvas with the raster"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2018", "2392"]

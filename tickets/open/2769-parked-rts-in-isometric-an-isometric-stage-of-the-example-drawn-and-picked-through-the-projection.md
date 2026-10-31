@@ -3,7 +3,7 @@ id: "2769"
 title: "Parked: RTS in isometric: an isometric stage of the RTS example, drawn and picked through the projection, and shuyi-rts claims isometric"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2719", "1126"]

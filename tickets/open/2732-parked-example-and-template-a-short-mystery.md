@@ -3,7 +3,7 @@ id: "2732"
 title: "Parked: Example and template: a short mystery"
 type: feature
 milestone: "Engine: detective games"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2731", "2726"]

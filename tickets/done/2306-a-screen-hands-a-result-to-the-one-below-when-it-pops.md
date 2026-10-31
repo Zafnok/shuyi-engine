@@ -3,7 +3,7 @@ id: "2306"
 title: "A screen hands a result to the one below when it pops, and the one below hears that it is uncovered"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

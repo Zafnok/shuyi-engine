@@ -3,7 +3,7 @@ id: "2759"
 title: "Parked: An inventory grid of shapes: items that take cells, placing, moving and sorting, a stash of tabs, and the grid widget"
 type: feature
 milestone: "Engine: action RPGs"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2746", "2354"]

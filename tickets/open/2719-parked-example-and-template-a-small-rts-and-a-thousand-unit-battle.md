@@ -3,7 +3,7 @@ id: "2719"
 title: "Parked: Example and template: a small RTS against the computer, and a thousand-unit battle"
 type: feature
 milestone: "Engine: real-time strategy"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2715", "2716", "2734", "2501", "2004"]

@@ -3,7 +3,7 @@ id: "2504"
 title: "Targets in the wizard: pick several export targets, check the picked modules' needs against them, and give the new game a CI job per target"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2502", "3001", "3004"]

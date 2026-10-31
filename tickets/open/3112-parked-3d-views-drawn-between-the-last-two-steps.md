@@ -3,7 +3,7 @@ id: "3112"
 title: "Parked: 3D views drawn between the last two steps: the camera, mesh draws and billboards blended in the view only, so 3D stages move smoothly on displays faster than 60 Hz"
 type: feature
 milestone: "Parked: 3D"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2361", "3101", "3103", "3106"]

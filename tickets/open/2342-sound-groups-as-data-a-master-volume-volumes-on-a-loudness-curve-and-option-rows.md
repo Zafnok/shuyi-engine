@@ -3,7 +3,7 @@ id: "2342"
 title: "Sound groups as data: a master volume, a volume per group on a loudness curve, and option rows"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2511"]

@@ -3,7 +3,7 @@ id: "2358"
 title: "Modules join a running game: an ADR, a Module trait, two hooks and state by type on Ctx, with debug menu entries, all listed in the contract"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2013"]

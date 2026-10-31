@@ -3,7 +3,7 @@ id: "2751"
 title: "Parked: Encounters and drops: encounter tables per area, fixed encounters by mark, and drop tables"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2748", "2746", "2114"]

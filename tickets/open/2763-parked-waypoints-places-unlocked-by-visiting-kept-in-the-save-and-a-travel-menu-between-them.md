@@ -3,7 +3,7 @@ id: "2763"
 title: "Parked: Waypoints: places unlocked by visiting, kept in the save, and a travel menu between them"
 type: feature
 milestone: "Engine: action RPGs"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: []

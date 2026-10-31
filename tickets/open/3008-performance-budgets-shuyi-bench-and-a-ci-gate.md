@@ -3,7 +3,7 @@ id: "3008"
 title: "Performance budgets: shuyi bench plays scenarios headlessly and gates instruction counts, peak memory and package size against every supported target"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["3001", "3003"]

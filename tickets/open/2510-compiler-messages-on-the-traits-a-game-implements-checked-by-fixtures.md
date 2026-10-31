@@ -3,7 +3,7 @@ id: "2510"
 title: "Compiler messages on the traits a game implements: on_unimplemented saying what to write and where to read, pinned by fixtures that check the message"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2234"
 title: "JPEG, WebP, QOI and JPEG XL pictures drawn and FLAC and MP3 sounds played: shuyi-app and frame-png decode them through the registry, and the audio manifest takes them"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2203"]

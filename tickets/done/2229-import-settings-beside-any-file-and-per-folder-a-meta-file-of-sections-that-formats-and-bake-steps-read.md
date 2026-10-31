@@ -3,7 +3,7 @@ id: "2229"
 title: "Import settings beside any file and per folder: a .meta file of typed sections that formats and bake steps read, named so no RON format claims it"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

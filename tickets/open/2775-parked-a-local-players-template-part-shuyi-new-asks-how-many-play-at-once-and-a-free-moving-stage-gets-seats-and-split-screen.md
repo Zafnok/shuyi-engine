@@ -3,7 +3,7 @@ id: "2775"
 title: "Parked: A local-players template part: shuyi new asks how many play at once on one machine, and a free-moving stage gets seats and split screen"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2774", "2502", "2503", "1122"]

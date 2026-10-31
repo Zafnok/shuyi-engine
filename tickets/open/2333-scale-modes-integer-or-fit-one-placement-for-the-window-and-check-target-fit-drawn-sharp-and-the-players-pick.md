@@ -3,7 +3,7 @@ id: "2333"
 title: "Scale modes: integer or fit, one placement for the window and check --target, fit drawn sharp, and the player's pick"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2511"]

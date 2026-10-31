@@ -3,7 +3,7 @@ id: "2316"
 title: "The debug view in real time: pause, step one frame, slow motion, and a readout of the top screen"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2315"]

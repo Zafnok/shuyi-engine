@@ -3,7 +3,7 @@ id: "2395"
 title: The Key bindings screen's glyph skin scrolls rows that don't fit its panel
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: done
 blocked_by: []

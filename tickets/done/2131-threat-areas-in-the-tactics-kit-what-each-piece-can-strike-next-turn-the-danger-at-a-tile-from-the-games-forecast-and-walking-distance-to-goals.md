@@ -3,7 +3,7 @@ id: "2131"
 title: "Threat areas in the tactics kit: what each piece can strike next turn, the danger at a tile from the game's forecast, and walking distance to the nearest goal"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: []

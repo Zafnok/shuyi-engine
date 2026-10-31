@@ -3,7 +3,7 @@ id: "2219"
 title: "A folder's assets file by file through the registry: each file of a kind in one folder, read or with its errors"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []
