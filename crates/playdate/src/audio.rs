@@ -159,7 +159,7 @@ impl<S: Sdk> Speaker<S> {
         let taken = (0..count)
             .map(|turn| (self.oldest + turn) % count)
             .find(|&at| !self.slots[at].paused)?;
-        self.oldest = (taken + 1) % count;
+        self.oldest = taken + 1;
         Some(taken)
     }
 
@@ -372,21 +372,10 @@ impl<S: Sdk> Backend for Speaker<S> {
     }
 }
 
-/// A file the Playdate reads for itself: no bytes come from here.
-fn no_bytes(_: &str) -> shuyi_assets::audio::Bytes {
-    None
-}
-
 /// How the player's warnings name a sound of the manifest: by its path in
 /// the `.pdx`.
 fn shown(file: &str) -> String {
     format!("{BAKED_SOUND_DIR}/{}", without_extension(file))
-}
-
-/// Whether a sound is left out on purpose: the export bakes what the game
-/// ships, so that is known there.
-fn left_out(_: &str) -> bool {
-    false
 }
 
 /// The player of `manifest` on `speaker`: its sounds loaded, from the `.pdx`.
@@ -395,7 +384,9 @@ pub fn player<S: Sdk>(
     manifest: AudioManifest,
     seed: u64,
 ) -> Player<Speaker<S>> {
-    let files = Files::new(&no_bytes, &shown, &left_out, BAKED_MUSIC_DIR);
+    // No bytes come from here, as the Playdate reads a file for itself, and
+    // what is left out was settled by the export.
+    let files = Files::new(&|_| None, &shown, &|_| false, BAKED_MUSIC_DIR);
     let music = BAKED_MUSIC_DIR.to_owned();
     let voice = VOICE_DIR.to_owned();
     ready_now(Player::load(speaker, manifest, &files, music, voice, seed))

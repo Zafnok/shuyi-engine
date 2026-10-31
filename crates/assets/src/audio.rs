@@ -716,6 +716,15 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn without_extension_takes_the_last_names_extension_alone() {
+        assert_eq!(without_extension("sfx/click.wav"), "sfx/click");
+        assert_eq!(without_extension("click.a.ogg"), "click.a");
+        assert_eq!(without_extension("v1.2/click"), "v1.2/click");
+        assert_eq!(without_extension("deep/v1.2/x.ogg"), "deep/v1.2/x");
+        assert_eq!(without_extension("click"), "click");
+    }
+
     const EMPTY: &str = "(music_fade_ms: 500, sounds: [], music: [], pools: [], credits: [])";
 
     const FULL: &str = r#"(

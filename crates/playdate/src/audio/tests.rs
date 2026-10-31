@@ -469,3 +469,109 @@ fn the_device_is_the_players_warnings_in_the_console() {
     assert_eq!(sdk.sounding_samples().len(), 1);
     assert_eq!(sdk.logs(), ["audio: unknown sound cue \"nope\""]);
 }
+
+/// What is sounding, by each sound's short name, in the sample players' order.
+fn sounding(rig: &Rig) -> Vec<String> {
+    let sounds = rig.sdk.sounding_samples();
+    sounds
+        .into_iter()
+        .map(|(path, _)| path.trim_start_matches("audio/sfx/").to_owned())
+        .collect()
+}
+
+#[test]
+fn a_sound_that_ended_leaves_its_player_free_and_the_others_play_on() {
+    let mut rig = Rig::new();
+    let many: Vec<SoundRequest> = (0..SAMPLE_PLAYERS).map(|_| sound("click", 1.0)).collect();
+    rig.frame(&many, &[], 0.0);
+    rig.sdk.finish_sample(3);
+    rig.frame(&[sound("step", 1.0)], &[], 0.0);
+    let heard = sounding(&rig);
+    assert_eq!(heard.len(), SAMPLE_PLAYERS);
+    assert_eq!(heard[3], "hum");
+    assert_eq!(heard.iter().filter(|name| *name == "click").count(), 7);
+}
+
+/// All busy: each new sound takes the next in turn, round and round, and never
+/// one that is paused.
+#[test]
+fn the_players_are_taken_in_turn_past_a_paused_one() {
+    let mut rig = Rig::new();
+    let mut first = vec![
+        SoundRequest::start(id(0), "hum", 1.0),
+        SoundRequest::PauseSounds,
+    ];
+    first.extend((1..SAMPLE_PLAYERS).map(|_| sound("click", 1.0)));
+    rig.frame(&first, &[], 0.0);
+    assert_eq!(sounding(&rig).len(), SAMPLE_PLAYERS - 1);
+    // Player 0 is paused, so the next two go on 1 and 2.
+    rig.frame(&[sound("step", 1.0), sound("step", 1.0)], &[], 0.0);
+    let heard = sounding(&rig);
+    assert_eq!(heard[..3], ["hum", "hum", "click"]);
+    // Then 3 to 7, and round past 0 to 1.
+    let five: Vec<SoundRequest> = (0..5).map(|_| sound("step", 1.0)).collect();
+    rig.frame(&five, &[], 0.0);
+    rig.frame(&[sound("click", 1.0)], &[], 0.0);
+    let heard = sounding(&rig);
+    assert_eq!(heard[0], "click");
+    assert!(heard[1..].iter().all(|name| name == "hum"), "{heard:?}");
+    assert_eq!(rig.sdk.paused_samples(), 1);
+}
+
+/// A sample's own volume and stop reach the players on it, and no others.
+#[test]
+fn a_samples_volume_and_stop_reach_its_players_alone() {
+    let mut rig = Rig::new();
+    let clip = |rig: &Rig, path: &str| super::Clip::Sample {
+        sample: rig.sdk.sample_id(path),
+        rate: core::cell::Cell::new(super::RATE_ONE),
+    };
+    let (click, hum) = (clip(&rig, "audio/sfx/click"), clip(&rig, "audio/sfx/hum"));
+    rig.speaker.play(&click, 1.0, false);
+    rig.speaker.play(&hum, 1.0, false);
+    rig.speaker.set_volume(&click, 0.5);
+    assert_eq!(
+        rig.sdk.sounding_samples(),
+        [
+            ("audio/sfx/click".to_owned(), 0.5),
+            ("audio/sfx/hum".to_owned(), 1.0)
+        ]
+    );
+    rig.speaker.stop(&click);
+    assert_eq!(
+        rig.sdk.sounding_samples(),
+        [("audio/sfx/hum".to_owned(), 1.0)]
+    );
+}
+
+/// A file the SDK says nothing about the length of has no length.
+#[test]
+fn a_clip_of_no_length_has_none_known() {
+    let mut rig = Rig::new();
+    rig.sdk.put_track("voice/unknown", 0.0);
+    let mut loading = rig.speaker.load_music("voice/unknown.ogg");
+    let Some(Ok(clip)) = rig.speaker.poll_music(&mut loading) else {
+        panic!("the file is there");
+    };
+    assert_eq!(rig.speaker.length(&clip), None);
+}
+
+/// A file player that refuses says so in the console, and one that plays says
+/// nothing.
+#[test]
+fn a_file_player_that_refuses_is_in_the_console() {
+    let mut rig = Rig::new();
+    rig.frame(&[], &[load("theme"), start("theme", 1.0)], 0.0);
+    rig.player.suspend(&mut rig.speaker);
+    rig.player.resume(&mut rig.speaker);
+    assert_eq!(rig.sdk.logs(), [] as [String; 0]);
+    rig.player.suspend(&mut rig.speaker);
+    rig.sdk.refuse_file_play(true);
+    rig.player.resume(&mut rig.speaker);
+    assert_eq!(rig.sdk.logs(), ["audio: the SDK could not resume a track"]);
+    rig.frame(&[], &[start("theme", 1.0)], 1.0);
+    assert_eq!(
+        rig.sdk.logs().last().map(String::as_str),
+        Some("audio: the SDK could not start a track")
+    );
+}

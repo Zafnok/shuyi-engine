@@ -84,6 +84,8 @@ struct State {
     tracks: BTreeMap<String, f32>,
     file_players: Vec<FakeFilePlayer>,
     file_player_calls: Vec<String>,
+    /// Whether a file player refuses to play.
+    file_play_refused: bool,
 }
 
 impl Default for State {
@@ -112,6 +114,7 @@ impl Default for State {
             tracks: BTreeMap::new(),
             file_players: Vec::new(),
             file_player_calls: Vec::new(),
+            file_play_refused: false,
         }
     }
 }
@@ -299,6 +302,16 @@ impl FakeSdk {
         for player in &mut self.0.borrow_mut().sample_players {
             player.playing = false;
         }
+    }
+
+    /// The sound on sample player `player` ends.
+    pub fn finish_sample(&self, player: usize) {
+        self.0.borrow_mut().sample_players[player].playing = false;
+    }
+
+    /// Whether a file player refuses to play from now on.
+    pub fn refuse_file_play(&self, refused: bool) {
+        self.0.borrow_mut().file_play_refused = refused;
     }
 
     /// What is heard from the file players: each file's path and volume, in
@@ -568,6 +581,9 @@ impl Sdk for FakeSdk {
 
     fn file_play(&self, player: usize, looped: bool) -> bool {
         let mut state = self.0.borrow_mut();
+        if state.file_play_refused {
+            return false;
+        }
         let call = format!("play {}", state.file_players[player].path);
         state.file_player_calls.push(call);
         let at = &mut state.file_players[player];

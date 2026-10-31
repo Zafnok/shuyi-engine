@@ -130,9 +130,7 @@ pub trait Backend {
 
     /// Says a problem of the player's in the backend's log, by default
     /// nowhere.
-    fn warn(&mut self, line: &str) {
-        let _ = line;
-    }
+    fn warn(&mut self, _line: &str) {}
 }
 
 /// A [`Backend`]'s provided feature, each warned of once.
@@ -1008,6 +1006,10 @@ mod tests {
         fn stop_playing(&mut self, playing: u32) {
             self.log.borrow_mut().push(format!("stop #{playing}"));
         }
+
+        fn warn(&mut self, line: &str) {
+            self.log.borrow_mut().push(format!("warn {line}"));
+        }
     }
 
     impl Fake {
@@ -1777,6 +1779,7 @@ mod tests {
     #[test]
     fn the_provided_methods_default_to_unsupported() {
         let mut backend = Required::default();
+        assert_eq!(RATE_ONE, 65_536);
         assert_eq!(backend.pause(&1), Err(Unsupported));
         assert_eq!(backend.resume(&1), Err(Unsupported));
         assert_eq!(backend.set_rate(&0, RATE_ONE), Err(Unsupported));
@@ -1855,6 +1858,9 @@ mod tests {
         device.set_player(player);
         device.play(&frame, Millis(0));
         assert!(format!("{device:?}").contains("loaded: true"));
+        let said = device.backend_mut().calls();
+        let nope = "warn unknown sound cue \"nope\"".to_owned();
+        assert!(said.contains(&nope), "{said:?}");
         let music = [cmd(load, "title"), cmd(start, "title")];
         device.backend_mut().ready.push("music/title.ogg".into());
         let frame = AudioFrame {
@@ -1864,10 +1870,51 @@ mod tests {
         };
         device.play(&frame, Millis(1000));
         assert_eq!(device.music_playing(Millis(2000)), Some(("title", 1.0)));
+        device.backend_mut().calls();
         device.suspend();
+        let said = device.backend_mut().calls();
+        let muted = "volume music/title.ogg 0.00".to_owned();
+        assert!(said.contains(&muted), "{said:?}");
+        let warned = "warn this backend can't pause sounds: they are muted instead".to_owned();
+        assert!(said.contains(&warned), "{said:?}");
         device.resume();
+        let said = device.backend_mut().calls();
+        let back = "volume music/title.ogg 0.40".to_owned();
+        assert!(said.contains(&back), "{said:?}");
         device.stop_all();
         assert_eq!(device.music_playing(Millis(2000)), None);
+    }
+
+    /// A frame sends the volumes every time: the same ones, to within a
+    /// rounding, touch nothing playing.
+    #[test]
+    fn the_same_sound_volume_again_leaves_a_started_sound_alone() {
+        let mut fake = Fake::default();
+        let mut audio = audio(&mut fake);
+        let start_rain = SoundRequest::start(handle(), "rain", 1.0);
+        audio.play(&mut fake, &[start_rain], &[], 0.0);
+        fake.calls();
+        audio.set_volumes(&mut fake, 1.0, 1.0);
+        assert_eq!(fake.calls(), [] as [String; 0]);
+        audio.set_volumes(&mut fake, 1.0, 1.0 - f32::EPSILON);
+        assert_eq!(fake.calls(), [] as [String; 0]);
+    }
+
+    /// A loaded track starts at its cue's volume times its gain and the music
+    /// volume, and a fade multiplies with all of them.
+    #[test]
+    fn a_ready_track_starts_at_its_gain_and_a_fade_keeps_the_music_volume() {
+        let mut fake = Fake::default();
+        fake.ready.push("music/title.ogg".into());
+        let mut audio = audio(&mut fake);
+        audio.set_volumes(&mut fake, 0.5, 1.0);
+        audio.play(&mut fake, &[], &[cmd(load, "title")], 0.0);
+        fake.calls();
+        let start_half = MusicCommand::start("title", 0.5);
+        audio.play(&mut fake, &[], &[start_half], 0.0);
+        assert_eq!(fake.calls(), ["play music/title.ogg 0.20 looped"]);
+        audio.play(&mut fake, &[], &[gain("title", 0.25)], 0.0);
+        assert_eq!(fake.calls(), ["volume music/title.ogg 0.10"]);
     }
 
     /// A backend that pauses: what a held playback does, by the numbers.
