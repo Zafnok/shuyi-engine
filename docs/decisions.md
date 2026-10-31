@@ -1294,3 +1294,20 @@ Source: Nick, on the limit of about 600 changed lines:
 **Rule:** a ticket is one PR of about 1,500 changed lines or fewer, without
 fixtures and snapshots (the `write-ticket` skill). Estimates and periodic checks
 keep to it, and no CI check measures a PR.
+
+## 2026-10-31: sound takes the hybrid path behind automated parity gates
+
+Source: Nick, after asking to do research ticket 2902 and reading the
+ownership options and their implementation risks:
+
+> I want A but only if we can have some way of automated parity checking (speed + correctness). Additionally A should be surrounded by a first ticket which gates progress (i.e. do not immediately rm quad-snd) and slowly reduces dependency on it as we get confirmation each goal has been met... and end ticket removes it after everything is checked out
+
+**Rules:** choose the hybrid ownership plan: library codecs and desktop
+output, an owned small mixer and current-loader browser bridge. A first
+ticket (2573) must establish working automated correctness and speed
+checks before replacement implementation starts. Keep old and new paths
+side by side; advance each stage only after its comparative checks pass.
+A final ticket (3079) removes quad-snd and macroquad audio only after all
+consumers and required behavior qualify. The research request unparks
+2902 alone; the replacement and parity build tickets stay parked. The
+technical plan is [ADR-0066](adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md).

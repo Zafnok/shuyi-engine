@@ -19,8 +19,14 @@ completed:
 
 Nick, 2026-10-19 (`docs/decisions.md`): "eventually - macroquad replace",
 and "we should have a wide compat with all GFX libs". Once sound,
-controllers, web saves and file embedding are replaced (2902, 2903, 3033,
-2215), macroquad does four jobs in `shuyi-app`:
+controllers, web saves and file embedding are replaced (3079, 2903, 3033,
+2215), macroquad does four jobs in `shuyi-app`. **From 2902 (done):**
+the audio choice is library decoder adapters, an engine-owned PCM mixer
+and CPAL native output, with an original bridge for the current loader.
+Preserve 2573's automated correctness/speed checks when migrating that
+bridge; research completion alone does not remove quad-snd (3079 does).
+
+The remaining macroquad jobs are:
 
 - the window, the run loop and the system's events;
 - keyboard, mouse and text input (`crates/app/src/keys.rs`);

@@ -6,7 +6,7 @@ milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
-blocked_by: ["2902", "2903", "2215", "3034"]
+blocked_by: ["2902", "2903", "2215", "3034", "3079"]
 nick_input: setup
 completed:
 ---
@@ -24,8 +24,10 @@ it's a full replacement.
 §4 made each one a crate with no `shuyi-*` dependency, so the move is
 mechanical:
 
-- `shuyi-sound` (2210–2214, 3030) and `shuyi-sound-out` (3031, 3032), if
-  the sound research (2902) kept our own code;
+- `shuyi-sound` (2210, 3030) and `shuyi-sound-out` (3031, 3032),
+  with the permitted library decoder adapters and CPAL output selected
+  by 2902. Their full replacement and removal gate is 3079 (a blocker);
+  no independent codec implementation from 2211–2214 is being carved;
 - `shuyi-pads` (2402, 2403), if the controller research (2903) kept our
   own code;
 - `shuyi-embed` (2215);

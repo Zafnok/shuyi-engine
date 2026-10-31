@@ -308,7 +308,9 @@ None. This is technical.
 - threads, or an async asset server (ADR-0007, *Alternatives*);
 - audio decisions: music and voice already load on demand
   (`crates/app/src/audio.rs`), 3029 streams music on the Playdate, and
-  2902 (parked) studies sound. Sounds are measured, not decided;
+  2902 selected library decoder adapters, an integer mixer and CPAL
+  output behind automated parity gates (2573 through 3079). This ticket
+  measures sound residency; it does not change that sound plan;
 - ROM targets: 3021 (parked) reads its pack in place;
 - streaming a world or its levels around a camera: real-time work,
   parked. 1124 loads a world's levels whole and leaves streaming to a

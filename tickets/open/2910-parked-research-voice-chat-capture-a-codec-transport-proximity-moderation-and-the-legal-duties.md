@@ -47,9 +47,11 @@ What Shuyi has today, and plans:
 - **Positional sound** (2363, parked): gain and pan from a sound's
   world position to a listener. Proximity voice is the same falloff on
   a voice stream.
-- **Sound after quad-snd** (2902, parked): whether we write our own
-  mixer and output (3030–3032) or use a library. Capture would live
-  beside output.
+- **Sound after quad-snd** (2902, done): permitted library decoders,
+  our integer PCM mixer (3030), CPAL native output and an original
+  current-loader Web Audio bridge (3031, 3032). Capture would live
+  beside output; the staged replacement is guarded by 2573 and keeps
+  quad-snd until 3079.
 - **The web build** uses macroquad's own loader, not `wasm-bindgen`
   (`AGENTS.md`, *Environment*), so the browser's microphone
   (`getUserMedia`) needs a JS plugin of our own, like
@@ -88,10 +90,12 @@ rules), and on which targets. Everything technical is decided here.
   and the user gesture it needs), and consoles (one line each: their
   SDKs' own voice systems). Libraries such as `cpal` (said to be
   Apache-2.0): its license, whether it builds on Windows with the GNU
-  toolchain, and whether it fits beside quad-snd or after 2902.
-  **Either order with 2902:** if it is done, follow the sound path it
-  chose; if not, say what capture needs from it and add a line to
-  2902's ticket.
+  toolchain, and how input coexists with CPAL output and the selected
+  mixer. **From 2902 (done):** use its PCM/source seam and staged
+  migration; capture, permissions, echo cancellation and voice routing
+  remain this research's work. Replacement-path build tickets require
+  2573's correctness/speed gate and preserve the reference backend
+  until 3079.
 - **The codec**: Opus (libopus, said to be BSD-3-Clause, royalty-free)
   through a binding and any pure Rust Opus encoder and decoder, each
   checked with `cargo deny check licenses` in a scratch crate with

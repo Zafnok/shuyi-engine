@@ -316,8 +316,9 @@ After MVP, and this PR keeps only the five built-in groups.
 
 - ducking (2343);
 - effects on a group (filters, reverb), snapshots, sends and a sidechain
-  compressor: they need a mixer of our own (3030, parked) and the sound
-  research (2902, parked); a ticket when a game asks;
+  compressor: they need DSP follow-ups over the integer mixer selected
+  by 2902 (3030, parked); a ticket when a game asks. The initial mixer
+  does not promise those effects;
 - rows made at run time from the manifest's groups: `OptionRow`'s key
   is a `&'static str` (`crates/ui/src/screens/options.rs`, line 81)
   and `RowValue::Volume` holds `fn` pointers, and changing either is a

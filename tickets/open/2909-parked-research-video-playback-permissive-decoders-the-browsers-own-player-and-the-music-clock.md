@@ -72,8 +72,8 @@ parked), 2365 (a beat clock, parked), 2366 (captions for sounds, not
 speech, parked), 2906 (asset memory research), 3017 (target
 capabilities, parked), 3010 (the Playdate backend), 3029 (audio on the
 Playdate, music streamed through the SDK's file players), 3034
-(research on replacing macroquad, parked), 2902 (sound after quad-snd,
-parked), 2020 (fuzzing every registered format) and 3039 (the notices
+(research on replacing macroquad, parked), 2902 (sound plan recorded),
+2020 (fuzzing every registered format) and 3039 (the notices
 a web build carries).
 
 Why it matters:
@@ -195,10 +195,14 @@ skill), not a choice made here.
     what happens when decoding falls behind (frames dropped, the sound
     never slowed);
   - the video's sound: decoded with it and handed to the backend's
-    audio, or a separate music cue. **Either order with 2902:** if it is
-    done, use the sound library it chose; if not, quad-snd as today, and
-    each build ticket that plays the video's sound names 2902, whose
-    needs list has a line for it and whose PR updates those tickets;
+    audio, or a separate music cue. **From 2902 (done):** fit decoded
+    PCM to the engine-owned source/mixer seam (2210, 3030), with CPAL
+    native output and the current-loader Web Audio bridge (3031, 3032).
+    This research adds no replacement audio implementation. Its build
+    tickets use the backend actually available, retain quad-snd until
+    3079, and require 2573's correctness/speed gate before adding
+    replacement-path consumers. Video synchronization remains this
+    research's responsibility;
   - ending or skipping a video reaches the rules as a command (turn
     games) or an input (tick games). Skipping is an action the screen
     declares (`Screen::actions` in `crates/ui/src/screen.rs`, 3002),
@@ -283,7 +287,7 @@ skill), not a choice made here.
 
 1. Read the code and ADRs named in *Context*, and 2721, 2722, 2724,
    2364, 3017, 3010 and 3034 as they stand. Note which of 2020, 2514,
-   2902, 2906, 3017 and 3034 are in `tickets/done/`, for the either-order
+   2906, 3017 and 3034 are in `tickets/done/`, for the either-order
    rules above.
 2. Write the needs into the report.
 3. Survey the candidates and fill the table. Check the licenses with

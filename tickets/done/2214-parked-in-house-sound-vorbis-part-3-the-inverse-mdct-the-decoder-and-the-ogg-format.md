@@ -1,19 +1,19 @@
 ---
 id: "2214"
-title: "Parked: In-house sound: Vorbis, part 3: the inverse MDCT, windows and overlap, a streaming decoder, and the ogg format"
+title: "In-house sound: Vorbis, part 3: the inverse MDCT, windows and overlap, a streaming decoder, and the ogg format"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: done
 blocked_by: ["2213"]
 nick_input: none
-completed:
+completed: 2026-10-31
 ---
 
 # 2214 — In-house sound: Vorbis, part 3: the MDCT, the decoder and the format
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
+> **Closed as dropped by 2902 (2026-10-31):** the conditional hybrid uses library codecs; this original clean-room implementation was not built.
 
 ## Context
 
@@ -95,16 +95,12 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Each fixture decodes to the same number of frames as its expected
-      output, and every sample is within ±2 of it (rounding differences
-      between float paths).
-- [ ] `decode_into` with output buffers of random sizes gives the same
-      samples as `decode_all`.
-- [ ] `rewind` then decoding again gives the same samples.
-- [ ] `shuyi-sound` still builds without `std`.
-- [ ] The PR body says the code was written from the Vorbis I
-      specification.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~Each fixture decodes to the same number of frames as its expected output, and every sample is within ±2 of it (rounding differences between float paths).~~ (not done: original codec work dropped by 2902.)
+- [x] ~~`decode_into` with output buffers of random sizes gives the same samples as `decode_all`.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~`rewind` then decoding again gives the same samples.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~`shuyi-sound` still builds without `std`.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~The PR body says the code was written from the Vorbis I specification.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~All gates in the `run-gates` skill pass.~~ (not done: original codec work dropped by 2902.)
 
 ## Tests required
 
@@ -118,5 +114,10 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Dropped, not implemented, by 2902 on 2026-10-31. Nick selected library
+codecs with an owned mixer, conditional on automated correctness/speed
+gates (2573), staged migration and final-only removal (3079). 2210's
+hound/lewton adapters supply decoding/container behavior; 2397 reads loop
+comments and 3030/3031 supply bounded streaming. No original decoder code
+or its implementation tests were written. The struck criteria preserve
+the rejected scope without claiming it was delivered.

@@ -78,5 +78,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0063](0063-the-audio-player-shared-by-every-backend-a-small-required-trait-provided-methods-for-what-some-lack-and-audio-baked-for-the-playdate.md) | The audio player shared by every backend: a small required trait, provided methods for what some lack, and audio baked for the Playdate | Accepted; extends ADR-0004 §6, ADR-0024 §2 and ADR-0056 |
 | [0064](0064-portable-agent-workflows.md) | Portable agent workflows and capability routing | Accepted; model routing amended by ADR-0065 |
 | [0065](0065-paired-model-recommendations.md) | Paired Claude and OpenAI model recommendations | Accepted |
+| [0066](0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md) | Sound uses library codecs and output, with an owned mixer and staged parity gates | Accepted; resolves ADR-0021's sound choice |
 
 Template: [`0000-template.md`](0000-template.md).

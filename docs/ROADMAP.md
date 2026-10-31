@@ -662,10 +662,16 @@ graphics through wgpu and the window through winit, as in Bevy, with our
 own code for the rest where research says so. Ours is written from
 specifications, never copied. The order, when unparked:
 
-- **Sound:** the research (2902) first. If it keeps our own code: 2210,
-  then 2211, 2212, 2213 and 2214, then the mixer (3030), then output on
-  Windows and the web (3031), then Linux and macOS, which removes quad-snd
-  (3032).
+- **Sound:** 2902 chose library codecs/output and an owned small mixer,
+  conditional on automated correctness/speed parity (2026-10-31,
+  [ADR-0066](adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md)).
+  The parked chain starts with a working native/browser baseline gate
+  (2573), then PCM/decoder adapters (2210), mixer (3030), Windows/web
+  (3031), Linux/macOS (3032), and loop regions (2397). Each stage qualifies
+  consumers while retaining the old path. Only final ticket 3079 removes
+  quad-snd after the complete comparative matrix and device checks pass.
+  Original clean-room codec tickets 2211–2214 were dropped. None of this
+  replacement work was unparked by the research request.
 - **Controllers:** the research (2903) first. If it keeps our own code:
   2402, then 2403, which removes gilrs.
 - **The two small ones:** web saves (3033) and file embedding (2215).
@@ -822,7 +828,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2902–2903, 2210–2215, 2402–2403, 3030–3034, 2008 | The platform layer (ADR-0021): research on sound and on controllers, then our own WAV, Ogg and Vorbis readers, a mixer and sound output, and our own controllers, if the research keeps them; web saves; file embedding; research on replacing macroquad with winit and a 2D renderer over wgpu; and each piece we wrote in a repository of its own | Nick asks (2026-10-19: "All parked until MVP") |
+| 2903, 2210, 2215, 2397, 2402–2403, 2573, 3030–3034, 3079, 2008 | The platform layer (ADR-0021; audio choice ADR-0066): sound parity gate, library decoder adapters, owned mixer and staged output, final-only quad-snd removal; controller research and its chosen replacement; web saves; embedding; winit/wgpu research; separate repositories for owned pieces | Nick asks; 2902 research alone was unparked on 2026-10-31, its build chain remains parked |
 | 2103–2105, 2216–2217 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones and Spine import (Spine through the official runtime, its users bringing their own Spine license, or a reader of our own: Nick picks when unparked) | Nick asks |
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |

@@ -13,7 +13,7 @@ completed:
 
 # 2379 — Cue pitch: a pitch range in the cue rules
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): a follow-up of parked work is parked. A pitch plays through the in-house mixer (3030) and its sound output (3031, 3032), so this starts after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), once those three are unparked and done. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop the mixer it plays through.
+> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): a follow-up of parked work is parked. A pitch plays through the in-house mixer (3030) and its sound output (3031, 3032), so this starts after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), once those three are unparked and done. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. 2902 kept the integer mixer and selected library decoder adapters plus CPAL native output. Its replacement stages are gated by 2573; 3079 alone removes the old backend.
 
 ## Context
 
@@ -188,8 +188,10 @@ None.
 - Saying that a game needs `Rate`, and checking it against a target:
   3017 (parked). Its needs already cover a game that changes a sound's
   rate on a target without `Rate`.
-- Choosing the sound stack: 2902 (parked). If its report replaces
-  3030's mixer, whatever fills in `set_rate` then plays this rate.
+- Choosing the sound stack: 2902 recorded the integer mixer and
+  provided `set_rate` seam. This ticket supplies cue pitch over it;
+  replacing the backend and its comparative checks are 2573, 3030–3032
+  and 3079, not this ticket.
 
 ## Implementation steps
 

@@ -1,19 +1,19 @@
 ---
 id: "2211"
-title: "Parked: In-house sound: our own Ogg container reader: pages, CRC, packets and granule positions"
+title: "In-house sound: our own Ogg container reader: pages, CRC, packets and granule positions"
 type: feature
 milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: blocked
+status: done
 blocked_by: ["2210"]
 nick_input: none
-completed:
+completed: 2026-10-31
 ---
 
 # 2211 — In-house sound: our own Ogg container reader
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
+> **Closed as dropped by 2902 (2026-10-31):** the conditional hybrid uses library codecs; this original clean-room implementation was not built.
 
 ## Context
 
@@ -77,13 +77,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The fixture's packets come out whole, in order, with the granule
-      positions its pages carry.
-- [ ] A page with a wrong CRC is skipped and reported, and the next good
-      page is read.
-- [ ] No input panics.
-- [ ] The PR body says the code was written from RFC 3533.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~The fixture's packets come out whole, in order, with the granule positions its pages carry.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~A page with a wrong CRC is skipped and reported, and the next good page is read.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~No input panics.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~The PR body says the code was written from RFC 3533.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~All gates in the `run-gates` skill pass.~~ (not done: original codec work dropped by 2902.)
 
 ## Tests required
 
@@ -96,5 +94,10 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Dropped, not implemented, by 2902 on 2026-10-31. Nick selected library
+codecs with an owned mixer, conditional on automated correctness/speed
+gates (2573), staged migration and final-only removal (3079). 2210's
+hound/lewton adapters supply decoding/container behavior; 2397 reads loop
+comments and 3030/3031 supply bounded streaming. No original decoder code
+or its implementation tests were written. The struck criteria preserve
+the rejected scope without claiming it was delivered.

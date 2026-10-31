@@ -1,33 +1,31 @@
 ---
 id: "3031"
-title: "Parked: In-house sound output, part 1: the shuyi-sound-out crate, Windows through WASAPI, and the web through our own Web Audio plugin"
+title: "Parked: Gated sound output on Windows through CPAL and the web through our own Web Audio bridge"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
-blocked_by: ["3030", "3003", "3029", "2344", "2394"]
+blocked_by: ["3030", "3003", "3029", "2344", "2394", "2573"]
 nick_input: sign-off
 completed:
 ---
 
 # 3031 — In-house sound output: Windows and the web
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
+> **Parked**: Nick selected the gated hybrid in 2902 on 2026-10-31; build work stays parked until he starts it. Whoever unparks it sets `status: todo` and drops `Parked:`. 2573's working baseline comes first.
 
 ## Context
 
 Nick, 2026-10-19 (`docs/decisions.md`): sound first, replacing quad-snd.
-After 2210–2214 (reading files) and 3030 (mixing), what's left is handing
+After 2210 (decoder adapters) and 3030 (mixing), what's left is handing
 the mix to the system. That's this ticket for Windows and the web, and
 3032 for Linux and macOS.
 
-- [ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md):
-  a crate of its own, `shuyi-sound-out`, over raw bindings only (§3). It is
-  written from Microsoft Learn (WASAPI: `IMMDeviceEnumerator`,
-  `IAudioClient`, `IAudioRenderClient`, event-driven shared mode) and MDN
-  and the W3C *Web Audio API* (`AudioContext`, `AudioWorklet`). Never from
-  the source of quad-snd, cpal or any other output library (§2).
+- [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md)
+  selects CPAL for native output and an original Web Audio bridge, preserving
+  ADR-0021's clean-room rule for our code. Call CPAL's documented API; do
+  not reimplement WASAPI or inspect another output implementation to copy it.
 - 3003 puts audio behind the `Platform` trait, and 3029 moves the audio
   player's rules out of `shuyi-app`, behind a small backend trait. This
   ticket adds a second implementation of that backend trait, over
@@ -45,6 +43,15 @@ sounds wrong, cuts out, or starts late.
 ## Scope
 
 **In:**
+- Before new platform output code, require 2573's actual automated Windows
+  reference capture/performance baseline and original-loader browser baseline.
+  Establish any missing platform baseline first; a missing/silent capture is
+  blocking, never a passed/ignored cell. Extend its corpus with both paths,
+  including bounded streams, sample-aligned loop joins, crossfades, pause,
+  rate, independent copies and no hidden stealing. Keep quad-snd available
+  and default until each consumer's correctness/speed gates and sign-off pass.
+  Internal region mechanics can be tested through mixer/source parameters;
+  2397 later adds the cue/metadata/clock contract and is not a blocker here.
 - **The crate** `crates/sound-out` (`shuyi-sound-out`), MIT OR Apache-2.0,
   no `shuyi-*` dependency except `shuyi-sound`:
   - `Output::open(OutputConfig { rate, channels, frames }) -> Result<Output,
@@ -57,32 +64,33 @@ sounds wrong, cuts out, or starts late.
     music clock holds, as 2394's rule for a backend that can pause says;
   - errors when there's no device, and a quiet fallback the caller picks
     (no sound rather than a crash).
-- **Windows**: WASAPI shared mode, event-driven, on its own thread, through
-  the `windows` crate (re-check its license on the day; ADR-0021 §3).
-  Format negotiation: ask for 16-bit at the mixer's rate; if the device
-  refuses, take its mix format (often 32-bit float at 48 kHz) and convert.
-  Device changes (headphones plugged in): reopen the default device when
-  WASAPI reports it invalidated.
+- **Windows**: CPAL, defaults off (0.18.2 researched as Apache-2.0; recheck
+  manifest/repository and full graph). Negotiate the device's format/rate,
+  convert the integer mix at the boundary, and handle default-device loss.
+  Keep ASIO off. Prove GNU and CI builds; 2902's silent construction probe
+  is not a playback or recovery test. Add its device-crate edge to layers.
 - **The web**: `crates/cli/web/sound.js`, our own, with an `AudioWorklet`
-  that pulls blocks the Rust side mixed into a shared ring in the wasm
-  memory. The `AudioContext` starts on the first user gesture, as
+  that consumes bounded PCM blocks, with the queue/message or shared-memory
+  contract specified and tested. State secure-context, isolation/header and
+  atomics requirements for the chosen design; do not assume wasm-bindgen.
+  The `AudioContext` starts on the first user gesture, as
   browsers require. Registered as a miniquad plugin like `gamepad.js`, and
   `cargo shuyi web` copies it.
 - **The engine side**: the backend from 3029 implemented over `Mixer`
   (3030) and `Output`, in `shuyi-app` behind a cargo feature
-  `in-house-sound`, off by default. Sound effects decode with
-  `decode_all`, and music streams with `vorbis::Decoder`, so music no
-  longer needs the worker thread of `native_music.rs` on this path.
+  `in-house-sound`, off by default. Sound effects use 2210's adapters;
+  backend workers incrementally decode music into bounded queues, seeking/
+  restarting, pre-rolling and trimming ahead of loop boundaries. No file
+  I/O, decoder work, allocation or blocking lock in the audio callback.
   It fills in the provided methods of 3029's trait that the mixer
   plays: `pause` and `resume` over the mixer's, and `set_rate` as
   `Params::rate` at the sound's next `play`.
 - **Either order with 2234 (FLAC and MP3 played):** if 2234 is done,
   sound effects already reach this backend as WAV (`Audio::load` runs
-  `audio::decode_to_wav`), and this backend's `load_music` runs a FLAC
-  or MP3 track through `audio::decode_to_wav` too and plays the WAV
-  whole, not streamed, on Windows and on the web alike (its web path
-  doesn't use the browser's decoder). If not, nothing to do (2234
-  does it on this path).
+  `audio::decode_to_wav`), and this backend's `load_music` uses the permitted
+  claxon/nanomp3 adapter in bounded chunks. Whole-song WAV transcoding
+  remains only the legacy path's behavior. If not, nothing to do (2234
+  adds this replacement path).
 - **Voices.** The backend makes the `Mixer` with at least as many
   voices as the cue rules let sound at once (the audio manifest's
   `max_voices`, which 2378 adds; 32 when there is none), so the mixer
@@ -109,7 +117,7 @@ sounds wrong, cuts out, or starts late.
 
 **Out (do not do):**
 - Linux and macOS (3032).
-- Removing quad-snd or macroquad's `audio` feature (3032).
+- Removing quad-snd or macroquad's `audio` feature (3079 only).
 - Exclusive mode, or choosing a device other than the default (write a
   ticket if a game needs a device picker).
 - Recording or microphones.
@@ -119,8 +127,8 @@ sounds wrong, cuts out, or starts late.
 1. `crates/sound-out` with `src/lib.rs`, `src/windows.rs`, `src/web.rs`,
    `src/null.rs` (an output that calls the callback on a timer and
    discards, for tests and machines without sound).
-2. Windows: open, negotiate, the event loop on a thread, conversion,
-   device loss.
+2. Establish the platform's reference gate, then CPAL open/negotiation,
+   callback conversion and device-loss recovery.
 3. The web: the ring buffer layout (documented in `sound.js` and
    `web.rs`), the worklet, the gesture start.
 4. The backend in `shuyi-app` behind `in-house-sound`.
@@ -141,6 +149,7 @@ sounds wrong, cuts out, or starts late.
 - [ ] The PR body says the code was written from the documents listed in
       the completion notes.
 - [ ] Nick signs off.
+- [ ] Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

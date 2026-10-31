@@ -6,19 +6,20 @@ milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2210", "2214", "2116"]
+blocked_by: ["2210", "2116", "2573"]
 nick_input: none
 completed:
 ---
 
 # 3030 — In-house sound: the mixer
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
+> **Parked**: Nick chose the gated hybrid in 2902 on 2026-10-31; build tickets stay parked until he starts them. Whoever unparks it sets `status: todo` and drops `Parked:`. The working automated baseline of 2573 comes first.
 
 ## Context
 
-Nick, 2026-10-19 (`docs/decisions.md`): sound goes in-house, replacing
-quad-snd. quad-snd does two jobs: it mixes the playing sounds, and it
+2902 selected the owned mixer over library codecs and desktop output,
+with staged automated parity ([ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md)).
+quad-snd does two jobs: it mixes the playing sounds, and it
 hands the mix to the system. This ticket is the mixing, in `shuyi-sound`
 (2210), so it has no system code and runs everywhere. Sound output is 3031
 and 3032.
@@ -49,6 +50,12 @@ None.
 ## Scope
 
 **In:**
+- Extend 2573's working parity harness with independent expected PCM for
+  pause/rate/loops, two streams, gains, capacity refusal and bounded memory.
+  Existing behavior compares to the retained old path; new behavior must
+  not inherit mute/full-decode bugs. Correctness and calibrated speed/CPU/
+  memory budgets must pass before any consumer switches. 3079 alone removes
+  quad-snd; this ticket keeps the reference path.
 - **`shuyi_sound::mix::Mixer`**, fixed output rate and channels (stereo, or
   mono for small devices), with:
   - `play(sound, Params) -> Result<VoiceId, Full>`, with `Params {
@@ -65,18 +72,17 @@ None.
     2345), `pause` and `resume` (2394), a stream's loop region (intro
     then loop), two streams at once for a crossfade (2341), and a voice
     limit that never steals a voice (2345's rule, 2378's limit). It also
-    holds the balance 2902 notes for positioned sound (2363). If 2902's
-    report marks another need required, it joins this list; a need it
-    marks optional (effects, seeking a stream to any time) stays out;
+    holds the balance 2902 notes for positioned sound (2363). Effects and
+    arbitrary seeking remain optional, as the report records;
   - `stream(source, Params) -> Result<VoiceId, Full>`, where `source` is
-    anything that implements `Source` (`fn fill(&mut self, out: &mut
-    [i16]) -> usize`, `fn rewind(&mut self)`), so a `vorbis::Decoder`
-    (2214) plays music without decoding it whole. `Params::region` is an
+    anything that implements a bounded, nonblocking PCM `Source` over
+    2210's types. Platform workers decode/refill ahead; `render` performs
+    no decoder work or I/O. `Params::region` is an
     optional loop region (start and end in frames), so a stream plays its
     intro once and then loops the region with no gap. However the source
-    gets back to the start frame (a decoder state saved when the stream
-    first passes it, or a seek; 2214 has only `rewind`), say which in the
-    completion notes;
+    gets back to the start frame is supplied by worker seek/restart,
+    pre-roll and exact trim, prefetched before the boundary; record the
+    bounded queue and underrun contract. 2397 owns cue/metadata mapping;
   - `set_volume`, `fade_to(volume, millis)`, `stop`, `is_playing`;
   - `pause(VoiceId)` and `resume(VoiceId)`, so 2394's `PauseSounds` and
     `Audio::suspend` hold a sound where it is instead of letting it run
@@ -140,8 +146,8 @@ None.
    feature), and `loom` only if a plain stress test can't show it right.
 3. Voices, volumes, fades, pause and resume, and the balance: a fade is
    a fixed number of frames with a step per frame, so its end is exact.
-4. Streaming voices over `Source`, with `rewind` for whole-file loops,
-   and the loop region.
+4. Streaming voices over bounded ready-PCM `Source`s; workers refill,
+   rewind/seek and prefetch loops outside `render`, including the region.
 5. Resampling and the playback rate.
 6. A golden test: a fixed script of plays, fades and stops renders to a
    buffer whose hash is a row of a golden table (2116's
@@ -162,6 +168,7 @@ None.
 - [ ] Each need that 2902 marked required has a unit test. Examples: a
       voice paused for 4800 frames resumes at the frame where it
       stopped; a sound at rate 2.0 ends in half its frames.
+- [ ] 2573's automated PCM/correctness and performance gates pass; the old backend remains available.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -158,7 +158,9 @@ None.
     a length. If not, nothing to do (2378 does it).
   - **The decoders** are the crates 2203 added, under the same
     features. If 2203 read a header by hand and added no decoder, add
-    one under that feature: check its license from its `Cargo.toml`
+    one under that feature: 2902 selected claxon for FLAC and nanomp3
+    for MP3, with optional std adapters and no denied Symphonia default
+    features. Check its license from its `Cargo.toml`
     and repository on the day (ADR-0002 §8; `symphonia` is MPL-2.0
     and denied, ADR-0004 §7), use `default-features = false`, check
     that it builds for `wasm32-unknown-unknown` without
@@ -202,11 +204,14 @@ None.
   - Web music: `load_music` (wasm32) takes the length from
     `track_length_ms` and hands the file to the browser as it is.
   - The docs of `Backend::length` and `Clip` say OGG, FLAC or MP3.
-  - **Either order with 3031** (parked, the in-house backend): if 3031
-    is done, its `load_music` also runs a FLAC or MP3 track through
-    `decode_to_wav` and plays the WAV whole, on the web too (its web
-    path doesn't use the browser's decoder). If not, nothing to do
-    (3031 does it).
+  - **Either order with 3031** (parked, the replacement backend): if
+    3031 is done, supply FLAC/MP3 through 2210's source contract and
+    the external decoder adapters in bounded chunks, on native and
+    the current-loader web path. Do not turn a streamed replacement
+    track into one whole WAV/AudioBuffer. Its comparative tests use
+    2573's correctness/speed checks and retain the old reference until
+    3079. If not, nothing to do (3031 adds the bounded source path and
+    these comparative checks when it lands).
 
 - **No feature of their own.** `shuyi-app` and `shuyi-cli` add none.
   With every format feature off nothing changes: no new dependency in
@@ -242,8 +247,9 @@ None.
   keeps a file's own bytes);
 - a kind of decoded samples: the WAV goes to the backend and is no
   asset;
-- streaming a FLAC or MP3 track: it is decoded whole, as quad-snd
-  decodes an OGG today;
+- streaming on the legacy quad-snd path: it decodes whole tracks.
+  Bounded streaming on the replacement path belongs to 2210, 3030
+  and 3031, with this ticket's adapters feeding their source contract;
 - resampling: the manifest check refuses a file at another rate, as it
   does an OGG;
 - voice clips in FLAC or MP3: a clip's file ends in `.ogg`
@@ -251,8 +257,10 @@ None.
 - the font atlas, which stays a PNG;
 - a picture format the game registers itself, outside
   `Formats::standard()`: `Look` carries no registry;
-- the rest of the in-house sound (2210, 3030 and 3032, parked): sounds
-  reach any backend as a WAV through `Audio::load`.
+- the rest of the replacement sound (2210, 3030–3032, parked), the
+  initial parity gate (2573) and final quad-snd removal (3079). The
+  legacy path still receives short effects as WAV; replacement PCM
+  sources use the adapters above.
 
 ## Implementation steps
 

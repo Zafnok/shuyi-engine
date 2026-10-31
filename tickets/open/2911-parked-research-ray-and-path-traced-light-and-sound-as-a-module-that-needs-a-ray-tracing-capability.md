@@ -116,9 +116,12 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
   or C++ code's own license file, since cargo-deny reads only the
   crate's declared one), Windows with the GNU toolchain, and what they
   add to a build; against our own rays over the tile map (2D) or 3105's
-  ray casts (3D). **Either order with 2902:** if it is done, fit the
-  mixer it chose; if not, say what traced sound needs from it and add
-  that to 2902's needs list as a noted need.
+  ray casts (3D). **From 2902 (done):** fit the engine-owned integer
+  PCM mixer (3030), with DSP/geometry policy added by the build tickets
+  this research writes. CPAL native output and the current-loader
+  bridge are below that seam. Replacement-path implementation observes
+  2573's parity gates and retains quad-snd until 3079; tracing is not
+  silently added to the initial mixer scope.
   **Either order with 2363:** if it is done, extend its falloff; if
   not, add a line to its ticket.
 - **The layers** (`AGENTS.md` rules 5 and 9, ADR-0002): traced light
@@ -147,7 +150,8 @@ a question for Nick (the `ask-nick` skill), not a choice made here.
     `Parked:` with this one's note and milestone "Engine: ray tracing",
     listed in `docs/ROADMAP.md`'s *Parked* section;
   - the edits the decision needs in 3017's, 3034's, 3104's, 2328's,
-    2363's and 2902's tickets. A ticket already in `tickets/done/` is
+    2363's tickets and the selected audio build tickets (2210, 3030–3032),
+    preserving 2573's parity gates. A ticket already in `tickets/done/` is
     never edited; the change becomes a new parked build ticket instead.
 - **Size:** if the PR passes about 600 changed lines with the report and
   the ADR, the build tickets and the edits become a follow-up ticket

@@ -1,19 +1,19 @@
 ---
 id: "2213"
-title: "Parked: In-house sound: Vorbis, part 2: audio packets: modes, floors, residues and channel coupling"
+title: "In-house sound: Vorbis, part 2: audio packets: modes, floors, residues and channel coupling"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: done
 blocked_by: ["2212"]
 nick_input: none
-completed:
+completed: 2026-10-31
 ---
 
 # 2213 — In-house sound: Vorbis, part 2: floors, residues and coupling
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
+> **Closed as dropped by 2902 (2026-10-31):** the conditional hybrid uses library codecs; this original clean-room implementation was not built.
 
 ## Context
 
@@ -71,13 +71,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Every audio packet of 2212's fixtures decodes without error.
-- [ ] Inverse coupling turns a hand-made magnitude and angle pair into the
-      values the spec's table (§4.3.5) gives, for each of its four cases.
-- [ ] A packet cut at any byte decodes without panicking.
-- [ ] The PR body says the code was written from the Vorbis I
-      specification.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] ~~Every audio packet of 2212's fixtures decodes without error.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~Inverse coupling turns a hand-made magnitude and angle pair into the values the spec's table (§4.3.5) gives, for each of its four cases.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~A packet cut at any byte decodes without panicking.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~The PR body says the code was written from the Vorbis I specification.~~ (not done: original codec work dropped by 2902.)
+- [x] ~~All gates in the `run-gates` skill pass.~~ (not done: original codec work dropped by 2902.)
 
 ## Tests required
 
@@ -92,5 +90,10 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Dropped, not implemented, by 2902 on 2026-10-31. Nick selected library
+codecs with an owned mixer, conditional on automated correctness/speed
+gates (2573), staged migration and final-only removal (3079). 2210's
+hound/lewton adapters supply decoding/container behavior; 2397 reads loop
+comments and 3030/3031 supply bounded streaming. No original decoder code
+or its implementation tests were written. The struck criteria preserve
+the rejected scope without claiming it was delivered.

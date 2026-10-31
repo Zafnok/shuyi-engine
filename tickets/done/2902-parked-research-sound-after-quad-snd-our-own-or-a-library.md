@@ -1,19 +1,19 @@
 ---
 id: "2902"
-title: "Parked: Research: sound after quad-snd: our own decoders, mixer and output, or a library, and the tickets that follow"
+title: "Research: sound after quad-snd: our own decoders, mixer and output, or a library, and the tickets that follow"
 type: research
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: done
 blocked_by: ["3003", "3029"]
 nick_input: decision
-completed:
+completed: 2026-10-31
 ---
 
 # 2902 — Research: sound after quad-snd
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> Nick unparked this research on 2026-10-31 by asking to do ticket 2902. The replacement build tickets remain parked.
 
 ## Context
 
@@ -168,16 +168,16 @@ calls: how much is ours, how long it takes, and what it costs the game.
 
 ## Acceptance criteria
 
-- [ ] The report covers decoding, mixing and output, with the facts dated.
-- [ ] The report's table marks each need of the first bullet for each
+- [x] The report covers decoding, mixing and output, with the facts dated.
+- [x] The report's table marks each need of the first bullet for each
       candidate and each layer: played, played with our code on top, or
       not. A required need that no candidate plays is named, together
       with the ticket that would write it.
-- [ ] Nick's answer is in `docs/decisions.md`, verbatim.
-- [ ] Every ticket in 2210–2214 and 3030–3032 is kept, rewritten or closed
+- [x] Nick's answer is in `docs/decisions.md`, verbatim.
+- [x] Every ticket in 2210–2214 and 3030–3032 is kept, rewritten or closed
       to match, the intro-then-loop ticket is in `tickets/open/`, and the
       ticket lint passes.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -185,5 +185,34 @@ calls: how much is ours, how long it takes, and what it costs the game.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Completed the dated [report](../../docs/research/2902-sound-after-quad-snd.md)
+with per-layer requirement matrices, primary license/maintenance sources,
+GNU build/size and read-only longest-track decode measurements. No game
+asset or library implementation source was copied or inspected.
+
+Nick selected A conditional on automated correctness/speed parity and
+staged migration; his exact words are in `docs/decisions.md`. ADR-0066
+records library codecs/CPAL with an owned no_std PCM/mixer core and
+current-loader Web Audio bridge. New parked 2573 must establish a working
+actual-output/performance baseline before replacement implementation;
+new parked 3079 alone removes quad-snd after the complete matrix qualifies.
+Port-specific capture must work before that port's new output code;
+unavailable/inconclusive evidence blocks that port, never passes silently.
+
+2210 is rewritten around library adapters; 2211–2214 are closed as dropped,
+with struck original criteria rather than fictitious implementation.
+3030–3032 retain/extend the mixer and staged platform work, keeping the old
+path. New parked 2397 owns loop metadata/cue/clock/backend mapping and
+reciprocal 2365/3027 handoffs. Existing related tickets and ROADMAP reflect
+the chosen path. All replacement build tickets remain parked.
+
+The research adds no runtime dependency, implementation or public API
+change, and requires no game pin change. Codec C FFI remains an adapter
+escape path subject to target/license checks. Effort estimates describe
+the original replacement scope; mandatory parity infrastructure is extra,
+unmeasured work whose feasibility/budget 2573 must establish.
+
+Validation: all applicable run-gates passed: full workspace code/doc/license
+checks, native/web and target checks, layers/modules, no_std host/target
+builds, generated grid/blank template gates, and repository ticket, docs,
+links, changelog, pins/toolchain, typos and whitespace checks.
