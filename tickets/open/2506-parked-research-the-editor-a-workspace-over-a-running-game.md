@@ -3,7 +3,7 @@ id: "2506"
 title: "Parked: Research: the editor, a workspace over a running game: where it runs, how it talks to the game, and its panels"
 type: research
 milestone: "Engine: editor"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1129", "2316", "2521", "2907"]

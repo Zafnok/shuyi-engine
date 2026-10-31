@@ -3,7 +3,7 @@ id: "2547"
 title: "The MCP server reads the client's roots again when they change"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2546"]
@@ -25,7 +25,7 @@ cargo workspace.
 
 Claude Code 2.1.291 declares `capabilities.roots.listChanged: true` in
 `initialize` (2546's completion notes), so it says when its roots
-change: it sends `notifications/roots/list_changed`. The Claude desktop
+change: it sends `notifications/roots/list_changed`. The the agent desktop
 app can move a session to another folder while it runs. Today the
 server ignores that notification, and keeps resolving against the old
 folder and following the old folder's tool list.

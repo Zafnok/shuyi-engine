@@ -3,7 +3,7 @@ id: "2526"
 title: "Outside modules: shuyi add of a crate from crates.io at a version, git at a revision or a folder, its metadata read with no code run, and an ADR extending ADR-0009"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2003", "2005"]

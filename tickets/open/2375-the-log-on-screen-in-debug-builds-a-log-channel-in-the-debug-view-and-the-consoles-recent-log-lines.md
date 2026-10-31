@@ -3,7 +3,7 @@ id: "2375"
 title: "The log on screen in debug builds: a `log` channel in the debug view, and the newest log lines in the debug console"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: todo
 blocked_by: ["2315", "2356"]

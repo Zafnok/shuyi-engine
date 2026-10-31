@@ -3,7 +3,7 @@ id: "2326"
 title: "Parked: Screen effects as skin data: a chain of passes over the painted frame (CRT, bloom, palette remap, vignette) on the wgpu renderer, with reference pictures in frame-png"
 type: feature
 milestone: "Engine: 2D effects"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["3034", "2018", "2340"]

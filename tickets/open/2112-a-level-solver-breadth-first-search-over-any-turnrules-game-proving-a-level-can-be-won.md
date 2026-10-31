@@ -3,7 +3,7 @@ id: "2112"
 title: "A level solver: breadth-first search over any TurnRules game, proving a level can be won and giving its shortest line"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

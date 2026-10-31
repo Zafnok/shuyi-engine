@@ -3,7 +3,7 @@ id: "2803"
 title: "The tutorial: a box-pushing puzzle built step by step, each step a project CI builds and tests, each playable in the browser"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2801", "2802", "2511"]

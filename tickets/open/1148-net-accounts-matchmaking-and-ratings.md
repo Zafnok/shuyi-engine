@@ -3,7 +3,7 @@ id: "1148"
 title: "Parked: Networking, step 9: accounts, a matchmaking queue, Glicko-2 ratings and verified results"
 type: feature
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1146", "3054"]
@@ -39,7 +39,7 @@ lives.
 our game without 0053.
 
 - Choose where the database runs: a small VPS with Postgres, or a managed
-  Postgres. Claude lists the prices on the day.
+  Postgres. The agent lists the prices on the day.
 - Approve a privacy policy and terms of service written for this. A
   lawyer's look is recommended, as for `LICENSE`.
 

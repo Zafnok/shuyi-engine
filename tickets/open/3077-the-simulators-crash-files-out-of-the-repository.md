@@ -3,7 +3,7 @@ id: "3077"
 title: "The Simulator's crash files out of the repository: .sentry-native untracked and ignored"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

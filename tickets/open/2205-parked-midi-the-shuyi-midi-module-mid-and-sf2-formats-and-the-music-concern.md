@@ -3,7 +3,7 @@ id: "2205"
 title: "Parked: MIDI: the shuyi-midi module, the .mid and .sf2 formats, Sequence as plain data, and music as a concern in the catalog"
 type: feature
 milestone: "Engine: MIDI music"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2201", "2003", "2116"]

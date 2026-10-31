@@ -3,7 +3,7 @@ id: "2516"
 title: "References between assets: Ref<K> ids checked by shuyi check with file and line, and the shipped files no load read reported with the largest files"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2511"]

@@ -3,7 +3,7 @@ id: "2369"
 title: "Parked: A light cycle: named lights blended over the game's own clock, for day and night, read from a cycle file and painted by the grid skin"
 type: feature
 milestone: "Engine: 2D effects"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: []

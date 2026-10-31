@@ -3,7 +3,7 @@ id: "2222"
 title: "Sprite atlases: images packed into pages at load, at bake time, and when a sprite is added while the game runs"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2219"]

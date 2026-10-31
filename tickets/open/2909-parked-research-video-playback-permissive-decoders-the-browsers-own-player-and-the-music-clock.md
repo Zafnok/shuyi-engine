@@ -3,7 +3,7 @@ id: "2909"
 title: "Parked: Research: video playback with permissive decoders, the browser's own player on the web, and sync with the music clock"
 type: research
 milestone: "Engine: visual novels"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: []

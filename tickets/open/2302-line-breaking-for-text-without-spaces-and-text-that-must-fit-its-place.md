@@ -3,7 +3,7 @@ id: "2302"
 title: "Line breaking for text without spaces (Japanese), and a report of translated text too long for its place"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: todo
 blocked_by: ["2301"]

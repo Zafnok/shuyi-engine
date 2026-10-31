@@ -3,7 +3,7 @@ id: "2137"
 title: "Real time's first step: TickSim, records that replay, and TickDriver with its input latch"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: todo
 blocked_by: ["2115"]

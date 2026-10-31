@@ -3,7 +3,7 @@ id: "2765"
 title: "Parked: Turn order by speed: an energy schedule where faster actors act more often, with ties broken by a fixed rule"
 type: feature
 milestone: "Engine: roguelikes"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: []

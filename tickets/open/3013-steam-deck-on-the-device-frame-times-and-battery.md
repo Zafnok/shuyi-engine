@@ -3,7 +3,7 @@ id: "3013"
 title: "Steam Deck on the device: run the bench scenarios, log frame times and power draw with MangoHud, and calibrate the steam-deck budgets"
 type: research
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["3008", "3012"]

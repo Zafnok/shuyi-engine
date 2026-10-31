@@ -3,7 +3,7 @@ id: "2111"
 title: "Stamped records: the engine version, the game's stamp and a fingerprint of the content in records and saves, and shuyi replay naming a mismatch"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

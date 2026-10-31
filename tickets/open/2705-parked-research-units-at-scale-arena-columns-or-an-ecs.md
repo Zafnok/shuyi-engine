@@ -3,7 +3,7 @@ id: "2705"
 title: "Parked: Research: units at scale: an arena of structs, columns, or an ECS at 1 000, 5 000 and 10 000 units"
 type: research
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1119", "2116"]

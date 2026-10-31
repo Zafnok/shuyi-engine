@@ -3,7 +3,7 @@ id: "1145"
 title: "Parked: Networking, step 6: sessions and lobbies — one API over the relay, the LAN and Steam, with a lobby screen"
 type: feature
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1141", "1143"]

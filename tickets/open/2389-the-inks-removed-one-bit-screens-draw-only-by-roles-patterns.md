@@ -3,7 +3,7 @@ id: "2389"
 title: "The inks removed: one-bit screens draw only by roles' patterns"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["2388"]

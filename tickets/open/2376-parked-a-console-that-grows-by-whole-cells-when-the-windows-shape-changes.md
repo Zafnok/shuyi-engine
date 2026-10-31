@@ -3,7 +3,7 @@ id: "2376"
 title: "Parked: A console that grows by whole cells when the window's shape changes: an aspect policy like Godot's expand, from the game's console up to the bounds it sets, checked at the smallest and largest"
 type: feature
 milestone: "Engine: accessibility"
-model: opus-5.5
+model: reasoning
 effort: medium
 status: blocked
 blocked_by: ["2323", "2333"]

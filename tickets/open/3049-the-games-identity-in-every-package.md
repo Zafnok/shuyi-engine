@@ -3,7 +3,7 @@ id: "3049"
 title: "The game's identity in every package: the exe's icon and version resource on the GNU toolchain, Info.plist and .icns in the .app, a .desktop file and hicolor icons, web icons, and the web title from the name"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["3004", "3048", "3072"]

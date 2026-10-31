@@ -3,7 +3,7 @@ id: "2532"
 title: "shuyi playtest plays the game's entrants itself: on every core, one stage or each, the entrants chosen, the game's defaults, and the time per try"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

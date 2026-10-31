@@ -3,7 +3,7 @@ id: "2804"
 title: "News with an automatic changelog: cargo xtask changelog from the tickets done and the merges, a changelog page, and a post for each release"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2801"]
@@ -99,7 +99,7 @@ None.
   a feed, in `site/config.toml`; 2805 extends that list.
 - **A release post can have an introduction:** if
   `site/content/news/intro/vX.Y.Z.md` exists, its text goes above the
-  generated notes. Nick or Claude writes it when they want one; with
+  generated notes. Nick or the agent writes it when they want one; with
   none, the post is the notes alone.
 - **The `work-ticket` skill:** its completion notes step says to add a
   `Breaking:` line for each API change the game must follow, and under

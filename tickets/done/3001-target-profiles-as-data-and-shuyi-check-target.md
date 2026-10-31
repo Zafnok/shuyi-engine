@@ -3,7 +3,7 @@ id: "3001"
 title: "Target profiles as data: targets/*.ron, the TargetProfile asset kind, and shuyi check --target for screen size and text size"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2201", "1129", "game#1131"]

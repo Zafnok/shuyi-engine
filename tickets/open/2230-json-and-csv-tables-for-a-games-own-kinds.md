@@ -3,7 +3,7 @@ id: "2230"
 title: "JSON and CSV tables: Json<T> and Csv<T, R> as formats of a game's own data kinds, beside Ron<T>, behind features"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

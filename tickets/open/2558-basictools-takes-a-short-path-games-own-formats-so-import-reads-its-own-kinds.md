@@ -3,7 +3,7 @@ id: "2558"
 title: "BasicTools takes a short-path game's own formats, so import reads its own kinds"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

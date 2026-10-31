@@ -3,7 +3,7 @@ id: "3076"
 title: "A crash report on the Playdate: the panic handler writes a CrashReport through the backend's storage, offered at the next start"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: todo
 blocked_by: ["3010", "3046"]

@@ -12,7 +12,7 @@ every `rust-version` follow it, and `cargo xtask check-toolchain`
 
 ## Who and when
 
-- **Claude moves the pin.** It is a technical choice, so Nick isn't asked.
+- **the agent moves the pin.** It is a technical choice, so Nick isn't asked.
 - **The pin follows each stable.** Dependabot's `rust-toolchain` update
   (`.github/dependabot.yml`) opens a PR once a stable is 14 days old, and
   a session finishes it before the next stable is out (six weeks). The

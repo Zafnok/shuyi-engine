@@ -3,7 +3,7 @@ id: "2563"
 title: "Worked examples call the MCP session tools: an Mcp step in the script runner, and shuyi-perf's example takes a heap snapshot and a diff"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

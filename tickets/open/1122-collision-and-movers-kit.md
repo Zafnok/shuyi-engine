@@ -3,7 +3,7 @@ id: "1122"
 title: "Parked: Collision and movement kit: tile collision, boxes, pixel-stepping movers, triggers, a top-down controller"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1119", "1120"]

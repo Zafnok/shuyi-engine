@@ -3,7 +3,7 @@ id: "2747"
 title: "Parked: Making characters and the roster: choices as data, bonus points rolled from the seed, the making screen, and a roster kept in the profile"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2745", "2114"]

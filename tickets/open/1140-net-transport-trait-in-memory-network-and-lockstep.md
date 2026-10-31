@@ -3,7 +3,7 @@ id: "1140"
 title: "Parked: Networking, step 1: the Transport trait, an in-memory network with seeded faults, and lockstep over TurnRules"
 type: feature
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["game#1131"]

@@ -3,7 +3,7 @@ id: "2002"
 title: "Gates for this repository before the code arrives: a ticket lint that knows game# ids, typos, and Markdown links, in CI"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

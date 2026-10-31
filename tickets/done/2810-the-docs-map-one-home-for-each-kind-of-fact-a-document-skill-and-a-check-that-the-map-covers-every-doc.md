@@ -3,7 +3,7 @@ id: "2810"
 title: "The docs map: one home for each kind of fact, by who reads it, a document skill that writes there, and a check that the map covers every Markdown file"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []
@@ -104,7 +104,7 @@ None.
     - how to contribute: `CONTRIBUTING.md`;
     - an example game: `examples/*/README.md`;
     - every third-party file: `THIRD_PARTY_ASSETS.md`.
-  - **Engine developers (Claude, and anyone working on the engine):**
+  - **Engine developers (the agent, and anyone working on the engine):**
     - the rules: `AGENTS.md`;
     - why a technical choice was made: `docs/adr/` (the `write-adr`
       skill);

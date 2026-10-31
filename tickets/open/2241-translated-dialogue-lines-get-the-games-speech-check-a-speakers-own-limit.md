@@ -3,7 +3,7 @@ id: "2241"
 title: "Translated dialogue lines get the game's speech check: a speaker's own limit applies to every language"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

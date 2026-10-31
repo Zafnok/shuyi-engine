@@ -3,7 +3,7 @@ id: "2001"
 title: "Set up the repository: plans, tickets, decisions, skills and licenses (no code)"
 type: infra
 milestone: MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

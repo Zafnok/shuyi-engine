@@ -37,7 +37,7 @@ const REQUIRED_KEYS: &[&str] = &[
 ];
 
 const VALID_TYPES: &[&str] = &["feature", "infra", "decision", "bug", "research"];
-const VALID_MODELS: &[&str] = &["haiku-4.5", "sonnet-5", "opus-5.5", "fable-5.1"];
+const VALID_MODELS: &[&str] = &["mechanical", "implementation", "reasoning", "creative"];
 const VALID_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
 const VALID_STATUSES: &[&str] = &["todo", "in-progress", "blocked", "done"];
 const VALID_NICK_INPUTS: &[&str] = &["none", "decision", "setup", "sign-off"];
@@ -1087,7 +1087,7 @@ id: \"2106\"
 title: \"Test ticket\"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: [\"2102\", \"game#1131\"]
@@ -1097,6 +1097,24 @@ completed:
 
 # body
 ";
+
+    #[test]
+    fn routes_by_capability_and_rejects_provider_model_ids() {
+        for model in ["mechanical", "implementation", "reasoning", "creative"] {
+            let fm = VALID_FRONTMATTER.replace("model: implementation", &format!("model: {model}"));
+            let ticket = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &fm);
+            assert!(ticket.errors.is_empty(), "{model}: {:?}", ticket.errors);
+        }
+        for model in ["sonnet-5", "gpt-6-astra", "unknown"] {
+            let fm = VALID_FRONTMATTER.replace("model: implementation", &format!("model: {model}"));
+            let ticket = parse_ticket("p".to_string(), Folder::Open, "2106-x.md", &fm);
+            assert!(
+                ticket.errors.iter().any(|e| e.contains("`model:")),
+                "{model}: {:?}",
+                ticket.errors
+            );
+        }
+    }
 
     #[test]
     fn accepts_well_formed_open_ticket() {

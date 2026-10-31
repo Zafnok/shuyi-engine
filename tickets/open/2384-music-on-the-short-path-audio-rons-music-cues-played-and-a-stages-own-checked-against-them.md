@@ -3,7 +3,7 @@ id: "2384"
 title: "Music on the short path: audio.ron's music cues played, the music clock running, and a stage's own part checked against them"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2225"]

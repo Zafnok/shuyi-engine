@@ -3,7 +3,7 @@ id: "2224"
 title: "Proportional fonts: an ADR for text off the cell grid, a font kind of its own, BMFont read directly, and TTF/OTF baked by the font tools"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

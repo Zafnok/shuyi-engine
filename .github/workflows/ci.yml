@@ -942,6 +942,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Check shared agent skill loaders
+        shell: pwsh
+        run: ./scripts/sync-agent-skills.ps1 -Check
       - name: Run ticket lint
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then

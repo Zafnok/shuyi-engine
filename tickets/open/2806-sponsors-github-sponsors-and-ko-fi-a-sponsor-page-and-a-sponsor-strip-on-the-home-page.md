@@ -3,7 +3,7 @@ id: "2806"
 title: "Sponsors: GitHub Sponsors and Ko-fi, the repository's Sponsor button, a sponsor page, and a sponsor strip on the home page"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: ["2801"]

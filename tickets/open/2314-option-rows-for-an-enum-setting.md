@@ -3,7 +3,7 @@ id: "2314"
 title: "Option rows for an enum setting: one call from the values, their text keys and a getter and setter"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

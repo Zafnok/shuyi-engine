@@ -3,7 +3,7 @@ id: "2349"
 title: "The player's language: a setting per profile, an options row of the languages by their own names, the system's languages at first start, and a language's own copies of files"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2226", "2511"]

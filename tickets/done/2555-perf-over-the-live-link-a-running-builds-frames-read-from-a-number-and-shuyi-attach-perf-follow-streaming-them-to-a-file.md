@@ -3,7 +3,7 @@ id: "2555"
 title: "Perf over the live link: a running debug build's frames read from a number, shuyi attach --perf-follow streaming them to a file, and the MCP perf tool on an attached session"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: ["2521", "2553"]

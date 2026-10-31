@@ -3,7 +3,7 @@ id: "2531"
 title: "The dev containers register the MCP server after the setup script, so an agent in a container or a Codespace finds it"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: done
 blocked_by: ["2513", "1133"]
@@ -46,7 +46,7 @@ template (the alias runs the game's own tool program, which serves
 Since 2535, `mcp install` ends by running the entry it wrote with
 `--ready`, which builds the server and the game's tool program. So the
 container's creation also takes that first build (minutes, cold), and
-the agent's first connection is then quick instead of timing out. That
+The agent's first connection is then quick instead of timing out. That
 is the point of 2535, so keep it; the README's line (Scope) also says
 that the container's first creation takes that build.
 

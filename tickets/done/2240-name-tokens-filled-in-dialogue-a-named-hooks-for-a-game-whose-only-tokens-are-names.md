@@ -3,7 +3,7 @@ id: "2240"
 title: "Name tokens filled in dialogue: a Named hooks for a game whose only tokens are names"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: done
 blocked_by: []

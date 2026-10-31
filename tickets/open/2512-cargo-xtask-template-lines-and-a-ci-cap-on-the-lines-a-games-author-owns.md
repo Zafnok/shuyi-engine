@@ -3,7 +3,7 @@ id: "2512"
 title: "Lines a game's author owns: cargo xtask template-lines over the templates and examples, and a CI cap on the minimal template"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2511"]

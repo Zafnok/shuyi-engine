@@ -3,7 +3,7 @@ id: "2036"
 title: "A ticket is one PR of about 1,500 changed lines or fewer, up from 600"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: done
 blocked_by: []

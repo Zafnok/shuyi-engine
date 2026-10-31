@@ -3,7 +3,7 @@ id: "1119"
 title: "Parked: Real time: fixed-point numbers and an entity arena for tick simulations"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["game#1131", "2116", "2137"]

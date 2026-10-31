@@ -3,7 +3,7 @@ id: "2364"
 title: "Parked: Keyframed tracks, sound cues, markers and shot transitions in the cinematic file"
 type: feature
 milestone: "Engine: animation"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2109", "2339"]

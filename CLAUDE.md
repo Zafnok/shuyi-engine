@@ -1,6 +1,5 @@
 # CLAUDE.md
 
-The instructions for this repository live in `AGENTS.md`, so every coding
-agent reads the same rules:
+Shared repository instructions (all models and providers):
 
 @AGENTS.md

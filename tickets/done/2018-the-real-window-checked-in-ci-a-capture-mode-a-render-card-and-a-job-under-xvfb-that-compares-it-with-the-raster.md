@@ -3,7 +3,7 @@ id: "2018"
 title: "The real window checked in CI: a capture mode in shuyi-app, a render card, and a job under Xvfb and llvmpipe that compares the window with the raster"
 type: infra
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["2332"]

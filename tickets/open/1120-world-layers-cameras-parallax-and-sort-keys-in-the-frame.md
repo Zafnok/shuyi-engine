@@ -3,7 +3,7 @@ id: "1120"
 title: "Parked: World layers in the frame: cameras that follow, parallax, and sort keys for y-sorting"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1119", "2335", "2336"]

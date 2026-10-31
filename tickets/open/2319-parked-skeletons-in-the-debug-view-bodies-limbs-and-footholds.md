@@ -3,7 +3,7 @@ id: "2319"
 title: "Parked: Skeletons in the debug view: procedural bodies' points and rules, limbs, targets and footholds"
 type: feature
 milestone: "Engine: procedural animation"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["2315", "2318", "2701", "2702"]

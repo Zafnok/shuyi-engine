@@ -3,7 +3,7 @@ id: "3051"
 title: "Parked: Signed packages that cost money: a Developer ID signature with notarization on macOS, and Windows exes signed through a signing service, with credentials only from CI secrets"
 type: feature
 milestone: "Parked: export targets"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3004", "3049"]

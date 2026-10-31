@@ -3,7 +3,7 @@ id: "3036"
 title: "Parked: Achievements and stats as data, and the one shape of every store service: a StoreServices set the platform hands in, a local backend saved with the profile, a test backend, an unlock notice and an achievements screen"
 type: feature
 milestone: "Engine: store services"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2367", "3040"]

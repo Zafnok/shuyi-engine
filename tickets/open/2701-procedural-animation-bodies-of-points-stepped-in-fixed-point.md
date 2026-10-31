@@ -3,7 +3,7 @@ id: "2701"
 title: "Parked: Procedural animation: bodies of points and rules, stepped in fixed-point, in a shuyi-procanim crate"
 type: feature
 milestone: "Engine: procedural animation"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1119", "1122", "2003"]

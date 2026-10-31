@@ -3,7 +3,7 @@ id: "2118"
 title: "Parked: Noise in integers: value and gradient noise with octaves, in a new shuyi-procgen module, with a golden table equal on native and wasm"
 type: feature
 milestone: "Engine: roguelikes"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2003", "2013", "2015", "2114", "2116"]

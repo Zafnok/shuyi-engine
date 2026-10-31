@@ -3,7 +3,7 @@ id: "2029"
 title: "Capture plans that play a session record: the capture mode replays a recorded session and compares the window with the raster at the frames a plan names"
 type: infra
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: todo
 blocked_by: ["2018", "2518", "2519"]

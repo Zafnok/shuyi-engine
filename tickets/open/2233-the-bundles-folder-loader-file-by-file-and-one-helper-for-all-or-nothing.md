@@ -3,7 +3,7 @@ id: "2233"
 title: "The bundle's folder loader file by file, as the registry's is, and one helper that turns a file-by-file map into the whole map or every error"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2309"
 title: "A question widget: a line of text and N answers with a focus and an answer for Cancel, its view and its glyph skin"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2303"
 title: "Wide glyph sets per language: one character drawn by language, punctuation wide in one language only, and Chinese line breaking"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2301", "2302", "2226"]

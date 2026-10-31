@@ -3,7 +3,7 @@ id: "2339"
 title: "Screen transition looks: cut, fade through a colour, wipe and dissolve in a Bayer order, played from the last frame on every painter"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

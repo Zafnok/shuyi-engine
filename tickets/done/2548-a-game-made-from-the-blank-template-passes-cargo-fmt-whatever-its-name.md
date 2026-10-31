@@ -3,7 +3,7 @@ id: "2548"
 title: A game made from the blank template passes cargo fmt whatever its name
 type: bug
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: done
 blocked_by: []

@@ -3,7 +3,7 @@ id: "1144"
 title: "Parked: Networking, step 5: Steam networking messages and Steam lobbies behind the steam feature"
 type: feature
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1140", "game#0903"]

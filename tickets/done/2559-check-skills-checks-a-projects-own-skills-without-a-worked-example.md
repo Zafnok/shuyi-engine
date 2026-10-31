@@ -3,7 +3,7 @@ id: "2559"
 title: check-skills checks a project's own skills without asking for a worked example
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

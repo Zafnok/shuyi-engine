@@ -3,7 +3,7 @@ id: "2385"
 title: "Parked: Split-screen layouts: two side by side or stacked, the three- and four-player shapes, views on whole cells, dividers, and the player's pick"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1120", "2314", "2351"]

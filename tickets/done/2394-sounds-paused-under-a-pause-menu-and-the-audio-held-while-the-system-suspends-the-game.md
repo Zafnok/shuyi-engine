@@ -3,7 +3,7 @@ id: "2394"
 title: "Sounds paused under a pause menu, and the audio held while the system suspends the game"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: done
 blocked_by: []

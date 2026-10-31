@@ -3,7 +3,7 @@ id: "2017"
 title: "The backlog and the docs kept true as tickets land: a ticket-lint warning on clauses about done tickets, a work-ticket step that settles them, and contract.md tested against the code"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2338"
 title: "Nine-slice and tiled pictures as plain sprites, and a picture frame for engine panels and text boxes"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

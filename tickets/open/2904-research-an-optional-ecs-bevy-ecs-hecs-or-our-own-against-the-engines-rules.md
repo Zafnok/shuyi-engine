@@ -3,7 +3,7 @@ id: "2904"
 title: "Research: an optional ECS: bevy_ecs, hecs or our own, measured against the engine's rules, and the ADR for the shuyi-ecs module"
 type: research
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

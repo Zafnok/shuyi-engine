@@ -3,7 +3,7 @@ id: "3032"
 title: "Parked: In-house sound output, part 2: Linux through ALSA, macOS through Core Audio, and quad-snd removed"
 type: feature
 milestone: "Engine: in-house platform"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3031", "2513"]

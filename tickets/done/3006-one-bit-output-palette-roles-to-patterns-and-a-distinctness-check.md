@@ -3,7 +3,7 @@ id: "3006"
 title: "1-bit output: palette roles map to 8×8 patterns, roles that tell things apart must stay distinct, and frame-png --target playdate shows the device's picture"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["3001"]

@@ -3,7 +3,7 @@ id: "2518"
 title: "Session records: every input, clock reading, music position, keyboard answer and stored file that reaches a game, recorded at the platform boundary and played back exactly in the Harness, with a hash per frame"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: todo
 blocked_by: ["2111"]

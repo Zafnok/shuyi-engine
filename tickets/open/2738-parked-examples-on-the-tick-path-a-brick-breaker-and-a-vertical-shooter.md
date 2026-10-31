@@ -3,7 +3,7 @@ id: "2738"
 title: "Parked: Examples on the tick path: a brick-breaker and a vertical shooter"
 type: feature
 milestone: "Engine: examples"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1119", "1122", "2739", "2511"]

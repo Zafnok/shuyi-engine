@@ -3,7 +3,7 @@ id: "2022"
 title: "The Markdown a test reads counts as code in CI, and run-gates runs the templates job"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: done
 blocked_by: []

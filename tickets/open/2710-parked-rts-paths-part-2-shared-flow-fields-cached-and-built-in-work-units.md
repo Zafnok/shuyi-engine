@@ -3,7 +3,7 @@ id: "2710"
 title: "Parked: RTS paths, part 2: flow fields shared by every unit going to one goal, cached and built in work units"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2709", "2117", "3009"]

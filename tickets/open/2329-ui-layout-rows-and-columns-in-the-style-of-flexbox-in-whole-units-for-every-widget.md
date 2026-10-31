@@ -3,7 +3,7 @@ id: "2329"
 title: "UI layout: rows and columns in the style of flexbox, in whole units, placing every widget"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

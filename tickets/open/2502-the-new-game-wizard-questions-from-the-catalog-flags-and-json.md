@@ -3,7 +3,7 @@ id: "2502"
 title: "The new-game wizard: shuyi new asks one question per concern from the catalog, with multi-pick, a flag for every answer, and the questions as JSON for agents"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2501"]

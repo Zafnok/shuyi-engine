@@ -30,13 +30,13 @@ repository has no row here.
 | Every third-party file | [`THIRD_PARTY_ASSETS.md`](../THIRD_PARTY_ASSETS.md) | adds or removes a non-crate asset |
 | The website's pages: the home page's text, Learn, News, the Examples cards, Community and Sponsor | [`site/content/`](../site/content/), and the home page's feature cards in [`site/data/features.toml`](../site/data/features.toml) ([ADR-0048](adr/0048-the-website-zola-0-21-pinned-in-site-sections-of-our-own-templates-and-the-base-url-passed-by-the-build.md)) | adds or changes a section or a page of the site, adds an example, or changes a feature card's tickets, or the status of one with none |
 
-## Engine developers (Claude, and anyone working on the engine)
+## Engine developers (people and coding agents)
 
 | The fact | Its home | Update it on a change that … |
 | -------- | -------- | ---------------------------- |
 | The rules | [`AGENTS.md`](../AGENTS.md) | changes how everyone must work here |
 | Why a technical choice was made | [`adr/`](adr/), indexed in its [README](adr/README.md) (the `write-adr` skill) | makes a significant technical choice, or supersedes one |
-| How to do a recurring task here | [`.claude/skills/`](../.claude/skills/) | changes a recurring task's steps, or adds one |
+| How to do a recurring task here | [`.claude/skills/`](../.claude/skills/), the shared source; [`.agents/skills/`](../.agents/skills/), generated Codex loaders | changes a recurring task's steps, or adds one |
 | What is to be done | [`tickets/`](../tickets/) (the `write-ticket` skill) | finds work, or finishes a ticket |
 | The order tickets are done in | [`ROADMAP.md`](ROADMAP.md) | adds a ticket to a phase, or moves one |
 | What came from the game | [`carve.md`](carve.md) | moves more of the game's code here |

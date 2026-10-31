@@ -3,7 +3,7 @@ id: "2712"
 title: "Parked: RTS combat: targets in buckets, attacks, attack-move and projectiles"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2711"]

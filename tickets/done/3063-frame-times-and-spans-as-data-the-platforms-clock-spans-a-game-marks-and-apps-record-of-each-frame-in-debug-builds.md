@@ -3,7 +3,7 @@ id: "3063"
 title: "Frame times and spans as data: the platform's clock, spans a game marks, and App's record of each frame, in debug builds"
 type: feature
 milestone: MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

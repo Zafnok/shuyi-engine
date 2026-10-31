@@ -3,7 +3,7 @@ id: "2544"
 title: "One operation plays a game's bots: `bots` folded into `playtest`, which answers each try's commands and record for `replay`"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2532", "2533"]

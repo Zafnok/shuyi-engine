@@ -3,7 +3,7 @@ id: "2135"
 title: "Sequence and Points in shuyi_core::ease: the tweens of one value one after another, and a curve through points"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2109"]

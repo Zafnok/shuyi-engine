@@ -3,7 +3,7 @@ id: "2028"
 title: "Each release after the first checked against the last version on crates.io: cargo-semver-checks before cargo publish refuses a version too small for its breaks"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2005"]

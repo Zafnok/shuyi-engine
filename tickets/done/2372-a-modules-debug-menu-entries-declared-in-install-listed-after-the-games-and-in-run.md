@@ -3,7 +3,7 @@ id: "2372"
 title: "A module's debug menu entries: declared in install, listed after the game's, and in run --json"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2358"]

@@ -37,6 +37,29 @@ ticket (`github.com/Zafnok/visions-of-shuyi/tree/main/tickets`): for
 example 0804 (Nick's Chapter 1 playtest), 1102–1118 (the carve) and 1131
 (the code moving here).
 
+## Model and effort guidance
+
+`model` describes a capability, not a provider or API model id:
+
+| Capability | Use for | Optional examples |
+| ---------- | ------- | ----------------- |
+| `mechanical` | Renames, file moves, small data edits | A fast model that can follow an exact procedure |
+| `implementation` | Specified changes, existing patterns, clear bug fixes | Sonnet / Terra |
+| `reasoning` | Architecture, tricky invariants, work across crates, design facilitation | Opus / Astra |
+| `creative` | Story, dialogue, character voice, art direction | Fable / Astra |
+
+The examples reflect the owner's routing preferences, not benchmark equivalence
+or guaranteed availability. Use any available model that meets the capability;
+no ticket requires switching providers. Keep actual model ids in the harness's
+settings. Escalate capability when repeated attempts cannot resolve the task.
+`effort` is relative reasoning effort; use the closest supported setting in
+the current harness. A creative task may also need high reasoning effort.
+
+The migration covers open, parked and done tickets. It changes recommendations
+and agent roles, not scope, blockers, status, completion dates or design decisions.
+Historical model comparisons, quotations, URLs and real harness configuration
+paths can still name a product; they do not impose an execution requirement.
+
 ## Frontmatter
 
 ```yaml
@@ -45,7 +68,7 @@ id: "2201"
 title: Short imperative title
 type: feature        # feature | infra | decision | bug | research
 milestone: MVP       # MVP | After MVP | Parked: styles | Parked: networking | Parked: 3D | …
-model: opus-5.5      # haiku-4.5 | sonnet-5 | opus-5.5 | fable-5.1
+model: reasoning     # mechanical | implementation | reasoning | creative
 effort: high         # low | medium | high | xhigh | max
 status: todo         # todo | in-progress | blocked | done
 blocked_by: ["2002", "game#1131"]  # this repo's ids, or game#NNNN for the game's

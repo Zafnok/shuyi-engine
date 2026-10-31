@@ -3,7 +3,7 @@ id: "3052"
 title: "The web shell: a download progress bar, readable errors in place of a black page, and notes for hosting on Pages, itch.io and in a frame"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: []

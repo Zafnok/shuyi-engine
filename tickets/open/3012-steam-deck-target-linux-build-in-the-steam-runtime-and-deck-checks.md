@@ -3,7 +3,7 @@ id: "3012"
 title: "Steam Deck target: a Linux build in the Steam Linux Runtime, 1280×800 fullscreen with integer scaling, Deck pad detection, resume after sleep, and the Deck Verified checks"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["3001", "3002", "3003", "3004", "3042", "3053"]

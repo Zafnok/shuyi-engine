@@ -3,7 +3,7 @@ id: "3022"
 title: "Parked: GBA on the device: run the bench scenarios on a GBA through a flash cart, record frame times and memory, and calibrate the gba budgets"
 type: research
 milestone: "Parked: export targets"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["3021"]

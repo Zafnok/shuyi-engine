@@ -3,7 +3,7 @@ id: "2730"
 title: "Parked: Testimony: press a statement, present a clue at a contradiction, and penalties as data"
 type: feature
 milestone: "Engine: detective games"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2727"]

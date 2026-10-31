@@ -3,7 +3,7 @@ id: "2346"
 title: "Typing names in any language: letters the font draws, name grid pages from the language pack with an accented page, and the IME on only in the name box"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

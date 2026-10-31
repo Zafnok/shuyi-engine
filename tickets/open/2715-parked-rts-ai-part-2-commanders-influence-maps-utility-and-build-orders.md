@@ -3,7 +3,7 @@ id: "2715"
 title: "Parked: RTS AI, part 2: commanders with influence maps, utility scores, build orders and difficulty as data"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2714", "2733"]

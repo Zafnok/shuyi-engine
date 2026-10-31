@@ -3,7 +3,7 @@ id: "2006"
 title: "check-keys and check-text on the engine's own code: a shuyi.ron at the root and both checks in CI"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2002"]

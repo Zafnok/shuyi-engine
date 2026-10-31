@@ -3,7 +3,7 @@ id: "2355"
 title: "FocusMap: the d-pad moves between the widgets of a laid-out screen by where they sit, with neighbours set by hand, and a check that every widget can be reached"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2329"]

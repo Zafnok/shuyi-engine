@@ -3,7 +3,7 @@ id: "2307"
 title: "A list cursor: focus that wraps, skips disabled rows and stays valid after a removal, with a scroll window, under the menu"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: done
 blocked_by: []

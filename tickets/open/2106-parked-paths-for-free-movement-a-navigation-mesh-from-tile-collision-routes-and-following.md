@@ -3,7 +3,7 @@ id: "2106"
 title: "Parked: Paths for free movement: a navigation mesh built from a tile collision map, routes over it, and a path a mover follows"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1122"]

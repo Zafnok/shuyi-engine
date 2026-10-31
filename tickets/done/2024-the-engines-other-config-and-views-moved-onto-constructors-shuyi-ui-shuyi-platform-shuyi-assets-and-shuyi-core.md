@@ -3,7 +3,7 @@ id: "2024"
 title: "The engine's other config and views moved onto constructors: the types the templates and hello-grid build by literal in shuyi-ui, shuyi-platform, shuyi-assets and shuyi-core"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2013"]

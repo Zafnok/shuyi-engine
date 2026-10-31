@@ -3,7 +3,7 @@ id: "2758"
 title: "Parked: Loot rolled from affix tables: item levels, rarities, affix tiers, uniques, monster modifiers, and a loot filter as data"
 type: feature
 milestone: "Engine: action RPGs"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2746", "2114"]

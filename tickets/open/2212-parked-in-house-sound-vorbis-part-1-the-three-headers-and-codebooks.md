@@ -3,7 +3,7 @@ id: "2212"
 title: "Parked: In-house sound: Vorbis, part 1: the bit reader, the three headers, and codebooks"
 type: feature
 milestone: "Engine: in-house platform"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2211"]

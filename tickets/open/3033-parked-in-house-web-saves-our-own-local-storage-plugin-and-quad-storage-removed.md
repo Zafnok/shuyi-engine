@@ -3,7 +3,7 @@ id: "3033"
 title: "Parked: In-house web saves: our own localStorage plugin, and quad-storage removed"
 type: feature
 milestone: "Engine: in-house platform"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: []

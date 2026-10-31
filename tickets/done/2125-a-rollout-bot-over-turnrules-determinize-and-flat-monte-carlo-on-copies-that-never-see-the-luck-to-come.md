@@ -3,7 +3,7 @@ id: "2125"
 title: "A rollout bot over any TurnRules game: Determinize, and flat Monte Carlo on copies that never see the luck to come"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

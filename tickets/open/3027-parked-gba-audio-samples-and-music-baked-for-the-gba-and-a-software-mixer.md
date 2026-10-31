@@ -3,7 +3,7 @@ id: "3027"
 title: "Parked: GBA audio: samples and tracker music baked for the GBA, and an integer software mixer in shuyi-gba"
 type: feature
 milestone: "Parked: export targets"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3021"]

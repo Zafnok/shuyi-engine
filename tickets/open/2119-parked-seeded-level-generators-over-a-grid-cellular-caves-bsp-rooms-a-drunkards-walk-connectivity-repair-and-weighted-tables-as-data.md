@@ -3,7 +3,7 @@ id: "2119"
 title: "Parked: Seeded level generators over a grid: cellular caves, BSP rooms, a drunkard's walk, connectivity repair, and weighted tables as data"
 type: feature
 milestone: "Engine: roguelikes"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2118", "2114", "2116"]

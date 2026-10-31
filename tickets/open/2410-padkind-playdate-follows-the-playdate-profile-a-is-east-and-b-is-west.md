@@ -3,7 +3,7 @@ id: "2410"
 title: "PadKind::Playdate follows the Playdate profile: A is East and B is West in its docs, its button names and its tests"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

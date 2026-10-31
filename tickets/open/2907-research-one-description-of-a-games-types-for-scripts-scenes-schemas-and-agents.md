@@ -3,7 +3,7 @@ id: "2907"
 title: "Research: one description of a game's types and values for scripts, scenes, schemas and agents, decided in an ADR before 2101 and 2221 start"
 type: research
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

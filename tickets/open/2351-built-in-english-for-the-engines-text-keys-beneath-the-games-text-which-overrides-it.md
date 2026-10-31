@@ -3,7 +3,7 @@ id: "2351"
 title: "Built-in English for the engine's text keys, beneath the game's text, which overrides it"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2564"
 title: "The move-aside tests fail on Windows under load: find whether the program's path is ever empty, and make the tests hold"
 type: bug
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "3042"
 title: "Focus on the desktop and the web: shuyi-app sends FocusLost and FocusGained, held keys and pads are let go on focus loss and suspend, and a game may pause or mute in the background"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

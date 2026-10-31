@@ -3,7 +3,7 @@ id: "2551"
 title: "Parked: A template part with online play: a new game that picks lockstep gets a lobby, a two-player mode over the relay and the LAN, and shuyi peers"
 type: feature
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2501", "2502", "2529", "1145"]

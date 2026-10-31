@@ -3,7 +3,7 @@ id: "3002"
 title: "Controls fit: every screen declares its actions, and each screen's required actions must bind to distinct inputs of the target"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["3001"]

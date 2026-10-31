@@ -3,7 +3,7 @@ id: "2813"
 title: "Pictures in the book: shots of Hello, Grid made by frame-png from its shuyi.ron, checked in and tested equal, shown by a shot shortcode and in the Markdown twins"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2808"]

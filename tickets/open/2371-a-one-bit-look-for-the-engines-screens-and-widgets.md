@@ -3,7 +3,7 @@ id: "2371"
 title: "A one-bit look for the engine's screens and widgets: Options, Key bindings, Profiles, the layout picker, menus, questions and name entry painted for a one-bit screen"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3053"]

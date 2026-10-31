@@ -3,7 +3,7 @@ id: "2334"
 title: "Text runs: proportional text placed in pixels with an outline and a shadow, fonts by id, and pixel-placed UI"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2224"]

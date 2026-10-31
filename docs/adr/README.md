@@ -76,5 +76,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0061](0061-a-games-icon-one-square-picture-downscaled-in-integers-by-the-tool-and-the-windows-icon-in-appinfo.md) | A game's icon: one square picture downscaled in integers by the tool, and the window's icon in `AppInfo` | Accepted; extends ADR-0059 |
 | [0062](0062-the-playdate-backend-a-c-shim-a-one-bit-look-in-the-frames-look-and-a-game-library-built-as-a-static-library.md) | The Playdate backend: a C shim, a one-bit look in the frame's `Look`, and a game's library built as a static library | Accepted; extends ADR-0008 §2 and ADR-0024 |
 | [0063](0063-the-audio-player-shared-by-every-backend-a-small-required-trait-provided-methods-for-what-some-lack-and-audio-baked-for-the-playdate.md) | The audio player shared by every backend: a small required trait, provided methods for what some lack, and audio baked for the Playdate | Accepted; extends ADR-0004 §6, ADR-0024 §2 and ADR-0056 |
+| [0064](0064-portable-agent-workflows.md) | Portable agent workflows and capability routing | Accepted |
 
 Template: [`0000-template.md`](0000-template.md).

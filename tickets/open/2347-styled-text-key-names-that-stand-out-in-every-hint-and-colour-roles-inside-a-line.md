@@ -3,7 +3,7 @@ id: "2347"
 title: "Styled text: key names that stand out in every hint, and colour roles inside a line"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2515"
 title: "shuyi kinds: every kind a game's tools register, with its formats, their extensions and a JSON schema of each format's text, as a contract op"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

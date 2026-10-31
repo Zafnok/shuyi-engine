@@ -3,7 +3,7 @@ id: "2332"
 title: "The raster: frame-png's Painter moved into shuyi-ui behind an opt-in feature, as the picture every backend must match"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

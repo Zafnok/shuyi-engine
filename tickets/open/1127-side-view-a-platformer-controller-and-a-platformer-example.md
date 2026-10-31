@@ -3,7 +3,7 @@ id: "1127"
 title: "Parked: Side view: a platformer controller, one-way platforms, parallax backgrounds, and a platformer example"
 type: feature
 milestone: "Engine: more styles"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1120", "1122", "1123", "1124", "2115", "2232", "2338", "2360", "2362"]

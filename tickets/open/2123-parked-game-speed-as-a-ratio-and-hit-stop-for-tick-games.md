@@ -3,7 +3,7 @@ id: "2123"
 title: "Parked: Game speed as a ratio for tick games, hit-stop as simulation state, and the view and UI on real time"
 type: feature
 milestone: "Engine: real time"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["1119"]

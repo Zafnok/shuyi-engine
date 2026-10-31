@@ -3,7 +3,7 @@ id: "2034"
 title: "The dead docs/design citations in the engine's code go, and check-links reads the docs paths Rust comments name"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

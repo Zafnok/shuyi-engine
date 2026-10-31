@@ -3,7 +3,7 @@ id: "2525"
 title: "Scheduled agent runs of the eval: a real coding agent makes each task in CI on a schedule, its minutes, tokens, cost, lines and checks tracked, within a budget Nick sets"
 type: infra
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2524", "1133", "2513", "2016"]
@@ -95,8 +95,8 @@ numbers:
    tokens) and offers three choices, for example: the two turn-based
    tasks once a month; once a week; once a week three times each, for a
    pass rate.
-2. **Which agents?** Claude Code only, or others too (OpenAI's Codex
-   CLI, Google's Gemini CLI, Cursor's CLI). Each other agent needs its
+2. **Which agents?** Pick the first harness and provider (for example Claude Code, OpenAI's Codex
+   CLI, Google's Gemini CLI or Cursor's CLI). Each additional adapter needs its
    own account, key and money, and gets a ticket of its own.
 3. **May the results go on the website?** The numbers only (tasks, pass
    rate, minutes, cost, lines), or nothing public. The agents'
@@ -109,7 +109,7 @@ the graded references of 2524.
 
 **Setup**, after the decision. These are Nick's alone:
 
-1. In the Claude Console (`https://platform.claude.com`), make a
+1. In the chosen provider's console, make a
    workspace for the eval and create an API key in it. If the Console
    offers a spend limit per workspace on the day, set it to the monthly
    cap he chose; if not, the plan's own cap below is the only one, and
@@ -117,7 +117,14 @@ the graded references of 2524.
 2. In the repository on GitHub, Settings, Environments, New environment:
    name it `agent-eval`. Under "Deployment branches and tags" pick
    "Selected branches and tags" and add `main`. Add an environment
-   secret `ANTHROPIC_API_KEY` with the key.
+   secret for the chosen adapter's key (for example `ANTHROPIC_API_KEY` for Claude Code).
+
+The first adapter is chosen by Nick, not by this ticket's recommendation.
+All Claude Code flags, event names, package names, paths and key variables
+below are examples for that adapter; when another harness is chosen, use
+its documented equivalents and preserve the same caps, isolation and tests.
+The budget stores the actual model id for the chosen provider; ticket routing
+continues to use the capability in tickets/README.md.
 
 ## Scope
 
@@ -221,7 +228,7 @@ the graded references of 2524.
        `eval-run.json`, which then says only that the run was withheld
        and in which file the key was found: its path, never the value;
   - each agent is one small adapter type: its command line and how its
-    stream reads. This ticket writes Claude Code's.
+    stream reads. This ticket writes the first adapter Nick chooses; the Claude Code details above are an example.
 - **`cargo xtask eval-record <results.json> --planned <matrix>
   <eval-run.json>...`** (`crates/xtask/src/eval/record.rs`): appends the
   runs to the array, and a `lost` entry for each planned run that has no
@@ -260,9 +267,9 @@ the graded references of 2524.
     3. `bash scripts/setup-linux.sh` (2513);
     4. Node from `actions/setup-node`, pinned by commit SHA, then
        `npm install -g "$PACKAGE@$VERSION"` from the matrix (Claude
-       Code: `@anthropic-ai/claude-code` at the exact version);
-    5. `cargo xtask eval-run`, the only step with `ANTHROPIC_API_KEY:
-       ${{ secrets.ANTHROPIC_API_KEY }}` in its `env:`;
+       Code example: `@anthropic-ai/claude-code` at the exact version);
+    5. `cargo xtask eval-run`, the only step with the selected adapter's key (Claude Code example: `ANTHROPIC_API_KEY:
+       ${{ secrets.ANTHROPIC_API_KEY }}` in its `env:`);
     6. with `if: always()`, uploads two artifacts kept 30 days:
        `eval-run-<task>` (the `eval-run.json` files only) and
        `eval-project-<task>` (each run's project without `target/`, and
@@ -282,7 +289,7 @@ the graded references of 2524.
   (Actions, "Agent eval", Run workflow), how to read `results.json`, and
   that a single run is indicative.
 - **`docs/continuity.md`** (2016's list of accounts and secrets): a row
-  each for the Claude Console workspace, the `agent-eval` environment
+  each for the chosen provider's workspace, the `agent-eval` environment
   and its `ANTHROPIC_API_KEY` secret: where each is kept (never a
   value), who holds it, how to rotate it, and this ticket.
 
@@ -296,7 +303,7 @@ so in the PR.
 - the results page on the website: if Nick said publish, step 1 writes
   its ticket, blocked by this one and by the website (2801). A chart or
   a card on the home page goes there too;
-- agents other than Claude Code: a ticket each, if Nick picks them;
+- additional agent adapters after the first chosen one: a ticket each, if Nick picks them;
 - running agents on Nick's machine, or from pushes, pull requests or
   forks;
 - grading by a model, or judging fun: the verdicts are 2524's checks;
@@ -325,8 +332,8 @@ so in the PR.
    they are done.
 2. Write `budget.rs`, `evals/budget.ron` and `plan.rs`, with tests on a
    made-up `results.json`.
-3. Write the Claude Code adapter, with tests on a fixture stream
-   written from the documented `system/init` and `result` events.
+3. Write the first chosen agent adapter, with tests on a fixture stream
+   written from its documented lifecycle, usage and result events (for Claude Code: `system/init` and `result`).
 4. Write `run.rs`. Its tests write `sh` fakes into a temporary folder:
    a project maker that copies a small folder, an agent that edits a
    file, calls the `cargo` wrapper (whose real `cargo` is a fake that

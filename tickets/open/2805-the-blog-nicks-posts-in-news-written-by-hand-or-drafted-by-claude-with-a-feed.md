@@ -1,9 +1,9 @@
 ---
 id: "2805"
-title: "The blog: Nick's posts in News, written by hand or drafted by Claude, with authors, images, drafts and a feed"
+title: "The blog: Nick's posts in News, written by hand or drafted by the agent, with authors, images, drafts and a feed"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2801"]
@@ -28,7 +28,7 @@ Two ways to write a post, and Nick picks each time:
 
 - **by hand:** a Markdown file, which he can make in GitHub's web editor
   with no tools installed, then merge;
-- **with Claude:** he says what he wants to share, and a skill drafts the
+- **with the agent:** he says what he wants to share, and a skill drafts the
   post in his voice and opens a PR. It never publishes on its own:
   Nick merges.
 
@@ -89,9 +89,9 @@ and says whether it is easy enough.
   - in the browser: open `site/content/news/` on GitHub, "Add file",
     paste the template, write, set `draft = false`, "Commit changes"
     to a new branch, open the PR, merge it once its checks pass;
-  - with Claude: say "write a blog post about …" in a session.
+  - with the agent: say "write a blog post about …" in a session.
 - **A `write-post` skill** (`.claude/skills/write-post/SKILL.md`) for the
-  Claude path:
+  The agent path:
   - it asks Nick what the post says if he hasn't said, and drafts in his
     words: plain, short, no hype;
   - every fact in it (a feature, a date, a number) comes from the

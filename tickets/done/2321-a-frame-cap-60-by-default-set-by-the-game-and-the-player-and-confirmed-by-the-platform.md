@@ -3,7 +3,7 @@ id: "2321"
 title: "A frame cap: 60 by default, set by the game and the player, that works with vsync and VRR, and a request the platform confirms"
 type: feature
 milestone: MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

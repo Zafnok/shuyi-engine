@@ -3,7 +3,7 @@ id: "2108"
 title: "An ECS stage in a game: a schedule run per command or per step, a parallel schedule on native with the same hashes, and an ECS example"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2107"]

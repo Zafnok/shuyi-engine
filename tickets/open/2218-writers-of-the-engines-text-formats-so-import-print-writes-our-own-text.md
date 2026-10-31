@@ -3,7 +3,7 @@ id: "2218"
 title: "Writers of the engine's text formats, so shuyi import --print writes our own text"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["1129"]

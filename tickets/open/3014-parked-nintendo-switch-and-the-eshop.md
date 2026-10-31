@@ -3,7 +3,7 @@ id: "3014"
 title: "Parked: Nintendo Switch and the eShop: join Nintendo's developer program, check Rust on its toolchain, and plan a private backend"
 type: research
 milestone: "Parked: export targets"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3003", "3005", "3008"]

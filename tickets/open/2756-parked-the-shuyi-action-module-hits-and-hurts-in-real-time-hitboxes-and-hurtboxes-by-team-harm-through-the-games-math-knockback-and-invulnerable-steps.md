@@ -3,7 +3,7 @@ id: "2756"
 title: "Parked: The shuyi-action module: hits and hurts in real time, hitboxes and hurtboxes by team, harm through the game's math, knockback and invulnerable steps"
 type: feature
 milestone: "Engine: action RPGs"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1119", "1122", "2124", "2745", "2003"]

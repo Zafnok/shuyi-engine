@@ -3,7 +3,7 @@ id: "2703"
 title: "Parked: Procedural animation: body views in the scene, strips in the frame, and a default skin"
 type: feature
 milestone: "Engine: procedural animation"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2702", "1120", "2335", "2336", "2018", "2392"]

@@ -5,7 +5,7 @@ description: Ask Nick (the owner) a product decision about Shuyi Engine and reco
 
 # Ask Nick a product decision
 
-Nick decides the **product**. Claude decides **everything technical** and
+Nick decides the **product**. The agent decides **everything technical** and
 never asks Nick about languages, libraries, architecture or code. Nick
 likes questions with options drawn from real projects, a
 recommendation, and room to describe his own.

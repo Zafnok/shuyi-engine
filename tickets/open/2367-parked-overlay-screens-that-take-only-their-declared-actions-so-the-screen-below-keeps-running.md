@@ -3,7 +3,7 @@ id: "2367"
 title: "Parked: Overlay screens that take only their declared actions, so the screen below keeps running"
 type: feature
 milestone: "Engine: screens"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2013"]
