@@ -4,8 +4,10 @@
 //! The screens' requests name the game's voice clips by its own variant
 //! type; what reaches the device names their files ([`SoundRequest`]), so
 //! a backend is the same for every game. The rules of playing (a cue's
-//! volume, picking a variant, fades, the music clock) are the backend's
-//! player's until ticket 3029 moves them here.
+//! volume, picking a variant, fades, the music clock) are [`player`]'s, so a
+//! backend writes only its small [`Backend`](player::Backend) trait.
+
+pub mod player;
 
 use crate::alloc_prelude::*;
 

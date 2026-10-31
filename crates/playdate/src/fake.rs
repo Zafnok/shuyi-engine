@@ -35,6 +35,27 @@ struct File {
     durable: Vec<u8>,
 }
 
+/// A sample player on the fake.
+#[derive(Debug, Clone, Default)]
+struct FakeSamplePlayer {
+    sample: usize,
+    volume: f32,
+    playing: bool,
+    paused: bool,
+    rate: f32,
+}
+
+/// A file player on the fake: its offset moves only while it plays.
+#[derive(Debug, Clone, Default)]
+struct FakeFilePlayer {
+    path: String,
+    volume: f32,
+    playing: bool,
+    looped: bool,
+    offset: f32,
+    open: bool,
+}
+
 #[derive(Debug)]
 struct State {
     millis: u32,
@@ -56,6 +77,13 @@ struct State {
     rename: Rename,
     /// Operations of the medium left before the power goes, if it is going.
     ops_left: Option<u32>,
+    /// The sounds in the `.pdx`, by path, with whether each was loaded.
+    samples: Vec<(String, bool)>,
+    sample_players: Vec<FakeSamplePlayer>,
+    /// The tracks in the `.pdx`, by path, with their lengths.
+    tracks: BTreeMap<String, f32>,
+    file_players: Vec<FakeFilePlayer>,
+    file_player_calls: Vec<String>,
 }
 
 impl Default for State {
@@ -79,6 +107,11 @@ impl Default for State {
             file_calls: Vec::new(),
             rename: Rename::default(),
             ops_left: None,
+            samples: Vec::new(),
+            sample_players: Vec::new(),
+            tracks: BTreeMap::new(),
+            file_players: Vec::new(),
+            file_player_calls: Vec::new(),
         }
     }
 }
@@ -209,6 +242,105 @@ impl FakeSdk {
         self.0.borrow_mut().ops_left = Some(ops);
     }
 
+    /// Puts a sound in the `.pdx`.
+    pub fn put_sample(&self, path: &str) {
+        self.0.borrow_mut().samples.push((path.to_owned(), false));
+    }
+
+    /// Puts a track of `seconds` in the `.pdx`.
+    pub fn put_track(&self, path: &str, seconds: f32) {
+        self.0.borrow_mut().tracks.insert(path.to_owned(), seconds);
+    }
+
+    /// The sample of `path`.
+    pub fn sample_id(&self, path: &str) -> usize {
+        let state = self.0.borrow();
+        state
+            .samples
+            .iter()
+            .position(|(p, _)| p == path)
+            .unwrap_or(0)
+    }
+
+    /// The sounds loaded, in the order they were put.
+    pub fn samples_loaded(&self) -> Vec<String> {
+        let state = self.0.borrow();
+        let loaded = state.samples.iter().filter(|(_, loaded)| *loaded);
+        loaded.map(|(path, _)| path.clone()).collect()
+    }
+
+    /// What is heard from the sample players: each sound's path and volume.
+    pub fn sounding_samples(&self) -> Vec<(String, f32)> {
+        let state = self.0.borrow();
+        let sounding = state
+            .sample_players
+            .iter()
+            .filter(|p| p.playing && !p.paused);
+        sounding
+            .map(|p| (state.samples[p.sample].0.clone(), p.volume))
+            .collect()
+    }
+
+    /// How many sample players are paused.
+    pub fn paused_samples(&self) -> usize {
+        let state = self.0.borrow();
+        state.sample_players.iter().filter(|p| p.paused).count()
+    }
+
+    /// The rate the last sound was played at.
+    pub fn last_sample_rate(&self) -> Option<f32> {
+        let state = self.0.borrow();
+        let played = state.sample_players.iter().filter(|p| p.playing);
+        played.map(|p| p.rate).reduce(|_, rate| rate)
+    }
+
+    /// Every sound ends.
+    pub fn finish_samples(&self) {
+        for player in &mut self.0.borrow_mut().sample_players {
+            player.playing = false;
+        }
+    }
+
+    /// What is heard from the file players: each file's path and volume, in
+    /// the order they opened.
+    pub fn sounding_files(&self) -> Vec<(String, f32)> {
+        let state = self.0.borrow();
+        let sounding = state.file_players.iter().filter(|p| p.open && p.playing);
+        sounding.map(|p| (p.path.clone(), p.volume)).collect()
+    }
+
+    /// `seconds` go by: every file player playing moves on, and one played
+    /// once ends at its file's end.
+    pub fn advance_files(&self, seconds: f32) {
+        let mut state = self.0.borrow_mut();
+        let State {
+            file_players,
+            tracks,
+            ..
+        } = &mut *state;
+        for player in file_players.iter_mut().filter(|p| p.open && p.playing) {
+            player.offset += seconds;
+            let length = tracks.get(&player.path).copied().unwrap_or(0.0);
+            if !player.looped && player.offset >= length {
+                player.playing = false;
+            }
+        }
+    }
+
+    /// How far into its file the last player on `path` is, in seconds.
+    pub fn file_offset(&self, path: &str) -> f32 {
+        let state = self.0.borrow();
+        let on = state.file_players.iter().filter(|p| p.path == path);
+        on.map(|p| p.offset)
+            .reduce(|_, offset| offset)
+            .unwrap_or(-1.0)
+    }
+
+    /// The file players' opens, starts and closes since the last call.
+    pub fn take_file_player_calls(&self) -> Vec<String> {
+        core::mem::take(&mut self.0.borrow_mut().file_player_calls)
+    }
+
     /// The power comes back: the medium has what it had made durable.
     pub fn restore_power(&self) {
         let mut state = self.0.borrow_mut();
@@ -223,6 +355,10 @@ impl FakeSdk {
 static CLOCK_US: AtomicU64 = AtomicU64::new(0);
 
 impl Sdk for FakeSdk {
+    type Sample = usize;
+    type SamplePlayer = usize;
+    type FilePlayer = usize;
+
     fn millis(&self) -> u32 {
         self.0.borrow().millis
     }
@@ -370,5 +506,110 @@ impl Sdk for FakeSdk {
         } else {
             Err(format!("{folder} is there"))
         }
+    }
+
+    fn sample_load(&self, path: &str) -> Option<usize> {
+        let mut state = self.0.borrow_mut();
+        let at = state.samples.iter().position(|(p, _)| p == path)?;
+        state.samples[at].1 = true;
+        Some(at)
+    }
+
+    fn sample_length(&self, _sample: usize) -> f32 {
+        0.25
+    }
+
+    fn sample_player_new(&self) -> Option<usize> {
+        let mut state = self.0.borrow_mut();
+        state.sample_players.push(FakeSamplePlayer::default());
+        Some(state.sample_players.len() - 1)
+    }
+
+    fn sample_player_play(&self, player: usize, sample: usize, volume: f32, _: bool, rate: f32) {
+        let mut state = self.0.borrow_mut();
+        state.sample_players[player] = FakeSamplePlayer {
+            sample,
+            volume,
+            playing: true,
+            paused: false,
+            rate,
+        };
+    }
+
+    fn sample_player_set_volume(&self, player: usize, volume: f32) {
+        self.0.borrow_mut().sample_players[player].volume = volume;
+    }
+
+    fn sample_player_stop(&self, player: usize) {
+        let mut state = self.0.borrow_mut();
+        state.sample_players[player].playing = false;
+        state.sample_players[player].paused = false;
+    }
+
+    fn sample_player_is_playing(&self, player: usize) -> bool {
+        self.0.borrow().sample_players[player].playing
+    }
+
+    fn sample_player_set_paused(&self, player: usize, paused: bool) {
+        self.0.borrow_mut().sample_players[player].paused = paused;
+    }
+
+    fn file_open(&self, path: &str) -> Option<usize> {
+        let mut state = self.0.borrow_mut();
+        state.tracks.get(path)?;
+        state.file_player_calls.push(format!("open {path}"));
+        state.file_players.push(FakeFilePlayer {
+            path: path.to_owned(),
+            open: true,
+            ..FakeFilePlayer::default()
+        });
+        Some(state.file_players.len() - 1)
+    }
+
+    fn file_play(&self, player: usize, looped: bool) -> bool {
+        let mut state = self.0.borrow_mut();
+        let call = format!("play {}", state.file_players[player].path);
+        state.file_player_calls.push(call);
+        let at = &mut state.file_players[player];
+        at.playing = true;
+        at.looped = looped;
+        true
+    }
+
+    fn file_set_volume(&self, player: usize, volume: f32) {
+        self.0.borrow_mut().file_players[player].volume = volume;
+    }
+
+    fn file_set_rate(&self, _player: usize, _rate: f32) {}
+
+    fn file_pause(&self, player: usize) {
+        self.0.borrow_mut().file_players[player].playing = false;
+    }
+
+    fn file_stop(&self, player: usize) {
+        self.0.borrow_mut().file_players[player].playing = false;
+    }
+
+    fn file_rewind(&self, player: usize) {
+        self.0.borrow_mut().file_players[player].offset = 0.0;
+    }
+
+    fn file_is_playing(&self, player: usize) -> bool {
+        self.0.borrow().file_players[player].playing
+    }
+
+    fn file_length(&self, player: usize) -> f32 {
+        let state = self.0.borrow();
+        let path = &state.file_players[player].path;
+        state.tracks.get(path).copied().unwrap_or(0.0)
+    }
+
+    fn file_close(&self, player: usize) {
+        let mut state = self.0.borrow_mut();
+        let call = format!("close {}", state.file_players[player].path);
+        state.file_player_calls.push(call);
+        let at = &mut state.file_players[player];
+        at.playing = false;
+        at.open = false;
     }
 }

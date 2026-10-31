@@ -117,14 +117,13 @@ None. Selling is 3018's question.
   - **audio**: sound effects only, baked to the formats the stock ARM7
     core's sound channels play, through `libnds`'s sound calls. Music is
     3061 (it may reuse 3027's format and mixer, or BlocksDS's own sound
-    library if 3018 found its license permissive). **Either order with
-    3029:** if 3029 is done, implement its shared backend trait under
-    its player, so that cue volumes, variants and fades are not written
-    again. Fill in the provided methods the sound channels can play,
-    leave the rest at their defaults, and list them in
-    `targets/nds.ron`'s audio `features` (3017). If not, write 3003's
-    `Audio` trait directly, and 3029 moves the DS onto its shared
-    trait;
+    library if 3018 found its license permissive). **From 3029
+    (done):** implement the shared backend trait
+    (`shuyi_platform::audio::player::Backend`, ADR-0063) under its player,
+    so that cue volumes, variants and fades are not written again. Fill in
+    the provided methods the sound channels can play, leave the rest at
+    their defaults, and list them in `targets/nds.ron`'s audio `features`
+    (3017);
   - **memory**: the heap through the allocator 3018 chose, guarded by
     turning interrupts off (no atomics).
 - **The DSi.** The `dsi` profile exports the same ROM, built to run in

@@ -55,6 +55,8 @@ shuyi-alloc-count = { path = "../alloc-count", default-features = false, optiona
 # The Harness and the toy game for the tests.
 shuyi-platform = { path = ".", default-features = false, features = ["harness", "link", "heap", "capture"] }
 shuyi-ui = { path = "../ui", default-features = false, features = ["toy"] }
+# A voice variant for the voice player's tests.
+serde.workspace = true
 # The link's server and the Harness playing random scripts alike, and
 # random plans.
 proptest.workspace = true

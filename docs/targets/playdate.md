@@ -37,6 +37,8 @@ The device has no standard library, so the game's library builds without
    most 400 × 240, and a table of buttons in its keymap file. A is `East`,
    B is `West`, and `DpadUp` to `DpadRight` and `CrankForward` and
    `CrankBack` are themselves.
+5. **Its sound:** its tools' `GameTools::audio` says what it ships there.
+   Without it the export warns, and the game is silent.
 
 [`examples/hello-grid`](../../examples/hello-grid/README.md) does all of it
 (`src/playdate.rs`).
@@ -46,6 +48,22 @@ unless it says. An optional action bound to `SystemMenu0` to `SystemMenu2`
 becomes an item of the system menu, titled by the text key
 `system_menu.<action>`, or its name. A required action only on the crank
 shows a hint while the crank is docked, by the text key `crank.unfold`.
+
+## Sound
+
+Sounds and music play as they do on the PC, through the same player. The
+export bakes each file the game's `GameTools::audio` names, OGG Vorbis or WAV at
+44,100 Hz, to mono IMA ADPCM, about 22 KB a second:
+
+- **sounds** are in memory all the game, in `audio/` in the `.pdx`, and eight
+  play at once: a ninth stops one of them, each in turn;
+- **music** streams from `music/`, each track on a file player of its own, so
+  a crossfade has two.
+
+To save room, leave a music cue out of what `GameTools::audio` answers: it isn't
+baked, and it plays as silence with a warning in the console. The player's
+pause, its hold on the lock and the system menu, and each handle stopping alone
+are the SDK's real pause and players, so a held track goes on from where it was.
 
 ## What the export does
 
@@ -76,6 +94,9 @@ profile's `package_bytes`.
 - **A debug build** drops the ELF's per-function unwind sections before
   `pdc`, which crashes on an ELF of more than 65,280 sections. Debug builds
   also run the storage conformance suite on the real files at start.
+- **The audio:** baked into `audio/` and `music/`, and `pdc` makes each a
+  `.pda`. A file baked once is kept in Cargo's target folder, by what it holds,
+  so a long track is decoded once.
 
 ## Run it
 
@@ -83,7 +104,7 @@ profile's `package_bytes`.
   the Simulator to close. On Windows the Simulator gives its caller nothing:
   the game's log is in its own console (the `>_` button). The arrow keys are
   the d-pad, `S` is A and `A` is B. Its speed is the computer's, never the
-  device's.
+  device's. Its volume slider, beside the screen, starts at mute.
 - **Sideload:** at <https://play.date/account/sideload/>, upload the
   `.pdx.zip`, then install it from the device's Settings, Games. Or, plugged
   in, open it in the Simulator and choose Device, Upload Game to Device.
@@ -94,7 +115,7 @@ for the device (its `no-std` job), without linking.
 
 ## What doesn't work yet
 
-- **No sound:** the game is silent until the audio player is shared.
+- **Voice clips** aren't baked: a voice plays as silence, with a warning.
 - **The device's stack:** the device gives the C stack about 10 KB, and a
   game's load can go deeper. Nothing moves it to a bigger one yet, so the
   Simulator, on the computer's stack, can run what a device can't.

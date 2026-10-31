@@ -567,3 +567,25 @@ fn the_pack_is_read_from_the_pdx() {
     sdk.put_bundled(crate::sdk::PACK, b"pack");
     assert_eq!(crate::backend::read_pack(&sdk), Ok(&b"pack"[..]));
 }
+
+/// The game's sounds load with it, from the `.pdx`, and the console says
+/// which it lacks.
+#[test]
+fn the_games_sounds_load_with_it_and_the_console_names_a_missing_one() {
+    let frames = |sdk: &FakeSdk| {
+        let mut driver = Driver::new(start(), sdk.clone());
+        for _ in 0..3 {
+            driver.update();
+        }
+    };
+    let sdk = FakeSdk::default();
+    sdk.put_sample("audio/click");
+    frames(&sdk);
+    assert_eq!(sdk.samples_loaded(), ["audio/click"]);
+    assert_eq!(sdk.logs(), [] as [String; 0]);
+    let lacking = FakeSdk::default();
+    frames(&lacking);
+    let logs = lacking.logs();
+    let line = "audio: sound \"click\": audio/click: not in the .pdx";
+    assert!(logs.iter().any(|l| l == line), "{logs:?}");
+}

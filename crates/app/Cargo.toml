@@ -91,16 +91,12 @@ shuyi-app = { path = ".", features = ["link", "capture"] }
 # Turns on `storage::conformance_suite` in tests, and the toy game the
 # link's tests attach to.
 shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
-# A voice variant for the voice player's tests.
-serde.workspace = true
 
 # The tests run on native alone. These two would pull `getrandom` into the
 # render card's web build (an example builds with the dev-dependencies),
 # and on the web it needs `wasm-bindgen`.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tempfile = "3"
-# Variant picking property test (audio.rs, ticket 0212).
-proptest.workspace = true
 
 [[example]]
 # The render card (ticket 2392, ADR-0052 §6): every kind of thing a frame

@@ -16,67 +16,25 @@ use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
 use shuyi_assets::audio::Files;
 use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
+use shuyi_platform::audio::player::{Player, PlayerDevice};
 use shuyi_platform::heap;
-use shuyi_platform::{
-    AudioFrame, DisplayInfo, Frame, Look, Millis, Platform, Show, Storage, SystemEvent, TextInput,
-};
+use shuyi_platform::{DisplayInfo, Frame, Look, Platform, Show, Storage, SystemEvent, TextInput};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
-use crate::audio::{self, Audio, device};
+use crate::audio::{self, device};
 use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::render::{Renderer, color, upload};
 use crate::{AppConfig, keys, storage};
 
-/// The sound player, once the game has loaded: before, there is nothing
-/// to play.
-#[derive(Default)]
-pub(crate) struct Sound {
-    player: Option<Audio<device::Macroquad>>,
-    speaker: device::Macroquad,
-}
-
-impl shuyi_platform::Audio for Sound {
-    fn music_playing(&self, now: Millis) -> Option<(&str, f64)> {
-        self.player.as_ref()?.music_playing(now.as_secs_f64())
-    }
-
-    fn play(&mut self, frame: &AudioFrame<'_>, now: Millis) {
-        let Some(player) = &mut self.player else {
-            return;
-        };
-        let speaker = &mut self.speaker;
-        player.set_volumes(speaker, frame.music_volume, frame.sound_volume);
-        player.set_voice_volume(speaker, frame.voice_volume);
-        player.play(speaker, frame.requests, frame.music, now.as_secs_f64());
-        for warning in player.take_warnings() {
-            warn!("audio: {}", warning);
-        }
-    }
-
-    fn stop_all(&mut self) {
-        if let Some(player) = &mut self.player {
-            player.stop_all(&mut self.speaker);
-        }
-    }
-
-    /// Mutes everything: quad-snd can't pause (ADR-0056).
-    fn suspend(&mut self) {
-        if let Some(player) = &mut self.player {
-            player.suspend(&mut self.speaker);
-        }
-    }
-
-    fn resume(&mut self) {
-        if let Some(player) = &mut self.player {
-            player.resume(&mut self.speaker);
-        }
-    }
-}
+/// The sound device: the shared player on quad-snd. Before the game has
+/// loaded there is nothing to play. It mutes what it holds: quad-snd can't
+/// pause (ADR-0056).
+type Sound = PlayerDevice<device::Macroquad>;
 
 /// The macroquad backend.
 pub(crate) struct Macroquad {
@@ -129,7 +87,7 @@ impl Macroquad {
             card_picture: None,
             fullscreen: false,
             pads: None,
-            sound: Sound::default(),
+            sound: Sound::new(device::Macroquad::default()),
             text_input: config.text_input.take(),
             started: false,
             facts,
@@ -178,8 +136,8 @@ impl Macroquad {
         voice_dir: String,
     ) {
         let data = &game.ctx().game;
-        let player = Audio::load(
-            &mut self.sound.speaker,
+        let player = Player::load(
+            self.sound.backend_mut(),
             data.audio_manifest().clone(),
             sounds,
             audio::platform_folder(sounds.music_dir),
@@ -187,7 +145,7 @@ impl Macroquad {
             miniquad::date::now().to_bits(),
         )
         .await;
-        self.sound.player = Some(player);
+        self.sound.set_player(player);
         self.pads = Some(PadInput::new(data.keymap_def().stick));
         self.started = true;
     }

@@ -7,6 +7,8 @@
 //!   input, the system's events ([`SystemEvent`]), the game's
 //!   [`Storage`], the sound device ([`Audio`]) and the system keyboard
 //!   ([`TextInput`]);
+//! - [`audio::player`]: the rules of playing a game's sounds and music, which
+//!   every backend shares over its small [`Backend`](audio::player::Backend);
 //! - [`App`]: the game's screens and input state ([`shuyi_ui::Game`]), its
 //!   fixed simulation steps ([`tick`]), suspend and resume, and the
 //!   loading phase ([`Start`], [`Card`]);
@@ -27,7 +29,7 @@
 //!   heap snapshot, for a backend that counts the heap.
 //!
 //! The backends: `shuyi-app` (macroquad: desktop, the web, the Steam Deck),
-//! later `shuyi-playdate`, and private crates for closed consoles.
+//! `shuyi-playdate`, and private crates for closed consoles.
 //! `docs/platform-backends.md` says how to write one. Nothing here touches
 //! a device: no window, file, sound card or clock.
 #![cfg_attr(not(feature = "std"), no_std)]

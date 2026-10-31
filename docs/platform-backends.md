@@ -302,10 +302,23 @@ keeps the volume it is given and sounds at it when it is released, and
 holds, a muted one's runs. quad-snd can't pause, so `shuyi-app` mutes,
 and the headless `Speaker` does as it does.
 
-Until ticket 3029 moves the rules of playing (variants, fades, the music
-clock) into a player every backend shares, they are in `shuyi-app`'s
-`audio` module; `shuyi_platform::Silent` plays nothing, for a backend
-with no sound yet.
+**Don't write the rules of playing yourself.** Variants, a cue's volume,
+handled sounds, fades and the music clock are
+`shuyi_platform::audio::player::Player`'s (ADR-0063). A backend writes its
+`Backend` trait and returns a `PlayerDevice` from `audio()`:
+
+- **required:** `load_sound`, `load_music`, `poll_music`, `length`, `play`,
+  `set_volume`, `stop`, `set_playing_volume`, `stop_playing`;
+- **provided, for what a device may lack**, each `Err(Unsupported)` by default:
+  `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
+  as recorded). The first `Unsupported` of each is one warning;
+- **provided, with a default that works:** `load_sound_file`, for a device that
+  loads a sound from its own path, and `warn`, which says the player's problems
+  in the backend's log.
+
+A feature some backends lack is always added as a provided method, so that no
+backend breaks. `shuyi_platform::Silent` plays nothing, for a backend with no
+sound yet.
 
 ### `text_input(&mut self) -> Option<&mut dyn TextInput>`
 

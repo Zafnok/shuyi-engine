@@ -47,8 +47,8 @@ use shuyi_cli::contract::target::engine_profiles;
 use shuyi_cli::frame_png::{self, Painter, Script, Shot};
 use shuyi_cli::serde_json::json;
 use shuyi_cli::{
-    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
-    Tunable,
+    AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
+    PlaytestPlan, Tunable,
 };
 
 use crate::map::Terrain;
@@ -176,6 +176,14 @@ pub struct HelloTools;
 impl GameTools for HelloTools {
     fn frame_options(&self) -> &[GameOption] {
         &OPTIONS
+    }
+
+    /// The blips, made by code, on every target that bakes its audio.
+    fn audio(&self, _target: &str) -> Result<GameAudio, String> {
+        Ok(GameAudio::new(
+            crate::sound::manifest(),
+            crate::sound::files(),
+        ))
     }
 
     fn frame(

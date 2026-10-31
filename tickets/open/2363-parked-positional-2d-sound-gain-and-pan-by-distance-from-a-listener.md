@@ -219,22 +219,19 @@ None.
   copied from `PlaySound`. `SoundRequest::from_request` maps a
   `PlaySoundFrom` (which `Game` never lets through) to a centred sound at
   volume 1, so the match stays total.
-- **The player. Either order with 3029:** if 3029 is done, this goes in
-  the shared backend trait it made, by the rule its ADR sets for a
-  feature some backends lack (if that rule is a provided method with an
-  `Unsupported` default and one warning, the pan follows it in place of
-  `can_pan`). If 3029 is not done, it goes in `shuyi-app`'s `Backend`
-  (`crates/app/src/audio.rs`), and 3029 moves it with the rest:
-  - `Backend::play` takes a pan (0 for music and voices), and
-    `Backend::can_pan(&self) -> bool` defaults to `false`;
+- **The player. From 3029 (done):** this goes in the shared backend trait
+  (`shuyi_platform::audio::player::Backend`), by ADR-0063's rule for a
+  feature some backends lack:
+  - a provided method, `set_pan(playing, pan)`, whose default says
+    `Err(Unsupported)`, so that no backend breaks;
   - a backend that can't pan plays the gain alone, centred. The player
-    warns once per run, through `take_warnings`, the first time a sound
-    with a pan other than 0 reaches such a backend: "this sound device
-    can't pan: positioned sounds play centred";
+    calls it through its one helper (`Provided`), so the first
+    `Unsupported` is one warning through `take_warnings`: "this sound
+    device can't pan: positioned sounds play centred";
   - the `Macroquad` device can't pan (quad-snd has no pan);
-  - if 3029 is done, its Playdate backend can pan: it sets the sample
-    player's left and right volumes from `pan_gains`, tested with
-    3029's fake SDK;
+  - the Playdate backend can pan: it sets the sample player's left and
+    right volumes from `pan_gains`, tested with its fake SDK
+    (`crates/playdate/src/fake.rs`);
   - **either order with 3027 (parked, GBA audio):** if 3027 is done,
     its GBA backend can pan too: each mixer voice's pan comes from
     `pan_gains`, tested with 3027's host mixer. If not, 3027 fills in
@@ -247,7 +244,7 @@ None.
     its own clause says;
   - **either order with 3017 (parked, target capabilities):** if 3017
     is done, add `Pan` to the audio `features` of each profile whose
-    backend now pans (`targets/playdate.ron` if 3029 is done,
+    backend now pans (`targets/playdate.ron`, and
     `targets/gba.ron` if 3027 is done). If not, nothing to do: 3017
     fills each profile's `features` from what its backend plays.
 - **Listeners:**
@@ -287,8 +284,7 @@ None.
 - **For the game:** this changes the API. `AudioRequest::PlaySound` and
   `SoundRequest::Sound` gain `pan`, `AudioRequest` gains a variant,
   `SoundCue` gains a field, and `run`'s `Sound` gains two. `Backend` is
-  `pub(crate)` in `shuyi-app`, so its new parameter breaks no game
-  unless 3029 made the trait public. The PR's `Breaking:` line (2010)
+  public, and a provided method breaks no game. The PR's `Breaking:` line (2010)
   says so, and the game's PR that moves the pin follows it. The game's
   own manifest reads unchanged; a pack baked before is refused and
   baked again.
@@ -318,7 +314,7 @@ None.
 1. Read `crates/ui/src/audio.rs`, `Game::collect_audio` and `is_known`
    in `crates/ui/src/game.rs`, `crates/assets/src/audio.rs`,
    `crates/assets/src/pack/tests.rs`, `crates/platform/src/audio.rs`,
-   the player (`crates/app/src/audio.rs`, or where 3029 moved it),
+   the player (`crates/platform/src/audio/player.rs`),
    `crates/ui/tests/it/audio.rs`, 2109's `shuyi_core::ease` and
    ADR-0039 (2013's). If they are done, read 2345's `Cues`, 2218's
    `AudioManifestRon` writer and 1120's `Camera`.
@@ -332,8 +328,8 @@ None.
    `PlaySound` to the new field. Add the toy's `door` cue and the
    Harness test.
 5. Add `pan` to `SoundRequest::Sound`, and to 2345's `Cues` if it is
-   done. Then add it to the player's backend with `can_pan` and the
-   warning, to the Playdate backend if 3029 is done, to the GBA's if
+   done. Then add it to the player's backend as a provided method with
+   its warning, to the Playdate backend, to the GBA's if
    3027 is done and to the in-house one if 3031 is done, and `Pan` to
    their profiles if 3017 is done.
 6. Add the grid listener, and 1120's if 1120 is done.
@@ -341,7 +337,7 @@ None.
    regenerate the schemas and update `docs/contract.md`.
 8. Write the ADR and run the gates. Expect about 600 changed lines, not
    counting the `pan: 0.0` added to existing tests, the schemas and the
-   pack snapshot. If 3029 or 1120 is done and the diff goes well past
+   pack snapshot. If the diff goes well past
    that, leave the Playdate backend's pan or the world camera's
    listener to a follow-up ticket (the `write-ticket` skill), and say so
    in the completion notes.
@@ -382,8 +378,8 @@ None.
       raised contract version, and the schemas test passes.
 - [ ] If 2345 is done: `Cues` passes a positioned sound's pan into
       `SoundRequest::Sound`, and a sound past `silent` starts no gap.
-- [ ] If 3029 is done: the Playdate backend's fake SDK gets the left and
-      right volumes `pan_gains` gives.
+- [ ] The Playdate backend's fake SDK gets the left and right volumes
+      `pan_gains` gives.
 - [ ] If 3027 or 3031 is done: its backend gets the balance
       `pan_gains` gives, and a full-right pan sounds only on the right.
       If 3017 is done: each profile whose backend pans lists `Pan`.

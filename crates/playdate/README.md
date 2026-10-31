@@ -16,6 +16,7 @@ behind it in ADR-0062.
 | `src/input.rs` | The buttons and the crank; the only file that names buttons |
 | `src/display.rs` | The frame buffer and its changed rows, the card and the errors |
 | `src/storage.rs` | The game's saves on the SDK's files, which pass the power-cut suite over the fake |
+| `src/audio.rs` | `Speaker`, the shared player's `Backend` on the SDK's sample and file players; its tests run on the fake |
 | `src/device/` | Only with `--cfg shuyi_playdate_sdk`: `Sdk` on the real SDK, the allocator, the panic handler. The only `unsafe` |
 
 Without that cfg the crate builds on any machine, so the workspace's host

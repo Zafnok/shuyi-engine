@@ -134,18 +134,12 @@ None.
   `SystemEvent::Suspend`) holds the song, and opening it goes on from
   the same row.
 
-  **Either order with 3029:** if 3029 is done, `shuyi-nds`'s sound
-  effects already play under its shared player (3024 or 3029 put them
-  there): add the songs the same way, as the shared backend trait's
-  methods for a track (`load_music`, `poll_music`, `play`,
-  `set_volume`, `stop`), so the player keeps the cue volumes, the
-  fades and the music clock, and fill in the provided methods the song
-  player can play (a pause, say); if not, add the songs to
-  `shuyi-nds`'s own `Audio` (3003's trait): play the frame's
-  `MusicCommand`s (`Load`, `Start`, `Gain`, `Stop`), and answer
-  `music_playing` with the song's cue and its clock. 3029 then moves
-  them onto its shared trait (its clause says so). In that case,
-  **either order with 2342:** if 2342 is done, a song plays at the
+  **From 3029 (done):** `shuyi-nds`'s sound effects play under the shared
+  player (3024 puts them there): add the songs the same way, as the shared
+  backend trait's methods for a track (`load_music`, `poll_music`, `play`,
+  `set_volume`, `stop`), so the player keeps the cue volumes, the fades and
+  the music clock, and fill in the provided methods the song player can
+  play (a pause, say). **Either order with 2342:** if 2342 is done, a song plays at the
   frame's `gains.music(cue)`; if not, at its `music_volume`, and 2342
   moves it onto the gains (its clause says so).
 - **The profiles.** Check `targets/nds.ron`'s and `targets/dsi.ron`'s
