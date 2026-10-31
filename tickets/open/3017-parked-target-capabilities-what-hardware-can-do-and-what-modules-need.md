@@ -67,10 +67,10 @@ None.
     `Mixed`), and `features`: the set of `AudioFeature`s the target's
     backend plays beyond cues and music, which are `Pause`, `Rate`,
     `Pan` and `LoopRegion`. They are named after the provided methods of
-    3029's shared backend trait: `pause` and `resume`, which 3029 adds,
-    and the rate, the pan and the loop region that later tickets add to
-    it (3029 leaves the rate to 3030's mixer; the pan is 2363's and the
-    loop region 2902's follow-up's, all parked). A backend ticket that
+    the shared backend trait (ADR-0063): `pause`, `resume` and `set_rate`,
+    which 3029 added, and the pan and the loop region that later tickets
+    add to it (the pan is 2363's and the loop region 2902's follow-up's,
+    both parked). A backend ticket that
     implements one adds it to its profile.
 - **The voice limit.** The cue rules' voice limit is the smaller of the
   audio manifest's `max_voices` (2378 adds it) and the target's
@@ -122,10 +122,9 @@ None.
   the day. For quad-snd 0.2.8 (desktop, web, Steam Deck) it is `[]`:
   quad-snd can't pause (2394 mutes instead), change the rate, pan or
   loop a region. A ticket that gives that backend a feature (2902's
-  chosen stack, say) adds it. **Either order with 3029:** if 3029 is
-  done, the Playdate's lists the provided methods its backend
-  implements (`Pause` if the SDK can pause, say); if not, it is `[]`,
-  and 3029 adds them. The GBA's and the DS's are provisional, from
+  chosen stack, say) adds it. **From 3029 (done):** the Playdate's
+  lists the provided methods its backend implements, `Pause` and `Rate`
+  (`crates/playdate/src/audio.rs`, ADR-0063). The GBA's and the DS's are provisional, from
   3027 and 3024.
 - **Three new profiles, `status: planned`**, from ADR-0012 §2 and §3, so
   that the bake (3019), the CI builds (3020) and the two-screen work

@@ -71,6 +71,7 @@ fn dirs() -> Dirs {
     Dirs {
         source: PathBuf::from("/build/Source"),
         obj: PathBuf::from("/build/obj"),
+        build: PathBuf::from("/build"),
     }
 }
 

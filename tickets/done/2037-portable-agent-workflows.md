@@ -64,7 +64,7 @@ meaning. The companion migration needs no output from this ticket.
 
 ## Completion notes
 
-Migrated all 506 existing tickets, plus the template and backlog guide.
+Migrated all 508 existing tickets, plus the template and backlog guide.
 An independent YAML audit compared every lifecycle field, effort and blocker
 with main. Recommendations now use mechanical, implementation, reasoning
 or creative; the lint rejects provider model ids. Examples are optional
@@ -77,7 +77,7 @@ the existing portable workflows and resources. The generator and CI check
 catch missing/stale loaders and metadata drift, and refuse to overwrite an
 unmanaged skill. Every loader and owned source passed skill validation.
 Generator failure modes were exercised in an isolated fixture checkout.
-ADR-0063 and the docs map record the arrangement. No public API break.
+ADR-0064 and the docs map record the arrangement. No public API break.
 
 Validation: native workspace tests (one fixture-build check rerun successfully
 without the inherited CARGO_TARGET_DIR setting); all 407 xtask tests;
@@ -92,3 +92,7 @@ leave a backlog that fails lint. No parked implementation was started.
 Work is in a fresh worktree from main, branch t2037-portable-agent-workflows;
 the original checkout was restored clean to main after a byte-verified move.
 The game adopts its independent half in game#0136; no pin move is needed.
+
+Merged the latest main to resolve the ADR index collision: the audio ADR
+keeps 0063, portability becomes 0064, and new tickets 3077 and 3078 use
+implementation capability while retaining their scope and lifecycle fields.

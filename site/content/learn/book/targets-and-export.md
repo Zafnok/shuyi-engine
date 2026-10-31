@@ -137,7 +137,8 @@ if the check finds an error. Then it builds the game for the target and
 writes into `dist/export/<target>/`:
 
 - `playdate`: a `.pdx` and its zip, for sideloading: the game's library
-  built without `std`, its pack baked one-bit. A game adds a `playdate`
+  built without `std`, its pack baked one-bit, its sounds and music baked to
+  ADPCM from what its tools' `GameTools::audio` names. A game adds a `playdate`
   feature and says how it starts with `shuyi_playdate::main!`;
 - `windows`: a zip of the `.exe`;
 - `linux`: a `tar.gz` that runs on any Linux with glibc 2.31 or newer;

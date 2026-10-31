@@ -111,9 +111,8 @@ None.
     `stop_sound`, never a second kind of handle. Its volume is its
     group's gain (below), which `shuyi-app` turns into its own volume.
     Add another handle only if a voice clip needs one these don't give.
-    **Either order with 3029:** if 3029 is done, add whatever is missing
-    to its shared backend trait, not to `shuyi-app` alone; if not, add
-    it to `shuyi-app`'s player, and 3029 moves it with the rest;
+    **From 3029 (done):** add whatever is missing to the shared backend
+    trait (`shuyi_platform::audio::player::Backend`), by ADR-0063's rule;
   - the story's screen plays the voice when a line is shown, and stops
     it on `Advance`, on skip and on going back;
   - **Either order with 2724:** if 2724 is done, loading a save stops
@@ -177,8 +176,8 @@ None.
 2. Write `VoiceEnvelope` and `voice-ron`, then the tool that writes it,
    with the fixture voice.
 3. Add the clip's group to `PlayVoice` and `SoundRequest::Voice`, and
-   play the clip at that group's gain in `shuyi-app` (in 3029's shared
-   player if it is done). Use a fake audio that records calls in tests.
+   play the clip at that group's gain in the shared player
+   (`crates/platform/src/audio/player/voice.rs`). Use a fake audio that records calls in tests.
 4. Play and stop voices from the story's screen; add the quick menu's
    volume rows; make auto wait; fill the backlog hook.
 5. Add `mouth` and `blink` to `CharacterDef` (update its fixtures and

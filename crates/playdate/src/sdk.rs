@@ -50,6 +50,13 @@ impl SdkEvent {
 /// The SDK's calls. A clone is the same SDK: the storage keeps its own, as a
 /// game's context outlives nothing the backend holds.
 pub trait Sdk: Clone + fmt::Debug + 'static {
+    /// A sound the SDK holds in memory (`AudioSample`).
+    type Sample: Copy + PartialEq + fmt::Debug;
+    /// A sample player (`SamplePlayer`).
+    type SamplePlayer: Copy + fmt::Debug;
+    /// A file player (`FilePlayer`).
+    type FilePlayer: Copy + fmt::Debug;
+
     /// `getCurrentTimeMilliseconds`: milliseconds from a fixed start, which
     /// stands still while the device sleeps and wraps at `u32::MAX`.
     fn millis(&self) -> u32;
@@ -97,6 +104,53 @@ pub trait Sdk: Clone + fmt::Debug + 'static {
     fn data_names(&self, folder: &str) -> Result<Vec<String>, String>;
     /// Makes `folder` in the game's data folder; an error if it is there.
     fn make_data_folder(&self, folder: &str) -> Result<(), String>;
+    /// `sample->load`: the sound at `path` in the `.pdx`, without its
+    /// extension; `None` if there is none.
+    fn sample_load(&self, path: &str) -> Option<Self::Sample>;
+    /// `sample->getLength`, in seconds.
+    fn sample_length(&self, sample: Self::Sample) -> f32;
+    /// `sampleplayer->newPlayer`.
+    fn sample_player_new(&self) -> Option<Self::SamplePlayer>;
+    /// Plays `sample` from its start on `player`, stopping what it played, at
+    /// `volume`, once or looped, at `rate` (1 as recorded).
+    fn sample_player_play(
+        &self,
+        player: Self::SamplePlayer,
+        sample: Self::Sample,
+        volume: f32,
+        looped: bool,
+        rate: f32,
+    );
+    /// `sampleplayer->setVolume`, the same on both sides.
+    fn sample_player_set_volume(&self, player: Self::SamplePlayer, volume: f32);
+    /// `sampleplayer->stop`.
+    fn sample_player_stop(&self, player: Self::SamplePlayer);
+    /// `sampleplayer->isPlaying`.
+    fn sample_player_is_playing(&self, player: Self::SamplePlayer) -> bool;
+    /// `sampleplayer->setPaused`.
+    fn sample_player_set_paused(&self, player: Self::SamplePlayer, paused: bool);
+    /// A new file player on the file at `path` in the `.pdx`, without its
+    /// extension; `None` if there is no such file.
+    fn file_open(&self, path: &str) -> Option<Self::FilePlayer>;
+    /// Starts `player`, or goes on from where its pause left it, once or
+    /// looped: false if it could not (`fileplayer->play`).
+    fn file_play(&self, player: Self::FilePlayer, looped: bool) -> bool;
+    /// `fileplayer->setVolume`, the same on both sides.
+    fn file_set_volume(&self, player: Self::FilePlayer, volume: f32);
+    /// `fileplayer->setRate`.
+    fn file_set_rate(&self, player: Self::FilePlayer, rate: f32);
+    /// `fileplayer->pause`.
+    fn file_pause(&self, player: Self::FilePlayer);
+    /// `fileplayer->stop`.
+    fn file_stop(&self, player: Self::FilePlayer);
+    /// `fileplayer->setOffset` to the file's start.
+    fn file_rewind(&self, player: Self::FilePlayer);
+    /// `fileplayer->isPlaying`.
+    fn file_is_playing(&self, player: Self::FilePlayer) -> bool;
+    /// `fileplayer->getLength`, in seconds.
+    fn file_length(&self, player: Self::FilePlayer) -> f32;
+    /// Stops `player` and frees it: it isn't used again.
+    fn file_close(&self, player: Self::FilePlayer);
 }
 
 /// A file call's error, as storage reports it.

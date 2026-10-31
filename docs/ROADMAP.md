@@ -132,7 +132,7 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | Cross platform: Windows, macOS, Linux, the web, iOS, Android | 3004 (desktop and the web), 3071 (Linux on Arm), 3015 (mobile) | partial: Windows, Linux, macOS and the web done (3004); 3071 after MVP; 3015 parked |
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
 | Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
-| Sound | `shuyi-app` today (cues, variants, fades, streamed music), 3029 for every backend; 2341–2345, 2394 and 2225 (crossfades, groups and ducking, handles and pauses, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
+| Sound | The player every backend shares (cues, variants, fades, streamed music; ADR-0063), on desktop, the web and the Playdate; 2341–2345, 2394 and 2225 (crossfades, groups and ducking, handles and pauses, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
 | Hot reload of assets | 2220 (every asset kind), 1124's maps through it | after MVP |
 | Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
 | Fast compiles | 2009 (measured, gated, a fast setup in the templates; README.md, *Fast compiles*) | done |
@@ -534,6 +534,8 @@ The tickets, in order:
 | 3013 | Steam Deck on the device: frame times and battery |
 | 3010 | The Playdate backend and `shuyi export playdate` |
 | 3076 | A crash report on the Playdate (after 3046) |
+| 3077 | The Simulator's crash files out of the repository |
+| 3078 | Voice clips baked for the Playdate |
 | 3011 | Playdate on the device: frame times and memory, budgets calibrated |
 
 3001, 3003 and 3005 are the cheapest early, because each one gets

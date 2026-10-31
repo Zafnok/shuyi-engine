@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: reasoning
 effort: high
-status: todo
+status: done
 blocked_by: ["3003", "3010"]
 nick_input: none
-completed:
+completed: 2026-10-31
 ---
 
 # 3029 — The audio player for every backend, and Playdate audio
@@ -235,28 +235,28 @@ may need an import path changed in that PR.
 
 ## Acceptance criteria
 
-- [ ] `shuyi-app`'s audio tests pass unchanged.
-- [ ] Host tests of the Playdate audio with a fake SDK: a cue plays at
+- [x] `shuyi-app`'s audio tests pass unchanged.
+- [x] Host tests of the Playdate audio with a fake SDK: a cue plays at
       its volume; a fade between two tracks opens the second before
       closing the first; the music clock follows the file player; a
       crossfade has both file players sounding, their
       volumes moving opposite ways.
-- [ ] The example exported for the Playdate plays a sound in the
+- [x] The example exported for the Playdate plays a sound in the
       Simulator, or the reason it can't is recorded.
-- [ ] A test backend that implements only the required methods
+- [x] A test backend that implements only the required methods
       compiles. Pausing on it twice gives exactly one warning, the
       warning names the feature, and the sound is muted until it
       resumes.
-- [ ] With the fake SDK, a paused track resumes from where it stopped.
+- [x] With the fake SDK, a paused track resumes from where it stopped.
       If the SDK lacks a pause, the Playdate backend keeps the default
       and the completion notes say why.
-- [ ] Host tests with the fake SDK show a handle's sample player
+- [x] Host tests with the fake SDK show a handle's sample player
       stopping alone. They also show `suspend` pausing the sample and
       file players and `resume` starting them again where they were.
-- [ ] If 2378 is done: with the fake SDK, of two copies of one sound,
+- [x] (2378 isn't done, so 2378 adds it.) If 2378 is done: with the fake SDK, of two copies of one sound,
       the one `SoundRequest::StopCopy` names stops and the other plays
       on.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -266,5 +266,96 @@ may need an import path changed in that PR.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**What was done.** The player moved to `shuyi_platform::audio::player`
+(`Player`, `Backend`, `PlayerDevice`, `Unsupported`, `RATE_ONE`), with its
+voice clips, handles, crossfades and pause rules. `shuyi-app` keeps quad-snd under
+the trait and its folders. `shuyi_playdate::audio::Speaker` implements the trait
+on the SDK's players, with pause, resume and the rate. `shuyi export playdate`
+bakes sounds and music (`crates/cli/src/export/playdate/audio.rs`), from the
+game's `playdate_audio.rs`. ADR-0063 records the trait's rule. The docs:
+`docs/platform-backends.md`, `docs/targets/playdate.md`, the book's chapter 9.
+
+**Acceptance.**
+
+- **The desktop's tests** moved with the code to `crates/platform/src/audio/player.rs`
+  and `player/voice.rs`, their assertions as they were; `the_music_folder_…`,
+  `a_folder_beside_…` and the voice manifest's stayed in `shuyi-app`. One test,
+  `without_a_voice_folder_…`, became two, since half of it reads files. The test
+  helpers changed where the crate's `no_std` test run needs it.
+- **The Simulator:** `cargo shuyi export playdate` on `examples/hello-grid`, opened
+  in SDK 3.1's Simulator on Windows. Measured with the Core Audio peak of the
+  Simulator's own audio session, the volume slider just above mute: 0 at rest,
+  about 0.043 after each d-pad press in the title's menu. No one listened to it.
+  Not run on a device (3011).
+- **The SDK has a pause**: `sampleplayer->setPaused`, and `fileplayer->pause`
+  then `play`, which goes on from the same place by the SDK's docs. The fake does
+  that; the Simulator run didn't exercise it, nor the music, since Hello, Grid has
+  none.
+
+**Deviations.**
+
+- **A new provided method, `load_sound_file`**, because the SDK loads a sound from
+  a path: the Playdate's required `load_sound` is an error that says so.
+- **`warn`** is a provided method, so that `PlayerDevice` can be shared.
+- **One-shots aren't held by a suspend.** The ticket says "pauses every player",
+  but ADR-0056 and `Audio::suspend` say a sound cue played once finishes, and the
+  player holds no handle for one. The Playdate keeps that rule.
+- **The music clock** is the player's, as the ticket's first part says, and moves
+  by the time a track was really paused. Its test holds it against the fake's file
+  offset. It doesn't read the SDK's `getOffset`.
+- **A game names what it ships by `GameTools::audio`**, a new provided method, in
+  place of the game's `playdate-music.txt`.
+- **`tools/layers.ron` gained `readers`**, since `shuyi-cli` has `devices: false`
+  and the bake needs `lewton` and `hound`. Both were on the list and in the lock
+  file. No new crate; `cargo deny` passes.
+
+- **Size:** about 3,200 net new lines, most of them tests, plus some 2,000 moved,
+  over the 1,500 of a ticket. The bake (about 650 with its tests) could have been
+  its own PR; the ticket asks for all of it, and it went as one.
+
+**Either-order clauses.** 2225, 2342, 2343, 2345, 2378, 2363, 2725, 3017, 3024, 3027
+and 3061 aren't done: each now says it works on the shared player. 2394, 2344 and
+2341 are done, and moved.
+
+**Follow-ups.** 3077 (the `.sentry-native` files 3010 committed, which any run of
+the Simulator from the example changes) and 3078 (voice clips baked).
+
+**For the game:** game#1170 moves its Playdate audio onto this, with its PR moving
+the pin. Its `playdate-music.txt` becomes what its `GameTools::audio` answers.
+
+Breaking: shuyi-playdate: `Sdk`: a type implementing it adds the sound calls and the
+three handle types.
+
+```migration
+since: 0.1.0
+what: The Playdate's SDK trait has the sound calls, which an implementation outside the engine must add.
+old: "impl Sdk for MySdk { ... }"
+new: "impl Sdk for MySdk { type Sample = ...; type SamplePlayer = ...; type FilePlayer = ...; fn sample_load(...) ... }"
+before: |
+  impl Sdk for MySdk {
+      fn millis(&self) -> u32 { 0 }
+  }
+after: |
+  impl Sdk for MySdk {
+      type Sample = usize;
+      type SamplePlayer = usize;
+      type FilePlayer = usize;
+      fn millis(&self) -> u32 { 0 }
+      fn sample_load(&self, path: &str) -> Option<usize> { None }
+  }
+```
+
+Breaking: shuyi-cli: `export::playdate::Dirs`: a new field, `build`, the build's own
+folder.
+
+```migration
+since: 0.1.0
+what: The Playdate exporter's folders have the build's own folder.
+old: "Dirs { source, obj }"
+new: "Dirs { source, obj, build }"
+before: |
+  let dirs = Dirs { source, obj };
+after: |
+  let dirs = Dirs { source, obj, build };
+find: ["Dirs { source, obj }"]
+```

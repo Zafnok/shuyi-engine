@@ -1,12 +1,15 @@
 //! The Playdate exporter (ADR-0062): the game's library built as a static
 //! library for the device (`thumbv7em-none-eabihf`) and, on Windows where
 //! MinGW is at hand, for the Simulator (`x86_64-pc-windows-gnu`), linked with
-//! the backend's C shim and the SDK's `setup.c`; its pack baked beside them,
-//! its `pdxinfo` and launcher images written and `NOTICES.txt`; all packed by
+//! the backend's C shim and the SDK's `setup.c`; its pack and its sounds and
+//! music ([`audio`]) baked beside them, its `pdxinfo` and launcher images
+//! written and `NOTICES.txt`; all packed by
 //! the SDK's `pdc` into `<base>.pdx`, and zipped for sideloading.
 //!
 //! The export is a list of [`Step`]s ([`plan`]), so the tests check every
 //! command without the SDK; `export` runs them.
+
+pub mod audio;
 
 use std::collections::BTreeMap;
 use std::env;
@@ -24,7 +27,7 @@ use crate::app_info;
 use crate::codec;
 use crate::contract::bake::{BakeInput, bake};
 use crate::contract::target::{Level, TargetCheck, TargetProblem, engine_profiles};
-use crate::game::GameTools;
+use crate::game::{GameTools, is_unsupported};
 use crate::notices::{self, Build, Section, Text, Work};
 use crate::project::{AppPart, Project};
 
@@ -333,6 +336,8 @@ pub struct Dirs {
     pub source: PathBuf,
     /// The C side's sources and objects.
     pub obj: PathBuf,
+    /// The build's own folder, which outlives a build.
+    pub build: PathBuf,
 }
 
 impl Dirs {
@@ -342,6 +347,7 @@ impl Dirs {
         Self {
             source: build.join("Source"),
             obj: build.join("obj"),
+            build,
         }
     }
 }
@@ -661,6 +667,48 @@ fn setup_c_notice(sdk: &Path) -> Result<Work, ExportError> {
 /// The pack's file in the export's folder, between the bake and the build.
 const BAKED: &str = "game.pack";
 
+/// The baked audio's folder in the export's folder, between the bake and the
+/// build. It isn't there when the game's tools offer no audio.
+const BAKED_AUDIO: &str = "baked-audio";
+
+/// Bakes the sounds and music `game` ships on `cx`'s target, for the build.
+fn bake_audio(cx: &ExportCx, game: &dyn GameTools) -> Result<(), ExportError> {
+    let into = cx.out.join(BAKED_AUDIO);
+    if into.exists() {
+        fs::remove_dir_all(&into)
+            .map_err(|e| ExportError::Build(format!("clear {}: {e}", into.display())))?;
+    }
+    let shipped = match game.audio(&cx.profile) {
+        Ok(shipped) => shipped,
+        Err(e) if is_unsupported(&e) => return Ok(()),
+        Err(e) => return Err(ExportError::Setup(format!("the game's audio: {e}"))),
+    };
+    let jobs = audio::jobs(&shipped, &cx.root)
+        .map_err(|e| ExportError::Setup(format!("the game's audio: {e}")))?;
+    fs::create_dir_all(&into)
+        .map_err(|e| ExportError::Build(format!("create {}: {e}", into.display())))?;
+    audio::bake(&jobs, &audio::cache_dir(&Dirs::of(cx).build), &into)
+        .map_err(|e| ExportError::Build(format!("the game's audio: {e}")))
+}
+
+/// Moves what [`bake_audio`] made into what `pdc` packs: true if there was any.
+fn place_audio(cx: &ExportCx, dirs: &Dirs) -> Result<bool, ExportError> {
+    let baked = cx.out.join(BAKED_AUDIO);
+    if !baked.is_dir() {
+        return Ok(false);
+    }
+    let names = fs::read_dir(&baked)
+        .map_err(|e| ExportError::Build(format!("read {}: {e}", baked.display())))?;
+    for entry in names.flatten() {
+        let to = dirs.source.join(entry.file_name());
+        fs::rename(entry.path(), &to)
+            .map_err(|e| ExportError::Build(format!("move to {}: {e}", to.display())))?;
+    }
+    fs::remove_dir_all(&baked)
+        .map_err(|e| ExportError::Build(format!("clear {}: {e}", baked.display())))?;
+    Ok(true)
+}
+
 /// The Playdate exporter.
 pub static PLAYDATE: PlaydateExporter = PlaydateExporter;
 
@@ -674,6 +722,7 @@ impl PlaydateExporter {
         cx: &ExportCx,
         pdx_bytes: u64,
         simulator: &Result<PathBuf, String>,
+        has_audio: bool,
     ) -> Vec<TargetProblem> {
         let budget = engine_profiles().ok().and_then(|profiles| {
             profiles
@@ -695,6 +744,15 @@ impl PlaydateExporter {
                 TargetCheck::Fits,
                 "simulator".to_owned(),
                 why.clone(),
+            ));
+        }
+        if !has_audio {
+            warnings.push(TargetProblem::display(
+                Level::Warning,
+                TargetCheck::Fits,
+                "audio".to_owned(),
+                "the game's tools offer no audio (GameTools::audio), so this .pdx is silent"
+                    .to_owned(),
             ));
         }
         warnings
@@ -745,6 +803,7 @@ impl Exporter for PlaydateExporter {
                 crate::project::FILE
             ))
         })?;
+        bake_audio(cx, game)?;
         let input = BakeInput {
             target: Some(cx.profile.clone()),
             out: Some(format!("{}/{BAKED}", cx.shown.replace('\\', "/"))),
@@ -798,6 +857,7 @@ impl Exporter for PlaydateExporter {
         let baked = cx.out.join(BAKED);
         fs::rename(&baked, dirs.source.join(playdate_pack()))
             .map_err(|e| ExportError::Build(format!("move the pack {}: {e}", baked.display())))?;
+        let has_audio = place_audio(cx, &dirs)?;
         let mut works = notices::crates(&cx.root, &cx.package, DEVICE, &[FEATURE.to_owned()])
             .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));
@@ -823,7 +883,7 @@ impl Exporter for PlaydateExporter {
             archive::entries(&pdx, &format!("{name}/"), &|_| false).map_err(ExportError::Build)?;
         archive::zip(&cx.out.join(&zip), &entries).map_err(ExportError::Build)?;
         let size = cx.size(&pdx)?;
-        let warnings = Self::warnings(cx, size.bytes, &tools.simulator);
+        let warnings = Self::warnings(cx, size.bytes, &tools.simulator, has_audio);
         let sizes = vec![size, cx.size(&cx.out.join(&zip))?];
         let mut report = cx.report(&name, sizes, Signing::None, None);
         report.warnings = warnings;

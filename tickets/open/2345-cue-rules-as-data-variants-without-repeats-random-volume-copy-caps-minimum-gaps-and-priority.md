@@ -202,9 +202,9 @@ None.
     `filter_map` over `SoundRequest::from_request`, keeps the frame's
     drops in `Lists`, and gives them out with
     `App::dropped_sounds(&self) -> &[DroppedSound]`;
-  - the module's doc no longer says variants wait for 3029: the cue
-    rules are `App`'s, and a backend plays what it is told.
-- **`shuyi-app` plays what it is told** (`crates/app/src/audio.rs`):
+  - the cue rules are `App`'s, and a backend plays what it is told.
+- **The shared player plays what it is told**
+  (`crates/platform/src/audio/player.rs`, since 3029, ADR-0063):
   - `Audio::sounds` keeps one slot per file (`Vec<Option<B::Sound>>`),
     so `variant` indexes the manifest's `files` even when a file failed
     to decode (warned at load, as now). An empty slot plays nothing;
@@ -267,9 +267,8 @@ None.
   (game#1170), plays `variant` at `cue_volume` instead of picking. The
   PR says so, and the game's PR that moves the pin follows it.
 - **Either order:**
-  - **3029:** if it is done, the shared player it made plays the given
-    file and volume as above; if not, `shuyi-app`'s player does, and
-    3029 moves it with these changes in.
+  - **From 3029 (done):** the shared player plays the given file and
+    volume as above, on every backend, the Playdate's among them.
   - **From 2344 (done):** `SoundCue` has `looped` (`SoundCue::new`
     sets it to `false`, `with_looped` changes it), and `pack::VERSION`
     is 5. This ticket rebases onto that `SoundCue` and bumps the

@@ -15,10 +15,9 @@
 //! - [`driver`]: [`Driver`], the update callback's body around
 //!   [`App::frame`](shuyi_platform::App::frame);
 //! - [`input`]: the buttons and the crank; [`display`]: the frame buffer and
-//!   its changed rows; [`storage`]: the game's saves on the SDK's files.
-//!
-//! Sounds are ticket 3029's: until then the game is silent
-//! ([`Silent`](shuyi_platform::Silent)).
+//!   its changed rows; [`storage`]: the game's saves on the SDK's files;
+//! - [`audio`]: the shared player's backend, on the SDK's sample and file
+//!   players.
 #![no_std]
 
 extern crate alloc;
@@ -26,6 +25,7 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+pub mod audio;
 pub mod backend;
 pub mod display;
 pub mod driver;

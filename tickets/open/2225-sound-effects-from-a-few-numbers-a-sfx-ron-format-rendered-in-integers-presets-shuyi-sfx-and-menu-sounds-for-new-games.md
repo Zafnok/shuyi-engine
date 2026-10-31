@@ -304,8 +304,10 @@ parked.
   - **2803.** If it is done, its step `08-polish` plays `.sfx.ron`
     sounds made with `shuyi sfx`, and its page says how. If not, 2803
     uses them.
-  - **3029.** If it is done, its Playdate export renders a `.sfx.ron`
-    with `sfx::render` before the ADPCM step. If not, 3029 does it.
+  - **From 3029 (done):** `audio::jobs` in
+    `crates/cli/src/export/playdate/audio.rs` reads a game's sound files for
+    the ADPCM step. Add this step there: a `.sfx.ron` is rendered with
+    `sfx::render` (`audio::playable`) first, and baked like any WAV.
   - **2003.** `docs/modules.md` lists the `sfx` feature with the
     format plugins, as planned: set its row to ready.
   - **2234** (JPEG, WebP, QOI and JPEG XL drawn, FLAC and MP3

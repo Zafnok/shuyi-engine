@@ -168,9 +168,8 @@ Nick wants it before the MVP, this ticket moves to the MVP with 2342.
 
 **Either order:**
 
-- **3029** (the player's rules shared by every backend): if it is done,
-  `voice_playing` reads the shared voice player; if not, `shuyi-app`'s,
-  and 3029 carries it along.
+- **From 3029 (done):** `voice_playing` reads the shared voice player
+  (`shuyi_platform::audio::player::voice`, ADR-0063).
 - **2218** (writers of the engine's text formats): if it is done, its
   `AudioManifestRon` writer writes `ducks` and its round-trip test
   covers a rule; if not, nothing here.

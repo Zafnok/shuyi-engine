@@ -6,15 +6,15 @@ use alloc::vec::Vec;
 
 use shuyi_assets::keymap::ActionSet;
 use shuyi_assets::target::TargetProfile;
-use shuyi_platform::{
-    Audio, DisplayInfo, Frame, Platform, Silent, Storage, SystemEvent, TextInput,
-};
+use shuyi_platform::audio::player::PlayerDevice;
+use shuyi_platform::{Audio, DisplayInfo, Frame, Platform, Storage, SystemEvent, TextInput};
 use shuyi_ui::frame_cap::{FrameCap, Pacing};
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::perf::{MemoryReading, PerfClock};
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
+use crate::audio::{self, Speaker};
 use crate::display::Screen;
 use crate::input::{PadInput, menu_button, menu_press};
 use crate::sdk::{PACK, Sdk, SdkEvent};
@@ -56,7 +56,8 @@ pub struct Playdate<S: Sdk> {
     /// The slots of the items chosen since the last poll.
     chosen: Vec<u8>,
     screen: Screen,
-    audio: Silent,
+    /// The sound device: its player comes with the game's data.
+    audio: PlayerDevice<Speaker<S>>,
     /// The system's events since the last call.
     events: Vec<SystemEvent>,
     /// How many of the system's holds are on: the lock and the menu may
@@ -72,6 +73,7 @@ impl<S: Sdk> Playdate<S> {
         let profile = profile();
         let rate = profile.frame_rate.target;
         sdk.set_refresh_rate(rate);
+        let audio = PlayerDevice::new(Speaker::new(sdk.clone()));
         Self {
             sdk,
             facts: PlatformFacts::from_profile(&profile)
@@ -82,7 +84,7 @@ impl<S: Sdk> Playdate<S> {
             docked: None,
             chosen: Vec::new(),
             screen: Screen::default(),
-            audio: Silent,
+            audio,
             events: Vec::new(),
             holds: 0,
             serial: 0,
@@ -94,11 +96,15 @@ impl<S: Sdk> Playdate<S> {
         &self.sdk
     }
 
-    /// The game has loaded: reads the crank's notch from its keymap, adds the
-    /// system menu's items its optional actions are bound to, and lets it
-    /// hear of the crank from the next frame.
+    /// The game has loaded: loads its sounds, reads the crank's notch from its
+    /// keymap, adds the system menu's items its optional actions are bound to,
+    /// and lets it hear of the crank from the next frame.
     pub fn start<G: GameData>(&mut self, game: &Game<G>) {
         let data = &game.ctx().game;
+        let manifest = data.audio_manifest().clone();
+        let seed = u64::from(self.sdk.millis());
+        let player = audio::player(self.audio.backend_mut(), manifest, seed);
+        self.audio.set_player(player);
         self.pad.set_crank(data.keymap_def().crank);
         self.docked = None;
         for slot in 0..self.menu_slots {

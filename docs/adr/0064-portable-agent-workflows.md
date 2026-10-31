@@ -1,4 +1,4 @@
-# ADR-0063: Portable agent workflows and capability routing
+# ADR-0064: Portable agent workflows and capability routing
 
 - **Status:** Accepted
 - **Date:** 2026-10-31

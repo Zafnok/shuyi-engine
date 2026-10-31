@@ -235,16 +235,15 @@ moves to the MVP.
 
 **Either order:**
 
-- **3029** (the player's rules shared by every backend): if it is done,
-  apply the gains in the shared player, where it put the rules; if not,
-  in `shuyi-app`'s player, and 3029 carries them along.
+- **From 3029 (done):** the player's rules are shared by every backend
+  (`shuyi_platform::audio::player`, ADR-0063), so apply the gains there.
 - **3027** (GBA audio, parked): if it is done and `shuyi-gba`'s `Audio`
-  still reads the frame's `sound_volume` and `music_volume` itself (3029
-  hasn't moved it under the shared player), move it onto `gains` here,
+  still reads the frame's `sound_volume` and `music_volume` itself (it
+  isn't under the shared player), move it onto `gains` here,
   as `shuyi-app`'s player; if not, nothing to do (3027 reads the gains).
 - **3061** (DS music, parked): if it is done and `shuyi-nds`'s `Audio`
-  still reads the frame's `music_volume` itself for its songs (3029
-  hasn't moved it under the shared player), move it onto `gains` here,
+  still reads the frame's `music_volume` itself for its songs (they
+  aren't under the shared player), move it onto `gains` here,
   with its sound effects if they read the volumes too, as `shuyi-app`'s
   player; if not, nothing to do (3061 reads the gains).
 - **3042** (focus and the game's background policy): if it is done, its

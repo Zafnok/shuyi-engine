@@ -54,8 +54,8 @@ use contract::codes;
 
 pub use basic::BasicTools;
 pub use game::{
-    AutobalancePlan, GameArg, GameBake, GameLang, GameOption, GameTools, OneBitSkin, PlaytestPlan,
-    Tunable, check_start, game_arg,
+    AutobalancePlan, GameArg, GameAudio, GameBake, GameLang, GameOption, GameTools, OneBitSkin,
+    PlaytestPlan, Tunable, check_start, game_arg,
 };
 pub use project::Project;
 /// JSON, for the scenes a game gives ([`contract::session::Scene::data`]).

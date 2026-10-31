@@ -136,10 +136,14 @@
         ),
         "shuyi-cli": (
             // The tools run headless, in CI and for agents (ADR-0005 §1):
-            // never `shuyi-app`, and no device.
+            // never `shuyi-app`, and no device. The two audio readers are
+            // on the list because a game's rules must never reach them; the
+            // export reads a game's files with them at build time, and
+            // plays nothing (ADR-0063).
             engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-alloc-count"],
             outside: Any,
             devices: false,
+            readers: ["lewton", "hound"],
             floats: true,
         ),
         "shuyi": (

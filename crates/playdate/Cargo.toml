@@ -1,6 +1,6 @@
 [package]
 name = "shuyi-playdate"
-description = "Shuyi Engine's Playdate backend: the update callback, the d-pad, A, B and the crank, the 1-bit display with changed rows, and storage on the SDK's files, behind shuyi-platform's Platform, for a game built by shuyi export playdate"
+description = "Shuyi Engine's Playdate backend: the update callback, the d-pad, A, B and the crank, the 1-bit display with changed rows, storage on the SDK's files, and sound on its sample and file players, behind shuyi-platform's Platform, for a game built by shuyi export playdate"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -58,6 +58,10 @@ pub struct CrateRule {
     pub outside: Outside,
     /// Whether a device crate may be below it.
     pub devices: bool,
+    /// The crates of the `devices` list it may reach all the same, each a
+    /// file reader it uses at build time and no device.
+    #[serde(default)]
+    pub readers: Vec<String>,
     /// Whether it may use floats (`false`: its `src/lib.rs` denies
     /// `clippy::float_arithmetic`).
     pub floats: bool,
@@ -351,7 +355,13 @@ pub fn check(
         }
         check_dependencies(name, rule, member, &engine, &mut errors);
         if !rule.devices {
-            for chain in device_chains(name, &layers.devices, &graph.edges) {
+            let devices: Vec<String> = layers
+                .devices
+                .iter()
+                .filter(|device| !rule.readers.contains(device))
+                .cloned()
+                .collect();
+            for chain in device_chains(name, &devices, &graph.edges) {
                 let device = chain.last().map_or("", String::as_str);
                 errors.push(format!(
                     "{name} reaches the device crate {device} ({}), and only a platform backend \
@@ -478,6 +488,7 @@ mod tests {
                 Outside::Only(only.iter().map(ToString::to_string).collect())
             }),
             devices,
+            readers: Vec::new(),
             floats,
         }
     }
@@ -726,6 +737,19 @@ mod tests {
             .or_default()
             .insert("macroquad".into());
         assert_eq!(check(&layers, &graph, banned()), Vec::<String>::new());
+    }
+
+    /// A file reader its entry names is let through, and only that one.
+    #[test]
+    fn a_crate_may_reach_the_readers_its_entry_names() {
+        let (mut layers, mut graph) = clean();
+        layers.devices.push("hound".into());
+        let edges = graph.edges.entry("foo".into()).or_default();
+        edges.insert("hound".into());
+        layers.crates.get_mut("shuyi-ui").unwrap().readers = vec!["hound".into()];
+        assert_eq!(check(&layers, &graph, banned()), Vec::<String>::new());
+        layers.crates.get_mut("shuyi-ui").unwrap().readers = vec!["lewton".into()];
+        assert_eq!(check(&layers, &graph, banned()).len(), 1);
     }
 
     #[test]

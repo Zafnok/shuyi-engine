@@ -143,6 +143,72 @@ int pd_file_mkdir(const char* path) { return pd->file->mkdir(path); }
 int pd_file_unlink(const char* name) { return pd->file->unlink(name, 0); }
 int pd_file_rename(const char* from, const char* to) { return pd->file->rename(from, to); }
 
+// --- sound ------------------------------------------------------------------
+
+// A sound from the `.pdx`, loaded into memory; NULL if there is none.
+void* pd_sample_load(const char* path) { return pd->sound->sample->load(path); }
+float pd_sample_length(void* sample) { return pd->sound->sample->getLength((AudioSample*)sample); }
+void* pd_sampleplayer_new(void) { return pd->sound->sampleplayer->newPlayer(); }
+// Plays `sample` from its start on `player`, stopping what it played. The
+// SDK's `repeat`: 1 is once, 0 loops until it is stopped.
+void pd_sampleplayer_play(void* player, void* sample, float volume, int looped, float rate)
+{
+	SamplePlayer* p = (SamplePlayer*)player;
+	pd->sound->sampleplayer->stop(p);
+	pd->sound->sampleplayer->setSample(p, (AudioSample*)sample);
+	pd->sound->sampleplayer->setVolume(p, volume, volume);
+	pd->sound->sampleplayer->play(p, looped ? 0 : 1, rate);
+}
+void pd_sampleplayer_set_volume(void* player, float volume)
+{
+	pd->sound->sampleplayer->setVolume((SamplePlayer*)player, volume, volume);
+}
+void pd_sampleplayer_stop(void* player)
+{
+	pd->sound->sampleplayer->setPaused((SamplePlayer*)player, 0);
+	pd->sound->sampleplayer->stop((SamplePlayer*)player);
+}
+int pd_sampleplayer_is_playing(void* player)
+{
+	return pd->sound->sampleplayer->isPlaying((SamplePlayer*)player);
+}
+void pd_sampleplayer_set_paused(void* player, int paused)
+{
+	pd->sound->sampleplayer->setPaused((SamplePlayer*)player, paused);
+}
+
+// A new file player on the file at `path` in the `.pdx`; NULL if there is none.
+void* pd_fileplayer_open(const char* path)
+{
+	FilePlayer* p = pd->sound->fileplayer->newPlayer();
+	if (p != NULL && !pd->sound->fileplayer->loadIntoPlayer(p, path)) {
+		pd->sound->fileplayer->freePlayer(p);
+		return NULL;
+	}
+	return p;
+}
+// The SDK's `repeat`, as for a sample player. After `pause` it goes on from
+// where the file was.
+int pd_fileplayer_play(void* player, int looped)
+{
+	return pd->sound->fileplayer->play((FilePlayer*)player, looped ? 0 : 1);
+}
+void pd_fileplayer_set_volume(void* player, float volume)
+{
+	pd->sound->fileplayer->setVolume((FilePlayer*)player, volume, volume);
+}
+void pd_fileplayer_set_rate(void* player, float rate) { pd->sound->fileplayer->setRate((FilePlayer*)player, rate); }
+void pd_fileplayer_pause(void* player) { pd->sound->fileplayer->pause((FilePlayer*)player); }
+void pd_fileplayer_stop(void* player) { pd->sound->fileplayer->stop((FilePlayer*)player); }
+void pd_fileplayer_rewind(void* player) { pd->sound->fileplayer->setOffset((FilePlayer*)player, 0.0f); }
+int pd_fileplayer_is_playing(void* player) { return pd->sound->fileplayer->isPlaying((FilePlayer*)player); }
+float pd_fileplayer_length(void* player) { return pd->sound->fileplayer->getLength((FilePlayer*)player); }
+void pd_fileplayer_close(void* player)
+{
+	pd->sound->fileplayer->stop((FilePlayer*)player);
+	pd->sound->fileplayer->freePlayer((FilePlayer*)player);
+}
+
 // --- the entry point --------------------------------------------------------
 
 // `src/device/mod.rs` and `src/sdk.rs` read these numbers.
