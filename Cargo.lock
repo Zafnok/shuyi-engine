@@ -424,6 +424,7 @@ dependencies = [
  "shuyi-app",
  "shuyi-assets",
  "shuyi-cli",
+ "shuyi-playdate",
 ]
 
 [[package]]
@@ -1212,6 +1213,16 @@ dependencies = [
  "shuyi-alloc-count",
  "shuyi-assets",
  "shuyi-core",
+ "shuyi-platform",
+ "shuyi-ui",
+]
+
+[[package]]
+name = "shuyi-playdate"
+version = "0.1.0"
+dependencies = [
+ "shuyi-alloc-count",
+ "shuyi-assets",
  "shuyi-platform",
  "shuyi-ui",
 ]

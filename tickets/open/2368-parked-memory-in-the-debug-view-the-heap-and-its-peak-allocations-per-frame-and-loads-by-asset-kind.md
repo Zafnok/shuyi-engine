@@ -220,11 +220,14 @@ None.
   channels starts it on `HeadlessPlatform::new().with_fake_memory()`
   through `Harness::on`: in Hello, Grid's `tools.rs` and the toy's
   (`crates/cli/src/toy.rs`). The snapshot is then the same on every run.
-- **Either order with 3010:** if `shuyi-playdate` is done, its debug
-  build's reading (3064 counts its allocator, by 3010's clause with
-  3064) gives the `playdate` profile's `peak_heap_bytes` as its budget,
-  taken the way 3010 takes the profile's refresh rate. If it isn't
-  done, 3010 does it, by its own either-order clause.
+- **From 3010 (done):** `shuyi-playdate`'s debug build counts its
+  allocator (3064's `CountingAlloc`), and its `Platform::memory` gives
+  that count as a `MemoryReading` with no budget, since `HeapBudget`
+  is this ticket's. The backend reads the `playdate` profile when it
+  starts (`profile()` in `crates/playdate/src/backend.rs`, the embedded
+  `targets/playdate.ron`, where it takes the refresh rate from). This
+  ticket gives its reading the profile's `peak_heap_bytes` as its
+  budget, taken the same way.
 
 **Out (do not do):**
 - frame times and spans (3063), and their channel (2325);

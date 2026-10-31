@@ -324,6 +324,10 @@ pub struct Ctx<G: GameData> {
     /// [`KeyPrompt::Waiting`], and `Game` moves it on to
     /// [`KeyPrompt::Pressed`] at the first key or button press.
     pub key_prompt: KeyPrompt,
+    /// Whether the device's crank is folded away, as the platform said
+    /// last: a screen whose required action is on the crank then gets a
+    /// hint to unfold it.
+    pub crank_docked: bool,
     /// Where the game runs: the target's id, whether the game may quit,
     /// whether its window goes full screen and back, and the keyboard,
     /// pointer and touch screen the device has. The `desktop` target's
@@ -386,6 +390,7 @@ impl<G: GameData> Ctx<G> {
             music_picks: 0,
             clock_s: 0.0,
             key_prompt: KeyPrompt::Off,
+            crank_docked: false,
             platform: PlatformFacts::default(),
             system_keyboard: SystemKeyboard::default(),
             lang: LangCode::english(),

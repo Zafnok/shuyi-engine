@@ -265,10 +265,7 @@ fn a_frame_with_its_look_is_kept_as_without() {
     p.present(&Frame::new(Show::Game {
         buffer: &a,
         background: Rgb::new(0, 0, 0),
-        look: Some(Look {
-            font: &font,
-            images: &images,
-        }),
+        look: Some(Look::new(&font, &images)),
     }));
     assert_eq!(p.last_frame().and_then(Presented::buffer), Some(&a));
 }

@@ -1,8 +1,9 @@
 //! The exporters `export` runs ([`crate::contract::export`]): one per
 //! target, each building the game with the target's Rust triple and
 //! writing its package ([`Exporter`]). `windows` writes a zip, `linux` a
-//! `tar.gz`, `macos` a folder holding a signed `.app`, and `web` a folder
-//! and its zip. Every package carries `NOTICES.txt` ([`notices`]), and
+//! `tar.gz`, `macos` a folder holding a signed `.app`, `web` a folder and
+//! its zip, and `playdate` a `.pdx` and its zip. Every package carries
+//! `NOTICES.txt` ([`notices`]), and
 //! the Windows and macOS ones a note for players on opening an unsigned
 //! program (`HOW-TO-OPEN.txt`).
 //!
@@ -17,8 +18,10 @@
 pub mod archive;
 mod desktop;
 pub mod paths;
+pub mod playdate;
 mod web;
 
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -28,8 +31,9 @@ use serde::Deserialize;
 use crate::contract::codes::{self, Code};
 use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
+use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
-use crate::project::{Project, Web};
+use crate::project::{AppPart, Project, Web};
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -42,8 +46,25 @@ pub trait Exporter: Sync {
     /// The Rust triples it builds for.
     fn triples(&self) -> &'static [&'static str];
 
+    /// Whether it packages a program of the game's package; otherwise it
+    /// builds the package's library, and the package needs no `[[bin]]`.
+    fn builds_a_program(&self) -> bool {
+        true
+    }
+
     /// The `cargo` arguments of each build it runs.
     fn cargo_args(&self, cx: &ExportCx) -> Vec<Vec<String>>;
+
+    /// What it needs of the game's tools before it builds, run where they
+    /// are at hand: by default nothing.
+    fn prepare(
+        &self,
+        _cx: &ExportCx,
+        _project: &Project,
+        _game: Option<&dyn GameTools>,
+    ) -> Result<(), ExportError> {
+        Ok(())
+    }
 
     /// Builds and writes the package into `cx.out`.
     fn export(&self, cx: &ExportCx) -> Result<ExportReport, ExportError>;
@@ -58,11 +79,12 @@ pub trait Exporter: Sync {
 }
 
 /// The exporters, by target id.
-static EXPORTERS: [&dyn Exporter; 4] = [
+static EXPORTERS: [&dyn Exporter; 5] = [
     &desktop::WINDOWS,
     &desktop::LINUX,
     &desktop::MACOS,
     &web::WEB,
+    &playdate::PLAYDATE,
 ];
 
 /// Every exporter.
@@ -154,6 +176,10 @@ pub struct ExportCx {
     pub game: Vec<Work>,
     /// The game's web build, if it has one.
     pub web: Option<Web>,
+    /// Who the game is, if `shuyi.ron` says.
+    pub app: Option<AppPart>,
+    /// The cargo features of the game's package.
+    pub features: Vec<String>,
 }
 
 /// What a run step works from.
@@ -175,6 +201,7 @@ struct MetaPackage {
     name: String,
     version: String,
     targets: Vec<MetaTarget>,
+    features: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Deserialize)]
@@ -214,10 +241,11 @@ impl ExportCx {
                 crate::project::FILE
             ))
         })?;
-        let (package_version, bins) = metadata(root, &package)?;
+        let (package_version, bins, features) = metadata(root, &package)?;
         let version = version(config.app.as_ref(), package_version);
         let bin = match web {
             Some(web) if exporter.id() == "web" => web.bin.clone(),
+            _ if !exporter.builds_a_program() => package.clone(),
             _ => program(&package, &bins)?,
         };
         let shown = input
@@ -246,6 +274,8 @@ impl ExportCx {
             version,
             game,
             web: web.cloned(),
+            app: config.app.clone(),
+            features,
         })
     }
 
@@ -379,9 +409,9 @@ fn version(app: Option<&crate::project::AppPart>, package: String) -> String {
     app.and_then(|app| app.version.clone()).unwrap_or(package)
 }
 
-/// The version and the programs of `package`, by `cargo metadata
-/// --no-deps` in `root`.
-fn metadata(root: &Path, package: &str) -> Result<(String, Vec<String>), ExportError> {
+/// The version, the programs and the features of `package`, by `cargo
+/// metadata --no-deps` in `root`.
+fn metadata(root: &Path, package: &str) -> Result<(String, Vec<String>, Vec<String>), ExportError> {
     let output = Command::new(crate::cargo())
         .args(["metadata", "--no-deps", "--format-version", "1"])
         .current_dir(root)
@@ -407,7 +437,7 @@ fn metadata(root: &Path, package: &str) -> Result<(String, Vec<String>), ExportE
         .filter(|t| t.kind.iter().any(|kind| kind == "bin"))
         .map(|t| t.name)
         .collect();
-    Ok((found.version, bins))
+    Ok((found.version, bins, found.features.into_keys().collect()))
 }
 
 /// The program of `package` to export among its `bins`: the one named as

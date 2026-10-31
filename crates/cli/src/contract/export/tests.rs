@@ -72,7 +72,7 @@ fn a_target_that_passes_with_no_exporter_says_so_and_names_the_exporters() {
     let error = answer.error.unwrap();
     assert!(error.contains("no exporter for it yet"), "{error}");
     assert!(
-        error.ends_with("(the exporters: windows, linux, macos, web)"),
+        error.ends_with("(the exporters: windows, linux, macos, web, playdate)"),
         "{error}"
     );
 }

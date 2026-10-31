@@ -14,6 +14,7 @@ pub use shuyi_assets::target::Quit;
 use shuyi_assets::target::TargetProfile;
 
 use crate::ctx::Keyboard;
+use crate::input::state::Device;
 
 /// Where the game runs: its target's id, and what that target lets a
 /// game do and the player press.
@@ -38,6 +39,11 @@ pub struct PlatformFacts {
     pub pointer: bool,
     /// Whether a touch screen exists.
     pub touch: bool,
+    /// The device the player holds, where the target has just the one: help
+    /// text names its buttons from the first frame, before any press
+    /// ([`Ctx::device`](crate::Ctx::device)). `None` where it isn't known
+    /// until something is pressed.
+    pub device: Option<Device>,
 }
 
 impl PlatformFacts {
@@ -55,7 +61,15 @@ impl PlatformFacts {
             },
             pointer: input.pointer,
             touch: input.touch,
+            device: None,
         }
+    }
+
+    /// The same facts on a target whose player holds `device`.
+    #[must_use]
+    pub fn with_device(mut self, device: Device) -> Self {
+        self.device = Some(device);
+        self
     }
 
     /// Whether the game may offer its own Quit: where the player leaves
@@ -77,6 +91,7 @@ impl Default for PlatformFacts {
             keyboard: Keyboard::Present,
             pointer: true,
             touch: false,
+            device: None,
         }
     }
 }
@@ -84,6 +99,16 @@ impl Default for PlatformFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_target_says_the_device_its_player_holds() {
+        let device = Device::Pad(crate::input::pad::PadKind::Playdate);
+        assert_eq!(PlatformFacts::default().device, None);
+        assert_eq!(
+            PlatformFacts::default().with_device(device).device,
+            Some(device)
+        );
+    }
 
     /// The engine's profile `id`, from `targets/`.
     fn engine(id: &str, source: &str) -> TargetProfile {

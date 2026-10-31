@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5
 effort: xhigh
-status: todo
+status: done
 blocked_by: ["3002", "3003", "3004", "3005", "3006", "2204", "3007", "3045", "3040", "3048", "3072", "3053"]
 nick_input: setup
-completed:
+completed: 2026-10-30
 ---
 
 # 3010 — The Playdate backend
@@ -337,25 +337,25 @@ Nothing here costs money. A device is needed only for 3011.
 
 ## Acceptance criteria
 
-- [ ] `shuyi export playdate` on the example produces a `.pdx`, and its
+- [x] `shuyi export playdate` on the example produces a `.pdx`, and its
       size is in the report.
-- [ ] The `.pdx`'s ELF passes 3004's path search (none of the build
+- [x] The `.pdx`'s ELF passes 3004's path search (none of the build
       machine's paths), and 3071's library audit against `playdate`'s
       list if 3071 is done.
-- [ ] Host tests with the fake SDK:
-  - [ ] a crank turn of 90° gives two `CrankForward`s;
-  - [ ] only changed rows are marked;
-  - [ ] the first frame's help names the Playdate's buttons
+- [x] Host tests with the fake SDK:
+  - [x] a crank turn of 90° gives two `CrankForward`s;
+  - [x] only changed rows are marked;
+  - [x] the first frame's help names the Playdate's buttons
         (`ctx.device` starts on `Device::Pad(PadKind::Playdate)`);
-  - [ ] the storage passes `shuyi_ui::storage::power_cut_suite` (3045)
+  - [x] the storage passes `shuyi_ui::storage::power_cut_suite` (3045)
         over the fake SDK's files.
-- [ ] The example opens and plays in the Playdate Simulator, if it
+- [x] The example opens and plays in the Playdate Simulator, if it
       builds (screenshot in the PR), or the reason it doesn't is
       recorded.
-- [ ] `shuyi export playdate --run` opens the example in the Simulator,
+- [x] `shuyi export playdate --run` opens the example in the Simulator,
       or the Completion notes say why it can't.
-- [ ] `cargo deny check` passes with `shuyi-playdate`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] `cargo deny check` passes with `shuyi-playdate`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -366,5 +366,96 @@ Nothing here costs money. A device is needed only for 3011.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+**Done:** `crates/playdate` (`shuyi-playdate`, `no_std`): the loop, the d-pad,
+A, B and the crank, the system menu, the 1-bit display with changed rows,
+storage in `FileStorage`'s order, the allocator with the debug build's heap
+counter, the clock, logs, panics, suspend, facts. `shuyi export playdate`
+(`crates/cli/src/export/playdate.rs`). Hello, Grid builds without `std`, has a
+50 × 15 console on the Playdate, and `export`s. ADR-0062 records the shim, the
+`OneBitLook` in `Look`, and the game's library built as a static library.
+
+**Checked by hand on Nick's machine** (SDK 3.1.2, Windows, GNU toolchain):
+debug and release exports; the release ELF and DLL pass the path search; the
+game plays in the Simulator from the title through a scene to the stage and the
+options, with real key presses; a setting kept is written to the SDK's real
+files (`p1-settings.ron`); `--run` opens the Simulator. Not on a device: 3011.
+
+**Recorded for the ticket's questions:**
+- boozook's crates, re-checked 2026-10-30: bindings still stop at SDK 2.6.2, so
+  the shim stays.
+- `pdc` copies a file it doesn't know as it is ("Unrecognized file types are
+  copied by default"), so `game.pack` and `NOTICES.txt` are in the `.pdx`.
+- The Simulator gives its caller nothing on Windows (stdout and stderr empty):
+  the log is in its own console.
+- The Simulator builds on Windows with MinGW and no MSVC.
+- The card's line art is `threshold(128)`, the icon `OneBitSettings::default()`.
+- The rule for the buttons is `East` and `West`, as the profile, and a fake-SDK
+  test checks A and B report what the profile lists.
+- `getElapsedTime` is a float of seconds, so `Platform::clock`'s microseconds
+  coarsen as a run goes on (about 60 µs after 1,000 s). The backend never resets
+  it.
+- The export runs on a developer's machine, not in CI: the SDK's license says
+  "You can't distribute our SDK". CI's `no-std` job builds the backend and the
+  example's library for the device.
+
+**Deviations:**
+- The crate has a `--cfg`, no `sdk` feature, so `--all-features` builds work.
+- A debug build runs the conformance suite on the device's real files at start,
+  as `docs/platform-backends.md` asks. It leaves an empty `storage-check` folder.
+- A panic on the Simulator leaves the game's call, since spinning hung its
+  window.
+- `Sdk`'s `rename` falls back to removing the old file first, since the SDK's
+  docs were not relied on; both pass the power-cut suite.
+
+**Follow-ups:** 3075 (the crash report, since 3046 isn't done). Known limits are
+in `docs/targets/playdate.md`. Help text names A as `B` and B as `X` until 2410;
+its test here passes before and after it.
+
+**For Nick:** the SDK's license keeps "Playdate" and "Panic" out of a game's name
+and its marketing without Panic's leave, and asks nothing else for selling your
+own game: "Any programs you develop with the SDK are yours". You can distribute
+them any way you like, but never the SDK itself.
+
+Breaking: shuyi-assets: `CrankDef::default` and the golden hash of a keymap with no `crank`: a notch is 45° unless the file says, was 30°.
+
+```migration
+since: 0.2.0
+what: A crank's notch is 45 degrees unless the keymap file says, where it was 30.
+old: "a keymap file with no crank part: a notch every 30 degrees"
+new: "a keymap file with no crank part: a notch every 45 degrees"
+before: |
+  let crank = CrankDef::default(); // 30 degrees
+after: |
+  let crank = CrankDef { notch_degrees: 30 };
+find: ["CrankDef::default"]
+```
+
+Breaking: shuyi-cli: `ExportCx`: two new public fields, `app` and `features`: code that builds one with a literal adds them.
+
+```migration
+since: 0.2.0
+what: ExportCx has two more public fields, app and features.
+old: "ExportCx { .. }"
+new: "ExportCx { app, features, .. }"
+before: |
+  ExportCx { web: None }
+after: |
+  ExportCx { web: None, app: None, features: Vec::new() }
+find: ["web: None }"]
+```
+
+Breaking: shuyi-platform: `Look`, `Frame`, `Show`: `Look` holds a `&dyn Images`, so it is no longer `Send`, `Sync` or unwind safe, and `Frame` and `Show` no longer unwind safe: nothing here moved one across threads or a `catch_unwind`, and code that did draws on its own thread.
+
+```migration
+since: 0.2.0
+what: Look holds a one-bit look with a &dyn Images, so it no longer crosses threads or a catch_unwind.
+old: "std::panic::catch_unwind(|| paint(look))"
+new: "paint(look)"
+before: |
+  let _ = std::panic::catch_unwind(|| paint(look));
+after: |
+  paint(look);
+find: ["catch_unwind(|| paint(look))"]
+```
+
+Book: chapter 9 (`targets-and-export.md`) names the Playdate's package.

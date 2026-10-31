@@ -290,10 +290,7 @@ trait LookOfToy {
 
 impl LookOfToy for Toy {
     fn look(&self) -> Look<'_> {
-        Look {
-            font: &FONT,
-            images: &IMAGES,
-        }
+        Look::new(&FONT, &IMAGES)
     }
 }
 
@@ -1223,4 +1220,18 @@ fn a_context_keeps_its_own_tags_over_the_platforms() {
     let _ = app.frame(&mut p, Millis(0));
     let entered = vec!["app", "update", "draw", "paint", "perf"];
     assert_eq!(fake_tags::take(), (entered, true));
+}
+
+#[test]
+fn the_crank_being_docked_reaches_the_games_context() {
+    let (game, _) = steps_game();
+    let mut app = App::running(game);
+    let mut p = HeadlessPlatform::new();
+    assert!(!running(&app).ctx().crank_docked);
+    p.push_system(SystemEvent::CrankDocked);
+    let _ = app.frame(&mut p, Millis(0));
+    assert!(running(&app).ctx().crank_docked);
+    p.push_system(SystemEvent::CrankUndocked);
+    let _ = app.frame(&mut p, Millis(17));
+    assert!(!running(&app).ctx().crank_docked);
 }

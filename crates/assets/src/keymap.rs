@@ -569,7 +569,7 @@ pub struct CrankDef {
 
 impl Default for CrankDef {
     fn default() -> Self {
-        Self { notch_degrees: 30 }
+        Self { notch_degrees: 45 }
     }
 }
 

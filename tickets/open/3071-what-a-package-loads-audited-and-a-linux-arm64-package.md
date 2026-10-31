@@ -77,10 +77,12 @@ None.
   - **Either order with 3032:** if 3032 is done, leave `libasound.so.2`
     out of the Linux lists, since ALSA is then opened with `dlopen`; if
     not, nothing to do (3032 removes it).
-  - **Either order with 3010:** if 3010 is done, add a `playdate` list
-    (expected empty: a `no_std` game links everything statically) and
-    run the audit on the ELF in its exporter; if not, nothing to do
-    (3010 does both).
+  - **From 3010 (done):** the Playdate's exporter
+    (`crates/cli/src/export/playdate.rs`) runs 3004's path search on its
+    ELF and DLL, but no audit, since this ticket's list file isn't
+    there yet. Add a `playdate` list to it (expected empty: a `no_std`
+    game links everything statically) and run the audit on the ELF in
+    that exporter.
   - **Either order with 3012:** if 3012 is done, its `steam-deck`
     exporter runs the audit against the `linux` list too; if not,
     nothing to do (3012 runs it).

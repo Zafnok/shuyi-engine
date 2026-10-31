@@ -105,8 +105,12 @@ None. Our game doesn't use these unless a later ticket says so.
   this ticket's. The crank's change in a frame also becomes the
   one-axis `Crank` input `targets/playdate.ron` lists, in integer 1/256
   turns, which `Axis` actions bind like a stick's.
-  **Either order with 3010:** if 3010 is done, `shuyi-playdate` reports
-  it from `getCrankChange`, with a fake-SDK test; if not, 3010 does it.
+  **From 3010 (done):** `shuyi-playdate` reads `getCrankChange` each
+  frame (`Sdk::crank_change`, `crates/playdate/src/sdk.rs`), and
+  `PadInput` (`input.rs`) turns it into whole 1/256 turns at the
+  boundary, but only to make the detents
+  (`RawInputEvent::from_crank_steps`). It reports no `Crank` axis: this
+  ticket adds it there, from the same steps, with a fake-SDK test.
 
 **Out (do not do):** pinch and other two-finger gestures; swipes and
 on-screen touch controls (2407, parked); the pointer in menus and on

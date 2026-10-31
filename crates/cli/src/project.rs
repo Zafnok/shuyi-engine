@@ -168,6 +168,14 @@ pub struct AppPart {
     /// `32.png` and `64.png` (`crates/game/icon`); `code` reads them.
     #[serde(default)]
     pub window_icons: Option<String>,
+    /// The Playdate launcher's list icon: a 32 × 32 black and white PNG, in
+    /// place of a one-bit bake of `icon`.
+    #[serde(default)]
+    pub playdate_icon: Option<String>,
+    /// The Playdate launcher's card: a 350 × 155 black and white PNG, in
+    /// place of a one-bit bake of `icon`.
+    #[serde(default)]
+    pub playdate_card: Option<String>,
 }
 
 /// A game's first build.
@@ -189,6 +197,8 @@ impl AppPart {
             code: None,
             icon: None,
             window_icons: None,
+            playdate_icon: None,
+            playdate_card: None,
         }
     }
 

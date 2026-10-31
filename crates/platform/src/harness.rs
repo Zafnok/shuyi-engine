@@ -241,7 +241,7 @@ impl<G: GameData> Harness<G> {
     }
 
     /// Notches of `def` for [`crank`](Self::crank) (the game's keymap
-    /// file's `crank`; 30° until set).
+    /// file's `crank`; 45° until set).
     pub fn set_crank(&mut self, def: CrankDef) -> &mut Self {
         self.crank = Crank::new(def);
         self

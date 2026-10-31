@@ -81,7 +81,7 @@ fn check_target_checks_the_controls_with_the_games_tools() {
     );
     let reports = answer.result.unwrap_or_else(|| panic!("no result")).targets;
     let ids: Vec<&str> = reports.iter().map(|r| r.target.as_str()).collect();
-    assert_eq!(ids, ["desktop", "steam-deck", "web"]);
+    assert_eq!(ids, ["desktop", "playdate", "steam-deck", "web"]);
     for report in reports {
         assert!(
             !report

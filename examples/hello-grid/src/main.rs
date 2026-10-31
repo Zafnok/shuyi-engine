@@ -31,7 +31,7 @@ fn config() -> AppConfig {
 
 /// What the game's frames are painted with.
 fn look(game: &Hello) -> Look<'_> {
-    Look::new(&game.font, &game.images)
+    game.look()
 }
 
 /// The game on the platform's `setup`, at its title, with its files as

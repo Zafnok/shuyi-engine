@@ -140,7 +140,34 @@ fn checked(part: &AppPart, root: &Path) -> Vec<AppProblem> {
     if let Err(e) = icon(part, root) {
         out.push(AppProblem::error("icon", e));
     }
+    let launcher = [
+        ("playdate_icon", &part.playdate_icon, (32, 32)),
+        ("playdate_card", &part.playdate_card, (350, 155)),
+    ];
+    for (field, path, size) in launcher {
+        if let Some(path) = path
+            && let Err(e) = sized_png(root, path, size)
+        {
+            out.push(AppProblem::error(field, e));
+        }
+    }
     out
+}
+
+/// Whether `path` in the project at `root` is a PNG of `size` pixels, the
+/// size the device's launcher asks.
+fn sized_png(root: &Path, path: &str, size: (u32, u32)) -> Result<(), String> {
+    let bytes = fs::read(root.join(path)).map_err(|e| format!("{path} can't be read: {e}"))?;
+    let (width, height, _) =
+        codec::decode_png(&bytes).map_err(|e| format!("{path} isn't a PNG file: {e}"))?;
+    if (width, height) == size {
+        Ok(())
+    } else {
+        Err(format!(
+            "{path} is {width} × {height} pixels: it must be {} × {}",
+            size.0, size.1
+        ))
+    }
 }
 
 /// The game's icon: `side` × `side` RGBA8 pixels.

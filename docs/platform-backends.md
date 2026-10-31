@@ -13,7 +13,7 @@ do. The decisions behind it are
 | ------- | ----- | ----- |
 | macroquad: Windows, Linux, macOS, the web, the Steam Deck | `shuyi-app` | here, `crates/app` |
 | headless: tests, tools, benchmarks | `shuyi_platform::headless` | here, `crates/platform` |
-| Playdate | `shuyi-playdate` | here, from ticket 3010 |
+| Playdate | `shuyi-playdate` | here, `crates/playdate` ([`targets/playdate.md`](targets/playdate.md)) |
 | a closed console | its own crate | **a private repository**, never here |
 
 ## The rules
@@ -182,9 +182,12 @@ next. `frame.show` is one of:
 - `Show::Game { buffer, background, look, .. }`: the game's console, a
   `GlyphBuffer` of glyph cells and sprite items in full colour, on
   `background` (also the letterbox's). `look` holds the game's font atlas
-  and image table: make the backend's textures (or 1-bit glyphs) from
-  them the first time and keep them. If they can't be made, show why
-  instead, as for `Errors`. The picture to match, pixel for pixel at
+  and image table: make the backend's textures from them the first time
+  and keep them. If they can't be made, show why instead, as for `Errors`.
+  A one-bit display draws with `look.one_bit` instead (a
+  `OneBitLook`, ADR-0062): the pattern map, the font's one-bit rows and
+  the pictures, which the game's load makes from its pack;
+  `shuyi_ui::frame::onebit::render_changed_with` draws them. The picture to match, pixel for pixel at
   whole scales, is the raster's (`shuyi_ui::frame::raster::Painter`,
   feature `raster`): compare a backend's pixels with it through
   `raster::compare`, within a `Tolerance`.
@@ -194,8 +197,7 @@ switches when it changes; a device that is always full screen ignores it.
 `frame.frame_cap` and `frame.frame_cap_serial` are the frame cap the
 backend paces the next frames to (*The frame cap*, above).
 `Show`, `Frame` and `DisplayInfo` are `#[non_exhaustive]`: match with a
-`_` arm, since later tickets add to them (1-bit frames, ticket 3006; more
-than one screen, 3023).
+`_` arm, since later tickets add to them (more than one screen, 3023).
 
 ### `poll_input(&mut self, out: &mut Vec<RawInputEvent>)`
 
@@ -208,7 +210,9 @@ Add the input since the last call, in the order it happened:
   `shuyi_ui::input::Pads`, then `RawInputEvent::from_pads`, which gives
   releases then presses and holds the rules (sticks as directions, the
   Switch-style swap, several pads as one);
-- a crank through `RawInputEvent::from_crank`.
+- a crank through `RawInputEvent::from_crank`, or, where the device gives
+  a float, `from_crank_steps` with whole steps (256 to the turn) made at
+  the backend's boundary.
 
 Translate only: which action a key means is the player's keymap's, never
 the backend's (`AGENTS.md` rule 8). Keys the system owns (a console's home
@@ -226,6 +230,7 @@ Add what the system said since the last call:
 | `QuitRequested` | the player closes the game (a window's close button) | the game's hook saves, then `FrameOutcome::Quit` |
 | `LowBattery` | the battery is nearly empty | the game's hook may save |
 | `ToggleFullscreen` | the window's own fullscreen shortcut (F11, Alt+Enter) | the Fullscreen setting flips |
+| `CrankDocked`, `CrankUndocked` | the device's crank is folded away, or out; said once the game has loaded, then on each change | `Ctx::crank_docked`: a screen whose required action is only on the crank gets a hint to unfold it (the text key `crank.unfold`) |
 
 A device that freezes the process without a word (the Steam Deck asleep)
 sends `Resume` itself when it sees a long gap between frames (ticket
@@ -322,7 +327,9 @@ embedded: `shuyi-app` embeds its targets' with `include_str!`), or from
 what the backend reads of the system. They are constant for a run: `App`
 asks once, for the game's `Setup`, and the game's context keeps them
 (`Ctx::platform`). There is no default: a backend always says which
-target it is.
+target it is. A device with one pad says so with `with_device`
+(`PlatformFacts::device`): the game starts on it, so help text names its
+buttons from the first frame.
 
 ### `clock(&self) -> Option<PerfClock>` (has a default)
 

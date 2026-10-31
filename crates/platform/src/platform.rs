@@ -11,6 +11,7 @@ use shuyi_assets::image::ImageTable;
 pub use shuyi_assets::target::Color;
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
+use shuyi_ui::frame::onebit::{Font, Images, PatternMap};
 use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapSnapshot, MemoryReading, MemoryScopes, PerfClock};
 use shuyi_ui::storage::Storage;
@@ -65,8 +66,8 @@ pub struct DisplayInfo {
     /// Its height in device pixels.
     pub height: u32,
     /// How many colours it shows, in a target profile's terms
-    /// ([`Color`], ADR-0008 §1): on `OneBit` the frame becomes 1-bit
-    /// (ticket 3006).
+    /// ([`Color`], ADR-0008 §1): on `OneBit` the backend draws a game's
+    /// frame with its look's [`one_bit`](Look::one_bit) part.
     pub color: Color,
 }
 
@@ -89,9 +90,9 @@ impl DisplayInfo {
 }
 
 /// What a game's frame is painted with: the font atlas and the pictures in
-/// the game's data. A backend makes its textures (or 1-bit glyphs) from
-/// them the first time it sees them. Build it with [`Look::new`]
-/// (ADR-0039).
+/// the game's data. A backend makes its textures from them the first time
+/// it sees them. Build it with [`Look::new`] (ADR-0039); a game that runs on
+/// a one-bit display adds [`Look::with_one_bit`] (ADR-0062).
 #[derive(Debug, Clone, Copy)]
 #[non_exhaustive]
 pub struct Look<'a> {
@@ -99,13 +100,58 @@ pub struct Look<'a> {
     pub font: &'a FontAtlasDef,
     /// The pictures the sprite items name.
     pub images: &'a ImageTable,
+    /// What a one-bit display draws the frame with; `None` for a game that
+    /// has no one-bit look, which a one-bit backend says instead of drawing.
+    pub one_bit: Option<OneBitLook<'a>>,
+}
+
+/// A game's look on a one-bit display (ADR-0062): what
+/// [`render_with`](shuyi_ui::frame::onebit::render_with) needs beside the
+/// frame. The game's load makes it from its pack, once.
+#[derive(Clone, Copy)]
+#[non_exhaustive]
+pub struct OneBitLook<'a> {
+    /// Each colour's patterns, by the skin's pattern map.
+    pub map: &'a PatternMap,
+    /// The font's one-bit rows.
+    pub font: &'a Font<'a>,
+    /// The sprites' one-bit pictures: the pack's bundle, for a game whose
+    /// pack holds them ([`Images`]).
+    pub images: &'a dyn Images,
+}
+
+impl<'a> OneBitLook<'a> {
+    /// The look of `map`'s patterns, `font`'s rows and `images`' pictures.
+    pub fn new(map: &'a PatternMap, font: &'a Font<'a>, images: &'a dyn Images) -> Self {
+        Self { map, font, images }
+    }
+}
+
+impl core::fmt::Debug for OneBitLook<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("OneBitLook")
+            .field("map", self.map)
+            .field("font", self.font)
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'a> Look<'a> {
     /// The look of glyphs from `font` and pictures from `images`.
     #[must_use]
     pub const fn new(font: &'a FontAtlasDef, images: &'a ImageTable) -> Self {
-        Self { font, images }
+        Self {
+            font,
+            images,
+            one_bit: None,
+        }
+    }
+
+    /// The same look, with what a one-bit display draws it with.
+    #[must_use]
+    pub const fn with_one_bit(mut self, one_bit: OneBitLook<'a>) -> Self {
+        self.one_bit = Some(one_bit);
+        self
     }
 }
 
@@ -120,8 +166,9 @@ pub enum Show<'a> {
     /// Why the game couldn't start (a broken asset, a wrong command line),
     /// in the backend's own font. It stays until the player quits.
     Errors(&'a str),
-    /// The game's console: its cells and pictures in full colour (the
-    /// 1-bit frame is ticket 3006's).
+    /// The game's console: its cells and pictures in full colour. A
+    /// one-bit backend draws it with its look's
+    /// [`one_bit`](Look::one_bit) part.
     #[non_exhaustive]
     Game {
         /// The cells and the sprite items, as the screens drew them.
@@ -195,6 +242,12 @@ pub enum SystemEvent {
     /// [`App`](crate::App) flips the Fullscreen setting, so the next frame
     /// asks for the other window mode and an options screen shows it.
     ToggleFullscreen,
+    /// The device's crank was folded away, or was already when the game
+    /// loaded: a screen whose required action is on the crank shows a hint
+    /// to unfold it ([`Ctx::crank_docked`](shuyi_ui::Ctx::crank_docked)).
+    CrankDocked,
+    /// The device's crank was unfolded.
+    CrankUndocked,
 }
 
 /// What a backend gives the engine: a display to [`present`] frames on,
@@ -336,6 +389,25 @@ mod tests {
     }
 
     #[test]
+    fn a_one_bit_look_is_part_of_a_look_and_says_what_it_holds() {
+        let font = FontAtlasDef {
+            cell_w: 8,
+            cell_h: 8,
+            columns: 16,
+            glyphs: alloc::collections::BTreeMap::new(),
+        };
+        let images = ImageTable::default();
+        let map = PatternMap::default();
+        let rows = Font::new(&font, &[]).unwrap_or_else(|e| panic!("{e}"));
+        let one_bit = OneBitLook::new(&map, &rows, &());
+        let shown = alloc::format!("{one_bit:?}");
+        assert!(shown.starts_with("OneBitLook"), "{shown}");
+        assert!(Look::new(&font, &images).one_bit.is_none());
+        let look = Look::new(&font, &images).with_one_bit(one_bit);
+        assert!(look.one_bit.is_some());
+    }
+
+    #[test]
     fn a_new_look_is_the_literal() {
         let font = FontAtlasDef {
             cell_w: 8,
@@ -348,6 +420,7 @@ mod tests {
         let literal = Look {
             font: &font,
             images: &images,
+            one_bit: None,
         };
         assert!(core::ptr::eq(look.font, literal.font));
         assert!(core::ptr::eq(look.images, literal.images));

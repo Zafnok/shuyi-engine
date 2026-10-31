@@ -125,6 +125,15 @@
             devices: true,
             floats: true,
         ),
+        "shuyi-playdate": (
+            // The Playdate backend (ADR-0062): it reaches its device through
+            // the SDK's C calls, not a device crate. `shuyi-core` stays below
+            // it, unnamed.
+            engine: ["shuyi-assets", "shuyi-ui", "shuyi-platform", "shuyi-alloc-count"],
+            outside: Any,
+            devices: false,
+            floats: true,
+        ),
         "shuyi-cli": (
             // The tools run headless, in CI and for agents (ADR-0005 §1):
             // never `shuyi-app`, and no device.
