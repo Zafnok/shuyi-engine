@@ -407,7 +407,7 @@ files (`p1-settings.ron`); `--run` opens the Simulator. Not on a device: 3011.
 - `Sdk`'s `rename` falls back to removing the old file first, since the SDK's
   docs were not relied on; both pass the power-cut suite.
 
-**Follow-ups:** 3075 (the crash report, since 3046 isn't done). Known limits are
+**Follow-ups:** 3076 (the crash report, since 3046 isn't done). Known limits are
 in `docs/targets/playdate.md`. Help text names A as `B` and B as `X` until 2410;
 its test here passes before and after it.
 

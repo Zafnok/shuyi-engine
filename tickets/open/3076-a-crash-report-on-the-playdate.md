@@ -1,5 +1,5 @@
 ---
-id: "3075"
+id: "3076"
 title: "A crash report on the Playdate: the panic handler writes a CrashReport through the backend's storage, offered at the next start"
 type: feature
 milestone: After MVP
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 3075 — A crash report on the Playdate
+# 3076 — A crash report on the Playdate
 
 ## Context
 
