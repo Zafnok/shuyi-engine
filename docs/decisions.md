@@ -1284,3 +1284,13 @@ the cost of its agent runs, he chose **"After the maze chase"**.
   character, maze, sound or art from it.
 - **The end goal's snake is measured again**: the agent eval's snake
   task gets its reference (2739) and is graded in CI once 2524 lands.
+
+## 2026-10-29: a ticket is one PR of about 1,500 changed lines or fewer
+
+Source: Nick, on the limit of about 600 changed lines:
+
+> "Engine work is more technical than game so 1500 is about right there"
+
+**Rule:** a ticket is one PR of about 1,500 changed lines or fewer, without
+fixtures and snapshots (the `write-ticket` skill). Estimates and periodic checks
+keep to it, and no CI check measures a PR.

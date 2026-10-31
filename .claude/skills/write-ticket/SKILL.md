@@ -39,7 +39,7 @@ them without asking questions.
    - A new public type follows ADR-0039 (2013): one that may grow is
      `#[non_exhaustive]` with a constructor, and a new field on such a
      type is additive. Say which in the Scope.
-5. **Keep it small:** one PR's worth, roughly 600 changed lines or fewer
+5. **Keep it small:** one PR's worth, about 1,500 changed lines or fewer
    excluding fixtures and snapshots. Split otherwise.
 6. **Check the dependency chain** (below).
 
