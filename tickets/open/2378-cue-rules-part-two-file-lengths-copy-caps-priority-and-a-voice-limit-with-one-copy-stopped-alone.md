@@ -195,12 +195,13 @@ None.
     `StopCopy` names it or its length (the cue's `lengths_ms`) has
     passed by the frame's time. A copy of unknown length keeps none;
   - the tests' `Fake` backend records each playback's start and stop.
-- **Either order with 3029:** if 3029 is done, the player's rules live
-  where 3029 moved them, so keep each copy's playback there, and the
-  Playdate backend keeps each copy's sample player until `StopCopy`
-  names it or its length has passed, and stops that copy alone (a test
-  against its fake SDK: of two copies of one sound, one stops and the
-  other plays on); if not, nothing to do (3029 does it).
+- **From 3029 (done):** the player's rules are in
+  `crates/platform/src/audio/player.rs`, so keep each copy's playback
+  there, and the Playdate backend (`crates/playdate/src/audio.rs`) keeps
+  each copy's sample player until `StopCopy` names it or its length has
+  passed, and stops that copy alone (a test against its fake SDK: of two
+  copies of one sound, one stops and the other plays on). 3029 left this
+  to this ticket, since `CopyId` is this ticket's.
 - **Either order with 3017** (parked, target capabilities): if 3017 is
   done, `Cues`' voice limit is the smaller of `max_voices` and the
   running target's `capabilities.audio.channels`, a `None` on either

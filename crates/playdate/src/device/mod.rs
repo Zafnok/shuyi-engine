@@ -51,6 +51,30 @@ unsafe extern "C" {
     fn pd_file_mkdir(path: *const c_char) -> c_int;
     fn pd_file_unlink(name: *const c_char) -> c_int;
     fn pd_file_rename(from: *const c_char, to: *const c_char) -> c_int;
+    fn pd_sample_load(path: *const c_char) -> *mut c_void;
+    fn pd_sample_length(sample: *mut c_void) -> c_float;
+    fn pd_sampleplayer_new() -> *mut c_void;
+    fn pd_sampleplayer_play(
+        player: *mut c_void,
+        sample: *mut c_void,
+        volume: c_float,
+        looped: c_int,
+        rate: c_float,
+    );
+    fn pd_sampleplayer_set_volume(player: *mut c_void, volume: c_float);
+    fn pd_sampleplayer_stop(player: *mut c_void);
+    fn pd_sampleplayer_is_playing(player: *mut c_void) -> c_int;
+    fn pd_sampleplayer_set_paused(player: *mut c_void, paused: c_int);
+    fn pd_fileplayer_open(path: *const c_char) -> *mut c_void;
+    fn pd_fileplayer_play(player: *mut c_void, looped: c_int) -> c_int;
+    fn pd_fileplayer_set_volume(player: *mut c_void, volume: c_float);
+    fn pd_fileplayer_set_rate(player: *mut c_void, rate: c_float);
+    fn pd_fileplayer_pause(player: *mut c_void);
+    fn pd_fileplayer_stop(player: *mut c_void);
+    fn pd_fileplayer_rewind(player: *mut c_void);
+    fn pd_fileplayer_is_playing(player: *mut c_void) -> c_int;
+    fn pd_fileplayer_length(player: *mut c_void) -> c_float;
+    fn pd_fileplayer_close(player: *mut c_void);
 }
 
 /// How many bytes a read asks the SDK for at a time.
@@ -120,7 +144,16 @@ unsafe impl Sync for Highest {}
 
 static CLOCK_US: Highest = Highest(UnsafeCell::new(0));
 
+/// `pointer`, unless the SDK gave a null one.
+fn non_null(pointer: *mut c_void) -> Option<*mut c_void> {
+    (!pointer.is_null()).then_some(pointer)
+}
+
 impl Sdk for Device {
+    type Sample = *mut c_void;
+    type SamplePlayer = *mut c_void;
+    type FilePlayer = *mut c_void;
+
     fn millis(&self) -> u32 {
         unsafe { pd_millis() }
     }
@@ -240,6 +273,89 @@ impl Sdk for Device {
     fn make_data_folder(&self, folder: &str) -> Result<(), String> {
         let folder = c_string(folder);
         ok(unsafe { pd_file_mkdir(folder.as_ptr().cast()) })
+    }
+
+    fn sample_load(&self, path: &str) -> Option<*mut c_void> {
+        let path = c_string(path);
+        non_null(unsafe { pd_sample_load(path.as_ptr().cast()) })
+    }
+
+    fn sample_length(&self, sample: *mut c_void) -> f32 {
+        unsafe { pd_sample_length(sample) }
+    }
+
+    fn sample_player_new(&self) -> Option<*mut c_void> {
+        non_null(unsafe { pd_sampleplayer_new() })
+    }
+
+    fn sample_player_play(
+        &self,
+        player: *mut c_void,
+        sample: *mut c_void,
+        volume: f32,
+        looped: bool,
+        rate: f32,
+    ) {
+        // SAFETY: a player and a sample the SDK made, neither ever freed.
+        unsafe { pd_sampleplayer_play(player, sample, volume, c_int::from(looped), rate) };
+    }
+
+    fn sample_player_set_volume(&self, player: *mut c_void, volume: f32) {
+        unsafe { pd_sampleplayer_set_volume(player, volume) };
+    }
+
+    fn sample_player_stop(&self, player: *mut c_void) {
+        unsafe { pd_sampleplayer_stop(player) };
+    }
+
+    fn sample_player_is_playing(&self, player: *mut c_void) -> bool {
+        unsafe { pd_sampleplayer_is_playing(player) != 0 }
+    }
+
+    fn sample_player_set_paused(&self, player: *mut c_void, paused: bool) {
+        unsafe { pd_sampleplayer_set_paused(player, c_int::from(paused)) };
+    }
+
+    fn file_open(&self, path: &str) -> Option<*mut c_void> {
+        let path = c_string(path);
+        non_null(unsafe { pd_fileplayer_open(path.as_ptr().cast()) })
+    }
+
+    fn file_play(&self, player: *mut c_void, looped: bool) -> bool {
+        unsafe { pd_fileplayer_play(player, c_int::from(looped)) != 0 }
+    }
+
+    fn file_set_volume(&self, player: *mut c_void, volume: f32) {
+        unsafe { pd_fileplayer_set_volume(player, volume) };
+    }
+
+    fn file_set_rate(&self, player: *mut c_void, rate: f32) {
+        unsafe { pd_fileplayer_set_rate(player, rate) };
+    }
+
+    fn file_pause(&self, player: *mut c_void) {
+        unsafe { pd_fileplayer_pause(player) };
+    }
+
+    fn file_stop(&self, player: *mut c_void) {
+        unsafe { pd_fileplayer_stop(player) };
+    }
+
+    fn file_rewind(&self, player: *mut c_void) {
+        unsafe { pd_fileplayer_rewind(player) };
+    }
+
+    fn file_is_playing(&self, player: *mut c_void) -> bool {
+        unsafe { pd_fileplayer_is_playing(player) != 0 }
+    }
+
+    fn file_length(&self, player: *mut c_void) -> f32 {
+        unsafe { pd_fileplayer_length(player) }
+    }
+
+    fn file_close(&self, player: *mut c_void) {
+        // SAFETY: `FileClip` closes its player once, as it goes.
+        unsafe { pd_fileplayer_close(player) };
     }
 }
 

@@ -92,16 +92,15 @@ save file the cart wrote, as in 3022's steps 4 and 5.
   master volume and any ducking (2343). If 2342 isn't done, at the
   frame's `sound_volume` and `music_volume`, and 2342 moves it onto the
   gains (its clause says so).
-  **Either order with 3029.** If 3029 is done, implement its shared
-  backend trait under its player, so that cue volumes, fades and the
+  **From 3029 (done).** Implement the shared backend trait
+  (`shuyi_platform::audio::player::Backend`, ADR-0063) under its player, so that cue volumes, fades and the
   music clock are not written again. Fill in the provided methods this
   mixer can play (pause and resume, and a rate as the voice's step),
   and leave the rest at their defaults. If 2363 is done, the trait has
   a pan: fill it in too, each voice's pan from 2363's `pan_gains`; if
   not, 2363 gives the GBA its pan when it lands (its own clause says
   so). If 3017 is done, list them in `targets/gba.ron`'s audio
-  `features`. If 3029 is not done, write the 3003 trait as described,
-  and 3029 moves the GBA onto its shared trait.
+  `features`.
 - **Budgets.** The bench scenarios (3008) get one with music and four
   sound effects at once, run by the emulator runner (3020) against the
   `gba` `frame_cycles` budget.

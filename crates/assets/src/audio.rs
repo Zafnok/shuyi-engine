@@ -337,6 +337,23 @@ impl<'a> Files<'a> {
     }
 }
 
+/// Where a sound file goes in a package whose target bakes its audio (the
+/// `.pdx`): `sfx/x.wav` is `audio/sfx/x` there.
+pub const BAKED_SOUND_DIR: &str = "audio";
+
+/// Where a music file goes in a package whose target bakes its audio.
+pub const BAKED_MUSIC_DIR: &str = "music";
+
+/// `file` without its extension, as a device that bakes its audio opens it.
+#[must_use]
+pub fn without_extension(file: &str) -> &str {
+    let name = file.rfind('/').unwrap_or(0);
+    match file[name..].rfind('.') {
+        Some(dot) => &file[..name + dot],
+        None => file,
+    }
+}
+
 /// The sample rate every file must have: quad-snd (native) plays at
 /// 44.1 kHz and resamples anything else crudely (game ADR-0026).
 pub const SAMPLE_RATE: u32 = 44_100;
@@ -698,6 +715,15 @@ mod tests {
     use alloc::borrow::Cow;
 
     use super::*;
+
+    #[test]
+    fn without_extension_takes_the_last_names_extension_alone() {
+        assert_eq!(without_extension("sfx/click.wav"), "sfx/click");
+        assert_eq!(without_extension("click.a.ogg"), "click.a");
+        assert_eq!(without_extension("v1.2/click"), "v1.2/click");
+        assert_eq!(without_extension("deep/v1.2/x.ogg"), "deep/v1.2/x");
+        assert_eq!(without_extension("click"), "click");
+    }
 
     const EMPTY: &str = "(music_fade_ms: 500, sounds: [], music: [], pools: [], credits: [])";
 

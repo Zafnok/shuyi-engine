@@ -13,6 +13,7 @@ use std::process::Command;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use shuyi_assets::ContentError;
+use shuyi_assets::audio::{AudioManifest, Files};
 use shuyi_assets::bundle::Bundle;
 use shuyi_assets::format::Formats;
 use shuyi_assets::lang::Lang;
@@ -166,6 +167,25 @@ impl GameBake {
             bundle,
             formats,
         }
+    }
+}
+
+/// The audio a game ships on a target whose export bakes it
+/// ([`GameTools::audio`]). Build it with [`GameAudio::new`] (ADR-0039).
+#[non_exhaustive]
+pub struct GameAudio {
+    /// The cues it ships there. A music cue left out isn't baked, and plays
+    /// as silence there, with a warning.
+    pub manifest: AudioManifest,
+    /// How to read their files. Where the game can't read its music folder
+    /// (`music` is `None`), it is read from the project's root.
+    pub files: Files<'static>,
+}
+
+impl GameAudio {
+    /// The cues of `manifest`, read with `files`.
+    pub fn new(manifest: AudioManifest, files: Files<'static>) -> Self {
+        Self { manifest, files }
     }
 }
 
@@ -592,6 +612,14 @@ pub trait GameTools {
     fn bake(&self, target: Option<&str>) -> Result<GameBake, String> {
         let _ = target;
         Err(unsupported("bake and check --baked", "bake"))
+    }
+
+    /// `export` on a target that bakes its audio (the Playdate's): the sounds
+    /// and music the game ships on `target`, whose profile's id it is. A game
+    /// that leaves this at its default is silent there.
+    fn audio(&self, target: &str) -> Result<GameAudio, String> {
+        let _ = target;
+        Err(unsupported("audio for a target that bakes it", "audio"))
     }
 }
 
