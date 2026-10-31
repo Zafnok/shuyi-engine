@@ -347,7 +347,7 @@ pub const BAKED_MUSIC_DIR: &str = "music";
 /// `file` without its extension, as a device that bakes its audio opens it.
 #[must_use]
 pub fn without_extension(file: &str) -> &str {
-    let name = file.rfind('/').map_or(0, |slash| slash + 1);
+    let name = file.rfind('/').unwrap_or(0);
     match file[name..].rfind('.') {
         Some(dot) => &file[..name + dot],
         None => file,
