@@ -3,7 +3,7 @@ id: "2331"
 title: "Parked: A render graph on the wgpu renderer: passes as nodes with named inputs and outputs, a game's own passes, encoded in parallel on native"
 type: feature
 milestone: "Engine: 2D effects"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3034"]

@@ -3,7 +3,7 @@ id: "3065"
 title: "Memory tags: live bytes by the frame's phase, the game's spans and each asset kind's decode, counted by the heap counter in debug builds"
 type: feature
 milestone: MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["3064"]

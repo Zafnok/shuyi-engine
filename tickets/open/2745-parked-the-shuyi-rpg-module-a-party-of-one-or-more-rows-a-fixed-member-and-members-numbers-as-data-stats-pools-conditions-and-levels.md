@@ -3,7 +3,7 @@ id: "2745"
 title: "Parked: The shuyi-rpg module: a party of one or more, rows, a fixed member, and members' numbers as data (stats, pools, conditions and levels)"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2003", "2116"]

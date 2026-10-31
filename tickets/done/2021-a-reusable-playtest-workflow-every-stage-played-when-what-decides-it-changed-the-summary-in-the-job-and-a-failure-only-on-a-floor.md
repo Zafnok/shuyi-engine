@@ -3,7 +3,7 @@ id: "2021"
 title: "A reusable playtest workflow: every stage played when what decides it changed, the summary in the job, a failure only on a floor; the grid template calls it"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2532", "2533"]

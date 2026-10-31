@@ -3,7 +3,7 @@ id: "2777"
 title: "New games build for the web as they are: a web part in shuyi.ron, a build.rs and the wasm target in the templates"
 type: feature
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

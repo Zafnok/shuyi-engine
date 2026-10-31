@@ -3,7 +3,7 @@ id: "2305"
 title: "The text box paints narration from the left like speech when the game asks, or centred as today"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: done
 blocked_by: []

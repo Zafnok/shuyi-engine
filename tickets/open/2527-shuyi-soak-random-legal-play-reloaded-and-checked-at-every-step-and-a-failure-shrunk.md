@@ -3,7 +3,7 @@ id: "2527"
 title: "shuyi soak: a seeded bot plays random legal commands, the state is saved and reloaded at every step, the TurnRules contract and the game's invariants are checked, and a failure shrinks to a short record"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

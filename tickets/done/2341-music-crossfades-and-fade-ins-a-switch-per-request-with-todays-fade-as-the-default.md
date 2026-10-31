@@ -3,7 +3,7 @@ id: "2341"
 title: "Music crossfades and fade-ins: how one track gives way to the next, per request, with today's fade-out-then-start as the default"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

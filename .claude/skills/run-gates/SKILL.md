@@ -5,6 +5,12 @@ description: Run the local quality gates before pushing (fmt, clippy pedantic, t
 
 # Run the local gates
 
+Verify shared skill discovery before the other gates:
+
+```powershell
+pwsh -File scripts/sync-agent-skills.ps1 -Check
+```
+
 These mirror CI. Run them fast to slow, and stop at the first failure.
 
 What holds for every game on the engine is the shipped skill

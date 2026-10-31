@@ -3,7 +3,7 @@ id: "2723"
 title: "Parked: Visual novel conveniences: text speed, auto, skip read text, the backlog and going back"
 type: feature
 milestone: "Engine: visual novels"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2722", "2405"]

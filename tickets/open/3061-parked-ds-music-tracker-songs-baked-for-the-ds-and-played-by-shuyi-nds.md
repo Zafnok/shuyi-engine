@@ -3,7 +3,7 @@ id: "3061"
 title: "Parked: DS music: tracker songs baked for the DS and played by shuyi-nds, through 3027's song format and player or BlocksDS's sound library"
 type: feature
 milestone: "Parked: export targets"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["3024"]

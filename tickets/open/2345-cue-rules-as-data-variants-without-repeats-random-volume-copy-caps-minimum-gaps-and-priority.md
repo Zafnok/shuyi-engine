@@ -3,7 +3,7 @@ id: "2345"
 title: "Cue rules as data: variants without repeats, random volume, copy caps, minimum gaps and priority, decided once for every backend"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

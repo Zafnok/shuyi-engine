@@ -3,7 +3,7 @@ id: "1135"
 title: "Parked: Research: visual scripting as a view over text — the graph file, what it compiles to, and the editor"
 type: research
 milestone: "Engine: public"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2101", "1125", "1127", "2907"]

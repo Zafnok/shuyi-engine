@@ -3,7 +3,7 @@ id: "2741"
 title: "Parked: The shuyi-crawl module: a labyrinth of cells and walls, specials as data, moves as turn rules, and the crawl-ron format"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2003", "2116"]

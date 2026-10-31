@@ -3,7 +3,7 @@ id: "2136"
 title: "The motions written by hand moved onto shuyi_core::ease: the grid cursor's pulse, music fades and Pan, with no snapshot moving, and why the rest stay"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2109"]

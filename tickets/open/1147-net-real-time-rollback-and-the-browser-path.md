@@ -3,7 +3,7 @@ id: "1147"
 title: "Parked: Networking, step 8: real-time play — rollback for tick games, snapshots for many players, and how the browser joins"
 type: research
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1125", "1145"]

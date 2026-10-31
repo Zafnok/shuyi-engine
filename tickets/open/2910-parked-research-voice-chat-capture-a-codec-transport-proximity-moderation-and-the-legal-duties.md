@@ -3,7 +3,7 @@ id: "2910"
 title: "Parked: Research: voice chat in multiplayer games — microphone capture per platform, a permissive codec, transport over the net tickets, proximity voice, moderation, and the legal duties for Nick"
 type: research
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2713"
 title: "Parked: RTS vision: fog of war per team, and TeamView, what each side knows"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2708"]

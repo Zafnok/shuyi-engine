@@ -3,7 +3,7 @@ id: "2401"
 title: "A profile with no layout of its own keeps the game's keys: a game with one layout never loses them on a switch"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

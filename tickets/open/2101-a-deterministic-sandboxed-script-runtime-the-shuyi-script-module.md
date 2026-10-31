@@ -3,7 +3,7 @@ id: "2101"
 title: "A deterministic, sandboxed script runtime: the shuyi-script module, and an ADR choosing its language"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2907"]

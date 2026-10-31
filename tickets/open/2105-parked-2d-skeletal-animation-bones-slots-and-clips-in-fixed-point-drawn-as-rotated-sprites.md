@@ -3,7 +3,7 @@ id: "2105"
 title: "Parked: 2D skeletal animation: bones, slots and clips in fixed point, mixing two poses, and a skeleton drawn as rotated sprites"
 type: feature
 milestone: "Engine: animation"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1119", "1120", "1123", "2109", "2335", "2337"]

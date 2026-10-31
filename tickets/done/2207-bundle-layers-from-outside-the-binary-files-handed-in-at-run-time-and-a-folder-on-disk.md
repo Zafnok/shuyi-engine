@@ -3,7 +3,7 @@ id: "2207"
 title: "Bundle layers from outside the binary: files handed in at run time, and a folder on disk read by shuyi-app"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

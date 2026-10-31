@@ -3,7 +3,7 @@ id: "2011"
 title: "Dependabot for the crates and the pinned actions (the templates' too), a weekly security workflow with zizmor, CodeQL and Scorecard, and an ADR that makes a Dependabot PR its own ticket and keeps publishing tokens out of CI"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

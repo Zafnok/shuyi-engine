@@ -3,7 +3,7 @@ id: "2327"
 title: "Parked: A game's own shaders: WGSL effect passes and sprite materials as assets, with their parameters as data, and a per-sprite palette swap"
 type: feature
 milestone: "Engine: 2D effects"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2220", "2326", "2337"]

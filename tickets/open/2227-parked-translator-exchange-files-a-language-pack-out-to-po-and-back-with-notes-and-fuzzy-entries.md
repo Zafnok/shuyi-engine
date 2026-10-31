@@ -3,7 +3,7 @@ id: "2227"
 title: "Parked: Translator exchange files: a language pack out to PO and back, with notes and fuzzy entries"
 type: feature
 milestone: "Engine: localization"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2302"]
@@ -51,8 +51,8 @@ Shuyi today:
   packs out: their files hold comments and layout a writer would lose,
   "a ticket of their own if wanted". This is that ticket.
 
-Why it is parked: Visions of Shuyi's languages are translated by Claude,
-"until a human translation replaces it" (game#0718), and Claude reads
+Why it is parked: Visions of Shuyi's languages are translated by the agent,
+"until a human translation replaces it" (game#0718), and the agent reads
 the RON packs as they are. Game#0045 asks Nick who, if anyone, checks
 the Chinese. Exchange files matter once a person translates or checks a
 language in a translation tool, for this game or another one.

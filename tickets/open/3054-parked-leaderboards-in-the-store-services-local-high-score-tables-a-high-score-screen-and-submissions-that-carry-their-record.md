@@ -3,7 +3,7 @@ id: "3054"
 title: "Parked: Leaderboards in the store services: local high-score tables, a high-score screen, and submissions that carry their run's record for a replay to check"
 type: feature
 milestone: "Engine: store services"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["3036"]

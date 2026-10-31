@@ -3,7 +3,7 @@ id: "2530"
 title: "Problem codes for the validators: unknown-name, duplicate and out-of-range in the keymap, the language packs and the maps"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2509"]

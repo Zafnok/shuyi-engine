@@ -3,7 +3,7 @@ id: "3070"
 title: "The one-bit renderer's timing test fails under coverage instrumentation: a_fight_draws_fast runs only without it"
 type: bug
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

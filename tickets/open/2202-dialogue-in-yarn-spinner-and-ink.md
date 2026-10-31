@@ -3,7 +3,7 @@ id: "2202"
 title: "Dialogue in widely used formats: Yarn Spinner and Ink, beside our .dlg"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: todo
 blocked_by: ["2201"]

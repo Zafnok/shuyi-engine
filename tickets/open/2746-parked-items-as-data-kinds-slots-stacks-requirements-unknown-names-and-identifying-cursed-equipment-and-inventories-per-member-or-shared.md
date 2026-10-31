@@ -3,7 +3,7 @@ id: "2746"
 title: "Parked: Items as data: kinds, slots, stacks, requirements, unknown names and identifying, cursed equipment, and inventories per member or shared"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2745"]

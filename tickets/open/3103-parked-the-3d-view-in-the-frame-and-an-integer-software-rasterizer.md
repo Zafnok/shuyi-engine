@@ -3,7 +3,7 @@ id: "3103"
 title: "Parked: The 3D view: a world layer of plain data in the frame, its snapshot text, and an integer software rasterizer for frame-png"
 type: feature
 milestone: "Parked: 3D"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["3101", "3102", "1120", "2332"]

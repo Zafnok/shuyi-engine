@@ -3,7 +3,7 @@ id: "2361"
 title: "Parked: World layers drawn between the last two steps, in the view only, so tick stages move smoothly on displays faster than 60 Hz"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1119", "1120"]
@@ -83,7 +83,7 @@ Why it matters:
 
 ## Nick input
 
-None. The sentence this supersedes is Claude's own technical choice
+None. The sentence this supersedes is the agent's own technical choice
 (ADR-0003 §2); `docs/decisions.md` says nothing about interpolation.
 
 ## Scope

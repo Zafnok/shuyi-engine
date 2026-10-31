@@ -3,7 +3,7 @@ id: "2513"
 title: "Zero setup on Linux: shuyi doctor checks the C linker and the system libraries, one setup script for containers and cloud agents, a dev container, and CI from a bare Ubuntu"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: []
@@ -334,7 +334,7 @@ None.
 - what the parked backend work changes (3032 loads ALSA at run time,
   2403 drops libudev, 3034 replaces the window and GL): each changes
   the table and the script when it lands;
-- the agent eval's runner (2525).
+- The agent eval's runner (2525).
 
 If the PR grows well past 600 changed lines, not counting the byte-equal
 copies, move the dev container and the Codespaces link to a follow-up

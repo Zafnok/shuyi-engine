@@ -3,7 +3,7 @@ id: "2008"
 title: "Parked: Move each in-house platform piece (sound, sound output, pads, embedding, and macroquad's replacement) to a repository of its own"
 type: infra
 milestone: "Engine: in-house platform"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["2902", "2903", "2215", "3034"]

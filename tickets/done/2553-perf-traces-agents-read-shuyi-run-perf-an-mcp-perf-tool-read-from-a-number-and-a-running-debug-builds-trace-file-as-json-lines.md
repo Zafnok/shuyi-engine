@@ -3,7 +3,7 @@ id: "2553"
 title: "Perf traces agents read: shuyi run --perf, an MCP perf tool read from a number, and a running debug build's trace file, as JSON lines"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: ["3063"]

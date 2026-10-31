@@ -3,7 +3,7 @@ id: "2562"
 title: "An A/B against Bevy: the same agent makes the maze chase in each engine, scored on one-shot passes, friction, deterministic checks and lines, published on Pages"
 type: infra
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2572", "2525"]
@@ -107,7 +107,7 @@ His answers go in `docs/decisions.md` and in `evals/ab/maze-chase.ron`.
   3. **Deterministic checks:** per run, how the agent checked its work:
      tool calls that check by replay, by the contract or MCP, or by tests
      the run added, against those that only look at a frame. Counted from
-     the agent's stream (`agent.jsonl`), by tool name and command, with
+     The agent's stream (`agent.jsonl`), by tool name and command, with
      the rules written in `ab.rs` and tested on made-up streams. And
      whether the game itself is deterministic: the same scripted input
      played twice in headless Chromium gives the same last canvas.

@@ -3,7 +3,7 @@ id: "2010"
 title: "Every PR shows its public API change: a CI job with cargo-public-api diffs and cargo-semver-checks against the base, and a Breaking: line required when it breaks"
 type: infra
 milestone: MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

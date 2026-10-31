@@ -3,7 +3,7 @@ id: "2377"
 title: "The system's reduced-motion preference at first start: a platform fact each backend reads, and the default of the player's motion setting"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2340", "3053"]

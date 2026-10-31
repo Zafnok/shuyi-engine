@@ -3,7 +3,7 @@ id: "2722"
 title: "Parked: The visual novel scene and skin: backgrounds, layered characters, the text box, choices and transitions"
 type: feature
 milestone: "Engine: visual novels"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2721", "2109", "2338", "2340"]

@@ -3,7 +3,7 @@ id: "2352"
 title: "Parked: The engine's screens in other languages, machine-translated and labelled as such"
 type: feature
 milestone: "Engine: localization"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["2351", "2350"]
@@ -65,7 +65,7 @@ Why it matters:
 **Decision:**
 
 1. Should the engine ship the words of its own screens (about 90 short
-   lines) in other languages, translated by machine in a Claude session
+   lines) in other languages, translated by machine in a the agent session
    and labelled machine-translated (`made_by: Machine`)? A game that
    turns them on and has a pack in one of those languages shows the
    engine's screens translated. Its own pack's words still win.

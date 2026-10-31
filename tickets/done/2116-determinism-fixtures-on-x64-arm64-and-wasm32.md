@@ -3,7 +3,7 @@ id: "2116"
 title: "Determinism fixtures: golden tables of a record's hashes and of decoded assets, the same on x64, ARM64 and wasm32 under wasmtime in CI, and a moved value declared as a break"
 type: infra
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

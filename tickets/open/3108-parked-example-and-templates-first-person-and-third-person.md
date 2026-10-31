@@ -3,7 +3,7 @@ id: "3108"
 title: "Parked: Example: a small walkable 3D place in first and third person, the first-person and third-person templates, a direction menu in shuyi new, and their guides"
 type: feature
 milestone: "Parked: 3D"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["3104", "3106", "1129", "2004"]

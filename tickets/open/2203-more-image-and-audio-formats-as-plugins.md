@@ -3,7 +3,7 @@ id: "2203"
 title: "More image and audio formats as plugins: JPEG, WebP, QOI, JPEG XL, FLAC, MP3, each behind a feature"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2201"]

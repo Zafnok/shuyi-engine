@@ -3,7 +3,7 @@ id: "2768"
 title: "Parked: The roguelike template grows: the genre's habits as the game's own code, a run save removed on death, unknown items shuffled per seed, and turns by speed"
 type: feature
 milestone: "Engine: roguelikes"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2735", "2765", "2766", "2767", "2746"]

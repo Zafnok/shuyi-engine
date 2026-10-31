@@ -3,7 +3,7 @@ id: "3005"
 title: "no_std with alloc for shuyi-core, shuyi-ui and shuyi-platform, with a CI gate that builds them for thumbv7em-none-eabihf"
 type: infra
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["game#1131", "3003"]

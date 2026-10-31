@@ -3,7 +3,7 @@ id: "2124"
 title: "Parked: Collision queries in fixed point: segment casts against tiles and boxes, point and overlap queries, mover probes, and filters by layer"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1122"]

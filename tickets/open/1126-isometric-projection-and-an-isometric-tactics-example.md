@@ -3,7 +3,7 @@ id: "1126"
 title: "Parked: Isometric: a projection for grid and free placement, depth sorting, picking, and a small isometric tactics example"
 type: feature
 milestone: "Engine: more styles"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1125"]

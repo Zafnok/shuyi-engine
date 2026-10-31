@@ -3,7 +3,7 @@ id: "2807"
 title: "Parked: A custom domain for the website: Nick's domain, its DNS records, a verified domain on GitHub, and HTTPS"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: low
 status: blocked
 blocked_by: ["2801", "2016", "2808", "2812"]

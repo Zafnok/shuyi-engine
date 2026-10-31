@@ -3,7 +3,7 @@ id: "2808"
 title: "Docs agents can read: llms.txt, llms-full.txt, a Markdown twin of every Learn page, and the contract's schemas on the site"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: ["2801", "2802"]

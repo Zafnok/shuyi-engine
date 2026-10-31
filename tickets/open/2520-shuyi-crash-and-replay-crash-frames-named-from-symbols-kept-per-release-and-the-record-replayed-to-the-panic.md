@@ -3,7 +3,7 @@ id: "2520"
 title: "shuyi crash and replay --crash: a crash report read, its frames named from the debug file kept for each release, and its record replayed to the panic"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["3046"]

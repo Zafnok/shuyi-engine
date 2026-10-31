@@ -3,7 +3,7 @@ id: "3053"
 title: "Platform facts at run time: the target's id, whether a game can quit, whether its window can go full screen, and its keyboard, pointer and touch, read from the target profile and handed through Setup into Ctx"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: []

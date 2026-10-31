@@ -3,7 +3,7 @@ id: "3059"
 title: "A one-language build: shuyi bake --lang and shuyi export --lang keep one language's packs and start the game in it"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2226", "2349", "3004"]

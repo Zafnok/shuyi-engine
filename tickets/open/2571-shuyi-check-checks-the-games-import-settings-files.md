@@ -3,7 +3,7 @@ id: "2571"
 title: "shuyi check checks the game's import settings files, through the bundle and formats its bake names"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

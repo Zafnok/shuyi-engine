@@ -3,7 +3,7 @@ id: "2035"
 title: "cargo xtask golden --breaks: a changed or removed golden value fails CI's determinism job without a Breaking: line naming its table"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2116"]

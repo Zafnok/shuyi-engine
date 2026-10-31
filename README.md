@@ -112,7 +112,7 @@ and a game that needs more than that doesn't export there
 | `docs/decisions.md` | The owner's product decisions: name, license, scope, what is parked |
 | `docs/adr/` | Technical decisions |
 | `tickets/` | The backlog, one ticket per pull request |
-| `.claude/skills/` | Skills for developing the engine: working a ticket, writing tickets and ADRs, the gates, input rules, the Sonar queue, dependency upkeep, the pinned Rust |
+| `.claude/skills/`, `.agents/skills/` | Shared skills for developing the engine, with Codex discovery loaders: tickets and ADRs, gates, input rules, the Sonar queue, dependency upkeep, the pinned Rust (see `AGENTS.md`) |
 | `crates/` | The engine's crates ([below](#the-crates)) |
 | `examples/` | Games made from the engine's crates alone ([below](#the-first-example-hello-grid)) |
 | `.github/dependabot.yml`, `.github/workflows/security.yml`, `codeql.yml`, `scorecard.yml` | Dependency upkeep: Dependabot for the crates and the actions' pins (the templates' too), the weekly advisory check that files `advisory` issues, CodeQL and Scorecard; zizmor audits the workflows in `ci.yml` (ADR-0037) |

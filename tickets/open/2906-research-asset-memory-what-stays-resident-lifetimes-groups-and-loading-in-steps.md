@@ -3,7 +3,7 @@ id: "2906"
 title: "Research: asset memory: measure what stays resident, decide lifetimes, asset groups and loading in steps in an ADR, and write the build tickets the numbers call for"
 type: research
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

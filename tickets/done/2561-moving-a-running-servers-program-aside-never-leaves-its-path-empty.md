@@ -3,7 +3,7 @@ id: "2561"
 title: Moving a running server's program aside never leaves its path empty, so the CLI's tests don't flake when they run in parallel
 type: bug
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

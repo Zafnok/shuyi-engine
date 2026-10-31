@@ -3,7 +3,7 @@ id: "2721"
 title: "Parked: The shuyi-vn module: a story as turn rules, stage directions as dialogue commands, and characters as data"
 type: feature
 milestone: "Engine: visual novels"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["game#1131", "2003", "2116"]

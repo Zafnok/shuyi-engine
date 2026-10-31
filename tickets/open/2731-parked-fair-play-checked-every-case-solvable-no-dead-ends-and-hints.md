@@ -3,7 +3,7 @@ id: "2731"
 title: "Parked: Fair play, checked: every case solvable from what can be found, no dead ends, and hints as data"
 type: feature
 milestone: "Engine: detective games"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2728", "2729", "2730", "2724"]

@@ -3,7 +3,7 @@ id: "2554"
 title: "Heap snapshots agents read: live bytes by tag at a frame, and a diff between two, in run --perf, the MCP perf tool and a running build's trace file"
 type: feature
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: ["2553", "3065"]

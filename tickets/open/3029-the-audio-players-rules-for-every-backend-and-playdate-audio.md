@@ -3,7 +3,7 @@ id: "3029"
 title: "The audio player's rules shared by every backend, and audio on the Playdate: sounds baked to ADPCM, music streamed through the SDK"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["3003", "3010"]

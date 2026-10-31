@@ -3,7 +3,7 @@ id: "2711"
 title: "Parked: RTS steering: separation, arrival, pushing with priorities, groups and formations"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2708", "2710"]

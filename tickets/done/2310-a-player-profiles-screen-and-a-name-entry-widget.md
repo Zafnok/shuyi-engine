@@ -3,7 +3,7 @@ id: "2310"
 title: "A player profiles screen (list, use, rename, delete, add) and a name entry widget, as engine screens like options"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: medium
 status: done
 blocked_by: ["2309"]

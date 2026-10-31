@@ -3,7 +3,7 @@ id: "2012"
 title: "The pinned Rust in step: cargo xtask check-toolchain over the engine, the templates and rust-version, Dependabot's reminder of a new stable, and a bump-rust skill"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []
@@ -206,7 +206,7 @@ None.
   - **When it triggers** (its `description`): a Dependabot PR that moves
     a `rust-toolchain.toml`, `check-toolchain` failing, or a request to
     update Rust.
-  - **Who and when.** Claude moves the pin; it is a technical choice,
+  - **Who and when.** the agent moves the pin; it is a technical choice,
     so Nick isn't asked. The pin follows each stable: Dependabot opens
     the PR once a stable is 14 days old, and a session finishes it
     before the next stable is out (six weeks), so the new lints come

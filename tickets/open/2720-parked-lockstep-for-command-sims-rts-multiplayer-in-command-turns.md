@@ -3,7 +3,7 @@ id: "2720"
 title: "Parked: Lockstep for command sims: RTS multiplayer in command turns"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2706", "1140"]

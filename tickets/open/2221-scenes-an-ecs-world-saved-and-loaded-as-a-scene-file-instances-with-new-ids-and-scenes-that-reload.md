@@ -3,7 +3,7 @@ id: "2221"
 title: "Scenes: an ECS world saved and loaded as a scene file keeping its ids, instances with new ids, and scene files that reload in a running game"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2107", "2220", "2907"]

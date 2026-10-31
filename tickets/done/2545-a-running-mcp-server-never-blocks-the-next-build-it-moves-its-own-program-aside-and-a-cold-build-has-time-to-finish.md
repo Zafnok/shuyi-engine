@@ -3,7 +3,7 @@ id: "2545"
 title: "A running MCP server never blocks the next build: it moves its own program aside on Windows, and a cold build has time to finish"
 type: bug
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["1133", "2535"]

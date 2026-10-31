@@ -3,7 +3,7 @@ id: "2809"
 title: "An Assets page on the website: modules, templates, tools and games, one file per entry, checked in CI, with other people's work listed if Nick says yes"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2801", "2005", "2003", "2526"]
@@ -94,7 +94,7 @@ answers in `docs/decisions.md`. The names of other people's crates are
    **Recommended: yes**, with these rules:
    - a submission is a GitHub issue form, so it works under any
      contribution policy (1132);
-   - a Claude session checks it against a written checklist and adds
+   - a the agent session checks it against a written checklist and adds
      the entry by PR;
    - Nick may remove any entry;
    - a listed entry is found, not vouched for: the page says so;

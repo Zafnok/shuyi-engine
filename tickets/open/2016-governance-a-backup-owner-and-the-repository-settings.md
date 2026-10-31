@@ -3,7 +3,7 @@ id: "2016"
 title: "Governance and continuity: GOVERNANCE.md, a backup owner, a list of the accounts and secrets, and main protected by a required pull request and ci-result, with private vulnerability reporting"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []
@@ -31,7 +31,7 @@ writing who runs them and what happens when someone is gone:
 What Shuyi has today:
 
 - `AGENTS.md`, *Who decides what*: two roles, Nick for the product and
-  Claude for everything technical. Nothing about absence, a backup, or
+  The agent for everything technical. Nothing about absence, a backup, or
   adding maintainers.
 - `docs/decisions.md`, *Still open*: who may contribute code (the game's
   ticket 0059, still open there). Its 2026-10-20 part lists "a backup

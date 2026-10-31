@@ -3,7 +3,7 @@ id: "1134"
 title: "The engine's skill pack: Agent Skills for making games on the engine, tested in CI and shipped as a plugin"
 type: feature
 milestone: "Engine: public"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: done
 blocked_by: ["1129", "2015", "2509", "2511", "2810"]
@@ -346,7 +346,7 @@ None.
 - rollback in `shuyi-net` (ADR-0005 §3's table gives the skill
   lockstep, rollback and sessions): 1147 writes the tickets that build
   rollback, and the rollback one adds that section;
-- the agent eval: its tasks, grader and reference solutions (2524), and
+- The agent eval: its tasks, grader and reference solutions (2524), and
   scheduled agent runs (2525).
 
 ## Implementation steps

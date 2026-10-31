@@ -3,7 +3,7 @@ id: "2109"
 title: "Ease curves in integers in shuyi_core::ease, tweens drawn from the time alone, and an ADR that takes easing out of the cinematic module"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

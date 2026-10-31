@@ -3,7 +3,7 @@ id: "2508"
 title: "Parked: The graph panel: boxes and wires over graph.ron files, compile errors on the node, and the running node lit up"
 type: feature
 milestone: "Engine: editor"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1135", "2507"]

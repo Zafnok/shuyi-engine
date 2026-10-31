@@ -3,7 +3,7 @@ id: "2391"
 title: "One RGBA picture type: the raster, glyph-tiles and font-atlas use shuyi_assets::image::Image"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

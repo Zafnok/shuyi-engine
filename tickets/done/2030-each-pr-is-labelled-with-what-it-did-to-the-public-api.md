@@ -3,7 +3,7 @@ id: "2030"
 title: "Each PR is labelled with what it did to the public API (api: none, api: added, api: breaking), so a game pinned by git revision knows when to move its pin"
 type: infra
 milestone: MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: []

@@ -3,7 +3,7 @@ id: "3019"
 title: "Parked: Indexed colour at bake time: images quantized to 8×8 tiles and palette banks, palette roles at fixed indices with a distinctness check, and frame-png --target gba"
 type: feature
 milestone: "Parked: export targets"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2116", "2204", "2229", "3007", "3017"]

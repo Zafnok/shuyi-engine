@@ -3,7 +3,7 @@ id: "3046"
 title: "Crash reports: a panic hook in shuyi-app writes a report through the game's storage, with the game's record of its play, and the game hears of it at the next start"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["3040", "2511"]

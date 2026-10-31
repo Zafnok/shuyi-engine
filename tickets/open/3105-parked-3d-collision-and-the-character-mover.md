@@ -3,7 +3,7 @@ id: "3105"
 title: "Parked: 3D collision in Fx12: shapes, static meshes and heightfields, a grid broad phase, ray and shape casts, triggers, and a character mover"
 type: feature
 milestone: "Parked: 3D"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["3101", "1122"]

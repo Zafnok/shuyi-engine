@@ -3,7 +3,7 @@ id: "2742"
 title: "Parked: The crawl view: what the explorer sees as slots of plain data, darkness and light, things in cells, and its snapshot text"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2741"]

@@ -3,7 +3,7 @@ id: "2764"
 title: "Parked: Example and template: a small isometric action RPG with a town, two generated areas, waypoints, skills, packs and loot"
 type: feature
 milestone: "Engine: action RPGs"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2747", "2752", "2759", "2760", "2761", "2762", "2763", "1126", "2119", "2501", "2511", "2004"]

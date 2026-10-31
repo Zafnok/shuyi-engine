@@ -3,7 +3,7 @@ id: "2911"
 title: "Parked: Research: ray- and path-traced light and sound as an opt-in module for PCs and current consoles, behind a new ray_tracing capability that every other target lacks"
 type: research
 milestone: "Engine: ray tracing"
-model: opus-5.5
+model: reasoning
 effort: max
 status: blocked
 blocked_by: []

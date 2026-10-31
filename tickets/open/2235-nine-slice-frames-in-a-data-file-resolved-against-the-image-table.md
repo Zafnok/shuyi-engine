@@ -3,7 +3,7 @@ id: "2235"
 title: "Nine-slice frames in a data file: a NineSliceDefs kind and its RON format, resolved against the image table, baked in the pack and read by BasicData"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2338"]

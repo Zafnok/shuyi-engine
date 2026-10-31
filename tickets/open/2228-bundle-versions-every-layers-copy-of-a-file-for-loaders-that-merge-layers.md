@@ -3,7 +3,7 @@ id: "2228"
 title: "Bundle::versions: every layer's copy of a file, for loaders that merge layers (mods, DLC, per-target layers)"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: []

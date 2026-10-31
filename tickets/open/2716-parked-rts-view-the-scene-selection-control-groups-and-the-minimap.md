@@ -3,7 +3,7 @@ id: "2716"
 title: "Parked: RTS view: the scene from the camera, selection, control groups and the minimap"
 type: feature
 milestone: "Engine: real-time strategy"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2712", "2713", "1120", "1121"]

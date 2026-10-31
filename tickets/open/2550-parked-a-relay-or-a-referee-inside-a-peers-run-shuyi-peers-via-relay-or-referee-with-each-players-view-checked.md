@@ -3,7 +3,7 @@ id: "2550"
 title: "Parked: A relay or a referee inside a peers run: shuyi peers --via relay or referee, in the same headless process, with each player's view checked"
 type: feature
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2529", "1141", "1146"]

@@ -3,7 +3,7 @@ id: "2761"
 title: "Parked: Moving to a pointed place: click to move on a route, held to follow, attack-move on a target, and the stick beside it"
 type: feature
 milestone: "Engine: action RPGs"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["1121", "2106", "2757"]

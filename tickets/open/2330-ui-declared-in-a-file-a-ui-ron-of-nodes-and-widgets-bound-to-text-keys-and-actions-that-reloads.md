@@ -3,7 +3,7 @@ id: "2330"
 title: "UI declared in a file: a .ui.ron of nodes and widgets bound to text keys and actions, built into a screen, and reloaded while the game runs"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["2329", "2220", "2355"]

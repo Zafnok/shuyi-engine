@@ -12,6 +12,29 @@ game stays the engine's first user. Read [`README.md`](README.md), then
 Where each kind of fact is written, and what each task reads first, is in
 [`docs/README.md`](docs/README.md), the docs map (the `document` skill).
 
+## Shared instructions and skills
+
+`AGENTS.md` is the shared instruction source. `CLAUDE.md` imports it for
+Claude Code; Codex reads it directly. Use the same rules with any model.
+Ticket `model` values are capability recommendations (`tickets/README.md`).
+
+The portable workflows and their resources live in `.claude/skills/` for
+compatibility with existing links and the pinned engine skill-pack updater.
+Codex discovers `.agents/skills/` loaders that read those same workflows.
+Edit the shared source, then run `pwsh -File scripts/sync-agent-skills.ps1`;
+`-Check` verifies that every loader is current. Run it after updating the
+engine skill pack too. These are regular tracked files: no symlinks or
+Windows administrator rights are needed. A new chat may be needed to
+discover newly added skills.
+
+Use the current harness's tools for questions, plans, shell commands and
+optional delegation; a named tool in a workflow describes an operation,
+not a requirement to change harnesses. If a tool is unavailable, use an
+equivalent operation while preserving the checks and authorization rules.
+Harness-specific hooks do not run everywhere: execute the workflow's
+required checks explicitly. Do not alter another harness's settings to
+make a shared instruction work.
+
 ## Who decides what
 
 - **Nick (owner)** decides the product: the name, the license, when
@@ -20,7 +43,7 @@ Where each kind of fact is written, and what each task reads first, is in
   and doesn't want technical questions. Ask him product questions with
   the `ask-nick` skill. His answers are in
   [`docs/decisions.md`](docs/decisions.md).
-- **Claude** decides everything technical and records significant
+- **The coding agent** decides everything technical and records significant
   choices as ADRs in `docs/adr/` (the `write-adr` skill).
 
 ## Hard rules

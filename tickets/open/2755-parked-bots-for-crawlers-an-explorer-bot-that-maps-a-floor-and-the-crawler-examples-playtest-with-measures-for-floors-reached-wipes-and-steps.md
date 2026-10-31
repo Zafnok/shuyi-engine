@@ -3,7 +3,7 @@ id: "2755"
 title: "Parked: Bots for crawlers: an explorer bot that maps a floor, and the crawler example's playtest with measures for floors reached, wipes and steps"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2744", "2754"]

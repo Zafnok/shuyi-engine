@@ -3,7 +3,7 @@ id: "2760"
 title: "Parked: Spawners, packs and aggro: spawn tables per area, packs with a leader, monster modifiers, waking, chasing and leashing"
 type: feature
 milestone: "Engine: action RPGs"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2756", "2757", "2748", "2106", "2114"]

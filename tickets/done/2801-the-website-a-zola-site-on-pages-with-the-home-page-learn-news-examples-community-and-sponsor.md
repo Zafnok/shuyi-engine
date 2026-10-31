@@ -3,7 +3,7 @@ id: "2801"
 title: "The website: a Zola site on GitHub Pages with a home page, Learn, News, Examples, Community and Sponsor, ready for a custom domain"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: []

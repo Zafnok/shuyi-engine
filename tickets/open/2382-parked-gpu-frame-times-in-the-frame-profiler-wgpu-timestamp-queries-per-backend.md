@@ -3,7 +3,7 @@ id: "2382"
 title: "Parked: GPU frame times in the frame profiler: wgpu timestamp queries per backend, a GPU time in FrameTimes, and its ticks in the graph, the readout and the trace file"
 type: feature
 milestone: "Engine: debug view"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2325", "3034", "2018"]

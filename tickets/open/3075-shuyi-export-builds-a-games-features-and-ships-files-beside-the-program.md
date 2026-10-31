@@ -3,7 +3,7 @@ id: "3075"
 title: "shuyi export builds a game's named features and ships the files it names beside the program"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["3004"]

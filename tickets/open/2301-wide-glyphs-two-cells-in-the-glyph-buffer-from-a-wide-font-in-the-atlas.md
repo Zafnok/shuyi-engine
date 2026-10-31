@@ -3,7 +3,7 @@ id: "2301"
 title: "Wide glyphs: a character two cells wide in the glyph buffer, drawn from a wide font in the atlas"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2350"]

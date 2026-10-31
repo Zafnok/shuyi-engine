@@ -3,7 +3,7 @@ id: "2754"
 title: "Parked: Example and template: a small dungeon crawler with an opening scene, a town, two floors, and a party of one by default"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2743", "2744", "2747", "2749", "2750", "2751", "2752", "2501", "2511", "2004"]

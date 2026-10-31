@@ -3,7 +3,7 @@ id: "2117"
 title: "Eight-way moves with a corner rule, and point-to-point paths by A* with partial paths, in the grid kit; four-way stays the default"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: []

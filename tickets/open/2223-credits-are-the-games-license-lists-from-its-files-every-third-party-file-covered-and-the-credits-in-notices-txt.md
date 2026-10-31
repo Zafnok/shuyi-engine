@@ -3,7 +3,7 @@ id: "2223"
 title: "Credits are the game's: license lists from its files with ADR-0002 §8 as the default, every third-party file covered by a credit in shuyi check, and the credits in every build's NOTICES.txt"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["3039"]

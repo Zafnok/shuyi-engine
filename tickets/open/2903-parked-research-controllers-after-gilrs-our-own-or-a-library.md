@@ -3,7 +3,7 @@ id: "2903"
 title: "Parked: Research: controllers after gilrs: our own code or a library, and the tickets that follow"
 type: research
 milestone: "Engine: in-house platform"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2005"
 title: "The first release: the engine's crates on crates.io, a version, a changelog, and the game on versions instead of a git revision"
 type: infra
 milestone: MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804", "2010", "2011", "2012", "2013", "2016", "2509", "2513", "2808", "2812"]

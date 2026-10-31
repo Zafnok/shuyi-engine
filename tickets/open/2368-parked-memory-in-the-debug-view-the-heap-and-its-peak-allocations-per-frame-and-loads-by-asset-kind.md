@@ -3,7 +3,7 @@ id: "2368"
 title: "Parked: Memory in the debug view: the heap and its peak, allocations per frame, and loads by asset kind"
 type: feature
 milestone: "Engine: debug view"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2315", "2316", "3064"]

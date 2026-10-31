@@ -3,7 +3,7 @@ id: "2316"
 title: "The debug view in real time: pause, step one frame, slow motion, and a readout of the top screen"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2315"]

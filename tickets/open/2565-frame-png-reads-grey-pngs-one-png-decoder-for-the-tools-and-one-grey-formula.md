@@ -3,7 +3,7 @@ id: "2565"
 title: "frame-png reads grey PNG files: one PNG decoder for the tools, and one grey formula"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

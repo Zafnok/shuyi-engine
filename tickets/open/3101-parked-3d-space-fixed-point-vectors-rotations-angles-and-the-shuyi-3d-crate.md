@@ -3,7 +3,7 @@ id: "3101"
 title: "Parked: 3D space: Fixed<F> and Fx12, vectors, rotations and Angle16, the shuyi-3d crate, and the 3D perspective markers"
 type: feature
 milestone: "Parked: 3D"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["1119", "1120", "2003"]

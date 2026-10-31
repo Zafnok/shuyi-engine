@@ -3,7 +3,7 @@ id: "2239"
 title: "Translated dialogue lines get the text box's page check that English lines get"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

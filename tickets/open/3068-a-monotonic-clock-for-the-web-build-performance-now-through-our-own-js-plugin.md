@@ -3,7 +3,7 @@ id: "3068"
 title: "A monotonic clock for the web build: the pacer reads performance.now() through a JS plugin of our own"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: ["3067"]

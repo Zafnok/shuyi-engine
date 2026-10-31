@@ -3,7 +3,7 @@ id: "3104"
 title: "Parked: The GPU 3D painter, shuyi-app-3d, over miniquad: depth, textures, skinning, lights, a shadow map and the named effects, on GL 3.3 and WebGL 2"
 type: feature
 milestone: "Parked: 3D"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["3103", "3003", "3017", "2018"]

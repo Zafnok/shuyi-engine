@@ -3,7 +3,7 @@ id: "2132"
 title: "A planner's candidate order from the game's kinds of command: each piece's best strike first, advances and holds by walking distance, and the end of the turn always within the cap"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["2131"]

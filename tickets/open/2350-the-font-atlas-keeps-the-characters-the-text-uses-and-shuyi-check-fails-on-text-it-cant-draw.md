@@ -3,7 +3,7 @@ id: "2350"
 title: "The font atlas keeps the characters the text uses, and shuyi check fails on text it can't draw"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: []

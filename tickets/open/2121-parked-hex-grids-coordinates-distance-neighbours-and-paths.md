@@ -3,7 +3,7 @@ id: "2121"
 title: "Parked: Hex grids in the grid kit: axial coordinates, offset storage, distance, neighbours, rings and paths, and an ADR amending ADR-0003 §6"
 type: feature
 milestone: "Engine: hex grids"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2013", "2015", "2117"]

@@ -3,7 +3,7 @@ id: "2567"
 title: "check-skills reads links with a Markdown parser, as check-links does"
 type: bug
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: low
 status: todo
 blocked_by: []

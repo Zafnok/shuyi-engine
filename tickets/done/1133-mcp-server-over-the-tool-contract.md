@@ -3,7 +3,7 @@ id: "1133"
 title: "An MCP server over the tool contract, with a session that keeps one headless game running"
 type: feature
 milestone: "Engine: public"
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: ["1129", "2509", "3040", "2810"]

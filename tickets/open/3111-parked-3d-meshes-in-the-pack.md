@@ -3,7 +3,7 @@ id: "3111"
 title: "Parked: 3D meshes in the pack: meshes, materials, skeletons and clips baked as postcard sections and proven equal to their glTF"
 type: feature
 milestone: "Parked: 3D"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["3102"]

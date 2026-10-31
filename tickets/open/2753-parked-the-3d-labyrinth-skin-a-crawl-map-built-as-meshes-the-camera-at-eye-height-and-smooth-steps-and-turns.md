@@ -3,7 +3,7 @@ id: "2753"
 title: "Parked: The 3D labyrinth skin: a crawl map built as meshes, the camera at eye height, and smooth steps and turns"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2742", "3102", "3103", "3104", "2109"]

@@ -3,7 +3,7 @@ id: "1132"
 title: "The engine's community files and contribution policy"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["game#1131", "2016"]

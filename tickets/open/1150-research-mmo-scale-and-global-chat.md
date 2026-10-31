@@ -3,7 +3,7 @@ id: "1150"
 title: "Parked: Research: what MMO-scale play and global chat would take — zones, interest management, persistence, running costs, legal duties"
 type: research
 milestone: "Engine: networking"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["1147", "1149"]

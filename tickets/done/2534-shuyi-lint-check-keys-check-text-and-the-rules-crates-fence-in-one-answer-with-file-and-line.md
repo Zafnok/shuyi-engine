@@ -3,7 +3,7 @@ id: "2534"
 title: "shuyi lint: check-keys, check-text and the rules crate's fence in one answer, with file and line"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2015"]

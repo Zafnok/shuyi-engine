@@ -3,7 +3,7 @@ id: "2214"
 title: "Parked: In-house sound: Vorbis, part 3: the inverse MDCT, windows and overlap, a streaming decoder, and the ogg format"
 type: feature
 milestone: "Engine: in-house platform"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2213"]

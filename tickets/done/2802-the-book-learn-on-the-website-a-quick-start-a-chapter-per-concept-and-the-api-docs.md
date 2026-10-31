@@ -3,7 +3,7 @@ id: "2802"
 title: "The book: Learn on the website, with a quick start, a chapter per concept whose code compiles in CI, and the API docs"
 type: infra
 milestone: "Engine: public"
-model: sonnet-5
+model: implementation
 effort: high
 status: done
 blocked_by: ["2801", "2511", "2513", "2810"]

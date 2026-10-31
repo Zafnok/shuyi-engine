@@ -3,7 +3,7 @@ id: "2359"
 title: "Parked: Animated tiles and unit frames as data in the grid kit: terrain pictures that move by the screen's clock, and idle and walk clips"
 type: feature
 milestone: "Engine: real time"
-model: sonnet-5
+model: implementation
 effort: high
 status: blocked
 blocked_by: ["2231"]

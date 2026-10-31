@@ -3,7 +3,7 @@ id: "3024"
 title: "Parked: shuyi-nds: the DS backend (Rust on the ARM9 over BlocksDS, two 2D engines, touch, the lid, saves, sound effects) and shuyi export nds"
 type: feature
 milestone: "Parked: export targets"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["3018", "3003", "3004", "3017", "3019", "3020", "3023", "3045"]

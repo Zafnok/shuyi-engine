@@ -3,7 +3,7 @@ id: "3050"
 title: "Release a game from a tag: every target's package built in CI, a GitHub Release with checksums, and an optional itch.io upload with butler"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["3004", "2011", "2513"]

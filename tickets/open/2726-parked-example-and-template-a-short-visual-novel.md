@@ -3,7 +3,7 @@ id: "2726"
 title: "Parked: Example and template: a short visual novel with three endings"
 type: feature
 milestone: "Engine: visual novels"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2724", "2725", "2501", "2004"]

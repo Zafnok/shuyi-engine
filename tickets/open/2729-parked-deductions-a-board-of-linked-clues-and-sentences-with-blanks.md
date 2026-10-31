@@ -3,7 +3,7 @@ id: "2729"
 title: "Parked: Deductions: a board of linked clues, and sentences with blanks confirmed in groups"
 type: feature
 milestone: "Engine: detective games"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2727", "2405"]

@@ -3,7 +3,7 @@ id: "2514"
 title: "Frames over time from frame-png: --every and --count make a sheet labelled with times, an APNG or a GIF, and the MCP frame_png tool returns the sheet"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: high
 status: todo
 blocked_by: ["1133"]
@@ -28,7 +28,7 @@ The benchmarks record motion from a running window:
 - Bevy, since 0.18, has `EasyScreenshotPlugin` and
   `EasyScreenRecordPlugin` in `bevy_dev_tools` (bevy.org/news/bevy-0-18);
 - Unity's Recorder package writes image sequences and movies;
-- the agent servers 1133 names (Godot's community MCP servers, Unity's
+- The agent servers 1133 names (Godot's community MCP servers, Unity's
   and Unreal's MCP plugins, `bevy_brp_mcp`) take one screenshot per
   call.
 

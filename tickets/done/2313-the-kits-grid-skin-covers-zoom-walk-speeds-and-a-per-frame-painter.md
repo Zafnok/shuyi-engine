@@ -3,7 +3,7 @@ id: "2313"
 title: "The kit's grid skin covers zoom, a held walk speed and a painter made each frame, and its glyph skin takes style options"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: done
 blocked_by: []

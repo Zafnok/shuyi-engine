@@ -3,7 +3,7 @@ id: "2336"
 title: "Drawn shapes for every game: lines, circles and polygons as frame items, filled or outlined, by one pixel rule in every renderer"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2335"]

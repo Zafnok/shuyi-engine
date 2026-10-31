@@ -3,7 +3,7 @@ id: "2025"
 title: "The contract's inputs and the game tools' types moved onto constructors in shuyi-cli"
 type: infra
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: done
 blocked_by: ["2013"]

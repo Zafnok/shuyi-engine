@@ -3,7 +3,7 @@ id: "2740"
 title: "Parked: Hex grids drawn: a hex projection with picking, the glyph skin in offset rows, and a small hex example with its guide"
 type: feature
 milestone: "Engine: hex grids"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2121", "2511", "3039"]

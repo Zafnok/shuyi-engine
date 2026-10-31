@@ -3,7 +3,7 @@ id: "2766"
 title: "Parked: A message log widget: event lines with colour roles, repeats folded, a few lines on screen, and a history screen"
 type: feature
 milestone: "Engine: roguelikes"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: []

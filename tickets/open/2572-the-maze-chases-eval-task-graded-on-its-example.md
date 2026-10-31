@@ -3,7 +3,7 @@ id: "2572"
 title: "The maze chase's eval task: evals/tasks/maze-chase.ron, graded on examples/maze-chase in CI"
 type: infra
 milestone: "Engine: real time"
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2776", "2524"]

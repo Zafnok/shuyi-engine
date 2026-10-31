@@ -3,7 +3,7 @@ id: "3035"
 title: "Parked: Screen reader output: the accessibility tree sent to Windows, macOS and Linux screen readers through AccessKit, in the winit backend"
 type: feature
 milestone: "Engine: accessibility"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2322", "3034"]

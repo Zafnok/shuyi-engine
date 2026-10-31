@@ -3,7 +3,7 @@ id: "2318"
 title: "Parked: Level layouts in the debug view: world layers, the camera's dead zone and bounds, sort keys, and Tiled and LDtk objects"
 type: feature
 milestone: "Engine: real time"
-model: sonnet-5
+model: implementation
 effort: medium
 status: blocked
 blocked_by: ["2315", "1120", "1124"]

@@ -3,7 +3,7 @@ id: "2378"
 title: "Cue rules, part two: file lengths, copy caps, priority and a voice limit, with one copy stopped alone"
 type: feature
 milestone: After MVP
-model: opus-5.5
+model: reasoning
 effort: high
 status: todo
 blocked_by: ["2345"]

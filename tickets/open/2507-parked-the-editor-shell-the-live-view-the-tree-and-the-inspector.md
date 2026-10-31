@@ -3,7 +3,7 @@ id: "2507"
 title: "Parked: The editor shell: shuyi edit, the live view with the debug channels, the tree of what is running, and an inspector over settings files"
 type: feature
 milestone: "Engine: editor"
-model: opus-5.5
+model: reasoning
 effort: high
 status: blocked
 blocked_by: ["2506", "2220", "2515", "2907", "2521"]

@@ -3,7 +3,7 @@ id: "2811"
 title: "Animated previews on the website's Examples cards: a preview.png per example, made by frame-png --preview from its shuyi.ron, checked in and tested equal"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["2514", "2801"]

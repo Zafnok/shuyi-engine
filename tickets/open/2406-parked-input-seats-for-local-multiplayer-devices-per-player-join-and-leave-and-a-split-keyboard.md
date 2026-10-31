@@ -3,7 +3,7 @@ id: "2406"
 title: "Parked: Input seats for local multiplayer: devices per player, join and leave, a split keyboard, keymaps and Harness scripts per seat, and controls checked per player count"
 type: feature
 milestone: "Engine: real time"
-model: opus-5.5
+model: reasoning
 effort: xhigh
 status: blocked
 blocked_by: ["2010", "2013"]

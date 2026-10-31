@@ -3,7 +3,7 @@ id: "3073"
 title: "frame-png on a one-bit target paints sprites from the target's one-bit pictures, not grey rectangles"
 type: feature
 milestone: After MVP
-model: sonnet-5
+model: implementation
 effort: medium
 status: todo
 blocked_by: ["3007"]
