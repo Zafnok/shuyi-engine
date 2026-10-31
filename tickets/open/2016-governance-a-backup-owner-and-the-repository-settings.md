@@ -3,7 +3,7 @@ id: "2016"
 title: "Governance and continuity: GOVERNANCE.md, a backup owner, a list of the accounts and secrets, and main protected by a required pull request and ci-result, with private vulnerability reporting"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

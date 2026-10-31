@@ -3,7 +3,7 @@ id: "3071"
 title: "What a package loads, audited against a list per target, and a linux-arm64 package"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["3004"]

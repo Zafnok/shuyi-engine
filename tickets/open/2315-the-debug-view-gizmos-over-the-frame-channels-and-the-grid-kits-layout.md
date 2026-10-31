@@ -3,7 +3,7 @@ id: "2315"
 title: "The debug view: gizmos drawn over the frame, channels turned on from the debug menu, and the grid kit's layout as the first channel"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

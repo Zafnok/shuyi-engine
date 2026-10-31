@@ -3,7 +3,7 @@ id: "3039"
 title: "Web builds carry the notices they owe: a NOTICES.txt with the crates compiled in, the vendored scripts' licenses and the game's license texts, published with the Pages examples"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: []

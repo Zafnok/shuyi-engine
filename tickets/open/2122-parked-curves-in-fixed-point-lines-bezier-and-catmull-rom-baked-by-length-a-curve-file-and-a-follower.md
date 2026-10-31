@@ -3,7 +3,7 @@ id: "2122"
 title: "Parked: Curves in fixed point: lines, Bézier and Catmull-Rom baked by length, a curve file, and a follower that stops, loops or ping-pongs"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1119", "2335"]

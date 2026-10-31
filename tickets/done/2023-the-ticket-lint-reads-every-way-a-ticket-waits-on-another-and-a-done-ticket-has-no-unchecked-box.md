@@ -3,7 +3,7 @@ id: "2023"
 title: "The ticket lint reads every way a ticket waits on another, the settle step reads the docs too, and a done ticket has no unchecked box"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

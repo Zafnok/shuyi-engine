@@ -3,7 +3,7 @@ id: "2103"
 title: "Parked: Particles: emitters as data, each particle a function of the seed and the time, painted by the skin"
 type: feature
 milestone: "Engine: animation"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["1119", "2114", "2231", "2335", "2337"]

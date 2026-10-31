@@ -3,7 +3,7 @@ id: "2374"
 title: "Eight-way on square maps in the grid kit's drawing and input: a diagonal step in the path arrow, steering over diagonal actions, and an eight-way choice in the grid template"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2117"]

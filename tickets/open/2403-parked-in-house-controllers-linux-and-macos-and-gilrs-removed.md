@@ -3,7 +3,7 @@ id: "2403"
 title: "Parked: In-house controllers, part 2: Linux through evdev, macOS through the Game Controller framework, and gilrs removed"
 type: feature
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2402"]

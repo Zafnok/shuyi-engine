@@ -3,7 +3,7 @@ id: "2714"
 title: "Parked: RTS AI, part 1: unit reactions and squads that judge a fight before it starts"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2712", "2713", "3009"]

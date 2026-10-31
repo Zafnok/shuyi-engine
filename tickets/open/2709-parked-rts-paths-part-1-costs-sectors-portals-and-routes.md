@@ -3,7 +3,7 @@ id: "2709"
 title: "Parked: RTS paths, part 1: costs per movement class, sectors and portals, and routes over the portal graph"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2707", "2116"]

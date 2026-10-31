@@ -3,7 +3,7 @@ id: "2501"
 title: "Templates as data: template.ron, parts that apply when an answer is picked, and a pure composer behind shuyi new"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["1129", "2003", "2511"]

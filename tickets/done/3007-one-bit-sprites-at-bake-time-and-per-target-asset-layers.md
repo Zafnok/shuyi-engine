@@ -3,7 +3,7 @@ id: "3007"
 title: "1-bit sprites at bake time: Atkinson or Bayer dithering per image, tested equal to the source, and per-target asset layers for hand-drawn overrides"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: ["2204", "2229", "3006"]

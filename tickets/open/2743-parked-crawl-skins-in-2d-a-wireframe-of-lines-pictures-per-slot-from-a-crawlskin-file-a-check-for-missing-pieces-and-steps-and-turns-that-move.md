@@ -3,7 +3,7 @@ id: "2743"
 title: "Parked: Crawl skins in 2D: a wireframe of lines, pictures per slot from a crawlskin file, a check for missing pieces, and steps and turns that move"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2742", "2336", "2109"]

@@ -3,7 +3,7 @@ id: "3055"
 title: "Parked: Presence: a status friends see, set by text key through a service with no store in it, Steam rich presence behind the steam feature, and Steam's token file written from the language packs"
 type: feature
 milestone: "Engine: store services"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["3036", "3037", "3040"]

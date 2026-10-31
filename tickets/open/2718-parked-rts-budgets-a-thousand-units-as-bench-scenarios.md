@@ -3,7 +3,7 @@ id: "2718"
 title: "Parked: RTS budgets: a thousand units as bench scenarios in CI, and the module's needs per target"
 type: infra
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2715", "3008"]

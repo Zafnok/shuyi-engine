@@ -3,7 +3,7 @@ id: "2032"
 title: "deny.toml's license allow list and credits::LICENSES kept equal by a test"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: todo
 blocked_by: []

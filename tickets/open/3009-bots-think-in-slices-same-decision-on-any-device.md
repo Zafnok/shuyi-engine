@@ -3,7 +3,7 @@ id: "3009"
 title: "Bots think in slices: spread a bot's search over frames by work units, so the frame rate holds and the decision is the same on every device"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["game#1131", "3008", "2112"]

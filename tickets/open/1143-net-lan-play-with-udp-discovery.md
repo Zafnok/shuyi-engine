@@ -3,7 +3,7 @@ id: "1143"
 title: "Parked: Networking, step 4: LAN play — a UDP transport and finding games on the local network"
 type: feature
 milestone: "Engine: networking"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["1140"]

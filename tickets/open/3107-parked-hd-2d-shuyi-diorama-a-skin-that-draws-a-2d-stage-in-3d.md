@@ -3,7 +3,7 @@ id: "3107"
 title: "Parked: HD-2D: shuyi-diorama, a skin that draws a 2D stage in 3D, with terrain from tiles and heights, billboard characters, picking and named effects"
 type: feature
 milestone: "Parked: 3D"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["3104", "1123", "1124", "3017", "2220", "2405"]

@@ -3,7 +3,7 @@ id: "2312"
 title: "A frame time that is never negative or not a number, a clock a held action speeds up and a press skips, and the text box's Confirm step"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

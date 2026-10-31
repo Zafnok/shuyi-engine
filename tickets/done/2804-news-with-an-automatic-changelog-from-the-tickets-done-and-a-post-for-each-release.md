@@ -3,7 +3,7 @@ id: "2804"
 title: "News with an automatic changelog: cargo xtask changelog from the tickets done and the merges, a changelog page, and a post for each release"
 type: infra
 milestone: "Engine: public"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: ["2801"]

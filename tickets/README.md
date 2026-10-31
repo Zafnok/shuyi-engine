@@ -39,26 +39,30 @@ example 0804 (Nick's Chapter 1 playtest), 1102–1118 (the carve) and 1131
 
 ## Model and effort guidance
 
-`model` describes a capability, not a provider or API model id:
+Each ticket's `model` line names both recommended alternatives, Claude first
+and OpenAI second. Choose the model for your current harness; do not run both.
 
-| Capability | Use for | Optional examples |
-| ---------- | ------- | ----------------- |
-| `mechanical` | Renames, file moves, small data edits | A fast model that can follow an exact procedure |
-| `implementation` | Specified changes, existing patterns, clear bug fixes | Sonnet / Terra |
-| `reasoning` | Architecture, tricky invariants, work across crates, design facilitation | Opus / Astra |
-| `creative` | Story, dialogue, character voice, art direction | Fable / Astra |
+| Recommendation (`model` value) | Use for |
+| ------------------------------ | ------- |
+| `haiku-4.5 / gpt-6-luna` | Mechanical renames, file moves, small data edits |
+| `sonnet-5 / gpt-6.1-terra` | Specified changes, existing patterns, clear bug fixes |
+| `opus-5.5 / gpt-6.1-sol` | Architecture, tricky invariants, work across crates, design facilitation |
+| `fable-5.1 / gpt-6-astra` | Story, dialogue, character voice, art direction |
 
-The examples reflect the owner's routing preferences, not benchmark equivalence
-or guaranteed availability. Use any available model that meets the capability;
-no ticket requires switching providers. Keep actual model ids in the harness's
-settings. Escalate capability when repeated attempts cannot resolve the task.
-`effort` is relative reasoning effort; use the closest supported setting in
-the current harness. A creative task may also need high reasoning effort.
+These are Nick's paired routing preferences, not benchmark equivalence or
+guaranteed availability. They are recommendations, not a requirement to switch
+providers. Use the available member of the pair, or an explicitly chosen override.
+The `model` field is a human-readable pair, not a single API model id.
 
-The migration covers open, parked and done tickets. It changes recommendations
-and agent roles, not scope, blockers, status, completion dates or design decisions.
-Historical model comparisons, quotations, URLs and real harness configuration
-paths can still name a product; they do not impose an execution requirement.
+`effort` is separate: high effort on an Opus/Sol ticket still recommends
+Opus/Sol. Complexity alone never changes that recommendation to Fable/Astra.
+Use the closest supported effort setting in the current harness. In particular,
+game ticket 1008 recommends `opus-5.5 / gpt-6.1-sol`, effort `high`.
+
+The mapping applies to open, parked and done tickets. Scope, blockers, status,
+effort and completion dates stay unchanged. Historical model comparisons,
+quotations, URLs and real harness configuration paths retain their meaning.
+Shared `AGENTS.md` instructions and skills remain usable by either harness.
 
 ## Frontmatter
 
@@ -68,7 +72,7 @@ id: "2201"
 title: Short imperative title
 type: feature        # feature | infra | decision | bug | research
 milestone: MVP       # MVP | After MVP | Parked: styles | Parked: networking | Parked: 3D | …
-model: reasoning     # mechanical | implementation | reasoning | creative
+model: opus-5.5 / gpt-6.1-sol # choose one complete pair above
 effort: high         # low | medium | high | xhigh | max
 status: todo         # todo | in-progress | blocked | done
 blocked_by: ["2002", "game#1131"]  # this repo's ids, or game#NNNN for the game's

@@ -3,7 +3,7 @@ id: "2004"
 title: "Guides: one per direction and one per move between directions, kept in step with the catalog"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2003", "2802", "2810"]

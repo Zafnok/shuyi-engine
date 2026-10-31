@@ -3,7 +3,7 @@ id: "2405"
 title: "Mouse and touch for menus and grid maps, split out of parked 1121: hover and click on the engine's menus, the grid cursor follows the pointer, and never required"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

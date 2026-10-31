@@ -3,7 +3,7 @@ id: "2517"
 title: "Format upgrades: each engine format lists its old names, shuyi check warns on them, and shuyi upgrade rewrites a game's files keeping their comments"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2005", "2511"]

@@ -3,7 +3,7 @@ id: "2134"
 title: "Parked: Animation states over bone clips: the state machine picks the skeletal module's clips and cross-fades them on a transition"
 type: feature
 milestone: "Engine: animation"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2104", "2105", "2109", "2231"]

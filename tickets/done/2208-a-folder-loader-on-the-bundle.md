@@ -3,7 +3,7 @@ id: "2208"
 title: "A folder loader on the bundle: parse every file of one extension in a folder into a map by name, with every error"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

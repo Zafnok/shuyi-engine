@@ -3,7 +3,7 @@ id: "2033"
 title: "One list of a new game's gates: the template's AGENTS.md, and a test that every copy matches it"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

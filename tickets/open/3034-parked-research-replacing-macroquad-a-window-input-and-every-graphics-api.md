@@ -3,7 +3,7 @@ id: "3034"
 title: "Parked: Research: replacing macroquad with winit for the window and input, and our own 2D renderer over wgpu (Vulkan, Metal, Direct3D 12, OpenGL and GLES, WebGL 2, WebGPU), and the tickets to build it"
 type: research
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["3003", "2018", "2019"]

@@ -3,7 +3,7 @@ id: "2363"
 title: "Parked: Positional 2D sound: a world position on the request, a listener the screen sets, and gain and pan by distance"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2109"]

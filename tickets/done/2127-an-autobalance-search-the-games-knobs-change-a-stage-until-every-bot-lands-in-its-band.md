@@ -3,7 +3,7 @@ id: "2127"
 title: "An autobalance search: the game's knobs change a stage, never the bots, until every bot lands in its band"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2126"]

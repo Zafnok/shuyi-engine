@@ -3,7 +3,7 @@ id: "2542"
 title: "The CLI's seams: the stale-server limit says which side is newer, no run of spaces in a help line, one target lookup, one way to find cargo, and each answer's schema names its own op"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

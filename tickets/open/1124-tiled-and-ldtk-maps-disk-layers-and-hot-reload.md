@@ -3,7 +3,7 @@ id: "1124"
 title: "Parked: Tiled and LDtk maps, as formats that reload with the rest through 2220"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1119", "2231"]

@@ -3,7 +3,7 @@ id: "3102"
 title: "Parked: Meshes, materials, skeletons and clips as asset kinds, loaded from glTF 2.0, with OBJ as a second format"
 type: feature
 milestone: "Parked: 3D"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2201", "3101"]

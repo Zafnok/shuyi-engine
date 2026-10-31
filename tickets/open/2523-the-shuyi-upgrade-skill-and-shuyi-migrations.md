@@ -3,7 +3,7 @@ id: "2523"
 title: "The shuyi-upgrade skill: a game moved to a newer engine, with shuyi migrations listing each breaking change since its version and where its code still uses the old names"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2005", "2804", "1134", "2010", "2012"]

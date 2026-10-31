@@ -3,7 +3,7 @@ id: "2514"
 title: "Frames over time from frame-png: --every and --count make a sheet labelled with times, an APNG or a GIF, and the MCP frame_png tool returns the sheet"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["1133"]

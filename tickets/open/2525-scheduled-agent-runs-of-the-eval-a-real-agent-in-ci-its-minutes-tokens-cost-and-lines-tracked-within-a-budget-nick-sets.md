@@ -3,7 +3,7 @@ id: "2525"
 title: "Scheduled agent runs of the eval: a real coding agent makes each task in CI on a schedule, its minutes, tokens, cost, lines and checks tracked, within a budget Nick sets"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2524", "1133", "2513", "2016"]

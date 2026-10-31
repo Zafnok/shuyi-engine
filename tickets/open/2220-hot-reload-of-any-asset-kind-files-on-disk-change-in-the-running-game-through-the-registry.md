@@ -3,7 +3,7 @@ id: "2220"
 title: "Hot reload of any asset kind: a file on disk changes and the running game sees it, through the registry, with errors shown instead of a crash"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2207", "2358"]

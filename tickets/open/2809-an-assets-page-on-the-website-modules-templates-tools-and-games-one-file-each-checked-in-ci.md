@@ -3,7 +3,7 @@ id: "2809"
 title: "An Assets page on the website: modules, templates, tools and games, one file per entry, checked in CI, with other people's work listed if Nick says yes"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2801", "2005", "2003", "2526"]

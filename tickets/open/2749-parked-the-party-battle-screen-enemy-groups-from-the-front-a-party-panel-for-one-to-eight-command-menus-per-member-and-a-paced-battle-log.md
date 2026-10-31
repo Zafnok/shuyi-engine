@@ -3,7 +3,7 @@ id: "2749"
 title: "Parked: The party battle screen: enemy groups from the front, a party panel for one to eight, command menus per member, and a paced battle log"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2748"]

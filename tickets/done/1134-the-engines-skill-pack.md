@@ -3,7 +3,7 @@ id: "1134"
 title: "The engine's skill pack: Agent Skills for making games on the engine, tested in CI and shipped as a plugin"
 type: feature
 milestone: "Engine: public"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: done
 blocked_by: ["1129", "2015", "2509", "2511", "2810"]

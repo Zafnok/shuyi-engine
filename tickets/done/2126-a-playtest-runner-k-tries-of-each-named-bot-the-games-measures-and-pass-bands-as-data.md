@@ -3,7 +3,7 @@ id: "2126"
 title: "A playtest runner: K tries of each named bot over a stage, the game's measures, and pass bands as data"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: done
 blocked_by: []

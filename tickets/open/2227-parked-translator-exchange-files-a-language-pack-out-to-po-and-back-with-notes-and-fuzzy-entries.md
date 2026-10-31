@@ -3,7 +3,7 @@ id: "2227"
 title: "Parked: Translator exchange files: a language pack out to PO and back, with notes and fuzzy entries"
 type: feature
 milestone: "Engine: localization"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2302"]

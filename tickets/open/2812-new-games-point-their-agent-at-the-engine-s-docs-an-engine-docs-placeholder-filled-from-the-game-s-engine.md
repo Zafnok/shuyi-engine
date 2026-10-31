@@ -3,7 +3,7 @@ id: "2812"
 title: "New games point their agent at the engine's docs: an {{engine.docs}} placeholder filled from the game's Engine"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2808"]

@@ -3,7 +3,7 @@ id: "2311"
 title: "Glyph drawing helpers: a box with a title in its border, a meter bar, and text centred in or cut to a width"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

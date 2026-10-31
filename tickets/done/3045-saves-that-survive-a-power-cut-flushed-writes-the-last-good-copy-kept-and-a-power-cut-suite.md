@@ -3,7 +3,7 @@ id: "3045"
 title: "Saves that survive a power cut: flushed writes, the last good copy kept, and a power-cut suite every backend's storage runs"
 type: bug
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

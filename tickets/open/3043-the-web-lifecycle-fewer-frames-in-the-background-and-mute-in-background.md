@@ -3,7 +3,7 @@ id: "3043"
 title: "The web lifecycle: a hidden tab suspends and saves inside the browser's event, a closing page saves, and in the background frames slow down and the player may mute"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["3042", "2321", "2511"]

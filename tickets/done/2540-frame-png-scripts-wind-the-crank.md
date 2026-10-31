@@ -3,7 +3,7 @@ id: "2540"
 title: "frame-png scripts wind the crank: a `--crank DEGREES` step beside `--keys`, `--pad` and `--wait`"
 type: feature
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

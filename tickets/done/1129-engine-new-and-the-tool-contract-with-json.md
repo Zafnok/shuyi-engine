@@ -3,7 +3,7 @@ id: "1129"
 title: "The tool contract: shuyi new, check, run, scene, replay, bots, import, doctor, with JSON output"
 type: feature
 milestone: "Engine: public"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: done
 blocked_by: ["game#1131", "2201"]

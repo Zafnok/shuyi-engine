@@ -3,7 +3,7 @@ id: "2570"
 title: "check-keys finds every key and button the keymap names after press, hit, tap or hold"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: done
 blocked_by: []

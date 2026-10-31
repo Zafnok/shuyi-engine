@@ -3,7 +3,7 @@ id: "2337"
 title: "Paint::Tinted and blend modes (add and multiply) on sprites and overlays, with integer reference rules in frame-png"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

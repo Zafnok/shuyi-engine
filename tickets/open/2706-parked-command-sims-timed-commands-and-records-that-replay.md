@@ -3,7 +3,7 @@ id: "2706"
 title: "Parked: Command sims: CommandSim, timed commands and records that replay, in shuyi-core"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1119"]

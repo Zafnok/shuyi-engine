@@ -3,7 +3,7 @@ id: "2393"
 title: "The headless Speaker plays two tracks: a crossfade seen in the Harness with its gains and a load delay"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: ["2341"]

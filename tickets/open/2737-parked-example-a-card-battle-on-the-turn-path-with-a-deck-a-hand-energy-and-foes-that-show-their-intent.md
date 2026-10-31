@@ -3,7 +3,7 @@ id: "2737"
 title: "Parked: Example: a card battle on the turn path, with a deck, a hand, energy and foes that show their intent"
 type: feature
 milestone: "Engine: examples"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2511", "2114"]

@@ -3,7 +3,7 @@ id: "2133"
 title: "The bots' data made alike: the settings refuse unknown fields and have schemas, one band distance, unknown names as errors, a seed for an entrant's bots, and personas recorded in an ADR"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

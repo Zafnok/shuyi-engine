@@ -3,7 +3,7 @@ id: "3018"
 title: "Parked: Research: GBA and DS toolchains, Rust on old ARM, emulators for CI, header tools, and whether to sell homebrew"
 type: research
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3005"]

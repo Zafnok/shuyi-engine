@@ -3,7 +3,7 @@ id: "3106"
 title: "Parked: 3D cameras: a first-person look from actions, a third-person orbit that pulls in at walls, and an overhead follow camera, each built for its marker"
 type: feature
 milestone: "Parked: 3D"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3105", "1121", "2510"]

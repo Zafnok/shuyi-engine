@@ -3,7 +3,7 @@ id: "2810"
 title: "The docs map: one home for each kind of fact, by who reads it, a document skill that writes there, and a check that the map covers every Markdown file"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2325"
 title: "Parked: A frame profiler in the debug view: time per phase from the platform, spans a game marks, a graph, and p50, p99 and the worst frame"
 type: feature
 milestone: "Engine: debug view"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2315", "2316", "2321", "3063", "2553"]

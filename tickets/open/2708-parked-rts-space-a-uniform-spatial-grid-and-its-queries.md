@@ -3,7 +3,7 @@ id: "2708"
 title: "Parked: RTS space: a uniform spatial grid rebuilt each step, and its queries"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2707"]

@@ -3,7 +3,7 @@ id: "3037"
 title: "Parked: Steam achievements, stats and cloud saves behind the steam feature: Steamworks under the achievements service, and saves synced by Steam Cloud"
 type: feature
 milestone: "Engine: store services"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3036", "2349"]

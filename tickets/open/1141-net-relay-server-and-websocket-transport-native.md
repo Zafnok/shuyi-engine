@@ -3,7 +3,7 @@ id: "1141"
 title: "Parked: Networking, step 2: a small relay server with room codes, and a native WebSocket transport"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1140"]

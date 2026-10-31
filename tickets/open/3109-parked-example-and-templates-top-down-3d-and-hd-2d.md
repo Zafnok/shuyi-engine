@@ -3,7 +3,7 @@ id: "3109"
 title: "Parked: Examples: a top-down 3D yard, and the town-and-battle example drawn in HD-2D with unchanged rules; the top-down-3d and hd-2d templates and their guides"
 type: feature
 milestone: "Parked: 3D"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["3106", "3107", "1125", "1129", "2004"]

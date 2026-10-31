@@ -3,7 +3,7 @@ id: "2560"
 title: "MCP's session attached to a running build over the live link: start with a link, then step, frame_png, scene, events, reset and stop"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2521"]

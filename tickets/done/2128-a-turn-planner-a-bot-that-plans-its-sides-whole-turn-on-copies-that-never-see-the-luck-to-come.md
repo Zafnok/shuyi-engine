@@ -3,7 +3,7 @@ id: "2128"
 title: "A turn planner: a bot that plans its side's whole turn, several commands deep, on copies that never see the luck to come"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

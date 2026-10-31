@@ -3,7 +3,7 @@ id: "2211"
 title: "Parked: In-house sound: our own Ogg container reader: pages, CRC, packets and granule positions"
 type: feature
 milestone: "Engine: in-house platform"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2210"]

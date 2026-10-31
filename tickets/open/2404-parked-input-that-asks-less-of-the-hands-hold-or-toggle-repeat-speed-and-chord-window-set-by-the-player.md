@@ -3,7 +3,7 @@ id: "2404"
 title: "Parked: Input that asks less of the hands: hold or toggle per action, and the repeat speed and the chord window set by the player"
 type: feature
 milestone: "Engine: accessibility"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["3042"]

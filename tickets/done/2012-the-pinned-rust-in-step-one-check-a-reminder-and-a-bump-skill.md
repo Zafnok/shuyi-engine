@@ -3,7 +3,7 @@ id: "2012"
 title: "The pinned Rust in step: cargo xtask check-toolchain over the engine, the templates and rust-version, Dependabot's reminder of a new stable, and a bump-rust skill"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

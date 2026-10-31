@@ -3,7 +3,7 @@ id: "2226"
 title: "Language tags in BCP 47 (pt-BR, zh-Hans), a fallback chain per key, matching the system's languages, and a source language the game declares"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2908"
 title: "Parked: Research: right-to-left and shaped scripts (Arabic, Hebrew, Thai, Devanagari) on the cell console and in text runs: what a cell holds, reordering, joining, line breaks, mirroring and the cost per target"
 type: research
 milestone: "Engine: localization"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2301"]

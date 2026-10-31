@@ -3,7 +3,7 @@ id: "2733"
 title: "Parked: RTS economy: resources, workers that gather, construction, production and supply"
 type: feature
 milestone: "Engine: real-time strategy"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2711"]

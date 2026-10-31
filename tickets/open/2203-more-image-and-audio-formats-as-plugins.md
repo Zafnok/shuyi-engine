@@ -3,7 +3,7 @@ id: "2203"
 title: "More image and audio formats as plugins: JPEG, WebP, QOI, JPEG XL, FLAC, MP3, each behind a feature"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2201"]

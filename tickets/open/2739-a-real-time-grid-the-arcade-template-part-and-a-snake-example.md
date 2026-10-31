@@ -3,7 +3,7 @@ id: "2739"
 title: "A real-time grid: the arcade template part and a snake example on TickSim, built for the web and the Playdate"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2137", "2115", "2501", "2511"]

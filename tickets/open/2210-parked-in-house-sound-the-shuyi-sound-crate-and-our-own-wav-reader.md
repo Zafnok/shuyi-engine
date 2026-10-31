@@ -3,7 +3,7 @@ id: "2210"
 title: "Parked: In-house sound: the shuyi-sound crate, plain PCM samples, and our own WAV reader"
 type: feature
 milestone: "Engine: in-house platform"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2201", "2902"]

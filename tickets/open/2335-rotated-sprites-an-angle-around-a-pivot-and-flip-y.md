@@ -3,7 +3,7 @@ id: "2335"
 title: "Rotated sprites: an angle around a pivot and flip_y on sprite items, with an integer Angle and its sine table in shuyi-core"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2752"
 title: "Parked: Shops and paid services: buy, sell and stock as data, and services that restore pools, end conditions or apply level-ups for a price"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2746", "2750"]

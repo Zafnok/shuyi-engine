@@ -3,7 +3,7 @@ id: "2767"
 title: "Parked: Progress kept between runs: unlocks and currencies in the profile, a run record per seed, and what a new run starts with"
 type: feature
 milestone: "Engine: roguelikes"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2546"
 title: "The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: ["2545"]

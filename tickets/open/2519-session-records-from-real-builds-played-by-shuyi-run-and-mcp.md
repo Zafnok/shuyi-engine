@@ -3,7 +3,7 @@ id: "2519"
 title: "Session records from real builds: desktop debug builds keep their last sessions, a debug menu entry saves one (a download on the web), and shuyi run, scene and MCP play them back"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2518", "1133", "2511"]

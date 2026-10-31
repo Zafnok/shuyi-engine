@@ -3,7 +3,7 @@ id: "2503"
 title: "Several perspectives in one new game: a stage for each, a flow that moves between them, and a test that crosses every move"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2502"]

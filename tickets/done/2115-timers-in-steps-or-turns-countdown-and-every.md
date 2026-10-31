@@ -3,7 +3,7 @@ id: "2115"
 title: "Timers in steps or turns: Countdown and Every in shuyi_core::timer, and the step rate moved into the core"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

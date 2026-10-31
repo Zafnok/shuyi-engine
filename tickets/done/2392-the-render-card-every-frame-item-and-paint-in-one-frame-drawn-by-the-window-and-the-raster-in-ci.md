@@ -3,7 +3,7 @@ id: "2392"
 title: "The render card: every frame item and paint in one frame, drawn by the window and by the raster in CI's render job"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: done
 blocked_by: ["2018"]

@@ -3,7 +3,7 @@ id: "2773"
 title: "The grid template's map errors keep their line, column and code in check"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

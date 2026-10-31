@@ -3,7 +3,7 @@ id: "2735"
 title: "Parked: Example and template: a small roguelike with generated floors, field of view, and runs from a seed"
 type: feature
 milestone: "Engine: roguelikes"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2118", "2119", "2120", "2114", "2116", "2003", "2511", "2501", "2004"]

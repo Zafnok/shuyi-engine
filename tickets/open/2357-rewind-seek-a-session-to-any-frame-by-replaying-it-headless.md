@@ -3,7 +3,7 @@ id: "2357"
 title: "Rewind: seek a session to any frame by replaying it headless, in the contract first and the debug view second"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["1133", "2316", "2511", "2518", "2519", "3042"]

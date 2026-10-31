@@ -3,7 +3,7 @@ id: "2231"
 title: "Parked: Animation clips for any game: AnimationClip, frame_at and a RON file of clips, split out of 1123"
 type: feature
 milestone: "Engine: real time"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: []

@@ -3,7 +3,7 @@ id: "2361"
 title: "Parked: World layers drawn between the last two steps, in the view only, so tick stages move smoothly on displays faster than 60 Hz"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1119", "1120"]

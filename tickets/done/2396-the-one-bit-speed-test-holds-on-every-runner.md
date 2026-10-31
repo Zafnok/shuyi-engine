@@ -3,7 +3,7 @@ id: "2396"
 title: "The one-bit renderer's speed test holds on every runner: renders timed in pairs, and a bar a debug build's numbers support"
 type: bug
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: medium
 status: done
 blocked_by: []

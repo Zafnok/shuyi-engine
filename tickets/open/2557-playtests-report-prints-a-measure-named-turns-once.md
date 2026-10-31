@@ -3,7 +3,7 @@ id: "2557"
 title: "playtest's report prints a measure named turns once, not beside the try's own turns"
 type: bug
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

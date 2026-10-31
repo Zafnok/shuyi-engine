@@ -3,7 +3,7 @@ id: "2704"
 title: "Parked: Example: a side-view cave with creatures that climb and reach, and the procedural animation module's README, skill and guide"
 type: feature
 milestone: "Engine: procedural animation"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2703", "1121", "1127", "1134", "2004"]

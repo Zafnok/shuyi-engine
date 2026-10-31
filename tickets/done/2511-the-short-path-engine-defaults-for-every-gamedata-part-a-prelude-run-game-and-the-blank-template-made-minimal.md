@@ -3,7 +3,7 @@ id: "2511"
 title: "The short path: engine defaults for every GameData part, a prelude, run_game and BasicTools, and the blank template made minimal on them"
 type: feature
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []

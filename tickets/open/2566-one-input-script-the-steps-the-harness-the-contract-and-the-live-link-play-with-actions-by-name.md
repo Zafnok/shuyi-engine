@@ -3,7 +3,7 @@ id: "2566"
 title: "One input script: the steps the Harness, the contract and the live link play, in shuyi-platform, with actions by name"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: []

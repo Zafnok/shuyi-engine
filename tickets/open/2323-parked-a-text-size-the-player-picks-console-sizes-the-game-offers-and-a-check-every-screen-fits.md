@@ -3,7 +3,7 @@ id: "2323"
 title: "Parked: A text size the player picks: the game offers console sizes, the options screen switches between them, and a check that every screen fits each"
 type: feature
 milestone: "Engine: accessibility"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2209", "2018", "2392"]

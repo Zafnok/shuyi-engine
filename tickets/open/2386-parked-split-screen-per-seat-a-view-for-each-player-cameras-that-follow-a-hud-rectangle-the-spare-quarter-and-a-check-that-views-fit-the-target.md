@@ -3,7 +3,7 @@ id: "2386"
 title: "Parked: Split screen per seat: a view for each player, cameras that follow, a HUD rectangle, the spare quarter, flashes in one view, and a check that views fit the target"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["1120", "2385", "2406", "2339", "2340", "2018", "2392"]

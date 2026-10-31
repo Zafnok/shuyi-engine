@@ -3,7 +3,7 @@ id: "2524"
 title: "An agent eval of the end goal: game tasks as data, a grader that checks any agent's game through the contract, and reference solutions graded in CI"
 type: infra
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["1134", "2803", "2566"]

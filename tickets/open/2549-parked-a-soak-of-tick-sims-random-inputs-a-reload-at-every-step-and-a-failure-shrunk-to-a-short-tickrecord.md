@@ -3,7 +3,7 @@ id: "2549"
 title: "Parked: A soak of tick sims: random inputs into a TickSim, a reload at every step against a copy never reloaded, and a failure shrunk to a short TickRecord"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2137", "2527"]

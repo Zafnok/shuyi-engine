@@ -3,7 +3,7 @@ id: "2007"
 title: "Coverage, SonarCloud, and the Sonar debt queue as batched GitHub issues"
 type: infra
 milestone: MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: done
 blocked_by: []

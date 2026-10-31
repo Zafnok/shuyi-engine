@@ -3,7 +3,7 @@ id: "3030"
 title: "Parked: In-house sound: the mixer in shuyi-sound: voices, volumes, fades, looping, streamed music and resampling, in integers"
 type: feature
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2210", "2214", "2116"]

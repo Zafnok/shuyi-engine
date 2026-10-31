@@ -3,7 +3,7 @@ id: "3025"
 title: "Parked: DS hardware 3D: the 3D view on the DS's 3D engine, meshes baked to display lists, a triangle budget, and reduced HD-2D"
 type: feature
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["2229", "3024", "3103", "3107"]

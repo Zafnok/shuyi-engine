@@ -3,7 +3,7 @@ id: "3072"
 title: "The game's icon in shuyi.ron: one square PNG checked by check --target, downscaled in integers by app-info, and the window's icon from AppInfo"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: done
 blocked_by: ["3048"]

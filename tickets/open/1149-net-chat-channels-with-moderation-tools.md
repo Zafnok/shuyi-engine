@@ -3,7 +3,7 @@ id: "1149"
 title: "Parked: Networking, step 10: chat channels for lobbies, matches and friends, with filter, block, mute and report"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1148", "2346"]

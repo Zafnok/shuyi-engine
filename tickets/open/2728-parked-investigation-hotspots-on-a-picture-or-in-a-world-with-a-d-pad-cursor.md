@@ -3,7 +3,7 @@ id: "2728"
 title: "Parked: Investigation: hotspots on a picture or in a world, with a cursor that works with only a d-pad"
 type: feature
 milestone: "Engine: detective games"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2727", "2405"]

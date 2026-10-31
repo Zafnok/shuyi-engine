@@ -3,7 +3,7 @@ id: "3058"
 title: "Parked: Screen reader output on the web: the accessibility tree mirrored into ARIA elements under the canvas, and announcements in live regions"
 type: feature
 milestone: "Engine: accessibility"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2322", "3035"]

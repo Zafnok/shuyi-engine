@@ -3,7 +3,7 @@ id: "3017"
 title: "Parked: Target capabilities: each profile says what its hardware can do, each module says what it needs, and shuyi check --target names what doesn't fit"
 type: feature
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3001", "2003"]

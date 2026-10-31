@@ -3,7 +3,7 @@ id: "2354"
 title: "A grid cursor: ListCursor in two dimensions, for rows of different lengths, cells that can't take the focus and a scroll window; the name grid and the key bindings screen move onto it"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

@@ -3,7 +3,7 @@ id: "1121"
 title: "Parked: Analog sticks as axes and the pointer in a tick game: a dead zone, mouse buttons as bindable inputs, and the pointer in world pixels in TickInput"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1119", "1120", "2405"]

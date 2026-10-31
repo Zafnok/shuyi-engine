@@ -3,7 +3,7 @@ id: "2320"
 title: "Parked: 3D in the debug view: bones, colliders and the camera, drawn as lines in the 3D view"
 type: feature
 milestone: "Parked: 3D"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2315", "3102", "3103", "3105"]

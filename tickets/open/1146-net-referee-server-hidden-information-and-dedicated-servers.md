@@ -3,7 +3,7 @@ id: "1146"
 title: "Parked: Networking, step 7: a referee server for turn-based games — hidden seed and fog, per-player views, listen or dedicated"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["1145"]

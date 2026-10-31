@@ -3,7 +3,7 @@ id: "2213"
 title: "Parked: In-house sound: Vorbis, part 2: audio packets: modes, floors, residues and channel coupling"
 type: feature
 milestone: "Engine: in-house platform"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["2212"]

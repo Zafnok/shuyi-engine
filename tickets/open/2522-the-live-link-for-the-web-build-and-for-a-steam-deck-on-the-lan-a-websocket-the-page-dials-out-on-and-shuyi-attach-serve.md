@@ -3,7 +3,7 @@ id: "2522"
 title: "The live link for the web build and for a Steam Deck on the LAN: a WebSocket the page dials out on through a plugin of our own, shuyi attach --serve, and a LAN setting"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2521"]

@@ -3,7 +3,7 @@ id: "2236"
 title: "Frozen format fixtures: each release keeps a copy of every engine format's fixtures, and CI reads the copies the version rule still covers"
 type: infra
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
 blocked_by: ["2005"]

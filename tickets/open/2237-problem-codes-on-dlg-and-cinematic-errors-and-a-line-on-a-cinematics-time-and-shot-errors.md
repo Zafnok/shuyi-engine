@@ -3,7 +3,7 @@ id: "2237"
 title: "Problem codes on .dlg and cinematic errors, and a line on a cinematic's time and shot errors"
 type: feature
 milestone: After MVP
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: todo
 blocked_by: []

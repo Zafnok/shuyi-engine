@@ -3,7 +3,7 @@ id: "2037"
 title: Make tickets and agent workflows provider neutral
 type: infra
 milestone: MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: done
 blocked_by: []
@@ -63,6 +63,9 @@ meaning. The companion migration needs no output from this ticket.
 - Docs: spelling and links (and the engine's docs map).
 
 ## Completion notes
+
+Historical routing below is amended by 2038 and ADR-0065;
+current recommendations use the explicit pairs in tickets/README.md.
 
 Migrated all 508 existing tickets, plus the template and backlog guide.
 An independent YAML audit compared every lifecycle field, effort and blocker

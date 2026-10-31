@@ -3,7 +3,7 @@ id: "2232"
 title: "Parked: Map objects as the game's own types: Tiled and LDtk objects read into a game's enum, checked in shuyi check, and the game's types written to Tiled and checked against LDtk"
 type: feature
 milestone: "Engine: real time"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["1119", "1124"]

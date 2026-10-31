@@ -3,7 +3,7 @@ id: "2366"
 title: "Parked: Captions for sound effects and music, not speech: a caption key on each cue, a player setting, and a strip the engine paints over every screen"
 type: feature
 milestone: "Engine: accessibility"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: []

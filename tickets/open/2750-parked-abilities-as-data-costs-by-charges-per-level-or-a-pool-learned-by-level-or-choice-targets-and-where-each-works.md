@@ -3,7 +3,7 @@ id: "2750"
 title: "Parked: Abilities as data: costs by charges per level or a pool, learned by level or choice, targets, and where each works"
 type: feature
 milestone: "Engine: dungeon crawlers"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2748"]

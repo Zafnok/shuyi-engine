@@ -3,7 +3,7 @@ id: "2370"
 title: "Parked: Ambiences for weather: particles across the view, a tinted overlay and a looped sound as one named preset, switched on a step with a fade"
 type: feature
 milestone: "Engine: 2D effects"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: blocked
 blocked_by: ["2103", "2337", "2344"]

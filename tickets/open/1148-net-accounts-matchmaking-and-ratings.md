@@ -3,7 +3,7 @@ id: "1148"
 title: "Parked: Networking, step 9: accounts, a matchmaking queue, Glicko-2 ratings and verified results"
 type: feature
 milestone: "Engine: networking"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
 status: blocked
 blocked_by: ["1146", "3054"]

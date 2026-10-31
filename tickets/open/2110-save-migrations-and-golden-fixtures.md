@@ -3,7 +3,7 @@ id: "2110"
 title: "Save migrations: an opt-in chain of typed steps from older versions, golden fixtures of every version as the shape guard, and the engine's own records on it"
 type: feature
 milestone: After MVP
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
 blocked_by: ["2511"]

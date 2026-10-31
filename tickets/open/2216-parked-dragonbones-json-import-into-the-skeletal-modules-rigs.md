@@ -3,7 +3,7 @@ id: "2216"
 title: "Parked: DragonBones JSON import into the skeletal module's rigs"
 type: feature
 milestone: "Engine: animation"
-model: implementation
+model: sonnet-5 / gpt-6.1-terra
 effort: medium
 status: blocked
 blocked_by: ["2105"]

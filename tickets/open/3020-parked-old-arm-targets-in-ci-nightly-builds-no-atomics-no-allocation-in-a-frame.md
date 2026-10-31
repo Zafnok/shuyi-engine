@@ -3,7 +3,7 @@ id: "3020"
 title: "Parked: Old ARM targets in CI: pinned-nightly builds for thumbv4t and armv5te, no atomics, no allocation in a steady frame, and emulator cycle counts in shuyi bench"
 type: infra
 milestone: "Parked: export targets"
-model: reasoning
+model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
 blocked_by: ["3018", "3005", "3008", "2012", "3017"]
