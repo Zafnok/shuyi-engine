@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 3113 — A game's icon with pictures drawn per size
@@ -75,16 +75,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With `icon_sizes` set for 16 and 32, `app-info` writes those pictures'
+- [x] With `icon_sizes` set for 16 and 32, `app-info` writes those pictures'
       pixels and downscales 64 from `icon`.
-- [ ] A drawn file of the wrong side, or that isn't a PNG, is an
+- [x] A drawn file of the wrong side, or that isn't a PNG, is an
       `app.icon_sizes` error in `check --target`, and `app-info` writes
       nothing.
-- [ ] A drawn file changed on disk makes `app-info --check` fail until
+- [x] A drawn file changed on disk makes `app-info --check` fail until
       `app-info` is run.
-- [ ] A project without the field writes the same bytes as before.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A project without the field writes the same bytes as before.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -95,5 +95,14 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`app.icon_sizes` draws window icons per size: `app-info` writes each drawn
+file's pixels through `codec::encode_png` and downscales the other sides
+from `icon`. Written up in ADR-0069, the template's comment, the
+`shuyi-ship` skill and the book's *Targets and export* chapter.
+
+Deviations: two rules beyond the ticket's list, both `app.icon_sizes` errors,
+since otherwise the pictures would be ignored without a word: a key that
+isn't 16, 32 or 64, and a non-empty map without `icon` or `window_icons`.
+
+The game: game#1201's PR moves the pin and sets the field; nothing changes
+for it until then. No break, and no follow-up tickets.

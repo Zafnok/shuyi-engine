@@ -45,6 +45,10 @@ link = ["shuyi-platform/link", "dep:image", "dep:getrandom"]
 # browser's console (ticket 2019). Off by default; never in a shipped
 # build.
 capture = ["shuyi-platform/capture", "shuyi-ui/raster", "dep:image"]
+# `sound-probe`: names the sound backend for the example `sound_probe`, the
+# parity gates' probe (ticket 2573, ADR-0066). Off by default; never in a
+# shipped build.
+sound-probe = []
 
 [dependencies]
 shuyi-assets = { path = "../assets" }
@@ -91,12 +95,21 @@ shuyi-app = { path = ".", features = ["link", "capture"] }
 # Turns on `storage::conformance_suite` in tests, and the toy game the
 # link's tests attach to.
 shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
+# The sound probe's plan.
+serde.workspace = true
+ron.workspace = true
 
 # The tests run on native alone. These two would pull `getrandom` into the
 # render card's web build (an example builds with the dev-dependencies),
 # and on the web it needs `wasm-bindgen`.
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tempfile = "3"
+
+[[example]]
+# The parity gates' probe (ticket 2573): the shared player on this backend,
+# recorded by tools/sound-parity/capture.py in CI's `sound-parity` job.
+name = "sound_probe"
+required-features = ["sound-probe"]
 
 [[example]]
 # The render card (ticket 2392, ADR-0052 §6): every kind of thing a frame

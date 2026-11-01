@@ -82,4 +82,38 @@
     // The game's own license texts: each goes whole into the
     // `NOTICES.txt` that `cargo shuyi web` writes beside the page.
     notices: (texts: ["files/font/Terminus-LICENSE.txt"]),
+
+    // What its packages may hold, which every `cargo shuyi export` reads
+    // them back against: `exposure-report.json` beside a package lists what
+    // is in it. A path matches whole. What the exporters write themselves
+    // needs no line, and these are the Playdate's: only its pack and its baked
+    // sounds are outside the program.
+    disclosure: (
+        allowed_files: [
+            // What the `export` part above ships beside the program.
+            "ABOUT.md",
+            "capture/frames.ron",
+            "hello-grid.app/Contents/Resources/capture/frames.ron",
+            "audio/cancel.pda",
+            "audio/cursor.pda",
+            "audio/move.pda",
+            "audio/select.pda",
+        ],
+        allowed_pack_entries: [
+            "en.ron",
+            "font/Terminus-LICENSE.txt",
+            "font/atlas.png",
+            "font/atlas.ron",
+            "font/atlas_1bit.bin",
+            "intro.dlg",
+            "keymap.ron",
+            "palette.ron",
+            "palette@onebit.ron",
+            "stage.map",
+            "tiles.png",
+            "tiles.png.meta",
+        ],
+        forbidden_paths: ["files/unreleased/next-map.ron"],
+        canaries: ["HELLO-GRID-UNRELEASED"],
+    ),
 )

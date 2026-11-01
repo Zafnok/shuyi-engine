@@ -1,0 +1,31 @@
+// What pins the sound gates' corpus (ticket 2573): written by `capture.py encode`.
+(
+    wav: {
+        "fmt_22k_m.wav": "4927084ad1490f50b4a6bc218bbc59715c1c5750eb989c1e0875e704959983f3",
+        "fmt_44k_s.wav": "51874480de5783c46007c7a860bbd213487f5c3c98f31a1a8ae8246463042783",
+        "fmt_48k_s.wav": "3fcfc956bb4ec481282f6add66b7958187ce0052c5252431126b2089a96188f4",
+        "intro_loop.wav": "2e210d77afdeab9e9187b17a56ee939c75208c323d45e769d7d2dd5244948c4e",
+        "long.wav": "c85023a82ed0f76cf91d82ef411d11936a6627c9f21cb74bcbc98a19178f04b3",
+        "loop.wav": "aea7e421b3dd69fc37b457c724af4fc2be3a9e8d55526eb4895c9a203393e564",
+        "marker.wav": "abd3c33309f28909c7e4e12d8270cb25a7e7c1106e8396be400cbff677688efb",
+        "music_a.wav": "3e3bedca48d1185f2efe001a9499c07c508379e259806ff53a6c8ae6da35f199",
+        "music_b.wav": "80e7c92e04043ee0522c1baaae152543efbf677f46f997f3d64137cf9d16e1e8",
+        "noise_loop.wav": "9f1e791e97e456d777132b7bae3d6f5fb3d3bcffd7528a7894e7a190bddd4301",
+        "silence.wav": "4057d79667b576cff0a0c2a32dc8c1eb80c2cdedf9b52d1de53d37c02b2e647c",
+        "tone.wav": "8f2de09c0047d70c2669effd39992eafc7db2949bf9f0c67a9ae16b6e448ef2c",
+    },
+    ogg: {
+        "fmt_44k_s.ogg": (sha256: "414aaab51fef689525196692dad3351ef42434eff848016d1991f7a7cd93619b", decoded_sha256: "2693e9da1211bc3865d49a4f7d98473a8d33e9b98d42cc3d2948282949007d8f"),
+        "fmt_22k_m.ogg": (sha256: "8caa3026b7b0c4ee0a24907e2cacc6b7ba4bffb8fe7b078a1c9cb96451e90df5", decoded_sha256: "d2cce743148764414bffe76d3763ed5d99a1c11ca0aa24dcf698c75c6a89d40f"),
+        "fmt_48k_s.ogg": (sha256: "d4becfffe95e152d27b377db38e23658f61af5ad9271c43941592b182bb94ada", decoded_sha256: "0760e0c72a5d41fd1e3345ecb798f29741298c1c5330ace8a06a71fb41debd14"),
+        "music_a.ogg": (sha256: "44796f0e1fa62975ad304ecaad78f3df720d4e9cb2bcbfd215a05d16181ab5b8", decoded_sha256: "234c576a949890ff23d23c91cbd142791e617a3d9035fed7b2add6e0c059ebde"),
+        "music_b.ogg": (sha256: "2e9b49d5150f997c8a467c70274a136870801d2a4d0b5476474691cca25e671e", decoded_sha256: "7e692cab01b73aaea51215163bd7d851157744f1d1db1abb9de609f81618635a"),
+        "long.ogg": (sha256: "80a9548673f4b1cf2b63bf5e1813096d149bb75275e0421a1b3e32ab11834060", decoded_sha256: "bab8743ab0dfdf5888b1cc2a4fb4cc7d1a767c235a68cadb9cacd3d2580dd754"),
+        "intro_loop.ogg": (sha256: "340f410551e54b4b435926a2f4a7d7f33fef53e9a90397f159254e1e007fa2dc", decoded_sha256: "aa354ea754f6f0d80894b2b36012655f3f14c1b5ea20a5b1b9b9ef7f78fbdba4"),
+    },
+    // The source against the lossy file: not decoded equality, which the
+    // hashes above pin.
+    lossy_min_snr_db: 15.0,
+    encoder: "oggenc from vorbis-tools 1.4.2 --quiet --quality=6 --serial=2573",
+    decoder: "oggdec from vorbis-tools 1.4.2",
+)

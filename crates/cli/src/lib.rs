@@ -117,7 +117,8 @@ the tool contract (each also with --json; a wrong argument prints its usage):
                                      bake the game's sources into one pack: sizes and times
   export <windows | linux | macos | web | playdate> [--out <dir>] [--release] [--run]
                                      check the game against the target, then build and package
-                                     it, with NOTICES.txt and export-report.json
+                                     it, with NOTICES.txt, export-report.json and
+                                     exposure-report.json
   doctor                             check the toolchain and say how to fix it
   explain [<code>]                   every problem code (SH2003), or one code's page
   attach <host:port> --token <t> [steps] [--screenshot <file.png>]

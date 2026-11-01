@@ -1,6 +1,6 @@
 ---
 id: "3030"
-title: "Parked: In-house sound: the mixer in shuyi-sound: voices, volumes, fades, looping, streamed music and resampling, in integers"
+title: "In-house sound: the mixer in shuyi-sound: voices, volumes, fades, looping, streamed music and resampling, in integers"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3030 — In-house sound: the mixer
-
-> **Parked**: Nick chose the gated hybrid in 2902 on 2026-10-31; build tickets stay parked until he starts them. Whoever unparks it sets `status: todo` and drops `Parked:`. The working automated baseline of 2573 comes first.
 
 ## Context
 
@@ -50,6 +48,9 @@ None.
 ## Scope
 
 **In:**
+- **From 2573 (done):** quad-snd exposes no offline mix to compare, so the
+  offline render budget and the bounded-memory tests over short and long streams
+  start here (`tools/sound-parity/README.md`, *What each stage adds*).
 - Extend 2573's working parity harness with independent expected PCM for
   pause/rate/loops, two streams, gains, capacity refusal and bounded memory.
   Existing behavior compares to the retained old path; new behavior must
@@ -169,6 +170,8 @@ None.
       voice paused for 4800 frames resumes at the frame where it
       stopped; a sound at rate 2.0 ends in half its frames.
 - [ ] 2573's automated PCM/correctness and performance gates pass; the old backend remains available.
+- [ ] It changes nothing the quad-snd path does.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

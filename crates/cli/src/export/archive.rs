@@ -4,7 +4,7 @@
 //! made twice gives the same bytes.
 
 use std::fs;
-use std::io::Write as _;
+use std::io::{Read as _, Write as _};
 use std::path::{Path, PathBuf};
 
 use flate2::write::DeflateEncoder;
@@ -163,6 +163,105 @@ pub fn zip_names(bytes: &[u8]) -> Result<Vec<String>, String> {
     Ok(names)
 }
 
+/// The files of the archive at `path`, a zip or a `tar.gz` as these functions
+/// write them: each name and its bytes, in order. An archive that unpacks to
+/// more than `limit` bytes is an error, as is one that doesn't read.
+pub fn read(path: &Path, limit: u64) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let bytes = fs::read(path).map_err(|e| format!("read {}: {e}", path.display()))?;
+    let read = if path.to_string_lossy().ends_with(".tar.gz") {
+        read_tar_gz(&bytes, limit)
+    } else {
+        read_zip(&bytes, limit)
+    };
+    read.map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// The files of the zip `bytes`, by its central directory.
+fn read_zip(bytes: &[u8], limit: u64) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let at = |at: usize, n: usize| bytes.get(at..at + n).ok_or("zip: cut short".to_owned());
+    let half = |offset: usize| at(offset, 2).map(|b| u16::from_le_bytes([b[0], b[1]]) as usize);
+    let word = |offset: usize| {
+        at(offset, 4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
+    };
+    let end = bytes
+        .windows(4)
+        .rposition(|w| w == 0x0605_4b50u32.to_le_bytes())
+        .ok_or("zip: no end of central directory")?;
+    let mut next = word(end + 16)?;
+    let mut total = 0u64;
+    let mut files = Vec::new();
+    for _ in 0..half(end + 10)? {
+        if at(next, 4)? != 0x0201_4b50u32.to_le_bytes() {
+            return Err("zip: a broken central directory".to_owned());
+        }
+        let method = half(next + 10)?;
+        let packed = word(next + 20)?;
+        let size = word(next + 24)? as u64;
+        let name_len = half(next + 28)?;
+        let skip = half(next + 30)? + half(next + 32)?;
+        let local = word(next + 42)?;
+        let name = String::from_utf8_lossy(at(next + 46, name_len)?).into_owned();
+        total = total.saturating_add(size);
+        if total > limit {
+            return Err(format!("zip: over {limit} bytes unpacked"));
+        }
+        let start = local + 30 + half(local + 26)? + half(local + 28)?;
+        let data = at(start, packed)?;
+        let inner = match method {
+            0 => data.to_vec(),
+            8 => {
+                let mut inner = Vec::new();
+                flate2::read::DeflateDecoder::new(data)
+                    .take(size)
+                    .read_to_end(&mut inner)
+                    .map_err(|e| format!("zip: {name}: {e}"))?;
+                inner
+            }
+            other => return Err(format!("zip: {name}: compression method {other}")),
+        };
+        files.push((name, inner));
+        next += 46 + name_len + skip;
+    }
+    Ok(files)
+}
+
+/// The files of the `tar.gz` `bytes`, by their ustar headers.
+fn read_tar_gz(bytes: &[u8], limit: u64) -> Result<Vec<(String, Vec<u8>)>, String> {
+    let mut tar = Vec::new();
+    flate2::read::GzDecoder::new(bytes)
+        .take(limit.saturating_add(1))
+        .read_to_end(&mut tar)
+        .map_err(|e| format!("tar: {e}"))?;
+    if tar.len() as u64 > limit {
+        return Err(format!("tar: over {limit} bytes unpacked"));
+    }
+    let text = |field: &[u8]| {
+        let end = field.iter().position(|&b| b == 0).unwrap_or(field.len());
+        String::from_utf8_lossy(&field[..end]).into_owned()
+    };
+    let mut files = Vec::new();
+    let mut at = 0;
+    while let Some(header) = tar.get(at..at + 512).filter(|header| header[0] != 0) {
+        let name = text(&header[..100]);
+        let prefix = text(&header[345..500]);
+        let size = usize::from_str_radix(text(&header[124..136]).trim(), 8)
+            .map_err(|_| format!("tar: {name}: a broken size"))?;
+        let data = at + 512;
+        let inner = data
+            .checked_add(size)
+            .and_then(|end| tar.get(data..end))
+            .ok_or_else(|| format!("tar: {name}: cut short"))?;
+        let name = if prefix.is_empty() {
+            name
+        } else {
+            format!("{prefix}/{name}")
+        };
+        files.push((name, inner.to_vec()));
+        at = data + size.div_ceil(512) * 512;
+    }
+    Ok(files)
+}
+
 /// Writes `entries` into a gzip-compressed ustar archive at `out`.
 pub fn tar_gz(out: &Path, entries: &[Entry]) -> Result<(), String> {
     let file = fs::File::create(out).map_err(|e| format!("write {}: {e}", out.display()))?;
@@ -219,8 +318,6 @@ fn tar_header(name: &str, mode: u32, size: u64) -> Result<[u8; 512], String> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Read as _;
-
     use super::*;
 
     fn fixture(name: &str) -> PathBuf {

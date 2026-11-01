@@ -1,0 +1,67 @@
+// What the sound parity gates hold (ticket 2573, ADR-0067): every number here
+// comes from recordings of quad-snd on CI's pinned image, three independent runs
+// of the job (attempts 1 to 3 of CI run 41271510575, 2026-11-01), then held by the
+// fresh runs named in the ticket's notes. Change one only with new runs that justify
+// it, written here, and raise `version`: never to pass.
+(
+    version: 1,
+    correctness: (
+        // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
+        // can land a block from where the marker's block puts it: the same copy
+        // started about 95 ms apart in two runs. The most measured against a
+        // schedule was 40 ms, which is what one run's phase gave, not the bound.
+        // This is the block and a little scheduling. A replacement with finer
+        // mixing can tighten it.
+        timing_ms: 100,
+        // Worst measured 0.63 dB: quad-snd natively at a quarter volume.
+        level_db: 1.0,
+        // Measured 0: a null sink gives true silence. 2 is a rounding step each way.
+        silent_peak: 2,
+        // Measured under 0.0001 of full scale; this is -60 dB.
+        silent_tone: 0.001,
+        // Worst measured 0.975: the marker through an Ogg file in the browser.
+        marker_correlation: 0.95,
+        // Against a WAV's own numbers, and against what `oggdec` makes of an Ogg
+        // file: measured 1 step on both platforms, one step of rounding.
+        exact_peak: 2,
+        decoded_peak: 2,
+        // Worst measured 0.29 dB, once commands' moments are left out.
+        repeat_db: 1.0,
+    ),
+    // An equal-work ratio's limits. `max_ratio` is 1 plus twice the worst distance
+    // from 1 of a median of old against old over the three runs, and at least 1.05;
+    // `max_spread` is twice the worst interquartile range, and at least 0.05. Each
+    // sits well under what the injected slowdown shows where it `slows`: at least
+    // 1.68 in the browser, 1.97 natively. Raw times moved by half between runs
+    // (native Ogg decode 168 to 255 ms) as machines differ: only ratios are held.
+    // A fresh run (CI run 41275055017) stayed inside every `max_ratio`. Its machine
+    // was noisy enough to pass three `max_spread`s, which is what they are for: CI
+    // measures that again rather than these being widened.
+    performance: {
+        "linux-native": {
+            "file_io_ms": (max_ratio: 1.05, max_spread: 0.17, slows: true),
+            "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.05, slows: true),
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.22, slows: false),
+            "latency_ms": (max_ratio: 1.05, max_spread: 0.09, slows: false),
+        },
+        "browser-chromium": {
+            // A fetch, and decodes only seen to end at a frame, are the noisiest.
+            "file_io_ms": (max_ratio: 1.25, max_spread: 0.52, slows: true),
+            "decode_wav_ms": (max_ratio: 1.17, max_spread: 0.22, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.05, max_spread: 0.19, slows: true),
+            "cpu_ms": (max_ratio: 1.05, max_spread: 0.09, slows: true),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 1.14, max_spread: 0.53, slows: false),
+        },
+    },
+    // Each platform's evidence. Only a `Captured` one can support a parity claim,
+    // and every cell of it is mandatory. `Blocked` says who must establish it.
+    platforms: {
+        "linux-native": Captured,
+        "browser-chromium": Captured,
+        "windows": Blocked("3031 establishes capture first, through WASAPI loopback on a real render endpoint"),
+        "macos": Blocked("3032 establishes capture first; hosted Mac capture is unproved"),
+    },
+)

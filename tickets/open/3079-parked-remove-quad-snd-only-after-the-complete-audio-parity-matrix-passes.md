@@ -1,19 +1,17 @@
 ---
 id: "3079"
-title: "Parked: Remove quad-snd only after the complete audio parity matrix passes"
+title: "Remove quad-snd only after the complete audio parity matrix passes"
 type: infra
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2902", "2573", "3032", "2397", "2234", "2378"]
+blocked_by: ["2902", "2573", "3032", "2397", "2234", "2378", "3084"]
 nick_input: none
 completed:
 ---
 
 # 3079 — Remove quad-snd after complete parity
-
-> **Parked**: Nick required a separate final removal ticket in 2902 on 2026-10-31. The build chain stays parked until he starts it. Whoever unparks it sets `status: todo` and removes `Parked:`.
 
 ## Context
 
@@ -22,6 +20,10 @@ and 2397 progressively qualify decoder, mixer, platform and loop behavior.
 Those stages retain the old path. This is the sole removal step in
 [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md),
 conditional on Nick's correctness/speed requirement, not just successful builds.
+It is also the one step that is hard to undo, so it comes after 3084 has made the
+new backend the default, and proves itself undoable first. 3034, replacing
+macroquad's loader, waits for this ticket, since it would close the way back
+([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 
 ## Nick input
 
@@ -43,7 +45,14 @@ Missing mandatory automated evidence still blocks removal.
   using the pre-removal reference revision in an isolated checkout/tools
   workspace. Preserve raw PCM, stats, hashes and gate/baseline revisions.
   Only after correctness, equal-work CPU/speed, bounded memory, underrun,
-  deployment/package and device checks pass, select every migrated consumer.
+  deployment/package and device checks pass does the removal go ahead.
+- Start only once the game has moved its pin to 3084's default and run on it:
+  name the game's PR in the completion notes. If it found a hurdle, this waits.
+- The removal is one commit holding nothing else. Before merging, on a scratch
+  branch, revert that commit and let CI pass: quad-snd back, its matrix passing,
+  the exact version from `Cargo.lock`. Record that run. Take out with the removal
+  what is only for going back: the rest of 2573's fence, `give-up`, its footprint,
+  its skill and CI's `sound-give-up` job. From here going back is that revert.
 - Preserve unchanged Playdate SDK/baking regression checks. The future GBA
   backend never used quad-snd and need not be built to remove a desktop/web
   dependency; any currently present target/consumer must be accounted for.
@@ -66,7 +75,8 @@ new codecs/mixers/DSP, future GBA implementation, replacing SDK audio.
 ## Implementation steps
 
 1. Audit every consumer and evidence cell; run the final comparative matrix.
-2. With all gates/sign-offs passing, remove the old stack and make new default.
+2. With all gates/sign-offs passing and the game on 3084's default, remove the
+   old stack in one commit, and rehearse its revert on a scratch branch.
 3. Rebuild native/web exports, audit dependencies/plugins/notices, rerun
    persistent regression/performance checks and record the reference revision.
 
@@ -76,6 +86,7 @@ new codecs/mixers/DSP, future GBA implementation, replacing SDK audio.
 - [ ] The final same-config historical-reference comparison passes and artifacts are retained.
 - [ ] No current shipping or test consumer selects quad-snd or macroquad audio; native/wasm trees and browser requests prove removal.
 - [ ] Owned PCM/performance regression checks, target packaging and unchanged SDK checks still pass after removal.
+- [ ] The game ran on 3084's default through a moved pin, and the rehearsed revert of the removal passed CI; both are named in the notes.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

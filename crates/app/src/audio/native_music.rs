@@ -18,7 +18,7 @@ use quad_snd::{AudioContext, PlaySoundParams, Sound};
 ///
 /// Dropping it before the worker is done detaches the thread: the worker
 /// finishes and drops the value itself, so nothing leaks.
-pub(crate) struct Pending<T> {
+pub struct Pending<T> {
     rx: Receiver<T>,
     /// The value (or the worker's failure) has been handed out.
     taken: bool,
@@ -77,7 +77,7 @@ impl Contexts {
 
 /// A decoded music track on its own context. Dropping it stops it, frees
 /// its samples and returns the context to the pool.
-pub(crate) struct Music {
+pub struct Music {
     sound: Sound,
     /// How long it plays, if the file is an OGG.
     length_ms: Option<u32>,

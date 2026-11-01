@@ -98,7 +98,7 @@ Game PR that moves the pin: game#0910 (the ticket's own PR).
 Book: updated (`targets-and-export`, the Export section).
 
 No break of what a game writes: `shuyi.ron`'s new part is optional. The
-contract's version is 33 (`export`'s `without` and `beside`).
+contract's version is 34 (`export`'s `without` and `beside`).
 
 Breaking: shuyi-cli: export::ExportCx: two new public fields, `turned_on` and `beside`; a literal of it adds them.
 

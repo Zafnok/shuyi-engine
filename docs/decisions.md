@@ -1330,3 +1330,66 @@ binary analysis, watermarking and capture controls:
   hardening before promising it as protection.
 - Hosted networking work stays parked until Nick explicitly unparks
   it. Putting it in the backlog is not starting that work.
+
+## 2026-10-31: the sound build chain starts now, ahead of the MVP
+
+Source: Nick, in a Claude Code session, after asking to do 2573 and being
+asked whether to unpark it alone, unpark the chain, or keep it parked until
+the MVP as decided on 2026-10-19. His answer:
+
+> "Unpark the whole chain"
+
+**Rules:** 2573, 2210, 3030, 3031, 3032, 2397 and 3079 are no longer parked.
+This commits to leaving quad-snd now rather than after the MVP. Everything
+else about the plan of 2026-10-31 above holds: they run one ticket at a time,
+in the order of their blockers, each behind 2573's gates, and only 3079
+removes quad-snd. The controllers, the two small ones and macroquad, the
+later steps of the platform layer's plan, stay parked.
+
+## 2026-10-31: the sound replacement stays reversible
+
+Source: Nick, in a Claude Code session, while 2573 was being worked:
+
+> "btw, quad-snd replacement and the whole chain should be easily reversible if we encounter an unclimbable hurdle. Ensure this is the case"
+
+> "btw by reversible I mean... say we hit a roadbump and it adds 50 more tickets at that point I might decide (not as a rule, so don't independently decide for me) that it's not worth it and to scrap all progress. It should be a clean revert no matter what stage im at until quad-snd is removed outright. Then I understand it will be more difficult"
+
+> "like I would wanna one shot say \"ok lets give up on sound replacement\" and then its done in one session"
+
+**Rules:**
+
+- Whether to give up is Nick's alone. An agent that hits a roadbump reports what
+  it found and what it costs, and goes on with what it can. It never gives up,
+  stops the chain or drops a ticket on its own judgement.
+- At any stage until 3079 merges, Nick saying so scraps all of it in one session
+  (the `give-up-sound-replacement` skill): one PR, with the game on quad-snd.
+- After 3079 it is harder, as he says: a revert, which later work can conflict with.
+- Making the new backend the default (3084) and deleting quad-snd (3079) are
+  separate steps. 3079 waits until the game has run on that default through a
+  moved pin, and its removal must be proven undoable before it merges.
+- How this is held is technical:
+  [ADR-0068](adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md).
+
+## 2026-11-01: `shuyi-alloc-count` and `shuyi-playdate` are held too
+
+Asked how close the first release was and whether more names should be held,
+Claude checked crates.io: the seven placeholders were live, and two crates
+written since were still free. `shuyi-app` and `shuyi-cli` need
+`shuyi-alloc-count`, so the release can't go out without it, and 2005's list
+had left it out. `shuyi-playdate` is the Playdate backend. Nick:
+
+> "Yes, reserve shuyi-alloc-count and shuyi-playdate as 0.0.0 placeholders, record it in decisions.md, and add both to ticket 2005."
+
+**Rules:**
+
+- **Both are held** as empty 0.0.0 placeholders like the seven (a library with
+  no code, both license files, a README that points here), owned by `Zafnok`.
+  Each is a real crate in this repository, which fits the 2026-10-21 rule that a
+  name is published when its crate is real.
+- **The token.** Nick made one for this run only: the `publish-new` scope, the
+  crates `shuyi-*`, a short expiry. Nick revokes it after the run. Its value is
+  recorded nowhere.
+- **2005 publishes the next version of both** with the others, through trusted
+  publishing.
+- **Still no defensive names.** The planned crates that don't exist yet, and
+  `shuyi-engine`, stay unheld.

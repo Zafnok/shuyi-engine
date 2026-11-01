@@ -1,0 +1,358 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExposureReport",
+  "description": "`exposure-report.json`.",
+  "type": "object",
+  "properties": {
+    "declared": {
+      "description": "Whether `shuyi.ron` has a `disclosure` part to hold it to. Without one\nnothing is refused, and there are no findings.",
+      "type": "boolean"
+    },
+    "files": {
+      "description": "Every file of the package, the archive and what is beside them, by\npath.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ExposedFile"
+      }
+    },
+    "findings": {
+      "description": "What refused it.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Finding"
+      }
+    },
+    "inputs": {
+      "description": "What it was built from.",
+      "$ref": "#/$defs/BuildInputs"
+    },
+    "ok": {
+      "description": "Whether the package stands: false when a finding removed it.",
+      "type": "boolean"
+    },
+    "pack_entries": {
+      "description": "Every file of every pack.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ExposedEntry"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "declared",
+    "inputs",
+    "files",
+    "pack_entries",
+    "findings"
+  ],
+  "$defs": {
+    "BuildInputs": {
+      "description": "What the package was built from.",
+      "type": "object",
+      "properties": {
+        "bin": {
+          "description": "The program, or the library on the Playdate.",
+          "type": "string"
+        },
+        "builds": {
+          "description": "The `cargo` arguments of each build.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "cargo_lock": {
+          "description": "The SHA-256 of the workspace's `Cargo.lock`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "default_features": {
+          "description": "Whether the builds keep the package's default features.",
+          "type": "boolean"
+        },
+        "features": {
+          "description": "The features of the game's package they turn on, with what those turn\non.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "package": {
+          "description": "The game's package.",
+          "type": "string"
+        },
+        "profile": {
+          "description": "The target profile its check ran with.",
+          "type": "string"
+        },
+        "project_file": {
+          "description": "The SHA-256 of `shuyi.ron`, which holds the `disclosure` part.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "release": {
+          "description": "Whether it was a release build.",
+          "type": "boolean"
+        },
+        "target": {
+          "description": "The target.",
+          "type": "string"
+        },
+        "toolchain": {
+          "description": "`rustc -V`.",
+          "type": "string"
+        },
+        "version": {
+          "description": "The game's version.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "profile",
+        "package",
+        "bin",
+        "version",
+        "release",
+        "builds",
+        "default_features",
+        "features",
+        "toolchain"
+      ]
+    },
+    "ExposedEntry": {
+      "description": "A file of a pack.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "description": "Its size in bytes, unpacked.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "file": {
+          "description": "The file holding the pack.",
+          "type": "string"
+        },
+        "kinds": {
+          "description": "The kinds it was baked as: none for a file kept as its own bytes.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "offset": {
+          "description": "Where the pack starts in that file: above 0, the file embeds it.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "path": {
+          "description": "Its path in the pack.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "The SHA-256 of what it unpacks to.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "offset",
+        "path",
+        "kinds",
+        "bytes",
+        "sha256"
+      ]
+    },
+    "ExposedFile": {
+      "description": "A file of the export.",
+      "type": "object",
+      "properties": {
+        "bytes": {
+          "description": "Its size in bytes.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "kind": {
+          "description": "What it is.",
+          "$ref": "#/$defs/FileKind"
+        },
+        "path": {
+          "description": "Its path: from the package's root for a file of the package, else from\nthe export's folder.",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "Its SHA-256.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Where it is from.",
+          "type": "string"
+        },
+        "varies": {
+          "description": "What the hash leaves out, if a tool writes part of the file differently\neach build. The hash is then of what is left.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "source",
+        "bytes",
+        "sha256"
+      ]
+    },
+    "FileKind": {
+      "description": "What a file is to the package.",
+      "oneOf": [
+        {
+          "description": "A built program.",
+          "type": "string",
+          "const": "program"
+        },
+        {
+          "description": "A file the exporter writes itself.",
+          "type": "string",
+          "const": "written"
+        },
+        {
+          "description": "A pack the exporter bakes.",
+          "type": "string",
+          "const": "pack"
+        },
+        {
+          "description": "A file of the game the exporter copies: `disclosure.allowed_files`\nnames it.",
+          "type": "string",
+          "const": "loose-asset"
+        },
+        {
+          "description": "A file in the package no exporter made or `allowed_files` names.",
+          "type": "string",
+          "const": "undeclared"
+        },
+        {
+          "description": "The archive players download: its files are those of the package.",
+          "type": "string",
+          "const": "archive"
+        },
+        {
+          "description": "The program with its debug sections, beside the package.",
+          "type": "string",
+          "const": "debug-companion"
+        },
+        {
+          "description": "A file beside the package that this export didn't make.",
+          "type": "string",
+          "const": "beside"
+        },
+        {
+          "description": "What a shipped file was made from by a tool that compresses it, read\nfor the canaries it would hide.",
+          "type": "string",
+          "const": "build-input"
+        }
+      ]
+    },
+    "Finding": {
+      "description": "One thing that refuses the export.",
+      "type": "object",
+      "properties": {
+        "canary": {
+          "description": "Which place of `disclosure.canaries`, for a canary. The report never\nholds its text.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0
+        },
+        "entry": {
+          "description": "The path in the pack, if it is in one.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "kind": {
+          "description": "What it is.",
+          "$ref": "#/$defs/FindingKind"
+        },
+        "path": {
+          "description": "The file: its [`ExposedFile::path`].",
+          "type": "string"
+        },
+        "source": {
+          "description": "Where the file is from.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "kind",
+        "source"
+      ]
+    },
+    "FindingKind": {
+      "description": "What a finding is.",
+      "oneOf": [
+        {
+          "description": "A path of `disclosure.forbidden_paths`, as a path or as a program's\ntext.",
+          "type": "string",
+          "const": "forbidden-path"
+        },
+        {
+          "description": "A canary of `disclosure.canaries`.",
+          "type": "string",
+          "const": "canary"
+        },
+        {
+          "description": "A file `disclosure.allowed_files` doesn't name.",
+          "type": "string",
+          "const": "undeclared-file"
+        },
+        {
+          "description": "A file of a pack `disclosure.allowed_pack_entries` doesn't name.",
+          "type": "string",
+          "const": "undeclared-pack-entry"
+        },
+        {
+          "description": "A file beside the package that this export didn't make.",
+          "type": "string",
+          "const": "beside"
+        },
+        {
+          "description": "A pack that doesn't read, so its files can't be listed.",
+          "type": "string",
+          "const": "unreadable-pack"
+        },
+        {
+          "description": "The archive and the package's folder differ.",
+          "type": "string",
+          "const": "archive-differs"
+        },
+        {
+          "description": "A file over [`MAX_FILE_BYTES`].",
+          "type": "string",
+          "const": "too-big"
+        }
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 ---
 id: "3032"
-title: "Parked: Gated CPAL sound integration on Linux and macOS, retaining quad-snd until final removal"
+title: "Gated CPAL sound integration on Linux and macOS, retaining quad-snd until final removal"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3032 — Gated sound output on Linux and macOS
-
-> **Parked**: Nick selected the gated hybrid in 2902 on 2026-10-31; build work stays parked until he starts it. Whoever unparks it sets `status: todo` and drops `Parked:`. 2573's working baseline comes first; 3079 alone removes quad-snd.
 
 ## Context
 
@@ -35,9 +33,11 @@ still mandatory on every required port; a CI build alone does not supply it.
 **In:**
 - Before new output code or switching a platform, establish its actual
   old-output capture and calibrated speed baseline in 2573's harness.
-  Linux reuses the virtual sink. Automated hosted macOS capture was not
-  established by research: make a route work on a suitable runner or
-  remain blocked there with the old backend. Missing capture, fake callback
+  Linux reuses the virtual sink. **From 2573 (done):** Linux's baseline is in
+  CI; macOS is yours to establish first, and `cargo xtask sound-parity
+  port-ready macos` refuses until it has passed evidence. Automated hosted
+  macOS capture was not established by research: make a route work on a
+  suitable runner or remain blocked there with the old backend. Missing capture, fake callback
   traces and unsupported cells never count as passed audio parity.
 - CPAL defaults off (0.18.2 researched Apache-2.0; recheck manifest,
   repository license and full graph), through public APIs. Own glue stays
@@ -62,8 +62,12 @@ still mandatory on every required port; a CI build alone does not supply it.
   gates and existing stage sign-off pass; record manual hardware limits
   above and leave the reference selectable.
   Hound/lewton remain intentional dependencies.
-- Keep the public audio/player API and game's files unchanged; any
-  discovered break gets a Breaking line and game handoff, not a silent break.
+- Keep the public audio/player API and game's files unchanged. A discovered
+  break gets a Breaking line and game handoff, not a silent break, and one only
+  the new backend could honour stops this stage until it needn't ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+- Stay behind 3031's `in-house-sound`, off by default: making it the default is
+  3084's, and CI still records quad-snd. All this PR adds goes in
+  `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes.
 
 **Out (do not do):** quad-snd, macroquad audio, feature, source, plugin and
 notice removal (3079); new cue rules; mobile backends; optional native

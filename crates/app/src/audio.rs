@@ -77,7 +77,7 @@ pub(crate) mod device {
 
     /// Plays through quad-snd. Only usable inside macroquad's main loop.
     #[derive(Default)]
-    pub(crate) struct Macroquad {
+    pub struct Macroquad {
         /// Spare music contexts.
         #[cfg(not(target_arch = "wasm32"))]
         contexts: Contexts,
@@ -86,7 +86,7 @@ pub(crate) mod device {
     }
 
     /// A decoded sound, track or voice clip.
-    pub(crate) enum Clip {
+    pub enum Clip {
         /// A sound effect, in the effects' context.
         Effect(quad_snd::Sound),
         /// A music track or voice clip on the web, in macroquad's context,

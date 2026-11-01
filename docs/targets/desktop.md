@@ -60,6 +60,11 @@ tools are that system's. On another one, `export` says where it builds.
 `export-report.json` beside the package names the debug file, with the
 version, the target, the sizes, what shipped beside the program, the check's
 warnings and the signing.
+`exposure-report.json` lists what the package holds and is held to the game's
+`disclosure` part (the book's [Targets and
+export](../../site/content/learn/book/targets-and-export.md)). A Windows
+program carries a fixed time, not the time of its build, so the same input
+gives the same report.
 
 ## A game's features and the files beside its program
 
@@ -96,6 +101,9 @@ export: (
 
 The Playdate's package takes none of this: a `.pdx` has its own build and its
 own files.
+
+A game with a `disclosure` part names these files in its `allowed_files` too:
+the part is the list a package is held to, and `beside` doesn't widen it.
 
 ## The Linux package by hand
 

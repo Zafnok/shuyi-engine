@@ -825,3 +825,32 @@ fn the_limits_hold_at_their_edges() {
         .collect();
     assert_eq!(opened(most, b""), format!("ok: {MAX_FILES} file(s)"));
 }
+
+#[test]
+fn a_packs_length_finds_its_end_inside_a_bigger_file() {
+    let files = [("a.txt".to_owned(), vec![7; 40])];
+    let pack = raw_pack(&test_info(), &files);
+    assert_eq!(length(&pack), Ok(pack.len()));
+    let inside = [&pack[..], b"the rest of a program"].concat();
+    assert_eq!(length(&inside), Ok(pack.len()));
+    assert!(Pack::open(&inside[..pack.len()], &test_info().stamp).is_ok());
+    let empty = raw_pack(&test_info(), &[]);
+    assert_eq!(length(&empty), Ok(empty.len()));
+    // Cut short, not a pack, or of another version.
+    assert_eq!(length(&pack[..pack.len() - 1]), Err(PackError::Truncated));
+    assert_eq!(length(b"not a pack"), Err(PackError::NotAPack));
+    let other = [&MAGIC[..], &(VERSION + 1).to_le_bytes(), &[0; 12]].concat();
+    assert_eq!(
+        length(&other),
+        Err(PackError::Version { found: VERSION + 1 })
+    );
+    let unread = [
+        &MAGIC[..],
+        &VERSION.to_le_bytes(),
+        &[0; 8],
+        &2u32.to_le_bytes(),
+        &[0xff, 0xff],
+    ]
+    .concat();
+    assert!(matches!(length(&unread), Err(PackError::Broken(_))));
+}

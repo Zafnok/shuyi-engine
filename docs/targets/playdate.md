@@ -97,6 +97,13 @@ profile's `package_bytes`.
 - **The audio:** baked into `audio/` and `music/`, and `pdc` makes each a
   `.pda`. A file baked once is kept in Cargo's target folder, by what it holds,
   so a long track is decoded once.
+- **The report:** `exposure-report.json` beside the package lists what it holds
+  (the book's [Targets and
+  export](../../site/content/learn/book/targets-and-export.md)). `pdc` compresses
+  `pdex.bin`, so canaries are looked for in the `pdex.elf` it is made from, listed
+  as a build input. `pdc` writes the time it ran into `pdxinfo` as `buildtime`,
+  so the report's hash of that file leaves the line out, and the zip's size and
+  hash are of its files; both say so.
 
 ## Run it
 

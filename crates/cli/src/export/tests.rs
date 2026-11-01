@@ -8,7 +8,7 @@ use super::*;
 
 /// A context on Hello, Grid with its export's folder under the temporary
 /// folder, for test `name`.
-fn cx(name: &str, target: &str) -> ExportCx {
+pub(super) fn cx(name: &str, target: &str) -> ExportCx {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
     let out = std::env::temp_dir().join(format!("shuyi-export-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&out);
@@ -381,6 +381,27 @@ fn what_ships_beside_goes_in_the_package_under_its_name_and_in_the_report() {
     let refused =
         desktop::pack(&taken, System::Windows, "x86_64-pc-windows-gnu", &program).unwrap_err();
     assert!(refused.message().contains("already holds"), "{refused:?}");
+    fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn what_ships_beside_is_the_games_own_in_the_exposure_report() {
+    let mut cx = cx("beside-marked", "windows");
+    cx.beside = vec![
+        beside("capture", None, false),
+        beside("Cargo.toml", None, false),
+    ];
+    let program = program_file(&cx, "hello-grid.exe");
+    let report = desktop::pack(&cx, System::Windows, "x86_64-pc-windows-gnu", &program).unwrap();
+    let shipped = desktop::WINDOWS.shipped(&cx, &report);
+    for (file, source) in [
+        ("capture/frames.ron", "export.beside: capture"),
+        ("Cargo.toml", "export.beside: Cargo.toml"),
+    ] {
+        let (kind, from) = &shipped.sources[file];
+        assert_eq!(*kind, disclosure::FileKind::LooseAsset);
+        assert_eq!(from, source);
+    }
     fs::remove_dir_all(&cx.out).unwrap();
 }
 

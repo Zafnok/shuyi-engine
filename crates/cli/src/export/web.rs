@@ -6,6 +6,7 @@
 
 use std::fs;
 
+use super::disclosure::{FileKind, Shipped};
 use super::{ExportCx, ExportError, ExportReport, Exporter, Signing, archive, fresh, paths};
 use crate::project::Web;
 use crate::web::{self as build, Options};
@@ -71,6 +72,37 @@ impl Exporter for WebExporter {
             }
         })?;
         pack(cx, rules, &dist)
+    }
+
+    /// The shell, the binary and the notices, which it writes; the music and
+    /// voice files, which it copies; and `web.dist`, which holds them too.
+    fn shipped(&self, cx: &ExportCx, report: &ExportReport) -> Shipped {
+        let mut shipped = Shipped::new(
+            cx.out.join(&report.folder),
+            Some(cx.out.join(&report.package)),
+            "",
+        );
+        let Some(rules) = &cx.web else {
+            return shipped;
+        };
+        shipped.public.push(cx.root.join(&rules.dist));
+        let game = build::game_files(rules, &cx.root).unwrap_or_default();
+        for file in build::current_files(rules, &cx.root).unwrap_or_default() {
+            if game.contains(&file) {
+                let music = rules.music.as_deref().is_some_and(|music| {
+                    file.starts_with(&format!("{}/", build::package_path(music)))
+                });
+                let part = if music { "music" } else { "voice" };
+                let source = format!("web.{part}: {file}");
+                shipped.source(file, FileKind::LooseAsset, source);
+            } else if file == format!("{}.wasm", rules.bin) {
+                shipped.source(file, FileKind::Program, "the built program");
+            } else {
+                shipped.source(file, FileKind::Written, "written by the export");
+            }
+        }
+        cx.mark_beside(report, &mut shipped);
+        shipped
     }
 }
 

@@ -11,6 +11,9 @@ Thumbs.db
 # Distribution / packaging output
 /dist/
 
+# Python's own, beside the tools' scripts.
+__pycache__/
+
 # Test & quality tooling output
 /mutants.out/
 /mutants.out.old/

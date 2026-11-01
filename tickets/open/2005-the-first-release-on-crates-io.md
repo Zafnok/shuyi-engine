@@ -204,13 +204,15 @@ The sign-off also:
 - A release workflow (`.github/workflows/release.yml`): on a tag
   `vX.Y.Z`, a check that the tag is `v` and the workspace's `version`,
   the gates, then `cargo publish` of each crate in dependency order
-  (`shuyi-core`, `shuyi-assets`, `shuyi-ui`, `shuyi-platform`,
-  `shuyi-app`, `shuyi`, `shuyi-cli`; `xtask` is never published). No
-  crates.io token is stored anywhere (2011's ADR). The publish job runs
+  (`shuyi-alloc-count`, `shuyi-core`, `shuyi-assets`, `shuyi-ui`,
+  `shuyi-platform`, `shuyi-app`, `shuyi`, `shuyi-cli`, `shuyi-playdate`;
+  `xtask` is never published). `shuyi-platform`, `shuyi-app`, `shuyi-cli`
+  and `shuyi-playdate` depend on `shuyi-alloc-count`, so it goes first.
+  No crates.io token is stored anywhere (2011's ADR). The publish job runs
   in a `release` environment with `permissions: id-token: write`. It
   gets a short-lived token through crates.io trusted publishing
   (`rust-lang/crates-io-auth-action`, pinned by SHA). crates.io lets a
-  crate trust a workflow only once the crate exists. The seven crates
+  crate trust a workflow only once the crate exists. The nine crates
   exist since the 0.0.0 placeholders (below), so the first real version
   goes out through the workflow too, with no publish by hand. Check
   this against crates.io's docs on the day. No job of the tag's run
@@ -221,10 +223,10 @@ The sign-off also:
   (`cargo owner --add <login> <crate>`, with a token that has the
   `change-owners` scope, or the crate's settings page), and they accept
   on crates.io. `docs/continuity.md`'s crates.io row names the owners,
-  the trusted publisher, and the placeholders' two tokens
+  the trusted publisher, and the placeholders' three tokens
   (`docs/decisions.md`, 2026-10-21 for the six, 2026-10-22 for
-  `shuyi`): each one's scope, its crates and that it was revoked, never
-  its value.
+  `shuyi`, 2026-11-01 for `shuyi-alloc-count` and `shuyi-playdate`):
+  each one's scope, its crates and that it was revoked, never its value.
 - **Docs at the release's version** (2808): the release workflow runs
   `cargo xtask llms --full-only --out <dir>` at the tag and attaches
   `llms-full.txt` to the GitHub release. `pages.yml` downloads, for each
@@ -255,8 +257,9 @@ The sign-off also:
   `Breaking:` line. If not, nothing to do either: 2906 counts a change
   of lifetimes after this release as a 0.x break, as this policy says.
 - The names are held already: on 2026-10-21 Nick had the six crates
-  published as empty 0.0.0 placeholders, and `shuyi` on 2026-10-22,
-  all owned by `Zafnok` (`docs/decisions.md`). The first release is the
+  published as empty 0.0.0 placeholders, `shuyi` on 2026-10-22, and
+  `shuyi-alloc-count` and `shuyi-playdate` on 2026-11-01, all owned by
+  `Zafnok` (`docs/decisions.md`). The first release is the
   next version of each and replaces the placeholder's README and
   description. Nick wants no real version until the engine is stable,
   so the placeholders don't hurry this ticket; only a threat to the

@@ -18,9 +18,13 @@
 //! debug build's live link (`link`), and the files and folders copied into
 //! the package ([`ExportCx::copy_beside`]). A game with no such part gets a
 //! build with no feature and a package with nothing else in it.
+//!
+//! Every final package is then read back and written down, and held to the
+//! game's `disclosure` part if it has one ([`disclosure`]).
 
 pub mod archive;
 mod desktop;
+pub mod disclosure;
 pub mod paths;
 pub mod playdate;
 mod web;
@@ -32,6 +36,7 @@ use std::process::Command;
 
 use serde::Deserialize;
 
+use self::disclosure::Shipped;
 use crate::contract::codes::{self, Code};
 use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
@@ -77,6 +82,19 @@ pub trait Exporter: Sync {
 
     /// Builds and writes the package into `cx.out`.
     fn export(&self, cx: &ExportCx) -> Result<ExportReport, ExportError>;
+
+    /// What the export that answered `report` wrote and where, for the
+    /// inspection after it. By default the folder and archive `report` names
+    /// and no file known, so a target that doesn't say holds only undeclared
+    /// files.
+    fn shipped(&self, cx: &ExportCx, report: &ExportReport) -> Shipped {
+        let archive = (report.package != report.folder).then(|| cx.out.join(&report.package));
+        Shipped::new(
+            cx.out.join(&report.folder),
+            archive,
+            format!("{}/", report.folder),
+        )
+    }
 
     /// Runs the package `export` wrote: by default there is no run step.
     fn run(&self, _cx: &RunCx) -> Result<(), ExportError> {
@@ -203,6 +221,9 @@ pub struct RunCx<'a> {
     pub report: &'a ExportReport,
 }
 
+/// A package's `[features]`: each feature and what it turns on.
+type Features = BTreeMap<String, Vec<String>>;
+
 /// `cargo metadata --no-deps`, the fields read here.
 #[derive(Deserialize)]
 struct Metadata {
@@ -256,6 +277,7 @@ impl ExportCx {
                 ))
             })?;
         let (package_version, bins, features) = metadata(root, &package)?;
+        let features = features.into_keys().collect();
         let version = version(config.app.as_ref(), package_version);
         let bin = match web {
             Some(web) if exporter.id() == "web" => web.bin.clone(),
@@ -452,6 +474,25 @@ impl ExportCx {
         Ok(sizes)
     }
 
+    /// Says in `shipped` that what `report` lists as shipped beside the
+    /// program is the game's own, for the exposure report.
+    pub fn mark_beside(&self, report: &ExportReport, shipped: &mut Shipped) {
+        for size in &report.beside {
+            let on_disk = self.out.join(&size.file);
+            let prefix = format!("{}/", report.folder);
+            let name = size.file.strip_prefix(&prefix).unwrap_or(&size.file);
+            let source = format!("export.beside: {name}");
+            if on_disk.is_dir() {
+                let inner = format!("{name}/");
+                for entry in archive::entries(&on_disk, &inner, &|_| false).unwrap_or_default() {
+                    shipped.source(entry.name, disclosure::FileKind::LooseAsset, source.clone());
+                }
+            } else {
+                shipped.source(name, disclosure::FileKind::LooseAsset, source);
+            }
+        }
+    }
+
     /// Writes `NOTICES.txt` into `dir` for a native build for `triple`:
     /// the crates compiled in, the engine's files they compile in, and the
     /// game's own works.
@@ -552,7 +593,7 @@ fn version(app: Option<&crate::project::AppPart>, package: String) -> String {
 
 /// The version, the programs and the features of `package`, by `cargo
 /// metadata --no-deps` in `root`.
-fn metadata(root: &Path, package: &str) -> Result<(String, Vec<String>, Vec<String>), ExportError> {
+fn metadata(root: &Path, package: &str) -> Result<(String, Vec<String>, Features), ExportError> {
     let output = Command::new(crate::cargo())
         .args(["metadata", "--no-deps", "--format-version", "1"])
         .current_dir(root)
@@ -578,7 +619,7 @@ fn metadata(root: &Path, package: &str) -> Result<(String, Vec<String>, Vec<Stri
         .filter(|t| t.kind.iter().any(|kind| kind == "bin"))
         .map(|t| t.name)
         .collect();
-    Ok((found.version, bins, found.features.into_keys().collect()))
+    Ok((found.version, bins, found.features))
 }
 
 /// The program of `package` to export among its `bins`: the one named as
@@ -646,9 +687,18 @@ fn missing_target(triple: &str) -> ExportError {
     ))
 }
 
+/// The time a packaging tool may write into a file, the archives' day
+/// (1980-01-01): `objcopy` would stamp a Windows program with the time it ran,
+/// and the same input is to give the same package.
+const SOURCE_DATE_EPOCH: &str = "315532800";
+
 /// Runs `program` with `args`, failing with `install` if it isn't there.
 fn tool(program: &str, args: &[&Path], install: &str) -> Result<(), ExportError> {
-    let status = Command::new(program).args(args).status().map_err(|e| {
+    let mut command = Command::new(program);
+    command
+        .args(args)
+        .env("SOURCE_DATE_EPOCH", SOURCE_DATE_EPOCH);
+    let status = command.status().map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
             ExportError::MissingTool(format!("{program} isn't installed: {install}"))
         } else {

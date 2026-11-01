@@ -71,6 +71,11 @@ Every target gets the same name, id and version, written once in
   weighed by how opaque they are, so a transparent edge doesn't darken
   the color beside it, and the same picture gives the same files on
   every computer.
+- `icon_sizes` draws window icons by hand, for pixel art that a mean
+  turns to mud: `{ 16: "art/icon-16.png", 32: "art/icon-32.png" }`.
+  Each file is a square PNG of its key's side, and `app-info` uses its
+  pixels as they are. The sizes it doesn't name still come from `icon`,
+  and so do the packages' icons.
 
 ## Checking them
 
@@ -181,6 +186,45 @@ those files and folders under their own names (`name` gives another). In a
 voices look for it, and a file goes beside the `.app`. A path that isn't there
 refuses the export, unless it is `optional`. `--without <feature>` leaves a
 feature off one build.
+
+## What a package gives away
+
+A menu that hides a level doesn't hide its file: a player can open a package
+and read what is in it. So every export reads its final package back, after
+every copy its target makes, and writes down what is there in
+`exposure-report.json` beside it: each file with its kind, its source, its size
+and its SHA-256, each file of each pack, whether the file is a pack or a program
+embeds one, the debug file, the features and what it was built from. The same
+input gives the same report.
+
+To hold a package to a list, add a `disclosure` part to `shuyi.ron`:
+
+```ron
+disclosure: (
+    // Files of the game beside what the exporter writes.
+    allowed_files: ["music/title.ogg"],
+    // Files a pack may hold.
+    allowed_pack_entries: ["maps/first.ron", "palette.ron"],
+    // Paths nothing may hold, as a file, in a pack or as a program's text.
+    forbidden_paths: ["maps/final-boss.ron"],
+    // Texts nothing may hold: put one in each file of what isn't out yet.
+    canaries: ["ACT-THREE-CANARY"],
+),
+```
+
+A path matches whole, with no pattern, and the part is the same for every
+target: list each target's names together. What the exporter writes itself (the
+program, `NOTICES.txt`, the web page) needs no line. A file or a pack's file the
+part doesn't name, a forbidden path, a canary, or a file beside the package that
+this export didn't make refuses the export with `SH3012`. It names each file and
+where it came from, and leaves the report and no package, and for the web an
+empty `web.dist`. The report and the error name a canary by its place in the
+list and never by its text, so they can be shared.
+
+This finds what is written plainly: in a file, in what a pack unpacks to, or as
+UTF-8 or UTF-16 in a program. It can't find what your code compresses itself, or
+say that a rule isn't in the machine code. What a game must not give away, leave
+out of the build.
 
 ## Size and speed
 
