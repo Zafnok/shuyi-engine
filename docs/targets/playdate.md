@@ -49,6 +49,29 @@ becomes an item of the system menu, titled by the text key
 `system_menu.<action>`, or its name. A required action only on the crank
 shows a hint while the crank is docked, by the text key `crank.unfold`.
 
+## The game's stack
+
+The device gives the C stack about 10 KB, and a game's load or search can go
+deeper: a first device build of Visions of Shuyi crashed while loading, and the
+same code used 15,256 bytes on a bigger stack. So on the device every call from
+the SDK into the game runs on a stack of its own from the heap, 64 KB unless
+the game says. The Simulator stays on the computer's stack, so it can run what
+a device can't.
+
+`shuyi_playdate::stack_high_water()` says how many bytes of it the game has
+ever used, and `None` on the Simulator. To pick a size, log it after the
+game's deepest moment on a device (the load, the longest search), and allow
+about four times that. Each byte is a byte less of the heap, so ask for no
+more than that:
+
+```rust,ignore
+shuyi_playdate::main!(start, stack_bytes = 128 * 1024);
+```
+
+A game that reaches the stack's last 256 bytes stops with a panic that says so
+as soon as its call into the game comes back, before what it overwrote can do
+harm later.
+
 ## Sound
 
 Sounds and music play as they do on the PC, through the same player. The
@@ -123,9 +146,6 @@ for the device (its `no-std` job), without linking.
 ## What doesn't work yet
 
 - **Voice clips** aren't baked: a voice plays as silence, with a warning.
-- **The device's stack:** the device gives the C stack about 10 KB, and a
-  game's load can go deeper. Nothing moves it to a bigger one yet, so the
-  Simulator, on the computer's stack, can run what a device can't.
 - **Not measured on a device:** the profile's budgets are provisional.
 - **A card that is a picture** shows only its background, since the pack
   isn't read yet.

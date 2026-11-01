@@ -17,7 +17,9 @@
 //! - [`input`]: the buttons and the crank; [`display`]: the frame buffer and
 //!   its changed rows; [`storage`]: the game's saves on the SDK's files;
 //! - [`audio`]: the shared player's backend, on the SDK's sample and file
-//!   players.
+//!   players;
+//! - [`stack`]: the arithmetic of the game's own stack, which every call from
+//!   the SDK into the game runs on.
 #![no_std]
 
 extern crate alloc;
@@ -32,6 +34,7 @@ pub mod driver;
 pub mod heap;
 pub mod input;
 pub mod sdk;
+pub mod stack;
 pub mod storage;
 pub mod text;
 
@@ -46,7 +49,7 @@ pub use backend::Playdate;
 pub use driver::Driver;
 
 #[cfg(shuyi_playdate_sdk)]
-pub use device::pack;
+pub use device::{pack, stack_high_water};
 
 /// The game's baked pack: off the device there is none.
 #[cfg(not(shuyi_playdate_sdk))]
@@ -56,17 +59,28 @@ pub fn pack() -> Result<&'static [u8], alloc::string::String> {
     Err("the pack is on the device alone".to_owned())
 }
 
+/// The bytes of the game's stack it has ever used: on the device alone, since
+/// the Simulator runs on the computer's stack.
+#[cfg(not(shuyi_playdate_sdk))]
+pub fn stack_high_water() -> Option<usize> {
+    None
+}
+
 /// The game's entry points, for the crate `shuyi export playdate` builds:
-/// `main!(start)`, with `start` a `fn() -> Start<G>`. Off the device it
-/// only checks `start` exists.
+/// `main!(start)`, with `start` a `fn() -> Start<G>`, or `main!(start,
+/// stack_bytes = 128 * 1024)` for a game's own stack of another size than
+/// [`stack::DEFAULT_BYTES`]. Off the device it only checks `start` exists.
 #[cfg(shuyi_playdate_sdk)]
 #[macro_export]
 macro_rules! main {
     ($start:path) => {
+        $crate::main!($start, stack_bytes = $crate::stack::DEFAULT_BYTES);
+    };
+    ($start:path, stack_bytes = $bytes:expr) => {
         /// The SDK's first event.
         #[unsafe(no_mangle)]
         pub extern "C" fn shuyi_playdate_init() {
-            $crate::device::init($start());
+            $crate::device::init($start, $bytes);
         }
 
         /// The SDK's update callback; 1 when the screen changed.
@@ -90,14 +104,21 @@ macro_rules! main {
 }
 
 /// The game's entry points, for the crate `shuyi export playdate` builds:
-/// `main!(start)`, with `start` a `fn() -> Start<G>`. Off the device it
-/// only checks `start` exists.
+/// `main!(start)`, with `start` a `fn() -> Start<G>`, or `main!(start,
+/// stack_bytes = 128 * 1024)` for a game's own stack of another size than
+/// [`stack::DEFAULT_BYTES`]. Off the device it only checks `start` exists.
 #[cfg(not(shuyi_playdate_sdk))]
 #[macro_export]
 macro_rules! main {
     ($start:path) => {
         const _: () = {
             let _ = $start;
+        };
+    };
+    ($start:path, stack_bytes = $bytes:expr) => {
+        const _: () = {
+            let _ = $start;
+            let _: usize = $bytes;
         };
     };
 }
@@ -122,6 +143,11 @@ mod tests {
     #[test]
     fn off_the_device_there_is_no_pack() {
         assert!(crate::pack().is_err());
+    }
+
+    #[test]
+    fn off_the_device_no_stack_is_measured() {
+        assert_eq!(crate::stack_high_water(), None);
     }
 
     /// `[lints]` is copied from the workspace's because one lint differs
