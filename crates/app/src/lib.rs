@@ -122,6 +122,7 @@ mod pacing;
 pub mod pads;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf_file;
+mod pictures;
 #[cfg(any(
     all(feature = "link", not(target_arch = "wasm32")),
     feature = "capture"
@@ -147,12 +148,20 @@ pub use crate::audio::device::Macroquad as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
 #[cfg(not(target_arch = "wasm32"))]
+pub(crate) use crate::folder::watched_file;
+#[cfg(not(target_arch = "wasm32"))]
 pub use crate::folder::{FolderError, read_folder, watched_layer};
 use crate::pacing::{Pacer, WebFrame};
 
 /// The web has no folders to watch.
 #[cfg(target_arch = "wasm32")]
 pub fn watched_layer() -> Option<shuyi_assets::bundle::Layer> {
+    None
+}
+
+/// The web has no folders to read through.
+#[cfg(target_arch = "wasm32")]
+pub(crate) fn watched_file(_: &str) -> Option<&'static [u8]> {
     None
 }
 
@@ -270,7 +279,9 @@ pub struct AppConfig {
     /// the web ([`storage::web_prefix`]). Changing it loses every save.
     pub storage_name: &'static str,
     /// The game's embedded files by path: the images, the font atlas's
-    /// picture and a loading card's picture are read with it.
+    /// picture and a loading card's picture are read with it. Under `cargo
+    /// shuyi run --watch` the folder of its files on disk lies over it
+    /// ([`watched_layer`]), and a picture saved there is drawn from then on.
     pub files: fn(&str) -> Option<&'static [u8]>,
     /// The font atlas's picture: its path for [`files`](Self::files).
     pub font_png: &'static str,

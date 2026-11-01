@@ -506,8 +506,16 @@ went with `Ctx::note_reload`, whose errors show over the frame. The example
 Hello, Grid's `src/hot_palette.rs` is one. `shuyi run --watch` starts a game so:
 the folder `shuyi.ron`'s `assets` names (`assets` until it says) over its
 embedded files. A file deleted keeps its last bytes until the game restarts. It
-isn't on the web or a console. What a backend made from a file once (a texture)
-doesn't follow it yet.
+isn't on the web or a console.
+
+The pictures the window draws follow with no module: `shuyi-app` makes a texture
+again when the font's picture or an image of the look changes. A picture that
+doesn't decode keeps its old texture, and its error shows over the frame until
+its next good save. A sprite's source stays in the picture's pixels from its
+top-left corner: a picture that grows shows the same pixels, and a sprite whose
+source is past the edge of one that shrank draws as a missing picture, magenta.
+The game's `ImageTable` keeps the size it loaded, and an atlas's glyph rectangles
+stay what its font file says, so a font picture is saved at its own size.
 
 ## Optimized formats
 

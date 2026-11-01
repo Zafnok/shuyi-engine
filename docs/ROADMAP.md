@@ -138,7 +138,7 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
 | Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
 | Sound | The player every backend shares (cues, variants, fades, streamed music; ADR-0063), on desktop, the web and the Playdate; 2341–2345, 2394 and 2225 (crossfades, groups and ducking, handles and pauses, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
-| Hot reload of assets | 2220 (every asset kind), 2242 (pictures a backend uploaded), 1124's maps through it | partial: values of every kind done (2220); the rest after MVP |
+| Hot reload of assets | 2220 (every asset kind), 2242 (pictures a backend uploaded), 1124's maps through it | partial: values of every kind (2220) and pictures (2242) done; the rest after MVP |
 | Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
 | Fast compiles | 2009 (measured, gated, a fast setup in the templates; README.md, *Fast compiles*) | done |
 | Free and open source, MIT or Apache 2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | done |
