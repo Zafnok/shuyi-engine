@@ -90,6 +90,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2546 | The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server |
 | 2561 | Moving a running server's program aside never leaves its path empty, so the CLI's tests don't flake in parallel |
 | 2564 | The move-aside tests fail on Windows under load: find whether the program's path is ever empty, and make them hold |
+| 2574 | A replaced name can read as missing on Windows: settle the move-aside promise and its test, which still fails under load |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 3063 | Frame times and spans as data: the platform's clock, spans a game marks, and `App`'s record of each frame, in debug builds |
 | 2553 | Perf traces agents read: `shuyi run --perf`, an MCP `perf` tool read from a number, and a running build's trace file, as JSON lines |
