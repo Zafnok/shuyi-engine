@@ -70,7 +70,7 @@ quad-snd = "0.2.8"
 # version macroquad already uses, PNG only (the `link` and `capture`
 # features). On every target: the render card's example encodes its
 # pictures with it on the web too (ticket 2019).
-image = { version = "0.24", default-features = false, features = ["png"], optional = true }
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
 
 # Storage on the web (ticket 0207): `localStorage`. Native resolves its
 # data directory by hand (see storage/native.rs) rather than pulling in the
