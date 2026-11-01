@@ -704,6 +704,20 @@ fn an_unknown_cue_panics_in_debug_builds() {
 }
 
 #[test]
+fn only_the_cues_the_widgets_play_may_be_missing() {
+    let config = AudioConfig::DEFAULT;
+    for cue in ["ui_move", "ui_select", "ui_cancel", "ui_cursor"] {
+        let request = AudioRequest::<Voice>::PlaySound {
+            cue: cue.into(),
+            volume: 1.0,
+        };
+        assert!(is_widget_cue(&config, &request), "{cue}");
+    }
+    assert!(!is_widget_cue(&config, &click(1.0)));
+    assert!(!is_widget_cue(&config, &AudioRequest::<Voice>::StopMusic));
+}
+
+#[test]
 fn a_widgets_cue_the_manifest_lacks_is_silence() {
     let mut ctx = ctx();
     ctx.audio.menu(crate::audio::MenuSound::Move);
