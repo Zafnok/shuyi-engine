@@ -4,6 +4,7 @@
 **/*.rs.bk
 *.snap.new
 *.pending-snap
+__pycache__/
 .DS_Store
 Thumbs.db
 

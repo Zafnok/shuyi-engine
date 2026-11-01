@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-CVPR and AAAI research has degraded selected video models with subtle perturbations, but no cited study established resistance to adaptive video-to-game cloning after social transcoding or recapture. The footage track (2912) supplies a fair test before any Shuyi capture feature is promised.
+CVPR and AAAI research has degraded selected video models with subtle perturbations, but no cited study established resistance to adaptive video-to-game cloning after social transcoding or recapture. **From 2912 (done):** the synthetic footage runner scores shown and held-out frames and winning paths, but its shared-worktree pilot had no hard blind boundary or human gameplay rubric. This ticket must add those before any Shuyi capture feature is promised.
 
 ## Nick input
 
