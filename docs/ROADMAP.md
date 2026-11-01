@@ -73,6 +73,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
 | 2040 | Close the API gate's crate-coverage gap: every shipped engine crate, including the Playdate backend and heap counter |
 | 2041 | The API listing sees what the semver check sees, in every crate: one feature choice per crate |
+| 2042 | The sound gate's browser latency limit calibrated against more runs, so a noisy machine doesn't fail a pull request |
 | 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
 | 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
