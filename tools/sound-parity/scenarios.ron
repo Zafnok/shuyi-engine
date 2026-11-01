@@ -8,6 +8,11 @@
 // the one alignment of a run. Levels are of full scale. A tone's `amp` is its
 // amplitude; a `Level`'s `rms` is the root mean square of what is expected.
 //
+// A `Boundary` is where a looped sound comes round. It checks nothing: it only
+// leaves that moment out of the comparison of two runs, because quad-snd's native
+// loop isn't gapless there (`loop` below), and a copy that started a mixing block
+// later has its glitch a block later. The checks of each scenario still hold.
+//
 // `backends` says which backends a scenario holds on: `mute` pins today's
 // fallback, and the `future` ones wait for a replacement (`[]`: unsupported
 // on every backend so far). A backend not named reports `unsupported`.
@@ -99,6 +104,7 @@
                 Tone(from: 1350, to: 1800, ch: Left, hz: 440.0, amp: 0.125),
                 Tone(from: 1350, to: 1800, ch: Right, hz: 660.0, amp: 0.125),
                 Silent(from: 2100, to: 2400),
+                Boundary(at: 1500),
             ],
         ),
         (
@@ -120,6 +126,10 @@
                 Level(from: 1600, to: 2000, ch: Both, rms: 0.161),
                 Level(from: 2300, to: 2700, ch: Both, rms: 0.072),
                 Silent(from: 3000, to: 3200),
+                Boundary(at: 1500),
+                Boundary(at: 1700),
+                Boundary(at: 2500),
+                Boundary(at: 2700),
             ],
         ),
         (
@@ -174,6 +184,8 @@
                 Tone(from: 1950, to: 2300, ch: Left, hz: 440.0, amp: 0.5),
                 Silent(from: 2600, to: 2800),
                 Warned("can't pause"),
+                Boundary(at: 1500),
+                Boundary(at: 2500),
             ],
         ),
         (

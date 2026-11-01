@@ -75,6 +75,11 @@ pub(crate) enum Expect {
         from: u32,
         to: u32,
     },
+    /// Where a looped sound comes round: no check, only a moment the repeat
+    /// comparison leaves out, as a backend may differ there (`scenarios.ron`).
+    Boundary {
+        at: u32,
+    },
     Waveform {
         file: String,
         repeats: usize,
@@ -291,7 +296,7 @@ fn check_one(
     let timing = tolerance.timing_ms;
     let loud = |s: &i16| i32::from(*s).abs() > tolerance.silent_peak;
     match expect {
-        Expect::NoSignal => None,
+        Expect::NoSignal | Expect::Boundary { .. } => None,
         Expect::Rise { at } => {
             let (from, to) = range(origin, at.saturating_sub(timing), at + timing);
             let first = recording.left[from..to].iter().position(loud);

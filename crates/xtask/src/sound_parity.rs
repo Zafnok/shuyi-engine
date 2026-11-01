@@ -590,11 +590,11 @@ fn repeat_cell(
     tolerance: &Tolerance,
 ) -> Value {
     let check = format!("repeat:{}", scenario.name);
-    // Where a command lands, or a sound ends by itself: runs may differ by a
-    // frame there, so a window across one says nothing.
+    // Where a command lands, a sound ends by itself or a loop comes round: runs
+    // may differ there, so a window across one says nothing.
     let mut edges: Vec<u32> = scenario.steps.iter().map(|step| step.at).collect();
     edges.extend(scenario.expect.iter().filter_map(|expect| match expect {
-        Expect::Rise { at } | Expect::Fall { at } => Some(*at),
+        Expect::Rise { at } | Expect::Fall { at } | Expect::Boundary { at } => Some(*at),
         _ => None,
     }));
     let [first, rest @ ..] = recordings else {

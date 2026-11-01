@@ -402,6 +402,18 @@ fn frame_index(ms: usize) -> usize {
 }
 
 #[test]
+fn a_boundary_is_only_left_out_of_the_repeat_and_checks_nothing() {
+    let good = recording(10, &signal("fmt_44k_s.wav"));
+    assert_eq!(problems(&good, &[Expect::Boundary { at: 700 }]).len(), 0);
+    let broken = inject(&good, Fault::Drop(600, 900), &tolerance());
+    assert_ne!(
+        problems(&broken, &tone_file()).len(),
+        0,
+        "a check still sees it"
+    );
+}
+
+#[test]
 fn too_few_pairs_is_inconclusive() {
     let few = ratios(&[10.0; 8], &[10.0; 8]);
     assert_eq!(few.pairs, 8);
