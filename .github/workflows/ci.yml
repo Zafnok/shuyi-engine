@@ -974,7 +974,7 @@ jobs:
           done
           cargo test -p shuyi --all-features --locked
 
-  # The public API of the crates a game uses (ticket 2010, ADR-0038): what
+  # The public API of the engine's crates (ticket 2010, ADR-0038): what
   # merging adds to each crate's listing (cargo-public-api) and its breaks
   # (cargo-semver-checks), against the base's tip, in the job summary. A
   # break needs a `Breaking:` line in the branch's ticket, and a change

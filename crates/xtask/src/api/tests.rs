@@ -58,6 +58,18 @@ fn finding(lint: &str, items: &[&str]) -> Finding {
     }
 }
 
+fn catalog_names() -> Vec<&'static str> {
+    API_CRATES.iter().map(|krate| krate.name).collect()
+}
+
+fn metadata_json(packages: &[&str]) -> String {
+    let list: Vec<String> = packages
+        .iter()
+        .map(|name| format!("{{\"name\":\"{name}\"}}"))
+        .collect();
+    format!("{{\"packages\":[{}]}}", list.join(","))
+}
+
 /// A fake [`Runner`]. Each command is written `<where>: <program> <args>`,
 /// `<where>` being `head` (the root) or `base` (the base's tree); the last
 /// answer given whose key starts the command answers it, and any other
@@ -100,24 +112,29 @@ impl Fake {
         )
     }
 
-    /// The base revision is the commit `commit`.
+    /// The base revision is the commit `commit`, and the head's workspace
+    /// has the whole catalog.
     fn with_base(self, commit: &str) -> Self {
         self.answer(
             "head: git rev-parse --verify ",
             Ok(ok(&format!("{commit}\n"))),
         )
+        .with_head_packages(&catalog_names())
     }
 
     /// The base's workspace has `packages`.
     fn with_base_packages(self, packages: &[&str]) -> Self {
-        let list: Vec<String> = packages
-            .iter()
-            .map(|name| format!("{{\"name\":\"{name}\"}}"))
-            .collect();
-        let json = format!("{{\"packages\":[{}]}}", list.join(","));
         self.answer(
             "base: cargo metadata --no-deps --format-version 1",
-            Ok(ok(&json)),
+            Ok(ok(&metadata_json(packages))),
+        )
+    }
+
+    /// The head's workspace has `packages`.
+    fn with_head_packages(self, packages: &[&str]) -> Self {
+        self.answer(
+            "head: cargo metadata --no-deps --format-version 1",
+            Ok(ok(&metadata_json(packages))),
         )
     }
 
@@ -912,7 +929,7 @@ fn breaking_run(root: &Path) -> Fake {
     let mut fake = Fake::new(root)
         .with_tools()
         .with_base("abc123")
-        .with_base_packages(&API_CRATES[..5])
+        .with_base_packages(&catalog_names()[..5])
         .with_listing("head", "shuyi-core", "pub mod shuyi_core\n")
         .with_listing(
             "base",
@@ -921,7 +938,7 @@ fn breaking_run(root: &Path) -> Fake {
         )
         .with_listing("head", "shuyi-cli", "pub mod shuyi_cli\n\n")
         .with_semver("shuyi-core", "one-finding");
-    for krate in &API_CRATES[1..5] {
+    for krate in &catalog_names()[1..5] {
         fake = fake.with_semver(krate, "pass");
     }
     fake
@@ -1104,14 +1121,14 @@ fn a_lost_line_without_a_finding_is_a_warning() {
     let fake = Fake::new(&root)
         .with_tools()
         .with_base("abc123")
-        .with_base_packages(API_CRATES)
+        .with_base_packages(&catalog_names())
         .with_listing("base", "shuyi-ui", "pub fn shuyi_ui::a()\n");
     let options = Options {
         base: Some("abc123".to_string()),
         pr_branch: Some("sonar/1-x".to_string()),
         ..Options::default()
     };
-    let fake = API_CRATES
+    let fake = catalog_names()
         .iter()
         .fold(fake, |fake, krate| fake.with_semver(krate, "pass"));
     let outcome = run(&root, &options, &fake);
@@ -1195,7 +1212,7 @@ fn a_failed_listing_is_an_error() {
     let fake = Fake::new(&root)
         .with_tools()
         .with_base("abc123")
-        .with_base_packages(API_CRATES)
+        .with_base_packages(&catalog_names())
         .answer(
             &format!("head: cargo +{NIGHTLY} public-api -p shuyi-core"),
             Ok(failed("error: unsupported rustdoc JSON format")),
@@ -1297,6 +1314,313 @@ fn missing_tools_stop_the_run_before_git() {
     let outcome = run(&root, &Options::default(), &fake);
     assert_eq!(outcome.errors.len(), 3, "{:?}", outcome.errors);
     assert!(!fake.ran().iter().any(|c| c.contains("git")));
+}
+
+// -- the catalog --
+
+fn members(names: &[&str]) -> HashSet<String> {
+    names.iter().map(|name| (*name).to_string()).collect()
+}
+
+#[test]
+fn the_catalog_is_the_real_workspaces_engine_crates() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let real = packages(&root, &System).unwrap();
+    assert_eq!(check_catalog(&real, API_CRATES), Ok(()));
+    assert_eq!(API_CRATES.len(), 9);
+}
+
+#[test]
+fn an_engine_member_left_out_is_named() {
+    let mut names = catalog_names();
+    names.extend(["shuyi-net", "shuyi-gba"]);
+    let error = check_catalog(&members(&names), API_CRATES).unwrap_err();
+    assert!(error.contains(": shuyi-gba, shuyi-net."), "{error}");
+}
+
+#[test]
+fn what_is_no_engine_crate_needs_no_entry() {
+    let mut names = catalog_names();
+    names.extend(["xtask", "hello-grid", "book-snippets", "shuyish"]);
+    assert_eq!(check_catalog(&members(&names), API_CRATES), Ok(()));
+}
+
+#[test]
+fn an_entry_that_is_no_member_is_named() {
+    let names = catalog_names();
+    let error = check_catalog(&members(&names[1..]), API_CRATES).unwrap_err();
+    assert!(
+        error.ends_with("no workspace member: shuyi-core"),
+        "{error}"
+    );
+}
+
+#[test]
+fn a_run_on_an_engine_member_left_out_fails_before_any_listing() {
+    let root = temp_root("left-out");
+    let mut names = catalog_names();
+    names.push("shuyi-net");
+    let fake = Fake::new(&root)
+        .with_tools()
+        .with_base("abc123")
+        .with_head_packages(&names)
+        .with_base_packages(&catalog_names());
+    let outcome = run(&root, &Options::default(), &fake);
+    assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+    assert!(
+        outcome.errors[0].contains("shuyi-net"),
+        "{:?}",
+        outcome.errors
+    );
+    assert_eq!(outcome.label, None);
+    assert!(!fake.ran().iter().any(|c| c.contains("public-api -p")));
+    assert_eq!(
+        fake.ran().last().map(String::as_str),
+        Some("head: git worktree prune")
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn features_become_each_tools_flags() {
+    assert_eq!(Features::ToolDefaults.listing_args(), Vec::<&str>::new());
+    assert_eq!(Features::ToolDefaults.semver_args(), Vec::<&str>::new());
+    assert_eq!(
+        Features::Only(&[]).listing_args(),
+        ["--no-default-features"]
+    );
+    assert_eq!(
+        Features::Only(&[]).semver_args(),
+        ["--only-explicit-features"]
+    );
+    assert_eq!(
+        Features::Only(&["global"]).listing_args(),
+        ["--no-default-features", "--features", "global"]
+    );
+    assert_eq!(
+        Features::Only(&["global"]).semver_args(),
+        ["--only-explicit-features", "--features", "global"]
+    );
+}
+
+// -- the two crates checked in a configuration of their own --
+
+/// What `cargo semver-checks` prints on the removed function `item`.
+fn removed(item: &str) -> Ran {
+    Ran {
+        ok: false,
+        stdout: format!(
+            "\n--- failure function_missing: pub fn removed or renamed ---\n\n\
+             Failed in:\n  function {item}, previously in file /x.rs:1\n"
+        ),
+        stderr: "     Summary semver requires new major version: 1 major\n".to_string(),
+    }
+}
+
+/// `krate` lost `item`, a line of its base's listing; every crate is in the
+/// base.
+fn break_in(root: &Path, krate: &str, item: &str) -> Fake {
+    Fake::new(root)
+        .with_tools()
+        .with_base("abc123")
+        .with_base_packages(&catalog_names())
+        .with_listing("base", krate, &format!("pub fn {item}()\n"))
+        .answer(
+            &format!("head: cargo semver-checks check-release -p {krate} "),
+            Ok(removed(item)),
+        )
+}
+
+const ADDED_CRATES: [(&str, &str, &str, &str); 2] = [
+    (
+        "shuyi-playdate",
+        "shuyi_playdate::stack_high_water",
+        " --no-default-features",
+        " --only-explicit-features",
+    ),
+    (
+        "shuyi-alloc-count",
+        "shuyi_alloc_count::global::rows",
+        " --no-default-features --features global",
+        " --only-explicit-features --features global",
+    ),
+];
+
+#[test]
+fn each_added_crate_has_one_configuration_on_both_sides_and_in_both_tools() {
+    let root = temp_root("configuration");
+    let fake = Fake::new(&root)
+        .with_tools()
+        .with_base("abc123")
+        .with_base_packages(&catalog_names());
+    let outcome = run(&root, &Options::default(), &fake);
+    assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+    let ran = fake.ran();
+    let target = root.join("target").to_string_lossy().into_owned();
+    let base_target = root.join(BASE_TARGET_DIR).to_string_lossy().into_owned();
+    let base_root = root.join(BASE_DIR).to_string_lossy().into_owned();
+    for (krate, _, listing, semver) in ADDED_CRATES {
+        for command in [
+            format!(
+                "head: cargo +{NIGHTLY} public-api -p {krate} --simplified{listing} \
+                 --target-dir {target}"
+            ),
+            format!(
+                "base: cargo +{NIGHTLY} public-api -p {krate} --simplified{listing} \
+                 --target-dir {base_target}"
+            ),
+            format!(
+                "head: cargo semver-checks check-release -p {krate} --baseline-root {base_root} \
+                 --release-type minor --color never{semver}"
+            ),
+        ] {
+            assert!(ran.contains(&command), "no `{command}` in {ran:#?}");
+        }
+    }
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn an_added_crate_missing_from_the_base_is_added() {
+    for (krate, item, listing, _) in ADDED_CRATES {
+        let root = temp_root(&format!("new-{krate}"));
+        let in_base: Vec<&str> = catalog_names()
+            .into_iter()
+            .filter(|name| *name != krate)
+            .collect();
+        let fake = Fake::new(&root)
+            .with_tools()
+            .with_base("abc123")
+            .with_base_packages(&in_base)
+            .with_listing("head", krate, &format!("pub fn {item}()\n"));
+        let outcome = run(&root, &Options::default(), &fake);
+        assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+        assert_eq!(outcome.label, Some(Label::Added));
+        assert!(
+            outcome
+                .summary
+                .contains(&format!("| `{krate}` (new) | 0 | 1 | not checked |")),
+            "{}",
+            outcome.summary
+        );
+        let ran = fake.ran();
+        assert!(ran.iter().any(|c| {
+            c.starts_with("head: cargo +")
+                && c.contains(&format!("-p {krate} --simplified{listing} "))
+        }));
+        assert!(
+            !ran.iter()
+                .any(|c| c.starts_with("base: cargo +") && c.contains(&format!("-p {krate} ")))
+        );
+        assert!(
+            !ran.iter()
+                .any(|c| c.contains(&format!("check-release -p {krate} ")))
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn a_break_in_an_added_crate_needs_its_line_and_the_books() {
+    for (krate, item, _, _) in ADDED_CRATES {
+        let root = temp_root(&format!("break-{krate}"));
+        let options = Options {
+            base: Some("abc123".to_string()),
+            pr_branch: Some("t2100-a".to_string()),
+            ..Options::default()
+        };
+        fs::write(
+            root.join("tickets/done/2100-a.md"),
+            "## Completion notes\n\nDone.\n",
+        )
+        .unwrap();
+        let outcome = run(&root, &options, &break_in(&root, krate, item));
+        assert_eq!(outcome.label, Some(Label::Breaking));
+        assert_eq!(outcome.errors.len(), 2, "{:?}", outcome.errors);
+        assert!(
+            outcome.errors[0].contains(&format!("no `Breaking:` line naming {krate}")),
+            "{:?}",
+            outcome.errors
+        );
+        assert!(outcome.errors[0].contains(item), "{:?}", outcome.errors);
+        assert!(
+            outcome.errors[1].contains(&format!("The public API of {krate} changed")),
+            "{:?}",
+            outcome.errors
+        );
+
+        fs::write(
+            root.join("tickets/done/2100-a.md"),
+            format!(
+                "## Completion notes\n\nBreaking: {krate}: `{item}`: call another.\n\
+                 Book: none, the book doesn't name it.\n"
+            ),
+        )
+        .unwrap();
+        let outcome = run(&root, &options, &break_in(&root, krate, item));
+        assert!(outcome.errors.is_empty(), "{:?}", outcome.errors);
+        assert_eq!(outcome.label, Some(Label::Breaking));
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn an_addition_to_an_added_crate_needs_the_book() {
+    for (krate, item, _, _) in ADDED_CRATES {
+        let root = temp_root(&format!("addition-{krate}"));
+        fs::write(
+            root.join("tickets/done/2100-a.md"),
+            "## Completion notes\n\nDone.\n",
+        )
+        .unwrap();
+        let options = Options {
+            base: Some("abc123".to_string()),
+            pr_branch: Some("t2100-a".to_string()),
+            ..Options::default()
+        };
+        let fake = Fake::new(&root)
+            .with_tools()
+            .with_base("abc123")
+            .with_base_packages(&catalog_names())
+            .with_listing("head", krate, &format!("pub fn {item}()\n"));
+        let outcome = run(&root, &options, &fake);
+        assert_eq!(outcome.label, Some(Label::Added));
+        assert_eq!(outcome.errors.len(), 1, "{:?}", outcome.errors);
+        assert!(
+            outcome.errors[0].contains("have no `Book:` line"),
+            "{:?}",
+            outcome.errors
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn a_failed_tool_on_an_added_crate_is_an_error_never_none() {
+    for (krate, _, _, _) in ADDED_CRATES {
+        for key in [
+            format!("base: cargo +{NIGHTLY} public-api -p {krate} "),
+            format!("head: cargo +{NIGHTLY} public-api -p {krate} "),
+            format!("head: cargo semver-checks check-release -p {krate} "),
+        ] {
+            let root = temp_root(&format!("tool-{krate}"));
+            let fake = Fake::new(&root)
+                .with_tools()
+                .with_base("abc123")
+                .with_base_packages(&catalog_names())
+                .answer(&key, Ok(failed("error: the package has no such feature")));
+            let outcome = run(&root, &Options::default(), &fake);
+            assert_eq!(outcome.errors.len(), 1, "{key}: {:?}", outcome.errors);
+            assert!(
+                outcome.errors[0].contains("error: the package has no such feature"),
+                "{:?}",
+                outcome.errors
+            );
+            assert_eq!(outcome.label, None);
+            assert_eq!(outcome.summary, "");
+            let _ = fs::remove_dir_all(&root);
+        }
+    }
 }
 
 #[test]

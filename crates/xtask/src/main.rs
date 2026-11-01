@@ -75,7 +75,7 @@ usage:
       the root's exact channel, the templates' channels, every workspace's
       rust-version, the members' inherited one and Dependabot's folders.
   cargo xtask api [--base <rev>] [--pr-branch <branch>] [--summary <file>] [--verdict <file>]
-      Show the public API change of the crates a game uses, against <rev> (by
+      Show the public API change of the engine's crates, against <rev> (by
       default `git merge-base HEAD main`): the listing diff (cargo-public-api)
       and the breaks (cargo-semver-checks), appending the Markdown to <file>.
       With --pr-branch, a break needs a `Breaking:` line in the branch's

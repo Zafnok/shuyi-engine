@@ -327,16 +327,24 @@ beside it; never loosen the checks to pass.
 
 Not a local gate: it needs a nightly and two tools. CI runs it on every
 PR that changes a crate (ADR-0038): it shows what merging adds to the
-public API of the seven crates a game uses, and fails a break that the
-branch's ticket has no `Breaking:` line for (the `work-ticket` skill,
-§5). It also fails a change to the public API that changes no file of
-the book (`site/content/learn/`, `site/snippets/`) when the ticket's
-notes have no `Book:` line saying why (ticket 2815). Before pushing a
-change you think breaks, run it from the repository root:
+public API of every engine crate, and fails a break that the branch's
+ticket has no `Breaking:` line for (the `work-ticket` skill, §5). It also
+fails a change to the public API that changes no file of the book
+(`site/content/learn/`, `site/snippets/`) when the ticket's notes have no
+`Book:` line saying why (ticket 2815). Before pushing a change you think
+breaks, run it from the repository root:
 
 ```bash
 cargo xtask api --pr-branch t<NNNN>-<slug>   # against `git merge-base HEAD main`; without --pr-branch, no rule
 ```
+
+`API_CRATES` in `crates/xtask/src/api.rs` is the catalog: a new engine
+crate left out of it fails the check, naming the crate. Each crate is
+checked once, on the host, in a debug build. `shuyi-alloc-count` is
+checked with `global`, and `shuyi-playdate` without the SDK, so its
+`device` module and the arms of `main!` are not. The others take each
+tool's default: the listing has their default features, and the semver
+check the features its heuristic turns on. That file's docs say the same.
 
 Without a tool it prints the line that installs it (`cargo install
 --locked …`, `rustup toolchain install nightly-… --profile minimal`).
