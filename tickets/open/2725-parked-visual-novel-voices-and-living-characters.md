@@ -6,7 +6,7 @@ milestone: "Engine: visual novels"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["2722", "2723", "2231", "2342", "2226", "2344", "2210", "2214"]
+blocked_by: ["2722", "2723", "2231", "2342", "2226", "2344", "2210"]
 nick_input: none
 completed:
 ---
@@ -92,15 +92,15 @@ None.
     checked into the game. **From 2204 (done):** `shuyi bake` packs a
     game's sources as they are, so a `*.voice.ron` goes into the pack
     like any other source, and bake computes nothing from the audio;
-  - decoding audio in the tool: with the in-house `shuyi-sound` crate,
-    WAV through 2210's `shuyi_sound::wav::decode` and OGG Vorbis through
-    2214's `decode_all` (both blockers), never a second decoder beside
-    it. `shuyi-assets` reads only a sound's header
-    (`crates/assets/src/audio/formats.rs`). `hound` and `lewton` can't
-    be used: `tools/layers.ron` lists both among `devices`, which
-    `shuyi-cli` may not reach (`devices: false`, ADR-0032), and the
-    in-house sound removes them from the tree. `shuyi-cli`'s edge to
-    `shuyi-sound` gets its line in `tools/layers.ron`;
+  - decoding audio in the tool: use 2210's `shuyi-sound` source API
+    and its optional std hound/lewton adapters, not a second decoder
+    path. **From 2902 (done):** the original 2214 decoder implementation
+    was dropped; 2210 is the blocker and updates `tools/layers.ron` to
+    classify those decoders as non-device code. `shuyi-assets` still
+    reads only a sound's header (`crates/assets/src/audio/formats.rs`).
+    Add `shuyi-cli`'s edge to `shuyi-sound` in the layers table, keep
+    device output out of the tool, and reuse 2573's correctness
+    fixtures for the analysis samples;
   - a fuzz-style test and a determinism fixture (ADR-0007 §5), with a
     short fixture voice we make (CC0-1.0, ours, listed in
     `THIRD_PARTY_ASSETS.md` as our own, created if it doesn't exist).

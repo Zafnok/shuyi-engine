@@ -197,12 +197,11 @@ None.
   form (`bpm` as a number, so `bpm_milli` 92 500 is `bpm: 92.5`), and
   its round trip covers a cue with a tempo. If not, 2218 does it (its
   clause says so).
-- **Either order with the loop-region ticket 2902 writes** (it has no
-  id yet; that ticket puts its id here): if `MusicCue` already has a
-  loop region (that ticket is done), `beats_since` and `bars_since`
+- **Either order with 2397:** if 2397 is done, `MusicCue` has a
+  loop region; `beats_since` and `bars_since`
   count across its wrap, from `loop_end_ms` back to `loop_start_ms`, as
   `MusicClock` wraps, with the beat at the loop point counted once (a
-  test). If not, nothing to do: that ticket wraps them (2902 says so).
+  test). If not, nothing to do (2397 wraps them).
 - **The pack:** `MusicCue`'s and `CinematicFile`'s binary forms change,
   so `shuyi_assets::pack::VERSION` (`crates/assets/src/pack.rs`) goes
   to the next number. One music cue in the pack test's sources gets a
@@ -233,18 +232,17 @@ None.
 **Out (do not do):**
 - tempo changes inside a track (one tempo per track; a follow-up when a
   game asks), and time signatures other than a beat count per bar;
-- loop regions (2902 writes that ticket); the beat clock wrapping at
+- loop regions (2397); the beat clock wrapping at
   one is In, above (either order);
 - starting a track part-way in so its beats line up, stems in sync,
   scheduling to the sample, and calibrating the device's delay: a
-  follow-up when a game asks, on the stack 2902 picks (2902 notes them
+  follow-up when a game asks, on the stack 2902 chose (2902 notes them
   among its needs);
 - fade lengths in beats, which 2341 sends here: a game writes
   `tempo.beat_ms() * n` as the switch's milliseconds;
 - stopping the music on a beat (a follow-up when a game asks);
 - reading the tempo from the file's own tags: a follow-up when a game
-  asks (it would read the file's comments, as the loop-region ticket
-  2902 writes does);
+  asks (it would read the file's comments, as 2397 does);
 - MIDI playback (2205, 2206), and game speed (2123);
 - a rhythm example or template (a follow-up if Nick names rhythm games
   as a kind of game the engine serves).

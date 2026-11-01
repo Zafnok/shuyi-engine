@@ -66,8 +66,9 @@ and Unreal 5.8, and the small-game tools beside them.
 - **Planned:**
   - MIDI and a synth (2205, 2206, parked: music, floats, a sound bank
     the game brings); more decoders (2203, no encoding); decoded
-    `Pcm` samples, and maybe a kind of them, in the parked in-house
-    sound (2210). Nothing makes sound effects from data.
+    `Pcm` samples and a source contract in the parked sound core
+    (2210, selected by 2902). That source contract does not itself add
+    a decoded-samples asset kind. Nothing makes sound effects from data.
 
 **Why it matters.**
 
@@ -376,8 +377,10 @@ parked.
   raw, like a WAV), rendering it to a WAV inside the pack, and an
   `SfxDef` fixture in the pack's tests and pinned binary form
   (`crates/assets/src/pack/tests.rs`), so `pack::VERSION` stays;
-- a decoded-samples kind (`Pcm`): 2210 (parked) decides whether to add
-  one, and if it does, adds a `.sfx.ron` format of it too;
+- a decoded-samples asset kind (`Pcm`): 2210's standalone source core
+  is not an engine asset kind. `.sfx.ron` continues through this ticket's
+  WAV adapter; a later asset-kind change must supply its `.sfx.ron`
+  format in that change rather than silently changing this contract;
 - cue rules: variants without repeats and random volume (2345), copy
   caps, priority and a voice limit (2378);
 - a fuzz target of its own for the two formats: 2020's harness walks

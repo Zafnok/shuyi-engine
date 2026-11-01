@@ -192,8 +192,8 @@ and the game's PR that moves its pin follows this one.
   when each sound ends, which no backend does today; a ticket when a
   game asks;
 - a sidechain compressor that follows the voice's loudness: it needs a
-  mixer of our own (3030, parked) and the sound research (2902,
-  parked);
+  DSP follow-up over the integer mixer selected by 2902 (3030,
+  parked), not the initial mixer scope;
 - curves other than a straight line for attack and release (2109's ease
   curves, if a game asks);
 - snapshots: several groups' volumes changed together by name;

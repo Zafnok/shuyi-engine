@@ -82,8 +82,9 @@ Planned around it:
 - 3029 (After MVP): the player's rules shared by every backend, and the
   Playdate's audio, whose SDK sample player has a left and a right
   volume;
-- 2902 and 3030 (parked): the sound research and an integer mixer with
-  stereo output.
+- 2902 (done) selected the integer mixer with stereo output (3030,
+  parked), library decoders and CPAL native output. 2573 gates the
+  replacement stages; 3079 alone removes the old backend.
 
 Why it matters:
 
@@ -300,7 +301,7 @@ None.
   proximity voice over this falloff: 2910);
 - 3D sound: none of the 3D tickets (3101–3109) has it. A follow-up
   there if a 3D game asks;
-- stereo on quad-snd, or replacing it (2902, 3030–3032). The mixer's
+- stereo on quad-snd, or replacing it (3030–3032, then 3079). The mixer's
   per-voice left and right volumes are 3030's;
 - music and voices by position: they stay centred;
 - showing where a sound came from, in captions (2381, blocked

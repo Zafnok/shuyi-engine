@@ -1,120 +1,100 @@
 ---
 id: "3032"
-title: "Parked: In-house sound output, part 2: Linux through ALSA, macOS through Core Audio, and quad-snd removed"
+title: "Parked: Gated CPAL sound integration on Linux and macOS, retaining quad-snd until final removal"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: blocked
-blocked_by: ["3031", "2513"]
+blocked_by: ["3031", "2513", "2573"]
 nick_input: sign-off
 completed:
 ---
 
-# 3032 — In-house sound output: Linux and macOS, and quad-snd removed
+# 3032 — Gated sound output on Linux and macOS
 
-> **Parked** (Nick, 2026-10-19, chose "Park until MVP" for the in-house platform layer, `docs/decisions.md`): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title. It also waits for the sound research (2902), which may keep, change or drop it.
+> **Parked**: Nick selected the gated hybrid in 2902 on 2026-10-31; build work stays parked until he starts it. Whoever unparks it sets `status: todo` and drops `Parked:`. 2573's working baseline comes first; 3079 alone removes quad-snd.
 
 ## Context
 
-The second half of sound output. 3031 made `shuyi-sound-out` with Windows
-and the web, and the `in-house-sound` feature in `shuyi-app`. This ticket
-adds Linux (the Steam Deck included) and macOS. Then it makes the new
-sound the only sound and removes quad-snd, as
-[ADR-0021](../../docs/adr/0021-the-platform-layer-in-house-clean-room-pieces-in-their-own-crates.md)
-§5 says.
-
-Written from the ALSA library's API reference (`snd_pcm_open`,
-`snd_pcm_hw_params_*`, `snd_pcm_writei`, recovering from `-EPIPE`) and
-Apple's Core Audio documentation (Audio Unit `kAudioUnitSubType_DefaultOutput`,
-the render callback). Never from the source of quad-snd, cpal or any
-other output library (ADR-0021 §2). Bindings: `alsa-sys` (MIT) and
-`objc2-audio-toolbox` / `objc2-core-audio` (Zlib OR Apache-2.0 OR MIT).
-Re-check both on the day (ADR-0021 §3).
-
-On the Steam Deck and current desktop Linux, PipeWire serves ALSA clients,
-so ALSA reaches every Linux sound system with one backend.
+3031 provides Windows/web output over the owned mixer and decoder adapters.
+This ticket adds Linux (the Steam Deck included) and macOS through CPAL.
+Keep old/new paths side by side; the separate final ticket 3079 owns removal.
+See [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md)
+and [2902's evidence](../../docs/research/2902-sound-after-quad-snd.md).
 
 ## Nick input
 
-**Sign-off:** play the game on the Steam Deck (or another Linux machine)
-and on a Mac if one is at hand. Say if anything sounds wrong. If no Mac is
-at hand, say so, and the ticket notes that macOS was tested only in CI.
+**Sign-off:** listen on the Steam Deck/Linux and a Mac if one is at hand.
+If no Mac is available, record that macOS was tested only in CI, as the
+original ticket allowed. Automated emitted-output/performance evidence is
+still mandatory on every required port; a CI build alone does not supply it.
 
 ## Scope
 
 **In:**
-- **Linux**: ALSA through `alsa-sys`, on its own thread, the `default`
-  device, 16-bit at the mixer's rate (or the device's, converted),
-  underrun recovery. `libasound` is loaded at run time with
-  `dlopen`, so a machine without it runs silent instead of failing to
-  start. If `alsa-sys` can only link at build time, write the few
-  function declarations ourselves, from the reference, and `dlopen`
-  them. When `libasound` is loaded at run time, doctor's `lib-alsa`
-  row (`crates/cli/src/contract/doctor/linux.rs`, 2513) changes from
-  `pkg-config --modversion alsa` to the soname `libasound.so.2`. The
-  row's packages, and the package lines of every
-  `scripts/setup-linux.sh`, follow if the package changes.
-  **Either order with 3071:** if 3071 is done, remove `libasound.so.2`
-  from the `linux` and `linux-arm64` lists in
-  `crates/cli/export/libraries.ron` (3071's library audit), so a link to
-  ALSA at build time fails the export, and drop it from
-  `docs/targets/desktop.md` if that names it; if not, nothing to do
-  (3071 leaves it out).
-- **macOS**: a default-output Audio Unit with a render callback, through
-  the `objc2-*` crates.
-- **The switch**: `in-house-sound` becomes the only path:
-  - remove `quad-snd` from `crates/app/Cargo.toml`;
-  - turn macroquad's `audio` feature off in the workspace `Cargo.toml`;
-  - delete the quad-snd backend in `crates/app/src/audio.rs` (`mod
-    device`) and `crates/app/src/audio/native_music.rs`;
-  - remove the feature flag, since there's nothing left to choose.
-- **Check**: `cargo tree --workspace` shows none of `quad-snd`, `audrey`,
-  `lewton`, `hound`, `dasp_*`, `smallvec 0.6` or `maybe-uninit`.
-- **For the game:** `shuyi-app`'s audio API is unchanged, so the game's
-  next pin bump needs no code change. Say so in the PR.
+- Before new output code or switching a platform, establish its actual
+  old-output capture and calibrated speed baseline in 2573's harness.
+  Linux reuses the virtual sink. Automated hosted macOS capture was not
+  established by research: make a route work on a suitable runner or
+  remain blocked there with the old backend. Missing capture, fake callback
+  traces and unsupported cells never count as passed audio parity.
+- CPAL defaults off (0.18.2 researched Apache-2.0; recheck manifest,
+  repository license and full graph), through public APIs. Own glue stays
+  original; do not copy implementation source or write raw ALSA/CoreAudio
+  backends merely to follow the old outline. Add actual layers edges.
+- Linux default ALSA output: negotiated formats, device loss and underrun
+  recovery. Audit actual linked/dynamic libraries and the sniper glibc
+  floor. Linux packages already require ALSA; do not claim CPAL uses
+  `dlopen` without proof. Preserve the planned silent-launch behavior
+  without an audio library using a compatible loading adapter/version,
+  or retain the old path until resolved. Doctor (2513), setup and package
+  requirements/tests follow the actual chosen behavior.
+- **Either order with 3071:** if 3071 is done, update its actual CPAL
+  library audit/package tests in `crates/cli/export/libraries.ron` and
+  `docs/targets/desktop.md`; if not, nothing to do (3071 audits this path).
+- macOS default output on Apple silicon and Intel. CPAL's researched
+  docs list macOS 14.2; Shuyi has no explicit OS floor. Verify deployment
+  rather than declaring a regression or silently raising the minimum.
+  Resolve incompatibility with a compatible version/adapter or keep old.
+- Extend actual emitted-PCM, equal-work CPU/speed, bounded-memory, hotplug,
+  suspend and music-clock checks. Only switch consumers after comparative
+  gates and existing stage sign-off pass; record manual hardware limits
+  above and leave the reference selectable.
+  Hound/lewton remain intentional dependencies.
+- Keep the public audio/player API and game's files unchanged; any
+  discovered break gets a Breaking line and game handoff, not a silent break.
 
-**Out (do not do):**
-- PulseAudio or JACK backends (PipeWire covers both through ALSA).
-- iOS and Android (later platforms; ADR-0008).
-- Changing the audio player's rules.
+**Out (do not do):** quad-snd, macroquad audio, feature, source, plugin and
+notice removal (3079); new cue rules; mobile backends; optional native
+PipeWire/JACK support. No unvalidated target is abandoned to finish this ticket.
 
 ## Implementation steps
 
-1. `crates/sound-out/src/alsa.rs` and `src/coreaudio.rs`.
-2. CI builds `shuyi-sound-out` for `x86_64-unknown-linux-gnu` and
-   `aarch64-apple-darwin`, and runs its tests with the null output.
-3. Make the switch (scope above), and fix whatever in `shuyi-app` used
-   macroquad's audio.
-4. Build the game against this working copy (`run-gates`, *The game at the
-   next pin*).
-5. Test on the Steam Deck or Linux, and on macOS if possible.
-6. In the completion notes: the documents used, the devices tested, and
-   what Nick said at sign-off.
+1. Prove each platform's reference capture/performance gate before its adapter.
+2. Integrate CPAL, negotiate/recover, audit package requirements and floors.
+3. Extend 2573's scenarios and CI on Linux and both Mac architectures.
+4. Build the game against this copy, listen on hardware, record artifacts,
+   devices, target floors, dependencies and sign-offs for 3079.
 
 ## Acceptance criteria
 
-- [ ] Sound and music play on Linux and macOS as on Windows.
-- [ ] A Linux machine without `libasound` starts and runs silent.
-- [ ] doctor's `lib-alsa` check looks for the soname, and its tests say so.
-- [ ] `cargo tree` shows none of the crates listed above.
-- [ ] The game builds and plays at this revision with no code change.
-- [ ] The PR body says the code was written from the documents listed in
-      the completion notes.
-- [ ] Nick signs off.
+- [ ] Actual old/new output and calibrated CPU/speed comparisons pass on Linux and macOS; unavailable capture blocks migration.
+- [ ] Both Mac architectures and verified deployment floor work; Linux package/doctor/library checks match reality.
+- [ ] Planned silent launch without an audio library is preserved and tested, or migration remains blocked.
+- [ ] Device recovery, suspend/clock, bounded streams and all required playback scenarios pass.
+- [ ] The game builds/plays without code changes; existing stage sign-off and hardware-availability notes are recorded.
+- [ ] Quad-snd and the reference path remain available for 3079.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- Unit: ALSA parameter choice (the rate and format fallbacks), with the
-  device calls behind a small trait and a fake.
-- Integration: the same null-output golden test as 3031, on Linux and
-  macOS runners.
-- Unit: doctor's `lib-alsa` row (2513's tests on fakes) passes when
-  `libasound.so.2` is found by soname and fails without it.
-- Manual: step 5.
+Unit: format negotiation/conversion and recovery on fakes; doctor/package
+requirements. Integration: actual emitted PCM and repeated performance in
+2573's harness, null-output golden render, bounded memory/underruns, Mac
+universal/export checks and Linux missing-library behavior. Manual: hardware
+listening/recovery as above, in addition to automated correctness and speed.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+*(Record platform gate artifacts, deployment audit, devices and sign-offs.)*

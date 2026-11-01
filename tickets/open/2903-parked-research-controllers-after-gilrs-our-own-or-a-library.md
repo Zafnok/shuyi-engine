@@ -13,7 +13,7 @@ completed:
 
 # 2903 — Research: controllers after gilrs
 
-> **Parked** (Nick, 2026-10-19: controllers are "a 2 way door decision and we can make it much later in the future after additional research in a dedicated ticket"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`), and after the sound research (2902) in Nick's order. Nobody starts it until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
+> **Parked** (Nick, 2026-10-19: controllers are "a 2 way door decision and we can make it much later in the future after additional research in a dedicated ticket"): after the engine reaches parity with the game (the MVP in `docs/ROADMAP.md`). Nick's sound-first research (2902) is recorded; its replacement build chain remains parked. Nobody starts this ticket until Nick unparks it. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 

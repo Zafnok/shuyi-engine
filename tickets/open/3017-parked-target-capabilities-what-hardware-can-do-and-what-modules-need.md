@@ -69,7 +69,7 @@ None.
     `Pan` and `LoopRegion`. They are named after the provided methods of
     the shared backend trait (ADR-0063): `pause`, `resume` and `set_rate`,
     which 3029 added, and the pan and the loop region that later tickets
-    add to it (the pan is 2363's and the loop region 2902's follow-up's,
+    add to it (the pan is 2363's and the loop region is 2397's,
     both parked). A backend ticket that
     implements one adds it to its profile.
 - **The voice limit.** The cue rules' voice limit is the smaller of the
@@ -121,8 +121,10 @@ None.
   Each profile's audio `features` comes from what its backend plays on
   the day. For quad-snd 0.2.8 (desktop, web, Steam Deck) it is `[]`:
   quad-snd can't pause (2394 mutes instead), change the rate, pan or
-  loop a region. A ticket that gives that backend a feature (2902's
-  chosen stack, say) adds it. **From 3029 (done):** the Playdate's
+  loop a region. **From 2902 (done):** the selected backend build
+  tickets (3031, 3032) and 2397 add only implemented audio features to
+  their profiles; the selection itself advertises no capability.
+  **From 3029 (done):** the Playdate's
   lists the provided methods its backend implements, `Pause` and `Rate`
   (`crates/playdate/src/audio.rs`, ADR-0063). The GBA's and the DS's are provisional, from
   3027 and 3024.

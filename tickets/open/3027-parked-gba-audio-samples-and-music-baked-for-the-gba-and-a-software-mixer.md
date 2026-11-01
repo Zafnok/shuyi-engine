@@ -38,6 +38,18 @@ which builds without `std`. Either order works: if 3030 is done first,
 use its mixer here and keep only the GBA's timing and 8-bit output; if
 this is done first, 3030 moves this mixer into `shuyi-sound`.
 
+**From 2902 (done):** keep tracker/PCM playback separate from desktop
+library decoders and CPAL. Reusing this integer mixer in the quad-snd
+replacement (3030) remains behind 2573's correctness/speed gate; this
+GBA backend does not require live Vorbis/MP3 decoding.
+
+**Either order with 2397:** if 2397 is done, map its loop-region fields
+to tracker positions and the song's restart point only where exactly
+representable. Test the time conversion, intro once and wrap behavior;
+an unrepresentable region uses the provided method's `Unsupported`
+result and one explicit fallback warning. If not, nothing to do (2397
+adds the common fields, mapping and tests).
+
 ## Nick input
 
 **Setup, only if 3022 is done first** (otherwise none), for the

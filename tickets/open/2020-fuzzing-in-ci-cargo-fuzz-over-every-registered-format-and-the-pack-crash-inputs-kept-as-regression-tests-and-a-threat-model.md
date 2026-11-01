@@ -59,8 +59,8 @@ disclosure policy.
 
 **What brings more untrusted bytes:** 2207 (layers of a player's files,
 for game#1012 and game#1014, the game's mods), 2203 (more decoders
-behind features), the parked in-house WAV, Ogg and Vorbis readers
-(2210–2214), the parked network messages (1140), and scripts (2101).
+behind features), the parked sound-source and library decoder adapters
+(2210, selected by 2902), the parked network messages (1140), and scripts (2101).
 
 **Why it matters:**
 
@@ -297,8 +297,9 @@ it is technical.
       bytes to quad-snd (`crates/app/src/audio.rs`; `audrey` with
       `lewton` and `hound`). For music,
       `crates/app/src/audio/native_music.rs` catches a panic in
-      quad-snd's `Sound::load`. 2210–2214 replace the sound decoders
-      with registered formats;
+      quad-snd's `Sound::load`. 2210 introduces the shared source and
+      permitted decoder adapters, with 2573's malformed-input and
+      correctness checks; 3079 alone removes the reference backend;
     - files `shuyi-ui` and `shuyi-core` read from storage:
       `Profiles::from_ron` (`crates/ui/src/profiles.rs`), the key
       bindings (`crates/ui/src/input/bindings.rs`) and `SaveHeader`
@@ -384,8 +385,9 @@ it is technical.
   fast gate on stable. Editing the open tickets that promise a
   "fuzz-style test": their property test still holds.
 - A target for the backend's decoders in `shuyi-app`. The threat model
-  names them, and the in-house sound (2210–2214) brings its decoders
-  into the registry.
+  names them. 2210's decoder adapters retain registry fuzz-style tests
+  and input limits; third-party implementation fuzzing and 2573's
+  comparative decoder probes have distinct coverage, stated explicitly.
 - Network messages: 1140 adds its own target when messages exist.
 - Files `shuyi-ui` and `shuyi-core` read from storage, and records and
   replays: if the threat model finds one that no random-bytes test

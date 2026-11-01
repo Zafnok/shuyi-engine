@@ -50,8 +50,8 @@ None.
     `crates/cli/export/libraries.ron`. That file is embedded with
     `include_str!` and read with `ron`. It is the tool's own table, not
     an asset kind, so it isn't registered in `Formats`. The lists are
-    data so that 3032 and 3034, which replace quad-snd and macroquad,
-    change one file.
+    data so that 3032's CPAL integration, 3079's final quad-snd removal
+    and 3034's macroquad replacement update one file.
   - `windows`: the PE import table (`PeFile::import_table`) names only
     Windows' own DLLs and its API sets (`api-ms-win-*`). No
     `libgcc_s_seh-1.dll`, `libwinpthread-1.dll` or `libstdc++-6.dll`.
@@ -74,9 +74,12 @@ None.
     **Either order with 2520:** if 2520 is done, use the `object` version
     it brought, so `Cargo.lock` holds one; if not, nothing to do (2520
     uses this one).
-  - **Either order with 3032:** if 3032 is done, leave `libasound.so.2`
-    out of the Linux lists, since ALSA is then opened with `dlopen`; if
-    not, nothing to do (3032 removes it).
+  - **Either order with 3032:** if 3032 is done, audit the actual CPAL
+    graph and its packaged imports on x86-64 and Arm Linux; keep
+    `libasound.so.2` in the allowed lists when linked. Do not assume
+    CPAL opens ALSA through `dlopen`. If not, nothing to do (3032
+    updates the audit when its linkage is known). Final old-backend
+    removal is 3079, not a reason to remove a still-used system library.
   - **From 3010 (done):** the Playdate's exporter
     (`crates/cli/src/export/playdate.rs`) runs 3004's path search on its
     ELF and DLL, but no audit, since this ticket's list file isn't

@@ -36,6 +36,7 @@ repository has no row here.
 | -------- | -------- | ---------------------------- |
 | The rules | [`AGENTS.md`](../AGENTS.md) | changes how everyone must work here |
 | Why a technical choice was made | [`adr/`](adr/), indexed in its [README](adr/README.md) (the `write-adr` skill) | makes a significant technical choice, or supersedes one |
+| Research findings, comparisons and measurements | [`research/`](research/), one report per research ticket | completes research or revisits its evidence |
 | How to do a recurring task here | [`.claude/skills/`](../.claude/skills/), the shared source; [`.agents/skills/`](../.agents/skills/), generated Codex loaders | changes a recurring task's steps, or adds one |
 | What is to be done | [`tickets/`](../tickets/) (the `write-ticket` skill) | finds work, or finishes a ticket |
 | The order tickets are done in | [`ROADMAP.md`](ROADMAP.md) | adds a ticket to a phase, or moves one |

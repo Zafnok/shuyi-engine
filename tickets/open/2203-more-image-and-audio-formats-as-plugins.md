@@ -46,9 +46,13 @@ None.
   build for `wasm32-unknown-unknown` without `wasm-bindgen`. Pick another
   or leave the format out (with a note) if not.
 - Audio `Format`s:
-  - FLAC (for example `claxon`);
-  - MP3 (a pure-Rust decoder under an allowed license; leave it out with
-    a note if none qualifies).
+  - FLAC: `claxon` (Apache-2.0), selected by 2902;
+  - MP3: `nanomp3` (MIT OR Apache-2.0), selected by 2902. Recheck both
+    manifests, repository licenses and the resolved graph on the day;
+    use defaults off and only the std/alloc features the adapter needs.
+    Keep unsupported no-std targets behind the format feature fence;
+    neither a pure Rust implementation nor `no_std` alone proves a
+    compressed track fits a handheld's runtime budget.
 - **From 2201 (done):** an image is two kinds (ADR-0019 §6). Each
   image codec is a `Format` of `image::Image` (its RGBA pixels) and has
   a size-only twin of `image::ImageInfo`, as `Png` has `PngInfo`, so
