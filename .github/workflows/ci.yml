@@ -577,11 +577,12 @@ jobs:
 
   # Nick can scrap the sound replacement in one session at any stage until
   # quad-snd is removed (ADR-0068): this really does it, and builds what is
-  # left, so the way back can't rot while nobody is looking.
+  # left, so the way back can't rot while nobody is looking. Every push runs
+  # it, as a mention of the chain in any file can break it.
   sound-give-up:
     name: sound-give-up
     needs: changes
-    if: needs.changes.outputs.sound == 'true'
+    if: needs.changes.outputs.sound == 'true' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

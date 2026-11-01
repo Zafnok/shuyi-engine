@@ -3,7 +3,8 @@
 What must hold before and during the move off quad-snd (ticket 2573,
 [ADR-0066](../../docs/adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md),
 [ADR-0067](../../docs/adr/0067-sound-parity-is-judged-from-a-real-sink-against-expected-signals.md)).
-CI's `sound-parity` job runs all of it on any change a sound path can feel.
+CI's `sound-parity` job runs all of it on a pull request or a push that changes
+a sound path (`sound` in `.github/workflows/changes.yml`).
 
 | File | What it is |
 | ---- | ---------- |
