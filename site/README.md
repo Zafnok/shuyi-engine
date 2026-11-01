@@ -46,7 +46,8 @@ copies each example's web build there.
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
 | `data/api.toml` | The crates whose API docs Learn links, at `/api/`, where `pages.yml` puts `cargo doc`'s output |
 | `templates/` | The HTML, our own (no theme): `base.html` has the menu, the footer and a Learn page's link to its twin; `shortcodes/snippet.md` shows the book's code |
-| `static/style.css` | The one stylesheet: system fonts, light and dark |
+| `static/style.css` | The one stylesheet: system fonts, light and dark. It also has the code's colors: `--code-*` tokens, in light and dark, each at least 4.5:1 on its background, for inline code and for the `z-*` classes Zola writes for a code block (`highlight_theme = "css"`, so no theme file) |
+| `syntaxes/` | Our own grammars for code blocks, read through `extra_syntaxes_and_themes`: `ron` (the rows after a `.map` file's `---` stay plain) and `text` (plain, and known, so it gives no warning). A fence in a language the build doesn't know fails the build checks: add its grammar here |
 | `errors.sh` | Writes `content/learn/errors/`, a page per problem code from `crates/cli/errors/`, never kept in git |
 | `check-build.sh` | The build checks CI runs |
 | `llms-header.md` | The start of `llms.txt`: its title, its summary and what Shuyi is ([The docs for agents](#the-docs-for-agents)) |
@@ -178,7 +179,9 @@ their links are checked by `pages.yml`.
 fails on a fenced Rust block in the book, and on a code block of the tutorial's that isn't `bash`, and on an engine crate with
 no row in `data/api.toml`; then it builds the site with two base URLs,
 fails if either output names the other's or lacks a page, and fails if
-a page loads anything from another host. The `test` job builds and
+a page loads anything from another host, if a code block's language is
+unknown, or if a page with a Rust block has no `z-keyword`, which is
+highlighting turned off. The `test` job builds and
 tests `snippets/`.
 `cargo xtask check-links` reads `content/` like the rest of the
 repository's Markdown, and leaves the `@/` links to Zola.
