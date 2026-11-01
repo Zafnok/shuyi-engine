@@ -96,6 +96,15 @@ check on the numbers.
   offers it; a game turns it on. Its lines go out the way App's lines do
   on the Playdate (3010's sink, the SDK's console), with the category
   `platform` of 3040's log.
+  **Consumer handoff, 2026-11-01 audit:** `game#1170` now explicitly
+  waits for this report surface before adopting the backend. Expose the
+  opt-in callbacks/observations needed for loading-card and first-frame
+  timestamps, slow bundle reads, periodic frame and stack figures, and
+  bench-phase observations. The game owns its labels and content; the
+  backend owns clocks, measurements and output. The game's follow-up
+  `game#1205` removes its superseded report only after adoption verifies
+  equivalent observations. Do not count logs from the example's private
+  bench code as a reusable shipped-game report API.
 - **If a scenario misses 30 fps.** Write a ticket per cause found (for
   example, the 1-bit conversion, the scene build, or the bot), each with
   its measurement. Don't fix them here.
@@ -125,12 +134,20 @@ check on the numbers.
 - [ ] `targets/playdate.ron` stays `status: Supported`, and a
       follow-up ticket exists for each scenario that misses 30 fps.
 - [ ] Nick's sign-off is recorded in the completion notes.
+- [ ] A toy consumer enables the shipped-game report through public
+      backend interfaces and receives loading/first-frame, slow-read,
+      periodic frame/stack and bench-phase observations without its own
+      device clock or SDK driver; the API and the `game#1170` handoff are
+      documented. Disabled reporting adds no unsolicited periodic output.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
-- None beyond the gates. This ticket measures; the bench gate (3008)
-  enforces the result.
+- Hardware runs above measure/calibrate performance; the bench gate
+  (3008) enforces the result.
+- Unit/integration: opt-in report callbacks using a fake SDK/clock and
+  a toy consumer, plus disabled-report behavior. These verify the reusable
+  interface independently of the hardware measurements.
 
 ## Completion notes
 

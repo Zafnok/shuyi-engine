@@ -69,6 +69,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2011 | Dependabot for the crates and the pinned actions, a weekly security workflow, a Dependabot PR as its own ticket |
 | 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
+| 2040 | Close the API gate's crate-coverage gap: every shipped engine crate, including the Playdate backend and heap counter |
 | 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
 | 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
@@ -98,11 +99,14 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
 | 3080 | Web export uses clean staging and rejects stale files before packaging a public build |
+| 3085 | Exports refuse the live link through resolved defaults, aliases and dependency features, before a build |
 | 3066 | The web build's vendored scripts point at their notices: a header line in `dist`, and a `rel="license"` link on the page |
+| 2398 | Stop music with a fade chosen per request, preserving the default stop (game#1080 adopts it afterward) |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
 | 2777 | New games build for the web as they are: a `web` part, a `build.rs` and the wasm target in the templates, so the quick start ends in the browser |
 | 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
+| 2817 | Finish the tutorial's browser-play acceptance: exercise all ten steps from their page links, with per-step evidence |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
@@ -552,7 +556,7 @@ The parked ones are under *Parked* below.
 
 | Ticket | What |
 | ------ | ---- |
-| 2028 | Each release after the first checked against the last version on crates.io (after 2005) |
+| 2028 | Each release after the first checked against the last version on crates.io (after 2005 and 2040's complete API catalog) |
 | 2029 | Capture plans that play a session record: the real window checked against the raster on a recorded session's frames |
 | 2135 | `Sequence` and `Points` in `shuyi_core::ease` (after 2109) |
 | 2136 | The motions written by hand moved onto 2109's ease: the grid cursor's pulse, music fades and `Pan` |
