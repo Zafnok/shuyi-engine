@@ -29,6 +29,11 @@ None.
 - Named distribution editions in shuyi.ron, independent of hardware targets.
 - An edition selects a game package or binary, explicit Cargo default-feature behavior and features, content root and allowed loose files before compilation and baking.
 - The exporter records the resolved edition and invokes the exposure gate on its final artifact.
+- **Either order with 3085:** if 3085 is done, pass the edition's selected
+  package and final default-feature/feature flags through its shared
+  resolved-build live-link guard before preparation or compilation; if
+  not, retain those flags in the exporter plan so 3085 validates edition
+  builds when it lands, with no separate edition bypass.
 
 **Out (do not do):**
 - Automatic guesses about which mechanic, story or art a game considers secret.

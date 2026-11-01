@@ -129,7 +129,9 @@ None.
 ## Acceptance criteria
 
 - [x] Ten steps, each building and passing its tests in CI.
-- [x] Each step plays in the browser from its page.
+- [x] ~~Each step plays in the browser from its page.~~ (not fully
+      verified by hand: only step 10 was played; CI boots all ten.
+      The remaining per-step browser-play evidence is ticket 2817.)
 - [x] Step 10's scene data has `moves` and `won`, and its actions keep
       the six names and undo (*The agent eval's reference*).
 - [x] Every code block on a tutorial page comes from a step's files, but
@@ -158,6 +160,14 @@ Each step was tested locally, built for the web, and step 10 was played in
 a browser: a push, a win, the menu's result, the options, progress across a
 reload, and Cancel leaving nothing on the web. CI's `check.py boot` covers
 the others.
+
+**Acceptance correction, 2026-11-01 audit:** the scope required playing
+every step by hand, but the evidence above covers only step 10. The
+browser-play criterion is recorded as incomplete rather than certified
+by the boot check. Follow-up 2817 exercises all ten on the current
+revision, with one evidence row per step; this note does not claim those
+checks have run. The implementation and its merged completion date stay
+as recorded.
 
 **Deviations:**
 

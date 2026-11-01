@@ -6,7 +6,7 @@ milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
 status: todo
-blocked_by: ["2005"]
+blocked_by: ["2005", "2040"]
 nick_input: none
 completed:
 ---
@@ -21,6 +21,12 @@ against its base's tip, and a break needs a `Breaking:` line
 It runs `cargo semver-checks` with `--release-type minor`, because
 every crate has the same version on both sides of a PR (§4). It left a
 baseline on crates.io to 2005 (§9, and its last alternative).
+
+2040 is also needed first: it closes the PR API catalog's omission of
+`shuyi-playdate` and `shuyi-alloc-count`, checks that catalog against the
+engine workspace members, and records the configurations it checks. This
+release command consumes that corrected catalog and configurations rather
+than keeping another list or reverting to default-only checks.
 
 2005 publishes the first release and writes the version policy as an
 ADR: one version for `shuyi` and every `shuyi-*` crate, 0.x while the
@@ -63,8 +69,11 @@ None.
     `toolchain.rs`'s `value_of` (made `pub(crate)`). It must be a plain
     `X.Y.Z`. `--version` asks "would this tree pass as X.Y.Z?" before
     the version is raised and tagged.
-  - **The crates:** `API_CRATES` from `api.rs`. After 2005 these are
-    the crates `release.yml` publishes; a test keeps the two the same.
+  - **The crates:** the shared API catalog from `api.rs`, corrected by
+    2040, including `shuyi-playdate` and `shuyi-alloc-count`, with each
+    crate's checked configuration. After 2005 these are the crates
+    `release.yml` publishes; a test keeps the two the same. Do not copy
+    the old seven-crate list into this command.
   - **The baseline** of each crate: the newest version in crates.io's
     index that is below the release's version, not yanked, not a
     pre-release, and not 0.0.0 (the name holders,
@@ -101,8 +110,10 @@ None.
     `Cargo.toml`, and keeps the rule in code that tests read.
   - **The semver check:** `cargo semver-checks check-release -p
     <crate> --baseline-version <baseline> --release-type <type> --color
-    never`, from the repository root, with the same features as the
-    `api` job (the tool's default; no feature flags).
+    never`, from the repository root, with the same per-crate
+    configuration as the `api` job (2040), including `global` for the
+    allocator. Pass the shared feature arguments to the baseline check
+    rather than assuming the tool's defaults cover every crate.
   - **Its output** is read by `api.rs`'s `parse_semver`, which learns
     the bump the tool asks for from its `Summary` line (`semver
     requires new major version`, or `minor`). The PR check keeps its
@@ -240,6 +251,9 @@ None.
 - [ ] `cargo xtask release-api` checks each of `API_CRATES` against its
       newest version on crates.io below the release's (not yanked, not
       a pre-release, not 0.0.0) and prints a summary table.
+- [ ] The checked catalog and configurations are the PR gate's after
+      2040, including `shuyi-playdate` and the allocator's `global`
+      module; their release-baseline fixture checks cannot be omitted.
 - [ ] A crate with no such version is skipped with a notice, and
       doesn't fail the command.
 - [ ] The release type passed to the tool follows the Scope's table
