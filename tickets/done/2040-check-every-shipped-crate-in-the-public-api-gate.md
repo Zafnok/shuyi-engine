@@ -5,10 +5,10 @@ type: infra
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: in-progress
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2040 — Check every shipped crate in the public API gate
@@ -83,22 +83,22 @@ None.
 
 ## Acceptance criteria
 
-- [ ] The catalog includes all nine engine crates; a fixture that adds
+- [x] The catalog includes all nine engine crates; a fixture that adds
       an engine workspace member without a catalog entry fails naming it.
-- [ ] A change to the public host surface of `shuyi-playdate` or
+- [x] A change to the public host surface of `shuyi-playdate` or
       `shuyi-alloc-count` appears in the API listing and verdict.
-- [ ] The allocator's `global` public items appear in its checked
+- [x] The allocator's `global` public items appear in its checked
       listing; listing and semver commands use the same configuration.
-- [ ] A fake break in either added crate yields a breaking verdict and
+- [x] A fake break in either added crate yields a breaking verdict and
       requires its `Breaking:` line; a public addition still requires
       book coverage or a `Book:` explanation.
-- [ ] An added crate missing from the base is reported as added; a
+- [x] An added crate missing from the base is reported as added; a
       failed listing or semver command fails the check.
-- [ ] The completion notes record the real demonstration checks, and
+- [x] The completion notes record the real demonstration checks, and
       no demonstration source edit remains.
-- [ ] The book's chapter is updated (2802), or the completion notes have
+- [x] The book's chapter is updated (2802), or the completion notes have
       a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -110,5 +110,38 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`API_CRATES` now holds all nine engine crates, each with its `Features`.
+`check_catalog` fails a run, naming the crate, on an engine workspace member
+left out or an entry that is no member; a test runs it on the real workspace.
+`shuyi-alloc-count` is checked with `global`, and `shuyi-playdate` with no
+feature. Both tools and both sides take the same choice, with
+`--no-default-features` for the listing and `--only-explicit-features` for
+the semver check. The limits are in `api.rs`'s module docs and `run-gates`.
+
+Real checks, with `RUSTFLAGS=""` and every demonstration edit reverted:
+
+- **Added:** `pub fn demo_added()` in `shuyi_playdate::stack` and in
+  `shuyi_alloc_count::global`, then `cargo xtask api --base origin/main
+  --verdict <file>`. Exit 0, verdict `added`, one added line in each of the
+  two crates, and nothing in the other seven.
+- **Removed:** the same two items in a throwaway local commit used as the
+  base, absent from the head, then `cargo xtask api --base <commit>
+  --pr-branch t2040-public-api-gate-crates --verdict <file>`. Exit 1, verdict
+  `breaking`, one `function_missing` finding in each crate, naming
+  `shuyi_alloc_count::global::demo_added` for the allocator. Both the
+  `Breaking:` and the `Book:` rules failed.
+
+The `--cfg shuyi_playdate_sdk` device code stays unchecked, and of `main!`
+only its existence is, as the ticket's Out says of a real SDK run.
+
+Deviation: ADR-0038 gained a note, *Every engine crate*, in the way ticket
+2030 added its own, since §1's list no longer says what is checked.
+
+Follow-up: 2041. The other seven crates keep each tool's default, so an item
+behind a non-default feature is judged by the semver check but not listed.
+
+No break: only `xtask` changed, and it is never shipped.
+
+Book: none, the gate is the repository's own CI tooling and no game calls it.
+
+Nick input: none.
