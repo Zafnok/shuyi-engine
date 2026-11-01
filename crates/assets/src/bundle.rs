@@ -104,13 +104,15 @@ impl OwnedFiles {
     /// What `read` gives on the table as it is now.
     fn with<T>(&self, read: impl FnOnce(&[TableFile]) -> T) -> T {
         #[cfg(feature = "std")]
-        let table = self
+        let guard = self
             .table
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
+        #[cfg(feature = "std")]
+        let table: &[TableFile] = &guard;
         #[cfg(not(feature = "std"))]
-        let table = &self.table;
-        read(&table)
+        let table: &[TableFile] = &self.table;
+        read(table)
     }
 
     /// Puts `bytes` at `path`, in place of what is there. The old bytes are
