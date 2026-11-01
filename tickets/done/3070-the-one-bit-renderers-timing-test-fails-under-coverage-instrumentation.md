@@ -5,10 +5,10 @@ type: bug
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: low
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 3070 — The one-bit renderer's timing test fails under coverage instrumentation
@@ -67,11 +67,11 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `a_fight_draws_fast` is ignored under `cargo llvm-cov` and runs
+- [x] `a_fight_draws_fast` is ignored under `cargo llvm-cov` and runs
       in `cargo test`.
-- [ ] No `unexpected_cfgs` warning, and no lint allowed to hide one.
-- [ ] The book needs no change (no public item changes).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] No `unexpected_cfgs` warning, and no lint allowed to hide one.
+- [x] The book needs no change (no public item changes).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -80,5 +80,34 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- **What was done.** `a_fight_draws_fast` carries
+  `#[cfg_attr(coverage, ignore = "…")]`, so the `coverage` job lists it
+  as ignored, with the reason, and every other job runs it.
+- **The check-cfg.** The attribute did warn (`unexpected_cfgs`), so the
+  lint's `check-cfg` names `cfg(coverage)`. It is in the root
+  `Cargo.toml`'s `[workspace.lints.rust]`, not the crate's as the ticket
+  sketched: a crate with `[lints] workspace = true` can't add lints of
+  its own. `shuyi-alloc-count`, `shuyi-app` and `shuyi-playdate` keep
+  their own copy of those lints, held equal by a test, so each has the
+  line too.
+- **What the ticket's text had overtaken.** 2396 (done after this ticket
+  was written) rewrote the measurement: the median of 51 pairs, and a bar
+  of 3 times in a debug build and 4 in an optimised one (`LEAST`). So
+  "its 4 times unchanged" here means `LEAST` unchanged. 2396 measured
+  5.62 times on `coverage`, so the old failure is unlikely to come back
+  anyway; this ticket's reason still holds, that a ratio under
+  instrumentation says nothing about the code as it ships.
+- **How it was checked.** `cargo test -p shuyi-ui --lib a_fight_draws_fast`
+  runs and passes it. With `RUSTFLAGS="--cfg coverage"`, the flag
+  `cargo llvm-cov` sets, it is ignored with the reason and nothing warns.
+  `cargo llvm-cov` itself was not run on this machine (it isn't installed
+  here): the `coverage` job's log on this PR shows it.
+- **Gates.** Run locally: the skills' sync, fmt, clippy, the workspace's
+  tests, the `no-std` tests, the ticket lint, the changelog, links, the
+  docs map, the layers, typos and the engine's lint. The others (docs,
+  deny, machete, the web build, the modules, compile times) don't depend
+  on a test's attribute or this lint's setting, and are left to CI.
+- **Docs.** None: a test's attribute and a lint's setting, no public item,
+  format or rule.
+
+No break.
