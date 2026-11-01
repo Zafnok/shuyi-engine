@@ -1,0 +1,114 @@
+[
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.024612,
+  "game_text_score": 98.8,
+  "job": "ordinary/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023004000000000004,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/platform",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.025188000000000002,
+  "game_text_score": 98.8,
+  "job": "invisible2/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.022699999999999998,
+  "game_text_score": 100.0,
+  "job": "invisible2/workshop/platform",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023296,
+  "game_text_score": 98.2,
+  "job": "invisible4/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023336,
+  "game_text_score": 100.0,
+  "job": "invisible4/workshop/platform",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.025236,
+  "game_text_score": 64.6,
+  "job": "invisible8/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.024028,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/platform",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.03186,
+  "game_text_score": 94.4,
+  "job": "visible_corner/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.025456,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/platform",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.030244,
+  "game_text_score": 98.8,
+  "job": "visible_tile/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.028308,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/platform",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.026979999999999997,
+  "game_text_score": 69.2,
+  "job": "visible_drift/courier/platform",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.026192,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/platform",
+  "state": 6
+ }
+]

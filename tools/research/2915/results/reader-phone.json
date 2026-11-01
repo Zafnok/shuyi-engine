@@ -1,0 +1,114 @@
+[
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023268,
+  "game_text_score": 100.0,
+  "job": "ordinary/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.024376000000000002,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/phone",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.022772,
+  "game_text_score": 100.0,
+  "job": "invisible2/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.024092,
+  "game_text_score": 100.0,
+  "job": "invisible2/workshop/phone",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.027696,
+  "game_text_score": 69.2,
+  "job": "invisible4/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023376,
+  "game_text_score": 100.0,
+  "job": "invisible4/workshop/phone",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023052,
+  "game_text_score": 94.1,
+  "job": "invisible8/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.024052,
+  "game_text_score": 97.1,
+  "job": "invisible8/workshop/phone",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.027184,
+  "game_text_score": 79.7,
+  "job": "visible_corner/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.024304,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/phone",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.030388,
+  "game_text_score": 98.8,
+  "job": "visible_tile/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.027988,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/phone",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.029508,
+  "game_text_score": 100.0,
+  "job": "visible_drift/courier/phone",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.024708,
+  "game_text_score": 96.4,
+  "job": "visible_drift/workshop/phone",
+  "state": 6
+ }
+]

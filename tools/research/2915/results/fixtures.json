@@ -1,0 +1,10 @@
+{
+ "courier": {
+  "frames": 9,
+  "sha256": "e60752d80916f706427094466b45832e3c375861d4748db4527e60159ec52849"
+ },
+ "workshop": {
+  "frames": 12,
+  "sha256": "dff221463aece86c1baaaa1c95d3168823bfbd4d8da0a2c47cad4500264337f7"
+ }
+}

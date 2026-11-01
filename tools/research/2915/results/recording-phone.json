@@ -1,0 +1,147 @@
+{
+ "file_sha256": "fdbf76fcad2df17ff8fe50d39aed075e597130edc8a5082e190cb79f7316a1cf",
+ "flashes_expected": 14,
+ "flashes_found": 19,
+ "fps": 59.97,
+ "label": "phone",
+ "segments": {
+  "invisible2/courier": {
+   "best_innocent": 2.58,
+   "best_true": 67.09,
+   "innocent_mean": -0.018,
+   "innocent_std": 0.971,
+   "mean_fit": 0.325,
+   "passes": true,
+   "screen_corners_found": true,
+   "states_registered": 9
+  },
+  "invisible2/workshop": {
+   "best_innocent": 2.84,
+   "best_true": 73.01,
+   "innocent_mean": 0.017,
+   "innocent_std": 1.029,
+   "mean_fit": 0.532,
+   "passes": true,
+   "screen_corners_found": true,
+   "states_registered": 12
+  },
+  "invisible4/courier": {
+   "best_innocent": 4.09,
+   "best_true": 72.33,
+   "innocent_mean": -0.009,
+   "innocent_std": 1.03,
+   "mean_fit": 0.268,
+   "passes": true,
+   "screen_corners_found": true,
+   "states_registered": 9
+  },
+  "invisible4/workshop": {
+   "best_innocent": 3.14,
+   "best_true": 82.88,
+   "innocent_mean": 0.054,
+   "innocent_std": 1.017,
+   "mean_fit": 0.427,
+   "passes": true,
+   "screen_corners_found": true,
+   "states_registered": 12
+  },
+  "invisible8/courier": {
+   "best_innocent": 3.3,
+   "best_true": 24.19,
+   "innocent_mean": 0.007,
+   "innocent_std": 1.001,
+   "mean_fit": 0.158,
+   "passes": true,
+   "screen_corners_found": true,
+   "states_registered": 1
+  },
+  "invisible8/workshop": {
+   "best_innocent": 3.16,
+   "best_true": 46.08,
+   "innocent_mean": -0.016,
+   "innocent_std": 0.986,
+   "mean_fit": 0.193,
+   "passes": true,
+   "screen_corners_found": true,
+   "states_registered": 4
+  },
+  "ordinary/courier": {
+   "best_any": 3.54,
+   "mean_fit": 0.375,
+   "screen_corners_found": true,
+   "states_registered": 9,
+   "voids_detector": false
+  },
+  "ordinary/workshop": {
+   "best_any": 3.51,
+   "mean_fit": 0.569,
+   "screen_corners_found": true,
+   "states_registered": 12,
+   "voids_detector": false
+  },
+  "visible_corner/courier": {
+   "best_innocent": 3.37,
+   "best_true": 2.28,
+   "innocent_mean": -0.006,
+   "innocent_std": 0.99,
+   "mean_fit": 0.444,
+   "passes": false,
+   "screen_corners_found": true,
+   "states_registered": 9
+  },
+  "visible_corner/workshop": {
+   "best_innocent": 4.4,
+   "best_true": -2.61,
+   "innocent_mean": -0.021,
+   "innocent_std": 1.029,
+   "mean_fit": 0.628,
+   "passes": false,
+   "screen_corners_found": true,
+   "states_registered": 12
+  },
+  "visible_drift/courier": {
+   "best_innocent": 2.65,
+   "best_true": 0.94,
+   "innocent_mean": -0.028,
+   "innocent_std": 0.948,
+   "mean_fit": 0.372,
+   "passes": false,
+   "screen_corners_found": true,
+   "states_registered": 9
+  },
+  "visible_drift/workshop": {
+   "best_innocent": 3.75,
+   "best_true": 2.18,
+   "innocent_mean": 0.043,
+   "innocent_std": 1.007,
+   "mean_fit": 0.525,
+   "passes": false,
+   "screen_corners_found": true,
+   "states_registered": 11
+  },
+  "visible_tile/courier": {
+   "best_innocent": 2.83,
+   "best_true": 1.12,
+   "innocent_mean": -0.005,
+   "innocent_std": 0.994,
+   "mean_fit": 0.311,
+   "passes": false,
+   "screen_corners_found": true,
+   "states_registered": 9
+  },
+  "visible_tile/workshop": {
+   "best_innocent": 2.63,
+   "best_true": 3.24,
+   "innocent_mean": -0.019,
+   "innocent_std": 0.977,
+   "mean_fit": 0.538,
+   "passes": false,
+   "screen_corners_found": true,
+   "states_registered": 12
+  }
+ },
+ "size": [
+  3840,
+  2160
+ ]
+}
