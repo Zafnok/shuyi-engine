@@ -56,7 +56,8 @@ BRIEF = (
     "object with game, seed and trace. Trace starts with the initial frame, then one "
     "record per action; each record has frame (the screen as text, lines joined by \\n) "
     "and outcome (\"Won\", \"Lost\" or null). `prog.py <game> <seed> --oracle` reads one "
-    "action per line and prints one such record per line, so a person can play."
+    "action per line and prints one such record per line, so a person can play. An "
+    "action the game refuses or does not know leaves the state unchanged."
 )
 DESCRIBER_PROMPT = (
     "Watch these frames from gameplay clips of two small games, as a player would. "
@@ -358,6 +359,7 @@ def call_model(model: str, content: list[dict], folder: Path) -> dict:
         "tools_offered": init.get("tools"), "mcp_servers": init.get("mcp_servers"), "tool_uses": tool_uses,
         "cost_usd": final.get("total_cost_usd"), "is_error": final.get("is_error"),
         "api_error_status": final.get("api_error_status"), "turns": final.get("num_turns"),
+        "models_used": sorted(final.get("modelUsage", {})),
         "input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens"),
         "text": final.get("result") or "", "stderr": process.stderr[-500:],
     }
@@ -404,35 +406,45 @@ def attempt(job: dict) -> dict:
     return record
 
 
-def plan(stage: str) -> list[dict]:
+def alive() -> list[str]:
+    """Candidates no valid model has passed the floor against yet."""
+    path = OUT / "ledger.json"
+    ledger = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+    dead = {row["candidate"] for row in ledger if row["class"] == "over_floor"}
+    return [candidate for candidate in CANDIDATES[1:] if candidate not in dead]
+
+
+def plan(stage: str, model: str) -> list[dict]:
+    """One stage's attempts. One bypass fails a candidate, so stronger and
+    costlier models attack only what the cheaper ones left standing."""
     jobs = []
-    def add(kind: str, candidate: str, transform: str, model: str, rep: int) -> None:
+    def add(kind: str, candidate: str, transform: str, chosen: str, rep: int) -> None:
         jobs.append({
-            "id": f"{stage}-{kind}-{candidate}-{transform}-{model.removeprefix('claude-')}-{rep}",
+            "id": f"{stage}-{kind}-{candidate}-{transform}-{chosen.removeprefix('claude-')}-{rep}",
             "stage": stage, "kind": kind, "candidate": candidate, "transform": transform,
-            "model": model, "rep": rep,
+            "model": chosen, "rep": rep, "brief_sha256": sha(BRIEF.encode()),
         })
     if stage == "smoke":
-        add("imitate", "ordinary", "direct", "claude-haiku-5-5", 0)
+        add("imitate", "ordinary", "direct", MODELS[0], 0)
     elif stage == "control":
-        for model in MODELS:
-            for rep in range(3):
-                add("imitate", "ordinary", "direct", model, rep)
-            add("imitate", "ordinary", "transcode", model, 0)
+        for chosen in MODELS:
+            for rep in range(3 if chosen == MODELS[0] else 1):
+                add("imitate", "ordinary", "direct", chosen, rep)
+            add("imitate", "ordinary", "transcode", chosen, 0)
+    elif stage == "transforms":
+        for transform in ("crop", "frames", "recapture"):
+            add("imitate", "ordinary", transform, model, 0)
     elif stage == "candidates":
-        for model in MODELS:
-            for candidate in CANDIDATES[1:]:
-                for transform in ("direct", "transcode"):
-                    add("imitate", candidate, transform, model, 0)
-    elif stage == "description":
-        for model in MODELS:
-            add("description", "ordinary", "direct", model, 0)
-            for candidate in CANDIDATES[1:]:
-                add("description", candidate, "direct", model, 0)
+        for candidate in alive():
+            for transform in ("direct", "transcode"):
+                add("imitate", candidate, transform, model, 0)
     elif stage == "bypass":
-        for transform in ("crop", "frames", "recapture", "average"):
-            for candidate in CANDIDATES:
-                add("imitate", candidate, transform, "claude-opus-5-5", 0)
+        for candidate in alive():
+            for transform in ("crop", "frames", "recapture", "average"):
+                add("imitate", candidate, transform, model, 0)
+    elif stage == "description":
+        for candidate in ("ordinary", *alive()):
+            add("description", candidate, "direct", model, 0)
     else:
         raise SystemExit(f"unknown stage: {stage}")
     random.Random(f"2913-{stage}").shuffle(jobs)
@@ -442,11 +454,11 @@ def plan(stage: str) -> list[dict]:
 LEDGER_LOCK = threading.Lock()
 
 
-def run_stage(stage: str, workers: int) -> None:
+def run_stage(stage: str, workers: int, model: str) -> None:
     ledger_path = OUT / "ledger.json"
     ledger = json.loads(ledger_path.read_text(encoding="utf-8")) if ledger_path.exists() else []
     done = {row["id"] for row in ledger}
-    jobs = [job for job in plan(stage) if job["id"] not in done]
+    jobs = [job for job in plan(stage, model) if job["id"] not in done]
 
     def work(job: dict) -> None:
         record = attempt(job)
@@ -533,6 +545,7 @@ def score_all() -> None:
 def summary() -> dict:
     ledger = json.loads((OUT / "ledger.json").read_text(encoding="utf-8"))
     cells: dict[str, dict] = {}
+    ledger = [row for row in ledger if row["stage"] != "smoke"]
     for row in ledger:
         key = "/".join((row["kind"], row["candidate"], row["transform"], row["model"].removeprefix("claude-")))
         cell = cells.setdefault(key, {
@@ -650,6 +663,7 @@ def main() -> None:
     ))
     parser.add_argument("--stage", default="smoke")
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--model", default=MODELS[0], choices=MODELS)
     parser.add_argument("--participants", type=int, default=12)
     args = parser.parse_args()
     if args.action == "capture":
@@ -664,7 +678,7 @@ def main() -> None:
     elif args.action == "commit-seed":
         print(commit_seed())
     elif args.action == "attack":
-        run_stage(args.stage, args.workers)
+        run_stage(args.stage, args.workers, args.model)
     elif args.action == "score":
         score_all()
     elif args.action == "summary":
