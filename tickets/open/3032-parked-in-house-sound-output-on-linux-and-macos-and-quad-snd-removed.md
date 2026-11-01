@@ -1,6 +1,6 @@
 ---
 id: "3032"
-title: "Parked: Gated CPAL sound integration on Linux and macOS, retaining quad-snd until final removal"
+title: "Gated CPAL sound integration on Linux and macOS, retaining quad-snd until final removal"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3032 — Gated sound output on Linux and macOS
-
-> **Parked**: Nick selected the gated hybrid in 2902 on 2026-10-31; build work stays parked until he starts it. Whoever unparks it sets `status: todo` and drops `Parked:`. 2573's working baseline comes first; 3079 alone removes quad-snd.
 
 ## Context
 

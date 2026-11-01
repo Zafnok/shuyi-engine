@@ -1,0 +1,7 @@
+// To be calibrated.
+(
+    version: 1,
+    correctness: (timing_ms: 60, level_db: 1.5, silent_peak: 16, silent_tone: 0.005, marker_correlation: 0.9, exact_peak: 4, decoded_peak: 16, repeat_db: 3.0),
+    performance: {},
+    platforms: {"linux-native": Captured, "browser-chromium": Captured, "windows": Blocked("3031"), "macos": Blocked("3032")},
+)

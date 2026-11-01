@@ -1330,3 +1330,18 @@ binary analysis, watermarking and capture controls:
   hardening before promising it as protection.
 - Hosted networking work stays parked until Nick explicitly unparks
   it. Putting it in the backlog is not starting that work.
+
+## 2026-10-31: the sound build chain starts now, ahead of the MVP
+
+Source: Nick, in a Claude Code session, after asking to do 2573 and being
+asked whether to unpark it alone, unpark the chain, or keep it parked until
+the MVP as decided on 2026-10-19. His answer:
+
+> "Unpark the whole chain"
+
+**Rules:** 2573, 2210, 3030, 3031, 3032, 2397 and 3079 are no longer parked.
+This commits to leaving quad-snd now rather than after the MVP. Everything
+else about the plan of 2026-10-31 above holds: they run one ticket at a time,
+in the order of their blockers, each behind 2573's gates, and only 3079
+removes quad-snd. The controllers, the two small ones and macroquad, the
+later steps of the platform layer's plan, stay parked.

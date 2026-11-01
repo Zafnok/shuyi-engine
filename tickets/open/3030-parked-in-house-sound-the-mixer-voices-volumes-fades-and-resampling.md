@@ -1,6 +1,6 @@
 ---
 id: "3030"
-title: "Parked: In-house sound: the mixer in shuyi-sound: voices, volumes, fades, looping, streamed music and resampling, in integers"
+title: "In-house sound: the mixer in shuyi-sound: voices, volumes, fades, looping, streamed music and resampling, in integers"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3030 — In-house sound: the mixer
-
-> **Parked**: Nick chose the gated hybrid in 2902 on 2026-10-31; build tickets stay parked until he starts them. Whoever unparks it sets `status: todo` and drops `Parked:`. The working automated baseline of 2573 comes first.
 
 ## Context
 

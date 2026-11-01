@@ -134,6 +134,8 @@ use shuyi_ui::GameData;
 use shuyi_ui::basic::FONT_PNG;
 use shuyi_ui::log::{LogLevel, LogLine};
 
+#[cfg(feature = "sound-probe")]
+pub use crate::audio::device::Macroquad as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
 #[cfg(not(target_arch = "wasm32"))]

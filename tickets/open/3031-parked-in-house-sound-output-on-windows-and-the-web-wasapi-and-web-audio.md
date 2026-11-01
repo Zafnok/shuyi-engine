@@ -1,6 +1,6 @@
 ---
 id: "3031"
-title: "Parked: Gated sound output on Windows through CPAL and the web through our own Web Audio bridge"
+title: "Gated sound output on Windows through CPAL and the web through our own Web Audio bridge"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3031 — In-house sound output: Windows and the web
-
-> **Parked**: Nick selected the gated hybrid in 2902 on 2026-10-31; build work stays parked until he starts it. Whoever unparks it sets `status: todo` and drops `Parked:`. 2573's working baseline comes first.
 
 ## Context
 

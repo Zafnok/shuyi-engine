@@ -1,6 +1,6 @@
 ---
 id: "2210"
-title: "Parked: Sound PCM/source core and permissive WAV/Vorbis decoder adapters"
+title: "Sound PCM/source core and permissive WAV/Vorbis decoder adapters"
 type: feature
 milestone: "Engine: in-house platform"
 model: sonnet-5 / gpt-6.1-terra
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 2210 — Sound PCM/source core and decoder adapters
-
-> **Parked**: Nick chose the gated hybrid in 2902 on 2026-10-31; its build chain remains parked until he starts it. Whoever unparks it sets `status: todo` and removes `Parked:`. The working automated baseline of 2573 must pass before implementation.
 
 ## Context
 

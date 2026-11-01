@@ -1,19 +1,17 @@
 ---
 id: "2573"
-title: "Parked: Establish sound parity baselines and automated correctness and speed gates before replacement"
+title: "Establish sound parity baselines and automated correctness and speed gates before replacement"
 type: infra
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
-status: blocked
+status: in-progress
 blocked_by: ["2902", "3003", "3029", "2116"]
 nick_input: none
 completed:
 ---
 
 # 2573 — Sound parity gates before replacement
-
-> **Parked**: Nick chose the conditional hybrid in 2902 on 2026-10-31; this and its build chain stay parked until he starts them. Whoever unparks it sets `status: todo` and removes `Parked:`.
 
 ## Context
 

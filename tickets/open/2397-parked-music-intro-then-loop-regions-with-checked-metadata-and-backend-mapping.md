@@ -1,6 +1,6 @@
 ---
 id: "2397"
-title: "Parked: Music intro-then-loop regions with checked metadata and backend mapping"
+title: "Music intro-then-loop regions with checked metadata and backend mapping"
 type: feature
 milestone: "Engine: audio"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 2397 — Music intro-then-loop regions
-
-> **Parked**: a follow-up of the gated sound replacement, chosen in 2902 on 2026-10-31. Nick has not started the build chain. Whoever unparks it sets `status: todo` and removes `Parked:`.
 
 ## Context
 

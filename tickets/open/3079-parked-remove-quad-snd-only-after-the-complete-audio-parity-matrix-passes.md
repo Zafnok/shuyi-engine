@@ -1,6 +1,6 @@
 ---
 id: "3079"
-title: "Parked: Remove quad-snd only after the complete audio parity matrix passes"
+title: "Remove quad-snd only after the complete audio parity matrix passes"
 type: infra
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3079 — Remove quad-snd after complete parity
-
-> **Parked**: Nick required a separate final removal ticket in 2902 on 2026-10-31. The build chain stays parked until he starts it. Whoever unparks it sets `status: todo` and removes `Parked:`.
 
 ## Context
 
