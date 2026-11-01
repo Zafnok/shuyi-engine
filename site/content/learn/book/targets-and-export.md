@@ -165,6 +165,23 @@ keeps the program's line tables for crash reports, and is never
 shipped. `export-report.json` beside it gives the version, the sizes,
 the check's warnings and the signing, and `--run` runs the package.
 
+A game whose build needs a feature, or whose soundtrack ships as loose
+files, says so in the `export` part of `shuyi.ron`:
+
+```ron
+export: (
+    features: ["licensed-art"],
+    beside: [(path: "music"), (path: "voice", optional: true)],
+),
+```
+
+Each desktop and web build turns the features on, and each package holds
+those files and folders under their own names (`name` gives another). In a
+`.app`, a folder goes in `Contents/Resources`, where the engine's music and
+voices look for it, and a file goes beside the `.app`. A path that isn't there
+refuses the export, unless it is `optional`. `--without <feature>` leaves a
+feature off one build.
+
 ## Size and speed
 
 A target's budgets are the most frame time, heap and start-up it

@@ -309,7 +309,7 @@ const EXPORT: &str = "Check the game against `target` (`windows`, `linux`, `maco
      build and package it there: a zip, a tar.gz, a signed .app or a web folder and its zip, \
      each with NOTICES.txt, and export-report.json beside it, in `out` (dist/export/<target> by \
      default). `release` remaps the build's paths and keeps the debug file beside the package; \
-     `run` runs the package after.";
+     `run` runs the package after; `without` leaves features of shuyi.ron's `export` part off.";
 
 /// `lint`'s description.
 const LINT: &str = "Check the game's code: keys named in code or text (check-keys), screen text as literals \

@@ -40,6 +40,9 @@ tools = ["std", "dep:shuyi-cli"]
 # `playdate`: the game on the Playdate (`hello_grid::playdate`), which
 # `cargo shuyi export playdate` builds with its default features off.
 playdate = ["dep:shuyi-playdate"]
+# `packaged`: does nothing. `shuyi.ron`'s `export` part turns it on, so CI's
+# export job builds a package with a feature on.
+packaged = []
 # `link`: the live link, so `cargo shuyi attach` reaches the game running
 # in its window: `SHUYI_LINK=0 cargo run -p hello-grid --features link`,
 # in a debug build. Off by default.

@@ -24,6 +24,8 @@ fn cx(release: bool) -> ExportCx {
         web: None,
         app: None,
         features: vec![FEATURE.to_owned()],
+        turned_on: Vec::new(),
+        beside: Vec::new(),
     }
 }
 

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["3004"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 3075 — shuyi export: a game's features, and files beside the program
@@ -60,14 +60,56 @@ moves the pin follows this one.
 
 ## Acceptance criteria
 
-- [ ] A fixture game with a feature and a folder exports each target with the
+- [x] A fixture game with a feature and a folder exports each target with the
       feature on and the folder beside the program.
-- [ ] A missing `beside` path refuses the export, naming it.
-- [ ] `link` in `features` is refused.
-- [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] A missing `beside` path refuses the export, naming it.
+- [x] `link` in `features` is refused.
+- [x] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
 - Unit: the part's parsing and errors; each exporter's cargo arguments.
 - Integration: the fixture's packages, by `tools/export-check/check.sh`.
+
+## Completion notes
+
+`shuyi.ron` has an `export` part: `features` and `beside` (`path`, optional
+`name`, `optional`). Windows, Linux, macOS and web build with the features and
+ship what `beside` names; `export-report.json` lists it under `beside`.
+Hello, Grid has the part, with a feature that does nothing, so CI's `export`
+job and `tools/export-check` check it on all four. Windows was run here by
+hand; Linux and macOS are checked by that job only.
+
+Deviations and additions, each because the game's release needs it:
+
+- `export --without <feature>`: a dry run or a fork has no bought art, and its
+  build must still run with the placeholders.
+- `name` in a `beside` row: the game's `audio-licenses/` is
+  `assets/audio/licenses` in its repository.
+- macOS: a folder goes in `Contents/Resources`, and `shuyi-app`'s
+  `folder_beside` looks there too, so `music/` and `voice/` play from a `.app`
+  and the signature covers them. A file goes beside the `.app`.
+- The Playdate's exporter takes none of the part: a `.pdx` has its own build
+  and files. So "each exporter" in the steps means the other four.
+
+Game PR that moves the pin: game#0910 (the ticket's own PR).
+
+Book: updated (`targets-and-export`, the Export section).
+
+No break of what a game writes: `shuyi.ron`'s new part is optional. The
+contract's version is 33 (`export`'s `without` and `beside`).
+
+Breaking: shuyi-cli: export::ExportCx: two new public fields, `turned_on` and `beside`; a literal of it adds them.
+
+```migration
+since: 0.2.0
+what: ExportCx has two new fields; ExportOutput has one.
+old: ExportCx { .. }
+new: ExportCx { turned_on, beside, .. }
+before: |
+  ExportCx { features, .. }
+after: |
+  ExportCx { features, turned_on: Vec::new(), beside: Vec::new(), .. }
+find: ["ExportCx { features, .. }"]
+```

@@ -1,5 +1,6 @@
-//! The web exporter: `shuyi web`'s build ([`crate::web`]), with no
-//! feature, copied into `<base>/` in the export's folder, and that folder
+//! The web exporter: `shuyi web`'s build ([`crate::web`]), with the features
+//! of `shuyi.ron`'s `export` part, copied into `<base>/` in the export's
+//! folder with what that part ships beside the program, and that folder
 //! zipped with `index.html` at the zip's root, as itch.io and other
 //! portals take it. It needs the game's `web` part, as `shuyi web` does.
 
@@ -16,11 +17,12 @@ pub static WEB: WebExporter = WebExporter;
 pub struct WebExporter;
 
 impl WebExporter {
-    /// The web build's options: release or not, and never a feature.
+    /// The web build's options: release or not, and the `export` part's
+    /// features.
     fn options(cx: &ExportCx) -> Options {
         Options {
             release: cx.release,
-            features: Vec::new(),
+            features: cx.turned_on.clone(),
         }
     }
 }
@@ -101,8 +103,12 @@ pub fn pack(
         let _ = fs::remove_file(cx.out.join(&zip));
         return Err(refused);
     }
+    let beside = cx.copy_beside(&|_| folder.clone())?;
+    let entries = archive::entries(&folder, "", &|_| false).map_err(ExportError::Build)?;
     archive::zip(&cx.out.join(&zip), &entries).map_err(ExportError::Build)?;
     let wasm = format!("{}.wasm", rules.bin);
     let sizes = vec![cx.size(&cx.out.join(&zip))?, cx.size(&folder.join(&wasm))?];
-    Ok(cx.report(&zip, sizes, Signing::None, None))
+    let mut report = cx.report(&zip, sizes, Signing::None, None);
+    report.beside = beside;
+    Ok(report)
 }

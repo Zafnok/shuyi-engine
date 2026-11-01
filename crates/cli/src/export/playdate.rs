@@ -776,6 +776,10 @@ impl Exporter for PlaydateExporter {
         false
     }
 
+    fn takes_export_part(&self) -> bool {
+        false
+    }
+
     fn cargo_args(&self, cx: &ExportCx) -> Vec<Vec<String>> {
         self.triples()
             .iter()

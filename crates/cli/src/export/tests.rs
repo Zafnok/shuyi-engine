@@ -38,6 +38,8 @@ fn cx(name: &str, target: &str) -> ExportCx {
         }),
         app: None,
         features: Vec::new(),
+        turned_on: Vec::new(),
+        beside: Vec::new(),
     }
 }
 
@@ -89,6 +91,89 @@ fn every_exporters_builds_turn_on_no_feature_and_never_the_live_link() {
         Ok(())
     );
     fs::remove_dir_all(&cx.out).unwrap();
+}
+
+/// What ships beside the program, as `shuyi.ron` writes it.
+fn beside(path: &str, name: Option<&str>, optional: bool) -> Beside {
+    let text = format!(
+        "(export: (beside: [(path: {path:?}, name: {name}, optional: {optional})]))",
+        name = name.map_or("None".to_owned(), |n| format!("Some({n:?})"))
+    );
+    crate::project::Config::parse(&text)
+        .unwrap()
+        .export
+        .unwrap()
+        .beside
+        .remove(0)
+}
+
+#[test]
+fn a_build_turns_on_the_export_parts_features_but_those_left_off() {
+    let mut cx = cx("features", "windows");
+    let part: ExportPart = crate::project::Config::parse(r#"(export: (features: ["a", "b"]))"#)
+        .unwrap()
+        .export
+        .unwrap();
+    cx.turned_on = turned_on(Some(&part), &[]).unwrap();
+    for exporter in [
+        &desktop::WINDOWS as &dyn Exporter,
+        &desktop::MACOS,
+        &web::WEB,
+    ] {
+        for args in exporter.cargo_args(&cx) {
+            let on: Vec<&str> = args
+                .windows(2)
+                .filter(|w| w[0] == "--features")
+                .flat_map(|w| w[1].split(','))
+                .collect();
+            assert_eq!(on, ["a", "b"], "{args:?}");
+        }
+    }
+    assert_eq!(turned_on(Some(&part), &["a".to_owned()]).unwrap(), ["b"]);
+    assert_eq!(turned_on(None, &[]).unwrap(), Vec::<String>::new());
+    let unknown = turned_on(Some(&part), &["c".to_owned()]).unwrap_err();
+    assert!(unknown.message().starts_with("--without c:"), "{unknown:?}");
+    assert!(!playdate::PLAYDATE.takes_export_part());
+    fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn link_in_the_export_parts_features_is_refused() {
+    let mut cx = cx("link-part", "windows");
+    cx.turned_on = vec!["art".to_owned(), "link".to_owned()];
+    for args in desktop::WINDOWS.cargo_args(&cx) {
+        let refused = no_live_link(&args).unwrap_err();
+        assert_eq!(refused.code(), codes::PROJECT_FILE);
+    }
+    fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn a_missing_beside_path_refuses_the_export_by_name_unless_it_is_optional() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
+    let part = |item: Beside| {
+        let mut part = crate::project::Config::parse("(export: ())")
+            .unwrap()
+            .export
+            .unwrap();
+        part.beside.push(item);
+        part
+    };
+    let missing = part(beside("no-such-folder", None, false));
+    let refused = present(&root, Some(&missing)).unwrap_err();
+    assert_eq!(refused.code(), codes::PROJECT_FILE);
+    assert!(refused.message().contains("no-such-folder"), "{refused:?}");
+    let optional = part(beside("no-such-folder", None, true));
+    assert_eq!(present(&root, Some(&optional)).unwrap(), []);
+    let there = part(beside("capture", None, false));
+    assert_eq!(present(&root, Some(&there)).unwrap().len(), 1);
+    let path_name = part(beside("capture", Some("../up"), false));
+    assert!(
+        present(&root, Some(&path_name))
+            .unwrap_err()
+            .message()
+            .contains("plain name")
+    );
 }
 
 #[test]
@@ -221,6 +306,42 @@ fn the_windows_package_is_a_zip_of_the_program_the_notices_and_the_players_note(
     ] {
         assert!(notices.contains(needle), "{needle} in {notices}");
     }
+    fs::remove_dir_all(&cx.out).unwrap();
+}
+
+#[test]
+fn what_ships_beside_goes_in_the_package_under_its_name_and_in_the_report() {
+    let mut cx = cx("beside", "windows");
+    cx.beside = vec![
+        beside("capture", Some("plans"), false),
+        beside("Cargo.toml", None, false),
+    ];
+    let program = program_file(&cx, "hello-grid.exe");
+    let report = desktop::pack(&cx, System::Windows, "x86_64-pc-windows-gnu", &program).unwrap();
+    let zip = fs::read(cx.out.join(&report.package)).unwrap();
+    let names = archive::zip_names(&zip).unwrap();
+    for name in ["Cargo.toml", "plans/frames.ron"] {
+        let name = format!("hello-grid-0.1.0-windows/{name}");
+        assert!(names.contains(&name), "{name} in {names:?}");
+    }
+    let shipped: Vec<&str> = report.beside.iter().map(|s| s.file.as_str()).collect();
+    assert_eq!(
+        shipped,
+        [
+            "hello-grid-0.1.0-windows/plans",
+            "hello-grid-0.1.0-windows/Cargo.toml"
+        ]
+    );
+    assert!(report.beside.iter().all(|size| size.bytes > 0));
+    // The report's sizes stay the package, then its program.
+    assert_eq!(report.sizes.len(), 2);
+    let taken = ExportCx {
+        beside: vec![beside("Cargo.toml", Some("NOTICES.txt"), false)],
+        ..cx.clone()
+    };
+    let refused =
+        desktop::pack(&taken, System::Windows, "x86_64-pc-windows-gnu", &program).unwrap_err();
+    assert!(refused.message().contains("already holds"), "{refused:?}");
     fs::remove_dir_all(&cx.out).unwrap();
 }
 

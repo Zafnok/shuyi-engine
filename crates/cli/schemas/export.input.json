@@ -25,6 +25,14 @@
     "target": {
       "description": "The target: `windows`, `linux`, `macos`, `web` or `playdate`. Any other\ntarget's check runs, and the answer says it has no exporter yet.",
       "type": "string"
+    },
+    "without": {
+      "description": "Features of `shuyi.ron`'s `export.features` to leave off this build\n(a build without the files a feature needs, say).",
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false,

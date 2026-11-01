@@ -14,6 +14,17 @@
         code: "src/app_info.rs",
     ),
 
+    // What `cargo shuyi export` turns on and ships beside the program. CI's
+    // export job checks these in each package (`tools/export-check`).
+    export: (
+        features: ["packaged"],
+        beside: [
+            (path: "README.md", name: "ABOUT.md"),
+            (path: "capture"),
+            (path: "no-such-folder", optional: true),
+        ],
+    ),
+
     // The game's tool program, for `frame-png` and `lang-status`.
     game: (package: "hello-grid", example: "tools", features: ["tools"]),
 
