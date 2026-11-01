@@ -125,6 +125,28 @@ mod tests {
         assert_eq!(*hot.plan, Plan::new(14, 20, 50));
     }
 
+    #[test]
+    fn a_game_with_the_module_shows_a_broken_plan_until_a_good_one() {
+        let good = b"(plots: 12, seeds: 20, grow_percent: 50)".to_vec();
+        let files = BTreeMap::from([("garden.ron".to_owned(), good.clone())]);
+        let layer = Layer::owned("assets".to_owned(), files).unwrap();
+        let bundle = Bundle::new(vec![layer]);
+        let basic = game();
+        let running = basic.game(basic.ctx().unwrap()).unwrap();
+        let mut running = running.with_module(HotPlan::new(&bundle).unwrap()).unwrap();
+        assert_eq!(running.modules()[0].name, "hot_plan");
+        assert_eq!(running.modules()[0].hooks, [Hook::Reloaded]);
+        let changed = ["garden.ron".to_owned()];
+        assert!(bundle.replace("garden.ron", b"(plots".to_vec()));
+        running.reloaded(&changed);
+        let errors = running.ctx().reload_errors();
+        assert!(errors[0].contains("assets/garden.ron"), "{errors:?}");
+        assert!(bundle.replace("garden.ron", good));
+        running.reloaded(&changed);
+        let errors = running.ctx().reload_errors();
+        assert!(errors.is_empty(), "{errors:?}");
+    }
+
     // ANCHOR: layers
     #[test]
     fn a_mod_laid_over_the_games_files_replaces_its_plan() {

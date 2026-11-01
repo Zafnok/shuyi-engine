@@ -174,8 +174,16 @@ fn a_recording_lists_what_it_found_and_nests() {
         assert_eq!(inner.into_iter().collect::<Vec<_>>(), ["b.txt"]);
     });
     assert_eq!(outer.into_iter().collect::<Vec<_>>(), ["a.txt", "b.txt"]);
-    // Outside a recording, nothing is kept; another thread's isn't seen.
+    // Outside a recording, nothing is kept.
     let _ = bundle.bytes("a.txt");
+    let ((), none) = recording(|| {});
+    assert!(none.is_empty(), "{none:?}");
+}
+
+#[test]
+#[cfg_attr(target_os = "wasi", ignore = "WASI preview 1 has no threads")]
+fn a_recording_doesnt_see_another_threads_reads() {
+    let layer = disk(&[("a.txt", "a")]);
     let ((), none) = recording(|| {
         std::thread::scope(|scope| {
             scope.spawn(|| {
@@ -187,6 +195,7 @@ fn a_recording_lists_what_it_found_and_nests() {
 }
 
 #[test]
+#[cfg_attr(target_os = "wasi", ignore = "WASI preview 1 has no unwinding")]
 fn a_recording_is_put_back_when_it_panics() {
     let bundle = Bundle::new(vec![disk(&[("a.txt", "a")])]);
     let ((), outer) = recording(|| {
