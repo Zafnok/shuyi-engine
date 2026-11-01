@@ -298,9 +298,9 @@ pub fn write(info: &PackInfo, files: &BTreeMap<String, Content>) -> Vec<u8> {
     out
 }
 
-/// The index of pack `bytes` and where its files' bytes start, once its
-/// header, version and checksum are right.
-fn index(bytes: &[u8]) -> Result<(Index, &[u8]), PackError> {
+/// The body of pack `bytes`, the rest of them after its header, and its
+/// index's length, once its magic bytes and version are right.
+fn body(bytes: &[u8]) -> Result<(&[u8], usize), PackError> {
     if !bytes.starts_with(&MAGIC) {
         return Err(if MAGIC.starts_with(bytes) {
             PackError::Truncated
@@ -312,13 +312,39 @@ fn index(bytes: &[u8]) -> Result<(Index, &[u8]), PackError> {
     if found != VERSION {
         return Err(PackError::Version { found });
     }
-    let sum = u64::from_le_bytes(take(bytes, 12)?);
     let length = u32::from_le_bytes(take(bytes, 20)?);
     let body = bytes.get(HEADER..).ok_or(PackError::Truncated)?;
     let length = usize::try_from(length).map_err(|_| PackError::Truncated)?;
     if body.len() < length {
         return Err(PackError::Truncated);
     }
+    Ok((body, length))
+}
+
+/// How many bytes the pack at the start of `bytes` takes, by its header and
+/// its index: for a tool that looks for a pack inside a bigger file, such as
+/// a program that embeds one with `include_bytes!`. Nothing here is checked
+/// against the checksum: [`Pack::open`] the bytes it counts.
+pub fn length(bytes: &[u8]) -> Result<usize, PackError> {
+    let (body, length) = body(bytes)?;
+    let index: Index =
+        postcard::from_bytes(&body[..length]).map_err(|_| broken("its index doesn't read"))?;
+    let data = index
+        .entries
+        .last()
+        .map_or(0, |entry| entry.offset.saturating_add(entry.stored));
+    usize::try_from(data)
+        .ok()
+        .and_then(|data| (HEADER + length).checked_add(data))
+        .filter(|&total| total <= bytes.len())
+        .ok_or(PackError::Truncated)
+}
+
+/// The index of pack `bytes` and where its files' bytes start, once its
+/// header, version and checksum are right.
+fn index(bytes: &[u8]) -> Result<(Index, &[u8]), PackError> {
+    let (body, length) = body(bytes)?;
+    let sum = u64::from_le_bytes(take(bytes, 12)?);
     if checksum(body) != sum {
         return Err(PackError::Checksum);
     }

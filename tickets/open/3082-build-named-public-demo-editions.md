@@ -17,6 +17,8 @@ completed:
 
 A runtime lock does not hide content already packaged. The default template embeds its whole files directory with include_dir!, while Cargo features are additive. A game needs a reproducible smaller program and content root for a public demo. The final-artifact gate (3081) measures the result; export feature support (3075) supplies the build seam.
 
+**From 3081 (done):** every export already runs the gate, `export::disclosure::gate`, after its exporter, against `shuyi.ron`'s `disclosure` part, so nothing here invokes it again: an edition needs its own part (or its own lists in one), since the part is one per project today. `exposure-report.json`'s `inputs` holds the package, program, cargo arguments, default-features flag and resolved features, read from `Exporter::cargo_args`, so a build with an edition's flags shows there if `cargo_args` returns them; add `edition` and `content root` to `BuildInputs`, and raise the contract's version. Compressed bytes a game makes itself aren't searched: the fixture's canaries stay plain.
+
 ## Nick input
 
 None.

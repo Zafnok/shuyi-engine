@@ -204,6 +204,14 @@ jobs:
         run: cargo shuyi export "$TARGET" --release
       - name: Check the package
         run: bash tools/export-check/check.sh "$TARGET" examples/hello-grid/dist/export/"$TARGET"
+      # The same input gives the same exposure report (ticket 3081): every
+      # hash in it, the program's and the archive's too.
+      - name: Export again and compare the reports
+        working-directory: examples/hello-grid
+        run: |
+          cp dist/export/"$TARGET"/exposure-report.json "$RUNNER_TEMP"/exposure-report.json
+          cargo shuyi export "$TARGET" --release
+          diff "$RUNNER_TEMP"/exposure-report.json dist/export/"$TARGET"/exposure-report.json
       # The `.app` keeps its signature and its program's mode in a zip
       # `ditto` writes; the artifact's own zip would drop them.
       - name: Zip the macOS package
@@ -218,6 +226,7 @@ jobs:
             examples/hello-grid/dist/export/${{ matrix.target }}/*.tar.gz
             examples/hello-grid/dist/export/${{ matrix.target }}/*.debug
             examples/hello-grid/dist/export/${{ matrix.target }}/export-report.json
+            examples/hello-grid/dist/export/${{ matrix.target }}/exposure-report.json
           retention-days: 7
 
   # The real window checked (ticket 2018, ADR-0052): Hello, Grid run in its

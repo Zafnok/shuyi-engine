@@ -21,7 +21,7 @@
 //! | `autobalance` | the game's knobs change a stage until its named bots land in their bands: the changes, the reports before and after; with `--apply`, the stage written | [`autobalance`] |
 //! | `import <file>` | a file read through the format registry, or its errors | [`import`] |
 //! | `bake [--target <id>]` | the game's sources baked into one pack: sizes and times | [`bake`] |
-//! | `export <target>` | the target's check, then the game built and packaged for it: a zip, a `tar.gz`, an `.app` or a web folder, with `NOTICES.txt` and `export-report.json` | [`export`] |
+//! | `export <target>` | the target's check, then the game built and packaged for it: a zip, a `tar.gz`, an `.app` or a web folder, with `NOTICES.txt`, `export-report.json` and `exposure-report.json` | [`export`] |
 //! | `doctor` | the toolchain: what is missing and how to install it | [`doctor`] |
 //! | `explain [<code>]` | every problem code, or one code's page | [`explain`] |
 //! | `attach <host:port>` | a running debug build over the live link: steps played as a player's input, then its screens, frame, log and window's picture | [`attach`] |
@@ -75,7 +75,7 @@ use codes::Code;
 /// The contract's version, in every answer. Raise it whenever an input
 /// or an answer changes shape (the schemas' test says when), and add the
 /// new schemas' fingerprint to `schemas/versions.json`.
-pub const VERSION: u32 = 32;
+pub const VERSION: u32 = 33;
 
 /// An operation of the contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -481,11 +481,16 @@ pub fn op_schemas(op: Op, session: bool) -> [SchemaFile; 2] {
 }
 
 /// Every operation's input and output schema, in [`Op::ALL`]'s order,
-/// then the MCP server's session tools' ([`Op::SESSION`]).
+/// then the MCP server's session tools' ([`Op::SESSION`]), then the file
+/// `export` writes beside its package.
 pub fn schemas() -> Vec<SchemaFile> {
     let ops = Op::ALL.into_iter().flat_map(|op| op_schemas(op, false));
     let session = Op::SESSION.into_iter().flat_map(|op| op_schemas(op, true));
-    ops.chain(session).collect()
+    let exposure = file(
+        "export.exposure.json".to_owned(),
+        &schema_for!(crate::export::disclosure::ExposureReport),
+    );
+    ops.chain(session).chain([exposure]).collect()
 }
 
 /// The fingerprint of `files`: a hash of their names and texts, which

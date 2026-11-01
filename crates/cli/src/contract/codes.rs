@@ -91,6 +91,9 @@ pub const BUILD_PATH: Code = Code("SH3009");
 pub const NO_EXPORTER: Code = Code("SH3010");
 /// `package`: `export`'s build, or writing its package, failed.
 pub const PACKAGE: Code = Code("SH3011");
+/// `disclosure`: `export` found what the game's `disclosure` part doesn't
+/// allow in the final package, and removed it.
+pub const DISCLOSURE: Code = Code("SH3012");
 
 /// A code's class: what kind of fix it asks for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -479,6 +482,15 @@ pub static TABLE: &[Entry] = &[
         "The export's build, or writing its package, failed",
         "fix what the message says (a compile error, a tool that failed, a folder that can't be \
          written), then export again"
+    ),
+    row!(
+        DISCLOSURE,
+        "disclosure",
+        Operation,
+        "SH3012",
+        "The final package holds what the game's disclosure part doesn't allow",
+        "for each file the message names, take it out of what is built, or add it to the part if \
+         it is meant to ship, then export again"
     ),
 ];
 

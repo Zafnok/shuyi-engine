@@ -22,6 +22,7 @@ use shuyi_assets::bitmap::Bitmap;
 use shuyi_assets::bitmap::dither::{Dither, OneBitSettings, dither};
 use shuyi_assets::image::Image;
 
+use super::disclosure::{FileKind, Shipped};
 use super::{ExportCx, ExportError, ExportReport, Exporter, RunCx, Signing, archive, fresh, paths};
 use crate::app_info;
 use crate::codec;
@@ -470,7 +471,12 @@ fn simulator_steps(cx: &ExportCx, tools: &Tools, gcc: &Path, dirs: &Dirs) -> Vec
         c_api.join("buildsupport").join("setup.c"),
         rust_lib(cx, SIMULATOR),
     ]));
-    args.extend(os_args(["-static-libgcc", "-o"]));
+    // No time of this build in the file: the same input gives the same file.
+    args.extend(os_args([
+        "-static-libgcc",
+        "-Wl,--no-insert-timestamp",
+        "-o",
+    ]));
     let dll = dirs.source.join("pdex.dll");
     args.push(dll.clone().into_os_string());
     vec![
@@ -888,6 +894,44 @@ impl Exporter for PlaydateExporter {
         let mut report = cx.report(&name, sizes, Signing::None, None);
         report.warnings = warnings;
         Ok(report)
+    }
+
+    /// What `pdc` makes of what is written here: the programs, `pdxinfo`, the
+    /// launcher's images, the notices and the pack; the sounds and music it
+    /// bakes from the game's tools; and `pdex.elf`, read in place of the
+    /// `pdex.bin` that may be compressed.
+    fn shipped(&self, cx: &ExportCx, report: &ExportReport) -> Shipped {
+        let tree = cx.out.join(&report.package);
+        let archive = cx.out.join(format!("{}.zip", report.package));
+        let mut shipped = Shipped::new(tree, Some(archive), format!("{}/", report.package));
+        for file in ["pdex.bin", "pdex.dll"] {
+            shipped.source(file, FileKind::Program, "the built library");
+        }
+        for file in [
+            "pdxinfo",
+            notices::FILE,
+            "launcher/icon.pdi",
+            "launcher/card.pdi",
+        ] {
+            shipped.source(file, FileKind::Written, "written by the export");
+        }
+        shipped.source(BAKED, FileKind::Pack, "the game's bundle, baked");
+        // `pdc` writes the time it ran into the `pdxinfo` it copies.
+        shipped
+            .varying
+            .insert("pdxinfo".to_owned(), "buildtime=".to_owned());
+        let found = archive::entries(&shipped.tree, "", &|_| false).unwrap_or_default();
+        for entry in found {
+            if entry.name.starts_with("audio/") || entry.name.starts_with("music/") {
+                shipped.source(entry.name, FileKind::LooseAsset, "GameTools::audio, baked");
+            }
+        }
+        shipped.inputs.push((
+            "pdex.elf".to_owned(),
+            "what pdc makes pdex.bin from".to_owned(),
+            Dirs::of(cx).source.join("pdex.elf"),
+        ));
+        shipped
     }
 
     /// Opens the `.pdx` in the SDK's Simulator, and waits for it to close.
