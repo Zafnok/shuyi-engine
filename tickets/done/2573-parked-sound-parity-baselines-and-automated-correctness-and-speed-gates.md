@@ -135,7 +135,14 @@ PulseAudio 16.1. The rule and each number are in `budget.ron`. A fresh run on da
 they weren't made from (CI run 41275055017) passed every correctness cell, and no
 median crossed its limit. Three of its speed cells were `inconclusive` on spread, a
 noisy machine. Rather than widen a limit, an inconclusive result is measured again,
-up to twice, while a failed one stands and every attempt's samples are kept.
+up to twice, while a failed one stands and every attempt's samples are kept. The
+next fresh run (CI run 41276204176, the head before these notes) passed all of it on
+its first measure: 90 cells passed on Linux and in Chromium, none inconclusive, and
+`sound-give-up` passed.
+
+**Not yet exercised.** Because that run was quiet, the measure-again step in the job
+has never actually run. If it is wrong it fails the job, the safe direction, and
+the first noisy run will prove it.
 
 **Evidence precision, as measured.**
 
