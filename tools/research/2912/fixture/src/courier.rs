@@ -248,3 +248,239 @@ impl TurnRules for Courier {
         self.result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Action, Courier, Error, Event, Outcome};
+    use shuyi_core::TurnRules;
+
+    fn game() -> Courier {
+        Courier {
+            x: 0,
+            y: 2,
+            parcel_x: 1,
+            parcel_y: 1,
+            carrying: false,
+            shield: 2,
+            energy: 18,
+            turn: 0,
+            bridge_phase: 0,
+            result: None,
+        }
+    }
+
+    #[test]
+    fn action_words_are_the_oracle_contract() {
+        for (word, action) in [
+            ("up", Action::Up),
+            ("down", Action::Down),
+            ("left", Action::Left),
+            ("right", Action::Right),
+            ("wait", Action::Wait),
+        ] {
+            assert_eq!(Action::parse(word), Some(action));
+        }
+        assert_eq!(Action::parse("UP"), None);
+        assert_eq!(Action::parse("jump"), None);
+    }
+
+    #[test]
+    fn bridge_cycle_and_visible_state_agree() {
+        let mut courier = game();
+        for (turn, live) in [false, true, false, false, true, false]
+            .into_iter()
+            .enumerate()
+        {
+            courier.turn = u8::try_from(turn).expect("small turn");
+            assert_eq!(courier.bridge_live(), live);
+            assert_eq!(courier.visible()["bridge_live"], live);
+        }
+        courier.turn = 0;
+        courier.bridge_phase = 2;
+        assert!(!courier.bridge_live());
+        courier.turn = 2;
+        assert!(courier.bridge_live());
+        assert_eq!(
+            game().visible(),
+            serde_json::json!({
+                "x": 0, "y": 2, "parcel": [1, 1], "carrying": false,
+                "shield": 2, "energy": 18, "turn": 0,
+                "bridge_live": false, "outcome": null,
+            })
+        );
+    }
+
+    #[test]
+    fn frame_shows_walls_bridge_parcel_depot_and_result() {
+        let courier = game();
+        assert_eq!(
+            courier.frame(),
+            "COURIER  turn 0  energy 18  shield 2  parcel ground\n...#...\n.p.#...\n@..=..D\n...#...\n...#..."
+        );
+        let courier = Courier {
+            x: 2,
+            y: 1,
+            carrying: true,
+            bridge_phase: 1,
+            result: Some(Outcome::Won),
+            ..courier
+        };
+        assert_eq!(
+            courier.frame(),
+            "COURIER  turn 0  energy 18  shield 2  parcel held\n...#...\n..@#...\n...!..D\n...#...\n...#...\nWon"
+        );
+    }
+
+    #[test]
+    fn boundaries_and_wall_filter_legal_actions() {
+        let courier = game();
+        assert_eq!(
+            courier.legal_commands(),
+            vec![Action::Up, Action::Down, Action::Right, Action::Wait]
+        );
+        assert_eq!(courier.check(&Action::Left), Err(Error::Blocked));
+        assert_eq!(
+            Courier {
+                y: 0,
+                ..courier.clone()
+            }
+            .check(&Action::Wait),
+            Ok(())
+        );
+        assert_eq!(
+            Courier {
+                x: 2,
+                y: 1,
+                ..courier.clone()
+            }
+            .check(&Action::Right),
+            Err(Error::Blocked)
+        );
+        assert_eq!(
+            Courier {
+                x: 2,
+                ..courier.clone()
+            }
+            .check(&Action::Right),
+            Ok(())
+        );
+        for (x, y, action) in [
+            (0, 0, Action::Up),
+            (0, 4, Action::Down),
+            (6, 2, Action::Right),
+            (8, 2, Action::Wait),
+            (0, 6, Action::Wait),
+        ] {
+            assert_eq!(
+                Courier {
+                    x,
+                    y,
+                    ..courier.clone()
+                }
+                .check(&action),
+                Err(Error::Blocked),
+                "boundary at ({x}, {y})"
+            );
+        }
+    }
+
+    #[test]
+    fn movement_waiting_and_pickup_change_state_once() {
+        let mut courier = game();
+        assert_eq!(courier.apply(&Action::Right), Ok(vec![Event::Moved]));
+        assert_eq!((courier.x, courier.y), (1, 2));
+        assert!(!courier.carrying);
+        assert_eq!((courier.energy, courier.turn), (17, 1));
+        assert_eq!(courier.apply(&Action::Wait), Ok(vec![Event::Waited]));
+        assert_eq!(
+            (courier.x, courier.y, courier.energy, courier.turn),
+            (1, 2, 16, 2)
+        );
+        assert_eq!(
+            courier.apply(&Action::Up),
+            Ok(vec![Event::Moved, Event::PickedUp])
+        );
+        assert!(courier.carrying);
+        assert_eq!(
+            (courier.x, courier.y, courier.energy, courier.turn),
+            (1, 1, 15, 3)
+        );
+        assert_eq!(courier.apply(&Action::Wait), Ok(vec![Event::Waited]));
+        assert_eq!(courier.energy, 14);
+    }
+
+    #[test]
+    fn bridge_shocks_only_when_entered_live() {
+        let mut courier = Courier {
+            x: 2,
+            bridge_phase: 1,
+            ..game()
+        };
+        assert_eq!(
+            courier.apply(&Action::Right),
+            Ok(vec![Event::Moved, Event::Shocked])
+        );
+        assert_eq!((courier.x, courier.y, courier.shield), (3, 2, 1));
+        assert_eq!(courier.apply(&Action::Wait), Ok(vec![Event::Waited]));
+        assert_eq!(courier.shield, 1);
+
+        let mut safe_bridge = Courier { x: 2, ..game() };
+        assert_eq!(safe_bridge.apply(&Action::Right), Ok(vec![Event::Moved]));
+        assert_eq!(safe_bridge.shield, 2);
+
+        let mut away = Courier {
+            bridge_phase: 1,
+            ..game()
+        };
+        assert_eq!(away.apply(&Action::Right), Ok(vec![Event::Moved]));
+        assert_eq!(away.shield, 2);
+    }
+
+    #[test]
+    fn exhaustion_and_delivery_are_terminal() {
+        let mut shocked = Courier {
+            x: 2,
+            shield: 1,
+            bridge_phase: 1,
+            ..game()
+        };
+        assert_eq!(
+            shocked.apply(&Action::Right),
+            Ok(vec![Event::Moved, Event::Shocked, Event::Exhausted])
+        );
+        assert_eq!(shocked.shield, 0);
+        assert_eq!(shocked.outcome(), Some(Outcome::Lost));
+        assert_eq!(shocked.legal_commands(), Vec::<Action>::new());
+        assert_eq!(shocked.apply(&Action::Wait), Err(Error::Over));
+
+        let mut tired = Courier {
+            energy: 1,
+            ..game()
+        };
+        assert_eq!(
+            tired.apply(&Action::Wait),
+            Ok(vec![Event::Waited, Event::Exhausted])
+        );
+        assert_eq!((tired.energy, tired.turn), (0, 1));
+        assert_eq!(tired.outcome(), Some(Outcome::Lost));
+
+        let mut empty_handed = Courier { x: 5, ..game() };
+        assert_eq!(empty_handed.apply(&Action::Right), Ok(vec![Event::Moved]));
+        assert_eq!(empty_handed.outcome(), None);
+
+        let mut delivering = Courier {
+            x: 5,
+            carrying: true,
+            energy: 1,
+            turn: 2,
+            ..game()
+        };
+        assert_eq!(
+            delivering.apply(&Action::Right),
+            Ok(vec![Event::Moved, Event::Delivered])
+        );
+        assert_eq!((delivering.energy, delivering.turn), (0, 3));
+        assert_eq!(delivering.outcome(), Some(Outcome::Won));
+        assert_eq!(delivering.check(&Action::Wait), Err(Error::Over));
+    }
+}

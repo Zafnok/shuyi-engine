@@ -142,7 +142,7 @@ used, human minutes and known direct charges. The runner itself does not
 limit elapsed time, model steps, oracle queries or spending. If any is
 unavailable, mark it **unmeasured** rather than assigning zero. The timing
 control takes twenty process-plus-replay samples per fixture and binary
-variant, including a p99 of those process times. It is not interactive
+variant and reports their median and maximum. It is not interactive
 frame p99, startup in a real export, or a defense overhead measurement.
 A one-agent pilot is a protocol and
 feasibility check, not a population estimate.

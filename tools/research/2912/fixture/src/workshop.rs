@@ -169,10 +169,10 @@ impl TurnRules for Workshop {
         match action {
             Action::Gather if self.fatigue >= 3 => Err(Error::Fatigued),
             Action::Refine if self.ore < 2 => Err(Error::NoOre),
-            Action::Refine if self.coal < 1 => Err(Error::NoCoal),
-            Action::Craft if self.ingots < 1 => Err(Error::NoIngot),
-            Action::Craft if self.heat < 1 => Err(Error::NoHeat),
-            Action::Deliver if self.gears < 1 => Err(Error::NoGear),
+            Action::Refine if self.coal == 0 => Err(Error::NoCoal),
+            Action::Craft if self.ingots == 0 => Err(Error::NoIngot),
+            Action::Craft if self.heat == 0 => Err(Error::NoHeat),
+            Action::Deliver if self.gears == 0 => Err(Error::NoGear),
             _ => Ok(()),
         }
     }
@@ -241,5 +241,177 @@ impl TurnRules for Workshop {
 
     fn outcome(&self) -> Option<Outcome> {
         self.result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Action, Error, Event, Outcome, Workshop};
+    use shuyi_core::TurnRules;
+
+    #[test]
+    fn protocol_actions_and_initial_observation() {
+        for (word, action) in [
+            ("gather", Action::Gather),
+            ("refine", Action::Refine),
+            ("craft", Action::Craft),
+            ("deliver", Action::Deliver),
+            ("rest", Action::Rest),
+        ] {
+            assert_eq!(Action::parse(word), Some(action));
+        }
+        assert_eq!(Action::parse("Gather"), None);
+        assert_eq!(Action::parse("unknown"), None);
+
+        let workshop = Workshop::new(0);
+        assert_eq!(
+            workshop.visible(),
+            serde_json::json!({
+                "ore": 0, "coal": 0, "ingots": 0, "gears": 0,
+                "heat": 0, "fatigue": 0, "orders": 0,
+                "gathers": 0, "turn": 0, "outcome": null,
+            })
+        );
+        assert_eq!(
+            workshop.legal_commands(),
+            vec![Action::Gather, Action::Rest]
+        );
+        assert_eq!(workshop.outcome(), None);
+        assert_eq!(
+            workshop.frame(),
+            "WORKSHOP  turn 0/16  orders 0/2\n\
+             ore 0  coal 0  ingots 0  gears 0\n\
+             heat 0  fatigue 0  gathers 0\n\
+             gather -> refine -> craft -> deliver; rest when tired"
+        );
+    }
+
+    #[test]
+    fn checks_require_each_resource_and_rest_before_another_gather() {
+        let mut workshop = Workshop::new(0);
+        assert_eq!(workshop.check(&Action::Refine), Err(Error::NoOre));
+        assert_eq!(workshop.check(&Action::Craft), Err(Error::NoIngot));
+        assert_eq!(workshop.check(&Action::Deliver), Err(Error::NoGear));
+
+        workshop.ore = 1;
+        workshop.coal = 2;
+        assert_eq!(workshop.check(&Action::Refine), Err(Error::NoOre));
+        workshop.ore = 2;
+        workshop.coal = 0;
+        assert_eq!(workshop.check(&Action::Refine), Err(Error::NoCoal));
+        workshop.coal = 1;
+        assert_eq!(workshop.check(&Action::Refine), Ok(()));
+
+        workshop.ingots = 1;
+        assert_eq!(workshop.check(&Action::Craft), Err(Error::NoHeat));
+        workshop.heat = 1;
+        assert_eq!(workshop.check(&Action::Craft), Ok(()));
+
+        workshop.gears = 1;
+        workshop.fatigue = 2;
+        assert_eq!(
+            workshop.legal_commands(),
+            vec![
+                Action::Gather,
+                Action::Refine,
+                Action::Craft,
+                Action::Deliver,
+                Action::Rest,
+            ]
+        );
+        workshop.fatigue = 3;
+        assert_eq!(workshop.check(&Action::Gather), Err(Error::Fatigued));
+        assert_eq!(
+            workshop.legal_commands(),
+            vec![Action::Refine, Action::Craft, Action::Deliver, Action::Rest]
+        );
+        assert_eq!(workshop.apply(&Action::Rest), Ok(vec![Event::Rested]));
+        assert_eq!(workshop.fatigue, 0);
+
+        workshop.result = Some(Outcome::Lost);
+        assert_eq!(workshop.legal_commands(), Vec::<Action>::new());
+        assert_eq!(workshop.check(&Action::Rest), Err(Error::Over));
+    }
+
+    #[test]
+    fn gathering_bonus_and_resource_flow() {
+        let mut workshop = Workshop::new(0);
+        workshop.bonus_phase = 1;
+        workshop.ore = 2;
+        workshop.coal = 2;
+
+        assert_eq!(workshop.apply(&Action::Gather), Ok(vec![Event::Gathered]));
+        assert_eq!(
+            (
+                workshop.ore,
+                workshop.coal,
+                workshop.gathers,
+                workshop.fatigue
+            ),
+            (3, 3, 1, 1)
+        );
+        assert_eq!(
+            workshop.apply(&Action::Gather),
+            Ok(vec![Event::Gathered, Event::BonusOre])
+        );
+        assert_eq!(
+            (
+                workshop.ore,
+                workshop.coal,
+                workshop.gathers,
+                workshop.fatigue
+            ),
+            (5, 4, 2, 2)
+        );
+
+        workshop.ingots = 2;
+        workshop.gears = 2;
+        workshop.heat = 3;
+        assert_eq!(workshop.apply(&Action::Refine), Ok(vec![Event::Refined]));
+        assert_eq!(
+            (workshop.ore, workshop.coal, workshop.ingots, workshop.heat),
+            (3, 3, 3, 4)
+        );
+        assert_eq!(workshop.apply(&Action::Craft), Ok(vec![Event::Crafted]));
+        assert_eq!((workshop.ingots, workshop.heat, workshop.gears), (2, 3, 3));
+        assert_eq!(workshop.apply(&Action::Deliver), Ok(vec![Event::Delivered]));
+        assert_eq!((workshop.gears, workshop.orders, workshop.turn), (2, 1, 5));
+        assert_eq!(workshop.outcome(), None);
+        assert_eq!(
+            workshop.visible(),
+            serde_json::json!({
+                "ore": 3, "coal": 3, "ingots": 2, "gears": 2,
+                "heat": 3, "fatigue": 2, "orders": 1,
+                "gathers": 2, "turn": 5, "outcome": null,
+            })
+        );
+    }
+
+    #[test]
+    fn deadline_and_delivery_have_distinct_terminal_results() {
+        let mut lost = Workshop::new(0);
+        lost.turn = 15;
+        assert_eq!(
+            lost.apply(&Action::Rest),
+            Ok(vec![Event::Rested, Event::Deadline])
+        );
+        assert_eq!(lost.outcome(), Some(Outcome::Lost));
+        assert_eq!(lost.apply(&Action::Rest), Err(Error::Over));
+        assert_eq!(lost.turn, 16);
+        assert!(lost.frame().ends_with("Lost"));
+
+        let mut won = Workshop::new(0);
+        won.turn = 15;
+        won.orders = 1;
+        won.gears = 1;
+        assert_eq!(
+            won.apply(&Action::Deliver),
+            Ok(vec![Event::Delivered, Event::Won])
+        );
+        assert_eq!(won.outcome(), Some(Outcome::Won));
+        assert_eq!(won.turn, 16);
+        assert_eq!(won.gears, 0);
+        assert_eq!(won.visible()["outcome"], "Won");
+        assert!(won.frame().ends_with("Won"));
     }
 }
