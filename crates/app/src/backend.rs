@@ -9,8 +9,9 @@
 //!
 //! The game's look, its sounds and its stick thresholds come from its data,
 //! which loads in a frame of [`App`](shuyi_platform::App)'s: the renderer
-//! is made from the first game frame's [`Look`], and the sound player and
-//! the pads once the game has loaded ([`Macroquad::start`]).
+//! is made from the first game frame's [`Look`], its textures made again as
+//! their files change ([`pictures`]), and the sound player and the pads once
+//! the game has loaded ([`Macroquad::start`]).
 
 use macroquad::prelude::*;
 use shuyi_alloc_count::{global, tags};
@@ -28,7 +29,8 @@ use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 use crate::audio::{self, device};
 use crate::pacing::Held;
 use crate::pads::PadInput;
-use crate::render::{Renderer, color, upload};
+use crate::pictures::{self, PictureErrors, decode_each, remakes};
+use crate::render::{Renderer, color, decode, upload};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::watch::{Poller, RealDisk};
 use crate::{AppConfig, keys, storage};
@@ -74,6 +76,10 @@ pub(crate) struct Macroquad {
     /// What looks at the disk layers, in a build with debug tools.
     #[cfg(not(target_arch = "wasm32"))]
     poller: Poller,
+    /// The files that changed since the last frame the game was drawn.
+    changed: Vec<String>,
+    /// Why pictures saved since the start don't decode.
+    picture_errors: PictureErrors,
 }
 
 impl Macroquad {
@@ -104,6 +110,8 @@ impl Macroquad {
             link_input: Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
             poller: Poller::new(shuyi_ui::DEBUG_TOOLS),
+            changed: Vec::new(),
+            picture_errors: PictureErrors::default(),
         }
     }
 
@@ -159,14 +167,48 @@ impl Macroquad {
         self.started = true;
     }
 
+    /// Makes the textures of the pictures that changed again, from `look`.
+    /// One that doesn't decode keeps its old texture, and its error shows.
+    fn remake_pictures(&mut self, look: &Look<'_>) {
+        let Some(renderer) = &mut self.renderer else {
+            return;
+        };
+        if self.changed.is_empty() {
+            return;
+        }
+        let files = self.files;
+        let wanted = remakes(&self.changed, self.font_png, look.images);
+        self.changed.clear();
+        let fresh = decode_each(
+            &wanted,
+            self.font_png,
+            |path| pictures::read(files, path),
+            decode,
+            &mut self.picture_errors,
+        );
+        renderer.remake(fresh, look.font);
+    }
+
     /// Draws a game frame with its look: the renderer is made the first
-    /// time; if that fails the reason shows instead, from then on.
+    /// time; if that fails the reason shows instead, until the font's
+    /// picture changes.
     fn draw_game(&mut self, buffer: &GlyphBuffer, background: Rgb, look: Option<Look<'_>>) {
+        if self.broken.is_some() {
+            if self.changed.iter().any(|path| path == self.font_png) {
+                self.broken = None;
+            }
+            self.changed.clear();
+        }
+        if let Some(look) = &look {
+            self.remake_pictures(look);
+        }
         if self.renderer.is_none() && self.broken.is_none() {
             let made = match look {
                 Some(look) => {
-                    let png = (self.files)(self.font_png).unwrap_or_default();
-                    Renderer::new(look.font.clone(), png, background, look.images, self.files)
+                    let files = self.files;
+                    let png = pictures::read(files, self.font_png).unwrap_or_default();
+                    let read = |path: &str| pictures::read(files, path);
+                    Renderer::with_files(look.font.clone(), png, background, look.images, read)
                 }
                 None => Err("the game gave no font and pictures to draw with".to_owned()),
             };
@@ -234,7 +276,7 @@ impl Macroquad {
             }
             shuyi_platform::Card::Picture { path, .. } => {
                 if self.card_picture.as_ref().is_none_or(|(p, _)| p != path) {
-                    let texture = (self.files)(path)
+                    let texture = pictures::read(self.files, path)
                         .ok_or_else(|| "not among the game's files".to_owned())
                         .and_then(upload);
                     if let Err(e) = &texture {
@@ -308,7 +350,11 @@ impl Platform for Macroquad {
             } => self.draw_game(buffer, background, look),
             _ => clear_background(BLACK),
         }
-        if !frame.reload_errors.is_empty() {
+        if !self.picture_errors.is_empty() {
+            let mut errors = frame.reload_errors.to_vec();
+            errors.extend(self.picture_errors.lines());
+            Self::draw_reload_errors(&errors);
+        } else if !frame.reload_errors.is_empty() {
             Self::draw_reload_errors(frame.reload_errors);
         }
     }
@@ -385,7 +431,9 @@ impl Platform for Macroquad {
     fn changed_files(&mut self, out: &mut Vec<String>) {
         self.poller.take_read();
         let clock = || Millis::from_secs_f64(crate::pacing::seconds());
+        let before = out.len();
         self.poller.poll(clock, &RealDisk, out);
+        self.changed.extend_from_slice(&out[before..]);
     }
 }
 

@@ -422,8 +422,11 @@ looks at them only every so often: `shuyi-app` compares the modification times
 and sizes of the folders `read_folder` read, once a second, with no clock read
 and no folder scanned when it has none. Keep what a frame shows of
 `frame.reload_errors` too: a backend with a debug overlay draws them at the top
-of the frame until they clear; one without ignores them. A device with no files
-to watch leaves the default, which adds nothing.
+of the frame until they clear; one without ignores them. A backend that made
+something from a file keeps it current itself: `shuyi-app` remakes the textures
+of the changed paths, shows a picture's decode error beside those, and reads
+`AppConfig::files` through the folder `watched_layer` read. A device with no
+files to watch leaves the default, which adds nothing.
 
 ## The live link (optional)
 

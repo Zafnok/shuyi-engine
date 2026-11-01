@@ -95,7 +95,10 @@ found](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#import-s
 `cargo shuyi run --watch` starts the game in its window, in a debug build,
 with the folder of its files on disk laid over the embedded ones
 (`assets:` in `shuyi.ron` names it). Save a file there, and within a
-second the bundle has its new bytes.
+second the bundle has its new bytes. The pictures the window draws, the
+font's and the images', are redrawn from them with no code of yours; a sprite
+keeps its source rectangle, so one past the edge of a smaller picture shows as
+missing, in magenta.
 
 A value you want to follow it is a `Hot<T>`: any kind, read through the
 registry, which remembers every file its decode asked for (its picture, its

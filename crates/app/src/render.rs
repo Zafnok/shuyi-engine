@@ -18,6 +18,8 @@ use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::console::{Layout, layout};
 use shuyi_ui::frame::glyph_buffer::{Backdrop, GlyphBuffer, Item, Layer, Paint, Sprite};
 
+use crate::pictures::{Fresh, Remake, src_fits};
+
 /// The colour of what is missing: the fallback glyph drawn for a glyph the
 /// atlas lacks, and the rectangle drawn for a sprite whose image has no
 /// texture.
@@ -60,8 +62,12 @@ pub struct Renderer {
     recoloured: HashMap<(ImageId, Recolour), Option<Texture2D>>,
     /// Images without a texture already logged, so each is reported once.
     warned_images: HashSet<ImageId>,
-    /// The game's embedded files by path, for the recoloured copies.
-    bytes: fn(&str) -> Option<&'static [u8]>,
+    /// The file of each texture of [`images`](Self::images), for the
+    /// recoloured copies: a save that doesn't decode never comes here.
+    sources: HashMap<ImageId, &'static [u8]>,
+    /// The size of each image made again since the start, for what its
+    /// sprites may show ([`src_fits`]).
+    remade: HashMap<ImageId, (u16, u16)>,
 }
 
 impl Renderer {
@@ -76,12 +82,26 @@ impl Renderer {
         images: &ImageTable,
         bytes: fn(&str) -> Option<&'static [u8]>,
     ) -> Result<Self, String> {
+        Self::with_files(atlas, png, clear, images, bytes)
+    }
+
+    /// [`new`](Self::new), with `bytes` any way of reading the files.
+    pub(crate) fn with_files(
+        atlas: FontAtlasDef,
+        png: &[u8],
+        clear: Rgb,
+        images: &ImageTable,
+        bytes: impl Fn(&str) -> Option<&'static [u8]>,
+    ) -> Result<Self, String> {
         let texture = upload(png).map_err(|e| format!("font atlas image: {e}"))?;
         let mut textures = HashMap::new();
+        let mut sources = HashMap::new();
         for id in images.ids() {
-            match upload(bytes(id.path()).unwrap_or_default()) {
+            let source = bytes(id.path()).unwrap_or_default();
+            match upload(source) {
                 Ok(texture) => {
                     textures.insert(id, texture);
+                    sources.insert(id, source);
                 }
                 Err(e) => {
                     warn!("image {}: {}", id.path(), e);
@@ -96,8 +116,37 @@ impl Renderer {
             images: textures,
             recoloured: HashMap::new(),
             warned_images: HashSet::new(),
-            bytes,
+            sources,
+            remade: HashMap::new(),
         })
+    }
+
+    /// Makes the textures of `fresh` again, from pictures that decoded. A
+    /// font's picture takes `font`, the game's atlas now. An image's
+    /// recoloured copies are made again as sprites next need them.
+    pub(crate) fn remake(&mut self, fresh: Vec<Fresh<Image>>, font: &FontAtlasDef) {
+        for Fresh {
+            remake,
+            decoded,
+            bytes,
+        } in fresh
+        {
+            let texture = texture_of(&decoded);
+            match remake {
+                Remake::Font => {
+                    self.texture = texture;
+                    self.atlas = font.clone();
+                    self.warned.clear();
+                }
+                Remake::Image(id) => {
+                    self.images.insert(id, texture);
+                    self.sources.insert(id, bytes);
+                    self.remade.insert(id, (decoded.width, decoded.height));
+                    self.recoloured.retain(|(image, _), _| *image != id);
+                    self.warned_images.remove(&id);
+                }
+            }
+        }
     }
 
     /// Sets the console background (the palette's `black`), which a
@@ -246,21 +295,36 @@ impl Renderer {
 
     /// Draws the visible part of `sprite` (its `clip`) at `(x, y)`, `size`
     /// big: the matching part of its image, or a [`MISSING_COLOR`]
-    /// rectangle if the image has no texture (logged once per image).
+    /// rectangle if the image has no texture, or was saved too small for
+    /// the sprite since the start (logged once per image).
     fn draw_sprite(&mut self, sprite: &Sprite, x: f32, y: f32, size: Vec2) {
+        if let Some(&picture) = self.remade.get(&sprite.image)
+            && !src_fits(sprite.src, picture)
+        {
+            if self.warned_images.insert(sprite.image) {
+                warn!(
+                    "image {} is {} by {} now: a sprite's source is past its edge",
+                    sprite.image.path(),
+                    picture.0,
+                    picture.1
+                );
+            }
+            draw_rectangle(x, y, size.x, size.y, MISSING_COLOR);
+            return;
+        }
         let (recolour, tint) = match sprite.paint {
             Paint::Image => (None, Rgb::new(255, 255, 255)),
             Paint::Solid(color) => (Some(Recolour::Silhouette), color),
             Paint::Dimmed => (Some(Recolour::Dimmed), Rgb::new(255, 255, 255)),
             Paint::Shaded(light) => (Some(Recolour::Shaded(light)), Rgb::new(255, 255, 255)),
         };
-        let bytes = self.bytes;
+        let source = self.sources.get(&sprite.image).copied();
         let texture = match recolour {
             None => self.images.get(&sprite.image),
             Some(recolour) => self
                 .recoloured
                 .entry((sprite.image, recolour))
-                .or_insert_with(|| recoloured(bytes(sprite.image.path())?, recolour))
+                .or_insert_with(|| recoloured(source?, recolour))
                 .as_ref(),
         };
         let Some(texture) = texture else {
@@ -304,14 +368,21 @@ impl Renderer {
     }
 }
 
-/// Decodes PNG file `png` into a texture drawn with nearest-pixel sampling.
+/// The picture of PNG file `png`, or why it can't be decoded.
+pub(crate) fn decode(png: &[u8]) -> Result<Image, String> {
+    Image::from_file_with_format(png, Some(ImageFormat::Png)).map_err(|e| e.to_string())
+}
+
+/// `image` as a texture drawn with nearest-pixel sampling.
+fn texture_of(image: &Image) -> Texture2D {
+    let texture = Texture2D::from_image(image);
+    texture.set_filter(FilterMode::Nearest);
+    texture
+}
+
 /// A texture of PNG file `png`, or why it can't be decoded.
 pub(crate) fn upload(png: &[u8]) -> Result<Texture2D, String> {
-    let image =
-        Image::from_file_with_format(png, Some(ImageFormat::Png)).map_err(|e| e.to_string())?;
-    let texture = Texture2D::from_image(&image);
-    texture.set_filter(FilterMode::Nearest);
-    Ok(texture)
+    decode(png).map(|image| texture_of(&image))
 }
 
 /// A texture of PNG file `png` recoloured as `recolour`, or `None` if it

@@ -8,12 +8,16 @@ use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
-use shuyi_assets::bundle::{Layer, LayerError};
+use shuyi_assets::bundle::{Bundle, Layer, LayerError};
 use shuyi_assets::format::DEFAULT_MAX_BYTES;
 use shuyi_platform::WATCH_VAR;
 
 use crate::watch;
+
+/// The layer [`watched_layer`] read first, for the backend's pictures.
+static WATCHED: OnceLock<Bundle> = OnceLock::new();
 
 /// Why a folder could not be read into a layer ([`read_folder`]).
 #[derive(Debug)]
@@ -129,12 +133,22 @@ pub fn watched_layer() -> Option<Layer> {
         .unwrap_or("watched");
     let limit = u64::try_from(DEFAULT_MAX_BYTES).unwrap_or(u64::MAX);
     match read_folder(&path, name, limit) {
-        Ok(layer) => Some(layer),
+        Ok(layer) => {
+            let _ = WATCHED.set(Bundle::new(vec![layer]));
+            Some(layer)
+        }
         Err(error) => {
             macroquad::logging::warn!("{}: {}", WATCH_VAR, error);
             None
         }
     }
+}
+
+/// The file at `path` of the folder [`watched_layer`] read, with its last
+/// saved bytes: what the backend reads pictures through, since a game's
+/// `AppConfig::files` is a function over its embedded files.
+pub(crate) fn watched_file(path: &str) -> Option<&'static [u8]> {
+    WATCHED.get()?.bytes(path)
 }
 
 /// The bytes of the file at `path`, or an error if it is over `limit`
@@ -165,8 +179,6 @@ pub(crate) fn read_file(path: &Path, limit: u64) -> Result<Vec<u8>, FolderError>
 
 #[cfg(test)]
 mod tests {
-    use shuyi_assets::bundle::Bundle;
-
     use super::*;
 
     /// A temporary folder holding `files` (`/`-separated paths).
