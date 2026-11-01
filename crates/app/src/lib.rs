@@ -65,7 +65,7 @@
 //! `capture.ron` beside the page, writes no files and logs each capture's
 //! line to the browser's console instead (ticket 2019).
 //!
-//! With the `sound-probe` feature, [`SoundProbeBackend`] names the sound
+//! With the `sound-probe` feature, `SoundProbeBackend` names the sound
 //! backend, for the example `sound_probe` that the parity gates record. No
 //! game turns it on.
 //!

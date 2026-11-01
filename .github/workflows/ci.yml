@@ -408,8 +408,6 @@ jobs:
     if: needs.changes.outputs.sound == 'true'
     # Pinned, as its performance budget is measured on this image.
     runs-on: ubuntu-24.04
-    env:
-      PY: ${{ github.workspace }}/.sound-parity-venv/bin/python
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -422,9 +420,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils libasound2-plugins libpulse0 vorbis-tools
-          python3 -m venv .sound-parity-venv
-          "$PY" -m pip install --require-hashes -r tools/web-check/requirements.txt
-          "$PY" -m playwright install --with-deps chromium
+          python3 -m venv "$RUNNER_TEMP/capture"
+          "$RUNNER_TEMP/capture/bin/pip" install --require-hashes -r tools/web-check/requirements.txt
+          "$RUNNER_TEMP/capture/bin/python" -m playwright install --with-deps chromium
       - name: The gates' own tests
         run: cargo test -p xtask --locked sound_parity
       - name: The corpus and what a separate decoder makes of it
@@ -447,13 +445,13 @@ jobs:
         env:
           REVISION: ${{ github.sha }}
         run: |
-          "$PY" tools/sound-parity/capture.py native --dir target/sound-parity \
+          "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir target/sound-parity \
             --probe target/release/examples/sound_probe --revision "$REVISION" --build-seconds "$NATIVE_BUILD"
       - name: Record the web backend on its real loader
         env:
           REVISION: ${{ github.sha }}
         run: |
-          "$PY" tools/sound-parity/capture.py browser --dir target/sound-parity \
+          "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir target/sound-parity \
             --page target/sound-parity-page --revision "$REVISION" --build-seconds "$WEB_BUILD"
       - name: The gate
         env:
