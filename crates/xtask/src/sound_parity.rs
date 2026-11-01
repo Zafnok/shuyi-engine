@@ -590,7 +590,13 @@ fn repeat_cell(
     tolerance: &Tolerance,
 ) -> Value {
     let check = format!("repeat:{}", scenario.name);
-    let edges: Vec<u32> = scenario.steps.iter().map(|step| step.at).collect();
+    // Where a command lands, or a sound ends by itself: runs may differ by a
+    // frame there, so a window across one says nothing.
+    let mut edges: Vec<u32> = scenario.steps.iter().map(|step| step.at).collect();
+    edges.extend(scenario.expect.iter().filter_map(|expect| match expect {
+        Expect::Rise { at } | Expect::Fall { at } => Some(*at),
+        _ => None,
+    }));
     let [first, rest @ ..] = recordings else {
         return cell(platform, &check, true, "failed", "no recordings");
     };
@@ -761,7 +767,8 @@ fn performance_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value>
             continue;
         }
         let burned = ratios(&before, &side("burn", metric));
-        let caught = judge(&burned, *limit) == "failed";
+        // Noise is `perf:`'s to judge: a slowdown only has to show above the limit.
+        let caught = burned.pairs >= MIN_PAIRS && burned.median > limit.max_ratio;
         let detail = format!(
             "with the injected slowdown: median ratio {:.3}, spread {:.3}",
             burned.median, burned.spread

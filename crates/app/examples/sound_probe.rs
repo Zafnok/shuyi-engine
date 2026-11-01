@@ -36,6 +36,15 @@ const TICK: f64 = 0.004;
 const PERF_PLAY: f64 = 3.0;
 /// The copies of a looped sound the perf workload mixes.
 const PERF_COPIES: usize = 4;
+/// How many whole decodes a decode's time is the sum of: on the web each is
+/// seen to end only at a frame, which one alone can't rise above.
+const PERF_DECODES: usize = 8;
+/// How long the perf workload waits for the music's load, in seconds, as a
+/// scenario's `settle` does.
+const PERF_SETTLE: f64 = 1.5;
+/// How long the sound plays on after the measure, in seconds, so that what is
+/// still on its way to the sink isn't cut off with the process.
+const PERF_DRAIN: f64 = 0.5;
 
 /// The part of `scenarios.ron` the probe reads; the gate reads the rest.
 #[derive(Deserialize)]
@@ -291,14 +300,16 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
 
     for (metric, bytes) in [("decode_wav_ms", &wav), ("decode_ogg_ms", &ogg)] {
         let timed = date::now();
-        let sound = Sound::load(&ctx, bytes);
-        // The browser decodes in the background; natively it is done.
-        #[cfg(target_arch = "wasm32")]
-        while !sound.is_loaded() {
-            tick().await;
+        for _ in 0..PERF_DECODES {
+            let sound = Sound::load(&ctx, bytes);
+            // The browser decodes in the background; natively it is done.
+            #[cfg(target_arch = "wasm32")]
+            while !sound.is_loaded() {
+                tick().await;
+            }
+            sound.delete(&ctx);
         }
         measure(metric, burned(timed, burn) * 1000.0);
-        sound.delete(&ctx);
     }
 
     let mut backend = SoundProbeBackend::default();
@@ -315,6 +326,11 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
     }
     player.play(&mut backend, &requests, &music, date::now());
     wait_for_gesture().await;
+    let settle = date::now() + PERF_SETTLE;
+    while date::now() < settle {
+        player.play(&mut backend, &[], &[], date::now());
+        tick().await;
+    }
     requests.clear();
     music.clear();
     // The marker first: its onset in the recording gives the output latency.
@@ -359,6 +375,11 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
         measure("cpu_ms", (after - before) as f64 / 1e6);
     }
     say(r#"{"event":"played"}"#);
+    let drained = date::now() + PERF_DRAIN;
+    while date::now() < drained {
+        player.play(&mut backend, &[], &[], date::now());
+        tick().await;
+    }
     player.stop_all(&mut backend);
     if let Some(kib) = peak_kib() {
         measure("peak_kib", kib);

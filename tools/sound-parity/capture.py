@@ -82,6 +82,10 @@ def sink() -> Iterator[Sink]:
             "PULSE_RUNTIME_PATH": f"{home}/pulse",
             "PULSE_SERVER": f"unix:{home}/pulse/native",
             "PULSE_SINK": SINK,
+            # What every stream asks of the sink. Left to itself a native stream
+            # gets the sink's largest blocks, about 2 seconds, and the end of a
+            # recording is cut off with the process that held them.
+            "PULSE_LATENCY_MSEC": "20",
         }
         Path(home, ".asoundrc").write_text('pcm.!default { type pulse }\nctl.!default { type pulse }\n', encoding="utf-8")
         server = subprocess.Popen(
@@ -285,7 +289,6 @@ class Browser:
             lines.append(line)
             if perf is not None and '"playing"' in line:
                 perf["_cpu"] = chrome_cpu_ms()
-                perf["_played_from"] = time.time()
             if perf is not None and '"played"' in line:
                 perf["cpu_ms"] = chrome_cpu_ms() - perf["_cpu"]
                 perf["peak_kib"] = chrome_kib()
@@ -321,7 +324,10 @@ def write_run(player: Native | Browser, run: Path) -> None:
     """Every scenario once."""
     run.mkdir(parents=True, exist_ok=True)
     for name in scenario_names():
-        lines = player.play(f"scenario {name}\n", run / f"{name}.pcm")
+        perf: dict[str, float] = {}
+        lines = player.play(f"scenario {name}\n", run / f"{name}.pcm", perf)
+        # When the recording's first frame was heard: the wall clock of its steps'.
+        lines.append(json.dumps({"event": "recording", "start": perf["_start"]}))
         (run / f"{name}.jsonl").write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
 
 

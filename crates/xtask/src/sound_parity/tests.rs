@@ -381,6 +381,27 @@ fn equal_work_passes_a_slowdown_fails_and_noise_is_inconclusive() {
 }
 
 #[test]
+fn a_repeat_ignores_where_a_sound_ends_by_itself() {
+    // The same sound starting a little later ends a little later too.
+    let pass = signal("fmt_44k_s.wav");
+    let early = recording(10, &pass);
+    let mut late = pass.clone();
+    late.splice(frame_index(800)..frame_index(800), vec![0; frame_index(20)]);
+    let late = recording(10, &late);
+    let end = 1300 + 20;
+    let edges = [800, 1300];
+    let apart = repeat_difference(&early, &late, &edges, end, &tolerance());
+    assert!(apart.clone().is_ok_and(|db| db < 1.0), "{apart:?}");
+    let apart = repeat_difference(&early, &late, &[800], end, &tolerance());
+    assert!(apart.clone().is_ok_and(|db| db > 10.0), "{apart:?}");
+}
+
+/// The index of `ms` in interleaved samples at the corpus's main rate.
+fn frame_index(ms: usize) -> usize {
+    ms * RATE as usize / 1000 * 2
+}
+
+#[test]
 fn too_few_pairs_is_inconclusive() {
     let few = ratios(&[10.0; 8], &[10.0; 8]);
     assert_eq!(few.pairs, 8);
