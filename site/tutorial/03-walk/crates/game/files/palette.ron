@@ -1,0 +1,28 @@
+// Box Pusher's colors by name: the engine's (its screens and widgets draw
+// with them), and the game's own after them.
+{
+    // The engine's.
+    "text": "#e4e4dc",
+    "text_dim": "#8a8a80",
+    "panel": "#16161c",
+    "border": "#5a5a6e",
+    "highlight": "#ffd75a",
+    "warning": "#ff7a5a",
+    "focus": "#5ac8ff",
+    "background": "#0a0a0e",
+    "accent": "#a0e07a",
+    "bright": "#ffffff",
+
+    // The game's.
+    "floor_fg": "#3a3a46",
+    "floor_bg": "#16161c",
+    "wall_fg": "#5a5a6e",
+    "wall_bg": "#26262e",
+    "target_fg": "#ffd75a",
+    "player": "#ffffff",
+    "box": "#c89a5a",
+    "box_home": "#a0e07a",
+    "path": "#5ac8ff",
+    "cursor": "#ffd75a",
+    "threat": "#ff7a5a",
+}

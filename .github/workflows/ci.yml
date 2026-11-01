@@ -353,6 +353,17 @@ jobs:
             "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "target/web/$name" \
               --out "target/web-check/boot-$name"
           done
+      # As pages.yml builds them: every step of the tutorial (ticket 2803).
+      - name: Every tutorial step's web build boots
+        env:
+          CARGO_TARGET_DIR: ${{ github.workspace }}/target/tutorial
+        run: |
+          for dir in site/tutorial/*/; do
+            name="$(basename "$dir")"
+            (cd "$dir" && cargo update -p shuyi -p shuyi-cli -p shuyi-app && cargo shuyi web --release)
+            "$RUNNER_TEMP/web-check/bin/python" tools/web-check/check.py boot "$dir/dist/web" \
+              --out "target/web-check/boot-tutorial-$name"
+          done
       - name: A page without `var register_plugin;` fails
         run: |
           page="$RUNNER_TEMP/no-register-plugin"
@@ -404,6 +415,52 @@ jobs:
           name: web-render
           path: target/web-check/
           if-no-files-found: ignore
+
+  # Each step of the tutorial, a whole game project and no member of the
+  # workspace (ticket 2803): it builds against the engine's code at this
+  # commit, so a change to the API that breaks a step fails here. Each keeps
+  # its own Cargo.lock, whose engine crates are moved first.
+  tutorial:
+    name: tutorial (${{ matrix.step }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        step:
+          - 01-new
+          - 02-board
+          - 03-walk
+          - 04-push
+          - 05-undo
+          - 06-levels
+          - 07-save
+          - 08-polish
+          - 09-test
+          - 10-ship
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: site/tutorial/${{ matrix.step }}
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Move the engine's crates in its lock
+        working-directory: site/tutorial/${{ matrix.step }}
+        run: cargo update -p shuyi -p shuyi-cli -p shuyi-app
+      - name: Format
+        working-directory: site/tutorial/${{ matrix.step }}
+        run: cargo fmt --all --check
+      - name: Lint
+        working-directory: site/tutorial/${{ matrix.step }}
+        run: cargo clippy --workspace --all-targets --features box-pusher/tools -- -D warnings
+      - name: Test
+        working-directory: site/tutorial/${{ matrix.step }}
+        run: cargo test --workspace
 
   # The first gate on leaving quad-snd (ticket 2573, ADR-0066): what the
   # backend really emits, recorded from a PulseAudio null sink natively and
@@ -1172,7 +1229,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

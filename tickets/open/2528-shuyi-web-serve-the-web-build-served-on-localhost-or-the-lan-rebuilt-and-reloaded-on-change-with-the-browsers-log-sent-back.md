@@ -268,10 +268,9 @@ None.
     **Either order with 2777:** if 2777 is done, the quick start's
     `cargo shuyi web` step on a new game becomes `cargo shuyi web
     --serve --open` too; if not, nothing to do (2777 writes it so);
-  - **with 2803** (in the MVP's list in `docs/ROADMAP.md`, so most
-    likely done): where the tutorial's `10-ship` step tells the reader
-    to serve the folder, it names `cargo shuyi web --serve --open`. If
-    not, it is written with it (its own clause says so).
+  - **From 2803 (done):** `site/content/learn/tutorial/10-ship.md`, *Build
+    it*, serves the folder with `python -m http.server`: it tries the build
+    with `cargo shuyi web --serve --open` instead.
 - **Docs:**
   - `README.md:181` ("serve that folder over HTTP"): build, serve and
     open in one step with `cargo shuyi web --serve --open`;

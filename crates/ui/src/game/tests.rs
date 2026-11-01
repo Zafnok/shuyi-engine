@@ -704,6 +704,15 @@ fn an_unknown_cue_panics_in_debug_builds() {
 }
 
 #[test]
+fn a_widgets_cue_the_manifest_lacks_is_silence() {
+    let mut ctx = ctx();
+    ctx.audio.menu(crate::audio::MenuSound::Move);
+    ctx.audio.cursor_tick();
+    let mut game = Game::new(ctx, Box::new(Noisy), GameHooks::default());
+    game.frame(&[], 0.0);
+}
+
+#[test]
 #[cfg(debug_assertions)]
 #[should_panic(expected = "play_sound of the looped cue \"hum\"")]
 fn playing_a_looped_cue_without_a_handle_panics_in_debug_builds() {

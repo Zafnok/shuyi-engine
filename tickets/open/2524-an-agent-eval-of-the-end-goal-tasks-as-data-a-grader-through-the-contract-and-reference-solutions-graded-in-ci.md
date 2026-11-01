@@ -229,6 +229,12 @@ None. Spending money on agent runs is 2525's question.
     Act("Left"), Act("Confirm"), Act("Right"), Act("Right"),
     Act("Confirm"), Act("Down"), Act("Down"), Act("Confirm")], has:
     [("/winner", Some("x"))] }`.
+  - **From 2803 (done):** step 10's game is named `Box Pusher`, made with
+    `shuyi new box-pusher --template blank --name "Box Pusher"`. It opens on
+    the title, and level 1's board is two Confirms in (the title, then the
+    level menu), so its `Scene` steps are `[Act("Confirm"), Act("Confirm")]`.
+    It keeps the six names and adds `Undo`, and its scene data has `moves`
+    and `won` once a level is open.
   - **`box-pushing.ron`:** template `blank` (2803's steps are made
     from it), the name 2803's step 10 was
     made with, the same targets, reference

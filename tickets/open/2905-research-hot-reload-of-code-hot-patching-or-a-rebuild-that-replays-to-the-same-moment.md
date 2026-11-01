@@ -42,7 +42,7 @@ None. This is technical.
 
 **In:**
 - **The options**, each tried on Hello, Grid and the tutorial's game
-  (2803, if done):
+  (2803, `site/tutorial/10-ship`):
   1. **Rebuild and replay:** `shuyi run --watch-code` rebuilds on a
      change to `src/`, starts the new binary, and replays the session
      record so far (2518's `SessionRecord`, which the debug build

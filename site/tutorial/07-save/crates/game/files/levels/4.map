@@ -1,0 +1,14 @@
+// Level 4, in the engine's `.map` format.
+(
+    name: "Side door",
+    legend: { '.': "floor", '#': "wall", 'o': "target" },
+    features: { (2, 5): Start, (2, 2): Box, (2, 4): Box },
+)
+---
+#########
+#...#...#
+#...#.o.#
+#......o#
+#...#...#
+#...#...#
+#########

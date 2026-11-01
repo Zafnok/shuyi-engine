@@ -1,0 +1,14 @@
+// Level 5, in the engine's `.map` format.
+(
+    name: "The yard",
+    legend: { '.': "floor", '#': "wall", 'o': "target" },
+    features: { (4, 5): Start, (2, 2): Box, (6, 2): Box, (2, 4): Box },
+)
+---
+#########
+#o..#..o#
+#.......#
+##.#.#.##
+#.....o.#
+#.......#
+#########

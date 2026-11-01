@@ -1,0 +1,75 @@
+// Box Pusher's project file: what `cargo shuyi <command>` (the engine's
+// tools) builds and runs here. Paths are from this folder.
+(
+    command: "cargo shuyi",
+
+    // Who the game is, the same on every target. `cargo shuyi check
+    // --target all` checks it; `cargo shuyi app-info` writes it into
+    // `code`, which the game's binary reads (`app_info::APP`): run it after
+    // each change here.
+    app: (
+        // The name players see.
+        name: "Box Pusher",
+        // Its reverse-DNS id, unique to the game: the folder its saves are
+        // kept in follows it. Set your own (`io.github.<you>.<game>`)
+        // before you hand out a build, and never change it after.
+        // ANCHOR: id
+        id: "io.github.zafnok.box-pusher",
+        // ANCHOR_END: id
+        // Its version, semver; without it, the crate's (`Cargo.toml`).
+        // version: "0.1.0",
+        // A number that only grows from one build handed out to the next.
+        // build: 1,
+        // Who publishes it.
+        // publisher: "",
+        // The Rust file `app-info` writes.
+        code: "crates/game/src/app_info.rs",
+        // The game's icon: one square PNG, 512 pixels a side or more, which
+        // the tools downscale to every size a target asks.
+        // icon: "art/icon.png",
+        // Where `app-info` writes the window's icons, 16, 32 and 64 pixels,
+        // which `code` reads; outside `files/`, so they are embedded once.
+        window_icons: "crates/game/icon",
+        // Any of those sizes drawn by hand, each a square PNG of its side,
+        // used as it is in place of downscaling the icon.
+        // icon_sizes: { 16: "art/icon-16.png", 32: "art/icon-32.png" },
+    ),
+
+    // The game's tool program, for the commands that run the game:
+    // frame-png, lang-status, check, run, scene, replay, bots, import.
+    game: (package: "box-pusher", example: "tools", features: ["tools"]),
+
+    // `cargo shuyi check --target all`: the targets the game ships on (the
+    // engine's profiles, `targets/` in its repository), each with its
+    // frame in pixels (48 × 24 cells of 8 × 16), its scale (`integer` or
+    // `fit`) and its smallest text's height (the font's cell).
+    targets: {
+        "desktop": (frame: (384, 384), scale: integer, text_px: 16),
+        "web": (frame: (384, 384), scale: integer, text_px: 16),
+    },
+
+    // `cargo shuyi check-keys`: no key named in the game's code or text.
+    check_keys: (
+        key_files: ["crates/game/src/action.rs"],
+        rust: ["crates/game/src"],
+        assets: ["crates/game/files"],
+        not_text: ["crates/game/files/keymap.ron"],
+        hint: "react to an action (the keymap names the keys), or name a key through the player's keymap",
+    ),
+
+    // ANCHOR: web
+    // `cargo shuyi web`: the game's binary built for the browser, and the
+    // page it runs in, written to `dist/web/`.
+    web: (
+        package: "box-pusher",
+        bin: "box-pusher",
+        title: "Box Pusher",
+        dist: "dist/web",
+    ),
+    // ANCHOR_END: web
+
+    // The game's own license texts (its font's): each goes whole into the
+    // `NOTICES.txt` of every package the engine's tools make, beside the
+    // notices of the crates and files they put in.
+    notices: (texts: ["crates/game/files/font/Terminus-LICENSE.txt"]),
+)

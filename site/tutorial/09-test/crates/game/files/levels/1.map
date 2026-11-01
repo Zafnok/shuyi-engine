@@ -1,0 +1,12 @@
+// Level 1, in the engine's `.map` format.
+(
+    name: "First push",
+    legend: { '.': "floor", '#': "wall", 'o': "target" },
+    features: { (2, 2): Start, (3, 2): Box },
+)
+---
+#######
+#.....#
+#....o#
+#.....#
+#######

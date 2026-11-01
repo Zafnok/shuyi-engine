@@ -1,0 +1,58 @@
+ First push                            Moves: 0 
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                ▓▓▓▓▓▓▓▓▓▓▓▓▓▓                  
+                ▓▓          ▓▓                  
+                ▓▓  @ []  <>▓▓                  
+                ▓▓          ▓▓                  
+                ▓▓▓▓▓▓▓▓▓▓▓▓▓▓                  
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+                                                
+ arrows walk · u undo · Backspace levels        
+--- colours ---
+abbbbbbbbbbaaaaaaaaaaaaaaaaaaaaaaaaaaaacccccccca
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaddddddddddddddaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaddeeeeeeeeeeddaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaddeefeggeebbddaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaddeeeeeeeeeeddaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaddddddddddddddaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhaaaaaaaa
+--- legend ---
+a = fg:panel bg:panel
+b = fg:highlight bg:panel
+c = fg:text bg:panel
+d = fg:border bg:wall_bg
+e = fg:floor_fg bg:panel
+f = fg:bright bg:panel
+g = fg:box bg:panel
+h = fg:text_dim bg:panel

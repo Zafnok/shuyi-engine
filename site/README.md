@@ -38,7 +38,8 @@ copies each example's web build there.
 | `content/` | The pages: `_index.md` (the home page's text), `learn/`, `community.md`, `sponsor.md`, `news/` (one Markdown file a post) and `examples/` (one page an example, named as its folder in `examples/`) |
 | `content/changelog.md`, `content/news/generated/` | **Never committed**: `cargo xtask changelog --site site/content` writes the Changelog page and a News post for each release (`release-vX-Y-Z.md`, or `changes-YYYY-MM.md` before the first tag), and `pages.yml` runs it before `zola build`. It needs the tags and the whole history (`git clone` in full, not shallow) |
 | `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
-| `content/learn/` | Learn: `_index.md`, `book/` (the book, one page a chapter, in `weight` order, each numbered by its `extra.chapter`; a page with none is an appendix) and `errors/`, which `errors.sh` writes |
+| `content/learn/` | Learn: `_index.md`, `book/` (the book, one page a chapter, in `weight` order, each numbered by its `extra.chapter`; a page with none is an appendix), `tutorial/` (a page per step, named as its folder in `tutorial/`, its number in `extra.step`) and `errors/`, which `errors.sh` writes |
+| `tutorial/` | The tutorial's code: one folder per step, a whole game project and no member of the workspace, with its own `Cargo.lock` and a path dependency on the engine's crates. CI's `tutorial` job builds and tests each. `shuyi new`'s files for agents and CI, and the pinned Rust (the root's applies), are left out |
 | `snippets/` | The book's code: a crate of the workspace, `book-snippets`, which CI builds and tests with the rest |
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
@@ -69,8 +70,16 @@ copies each example's web build there.
 
   `file` is from `snippets/`; `language` names the fence's language
   when it isn't Rust (`language="ron"` for a RON file of the game's).
+  `step` reads the file from that step of the tutorial instead
+  (`step="04-push"`, `file` from `tutorial/04-push/`), and with no
+  `anchor` it shows the whole file.
   The lines are shown as written, without the lines of other anchors
   inside them. A file or an anchor that isn't there fails the build.
+- A page of the tutorial writes no code of its own: its only code blocks
+  written in the page are `bash`, the commands to type, and the build
+  checks fail any other. A step's page links its web build at `play/`,
+  which `pages.yml` puts there (`templates/tutorial-step.html`), and CI's
+  `web-render` job boots each.
 - A new engine crate gets its row in `data/api.toml`, or the build
   checks fail.
 
@@ -88,6 +97,7 @@ and the feature cards' text:
 | The Examples | each example's web build | yes |
 | The feature cards' statuses | the `tickets` each card names (`cargo xtask site-data`, ticket 2815) | yes: **Ready** when all are in `tickets/done/`, **In progress** when some are, **Planned** when none is |
 | The book's code | `snippets/`, built and tested in CI | yes: a change that breaks it fails |
+| The tutorial's code and its playable steps | `tutorial/`, built and tested in CI, built for the web by `pages.yml` | yes: a change that breaks a step fails |
 | The book's words | written by hand | when a PR changes them: CI's `api` job fails a change to the public API that changes no file of the book and has no `Book:` line in its ticket's notes saying why not |
 | `llms.txt`, `llms-full.txt` and the twins | the Learn pages | as the book does |
 | The feature cards' text | `data/features.toml`, written by hand | no |
@@ -148,7 +158,7 @@ its budget fails before the merge. The API docs aren't built there, so
 their links are checked by `pages.yml`.
 
 `zola check` checks the `@/` links and their anchors. `check-build.sh`
-fails on a fenced Rust block in the book, and on an engine crate with
+fails on a fenced Rust block in the book, and on a code block of the tutorial's that isn't `bash`, and on an engine crate with
 no row in `data/api.toml`; then it builds the site with two base URLs,
 fails if either output names the other's or lacks a page, and fails if
 a page loads anything from another host. The `test` job builds and

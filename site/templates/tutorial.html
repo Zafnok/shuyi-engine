@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{#- The tutorial's contents: its steps in order (`weight`). -#}
+{% block content %}
+<article class="prose">
+  <h1>{{ section.title }}</h1>
+  {{ section.content | safe }}
+  <ol class="contents">
+    {%- for step in section.pages %}
+    <li><a href="{{ step.permalink | safe }}">{{ step.title }}</a>
+      {%- if step.description %}: {{ step.description }}{% endif %}</li>
+    {%- endfor %}
+  </ol>
+</article>
+{% endblock content %}

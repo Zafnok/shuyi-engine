@@ -1,0 +1,14 @@
+// Level 2, in the engine's `.map` format.
+(
+    name: "Two rows",
+    legend: { '.': "floor", '#': "wall", 'o': "target" },
+    features: { (2, 2): Start, (3, 2): Box, (3, 4): Box },
+)
+---
+########
+#......#
+#....o.#
+#......#
+#....o.#
+#......#
+########

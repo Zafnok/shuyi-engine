@@ -1,0 +1,61 @@
+# Box Pusher: a game on Shuyi Engine, made with `shuyi new`.
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+# The engine's crates. Until its first release on crates.io a game
+# depends on the engine's repository at a commit (its README).
+# `shuyi` is the engine by its front door: `shuyi add <module>` turns on
+# a module's feature here.
+shuyi = { path = "../../../crates/shuyi" }
+shuyi-cli = { path = "../../../crates/cli" }
+# The macroquad backend, already under `shuyi`, named for its `link`
+# feature (the game crate's).
+shuyi-app = { path = "../../../crates/app" }
+# The game's files, embedded.
+include_dir = "0.7"
+# Its own part of the data, and its rules' state, are plain data.
+serde = { version = "1", features = ["derive"] }
+# What it keeps and its lines are written as RON.
+ron = "0.12"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+unwrap_used = "warn"
+expect_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# Quick rebuilds: no debug info in dev and test builds, which takes about
+# a third off each rebuild's link. A panic still names its file and line;
+# a backtrace names functions only. For lines in backtraces, or to step
+# through the game in a debugger, set `debug = "line-tables-only"` (or
+# `true`). The engine and the other crates are built optimized, so the
+# game runs at speed in a debug build.
+[profile.dev]
+debug = false
+
+[profile.dev.package."*"]
+opt-level = 2
+debug = false

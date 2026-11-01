@@ -1,0 +1,25 @@
+// Box Pusher's English: every screen's text by key. A `{name}` that is an
+// action's name shows the player's key for it ({Confirm}).
+{
+    // The keys and layouts the engine names.
+    "keys.not_mapped": "! not mapped",
+    "keys.arrows": "arrows",
+    "keys.chord_join": "+",
+    "layout.arrows": "Arrows",
+
+    // The title.
+    "title.name": "Box Pusher",
+    "title.subtitle": "made with Shuyi Engine",
+    // Shown when the game has a stage to start.
+    "title.play": "{Confirm} play",
+    "title.help": "{Cancel} leave",
+
+    // The board.
+    "board.help": "{Cursor} walk · {Undo} undo · {Cancel} levels",
+    "board.help.won": "Solved! {Confirm} next · {Undo} undo · {Cancel} levels",
+
+    // The level menu.
+    "levels.title": "Levels",
+    "levels.level": "Level {n}",
+    "levels.help": "{Cursor} move · {Confirm} choose · {Cancel} back",
+}
