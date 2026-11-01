@@ -59,7 +59,7 @@ Every `export` now reads its final package back and writes
 package, with hashes and the resolved build inputs. A `disclosure` part in
 `shuyi.ron` holds it to a list; what breaks it refuses the export with `SH3012`,
 names the file and its source, and leaves the report and no package.
-[ADR-0067](../../docs/adr/0067-each-final-export-is-read-back-into-an-exposure-report-and-held-to-a-games-disclosure-part.md)
+[ADR-0070](../../docs/adr/0070-each-final-export-is-read-back-into-an-exposure-report-and-held-to-a-games-disclosure-part.md)
 has the choices.
 
 Checked on real packages of Hello, Grid, whose `shuyi.ron` is now the allowed

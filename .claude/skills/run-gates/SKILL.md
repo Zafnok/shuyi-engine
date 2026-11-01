@@ -156,6 +156,15 @@ cargo clippy --target wasm32-unknown-unknown -p shuyi-app --features capture --l
 
 Running `check.py` by hand: `crates/cli/web/README.md`, *Checked in CI*.
 
+## The sound parity gates (CI's `sound-parity` job, CI only)
+
+On any change a sound path can feel, the `sound-parity` job records what the
+backend really emits, natively and in Chromium, and holds it to expected
+signals and to its speed budget. It needs PulseAudio on Linux and takes minutes,
+so it isn't one of these gates. Its own tests are `cargo test -p xtask
+sound_parity`. Running it by hand, and what its cells mean:
+[`tools/sound-parity/README.md`](../../../tools/sound-parity/README.md).
+
 ## Golden tables (CI's `determinism` job)
 
 Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build

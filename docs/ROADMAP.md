@@ -684,13 +684,16 @@ specifications, never copied. The order, when unparked:
 - **Sound:** 2902 chose library codecs/output and an owned small mixer,
   conditional on automated correctness/speed parity (2026-10-31,
   [ADR-0066](adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md)).
-  The parked chain starts with a working native/browser baseline gate
-  (2573), then PCM/decoder adapters (2210), mixer (3030), Windows/web
-  (3031), Linux/macOS (3032), and loop regions (2397). Each stage qualifies
-  consumers while retaining the old path. Only final ticket 3079 removes
-  quad-snd after the complete comparative matrix and device checks pass.
-  Original clean-room codec tickets 2211–2214 were dropped. None of this
-  replacement work was unparked by the research request.
+  Nick unparked the whole chain on 2026-10-31, ahead of the MVP
+  ([`decisions.md`](decisions.md)). It starts with a working native/browser
+  baseline gate (2573), then PCM/decoder adapters (2210), mixer (3030),
+  Windows/web (3031), Linux/macOS (3032), loop regions (2397), and the new
+  default (3084). Each stage qualifies consumers while retaining the old path,
+  and each can be backed out if a hurdle can't be climbed
+  ([ADR-0068](adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+  Only final ticket 3079 removes quad-snd, after the complete comparative matrix
+  and device checks pass and the game has run on the new default. Original
+  clean-room codec tickets 2211–2214 were dropped.
 - **Controllers:** the research (2903) first. If it keeps our own code:
   2402, then 2403, which removes gilrs.
 - **The two small ones:** web saves (3033) and file embedding (2215).
@@ -848,7 +851,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2705–2720, 2733–2734 | Real-time strategy at scale, a module (ADR-0015): measuring units at scale, command sims, units in columns, a spatial grid, sectors and flow fields shared by armies, steering and formations, combat, fog of war, the economy (resources, workers, construction, production), AI for units, squads and commanders, the view and selection, parallel steps on desktops, budgets of a thousand units, an example, and lockstep multiplayer | Nick asks, after the game launches (2026-10-18: "make tickets parked for after visions of shuyi launches") |
 | 2721–2726 | Visual novels, a module (ADR-0016): a story as turn rules, stage directions, characters as data, the scene and skin, text speed, auto, skip, the backlog, going back, saves anywhere, the gallery, story checks and a route chart, voices, an example | the same |
 | 2727–2732 | Detective games, a module on top of visual novels (ADR-0016): clues and the case file, investigation, deductions, testimony, a fair-play check that every case can be solved, an example | the same |
-| 2903, 2210, 2215, 2397, 2402–2403, 2573, 3030–3034, 3079, 2008 | The platform layer (ADR-0021; audio choice ADR-0066): sound parity gate, library decoder adapters, owned mixer and staged output, final-only quad-snd removal; controller research and its chosen replacement; web saves; embedding; winit/wgpu research; separate repositories for owned pieces | Nick asks; 2902 research alone was unparked on 2026-10-31, its build chain remains parked |
+| 2903, 2215, 2402–2403, 3033–3034, 2008 | The rest of the platform layer (ADR-0021): controller research and its chosen replacement; web saves; embedding; winit/wgpu research; separate repositories for owned pieces. Its sound chain (2573, 2210, 3030–3032, 2397, 3084, 3079; ADR-0066) was unparked on 2026-10-31 | Nick asks |
 | 2103–2105, 2216–2217 | Animation beyond clips: particles drawn from a seed and the time, state machines over clips with direction sets and frame events, 2D skeletal animation in `Fx` (a `shuyi-bones` module), and DragonBones and Spine import (Spine through the official runtime, its users bringing their own Spine license, or a reader of our own: Nick picks when unparked) | Nick asks |
 | 2106 | Paths for free movement: a navigation mesh built from tile collision, routes with clearance, and a path a mover follows | 1122 is unparked |
 | 2322–2324, 2404, 3035 | Accessibility: an accessibility tree from the engine's views, a text size the player picks, a colour-vision and text-contrast check, hold or toggle and slower timings, and screen reader output through AccessKit | Nick asks |

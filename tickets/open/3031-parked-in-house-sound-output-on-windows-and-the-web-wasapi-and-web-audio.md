@@ -1,6 +1,6 @@
 ---
 id: "3031"
-title: "Parked: Gated sound output on Windows through CPAL and the web through our own Web Audio bridge"
+title: "Gated sound output on Windows through CPAL and the web through our own Web Audio bridge"
 type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
@@ -12,8 +12,6 @@ completed:
 ---
 
 # 3031 — In-house sound output: Windows and the web
-
-> **Parked**: Nick selected the gated hybrid in 2902 on 2026-10-31; build work stays parked until he starts it. Whoever unparks it sets `status: todo` and drops `Parked:`. 2573's working baseline comes first.
 
 ## Context
 
@@ -45,7 +43,11 @@ sounds wrong, cuts out, or starts late.
 **In:**
 - Before new platform output code, require 2573's actual automated Windows
   reference capture/performance baseline and original-loader browser baseline.
-  Establish any missing platform baseline first; a missing/silent capture is
+  **From 2573 (done):** the browser baseline and the harness are there, and
+  Windows is yours to establish first: add its capture to
+  `tools/sound-parity/capture.py` (WASAPI loopback on a real render endpoint),
+  mark it `Captured` in `budget.ron` with calibrated limits, and pass `cargo
+  xtask sound-parity port-ready windows`. A missing/silent capture is
   blocking, never a passed/ignored cell. Extend its corpus with both paths,
   including bounded streams, sample-aligned loop joins, crossfades, pause,
   rate, independent copies and no hidden stealing. Keep quad-snd available
@@ -150,6 +152,8 @@ sounds wrong, cuts out, or starts late.
       the completion notes.
 - [ ] Nick signs off.
 - [ ] Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable.
+- [ ] `in-house-sound` is the one switch, off by default; no game code or file names a backend, and CI still records quad-snd with every cell mandatory.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -1,0 +1,310 @@
+// What the sound parity gates play and what must come out (ticket 2573,
+// ADR-0066). `crates/app/examples/sound_probe.rs` plays the `steps`; `cargo
+// xtask sound-parity gate` holds a recording to the `expect`s, independent
+// expected signals made from the corpus's own numbers
+// (crates/xtask/src/sound_parity/corpus.rs), never from an old recording.
+//
+// Times are milliseconds after the marker's first sample in the recording,
+// the one alignment of a run. Levels are of full scale. A tone's `amp` is its
+// amplitude; a `Level`'s `rms` is the root mean square of what is expected.
+//
+// A `Boundary` is where a looped sound comes round. It checks nothing: it only
+// leaves that moment out of the comparison of two runs, because quad-snd's native
+// loop isn't gapless there (`loop` below), and a copy that started a mixing block
+// later has its glitch a block later. The checks of each scenario still hold.
+//
+// `backends` says which backends a scenario holds on: `mute` pins today's
+// fallback, and the `future` ones wait for a replacement (`[]`: unsupported
+// on every backend so far). A backend not named reports `unsupported`.
+(
+    sounds: {
+        "marker": ("marker.wav", false),
+        "silence": ("silence.wav", false),
+        "tone": ("tone.wav", false),
+        "tone_loop": ("tone.wav", true),
+        "noise_loop": ("noise_loop.wav", true),
+        "loop": ("loop.wav", true),
+        "wav_44k": ("fmt_44k_s.wav", false),
+        "wav_22k": ("fmt_22k_m.wav", false),
+        "wav_48k": ("fmt_48k_s.wav", false),
+        "ogg_44k": ("fmt_44k_s.ogg", false),
+        "ogg_22k": ("fmt_22k_m.ogg", false),
+        "ogg_48k": ("fmt_48k_s.ogg", false),
+    },
+    music: {
+        "music_a": ("music_a.ogg", 6000),
+        "music_b": ("music_b.ogg", 6000),
+    },
+    scenarios: [
+        (
+            name: "silence",
+            steps: [(at: 0, do: Sound("silence", 1.0))],
+            end: 1500,
+            // No marker: nothing may come out at all.
+            expect: [NoSignal],
+        ),
+        (
+            name: "onset",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Sound("tone", 1.0)),
+            ],
+            end: 2200,
+            expect: [
+                Rise(at: 500),
+                Fall(at: 1500),
+                Tone(from: 650, to: 1350, ch: Left, hz: 440.0, amp: 0.5),
+                Tone(from: 650, to: 1350, ch: Right, hz: 660.0, amp: 0.5),
+                Silent(from: 1700, to: 2100),
+            ],
+        ),
+        (
+            // Three whole passes of the file, sample by sample: two boundaries,
+            // each landing on its exact frame. The smear is what quad-snd does
+            // natively: inside the 4,096-frame block holding a pass's end, the
+            // next pass lands on top of it or the block falls silent, so its
+            // loops aren't gapless. That is pinned here, and not as correct:
+            // `loop_gapless` is what a replacement is held to.
+            name: "loop",
+            steps: [
+                (at: 0, do: Start(1, "loop", 1.0)),
+                (at: 1700, do: Stop(1)),
+            ],
+            end: 2500,
+            expect: [
+                Waveform(file: "loop.wav", repeats: 3, class: Exact, smear: 4096),
+                Silent(from: 1950, to: 2400),
+            ],
+        ),
+        (
+            // The same, with every frame held.
+            name: "loop_gapless",
+            backends: Some(["quad-snd-web"]),
+            steps: [
+                (at: 0, do: Start(1, "loop", 1.0)),
+                (at: 1700, do: Stop(1)),
+            ],
+            end: 2500,
+            expect: [
+                Waveform(file: "loop.wav", repeats: 3, class: Exact),
+                Silent(from: 1950, to: 2400),
+            ],
+        ),
+        (
+            name: "gain",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Start(1, "tone_loop", 1.0)),
+                (at: 1200, do: Volume(1, 0.25)),
+                (at: 1900, do: Stop(1)),
+            ],
+            end: 2500,
+            expect: [
+                Tone(from: 650, to: 1100, ch: Left, hz: 440.0, amp: 0.5),
+                Tone(from: 1350, to: 1800, ch: Left, hz: 440.0, amp: 0.125),
+                Tone(from: 1350, to: 1800, ch: Right, hz: 660.0, amp: 0.125),
+                Silent(from: 2100, to: 2400),
+                Boundary(at: 1500),
+            ],
+        ),
+        (
+            // Noise, so that two copies add by power whatever their offset: a
+            // tone's copies would cancel or not by luck. Each level tells
+            // which copy went: stopping the wrong one leaves 0.144, not 0.072.
+            name: "copies",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Start(1, "noise_loop", 1.0)),
+                (at: 700, do: Start(2, "noise_loop", 1.0)),
+                (at: 1400, do: Volume(2, 0.5)),
+                (at: 2100, do: Stop(1)),
+                (at: 2800, do: Stop(2)),
+            ],
+            end: 3300,
+            expect: [
+                Level(from: 900, to: 1300, ch: Both, rms: 0.204),
+                Level(from: 1600, to: 2000, ch: Both, rms: 0.161),
+                Level(from: 2300, to: 2700, ch: Both, rms: 0.072),
+                Silent(from: 3000, to: 3200),
+                Boundary(at: 1500),
+                Boundary(at: 1700),
+                Boundary(at: 2500),
+                Boundary(at: 2700),
+            ],
+        ),
+        (
+            name: "crossfade",
+            setup: [Load("music_a"), Load("music_b")],
+            settle: 1500,
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Music("music_a", 1.0)),
+                (at: 1100, do: Tick),
+                (at: 1500, do: Music("music_b", 0.25)),
+                (at: 1500, do: Gain("music_a", 0.75)),
+                (at: 1900, do: Gain("music_a", 0.5)),
+                (at: 1900, do: Gain("music_b", 0.5)),
+                (at: 2300, do: Gain("music_a", 0.0)),
+                (at: 2300, do: Gain("music_b", 1.0)),
+                (at: 2900, do: Tick),
+                (at: 3000, do: StopMusic("music_a")),
+                (at: 3000, do: StopMusic("music_b")),
+            ],
+            end: 3500,
+            expect: [
+                Tone(from: 650, to: 1400, ch: Both, hz: 440.0, amp: 0.5),
+                Tone(from: 1600, to: 1800, ch: Both, hz: 440.0, amp: 0.375),
+                Tone(from: 1600, to: 1800, ch: Both, hz: 1000.0, amp: 0.125),
+                Tone(from: 2000, to: 2200, ch: Both, hz: 440.0, amp: 0.25),
+                Tone(from: 2000, to: 2200, ch: Both, hz: 1000.0, amp: 0.25),
+                Tone(from: 2450, to: 2900, ch: Both, hz: 1000.0, amp: 0.5),
+                Tone(from: 2450, to: 2900, ch: Both, hz: 440.0, amp: 0.0),
+                Silent(from: 3200, to: 3400),
+                // The player's clock: the newest track sounding, and for how long.
+                State(at: 1100, cue: "music_a", secs: 0.6),
+                State(at: 2900, cue: "music_b", secs: 1.4),
+            ],
+        ),
+        (
+            // Today's fallback where a backend can't pause: the sound runs on
+            // muted. A true pause is `future_pause`.
+            name: "mute",
+            backends: Some(["quad-snd", "quad-snd-web"]),
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Start(1, "tone_loop", 1.0)),
+                (at: 1100, do: Pause),
+                (at: 1800, do: Resume),
+                (at: 2400, do: Stop(1)),
+            ],
+            end: 2900,
+            expect: [
+                Tone(from: 650, to: 1000, ch: Left, hz: 440.0, amp: 0.5),
+                Silent(from: 1250, to: 1700),
+                Tone(from: 1950, to: 2300, ch: Left, hz: 440.0, amp: 0.5),
+                Silent(from: 2600, to: 2800),
+                Warned("can't pause"),
+                Boundary(at: 1500),
+                Boundary(at: 2500),
+            ],
+        ),
+        (
+            name: "wav_44k",
+            steps: [(at: 0, do: Sound("wav_44k", 1.0))],
+            end: 1900,
+            expect: [
+                Waveform(file: "fmt_44k_s.wav", repeats: 1, class: Exact),
+                Silent(from: 1500, to: 1800),
+            ],
+        ),
+        (
+            // Against what a decoder apart from the backend makes of the file.
+            name: "ogg_44k",
+            steps: [(at: 0, do: Sound("ogg_44k", 1.0))],
+            end: 1900,
+            expect: [
+                Waveform(file: "fmt_44k_s.ogg", repeats: 1, class: Decoded),
+                Silent(from: 1500, to: 1800),
+            ],
+        ),
+        (
+            name: "wav_22k",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Sound("wav_22k", 1.0)),
+            ],
+            end: 2100,
+            expect: [
+                Rise(at: 500),
+                Fall(at: 1500),
+                Tone(from: 650, to: 1350, ch: Both, hz: 1000.0, amp: 0.5),
+                Silent(from: 1700, to: 2000),
+            ],
+        ),
+        (
+            name: "ogg_22k",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Sound("ogg_22k", 1.0)),
+            ],
+            end: 2100,
+            expect: [
+                Rise(at: 500),
+                Fall(at: 1500),
+                Tone(from: 650, to: 1350, ch: Both, hz: 1000.0, amp: 0.5),
+                Silent(from: 1700, to: 2000),
+            ],
+        ),
+        (
+            name: "wav_48k",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Sound("wav_48k", 1.0)),
+            ],
+            end: 2100,
+            expect: [
+                Rise(at: 500),
+                Fall(at: 1500),
+                Tone(from: 650, to: 1350, ch: Left, hz: 1000.0, amp: 0.5),
+                Tone(from: 650, to: 1350, ch: Right, hz: 500.0, amp: 0.5),
+                Silent(from: 1700, to: 2000),
+            ],
+        ),
+        (
+            name: "ogg_48k",
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Sound("ogg_48k", 1.0)),
+            ],
+            end: 2100,
+            expect: [
+                Rise(at: 500),
+                Fall(at: 1500),
+                Tone(from: 650, to: 1350, ch: Left, hz: 1000.0, amp: 0.5),
+                Tone(from: 650, to: 1350, ch: Right, hz: 500.0, amp: 0.5),
+                Silent(from: 1700, to: 2000),
+            ],
+        ),
+        // What a replacement must do that quad-snd can't (ADR-0056, 2902):
+        // expected signals of their own, not today's mute or whole decode.
+        // Their stages add the steps and put themselves in `backends`.
+        (
+            // The tone stops at the pause and goes on from there: 600 ms of it
+            // before, 400 ms after, then the file ends; a mute would end early.
+            name: "future_pause",
+            backends: Some([]),
+            steps: [],
+            end: 3000,
+            expect: [
+                Tone(from: 650, to: 1000, ch: Left, hz: 440.0, amp: 0.5),
+                Silent(from: 1250, to: 1700),
+                Tone(from: 1950, to: 2150, ch: Left, hz: 440.0, amp: 0.5),
+                Fall(at: 2200),
+            ],
+        ),
+        (
+            // Twice the rate: an octave up, half as long.
+            name: "future_rate",
+            backends: Some([]),
+            steps: [],
+            end: 2000,
+            expect: [
+                Tone(from: 600, to: 900, ch: Left, hz: 880.0, amp: 0.5),
+                Fall(at: 1000),
+            ],
+        ),
+        (
+            // `intro_loop.ogg`: the 440 Hz intro once, then the 880 Hz region
+            // again and again, with no 440 Hz after the first pass.
+            name: "future_region",
+            backends: Some([]),
+            steps: [],
+            end: 4000,
+            expect: [
+                Tone(from: 650, to: 1350, ch: Both, hz: 440.0, amp: 0.5),
+                Tone(from: 1650, to: 3400, ch: Both, hz: 880.0, amp: 0.5),
+                Tone(from: 1650, to: 3400, ch: Both, hz: 440.0, amp: 0.0),
+            ],
+        ),
+    ],
+)

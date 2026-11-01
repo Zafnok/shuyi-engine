@@ -1,4 +1,4 @@
-# ADR-0067: Each final export is read back into an exposure report and held to a game's disclosure part
+# ADR-0070: Each final export is read back into an exposure report and held to a game's disclosure part
 
 - **Status:** Accepted; extends ADR-0058 (what an export package carries)
 - **Date:** 2026-11-01

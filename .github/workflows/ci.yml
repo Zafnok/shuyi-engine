@@ -405,6 +405,156 @@ jobs:
           path: target/web-check/
           if-no-files-found: ignore
 
+  # The first gate on leaving quad-snd (ticket 2573, ADR-0066): what the
+  # backend really emits, recorded from a PulseAudio null sink natively and
+  # from Chromium on the real loader, held to expected signals, to itself and
+  # to its speed. tools/sound-parity/README.md says what each cell means. No
+  # replacement work starts without it passing, and no cell may be skipped:
+  # missing, stale or silent evidence fails.
+  sound-parity:
+    name: sound-parity
+    needs: changes
+    if: needs.changes.outputs.sound == 'true'
+    # Pinned, as its performance budget is measured on this image.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Install the capture's tools and Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pulseaudio pulseaudio-utils libasound2-plugins libpulse0 vorbis-tools
+          python3 -m venv "$RUNNER_TEMP/capture"
+          "$RUNNER_TEMP/capture/bin/pip" install --require-hashes -r tools/web-check/requirements.txt
+          "$RUNNER_TEMP/capture/bin/python" -m playwright install --with-deps chromium
+      - name: The gates' own tests
+        run: cargo test -p xtask --locked sound_parity
+      - name: The corpus and what a separate decoder makes of it
+        run: cargo xtask sound-parity corpus --out target/sound-parity --oracle
+      - name: Build the probe, natively and for the web
+        run: |
+          start=$SECONDS
+          cargo build -p shuyi-app --example sound_probe --features sound-probe --release --locked
+          echo "NATIVE_BUILD=$((SECONDS - start))" >> "$GITHUB_ENV"
+          start=$SECONDS
+          cargo build -p shuyi-app --example sound_probe --features sound-probe \
+            --target wasm32-unknown-unknown --release --locked
+          echo "WEB_BUILD=$((SECONDS - start))" >> "$GITHUB_ENV"
+          page=target/sound-parity-page
+          rm -rf "$page"
+          mkdir -p "$page"
+          cp target/wasm32-unknown-unknown/release/examples/sound_probe.wasm crates/cli/web/*.js "$page/"
+          sed -e 's/%TITLE%/Sound probe/' -e 's/%WASM%/sound_probe.wasm/' crates/cli/web/index.html > "$page/index.html"
+      - name: Record the native backend
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir target/sound-parity \
+            --probe target/release/examples/sound_probe --revision "$REVISION" --build-seconds "$NATIVE_BUILD"
+      - name: Record the web backend on its real loader
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir target/sound-parity \
+            --page target/sound-parity-page --revision "$REVISION" --build-seconds "$WEB_BUILD"
+      # A noisy machine's timings say nothing either way, so they are measured
+      # again, up to twice; a failed cell stands, as a slowdown shows in the median
+      # however often it is measured. Every attempt's samples stay in the artifact.
+      - name: The gate
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          dir=target/sound-parity
+          for attempt in 1 2 3; do
+            if cargo xtask sound-parity gate --dir "$dir" --revision "$REVISION"; then
+              exit 0
+            fi
+            if [ "$attempt" = 3 ] || jq -e '[.cells[] | select(.mandatory and .status != "passed" and .status != "inconclusive")] | length > 0' "$dir/matrix.json" > /dev/null; then
+              exit 1
+            fi
+            for platform in $(jq -r '[.cells[] | select(.status == "inconclusive") | .platform] | unique | .[]' "$dir/matrix.json"); do
+              echo "::notice::$platform's timings were inconclusive: measuring again"
+              mv "$dir/$platform/perf.jsonl" "$dir/$platform/perf-attempt-$attempt.jsonl"
+              case "$platform" in
+                linux-native) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir "$dir" \
+                  --probe target/release/examples/sound_probe --revision "$REVISION" --perf-only ;;
+                browser-chromium) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir "$dir" \
+                  --page target/sound-parity-page --revision "$REVISION" --perf-only ;;
+              esac
+            done
+          done
+      - name: A port without capture evidence isn't ready, and the captured ones are
+        run: |
+          for platform in windows macos; do
+            if cargo xtask sound-parity port-ready "$platform" --matrix target/sound-parity/matrix.json; then
+              echo "::error::$platform was called ready without capture evidence"
+              exit 1
+            fi
+          done
+          cargo xtask sound-parity port-ready linux-native --matrix target/sound-parity/matrix.json
+          cargo xtask sound-parity port-ready browser-chromium --matrix target/sound-parity/matrix.json
+      - name: The matrix in the summary
+        if: always()
+        run: |
+          if [ -f target/sound-parity/matrix.json ]; then
+            {
+              echo '```text'
+              jq -r '.cells[] | "\(.platform) \(.check): \(.status) \(.detail)"' target/sound-parity/matrix.json
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: sound-parity
+          path: |
+            target/sound-parity/matrix.json
+            target/sound-parity/linux-native/
+            target/sound-parity/browser-chromium/
+          if-no-files-found: ignore
+
+  # Nick can scrap the sound replacement in one session at any stage until
+  # quad-snd is removed (ADR-0068): this really does it, and builds what is
+  # left, so the way back can't rot while nobody is looking.
+  sound-give-up:
+    name: sound-give-up
+    needs: changes
+    if: needs.changes.outputs.sound == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Give up, in this checkout
+        run: cargo xtask sound-parity give-up --apply
+      - name: What is left builds, for the desktop and the web
+        run: |
+          cargo check --workspace --all-targets
+          cargo check -p shuyi-app --target wasm32-unknown-unknown
+      - name: What is left passes its checks
+        run: |
+          cargo test -p shuyi-app -p xtask
+          cargo xtask check-layers
+          cargo xtask check-docs
+          cargo xtask check-links
+          pwsh -File scripts/sync-agent-skills.ps1 -Check
+      - name: Nothing of it is left outside the record
+        run: |
+          if git grep -l -I -E 'sound-parity|sound_parity|sound_probe|sound-probe|SoundProbeBackend|in-house-sound|shuyi-sound|shuyi_sound' \
+            -- . ':!tickets' ':!docs/adr' ':!docs/research' ':!docs/decisions.md' ':!docs/ROADMAP.md'; then
+            echo "::error::Giving up left these behind"
+            exit 1
+          fi
+
   # `shuyi new` (tickets 1129 and 2501): a game made with each short name
   # of the engine's template (templates/shuyi-default), on this checkout of
   # the engine, passes the gates its own CI runs. It builds in this
@@ -1022,7 +1172,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled
