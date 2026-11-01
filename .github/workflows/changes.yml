@@ -21,9 +21,11 @@ name: Changes
 # Any other event (push, schedule, workflow_dispatch) always counts as code.
 #
 # `sound` is narrower (ticket 2573, the `sound-parity` job): a pull request
-# that changes the sound backend, the shared player, the audio formats, the
-# web loader, what builds them, or the gates themselves. Always 'true' on
-# other events.
+# or a push (ticket 2039) that changes the sound backend, the shared player,
+# the audio formats, the web loader, what builds them, or the gates
+# themselves. 'true' on other events, and on a push whose earlier commit can't
+# be fetched (a new branch, a forced push). A push cancelled by the next one
+# isn't compared again: its pull request already ran the job.
 #
 # `crates` is narrower (ticket 2010, the `api` job): a pull request that
 # changes the crates' code or what builds them (`crates/**`, the root
@@ -40,7 +42,7 @@ on:
         description: "'true' unless the event is a pull request that changes no crate, Cargo.toml, Cargo.lock or rust-toolchain.toml"
         value: ${{ jobs.detect.outputs.crates }}
       sound:
-        description: "'true' unless the event is a pull request that changes nothing the sound parity gates cover"
+        description: "'true' unless the event is a pull request or a push that changes nothing the sound parity gates cover"
         value: ${{ jobs.detect.outputs.sound }}
 
 permissions:
@@ -57,7 +59,7 @@ jobs:
     steps:
       # On pull_request, HEAD is the PR merge commit; HEAD^1 is the base tip.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'push'
         with:
           persist-credentials: false
           fetch-depth: 2
@@ -65,9 +67,15 @@ jobs:
         id: classify
         env:
           EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [ "$EVENT_NAME" != "pull_request" ]; then
+          base=
+          case "$EVENT_NAME" in
+            pull_request) base=HEAD^1 ;;
+            push) git fetch --quiet --depth=1 origin "$BEFORE" && base=$BEFORE ;;
+          esac
+          if [ -z "$base" ]; then
             echo "Event $EVENT_NAME: always run everything."
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "crates=true" >> "$GITHUB_OUTPUT"
@@ -83,14 +91,18 @@ jobs:
               crates/*|Cargo.toml|Cargo.lock|rust-toolchain.toml) crates=true ;;
             esac
             case "$path" in
-              crates/app/*|crates/platform/src/audio*|crates/assets/src/audio*|crates/ui/src/audio*|crates/cli/web/*|crates/xtask/src/sound_parity*|tools/sound-parity/*|tools/web-check/*|.github/workflows/ci.yml|.github/workflows/changes.yml|Cargo.toml|Cargo.lock|rust-toolchain.toml|scripts/setup-linux.sh) sound=true ;;
+              crates/app/src/audio*|crates/app/src/backend.rs|crates/app/src/lib.rs|crates/app/examples/sound_probe.rs|crates/app/Cargo.toml|crates/platform/src/audio*|crates/assets/src/audio*|crates/ui/src/audio*|crates/cli/web/*|crates/xtask/src/sound_parity*|tools/sound-parity/*|tools/web-check/*|.github/workflows/ci.yml|.github/workflows/changes.yml|Cargo.toml|Cargo.lock|rust-toolchain.toml|scripts/setup-linux.sh) sound=true ;;
             esac
             case "$path" in
               crates/*|templates/*|examples/*|skills/*|docs/contract.md|docs/modules.md|docs/modules.ron|README.md) echo "code: $path"; code=true ;;
               *.md|docs/*|tickets/*|.claude/*) echo "docs: $path" ;;
               *) echo "code: $path"; code=true ;;
             esac
-          done < <(git diff --name-only --no-renames HEAD^1 HEAD)
+          done < <(git diff --name-only --no-renames "$base" HEAD)
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            code=true
+            crates=true
+          fi
           echo "code=$code crates=$crates sound=$sound"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "crates=$crates" >> "$GITHUB_OUTPUT"

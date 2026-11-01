@@ -158,8 +158,8 @@ Running `check.py` by hand: `crates/cli/web/README.md`, *Checked in CI*.
 
 ## The sound parity gates (CI's `sound-parity` job, CI only)
 
-On any change a sound path can feel, the `sound-parity` job records what the
-backend really emits, natively and in Chromium, and holds it to expected
+On a pull request or a push that changes a sound path, the `sound-parity` job
+records what the backend really emits, natively and in Chromium, and holds it to expected
 signals and to its speed budget. It needs PulseAudio on Linux and takes minutes,
 so it isn't one of these gates. Its own tests are `cargo test -p xtask
 sound_parity`. Running it by hand, and what its cells mean:

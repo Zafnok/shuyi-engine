@@ -35,7 +35,7 @@
         Replace(
             file: ".github/workflows/changes.yml",
             find: r##"      sound:
-        description: "'true' unless the event is a pull request that changes nothing the sound parity gates cover"
+        description: "'true' unless the event is a pull request or a push that changes nothing the sound parity gates cover"
         value: ${{ jobs.detect.outputs.sound }}
 "##,
             with: "",
@@ -57,7 +57,7 @@
         ),
         Cut(
             file: ".github/workflows/changes.yml",
-            from: "            case \"$path\" in\n              crates/app/*",
+            from: "            case \"$path\" in\n              crates/app/src/audio*",
             to: "            case \"$path\" in\n              crates/*|templates/*",
         ),
         Replace(
