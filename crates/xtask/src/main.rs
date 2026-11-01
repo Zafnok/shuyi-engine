@@ -15,6 +15,7 @@
 //! - `cargo xtask llms --public <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask site-data --site <dir>`
+//! - `cargo xtask tutorial-tries [--check] [<name>...]`
 //! - `cargo xtask golden --bless`
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
@@ -38,6 +39,7 @@ mod skills;
 mod sound_parity;
 mod tickets;
 mod toolchain;
+mod tries;
 
 use std::io::Write as _;
 use std::path::{Path, PathBuf};
@@ -114,6 +116,13 @@ usage:
       are in tickets/done/, In progress when some are, Planned when none is,
       and its link text when it has none. Fails on a card with both `tickets`
       and `status`, or naming a ticket in neither tickets/open/ nor done/.
+  cargo xtask tutorial-tries [--check] [<name>...]
+      Render the tutorial's pictures from site/tutorial/tries.toml (ticket
+      2818), or those named: each step as it is and, for a try with edits, a
+      copy of it with them made, built and run. Writes them to
+      site/static/tutorial-tries/; with --check, compares with those kept and
+      fails on a stale one. Fails on an edit that isn't exactly once in its
+      file and, for the whole list, on an orphan or a try no page shows.
   cargo xtask golden --bless
       Write the golden tables (shuyi_assets::golden, ticket 2116): run every
       test with `golden` in its name with SHUYI_BLESS=1, write each table a
@@ -158,6 +167,7 @@ fn main() -> ExitCode {
         Some("changelog") => changelog(&root, &args[1..]),
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),
+        Some("tutorial-tries") => tutorial_tries(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
         Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
         _ => {
@@ -354,6 +364,14 @@ fn site_data(root: &Path, args: &[String]) -> ExitCode {
     };
     let errors = site_data::run(root, &options).err().unwrap_or_default();
     report("site-data", &errors, &[])
+}
+
+fn tutorial_tries(root: &Path, args: &[String]) -> ExitCode {
+    let Some(options) = tries::Options::parse(args) else {
+        eprintln!("{USAGE}");
+        return ExitCode::FAILURE;
+    };
+    report("tutorial-tries", &tries::run(root, &options), &[])
 }
 
 /// Prints what a check found on stderr, and on GitHub Actions each warning on

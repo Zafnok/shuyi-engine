@@ -31,6 +31,12 @@ pin, and Nick's machine.
 
 ## The code gates (CI's `ci.yml`)
 
+A change that can move what the tutorial's game draws also runs `cargo xtask
+tutorial-tries --check` (CI's `tutorial-tries` job, ticket 2818). It takes
+minutes, as it builds a copy of a step for each picture; name a try to check
+only it. After a change on purpose, `cargo xtask tutorial-tries` remakes them:
+look at each picture before you keep it.
+
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets --features shuyi-app/capture,hello-grid/capture --locked -- -D warnings   # pedantic: the workspace's lints

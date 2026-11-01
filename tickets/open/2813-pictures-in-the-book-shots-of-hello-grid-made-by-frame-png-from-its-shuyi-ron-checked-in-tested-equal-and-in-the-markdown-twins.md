@@ -56,6 +56,13 @@ ends with the command remaking the file) into `frame_png/kept.rs`, and
 have both call it. If not, write `frame_png/kept.rs` with the still
 check alone.
 
+**From 2818 (done):** the tutorial's pictures are `cargo xtask
+tutorial-tries`'s and stay so (their edits have no home in `shuyi.ron`). Share
+their CSS (`.prose figure`, `.try-pair`) with `shot` if that's simple.
+
+**Either order with 2819:** if 2819 is done, add these shots to its chapters
+beside what it put there; if not, nothing to do (2819 adds to them).
+
 ## Nick input
 
 None.

@@ -91,9 +91,11 @@ impl Screen<Data> for LevelMenu {
                 Some(MenuEvent::Chosen(Choice::Level(n))) => {
                     return Transition::Push(Box::new(Board::new(ctx, n)));
                 }
+                // ANCHOR: chosen
                 Some(MenuEvent::Chosen(Choice::Options)) => {
                     return Transition::Push(Box::new(OptionsScreen::new(option_rows)));
                 }
+                // ANCHOR_END: chosen
                 Some(MenuEvent::Cancelled) => return Transition::Pop,
                 None => {}
             }

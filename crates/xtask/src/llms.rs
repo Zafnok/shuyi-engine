@@ -25,6 +25,8 @@ use std::process::Command;
 
 use pulldown_cmark::{Event, LinkType, Options as Extensions, Parser, Tag, TagEnd};
 
+use crate::tries;
+
 #[cfg(test)]
 mod tests;
 
@@ -38,6 +40,10 @@ const REPO: &str = "Zafnok/shuyi-engine";
 const CONTENT: &str = "site/content";
 /// Learn's folder, from [`CONTENT`], as a section's folder is written.
 const LEARN: &str = "learn/";
+/// The URL of what `llms-full.txt` leaves out: the tutorial teaches people
+/// from nothing, and an agent has the book, the API docs and the steps'
+/// sources (ticket 2818). Its pages keep their twins and `llms.txt` lines.
+const FOR_PEOPLE: &str = "learn/tutorial/";
 /// The book's code, which the `snippet` shortcode reads.
 const SNIPPETS: &str = "site/snippets";
 /// The start of `llms.txt`, written by hand.
@@ -177,7 +183,13 @@ pub fn run(root: &Path, options: &Options, env: &Env) -> Outcome {
         texts.push(text);
     }
 
-    let full = full_text(&facts, &texts);
+    let in_full: Vec<String> = listed
+        .iter()
+        .zip(&texts)
+        .filter(|(page, _)| !page.url.starts_with(FOR_PEOPLE))
+        .map(|(_, text)| text.clone())
+        .collect();
+    let full = full_text(&facts, &in_full);
     // A twin's error is already named at its twin; the full file has only
     // its own start to add.
     if out.errors.len() == before {
@@ -187,7 +199,7 @@ pub fn run(root: &Path, options: &Options, env: &Env) -> Outcome {
         "llms-full.txt: {} bytes, about {} tokens, {} pages (the budget is {} bytes)",
         full.len(),
         full.len() / 4,
-        texts.len(),
+        in_full.len(),
         env.budget
     ));
     if full.len() > env.budget {
@@ -682,8 +694,13 @@ fn expand(shown: &str, body: &str, first_line: usize, snippets: &Path) -> (Strin
             }
             Some(Ok(call)) => {
                 at = open + 2 + call.len;
-                if opener == "{{" && call.name == "snippet" {
-                    match snippet(call.args, snippets) {
+                if opener == "{{" && matches!(call.name, "snippet" | "try_it") {
+                    let expanded = if call.name == "snippet" {
+                        snippet(call.args, snippets)
+                    } else {
+                        try_it(call.args, snippets)
+                    };
+                    match expanded {
                         Ok(code) => out.push_str(&code),
                         Err(e) => errors.push(format!("{shown}:{line}: {e}")),
                     }
@@ -821,6 +838,50 @@ fn snippet(args: &str, snippets: &Path) -> Result<String, String> {
         None => whole(&source),
     };
     Ok(format!("```{language}\n{}\n```", lines.join("\n")))
+}
+
+/// The `try_it` shortcode (`site/templates/shortcodes/try_it.md`, ticket
+/// 2818): the try `name` of `site/tutorial/tries.toml`, each edit as a diff
+/// and each picture as an image, from `site/static/tutorial-tries/<name>/`,
+/// which must be there.
+fn try_it(args: &str, snippets: &Path) -> Result<String, String> {
+    let mut name = None;
+    for (key, value) in arguments(args).map_err(|e| format!("try_it: {e}"))? {
+        match key {
+            "name" => name = Some(value),
+            _ => return Err(format!("try_it: no argument `{key}` (it takes `name`)")),
+        }
+    }
+    let name = name.ok_or("try_it: no `name`")?;
+    let site = snippets.parent().unwrap_or(snippets);
+    let list = fs::read_to_string(site.join("tutorial/tries.toml"))
+        .map_err(|e| format!("try_it: site/tutorial/tries.toml: {e}"))?;
+    let tries = tries::parse(&list).map_err(|errors| format!("try_it: {}", errors.join("; ")))?;
+    let one = tries
+        .get(name)
+        .ok_or_else(|| format!("try_it: site/tutorial/tries.toml has no try `{name}`"))?;
+    let mut out = String::new();
+    for edit in &one.edits {
+        let _ = write!(out, "In `{}`:\n\n```diff\n", edit.file);
+        for line in edit.find.lines() {
+            let _ = writeln!(out, "- {line}");
+        }
+        for line in edit.replace.lines() {
+            let _ = writeln!(out, "+ {line}");
+        }
+        out.push_str("```\n\n");
+    }
+    let alts = [Some(one.alt.as_str()), one.after.as_deref()];
+    for (file, alt) in tries::pictures(one).iter().zip(alts.into_iter().flatten()) {
+        let path = format!("tutorial-tries/{name}/{file}");
+        if !site.join("static").join(&path).is_file() {
+            return Err(format!(
+                "try_it: site/static/{path} isn't there: run `cargo xtask tutorial-tries {name}`"
+            ));
+        }
+        let _ = write!(out, "![{alt}](/{path})\n\n");
+    }
+    Ok(out.trim_end().to_owned())
 }
 
 /// Every line of `source`, without the anchors' lines, as the shortcode
@@ -1220,8 +1281,8 @@ fn llms_txt(listing: &Listing) -> String {
         "This copy documents Shuyi Engine {} at commit [`{short}`](https://github.com/{REPO}/commit/{}), \
          of {}. It follows the `main` branch and changes with each merge, so a game on a released \
          version reads its version's copy, under *Released versions*. Each page listed under \
-         Learn's sections is also in one file, [llms-full.txt]({base}llms-full.txt): {} bytes, \
-         about {} tokens.",
+         Learn's sections, but the tutorial's, which teaches people from nothing, is also in one \
+         file, [llms-full.txt]({base}llms-full.txt): {} bytes, about {} tokens.",
         facts.version,
         facts.commit,
         facts.date,

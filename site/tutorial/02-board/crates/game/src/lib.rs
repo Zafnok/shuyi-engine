@@ -7,12 +7,14 @@
 //! its name, id and version, is `shuyi.ron`'s `app`, which
 //! `cargo shuyi app-info` writes into [`app_info`].
 
+// ANCHOR: mods
 pub mod app_info;
 pub mod board;
 pub mod level;
 pub mod rules;
 pub mod stages;
 pub mod title;
+// ANCHOR_END: mods
 
 use std::sync::OnceLock;
 

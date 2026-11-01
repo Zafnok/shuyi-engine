@@ -17,8 +17,10 @@ pub mod progress;
 pub mod rules;
 pub mod stages;
 pub mod title;
+// ANCHOR: tools
 #[cfg(feature = "tools")]
 pub mod tools;
+// ANCHOR_END: tools
 
 use std::sync::OnceLock;
 

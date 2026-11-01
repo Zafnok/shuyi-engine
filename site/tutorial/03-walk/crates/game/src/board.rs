@@ -204,6 +204,7 @@ impl Screen<Data> for Board {
         "board"
     }
 
+    // ANCHOR: actions
     /// The four steps, and Cancel to go back.
     fn actions(&self) -> Option<Vec<UiAction>> {
         Some(vec![
@@ -214,6 +215,7 @@ impl Screen<Data> for Board {
             UiAction::Cancel,
         ])
     }
+    // ANCHOR_END: actions
 
     // ANCHOR: update
     fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {

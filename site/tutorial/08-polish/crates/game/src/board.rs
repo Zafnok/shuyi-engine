@@ -273,9 +273,11 @@ impl Screen<Data> for Board {
         buf.fill_rect(buf.bounds(), Cell::new(' ', bg, bg));
         let view = self.view(ctx);
         buf.print(1, 0, &view.name, c(EngineColor::Highlight), bg);
+        // ANCHOR: draw_moves
         let width = i32::try_from(view.moves.chars().count()).unwrap_or(0);
         let right = i32::from(buf.width()) - width - 1;
         buf.print(right, 0, &view.moves, c(EngineColor::Text), bg);
+        // ANCHOR_END: draw_moves
         let last = i32::from(buf.height()) - 1;
         buf.print(1, last, &view.help, c(EngineColor::TextDim), bg);
         let looks = Looks::new(palette, &Terrain, &ctx.game.own.lights);

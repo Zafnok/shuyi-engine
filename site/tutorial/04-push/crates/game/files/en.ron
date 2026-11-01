@@ -14,7 +14,9 @@
     "title.play": "{Confirm} play",
     "title.help": "{Cancel} leave",
 
+    // ANCHOR: board
     // The board.
     "board.help": "{Cursor} walk · {Cancel} back",
     "board.help.won": "Solved! {Cancel} back",
+    // ANCHOR_END: board
 }

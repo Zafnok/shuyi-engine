@@ -1,12 +1,14 @@
 //! The puzzle's rules, pure and deterministic: a state that changes only
 //! through commands. They know nothing of screens, keys or the clock.
 
+// ANCHOR: uses
 use std::collections::BTreeSet;
 
 use serde::{Deserialize, Serialize};
 use shuyi::core::{Grid, Pos, TerrainId};
 
 use crate::level::{Feature, Level, TARGET};
+// ANCHOR_END: uses
 
 // ANCHOR: state
 /// The puzzle: its tiles, where the player stands and where the boxes are.
@@ -22,6 +24,7 @@ pub struct Puzzle {
 // ANCHOR_END: state
 
 impl Puzzle {
+    // ANCHOR: new
     /// The puzzle `level` lays out: it needs one start, a box, and as many
     /// targets as boxes.
     pub fn new(level: &Level) -> Result<Self, String> {
@@ -49,7 +52,9 @@ impl Puzzle {
         }
         Ok(puzzle)
     }
+    // ANCHOR_END: new
 
+    // ANCHOR: getters
     /// The tiles.
     pub fn tiles(&self) -> &Grid<TerrainId> {
         &self.tiles
@@ -64,7 +69,9 @@ impl Puzzle {
     pub fn boxes(&self) -> &BTreeSet<Pos> {
         &self.boxes
     }
+    // ANCHOR_END: getters
 
+    // ANCHOR: targets
     /// Every target tile.
     pub fn targets(&self) -> BTreeSet<Pos> {
         let (width, height) = (self.tiles.width(), self.tiles.height());
@@ -73,4 +80,5 @@ impl Puzzle {
             .filter(|&pos| self.tiles.get(pos) == Some(&TARGET))
             .collect()
     }
+    // ANCHOR_END: targets
 }

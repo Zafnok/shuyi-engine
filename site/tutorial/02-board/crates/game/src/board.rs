@@ -1,6 +1,7 @@
 //! The board: a level on the screen. What it shows is a [`MapScene`] the
 //! engine's glyph skin paints, and a [`BoardView`] of the lines round it.
 
+// ANCHOR: uses
 use std::any::Any;
 
 use shuyi::core::Pos;
@@ -15,11 +16,15 @@ use shuyi::ui::grid::{
 use crate::Data;
 use crate::level::TERRAIN_NAMES;
 use crate::rules::Puzzle;
+// ANCHOR_END: uses
 
 // ANCHOR: skin
+// ANCHOR: area
 /// The cells a level is shown in: all but the top and bottom rows.
 pub const AREA: Rect = Rect::new(0, 1, 48, 22);
+// ANCHOR_END: area
 
+// ANCHOR: looks
 /// Each terrain's two glyphs and colors, by [`TerrainId`]: floor, wall,
 /// target.
 pub const TERRAIN_LOOKS: [([char; 2], &str, &str); 3] = [
@@ -27,7 +32,9 @@ pub const TERRAIN_LOOKS: [([char; 2], &str, &str); 3] = [
     (['▓', '▓'], "wall_fg", "wall_bg"),
     (['<', '>'], "target_fg", "floor_bg"),
 ];
+// ANCHOR_END: looks
 
+// ANCHOR: terrains
 /// The terrains as the skin sees them.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Terrain;
@@ -42,7 +49,9 @@ impl Terrains for Terrain {
         Some(TerrainGlyphs::new(glyphs, fg, bg))
     }
 }
+// ANCHOR_END: terrains
 
+// ANCHOR: glyphs
 /// The glyph skin: two cells a tile.
 // check-text: not player text, the palette's names
 pub const GLYPHS: GlyphSkin = GlyphSkin::new(
@@ -50,7 +59,9 @@ pub const GLYPHS: GlyphSkin = GlyphSkin::new(
     WalkSpeeds::of(8.0),
     0,
 );
+// ANCHOR_END: glyphs
 
+// ANCHOR: piece
 /// Which piece.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Who {
@@ -87,7 +98,9 @@ impl MapUnit for Piece {
         format!("{letter} ({},{})", self.pos.x, self.pos.y)
     }
 }
+// ANCHOR_END: piece
 
+// ANCHOR: pieces
 /// The pieces under the glyph skin: the player's letter over its tile, and
 /// a box over both of its tile's cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,8 +134,10 @@ impl UnitPainter<Piece> for Pieces<'_> {
         }
     }
 }
+// ANCHOR_END: pieces
 // ANCHOR_END: skin
 
+// ANCHOR: boardview
 /// What the lines round the map show.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BoardView {
@@ -131,6 +146,7 @@ pub struct BoardView {
     /// The help line.
     pub help: String,
 }
+// ANCHOR_END: boardview
 
 // ANCHOR: board
 /// The board screen.
@@ -144,6 +160,7 @@ pub struct Board {
 // ANCHOR_END: board
 
 impl Board {
+    // ANCHOR: new
     /// The board on the game's level.
     ///
     /// # Panics
@@ -157,7 +174,9 @@ impl Board {
             puzzle,
         }
     }
+    // ANCHOR_END: new
 
+    // ANCHOR: scene
     /// What the map shows, in a view of `view` tiles round the player.
     pub fn scene(&self, view: (i32, i32)) -> MapScene<Piece> {
         let tiles = self.puzzle.tiles();
@@ -175,8 +194,10 @@ impl Board {
         scene.push_unit(Piece { who, pos, home });
         scene
     }
+    // ANCHOR_END: scene
 
     /// What the lines round the map show.
+    // ANCHOR: view
     pub fn view(&self, ctx: &Ctx<Data>) -> BoardView {
         let help = "board.help";
         BoardView {
@@ -184,13 +205,17 @@ impl Board {
             help: ctx.text_with(help, &[]),
         }
     }
+    // ANCHOR_END: view
 
+    // ANCHOR: view_tiles
     /// The tiles the glyph skin fits in [`AREA`].
     pub fn view_tiles() -> (i32, i32) {
         GridSkin::<Piece>::view_tiles(&GLYPHS, AREA)
     }
+    // ANCHOR_END: view_tiles
 }
 
+// ANCHOR: screen_top
 impl Screen<Data> for Board {
     // check-text: not player text, the screen's id
     fn name(&self) -> &'static str {
@@ -208,6 +233,7 @@ impl Screen<Data> for Board {
         }
         Transition::None
     }
+    // ANCHOR_END: screen_top
 
     // ANCHOR: draw
     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
@@ -225,7 +251,9 @@ impl Screen<Data> for Board {
     }
     // ANCHOR_END: draw
 
+    // ANCHOR: as_any
     fn as_any(&self) -> Option<&dyn Any> {
         Some(self)
     }
+    // ANCHOR_END: as_any
 }

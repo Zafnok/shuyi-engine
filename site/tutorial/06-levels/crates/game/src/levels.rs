@@ -2,6 +2,7 @@
 //! [`Menu`]. A board that is won pops with a [`LevelWon`], and the menu
 //! moves on to the next level.
 
+// ANCHOR: uses
 use std::any::Any;
 
 use shuyi::prelude::*;
@@ -11,6 +12,7 @@ use shuyi::ui::widgets::{Menu, MenuEvent, MenuItem};
 use crate::Data;
 use crate::action::Action;
 use crate::board::Board;
+// ANCHOR_END: uses
 
 // ANCHOR: result
 /// What a won board hands the menu: the level it was on.
@@ -18,25 +20,31 @@ use crate::board::Board;
 pub struct LevelWon(pub usize);
 // ANCHOR_END: result
 
+// ANCHOR: choice
 /// What an item of the menu stands for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Choice {
     /// Plays this level, counted from 0.
     Level(usize),
 }
+// ANCHOR_END: choice
 
+// ANCHOR: struct
 /// The level menu.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct LevelMenu {
     /// Which item has the focus.
     pub focus: usize,
 }
+// ANCHOR_END: struct
 
 impl LevelMenu {
+    // ANCHOR: new
     /// The menu, on the first level.
     pub fn new() -> Self {
         Self::default()
     }
+    // ANCHOR_END: new
 
     // ANCHOR: menu
     /// The menu's items: a text key and a value each.
@@ -58,11 +66,13 @@ impl Screen<Data> for LevelMenu {
         "levels"
     }
 
+    // ANCHOR: actions
     /// Its menu's.
     fn actions(&self) -> Option<Vec<Action>> {
         let actions = Menu::<()>::ACTIONS.iter();
         Some(actions.filter_map(|&ui| Action::for_ui(ui)).collect())
     }
+    // ANCHOR_END: actions
 
     // ANCHOR: update
     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {
@@ -93,6 +103,7 @@ impl Screen<Data> for LevelMenu {
     }
     // ANCHOR_END: uncovered
 
+    // ANCHOR: draw
     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
         let c = |e| ctx.palette.engine(e);
         let bg = c(EngineColor::Background);
@@ -112,6 +123,7 @@ impl Screen<Data> for LevelMenu {
         let last = i32::from(buf.height()) - 1;
         print_centred(buf, last, &help, c(EngineColor::TextDim), bg);
     }
+    // ANCHOR_END: draw
 
     fn as_any(&self) -> Option<&dyn Any> {
         Some(self)

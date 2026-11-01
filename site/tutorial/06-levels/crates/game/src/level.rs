@@ -53,7 +53,9 @@ pub fn formats() -> Formats {
     let mut formats = Formats::standard();
     // The first format of its kind: never refused.
     let _ = formats.register(MapText::<TerrainId, Feature>::new(FORMAT, terrain_named));
+    // ANCHOR: register
     let _ = formats.register(Ron::<LevelList>::new());
+    // ANCHOR_END: register
     formats
 }
 

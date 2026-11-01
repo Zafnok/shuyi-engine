@@ -14,6 +14,8 @@
     "title.play": "{Confirm} play",
     "title.help": "{Cancel} leave",
 
+    // ANCHOR: board
     // The board.
     "board.help": "{Cancel} back",
+    // ANCHOR_END: board
 }

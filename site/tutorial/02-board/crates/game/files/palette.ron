@@ -13,6 +13,7 @@
     "accent": "#a0e07a",
     "bright": "#ffffff",
 
+    // ANCHOR: game
     // The game's.
     "floor_fg": "#3a3a46",
     "floor_bg": "#16161c",
@@ -25,4 +26,5 @@
     "path": "#5ac8ff",
     "cursor": "#ffd75a",
     "threat": "#ff7a5a",
+    // ANCHOR_END: game
 }
