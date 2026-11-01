@@ -140,6 +140,11 @@ next fresh run (CI run 41276204176, the head before these notes) passed all of i
 its first measure: 90 cells passed on Linux and in Chromium, none inconclusive, and
 `sound-give-up` passed.
 
+The run after that (CI run 41277487852) failed one cell, native peak memory at 1.114
+against itself, which is why peak memory is now read before the decodes: quad-snd
+frees each on its mixer thread, so the decode loop made the peak follow that thread's
+timing, 33 to 82 MB on identical code. No limit moved for it.
+
 **Not yet exercised.** Because that run was quiet, the measure-again step in the job
 has never actually run. If it is wrong it fails the job, the safe direction, and
 the first noisy run will prove it.

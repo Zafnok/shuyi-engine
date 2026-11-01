@@ -280,8 +280,8 @@ fn request(
     }
 }
 
-/// The timed workload: file reads, the context's start and whole decodes
-/// apart, then the same playback for [`PERF_PLAY`] seconds. Each phase's time
+/// The timed workload: file reads and the context's start apart, the same
+/// playback for [`PERF_PLAY`] seconds, then whole decodes. Each phase's time
 /// grows by `burn` percent of it, so the gate can prove it sees a slowdown.
 async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
     let measure = |metric: &str, value: f64| {
@@ -297,20 +297,6 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
     let timed = date::now();
     let ctx = AudioContext::new();
     measure("context_ms", burned(timed, burn) * 1000.0);
-
-    for (metric, bytes) in [("decode_wav_ms", &wav), ("decode_ogg_ms", &ogg)] {
-        let timed = date::now();
-        for _ in 0..PERF_DECODES {
-            let sound = Sound::load(&ctx, bytes);
-            // The browser decodes in the background; natively it is done.
-            #[cfg(target_arch = "wasm32")]
-            while !sound.is_loaded() {
-                tick().await;
-            }
-            sound.delete(&ctx);
-        }
-        measure(metric, burned(timed, burn) * 1000.0);
-    }
 
     let mut backend = SoundProbeBackend::default();
     let mut player = player(plan, &mut backend).await?;
@@ -381,8 +367,25 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
         tick().await;
     }
     player.stop_all(&mut backend);
+    // Before the decodes: quad-snd frees each on its mixer thread, so how many
+    // pile up in the allocator depends on that thread's timing, and identical runs
+    // peaked anywhere from 33 to 82 MB. This is what playing holds.
     if let Some(kib) = peak_kib() {
         measure("peak_kib", kib);
+    }
+
+    for (metric, bytes) in [("decode_wav_ms", &wav), ("decode_ogg_ms", &ogg)] {
+        let timed = date::now();
+        for _ in 0..PERF_DECODES {
+            let sound = Sound::load(&ctx, bytes);
+            // The browser decodes in the background; natively it is done.
+            #[cfg(target_arch = "wasm32")]
+            while !sound.is_loaded() {
+                tick().await;
+            }
+            sound.delete(&ctx);
+        }
+        measure(metric, burned(timed, burn) * 1000.0);
     }
     Ok(())
 }

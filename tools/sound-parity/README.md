@@ -74,10 +74,10 @@ never in CI. A change to the corpus's numbers fails until then.
 `capture.py` holds a monitor stream open for the whole session and starts nothing
 until frames flow: an idle sink takes blocks of about 2 seconds, and a stream
 arriving then stalls. It runs warm-ups, then at least nine interleaved pairs of the
-same workload, measuring file reads, the context's start and whole decodes apart,
-then the process's CPU over the same three seconds of playback, every thread's
-(the browser's whole process tree), the output latency against the recording
-and gaps in the recording while everything plays. A third side injects a
+same workload, measuring file reads and the context's start apart, then the process's
+CPU over the same three seconds of playback, every thread's (the browser's whole
+process tree), the output latency against the recording, gaps in the recording
+while everything plays, and the peak memory, and last whole decodes. A third side injects a
 slowdown. Decode is whole against whole: a new first buffer is never compared
 with an old full load, and a timed sleep isn't mixer throughput, so offline
 rendering needs its own budget when it arrives.
