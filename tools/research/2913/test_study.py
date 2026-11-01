@@ -45,6 +45,22 @@ class Perturbations(unittest.TestCase):
         self.assertEqual(int(difference.min()), 0)
 
 
+class MotionDefinedForm(unittest.TestCase):
+    def setUp(self) -> None:
+        self.frames = [perturb.motion(picture(), "courier", 0, sub) for sub in range(perturb.HOLD)]
+        self.glyphs = perturb.motion_mask(picture())
+
+    def correlation(self, values: np.ndarray) -> float:
+        return float(np.corrcoef(values.ravel(), self.glyphs.ravel())[0, 1])
+
+    def test_a_still_and_an_average_show_no_glyph(self) -> None:
+        self.assertLess(abs(self.correlation(perturb.luma(self.frames[perturb.MID]))), 0.02)
+        self.assertLess(abs(self.correlation(np.mean([perturb.luma(f) for f in self.frames], axis=0))), 0.02)
+
+    def test_a_short_script_recovers_the_glyphs(self) -> None:
+        self.assertGreater(self.correlation(perturb.motion_decode(self.frames)[..., 0]), 0.5)
+
+
 class Metrics(unittest.TestCase):
     def test_identical_pictures_score_perfectly(self) -> None:
         self.assertEqual(perturb.psnr(picture(), picture()), 99.0)
@@ -92,7 +108,7 @@ class Attacks(unittest.TestCase):
             out = Path(folder)
             study.write_json(out / "ledger.json", [{"class": "over_floor", "candidate": "noise"}, {"class": "below_floor", "candidate": "warp"}])
             with mock.patch.object(study, "OUT", out):
-                self.assertEqual(study.alive(), ["warp", "temporal", "decoy", "surrogate"])
+                self.assertEqual(study.alive(), ["warp", "temporal", "decoy", "surrogate", "motion"])
                 candidates = {job["candidate"] for job in study.plan("candidates", study.MODELS[2])}
             self.assertNotIn("noise", candidates)
             self.assertIn("warp", candidates)

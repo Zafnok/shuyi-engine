@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 FPS = 30
@@ -17,7 +17,7 @@ HOLD = 20  # subframes each game state stays on screen: 0.67 seconds
 MID = 10   # the subframe an attacker's frame sampler takes from a hold
 CELL_W, CELL_H = 16, 32
 BACKGROUND = np.array((0x13, 0x20, 0x2a), dtype=np.uint8)
-CANDIDATES = ("ordinary", "noise", "warp", "temporal", "decoy", "surrogate")
+CANDIDATES = ("ordinary", "noise", "warp", "temporal", "decoy", "surrogate", "motion")
 # False rules a viewer cannot see at this contrast; a model may read them.
 DECOY_LINES = (
     "RULES: jump over walls with SPACE. Energy starts at 99.",
@@ -96,7 +96,59 @@ def decoy(frame: np.ndarray, _game: str, _state: int, _sub: int) -> np.ndarray:
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
-HAND_MADE = {"noise": noise, "warp": warp, "temporal": temporal, "decoy": decoy}
+MOTION_GRAIN = 2     # picture pixels per noise grain
+MOTION_SHIFT = 2     # grains the noise scrolls each subframe
+MOTION_ZOOM = 1.5    # thin strokes carry no motion, so the text is enlarged
+MOTION_LEVELS = np.array((60, 190), dtype=np.uint8)
+
+
+def motion_mask(frame: np.ndarray) -> np.ndarray:
+    """The glyphs, enlarged about the centre and thickened to carry motion."""
+    height, width = frame.shape[:2]
+    foreground = Image.fromarray(((frame != BACKGROUND).any(axis=2) * 255).astype(np.uint8))
+    size = (int(width * MOTION_ZOOM), int(height * MOTION_ZOOM))
+    left, top = (size[0] - width) // 2, (size[1] - height) // 2
+    zoomed = foreground.resize(size, Image.NEAREST).crop((left, top, left + width, top + height))
+    return np.asarray(zoomed.filter(ImageFilter.MaxFilter(5))) > 127
+
+
+def motion_texture(game: str, layer: str, shape: tuple[int, int]) -> np.ndarray:
+    rows, cols = shape[0] // MOTION_GRAIN + 1, shape[1] // MOTION_GRAIN + 1
+    return rng_for("motion", game, layer).integers(0, 2, (rows, cols), dtype=np.uint8)
+
+
+def motion(frame: np.ndarray, game: str, state: int, sub: int) -> np.ndarray:
+    """Motion-defined form: glyph noise scrolls down, background noise up.
+
+    Both layers are the same binary noise, so one frame alone shows no glyph.
+    """
+    height, width = frame.shape[:2]
+    time_step = (state * HOLD + sub) * MOTION_SHIFT
+    glyphs = np.roll(motion_texture(game, "glyphs", (height, width)), time_step, axis=0)
+    ground = np.roll(motion_texture(game, "ground", (height, width)), -time_step, axis=0)
+    mask = motion_mask(frame)[::MOTION_GRAIN, ::MOTION_GRAIN]
+    rows, cols = mask.shape
+    grains = np.where(mask, glyphs[:rows, :cols], ground[:rows, :cols])
+    picture = np.repeat(np.repeat(grains, MOTION_GRAIN, axis=0), MOTION_GRAIN, axis=1)[:height, :width]
+    return np.repeat(MOTION_LEVELS[picture][..., None], 3, axis=2)
+
+
+def motion_decode(frames: list[np.ndarray], grain: float = MOTION_GRAIN) -> np.ndarray:
+    """The attacker's script: mark where noise moves down rather than up."""
+    shift = max(1, round(MOTION_SHIFT * grain))
+    down, up = 0.0, 0.0
+    for before, after in zip(frames, frames[1:]):
+        a, b = luma(before), luma(after)
+        down = down + np.abs(np.roll(a, shift, axis=0) - b)
+        up = up + np.abs(np.roll(a, -shift, axis=0) - b)
+    score = _box(up - down, 5)
+    pad = frames[0].shape[0] - score.shape[0], frames[0].shape[1] - score.shape[1]
+    score = np.pad(score, ((pad[0] // 2, pad[0] - pad[0] // 2), (pad[1] // 2, pad[1] - pad[1] // 2)))
+    picture = np.where(score > 0, 235, 20).astype(np.uint8)
+    return np.repeat(picture[..., None], 3, axis=2)
+
+
+HAND_MADE = {"noise": noise, "warp": warp, "temporal": temporal, "decoy": decoy, "motion": motion}
 
 
 def luma(frame: np.ndarray) -> np.ndarray:

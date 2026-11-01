@@ -245,6 +245,14 @@ def encode_arm(candidate: str, transform: str) -> None:
             sample_holds(decode_all(arm / "clip.mp4"), arm)
         elif transform == "frames":
             sample_holds(decode_all(master), arm, suffix="jpg", resize=640)
+        elif transform in ("decode", "decode_transcode"):
+            # What a script recovers from motion-defined form, hold by hold.
+            arm.mkdir(parents=True)
+            frames = list(video_frames(candidate, game, clean)) if transform == "decode" else list(decode_all(master))
+            grain = perturb.MOTION_GRAIN * frames[0].shape[1] / width
+            for state in range(len(clean)):
+                decoded = perturb.motion_decode(frames[state * HOLD:(state + 1) * HOLD], grain)
+                Image.fromarray(decoded).save(arm / f"{state:03}.png")
         elif transform == "recapture":
             size = next(decode_all(master)).shape
             encode(recapture_frames(decode_all(master), game), size[1], size[0], arm / "clip.mp4", 26)
@@ -444,6 +452,9 @@ def plan(stage: str, model: str, everything: bool = False) -> list[dict]:
         for candidate in standing:
             for transform in ("crop", "frames", "recapture", "average"):
                 add("imitate", candidate, transform, model, 0)
+    elif stage == "motion":
+        for transform in ("direct", "transcode", "average", "decode", "decode_transcode"):
+            add("imitate", "motion", transform, model, 0)
     elif stage == "description":
         for candidate in ("ordinary", *standing):
             add("description", candidate, "direct", model, 0)
@@ -667,6 +678,7 @@ def main() -> None:
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--model", default=MODELS[0], choices=MODELS)
     parser.add_argument("--everything", action="store_true")
+    parser.add_argument("--candidate", choices=CANDIDATES)
     parser.add_argument("--participants", type=int, default=12)
     args = parser.parse_args()
     if args.action == "capture":
@@ -674,8 +686,8 @@ def main() -> None:
     elif args.action == "surrogate":
         surrogate_deltas()
     elif args.action == "encode":
-        for candidate in CANDIDATES:
-            for transform in TRANSFORMS:
+        for candidate in (args.candidate,) if args.candidate else CANDIDATES:
+            for transform in TRANSFORMS + (("decode", "decode_transcode") if candidate == "motion" else ()):
                 encode_arm(candidate, transform)
         print(json.dumps(viewer_metrics(), indent=1))
     elif args.action == "commit-seed":
