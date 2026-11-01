@@ -168,6 +168,11 @@ pub struct AppPart {
     /// `32.png` and `64.png` (`crates/game/icon`); `code` reads them.
     #[serde(default)]
     pub window_icons: Option<String>,
+    /// The window's icons drawn by hand: a side in pixels and the square
+    /// PNG of that side to use for it, in place of downscaling `icon`
+    /// (ADR-0069). `icon` still makes the sides this doesn't name.
+    #[serde(default)]
+    pub icon_sizes: BTreeMap<u32, String>,
     /// The Playdate launcher's list icon: a 32 × 32 black and white PNG, in
     /// place of a one-bit bake of `icon`.
     #[serde(default)]
@@ -197,6 +202,7 @@ impl AppPart {
             code: None,
             icon: None,
             window_icons: None,
+            icon_sizes: BTreeMap::new(),
             playdate_icon: None,
             playdate_card: None,
         }
@@ -500,6 +506,7 @@ mod tests {
         assert_eq!((app.build, app.publisher.as_str()), (1, ""));
         assert_eq!((&app.version, &app.code), (&None, &None));
         assert_eq!(app.storage(), "com.example.moon-garden");
+        assert!(app.icon_sizes.is_empty());
         let text = r#"(app: (
     name: "Moon Garden",
     id: "com.example.moon-garden",
@@ -510,9 +517,17 @@ mod tests {
     code: "crates/game/src/app_info.rs",
     icon: "art/icon.png",
     window_icons: "crates/game/icon",
+    icon_sizes: { 16: "art/icon-16.png", 32: "art/icon-32.png" },
 ))"#;
         let app = Config::parse(text).unwrap().app.unwrap();
         assert_eq!(app.icon.as_deref(), Some("art/icon.png"));
+        assert_eq!(
+            app.icon_sizes,
+            BTreeMap::from([
+                (16, "art/icon-16.png".to_owned()),
+                (32, "art/icon-32.png".to_owned()),
+            ])
+        );
         assert_eq!(app.window_icons.as_deref(), Some("crates/game/icon"));
         assert_eq!(app.version.as_deref(), Some("1.2.0-beta.1"));
         assert_eq!((app.build, app.publisher.as_str()), (12, "Someone"));

@@ -71,6 +71,11 @@ Every target gets the same name, id and version, written once in
   weighed by how opaque they are, so a transparent edge doesn't darken
   the color beside it, and the same picture gives the same files on
   every computer.
+- `icon_sizes` draws window icons by hand, for pixel art that a mean
+  turns to mud: `{ 16: "art/icon-16.png", 32: "art/icon-32.png" }`.
+  Each file is a square PNG of its key's side, and `app-info` uses its
+  pixels as they are. The sizes it doesn't name still come from `icon`,
+  and so do the packages' icons.
 
 ## Checking them
 

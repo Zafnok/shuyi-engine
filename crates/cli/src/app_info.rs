@@ -2,7 +2,7 @@
 //! rules ([`problems`], which `check --target` reports), and `app-info`,
 //! which writes it as the Rust constant the game's binary compiles
 //! ([`rust`], [`run`]) and the window's icons, downscaled from the game's
-//! one icon ([`downscale`], ADR-0061).
+//! one icon ([`downscale`], ADR-0061) or drawn per size (ADR-0069).
 //!
 //! The rules:
 //!
@@ -19,6 +19,9 @@
 //!   or more;
 //! - `window_icons`: set when `icon` and `code` are, since the Rust reads
 //!   the window's icons from there;
+//! - `icon_sizes`: each key one of [`WINDOW_ICON_SIDES`], each file a PNG
+//!   square at its key's side, with `icon` and `window_icons` set, since
+//!   the sizes it doesn't draw come from the icon and it fills that folder;
 //! - the files `app-info` writes (`code` and the window's icons) are the
 //!   ones on disk.
 
@@ -131,6 +134,21 @@ fn fields(part: &AppPart) -> Vec<AppProblem> {
              `app-info` writes the window's icons, which `code` reads",
         ));
     }
+    if !part.icon_sizes.is_empty() && (part.icon.is_none() || part.window_icons.is_none()) {
+        out.push(AppProblem::error(
+            "icon_sizes",
+            "pictures drawn per size need `icon`, which makes the sizes they don't draw, and \
+             `window_icons`, the folder `app-info` writes them to",
+        ));
+    }
+    for side in part.icon_sizes.keys() {
+        if !WINDOW_ICON_SIDES.contains(side) {
+            out.push(AppProblem::error(
+                "icon_sizes",
+                format!("{side} isn't a size of the window's icons: {WINDOW_ICON_SIDES:?}"),
+            ));
+        }
+    }
     out
 }
 
@@ -151,17 +169,22 @@ fn checked(part: &AppPart, root: &Path) -> Vec<AppProblem> {
             out.push(AppProblem::error(field, e));
         }
     }
+    for (&side, path) in &part.icon_sizes {
+        if let Err(e) = sized_png(root, path, (side, side)) {
+            out.push(AppProblem::error("icon_sizes", e));
+        }
+    }
     out
 }
 
-/// Whether `path` in the project at `root` is a PNG of `size` pixels, the
-/// size the device's launcher asks.
-fn sized_png(root: &Path, path: &str, size: (u32, u32)) -> Result<(), String> {
+/// The RGBA8 pixels of `path` in the project at `root`, which must be a PNG
+/// of `size` pixels: the size a device's launcher asks, or a drawn icon's.
+fn sized_png(root: &Path, path: &str, size: (u32, u32)) -> Result<Vec<u8>, String> {
     let bytes = fs::read(root.join(path)).map_err(|e| format!("{path} can't be read: {e}"))?;
-    let (width, height, _) =
+    let (width, height, rgba) =
         codec::decode_png(&bytes).map_err(|e| format!("{path} isn't a PNG file: {e}"))?;
     if (width, height) == size {
-        Ok(())
+        Ok(rgba)
     } else {
         Err(format!(
             "{path} is {width} × {height} pixels: it must be {} × {}",
@@ -441,14 +464,18 @@ fn rust_file(part: &AppPart, command: &str) -> Option<(String, Vec<u8>)> {
 
 /// The files `app-info` writes for `part` in the project at `root`: each
 /// path from the root and its bytes, the Rust file and then the window's
-/// icons, downscaled from the icon. Fails when the icon doesn't load.
+/// icons, each the picture `icon_sizes` draws for its side, else downscaled
+/// from the icon. Fails when the icon or a drawn picture doesn't load.
 pub fn files(part: &AppPart, root: &Path, command: &str) -> Result<Vec<(String, Vec<u8>)>, String> {
     let mut out: Vec<_> = rust_file(part, command).into_iter().collect();
     if let Some(paths) = window_icon_paths(part)
         && let Some(icon) = icon(part, root)?
     {
         for (side, path) in paths {
-            let pixels = downscale(icon.side, icon.side, &icon.rgba, side);
+            let pixels = match part.icon_sizes.get(&side) {
+                Some(drawn) => sized_png(root, drawn, (side, side))?,
+                None => downscale(icon.side, icon.side, &icon.rgba, side),
+            };
             out.push((path, codec::encode_png(side, side, &pixels)?));
         }
     }
@@ -457,8 +484,8 @@ pub fn files(part: &AppPart, root: &Path, command: &str) -> Result<Vec<(String, 
 
 /// The files `app-info` would write for `part` that differ from those in
 /// `root` (a missing file differs), by their paths. A text file's line
-/// endings don't count. When the icon doesn't load, the window's icons
-/// aren't compared: the icon's rule says why.
+/// endings don't count. When the icon or a drawn picture doesn't load, the
+/// window's icons aren't compared: its rule says why.
 pub fn stale(part: &AppPart, root: &Path, command: &str) -> Vec<String> {
     let files = files(part, root, command)
         .unwrap_or_else(|_| rust_file(part, command).into_iter().collect());

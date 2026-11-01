@@ -81,5 +81,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0066](0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md) | Sound uses library codecs and output, with an owned mixer and staged parity gates | Accepted; resolves ADR-0021's sound choice |
 | [0067](0067-sound-parity-is-judged-from-a-real-sink-against-expected-signals.md) | Sound parity is judged from a real sink against expected signals | Accepted |
 | [0068](0068-the-sound-replacement-stays-reversible-at-every-stage.md) | The sound replacement stays reversible at every stage | Accepted |
+| [0069](0069-a-games-window-icons-may-be-drawn-per-size-in-app-icon-sizes.md) | A game's window icons may be drawn per size, in `app.icon_sizes` | Accepted; extends ADR-0061 |
 
 Template: [`0000-template.md`](0000-template.md).
