@@ -45,9 +45,9 @@ pub enum PadKind {
     /// A Nintendo pad (Switch Pro controller, Joy-Cons).
     Nintendo,
     /// The Playdate's own buttons (game ADR-0070): the D-pad, A and B. Its
-    /// front end reports A at the binding position `South` and B at
-    /// `East`, so the default bindings make A Confirm and B Cancel
-    /// (`docs/design/playdate.md`, *Buttons and the crank*).
+    /// backend reports A at the binding position `East` and B at `West`
+    /// (`targets/playdate.ron`, ADR-0008 §1), with no swap, so a game binds
+    /// them in its keymap's `targets."playdate"` table.
     Playdate,
     /// Anything else, or a pad that doesn't say. Treated like an Xbox pad.
     #[default]
@@ -94,15 +94,19 @@ impl PadKind {
     /// this kind of pad (`docs/design/controls.md`, *Button names on
     /// screen*): Xbox letters (also on generic pads), Sony's shapes,
     /// or Nintendo's letters (a PS4 pad says `Share` where later Sony pads
-    /// say `Create`). The Playdate's `A`, `B` and D-pad are named as
-    /// printed on it, which are the Xbox names; it has none of the other
-    /// buttons (their actions move to chords and menus in tickets 1034
-    /// and 1035), but has the crank. The only place buttons get their
-    /// names.
+    /// say `Create`). The Playdate's `A` is `East` and its `B` is `West`, as
+    /// printed on it; every other name is the Xbox one, its D-pad's and its
+    /// crank's among them, but `South`'s, which is the `X` that leaves free:
+    /// `A` would name a button its A doesn't press. It has none of the other
+    /// buttons (their actions move to chords and menus in tickets 1034 and
+    /// 1035). The only place buttons get their names.
     // check-text: not player text (a button's name is what is printed on the pad)
     pub fn button_name(self, button: Button) -> &'static str {
         let [xbox, playstation, nintendo] = names(button);
         match self {
+            Self::Playdate if button == Button::East => "A",
+            Self::Playdate if button == Button::West => "B",
+            Self::Playdate if button == Button::South => "X",
             Self::Xbox | Self::Generic | Self::Playdate => xbox,
             Self::PlayStation4 if button == Button::Select => "Share",
             Self::PlayStation | Self::PlayStation4 => playstation,

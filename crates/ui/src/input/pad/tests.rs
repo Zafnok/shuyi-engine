@@ -158,18 +158,24 @@ fn a_dualshock_4_says_share_and_otherwise_names_as_a_playstation_pad() {
     assert_eq!(PadKind::PlayStation.button_name(Button::Select), "Create");
 }
 
-/// The Playdate's buttons are named as printed on it (its A, B and
-/// D-pad), and its front end reports A and B at the positions the default
-/// bindings give Confirm and Cancel, so no swap: A confirms, B cancels
-/// (`docs/design/playdate.md`, *Buttons and the crank*).
+/// The Playdate's buttons are named as printed on it (its A, B and D-pad),
+/// at the positions its profile lists: A is `East` and B is `West`
+/// (`targets/playdate.ron`, ADR-0008 §1), with no swap. Binding them is its
+/// keymap's `targets."playdate"` table's: the chord tests play one.
 #[test]
-fn a_playdates_a_confirms_and_its_b_cancels_named_as_printed_on_it() {
+fn a_playdates_a_and_b_are_east_and_west_named_as_printed_on_it() {
     let playdate = PadKind::Playdate;
     for button in Button::ALL {
         assert_eq!(playdate.position(*button), *button, "{button}");
     }
-    assert_eq!(playdate.button_name(South), "A");
-    assert_eq!(playdate.button_name(East), "B");
+    assert_eq!(playdate.button_name(East), "A");
+    assert_eq!(playdate.button_name(West), "B");
+    assert_eq!(
+        playdate.button_name(South),
+        "X",
+        "no button of its A's name"
+    );
+    assert_eq!(playdate.button_name(North), "Y", "the Xbox name");
     let dpad = [
         DpadUp,
         Button::DpadDown,
@@ -177,12 +183,10 @@ fn a_playdates_a_confirms_and_its_b_cancels_named_as_printed_on_it() {
         Button::DpadRight,
     ];
     assert_eq!(dpad.map(|b| playdate.button_name(b)), ["↑", "↓", "←", "→"]);
-    let buttons = [South, East, DpadUp, Button::DpadDown, Button::DpadLeft];
+    let buttons = [DpadUp, Button::DpadDown, Button::DpadLeft];
     assert_eq!(
         actions_of(playdate, &buttons),
         [
-            vec![Action::Confirm],
-            vec![Action::Cancel],
             vec![Action::CursorUp],
             vec![Action::CursorDown],
             vec![Action::CursorLeft],
@@ -193,6 +197,37 @@ fn a_playdates_a_confirms_and_its_b_cancels_named_as_printed_on_it() {
         cursor_buttons_name(playdate, &dpad).as_deref(),
         Some("D-pad")
     );
+}
+
+/// The buttons the profile lists beside the D-pad and the crank are the ones
+/// `PadKind::Playdate` names `A` and `B`, and its one chord reads `A+B`.
+#[test]
+fn a_playdates_a_and_b_are_the_buttons_its_profile_lists() {
+    let source = include_str!("../../../../../targets/playdate.ron");
+    let profile = shuyi_assets::target::TargetProfile::from_source("playdate", "playdate", source)
+        .unwrap_or_else(|e| panic!("{e:?}"));
+    let playdate = PadKind::Playdate;
+    let not_a_face_button = [
+        DpadUp,
+        Button::DpadDown,
+        Button::DpadLeft,
+        Button::DpadRight,
+        CrankForward,
+        CrankBack,
+    ];
+    let names: Vec<&str> = profile
+        .input
+        .buttons
+        .iter()
+        .filter(|button| !not_a_face_button.contains(button))
+        .map(|&button| playdate.button_name(button))
+        .collect();
+    assert_eq!(names, ["A", "B"]);
+    let [[a, b]] = profile.input.chords[..] else {
+        panic!("{:?}", profile.input.chords);
+    };
+    let chord = ButtonChord::pair(a, b).unwrap_or_else(|| panic!("{a} and {b}"));
+    assert_eq!(playdate.chord_name(chord, "+"), "A+B");
 }
 
 /// On a Nintendo pad the physical right button is the binding position

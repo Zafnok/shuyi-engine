@@ -5,10 +5,10 @@ type: bug
 milestone: After MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: []
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2410 — `PadKind::Playdate` follows the Playdate profile: A is `East`, B is `West`
@@ -168,18 +168,18 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `PadKind::Playdate.button_name(Button::East)` is `"A"` and
+- [x] `PadKind::Playdate.button_name(Button::East)` is `"A"` and
       `button_name(Button::West)` is `"B"` (a test).
-- [ ] A test reads `targets/playdate.ron` and fails if the profile's A
+- [x] A test reads `targets/playdate.ron` and fails if the profile's A
       and B are not the buttons `PadKind::Playdate` names `A` and `B`.
-- [ ] `grep -rn "docs/design/playdate" crates/ui/src/input` finds
+- [x] `grep -rn "docs/design/playdate" crates/ui/src/input` finds
       nothing.
-- [ ] `PadKind::Playdate`'s doc and `button_name`'s doc name the same
+- [x] `PadKind::Playdate`'s doc and `button_name`'s doc name the same
       two positions for A and B as `targets/playdate.ron`'s `buttons`.
-- [ ] Every test in `chord_tests.rs` passes with `playdate_keymap` on
+- [x] Every test in `chord_tests.rs` passes with `playdate_keymap` on
       `East` and `West`, and its expected help names are unchanged.
-- [ ] The completion notes have the `Breaking:` line of the Scope.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The completion notes have the `Breaking:` line of the Scope.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -190,5 +190,36 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `PadKind::button_name` names a Playdate's `East` `A` and its `West` `B`;
+  its other names are the Xbox ones, as they were. `position` is unchanged.
+- The docs cite `targets/playdate.ron` and ADR-0008 §1, and
+  `docs/targets/playdate.md` no longer lists the help text as a limit.
+- `chord_tests.rs` plays its Playdate on `East` and `West`, with the expected
+  help names unchanged. A new test reads `targets/playdate.ron`: the profile's
+  buttons beside the D-pad and the crank must be named `A` and `B`, and its
+  chord `A+B`.
+- **Deviation:** the Playdate test's `actions_of` part keeps its D-pad and
+  drops Confirm and Cancel, as step 2 allows: `actions_of` plays the default
+  bindings, and the chord tests play A and B on the moved keymap.
+- **Deviation:** a Playdate's `South` is named `X`, not the Xbox `A` the Scope kept: `button_names_are_distinct_on_each_pad` holds every pad to no two buttons sharing a name, and `A` would name a button its A doesn't press. It has no `South`, so only a stale binding can show it.
+- 2034's clause waiting on this ticket is settled.
+- **The game PR that moves the pin:** game#1170 moves the game's front end and
+  its `playdate` table to `East` and `West`.
+
+Breaking: shuyi-ui: PadKind::button_name: on PadKind::Playdate, East is named A, West B and South X; a front end that reports A at South and B at East moves to East and West
+
+```migration
+since: 0.1.0
+what: On a Playdate, help text names East A and West B, the positions its profile lists for those buttons.
+old: PadKind::Playdate.button_name(Button::South) is "A", and Button::East is "B"
+new: PadKind::Playdate.button_name(Button::East) is "A", and Button::West is "B"
+before: |
+  "Confirm": ["South"],
+  "Cancel": ["East"],
+after: |
+  "Confirm": ["East"],
+  "Cancel": ["West"],
+```
+
+Book: none, the public API's signatures don't change and the book names no
+Playdate button.

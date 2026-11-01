@@ -71,11 +71,9 @@ None.
     page says them, so the comment states what the code does in a
     sentence (the backdrop's in engine words: a backdrop behind a
     title, not the game's intro).
-- **Either order with 2410:** if 2410 is done, the three Playdate
-  button citations (`pad.rs:50`, `pad/tests.rs:164`,
-  `chord_tests.rs:34`) are gone already: check, and do the rest; if
-  not, do those three too, citing `targets/playdate.ron` and ADR-0008
-  §1, and 2410 finds them gone.
+- **From 2410 (done):** the three Playdate button citations (in `pad.rs`,
+  `pad/tests.rs` and `chord_tests.rs`) are gone, citing
+  `targets/playdate.ron` and ADR-0008 §1.
 - **`check-links` reads Rust comments too.** In `links.rs`, beside
   `relative_links`: `comment_paths(text) -> Vec<(usize, String)>`, for
   each line of a `*.rs` file whose text after the indent starts with
@@ -102,8 +100,7 @@ None.
 ## Implementation steps
 
 1. `grep -rn "docs/design/" crates examples templates skills` to find
-   every citation (the table above, or more if code moved). Check
-   whether 2410 is done.
+   every citation (the table above, or more if code moved).
 2. Replace each as Scope says, reading the code around it so the
    sentence is true.
 3. Add `comment_paths` and the `*.rs` walk to `links.rs`, with its
