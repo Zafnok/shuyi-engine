@@ -10,9 +10,11 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+use super::disclosure::{FileKind, Shipped};
 use super::{
     ExportCx, ExportError, ExportReport, Exporter, RunCx, Signing, archive, fresh, tool, write,
 };
+use crate::notices;
 
 /// The Windows exporter.
 pub static WINDOWS: Desktop = Desktop {
@@ -143,6 +145,33 @@ impl Exporter for Desktop {
                 pack(cx, system, self.triples[0], &program)
             }
         }
+    }
+
+    /// The program, its notices and the players' note, all written here, and
+    /// on macOS the bundle's files; the debug file beside them.
+    fn shipped(&self, cx: &ExportCx, report: &ExportReport) -> Shipped {
+        let tree = cx.out.join(&report.folder);
+        let archive = (report.package != report.folder).then(|| cx.out.join(&report.package));
+        let mut shipped = Shipped::new(tree, archive, format!("{}/", report.folder));
+        shipped.debug = report.debug.as_ref().map(|debug| cx.out.join(debug));
+        shipped.source(notices::FILE, FileKind::Written, "written by the export");
+        let program = match self.system {
+            System::Windows => format!("{}.exe", cx.bin),
+            System::Linux => cx.bin.clone(),
+            System::MacOs => {
+                let contents = format!("{}.app/Contents", cx.bin);
+                for file in ["Info.plist", "_CodeSignature/CodeResources"] {
+                    let path = format!("{contents}/{file}");
+                    shipped.source(path, FileKind::Written, "written by the export");
+                }
+                format!("{contents}/MacOS/{}", cx.bin)
+            }
+        };
+        shipped.source(program, FileKind::Program, "the built program");
+        if self.system != System::Linux {
+            shipped.source(NOTE, FileKind::Written, "written by the export");
+        }
+        shipped
     }
 
     fn run(&self, cx: &RunCx) -> Result<(), ExportError> {

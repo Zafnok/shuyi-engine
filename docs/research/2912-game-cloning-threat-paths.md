@@ -334,4 +334,4 @@ are therefore **unassessable** here. No go decision for a production
 obfuscator, video perturbation or DRM follows from these controls. The
 clear positive extraction result favors auditing and removing future
 content from final demo artifacts before release; the real-export audit
-belongs to ticket 3081.
+went to ticket 3081, which is done.

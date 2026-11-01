@@ -104,6 +104,9 @@ pub struct Config {
     pub web: Option<Web>,
     /// The game's own license texts, which its packages carry.
     pub notices: Option<Notices>,
+    /// What the game's packages may hold, which `export` holds each final
+    /// package to ([`crate::export::disclosure`]).
+    pub disclosure: Option<Disclosure>,
     /// `glyph-tiles`.
     pub glyph_tiles: Option<GlyphTiles>,
     /// `private-assets`.
@@ -414,6 +417,29 @@ pub struct Web {
 pub struct Notices {
     /// The files, from the project's root.
     pub texts: Vec<String>,
+}
+
+/// What the game's packages may hold, the same for every target: a path is
+/// matched whole, with no pattern, from the package's root or the pack's.
+/// What the exporter itself writes (the program, `NOTICES.txt`, the web
+/// shell, the pack's file) needs no line here.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct Disclosure {
+    /// The files of the game a package may hold beside what the exporter
+    /// writes (`music/title.ogg`, `audio/step.pda`).
+    pub allowed_files: Vec<String>,
+    /// The files a pack may hold (`maps/first.ron`).
+    pub allowed_pack_entries: Vec<String>,
+    /// The paths nothing may hold: no file of the package or beside it, no
+    /// file of a pack, and no program as text (a file a game embeds keeps
+    /// its path in the program).
+    pub forbidden_paths: Vec<String>,
+    /// The texts nothing may hold, each written in a file of what isn't out
+    /// yet so that a copy of it can be found: UTF-8 or UTF-16, whole, in any
+    /// file of the package, of a pack or beside it.
+    pub canaries: Vec<String>,
 }
 
 /// The private repository of files the game may not hand out (bought art):

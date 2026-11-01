@@ -442,6 +442,14 @@ pub(crate) fn current_files(rules: &Web, root: &Path) -> Result<BTreeSet<String>
     let mut files: BTreeSet<String> = SHELL.iter().map(|(name, _)| (*name).to_owned()).collect();
     files.insert(format!("{}.wasm", rules.bin));
     files.insert(notices::FILE.to_owned());
+    files.extend(game_files(rules, root)?);
+    Ok(files)
+}
+
+/// The files of [`current_files`] that are the game's own: the music and
+/// voice files in their folders now.
+pub(crate) fn game_files(rules: &Web, root: &Path) -> Result<BTreeSet<String>, String> {
+    let mut files = BTreeSet::new();
     if let Some(music) = &rules.music {
         // A missing folder is an empty one, as `copy_music` has it.
         for entry in fs::read_dir(root.join(music)).into_iter().flatten() {
@@ -479,7 +487,7 @@ fn list_voice(dir: &Path, prefix: &str, files: &mut BTreeSet<String>) -> Result<
 }
 
 /// A folder of `shuyi.ron` as a path in the package: `./a\b/` is `a/b`.
-fn package_path(folder: &str) -> String {
+pub(crate) fn package_path(folder: &str) -> String {
     let path = folder.replace('\\', "/");
     let parts: Vec<&str> = path
         .split('/')

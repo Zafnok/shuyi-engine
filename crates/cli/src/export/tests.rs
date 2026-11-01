@@ -8,7 +8,7 @@ use super::*;
 
 /// A context on Hello, Grid with its export's folder under the temporary
 /// folder, for test `name`.
-fn cx(name: &str, target: &str) -> ExportCx {
+pub(super) fn cx(name: &str, target: &str) -> ExportCx {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
     let out = std::env::temp_dir().join(format!("shuyi-export-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&out);

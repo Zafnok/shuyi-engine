@@ -73,6 +73,14 @@ Ship only what `check --target` passes.
    - `export-report.json` beside it gives the version, the sizes, the
      check's warnings and the signing; `--run` runs the package, on its
      own system.
+   - `exposure-report.json` beside it lists what the final package holds:
+     each file with its source and SHA-256, each file of each pack, the
+     debug file and the features. Before a public demo, add a `disclosure`
+     part to `shuyi.ron` (`allowed_files`, `allowed_pack_entries`,
+     `forbidden_paths`, `canaries`; each path whole, no patterns): what it
+     doesn't allow refuses the export and removes the package. It finds what
+     is written plainly, so leave out of the build what mustn't be seen; a
+     menu that hides a level doesn't hide its file.
 
    A release build on Windows opens no console window.
 
@@ -230,7 +238,9 @@ with `cargo shuyi explain <code>`:
   the program holds a path of this machine (code writes one in as a
   value, such as `env!("CARGO_MANIFEST_DIR")`); `SH3010`, no exporter or
   no run step for that target yet; `SH3011`, the build or a packaging
-  tool failed; `SH1003`, a Rust target or tool is missing.
+  tool failed; `SH3012`, the package holds what the `disclosure` part
+  doesn't allow (each file named, with its source); `SH1003`, a Rust target
+  or tool is missing.
 - `import` answers `ok: false` with each error's file and line (and its
   code when its class has one): a credit with an empty field, a source
   that isn't a web link, a license not on the list.

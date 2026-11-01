@@ -6,8 +6,10 @@
 //! folder; `dist/export/<target>` without it) with `export-report.json`,
 //! which holds this answer's result: the target, the version, the sizes,
 //! the check's warnings, the signing and, with `--release`, the debug file
-//! kept beside the package. With `--run`, the package is run after it is
-//! written.
+//! kept beside the package. The final package is read back into
+//! `exposure-report.json`, and refused if it breaks the game's `disclosure`
+//! part ([`crate::export::disclosure`]). With `--run`, the package is run
+//! after that.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -19,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use super::check::{self, CheckInput};
 use super::target::{Level, TargetProblem};
 use super::{Answer, Op, codes};
-use crate::export::{self as exporters, ExportCx, ExportError, RunCx};
+use crate::export::{self as exporters, ExportCx, ExportError, RunCx, disclosure};
 use crate::game::GameTools;
 use crate::project::Project;
 
@@ -146,6 +148,18 @@ pub fn export(
         );
         return Answer::failed(op, codes::NO_EXPORTER, error);
     };
+    let part = project.config.disclosure.as_ref();
+    if let Some(part) = part {
+        let problems = disclosure::problems(part);
+        if !problems.is_empty() {
+            let error = format!(
+                "{} can't be used; nothing was built:\n  {}",
+                crate::project::FILE,
+                problems.join("\n  ")
+            );
+            return Answer::failed(op, codes::PROJECT_FILE, error);
+        }
+    }
     let cx = match ExportCx::of(project, exporter, input) {
         Ok(cx) => cx,
         Err(e) => return failed(&e),
@@ -157,6 +171,10 @@ pub fn export(
         Ok(report) => report,
         Err(e) => return failed(&e),
     };
+    let shipped = exporter.shipped(&cx, &report);
+    if let Err((code, error)) = disclosure::gate(&cx, exporter, part, &shipped) {
+        return Answer::failed(op, code, error);
+    }
     report.warnings.extend(
         problems
             .into_iter()
@@ -249,6 +267,8 @@ pub fn text(output: &ExportOutput) -> String {
     };
     let _ = writeln!(text, "  signing: {signing}");
     let _ = writeln!(text, "  report: {}", out.join(REPORT).display());
+    let exposure = out.join(disclosure::REPORT);
+    let _ = writeln!(text, "  exposure: {}", exposure.display());
     for warning in &output.warnings {
         let _ = writeln!(text, "  warning: {}: {}", warning.setting, warning.message);
     }

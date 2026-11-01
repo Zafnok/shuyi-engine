@@ -307,8 +307,9 @@ const START: &str = "Build the game's tool program and start its game headless i
 /// What `export`'s tool does.
 const EXPORT: &str = "Check the game against `target` (`windows`, `linux`, `macos`, `web`), then \
      build and package it there: a zip, a tar.gz, a signed .app or a web folder and its zip, \
-     each with NOTICES.txt, and export-report.json beside it, in `out` (dist/export/<target> by \
-     default). `release` remaps the build's paths and keeps the debug file beside the package; \
+     each with NOTICES.txt, and export-report.json and exposure-report.json beside it, in `out` \
+     (dist/export/<target> by default). A package that breaks shuyi.ron's `disclosure` part is \
+     removed. `release` remaps the build's paths and keeps the debug file beside the package; \
      `run` runs the package after.";
 
 /// `lint`'s description.

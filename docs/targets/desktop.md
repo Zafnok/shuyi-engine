@@ -59,6 +59,11 @@ tools are that system's. On another one, `export` says where it builds.
 
 `export-report.json` beside the package names the debug file, with the
 version, the target, the sizes, the check's warnings and the signing.
+`exposure-report.json` lists what the package holds and is held to the game's
+`disclosure` part (the book's [Targets and
+export](../../site/content/learn/book/targets-and-export.md)). A Windows
+program carries a fixed time, not the time of its build, so the same input
+gives the same report.
 
 ## The Linux package by hand
 

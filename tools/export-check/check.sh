@@ -11,7 +11,9 @@
 # - macos: the `.app` passes `codesign --verify --strict`, is signed
 #   ad hoc, and its program has an arm64 and an x86_64 slice.
 #
-# The exporter itself already refused any path of the build machine.
+# The exporter itself already refused any path of the build machine, and
+# anything the game's `disclosure` part doesn't allow; this says the part was
+# read.
 #
 # Usage: bash tools/export-check/check.sh <target> <export folder>
 
@@ -32,6 +34,10 @@ signing=$(field signing)
 # The program, from the export folder: the second size the report lists.
 program="$out/$(sed -n 's/^      "file": "\(.*\)",\{0,1\}\r\{0,1\}$/\1/p' "$report" | sed -n 2p)"
 echo "check: $target $package (version $version, signing $signing)"
+
+grep -q '"declared": true' "$out/exposure-report.json" || {
+  echo "check: exposure-report.json says the game has no disclosure part"; exit 1
+}
 
 # The package's files, by name.
 case "$package" in
