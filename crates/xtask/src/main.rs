@@ -19,6 +19,7 @@
 //! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
 //! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
 //! - `cargo xtask sound-parity port-ready <platform> --matrix <file>`
+//! - `cargo xtask sound-parity give-up [--apply]`
 
 mod api;
 mod changelog;
@@ -129,7 +130,11 @@ usage:
       mandatory cell passed.
   cargo xtask sound-parity port-ready <platform> --matrix <file>
       Fail unless <platform> has passed capture evidence: what a port's new
-      output work needs first.";
+      output work needs first.
+  cargo xtask sound-parity give-up [--apply]
+      Check that tools/sound-parity/footprint.ron covers all the sound
+      replacement added; with --apply, take it all out. Only on Nick's word:
+      the give-up-sound-replacement skill says what else that session does.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

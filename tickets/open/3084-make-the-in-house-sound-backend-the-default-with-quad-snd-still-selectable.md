@@ -31,12 +31,13 @@ None.
 **In:**
 - Run the complete 2573 matrix for every required platform, with the new backend
   against quad-snd on the same corpus. Any mandatory cell not passed stops here.
-- Add `in-house-sound` to `shuyi-app`'s default features, with a way to build on
-  quad-snd that a game's manifest can name. Every migrated consumer follows.
+- Add `in-house-sound` to `shuyi-app`'s default features; a build on quad-snd says
+  `default-features = false`. No game needs to name either, so giving up leaves
+  nothing in a game's files. Every migrated consumer follows.
 - CI keeps recording quad-snd with every cell mandatory, beside the new default.
 - Take the default-features half of 2573's fence out of
   `crates/xtask/src/sound_parity/tests.rs`, and keep the half that holds quad-snd.
-- Say in the completion notes how to go back, and hand the game's pin move to the
+- Hand the game's pin move to the
   game (`engine-change`), naming what to listen for.
 
 **Out (do not do):**
@@ -54,6 +55,7 @@ None.
 - [ ] The complete matrix passes on the new backend, and quad-snd's still does.
 - [ ] A build selecting quad-snd plays through it, proven by `cargo tree` and a recording.
 - [ ] Reverting this PR alone returns every game to quad-snd with nothing else to change.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] The book's chapter is updated (2802), or the completion notes have a `Book:` line saying why not.
 - [ ] All gates in the `run-gates` skill pass.
 

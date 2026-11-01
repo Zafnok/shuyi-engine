@@ -10,9 +10,12 @@
 //!   one passed. Missing, stale or silent evidence is a failure, never a skip.
 //! - `port-ready <platform>` reads a matrix and exits non-zero unless that
 //!   platform has real evidence: what a port's output work must pass first.
+//! - `give-up [--apply]` takes the whole replacement out, on Nick's word alone
+//!   ([`give_up`], ADR-0068).
 
 mod compare;
 mod corpus;
+mod give_up;
 #[cfg(test)]
 mod tests;
 
@@ -151,6 +154,8 @@ pub(crate) fn run(root: &Path, args: &[String]) -> Vec<String> {
                 Err(e) => vec![e],
             }
         }
+        ["give-up"] => give_up::run(root, false),
+        ["give-up", "--apply"] => give_up::run(root, true),
         _ => vec![format!("sound-parity: don't know {args:?}")],
     }
 }

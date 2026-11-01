@@ -10,14 +10,25 @@
 keeps quad-snd beside each new stage, but said nothing of going back, and 3079
 made the new backend the default and deleted the old one in one step. Nick asked
 that the whole chain be easily reversible if a hurdle can't be climbed
-([decision](../decisions.md)). A fallback only holds if it is still exercised,
-if nothing has come to depend on the new path, and if the last step can be undone.
+([decision](../decisions.md)): he may decide, at any stage and for any reason, to
+scrap all of it in one session, until quad-snd is removed. Reverting each stage's
+PR wouldn't do: other work lands between them, so the reverts would conflict, and
+a session would spend itself untangling them.
 
 ## Decision
 
+0. **Giving up is one command, Nick's to call.**
+   `cargo xtask sound-parity give-up --apply` takes out everything listed in
+   `tools/sound-parity/footprint.ron`: whole paths, and exact edits to shared
+   files. The `give-up-sound-replacement` skill does the rest of that session:
+   tickets, the record, the game's handoff. A chain ticket adds its own lines to
+   the footprint in its PR. A test fails on any file that names the chain's words
+   and isn't covered, or an edit that no longer matches. CI's `sound-give-up` job
+   really does it and builds and checks what is left. No agent gives up on its
+   own judgement. A ticket outside the chain that would use `shuyi-sound` waits
+   for 3079, so that giving up never takes another feature with it.
 1. **New code goes beside the old.** 2210, 3030, 3031 and 3032 add crates and a
-   path in `shuyi-app`. They don't change what the quad-snd path does, so backing
-   out a stage is reverting its PR.
+   path in `shuyi-app`. They don't change what the quad-snd path does.
 2. **One switch.** `shuyi-app`'s cargo feature `in-house-sound` chooses the
    backend, behind the same `Backend` trait. No game code or file names a backend.
 3. **A game can't come to need the new backend.** New manifest fields are
@@ -39,7 +50,9 @@ if nothing has come to depend on the new path, and if the last step can be undon
 
 ## Consequences
 
-Until 3079 merges, backing out needs no game change and little work. After it,
+Until 3079 merges, giving up is one session, and a game not past 3084's pin
+changes nothing. Every chain ticket pays a few lines of footprint, and sound PRs
+a CI job, to keep it so. After it,
 going back is a revert that conflicts more as later work builds on the removal.
 Replacing macroquad and its web loader (3034) closes that door in practice, since
 quad-snd's web path runs on that loader, so 3034 must not start until the chain is
@@ -47,8 +60,11 @@ finished or abandoned. Keeping two paths costs CI time and some discipline until
 
 ## Alternatives considered
 
-- **Reverting whatever was merged, with no rules:** a revert can't undo a game's
-  files that came to need a new field, nor a fallback that rotted unexercised.
+- **Reverting each stage's PR when the time comes:** other work lands between
+  them, so it gets harder with every merge, and nothing proves it still works
+  until the day it is needed.
+- **Keeping the chain on a long-lived branch until the end:** nothing would be
+  tested against the rest of the engine, and it would drift for months.
 - **Keeping quad-snd forever as the fallback:** it leaves the quiet dependency
   Nick chose to leave, and ADR-0066 removes it.
 - **A runtime switch between backends:** it ships both in every game and adds

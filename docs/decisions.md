@@ -1352,10 +1352,18 @@ Source: Nick, in a Claude Code session, while 2573 was being worked:
 
 > "btw, quad-snd replacement and the whole chain should be easily reversible if we encounter an unclimbable hurdle. Ensure this is the case"
 
+> "btw by reversible I mean... say we hit a roadbump and it adds 50 more tickets at that point I might decide (not as a rule, so don't independently decide for me) that it's not worth it and to scrap all progress. It should be a clean revert no matter what stage im at until quad-snd is removed outright. Then I understand it will be more difficult"
+
+> "like I would wanna one shot say \"ok lets give up on sound replacement\" and then its done in one session"
+
 **Rules:**
 
-- An unclimbable hurdle at any stage stops the chain there, with the game on
-  quad-snd and nothing in a game to change. Reaching the end isn't owed.
+- Whether to give up is Nick's alone. An agent that hits a roadbump reports what
+  it found and what it costs, and goes on with what it can. It never gives up,
+  stops the chain or drops a ticket on its own judgement.
+- At any stage until 3079 merges, Nick saying so scraps all of it in one session
+  (the `give-up-sound-replacement` skill): one PR, with the game on quad-snd.
+- After 3079 it is harder, as he says: a revert, which later work can conflict with.
 - Making the new backend the default (3084) and deleting quad-snd (3079) are
   separate steps. 3079 waits until the game has run on that default through a
   moved pin, and its removal must be proven undoable before it merges.

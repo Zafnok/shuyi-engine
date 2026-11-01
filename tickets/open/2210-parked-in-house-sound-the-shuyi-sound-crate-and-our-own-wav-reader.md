@@ -73,7 +73,8 @@ to copy it. Existing `.sfx.ron` work (2225) continues to produce WAV bytes.
 - [ ] Supported WAV/Vorbis fixtures and malformed input checks pass; limits never panic.
 - [ ] Optional codecs build with GNU and current-loader wasm; no denied license is selected.
 - [ ] 2573's decoder correctness/speed checks pass; quad-snd remains available and default.
-- [ ] Backing out is reverting this PR: it changes nothing the quad-snd path does ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+- [ ] It changes nothing the quad-snd path does.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -170,7 +170,8 @@ None.
       voice paused for 4800 frames resumes at the frame where it
       stopped; a sound at rate 2.0 ends in half its frames.
 - [ ] 2573's automated PCM/correctness and performance gates pass; the old backend remains available.
-- [ ] Backing out is reverting this PR: it changes nothing the quad-snd path does ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+- [ ] It changes nothing the quad-snd path does.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

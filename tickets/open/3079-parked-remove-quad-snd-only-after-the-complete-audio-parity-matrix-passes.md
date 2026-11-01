@@ -50,8 +50,9 @@ Missing mandatory automated evidence still blocks removal.
   name the game's PR in the completion notes. If it found a hurdle, this waits.
 - The removal is one commit holding nothing else. Before merging, on a scratch
   branch, revert that commit and let CI pass: quad-snd back, its matrix passing,
-  the exact version from `Cargo.lock`. Record that run. Take out the rest of
-  2573's fence with the removal (`crates/xtask/src/sound_parity/tests.rs`).
+  the exact version from `Cargo.lock`. Record that run. Take out with the removal
+  what is only for going back: the rest of 2573's fence, `give-up`, its footprint,
+  its skill and CI's `sound-give-up` job. From here going back is that revert.
 - Preserve unchanged Playdate SDK/baking regression checks. The future GBA
   backend never used quad-snd and need not be built to remove a desktop/web
   dependency; any currently present target/consumer must be accounted for.

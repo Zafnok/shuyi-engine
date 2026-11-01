@@ -84,6 +84,7 @@ backend (3027), deleting quad-snd (3079).
 - [ ] Unsupported fallback warns once; Playdate/GBA mapping is checked and truthful.
 - [ ] 2573's correctness/speed gates pass without removing the reference backend.
 - [ ] A manifest with a region loads and plays whole-file on quad-snd, with one warning; a test says so.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

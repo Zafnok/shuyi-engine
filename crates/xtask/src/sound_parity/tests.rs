@@ -429,3 +429,55 @@ fn quad_snd_stays_and_stays_the_default() {
         "only 3079 removes macroquad's audio (ADR-0068)"
     );
 }
+
+// -- giving up --
+
+#[test]
+fn giving_up_covers_all_the_chain_added() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    assert_eq!(give_up::run(&root, false), Vec::<String>::new());
+}
+
+#[test]
+fn a_file_naming_the_chain_outside_the_footprint_is_caught() {
+    let owned = ["tools/sound-parity".to_owned()];
+    let files = |names: &[&str]| -> Vec<String> { names.iter().map(|n| (*n).to_owned()).collect() };
+    let clean = files(&[
+        "tools/sound-parity/a.ron",
+        "tickets/open/1.md",
+        "docs/adr/1.md",
+    ]);
+    let none = BTreeMap::new();
+    assert_eq!(give_up::uncovered(&clean, &owned, &none).len(), 0);
+    let stray = files(&["crates/new/Cargo.toml"]);
+    assert_eq!(give_up::uncovered(&stray, &owned, &none).len(), 1);
+    // An edit counts only if it leaves nothing of the chain behind.
+    let mut edited = BTreeMap::new();
+    edited.insert("crates/new/Cargo.toml".to_owned(), "clean".to_owned());
+    assert_eq!(give_up::uncovered(&stray, &owned, &edited).len(), 0);
+    edited.insert(
+        "crates/new/Cargo.toml".to_owned(),
+        "shuyi-sound = 1".to_owned(),
+    );
+    assert_eq!(give_up::uncovered(&stray, &owned, &edited).len(), 1);
+}
+
+#[test]
+fn an_edit_that_no_longer_matches_is_an_error() {
+    let replace = |find: &str| give_up::Edit::Replace {
+        file: "f".to_owned(),
+        find: find.to_owned(),
+        with: "x".to_owned(),
+    };
+    assert_eq!(replace("b").apply("abc"), Ok("axc".to_owned()));
+    assert!(replace("z").apply("abc").is_err());
+    assert!(replace("a").apply("aa").is_err());
+    let cut = |from: &str, to: &str| give_up::Edit::Cut {
+        file: "f".to_owned(),
+        from: from.to_owned(),
+        to: to.to_owned(),
+    };
+    assert_eq!(cut("b", "d").apply("abcde"), Ok("ade".to_owned()));
+    assert!(cut("d", "b").apply("abcde").is_err());
+    assert!(cut("z", "b").apply("abcde").is_err());
+}

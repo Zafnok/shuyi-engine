@@ -152,7 +152,8 @@ sounds wrong, cuts out, or starts late.
       the completion notes.
 - [ ] Nick signs off.
 - [ ] Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable.
-- [ ] `in-house-sound` is the one switch, off by default; no game code or file names a backend, and CI still records quad-snd with every cell mandatory. Backing out is reverting this PR ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+- [ ] `in-house-sound` is the one switch, off by default; no game code or file names a backend, and CI still records quad-snd with every cell mandatory.
+- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

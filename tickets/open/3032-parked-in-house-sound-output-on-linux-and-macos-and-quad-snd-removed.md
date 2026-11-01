@@ -66,7 +66,8 @@ still mandatory on every required port; a CI build alone does not supply it.
   break gets a Breaking line and game handoff, not a silent break, and one only
   the new backend could honour stops this stage until it needn't ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - Stay behind 3031's `in-house-sound`, off by default: making it the default is
-  3084's. Backing out is reverting this PR, and CI still records quad-snd.
+  3084's, and CI still records quad-snd. All this PR adds goes in
+  `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes.
 
 **Out (do not do):** quad-snd, macroquad audio, feature, source, plugin and
 notice removal (3079); new cue rules; mobile backends; optional native

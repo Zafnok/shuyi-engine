@@ -489,6 +489,43 @@ jobs:
             target/sound-parity/browser-chromium/
           if-no-files-found: ignore
 
+  # Nick can scrap the sound replacement in one session at any stage until
+  # quad-snd is removed (ADR-0068): this really does it, and builds what is
+  # left, so the way back can't rot while nobody is looking.
+  sound-give-up:
+    name: sound-give-up
+    needs: changes
+    if: needs.changes.outputs.sound == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - name: Give up, in this checkout
+        run: cargo xtask sound-parity give-up --apply
+      - name: What is left builds, for the desktop and the web
+        run: |
+          cargo check --workspace --all-targets
+          cargo check -p shuyi-app --target wasm32-unknown-unknown
+      - name: What is left passes its checks
+        run: |
+          cargo test -p shuyi-app -p xtask
+          cargo xtask check-layers
+          cargo xtask check-docs
+          cargo xtask check-links
+          pwsh -File scripts/sync-agent-skills.ps1 -Check
+      - name: Nothing of it is left outside the record
+        run: |
+          if git grep -l -I -E 'sound-parity|sound_parity|sound_probe|sound-probe|SoundProbeBackend|in-house-sound|shuyi-sound|shuyi_sound' \
+            -- . ':!tickets' ':!docs/adr' ':!docs/research' ':!docs/decisions.md' ':!docs/ROADMAP.md'; then
+            echo "::error::Giving up left these behind"
+            exit 1
+          fi
+
   # `shuyi new` (tickets 1129 and 2501): a game made with each short name
   # of the engine's template (templates/shuyi-default), on this checkout of
   # the engine, passes the gates its own CI runs. It builds in this
@@ -1106,7 +1143,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

@@ -126,22 +126,26 @@ of it mandatory.
 | 3084 new default | 3032, 2397, 2234, 2378 | The complete matrix on both backends, then one line flipped |
 | 3079 removal | 3084, and the game having run on it | A fresh, complete matrix, the removal, and its revert rehearsed |
 
-## Backing out
+## Giving up
 
-If a hurdle can't be climbed, the chain stops where it is
-([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
-A game on the engine changes nothing unless a row says so.
+Nick can scrap the whole replacement in one session at any stage until quad-snd
+is removed, and only he decides to
+([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)):
+the `give-up-sound-replacement` skill.
 
-| Where it stops | To go back | What a game sees |
-| -------------- | ---------- | ---------------- |
-| 2210, 3030 | Stop, or revert the stage's PR: nothing ships it | Nothing |
-| 3031, 3032 | `in-house-sound` stays off; revert the stage's PR to remove it | Nothing |
-| 2397 | Stop: its fields are optional | A region plays whole-file on quad-snd, with one warning |
-| 3084 | Revert its PR: one line | Quad-snd again, at the game's next pin |
-| 3079 | Revert its one commit, rehearsed before it merged | Quad-snd again, at the game's next pin; later work may conflict |
+```bash
+cargo xtask sound-parity give-up --apply
+```
 
-`cargo test -p xtask` fails if `shuyi-app` loses quad-snd, or the new backend
-becomes the default, before the ticket that may do so.
+`footprint.ron` lists what the chain has added, and each of its tickets adds its
+own lines in its PR. `cargo test -p xtask` fails if a file names the chain and
+isn't covered, or an edit no longer matches; CI's `sound-give-up` job really gives
+up and builds what is left. Other fences in the same tests fail if `shuyi-app`
+loses quad-snd, or the new backend becomes the default, before the ticket that
+may do so.
+
+Reaching the end isn't owed, but stopping is his call: an agent that hits a
+roadbump reports what it costs, and doesn't stop on its own judgement.
 
 ## Limits of this evidence
 
