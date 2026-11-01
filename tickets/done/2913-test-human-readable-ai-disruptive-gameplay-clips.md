@@ -86,4 +86,6 @@ Under the rules that is a no-go as protection, so no ticket follows. Nothing in
 the engine changed. No public API changed, so there is no `Breaking:` line.
 
 Handed on: ticket 2915 now records the result and the first real phone test.
-The report is the docs home; no other docs change.
+The report is the docs home; no other docs change. At the owner's request the
+study is one folder outside the workspace, and `git rm -r tools/research/2913`
+removes it.

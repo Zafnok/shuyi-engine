@@ -3,6 +3,9 @@
 Attackers run with no tools at all and receive only frames and a brief, so
 they cannot reach the fixture source, this runner or the hidden cases. Their
 programs run in a container with no network and are scored by the 2912 grader.
+
+Everything of the study is in this folder, and nothing else depends on it, so
+`git rm -r tools/research/2913` removes it. Its outputs are under target/.
 """
 
 from __future__ import annotations
@@ -105,8 +108,10 @@ def read_frames(folder: Path) -> list[np.ndarray]:
 
 
 def capture_clean() -> None:
-    run(["cargo", "build", "--release", "-p", "cloning-fixture", "-p", "clip-capture", "--locked"])
-    binary = ROOT / "target" / "release" / ("clip-capture" + (".exe" if os.name == "nt" else ""))
+    run(["cargo", "build", "--release", "-p", "cloning-fixture", "--locked"])
+    run(["cargo", "build", "--release", "--locked", "--manifest-path", str(HERE / "capture" / "Cargo.toml"),
+         "--target-dir", str(ROOT / "target" / "clip-capture")])
+    binary = ROOT / "target" / "clip-capture" / "release" / ("clip-capture" + (".exe" if os.name == "nt" else ""))
     for game in GAMES:
         run([str(binary), game, str(SHOWN_SEED), ",".join(SCRIPTS[game]), str(OUT / "clean" / game)])
 

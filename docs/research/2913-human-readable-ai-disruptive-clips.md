@@ -297,10 +297,8 @@ every category, with at least three of four finishing the loop.
 
 ## Reproduction
 
-The [runner](../../tools/research/2913/study.py),
-[perturbations](../../tools/research/2913/perturb.py) and
-[tests](../../tools/research/2913/test_study.py) are in `tools/research/2913/`,
-with the [capture crate](../../tools/research/2913/capture/). In a virtual
+The runner (`study.py`), perturbations (`perturb.py`), tests (`test_study.py`)
+and capture crate (`capture/`) are in `tools/research/2913/`. In a virtual
 environment with Pillow 12.3.0, NumPy 2.5.3, imageio-ffmpeg 0.7.0 (ffmpeg 7.1),
 torch 2.15.0 and open_clip_torch 3.3.0, and with Docker's `python:3.14-slim`:
 
@@ -317,15 +315,21 @@ python tools/research/2913/study.py score
 Run `attack` with `--model` and `--everything` for the stages `candidates` and
 `description`, and with `--model` for `motion`, `transforms` and `bypass`, then
 `score` and `publish`. None of these packages ships: they are research tools in
-a virtual environment under `target/`. `cargo test -p clip-capture` checks the
-capture.
+a virtual environment under `target/`.
 
-[`results/`](../../tools/research/2913/results/) holds the
-[attempt ledger](../../tools/research/2913/results/attempts.json), the
-[hash of each evaluated encode](../../tools/research/2913/results/encodes.json)
-and frame set, the [per-arm summary](../../tools/research/2913/results/summary.json)
-and the [viewer metrics](../../tools/research/2913/results/viewer_metrics.json).
-Programs, responses, clips and the case seed stay in the ignored `target/`.
+The capture crate is not in the repository's workspace, so the workspace's tests
+skip it. Check it with
+`cargo test --manifest-path tools/research/2913/capture/Cargo.toml`.
+
+`tools/research/2913/results/` holds the attempt ledger (`attempts.json`), the
+hash of each evaluated encode and frame set (`encodes.json`), the per-arm summary
+(`summary.json`) and the viewer metrics (`viewer_metrics.json`). Programs,
+responses, clips and the case seed stay in the ignored `target/`.
+
+**Removing the study.** Everything is in that one folder and nothing depends on
+it, so `git rm -r tools/research/2913` removes it. This report deliberately names
+those files as text, so it stays valid without them, though the study then cannot
+be re-run or its hashes checked.
 
 The SHA-256 commitment to the grader's seed, made before the first attempt, was
 `0d6db84e77d18b74c3d4ba51214176de8123865b68e1b1d53ca088d0b9277965`.

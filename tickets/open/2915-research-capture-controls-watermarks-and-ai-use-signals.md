@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-A human-readable clip is not known to be reliably AI-inaccessible. Windows capture exclusion and protected media block some software recorders, while a camera or human description bypasses them. Watermarks, C2PA and crawler/AI-training preferences serve attribution or training choices, not universal model refusal. Study the controlled-preview boundary before a production feature. **From 2913 (done):** [no-go on clip filters](../../docs/research/2913-human-readable-ai-disruptive-clips.md): a viewer's written description alone rebuilt the shown loop, and hidden low-contrast text was read and disbelieved or compressed away. Its real phone recording was not run, so this ticket's camera arm is the first real one. Its `clip-capture` crate and encode runner can serve as the fixtures here.
+A human-readable clip is not known to be reliably AI-inaccessible. Windows capture exclusion and protected media block some software recorders, while a camera or human description bypasses them. Watermarks, C2PA and crawler/AI-training preferences serve attribution or training choices, not universal model refusal. Study the controlled-preview boundary before a production feature. **From 2913 (done):** [no-go on clip filters](../../docs/research/2913-human-readable-ai-disruptive-clips.md): a viewer's written description alone rebuilt the shown loop, and hidden low-contrast text was read and disbelieved or compressed away. Its real phone recording was not run, so this ticket's camera arm is the first real one. Its capture crate and encode runner, in `tools/research/2913/` while that folder exists, can serve as the fixtures here.
 
 ## Nick input
 
