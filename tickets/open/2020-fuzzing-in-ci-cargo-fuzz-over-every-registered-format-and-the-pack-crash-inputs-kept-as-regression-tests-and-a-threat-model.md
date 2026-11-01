@@ -54,7 +54,7 @@ Unreal 5.8.
 **What it doesn't have:** coverage-guided fuzzing, a `fuzz/` folder or a
 CI job (the only mention of `cargo fuzz` is ADR-0007 §5), a folder of
 inputs that once crashed, and a threat model. "Never a panic" in
-`docs/formats.md` is one rule, and `SECURITY.md` (1132) will be a
+`docs/formats.md` is one rule, and `SECURITY.md` (2005) will be a
 disclosure policy.
 
 **What brings more untrusted bytes:** 2207 (layers of a player's files,
@@ -336,8 +336,9 @@ it is technical.
   ADR-0007's row in `docs/adr/README.md` says it is extended by the new
   ADR.
 - **Either order:**
-  - with 1132: if `SECURITY.md` exists, link *Untrusted files* from it;
-    if not, 1132 adds the link;
+  - with 2005, and 1132 (parked) if it lands first: if `SECURITY.md`
+    exists, link *Untrusted files* from it; if not, the ticket that
+    writes it adds the link;
   - with 2011 (done): add `/fuzz` to `.github/dependabot.yml`'s cargo
     update (as `directories: ["/", "/fuzz"]`);
   - with 2012 (done): `check-toolchain` checks only the stable pins,

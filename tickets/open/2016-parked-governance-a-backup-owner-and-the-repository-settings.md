@@ -1,17 +1,19 @@
 ---
 id: "2016"
-title: "Governance and continuity: GOVERNANCE.md, a backup owner, a list of the accounts and secrets, and main protected by a required pull request and ci-result, with private vulnerability reporting"
+title: "Parked: Governance and continuity: GOVERNANCE.md, a backup owner, a list of the accounts and secrets, and main protected by a required pull request and ci-result, with private vulnerability reporting"
 type: infra
-milestone: MVP
+milestone: "Parked: governance"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: blocked
 blocked_by: []
 nick_input: setup
 completed:
 ---
 
 # 2016 — Governance, a backup owner and the repository's settings
+
+> **Parked** (Nick, 2026-11-01: "why is 2016 MVP tbh I don't get it I would rather park it altogether"): the release no longer waits for it. 2005 keeps `main`'s required checks, private vulnerability reporting and a short `SECURITY.md`. Nobody starts this until Nick says so. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -38,7 +40,7 @@ What Shuyi has today:
   owner and the repository's settings" among the decisions left for the
   tickets that need them. This is that ticket.
 - `CONTRIBUTING.md`: outside pull requests aren't accepted yet.
-- No `GOVERNANCE.md`, no `SECURITY.md` (1132 writes it), and no list of
+- No `GOVERNANCE.md`, no `SECURITY.md` (2005 writes it), and no list of
   the accounts and secrets the engine runs on.
 - The repository's settings, read with `gh api` on 2026-10-20:
   - one ruleset on the default branch, "protect main", made that day. It
@@ -97,7 +99,8 @@ Why it matters:
   agents do most of the work. The repository's own rules, not the
   agents' good behaviour, should keep `main` green.
 
-It costs nothing and is small. It goes before the first release (2005):
+It costs nothing and is small. It went before the first release (2005)
+until it was parked on 2026-11-01:
 owners and settings are easier to set before anything is published.
 
 ## Nick input
@@ -119,7 +122,7 @@ before any file is written):
      died, so it gives no rights while you are alive. While you're away,
      the work waits. The crates stay yours alone.
    - **C. Nobody for now.** `GOVERNANCE.md` says the work waits for you,
-     and 2005 asks again at the first release.
+     and nobody asks again until Nick does.
    - **Recommendation: B.** It costs nothing, grants no rights today,
      and covers the worst case. A fits better once someone has worked on
      the engine under the contribution policy that is still open.
@@ -139,7 +142,8 @@ the answer* says.
 
 **Setup**, after the decision. These are Nick's own clicks. An agent
 never changes the repository's settings, its secrets or anyone's
-account.
+account. **From 2005:** if 2005 is done, steps 1 and 2 are on already,
+so check them and go on.
 
 1. **Make the gates binding on `main`.** Open
    `https://github.com/Zafnok/shuyi-engine/settings/rules`, pick the
@@ -210,7 +214,7 @@ Then tell the session "done". It checks the result, read-only, with
     (the successor archives the repository or hands it on, and the
     README says so);
   - **security reports:** through private vulnerability reporting (the
-    repository's *Security* tab), never a public issue. 1132's
+    repository's *Security* tab), never a public issue. 2005's
     `SECURITY.md` holds the policy.
 - **`docs/continuity.md`**, public:
   - one table, a row per account or secret: what it controls, where it
@@ -233,7 +237,10 @@ Then tell the session "done". It checks the result, read-only, with
       yet, 2005";
     - GitHub Sponsors and Ko-fi. **Either order with 2806:** if 2806 is
       done, write their rows; if not, 2806 adds them;
-    - the domain: "none yet, 2807";
+    - the domain: "none yet, 2807". **Either order with 2807 and
+      2525:** if either is done, write the rows its ticket names (its
+      domain; the eval's workspace, environment and secret); if not,
+      that ticket adds them;
   - never a secret's value, an email address, a phone number, or where
     recovery codes are kept. The backup's login only if Nick said yes;
   - a section, "The repository's settings": the expected values (the
@@ -310,8 +317,7 @@ Then tell the session "done". It checks the result, read-only, with
   page (`site/content/community.md`).
 - **With 2011 (done):** `NOT_REQUIRED` holds `codeql.yml`'s
   `codeql-result`, with a comment naming ADR-0037 (CodeQL is not a
-  required check; the zizmor job is under `ci-result`). 2005 runs
-  `cargo xtask repo-settings` before the release.
+  required check; the zizmor job is under `ci-result`).
 - **From 2026 (done):** #83 and #84, each green on its own base,
   merged 23 seconds apart and broke `clippy` on `main`. Required checks
   alone don't stop that, and 2026 left the setting to this ticket. So
@@ -326,14 +332,14 @@ Then tell the session "done". It checks the result, read-only, with
 **Out (do not do):**
 - changing any setting, ruleset, secret, collaborator or account, from
   code or with a `gh api` call that writes (that is Nick's setup);
-- `SECURITY.md`: its supported versions, channel and response time are
-  1132's, which waits for this ticket;
+- `SECURITY.md`: 2005 writes it, and the response time Nick chooses here
+  replaces its "best effort" in this ticket's PR if it differs;
 - `.github/dependabot.yml`, the weekly security workflow, CodeQL and
   Scorecard (2011), and crates.io trusted publishing (2011's ADR sets
   the rule, 2005 builds it). This ticket only lists 2011's
   `codeql-result`, as *With 2011 (done)* above says;
 - adding crates.io owners and the trusted publisher, with no release
-  token (2005 does, and fills in this ticket's crates.io row);
+  token (2005 does; this ticket reads them from crates.io for its row);
 - the contribution policy (1132 asks Nick) and how maintainers are
   added (the game's ticket 0059; still open);
 - moving the repository to a GitHub organization (it would change the
