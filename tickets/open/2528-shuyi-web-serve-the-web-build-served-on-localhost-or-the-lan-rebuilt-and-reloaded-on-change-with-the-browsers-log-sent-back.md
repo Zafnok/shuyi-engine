@@ -222,6 +222,11 @@ None.
   metadata` fails, it watches the project's root. Modification times
   come from `fs::metadata` behind a small trait, so tests use fake
   times. No `notify`-style crate: polling, as 2220 does.
+  **From 3080 (done):** each build makes its package in
+  `<web.dist>.staging` beside `web.dist`, then replaces what is in
+  `web.dist` and keeps the folder, so a running server keeps serving.
+  The watcher skips that staging folder too, and `--serve` puts nothing
+  of its own in `web.dist`: the next build deletes it.
 - **`--open`:** after the first good build it opens the URL in the
   default browser: `rundll32 url.dll,FileProtocolHandler <url>` on
   Windows (no shell, so the `&` and `#` of 2522's hash pass through),

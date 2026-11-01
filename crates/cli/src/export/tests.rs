@@ -262,35 +262,114 @@ fn the_linux_package_is_a_tar_gz_with_the_program_runnable_and_no_players_note()
 
 #[test]
 fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
-    let cx = cx("web", "web");
-    let dist = cx.out.join("dist");
-    fs::create_dir_all(dist.join("music")).unwrap();
-    for file in [
-        "index.html",
-        "hello-grid.wasm",
-        "NOTICES.txt",
-        "gamepad.js",
-        "music/a.ogg",
-    ] {
-        fs::write(dist.join(file), file).unwrap();
-    }
-    let report = web::pack(&cx, &dist, "hello-grid.wasm").unwrap();
+    let (cx, rules, dist) = web_build("web");
+    let report = web::pack(&cx, &rules, &dist).unwrap();
     assert_eq!(report.package, "hello-grid-0.1.0-web.zip");
     let zip = fs::read(cx.out.join(&report.package)).unwrap();
     assert_eq!(report.sizes[0].bytes, zip.len() as u64);
     assert_eq!(report.sizes[1].file, "hello-grid-0.1.0-web/hello-grid.wasm");
-    assert_eq!(
-        archive::zip_names(&zip).unwrap(),
-        [
-            "NOTICES.txt",
-            "gamepad.js",
-            "hello-grid.wasm",
-            "index.html",
-            "music/a.ogg"
-        ]
-    );
+    assert_eq!(archive::zip_names(&zip).unwrap(), WEB_FILES);
     assert!(cx.out.join("hello-grid-0.1.0-web/index.html").is_file());
     fs::remove_dir_all(&cx.out).unwrap();
+}
+
+/// What a web build of [`web_build`]'s game makes.
+const WEB_FILES: [&str; 8] = [
+    "NOTICES.txt",
+    "gamepad.js",
+    "hello-grid.wasm",
+    "index.html",
+    "mq_js_bundle.js",
+    "music/a.ogg",
+    "quad-storage.js",
+    "sapp_jsutils.js",
+];
+
+/// A context on a game in the export's folder with a stand-in binary and
+/// a track, built once with the web packager: the context, the web rules
+/// and the build's folder.
+fn web_build(name: &str) -> (ExportCx, Web, PathBuf) {
+    let mut cx = cx(name, "web");
+    cx.root = cx.out.join("game");
+    cx.out = cx.out.join("export");
+    let mut rules = cx.web.clone().unwrap();
+    rules.music = Some("music".to_owned());
+    fs::create_dir_all(cx.root.join("music")).unwrap();
+    fs::write(cx.root.join("music/a.ogg"), "a").unwrap();
+    let wasm = cx.root.join("target/wasm32-unknown-unknown/debug");
+    fs::create_dir_all(&wasm).unwrap();
+    fs::write(wasm.join("hello-grid.wasm"), "wasm").unwrap();
+    build_web(&cx, &rules);
+    let dist = cx.root.join(&rules.dist);
+    (cx, rules, dist)
+}
+
+/// The web packager on `cx`'s game, in debug, with no works.
+fn build_web(cx: &ExportCx, rules: &Web) {
+    let target = cx.root.join("target");
+    let options = crate::web::Options::default();
+    crate::web::package(
+        &crate::web::RealWasmOpt,
+        rules,
+        &cx.root,
+        &target,
+        &options,
+        &[],
+    )
+    .unwrap();
+}
+
+/// A stale file in the build's folder, nested and not, is gone from the
+/// second build, its zip and the published folder.
+#[test]
+fn a_second_web_export_holds_no_stale_file() {
+    let (cx, rules, dist) = web_build("web-stale");
+    web::pack(&cx, &rules, &dist).unwrap();
+    fs::create_dir_all(dist.join("old")).unwrap();
+    fs::write(dist.join("canary.txt"), "stale").unwrap();
+    fs::write(dist.join("old/canary.txt"), "stale").unwrap();
+    build_web(&cx, &rules);
+    let report = web::pack(&cx, &rules, &dist).unwrap();
+    let zip = fs::read(cx.out.join(&report.package)).unwrap();
+    assert_eq!(archive::zip_names(&zip).unwrap(), WEB_FILES);
+    assert!(!dist.join("canary.txt").exists());
+    assert!(!cx.out.join(&report.folder).join("canary.txt").exists());
+    assert!(!cx.out.join(&report.folder).join("old").exists());
+    fs::remove_dir_all(cx.root.parent().unwrap()).unwrap();
+}
+
+/// A file that reached the build's folder after the build is refused by
+/// its path, and neither the folder nor an older zip stays to be released.
+#[test]
+fn an_unexpected_file_in_the_web_export_is_refused_by_its_path() {
+    let (cx, rules, dist) = web_build("web-unexpected");
+    let report = web::pack(&cx, &rules, &dist).unwrap();
+    fs::create_dir_all(dist.join("old")).unwrap();
+    fs::write(dist.join("old/canary.txt"), "stale").unwrap();
+    let refused = web::pack(&cx, &rules, &dist).unwrap_err();
+    assert_eq!(refused.code(), codes::PACKAGE);
+    assert!(refused.message().contains("old/canary.txt"), "{refused:?}");
+    assert!(!cx.out.join(&report.package).exists());
+    assert!(!cx.out.join(&report.folder).exists());
+    fs::remove_dir_all(cx.root.parent().unwrap()).unwrap();
+}
+
+/// `web.dist` holding the export's folder would delete it each build.
+#[test]
+fn an_export_folder_inside_the_web_build_is_refused() {
+    let mut cx = cx("web-nested", "web");
+    let rules = cx.web.as_mut().unwrap();
+    rules.dist = "dist".to_owned();
+    cx.root = cx.out.clone();
+    cx.out = cx.root.join("dist/export/web");
+    let refused = web::WEB.export(&cx);
+    // Where wasm32 isn't installed the export stops sooner, at the toolchain.
+    if crate::export::installed(crate::web::TARGET).is_ok() {
+        let refused = refused.unwrap_err();
+        assert_eq!(refused.code(), codes::PROJECT_FILE, "{refused:?}");
+        assert!(refused.message().contains("`web.dist`"), "{refused:?}");
+    }
+    fs::remove_dir_all(&cx.root).unwrap();
 }
 
 #[test]

@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-Shuyi's asset baker keeps unplanned bundle files as raw bytes (crates/assets/src/pack/bake.rs), and a game may embed files into its program. A pack equality test proves fidelity, not release safety. Build an auditable list of the bytes distributed to a player, beginning after web staging is clean (3080).
+Shuyi's asset baker keeps unplanned bundle files as raw bytes (crates/assets/src/pack/bake.rs), and a game may embed files into its program. A pack equality test proves fidelity, not release safety. Build an auditable list of the bytes distributed to a player. A web build already holds only what it made (3080).
 
 ## Nick input
 

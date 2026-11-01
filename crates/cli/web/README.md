@@ -176,6 +176,19 @@ otherwise skips that step silently. Writes `NOTICES.txt` beside the page.
 Prints the output folder and the wasm binary's size. Serve that folder over HTTP (any static file server; the
 WASM binary must not be opened as a `file://` URL).
 
+The package is made whole in `<web.dist>.staging` beside the folder, then
+replaces everything in `web.dist`: a file left there is deleted by the next
+build, and a build that fails leaves the last one as it was. The folder
+itself stays, so a server running in it keeps serving. A `web.dist` that
+holds the project, the binary, the music or voice sources, a `.git` or a
+`Cargo.toml` is refused, since replacing it would destroy them.
+
+`shuyi export web` runs that build, then copies the folder into its package.
+It refuses an export folder inside `web.dist`, and a file in the package that
+the build doesn't make (`current_files` in `web.rs`), by its path. A file
+copied in after `shuyi web`, as CI does with `capture.ron`, is for checking
+that folder and never reaches an export.
+
 ## Checked in CI
 
 CI's `web-render` job (ticket 2019, [ADR-0053](../../../docs/adr/0053-the-web-build-checked-in-headless-chromium-playwright-for-python-and-a-capture-mode-that-logs.md)) opens web builds in headless Chromium

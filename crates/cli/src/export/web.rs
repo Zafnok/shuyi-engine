@@ -3,7 +3,10 @@
 //! zipped with `index.html` at the zip's root, as itch.io and other
 //! portals take it. It needs the game's `web` part, as `shuyi web` does.
 
+use std::fs;
+
 use super::{ExportCx, ExportError, ExportReport, Exporter, Signing, archive, fresh, paths};
+use crate::project::Web;
 use crate::web::{self as build, Options};
 
 /// The web exporter.
@@ -50,6 +53,14 @@ impl Exporter for WebExporter {
         for args in self.cargo_args(cx) {
             super::no_live_link(&args)?;
         }
+        let dist = cx.root.join(&rules.dist);
+        if build::is_under(&cx.out, &dist) {
+            return Err(ExportError::Setup(format!(
+                "the export's folder {} is in `web.dist`, `{}`, which each web build replaces: \
+                 give the web build a folder of its own, such as `dist/web`",
+                cx.shown, rules.dist
+            )));
+        }
         build::run(rules, &cx.root, &Self::options(cx), &cx.game).map_err(|e| {
             if e.starts_with(paths::FOUND) {
                 ExportError::BuildPath(e)
@@ -57,28 +68,41 @@ impl Exporter for WebExporter {
                 ExportError::Build(e)
             }
         })?;
-        pack(
-            cx,
-            &cx.root.join(&rules.dist),
-            &format!("{}.wasm", rules.bin),
-        )
+        pack(cx, rules, &dist)
     }
 }
 
-/// Copies the web build in `dist` into `<base>/` and zips it, `wasm`
-/// being its binary.
+/// Copies the web build in `dist` into `<base>/` and zips it. A file there
+/// that this build doesn't make is refused by its path, with no package
+/// left behind.
 pub fn pack(
     cx: &ExportCx,
+    rules: &Web,
     dist: &std::path::Path,
-    wasm: &str,
 ) -> Result<ExportReport, ExportError> {
     let base = cx.base();
     let folder = cx.out.join(&base);
+    let zip = format!("{base}.zip");
     fresh(&folder)?;
     build::copy_tree(dist, &folder, &|_| true).map_err(ExportError::Build)?;
     let entries = archive::entries(&folder, "", &|_| false).map_err(ExportError::Build)?;
-    let zip = format!("{base}.zip");
+    let current = build::current_files(rules, &cx.root).map_err(ExportError::Build)?;
+    let unexpected: Vec<&str> = entries
+        .iter()
+        .map(|entry| entry.name.as_str())
+        .filter(|name| !current.contains(*name))
+        .collect();
+    if !unexpected.is_empty() {
+        let refused = ExportError::Build(format!(
+            "the web export holds {}, which this build didn't make: remove it, or build again",
+            unexpected.join(", ")
+        ));
+        let _ = fs::remove_dir_all(&folder);
+        let _ = fs::remove_file(cx.out.join(&zip));
+        return Err(refused);
+    }
     archive::zip(&cx.out.join(&zip), &entries).map_err(ExportError::Build)?;
-    let sizes = vec![cx.size(&cx.out.join(&zip))?, cx.size(&folder.join(wasm))?];
+    let wasm = format!("{}.wasm", rules.bin);
+    let sizes = vec![cx.size(&cx.out.join(&zip))?, cx.size(&folder.join(&wasm))?];
     Ok(cx.report(&zip, sizes, Signing::None, None))
 }
