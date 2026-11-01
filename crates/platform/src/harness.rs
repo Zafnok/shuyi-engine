@@ -25,6 +25,8 @@ use crate::alloc_prelude::*;
 use alloc::{format, vec};
 use core::any::Any;
 
+#[cfg(feature = "std")]
+use shuyi_assets::bundle::Layer;
 use shuyi_assets::keymap::{Button, Chord, CrankDef};
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
@@ -161,6 +163,15 @@ impl<G: GameData> Harness<G> {
     /// pad `South` is its right face button.
     pub fn use_pad(&mut self, kind: PadKind) -> &mut Self {
         self.pad_kind = kind;
+        self
+    }
+
+    /// Changes the file at `path` in `layer` (one handed in at run time),
+    /// as a file changing on disk does: the next frame's modules hear of it
+    /// before the update ([`HeadlessPlatform::change_file`]).
+    #[cfg(feature = "std")]
+    pub fn change_file(&mut self, layer: Layer, path: &str, bytes: Vec<u8>) -> &mut Self {
+        self.platform.change_file(layer, path, bytes);
         self
     }
 

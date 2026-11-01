@@ -7,7 +7,9 @@
 //!
 //! On desktop, `read_folder` reads a folder on disk (a player's mod) into
 //! a bundle layer the game lays over its own files. The web has no
-//! folders, so it isn't there.
+//! folders, so it isn't there. In a build with debug tools the folders it
+//! reads are watched, and `watched_layer` gives the one `cargo shuyi run
+//! --watch` names (ADR-0071).
 //!
 //! A game on the short path (ADR-0036) runs from a plain `main`, with
 //! [`run_game`] and its `BasicGame`:
@@ -127,6 +129,8 @@ mod perf_file;
 mod readback;
 pub mod render;
 pub mod storage;
+#[cfg(not(target_arch = "wasm32"))]
+mod watch;
 
 use core::fmt::Debug;
 
@@ -143,8 +147,14 @@ pub use crate::audio::device::Macroquad as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
 #[cfg(not(target_arch = "wasm32"))]
-pub use crate::folder::{FolderError, read_folder};
+pub use crate::folder::{FolderError, read_folder, watched_layer};
 use crate::pacing::{Pacer, WebFrame};
+
+/// The web has no folders to watch.
+#[cfg(target_arch = "wasm32")]
+pub fn watched_layer() -> Option<shuyi_assets::bundle::Layer> {
+    None
+}
 
 /// The window a game opens. Build it with [`Window::new`]: a struct
 /// literal doesn't compile outside this crate, so a new field never breaks
@@ -471,8 +481,14 @@ fn answer_link<G: GameData>(link: &mut link::Listener, app: &App<G>, platform: &
 /// Runs a game on the short path until it quits, in a window of its
 /// console at twice its size: its files become the process's bundle, and
 /// [`run`] starts it as [`BasicGame::start`] says, with no sounds, no
-/// voices and no system keyboard. Called from a plain `fn main`.
+/// voices and no system keyboard. Called from a plain `fn main`. Under
+/// `cargo shuyi run --watch` the game's files on disk are laid over the
+/// embedded ones ([`watched_layer`]).
 pub fn run_game<A: ActionSet, T: Debug + 'static>(game: BasicGame<A, T>) {
+    let game = match watched_layer() {
+        Some(layer) => game.over(layer),
+        None => game,
+    };
     // Only the binary installs the bundle: the tools and the tests read
     // the one the game's data holds, since one test process runs many
     // games. A bundle installed before (none is) would stay.

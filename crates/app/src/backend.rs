@@ -29,7 +29,11 @@ use crate::audio::{self, device};
 use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::render::{Renderer, color, upload};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::watch::{Poller, RealDisk};
 use crate::{AppConfig, keys, storage};
+#[cfg(not(target_arch = "wasm32"))]
+use shuyi_platform::Millis;
 
 /// The sound device: the shared player on quad-snd. Before the game has
 /// loaded there is nothing to play. It mutes what it holds: quad-snd can't
@@ -67,6 +71,9 @@ pub(crate) struct Macroquad {
     /// The live link's input for the next frame, after the devices'.
     #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
     link_input: Vec<RawInputEvent>,
+    /// What looks at the disk layers, in a build with debug tools.
+    #[cfg(not(target_arch = "wasm32"))]
+    poller: Poller,
 }
 
 impl Macroquad {
@@ -95,6 +102,8 @@ impl Macroquad {
             held: Held::default(),
             #[cfg(all(feature = "link", not(target_arch = "wasm32")))]
             link_input: Vec::new(),
+            #[cfg(not(target_arch = "wasm32"))]
+            poller: Poller::new(shuyi_ui::DEBUG_TOOLS),
         }
     }
 
@@ -191,6 +200,26 @@ impl Macroquad {
         }
     }
 
+    /// Shows the errors of hot reloads that failed over the top of the
+    /// frame, whatever the debug view shows: the debug overlay, in
+    /// macroquad's built-in font, since the game's may be what failed.
+    fn draw_reload_errors(errors: &[String]) {
+        let glyph = measure_text("M", None, 22, 1.0).width.max(1.0);
+        // The window's width in characters: a few, whatever the window is.
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let width = ((screen_width() - 24.0) / glyph).max(20.0) as usize;
+        let text = crate::wrap(&errors.join("\n"), width);
+        let lines = text.lines().count();
+        #[allow(clippy::cast_precision_loss)] // A few lines of text.
+        let height = lines as f32 * 24.0 + 12.0;
+        draw_rectangle(0.0, 0.0, screen_width(), height, BLACK);
+        let mut y = 24.0;
+        for line in text.lines() {
+            draw_text(line, 12.0, y, 22.0, RED);
+            y += 24.0;
+        }
+    }
+
     /// Draws the loading card: its line in macroquad's built-in font, or its
     /// picture at the largest whole scale that fits, centred.
     fn draw_card(&mut self, card: &shuyi_platform::Card) {
@@ -279,6 +308,9 @@ impl Platform for Macroquad {
             } => self.draw_game(buffer, background, look),
             _ => clear_background(BLACK),
         }
+        if !frame.reload_errors.is_empty() {
+            Self::draw_reload_errors(frame.reload_errors);
+        }
     }
 
     fn poll_input(&mut self, out: &mut Vec<RawInputEvent>) {
@@ -345,6 +377,15 @@ impl Platform for Macroquad {
     /// heap.
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         heap_snapshot()
+    }
+
+    /// The files of the disk layers that changed, their new bytes in their
+    /// layers: looked at once a second.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn changed_files(&mut self, out: &mut Vec<String>) {
+        self.poller.take_read();
+        let clock = || Millis::from_secs_f64(crate::pacing::seconds());
+        self.poller.poll(clock, &RealDisk, out);
     }
 }
 

@@ -277,12 +277,12 @@ privacy question for Nick, which parked 3047 asks for crash reports).
     scripts and clock from the record's last time; the music then comes
     from the headless speaker, and `limits` says so.
 - **Either order:**
-  - with 2220 (hot reload): if it is done, a frame whose
-    `Platform::changed_files` named files is recorded as
-    `reloaded_at: Option<u32>` (the first such frame) on
-    `SessionRecord`, and `Played::limits` warns that frames after it may
-    differ (the files' new bytes aren't in the record). If not, 2220
-    does it (its own clause says so);
+  - **from 2220 (hot reload, done):** a frame whose
+    `Platform::changed_files` named files (`tell_changed` in
+    `crates/platform/src/app.rs`) is recorded as `reloaded_at: Option<u32>`
+    (the first such frame) on `SessionRecord`, and `Played::limits` warns
+    that frames after it may differ (the files' new bytes aren't in the
+    record);
   - **from 2321 (the frame cap, done):** the backend reports its
     pacing between frames (`App::set_pacing`), and the next frame that
     runs the game hands it over before the update

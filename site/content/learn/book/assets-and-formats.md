@@ -90,6 +90,26 @@ in any settings file is an error with its line. The formats page says
 [how settings are
 found](https://github.com/Zafnok/shuyi-engine/blob/main/docs/formats.md#import-settings).
 
+## Reloading while the game runs
+
+`cargo shuyi run --watch` starts the game in its window, in a debug build,
+with the folder of its files on disk laid over the embedded ones
+(`assets:` in `shuyi.ron` names it). Save a file there, and within a
+second the bundle has its new bytes.
+
+A value you want to follow it is a `Hot<T>`: any kind, read through the
+registry, which remembers every file its decode asked for (its picture, its
+settings) and reads like the value. A small module of the game's keeps it, and
+refreshes it when files change:
+
+{{ snippet(file="src/assets.rs", anchor="hot") }}
+
+A broken file never stops the game: the old value stays, and `note_reload` shows
+its error, with its file and line, at the top of the frame until the next good
+save. A reload is no input and is in no record, and a build that ships never
+looks at the disk. It isn't on the web, which rebuilds the page instead, or on
+a console.
+
 ## The pack
 
 A game may ship its files baked into one pack, a `.shuyipak` file

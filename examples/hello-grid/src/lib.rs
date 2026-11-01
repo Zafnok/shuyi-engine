@@ -31,6 +31,8 @@ mod prelude {
 
 pub mod action;
 pub mod app_info;
+#[cfg(feature = "std")]
+pub mod hot_palette;
 pub mod map;
 #[cfg(feature = "playdate")]
 pub mod playdate;
@@ -115,6 +117,15 @@ pub fn target_layers() -> [Layer; 1] {
 #[cfg(feature = "std")]
 pub fn bundle(target: Option<&str>) -> Bundle {
     Bundle::for_target(vec![layer()], &target_layers(), target)
+}
+
+/// The game's files on `target` with `over` laid over them: a folder on
+/// disk, under `cargo shuyi run --watch`, reading first ([`bundle`] for
+/// none).
+#[cfg(feature = "std")]
+pub fn bundle_over(over: Option<Layer>, target: &str) -> Bundle {
+    let layers = over.into_iter().chain([layer()]).collect();
+    Bundle::for_target(layers, &target_layers(), Some(target))
 }
 
 /// The game's English screen text, by key: `en.ron`.
@@ -273,7 +284,14 @@ impl Hello {
     /// found.
     #[cfg(feature = "std")]
     pub fn load_on(target: &str) -> Result<Self, Vec<ContentError>> {
-        let mut game = Self::load_from(&bundle(Some(target)), &formats())?;
+        Self::load_from_on(&bundle(Some(target)), target)
+    }
+
+    /// The game's data from `bundle` on target `target`, with its console
+    /// and buttons, or every problem found.
+    #[cfg(feature = "std")]
+    fn load_from_on(bundle: &Bundle, target: &str) -> Result<Self, Vec<ContentError>> {
+        let mut game = Self::load_from(bundle, &formats())?;
         game.keymap = game.keymap.for_target(target);
         game.console = console_on(target);
         Ok(game)
@@ -480,6 +498,16 @@ pub fn ctx(seed: u64) -> Ctx<Hello> {
 #[cfg(feature = "std")]
 pub fn ctx_on(target: &str, seed: u64) -> Ctx<Hello> {
     ctx_of(Hello::load_on(target), seed)
+}
+
+/// [`ctx_on`], with the game's files read from `bundle` ([`bundle_over`]).
+///
+/// # Panics
+///
+/// As [`ctx`]: a file on disk broken before the game starts says so.
+#[cfg(feature = "std")]
+pub fn ctx_from(bundle: &Bundle, target: &str, seed: u64) -> Ctx<Hello> {
+    ctx_of(Hello::load_from_on(bundle, target), seed)
 }
 
 /// The context of `loaded` (see [`ctx`]).

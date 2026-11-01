@@ -126,10 +126,9 @@ Nick comments on the scope and the look, not on the code.
 - **A throwaway spike** (not committed). The chosen shell shows the
   toy's grid game running with the `grid` channel on, and edits one
   setting in a RON file that the game reloads.
-- **Either order with 2220 (hot reload):** if 2220 is done, the spike's
-  game reloads the file through it (`shuyi run --watch`); if not, the
-  spike restarts the game to show the change. Either way, point 4 of
-  the ADR (live edits) starts from what 2220 reloads.
+- **From 2220 (hot reload, done):** the spike's game reloads the file
+  through it (`shuyi run --watch`), and point 4 of the ADR (live edits)
+  starts from what it reloads (ADR-0071).
 - **The tickets.** Rewrite 2507 (the shell) and 2508 (the graph panel)
   to the ADR, splitting them where one is over a PR's worth. Write
   tickets for any other day-one panels. Update 1135's editor point if

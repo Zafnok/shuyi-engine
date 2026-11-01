@@ -347,7 +347,9 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
         out.push_str(
             "\n--perf               measure each frame, and answer a summary of the times\n\
              --perf-out <file>    also write each kept frame as a JSON line, from the\n                     \
-             project's folder (implies --perf)\n",
+             project's folder (implies --perf)\n\
+             --watch              alone: the game in its window instead, its files on\n                     \
+             disk reloading as they change (a debug build)\n",
         );
     }
     if !options.is_empty() {

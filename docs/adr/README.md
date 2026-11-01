@@ -83,5 +83,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0068](0068-the-sound-replacement-stays-reversible-at-every-stage.md) | The sound replacement stays reversible at every stage | Accepted |
 | [0069](0069-a-games-window-icons-may-be-drawn-per-size-in-app-icon-sizes.md) | A game's window icons may be drawn per size, in `app.icon_sizes` | Accepted; extends ADR-0061 |
 | [0070](0070-each-final-export-is-read-back-into-an-exposure-report-and-held-to-a-games-disclosure-part.md) | Each final export is read back into an exposure report and held to a game's disclosure part | Accepted; extends ADR-0058 |
+| [0071](0071-hot-reload-a-disk-layers-bytes-replaced-values-that-remember-what-they-read-and-a-module-hook.md) | Hot reload: a disk layer's bytes replaced, values that remember what they read, and a module hook | Accepted; extends ADR-0004, ADR-0040 |
 
 Template: [`0000-template.md`](0000-template.md).

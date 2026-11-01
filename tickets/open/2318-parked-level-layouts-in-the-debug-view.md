@@ -88,10 +88,9 @@ None.
   its sort key as a small label at its foot (`z,y,order`), and a
   `Cross` at the point its `y` is measured from. It is separate from
   `layout` because it is noisy.
-- **Hot reload. Either order with 2220:** if 2220 is done, when a
-  `Hot<TileMap>` reloads, the `layout` channel shows a `Note` label
-  "reloaded <file>" for two seconds of frames; if not, 2220 adds it to
-  this channel when it lands.
+- **From 2220 (hot reload, done):** when a `Hot<TileMap>` reloads, the
+  `layout` channel shows a `Note` label "reloaded <file>" for two seconds
+  of frames.
 - **Either order with 2361:** 2361 draws a smoothed world layer
   between the last two steps, through a blended camera. If 2361 is
   done, a gizmo on a smoothed layer goes through the layer as drawn
@@ -119,9 +118,10 @@ None.
    sprite at the same world point.
 3. Write `debug/layout.rs` and the two channels.
 4. Change 2317's `to_px` to call `world_to_px`, if 2317 is done.
-5. Do the either-order parts for 1125, 1126, 2220, 2360, 2361 and
+5. Do the either-order parts for 1125, 1126, 2360, 2361 and
    2362.
-6. Run the gates.
+6. Add the reload note.
+7. Run the gates.
 
 ## Acceptance criteria
 
@@ -133,7 +133,7 @@ None.
       each room and the look-ahead point.
 - [ ] If 2360 is done, with `layout` on, the example's snapshot lists
       each tile layer's map bounds and `visible` rectangle.
-- [ ] If 2220 is done, a reloaded map shows its "reloaded <file>" note
+- [ ] A reloaded map shows its "reloaded <file>" note
       in the `layout` channel.
 - [ ] With `sort` on, every world sprite has a sort-key label.
 - [ ] The replay hash is the same with the channels on and off.

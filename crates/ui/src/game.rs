@@ -350,6 +350,21 @@ impl<G: GameData> Game<G> {
         }
     }
 
+    /// Tells the modules that declared [`Hook::Reloaded`], in install order,
+    /// that the files at `changed` changed on disk (paths in the bundle).
+    /// The platform's `App` calls it before the frame's update, in a build
+    /// with debug tools on. After a quit, nothing.
+    pub fn reloaded(&mut self, changed: &[String]) {
+        if self.quit {
+            return;
+        }
+        for (module, installed) in self.modules.iter_mut().zip(&self.installed) {
+            if installed.hooks.contains(&Hook::Reloaded) {
+                module.reloaded(&mut self.ctx, changed);
+            }
+        }
+    }
+
     /// Runs one frame: applies `events` (in order), advances input by `dt`
     /// seconds, updates the top screen with the resulting actions, collects
     /// its audio requests and redraws. After a quit, frames do nothing. In

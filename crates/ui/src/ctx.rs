@@ -18,6 +18,7 @@ use core::fmt::{Debug, Display};
 
 use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::dialogue::LineId;
+use shuyi_assets::hot::Reload;
 use shuyi_assets::keymap::{ActionSet, KeymapDef, Layout};
 use shuyi_assets::lang::{Lang, LangCode};
 use shuyi_assets::palette::PaletteDef;
@@ -349,6 +350,8 @@ pub struct Ctx<G: GameData> {
     english: LangCode,
     /// The installed modules' states and debug menu entries.
     pub(crate) modules: module::States<G>,
+    /// The hot reloads that failed ([`note_reload`](Self::note_reload)).
+    reload_errors: module::ReloadErrors,
 }
 
 impl<G: GameData> Ctx<G> {
@@ -396,7 +399,22 @@ impl<G: GameData> Ctx<G> {
             lang: LangCode::english(),
             english: LangCode::english(),
             modules: module::States::default(),
+            reload_errors: module::ReloadErrors::default(),
         })
+    }
+
+    /// Takes how the asset `id` reloaded (`Hot::refresh`'s answer): a
+    /// failure's errors show at the top of the frame, where the backend has
+    /// a debug overlay, until `id`'s next good reload. Called from
+    /// [`Module::reloaded`](module::Module::reloaded).
+    pub fn note_reload(&mut self, id: &str, reload: &Reload) {
+        self.reload_errors.note(id, reload);
+    }
+
+    /// The errors of the reloads that failed and haven't reloaded since,
+    /// each with its file and line, one a line.
+    pub fn reload_errors(&self) -> &[String] {
+        self.reload_errors.lines()
     }
 
     /// The state of type `T` a module put here

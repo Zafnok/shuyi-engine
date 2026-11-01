@@ -138,6 +138,7 @@ fn a_state_two_modules_put_on_the_context_is_refused_naming_both() {
 fn a_hook_is_named_after_its_method() {
     assert_eq!(Hook::BeforeUpdate.name(), "before_update");
     assert_eq!(Hook::DrawOver.name(), "draw_over");
+    assert_eq!(Hook::Reloaded.name(), "reloaded");
 }
 
 #[test]

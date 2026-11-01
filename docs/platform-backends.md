@@ -138,16 +138,18 @@ confirmed. A backend that never reports leaves every request pending.
    that same one;
 3. while suspended, `poll_input` (dropped) and nothing else: no update,
    nothing presented;
-4. `poll_input`;
-5. `text_input`: whether there is a system keyboard, and its answer if a
+4. `changed_files`, with debug tools on: the paths go to the game's
+   modules before its update (never in a build that ships);
+5. `poll_input`;
+6. `text_input`: whether there is a system keyboard, and its answer if a
    screen's ask waits for one;
-6. `audio().music_playing(now)`, for the screens that keep time with the
+7. `audio().music_playing(now)`, for the screens that keep time with the
    music;
-7. the game's update (`shuyi_ui::Game::frame`);
-8. `audio().play(&frame, now)` with that frame's audio, every frame;
-9. `text_input().open(&ask)` if a screen asked for the system keyboard;
-10. `audio().stop_all()` if the game quit in that update;
-11. `present(&frame)` (timed, in a frame `App` measures, and the
+8. the game's update (`shuyi_ui::Game::frame`);
+9. `audio().play(&frame, now)` with that frame's audio, every frame;
+10. `text_input().open(&ask)` if a screen asked for the system keyboard;
+11. `audio().stop_all()` if the game quit in that update;
+12. `present(&frame)` (timed, in a frame `App` measures, and the
     frame's end read after it).
 
 The game's first frames are different: frame 1 presents the loading card;
@@ -410,6 +412,19 @@ overflowed)` (the platform's `heap` feature), which `shuyi-app` and the
 tool program share. A backend whose counter has no tags leaves the
 default, `None`, and no snapshot is taken.
 
+### `changed_files(&mut self, out: &mut Vec<String>)` (has a default)
+
+The files that changed on disk since the last call, in debug builds
+(ADR-0071): their paths in the bundle, each with its new bytes already in its
+layer (`Layer::replace`). `App` asks once a frame the game runs, while debug
+tools are on, so a build that ships never asks. A backend with files to watch
+looks at them only every so often: `shuyi-app` compares the modification times
+and sizes of the folders `read_folder` read, once a second, with no clock read
+and no folder scanned when it has none. Keep what a frame shows of
+`frame.reload_errors` too: a backend with a debug overlay draws them at the top
+of the frame until they clear; one without ignores them. A device with no files
+to watch leaves the default, which adds nothing.
+
 ## The live link (optional)
 
 A backend may offer the live link
@@ -456,7 +471,10 @@ the same records on every run, and a heap: a fake one that moves by
 fixed amounts with the frames presented (`with_fake_memory`), or a real
 counter's reading (`set_memory`); `memory_calls` counts `App`'s asks. It
 gives memory tags only when a test hands it some (`with_scopes`,
-`set_scopes`): fakes that note what is entered. The test Harness (`shuyi_platform::harness`, the
+`set_scopes`): fakes that note what is entered. A test changes a file with
+`change_file(layer, path, bytes)`: the next ask replaces it and tells its path
+(`changed_asks` counts the asks), and `reload_errors` keeps what the last frame
+asked to show. The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a
 new backend's translation the same way: a fake of the device's SDK on

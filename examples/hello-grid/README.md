@@ -12,6 +12,7 @@ ended.
 
 ```
 cargo run -p hello-grid              # from the repository's root
+cargo shuyi run --watch              # from here: a colour saved in files/palette.ron shows
 cargo shuyi web --release            # from this folder: the page in dist/web/
 cargo test -p hello-grid             # the tests
 ```
