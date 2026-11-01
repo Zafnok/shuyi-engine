@@ -72,6 +72,13 @@ class Metrics(unittest.TestCase):
         self.assertTrue(perturb.flash_area([black, white] * 15)["fails_general_flash_screen"])
         self.assertFalse(perturb.flash_area([black] * 30)["fails_general_flash_screen"])
 
+    def test_a_strobe_changes_a_whole_field_and_fine_noise_does_not(self) -> None:
+        black = np.zeros((128, 128, 3), dtype=np.uint8)
+        white = np.full((128, 128, 3), 255, dtype=np.uint8)
+        self.assertGreater(perturb.largest_field_change([black, white]), 0.9)
+        frames = [perturb.motion(picture(), "courier", 0, sub) for sub in range(4)]
+        self.assertLess(perturb.largest_field_change(frames), 0.1)
+
     def test_survival_sees_a_kept_and_a_removed_perturbation(self) -> None:
         clean = picture()
         noisy = perturb.noise(clean, "courier", 0, 0)

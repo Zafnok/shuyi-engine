@@ -210,6 +210,16 @@ def flash_area(frames: list[np.ndarray]) -> dict:
     }
 
 
+def largest_field_change(frames: list[np.ndarray], cell: int = 64) -> float:
+    """The largest luminance step between frames, averaged over cells of `cell` pixels.
+
+    Beside `flash_area`, which counts single pixels and so overstates fine noise
+    that the eye averages. The WCAG flash threshold is a step of 0.1.
+    """
+    series = np.stack([_box(relative_luminance(frame), cell)[::cell, ::cell] for frame in frames])
+    return round(float(np.abs(np.diff(series, axis=0)).max()), 4)
+
+
 def survival(clean: np.ndarray, perturbed: np.ndarray, clean_after: np.ndarray, perturbed_after: np.ndarray) -> dict:
     """How much of a perturbation an encode kept, in the encode's own size."""
     height, width = clean_after.shape[:2]

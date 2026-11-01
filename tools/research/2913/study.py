@@ -283,6 +283,7 @@ def viewer_metrics() -> dict:
         row = {"psnr": [], "ssim": [], "energy_kept": [], "correlation": [], "ms_per_frame": []}
         flash = 0
         fails = False
+        field_change = 0.0
         for game in GAMES:
             clean = read_frames(OUT / "clean" / game)
             for state, frame in enumerate(clean):
@@ -300,10 +301,12 @@ def viewer_metrics() -> dict:
             screen = perturb.flash_area(hold)
             flash = max(flash, screen["pixels_over_three_flashes_per_second"])
             fails = fails or screen["fails_general_flash_screen"]
+            field_change = max(field_change, perturb.largest_field_change(hold))
         size = sum((OUT / "arms" / candidate / "transcode" / game / "clip.mp4").stat().st_size for game in GAMES)
         result[candidate] = {
             **{key: round(statistics.mean(values), 3) for key, values in row.items()},
             "transcode_bytes_both_clips": size, "flash_pixels": flash, "fails_general_flash_screen": fails,
+            "largest_field_change": field_change,
         }
     return result
 
