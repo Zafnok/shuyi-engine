@@ -37,7 +37,7 @@ use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
-use crate::project::{AppPart, Beside, ExportPart, Project, Web};
+use crate::project::{AppPart, Beside, ExportPart, GameProgram, Project, Web};
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -243,17 +243,18 @@ impl ExportCx {
         } else {
             config.web.as_ref()
         };
-        let package = match (&config.game, web) {
-            _ if exporter.id() == "web" => web.map(|web| web.package.clone()),
-            (Some(game), _) => Some(game.package.clone()),
-            (None, web) => web.map(|web| web.package.clone()),
-        }
-        .ok_or_else(|| {
-            ExportError::Setup(format!(
-                "{} names no package to build: its `game` part names the game's",
-                crate::project::FILE
-            ))
-        })?;
+        let part = config
+            .export
+            .as_ref()
+            .filter(|_| exporter.takes_export_part());
+        let named = part.and_then(|part| part.package.as_deref());
+        let package =
+            package_of(exporter.id(), named, config.game.as_ref(), web).ok_or_else(|| {
+                ExportError::Setup(format!(
+                    "{} names no package to build: its `game` part names the game's",
+                    crate::project::FILE
+                ))
+            })?;
         let (package_version, bins, features) = metadata(root, &package)?;
         let version = version(config.app.as_ref(), package_version);
         let bin = match web {
@@ -272,10 +273,6 @@ impl ExportCx {
             Some(texts) => notices::game_texts(root, texts).map_err(ExportError::Setup)?,
             None => Vec::new(),
         };
-        let part = config
-            .export
-            .as_ref()
-            .filter(|_| exporter.takes_export_part());
         let turned_on = turned_on(part, &input.without)?;
         let mut beside = present(root, part)?;
         if let Some(web) = web.filter(|_| exporter.id() == "web") {
@@ -465,6 +462,25 @@ impl ExportCx {
         works.extend(self.game.iter().cloned());
         notices::write(dir, &self.title, &works).map_err(ExportError::Build)
     }
+}
+
+/// The package an export of target `id` builds: the web build's on `web`;
+/// otherwise the `export` part's, the `game` part's or the web build's, the
+/// first there is.
+fn package_of(
+    id: &str,
+    named: Option<&str>,
+    game: Option<&GameProgram>,
+    web: Option<&Web>,
+) -> Option<String> {
+    let web_package = web.map(|web| web.package.clone());
+    if id == "web" {
+        return web_package;
+    }
+    named
+        .map(str::to_owned)
+        .or_else(|| game.map(|game| game.package.clone()))
+        .or(web_package)
 }
 
 /// The features a build turns on: what `part` lists but `without`. Leaving

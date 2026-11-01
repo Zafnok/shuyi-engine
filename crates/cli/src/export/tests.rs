@@ -149,6 +149,33 @@ fn link_in_the_export_parts_features_is_refused() {
 }
 
 #[test]
+fn the_package_is_the_export_parts_then_the_games_then_the_web_builds() {
+    let game = GameProgram {
+        package: "tools".to_owned(),
+        ..GameProgram::default()
+    };
+    let web = Web {
+        package: "page".to_owned(),
+        ..Web::default()
+    };
+    let of = |id, named, game, web| package_of(id, named, game, web);
+    assert_eq!(
+        of("windows", Some("app"), Some(&game), Some(&web)).as_deref(),
+        Some("app")
+    );
+    assert_eq!(
+        of("windows", None, Some(&game), Some(&web)).as_deref(),
+        Some("tools")
+    );
+    assert_eq!(of("linux", None, None, Some(&web)).as_deref(), Some("page"));
+    assert_eq!(
+        of("web", Some("app"), Some(&game), Some(&web)).as_deref(),
+        Some("page")
+    );
+    assert_eq!(of("macos", None, None, None), None);
+}
+
+#[test]
 fn the_web_builds_own_folders_are_not_shipped_twice() {
     let web = Web {
         music: Some("music".to_owned()),

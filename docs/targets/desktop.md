@@ -77,6 +77,8 @@ export: (
 ),
 ```
 
+- **`package`**, if the program that ships isn't in the `game` part's package
+  (a game whose tool program is a package of its own), names it.
 - **`features`** go to the build's `--features`, on every desktop target and
   the web, and to `NOTICES.txt`. `link`, the live link, is refused.
   `--without <feature>` leaves one off a build, as a build with no access to

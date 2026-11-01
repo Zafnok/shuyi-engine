@@ -419,6 +419,9 @@ pub struct Notices {
 #[serde(deny_unknown_fields, default)]
 #[non_exhaustive]
 pub struct ExportPart {
+    /// The package whose program ships, when it isn't the `game` part's (a
+    /// game whose tool program is a package of its own).
+    pub package: Option<String>,
     /// The features of the game's package a build turns on. `link`, the
     /// debug build's live link, is refused.
     pub features: Vec<String>,
