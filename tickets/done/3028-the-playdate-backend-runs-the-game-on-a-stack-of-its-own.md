@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: medium
-status: todo
+status: done
 blocked_by: ["3010"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 3028 — The game on a stack of its own on the Playdate
@@ -82,12 +82,12 @@ backend in game#1170.
 
 ## Acceptance criteria
 
-- [ ] Host test: the high-water mark of a painted buffer after a
+- [x] Host test: the high-water mark of a painted buffer after a
       simulated use of 3 KB reads 3 KB (±16 bytes).
-- [ ] The example built for the device runs its load on the heap stack
+- [x] The example built for the device runs its load on the heap stack
       (checked on the device in 3011, or in the Simulator's device
       build if it has one; say which in the PR).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -95,5 +95,26 @@ backend in game#1170.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+- `crates/playdate/src/stack.rs` holds the plain part, tested on the host:
+  the high-water mark, the red zone, the top, and `run`, the guard on a nested
+  call. `src/device/game_stack.rs` holds the switch, lifted from the game's
+  `src/pd/game_stack.rs`. Every call from the SDK runs on the stack: `init`,
+  the update, the events and the system menu.
+- The size is `main!(start, stack_bytes = N)`, with `main!(start)` still
+  meaning `stack::DEFAULT_BYTES` (64 KB, the game's size). `stack_high_water()`
+  is the mark, `None` off the device.
+- **Deviations from the game's code:** the overflow check reads only the 256
+  bytes of the red zone after each call, where the game's scanned up to the
+  deepest byte used, so the check costs no more on a stack of 64 KB than on a
+  small one. The stack's bytes are read one at a time with `read_volatile`, so
+  `stack_high_water()` is sound from inside the game, on the stack it reads.
+- **Which check of the device criterion:** Hello, Grid's `.pdx` was exported
+  and linked, and the switch is in its `pdex.elf` (`mov sp, r1`, `blx r2`,
+  `mov sp, r4`). It has **not** run on a device: 3011 holds that check, as its
+  report's high-water line.
+- **The game PR that moves the pin:** game#1170, in the same session.
+
+Book: none, `main!` keeps its form and the book names no stack; the new
+argument and `stack_high_water()` are in `docs/targets/playdate.md`.
+
+No break.

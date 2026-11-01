@@ -17,7 +17,8 @@ behind it in ADR-0062.
 | `src/display.rs` | The frame buffer and its changed rows, the card and the errors |
 | `src/storage.rs` | The game's saves on the SDK's files, which pass the power-cut suite over the fake |
 | `src/audio.rs` | `Speaker`, the shared player's `Backend` on the SDK's sample and file players; its tests run on the fake |
-| `src/device/` | Only with `--cfg shuyi_playdate_sdk`: `Sdk` on the real SDK, the allocator, the panic handler. The only `unsafe` |
+| `src/stack.rs` | The arithmetic of the game's own stack: its high-water mark, its red zone, the guard on a nested call. `src/device/game_stack.rs` is the switch itself |
+| `src/device/` | Only with `--cfg shuyi_playdate_sdk`: `Sdk` on the real SDK, the allocator, the panic handler, the stack switch. The only `unsafe` |
 
 Without that cfg the crate builds on any machine, so the workspace's host
 builds and tests never need the SDK. It is a cfg and no cargo feature: a build

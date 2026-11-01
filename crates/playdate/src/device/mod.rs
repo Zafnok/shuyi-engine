@@ -1,9 +1,10 @@
 //! The device (`--cfg shuyi_playdate_sdk`): [`Sdk`] on the real SDK through
-//! `shim/shim.c`, the allocator, the panic handler and what the game's
-//! entry points call. The only `unsafe` in the crate.
+//! `shim/shim.c`, the allocator, the panic handler, the game's own stack and
+//! what the game's entry points call. The only `unsafe` in the crate.
 #![allow(unsafe_code)]
 
 mod alloc_sdk;
+mod game_stack;
 mod panic;
 
 use alloc::boxed::Box;
@@ -402,33 +403,47 @@ fn running() -> Option<&'static mut Box<dyn Running>> {
     unsafe { (*GAME.0.get()).as_mut() }
 }
 
-/// The SDK's first event: makes the game `start` says.
-pub fn init<G: GameData>(start: Start<G>) {
-    if cfg!(debug_assertions) {
-        crate::storage::check(Device);
-        // check-text: not player text (for the console)
-        Device.log("storage: the conformance suite passed");
-    }
-    let driver: Box<dyn Running> = Box::new(Driver::new(start, Device));
-    // SAFETY: one thread (see `Game`), before any update.
-    unsafe { *GAME.0.get() = Some(driver) };
+/// The bytes of the game's stack it has ever used, or `None` where they aren't
+/// measured: on the Simulator, which runs on the computer's stack.
+pub fn stack_high_water() -> Option<usize> {
+    game_stack::high_water()
+}
+
+/// The SDK's first event: takes the game's stack of `stack_bytes` bytes, and on
+/// it makes the game `start` says.
+pub fn init<G: GameData>(start: fn() -> Start<G>, stack_bytes: usize) {
+    game_stack::init(stack_bytes);
+    game_stack::run(|| {
+        if cfg!(debug_assertions) {
+            crate::storage::check(Device);
+            // check-text: not player text (for the console)
+            Device.log("storage: the conformance suite passed");
+        }
+        let driver: Box<dyn Running> = Box::new(Driver::new(start(), Device));
+        // SAFETY: one thread (see `Game`), before any update.
+        unsafe { *GAME.0.get() = Some(driver) };
+    });
 }
 
 /// The SDK's update callback; 1 when the screen changed.
 pub fn update() -> c_int {
-    running().map_or(0, |game| c_int::from(game.update()))
+    game_stack::run(|| running().map_or(0, |game| c_int::from(game.update())))
 }
 
 /// The SDK's other events, by number.
 pub fn event(event: c_int) {
-    if let (Some(game), Some(event)) = (running(), SdkEvent::from_raw(event)) {
-        game.event(event);
-    }
+    game_stack::run(|| {
+        if let (Some(game), Some(event)) = (running(), SdkEvent::from_raw(event)) {
+            game.event(event);
+        }
+    });
 }
 
 /// The player chose the system menu's item in `slot`.
 pub fn menu_chosen(slot: c_int) {
-    if let (Some(game), Ok(slot)) = (running(), u8::try_from(slot)) {
-        game.menu_chosen(slot);
-    }
+    game_stack::run(|| {
+        if let (Some(game), Ok(slot)) = (running(), u8::try_from(slot)) {
+            game.menu_chosen(slot);
+        }
+    });
 }
