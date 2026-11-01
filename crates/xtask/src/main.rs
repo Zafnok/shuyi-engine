@@ -16,6 +16,10 @@
 //! - `cargo xtask llms --full-only --out <dir> --base-url <url> --commit <sha>`
 //! - `cargo xtask site-data --site <dir>`
 //! - `cargo xtask golden --bless`
+//! - `cargo xtask sound-parity corpus --out <dir> [--oracle]`
+//! - `cargo xtask sound-parity gate --dir <dir> --revision <sha>`
+//! - `cargo xtask sound-parity port-ready <platform> --matrix <file>`
+//! - `cargo xtask sound-parity give-up [--apply]`
 
 mod api;
 mod changelog;
@@ -31,6 +35,7 @@ mod pins;
 mod script;
 mod site_data;
 mod skills;
+mod sound_parity;
 mod tickets;
 mod toolchain;
 
@@ -114,7 +119,22 @@ usage:
       test with `golden` in its name with SHUYI_BLESS=1, write each table a
       failed test printed (never outside the repository), show `git diff
       --stat` over them, and run the tests again: they must pass. A changed
-      or removed row needs a `Breaking:` line in the ticket.";
+      or removed row needs a `Breaking:` line in the ticket.
+  cargo xtask sound-parity corpus --out <dir> [--oracle]
+      Write the sound gates' test signals into <dir>/corpus, each checked
+      against tools/sound-parity/corpus.ron; with --oracle, what `oggdec` makes
+      of each Ogg file into <dir>/oracle, checked too (ticket 2573).
+  cargo xtask sound-parity gate --dir <dir> --revision <sha>
+      Hold what tools/sound-parity/capture.py recorded under <dir> to the
+      scenarios and budget, write <dir>/matrix.json, and fail unless every
+      mandatory cell passed.
+  cargo xtask sound-parity port-ready <platform> --matrix <file>
+      Fail unless <platform> has passed capture evidence: what a port's new
+      output work needs first.
+  cargo xtask sound-parity give-up [--apply]
+      Check that tools/sound-parity/footprint.ron covers all the sound
+      replacement added; with --apply, take it all out. Only on Nick's word:
+      the give-up-sound-replacement skill says what else that session does.";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -139,6 +159,7 @@ fn main() -> ExitCode {
         Some("llms") => llms(&root, &args[1..]),
         Some("site-data") => site_data(&root, &args[1..]),
         Some("golden") if args[1..] == ["--bless"] => bless(&root),
+        Some("sound-parity") => report("sound-parity", &sound_parity::run(&root, &args[1..]), &[]),
         _ => {
             eprintln!("{USAGE}");
             ExitCode::FAILURE

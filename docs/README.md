@@ -47,6 +47,7 @@ repository has no row here.
 | The MCP server sessions here use: `shuyi mcp`, run as `cargo run -q -p shuyi-cli -- mcp` | [`.mcp.json`](../.mcp.json) and [`.claude/settings.json`](../.claude/settings.json), what `cargo shuyi mcp install --dry-run --command "cargo run -q -p shuyi-cli --"` prints for Claude Code (a test checks) | changes how the server is run or registered |
 | How to preview and build the website, and its rules, and the docs for agents `cargo xtask llms` writes into it: the twins' rule, the URL rule and the full file's budget | [`site/README.md`](../site/README.md) | changes how the site is built, checked or published (`pages.yml`, the `site` job, the pinned Zola, `crates/xtask/src/llms.rs`) |
 | The web shell a game's web build runs in, and how CI opens the web builds in headless Chromium (*Checked in CI*: `tools/web-check/check.py`, the `web-render` job) | [`crates/cli/web/README.md`](../crates/cli/web/README.md) | changes the page, the loader or the files `shuyi web` writes, or what `check.py` and the `web-render` job check |
+| The sound parity gates: how to run them, what each cell of the matrix means, each platform's evidence contract and what each replacement stage adds | [`tools/sound-parity/README.md`](../tools/sound-parity/README.md); the tolerances and limits in its `budget.ron` | changes what `capture.py`, the `sound-parity` job or `cargo xtask sound-parity` do, or what a stage must pass |
 | Where each fact is written | this file | makes a new home for docs (rule 5) |
 
 ## Nick

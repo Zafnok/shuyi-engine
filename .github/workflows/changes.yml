@@ -20,6 +20,11 @@ name: Changes
 # The rest is docs-only: other `*.md`, `docs/**`, `tickets/**`, `.claude/**`.
 # Any other event (push, schedule, workflow_dispatch) always counts as code.
 #
+# `sound` is narrower (ticket 2573, the `sound-parity` job): a pull request
+# that changes the sound backend, the shared player, the audio formats, the
+# web loader, what builds them, or the gates themselves. Always 'true' on
+# other events.
+#
 # `crates` is narrower (ticket 2010, the `api` job): a pull request that
 # changes the crates' code or what builds them (`crates/**`, the root
 # `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`). Always 'true' on other
@@ -34,6 +39,9 @@ on:
       crates:
         description: "'true' unless the event is a pull request that changes no crate, Cargo.toml, Cargo.lock or rust-toolchain.toml"
         value: ${{ jobs.detect.outputs.crates }}
+      sound:
+        description: "'true' unless the event is a pull request that changes nothing the sound parity gates cover"
+        value: ${{ jobs.detect.outputs.sound }}
 
 permissions:
   contents: read
@@ -45,6 +53,7 @@ jobs:
     outputs:
       code: ${{ steps.classify.outputs.code }}
       crates: ${{ steps.classify.outputs.crates }}
+      sound: ${{ steps.classify.outputs.sound }}
     steps:
       # On pull_request, HEAD is the PR merge commit; HEAD^1 is the base tip.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,14 +71,19 @@ jobs:
             echo "Event $EVENT_NAME: always run everything."
             echo "code=true" >> "$GITHUB_OUTPUT"
             echo "crates=true" >> "$GITHUB_OUTPUT"
+            echo "sound=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           code=false
           crates=false
+          sound=false
           while IFS= read -r path; do
             [ -z "$path" ] && continue
             case "$path" in
               crates/*|Cargo.toml|Cargo.lock|rust-toolchain.toml) crates=true ;;
+            esac
+            case "$path" in
+              crates/app/*|crates/platform/src/audio*|crates/assets/src/audio*|crates/ui/src/audio*|crates/cli/web/*|crates/xtask/src/sound_parity*|tools/sound-parity/*|tools/web-check/*|.github/workflows/ci.yml|.github/workflows/changes.yml|Cargo.toml|Cargo.lock|rust-toolchain.toml|scripts/setup-linux.sh) sound=true ;;
             esac
             case "$path" in
               crates/*|templates/*|examples/*|skills/*|docs/contract.md|docs/modules.md|docs/modules.ron|README.md) echo "code: $path"; code=true ;;
@@ -77,6 +91,7 @@ jobs:
               *) echo "code: $path"; code=true ;;
             esac
           done < <(git diff --name-only --no-renames HEAD^1 HEAD)
-          echo "code=$code crates=$crates"
+          echo "code=$code crates=$crates sound=$sound"
           echo "code=$code" >> "$GITHUB_OUTPUT"
           echo "crates=$crates" >> "$GITHUB_OUTPUT"
+          echo "sound=$sound" >> "$GITHUB_OUTPUT"
