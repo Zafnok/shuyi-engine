@@ -441,3 +441,18 @@ and room DSP respectively. Sample starts, stems and latency calibration
 remain future work when a game asks; selecting a library does not promise
 those features in the first replacement. This research writes no library
 implementation and reads no candidate implementation source.
+
+## What 2573 measured afterwards
+
+Added 2026-11-01. The parity infrastructure called unmeasured above came to about
+**4,300 authored lines**, tests, scenarios and capture among them, against 1,000 to
+1,400 planned. Read the estimates for A with that on top, and more for each port's
+own capture on Windows and macOS. It is engine tooling, and none of it ships.
+
+The first real captures changed one claim here. Today's native loops aren't merely
+fully decoded: **they aren't gapless**. In the 4,096-frame block holding a pass's end,
+the next pass lands on top of it at the wrong offset or the block falls silent, while
+web output is gapless. So a gapless native loop is a behaviour the replacement adds,
+as bounded streaming is, not a parity it keeps. Measured on test signals through
+[the gates](../../tools/sound-parity/README.md), which also hold the figures for
+latency, decode and CPU that this report had no way to measure.
