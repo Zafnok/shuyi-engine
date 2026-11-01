@@ -453,10 +453,32 @@ jobs:
         run: |
           "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir target/sound-parity \
             --page target/sound-parity-page --revision "$REVISION" --build-seconds "$WEB_BUILD"
+      # A noisy machine's timings say nothing either way, so they are measured
+      # again, up to twice; a failed cell stands, as a slowdown shows in the median
+      # however often it is measured. Every attempt's samples stay in the artifact.
       - name: The gate
         env:
           REVISION: ${{ github.sha }}
-        run: cargo xtask sound-parity gate --dir target/sound-parity --revision "$REVISION"
+        run: |
+          dir=target/sound-parity
+          for attempt in 1 2 3; do
+            if cargo xtask sound-parity gate --dir "$dir" --revision "$REVISION"; then
+              exit 0
+            fi
+            if [ "$attempt" = 3 ] || jq -e '[.cells[] | select(.mandatory and .status != "passed" and .status != "inconclusive")] | length > 0' "$dir/matrix.json" > /dev/null; then
+              exit 1
+            fi
+            for platform in $(jq -r '[.cells[] | select(.status == "inconclusive") | .platform] | unique | .[]' "$dir/matrix.json"); do
+              echo "::notice::$platform's timings were inconclusive: measuring again"
+              mv "$dir/$platform/perf.jsonl" "$dir/$platform/perf-attempt-$attempt.jsonl"
+              case "$platform" in
+                linux-native) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py native --dir "$dir" \
+                  --probe target/release/examples/sound_probe --revision "$REVISION" --perf-only ;;
+                browser-chromium) "$RUNNER_TEMP/capture/bin/python" tools/sound-parity/capture.py browser --dir "$dir" \
+                  --page target/sound-parity-page --revision "$REVISION" --perf-only ;;
+              esac
+            done
+          done
       - name: A port without capture evidence isn't ready, and the captured ones are
         run: |
           for platform in windows macos; do

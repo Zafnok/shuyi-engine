@@ -85,7 +85,10 @@ rendering needs its own budget when it arrives.
 The verdict on each metric is the median of the paired ratios and their
 interquartile range. Over the budget's `max_spread` it is `inconclusive`,
 which fails like anything else not passed; over `max_ratio` it is `failed`.
-The injected slowdown must fail. Raise a limit only with new calibration runs
+CI's job measures an `inconclusive` platform again, up to twice, keeping every
+attempt's samples as `perf-attempt-N.jsonl`: a noisy machine says nothing either
+way. A `failed` cell is never measured again, and a slowdown shows in the median
+however often it is. The injected slowdown must fail. Raise a limit only with new calibration runs
 that justify it, written in `budget.ron`, never to pass.
 
 ## The matrix

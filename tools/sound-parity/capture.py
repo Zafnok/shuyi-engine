@@ -8,6 +8,7 @@ and nothing is heard elsewhere, it records the sink's monitor while the probe
 
     capture.py native --dir D --probe BIN --revision SHA
     capture.py browser --dir D --page DIR --revision SHA
+    (either with --perf-only: the timings again, the recordings kept)
     capture.py encode --dir D       (by hand, on Linux) the Ogg fixtures
 
 Natively ALSA's default device is routed to the sink, as a player's system
@@ -416,12 +417,13 @@ def write_perf(player: Native | Browser, base: Path) -> None:
 
 def native(args: argparse.Namespace) -> int:
     base = args.dir / "linux-native"
-    shutil.rmtree(base, ignore_errors=True)
-    base.mkdir(parents=True)
+    if not args.perf_only:
+        shutil.rmtree(base, ignore_errors=True)
+    base.mkdir(parents=True, exist_ok=True)
     shutil.copy(TOOL / "scenarios.ron", args.dir / "scenarios.ron")
     with sink() as target:
         player = Native(args.probe.resolve(), args.dir.resolve(), target)
-        for number in range(RUNS):
+        for number in range(0 if args.perf_only else RUNS):
             run = base / f"run-{number}"
             write_run(player, run)
             write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
@@ -431,8 +433,9 @@ def native(args: argparse.Namespace) -> int:
 
 def browser(args: argparse.Namespace) -> int:
     base = args.dir / "browser-chromium"
-    shutil.rmtree(base, ignore_errors=True)
-    base.mkdir(parents=True)
+    if not args.perf_only:
+        shutil.rmtree(base, ignore_errors=True)
+    base.mkdir(parents=True, exist_ok=True)
     stage = args.dir / "page"
     shutil.rmtree(stage, ignore_errors=True)
     shutil.copytree(args.page, stage)
@@ -443,7 +446,7 @@ def browser(args: argparse.Namespace) -> int:
         player = Browser(stage, target)
         player.open()
         try:
-            for number in range(RUNS):
+            for number in range(0 if args.perf_only else RUNS):
                 run = base / f"run-{number}"
                 write_run(player, run)
                 write_meta(run, args.revision, "quad-snd-web", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": player.version})
@@ -485,6 +488,7 @@ def main() -> int:
     parser.add_argument("--page", type=Path, help="the web page's folder, with the probe's wasm")
     parser.add_argument("--revision", default="")
     parser.add_argument("--build-seconds", type=float, default=0.0)
+    parser.add_argument("--perf-only", action="store_true", help="only the timings, again")
     args = parser.parse_args()
     return {"native": native, "browser": browser, "encode": encode}[args.mode](args)
 

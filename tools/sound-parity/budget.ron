@@ -34,6 +34,9 @@
     // sits well under what the injected slowdown shows where it `slows`: at least
     // 1.68 in the browser, 1.97 natively. Raw times moved by half between runs
     // (native Ogg decode 168 to 255 ms) as machines differ: only ratios are held.
+    // A fresh run (CI run 41275055017) stayed inside every `max_ratio`. Its machine
+    // was noisy enough to pass three `max_spread`s, which is what they are for: CI
+    // measures that again rather than these being widened.
     performance: {
         "linux-native": {
             "file_io_ms": (max_ratio: 1.05, max_spread: 0.17, slows: true),

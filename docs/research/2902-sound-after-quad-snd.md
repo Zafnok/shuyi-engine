@@ -454,5 +454,5 @@ fully decoded: **they aren't gapless**. In the 4,096-frame block holding a pass'
 the next pass lands on top of it at the wrong offset or the block falls silent, while
 web output is gapless. So a gapless native loop is a behaviour the replacement adds,
 as bounded streaming is, not a parity it keeps. Measured on test signals through
-[the gates](../../tools/sound-parity/README.md), which also hold the figures for
+the gates (`tools/sound-parity/README.md`), which also hold the figures for
 latency, decode and CPU that this report had no way to measure.

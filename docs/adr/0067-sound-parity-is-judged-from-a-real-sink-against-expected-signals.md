@@ -36,8 +36,10 @@ runners have no sound card, and Playwright mutes Chromium by default.
   decides nothing.
 - **Performance is paired and fails closed.** At least nine interleaved pairs per
   metric, judged by the median ratio and its interquartile range: too noisy is
-  `inconclusive`, and that fails. An injected slowdown must fail too. Limits come
-  from calibration runs on the pinned image, and `budget.ron` records them.
+  `inconclusive`, and that fails, after CI has measured it again up to twice, since
+  a noisy machine says nothing either way. A `failed` cell is never measured again.
+  An injected slowdown must fail too. Limits come from calibration runs on the
+  pinned image, and `budget.ron` records them.
 - **The matrix is the contract.** A mandatory cell not `passed` fails, stale or
   silent evidence included. Windows and macOS are `unsupported` until their
   tickets establish a capture, and `port-ready` refuses them until then.

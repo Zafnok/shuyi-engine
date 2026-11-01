@@ -122,7 +122,7 @@ for the distinction between endpoint capture and an independent graph oracle.
 real output recorded from a PulseAudio null sink natively (ALSA routed to it) and
 from Chromium on the real loader (Playwright's mute flag removed, a real click),
 held to independent expected signals, to itself, and to paired equal-work speed
-([`tools/sound-parity/README.md`](../../tools/sound-parity/README.md),
+(`tools/sound-parity/README.md`,
 [ADR-0067](../../docs/adr/0067-sound-parity-is-judged-from-a-real-sink-against-expected-signals.md)).
 Nick unparked the whole chain, ahead of the MVP, and asked that giving up stay one
 session at any stage until quad-snd is removed
@@ -131,8 +131,11 @@ session at any stage until quad-snd is removed
 
 **Baseline runs.** Limits were calibrated from three independent runs of the job:
 attempts 1 to 3 of CI run 41271510575, on `ubuntu-24.04`, Chromium 156.0.8078.4,
-PulseAudio 16.1. The rule and each number are in `budget.ron`. They are held by the
-fresh runs on this PR's head, named in the PR.
+PulseAudio 16.1. The rule and each number are in `budget.ron`. A fresh run on data
+they weren't made from (CI run 41275055017) passed every correctness cell, and no
+median crossed its limit. Three of its speed cells were `inconclusive` on spread, a
+noisy machine. Rather than widen a limit, an inconclusive result is measured again,
+up to twice, while a failed one stands and every attempt's samples are kept.
 
 **Evidence precision, as measured.**
 
@@ -165,7 +168,9 @@ capture, 470 of probe, 540 of scenarios, footprint and budget. It wasn't split, 
 no part proves anything alone. 2902's estimate had this as unmeasured; its report now
 has the figure, and later stages should plan for it.
 
-**Deviations.** Performance runs order pairs a, b, b, a with the slowed runs after,
+**Deviations.** An inconclusive speed cell is measured again in the job, up to
+twice, where the ticket says only that noise fails: it still fails if the noise
+persists. Performance runs order pairs a, b, b, a with the slowed runs after,
 not interleaved three ways, which lined each side up with a run's parity. The
 expected signals of a true pause, rate and region loop are data with no steps yet
 (`future_*`): their stages give them steps. Peak memory is the process's: quad-snd
