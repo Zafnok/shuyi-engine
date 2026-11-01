@@ -1,4 +1,6 @@
+ABOUT.md
 NOTICES.txt
+capture/frames.ron
 gamepad.js
 hello-grid.wasm
 index.html

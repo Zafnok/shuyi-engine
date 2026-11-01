@@ -1,2 +1,4 @@
+{base}/ABOUT.md
 {base}/NOTICES.txt
+{base}/capture/frames.ron
 {base}/hello-grid

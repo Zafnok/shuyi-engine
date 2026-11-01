@@ -1,3 +1,5 @@
+{base}/ABOUT.md
 {base}/HOW-TO-OPEN.txt
 {base}/NOTICES.txt
+{base}/capture/frames.ron
 {base}/hello-grid.exe

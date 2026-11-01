@@ -310,7 +310,7 @@ const EXPORT: &str = "Check the game against `target` (`windows`, `linux`, `maco
      each with NOTICES.txt, and export-report.json and exposure-report.json beside it, in `out` \
      (dist/export/<target> by default). A package that breaks shuyi.ron's `disclosure` part is \
      removed. `release` remaps the build's paths and keeps the debug file beside the package; \
-     `run` runs the package after.";
+     `run` runs the package after; `without` leaves features of shuyi.ron's `export` part off.";
 
 /// `lint`'s description.
 const LINT: &str = "Check the game's code: keys named in code or text (check-keys), screen text as literals \

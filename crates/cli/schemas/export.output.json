@@ -71,6 +71,13 @@
       "description": "What `export` made: `export-report.json`.",
       "type": "object",
       "properties": {
+        "beside": {
+          "description": "What `shuyi.ron`'s `export.beside` copied into the package, from the\nexport's folder, a folder with the bytes of all its files.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FileSize"
+          }
+        },
         "debug": {
           "description": "With `--release` on Windows and Linux, the program with its debug\nsections, kept beside the package and never in it\n(`game-0.1.0-linux.debug`).",
           "type": [

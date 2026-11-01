@@ -12,8 +12,12 @@
 //! Windows and Linux it keeps its line tables in `<package>.debug`, beside
 //! the package and never in it, and the package's copy is stripped of
 //! them with `objcopy --strip-debug` (which moves no code, so a crash's
-//! offsets name the same lines). No export turns on a feature: never the
-//! debug build's live link (`link`), whatever the game lists.
+//! offsets name the same lines).
+//!
+//! `shuyi.ron`'s `export` part names the features a build turns on, never the
+//! debug build's live link (`link`), and the files and folders copied into
+//! the package ([`ExportCx::copy_beside`]). A game with no such part gets a
+//! build with no feature and a package with nothing else in it.
 //!
 //! Every final package is then read back and written down, and held to the
 //! game's `disclosure` part if it has one ([`disclosure`]).
@@ -38,7 +42,7 @@ use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
-use crate::project::{AppPart, Project, Web};
+use crate::project::{AppPart, Beside, ExportPart, GameProgram, Project, Web};
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -59,6 +63,11 @@ pub trait Exporter: Sync {
 
     /// The `cargo` arguments of each build it runs.
     fn cargo_args(&self, cx: &ExportCx) -> Vec<Vec<String>>;
+
+    /// Whether `shuyi.ron`'s `export` part applies to it.
+    fn takes_export_part(&self) -> bool {
+        true
+    }
 
     /// What it needs of the game's tools before it builds, run where they
     /// are at hand: by default nothing.
@@ -198,6 +207,10 @@ pub struct ExportCx {
     pub app: Option<AppPart>,
     /// The cargo features of the game's package.
     pub features: Vec<String>,
+    /// The features its build turns on.
+    pub turned_on: Vec<String>,
+    /// What ships beside the program.
+    pub beside: Vec<Beside>,
 }
 
 /// What a run step works from.
@@ -251,17 +264,18 @@ impl ExportCx {
         } else {
             config.web.as_ref()
         };
-        let package = match (&config.game, web) {
-            _ if exporter.id() == "web" => web.map(|web| web.package.clone()),
-            (Some(game), _) => Some(game.package.clone()),
-            (None, web) => web.map(|web| web.package.clone()),
-        }
-        .ok_or_else(|| {
-            ExportError::Setup(format!(
-                "{} names no package to build: its `game` part names the game's",
-                crate::project::FILE
-            ))
-        })?;
+        let part = config
+            .export
+            .as_ref()
+            .filter(|_| exporter.takes_export_part());
+        let named = part.and_then(|part| part.package.as_deref());
+        let package =
+            package_of(exporter.id(), named, config.game.as_ref(), web).ok_or_else(|| {
+                ExportError::Setup(format!(
+                    "{} names no package to build: its `game` part names the game's",
+                    crate::project::FILE
+                ))
+            })?;
         let (package_version, bins, features) = metadata(root, &package)?;
         let features = features.into_keys().collect();
         let version = version(config.app.as_ref(), package_version);
@@ -281,6 +295,11 @@ impl ExportCx {
             Some(texts) => notices::game_texts(root, texts).map_err(ExportError::Setup)?,
             None => Vec::new(),
         };
+        let turned_on = turned_on(part, &input.without)?;
+        let mut beside = present(root, part)?;
+        if let Some(web) = web.filter(|_| exporter.id() == "web") {
+            beside.retain(|item| !in_web_build(item, web));
+        }
         Ok(Self {
             target: exporter.id().to_owned(),
             profile: exporter.profile().to_owned(),
@@ -298,6 +317,8 @@ impl ExportCx {
             web: web.cloned(),
             app: config.app.clone(),
             features,
+            turned_on,
+            beside,
         })
     }
 
@@ -315,6 +336,9 @@ impl ExportCx {
         args.extend(["--target".to_owned(), triple.to_owned()]);
         if self.release {
             args.push("--release".to_owned());
+        }
+        if !self.turned_on.is_empty() {
+            args.extend(["--features".to_owned(), self.turned_on.join(",")]);
         }
         args
     }
@@ -410,6 +434,62 @@ impl ExportCx {
             warnings: Vec::new(),
             signing,
             debug,
+            beside: Vec::new(),
+        }
+    }
+
+    /// Copies what ships beside the program, each into the folder `place`
+    /// picks for it from whether it is a folder, under its name there, and
+    /// returns what it copied. A name the package already holds is refused.
+    pub fn copy_beside(
+        &self,
+        place: &dyn Fn(bool) -> PathBuf,
+    ) -> Result<Vec<FileSize>, ExportError> {
+        let mut sizes = Vec::new();
+        for item in &self.beside {
+            let from = self.root.join(&item.path);
+            let is_dir = from.is_dir();
+            let to = place(is_dir).join(beside_name(item)?);
+            if to.exists() {
+                return Err(ExportError::Setup(format!(
+                    "`export.beside` ships `{}` as {}, which the package already holds",
+                    item.path,
+                    to.display()
+                )));
+            }
+            if is_dir {
+                crate::web::copy_tree(&from, &to, &|_| true).map_err(ExportError::Build)?;
+            } else {
+                if let Some(parent) = to.parent() {
+                    fs::create_dir_all(parent).map_err(|e| {
+                        ExportError::Build(format!("create {}: {e}", parent.display()))
+                    })?;
+                }
+                fs::copy(&from, &to).map_err(|e| {
+                    ExportError::Build(format!("copy {} to {}: {e}", item.path, to.display()))
+                })?;
+            }
+            sizes.push(self.size(&to)?);
+        }
+        Ok(sizes)
+    }
+
+    /// Says in `shipped` that what `report` lists as shipped beside the
+    /// program is the game's own, for the exposure report.
+    pub fn mark_beside(&self, report: &ExportReport, shipped: &mut Shipped) {
+        for size in &report.beside {
+            let on_disk = self.out.join(&size.file);
+            let prefix = format!("{}/", report.folder);
+            let name = size.file.strip_prefix(&prefix).unwrap_or(&size.file);
+            let source = format!("export.beside: {name}");
+            if on_disk.is_dir() {
+                let inner = format!("{name}/");
+                for entry in archive::entries(&on_disk, &inner, &|_| false).unwrap_or_default() {
+                    shipped.source(entry.name, disclosure::FileKind::LooseAsset, source.clone());
+                }
+            } else {
+                shipped.source(name, disclosure::FileKind::LooseAsset, source);
+            }
         }
     }
 
@@ -417,12 +497,92 @@ impl ExportCx {
     /// the crates compiled in, the engine's files they compile in, and the
     /// game's own works.
     pub fn native_notices(&self, triple: &str, dir: &Path) -> Result<(), ExportError> {
-        let mut works =
-            notices::crates(&self.root, &self.package, triple, &[]).map_err(ExportError::Build)?;
+        let mut works = notices::crates(&self.root, &self.package, triple, &self.turned_on)
+            .map_err(ExportError::Build)?;
         works.extend(notices::engine_files(Build::Native, &works));
         works.extend(self.game.iter().cloned());
         notices::write(dir, &self.title, &works).map_err(ExportError::Build)
     }
+}
+
+/// The package an export of target `id` builds: the web build's on `web`;
+/// otherwise the `export` part's, the `game` part's or the web build's, the
+/// first there is.
+fn package_of(
+    id: &str,
+    named: Option<&str>,
+    game: Option<&GameProgram>,
+    web: Option<&Web>,
+) -> Option<String> {
+    let web_package = web.map(|web| web.package.clone());
+    if id == "web" {
+        return web_package;
+    }
+    named
+        .map(str::to_owned)
+        .or_else(|| game.map(|game| game.package.clone()))
+        .or(web_package)
+}
+
+/// The features a build turns on: what `part` lists but `without`. Leaving
+/// out one it doesn't list is refused.
+fn turned_on(part: Option<&ExportPart>, without: &[String]) -> Result<Vec<String>, ExportError> {
+    let listed = part.map_or(&[][..], |part| &part.features);
+    if let Some(unknown) = without.iter().find(|name| !listed.contains(name)) {
+        return Err(ExportError::Setup(format!(
+            "--without {unknown}: `export.features` in {} doesn't list it",
+            crate::project::FILE
+        )));
+    }
+    Ok(listed
+        .iter()
+        .filter(|name| !without.contains(name))
+        .cloned()
+        .collect())
+}
+
+/// What `part` ships that is there: one that isn't refuses the export,
+/// unless it is optional.
+fn present(root: &Path, part: Option<&ExportPart>) -> Result<Vec<Beside>, ExportError> {
+    let mut found = Vec::new();
+    for item in part.map_or(&[][..], |part| &part.beside) {
+        beside_name(item)?;
+        if root.join(&item.path).exists() {
+            found.push(item.clone());
+        } else if !item.optional {
+            return Err(ExportError::Setup(format!(
+                "`export.beside` in {} names `{}`, which isn't there",
+                crate::project::FILE,
+                item.path
+            )));
+        }
+    }
+    Ok(found)
+}
+
+/// Whether the web build already ships `item`: its `music` or `voice` folder.
+fn in_web_build(item: &Beside, web: &Web) -> bool {
+    [&web.music, &web.voice]
+        .into_iter()
+        .any(|folder| folder.as_deref() == Some(item.path.as_str()))
+}
+
+/// The name `item` has in the package: one plain name, never a path.
+fn beside_name(item: &Beside) -> Result<String, ExportError> {
+    let name = item.name.as_deref().map_or_else(
+        || Path::new(&item.path).file_name().and_then(|n| n.to_str()),
+        Some,
+    );
+    name.filter(|name| {
+        !name.is_empty() && !name.contains(['/', '\\']) && !matches!(*name, "." | "..")
+    })
+    .map(str::to_owned)
+    .ok_or_else(|| {
+        ExportError::Setup(format!(
+            "`export.beside`'s `{}` has no plain name to ship under",
+            item.path
+        ))
+    })
 }
 
 /// The game's version: `app`'s, when it sets one, else its package's,

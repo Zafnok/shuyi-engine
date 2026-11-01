@@ -18,8 +18,8 @@ tools are that system's. On another one, `export` says where it builds.
 
 ## What each package holds
 
-- **The program.** No feature of the game's package is turned on, the
-  debug build's live link (`link`) never.
+- **The program.** Built with the features of `shuyi.ron`'s `export` part
+  (below), and none without one; the debug build's live link (`link`) never.
 - **`NOTICES.txt`**: every crate compiled in, the engine's data compiled
   in with it (the controller database `gilrs` carries, under Zlib), and
   the game's own texts its `shuyi.ron`'s `notices` names, then each
@@ -58,12 +58,52 @@ tools are that system's. On another one, `export` says where it builds.
   debug file. Keep the debug file with each release.
 
 `export-report.json` beside the package names the debug file, with the
-version, the target, the sizes, the check's warnings and the signing.
+version, the target, the sizes, what shipped beside the program, the check's
+warnings and the signing.
 `exposure-report.json` lists what the package holds and is held to the game's
 `disclosure` part (the book's [Targets and
 export](../../site/content/learn/book/targets-and-export.md)). A Windows
 program carries a fixed time, not the time of its build, so the same input
 gives the same report.
+
+## A game's features and the files beside its program
+
+`shuyi.ron`'s `export` part names what a build turns on and what its package
+holds besides the program and its notes:
+
+```ron
+export: (
+    features: ["bought-art"],
+    beside: [
+        (path: "music"),
+        (path: "voice", optional: true),
+        (path: "files/licenses", name: "licenses"),
+    ],
+),
+```
+
+- **`package`**, if the program that ships isn't in the `game` part's package
+  (a game whose tool program is a package of its own), names it.
+- **`features`** go to the build's `--features`, on every desktop target and
+  the web, and to `NOTICES.txt`. `link`, the live link, is refused.
+  `--without <feature>` leaves one off a build, as a build with no access to
+  a feature's files needs.
+- **`beside`** copies each file or folder under its own name, or `name`. A
+  path that isn't there refuses the export, naming it, unless it is
+  `optional`; a name the package already holds is refused too.
+- **Windows, Linux and the web:** they go next to the program. The web build
+  already ships its `web.music` and `web.voice` folders, so a row naming one
+  adds nothing there.
+- **macOS:** a folder goes in the `.app`'s `Contents/Resources`, before it is
+  signed. The backend's `music` and `voice` folders look there as well as next
+  to the program, so a game reads them the same way on each system. A file
+  goes beside the `.app`, where a player finds it.
+
+The Playdate's package takes none of this: a `.pdx` has its own build and its
+own files.
+
+A game with a `disclosure` part names these files in its `allowed_files` too:
+the part is the list a package is held to, and `beside` doesn't widen it.
 
 ## The Linux package by hand
 

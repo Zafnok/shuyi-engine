@@ -40,6 +40,16 @@ fn the_arguments_are_a_target_then_out_release_and_run_once_each() {
 }
 
 #[test]
+fn without_takes_a_feature_each_time() {
+    let input = parse_args(&args(&["web", "--without", "a", "--without", "b"])).unwrap();
+    assert_eq!(input.without, ["a", "b"]);
+    assert_eq!(
+        parse_args(&args(&["web", "--without"])).unwrap_err(),
+        "--without needs a feature"
+    );
+}
+
+#[test]
 fn a_game_that_fails_the_targets_check_is_refused_with_the_checks_errors() {
     // The Playdate's screen is 400 × 240: an 800 × 512 frame doesn't fit.
     let p = project(r#"(targets: {"playdate": (frame: (800, 512), scale: integer, text_px: 16)})"#);
@@ -99,6 +109,10 @@ fn the_report_for_people_names_the_package_its_sizes_and_warnings() {
         out: "dist/export/windows".to_owned(),
         package: "g-0.1.0-windows.zip".to_owned(),
         folder: "g-0.1.0-windows".to_owned(),
+        beside: vec![FileSize {
+            file: "g-0.1.0-windows/music".to_owned(),
+            bytes: 9,
+        }],
         sizes: vec![FileSize {
             file: "g-0.1.0-windows.zip".to_owned(),
             bytes: 12,

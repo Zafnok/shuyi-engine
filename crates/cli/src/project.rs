@@ -104,6 +104,8 @@ pub struct Config {
     pub web: Option<Web>,
     /// The game's own license texts, which its packages carry.
     pub notices: Option<Notices>,
+    /// What `export` turns on and ships beside the program.
+    pub export: Option<ExportPart>,
     /// What the game's packages may hold, which `export` holds each final
     /// package to ([`crate::export::disclosure`]).
     pub disclosure: Option<Disclosure>,
@@ -419,6 +421,39 @@ pub struct Notices {
     pub texts: Vec<String>,
 }
 
+/// What `export` builds and ships for the desktop and web targets, on top of
+/// the program and its notes. The Playdate's package, a `.pdx`, takes none of
+/// it.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+#[non_exhaustive]
+pub struct ExportPart {
+    /// The package whose program ships, when it isn't the `game` part's (a
+    /// game whose tool program is a package of its own).
+    pub package: Option<String>,
+    /// The features of the game's package a build turns on. `link`, the
+    /// debug build's live link, is refused.
+    pub features: Vec<String>,
+    /// The files and folders copied into the package.
+    pub beside: Vec<Beside>,
+}
+
+/// A file or folder of the game that ships in its package.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct Beside {
+    /// Where it is, from the project's root.
+    pub path: String,
+    /// Its name in the package; without it, the one it has.
+    #[serde(default)]
+    pub name: Option<String>,
+    /// Whether the package goes without it when it isn't there; otherwise
+    /// that refuses the export.
+    #[serde(default)]
+    pub optional: bool,
+}
+
 /// What the game's packages may hold, the same for every target: a path is
 /// matched whole, with no pattern, from the package's root or the pack's.
 /// What the exporter itself writes (the program, `NOTICES.txt`, the web
@@ -579,6 +614,35 @@ mod tests {
             Some(Notices::default())
         );
         assert!(Config::parse(r#"(notices: (files: ["a"]))"#).is_err());
+    }
+
+    #[test]
+    fn the_export_part_names_features_and_what_ships_beside() {
+        let text = r#"(export: (
+    features: ["art"],
+    beside: [
+        (path: "music"),
+        (path: "voice", optional: true),
+        (path: "files/licenses", name: "licenses"),
+    ],
+))"#;
+        let part = Config::parse(text).unwrap().export.unwrap();
+        assert_eq!(part.features, ["art"]);
+        let row = |path: &str, name: Option<&str>, optional| Beside {
+            path: path.to_owned(),
+            name: name.map(str::to_owned),
+            optional,
+        };
+        assert_eq!(
+            part.beside,
+            [
+                row("music", None, false),
+                row("voice", None, true),
+                row("files/licenses", Some("licenses"), false),
+            ]
+        );
+        assert!(Config::parse("(export: (beside: [(optional: true)]))").is_err());
+        assert!(Config::parse("(export: (files: []))").is_err());
     }
 
     #[test]

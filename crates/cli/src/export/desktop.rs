@@ -4,7 +4,10 @@
 //! glibc is the floor) and `macos` (one universal program, `lipo` of
 //! `aarch64-apple-darwin` and `x86_64-apple-darwin`, in an ad-hoc signed
 //! `.app`). Each builds on its own system: the linker, the system
-//! libraries and the tools are that system's.
+//! libraries and the tools are that system's. What ships beside the program
+//! goes beside it in the package; in a `.app`, a folder goes in
+//! `Contents/Resources`, where the engine's backend looks for it and the
+//! signature covers it, and a file beside the `.app`, where a player finds it.
 
 use std::fs;
 use std::path::Path;
@@ -171,6 +174,7 @@ impl Exporter for Desktop {
         if self.system != System::Linux {
             shipped.source(NOTE, FileKind::Written, "written by the export");
         }
+        cx.mark_beside(report, &mut shipped);
         shipped
     }
 
@@ -246,6 +250,7 @@ pub fn pack(
     if system == System::Windows {
         write(&folder.join(NOTE), WINDOWS_NOTE)?;
     }
+    let beside = cx.copy_beside(&|_| folder.clone())?;
     let entries = archive::entries(&folder, &format!("{base}/"), &|path| {
         path.file_name() == Some(name)
     })
@@ -263,7 +268,9 @@ pub fn pack(
     }
     .map_err(ExportError::Build)?;
     let sizes = vec![cx.size(&written)?, cx.size(&shipped)?];
-    Ok(cx.report(&package, sizes, Signing::None, debug))
+    let mut report = cx.report(&package, sizes, Signing::None, debug);
+    report.beside = beside;
+    Ok(report)
 }
 
 /// Writes the macOS package of the program's `slices`: the folder
@@ -285,6 +292,16 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
     tool("lipo", &lipo, xcode)?;
     cx.search(&program)?;
     write(&contents.join("Info.plist"), &info_plist(&cx.bin))?;
+    cx.native_notices(MACOS.triples[0], &folder)?;
+    write(&folder.join(NOTE), MACOS_NOTE)?;
+    let resources = contents.join("Resources");
+    let beside = cx.copy_beside(&|is_dir| {
+        if is_dir {
+            resources.clone()
+        } else {
+            folder.clone()
+        }
+    })?;
     // Every file of the bundle is written: sign the nested code first,
     // then the bundle (not `--deep`).
     for code in [program.as_path(), app.as_path()] {
@@ -299,10 +316,10 @@ fn pack_macos(cx: &ExportCx, slices: &[std::path::PathBuf]) -> Result<ExportRepo
             xcode,
         )?;
     }
-    cx.native_notices(MACOS.triples[0], &folder)?;
-    write(&folder.join(NOTE), MACOS_NOTE)?;
     let sizes = vec![cx.size(&folder)?, cx.size(&program)?];
-    Ok(cx.report(&base, sizes, Signing::AdHoc, None))
+    let mut report = cx.report(&base, sizes, Signing::AdHoc, None);
+    report.beside = beside;
+    Ok(report)
 }
 
 /// The minimal `Info.plist` of a bundle whose program is `bin`.

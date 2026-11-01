@@ -17,19 +17,25 @@ pub(crate) mod voice;
 use std::path::{Path, PathBuf};
 
 /// Where a `folder` that ships beside the game is: next to the executable
-/// when it's there (a shipped build), else relative to the working
-/// directory (`cargo run` from the repo root, or the web build, which
-/// fetches `music/…` from beside the page).
+/// when it's there (a shipped build), or in a macOS bundle's
+/// `Contents/Resources` when the executable is in its `Contents/MacOS`, else
+/// relative to the working directory (`cargo run` from the repo root, or the
+/// web build, which fetches `music/…` from beside the page).
 pub(crate) fn folder_beside(
     folder: &str,
     exe: Option<&Path>,
     is_dir: impl Fn(&Path) -> bool,
 ) -> String {
-    let beside_exe = exe
+    let exe_dir = exe.and_then(Path::parent);
+    let in_bundle = exe_dir
+        .filter(|dir| dir.ends_with("Contents/MacOS"))
         .and_then(Path::parent)
+        .map(|contents| contents.join("Resources"));
+    exe_dir
+        .into_iter()
+        .chain(in_bundle.as_deref())
         .map(|dir| dir.join(folder))
-        .filter(|dir| is_dir(dir));
-    beside_exe
+        .find(|dir| is_dir(dir))
         .as_deref()
         .and_then(Path::to_str)
         .map_or_else(|| folder.to_owned(), |dir| dir.replace('\\', "/"))
@@ -248,6 +254,25 @@ mod tests {
         assert_eq!(
             platform_folder("music"),
             folder_beside("music", exe.as_deref(), Path::is_dir)
+        );
+    }
+
+    #[test]
+    fn a_macos_bundles_folder_is_in_its_resources() {
+        let exe = Path::new("/Applications/Game.app/Contents/MacOS/game");
+        let resources = "/Applications/Game.app/Contents/Resources/music";
+        assert_eq!(
+            folder_beside("music", Some(exe), |d| d.ends_with("Resources/music")),
+            resources
+        );
+        assert_eq!(
+            folder_beside("music", Some(exe), |_| true),
+            "/Applications/Game.app/Contents/MacOS/music"
+        );
+        let plain = Path::new("/games/MacOS/game");
+        assert_eq!(
+            folder_beside("music", Some(plain), |d| d.ends_with("Resources/music")),
+            "music"
         );
     }
 
