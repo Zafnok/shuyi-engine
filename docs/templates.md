@@ -155,6 +155,7 @@ other `{{`:
 | `{{crate_name}}` | Its crate's name (`moon-garden`) |
 | `"{{engine.<crate>}}"` | With its quotes: the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`), a TOML inline table: the engine's repository at `main` or a commit, or a checkout |
 | `{{engine_ref}}` | The engine's commit the game builds with, as a workflow's `uses: Zafnok/shuyi-engine/…@` names it: the 40-digit `--engine-rev`, else `main` |
+| `{{engine.docs}}` | A Markdown list of the engine's rules and docs for the game's agent. At `main`: `AGENTS.md` and the site's `llms.txt` and `llms-full.txt`. At a commit: `AGENTS.md` and the book's Markdown at that commit. In a checkout: the same two, as paths |
 | `{{answer.<question>}}` | That question's answers, joined by `,` |
 
 A GitHub Actions expression, `${{ … }}`, is left as it is. An unknown

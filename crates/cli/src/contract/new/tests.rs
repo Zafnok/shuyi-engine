@@ -67,7 +67,84 @@ fn every_short_name_fills_every_placeholder_on_every_engine() {
                 _ => "/crates/shuyi' }".to_owned(),
             };
             assert!(manifest.contains(&expected), "{manifest}");
+            // The skill pack is copied, not filled: its Rust has `format!`'s `{{`.
+            let filled = plan
+                .files
+                .iter()
+                .filter(|(path, _)| !path.starts_with(crate::catalog::SKILLS));
+            for (path, bytes) in filled {
+                // Only text is filled: a picture's bytes may hold anything.
+                let Ok(text) = std::str::from_utf8(bytes) else {
+                    continue;
+                };
+                for (at, _) in text.match_indices("{{") {
+                    assert!(
+                        text[..at].ends_with('$'),
+                        "{short}: {}: {}",
+                        path.display(),
+                        &text[at..]
+                    );
+                }
+            }
         }
+    }
+}
+
+#[test]
+fn the_engines_docs_are_those_of_the_engine_the_game_builds_with() {
+    let at = |rev: &str| Engine::Rev {
+        rev: rev.to_owned(),
+    };
+    let checkout = Engine::Path {
+        path: "e".to_owned(),
+    };
+    assert_eq!(
+        engine_docs(&Engine::Main, None),
+        "- its rules: [`AGENTS.md`](https://github.com/Zafnok/shuyi-engine/blob/main/AGENTS.md)\n\
+         - its docs, page by page: [`llms.txt`](https://zafnok.github.io/shuyi-engine/llms.txt)\n\
+         - its docs, in one file: [`llms-full.txt`](https://zafnok.github.io/shuyi-engine/llms-full.txt)"
+    );
+    assert_eq!(
+        engine_docs(&at("abc1234"), None),
+        "- its rules: [`AGENTS.md`](https://github.com/Zafnok/shuyi-engine/blob/abc1234/AGENTS.md)\n\
+         - its book, in Markdown: [`site/content/learn`](https://github.com/Zafnok/shuyi-engine/tree/abc1234/site/content/learn), \
+         whose code is in `site/snippets/` at the same commit"
+    );
+    assert_eq!(
+        engine_docs(&checkout, Some("D:/e")),
+        "- its rules: `D:/e/AGENTS.md`\n\
+         - its book, in Markdown: `D:/e/site/content/learn/`, whose code is in \
+         `D:/e/site/snippets/`"
+    );
+}
+
+#[test]
+fn a_new_games_agents_file_links_the_docs_of_its_engine() {
+    let template = built_in();
+    let cwd = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    for (engine, holds, lacks) in [
+        (Engine::Main, "/blob/main/AGENTS.md", "site/content/learn"),
+        (
+            Engine::Rev {
+                rev: "abc1234".to_owned(),
+            },
+            "/tree/abc1234/site/content/learn",
+            "blob/main",
+        ),
+        (
+            Engine::Path {
+                path: ".".to_owned(),
+            },
+            "/site/content/learn/`",
+            "https://zafnok.github.io",
+        ),
+    ] {
+        let mut input = NewInput::new("g");
+        input.engine = engine;
+        let (plan, _) = plan(&cwd, &template, &input, "Moon", "moon").unwrap();
+        let agents = String::from_utf8_lossy(&plan.files[Path::new("AGENTS.md")]);
+        assert!(agents.contains(holds), "{agents}");
+        assert!(!agents.contains(lacks), "{agents}");
     }
 }
 

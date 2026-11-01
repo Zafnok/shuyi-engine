@@ -20,6 +20,7 @@
 //! | `{{crate_name}}` | its crate's name (`moon-garden`) |
 //! | `"{{engine.<crate>}}"` | the dependency on that engine crate (`shuyi`, `core`, `assets`, `ui`, `platform`, `app`, `cli`) in `Cargo.toml`: the engine's repository at `main` or at a commit, or a checkout on this machine |
 //! | `{{engine_ref}}` | the engine's commit as a workflow's `uses: …@` names it: a 40-digit `--engine-rev`, else `main` |
+//! | `{{engine.docs}}` | a Markdown list of the engine's rules and docs for the game's agent: at `main` and on the site, at a commit, or in a checkout on this machine |
 //! | `{{answer.<question>}}` | that question's answers, joined by `,` |
 //!
 //! A GitHub Actions expression, `${{ … }}`, is left as it is. The game's
@@ -45,6 +46,9 @@ use crate::template::{self, Answers, ComposeError, Fill, Plan, Template};
 
 /// The engine's repository, which a new game depends on by git.
 pub const ENGINE_GIT: &str = "https://github.com/Zafnok/shuyi-engine";
+
+/// The engine's website, whose docs for agents follow `main`.
+pub const ENGINE_SITE: &str = "https://zafnok.github.io/shuyi-engine";
 
 /// The game's workflow that calls the engine's reusable playtest
 /// workflow, at `{{engine_ref}}` (the grid stage's part writes it).
@@ -212,6 +216,28 @@ fn dependency(engine: &Engine, root: Option<&str>, krate: &str) -> String {
     }
 }
 
+/// The engine's rules and docs for a game's agent, as a Markdown list, one
+/// link or path per line: those of the engine the game builds with.
+fn engine_docs(engine: &Engine, root: Option<&str>) -> String {
+    match (engine, root) {
+        (Engine::Path { .. }, Some(root)) => format!(
+            "- its rules: `{root}/AGENTS.md`\n\
+             - its book, in Markdown: `{root}/site/content/learn/`, whose code is in \
+             `{root}/site/snippets/`"
+        ),
+        (Engine::Rev { rev }, _) => format!(
+            "- its rules: [`AGENTS.md`]({ENGINE_GIT}/blob/{rev}/AGENTS.md)\n\
+             - its book, in Markdown: [`site/content/learn`]({ENGINE_GIT}/tree/{rev}/site/content/learn), \
+             whose code is in `site/snippets/` at the same commit"
+        ),
+        _ => format!(
+            "- its rules: [`AGENTS.md`]({ENGINE_GIT}/blob/main/AGENTS.md)\n\
+             - its docs, page by page: [`llms.txt`]({ENGINE_SITE}/llms.txt)\n\
+             - its docs, in one file: [`llms-full.txt`]({ENGINE_SITE}/llms-full.txt)"
+        ),
+    }
+}
+
 /// The commit a workflow's `uses: …@` can name for `engine`: a full
 /// 40-digit rev (GitHub takes no shorter one there).
 fn engine_ref(engine: &Engine) -> Option<&str> {
@@ -248,6 +274,7 @@ pub fn fill_for(name: &str, krate: &str, engine: &Engine, root: Option<&str>) ->
             .map(|krate| ((*krate).to_owned(), dependency(engine, root, krate)))
             .collect(),
         engine_ref: engine_ref(engine).unwrap_or("main").to_owned(),
+        engine_docs: engine_docs(engine, root),
     }
 }
 

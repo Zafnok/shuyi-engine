@@ -53,6 +53,9 @@ pub struct Fill {
     /// `{{engine_ref}}`: the engine's commit the game builds with, as a
     /// workflow's `uses: …@` names it (40 hex digits), or `main`.
     pub engine_ref: String,
+    /// `{{engine.docs}}`: the engine's rules and docs for the game's agent,
+    /// a Markdown list.
+    pub engine_docs: String,
 }
 
 /// What a template makes for a set of answers: the new game's files and
@@ -239,8 +242,8 @@ impl std::error::Error for ComposeError {}
 
 /// `text`, the file `file`, with its placeholders filled: `{{name}}`,
 /// `{{crate_name}}`, `"{{engine.<crate>}}"` (with its quotes),
-/// `{{engine_ref}}` and `{{answer.<question>}}` (the question's answers in `answers`, joined
-/// by `,`). A GitHub Actions expression, `${{ … }}`, passes through as it
+/// `{{engine_ref}}`, `{{engine.docs}}` and `{{answer.<question>}}` (the question's answers in
+/// `answers`, joined by `,`). A GitHub Actions expression, `${{ … }}`, passes through as it
 /// is. Any other `{{` is [`ComposeError::Placeholder`].
 pub fn fill(
     file: &str,
@@ -284,6 +287,7 @@ pub fn fill(
             "name" => with.name.clone(),
             "crate_name" => with.crate_name.clone(),
             "engine_ref" => with.engine_ref.clone(),
+            "engine.docs" => with.engine_docs.clone(),
             _ => match inner
                 .strip_prefix("answer.")
                 .and_then(|question| answers.0.get(question))

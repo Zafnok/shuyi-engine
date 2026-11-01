@@ -109,7 +109,11 @@ a skill that has gone wrong fails there first.
 
 A game's own `AGENTS.md` holds the rules a game on the engine keeps
 (this book's chapters 3, 4 and 6, in short), for any agent that reads
-it.
+it. It also links the engine's rules and docs, those of the engine the
+game builds with: for a game on `main`, the site's `llms.txt` and
+`llms-full.txt`; for a game on a commit (`--engine-rev`), this book's
+Markdown at that commit; for a game on a checkout (`--engine-path`),
+the same files in that folder.
 
 ## Problem codes
 

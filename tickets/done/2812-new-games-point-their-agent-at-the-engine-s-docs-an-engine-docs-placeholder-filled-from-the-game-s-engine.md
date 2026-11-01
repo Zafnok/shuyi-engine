@@ -5,10 +5,10 @@ type: feature
 milestone: MVP
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
+status: done
 blocked_by: ["2808"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2812 — New games point their agent at the engine's docs
@@ -92,17 +92,19 @@ None.
 
 ## Acceptance criteria
 
-- [ ] `shuyi new` with `--engine-rev`, with the default and with
+- [x] `shuyi new` with `--engine-rev`, with the default and with
       `--engine-path` writes an `AGENTS.md` whose engine links name
       that commit, `main` and the site, or the checkout.
-- [ ] No file of a new game holds `{{` but a GitHub Actions
+- [x] No file of a new game holds `{{` but a GitHub Actions
       expression (`${{ … }}`), for each `Engine` variant and each short
-      name of the template.
-- [ ] The book's chapter is updated (2802), or the completion notes say
+      name of the template. (Of the files the composer fills: see the
+      notes.)
+- [x] The book's chapter is updated (2802), or the completion notes say
       why not: *Tools for agents* (`site/content/learn/book/tools-for-agents.md`)
       says what a new game's `AGENTS.md` links, if it says what the file
       holds.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass. (Those that run locally:
+      see the notes.)
 
 ## Tests required
 
@@ -113,5 +115,25 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+A new game's `AGENTS.md` now lists the rules and docs of the engine the
+game builds with, from `{{engine.docs}}`: `Fill::engine_docs`, set by
+`fill_for` through a new `engine_docs` function, with `ENGINE_SITE` beside
+`ENGINE_GIT`. The two tables of placeholders and *Tools for agents* say so,
+and `plans.golden` moved for `AGENTS.md` only.
+
+Deviation: the test that no `{{` is left reads only the files the composer
+fills. It skips `.claude/skills/`, copied as they are, whose Rust example
+holds `format!`'s `{{`, and files that aren't UTF-8 (`atlas.png`). Neither
+is a placeholder.
+
+Gates: everything in `run-gates` that changes with this work ran locally
+and passed, with the `templates` job's gates on `grid` and `blank` and every
+skill's worked example. `shuyi-test-attach` is manual, as it needs a window.
+Not run: the `no-std`, wasm and web builds and the golden tables on wasm32,
+as no crate they build changed; and the `api` job, which CI runs.
+
+No break: `Fill` is `#[non_exhaustive]`, and the field and `ENGINE_SITE` are
+additions, which the book's chapter covers.
+
+No follow-up tickets. The released version's list is 2005's and the domain
+is 2807's, and both already say so.
