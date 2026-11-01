@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-description = "Shuyi Engine's repository tooling (`cargo xtask`): the ticket lint, the link check, the docs map check, the `no_std` path check, the layers check, the modules check, the pins check, the pinned Rust check, the public API check, the skill pack's worked examples, a new game's compile times, the changelog and the website's docs for agents; never shipped"
+description = "Shuyi Engine's repository tooling (`cargo xtask`): the ticket lint, the link check, the docs map check, the `no_std` path check, the layers check, the modules check, the pins check, the pinned Rust check, the public API check, the skill pack's worked examples, a new game's compile times, the sound parity gates, the changelog and the website's docs for agents; never shipped"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -23,6 +23,9 @@ ron = { workspace = true, features = ["std"] }
 # `llms`: the Learn pages' front matter, and the manifests' versions and
 # names. Parsing only.
 toml = { version = "1.1", default-features = false, features = ["parse", "serde", "std"] }
+
+# `sound-parity`: the SHA-256 that pins the corpus and the evidence.
+sha2 = { version = "0.10", default-features = false }
 
 [dev-dependencies]
 # `llms`'s snapshots of the fixture site.

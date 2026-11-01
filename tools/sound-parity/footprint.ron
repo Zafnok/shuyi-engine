@@ -1,0 +1,167 @@
+// Everything the sound replacement has added to the repository, so that
+// `cargo xtask sound-parity give-up --apply` can take it all out in one go at
+// any stage until quad-snd is removed (ADR-0068). A ticket of the chain adds
+// its own lines here in the same PR: a test fails on any file that names the
+// chain's words and isn't covered, and CI's `sound-give-up` job really gives up
+// and builds what is left. Docs and tickets are the give-up skill's to settle.
+(
+    // Removed whole.
+    owned: [
+        ".agents/skills/give-up-sound-replacement",
+        ".claude/skills/give-up-sound-replacement",
+        "crates/app/examples/sound_probe.rs",
+        "crates/xtask/src/sound_parity",
+        "crates/xtask/src/sound_parity.rs",
+        "tools/sound-parity",
+    ],
+    // A `find` must be there exactly once, and a `Cut` removes from `from` up to,
+    // not including, `to`: one that no longer matches fails the check and CI.
+    edits: [
+        Cut(
+            file: ".github/workflows/ci.yml",
+            from: "  # The first gate on leaving quad-snd",
+            to: "  # `shuyi new` (tickets 1129 and 2501)",
+        ),
+        Replace(
+            file: ".github/workflows/ci.yml",
+            find: "web-render, sound-parity, sound-give-up, templates,",
+            with: "web-render, templates,",
+        ),
+        Cut(
+            file: ".github/workflows/changes.yml",
+            from: "# `sound` is narrower (ticket 2573",
+            to: "# `crates` is narrower (ticket 2010",
+        ),
+        Replace(
+            file: ".github/workflows/changes.yml",
+            find: r##"      sound:
+        description: "'true' unless the event is a pull request that changes nothing the sound parity gates cover"
+        value: ${{ jobs.detect.outputs.sound }}
+"##,
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/changes.yml",
+            find: "      sound: ${{ steps.classify.outputs.sound }}\n",
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/changes.yml",
+            find: "            echo \"sound=true\" >> \"$GITHUB_OUTPUT\"\n",
+            with: "",
+        ),
+        Replace(
+            file: ".github/workflows/changes.yml",
+            find: "          sound=false\n",
+            with: "",
+        ),
+        Cut(
+            file: ".github/workflows/changes.yml",
+            from: "            case \"$path\" in\n              crates/app/*",
+            to: "            case \"$path\" in\n              crates/*|templates/*",
+        ),
+        Replace(
+            file: ".github/workflows/changes.yml",
+            find: "code=$code crates=$crates sound=$sound\"",
+            with: "code=$code crates=$crates\"",
+        ),
+        Replace(
+            file: ".github/workflows/changes.yml",
+            find: "          echo \"sound=$sound\" >> \"$GITHUB_OUTPUT\"\n",
+            with: "",
+        ),
+        Cut(
+            file: ".claude/skills/run-gates/SKILL.md",
+            from: "## The sound parity gates",
+            to: "## Golden tables",
+        ),
+        Cut(
+            file: "docs/README.md",
+            from: "| The sound parity gates:",
+            to: "| Where each fact is written | this file |",
+        ),
+        Replace(
+            file: "crates/app/Cargo.toml",
+            find: r##"# `sound-probe`: names the sound backend for the example `sound_probe`, the
+# parity gates' probe (ticket 2573, ADR-0066). Off by default; never in a
+# shipped build.
+sound-probe = []
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/app/Cargo.toml",
+            find: "# The sound probe's plan.\nserde.workspace = true\nron.workspace = true\n",
+            with: "",
+        ),
+        Cut(
+            file: "crates/app/Cargo.toml",
+            from: "[[example]]\n# The parity gates' probe",
+            to: "[[example]]\n# The render card",
+        ),
+        Replace(
+            file: "crates/app/src/lib.rs",
+            find: r##"//! With the `sound-probe` feature, `SoundProbeBackend` names the sound
+//! backend, for the example `sound_probe` that the parity gates record. No
+//! game turns it on.
+//!
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/app/src/lib.rs",
+            find: "#[cfg(feature = \"sound-probe\")]\npub use crate::audio::device::Macroquad as SoundProbeBackend;\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/app/src/audio.rs",
+            find: "    pub struct Macroquad {",
+            with: "    pub(crate) struct Macroquad {",
+        ),
+        Replace(
+            file: "crates/app/src/audio.rs",
+            find: "    pub enum Clip {",
+            with: "    pub(crate) enum Clip {",
+        ),
+        Replace(
+            file: "crates/app/src/audio/native_music.rs",
+            find: "pub struct Pending<T> {",
+            with: "pub(crate) struct Pending<T> {",
+        ),
+        Replace(
+            file: "crates/app/src/audio/native_music.rs",
+            find: "pub struct Music {",
+            with: "pub(crate) struct Music {",
+        ),
+        Replace(
+            file: "crates/xtask/Cargo.toml",
+            find: "a new game's compile times, the sound parity gates, the changelog",
+            with: "a new game's compile times, the changelog",
+        ),
+        Replace(
+            file: "crates/xtask/Cargo.toml",
+            find: "\n# `sound-parity`: the SHA-256 that pins the corpus and the evidence.\nsha2 = { version = \"0.10\", default-features = false }\n",
+            with: "",
+        ),
+        Cut(
+            file: "crates/xtask/src/main.rs",
+            from: "//! - `cargo xtask sound-parity corpus",
+            to: "\nmod api;",
+        ),
+        Replace(
+            file: "crates/xtask/src/main.rs",
+            find: "mod sound_parity;\n",
+            with: "",
+        ),
+        Cut(
+            file: "crates/xtask/src/main.rs",
+            from: "\n  cargo xtask sound-parity corpus",
+            to: "\";\n\nfn main()",
+        ),
+        Replace(
+            file: "crates/xtask/src/main.rs",
+            find: "        Some(\"sound-parity\") => report(\"sound-parity\", &sound_parity::run(&root, &args[1..]), &[]),\n",
+            with: "",
+        ),
+    ],
+)
