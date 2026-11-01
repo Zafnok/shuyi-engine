@@ -414,10 +414,12 @@ def alive() -> list[str]:
     return [candidate for candidate in CANDIDATES[1:] if candidate not in dead]
 
 
-def plan(stage: str, model: str) -> list[dict]:
-    """One stage's attempts. One bypass fails a candidate, so stronger and
-    costlier models attack only what the cheaper ones left standing."""
+def plan(stage: str, model: str, everything: bool = False) -> list[dict]:
+    """One stage's attempts. One bypass fails a candidate, so by default a
+    later model attacks only what the earlier ones left standing; `everything`
+    attacks every candidate anyway, for the transfer data."""
     jobs = []
+    standing = list(CANDIDATES[1:]) if everything else alive()
     def add(kind: str, candidate: str, transform: str, chosen: str, rep: int) -> None:
         jobs.append({
             "id": f"{stage}-{kind}-{candidate}-{transform}-{chosen.removeprefix('claude-')}-{rep}",
@@ -435,15 +437,15 @@ def plan(stage: str, model: str) -> list[dict]:
         for transform in ("crop", "frames", "recapture"):
             add("imitate", "ordinary", transform, model, 0)
     elif stage == "candidates":
-        for candidate in alive():
+        for candidate in standing:
             for transform in ("direct", "transcode"):
                 add("imitate", candidate, transform, model, 0)
     elif stage == "bypass":
-        for candidate in alive():
+        for candidate in standing:
             for transform in ("crop", "frames", "recapture", "average"):
                 add("imitate", candidate, transform, model, 0)
     elif stage == "description":
-        for candidate in ("ordinary", *alive()):
+        for candidate in ("ordinary", *standing):
             add("description", candidate, "direct", model, 0)
     else:
         raise SystemExit(f"unknown stage: {stage}")
@@ -454,11 +456,11 @@ def plan(stage: str, model: str) -> list[dict]:
 LEDGER_LOCK = threading.Lock()
 
 
-def run_stage(stage: str, workers: int, model: str) -> None:
+def run_stage(stage: str, workers: int, model: str, everything: bool) -> None:
     ledger_path = OUT / "ledger.json"
     ledger = json.loads(ledger_path.read_text(encoding="utf-8")) if ledger_path.exists() else []
     done = {row["id"] for row in ledger}
-    jobs = [job for job in plan(stage, model) if job["id"] not in done]
+    jobs = [job for job in plan(stage, model, everything) if job["id"] not in done]
 
     def work(job: dict) -> None:
         record = attempt(job)
@@ -664,6 +666,7 @@ def main() -> None:
     parser.add_argument("--stage", default="smoke")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--model", default=MODELS[0], choices=MODELS)
+    parser.add_argument("--everything", action="store_true")
     parser.add_argument("--participants", type=int, default=12)
     args = parser.parse_args()
     if args.action == "capture":
@@ -678,7 +681,7 @@ def main() -> None:
     elif args.action == "commit-seed":
         print(commit_seed())
     elif args.action == "attack":
-        run_stage(args.stage, args.workers, args.model)
+        run_stage(args.stage, args.workers, args.model, args.everything)
     elif args.action == "score":
         score_all()
     elif args.action == "summary":
