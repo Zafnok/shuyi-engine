@@ -302,9 +302,12 @@ parked.
     effects: a cue names a `.sfx.ron` file, `shuyi sfx <preset> --out
     <file>` writes one, `--wav` renders it to listen to, and which
     fields to change. `check-skills` passes.
-  - **2803.** If it is done, its step `08-polish` plays `.sfx.ron`
-    sounds made with `shuyi sfx`, and its page says how. If not, 2803
-    uses them.
+  - **From 2803 (done):** `site/tutorial/08-polish`, and `09-test` and
+    `10-ship` after it, have no sound. They get two `.sfx.ron` sounds made
+    with `shuyi sfx`, one on a push and one on a win, and
+    `site/content/learn/tutorial/08-polish.md` gets its part on them. Their
+    menu already plays the widgets' cues (`handle_with_sound`), which a
+    manifest without them leaves silent.
   - **From 3029 (done):** `audio::jobs` in
     `crates/cli/src/export/playdate/audio.rs` reads a game's sound files for
     the ADPCM step. Add this step there: a `.sfx.ron` is rendered with

@@ -5,10 +5,10 @@ type: infra
 milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: high
-status: todo
+status: done
 blocked_by: ["2801", "2802", "2511"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2803 — The tutorial
@@ -128,15 +128,16 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Ten steps, each building and passing its tests in CI.
-- [ ] Each step plays in the browser from its page.
-- [ ] Step 10's scene data has `moves` and `won`, and its actions keep
+- [x] Ten steps, each building and passing its tests in CI.
+- [x] Each step plays in the browser from its page.
+- [x] Step 10's scene data has `moves` and `won`, and its actions keep
       the six names and undo (*The agent eval's reference*).
-- [ ] Every code block on a tutorial page comes from a step's files.
-- [ ] A change to the engine's API that breaks a step fails CI.
-- [ ] Nothing names the original game's trademark, or anything of
+- [x] Every code block on a tutorial page comes from a step's files, but
+      the commands to type (`bash`), which are no file's (see the notes).
+- [x] A change to the engine's API that breaks a step fails CI.
+- [x] Nothing names the original game's trademark, or anything of
       Visions of Shuyi.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -145,4 +146,47 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Ten steps in `site/tutorial/`, a page each in
+`site/content/learn/tutorial/`, the Learn landing page's link, a `tutorial`
+matrix job in `ci.yml`, a boot of each step in `web-render`, and each step
+at `/learn/tutorial/<step>/play/` from `pages.yml`. The game is called Box
+Pusher (`shuyi new box-pusher --template blank --name "Box Pusher"`). Its
+five levels were solved by a breadth-first search while they were written,
+and a test plays each one's line.
+
+Each step was tested locally, built for the web, and step 10 was played in
+a browser: a push, a win, the menu's result, the options, progress across a
+reload, and Cancel leaving nothing on the web. CI's `check.py boot` covers
+the others.
+
+**Deviations:**
+
+- **An engine fix this ticket needed.** A screen on the short path that
+  played a widget's sound (the engine's options, and any `Menu` with
+  `handle_with_sound`) panicked in a debug build, since `BasicData`'s
+  manifest is empty. `Game::collect_audio` now lets the game's `AudioConfig`
+  cues be missing: that is silence. Any other unknown cue still panics.
+- **The layout** is what `shuyi new` writes today (`crates/game/src`,
+  `crates/game/files`), not the ticket's older `src/` and `assets/`.
+- **Left out of each step's folder:** what `shuyi new` writes for agents and
+  CI (`AGENTS.md`, `CLAUDE.md`, `README.md`, `.claude/`, `.github/`,
+  `.devcontainer/`, `scripts/`), and `rust-toolchain.toml`, `rustfmt.toml`,
+  `clippy.toml` and `rust-version`. A step takes the root's pin and format,
+  so `bump-rust`, `check-pins` and `check-docs` see no ten more copies.
+- **The steps' web part** comes in step 01, not step 10, as every step plays
+  on its page.
+- **A diff from the step before** is the changed code, by anchor. No code
+  block is written by hand, but the commands to type: `check-build.sh` fails
+  any other fence in a tutorial page.
+- **The `snippet` shortcode** gained `step`, and an `anchor` may be left out
+  for a whole file, which `llms.rs` expands alike.
+- **Step 10's page** tells how to publish `dist/web/` in words: a workflow
+  file in a step would be one more to keep pinned.
+
+**Either-order clauses taken:** 2225 isn't done, so no step has sound, and
+2225 adds it. 2112 isn't done, so step 9 plays a line kept in its files, and
+2112 moves it to `solve`. 2528 isn't done, so nothing here, and it changes
+step 10's page. All three say so, and so do 2524, 2777 and 2905.
+
+Book: the tutorial's pages under `site/content/learn/` are this change; no
+public item changed.

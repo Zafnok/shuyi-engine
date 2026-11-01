@@ -1,0 +1,50 @@
+// The default keys and buttons (`shuyi_assets::keymap`). Screens
+// only see the action names on the left; the player rebinds each from the
+// options (Key bindings), keeping up to 3 chords per action. Esc always
+// cancels and Delete empties a key slot, so neither may appear here.
+(
+    layouts: [
+        (
+            id: "Arrows",
+            name: "layout.arrows",
+            keys: {
+                // Held, they repeat.
+                "Up": ["Up", "w"],
+                "Down": ["Down", "s"],
+                "Left": ["Left", "a"],
+                "Right": ["Right", "d"],
+                "Confirm": ["Enter", "Space", "z"],
+                "Cancel": ["Backspace", "x"],
+                // ANCHOR: undo
+                "Undo": ["u"],
+                // ANCHOR_END: undo
+            },
+        ),
+    ],
+    // The game starts in its one layout, so this table only fills the
+    // format's slot for a game that has a layout picker.
+    layout_picker: {
+        "Up": ["Up"],
+        "Down": ["Down"],
+        "Confirm": ["Enter"],
+    },
+    // Buttons by their place on an Xbox-shaped pad.
+    pad: {
+        "Up": ["DpadUp", "LeftStickUp"],
+        "Down": ["DpadDown", "LeftStickDown"],
+        "Left": ["DpadLeft", "LeftStickLeft"],
+        "Right": ["DpadRight", "LeftStickRight"],
+        "Confirm": ["South"],
+        "Cancel": ["East"],
+        "Undo": ["West"],
+    },
+    // Each target's own buttons, named after its profile (`targets/<id>.ron`
+    // in the engine's repository): a target of shuyi.ron that has no
+    // keyboard (a Steam Deck, a Playdate) needs a table here, as
+    // `"steam-deck": { "Up": ["DpadUp"], … }`. `cargo shuyi check --target`
+    // checks that every screen's actions fit them. Desktop and web play
+    // with the keys above.
+    targets: {},
+    repeat: (delay_ms: 300, interval_ms: 70),
+    stick: (press_percent: 50, release_percent: 35),
+)

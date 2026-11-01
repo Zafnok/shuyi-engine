@@ -311,6 +311,26 @@ fn a_snippet_is_the_same_text_as_its_anchored_lines() {
 }
 
 #[test]
+fn a_snippet_of_a_step_reads_the_tutorial_and_no_anchor_is_the_whole_file() {
+    let root = std::env::temp_dir().join(format!("llms-step-{}", std::process::id()));
+    let step = root.join("tutorial/01-new");
+    fs::create_dir_all(&step).unwrap();
+    let text = "first\n// ANCHOR: a\nsecond\n// ANCHOR_END: a\n";
+    fs::write(step.join("f.ron"), text).unwrap();
+    let snippets = root.join("snippets");
+    let whole = snippet(
+        "step=\"01-new\", file=\"f.ron\", language=\"ron\"",
+        &snippets,
+    );
+    assert_eq!(whole.unwrap(), "```ron\nfirst\nsecond\n\n```");
+    let one = snippet("step=\"01-new\", file=\"f.ron\", anchor=\"a\"", &snippets);
+    assert_eq!(one.unwrap(), "```rust\nsecond\n```");
+    let none = snippet("step=\"02-board\", file=\"f.ron\"", &snippets).unwrap_err();
+    assert!(none.contains("site/tutorial/02-board/f.ron"), "{none}");
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
 fn a_snippet_takes_its_language_and_any_quotes() {
     let (text, errors) = expand(
         "a.md",
@@ -323,7 +343,7 @@ fn a_snippet_takes_its_language_and_any_quotes() {
 }
 
 #[test]
-fn a_snippet_s_unknown_argument_or_missing_anchor_fails_on_its_line() {
+fn a_snippet_s_unknown_argument_missing_anchor_or_no_file_fails_on_its_line() {
     let (_, errors) = expand(
         "a.md",
         "a\n{{ snippet(file=\"src/garden.rs\", anchor=\"garden\", lang=\"en\") }}\n",
@@ -345,13 +365,8 @@ fn a_snippet_s_unknown_argument_or_missing_anchor_fails_on_its_line() {
         has(&errors, "a.md:1: snippet: no `// ANCHOR: gone`"),
         "{errors:?}"
     );
-    let (_, errors) = expand(
-        "a.md",
-        "{{ snippet(file=\"src/garden.rs\") }}",
-        1,
-        &snippets(),
-    );
-    assert!(has(&errors, "snippet: no `anchor`"), "{errors:?}");
+    let (_, errors) = expand("a.md", "{{ snippet(anchor=\"garden\") }}", 1, &snippets());
+    assert!(has(&errors, "snippet: no `file`"), "{errors:?}");
 }
 
 #[test]

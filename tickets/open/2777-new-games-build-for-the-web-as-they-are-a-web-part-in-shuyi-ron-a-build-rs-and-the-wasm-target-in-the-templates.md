@@ -71,6 +71,11 @@ None.
     `build.rs` already, and shows them as what they are and why
     (its `snippet`s of `site/snippets/project/shuyi.ron` and
     `site/snippets/build.rs` stay).
+- **From 2803 (done):** `site/content/learn/tutorial/01-new.md`, *Make it
+  play in the browser*, has the reader add the `web` part and `build.rs` by
+  hand. It says instead that a new game has them, and shows what they are.
+  The steps' folders in `site/tutorial/` already have both, so they don't
+  change.
 - **Either order with 2524:** if 2524 is done, its tic-tac-toe
   reference (`evals/references/tic-tac-toe/`) drops the `web` entry,
   `build.rs` and the toolchain's target it carries over the template,

@@ -63,6 +63,13 @@ if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*(rust|rs)([^[:alnum:]_-]|$)' "$b
   fail "the book has a fenced Rust block: write it in site/snippets/ and show it with the snippet shortcode"
 fi
 
+# So does every code block of the tutorial, from its step's folder, which
+# CI builds and tests: only the commands to type are written in a page.
+tutorial="$site_dir/content/learn/tutorial"
+if grep -rnE '^[[:space:]]*(```|~~~)[[:space:]]*($|[^b[:space:]]|b[^a])' "$tutorial" | grep -vE ':[0-9]+:[[:space:]]*(```|~~~)[[:space:]]*$'; then
+  fail "the tutorial has a code block of its own: show its step's file with the snippet shortcode"
+fi
+
 # Learn links each engine crate's API docs: data/api.toml has a row for
 # each `shuyi*` package under crates/, by rustdoc's name for it.
 for manifest in "$site_dir"/../crates/*/Cargo.toml; do
@@ -102,6 +109,13 @@ for chapter in "$book"/*.md; do
   name="$(basename "$chapter" .md)"
   [ "$name" = _index ] && continue
   [ -f "$out/one/learn/book/$name/index.html" ] || fail "the build has no learn/book/$name/"
+done
+# Each step of the tutorial has a page, which links its playable build.
+for step in "$site_dir"/tutorial/*/; do
+  name="$(basename "$step")"
+  page="$out/one/learn/tutorial/$name/index.html"
+  [ -f "$page" ] || fail "the build has no learn/tutorial/$name/"
+  grep -qF "${one}learn/tutorial/$name/play/" "$page" || fail "learn/tutorial/$name/ doesn't link its play/"
 done
 # The chapters are numbered 1 to the last, none twice and none missing.
 chapters="$(sed -nE 's/^chapter = ([0-9]+)$/\1/p' "$book"/*.md | sort -n | tr '\n' ' ')"

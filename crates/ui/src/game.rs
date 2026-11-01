@@ -15,7 +15,7 @@ use core::fmt;
 use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
-use crate::audio::{AudioRequest, MusicClock, MusicCommand, MusicState};
+use crate::audio::{AudioConfig, AudioRequest, MusicClock, MusicCommand, MusicState};
 use crate::ctx::{Ctx, GameData, KeyPrompt, Keyboard};
 use crate::frame::EngineColor;
 use crate::frame::glyph_buffer::{Cell, GlyphBuffer, Rect};
@@ -398,14 +398,18 @@ impl<G: GameData> Game<G> {
     /// this frame's output and runs the music state machine. In debug
     /// builds, a cue the manifest lacks is a bug in the screen and panics,
     /// and so does a looped cue played without a handle, which nothing
-    /// could stop (a release build plays it once).
+    /// could stop (a release build plays it once). The engine's widgets
+    /// play the game's [`AudioConfig`](crate::audio::AudioConfig) cues
+    /// whatever sounds it has, so one the manifest lacks is silence: a game
+    /// with no sounds has quiet menus.
     fn collect_audio(&mut self, dt: f32) {
         self.ctx.audio.advance(dt);
         self.audio_out = self.ctx.audio.take();
         for request in &self.audio_out {
             let manifest = self.ctx.game.audio_manifest();
             debug_assert!(
-                is_known(manifest, request),
+                is_known(manifest, request)
+                    || is_widget_cue(&self.ctx.game.audio_config(), request),
                 "audio request for a cue not in the audio manifest: {request:?}"
             );
             debug_assert!(
@@ -660,6 +664,21 @@ pub const CRANK_HINT: &str = "crank.unfold";
 const CRANK_HINT_ENGLISH: &str = "Unfold the crank to go on";
 
 /// Whether `request` names a cue of the right kind in `manifest`.
+/// Whether `request` plays a cue the engine's widgets play: `config`'s.
+fn is_widget_cue<V>(config: &AudioConfig, request: &AudioRequest<V>) -> bool {
+    let AudioRequest::PlaySound { cue, .. } = request else {
+        return false;
+    };
+    [
+        config.move_cue,
+        config.select_cue,
+        config.cancel_cue,
+        config.denied_cue,
+        config.cursor_cue,
+    ]
+    .contains(&cue.as_str())
+}
+
 fn is_known<V>(manifest: &AudioManifest, request: &AudioRequest<V>) -> bool {
     match request {
         AudioRequest::PlaySound { cue, .. } | AudioRequest::StartSound { cue, .. } => {

@@ -11,8 +11,8 @@ Three ways in:
   engine is built on: screens and skins, input actions, assets and
   formats, rules as commands and their determinism, saves, testing,
   targets, and the tools agents use.
-- **The tutorial.** A small puzzle game built step by step, each step
-  tested and playable in the browser. Coming soon.
+- **[The tutorial](@/learn/tutorial/01-new.md).** A small puzzle game
+  built step by step, each step tested and playable in the browser.
 - **[The API docs](#the-api-docs).** Every crate's reference, generated
   from its code.
 

@@ -1,0 +1,12 @@
+[alias]
+# The engine's tools on this game: `cargo shuyi check`, `cargo shuyi run
+# --script "Right Right"`, `cargo shuyi bots 20`... (`cargo shuyi` alone
+# lists them). They run in the game's own tool program.
+shuyi = "run -q -p box-pusher --example tools --features tools --"
+
+# On Windows with the GNU toolchain, rustup's own linker lacks import
+# libraries macroquad needs: link with MSYS2's mingw-w64 instead
+# (`cargo shuyi doctor` says how to install it).
+[target.x86_64-pc-windows-gnu]
+linker = "C:/msys64/mingw64/bin/gcc.exe"
+ar = "C:/msys64/mingw64/bin/ar.exe"

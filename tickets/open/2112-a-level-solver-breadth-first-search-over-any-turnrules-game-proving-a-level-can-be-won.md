@@ -159,12 +159,12 @@ None.
     `Exhausted` comes only when every line ends caught or stuck.
   - If the shipped stage can't be won on seed 0, fix the stage in this
     PR.
-- **Either order with 2803:** if `site/tutorial/` exists, its `09-test`
-  step (and `10-ship`, which carries it) gets level 1's line from
-  `solve` instead of a line kept in its files, a test proves its five
-  levels winnable, and the step's page in `site/content/learn/tutorial/`
-  shows the call. If 2803 isn't done, its step 9 already says to use
-  `solve` when it exists.
+- **From 2803 (done):** `site/tutorial/09-test` and `10-ship` play a line
+  kept in `crates/game/files/lines/` (`LineBot`, `crates/game/src/tools.rs`,
+  with `every_levels_line_wins_it` in `crates/game/tests/tools.rs`). Their
+  bot gets level 1's line from `solve` instead, the lines go, a test proves
+  the five levels winnable with `solve`, and the step's page
+  (`site/content/learn/tutorial/09-test.md`) shows the call.
 - **From 1134 (done):** add a short section to
   `skills/shuyi-test/SKILL.md`: proving a level winnable with `solve` in
   a game's `check`; `check-skills` passes.

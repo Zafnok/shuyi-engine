@@ -1,0 +1,13 @@
+// Level 3, in the engine's `.map` format.
+(
+    name: "Round the corner",
+    legend: { '.': "floor", '#': "wall", 'o': "target" },
+    features: { (2, 4): Start, (4, 3): Box },
+)
+---
+########
+#o.....#
+###.#..#
+#......#
+#......#
+########

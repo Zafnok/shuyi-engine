@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{#- A step of the tutorial: its text, the game as it stands at this step
+    (pages.yml puts its web build at `play/`), its whole project, and the
+    steps before and after it (`weight`). -#}
+{% block content %}
+<article class="prose">
+  <p class="meta"><a href="{{ get_url(path='@/learn/tutorial/_index.md') }}">The tutorial</a> · Step {{ page.extra.step }}</p>
+  <h1>{{ page.title }}</h1>
+  <p><a class="button" href="{{ page.permalink | safe }}play/">Play this step</a>
+    <a href="{{ config.extra.repo | safe }}/tree/main/site/tutorial/{{ page.slug }}">Its whole project</a></p>
+  {{ page.content | safe }}
+</article>
+<nav class="pager" aria-label="The tutorial">
+  {%- if page.lower %}
+  <a rel="prev" href="{{ page.lower.permalink | safe }}">← {{ page.lower.title }}</a>
+  {%- else %}<span></span>{% endif %}
+  {%- if page.higher %}
+  <a rel="next" href="{{ page.higher.permalink | safe }}">{{ page.higher.title }} →</a>
+  {%- endif %}
+</nav>
+{% endblock content %}

@@ -785,33 +785,56 @@ fn arguments(args: &str) -> Result<Vec<(&str, &str)>, String> {
 }
 
 /// The `snippet` shortcode (`site/templates/shortcodes/snippet.md`): the
-/// lines of `site/snippets/<file>` between `// ANCHOR: <anchor>` and
-/// `// ANCHOR_END: <anchor>`, other anchors' lines left out, as a fenced
-/// block in `language` (`rust` unless given).
+/// lines of `site/snippets/<file>`, or with `step` of
+/// `site/tutorial/<step>/<file>`, between `// ANCHOR: <anchor>` and
+/// `// ANCHOR_END: <anchor>` (with no `anchor`, of the whole file), other
+/// anchors' lines left out, as a fenced block in `language` (`rust` unless
+/// given).
 fn snippet(args: &str, snippets: &Path) -> Result<String, String> {
-    let (mut file, mut anchor, mut language) = (None, None, "rust");
+    let (mut file, mut anchor, mut language, mut step) = (None, None, "rust", None);
     for (key, value) in arguments(args).map_err(|e| format!("snippet: {e}"))? {
         match key {
             "file" => file = Some(value),
             "anchor" => anchor = Some(value),
             "language" => language = value,
+            "step" => step = Some(value),
             _ => {
                 return Err(format!(
-                    "snippet: no argument `{key}` (it takes `file`, `anchor` and `language`)"
+                    "snippet: no argument `{key}` (it takes `file`, `anchor`, `language` and `step`)"
                 ));
             }
         }
     }
     let file = file.ok_or("snippet: no `file`")?;
-    let anchor = anchor.ok_or("snippet: no `anchor`")?;
-    let source = fs::read_to_string(snippets.join(file))
-        .map_err(|e| format!("snippet: {SNIPPETS}/{file}: {e}"))?;
-    let lines = anchored(&source, anchor).ok_or_else(|| {
-        format!(
-            "snippet: no `// ANCHOR: {anchor}` … `// ANCHOR_END: {anchor}` in {SNIPPETS}/{file}"
-        )
-    })?;
+    let (path, shown) = match step {
+        Some(step) => (
+            snippets.with_file_name("tutorial").join(step).join(file),
+            format!("site/tutorial/{step}/{file}"),
+        ),
+        None => (snippets.join(file), format!("{SNIPPETS}/{file}")),
+    };
+    let source = fs::read_to_string(path).map_err(|e| format!("snippet: {shown}: {e}"))?;
+    let lines = match anchor {
+        Some(anchor) => anchored(&source, anchor).ok_or_else(|| {
+            format!("snippet: no `// ANCHOR: {anchor}` … `// ANCHOR_END: {anchor}` in {shown}")
+        })?,
+        None => whole(&source),
+    };
     Ok(format!("```{language}\n{}\n```", lines.join("\n")))
+}
+
+/// Every line of `source`, without the anchors' lines, as the shortcode
+/// shows a file named with no anchor. The empty line after its last
+/// newline stays, as the shortcode's split keeps it.
+fn whole(source: &str) -> Vec<&str> {
+    source
+        .split('\n')
+        .map(|raw| raw.trim_end_matches('\r'))
+        .filter(|line| {
+            let bare = line.trim();
+            !bare.starts_with("// ANCHOR: ") && !bare.starts_with("// ANCHOR_END: ")
+        })
+        .collect()
 }
 
 /// The lines of `source` inside its first `anchor`, without the lines of
