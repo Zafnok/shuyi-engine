@@ -1,0 +1,37 @@
+{
+ "invisible2": {
+  "largest_luma_change": 2.0,
+  "luma_psnr_db": 45.1,
+  "ssim": 0.9977
+ },
+ "invisible4": {
+  "largest_luma_change": 4.0,
+  "luma_psnr_db": 39.4,
+  "ssim": 0.9932
+ },
+ "invisible8": {
+  "largest_luma_change": 8.0,
+  "luma_psnr_db": 33.4,
+  "ssim": 0.976
+ },
+ "ordinary": {
+  "largest_luma_change": 0.0,
+  "luma_psnr_db": 99.0,
+  "ssim": 1.0
+ },
+ "visible_corner": {
+  "largest_luma_change": 45.4,
+  "luma_psnr_db": 49.8,
+  "ssim": 0.9986
+ },
+ "visible_drift": {
+  "largest_luma_change": 45.4,
+  "luma_psnr_db": 36.0,
+  "ssim": 0.9699
+ },
+ "visible_tile": {
+  "largest_luma_change": 45.4,
+  "luma_psnr_db": 36.0,
+  "ssim": 0.97
+ }
+}

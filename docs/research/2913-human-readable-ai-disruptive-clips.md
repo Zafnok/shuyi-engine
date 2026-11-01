@@ -326,8 +326,10 @@ hash of each evaluated encode and frame set (`encodes.json`), the per-arm summar
 (`summary.json`) and the viewer metrics (`viewer_metrics.json`). Programs,
 responses, clips and the case seed stay in the ignored `target/`.
 
-**Removing the study.** Everything is in that one folder and nothing depends on
-it, so `git rm -r tools/research/2913` removes it. This report deliberately names
+**Removing the study.** Everything is in that one folder, so `git rm -r
+tools/research/2913` removes it. Only re-running
+[2915's study](2915-capture-controls-marks-and-ai-signals.md) needs its capture
+crate. This report deliberately names
 those files as text, so it stays valid without them, though the study then cannot
 be re-run or its hashes checked.
 

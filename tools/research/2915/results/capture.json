@@ -1,0 +1,576 @@
+{
+ "filming_exclude_on": {
+  "exclude": true,
+  "seen": [
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.23,
+    "state": "ordinary-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.16,
+    "state": "ordinary-workshop-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.3,
+    "state": "invisible2-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.25,
+    "state": "invisible2-workshop-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.61,
+    "state": "invisible4-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.2,
+    "state": "invisible4-workshop-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.18,
+    "state": "invisible8-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.42,
+    "state": "invisible8-workshop-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.25,
+    "state": "visible_corner-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.18,
+    "state": "visible_corner-workshop-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.64,
+    "state": "visible_tile-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.58,
+    "state": "visible_tile-workshop-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 29.62,
+    "state": "visible_drift-courier-00"
+   },
+   {
+    "screen_copy_mean": 35.98,
+    "screen_copy_shares": 0.0,
+    "shown_mean": 30.55,
+    "state": "visible_drift-workshop-00"
+   }
+  ]
+ },
+ "game_window": {
+  "Desktop Duplication (ffmpeg ddagrab)": {
+   "distinct_levels": 92,
+   "has_a_picture": true,
+   "mean": 18.3,
+   "shape": [
+    796,
+    784,
+    3
+   ]
+  },
+  "GDI screen copy (BitBlt)": {
+   "distinct_levels": 48,
+   "has_a_picture": true,
+   "mean": 18.2,
+   "shape": [
+    796,
+    784,
+    3
+   ]
+  },
+  "PrintWindow": {
+   "distinct_levels": 211,
+   "has_a_picture": true,
+   "mean": 29.4,
+   "shape": [
+    796,
+    784,
+    3
+   ]
+  },
+  "Windows.Graphics.Capture": {
+   "distinct_levels": 220,
+   "has_a_picture": true,
+   "mean": 28.4,
+   "shape": [
+    838,
+    788,
+    3
+   ]
+  },
+  "binary": "hello-grid.exe",
+  "ffmpeg gdigrab": {
+   "distinct_levels": 93,
+   "has_a_picture": true,
+   "mean": 18.3,
+   "shape": [
+    796,
+    784,
+    3
+   ]
+  },
+  "restricting_strings_in_binary": [],
+  "title": "Hello, Grid"
+ },
+ "matrix": {
+  "another_process_cleared_the_flag": "False 5",
+  "gdi/exclude/Desktop Duplication (ffmpeg ddagrab)": {
+   "mean": [
+    41.5,
+    41.2,
+    53.9
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/exclude/GDI screen copy (BitBlt)": {
+   "mean": [
+    41.5,
+    41.2,
+    53.9
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/exclude/PrintWindow": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/exclude/UI Automation": {
+   "error": "",
+   "name": "shuyi-capture-probe"
+  },
+  "gdi/exclude/Windows.Graphics.Capture": {
+   "error": "RuntimeError: no frame in 8 seconds"
+  },
+  "gdi/exclude/ffmpeg gdigrab": {
+   "mean": [
+    41.5,
+    41.2,
+    53.9
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/exclude/set_ok": true,
+  "gdi/monitor/Desktop Duplication (ffmpeg ddagrab)": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/monitor/GDI screen copy (BitBlt)": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/monitor/PrintWindow": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/monitor/UI Automation": {
+   "error": "",
+   "name": "shuyi-capture-probe"
+  },
+  "gdi/monitor/Windows.Graphics.Capture": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/monitor/ffmpeg gdigrab": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "gdi/monitor/set_ok": true,
+  "gdi/none/Desktop Duplication (ffmpeg ddagrab)": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "gdi/none/GDI screen copy (BitBlt)": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "gdi/none/PrintWindow": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "gdi/none/UI Automation": {
+   "error": "",
+   "name": "shuyi-capture-probe"
+  },
+  "gdi/none/Windows.Graphics.Capture": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "gdi/none/ffmpeg gdigrab": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "gdi/none/set_ok": true,
+  "opengl/exclude/Desktop Duplication (ffmpeg ddagrab)": {
+   "mean": [
+    41.5,
+    41.2,
+    53.9
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/exclude/GDI screen copy (BitBlt)": {
+   "mean": [
+    41.5,
+    41.2,
+    53.9
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/exclude/PrintWindow": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/exclude/UI Automation": {
+   "error": "",
+   "name": "shuyi-capture-probe"
+  },
+  "opengl/exclude/Windows.Graphics.Capture": {
+   "error": "RuntimeError: no frame in 8 seconds"
+  },
+  "opengl/exclude/ffmpeg gdigrab": {
+   "mean": [
+    41.5,
+    41.2,
+    53.9
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/exclude/set_ok": true,
+  "opengl/monitor/Desktop Duplication (ffmpeg ddagrab)": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/monitor/GDI screen copy (BitBlt)": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/monitor/PrintWindow": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/monitor/UI Automation": {
+   "error": "",
+   "name": "shuyi-capture-probe"
+  },
+  "opengl/monitor/Windows.Graphics.Capture": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/monitor/ffmpeg gdigrab": {
+   "mean": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 0.0
+  },
+  "opengl/monitor/set_ok": true,
+  "opengl/none/Desktop Duplication (ffmpeg ddagrab)": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "opengl/none/GDI screen copy (BitBlt)": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "opengl/none/PrintWindow": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "opengl/none/UI Automation": {
+   "error": "",
+   "name": "shuyi-capture-probe"
+  },
+  "opengl/none/Windows.Graphics.Capture": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "opengl/none/ffmpeg gdigrab": {
+   "mean": [
+    214.0,
+    40.0,
+    160.0
+   ],
+   "shape": [
+    360,
+    360,
+    3
+   ],
+   "share_of_window_colour": 1.0
+  },
+  "opengl/none/set_ok": true
+ },
+ "scan": {
+  "backend_hits": {
+   "macroquad-0.4.16": [],
+   "miniquad-0.4.11": []
+  },
+  "engine_hits": []
+ },
+ "web_page": {
+  "canvas_readback": [
+   214,
+   41,
+   161,
+   255
+  ],
+  "capture_stream_ok": true,
+  "display_media": {
+   "canvas_coloured_pixels": 777852,
+   "size": [
+    1754,
+    878
+   ]
+  },
+  "eme_used": false,
+  "finished": true,
+  "shell_hits": []
+ },
+ "windows_build": 26300
+}

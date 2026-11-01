@@ -1,0 +1,530 @@
+[
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.024796,
+  "game_text_score": 98.2,
+  "job": "ordinary/courier/direct",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023404,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/direct",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.017192,
+  "game_text_score": 98.2,
+  "job": "ordinary/courier/transcode",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.01704,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/transcode",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.016592,
+  "game_text_score": 100.0,
+  "job": "ordinary/courier/crop",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.016096000000000003,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/crop",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.021532000000000003,
+  "game_text_score": 98.8,
+  "job": "ordinary/courier/recapture_sim",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.017356,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/recapture_sim",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.020612,
+  "game_text_score": 87.1,
+  "job": "ordinary/courier/palette_snap",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.021728,
+  "game_text_score": 100.0,
+  "job": "ordinary/workshop/palette_snap",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.03086,
+  "game_text_score": 100.0,
+  "job": "invisible8/courier/direct",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.022092,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/direct",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.01786,
+  "game_text_score": 98.2,
+  "job": "invisible8/courier/transcode",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.01736,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/transcode",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.020756,
+  "game_text_score": 98.2,
+  "job": "invisible8/courier/crop",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.01612,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/crop",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.017796,
+  "game_text_score": 69.2,
+  "job": "invisible8/courier/recapture_sim",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.017308,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/recapture_sim",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.018016,
+  "game_text_score": 99.4,
+  "job": "invisible8/courier/collude_avg2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.016872,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/collude_avg2",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.016923999999999998,
+  "game_text_score": 98.8,
+  "job": "invisible8/courier/collude_min2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.016576,
+  "game_text_score": 100.0,
+  "job": "invisible8/workshop/collude_min2",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.021543999999999997,
+  "game_text_score": 67.2,
+  "job": "invisible8/courier/palette_snap",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.022156,
+  "game_text_score": 95.0,
+  "job": "invisible8/workshop/palette_snap",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.024655999999999997,
+  "game_text_score": 69.2,
+  "job": "visible_corner/courier/direct",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.023736,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/direct",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.020168,
+  "game_text_score": 99.4,
+  "job": "visible_corner/courier/transcode",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.019996,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/transcode",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.011233,
+  "game_text_score": 99.4,
+  "job": "visible_corner/courier/crop",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.010737,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/crop",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023588,
+  "game_text_score": 97.6,
+  "job": "visible_corner/courier/recapture_sim",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.023724,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/recapture_sim",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.0215,
+  "game_text_score": 99.4,
+  "job": "visible_corner/courier/collude_avg2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.023376,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/collude_avg2",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.022,
+  "game_text_score": 98.8,
+  "job": "visible_corner/courier/collude_min2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.021136,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/collude_min2",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.024003999999999998,
+  "game_text_score": 98.2,
+  "job": "visible_corner/courier/palette_snap",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.024,
+  "game_text_score": 100.0,
+  "job": "visible_corner/workshop/palette_snap",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.02748,
+  "game_text_score": 69.2,
+  "job": "visible_tile/courier/direct",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.026004,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/direct",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.03233200000000001,
+  "game_text_score": 98.2,
+  "job": "visible_tile/courier/transcode",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.021396,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/transcode",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.026428,
+  "game_text_score": 69.2,
+  "job": "visible_tile/courier/crop",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.021907999999999997,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/crop",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.025284,
+  "game_text_score": 97.6,
+  "job": "visible_tile/courier/recapture_sim",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.0242,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/recapture_sim",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.035164,
+  "game_text_score": 97.6,
+  "job": "visible_tile/courier/collude_avg2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.028636,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/collude_avg2",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.0233,
+  "game_text_score": 97.6,
+  "job": "visible_tile/courier/collude_min2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.028236,
+  "game_text_score": 100.0,
+  "job": "visible_tile/workshop/collude_min2",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.031799999999999995,
+  "game_text_score": 99.4,
+  "job": "visible_tile/courier/palette_snap",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.023407999999999998,
+  "game_text_score": 99.6,
+  "job": "visible_tile/workshop/palette_snap",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.030879999999999998,
+  "game_text_score": 98.2,
+  "job": "visible_drift/courier/direct",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.024596,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/direct",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.028624,
+  "game_text_score": 98.2,
+  "job": "visible_drift/courier/transcode",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.023308000000000002,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/transcode",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.024428,
+  "game_text_score": 69.2,
+  "job": "visible_drift/courier/crop",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.023288,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/crop",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.025076,
+  "game_text_score": 69.2,
+  "job": "visible_drift/courier/recapture_sim",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.024467999999999997,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/recapture_sim",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.022504,
+  "game_text_score": 98.2,
+  "job": "visible_drift/courier/collude_avg2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.027304000000000002,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/collude_avg2",
+  "state": 6
+ },
+ {
+  "code_correct": false,
+  "code_read": "wrong",
+  "cost_usd": 0.024292,
+  "game_text_score": 98.2,
+  "job": "visible_drift/courier/collude_min2",
+  "state": 4
+ },
+ {
+  "code_correct": false,
+  "code_read": "none",
+  "cost_usd": 0.02324,
+  "game_text_score": 100.0,
+  "job": "visible_drift/workshop/collude_min2",
+  "state": 6
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.025088,
+  "game_text_score": 94.1,
+  "job": "visible_drift/courier/palette_snap",
+  "state": 4
+ },
+ {
+  "code_correct": true,
+  "code_read": "correct",
+  "cost_usd": 0.023084,
+  "game_text_score": 99.3,
+  "job": "visible_drift/workshop/palette_snap",
+  "state": 6
+ }
+]

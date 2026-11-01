@@ -17,7 +17,7 @@ completed:
 
 ## Context
 
-An authenticated preview can add a visible per-recipient mark and platform capture controls. Windows WDA_EXCLUDEFROMCAPTURE and Android FLAG_SECURE impede selected software recorders; Microsoft says the Windows flag is not DRM and cannot stop a camera. A public Steam trailer is transcoded and cannot carry the game's window policy.
+An authenticated preview can add a visible per-recipient mark and platform capture controls. Windows WDA_EXCLUDEFROMCAPTURE and Android FLAG_SECURE impede selected software recorders; Microsoft says the Windows flag is not DRM and cannot stop a camera. A public Steam trailer is transcoded and cannot carry the game's window policy. **From 2915 (done):** [its report](../../docs/research/2915-capture-controls-marks-and-ai-signals.md) sets the scope. A faint per-recipient mark named the right 1 of 1,000 recipients on YouTube's encode and a real phone film, but a person could see it on flat backgrounds and a short cleanup erased it, so call it faint and removable, never invisible. Windows' exclusion blocked all five software paths tested and a phone filmed every frame. A tiled visible code stayed readable but missed the readability screen, so a visible mark here must be drawn away from or behind the game's text and pass that screen. macOS and Android flags were read about, not run: this ticket's matrix runs them, and Apple documents `sharingType` as not to be used for this. Test on real art, in a live session, whether the detector still works without a clean frame. Magnifiers with the flag on are also untested. The report's `verify_public.py` checks are the starting point for the public-build test.
 
 ## Nick input
 
