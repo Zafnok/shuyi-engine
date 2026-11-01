@@ -30,6 +30,8 @@ insta = "1"
 [workspace.lints.rust]
 unsafe_code = "forbid"
 missing_docs = "warn"
+# `cargo llvm-cov` sets `cfg(coverage)` (ticket 3070).
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

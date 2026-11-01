@@ -58,8 +58,13 @@ fn time_fight() -> (Duration, Duration, u128) {
 }
 
 /// The fight's frame draws much faster than the plain renderer draws it
-/// (ticket 3056).
+/// (ticket 3056). It checks the code as it ships, so not under `cargo
+/// llvm-cov` (ticket 3070).
 #[test]
+#[cfg_attr(
+    coverage,
+    ignore = "coverage counters slow the fast renderer's loops more than the plain one's: the ratio means nothing there"
+)]
 fn a_fight_draws_fast() {
     let (fast, slow, speed_up) = time_fight();
     assert!(
