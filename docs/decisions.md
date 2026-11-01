@@ -1369,3 +1369,27 @@ Source: Nick, in a Claude Code session, while 2573 was being worked:
   moved pin, and its removal must be proven undoable before it merges.
 - How this is held is technical:
   [ADR-0068](adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md).
+
+## 2026-11-01: `shuyi-alloc-count` and `shuyi-playdate` are held too
+
+Asked how close the first release was and whether more names should be held,
+Claude checked crates.io: the seven placeholders were live, and two crates
+written since were still free. `shuyi-app` and `shuyi-cli` need
+`shuyi-alloc-count`, so the release can't go out without it, and 2005's list
+had left it out. `shuyi-playdate` is the Playdate backend. Nick:
+
+> "Yes, reserve shuyi-alloc-count and shuyi-playdate as 0.0.0 placeholders, record it in decisions.md, and add both to ticket 2005."
+
+**Rules:**
+
+- **Both are held** as empty 0.0.0 placeholders like the seven (a library with
+  no code, both license files, a README that points here), owned by `Zafnok`.
+  Each is a real crate in this repository, which fits the 2026-10-21 rule that a
+  name is published when its crate is real.
+- **The token.** Nick made one for this run only: the `publish-new` scope, the
+  crates `shuyi-*`, a short expiry. Nick revokes it after the run. Its value is
+  recorded nowhere.
+- **2005 publishes the next version of both** with the others, through trusted
+  publishing.
+- **Still no defensive names.** The planned crates that don't exist yet, and
+  `shuyi-engine`, stay unheld.

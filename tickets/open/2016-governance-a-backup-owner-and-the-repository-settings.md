@@ -77,8 +77,9 @@ What Shuyi has today:
 What is planned:
 
 - 2005 publishes the `shuyi-*` crates with one owner, through crates.io
-  trusted publishing. The six crates exist already as 0.0.0
-  placeholders, owned by `Zafnok` (`docs/decisions.md`, 2026-10-21).
+  trusted publishing. The nine crates exist already as 0.0.0
+  placeholders, owned by `Zafnok` (`docs/decisions.md`, 2026-10-21,
+  2026-10-22 and 2026-11-01).
 - 2806 adds GitHub Sponsors and Ko-fi. 2807 (parked) adds a domain.
 
 Why it matters:
@@ -226,9 +227,9 @@ Then tell the session "done". It checks the result, read-only, with
     - the SonarCloud organization, which signs in through GitHub;
     - GitHub Pages and its `github-pages` environment (no secret:
       `pages.yml` deploys with the workflow's own token);
-    - crates.io: the owner `Zafnok` of the six `shuyi-*` placeholder
-      crates and the revoked token that published them
-      (`docs/decisions.md`, 2026-10-21); the release credential: "none
+    - crates.io: the owner `Zafnok` of the nine placeholder crates and
+      the three revoked tokens that published them (`docs/decisions.md`,
+      2026-10-21, 2026-10-22 and 2026-11-01); the release credential: "none
       yet, 2005";
     - GitHub Sponsors and Ko-fi. **Either order with 2806:** if 2806 is
       done, write their rows; if not, 2806 adds them;
