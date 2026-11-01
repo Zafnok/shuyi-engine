@@ -1,0 +1,15 @@
+[package]
+name = "cloning-fixture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+shuyi-core = { path = "../../../../crates/core" }
+serde = { workspace = true, features = ["std"] }
+serde_json = "1"

@@ -156,6 +156,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cloning-fixture"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "shuyi-core",
+]
+
+[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
