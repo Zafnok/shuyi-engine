@@ -75,10 +75,9 @@ None.
 - **The GPU painter**, registered for the `shuyi-3d` module layer
   (3103's `ModulePainter`, in its GPU form through the hook):
   - meshes and textures uploaded once per asset.
-    **Either order with 2220:** if 2220 is done, upload them again
-    when its module hook, `Module::reloaded`, names a file they were
-    read from; if not, upload once, and 2220 adds the upload on
-    reload (its clause says so);
+    **From 2220 (done):** upload them again on reload, from
+    `Module::reloaded`, for the meshes and textures read from a changed
+    file (`Hot<T>`, ADR-0071).
   - `Fx12` turned into `f32` here, after the scene is built (ADR-0011
     §3);
   - textures: `FilterMode::Nearest` when the material's `pixel` flag is

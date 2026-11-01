@@ -200,6 +200,11 @@ pub struct Frame<'a> {
     /// The serial of the cap's latest change: the backend reports it with
     /// the cap it applied.
     pub frame_cap_serial: u32,
+    /// The errors of the hot reloads that failed, each with its file and
+    /// line ([`Ctx::reload_errors`](shuyi_ui::Ctx::reload_errors)): a
+    /// backend with a debug overlay shows them at the top of the frame. In
+    /// a build with debug tools; empty otherwise.
+    pub reload_errors: &'a [String],
 }
 
 impl<'a> Frame<'a> {
@@ -211,6 +216,7 @@ impl<'a> Frame<'a> {
             fullscreen: false,
             frame_cap: FrameCap::DEFAULT,
             frame_cap_serial: 0,
+            reload_errors: &[],
         }
     }
 }
@@ -347,6 +353,15 @@ pub trait Platform {
     fn heap_snapshot(&mut self) -> Option<HeapSnapshot> {
         None
     }
+
+    /// Adds the paths in the bundle of the files that changed since the
+    /// last call to `out`, in a build with debug tools (ADR-0071): the
+    /// backend has already put their new bytes in their layers
+    /// ([`Layer::replace`](shuyi_assets::bundle::Layer::replace)). `App` asks
+    /// once a frame while the game runs, only with
+    /// [`Ctx::debug_tools`](shuyi_ui::Ctx::debug_tools) on. By default it
+    /// adds nothing: a device with no files to watch.
+    fn changed_files(&mut self, _out: &mut Vec<String>) {}
 }
 
 #[cfg(test)]

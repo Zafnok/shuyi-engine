@@ -480,6 +480,35 @@ A pixel's brightness is `(77 r + 150 g + 29 b + 128) / 256`, from 0 to
 255. The picture keeps its size, one dot a pixel. `bitmap::dither::dither`
 does it for a decoded picture, and `Dithered` for a PNG in a bundle.
 
+## Hot reload
+
+A value read through the registry can reload when its files change on disk
+(ADR-0071): `shuyi_assets::hot::Hot<T>`, for any kind, with no code in its
+format.
+
+- `Hot::load(&formats, &bundle, id)` decodes the asset as `Formats::load` does,
+  and keeps the paths the decode asked the bundle for through `Bundle::bytes`:
+  its file, what its format read through `DecodeCx`, and its import settings,
+  found or not, so a `.meta` file that appears reloads it.
+- `hot.refresh(&changed)` decodes again if one of those paths is among
+  `changed`, and answers `Reload::Unchanged`, `Reloaded` or `Failed(errors)`. A
+  failure keeps the old value. A `Hot<T>` derefs to its `T`.
+- Only a layer handed in at run time changes (`Layer::owned`,
+  `shuyi_app::read_folder`), with `Bundle::replace` or `Layer::replace`. An
+  embedded file stays as it is. The old bytes are leaked so every `&'static`
+  read stays valid, which is why this is for debug builds.
+- `bundle::recording(f)` gives the paths `f` found on its thread, for a tool
+  that wants to know what a load read.
+
+The game's half is a module: it declares `Hook::Reloaded`, keeps its `Hot`
+values as its own state, refreshes them in `Module::reloaded`, and says how each
+went with `Ctx::note_reload`, whose errors show over the frame. The example
+Hello, Grid's `src/hot_palette.rs` is one. `shuyi run --watch` starts a game so:
+the folder `shuyi.ron`'s `assets` names (`assets` until it says) over its
+embedded files. A file deleted keeps its last bytes until the game restarts. It
+isn't on the web or a console. What a backend made from a file once (a texture)
+doesn't follow it yet.
+
 ## Optimized formats
 
 An optimized format is derived from a text source by a tool and tested

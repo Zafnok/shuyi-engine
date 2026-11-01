@@ -212,10 +212,9 @@ None.
     whatever it is when this lands, the schemas regenerated and the line
     added to `crates/cli/schemas/versions.json` (`docs/contract.md`,
     *The schemas*).
-- **Either order with 2220:** if 2220 is done, it added
-  `bundle::recording` as described here and `Hot<T>` records through it
-  (its clause says so): reuse it. If not, 2220 uses
-  `bundle::recording`.
+- **From 2220 (done):** `bundle::recording` is in `bundle.rs` as described
+  above, its log per thread: reuse it. `Hot<T>` reads the same log
+  (`reads_of`), and also keeps the paths asked for and not found.
 - **Either order with 2228:** if 2228 is done, `Bundle::bytes` and
   `Bundle::versions` tell of a read through one private helper: record
   there, so `versions`' reads are recorded too. If not, record in

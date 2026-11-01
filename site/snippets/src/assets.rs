@@ -1,10 +1,13 @@
 //! Chapter 5, assets and formats: the garden's plan as a kind of asset of
 //! the game's own, read from `files/garden.ron` through the format
-//! registry, and the bundle's layers, a player's mod laid over the
-//! game's files.
+//! registry, the bundle's layers, a player's mod laid over the game's
+//! files, and the plan reloading as its file changes.
+
+use std::sync::Arc;
 
 use serde::Deserialize;
 use shuyi::assets::format::AssetKind;
+use shuyi::assets::hot::Hot;
 use shuyi::assets::ron::Ron;
 use shuyi::assets::{Bundle, ContentError, Formats};
 use shuyi::prelude::*;
@@ -61,14 +64,66 @@ pub fn read_plan(bundle: &Bundle) -> Result<Plan, Vec<ContentError>> {
 }
 // ANCHOR_END: formats
 
+// ANCHOR: hot
+/// The garden's plan, reloading as its file changes. A screen reads it from
+/// the context, as it reads any module's state.
+pub struct HotPlan {
+    /// The plan: reads like a `Plan`.
+    pub plan: Hot<Plan>,
+}
+
+impl HotPlan {
+    /// The plan of `bundle`, or every problem with it.
+    pub fn new(bundle: &Bundle) -> Result<Self, Vec<ContentError>> {
+        let plan = Hot::load(&Arc::new(formats()), bundle, "garden")?;
+        Ok(Self { plan })
+    }
+}
+
+impl<G: GameData> Module<G> for HotPlan {
+    fn name(&self) -> &'static str {
+        "hot_plan"
+    }
+
+    fn install(&mut self, install: &mut Install<'_, G>) {
+        install.hook(Hook::Reloaded);
+    }
+
+    fn reloaded(&mut self, ctx: &mut Ctx<G>, changed: &[String]) {
+        // A broken file keeps the old plan, and shows its error.
+        let reload = self.plan.refresh(changed);
+        ctx.note_reload(self.plan.id(), &reload);
+    }
+}
+// ANCHOR_END: hot
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
     use shuyi::assets::Layer;
+    use shuyi::assets::hot::Reload;
 
     use super::*;
     use crate::game;
+
+    #[test]
+    fn a_hot_plan_follows_its_file_and_keeps_the_last_good_one() {
+        let plan =
+            |plots: u32| format!("(plots: {plots}, seeds: 20, grow_percent: 50)").into_bytes();
+        let files = BTreeMap::from([("garden.ron".to_owned(), plan(12))]);
+        let layer = Layer::owned("assets".to_owned(), files).unwrap();
+        let bundle = Bundle::new(vec![layer]);
+        let mut hot = HotPlan::new(&bundle).unwrap();
+        assert_eq!(*hot.plan, Plan::new(12, 20, 50));
+        assert!(bundle.replace("garden.ron", plan(14)));
+        let changed = ["garden.ron".to_owned()];
+        assert_eq!(hot.plan.refresh(&changed), Reload::Reloaded);
+        assert_eq!(*hot.plan, Plan::new(14, 20, 50));
+        assert!(bundle.replace("garden.ron", b"(plots".to_vec()));
+        assert!(matches!(hot.plan.refresh(&changed), Reload::Failed(_)));
+        assert_eq!(*hot.plan, Plan::new(14, 20, 50));
+    }
 
     // ANCHOR: layers
     #[test]

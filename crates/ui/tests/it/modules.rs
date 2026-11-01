@@ -301,3 +301,70 @@ fn a_modules_debug_entry_shows_last_on_the_debug_menu() {
     assert!(gallery.is_some() && bodies > gallery, "{shown}");
     assert_eq!(h.game().modules()[0].debug_entries, ["Show bodies"]);
 }
+
+/// A module that notes what changed; it says it hears of it if `declared`.
+struct Listener {
+    name: &'static str,
+    declared: bool,
+    heard: Rc<RefCell<Vec<String>>>,
+}
+
+impl Module<Toy> for Listener {
+    fn name(&self) -> &'static str {
+        self.name
+    }
+
+    fn install(&mut self, install: &mut Install<'_, Toy>) {
+        if self.declared {
+            install.hook(Hook::Reloaded);
+        }
+    }
+
+    fn reloaded(&mut self, _: &mut ToyCtx, changed: &[String]) {
+        for path in changed {
+            self.heard
+                .borrow_mut()
+                .push(format!("{}: {path}", self.name));
+        }
+    }
+}
+
+#[test]
+fn a_changed_file_is_heard_in_install_order_by_those_that_declared_it() {
+    let heard = Rc::new(RefCell::new(Vec::new()));
+    let listener = |name, declared| Listener {
+        name,
+        declared,
+        heard: Rc::clone(&heard),
+    };
+    let game = on(Ordered)
+        .with_module(listener("first", true))
+        .and_then(|game| game.with_module(listener("deaf", false)))
+        .and_then(|game| game.with_module(listener("second", true)))
+        .unwrap();
+    let mut game = game;
+    game.reloaded(&["a.ron".to_owned()]);
+    assert_eq!(*heard.borrow(), ["first: a.ron", "second: a.ron"]);
+    assert_eq!(game.modules()[0].hooks, [Hook::Reloaded]);
+}
+
+#[test]
+fn a_reload_error_stays_until_that_values_next_good_reload() {
+    use shuyi_assets::ContentError;
+    use shuyi_assets::hot::Reload;
+
+    let mut ctx = toy::ctx();
+    let failed = |message: &str| Reload::Failed(vec![ContentError::new("a.ron", message)]);
+    assert_eq!(ctx.reload_errors(), [] as [String; 0]);
+    ctx.note_reload("a", &failed("first"));
+    ctx.note_reload("b", &failed("second"));
+    assert_eq!(ctx.reload_errors(), ["a.ron: first", "a.ron: second"]);
+    ctx.note_reload("a", &Reload::Unchanged);
+    assert_eq!(ctx.reload_errors().len(), 2);
+    ctx.note_reload("b", &Reload::Reloaded);
+    assert_eq!(ctx.reload_errors(), ["a.ron: first"]);
+    ctx.note_reload("a", &failed("again"));
+    assert_eq!(ctx.reload_errors(), ["a.ron: again"]);
+    ctx.note_reload("a", &Reload::Reloaded);
+    assert_eq!(ctx.reload_errors(), [] as [String; 0]);
+}

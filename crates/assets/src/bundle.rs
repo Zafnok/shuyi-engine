@@ -33,8 +33,15 @@
 //! and its loaders read files as `&'static` data from it. A front end can
 //! [`watch`] every file read, to log or time what it loads; with `std`,
 //! [`reading`] makes one thread read another bundle (a test of a smaller
-//! build's bundle).
+//! build's bundle), and [`recording`] lists the files a stretch of code
+//! read on its thread.
+//!
+//! In a debug build a file of a run-time layer may change on disk:
+//! [`Bundle::replace`] takes its new bytes, and [`hot`](crate::hot) values
+//! decode again.
 use alloc::collections::BTreeMap;
+#[cfg(feature = "std")]
+use alloc::collections::BTreeSet;
 
 use shuyi_core::ContentHash;
 
@@ -66,13 +73,67 @@ pub enum Files {
     Owned(&'static OwnedFiles),
 }
 
+/// One file of a layer's table: its path and its contents.
+type TableFile = (&'static str, &'static [u8]);
+
 /// The files of a layer handed in at run time ([`Layer::owned`]), with
 /// checked paths, kept for the life of the program so every read of them
-/// is `&'static`.
+/// is `&'static`. With `std` a file can be replaced ([`Layer::replace`]);
+/// its old bytes stay, so what was read of them stays valid.
 #[derive(Debug)]
 pub struct OwnedFiles {
     /// `(path, contents)`, sorted by path.
-    table: &'static [(&'static str, &'static [u8])],
+    #[cfg(feature = "std")]
+    table: std::sync::RwLock<Vec<TableFile>>,
+    /// `(path, contents)`, sorted by path.
+    #[cfg(not(feature = "std"))]
+    table: Vec<TableFile>,
+}
+
+impl OwnedFiles {
+    /// The files of `table`, sorted by path.
+    fn new(table: Vec<TableFile>) -> Self {
+        Self {
+            #[cfg(feature = "std")]
+            table: std::sync::RwLock::new(table),
+            #[cfg(not(feature = "std"))]
+            table,
+        }
+    }
+
+    /// What `read` gives on the table as it is now.
+    #[cfg(feature = "std")]
+    fn with<T>(&self, read: impl FnOnce(&[TableFile]) -> T) -> T {
+        let table = self
+            .table
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        read(&table)
+    }
+
+    /// What `read` gives on the table.
+    #[cfg(not(feature = "std"))]
+    fn with<T>(&self, read: impl FnOnce(&[TableFile]) -> T) -> T {
+        read(&self.table)
+    }
+
+    /// Puts `bytes` at `path`, in place of what is there. The old bytes are
+    /// leaked, as every file of the layer is.
+    #[cfg(feature = "std")]
+    fn replace(&self, path: &str, bytes: Vec<u8>) {
+        let bytes: &'static [u8] = Box::leak(bytes.into_boxed_slice());
+        let mut table = self
+            .table
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        match table.binary_search_by(|(p, _)| (*p).cmp(path)) {
+            Ok(at) => table[at].1 = bytes,
+            Err(at) => {
+                let path: &'static str = Box::leak(path.to_owned().into_boxed_str());
+                table.insert(at, (path, bytes));
+            }
+        }
+    }
 }
 
 impl Files {
@@ -82,7 +143,7 @@ impl Files {
             #[cfg(feature = "std")]
             Self::Dir(dir) => dir.get_file(path).map(include_dir::File::contents),
             Self::Table(files) => table_get(files, path),
-            Self::Owned(files) => table_get(files.table, path),
+            Self::Owned(files) => files.with(|table| table_get(table, path)),
         }
     }
 
@@ -106,25 +167,20 @@ impl Files {
                 }
             }
             Self::Table(files) => table_list(files, dir, deep, paths),
-            Self::Owned(files) => table_list(files.table, dir, deep, paths),
+            Self::Owned(files) => files.with(|table| table_list(table, dir, deep, paths)),
         }
     }
 }
 
 /// The contents of the file at `path` in `files` (sorted by path).
-fn table_get(files: &'static [(&'static str, &'static [u8])], path: &str) -> Option<&'static [u8]> {
+fn table_get(files: &[TableFile], path: &str) -> Option<&'static [u8]> {
     let at = files.binary_search_by(|(p, _)| (*p).cmp(path)).ok()?;
     Some(files[at].1)
 }
 
 /// Adds the paths of the files of `files` inside `dir` to `paths`, as
 /// [`Files::list`] does.
-fn table_list(
-    files: &'static [(&'static str, &'static [u8])],
-    dir: &str,
-    deep: bool,
-    paths: &mut Vec<&'static str>,
-) {
+fn table_list(files: &[TableFile], dir: &str, deep: bool, paths: &mut Vec<&'static str>) {
     paths.extend(files.iter().map(|(path, _)| *path).filter(|path| {
         let rest = if dir.is_empty() {
             Some(*path)
@@ -263,7 +319,7 @@ impl Layer {
             })?;
         }
         // A `BTreeMap` is sorted by path, as the table's search needs.
-        let table: Vec<(&'static str, &'static [u8])> = files
+        let table: Vec<TableFile> = files
             .into_iter()
             .map(|(path, bytes)| {
                 let path: &'static str = Box::leak(path.into_boxed_str());
@@ -271,13 +327,31 @@ impl Layer {
                 (path, bytes)
             })
             .collect();
-        let files: &'static OwnedFiles = Box::leak(Box::new(OwnedFiles {
-            table: Box::leak(table.into_boxed_slice()),
-        }));
+        let files: &'static OwnedFiles = Box::leak(Box::new(OwnedFiles::new(table)));
         Ok(Self::of(
             Box::leak(name.into_boxed_str()),
             Files::Owned(files),
         ))
+    }
+
+    /// Puts `bytes` at `path` in this layer (a file changed on disk), for
+    /// every bundle that has the layer, and says whether it did: only a
+    /// layer handed in at run time ([`Layer::owned`]) changes, and only at a
+    /// path it could have been made with.
+    ///
+    /// A hot reload's way in, in debug builds: the old bytes are leaked, as
+    /// the layer's files are, so every `&'static` read of them stays valid.
+    #[cfg(feature = "std")]
+    #[must_use]
+    pub fn replace(&self, path: &str, bytes: Vec<u8>) -> bool {
+        let Files::Owned(files) = self.files else {
+            return false;
+        };
+        if check_path(path).is_err() {
+            return false;
+        }
+        files.replace(path, bytes);
+        true
     }
 
     /// A layer of `files`, shown as `name`.
@@ -462,13 +536,49 @@ impl Bundle {
         if let Some(watcher) = WATCHER.get() {
             watcher(path, bytes.is_some());
         }
+        #[cfg(feature = "std")]
+        note_read(path, bytes.is_some());
         bytes
     }
 
     /// Whether a layer this thread reads has the file at `path`. Unlike
-    /// [`Bundle::bytes`], this reads nothing: the [`watch`]er isn't told.
+    /// [`Bundle::bytes`], this reads nothing: the [`watch`]er isn't told,
+    /// and [`recording`] doesn't hear of it.
     pub fn has(&self, path: &str) -> bool {
         find(self.read(), path).is_some()
+    }
+
+    /// Puts `bytes` at `path` in the first layer handed in at run time that
+    /// has the file, or the first of them if none has it, and says whether
+    /// one took it ([`Layer::replace`]). A file of an embedded layer stays
+    /// as it is, so a layer above one still wins over it.
+    ///
+    /// Debug builds only, for a hot reload: the old bytes are leaked, so
+    /// every `&'static` read of them stays valid.
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use shuyi_assets::bundle::{Bundle, Layer};
+    ///
+    /// let files = BTreeMap::from([("a.txt".to_owned(), b"old".to_vec())]);
+    /// let layer = Layer::owned("disk".to_owned(), files).unwrap();
+    /// let bundle = Bundle::new(vec![layer]);
+    /// let old = bundle.file("a.txt");
+    /// assert!(bundle.replace("a.txt", b"new".to_vec()));
+    /// assert_eq!(bundle.file("a.txt"), Some("new"));
+    /// assert_eq!(old, Some("old"));
+    /// ```
+    #[cfg(feature = "std")]
+    #[must_use]
+    pub fn replace(&self, path: &str, bytes: Vec<u8>) -> bool {
+        let mut disk = self
+            .layers
+            .iter()
+            .filter(|layer| matches!(layer.files, Files::Owned(_)));
+        let first = disk.clone().next();
+        disk.find(|layer| layer.files.get(path).is_some())
+            .or(first)
+            .is_some_and(|layer| layer.replace(path, bytes))
     }
 
     /// Whether a layer this thread reads leaves the file at `path` out on
@@ -692,6 +802,67 @@ static WATCHER: OnceBox<Watcher> = OnceBox::new();
 /// call gives its watcher back and changes nothing.
 pub fn watch(watcher: Watcher) -> Result<(), Watcher> {
     WATCHER.set(Box::new(watcher)).map_err(|watcher| *watcher)
+}
+
+/// The files a stretch of code asked for ([`reads_of`]).
+#[cfg(feature = "std")]
+#[derive(Debug, Default)]
+pub(crate) struct Reads {
+    /// The paths [`Bundle::bytes`] found.
+    pub(crate) found: BTreeSet<String>,
+    /// The paths it was asked for, found or not.
+    pub(crate) asked: BTreeSet<String>,
+}
+
+#[cfg(feature = "std")]
+std::thread_local! {
+    /// What this thread has read inside [`reads_of`].
+    static READS: core::cell::RefCell<Option<Reads>> = const { core::cell::RefCell::new(None) };
+}
+
+/// Notes a read for [`reads_of`], on this thread.
+#[cfg(feature = "std")]
+fn note_read(path: &str, found: bool) {
+    READS.with_borrow_mut(|reads| {
+        if let Some(reads) = reads {
+            reads.asked.insert(path.to_owned());
+            if found {
+                reads.found.insert(path.to_owned());
+            }
+        }
+    });
+}
+
+/// What `f` gives, and the files it asked any bundle for on this thread.
+/// Nested, the outer call sees the inner one's reads too.
+#[cfg(feature = "std")]
+pub(crate) fn reads_of<T>(f: impl FnOnce() -> T) -> (T, Reads) {
+    /// Puts the outer log back, also when `f` panics.
+    struct Restore(Option<Reads>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            READS.set(self.0.take());
+        }
+    }
+    let mut outer = Restore(READS.replace(Some(Reads::default())));
+    let value = f();
+    let reads = READS.take().unwrap_or_default();
+    if let Some(outer) = &mut outer.0 {
+        outer.found.extend(reads.found.iter().cloned());
+        outer.asked.extend(reads.asked.iter().cloned());
+    }
+    (value, reads)
+}
+
+/// What `f` gives, and the paths [`Bundle::bytes`] found while it ran on
+/// this thread (also through [`Bundle::file`] and the formats that read a
+/// bundle). Unlike [`watch`], it is scoped, and more than one tool can use
+/// it at once. Nested, the outer call sees the inner one's reads too.
+/// [`Bundle::has`] records nothing.
+#[cfg(feature = "std")]
+pub fn recording<T>(f: impl FnOnce() -> T) -> (T, BTreeSet<String>) {
+    let (value, reads) = reads_of(f);
+    (value, reads.found)
 }
 
 #[cfg(feature = "std")]

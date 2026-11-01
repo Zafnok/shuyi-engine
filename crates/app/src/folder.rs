@@ -10,6 +10,10 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use shuyi_assets::bundle::{Layer, LayerError};
+use shuyi_assets::format::DEFAULT_MAX_BYTES;
+use shuyi_platform::WATCH_VAR;
+
+use crate::watch;
 
 /// Why a folder could not be read into a layer ([`read_folder`]).
 #[derive(Debug)]
@@ -60,11 +64,18 @@ impl std::error::Error for FolderError {}
 /// a folder is not followed. Read it once: the layer's files are kept for
 /// the life of the program.
 ///
+/// In a build with debug tools the folder is watched from then on: a file
+/// that changes takes its new bytes in the layer, and the game's modules
+/// hear of it (`Module::reloaded`).
+///
 /// # Errors
 ///
 /// A file over `max_file_bytes`, a file or folder that can't be read or
 /// whose name isn't UTF-8, each naming it, and a path the layer refuses.
 pub fn read_folder(path: &Path, name: &str, max_file_bytes: u64) -> Result<Layer, FolderError> {
+    // Before the files are read: one that changes meanwhile is seen as
+    // changed, and read again.
+    let seen = shuyi_ui::DEBUG_TOOLS.then(|| watch::scan(path));
     let mut files = BTreeMap::new();
     let mut pending = vec![(path.to_path_buf(), String::new())];
     while let Some((dir, prefix)) = pending.pop() {
@@ -95,13 +106,41 @@ pub fn read_folder(path: &Path, name: &str, max_file_bytes: u64) -> Result<Layer
             }
         }
     }
-    Layer::owned(name.to_owned(), files).map_err(FolderError::Layer)
+    let layer = Layer::owned(name.to_owned(), files).map_err(FolderError::Layer)?;
+    if let Some(seen) = seen {
+        watch::note_folder(path, layer, max_file_bytes, seen);
+    }
+    Ok(layer)
+}
+
+/// The folder `cargo shuyi run --watch` named ([`WATCH_VAR`]) as a layer to
+/// lay over the game's files, watched like any folder [`read_folder`]
+/// reads and shown under the folder's name: in a build with debug tools,
+/// when it is set. A folder that can't be read logs why, and the game runs
+/// on its embedded files.
+pub fn watched_layer() -> Option<Layer> {
+    if !shuyi_ui::DEBUG_TOOLS {
+        return None;
+    }
+    let path = PathBuf::from(std::env::var_os(WATCH_VAR)?);
+    let name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("watched");
+    let limit = u64::try_from(DEFAULT_MAX_BYTES).unwrap_or(u64::MAX);
+    match read_folder(&path, name, limit) {
+        Ok(layer) => Some(layer),
+        Err(error) => {
+            macroquad::logging::warn!("{}: {}", WATCH_VAR, error);
+            None
+        }
+    }
 }
 
 /// The bytes of the file at `path`, or an error if it is over `limit`
 /// bytes. It never reads more than one byte past the limit, also when the
 /// file grows while it is read.
-fn read_file(path: &Path, limit: u64) -> Result<Vec<u8>, FolderError> {
+pub(crate) fn read_file(path: &Path, limit: u64) -> Result<Vec<u8>, FolderError> {
     let read = |error| FolderError::Read {
         path: path.to_path_buf(),
         error,

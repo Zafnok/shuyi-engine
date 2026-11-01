@@ -42,7 +42,7 @@ use crate::contract::export::ExportInput;
 pub use crate::contract::export::{ExportOutput as ExportReport, FileSize, Signing};
 use crate::game::GameTools;
 use crate::notices::{self, Build, Work};
-use crate::project::{AppPart, Beside, ExportPart, GameProgram, Project, Web};
+use crate::project::{AppPart, Beside, Config, ExportPart, GameProgram, Project, Web};
 
 /// A target's exporter.
 pub trait Exporter: Sync {
@@ -522,6 +522,28 @@ fn package_of(
         .map(str::to_owned)
         .or_else(|| game.map(|game| game.package.clone()))
         .or(web_package)
+}
+
+/// The package and program of the project at `root` that `config` says runs
+/// the game on a desktop, as `export` builds it.
+pub(crate) fn package_and_program(
+    root: &Path,
+    config: &Config,
+) -> Result<(String, String), ExportError> {
+    let named = config
+        .export
+        .as_ref()
+        .and_then(|part| part.package.as_deref());
+    let package = package_of("desktop", named, config.game.as_ref(), config.web.as_ref())
+        .ok_or_else(|| {
+            ExportError::Setup(format!(
+                "{} names no package to run: its `game` part names the game's",
+                crate::project::FILE
+            ))
+        })?;
+    let (_, bins, _) = metadata(root, &package)?;
+    let bin = program(&package, &bins)?;
+    Ok((package, bin))
 }
 
 /// The features a build turns on: what `part` lists but `without`. Leaving

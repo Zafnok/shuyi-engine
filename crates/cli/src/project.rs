@@ -120,6 +120,9 @@ pub struct Config {
     /// The folder of the game's own target profiles, if it has any: each
     /// adds a target, or replaces the engine's of its id.
     pub target_profiles: Option<String>,
+    /// The folder of the game's files, which `run --watch` lays over the
+    /// embedded ones: `assets` unless it says.
+    pub assets: Option<String>,
 }
 
 impl Config {

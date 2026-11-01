@@ -17,9 +17,14 @@
 //! picture's `.meta` file or a folder's `_folder.meta`:
 //! `(txtimg: (mirror: true))` flips it left to right.
 
+use std::collections::BTreeMap;
+use std::slice;
+use std::sync::Arc;
+
 use proptest::prelude::*;
 use serde::Deserialize;
 use shuyi_assets::format::{AssetPath, DecodeCx, Encode, Format, Formats, TEXT_MAX_BYTES, text};
+use shuyi_assets::hot::{Hot, Reload};
 use shuyi_assets::image::{Image, ImageId, ImageInfo, ImageTable};
 use shuyi_assets::import_settings::ImportSettings;
 use shuyi_assets::{Bundle, ContentError, Layer};
@@ -292,6 +297,45 @@ fn a_text_image_is_mirrored_by_its_own_settings_or_its_folders() {
         found[0].starts_with("base/images/card.txtimg.meta:2:"),
         "{found:?}"
     );
+}
+
+#[test]
+fn a_hot_text_image_reloads_when_its_settings_change_or_appear() {
+    let flipped = b"(txtimg: (mirror: true))".to_vec();
+    let flipped_pixels = [0, 0, 0, 0, 255, 0, 0, 255].to_vec();
+    let files = BTreeMap::from([("images/card.txtimg".to_owned(), TEXT_CARD.to_vec())]);
+    let layer = Layer::owned("disk".to_owned(), files).unwrap();
+    let bundle = Bundle::new(vec![layer]);
+    let formats = Arc::new(with_txtimg());
+    let mut hot = Hot::<Image>::load(&formats, &bundle, "images/card").unwrap();
+    assert_eq!(hot.rgba, RED_THEN_CLEAR);
+    // No settings file yet: its folder's appears.
+    let folder = "images/_folder.meta".to_owned();
+    assert!(bundle.replace(&folder, flipped.clone()));
+    let changed = slice::from_ref(&folder);
+    assert_eq!(hot.refresh(changed), Reload::Reloaded);
+    assert_eq!(hot.rgba, flipped_pixels);
+    // Its own file's wins over the folder's, as it appears and as it changes.
+    let own = "images/card.txtimg.meta".to_owned();
+    assert!(bundle.replace(&own, b"(txtimg: ())".to_vec()));
+    let changed = slice::from_ref(&own);
+    assert_eq!(hot.refresh(changed), Reload::Reloaded);
+    assert_eq!(hot.rgba, RED_THEN_CLEAR);
+    assert!(bundle.replace(&own, flipped));
+    assert_eq!(hot.refresh(changed), Reload::Reloaded);
+    assert_eq!(hot.rgba, flipped_pixels);
+    // A typo keeps what it had, and names its file and line.
+    assert!(bundle.replace(&own, b"(\n  txtimg: (flip: true),\n)".to_vec()));
+    let Reload::Failed(errors) = hot.refresh(changed) else {
+        panic!("a typo should fail");
+    };
+    assert!(
+        errors[0]
+            .to_string()
+            .starts_with("disk/images/card.txtimg.meta:2:"),
+        "{errors:?}"
+    );
+    assert_eq!(hot.rgba, flipped_pixels);
 }
 
 #[test]

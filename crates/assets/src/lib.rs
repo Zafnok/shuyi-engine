@@ -22,7 +22,8 @@
 //! and a game registers its own kinds and formats beside the engine's in
 //! a [`Formats`] registry, then asks it for an asset by id. A game may
 //! ship its assets baked into one [`pack`] (`.shuyipak`), proven equal to
-//! its sources.
+//! its sources. A value read through the registry can reload when its files
+//! change on disk ([`hot`]).
 //!
 //! For tests, behind the `golden` feature: golden tables (`golden`),
 //! values a build gives pinned in a file, the same on every platform.
@@ -52,6 +53,7 @@ pub mod format;
 #[cfg(feature = "golden")]
 pub mod golden;
 pub mod grid_map;
+pub mod hot;
 pub mod image;
 pub mod import_settings;
 pub mod ink;

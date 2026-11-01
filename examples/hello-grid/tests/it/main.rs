@@ -4,7 +4,7 @@
 //! tool contract's operations,
 //! the same seed and commands giving the same game, its options and key
 //! rebinding, its profiles, its files, its look on a one-bit screen, its pack, pictures
-//! of its frames, and a sleep and a wake.
+//! of its frames, a sleep and a wake, and its palette reloading.
 
 mod autobalance;
 mod balance;
@@ -19,6 +19,7 @@ mod pack;
 mod playtest;
 mod playthrough;
 mod profiles;
+mod reload;
 mod snapshot;
 mod suspend;
 

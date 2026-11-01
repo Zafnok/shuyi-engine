@@ -14,6 +14,8 @@ use crate::alloc_prelude::*;
 use alloc::collections::VecDeque;
 use alloc::vec;
 
+#[cfg(feature = "std")]
+use shuyi_assets::bundle::Layer;
 use shuyi_ui::audio::{MusicCommand, SoundId};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
@@ -387,6 +389,13 @@ pub struct HeadlessPlatform {
     last: Option<Presented>,
     /// The frame cap the last of them asked for, and its serial.
     frame_cap: Option<(FrameCap, u32)>,
+    /// The reload errors the last of them asked to show.
+    reload_errors: Vec<String>,
+    /// The files that change at the next ask ([`change_file`](Self::change_file)).
+    #[cfg(feature = "std")]
+    changes: Vec<(Layer, String, Vec<u8>)>,
+    /// How many times `App` asked what changed.
+    changed_asks: u32,
 }
 
 impl Default for HeadlessPlatform {
@@ -418,6 +427,10 @@ impl HeadlessPlatform {
             presented: 0,
             last: None,
             frame_cap: None,
+            reload_errors: Vec::new(),
+            #[cfg(feature = "std")]
+            changes: Vec::new(),
+            changed_asks: 0,
         }
     }
 
@@ -532,6 +545,27 @@ impl HeadlessPlatform {
         self.system.push(event);
     }
 
+    /// Queues a change of the file at `path` in `layer` (one handed in at
+    /// run time) for the next time `App` asks what changed
+    /// ([`Platform::changed_files`]), as a file changing on disk does: then
+    /// it has `bytes`, and its path is told.
+    #[cfg(feature = "std")]
+    pub fn change_file(&mut self, layer: Layer, path: &str, bytes: Vec<u8>) {
+        self.changes.push((layer, path.to_owned(), bytes));
+    }
+
+    /// How many times `App` asked what changed
+    /// ([`Platform::changed_files`]).
+    pub fn changed_asks(&self) -> u32 {
+        self.changed_asks
+    }
+
+    /// The hot reload errors the last frame presented asked to show
+    /// ([`Frame::reload_errors`]).
+    pub fn reload_errors(&self) -> &[String] {
+        &self.reload_errors
+    }
+
     /// How many frames were presented.
     pub fn presented(&self) -> u32 {
         self.presented
@@ -572,6 +606,8 @@ impl Platform for HeadlessPlatform {
     fn present(&mut self, frame: &Frame<'_>) {
         self.presented += 1;
         self.frame_cap = Some((frame.frame_cap, frame.frame_cap_serial));
+        self.reload_errors.clear();
+        self.reload_errors.extend_from_slice(frame.reload_errors);
         Presented::keep(&mut self.last, frame);
     }
 
@@ -625,6 +661,16 @@ impl Platform for HeadlessPlatform {
         match self.memory {
             Memory::Fake => Some(fake_snapshot(self.presented)),
             Memory::None | Memory::Real(_) => self.snapshots.map(|snapshot| snapshot()),
+        }
+    }
+
+    #[cfg(feature = "std")]
+    fn changed_files(&mut self, out: &mut Vec<String>) {
+        self.changed_asks = self.changed_asks.saturating_add(1);
+        for (layer, path, bytes) in self.changes.drain(..) {
+            if layer.replace(&path, bytes) {
+                out.push(path);
+            }
         }
     }
 }

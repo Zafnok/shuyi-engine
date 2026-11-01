@@ -45,6 +45,7 @@ pub mod skills;
 pub mod template;
 #[cfg(feature = "toy")]
 pub mod toy;
+pub mod watch;
 pub mod web;
 
 use std::path::{Path, PathBuf};
@@ -101,7 +102,9 @@ the tool contract (each also with --json; a wrong argument prints its usage):
   modules                            the engine's modules by concern, and the ones the game has on
   add <module>                       turn a module on: its feature in Cargo.toml, its skill
   run [steps] [--frames N]          play a key script headless: screens, scene, events, sounds
-  scene [steps]                      the scene on screen after a script
+  run --watch                        the game in its window, its files on disk reloading as
+                                     they change (a debug build)
+  scene [steps]                     the scene on screen after a script
   replay <record> [<other>] [--any-stamp]
                                      a state hash per step; where two runs part; a
                                      record made by another build: refused, or run
@@ -202,6 +205,28 @@ pub fn main_with(args: impl Iterator<Item = String>, game: Option<&dyn GameTools
     }
 }
 
+/// `mcp-host` on `project`: served by the game's tools if they are at hand,
+/// else in the game's tool program.
+fn mcp_host(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> u8 {
+    match game {
+        Some(game) => {
+            if cfg!(windows) {
+                // The server's `start` relinks this program.
+                mcp::aside::this_program();
+            }
+            let stdin = std::io::stdin();
+            mcp::host::serve(
+                game,
+                project.clone(),
+                stdin.lock(),
+                std::io::stdout().lock(),
+            )
+        }
+        // It says so if the project names no game tool program.
+        None => game::run_in_game_program(project, "mcp-host", args),
+    }
+}
+
 /// Runs the command `args` on `project`, with the game's tools if they are
 /// at hand (otherwise a command that runs the game runs the game's tool
 /// program), and returns the exit code (see [`main_with`]).
@@ -218,24 +243,11 @@ pub fn run(project: &Project, args: &[String], game: Option<&dyn GameTools>) -> 
         let here = std::env::current_dir().unwrap_or_else(|_| project.root.clone());
         return check_skills(&here, args, command);
     }
+    if name == "run" && args.iter().any(|arg| arg == "--watch") {
+        return watch::main(project, args);
+    }
     if name == "mcp-host" {
-        return match game {
-            Some(game) => {
-                if cfg!(windows) {
-                    // The server's `start` relinks this program.
-                    mcp::aside::this_program();
-                }
-                let stdin = std::io::stdin();
-                mcp::host::serve(
-                    game,
-                    project.clone(),
-                    stdin.lock(),
-                    std::io::stdout().lock(),
-                )
-            }
-            // It says so if the project names no game tool program.
-            None => game::run_in_game_program(project, name, args),
-        };
+        return mcp_host(project, args, game);
     }
     if name == "lint" {
         // On the project's files and cargo: in this program or the game's.
