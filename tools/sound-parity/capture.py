@@ -45,7 +45,7 @@ PREFIX = "shuyi-sound-probe: "
 # Two recordings of every scenario: the gate compares them with each other.
 RUNS = 2
 # The most any one probe run may take, in seconds.
-TIMEOUT = 90
+TIMEOUT = 30
 # Runs thrown away first so that caches and the page's code are warm.
 WARMUP = 2
 PAIRS = 9
@@ -142,7 +142,8 @@ def write_meta(run: Path, revision: str, backend: str, extra: dict[str, object])
     """What the gate reads to refuse stale evidence, and how it was made."""
     tools = {}
     for tool in [["pulseaudio", "--version"], ["oggdec", "--version"]]:
-        tools[tool[0]] = subprocess.run(tool, capture_output=True, text=True, check=False).stdout.strip()
+        ran = subprocess.run(tool, capture_output=True, text=True, check=False)
+        tools[tool[0]] = (ran.stdout + ran.stderr).strip()
     meta = {
         "revision": revision,
         "backend": backend,
@@ -297,19 +298,22 @@ class Browser:
         deadline = time.monotonic() + TIMEOUT
         while time.monotonic() < deadline:
             if not clicked and any('"ready"' in line for line in lines):
-                # The gesture the browser asks for.
-                page.mouse.click(100, 100)
+                # The gesture the browser asks for, held across a frame.
+                page.mouse.move(100, 100)
+                page.mouse.down()
+                page.wait_for_timeout(100)
+                page.mouse.up()
                 clicked = True
             if any('"done"' in line for line in lines):
                 break
             page.wait_for_timeout(10)
         page.wait_for_timeout(300)
-        state = page.evaluate("document.visibilityState")
         page.close()
         recorder.stop()
+        if not any('"done"' in line for line in lines):
+            lines.append(json.dumps({"event": "failed", "text": f"no done in {TIMEOUT} seconds"}))
         if perf is not None:
             perf["_start"] = recorder.start
-            perf["_visibility"] = state == "visible"
         return lines
 
 
@@ -350,7 +354,8 @@ def sound_facts(pcm: Path, start: float, step_wall: float | None) -> dict[str, f
 
 def one_perf(player: Native | Browser, base: Path, side: str, pair: int, burn: int) -> dict[str, object]:
     perf: dict[str, float] = {}
-    record = base / "perf.pcm"
+    # The last of each side stays, to look at.
+    record = base / f"perf-{side}.pcm"
     lines = player.play(f"perf {burn}\n", record, perf)
     metrics: dict[str, float] = {}
     wall = None
@@ -364,7 +369,6 @@ def one_perf(player: Native | Browser, base: Path, side: str, pair: int, burn: i
             raise SystemExit(f"the perf run failed: {line}")
     metrics.update({k: v for k, v in perf.items() if not k.startswith("_")})
     metrics.update(sound_facts(record, perf["_start"], wall))
-    record.unlink()
     return {"side": side, "pair": pair, "metrics": metrics}
 
 
@@ -412,7 +416,7 @@ def browser(args: argparse.Namespace) -> int:
             for number in range(RUNS):
                 run = base / f"run-{number}"
                 write_run(player, run)
-                write_meta(run, args.revision, "quad-snd", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": player.version})
+                write_meta(run, args.revision, "quad-snd-web", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": player.version})
             write_perf(player, base)
         finally:
             player.close()

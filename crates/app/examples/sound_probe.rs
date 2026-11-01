@@ -165,8 +165,8 @@ async fn wait_for_gesture() {
     say(r#"{"event":"ready"}"#);
     #[cfg(target_arch = "wasm32")]
     {
-        use macroquad::input::{MouseButton, is_mouse_button_down};
-        while !is_mouse_button_down(MouseButton::Left) {
+        use macroquad::input::{MouseButton, is_mouse_button_pressed};
+        while !is_mouse_button_pressed(MouseButton::Left) {
             macroquad::window::next_frame().await;
         }
     }

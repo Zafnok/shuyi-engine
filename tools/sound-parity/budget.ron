@@ -1,7 +1,24 @@
-// To be calibrated.
+// Provisional: the first measured run sets the shape, calibration the numbers.
 (
     version: 1,
     correctness: (timing_ms: 60, level_db: 1.5, silent_peak: 16, silent_tone: 0.005, marker_correlation: 0.9, exact_peak: 4, decoded_peak: 16, repeat_db: 3.0),
-    performance: {},
+    performance: {
+        "linux-native": {
+            "file_io_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "decode_wav_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "cpu_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "peak_kib": (max_ratio: 1.25, max_spread: 0.2, slows: false),
+            "latency_ms": (max_ratio: 1.25, max_spread: 0.2, slows: false),
+        },
+        "browser-chromium": {
+            "file_io_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "decode_wav_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "decode_ogg_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "cpu_ms": (max_ratio: 1.25, max_spread: 0.2, slows: true),
+            "peak_kib": (max_ratio: 1.25, max_spread: 0.2, slows: false),
+            "latency_ms": (max_ratio: 1.25, max_spread: 0.2, slows: false),
+        },
+    },
     platforms: {"linux-native": Captured, "browser-chromium": Captured, "windows": Blocked("3031"), "macos": Blocked("3032")},
 )

@@ -79,6 +79,10 @@ pub(crate) enum Expect {
         file: String,
         repeats: usize,
         class: Class,
+        /// Frames: a backend's mixing block, inside which the end of a pass
+        /// may be wrong. 0, the default, holds every frame: what gapless is.
+        #[serde(default)]
+        smear: usize,
     },
     State {
         at: u32,
@@ -347,7 +351,17 @@ fn check_one(
             file,
             repeats,
             class,
-        } => waveform(recording, origin, file, *repeats, *class, oracle, tolerance),
+            smear,
+        } => {
+            let limit = match class {
+                Class::Exact => tolerance.exact_peak,
+                Class::Decoded => tolerance.decoded_peak,
+            };
+            oracle(file).map_or_else(
+                || Some(format!("no expected samples for {file}")),
+                |expected| waveform(recording, origin, file, &expected, *repeats, *smear, limit),
+            )
+        }
         Expect::State { at, cue, secs } => {
             let step = log.steps.iter().rfind(|step| step.0 == *at);
             let limit = f64::from(timing) / 1000.0;
@@ -370,24 +384,24 @@ fn waveform(
     recording: &Recording,
     origin: usize,
     file: &str,
+    expected: &[i16],
     repeats: usize,
-    class: Class,
-    oracle: &dyn Fn(&str) -> Option<Vec<i16>>,
-    tolerance: &Tolerance,
+    smear: usize,
+    limit: i32,
 ) -> Option<String> {
-    let Some(expected) = oracle(file) else {
-        return Some(format!("no expected samples for {file}"));
-    };
-    let limit = match class {
-        Class::Exact => tolerance.exact_peak,
-        Class::Decoded => tolerance.decoded_peak,
-    };
     let per_pass = expected.len() / 2;
     let total = per_pass * repeats;
     if !recording.reaches(origin + total) {
         return Some(format!("too short for {repeats} passes of {file}"));
     }
-    for frame in 0..total {
+    let smeared = |frame: usize| {
+        smear > 0
+            && (1..=repeats).any(|pass| {
+                let block = pass * per_pass / smear * smear;
+                (block..block + smear).contains(&frame)
+            })
+    };
+    for frame in (0..total).filter(|frame| !smeared(*frame)) {
         let at = frame % per_pass;
         let left = i32::from(recording.left[origin + frame]) - i32::from(expected[at * 2]);
         let right = i32::from(recording.right[origin + frame]) - i32::from(expected[at * 2 + 1]);

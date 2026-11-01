@@ -77,6 +77,9 @@ pub(crate) struct Limit {
     /// The largest spread of the ratios (their interquartile range) that
     /// still says anything: past it the verdict is inconclusive.
     pub(crate) max_spread: f64,
+    /// Whether the injected slowdown moves it, so that it must be caught:
+    /// memory and latency it doesn't touch.
+    pub(crate) slows: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -638,15 +641,22 @@ fn fault_cells(
             else {
                 return cell(platform, &check, true, "failed", "no recording to break");
             };
-            let broken = compare::inject(&recording, *fault, tolerance);
-            let caught = compare::check(
-                &scenario.expect,
-                scenario.end,
-                &broken,
-                &log,
-                oracle,
-                tolerance,
-            );
+            let judge = |recording: &Recording| {
+                compare::check(
+                    &scenario.expect,
+                    scenario.end,
+                    recording,
+                    &log,
+                    oracle,
+                    tolerance,
+                )
+            };
+            // Breaking what is already broken proves nothing.
+            if let Some(already) = judge(&recording).first() {
+                let why = format!("the recording to break isn't good: {already}");
+                return cell(platform, &check, true, "failed", &why);
+            }
+            let caught = judge(&compare::inject(&recording, *fault, tolerance));
             if caught.is_empty() {
                 cell(platform, &check, true, "failed", "the fault wasn't caught")
             } else {
@@ -747,6 +757,9 @@ fn performance_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value>
             status,
             &detail,
         ));
+        if !limit.slows {
+            continue;
+        }
         let burned = ratios(&before, &side("burn", metric));
         let caught = judge(&burned, *limit) == "failed";
         let detail = format!(

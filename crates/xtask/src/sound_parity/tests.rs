@@ -55,6 +55,7 @@ fn tone_file() -> Vec<Expect> {
             file: "fmt_44k_s.wav".to_owned(),
             repeats: 1,
             class: Class::Exact,
+            smear: 0,
         },
         Expect::Tone {
             from: 400,
@@ -162,6 +163,7 @@ fn a_missing_loop_pass_fails_and_whole_passes_pass() {
         file: "loop.wav".to_owned(),
         repeats: 3,
         class: Class::Exact,
+        smear: 0,
     }];
     let check_it = |r: &Recording| check(&expect, 1500, r, &done(), &oracle, &tolerance());
     assert_eq!(check_it(&recording(50, &three)), Vec::<String>::new());
@@ -172,6 +174,36 @@ fn a_missing_loop_pass_fails_and_whole_passes_pass() {
     gap.extend_from_slice(&pass);
     let found = check_it(&recording(50, &gap));
     assert!(found.iter().any(|p| p.contains("pass 2")), "{found:?}");
+}
+
+/// quad-snd's native mix: inside the block holding a pass's end, the next pass
+/// lands on top. A smear allows that block, and nothing else.
+#[test]
+fn a_smear_forgives_the_block_of_a_boundary_and_nothing_else() {
+    let pass = signal("loop.wav");
+    let frames = pass.len() / 2;
+    let block = 4096;
+    let mut three = [pass.clone(), pass.clone(), pass].concat();
+    // Spoil the block holding the first boundary.
+    let start = frames / block * block;
+    three[start * 2..(start + block) * 2].fill(1);
+    let waveform = |smear| {
+        [Expect::Waveform {
+            file: "loop.wav".to_owned(),
+            repeats: 3,
+            class: Class::Exact,
+            smear,
+        }]
+    };
+    let good = recording(50, &three);
+    let run =
+        |r: &Recording, smear| check(&waveform(smear), 1500, r, &done(), &oracle, &tolerance());
+    assert_eq!(run(&good, block), Vec::<String>::new());
+    assert_ne!(run(&good, 0).len(), 0, "gapless holds every frame");
+    // The same damage a block later isn't forgiven.
+    let mut later = three.clone();
+    later[(start + block) * 2] = 9;
+    assert_ne!(run(&recording(50, &later), block).len(), 0);
 }
 
 #[test]
@@ -334,6 +366,7 @@ fn a_port_needs_real_evidence() {
 const LIMIT: Limit = Limit {
     max_ratio: 1.2,
     max_spread: 0.1,
+    slows: true,
 };
 
 #[test]

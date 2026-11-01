@@ -54,8 +54,27 @@
             ],
         ),
         (
-            // Three whole passes of the file, sample by sample: two boundaries.
+            // Three whole passes of the file, sample by sample: two boundaries,
+            // each landing on its exact frame. The smear is what quad-snd does
+            // natively: inside the 4,096-frame block holding a pass's end, the
+            // next pass lands on top of it or the block falls silent, so its
+            // loops aren't gapless. That is pinned here, and not as correct:
+            // `loop_gapless` is what a replacement is held to.
             name: "loop",
+            steps: [
+                (at: 0, do: Start(1, "loop", 1.0)),
+                (at: 1700, do: Stop(1)),
+            ],
+            end: 2500,
+            expect: [
+                Waveform(file: "loop.wav", repeats: 3, class: Exact, smear: 4096),
+                Silent(from: 1950, to: 2400),
+            ],
+        ),
+        (
+            // The same, with every frame held.
+            name: "loop_gapless",
+            backends: Some(["quad-snd-web"]),
             steps: [
                 (at: 0, do: Start(1, "loop", 1.0)),
                 (at: 1700, do: Stop(1)),
@@ -140,7 +159,7 @@
             // Today's fallback where a backend can't pause: the sound runs on
             // muted. A true pause is `future_pause`.
             name: "mute",
-            backends: Some(["quad-snd"]),
+            backends: Some(["quad-snd", "quad-snd-web"]),
             steps: [
                 (at: 0, do: Sound("marker", 1.0)),
                 (at: 500, do: Start(1, "tone_loop", 1.0)),
