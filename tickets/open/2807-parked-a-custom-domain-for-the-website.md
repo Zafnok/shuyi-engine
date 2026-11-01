@@ -6,7 +6,7 @@ milestone: "Engine: public"
 model: sonnet-5 / gpt-6.1-terra
 effort: low
 status: blocked
-blocked_by: ["2801", "2016", "2808", "2812"]
+blocked_by: ["2801", "2808", "2812"]
 nick_input: setup
 completed:
 ---
@@ -20,7 +20,7 @@ completed:
 2801 builds the site with `base_url` passed in by the build, so the
 site itself moves by changing one value. A few places outside the site
 name its address too: the README, the crates' metadata, and 2812's
-`ENGINE_SITE`, which new games' `AGENTS.md` links. 2016's
+`ENGINE_SITE`, which new games' `AGENTS.md` links. 2016's (parked)
 `docs/continuity.md` lists the accounts the engine runs on, with a
 "none yet, 2807" row for the domain. A domain costs money every year,
 so buying one is Nick's (`AGENTS.md`, *Who decides what*).
@@ -53,7 +53,8 @@ so buying one is Nick's (`AGENTS.md`, *Who decides what*).
 - The README, `Cargo.toml`'s `homepage`, every crate's `documentation`
   link, and `ENGINE_SITE` in `crates/cli/src/contract/new.rs` (2812,
   linked from new games' `AGENTS.md`) use the domain.
-- A row in `docs/continuity.md` (2016) for the domain, in place of its
+- **Either order with 2016:** if it is done, a row in
+  `docs/continuity.md`; if not, 2016 adds it. The row for the domain, in place of its
   "none yet, 2807": the registrar's name, that auto-renew is on, the
   renewal month, and that Nick holds it; no account details.
 - The old `zafnok.github.io/shuyi-engine/` addresses redirect (GitHub
@@ -67,7 +68,8 @@ so buying one is Nick's (`AGENTS.md`, *Who decides what*).
 
 1. Read GitHub's custom domain docs on the day, and write Nick's steps.
 2. After his setup, change `pages.yml`, `ci.yml`, the README, the
-   metadata and `ENGINE_SITE`, and write the `docs/continuity.md` row.
+   metadata and `ENGINE_SITE`, and write the `docs/continuity.md` row if
+   2016 is done.
 3. Check HTTPS and the redirects.
 
 ## Acceptance criteria
@@ -79,8 +81,8 @@ so buying one is Nick's (`AGENTS.md`, *Who decides what*).
 - [ ] `llms.txt` at the domain links pages at the domain, and a game
       made by `shuyi new` on the engine's `main` links it there in its
       `AGENTS.md`.
-- [ ] `docs/continuity.md`'s domain row names the registrar, auto-renew
-      and the renewal month, and no account details.
+- [ ] If 2016 is done, `docs/continuity.md`'s domain row names the
+      registrar, auto-renew and the renewal month, and no account details.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

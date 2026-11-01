@@ -1,17 +1,19 @@
 ---
 id: "1132"
-title: "The engine's community files and contribution policy"
+title: "Parked: The engine's community files and contribution policy"
 type: infra
-milestone: "Engine: public"
+milestone: "Parked: community"
 model: sonnet-5 / gpt-6.1-terra
 effort: medium
-status: todo
-blocked_by: ["game#1131", "2016"]
+status: blocked
+blocked_by: ["game#1131"]
 nick_input: decision
 completed:
 ---
 
 # 1132 — Community files and contribution policy
+
+> **Parked** (Nick, 2026-11-01: "for 1132 I will probably make it post-MVP if I get any traction otherwise park as well"): the release no longer waits for it, and outside pull requests stay closed. It comes back if the engine gets traction and Nick says so. Whoever unparks it sets `status: todo` and drops `Parked:` from the title.
 
 ## Context
 
@@ -38,8 +40,8 @@ website a Community page, `site/content/community.md`, which links the
 repository, its issues and `CONTRIBUTING.md`; this ticket adds the rest
 there.
 
-2016 comes first: it turns on private vulnerability reporting, the
-channel `SECURITY.md` names, and records the response time Nick chose.
+2005 writes a short `SECURITY.md` and has Nick turn on private
+vulnerability reporting, the channel it names.
 
 ## Nick input
 
@@ -69,22 +71,25 @@ take it out of *Still open*.
   first for large changes.
 - `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1), and issue and PR
   templates.
-- `SECURITY.md`, with:
+- `SECURITY.md`, which 2005 writes (this ticket writes it if it lands
+  first), with:
   - a *Supported versions* line: before the first release, `main` only;
     after it, the latest 0.x release only, with no backports or LTS
     (2005's version policy; Bevy too supports only its latest minor
     version);
   - how to report: GitHub's private vulnerability reporting (the
-    Security tab's "Report a vulnerability", which 2016's setup turns
+    Security tab's "Report a vulnerability", which 2005's setup turns
     on), never a public issue;
-  - the response time Nick chose in 2016 (`docs/decisions.md`);
+  - the response time: best effort with no number, unless Nick chose one
+    in 2016 (`docs/decisions.md`);
   - a link to the threat model for untrusted files (`docs/formats.md`,
     *Untrusted files*, from 2020). It says that, for a file the engine
     reads, a panic, memory or time without bound, or two different
     results from the same bytes is a security bug to report privately.
     **Either order with 2020:** if 2020 isn't done, `SECURITY.md` leaves
     this out, and 2020 adds the link when it lands.
-- `CONTRIBUTING.md` and `SECURITY.md` link `GOVERNANCE.md` (2016), and
+- **If 2016 is done:** `CONTRIBUTING.md` and `SECURITY.md` link
+  `GOVERNANCE.md`, and
   `GOVERNANCE.md`'s line on security reports gets a link to
   `SECURITY.md`.
 - The channel Nick picks, linked from `CONTRIBUTING.md` and from the
@@ -121,7 +126,7 @@ take it out of *Still open*.
 - [ ] `docs/decisions.md` has Nick's contribution policy, and *Still
       open* no longer lists it.
 - [ ] `SECURITY.md` has the supported versions, the private channel and
-      the response time from 2016, and the link to *Untrusted files* if
+      the response time, and the link to *Untrusted files* if
       2020 is done.
 - [ ] The repository shows the community files in GitHub's community
       profile.

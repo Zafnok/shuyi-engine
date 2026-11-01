@@ -154,7 +154,8 @@ From the game's ticket 0059:
   open);
 - who may contribute code (the recommendation is issues only until the
   first public release, then pull requests under a Developer Certificate
-  of Origin).
+  of Origin; since 2026-11-01 it stays open past the first release, with
+  1132 parked).
 
 ## 2026-10-15: export targets, the Playdate rule, benchmarks
 
@@ -1393,3 +1394,33 @@ had left it out. `shuyi-playdate` is the Playdate backend. Nick:
   publishing.
 - **Still no defensive names.** The planned crates that don't exist yet, and
   `shuyi-engine`, stay unheld.
+
+## 2026-11-01: governance and the community files are parked
+
+Told that the first release was waiting on 2016 and 1132, Nick:
+
+> "why is 2016 MVP tbh I don't get it I would rather park it altogether"
+
+> "for 1132 I will probably make it post-MVP if I get any traction otherwise park as well"
+
+Claude answered that 2016 was in the MVP through the "protections" group of
+2026-10-20, and recommended parking both while 2005 kept three small parts.
+Nick:
+
+> "Yes. Park 2016 and 1132, take both off 2005's blockers, and keep the small replacements you listed in 2005."
+
+**Rules:**
+
+- **2016 and 1132 are parked,** and the first release no longer waits for
+  them. This replaces "governance" among the MVP's protections
+  (2026-10-20). 2016 waits until Nick asks; 1132 comes back if the engine
+  gets traction and he asks.
+- **2005 keeps three parts:** `main` requires its checks, private
+  vulnerability reporting is on (both Nick's clicks), and a short
+  `SECURITY.md`: the latest release only, a private channel, best effort with
+  no promised time.
+- **No backup is named.** `Zafnok` stays the crates' one owner, and 2005 no
+  longer asks.
+- **Outside pull requests stay closed** at the first release, and
+  `CONTRIBUTING.md` no longer promises a decision before it.
+- 2525 and 2807 no longer wait for 2016.

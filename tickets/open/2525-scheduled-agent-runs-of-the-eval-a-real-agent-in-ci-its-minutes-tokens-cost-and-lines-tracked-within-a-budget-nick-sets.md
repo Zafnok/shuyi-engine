@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2524", "1133", "2513", "2016"]
+blocked_by: ["2524", "1133", "2513"]
 nick_input: decision
 completed:
 ---
@@ -288,8 +288,9 @@ continues to use the capability in tickets/README.md.
 - **`evals/README.md`:** how the runs work, how to start one by hand
   (Actions, "Agent eval", Run workflow), how to read `results.json`, and
   that a single run is indicative.
-- **`docs/continuity.md`** (2016's list of accounts and secrets): a row
-  each for the chosen provider's workspace, the `agent-eval` environment
+- **`docs/continuity.md`** (parked 2016's list of accounts and secrets).
+  **Either order with 2016:** if it is done, add a row each here; if
+  not, 2016 adds them. A row each for the chosen provider's workspace, the `agent-eval` environment
   and its `ANTHROPIC_API_KEY` secret: where each is kept (never a
   value), who holds it, how to rotate it, and this ticket.
 
@@ -344,7 +345,8 @@ so in the PR.
 6. Write the workflow, and a test in `crates/xtask/tests/cli.rs` that
    reads it as YAML. Run it once by hand, `runs: 1` on tic-tac-toe, and
    put the result in the PR description.
-7. Update `AGENTS.md`, `evals/README.md` and `docs/continuity.md`, and
+7. Update `AGENTS.md`, `evals/README.md` and, if 2016 is done,
+   `docs/continuity.md`, and
    run the gates.
 
 ## Acceptance criteria
@@ -373,7 +375,8 @@ so in the PR.
 - [ ] One run by hand on tic-tac-toe finished with `mcp_connected` true,
       a `cost_usd` and its tokens, and its result is on the
       `eval-results` branch and in the PR description.
-- [ ] `docs/continuity.md` has the rows, and `AGENTS.md` the line.
+- [ ] `AGENTS.md` has the line, and `docs/continuity.md` the rows if 2016
+      is done.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

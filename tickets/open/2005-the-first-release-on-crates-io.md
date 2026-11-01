@@ -6,7 +6,7 @@ milestone: MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2002", "1129", "1133", "1134", "1132", "2801", "2804", "2010", "2011", "2012", "2013", "2016", "2509", "2513", "2808", "2812"]
+blocked_by: ["2002", "1129", "1133", "1134", "2801", "2804", "2010", "2011", "2012", "2013", "2509", "2513", "2808", "2812"]
 nick_input: sign-off
 completed:
 ---
@@ -30,18 +30,18 @@ Nick, 2026-10-20 (`docs/decisions.md`, *a second comparison*): the first
 release waits for the protections a release needs. Its `blocked_by`
 holds the tickets that add them: 2010 (API breaks named on every PR),
 2011 (Dependabot, and no publishing token in CI), 2012 (the pinned
-Rust), 2013 (public types that can grow), 2016 (governance and the repository's settings), 2509
+Rust), 2013 (public types that can grow), 2509
 (problem codes), 2513 (zero setup on Linux) and 2808 (docs agents can
-read).
+read). On 2026-11-01 Nick parked 2016 (governance) and 1132 (community
+files), and kept three small parts here: `main`'s required checks,
+private vulnerability reporting and a short `SECURITY.md`.
 
 ## Nick input
 
 **Sign-off:** before `cargo publish` runs, Nick says go. Publishing can't
 be undone (a version can be yanked, never deleted), and it is the
-engine's first public release. Nick's contribution policy is settled
-first: 1132, in this ticket's `blocked_by`, asks him (the game's 0059,
-*Still open* in `docs/decisions.md`). `CONTRIBUTING.md` says it is
-decided "before the engine's first public release".
+engine's first public release. Outside pull requests stay closed
+(`CONTRIBUTING.md`) until Nick unparks 1132.
 
 The sign-off also:
 - asks how often the engine releases: on a fixed rhythm (Bevy ships
@@ -49,8 +49,6 @@ The sign-off also:
   answer goes in `docs/decisions.md` (the `ask-nick` skill), and the
   ADR follows it. It tells him that fixes go to the latest release only
   (the ADR's rule, below), so he can say otherwise;
-- asks again who the backup is, if Nick chose nobody in 2016 (its
-  option C);
 - holds the release's setup, which is Nick's own clicks. The crates
   exist already (the 0.0.0 placeholders, below), so no token is made
   for this release: Nick adds this repository's `release.yml` and the
@@ -58,6 +56,20 @@ The sign-off also:
   settings page on crates.io, and turns on the setting that refuses API
   tokens for the crate if crates.io offers it. The session writes the
   clicks here, checked against crates.io on the day, before it asks.
+  The setup also has two clicks on GitHub, which Nick may do at any
+  time before the release:
+  - **The gates bind on `main`.** At
+    `https://github.com/Zafnok/shuyi-engine/settings/rules`, in the
+    ruleset "protect main": keep "Restrict deletions" and "Block
+    force pushes"; turn on "Require a pull request before merging"
+    with 0 required approvals; turn on "Require status checks to
+    pass" with `ci-result` and `mutants (diff)` from GitHub Actions,
+    and "Require branches to be up to date before merging"; remove
+    every entry from "Bypass list", his own account included, since
+    agents push with his credentials.
+  - **Private vulnerability reporting.** At
+    `https://github.com/Zafnok/shuyi-engine/settings/security_analysis`,
+    turn it on.
 
 ## Scope
 
@@ -85,7 +97,7 @@ The sign-off also:
     with its migration entry. No window is required for every change
     while the engine is 0.x.
   - **Fixes go to the latest release only:** no backports, no LTS.
-    `SECURITY.md` (1132) says so in one line.
+    `SECURITY.md` says so in one line.
   - **The `since` of a `migration` block** is the workspace version
     after the PR that breaks. 2523's `shuyi migrations` relies on this.
   - **Golden values.** It counts as breaking a changed or removed value
@@ -217,16 +229,16 @@ The sign-off also:
   goes out through the workflow too, with no publish by hand. Check
   this against crates.io's docs on the day. No job of the tag's run
   reads the Actions cache.
-- **Owners and the credential** (`docs/continuity.md`, 2016): if Nick
-  chose a backup with crates.io rights in 2016 (option A), after the
-  release, Nick invites them to `shuyi` and every `shuyi-*` crate
-  (`cargo owner --add <login> <crate>`, with a token that has the
-  `change-owners` scope, or the crate's settings page), and they accept
-  on crates.io. `docs/continuity.md`'s crates.io row names the owners,
-  the trusted publisher, and the placeholders' three tokens
-  (`docs/decisions.md`, 2026-10-21 for the six, 2026-10-22 for
-  `shuyi`, 2026-11-01 for `shuyi-alloc-count` and `shuyi-playdate`):
-  each one's scope, its crates and that it was revoked, never its value.
+- **`SECURITY.md`** at the root, short: *Supported versions* (the latest
+  0.x release only, no backports or LTS); how to report (the Security
+  tab's "Report a vulnerability", never a public issue); and the
+  response time, best effort with no number. **Either order with 2020:**
+  if 2020 is done, it links `docs/formats.md`, *Untrusted files*; if not,
+  2020 adds the link. 1132, parked, grows this file if it lands later.
+- **Owners and the credential:** `Zafnok` stays the crates' one owner,
+  and the release's only credential is the trusted publisher's. The
+  list of accounts (`docs/continuity.md`) waits for 2016, which reads
+  them from crates.io when it is unparked.
 - **Docs at the release's version** (2808): the release workflow runs
   `cargo xtask llms --full-only --out <dir>` at the tag and attaches
   `llms-full.txt` to the GitHub release. `pages.yml` downloads, for each
@@ -298,7 +310,10 @@ The sign-off also:
 2. Fill in the metadata; `cargo package` for each crate must pass.
 3. Write the release workflow with trusted publishing; dry-run it with
    `cargo publish --dry-run`.
-4. Run `cargo xtask repo-settings` (2016); every check must be `ok`.
+4. Read the settings with `gh api`, GET only: `rules/branches/main`
+   holds `pull_request` and `required_status_checks` naming `ci-result`
+   and `mutants (diff)`, and `private-vulnerability-reporting` is
+   enabled. Anything else goes to Nick with its click.
 5. Ask Nick for the sign-off, then tag and publish.
 6. Write the game's ticket for moving to versions.
 
@@ -312,9 +327,9 @@ game's ticket for the move waits for.
       version, with their README, licenses and docs.
 - [ ] A tag publishes a release through CI.
 - [ ] The game's follow-up ticket exists.
-- [ ] `docs/continuity.md`'s crates.io row lists the owners and the
-      release credential (no value), and `cargo xtask repo-settings`
-      passed on the day of the release.
+- [ ] `SECURITY.md` exists, and on the day of the release `main` requires
+      `ci-result` and `mutants (diff)` and private vulnerability
+      reporting is on.
 - [ ] After the release, `/v<x.y>/llms-full.txt` is live and
       `/llms.txt` links it.
 - [ ] All gates in the `run-gates` skill pass.
