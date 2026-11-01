@@ -293,11 +293,11 @@ replace = '"board.moves": "Steps taken: {n}",'
 step = "08-polish"
 keys = "Enter Enter Right"
 alt = "The moves counter is at the top right."
-after = "The moves counter has moved to the top, nearer the middle."
+after = "The moves counter is centred at the top."
 [[moves-left.edits]]
 file = "crates/game/src/board.rs"
 find = "let right = i32::from(buf.width()) - width - 1;"
-replace = "let right = i32::from(buf.width()) / 2;"
+replace = "let right = (i32::from(buf.width()) - width) / 2;"
 
 # ---- Step 10: the finished game ----
 

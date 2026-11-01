@@ -48,7 +48,7 @@ And here's a nice thing about measuring. Use longer words, and it stays against 
 
 {{ try_it(name="moves-words") }}
 
-Or put it somewhere else, by changing the sum:
+Or centre it, by changing the sum:
 
 {{ try_it(name="moves-left") }}
 
