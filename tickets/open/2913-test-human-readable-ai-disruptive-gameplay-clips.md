@@ -5,7 +5,7 @@ type: research
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: in-progress
 blocked_by: ["2912"]
 nick_input: none
 completed:

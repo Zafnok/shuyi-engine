@@ -1,0 +1,17 @@
+[package]
+name = "clip-capture"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+cloning-fixture = { path = "../../2912/fixture" }
+shuyi-assets = { path = "../../../../crates/assets" }
+shuyi-cli = { path = "../../../../crates/cli" }
+shuyi-core = { path = "../../../../crates/core" }
+shuyi-ui = { path = "../../../../crates/ui" }

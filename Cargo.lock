@@ -156,6 +156,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "clip-capture"
+version = "0.1.0"
+dependencies = [
+ "cloning-fixture",
+ "shuyi-assets",
+ "shuyi-cli",
+ "shuyi-core",
+ "shuyi-ui",
+]
+
+[[package]]
 name = "cloning-fixture"
 version = "0.1.0"
 dependencies = [
