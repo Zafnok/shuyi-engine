@@ -97,6 +97,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2555 | Perf over the live link: a running build's frames read from a number, and `shuyi attach --perf-follow` streaming them to a file |
 | 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
+| 3080 | Web export uses clean staging and rejects stale files before packaging a public build |
 | 3066 | The web build's vendored scripts point at their notices: a header line in `dist`, and a `rel="license"` link on the page |
 | 2801 | The website: a Zola site on Pages with Home, Learn, News, Examples, Community and Sponsor |
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
@@ -599,6 +600,24 @@ site that keeps up with the tickets
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 
+### Public demo defenses
+
+On 2026-10-31 Nick asked for a ticket track for countermeasures to
+AI-assisted video imitation, demo extraction and reverse engineering
+([`decisions.md`](decisions.md)). This is a backlog, not a protection
+claim. The web packaging bug (3080) is in the MVP above; the rest below
+comes after the MVP. Hosted networking stays parked in the table below.
+
+| Ticket | What |
+| ------ | ---- |
+| 2912 | Measure footage imitation, package extraction, binary reconstruction and store attribution separately |
+| 3081 | Inspect final exports for undeclared files and game-declared forbidden content (after 3080) |
+| 3082 | Build named public-demo editions from separate code and content roots (after 3081 and 3075) |
+| 2816 | Prepare a verifiable public reveal kit from captures and tagged releases (after 2811 and 3050) |
+| 2915 | Research capture controls, watermarks and AI-use signals for closed previews |
+| 2913 | Test whether human-readable perturbed gameplay clips resist video-to-game imitation (after 2912) |
+| 2914 | Test a small protected rules kernel against dynamic AI analysis (after 2912) |
+
 ## Parked
 
 Nick, 2026-10-14: "document the parked (i.e. after MVP/parity) tickets
@@ -813,6 +832,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2385–2387, 2774–2775 | Local split screen for two to four players: layouts side by side or stacked and the three- and four-player shapes with the player's pick, a view per seat with its camera, HUD rectangle and spare quarter, a check that views fit the target, a listener per view, an example and a template part | Nick asks (2026-10-24: "These will be parked since they're not needed for Visions of Shuyi") |
 | 2364–2368, 2408, 2227, 2352, 2908 | Cinematic tracks, a beat clock, captions for sounds, overlay screens that let the screen below run, memory in the debug view, rumble, translator files, machine-translated engine screens, and research on right-to-left scripts | Nick asks |
 | 3047, 3054–3055, 2601, 2529 | Crash reports sent, leaderboards, presence, HTTP requests, several peers in one headless run | Nick asks; 2529 with networking |
+| 2602–2603, 3083 | A hosted action-to-pixels preview, server-held future content, and marked closed previews with supported capture limits | Nick asks; networking stays parked |
 | 2407, 3051 | Phones' browsers as a way to play a web build; paid code signing | Nick decides (each ticket asks) |
 | 2118–2121, 2735–2738, 2740 | Roguelikes, a gallery of small games, and hex grids | Nick asks, after the game launches (2026-10-20) |
 | 2909 | Research: video playback | with the visual novels |

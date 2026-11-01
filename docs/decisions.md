@@ -1311,3 +1311,22 @@ A final ticket (3079) removes quad-snd and macroquad audio only after all
 consumers and required behavior qualify. The research request unparks
 2902 alone; the replacement and parity build tickets stay parked. The
 technical plan is [ADR-0066](adr/0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md).
+
+## 2026-10-31: public demo defenses get a ticket track
+
+Source: Nick, after research into AI-assisted video imitation, demo extraction,
+binary analysis, watermarking and capture controls:
+
+> "ok all of these countermeasures are worth a ticket track so go ahead and make tickets in engine repo and make a pr"
+
+**Rules:**
+
+- Preserve separate tickets for what a game discloses, what its final
+  package contains, hosted previews, release identity and bounded
+  experiments. A future implementation still follows one ticket, one
+  branch and one PR.
+- The ticket track does not claim that a public clip can be made
+  human-readable and reliably AI-inaccessible. Measure video and binary
+  hardening before promising it as protection.
+- Hosted networking work stays parked until Nick explicitly unparks
+  it. Putting it in the backlog is not starting that work.
