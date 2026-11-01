@@ -277,7 +277,10 @@ impl ExportCx {
             .as_ref()
             .filter(|_| exporter.takes_export_part());
         let turned_on = turned_on(part, &input.without)?;
-        let beside = present(root, part)?;
+        let mut beside = present(root, part)?;
+        if let Some(web) = web.filter(|_| exporter.id() == "web") {
+            beside.retain(|item| !in_web_build(item, web));
+        }
         Ok(Self {
             target: exporter.id().to_owned(),
             profile: exporter.profile().to_owned(),
@@ -498,6 +501,13 @@ fn present(root: &Path, part: Option<&ExportPart>) -> Result<Vec<Beside>, Export
         }
     }
     Ok(found)
+}
+
+/// Whether the web build already ships `item`: its `music` or `voice` folder.
+fn in_web_build(item: &Beside, web: &Web) -> bool {
+    [&web.music, &web.voice]
+        .into_iter()
+        .any(|folder| folder.as_deref() == Some(item.path.as_str()))
 }
 
 /// The name `item` has in the package: one plain name, never a path.

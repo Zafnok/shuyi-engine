@@ -84,7 +84,9 @@ export: (
 - **`beside`** copies each file or folder under its own name, or `name`. A
   path that isn't there refuses the export, naming it, unless it is
   `optional`; a name the package already holds is refused too.
-- **Windows, Linux and the web:** they go next to the program.
+- **Windows, Linux and the web:** they go next to the program. The web build
+  already ships its `web.music` and `web.voice` folders, so a row naming one
+  adds nothing there.
 - **macOS:** a folder goes in the `.app`'s `Contents/Resources`, before it is
   signed. The backend's `music` and `voice` folders look there as well as next
   to the program, so a game reads them the same way on each system. A file

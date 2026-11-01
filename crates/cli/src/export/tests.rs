@@ -149,6 +149,18 @@ fn link_in_the_export_parts_features_is_refused() {
 }
 
 #[test]
+fn the_web_builds_own_folders_are_not_shipped_twice() {
+    let web = Web {
+        music: Some("music".to_owned()),
+        voice: Some("voice".to_owned()),
+        ..Web::default()
+    };
+    assert!(in_web_build(&beside("music", None, false), &web));
+    assert!(in_web_build(&beside("voice", None, true), &web));
+    assert!(!in_web_build(&beside("LICENSE", None, false), &web));
+}
+
+#[test]
 fn a_missing_beside_path_refuses_the_export_by_name_unless_it_is_optional() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-grid");
     let part = |item: Beside| {
