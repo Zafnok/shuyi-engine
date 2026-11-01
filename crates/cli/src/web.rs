@@ -16,10 +16,17 @@
 //! Every build also writes `NOTICES.txt` beside the page ([`notices`]):
 //! the crates compiled in, the shell's files (`SHELL_NOTICES`) and the
 //! game's own license texts.
+//!
+//! A build is made whole in a staging folder beside `web.dist`, then
+//! replaces everything in `web.dist`, so nothing of an older build stays
+//! and a failed build leaves the last one as it was. The folder itself
+//! stays, so a server running in it keeps serving. A `web.dist` that holds
+//! the project, a source of the build or a repository is refused.
 
+use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 
 use crate::export::paths;
@@ -269,12 +276,10 @@ pub fn workspace_root(root: &Path) -> PathBuf {
         .unwrap_or_else(|| root.to_path_buf())
 }
 
-/// Copies the wasm artifact and writes the web shell and `NOTICES.txt`
-/// (with `works`) into the dist folder, optimizing the wasm binary with
-/// `opt` first if `options.release`. Split out from [`run`] so tests can
-/// exercise it (with a fake [`WasmOpt`]) without needing a real `cargo
-/// build`.
-fn package(
+/// Makes the package in a staging folder and replaces what is in the dist
+/// folder with it. Split out from [`run`] so tests can exercise it (with a
+/// fake [`WasmOpt`]) without needing a real `cargo build`.
+pub(crate) fn package(
     opt: &impl WasmOpt,
     rules: &Web,
     root: &Path,
@@ -282,13 +287,113 @@ fn package(
     options: &Options,
     works: &[Work],
 ) -> Result<String, String> {
-    let dist = root.join(&rules.dist);
-    fs::create_dir_all(&dist).map_err(|e| format!("create {}: {e}", dist.display()))?;
-
-    let wasm_name = format!("{}.wasm", rules.bin);
+    let dist = resolved(&root.join(&rules.dist));
     let wasm_src = wasm_artifact_path(rules, target, options);
+    refuse_dist(rules, root, &dist, &wasm_src)?;
+    let name = dist.file_name().unwrap_or_default().to_string_lossy();
+    let staging = dist.with_file_name(format!("{name}.staging"));
+    if staging.exists() {
+        fs::remove_dir_all(&staging).map_err(|e| format!("clear {}: {e}", staging.display()))?;
+    }
+    fs::create_dir_all(&staging).map_err(|e| format!("create {}: {e}", staging.display()))?;
+    let made = fill(opt, rules, root, &staging, &wasm_src, options, works)
+        .and_then(|size| publish(&staging, &dist).map(|()| size));
+    // Nothing is left to keep: on success its files have moved.
+    let _ = fs::remove_dir_all(&staging);
+    Ok(format!("{} ({} bytes)", dist.display(), made?))
+}
+
+/// `path` absolute with its `.` and `..` worked out, without reading the
+/// disk: what it names need not exist yet.
+fn resolved(path: &Path) -> PathBuf {
+    let absolute = std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    let mut out = PathBuf::new();
+    for part in absolute.components() {
+        match part {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+/// Whether `path` is `folder` or is under it.
+pub(crate) fn is_under(path: &Path, folder: &Path) -> bool {
+    resolved(path).starts_with(resolved(folder))
+}
+
+/// Refuses a dist folder that replacing would destroy something in: the
+/// project, a source of the build, or a folder that is a repository or a
+/// package rather than a build's output.
+fn refuse_dist(rules: &Web, root: &Path, dist: &Path, wasm: &Path) -> Result<(), String> {
+    let configured = &rules.dist;
+    let sources = [Some(root.to_path_buf()), Some(wasm.to_path_buf())]
+        .into_iter()
+        .chain([&rules.music, &rules.voice].map(|folder| folder.as_ref().map(|f| root.join(f))));
+    for source in sources.flatten() {
+        if is_under(&source, dist) {
+            return Err(format!(
+                "`web.dist` is `{configured}`, and each build replaces all of it, which holds {}: \
+                 give the web build a folder of its own, such as `dist/web`",
+                source.display()
+            ));
+        }
+    }
+    for marker in [".git", "Cargo.toml"] {
+        if dist.join(marker).exists() {
+            return Err(format!(
+                "`web.dist` is `{configured}`, and each build replaces all of it, which holds \
+                 {marker}: give the web build a folder of its own, such as `dist/web`"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Replaces everything in `dist` with what is in `staging`. The folder
+/// itself stays, so a server running in it keeps working.
+fn publish(staging: &Path, dist: &Path) -> Result<(), String> {
+    fs::create_dir_all(dist).map_err(|e| format!("create {}: {e}", dist.display()))?;
+    let read = |dir: &Path| {
+        fs::read_dir(dir)
+            .and_then(Iterator::collect::<Result<Vec<_>, _>>)
+            .map_err(|e| format!("read {}: {e}", dir.display()))
+    };
+    for entry in read(dist)? {
+        let path = entry.path();
+        let removed = if entry.file_type().is_ok_and(|kind| kind.is_dir()) {
+            fs::remove_dir_all(&path)
+        } else {
+            // A link to a folder is a folder to Windows, and a file elsewhere.
+            fs::remove_file(&path).or_else(|_| fs::remove_dir(&path))
+        };
+        removed.map_err(|e| format!("clear {}: {e}", path.display()))?;
+    }
+    for entry in read(staging)? {
+        let to = dist.join(entry.file_name());
+        fs::rename(entry.path(), &to).map_err(|e| format!("move to {}: {e}", to.display()))?;
+    }
+    Ok(())
+}
+
+/// Copies the wasm artifact and writes the web shell and `NOTICES.txt`
+/// (with `works`) into the empty folder `dist`, optimizing the wasm binary
+/// with `opt` first if `options.release`. Returns the binary's size.
+fn fill(
+    opt: &impl WasmOpt,
+    rules: &Web,
+    root: &Path,
+    dist: &Path,
+    wasm_src: &Path,
+    options: &Options,
+    works: &[Work],
+) -> Result<u64, String> {
+    let wasm_name = format!("{}.wasm", rules.bin);
     let wasm_dst = dist.join(&wasm_name);
-    fs::copy(&wasm_src, &wasm_dst)
+    fs::copy(wasm_src, &wasm_dst)
         .map_err(|e| format!("copy {} to {}: {e}", wasm_src.display(), wasm_dst.display()))?;
 
     for (name, text) in SHELL {
@@ -301,7 +406,7 @@ fn package(
         let shell_dst = dist.join(name);
         fs::write(&shell_dst, text).map_err(|e| format!("write {}: {e}", shell_dst.display()))?;
     }
-    notices::write(&dist, &rules.title, works)?;
+    notices::write(dist, &rules.title, works)?;
 
     if let Some(music) = &rules.music {
         copy_music(&root.join(music), &dist.join(music))?;
@@ -314,18 +419,78 @@ fn package(
         run_wasm_opt(opt, &wasm_dst);
     }
 
-    let size = fs::metadata(&wasm_dst)
+    Ok(fs::metadata(&wasm_dst)
         .map_err(|e| format!("stat {}: {e}", wasm_dst.display()))?
-        .len();
-    Ok(format!("{} ({size} bytes)", dist.display()))
+        .len())
 }
 
-/// Replaces `dst` with a folder holding every `.ogg` file in `src` (none
-/// if `src` is missing), so the web build fetches tracks from it.
-fn copy_music(src: &Path, dst: &Path) -> Result<(), String> {
-    if dst.exists() {
-        fs::remove_dir_all(dst).map_err(|e| format!("clear {}: {e}", dst.display()))?;
+/// Whether `path` is a music track the web build ships.
+fn is_track(path: &Path) -> bool {
+    path.is_file() && path.extension().is_some_and(|ext| ext == "ogg")
+}
+
+/// Whether `path` is a voice file the web build ships.
+fn is_voice_file(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|ext| ext == "ogg" || ext == "ron")
+}
+
+/// The files a build of the project at `root` makes, by their paths in the
+/// package with `/` between folders: the shell, the binary, the notices,
+/// and the music and voice files in their folders now.
+pub(crate) fn current_files(rules: &Web, root: &Path) -> Result<BTreeSet<String>, String> {
+    let mut files: BTreeSet<String> = SHELL.iter().map(|(name, _)| (*name).to_owned()).collect();
+    files.insert(format!("{}.wasm", rules.bin));
+    files.insert(notices::FILE.to_owned());
+    if let Some(music) = &rules.music {
+        // A missing folder is an empty one, as `copy_music` has it.
+        for entry in fs::read_dir(root.join(music)).into_iter().flatten() {
+            let path = entry.map_err(|e| format!("read {music}: {e}"))?.path();
+            if is_track(&path) {
+                let name = path.file_name().unwrap_or_default().to_string_lossy();
+                files.insert(format!("{}/{name}", package_path(music)));
+            }
+        }
     }
+    if let Some(voice) = &rules.voice {
+        let src = root.join(voice);
+        if src.is_dir() {
+            list_voice(&src, &package_path(voice), &mut files)?;
+        }
+    }
+    Ok(files)
+}
+
+/// The voice files under `dir`, whose package path is `prefix`.
+fn list_voice(dir: &Path, prefix: &str, files: &mut BTreeSet<String>) -> Result<(), String> {
+    for entry in fs::read_dir(dir).map_err(|e| format!("read {}: {e}", dir.display()))? {
+        let path = entry
+            .map_err(|e| format!("read {}: {e}", dir.display()))?
+            .path();
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let inner = format!("{prefix}/{name}");
+        if path.is_dir() {
+            list_voice(&path, &inner, files)?;
+        } else if is_voice_file(&path) {
+            files.insert(inner);
+        }
+    }
+    Ok(())
+}
+
+/// A folder of `shuyi.ron` as a path in the package: `./a\b/` is `a/b`.
+fn package_path(folder: &str) -> String {
+    let path = folder.replace('\\', "/");
+    let parts: Vec<&str> = path
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+        .collect();
+    parts.join("/")
+}
+
+/// Makes `dst` a folder holding every `.ogg` file in `src` (none if `src`
+/// is missing), so the web build fetches tracks from it.
+fn copy_music(src: &Path, dst: &Path) -> Result<(), String> {
     fs::create_dir_all(dst).map_err(|e| format!("create {}: {e}", dst.display()))?;
     let Ok(entries) = fs::read_dir(src) else {
         return Ok(());
@@ -334,7 +499,7 @@ fn copy_music(src: &Path, dst: &Path) -> Result<(), String> {
         let path = entry
             .map_err(|e| format!("read {}: {e}", src.display()))?
             .path();
-        if path.is_file() && path.extension().is_some_and(|ext| ext == "ogg") {
+        if is_track(&path) {
             let name = path.file_name().unwrap_or_default();
             fs::copy(&path, dst.join(name)).map_err(|e| format!("copy {}: {e}", path.display()))?;
         }
@@ -342,22 +507,14 @@ fn copy_music(src: &Path, dst: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Replaces `dst` with a copy of the voice folder `src`: its manifests
-/// (`.ron`) and clips (`.ogg`), in the same folders, so the web build
-/// fetches them from it. With no `src` there is no `dst` either: a build
-/// without voices.
+/// Makes `dst` a copy of the voice folder `src`: its manifests (`.ron`)
+/// and clips (`.ogg`), in the same folders, so the web build fetches them
+/// from it. With no `src` there is no `dst` either: a build without voices.
 fn copy_voice(src: &Path, dst: &Path) -> Result<(), String> {
-    if dst.exists() {
-        fs::remove_dir_all(dst).map_err(|e| format!("clear {}: {e}", dst.display()))?;
-    }
     if !src.is_dir() {
         return Ok(());
     }
-    let shipped = |path: &Path| {
-        path.extension()
-            .is_some_and(|ext| ext == "ogg" || ext == "ron")
-    };
-    copy_tree(src, dst, &shipped).map(|_| ())
+    copy_tree(src, dst, &is_voice_file).map(|_| ())
 }
 
 /// Copies the files under `src` that `keep` accepts to the same places
@@ -385,7 +542,7 @@ pub fn copy_tree(src: &Path, dst: &Path, keep: &dyn Fn(&Path) -> bool) -> Result
 /// Runs `wasm-opt -Oz` on a wasm binary, abstracted so tests can substitute a
 /// fake instead of depending on a real `wasm-opt` install (which is optional
 /// and often absent — see the "skip silently" rule on [`WasmOpt::optimize`]).
-trait WasmOpt {
+pub(crate) trait WasmOpt {
     /// Optimizes `input` into `output` (mirroring `wasm-opt -Oz -o <output>
     /// <input>`). `Ok(true)`/`Ok(false)` is a completed process's exit
     /// status; `Err` means it couldn't be spawned at all (e.g. not on
@@ -394,7 +551,7 @@ trait WasmOpt {
 }
 
 /// The real `wasm-opt` binary on `PATH`.
-struct RealWasmOpt;
+pub(crate) struct RealWasmOpt;
 
 impl WasmOpt for RealWasmOpt {
     /// Not covered by mutation testing (`.cargo/mutants.toml` leaves it
@@ -415,7 +572,7 @@ impl WasmOpt for RealWasmOpt {
 
 /// Runs `opt` on `wasm_path` in place, replacing it with the optimized
 /// output on success. Does nothing (silently) if `opt` reports the tool
-/// isn't available.
+/// isn't available. Whatever a failed run left behind isn't shipped.
 fn run_wasm_opt(opt: &impl WasmOpt, wasm_path: &Path) {
     let optimized = wasm_path.with_extension("wasm.opt");
     match opt.optimize(wasm_path, &optimized) {
@@ -427,6 +584,7 @@ fn run_wasm_opt(opt: &impl WasmOpt, wasm_path: &Path) {
         Ok(false) => eprintln!("web: wasm-opt exited with a failure, skipping optimization"),
         Err(_) => {} // wasm-opt not on PATH: skip silently.
     }
+    let _ = fs::remove_file(&optimized);
 }
 
 #[cfg(test)]
@@ -901,6 +1059,147 @@ mod tests {
         let err = package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap_err();
         assert!(err.contains("copy"), "{err}");
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// Every file under `dir`, with `/` between folders, sorted.
+    fn tree(dir: &Path) -> Vec<String> {
+        let entries = crate::export::archive::entries(dir, "", &|_| false).unwrap();
+        entries.into_iter().map(|entry| entry.name).collect()
+    }
+
+    #[test]
+    fn a_build_replaces_everything_in_dist_and_leaves_no_staging() {
+        let root = fixture("package-stale");
+        write_wasm(&root, &debug(), b"w");
+        let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
+        let dist = root.join("dist/web");
+        fs::create_dir_all(dist.join("old/deep")).unwrap();
+        fs::write(dist.join("canary.txt"), "old").unwrap();
+        fs::write(dist.join("old/deep/canary.txt"), "old").unwrap();
+        // A crashed build's staging folder goes too.
+        fs::create_dir_all(root.join("dist/web.staging")).unwrap();
+        fs::write(root.join("dist/web.staging/canary.txt"), "old").unwrap();
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap();
+        let mut files: Vec<String> = current_files(&rules(), &root)
+            .unwrap()
+            .into_iter()
+            .collect();
+        files.sort();
+        assert_eq!(tree(&dist), files);
+        assert!(!dist.join("old").exists());
+        assert!(!root.join("dist/web.staging").exists());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_failed_build_leaves_the_last_one_as_it_was() {
+        let root = fixture("package-failed");
+        let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
+        let dist = root.join("dist/web");
+        fs::create_dir_all(&dist).unwrap();
+        fs::write(dist.join("index.html"), "the last build").unwrap();
+        // No binary to copy.
+        package(&opt, &rules(), &root, &root.join("target"), &debug(), &[]).unwrap_err();
+        assert_eq!(tree(&dist), ["index.html"]);
+        assert!(!root.join("dist/web.staging").exists());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_failed_wasm_opt_leaves_nothing_in_the_package() {
+        let root = fixture("package-opt-leftover");
+        write_wasm(&root, &release(), b"w");
+        let opt = FakeWasmOpt(|_: &Path, output: &Path| {
+            fs::write(output, b"partial").unwrap();
+            Ok(false)
+        });
+        package(&opt, &rules(), &root, &root.join("target"), &release(), &[]).unwrap();
+        assert!(!root.join("dist/web/the-game.wasm.opt").exists());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn a_dist_that_holds_what_must_stay_is_refused_and_untouched() {
+        let root = fixture("package-refused");
+        write_wasm(&root, &debug(), b"w");
+        fs::write(root.join("keep.txt"), "kept").unwrap();
+        let opt = FakeWasmOpt(|_: &Path, _: &Path| panic!("not reached"));
+        for (dist, holds) in [
+            (".", "keep"),
+            ("sub/..", "keep"),
+            ("..", "keep"),
+            ("target", "wasm"),
+            ("music/..", "keep"),
+        ] {
+            let rules = Web {
+                dist: dist.to_owned(),
+                ..rules()
+            };
+            let err =
+                package(&opt, &rules, &root, &root.join("target"), &debug(), &[]).unwrap_err();
+            assert!(
+                err.contains(&format!("`web.dist` is `{dist}`")),
+                "{holds}: {err}"
+            );
+        }
+        // A source folder under it.
+        let nested = Web {
+            dist: "assets".to_owned(),
+            music: Some("assets/music".to_owned()),
+            ..rules()
+        };
+        let err = package(&opt, &nested, &root, &root.join("target"), &debug(), &[]).unwrap_err();
+        assert!(err.contains("music"), "{err}");
+        // A repository, or a package, is nobody's build output.
+        for marker in [".git", "Cargo.toml"] {
+            let folder = root.join(format!("site-{marker}"));
+            fs::create_dir_all(&folder).unwrap();
+            fs::write(folder.join(marker), "").unwrap();
+            let rules = Web {
+                dist: format!("site-{marker}"),
+                ..rules()
+            };
+            let err =
+                package(&opt, &rules, &root, &root.join("target"), &debug(), &[]).unwrap_err();
+            assert!(err.contains(marker), "{err}");
+            assert!(folder.join(marker).exists());
+        }
+        assert_eq!(fs::read_to_string(root.join("keep.txt")).unwrap(), "kept");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn the_current_files_are_what_a_build_writes() {
+        let root = fixture("current-files");
+        write_wasm(&root, &debug(), b"w");
+        let rules = Web {
+            music: Some("./audio/music/".to_owned()),
+            ..rules()
+        };
+        fs::create_dir_all(root.join("audio/music")).unwrap();
+        fs::write(root.join("audio/music/a.ogg"), "a").unwrap();
+        fs::write(root.join("audio/music/notes.md"), "doc").unwrap();
+        fs::create_dir_all(root.join("voice/en")).unwrap();
+        fs::write(root.join("voice/en/voice.ron"), "m").unwrap();
+        fs::write(root.join("voice/en/take.wav"), "source").unwrap();
+        let opt = FakeWasmOpt(|_: &Path, _: &Path| Ok(false));
+        package(&opt, &rules, &root, &root.join("target"), &debug(), &[]).unwrap();
+        let files = current_files(&rules, &root).unwrap();
+        assert!(files.contains("audio/music/a.ogg"), "{files:?}");
+        assert!(files.contains("voice/en/voice.ron"), "{files:?}");
+        assert_eq!(
+            tree(&root.join("dist/web")),
+            files.into_iter().collect::<Vec<_>>()
+        );
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn is_under_works_out_dots_and_needs_no_files() {
+        assert!(is_under(Path::new("/a/b/c"), Path::new("/a/b")));
+        assert!(is_under(Path::new("/a/b"), Path::new("/a/x/../b")));
+        assert!(!is_under(Path::new("/a/bc"), Path::new("/a/b")));
+        assert!(!is_under(Path::new("/a"), Path::new("/a/b")));
     }
 
     #[test]

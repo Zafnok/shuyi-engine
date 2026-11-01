@@ -125,6 +125,11 @@ names. Serve that folder over HTTP and open it in a browser; a page
 opened from the disk can't load its `.wasm`. The engine's examples on
 this site are such folders.
 
+The folder belongs to the build. Each build replaces everything in it,
+so a file from an older build can't ship, and keep nothing of your own
+there: `web.dist` that holds your project or a repository is refused. A
+server already running in the folder keeps serving the new build.
+
 ## Export
 
 ```bash
@@ -145,7 +150,8 @@ writes into `dist/export/<target>/`:
 - `macos`: a folder with one `.app` for Apple silicon and Intel Macs,
   signed ad hoc;
 - `web`: the web build's folder and a zip of it, `index.html` at its
-  root, as itch.io takes it.
+  root, as itch.io takes it. A file in it that the build didn't make is
+  refused by its path.
 
 Each desktop package builds on its own system: Windows on Windows,
 Linux on Linux, macOS on a Mac (CI has all three). Every package carries
