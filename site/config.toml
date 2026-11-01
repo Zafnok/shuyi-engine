@@ -18,7 +18,10 @@ feed_filenames = ["atom.xml"]
 taxonomies = [{ name = "tags", feed = true }]
 
 [markdown]
-highlight_code = false
+highlight_code = true
+# Classes, not colors: `static/style.css` colors them, in light and dark.
+highlight_theme = "css"
+extra_syntaxes_and_themes = ["syntaxes"]
 external_links_no_referrer = true
 
 [link_checker]

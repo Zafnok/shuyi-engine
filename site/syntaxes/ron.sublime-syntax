@@ -1,0 +1,49 @@
+%YAML 1.2
+---
+# RON for the website's code blocks (ticket 2821), our own, under the
+# repository's license (MIT OR Apache-2.0). A `.map` file is RON, a `---`
+# line, then a level's rows, which aren't RON: they stay plain.
+name: RON
+file_extensions: [ron]
+scope: source.ron
+
+contexts:
+  main:
+    - match: ^---\s*$
+      scope: punctuation.separator.ron
+      push: rows
+    - match: //.*$
+      scope: comment.line.ron
+    - match: /\*
+      push: block-comment
+    - match: '"(?:[^"\\]|\\.)*"(?=\s*:)'
+      scope: entity.name.tag.ron
+    - match: '"'
+      push: string
+    - match: "'(?:[^'\\\\]|\\\\.)[^']*'"
+      scope: string.quoted.single.ron
+    - match: \b(?:true|false)\b
+      scope: constant.language.ron
+    - match: -?\b(?:0x[0-9a-fA-F_]+|0o[0-7_]+|0b[01_]+|[0-9][0-9_]*(?:\.[0-9_]+)?(?:[eE][+-]?[0-9]+)?)\b
+      scope: constant.numeric.ron
+    - match: \b[a-z_][A-Za-z0-9_]*(?=\s*:)
+      scope: entity.name.tag.ron
+    - match: \b[A-Z][A-Za-z0-9_]*\b
+      scope: entity.name.type.ron
+
+  block-comment:
+    - meta_scope: comment.block.ron
+    - match: /\*
+      push: block-comment
+    - match: \*/
+      pop: true
+
+  string:
+    - meta_scope: string.quoted.double.ron
+    - match: \\.
+      scope: constant.character.escape.ron
+    - match: '"'
+      pop: true
+
+  rows:
+    - meta_content_scope: text.plain.ron
