@@ -22,11 +22,12 @@ It runs `cargo semver-checks` with `--release-type minor`, because
 every crate has the same version on both sides of a PR (§4). It left a
 baseline on crates.io to 2005 (§9, and its last alternative).
 
-2040 is also needed first: it closes the PR API catalog's omission of
-`shuyi-playdate` and `shuyi-alloc-count`, checks that catalog against the
-engine workspace members, and records the configurations it checks. This
-release command consumes that corrected catalog and configurations rather
-than keeping another list or reverting to default-only checks.
+**From 2040 (done):** `API_CRATES` in `api.rs` holds all nine engine
+crates, `shuyi-playdate` and `shuyi-alloc-count` among them, each with its
+`Features`, and a run fails on an engine workspace member left out. This
+release command consumes that catalog and those configurations
+(`Features::semver_args`) rather than keeping another list or reverting to
+default-only checks.
 
 2005 publishes the first release and writes the version policy as an
 ADR: one version for `shuyi` and every `shuyi-*` crate, 0.x while the
