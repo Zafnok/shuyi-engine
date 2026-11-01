@@ -162,6 +162,20 @@ Added after acceptance; the decision above is unchanged.
   watcher (game#1190) reads it to decide when to move its pin, and falls
   back to its own test on a PR without one.
 
+## Every engine crate (ticket 2040)
+
+Added after acceptance; it widens §1's list and leaves the rest as it was.
+
+- `API_CRATES` is every engine crate, a workspace member named `shuyi` or
+  `shuyi-*`, which is what a game can depend on: `shuyi-playdate` and
+  `shuyi-alloc-count` joined. The run fails, naming the crate, on a member
+  the catalog leaves out.
+- Each entry says its features. `shuyi-alloc-count` is checked with
+  `global`, and `shuyi-playdate` with none, without its SDK's `--cfg`; both
+  tools and both sides take the same choice. The other crates keep each
+  tool's default.
+- `api.rs`'s module docs say what that leaves unchecked.
+
 ## Consequences
 
 - A break is named by a tool on every PR, and written down by the agent

@@ -70,6 +70,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
 | 2040 | Close the API gate's crate-coverage gap: every shipped engine crate, including the Playdate backend and heap counter |
+| 2041 | The API listing sees what the semver check sees, in every crate: one feature choice per crate |
 | 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
 | 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
