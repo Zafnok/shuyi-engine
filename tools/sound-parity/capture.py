@@ -58,10 +58,16 @@ OGGENC = ["--quiet", "--quality=6", "--serial=2573"]
 # Chromium's real output path: the full browser in new-headless mode (the
 # headless shell has no sound), SwiftShader as in tools/web-check/check.py.
 CHROMIUM_ARGS = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader"]
+# The silence a recording starts with before anything plays, in frames.
+LEAD_FRAMES = RATE // 5
 # Sound after this far under full scale counts as sound, for finding gaps.
 QUIET = 8
 # A run of quiet this long while everything plays is an underrun, in frames.
 GAP_FRAMES = RATE // 200
+
+
+# How the sink's monitor is read.
+RECORD = ["parec", f"--device={SINK}.monitor", "--format=s16le", f"--rate={RATE}", "--channels=2", "--latency-msec=10"]
 
 
 @dataclass
@@ -107,7 +113,16 @@ def sink() -> Iterator[Sink]:
                 raise SystemExit("PulseAudio didn't start")
             subprocess.run(["pactl", "set-default-sink", SINK], env=env, check=True)
             subprocess.run(["pactl", "set-sink-volume", SINK, "100%"], env=env, check=True)
-            yield Sink(env)
+            # A monitor stream held open for the whole session: an idle sink
+            # takes its largest blocks, about 2 seconds, and a stream that arrives
+            # then stalls, so that commands land together. A sink flipping between
+            # the two made every other run differ.
+            keeper = subprocess.Popen(RECORD, env=env, stdout=subprocess.DEVNULL)
+            try:
+                yield Sink(env)
+            finally:
+                keeper.terminate()
+                keeper.wait(10)
         finally:
             server.terminate()
             server.wait(10)
@@ -121,13 +136,17 @@ class Recorder:
         self.frames = 0
         # When frame 0 was heard: the earliest arrival, less the frames before.
         self.start = float("inf")
-        self.process = subprocess.Popen(
-            ["parec", f"--device={SINK}.monitor", "--format=s16le", f"--rate={RATE}", "--channels=2", "--latency-msec=10"],
-            env=target.env,
-            stdout=subprocess.PIPE,
-        )
+        self.process = subprocess.Popen(RECORD, env=target.env, stdout=subprocess.PIPE)
         self.thread = threading.Thread(target=self.pump, daemon=True)
         self.thread.start()
+
+    def flowing(self) -> None:
+        """Waits for the first frames, then a moment of them: nothing plays until they do."""
+        deadline = time.monotonic() + TIMEOUT
+        while self.frames < LEAD_FRAMES:
+            if time.monotonic() > deadline or self.process.poll() is not None:
+                raise SystemExit("the sink's monitor gives no frames")
+            time.sleep(0.01)
 
     def pump(self) -> None:
         with self.path.open("wb") as out:
@@ -188,7 +207,7 @@ class Native:
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
         (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
         recorder = Recorder(self.target, record)
-        time.sleep(0.3)
+        recorder.flowing()
         process = subprocess.run(
             [str(self.probe)], cwd=self.stage, env=self.target.env, stderr=subprocess.PIPE, text=True, timeout=TIMEOUT, check=False
         )
@@ -279,7 +298,7 @@ class Browser:
         (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
         lines: list[str] = []
         recorder = Recorder(self.target, record)
-        time.sleep(0.3)
+        recorder.flowing()
         page = self.browser.new_page(viewport={"width": 320, "height": 240})
 
         def on_console(message: object) -> None:
@@ -321,8 +340,10 @@ class Browser:
 
 
 def write_run(player: Native | Browser, run: Path) -> None:
-    """Every scenario once."""
+    """Every scenario once, after one thrown away: a cold process isn't what is measured."""
     run.mkdir(parents=True, exist_ok=True)
+    player.play("scenario onset\n", run / "warmup.pcm")
+    (run / "warmup.pcm").unlink()
     for name in scenario_names():
         perf: dict[str, float] = {}
         lines = player.play(f"scenario {name}\n", run / f"{name}.pcm", perf)
@@ -379,15 +400,18 @@ def one_perf(player: Native | Browser, base: Path, side: str, pair: int, burn: i
 
 
 def write_perf(player: Native | Browser, base: Path) -> None:
-    """Warm up, then pairs in turn: the order alternates, so drift falls on neither."""
+    """Warm up, then pairs in turn, a, b, b, a: drift falls on neither, and neither
+    side lines up with every other run. The slowed runs come after, so they can't."""
     for _ in range(WARMUP):
         one_perf(player, base, "warmup", -1, 0)
     with (base / "perf.jsonl").open("w", encoding="utf-8", newline="\n") as out:
         for pair in range(PAIRS):
-            sides = [("a", 0), ("b", 0)] if pair % 2 == 0 else [("b", 0), ("a", 0)]
-            for side, burn in [*sides, ("burn", BURN)]:
-                out.write(json.dumps(one_perf(player, base, side, pair, burn)) + "\n")
+            for side in ("a", "b") if pair % 2 == 0 else ("b", "a"):
+                out.write(json.dumps(one_perf(player, base, side, pair, 0)) + "\n")
                 out.flush()
+        for pair in range(PAIRS):
+            out.write(json.dumps(one_perf(player, base, "burn", pair, BURN)) + "\n")
+            out.flush()
 
 
 def native(args: argparse.Namespace) -> int:
