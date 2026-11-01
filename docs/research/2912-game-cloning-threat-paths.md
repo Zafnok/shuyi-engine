@@ -231,9 +231,10 @@ satisfy that later gate. A defense that fails player cost is no-go even
 if an attacker times out.
 
 These thresholds are proposed rules for choosing the *next experiment*,
-not a promise that a defender can stop cloning. Ticket 2913
-must test transcode, crop, frame extraction, recapture and human-description
-bypasses before any footage measure is recommended. Ticket 2914 must test
+not a promise that a defender can stop cloning. Ticket 2913 tested
+transcode, crop, frame extraction, simulated recapture and description
+bypasses, and [ended the footage proposal](2913-human-readable-ai-disruptive-clips.md).
+Ticket 2914 must test
 dynamic analysis and absolute delay before any protected rules kernel is
 recommended. The present pilot neither implements those defenses nor
 claims DRM, opacity, ownership or marketplace enforcement.

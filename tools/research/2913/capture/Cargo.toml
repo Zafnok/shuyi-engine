@@ -1,0 +1,17 @@
+# Not a member of the repository's workspace: the study stays in one folder,
+# and deleting that folder removes it.
+[workspace]
+
+[package]
+name = "clip-capture"
+version = "0.0.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+cloning-fixture = { path = "../../2912/fixture" }
+shuyi-assets = { path = "../../../../crates/assets" }
+shuyi-cli = { path = "../../../../crates/cli" }
+shuyi-core = { path = "../../../../crates/core" }
+shuyi-ui = { path = "../../../../crates/ui" }
