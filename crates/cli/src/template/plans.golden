@@ -8,7 +8,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 6fb8a5f8aaaea98a .devcontainer/devcontainer.json
 3ff31f910a652891 .github/workflows/ci.yml
 7798fc67608aa8a1 .gitignore
-990b0d865a55d45d AGENTS.md
+54ed38abe3988aeb AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 a816b2d997ffa671 Cargo.toml
 c711d1bb70e03694 README.md
@@ -38,7 +38,7 @@ d4b465b5e5a1bbb5 .cargo/config.toml
 3ff31f910a652891 .github/workflows/ci.yml
 4ee8995e0c00e734 .github/workflows/playtest.yml
 7798fc67608aa8a1 .gitignore
-990b0d865a55d45d AGENTS.md
+54ed38abe3988aeb AGENTS.md
 affd7179f0813dc2 CLAUDE.md
 e38c9bf7515affe5 Cargo.toml
 c711d1bb70e03694 README.md

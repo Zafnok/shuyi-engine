@@ -4,9 +4,10 @@ How to work on {{name}}, for people and coding agents alike. Claude
 Code reads it through `CLAUDE.md`.
 
 {{name}} is a game on [Shuyi Engine](https://github.com/Zafnok/shuyi-engine),
-made with `shuyi new`. The engine's own rules are in its
-[`AGENTS.md`](https://github.com/Zafnok/shuyi-engine/blob/main/AGENTS.md);
-these are the ones a game on it keeps.
+made with `shuyi new`. This file holds the rules a game on it keeps. For
+the engine this game builds with, read:
+
+{{engine.docs}}
 
 ## The layers
 

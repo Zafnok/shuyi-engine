@@ -99,6 +99,7 @@ fn filled() -> Fill {
         crate_name: "moon-garden".to_owned(),
         engine: BTreeMap::from([("shuyi".to_owned(), "{ path = 'e' }".to_owned())]),
         engine_ref: "main".to_owned(),
+        engine_docs: "- the docs".to_owned(),
     }
 }
 
@@ -529,11 +530,12 @@ fn placeholders_fill_in_text_and_names_and_actions_expressions_pass() {
     let picked = answers(&[("look", &["a", "b"]), ("one", &[])]);
     let with = filled();
     let text = "{{name}} / {{crate_name}} / shuyi = \"{{engine.shuyi}}\" / {{answer.look}} / \
-                {{answer.one}} / ${{ matrix.target }} / ${{github.sha}} / @{{engine_ref}}";
+                {{answer.one}} / ${{ matrix.target }} / ${{github.sha}} / @{{engine_ref}} / \
+                {{engine.docs}}";
     assert_eq!(
         fill("f", text, &with, &picked).unwrap(),
         "Moon Garden / moon-garden / shuyi = { path = 'e' } / a,b /  / ${{ matrix.target }} / \
-         ${{github.sha}} / @main"
+         ${{github.sha}} / @main / - the docs"
     );
     let unknown = fill("a.rs", "one\ntwo {{nope}} three", &with, &picked).unwrap_err();
     assert_eq!(
