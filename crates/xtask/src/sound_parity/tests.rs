@@ -181,7 +181,7 @@ fn a_silent_recording_is_a_failure_and_only_no_signal_expects_one() {
     assert!(found.iter().any(|p| p.contains("silent")), "{found:?}");
     assert_eq!(problems(&silent, &[Expect::NoSignal]), Vec::<String>::new());
     let good = recording(10, &signal("marker.wav"));
-    assert!(!problems(&good, &[Expect::NoSignal]).is_empty());
+    assert_ne!(problems(&good, &[Expect::NoSignal]).len(), 0);
 }
 
 #[test]
@@ -211,11 +211,11 @@ fn the_state_and_warnings_are_checked_against_the_log() {
         secs,
     };
     let run = |expect: &[Expect]| check(expect, 100, &good, &log, &oracle, &tolerance());
-    assert!(run(&[state("music_a", 1.01)]).is_empty());
-    assert!(!run(&[state("music_b", 1.0)]).is_empty());
-    assert!(!run(&[state("music_a", 1.5)]).is_empty());
-    assert!(run(&[Expect::Warned("can't pause".to_owned())]).is_empty());
-    assert!(!run(&[Expect::Warned("something else".to_owned())]).is_empty());
+    assert_eq!(run(&[state("music_a", 1.01)]).len(), 0);
+    assert_ne!(run(&[state("music_b", 1.0)]).len(), 0);
+    assert_ne!(run(&[state("music_a", 1.5)]).len(), 0);
+    assert_eq!(run(&[Expect::Warned("can't pause".to_owned())]).len(), 0);
+    assert_ne!(run(&[Expect::Warned("something else".to_owned())]).len(), 0);
 }
 
 #[test]
@@ -288,16 +288,25 @@ fn every_mandatory_cell_but_a_passed_one_fails_the_gate() {
         let one = matrix(&[cell("p", "c", true, status, "why")]);
         assert_eq!(failures(&one).len(), 1, "{status}");
     }
-    assert!(failures(&matrix(&[cell("p", "c", true, "passed", "")])).is_empty());
-    assert!(failures(&matrix(&[cell("p", "c", false, "unsupported", "")])).is_empty());
+    assert_eq!(
+        failures(&matrix(&[cell("p", "c", true, "passed", "")])).len(),
+        0
+    );
+    assert_eq!(
+        failures(&matrix(&[cell("p", "c", false, "unsupported", "")])).len(),
+        0
+    );
 }
 
 #[test]
 fn a_broken_matrix_fails_the_gate() {
-    assert!(!failures("not json").is_empty());
-    assert!(!failures(&matrix(&[])).is_empty());
-    assert!(!failures(&json!({"schema": SCHEMA + 1, "cells": []}).to_string()).is_empty());
-    assert!(!failures(&json!({"schema": SCHEMA}).to_string()).is_empty());
+    assert_ne!(failures("not json").len(), 0);
+    assert_ne!(failures(&matrix(&[])).len(), 0);
+    assert_ne!(
+        failures(&json!({"schema": SCHEMA + 1, "cells": []}).to_string()).len(),
+        0
+    );
+    assert_ne!(failures(&json!({"schema": SCHEMA}).to_string()).len(), 0);
 }
 
 #[test]
@@ -388,4 +397,35 @@ fn the_corpus_is_what_its_manifest_pins() {
             "{name}"
         );
     }
+}
+
+/// ADR-0068's fence: going back stays possible. 3084 takes out the default's
+/// check when it makes the new backend the default; 3079 takes out the rest.
+#[test]
+fn quad_snd_stays_and_stays_the_default() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let table = |path: &str| -> toml::Table {
+        let text = fs::read_to_string(root.join(path)).unwrap_or_else(|e| panic!("{path}: {e}"));
+        toml::from_str(&text).unwrap_or_else(|e| panic!("{path}: {e}"))
+    };
+    let app = table("crates/app/Cargo.toml");
+    let quad_snd = app["dependencies"].get("quad-snd");
+    assert!(
+        quad_snd.is_some_and(|dep| dep.get("optional").is_none()),
+        "only 3079 removes quad-snd or makes it optional (ADR-0068)"
+    );
+    let has = |list: Option<&toml::Value>, name: &str| {
+        list.and_then(toml::Value::as_array)
+            .is_some_and(|items| items.iter().any(|item| item.as_str() == Some(name)))
+    };
+    assert!(
+        !has(app["features"].get("default"), "in-house-sound"),
+        "only 3084 makes the new backend the default (ADR-0068)"
+    );
+    let workspace = table("Cargo.toml");
+    let macroquad = &workspace["workspace"]["dependencies"]["macroquad"];
+    assert!(
+        has(macroquad.get("features"), "audio"),
+        "only 3079 removes macroquad's audio (ADR-0068)"
+    );
 }

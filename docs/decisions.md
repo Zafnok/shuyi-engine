@@ -1345,3 +1345,19 @@ else about the plan of 2026-10-31 above holds: they run one ticket at a time,
 in the order of their blockers, each behind 2573's gates, and only 3079
 removes quad-snd. The controllers, the two small ones and macroquad, the
 later steps of the platform layer's plan, stay parked.
+
+## 2026-10-31: the sound replacement stays reversible
+
+Source: Nick, in a Claude Code session, while 2573 was being worked:
+
+> "btw, quad-snd replacement and the whole chain should be easily reversible if we encounter an unclimbable hurdle. Ensure this is the case"
+
+**Rules:**
+
+- An unclimbable hurdle at any stage stops the chain there, with the game on
+  quad-snd and nothing in a game to change. Reaching the end isn't owed.
+- Making the new backend the default (3084) and deleting quad-snd (3079) are
+  separate steps. 3079 waits until the game has run on that default through a
+  moved pin, and its removal must be proven undoable before it merges.
+- How this is held is technical:
+  [ADR-0068](adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md).

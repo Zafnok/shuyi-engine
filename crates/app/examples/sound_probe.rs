@@ -159,6 +159,8 @@ async fn player(
 
 /// Waits, on the web, for the click that lets the page sound, and tells the
 /// capture when it may click.
+// Only the web awaits here.
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 async fn wait_for_gesture() {
     say(r#"{"event":"ready"}"#);
     #[cfg(target_arch = "wasm32")]
@@ -248,13 +250,13 @@ fn request(
             requests.push(SoundRequest::start(sound, cue.as_str(), *volume));
         }
         Action::Stop(number) => {
-            requests.extend(id(ids, number).map(|id| SoundRequest::Stop { id }))
+            requests.extend(id(ids, number).map(|id| SoundRequest::Stop { id }));
         }
         Action::Volume(number, volume) => {
             requests.extend(id(ids, number).map(|id| SoundRequest::Volume {
                 id,
                 volume: *volume,
-            }))
+            }));
         }
         Action::Pause => requests.push(SoundRequest::PauseSounds),
         Action::Resume => requests.push(SoundRequest::ResumeSounds),
@@ -417,6 +419,7 @@ fn say(line: &str) {
 }
 
 /// One pass of the main loop goes by.
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 async fn tick() {
     #[cfg(not(target_arch = "wasm32"))]
     std::thread::sleep(std::time::Duration::from_secs_f64(TICK));
@@ -424,6 +427,7 @@ async fn tick() {
     macroquad::window::next_frame().await;
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 async fn read(path: &str) -> Result<Vec<u8>, String> {
     #[cfg(not(target_arch = "wasm32"))]
     let bytes = std::fs::read(path).map_err(|e| e.to_string());

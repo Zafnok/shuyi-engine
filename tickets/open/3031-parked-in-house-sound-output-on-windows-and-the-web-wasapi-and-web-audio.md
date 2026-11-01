@@ -43,7 +43,11 @@ sounds wrong, cuts out, or starts late.
 **In:**
 - Before new platform output code, require 2573's actual automated Windows
   reference capture/performance baseline and original-loader browser baseline.
-  Establish any missing platform baseline first; a missing/silent capture is
+  **From 2573 (done):** the browser baseline and the harness are there, and
+  Windows is yours to establish first: add its capture to
+  `tools/sound-parity/capture.py` (WASAPI loopback on a real render endpoint),
+  mark it `Captured` in `budget.ron` with calibrated limits, and pass `cargo
+  xtask sound-parity port-ready windows`. A missing/silent capture is
   blocking, never a passed/ignored cell. Extend its corpus with both paths,
   including bounded streams, sample-aligned loop joins, crossfades, pause,
   rate, independent copies and no hidden stealing. Keep quad-snd available
@@ -148,6 +152,7 @@ sounds wrong, cuts out, or starts late.
       the completion notes.
 - [ ] Nick signs off.
 - [ ] Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable.
+- [ ] `in-house-sound` is the one switch, off by default; no game code or file names a backend, and CI still records quad-snd with every cell mandatory. Backing out is reverting this PR ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

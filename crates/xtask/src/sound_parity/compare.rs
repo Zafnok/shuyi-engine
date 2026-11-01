@@ -122,15 +122,16 @@ impl Recording {
         }
     }
 
-    fn range(&self, origin: usize, from: u32, to: u32) -> (usize, usize) {
-        let end = origin + frames(to);
-        ((origin + frames(from)).min(end), end)
-    }
-
     /// Whether the recording reaches `frame`.
     fn reaches(&self, frame: usize) -> bool {
         self.left.len() >= frame && self.right.len() >= frame
     }
+}
+
+/// A range of milliseconds after `origin`, in frames.
+fn range(origin: usize, from: u32, to: u32) -> (usize, usize) {
+    let end = origin + frames(to);
+    ((origin + frames(from)).min(end), end)
 }
 
 fn frames(ms: u32) -> usize {
@@ -288,14 +289,14 @@ fn check_one(
     match expect {
         Expect::NoSignal => None,
         Expect::Rise { at } => {
-            let (from, to) = recording.range(origin, at.saturating_sub(timing), at + timing);
+            let (from, to) = range(origin, at.saturating_sub(timing), at + timing);
             let first = recording.left[from..to].iter().position(loud);
             (first.is_none() || first == Some(0)).then(|| {
                 format!("no sound starts within {timing} ms of {at} ms (a wrong onset or duration)")
             })
         }
         Expect::Fall { at } => {
-            let (from, to) = recording.range(origin, at.saturating_sub(timing), at + timing);
+            let (from, to) = range(origin, at.saturating_sub(timing), at + timing);
             let window = &recording.left[from..to];
             let last = window.iter().rposition(loud);
             (last.is_none() || last == Some(window.len() - 1)).then(|| {
@@ -309,7 +310,7 @@ fn check_one(
             hz,
             amp,
         } => {
-            let (start, end) = recording.range(origin, *from, *to);
+            let (start, end) = range(origin, *from, *to);
             recording.channels(*ch).iter().find_map(|channel| {
                 let got = tone_amplitude(&channel[start..end], *hz);
                 let wrong = if *amp == 0.0 {
@@ -328,7 +329,7 @@ fn check_one(
             ch,
             rms: want,
         } => {
-            let (start, end) = recording.range(origin, *from, *to);
+            let (start, end) = range(origin, *from, *to);
             recording.channels(*ch).iter().find_map(|channel| {
                 let got = rms(&channel[start..end]);
                 (got <= 0.0 || db(got / want).abs() > tolerance.level_db).then(|| {
@@ -337,7 +338,7 @@ fn check_one(
             })
         }
         Expect::Silent { from, to } => {
-            let (start, end) = recording.range(origin, *from, *to);
+            let (start, end) = range(origin, *from, *to);
             let loudest = peak(&recording.left[start..end]).max(peak(&recording.right[start..end]));
             (loudest > tolerance.silent_peak)
                 .then(|| format!("not silent over {from}..{to} ms: its peak is {loudest}"))
@@ -463,7 +464,7 @@ pub(crate) fn inject(recording: &Recording, fault: Fault, tolerance: &Tolerance)
             out.right = resample(&recording.right);
         }
         Fault::Drop(from, to) => {
-            let (start, end) = recording.range(origin, from, to);
+            let (start, end) = range(origin, from, to);
             let end = end.min(out.left.len());
             out.left[start..end].fill(0);
             out.right[start..end].fill(0);

@@ -57,6 +57,10 @@ checked against.
 This is research: it writes the plan, an ADR and the tickets. It builds
 nothing that ships.
 
+**From [ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md):** quad-snd's web path runs on
+macroquad's loader, so replacing it closes the way back to quad-snd. Don't start
+until 3079 is done or the sound chain was abandoned.
+
 ## Nick input
 
 None. If the research finds a choice that changes what the game gets or

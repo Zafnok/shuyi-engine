@@ -52,6 +52,9 @@ None.
 - **Either order with 2365:** if 2365 is done, wrap `beats_since` and
   `bars_since` through the region and count the loop point once; if not,
   nothing to do (2365 adds that wrapping). Keep the reciprocal clause.
+- **From 2573 (done):** `future_region` in `tools/sound-parity/scenarios.ron`
+  and `corpus/intro_loop.ogg` (`LOOPSTART` and `LOOPLENGTH` set) wait for this
+  ticket: give the scenario steps and name the backend that passes it.
 - Extend 2573's actual output and independent oracle tests: expected
   `intro + region + region`, exact sample indices, decoder-page boundaries,
   no added silence/duplicates, queue wrap and producer stalls. Correctness,
@@ -59,6 +62,9 @@ None.
   3017 is still open and reads implemented audio features when it lands.
 - Update platform contract, format docs and book; test asset registry/pack
   round trips. API breaks carry Breaking/migration notes and a game pin handoff.
+  The new fields stay optional, so a game's files load and play on quad-snd too,
+  whole-file with the warning above: a game must never come to need the new
+  backend ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 
 **Out (do not do):** arbitrary seeking UI, stems/sample scheduling/latency
 calibration, tempo reading, beat-clock implementation (2365), new GBA
@@ -77,6 +83,7 @@ backend (3027), deleting quad-snd (3079).
 - [ ] Clock and, when present, beat/bar queries wrap correctly through pause/crossfade.
 - [ ] Unsupported fallback warns once; Playdate/GBA mapping is checked and truthful.
 - [ ] 2573's correctness/speed gates pass without removing the reference backend.
+- [ ] A manifest with a region loads and plays whole-file on quad-snd, with one warning; a test says so.
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

@@ -47,6 +47,8 @@ None.
 - Add each crate/edge/codec dependency to `tools/layers.ron`, explicitly
   classifying hound/lewton as non-device decoders so tools such as 2725
   may use optional std adapters; the PCM/mixer core stays no_std.
+- **From 2573 (done):** its corpus and oracles are `tools/sound-parity/` and
+  `crates/xtask/src/sound_parity/`; `oggdec`'s output is the expected PCM.
 - Extend 2573's corpus with decoder errors, limits and expected PCM; compare
   permitted formats against the old black-box path where supported and
   independent fixtures otherwise. Correctness/speed budgets must pass
@@ -71,6 +73,7 @@ to copy it. Existing `.sfx.ron` work (2225) continues to produce WAV bytes.
 - [ ] Supported WAV/Vorbis fixtures and malformed input checks pass; limits never panic.
 - [ ] Optional codecs build with GNU and current-loader wasm; no denied license is selected.
 - [ ] 2573's decoder correctness/speed checks pass; quad-snd remains available and default.
+- [ ] Backing out is reverting this PR: it changes nothing the quad-snd path does ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required

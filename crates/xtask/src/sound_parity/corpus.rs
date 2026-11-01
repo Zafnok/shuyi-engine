@@ -6,6 +6,8 @@
 //! What a scenario expects comes from the same numbers, written apart from
 //! any backend or decoder: an oracle that shares no code with what it checks.
 
+use std::fmt::Write as _;
+
 use sha2::{Digest as _, Sha256};
 
 /// The rate recordings are at, and the corpus's main rate.
@@ -49,7 +51,7 @@ fn tone(hz: u32, rate: u32, frames: usize, amp: i32) -> Vec<i16> {
     let turn = core::f64::consts::PI * f64::from(hz) / f64::from(rate);
     // Under 2 in 2^30, far inside `i64`.
     #[allow(clippy::cast_possible_truncation)]
-    let step = (2.0 * turn.sin() * (1u64 << 30) as f64).round() as i64;
+    let step = (2.0 * turn.sin() * 1_073_741_824.0).round() as i64;
     let (mut x, mut y) = (i64::from(amp) * ONE, 0i64);
     (0..frames)
         .map(|_| {
@@ -224,18 +226,18 @@ pub(crate) fn wav(signal: &Signal) -> Vec<u8> {
 
 /// The SHA-256 of `bytes`, in hex.
 pub(crate) fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
+    let mut out = String::new();
+    for byte in Sha256::digest(bytes) {
+        // Writing to a `String` doesn't fail.
+        let _ = write!(out, "{byte:02x}");
+    }
+    out
 }
 
 /// A little-endian PCM file's samples.
 pub(crate) fn samples(bytes: &[u8]) -> Vec<i16> {
-    bytes
-        .chunks_exact(2)
-        .map(|pair| i16::from_le_bytes([pair[0], pair[1]]))
-        .collect()
+    let (pairs, _) = bytes.as_chunks::<2>();
+    pairs.iter().map(|pair| i16::from_le_bytes(*pair)).collect()
 }
 
 #[cfg(test)]

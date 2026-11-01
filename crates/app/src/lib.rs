@@ -65,6 +65,10 @@
 //! `capture.ron` beside the page, writes no files and logs each capture's
 //! line to the browser's console instead (ticket 2019).
 //!
+//! With the `sound-probe` feature, [`SoundProbeBackend`] names the sound
+//! backend, for the example `sound_probe` that the parity gates record. No
+//! game turns it on.
+//!
 //! A desktop debug build writes its frames' times as it runs when
 //! `SHUYI_PERF` names a file (`SHUYI_PERF=perf.jsonl cargo run`): its log
 //! names the file, and after each frame it writes that frame's record as a

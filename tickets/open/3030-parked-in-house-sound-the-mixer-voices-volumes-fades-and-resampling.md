@@ -48,6 +48,9 @@ None.
 ## Scope
 
 **In:**
+- **From 2573 (done):** quad-snd exposes no offline mix to compare, so the
+  offline render budget and the bounded-memory tests over short and long streams
+  start here (`tools/sound-parity/README.md`, *What each stage adds*).
 - Extend 2573's working parity harness with independent expected PCM for
   pause/rate/loops, two streams, gains, capacity refusal and bounded memory.
   Existing behavior compares to the retained old path; new behavior must
@@ -167,6 +170,7 @@ None.
       voice paused for 4800 frames resumes at the frame where it
       stopped; a sound at rate 2.0 ends in half its frames.
 - [ ] 2573's automated PCM/correctness and performance gates pass; the old backend remains available.
+- [ ] Backing out is reverting this PR: it changes nothing the quad-snd path does ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [ ] All gates in the `run-gates` skill pass.
 
 ## Tests required
