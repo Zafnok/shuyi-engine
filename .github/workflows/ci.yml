@@ -48,7 +48,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       # The capture mode and Hello, Grid's are behind features (ADR-0052).
@@ -68,7 +68,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         if: matrix.os == 'ubuntu-latest'
         run: bash scripts/setup-linux.sh
@@ -91,7 +91,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo doc --workspace --no-deps --locked
@@ -108,7 +108,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # `check --target` checks the controls in the game's tool program,
       # which builds natively.
       - name: Set up Linux
@@ -196,7 +196,7 @@ jobs:
         if: matrix.target == 'macos'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: export-${{ matrix.target }}
       - name: Export Hello, Grid
@@ -251,7 +251,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install Xvfb and Mesa's software GL
@@ -327,7 +327,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install the checker and Chromium
@@ -444,7 +444,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: site/tutorial/${{ matrix.step }}
       - name: Set up Linux
@@ -474,7 +474,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo xtask tutorial-tries --check
@@ -496,7 +496,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Install the capture's tools and Chromium
@@ -606,7 +606,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - name: Give up, in this checkout
@@ -664,7 +664,7 @@ jobs:
       - name: Set up Linux from nothing
         run: bash scripts/setup-linux.sh
       - run: echo "CARGO_TARGET_DIR=$GITHUB_WORKSPACE/target" >> "$GITHUB_ENV"
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: template-${{ matrix.template }}
       - name: The engine's doctor passes
@@ -833,7 +833,7 @@ jobs:
       - run: rustup show
       # `shuyi-ship`'s example builds its game for the web.
       - run: rustup target add wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: skills-${{ strategy.job-index }}
       - name: Set up Linux
@@ -864,7 +864,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         if: matrix.os == 'ubuntu-latest'
         run: bash scripts/setup-linux.sh
@@ -886,7 +886,7 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: rustup target add thumbv7em-none-eabihf
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - run: cargo build -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-alloc-count --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-assets --no-default-features --target thumbv7em-none-eabihf --locked
       - run: cargo build -p shuyi-ui --no-default-features --features raster --target thumbv7em-none-eabihf --locked
@@ -934,9 +934,9 @@ jobs:
           persist-credentials: false
       - run: rustup show
       - run: rustup target add wasm32-wasip1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # The run-gates skill names this version for a local run.
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
@@ -975,7 +975,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
       - run: cargo xtask check-modules
@@ -1014,11 +1014,11 @@ jobs:
       # The nightly, and the tools' versions below, are the consts in
       # crates/xtask/src/api.rs; they move with rust-toolchain.toml.
       - run: rustup toolchain install nightly-2026-07-06 --profile minimal
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       # `shuyi-app`'s dependencies need them to be documented.
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-semver-checks@0.51.0
       # install-action doesn't carry cargo-public-api.
@@ -1101,7 +1101,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1
+      - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
         with:
           inputs: .
           min-severity: medium
@@ -1117,7 +1117,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-machete
       - run: cargo machete
@@ -1139,10 +1139,10 @@ jobs:
           fetch-depth: 0
       - run: rustup show
       - run: rustup component add llvm-tools-preview
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Set up Linux
         run: bash scripts/setup-linux.sh
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-llvm-cov
       - name: Generate coverage report
@@ -1175,7 +1175,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Check shared agent skill loaders
         shell: pwsh
         run: ./scripts/sync-agent-skills.ps1 -Check
@@ -1198,7 +1198,7 @@ jobs:
         run: cargo xtask check-toolchain
       - name: Check the docs map
         run: cargo xtask check-docs
-      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: typos
       - name: Check spelling
@@ -1221,7 +1221,7 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup show
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - uses: ./.github/actions/setup-zola
       - name: Write the problem codes' pages
         run: bash site/errors.sh
