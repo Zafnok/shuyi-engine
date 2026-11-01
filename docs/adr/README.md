@@ -79,5 +79,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0064](0064-portable-agent-workflows.md) | Portable agent workflows and capability routing | Accepted; model routing amended by ADR-0065 |
 | [0065](0065-paired-model-recommendations.md) | Paired Claude and OpenAI model recommendations | Accepted |
 | [0066](0066-sound-uses-library-codecs-and-output-with-an-owned-mixer-and-parity-gates.md) | Sound uses library codecs and output, with an owned mixer and staged parity gates | Accepted; resolves ADR-0021's sound choice |
+| [0069](0069-a-games-window-icons-may-be-drawn-per-size-in-app-icon-sizes.md) | A game's window icons may be drawn per size, in `app.icon_sizes` | Accepted; extends ADR-0061 |
 
 Template: [`0000-template.md`](0000-template.md).
