@@ -28,6 +28,9 @@
         // Where `app-info` writes the window's icons, 16, 32 and 64 pixels,
         // which `code` reads; outside `files/`, so they are embedded once.
         window_icons: "crates/game/icon",
+        // Any of those sizes drawn by hand, each a square PNG of its side,
+        // used as it is in place of downscaling the icon.
+        // icon_sizes: { 16: "art/icon-16.png", 32: "art/icon-32.png" },
     ),
 
     // The game's tool program, for the commands that run the game:

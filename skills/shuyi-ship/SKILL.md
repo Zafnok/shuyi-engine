@@ -34,7 +34,9 @@ Ship only what `check --target` passes.
    `com.example.…`), and its icon (`icon`, one square PNG of 512 pixels
    or more), then run `cargo shuyi app-info`: the player's saves are
    kept under the id, so it never changes after a release, and the
-   window's icons are downscaled from the icon. Then check every target
+   window's icons are downscaled from the icon, except the sizes
+   `icon_sizes` draws by hand (`{ 16: "art/icon-16.png" }`, for art that
+   turns to mud when scaled). Then check every target
    `shuyi.ron` lists:
 
    ```bash

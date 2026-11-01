@@ -516,6 +516,98 @@ fn app_info_writes_the_window_icons_without_code() {
     fs::remove_dir_all(&root).unwrap();
 }
 
+/// `moon`, with `icon.png`, the window's icons in `icon` and `sizes` drawn.
+fn drawn_part(sizes: &[(u32, &str)]) -> AppPart {
+    let mut part = moon();
+    part.icon = Some("icon.png".to_owned());
+    part.window_icons = Some("icon".to_owned());
+    part.icon_sizes = sizes.iter().map(|&(s, p)| (s, p.to_owned())).collect();
+    part
+}
+
+#[test]
+fn a_drawn_picture_beats_the_downscale_at_its_side_and_leaves_the_others() {
+    let root = scratch("drawn");
+    let part = drawn_part(&[(16, "art/16.png"), (32, "art/32.png")]);
+    let write = |path: &str, side: u32, seed: u8| {
+        fs::write(
+            root.join(path),
+            codec::encode_png(side, side, &picture(side, seed)).unwrap(),
+        )
+        .unwrap();
+    };
+    fs::create_dir_all(root.join("art")).unwrap();
+    write("icon.png", 512, 0);
+    write("art/16.png", 16, 1);
+    write("art/32.png", 32, 2);
+    run(&part, &root, "shuyi", false).unwrap();
+    let pixels = |side: u32| {
+        let bytes = fs::read(root.join(format!("icon/{side}.png"))).unwrap();
+        codec::decode_png(&bytes).unwrap().2
+    };
+    assert_eq!(pixels(16), picture(16, 1));
+    assert_eq!(pixels(32), picture(32, 2));
+    assert_eq!(pixels(64), downscale(512, 512, &picture(512, 0), 64));
+    assert_eq!(
+        run(&part, &root, "shuyi", true),
+        Ok("app-info: up to date".to_owned())
+    );
+    // A drawn file changed on disk makes only its own icon stale.
+    write("art/16.png", 16, 3);
+    assert_eq!(stale(&part, &root, "shuyi"), ["icon/16.png"]);
+    let error = run(&part, &root, "shuyi", true).unwrap_err();
+    assert!(error.contains("icon/16.png"), "{error}");
+    run(&part, &root, "shuyi", false).unwrap();
+    assert_eq!(pixels(16), picture(16, 3));
+    assert_eq!(stale(&part, &root, "shuyi"), [] as [String; 0]);
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_drawn_file_that_is_not_its_keys_square_png_is_an_error_and_nothing_is_written() {
+    let root = scratch("drawn-bad");
+    let part = drawn_part(&[(16, "art/16.png")]);
+    write_png(&root, "icon.png", 512, 512);
+    let refused = |wanted: &str| {
+        assert_eq!(found_in(&part, &root), error("app.icon_sizes"));
+        let message = run(&part, &root, "shuyi", false).unwrap_err();
+        assert!(
+            message.contains(&format!("app.icon_sizes: {wanted}")),
+            "{message}"
+        );
+        assert!(!root.join("icon").exists(), "{message}");
+        // Its rule says why: the window's icons aren't called stale too.
+        assert_eq!(stale(&part, &root, "shuyi"), [] as [String; 0]);
+    };
+    refused("art/16.png can't be read");
+    fs::create_dir_all(root.join("art")).unwrap();
+    fs::write(root.join("art/16.png"), b"not a picture").unwrap();
+    refused("art/16.png isn't a PNG file");
+    write_png(&root, "art/16.png", 32, 32);
+    refused("art/16.png is 32 × 32 pixels: it must be 16 × 16");
+    write_png(&root, "art/16.png", 16, 8);
+    refused("art/16.png is 16 × 8 pixels: it must be 16 × 16");
+    write_png(&root, "art/16.png", 16, 16);
+    assert_eq!(found_in(&part, &root), []);
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn icon_sizes_needs_the_icon_the_folder_and_a_side_of_the_windows_icons() {
+    let drawn = [(16, "art/16.png")];
+    let mut part = drawn_part(&drawn);
+    assert_eq!(found(&part), []);
+    part.icon = None;
+    assert_eq!(found(&part), error("app.icon_sizes"));
+    let mut part = drawn_part(&drawn);
+    part.window_icons = None;
+    assert_eq!(found(&part), error("app.icon_sizes"));
+    assert_eq!(
+        found(&drawn_part(&[(128, "art/128.png")])),
+        error("app.icon_sizes")
+    );
+}
+
 #[test]
 fn app_info_takes_check_or_nothing() {
     assert_eq!(parse_args(&[]), Ok(false));
