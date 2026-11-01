@@ -15,7 +15,7 @@ completed:
 
 ## Context
 
-Static obfuscation delayed AI on small challenges, but dynamic agents can execute decoders. SRE-Bench's layered Linux protector barely reduced its strongest model's hidden-trigger score, and strong virtual machines can cost hundreds of times a protected function's runtime. A Shuyi trial needs the behavioral benchmark (2912) before any engine promise.
+Static obfuscation delayed AI on small challenges, but dynamic agents can execute decoders. SRE-Bench's layered Linux protector barely reduced its strongest model's hidden-trigger score, and strong virtual machines can cost hundreds of times a protected function's runtime. **From 2912 (done):** an independent replacement matched all 343 hidden transitions of its small ordinary fixtures; this was a shared-worktree pilot without a defended arm, enforced oracle budget or browser export. This ticket must supply those controls before any engine promise.
 
 ## Nick input
 

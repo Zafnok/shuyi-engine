@@ -1,0 +1,79 @@
+{
+ "decoy": {
+  "correlation": 0.636,
+  "energy_kept": 0.426,
+  "fails_general_flash_screen": false,
+  "flash_pixels": 0,
+  "largest_field_change": 0.0,
+  "ms_per_frame": 16.618,
+  "psnr": 47.99,
+  "ssim": 0.989,
+  "transcode_bytes_both_clips": 32851
+ },
+ "motion": {
+  "correlation": 0.989,
+  "energy_kept": 1.055,
+  "fails_general_flash_screen": true,
+  "flash_pixels": 912708,
+  "largest_field_change": 0.0142,
+  "ms_per_frame": 66.316,
+  "psnr": 6.887,
+  "ssim": 0.007,
+  "transcode_bytes_both_clips": 2877863
+ },
+ "noise": {
+  "correlation": -0.016,
+  "energy_kept": 0.666,
+  "fails_general_flash_screen": false,
+  "flash_pixels": 2,
+  "largest_field_change": 0.001,
+  "ms_per_frame": 75.042,
+  "psnr": 32.901,
+  "ssim": 0.656,
+  "transcode_bytes_both_clips": 31800
+ },
+ "ordinary": {
+  "correlation": 1.0,
+  "energy_kept": 1.0,
+  "fails_general_flash_screen": false,
+  "flash_pixels": 0,
+  "largest_field_change": 0.0,
+  "ms_per_frame": 0.006,
+  "psnr": 99.0,
+  "ssim": 1.0,
+  "transcode_bytes_both_clips": 30859
+ },
+ "surrogate": {
+  "correlation": 0.635,
+  "energy_kept": 0.844,
+  "fails_general_flash_screen": false,
+  "flash_pixels": 0,
+  "largest_field_change": 0.0,
+  "ms_per_frame": 1.682,
+  "psnr": 35.391,
+  "ssim": 0.841,
+  "transcode_bytes_both_clips": 179734
+ },
+ "temporal": {
+  "correlation": 0.935,
+  "energy_kept": 1.194,
+  "fails_general_flash_screen": false,
+  "flash_pixels": 7864,
+  "largest_field_change": 0.0077,
+  "ms_per_frame": 22.749,
+  "psnr": 27.074,
+  "ssim": 0.986,
+  "transcode_bytes_both_clips": 370346
+ },
+ "warp": {
+  "correlation": 0.973,
+  "energy_kept": 1.204,
+  "fails_general_flash_screen": false,
+  "flash_pixels": 0,
+  "largest_field_change": 0.0127,
+  "ms_per_frame": 21.285,
+  "psnr": 22.39,
+  "ssim": 0.936,
+  "transcode_bytes_both_clips": 404327
+ }
+}
