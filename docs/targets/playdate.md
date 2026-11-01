@@ -153,5 +153,3 @@ for the device (its `no-std` job), without linking.
   map, and are cut off where they don't fit 15 rows.
 - **A frame cap above 30:** the device runs at the profile's 30, whatever an
   options row says.
-- **Help text** names A as `B` and B as `X` until `PadKind::Playdate`'s names
-  follow the profile.

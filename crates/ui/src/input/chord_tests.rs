@@ -1,6 +1,6 @@
 //! Button chords (ticket 1034): how they fire in [`InputState`], over the
 //! sample game's actions with a Playdate's buttons: the D-pad moves the
-//! cursor, `A` (`South`) confirms, `B` (`East`) cancels, `A+B` ends the
+//! cursor, `A` (`East`) confirms, `B` (`West`) cancels, `A+B` ends the
 //! turn and `B+←` / `B+→` pick the previous / next unit.
 use core::time::Duration;
 
@@ -31,7 +31,7 @@ fn pair(a: Button, b: Button) -> ButtonChord {
     ButtonChord::pair(a, b).unwrap_or(ButtonChord::single(a))
 }
 
-/// A Playdate's buttons, as `docs/design/playdate.md` has them.
+/// A Playdate's buttons, as `targets/playdate.ron` has them.
 fn playdate_keymap() -> Keymap {
     Keymap::new([], REPEAT)
         .with_pad([
@@ -39,11 +39,11 @@ fn playdate_keymap() -> Keymap {
             (DpadRight.into(), CursorRight),
             (DpadUp.into(), CursorUp),
             (DpadDown.into(), CursorDown),
-            (South.into(), Confirm),
-            (East.into(), Cancel),
-            (pair(South, East), EndTurn),
-            (pair(East, DpadLeft), PrevUnit),
-            (pair(East, DpadRight), NextUnit),
+            (East.into(), Confirm),
+            (West.into(), Cancel),
+            (pair(East, West), EndTurn),
+            (pair(West, DpadLeft), PrevUnit),
+            (pair(West, DpadRight), NextUnit),
         ])
         .with_chord(ChordDef {
             window_ms: WINDOW_MS,
@@ -82,15 +82,15 @@ fn idle(s: &mut InputState, frames: usize, dt_ms: u32) -> Vec<Action> {
 fn who_waits_follows_the_buttons_own_actions() {
     let km = playdate_keymap();
     // A: its partner B waits too, so A waits only the window.
-    assert_eq!(km.chord_wait(South), ChordWait::Window);
+    assert_eq!(km.chord_wait(East), ChordWait::Window);
     // B: a partner (the D-pad) acts on press, so B waits until let go.
-    assert_eq!(km.chord_wait(East), ChordWait::Release);
+    assert_eq!(km.chord_wait(West), ChordWait::Release);
     // The D-pad moves the cursor, which repeats: never held back.
     assert_eq!(km.chord_wait(DpadLeft), ChordWait::None);
     assert_eq!(km.chord_wait(DpadRight), ChordWait::None);
     // In no chord.
     assert_eq!(km.chord_wait(DpadUp), ChordWait::None);
-    assert_eq!(km.chord_wait(West), ChordWait::None);
+    assert_eq!(km.chord_wait(South), ChordWait::None);
     // A chord button with no action of its own waits until let go.
     let lone = Keymap::new([], REPEAT).with_pad([(pair(South, West), EndTurn)]);
     assert_eq!(lone.chord_wait(South), ChordWait::Release);
@@ -106,12 +106,12 @@ fn who_waits_follows_the_buttons_own_actions() {
 #[test]
 fn the_keymap_looks_chords_up_in_either_order() {
     let km = playdate_keymap();
-    assert_eq!(km.chord_actions(pair(East, South)), [EndTurn]);
-    assert_eq!(km.chord_actions(pair(South, East)), [EndTurn]);
-    assert_eq!(km.chord_actions(pair(South, West)), []);
-    assert_eq!(km.pad_actions(South), [Confirm]);
-    assert_eq!(km.buttons_for(EndTurn), [pair(South, East)]);
-    assert_eq!(km.primary_button(PrevUnit), Some(pair(East, DpadLeft)));
+    assert_eq!(km.chord_actions(pair(West, East)), [EndTurn]);
+    assert_eq!(km.chord_actions(pair(East, West)), [EndTurn]);
+    assert_eq!(km.chord_actions(pair(East, South)), []);
+    assert_eq!(km.pad_actions(East), [Confirm]);
+    assert_eq!(km.buttons_for(EndTurn), [pair(East, West)]);
+    assert_eq!(km.primary_button(PrevUnit), Some(pair(West, DpadLeft)));
     assert_eq!(km.chord(), ChordDef { window_ms: 80 });
     assert_eq!(Keymap::new([], REPEAT).chord(), ChordDef::default());
     // The cursor's name leaves the chords out.
@@ -120,7 +120,7 @@ fn the_keymap_looks_chords_up_in_either_order() {
 
 #[test]
 fn a_and_b_together_end_the_turn_in_either_order() {
-    for (first, second) in [(South, East), (East, South)] {
+    for (first, second) in [(East, West), (West, East)] {
         // In one frame.
         let mut s = playdate();
         assert_eq!(
@@ -147,13 +147,13 @@ fn a_and_b_together_end_the_turn_in_either_order() {
 #[test]
 fn b_held_then_a_any_time_ends_the_turn() {
     let mut s = playdate();
-    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, true)], 33), []);
     assert_eq!(idle(&mut s, 60, 33), [], "B waits while held");
-    assert_eq!(frame(&mut s, &[(South, true)], 33), [EndTurn]);
-    assert_eq!(frame(&mut s, &[(South, false)], 33), []);
+    assert_eq!(frame(&mut s, &[(East, true)], 33), [EndTurn]);
+    assert_eq!(frame(&mut s, &[(East, false)], 33), []);
     // Still held: A again ends it again.
-    assert_eq!(frame(&mut s, &[(South, true)], 33), [EndTurn]);
-    assert_eq!(frame(&mut s, &[(South, false), (East, false)], 33), []);
+    assert_eq!(frame(&mut s, &[(East, true)], 33), [EndTurn]);
+    assert_eq!(frame(&mut s, &[(East, false), (West, false)], 33), []);
     assert_eq!(idle(&mut s, 30, 33), []);
 }
 
@@ -161,48 +161,48 @@ fn b_held_then_a_any_time_ends_the_turn() {
 fn a_alone_confirms_after_the_window_or_when_let_go() {
     // Tapped: on release.
     let mut s = playdate();
-    assert_eq!(frame(&mut s, &[(South, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
     assert!(!s.is_held(Confirm), "held back");
-    assert_eq!(frame(&mut s, &[(South, false)], 33), [Confirm]);
+    assert_eq!(frame(&mut s, &[(East, false)], 33), [Confirm]);
     assert!(!s.is_held(Confirm));
     assert_eq!(idle(&mut s, 30, 33), []);
     // Held: once the window has passed, counted from the frame after
     // the press, and then held (hold Confirm to fast-forward).
     let mut s = playdate();
-    assert_eq!(frame(&mut s, &[(South, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
     assert_eq!(frame(&mut s, &[], 40), []);
     assert_eq!(frame(&mut s, &[], 39), []);
     assert_eq!(frame(&mut s, &[], 1), [Confirm]);
     assert!(s.is_held(Confirm));
     assert_eq!(idle(&mut s, 60, 33), [], "Confirm doesn't repeat");
-    assert_eq!(frame(&mut s, &[(South, false)], 33), []);
+    assert_eq!(frame(&mut s, &[(East, false)], 33), []);
     assert!(!s.is_held(Confirm));
 }
 
 #[test]
 fn a_long_frame_never_eats_the_window_of_a_press_made_during_it() {
     let mut s = playdate();
-    assert_eq!(frame(&mut s, &[(South, true)], 500), []);
-    assert_eq!(frame(&mut s, &[(East, true)], 500), [EndTurn]);
+    assert_eq!(frame(&mut s, &[(East, true)], 500), []);
+    assert_eq!(frame(&mut s, &[(West, true)], 500), [EndTurn]);
 }
 
 #[test]
 fn b_after_a_has_confirmed_is_b_on_its_own() {
     let mut s = playdate();
-    frame(&mut s, &[(South, true)], 33);
+    frame(&mut s, &[(East, true)], 33);
     assert_eq!(frame(&mut s, &[], 100), [Confirm]);
-    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
-    assert_eq!(frame(&mut s, &[(East, false)], 33), [Cancel]);
-    assert_eq!(frame(&mut s, &[(South, false)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, false)], 33), [Cancel]);
+    assert_eq!(frame(&mut s, &[(East, false)], 33), []);
 }
 
 #[test]
 fn b_alone_cancels_when_let_go() {
     for held_ms in [0, 33, 80, 2000] {
         let mut s = playdate();
-        assert_eq!(frame(&mut s, &[(East, true)], held_ms), []);
+        assert_eq!(frame(&mut s, &[(West, true)], held_ms), []);
         assert!(!s.is_held(Cancel));
-        assert_eq!(frame(&mut s, &[(East, false)], 33), [Cancel], "{held_ms}");
+        assert_eq!(frame(&mut s, &[(West, false)], 33), [Cancel], "{held_ms}");
         assert_eq!(idle(&mut s, 30, 33), []);
     }
 }
@@ -210,7 +210,7 @@ fn b_alone_cancels_when_let_go() {
 #[test]
 fn hold_b_and_left_or_right_picks_the_previous_or_next_unit() {
     let mut s = playdate();
-    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, true)], 33), []);
     assert_eq!(frame(&mut s, &[(DpadLeft, true)], 33), [PrevUnit]);
     assert!(!s.is_held(CursorLeft) && s.is_held(PrevUnit));
     assert_eq!(frame(&mut s, &[(DpadLeft, false)], 33), []);
@@ -221,23 +221,23 @@ fn hold_b_and_left_or_right_picks_the_previous_or_next_unit() {
     );
     assert_eq!(frame(&mut s, &[(DpadRight, false)], 33), []);
     // B's own Cancel is gone for this hold.
-    assert_eq!(frame(&mut s, &[(East, false)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, false)], 33), []);
     assert_eq!(idle(&mut s, 30, 33), []);
     // The next hold of B cancels again.
-    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
-    assert_eq!(frame(&mut s, &[(East, false)], 33), [Cancel]);
+    assert_eq!(frame(&mut s, &[(West, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, false)], 33), [Cancel]);
 }
 
 #[test]
 fn hold_b_and_left_held_repeats_as_the_cursor_does() {
     let mut s = playdate();
-    frame(&mut s, &[(East, true)], 33);
+    frame(&mut s, &[(West, true)], 33);
     assert_eq!(frame(&mut s, &[(DpadLeft, true)], 0), [PrevUnit]);
     assert_eq!(s.update(ms(299)), []);
     assert_eq!(s.update(ms(1)), [PrevUnit]);
     assert_eq!(s.update(ms(55)), [PrevUnit]);
     // Letting go of B ends it; ← still down does nothing more.
-    assert_eq!(frame(&mut s, &[(East, false)], 500), []);
+    assert_eq!(frame(&mut s, &[(West, false)], 500), []);
     assert!(!s.is_held(PrevUnit) && !s.is_held(CursorLeft));
     assert_eq!(frame(&mut s, &[(DpadLeft, false)], 33), []);
     assert_eq!(idle(&mut s, 30, 33), []);
@@ -247,9 +247,9 @@ fn hold_b_and_left_held_repeats_as_the_cursor_does() {
 fn left_before_b_moves_the_cursor_and_b_still_cancels() {
     let mut s = playdate();
     assert_eq!(frame(&mut s, &[(DpadLeft, true)], 33), [CursorLeft]);
-    assert_eq!(frame(&mut s, &[(East, true)], 33), []);
+    assert_eq!(frame(&mut s, &[(West, true)], 33), []);
     assert_eq!(
-        frame(&mut s, &[(East, false), (DpadLeft, false)], 33),
+        frame(&mut s, &[(West, false), (DpadLeft, false)], 33),
         [Cancel]
     );
 }
@@ -257,10 +257,10 @@ fn left_before_b_moves_the_cursor_and_b_still_cancels() {
 #[test]
 fn up_while_b_is_held_moves_the_cursor_and_b_still_cancels() {
     let mut s = playdate();
-    frame(&mut s, &[(East, true)], 33);
+    frame(&mut s, &[(West, true)], 33);
     assert_eq!(frame(&mut s, &[(DpadUp, true)], 33), [CursorUp]);
     assert_eq!(
-        frame(&mut s, &[(DpadUp, false), (East, false)], 33),
+        frame(&mut s, &[(DpadUp, false), (West, false)], 33),
         [Cancel]
     );
 }
@@ -277,13 +277,13 @@ fn the_cursor_acts_on_press_and_repeats_on_a_pad_with_chords() {
 #[test]
 fn a_new_keymap_forgets_waiting_buttons() {
     let mut s = playdate();
-    frame(&mut s, &[(East, true), (South, true)], 0);
+    frame(&mut s, &[(West, true), (East, true)], 0);
     s.set_keymap(playdate_keymap());
     assert_eq!(s.update(0.0), []);
-    assert_eq!(frame(&mut s, &[(South, false), (East, false)], 500), []);
+    assert_eq!(frame(&mut s, &[(East, false), (West, false)], 500), []);
     // B pressed again works as usual.
-    frame(&mut s, &[(East, true)], 0);
-    assert_eq!(frame(&mut s, &[(East, false)], 0), [Cancel]);
+    frame(&mut s, &[(West, true)], 0);
+    assert_eq!(frame(&mut s, &[(West, false)], 0), [Cancel]);
 }
 
 #[test]
@@ -351,8 +351,8 @@ fn run(steps: &[Step]) -> Vec<Action> {
         }
     }
     actions.extend(s.update(0.0));
-    s.pad_up(South);
     s.pad_up(East);
+    s.pad_up(West);
     actions.extend(idle(&mut s, 60, 33));
     actions
 }
@@ -376,12 +376,12 @@ proptest! {
         held in prop::collection::vec(1..400u32, 0..4),
         a_up_first in any::<bool>(),
     ) {
-        let (first, second) = if b_first { (East, South) } else { (South, East) };
+        let (first, second) = if b_first { (West, East) } else { (East, West) };
         let mut steps = vec![Step::Down(first), Step::Wait(first_frame)];
         steps.extend(between.into_iter().map(Step::Wait));
         steps.push(Step::Down(second));
         steps.extend(held.into_iter().map(Step::Wait));
-        let ups = if a_up_first { [South, East] } else { [East, South] };
+        let ups = if a_up_first { [East, West] } else { [West, East] };
         steps.extend(ups.map(Step::Up));
         prop_assert_eq!(run(&steps), vec![EndTurn]);
     }
@@ -390,18 +390,18 @@ proptest! {
     /// Cancel and nothing else.
     #[test]
     fn b_alone_always_gives_one_cancel(frames in prop::collection::vec(0..300u32, 0..8)) {
-        let mut steps = vec![Step::Down(East)];
+        let mut steps = vec![Step::Down(West)];
         steps.extend(frames.into_iter().map(Step::Wait));
-        steps.push(Step::Up(East));
+        steps.push(Step::Up(West));
         prop_assert_eq!(run(&steps), vec![Cancel]);
     }
 
     /// A tapped or held alone gives one Confirm and nothing else.
     #[test]
     fn a_alone_always_gives_one_confirm(frames in prop::collection::vec(0..300u32, 0..8)) {
-        let mut steps = vec![Step::Down(South)];
+        let mut steps = vec![Step::Down(East)];
         steps.extend(frames.into_iter().map(Step::Wait));
-        steps.push(Step::Up(South));
+        steps.push(Step::Up(East));
         prop_assert_eq!(run(&steps), vec![Confirm]);
     }
 
@@ -411,8 +411,8 @@ proptest! {
     fn every_press_gives_one_action_or_one_end_turn(
         steps in prop::collection::vec(
             prop_oneof![
-                prop::sample::select(vec![South, East]).prop_map(Step::Down),
-                prop::sample::select(vec![South, East]).prop_map(Step::Up),
+                prop::sample::select(vec![East, West]).prop_map(Step::Down),
+                prop::sample::select(vec![East, West]).prop_map(Step::Up),
                 (0..200u32).prop_map(Step::Wait),
             ],
             0..30,
@@ -423,13 +423,13 @@ proptest! {
         let mut presses = 0;
         for &step in &steps {
             if let Step::Down(b) = step {
-                let i = usize::from(b == East);
+                let i = usize::from(b == West);
                 if !down[i] {
                     presses += 1;
                 }
                 down[i] = true;
             } else if let Step::Up(b) = step {
-                down[usize::from(b == East)] = false;
+                down[usize::from(b == West)] = false;
             }
         }
         let ends = actions.iter().filter(|&&a| a == EndTurn).count();
@@ -461,8 +461,8 @@ fn help_text_names_both_buttons_of_a_chord() {
     );
     let both = km
         .clone()
-        .with_pad([(pair(South, East), EndTurn), (West.into(), EndTurn)]);
-    assert_eq!(all_key_names(keys.of(&both), EndTurn), "A+B/X");
+        .with_pad([(pair(East, West), EndTurn), (North.into(), EndTurn)]);
+    assert_eq!(all_key_names(keys.of(&both), EndTurn), "A+B/Y");
     assert_eq!(
         PadKind::PlayStation.chord_name(pair(East, South), "+"),
         "\u{2715}+\u{25ef}"
@@ -479,7 +479,7 @@ fn help_text_names_both_buttons_of_a_chord() {
 /// nothing, even when a chord made it wait.
 #[test]
 fn a_taken_press_gives_nothing() {
-    for button in [South, East] {
+    for button in [East, West] {
         let mut s = playdate();
         s.pad_down(button, PLAYDATE);
         s.pad_taken(button);
@@ -508,11 +508,11 @@ fn the_window_is_the_keymaps() {
     let km = playdate_keymap().with_chord(slow);
     assert_eq!(km.chord(), slow);
     let mut s = InputState::new(km);
-    assert_eq!(frame(&mut s, &[(South, true)], 0), []);
+    assert_eq!(frame(&mut s, &[(East, true)], 0), []);
     assert_eq!(frame(&mut s, &[], 200), [], "still inside 300 ms");
-    assert_eq!(frame(&mut s, &[(East, true)], 0), [EndTurn]);
+    assert_eq!(frame(&mut s, &[(West, true)], 0), [EndTurn]);
     let mut s = InputState::new(playdate_keymap().with_chord(slow));
-    frame(&mut s, &[(South, true)], 0);
+    frame(&mut s, &[(East, true)], 0);
     assert_eq!(frame(&mut s, &[], 299), []);
     assert_eq!(frame(&mut s, &[], 1), [Confirm]);
 }
@@ -524,18 +524,18 @@ fn the_window_is_the_keymaps() {
 fn an_ended_chord_never_touches_a_later_press() {
     for b_first in [false, true] {
         let mut s = playdate();
-        frame(&mut s, &[(East, true)], 0);
+        frame(&mut s, &[(West, true)], 0);
         assert_eq!(frame(&mut s, &[(DpadLeft, true)], 0), [PrevUnit]);
         let ups = if b_first {
-            [(East, false), (DpadLeft, false)]
+            [(West, false), (DpadLeft, false)]
         } else {
-            [(DpadLeft, false), (East, false)]
+            [(DpadLeft, false), (West, false)]
         };
         assert_eq!(frame(&mut s, &ups, 0), []);
         // ← alone, held; B tapped while it is held.
         assert_eq!(frame(&mut s, &[(DpadLeft, true)], 0), [CursorLeft]);
-        assert_eq!(frame(&mut s, &[(East, true)], 0), []);
-        assert_eq!(frame(&mut s, &[(East, false)], 0), [Cancel]);
+        assert_eq!(frame(&mut s, &[(West, true)], 0), []);
+        assert_eq!(frame(&mut s, &[(West, false)], 0), [Cancel]);
         assert!(s.is_held(CursorLeft), "b_first {b_first}");
         assert_eq!(s.update(ms(300)), [CursorLeft], "b_first {b_first}");
     }
