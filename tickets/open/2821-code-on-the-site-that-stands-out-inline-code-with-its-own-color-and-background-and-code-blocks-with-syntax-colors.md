@@ -20,8 +20,8 @@ Nick, 2026-11-01, reading the tutorial (2818): "When we are in-lining code i.e.
 correct but usually I see these rendered with either some different font color
 and/or some different background to make it more clear." And: "also block code I
 would want a diff color for the text too, probably using Rust color settings from
-an editor i.e. vscode with rust ext or something... or like Darcula color scheme
-or some other open source color scheme we can use w/o licensing issues..."
+an editor i.e. vscode with rust ext or something... or [...] some other open source
+color scheme we can use w/o licensing issues..."
 
 What there is today:
 
