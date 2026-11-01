@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2207", "2358"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2220 — Hot reload of any asset kind
@@ -169,20 +169,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] With the headless backend's script, a changed palette file is seen
+- [x] With the headless backend's script, a changed palette file is seen
       by the game on the next frame (a harness test).
-- [ ] A changed image that a sprite sheet reads reloads the sheet.
-- [ ] If 1124 is done, a changed map and a changed TSX tileset it reads
-      reload through `Hot<TileMap>` (a harness test).
-- [ ] If 2318 is done, a reloaded map shows its note in the `layout`
-      channel (a test).
-- [ ] A broken file keeps the old value, and its error names the file
+- [x] A changed image that a sprite sheet reads reloads the sheet.
+- [x] ~~If 1124 is done, a changed map and a changed TSX tileset it reads
+      reload through `Hot<TileMap>` (a harness test).~~ (not done: 1124 is parked, and its clause now adds the test)
+- [x] ~~If 2318 is done, a reloaded map shows its note in the `layout`
+      channel (a test).~~ (not done: 2318 is parked, and its clause now adds the note)
+- [x] A broken file keeps the old value, and its error names the file
       and line (a test).
-- [ ] A shipped build (debug tools off) never polls (a test with a
+- [x] A shipped build (debug tools off) never polls (a test with a
       counting fake clock).
-- [ ] `shuyi run --watch` on Hello, Grid shows a changed palette within
+- [x] `shuyi run --watch` on Hello, Grid shows a changed palette within
       two seconds (checked by hand; say so in the completion notes).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -195,4 +195,53 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+What was done, all as the scope says and recorded in ADR-0071:
+
+- `Platform::changed_files` (defaulted), asked by `App` once a frame before the
+  update, only with debug tools on. `shuyi-app`'s `Poller`
+  (`crates/app/src/watch.rs`) looks at the folders `read_folder` read once a
+  second. The headless backend takes a script (`change_file`).
+- `Layer::replace` and `Bundle::replace`; `bundle::recording` (2516 reuses it);
+  `shuyi_assets::hot::{Hot, Reload}`.
+- `Hook::Reloaded`, `Module::reloaded`, `Game::reloaded`.
+- `Ctx::note_reload` and `reload_errors`, `Frame::reload_errors`, drawn by
+  `shuyi-app` over the top of the frame.
+- `shuyi run --watch`, and `shuyi.ron`'s new `assets` part; `shuyi_app::watched_layer`,
+  `BasicGame::over`. Hello, Grid's palette shows the module
+  (`examples/hello-grid/src/hot_palette.rs`).
+- The book's chapter 5 has its section, its code a snippet.
+
+**Polling, measured:** scanning 5 000 files in 50 folders takes about 8 ms on
+Nick's machine in a debug build (Windows 11, NTFS). A first version looked each
+file up and took about 100 ms, a visible hitch once a second, so it now reads
+what the directory listing holds. No `notify`-style crate is needed.
+
+**Checked by hand**, on Hello, Grid in its window: with the folder of a copy of
+its files watched (`SHUYI_WATCH`, in a build with the `link` feature so a
+screenshot could be taken), a changed colour showed within two seconds, a broken
+palette kept its colours and showed `watched/palette.ron:8: …` at the top of the
+window, and a good save cleared it. That check found the error line running off
+the window; it now wraps to the window's width, checked the same way. `shuyi run --watch` itself was run on Hello, Grid and
+opened its window; a change wasn't made through that command, which sets the
+same variable.
+
+Deviations and what the ticket didn't say:
+
+- `Hot` tracks the paths **asked for**, found or not, where `recording` gives the
+  found ones (as 2516 describes it): a `.meta` file that doesn't exist yet must
+  reload a value when it appears. Both read one per-thread log.
+- A deleted file keeps its last bytes until the game restarts (ADR-0071 §1).
+- The ticket says a game's `assets/`; Hello, Grid's are in `files/` and a new
+  game's in `crates/game/files`, so `shuyi.ron` gained `assets`, `assets` by
+  default.
+- A short-path game under `--watch` starts from its files on disk, but sees later
+  changes only through a module of its own.
+- `HeadlessPlatform::reload_errors` holds the frame's errors: `Presented::Game`
+  is an exhaustive variant, and a new field would have broken games' patterns.
+
+The either-order clauses: 2228, 2516, 2518, 1124, 2318, 2506 and 3104 aren't done.
+Each clause naming this ticket now says what holds. **Follow-up:** 2242, the
+pictures a backend uploaded (a changed PNG isn't redrawn: the renderer's textures
+are made once).
+
+No break.

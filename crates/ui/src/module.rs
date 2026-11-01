@@ -10,14 +10,18 @@
 //! ([`Install::debug_entry`]). The game lists each module with what it
 //! declared ([`Game::modules`](crate::Game::modules)).
 //!
+//! A module hears of files changed on disk through [`Module::reloaded`].
 //! A hook changes the module's own state and the context's UI side (a
 //! sound), never the game's data or a stage's state, which change only
 //! through commands or inputs per step. A module takes no actions: one
 //! that needs input has a screen, which declares them.
 
 use crate::prelude::*;
+use alloc::collections::BTreeMap;
 use core::any::{Any, TypeId, type_name};
 use core::fmt;
+
+use shuyi_assets::hot::Reload;
 
 use crate::ctx::{Ctx, GameData};
 use crate::debug::DebugEntry;
@@ -40,6 +44,13 @@ pub trait Module<G: GameData>: 'static {
 
     /// Draws over the screens, after them ([`Hook::DrawOver`]).
     fn draw_over(&self, _ctx: &Ctx<G>, _buf: &mut GlyphBuffer) {}
+
+    /// Runs when files changed on disk, before the frame's update, with
+    /// their paths in the bundle ([`Hook::Reloaded`]): in a build with debug
+    /// tools, where the platform watches them. The module refreshes the
+    /// [`Hot`](shuyi_assets::hot) values it keeps as its own state, and says
+    /// how each went ([`Ctx::note_reload`]).
+    fn reloaded(&mut self, _ctx: &mut Ctx<G>, _changed: &[String]) {}
 }
 
 /// A place in the frame loop where the game calls a module.
@@ -50,6 +61,8 @@ pub enum Hook {
     BeforeUpdate,
     /// [`Module::draw_over`].
     DrawOver,
+    /// [`Module::reloaded`].
+    Reloaded,
 }
 
 impl Hook {
@@ -58,7 +71,38 @@ impl Hook {
         match self {
             Self::BeforeUpdate => "before_update",
             Self::DrawOver => "draw_over",
+            Self::Reloaded => "reloaded",
         }
+    }
+}
+
+/// The reloads that failed and haven't reloaded since ([`Ctx::note_reload`]),
+/// by what failed, and their errors as the frame shows them.
+#[derive(Debug, Default)]
+pub(crate) struct ReloadErrors {
+    by_id: BTreeMap<String, Vec<String>>,
+    lines: Vec<String>,
+}
+
+impl ReloadErrors {
+    /// Takes how the asset `id` reloaded.
+    pub(crate) fn note(&mut self, id: &str, reload: &Reload) {
+        match reload {
+            Reload::Failed(errors) => {
+                let errors = errors.iter().map(ToString::to_string).collect();
+                self.by_id.insert(id.to_owned(), errors);
+            }
+            Reload::Reloaded => {
+                self.by_id.remove(id);
+            }
+            _ => return,
+        }
+        self.lines = self.by_id.values().flatten().cloned().collect();
+    }
+
+    /// Every error, one a line.
+    pub(crate) fn lines(&self) -> &[String] {
+        &self.lines
     }
 }
 

@@ -28,6 +28,10 @@
     // The game's tool program, for `frame-png` and `lang-status`.
     game: (package: "hello-grid", example: "tools", features: ["tools"]),
 
+    // The folder of its files, which `cargo shuyi run --watch` lays over the
+    // embedded ones.
+    assets: "files",
+
     // `cargo shuyi font-atlas files-src/ter-u16n.bdf files/font`: the
     // atlas of Terminus, with every glyph the game draws
     // (`hello_grid::REQUIRED_GLYPHS`; a test keeps the two equal).

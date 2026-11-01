@@ -41,6 +41,8 @@ pub const BASIC_CONSOLE: ConsoleSpec = ConsoleSpec::text(48, 24);
 pub struct BasicGame<A: ActionSet, T: Debug + 'static = ()> {
     app: AppInfo,
     files: Layer,
+    /// A layer laid over `files`, if it has one.
+    over: Option<Layer>,
     own: Own<T>,
     first: First<A, T>,
     console: ConsoleSpec,
@@ -69,6 +71,7 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         Self {
             app,
             files,
+            over: None,
             own,
             first,
             console: BASIC_CONSOLE,
@@ -120,9 +123,18 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         self.console
     }
 
-    /// Its files, as a bundle of their one layer.
+    /// The same game with `layer` laid over its files: a folder on disk
+    /// (`shuyi_app::watched_layer`, `cargo shuyi run --watch`), or a mod.
+    #[must_use]
+    pub fn over(mut self, layer: Layer) -> Self {
+        self.over = Some(layer);
+        self
+    }
+
+    /// Its files, as a bundle of their one layer, under the one laid
+    /// [`over`](Self::over) them if it has one.
     pub fn bundle(&self) -> Bundle {
-        Bundle::new(vec![self.files])
+        Bundle::new(self.over.into_iter().chain([self.files]).collect())
     }
 
     /// Its data from its files, or every problem of every file.

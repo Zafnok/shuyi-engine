@@ -69,6 +69,7 @@ same command again; 1, it ran and found something wrong.
 | ------- | ----------------- |
 | `cargo shuyi check` | every error in `files/`, with file and line |
 | `cargo shuyi run --script "Enter" --frames 30` | the screens, what happened and the sounds |
+| `cargo shuyi run --watch` | the game in its window, its files on disk laid over the embedded ones; a module of the game's reloads what it keeps as a `Hot` value when one changes |
 | `cargo shuyi frame-png title.png` | a picture of a frame, with no window |
 | `cargo shuyi import crates/game/files/palette.ron` | what a file reads as, or its errors |
 | `cargo shuyi modules` | the engine's modules by concern (perspective, bodies and motion, online play, kind of game), each with its status, and the ones this game has on |

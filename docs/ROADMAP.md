@@ -54,6 +54,9 @@ server (1133), the skill pack (1134), the book (2802) and the guides
 (2004) write into it. On 2026-10-24 he put perf traces agents can read
 in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 (2521) with them, so an agent reads a running build's trace too
+([`decisions.md`](decisions.md)). On 2026-11-01 he parked governance
+(2016) and the community files (1132), and 2005 keeps `main`'s required
+checks, private vulnerability reporting and a short `SECURITY.md`
 ([`decisions.md`](decisions.md)). These tickets, in order:
 
 | Ticket | What |
@@ -61,7 +64,6 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2810 | The docs map: one home for each kind of fact, by who reads it, a `document` skill, and `check-docs` |
 | 2002 | This repository's gates: the ticket lint, typos and links, in the CI 1131 started with the code gates |
 | 2007 | Coverage and SonarCloud in CI, and the Sonar debt queue as batched GitHub issues, copied from the game |
-| 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, `main` protected by its required checks |
 | 2017 | The backlog and the docs kept true as tickets land: a lint warning on clauses about done tickets, `contract.md` tested |
 | 2022 | The Markdown a test reads counts as code in CI, and `run-gates` runs the templates job |
 | 2023 | The ticket lint reads every way a ticket waits on another, and the docs too; a done ticket has no unchecked box |
@@ -70,6 +72,7 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2012 | The pinned Rust in step: `cargo xtask check-toolchain`, a reminder of a new stable, a `bump-rust` skill |
 | 2010 | Every PR shows its public API change: `cargo-semver-checks` against the base, and a `Breaking:` line when it breaks |
 | 2040 | Close the API gate's crate-coverage gap: every shipped engine crate, including the Playdate backend and heap counter |
+| 2041 | The API listing sees what the semver check sees, in every crate: one feature choice per crate |
 | 2013 | Public types that can grow without breaking a game: `#[non_exhaustive]` and constructors |
 | 2015 | `check-layers` over cargo metadata, a float ban in `shuyi-core`, and a new game's rules crate kept pure |
 | 2201 | Formats are plugins: the registry (ADR-0007) |
@@ -96,7 +99,6 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2521 | The live link: `shuyi attach` and MCP reading a running windowed build |
 | 2560 | MCP's session attached to a running build over the live link |
 | 2555 | Perf over the live link: a running build's frames read from a number, and `shuyi attach --perf-follow` streaming them to a file |
-| 1132 | Community files and the contribution policy |
 | 3039 | Web builds carry the notices they owe: a `NOTICES.txt` with the crates, the vendored scripts and the fonts |
 | 3080 | Web export uses clean staging and rejects stale files before packaging a public build |
 | 3085 | Exports refuse the live link through resolved defaults, aliases and dependency features, before a build |
@@ -140,13 +142,12 @@ Each feature on bevy.org (read 2026-10-20), and where it lives:
 | UI: layout in the style of flexbox, declared in code or a file | 2329 (layout), 2355 (focus between widgets), 2330 (`.ui.ron`), 2224 and 2334 (fonts and text off the cell grid) | after MVP |
 | Scenes: save and load worlds keeping ids, instances, live reload | 2221 | after MVP |
 | Sound | The player every backend shares (cues, variants, fades, streamed music; ADR-0063), on desktop, the web and the Playdate; 2341–2345, 2394 and 2225 (crossfades, groups and ducking, handles and pauses, cue rules, made sounds); 2363 (positional) and 2365 (a beat clock) | partial: the rest after MVP, 2363 and 2365 parked |
-| Hot reload of assets | 2220 (every asset kind), 1124's maps through it | after MVP |
+| Hot reload of assets | 2220 (every asset kind), 2242 (pictures a backend uploaded), 1124's maps through it | partial: values of every kind done (2220); the rest after MVP |
 | Hot reload of code (not on Bevy's homepage; Bevy has it experimentally) | 2905 (research) | after MVP |
 | Fast compiles | 2009 (measured, gated, a fast setup in the templates; README.md, *Fast compiles*) | done |
 | Free and open source, MIT or Apache 2.0 | `LICENSE-MIT`, `LICENSE-APACHE` | done |
 
-The order, after the MVP: 2220 first, after 2009 (done; each makes every later
-ticket nicer to work on), then 2329 and 2222, then 2355, then 2904,
+The order, after the MVP: 2329 and 2222, then 2355, then 2904,
 2107, 2108 and 2221, then 2330 and 2905.
 
 These are not parked, but they come after the MVP:
@@ -867,6 +868,8 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2331 | A render graph on the wgpu renderer: passes as nodes, a game's own passes, recorded in parallel on native | 3034 is unparked |
 | 3110 | 3D animation: several clips blended at once, and morph targets from glTF | 3D is unparked |
 | 3111 | 3D meshes in the pack: meshes, materials, skeletons and clips baked as postcard sections and proven equal to their glTF | 3D is unparked |
+| 2016 | Governance and continuity: `GOVERNANCE.md`, a backup owner, the accounts and secrets, and `cargo xtask repo-settings` | Nick asks (2026-11-01: "I would rather park it altogether") |
+| 1132 | Community files and the contribution policy: who may send code, a channel, a code of conduct | the engine gets traction and Nick asks (2026-11-01) |
 | 2807 | A custom domain for the website | Nick has a domain (2026-10-20: "can use custom domain later") |
 | 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |
 | 2369–2370 | A light cycle for day and night, and ambiences for weather (particles across the view, an overlay and a looped sound, with a fade) | the game asks (2026-10-22); 2370 with particles (2103) |

@@ -71,6 +71,11 @@ pub use platform::{DisplayInfo, Frame, Look, Millis, OneBitLook, Platform, Show,
 pub use shuyi_ui::storage::Storage;
 pub use text_input::{TextAnswer, TextAsk, TextInput};
 
+/// The variable `cargo shuyi run --watch` sets for the game it starts: the
+/// folder of the game's files on disk, which a backend lays over the
+/// embedded ones and watches (ADR-0071).
+pub const WATCH_VAR: &str = "SHUYI_WATCH";
+
 /// What a game on the short path names (ADR-0036), and the start types a
 /// game names when it leaves it. Anything else is named by its module's
 /// path.

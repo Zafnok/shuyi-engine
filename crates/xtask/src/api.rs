@@ -1,5 +1,5 @@
-//! `cargo xtask api`: what a change does to the public API of the crates a
-//! game uses (ticket 2010, ADR-0038).
+//! `cargo xtask api`: what a change does to the public API of the engine's
+//! crates (ticket 2010, ADR-0038).
 //!
 //! For each crate of [`API_CRATES`] it lists the public items of the head
 //! (the working tree) and of the base (a `git worktree` at the base
@@ -11,6 +11,22 @@
 //! public API that changes no file of the book needs a `Book:` line in the
 //! branch's ticket (ticket 2815).
 //!
+//! **What is checked** (ticket 2040) is one configuration per crate, on the
+//! host, in a debug build:
+//!
+//! - `shuyi-alloc-count` with `global`, so its feature-gated module is
+//!   listed too. A release build's `global` is not checked: the same items,
+//!   which read nothing there.
+//! - `shuyi-playdate` without `--cfg shuyi_playdate_sdk`: the SDK-free
+//!   surface, `stack_high_water` and `main!` among it. Its doc-hidden
+//!   `device` module is not checked, and of `main!` only that it exists: a
+//!   change to its arms shows in neither tool.
+//! - The other seven with each tool's own default: the listing has their
+//!   default features, and the semver check the features its heuristic turns
+//!   on, so a public item behind another feature is judged but not listed.
+//!
+//! No crate is checked in every combination of its features.
+//!
 //! Every `git`, `cargo` and `rustup` call goes through [`Runner`], which the
 //! tests fake.
 
@@ -20,19 +36,78 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::layers::is_engine;
 use crate::tickets::{book_lines, breaking_lines, ticket_id_from_branch};
 
-/// The crates a game made with `shuyi new` depends on, and those its
-/// front door re-exports: their public API is what a game builds on. Not
-/// `xtask` (never shipped) and not the examples.
-pub const API_CRATES: &[&str] = &[
-    "shuyi-core",
-    "shuyi-assets",
-    "shuyi-ui",
-    "shuyi-platform",
-    "shuyi-app",
-    "shuyi-cli",
-    "shuyi",
+/// The features a crate's public API is checked with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Features {
+    /// Each tool's own default (the module's docs say what differs).
+    ToolDefaults,
+    /// Exactly these features, in the listing and the semver check alike, on
+    /// the head and the base alike.
+    Only(&'static [&'static str]),
+}
+
+impl Features {
+    /// What `cargo-public-api` is given.
+    fn listing_args(self) -> Vec<&'static str> {
+        self.args("--no-default-features")
+    }
+
+    /// What `cargo-semver-checks` is given. Its `--features` holds for the
+    /// baseline and the current version both.
+    fn semver_args(self) -> Vec<&'static str> {
+        self.args("--only-explicit-features")
+    }
+
+    fn args(self, only: &'static str) -> Vec<&'static str> {
+        match self {
+            Self::ToolDefaults => Vec::new(),
+            Self::Only(features) => std::iter::once(only)
+                .chain(features.iter().flat_map(|name| ["--features", *name]))
+                .collect(),
+        }
+    }
+}
+
+/// One crate of the catalog, and how it is checked.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ApiCrate {
+    pub name: &'static str,
+    pub features: Features,
+}
+
+const fn defaults(name: &'static str) -> ApiCrate {
+    ApiCrate {
+        name,
+        features: Features::ToolDefaults,
+    }
+}
+
+/// Every engine crate (a workspace member [`is_engine`] names), the one
+/// catalog of what a game can build on: [`check_catalog`] fails a run on a
+/// member left out. Not `xtask` (never shipped), the examples or the book.
+/// Not read from `publish`: every crate is unpublished before the first
+/// release.
+pub const API_CRATES: &[ApiCrate] = &[
+    defaults("shuyi-core"),
+    defaults("shuyi-assets"),
+    defaults("shuyi-ui"),
+    defaults("shuyi-platform"),
+    defaults("shuyi-app"),
+    defaults("shuyi-cli"),
+    defaults("shuyi"),
+    // The crate has no feature; none may join the check unchosen.
+    ApiCrate {
+        name: "shuyi-playdate",
+        features: Features::Only(&[]),
+    },
+    // `global` turns `std` on, and adds the public `global` module.
+    ApiCrate {
+        name: "shuyi-alloc-count",
+        features: Features::Only(&["global"]),
+    },
 ];
 
 /// The `cargo-semver-checks` this check runs, the one CI installs. It reads
@@ -419,19 +494,56 @@ fn compare_crates(root: &Path, runner: &dyn Runner) -> Result<Vec<CrateApi>, Str
     // both), and sources older than the head's builds: the base would be
     // built on the head's crates.
     let base_target_dir = root.join(BASE_TARGET_DIR);
+    check_catalog(&packages(root, runner)?, API_CRATES)?;
     let in_base = packages(&base_root, runner)?;
     API_CRATES
         .iter()
-        .map(|&name| {
-            let head = listing(root, name, &target_dir, runner)?;
+        .map(|krate| {
+            let name = krate.name;
+            let head = listing(root, krate, &target_dir, runner)?;
             if !in_base.contains(name) {
                 return Ok(CrateApi::new(name, None, &head, Vec::new()));
             }
-            let base = listing(&base_root, name, &base_target_dir, runner)?;
-            let findings = semver(root, name, &base_root, runner)?;
+            let base = listing(&base_root, krate, &base_target_dir, runner)?;
+            let findings = semver(root, krate, &base_root, runner)?;
             Ok(CrateApi::new(name, Some(&base), &head, findings))
         })
         .collect()
+}
+
+/// That `catalog` has each engine crate among the workspace's `members`, and
+/// nothing else: a crate left out would change with no check at all.
+pub fn check_catalog(members: &HashSet<String>, catalog: &[ApiCrate]) -> Result<(), String> {
+    let mut unlisted: Vec<&str> = members
+        .iter()
+        .map(String::as_str)
+        .filter(|name| is_engine(name) && !catalog.iter().any(|c| c.name == *name))
+        .collect();
+    unlisted.sort_unstable();
+    let gone: Vec<&str> = catalog
+        .iter()
+        .map(|c| c.name)
+        .filter(|name| !members.contains(*name))
+        .collect();
+    let mut problems = Vec::new();
+    if !unlisted.is_empty() {
+        problems.push(format!(
+            "engine crate(s) not in `API_CRATES` (crates/xtask/src/api.rs): {}. Add each with \
+             the features its public API is checked with",
+            unlisted.join(", ")
+        ));
+    }
+    if !gone.is_empty() {
+        problems.push(format!(
+            "`API_CRATES` (crates/xtask/src/api.rs) names what is no workspace member: {}",
+            gone.join(", ")
+        ));
+    }
+    if problems.is_empty() {
+        Ok(())
+    } else {
+        Err(problems.join("\n"))
+    }
 }
 
 /// The names of the workspace's packages in `dir`.
@@ -456,26 +568,22 @@ fn packages(dir: &Path, runner: &dyn Runner) -> Result<HashSet<String>, String> 
 /// `krate`'s public items in the workspace in `dir`, one per line.
 fn listing(
     dir: &Path,
-    krate: &str,
+    krate: &ApiCrate,
     target_dir: &Path,
     runner: &dyn Runner,
 ) -> Result<Vec<String>, String> {
     let toolchain = format!("+{NIGHTLY}");
     let target_dir = target_dir.to_string_lossy();
-    let ran = run_ok(
-        runner,
-        dir,
-        "cargo",
-        &[
-            &toolchain,
-            "public-api",
-            "-p",
-            krate,
-            "--simplified",
-            "--target-dir",
-            &target_dir,
-        ],
-    )?;
+    let mut args = vec![
+        toolchain.as_str(),
+        "public-api",
+        "-p",
+        krate.name,
+        "--simplified",
+    ];
+    args.extend(krate.features.listing_args());
+    args.extend(["--target-dir", &target_dir]);
+    let ran = run_ok(runner, dir, "cargo", &args)?;
     Ok(ran
         .stdout
         .lines()
@@ -489,28 +597,26 @@ fn listing(
 /// lints that need a major version run (ADR-0038 §4).
 fn semver(
     root: &Path,
-    krate: &str,
+    krate: &ApiCrate,
     base_root: &Path,
     runner: &dyn Runner,
 ) -> Result<Vec<Finding>, String> {
     let base_root = base_root.to_string_lossy();
-    let ran = runner.run(
-        root,
-        "cargo",
-        &[
-            "semver-checks",
-            "check-release",
-            "-p",
-            krate,
-            "--baseline-root",
-            &base_root,
-            "--release-type",
-            "minor",
-            "--color",
-            "never",
-        ],
-    )?;
-    parse_semver(krate, &ran)
+    let mut args = vec![
+        "semver-checks",
+        "check-release",
+        "-p",
+        krate.name,
+        "--baseline-root",
+        &base_root,
+        "--release-type",
+        "minor",
+        "--color",
+        "never",
+    ];
+    args.extend(krate.features.semver_args());
+    let ran = runner.run(root, "cargo", &args)?;
+    parse_semver(krate.name, &ran)
 }
 
 /// The findings in what `cargo semver-checks` printed. A run that failed

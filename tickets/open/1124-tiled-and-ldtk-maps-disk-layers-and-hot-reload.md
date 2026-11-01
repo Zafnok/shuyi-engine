@@ -146,10 +146,9 @@ None.
   `TileMap` that builds 1122's `TileCollision` from a named tile layer
   and a rule per tile id, tested on the Tiled fixture. If 1122 isn't
   done, 1122 adds it.
-- Hot reload is 2220's. **Either order:** if 2220 is done, a test
-  shows a changed `.tmx` reloading through `Hot<TileMap>`, including a
-  change to a TSX tileset it reads; if not, 2220's own tests cover maps
-  once this lands, and this ticket adds nothing for reload.
+- **From 2220 (done):** a test shows a changed `.tmx` reloading through
+  `Hot<TileMap>`, including a change to a TSX tileset it reads, through
+  the headless backend's script (`Harness::change_file`).
 - `shuyi-cli import <map> --print` prints the map as our text.
   **From 1129 (done):** `import` tries only the kinds that
   `Importers::standard()` lists (`crates/cli/src/contract/import.rs`),
@@ -206,7 +205,7 @@ None.
    `docs/formats.md` that LDtk has no tile animations.
 5. If 2121, 2122, 2362 or 2709 is done, add the hex layout, the curve
    function, the rooms or `TerrainGrid::from_layer`.
-6. If 2220 is done, add the map reload test through its headless
+6. Add the map reload test through its headless
    script.
 7. Update the `shuyi-import-art` skill as *The skill pack* says.
 
@@ -237,7 +236,7 @@ None.
 - [ ] `shuyi-cli import` reads the Tiled fixture as a `TileMap`, and
       `--print` prints its text dump with no limit saying the kind has
       no writer.
-- [ ] If 2220 is done, a changed map and a changed tileset reload.
+- [ ] A changed map and a changed tileset reload.
 - [ ] `shuyi-import-art`'s `waits_for` no longer lists 1124, the skill
       has its worked example once that list is empty, and
       `check-skills` passes.
@@ -251,6 +250,6 @@ None.
 - Unit: each property type; the class and properties a tile object and
   a template instance inherit; the rounding at a tie and past `Fx`; each
   flip bit; a tile animation's clip.
-- Integration: map reload through 2220's script, if 2220 is done.
+- Integration: map reload through 2220's script.
 
 ## Completion notes

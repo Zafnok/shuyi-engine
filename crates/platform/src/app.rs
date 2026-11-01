@@ -390,6 +390,7 @@ struct Lists<V> {
     sounds: Vec<SoundRequest>,
     audio: Vec<AudioRequest<V>>,
     music: Vec<MusicCommand>,
+    changed: Vec<String>,
 }
 
 /// A game run one frame at a time by a backend's loop.
@@ -467,6 +468,7 @@ impl<G: GameData> App<G> {
                 sounds: Vec::new(),
                 audio: Vec::new(),
                 music: Vec::new(),
+                changed: Vec::new(),
             },
             frames: 0,
             log: LogRing::new(LOG_LINES),
@@ -731,6 +733,7 @@ impl<G: GameData> App<G> {
                 if let Some(pacing) = self.pacing.take() {
                     game.set_pacing(pacing);
                 }
+                tell_changed(platform, game, &mut self.lists.changed);
                 step(platform, game, &mut self.lists, elapsed);
                 if game.quit_requested() {
                     platform.audio().stop_all();
@@ -938,6 +941,23 @@ fn drain(platform: &mut impl Platform, input: &mut Vec<RawInputEvent>) {
     input.clear();
 }
 
+/// Hands the files the platform says changed to `game`'s modules: while
+/// debug tools are on, in a build with them. A build that ships never asks.
+fn tell_changed<G: GameData>(
+    platform: &mut impl Platform,
+    game: &mut Game<G>,
+    changed: &mut Vec<String>,
+) {
+    if !(shuyi_ui::DEBUG_TOOLS && game.ctx().debug_tools) {
+        return;
+    }
+    changed.clear();
+    platform.changed_files(changed);
+    if !changed.is_empty() {
+        game.reloaded(changed);
+    }
+}
+
 /// One frame of the running game: the input, the system keyboard's
 /// answer, the music sounding and the steps due go in; the update runs;
 /// its audio goes to the device and a keyboard it asked for opens.
@@ -1001,6 +1021,7 @@ fn present_game<G: GameData>(
     frame.fullscreen = ctx.settings().fullscreen;
     frame.frame_cap = ctx.settings().frame_cap;
     frame.frame_cap_serial = ctx.frame_cap_serial();
+    frame.reload_errors = ctx.reload_errors();
     platform.present(&frame);
 }
 
