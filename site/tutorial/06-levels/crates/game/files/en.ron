@@ -14,12 +14,16 @@
     "title.play": "{Confirm} play",
     "title.help": "{Cancel} leave",
 
+    // ANCHOR: board
     // The board.
     "board.help": "{Cursor} walk · {Undo} undo · {Cancel} levels",
     "board.help.won": "Solved! {Confirm} next · {Undo} undo · {Cancel} levels",
+    // ANCHOR_END: board
 
+    // ANCHOR: levels
     // The level menu.
     "levels.title": "Levels",
     "levels.level": "Level {n}",
     "levels.help": "{Cursor} move · {Confirm} choose · {Cancel} back",
+    // ANCHOR_END: levels
 }

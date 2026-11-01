@@ -1393,3 +1393,38 @@ had left it out. `shuyi-playdate` is the Playdate backend. Nick:
   publishing.
 - **Still no defensive names.** The planned crates that don't exist yet, and
   `shuyi-engine`, stay unheld.
+
+## 2026-11-01: the tutorial and the book teach from nothing
+
+Source: Nick, in a session of this repository, reading the tutorial's pages:
+
+> "our tutorial pages are ok but a bit content sparse, for instance on page
+> 01, we just list all files and don't really give more info. I want the
+> tutorial to be very in-depth. Assume the developer is brand new to
+> programming and game development. Introduce Shuyi primitives, Shuyi
+> concepts, Rust-isms that are necessary for Shuyi, and so on. Same notes for
+> the book, but we can file that as a later ticket. Tutorial will be read by
+> humans, AI can infer all Shuyi directives from its source and useful
+> indices."
+
+> "I'd also want some screenshots showing i.e. ok now what if we want this
+> color to be blue? or this size to be 2x? etc and show a before/after with
+> code changes rn we have no screenshots only playable demos. Btw, will we
+> implement a coderpad thing once we have hot reload? We should do that --
+> its probably already in another ticket but just make sure it wires to
+> tutorial as well."
+
+**Rules:**
+
+- **The tutorial's reader has never programmed or made a game.** It explains
+  the engine's ideas and as much Rust as a game needs, on the lines that use
+  them (2818). The book gets the same treatment later (2819).
+- **The tutorial is written for people.** Agents read the engine's source and
+  its indices, so `llms-full.txt` leaves the tutorial out (2818).
+- **The tutorial shows before and after.** Its pictures come from real edits to
+  a step, so they can't go stale (2818).
+- **The playground reaches the tutorial** (2820), and still edits data files:
+  this doesn't change the 2026-10-28 decision. Hot reload doesn't give a code
+  pad, as a browser has no compiler, so editing Rust in a page needs a build
+  server, which costs money. That is researched in 2916, parked until Nick
+  decides whether it is worth its cost.

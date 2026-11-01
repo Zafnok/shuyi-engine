@@ -54,6 +54,7 @@ fn pushing_the_box_onto_the_target_wins() {
 }
 // ANCHOR_END: test_push
 
+// ANCHOR: test_stuck
 #[test]
 fn a_box_against_a_wall_stays_and_so_does_the_player() {
     let mut h = on_board();
@@ -64,3 +65,4 @@ fn a_box_against_a_wall_stays_and_so_does_the_player() {
     h.keys("Up");
     assert_eq!(board(&h).puzzle.player(), Pos::new(3, 2));
 }
+// ANCHOR_END: test_stuck

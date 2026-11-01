@@ -42,6 +42,7 @@ pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
     Some(Box::new(LevelMenu::new(ctx)))
 }
 
+// ANCHOR: screens
 /// Every screen the game can show past the title, for the check that its
 /// controls fit each target.
 pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
@@ -52,6 +53,7 @@ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
         Box::new(KeyBindingsScreen::new(ctx, &KEY_ROWS)),
     ]
 }
+// ANCHOR_END: screens
 
 /// The game's tools: the engine's, for a game on the short path.
 #[cfg(feature = "tools")]

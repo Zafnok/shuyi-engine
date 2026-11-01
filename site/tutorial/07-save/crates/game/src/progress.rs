@@ -1,9 +1,11 @@
 //! The player's progress, kept in their storage: the furthest level
 //! reached, with the version of its format.
 
+// ANCHOR: uses
 use serde::{Deserialize, Serialize};
 use shuyi::core::{SaveFormat, SaveHeader};
 use shuyi::ui::storage::{Storage, StorageError};
+// ANCHOR_END: uses
 
 // ANCHOR: progress
 /// What is kept: the version of the format, and the furthest level.

@@ -370,3 +370,49 @@ h3 {
   padding: 0;
   list-style: none;
 }
+
+/* The tutorial's pictures of the game (the `try_it` shortcode). */
+
+.prose figure {
+  margin: 1rem 0;
+}
+
+.prose figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* A picture is drawn at twice the size it shows, so its text stays sharp. */
+.prose figure.try-one img {
+  max-width: min(100%, 24rem);
+}
+
+.prose figcaption {
+  margin-top: 0.25rem;
+  font-size: 0.9em;
+  color: var(--muted);
+}
+
+.try-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.try-pair figure {
+  margin: 0;
+}
+
+@media (max-width: 600px) {
+  .try-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.contents li.unnumbered {
+  list-style: none;
+}

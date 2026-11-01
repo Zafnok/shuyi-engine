@@ -30,6 +30,7 @@ pub enum Command {
     Step(Dir),
 }
 
+// ANCHOR: event
 /// What happened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Event {
@@ -43,7 +44,9 @@ pub enum Event {
         to: Pos,
     },
 }
+// ANCHOR_END: event
 
+// ANCHOR: refusal
 /// Why a command was refused.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Refusal {
@@ -54,6 +57,7 @@ pub enum Refusal {
     /// Every box is already on a target.
     Over,
 }
+// ANCHOR_END: refusal
 
 impl fmt::Display for Refusal {
     // check-text: not player text, what a test or a tool prints
@@ -67,9 +71,11 @@ impl fmt::Display for Refusal {
 }
 // ANCHOR_END: command
 
+// ANCHOR: won
 /// How a level ends: only one way, every box on a target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Won;
+// ANCHOR_END: won
 
 impl Puzzle {
     /// The puzzle `level` lays out: it needs one start, a box, and as many
@@ -137,6 +143,7 @@ impl TurnRules for Puzzle {
     type Error = Refusal;
     type Outcome = Won;
 
+    // ANCHOR: check
     fn check(&self, command: &Command) -> Result<(), Refusal> {
         if self.outcome().is_some() {
             return Err(Refusal::Over);
@@ -154,7 +161,9 @@ impl TurnRules for Puzzle {
         // ANCHOR_END: push_check
         Ok(())
     }
+    // ANCHOR_END: check
 
+    // ANCHOR: apply
     fn apply(&mut self, command: &Command) -> Result<Vec<Event>, Refusal> {
         // All or nothing: a refused command changes nothing.
         self.check(command)?;
@@ -172,6 +181,7 @@ impl TurnRules for Puzzle {
         events.push(Event::Walked(to));
         Ok(events)
     }
+    // ANCHOR_END: apply
 
     fn legal_commands(&self) -> Vec<Command> {
         Dir::ALL

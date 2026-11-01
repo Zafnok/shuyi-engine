@@ -462,6 +462,23 @@ jobs:
         working-directory: site/tutorial/${{ matrix.step }}
         run: cargo test --workspace
 
+  # The tutorial's pictures (ticket 2818): each edit a page tells the reader
+  # to make still applies, builds and draws what its checked-in picture shows.
+  tutorial-tries:
+    name: tutorial-tries
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: Set up Linux
+        run: bash scripts/setup-linux.sh
+      - run: cargo xtask tutorial-tries --check
+
   # The first gate on leaving quad-snd (ticket 2573, ADR-0066): what the
   # backend really emits, recorded from a PulseAudio null sink natively and
   # from Chromium on the real loader, held to expected signals, to itself and
@@ -1230,7 +1247,7 @@ jobs:
   ci-result:
     name: ci-result
     if: always()
-    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
+    needs: [changes, fmt, clippy, test, docs, wasm, export, render, web-render, sound-parity, sound-give-up, templates, tutorial, tutorial-tries, playtest, skills, compile-times, no-std, determinism, layers, modules, api, api-label, deny, zizmor, machete, coverage, tickets, site]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any needed job failed or was cancelled

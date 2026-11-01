@@ -20,6 +20,7 @@ fn tools() -> BasicTools<UiAction, game::stages::Own> {
     BasicTools::new(game::game())
 }
 
+// ANCHOR: test_title
 #[test]
 fn the_title_shows_the_games_name_and_cancel_leaves() {
     let mut h = game::game().harness();
@@ -31,6 +32,7 @@ fn the_title_shows_the_games_name_and_cancel_leaves() {
     h.keys("Backspace");
     assert!(h.quit_requested());
 }
+// ANCHOR_END: test_title
 
 #[test]
 fn the_title_quits_only_where_the_game_can() {

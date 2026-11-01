@@ -8,7 +8,7 @@ expression: "fixture.read(\"llms.txt\")"
 
 It has two sections of Learn and four pages.
 
-This copy documents Shuyi Engine 0.3.0 at commit [`0123456`](https://github.com/Zafnok/shuyi-engine/commit/0123456789abcdef0123456789abcdef01234567), of 2026-10-28. It follows the `main` branch and changes with each merge, so a game on a released version reads its version's copy, under *Released versions*. Each page listed under Learn's sections is also in one file, [llms-full.txt](https://docs.invalid/engine/llms-full.txt): 1626 bytes, about 406 tokens.
+This copy documents Shuyi Engine 0.3.0 at commit [`0123456`](https://github.com/Zafnok/shuyi-engine/commit/0123456789abcdef0123456789abcdef01234567), of 2026-10-28. It follows the `main` branch and changes with each merge, so a game on a released version reads its version's copy, under *Released versions*. Each page listed under Learn's sections, but the tutorial's, which teaches people from nothing, is also in one file, [llms-full.txt](https://docs.invalid/engine/llms-full.txt): 1626 bytes, about 406 tokens.
 
 ## Learn
 

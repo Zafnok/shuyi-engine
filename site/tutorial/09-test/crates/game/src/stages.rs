@@ -53,8 +53,10 @@ pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
     ]
 }
 
+// ANCHOR: tools
 /// The game's tools: the engine's, and its scene, bot and replay on top.
 #[cfg(feature = "tools")]
 pub fn tools() -> crate::tools::Tools {
     crate::tools::Tools::new(crate::game())
 }
+// ANCHOR_END: tools

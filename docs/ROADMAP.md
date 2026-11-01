@@ -106,7 +106,9 @@ in the MVP (3063, 2553, 3064, 3065, 2554 and 2555), and the live link
 | 2802 | The book: a quick start, a chapter per concept whose code CI compiles, and the API docs |
 | 2777 | New games build for the web as they are: a `web` part, a `build.rs` and the wasm target in the templates, so the quick start ends in the browser |
 | 2803 | The tutorial: a box-pushing puzzle built in ten steps, each tested and playable |
+| 2818 | The tutorial taught from nothing: for a reader new to programming, with before-and-after pictures of real edits |
 | 2817 | Finish the tutorial's browser-play acceptance: exercise all ten steps from their page links, with per-step evidence |
+| 2819 | The book taught from nothing: each chapter for the tutorial's reader, with its words explained and its pictures |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
@@ -602,6 +604,7 @@ site that keeps up with the tickets
 | 2813 | Pictures in the book: Hello, Grid's shots made by `frame-png`, checked in and tested equal |
 | 3069 | Files from the page: a web build lays the files its page holds over its own |
 | 2814 | The playground: Hello, Grid in a Learn page beside its data files, edited and run again (after 3069) |
+| 2820 | The tutorial's steps in the playground: each page edits its step's data files, and tries its before-and-afters there |
 | 2815 | The site keeps up with the tickets: feature cards' status from their tickets, and a `Book:` line for a public change |
 
 ### Public demo defenses
@@ -868,6 +871,7 @@ the A/B (2562) after 2572 and 2525 (*The end goal*, above).
 | 2326–2328 | 2D effects on the wgpu renderer: screen passes (CRT, bloom, palette remap, vignette, flash), a game's own WGSL passes and sprite materials, and 2D lights with normal maps | 3034 is unparked |
 | 2369–2370 | A light cycle for day and night, and ambiences for weather (particles across the view, an overlay and a looped sound, with a fade) | the game asks (2026-10-22); 2370 with particles (2103) |
 | 2910 | Research: voice chat and proximity voice, ending with a question to Nick | with networking |
+| 2916 | Research: editing a game's Rust code in a web page, what a build server would cost, and whether scripts do the job for free | Nick asks (2026-11-01: "will we implement a coderpad thing") |
 | 2911 | Research: ray- and path-traced light and sound, an opt-in module behind a `ray_tracing` capability, for PCs and current consoles | Nick asks (2026-10-22: "would be for diff comp targets like PC, new gen consoles") |
 | 2741–2755 | Dungeon crawlers, two modules (ADR-0033): `shuyi-crawl` (a labyrinth of cells and walls, moving as turn rules, the view as plain data, lines, pictures and 3D skins, the automap and travel, an explorer bot) and `shuyi-rpg` (a party of one or more, sheets as data, items, making characters and the roster, front-view battles, abilities, encounters and drops, shops and services), and a demo with an opening, a town and two floors | Nick asks, after the game launches (2026-10-22: "if we can have tickets to add support for this type of game too"); 2753 also waits for 3D |
 | 2756–2764 | Action RPGs (ADR-0034): `shuyi-action` (hits and hurts, skills with cooldowns, spawners and aggro, moving to a pointed place, the HUD), loot rolled from affix tables and an inventory grid in `shuyi-rpg`, waypoints, and a demo | the same, after the real-time work (2026-10-22: "I also want support for roguelikes, and Diablo-likes") |

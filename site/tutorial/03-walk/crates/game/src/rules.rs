@@ -1,6 +1,7 @@
 //! The puzzle's rules, pure and deterministic: a state that changes only
 //! through commands. They know nothing of screens, keys or the clock.
 
+// ANCHOR: uses
 use core::fmt;
 use std::collections::BTreeSet;
 
@@ -8,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use shuyi::core::{Dir, Grid, Pos, TerrainId, TurnRules};
 
 use crate::level::{Feature, Level, TARGET, WALL};
+// ANCHOR_END: uses
 
 // ANCHOR: state
 /// The puzzle: its tiles, where the player stands and where the boxes are.
@@ -110,10 +112,12 @@ impl Puzzle {
             .collect()
     }
 
+    // ANCHOR: is_wall
     /// Whether `pos` is a wall, or off the map.
     fn is_wall(&self, pos: Pos) -> bool {
         self.tiles.get(pos).is_none_or(|&tile| tile == WALL)
     }
+    // ANCHOR_END: is_wall
 }
 
 // ANCHOR: rules

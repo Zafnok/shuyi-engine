@@ -7,6 +7,7 @@
         (
             id: "Arrows",
             name: "layout.arrows",
+            // ANCHOR: keys
             keys: {
                 // Held, they repeat.
                 "Up": ["Up", "w"],
@@ -16,6 +17,7 @@
                 "Confirm": ["Enter", "Space", "z"],
                 "Cancel": ["Backspace", "x"],
             },
+            // ANCHOR_END: keys
         ),
     ],
     // The game starts in its one layout, so this table only fills the

@@ -1,6 +1,7 @@
 //! A level: a text file in the engine's `.map` format, read through the
 //! format registry, with the game's own terrains and features.
 
+// ANCHOR: uses
 use serde::{Deserialize, Serialize};
 use shuyi::assets::Formats;
 use shuyi::assets::grid_map::{self, GridMap, MapFeature, MapFormat, MapText};
@@ -8,6 +9,7 @@ use shuyi::core::TerrainId;
 use shuyi::prelude::*;
 
 use crate::rules::Puzzle;
+// ANCHOR_END: uses
 
 // ANCHOR: terrains
 /// Floor: the player and the boxes go over it.

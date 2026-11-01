@@ -151,6 +151,7 @@ pub struct Board {
 // ANCHOR_END: board
 
 impl Board {
+    // ANCHOR: new
     /// The board on level `level`.
     ///
     /// # Panics
@@ -167,6 +168,7 @@ impl Board {
             puzzle,
         }
     }
+    // ANCHOR_END: new
 
     /// What the map shows, in a view of `view` tiles round the player.
     pub fn scene(&self, view: (i32, i32)) -> MapScene<Piece> {

@@ -8,6 +8,7 @@ use shuyi::core::Pos;
 use shuyi::core::TurnRules;
 use shuyi::platform::harness::Harness;
 
+// ANCHOR: on_board
 /// The game on its first level.
 fn on_board() -> Harness<game::Data> {
     let mut h = game::game().harness();
@@ -15,6 +16,7 @@ fn on_board() -> Harness<game::Data> {
     assert_eq!(h.screens(), ["title", "levels", "board"]);
     h
 }
+// ANCHOR_END: on_board
 
 fn board(h: &Harness<game::Data>) -> &Board {
     h.screen::<Board>()

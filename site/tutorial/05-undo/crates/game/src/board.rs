@@ -228,10 +228,12 @@ impl Screen<Data> for Board {
         "board"
     }
 
+    // ANCHOR: actions
     /// Every action of the game.
     fn actions(&self) -> Option<Vec<Action>> {
         Some(Action::ALL.to_vec())
     }
+    // ANCHOR_END: actions
 
     // ANCHOR: update
     fn update(&mut self, _: &mut Ctx<Data>, input: &FrameInput<Action>) -> Transition<Data> {

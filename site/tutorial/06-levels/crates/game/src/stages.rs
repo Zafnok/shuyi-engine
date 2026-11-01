@@ -34,17 +34,21 @@ pub fn own(bundle: &Bundle) -> Result<Own, Vec<ContentError>> {
 }
 // ANCHOR_END: own
 
+// ANCHOR: first
 /// What the title starts: the level menu.
 pub fn first(ctx: &mut Ctx<Data>) -> Option<Box<dyn Screen<Data>>> {
     let _ = ctx;
     Some(Box::new(LevelMenu::new()))
 }
+// ANCHOR_END: first
 
+// ANCHOR: screens
 /// Every screen the game can show past the title, for the check that its
 /// controls fit each target.
 pub fn screens(ctx: &mut Ctx<Data>) -> Vec<Box<dyn Screen<Data>>> {
     vec![Box::new(LevelMenu::new()), Box::new(Board::new(ctx, 0))]
 }
+// ANCHOR_END: screens
 
 /// The game's tools: the engine's, for a game on the short path.
 #[cfg(feature = "tools")]

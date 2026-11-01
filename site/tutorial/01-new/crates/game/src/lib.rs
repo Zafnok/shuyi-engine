@@ -7,9 +7,11 @@
 //! its name, id and version, is `shuyi.ron`'s `app`, which
 //! `cargo shuyi app-info` writes into [`app_info`].
 
+// ANCHOR: mods
 pub mod app_info;
 pub mod stages;
 pub mod title;
+// ANCHOR_END: mods
 
 use std::sync::OnceLock;
 
@@ -17,15 +19,20 @@ use include_dir::{Dir, include_dir};
 use shuyi::core::Made;
 use shuyi::prelude::*;
 
+// ANCHOR: files
 /// The game's files, embedded.
 // check-text: not player text, a folder
 static FILES: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/files");
+// ANCHOR_END: files
 
+// ANCHOR: data
 /// The game's data and state, which its screens share: the engine's, read
 /// from `files/`, with the six moves of `files/keymap.ron` as its actions,
 /// and its stages' own part.
 pub type Data = BasicData<UiAction, stages::Own>;
+// ANCHOR_END: data
 
+// ANCHOR: game
 /// The game: who it is ([`app_info::APP`]: its name, and where the
 /// player's settings and keys are kept), its files and its stages' part of
 /// them, its first screen, every screen it can show, and the engine's
@@ -39,6 +46,7 @@ pub fn game() -> BasicGame<UiAction, stages::Own> {
     .screens(screens)
     .modules(shuyi::enabled_modules)
 }
+// ANCHOR_END: game
 
 /// What made this build, for its records and saves: the game's id and
 /// version, and the fingerprint of the files it ships, computed once. A

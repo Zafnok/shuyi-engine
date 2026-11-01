@@ -99,7 +99,7 @@ None.
 **Out (do not do):**
 - editing or compiling Rust in the browser, or any build server;
 - other examples or templates in the playground. One more is a later
-  ticket, with its own tab set;
+  ticket, with its own tab set: 2820 does it for the tutorial's steps;
 - sharing edits by link, saving them past the tab, or downloading them;
 - a code editor library, syntax colours or completion;
 - pictures or sounds edited in the page (3069 hands over text only);

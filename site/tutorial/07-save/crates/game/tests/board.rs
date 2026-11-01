@@ -129,6 +129,7 @@ fn a_level_not_reached_cant_be_chosen() {
     assert!(!menu.items()[1].enabled);
 }
 
+// ANCHOR: test_damaged
 #[test]
 fn a_kept_progress_of_another_version_or_damaged_counts_as_none() {
     let mut h = game::game().harness();
@@ -140,3 +141,4 @@ fn a_kept_progress_of_another_version_or_damaged_counts_as_none() {
     storage.write(game::progress::KEY, "(version").unwrap();
     assert_eq!(game::progress::furthest(storage), 0);
 }
+// ANCHOR_END: test_damaged

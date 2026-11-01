@@ -1,12 +1,14 @@
 //! The options: the engine's screen, with the rows the game wants, and the
 //! engine's Key bindings screen, where the player rebinds every action.
 
+// ANCHOR: uses
 use shuyi::prelude::*;
 use shuyi::ui::screens::key_bindings::{KeyBindingsScreen, KeyRow, RowGroup};
 use shuyi::ui::screens::options::{self, OptionRow, RowAction, RowValue};
 
 use crate::Data;
 use crate::action::Action;
+// ANCHOR_END: uses
 
 // ANCHOR: rows
 /// The Key bindings screen's rows: every action must keep a key.

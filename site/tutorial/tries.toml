@@ -1,0 +1,314 @@
+# The tutorial's pictures (ticket 2818), which `cargo xtask tutorial-tries`
+# renders into `site/static/tutorial-tries/<name>/`, and a page shows with
+# {{ try_it(name="<name>") }}. `alt` says what the first picture shows,
+# `after` the second. An edit's `find` must be in its file exactly once, and
+# its result must build: it is what the page tells the reader to change.
+
+# ---- Step 1: the title ----
+
+[title]
+step = "01-new"
+alt = "The title screen: Box Pusher in a double-lined box, a line under it saying made with Shuyi Engine, and the help line at the bottom."
+
+[title-name]
+step = "01-new"
+alt = "The title reads Box Pusher."
+after = "The title reads Crate Escape, and its box has grown to fit."
+[[title-name.edits]]
+file = "crates/game/files/en.ron"
+find = '"title.name": "Box Pusher",'
+replace = '"title.name": "Crate Escape",'
+
+[title-blue]
+step = "01-new"
+alt = "The name in the box is yellow."
+after = "The name in the box is blue."
+[[title-blue.edits]]
+file = "crates/game/files/palette.ron"
+find = '"highlight": "#ffd75a",'
+replace = '"highlight": "#5a9bff",'
+
+[title-higher]
+step = "01-new"
+alt = "The box sits a third of the way down the screen."
+after = "The box and the name have moved up, near the top of the screen. The line under them has stayed where it was."
+[[title-higher.edits]]
+file = "crates/game/src/title.rs"
+find = "Rect::new(x, 8, width, 3),"
+replace = "Rect::new(x, 2, width, 3),"
+[[title-higher.edits]]
+file = "crates/game/src/title.rs"
+find = "print_centred(buf, 9, &view.title,"
+replace = "print_centred(buf, 3, &view.title,"
+
+[title-single]
+step = "01-new"
+alt = "The box is drawn with a double line."
+after = "The box is drawn with a single line."
+[[title-single.edits]]
+file = "crates/game/src/title.rs"
+find = "BoxStyle::Double,"
+replace = "BoxStyle::Single,"
+
+# ---- Step 2: the board ----
+
+[board]
+step = "02-board"
+keys = "Enter"
+alt = "The board: First push at the top left, a walled room in the middle with the player as an at sign, a box in square brackets and a target in angle brackets, and the help line at the bottom."
+
+[box-blue]
+step = "02-board"
+keys = "Enter"
+alt = "The box is orange-brown."
+after = "The box is blue."
+[[box-blue.edits]]
+file = "crates/game/files/palette.ron"
+find = '"box": "#c89a5a",'
+replace = '"box": "#5a9bff",'
+
+[level-double]
+step = "02-board"
+keys = "Enter"
+alt = "The room is seven tiles wide and five tall."
+after = "The room is fourteen tiles wide and ten tall, twice the size each way, with the player and the box still near its top left."
+[[level-double.edits]]
+file = "crates/game/files/levels/1.map"
+find = """
+#######
+#.....#
+#....o#
+#.....#
+#######"""
+replace = """
+##############
+#............#
+#....o.......#
+#............#
+#............#
+#............#
+#............#
+#............#
+#............#
+##############"""
+
+[wall-look]
+step = "02-board"
+keys = "Enter"
+alt = "The walls are solid shaded blocks."
+after = "The walls are drawn with plus signs."
+[[wall-look.edits]]
+file = "crates/game/src/board.rs"
+find = "(['▓', '▓'], \"wall_fg\", \"wall_bg\"),"
+replace = "(['+', '+'], \"wall_fg\", \"wall_bg\"),"
+
+[player-look]
+step = "02-board"
+keys = "Enter"
+alt = "The player is an at sign."
+after = "The player is the letter P."
+[[player-look.edits]]
+file = "crates/game/src/board.rs"
+find = "(Who::Player, _) => (['@', ' '], \"player\"),"
+replace = "(Who::Player, _) => (['P', ' '], \"player\"),"
+
+# ---- Step 3: walking ----
+
+[walked]
+step = "03-walk"
+keys = "Enter Up"
+alt = "The player has walked one tile up from where the level started them."
+
+[up-is-down]
+step = "03-walk"
+keys = "Enter Up"
+alt = "After pressing Up, the player is one tile higher."
+after = "After pressing Up, the player is one tile lower."
+[[up-is-down.edits]]
+file = "crates/game/src/board.rs"
+find = "UiAction::Up => self.send(Command::Step(Dir::Up)),"
+replace = "UiAction::Up => self.send(Command::Step(Dir::Down)),"
+
+[no-walls]
+step = "03-walk"
+keys = "Enter Up Up"
+alt = "After pressing Up twice, the player has stopped under the wall."
+after = "After pressing Up twice, the player stands inside the top wall."
+[[no-walls.edits]]
+file = "crates/game/src/rules.rs"
+find = "if self.is_wall(to) {"
+replace = "if false && self.is_wall(to) {"
+
+# ---- Step 4: pushing ----
+
+[pushed]
+step = "04-push"
+keys = "Enter Right"
+alt = "The player has pushed the box one tile right, and it is one tile from the target."
+
+[solved]
+step = "04-push"
+keys = "Enter Right Right"
+alt = "The box is on the target and has turned green, and the help line says Solved."
+
+[won-words]
+step = "04-push"
+keys = "Enter Right Right"
+alt = "The help line starts with Solved."
+after = "The help line starts with You did it."
+[[won-words.edits]]
+file = "crates/game/files/en.ron"
+find = '"board.help.won": "Solved! {Cancel} back",'
+replace = '"board.help.won": "You did it! {Cancel} back",'
+
+[box-home-blue]
+step = "04-push"
+keys = "Enter Right Right"
+alt = "A box on its target is green."
+after = "A box on its target is blue."
+[[box-home-blue.edits]]
+file = "crates/game/files/palette.ron"
+find = '"box_home": "#a0e07a",'
+replace = '"box_home": "#5a9bff",'
+
+# ---- Step 5: undo ----
+
+[undone]
+step = "05-undo"
+keys = "Enter Right u"
+alt = "After a push and an undo, the box and the player are back where they started, and the help line names the undo key."
+
+[undo-two]
+step = "05-undo"
+keys = "Enter Up Left u"
+alt = "After two steps and one undo, the player has gone back one step."
+after = "After two steps and one undo, the player has gone back both, to where they started."
+[[undo-two.edits]]
+file = "crates/game/src/board.rs"
+find = "self.history.len().checked_sub(1)"
+replace = "self.history.len().checked_sub(2)"
+
+[undo-key]
+step = "05-undo"
+keys = "Enter"
+alt = "The help line says u undo."
+after = "The help line says r undo: the words follow the keymap."
+[[undo-key.edits]]
+file = "crates/game/files/keymap.ron"
+find = '"Undo": ["u"],'
+replace = '"Undo": ["r"],'
+
+# ---- Step 6: levels ----
+
+[level-menu]
+step = "06-levels"
+keys = "Enter"
+alt = "The level menu: Levels at the top, then Level 1 to Level 5, with the first in focus."
+
+[level-two]
+step = "06-levels"
+keys = "Enter Down Enter"
+alt = "Level 2, Two rows: a wider room with two boxes and two targets."
+
+[menu-words]
+step = "06-levels"
+keys = "Enter"
+alt = "The menu lists Level 1 to Level 5."
+after = "The menu lists Puzzle 1 to Puzzle 5."
+[[menu-words.edits]]
+file = "crates/game/files/en.ron"
+find = '"levels.level": "Level {n}",'
+replace = '"levels.level": "Puzzle {n}",'
+
+[levels-order]
+step = "06-levels"
+keys = "Enter Enter"
+alt = "The first item of the menu opens the level First push."
+after = "The first item of the menu opens the level The yard."
+[[levels-order.edits]]
+file = "crates/game/files/levels.ron"
+find = """
+    "levels/1.map",
+    "levels/2.map",
+    "levels/3.map",
+    "levels/4.map",
+    "levels/5.map","""
+replace = """
+    "levels/5.map",
+    "levels/2.map",
+    "levels/3.map",
+    "levels/4.map",
+    "levels/1.map","""
+
+# ---- Step 7: saving ----
+
+[locked]
+step = "07-save"
+keys = "Enter"
+alt = "The level menu with only Level 1 bright: the levels not reached yet are dim."
+
+[reached-two]
+step = "07-save"
+keys = "Enter Enter Right Right Enter"
+alt = "After winning level 1, the menu is on Level 2, and Level 2 is now bright."
+
+[all-open]
+step = "07-save"
+keys = "Enter"
+alt = "Only Level 1 is bright."
+after = "Every level is bright, and can be chosen."
+[[all-open.edits]]
+file = "crates/game/src/levels.rs"
+find = ".with_enabled(n < self.open)"
+replace = ".with_enabled(true)"
+
+# ---- Step 8: polish ----
+
+[moves]
+step = "08-polish"
+keys = "Enter Enter Right"
+alt = "The board with Moves: 1 at the top right."
+
+[options]
+step = "08-polish"
+keys = "Enter Up Enter"
+alt = "The options screen: Frame rate, Key bindings and Restore defaults."
+
+[key-bindings]
+step = "08-polish"
+keys = "Enter Up Enter Down Enter"
+alt = "The Key bindings screen: a row for each action, with its keys in columns."
+
+[moves-words]
+step = "08-polish"
+keys = "Enter Enter Right"
+alt = "The top right says Moves: 1."
+after = "The top right says Steps taken: 1, and stays against the edge."
+[[moves-words.edits]]
+file = "crates/game/files/en.ron"
+find = '"board.moves": "Moves: {n}",'
+replace = '"board.moves": "Steps taken: {n}",'
+
+[moves-left]
+step = "08-polish"
+keys = "Enter Enter Right"
+alt = "The moves counter is at the top right."
+after = "The moves counter has moved to the top, nearer the middle."
+[[moves-left.edits]]
+file = "crates/game/src/board.rs"
+find = "let right = i32::from(buf.width()) - width - 1;"
+replace = "let right = i32::from(buf.width()) / 2;"
+
+# ---- Step 10: the finished game ----
+
+[finished]
+step = "10-ship"
+keys = "Enter Enter Right Right Enter Enter Right Right Down Left Left Down Right Right Enter Enter"
+alt = "The finished game on level 3, Round the corner, with Moves: 0 at the top right and the whole help line at the bottom."
+
+# ---- Step 9: a frame ----
+
+[test-frame]
+step = "09-test"
+keys = "Enter Enter"
+alt = "The first level with no moves made, the frame the test keeps as text."

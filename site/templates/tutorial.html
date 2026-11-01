@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 
-{#- The tutorial's contents: its steps in order (`weight`). -#}
+{#- The tutorial's contents, in order (`weight`): a step is numbered by its
+    `extra.step`, and the pages around the steps have no number. -#}
 {% block content %}
 <article class="prose">
   <h1>{{ section.title }}</h1>
   {{ section.content | safe }}
   <ol class="contents">
     {%- for step in section.pages %}
-    <li><a href="{{ step.permalink | safe }}">{{ step.title }}</a>
+    <li{% if step.extra.step %} value="{{ step.extra.step }}"{% else %} class="unnumbered"{% endif %}><a href="{{ step.permalink | safe }}">{{ step.title }}</a>
       {%- if step.description %}: {{ step.description }}{% endif %}</li>
     {%- endfor %}
   </ol>

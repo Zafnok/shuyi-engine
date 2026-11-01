@@ -11,6 +11,7 @@ use shuyi::prelude::*;
 
 use crate::{Data, stages};
 
+// ANCHOR: view_struct
 /// What the title shows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TitleView {
@@ -24,11 +25,15 @@ pub struct TitleView {
     /// only thing it would name.
     pub help: String,
 }
+// ANCHOR_END: view_struct
 
+// ANCHOR: title_struct
 /// The title screen.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Title;
+// ANCHOR_END: title_struct
 
+// ANCHOR: view_fn
 impl Title {
     /// What it shows.
     pub fn view(ctx: &Ctx<Data>) -> TitleView {
@@ -44,13 +49,17 @@ impl Title {
         }
     }
 }
+// ANCHOR_END: view_fn
 
 impl Screen<Data> for Title {
+    // ANCHOR: name
     // check-text: not player text, the screen's id
     fn name(&self) -> &'static str {
         "title"
     }
+    // ANCHOR_END: name
 
+    // ANCHOR: actions
     /// Confirm, if there is a stage to start, and Cancel to leave.
     fn actions(&self) -> Option<Vec<UiAction>> {
         let mut actions = vec![UiAction::Cancel];
@@ -59,7 +68,9 @@ impl Screen<Data> for Title {
         }
         Some(actions)
     }
+    // ANCHOR_END: actions
 
+    // ANCHOR: update
     fn update(&mut self, ctx: &mut Ctx<Data>, input: &FrameInput<UiAction>) -> Transition<Data> {
         if ctx.platform.can_quit() && input.actions.contains(&UiAction::Cancel) {
             return Transition::Quit;
@@ -71,7 +82,9 @@ impl Screen<Data> for Title {
         }
         Transition::None
     }
+    // ANCHOR_END: update
 
+    // ANCHOR: draw
     fn draw(&self, ctx: &Ctx<Data>, buf: &mut GlyphBuffer) {
         let c = |e| ctx.palette.engine(e);
         let bg = c(EngineColor::Background);
@@ -93,4 +106,5 @@ impl Screen<Data> for Title {
         let last = i32::from(buf.height()) - 1;
         print_centred(buf, last, &view.help, c(EngineColor::TextDim), bg);
     }
+    // ANCHOR_END: draw
 }

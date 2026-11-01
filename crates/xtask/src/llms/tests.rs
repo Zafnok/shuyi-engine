@@ -843,3 +843,88 @@ fn git_dates_a_commit_of_this_repository() {
     assert_eq!(date.len(), 10, "{date}");
     assert!(git_date(&root)("not-a-commit").is_err());
 }
+
+// -- the tutorial's pictures, and the file it stays out of (ticket 2818) --
+
+/// A site with the list of tries, `tries`, and the pictures in `pictures`.
+fn tries_site(name: &str, tries: &str, pictures: &[&str]) -> PathBuf {
+    let root = std::env::temp_dir().join(format!("llms-tries-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&root);
+    put(&root, "tutorial/tries.toml", tries);
+    for picture in pictures {
+        put(&root, &format!("static/tutorial-tries/{picture}"), "png");
+    }
+    root
+}
+
+const BLUE: &str = "[blue]\nstep = \"01-new\"\nalt = \"Yellow\"\nafter = \"Blue\"\n\
+    [[blue.edits]]\nfile = \"files/palette.ron\"\nfind = \"one\\ntwo\"\nreplace = \"three\"\n";
+
+#[test]
+fn a_try_is_its_edits_as_a_diff_and_its_pictures_as_images() {
+    let root = tries_site("both", BLUE, &["blue/before.png", "blue/after.png"]);
+    let text = try_it("name=\"blue\"", &root.join("snippets")).unwrap();
+    assert_eq!(
+        text,
+        "In `files/palette.ron`:\n\n```diff\n- one\n- two\n+ three\n```\n\n\
+         ![Yellow](/tutorial-tries/blue/before.png)\n\n![Blue](/tutorial-tries/blue/after.png)"
+    );
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_try_with_no_edits_is_one_picture() {
+    let list = "[title]\nstep = \"01-new\"\nalt = \"The title\"\n";
+    let root = tries_site("one", list, &["title/before.png"]);
+    let text = try_it("name=\"title\"", &root.join("snippets")).unwrap();
+    assert_eq!(text, "![The title](/tutorial-tries/title/before.png)");
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn a_try_s_missing_picture_unknown_name_or_argument_fails() {
+    let root = tries_site("missing", BLUE, &["blue/before.png"]);
+    let snippets = root.join("snippets");
+    let picture = try_it("name=\"blue\"", &snippets).unwrap_err();
+    assert!(picture.contains("blue/after.png"), "{picture}");
+    assert!(
+        picture.contains("cargo xtask tutorial-tries blue"),
+        "{picture}"
+    );
+    let name = try_it("name=\"red\"", &snippets).unwrap_err();
+    assert!(name.contains("no try `red`"), "{name}");
+    let argument = try_it("color=\"red\"", &snippets).unwrap_err();
+    assert!(argument.contains("no argument `color`"), "{argument}");
+    fs::remove_dir_all(&root).unwrap();
+}
+
+#[test]
+fn the_tutorial_has_its_twin_and_its_line_but_stays_out_of_the_full_file() {
+    let fixture = Fixture::new("for-people");
+    put(
+        &fixture.root,
+        "site/content/learn/tutorial/_index.md",
+        "+++\ntitle = \"The tutorial\"\n+++\n\nFrom nothing.\n",
+    );
+    put(
+        &fixture.root,
+        "site/content/learn/tutorial/01-new.md",
+        "+++\ntitle = \"A new game\"\nweight = 1\n+++\n\nFirst steps.\n",
+    );
+    put(&fixture.public, "learn/tutorial/index.html", "");
+    put(&fixture.public, "learn/tutorial/01-new/index.html", "");
+    fixture.passes();
+    assert!(
+        fixture
+            .read("learn/tutorial/01-new/index.md")
+            .contains("First steps.")
+    );
+    assert!(
+        fixture
+            .read("llms.txt")
+            .contains("learn/tutorial/01-new/index.md")
+    );
+    let full = fixture.read("llms-full.txt");
+    assert!(!full.contains("First steps."), "{full}");
+    assert!(!full.contains("From nothing."), "{full}");
+}
