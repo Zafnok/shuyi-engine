@@ -215,13 +215,19 @@
             if (!Base || !window.isSecureContext) {
                 return 0;
             }
-            var opened = new Base({ sampleRate: wanted, latencyHint: "interactive" });
-            if (!opened.audioWorklet) {
+            var opened;
+            try {
+                // Every browser with a worklet honours the rate, or refuses it here,
+                // so the mix can be made for it before the context exists.
+                opened = new Base({ sampleRate: wanted, latencyHint: "interactive" });
+            } catch (error) {
+                return 0;
+            }
+            if (!opened.audioWorklet || opened.sampleRate !== wanted) {
                 opened.close();
                 return 0;
             }
             context = opened;
-            rate = opened.sampleRate;
             start_idle();
             var source = "(" + worklet_scope.toString() + ")(true);";
             var url = URL.createObjectURL(new Blob([source], { type: "application/javascript" }));

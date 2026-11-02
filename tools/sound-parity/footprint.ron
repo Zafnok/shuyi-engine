@@ -311,6 +311,16 @@ pub(crate) mod device {
             with: "",
         ),
         Replace(
+            file: "docs/platform-backends.md",
+            find: "`load_sound_file`, for a device that\n  loads a sound from its own path, `hold_output`, for a device whose whole output\n  can stop while the system suspends the game, and `warn`, which says the player's\n  problems in the backend's log.\n",
+            with: "`load_sound_file`, for a device that\n  loads a sound from its own path, and `warn`, which says the player's problems\n  in the backend's log.\n",
+        ),
+        Replace(
+            file: "docs/platform-backends.md",
+            find: "so `shuyi-app` mutes on it (its\n`in-house-sound` backend pauses), and the headless",
+            with: "so `shuyi-app` mutes,\nand the headless",
+        ),
+        Replace(
             file: "crates/platform/src/audio/player.rs",
             find: "        self.backend.hold_output(true);\n",
             with: "",

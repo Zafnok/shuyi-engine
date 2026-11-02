@@ -237,12 +237,11 @@ None.
     its GBA backend can pan too: each mixer voice's pan comes from
     `pan_gains`, tested with 3027's host mixer. If not, 3027 fills in
     the pan when it lands, as its own clause says;
-  - **either order with 3031 (parked, in-house sound):** if 3031 is
-    done, its `in-house-sound` backend can pan too: it starts each
+  - **from 3031 (done):** its `in-house-sound` backend can pan too: it starts each
     voice with 3030's `Params::balance` set from `pan_gains` divided by
-    16 (1/65536 to 1/4096), with a test on 3031's null output that a
-    full-right pan sounds only on the right. If not, 3031 does it, as
-    its own clause says;
+    16 (1/65536 to 1/4096), with a test on the side its tests call
+    (`crates/app/src/audio/in_house/tests.rs`) that a full-right pan sounds only
+    on the right;
   - **either order with 3017 (parked, target capabilities):** if 3017
     is done, add `Pan` to the audio `features` of each profile whose
     backend now pans (`targets/playdate.ron`, and

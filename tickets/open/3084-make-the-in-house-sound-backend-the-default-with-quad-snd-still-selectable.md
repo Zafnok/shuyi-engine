@@ -37,6 +37,12 @@ None.
 - CI keeps recording quad-snd with every cell mandatory, beside the new default.
 - Take the default-features half of 2573's fence out of
   `crates/xtask/src/sound_parity/tests.rs`, and keep the half that holds quad-snd.
+- **From 3031 (done):** a build with `in-house-sound` on needs the root
+  `Cargo.toml`'s `[patch.crates-io]` of `alsa-sys` ([ADR-0074](../../docs/adr/0074-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)),
+  which Cargo reads only from the root of a build, so a default on would ask it of
+  every game while quad-snd is in the graph. Settle that first: make quad-snd
+  optional, the feature's other side, so a default build has one `links = "alsa"`, or
+  put the patch in `shuyi new`'s template and the game's `Cargo.toml` in this PR.
 - Hand the game's pin move to the
   game (`engine-change`), naming what to listen for.
 

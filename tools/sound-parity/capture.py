@@ -379,13 +379,19 @@ class Browser:
     playwright: object = None
     version: str = field(default="")
 
-    def open(self) -> None:
+    def open(self, beside: Browser | None = None) -> None:
+        """Serves its page, in a browser of its own, or in `beside`'s: Playwright's
+        API starts once in a thread."""
         sys.path.insert(0, str(TOOL.parent / "web-check"))
         from check import serve
         from playwright.sync_api import sync_playwright
 
-        self.playwright = sync_playwright().start()
         self.server = serve(self.stage)
+        if beside is not None:
+            self.browser = beside.browser
+            self.version = beside.version
+            return
+        self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(
             channel="chromium",
             args=CHROMIUM_ARGS,
@@ -396,9 +402,10 @@ class Browser:
         self.version = self.browser.version
 
     def close(self) -> None:
-        self.browser.close()
         self.server.shutdown()
-        self.playwright.stop()
+        if self.playwright is not None:
+            self.browser.close()
+            self.playwright.stop()
 
     def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
         (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
@@ -663,7 +670,7 @@ def browser(args: argparse.Namespace) -> int:
                 write_mixer(old, base)
             if args.new_page and args.only in (None, "browser-in-house"):
                 new = Browser(staged(args.new_page, "page-new"), target)
-                new.open()
+                new.open(old)
                 new_wasm = next(new.stage.glob("*.wasm"))
                 base = recorded("browser-in-house")
                 for number in range(0 if args.perf_only else RUNS):
@@ -673,9 +680,9 @@ def browser(args: argparse.Namespace) -> int:
                 write_perf(new, base)
                 write_old_new(old, new, base)
         finally:
-            old.close()
             if new is not None:
                 new.close()
+            old.close()
     return 0
 
 

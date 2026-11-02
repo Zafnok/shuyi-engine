@@ -301,8 +301,8 @@ The sound device:
 can't mutes it (volume 0) and lets it run on silently. A held sound
 keeps the volume it is given and sounds at it when it is released, and
 `music_playing` says where the track really is: a paused track's clock
-holds, a muted one's runs. quad-snd can't pause, so `shuyi-app` mutes,
-and the headless `Speaker` does as it does.
+holds, a muted one's runs. quad-snd can't pause, so `shuyi-app` mutes on it (its
+`in-house-sound` backend pauses), and the headless `Speaker` does as it does.
 
 **Don't write the rules of playing yourself.** Variants, a cue's volume,
 handled sounds, fades and the music clock are
@@ -315,8 +315,9 @@ handled sounds, fades and the music clock are
   `pause` and `resume` (else the player mutes), `set_rate` (else the sound plays
   as recorded). The first `Unsupported` of each is one warning;
 - **provided, with a default that works:** `load_sound_file`, for a device that
-  loads a sound from its own path, and `warn`, which says the player's problems
-  in the backend's log.
+  loads a sound from its own path, `hold_output`, for a device whose whole output
+  can stop while the system suspends the game, and `warn`, which says the player's
+  problems in the backend's log.
 
 A feature some backends lack is always added as a provided method, so that no
 backend breaks. `shuyi_platform::Silent` plays nothing, for a backend with no

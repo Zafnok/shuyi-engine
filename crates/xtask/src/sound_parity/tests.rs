@@ -692,7 +692,8 @@ fn old_new_rows(name: &str, old: f64, new: f64, gaps: f64) -> PathBuf {
     for pair in 0..9 {
         for (side, cpu, underruns) in [("old", old, 0.0), ("new", new, gaps)] {
             let row = json!({"side": side, "pair": pair, "metrics": {"cpu_ms": cpu, "underruns": underruns}});
-            text.push_str(&format!("{row}\n"));
+            text.push_str(&row.to_string());
+            text.push('\n');
         }
     }
     fs::write(dir.join("old-new.jsonl"), text).unwrap_or_else(|e| panic!("{e}"));
