@@ -169,7 +169,7 @@ sounds wrong, cuts out, or starts late.
       the completion notes.
 - [x] Nick signs off: the sounds and the music on Windows and in the browser.
       Headphones are 3087's.
-- [x] ~~Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable.~~ (not done yet: calibrating)
+- [x] Native/browser emitted-PCM and calibrated performance checks pass in 2573's harness; quad-snd remains selectable. `windows-in-house` and `browser-in-house` are `NewBackend`s of the matrix, every cell mandatory, with `old_new` limits calibrated from the runs `budget.ron` names.
 - [x] `in-house-sound` is the one switch, off by default; no game code or file names a backend, and CI still records quad-snd with every cell mandatory.
 - [x] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
 - [x] All gates in the `run-gates` skill pass.
@@ -237,7 +237,20 @@ tool calls, is undocumented.
 
 **Latency**, from a play to the callback that hands it to the device's buffer, on
 Nick's machine (Realtek speakers, the GNU build, at no volume): median 2.85 ms, 95th
-percentile 9.82 ms, against an aim of 30 ms. The device's own buffer comes after.
+percentile 9.82 ms, against an aim of 30 ms. The device's own buffer comes after. As
+CI's recordings hear it, from the play to its first sample at the endpoint: 19 ms on
+Windows against quad-snd's 85, and 54 ms in Chromium against its 30. That one was 78 ms
+first: the worklet's lead is now four blocks of 256 frames, growing only when it runs
+dry.
+
+**What the matrix says of the new backend against quad-snd**, on the same runners: on
+Windows a little over three times the CPU cycles, under 1 % of a core, and 0.71 of the
+memory; in the browser 1.07 to 1.09 of the CPU and the same memory. A device taken away
+and given back while it plays is heard again 15 to 31 ms after the endpoint is back.
+One recording in thirty on Windows had a 68 ms dropout, which looked like the stream
+being rebuilt on a look at the default device that came back empty: a move now takes
+two looks that agree, and the probe logs each run's rebuilds and silent callbacks
+(`Output::stats`) so that a recording says what it went through.
 
 Breaking: shuyi-sound: `wav::WavSource` and `vorbis::VorbisSource`: their lifetime is now a type, what they read: nothing to change where a game calls `new` with a slice, and `WavSource<'a>` written out becomes `WavSource<&'a [u8]>`
 

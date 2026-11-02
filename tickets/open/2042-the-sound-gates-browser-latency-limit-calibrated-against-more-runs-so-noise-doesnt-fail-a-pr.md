@@ -48,6 +48,10 @@ measurement in this ticket covers `linux-native` too.
 
 ADR-0066 and ticket 2573 hold what the gate is for.
 
+**From 3031 (done):** `old_new`'s `browser-in-house` `latency_ms` limit in `budget.ron`
+comes from one run of the worklet's lead as it is now (CI run 41419687839, ratio 1.80,
+spread 0.41). Calibrate it with the same runs as `browser-chromium`'s.
+
 ## Nick input
 
 None.

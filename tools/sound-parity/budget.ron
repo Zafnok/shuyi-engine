@@ -4,7 +4,7 @@
 // fresh runs named in the ticket's notes. Change one only with new runs that justify
 // it, written here, and raise `version`: never to pass.
 (
-    version: 4,
+    version: 5,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -63,6 +63,8 @@
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
             "latency_ms": (max_ratio: 1.08, max_spread: 0.15, slows: false),
         },
+        // A new backend against itself, as its platform's old one is: the same limits
+        // as that one's, which three runs held (ticket 3031).
         "windows-in-house": {
             "file_io_ms": (max_ratio: 1.25, max_spread: 0.50, slows: true),
             "decode_wav_ms": (max_ratio: 1.05, max_spread: 0.10, slows: true),
@@ -119,17 +121,26 @@
     // A stream holds a worker's ring of 4096 frames and a voice's 128, however long
     // it is: bounded by construction, measured the same over 1 and 10 seconds.
     mixer_memory: (max_held_frames: 4224),
-    // A new backend against the old one on its platform (ticket 3031).
+    // A new backend against the old one on its platform (ticket 3031): the same
+    // workload in turn, so a ratio is new over old. They are different work, so 1 is
+    // no target: each limit is a guard a quarter past the worst measured, and each
+    // spread twice the worst. On Windows, CI runs 41407007407, 41413879571 and
+    // 41419687839: CPU 2.52, 3.16 and 3.16 times quad-snd's cycles (spread at most
+    // 0.30), a little under 1 % of a core; latency 0.23, 0.22 and 0.23 of its own (19
+    // ms against 85; the limit holds it near the ticket's aim of 30); memory 0.71. In
+    // the browser, run 41419687839, one run of the worklet's lead as it is now so far
+    // (ticket 2042 measures more): latency 1.80 of quad-snd's (54 ms against 30), CPU
+    // 1.07 and 1.09, memory 1.00.
     old_new: {
         "windows-in-house": {
-            "cpu_ms": (max_ratio: 8.0, max_spread: 3.0, slows: false),
-            "peak_kib": (max_ratio: 1.5, max_spread: 0.3, slows: false),
-            "latency_ms": (max_ratio: 1.2, max_spread: 0.5, slows: false),
+            "cpu_ms": (max_ratio: 4.0, max_spread: 0.60, slows: false),
+            "peak_kib": (max_ratio: 0.85, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 0.35, max_spread: 0.10, slows: false),
         },
         "browser-in-house": {
-            "cpu_ms": (max_ratio: 2.0, max_spread: 0.5, slows: false),
-            "peak_kib": (max_ratio: 1.5, max_spread: 0.3, slows: false),
-            "latency_ms": (max_ratio: 2.0, max_spread: 1.0, slows: false),
+            "cpu_ms": (max_ratio: 1.35, max_spread: 0.10, slows: false),
+            "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
+            "latency_ms": (max_ratio: 2.25, max_spread: 0.82, slows: false),
         },
     },
     // How long a new backend may take to be heard again, from when an endpoint is back
