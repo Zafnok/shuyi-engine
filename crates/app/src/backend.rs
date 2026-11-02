@@ -26,7 +26,7 @@ use shuyi_ui::frame_cap::FrameCap;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryReading, MemoryScopes, PerfClock, TagClass};
 use shuyi_ui::{Game, GameData, PlatformFacts, RawInputEvent};
 
-use crate::audio::{self, device};
+use crate::audio;
 use crate::pacing::Held;
 use crate::pads::PadInput;
 use crate::pictures::{self, PictureErrors, decode_each, remakes};
@@ -37,10 +37,10 @@ use crate::{AppConfig, keys, storage};
 #[cfg(not(target_arch = "wasm32"))]
 use shuyi_platform::Millis;
 
-/// The sound device: the shared player on quad-snd. Before the game has
-/// loaded there is nothing to play. It mutes what it holds: quad-snd can't
-/// pause (ADR-0056).
-type Sound = PlayerDevice<device::Macroquad>;
+/// The sound device: the shared player on this build's backend. Before the game
+/// has loaded there is nothing to play. On quad-snd it mutes what it holds, as
+/// quad-snd can't pause (ADR-0056).
+type Sound = PlayerDevice<audio::Chosen>;
 
 /// The macroquad backend.
 pub(crate) struct Macroquad {
@@ -100,7 +100,7 @@ impl Macroquad {
             card_picture: None,
             fullscreen: false,
             pads: None,
-            sound: Sound::new(device::Macroquad::default()),
+            sound: Sound::new(audio::Chosen::default()),
             text_input: config.text_input.take(),
             started: false,
             facts,

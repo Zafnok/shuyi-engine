@@ -455,7 +455,7 @@ fn the_web_package_is_a_folder_and_its_zip_with_index_html_at_the_root() {
 }
 
 /// What a web build of [`web_build`]'s game makes.
-const WEB_FILES: [&str; 8] = [
+const WEB_FILES: [&str; 9] = [
     "NOTICES.txt",
     "gamepad.js",
     "hello-grid.wasm",
@@ -464,6 +464,7 @@ const WEB_FILES: [&str; 8] = [
     "music/a.ogg",
     "quad-storage.js",
     "sapp_jsutils.js",
+    "sound.js",
 ];
 
 /// A context on a game in the export's folder with a stand-in binary and

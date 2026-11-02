@@ -35,12 +35,13 @@ use crate::project::Web;
 
 /// The shell's files: name and contents. `index.html` has `%TITLE%` and
 /// `%WASM%` in it, for the game's title and binary.
-const SHELL: [(&str, &str); 5] = [
+const SHELL: [(&str, &str); 6] = [
     ("index.html", include_str!("../web/index.html")),
     ("mq_js_bundle.js", include_str!("../web/mq_js_bundle.js")),
     ("sapp_jsutils.js", include_str!("../web/sapp_jsutils.js")),
     ("quad-storage.js", include_str!("../web/quad-storage.js")),
     ("gamepad.js", include_str!("../web/gamepad.js")),
+    ("sound.js", include_str!("../web/sound.js")),
 ];
 
 /// Where a file of [`SHELL`] comes from, for `NOTICES.txt`.
@@ -53,12 +54,13 @@ enum Origin {
 }
 
 /// Each file of [`SHELL`], by name, and where it comes from.
-const SHELL_NOTICES: [(&str, Origin); 5] = [
+const SHELL_NOTICES: [(&str, Origin); 6] = [
     ("index.html", Origin::Engine),
     ("mq_js_bundle.js", Origin::Vendored),
     ("sapp_jsutils.js", Origin::Vendored),
     ("quad-storage.js", Origin::Vendored),
     ("gamepad.js", Origin::Engine),
+    ("sound.js", Origin::Engine),
 ];
 
 /// The row of [`notices::FILES`] of the shell's file `name`.
@@ -601,6 +603,8 @@ mod tests {
 
     /// The Rust side of `web/gamepad.js`: the engine's web pads.
     const PADS_WEB: &str = include_str!("../../app/src/pads/web.rs");
+    /// The Rust side of `web/sound.js`: the engine's web sound output.
+    const SOUND_WEB: &str = include_str!("../../sound-out/src/sys.rs");
 
     struct FakeWasmOpt<F>(F);
 
@@ -823,6 +827,7 @@ mod tests {
                 "/*! quad-storage.js: quad-storage 0.1.3, MIT. See NOTICES.txt. */\n",
             ),
             ("gamepad.js", ""),
+            ("sound.js", ""),
         ] {
             assert_eq!(
                 fs::read_to_string(dist.join(name)).unwrap(),
@@ -1339,6 +1344,55 @@ version = "1.2.3"
         assert!(js.contains("version: VERSION"));
         assert!(js.contains(r#"name: "shuyi_gamepad""#));
         assert!(PADS_WEB.contains("fn shuyi_gamepad_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn sound_js_provides_exactly_the_functions_the_output_imports() {
+        // A function missing on either side only shows up in the browser, as a
+        // warning and a game with no sound.
+        let js = shell("sound.js");
+        let provided: Vec<String> = identifiers_starting(js, "importObject.env.shuyi_sound_")
+            .iter()
+            .map(|name| name.replace("importObject.env.", ""))
+            .collect();
+        let imported: Vec<String> = identifiers_starting(SOUND_WEB, "safe fn shuyi_sound_")
+            .iter()
+            .map(|name| name.replace("safe fn ", ""))
+            .collect();
+        assert_eq!(
+            imported.len(),
+            4,
+            "found {imported:?} in sound-out/src/sys.rs"
+        );
+        assert_eq!(provided, imported);
+        // And what it calls of Rust's is there.
+        assert!(js.contains("wasm_exports.shuyi_sound_fill("));
+        assert!(SOUND_WEB.contains("pub extern \"C\" fn shuyi_sound_fill(frames: u32)"));
+    }
+
+    #[test]
+    fn sound_js_version_matches_the_output() {
+        let js = shell("sound.js");
+        assert_eq!(
+            number_after(js, "var VERSION = "),
+            number_after(SOUND_WEB, "const PLUGIN_VERSION: u32 = ")
+        );
+        assert!(js.contains("version: VERSION"));
+        assert!(js.contains(r#"name: "shuyi_sound""#));
+        assert!(SOUND_WEB.contains("fn shuyi_sound_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn index_html_loads_sound_js_between_the_bundle_and_the_game() {
+        let html = shell("index.html");
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("index.html has `{needle}`"))
+        };
+        let bundle = at(r#"<script src="mq_js_bundle.js">"#);
+        let sound = at(r#"<script src="sound.js">"#);
+        let load = at(r#"load("%WASM%")"#);
+        assert!(bundle < sound && sound < load);
     }
 
     #[test]

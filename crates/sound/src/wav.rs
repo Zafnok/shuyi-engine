@@ -2,7 +2,7 @@
 //! WAV files, over the `hound` crate: integer samples of 8, 16, 24 or 32 bits
 //! and float samples of 32. Playdate's IMA ADPCM WAV isn't one of them.
 
-use std::io::Cursor;
+use std::io::{Cursor, Read};
 
 use hound::{SampleFormat, WavReader};
 
@@ -23,9 +23,10 @@ enum Kind {
     Float32,
 }
 
-/// A WAV file's samples, read from its bytes as they are asked for.
-pub struct WavSource<'a> {
-    reader: WavReader<Cursor<&'a [u8]>>,
+/// A WAV file's samples, read from its bytes as they are asked for. It borrows them
+/// or owns them, as `B` does: a worker that outlives its caller holds an `Arc<[u8]>`.
+pub struct WavSource<B> {
+    reader: WavReader<Cursor<B>>,
     format: PcmFormat,
     kind: Kind,
     frames: u64,
@@ -40,18 +41,21 @@ fn malformed(error: &hound::Error) -> Error {
     }
 }
 
-impl<'a> WavSource<'a> {
+impl<B: AsRef<[u8]>> WavSource<B> {
     /// A source of `bytes`, whose header says what it holds. What that is must
     /// be within `limits`, and the bytes must be there for it.
-    pub fn new(bytes: &'a [u8], limits: &Limits) -> Result<Self, Error> {
+    pub fn new(bytes: B, limits: &Limits) -> Result<Self, Error> {
         guarded(FORMAT, || Self::open(bytes, limits))
     }
 
-    fn open(bytes: &'a [u8], limits: &Limits) -> Result<Self, Error> {
+    fn open(bytes: B, limits: &Limits) -> Result<Self, Error> {
         // The reader stops at the first sample, and says where only when given up.
-        let open = || WavReader::new(Cursor::new(bytes)).map_err(|e| malformed(&e));
-        let start = open()?.into_inner().position();
-        let reader = open()?;
+        let (start, available) = {
+            let borrowed = Cursor::new(bytes.as_ref());
+            let header = WavReader::new(borrowed).map_err(|e| malformed(&e))?;
+            (header.into_inner().position(), bytes.as_ref().len() as u64)
+        };
+        let reader = WavReader::new(Cursor::new(bytes)).map_err(|e| malformed(&e))?;
         let spec = reader.spec();
         let format = PcmFormat::new(spec.sample_rate, u32::from(spec.channels), limits)?;
         let kind = match (spec.sample_format, spec.bits_per_sample) {
@@ -91,7 +95,7 @@ impl<'a> WavSource<'a> {
         // What the header promises, against what is there: a corrupt length
         // shows now, and not as the file runs out while it plays.
         let needed = samples * u64::from(spec.bits_per_sample / 8);
-        if needed > (bytes.len() as u64).saturating_sub(start) {
+        if needed > available.saturating_sub(start) {
             return Err(Error::Malformed {
                 format: FORMAT,
                 reason: format!("it says it holds {needed} bytes of samples, and has less"),
@@ -108,8 +112,8 @@ impl<'a> WavSource<'a> {
 }
 
 /// Fills `out` with `reader`'s next samples of `S`, each through `convert`.
-fn fill<S: hound::Sample>(
-    reader: &mut WavReader<Cursor<&[u8]>>,
+fn fill<S: hound::Sample, R: Read>(
+    reader: &mut WavReader<R>,
     out: &mut [i16],
     convert: impl Fn(S) -> i16,
 ) -> Result<(), Error> {
@@ -139,7 +143,7 @@ fn from_float(sample: f32) -> i16 {
     narrow
 }
 
-impl Source for WavSource<'_> {
+impl<B: AsRef<[u8]>> Source for WavSource<B> {
     fn format(&self) -> PcmFormat {
         self.format
     }

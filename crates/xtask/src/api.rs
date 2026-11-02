@@ -21,7 +21,7 @@
 //!   surface, `stack_high_water` and `main!` among it. Its doc-hidden
 //!   `device` module is not checked, and of `main!` only that it exists: a
 //!   change to its arms shows in neither tool.
-//! - The other eight with each tool's own default: the listing has their
+//! - The other nine with each tool's own default: the listing has their
 //!   default features, and the semver check the features its heuristic turns
 //!   on, so a public item behind another feature is judged but not listed.
 //!
@@ -99,6 +99,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     defaults("shuyi-cli"),
     defaults("shuyi"),
     defaults("shuyi-sound"),
+    defaults("shuyi-sound-out"),
     // The crate has no feature; none may join the check unchosen.
     ApiCrate {
         name: "shuyi-playdate",

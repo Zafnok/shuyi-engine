@@ -1,5 +1,6 @@
 //! A source of samples in bounded chunks.
 
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 use crate::error::Error;
@@ -34,6 +35,24 @@ pub trait Source {
     fn rewind_to(&mut self, frame: u64) -> Result<(), Error> {
         let _ = frame;
         Err(Error::NoRewind)
+    }
+}
+
+impl<S: Source + ?Sized> Source for Box<S> {
+    fn format(&self) -> PcmFormat {
+        (**self).format()
+    }
+
+    fn total_frames(&self) -> Option<u64> {
+        (**self).total_frames()
+    }
+
+    fn read(&mut self, out: &mut [i16]) -> Result<usize, Error> {
+        (**self).read(out)
+    }
+
+    fn rewind_to(&mut self, frame: u64) -> Result<(), Error> {
+        (**self).rewind_to(frame)
     }
 }
 

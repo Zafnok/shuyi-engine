@@ -1,0 +1,14 @@
+[package]
+# See `src/lib.rs`: takes the name of the crate that can't be in one build with
+# quad-snd, at the version `alsa` asks for, without its `links`. Empty, and never built.
+name = "alsa-sys"
+version = "0.4.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "Holds alsa-sys's place while quad-snd and CPAL share a build (ticket 3031, ADR-0074). Nothing is ever compiled against it"
+
+[lib]
+path = "src/lib.rs"
+
+[workspace]

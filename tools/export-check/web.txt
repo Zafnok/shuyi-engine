@@ -7,3 +7,4 @@ index.html
 mq_js_bundle.js
 quad-storage.js
 sapp_jsutils.js
+sound.js

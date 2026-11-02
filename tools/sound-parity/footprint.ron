@@ -10,7 +10,11 @@
         ".agents/skills/give-up-sound-replacement",
         ".claude/skills/give-up-sound-replacement",
         "crates/app/examples/sound_probe.rs",
+        "crates/app/src/audio/in_house",
+        "crates/app/src/audio/in_house.rs",
+        "crates/cli/web/sound.js",
         "crates/sound",
+        "crates/sound-out",
         "crates/xtask/src/sound_parity",
         "crates/xtask/src/sound_parity.rs",
         "tools/sound-parity",
@@ -33,7 +37,11 @@
             find: "
 [[crate]]
 name = \"shuyi_sound\"
-text = \"decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which no backend plays through yet\"
+text = \"decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which only the backend of `shuyi-app`'s `in-house-sound` feature plays through yet\"
+
+[[crate]]
+name = \"shuyi_sound_out\"
+text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the browser, and an output that discards it\"
 ",
             with: "",
         ),
@@ -44,7 +52,7 @@ text = \"decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, wh
         ),
         Replace(
             file: "Cargo.lock",
-            find: " \"shuyi-platform\",\n \"shuyi-sound\",\n",
+            find: " \"shuyi-platform\",\n \"shuyi-sound\",\n \"shuyi-sound-out\",\n",
             with: " \"shuyi-platform\",\n",
         ),
         Replace(
@@ -105,24 +113,24 @@ text = \"decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, wh
         ),
         Replace(
             file: "crates/xtask/src/api/tests.rs",
-            find: "assert_eq!(API_CRATES.len(), 10);",
+            find: "assert_eq!(API_CRATES.len(), 11);",
             with: "assert_eq!(API_CRATES.len(), 9);",
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "//! - The other eight with each tool's own default",
+            find: "//! - The other nine with each tool's own default",
             with: "//! - The other seven with each tool's own default",
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "    defaults(\"shuyi-sound\"),\n",
+            find: "    defaults(\"shuyi-sound\"),\n    defaults(\"shuyi-sound-out\"),\n",
             with: "",
         ),
         Replace(
             file: "crates/xtask/src/modules.rs",
             find: r##"/// modules: the front door, this tool, and what only the sound replacement
 /// uses until a backend does (ADR-0066, ADR-0068).
-const NOT_MODULES: [&str; 3] = ["shuyi", "xtask", "shuyi-sound"];"##,
+const NOT_MODULES: [&str; 4] = ["shuyi", "xtask", "shuyi-sound", "shuyi-sound-out"];"##,
             with: r##"/// modules: the front door and this tool.
 const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
         ),
@@ -143,7 +151,7 @@ const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
         ),
         Replace(
             file: ".github/workflows/ci.yml",
-            find: "web-render, sound-parity, sound-give-up, templates,",
+            find: "web-render, sound-parity-windows, sound-parity, sound-give-up, templates,",
             with: "web-render, templates,",
         ),
         Cut(
@@ -224,13 +232,170 @@ sound-probe = []
 //! backend, for the example `sound_probe` that the parity gates record. No
 //! game turns it on.
 //!
+//! With the `in-house-sound` feature, sound goes through `shuyi-sound`'s mixer and
+//! `shuyi-sound-out` instead of quad-snd.
+//!
 "##,
             with: "",
         ),
         Replace(
             file: "crates/app/src/lib.rs",
-            find: "#[cfg(feature = \"sound-probe\")]\npub use crate::audio::device::Macroquad as SoundProbeBackend;\n",
+            find: "#[cfg(feature = \"sound-probe\")]\npub use crate::audio::Chosen as SoundProbeBackend;\n",
             with: "",
+        ),
+        // Ticket 3031: the new backend, its output, and what names them.
+        Cut(
+            file: "Cargo.toml",
+            from: "# Cargo allows one crate of a build to say",
+            to: "[workspace.lints.rust]",
+        ),
+        Replace(
+            file: "crates/app/Cargo.toml",
+            find: r##"# `in-house-sound`: the sound replacement's backend, over `shuyi-sound`'s mixer and
+# `shuyi-sound-out`, in quad-snd's place (ticket 3031, ADR-0068): the one switch. Off
+# by default. A game that turns it on needs the root Cargo.toml's patch of `alsa-sys`
+# (ADR-0074).
+in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/app/Cargo.toml",
+            find: r##"# The `in-house-sound` feature's mixer, adapters and output.
+shuyi-sound = { path = "../sound", features = ["wav", "vorbis"], optional = true }
+shuyi-sound-out = { path = "../sound-out", optional = true }
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/app/src/audio.rs",
+            find: r##"#[cfg(feature = "in-house-sound")]
+pub(crate) mod in_house;
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg_attr(feature = "in-house-sound", allow(dead_code))]
+mod native_music;
+"##,
+            with: r##"#[cfg(not(target_arch = "wasm32"))]
+mod native_music;
+"##,
+        ),
+        Replace(
+            file: "crates/app/src/audio.rs",
+            find: r##"/// The backend this build plays through: the one place that chooses, by the feature
+/// `in-house-sound` (ADR-0068). No game code or file names one.
+#[cfg(not(feature = "in-house-sound"))]
+pub use device::Macroquad as Chosen;
+#[cfg(feature = "in-house-sound")]
+pub use in_house::InHouse as Chosen;
+"##,
+            with: r##"/// The backend this build plays through.
+pub(crate) use device::Macroquad as Chosen;
+"##,
+        ),
+        Replace(
+            file: "crates/app/src/audio.rs",
+            find: r##"#[cfg(not(feature = "in-house-sound"))]
+pub(crate) mod device {
+"##,
+            with: "pub(crate) mod device {\n",
+        ),
+        Replace(
+            file: "crates/platform/src/audio/player.rs",
+            find: r##"    /// The system suspends the game (`on`) or has resumed it: a backend whose output
+    /// can stop stops it here, after the player has held what sounds.
+    fn hold_output(&mut self, on: bool) {
+        let _ = on;
+    }
+
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/platform/src/audio/player.rs",
+            find: "        self.backend.hold_output(true);\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/platform/src/audio/player.rs",
+            find: "        self.backend.hold_output(false);\n",
+            with: "",
+        ),
+        Replace(
+            file: "tools/layers.ron",
+            find: r##""shuyi-alloc-count", "shuyi-sound", "shuyi-sound-out"],"##,
+            with: r##""shuyi-alloc-count"],"##,
+        ),
+        Replace(
+            file: "crates/cli/src/web.rs",
+            find: "const SHELL: [(&str, &str); 6] = [",
+            with: "const SHELL: [(&str, &str); 5] = [",
+        ),
+        Replace(
+            file: "crates/cli/src/web.rs",
+            find: "    (\"sound.js\", include_str!(\"../web/sound.js\")),\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/cli/src/web.rs",
+            find: "const SHELL_NOTICES: [(&str, Origin); 6] = [",
+            with: "const SHELL_NOTICES: [(&str, Origin); 5] = [",
+        ),
+        Replace(
+            file: "crates/cli/src/web.rs",
+            find: "    (\"sound.js\", Origin::Engine),\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/cli/src/web.rs",
+            find: "            (\"sound.js\", \"\"),\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/cli/src/web.rs",
+            find: r##"    /// The Rust side of `web/sound.js`: the engine's web sound output.
+    const SOUND_WEB: &str = include_str!("../../sound-out/src/sys.rs");
+"##,
+            with: "",
+        ),
+        Cut(
+            file: "crates/cli/src/web.rs",
+            from: "    #[test]\n    fn sound_js_provides_exactly_the_functions_the_output_imports() {",
+            to: "    #[test]\n    fn index_html_loads_gamepad_js_between_the_bundle_and_the_game() {",
+        ),
+        Replace(
+            file: "crates/cli/web/index.html",
+            find: r##"<!-- Sound output (3031): our own plugin over Web Audio, for the in-house sound. -->
+<script src="sound.js"></script>
+"##,
+            with: "",
+        ),
+        Replace(
+            file: "crates/cli/src/export/tests.rs",
+            find: "const WEB_FILES: [&str; 9] = [",
+            with: "const WEB_FILES: [&str; 8] = [",
+        ),
+        Replace(
+            file: "crates/cli/src/export/tests.rs",
+            find: "    \"sound.js\",\n",
+            with: "",
+        ),
+        Replace(
+            file: "tools/export-check/web.txt",
+            find: "sound.js\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/cli/web/README.md",
+            find: r##"- `sound.js`: sound output, a miniquad JS plugin over Web Audio, which a build
+  with `shuyi-app`'s `in-house-sound` feature plays through. The engine's own
+  code, not vendored. See below.
+"##,
+            with: "",
+        ),
+        Cut(
+            file: "crates/cli/web/README.md",
+            from: "## The engine's own `sound.js`",
+            to: "## Building and running",
         ),
         Replace(
             file: "crates/app/src/audio.rs",

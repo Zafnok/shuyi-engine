@@ -71,6 +71,9 @@
 //! backend, for the example `sound_probe` that the parity gates record. No
 //! game turns it on.
 //!
+//! With the `in-house-sound` feature, sound goes through `shuyi-sound`'s mixer and
+//! `shuyi-sound-out` instead of quad-snd.
+//!
 //! A desktop debug build writes its frames' times as it runs when
 //! `SHUYI_PERF` names a file (`SHUYI_PERF=perf.jsonl cargo run`): its log
 //! names the file, and after each frame it writes that frame's record as a
@@ -144,7 +147,7 @@ use shuyi_ui::basic::FONT_PNG;
 use shuyi_ui::log::{LogLevel, LogLine};
 
 #[cfg(feature = "sound-probe")]
-pub use crate::audio::device::Macroquad as SoundProbeBackend;
+pub use crate::audio::Chosen as SoundProbeBackend;
 pub use crate::audio::voice::read_manifest as read_voice_manifest;
 use crate::backend::Macroquad;
 #[cfg(not(target_arch = "wasm32"))]

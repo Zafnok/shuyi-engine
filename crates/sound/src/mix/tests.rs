@@ -1033,6 +1033,95 @@ fn a_remote_plays_a_stream_the_mixer_was_given_ahead_of_time() {
     assert!(mixer.take_finished_stream().is_some());
 }
 
+#[test]
+fn a_remote_names_a_place_ahead_of_what_goes_there() {
+    let mut mixer = stereo_mixer(2);
+    let (mut remote, mut inbox) = mixer.remote(4);
+    let sound = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
+    // The play goes first: it finds its sound when the hand-over comes before it.
+    let voice = remote
+        .play(sound, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let mut handed = Some(ramp(2));
+    inbox.apply_with(&mut mixer, |mixer| {
+        if let Some(pcm) = handed.take() {
+            assert!(mixer.put_sound(sound, pcm).is_none());
+        }
+    });
+    assert!(mixer.is_playing(voice));
+    assert_eq!(left(&render(&mut mixer, 3)), [1, 2, 0]);
+
+    // A place freed goes to a new tenant, whose id the old one's isn't.
+    remote.release_sound(sound);
+    let next = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
+    assert_ne!(sound, next);
+    assert_eq!(mixer.put_sound(next, ramp(1)).map(|p| p.frames()), Some(2));
+    inbox.apply(&mut mixer);
+    let stale = remote
+        .play(sound, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    inbox.apply(&mut mixer);
+    assert_eq!(left(&render(&mut mixer, 1)), [0], "plays as nothing");
+    assert!(!mixer.is_playing(stale));
+}
+
+#[test]
+fn a_remote_says_full_when_its_places_are_taken() {
+    let mixer = Mixer::new(
+        Config::new(RATE, Channels::Stereo, 1)
+            .with_sounds(1)
+            .with_streams(1),
+    );
+    let (mut remote, _inbox) = mixer.remote(4);
+    let sound = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(remote.reserve_sound(), Err(Full));
+    remote.release_sound(sound);
+    assert!(remote.reserve_sound().is_ok());
+    let stream = remote.reserve_stream().unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(remote.reserve_stream(), Err(Full));
+    remote.release_stream(stream);
+    assert!(remote.reserve_stream().is_ok());
+}
+
+#[test]
+fn a_remote_counts_what_the_mixer_already_holds_as_taken() {
+    let mut mixer = Mixer::new(Config::new(RATE, Channels::Stereo, 1).with_sounds(2));
+    let held = mixer.add_sound(ramp(1)).unwrap_or_else(|e| panic!("{e}"));
+    let (mut remote, _inbox) = mixer.remote(4);
+    let named = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
+    assert_ne!(held, named);
+    assert_eq!(remote.reserve_sound(), Err(Full));
+}
+
+#[test]
+fn a_stream_goes_in_a_named_slot_and_comes_out_with_what_played_it_ended() {
+    let mut mixer = stereo_mixer(2);
+    let (mut remote, mut inbox) = mixer.remote(4);
+    let stream = remote.reserve_stream().unwrap_or_else(|e| panic!("{e}"));
+    let source = Box::new(SharedSource::new(ramp(9)));
+    assert!(mixer.put_stream(stream, source).is_none());
+    let voice = remote
+        .play_stream(stream, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    inbox.apply(&mut mixer);
+    assert_eq!(left(&render(&mut mixer, 2)), [1, 2]);
+    assert!(mixer.take_stream(stream).is_some());
+    assert!(!mixer.is_playing(voice));
+    assert!(mixer.take_stream(stream).is_none(), "taken already");
+    assert_eq!(left(&render(&mut mixer, 1)), [0]);
+    remote.release_stream(stream);
+    let next = remote.reserve_stream().unwrap_or_else(|e| panic!("{e}"));
+    assert!(mixer.take_stream(stream).is_none(), "nothing there yet");
+    let first = Box::new(SharedSource::new(ramp(1)));
+    assert!(mixer.put_stream(next, first).is_none());
+    assert!(
+        mixer.take_stream(stream).is_none(),
+        "an old id takes nothing"
+    );
+    let second = Box::new(SharedSource::new(ramp(2)));
+    assert!(mixer.put_stream(next, second).is_some(), "what was there");
+}
+
 // -- what holds of any script --
 
 /// One thing a script does.

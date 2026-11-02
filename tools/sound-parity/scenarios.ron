@@ -34,6 +34,8 @@
     music: {
         "music_a": ("music_a.ogg", 6000),
         "music_b": ("music_b.ogg", 6000),
+        // A WAV as a stream, so that every frame of a loop's join has one right answer.
+        "stream_loop": ("loop.wav", 500),
     },
     scenarios: [
         (
@@ -79,7 +81,7 @@
         (
             // The same, with every frame held.
             name: "loop_gapless",
-            backends: Some(["quad-snd-web"]),
+            backends: Some(["quad-snd-web", "in-house", "in-house-web"]),
             steps: [
                 (at: 0, do: Start(1, "loop", 1.0)),
                 (at: 1700, do: Stop(1)),
@@ -88,6 +90,44 @@
             expect: [
                 Waveform(file: "loop.wav", repeats: 3, class: Exact),
                 Silent(from: 1950, to: 2400),
+            ],
+        ),
+        (
+            // The same through a stream: a worker's ring, whose way round is decoded
+            // ahead of the join, and holds every frame.
+            name: "stream_gapless",
+            backends: Some(["in-house", "in-house-web"]),
+            setup: [Load("stream_loop")],
+            settle: 500,
+            steps: [
+                (at: 0, do: Music("stream_loop", 1.0)),
+                (at: 1700, do: StopMusic("stream_loop")),
+            ],
+            end: 2500,
+            expect: [
+                Waveform(file: "loop.wav", repeats: 3, class: Exact),
+                Silent(from: 1950, to: 2400),
+            ],
+        ),
+        (
+            // Every voice busy, then one more asked for. They start together, so
+            // their levels add to 32 times one's: 1.6 of the noise's 0.144. A copy
+            // at full volume that took a voice, or a voice stolen for it, would move
+            // that by over a dB. Nothing is stolen to make room.
+            name: "voices_full",
+            backends: Some(["in-house", "in-house-web"]),
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 700, do: Copies(1, 32, "noise_loop", 0.05)),
+                (at: 1000, do: Start(33, "noise_loop", 1.0)),
+                (at: 1300, do: StopCopies(1, 32)),
+            ],
+            end: 2000,
+            expect: [
+                Level(from: 800, to: 950, ch: Both, rms: 0.2304),
+                Level(from: 1050, to: 1250, ch: Both, rms: 0.2304),
+                Silent(from: 1500, to: 1900),
+                Boundary(at: 1700),
             ],
         ),
         (
@@ -272,8 +312,13 @@
             // The tone stops at the pause and goes on from there: 600 ms of it
             // before, 400 ms after, then the file ends; a mute would end early.
             name: "future_pause",
-            backends: Some([]),
-            steps: [],
+            backends: Some(["in-house", "in-house-web"]),
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Start(1, "tone", 1.0)),
+                (at: 1100, do: Pause),
+                (at: 1800, do: Resume),
+            ],
             end: 3000,
             expect: [
                 Tone(from: 650, to: 1000, ch: Left, hz: 440.0, amp: 0.5),
@@ -285,8 +330,12 @@
         (
             // Twice the rate: an octave up, half as long.
             name: "future_rate",
-            backends: Some([]),
-            steps: [],
+            backends: Some(["in-house", "in-house-web"]),
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 400, do: Rate("tone", 2.0)),
+                (at: 500, do: Sound("tone", 1.0)),
+            ],
             end: 2000,
             expect: [
                 Tone(from: 600, to: 900, ch: Left, hz: 880.0, amp: 0.5),

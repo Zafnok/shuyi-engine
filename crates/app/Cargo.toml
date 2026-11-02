@@ -50,6 +50,11 @@ capture = ["shuyi-platform/capture", "shuyi-ui/raster", "dep:image"]
 # parity gates' probe (ticket 2573, ADR-0066). Off by default; never in a
 # shipped build.
 sound-probe = []
+# `in-house-sound`: the sound replacement's backend, over `shuyi-sound`'s mixer and
+# `shuyi-sound-out`, in quad-snd's place (ticket 3031, ADR-0068): the one switch. Off
+# by default. A game that turns it on needs the root Cargo.toml's patch of `alsa-sys`
+# (ADR-0074).
+in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 
 [dependencies]
 shuyi-assets = { path = "../assets" }
@@ -67,6 +72,9 @@ macroquad.workspace = true
 # thread into contexts of its own (ticket 0215, game ADR-0028). The same
 # version macroquad's `audio` feature uses, on every target.
 quad-snd = "0.2.8"
+# The `in-house-sound` feature's mixer, adapters and output.
+shuyi-sound = { path = "../sound", features = ["wav", "vorbis"], optional = true }
+shuyi-sound-out = { path = "../sound-out", optional = true }
 # The link's picture of the window as a PNG, and the capture mode's: the
 # version macroquad already uses, PNG only (the `link` and `capture`
 # features). On every target: the render card's example encodes its

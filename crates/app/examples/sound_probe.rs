@@ -12,8 +12,10 @@
 //! the timed workload, `<burn>` being the slowdown it injects in percent (0
 //! for none), or `decoders <pair>` for the old path's whole decodes against
 //! `shuyi-sound`'s, the side first going by `<pair>`, or `mixer <pair>` for the
-//! mixer's offline render. Every line it says starts `shuyi-sound-probe: ` and ends
-//! in a JSON object: on stderr natively, on the console on the web.
+//! mixer's offline render, or, on the in-house backend natively, `latency` for how
+//! long a play takes to reach the device's buffer. Every line it says starts
+//! `shuyi-sound-probe: ` and ends in a JSON object: on stderr natively, on the console
+//! on the web.
 //!
 //! On the web it waits for a click, the gesture a browser asks for before it
 //! sounds anything. Natively it opens no window: the backend needs none.
@@ -22,12 +24,14 @@ use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use macroquad::miniquad::date;
-use quad_snd::{AudioContext, Sound};
+use quad_snd::AudioContext;
+#[cfg(not(feature = "in-house-sound"))]
+use quad_snd::Sound;
 use serde::Deserialize;
 use shuyi_app::SoundProbeBackend;
 use shuyi_assets::audio::{AudioManifest, CreditRef, Files, MusicCue, SoundCue};
 use shuyi_platform::audio::SoundRequest;
-use shuyi_platform::audio::player::Player;
+use shuyi_platform::audio::player::{Player, RATE_ONE};
 use shuyi_sound::mix::{Config, Mixer, Params, SharedPcm, UNITY};
 use shuyi_sound::vorbis::VorbisSource;
 use shuyi_sound::wav::WavSource;
@@ -103,6 +107,12 @@ enum Action {
     Start(u32, String, f32),
     Stop(u32),
     Volume(u32, f32),
+    /// `count` copies of a cue, numbered from the first, in one frame.
+    Copies(u32, u32, String, f32),
+    /// Stops the copies `Copies` started.
+    StopCopies(u32, u32),
+    /// How fast a sound plays from its next play: 1.0 is as recorded.
+    Rate(String, f32),
     Pause,
     Resume,
     Load(String),
@@ -155,6 +165,8 @@ async fn run() -> Result<(), String> {
             let pair: u32 = pair.parse().map_err(|e| format!("pair {pair}: {e}"))?;
             mixer(pair).await
         }
+        #[cfg(all(feature = "in-house-sound", not(target_arch = "wasm32")))]
+        ["latency"] => latency().await,
         _ => Err(format!("probe.txt says {order:?}")),
     }
 }
@@ -235,6 +247,12 @@ async fn play_scenario(plan: &Plan, scenario: &Scenario) -> Result<(), String> {
         music.clear();
         let mut due = Vec::new();
         while let Some(step) = steps.next_if(|step| f64::from(step.at) <= elapsed_ms) {
+            if let Action::Rate(cue, rate) = &step.action {
+                // Fixed point, as the player takes it.
+                #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+                let fixed = (f64::from(*rate) * f64::from(RATE_ONE)) as u32;
+                player.set_rate(&mut backend, cue, fixed);
+            }
             request(&step.action, &mut ids, &mut requests, &mut music);
             due.push(step.at);
         }
@@ -287,6 +305,21 @@ fn request(
             ids.by_number.insert(*number, sound);
             requests.push(SoundRequest::start(sound, cue.as_str(), *volume));
         }
+        Action::Copies(first, count, cue, volume) => {
+            for number in *first..first + count {
+                request(
+                    &Action::Start(number, cue.clone(), *volume),
+                    ids,
+                    requests,
+                    music,
+                );
+            }
+        }
+        Action::StopCopies(first, count) => {
+            for number in *first..first + count {
+                request(&Action::Stop(number), ids, requests, music);
+            }
+        }
         Action::Stop(number) => {
             requests.extend(id(ids, number).map(|id| SoundRequest::Stop { id }));
         }
@@ -305,7 +338,7 @@ fn request(
             gain: *gain,
         }),
         Action::StopMusic(cue) => music.push(MusicCommand::Stop { cue: cue.clone() }),
-        Action::Tick => {}
+        Action::Tick | Action::Rate(..) => {}
     }
 }
 
@@ -313,19 +346,19 @@ fn request(
 /// playback for [`PERF_PLAY`] seconds, then whole decodes. Each phase's time
 /// grows by `burn` percent of it, so the gate can prove it sees a slowdown.
 async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
-    let measure = |metric: &str, value: f64| {
-        say(&format!(
-            r#"{{"event":"perf","metric":"{metric}","value":{value:.3}}}"#
-        ));
-    };
+    let measure = say_measure;
     let timed = date::now();
     let wav = read("corpus/long.wav").await?;
     let ogg = read("corpus/long.ogg").await?;
     measure("file_io_ms", burned(timed, burn) * 1000.0);
 
-    let timed = date::now();
-    let ctx = AudioContext::new();
-    measure("context_ms", burned(timed, burn) * 1000.0);
+    #[cfg(not(feature = "in-house-sound"))]
+    let ctx = {
+        let timed = date::now();
+        let ctx = AudioContext::new();
+        measure("context_ms", burned(timed, burn) * 1000.0);
+        ctx
+    };
 
     let mut backend = SoundProbeBackend::default();
     let mut player = player(plan, &mut backend).await?;
@@ -403,19 +436,90 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
         measure("peak_kib", kib);
     }
 
-    for (metric, bytes) in [("decode_wav_ms", &wav), ("decode_ogg_ms", &ogg)] {
+    #[cfg(not(feature = "in-house-sound"))]
+    perf_decodes_old(&ctx, &wav, &ogg, burn).await;
+    #[cfg(feature = "in-house-sound")]
+    perf_decodes_new(&wav, &ogg, burn)?;
+    Ok(())
+}
+
+/// The workload's whole decodes, the old backend's way.
+#[cfg(not(feature = "in-house-sound"))]
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
+async fn perf_decodes_old(ctx: &AudioContext, wav: &[u8], ogg: &[u8], burn: u32) {
+    for (metric, bytes) in [("decode_wav_ms", wav), ("decode_ogg_ms", ogg)] {
         let timed = date::now();
         for _ in 0..PERF_DECODES {
-            let sound = Sound::load(&ctx, bytes);
+            let sound = Sound::load(ctx, bytes);
             // The browser decodes in the background; natively it is done.
             #[cfg(target_arch = "wasm32")]
             while !sound.is_loaded() {
                 tick().await;
             }
-            sound.delete(&ctx);
+            sound.delete(ctx);
         }
-        measure(metric, burned(timed, burn) * 1000.0);
+        say_measure(metric, burned(timed, burn) * 1000.0);
     }
+}
+
+/// The workload's whole decodes, the new backend's way.
+#[cfg(feature = "in-house-sound")]
+fn perf_decodes_new(wav: &[u8], ogg: &[u8], burn: u32) -> Result<(), String> {
+    for (metric, kind, bytes) in [
+        ("decode_wav_ms", Kind::Wav, wav),
+        ("decode_ogg_ms", Kind::Ogg, ogg),
+    ] {
+        let timed = date::now();
+        for _ in 0..PERF_DECODES {
+            decode_new(kind, bytes)?;
+        }
+        say_measure(metric, burned(timed, burn) * 1000.0);
+    }
+    Ok(())
+}
+
+/// One number of the timed workload.
+fn say_measure(metric: &str, value: f64) {
+    say(&format!(
+        r#"{{"event":"perf","metric":"{metric}","value":{value:.3}}}"#
+    ));
+}
+
+/// How long a play takes to reach the device's buffer, a hundred times at a phase of
+/// its own, at no volume, so that it can be measured on a machine someone is at.
+#[cfg(all(feature = "in-house-sound", not(target_arch = "wasm32")))]
+async fn latency() -> Result<(), String> {
+    use shuyi_platform::audio::player::Backend;
+
+    let bytes = read("corpus/silence.wav").await?;
+    let mut backend = SoundProbeBackend::default();
+    let sound = backend.load_sound(&bytes).await?;
+    // The first play moves the mixer to the callback.
+    let _ = backend.play(&sound, 0.0, false);
+    tick().await;
+    let mut measured = Vec::new();
+    for turn in 0..100u32 {
+        std::thread::sleep(std::time::Duration::from_micros(u64::from(
+            7000 + turn * 137 % 5000,
+        )));
+        if let Some(ms) = backend.play_latency_ms(&sound) {
+            measured.push(ms);
+        }
+    }
+    measured.sort_by(f64::total_cmp);
+    let at = |share: usize| {
+        measured
+            .get(measured.len() * share / 100)
+            .copied()
+            .unwrap_or(0.0)
+    };
+    say(&format!(
+        r#"{{"event":"latency","plays":{},"median_ms":{:.2},"p95_ms":{:.2},"worst_ms":{:.2}}}"#,
+        measured.len(),
+        at(50),
+        at(95),
+        measured.last().copied().unwrap_or(0.0),
+    ));
     Ok(())
 }
 
@@ -450,6 +554,8 @@ fn timed_new(kind: Kind, bytes: &[u8], burn: u32) -> Result<f64, String> {
 /// [`DECODER_DECODES`] whole decodes by the old path, in milliseconds.
 #[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
 async fn timed_old(ctx: &AudioContext, bytes: &[u8]) -> f64 {
+    use quad_snd::Sound;
+
     let timed = date::now();
     for _ in 0..DECODER_DECODES {
         let sound = Sound::load(ctx, bytes);

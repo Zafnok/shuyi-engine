@@ -226,11 +226,19 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def scenario_names() -> list[str]:
-    """The scenarios the probe can play: those with steps."""
+def scenario_names(backend: str) -> list[str]:
+    """The scenarios this backend's probe plays: those with steps that hold on it, or
+    that name no backends."""
     text = (TOOL / "scenarios.ron").read_text(encoding="utf-8")
-    names = re.findall(r'name: "(\w+)"', text)
-    return [name for name in names if not name.startswith("future_")]
+    chosen = []
+    for part in re.split(r'(?=name: "\w+")', text)[1:]:
+        name = re.match(r'name: "(\w+)"', part).group(1)
+        named = re.search(r"backends: Some\(\[(.*?)\]\)", part)
+        if named is not None and f'"{backend}"' not in named.group(1):
+            continue
+        if "steps: []" not in part:
+            chosen.append(name)
+    return chosen
 
 
 @dataclass
@@ -437,12 +445,12 @@ class Browser:
         return lines
 
 
-def write_run(player: Native | Browser, run: Path) -> None:
+def write_run(player: Native | Windows | Browser, run: Path, backend: str) -> None:
     """Every scenario once, after one thrown away: a cold process isn't what is measured."""
     run.mkdir(parents=True, exist_ok=True)
     player.play("scenario onset\n", run / "warmup.pcm")
     (run / "warmup.pcm").unlink()
-    for name in scenario_names():
+    for name in scenario_names(backend):
         perf: dict[str, float] = {}
         lines = player.play(f"scenario {name}\n", run / f"{name}.pcm", perf)
         # When the recording's first frame was heard: the wall clock of its steps'.
@@ -477,7 +485,7 @@ def sound_facts(pcm: Path, start: float, step_wall: float | None) -> dict[str, f
     return facts
 
 
-def one_perf(player: Native | Browser, base: Path, side: str, pair: int, burn: int) -> dict[str, object]:
+def one_perf(player: Native | Windows | Browser, base: Path, side: str, pair: int, burn: int) -> dict[str, object]:
     perf: dict[str, float] = {}
     # The last of each side stays, to look at.
     record = base / f"perf-{side}.pcm"
@@ -497,7 +505,7 @@ def one_perf(player: Native | Browser, base: Path, side: str, pair: int, burn: i
     return {"side": side, "pair": pair, "metrics": metrics}
 
 
-def write_perf(player: Native | Browser, base: Path) -> None:
+def write_perf(player: Native | Windows | Browser, base: Path) -> None:
     """Warm up, then pairs in turn, a, b, b, a: drift falls on neither, and neither
     side lines up with every other run. The slowed runs come after, so they can't."""
     for _ in range(WARMUP):
@@ -512,7 +520,19 @@ def write_perf(player: Native | Browser, base: Path) -> None:
             out.flush()
 
 
-def write_decoders(player: Native | Browser, base: Path) -> None:
+def write_old_new(old: Native | Windows | Browser, new: Native | Windows | Browser, base: Path) -> None:
+    """The old backend against the new, the same workload in turn, a, b, b, a."""
+    for _ in range(WARMUP):
+        one_perf(new, base, "warmup", -1, 0)
+    with (base / "old-new.jsonl").open("w", encoding="utf-8", newline="\n") as out:
+        for pair in range(PAIRS):
+            sides = (("old", old), ("new", new))
+            for side, player in sides if pair % 2 == 0 else reversed(sides):
+                out.write(json.dumps(one_perf(player, base, side, pair, 0)) + "\n")
+                out.flush()
+
+
+def write_decoders(player: Native | Windows | Browser, base: Path) -> None:
     """The old path's whole decodes against `shuyi-sound`'s, a process per pair, each
     swapping which side goes first. The recording says nothing here."""
     record = base / "decoders.pcm"
@@ -530,7 +550,7 @@ def write_decoders(player: Native | Browser, base: Path) -> None:
     record.unlink()
 
 
-def write_mixer(player: Native | Browser, base: Path) -> None:
+def write_mixer(player: Native | Windows | Browser, base: Path) -> None:
     """The mixer's offline render, a process per pair: nothing old to compare with,
     so the gate reads its share of the sound's length. The recording says nothing."""
     record = base / "mixer.pcm"
@@ -558,7 +578,7 @@ def native(args: argparse.Namespace) -> int:
         player = Native(args.probe.resolve(), args.dir.resolve(), target)
         for number in range(0 if args.perf_only else RUNS):
             run = base / f"run-{number}"
-            write_run(player, run)
+            write_run(player, run, "quad-snd")
             write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
         write_perf(player, base)
         write_decoders(player, base)
@@ -573,53 +593,89 @@ def windows(args: argparse.Namespace) -> int:
     sys.path.insert(0, str(TOOL))
     import wasapi
 
-    base = args.dir / "windows"
-    if not args.perf_only:
-        shutil.rmtree(base, ignore_errors=True)
-    base.mkdir(parents=True, exist_ok=True)
     shutil.copy(TOOL / "scenarios.ron", args.dir / "scenarios.ron")
     wasapi.coinit()
     if args.set_endpoint:
         wasapi.set_endpoint_rate(RATE)
     keeper = wasapi.Endpoint()
     try:
-        player = Windows(args.probe.resolve(), args.dir.resolve())
-        for number in range(0 if args.perf_only else RUNS):
-            run = base / f"run-{number}"
-            write_run(player, run)
-            write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
-        write_perf(player, base)
-        write_decoders(player, base)
-        write_mixer(player, base)
+        old = Windows(args.probe.resolve(), args.dir.resolve())
+        new = Windows(args.new_probe.resolve(), args.dir.resolve()) if args.new_probe else None
+        if args.only in (None, "windows"):
+            base = args.dir / "windows"
+            if not args.perf_only:
+                shutil.rmtree(base, ignore_errors=True)
+            base.mkdir(parents=True, exist_ok=True)
+            for number in range(0 if args.perf_only else RUNS):
+                run = base / f"run-{number}"
+                write_run(old, run, "quad-snd")
+                write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
+            write_perf(old, base)
+            write_decoders(old, base)
+            write_mixer(old, base)
+        if new is not None and args.only in (None, "windows-in-house"):
+            base = args.dir / "windows-in-house"
+            if not args.perf_only:
+                shutil.rmtree(base, ignore_errors=True)
+            base.mkdir(parents=True, exist_ok=True)
+            for number in range(0 if args.perf_only else RUNS):
+                run = base / f"run-{number}"
+                write_run(new, run, "in-house")
+                write_meta(run, args.revision, "in-house", {"probe_bytes": args.new_probe.stat().st_size, "build_seconds": args.build_seconds})
+            write_perf(new, base)
+            write_old_new(old, new, base)
     finally:
         keeper.close()
     return 0
 
 
 def browser(args: argparse.Namespace) -> int:
-    base = args.dir / "browser-chromium"
-    if not args.perf_only:
-        shutil.rmtree(base, ignore_errors=True)
-    base.mkdir(parents=True, exist_ok=True)
-    stage = args.dir / "page"
-    shutil.rmtree(stage, ignore_errors=True)
-    shutil.copytree(args.page, stage)
-    shutil.copytree(args.dir / "corpus", stage / "corpus")
-    shutil.copy(TOOL / "scenarios.ron", stage / "scenarios.ron")
+    def staged(page: Path, name: str) -> Path:
+        stage = args.dir / name
+        shutil.rmtree(stage, ignore_errors=True)
+        shutil.copytree(page, stage)
+        shutil.copytree(args.dir / "corpus", stage / "corpus")
+        shutil.copy(TOOL / "scenarios.ron", stage / "scenarios.ron")
+        return stage
+
+    def recorded(name: str) -> Path:
+        base = args.dir / name
+        if not args.perf_only:
+            shutil.rmtree(base, ignore_errors=True)
+        base.mkdir(parents=True, exist_ok=True)
+        return base
+
+    stage = staged(args.page, "page")
     wasm = next(stage.glob("*.wasm"))
     with sink() as target:
-        player = Browser(stage, target)
-        player.open()
+        old = Browser(stage, target)
+        old.open()
+        new = None
         try:
-            for number in range(0 if args.perf_only else RUNS):
-                run = base / f"run-{number}"
-                write_run(player, run)
-                write_meta(run, args.revision, "quad-snd-web", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": player.version})
-            write_perf(player, base)
-            write_decoders(player, base)
-            write_mixer(player, base)
+            if args.only in (None, "browser-chromium"):
+                base = recorded("browser-chromium")
+                for number in range(0 if args.perf_only else RUNS):
+                    run = base / f"run-{number}"
+                    write_run(old, run, "quad-snd-web")
+                    write_meta(run, args.revision, "quad-snd-web", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": old.version})
+                write_perf(old, base)
+                write_decoders(old, base)
+                write_mixer(old, base)
+            if args.new_page and args.only in (None, "browser-in-house"):
+                new = Browser(staged(args.new_page, "page-new"), target)
+                new.open()
+                new_wasm = next(new.stage.glob("*.wasm"))
+                base = recorded("browser-in-house")
+                for number in range(0 if args.perf_only else RUNS):
+                    run = base / f"run-{number}"
+                    write_run(new, run, "in-house-web")
+                    write_meta(run, args.revision, "in-house-web", {"probe_bytes": new_wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": new.version})
+                write_perf(new, base)
+                write_old_new(old, new, base)
         finally:
-            player.close()
+            old.close()
+            if new is not None:
+                new.close()
     return 0
 
 
@@ -657,6 +713,9 @@ def main() -> int:
     parser.add_argument("--build-seconds", type=float, default=0.0)
     parser.add_argument("--perf-only", action="store_true", help="only the timings, again")
     parser.add_argument("--set-endpoint", action="store_true", help="on a runner: set the virtual endpoint's format first")
+    parser.add_argument("--new-probe", type=Path, help="windows: the probe of the in-house backend, recorded too")
+    parser.add_argument("--new-page", type=Path, help="browser: the page of the in-house backend, recorded too")
+    parser.add_argument("--only", help="the one platform of this mode to record, when it is measured again")
     args = parser.parse_args()
     return {"native": native, "windows": windows, "browser": browser, "encode": encode}[args.mode](args)
 
