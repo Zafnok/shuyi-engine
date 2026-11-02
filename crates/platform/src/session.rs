@@ -304,9 +304,8 @@ pub struct FrameDifference {
 /// build can replay a record too.
 #[derive(Debug, Clone)]
 pub struct Playback {
-    frames: Vec<FrameRecord>,
-    /// How many have played.
-    played: usize,
+    /// The frames still to play.
+    frames: alloc::vec::IntoIter<FrameRecord>,
     /// The time of the last frame played, or the record's start.
     now: u64,
     /// The last hash the record wrote.
@@ -317,8 +316,7 @@ impl Playback {
     /// The playback of `record`, from its first frame.
     pub fn new(record: &SessionRecord) -> Self {
         Self {
-            frames: record.frames.clone(),
-            played: 0,
+            frames: record.frames.clone().into_iter(),
             now: record.start,
             hash: None,
         }
@@ -333,16 +331,15 @@ impl Playback {
         app: &mut App<G>,
         platform: &mut HeadlessPlatform,
     ) -> Option<Result<u32, FrameDifference>> {
-        let frame = self.frames.get(self.played)?;
+        let frame = self.frames.next()?;
         app.hash_frames(true);
-        platform.push_frame(frame);
+        platform.push_frame(&frame);
         if let Some(pacing) = frame.pacing {
             app.set_pacing(pacing);
         }
         self.now = self.now.wrapping_add_signed(frame.dt);
         self.hash = frame.hash.or(self.hash);
         let _ = app.frame(platform, Millis(self.now));
-        self.played += 1;
         if self.is_done() {
             platform.end_session();
         }
@@ -363,7 +360,7 @@ impl Playback {
 
     /// Whether every frame has played.
     pub fn is_done(&self) -> bool {
-        self.played == self.frames.len()
+        self.frames.as_slice().is_empty()
     }
 
     /// The time of the last frame played, for a driver that goes on from
