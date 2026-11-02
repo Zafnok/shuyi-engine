@@ -234,10 +234,10 @@ These thresholds are proposed rules for choosing the *next experiment*,
 not a promise that a defender can stop cloning. Ticket 2913 tested
 transcode, crop, frame extraction, simulated recapture and description
 bypasses, and [ended the footage proposal](2913-human-readable-ai-disruptive-clips.md).
-Ticket 2914 must test
-dynamic analysis and absolute delay before any protected rules kernel is
-recommended. The present pilot neither implements those defenses nor
-claims DRM, opacity, ownership or marketplace enforcement.
+The [2914 dynamic-analysis experiment](2914-protected-cold-rules-dynamic-analysis.md)
+tested a small diversified interpreter and found no added absolute delay in
+its local matched rehearsal. The 2912 pilot neither implements those defenses
+nor claims DRM, opacity, ownership or marketplace enforcement.
 
 ## Pilot results
 
@@ -280,6 +280,9 @@ to build the ordinary native and WASI artifacts, GIFs and allowlisted
 bundles; `controls` records timing. The four `score-*` actions grade a
 submission. The private case seed is needed only for F and B grading and
 is deliberately absent from the attacker bundles and this report.
+Ticket 2914 later extended the fixture crate with optional kernel features;
+its default behavior remains the same, but a fresh build need not have the
+2026-10-31 artifact hashes or timings recorded below.
 
 The pre-attempt SHA-256 commitment to that seed was
 `d91d2f5bb0d213e955225e37e973e8a4b626f93fbe3102c9124cace2a934d46b`.
