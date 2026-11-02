@@ -1,5 +1,5 @@
 ---
-id: "2574"
+id: "2575"
 title: A misspelled action in a language file fails `shuyi check`, rather than showing its braces to the player
 type: feature
 milestone: "Engine: public"
@@ -11,7 +11,7 @@ nick_input: none
 completed:
 ---
 
-# 2574 — A misspelled action in a language file fails `shuyi check`
+# 2575 — A misspelled action in a language file fails `shuyi check`
 
 ## Context
 

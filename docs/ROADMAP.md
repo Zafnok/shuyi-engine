@@ -80,7 +80,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
 | 2509 | Problem codes: a code and a help line on every error the contract gives, `shuyi explain`, an exit code for "fix the setup" |
 | 2530 | Problem codes for the validators: unknown names, duplicates and values out of range in the keymap, the language packs and the maps |
-| 2574 | A misspelled action in a language file fails `shuyi check`, rather than showing its braces to the player |
+| 2575 | A misspelled action in a language file fails `shuyi check`, rather than showing its braces to the player |
 | 3040 | One log for the engine and the game, kept by `App` and carried in the contract's answers |
 | 2513 | Zero setup on Linux: `shuyi doctor` checks the system libraries, a setup script, a dev container |
 | 2511 | The short path: engine defaults for every `GameData` part, a prelude, `run_game`, and a minimal template |
