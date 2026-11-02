@@ -7,6 +7,9 @@ use std::ptr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, AtomicU32, Ordering};
 
+/// The most a ring can hold and still tell full from empty by counters of 32 bits.
+const MOST_SLOTS: u32 = 0x8000_0000;
+
 /// A fixed ring of pointers, for one writer and one reader, which owns what it holds.
 struct Ring<T> {
     slots: Box<[AtomicPtr<T>]>,
@@ -44,8 +47,8 @@ impl<T> Drop for Ring<T> {
 /// the end on an audio thread sends each box back rather than dropping it.
 pub fn handover<T: Send>(slots: usize) -> (HandTo<T>, HandOut<T>) {
     let slots = u32::try_from(slots)
-        .unwrap_or(1 << 31)
-        .clamp(1, 1 << 31)
+        .unwrap_or(MOST_SLOTS)
+        .clamp(1, MOST_SLOTS)
         .next_power_of_two();
     let ring = Arc::new(Ring {
         slots: (0..slots)

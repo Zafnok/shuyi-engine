@@ -17,8 +17,14 @@
 # `shuyi-sound-out`'s `windows.rs` and `web.rs` are built only for those targets and
 # need a device; what is tested of them is `convert_impl.rs`, the null output, and CI's
 # sound parity gates.
+#
+# `shuyi-sound`'s `wav.rs` and `vorbis.rs` are built only with its features, which a
+# run on one package doesn't turn on, so every mutant there would be missed whatever
+# the tests say. Their tests run with `--all-features` in `sound-parity`.
 exclude_globs = [
     "crates/app/**",
+    "crates/sound/src/wav.rs",
+    "crates/sound/src/vorbis.rs",
     "crates/sound-out/src/windows.rs",
     "crates/sound-out/src/web.rs",
     "crates/playdate/src/device/**",
@@ -32,6 +38,10 @@ exclude_globs = [
 timeout_multiplier = 3.0
 # Mutants no test can catch, each for the reason beside it:
 exclude_re = [
+    # The default `hold_output` does nothing: its only viable mutant is itself.
+    "replace Backend::hold_output with \\(\\)",
+    # Off Windows `preferred_rate` is `None`, which is its only viable mutant there.
+    "replace Output::preferred_rate -> Option<u32> with None",
     # The web's functions in `sys.rs`, built only for `wasm32`.
     "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
     # `NoDirective` has no values, so its `print` can never run.

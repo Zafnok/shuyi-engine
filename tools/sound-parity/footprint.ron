@@ -118,13 +118,18 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "//! - The other nine with each tool's own default",
+            find: "//! - `shuyi-app` with the features it had before `in-house-sound`, as that one\n//!   brings CPAL, which needs the root's patch (ADR-0074), and the semver check builds\n//!   a crate outside this workspace.\n//! - The other eight with each tool's own default",
             with: "//! - The other seven with each tool's own default",
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
             find: "    defaults(\"shuyi-sound\"),\n    defaults(\"shuyi-sound-out\"),\n",
             with: "",
+        ),
+        Replace(
+            file: "crates/xtask/src/api.rs",
+            find: "    // Its `in-house-sound` can't be built outside this workspace (ADR-0074): the rest,\n    // which is what the semver check's own choice comes to without it.\n    ApiCrate {\n        name: \"shuyi-app\",\n        features: Features::Only(&[\"link\", \"capture\", \"sound-probe\"]),\n    },\n",
+            with: "    defaults(\"shuyi-app\"),\n",
         ),
         Replace(
             file: "crates/xtask/src/modules.rs",
@@ -250,19 +255,29 @@ sound-probe = []
 # `shuyi-sound-out`'s `windows.rs` and `web.rs` are built only for those targets and
 # need a device; what is tested of them is `convert_impl.rs`, the null output, and CI's
 # sound parity gates.
+#
+# `shuyi-sound`'s `wav.rs` and `vorbis.rs` are built only with its features, which a
+# run on one package doesn't turn on, so every mutant there would be missed whatever
+# the tests say. Their tests run with `--all-features` in `sound-parity`.
 "##,
             with: "",
         ),
         Replace(
             file: ".cargo/mutants.toml",
-            find: r##"    "crates/sound-out/src/windows.rs",
+            find: r##"    "crates/sound/src/wav.rs",
+    "crates/sound/src/vorbis.rs",
+    "crates/sound-out/src/windows.rs",
     "crates/sound-out/src/web.rs",
 "##,
             with: "",
         ),
         Replace(
             file: ".cargo/mutants.toml",
-            find: r##"    # The web's functions in `sys.rs`, built only for `wasm32`.
+            find: r##"    # The default `hold_output` does nothing: its only viable mutant is itself.
+    "replace Backend::hold_output with \\(\\)",
+    # Off Windows `preferred_rate` is `None`, which is its only viable mutant there.
+    "replace Output::preferred_rate -> Option<u32> with None",
+    # The web's functions in `sys.rs`, built only for `wasm32`.
     "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
 "##,
             with: "",

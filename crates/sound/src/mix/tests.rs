@@ -1142,11 +1142,11 @@ fn what_has_no_place_in_this_mixer_comes_back_to_the_caller() {
             .with_sounds(1)
             .with_streams(1),
     );
-    let pcm = small.put_sound(sounds[3], ramp(2));
+    let pcm = small.put_sound(sounds[1], ramp(2));
     assert_eq!(pcm.map(|p| p.frames()), Some(2));
-    let source = small.put_stream(streams[3], Box::new(SharedSource::new(ramp(3))));
+    let source = small.put_stream(streams[1], Box::new(SharedSource::new(ramp(3))));
     assert_eq!(source.and_then(|s| s.total_frames()), Some(3));
-    assert!(small.take_stream(streams[3]).is_none());
+    assert!(small.take_stream(streams[1]).is_none());
     // A release only frees its own tenant's place.
     remote.release_sound(sounds[0]);
     let tenant = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
@@ -1158,6 +1158,44 @@ fn what_has_no_place_in_this_mixer_comes_back_to_the_caller() {
     );
     remote.release_sound(tenant);
     assert!(remote.reserve_sound().is_ok());
+}
+
+#[test]
+fn taking_a_stream_away_ends_only_what_plays_it() {
+    let mut mixer = stereo_mixer(3);
+    let bystander = mixer.add_sound(ramp(50)).unwrap_or_else(|e| panic!("{e}"));
+    let (mut remote, mut inbox) = mixer.remote(8);
+    let (one, other) = (
+        remote.reserve_stream().unwrap_or_else(|e| panic!("{e}")),
+        remote.reserve_stream().unwrap_or_else(|e| panic!("{e}")),
+    );
+    assert!(
+        mixer
+            .put_stream(one, Box::new(SharedSource::new(ramp(9))))
+            .is_none()
+    );
+    assert!(
+        mixer
+            .put_stream(other, Box::new(SharedSource::new(ramp(9))))
+            .is_none()
+    );
+    let play = |remote: &mut Remote, stream| {
+        remote
+            .play_stream(stream, Params::new())
+            .unwrap_or_else(|e| panic!("{e}"))
+    };
+    let (ends, goes_on) = (play(&mut remote, one), play(&mut remote, other));
+    let sound = remote
+        .play(bystander, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    inbox.apply(&mut mixer);
+    render(&mut mixer, 1);
+    assert!(mixer.take_stream(one).is_some());
+    assert!(!mixer.is_playing(ends));
+    assert!(mixer.is_playing(goes_on), "another stream");
+    assert!(mixer.is_playing(sound), "a sound");
+    // What has ended and held this slot doesn't end what plays it next.
+    assert_eq!(left(&render(&mut mixer, 1)), [4]);
 }
 
 #[test]

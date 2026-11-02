@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::JoinHandle;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::{Callback, OutputConfig};
 
@@ -47,18 +47,10 @@ fn run(config: OutputConfig, callback: &Callback, stop: &AtomicBool, held: &Atom
     let mut block = vec![0; frames * channels];
     let period =
         Duration::from_secs_f64(f64::from(config.frames.max(1)) / f64::from(config.rate.max(1)));
-    let mut next = Instant::now() + period;
+    // A sleep's overshoot makes it a little slower than a device, which nothing here
+    // can hear: what plays only ends a little late.
     while !stop.load(Ordering::Acquire) {
-        let now = Instant::now();
-        if next > now {
-            std::thread::sleep((next - now).min(Duration::from_millis(50)));
-            continue;
-        }
-        next += period;
-        // A slow machine doesn't catch up in a rush: real devices don't either.
-        if next < now {
-            next = now + period;
-        }
+        std::thread::sleep(period);
         if held.load(Ordering::Acquire) {
             continue;
         }
@@ -72,6 +64,7 @@ fn run(config: OutputConfig, callback: &Callback, stop: &AtomicBool, held: &Atom
 mod tests {
     use std::sync::Mutex;
     use std::sync::atomic::AtomicUsize;
+    use std::time::Instant;
 
     use shuyi_sound::Channels;
 
