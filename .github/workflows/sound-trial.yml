@@ -38,7 +38,7 @@ jobs:
           (Get-FileHash scream.zip -Algorithm SHA256).Hash
           Expand-Archive scream.zip -DestinationPath scream
           Get-ChildItem scream -Recurse | Select-Object FullName | Format-Table -AutoSize -Wrap
-          $driver = "scream\Install\driverd"
+          $driver = "scream\Install\driver\x64"
           $sig = Get-AuthenticodeSignature "$driver\Scream.sys"
           $catsig = Get-AuthenticodeSignature "$driver\scream.cat"
           $catsig | Format-List Status,StatusMessage
