@@ -60,8 +60,6 @@ pub struct VorbisSource<'a> {
     /// Where the end of the last packet is, in frames from the start of the
     /// sound. A seek forgets it until a page's end says.
     at: Option<u64>,
-    /// It has moved by a seek, so a header may be next.
-    sought: bool,
     /// The last packet's samples, and how many of them have gone out.
     packet: Vec<i16>,
     sent: usize,
@@ -99,7 +97,6 @@ impl<'a> VorbisSource<'a> {
                 decoded: 0,
                 end,
                 at: Some(0),
-                sought: false,
                 packet: Vec::new(),
                 sent: 0,
                 ended: false,
@@ -157,7 +154,6 @@ impl<'a> VorbisSource<'a> {
         self.sent = 0;
         self.ended = false;
         self.at = None;
-        self.sought = true;
         Ok(())
     }
 
@@ -173,12 +169,10 @@ impl<'a> VorbisSource<'a> {
 
     /// Decodes the next packet, or says the file has ended.
     fn next_packet(&mut self) -> Result<(), Error> {
-        let (reader, sought) = (&mut self.reader, self.sought);
+        let reader = &mut self.reader;
         let packet = guarded(FORMAT, || match reader.read_dec_packet_itl() {
             // A seek near the start lands among the headers; the sound follows.
-            Err(VorbisError::BadAudio(AudioReadError::AudioIsHeader)) if sought => {
-                Ok(Some(Vec::new()))
-            }
+            Err(VorbisError::BadAudio(AudioReadError::AudioIsHeader)) => Ok(Some(Vec::new())),
             other => other.map_err(|e| malformed(&e)),
         });
         self.broken = packet.is_err();

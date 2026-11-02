@@ -5,8 +5,8 @@ use alloc::vec::Vec;
 use crate::error::Error;
 use crate::pcm::{Limits, Pcm, PcmFormat};
 
-/// How many frames [`read_all`] reads at a time.
-const CHUNK_FRAMES: usize = 4096;
+/// How many samples [`read_all`] reads at a time.
+const CHUNK_SAMPLES: usize = 8192;
 
 /// Something that yields whole frames on request, as a decoder working through
 /// a file does. A caller decides how much it holds at once: a read never fills
@@ -49,14 +49,13 @@ pub fn read_all(source: &mut impl Source, limits: &Limits) -> Result<Pcm, Error>
         });
     }
     let mut samples = Vec::new();
-    let mut chunk = [0; CHUNK_FRAMES * 2];
-    let room = &mut chunk[..CHUNK_FRAMES * channels];
+    let mut chunk = [0; CHUNK_SAMPLES];
     loop {
-        let frames = source.read(room)?;
+        let frames = source.read(&mut chunk)?;
         if frames == 0 {
             return Pcm::new(format, samples, limits);
         }
-        samples.extend_from_slice(&room[..frames * channels]);
+        samples.extend_from_slice(&chunk[..frames * channels]);
         let frames = samples.len() as u64 / channels as u64;
         if frames > limits.max_frames {
             return Err(Error::TooLong {
@@ -155,11 +154,11 @@ mod tests {
     }
 
     /// Says nothing of its length and goes on for ever.
-    struct Endless;
+    struct Endless(Channels);
 
     impl Source for Endless {
         fn format(&self) -> PcmFormat {
-            format(Channels::Mono)
+            format(self.0)
         }
 
         fn total_frames(&self) -> Option<u64> {
@@ -168,19 +167,22 @@ mod tests {
 
         fn read(&mut self, out: &mut [i16]) -> Result<usize, Error> {
             out.fill(7);
-            Ok(out.len())
+            Ok(out.len() / usize::from(self.0.count()))
         }
     }
 
     #[test]
     fn read_all_stops_at_the_limit_of_an_endless_source() {
         let limits = Limits::new(8_000, 10_000);
-        let Err(Error::TooLong { frames, limit }) = read_all(&mut Endless, &limits) else {
-            panic!("it should have stopped");
-        };
-        assert_eq!(limit, 10_000);
-        // No later than one chunk past it.
-        assert!(frames > 10_000 && frames <= 10_000 + 4096, "{frames}");
+        for (channels, chunk) in [(Channels::Mono, 8192), (Channels::Stereo, 4096)] {
+            let Err(Error::TooLong { frames, limit }) = read_all(&mut Endless(channels), &limits)
+            else {
+                panic!("it should have stopped");
+            };
+            assert_eq!(limit, 10_000);
+            // It counts frames, and goes no further than one chunk past.
+            assert!(frames > 10_000 && frames <= 10_000 + chunk, "{frames}");
+        }
     }
 
     #[test]

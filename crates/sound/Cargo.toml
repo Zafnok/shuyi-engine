@@ -27,8 +27,8 @@ hound = { version = "3.5", optional = true }
 lewton = { version = "0.9", optional = true, default-features = false, features = ["ogg"] }
 
 [dev-dependencies]
+# Its adapters, for their tests, whichever features a run names (a
+# dev-dependency on itself, as `shuyi-alloc-count`'s). A build for a console
+# leaves these out.
+shuyi-sound = { path = ".", features = ["wav", "vorbis"] }
 proptest.workspace = true
-
-[[test]]
-name = "adapters"
-required-features = ["wav", "vorbis"]

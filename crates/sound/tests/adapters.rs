@@ -82,7 +82,7 @@ fn a_16_bit_wav_gives_its_own_numbers() {
 
 #[test]
 fn a_wav_says_how_long_it_is_before_it_is_read() {
-    let bytes = wav16(1, 8_000, &[1, 2, 3]);
+    let bytes = wav16(2, 8_000, &[1, 2, 3, 4, 5, 6]);
     let source = WavSource::new(&bytes, &Limits::default()).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(source.total_frames(), Some(3));
 }
@@ -197,7 +197,7 @@ fn an_ogg_file_keeps_its_comments() {
     assert_eq!(source.comment("looplength"), Some("44100"));
     assert_eq!(source.comment("nothing"), None);
     assert!(source.comments().iter().any(|(k, _)| k == "LOOPSTART"));
-    assert_ne!(source.vendor(), "");
+    assert!(source.vendor().contains("Xiph"), "{}", source.vendor());
     assert_eq!(source.total_frames(), None);
 }
 
@@ -228,6 +228,39 @@ fn an_ogg_file_over_the_limit_stops_early() {
             max: 8_000
         })
     );
+}
+
+/// The source's own limit, not `read_all`'s, and nothing after it.
+#[test]
+fn an_ogg_source_stops_itself_at_its_limit_and_stays_stopped() {
+    let limits = Limits::new(192_000, 1000);
+    let mut source = VorbisSource::new(STEREO, &limits).unwrap_or_else(|e| panic!("{e}"));
+    let mut out = [0; 2];
+    let mut read = 0;
+    let error = loop {
+        match source.read(&mut out) {
+            Ok(frames) => {
+                assert_eq!(frames, 1, "it ended without stopping");
+                read += 1;
+            }
+            Err(error) => break error,
+        }
+    };
+    assert!(
+        matches!(error, Error::TooLong { limit: 1000, .. }),
+        "{error:?}"
+    );
+    assert!(read <= 1000, "{read}");
+    let again = source.read(&mut out);
+    assert!(matches!(again, Err(Error::Malformed { .. })), "{again:?}");
+    assert!(source.seek_page(0).is_err());
+}
+
+#[test]
+fn an_ogg_file_exactly_at_the_limit_is_taken() {
+    let limits = Limits::new(192_000, 57_330);
+    let pcm = VorbisSource::new(STEREO, &limits).and_then(|mut s| read_all(&mut s, &limits));
+    assert_eq!(pcm.map(|p| p.frames()), Ok(57_330));
 }
 
 #[test]

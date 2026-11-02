@@ -1305,6 +1305,7 @@ dependencies = [
  "hound",
  "lewton",
  "proptest",
+ "shuyi-sound",
  "thiserror",
 ]
 

@@ -19,6 +19,15 @@
     // not including, `to`: one that no longer matches fails the check and CI.
     edits: [
         // Ticket 2210: the sound core and what names it.
+        Replace(
+            file: "site/data/api.toml",
+            find: "
+[[crate]]
+name = \"shuyi_sound\"
+text = \"decoded sound and its WAV and Ogg Vorbis adapters, which no backend plays through yet\"
+",
+            with: "",
+        ),
         Cut(
             file: "Cargo.lock",
             from: "[[package]]\nname = \"shuyi-sound\"",

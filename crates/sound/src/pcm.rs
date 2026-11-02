@@ -120,26 +120,17 @@ pub const fn from_i8(sample: i8) -> i16 {
 
 /// `sample` of 24 bits, in the low bits of an `i32`, as one of 16: the bits
 /// below are dropped, as a truncating converter does. Out of range, it clamps.
-pub const fn from_i24(sample: i32) -> i16 {
+pub fn from_i24(sample: i32) -> i16 {
     clamp_i16(sample >> 8)
 }
 
 /// `sample` of 32 bits as one of 16: the bits below are dropped.
-pub const fn from_i32(sample: i32) -> i16 {
+pub fn from_i32(sample: i32) -> i16 {
     clamp_i16(sample >> 16)
 }
 
-const fn clamp_i16(value: i32) -> i16 {
-    if value > i16::MAX as i32 {
-        i16::MAX
-    } else if value < i16::MIN as i32 {
-        i16::MIN
-    } else {
-        // Between the two, as just checked.
-        #[allow(clippy::cast_possible_truncation)]
-        let narrow = value as i16;
-        narrow
-    }
+fn clamp_i16(value: i32) -> i16 {
+    i16::try_from(value.clamp(i32::from(i16::MIN), i32::from(i16::MAX))).unwrap_or(0)
 }
 
 /// A sound decoded whole.
