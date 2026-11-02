@@ -106,7 +106,7 @@ that mistake, on Moon Garden or a tutorial step. Some are cut to their first
 lines. They are written by hand, so they can drift as messages improve.
 
 **Found doing it:** `{Confirn}` in a language file passes `check` and shows on
-screen, so 2575. A missing text key passes `check` too and panics in a debug build:
+screen, so 2576. A missing text key passes `check` too and panics in a debug build:
 that's the design, and chapter 2 says so. A `blank` game's `lint` runs no text
 check and no rules fence: chapters 2 and 6 say so.
 
@@ -130,6 +130,6 @@ and the same fails with no book try in the list, so the bug was already there: 2
   only the book uses is explained where the book uses it.
 - **The job's cost:** `tutorial-tries` builds a copy per before-and-after, so 8 more.
 
-**Follow-ups:** 2575, 2822.
+**Follow-ups:** 2576, 2822.
 
 Book: this is the book. No public item changed.
