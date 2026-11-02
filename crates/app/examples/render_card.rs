@@ -120,7 +120,7 @@ fn png(image: &raster::Image) -> Result<Vec<u8>, String> {
             &image.rgba,
             image.width,
             image.height,
-            image::ColorType::Rgba8,
+            image::ExtendedColorType::Rgba8,
         )
         .map_err(|e| format!("a picture didn't encode: {e}"))?;
     Ok(out)
