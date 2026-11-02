@@ -297,9 +297,10 @@ it is technical.
       bytes to quad-snd (`crates/app/src/audio.rs`; `audrey` with
       `lewton` and `hound`). For music,
       `crates/app/src/audio/native_music.rs` catches a panic in
-      quad-snd's `Sound::load`. 2210 introduces the shared source and
-      permitted decoder adapters, with 2573's malformed-input and
-      correctness checks; 3079 alone removes the reference backend;
+      quad-snd's `Sound::load`. **From 2210 (done):** `shuyi-sound` has the
+      shared source and decoder adapters, with property tests over damaged
+      files and `sound-parity`'s `decoder-refuses` cells; no game path uses
+      them yet. 3079 alone removes the reference backend;
     - files `shuyi-ui` and `shuyi-core` read from storage:
       `Profiles::from_ron` (`crates/ui/src/profiles.rs`), the key
       bindings (`crates/ui/src/input/bindings.rs`) and `SaveHeader`

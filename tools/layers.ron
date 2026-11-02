@@ -99,13 +99,14 @@
             // (its optional `heap` feature, without the global static).
             engine: ["shuyi-core", "shuyi-assets", "shuyi-ui", "shuyi-alloc-count"],
             outside: Only([
+                // A session record's text and the frame's hash (ADR-0072);
+                // also the live link's requests (ADR-0047) and a capture's
+                // plan (ADR-0052).
+                "serde",
+                "ron",
                 // The live link's requests and answers, JSON lines (its
                 // optional `link` feature, ADR-0047).
-                "serde",
                 "serde_json",
-                // A capture's plan, RON (its optional `capture` feature,
-                // ADR-0052).
-                "ron",
             ]),
             devices: false,
             floats: true,
@@ -133,6 +134,24 @@
             outside: Any,
             devices: false,
             floats: true,
+        ),
+        "shuyi-sound": (
+            // Decoded sound, apart from the rest of the engine (ADR-0066), for
+            // a backend and for the tools alike. `hound` and `lewton` read bytes
+            // and touch no device, behind features that are off by default; they
+            // are on the `devices` list only so that a game's rules can't reach
+            // them. Its one float is a float WAV's sample on the way in (`wav`).
+            engine: [],
+            outside: Only([
+                // Typed errors (ADR-0002 §9).
+                "thiserror",
+                // The optional adapters.
+                "hound",
+                "lewton",
+            ]),
+            devices: false,
+            readers: ["lewton", "hound"],
+            floats: false,
         ),
         "shuyi-cli": (
             // The tools run headless, in CI and for agents (ADR-0005 §1):

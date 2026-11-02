@@ -426,6 +426,7 @@ fn a_gate_without_budget_or_samples_fails_closed() {
         version: 1,
         correctness: tolerance(),
         performance: BTreeMap::new(),
+        decoders: BTreeMap::new(),
         platforms: BTreeMap::new(),
     };
     let dir = std::env::temp_dir();
@@ -494,6 +495,160 @@ fn quad_snd_stays_and_stays_the_default() {
         has(macroquad.get("features"), "audio"),
         "only 3079 removes macroquad's audio (ADR-0068)"
     );
+}
+
+// -- the decoder stage --
+
+fn decoder_cell_status<'a>(cells: &'a [Value], check: &str) -> &'a str {
+    let found = cells.iter().find(|cell| cell["check"] == check);
+    found
+        .and_then(|cell| cell["status"].as_str())
+        .unwrap_or("absent")
+}
+
+/// A folder with the corpus's files and no oracle.
+fn corpus_only(name: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("xtask-decoders-{name}-{}", std::process::id()));
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let errors = write_corpus(
+        &root,
+        &CorpusOptions {
+            out: dir.clone(),
+            oracle: false,
+        },
+    );
+    assert_eq!(errors, Vec::<String>::new());
+    dir
+}
+
+#[test]
+fn the_adapters_pass_on_every_wav_and_refuse_every_malformed_file() {
+    let dir = corpus_only("wavs");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let cells = decoder_cells(&root, &dir, &tolerance()).unwrap_or_else(|e| panic!("{e}"));
+    let _ = fs::remove_dir_all(&dir);
+    let wavs = sources().len();
+    let passed = |prefix: &str| {
+        cells
+            .iter()
+            .filter(|c| c["status"] == "passed")
+            .filter(|c| c["check"].as_str().is_some_and(|n| n.starts_with(prefix)))
+            .count()
+    };
+    assert_eq!(passed("decoder:"), wavs, "every WAV, and no Ogg file yet");
+    let refusals = corpus::malformed_wavs().len() + 7;
+    assert_eq!(passed("decoder-refuses:"), refusals);
+    // No oracle is a failure, never a skip.
+    assert_eq!(decoder_cell_status(&cells, "decoder:long.ogg"), "failed");
+}
+
+/// The oracle is CI's, as `oggdec` isn't everywhere: this holds what needs none.
+#[test]
+fn an_ogg_file_decodes_near_its_source_and_its_oracle_is_held_to_the_sample() {
+    let dir = corpus_only("oggs");
+    let bytes = fs::read(dir.join("corpus/fmt_44k_s.ogg")).unwrap_or_else(|e| panic!("{e}"));
+    let limits = shuyi_sound::Limits::default();
+    let mut source =
+        shuyi_sound::vorbis::VorbisSource::new(&bytes, &limits).unwrap_or_else(|e| panic!("{e}"));
+    let pcm = shuyi_sound::read_all(&mut source, &limits).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(pcm.samples().len(), signal("fmt_44k_s.wav").len());
+    assert!(snr_db(&signal("fmt_44k_s.wav"), pcm.samples()) > 15.0);
+
+    // A oracle of what the decoder gives passes; one sample off by more fails.
+    let oracle = dir.join("oracle");
+    let write = |samples: &[i16]| {
+        let raw: Vec<u8> = samples.iter().flat_map(|s| s.to_le_bytes()).collect();
+        fs::write(oracle.join("fmt_44k_s.ogg.pcm"), raw).unwrap_or_else(|e| panic!("{e}"));
+    };
+    let names = ["fmt_44k_s.ogg".to_owned()];
+    let names: Vec<&String> = names.iter().collect();
+    let status = || {
+        let cells = decoders::correctness_cells(&dir, &names, &tolerance());
+        decoder_cell_status(&cells, "decoder:fmt_44k_s.ogg").to_owned()
+    };
+    write(pcm.samples());
+    assert_eq!(status(), "passed");
+    let mut off = pcm.samples().to_vec();
+    off[1000] = off[1000].wrapping_add(100);
+    write(&off);
+    assert_eq!(status(), "failed");
+    write(&pcm.samples()[2..]);
+    assert_eq!(status(), "failed");
+    let _ = fs::remove_dir_all(&dir);
+}
+
+/// `rows` of old, new and slowed times over a sound of 10 seconds.
+fn decode_rows(pairs: usize, old: f64, new: f64, burn: f64) -> Vec<Value> {
+    (0..pairs)
+        .map(|pair| {
+            json!({"file": "ogg", "pair": pair, "old": old, "new": new, "burn": burn, "audio_ms": 10_000})
+        })
+        .collect()
+}
+
+fn decoder_limits(text: &str) -> BTreeMap<String, decoders::DecoderLimit> {
+    ron::from_str(text).unwrap_or_else(|e| panic!("{e}"))
+}
+
+#[test]
+fn decoder_speed_is_judged_against_the_old_path_and_the_sounds_length() {
+    let limits = decoder_limits(
+        r#"{"ogg": (ratio: Some((max_ratio: 1.05, max_spread: 0.1, slows: true)), max_share: 0.1)}"#,
+    );
+    let verdicts = |old, new, burn, pairs| {
+        let cells = decoders::speed_cells("p", &decode_rows(pairs, old, new, burn), &limits);
+        [
+            "decoder-speed:ogg",
+            "decoder-slowdown:ogg",
+            "decoder-share:ogg",
+        ]
+        .map(|check| decoder_cell_status(&cells, check).to_owned())
+    };
+    assert_eq!(
+        verdicts(100.0, 100.0, 200.0, 9),
+        ["passed", "passed", "passed"]
+    );
+    assert_eq!(verdicts(100.0, 200.0, 400.0, 9)[0], "failed", "a slowdown");
+    assert_eq!(verdicts(100.0, 100.0, 100.0, 9)[1], "failed", "not caught");
+    assert_eq!(
+        verdicts(9000.0, 2000.0, 4000.0, 9)[2],
+        "failed",
+        "too slow to play"
+    );
+    assert_eq!(verdicts(100.0, 100.0, 200.0, 8)[0], "inconclusive");
+    let none = decoders::speed_cells("p", &[], &limits);
+    assert_eq!(decoder_cell_status(&none, "decoder-speed:ogg"), "failed");
+}
+
+#[test]
+fn where_old_and_new_are_not_the_same_work_only_the_share_is_a_verdict() {
+    let limits = decoder_limits(r#"{"ogg": (ratio: None, max_share: 0.1)}"#);
+    let cells = decoders::speed_cells("p", &decode_rows(9, 10.0, 500.0, 900.0), &limits);
+    assert_eq!(
+        decoder_cell_status(&cells, "decoder-speed:ogg"),
+        "unsupported"
+    );
+    assert_eq!(cells[0]["mandatory"], json!(false));
+    assert_eq!(
+        decoder_cell_status(&cells, "decoder-slowdown:ogg"),
+        "absent"
+    );
+    assert_eq!(decoder_cell_status(&cells, "decoder-share:ogg"), "passed");
+}
+
+#[test]
+fn a_platform_without_decoder_evidence_fails_closed() {
+    let dir = std::env::temp_dir();
+    let budget = Budget {
+        version: 1,
+        correctness: tolerance(),
+        performance: BTreeMap::new(),
+        decoders: BTreeMap::new(),
+        platforms: BTreeMap::new(),
+    };
+    let cells = decoder_speed_cells("linux-native", &dir, &budget);
+    assert_eq!(cells[0]["status"], "failed");
+    assert_eq!(cells[0]["detail"], "no budget");
 }
 
 // -- giving up --

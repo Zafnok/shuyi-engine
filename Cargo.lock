@@ -1212,6 +1212,7 @@ dependencies = [
  "shuyi-app",
  "shuyi-assets",
  "shuyi-platform",
+ "shuyi-sound",
  "shuyi-ui",
  "tempfile",
 ]
@@ -1295,6 +1296,17 @@ dependencies = [
  "shuyi-assets",
  "shuyi-platform",
  "shuyi-ui",
+]
+
+[[package]]
+name = "shuyi-sound"
+version = "0.1.0"
+dependencies = [
+ "hound",
+ "lewton",
+ "proptest",
+ "shuyi-sound",
+ "thiserror",
 ]
 
 [[package]]
@@ -1733,6 +1745,7 @@ dependencies = [
  "serde_json",
  "serde_norway",
  "sha2",
+ "shuyi-sound",
  "toml",
 ]
 

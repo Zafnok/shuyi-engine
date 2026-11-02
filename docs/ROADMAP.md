@@ -80,6 +80,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
 | 2509 | Problem codes: a code and a help line on every error the contract gives, `shuyi explain`, an exit code for "fix the setup" |
 | 2530 | Problem codes for the validators: unknown names, duplicates and values out of range in the keymap, the language packs and the maps |
+| 2576 | A misspelled action in a language file fails `shuyi check`, rather than showing its braces to the player |
 | 3040 | One log for the engine and the game, kept by `App` and carried in the contract's answers |
 | 2513 | Zero setup on Linux: `shuyi doctor` checks the system libraries, a setup script, a dev container |
 | 2511 | The short path: engine defaults for every `GameData` part, a prelude, `run_game`, and a minimal template |
@@ -90,6 +91,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2546 | The MCP server follows the session's checkout: it reads the client's roots and hands each project to that project's own server |
 | 2561 | Moving a running server's program aside never leaves its path empty, so the CLI's tests don't flake in parallel |
 | 2564 | The move-aside tests fail on Windows under load: find whether the program's path is ever empty, and make them hold |
+| 2574 | A replaced name can read as missing on Windows: settle the move-aside promise and its test, which still fails under load |
 | 1134 | The engine's skill pack (Agent Skills) |
 | 3063 | Frame times and spans as data: the platform's clock, spans a game marks, and `App`'s record of each frame, in debug builds |
 | 2553 | Perf traces agents read: `shuyi run --perf`, an MCP `perf` tool read from a number, and a running build's trace file, as JSON lines |
@@ -112,6 +114,8 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2818 | The tutorial taught from nothing: for a reader new to programming, with before-and-after pictures of real edits |
 | 2817 | Finish the tutorial's browser-play acceptance: exercise all ten steps from their page links, with per-step evidence |
 | 2819 | The book taught from nothing: each chapter for the tutorial's reader, with its words explained and its pictures |
+| 2822 | `tutorial-tries` on Windows can draw a try with another step's program |
+| 2821 | Code on the site that stands out: inline code with its own color and background, and code blocks with syntax colors of our own |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |
 | 2804 | News with an automatic changelog from the tickets done, and a post per release |
@@ -261,7 +265,8 @@ volume), and 2226 and 2349 (game#0825, the language option).
 | ------ | ---- |
 | 2116 | Determinism fixtures, the same on x64, ARM64 and wasm32 in CI |
 | 2020 | Fuzzing in CI over every registered format and the pack, and a threat model |
-| 2518 | Session records at the platform boundary, played back exactly in the Harness |
+| 2518 | Session records at the platform boundary, played back exactly on the headless backend |
+| 2575 | The Harness starts a game from its real `Start`, records it, and plays a session record to any frame |
 | 2519 | Session records from real builds, played back by `shuyi run`, `scene` and MCP |
 | 3041 | Log sinks in shipped builds: a log file, and the browser console on the web |
 | 3046 | Crash reports: a panic hook writes a report with the game's record, and the game hears of it at the next start |

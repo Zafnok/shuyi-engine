@@ -33,7 +33,19 @@ const DUALSHOCK_4: [u16; 3] = [0x05c4, 0x09cc, 0x0ba0];
 
 /// Who made a pad, which decides the Confirm / Cancel swap here and the
 /// button names shown on screen (ticket 0220).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    serde::Serialize,
+    serde::Deserialize,
+)]
 pub enum PadKind {
     /// A Microsoft pad.
     Xbox,

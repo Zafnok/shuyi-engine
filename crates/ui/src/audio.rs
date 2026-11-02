@@ -108,7 +108,7 @@ impl Default for AudioConfig {
 /// A sound started with a handle ([`AudioQueue::start_sound`]): the
 /// queue's count of them, from 1, so the same calls give the same ids on
 /// every run.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize)]
 pub struct SoundId(u32);
 
 impl SoundId {
@@ -419,7 +419,7 @@ impl MusicClock {
 
 /// What the platform must do to the music this frame. A track is loaded, started,
 /// has its volume changed and is stopped, which also unloads it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum MusicCommand {
     /// Start loading `cue`'s file; it will be started soon.
     Load {

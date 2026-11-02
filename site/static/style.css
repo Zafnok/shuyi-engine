@@ -12,6 +12,16 @@
   --ready: #1f7a3d;
   --in-progress: #8a5a00;
   --planned: #4b5563;
+  --code-inline: #7a2a63;
+  --code-inline-bg: #f1eee6;
+  --code-keyword: #8b2c9f;
+  --code-type: #0a6b75;
+  --code-function: #6b5c00;
+  --code-string: #9a4a10;
+  --code-number: #1f5fbf;
+  --code-comment: #4f6f52;
+  --code-deleted: #b3261e;
+  --code-inserted: #1a7a37;
   --radius: 10px;
   --wrap: 68rem;
   color-scheme: light dark;
@@ -29,6 +39,16 @@
     --ready: #6fd394;
     --in-progress: #f0c060;
     --planned: #aeb6c2;
+    --code-inline: #e9b8dc;
+    --code-inline-bg: #2a2e36;
+    --code-keyword: #c792ea;
+    --code-type: #5fd0c0;
+    --code-function: #dcdca0;
+    --code-string: #e0a070;
+    --code-number: #8fc4f0;
+    --code-comment: #8fb08a;
+    --code-deleted: #ff8a80;
+    --code-inserted: #7ee29a;
   }
 }
 
@@ -68,6 +88,50 @@ pre {
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+}
+
+/* Code blocks: the classes Zola writes (`highlight_theme = "css"`), by the
+   tokens above. Punctuation and operators keep the text's color. */
+
+.z-keyword,
+.z-storage {
+  color: var(--code-keyword);
+}
+
+.z-keyword.z-operator {
+  color: inherit;
+}
+
+.z-support.z-type,
+.z-entity.z-name {
+  color: var(--code-type);
+}
+
+.z-support.z-function,
+.z-entity.z-name.z-function,
+.z-variable.z-function,
+.z-entity.z-name.z-tag {
+  color: var(--code-function);
+}
+
+.z-string {
+  color: var(--code-string);
+}
+
+.z-constant {
+  color: var(--code-number);
+}
+
+.z-comment {
+  color: var(--code-comment);
+}
+
+.z-markup.z-deleted {
+  color: var(--code-deleted);
+}
+
+.z-markup.z-inserted {
+  color: var(--code-inserted);
 }
 
 a {
@@ -281,6 +345,22 @@ h3 {
 .prose h1 {
   font-size: clamp(1.9rem, 6vw, 2.5rem);
   margin-top: 0;
+}
+
+/* Inline code: its own color and background, wrapping on a narrow screen. */
+.prose :not(pre) > code {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--code-inline-bg);
+  color: var(--code-inline);
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* In a link it stays the link's color. */
+.prose a > code {
+  color: inherit;
 }
 
 .meta {

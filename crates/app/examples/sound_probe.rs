@@ -8,9 +8,10 @@
 //! ```
 //!
 //! It runs in a folder holding `scenarios.ron`, `corpus/` and `probe.txt`,
-//! whose one line says what to do: `scenario <name>`, or `perf <burn>` for
+//! whose one line says what to do: `scenario <name>`, `perf <burn>` for
 //! the timed workload, `<burn>` being the slowdown it injects in percent (0
-//! for none). Every line it says starts `shuyi-sound-probe: ` and ends in a
+//! for none), or `decoders <pair>` for the old path's whole decodes against
+//! `shuyi-sound`'s, the side first going by `<pair>`. Every line it says starts `shuyi-sound-probe: ` and ends in a
 //! JSON object: on stderr natively, on the console on the web.
 //!
 //! On the web it waits for a click, the gesture a browser asks for before it
@@ -26,6 +27,9 @@ use shuyi_app::SoundProbeBackend;
 use shuyi_assets::audio::{AudioManifest, CreditRef, Files, MusicCue, SoundCue};
 use shuyi_platform::audio::SoundRequest;
 use shuyi_platform::audio::player::Player;
+use shuyi_sound::vorbis::VorbisSource;
+use shuyi_sound::wav::WavSource;
+use shuyi_sound::{Limits, read_all};
 use shuyi_ui::audio::{AudioQueue, MusicCommand, SoundId};
 
 /// How long one pass of the main loop waits natively, in seconds. The web's
@@ -42,6 +46,12 @@ const PERF_DECODES: usize = 8;
 /// How long the perf workload waits for the music's load, in seconds, as a
 /// scenario's `settle` does.
 const PERF_SETTLE: f64 = 1.5;
+/// How many whole decodes one decoder measure is the sum of, the slowdown it
+/// injects into a third measure of the new side, in percent, and how long
+/// `corpus/long`, which they decode, plays, in milliseconds.
+const DECODER_DECODES: u32 = 3;
+const DECODER_BURN: u32 = 100;
+const DECODER_AUDIO_MS: u32 = 10_000;
 /// How long the sound plays on after the measure, in seconds, so that what is
 /// still on its way to the sink isn't cut off with the process.
 const PERF_DRAIN: f64 = 0.5;
@@ -125,6 +135,10 @@ async fn run() -> Result<(), String> {
         ["perf", burn] => {
             let burn = burn.parse().map_err(|e| format!("burn {burn}: {e}"))?;
             perf(&plan, burn).await
+        }
+        ["decoders", pair] => {
+            let pair = pair.parse().map_err(|e| format!("pair {pair}: {e}"))?;
+            decoders(pair).await
         }
         _ => Err(format!("probe.txt says {order:?}")),
     }
@@ -386,6 +400,78 @@ async fn perf(plan: &Plan, burn: u32) -> Result<(), String> {
             sound.delete(&ctx);
         }
         measure(metric, burned(timed, burn) * 1000.0);
+    }
+    Ok(())
+}
+
+/// Which adapter of `shuyi-sound` a file goes through.
+#[derive(Clone, Copy)]
+enum Kind {
+    Wav,
+    Ogg,
+}
+
+/// `bytes` decoded whole by `shuyi-sound`.
+fn decode_new(kind: Kind, bytes: &[u8]) -> Result<(), String> {
+    let limits = Limits::default();
+    let pcm = match kind {
+        Kind::Wav => WavSource::new(bytes, &limits).and_then(|mut s| read_all(&mut s, &limits)),
+        Kind::Ogg => VorbisSource::new(bytes, &limits).and_then(|mut s| read_all(&mut s, &limits)),
+    };
+    core::hint::black_box(pcm.map_err(|e| e.to_string())?);
+    Ok(())
+}
+
+/// [`DECODER_DECODES`] whole decodes by `shuyi-sound`, in milliseconds, with
+/// `burn` percent more.
+fn timed_new(kind: Kind, bytes: &[u8], burn: u32) -> Result<f64, String> {
+    let timed = date::now();
+    for _ in 0..DECODER_DECODES {
+        decode_new(kind, bytes)?;
+    }
+    Ok(burned(timed, burn) * 1000.0)
+}
+
+/// [`DECODER_DECODES`] whole decodes by the old path, in milliseconds.
+#[cfg_attr(not(target_arch = "wasm32"), allow(clippy::unused_async))]
+async fn timed_old(ctx: &AudioContext, bytes: &[u8]) -> f64 {
+    let timed = date::now();
+    for _ in 0..DECODER_DECODES {
+        let sound = Sound::load(ctx, bytes);
+        // The browser decodes in the background; natively it is done.
+        #[cfg(target_arch = "wasm32")]
+        while !sound.is_loaded() {
+            tick().await;
+        }
+        sound.delete(ctx);
+    }
+    (date::now() - timed) * 1000.0
+}
+
+/// Old against new on the same bytes in the same process, each side's turn first
+/// by `pair`, then the new side slowed: one line per kind of file, in
+/// milliseconds per decode.
+async fn decoders(pair: u32) -> Result<(), String> {
+    let wav = read("corpus/long.wav").await?;
+    let ogg = read("corpus/long.ogg").await?;
+    let ctx = AudioContext::new();
+    wait_for_gesture().await;
+    let per_decode = |ms: f64| ms / f64::from(DECODER_DECODES);
+    for (file, kind, bytes) in [("wav", Kind::Wav, &wav), ("ogg", Kind::Ogg, &ogg)] {
+        let (old, new) = if pair.is_multiple_of(2) {
+            let old = timed_old(&ctx, bytes).await;
+            (old, timed_new(kind, bytes, 0)?)
+        } else {
+            let new = timed_new(kind, bytes, 0)?;
+            (timed_old(&ctx, bytes).await, new)
+        };
+        let burn = timed_new(kind, bytes, DECODER_BURN)?;
+        say(&format!(
+            r#"{{"event":"decode","file":"{file}","pair":{pair},"old":{:.3},"new":{:.3},"burn":{:.3},"audio_ms":{DECODER_AUDIO_MS}}}"#,
+            per_decode(old),
+            per_decode(new),
+            per_decode(burn),
+        ));
     }
     Ok(())
 }

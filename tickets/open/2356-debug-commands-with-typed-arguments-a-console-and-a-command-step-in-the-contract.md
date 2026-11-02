@@ -222,20 +222,18 @@ None.
 - **The log (3040, done):** `Game::command` also logs each line and its
   result with `Ctx::log` (level `Info`, category `Game`: the commands
   are the game's).
-- **Session records, in either order with 2518:** if 2518 is done, a
-  command run between frames goes through `App::command(&mut self,
-  line: &str) -> Result<String, String>` (new), which runs
-  `Game::command` and notes the line on the next `FrameRecord`
-  (`commands: Vec<String>`); playback runs it before that frame, as
-  2518 says. Only calls from outside a frame are recorded:
-  a console line (below) is typed input, which the record holds
-  already. If 2518 isn't done, 2518 does it (its own clause says so).
+- **Session records (from 2518, done; ADR-0072):** a command run between
+  frames goes through `App::command(&mut self, line: &str) ->
+  Result<String, String>` (new), which runs `Game::command` and notes the
+  line on the next `session::FrameRecord` (`commands: Vec<String>`,
+  optional, by the record's version rule); `session::Playback::next` runs
+  it before that frame. Only calls from outside a frame are recorded: a
+  console line (below) is typed input, which the record holds already.
 - **The live link (from 2521, done; ADR-0047):** add
   `Request::Command { line }` to `shuyi_platform::link`, which runs
-  `Game::command` (through `App::command` if 2518 is done, so the line
-  is recorded; if not, through `App::game_mut`, so `Server::handle`
-  takes `&mut App<G>`, and 2518 moves it onto `App::command`) and
-  answers its reply; raise `link::VERSION` by one. `shuyi attach` gains
+  `Game::command` through `App::command`, so the line is recorded, and
+  answers its reply; a test finds a command sent over the link on the
+  record; raise `link::VERSION` by one. `shuyi attach` gains
   `--command <line>` if the contract's other operations take one.
 - **Types, in either order with 2907:** if 2907's ADR is done and
   names a description that `ArgKind` should use, follow it. If not,
@@ -320,8 +318,8 @@ None.
    `contract/session.rs` and `contract/fake.rs`. Then read Hello,
    Grid's `rules.rs`, `screens/stage.rs`, `tools.rs` and
    `tests/it/determinism.rs`, 2315's and 2316's ADR, ADR-0002 §2–§3,
-   ADR-0022 §3, ADR-0047, and the `shuyi-input` skill. Check which of
-   2518 and 2907 are done.
+   ADR-0022 §3, ADR-0047, and the `shuyi-input` skill. Check whether
+   2907 is done.
 2. Write the ADR.
 3. Add `debug/command.rs` with its unit tests.
 4. Add the two `Screen` methods, the stack's walk from the top,

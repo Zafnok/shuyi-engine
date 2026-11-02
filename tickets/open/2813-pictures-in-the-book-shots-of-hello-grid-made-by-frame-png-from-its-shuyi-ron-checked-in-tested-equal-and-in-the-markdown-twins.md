@@ -60,8 +60,9 @@ check alone.
 tutorial-tries`'s and stay so (their edits have no home in `shuyi.ron`). Share
 their CSS (`.prose figure`, `.try-pair`) with `shot` if that's simple.
 
-**Either order with 2819:** if 2819 is done, add these shots to its chapters
-beside what it put there; if not, nothing to do (2819 adds to them).
+**From 2819 (done):** the book's chapters have their own pictures of Moon Garden
+(`step = "book"` in `site/tutorial/tries.toml`). Add these shots beside them.
+Chapter 9 has no picture yet: a target's own display is this ticket's.
 
 ## Nick input
 

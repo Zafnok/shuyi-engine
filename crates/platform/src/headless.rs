@@ -29,6 +29,7 @@ use shuyi_ui::{PlatformFacts, RawInputEvent};
 use crate::app::Card;
 use crate::audio::{Audio, AudioFrame, SoundRequest};
 use crate::platform::{DisplayInfo, Frame, Millis, Platform, Show, SystemEvent};
+use crate::session::{FrameRecord, KeyboardFrame, SessionRecord};
 use crate::text_input::{TextAnswer, TextAsk, TextInput};
 
 /// A frame as the headless backend keeps it.
@@ -138,6 +139,18 @@ pub struct Speaker {
     playing: Vec<PlayingSound>,
     /// Whether the system suspended the game ([`Audio::suspend`]).
     suspended: bool,
+    /// What a session record says is sounding, while one plays: the
+    /// answer to `music_playing` in place of the speaker's own.
+    recorded: Option<RecordedMusic>,
+}
+
+/// What a session record says is sounding.
+#[derive(Debug, Clone, Default)]
+struct RecordedMusic {
+    /// The cue of the track, written only when it changes.
+    track: String,
+    /// Its position this frame; `None` in silence.
+    position: Option<f64>,
 }
 
 impl Speaker {
@@ -185,6 +198,16 @@ impl Speaker {
         self.suspended
     }
 
+    /// One frame of a session record: the track if it changed, and its
+    /// position.
+    fn play_recorded(&mut self, track: Option<&str>, position: Option<f64>) {
+        let recorded = self.recorded.get_or_insert_default();
+        if let Some(track) = track {
+            track.clone_into(&mut recorded.track);
+        }
+        recorded.position = position;
+    }
+
     /// Follows one sound request: a start adds a sound playing (or
     /// replaces the one of its id, as a new game's queue counts from 1
     /// again), a stop takes it away.
@@ -225,6 +248,9 @@ impl Speaker {
 
 impl Audio for Speaker {
     fn music_playing(&self, now: Millis) -> Option<(&str, f64)> {
+        if let Some(recorded) = &self.recorded {
+            return recorded.position.map(|at| (recorded.track.as_str(), at));
+        }
         let (cue, at) = self.started.as_ref().filter(|_| !self.silent)?;
         let elapsed = now.since(*at).as_secs_f64() - self.load_delay;
         (elapsed >= 0.0).then_some((cue.as_str(), elapsed))
@@ -301,6 +327,38 @@ impl TextInput for ScriptedKeyboard {
     }
 }
 
+/// The system keyboard a session record says was there: its answers and
+/// its opens are the frame's. Nothing asks it what to answer.
+#[derive(Debug, Clone, Default)]
+struct RecordedKeyboard {
+    present: bool,
+    answer: Option<TextAnswer>,
+    opened: Option<bool>,
+}
+
+impl RecordedKeyboard {
+    /// One frame of a session record, if the keyboard had a part in it.
+    fn play(&mut self, frame: Option<&KeyboardFrame>) {
+        self.answer = None;
+        self.opened = None;
+        if let Some(frame) = frame {
+            self.present = frame.present.unwrap_or(self.present);
+            self.answer.clone_from(&frame.answer);
+            self.opened = frame.opened;
+        }
+    }
+}
+
+impl TextInput for RecordedKeyboard {
+    fn open(&mut self, _ask: &TextAsk) -> bool {
+        self.opened.take().unwrap_or(false)
+    }
+
+    fn poll(&mut self) -> Option<TextAnswer> {
+        self.answer.take()
+    }
+}
+
 /// Where a [`HeadlessPlatform`]'s memory readings come from.
 #[derive(Debug, Clone, Copy)]
 enum Memory {
@@ -370,6 +428,9 @@ pub struct HeadlessPlatform {
     storage: Option<Box<dyn Storage>>,
     speaker: Speaker,
     keyboard: Option<ScriptedKeyboard>,
+    /// The system keyboard of a session record, while one plays: in place
+    /// of `keyboard`.
+    recorded_keyboard: Option<RecordedKeyboard>,
     /// Where the game is said to run.
     facts: PlatformFacts,
     /// The clock it gives to measure frames with, if a test set one.
@@ -418,6 +479,7 @@ impl HeadlessPlatform {
             storage: None,
             speaker: Speaker::default(),
             keyboard: None,
+            recorded_keyboard: None,
             facts: PlatformFacts::default(),
             clock: None,
             memory: Memory::None,
@@ -432,6 +494,41 @@ impl HeadlessPlatform {
             changes: Vec::new(),
             changed_asks: 0,
         }
+    }
+
+    /// A backend ready to play `record` ([`Playback`](crate::session::Playback)):
+    /// the display and the facts it recorded, and a memory storage holding
+    /// its store (writes stay in memory). Its music and its system keyboard
+    /// are the record's from the first [`push_frame`](Self::push_frame).
+    pub fn from_session(record: &SessionRecord) -> Self {
+        let mut storage = MemoryStorage::new();
+        for (key, value) in &record.storage {
+            // A key a store refused was never recorded by one.
+            let _ = storage.write(key, value);
+        }
+        Self::new()
+            .with_display(record.display)
+            .with_facts(record.platform.clone())
+            .with_storage(Box::new(storage))
+    }
+
+    /// Queues one frame of a session record: its system events, its input,
+    /// and what the sound device and the system keyboard answer in it.
+    pub fn push_frame(&mut self, frame: &FrameRecord) {
+        self.system.extend_from_slice(&frame.system);
+        self.push_input(&frame.input);
+        self.speaker
+            .play_recorded(frame.track.as_deref(), frame.music);
+        self.recorded_keyboard
+            .get_or_insert_default()
+            .play(frame.keyboard.as_ref());
+    }
+
+    /// The session record has played: the music and the system keyboard are
+    /// this backend's own again.
+    pub fn end_session(&mut self) {
+        self.speaker.recorded = None;
+        self.recorded_keyboard = None;
     }
 
     /// The same backend on `display`.
@@ -632,6 +729,9 @@ impl Platform for HeadlessPlatform {
     }
 
     fn text_input(&mut self) -> Option<&mut dyn TextInput> {
+        if let Some(recorded) = &mut self.recorded_keyboard {
+            return recorded.present.then_some(recorded as &mut dyn TextInput);
+        }
         self.keyboard.as_mut().map(|k| k as &mut dyn TextInput)
     }
 

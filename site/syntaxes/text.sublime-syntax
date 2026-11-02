@@ -1,0 +1,10 @@
+%YAML 1.2
+---
+# A `text` code block (ticket 2821): plain, and known to the build, so it
+# gives no warning. Our own, under the repository's license.
+name: Text
+file_extensions: [text]
+scope: text.plain.block
+
+contexts:
+  main: []

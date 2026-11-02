@@ -17,18 +17,54 @@
 //! away and the copy renamed in after it. Windows lets a running
 //! program's name be replaced while another name keeps the file.
 //!
+//! That replacing is the one moment left, and it is the system's: on a busy
+//! machine a name being replaced can read as not there for tens of
+//! milliseconds (ticket 2564 saw it in about one move in 40,000, inside the
+//! call, with `fs::rename`, a POSIX-semantics rename and a replacing hard
+//! link alike). No order of the moves avoids it.
+//!
 //! Only a cargo build output has a twin: a `shuyi` installed with `cargo
 //! install` has none and is never moved.
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 
 /// The folder, beside the program, its moved files go to.
 pub const RUNNING: &str = ".shuyi-running";
 
 /// The most files one process moves under its pid.
 const NAMES: u32 = 1000;
+
+/// How many times a refused step of a move is tried, and the wait between:
+/// two seconds at most, where a scan was seen to clear in about 30
+/// milliseconds.
+const TRIES: u32 = 200;
+const PAUSE: Duration = Duration::from_millis(10);
+
+/// `ERROR_ACCESS_DENIED` and `ERROR_SHARING_VIOLATION`: what Windows answers
+/// while something else, such as an antivirus scan of a new `.exe`, holds a
+/// file for a moment. Only Windows moves a program aside.
+const BUSY: [i32; 2] = [5, 32];
+
+/// `step`, tried again while the answer is [`BUSY`], at most `tries` times
+/// with `pause` between; any other error, and the last, is returned.
+fn retrying<T>(
+    tries: u32,
+    pause: Duration,
+    mut step: impl FnMut() -> std::io::Result<T>,
+) -> std::io::Result<T> {
+    let mut left = tries;
+    loop {
+        left = left.saturating_sub(1);
+        match step() {
+            Err(e) if left > 0 && e.raw_os_error().is_some_and(|c| BUSY.contains(&c)) => {
+                std::thread::sleep(pause);
+            }
+            answer => return answer,
+        }
+    }
+}
 
 /// The length and modified time of `path`: what a hard link shares.
 fn stamp(path: &Path) -> Option<(u64, SystemTime)> {
@@ -84,6 +120,11 @@ pub fn sweep(dir: &Path) {
 /// that name in one step. Renaming `from` away first would leave nothing
 /// there until the copy came, and a program started then (another test,
 /// a person's `cargo shuyi`) would fail to find it.
+///
+/// Each step after the copy is retried while the file is busy (ticket
+/// 2564): the copy is a new `.exe`, which a scan may hold just then, and a
+/// busy machine refused the rename with `Access is denied`. A refusal that
+/// lasts is still returned.
 fn put_aside(from: &Path, to: &Path) -> Result<(), String> {
     let at = |path: &Path, e: std::io::Error| format!("{}: {e}", path.display());
     let copy = to.with_extension("copy");
@@ -91,13 +132,15 @@ fn put_aside(from: &Path, to: &Path) -> Result<(), String> {
     let modified = fs::metadata(from)
         .and_then(|meta| meta.modified())
         .map_err(|e| at(from, e))?;
-    fs::File::options()
-        .write(true)
-        .open(&copy)
-        .and_then(|file| file.set_modified(modified))
-        .map_err(|e| at(&copy, e))?;
-    fs::hard_link(from, to).map_err(|e| at(to, e))?;
-    fs::rename(&copy, from).map_err(|e| at(from, e))
+    retrying(TRIES, PAUSE, || {
+        fs::File::options()
+            .write(true)
+            .open(&copy)
+            .and_then(|file| file.set_modified(modified))
+    })
+    .map_err(|e| at(&copy, e))?;
+    retrying(TRIES, PAUSE, || fs::hard_link(from, to)).map_err(|e| at(to, e))?;
+    retrying(TRIES, PAUSE, || fs::rename(&copy, from)).map_err(|e| at(from, e))
 }
 
 /// Moves `exe` and its twins into `<exe dir>/.shuyi-running/`,

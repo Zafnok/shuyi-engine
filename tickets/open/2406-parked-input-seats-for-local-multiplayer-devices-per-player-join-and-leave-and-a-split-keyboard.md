@@ -310,8 +310,8 @@ online)?
   says), each seat has its own `RumblePlayer`, `Motors::set` and `stop`
   take the seat, and a seat's cue goes to the last pad pressed in that
   seat. If 2408 isn't done, 2408 does this when it lands.
-- **Pointer, focus and records** (2405, 3042 and 2518 are After MVP, so
-  they are likely done first). For each one that is done:
+- **Pointer, focus and records** (2405 and 3042 are After MVP, so they
+  are likely done first; 2518 is done). For each one that is done:
   - 2405: its pointer events (`PointerMoved`, `PointerDown`,
     `PointerUp`, `Wheel`) go to the seat holding the keyboard, or its
     first half, and stay in the shared stream for menus;
@@ -361,7 +361,7 @@ online)?
    `input/state.rs`, `input/frame.rs`, `ctx.rs` (`keymap`, `keymap_for`,
    `pad_bindings`), `harness.rs`, `frame_png.rs`'s `Step` and `Script`,
    `fit.rs` and `target.rs`. Check which of 2137, 1120, 1121, 2405,
-   2408, 2518 and 3042 are done.
+   2408 and 3042 are done.
 2. Write the ADR.
 3. Pad ids on the raw events: `Pads::update` per pad, `PadRemoved`,
    `from_crank`'s pad. Move `two_pads_holding_one_button_are_one_press`
@@ -386,7 +386,7 @@ online)?
 9. `local_players` in the profiles, `GameControls::with_seats`, the new
    rules and the contract's settings.
 10. The either-order parts that are due, the lines this PR adds to the
-    open tickets of 2405, 3042 and 2518, the docs and the skill.
+    open tickets of 2405 and 3042, the docs and the skill.
 11. Run the gates.
 
 ## Acceptance criteria
