@@ -171,6 +171,15 @@ so it isn't one of these gates. Its own tests are `cargo test -p xtask
 sound_parity`. Running it by hand, and what its cells mean:
 [`tools/sound-parity/README.md`](../../../tools/sound-parity/README.md).
 
+`shuyi-sound` builds without `std`, with `cargo test -p shuyi-sound` for its
+core and its adapters on the targets they serve:
+
+```bash
+cargo test -p shuyi-sound --all-features --locked
+cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
+cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
+```
+
 ## Golden tables (CI's `determinism` job)
 
 Golden tables (`shuyi_assets::golden`, ticket 2116) pin values a build

@@ -5,10 +5,10 @@ type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: todo
+status: done
 blocked_by: ["2518"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 2575 — The Harness starts a game from its real Start, records it, and plays a session record
@@ -101,29 +101,29 @@ None.
 
 ## Acceptance criteria
 
-- [ ] For random scripts on the toy game (keys, pad buttons, waits of 0 to 100 ms
+- [x] For random scripts on the toy game (keys, pad buttons, waits of 0 to 100 ms
       frames, a suspend and a resume), a session recorded with
       `Harness::start_recording` and played with `Harness::from_session` has no
       differing frame, ends on the same screens, and leaves the same storage
       (property test).
-- [ ] Removing one key press from a recorded toy session at frame N makes
+- [x] Removing one key press from a recorded toy session at frame N makes
       `play_all` report its first difference at frame N, and leaves the game on
       that frame.
-- [ ] `FRAME_DT` frames on a `Harness::start` come out as 16, 17 and 17 ms in the
+- [x] `FRAME_DT` frames on a `Harness::start` come out as 16, 17 and 17 ms in the
       record.
-- [ ] A `Harness::start` of a game whose load fails is the `Err` with its errors.
-- [ ] A `Harness::start` doesn't hold back an undeclared action; `Harness::new`
+- [x] A `Harness::start` of a game whose load fails is the `Err` with its errors.
+- [x] A `Harness::start` doesn't hold back an undeclared action; `Harness::new`
       still does.
-- [ ] `Stamps::Ignore`, a start without a stamp, a truncated record and an
+- [x] `Stamps::Ignore`, a start without a stamp, a truncated record and an
       incomplete store each show in `Played::limits`; another `Made` and another
       version are `Err` from `from_session`.
-- [ ] After `play_all`, `keys` runs on from the record's last time, and `limits`
+- [x] After `play_all`, `keys` runs on from the record's last time, and `limits`
       says the music is the headless speaker's.
-- [ ] `play_to` before the game has loaded leaves the Harness usable: a test can
+- [x] `play_to` before the game has loaded leaves the Harness usable: a test can
       read `app()` and `screen_log()` on the card's frame.
-- [ ] The book's chapter is updated, or the completion notes have a `Book:` line
+- [x] The book's chapter is updated, or the completion notes have a `Book:` line
       saying why not.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -134,5 +134,28 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+Done as scoped: `Harness::start`, `start_recording`, `session`, `from_session`,
+`play_to`, `play_all` and `session::Played`, with a shared `note_frame`. The tests
+are in `crates/platform/tests/it/session.rs`, and the book's *Recording a session*
+in chapter 8 has its code in `site/snippets/src/testing.rs`.
+
+Deviations:
+
+- The clock is a small `FrameClock` (a start in milliseconds, and microseconds
+  since), not the `Option<u64>` of microseconds in step 2: a record's clock can be
+  anywhere in a `u64` of milliseconds, whose microseconds wouldn't fit.
+- `session::prepare` now refuses a record of another version. Only `from_ron` did,
+  and the acceptance criteria want `from_session`'s `Err` for a record in memory.
+- `Harness::screens` and `top_screen` are empty before the load rather than
+  panicking, so the shared bookkeeping and a test on the card's frame can read them.
+- The ticket didn't say what a script's frame does before the record's end. It takes
+  over: the rest of the record doesn't play, and `Played::limits` says how many frames
+  that left. The limits grow here, so a later read is `play_all` again, which plays
+  nothing more.
+- From `FRAME_DT`'s 16 667 microseconds, the 16, 17, 17 pattern slips by a millisecond
+  about once in 1000 frames. It is a run's time and any record plays it back exactly.
+
+No follow-up tickets. No `Harness::on`-like start from a `Start` was asked for by
+any test here. No ADR: ADR-0072 §5 and §6 already decide this.
+
+No break of the public API.

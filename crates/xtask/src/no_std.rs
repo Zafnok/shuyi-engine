@@ -18,7 +18,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 /// The crates checked, by folder from the root.
-pub const CRATES: &[&str] = &["crates/core", "crates/ui", "crates/platform"];
+pub const CRATES: &[&str] = &[
+    "crates/core",
+    "crates/ui",
+    "crates/platform",
+    "crates/sound",
+];
 
 /// What lets a line, or a whole file, use `std`.
 const STD_CFG: &str = "cfg(feature = \"std\")";

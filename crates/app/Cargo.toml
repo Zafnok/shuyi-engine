@@ -99,6 +99,8 @@ shuyi-ui = { path = "../ui", features = ["storage-conformance", "toy"] }
 # The sound probe's plan.
 serde.workspace = true
 ron.workspace = true
+# The sound probe's decoder timings (ticket 2210): only the example uses it.
+shuyi-sound = { path = "../sound", features = ["wav", "vorbis"] }
 
 # The tests run on native alone. These two would pull `getrandom` into the
 # render card's web build (an example builds with the dev-dependencies),

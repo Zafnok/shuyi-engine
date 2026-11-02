@@ -1,4 +1,4 @@
-{#- A picture of the tutorial's game (ticket 2818): the try `name` of
+{#- A picture of the tutorial's game or the book's (tickets 2818, 2819): the try `name` of
     `site/tutorial/tries.toml`, which `cargo xtask tutorial-tries` renders
     into `static/tutorial-tries/<name>/`. With no edits, what the reader
     should see. With edits, each edit as a diff, then the picture before and

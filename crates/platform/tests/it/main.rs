@@ -7,6 +7,7 @@
 mod bare;
 #[cfg(feature = "std")]
 mod reload;
+mod session;
 mod sounds;
 
 use shuyi_platform::SystemEvent;

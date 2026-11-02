@@ -7,12 +7,17 @@ weight = 110
 chapter = 11
 +++
 
-If you know another engine, most of its ideas have a counterpart here,
-under another name and often in a plainer shape: the engine has no
-scene tree and no entity system by default, and a game's state is plain
-structs it owns. The table gives Shuyi's word first, with the chapter
-that explains it, then the words of five engines for it. A dash means that engine
-has no such word; "none yet" means Shuyi has no counterpart today.
+This page is for you if you've used another engine, and you'd like to know what its
+words are called here. If you haven't, you can skip it: nothing else in the book needs it.
+
+Most of another engine's ideas have a counterpart here, under another name and often in a
+plainer shape. The engine has no **scene tree** (a hierarchy of objects, as in Godot) and
+no **entity system** (game objects as loose bundles of data, as in Bevy) by default, and a
+game's state is plain structs it owns. A **struct** is Rust's named group of values.
+
+The table gives Shuyi's word first, with the chapter that explains it, then the words of
+five engines for it. A dash means that engine has no such word; "none yet" means Shuyi has
+no counterpart today.
 
 | Shuyi Engine | Godot | Unity | Bevy | GameMaker | PICO-8 |
 | ------------ | ----- | ----- | ---- | --------- | ------ |

@@ -39,6 +39,13 @@ python3 tools/sound-parity/capture.py native --dir target/sound-parity --probe t
 cargo xtask sound-parity gate --dir target/sound-parity --revision "$(git rev-parse HEAD)"
 ```
 
+`shuyi-sound`'s adapters need neither capture: this holds them to the corpus and
+the oracle the first command wrote. The gate runs the same cells.
+
+```bash
+cargo xtask sound-parity decoders --dir target/sound-parity
+```
+
 The browser half builds the same example for `wasm32-unknown-unknown`, puts it
 beside the loader as CI's job does, and runs `capture.py browser --page <its
 folder>`. The gate writes `target/sound-parity/matrix.json` and exits non-zero
@@ -69,6 +76,31 @@ never in CI. A change to the corpus's numbers fails until then.
   `future_rate` and `future_region` hold what a replacement must do, as their
   own expected signals; on quad-snd they report `unsupported`. `mute` pins
   today's fallback and holds on quad-snd alone.
+
+## The decoders
+
+The cells of platform `decoders` hold `shuyi-sound`'s adapters to the same
+expected signals as the backend's recordings, so old and new are compared through
+them: quad-snd exposes no decoded samples to compare directly.
+
+- `decoder:<file>`: a WAV's samples are exactly its numbers. An Ogg file has the
+  oracle's length and is within `decoded_peak` of it. Both come out the same in
+  chunks that split every packet, and `intro_loop.ogg` keeps its comments.
+- `decoder-refuses:<case>`: each malformed file (`corpus::malformed_wavs`, a
+  damaged Ogg file) and each file over a limit gives an error.
+- `decoder-speed:<wav|ogg>`, on each captured platform, from `decoders.jsonl`:
+  whole decodes of `long`, old and new in one process, each going first in turn.
+  Natively old and new are the same work on the same libraries, so the ratio is a
+  verdict and `decoder-slowdown` must catch an injected one. A browser decodes
+  with its own code on its own threads, seen to end at a frame, so there the ratio
+  is written down and isn't one.
+- `decoder-share:<wav|ogg>`: how much of the sound's length decoding it takes, on
+  each platform: a decoder over its `max_share` can't feed a stream with room to
+  spare. This is what holds the browser.
+
+Whether a corrupt file's panic becomes an error depends on unwinding, which
+`wasm32-unknown-unknown` lacks. There a panic in a library stops the program, so
+the web's consumer decides what it hands them (3031).
 
 ## Performance
 

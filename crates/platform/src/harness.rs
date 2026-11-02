@@ -20,10 +20,17 @@
 //! h.keys("f");
 //! assert_eq!(h.sounds(), ["click"]);
 //! ```
+//!
+//! [`Harness::new`] takes a game already running. [`Harness::start`] runs it
+//! from its real [`Start`], card and load first, as a device does;
+//! [`Harness::start_recording`] records that run ([`session`]),
+//! and [`Harness::from_session`] plays such a record to any frame
+//! ([`play_to`](Harness::play_to)).
 
 use crate::alloc_prelude::*;
 use alloc::{format, vec};
 use core::any::Any;
+use core::time::Duration;
 
 #[cfg(feature = "std")]
 use shuyi_assets::bundle::Layer;
@@ -31,6 +38,7 @@ use shuyi_assets::keymap::{Button, Chord, CrankDef};
 use shuyi_assets::target::TargetProfile;
 use shuyi_ui::audio::{AudioRequest, MusicClock, MusicCommand};
 use shuyi_ui::input::crank::Crank;
+use shuyi_ui::input::frame_seconds;
 use shuyi_ui::input::pad::PadKind;
 use shuyi_ui::input::state::Device;
 use shuyi_ui::log::LogRing;
@@ -38,9 +46,10 @@ use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryScopes, PerfClock, PerfRing
 use shuyi_ui::storage::Storage;
 use shuyi_ui::{Ctx, Game, GameData, KeyPrompt, PlatformFacts, RawInputEvent};
 
-use crate::app::{App, FrameOutcome, SystemHook};
+use crate::app::{App, Start, SystemHook};
 use crate::headless::{HeadlessPlatform, PlayingSound, Presented};
-use crate::platform::SystemEvent;
+use crate::platform::{Millis, SystemEvent};
+use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
 /// Simulated length of one frame, in seconds (60 fps).
 pub const FRAME_DT: f32 = 1.0 / 60.0;
@@ -49,11 +58,45 @@ pub const FRAME_DT: f32 = 1.0 / 60.0;
 /// half a simulated minute), so a runaway script fails instead of hanging.
 pub const MAX_FRAMES: u32 = 2_000;
 
+/// The clock of a Harness on a game's real [`Start`]: the whole milliseconds
+/// [`App::frame`] takes, from the microseconds its frames add up to, so
+/// frames of [`FRAME_DT`] come out as 16, 17 and 17 ms. All integers: the
+/// `no_std` build has no `f64::round`.
+#[derive(Debug, Clone, Copy)]
+struct FrameClock {
+    /// Where it started, whatever a record's clock had reached.
+    from: Millis,
+    /// The microseconds since.
+    micros: u64,
+}
+
+impl FrameClock {
+    fn at(from: Millis) -> Self {
+        Self { from, micros: 0 }
+    }
+
+    /// The time `seconds` later, which goes on from here.
+    fn after(&mut self, seconds: f32) -> Millis {
+        let elapsed = Duration::try_from_secs_f32(frame_seconds(seconds)).unwrap_or(Duration::ZERO);
+        let micros = elapsed.as_nanos().saturating_add(500) / 1000;
+        let micros = u64::try_from(micros).unwrap_or(u64::MAX);
+        self.micros = self.micros.saturating_add(micros);
+        Millis(self.from.0.wrapping_add(self.micros / 1000))
+    }
+}
+
 /// Drives a [`Game`] with simulated key presses and time, as the platform
 /// would: in an [`App`], on the [`HeadlessPlatform`].
 pub struct Harness<G: GameData> {
     app: App<G>,
     platform: HeadlessPlatform,
+    /// The clock of a game from its [`Start`], which runs on [`App::frame`];
+    /// `None` for a game already running, on [`App::frame_after`].
+    clock: Option<FrameClock>,
+    /// The record playing, until a script's frame takes over from it.
+    playback: Option<Playback>,
+    /// How far it has played.
+    played: Played,
     /// Every frame's audio requests, oldest first.
     audio: Vec<Vec<AudioRequest<G::Voice>>>,
     /// Every music command of the run, in order.
@@ -88,10 +131,134 @@ impl<G: GameData> Harness<G> {
     /// were held back).
     pub fn on(mut game: Game<G>, platform: HeadlessPlatform) -> Self {
         game.guard_actions(true);
-        let stacks = vec![(0, game.screens())];
+        Self::driving(App::running(game), platform, None)
+    }
+
+    /// Runs the game from its real `start`, as a device runs it: the card's
+    /// frame at 0 ms and the load's one [`FRAME_DT`] later run now, and the
+    /// load's errors are the `Err`. Its frames go through [`App::frame`], in
+    /// whole milliseconds. As on a device, its screens get the actions they
+    /// didn't declare too ([`on`](Self::on) holds those back), and a game
+    /// waits for its first press unless its start says not
+    /// ([`Setup::key_prompt`](crate::Setup::key_prompt)). The scripts work as
+    /// on any Harness.
+    pub fn start(start: Start<G>) -> Result<Self, String> {
+        Self::started(App::new(start))
+    }
+
+    /// [`start`](Self::start), recording from the first frame:
+    /// [`session`](Self::session) gives the record so far.
+    ///
+    /// A record holds what the platform gives the game, so what a test
+    /// changes around the platform isn't in it, and plays differently or
+    /// not at all: [`act`](Self::act), [`ctx_mut`](Self::ctx_mut),
+    /// [`screen_mut`](Self::screen_mut). Press the keys instead. Nor does it
+    /// hold a [`with_system_hook`](Self::with_system_hook) hook, so give the
+    /// hook in the `Start`, to both runs ([`Start::on_system`]).
+    pub fn start_recording(start: Start<G>) -> Result<Self, String> {
+        let mut app = App::new(start);
+        // No frame has run, so it always turns on.
+        let _ = app.record();
+        Self::started(app)
+    }
+
+    /// The record so far, of a [`start_recording`](Self::start_recording).
+    pub fn session(&self) -> Option<&SessionRecord> {
+        self.app.session()
+    }
+
+    /// Makes ready to play `record` from the game's real `start`, on the
+    /// display, the facts and the store it recorded
+    /// ([`HeadlessPlatform::from_session`]). It plays nothing yet:
+    /// [`play_to`](Self::play_to) does. A record of another version is
+    /// refused, and of another build as `stamps` says
+    /// ([`session::prepare`]).
+    pub fn from_session(
+        start: Start<G>,
+        record: &SessionRecord,
+        stamps: Stamps,
+    ) -> Result<Self, SessionError> {
+        let (start, limits) = session::prepare(start, record, stamps)?;
+        let platform = HeadlessPlatform::from_session(record);
+        let mut harness = Self::driving(App::new(start), platform, None);
+        harness.playback = Some(Playback::new(record));
+        harness.played.of = u32::try_from(record.frames.len()).unwrap_or(u32::MAX);
+        harness.played.limits = limits;
+        Ok(harness)
+    }
+
+    /// Plays the record's frames up to `frame`, counted from 1, or to its
+    /// end, and stops at the first frame whose hash differs, leaving the game
+    /// on that frame; after that it plays nothing more. On a frame before the
+    /// load, [`app`](Self::app), [`screens`](Self::screens) and
+    /// [`screen_log`](Self::screen_log) can be read, while what needs the
+    /// game panics. A Harness with no record plays nothing.
+    ///
+    /// A script's frame ends the playing, wherever it has got to: the game
+    /// goes on with the script, its clock from the last frame played
+    /// ([`Playback::now`]) and its music from the headless
+    /// [`Speaker`](crate::headless::Speaker), and [`Played::limits`] says so.
+    pub fn play_to(&mut self, frame: u32) -> &Played {
+        while self.played.first_difference.is_none() && self.played.frames < frame {
+            let Some(playback) = &mut self.playback else {
+                break;
+            };
+            let Some(answer) = playback.next(&mut self.app, &mut self.platform) else {
+                break;
+            };
+            self.played.frames += 1;
+            self.played.first_difference = answer.err();
+            self.note_frame();
+        }
+        &self.played
+    }
+
+    /// [`play_to`](Self::play_to) the record's end.
+    pub fn play_all(&mut self) -> &Played {
+        self.play_to(u32::MAX)
+    }
+
+    /// A script's frame is about to run: a record playing stops here.
+    fn leave_record(&mut self) {
+        let Some(playback) = self.playback.take() else {
+            return;
+        };
+        self.clock = Some(FrameClock::at(playback.now()));
+        self.platform.end_session();
+        let Played { frames, of, .. } = self.played;
+        self.played.limits.push(format!(
+            "after frame {frames} the music is the headless speaker's and no system keyboard is there: a script took over from the record"
+        ));
+        if frames < of {
+            self.played.limits.push(format!(
+                "the script took over before the record's end: {} of its frames didn't play",
+                of - frames
+            ));
+        }
+    }
+
+    /// Runs the first two frames of a Harness on a game's real [`Start`].
+    fn started(app: App<G>) -> Result<Self, String> {
+        let clock = FrameClock::at(Millis(0));
+        let mut harness = Self::driving(app, HeadlessPlatform::new(), Some(clock));
+        let _ = harness.app.frame(&mut harness.platform, clock.from);
+        harness.note_frame();
+        harness.frame(&[], FRAME_DT);
+        match harness.app.errors() {
+            Some(errors) => Err(errors.to_owned()),
+            None => Ok(harness),
+        }
+    }
+
+    /// A Harness over `app`, which has run no frame.
+    fn driving(app: App<G>, platform: HeadlessPlatform, clock: Option<FrameClock>) -> Self {
+        let stacks = vec![(0, app.game().map_or_else(Vec::new, Game::screens))];
         Self {
-            app: App::running(game),
+            app,
             platform,
+            clock,
+            playback: None,
+            played: Played::default(),
             audio: Vec::new(),
             music: Vec::new(),
             pad_kind: PadKind::default(),
@@ -332,22 +499,32 @@ impl<G: GameData> Harness<G> {
     /// frame presented); then the audio is recorded. The scripts above
     /// are made of these.
     pub fn frame(&mut self, events: &[RawInputEvent], dt: f32) -> &mut Self {
+        self.leave_record();
         self.platform.push_input(events);
-        let outcome = self.app.frame_after(&mut self.platform, dt);
+        let _ = match &mut self.clock {
+            Some(clock) => self.app.frame(&mut self.platform, clock.after(dt)),
+            None => self.app.frame_after(&mut self.platform, dt),
+        };
+        self.note_frame();
+        self
+    }
+
+    /// Notes the frame just run: its audio, whether it quit, and the screens
+    /// it left, none while the game hasn't loaded.
+    fn note_frame(&mut self) {
         self.frames += 1;
         self.audio.push(self.app.audio().to_vec());
         let music = self.app.music();
         self.music.extend_from_slice(music);
         self.music_frames
             .extend(core::iter::repeat_n(self.frames, music.len()));
-        if outcome == FrameOutcome::Quit && self.quit_frame.is_none() {
+        if self.app.has_quit() && self.quit_frame.is_none() {
             self.quit_frame = Some(self.frames);
         }
         let screens = self.screens();
         if self.stacks.last().is_none_or(|(_, last)| *last != screens) {
             self.stacks.push((self.frames, screens));
         }
-        self
     }
 
     /// How many frames have run since the Harness started.
@@ -462,14 +639,16 @@ impl<G: GameData> Harness<G> {
         self
     }
 
-    /// Name of the top screen; empty once every screen has closed.
+    /// Name of the top screen; empty once every screen has closed, and while
+    /// the game hasn't loaded.
     pub fn top_screen(&self) -> &'static str {
-        self.game().top_screen().unwrap_or("")
+        self.app.game().and_then(Game::top_screen).unwrap_or("")
     }
 
-    /// Names of the open screens, bottom first.
+    /// Names of the open screens, bottom first: none while the game hasn't
+    /// loaded.
     pub fn screens(&self) -> Vec<&'static str> {
-        self.game().screens()
+        self.app.game().map_or_else(Vec::new, Game::screens)
     }
 
     /// The top-most screen of type `T` on the stack, if it opts in

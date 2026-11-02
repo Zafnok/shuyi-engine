@@ -258,14 +258,18 @@ pub enum Stamps {
     Ignore,
 }
 
-/// `start` made ready to play `record`: the record's stamp checked against
-/// the start's as `stamps` says, and the record's voice manifest put in its
-/// setup. Beside it, what the playback can't promise, one line each.
+/// `start` made ready to play `record`: a record of another version refused,
+/// the record's stamp checked against the start's as `stamps` says, and the
+/// record's voice manifest put in its setup. Beside it, what the playback
+/// can't promise, one line each.
 pub fn prepare<G: GameData>(
     start: Start<G>,
     record: &SessionRecord,
     stamps: Stamps,
 ) -> Result<(Start<G>, Vec<String>), SessionError> {
+    if record.format_version != FORMAT_VERSION {
+        return Err(SessionError::Version(record.format_version));
+    }
     let mut limits = record.limits();
     match (&record.made, &start.made) {
         (Some(made), Some(now)) => {
@@ -296,6 +300,21 @@ pub struct FrameDifference {
     pub recorded: StateHash,
     /// The hash it played with.
     pub played: StateHash,
+}
+
+/// How far the test Harness has played its record (`Harness::play_to`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[non_exhaustive]
+pub struct Played {
+    /// The record's frames played so far.
+    pub frames: u32,
+    /// The frames the record holds.
+    pub of: u32,
+    /// The first frame that played differently: the playing stopped there.
+    pub first_difference: Option<FrameDifference>,
+    /// What the playing can't promise, one line each ([`prepare`]), and,
+    /// once a script's frame has run, what no longer comes from the record.
+    pub limits: Vec<String>,
 }
 
 /// A record playing, one frame at a time: on an [`App`] made from the game's
