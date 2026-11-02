@@ -51,7 +51,7 @@ pub(crate) fn png(rgba: &[u8], width: u32, height: u32) -> Result<Vec<u8>, Strin
     }
     let mut out = Vec::new();
     PngEncoder::new(&mut out)
-        .write_image(rgba, width, height, image::ColorType::Rgba8)
+        .write_image(rgba, width, height, image::ExtendedColorType::Rgba8)
         .map_err(|e| format!("the window's picture didn't encode: {e}"))?;
     Ok(out)
 }
