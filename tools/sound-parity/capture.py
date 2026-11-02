@@ -593,35 +593,38 @@ def native(args: argparse.Namespace) -> int:
     return 0
 
 
-def write_device_loss(player: Windows, base: Path, device: str) -> None:
-    """Takes the render device away while the probe plays, gives it back, and writes how
-    long the sound takes to be heard from when an endpoint is there again: what a player
-    has of unplugging headphones, on a machine with one device. `device` is the instance
-    `Disable-PnpDevice` takes. Recording stops with the device, so it starts again."""
+def write_device_loss(player: Windows, base: Path) -> None:
+    """Takes the render endpoint away while the probe plays, gives it back, and writes
+    how long the sound takes to be heard from when an endpoint is there again: what a
+    player has of unplugging headphones, on a machine with one device. Recording stops
+    with the endpoint, so it starts again. Whatever goes wrong is in the report, which
+    the gate fails: evidence missing is never a pass."""
     import wasapi
 
-    def switch(verb: str) -> None:
-        subprocess.run(
-            ["pwsh", "-NoProfile", "-Command", f"{verb}-PnpDevice -InstanceId '{device}' -Confirm:$false"],
-            check=True,
-        )
+    def powershell(command: str) -> str:
+        ran = subprocess.run(["pwsh", "-NoProfile", "-Command", command], capture_output=True, text=True, check=False)
+        if ran.returncode != 0:
+            raise RuntimeError(f"{command}: {ran.stderr.strip()[-300:]}")
+        return ran.stdout.strip()
 
     (player.stage / "probe.txt").write_text("scenario device_loss\n", encoding="utf-8", newline="\n")
-    process = subprocess.Popen([str(player.probe)], cwd=player.stage, stderr=subprocess.DEVNULL)
     report: dict[str, object] = {}
+    process = subprocess.Popen([str(player.probe)], cwd=player.stage, stderr=subprocess.DEVNULL)
     try:
+        endpoint = powershell("(Get-PnpDevice -Class AudioEndpoint -Status OK | Select-Object -First 1).InstanceId")
+        report["endpoint"] = endpoint
         time.sleep(2.5)
-        switch("Disable")
+        powershell(f"Disable-PnpDevice -InstanceId '{endpoint}' -Confirm:$false")
         time.sleep(1.5)
         report["still_running"] = process.poll() is None
-        switch("Enable")
+        powershell(f"Enable-PnpDevice -InstanceId '{endpoint}' -Confirm:$false")
         deadline = time.monotonic() + 20
         while True:
             with contextlib.suppress(OSError):
                 wasapi.default_endpoint()
                 break
             if time.monotonic() > deadline:
-                raise SystemExit("no render endpoint came back")
+                raise RuntimeError("no render endpoint came back")
             time.sleep(0.02)
         back = time.monotonic()
         recording = wasapi.Loopback(base / "device-loss.pcm")
@@ -632,6 +635,8 @@ def write_device_loss(player: Windows, base: Path, device: str) -> None:
                 heard = time.monotonic() - back
         recording.stop()
         report["heard_ms"] = None if heard is None else heard * 1000
+    except (OSError, RuntimeError, SystemExit) as error:
+        report["error"] = str(error)
     finally:
         process.kill()
         process.wait()
@@ -678,8 +683,8 @@ def windows(args: argparse.Namespace) -> int:
             write_old_new(old, new, base)
     finally:
         keeper.close()
-    if new is not None and args.only is None and args.device_id:
-        write_device_loss(new, args.dir / "windows-in-house", args.device_id)
+    if new is not None and args.only is None and args.take_device:
+        write_device_loss(new, args.dir / "windows-in-house")
     return 0
 
 
@@ -769,7 +774,7 @@ def main() -> int:
     parser.add_argument("--set-endpoint", action="store_true", help="on a runner: set the virtual endpoint's format first")
     parser.add_argument("--new-probe", type=Path, help="windows: the probe of the in-house backend, recorded too")
     parser.add_argument("--new-page", type=Path, help="browser: the page of the in-house backend, recorded too")
-    parser.add_argument("--device-id", help="windows: the instance of the render device, to take away and give back")
+    parser.add_argument("--take-device", action="store_true", help="windows, on a runner: take the render endpoint away and give it back while the new backend plays")
     parser.add_argument("--only", help="the one platform of this mode to record, when it is measured again")
     args = parser.parse_args()
     return {"native": native, "windows": windows, "browser": browser, "encode": encode}[args.mode](args)

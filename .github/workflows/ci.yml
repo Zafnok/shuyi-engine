@@ -678,7 +678,7 @@ jobs:
         run: |
           python tools/sound-parity/capture.py windows --set-endpoint --dir target/sound-parity \
             --probe target/sound-parity/probe-old.exe --new-probe target/sound-parity/probe-new.exe --revision "$REVISION" \
-            --device-id 'ROOT\MEDIA\0000'
+            --take-device
       - name: Measure noisy timings again
         env:
           REVISION: ${{ github.sha }}
@@ -696,6 +696,7 @@ jobs:
             done
           done
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
         with:
           name: sound-parity-windows
           path: |
