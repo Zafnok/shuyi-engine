@@ -1,18 +1,22 @@
 //! Decoded sound: [`Pcm`] holds samples, a [`Source`] yields them in bounded
-//! chunks, and optional adapters make a source of a file's bytes. It knows
-//! nothing else of the engine, reads no file and opens no device.
+//! chunks, optional adapters make a source of a file's bytes, and [`mix::Mixer`]
+//! adds up what is playing. It knows nothing else of the engine, reads no file and
+//! opens no device.
 //!
 //! - [`pcm`]: holds [`Pcm`], its [`PcmFormat`], the [`Limits`] on what a decoder may
 //!   produce, and sample width conversions.
-//! - [`source`]: has the [`Source`] trait, [`PcmSource`] and [`read_all`].
+//! - [`source`]: has the [`Source`] trait, [`PcmSource`], [`SharedSource`] and
+//!   [`read_all`].
+//! - [`mix`]: the integer [`Mixer`](mix::Mixer), its [`queue`](mix::queue) from
+//!   another thread, and the [`stream`](mix::stream) feed from a worker.
 //! - [`error`]: what can go wrong, [`Error`].
 //! - `wav` (feature `wav`): `WavSource`, over the `hound` crate.
 //! - `vorbis` (feature `vorbis`): `VorbisSource`, over the `lewton` crate, with
 //!   a file's comments and page positions.
 //!
 //! Without features the crate is `no_std` with `alloc`. Samples are whole
-//! numbers from end to end; the one float is a float WAV's own sample on its
-//! way in.
+//! numbers from end to end, the mix's too; the one float is a float WAV's own
+//! sample on its way in.
 //!
 //! A malformed file gives an [`Error`], never a panic. The decoding libraries
 //! are behind a guard that turns their panics into errors where the target can
@@ -24,6 +28,7 @@
 extern crate alloc;
 
 pub mod error;
+pub mod mix;
 pub mod pcm;
 pub mod source;
 
@@ -36,4 +41,4 @@ pub mod wav;
 
 pub use error::Error;
 pub use pcm::{Channels, Limits, Pcm, PcmFormat};
-pub use source::{PcmSource, Source, read_all};
+pub use source::{PcmSource, SharedSource, Source, read_all};

@@ -3,6 +3,7 @@
 use alloc::vec::Vec;
 
 use crate::error::Error;
+use crate::mix::SharedPcm;
 use crate::pcm::{Limits, Pcm, PcmFormat};
 
 /// How many samples [`read_all`] reads at a time.
@@ -22,7 +23,18 @@ pub trait Source {
     /// Fills `out` with the next whole frames, interleaved, and says how many
     /// frames that was. `0` means it has ended. Short of the end it gives at
     /// least one, and a buffer without room for one is [`Error::NoRoom`].
+    ///
+    /// A source that mustn't keep its reader waiting gives [`Error::Underrun`] when
+    /// it has no frame ready yet.
     fn read(&mut self, out: &mut [i16]) -> Result<usize, Error>;
+
+    /// Goes back, so that the next read gives frame `frame`, without waiting:
+    /// what a mix asks at a loop's join. A source that can't says
+    /// [`Error::NoRewind`], as this does unless it is written otherwise.
+    fn rewind_to(&mut self, frame: u64) -> Result<(), Error> {
+        let _ = frame;
+        Err(Error::NoRewind)
+    }
 }
 
 /// Whole frames `out` has room for, of `format`'s, or why it has none.
@@ -101,6 +113,61 @@ impl Source for PcmSource<'_> {
         self.at += count;
         Ok(frames)
     }
+
+    /// Past the end, the next read gives nothing.
+    fn rewind_to(&mut self, frame: u64) -> Result<(), Error> {
+        self.at = sample_index(self.pcm, frame);
+        Ok(())
+    }
+}
+
+/// Where frame `frame` of `pcm` starts, or its end if it hasn't one.
+fn sample_index(pcm: &Pcm, frame: u64) -> usize {
+    let channels = u64::from(pcm.format().channels.count());
+    let frame = frame.min(pcm.frames());
+    usize::try_from(frame * channels).unwrap_or(pcm.samples().len())
+}
+
+/// A shared [`Pcm`]'s samples as a source that owns its share, so a voice can
+/// stream it from anywhere.
+#[derive(Debug, Clone)]
+pub struct SharedSource {
+    pcm: SharedPcm,
+    /// The next sample.
+    at: usize,
+}
+
+impl SharedSource {
+    /// `pcm`'s samples, from the start.
+    pub const fn new(pcm: SharedPcm) -> Self {
+        Self { pcm, at: 0 }
+    }
+}
+
+impl Source for SharedSource {
+    fn format(&self) -> PcmFormat {
+        self.pcm.format()
+    }
+
+    fn total_frames(&self) -> Option<u64> {
+        Some(self.pcm.frames())
+    }
+
+    fn read(&mut self, out: &mut [i16]) -> Result<usize, Error> {
+        let mut source = PcmSource {
+            pcm: &self.pcm,
+            at: self.at,
+        };
+        let frames = source.read(out)?;
+        self.at = source.at;
+        Ok(frames)
+    }
+
+    /// Past the end, the next read gives nothing.
+    fn rewind_to(&mut self, frame: u64) -> Result<(), Error> {
+        self.at = sample_index(&self.pcm, frame);
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -172,6 +239,36 @@ mod tests {
             out.fill(7);
             Ok(out.len() / usize::from(self.0.count()))
         }
+    }
+
+    #[test]
+    fn a_shared_source_reads_and_goes_back_as_a_borrowed_one_does() {
+        let sound = pcm(Channels::Stereo, vec![1, 2, 3, 4, 5, 6]);
+        let mut shared = SharedSource::new(SharedPcm::new(sound.clone()));
+        let mut borrowed = sound.source();
+        assert_eq!(shared.format(), sound.format());
+        assert_eq!(shared.total_frames(), Some(3));
+        let (mut a, mut b) = ([0; 4], [0; 4]);
+        assert_eq!(shared.read(&mut a), Ok(2));
+        assert_eq!(borrowed.read(&mut b), Ok(2));
+        assert_eq!(a, [1, 2, 3, 4]);
+        assert_eq!(a, b);
+        assert_eq!(shared.rewind_to(1), Ok(()));
+        assert_eq!(borrowed.rewind_to(1), Ok(()));
+        assert_eq!(shared.read(&mut a), Ok(2));
+        assert_eq!(borrowed.read(&mut b), Ok(2));
+        assert_eq!(a, [3, 4, 5, 6]);
+        assert_eq!(a, b);
+        assert_eq!(shared.rewind_to(9), Ok(()));
+        assert_eq!(borrowed.rewind_to(9), Ok(()));
+        assert_eq!(shared.read(&mut a), Ok(0));
+        assert_eq!(borrowed.read(&mut b), Ok(0));
+    }
+
+    #[test]
+    fn a_source_goes_back_only_if_it_says_it_can() {
+        let mut endless = Endless(Channels::Mono, 0);
+        assert_eq!(endless.rewind_to(0), Err(Error::NoRewind));
     }
 
     #[test]

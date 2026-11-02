@@ -511,7 +511,8 @@ jobs:
       - name: The sound core, without std and for the web
         run: |
           rustup target add thumbv7em-none-eabihf
-          cargo test -p shuyi-sound --locked
+          cargo test -p shuyi-sound --all-features --locked
+          cargo test -p shuyi-sound --no-default-features --locked
           cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
           cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
       - name: The corpus and what a separate decoder makes of it
@@ -913,7 +914,7 @@ jobs:
       - name: The tests without std
         env:
           RUSTFLAGS: -D warnings -A unused-imports
-        run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform --no-default-features --locked --no-fail-fast
+        run: cargo test -p shuyi-core -p shuyi-ui -p shuyi-platform -p shuyi-sound --no-default-features --locked --no-fail-fast
 
   # The same state on every platform (ADR-0002 §2, ticket 2116). x64 and
   # ARM64 are the `test` job's legs (`macos-latest` is Apple silicon); this
@@ -946,7 +947,7 @@ jobs:
         with:
           tool: wasmtime@49.0.3
       - name: The engine's crates' tests on wasm32
-        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -- --nocapture
+        run: cargo test --target wasm32-wasip1 --locked --no-fail-fast --lib --tests -p shuyi-core -p shuyi-assets -p shuyi-ui -p shuyi-platform -p shuyi-sound -- --nocapture
       - name: Hello, Grid's golden table on wasm32
         run: cargo test --target wasm32-wasip1 --locked --no-fail-fast -p hello-grid --no-default-features --test golden -- --nocapture
 

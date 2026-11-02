@@ -13,7 +13,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `budget.ron` | The fixed tolerances, the performance limits and each platform's evidence contract, with how each number was measured |
 | `capture.py` | Records the real output and the paired timings |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
-| `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator and the gate |
+| `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |
 
 ## Run it
 
@@ -44,6 +44,13 @@ the oracle the first command wrote. The gate runs the same cells.
 
 ```bash
 cargo xtask sound-parity decoders --dir target/sound-parity
+```
+
+The mixer needs neither capture nor oracle: this holds it to expected samples
+worked out from the corpus's numbers. The gate runs the same cells.
+
+```bash
+cargo xtask sound-parity mixer
 ```
 
 The browser half builds the same example for `wasm32-unknown-unknown`, puts it
@@ -101,6 +108,33 @@ them: quad-snd exposes no decoded samples to compare directly.
 Whether a corrupt file's panic becomes an error depends on unwinding, which
 `wasm32-unknown-unknown` lacks. There a panic in a library stops the program, so
 the web's consumer decides what it hands them (3031).
+
+## The mixer
+
+The cells of platform `mixer` render to memory, so they are exact where nothing
+real-time can be. quad-snd exposes no offline mix, so nothing comes from the old
+path: expected samples are worked out in `xtask`, by plain arithmetic in floats
+that shares no code with the mixer, and differ by at most a rounding step.
+
+- `mixer:<case>`: `pause`, rates and resampling, `loop`, a region through the mix
+  and through a worker's decoder, `two-streams` at their own gains, `gains`,
+  `clamp`, `fade`, `stereo-on-mono`, and `capacity`, a play refused with what plays
+  untouched.
+- `mixer:memory`: the most frames decoded and not yet mixed, over a short stream and
+  a long one, against `mixer_memory.max_held_frames`. A longer stream may not hold
+  more.
+- `mixer-fault:<fault>`: each must be caught: a silent, swapped, quiet or wrapped
+  mix, a frame lost or late, and a stream decoded whole.
+- `mixer-share`, on each captured platform, from `mixer.jsonl`: how much of a sound's
+  length it takes to mix 32 busy voices in a release build, against `max_share`.
+  With nothing old to compare with, this is what holds the speed. `mixer-slowdown`:
+  the injected slowdown must show.
+
+The mixer's own promises are its crate's tests: `render` allocates and frees nothing
+(`tests/mix_alloc.rs`), the rings lose nothing between real threads
+(`tests/mix_queue.rs`), and its golden table
+(`tests/mix_golden.rs`, `crates/sound/tests/golden/mix.ron`) is the same natively,
+without `std` and on wasm32.
 
 ## Performance
 
