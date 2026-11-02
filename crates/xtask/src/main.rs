@@ -117,9 +117,10 @@ usage:
       and its link text when it has none. Fails on a card with both `tickets`
       and `status`, or naming a ticket in neither tickets/open/ nor done/.
   cargo xtask tutorial-tries [--check] [<name>...]
-      Render the tutorial's pictures from site/tutorial/tries.toml (ticket
-      2818), or those named: each step as it is and, for a try with edits, a
-      copy of it with them made, built and run. Writes them to
+      Render the tutorial's and the book's pictures from
+      site/tutorial/tries.toml (tickets 2818, 2819), or those named: each game
+      as it is and, for a try with edits, a copy of it with them made, built
+      and run. Writes them to
       site/static/tutorial-tries/; with --check, compares with those kept and
       fails on a stale one. Fails on an edit that isn't exactly once in its
       file and, for the whole list, on an orphan or a try no page shows.
