@@ -872,6 +872,49 @@ fn a_stream_held_plays_once_and_only_by_its_own_id() {
     assert!(!mixer.is_playing(stale), "it is gone");
 }
 
+#[test]
+fn an_old_streams_id_doesnt_play_the_stream_that_took_its_slot() {
+    let mut mixer = Mixer::new(Config::new(RATE, Channels::Stereo, 2).with_streams(1));
+    let old = mixer
+        .add_stream(Box::new(SharedSource::new(ramp(1))))
+        .unwrap_or_else(|e| panic!("{e}"));
+    let voice = mixer
+        .play_stream(old, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    render(&mut mixer, 2);
+    assert!(!mixer.is_playing(voice));
+    assert!(mixer.take_finished_stream().is_some());
+    let new = mixer
+        .add_stream(Box::new(SharedSource::new(ramp(2))))
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_ne!(old, new);
+    mixer
+        .play_stream(old, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        left(&render(&mut mixer, 1)),
+        [0],
+        "the old id plays nothing"
+    );
+    mixer
+        .play_stream(new, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        left(&render(&mut mixer, 2)),
+        [1, 2],
+        "nothing of it was used"
+    );
+}
+
+#[test]
+fn a_mixer_shows_what_it_is_made_with_and_how_late_it_has_been() {
+    let mixer = stereo_mixer(3);
+    let shown = format!("{mixer:?}");
+    assert!(shown.starts_with("Mixer"), "{shown}");
+    assert!(shown.contains("voices: 3"), "{shown}");
+    assert!(shown.contains("underrun_frames: 0"), "{shown}");
+}
+
 // -- the queue, on one thread: `tests/mix_queue.rs` has two --
 
 #[test]
