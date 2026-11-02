@@ -248,6 +248,7 @@ mod tests {
         let (count, callback) = counting();
         let output = Output::null(CONFIG, callback);
         assert_eq!(output.rate(), 48_000);
+        assert_eq!(output.stats(), (0, 0), "it has no stream to build or lose");
         assert!(format!("{output:?}").contains("48000"));
         wait_for(&count, 0);
         assert_eq!(

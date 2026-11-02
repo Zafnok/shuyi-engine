@@ -277,6 +277,8 @@ sound-probe = []
     "replace Backend::hold_output with \\(\\)",
     # Off Windows `preferred_rate` is `None`, which is its only viable mutant there.
     "replace Output::preferred_rate -> Option<u32> with None",
+    # Off Windows `Output::stats` is `(0, 0)`, its only viable mutant there.
+    "replace Output::stats -> \(u32, u32\) with \(0, 0\)",
     # The web's functions in `sys.rs`, built only for `wasm32`.
     "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
 "##,
