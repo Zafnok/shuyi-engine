@@ -865,6 +865,9 @@ impl<G: GameData> App<G> {
                 }
             }
             Phase::Running(game) if !self.quit => {
+                let recording = self.recorder.as_ref().is_some_and(|r| r.is_on());
+                game.ctx_mut()
+                    .set_session_recording(recording || self.frame_hashes.on);
                 let mut recorder = self.recorder.as_deref_mut();
                 if let Some(pacing) = self.pacing.take() {
                     game.set_pacing(pacing);
@@ -973,6 +976,14 @@ impl<G: GameData> App<G> {
     /// Ends the recording, handing back the record.
     pub fn take_session(&mut self) -> Option<SessionRecord> {
         self.recorder.take().map(|recorder| recorder.record)
+    }
+
+    /// Whether a debug tool asked in the last frames to save the session
+    /// ([`Ctx::ask_session_save`]): true once for each ask. The backend
+    /// writes [`session`](Self::session), which goes on recording.
+    pub fn take_session_save(&mut self) -> bool {
+        self.game_mut()
+            .is_some_and(|game| game.ctx_mut().take_session_save())
     }
 
     /// The last frame's hash: of what happened in it, never its picture.

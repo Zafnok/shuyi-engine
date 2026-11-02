@@ -2,7 +2,7 @@ name: CodeQL
 
 # The game's CodeQL (game ADR-0008), adopted by ticket 2011 (ADR-0037 §4):
 # Rust and the workflows. JavaScript is left out: the engine's own JS is
-# crates/cli/web/gamepad.js, and the rest is vendored upstream files.
+# crates/cli/web/gamepad.js and download.js, and the rest is vendored upstream files.
 # `codeql-result` is not a required check; a session reads it with every
 # other check before a merge.
 

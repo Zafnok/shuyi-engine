@@ -34,6 +34,7 @@ use shuyi::core::{
     play_observed,
 };
 use shuyi::platform::harness::Harness;
+use shuyi::platform::session::{SessionRecord, Stamps};
 use shuyi::ui::frame::onebit::{Font, PatternMap, to_one_bit};
 use shuyi::ui::input::fit::{Controls, GameControls, ScreenActions};
 use shuyi::ui::{Game, GameData, GameHooks};
@@ -223,12 +224,18 @@ impl GameTools for HelloTools {
     }
 
     fn session(&self, options: &[GameArg]) -> Result<Box<dyn Session>, String> {
-        let harness = Start::from_options(options)?.harness();
-        let session = Headless::new(harness)
-            .with_scene(scene)
-            .with_events(events)
-            .with_picture(|h, scale| picture(h, scale.unwrap_or(1)));
-        Ok(Box::new(session))
+        Ok(session_of(Start::from_options(options)?.harness()))
+    }
+
+    /// The record played from the game's real start, [`crate::start`].
+    fn session_from(
+        &self,
+        record: &SessionRecord,
+        stamps: Stamps,
+    ) -> Result<Box<dyn Session>, String> {
+        let harness =
+            Harness::from_session(crate::start(), record, stamps).map_err(|e| e.to_string())?;
+        Ok(session_of(harness))
     }
 
     fn replay(&self, record: &Record) -> Result<ReplayRun, String> {
@@ -326,6 +333,16 @@ impl GameTools for HelloTools {
         };
         Ok(GameBake::new(bake, crate::bundle(target), crate::formats()))
     }
+}
+
+/// A session of `harness`, with the stage's scene and events and the game's
+/// picture.
+fn session_of(harness: Harness<Hello>) -> Box<dyn Session> {
+    let session = Headless::new(harness)
+        .with_scene(scene)
+        .with_events(events)
+        .with_picture(|h, scale| picture(h, scale.unwrap_or(1)));
+    Box::new(session)
 }
 
 /// Whether the engine's profile of target `id` has a one-bit display.

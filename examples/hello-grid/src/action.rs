@@ -1,5 +1,5 @@
-//! What a player can ask for: six actions, every one rebindable, their
-//! default keys and buttons in `files/keymap.ron`.
+//! What a player can ask for: six actions, every one rebindable, and the
+//! developer's Debug, their default keys and buttons in `files/keymap.ron`.
 
 use shuyi::assets::keymap::{ActionSet, Chord, Key, UiAction};
 
@@ -20,6 +20,8 @@ pub enum Action {
     Confirm,
     /// Put your piece down, go back.
     Cancel,
+    /// Open the debug menu, with debug tools on: a key of the developer's.
+    Debug,
 }
 
 /// The keys every keymap has on top of its own: plain `Escape` cancels.
@@ -36,6 +38,7 @@ impl ActionSet for Action {
         Self::Right,
         Self::Confirm,
         Self::Cancel,
+        Self::Debug,
     ];
 
     fn name(self) -> &'static str {
@@ -46,6 +49,7 @@ impl ActionSet for Action {
             Self::Right => "Right",
             Self::Confirm => "Confirm",
             Self::Cancel => "Cancel",
+            Self::Debug => "Debug",
         }
     }
 
@@ -54,13 +58,14 @@ impl ActionSet for Action {
         matches!(self, Self::Up | Self::Down | Self::Left | Self::Right)
     }
 
-    /// Every action must keep a key: the game can't be played without one.
+    /// Every action a player uses must keep a key: the game can't be played
+    /// without one.
     fn is_required(self) -> bool {
-        true
+        self != Self::Debug
     }
 
     fn is_rebindable(self) -> bool {
-        true
+        self != Self::Debug
     }
 
     fn group(self) {}
@@ -73,6 +78,7 @@ impl ActionSet for Action {
             Self::Right => UiAction::Right,
             Self::Confirm => UiAction::Confirm,
             Self::Cancel => UiAction::Cancel,
+            Self::Debug => UiAction::Debug,
         })
     }
 
@@ -90,7 +96,9 @@ mod tests {
         for &action in Action::ALL {
             assert_eq!(Action::from_name(action.name()), Some(action));
             assert_eq!(action.ui().and_then(Action::for_ui), Some(action));
-            assert!(action.is_required() && action.is_rebindable());
+            let players = action != Action::Debug;
+            assert_eq!(action.is_required(), players);
+            assert_eq!(action.is_rebindable(), players);
         }
         let repeating: Vec<Action> = Action::ALL
             .iter()

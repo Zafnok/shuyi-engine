@@ -74,6 +74,7 @@ impl Attached {
             frames: status.frames,
             top_screen: status.top_screen,
             screens: status.screens,
+            session: None,
         };
         let limits = vec![format!(
             "attached to the build at {}: it runs in its window with its own options; {NO_SCENE}, \
@@ -198,6 +199,7 @@ impl Attached {
             log: log.lines.into_iter().map(log_entry).collect(),
             modules: Vec::new(),
             perf: None,
+            session: None,
         };
         Ok((to_json(&Answer::new(Op::Step, true, output, limits)), None))
     }
@@ -218,6 +220,7 @@ impl Attached {
             top_screen: status.top_screen,
             scene,
             log: log.lines.into_iter().map(log_entry).collect(),
+            session: None,
         };
         let ok = output.scene.is_some();
         Ok(to_json(&Answer::new(Op::Scene, ok, output, limits)))

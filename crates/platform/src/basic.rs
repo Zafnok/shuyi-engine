@@ -13,6 +13,7 @@ use core::fmt::{self, Debug};
 use shuyi_assets::ContentError;
 use shuyi_assets::bundle::{Bundle, Layer};
 use shuyi_assets::keymap::ActionSet;
+use shuyi_core::Made;
 use shuyi_ui::basic::{BasicData, Own};
 use shuyi_ui::frame::ConsoleSpec;
 use shuyi_ui::module::{Module, ModuleError};
@@ -183,15 +184,27 @@ impl<A: ActionSet, T: Debug + 'static> BasicGame<A, T> {
         }
     }
 
+    /// What made this build, for its records: its id and version as the
+    /// game's word, and the fingerprint of its files.
+    pub fn made(&self) -> Made {
+        let build = format!("{} {}", self.app.id, self.app.version);
+        Made::new(build, self.bundle().fingerprint())
+    }
+
     /// How a backend starts it: a card with its name, then its context on
     /// the platform and its first screen. A file that doesn't load, or a
     /// module that can't be installed, is the load's error, which the
-    /// platform shows in place of the game.
+    /// platform shows in place of the game. A session record of it carries
+    /// its [`made`](Self::made), and each frame's hash the state hash of its
+    /// screens ([`Screen::state_hash`]).
     pub fn start(self) -> Start<BasicData<A, T>> {
+        let made = self.made();
         Start::new(Card::text(self.app.name), look::<A, T>, move |setup| {
             let ctx = self.ctx()?;
             self.game(setup.ctx(ctx)).map_err(|e| e.to_string())
         })
+        .made(made)
+        .state_hash(Game::state_hash)
     }
 
     /// The game in the test Harness, at its first screen.

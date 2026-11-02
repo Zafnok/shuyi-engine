@@ -213,6 +213,15 @@ pub enum KeyPrompt {
     Pressed,
 }
 
+/// The platform's session record, as the debug tools see it.
+#[derive(Debug, Clone, Copy, Default)]
+struct SessionState {
+    /// Whether the platform records this run, or plays a record.
+    recording: bool,
+    /// Whether a debug tool has asked for the session to be saved.
+    save: bool,
+}
+
 /// Resources shared by every screen: the engine's, and the game's in
 /// [`game`](Self::game).
 #[derive(Debug)]
@@ -285,6 +294,8 @@ pub struct Ctx<G: GameData> {
     /// the game offers only to developers. On in debug builds and with the
     /// `debug-tools` feature ([`DEBUG_TOOLS`](crate::DEBUG_TOOLS)).
     pub debug_tools: bool,
+    /// The platform's session record, as the debug tools see it.
+    session: SessionState,
     /// Whether screens show their idle motion. Off here, so a screen left
     /// alone in a test looks the same a moment later; the platform turns
     /// it on.
@@ -383,6 +394,7 @@ impl<G: GameData> Ctx<G> {
             frame_cap_serial: 0,
             pacing: None,
             debug_tools: crate::DEBUG_TOOLS,
+            session: SessionState::default(),
             idle_motion: IdleMotion::Off,
             audio,
             music_clock: None,
@@ -748,6 +760,31 @@ impl<G: GameData> Ctx<G> {
     ) -> Option<(MemoryScopes, u16)> {
         let scopes = self.perf.scopes?;
         Some((scopes, scopes.enter(class, name)))
+    }
+
+    /// Whether the platform is recording this run as a session, or playing
+    /// one back, so [`ask_session_save`](Self::ask_session_save) means
+    /// something: not until it says.
+    pub fn session_recording(&self) -> bool {
+        self.session.recording
+    }
+
+    /// Says whether the platform is recording this run, or playing a record:
+    /// for the platform's `App`. The same in a session and its playback, so
+    /// it is no value a record must hold.
+    pub fn set_session_recording(&mut self, on: bool) {
+        self.session.recording = on;
+    }
+
+    /// Asks the platform to save the session so far, after this frame.
+    pub fn ask_session_save(&mut self) {
+        self.session.save = true;
+    }
+
+    /// Takes the request of [`ask_session_save`](Self::ask_session_save): for
+    /// the platform's `App`.
+    pub fn take_session_save(&mut self) -> bool {
+        core::mem::take(&mut self.session.save)
     }
 
     /// Hands the context a clock to measure frames with, or takes it away

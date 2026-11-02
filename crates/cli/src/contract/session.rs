@@ -19,6 +19,8 @@
 //! the heap by tag. Start a session with [`measured_start`] to tag its
 //! start, the game's load, `load`.
 
+use std::fs;
+use std::path::Path;
 use std::sync::OnceLock;
 use std::time::Instant;
 
@@ -29,15 +31,17 @@ use shuyi_assets::format::{DecodeWatch, Decoded, watch_decodes};
 use shuyi_platform::Platform as _;
 use shuyi_platform::harness::{FRAME_DT, Harness};
 use shuyi_platform::heap;
+use shuyi_platform::session::{Played, SessionRecord, Stamps};
 use shuyi_ui::GameData;
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::log::LogLine;
 use shuyi_ui::module::InstalledModule;
 use shuyi_ui::perf::{HeapCounts, HeapSnapshot, MemoryScopes, PerfClock, TagClass};
 
+use super::codes::{self, Code};
 use super::perf::PerfRead;
 use crate::frame_png::{Image, Script};
-use crate::game::unsupported;
+use crate::game::{GameTools, code_of, unsupported};
 
 /// The scene a stage shows, as text and as data.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -189,6 +193,119 @@ impl From<&InstalledModule> for ModuleEntry {
     }
 }
 
+/// A session record to play, in place of a game's start options.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An input: built with `SessionInput::new` and its fields assigned, it may
+// grow (ADR-0039).
+#[non_exhaustive]
+pub struct SessionInput {
+    /// The record's file, from the project's root.
+    pub file: String,
+    /// Play a record stamped by another build or with other content too
+    /// (`--any-stamp`), which is otherwise refused; it may then differ for
+    /// that reason alone.
+    #[serde(default)]
+    pub any_stamp: bool,
+}
+
+impl SessionInput {
+    /// The record in the file `file`, refused if stamped by another build.
+    pub fn new(file: impl Into<String>) -> Self {
+        Self {
+            file: file.into(),
+            any_stamp: false,
+        }
+    }
+}
+
+/// How far a session record played.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct SessionPlayed {
+    /// The record's file, as given.
+    pub file: String,
+    /// The record's frames played.
+    pub frames: u32,
+    /// The frames the record holds.
+    pub of: u32,
+    /// The first frame that played differently: the playing stopped there,
+    /// and neither the script nor `frames` played.
+    pub first_difference: Option<SessionDifference>,
+}
+
+/// The first frame of a session record that played differently.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+// An answer's, read field by field: it may grow (ADR-0039).
+#[non_exhaustive]
+pub struct SessionDifference {
+    /// The frame, counted from 1.
+    pub frame: u32,
+    /// The hash the record holds for it (sixteen hex digits).
+    pub recorded: String,
+    /// The hash it played with.
+    pub played: String,
+}
+
+impl SessionPlayed {
+    /// `played` of the record in `file`.
+    pub(crate) fn of(file: &str, played: &Played) -> Self {
+        Self {
+            file: file.to_owned(),
+            frames: played.frames,
+            of: played.of,
+            first_difference: played.first_difference.as_ref().map(|difference| {
+                SessionDifference {
+                    frame: difference.frame,
+                    recorded: difference.recorded.to_string(),
+                    played: difference.played.to_string(),
+                }
+            }),
+        }
+    }
+}
+
+/// The session of `game` made ready to play the record `input` names, from
+/// `root`, and played: or the problem code and why not. A record another
+/// build stamped is refused unless `input` says, by the game's own stamp
+/// ([`GameTools::made`]) if it gives one.
+pub(crate) fn from_record(
+    game: &dyn GameTools,
+    root: &Path,
+    input: &SessionInput,
+) -> Result<(Box<dyn Session>, Played), (Code, String)> {
+    let file = &input.file;
+    let text =
+        fs::read_to_string(root.join(file)).map_err(|e| (codes::FILE, format!("{file}: {e}")))?;
+    let record =
+        SessionRecord::from_ron(&text).map_err(|e| (codes::FILE, format!("{file}: {e}")))?;
+    if !input.any_stamp
+        && let (Some(made), Some(now)) = (&record.made, game.made())
+        && let Err(mismatch) = made.check(&now)
+    {
+        let error = format!(
+            "{file} was {mismatch}: make it again with this build, or play it with --any-stamp"
+        );
+        return Err((codes::OTHER_STAMP, error));
+    }
+    let stamps = if input.any_stamp {
+        Stamps::Ignore
+    } else {
+        Stamps::Check
+    };
+    let mut session = game
+        .session_from(&record, stamps)
+        .map_err(|e| (code_of(&e), e))?;
+    let played = session.play_record().ok_or_else(|| {
+        let error = unsupported("run --session and scene --session", "session_from");
+        (codes::NOT_OFFERED, error)
+    })?;
+    Ok((session, played))
+}
+
 /// A game running headless.
 pub trait Session {
     /// Plays `script`'s steps, in order.
@@ -196,6 +313,16 @@ pub trait Session {
 
     /// Runs `frames` frames with no input.
     fn idle(&mut self, frames: u32);
+
+    /// Plays the session record it was made ready for
+    /// ([`GameTools::session_from`]) to
+    /// its end, or its first frame that plays differently, and says how far
+    /// it has got. Asked again, it plays nothing more: its limits then say
+    /// what a script's frames took over from it. `None` for a session
+    /// started from options, the default.
+    fn play_record(&mut self) -> Option<Played> {
+        None
+    }
 
     /// How many frames have run.
     fn frame_count(&self) -> u32;
@@ -419,6 +546,12 @@ impl<G: GameData> Headless<G> {
     pub fn harness(&self) -> &Harness<G> {
         &self.harness
     }
+
+    /// Whether the game has loaded: a record stopped before its load, or a
+    /// load that failed, leaves none to read.
+    fn loaded(&self) -> bool {
+        self.harness.app().game().is_some()
+    }
 }
 
 /// The screens that closed and opened between stacks `before` and
@@ -452,6 +585,20 @@ impl<G: GameData> Session for Headless<G> {
         }
     }
 
+    fn play_record(&mut self) -> Option<Played> {
+        let mut played = self.harness.play_all().clone();
+        if let Some(errors) = self.harness.app().errors() {
+            played
+                .limits
+                .push(format!("the game didn't load: {errors}"));
+        } else if !self.loaded() {
+            played
+                .limits
+                .push("the record stopped before the game loaded".to_owned());
+        }
+        Some(played)
+    }
+
     fn frame_count(&self) -> u32 {
         self.harness.frame_count()
     }
@@ -469,7 +616,11 @@ impl<G: GameData> Session for Headless<G> {
     }
 
     fn snapshot(&self) -> String {
-        self.harness.snapshot()
+        if self.loaded() {
+            self.harness.snapshot()
+        } else {
+            String::new()
+        }
     }
 
     fn events(&self) -> Vec<Event> {
@@ -512,9 +663,12 @@ impl<G: GameData> Session for Headless<G> {
         // A stable sort: within a frame, screens, then music, voices and
         // the quit.
         timed.sort_by_key(|(frame, _)| *frame);
-        let game = (self.events)(&self.harness)
-            .into_iter()
-            .map(|text| Event::Game { text });
+        let game = if self.loaded() {
+            (self.events)(&self.harness)
+        } else {
+            Vec::new()
+        };
+        let game = game.into_iter().map(|text| Event::Game { text });
         timed
             .into_iter()
             .map(|(_, event)| event)
@@ -539,6 +693,9 @@ impl<G: GameData> Session for Headless<G> {
     }
 
     fn scene(&self) -> Result<Scene, String> {
+        if !self.loaded() {
+            return Err("the game hasn't loaded".to_owned());
+        }
         (self.scene)(&self.harness)
     }
 
@@ -551,16 +708,21 @@ impl<G: GameData> Session for Headless<G> {
     }
 
     fn modules(&self) -> Vec<ModuleEntry> {
-        let modules = self.harness.game().modules();
-        modules.iter().map(ModuleEntry::from).collect()
+        let Some(game) = self.harness.app().game() else {
+            return Vec::new();
+        };
+        game.modules().iter().map(ModuleEntry::from).collect()
     }
 
     /// Gives the Harness this machine's clock, and in a build that counts
     /// the heap this program's heap counter and its memory tags (and tags
     /// the asset decodes), each unless its platform has one already (a
     /// test's fake, kept so its records stay the same); `false` takes away
-    /// what it gave.
+    /// what it gave. Before the game has loaded it does nothing.
     fn set_perf(&mut self, on: bool) {
+        if !self.loaded() {
+            return;
+        }
         let platform = self.harness.platform();
         let (clock, memory) = (platform.clock().is_none(), !platform.has_memory());
         let scopes = platform.memory_scopes().is_none();
@@ -609,6 +771,9 @@ impl<G: GameData> Session for Headless<G> {
     }
 
     fn picture(&self, scale: Option<u32>) -> Result<Image, String> {
+        if !self.loaded() {
+            return Err("the game hasn't loaded".to_owned());
+        }
         match &self.picture {
             Some(picture) => picture(&self.harness, scale),
             None => Err(unsupported(

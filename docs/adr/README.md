@@ -85,5 +85,6 @@ one's status to `Superseded by ADR-NNNN`. Use the `write-adr` skill.
 | [0070](0070-each-final-export-is-read-back-into-an-exposure-report-and-held-to-a-games-disclosure-part.md) | Each final export is read back into an exposure report and held to a game's disclosure part | Accepted; extends ADR-0058 |
 | [0071](0071-hot-reload-a-disk-layers-bytes-replaced-values-that-remember-what-they-read-and-a-module-hook.md) | Hot reload: a disk layer's bytes replaced, values that remember what they read, and a module hook | Accepted; extends ADR-0004, ADR-0040 |
 | [0072](0072-session-records-app-notes-what-the-platform-gives-a-hash-per-frame-of-what-happened-and-ron-never-migrated.md) | Session records: App notes what the platform gives, a hash per frame of what happened, and RON that is never migrated | Accepted; extends ADR-0024, ADR-0022 |
+| [0073](0073-session-records-from-real-builds-whole-sessions-kept-beside-the-saves-and-a-screens-own-state-hash.md) | Session records from real builds: whole sessions kept beside the saves, and a screen's own state hash | Accepted; extends ADR-0072, ADR-0036, ADR-0022, ADR-0051 |
 
 Template: [`0000-template.md`](0000-template.md).

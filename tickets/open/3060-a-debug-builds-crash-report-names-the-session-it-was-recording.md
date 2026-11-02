@@ -227,8 +227,8 @@ privacy question for Nick (parked 3047 asks it for crash reports).
 
 1. Read 3046's `crates/app/src/crash.rs` (the hook, `add_record`, the
    catch path in `run`), `shuyi_platform::crash` and its ADR. Read
-   2519's `crates/app/src/sessions.rs`, its writer and ring, and its
-   write at quit in `run`. Read 2518's `App::record`,
+   2519's `crates/app/src/sessions.rs` and `sessions/disk.rs` (its writer
+   and ring), and its write at quit in `run`. Read 2518's `App::record`,
    `App::take_session`, and where `App` pushes each `FrameRecord`.
    Check whether 2520 is done.
 2. Add `CrashReport::session`, with its unit tests, and add the field

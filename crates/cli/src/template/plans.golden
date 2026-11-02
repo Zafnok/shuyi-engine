@@ -26,7 +26,7 @@ db2db64dafb70062 crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
 ffa20be348ab831e crates/game/src/stages.rs
 fbc4754f1d90d0da crates/game/src/title.rs
-83eee765479e0484 crates/game/tests/it/main.rs
+15269149d916a042 crates/game/tests/it/main.rs
 c7bc56040688f5d6 rust-toolchain.toml
 2ed9545729103b37 rustfmt.toml
 41ed1249a956f9a5 scripts/setup-linux.sh
@@ -55,11 +55,11 @@ ba791d69f803381d crates/game/files/keymap.ron
 f23feaa7846d2643 crates/game/src/app_info.rs
 db2db64dafb70062 crates/game/src/lib.rs
 c2a32153feca5b36 crates/game/src/main.rs
-b3e48be6b267ac9f crates/game/src/stages/top_down_grid/tools.rs
-db5e2588379a32b0 crates/game/src/stages/top_down_grid.rs
+448332488251a940 crates/game/src/stages/top_down_grid/tools.rs
+e6c18efa29d7ecba crates/game/src/stages/top_down_grid.rs
 4840525a6e19d42d crates/game/src/stages.rs
 fbc4754f1d90d0da crates/game/src/title.rs
-83eee765479e0484 crates/game/tests/it/main.rs
+15269149d916a042 crates/game/tests/it/main.rs
 ad302237f9ed6ee7 crates/game/tests/stage.rs
 dd2774be3effd43f crates/rules/AGENTS.md
 7d39342f9c953a2a crates/rules/Cargo.toml

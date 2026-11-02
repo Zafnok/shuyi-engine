@@ -12,6 +12,8 @@ use crate::prelude::*;
 use core::any::Any;
 use core::fmt;
 
+use shuyi_core::StateHash;
+
 use shuyi_assets::audio::AudioManifest;
 use shuyi_assets::keymap::{ActionSet, Button, Chord, Key, UiAction};
 
@@ -644,6 +646,12 @@ impl<G: GameData> Game<G> {
     /// ([`Screen::as_any`]).
     pub fn screen<T: Any>(&self) -> Option<&T> {
         self.stack.find()
+    }
+
+    /// The state hash of the top-most screen that has one
+    /// ([`Screen::state_hash`]).
+    pub fn state_hash(&self) -> Option<StateHash> {
+        self.stack.state_hash()
     }
 
     /// [`screen`](Self::screen), mutable, for scripted tests.

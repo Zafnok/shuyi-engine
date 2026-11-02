@@ -6,8 +6,13 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use hello_grid::tools::{HelloTools, StageRecord};
-use shuyi::core::ContentHash;
+use hello_grid::Hello;
+use hello_grid::tools::{HelloTools, StageRecord, Start as HelloStart};
+use shuyi::core::{ContentHash, Made};
+use shuyi::platform::harness::Harness;
+use shuyi::platform::session::SessionRecord;
+use shuyi::ui::RawInputEvent;
+use shuyi::ui::debug::DebugMenuScreen;
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::bots::{BotsInput, bots};
 use shuyi_cli::contract::check::{CheckInput, check};
@@ -15,8 +20,8 @@ use shuyi_cli::contract::doctor::{DoctorInput, ThisMachine, doctor};
 use shuyi_cli::contract::import::{ImportInput, import};
 use shuyi_cli::contract::new::{Engine, NewInput, new};
 use shuyi_cli::contract::replay::{ReplayInput, replay};
-use shuyi_cli::contract::run::{RunInput, keys, run, scene};
-use shuyi_cli::contract::session::Event;
+use shuyi_cli::contract::run::{RunInput, keys, run, run_at, scene, scene_at};
+use shuyi_cli::contract::session::{Event, SessionInput};
 use shuyi_cli::{GameArg, contract};
 
 /// The game's folder, its project's root.
@@ -429,4 +434,157 @@ fn run_lists_the_rules_events_after_the_engines() {
         "{game:?}"
     );
     assert!(matches!(out.events.last(), Some(Event::Game { .. })));
+}
+
+/// The golden session, from the game's folder.
+const GOLDEN_SESSION: &str = "tests/sessions/stage.session.ron";
+
+/// `run`'s and `scene`'s input for the record `file`.
+fn from_session(file: &str) -> RunInput {
+    let mut input = RunInput::default();
+    input.session = Some(SessionInput::new(file));
+    input
+}
+
+/// A scratch folder holding `text` as `record.ron`.
+fn with_record(name: &str, text: &str) -> PathBuf {
+    let dir = scratch(&format!("session-{name}"));
+    fs::write(dir.join("record.ron"), text).unwrap_or_else(|e| panic!("{e}"));
+    dir
+}
+
+/// The golden session's text.
+fn golden_text() -> String {
+    fs::read_to_string(root().join(GOLDEN_SESSION)).unwrap_or_else(|e| panic!("{e}"))
+}
+
+#[test]
+fn run_plays_the_golden_session_to_the_stage_and_a_script_goes_on() {
+    let answer = run_at(&HelloTools, root(), &from_session(GOLDEN_SESSION));
+    assert!(answer.ok, "{answer:?}");
+    let out = answer.result.as_ref().unwrap();
+    let session = out.session.as_ref().unwrap();
+    assert_eq!(session.file, GOLDEN_SESSION);
+    assert_eq!(session.frames, session.of);
+    assert_eq!(session.first_difference, None);
+    assert_eq!(out.frames, session.of);
+    assert_eq!(out.top_screen, "stage");
+    assert!(out.scene.is_some());
+
+    let scene = scene_at(&HelloTools, root(), &from_session(GOLDEN_SESSION));
+    assert!(scene.ok, "{scene:?}");
+    let shown = scene.result.unwrap();
+    assert_eq!(shown.scene, out.scene);
+    assert_eq!(shown.session.as_ref(), Some(session));
+
+    let mut input = from_session(GOLDEN_SESSION);
+    input.frames = 3;
+    let on = run_at(&HelloTools, root(), &input);
+    assert!(on.ok, "{on:?}");
+    assert_eq!(on.result.unwrap().frames, session.of + 3);
+    assert!(
+        on.limits.iter().any(|l| l.contains("took over")),
+        "{:?}",
+        on.limits
+    );
+}
+
+#[test]
+fn a_session_with_an_input_removed_answers_the_frame_that_differs() {
+    let mut record = SessionRecord::from_ron(&golden_text()).unwrap();
+    // The last press: a step on the stage.
+    let down = record
+        .frames
+        .iter()
+        .rposition(|frame| matches!(frame.input.first(), Some(RawInputEvent::Down(_))))
+        .unwrap();
+    record.frames[down].input.clear();
+    let dir = with_record("removed", &record.to_ron());
+
+    let answer = run_at(&HelloTools, &dir, &from_session("record.ron"));
+    assert!(!answer.ok, "{answer:?}");
+    assert_eq!(answer.code, None);
+    assert_eq!(answer.exit_code(), 1);
+    let out = answer.result.unwrap();
+    let session = out.session.unwrap();
+    let difference = session.first_difference.unwrap();
+    assert_eq!(difference.frame, u32::try_from(down).unwrap() + 1);
+    assert_ne!(difference.recorded, difference.played);
+    assert_eq!(difference.recorded.len(), 16, "{difference:?}");
+    // It stands on that frame: the script and the frames didn't play.
+    assert_eq!(out.frames, difference.frame);
+    let mut input = from_session("record.ron");
+    input.frames = 5;
+    let scene = scene_at(&HelloTools, &dir, &input);
+    assert!(!scene.ok, "{scene:?}");
+    let shown = scene.result.unwrap();
+    assert_eq!(shown.frames, difference.frame);
+    assert_eq!(shown.scene, out.scene);
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_session_of_another_build_is_refused_unless_any_stamp() {
+    let mut record = SessionRecord::from_ron(&golden_text()).unwrap();
+    record.made = Some(Made::new("another build", ContentHash(7)));
+    let dir = with_record("stamp", &record.to_ron());
+    let refused = run_at(&HelloTools, &dir, &from_session("record.ron"));
+    assert_eq!(refused.code.as_deref(), Some("SH3007"));
+    let error = refused.error.unwrap();
+    assert!(error.starts_with("record.ron was made with "), "{error}");
+    assert!(error.ends_with("--any-stamp"), "{error}");
+    let mut input = from_session("record.ron");
+    input.session.as_mut().unwrap().any_stamp = true;
+    let anyway = run_at(&HelloTools, &dir, &input);
+    assert!(anyway.ok, "{anyway:?}");
+    assert!(
+        anyway
+            .limits
+            .iter()
+            .any(|l| l.contains("stamps were ignored")),
+        "{:?}",
+        anyway.limits
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_session_of_no_frames_answers_without_a_game() {
+    let mut record = SessionRecord::from_ron(&golden_text()).unwrap();
+    record.frames.clear();
+    let dir = with_record("empty", &record.to_ron());
+    let answer = run_at(&HelloTools, &dir, &from_session("record.ron"));
+    assert!(answer.ok, "{answer:?}");
+    let out = answer.result.unwrap();
+    assert_eq!((out.frames, out.top_screen.as_str()), (0, ""));
+    assert!(
+        answer
+            .limits
+            .iter()
+            .any(|l| l.contains("before the game loaded")),
+        "{:?}",
+        answer.limits
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn the_debug_action_opens_the_debug_menu_only_with_debug_tools_on() {
+    let mut h = HelloStart::default().harness();
+    assert!(h.ctx().debug_tools);
+    h.keys("F2");
+    assert_eq!(h.screens(), ["title", DebugMenuScreen::<Hello>::NAME]);
+    h.keys("Backspace");
+    assert_eq!(h.screens(), ["title"]);
+
+    h.ctx_mut().debug_tools = false;
+    h.keys("F2");
+    assert_eq!(h.screens(), ["title"]);
+
+    // A recorded run lists the engine's entry, and asks once.
+    let mut h = Harness::start_recording(hello_grid::start()).unwrap();
+    h.keys("F2");
+    assert!(h.snapshot().contains("Save session"), "{}", h.snapshot());
+    h.keys("Enter");
+    assert!(h.app_mut().take_session_save());
 }

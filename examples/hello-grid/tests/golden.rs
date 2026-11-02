@@ -10,7 +10,15 @@
 //! The record, `tests/records/seed-11.ron`, is seed 11's play from `cargo
 //! shuyi bots 1 --seed 11 --json`, without its stamp, so a change to the
 //! game's files shows as rows moving rather than a refusal. It and the
-//! table are read with `include_str!`: the test reads no file at run time.
+//! table are read with `include_str!`.
+//!
+//! Beside them, the golden session, `tests/sessions/stage.session.ron`: a
+//! session record of the game from its real start, through the options to a
+//! few moves on the stage, which plays with no difference on each of them.
+//! It is read at run time, so `cargo xtask golden --bless` can write it
+//! (`SHUYI_BLESS=1`), and `make_the_golden_session` makes it from nothing.
+
+use std::path::PathBuf;
 
 use serde::Serialize;
 use shuyi::assets::bundle::Bundle;
@@ -23,16 +31,54 @@ use shuyi::assets::keymap::KeymapDef;
 use shuyi::assets::pack::Pack;
 use shuyi::assets::palette::PaletteDef;
 use shuyi::core::{TerrainId, state_hash};
+use shuyi::platform::harness::{Harness, assert_session};
 use shuyi_assets::golden::Golden;
 use shuyi_cli::GameTools;
 use shuyi_cli::contract::replay::Record;
 
 use hello_grid::rules::Feature;
+use hello_grid::screens::StageScreen;
 use hello_grid::tools::HelloTools;
 use hello_grid::{Action, English, FONT_PNG, FONT_RON, PACK_STAMP};
 
 /// The checked-in record.
 const RECORD: &str = "tests/records/seed-11.ron";
+
+/// The golden session's file.
+fn golden_session() -> PathBuf {
+    let dir = env!("CARGO_MANIFEST_DIR");
+    PathBuf::from(dir).join("tests/sessions/stage.session.ron")
+}
+
+#[test]
+fn the_golden_session_plays_with_no_difference() {
+    assert_session(hello_grid::start(), golden_session());
+}
+
+/// Makes the golden session from nothing, played by keys (a test script's
+/// names, not game code).
+#[test]
+#[ignore = "writes the golden session"]
+fn make_the_golden_session() {
+    let mut h = Harness::start_recording(hello_grid::start()).unwrap_or_else(|e| panic!("{e}"));
+    // The options and back.
+    h.keys("Down Enter");
+    assert_eq!(h.screens(), ["title", "options"]);
+    h.keys("Down Backspace Up Enter");
+    assert_eq!(h.screens(), ["title", "stage", "talk"]);
+    // The scene read: each page revealed, then gone on from.
+    while h.top_screen() == "talk" {
+        h.keys("Enter");
+    }
+    assert_eq!(h.screens(), ["title", "stage"]);
+    // Two turns: the piece picked up, a tile chosen, and time to walk.
+    h.keys("Enter Up Enter").wait(1.0);
+    h.keys("Enter Up Enter").wait(1.0);
+    let stage = h.screen::<StageScreen>();
+    assert_eq!(stage.map(|stage| stage.commands.len()), Some(2));
+    let record = h.session().unwrap_or_else(|| panic!("nothing recorded"));
+    std::fs::write(golden_session(), record.to_ron()).unwrap_or_else(|e| panic!("{e}"));
+}
 
 /// A bundle and the formats it is read with.
 struct Source {

@@ -7,7 +7,10 @@
 //! `--perf-out` writes every kept frame as a JSON line ([`super::perf`]);
 //! where the heap is counted by memory tag, it takes a heap snapshot
 //! before the script and one after the last frame, and answers what held
-//! the heap and what grew.
+//! the heap and what grew. With `--session`, the game starts from a session
+//! record instead (`shuyi_platform::session`), played to its end or to the
+//! first frame this build plays differently, and the script goes on from
+//! there.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -19,7 +22,10 @@ use shuyi_ui::log::LOG_LINES;
 use shuyi_ui::perf::{FrameRecord, HeapSnapshot, PERF_FRAMES};
 
 use super::perf::{self, PerfSummary};
-use super::session::{Event, LogEntry, ModuleEntry, Scene, Session, Sound, measured_start};
+use super::session::{
+    Event, LogEntry, ModuleEntry, Scene, Session, SessionInput, SessionPlayed, Sound, from_record,
+    measured_start,
+};
 use super::{Answer, Op, codes};
 use crate::frame_png::{Script, Step};
 use crate::game::{GameArg, GameOption, GameTools, check_start, code_of, game_arg};
@@ -46,6 +52,11 @@ pub struct RunInput {
     /// Also write every kept frame's record there, a JSON line each; a
     /// relative path is from the project's folder. It implies `perf`.
     pub perf_out: Option<String>,
+    /// Start from this session record, played to its end, in place of the
+    /// start options: the game's real start is the record's. A frame that
+    /// plays differently stops it there, and the script and `frames` don't
+    /// play.
+    pub session: Option<SessionInput>,
 }
 
 /// What `run` saw.
@@ -78,6 +89,8 @@ pub struct RunOutput {
     /// The frames' times, with `perf`: none without it, or when nothing
     /// was measured.
     pub perf: Option<PerfSummary>,
+    /// How far the session record played, with `session`.
+    pub session: Option<SessionPlayed>,
 }
 
 /// What `scene` saw.
@@ -92,13 +105,23 @@ pub struct SceneOutput {
     pub scene: Option<Scene>,
     /// The game's log, oldest first: its last lines.
     pub log: Vec<LogEntry>,
+    /// How far the session record played, with `session`.
+    pub session: Option<SessionPlayed>,
 }
 
 impl RunInput {
     /// Whether the Harness can play it: every step of its script
-    /// ([`Script::check`]), and at most [`MAX_IDLE_FRAMES`] frames after.
+    /// ([`Script::check`]), at most [`MAX_IDLE_FRAMES`] frames after, and no
+    /// start options with a session record, whose start is the game's real
+    /// one.
     pub fn check(&self) -> Result<(), String> {
         self.script.check()?;
+        if self.session.is_some() && !self.start.is_empty() {
+            return Err(
+                "session: a record starts as the game really starts, with no start options"
+                    .to_owned(),
+            );
+        }
         if self.frames > MAX_IDLE_FRAMES {
             return Err(format!(
                 "frames: at most {MAX_IDLE_FRAMES}, not {}",
@@ -114,33 +137,74 @@ impl RunInput {
     }
 }
 
-/// A session played, and measured, the heap snapshot taken once it
-/// started.
-type Played = (Box<dyn Session>, Option<HeapSnapshot>);
+/// A session played: the heap snapshot taken once it started if it was
+/// measured, and how far its record played if it has one.
+struct Ran {
+    session: Box<dyn Session>,
+    first: Option<HeapSnapshot>,
+    record: Option<SessionPlayed>,
+    /// What the record's playing can't promise.
+    limits: Vec<String>,
+    /// Whether a frame of the record played differently.
+    differs: bool,
+}
 
 /// A session of `game` started and played as `input` says, or the answer
-/// of `op` that says why not; measured, also the heap snapshot taken once
-/// it started, before the script.
-fn played<T>(op: Op, game: &dyn GameTools, input: &RunInput) -> Result<Played, Answer<T>> {
+/// of `op` that says why not; a record is read from `root`. Measured, also
+/// the heap snapshot taken once it started, before the script. A record
+/// that plays differently stands on that frame: the script and the frames
+/// after it don't play.
+fn played<T>(
+    op: Op,
+    game: &dyn GameTools,
+    root: &Path,
+    input: &RunInput,
+) -> Result<Ran, Answer<T>> {
     input
         .check()
         .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
     check_start(game.frame_options(), &input.start)
         .map_err(|e| Answer::failed(op, codes::WRONG_ARGUMENTS, e))?;
-    let started = if input.measures() {
-        measured_start(|| game.session(&input.start))
-    } else {
-        game.session(&input.start)
+    let start = || match &input.session {
+        Some(record) => {
+            from_record(game, root, record).map(|(session, played)| (session, Some(played)))
+        }
+        None => game
+            .session(&input.start)
+            .map(|session| (session, None))
+            .map_err(|e| (code_of(&e), e)),
     };
-    let mut session = started.map_err(|e| Answer::failed(op, code_of(&e), e))?;
+    let started = if input.measures() {
+        measured_start(start)
+    } else {
+        start()
+    };
+    let (mut session, played) = started.map_err(|(code, e)| Answer::failed(op, code, e))?;
+    let differs = played
+        .as_ref()
+        .is_some_and(|played| played.first_difference.is_some());
     let mut first = None;
-    if input.measures() {
-        session.set_perf(true);
-        first = session.heap_snapshot();
+    if !differs {
+        if input.measures() {
+            session.set_perf(true);
+            first = session.heap_snapshot();
+        }
+        session.play(&input.script);
+        session.idle(input.frames);
     }
-    session.play(&input.script);
-    session.idle(input.frames);
-    Ok((session, first))
+    // Read after the script: its frames add lines (`Session::play_record`).
+    let after = played.and_then(|_| session.play_record());
+    let (record, limits) = match (&input.session, after) {
+        (Some(file), Some(played)) => (Some(SessionPlayed::of(&file.file, &played)), played.limits),
+        _ => (None, Vec::new()),
+    };
+    Ok(Ran {
+        session,
+        first,
+        record,
+        limits,
+        differs,
+    })
 }
 
 /// What a run of `frames` frames couldn't show: the frames after the game
@@ -209,6 +273,7 @@ pub fn run_output(session: &dyn Session) -> (RunOutput, Vec<String>) {
         log: session.log(),
         modules: session.modules(),
         perf: None,
+        session: None,
     };
     (output, limits)
 }
@@ -284,6 +349,7 @@ pub fn scene_output(session: &dyn Session) -> (SceneOutput, Vec<String>) {
         top_screen: screens.last().cloned().unwrap_or_default(),
         scene: scene.ok(),
         log: session.log(),
+        session: None,
     };
     (output, limits)
 }
@@ -297,13 +363,21 @@ pub fn run(game: &dyn GameTools, input: &RunInput) -> Answer<RunOutput> {
 /// `run`: plays `input` in `game`; a trace file (`perf_out`) is written
 /// from the project's folder `root`, as the CLI and the MCP server run it.
 pub fn run_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<RunOutput> {
-    let (mut session, first) = match played(Op::Run, game, input) {
+    let Ran {
+        mut session,
+        first,
+        record,
+        limits: record_limits,
+        differs,
+    } = match played(Op::Run, game, root, input) {
         Ok(played) => played,
         Err(answer) => return answer,
     };
     // After the last frame, before the answer is read.
     let heap = first.zip(session.heap_snapshot());
     let (mut output, mut limits) = run_output(&*session);
+    output.session = record;
+    limits.extend(record_limits);
     if input.measures() {
         let (mut summary, records, perf_limits) = perf_of(&*session, heap.as_ref());
         limits.extend(perf_limits);
@@ -316,16 +390,26 @@ pub fn run_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<Run
         }
         output.perf = summary;
     }
-    Answer::new(Op::Run, true, output, limits)
+    Answer::new(Op::Run, !differs, output, limits)
 }
 
-/// `scene`: plays `input` in `game`, and answers with the scene. It
-/// passes if there is one.
+/// `scene`: plays `input` in `game`, and answers with the scene; a record
+/// is read from the working folder ([`scene_at`] says from where).
 pub fn scene(game: &dyn GameTools, input: &RunInput) -> Answer<SceneOutput> {
-    match played(Op::Scene, game, input) {
-        Ok((session, _)) => {
-            let (output, limits) = scene_output(&*session);
-            Answer::new(Op::Scene, output.scene.is_some(), output, limits)
+    scene_at(game, Path::new("."), input)
+}
+
+/// `scene`: plays `input` in `game`, a record read from the project's folder
+/// `root`, and answers with the scene. It passes if there is one and a
+/// record played no differently.
+pub fn scene_at(game: &dyn GameTools, root: &Path, input: &RunInput) -> Answer<SceneOutput> {
+    match played(Op::Scene, game, root, input) {
+        Ok(ran) => {
+            let (mut output, mut limits) = scene_output(&*ran.session);
+            output.session = ran.record;
+            limits.extend(ran.limits);
+            let ok = output.scene.is_some() && !ran.differs;
+            Answer::new(Op::Scene, ok, output, limits)
         }
         Err(answer) => answer,
     }
@@ -340,7 +424,10 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
          --script \"Enter Up\"  press and release each key chord in turn (or --keys)\n  \
          --pad \"South\"        press and release each controller button in turn\n  \
          --wait 0.5           let that many seconds pass\n\n\
-         --frames N           then run N frames (1/60 s each) with no input\n",
+         --frames N           then run N frames (1/60 s each) with no input\n\n\
+         --session <file>     start from a session record, from the project's folder,\n                     \
+         played to its end or the first frame that differs; no start options\n\
+         --any-stamp          play a record another build or other content made too\n",
         op.name()
     );
     if op == Op::Run {
@@ -371,6 +458,7 @@ pub fn usage(command: &str, op: Op, options: &[GameOption]) -> String {
 /// start `options` among them.
 pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, String> {
     let mut input = RunInput::default();
+    let mut any_stamp = false;
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         let mut value = || {
@@ -383,6 +471,14 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
             if let Some(step) = Script::parse_step(arg, &text) {
                 input.script.steps.push(step?);
             }
+            continue;
+        }
+        if arg == "--session" {
+            input.session = Some(SessionInput::new(value()?));
+            continue;
+        }
+        if arg == "--any-stamp" {
+            any_stamp = true;
             continue;
         }
         if arg == "--perf" {
@@ -406,6 +502,11 @@ pub fn parse_args(args: &[String], options: &[GameOption]) -> Result<RunInput, S
             continue;
         }
         input.start.push(game_arg(arg, options, value)?);
+    }
+    match &mut input.session {
+        Some(session) => session.any_stamp = any_stamp,
+        None if any_stamp => return Err("--any-stamp needs --session".to_owned()),
+        None => {}
     }
     Ok(input)
 }
@@ -456,6 +557,25 @@ fn scene_text(out: &mut String, scene: Option<&Scene>) {
     }
 }
 
+/// How far a session record played, for people.
+fn session_text(out: &mut String, session: Option<&SessionPlayed>) {
+    let Some(session) = session else {
+        return;
+    };
+    let _ = writeln!(
+        out,
+        "session {}: played {} of {} frame(s)",
+        session.file, session.frames, session.of
+    );
+    if let Some(difference) = &session.first_difference {
+        let _ = writeln!(
+            out,
+            "it first differs at frame {}: the record says {}, this build {}",
+            difference.frame, difference.recorded, difference.played
+        );
+    }
+}
+
 /// What `run` saw, for people.
 pub fn text(output: &RunOutput) -> String {
     let mut out = format!(
@@ -468,6 +588,7 @@ pub fn text(output: &RunOutput) -> String {
         },
         output.screens.join(" > ")
     );
+    session_text(&mut out, output.session.as_ref());
     if !output.events.is_empty() {
         out.push_str("events:\n");
         for event in &output.events {
@@ -514,6 +635,7 @@ pub fn scene_output_text(output: &SceneOutput) -> String {
         "scene: after {} frame(s), top screen {}\n",
         output.frames, output.top_screen
     );
+    session_text(&mut out, output.session.as_ref());
     log_text(&mut out, &output.log);
     scene_text(&mut out, output.scene.as_ref());
     out

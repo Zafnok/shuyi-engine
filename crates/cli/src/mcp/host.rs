@@ -26,7 +26,7 @@ use crate::contract::codes::{self, Code};
 use crate::contract::import::Importers;
 use crate::contract::perf::{self, PerfRead};
 use crate::contract::run::{self, RunInput};
-use crate::contract::session::{Session, measured_start};
+use crate::contract::session::{Session, SessionInput, SessionPlayed, from_record, measured_start};
 use crate::contract::{
     Answer, Op, add, attach, autobalance, bake, bots, check, doctor, explain, export, import, lint,
     modules, new, playtest, replay,
@@ -189,7 +189,9 @@ pub fn one_off(
         Op::Run => {
             needs(&|game, p| answered(op, input.clone(), |i| run::run_at(game, &p.root, &i)))
         }
-        Op::Scene => needs(&|game, _| answered(op, input.clone(), |i| run::scene(game, &i))),
+        Op::Scene => {
+            needs(&|game, p| answered(op, input.clone(), |i| run::scene_at(game, &p.root, &i)))
+        }
         Op::Replay => {
             needs(&|game, p| answered(op, input.clone(), |i| replay::replay(game, &p.root, &i)))
         }
@@ -211,10 +213,11 @@ pub fn one_off(
     }
 }
 
-/// The session's game: the options it started with, the game, and the
-/// heap snapshots `perf` took of it, by frame.
+/// The session's game: the options or the session record it started with,
+/// the game, and the heap snapshots `perf` took of it, by frame.
 struct Live {
     start: Vec<GameArg>,
+    session: Option<SessionInput>,
     game: Box<dyn Session>,
     snapshots: Vec<HeapSnapshot>,
 }
@@ -241,12 +244,14 @@ impl<'a> Host<'a> {
     pub fn call(&mut self, request: &Request) -> Reply {
         let (op, input) = (request.op, request.input.clone());
         match op {
-            Op::Start => Reply::of(answered(op, input, |i: StartInput| self.start(op, i.start))),
+            Op::Start => Reply::of(answered(op, input, |i: StartInput| {
+                self.start(op, i.start, i.session)
+            })),
             Op::Reset => match (read::<NoInput>(input), &self.live) {
                 (Err(e), _) => Reply::of(failed(op, codes::WRONG_ARGUMENTS, e)),
                 (Ok(_), Some(live)) => {
-                    let start = live.start.clone();
-                    Reply::of(to_json(&self.start(op, start)))
+                    let (start, session) = (live.start.clone(), live.session.clone());
+                    Reply::of(to_json(&self.start(op, start, session)))
                 }
                 (Ok(_), None) => Reply::of(no_session(op)),
             },
@@ -309,15 +314,37 @@ impl<'a> Host<'a> {
         }
     }
 
-    /// The session's game started as `start` says, for `start` or `reset`
-    /// (`op`).
-    fn start(&mut self, op: Op, start: Vec<GameArg>) -> Answer<StartOutput> {
+    /// The session's game started as `start` says, or from the record
+    /// `session` names, for `start` or `reset` (`op`). A record that plays
+    /// differently answers `ok: false`, and the game stands on that frame.
+    fn start(
+        &mut self,
+        op: Op,
+        start: Vec<GameArg>,
+        session: Option<SessionInput>,
+    ) -> Answer<StartOutput> {
         if let Err(e) = check_start(self.tools.frame_options(), &start) {
             return Answer::failed(op, codes::WRONG_ARGUMENTS, e);
         }
-        let mut game = match measured_start(|| self.tools.session(&start)) {
-            Ok(game) => game,
-            Err(e) => return Answer::failed(op, code_of(&e), e),
+        if session.is_some() && !start.is_empty() {
+            let error =
+                "start: a session record starts as the game really starts, with no start options";
+            return Answer::failed(op, codes::WRONG_ARGUMENTS, error);
+        }
+        let root = self.project.root.clone();
+        let started = measured_start(|| match &session {
+            Some(input) => {
+                from_record(self.tools, &root, input).map(|(game, played)| (game, Some(played)))
+            }
+            None => self
+                .tools
+                .session(&start)
+                .map(|game| (game, None))
+                .map_err(|e| (code_of(&e), e)),
+        });
+        let (mut game, played) = match started {
+            Ok(started) => started,
+            Err((code, e)) => return Answer::failed(op, code, e),
         };
         // So `perf` always has records.
         game.set_perf(true);
@@ -335,13 +362,21 @@ impl<'a> Host<'a> {
             frames: game.frame_count(),
             top_screen: screens.last().cloned().unwrap_or_default(),
             screens,
+            session: session
+                .as_ref()
+                .zip(played.as_ref())
+                .map(|(input, played)| SessionPlayed::of(&input.file, played)),
         };
         self.live = Some(Live {
             start,
+            session,
             game,
             snapshots: Vec::new(),
         });
-        Answer::new(op, true, output, Vec::new())
+        let (differs, limits) = played.map_or((false, Vec::new()), |played| {
+            (played.first_difference.is_some(), played.limits)
+        });
+        Answer::new(op, !differs, output, limits)
     }
 }
 
