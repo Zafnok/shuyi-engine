@@ -151,6 +151,7 @@ fn say(speaker: &str, expression: Option<&str>, text: &str) -> TStep {
         speaker: id(speaker),
         expression: expression.map(Into::into),
         text: text.into(),
+        direction: None,
         line: LineId::default(),
     }
 }
@@ -166,8 +167,166 @@ fn place(side: Side, character: &str, expression: &str) -> TStep {
 fn narrate(text: &str) -> TStep {
     Step::Narrate {
         text: text.into(),
+        direction: None,
         line: LineId::default(),
     }
+}
+
+/// The directions of the lines of the first scene of `src`, in script order;
+/// `-` for a line with none.
+fn directions(src: &str) -> Vec<String> {
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    parsed[0]
+        .scene
+        .lines()
+        .iter()
+        .map(|line| line.direction.unwrap_or("-").to_owned())
+        .collect()
+}
+
+/// The errors of `src`, without where they are.
+fn messages(src: &str) -> Vec<String> {
+    let (_, errors) = parse_dlg::<Cue>("t.dlg", src);
+    errors.into_iter().map(|e| e.message).collect()
+}
+
+#[test]
+fn a_line_keeps_its_direction_apart_from_its_text() {
+    let src = "@scene a\n@left m neutral\nm (shouting, furious): Run!\n\
+               m[sad] (whispering): It is over.\n> (slowly): The rain fell.\n@end\n";
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    let lines = parsed[0].scene.lines();
+    let got: Vec<_> = lines.iter().map(|l| (l.text, l.direction)).collect();
+    assert_eq!(
+        got,
+        [
+            ("Run!", Some("shouting, furious")),
+            ("It is over.", Some("whispering")),
+            ("The rain fell.", Some("slowly")),
+        ]
+    );
+    let Step::Say { expression, .. } = &parsed[0].scene.steps[2] else {
+        panic!("not speech");
+    };
+    assert_eq!(expression.as_deref(), Some("sad"));
+}
+
+#[test]
+fn a_direction_is_not_part_of_the_line_id() {
+    let id = |src: &str| {
+        let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+        assert_eq!(errors, []);
+        let ids: Vec<LineId> = parsed[0]
+            .scene
+            .lines()
+            .iter()
+            .map(|l| l.id.clone())
+            .collect();
+        ids
+    };
+    assert_eq!(
+        id("@scene a\n@left m neutral\nm: Run!\n> It rained.\n@end\n"),
+        id("@scene a\n@left m neutral\n@delivery low\nm (loud): Run!\n> It rained.\n@end\n"),
+    );
+}
+
+#[test]
+fn narration_with_a_bracket_that_is_no_direction_stays_text() {
+    let src = "@scene a\n> (It rained.) Nobody spoke: not even Bo.\n@end\n";
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    let line = parsed[0].scene.lines()[0];
+    assert_eq!(line.text, "(It rained.) Nobody spoke: not even Bo.");
+    assert_eq!(line.direction, None);
+}
+
+#[test]
+fn delivery_holds_until_cleared_and_a_lines_own_wins() {
+    let src = "@scene a\n@left m neutral\nm: One.\n@delivery low, tired\nm: Two.\nm (loud): Three.\n\
+               > Four.\n@delivery calm\nm: Five.\n@delivery clear\nm: Six.\n@end\n\
+               @scene b\n@delivery low\n> Seven.\n@end\n";
+    assert_eq!(
+        directions(src),
+        ["-", "low, tired", "loud", "low, tired", "calm", "-"]
+    );
+    // A new scene starts with none.
+    let (parsed, _) = parse_dlg::<Cue>(
+        "t.dlg",
+        "@scene a\n@delivery low\n> One.\n@end\n@scene b\n> Two.\n@end\n",
+    );
+    assert_eq!(parsed[1].scene.lines()[0].direction, None);
+}
+
+#[test]
+fn delivery_inside_a_block_ends_with_its_part() {
+    let src = "@scene a\n@left m neutral\n@delivery low\n@if m\n@delivery loud\nm: One.\n@else\n\
+               > Two.\n@endif\n> Three.\n@choice\n* wry: Yes.\n  @delivery soft\n  m: Four.\n\
+               * blunt: No.\n  m: Five.\n@endchoice\n> Six.\n@end\n";
+    assert_eq!(
+        directions(src),
+        [
+            "loud", "low", "low", "-", // the reply
+            "soft", "-", // the reply
+            "low", "low",
+        ]
+    );
+}
+
+#[test]
+fn an_empty_direction_is_an_error() {
+    assert_eq!(
+        messages("@scene a\n@left m neutral\nm (): Run!\n> ( ): Rain.\n@end\n"),
+        [
+            "a line's ( ) has no direction in it",
+            "a line's ( ) has no direction in it"
+        ],
+    );
+    assert_eq!(
+        messages("@scene a\n@delivery\n> Rain.\n@end\n"),
+        ["@delivery needs a direction, or \"clear\""],
+    );
+    assert_eq!(
+        messages("@delivery low\n"),
+        ["line is outside a scene; start one with @scene <id>"],
+    );
+    assert_eq!(
+        messages("@scene a\n@left m neutral\nm (caf\u{e9}): Run!\n@end\n"),
+        ["unsupported character '\u{e9}'; dialogue text is plain ASCII"],
+    );
+}
+
+#[test]
+fn a_space_in_the_head_without_a_direction_is_still_unrecognised() {
+    let want = [
+        "unrecognised line; expected \"@directive\", \"> narration\", \"speaker: text\" or \"# comment\"",
+    ];
+    assert_eq!(
+        messages("@scene a\n@left m neutral\nm loud: Run!\n> x.\n@end\n"),
+        want
+    );
+    assert_eq!(
+        messages("@scene a\n@left m neutral\nm (loud: Run!\n> x.\n@end\n"),
+        want
+    );
+}
+
+#[test]
+fn a_printed_scene_keeps_its_directions() {
+    let src = "@scene a\n@left m neutral\n@delivery low\nm: One.\nm[sad] (loud): Two.\n> Three.\n\
+               @delivery clear\n> (slowly): Four.\nm: Five.\n@end\n";
+    let (parsed, errors) = parse_dlg::<Cue>("t.dlg", src);
+    assert_eq!(errors, []);
+    let printed = print_scene(&parsed[0].scene);
+    assert_eq!(
+        printed,
+        "@scene a\n@left m neutral\nm (low): One.\nm[sad] (loud): Two.\n> (low): Three.\n\
+         > (slowly): Four.\nm: Five.\n@end\n"
+    );
+    let (again, errors) = parse_dlg::<Cue>("t.dlg", &printed);
+    assert_eq!(errors, []);
+    assert_eq!(again[0].scene, parsed[0].scene);
 }
 
 /// `steps` without their line ids, to compare with steps built by hand.

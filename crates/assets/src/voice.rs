@@ -90,6 +90,8 @@ pub struct VoiceClip<V> {
     /// The words it says: the line's text with every token filled in, as
     /// it was when the clip was made.
     pub spoken: String,
+    /// The direction the line had when the clip was made, if any.
+    pub direction: Option<String>,
     /// The cast voice that says it (a value of the [`Cast`]).
     pub voice: String,
     /// Who or what made it.
@@ -132,6 +134,8 @@ struct RawClip<V> {
     #[serde(default)]
     variant: V,
     spoken: String,
+    #[serde(default)]
+    direction: Option<String>,
     voice: String,
     made_by: MadeBy,
 }
@@ -222,6 +226,7 @@ pub fn from_source<V: ClipVariant, D>(
             line: LineId::new(c.line),
             variant: c.variant,
             spoken: c.spoken,
+            direction: c.direction,
             voice: c.voice,
             made_by: c.made_by,
         })
@@ -310,6 +315,24 @@ impl<V: ClipVariant> VoiceManifest<V> {
             return true;
         };
         stale(clip, text, &spoken)
+    }
+
+    /// Whether `clip` should be made again: it is stale
+    /// ([`is_stale`](Self::is_stale)) or its line's direction changed. A
+    /// clip whose direction changed still says the right words, so it stays
+    /// playable until it is made again.
+    pub fn needs_remake<D>(
+        clip: &VoiceClip<V>,
+        dialogue: &DialogueTable<D>,
+        spoken: impl Fn(&str, V) -> Option<String>,
+    ) -> bool {
+        let line = dialogue
+            .get(clip.line.scene_id())
+            .map(Scene::lines)
+            .and_then(|lines| lines.into_iter().find(|line| *line.id == clip.line));
+        line.is_none_or(|line| {
+            stale(clip, line.text, &spoken) || clip.direction.as_deref() != line.direction
+        })
     }
 
     /// The clips that aren't stale ([`is_stale`](Self::is_stale)).
