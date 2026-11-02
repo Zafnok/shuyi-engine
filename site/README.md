@@ -40,7 +40,7 @@ copies each example's web build there.
 | `content/news/intro/` | An optional introduction for a release post, `vX.Y.Z.md`, which goes above the generated notes. Start it with `+++` / `draft = true` / `+++`, so Zola leaves the file out of the site and the tool drops the front matter |
 | `content/learn/` | Learn: `_index.md`, `book/` (the book, one page a chapter, in `weight` order, each numbered by its `extra.chapter`; a page with none is an appendix), `tutorial/` (a page per step, named as its folder in `tutorial/`, its number in `extra.step`; `00-start` and `glossary` have no number, no folder and no `play/`) and `errors/`, which `errors.sh` writes |
 | `tutorial/` | The tutorial's code: one folder per step, a whole game project and no member of the workspace, with its own `Cargo.lock` and a path dependency on the engine's crates. CI's `tutorial` job builds and tests each. `shuyi new`'s files for agents and CI, and the pinned Rust (the root's applies), are left out |
-| `tutorial/tries.toml`, `static/tutorial-tries/` | The tutorial's pictures: each try names a step, its keys and, for a before-and-after, the edits a page asks of the reader. `cargo xtask tutorial-tries` renders them into `static/tutorial-tries/<name>/`, where they are checked in. CI's `tutorial-tries` job renders them again and compares |
+| `tutorial/tries.toml`, `static/tutorial-tries/` | The pictures of the tutorial and the book: each try names a step, or `book` for Moon Garden (`snippets/`), its keys and, for a before-and-after, the edits a page asks of the reader. `cargo xtask tutorial-tries` renders them into `static/tutorial-tries/<name>/`, where they are checked in. CI's `tutorial-tries` job renders them again and compares |
 | `snippets/` | The book's code: a crate of the workspace, `book-snippets`, which CI builds and tests with the rest |
 | `data/features.toml` | The home page's feature cards, the first rows from `docs/ROADMAP.md`, *Bevy's homepage*. A card names its `tickets`, and its status is made from them; a card with none has its own `status` ([What follows the tickets](#what-follows-the-tickets)) |
 | `data/tickets.toml` | **Never committed**: `cargo xtask site-data --site site` writes each card's status and link text made from its tickets, and `pages.yml` and CI run it before `zola build`. Without it, each card shows its own `status`, or "Planned" |
@@ -85,9 +85,16 @@ copies each example's web build there.
 - The tutorial's pages are for a reader new to programming: each word of
   Rust or of the engine is explained the first time a page uses it, or
   links the page that did, and its row goes in `glossary.md`.
-- A picture of the tutorial is a try in `tutorial/tries.toml`, never a file
-  made by hand. Add it, run `cargo xtask tutorial-tries <name>`, look at
-  the picture, and show it with
+- The book has the same reader, and each chapter stands on its own: it says
+  what an idea is for before its name, explains each word of Rust or of the
+  engine its code uses, or links where the tutorial does, and has a section
+  *When it goes wrong* with real messages, from running the mistake. Its
+  code stays on Moon Garden, and the tutorial stays the one that builds a
+  game in order.
+- A picture of the tutorial or the book is a try in `tutorial/tries.toml`,
+  never a file made by hand. A book's try has `step = "book"`, and its edits'
+  files are from `snippets/`. Add it, run `cargo xtask tutorial-tries <name>`,
+  look at the picture, and show it with
 
   ```text
   {{ try_it(name="box-blue") }}

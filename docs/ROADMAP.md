@@ -80,6 +80,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 1129 | The tool contract: `shuyi new`, `check`, `run`, `scene`, `replay`, `bots`, `import`, `doctor` |
 | 2509 | Problem codes: a code and a help line on every error the contract gives, `shuyi explain`, an exit code for "fix the setup" |
 | 2530 | Problem codes for the validators: unknown names, duplicates and values out of range in the keymap, the language packs and the maps |
+| 2575 | A misspelled action in a language file fails `shuyi check`, rather than showing its braces to the player |
 | 3040 | One log for the engine and the game, kept by `App` and carried in the contract's answers |
 | 2513 | Zero setup on Linux: `shuyi doctor` checks the system libraries, a setup script, a dev container |
 | 2511 | The short path: engine defaults for every `GameData` part, a prelude, `run_game`, and a minimal template |
@@ -113,6 +114,7 @@ checks, private vulnerability reporting and a short `SECURITY.md`
 | 2818 | The tutorial taught from nothing: for a reader new to programming, with before-and-after pictures of real edits |
 | 2817 | Finish the tutorial's browser-play acceptance: exercise all ten steps from their page links, with per-step evidence |
 | 2819 | The book taught from nothing: each chapter for the tutorial's reader, with its words explained and its pictures |
+| 2822 | `tutorial-tries` on Windows can draw a try with another step's program |
 | 2821 | Code on the site that stands out: inline code with its own color and background, and code blocks with syntax colors of our own |
 | 2808 | Docs agents can read: `llms.txt`, a Markdown twin of every Learn page, the contract's schemas |
 | 2812 | New games point their agent at the engine's docs: `{{engine.docs}}` in a new game's `AGENTS.md`, from the engine it builds with |

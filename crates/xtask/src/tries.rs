@@ -1,11 +1,13 @@
-//! `cargo xtask tutorial-tries [--check] [<name>...]`: the tutorial's
-//! pictures (ticket 2818), each from `site/tutorial/tries.toml`.
+//! `cargo xtask tutorial-tries [--check] [<name>...]`: the pictures of the
+//! tutorial (ticket 2818) and the book (ticket 2819), each from
+//! `site/tutorial/tries.toml`.
 //!
-//! A try names a step of the tutorial and the keys to press. With no edits
-//! it is one picture, what the reader should see. With edits it is two: the
-//! step as it is, and the step with each edit made, built and run. The edits
-//! are the ones a page tells the reader to make, so an edit that no longer
-//! applies or builds fails here, and a picture can't go stale.
+//! A try names a step of the tutorial, or [`BOOK`] for the book's game, and
+//! the keys to press. With no edits it is one picture, what the reader should
+//! see. With edits it is two: the game as it is, and the game with each edit
+//! made, built and run. The edits are the ones a page tells the reader to
+//! make, so an edit that no longer applies or builds fails here, and a picture
+//! can't go stale.
 //!
 //! The pictures are checked in, under `site/static/tutorial-tries/<name>/`,
 //! so a change to one shows in its pull request. `--check` renders them
@@ -29,10 +31,18 @@ const STEPS: &str = "site/tutorial";
 /// The pictures, from the repository's root.
 const PICTURES: &str = "site/static/tutorial-tries";
 /// The pages that show them, from the repository's root.
-const PAGES: &str = "site/content/learn/tutorial";
+const PAGES: [&str; 2] = ["site/content/learn/tutorial", "site/content/learn/book"];
 /// Where the copies are built: three folders down, like a step, so a step's
 /// path dependencies on the engine's crates still resolve.
 const COPIES: &str = "target/tutorial-tries";
+/// A try's `step` for the book's game, Moon Garden, a member of the workspace
+/// and no step of the tutorial.
+pub const BOOK: &str = "book";
+/// The book's game, from the repository's root.
+const SNIPPETS: &str = "site/snippets";
+/// The start of a copy of the book's game's folder name, under `target/`: two
+/// folders down, like the crate, so its path dependencies still resolve.
+const BOOK_COPIES: &str = "book-tries-";
 /// What a copy leaves out of a step.
 const LEFT_OUT: [&str; 2] = ["target", "dist"];
 /// The picture of the step as it is, and the one of the step edited.
@@ -44,7 +54,7 @@ pub const AFTER: &str = "after.png";
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Try {
-    /// The step's folder under `site/tutorial/`.
+    /// The step's folder under `site/tutorial/`, or [`BOOK`].
     pub step: String,
     /// The keys to press, as `frame-png --keys` takes them.
     #[serde(default)]
@@ -63,7 +73,7 @@ pub struct Try {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Edit {
-    /// The file, from the step's folder.
+    /// The file, from the step's folder, or from `site/snippets/`.
     pub file: String,
     /// The text to find, which must be there exactly once.
     pub find: String,
@@ -136,6 +146,18 @@ pub fn apply(text: &str, edit: &Edit) -> Result<String, String> {
     }
 }
 
+/// The manifest of a copy of the book's game, which leaves the workspace it
+/// inherits from: its own text, given as `crate_toml`, and the workspace's,
+/// `root_toml`, without the members, making the copy its own one-crate
+/// workspace with the same versions, lints and profiles.
+pub fn book_manifest(crate_toml: &str, root_toml: &str) -> String {
+    let root: Vec<&str> = root_toml
+        .lines()
+        .filter(|line| !line.starts_with("members = "))
+        .collect();
+    format!("{crate_toml}\n{}\n", root.join("\n"))
+}
+
 /// Every try no page shows with the `try_it` shortcode, given the pages'
 /// text.
 pub fn unused<'a>(tries: &'a BTreeMap<String, Try>, pages: &str) -> Vec<&'a str> {
@@ -205,7 +227,7 @@ pub fn run(root: &Path, options: &Options) -> Vec<String> {
         .collect();
     let mut steps = BTreeSet::new();
     for (name, one) in &chosen {
-        let step = root.join(STEPS).join(&one.step);
+        let step = source(root, &one.step);
         if !step.is_dir() {
             errors.push(format!("{TRIES}: `{name}`: no step {STEPS}/{}", one.step));
             continue;
@@ -231,6 +253,15 @@ pub fn run(root: &Path, options: &Options) -> Vec<String> {
     errors
 }
 
+/// The folder of `step`: a step of the tutorial, or the book's game.
+fn source(root: &Path, step: &str) -> PathBuf {
+    if step == BOOK {
+        root.join(SNIPPETS)
+    } else {
+        root.join(STEPS).join(step)
+    }
+}
+
 /// What only the whole list can show: an orphan, and a try no page shows.
 fn whole_list_problems(root: &Path, tries: &BTreeMap<String, Try>) -> Vec<String> {
     let mut errors = Vec::new();
@@ -246,14 +277,17 @@ fn whole_list_problems(root: &Path, tries: &BTreeMap<String, Try>) -> Vec<String
         ));
     }
     let mut pages = String::new();
-    if let Ok(entries) = fs::read_dir(root.join(PAGES)) {
-        for entry in entries.flatten() {
-            pages.push_str(&fs::read_to_string(entry.path()).unwrap_or_default());
+    for folder in PAGES {
+        if let Ok(entries) = fs::read_dir(root.join(folder)) {
+            for entry in entries.flatten() {
+                pages.push_str(&fs::read_to_string(entry.path()).unwrap_or_default());
+            }
         }
     }
     for name in unused(tries, &pages) {
         errors.push(format!(
-            "{TRIES}: `{name}`: no page of {PAGES} shows it with `try_it(name=\"{name}\")`"
+            "{TRIES}: `{name}`: no page of {} shows it with `try_it(name=\"{name}\")`",
+            PAGES.join(" or ")
         ));
     }
     errors
@@ -282,12 +316,12 @@ fn render(
     name: &str,
     one: &Try,
 ) -> Result<Vec<(&'static str, Vec<u8>)>, String> {
-    let before = renderer.frame(&format!("step-{}", one.step), name, BEFORE, &one.keys)?;
+    let before = renderer.frame(&format!("step-{}", one.step), name, BEFORE, one)?;
     let mut made = vec![(BEFORE, before)];
     if !one.edits.is_empty() {
         let copy = format!("try-{name}");
         renderer.prepare(&copy, &one.step, &one.edits)?;
-        made.push((AFTER, renderer.frame(&copy, name, AFTER, &one.keys)?));
+        made.push((AFTER, renderer.frame(&copy, name, AFTER, one)?));
     }
     Ok(made)
 }
@@ -325,27 +359,37 @@ impl Renderer {
         }
     }
 
-    fn copy_dir(&self, copy: &str) -> PathBuf {
-        self.root.join(COPIES).join(copy)
+    /// Where the copy `copy` of `step` is built.
+    fn copy_dir(&self, step: &str, copy: &str) -> PathBuf {
+        if step == BOOK {
+            self.root
+                .join("target")
+                .join(format!("{BOOK_COPIES}{copy}"))
+        } else {
+            self.root.join(COPIES).join(copy)
+        }
     }
 
-    /// Makes the copy `copy` of `step`, with `edits` made, and moves its
-    /// lock to the engine's crates, as CI's `tutorial` job does.
+    /// Makes the copy `copy` of `step`, with `edits` made. A step's lock moves
+    /// to the engine's crates, as CI's `tutorial` job does; the book's game
+    /// becomes a workspace of its own, with the engine's lock.
     fn prepare(&self, copy: &str, step: &str, edits: &[Edit]) -> Result<(), String> {
-        let to = self.copy_dir(copy);
+        let to = self.copy_dir(step, copy);
         if to.exists() {
             fs::remove_dir_all(&to).map_err(|e| format!("{}: {e}", to.display()))?;
         }
-        copy_tree(&self.root.join(STEPS).join(step), &to)
-            .map_err(|e| format!("copying {step}: {e}"))?;
+        copy_tree(&source(&self.root, step), &to).map_err(|e| format!("copying {step}: {e}"))?;
         for edit in edits {
             let path = to.join(&edit.file);
             let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let edited = apply(&text, edit).map_err(|e| format!("{step}: {e}"))?;
             fs::write(&path, edited).map_err(|e| format!("{}: {e}", path.display()))?;
         }
+        if step == BOOK {
+            return self.leave_workspace(&to);
+        }
         self.cargo(
-            copy,
+            &to,
             &[
                 "update",
                 "-q",
@@ -359,24 +403,50 @@ impl Renderer {
         )
     }
 
-    /// The frame of the copy `copy` after `keys`, as PNG bytes.
-    fn frame(&self, copy: &str, name: &str, file: &str, keys: &str) -> Result<Vec<u8>, String> {
+    /// Makes the copy at `to` a workspace of its own, with the engine's
+    /// manifest settings and lock.
+    fn leave_workspace(&self, to: &Path) -> Result<(), String> {
+        let read = |path: PathBuf| {
+            fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))
+        };
+        let manifest = book_manifest(
+            &read(to.join("Cargo.toml"))?,
+            &read(self.root.join("Cargo.toml"))?,
+        );
+        fs::write(to.join("Cargo.toml"), manifest).map_err(|e| format!("{}: {e}", to.display()))?;
+        fs::copy(self.root.join("Cargo.lock"), to.join("Cargo.lock"))
+            .map(|_| ())
+            .map_err(|e| format!("Cargo.lock: {e}"))
+    }
+
+    /// The frame of the copy `copy` of `one`'s game after its keys, as PNG
+    /// bytes.
+    fn frame(&self, copy: &str, name: &str, file: &str, one: &Try) -> Result<Vec<u8>, String> {
         eprintln!("tutorial-tries: {name}/{file}");
-        let out = self.copy_dir(copy).join(format!("{name}-{file}"));
+        let dir = self.copy_dir(&one.step, copy);
+        let out = dir.join(format!("{name}-{file}"));
         let out_text = out.to_string_lossy().into_owned();
-        let mut args = vec!["shuyi", "frame-png", out_text.as_str(), "--scale", "2"];
-        if !keys.is_empty() {
-            args.extend(["--keys", keys]);
+        // A step has `cargo shuyi`, as a new game does. The book's game runs
+        // its tool program by hand.
+        let tools: &[&str] = if one.step == BOOK {
+            &["run", "-q", "--example", "tools", "--"]
+        } else {
+            &["shuyi"]
+        };
+        let mut args = tools.to_vec();
+        args.extend(["frame-png", out_text.as_str(), "--scale", "2"]);
+        if !one.keys.is_empty() {
+            args.extend(["--keys", one.keys.as_str()]);
         }
-        self.cargo(copy, &args)
+        self.cargo(&dir, &args)
             .map_err(|e| format!("try `{name}`, {file}: {e}"))?;
         fs::read(&out).map_err(|e| format!("{}: {e}", out.display()))
     }
 
-    fn cargo(&self, copy: &str, args: &[&str]) -> Result<(), String> {
+    fn cargo(&self, dir: &Path, args: &[&str]) -> Result<(), String> {
         let output = Command::new("cargo")
             .args(args)
-            .current_dir(self.copy_dir(copy))
+            .current_dir(dir)
             .env("CARGO_TARGET_DIR", &self.target_dir)
             .output()
             .map_err(|e| format!("cargo did not run: {e}"))?;
