@@ -41,4 +41,4 @@ text = "the heap counter of debug builds"
 
 [[crate]]
 name = "shuyi_sound"
-text = "decoded sound and its WAV and Ogg Vorbis adapters, which no backend plays through yet"
+text = "decoded sound, its WAV and Ogg Vorbis adapters and an integer mixer, which no backend plays through yet"

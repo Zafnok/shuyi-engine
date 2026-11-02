@@ -33,15 +33,14 @@ Split out of 3021, the GBA backend, to keep that ticket one PR.
 
 Until this lands, `shuyi-gba`'s `audio()` is silent (3021).
 
-The in-house mixer (3030, parked) is an integer mixer in `shuyi-sound`,
-which builds without `std`. Either order works: if 3030 is done first,
-use its mixer here and keep only the GBA's timing and 8-bit output; if
-this is done first, 3030 moves this mixer into `shuyi-sound`.
+**From 3030 (done):** `shuyi_sound::mix::Mixer` is an integer mixer that builds
+without `std`. Use it here and keep only the GBA's timing and 8-bit output. Without
+shared atomic counts its `SharedPcm` is an `Rc`, which only this target compiles:
+build it for the target first, and count a voice's cost (a frame's 64-bit
+multiply) against the `gba` budget.
 
 **From 2902 (done):** keep tracker/PCM playback separate from desktop
-library decoders and CPAL. Reusing this integer mixer in the quad-snd
-replacement (3030) remains behind 2573's correctness/speed gate; this
-GBA backend does not require live Vorbis/MP3 decoding.
+library decoders and CPAL. This GBA backend does not require live Vorbis/MP3 decoding.
 
 **Either order with 2397:** if 2397 is done, map its loop-region fields
 to tracker positions and the song's restart point only where exactly

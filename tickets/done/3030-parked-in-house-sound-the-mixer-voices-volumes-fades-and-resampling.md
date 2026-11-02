@@ -5,10 +5,10 @@ type: feature
 milestone: "Engine: in-house platform"
 model: opus-5.5 / gpt-6.1-sol
 effort: high
-status: blocked
+status: done
 blocked_by: ["2210", "2116", "2573"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
 # 3030 — In-house sound: the mixer
@@ -164,20 +164,20 @@ None.
 
 ## Acceptance criteria
 
-- [ ] Two sounds at full volume that overflow `i16` clamp, never wrap.
-- [ ] A fade from 1.0 to 0 over 100 ms at 48 kHz ends at exactly 0 after
+- [x] Two sounds at full volume that overflow `i16` clamp, never wrap.
+- [x] A fade from 1.0 to 0 over 100 ms at 48 kHz ends at exactly 0 after
       4800 frames.
-- [ ] `render` doesn't allocate (a test with a counting global allocator).
-- [ ] The golden hash is the same natively, in the no-std build's test
+- [x] `render` doesn't allocate (a test with a counting global allocator).
+- [x] The golden hash is the same natively, in the no-std build's test
       run (a host test of the same code without `std`), and on wasm32
       (CI's `determinism` job).
-- [ ] Each need that 2902 marked required has a unit test. Examples: a
+- [x] Each need that 2902 marked required has a unit test. Examples: a
       voice paused for 4800 frames resumes at the frame where it
       stopped; a sound at rate 2.0 ends in half its frames.
-- [ ] 2573's automated PCM/correctness and performance gates pass; the old backend remains available.
-- [ ] It changes nothing the quad-snd path does.
-- [ ] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
-- [ ] All gates in the `run-gates` skill pass.
+- [x] 2573's automated PCM/correctness and performance gates pass; the old backend remains available.
+- [x] It changes nothing the quad-snd path does.
+- [x] All this PR adds is in `tools/sound-parity/footprint.ron`, and CI's `sound-give-up` job passes: giving up stays one command ([ADR-0068](../../docs/adr/0068-the-sound-replacement-stays-reversible-at-every-stage.md)).
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -192,5 +192,57 @@ None.
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket: what was done,
-deviations, follow-up tickets created, notes for Nick.)*
+`shuyi_sound::mix` is the mixer, in whole numbers, with every need 2902 marked
+required: `Mixer` with `play`, `stream`, `set_volume`, `fade_to`, `stop`, `pause`,
+`resume`, `set_balance`, `is_playing` and `render`; `Params` with `volume`, `looped`,
+`rate`, `balance` and `region`; a fixed voice limit that answers `Full` and stops
+nothing. Nothing plays through it yet, so nothing quad-snd does has changed. The
+choices are [ADR-0073](../../docs/adr/0073-the-mixers-seams-commands-as-words-in-a-safe-ring-streams-through-a-workers-ring-and-a-bank-of-sounds.md).
+
+**The queue is here, safe and real-time safe:** a ring of `AtomicU32`s, loads and
+stores only, no `unsafe`. `Mixer::remote` gives a `Remote` and an `Inbox`. 3031 uses
+it. A `Pcm` or a source can't cross as words in safe code, so what is loaded after
+the mixer moves to a callback needs a hand-over of 3031's own; its ticket says so.
+
+**The bounded queue and underrun contract** (`mix::stream`'s module docs): a worker
+owns a `Feeder` and decodes ahead, `render` only reads the `Feed`, an empty ring that
+isn't closed is `Error::Underrun`, and the voice waits where it is, so a late worker
+delays a stream and loses and repeats nothing. `Mixer::underrun_frames` counts it. A
+loop is supplied by `LoopedRegion` on the worker: exact trim, restart and pre-roll,
+ready before the join.
+
+**The parity harness:** `cargo xtask sound-parity mixer`, also in `gate`, holds the
+mixer to samples worked out in plain arithmetic from the corpus's numbers, for pause,
+rate, resampling, loops, regions, two streams, gains, clamping, a fade, mono output,
+capacity refusal and bounded memory, with faults each must catch. The probe's `mixer`
+mode times 32 busy voices in release builds on Linux and in Chromium: MIXER_MEASURED.
+quad-snd has no offline mix, so this is a share of the sound's length, not a ratio
+against old. Its limit in `budget.ron` is about ten times the worst measured.
+
+**Deviations:**
+
+- `play` takes a `SoundId` from `add_sound`, not a `Pcm`: commands are plain data,
+  and a voice then holds nothing a mix could have to free. A stale id plays as a
+  sound with no frames, so `play`'s answer stays `Result<VoiceId, Full>`.
+- `Source` gained a provided `rewind_to`, and `Error` gained `Underrun` and
+  `NoRewind`: 2210's `read` had only `0` for "nothing now", which means the end. No
+  source changes.
+- `rate` is held between 1/256 and 256, so a voice always ends and a block's cost is
+  bounded. Not asked for; the property test needs the first.
+- `shuyi-sound`'s dev-dependency on itself is gone, and `tests/adapters.rs` has
+  `required-features`. With it, every run had `std` on, so a run without `std` wasn't
+  one. CI's sound step now runs `--all-features` and `--no-default-features`, and the
+  `no-std` job and the `determinism` job name the crate.
+- Without shared atomic counts `SharedPcm` is an `Rc`; `thumbv6m-none-eabi` builds
+  that path. CI doesn't, and 3027 builds it for the GBA.
+
+No follow-up tickets. Handed over: 3031 (the queue, the feed, the hand-over), 2397
+(`LoopedRegion`, and `seek_page` if pre-rolling is slow), 3027 (use this mixer).
+
+No break. New rows in a new golden table, `crates/sound/tests/golden/mix.ron`, aren't
+one.
+
+Book: none, no game can name this yet: only `shuyi-sound` has it and no backend plays
+through it, and `site/data/api.toml` says so.
+
+Nick input: none. Nothing to hear yet: listening stays 3031's sign-off.

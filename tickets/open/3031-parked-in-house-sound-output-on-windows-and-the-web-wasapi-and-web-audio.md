@@ -106,10 +106,18 @@ sounds wrong, cuts out, or starts late.
   `log::warn!(target: "audio", …)` line. **Either order with 2378:**
   if 2378 is done, read `max_voices` here; if not, make 32 voices, and
   2378 sizes the mixer from `max_voices` when it lands.
-- **The command queue.** If 3030's completion notes say its queue
-  couldn't be made real-time safe without `unsafe`, write it here, in
-  `src/sys.rs` (ADR-0021 §6), between the backend and `render`;
-  otherwise use 3030's.
+- **The command queue. From 3030 (done):** it is safe and real-time safe
+  ([ADR-0073](../../docs/adr/0073-the-mixers-seams-commands-as-words-in-a-safe-ring-streams-through-a-workers-ring-and-a-bank-of-sounds.md)).
+  `Mixer::remote(commands)` gives a `Remote` for the game's side and an `Inbox`
+  whose `apply(&mut mixer)` the callback calls before each `render`. What can't
+  cross as words (a new `SharedPcm`, a boxed source) needs a hand-over of this
+  ticket's own, in `src/sys.rs` (ADR-0021 §6), for anything loaded after the mixer
+  moved to the callback: `add_sound` and `add_stream` neither allocate nor free
+  there, and `remove_sound` and `take_finished_stream` give objects back to free on
+  another thread. A stream goes through `mix::stream::feed`: the worker owns the
+  `Feeder`, calls `fill_from`, and wraps its decoder in `LoopedRegion` for a loop,
+  and the `Feed` is the mixer's source, with `Params::region` left off (ADR-0073).
+  `Mixer::underrun_frames` counts a late worker's frames.
 - **Either order with 2363 (parked, positional sound):** if 2363 is
   done, the in-house backend pans: it says it can (`can_pan`, or the
   provided method 3029's ADR set for the pan) and implements the pan

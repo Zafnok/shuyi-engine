@@ -41,6 +41,13 @@ pub enum Error {
         /// How many channels a frame has.
         channels: u16,
     },
+    /// A stream that has no frame ready yet and hasn't ended: it never waits for
+    /// one, so the reader comes back.
+    #[error("no frame is ready yet")]
+    Underrun,
+    /// A source that can't go back.
+    #[error("this source can't go back")]
+    NoRewind,
     /// A valid file whose samples aren't one of the kinds read here.
     #[error("{bits}-bit {kind} samples aren't read here")]
     SampleKind {

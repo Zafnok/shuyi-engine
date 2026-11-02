@@ -4,7 +4,7 @@
 // fresh runs named in the ticket's notes. Change one only with new runs that justify
 // it, written here, and raise `version`: never to pass.
 (
-    version: 2,
+    version: 3,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -75,6 +75,19 @@
             "ogg": (ratio: None, max_share: 0.05),
         },
     },
+    // The mixer (ticket 3030). quad-snd has no offline mix to compare with, so this
+    // is a share of the sound's own length: 32 voices, at other rates and looped,
+    // two of them streams, in release builds (`mixer` in the probe). `max_share` is
+    // about ten times the worst measured, as `decoders`' is, because raw times move
+    // by half between machines, and leaves room for an audio callback's deadline.
+    // `min_slowdown` is what doubling a measure must show at the least.
+    mixer: {
+        "linux-native": (max_share: 0.1, min_slowdown: 1.5),
+        "browser-chromium": (max_share: 0.2, min_slowdown: 1.5),
+    },
+    // A stream holds a worker's ring of 4096 frames and a voice's 128, however long
+    // it is: bounded by construction, measured the same over 1 and 10 seconds.
+    mixer_memory: (max_held_frames: 4224),
     // Each platform's evidence. Only a `Captured` one can support a parity claim,
     // and every cell of it is mandatory. `Blocked` says who must establish it.
     platforms: {

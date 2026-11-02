@@ -1305,7 +1305,8 @@ dependencies = [
  "hound",
  "lewton",
  "proptest",
- "shuyi-sound",
+ "shuyi-alloc-count",
+ "shuyi-assets",
  "thiserror",
 ]
 

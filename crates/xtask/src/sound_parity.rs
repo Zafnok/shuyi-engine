@@ -12,6 +12,8 @@
 //!   platform has real evidence: what a port's output work must pass first.
 //! - `decoders --dir D` holds `shuyi-sound`'s adapters to the corpus and the
 //!   oracle under `D`, as `gate` does too ([`decoders`]): no capture needed.
+//! - `mixer` holds `shuyi-sound`'s mixer to expected samples worked out from the
+//!   corpus's numbers, as `gate` does too ([`mixer`]): no capture and no oracle.
 //! - `give-up [--apply]` takes the whole replacement out, on Nick's word alone
 //!   ([`give_up`], ADR-0068).
 
@@ -19,6 +21,7 @@ mod compare;
 mod corpus;
 mod decoders;
 mod give_up;
+mod mixer;
 #[cfg(test)]
 mod tests;
 
@@ -70,6 +73,10 @@ pub(crate) struct Budget {
     performance: BTreeMap<String, BTreeMap<String, Limit>>,
     /// Each platform's decoder limits, by kind of file.
     decoders: BTreeMap<String, BTreeMap<String, decoders::DecoderLimit>>,
+    /// Each platform's limit on a mix's time.
+    mixer: mixer::MixerLimits,
+    /// What a stream may hold decoded.
+    mixer_memory: mixer::MixerMemory,
     /// Which platforms a parity claim needs, and who establishes the others.
     platforms: BTreeMap<String, Contract>,
 }
@@ -163,6 +170,7 @@ pub(crate) fn run(root: &Path, args: &[String]) -> Vec<String> {
             }
         }
         ["decoders", "--dir", dir] => decoder_failures(root, Path::new(dir)),
+        ["mixer"] => mixer_failures(root),
         ["give-up"] => give_up::run(root, false),
         ["give-up", "--apply"] => give_up::run(root, true),
         _ => vec![format!("sound-parity: don't know {args:?}")],
@@ -189,6 +197,17 @@ fn decoder_failures(root: &Path, dir: &Path) -> Vec<String> {
     };
     match decoder_cells(root, dir, &budget.correctness) {
         Ok(cells) => failures(&json!({"schema": SCHEMA, "cells": cells}).to_string()),
+        Err(e) => vec![e],
+    }
+}
+
+/// What `mixer` prints: every cell of it that didn't pass.
+fn mixer_failures(root: &Path) -> Vec<String> {
+    match read_ron::<Budget>(&root.join(TOOL).join("budget.ron")) {
+        Ok(budget) => {
+            let cells = mixer::correctness_cells(budget.mixer_memory);
+            failures(&json!({"schema": SCHEMA, "cells": cells}).to_string())
+        }
         Err(e) => vec![e],
     }
 }
@@ -339,6 +358,7 @@ fn gate(root: &Path, dir: &Path, revision: &str) -> Result<(), Vec<String>> {
         scenarios: hash("scenarios.ron")?,
     };
     let mut cells = decoder_cells(root, dir, &budget.correctness).map_err(one)?;
+    cells.extend(mixer::correctness_cells(budget.mixer_memory));
     for (platform, contract) in &budget.platforms {
         match contract {
             Contract::Blocked(who) => {
@@ -484,7 +504,21 @@ fn platform_cells(
     cells.extend(fault_cells(platform, plan, &runs[0], &oracle, tolerance));
     cells.extend(performance_cells(platform, &base, budget));
     cells.extend(decoder_speed_cells(platform, &base, budget));
+    cells.extend(mixer_speed_cells(platform, &base, budget));
     cells
+}
+
+/// The verdicts from `base/mixer.jsonl`; no budget for a platform is a failure.
+fn mixer_speed_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value> {
+    let rows: Vec<Value> = fs::read_to_string(base.join("mixer.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect();
+    match budget.mixer.get(platform) {
+        Some(limit) => mixer::speed_cells(platform, &rows, *limit),
+        None => vec![cell(platform, "mixer-share", true, "failed", "no budget")],
+    }
 }
 
 /// The verdicts from `base/decoders.jsonl`; no budget for a platform is a failure.

@@ -427,6 +427,8 @@ fn a_gate_without_budget_or_samples_fails_closed() {
         correctness: tolerance(),
         performance: BTreeMap::new(),
         decoders: BTreeMap::new(),
+        mixer: BTreeMap::new(),
+        mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
         platforms: BTreeMap::new(),
     };
     let dir = std::env::temp_dir();
@@ -644,6 +646,8 @@ fn a_platform_without_decoder_evidence_fails_closed() {
         correctness: tolerance(),
         performance: BTreeMap::new(),
         decoders: BTreeMap::new(),
+        mixer: BTreeMap::new(),
+        mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
         platforms: BTreeMap::new(),
     };
     let cells = decoder_speed_cells("linux-native", &dir, &budget);
