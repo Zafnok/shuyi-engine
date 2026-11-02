@@ -18,7 +18,8 @@ use crate::input::state::Device;
 
 /// Where the game runs: its target's id, and what that target lets a
 /// game do and the player press.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct PlatformFacts {
     /// The target's id, as its profile names it (`desktop`, `web`,

@@ -1,17 +1,17 @@
 ---
 id: "2518"
-title: "Session records: every input, clock reading, music position, keyboard answer and stored file that reaches a game, recorded at the platform boundary and played back exactly in the Harness, with a hash per frame"
+title: "Session records: every input, clock reading, music position, keyboard answer and stored file that reaches a game, recorded at the platform boundary and played back exactly on the headless backend, with a hash per frame"
 type: feature
 milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: xhigh
-status: todo
+status: done
 blocked_by: ["2111"]
 nick_input: none
-completed:
+completed: 2026-11-01
 ---
 
-# 2518 — Session records and their playback in the Harness
+# 2518 — Session records and their playback on the headless backend
 
 ## Context
 
@@ -392,43 +392,47 @@ privacy question for Nick, which parked 3047 asks for crash reports).
 
 ## Acceptance criteria
 
-- [ ] For random scripts on the toy game (keys, pad buttons, waits of 0
+- [x] ~~For random scripts on the toy game (keys, pad buttons, waits of 0
       to 100 ms frames, a suspend and a resume), a session recorded with
       `Harness::start_recording` and played with `Harness::from_session`
       has no differing frame, ends on the same screens, and leaves the
-      same storage (property test).
-- [ ] A session recorded on `App` directly, with a clock that goes back
+      same storage (property test).~~ (not done: the Harness's part went to
+      2575 by the size clause. The same property holds here on `App` and
+      `Playback`: `a_recorded_session_plays_back_the_same`.)
+- [x] A session recorded on `App` directly, with a clock that goes back
       twice, plays back through `Playback` with no differing frame.
-- [ ] `SessionRecord::from_ron(&r.to_ron())` equals `r` for random
+- [x] `SessionRecord::from_ron(&r.to_ron())` equals `r` for random
       records, music positions bit for bit (property test).
-- [ ] `SessionRecord::from_ron` on any text gives a record or an error,
+- [x] `SessionRecord::from_ron` on any text gives a record or an error,
       never a panic (property test).
-- [ ] Removing one key press from a recorded toy session at frame N
-      makes `play_all` report its first difference at frame N.
-- [ ] A session recorded over a store with saved settings
+- [x] ~~Removing one key press from a recorded toy session at frame N
+      makes `play_all` report its first difference at frame N.~~ (not done:
+      `play_all` is 2575's. `Playback::next` reports it at frame N:
+      `a_key_press_taken_out_is_found_at_its_frame`.)
+- [x] A session recorded over a store with saved settings
       (`HeadlessPlatform::with_storage`) plays back with them from the
       record alone, and the playback's writes stay in its own
       `MemoryStorage`.
-- [ ] A session recorded with a system keyboard answer
+- [x] A session recorded with a system keyboard answer
       (`HeadlessPlatform::with_keyboard`) plays back with the same text
       in the game, on a playback platform given no `ScriptedKeyboard`.
-- [ ] A screen that reads `Ctx::music_clock` plays back the same with a
+- [x] A screen that reads `Ctx::music_clock` plays back the same with a
       different `Speaker` load delay, since the recorded positions are
       used.
-- [ ] Another `format_version`, and another `Made`, are refused with
+- [x] Another `format_version`, and another `Made`, are refused with
       messages naming both; `Stamps::Ignore` plays and says so in
       `limits`; a start without a stamp plays and says so in `limits`.
-- [ ] An hour of idle frames with music sounding (216 000 synthetic
+- [x] An hour of idle frames with music sounding (216 000 synthetic
       frames) writes under 16 MB of text.
-- [ ] `App::record` after the first frame returns `false`; recording
+- [x] `App::record` after the first frame returns `false`; recording
       stops at `MAX_SESSION_FRAMES`, and on a `frame_after`, with
       `truncated` set.
-- [ ] Each either-order partner that is done has its value recorded and
+- [x] Each either-order partner that is done has its value recorded and
       played back, with a test.
-- [ ] `shuyi-platform` and `shuyi-ui` still build for
+- [x] `shuyi-platform` and `shuyi-ui` still build for
       `thumbv7em-none-eabihf`, and `cargo xtask check-layers` passes.
-- [ ] The ADR is written and listed in `docs/adr/README.md`.
-- [ ] All gates in the `run-gates` skill pass.
+- [x] The ADR is written and listed in `docs/adr/README.md`.
+- [x] All gates in the `run-gates` skill pass.
 
 ## Tests required
 
@@ -444,4 +448,60 @@ privacy question for Nick, which parked 3047 asks for crash reports).
 
 ## Completion notes
 
-*(Filled in by the session that completes the ticket.)*
+Done: `shuyi_platform::session` (`SessionRecord`, `FrameRecord`,
+`KeyboardFrame`, `SessionError`, `Stamps`, `FrameDifference`, `prepare`,
+`Playback`), `App`'s capture and frame hash (`App::record`, `session`,
+`session_mut`, `take_session`, `frame_hash`, `hash_frames`, `Start::made`,
+`Start::state_hash`), `HeadlessPlatform::from_session`, `push_frame` and
+`end_session`, the serde derives, ADR-0072 and *Session records* in
+`docs/platform-backends.md`.
+
+**The size clause applied.** The record, the capture and the playback with
+their tests came to about 2,200 changed lines outside the ADR, the docs and the
+tickets, about 930 of them not tests, against the clause's 600. So
+`Harness::start`, `start_recording`, `session`, `from_session`, `play_to`,
+`play_all` and `Played` went to **2575**, which 2519 and 2357 now also wait for.
+This PR's tests are on `App` directly, as the clause says. The ticket's title and
+the ROADMAP's row now say "on the headless backend".
+
+Deviations:
+
+- `session::prepare` is here, not in 2029: the stamp check, the voice manifest and
+  the limits needed a home with no Harness, and 2029 had asked for this function.
+  `Playback::new` takes only the record. `SessionRecord::limits` and
+  `Playback::is_done` and `now` are small additions for the same reason.
+- `Device` also gains serde, which `PlatformFacts::device` needs, and `SoundId`
+  gains `Serialize`, which `SoundRequest`'s needs. The ticket didn't list them.
+- `App` keeps the frame's dropped input in its list until the next frame, instead
+  of clearing it in `drain`, so the frame's end can note it. Nothing reads it there.
+- `to_ron` pins the line ending to `\n`: RON's own follows the OS, which would make
+  the same record read differently on Windows. And `RawInputEvent::Text` is written
+  as a one-character string (`#[serde(with)]`), since RON writes a `char` unescaped
+  and a typed line break would break "one frame per line".
+- `App`'s frame hashing sits in a small `FrameHashes` struct: a fourth bool on `App`
+  fails `clippy::struct_excessive_bools`.
+- `App::frame` writes `dt` with wrapping arithmetic, so any two `u64` times
+  round-trip exactly. A NaN music position doesn't round-trip bit for bit (RON
+  writes one NaN); ADR-0072 says so.
+
+Either-order partners: 2220's `reloaded_at`, 2321's `pacing`, 3053's `platform`
+and 2521's link test are in. 2356 is open: its ticket now says it adds
+`App::command` and `FrameRecord::commands`.
+
+Follow-up: 2575.
+
+Breaking: shuyi-platform: Start: it is `#[non_exhaustive]` with two more fields (`made`, `state_hash`), so a game builds it with `Start::new` and its builders, never by literal
+
+```migration
+since: 0.1.0
+what: Start is non-exhaustive and gains made and state_hash, so it is built with Start::new.
+old: Start { card, load, look, on_system }
+new: Start::new(card, look, load).on_system(hook)
+before: |
+  let start = Start { card, load: Box::new(load), look, on_system: Some(hook) };
+after: |
+  let start = Start::new(card, look, load).on_system(hook);
+find: ["Start { card"]
+```
+
+Book: none, a session record is a backend's and a tool's until 2575 gives a game's tests the Harness's part, whose ticket updates the testing chapter

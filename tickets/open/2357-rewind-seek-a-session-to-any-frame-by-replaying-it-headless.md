@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["1133", "2316", "2511", "2518", "2519", "3042"]
+blocked_by: ["1133", "2316", "2511", "2518", "2519", "2575", "3042"]
 nick_input: none
 completed:
 ---
@@ -84,9 +84,10 @@ What is planned under it:
 
 - 2518 records a whole session in `App` (`App::record`; its start:
   display, seed, storage; then each frame's time, input, system events,
-  text answers and music position) and plays it back in the Harness
-  (`Harness::from_session`, `Harness::play_to`) and through
-  `session::Playback` (no `harness` feature), with a hash per frame. It
+  text answers and music position) and plays it back through
+  `session::Playback` (no `harness` feature), with a hash per frame; 2575
+  gives the Harness the same (`Harness::from_session`,
+  `Harness::play_to`). It
   records only drivers of `App::frame`: `frame_after` stops a record and
   sets `truncated`, and so does its cap of `MAX_SESSION_FRAMES`.
 - 2519 makes the windowed and web builds record their sessions in debug
@@ -189,7 +190,7 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   `Live::start`, no rebuild), plays it to `frame`, and answers as
   `step` does:
   - for a session started from a record, it replays that record
-    (2518's `Harness::from_session`, then `Harness::play_to`). A frame
+    (2575's `Harness::from_session`, then `Harness::play_to`). A frame
     past the record's end replays the whole record, then the steps run
     after it, by the rule below;
   - for a session started from options, which runs on `Harness::new`
@@ -226,14 +227,9 @@ A frame number here counts `App::frame` calls from 1, as 2518's
   - `App::new` keeps a copy of a rerunnable start to build the replay
     from: its card, look, system hook, 2518's `made` and `state_hash`,
     and the rerun;
-  - 2518 adds `made` and `state_hash` to `Start` first. Give `rerun` the
-    same treatment under ADR-0039 (2518 moves `Start` under it): if
-    `Start` is `#[non_exhaustive]` or has private fields by then, the
-    field is additive. If not, it breaks a struct literal or an exhaustive
-    pattern of `Start` in a game. Nothing in this repository writes one
-    outside `App::new`. The PR says so for the game's pin bump
-    (`AGENTS.md`, *Working with the game repository*), with 2010's
-    `Breaking:` line if its job asks for one.
+  - **From 2518 (done):** `Start` has `made` and `state_hash` and is
+    `#[non_exhaustive]` (ADR-0039), so `rerun`, set by a builder like them,
+    is additive.
 - **`UiAction::DebugBack`** in `shuyi_assets::keymap::action_set`,
   beside `Debug` (line 29):
   - like 2316's `DebugPause` and `DebugStep`, it acts only with debug

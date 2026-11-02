@@ -20,7 +20,7 @@ use crate::platform::Millis;
 /// [`AudioRequest`] with each voice clip named by its file in the game's
 /// voice folder ([`clip_file`]). The music's requests are already
 /// [`MusicCommand`]s.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[non_exhaustive]
 pub enum SoundRequest {
     /// Play a sound cue once, at `volume` (0–1) times the cue's own volume.

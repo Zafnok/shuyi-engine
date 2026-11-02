@@ -119,9 +119,8 @@ privacy question for Nick (parked 3047 asks it for crash reports).
     record's first `frame - 1` frames. `frame` is the frame that
     panicked, numbered as `App::frame_number` numbers frames (from 1).
     Frame 1 keeps none, and a record already that short keeps all. The
-    record's other fields stay as they are. This holds whether `App`
-    pushes a frame's `FrameRecord` as the frame begins or as it ends:
-    check which in 2518's code, and say it in the doc comment;
+    record's other fields stay as they are. `App` pushes a frame's
+    `FrameRecord` as the frame ends (2518): say it in the doc comment;
   - `write_at_panic(dir: Option<&Path>, record: Option<SessionRecord>,
     frame: u32) -> Option<String>` cuts the record and writes it with
     2519's writer into `dir`, the data folder (the writer adds

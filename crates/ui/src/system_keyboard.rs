@@ -32,7 +32,7 @@ pub struct TextAsk {
 }
 
 /// What the player did with the system keyboard.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum TextAnswer {
     /// They typed this and confirmed it: the whole text, not a change.
     Typed(String),

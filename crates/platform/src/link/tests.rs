@@ -6,7 +6,7 @@
 use alloc::collections::BTreeMap;
 
 use proptest::prelude::*;
-use shuyi_ui::input::{Key, PadKind, RepeatDef};
+use shuyi_ui::input::{Chord, Key, PadKind, RepeatDef};
 use shuyi_ui::log::{LogCategory, LogLevel, LogLine};
 use shuyi_ui::perf::PerfClock;
 use shuyi_ui::toy::{self, Toy};
@@ -115,6 +115,34 @@ fn pad(script: &str) -> Step {
 
 fn act(name: &str) -> Step {
     Step::Act(name.to_owned())
+}
+
+/// The link's input goes where a player's goes, so a session record holds
+/// it.
+#[test]
+fn a_key_sent_over_the_link_is_in_the_session_record() {
+    let mut build = toy_build();
+    assert!(build.app.record());
+    let _ = build.send(
+        &Request::Play {
+            steps: vec![keys("f")],
+        }
+        .to_line(),
+    );
+    for frame in 0..2 {
+        let mut events = Vec::new();
+        build.server.input(&build.app, &mut events);
+        build.platform.push_input(&events);
+        let _ = build.app.frame(&mut build.platform, crate::Millis(frame));
+        let _ = build.server.after_frame(&build.app);
+    }
+    let record = build.app.take_session().unwrap();
+    assert_eq!(
+        record.frames[0].input,
+        [RawInputEvent::Down(Chord::plain(Key::F))]
+    );
+    assert_eq!(record.frames[1].input, [RawInputEvent::Up(Key::F)]);
+    assert!(!record.truncated);
 }
 
 #[test]

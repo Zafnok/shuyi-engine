@@ -37,7 +37,9 @@ pub const MAX_REPEATS_PER_UPDATE: u64 = 5;
 /// What the player is playing with: whatever they pressed last
 /// (`docs/design/controls.md`, *Switching between keyboard and
 /// controller*). Help text names keys or this pad's buttons to match.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, Default, serde::Serialize, serde::Deserialize,
+)]
 pub enum Device {
     /// The keyboard.
     #[default]
