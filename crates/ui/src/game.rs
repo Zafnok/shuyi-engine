@@ -29,7 +29,7 @@ use crate::perf::{self, TagClass};
 use crate::screen::{FrameInput, Screen, ScreenStack, Transition};
 
 /// A keyboard or controller event as the platform reports it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum RawInputEvent {
     /// A key went down, with the Shift state at the time.
     Down(Chord),
@@ -38,12 +38,39 @@ pub enum RawInputEvent {
     /// A character was typed (the platform's text input: the keyboard's own
     /// layout and Shift applied), for text boxes such as a name. Comes with
     /// the key's own `Down`.
-    Text(char),
+    Text(#[serde(with = "one_char")] char),
     /// A controller button went down on a pad of this kind (its binding
     /// position, from [`Pads::update`]).
     PadDown(Button, PadKind),
     /// A controller button went up on every pad.
     PadUp(Button),
+}
+
+/// A typed character in a file, as a string of one character: RON escapes a
+/// string, and writes a `char` as it is, so a typed line break would break the
+/// line it is written on.
+mod one_char {
+    use serde::de::Error;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    use crate::prelude::*;
+
+    /// Serde hands it a reference, whatever a `char`'s size.
+    pub fn serialize<C: Copy + Into<char>, S: Serializer>(
+        c: &C,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str((*c).into().encode_utf8(&mut [0; 4]))
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<char, D::Error> {
+        let text = String::deserialize(deserializer)?;
+        let mut chars = text.chars();
+        match (chars.next(), chars.next()) {
+            (Some(c), None) => Ok(c),
+            _ => Err(D::Error::custom("expected one character")),
+        }
+    }
 }
 
 impl RawInputEvent {

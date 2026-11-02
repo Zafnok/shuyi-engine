@@ -462,6 +462,36 @@ carries the lines and takes the picture and the heap snapshot.
   nothing more. Drop a client that leaves more than `link::MAX_UNSENT`
   bytes unread, or sends a line longer than `link::MAX_LINE`.
 
+## Session records
+
+`App` can record everything a backend gives a game
+([ADR-0072](adr/0072-session-records-app-notes-what-the-platform-gives-a-hash-per-frame-of-what-happened-and-ron-never-migrated.md)):
+`app.record()` before the first frame, then `app.take_session()` for the
+`shuyi_platform::session::SessionRecord`, whose `to_ron` is its text (a file
+named `*.session.ron`). A backend writes no capture code: `App` notes each value
+where it reads it (the frame's time, `system_events`, `poll_input`, `text_input`,
+`music_playing`, and `display`, `storage` and `facts` at the load).
+
+Two things hold for a backend that records:
+
+- **A new value that reaches the game from the platform gets a field in the
+  record and its playback in the same PR.** That is what keeps a record whole.
+- **A backend hands the game nothing around the trait while recording**
+  (`App::game_mut`), since that isn't in the record. The one exception is what it
+  puts into `Setup` with `Start::before_load` (the voice manifest), which it also
+  gives the record: `app.session_mut()` and its `voice_manifest`.
+
+Recording stops at `session::MAX_SESSION_FRAMES` (an hour at 60 frames a second)
+and on `App::frame_after`, whose time isn't whole milliseconds, and the record's
+`truncated` says so. A record holds a player's input and saves, so a build that
+ships doesn't take one.
+
+To play one: `session::prepare(start, &record, Stamps::Check)` checks the build's
+stamp (`Start::made`) and gives what the playback can't promise; then `App::new`
+on that start, `HeadlessPlatform::from_session(&record)`, and
+`session::Playback::new(&record)`, whose `next` runs each frame at its recorded
+time and says the first frame whose hash differs.
+
 ## The headless backend, as a reference
 
 `shuyi_platform::headless::HeadlessPlatform` is the smallest complete
@@ -477,7 +507,8 @@ gives memory tags only when a test hands it some (`with_scopes`,
 `set_scopes`): fakes that note what is entered. A test changes a file with
 `change_file(layer, path, bytes)`: the next ask replaces it and tells its path
 (`changed_asks` counts the asks), and `reload_errors` keeps what the last frame
-asked to show. The test Harness (`shuyi_platform::harness`, the
+asked to show. It plays a session record too (`from_session`, `push_frame`:
+*Session records*, above). The test Harness (`shuyi_platform::harness`, the
 `harness` feature) runs every game's tests on it, through the same
 `App::frame` a device runs. Read it before writing a backend, and test a
 new backend's translation the same way: a fake of the device's SDK on

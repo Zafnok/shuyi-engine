@@ -6,7 +6,7 @@ milestone: After MVP
 model: opus-5.5 / gpt-6.1-sol
 effort: high
 status: todo
-blocked_by: ["2518", "1133", "2511"]
+blocked_by: ["2518", "2575", "1133", "2511"]
 nick_input: none
 completed:
 ---
@@ -22,9 +22,10 @@ replays them. Bevy's remote protocol (BRP) gives agents a running game,
 but it records nothing of the session a person played.
 
 2518 builds the session record (`shuyi_platform::session`): `App`
-records every value the platform hands the game, and the Harness plays
-a record back from the game's real `Start`, with a hash per frame. But
-only tests make records there, and only Rust tests play them. What is
+records every value the platform hands the game, and `Playback` plays a
+record back from the game's real `Start`, with a hash per frame; 2575
+gives the Harness the same. But only tests make records there, and only
+Rust tests play them. What is
 missing (read on 2026-10-21):
 
 - **The real builds don't record.** `shuyi_app::run`
@@ -115,7 +116,7 @@ for Nick (parked 3047 asks it for crash reports).
   - `GameTools::session_from(&self, record: &SessionRecord, stamps:
     Stamps) -> Result<Box<dyn Session>, String>`, with 2518's `Stamps`,
     defaulted to `Err(unsupported("run --session and scene --session",
-    "session_from"))`. Most simply it is 2518's
+    "session_from"))`. Most simply it is 2575's
     `Harness::from_session(start, record, stamps)`, its error as text,
     in a `Headless` with the game's scene and events, as its `session`
     builds one. Hello, Grid's tools, the grid template's and 2511's
@@ -129,7 +130,7 @@ for Nick (parked 3047 asks it for crash reports).
   - `RunOutput` and `SceneOutput` gain `session:
     Option<SessionPlayed>`: the file, the frames played and in the
     record, and the first differing frame with both hashes as hex text
-    (`shuyi-core` has no `schemars`). 2518's `Played::limits` join the
+    (`shuyi-core` has no `schemars`). 2575's `Played::limits` join the
     answer's `limits`.
   - A frame that differs gives `ok: false` with the result, as `replay`
     does when its runs disagree. The script and `frames` don't play

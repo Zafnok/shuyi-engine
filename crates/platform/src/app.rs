@@ -26,11 +26,18 @@
 //! allocates: `load` (the game's load), `paint` (presenting the game's
 //! frame), `perf` (its record), and `app` for the rest; the game's own
 //! frame tags `update`, `draw` and its spans.
+//!
+//! `App` also records a run, when told ([`App::record`], ADR-0072): it notes
+//! each value where it reads it from the [`Platform`], since only it sees
+//! the order of a frame's calls, the keyboard's handshake and the load.
 
 use crate::alloc_prelude::*;
 use alloc::format;
 use core::time::Duration;
 
+use serde::Serialize;
+use shuyi_core::made::Made;
+use shuyi_core::{StateHash, state_hash};
 use shuyi_ui::audio::{AudioRequest, MusicCommand};
 use shuyi_ui::frame::Rgb;
 use shuyi_ui::frame_cap::Pacing;
@@ -45,6 +52,7 @@ use shuyi_ui::{Ctx, Game, GameData, IdleMotion, KeyPrompt, PlatformFacts, RawInp
 
 use crate::audio::{AudioFrame, SoundRequest};
 use crate::platform::{DisplayInfo, Frame, Look, Millis, Platform, Show, SystemEvent};
+use crate::session::{Recorder, SessionRecord};
 use crate::text_input::TextInput;
 use crate::tick::TickClock;
 
@@ -190,8 +198,13 @@ pub type LookOf<G> = fn(&G) -> Look<'_>;
 /// it hasn't; on [`FocusLost`](SystemEvent::FocusLost) it may pause.
 pub type SystemHook<G> = fn(&mut Game<G>, SystemEvent);
 
+/// The game's own state hash, for the frame's hash ([`Start::state_hash`]).
+pub type GameHash<G> = fn(&Game<G>) -> Option<StateHash>;
+
 /// How a game starts: the card shown while it loads, the load, where its
-/// look is and its hook for the system's events.
+/// look is and its hook for the system's events. Built with [`Start::new`],
+/// its optional parts set by the methods named for them (ADR-0039).
+#[non_exhaustive]
 pub struct Start<G: GameData> {
     /// What the first frame shows.
     pub card: Card,
@@ -201,6 +214,10 @@ pub struct Start<G: GameData> {
     pub look: LookOf<G>,
     /// The game's hook for the system's events, if it has one.
     pub on_system: Option<SystemHook<G>>,
+    /// The build's stamp, copied into a session record.
+    pub made: Option<Made>,
+    /// The game's own state hash, in each frame's hash.
+    pub state_hash: Option<GameHash<G>>,
 }
 
 impl<G: GameData> Start<G> {
@@ -216,6 +233,8 @@ impl<G: GameData> Start<G> {
             load: Box::new(load),
             look,
             on_system: None,
+            made: None,
+            state_hash: None,
         }
     }
 
@@ -223,6 +242,26 @@ impl<G: GameData> Start<G> {
     #[must_use]
     pub fn on_system(mut self, hook: SystemHook<G>) -> Self {
         self.on_system = Some(hook);
+        self
+    }
+
+    /// The same start with the build's stamp, copied into a session record
+    /// and checked when one is played ([`session::prepare`]).
+    ///
+    /// [`session::prepare`]: crate::session::prepare
+    #[must_use]
+    pub fn made(mut self, made: Made) -> Self {
+        self.made = Some(made);
+        self
+    }
+
+    /// The same start with the game's own state hash, in each frame's hash
+    /// ([`App::frame_hash`]): so a playback that plays differently is found
+    /// at the frame the game's state moved, not only when a screen or a
+    /// sound shows it.
+    #[must_use]
+    pub fn state_hash(mut self, hash: GameHash<G>) -> Self {
+        self.state_hash = Some(hash);
         self
     }
 
@@ -383,6 +422,28 @@ fn micros(from: u64, to: u64) -> u32 {
     u32::try_from(to.saturating_sub(from)).unwrap_or(u32::MAX)
 }
 
+/// What one frame's hash covers: what happened, never the picture, so a
+/// skin or palette change breaks no recorded session.
+#[derive(Serialize)]
+struct FrameFacts<'a> {
+    phase: PhaseFact<'a>,
+    /// The open screens' names, bottom first.
+    screens: Vec<&'static str>,
+    quit: bool,
+    sounds: &'a [SoundRequest],
+    music: &'a [MusicCommand],
+    /// The game's own state hash, if its [`Start`] gives one.
+    game: Option<u64>,
+}
+
+/// Where the game is, in a frame's hash.
+#[derive(Serialize)]
+enum PhaseFact<'a> {
+    Loading,
+    Failed(&'a str),
+    Running,
+}
+
 /// The lists one frame fills, kept to save allocating them each frame.
 struct Lists<V> {
     input: Vec<RawInputEvent>,
@@ -391,6 +452,16 @@ struct Lists<V> {
     audio: Vec<AudioRequest<V>>,
     music: Vec<MusicCommand>,
     changed: Vec<String>,
+}
+
+/// The frames' hashes.
+#[derive(Debug, Clone, Copy, Default)]
+struct FrameHashes {
+    /// Whether frames are hashed when not recording
+    /// ([`hash_frames`](App::hash_frames)).
+    on: bool,
+    /// The last frame's ([`frame_hash`](App::frame_hash)).
+    last: Option<StateHash>,
 }
 
 /// A game run one frame at a time by a backend's loop.
@@ -418,6 +489,13 @@ pub struct App<G: GameData> {
     /// The backend's report of its pacing, until the next frame that runs
     /// the game hands it over ([`set_pacing`](Self::set_pacing)).
     pacing: Option<Pacing>,
+    /// The build's stamp ([`Start::made`]).
+    made: Option<Made>,
+    /// The game's own state hash ([`Start::state_hash`]).
+    game_hash: Option<GameHash<G>>,
+    /// The run being recorded, once [`record`](Self::record) says.
+    recorder: Option<Box<Recorder>>,
+    frame_hashes: FrameHashes,
 }
 
 impl<G: GameData> App<G> {
@@ -428,8 +506,10 @@ impl<G: GameData> App<G> {
             load,
             look,
             on_system,
+            made,
+            state_hash,
         } = start;
-        Self::in_phase(
+        let mut app = Self::in_phase(
             Phase::Loading {
                 card,
                 load: Some(load),
@@ -437,7 +517,10 @@ impl<G: GameData> App<G> {
             },
             Some(look),
             on_system,
-        )
+        );
+        app.made = made;
+        app.game_hash = state_hash;
+        app
     }
 
     /// `game`, already loaded and running: for a test, which has no look to
@@ -476,6 +559,10 @@ impl<G: GameData> App<G> {
             log_read: 0,
             perf: Perf::new(),
             pacing: None,
+            made: None,
+            game_hash: None,
+            recorder: None,
+            frame_hashes: FrameHashes::default(),
         }
     }
 
@@ -491,6 +578,9 @@ impl<G: GameData> App<G> {
     /// screens see and the steps are made of; the first frame, and the
     /// first after a load or a [`SystemEvent::Resume`], count none.
     pub fn frame(&mut self, platform: &mut impl Platform, now: Millis) -> FrameOutcome {
+        if let Some(recorder) = &mut self.recorder {
+            recorder.begin(now.0);
+        }
         self.begin(platform);
         let elapsed = self.clock.at(now);
         self.end(platform, elapsed)
@@ -527,8 +617,13 @@ impl<G: GameData> App<G> {
     /// own, as [`frame`](Self::frame) does otherwise: for a driver whose
     /// frames a clock in whole milliseconds can't give (the test Harness's,
     /// exactly 1/60 s), or a backend whose system says how long the last
-    /// frame took. A driver uses this or `frame`, never both.
+    /// frame took. A driver uses this or `frame`, never both. A recording
+    /// stops here, since a record's time is whole milliseconds, and says so
+    /// ([`SessionRecord::truncated`]).
     pub fn frame_after(&mut self, platform: &mut impl Platform, seconds: f32) -> FrameOutcome {
+        if let Some(recorder) = &mut self.recorder {
+            recorder.stop();
+        }
         self.begin(platform);
         let elapsed = self.clock.after(seconds);
         self.end(platform, elapsed)
@@ -553,7 +648,43 @@ impl<G: GameData> App<G> {
         self.end_perf(platform);
         leave(tagged);
         leave(self.perf.app_tag.take());
+        self.end_session_frame();
         outcome
+    }
+
+    /// Hashes the frame just run, while recording or asked to
+    /// ([`hash_frames`](Self::hash_frames)), and notes it and its input.
+    fn end_session_frame(&mut self) {
+        let recording = self.recorder.as_ref().is_some_and(|r| r.is_on());
+        if !(recording || self.frame_hashes.on) {
+            self.frame_hashes.last = None;
+            return;
+        }
+        let (phase, screens, game) = match &self.phase {
+            Phase::Loading { .. } => (PhaseFact::Loading, Vec::new(), None),
+            Phase::Failed(errors) => (PhaseFact::Failed(errors), Vec::new(), None),
+            Phase::Running(game) => (
+                PhaseFact::Running,
+                game.screens(),
+                self.game_hash
+                    .and_then(|hash| hash(game))
+                    .map(|hash| hash.0),
+            ),
+        };
+        let facts = FrameFacts {
+            phase,
+            screens,
+            quit: self.quit,
+            sounds: &self.lists.sounds,
+            music: &self.lists.music,
+            game,
+        };
+        // Strings, numbers and lists: nothing here refuses to serialize.
+        let hash = state_hash(&facts).unwrap_or_default();
+        self.frame_hashes.last = Some(hash);
+        if let Some(recorder) = &mut self.recorder {
+            recorder.end(&self.lists.input, hash);
+        }
     }
 
     /// Takes the platform's clock and memory tags on the first frame, in a
@@ -670,6 +801,9 @@ impl<G: GameData> App<G> {
         let mut events = core::mem::take(&mut self.lists.system);
         events.clear();
         platform.system_events(&mut events);
+        if let Some(recorder) = &mut self.recorder {
+            recorder.system(&events);
+        }
         for &event in &events {
             self.on_system_event(platform, event);
         }
@@ -713,6 +847,7 @@ impl<G: GameData> App<G> {
     fn run(&mut self, platform: &mut impl Platform, elapsed: Elapsed) -> FrameOutcome {
         self.lists.audio.clear();
         self.lists.music.clear();
+        self.lists.sounds.clear();
         if self.suspended && !self.quit {
             // Suspended: nothing steps and nothing is shown.
             drain(platform, &mut self.lists.input);
@@ -730,11 +865,18 @@ impl<G: GameData> App<G> {
                 }
             }
             Phase::Running(game) if !self.quit => {
+                let mut recorder = self.recorder.as_deref_mut();
                 if let Some(pacing) = self.pacing.take() {
                     game.set_pacing(pacing);
+                    if let Some(recorder) = recorder.as_deref_mut() {
+                        recorder.handed_pacing(pacing);
+                    }
                 }
-                tell_changed(platform, game, &mut self.lists.changed);
-                step(platform, game, &mut self.lists, elapsed);
+                let told = tell_changed(platform, game, &mut self.lists.changed);
+                if let Some(recorder) = recorder.as_deref_mut().filter(|_| told) {
+                    recorder.reloaded(self.frames);
+                }
+                step(platform, game, &mut self.lists, elapsed, recorder);
                 if game.quit_requested() {
                     platform.audio().stop_all();
                     self.quit = true;
@@ -775,6 +917,9 @@ impl<G: GameData> App<G> {
             platform: platform.facts(),
             key_prompt: KeyPrompt::Waiting,
         };
+        if let Some(recorder) = &mut self.recorder {
+            recorder.handed_over(setup.display, setup.storage.as_ref(), &setup.platform);
+        }
         drain(platform, &mut self.lists.input);
         let tagged = enter(self.perf.scopes, "load");
         let loading = self.perf.clock.as_mut().map(PerfClock::read);
@@ -797,6 +942,50 @@ impl<G: GameData> App<G> {
         }
         // The game's time starts now, not before its load.
         self.clock.restart();
+    }
+
+    /// Turns recording on (ADR-0072): `false` once a frame has run, since a
+    /// record must start at the first frame to play back. While recording,
+    /// a backend hands the game nothing around the [`Platform`]
+    /// ([`game_mut`](Self::game_mut)), except through
+    /// [`session_mut`](Self::session_mut) for what it puts into the [`Setup`].
+    pub fn record(&mut self) -> bool {
+        if self.frames > 0 {
+            return false;
+        }
+        let made = self.made.clone();
+        self.recorder
+            .get_or_insert_with(|| Box::new(Recorder::new(made)));
+        true
+    }
+
+    /// The record so far, if this run is recorded.
+    pub fn session(&self) -> Option<&SessionRecord> {
+        self.recorder.as_ref().map(|recorder| &recorder.record)
+    }
+
+    /// The record so far, for what a backend puts into the game's [`Setup`]
+    /// and `App` can't see ([`SessionRecord::voice_manifest`]).
+    pub fn session_mut(&mut self) -> Option<&mut SessionRecord> {
+        self.recorder.as_mut().map(|recorder| &mut recorder.record)
+    }
+
+    /// Ends the recording, handing back the record.
+    pub fn take_session(&mut self) -> Option<SessionRecord> {
+        self.recorder.take().map(|recorder| recorder.record)
+    }
+
+    /// The last frame's hash: of what happened in it, never its picture.
+    /// `None` unless frames are hashed: while recording, or with
+    /// [`hash_frames`](Self::hash_frames) on.
+    pub fn frame_hash(&self) -> Option<StateHash> {
+        self.frame_hashes.last
+    }
+
+    /// Hashes each frame from now on ([`frame_hash`](Self::frame_hash)), or
+    /// stops: what a playback compares.
+    pub fn hash_frames(&mut self, on: bool) {
+        self.frame_hashes.on = on;
     }
 
     /// The game, once it has loaded.
@@ -933,29 +1122,31 @@ impl<G: GameData> App<G> {
     }
 }
 
-/// Reads the input into `input` and drops it: a frame where nothing takes
-/// it.
+/// Reads the input into `input`, where nothing takes it: it stays there
+/// until the next frame, for a session record.
 fn drain(platform: &mut impl Platform, input: &mut Vec<RawInputEvent>) {
     input.clear();
     platform.poll_input(input);
-    input.clear();
 }
 
 /// Hands the files the platform says changed to `game`'s modules: while
 /// debug tools are on, in a build with them. A build that ships never asks.
+/// Whether it named any.
 fn tell_changed<G: GameData>(
     platform: &mut impl Platform,
     game: &mut Game<G>,
     changed: &mut Vec<String>,
-) {
+) -> bool {
     if !(shuyi_ui::DEBUG_TOOLS && game.ctx().debug_tools) {
-        return;
+        return false;
     }
     changed.clear();
     platform.changed_files(changed);
-    if !changed.is_empty() {
+    let told = !changed.is_empty();
+    if told {
         game.reloaded(changed);
     }
+    told
 }
 
 /// One frame of the running game: the input, the system keyboard's
@@ -966,18 +1157,30 @@ fn step<G: GameData>(
     game: &mut Game<G>,
     lists: &mut Lists<G::Voice>,
     elapsed: Elapsed,
+    mut recorder: Option<&mut Recorder>,
 ) {
     lists.input.clear();
     platform.poll_input(&mut lists.input);
     let keyboard = &mut game.ctx_mut().system_keyboard;
     let text_input = platform.text_input();
-    keyboard.set_present(text_input.is_some());
+    let present = text_input.is_some();
+    keyboard.set_present(present);
+    if let Some(recorder) = recorder.as_deref_mut() {
+        recorder.keyboard_present(present);
+    }
     if keyboard.is_waiting()
         && let Some(answer) = text_input.and_then(TextInput::poll)
     {
+        if let Some(recorder) = recorder.as_deref_mut() {
+            recorder.keyboard_answer(&answer);
+        }
         keyboard.answer(answer);
     }
-    game.set_music_playing(platform.audio().music_playing(elapsed.now));
+    let playing = platform.audio().music_playing(elapsed.now);
+    if let Some(recorder) = recorder.as_deref_mut() {
+        recorder.music(playing);
+    }
+    game.set_music_playing(playing);
     game.set_ticks(elapsed.ticks);
     let out = game.frame(&lists.input, elapsed.dt);
     lists.audio.extend_from_slice(out.audio);
@@ -998,6 +1201,9 @@ fn step<G: GameData>(
     let keyboard = &mut game.ctx_mut().system_keyboard;
     if let Some(ask) = keyboard.take_ask() {
         let opened = platform.text_input().is_some_and(|input| input.open(&ask));
+        if let Some(recorder) = recorder {
+            recorder.keyboard_opened(opened);
+        }
         if !opened {
             keyboard.answer(TextAnswer::Cancelled);
         }

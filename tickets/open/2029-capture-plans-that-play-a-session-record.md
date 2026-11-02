@@ -130,21 +130,19 @@ None.
   moves the step form's steps onto `script::Step` and leaves the
   session form alone).
 - **Playback on a platform other than `HeadlessPlatform`**
-  (`shuyi_platform::session`). If 2518's `Playback::next` takes
-  `&mut HeadlessPlatform` only, give it a trait instead:
+  (`shuyi_platform::session`). 2518's `Playback::next` takes
+  `&mut HeadlessPlatform` only, so give it a trait instead:
   `session::Replays: Platform` with `fn push_frame(&mut self, frame:
   &FrameRecord)`. `HeadlessPlatform` implements it with its own
   `push_frame`. The Harness's calls don't change.
-- **The start check outside the Harness.** If the stamp check and the
-  voice manifest of `Harness::from_session` live only in the Harness
-  (behind `harness`), move them to one public function both call, for
-  example `session::prepare<G: GameData>(start: Start<G>, record:
-  &SessionRecord, stamps: Stamps) -> Result<(Start<G>, Vec<String>),
-  SessionError>`. It runs 2111's `Made::check` between the record's
-  stamp and the start's (2111 is done), applies the
-  record's voice manifest with `Start::before_load`, and gives the
-  lines `Played::limits` would give (no stamp, a truncated record, an
-  incomplete store).
+- **The start check outside the Harness (from 2518, done):**
+  `session::prepare<G: GameData>(start: Start<G>, record: &SessionRecord,
+  stamps: Stamps) -> Result<(Start<G>, Vec<String>), SessionError>`, public
+  and with no `harness` feature, runs 2111's `Made::check` between the
+  record's stamp and the start's, applies the record's voice manifest with
+  `Start::before_load`, and gives the lines of what the playback can't
+  promise (no stamp, a truncated record, an incomplete store, files
+  reloaded).
 - **The capture mode plays a session plan**
   (`crates/app/src/capture.rs`):
   - **the record:** read from `file`, resolved against the plan's
@@ -152,8 +150,8 @@ None.
     `macroquad::file::load_string` as the plan is, and parsed with
     `SessionRecord::from_ron`. A missing file or a parse error exits 2,
     naming the file. So does an error from `SessionPlan::marks`;
-  - **the stamp:** `session::prepare(start, &record, Stamps::Check)`,
-    or the check 2518 left public. A refused stamp exits 2 with 2111's
+  - **the stamp:** `session::prepare(start, &record, Stamps::Check)`.
+    A refused stamp exits 2 with 2111's
     `Mismatch` text. A plan never ignores stamps;
   - **the platform:** a private `SessionWindow` holding
     `HeadlessPlatform::from_session(&record)` and the window drawing of
@@ -266,9 +264,8 @@ None.
    golden session's test.
 2. Add the session form to `Plan`, and `SessionPlan::marks`, with their
    unit and property tests.
-3. If 2518 didn't already, make `Playback::next` take a `Replays`
-   platform and move the start check to `session::prepare`; the
-   Harness calls both.
+3. Make `Playback::next` take a `Replays` platform; the Harness (2575)
+   calls it.
 4. Write `SessionWindow` and the session loop in
    `crates/app/src/capture.rs`, the exit codes and the `capture.txt`
    lines, and the capture case of the recording decision. Run Hello,

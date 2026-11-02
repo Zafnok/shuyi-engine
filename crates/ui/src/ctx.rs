@@ -189,7 +189,7 @@ pub enum IdleMotion {
 
 /// Whether the platform has a keyboard
 /// ([`PlatformFacts::keyboard`](crate::PlatformFacts::keyboard)).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum Keyboard {
     /// It does (a computer, a browser): a first key press opens the
     /// game's first-key screen until a layout is chosen

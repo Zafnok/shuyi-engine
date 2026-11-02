@@ -175,7 +175,8 @@ pub enum CapStatus {
 /// ([`Game::set_pacing`](crate::Game::set_pacing)): the cap it applied and
 /// its serial, whether it asked for vsync, and the frames a second it
 /// measured. Built with [`Pacing::new`]; the rest is assigned.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 #[non_exhaustive]
 pub struct Pacing {
     /// The cap applied.
