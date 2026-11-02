@@ -25,22 +25,32 @@ $store.Open('ReadWrite')
 $store.Add($certificate)
 $store.Close()
 
-Stop-Service w32time -Force -ErrorAction SilentlyContinue
+# Both of what set the clock: Windows' own and the virtual machine's, which can set it
+# back while the install reads the certificate's dates.
+$timekeepers = 'w32time', 'vmictimesync'
+$timekeepers | ForEach-Object { Stop-Service $_ -Force -ErrorAction SilentlyContinue }
 $now = Get-Date
 $clock = [System.Diagnostics.Stopwatch]::StartNew()
-Set-Date -Date ([datetime]'2023-01-15T12:00:00') | Out-Null
+$exit = $null
 try {
-    $process = Start-Process -FilePath $devcon -ArgumentList 'install', 'Scream.inf', '*Scream' -WorkingDirectory $driver -PassThru -NoNewWindow
-    # A prompt nobody can answer would otherwise hold the job for hours.
-    if (-not $process.WaitForExit(60000)) {
+    foreach ($attempt in 1, 2) {
+        Set-Date -Date ([datetime]'2023-01-15T12:00:00') | Out-Null
+        if ((Get-Date).Year -ne 2023) { throw 'the clock would not stay inside the certificate''s dates' }
+        $process = Start-Process -FilePath $devcon -ArgumentList 'install', 'Scream.inf', '*Scream' -WorkingDirectory $driver -PassThru -NoNewWindow
+        # A prompt nobody can answer would otherwise hold the job for hours.
+        if ($process.WaitForExit(60000)) {
+            $exit = $process.ExitCode
+            break
+        }
         Stop-Process -Id $process.Id -Force
-        throw 'the driver install is waiting for a person'
+        Write-Output "attempt $attempt of the driver install waited for a person; the clock read $(Get-Date)"
     }
 } finally {
     Set-Date -Date $now.Add($clock.Elapsed) | Out-Null
-    Start-Service w32time -ErrorAction SilentlyContinue
+    $timekeepers | ForEach-Object { Start-Service $_ -ErrorAction SilentlyContinue }
 }
-if ($process.ExitCode -ne 0) { throw "the driver install exited with $($process.ExitCode)" }
+if ($null -eq $exit) { throw 'the driver install is waiting for a person' }
+if ($exit -ne 0) { throw "the driver install exited with $exit" }
 
 Restart-Service audiosrv -Force
 $deadline = [DateTime]::UtcNow.AddSeconds(30)
