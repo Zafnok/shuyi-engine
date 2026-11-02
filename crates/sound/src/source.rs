@@ -153,8 +153,9 @@ mod tests {
         );
     }
 
-    /// Says nothing of its length and goes on for ever.
-    struct Endless(Channels);
+    /// Says nothing of its length and has no end, as far as a reader can tell.
+    /// A reader that ignores its limit fails here, before it fills the memory.
+    struct Endless(Channels, u32);
 
     impl Source for Endless {
         fn format(&self) -> PcmFormat {
@@ -166,6 +167,8 @@ mod tests {
         }
 
         fn read(&mut self, out: &mut [i16]) -> Result<usize, Error> {
+            self.1 += 1;
+            assert!(self.1 < 16, "read on long past the limit");
             out.fill(7);
             Ok(out.len() / usize::from(self.0.count()))
         }
@@ -175,7 +178,8 @@ mod tests {
     fn read_all_stops_at_the_limit_of_an_endless_source() {
         let limits = Limits::new(8_000, 10_000);
         for (channels, chunk) in [(Channels::Mono, 8192), (Channels::Stereo, 4096)] {
-            let Err(Error::TooLong { frames, limit }) = read_all(&mut Endless(channels), &limits)
+            let Err(Error::TooLong { frames, limit }) =
+                read_all(&mut Endless(channels, 0), &limits)
             else {
                 panic!("it should have stopped");
             };
