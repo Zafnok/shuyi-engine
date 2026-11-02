@@ -77,10 +77,11 @@
     },
     // The mixer (ticket 3030). quad-snd has no offline mix to compare with, so this
     // is a share of the sound's own length: 32 voices, at other rates and looped,
-    // two of them streams, in release builds (`mixer` in the probe). `max_share` is
-    // about ten times the worst measured, as `decoders`' is, because raw times move
-    // by half between machines, and leaves room for an audio callback's deadline.
-    // `min_slowdown` is what doubling a measure must show at the least.
+    // two of them streams, in release builds (`mixer` in the probe). Not yet from
+    // CI's runs: natively about ten times the 0.008 measured by hand on Windows, as
+    // `decoders`' are ten times theirs, and in the browser an unmeasured allowance.
+    // Set them from this job's `mixer-share` cells. `min_slowdown` is what doubling a
+    // measure must show at the least.
     mixer: {
         "linux-native": (max_share: 0.1, min_slowdown: 1.5),
         "browser-chromium": (max_share: 0.2, min_slowdown: 1.5),
