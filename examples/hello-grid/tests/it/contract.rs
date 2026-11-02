@@ -574,6 +574,9 @@ fn the_debug_action_opens_the_debug_menu_only_with_debug_tools_on() {
     assert!(h.ctx().debug_tools);
     h.keys("F2");
     assert_eq!(h.screens(), ["title", DebugMenuScreen::<Hello>::NAME]);
+    // Over the menu it does nothing: no second menu.
+    h.keys("F2");
+    assert_eq!(h.screens(), ["title", DebugMenuScreen::<Hello>::NAME]);
     h.keys("Backspace");
     assert_eq!(h.screens(), ["title"]);
 
