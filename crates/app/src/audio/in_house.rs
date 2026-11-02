@@ -220,7 +220,7 @@ struct AudioSide {
     #[cfg(target_arch = "wasm32")]
     feeding: Feedings,
     /// When a command last reached the mix, for the probe's measure of latency.
-    #[cfg(feature = "sound-probe")]
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     reached: Arc<Reached>,
 }
 
@@ -258,11 +258,11 @@ impl AudioSide {
         };
         let (mixer, inbox) = &mut **seated;
         let (jobs, back) = (&mut self.jobs, &mut self.back);
-        #[cfg(feature = "sound-probe")]
+        #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
         let reached = &self.reached;
         inbox.apply_with(mixer, |mixer| {
             run_jobs(jobs, back, mixer);
-            #[cfg(feature = "sound-probe")]
+            #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
             reached.stamp();
         });
         run_jobs(jobs, back, mixer);
@@ -385,7 +385,7 @@ struct Engine {
     _worker: Worker,
     /// Dropped first: the callback stops before what it uses goes.
     output: Option<Output>,
-    #[cfg(feature = "sound-probe")]
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     reached: Arc<Reached>,
 }
 
@@ -399,7 +399,7 @@ fn sides(rate: u32) -> (Engine, AudioSide) {
     let (to_audio, from_game) = handover(JOBS);
     let (to_game, from_audio) = handover(JOBS);
     let feedings = Feedings::default();
-    #[cfg(feature = "sound-probe")]
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     let reached = Arc::new(Reached::default());
     let side = AudioSide {
         seated: None,
@@ -407,7 +407,7 @@ fn sides(rate: u32) -> (Engine, AudioSide) {
         back: to_game,
         #[cfg(target_arch = "wasm32")]
         feeding: feedings.clone(),
-        #[cfg(feature = "sound-probe")]
+        #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
         reached: Arc::clone(&reached),
     };
     let engine = Engine {
@@ -421,7 +421,7 @@ fn sides(rate: u32) -> (Engine, AudioSide) {
         _worker: Worker::start(feedings.clone()),
         feedings,
         output: None,
-        #[cfg(feature = "sound-probe")]
+        #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
         reached,
     };
     (engine, side)
@@ -610,7 +610,7 @@ impl InHouse {
     /// How long a play takes to reach the mix going to the device's buffer, in
     /// milliseconds: the time to the callback that has it, at no volume so that
     /// nothing is heard. For the probe's `latency` order.
-    #[cfg(feature = "sound-probe")]
+    #[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
     pub fn play_latency_ms(&mut self, sound: &Clip) -> Option<f64> {
         let started = std::time::Instant::now();
         let engine = self.engine.as_ref()?;
@@ -814,15 +814,16 @@ fn clip_of(track: Track) -> Clip {
     }
 }
 
-/// When a command last reached the mix, for the probe's measure.
-#[cfg(feature = "sound-probe")]
+/// When a command last reached the mix, for the probe's measure: natively, as the web
+/// build has no clock to read it by.
+#[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
 #[derive(Default)]
 pub(crate) struct Reached {
     anchor: std::sync::OnceLock<std::time::Instant>,
     micros: std::sync::atomic::AtomicU64,
 }
 
-#[cfg(feature = "sound-probe")]
+#[cfg(all(feature = "sound-probe", not(target_arch = "wasm32")))]
 impl Reached {
     fn stamp(&self) {
         let anchor = self.anchor.get_or_init(std::time::Instant::now);
