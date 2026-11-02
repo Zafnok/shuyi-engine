@@ -7,12 +7,15 @@ and nothing is heard elsewhere, it records the sink's monitor while the probe
 (`crates/app/examples/sound_probe.rs`) plays:
 
     capture.py native --dir D --probe BIN --revision SHA
+    capture.py windows --dir D --probe BIN --revision SHA [--set-endpoint]
     capture.py browser --dir D --page DIR --revision SHA
     (either with --perf-only: the timings again, the recordings kept)
     capture.py encode --dir D       (by hand, on Linux) the Ogg fixtures
 
 Natively ALSA's default device is routed to the sink, as a player's system
-would. In the browser, the page that `shuyi web` writes runs in Chromium with
+would. On Windows there is no such sink to make: it records the default render
+endpoint through `wasapi.py`, on a runner a virtual one (`install-endpoint.ps1`). In
+the browser, the page that `shuyi web` writes runs in Chromium with
 Playwright's mute flag taken away and a real click to unlock it. Each writes
 `D/<platform>/run-N/<scenario>.pcm` and `.jsonl`, `meta.json`, and the paired
 timings in `D/<platform>/perf.jsonl`. `cargo xtask sound-parity gate` judges
@@ -24,6 +27,7 @@ from __future__ import annotations
 import argparse
 import array
 import contextlib
+import ctypes
 import hashlib
 import json
 import os
@@ -162,12 +166,44 @@ class Recorder:
         self.process.wait(10)
 
 
+class LoopbackRecorder:
+    """The same on Windows: the default render endpoint, through WASAPI loopback."""
+
+    def __init__(self, path: Path) -> None:
+        import wasapi
+
+        self.loopback = wasapi.Loopback(path)
+        form = self.loopback.form
+        if form.rate != RATE or form.channels != 2:
+            self.loopback.stop()
+            raise SystemExit(f"the endpoint runs at {form.rate} Hz with {form.channels} channels, not {RATE} and 2: nothing recorded here could be sample-exact")
+
+    @property
+    def start(self) -> float:
+        return self.loopback.start
+
+    def flowing(self) -> None:
+        """As the sink's monitor: nothing plays until frames come."""
+        deadline = time.monotonic() + TIMEOUT
+        while self.loopback.frames < LEAD_FRAMES:
+            if time.monotonic() > deadline:
+                raise SystemExit("the endpoint's loopback gives no frames")
+            time.sleep(0.01)
+
+    def stop(self) -> None:
+        self.loopback.stop()
+        # The system dropped frames while this was reading: not a recording of it all.
+        if self.loopback.discontinuities:
+            raise SystemExit(f"the loopback lost frames {self.loopback.discontinuities} times")
+
+
 def write_meta(run: Path, revision: str, backend: str, extra: dict[str, object]) -> None:
     """What the gate reads to refuse stale evidence, and how it was made."""
     tools = {}
     for tool in [["pulseaudio", "--version"], ["oggdec", "--version"]]:
-        ran = subprocess.run(tool, capture_output=True, text=True, check=False)
-        tools[tool[0]] = (ran.stdout + ran.stderr).strip()
+        with contextlib.suppress(OSError):
+            ran = subprocess.run(tool, capture_output=True, text=True, check=False)
+            tools[tool[0]] = (ran.stdout + ran.stderr).strip()
     meta = {
         "revision": revision,
         "backend": backend,
@@ -217,6 +253,67 @@ class Native:
         lines = [line[len(PREFIX):] for line in process.stderr.splitlines() if line.startswith(PREFIX)]
         if process.returncode != 0:
             lines.append(json.dumps({"event": "failed", "text": f"exit {process.returncode}: {process.stderr[-300:]}"}))
+        if perf is not None:
+            perf["_start"] = recorder.start
+        return lines
+
+
+def process_cycles(handle: int) -> int:
+    """What a Windows process's threads have run for, in cycles: process CPU time is
+    charged at clock ticks and misreads a process that sleeps between its work."""
+    cycles = ctypes.c_uint64()
+    ctypes.windll.kernel32.QueryProcessCycleTime(ctypes.c_void_p(handle), ctypes.byref(cycles))
+    return cycles.value
+
+
+def process_peak_kib(handle: int) -> float:
+    """A Windows process's peak working set, in KiB."""
+
+    class Counters(ctypes.Structure):
+        _fields_ = [("cb", ctypes.c_uint32), ("faults", ctypes.c_uint32), ("peak", ctypes.c_size_t), ("rest", ctypes.c_size_t * 7)]
+
+    counters = Counters()
+    counters.cb = ctypes.sizeof(Counters)
+    ctypes.windll.kernel32.K32GetProcessMemoryInfo(ctypes.c_void_p(handle), ctypes.byref(counters), counters.cb)
+    return counters.peak / 1024
+
+
+@dataclass
+class Windows:
+    """Plays with the native probe on Windows: the recorder is the loopback, and the
+    process's CPU and memory are read from here, as the browser's are, since the
+    probe has no way to read them on this system. `cpu_ms` counts millions of cycles:
+    only its ratios are held, and a runner's clock isn't a fixed number."""
+
+    probe: Path
+    stage: Path
+
+    def play(self, order: str, record: Path, perf: dict[str, float] | None = None) -> list[str]:
+        (self.stage / "probe.txt").write_text(order, encoding="utf-8", newline="\n")
+        recorder = LoopbackRecorder(record)
+        recorder.flowing()
+        process = subprocess.Popen([str(self.probe)], cwd=self.stage, stderr=subprocess.PIPE, text=True)
+        timer = threading.Timer(TIMEOUT, process.kill)
+        timer.start()
+        handle = int(process._handle)
+        lines = []
+        tail = ""
+        for raw in process.stderr:
+            tail = (tail + raw)[-300:]
+            if not raw.startswith(PREFIX):
+                continue
+            lines.append(raw[len(PREFIX):].rstrip())
+            if perf is not None and '"playing"' in raw:
+                perf["_cycles"] = process_cycles(handle)
+            if perf is not None and '"played"' in raw:
+                perf["cpu_ms"] = (process_cycles(handle) - perf["_cycles"]) / 1e6
+                perf["peak_kib"] = process_peak_kib(handle)
+        process.wait()
+        timer.cancel()
+        time.sleep(0.3)
+        recorder.stop()
+        if process.returncode != 0:
+            lines.append(json.dumps({"event": "failed", "text": f"exit {process.returncode}: {tail}"}))
         if perf is not None:
             perf["_start"] = recorder.start
         return lines
@@ -469,6 +566,36 @@ def native(args: argparse.Namespace) -> int:
     return 0
 
 
+def windows(args: argparse.Namespace) -> int:
+    """The same as `native`, on Windows' default render endpoint. It may set that
+    endpoint's format (`--set-endpoint`, on a runner's virtual device), and otherwise
+    refuses one that isn't the sink's: nothing else on a person's machine is touched."""
+    sys.path.insert(0, str(TOOL))
+    import wasapi
+
+    base = args.dir / "windows"
+    if not args.perf_only:
+        shutil.rmtree(base, ignore_errors=True)
+    base.mkdir(parents=True, exist_ok=True)
+    shutil.copy(TOOL / "scenarios.ron", args.dir / "scenarios.ron")
+    wasapi.coinit()
+    if args.set_endpoint:
+        wasapi.set_endpoint_rate(RATE)
+    keeper = wasapi.Endpoint()
+    try:
+        player = Windows(args.probe.resolve(), args.dir.resolve())
+        for number in range(0 if args.perf_only else RUNS):
+            run = base / f"run-{number}"
+            write_run(player, run)
+            write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
+        write_perf(player, base)
+        write_decoders(player, base)
+        write_mixer(player, base)
+    finally:
+        keeper.close()
+    return 0
+
+
 def browser(args: argparse.Namespace) -> int:
     base = args.dir / "browser-chromium"
     if not args.perf_only:
@@ -522,15 +649,16 @@ def encode(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mode", choices=["native", "browser", "encode"])
+    parser.add_argument("mode", choices=["native", "windows", "browser", "encode"])
     parser.add_argument("--dir", type=Path, default=Path("target/sound-parity"))
     parser.add_argument("--probe", type=Path, help="the native probe")
     parser.add_argument("--page", type=Path, help="the web page's folder, with the probe's wasm")
     parser.add_argument("--revision", default="")
     parser.add_argument("--build-seconds", type=float, default=0.0)
     parser.add_argument("--perf-only", action="store_true", help="only the timings, again")
+    parser.add_argument("--set-endpoint", action="store_true", help="on a runner: set the virtual endpoint's format first")
     args = parser.parse_args()
-    return {"native": native, "browser": browser, "encode": encode}[args.mode](args)
+    return {"native": native, "windows": windows, "browser": browser, "encode": encode}[args.mode](args)
 
 
 if __name__ == "__main__":

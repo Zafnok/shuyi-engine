@@ -27,8 +27,11 @@ IID_ENUMERATOR = "{A95664D2-9614-4F35-A746-DE8DB63617E6}"
 IID_AUDIO_CLIENT = "{1CB9AD4C-DBFA-4C32-B178-C2F568A703B2}"
 IID_CAPTURE = "{C8ADBD64-E71E-48A0-A4DE-185C395CD317}"
 IID_RENDER = "{F294ACFC-3146-4483-A7BF-ADDCA7C260E2}"
-# A WAVEFORMATEXTENSIBLE's subformat, for floats.
+CLSID_POLICY = "{870AF99C-171D-4F9E-AF0D-E63DF40C2BC9}"
+IID_POLICY = "{F8679F50-850A-41CF-9C72-430F290290C8}"
+# A WAVEFORMATEXTENSIBLE's subformats.
 FLOAT_GUID = uuid.UUID("00000003-0000-0010-8000-00AA00389B71")
+PCM_GUID = uuid.UUID("00000001-0000-0010-8000-00AA00389B71")
 TAG_PCM = 1
 TAG_FLOAT = 3
 TAG_EXTENSIBLE = 0xFFFE
@@ -97,6 +100,29 @@ def default_endpoint() -> ctypes.c_void_p:
     device = ctypes.c_void_p()
     call(enumerator, 4, (c_int32, c_int32, POINTER(ctypes.c_void_p)), E_RENDER, ROLE_CONSOLE, byref(device))
     return device
+
+
+def extensible(rate: int, bits: int, floats: bool) -> ctypes.Array:
+    """A stereo WAVEFORMATEXTENSIBLE."""
+    align = 2 * bits // 8
+    subformat = FLOAT_GUID if floats else PCM_GUID
+    raw = struct.pack("<HHIIHHHHI", TAG_EXTENSIBLE, 2, rate, rate * align, align, bits, 22, bits, 3) + subformat.bytes_le
+    return (ctypes.c_ubyte * len(raw)).from_buffer_copy(raw)
+
+
+def set_endpoint_rate(rate: int) -> None:
+    """Sets the default endpoint's format, as its Advanced tab does: CI's virtual
+    endpoint starts at 48 kHz, and a sample-exact comparison needs no resampling on
+    the way. `IPolicyConfig` isn't documented; only this tool, on a runner, calls it."""
+    device = default_endpoint()
+    identifier = ctypes.c_wchar_p()
+    call(device, 5, (POINTER(ctypes.c_wchar_p),), byref(identifier))
+    policy = ctypes.c_void_p()
+    ole32.CoCreateInstance(
+        byref(Guid.of(CLSID_POLICY)), None, CLSCTX_ALL, byref(Guid.of(IID_POLICY)), byref(policy)
+    )
+    endpoint, mix = extensible(rate, 16, False), extensible(rate, 32, True)
+    call(policy, 6, (ctypes.c_wchar_p, ctypes.c_void_p, ctypes.c_void_p), identifier.value, endpoint, mix)
 
 
 class Client:

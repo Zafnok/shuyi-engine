@@ -1,6 +1,6 @@
 name: sound-trial
 
-# Temporary, ticket 3031: can a hosted Windows runner have a real render endpoint?
+# Temporary, ticket 3031: the Windows capture, before it joins ci.yml.
 on:
   push:
     branches: [t3031-sound-output]
@@ -9,69 +9,29 @@ permissions:
   contents: read
 
 jobs:
-  trial:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2022, windows-2025]
-    runs-on: ${{ matrix.os }}
+  windows:
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: What is there
+      - run: rustup show
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: A real render endpoint
         shell: pwsh
-        run: |
-          Start-Service audiosrv -ErrorAction Continue
-          Start-Service AudioEndpointBuilder -ErrorAction Continue
-          Get-Service audio* | Format-Table -AutoSize
-          Get-CimInstance Win32_SoundDevice | Format-Table Name,Status -AutoSize
-          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table FriendlyName,Status -AutoSize
-          Get-CimInstance Win32_ComputerSystem | Format-List Model,Manufacturer
-          Confirm-SecureBootUEFI -ErrorAction Continue
-          python --version
-      - name: Install Scream
+        run: tools/sound-parity/install-endpoint.ps1
+      - name: The corpus
+        run: cargo xtask sound-parity corpus --out target/sound-parity
+      - name: Build the probe
+        run: cargo build -p shuyi-app --example sound_probe --features sound-probe --release
+      - name: Record
         shell: pwsh
-        continue-on-error: true
-        run: |
-          Invoke-WebRequest https://github.com/duncanthrax/scream/releases/download/4.0/Scream4.0.zip -OutFile scream.zip
-          (Get-FileHash scream.zip -Algorithm SHA256).Hash
-          Expand-Archive scream.zip -DestinationPath scream
-          Get-ChildItem scream -Recurse | Select-Object FullName | Format-Table -AutoSize -Wrap
-          $driver = "scream\Install\driver\x64"
-          $sig = Get-AuthenticodeSignature "$driver\Scream.sys"
-          $catsig = Get-AuthenticodeSignature "$driver\scream.cat"
-          $catsig | Format-List Status,StatusMessage
-          $store = [System.Security.Cryptography.X509Certificates.X509Store]::new("TrustedPublisher", "LocalMachine")
-          $store.Open("ReadWrite")
-          $store.Add($catsig.SignerCertificate)
-          $store.Add($sig.SignerCertificate)
-          $store.Close()
-          $devcon = (Resolve-Path "scream\Install\helpers\devcon-x64.exe").Path
-          # The certificate expired in 2023 and the signature has no timestamp.
-          Stop-Service w32time -Force -ErrorAction SilentlyContinue
-          $now = Get-Date
-          $clock = [System.Diagnostics.Stopwatch]::StartNew()
-          Set-Date -Date ([datetime]'2023-01-15T12:00:00') | Out-Null
-          (Get-AuthenticodeSignature "$driver\scream.cat") | Format-List Status,StatusMessage
-          $p = Start-Process -FilePath $devcon -ArgumentList 'install','Scream.inf','*Scream' -WorkingDirectory (Resolve-Path $driver).Path -PassThru -NoNewWindow
-          $finished = $p.WaitForExit(60000)
-          Set-Date -Date $now.Add($clock.Elapsed) | Out-Null
-          if (-not $finished) {
-            Write-Output "devcon hung; killing it"
-            Stop-Process -Id $p.Id -Force
-          } else {
-            Write-Output "devcon exit: $($p.ExitCode)"
-          }
-          Start-Service w32time -ErrorAction SilentlyContinue
-          Get-Content C:\Windows\INF\setupapi.dev.log -Tail 25
-          Get-CimInstance Win32_PnPEntity | Where-Object Name -Match 'Scream' | Format-List Name,Status,ConfigManagerErrorCode
-          Start-Sleep 5
-          Restart-Service audiosrv -Force -ErrorAction Continue
-          Start-Sleep 5
-          Get-CimInstance Win32_SoundDevice | Format-Table Name,Status -AutoSize
-          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table FriendlyName,Status -AutoSize
-      - name: The recorder, with a tone
-        shell: pwsh
-        continue-on-error: true
-        run: python tools/sound-parity/trial_loopback.py tools/sound-parity --tone
+        env:
+          REVISION: ${{ github.sha }}
+        run: python tools/sound-parity/capture.py windows --set-endpoint --dir target/sound-parity --probe target/release/examples/sound_probe.exe --revision "$env:REVISION"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: sound-parity-windows
+          path: target/sound-parity/windows/
+          if-no-files-found: error
