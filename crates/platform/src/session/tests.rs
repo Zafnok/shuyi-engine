@@ -200,11 +200,24 @@ fn play(
     let mut app = App::new(start);
     let mut platform = HeadlessPlatform::from_session(record);
     let mut playback = Playback::new(record);
-    let mut answers = Vec::new();
-    while let Some(answer) = playback.next(&mut app, &mut platform) {
-        answers.push(answer);
-    }
+    let answers = play_out(&mut playback, record, &mut app, &mut platform);
     (app, platform, answers)
+}
+
+/// Plays `record` through `playback`: one answer a frame, and a playback that
+/// goes on past its record fails here rather than running for ever.
+fn play_out(
+    playback: &mut Playback,
+    record: &SessionRecord,
+    app: &mut App<Toy>,
+    platform: &mut HeadlessPlatform,
+) -> Vec<Result<u32, FrameDifference>> {
+    let most = record.frames.len() + 1;
+    let answers: Vec<_> = (0..most)
+        .map_while(|_| playback.next(app, platform))
+        .collect();
+    assert_eq!(answers.len(), record.frames.len(), "one answer a frame");
+    answers
 }
 
 /// Asserts every frame of `answers` played the same.
@@ -996,9 +1009,7 @@ fn the_music_plays_back_from_the_record_whatever_the_speaker_says() {
     let mut platform = HeadlessPlatform::from_session(&record);
     platform.speaker_mut().set_load_delay(5.0);
     let mut playback = Playback::new(&record);
-    while let Some(answer) = playback.next(&mut app, &mut platform) {
-        assert!(answer.is_ok(), "{answer:?}");
-    }
+    assert_same(&play_out(&mut playback, &record, &mut app, &mut platform));
     assert_eq!(*seen.borrow(), *again.borrow());
     assert!(again.borrow().iter().any(|s| s.music.is_some()));
     // Played, the speaker answers for itself: 5 s of load to go.
@@ -1226,7 +1237,7 @@ fn a_finished_playback_leaves_the_game_to_the_platform() {
     let mut platform = HeadlessPlatform::from_session(&record);
     let mut playback = Playback::new(&record);
     assert_eq!(playback.now(), Millis(0));
-    while playback.next(&mut app, &mut platform).is_some() {}
+    assert_same(&play_out(&mut playback, &record, &mut app, &mut platform));
     assert_eq!(playback.now(), Millis(32));
     // A driver goes on from there, on its own input.
     platform.push_input(&press(Key::F));
