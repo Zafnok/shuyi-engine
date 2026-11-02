@@ -85,7 +85,7 @@ out="$(mktemp -d)"
 trap 'rm -rf "$out"' EXIT
 one="https://one.invalid/first/"
 two="https://two.invalid/second/"
-(cd "$site_dir" && zola build --base-url "$one" --output-dir "$out/one" --force)
+(cd "$site_dir" && zola build --base-url "$one" --output-dir "$out/one" --force) 2>&1 | tee "$out/build.log"
 (cd "$site_dir" && zola build --base-url "$two" --output-dir "$out/two" --force)
 
 # Changing the base URL alone moves every link: neither output names the
@@ -126,6 +126,17 @@ grep -qF "${one}examples/hello-grid/" "$out/one/hello-grid/index.html" ||
 
 check_hosts "$out/one" "$one"
 check_hosts "$out/two" "$two"
+
+# Code blocks are highlighted (ticket 2821): every language is known, and a
+# page with a Rust block has its keywords marked, so highlighting can't be
+# turned off by accident. (`fn` and `let` are `z-storage`, so a page is the
+# unit: one block may have no `z-keyword` of its own.)
+if grep -E 'language .* not found' "$out/build.log"; then
+  fail "a code block names a language the build doesn't know: add its grammar to site/syntaxes/"
+fi
+while IFS= read -r page; do
+  grep -qF 'z-keyword' "$page" || fail "$page has a Rust block with no z-keyword: is highlight_code on?"
+done < <(grep -rlF 'data-lang="rust"' "$out/one" --include='*.html')
 
 # The home page shows each card's status as its tickets make it (ticket
 # 2815), once `cargo xtask site-data` has written them, as CI does first.

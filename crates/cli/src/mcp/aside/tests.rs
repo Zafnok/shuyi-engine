@@ -196,13 +196,55 @@ fn a_running_program_is_put_aside_and_its_path_left_replaceable() {
     let to = dir.join("ping-aside.exe");
     let put = put_aside(&from, &to);
     // What the build does next: write a new program at the old path.
-    let rewritten = fs::write(&from, b"fresh");
+    // A scan of the new `.exe` can hold the path for a moment, as for a
+    // build's linker; a refusal that lasts still fails below.
+    let rewritten = retrying(TRIES, PAUSE, || fs::write(&from, b"fresh"));
     running.kill().unwrap();
     running.wait().unwrap();
     put.unwrap();
     rewritten.unwrap();
     assert!(to.exists());
     fs::remove_dir_all(dir.parent().unwrap()).unwrap();
+}
+
+/// `retrying` with no wait, counting its tries; the first `busy` answer
+/// `code`, and the rest succeed.
+fn tried(tries: u32, busy: u32, code: i32) -> (std::io::Result<()>, u32) {
+    let mut count = 0;
+    let answer = retrying(tries, Duration::ZERO, || {
+        count += 1;
+        if count <= busy {
+            Err(std::io::Error::from_raw_os_error(code))
+        } else {
+            Ok(())
+        }
+    });
+    (answer, count)
+}
+
+#[test]
+fn a_busy_answer_that_clears_is_retried() {
+    for code in BUSY {
+        let (answer, count) = tried(5, 1, code);
+        assert!(answer.is_ok());
+        assert_eq!(count, 2);
+    }
+}
+
+#[test]
+fn a_busy_answer_that_lasts_is_returned_after_every_try() {
+    for code in BUSY {
+        let (answer, count) = tried(5, u32::MAX, code);
+        assert_eq!(answer.unwrap_err().raw_os_error(), Some(code));
+        assert_eq!(count, 5);
+    }
+}
+
+#[test]
+fn any_other_error_is_returned_at_once() {
+    let (answer, count) = tried(5, u32::MAX, 2);
+    assert_eq!(answer.unwrap_err().raw_os_error(), Some(2));
+    assert_eq!(count, 1);
 }
 
 #[test]
