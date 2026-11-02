@@ -20,9 +20,12 @@
 //! @left mentor neutral
 //! @right scout happy
 //! mentor: Is the road clear?
-//! scout[sad]: Not since noon.
+//! scout[sad] (quietly, out of breath): Not since noon.
 //!   Riders came over the hill.
 //! > Rain begins to fall.
+//! @delivery low, keeping out of sight
+//! mentor: Then we go by the river.
+//! @delivery clear
 //! @music storm
 //! @choice
 //! * earnest: Then we wait.
@@ -212,6 +215,9 @@ pub enum Step<D = NoDirective> {
         expression: Option<String>,
         /// What they say.
         text: String,
+        /// How it is said, for a voice or an actor; never shown, and not
+        /// part of the line's id.
+        direction: Option<String>,
         /// The line's id.
         line: LineId,
     },
@@ -219,6 +225,9 @@ pub enum Step<D = NoDirective> {
     Narrate {
         /// The narration.
         text: String,
+        /// How it is said, for a voice or an actor; never shown, and not
+        /// part of the line's id.
+        direction: Option<String>,
         /// The line's id.
         line: LineId,
     },
@@ -569,16 +578,24 @@ fn print_step<D: Directive>(out: &mut String, step: &Step<D>, indent: &str) {
         Step::Clear { side } => format!("@{} clear", side.name()),
         Step::Say {
             speaker,
-            expression: Some(e),
+            expression,
             text,
+            direction,
             ..
-        } => format!("{}[{e}]: {text}", speaker.0),
-        Step::Say {
-            speaker,
-            expression: None,
+        } => {
+            let expression = expression
+                .as_ref()
+                .map_or(String::new(), |e| format!("[{e}]"));
+            let direction = direction
+                .as_ref()
+                .map_or(String::new(), |d| format!(" ({d})"));
+            format!("{}{expression}{direction}: {text}", speaker.0)
+        }
+        Step::Narrate {
             text,
+            direction: Some(d),
             ..
-        } => format!("{}: {text}", speaker.0),
+        } => format!("> ({d}): {text}"),
         Step::Narrate { text, .. } => format!("> {text}"),
         Step::Music(music) => format!("@music {}", music.arg()),
         Step::Directive(directive) => format!("@{}", directive.print()),

@@ -76,6 +76,8 @@ pub struct Line<'a> {
     pub speaker: &'a str,
     /// Its text as written (tokens unexpanded).
     pub text: &'a str,
+    /// How it is said, for a voice or an actor; a reply has none.
+    pub direction: Option<&'a str>,
 }
 
 /// FNV-1a, 64 bits. Written here because line ids are stored in translation
@@ -117,7 +119,7 @@ fn visit_mut<D>(steps: &mut [Step<D>], f: &mut impl FnMut(&str, &str, &mut LineI
                 line,
                 ..
             } => f(&speaker.0, text, line),
-            Step::Narrate { text, line } => f(NARRATION_SPEAKER, text, line),
+            Step::Narrate { text, line, .. } => f(NARRATION_SPEAKER, text, line),
             Step::Choice { options } => {
                 for o in options {
                     f(REPLY_SPEAKER, &o.text, &mut o.line);
@@ -146,17 +148,24 @@ fn collect<'a, D>(steps: &'a [Step<D>], out: &mut Vec<Line<'a>>) {
             Step::Say {
                 speaker,
                 text,
+                direction,
                 line,
                 ..
             } => out.push(Line {
                 id: line,
                 speaker: &speaker.0,
                 text,
+                direction: direction.as_deref(),
             }),
-            Step::Narrate { text, line } => out.push(Line {
+            Step::Narrate {
+                text,
+                direction,
+                line,
+            } => out.push(Line {
                 id: line,
                 speaker: NARRATION_SPEAKER,
                 text,
+                direction: direction.as_deref(),
             }),
             Step::Choice { options } => {
                 for o in options {
@@ -164,6 +173,7 @@ fn collect<'a, D>(steps: &'a [Step<D>], out: &mut Vec<Line<'a>>) {
                         id: &o.line,
                         speaker: REPLY_SPEAKER,
                         text: &o.text,
+                        direction: None,
                     });
                     collect(&o.steps, out);
                 }

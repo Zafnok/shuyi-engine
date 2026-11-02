@@ -378,7 +378,7 @@ impl Lang {
                     let shown = self.line(code, &caption_key(scene, text), text, variant);
                     *text = shown.to_owned();
                 }
-                Step::Say { text, line: id, .. } | Step::Narrate { text, line: id } => {
+                Step::Say { text, line: id, .. } | Step::Narrate { text, line: id, .. } => {
                     line(id, text);
                 }
                 Step::Choice { options } => {
