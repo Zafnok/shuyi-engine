@@ -4,7 +4,7 @@
 // fresh runs named in the ticket's notes. Change one only with new runs that justify
 // it, written here, and raise `version`: never to pass.
 (
-    version: 1,
+    version: 2,
     correctness: (
         // quad-snd's native mix goes in blocks of 4,096 frames, 93 ms, so a command
         // can land a block from where the marker's block puts it: the same copy
@@ -54,6 +54,25 @@
             "cpu_ms": (max_ratio: 1.05, max_spread: 0.09, slows: true),
             "peak_kib": (max_ratio: 1.05, max_spread: 0.05, slows: false),
             "latency_ms": (max_ratio: 1.14, max_spread: 0.53, slows: false),
+        },
+    },
+    // The adapters against the old path (ticket 2210), from CI run 41366247884 and
+    // the runs named in the ticket's notes. Natively it is the same libraries on the
+    // same bytes, so new may not be slower: `max_ratio` is `performance`'s floor,
+    // though new measured 0.37 on WAV and 0.76 on Ogg, spread under 0.01, and the
+    // injected slowdown showed 1.81 and 2.03. A browser decodes with its own code on
+    // its own threads, seen to end at a frame, so there the ratio is only written
+    // down (0.53 on WAV, 1.26 on Ogg). `max_share` is about ten times the worst
+    // measured: 0.0026 natively and 0.0045 in the browser of a sound's length, as raw
+    // times move by half between machines. It leaves room for twenty streams at once.
+    decoders: {
+        "linux-native": {
+            "wav": (ratio: Some((max_ratio: 1.05, max_spread: 0.05, slows: true)), max_share: 0.03),
+            "ogg": (ratio: Some((max_ratio: 1.05, max_spread: 0.05, slows: true)), max_share: 0.03),
+        },
+        "browser-chromium": {
+            "wav": (ratio: None, max_share: 0.05),
+            "ogg": (ratio: None, max_share: 0.05),
         },
     },
     // Each platform's evidence. Only a `Captured` one can support a parity claim,

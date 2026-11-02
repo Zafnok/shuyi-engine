@@ -415,6 +415,24 @@ def write_perf(player: Native | Browser, base: Path) -> None:
             out.flush()
 
 
+def write_decoders(player: Native | Browser, base: Path) -> None:
+    """The old path's whole decodes against `shuyi-sound`'s, a process per pair, each
+    swapping which side goes first. The recording says nothing here."""
+    record = base / "decoders.pcm"
+    for pair in range(WARMUP):
+        player.play(f"decoders {pair}\n", record)
+    with (base / "decoders.jsonl").open("w", encoding="utf-8", newline="\n") as out:
+        for pair in range(PAIRS):
+            for line in player.play(f"decoders {pair}\n", record):
+                event = json.loads(line)
+                if event["event"] == "failed":
+                    raise SystemExit(f"the decoder run failed: {line}")
+                if event["event"] == "decode":
+                    out.write(line + "\n")
+                    out.flush()
+    record.unlink()
+
+
 def native(args: argparse.Namespace) -> int:
     base = args.dir / "linux-native"
     if not args.perf_only:
@@ -428,6 +446,7 @@ def native(args: argparse.Namespace) -> int:
             write_run(player, run)
             write_meta(run, args.revision, "quad-snd", {"probe_bytes": args.probe.stat().st_size, "build_seconds": args.build_seconds})
         write_perf(player, base)
+        write_decoders(player, base)
     return 0
 
 
@@ -451,6 +470,7 @@ def browser(args: argparse.Namespace) -> int:
                 write_run(player, run)
                 write_meta(run, args.revision, "quad-snd-web", {"probe_bytes": wasm.stat().st_size, "build_seconds": args.build_seconds, "chromium": player.version})
             write_perf(player, base)
+            write_decoders(player, base)
         finally:
             player.close()
     return 0

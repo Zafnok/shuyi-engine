@@ -134,6 +134,24 @@
             devices: false,
             floats: true,
         ),
+        "shuyi-sound": (
+            // Decoded sound, apart from the rest of the engine (ADR-0066), for
+            // a backend and for the tools alike. `hound` and `lewton` read bytes
+            // and touch no device, behind features that are off by default; they
+            // are on the `devices` list only so that a game's rules can't reach
+            // them. Its one float is a float WAV's sample on the way in (`wav`).
+            engine: [],
+            outside: Only([
+                // Typed errors (ADR-0002 §9).
+                "thiserror",
+                // The optional adapters.
+                "hound",
+                "lewton",
+            ]),
+            devices: false,
+            readers: ["lewton", "hound"],
+            floats: false,
+        ),
         "shuyi-cli": (
             // The tools run headless, in CI and for agents (ADR-0005 §1):
             // never `shuyi-app`, and no device. The two audio readers are

@@ -80,7 +80,12 @@ sounds wrong, cuts out, or starts late.
   `cargo shuyi web` copies it.
 - **The engine side**: the backend from 3029 implemented over `Mixer`
   (3030) and `Output`, in `shuyi-app` behind a cargo feature
-  `in-house-sound`, off by default. Sound effects use 2210's adapters;
+  `in-house-sound`, off by default. **From 2210 (done):** the adapters' guard
+  turns a library's panic on a corrupt file into `Error::Malformed` where the
+  target unwinds. `wasm32-unknown-unknown` doesn't, so on the web a panic stops
+  the program: choose what the web hands the adapters knowing that, and say so.
+  `decoder-share` in CI's `sound-parity` job measures their speed in Chromium.
+  Sound effects use 2210's adapters;
   backend workers incrementally decode music into bounded queues, seeking/
   restarting, pre-rolling and trimming ahead of loop boundaries. No file
   I/O, decoder work, allocation or blocking lock in the audio callback.

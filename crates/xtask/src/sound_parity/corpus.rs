@@ -224,6 +224,43 @@ pub(crate) fn wav(signal: &Signal) -> Vec<u8> {
     out
 }
 
+/// A WAV with `edit` made to its bytes, each named for what is wrong with it: all
+/// of them a decoder must refuse.
+pub(crate) fn malformed_wavs() -> Vec<(&'static str, Vec<u8>)> {
+    let good = wav(&Signal {
+        rate: RATE,
+        channels: 2,
+        samples: vec![1; 64],
+    });
+    let edited = |at: usize, new: &[u8]| {
+        let mut bytes = good.clone();
+        bytes[at..at + new.len()].copy_from_slice(new);
+        bytes
+    };
+    let cut = |length: usize| good[..length].to_vec();
+    vec![
+        ("wav_no_bytes", Vec::new()),
+        ("wav_header_cut", cut(30)),
+        ("wav_data_cut", cut(good.len() - 10)),
+        ("wav_not_riff", edited(0, b"JUNK")),
+        ("wav_zero_channels", edited(22, &0u16.to_le_bytes())),
+        ("wav_three_channels", edited(22, &3u16.to_le_bytes())),
+        ("wav_zero_rate", edited(24, &0u32.to_le_bytes())),
+        ("wav_vast_rate", edited(24, &u32::MAX.to_le_bytes())),
+        ("wav_adpcm", edited(20, &0x11u16.to_le_bytes())),
+        ("wav_says_vast", edited(40, &0xFFFF_FFF0u32.to_le_bytes())),
+        ("wav_12_bits", edited(34, &12u16.to_le_bytes())),
+    ]
+}
+
+/// Bytes that are no file of any kind, the same every time.
+pub(crate) fn wav_noise() -> Vec<u8> {
+    noise(0x2573_0007, 1024, HALF)
+        .iter()
+        .flat_map(|sample| sample.to_le_bytes())
+        .collect()
+}
+
 /// The SHA-256 of `bytes`, in hex.
 pub(crate) fn sha256(bytes: &[u8]) -> String {
     let mut out = String::new();
