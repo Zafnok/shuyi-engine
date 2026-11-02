@@ -11,15 +11,22 @@ pub(crate) fn gather_bonus(gathers: u8, bonus_phase: u8) -> bool {
     (u16::from(gathers) + u16::from(bonus_phase)).is_multiple_of(3)
 }
 
-#[cfg(all(feature = "layout-kernel", not(feature = "vm-kernel")))]
-pub(crate) fn gather_bonus(gathers: u8, bonus_phase: u8) -> bool {
+#[cfg(any(test, all(feature = "layout-kernel", not(feature = "vm-kernel"))))]
+fn layout_index(gathers: u8, bonus_phase: u8) -> usize {
+    usize::from(gathers ^ bonus_phase)
+}
+
+#[cfg(any(test, all(feature = "layout-kernel", not(feature = "vm-kernel"))))]
+pub(crate) fn layout_bonus(gathers: u8, bonus_phase: u8) -> bool {
     const LAYOUT: &[u8; 256] = include_bytes!(concat!(env!("OUT_DIR"), "/kernel_layout.bin"));
-    let offset = usize::from(gathers ^ bonus_phase);
-    let _ = std::hint::black_box(LAYOUT[offset]);
+    let _ = std::hint::black_box(LAYOUT[layout_index(gathers, bonus_phase)]);
     (u16::from(gathers) + u16::from(bonus_phase)).is_multiple_of(3)
 }
 
-#[cfg(all(feature = "vm-kernel", not(feature = "layout-kernel")))]
+#[cfg(all(feature = "layout-kernel", not(feature = "vm-kernel")))]
+pub(crate) use layout_bonus as gather_bonus;
+
+#[cfg(any(test, all(feature = "vm-kernel", not(feature = "layout-kernel"))))]
 mod vm {
     include!(concat!(env!("OUT_DIR"), "/kernel_opcodes.rs"));
 
@@ -98,14 +105,35 @@ pub(crate) use vm::gather_bonus;
 
 #[cfg(test)]
 mod tests {
-    use super::gather_bonus;
+    use super::{layout_bonus, layout_index, vm};
 
     #[test]
-    fn every_u8_pair_matches_the_integer_rule() {
+    fn layout_touches_the_seeded_slot_selected_by_both_inputs() {
+        assert_eq!(layout_index(0, 0), 0);
+        assert_eq!(layout_index(0b1100, 0b1010), 0b0110);
+        assert_eq!(layout_index(0xff, 0x55), 0xaa);
+    }
+
+    #[test]
+    fn every_u8_pair_matches_the_integer_rule_in_all_arms() {
         for gathers in u8::MIN..=u8::MAX {
             for phase in u8::MIN..=u8::MAX {
                 let expected = (u16::from(gathers) + u16::from(phase)).is_multiple_of(3);
-                assert_eq!(gather_bonus(gathers, phase), expected, "{gathers}, {phase}");
+                assert_eq!(
+                    super::gather_bonus(gathers, phase),
+                    expected,
+                    "active: {gathers}, {phase}"
+                );
+                assert_eq!(
+                    layout_bonus(gathers, phase),
+                    expected,
+                    "layout: {gathers}, {phase}"
+                );
+                assert_eq!(
+                    vm::gather_bonus(gathers, phase),
+                    expected,
+                    "VM: {gathers}, {phase}"
+                );
             }
         }
     }

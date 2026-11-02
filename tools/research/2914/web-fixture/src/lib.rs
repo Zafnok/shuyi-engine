@@ -188,6 +188,7 @@ mod tests {
     use super::{
         replay, shuyi_input_clear, shuyi_input_push, shuyi_output_byte, shuyi_output_len, shuyi_run,
     };
+    use serde_json::{Value, json};
 
     #[test]
     fn bridge_replays_and_rejects_bad_requests() {
@@ -209,5 +210,31 @@ mod tests {
         assert_eq!(shuyi_input_push(256), 1);
         assert_eq!(shuyi_run(), 1);
         assert!(shuyi_output_len() > 0);
+    }
+
+    #[test]
+    fn state_action_reads_without_advancing_the_workshop() {
+        let actions = vec!["state".to_owned(), "gather".to_owned()];
+        let batch: Value = serde_json::from_str(&replay(11, &actions).unwrap()).unwrap();
+        let trace = batch["trace"].as_array().unwrap();
+        assert_eq!(trace.len(), 3);
+        assert_eq!(trace[1]["action"], "state");
+        assert_eq!(trace[1]["ok"], true);
+        assert_eq!(trace[1]["events"], json!([]));
+        assert_eq!(trace[1]["error"], Value::Null);
+        assert_eq!(trace[1]["state"], trace[0]["state"]);
+        assert_eq!(trace[1]["frame"], trace[0]["frame"]);
+        assert_eq!(trace[1]["hash"], trace[0]["hash"]);
+        assert_eq!(trace[2]["action"], "gather");
+        assert_ne!(trace[2]["state"], trace[1]["state"]);
+    }
+
+    #[test]
+    fn request_buffer_accepts_exactly_sixty_four_kib() {
+        shuyi_input_clear();
+        for _ in 0..65_536 {
+            assert_eq!(shuyi_input_push(u32::from(b' ')), 0);
+        }
+        assert_eq!(shuyi_input_push(u32::from(b' ')), 1);
     }
 }

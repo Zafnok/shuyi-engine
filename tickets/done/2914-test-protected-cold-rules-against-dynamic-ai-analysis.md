@@ -82,7 +82,7 @@ None.
   the fresh ordinary assignment succeeded. Total model/tool steps and model
   charges were unavailable, and exact analyst model/effort parity was not
   recorded in the saved attempt logs. Local headless Chrome/Edge did not complete;
-  the HTML browser replay is gated in CI with Playwright.
+  the HTML browser replay passed in CI with Playwright on PR #235.
 - Documentation: the result lives in `docs/research/`; the 2912 report now
   links it. No game-facing API, contract, format, rule or template changed,
   so the book and skill pack need no update. No public API or format break.

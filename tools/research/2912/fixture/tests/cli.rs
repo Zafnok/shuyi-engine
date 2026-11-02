@@ -10,6 +10,30 @@ fn binary() -> Command {
 }
 
 #[test]
+fn cost_probe_reports_a_valid_replay_distribution() {
+    let output = Command::new(env!("CARGO_BIN_EXE_kernel-cost"))
+        .output()
+        .unwrap_or_else(|error| panic!("cost probe: {error}"));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report: Value = serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|error| panic!("cost probe JSON: {error}"));
+    assert_eq!(report["actions_per_replay"], 11);
+    assert_eq!(report["warmup_replays"], 1_000);
+    assert_eq!(report["samples"], 20_000);
+    let median = report["median_ns_per_replay"]
+        .as_u64()
+        .unwrap_or_else(|| panic!("missing median"));
+    let p99 = report["p99_ns_per_replay"]
+        .as_u64()
+        .unwrap_or_else(|| panic!("missing p99"));
+    assert!(median <= p99);
+}
+
+#[test]
 fn batch_has_initial_and_final_records_with_an_atomic_refusal() {
     let output = binary()
         .args(["courier", "11", "left,right"])

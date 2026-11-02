@@ -19,8 +19,9 @@ bonus ore. The three arms differ only in this calculation:
 | Layout control | The same direct arithmetic, plus a touched, seed-generated 256-byte layout table that cannot change the answer. |
 | Protected candidate | A generated stack bytecode program for the same predicate, with a per-build shuffled opcode assignment, encoded constant and variable no-op padding, run through a small interpreter. |
 
-`SHUYI_KERNEL_BUILD_SEED` makes a build reproducible. The study builds two
-seeds of each diversified arm and checks that native and browser-target Wasm
+`SHUYI_KERNEL_BUILD_SEED` reproduces the generated layout and bytecode for a
+given source and toolchain. The study builds two seeds of each diversified arm
+and checks that native and browser-target Wasm
 bytes differ. All arms use the same `Workshop` state, commands, JSON trace,
 ASCII scene and full-state hash. `Courier` stays unchanged as a negative
 control. The browser target is a `wasm32-unknown-unknown` library with a small
@@ -32,7 +33,7 @@ The parity runner generates private seeded traces in the 2912 random-plus-win
 shape and adds guaranteed deadline loss, rejected-action and bonus-boundary
 families. It checks the complete JSON record at every step, including the
 state hash and SHA-256 of the ASCII scene. The latter is a fixture scene
-proxy, not `shuyi_ui::Scene`. CI's headless browser gate is set to replay
+proxy, not `shuyi_ui::Scene`. CI's headless browser gate replays
 win, loss and refusal paths for each of the three arms. The kernel unit test
 exhausts all `u8` input pairs.
 
@@ -87,6 +88,10 @@ first-seed artifacts were:
 | Layout | `e30e046fcc391504882fee294c2cc49011789ce2cd4e84e183ea8de12a1772c1` | `ce894a0c3b511cd43a5e577407fc580fc1a4d6172d0b0a4702f2ffb711d6cd44` |
 | VM | `57d35d60bd9c188ab0599dda57c875d52e3c2e290d21d72a8cb826c113e2a94e` | `f2bb9c9e4f9267a4904800aadf2951a810719130badddc7b6117d6e7022b0c40` |
 
+These hashes identify the frozen executables delivered to the analysts.
+Subsequent test-coverage edits to this repository can change fresh binary
+hashes without changing the recorded artifacts or their measured outcomes.
+
 All **39** held-out Workshop traces passed on five native and five browser
 Wasm builds: 20 random, one mandatory win, six deadline losses, six
 rejected-action paths and six bonus-boundary paths. They held **425**
@@ -95,9 +100,10 @@ transitions. Every complete JSON trace matched the ordinary build, including
 across the ten builds. The unchanged Courier game matched in 50 additional
 native control runs. Two layout seeds and two VM seeds produced different
 native and Wasm bytes. A separate native/Wasm test matched 104 traces,
-including the largest `u64` seed. The actual HTML/browser check is in CI's
-`web-render` job; local Chrome and Edge headless launches did not complete on
-this Windows host, and local Playwright was unavailable.
+including the largest `u64` seed. The actual HTML/browser replay step passed
+in [CI's `web-render` job](https://github.com/Zafnok/shuyi-engine/actions/runs/41375368403/job/125054357058).
+Local Chrome and Edge headless launches did not complete on this Windows host,
+and local Playwright was unavailable.
 
 The ordinary analyst's saved Node Inspector trace disassembled 275 functions
 (52,540 WAT lines) in its browser-target module, hit a live breakpoint in
