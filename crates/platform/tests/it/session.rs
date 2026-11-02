@@ -13,7 +13,7 @@ use shuyi_core::StateHash;
 use shuyi_core::made::{ContentHash, Made};
 use shuyi_platform::SystemEvent;
 use shuyi_platform::app::{Card, Start};
-use shuyi_platform::harness::{FRAME_DT, Harness, bless_session, check_session};
+use shuyi_platform::harness::{FRAME_DT, Harness, assert_session, bless_session, check_session};
 use shuyi_platform::platform::Look;
 use shuyi_platform::session::{FORMAT_VERSION, Played, SessionError, SessionRecord, Stamps};
 use shuyi_ui::debug::DebugMenuScreen;
@@ -643,4 +643,34 @@ fn the_debug_menu_saves_only_a_run_recorded_or_played() {
     let opened = h.screen_log().iter().find(|(_, s)| s.len() > 1).unwrap().0;
     played.play_to(opened);
     assert!(lists_save(&played));
+}
+
+/// A file of `text`, for a test of `assert_session`, in the test's own part
+/// of the target folder.
+fn kept_file(name: &str, text: &str) -> std::path::PathBuf {
+    let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
+    std::fs::write(&path, text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    path
+}
+
+#[test]
+fn assert_session_plays_a_kept_file_and_leaves_it_as_it_is() {
+    // A blank line a new record wouldn't have: writing it again would show.
+    let text = format!("{}\n\n", recorded_text());
+    let path = kept_file("plays.session.ron", &text);
+    assert_session(home(), &path);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
+}
+
+#[test]
+#[should_panic(expected = "played differently")]
+#[cfg_attr(target_os = "wasi", ignore = "WASI has no unwinding")]
+fn assert_session_fails_a_kept_file_that_plays_differently() {
+    let mut record = SessionRecord::from_ron(&recorded_text()).unwrap();
+    let frame = record
+        .frames
+        .iter_mut()
+        .find_map(|frame| frame.hash.as_mut());
+    *frame.unwrap() ^= 1;
+    assert_session(home(), kept_file("differs.session.ron", &record.to_ron()));
 }
