@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "examples/*", "site/snippets", "tools/research/2912/fixture"]
+members = ["crates/*", "examples/*", "site/snippets", "tools/research/2912/fixture", "tools/research/2914/web-fixture"]
 resolver = "3"
 
 [workspace.package]
