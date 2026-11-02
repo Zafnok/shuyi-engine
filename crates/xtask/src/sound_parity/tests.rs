@@ -430,6 +430,7 @@ fn a_gate_without_budget_or_samples_fails_closed() {
         mixer: BTreeMap::new(),
         mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
         old_new: BTreeMap::new(),
+        device_loss_ms: BTreeMap::new(),
         platforms: BTreeMap::new(),
     };
     let dir = std::env::temp_dir();
@@ -650,6 +651,7 @@ fn a_platform_without_decoder_evidence_fails_closed() {
         mixer: BTreeMap::new(),
         mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
         old_new: BTreeMap::new(),
+        device_loss_ms: BTreeMap::new(),
         platforms: BTreeMap::new(),
     };
     let cells = decoder_speed_cells("linux-native", &dir, &budget);
@@ -673,6 +675,7 @@ fn new_backend_budget() -> Budget {
         mixer: BTreeMap::new(),
         mixer_memory: ron::from_str("(max_held_frames: 1)").unwrap_or_else(|e| panic!("{e}")),
         old_new: BTreeMap::from([("new".to_owned(), metrics)]),
+        device_loss_ms: BTreeMap::from([("new".to_owned(), 1000.0)]),
         platforms: BTreeMap::from([("new".to_owned(), Contract::NewBackend)]),
     }
 }
@@ -721,6 +724,40 @@ fn a_new_backend_is_held_to_the_old_ones_speed_and_to_no_gaps() {
     let gaps = old_new_rows("gaps", 10.0, 12.0, 1.0);
     let cells = old_new_cells("new", &gaps, &budget);
     assert_eq!(status_of(&cells, "old-new:underruns"), "failed");
+}
+
+#[test]
+fn a_backend_must_come_back_when_its_device_does() {
+    let budget = new_backend_budget();
+    let report = |name: &str, text: &str| {
+        let dir = empty_folder(name);
+        fs::write(dir.join("device-loss.json"), text).unwrap_or_else(|e| panic!("{e}"));
+        let cell = device_loss_cell("new", &dir, &budget).unwrap_or_else(|| panic!("a limit"));
+        cell["status"].as_str().unwrap_or("").to_owned()
+    };
+    assert_eq!(
+        report("in-time", r#"{"still_running":true,"heard_ms":300.0}"#),
+        "passed"
+    );
+    assert_eq!(
+        report("late", r#"{"still_running":true,"heard_ms":1300.0}"#),
+        "failed"
+    );
+    assert_eq!(
+        report("never", r#"{"still_running":true,"heard_ms":null}"#),
+        "failed"
+    );
+    assert_eq!(
+        report("crashed", r#"{"still_running":false,"heard_ms":300.0}"#),
+        "failed"
+    );
+    let empty = empty_folder("no-report");
+    let cell = device_loss_cell("new", &empty, &budget).unwrap_or_else(|| panic!("a limit"));
+    assert_eq!(cell["status"], "failed", "no evidence is a failure");
+    assert!(
+        device_loss_cell("another", &empty, &budget).is_none(),
+        "no device to lose"
+    );
 }
 
 #[test]

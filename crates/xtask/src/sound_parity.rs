@@ -81,6 +81,9 @@ pub(crate) struct Budget {
     mixer_memory: mixer::MixerMemory,
     /// Each new backend's verdicts against the old one, by metric.
     old_new: BTreeMap<String, BTreeMap<String, Limit>>,
+    /// How long each new backend with a device to lose may take to be heard again,
+    /// in milliseconds.
+    device_loss_ms: BTreeMap<String, f64>,
     /// Which platforms a parity claim needs, and who establishes the others.
     platforms: BTreeMap<String, Contract>,
 }
@@ -528,11 +531,32 @@ fn platform_cells(
     cells.extend(performance_cells(platform, &base, budget));
     if matches!(budget.platforms.get(platform), Some(Contract::NewBackend)) {
         cells.extend(old_new_cells(platform, &base, budget));
+        cells.extend(device_loss_cell(platform, &base, budget));
     } else {
         cells.extend(decoder_speed_cells(platform, &base, budget));
         cells.extend(mixer_speed_cells(platform, &base, budget));
     }
     cells
+}
+
+/// Whether a backend came back when its device did, from `base/device-loss.json`: none
+/// for a platform with no device to lose. Evidence that isn't there fails.
+fn device_loss_cell(platform: &str, base: &Path, budget: &Budget) -> Option<Value> {
+    let limit = budget.device_loss_ms.get(platform)?;
+    let path = base.join("device-loss.json");
+    let report: Value = fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default();
+    let alive = report["still_running"] == json!(true);
+    let heard = report["heard_ms"].as_f64();
+    let status = if alive && heard.is_some_and(|ms| ms <= *limit) {
+        "passed"
+    } else {
+        "failed"
+    };
+    let detail = format!("{report} from {}, limit {limit} ms", path.display());
+    Some(cell(platform, "device-loss", true, status, &detail))
 }
 
 /// A new backend against the old on its platform, from `base/old-new.jsonl`: the same

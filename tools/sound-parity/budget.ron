@@ -132,6 +132,12 @@
             "latency_ms": (max_ratio: 2.0, max_spread: 1.0, slows: false),
         },
     },
+    // How long a new backend may take to be heard again, from when an endpoint is back
+    // after the one it played on went away: the second the ticket gives a player whose
+    // headphones came out, in milliseconds.
+    device_loss_ms: {
+        "windows-in-house": 1000,
+    },
     // Each platform's evidence. Only a `Captured` one can support a parity claim,
     // and every cell of it is mandatory. `Blocked` says who must establish it.
     platforms: {

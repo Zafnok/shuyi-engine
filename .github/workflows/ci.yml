@@ -677,7 +677,8 @@ jobs:
           REVISION: ${{ github.sha }}
         run: |
           python tools/sound-parity/capture.py windows --set-endpoint --dir target/sound-parity \
-            --probe target/sound-parity/probe-old.exe --new-probe target/sound-parity/probe-new.exe --revision "$REVISION"
+            --probe target/sound-parity/probe-old.exe --new-probe target/sound-parity/probe-new.exe --revision "$REVISION" \
+            --device-id 'ROOT\MEDIA\0000'
       - name: Measure noisy timings again
         env:
           REVISION: ${{ github.sha }}

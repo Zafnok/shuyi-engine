@@ -131,6 +131,31 @@
             ],
         ),
         (
+            // What `capture.py` plays while it takes the device away and gives it
+            // back (`device-loss.json`); left alone, it only plays.
+            name: "device_loss",
+            backends: Some(["in-house"]),
+            steps: [
+                (at: 0, do: Sound("marker", 1.0)),
+                (at: 500, do: Start(1, "noise_loop", 1.0)),
+            ],
+            end: 12000,
+            expect: [
+                Level(from: 800, to: 1300, ch: Both, rms: 0.144),
+                Boundary(at: 1500),
+                Boundary(at: 2500),
+                Boundary(at: 3500),
+                Boundary(at: 4500),
+                Boundary(at: 5500),
+                Boundary(at: 6500),
+                Boundary(at: 7500),
+                Boundary(at: 8500),
+                Boundary(at: 9500),
+                Boundary(at: 10500),
+                Boundary(at: 11500),
+            ],
+        ),
+        (
             name: "gain",
             steps: [
                 (at: 0, do: Sound("marker", 1.0)),

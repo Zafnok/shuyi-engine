@@ -593,6 +593,51 @@ def native(args: argparse.Namespace) -> int:
     return 0
 
 
+def write_device_loss(player: Windows, base: Path, device: str) -> None:
+    """Takes the render device away while the probe plays, gives it back, and writes how
+    long the sound takes to be heard from when an endpoint is there again: what a player
+    has of unplugging headphones, on a machine with one device. `device` is the instance
+    `Disable-PnpDevice` takes. Recording stops with the device, so it starts again."""
+    import wasapi
+
+    def switch(verb: str) -> None:
+        subprocess.run(
+            ["pwsh", "-NoProfile", "-Command", f"{verb}-PnpDevice -InstanceId '{device}' -Confirm:$false"],
+            check=True,
+        )
+
+    (player.stage / "probe.txt").write_text("scenario device_loss\n", encoding="utf-8", newline="\n")
+    process = subprocess.Popen([str(player.probe)], cwd=player.stage, stderr=subprocess.DEVNULL)
+    report: dict[str, object] = {}
+    try:
+        time.sleep(2.5)
+        switch("Disable")
+        time.sleep(1.5)
+        report["still_running"] = process.poll() is None
+        switch("Enable")
+        deadline = time.monotonic() + 20
+        while True:
+            with contextlib.suppress(OSError):
+                wasapi.default_endpoint()
+                break
+            if time.monotonic() > deadline:
+                raise SystemExit("no render endpoint came back")
+            time.sleep(0.02)
+        back = time.monotonic()
+        recording = wasapi.Loopback(base / "device-loss.pcm")
+        heard = None
+        while heard is None and time.monotonic() < back + 5:
+            time.sleep(0.01)
+            if any(any(chunk) for chunk in list(recording.chunks)):
+                heard = time.monotonic() - back
+        recording.stop()
+        report["heard_ms"] = None if heard is None else heard * 1000
+    finally:
+        process.kill()
+        process.wait()
+    (base / "device-loss.json").write_text(json.dumps(report) + "\n", encoding="utf-8", newline="\n")
+
+
 def windows(args: argparse.Namespace) -> int:
     """The same as `native`, on Windows' default render endpoint. It may set that
     endpoint's format (`--set-endpoint`, on a runner's virtual device), and otherwise
@@ -633,6 +678,8 @@ def windows(args: argparse.Namespace) -> int:
             write_old_new(old, new, base)
     finally:
         keeper.close()
+    if new is not None and args.only is None and args.device_id:
+        write_device_loss(new, args.dir / "windows-in-house", args.device_id)
     return 0
 
 
@@ -722,6 +769,7 @@ def main() -> int:
     parser.add_argument("--set-endpoint", action="store_true", help="on a runner: set the virtual endpoint's format first")
     parser.add_argument("--new-probe", type=Path, help="windows: the probe of the in-house backend, recorded too")
     parser.add_argument("--new-page", type=Path, help="browser: the page of the in-house backend, recorded too")
+    parser.add_argument("--device-id", help="windows: the instance of the render device, to take away and give back")
     parser.add_argument("--only", help="the one platform of this mode to record, when it is measured again")
     args = parser.parse_args()
     return {"native": native, "windows": windows, "browser": browser, "encode": encode}[args.mode](args)
