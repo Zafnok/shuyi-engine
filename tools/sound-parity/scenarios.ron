@@ -132,9 +132,10 @@
         ),
         (
             // What `capture.py` plays while it takes the device away and gives it
-            // back (`device-loss.json`); left alone, it only plays.
+            // back: the `device-loss` cell, from `device-loss.json`. No run of its
+            // own records it, so it holds on no backend here.
             name: "device_loss",
-            backends: Some(["in-house"]),
+            backends: Some([]),
             steps: [
                 (at: 0, do: Sound("marker", 1.0)),
                 (at: 500, do: Start(1, "noise_loop", 1.0)),
