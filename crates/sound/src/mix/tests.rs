@@ -776,12 +776,31 @@ fn a_looped_regions_file_may_end_before_the_region_does() {
     let mut seen = Vec::new();
     while seen.len() < 16 {
         let frames = source.read(&mut out).unwrap_or_else(|e| panic!("{e}"));
+        assert!(frames > 0, "it comes round, it doesn't end");
         seen.extend_from_slice(&out[..frames * 2]);
     }
     assert_eq!(
         seen[..16],
         stereo_numbers([0, 1, 2, 1, 2, 1, 2, 1].into_iter())
     );
+}
+
+#[test]
+fn a_mono_regions_pre_roll_stops_exactly_at_the_regions_start() {
+    let region = Region::new(3, 5).unwrap_or_else(|| panic!("frames"));
+    let sound = ramp(9);
+    let first = SharedSource::new(SharedPcm::clone(&sound));
+    let mut source = LoopedRegion::new(first, region, move || {
+        Ok(SharedSource::new(SharedPcm::clone(&sound)))
+    });
+    let mut out = [0; 16];
+    let mut seen = Vec::new();
+    while seen.len() < 9 {
+        let frames = source.read(&mut out).unwrap_or_else(|e| panic!("{e}"));
+        assert!(frames > 0, "it comes round, it doesn't end");
+        seen.extend_from_slice(&out[..frames]);
+    }
+    assert_eq!(seen[..9], [1, 2, 3, 4, 5, 4, 5, 4, 5]);
 }
 
 #[test]
