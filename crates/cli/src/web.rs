@@ -35,13 +35,14 @@ use crate::project::Web;
 
 /// The shell's files: name and contents. `index.html` has `%TITLE%` and
 /// `%WASM%` in it, for the game's title and binary.
-const SHELL: [(&str, &str); 6] = [
+const SHELL: [(&str, &str); 7] = [
     ("index.html", include_str!("../web/index.html")),
     ("mq_js_bundle.js", include_str!("../web/mq_js_bundle.js")),
     ("sapp_jsutils.js", include_str!("../web/sapp_jsutils.js")),
     ("quad-storage.js", include_str!("../web/quad-storage.js")),
     ("gamepad.js", include_str!("../web/gamepad.js")),
     ("sound.js", include_str!("../web/sound.js")),
+    ("download.js", include_str!("../web/download.js")),
 ];
 
 /// Where a file of [`SHELL`] comes from, for `NOTICES.txt`.
@@ -54,13 +55,14 @@ enum Origin {
 }
 
 /// Each file of [`SHELL`], by name, and where it comes from.
-const SHELL_NOTICES: [(&str, Origin); 6] = [
+const SHELL_NOTICES: [(&str, Origin); 7] = [
     ("index.html", Origin::Engine),
     ("mq_js_bundle.js", Origin::Vendored),
     ("sapp_jsutils.js", Origin::Vendored),
     ("quad-storage.js", Origin::Vendored),
     ("gamepad.js", Origin::Engine),
     ("sound.js", Origin::Engine),
+    ("download.js", Origin::Engine),
 ];
 
 /// The row of [`notices::FILES`] of the shell's file `name`.
@@ -606,6 +608,9 @@ mod tests {
     /// The Rust side of `web/sound.js`: the engine's web sound output.
     const SOUND_WEB: &str = include_str!("../../sound-out/src/sys.rs");
 
+    /// The Rust side of `web/download.js`: the engine's web downloads.
+    const SESSIONS_WEB: &str = include_str!("../../app/src/sessions/web.rs");
+
     struct FakeWasmOpt<F>(F);
 
     impl<F: Fn(&Path, &Path) -> Result<bool, String>> WasmOpt for FakeWasmOpt<F> {
@@ -828,6 +833,7 @@ mod tests {
             ),
             ("gamepad.js", ""),
             ("sound.js", ""),
+            ("download.js", ""),
         ] {
             assert_eq!(
                 fs::read_to_string(dist.join(name)).unwrap(),
@@ -1408,6 +1414,43 @@ version = "1.2.3"
         let gamepad = at(r#"<script src="gamepad.js">"#);
         let load = at(r#"load("%WASM%")"#);
         assert!(bundle < gamepad && gamepad < load);
+    }
+
+    #[test]
+    fn download_js_provides_exactly_the_function_the_app_imports() {
+        let provided = identifiers_starting(shell("download.js"), "importObject.env.shuyi_");
+        assert_eq!(provided, ["importObject.env.shuyi_download"]);
+        // Beside the function, what the loader asks for its version.
+        let imported = identifiers_starting(SESSIONS_WEB, "fn shuyi_d");
+        assert_eq!(
+            imported,
+            ["fn shuyi_download", "fn shuyi_download_crate_version"]
+        );
+    }
+
+    #[test]
+    fn download_js_version_matches_the_app() {
+        let js = shell("download.js");
+        assert_eq!(
+            number_after(js, "var VERSION = "),
+            number_after(SESSIONS_WEB, "const PLUGIN_VERSION: u32 = ")
+        );
+        assert!(js.contains("version: VERSION"));
+        assert!(js.contains(r#"name: "shuyi_download""#));
+        assert!(SESSIONS_WEB.contains("fn shuyi_download_crate_version() -> u32"));
+    }
+
+    #[test]
+    fn index_html_loads_download_js_between_the_bundle_and_the_game() {
+        let html = shell("index.html");
+        let at = |needle: &str| {
+            html.find(needle)
+                .unwrap_or_else(|| panic!("index.html has `{needle}`"))
+        };
+        let bundle = at(r#"<script src="mq_js_bundle.js">"#);
+        let download = at(r#"<script src="download.js">"#);
+        let load = at(r#"load("%WASM%")"#);
+        assert!(bundle < download && download < load);
     }
 
     #[test]

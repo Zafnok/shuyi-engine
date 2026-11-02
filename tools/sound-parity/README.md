@@ -14,7 +14,7 @@ a sound path (`sound` in `.github/workflows/changes.yml`).
 | `capture.py` | Records the real output and the paired timings |
 | `wasapi.py` | Windows' recorder: WASAPI loopback, through the documented COM interfaces |
 | `install-endpoint.ps1` | CI's real render endpoint on a Windows runner, which has none: Scream, pinned by its hash |
-| `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0074](../../docs/adr/0074-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
+| `alsa-sys-held/` | Holds `alsa-sys`'s place, so that CPAL and quad-snd resolve in one build ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)) |
 | `ring_test.js` | The web sound ring's indices, under node |
 | `crates/app/examples/sound_probe.rs` | The probe: the shared player on the real backend |
 | `crates/xtask/src/sound_parity*` | The corpus's numbers, the comparator, the mixer's expected samples and the gate |

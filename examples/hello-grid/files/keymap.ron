@@ -15,6 +15,8 @@
                 "Right": ["Right", "d"],
                 "Confirm": ["Enter", "Space", "z"],
                 "Cancel": ["Backspace", "x"],
+                // The debug menu, with debug tools on.
+                "Debug": ["F2"],
             },
         ),
     ],
@@ -33,6 +35,8 @@
         "Right": ["DpadRight", "LeftStickRight"],
         "Confirm": ["South"],
         "Cancel": ["East"],
+        // Keyboard only.
+        "Debug": [],
     },
     // Each target's own buttons, named after its profile
     // (`targets/<id>.ron`): `cargo shuyi check --target` checks that every
@@ -46,6 +50,7 @@
             "Right": ["DpadRight"],
             "Confirm": ["East"],
             "Cancel": ["West"],
+            "Debug": [],
         },
         // The Deck's gamepad, as `pad`.
         "steam-deck": {
@@ -55,6 +60,7 @@
             "Right": ["DpadRight", "LeftStickRight"],
             "Confirm": ["South"],
             "Cancel": ["East"],
+            "Debug": [],
         },
     },
     repeat: (delay_ms: 300, interval_ms: 70),

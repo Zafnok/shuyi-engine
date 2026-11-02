@@ -521,6 +521,17 @@
             "type": "string"
           }
         },
+        "session": {
+          "description": "How far the session record played, with `session`.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionPlayed"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "sounds": {
           "description": "The sound cues asked for, in order.",
           "type": "array",
@@ -571,6 +582,71 @@
         "kind",
         "text",
         "data"
+      ]
+    },
+    "SessionDifference": {
+      "description": "The first frame of a session record that played differently.",
+      "type": "object",
+      "properties": {
+        "frame": {
+          "description": "The frame, counted from 1.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "played": {
+          "description": "The hash it played with.",
+          "type": "string"
+        },
+        "recorded": {
+          "description": "The hash the record holds for it (sixteen hex digits).",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "frame",
+        "recorded",
+        "played"
+      ]
+    },
+    "SessionPlayed": {
+      "description": "How far a session record played.",
+      "type": "object",
+      "properties": {
+        "file": {
+          "description": "The record's file, as given.",
+          "type": "string"
+        },
+        "first_difference": {
+          "description": "The first frame that played differently: the playing stopped there,\nand neither the script nor `frames` played.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionDifference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "frames": {
+          "description": "The record's frames played.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "of": {
+          "description": "The frames the record holds.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "frames",
+        "of"
       ]
     },
     "Sound": {

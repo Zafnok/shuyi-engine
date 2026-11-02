@@ -6,7 +6,7 @@ version = "0.4.0"
 edition = "2024"
 publish = false
 license = "MIT OR Apache-2.0"
-description = "Holds alsa-sys's place while quad-snd and CPAL share a build (ticket 3031, ADR-0074). Nothing is ever compiled against it"
+description = "Holds alsa-sys's place while quad-snd and CPAL share a build (ticket 3031, ADR-0075). Nothing is ever compiled against it"
 
 [lib]
 path = "src/lib.rs"

@@ -1,4 +1,4 @@
-//! The sound device behind the `in-house-sound` feature (ADR-0066, ADR-0074): the
+//! The sound device behind the `in-house-sound` feature (ADR-0066, ADR-0075): the
 //! shared player's rules over `shuyi-sound`'s mixer and `shuyi-sound-out`'s output.
 //!
 //! The mixer stays on the game's thread until the first play, so that sounds loading

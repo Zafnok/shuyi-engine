@@ -228,8 +228,8 @@ Visions of Shuyi.
 - **Either order with 3052:** both change `index.html` and `SHELL`.
   Whichever lands second keeps the other's part; `load("%WASM%")` stays
   in the page, so both tickets' tests hold.
-- **Either order with 2519:** if it is done, the `Cargo.toml` comment
-  and `lib.rs`'s docs name its `download.js` block too.
+- **From 2519 (done):** the `Cargo.toml` comment and `lib.rs`'s docs
+  name its `download.js` block too.
 - **From 3067 (done):** `run` reads the frame's time once,
   `pacing::seconds()` (the `start` it hands the pacer), and the
   synchronous frame for a lifecycle code hands `App::frame` that same

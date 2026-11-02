@@ -116,7 +116,33 @@ hashes differ, and that step's command is where to look.
   was drawn. Look at a frame with `cargo shuyi frame-png` (`shuyi-test`).
 
 Reproducing a player's crash from a crash report is still to come: today
-a bug is reproduced from a record of the rules.
+a bug is reproduced from a record of the rules, or from a session.
+
+## From a session record
+
+A debug build keeps its last ten sessions in `sessions/` under the game's data
+folder, each a whole run from its first frame, and its debug menu's "Save session"
+writes the one so far. Its log names the file. A session holds everything the
+platform gave the game, so it reproduces what a rules record can't: the menus, the
+clock, the store.
+
+1. Play it: `cargo shuyi run --session <file> --json`. Its answer's `scene` and
+   `top_screen` are where the session ended.
+2. Read `session.first_difference`. `null` means this build plays it the same, so
+   the bug is there at the end: read the scene, then `--script` and `--frames` go
+   on from it. A frame there means this build first parts from the session on that
+   frame (`ok` false, exit 1), and the answer is that frame's. `SH3007` means
+   another build made it: `--any-stamp` plays it, and a difference may then come
+   from that alone.
+3. In a session of tools, MCP's `start` takes `session`: `step`, `scene` and
+   `frame_png` go on from the frame it stopped on, and `reset` plays it again.
+4. Fix the bug, then keep the file as a golden session, a test that plays it
+   (`shuyi::platform::harness::assert_session`) in a test with `golden` in its name.
+   `SHUYI_BLESS=1 cargo test golden` writes it again when a change is meant.
+
+The game's tools need `session_from` (`SH3001` without it). A game on the short
+path has it. A game of its own shape moves its `Start` from its binary into its
+library, and plays the record from that.
 
 ## When it fails
 

@@ -34,6 +34,8 @@ use crate::prelude::*;
 use core::any::Any;
 use core::fmt;
 
+use shuyi_core::StateHash;
+
 use crate::ctx::{Ctx, GameData};
 use crate::frame::glyph_buffer::GlyphBuffer;
 
@@ -68,6 +70,17 @@ pub trait Screen<G: GameData> {
     ///
     /// [`ActionSet::ui`]: crate::input::ActionSet::ui
     fn actions(&self) -> Option<Vec<G::Action>> {
+        None
+    }
+
+    /// The hash of the game's state this screen holds, which goes in each
+    /// frame's hash in a session record ([`Game::state_hash`]), most simply
+    /// `shuyi_core::state_hash(&self.rules).ok()`: so a playback that plays
+    /// differently is found at the frame the state moved. `None` unless the
+    /// screen opts in.
+    ///
+    /// [`Game::state_hash`]: crate::Game::state_hash
+    fn state_hash(&self) -> Option<StateHash> {
         None
     }
 
@@ -287,6 +300,11 @@ impl<G: GameData> ScreenStack<G> {
             .iter()
             .rev()
             .find_map(|s| s.as_any()?.downcast_ref())
+    }
+
+    /// The top-most screen's [`Screen::state_hash`] that has one.
+    pub fn state_hash(&self) -> Option<StateHash> {
+        self.screens.iter().rev().find_map(|s| s.state_hash())
     }
 
     /// The top-most screen of type `T`, mutable ([`Screen::as_any_mut`]).

@@ -51,6 +51,11 @@ use crate::headless::{HeadlessPlatform, PlayingSound, Presented};
 use crate::platform::{Millis, SystemEvent};
 use crate::session::{self, Playback, Played, SessionError, SessionRecord, Stamps};
 
+#[cfg(feature = "std")]
+mod kept;
+#[cfg(feature = "std")]
+pub use kept::assert_session;
+
 /// Simulated length of one frame, in seconds (60 fps).
 pub const FRAME_DT: f32 = 1.0 / 60.0;
 
@@ -715,6 +720,12 @@ impl<G: GameData> Harness<G> {
         &self.app
     }
 
+    /// The [`App`] running the game, mutable, to take what it hands a
+    /// backend ([`App::take_session_save`]).
+    pub fn app_mut(&mut self) -> &mut App<G> {
+        &mut self.app
+    }
+
     /// The game's log, kept by its [`App`]: every line from frame 0 (what
     /// its context logged before the Harness started), each with the frame
     /// it was given in.
@@ -802,6 +813,50 @@ impl<G: GameData> Harness<G> {
             .unwrap_or_else(|| panic!("Harness: the game isn't running"));
         game.into_ctx().storage.into_computer()
     }
+}
+
+/// Plays the session record in `text` from `start`, stamps checked, to its
+/// end ([`Harness::from_session`]). The error says why it can't be played,
+/// or names the first frame that played differently.
+pub fn check_session<G: GameData>(start: Start<G>, text: &str) -> Result<Played, String> {
+    let record = SessionRecord::from_ron(text).map_err(|e| e.to_string())?;
+    let mut harness =
+        Harness::from_session(start, &record, Stamps::Check).map_err(|e| e.to_string())?;
+    let played = harness.play_all().clone();
+    match played.first_difference {
+        Some(difference) => Err(format!(
+            "frame {} played differently: the record says {}, this build {}",
+            difference.frame, difference.recorded, difference.played
+        )),
+        None => Ok(played),
+    }
+}
+
+/// The session record in `text` made again from `start`: every frame played,
+/// differences and all, and recorded. The same inputs, this build's stamp
+/// and hashes. The error says why it can't be played, or that this build
+/// reads the platform differently, so its inputs are no longer the record's.
+pub fn bless_session<G: GameData>(start: Start<G>, text: &str) -> Result<String, String> {
+    let old = SessionRecord::from_ron(text).map_err(|e| e.to_string())?;
+    let (start, _) = session::prepare(start, &old, Stamps::Ignore).map_err(|e| e.to_string())?;
+    let mut platform = HeadlessPlatform::from_session(&old);
+    let mut app = App::new(start);
+    // No frame has run, so it always turns on.
+    let _ = app.record();
+    let mut playback = Playback::new(&old);
+    while playback.next(&mut app, &mut platform).is_some() {}
+    let mut new = app
+        .take_session()
+        .ok_or("the record stopped being recorded")?;
+    new.voice_manifest.clone_from(&old.voice_manifest);
+    let inputs = |record: &SessionRecord| -> Vec<Vec<RawInputEvent>> {
+        let frames = record.frames.iter();
+        frames.map(|frame| frame.input.clone()).collect()
+    };
+    if inputs(&new) != inputs(&old) {
+        return Err("this build reads the platform differently: record the session again".into());
+    }
+    Ok(new.to_ron())
 }
 
 fn parse(chord: &str) -> Chord {

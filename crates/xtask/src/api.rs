@@ -22,7 +22,7 @@
 //!   `device` module is not checked, and of `main!` only that it exists: a
 //!   change to its arms shows in neither tool.
 //! - `shuyi-app` with the features it had before `in-house-sound`, as that one
-//!   brings CPAL, which needs the root's patch (ADR-0074), and the semver check builds
+//!   brings CPAL, which needs the root's patch (ADR-0075), and the semver check builds
 //!   a crate outside this workspace.
 //! - The other eight with each tool's own default: the listing has their
 //!   default features, and the semver check the features its heuristic turns
@@ -98,7 +98,7 @@ pub const API_CRATES: &[ApiCrate] = &[
     defaults("shuyi-assets"),
     defaults("shuyi-ui"),
     defaults("shuyi-platform"),
-    // Its `in-house-sound` can't be built outside this workspace (ADR-0074): the rest,
+    // Its `in-house-sound` can't be built outside this workspace (ADR-0075): the rest,
     // which is what the semver check's own choice comes to without it.
     ApiCrate {
         name: "shuyi-app",

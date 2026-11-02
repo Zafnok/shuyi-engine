@@ -225,6 +225,7 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
 
     let ended = client.call("stop", &json!({}));
     assert_eq!(ended["structuredContent"]["result"]["frames"], 0, "{ended}");
+    start_from_the_golden_session(&mut client);
     let after = client.call("scene", &json!({}));
     assert_eq!(after["structuredContent"]["code"], "SH0002");
 
@@ -233,6 +234,38 @@ fn an_agent_starts_hello_grid_steps_into_the_stage_and_looks_at_it() {
     client.stdin = None;
     let status = client.server.wait().unwrap();
     assert!(status.success(), "{status}");
+}
+
+/// Starts Hello, Grid from its golden session, reads the scene, steps on
+/// from it, and resets to the record's end, on the same frame and scene.
+fn start_from_the_golden_session(client: &mut Client) {
+    let started = client.call(
+        "start",
+        &json!({ "project": "examples/hello-grid",
+                "session": { "file": "tests/sessions/stage.session.ron" } }),
+    );
+    assert_eq!(started["isError"], false, "{started}");
+    let result = &started["structuredContent"]["result"];
+    let frames = result["frames"].as_u64().unwrap_or_default();
+    assert_eq!(result["session"]["frames"], frames, "{result}");
+    assert_eq!(result["session"]["first_difference"], Value::Null);
+    assert_eq!(result["top_screen"], "stage", "{result}");
+    let scene = |client: &mut Client| {
+        let scene = client.call("scene", &json!({}));
+        assert_eq!(scene["isError"], false, "{scene}");
+        scene["structuredContent"]["result"]["scene"].clone()
+    };
+    let first = scene(client);
+    let stepped = client.call("step", &json!({ "frames": 3 }));
+    let on = stepped["structuredContent"]["result"]["frames"].as_u64();
+    assert_eq!(on, Some(frames + 3), "{stepped}");
+    let reset = client.call("reset", &json!({}));
+    assert_eq!(reset["isError"], false, "{reset}");
+    let result = &reset["structuredContent"]["result"];
+    assert_eq!(result["frames"], frames, "{result}");
+    assert_eq!(scene(client), first);
+    let ended = client.call("stop", &json!({}));
+    assert_eq!(ended["isError"], false, "{ended}");
 }
 
 /// The records' frames in `perf`'s answer.

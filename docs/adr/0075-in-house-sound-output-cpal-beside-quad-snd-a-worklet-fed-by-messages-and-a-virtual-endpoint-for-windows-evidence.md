@@ -1,4 +1,4 @@
-# ADR-0074: In-house sound output: CPAL beside quad-snd, a worklet fed by messages, and a virtual endpoint for Windows' evidence
+# ADR-0075: In-house sound output: CPAL beside quad-snd, a worklet fed by messages, and a virtual endpoint for Windows' evidence
 
 - **Status:** Accepted
 - **Date:** 2026-11-02

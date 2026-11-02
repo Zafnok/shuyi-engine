@@ -43,7 +43,7 @@ pub fn play_randomly(seed: u64) -> Report<Garden> {
 mod tests {
     use proptest::prelude::*;
     use shuyi::core::state_hash;
-    use shuyi::platform::harness::Harness;
+    use shuyi::platform::harness::{Harness, check_session};
     use shuyi::platform::session::Stamps;
     use shuyi_cli::contract::replay::turns;
 
@@ -121,4 +121,17 @@ mod tests {
         assert_eq!(at.screens(), ["title", "garden"]);
     }
     // ANCHOR_END: session
+
+    // ANCHOR: keep_session
+    #[test]
+    fn the_golden_session_plays_as_it_did() {
+        // A real test reads a file you kept: `assert_session(game().start(), path)`.
+        let mut first = Harness::start_recording(game().start()).unwrap();
+        first.keys("Enter Right");
+        let text = first.session().unwrap().to_ron();
+
+        let played = check_session(game().start(), &text).unwrap();
+        assert_eq!(played.frames, played.of);
+    }
+    // ANCHOR_END: keep_session
 }

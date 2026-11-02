@@ -23,7 +23,7 @@ This ticket adds Linux (the Steam Deck included) and macOS through CPAL.
 - **`links = "alsa"`.** CPAL's Linux path needs `alsa-sys` and quad-snd's needs
   `quad-alsa-sys`, each with `links = "alsa"`, which Cargo allows once in a build on
   any target. 3031 patches `alsa-sys` to an empty crate
-  (`tools/sound-parity/alsa-sys-held`, [ADR-0074](../../docs/adr/0074-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md))
+  (`tools/sound-parity/alsa-sys-held`, [ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md))
   and builds CPAL only for Windows. Linux needs real ALSA, so this ticket starts by
   replacing that patch: a held crate that re-exports `quad-alsa-sys`'s bindings under
   the name CPAL's `alsa` wants, or `quad-alsa-sys` patched to use `alsa-sys`, proved

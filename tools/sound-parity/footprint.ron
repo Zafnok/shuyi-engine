@@ -118,7 +118,7 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "//! - `shuyi-app` with the features it had before `in-house-sound`, as that one\n//!   brings CPAL, which needs the root's patch (ADR-0074), and the semver check builds\n//!   a crate outside this workspace.\n//! - The other eight with each tool's own default",
+            find: "//! - `shuyi-app` with the features it had before `in-house-sound`, as that one\n//!   brings CPAL, which needs the root's patch (ADR-0075), and the semver check builds\n//!   a crate outside this workspace.\n//! - The other eight with each tool's own default",
             with: "//! - The other seven with each tool's own default",
         ),
         Replace(
@@ -128,7 +128,7 @@ text = \"hands a mix to the system: CPAL on Windows, a Web Audio worklet in the 
         ),
         Replace(
             file: "crates/xtask/src/api.rs",
-            find: "    // Its `in-house-sound` can't be built outside this workspace (ADR-0074): the rest,\n    // which is what the semver check's own choice comes to without it.\n    ApiCrate {\n        name: \"shuyi-app\",\n        features: Features::Only(&[\"link\", \"capture\", \"sound-probe\"]),\n    },\n",
+            find: "    // Its `in-house-sound` can't be built outside this workspace (ADR-0075): the rest,\n    // which is what the semver check's own choice comes to without it.\n    ApiCrate {\n        name: \"shuyi-app\",\n        features: Features::Only(&[\"link\", \"capture\", \"sound-probe\"]),\n    },\n",
             with: "    defaults(\"shuyi-app\"),\n",
         ),
         Replace(
@@ -294,7 +294,7 @@ sound-probe = []
             find: r##"# `in-house-sound`: the sound replacement's backend, over `shuyi-sound`'s mixer and
 # `shuyi-sound-out`, in quad-snd's place (ticket 3031, ADR-0068): the one switch. Off
 # by default. A game that turns it on needs the root Cargo.toml's patch of `alsa-sys`
-# (ADR-0074).
+# (ADR-0075).
 in-house-sound = ["dep:shuyi-sound", "dep:shuyi-sound-out"]
 "##,
             with: "",
@@ -377,8 +377,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/web.rs",
-            find: "const SHELL: [(&str, &str); 6] = [",
-            with: "const SHELL: [(&str, &str); 5] = [",
+            find: "const SHELL: [(&str, &str); 7] = [",
+            with: "const SHELL: [(&str, &str); 6] = [",
         ),
         Replace(
             file: "crates/cli/src/web.rs",
@@ -387,8 +387,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/web.rs",
-            find: "const SHELL_NOTICES: [(&str, Origin); 6] = [",
-            with: "const SHELL_NOTICES: [(&str, Origin); 5] = [",
+            find: "const SHELL_NOTICES: [(&str, Origin); 7] = [",
+            with: "const SHELL_NOTICES: [(&str, Origin); 6] = [",
         ),
         Replace(
             file: "crates/cli/src/web.rs",
@@ -421,8 +421,8 @@ pub(crate) mod device {
         ),
         Replace(
             file: "crates/cli/src/export/tests.rs",
-            find: "const WEB_FILES: [&str; 9] = [",
-            with: "const WEB_FILES: [&str; 8] = [",
+            find: "const WEB_FILES: [&str; 10] = [",
+            with: "const WEB_FILES: [&str; 9] = [",
         ),
         Replace(
             file: "crates/cli/src/export/tests.rs",

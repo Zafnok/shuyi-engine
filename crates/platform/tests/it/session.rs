@@ -13,14 +13,15 @@ use shuyi_core::StateHash;
 use shuyi_core::made::{ContentHash, Made};
 use shuyi_platform::SystemEvent;
 use shuyi_platform::app::{Card, Start};
-use shuyi_platform::harness::{FRAME_DT, Harness};
+use shuyi_platform::harness::{FRAME_DT, Harness, assert_session, bless_session, check_session};
 use shuyi_platform::platform::Look;
 use shuyi_platform::session::{FORMAT_VERSION, Played, SessionError, SessionRecord, Stamps};
+use shuyi_ui::debug::DebugMenuScreen;
 use shuyi_ui::frame::glyph_buffer::GlyphBuffer;
 use shuyi_ui::input::{Chord, Key};
 use shuyi_ui::screen::{FrameInput, Screen, Transition};
 use shuyi_ui::toy::{self, Action, Home, Toy, ToyCtx};
-use shuyi_ui::{Game, GameHooks, KeyPrompt, RawInputEvent};
+use shuyi_ui::{Game, GameHooks, KeyPrompt, RawInputEvent, ScreenHook};
 
 /// An empty font and image table: the toy draws neither.
 static FONT: FontAtlasDef = FontAtlasDef {
@@ -494,4 +495,182 @@ fn a_harness_with_no_record_plays_nothing() {
     assert_eq!(h.play_all(), &Played::default());
     assert_eq!(h.frame_count(), 0);
     assert_eq!(h.session(), None);
+}
+
+/// The text of a record of the toy at its home, a few keys in.
+fn recorded_text() -> String {
+    let mut h = recording(home());
+    h.keys("Enter x").wait(0.1);
+    record_of(&h).to_ron()
+}
+
+#[test]
+fn check_session_plays_a_records_text_and_names_a_difference() {
+    let text = recorded_text();
+    let played = check_session(home(), &text).unwrap();
+    assert_eq!(played.frames, played.of);
+    assert!(played.first_difference.is_none());
+    // A hash that isn't what this build plays: named at its frame.
+    let mut record = SessionRecord::from_ron(&text).unwrap();
+    let frame = record
+        .frames
+        .iter()
+        .position(|frame| frame.hash.is_some() && frame.dt > 0)
+        .unwrap();
+    record.frames[frame].hash = record.frames[frame].hash.map(|hash| hash ^ 1);
+    let error = check_session(home(), &record.to_ron()).unwrap_err();
+    assert!(
+        error.starts_with(&format!("frame {} played differently: ", frame + 1)),
+        "{error}"
+    );
+    // What isn't a record says so, and another build's stamp is refused.
+    assert!(check_session(home(), "nope").is_err());
+    let made = Made::new("other", ContentHash(1));
+    let stamped = home().made(Made::new("this", ContentHash(2)));
+    let mut other = SessionRecord::from_ron(&text).unwrap();
+    other.made = Some(made);
+    let error = check_session(stamped, &other.to_ron()).unwrap_err();
+    assert!(error.starts_with("made with "), "{error}");
+}
+
+#[test]
+fn bless_session_keeps_the_inputs_and_takes_this_builds_stamp_and_hashes() {
+    let text = recorded_text();
+    let old = SessionRecord::from_ron(&text).unwrap();
+    // This build hashes its state otherwise, and is stamped.
+    let made = Made::new("this", ContentHash(2));
+    let this_build = || {
+        home().made(made.clone()).state_hash(|game| {
+            let home = game.screen::<Home>()?;
+            Some(StateHash(u64::try_from(home.frames).ok()? + 1))
+        })
+    };
+    assert!(check_session(this_build(), &text).is_err());
+    let blessed = bless_session(this_build(), &text).unwrap();
+    let new = SessionRecord::from_ron(&blessed).unwrap();
+    assert_eq!(new.made.as_ref(), Some(&made));
+    assert_eq!(new.frames.len(), old.frames.len());
+    for (new, old) in new.frames.iter().zip(&old.frames) {
+        assert_eq!(new.input, old.input);
+        assert_eq!(new.dt, old.dt);
+    }
+    assert_ne!(new.frames, old.frames);
+    assert!(check_session(this_build(), &blessed).is_ok());
+    // Blessing again changes nothing.
+    assert_eq!(bless_session(this_build(), &blessed).unwrap(), blessed);
+}
+
+/// A screen that holds a state, which it hashes.
+struct Holds(u64);
+
+impl Screen<Toy> for Holds {
+    fn name(&self) -> &'static str {
+        "holds"
+    }
+
+    fn update(&mut self, _: &mut ToyCtx, _: &FrameInput<Action>) -> Transition<Toy> {
+        Transition::None
+    }
+
+    fn draw(&self, _: &ToyCtx, _: &mut GlyphBuffer) {}
+
+    fn state_hash(&self) -> Option<StateHash> {
+        Some(StateHash(self.0))
+    }
+}
+
+#[test]
+fn a_screens_state_hash_goes_in_the_frames_through_the_game() {
+    let holding = |state| start_at(move || Box::new(Holds(state))).state_hash(Game::state_hash);
+    let h = recording(holding(1));
+    let text = record_of(&h).to_ron();
+    assert!(check_session(holding(1), &text).is_ok());
+    // The load's frame, the second, is where the state is first there.
+    let error = check_session(holding(2), &text).unwrap_err();
+    assert!(error.starts_with("frame 2 "), "{error}");
+}
+
+/// The toy at its [`Home`], its Debug action opening the debug menu.
+fn with_a_debug_menu() -> Start<Toy> {
+    Start::new(Card::text("Toy"), look, |setup| {
+        let hooks = GameHooks {
+            debug: Some(ScreenHook {
+                name: DebugMenuScreen::<Toy>::NAME,
+                open: |ctx| Box::new(DebugMenuScreen::new(ctx, Vec::new())),
+            }),
+            debug_screens: &[DebugMenuScreen::<Toy>::NAME],
+            ..GameHooks::default()
+        };
+        Ok(Game::new(
+            setup.ctx(toy::ctx()),
+            Box::new(Home::default()),
+            hooks,
+        ))
+    })
+    .before_load(|setup| setup.key_prompt = KeyPrompt::Off)
+}
+
+/// Whether the debug menu on screen lists "Save session".
+fn lists_save(h: &Harness<Toy>) -> bool {
+    assert_eq!(h.top_screen(), DebugMenuScreen::<Toy>::NAME);
+    h.snapshot().contains("Save session")
+}
+
+#[test]
+fn the_debug_menu_saves_only_a_run_recorded_or_played() {
+    // A run that isn't recorded: no entry.
+    let mut plain = started(Harness::start(with_a_debug_menu()));
+    plain.keys("F2");
+    assert!(!lists_save(&plain));
+
+    let mut h = recording(with_a_debug_menu());
+    h.keys("F2");
+    assert!(lists_save(&h));
+    assert!(!h.app_mut().take_session_save());
+    // Choosing it keeps the menu open, and asks once.
+    h.keys("f");
+    assert!(lists_save(&h));
+    assert!(h.app_mut().take_session_save());
+    assert!(!h.app_mut().take_session_save());
+    h.keys("d").wait(0.1);
+    assert_eq!(h.top_screen(), "home");
+
+    // A session that chose it plays back with no difference, the same menu
+    // showing as it plays.
+    let record = record_of(&h);
+    assert!(check_session(with_a_debug_menu(), &record.to_ron()).is_ok());
+    let mut played = playing(with_a_debug_menu(), &record);
+    let opened = h.screen_log().iter().find(|(_, s)| s.len() > 1).unwrap().0;
+    played.play_to(opened);
+    assert!(lists_save(&played));
+}
+
+/// A file of `text`, for a test of `assert_session`, in the test's own part
+/// of the target folder.
+fn kept_file(name: &str, text: &str) -> std::path::PathBuf {
+    let path = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
+    std::fs::write(&path, text).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    path
+}
+
+#[test]
+fn assert_session_plays_a_kept_file_and_leaves_it_as_it_is() {
+    // A blank line a new record wouldn't have: writing it again would show.
+    let text = format!("{}\n\n", recorded_text());
+    let path = kept_file("plays.session.ron", &text);
+    assert_session(home(), &path);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), text);
+}
+
+#[test]
+#[should_panic(expected = "played differently")]
+#[cfg_attr(target_os = "wasi", ignore = "WASI has no unwinding")]
+fn assert_session_fails_a_kept_file_that_plays_differently() {
+    let mut record = SessionRecord::from_ron(&recorded_text()).unwrap();
+    let frame = record
+        .frames
+        .iter_mut()
+        .find_map(|frame| frame.hash.as_mut());
+    *frame.unwrap() ^= 1;
+    assert_session(home(), kept_file("differs.session.ron", &record.to_ron()));
 }

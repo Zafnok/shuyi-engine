@@ -24,6 +24,9 @@
 //! | `reset` | the game started again as `start` started it | [`StartOutput`] |
 //! | `stop` | the game stopped | [`StopOutput`] |
 //!
+//! `start` with `session` starts from a session record instead, played to
+//! its end, and `reset` plays it again.
+//!
 //! `start` with `link` attaches the session to a debug build already
 //! running in its window instead, over the live link ([`attached`]).
 //!
@@ -56,7 +59,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use crate::contract::perf::PerfSummary;
-use crate::contract::session::{Event, Sound};
+use crate::contract::session::{Event, SessionInput, SessionPlayed, Sound};
 use crate::contract::{Op, VERSION, op_schemas};
 use crate::frame_png::Script;
 use crate::game::{GameArg, GameOption};
@@ -85,6 +88,11 @@ pub struct StartInput {
     /// A debug build already running in its window, to attach the session
     /// to over the live link instead of starting the game headless.
     pub link: Option<StartLink>,
+    /// A session record to start from, as `run`'s: played to its end, or
+    /// the first frame this build plays differently (`ok` false, the game
+    /// kept on that frame), and `step`, `scene` and `frame_png` go on from
+    /// there; `reset` plays it again. No start options with it.
+    pub session: Option<SessionInput>,
 }
 
 /// The running build `start` attaches to: its log line `shuyi link:
@@ -144,6 +152,8 @@ pub struct StartOutput {
     pub top_screen: String,
     /// The open screens, bottom first.
     pub screens: Vec<String>,
+    /// How far the session record played, if it started from one.
+    pub session: Option<SessionPlayed>,
 }
 
 /// What `step` plays.

@@ -32,6 +32,8 @@ itself, so a game needs no copy of its own.
 - `sound.js`: sound output, a miniquad JS plugin over Web Audio, which a build
   with `shuyi-app`'s `in-house-sound` feature plays through. The engine's own
   code, not vendored. See below.
+- `download.js`: offers the browser a file, for the debug menu's "Save
+  session". The engine's own code, not vendored. See below.
 
 In `dist`, each vendored script starts with one line naming its work
 and pointing at the notices, then the committed file:
@@ -147,6 +149,15 @@ When bumping the `quad-storage` crate version, re-vendor `quad-storage.js`
 from the matching commit/tag and update this note; `sapp_jsutils.js` can
 just be re-copied from the new version of the crate. Both come in
 Dependabot's `backend` group too.
+
+## The engine's own `download.js`
+
+- `shuyi_download` makes a `Blob` of the bytes it is handed and clicks a
+  temporary link. `crates/app/src/sessions/web.rs` declares it. The two files
+  must list the same function and the same plugin version: `shuyi-cli`'s tests
+  fail otherwise.
+- Only a build with debug tools calls it, when the debug menu asks. The web
+  never quits, so nothing saves by itself.
 
 ## The engine's own `gamepad.js`
 

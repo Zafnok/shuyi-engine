@@ -19,7 +19,7 @@ is another way to reach them.
 | `lint` | Everything wrong with the shape of the game's code, each finding with its file, line, problem code and what to do: `check-keys`' findings (`SH2101`), `check-text`'s (`SH2102`: every literal when there are more than `check_text.max_literals`, and every data name a screen reads), and the rules crate's fence ([ADR-0032](adr/0032-the-layers-as-data-checked-over-cargo-metadata-a-float-ban-in-the-simulations-and-a-new-games-rules-crate-kept-pure.md) §4) on the package `shuyi.ron`'s `rules` names: `cargo clippy` read for `disallowed_types`, `disallowed_methods` and `float_arithmetic`, with clippy's reason (`SH2103`, with the column), and `cargo tree` for a screen, device or tool crate or outside luck under it (`SH2104`, with the `cargo tree -i` that shows the way in). A part `shuyi.ron` lacks is a limit | the project file and cargo |
 | `modules` | The catalog of the engine the game builds with ([`modules.md`](modules.md)), by concern: each answer, who gives it (`default` or a module's crate), its status and its tickets; every module the engine builds, with its feature of `shuyi` and its metadata (what it answers, serves and sits beside); and the modules the game has on, from its `Cargo.toml` | the game's `Cargo.toml` and its engine |
 | `add <module>` | Turns a module of the engine on (`physics` or `shuyi-physics`): its feature of `shuyi` in the game's `Cargo.toml`, its layout kept; its skill copied into `.claude/skills/` if the game keeps one; its README's first paragraph. It warns of an alternative already on, with the README's section on using both; gives the line to add if the game's code never installs `shuyi::enabled_modules`, and the line for its `formats()` if the module adds formats. A second run changes nothing (`changed: false`); a name that isn't built fails with `SH0003` and the names that are | the game's `Cargo.toml` and its engine |
-| `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`, `reloaded`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)). `run --watch`, alone, is no operation of the contract: it starts the game's program in its window in a debug build, the folder `shuyi.ron`'s `assets` names (`assets` until it says) laid over its embedded files, and a file changed there reloads ([`formats.md`](formats.md#hot-reload)); it answers nothing, `--json` is refused, and it ends with the window | the game |
+| `run [steps] [--frames N] [--perf] [--perf-out <file.jsonl>] [--session <file> [--any-stamp]]` | Starts the game headless, plays the steps, runs N frames more: the top screen, the screens, the scene, the frame as text, what happened, the sounds, the [log](#the-log), and the modules the game installed with the hooks each declared (`before_update`, `draw_over`, `reloaded`), its state's types and its debug menu entries. `--perf` measures each frame and answers a summary of the times, `perf`; `--perf-out` also writes every kept frame as a JSON line, from the project's folder, and implies `--perf` ([Perf traces](#perf-traces)). `--session` starts from a session record instead of the game's start options ([Session records](#session-records)). `run --watch`, alone, is no operation of the contract: it starts the game's program in its window in a debug build, the folder `shuyi.ron`'s `assets` names (`assets` until it says) laid over its embedded files, and a file changed there reloads ([`formats.md`](formats.md#hot-reload)); it answers nothing, `--json` is refused, and it ends with the window | the game |
 | `scene [steps]` | The same, answering with the scene or stage on screen and the log | the game |
 | `replay <record> [<other>] [--any-stamp]` | Re-runs a record by the game's rules: a state hash per step, and the first step where two runs differ. A record stamped with what made it (`made`: the engine's version, the game's word for its build, the fingerprint of its content) by another build is refused with `SH3007`, naming each part that differs, before anything is compared; `--any-stamp` runs it anyway, with a limit that a difference may come from the stamp. A record with no stamp, or a game whose tools give none, runs with a limit saying so. The text shows each record's stamp | the game |
 | `bots <games>` | The game's bots play: how each play ended, how long it took, the game's measures, a record of each | the game |
@@ -56,10 +56,10 @@ Every operation answers with the same shape, `Answer<T>`:
 
 ```json
 {
-  "contract": 34,
+  "contract": 35,
   "op": "scene",
   "ok": false,
-  "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [] },
+  "result": { "frames": 0, "top_screen": "title", "scene": null, "log": [], "session": null },
   "error": null,
   "code": null,
   "help": null,
@@ -362,6 +362,28 @@ its page. **A new error gets a new code, its row and its page in the
 same PR**; a test fails on a page with no row, a code twice, or a row no
 source uses.
 
+## Session records
+
+`run` and `scene` take `--session <file>`, from the project's folder (a file from
+a debug build's `sessions/` folder has an absolute path): a session record, which
+plays from the game's real start with no start options, to its end. The script
+and `--frames` then go on from there, and the `limits` say what no longer comes
+from the record. `session` in the answer holds the `file`, the `frames` played,
+the frames it holds (`of`) and the `first_difference`.
+
+- A frame that plays differently stops it there: `ok` is false with no `code`, and
+  `exit 1`. `first_difference` holds its `frame` and both hashes (`recorded`,
+  `played`, as hex text), the script and `--frames` don't play, and the answer's
+  `frames`, `top_screen`, `frame` and `scene` are that frame's.
+- A record stamped by another build, or with other content, is refused (`SH3007`)
+  unless `--any-stamp`: it may then differ for that reason alone, and the `limits`
+  say so.
+- A file that can't be read or isn't a record is `SH3004`, naming the file. A game
+  whose tools give no `GameTools::session_from` answers `SH3001`.
+
+The session's `start` takes the same record as `session`, and keeps the game on
+the differing frame to look at, with `ok` false.
+
 ## The schemas
 
 Each operation's input and answer has a JSON schema, generated from the
@@ -409,7 +431,7 @@ A **session** keeps one game running headless between calls:
 
 | Tool | Input | Does |
 | ---- | ----- | ---- |
-| `start` | `project`, `start` (the game's start options) | builds the game's tool program and starts its game; the answer lists the options it offers. A game already running is stopped |
+| `start` | `project`, `start` (the game's start options), or `session` (`file`, `any_stamp`) in their place | builds the game's tool program and starts its game; the answer lists the options it offers. From a [session record](#session-records), the game is on the frame it stopped on, and `reset` plays the record again. A game already running is stopped |
 | `step` | `script`, `frames` | plays the script, then idle frames; answers as `run` does, for everything since the start |
 | `scene` | nothing | the scene on screen now, and the log, as `scene` answers |
 | `frame_png` | `scale` (1 to 8) | a picture of the frame now, as an image, with its size |

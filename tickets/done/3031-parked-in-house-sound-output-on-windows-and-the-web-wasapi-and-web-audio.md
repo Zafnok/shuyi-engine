@@ -213,7 +213,7 @@ sounds wrong, cuts out, or starts late.
 
 - **CPAL and quad-snd can't be in one build as they are**: both bring a crate with
   `links = "alsa"`. The root `Cargo.toml` patches `alsa-sys` to an empty crate, and
-  CPAL is built only for Windows ([ADR-0074](../../docs/adr/0074-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)).
+  CPAL is built only for Windows ([ADR-0075](../../docs/adr/0075-in-house-sound-output-cpal-beside-quad-snd-a-worklet-fed-by-messages-and-a-virtual-endpoint-for-windows-evidence.md)).
   A game that turns `in-house-sound` on needs the same patch. 3032 and 3084 say what
   that means for them.
 - **The log line** is the backend's `warn`, not `log::warn!`: see the criteria.

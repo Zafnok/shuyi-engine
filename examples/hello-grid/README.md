@@ -115,3 +115,10 @@ made from it) is under the SIL Open Font License 1.1:
 own: the tileset is the font's glyphs on the palette's colors (and in
 black and white in `files@playdate/`), and the sounds are sine blips the
 game makes when it starts.
+
+## Debug tools
+
+In a debug build `F2` opens the debug menu, whose "Save session" keeps the
+session so far: a file in `sessions/` under the game's data folder, or a download
+in the web build. Quitting keeps it too. `cargo shuyi run --session <file>` plays
+one. `tests/sessions/stage.session.ron` is kept as a test (`tests/golden.rs`).

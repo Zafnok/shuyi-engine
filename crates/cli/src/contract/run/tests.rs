@@ -1,7 +1,10 @@
 //! `run` and `scene` on a made-up game.
 
 use super::*;
-use crate::contract::fake::{Fake, FakeSession, OPTIONS};
+use crate::contract::fake::{Fake, FakeSession, OPTIONS, stamp};
+use crate::game::GameArg;
+use shuyi_core::ContentHash;
+use shuyi_platform::session::SessionRecord;
 use shuyi_ui::perf::{HeapCounts, PerfLine, TagClass, TagRow};
 
 fn args(items: &[&str]) -> Vec<String> {
@@ -276,6 +279,7 @@ fn what_run_and_scene_saw_reads_for_people() {
         log: Vec::new(),
         modules: Vec::new(),
         perf: None,
+        session: None,
     };
     assert_eq!(
         text(&bare),
@@ -291,6 +295,7 @@ fn what_run_and_scene_saw_reads_for_people() {
             data: serde_json::Value::Null,
         }),
         log: Vec::new(),
+        session: None,
     };
     assert_eq!(
         scene_output_text(&shown),
@@ -615,4 +620,103 @@ fn a_start_option_the_game_doesnt_offer_is_refused_before_its_session() {
         run(&game, &no_value).error.as_deref(),
         Some("--seed needs a value")
     );
+}
+
+/// `run`'s input for the record `file`.
+fn from_session(file: &str) -> RunInput {
+    RunInput {
+        session: Some(SessionInput::new(file)),
+        ..RunInput::default()
+    }
+}
+
+/// A fresh folder holding `record.ron` and `broken.ron`.
+fn records(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("shuyi-run-{name}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&dir);
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("record.ron"), SessionRecord::new().to_ron()).unwrap();
+    fs::write(dir.join("broken.ron"), "not a record").unwrap();
+    dir
+}
+
+#[test]
+fn start_options_with_a_session_are_refused() {
+    let mut input = from_session("record.ron");
+    input.start = vec![GameArg {
+        flag: "--seed".to_owned(),
+        value: Some("1".to_owned()),
+    }];
+    let answer = run_at(&Fake::default(), Path::new("."), &input);
+    assert_eq!(answer.code.as_deref(), Some("SH0001"));
+    assert!(answer.error.unwrap().contains("no start options"));
+}
+
+#[test]
+fn a_file_that_isnt_a_record_is_refused_naming_the_file() {
+    let dir = records("broken");
+    for file in ["broken.ron", "missing.ron"] {
+        let answer = run_at(&Fake::default(), &dir, &from_session(file));
+        assert_eq!(answer.code.as_deref(), Some("SH3004"), "{file}");
+        let error = answer.error.unwrap();
+        assert!(error.starts_with(&format!("{file}: ")), "{error}");
+    }
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_game_with_no_session_from_says_so() {
+    let dir = records("unoffered");
+    for answer in [
+        run_at(&Fake::default(), &dir, &from_session("record.ron")).code,
+        scene_at(&Fake::default(), &dir, &from_session("record.ron")).code,
+    ] {
+        assert_eq!(answer.as_deref(), Some("SH3001"));
+    }
+    let answer = run_at(&Fake::default(), &dir, &from_session("record.ron"));
+    assert_eq!(
+        answer.error.as_deref(),
+        Some(
+            "the game's tools don't offer run --session and scene --session \
+             (GameTools::session_from)"
+        )
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_record_stamped_by_another_build_is_refused_before_the_game_is_asked() {
+    let dir = records("stamp");
+    let mut record = SessionRecord::new();
+    record.made = Some(stamp("0.1.0", "other", ContentHash(1)));
+    fs::write(dir.join("record.ron"), record.to_ron()).unwrap();
+    let game = Fake {
+        made: Some(stamp("0.1.0", "demo", ContentHash(2))),
+        ..Fake::default()
+    };
+    let answer = run_at(&game, &dir, &from_session("record.ron"));
+    assert_eq!(answer.code.as_deref(), Some("SH3007"));
+    let mut input = from_session("record.ron");
+    input.session.as_mut().unwrap().any_stamp = true;
+    // Past the stamp, to the game, which offers none.
+    assert_eq!(run_at(&game, &dir, &input).code.as_deref(), Some("SH3001"));
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn session_and_any_stamp_read_from_the_command_line() {
+    let read = parse_args(&args(&["--session", "a.ron", "--any-stamp"]), &[]).unwrap();
+    assert_eq!(
+        read.session.as_ref().map(|s| s.file.as_str()),
+        Some("a.ron")
+    );
+    assert!(read.session.unwrap().any_stamp);
+    let read = parse_args(&args(&["--session", "a.ron"]), &[]).unwrap();
+    assert!(!read.session.unwrap().any_stamp);
+    assert_eq!(
+        parse_args(&args(&["--any-stamp"]), &[]).unwrap_err(),
+        "--any-stamp needs --session"
+    );
+    assert!(parse_args(&args(&["--session"]), &[]).is_err());
+    assert!(usage("shuyi", Op::Scene, &[]).contains("--session <file>"));
 }
