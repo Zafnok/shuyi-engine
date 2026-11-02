@@ -36,6 +36,8 @@ impl Drop for NullOutput {
     fn drop(&mut self) {
         self.stop.store(true, Ordering::Release);
         if let Some(thread) = self.thread.take() {
+            // It waits a period at a time, and comes out of that at once for this.
+            thread.thread().unpark();
             let _ = thread.join();
         }
     }
@@ -50,8 +52,8 @@ fn run(config: OutputConfig, callback: &Callback, stop: &AtomicBool, held: &Atom
     // A sleep's overshoot makes it a little slower than a device, which nothing here
     // can hear: what plays only ends a little late.
     while !stop.load(Ordering::Acquire) {
-        std::thread::sleep(period);
-        if held.load(Ordering::Acquire) {
+        std::thread::park_timeout(period);
+        if stop.load(Ordering::Acquire) || held.load(Ordering::Acquire) {
             continue;
         }
         if let Ok(mut callback) = callback.try_lock() {

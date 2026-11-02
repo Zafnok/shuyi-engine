@@ -4,6 +4,9 @@
 
 /// The fractional bits of a boundary's place between two frames.
 const FRACTION_BITS: u32 = 16;
+/// The most frames of the mix one device frame passes: more than any two rates a
+/// device takes ask (192 kHz for 8 kHz is 24).
+const MOST_STEP_FRAMES: u64 = 64;
 
 /// A sample a device can take, from one of the mix's.
 pub trait DeviceSample: Copy {
@@ -103,12 +106,14 @@ impl Boundary {
             return self.next(mix);
         }
         let mut ahead = self.next_held(mix);
-        while self.place >= one {
-            self.place -= one;
+        // The frames of the mix the device's place has passed. A step is a few at most,
+        // and the bound means a bad one can't hold the audio thread.
+        for _ in 0..(self.place >> FRACTION_BITS).min(MOST_STEP_FRAMES) {
             self.previous = ahead;
             self.at += self.from;
             ahead = self.next_held(mix);
         }
+        self.place &= one - 1;
         let between = |a: i16, b: i16| {
             let (a, b) = (i64::from(a), i64::from(b));
             let mixed = a + (b - a) * i64::try_from(self.place).unwrap_or(0) / (1 << FRACTION_BITS);
