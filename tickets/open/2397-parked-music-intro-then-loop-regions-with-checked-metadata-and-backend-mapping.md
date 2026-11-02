@@ -32,7 +32,15 @@ None.
   checked `0 <= start < end <= length_ms`. Update RON/serde/validation,
   constructor/defaults, pack version/pinned binary fixtures and public API
   migration notes as needed. New growable public types follow ADR-0039.
-- Read Ogg `LOOPSTART`/`LOOPLENGTH` sample comments via lewton (2210),
+- **From 2210 (done):** `shuyi_sound::vorbis::VorbisSource` has `comment(name)`,
+  `comments()`, `position()`, `end_granule()` and `seek_page(frame)`. `seek_page`
+  lands on the first page ending at or past the frame, and the packet after it
+  gives nothing, so `position()` is `None` until a page ends. An exact boundary
+  seeks some way before it, reads until `position()` is known and still before
+  the boundary, and discards up to it: a test proves the samples from there equal
+  a whole decode's. `lewton`'s own running count between pages isn't exact, so
+  don't read it directly.
+- Read Ogg `LOOPSTART`/`LOOPLENGTH` sample comments with `VorbisSource::comment`,
   checked addition/unit conversion and known sample rate. Manifest values
   override file defaults; errors name file/field. Do not silently clamp
   invalid/overflowing metadata or make a codec-specific manifest.

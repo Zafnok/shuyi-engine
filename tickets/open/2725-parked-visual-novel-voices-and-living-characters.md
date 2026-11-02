@@ -95,8 +95,9 @@ None.
   - decoding audio in the tool: use 2210's `shuyi-sound` source API
     and its optional std hound/lewton adapters, not a second decoder
     path. **From 2902 (done):** the original 2214 decoder implementation
-    was dropped; 2210 is the blocker and updates `tools/layers.ron` to
-    classify those decoders as non-device code. `shuyi-assets` still
+    was dropped. **From 2210 (done):** `shuyi-sound`'s entry in
+    `tools/layers.ron` names those decoders as `readers`, non-device code, as
+    `shuyi-cli`'s already does. `shuyi-assets` still
     reads only a sound's header (`crates/assets/src/audio/formats.rs`).
     Add `shuyi-cli`'s edge to `shuyi-sound` in the layers table, keep
     device output out of the tool, and reuse 2573's correctness

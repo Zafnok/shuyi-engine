@@ -56,6 +56,17 @@
             "latency_ms": (max_ratio: 1.14, max_spread: 0.53, slows: false),
         },
     },
+    // Placeholder until calibrated.
+    decoders: {
+        "linux-native": {
+            "wav": (ratio: Some((max_ratio: 1.05, max_spread: 0.3, slows: true)), max_share: 0.25),
+            "ogg": (ratio: Some((max_ratio: 1.05, max_spread: 0.3, slows: true)), max_share: 0.25),
+        },
+        "browser-chromium": {
+            "wav": (ratio: None, max_share: 0.25),
+            "ogg": (ratio: None, max_share: 0.25),
+        },
+    },
     // Each platform's evidence. Only a `Captured` one can support a parity claim,
     // and every cell of it is mandatory. `Blocked` says who must establish it.
     platforms: {

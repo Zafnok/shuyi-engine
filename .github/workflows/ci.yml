@@ -508,6 +508,13 @@ jobs:
           "$RUNNER_TEMP/capture/bin/python" -m playwright install --with-deps chromium
       - name: The gates' own tests
         run: cargo test -p xtask --locked sound_parity
+      - name: The sound core, without std and for the web
+        run: |
+          rustup target add thumbv7em-none-eabihf
+          cargo test -p shuyi-sound --locked
+          cargo test -p shuyi-sound --all-features --locked
+          cargo build -p shuyi-sound --target thumbv7em-none-eabihf --locked
+          cargo build -p shuyi-sound --all-features --target wasm32-unknown-unknown --locked
       - name: The corpus and what a separate decoder makes of it
         run: cargo xtask sound-parity corpus --out target/sound-parity --oracle
       - name: Build the probe, natively and for the web

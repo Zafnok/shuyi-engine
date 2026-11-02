@@ -48,6 +48,11 @@ None.
 ## Scope
 
 **In:**
+- **From 2210 (done):** `crates/sound` has `Pcm`, `Channels`, `PcmFormat`,
+  `Limits` and `Source`, whose `read` fills a buffer with whole frames and returns
+  `0` at the end. `WavSource` and `VorbisSource` are `Source`s that do decoder work
+  in `read`, so a worker calls them and `render` never does. `tools/layers.ron`
+  has the crate with `floats: false`; the one float is in `wav.rs`.
 - **From 2573 (done):** quad-snd exposes no offline mix to compare, so the
   offline render budget and the bounded-memory tests over short and long streams
   start here (`tools/sound-parity/README.md`, *What each stage adds*).

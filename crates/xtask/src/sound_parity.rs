@@ -10,11 +10,14 @@
 //!   one passed. Missing, stale or silent evidence is a failure, never a skip.
 //! - `port-ready <platform>` reads a matrix and exits non-zero unless that
 //!   platform has real evidence: what a port's output work must pass first.
+//! - `decoders --dir D` holds `shuyi-sound`'s adapters to the corpus and the
+//!   oracle under `D`, as `gate` does too ([`decoders`]): no capture needed.
 //! - `give-up [--apply]` takes the whole replacement out, on Nick's word alone
 //!   ([`give_up`], ADR-0068).
 
 mod compare;
 mod corpus;
+mod decoders;
 mod give_up;
 #[cfg(test)]
 mod tests;
@@ -65,6 +68,8 @@ pub(crate) struct Budget {
     correctness: Tolerance,
     /// Each platform's verdicts, by metric.
     performance: BTreeMap<String, BTreeMap<String, Limit>>,
+    /// Each platform's decoder limits, by kind of file.
+    decoders: BTreeMap<String, BTreeMap<String, decoders::DecoderLimit>>,
     /// Which platforms a parity claim needs, and who establishes the others.
     platforms: BTreeMap<String, Contract>,
 }
@@ -157,6 +162,7 @@ pub(crate) fn run(root: &Path, args: &[String]) -> Vec<String> {
                 Err(e) => vec![e],
             }
         }
+        ["decoders", "--dir", dir] => decoder_failures(root, Path::new(dir)),
         ["give-up"] => give_up::run(root, false),
         ["give-up", "--apply"] => give_up::run(root, true),
         _ => vec![format!("sound-parity: don't know {args:?}")],
@@ -166,6 +172,25 @@ pub(crate) fn run(root: &Path, args: &[String]) -> Vec<String> {
 fn read_ron<T: for<'a> Deserialize<'a>>(path: &Path) -> Result<T, String> {
     let text = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
     ron::from_str(&text).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// The decoder stage's correctness cells, from the corpus and oracle under `dir`.
+fn decoder_cells(root: &Path, dir: &Path, tolerance: &Tolerance) -> Result<Vec<Value>, String> {
+    let manifest: Manifest = read_ron(&root.join(TOOL).join("corpus.ron"))?;
+    let names: Vec<&String> = manifest.ogg.keys().collect();
+    Ok(decoders::correctness_cells(dir, &names, tolerance))
+}
+
+/// What `decoders` prints: every cell of them that didn't pass.
+fn decoder_failures(root: &Path, dir: &Path) -> Vec<String> {
+    let budget: Budget = match read_ron(&root.join(TOOL).join("budget.ron")) {
+        Ok(budget) => budget,
+        Err(e) => return vec![e],
+    };
+    match decoder_cells(root, dir, &budget.correctness) {
+        Ok(cells) => failures(&json!({"schema": SCHEMA, "cells": cells}).to_string()),
+        Err(e) => vec![e],
+    }
 }
 
 /// Writes every corpus file into `options.out/corpus`, and the decoded
@@ -313,7 +338,7 @@ fn gate(root: &Path, dir: &Path, revision: &str) -> Result<(), Vec<String>> {
         corpus: hash("corpus.ron")?,
         scenarios: hash("scenarios.ron")?,
     };
-    let mut cells = Vec::new();
+    let mut cells = decoder_cells(root, dir, &budget.correctness).map_err(one)?;
     for (platform, contract) in &budget.platforms {
         match contract {
             Contract::Blocked(who) => {
@@ -458,7 +483,26 @@ fn platform_cells(
     }
     cells.extend(fault_cells(platform, plan, &runs[0], &oracle, tolerance));
     cells.extend(performance_cells(platform, &base, budget));
+    cells.extend(decoder_speed_cells(platform, &base, budget));
     cells
+}
+
+/// The verdicts from `base/decoders.jsonl`; no budget for a platform is a failure.
+fn decoder_speed_cells(platform: &str, base: &Path, budget: &Budget) -> Vec<Value> {
+    let path = base.join("decoders.jsonl");
+    let rows: Vec<Value> = fs::read_to_string(&path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect();
+    let Some(limits) = budget.decoders.get(platform) else {
+        return vec![cell(platform, "decoder-speed", true, "failed", "no budget")];
+    };
+    if rows.is_empty() {
+        let why = format!("no samples in {}", path.display());
+        return vec![cell(platform, "decoder-speed", true, "failed", &why)];
+    }
+    decoders::speed_cells(platform, &rows, limits)
 }
 
 /// A platform's numbered runs, in order.

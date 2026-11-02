@@ -52,8 +52,9 @@ pub const DEFAULT_CRATES: [&str; 7] = [
 ];
 
 /// The members under `crates/` that are neither default crates nor
-/// modules: the front door and this tool.
-const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];
+/// modules: the front door, this tool, and what only the sound replacement
+/// uses until a backend does (ADR-0066, ADR-0068).
+const NOT_MODULES: [&str; 3] = ["shuyi", "xtask", "shuyi-sound"];
 
 /// The heading of the catalog's table of backends, which answer no concern
 /// and are no feature of the front door.

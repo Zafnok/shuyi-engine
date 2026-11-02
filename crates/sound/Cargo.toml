@@ -1,0 +1,34 @@
+[package]
+name = "shuyi-sound"
+description = "Shuyi Engine's sound core: decoded samples (`Pcm`), a bounded `Source` of them, and optional WAV and Ogg Vorbis adapters over permissive libraries. Independent of the engine's other crates, no I/O and no device"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+# Off by default: without `std` the core builds for a console.
+default = []
+std = ["thiserror/std"]
+# The adapters. Each reads bytes it is handed and needs `std`, as its library does.
+wav = ["std", "dep:hound"]
+vorbis = ["std", "dep:lewton"]
+
+[dependencies]
+thiserror.workspace = true
+hound = { version = "3.5", optional = true }
+# The `ogg` feature is its Ogg container reader; 0.9 is the version the old
+# backend's and the Playdate exporter's paths already build.
+lewton = { version = "0.9", optional = true, default-features = false, features = ["ogg"] }
+
+[dev-dependencies]
+proptest.workspace = true
+
+[[test]]
+name = "adapters"
+required-features = ["wav", "vorbis"]

@@ -10,6 +10,7 @@
         ".agents/skills/give-up-sound-replacement",
         ".claude/skills/give-up-sound-replacement",
         "crates/app/examples/sound_probe.rs",
+        "crates/sound",
         "crates/xtask/src/sound_parity",
         "crates/xtask/src/sound_parity.rs",
         "tools/sound-parity",
@@ -17,6 +18,75 @@
     // A `find` must be there exactly once, and a `Cut` removes from `from` up to,
     // not including, `to`: one that no longer matches fails the check and CI.
     edits: [
+        // Ticket 2210: the sound core and what names it.
+        Cut(
+            file: "Cargo.lock",
+            from: "[[package]]\nname = \"shuyi-sound\"",
+            to: "[[package]]\nname = \"shuyi-ui\"",
+        ),
+        Replace(
+            file: "Cargo.lock",
+            find: " \"shuyi-platform\",\n \"shuyi-sound\",\n",
+            with: " \"shuyi-platform\",\n",
+        ),
+        Replace(
+            file: "Cargo.lock",
+            find: " \"sha2\",\n \"shuyi-sound\",\n",
+            with: " \"sha2\",\n",
+        ),
+        Replace(
+            file: "crates/app/Cargo.toml",
+            find: "# The sound probe's decoder timings (ticket 2210): only the example uses it.\nshuyi-sound = { path = \"../sound\", features = [\"wav\", \"vorbis\"] }\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/xtask/Cargo.toml",
+            find: "# `sound-parity`'s decoder stage: the adapters held to the corpus (ticket 2210).\nshuyi-sound = { path = \"../sound\", features = [\"wav\", \"vorbis\"] }\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/xtask/src/no_std.rs",
+            find: r##"&[
+    "crates/core",
+    "crates/ui",
+    "crates/platform",
+    "crates/sound",
+];"##,
+            with: r##"&["crates/core", "crates/ui", "crates/platform"];"##,
+        ),
+        Replace(
+            file: "crates/xtask/src/api/tests.rs",
+            find: "assert_eq!(API_CRATES.len(), 10);",
+            with: "assert_eq!(API_CRATES.len(), 9);",
+        ),
+        Replace(
+            file: "crates/xtask/src/api.rs",
+            find: "//! - The other eight with each tool's own default",
+            with: "//! - The other seven with each tool's own default",
+        ),
+        Replace(
+            file: "crates/xtask/src/api.rs",
+            find: "    defaults(\"shuyi-sound\"),\n",
+            with: "",
+        ),
+        Replace(
+            file: "crates/xtask/src/modules.rs",
+            find: r##"/// modules: the front door, this tool, and what only the sound replacement
+/// uses until a backend does (ADR-0066, ADR-0068).
+const NOT_MODULES: [&str; 3] = ["shuyi", "xtask", "shuyi-sound"];"##,
+            with: r##"/// modules: the front door and this tool.
+const NOT_MODULES: [&str; 2] = ["shuyi", "xtask"];"##,
+        ),
+        Cut(
+            file: "tools/layers.ron",
+            from: "        \"shuyi-sound\": (",
+            to: "        \"shuyi-cli\": (",
+        ),
+        Cut(
+            file: "README.md",
+            from: "| `shuyi-sound` | `crates/sound` |",
+            to: "| `shuyi-cli` | `crates/cli` |",
+        ),
         Cut(
             file: ".github/workflows/ci.yml",
             from: "  # The first gate on leaving quad-snd",
