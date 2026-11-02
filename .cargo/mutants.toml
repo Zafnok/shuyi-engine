@@ -13,8 +13,14 @@
 # `--cfg shuyi_playdate_sdk` for a device no test has; the rest of the crate
 # is tested on a fake of them. An example's `src/playdate.rs` hands it to that
 # backend, as `src/main.rs` hands it to the shell.
+#
+# `shuyi-sound-out`'s `windows.rs` and `web.rs` are built only for those targets and
+# need a device; what is tested of them is `convert_impl.rs`, the null output, and CI's
+# sound parity gates.
 exclude_globs = [
     "crates/app/**",
+    "crates/sound-out/src/windows.rs",
+    "crates/sound-out/src/web.rs",
     "crates/playdate/src/device/**",
     "examples/*/src/main.rs",
     "examples/*/src/playdate.rs",
@@ -26,6 +32,8 @@ exclude_globs = [
 timeout_multiplier = 3.0
 # Mutants no test can catch, each for the reason beside it:
 exclude_re = [
+    # The web's functions in `sys.rs`, built only for `wasm32`.
+    "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
     # `NoDirective` has no values, so its `print` can never run.
     "<impl Directive for NoDirective>::print",
     # The default `scene_problems` is `Vec::new()`: its only viable mutant,

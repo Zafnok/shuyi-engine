@@ -244,6 +244,29 @@ sound-probe = []
             with: "",
         ),
         // Ticket 3031: the new backend, its output, and what names them.
+        Replace(
+            file: ".cargo/mutants.toml",
+            find: r##"#
+# `shuyi-sound-out`'s `windows.rs` and `web.rs` are built only for those targets and
+# need a device; what is tested of them is `convert_impl.rs`, the null output, and CI's
+# sound parity gates.
+"##,
+            with: "",
+        ),
+        Replace(
+            file: ".cargo/mutants.toml",
+            find: r##"    "crates/sound-out/src/windows.rs",
+    "crates/sound-out/src/web.rs",
+"##,
+            with: "",
+        ),
+        Replace(
+            file: ".cargo/mutants.toml",
+            find: r##"    # The web's functions in `sys.rs`, built only for `wasm32`.
+    "sound-out/src/sys.rs.*(web|vet|shuyi_sound)",
+"##,
+            with: "",
+        ),
         Cut(
             file: "Cargo.toml",
             from: "# Cargo allows one crate of a build to say",

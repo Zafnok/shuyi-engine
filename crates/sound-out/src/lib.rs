@@ -207,6 +207,75 @@ impl Output {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::{Duration, Instant};
+
+    use super::*;
+
+    const CONFIG: OutputConfig = OutputConfig::new(48_000, Channels::Stereo, 48);
+
+    fn counting() -> (Arc<AtomicUsize>, impl FnMut(&mut [i16]) + Send + 'static) {
+        let count = Arc::new(AtomicUsize::new(0));
+        let inner = Arc::clone(&count);
+        (count, move |out: &mut [i16]| {
+            inner.fetch_add(out.len(), Ordering::AcqRel);
+        })
+    }
+
+    fn wait_for(count: &AtomicUsize, more_than: usize) {
+        let start = Instant::now();
+        while count.load(Ordering::Acquire) <= more_than {
+            assert!(start.elapsed() < Duration::from_secs(20), "it never asked");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    #[test]
+    fn the_null_output_runs_at_the_rate_it_was_asked_for_and_can_be_held() {
+        let (count, callback) = counting();
+        let output = Output::null(CONFIG, callback);
+        assert_eq!(output.rate(), 48_000);
+        assert!(format!("{output:?}").contains("48000"));
+        wait_for(&count, 0);
+        assert_eq!(
+            count.load(Ordering::Acquire) % 96,
+            0,
+            "whole blocks of stereo"
+        );
+        output.suspend();
+        std::thread::sleep(Duration::from_millis(20));
+        let held = count.load(Ordering::Acquire);
+        std::thread::sleep(Duration::from_millis(30));
+        assert_eq!(count.load(Ordering::Acquire), held, "it stopped asking");
+        output.resume();
+        wait_for(&count, held);
+    }
+
+    /// Linux and macOS come with their own ticket: until then they say so, and the
+    /// caller gets an output that discards rather than a crash.
+    #[cfg(not(windows))]
+    #[test]
+    fn a_system_without_its_output_is_quiet_and_says_why() {
+        assert_eq!(Output::preferred_rate(), None);
+        let (_, callback) = counting();
+        assert!(matches!(
+            Output::open(CONFIG, callback),
+            Err(OutputError::Unavailable(_))
+        ));
+        let (count, callback) = counting();
+        let (output, problem) = Output::open_or_null(CONFIG, callback);
+        assert!(matches!(problem, Some(OutputError::Unavailable(_))));
+        assert_eq!(output.rate(), 48_000);
+        wait_for(&count, 0);
+    }
+
+    #[test]
+    fn errors_say_what_went_wrong() {
+        assert_eq!(OutputError::NoDevice.to_string(), "no sound device");
+        let refused = OutputError::Device("busy".to_owned());
+        assert_eq!(refused.to_string(), "the sound device refused: busy");
+    }
+
     /// The one lint that differs from the workspace's is `unsafe_code`, as ADR-0021
     /// §6 says, and the one added is what makes each block say why it holds.
     #[test]

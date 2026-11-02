@@ -1122,6 +1122,83 @@ fn a_stream_goes_in_a_named_slot_and_comes_out_with_what_played_it_ended() {
     assert!(mixer.put_stream(next, second).is_some(), "what was there");
 }
 
+#[test]
+fn what_has_no_place_in_this_mixer_comes_back_to_the_caller() {
+    let mixer = Mixer::new(
+        Config::new(RATE, Channels::Stereo, 1)
+            .with_sounds(4)
+            .with_streams(4),
+    );
+    let (mut remote, _inbox) = mixer.remote(4);
+    let mut sounds = Vec::new();
+    let mut streams = Vec::new();
+    for _ in 0..4 {
+        sounds.push(remote.reserve_sound().unwrap_or_else(|e| panic!("{e}")));
+        streams.push(remote.reserve_stream().unwrap_or_else(|e| panic!("{e}")));
+    }
+    // The last places of a larger mixer's are none of a smaller one's.
+    let mut small = Mixer::new(
+        Config::new(RATE, Channels::Stereo, 1)
+            .with_sounds(1)
+            .with_streams(1),
+    );
+    let pcm = small.put_sound(sounds[3], ramp(2));
+    assert_eq!(pcm.map(|p| p.frames()), Some(2));
+    let source = small.put_stream(streams[3], Box::new(SharedSource::new(ramp(3))));
+    assert_eq!(source.and_then(|s| s.total_frames()), Some(3));
+    assert!(small.take_stream(streams[3]).is_none());
+    // A release only frees its own tenant's place.
+    remote.release_sound(sounds[0]);
+    let tenant = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
+    remote.release_sound(sounds[0]);
+    assert_eq!(
+        remote.reserve_sound(),
+        Err(Full),
+        "the old id frees nothing"
+    );
+    remote.release_sound(tenant);
+    assert!(remote.reserve_sound().is_ok());
+}
+
+#[test]
+fn a_hand_over_runs_before_each_command_and_not_otherwise() {
+    let mut mixer = stereo_mixer(2);
+    let (mut remote, mut inbox) = mixer.remote(4);
+    let mut calls = 0;
+    inbox.apply_with(&mut mixer, |_| calls += 1);
+    assert_eq!(calls, 0, "no command, no call");
+    let sound = remote.reserve_sound().unwrap_or_else(|e| panic!("{e}"));
+    let voice = remote
+        .play(sound, Params::new())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(remote.stop(voice), Ok(()));
+    inbox.apply_with(&mut mixer, |_| calls += 1);
+    assert_eq!(calls, 2);
+}
+
+#[test]
+fn a_feeder_says_when_it_has_closed() {
+    let format = ramp(1).format();
+    let (mut feeder, _feed) = feed(format, 8);
+    assert!(!feeder.is_closed());
+    let mut source = SharedSource::new(ramp(2));
+    assert_eq!(feeder.fill_from(&mut source), Ok(2));
+    assert!(feeder.is_closed(), "the source ended");
+}
+
+#[test]
+fn a_boxed_source_is_the_source_it_holds() {
+    let mut boxed: Box<dyn Source + Send> = Box::new(SharedSource::new(ramp(3)));
+    assert_eq!(boxed.total_frames(), Some(3));
+    assert_eq!(boxed.format(), ramp(1).format());
+    let mut out = [0; 2];
+    assert_eq!(boxed.read(&mut out), Ok(2));
+    assert_eq!(out, [1, 2]);
+    assert_eq!(boxed.rewind_to(0), Ok(()));
+    assert_eq!(boxed.read(&mut out), Ok(2));
+    assert_eq!(out, [1, 2]);
+}
+
 // -- what holds of any script --
 
 /// One thing a script does.
