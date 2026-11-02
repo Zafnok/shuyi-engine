@@ -1,0 +1,69 @@
+name: sound-trial
+
+# Temporary, ticket 3031: can a hosted Windows runner have a real render endpoint?
+on:
+  push:
+    branches: [t3031-sound-output]
+
+permissions:
+  contents: read
+
+jobs:
+  trial:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: What is there
+        shell: pwsh
+        run: |
+          Start-Service audiosrv -ErrorAction Continue
+          Start-Service AudioEndpointBuilder -ErrorAction Continue
+          Get-Service audio* | Format-Table -AutoSize
+          Get-CimInstance Win32_SoundDevice | Format-Table Name,Status -AutoSize
+          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table FriendlyName,Status -AutoSize
+          Get-CimInstance Win32_ComputerSystem | Format-List Model,Manufacturer
+          Confirm-SecureBootUEFI -ErrorAction Continue
+          python --version
+      - name: Install Scream
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          Invoke-WebRequest https://github.com/duncanthrax/scream/releases/download/4.0/Scream4.0.zip -OutFile scream.zip
+          (Get-FileHash scream.zip -Algorithm SHA256).Hash
+          Expand-Archive scream.zip -DestinationPath scream
+          Get-ChildItem scream -Recurse | Select-Object FullName | Format-Table -AutoSize -Wrap
+          $sys = Get-ChildItem scream -Recurse -Filter Scream.sys | Where-Object FullName -Match 'x64|amd64|driver' | Select-Object -First 1
+          $sig = Get-AuthenticodeSignature $sys.FullName
+          $sig | Format-List Status,StatusMessage
+          $sig.SignerCertificate | Format-List Subject,NotAfter
+          $cat = Get-ChildItem scream -Recurse -Filter *.cat | Select-Object -First 1
+          $catsig = Get-AuthenticodeSignature $cat.FullName
+          $catsig | Format-List Status,StatusMessage
+          $store = [System.Security.Cryptography.X509Certificates.X509Store]::new("TrustedPublisher", "LocalMachine")
+          $store.Open("ReadWrite")
+          $store.Add($catsig.SignerCertificate)
+          $store.Add($sig.SignerCertificate)
+          $store.Close()
+          $inf = Get-ChildItem scream -Recurse -Filter Scream.inf | Select-Object -First 1
+          $devcon = Get-ChildItem scream -Recurse -Filter devcon*x64*.exe | Select-Object -First 1
+          if (-not $devcon) { $devcon = Get-ChildItem "C:\Program Files (x86)\Windows Kits" -Recurse -Filter devcon.exe | Where-Object FullName -Match 'x64' | Select-Object -First 1 }
+          Write-Output "devcon: $($devcon.FullName), inf: $($inf.FullName)"
+          Push-Location $inf.DirectoryName
+          & $devcon.FullName install $inf.Name '*Scream'
+          Write-Output "devcon exit: $LASTEXITCODE"
+          Pop-Location
+          Start-Sleep 5
+          Restart-Service audiosrv -Force -ErrorAction Continue
+          Start-Sleep 5
+          Get-CimInstance Win32_SoundDevice | Format-Table Name,Status -AutoSize
+          Get-PnpDevice -Class AudioEndpoint -ErrorAction SilentlyContinue | Format-Table FriendlyName,Status -AutoSize
+      - name: The recorder, with a tone
+        shell: pwsh
+        continue-on-error: true
+        run: python tools/sound-parity/trial_loopback.py tools/sound-parity --tone
