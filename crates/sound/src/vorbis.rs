@@ -233,8 +233,8 @@ impl Source for VorbisSource<'_> {
         self.check_broken()?;
         let channels = usize::from(self.format.channels.count());
         let wanted = room * channels;
-        let mut written = 0;
-        while written < wanted {
+        let mut rest = &mut out[..wanted];
+        while !rest.is_empty() {
             let left = &self.packet[self.sent..];
             if left.is_empty() {
                 if self.ended {
@@ -243,12 +243,13 @@ impl Source for VorbisSource<'_> {
                 self.next_packet()?;
                 continue;
             }
-            let count = (wanted - written).min(left.len());
-            out[written..written + count].copy_from_slice(&left[..count]);
+            let count = rest.len().min(left.len());
+            let (filled, after) = core::mem::take(&mut rest).split_at_mut(count);
+            filled.copy_from_slice(&left[..count]);
+            rest = after;
             self.sent += count;
-            written += count;
         }
-        Ok(written / channels)
+        Ok((wanted - rest.len()) / channels)
     }
 }
 
