@@ -330,7 +330,7 @@ None.
 5. Add `pan` to `SoundRequest::Sound`, and to 2345's `Cues` if it is
    done. Then add it to the player's backend as a provided method with
    its warning, to the Playdate backend, to the GBA's if
-   3027 is done and to the in-house one if 3031 is done, and `Pan` to
+   3027 is done, to the in-house one (3031's), and `Pan` to
    their profiles if 3017 is done.
 6. Add the grid listener, and 1120's if 1120 is done.
 7. Add `volume` and `pan` to the contract's `Sound`, raise `VERSION`,
@@ -380,7 +380,7 @@ None.
       `SoundRequest::Sound`, and a sound past `silent` starts no gap.
 - [ ] The Playdate backend's fake SDK gets the left and right volumes
       `pan_gains` gives.
-- [ ] If 3027 or 3031 is done: its backend gets the balance
+- [ ] The in-house backend (3031's), and 3027's if 3027 is done, gets the balance
       `pan_gains` gives, and a full-right pan sounds only on the right.
       If 3017 is done: each profile whose backend pans lists `Pan`.
 - [ ] `shuyi-ui` and `shuyi-assets` still build for
