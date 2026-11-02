@@ -136,4 +136,8 @@ exclude_re = [
     # The book's action set has no fixed keys (`&[]`): the mutant that
     # returns an empty leaked `Vec` is the same function.
     '<impl ActionSet for GardenAction>::fixed_keys -> .* with Vec::leak\(Vec::new\(\)\)',
+    # A Vorbis source's `read` asks `next_packet` until the file ends: the mutant
+    # that decodes nothing never ends, so it costs a shard its whole timeout and
+    # fails it as one, though every test that reads a file would hang on it.
+    'VorbisSource<.a>::next_packet -> Result<\(\), Error> with Ok\(\(\)\)',
 ]

@@ -116,9 +116,23 @@ What the work turned up, and how it differs from the ticket and the research:
   threads, so old against new isn't equal work there. The ratio is recorded as a
   non-mandatory cell, and `decoder-share` is the verdict.
 
-Measurements: see `tools/sound-parity/budget.ron`, `decoders`, for the runs behind
-each limit. Locally, `oggdec` 1.4.2's output matched `corpus.ron`'s pinned hashes
-byte for byte, and every `decoder:*` and `decoder-refuses:*` cell passed.
+Measurements, CI run 41366247884 (artifact `sound-parity`, whole decodes of the
+10-second `long`, new against old, 9 pairs):
+
+| Platform | File | Old | New | Ratio | Spread | Of the sound's length |
+| -------- | ---- | --- | --- | ----- | ------ | --------------------- |
+| Linux | WAV | 21.1 ms | 7.8 ms | 0.37 | 0.008 | 0.08% |
+| Linux | Ogg | 33.6 ms | 25.7 ms | 0.76 | 0.006 | 0.26% |
+| Chromium | WAV | 25.0 ms | 12.0 ms | 0.53 | 0.125 | 0.12% |
+| Chromium | Ogg | 35.3 ms | 44.7 ms | 1.26 | 0.044 | 0.45% |
+
+All 37 cells of `decoders` passed. `budget.ron`'s limits are from this one run, and
+hold in the runs that followed it on this PR. Ogg in the browser is the one place
+new is slower than old: 3031 decodes off the main thread there or accepts that.
+Locally, `oggdec` 1.4.2's output matched `corpus.ron`'s pinned hashes byte for byte.
+
+The mutant that makes `next_packet` do nothing is excluded in `.cargo/mutants.toml`:
+every test that reads a file hangs on it, which a shard reports as a failure.
 
 Remaining consumers: 3030 (the mixer's `Source`s), 3031 and 3032 (the backends'
 workers), 2397 (loop comments and position), 2725 (the tool, which ADR-0068 §0 says

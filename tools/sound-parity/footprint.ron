@@ -20,6 +20,15 @@
     edits: [
         // Ticket 2210: the sound core and what names it.
         Replace(
+            file: ".cargo/mutants.toml",
+            find: r##"    # A Vorbis source's `read` asks `next_packet` until the file ends: the mutant
+    # that decodes nothing never ends, so it costs a shard its whole timeout and
+    # fails it as one, though every test that reads a file would hang on it.
+    'VorbisSource<.a>::next_packet -> Result<\(\), Error> with Ok\(\(\)\)',
+"##,
+            with: "",
+        ),
+        Replace(
             file: "site/data/api.toml",
             find: "
 [[crate]]

@@ -235,16 +235,16 @@ impl Source for VorbisSource<'_> {
         let wanted = room * channels;
         let mut written = 0;
         while written < wanted {
-            if self.sent == self.packet.len() {
+            let left = &self.packet[self.sent..];
+            if left.is_empty() {
                 if self.ended {
                     break;
                 }
                 self.next_packet()?;
                 continue;
             }
-            let count = (wanted - written).min(self.packet.len() - self.sent);
-            out[written..written + count]
-                .copy_from_slice(&self.packet[self.sent..self.sent + count]);
+            let count = (wanted - written).min(left.len());
+            out[written..written + count].copy_from_slice(&left[..count]);
             self.sent += count;
             written += count;
         }
