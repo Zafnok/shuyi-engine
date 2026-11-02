@@ -48,14 +48,24 @@ jobs:
           $store.Add($sig.SignerCertificate)
           $store.Close()
           $devcon = (Resolve-Path "scream\Install\helpers\devcon-x64.exe").Path
+          # The certificate expired in 2023 and the signature has no timestamp.
+          Stop-Service w32time -Force -ErrorAction SilentlyContinue
+          $now = Get-Date
+          $clock = [System.Diagnostics.Stopwatch]::StartNew()
+          Set-Date -Date ([datetime]'2023-01-15T12:00:00') | Out-Null
+          (Get-AuthenticodeSignature "$driver\scream.cat") | Format-List Status,StatusMessage
           $p = Start-Process -FilePath $devcon -ArgumentList 'install','Scream.inf','*Scream' -WorkingDirectory (Resolve-Path $driver).Path -PassThru -NoNewWindow
-          if (-not $p.WaitForExit(120000)) {
+          $finished = $p.WaitForExit(60000)
+          Set-Date -Date $now.Add($clock.Elapsed) | Out-Null
+          if (-not $finished) {
             Write-Output "devcon hung; killing it"
             Stop-Process -Id $p.Id -Force
           } else {
             Write-Output "devcon exit: $($p.ExitCode)"
           }
-          Get-Content C:\Windows\INF\setupapi.dev.log -Tail 40
+          Start-Service w32time -ErrorAction SilentlyContinue
+          Get-Content C:\Windows\INF\setupapi.dev.log -Tail 25
+          Get-CimInstance Win32_PnPEntity | Where-Object Name -Match 'Scream' | Format-List Name,Status,ConfigManagerErrorCode
           Start-Sleep 5
           Restart-Service audiosrv -Force -ErrorAction Continue
           Start-Sleep 5
