@@ -255,6 +255,7 @@ fn a_choice_with_no_replies_is_passed_over() {
             },
             Step::Narrate {
                 text: "After.".into(),
+                direction: None,
                 line: LineId::default(),
             },
         ],

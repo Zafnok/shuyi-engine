@@ -63,6 +63,12 @@ scout: I'll keep watch.
   changes its expression first. An indented line goes on with the line
   above.
 - `> text` is narration: nobody says it.
+- `<id> (whispering, frightened): text` and `> (slowly): text` say how a
+  line is spoken, for a voice tool or an actor. `@delivery <direction>`
+  does it for the lines after it, until `@delivery clear`, the next
+  `@delivery` or the end of the scene, or of the `@if` part or reaction
+  it is in; a line's own direction wins. A direction is never shown, and
+  changing it keeps the line's id.
 - `@caption <text>` names the place or the time until the next one.
 - `@music <cue>` changes the music when the scene reaches it, and
   `@music stop` fades it out. It stays after the scene.
