@@ -216,13 +216,11 @@ mixer to samples worked out in plain arithmetic from the corpus's numbers, for p
 rate, resampling, loops, regions, two streams, gains, clamping, a fade, mono output,
 capacity refusal and bounded memory, with faults each must catch. The probe's `mixer`
 mode times 32 busy voices in release builds on Linux and in Chromium. quad-snd has no
-offline mix, so this is a share of the sound's length, not a ratio against old.
-
-**The speed limits aren't calibrated yet.** The one measure so far is on Windows, by
-hand: 0.008 of the sound's length. `max_share` in `budget.ron` is about ten times that
-natively, and 0.2 in the browser is an unmeasured allowance. No consumer switches in
-this ticket; the numbers want setting from the `sound-parity` job's `mixer-share`
-cells, as `budget.ron` says.
+offline mix, so this is a share of the sound's length, not a ratio against old: 0.013
+natively over three CI runs and 0.026 in Chromium over one (CI run 41391211198, whose
+every mandatory cell passed). `max_share` in `budget.ron` is about ten times the worst
+single measure, as the decoders' is. The browser's rests on one run: a consumer
+switching (3031) measures it again.
 
 **Deviations:**
 
