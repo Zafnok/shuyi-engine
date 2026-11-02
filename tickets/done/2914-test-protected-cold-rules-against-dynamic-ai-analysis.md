@@ -86,6 +86,6 @@ None.
 - Documentation: the result lives in `docs/research/`; the 2912 report now
   links it. No game-facing API, contract, format, rule or template changed,
   so the book and skill pack need no update. No public API or format break.
-- Follow-up: ticket 2575 covers an unrelated existing CLI timing assertion
+- Follow-up: ticket 2577 covers an unrelated existing CLI timing assertion
   that failed once under parallel workspace-test load.
 - Nick input: none.
